@@ -129,6 +129,7 @@ const StoredSchema = z.object({
       owner: z.string(),
       at: z.string().optional(),
       standing: z.enum(["earlier", "set-aside"]).optional(),
+      setAsideAt: z.string().optional(),
       filed: z.object({ ref: z.string(), at: z.string() }).optional(),
     })
   ),

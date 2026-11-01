@@ -437,9 +437,10 @@
     {
       "id": "voice-heard",
       "name": "Voice notes sent home get heard",
-      "why": "The phone sends a voice note home; home transcribes it in the background, and the transcript is what the routine reads.",
+      "why": "The phone sends a voice note home; home transcribes it in the background, and the transcript is what the routine reads. A note I let go on the phone is set aside on home, kept, and the routines read it no more (D3).",
       "paths": [
         "some-ui:apps/www/src/lib/voice-home",
+        "some-ui:apps/www/src/lib/home-link/set-aside.ts",
         "server:apps/servers/file_host/src/transcribe"
       ],
       "modules": ["voice"],
@@ -448,25 +449,44 @@
           "id": "VH1",
           "kind": "OA2",
           "property": "outcome",
-          "claim": "Every voice note sent home gets a transcript or a recorded reason it has none.",
-          "requirement": "Each note home holds gets a row; a failed hearing is recorded and tried again on at most ATTEMPTS (3) passes, then stays recorded as failed, so no note is left without an outcome after three passes.",
+          "claim": "Every voice note sent home gets a transcript or a recorded reason it has none, its set-aside mark among them.",
+          "requirement": "Each note home holds gets a row; a failed hearing is recorded and tried again on at most ATTEMPTS (3) passes, then stays recorded as failed, so no note is left without an outcome after three passes. A note set aside (D3) before it was heard leaves the queue, its mark the recorded reason; the phone sends that mark once for each note it set aside that home holds, and keeps it owed until home takes it. While home has no route for the mark (a server before paulgsc/server#638), the phone keeps at most ASIDE_OWED_MAX (500) owed marks; past that it drops the oldest whose notes have left the phone, and home's routines go on reading those notes.",
           "verdict": "holds",
-          "conclusion": "Every note gets a row, and a failure is retried a few times and then kept as failed.",
+          "conclusion": "Every note gets a row, and a failure is retried a few times and then kept as failed. A note I let go before home heard it is not heard, and home keeps its mark saying so; the phone owes the mark at Let go, before the note is set aside, for every kind of note that can be let go, and sends it once home holds the note. While home runs a server without the mark's route, the phone keeps at most 500 marks owed, and past that the oldest of notes no longer on the phone are dropped and those notes stay read.",
           "evidence": [
             {
               "class": "measured",
               "says": "A pass gives every note a row and retries a failure a few times.",
               "ref": "server:apps/servers/file_host/src/transcribe/pass.rs"
+            },
+            {
+              "class": "measured",
+              "says": "The transcriber's queue skips a note set aside, which keeps its row in voice_note_set_aside.",
+              "ref": "server:crates/db/voice/src/set_aside.rs"
+            },
+            {
+              "class": "measured",
+              "says": "The voice lane sends the mark of a note set aside in each store that goes home, once home holds it, once only, and again after home found no note.",
+              "ref": "some-ui:apps/www/src/lib/home-link/__tests__/voice-aside.test.ts"
             }
           ],
           "proof": [
-            "server:apps/servers/file_host/src/transcribe/pass.rs#every_note_gets_a_row_and_a_failure_is_retried_a_few_times"
+            "server:apps/servers/file_host/src/transcribe/pass.rs#every_note_gets_a_row_and_a_failure_is_retried_a_few_times",
+            "server:crates/db/voice/src/set_aside.rs#the_transcribers_queue_skips_a_note_set_aside",
+            "some-ui:apps/www/src/lib/home-link/__tests__/voice-aside.test.ts#home's set-aside mark on a note let go on the phone (MIC2)"
           ],
           "watch": {
             "by": "dashboard",
             "ref": "server:infra/grafana/dashboards/transcribe.jsonnet"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-11-01",
+              "change": "A note set aside before home heard it is no longer heard: its set-aside mark is the recorded reason it has no transcript. While home has no route for the mark, the phone keeps at most 500 owed and drops the oldest of notes no longer on it, which home then goes on reading.",
+              "why": "The owner's D3 is what changes VH1: set aside means out of what routines read, kept on home, and the transcriber's queue is one of those reads. Keeping the mark in a table of its own (shape B) was the session's choice under the owner's direction to go with recommendations (some-ui#2372 comment 6559370232), as was the 500-mark cap on what the phone keeps owed for a home without the route (#2451).",
+              "decision": "https://github.com/paulgsc/some-ui/issues/2368"
+            }
+          ]
         },
         {
           "id": "VH2",
@@ -1917,7 +1937,7 @@
     {
       "store": "phone:voice-home",
       "class": "cache",
-      "growth": "bounded: VOICE_HOME_MAX_BYTES = 100 x 240,000 = 24,000,000 B of copies of voice notes not yet held by home.",
+      "growth": "bounded: VOICE_HOME_MAX_BYTES = 100 x 240,000 = 24,000,000 B of copies of voice notes not yet held by home. Its record (`some-ui:voice-home`) also keeps the set-aside marks owed to home, one per note let go until home answers it, forgotten once a pass finds its note listed nowhere and its copy neither waiting nor held; past ASIDE_OWED_MAX = 500, the oldest of those whose notes left the phone are dropped (a home without the set-aside route answers every mark 404), and only marks of notes still on the phone, which the stores' caps bound, may pass it; and at most ASIDE_ANSWERED_MAX = 1,000 ids home answered (MIC2).",
       "horizon": "A copy leaves once home holds the note; a copy home refuses stays on the phone for good (voice-home runtime's sweep keeps it), still counted in the pool.",
       "family": "voice-heard"
     },

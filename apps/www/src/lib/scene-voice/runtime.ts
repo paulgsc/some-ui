@@ -37,6 +37,8 @@ import type {
 import { ONE_TAKE, shelveTake, takePattern } from "@some-ui/voice-capture"
 
 import { homeHolds, makesRoom } from "@/lib/takes-desk/runtime"
+import type { MarkOwing } from "@/lib/voice-marks"
+import { setAsideOwing } from "@/lib/voice-marks"
 
 import { SCENE_NOTES_KEPT, SCENE_NOTES_MAX } from "./budget"
 
@@ -50,6 +52,12 @@ export type KeptSceneNote = SceneNote & {
   readonly at?: string
   readonly prompted?: boolean
   readonly standing?: "earlier" | "set-aside"
+  /**
+   * When it was set aside, ISO 8601, written with its standing and never
+   * after: home's mark is sent with it (MIC2). Absent on one not set aside,
+   * and on one set aside before the phone noted when.
+   */
+  readonly setAsideAt?: string
 }
 
 /** Topik's port, and what the voice lane and the drain tell it. */
@@ -89,8 +97,11 @@ export type SceneVoicePorts = {
     remove: (ids: ReadonlyArray<string>) => boolean
     /** Marks these notes carried by an ask home holds; says whether it stored. */
     prompted: (ids: ReadonlyArray<string>) => boolean
-    /** Marks these notes set aside, keeping them; says whether it stored. */
-    setAside: (ids: ReadonlyArray<string>) => boolean
+    /**
+     * Marks these notes set aside at `at` (ISO 8601), keeping them; one set
+     * aside already keeps its first time. Says whether it stored.
+     */
+    setAside: (ids: ReadonlyArray<string>, at: string) => boolean
   }
   /** A note whose audio is being written, and when done. */
   saving: (id: string, inFlight: boolean) => void
@@ -98,6 +109,8 @@ export type SceneVoicePorts = {
   newId: () => string
   /** Where this note is kept, from what home told this phone (`lib/home-link`). */
   kept: (id: string) => TakeKept
+  /** What owes home a note's set-aside mark; the phone's unless a test gives its own. */
+  marks?: MarkOwing | undefined
   /** The kit's `audioPlayer` unless a test gives its own. */
   player?: Player | undefined
   /** The phone's one microphone unless a test gives its own. */
@@ -188,8 +201,16 @@ export function createSceneVoice(ports: SceneVoicePorts): PhoneSceneVoice {
             )
         )
       },
+      // LA13: set aside only once its mark is owed (`lib/voice-marks`).
       setAside: (id, done) => {
-        const stored = ports.notes.setAside([id])
+        const at = new Date(ports.now()).toISOString()
+        const stored = setAsideOwing(
+          id,
+          "scene",
+          at,
+          () => ports.notes.setAside([id], at),
+          ports.marks
+        )
         if (stored) publish()
         done(stored)
       },

@@ -7,6 +7,11 @@
  * offered again while its own screen still has it. A copy goes once home
  * holds its note: the copy of a note home refused stays, since it may be
  * the only one. `sweep` clears a copy the record never named.
+ *
+ * The same record keeps the set-aside marks owed to home (`owe`, MIC2) and
+ * hands the ones due to `lib/home-link/set-aside` (`marks`). A mark storage
+ * would not keep is owed nowhere, and `owe` says so: Let go then sets
+ * nothing aside (`lib/voice-marks`, LA13).
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
 import { openRecord, writeRecord } from "@some-ui/core-utils"
@@ -15,9 +20,16 @@ import type { BlobShelf } from "@some-ui/voice-capture"
 import { ShelfFullError } from "@some-ui/voice-capture"
 
 import type { Encoded, VoiceHomePort } from "./home"
-import type { CopyEnd, VoiceHomeEvent, VoiceHomeState, VoiceOut } from "./model"
+import type {
+  AsidePort,
+  CopyEnd,
+  VoiceHomeEvent,
+  VoiceHomeState,
+  VoiceOut,
+} from "./model"
 import {
   INITIAL_VOICE_HOME,
+  marksDue,
   parseVoiceHome,
   settled,
   stepVoiceHome,
@@ -48,8 +60,40 @@ export type VoiceHome = {
   copy: (note: VoiceOut, audio: Blob) => Promise<CopyEnd>
   /** What `./home`'s exchange reads and answers through. */
   keeping: VoiceHomePort
+  /**
+   * The owner set note `id` aside at `at` (ISO 8601): home is owed its mark,
+   * once. A note already owed, answered or refused is left as it is, so the
+   * first time stands. Says whether the record as storage keeps it now owes
+   * the mark, has it answered, or needs none (home refused the note); a mark
+   * storage would not keep is owed nowhere, not even in memory.
+   */
+  owe: (id: string, at: string, from: string) => boolean
+  /**
+   * Takes back a mark owed for a set-aside write that did not happen, or for
+   * a note its store lists as current.
+   */
+  unowe: (id: string) => void
+  /**
+   * Forgets the marks owed for `ids`, notes listed nowhere they could be,
+   * whose copy neither waits nor is held: they can never be taken.
+   */
+  forget: (ids: ReadonlyArray<string>) => void
+  /** Drops the marks owed for `ids`, held or not (`ASIDE_OWED_MAX`). */
+  drop: (ids: ReadonlyArray<string>) => void
+  /** What `lib/home-link/set-aside`'s marks read and answer through. */
+  marks: AsidePort
   /** Clears copies the record names neither waiting nor refused. Best effort. */
   sweep: () => void
+}
+
+/** `record` owes `id`'s mark, has it answered, or needs none (refused). */
+function owes(record: VoiceHomeState, id: string): boolean {
+  const { owed, answered } = record.aside
+  return (
+    answered.includes(id) ||
+    owed.some((mark) => mark.id === id) ||
+    record.refused.some((refusal) => refusal.id === id)
+  )
 }
 
 export function createVoiceHome(ports: VoiceHomePorts): VoiceHome {
@@ -61,9 +105,19 @@ export function createVoiceHome(ports: VoiceHomePorts): VoiceHome {
   let state = opened?.kind === "kept" ? opened.value : INITIAL_VOICE_HOME
   // Storage that threw is written to by no one: the record stays in memory.
   const writable = storage !== null && opened?.kind !== "unreadable"
+  // The record as storage last kept it; with none writable, nothing is.
+  let stored = writable ? state : INITIAL_VOICE_HOME
   const listeners = new Set<() => void>()
 
-  /** Steps the record; false when the step could not be kept in storage. */
+  /**
+   * Steps the record; false when the step could not be kept in storage. A
+   * step that adds what must outlast the launch (a copy, a mark owed) is
+   * taken only once storage kept it: refused, it is neither held in memory
+   * nor told to anyone, so nothing listening can act on it or step again
+   * in answer. A step that only takes away, or that records home's word,
+   * is held in memory even when storage refused it: the next kept write
+   * carries it, and until then the record only sends less.
+   */
   const apply = (event: VoiceHomeEvent): boolean => {
     const next = stepVoiceHome(state, event)
     if (next === state) return true
@@ -71,9 +125,13 @@ export function createVoiceHome(ports: VoiceHomePorts): VoiceHome {
       writable &&
       writeRecord(storage, STORAGE_KEY, JSON.stringify(next), parseVoiceHome)
     // A copy the record cannot name for good is no copy: a later launch
-    // would sweep it while the person may have let the note go.
-    if (!kept && event.kind === "copied") return false
+    // would sweep it while the person may have let the note go. A mark the
+    // record cannot keep is owed nowhere, and Let go sets nothing aside.
+    if (!kept && (event.kind === "copied" || event.kind === "aside")) {
+      return false
+    }
     state = next
+    if (kept) stored = next
     for (const listener of listeners) listener()
     return kept
   }
@@ -121,6 +179,26 @@ export function createVoiceHome(ports: VoiceHomePorts): VoiceHome {
           // is kept, so the next `sweep` clears one that fails to go.
           shelf.remove([answer.id]).catch(() => undefined)
         }
+      },
+    },
+    owe(id, at, from): boolean {
+      // Refused, the step is taken nowhere: nothing to take back.
+      apply({ kind: "aside", id, at, from })
+      return owes(stored, id)
+    },
+    unowe(id): void {
+      apply({ kind: "unowed", id })
+    },
+    forget(ids): void {
+      if (ids.length > 0) apply({ kind: "gone", ids })
+    },
+    drop(ids): void {
+      if (ids.length > 0) apply({ kind: "overflow", ids })
+    },
+    marks: {
+      due: () => marksDue(state),
+      answered(kind, id): void {
+        apply({ kind, id })
       },
     },
     sweep(): void {

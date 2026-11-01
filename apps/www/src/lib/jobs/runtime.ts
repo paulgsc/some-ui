@@ -22,6 +22,9 @@ import type {
 } from "@some-ui/voice-capture"
 import { ONE_TAKE, shelveTake, takePattern } from "@some-ui/voice-capture"
 
+import type { MarkOwing } from "@/lib/voice-marks"
+import { setAsideOwing } from "@/lib/voice-marks"
+
 import type { FormDraft, FormDrafts } from "./drafts"
 import { draftRecordedBy, readDrafts, withDraft, writeDrafts } from "./drafts"
 import type { Outgoing } from "./files"
@@ -84,6 +87,8 @@ export type NoticePort = {
 }
 
 export type JobsPorts = {
+  /** What owes home a note's set-aside mark; the phone's unless a test gives its own. */
+  marks?: MarkOwing | undefined
   storage: KeyedStorage
   audio: BlobShelf
   saving: (id: string, inFlight: boolean) => void
@@ -213,8 +218,18 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
             )
         )
       },
+      // LA13: set aside only once its mark is owed (`lib/voice-marks`).
       setAside: (id, done) => {
-        done(commit({ type: "voice-set-aside", id }))
+        const at = ports.now().toISOString()
+        done(
+          setAsideOwing(
+            id,
+            "jobs",
+            at,
+            () => commit({ type: "voice-set-aside", id, at }),
+            ports.marks
+          )
+        )
       },
       audio: (id) => ports.audio.get(id),
     },

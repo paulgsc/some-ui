@@ -18,6 +18,7 @@ import {
   NEXT_SCENE,
   sweepNotes,
 } from "@/lib/scene-voice/runtime"
+import type { MarkOwing } from "@/lib/voice-marks"
 
 /** The draft's list in memory, as the phone's keeps it (`./index`). */
 function memoryNotes(
@@ -49,12 +50,14 @@ function memoryNotes(
           ids.includes(note.id) ? { ...note, prompted: true } : note
         )
       ),
-    setAside: (ids): boolean =>
+    setAside: (ids, at): boolean =>
       asides() &&
       write(
         listed.map(
           (note): KeptSceneNote =>
-            ids.includes(note.id) ? { ...note, standing: "set-aside" } : note
+            ids.includes(note.id) && note.standing !== "set-aside"
+              ? { ...note, standing: "set-aside", setAsideAt: at }
+              : note
         )
       ),
   }
@@ -67,6 +70,7 @@ function phone(
     removes,
     asides,
     kept = (): TakeKept => ({ place: "phone" }),
+    marks,
   }: {
     stores?: boolean
     /** Whether the list stores a note let go; it does unless said. */
@@ -74,6 +78,8 @@ function phone(
     /** Whether the list stores a note set aside; it does unless said. */
     asides?: () => boolean
     kept?: (id: string) => TakeKept
+    /** What owes a note's set-aside mark; one that always keeps unless said. */
+    marks?: MarkOwing
   } = {}
 ): {
   voice: PhoneSceneVoice
@@ -93,6 +99,7 @@ function phone(
     now: Date.now,
     newId: () => `n${(next += 1)}`,
     kept,
+    marks,
   })
   return { voice, audio, listed }
 }
@@ -157,7 +164,33 @@ describe("createSceneVoice", () => {
       ["n1", "set-aside"],
       ["n2", undefined],
     ])
+    // When it was let go, for home's mark (MIC2).
+    expect(listed[0]?.setAsideAt).toMatch(/^\d{4}-\d\d-\d\dT/)
+    expect(listed[1]?.setAsideAt).toBeUndefined()
     expect(await audio.ids()).toEqual(["n1", "n2"])
+  })
+
+  it("sets a note aside only once its mark is owed, and takes the mark back when the list won't store it (LA13)", async () => {
+    let keeps = false
+    const unowed: Array<string> = []
+    const marks: MarkOwing = {
+      owe: () => keeps,
+      unowe: (id): void => {
+        unowed.push(id)
+      },
+    }
+    const { voice, listed } = phone([], { marks })
+    await talk(voice)
+    voice.pattern.letGo("n1", "phone")
+    expect(listed[0]?.standing).toBeUndefined()
+    expect(voice.pattern.getSnapshot().setAside).toBeNull()
+
+    keeps = true
+    const refusing = phone([], { marks, asides: () => false })
+    await talk(refusing.voice)
+    refusing.voice.pattern.letGo("n1", "phone")
+    expect(refusing.listed[0]?.standing).toBeUndefined()
+    expect(unowed).toEqual(["n1"])
   })
 
   it("takes back the set-aside line when the phone won't store the note set aside", async () => {

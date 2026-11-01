@@ -11,6 +11,8 @@ import { microphoneOwner } from "@some-ui/voice-capture"
 import { simulatedMicrophone } from "@some-ui/voice-capture/testing"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import type { MarkOwing } from "@/lib/voice-marks"
+
 import type { TestDesk } from "./desk"
 import { testDesk } from "./desk"
 
@@ -26,11 +28,33 @@ const settle = async (ms = 0): Promise<void> => {
   await vi.advanceTimersByTimeAsync(ms)
 }
 
-function desk(max = 40): TestDesk {
-  return testDesk(simulatedMicrophone({ now: Date.now }), microphoneOwner(), {
-    max,
-    maxMs: 60_000,
-  })
+function desk(max = 40, marks?: MarkOwing): TestDesk {
+  return testDesk(
+    simulatedMicrophone({ now: Date.now }),
+    microphoneOwner(),
+    { max, maxMs: 60_000 },
+    marks
+  )
+}
+
+/** What owes marks in a test: `keeps` says whether storage keeps one. */
+function owing(keeps: () => boolean): MarkOwing & {
+  readonly owed: Array<[string, string]>
+  readonly unowed: Array<string>
+} {
+  const owed: Array<[string, string]> = []
+  const unowed: Array<string> = []
+  return {
+    owed,
+    unowed,
+    owe: (id, at): boolean => {
+      owed.push([id, at])
+      return keeps()
+    },
+    unowe: (id): void => {
+      unowed.push(id)
+    },
+  }
 }
 
 /** One take answering `answers`, tapped on, talked `ms` and tapped off. */
@@ -90,6 +114,37 @@ describe("createPatternTakes", () => {
       expect.objectContaining({ id: "n1", standing: "set-aside" }),
     ])
     expect(await on.shelf.ids()).toEqual(["n1"])
+  })
+
+  it("sets a take aside only once its mark is owed, with when, and none when storage won't keep the mark (LA13)", async () => {
+    let keeps = false
+    const marks = owing(() => keeps)
+    const on = desk(40, marks)
+    await take(on, "card")
+    on.phone.pattern.letGo("n1", "phone")
+    expect(on.listed()[0]?.standing).toBeUndefined()
+    keeps = true
+    on.phone.pattern.letGo("n1", "phone")
+    const kept = on.listed().at(0)
+    expect(kept?.standing).toBe("set-aside")
+    expect(marks.owed.at(-1)).toEqual([
+      "n1",
+      new Date(kept?.setAsideAt ?? 0).toISOString(),
+    ])
+    expect(marks.unowed).toEqual([])
+  })
+
+  it("takes the mark back when the phone won't store the take set aside (LA13)", async () => {
+    const marks = owing(() => true)
+    const on = desk(40, marks)
+    await take(on, "card")
+    vi.spyOn(Storage.prototype, "setItem").mockImplementationOnce(() => {
+      throw new DOMException("full", "QuotaExceededError")
+    })
+    on.phone.pattern.letGo("n1", "phone")
+    vi.restoreAllMocks()
+    expect(on.listed()[0]?.standing).toBeUndefined()
+    expect(marks.unowed).toEqual(["n1"])
   })
 
   it("says a take is going home while its copy waits, and on home since this phone heard so (MIC3)", async () => {

@@ -46,6 +46,9 @@ const REFLECTION_MAY_IMPORT = [
   "lib/format",
   "lib/intent",
   "lib/tenant$",
+  // MIC2: Let go owes a spoken reflection's set-aside mark, its id and when,
+  // in the voice lane's record (LA13); it sends nothing itself.
+  "lib/voice-marks$",
   "components/reflection",
   "components/player/toggle-chips$",
 ]

@@ -18,6 +18,7 @@ import {
   keptIn,
   stepVoiceHome,
 } from "@/lib/voice-home/model"
+import type { MarkOwing } from "@/lib/voice-marks"
 
 export type TestDesk = {
   readonly phone: PatternPhone
@@ -44,7 +45,8 @@ let desks = 0
 export function testDesk(
   mic: SimulatedMicrophone,
   owner: MicOwner,
-  limits: TakeLimits
+  limits: TakeLimits,
+  marks?: MarkOwing
 ): TestDesk {
   desks += 1
   const takes = deskList(`test-desk-${String(desks)}`, limits.max)
@@ -75,6 +77,8 @@ export function testDesk(
       now: Date.now,
       newId: () => `n${(next += 1)}`,
       kept,
+      marks,
+      from: "leetype",
     },
     limits
   )

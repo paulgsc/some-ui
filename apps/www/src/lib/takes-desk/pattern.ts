@@ -36,6 +36,9 @@ import type {
 } from "@some-ui/voice-capture"
 import { ONE_TAKE, shelveTake, takePattern } from "@some-ui/voice-capture"
 
+import type { MarkFrom, MarkOwing } from "@/lib/voice-marks"
+import { setAsideOwing } from "@/lib/voice-marks"
+
 import type { Take, TakeLimits } from "./runtime"
 import { homeHolds, makesRoom } from "./runtime"
 
@@ -51,8 +54,11 @@ export type PatternTakesPorts = {
      */
     add: (take: Take, supersedes?: string | null) => boolean
     remove: (ids: ReadonlyArray<string>) => boolean
-    /** Marks a take set aside, keeping it. Says whether the device stored it. */
-    setAside: (id: string) => boolean
+    /**
+     * Marks a take set aside at `at` (ms since the epoch), keeping it. Says
+     * whether the device stored it.
+     */
+    setAside: (id: string, at: number) => boolean
   }
   /** A take whose audio is being written, and when done. */
   saving: (id: string, inFlight: boolean) => void
@@ -60,6 +66,13 @@ export type PatternTakesPorts = {
   newId: () => string
   /** Where this take is kept, from what home told this phone (`lib/home-link`). */
   kept: (id: string) => TakeKept
+  /** What owes home a take's set-aside mark; the phone's unless a test gives its own. */
+  marks?: MarkOwing | undefined
+  /**
+   * The store home is told the takes are kept in, for their set-aside marks;
+   * null for a desk whose takes go home in no lane yet (Rust Rounds).
+   */
+  from: MarkFrom | null
   /** The kit's `audioPlayer` unless a test gives its own. */
   player?: Player | undefined
   /** The phone's one microphone unless a test gives its own. */
@@ -195,8 +208,16 @@ export function createPatternTakes(
             )
         )
       },
+      // LA13: set aside only once its mark is owed (`lib/voice-marks`).
       setAside: (id, done) => {
-        const stored = ports.takes.setAside(id)
+        const at = ports.now()
+        const stored = setAsideOwing(
+          id,
+          ports.from,
+          new Date(at).toISOString(),
+          () => ports.takes.setAside(id, at),
+          ports.marks
+        )
         if (stored) publish()
         done(stored)
       },

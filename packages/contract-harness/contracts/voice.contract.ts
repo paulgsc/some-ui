@@ -20,6 +20,15 @@
  * `{ "heard": { "text", "heardAt", … } }` are declared and skipped, and are
  * held by the server's own test
  * (`handlers/voice.rs`, `the_phone_reads_back_what_home_heard_in_its_note`).
+ *
+ * Home's set-aside mark on a note the owner let go on the phone
+ * (`PUT /voice-notes/:id/set-aside?at=`, MIC2 some-ui#2372): the voice lane
+ * sends it for a note home holds (`apps/www/src/lib/home-link/set-aside.ts`).
+ * Home answers `204` with no body, marked or already marked, which no probe
+ * may cause: a mark is kept for good. A note the caller doesn't hold is a
+ * `404`, and a time home can't read a `422` naming `at`; both write nothing,
+ * and the phone reads each by its status alone (a `404` stays owed and is
+ * asked again on the next run).
  */
 
 import { z } from "zod"
@@ -33,6 +42,11 @@ import { defineContract } from "../src/contract"
  */
 const NoteHeardSchema = z.object({
   heard: z.object({ text: z.string(), heardAt: z.string() }).nullable(),
+})
+
+/** Home's refusal of a mark's time: `details.at` names why (`put_set_aside`). */
+const AtRefusedSchema = z.object({
+  error: z.object({ details: z.object({ at: z.array(z.string()) }) }),
 })
 
 export const contracts = [
@@ -52,6 +66,36 @@ export const contracts = [
       body: "not audio",
     },
     expect: { status: 422 },
+  }),
+  defineContract({
+    id: "voice.set_aside_unknown",
+    module: "voice",
+    session: true,
+    method: "PUT",
+    path: "/voice-notes/:id/set-aside",
+    summary:
+      "a set-aside mark for a note the caller doesn't hold is a 404, which the phone keeps owed for a later run, and nothing is written",
+    mutates: true,
+    request: {
+      path: { id: "contract-harness-does-not-exist" },
+      query: { at: "2026-11-01T09:15:00.000Z" },
+    },
+    expect: { status: 404 },
+  }),
+  defineContract({
+    id: "voice.set_aside_refused",
+    module: "voice",
+    session: true,
+    method: "PUT",
+    path: "/voice-notes/:id/set-aside",
+    summary:
+      "a set-aside mark whose time home can't read is a 422, which the phone answers for good, and nothing is written",
+    mutates: true,
+    request: {
+      path: { id: "contract-harness-does-not-exist" },
+      query: { at: "soon" },
+    },
+    expect: { status: 422, schema: AtRefusedSchema },
   }),
   defineContract({
     id: "voice.heard_unknown",

@@ -25,6 +25,7 @@ import {
 } from "@some-ui/voice-capture"
 
 import { boundedList } from "@/lib/bounded-list"
+import type { MarkFrom } from "@/lib/voice-marks"
 
 import type { DeskShape, PatternPhone, PatternTakesPorts } from "./pattern"
 import { createPatternTakes } from "./pattern"
@@ -44,7 +45,8 @@ const isTake = (value: unknown): value is Take =>
   typeof Reflect.get(value, "takenAt") === "number" &&
   typeof Reflect.get(value, "durationMs") === "number" &&
   typeof Reflect.get(value, "mimeType") === "string" &&
-  STANDINGS.includes(Reflect.get(value, "standing"))
+  STANDINGS.includes(Reflect.get(value, "standing")) &&
+  ["undefined", "number"].includes(typeof Reflect.get(value, "setAsideAt"))
 
 /** Whether a take is in its item's view: neither recorded again nor set aside. */
 export const inView = (take: Take): boolean => take.standing === undefined
@@ -94,6 +96,12 @@ type DeskOptions = {
   readonly key: string
   readonly dbName: string
   readonly limits: TakeLimits
+  /**
+   * The store home is told the takes are kept in, for their set-aside marks
+   * (`lib/voice-marks`); null for takes that go home in no lane yet, or have
+   * no Let go.
+   */
+  readonly from: MarkFrom | null
 }
 
 type PatternDeskOptions = DeskOptions & {
@@ -125,9 +133,12 @@ export function deskList(key: string, max: number): PatternTakesPorts["takes"] {
           other.id === supersedes ? { ...other, standing: "earlier" } : other
       ),
     remove: (ids): boolean => list.remove(({ id }) => ids.includes(id)),
-    setAside: (id): boolean =>
+    // A take set aside once keeps the time it was first let go.
+    setAside: (id, at): boolean =>
       list.update((take) =>
-        take.id === id ? { ...take, standing: "set-aside" } : take
+        take.id === id && take.standing !== "set-aside"
+          ? { ...take, standing: "set-aside", setAsideAt: at }
+          : take
       ),
   }
 }
@@ -177,6 +188,7 @@ function desk<R extends Runtime>(
       now: () => Date.now(),
       newId: () => crypto.randomUUID(),
       kept: (id) => where(id),
+      from: options.from,
       held: (id) => homeHolds(where(id)),
     })
     return runtime

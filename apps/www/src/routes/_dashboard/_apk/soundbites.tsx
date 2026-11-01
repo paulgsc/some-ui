@@ -6,6 +6,7 @@ import {
   phoneSoundbiteStore,
   Soundbites,
   soundbitesHeldByHome,
+  soundbitesOweMarks,
 } from "@some-ui/soundbites"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 
@@ -16,6 +17,7 @@ import { IntentButton } from "@/lib/intent/render"
 import { keepSoundbites } from "@/lib/soundbite-keeping"
 import type { SessionRecord, SessionStatus } from "@/lib/tenant"
 import { sessionsQuery, useSessions } from "@/lib/tenant"
+import { voiceMarks } from "@/lib/voice-marks"
 import { arrived, goingOut } from "@/components/reflection/copy"
 
 /**
@@ -135,6 +137,12 @@ const SoundbitesRoute = (): JSX.Element => {
   // Hands the store to the home link, which copies each soundbite home and
   // says which home holds (`lib/soundbite-keeping`, HF5).
   useEffect(() => {
+    // Let go owes each soundbite's set-aside mark through the voice lane
+    // (`lib/voice-marks`, MIC2).
+    soundbitesOweMarks({
+      owe: (id, at) => voiceMarks.owe(id, at, "soundbite"),
+      unowe: voiceMarks.unowe,
+    })
     if (import.meta.env.VITE_DEVICE_BACKEND !== "true") return
     keepSoundbites({
       store: phoneSoundbiteStore(),

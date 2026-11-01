@@ -56,4 +56,10 @@ export type Soundbite = {
    * are still kept, audio and all.
    */
   standing?: "earlier" | "set-aside"
+  /**
+   * When it was set aside, ISO 8601, written with its standing and never
+   * after: home's mark is sent with it (MIC2). Absent on one not set aside,
+   * and on one set aside before the page noted when.
+   */
+  setAsideAt?: string
 }

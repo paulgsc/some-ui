@@ -3,8 +3,10 @@
  * finished voice note a routine hears, copied for home while the phone is
  * paired (`./voice-copy`, which says which notes and how each is told), and
  * sent through the one wiring (`./lanes`) by `exchangeVoice`
- * (`lib/voice-home/home`). There is no mark: the app shell mounts
- * `useVoiceHome` on every screen, so notes go from any wing.
+ * (`lib/voice-home/home`), then the set-aside marks owed for notes the
+ * owner let go (`./set-aside`, MIC2). The lane has no wing mark of its
+ * own: the app shell mounts `useVoiceHome` on every screen, so notes go
+ * from any wing.
  */
 import { useEffect, useSyncExternalStore } from "react"
 import type { OutboxPort, OutboxView } from "@some-ui/game-week"
@@ -35,7 +37,11 @@ import {
 export const voiceLane: Lane = {
   id: "voice",
   exchange: sendVoice,
-  revision: () => phoneVoiceHome().getSnapshot().waiting.length,
+  // A mark owed for a note set aside (MIC2) is something to send too.
+  revision: () => {
+    const { waiting, aside } = phoneVoiceHome().getSnapshot()
+    return waiting.length + aside.owed.length
+  },
   subscribe: (listener) => phoneVoiceHome().subscribe(listener),
   useCounts: (): LaneCounts => {
     const home = phoneVoiceHome()

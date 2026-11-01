@@ -33,6 +33,19 @@
  * it could not copy and why (`copyPasses`), so Settings never counts as
  * waiting a note this phone cannot send (LA14).
  *
+ * A note the owner let go where it was recorded (`standing: "set-aside"`,
+ * D3 on epic #2368) owes home its set-aside mark (MIC2 #2372), so home's
+ * routines stop reading it. Every store with Let go (reflections, Jobs
+ * notes, scene notes, soundbites, lens and LeetType takes; game bites,
+ * Studio takes and idea takes have none) sets a note aside through
+ * `lib/voice-marks`. Let go owes the mark in the voice-home record before it writes the
+ * standing (`lib/voice-marks`, which `watchVoiceNotes` wires), where it
+ * outlives the note on this phone; each pass and each hand-off of what
+ * home holds owes it for a note set aside before that (`oweMarks`); the run
+ * sends those due once its exchange has synced (`./set-aside`). A Redo's
+ * `earlier` take owes none: home has no such mark, and an earlier take is
+ * still the owner's record.
+ *
  * **LG1: nothing is let go on a third party's word** (HF1, #2176; the
  * owner's frame, `docs/learner-data-authority.md`, "The owner's deployment").
  *
@@ -127,17 +140,46 @@ import { onStudioKept, studioKeeping } from "@/lib/studio-keeping"
 import { phoneVoiceHome } from "@/lib/voice-home"
 import { exchangeVoice } from "@/lib/voice-home/home"
 import type {
+  AsideMark,
+  AsidePort,
   CopyPass,
   Unsendable,
   VoiceHomeState,
   VoiceOut,
 } from "@/lib/voice-home/model"
-import { keptIn, NO_PASS, passWith, runEnd } from "@/lib/voice-home/model"
+import {
+  ASIDE_OWED_MAX,
+  keptIn,
+  NO_PASS,
+  passWith,
+  runEnd,
+} from "@/lib/voice-home/model"
+import { wireVoiceMarks } from "@/lib/voice-marks"
 
 import { homeLink, paired } from "./index"
 import { lensEntriesHeld } from "./lens-record"
 import { notesHeld } from "./notes"
 import { askOnDrive } from "./on-drive"
+import { markSetAside } from "./set-aside"
+
+/**
+ * When a note was set aside (D3), ISO 8601, as its store recorded it
+ * (`standing` and `setAsideAt`); null for one set aside with no time it can
+ * read (before stores noted when, or a time that is no time); undefined for
+ * one not set aside, a Redo's `earlier` included, which owes home no mark.
+ * Its mark was owed at Let go (`lib/voice-marks`); this is how a pass owes
+ * it for one set aside before that.
+ */
+export function asideAt(kept: object | undefined): string | null | undefined {
+  if (kept === undefined) return undefined
+  if (Reflect.get(kept, "standing") !== "set-aside") return undefined
+  const at: unknown = Reflect.get(kept, "setAsideAt")
+  const ms =
+    typeof at === "number" ? at : typeof at === "string" ? Date.parse(at) : NaN
+  // A number past the dates a Date can hold is no time either.
+  const when = new Date(ms)
+  return Number.isFinite(when.getTime()) ? when.toISOString() : null
+}
 
 /** A finished voice reflection, as home is told it; null for any other. */
 export function reflectionNote(reflection: Reflection): VoiceOut | null {
@@ -293,10 +335,14 @@ export function unsendable(
   return { gone: [...pass.gone].filter((id) => !settled(id)).length }
 }
 
-/** One note on this phone that could go home, and where its audio is. */
+/**
+ * One note on this phone that could go home, where its audio is, and, for
+ * one set aside, when (`asideAt`).
+ */
 type Candidate = {
   readonly note: VoiceOut
   readonly audio: () => Promise<Blob | null>
+  readonly aside?: string | null | undefined
 }
 
 /**
@@ -327,6 +373,12 @@ export const storesRead = {
   },
 }
 
+/**
+ * Whether the soundbites were read in the last copy pass: only then does
+ * their list say which are set aside, and which have left the phone.
+ */
+let soundbitesFresh = false
+
 async function readSoundbites(): Promise<void> {
   const kept = soundbiteKeeping()
   if (kept === null) return
@@ -335,8 +387,88 @@ async function readSoundbites(): Promise<void> {
   soundbites = bites.map((bite) => ({
     note: soundbiteNote(bite),
     audio: (): Promise<Blob | null> => store.audio(bite.id),
+    aside: asideAt(bite),
   }))
+  soundbitesFresh = true
   wasRead()
+}
+
+/**
+ * The stores with Let go read as they are now (`MarkFrom`): every one but
+ * the soundbites at each look, and those once the last copy pass read them.
+ * A mark of an earlier build names no store, so its note is read only when
+ * every store is.
+ */
+function readNow(from: string | undefined): boolean {
+  if (from === undefined || from === "soundbite") return soundbitesFresh
+  return true
+}
+
+/**
+ * Which set-aside marks may go to home now (MIC2, LA13): one whose note its
+ * store lists as set aside, or whose note its store, read, lists no more
+ * (it left the phone once home held it). One whose note is listed as
+ * current goes nowhere: its set-aside write is pending or never happened
+ * (the soundbites' store writes after the mark is owed, and the app can be
+ * closed between).
+ */
+function marksSendable(
+  listed: ReadonlyArray<Candidate>
+): (mark: AsideMark) => boolean {
+  const standing = standingsRead(listed)
+  return (mark): boolean => standing.get(mark.id) ?? readNow(mark.from)
+}
+
+/**
+ * Whether each note `listed` is set aside, by id, from the stores read now
+ * alone: soundbites listed by a read that is not the last pass's say
+ * nothing, so a stale list can neither send a mark nor take one back.
+ */
+function standingsRead(
+  listed: ReadonlyArray<Candidate>
+): ReadonlyMap<string, boolean> {
+  return new Map(
+    listed
+      .filter(({ note }) => readNow(note.of))
+      .map(({ note, aside }) => [note.id, aside !== undefined])
+  )
+}
+
+/**
+ * Settles the marks owed against what the stores list (MIC2, LA13): one
+ * whose note is listed as current is taken back, its set-aside write never
+ * having landed; one whose note no store it could be in lists, read, and
+ * whose copy neither waits nor is held is forgotten, since it left the
+ * phone before home had it and no mark of it can be taken; and past
+ * `ASIDE_OWED_MAX`, the oldest marks of notes that left the phone are
+ * dropped, so a home that never takes a mark leaves the record bounded.
+ */
+function settleMarks(listed: ReadonlyArray<Candidate>): void {
+  const home = phoneVoiceHome()
+  const { owed } = home.getSnapshot().aside
+  if (owed.length === 0) return
+  const standing = standingsRead(listed)
+  for (const mark of owed) {
+    if (standing.get(mark.id) === false) home.unowe(mark.id)
+  }
+  const left = owed.filter(
+    (mark) => !standing.has(mark.id) && readNow(mark.from)
+  )
+  home.forget(left.map(({ id }) => id))
+  // Past the cap, the oldest marks of notes that left the phone go, home
+  // holding them or not: a home without the set-aside route never takes
+  // one. A mark whose note is on the phone, or waits to go home, stays.
+  const kept = home.getSnapshot()
+  const over = kept.aside.owed.length - ASIDE_OWED_MAX
+  if (over <= 0) return
+  const waiting = new Set(kept.waiting.map((note) => note.id))
+  const gone = new Set(left.map(({ id }) => id))
+  home.drop(
+    kept.aside.owed
+      .filter((mark) => gone.has(mark.id) && !waiting.has(mark.id))
+      .slice(0, over)
+      .map(({ id }) => id)
+  )
 }
 
 async function readStudio(): Promise<void> {
@@ -364,16 +496,23 @@ export function candidates(): Array<Candidate> {
             {
               note,
               audio: (): Promise<Blob | null> => reflectionAudio().get(note.id),
+              aside: asideAt(
+                reflection.body.kind === "voice" ? reflection.body : undefined
+              ),
             },
           ]
     })
-  const named = jobsNotes(phoneJobs().getSnapshot().state).map((note) => ({
+  const jobs = phoneJobs().getSnapshot().state
+  const jobVoice = new Map(jobs.voice.map((kept) => [kept.id, kept]))
+  const named = jobsNotes(jobs).map((note) => ({
     note,
     audio: (): Promise<Blob | null> => jobVoiceAudio().get(note.id),
+    aside: asideAt(jobVoice.get(note.id)),
   }))
   const now = new Date()
   const scene = sceneNotes.read().map((kept) => ({
     note: sceneNote(kept, now),
+    aside: asideAt(kept),
     audio: (): Promise<Blob | null> => sceneNotes.audio(kept.id),
   }))
   const bites = phoneGameBites()
@@ -384,14 +523,17 @@ export function candidates(): Array<Candidate> {
   const lens = lensTakesDesk.kept().map((take) => ({
     note: lensNote(take),
     audio: (): Promise<Blob | null> => lensTakesDesk.audio(take.id),
+    aside: asideAt(take),
   }))
   const leetype = leetypeTakesDesk.kept().map((take) => ({
     note: leetypeNote(take),
     audio: (): Promise<Blob | null> => leetypeTakesDesk.audio(take.id),
+    aside: asideAt(take),
   }))
   const ideas = ideaTakesDesk.kept().map((take) => ({
     note: ideaNote(take),
     audio: (): Promise<Blob | null> => ideaTakesDesk.audio(take.id),
+    aside: asideAt(take),
   }))
   return [
     ...said,
@@ -415,6 +557,21 @@ export function gameNote(bite: KeptBite): VoiceOut {
     at: bite.at,
     contentType: bite.contentType,
     fields: bite.fields,
+  }
+}
+
+/**
+ * Notes, in the voice-home record, the mark home is owed for each of
+ * `listed` set aside before Let go owed it (`lib/voice-marks`): when its
+ * store says it was let go, or now for one with no time it can read. The
+ * first time noted stands, so a mark already owed or answered is left as it
+ * is.
+ */
+function oweMarks(listed: ReadonlyArray<Candidate>): void {
+  const home = phoneVoiceHome()
+  const now = new Date().toISOString()
+  for (const { note, aside } of listed) {
+    if (aside !== undefined) home.owe(note.id, aside ?? now, note.of)
   }
 }
 
@@ -479,6 +636,7 @@ async function copyAll(): Promise<CopyPass> {
   let pass = NO_PASS
   const gone = new Set<string>()
   let failed = false
+  soundbitesFresh = false
   const listed = await readEach(
     [
       { source: "Studio takes", read: readStudio },
@@ -487,7 +645,10 @@ async function copyAll(): Promise<CopyPass> {
     unreadSource
   )
   if (!listed) pass = passWith(pass, "fault")
-  for (const { note, audio } of candidates()) {
+  const all = candidates()
+  oweMarks(all)
+  settleMarks(all)
+  for (const { note, audio } of all) {
     if (!paired()) break
     if (home.settled(note.id)) continue
     try {
@@ -591,18 +752,26 @@ async function letGoOnHomesWord(send: HomeCall): Promise<void> {
  * The voice lane's exchange: a copy pass first, so a note the watch could
  * not copy yet (no room, storage that would not keep its record) is tried
  * again, then each copy waiting sent (`exchangeVoice`), then, once that
- * synced, home's word on which Studio takes Drive has (`letGoOnHomesWord`).
- * A run that sent all it had still fails, saying why, if that pass left a
- * note it could copy uncopied (`runEnd`, LA14).
+ * synced, home's word on which Studio takes Drive has (`letGoOnHomesWord`)
+ * and the set-aside marks due (`markSetAside`, MIC2), which end the run in
+ * its exchange's place. A run that sent all it had still fails, saying why,
+ * if that pass left a note it could copy uncopied (`runEnd`, LA14).
  */
 export async function sendVoice(send: HomeCall): Promise<HomeExchanged> {
   copySoon()
   const running = copying
   if (running !== null) await running
   const pass = running === null ? NO_PASS : lastPass
-  const exchanged = await exchangeVoice(phoneVoiceHome().keeping, send)
-  if (exchanged.kind === "synced") await letGoOnHomesWord(send)
-  return runEnd(pass, exchanged)
+  const home = phoneVoiceHome()
+  const exchanged = await exchangeVoice(home.keeping, send)
+  if (exchanged.kind !== "synced") return runEnd(pass, exchanged)
+  await letGoOnHomesWord(send)
+  const sendable = marksSendable(candidates())
+  const marks: AsidePort = {
+    due: () => home.marks.due().filter(sendable),
+    answered: home.marks.answered,
+  }
+  return runEnd(pass, await markSetAside(marks, send))
 }
 
 /** Home's held notes as a set, made again only when the list changes. */
@@ -646,12 +815,14 @@ type LetsGo = { letGo: (homeHolds: ReadonlySet<string>) => unknown }
 /**
  * Hands what home now holds to each store of game bites (`lib/game-bites`),
  * Jobs voice notes, scene notes and Studio takes, whose `letGo` says which
- * of them leave this phone (LG1).
+ * of them leave this phone (LG1). A note set aside before Let go owed its
+ * mark is owed it first (`oweMarks`).
  */
 function letGoHeld(): void {
   const holds = heldIds()
   // Home holds nothing on a phone that never sent: build no store for it.
   if (holds.size === 0) return
+  oweMarks(candidates())
   const stores: ReadonlyArray<LetsGo> = [
     phoneGameBites(),
     phoneJobs(),
@@ -759,10 +930,20 @@ export function watchVoiceNotes(): () => void {
     }
     copySoon()
   }
+  // First, so nothing below can leave Let go owing nothing for the launch:
+  // it owes each note's mark in the record before its standing is written
+  // (LA13).
+  const unwire = wireVoiceMarks({
+    owe: (id, at, from) => phoneVoiceHome().owe(id, at, from),
+    unowe: (id): void => {
+      phoneVoiceHome().unowe(id)
+    },
+  })
   holdOffline()
   changed()
   letGoHeld()
   const stops = [
+    unwire,
     phoneVoiceHome().subscribe(letGoHeld),
     // What home holds moved: the offline sets may make room again.
     phoneVoiceHome().subscribe(holdOffline),

@@ -61,12 +61,12 @@ export function memoryStore(initial: ReadonlyArray<Soundbite> = []): {
         changed()
         return Promise.resolve()
       },
-      setAside: (id): Promise<void> => {
+      setAside: (id, at): Promise<void> => {
         const each = kept.get(id)
-        if (each !== undefined)
+        if (each !== undefined && each.bite.standing !== "set-aside")
           kept.set(id, {
             ...each,
-            bite: { ...each.bite, standing: "set-aside" },
+            bite: { ...each.bite, standing: "set-aside", setAsideAt: at },
           })
         changed()
         return Promise.resolve()

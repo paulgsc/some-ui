@@ -26,6 +26,8 @@ const NOTE_MAX_MS = 60_000
 
 const desk = patternDesk({
   key: "some-ui:rust-rounds.notes",
+  // Its notes go home in no lane yet (RR6, #2237), so Let go owes no mark.
+  from: null,
   dbName: "some-ui.rust-rounds-notes",
   // No count of its own: only the device's room refuses a note.
   limits: { max: Number.POSITIVE_INFINITY, maxMs: NOTE_MAX_MS },

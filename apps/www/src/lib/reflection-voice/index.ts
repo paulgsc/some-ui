@@ -10,6 +10,7 @@ import type { StartRecording, TakeKept } from "@some-ui/voice-capture"
 import { micRecorder, ON_PHONE, savingShelf } from "@some-ui/voice-capture"
 
 import { reflections } from "@/lib/session-reflection"
+import { setAsideOwing } from "@/lib/voice-marks"
 
 import { REFLECTION_AUDIO_MAX_BYTES } from "./budget"
 import type { ReflectionTakes } from "./runtime"
@@ -83,7 +84,13 @@ export function phoneVoiceNote(
       },
       keep: (reflection) => reflections.keep(reflection),
       supersede: (id) => reflections.standAside(id, "earlier"),
-      setAside: (id) => reflections.standAside(id, "set-aside"),
+      // LA13: set aside only once its mark is owed (`lib/voice-marks`).
+      setAside: (id) => {
+        const at = new Date().toISOString()
+        return setAsideOwing(id, "reflection", at, () =>
+          reflections.standAside(id, "set-aside", at)
+        )
+      },
       letGo: (ids) => reflections.letGo(ids),
       saving,
       now: () => Date.now(),
