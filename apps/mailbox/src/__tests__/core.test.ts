@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto"
+import { readFileSync } from "node:fs"
+import { fileURLToPath } from "node:url"
 import type { Deps } from "@mailbox/core"
 import {
   ARCHIVE_MIN_AGE_DAYS,
@@ -295,20 +297,25 @@ describe("roles", () => {
   })
 })
 
-describe("the routine's backfill of pre-mailbox files (MB2)", () => {
+describe("the routine's backfill of files only Drive holds (MB2)", () => {
   const OLD_DECISIONS = "decisions-2026-10-20.json"
   const OLD_SCOUTS = "scouts-20261022T235959.json"
 
-  it("the routine puts a decisions or scouts file from before the mailbox in brief, once, and home reads it", async () => {
+  it("the routine puts a decisions or scouts file only Drive holds in brief, once, and home reads it", async () => {
     const d = deps()
-    // The days from the phone's first share (2026-10-17) to the mailbox's.
+    // The days from the phone's first share (2026-10-17) to the last before
+    // it filed every Jobs file home (DRIVE_ONLY_ENDED, 2026-11-04).
     for (const [name, body] of [
       [OLD_DECISIONS, DECISIONS],
       ["decisions-2026-10-17.json", DECISIONS],
       ["decisions-2026-10-20-2.json", DECISIONS],
       ["decisions-2026-10-22-99.json", DECISIONS],
+      ["decisions-2026-10-23.json", DECISIONS],
+      ["decisions-2026-10-26-5.json", DECISIONS],
+      ["decisions-2026-11-03.json", DECISIONS],
       ["scouts-20261017T000000.json", SCOUTS],
       [OLD_SCOUTS, SCOUTS],
+      ["scouts-20261103T235959.json", SCOUTS],
     ] as const) {
       expect([name, (await put(d, "brief", name, { body })).status]).toEqual([
         name,
@@ -330,13 +337,13 @@ describe("the routine's backfill of pre-mailbox files (MB2)", () => {
     ).toBe(409)
   })
 
-  it("takes only a name the phone could have written before the mailbox opened, and holds each to its own schema", async () => {
+  it("takes only a name the phone could have written before it filed every Jobs file home, and holds each to its own schema", async () => {
     const d = deps()
     for (const [name, body] of [
-      // From the day the mailbox opened.
-      ["decisions-2026-10-23.json", DECISIONS],
-      ["decisions-2026-11-02-3.json", DECISIONS],
-      ["scouts-20261023T000000.json", SCOUTS],
+      // From the day the phone files every Jobs file home.
+      ["decisions-2026-11-04.json", DECISIONS],
+      ["decisions-2026-11-09-3.json", DECISIONS],
+      ["scouts-20261104T000000.json", SCOUTS],
       // Before the phone could share one, or in no year it could.
       ["decisions-2026-10-16.json", DECISIONS],
       ["scouts-20261016T235959.json", SCOUTS],
@@ -2206,5 +2213,19 @@ describe("when storage fails", () => {
     const written = await put(d, "brief", DIGEST_NAME, { body: DIGEST })
     expect(written.status).toBe(503)
     expect(reported).toHaveLength(2)
+  })
+})
+
+describe("the backfill's last day", () => {
+  it("is the day job-desk's index check holds too, which neither file can import", () => {
+    const bound = (path: string): string | undefined =>
+      /const DRIVE_ONLY_ENDED = "(\d{4}-\d{2}-\d{2})"/.exec(
+        readFileSync(fileURLToPath(new URL(path, import.meta.url).href), "utf8")
+      )?.[1]
+    const worker = bound("../core.ts")
+    expect(worker).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    expect(bound("../../../../packages/job-desk/src/home-index.ts")).toBe(
+      worker
+    )
   })
 })

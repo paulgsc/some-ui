@@ -138,11 +138,12 @@ role, and it is the owner's call, so it is not built.
 ### What a put must satisfy
 
 - **Name**, anchored to its folder: `brief` takes `digest-YYYY-MM-DD.json`, and, from the
-  routine's one-time backfill (MB2, below), a pre-mailbox `decisions-YYYY-MM-DD.json`,
+  routine's one-time backfill (MB2, below), a `decisions-YYYY-MM-DD.json`,
   `decisions-YYYY-MM-DD-<n>.json` (`<n>` from 2 to 99, no leading zero, as the phone numbers
-  a later share that day) or `scouts-YYYYMMDDTHHMMSS.json` (a time on the clock) under its
-  Drive name, only for a real calendar day from 2026-10-17, the first day the phone could
-  share one, through 2026-10-22, the day before the mailbox opened, and each with its own
+  a later share that day) or `scouts-YYYYMMDDTHHMMSS.json` (a time on the clock) that only
+  Drive holds, under its Drive name, only for a real calendar day from 2026-10-17, the first
+  day the phone could share one, through 2026-11-03, the day before the phone files every
+  Jobs file home, and each with its own
   schema (`some-ui.job-decisions/1` or `some-ui.job-scouts/1`); `decisions` takes
   `decisions-YYYY-MM-DD.json` or `decisions-YYYY-MM-DD-<n>.json`; `scout` takes
   `scouts-YYYYMMDDTHHMMSS.json`; `scene` takes `scene-<reflection>.json` or
@@ -484,9 +485,10 @@ how each was checked when this workspace landed.
   and decision, paulgsc/some-ui#2179, kept out of `ask` for the same reason). The routine's `brief` also takes its one-time backfill: a Jobs decisions or
   scouts file under its Drive name, only as the phone names one (`sharedDay`: a real calendar
   day, a decisions share number from 2 to 99, a scouts stamp at a real time) and only for a
-  day from 2026-10-17, when the phone could first share one, through 2026-10-22, the day
-  before the mailbox opened (`FOLDERS`' `backfill`, `FIRST_SHARED`, `MAILBOX_OPENED`), so the
-  files it can add there are a closed set. `brief` also takes the build-journal session's list
+  day from 2026-10-17, when the phone could first share one, through 2026-11-03, the day
+  before the phone files every Jobs file home (`FOLDERS`' `backfill`, `FIRST_SHARED`,
+  `DRIVE_ONLY_ENDED`; widened from the day the mailbox opened by the owner's decision on
+  paulgsc/some-ui#2393, https://github.com/paulgsc/some-ui/issues/2393#issuecomment-6552332294), so the files it can add there are a closed set. `brief` also takes the build-journal session's list
   of the takes Drive holds (`FOLDERS`' `also`, `drive-takes-…`, `driveTakesRefusal`; the
   owner's route a, 2026-10-31,
   [paulgsc/some-ui#2401](https://github.com/paulgsc/some-ui/issues/2401#issuecomment-6549482554)),
@@ -499,7 +501,7 @@ how each was checked when this workspace landed.
   checked against; lets `handle` reach `serve` or the store without a grant; adds a method to
   a route in `METHODS`; renames, moves or deletes the `ROLES` table; or adds a `backfill`
   folder to any folder, loosens `SHARED_NAMES` or `sharedDay`, moves `FIRST_SHARED` or
-  `MAILBOX_OPENED`, or lets `kindOf` take a backfill name `sharedDay` does not read or for a
+  `DRIVE_ONLY_ENDED`, or lets `kindOf` take a backfill name `sharedDay` does not read or for a
   day outside them; or adds a kind to any folder's `also`, loosens the `drive-takes` name or
   `driveTakesRefusal` (a key beyond `schema`, `at` and `takes`, or beyond `sha256` per take),
   or removes `kindOf`'s reading of `also`; when the PR description does not name the owner's
@@ -541,6 +543,10 @@ how each was checked when this workspace landed.
   (2026-10-17) to before `MAILBOX_OPENED` (2026-10-23), and `core.test.ts` pins the first
   and last days taken and the days either side, impossible dates and times, share numbers
   the phone never writes, the schemas, and that only the routine puts one. _Checked at the
+  backfill widening (2026-11-01, paulgsc/some-ui#2393, "yes on 2393, widen the
+  backfill"):_ `kindOf` refuses a day `>= DRIVE_ONLY_ENDED` (2026-11-04), which replaces
+  `MAILBOX_OPENED`, and `core.test.ts` pins 2026-10-16 and 2026-10-17 and 2026-11-03 and
+  2026-11-04, for decisions and scouts. _Checked at the
   reflection amendment (the owner's decision D2 on paulgsc/some-ui#2174, 2026-10-26: written
   reflections reach the routine by the mailbox as the routine's minimum, as spoken
   transcripts do; paulgsc/some-ui#2178):_ `ROLES` has three entries; `core.test.ts` pins
