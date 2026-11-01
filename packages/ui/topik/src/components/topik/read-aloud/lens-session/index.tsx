@@ -6,6 +6,8 @@
 
 import type { JSX } from "react"
 import { useSyncExternalStore } from "react"
+import type { TakePatternSnapshot } from "@some-ui/voice-capture"
+import { takeItemView } from "@some-ui/voice-capture"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
 import { LensCard } from "@topik/components/topik/read-aloud/lens-card"
 import { HeldNote } from "@topik/components/topik/read-aloud/rep-card"
@@ -24,6 +26,7 @@ import { ArrowLeft } from "lucide-react"
 
 const noSubscription = (): (() => void) => () => undefined
 const noTake = (): LensTakeSnapshot | null => null
+const noPattern = (): TakePatternSnapshot | null => null
 
 export type LensSessionProps = UseLensSessionOptions & {
   short?: boolean
@@ -93,9 +96,13 @@ export const LensSession = ({
   const showing = phase.name === "paused" ? phase.resume : phase
   const item = currentItem(state)
   const { takes } = options
-  const take = useSyncExternalStore(
+  const kept = useSyncExternalStore(
     takes?.subscribe ?? noSubscription,
     takes?.getSnapshot ?? noTake
+  )
+  const pattern = useSyncExternalStore(
+    takes?.pattern.subscribe ?? noSubscription,
+    takes?.pattern.getSnapshot ?? noPattern
   )
 
   const header = (
@@ -171,12 +178,20 @@ export const LensSession = ({
         onHearCue={vm.hearCue}
         onHearLine={vm.hearLine}
         take={
-          takes && take
+          takes && kept && pattern
             ? {
-                snapshot: take,
-                onStart: vm.startTake,
-                onStop: takes.stop,
+                view: takeItemView(
+                  pattern,
+                  kept.takes,
+                  item.lineId,
+                  takes.pattern.options
+                ),
+                taking: pattern.take.kind !== "idle",
+                full: kept.full,
+                onTap: () => vm.tapTake(),
+                onRedo: vm.tapTake,
                 onPlay: vm.playTake,
+                onLetGo: takes.pattern.letGo,
               }
             : undefined
         }

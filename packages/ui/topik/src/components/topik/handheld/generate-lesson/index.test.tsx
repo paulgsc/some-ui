@@ -1,13 +1,19 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react"
 import type {
   SceneAsk,
   SceneAskSnapshot,
 } from "@topik/lib/topik/adapter/next-scene-ask"
-import type {
-  SceneNote,
-  SceneVoice,
-  SceneVoiceSnapshot,
-} from "@topik/lib/topik/adapter/scene-voice"
+import {
+  draftNote,
+  sceneDraft,
+} from "@topik/lib/topik/adapter/scene-voice/__tests__/draft"
 import type { DramaLesson } from "@topik/lib/topik/core/drama"
 import type { TreeRequest } from "@topik/lib/topik/generation"
 import {
@@ -170,43 +176,10 @@ describe("GenerateLesson, with a scene tree", () => {
 })
 
 describe("GenerateLesson's spoken scene", () => {
-  /** A scene voice holding `notes`, whose `remove` takes them out. */
-  const draftOf = (
-    notes: Array<SceneNote>
-  ): SceneVoice & { remove: Mock<(ids: ReadonlyArray<string>) => void> } => {
-    let snapshot: SceneVoiceSnapshot = {
-      notes,
-      take: { kind: "idle" },
-      said: null,
-      full: false,
-    }
-    const listeners = new Set<() => void>()
-    return {
-      getSnapshot: () => snapshot,
-      subscribe: (listener) => {
-        listeners.add(listener)
-        return () => listeners.delete(listener)
-      },
-      start: vi.fn(),
-      stop: vi.fn(),
-      leave: vi.fn(),
-      letGo: vi.fn(),
-      remove: vi.fn((ids: ReadonlyArray<string>) => {
-        snapshot = {
-          ...snapshot,
-          notes: snapshot.notes.filter(({ id }) => !ids.includes(id)),
-        }
-        for (const listener of listeners) listener()
-      }),
-    }
-  }
-  const notes = [
-    { id: "n1", durationMs: 42_000, mimeType: "audio/webm" },
-    { id: "n2", durationMs: 9_000, mimeType: "audio/webm" },
-  ]
+  const notes = [draftNote("n1", 42_000, 1), draftNote("n2", 9_000, 2)]
 
   it("asks home with the draft's voice notes named by id, keeps them on the phone, and says what the host says (LG1)", () => {
-    const draft = draftOf(notes)
+    const draft = sceneDraft(notes)
     let snapshot: SceneAskSnapshot = { said: "Nothing asked yet.", held: false }
     const listeners = new Set<() => void>()
     const ask = vi.fn<SceneAsk["ask"]>(() => {
@@ -248,7 +221,10 @@ describe("GenerateLesson's spoken scene", () => {
     )
     expect(onPromptHandedOff).toHaveBeenCalledOnce()
     expect(screen.getByText("Home has your ask.")).toBeTruthy()
-    expect(draft.remove).not.toHaveBeenCalled()
+    expect(draft.store.getSnapshot().map(({ standing }) => standing)).toEqual([
+      "current",
+      "current",
+    ])
   })
 
   it("says so when the phone could not keep an ask, and hands nothing off", () => {
@@ -267,16 +243,49 @@ describe("GenerateLesson's spoken scene", () => {
     expect(onPromptHandedOff).not.toHaveBeenCalled()
   })
 
-  it("opens on the draft left open, and starts another only once it is let go", () => {
-    const draft = draftOf(notes)
+  it("records nothing while the phone keeps as many notes as it can, and still plays each, earlier ones too, and lets each go", async () => {
+    const earlier = {
+      ...draftNote("n0", 5_000, 0),
+      standing: "earlier" as const,
+    }
+    const draft = sceneDraft([earlier, ...notes], { full: true })
+    renderGenerate({ sceneVoice: draft })
+    expect(screen.getByRole("status").textContent).toMatch(
+      /kept as many voice notes as it can\. One you let go makes room once a home it's paired with has it/
+    )
+    expect(document.querySelector("[data-take]")).toBeNull()
+    expect(
+      screen.getAllByRole("button", { name: /^Let it go the take/ })
+    ).toHaveLength(2)
+    expect(
+      screen.queryAllByRole("button", { name: /^Redo the take/ })
+    ).toHaveLength(0)
+    // The earlier one a Redo superseded stays, collapsed, and plays.
+    expect(screen.getByText("Earlier take (1)")).toBeTruthy()
+    const plays = screen.getAllByRole("button", { name: /^Play the take/ })
+    expect(plays).toHaveLength(3)
+    fireEvent.click(
+      within(screen.getByRole("group")).getByRole("button", {
+        name: /^Play the take/,
+      })
+    )
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+    expect(draft.player.playing()).toBe(1)
+  })
+
+  it("opens on the draft left open, and starts another by setting it aside, kept (D3)", () => {
+    const draft = sceneDraft(notes)
     renderGenerate({ sceneVoice: draft })
     expect(screen.getAllByRole("listitem")).toHaveLength(2)
     click(/Start a different scene/)
-    click(/Let this scene go/)
-    expect(draft.remove).toHaveBeenCalledWith(["n1", "n2"])
-    expect(screen.queryByRole("list", { name: "Voice notes" })).toBeNull()
-    expect(
-      screen.getByRole("button", { name: /Describe it aloud/ })
-    ).toBeTruthy()
+    expect(draft.store.getSnapshot().map(({ standing }) => standing)).toEqual([
+      "set-aside",
+      "set-aside",
+    ])
+    expect(screen.queryAllByRole("listitem")).toHaveLength(0)
+    expect(screen.getByText(/Set aside/)).toBeTruthy()
+    expect(screen.getByRole("button", { name: "Start talking" })).toBeTruthy()
   })
 })

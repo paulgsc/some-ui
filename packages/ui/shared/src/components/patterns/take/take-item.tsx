@@ -39,6 +39,13 @@ export type TakeItemProps = {
    * named `extra` slot (`TakeRow`).
    */
   extra?: (row: TakeRowView) => ReactNode
+  /**
+   * Set while the screen's store keeps no new take (a phone full until home
+   * has some): the button and its line give way to these words, saying what
+   * makes room, and no row offers Redo, which records one. Every take still
+   * plays, and a current one can still be let go.
+   */
+  full?: ReactNode
   className?: string
 } & Pick<TakeButtonProps, "size">
 
@@ -61,6 +68,7 @@ export const TakeItem = ({
   describe,
   words = TAKE_WORDS,
   extra,
+  full,
   size,
   className,
 }: TakeItemProps): JSX.Element => {
@@ -70,20 +78,28 @@ export const TakeItem = ({
       aria-label={label}
       className={cn("flex flex-col gap-3", className)}
     >
-      <div className="flex flex-col items-center gap-2">
-        <TakeButton view={view.button} size={size} onTap={onTap} />
-        <p
-          aria-live="polite"
-          data-take-ended={said?.kind === "ended" ? said.ended.seq : undefined}
-          className="text-muted-foreground min-h-5 text-center text-sm"
-        >
-          {said === null ? null : takeSaid(words, said)}
+      {full === undefined ? (
+        <div className="flex flex-col items-center gap-2">
+          <TakeButton view={view.button} size={size} onTap={onTap} />
+          <p
+            aria-live="polite"
+            data-take-ended={
+              said?.kind === "ended" ? said.ended.seq : undefined
+            }
+            className="text-muted-foreground min-h-5 text-center text-sm"
+          >
+            {said === null ? null : takeSaid(words, said)}
+          </p>
+        </div>
+      ) : (
+        <p role="status" className="text-muted-foreground text-sm">
+          {full}
         </p>
-      </div>
+      )}
       <TakeRows
         view={view}
         onPlay={onPlay}
-        onRedo={onRedo}
+        onRedo={full === undefined ? onRedo : undefined}
         onLetGo={onLetGo}
         describe={describe}
         extra={extra}
@@ -94,8 +110,11 @@ export const TakeItem = ({
 
 export type TakeRowsProps = Pick<
   TakeItemProps,
-  "view" | "onPlay" | "onRedo" | "onLetGo" | "describe" | "extra"
->
+  "view" | "onPlay" | "onLetGo" | "describe" | "extra"
+> & {
+  /** Records a current take again (D2); absent while no new take is kept. */
+  onRedo?: TakeItemProps["onRedo"] | undefined
+}
 
 /**
  * An item's takes as rows: its current takes, then the earlier ones a Redo
@@ -121,7 +140,11 @@ export const TakeRows = ({
               key={row.take.id}
               row={row}
               onPlay={() => onPlay(row.take.id)}
-              onRedo={() => onRedo(row.take.id)}
+              onRedo={
+                onRedo === undefined
+                  ? undefined
+                  : (): void => onRedo(row.take.id)
+              }
               // A take on neither this phone nor home has nowhere to set
               // it aside.
               onLetGo={
