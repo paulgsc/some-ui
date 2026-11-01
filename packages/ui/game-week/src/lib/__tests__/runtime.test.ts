@@ -63,6 +63,7 @@ function memoryStore(failKeep = false): MemoryStore {
     audio: (id) =>
       Promise.resolve(store.kept.has(id) ? new Blob(["said"]) : null),
     isKept: (id) => store.kept.has(id),
+    homeSince: () => null,
     subscribe(listener): () => void {
       listeners.add(listener)
       return (): void => {

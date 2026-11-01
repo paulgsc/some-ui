@@ -127,13 +127,14 @@ export function memoryTakes(options: {
         ])
         done({ outcome: "kept", id })
       },
-      setAside: (id: string): void => {
+      setAside: (id: string, done: (stored: boolean) => void): void => {
         write(
           takes.map(
             (kept): PatternTake =>
               kept.id === id ? { ...kept, standing: "set-aside" } : kept
           )
         )
+        done(true)
       },
       audio: (id: string) =>
         Promise.resolve(

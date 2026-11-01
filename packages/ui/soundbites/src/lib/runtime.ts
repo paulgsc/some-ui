@@ -124,10 +124,14 @@ export function createSoundbites(
             })
         )
       },
-      setAside: (id) => {
-        ports.store
-          .setAside(id)
-          .catch(() => dispatch({ type: "setAsideFailed" }))
+      setAside: (id, done) => {
+        ports.store.setAside(id).then(
+          () => done(true),
+          () => {
+            done(false)
+            dispatch({ type: "setAsideFailed" })
+          }
+        )
       },
       audio: (id) => ports.store.audio(id),
     },

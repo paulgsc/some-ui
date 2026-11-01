@@ -187,6 +187,8 @@ export type TakePatternEvent =
   | { readonly type: "stopPlaying" }
   /** D3: sets a take aside. */
   | { readonly type: "letGo"; readonly id: string; readonly place: TakePlace }
+  /** The screen's store couldn't mark it: it stays the item's, unsaid. */
+  | { readonly type: "setAsideFailed"; readonly id: string }
   /** The screen went: a take under way is kept, and nothing plays. */
   | { readonly type: "left" }
   | {
@@ -350,6 +352,10 @@ export function stepTakePattern(
         effects: [...quiet.effects, { type: "setAside", id: event.id }],
       }
     }
+    case "setAsideFailed": {
+      if (state.setAside?.id !== event.id) return { state, effects: [] }
+      return { state: { ...state, setAside: null }, effects: [] }
+    }
     case "micOpened":
     case "micFailed":
     case "ticked":
@@ -429,12 +435,72 @@ export type TakePatternPorts = Omit<TakeKitPorts, "keep"> & {
     supersedes: string | null,
     done: (result: KeepResult) => void
   ) => void
-  /** Marks a take set aside (D3): out of the item, kept. */
-  readonly setAside: (id: string) => void
+  /**
+   * Marks a take set aside (D3): out of the item, kept. Then says, once,
+   * whether the store kept the mark; a take it couldn't mark stays the
+   * item's, and the line saying it was set aside goes.
+   */
+  readonly setAside: (id: string, done: (stored: boolean) => void) => void
   /** A take's audio, or null when it can't be read. */
   readonly audio: (id: string) => Promise<Blob | null>
   /** Defaults to the kit's `audioPlayer`. */
   readonly player?: Player | undefined
+}
+
+/** The pattern's playback effects. */
+export type PlaybackEffect = Extract<
+  TakePatternEffect,
+  { type: "loadAudio" | "playAudio" | "stopAudio" }
+>
+
+/**
+ * Runs the pattern's playback effects: reads a take's audio through
+ * `audio` and plays one at a time through `player`, and reports each as
+ * the pattern's `loaded` and `played`. Which answer is stale is the step's.
+ * `takePattern` runs it, and so does a screen whose own machine embeds
+ * `stepTakePattern` (Game Week).
+ */
+export function takePlayback(
+  ports: Pick<TakePatternPorts, "audio" | "player">,
+  dispatch: (
+    event: Extract<TakePatternEvent, { type: "loaded" | "played" }>
+  ) => void
+): { readonly run: (effect: PlaybackEffect) => void } {
+  const player = ports.player ?? audioPlayer
+  let playback: { readonly stop: () => void } | null = null
+  return {
+    run(effect): void {
+      switch (effect.type) {
+        case "loadAudio": {
+          const { play } = effect
+          ports.audio(effect.id).then(
+            (audio) => dispatch({ type: "loaded", play, audio }),
+            () => dispatch({ type: "loaded", play, audio: null })
+          )
+          return
+        }
+        case "playAudio": {
+          playback?.stop()
+          const { play } = effect
+          const started = player.play(effect.audio)
+          playback = started
+          void started.ended.then(() => {
+            if (playback === started) playback = null
+            dispatch({ type: "played", play })
+          })
+          return
+        }
+        case "stopAudio": {
+          playback?.stop()
+          playback = null
+          return
+        }
+        default: {
+          assertNever(effect)
+        }
+      }
+    },
+  }
 }
 
 /**
@@ -449,8 +515,6 @@ export function takePattern(
   let state = initialTakePattern
   const listeners = new Set<() => void>()
   let snapshot = takePatternSnapshot(state, options)
-  let playback: { readonly stop: () => void } | null = null
-  const player = ports.player ?? audioPlayer
 
   const dispatch = (event: TakePatternEvent): void => {
     const next = stepTakePattern(state, event, options)
@@ -473,6 +537,8 @@ export function takePattern(
     dispatch
   )
 
+  const playback = takePlayback(ports, dispatch)
+
   const run = (effect: TakePatternEffect): void => {
     switch (effect.type) {
       case "keep": {
@@ -486,31 +552,20 @@ export function takePattern(
         return
       }
       case "setAside": {
-        ports.setAside(effect.id)
-        return
-      }
-      case "loadAudio": {
-        const { play } = effect
-        ports.audio(effect.id).then(
-          (audio) => dispatch({ type: "loaded", play, audio }),
-          () => dispatch({ type: "loaded", play, audio: null })
-        )
-        return
-      }
-      case "playAudio": {
-        playback?.stop()
-        const { play } = effect
-        const started = player.play(effect.audio)
-        playback = started
-        void started.ended.then(() => {
-          if (playback === started) playback = null
-          dispatch({ type: "played", play })
+        const { id } = effect
+        let answered = false
+        ports.setAside(id, (stored) => {
+          // Once: a second answer is for nobody.
+          if (answered) return
+          answered = true
+          if (!stored) dispatch({ type: "setAsideFailed", id })
         })
         return
       }
+      case "loadAudio":
+      case "playAudio":
       case "stopAudio": {
-        playback?.stop()
-        playback = null
+        playback.run(effect)
         return
       }
       case "openMic":

@@ -1,7 +1,7 @@
 /**
  * Runs the recorder's machine (`machine.ts`) against the outside world. It
- * holds the handles (the take, the playback, the page clock, home's feed:
- * the take pattern's effects run here as its own runtime runs them), turns each
+ * holds the handles (the take through `takeRunner`, the playback through the
+ * pattern's own `takePlayback`, the page clock, home's feed), turns each
  * effect into a call on a port and each result into an event, and decides
  * nothing: whether a result still matters is `step`'s. Plain TypeScript, so
  * deleting React deletes none of this.
@@ -14,12 +14,11 @@
 import { assertNever } from "@some-ui/core-utils"
 import type {
   MicOwner,
-  Playback,
   Player,
   StartRecording,
   TakeDeadlines,
 } from "@some-ui/voice-capture"
-import { audioPlayer, takeRunner } from "@some-ui/voice-capture"
+import { takePlayback, takeRunner } from "@some-ui/voice-capture"
 
 import type { FeedPort } from "./feed"
 import type {
@@ -69,8 +68,6 @@ export type GameWeekRuntime = {
 export function createGameWeek(ports: GameWeekPorts): GameWeekRuntime {
   let state = initialState(ports.prefs.read(), ports.now())
   const listeners = new Set<() => void>()
-  const player = ports.player ?? audioPlayer
-  let playback: Playback | null = null
 
   const dispatch = (event: GameWeekEvent): void => {
     const next = step(state, event)
@@ -97,12 +94,24 @@ export function createGameWeek(ports: GameWeekPorts): GameWeekRuntime {
       )
   )
 
-  /** Tells `step` of each bite the store held and has since kept. */
+  const playback = takePlayback(
+    { audio: (id) => ports.store.audio(id), player: ports.player },
+    dispatch
+  )
+
+  /**
+   * Tells `step` of each bite the store held and has since kept, and since
+   * when home holds the bite on its row.
+   */
   function reconcile(): void {
     const kept = state.keeping
       .filter(({ id, held }) => held && ports.store.isKept(id))
       .map(({ id }) => id)
     for (const id of kept) dispatch({ type: "kept", id })
+    const row = state.lastBite
+    if (row === null || row.take.kept.place === "home") return
+    const since = ports.store.homeSince(row.take.id)
+    if (since !== null) dispatch({ type: "homeHolds", id: row.take.id, since })
   }
 
   function run(effect: GameWeekEffect): void {
@@ -115,28 +124,10 @@ export function createGameWeek(ports: GameWeekPorts): GameWeekRuntime {
         take.run(effect)
         return
       }
-      case "loadAudio": {
-        const { play } = effect
-        ports.store.audio(effect.id).then(
-          (audio) => dispatch({ type: "loaded", play, audio }),
-          () => dispatch({ type: "loaded", play, audio: null })
-        )
-        return
-      }
-      case "playAudio": {
-        playback?.stop()
-        const { play } = effect
-        const started = player.play(effect.audio)
-        playback = started
-        void started.ended.then(() => {
-          if (playback === started) playback = null
-          dispatch({ type: "played", play })
-        })
-        return
-      }
+      case "loadAudio":
+      case "playAudio":
       case "stopAudio": {
-        playback?.stop()
-        playback = null
+        playback.run(effect)
         return
       }
       case "keep": {
