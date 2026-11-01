@@ -1035,6 +1035,7 @@ describe("Done for now twice while a take is still saving", () => {
     const finished = new Promise<void>((resolve) => {
       finish = resolve
     })
+    // eslint-disable-next-line one-owner/no-hand-written-microphone -- Studio's tests move onto the simulated microphone with its machine (#2442)
     const held: StartRecording = async () => {
       const recording = await speaking()()
       return {
@@ -1165,6 +1166,7 @@ describe("VC1: a microphone that is slow or silent holds nothing for good", () =
   } {
     let open: () => void = () => undefined
     let discards = 0
+    // eslint-disable-next-line one-owner/no-hand-written-microphone -- Studio's tests move onto the simulated microphone with its machine (#2442)
     const mic: StartRecording = () =>
       new Promise((resolve) => {
         open = (): void => {
@@ -1202,6 +1204,7 @@ describe("VC1: a microphone that is slow or silent holds nothing for good", () =
 
   it("closes the sitting when Done for now waits on a recording that never gives back what it heard", async () => {
     const memory = memoryProjectStore()
+    // eslint-disable-next-line one-owner/no-hand-written-microphone -- Studio's tests move onto the simulated microphone with its machine (#2442)
     const silent: StartRecording = () =>
       Promise.resolve({
         level: (): number => 0.3,
