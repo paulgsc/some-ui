@@ -25,7 +25,7 @@ import { z } from "zod"
 import type { IdeaAbout, QuestionId } from "./model"
 import { IDEA_FORMATS, IDEA_QUESTIONS, TITLE_MAX, TYPED_MAX } from "./model"
 
-const DRAFT_KEY = "some-ui:studio:idea-draft"
+export const DRAFT_KEY = "some-ui:studio:idea-draft"
 
 export type IdeaDraft = {
   /** The idea's id once sent: letters, digits and dashes. */

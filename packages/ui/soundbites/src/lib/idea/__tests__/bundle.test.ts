@@ -197,15 +197,12 @@ describe("a new idea as one bundle (ST26)", () => {
       expect(effects).toEqual([{ type: "open" }])
     })
 
-    it("deletes a waiting take no draft or kept idea names: one whose draft couldn't be kept", () => {
+    it("keeps waiting a take whose idea nothing readable owns: its draft or idea may only have been unreadable", () => {
       const { effects } = run([
         { type: "entered", at: AT },
         opened(null, [{ ...take("t1", "what"), answers: "idea:lost:what" }]),
       ])
-      expect(effects).toEqual([
-        { type: "open" },
-        { type: "drop", takes: ["t1"] },
-      ])
+      expect(effects).toEqual([{ type: "open" }])
     })
   })
 

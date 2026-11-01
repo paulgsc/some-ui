@@ -15,10 +15,14 @@ import { bundleTakesOf } from "@soundbites/fixtures"
 import type { BundleRuntime } from "@soundbites/lib/idea/bundle-runtime"
 import { createIdeaBundle } from "@soundbites/lib/idea/bundle-runtime"
 import type { DraftStore } from "@soundbites/lib/idea/draft"
-import { IDEA_LISTS_SEED, keptDraftStore } from "@soundbites/lib/idea/draft"
+import {
+  DRAFT_KEY,
+  IDEA_LISTS_SEED,
+  keptDraftStore,
+} from "@soundbites/lib/idea/draft"
 import type { Idea } from "@soundbites/lib/idea/model"
 import type { IdeaStore } from "@soundbites/lib/idea/store"
-import { keptIdeaStore } from "@soundbites/lib/idea/store"
+import { IDEAS_KEY, keptIdeaStore } from "@soundbites/lib/idea/store"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 beforeEach(() => {
@@ -235,6 +239,60 @@ describe("a new idea, end to end on the simulated microphone (ST26)", () => {
     on.page(false)
     await say(on, "spark")
     expect(on.simulated.store.getSnapshot()).toHaveLength(2)
+  })
+
+  it("keeps every take of a draft that can't be read whole: none is deleted while it is set aside", async () => {
+    const storage = inMemoryStorage()
+    const simulated = simulatedPattern({
+      options: { ...ONE_TAKE, send: "on-confirm" },
+    })
+    const first = phone(storage, simulated)
+    titled(first)
+    await say(first, "what")
+    await say(first, "spark")
+    const said = simulated.store.getSnapshot().map((take) => take.id)
+    // The draft no longer reads as one: it is set aside, and reads as none.
+    storage.setItem(DRAFT_KEY, JSON.stringify({ draft: { id: 7 } }))
+    const again = phone(storage, simulated)
+    expect(again.drafts.read()).toBeNull()
+    expect(again.bundle.getSnapshot().screen).toBe("about")
+    expect(simulated.store.getSnapshot().map((take) => take.id)).toEqual(said)
+    expect(again.release).not.toHaveBeenCalled()
+  })
+
+  it("keeps every take of a kept idea that can't be read whole, after a Send cut short", async () => {
+    const storage = inMemoryStorage()
+    const simulated = simulatedPattern({
+      options: { ...ONE_TAKE, send: "on-confirm" },
+    })
+    const first = phone(storage, simulated)
+    titled(first)
+    await say(first, "what")
+    const [taken] = simulated.store.getSnapshot()
+    // Said, but not in the idea the Send kept.
+    await say(first, "spark")
+    const said = simulated.store.getSnapshot().map((take) => take.id)
+    const idea: Idea = {
+      id: first.bundle.getSnapshot().draft.id,
+      at: new Date(0).toISOString(),
+      questions: 1,
+      answers: [
+        {
+          question: "what",
+          versions: [],
+          takes: [{ at: taken?.recordedAt ?? "", take: taken?.id ?? "" }],
+        },
+      ],
+      passed: [],
+    }
+    first.ideas.keep((ideas) => [...ideas, idea])
+    first.drafts.write(null)
+    // The idea no longer reads as one: the list drops it as it is read.
+    storage.setItem(IDEAS_KEY, JSON.stringify([{ ...idea, answers: 3 }]))
+    const again = phone(storage, simulated)
+    expect(again.ideas.list()).toEqual([])
+    expect(simulated.store.getSnapshot().map((take) => take.id)).toEqual(said)
+    expect(again.release).not.toHaveBeenCalled()
   })
 
   it("starts no take when the draft it would answer couldn't be kept", async () => {

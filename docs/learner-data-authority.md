@@ -707,9 +707,12 @@ only from the lane's hook and the scene notes read for home only there
   null); game bites, Studio takes and the answers to Claude's questions
   about an idea have no Let go. A new idea's takes (ST26) owe no marks
   either (their desk's `from` is null): before Send, its Delete, a Redo
-  and the clean-up of takes nothing will send delete for good a take that
-  still `waits`, through the desk's `discard`, and nothing lets one go
-  once it no longer waits. A mark
+  and the clean-up of a kept idea's takes it doesn't name delete for good
+  a take that still `waits`, through the desk's `discard`. Once a take no
+  longer waits, only the desk's own two exits remove it, as on every
+  takes desk: making room at the cap of 40, which lets the oldest take
+  home holds go (`makesRoom`), and the sweep of a take whose audio never
+  landed (`sweepIdeaTakes`), which takes a waiting one too. A mark
   goes to home only while its note reads set aside where it is kept, or
   is listed nowhere by its store, read this pass (`marksSendable`; the
   soundbites count as read only once the pass has read them): one whose
@@ -739,7 +742,8 @@ only from the lane's hook and the scene notes read for home only there
   `lib/idea-takes/index.ts`, `bundle-runtime.ts` or `bundle.ts` that lets
   the new idea's desk (`bundleDesk`, whose `from` is null) let go a take
   that no longer `waits`: a call of its pattern's `letGo`, or a removal
-  there but through `discard`;
+  there but through `discard`, the desk's `sweep` or its making room at
+  the cap;
   a hunk to `lib/scene-voice/runtime.ts` that lets `letGo` remove a scene note that
   is not `prompted` (an ask home holds named it, LA18) or that home does not
   hold; a hunk

@@ -17,9 +17,11 @@
  *   names (`send`'s `release`), and only those (`settle` too).
  * - **One take per answer before Send.** Saying an answer again replaces
  *   its take: once the new one is kept, the one it replaced, which never
- *   left the phone, is deleted for good (`drop`). So is a waiting take no
- *   draft or kept idea names (a Send cut short, a draft that couldn't be
- *   kept), when the screen opens.
+ *   left the phone, is deleted for good (`drop`). So, when the screen
+ *   opens, is a waiting take of a kept idea that the idea doesn't name (a
+ *   Send cut short). A take is deleted only on the word of what owns its
+ *   idea, read whole: one whose idea nothing readable holds (a draft or an
+ *   idea set aside as unreadable) keeps waiting, never guessed at.
  * - **Deleting before Send is gone for good, and asks first** (the owner's
  *   ruling on #2265): one answer, every take it has (`askDelete`, then
  *   `confirmed`), or the whole idea (`askDeleteAll`). Besides `drop`,
@@ -206,7 +208,8 @@ export type BundleEffect =
   | { readonly type: "deleteTakes"; readonly takes: ReadonlyArray<string> }
   /**
    * Deletes, for good and saying nothing, waiting takes nothing will send:
-   * replaced by a newer take of their answer, or named by no draft or idea.
+   * replaced by a newer take of their answer, or of a kept idea that doesn't
+   * name them.
    */
   | { readonly type: "drop"; readonly takes: ReadonlyArray<string> }
   /** Deletes the draft and every take it has, for good. */
@@ -286,21 +289,25 @@ function takesOf(
 }
 
 /**
- * The waiting takes nothing will send: the draft's takes each replaced by
- * its answer's take now, and, with `kept`, every take neither the draft nor
- * a kept idea names. None already asked for.
+ * The waiting takes nothing will send, each on the word of what owns its
+ * idea: the draft's takes each replaced by its answer's take now, and, with
+ * `kept`, each kept idea's takes it doesn't name. A take whose idea neither
+ * owns keeps waiting: its draft or idea may only have been unreadable. None
+ * already asked for.
  */
 function droppable(
   state: Pick<BundleState, "draft" | "takes" | "dropping">,
   kept: ReadonlyArray<Idea> | null
 ): ReadonlyArray<string> {
-  const named = kept === null ? null : namedBy(kept)
   return state.takes
     .filter((take) => {
       if (take.waits !== true || state.dropping.includes(take.id)) return false
       const question = questionOf(state.draft.id, take.answers)
       if (question !== null) return currentTake(state, question)?.id !== take.id
-      return named !== null && !named.has(take.id)
+      const owner = kept?.find(
+        (idea) => questionOf(idea.id, take.answers) !== null
+      )
+      return owner !== undefined && !namedBy([owner]).has(take.id)
     })
     .map((take) => take.id)
 }
