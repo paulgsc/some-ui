@@ -41,9 +41,10 @@ couldn't do:
   isn't usable, all of `Brief/`.
 - **A digest only Drive holds:** one a run put there alone, on a day the
   mailbox wasn't usable (§0.1) or when a usable mailbox didn't take it
-  (§8.5). One from §8.5 has picks; one from a day the mailbox wasn't usable
-  has none. Only a run with both the mailbox and Drive puts it home (§0.5),
-  and a run without Drive can't count it (§2).
+  (§8.5). One from §8.5 may have picks; one from a day the mailbox wasn't
+  usable has none. Only a run with both the mailbox and Drive puts it home
+  (§0.5), unless the mailbox refused the digest itself, and a run without
+  Drive can't count it (§2).
 - **Decisions and scouts files only Drive holds** (paulgsc/some-ui#2393). A
   phone on an APK without HF2 shared a file that names a voice note to Drive
   alone. One named for a day §0.5's backfill covers (before 2026-11-04) goes
@@ -177,11 +178,14 @@ record (§9) and the summary (§10). Nothing ends a run before those two.
    as one that can't go home, take its name out of `drive.json`, and run
    `stands` again; that second answer is the one that counts. The run keeps
    nothing between days, so the next run puts it, meets the same `422` and
-   does the same. A digest the mailbox refuses (`413` `too_big`, or a `422`
-   naming why) can't go home either, and no index will count it: name it in
-   the summary as a digest that can't go home, take its name out of
-   `drive.json`, and run `stands` again; that second answer is the one that
-   counts. The next run puts it, meets the same refusal and does the same.
+   does the same. A digest the mailbox refuses for what it is (`413`
+   `too_big`, or a `422` saying it doesn't read as a digest) can't go home
+   either, but its picks are real, so leave its name in `drive.json`: the
+   index doesn't stand while it is there, and §2's bookkeeping counts its
+   picks from Drive. Name it in the summary as a digest that can't go home,
+   and say that home's index won't stand until it is gone from `Brief/`. A
+   `422` about the request itself (its content type, or a body that couldn't
+   be read) is not the digest's: the next run puts it again.
    Count what you put back, by kind, for §10.
 
    When the index doesn't stand, or there is none, or the mailbox isn't
@@ -870,8 +874,8 @@ shorter limit, first person, the gaps) is yours to hold.
    summary, don't retry, and put nothing in Drive (step 6). Anything else:
    say so in the summary and go on to step 6. The next run puts that copy
    home (§0.5), unless the mailbox refused the digest itself (`413`
-   `too_big`, or `422`): that one stays in Drive alone, and §0.5 names it as
-   a digest that can't go home. The mailbox holds a name for good, with the
+   `too_big`, or a `422` saying it doesn't read as a digest): that one stays
+   in Drive alone, and §0.5 names it as a digest that can't go home. The mailbox holds a name for good, with the
    bytes it was first given, so only a digest that passed step 4 goes there.
 
 6. The Drive copy, for refreshing away from home ("What still needs Drive"),
