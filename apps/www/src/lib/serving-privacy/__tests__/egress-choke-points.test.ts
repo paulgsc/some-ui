@@ -35,7 +35,14 @@ import { readdirSync, readFileSync } from "node:fs"
 import { dirname, join, posix, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import ts from "typescript"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
+
+// EG1: a scan fails only on a violation, not on a busy CI host. Each scan
+// reads and parses every source file in www; vitest's 5 s default left no
+// room on a busy host, where the LA8 scan took 5.1 s. 30 s covers host load
+// on today's tree. Tolerance: a tree whose scan nears 30 s, which then wants
+// the files parsed once for every check, not a larger number here.
+vi.setConfig({ testTimeout: 30_000 })
 
 /** apps/www/src/lib/serving-privacy/__tests__ -> apps/www/src. */
 const SRC = resolve(dirname(fileURLToPath(import.meta.url)), "../../..")
