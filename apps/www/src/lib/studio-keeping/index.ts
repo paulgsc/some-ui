@@ -20,7 +20,7 @@ import type {
 import { handedIn } from "@/lib/handed-in"
 
 /** What the lanes need of Studio, handed in by its route. */
-export type StudioKeeping = {
+type StudioKeeping = {
   /** What the lanes read of Studio's projects. */
   readonly store: Pick<
     ProjectStore,

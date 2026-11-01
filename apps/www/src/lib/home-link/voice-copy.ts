@@ -354,7 +354,7 @@ function reported(error: unknown): void {
 }
 
 /** A store whose notes are listed only asynchronously, and what it is called. */
-export type SourceRead = {
+type SourceRead = {
   readonly source: string
   readonly read: () => Promise<void>
 }
@@ -364,7 +364,7 @@ export type SourceRead = {
  * it, keeps its notes as last read, and is told to `unread`. Says whether
  * every one was read.
  */
-export async function readEach(
+async function readEach(
   reads: ReadonlyArray<SourceRead>,
   unread: (source: string, error: unknown) => void
 ): Promise<boolean> {

@@ -14,7 +14,7 @@ import type { SoundbiteStore } from "@some-ui/soundbites"
 import { handedIn } from "@/lib/handed-in"
 
 /** What the lanes need of the soundbites, handed in by their page. */
-export type SoundbiteKeeping = {
+type SoundbiteKeeping = {
   /** What the lanes read of the kept soundbites. */
   readonly store: Pick<SoundbiteStore, "list" | "audio" | "subscribe">
   /**
