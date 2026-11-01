@@ -84,7 +84,7 @@ function screen(): Screen {
 }
 
 /**
- * The take pattern's parts (MIC2, #2372) as a phone screen shows them, in a
+ * The take pattern's parts as a phone screen shows them, in a
  * column that scrolls down and never across (`../take-pattern-fit.spec.ts`):
  * the large button with a one-take item, then a compact button with an item
  * at its max.

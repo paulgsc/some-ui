@@ -1,13 +1,10 @@
 /**
- * The take pattern's words (MIC2, #2372): one pure table, in the person's
+ * The take pattern's words: one pure table, in the person's
  * terms (CLAUDE.md, "State in the person's terms"). It says what is kept
  * where and what a control does, never the machinery: no state name, no
  * "supersede", no "set-aside" as the code spells it. A screen adds its
  * item's words around the parts (what the take answers), never its own
  * "Too short" or "Kept": those are `ended`, the shared `TAKE_ENDING_WORDS`.
- *
- * Lengths read as a recording's clock, by core-utils' `formatTimecode`, the
- * one length formatter.
  */
 import { assertNever, formatTimecode } from "@some-ui/core-utils"
 

@@ -1,5 +1,5 @@
 /**
- * What the take pattern's parts show for one item (MIC2, #2372): the take
+ * What the take pattern's parts show for one item: the take
  * button, the line said beside it, and the item's takes as rows, current
  * first and earlier ones apart (D2). A pure projection of the pattern's
  * snapshot, the screen's takes and the options, as Zag's `connect` maps a

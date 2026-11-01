@@ -160,7 +160,7 @@ export const INTENT_FAILURE_FIXTURE = "intent-failure"
 /** Rust Rounds' screens (RR4), walked by `./rust-rounds-fit.spec.ts`. */
 export const RUST_ROUNDS_FIXTURE = "rust-rounds"
 
-/** The take pattern's parts (MIC2), measured by `./take-pattern-fit.spec.ts`. */
+/** The take pattern's parts, measured by `./take-pattern-fit.spec.ts`. */
 export const TAKE_PATTERN_FIXTURE = "take-pattern"
 
 const MIME: Record<string, string> = {

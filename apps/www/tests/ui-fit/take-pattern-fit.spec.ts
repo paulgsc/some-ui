@@ -1,5 +1,5 @@
 /**
- * Do the take pattern's parts fit the phone? (MIC2, #2372.)
+ * Do the take pattern's parts fit the phone?
  *
  * jsdom lays nothing out, so this measures the `take-pattern` fixture
  * (`./panel-page/take-pattern.tsx`) at the phone's sizes (`PHONE_VIEWPORTS`,

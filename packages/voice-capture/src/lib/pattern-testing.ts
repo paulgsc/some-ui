@@ -1,5 +1,5 @@
 /**
- * Stand-ins for the take pattern's other ports (MIC2, #2372), beside the
+ * Stand-ins for the take pattern's other ports, beside the
  * simulated microphone in `@some-ui/voice-capture/testing`: a player whose
  * playbacks end when the test says, and a screen's store of takes held in
  * memory that keeps D2 and D3 as a real store must (a redo supersedes the
@@ -18,16 +18,15 @@ export type SimulatedPlayer = Player & {
 }
 
 export function simulatedPlayer(): SimulatedPlayer {
-  const live = new Set<Playback & { readonly settle: () => void }>()
+  const live = new Set<Playback>()
   return {
     play(): Playback {
       let settle: () => void = () => undefined
       const ended = new Promise<void>((resolve) => {
         settle = resolve
       })
-      const playback = {
+      const playback: Playback = {
         ended,
-        settle,
         stop: (): void => {
           live.delete(playback)
           settle()

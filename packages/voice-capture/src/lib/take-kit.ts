@@ -277,7 +277,7 @@ export type TakeKitPorts = {
   readonly tickMs?: number | undefined
 }
 
-const TICK_MS = 200
+export const TICK_MS = 200
 
 /**
  * Runs `stepTakeKit` over the ports: it holds the microphone through

@@ -21,7 +21,7 @@ export type TakeRowProps = {
 }
 
 /**
- * One take (MIC2, #2372): where it is kept and how long it is, Play and
+ * One take: where it is kept and how long it is, Play and
  * Stop, Redo, and Let it go. Let it go sets the take aside (D3), which keeps
  * it, so it asks nothing first; a step that can't be undone would go through
  * `ConfirmSheet`, and the pattern has none. A control the row can't offer

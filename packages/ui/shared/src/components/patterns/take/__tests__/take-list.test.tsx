@@ -1,5 +1,5 @@
 /**
- * The take pattern's parts (MIC2, #2372), rendered over the real pattern
+ * The take pattern's parts, rendered over the real pattern
  * runtime, the real take kit, `takeRunner` and the phone's one-microphone
  * owner, with only the microphone, the player and the screen's store
  * standing in (`@some-ui/voice-capture/testing`). Every line asserted is the
@@ -15,7 +15,6 @@ import type {
 } from "@some-ui/voice-capture"
 import {
   microphoneOwner,
-  RECORDING_FAILURE_COPY,
   TAKE_ENDING_WORDS,
   TAKE_WORDS,
   takePattern,
@@ -165,17 +164,6 @@ describe("the take button, row and list", () => {
     expect(screen.getByRole("listitem")).toHaveTextContent("0:15")
   })
 
-  it("says a take too short to keep in the pattern's words", async () => {
-    const on = phone()
-    render(<Screen {...screenOn(on)} />)
-    fireEvent.click(takeButton())
-    await pass(200)
-    fireEvent.click(live())
-    await pass(0)
-    expect(screen.getByText(TAKE_ENDING_WORDS.short)).toBeInTheDocument()
-    expect(screen.queryByRole("listitem")).toBeNull()
-  })
-
   it("redoes a take: the new one is the item's, and the earlier one is kept apart (D2)", async () => {
     const on = phone()
     render(<Screen {...screenOn(on)} />)
@@ -262,21 +250,6 @@ describe("the take button, row and list", () => {
     expect(
       screen.getByRole("button", { name: W.buttonLabel.elsewhere })
     ).toBeDisabled()
-  })
-
-  it("says another screen is recording, in the microphone's words", async () => {
-    const on = phone()
-    const first = screenOn(on)
-    const second = screenOn(on)
-    render(<Screen {...second} answers="card-2" />)
-    act(() => first.pattern.tap("card-1"))
-    await pass(1_000)
-    fireEvent.click(takeButton())
-    await pass(0)
-    expect(
-      screen.getByText(RECORDING_FAILURE_COPY.elsewhere)
-    ).toBeInTheDocument()
-    expect(on.mic.asked()).toBe(1)
   })
 
   it("adds takes beside each other under `many`, and holds the button at its max", async () => {

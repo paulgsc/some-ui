@@ -1,6 +1,6 @@
 /**
  * The scenario family (MIC1's `takeScenarios`) played against the rendered
- * take pattern (MIC2, #2372): each screen is a `TakeList` on its own pattern,
+ * take pattern: each screen is a `TakeList` on its own pattern,
  * all on one simulated microphone and one owner. A tap is a click on the
  * rendered take button, whether a take is under way is read from the button,
  * and each ending is read from the line the screen shows beside it. VC2 and

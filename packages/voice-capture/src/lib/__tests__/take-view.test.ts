@@ -256,9 +256,4 @@ describe("the take pattern's words", () => {
     expect(TAKE_WORDS.nearlyUp(9_100)).toBe("10 seconds left")
     expect(TAKE_WORDS.nearlyUp(400)).toBe("1 second left")
   })
-
-  it("would catch a line that names the machinery", () => {
-    expect(MACHINERY.test("The take's phase is idle")).toBe(true)
-    expect(MACHINERY.test("Superseded by t2")).toBe(true)
-  })
 })

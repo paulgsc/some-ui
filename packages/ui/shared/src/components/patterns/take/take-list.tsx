@@ -26,7 +26,7 @@ export type TakeListProps = {
 } & Pick<TakeButtonProps, "size">
 
 /**
- * One item's takes, as the take pattern shows them (MIC2, #2372): the take
+ * One item's takes, as the take pattern shows them: the take
  * button with its one line beside it (how the last take ended, a take set
  * aside, a take that couldn't play), then the item's current takes, then
  * the earlier ones a Redo superseded, collapsed (D2). It renders

@@ -234,13 +234,9 @@ becomes a new option in the pattern, added in the pull request that needs it
 with the case it serves, never a fork in the screen. An option no part honours
 yet is not added ahead of its case.
 
-| Pattern                                                                                      | Machine and words                                                                             | Parts                                                                                                                     | Options                                                                                                                                          |
-| -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Take** (MIC2, #2372; epic #2368): record, see where it's kept, hear it, redo it, let it go | `@some-ui/voice-capture`: `takePattern`, `takeItemView`, `TAKE_WORDS` (on the take kit, MIC1) | `TakeButton`, `TakeRow`, `TakeList`; tests on `@some-ui/voice-capture/testing`'s simulated microphone and scenario family | `TakePatternOptions`: `takes` (one, or many up to a max), `limits`, `redo: "supersede"` (D2), `letGo: "set-aside"` (D3), `play` (each or latest) |
-
-The next candidates are confirming a permanent step (`ConfirmSheet`, used
-unevenly), listening for words (the recognizer), and a record going home and
-saying where it is.
+| Pattern                                                            | Machine and words                                                                       | Parts                                                                                                                     | Options                                                                                                                                          |
+| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Take**: record, see where it's kept, hear it, redo it, let it go | `@some-ui/voice-capture`: `takePattern`, `takeItemView`, `TAKE_WORDS` (on the take kit) | `TakeButton`, `TakeRow`, `TakeList`; tests on `@some-ui/voice-capture/testing`'s simulated microphone and scenario family | `TakePatternOptions`: `takes` (one, or many up to a max), `limits`, `redo: "supersede"` (D2), `letGo: "set-aside"` (D3), `play` (each or latest) |
 
 ## A port translates: the foreign boundary
 

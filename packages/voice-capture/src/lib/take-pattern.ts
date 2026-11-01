@@ -1,5 +1,5 @@
 /**
- * The take pattern (MIC2, #2372): record, see where it's kept, hear it,
+ * The take pattern: record, see where it's kept, hear it,
  * redo it, let it go, the same on every screen. The first entry of the
  * pattern tier (docs/monorepo-boundaries.md, "Patterns: whole flows, one
  * closed set of options"): a pure step and a runtime here, its words in
@@ -45,7 +45,7 @@ import type {
   TakeKitState,
   TakeKitView,
 } from "./take-kit"
-import { initialTakeKit, stepTakeKit, takeKitView } from "./take-kit"
+import { initialTakeKit, stepTakeKit, takeKitView, TICK_MS } from "./take-kit"
 
 /** One current take per item, or many beside each other, up to `max`. */
 export type TakesPerItem =
@@ -54,8 +54,7 @@ export type TakesPerItem =
 
 /**
  * The pattern's options: the closed set a screen picks from, as a shadcn
- * component takes its `cva` variants. Settled in MIC2 from the nine screens
- * that record; each migration story names the options its screens choose.
+ * component takes its `cva` variants.
  */
 export type TakePatternOptions = {
   readonly takes: TakesPerItem
@@ -69,7 +68,7 @@ export type TakePatternOptions = {
   readonly play: "each" | "latest"
 }
 
-/** Where a take is kept, in the person's terms (`./take-words`). MIC3 says since when. */
+/** Where a take is kept, in the person's terms (`./take-words`). */
 export type TakePlace = "phone" | "home"
 
 /** Where a take stands in its item: its take, an earlier one (D2), or set aside (D3). */
@@ -382,8 +381,6 @@ export type TakePatternPorts = Omit<TakeKitPorts, "keep"> & {
   /** Defaults to the kit's `audioPlayer`. */
   readonly player?: Player | undefined
 }
-
-const TICK_MS = 200
 
 /**
  * Runs `stepTakePattern` over the ports. It holds the microphone through

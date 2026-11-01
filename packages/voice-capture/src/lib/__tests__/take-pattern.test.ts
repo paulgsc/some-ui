@@ -1,5 +1,5 @@
 /**
- * The take pattern (MIC2, #2372): its step, its runtime on the shared
+ * The take pattern: its step, its runtime on the shared
  * simulated microphone, and the property family. The pattern embeds the
  * take kit's step, so VC2 and VC3 (`lib/properties.ts`) are checked on every
  * generated trace of the scenario family over pattern screens, as they are

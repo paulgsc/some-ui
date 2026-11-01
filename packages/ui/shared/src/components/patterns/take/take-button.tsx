@@ -64,9 +64,9 @@ function toneOf(view: TakeButtonView): "rest" | "live" | "quiet" {
 }
 
 /**
- * The take pattern's button (MIC2, #2372): tap to start, tap to stop (D1).
+ * The take pattern's button: tap to start, tap to stop (D1).
  * While it records it shows the time against the cap, breathes with the
- * input's level, and warns in the last ten seconds; while the microphone
+ * input's level, and warns when the time is nearly up; while the microphone
  * opens it can still be tapped, which lets the take go. Its words are the
  * pattern's (`TAKE_WORDS`); it renders `view` and forwards taps, nothing
  * else.
