@@ -1,9 +1,9 @@
 import type { JSX } from "react"
 import type { IdeaListener, IdeaShare } from "@some-ui/soundbites"
-import { IdeaShelf, STUDIO_WORDS } from "@some-ui/soundbites"
+import { homeHearing, IdeaShelf, STUDIO_WORDS } from "@some-ui/soundbites"
 import { createFileRoute, Link } from "@tanstack/react-router"
 
-import { deviceListener } from "@/lib/device-listen"
+import { phoneIdeaListener } from "@/lib/idea-hearing"
 import { useAsyncIntent } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import { shareIdea } from "@/lib/journal-share"
@@ -29,9 +29,12 @@ const ShareIdea = ({ file }: Parameters<IdeaShare>[0]): JSX.Element => {
 
 const device = import.meta.env.VITE_DEVICE_BACKEND === "true"
 
-/** The phone's recognizer for Claude's questions, in the Android app. */
+/**
+ * Claude's questions, answered as `idea.tsx`'s are, in the Android app
+ * (`lib/idea-hearing`).
+ */
 const capture: { listener: IdeaListener } | undefined = device
-  ? { listener: deviceListener }
+  ? { listener: phoneIdeaListener(homeHearing) }
   : undefined
 
 const share: IdeaShare | undefined = device

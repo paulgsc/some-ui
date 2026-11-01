@@ -613,6 +613,10 @@ export const STUDIO_WORDS = {
     listening: "Listening…",
     stop: "Done talking",
     finishing: "Finishing…",
+    /** The take is kept, and home is hearing it (IH1). */
+    hearing: "Home is hearing it…",
+    hearingLine:
+      "What you said is kept. Your words come back from home in a minute or two.",
     right: "That's right",
     fix: "Fix the words",
     again: "Say it again",
@@ -626,9 +630,20 @@ export const STUDIO_WORDS = {
     listenFailed: "Couldn't hear that. Try again, or type it.",
     listenNotStarted: "Listening isn't working right now. Type it instead.",
     notKept: "Couldn't keep that on this phone. Your words are still here.",
+    keptOnHome:
+      "Home has what you said but hasn't heard it yet. Type the words for now.",
+    keptOnPhone:
+      "Home can't be reached right now. What you said is kept on this phone and goes home later. Type the words for now.",
+    takeFull:
+      "There's no room on this phone for another take until home has the ones before it. Type it instead.",
+    takeNotKept: "Couldn't keep that take. Try again, or type it.",
+    refused: (reason: RecordingFailure): string =>
+      RECORDING_FAILURE_COPY[reason],
     kept: "Kept. Come back to it any time.",
-    keptLine: (n: number): string =>
-      `${plural(n, "answer", "answers")} kept as text on this phone. No sound was kept.`,
+    keptLine: (n: number, took: boolean): string =>
+      took
+        ? `${plural(n, "answer", "answers")} kept as text on this phone. What you said is kept too, on home once it has it.`
+        : `${plural(n, "answer", "answers")} kept as text on this phone. No sound was kept.`,
     answerSkipped: (n: number): string =>
       `Answer the ${n === 1 ? "one" : n} you skipped`,
     answerSkippedEarlier: (n: number): string =>

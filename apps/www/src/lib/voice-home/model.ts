@@ -32,7 +32,8 @@ export type VoiceOut = {
   /**
    * The reflection's session, the Jobs pick or scout, `next-scene` for the
    * drama's next scene said aloud (before HF2, the prompt's stamp), the
-   * game's ESPN id, the Studio take (`<project>:<shot>:<take>`), how a
+   * game's ESPN id, the Studio take (`<project>:<shot>:<take>`, or an idea
+   * answer's `idea:<idea>:<question>`), how a
    * soundbite came to be recorded (its `context.source`), the grammar-lens
    * line read aloud, LeetType's session file and screen (`<file>:<screen>`).
    */

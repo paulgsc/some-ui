@@ -18,10 +18,12 @@
  *   call that module, and only the Home server block, the study list's
  *   "Let it go" and the phone-full offer's "Remove it", the drain and
  *   marks of what this phone keeps on home (LA15), what hands aph's lane to
- *   them, Settings' readout of what is kept where, and the readout and port
+ *   them, Settings' readout of what is kept where, the readout and port
  *   of the routine's files in Korean (whose read sends one
  *   `GET /routine/files` and whose telling of what was opened one
- *   `PUT /routine/opened`) may call `lib/home-link`.
+ *   `PUT /routine/opened`), and Studio's idea answers asking home for a
+ *   take's words (`lib/idea-hearing`, whose read sends one
+ *   `GET /voice-notes/:id/heard`) may call `lib/home-link`.
  *
  * The last group feeds the checks known-bad sources, so a check that stopped
  * looking cannot stay green.
@@ -70,6 +72,9 @@ const HOME_LINK_CALLERS = new Set([
   // LA8, PF1: the phone-full offer's "Remove it", the same let-go of the one
   // session it names, on its press.
   "components/settings/device-storage.tsx",
+  // LA8, IH1 (MIC10): Studio's idea answers, which read the pairing and ask
+  // home for a take's words while the screen shows it being heard.
+  "lib/idea-hearing/index.ts",
 ])
 
 /**
@@ -91,6 +96,7 @@ const KEEPERS = new Set([
   "lib/home-link/lanes.ts",
   "lib/home-link/kept-runtime.ts",
   "lib/home-link/routine.ts",
+  "lib/home-link/heard.ts",
 ])
 
 /** The routine's read, and the two requests it may send. */
@@ -106,6 +112,10 @@ const ROUTINE_SENDS = [
  */
 const ON_DRIVE_READ = "lib/home-link/on-drive.ts"
 const ON_DRIVE_SENDS = [['"GET"', "onDrivePath(chunk)"]]
+
+/** LA8, IH1: the read of one take's words, and the one request it may send. */
+const HEARD_READ = "lib/home-link/heard.ts"
+const HEARD_SENDS = [['"GET"', "heardPath(id)"]]
 
 /** Every call of a function named `send` in `text`, as its arguments' text. */
 function sendCalls(path: string, text: string): Array<Array<string>> {
@@ -508,6 +518,18 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(reach.filter(keeps)).toEqual([])
     expect(read("lib/home-link/lanes.ts")).toContain("homeLink().keep(")
     expect(read(ROUTINE_READ)).toContain("homeLink().keep(")
+    expect(read(HEARD_READ)).toContain("homeLink().keep(")
+  })
+
+  it("sends nothing from the read of a take's words but one GET of /voice-notes/:id/heard, and only Studio's idea answers read it (IH1)", () => {
+    expect(sendCalls(HEARD_READ, read(HEARD_READ))).toEqual(HEARD_SENDS)
+    expect(read(HEARD_READ)).toContain("/heard`")
+    const readers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /from "\.\/heard"|from "@\/lib\/home-link\/heard"/.test(read(f))
+      )
+    expect(readers).toEqual(["lib/idea-hearing/index.ts"])
   })
 
   it("sends nothing from the routine's read but one GET /routine/files and one PUT /routine/opened", () => {

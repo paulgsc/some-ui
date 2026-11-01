@@ -1,14 +1,18 @@
 import type { JSX } from "react"
 import type { IdeaListener, WingLink } from "@some-ui/soundbites"
-import { NewIdeaPage } from "@some-ui/soundbites"
+import { homeHearing, NewIdeaPage } from "@some-ui/soundbites"
 import { createFileRoute, Link } from "@tanstack/react-router"
 
-import { deviceListener } from "@/lib/device-listen"
+import { phoneIdeaListener } from "@/lib/idea-hearing"
 
-/** The phone's recognizer in the Android app; typed words elsewhere. */
+/**
+ * In the Android app, each answer said as a take home hears, or the phone's
+ * recognizer on a phone not paired with home (`lib/idea-hearing`); typed
+ * words elsewhere.
+ */
 const ports: { listener: IdeaListener } | undefined =
   import.meta.env.VITE_DEVICE_BACKEND === "true"
-    ? { listener: deviceListener }
+    ? { listener: phoneIdeaListener(homeHearing) }
     : undefined
 
 const StudioLink: WingLink = ({ className, children }) => (

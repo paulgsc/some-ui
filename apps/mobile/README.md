@@ -1007,8 +1007,18 @@ offline, in any language whose voice data is installed (#1625):
 ## Hearing an idea: speech to text, offline
 
 Studio's **New idea** (`/journal/idea`, STUDIO ST18) asks what a video is,
-one question at a time, and shows the words as they are spoken. It hears
-them through the app's own plugin, `ListenPlugin.java` (registered in
+one question at a time.
+
+On a phone paired with home (MIC10, #2428), each answer is said as a take,
+recorded through the shared take kit as the Soundbites page records, kept on
+the phone and sent home as a Studio voice note; home hears it and the screen
+asks for its words every few seconds while it shows, for up to three minutes
+(www's `src/lib/idea-hearing`, IH1). Words that don't come by then leave the
+take kept and the answer typed. No recognizer is needed, so this works on
+every phone that records at all.
+
+On a phone not paired with home, it shows the words as they are spoken,
+heard through the app's own plugin, `ListenPlugin.java` (registered in
 `MainActivity`, reached from www's `src/lib/device-listen` through
 `callForeign`):
 

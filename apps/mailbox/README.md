@@ -207,7 +207,7 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
 "text","language","model","heardAt","words"}`: the note's phone id (the id in its exported file name,
   `<base>_voice-<at>-<id>`, in a Jobs voice entry, and in a drama prompt's `notes` line), what
   it belongs to (`of` is `reflection` with `ref` its session, `jobs` with the pick or scout, `scene` with the drama prompt's
-  stamp, or `studio` with a Studio take's `<project>:<shot>:<take>`), when it was recorded, what home heard, the language heard (Whisper's code, `en` or
+  stamp, or `studio` with a Studio take's `<project>:<shot>:<take>`, or an idea answer's `idea:<idea>:<question>`), when it was recorded, what home heard, the language heard (Whisper's code, `en` or
   `ko`), the model that heard it, and when; and `words`, each word heard as
   `{"text","startMs","endMs","p","language"}`: its time in milliseconds from the note's start,
   how sure the model was of it, 0 to 1, and the language it was heard in (Whisper's code).
