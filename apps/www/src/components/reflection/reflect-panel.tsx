@@ -31,10 +31,17 @@ function where(): string {
     : "kept in this browser"
 }
 
-function describe(reflection: Reflection): string {
+/** A typed line or the one-tap answers: what the panel lists. */
+type Written = Reflection & {
+  body: Exclude<Reflection["body"], { kind: "voice" }>
+}
+
+const isWritten = (reflection: Reflection): reflection is Written =>
+  reflection.body.kind !== "voice"
+
+function describe(reflection: Written): string {
   const { body } = reflection
   if (body.kind === "text") return `"${body.text}"`
-  if (body.kind === "voice") return `Voice · ${formatTimecode(body.durationMs)}`
   return QUESTIONS.flatMap((question) => {
     const answer = body.answers[question.key]
     const label = question.options.find(([id]) => id === answer)?.[1]
@@ -64,7 +71,7 @@ export const ReflectPanel = ({
 
   // A spoken one is the take pattern's row, above.
   const own = inOrder(
-    kept.filter((r) => r.sessionId === sessionId && r.body.kind !== "voice")
+    kept.filter((r): r is Written => r.sessionId === sessionId && isWritten(r))
   )
   const answers = answersOf(kept, sessionId)?.answers ?? {}
   const stale = staleCount(kept, now)

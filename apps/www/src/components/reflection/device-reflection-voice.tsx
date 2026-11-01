@@ -12,6 +12,7 @@ import { takeItemView } from "@some-ui/voice-capture"
 
 import type { ReflectionTakes } from "@/lib/reflection-voice"
 import { phoneVoiceNote } from "@/lib/reflection-voice"
+import { REFLECTION_TAKE_WORDS } from "@/lib/reflection-voice/words"
 
 type VoiceProps = {
   sessionId: string
@@ -28,17 +29,28 @@ export const ReflectionTakeList = ({
   const { pattern } = voice
   const taken = useTakePattern(pattern)
   const takes = useSyncExternalStore(voice.subscribe, voice.getSnapshot)
+  const refused = useSyncExternalStore(voice.subscribe, voice.refused)
   useEffect(() => (): void => pattern.leave(), [pattern])
   const view = takeItemView(taken, takes, sessionId, pattern.options)
   return (
-    <TakeItem
-      view={view}
-      label="Spoken reflections"
-      onTap={() => voice.tap(atMs, view.supersedes)}
-      onPlay={pattern.play}
-      onRedo={(id) => voice.tap(atMs, id)}
-      onLetGo={pattern.letGo}
-    />
+    <div className="flex flex-col gap-1.5">
+      <TakeItem
+        // What the phone refused replaces the pattern's line, which would
+        // say the step was done (#2438 makes it the pattern's).
+        view={refused === null ? view : { ...view, said: null }}
+        words={REFLECTION_TAKE_WORDS}
+        label="Spoken reflections"
+        onTap={() => voice.tap(atMs, view.supersedes)}
+        onPlay={pattern.play}
+        onRedo={(id) => voice.tap(atMs, id)}
+        onLetGo={pattern.letGo}
+      />
+      {refused !== null && (
+        <p role="alert" className="text-destructive text-sm">
+          {refused}
+        </p>
+      )}
+    </div>
   )
 }
 

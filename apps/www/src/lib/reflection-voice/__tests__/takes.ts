@@ -36,10 +36,13 @@ export function testReflections(
   sessionId: string,
   {
     stores = (): KeepResult => "kept",
+    standsAside = (): boolean => true,
     audio = memoryShelf(),
   }: {
     /** How the list answers a keep. */
     stores?: () => KeepResult
+    /** Whether the list stores a take recorded again or set aside. */
+    standsAside?: () => boolean
     audio?: ReturnType<typeof memoryShelf>
   } = {}
 ): TestReflections {
@@ -56,6 +59,7 @@ export function testReflections(
   const standAside =
     (standing: "earlier" | "set-aside") =>
     (id: string): boolean =>
+      standsAside() &&
       write(
         kept.map((r) =>
           r.id === id && r.body.kind === "voice"

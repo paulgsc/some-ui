@@ -5,11 +5,12 @@
  * with the shared simulated microphone.
  */
 
-import { takeButton } from "@some-ui/voice-capture/testing"
+import { memoryShelf, takeButton } from "@some-ui/voice-capture/testing"
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { testReflections } from "@/lib/reflection-voice/__tests__/takes"
+import { REFLECTION_TAKE_WORDS } from "@/lib/reflection-voice/words"
 import { ReflectionTakeList } from "@/components/reflection/device-reflection-voice"
 
 const pass = (ms = 0): Promise<void> =>
@@ -62,5 +63,14 @@ describe("ReflectionTakeList", () => {
     ).toHaveLength(0)
     expect(phone.kept()).toHaveLength(2)
     expect(await phone.audio.ids()).toHaveLength(2)
+  })
+
+  it("says where room is made when the phone has none for another spoken one", async () => {
+    const phone = testReflections("s1", { audio: memoryShelf({ full: true }) })
+    render(
+      <ReflectionTakeList voice={phone.voice} sessionId="s1" atMs={null} />
+    )
+    await record(3_000)
+    expect(screen.getByText(REFLECTION_TAKE_WORDS.ended.full)).toBeTruthy()
   })
 })

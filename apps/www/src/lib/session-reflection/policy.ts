@@ -216,7 +216,9 @@ export function bySession(
 }
 
 /** One session's, in the order they were said. */
-export function inOrder(kept: ReadonlyArray<Reflection>): Array<Reflection> {
+export function inOrder<R extends Reflection>(
+  kept: ReadonlyArray<R>
+): Array<R> {
   return [...kept].sort((a, b) => a.createdAt.localeCompare(b.createdAt))
 }
 

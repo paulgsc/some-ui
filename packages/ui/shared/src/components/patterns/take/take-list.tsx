@@ -16,7 +16,7 @@ export type TakeListProps = {
   answers: string
   /** The screen's takes, as its store holds them; other items' are ignored. */
   takes: ReadonlyArray<PatternTake>
-} & Pick<TakeItemProps, "label" | "describe" | "size" | "className">
+} & Pick<TakeItemProps, "label" | "describe" | "words" | "size" | "className">
 
 /**
  * One item's takes, as the take pattern shows them (`TakeItem`), over the

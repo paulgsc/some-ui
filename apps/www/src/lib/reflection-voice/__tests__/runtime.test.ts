@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { testReflections } from "@/lib/reflection-voice/__tests__/takes"
 import type { ReflectionTakes } from "@/lib/reflection-voice/runtime"
+import { REFLECTION_REFUSED } from "@/lib/reflection-voice/words"
 
 const pass = async (ms = 0): Promise<void> => {
   await vi.advanceTimersByTimeAsync(ms)
@@ -101,5 +102,22 @@ describe("createVoiceNote", () => {
     expect(phone.kept().map((r) => r.id)).toEqual(["v1"])
     expect(phone.voice.getSnapshot()).toMatchObject([{ standing: "current" }])
     expect(phone.voice.pattern.getSnapshot().ended?.ending).toBe("full")
+  })
+
+  it("says so when the phone won't store a take set aside or recorded again, and keeps it the session's", async () => {
+    const phone = testReflections("s1", { standsAside: () => false })
+    await talk(phone.voice, null)
+    phone.voice.pattern.letGo("v1", "phone")
+    expect(phone.voice.refused()).toBe(REFLECTION_REFUSED.setAside)
+    expect(phone.voice.getSnapshot()).toMatchObject([{ standing: "current" }])
+    await talk(phone.voice, null, "v1")
+    expect(phone.voice.refused()).toBe(REFLECTION_REFUSED.supersede)
+    expect(phone.voice.getSnapshot().map(({ standing }) => standing)).toEqual([
+      "current",
+      "current",
+    ])
+    // The next tap clears it.
+    phone.voice.tap(null)
+    expect(phone.voice.refused()).toBeNull()
   })
 })

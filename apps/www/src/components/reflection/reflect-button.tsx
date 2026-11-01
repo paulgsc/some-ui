@@ -4,6 +4,7 @@ import { cn, formatTimecode } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
 import { NotebookPen } from "lucide-react"
 
+import { inView } from "@/lib/session-reflection"
 import { useReflections } from "@/lib/session-reflection/use-reflections"
 
 import { ReflectPanel } from "./reflect-panel"
@@ -26,7 +27,10 @@ export const ReflectButton = ({
 }): JSX.Element => {
   const [open, setOpen] = useState(false)
   const { kept } = useReflections()
-  const count = kept.filter((r) => r.sessionId === sessionId).length
+  // One recorded again or set aside is kept, but not the session's (D2, D3).
+  const count = kept.filter(
+    (r) => r.sessionId === sessionId && inView(r)
+  ).length
 
   return (
     <>

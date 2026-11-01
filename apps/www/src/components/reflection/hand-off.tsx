@@ -4,7 +4,8 @@ import { Badge, Button, useConfirmSheet } from "@some-ui/shared"
 import { Trash2 } from "lucide-react"
 
 import { useMinuteClock } from "@/lib/clock"
-import { bySession, describeAge } from "@/lib/session-reflection"
+import { bySession, describeAge, inView } from "@/lib/session-reflection"
+import type { Reflection } from "@/lib/session-reflection"
 import { useReflections } from "@/lib/session-reflection/use-reflections"
 import { useSessions } from "@/lib/tenant"
 
@@ -24,8 +25,18 @@ export const HandOff = (): JSX.Element | null => {
 
   // The phone asks in a sheet; the desktop web keeps the browser's dialog
   // (CLAUDE.md, "The phone and the desktop web are separate surfaces").
-  const confirmLetGo = (name: string, ids: ReadonlyArray<string>): void => {
-    const what = `${counted(ids.length, "reflection")} from "${name}"`
+  const confirmLetGo = (
+    name: string,
+    reflections: ReadonlyArray<Reflection>
+  ): void => {
+    const ids = reflections.map((r) => r.id)
+    const aside = reflections.length - reflections.filter(inView).length
+    // Spoken ones recorded again or set aside go too: the sheet says so.
+    const including =
+      aside === 0
+        ? ""
+        : `, including ${String(aside)} set aside or recorded again`
+    const what = `${counted(ids.length, "reflection")}${including} from "${name}"`
     if (import.meta.env.VITE_DEVICE_BACKEND !== "true") {
       if (
         confirm(
@@ -37,7 +48,7 @@ export const HandOff = (): JSX.Element | null => {
     }
     ask({
       title: `Let go of ${counted(ids.length, "reflection")}?`,
-      description: `From "${name}". They won't be shared, and can't be brought back.`,
+      description: `From "${name}"${including}. They won't be shared, and can't be brought back.`,
       confirm: "Let go",
       onConfirm: () => letGo(ids),
     })
@@ -59,8 +70,11 @@ export const HandOff = (): JSX.Element | null => {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{name}</p>
                 <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
-                  {counted(group.reflections.length, "reflection")} ·{" "}
-                  {describeAge(group.oldestMs)} old
+                  {counted(
+                    group.reflections.filter(inView).length,
+                    "reflection"
+                  )}{" "}
+                  · {describeAge(group.oldestMs)} old
                   {group.stale && <Badge variant="secondary">stale</Badge>}
                 </p>
               </div>
@@ -70,12 +84,7 @@ export const HandOff = (): JSX.Element | null => {
                 variant="outline"
                 className="text-destructive hover:text-destructive"
                 aria-label={`Let go of the reflections from "${name}"`}
-                onClick={() =>
-                  confirmLetGo(
-                    name,
-                    group.reflections.map((r) => r.id)
-                  )
-                }
+                onClick={() => confirmLetGo(name, group.reflections)}
               >
                 <Trash2 className="mr-1.5 size-3.5" aria-hidden />
                 Let go

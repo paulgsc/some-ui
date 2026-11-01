@@ -29,8 +29,10 @@ import { ONE_TAKE, ShelfFullError, takePattern } from "@some-ui/voice-capture"
 import type { KeepResult, Reflection } from "@/lib/session-reflection"
 import { REFLECTION_LIMIT } from "@/lib/session-reflection"
 
+import { REFLECTION_REFUSED } from "./words"
+
 /** The reflections' choice of the pattern's options. */
-export const REFLECTION_TAKE_OPTIONS: TakePatternOptions = {
+const REFLECTION_TAKE_OPTIONS: TakePatternOptions = {
   ...ONE_TAKE,
   takes: { per: "many", max: REFLECTION_LIMIT },
   limits: SOUNDBITE_TAKE_LIMITS,
@@ -74,6 +76,11 @@ export type ReflectionTakes = {
   readonly tap: (atMs: number | null, supersedes?: string | null) => void
   /** The session's spoken reflections as the pattern lists them; the same array while nothing changed. */
   readonly getSnapshot: () => ReadonlyArray<PatternTake>
+  /**
+   * What the phone would not store of a row's step (`REFLECTION_REFUSED`),
+   * until the next tap or step; null while nothing was refused.
+   */
+  readonly refused: () => string | null
   readonly subscribe: (listener: () => void) => () => void
 }
 
@@ -83,6 +90,13 @@ export function createVoiceNote(
 ): ReflectionTakes {
   // How far into the session the take under way was started: one at a time.
   let startedAt: number | null = null
+  let refused: string | null = null
+  const refusedListeners = new Set<() => void>()
+  const say = (next: string | null): void => {
+    if (next === refused) return
+    refused = next
+    for (const listener of refusedListeners) listener()
+  }
 
   const pattern = takePattern(
     {
@@ -121,7 +135,9 @@ export function createVoiceNote(
         ports.audio.put(id, take.blob).then(
           () => {
             ports.saving(id, false)
-            if (supersedes !== null) ports.supersede(supersedes)
+            if (supersedes !== null && !ports.supersede(supersedes)) {
+              say(REFLECTION_REFUSED.supersede)
+            }
             done({ outcome: "kept", id })
           },
           (error: unknown) => {
@@ -134,7 +150,7 @@ export function createVoiceNote(
         )
       },
       setAside: (id) => {
-        ports.setAside(id)
+        say(ports.setAside(id) ? null : REFLECTION_REFUSED.setAside)
       },
       audio: (id) => ports.audio.get(id),
     },
@@ -173,14 +189,22 @@ export function createVoiceNote(
     pattern,
     tap: (atMs, supersedes = null): void => {
       if (pattern.getSnapshot().take.kind === "idle") startedAt = atMs
+      say(null)
       pattern.tap(sessionId, supersedes)
     },
     getSnapshot: read,
-    subscribe: (listener) =>
-      ports.subscribe(() => {
+    refused: () => refused,
+    subscribe: (listener) => {
+      refusedListeners.add(listener)
+      const stop = ports.subscribe(() => {
         // Where a note is kept can move while the list stays the same.
         stale = true
         listener()
-      }),
+      })
+      return (): void => {
+        refusedListeners.delete(listener)
+        stop()
+      }
+    },
   }
 }

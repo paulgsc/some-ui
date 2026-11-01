@@ -47,6 +47,28 @@ describe("HandOffStrip", () => {
 })
 
 describe("SessionReflectionsRow", () => {
+  it("counts only those in the session's view: one recorded again or set aside is kept, not counted", () => {
+    keep("a", "s1", new Date().toISOString())
+    reflections.keep({
+      id: "aside",
+      sessionId: "s1",
+      createdAt: new Date().toISOString(),
+      atMs: null,
+      body: {
+        kind: "voice",
+        durationMs: 3_000,
+        mimeType: "audio/webm",
+        bytes: 3,
+      },
+    })
+    reflections.standAside("aside", "set-aside")
+
+    render(<SessionReflectionsRow sessionId="s1" finished />)
+
+    expect(screen.getByText(/1 reflection ·/)).toBeTruthy()
+    expect(reflections.getSnapshot().kept).toHaveLength(2)
+  })
+
   it("says how many are kept for this session and that they are stale", () => {
     keep("a", "s1", "2026-01-01T00:00:00.000Z")
     keep("b", "s2", new Date().toISOString())
