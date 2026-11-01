@@ -80,16 +80,16 @@ import {
 import { isProjectFile, readProjectFile } from "@soundbites/lib/project/file"
 import { finishOf, youtubeLink } from "@soundbites/lib/project/finish"
 import type { LetGo, LetGoChoice } from "@soundbites/lib/project/let-go"
-import { waitingCount, waitingTakes } from "@soundbites/lib/project/let-go"
+import {
+  driveHasItIn,
+  waitingCount,
+  waitingTakes,
+} from "@soundbites/lib/project/let-go"
 import { sameJson } from "@soundbites/lib/project/lookup"
 import type { Clash } from "@soundbites/lib/project/merge"
 import { mergeIn } from "@soundbites/lib/project/merge"
 import type { Note, Project, ProjectTake } from "@soundbites/lib/project/model"
-import {
-  homeHolds,
-  latest,
-  step as stepProject,
-} from "@soundbites/lib/project/model"
+import { latest, step as stepProject } from "@soundbites/lib/project/model"
 import {
   capFor,
   currentOf,
@@ -752,15 +752,7 @@ function applied(project: Project | null, pending: Pending): Project | null {
     }
     case "driveHasIt": {
       if (project === null) return null
-      const take = project.takes.find((each) => each.id === pending.take)
-      // Only a take home holds may leave; Drive's word alone keeps it here.
-      if (take === undefined || !take.onPhone || !homeHolds(take)) return null
-      const marked = take.keptBy.includes("drive")
-        ? project
-        : model(project, { type: "keptBy", take: take.id, keeper: "drive" })
-      return marked === null
-        ? null
-        : model(marked, { type: "letGo", take: take.id })
+      return driveHasItIn(project, pending.take)
     }
     case "shape": {
       if (project === null) return null

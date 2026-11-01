@@ -94,7 +94,7 @@ Drive has a take lets it go too (route a on #2401, the owner's decision):
 a Build Journal session puts the SHA-256 of each take it finds in Drive in
 the Jobs mailbox, home matches them against the takes it holds
 (paulgsc/server `studio_take_on_drive`), and the voice lane's run asks home,
-by one `GET /voice-notes/on-drive` of the waiting takes' ids
+by one `GET /voice-notes/on-drive` per 100 waiting takes, of their ids
 (`lib/home-link/on-drive.ts`), only under "Keep each until Drive has it
 too". Home never reaches Drive.
 
@@ -378,7 +378,8 @@ declared (checked by reading every call site and by the tests named).
   `CapacitorHttp`), which only `lib/home-link` calls, and, but for the drain
   of what this phone keeps (LA15: aph, the Jobs record, Practice's record,
   voice notes, through `lib/home-link/lanes`, whose voice run also reads,
-  by one `GET /voice-notes/on-drive` in `lib/home-link/on-drive.ts`, which
+  by one `GET /voice-notes/on-drive` per 100 waiting takes in
+  `lib/home-link/on-drive.ts`, which
   Studio takes home holds it knows Drive holds too, HF11) and Korean's look at the
   routine's files (`lib/home-link/routine`, one `GET /routine/files` per
   look and one `PUT /routine/opened` of names per open, started by the
@@ -416,7 +417,8 @@ declared (checked by reading every call site and by the tests named).
   anywhere but a press handler in the Home server block or a module that
   block calls; one that calls its `keep` from anywhere but
   `lib/home-link/lanes.ts` (LA15) and `lib/home-link/routine.ts`; one that
-  has `lib/home-link/on-drive.ts` send anything but its one `GET`, or lets
+  has `lib/home-link/on-drive.ts` send anything but its `GET`s, one per 100
+  waiting takes, or lets
   anything but the voice run (`voice-copy.ts`'s `sendVoice`) read it; one that
   sends from `createHomeLink` or `load`, or, outside LA15's watch and
   Korean's look, from a `useEffect`, a timer, a `visibilitychange` or
@@ -570,11 +572,13 @@ only from the lane's hook and the scene notes read for home only there
   only `useVoiceHome`'s effect starts, and from the lane's exchange,
   `sendVoice`); the lane's runs are asked for as LA15 says, its
   exchange is `sendVoice` (a copy pass, then `exchangeVoice` over the
-  store's `keeping`, its end read with the pass's by `runEnd`, LA14), and a
-  copy goes only once home holds its note. Letting a note go where it was
-  recorded never removes its copy, and the drama's draft lets a scene note
-  go on home's word only once home holds the ask that named it too
-  (`prompted`, which only LA18's `letGoHeldPrompts` sets).
+  store's `keeping`, its end read with the pass's by `runEnd`, LA14, then,
+  only once that exchange is `synced`, one `letGoOnHomesWord(send)`, home's
+  word on which Studio takes Drive has, HF11, which does not change the
+  run's end), and a copy goes only once home holds its note. Letting a note
+  go where it was recorded never removes its copy, and the drama's draft
+  lets a scene note go on home's word only once home holds the ask that
+  named it too (`prompted`, which only LA18's `letGoHeldPrompts` sets).
 - _Falsified by:_ a hunk LA15's falsifier names for the shared files; a hunk
   to `lib/scene-voice/runtime.ts` that lets `letGo` remove a scene note that
   is not `prompted` (an ask home holds named it, LA18) or that home does not
@@ -583,11 +587,13 @@ only from the lane's hook and the scene notes read for home only there
   `copyAll`, removes its `paired()` checks (before every note and again
   after its audio is read), starts
   `copySoon` from anything but `watchVoiceNotes`, its subscriptions and
-  `sendVoice`, or makes `sendVoice` anything but a copy pass and then
-  `exchangeVoice` over `phoneVoiceHome().keeping`, whose end only `runEnd`
-  may change; a hunk to `lib/home-link/lanes.ts` that makes `paired`
-  anything but the link holding a pairing; a hunk to
-  `lib/home-link/voice.ts` that makes the lane's `exchange` anything but
+  `sendVoice`, or makes `sendVoice` anything but a copy pass, then
+  `exchangeVoice` over `phoneVoiceHome().keeping`, then one
+  `letGoOnHomesWord(send)` only after a `synced` exchange, whose end only
+  `runEnd` may change (so also one that lets `letGoOnHomesWord` throw, or
+  its outcome reach what `sendVoice` returns); a hunk to
+  `lib/home-link/lanes.ts` that makes `paired` anything but the link
+  holding a pairing; a hunk to `lib/home-link/voice.ts` that makes the lane's `exchange` anything but
   `sendVoice`, or calls `watchVoiceNotes` from anywhere but `useVoiceHome`'s
   effect, or drops its cleanup; a hunk to `lib/scene-voice` that makes
   `sceneNotes` read anything but the draft's list, or lists a note before

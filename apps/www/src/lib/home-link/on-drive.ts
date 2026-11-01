@@ -5,8 +5,8 @@
  * `GET /voice-notes/on-drive`, `voice_repo::on_drive`). Home never reaches
  * Drive; the session tells it, through the Jobs mailbox.
  *
- * One read only, over the voice lane's `send` (`./voice-copy`'s
- * `sendVoice`), so this module makes no request of its own and sends
+ * One `GET` per `ON_DRIVE_MAX_IDS` (100) waiting takes, over the voice
+ * lane's `send` (`./voice-copy`'s `sendVoice`), so this module makes no request of its own and sends
  * nothing of the phone's but the takes' ids. What the phone then lets go is
  * the owner's choice's (soundbites' `lib/project/let-go`, LG1).
  */

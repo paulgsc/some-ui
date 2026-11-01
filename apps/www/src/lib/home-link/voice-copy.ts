@@ -42,7 +42,7 @@
  *   owner's choice allows it (HF11, #2401; soundbites' `lib/project/let-go`):
  *   none before they choose, every one under "Let takes go once home has
  *   them", and under "Keep each until Drive has it too" only the one they
- *   tap "Drive has it" on, or one home says it has seen in Drive
+ *   tap "Drive has it" on, or one home says Drive has
  *   (`./on-drive`: a Build Journal session's list of Drive's takes, which
  *   home matches by SHA-256; home never reaches Drive).
  * - _Family:_ every share kind (reflections; the study-context export with
@@ -509,8 +509,8 @@ function unheard(error: unknown): void {
 
 /**
  * Under "Keep each until Drive has it too", asks home which of the Studio
- * takes it holds, still on this phone, it has seen in Drive (`./on-drive`,
- * HF11), and lets those go, as the owner's choice allows (LG1). Under any
+ * takes it holds, still on this phone, a Build Journal session found in
+ * Drive (`./on-drive`, HF11), and lets those go, as the owner's choice allows (LG1). Under any
  * other choice it asks nothing: "once home has them" lets them go already,
  * and before a choice none leaves. What it cannot read lets nothing go, and
  * the run it rides ends as its notes did.

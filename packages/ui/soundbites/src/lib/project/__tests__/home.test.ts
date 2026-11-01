@@ -95,11 +95,11 @@ describe("Studio's takes on their way home", () => {
   /**
    * LG1 (HF11): home's word that Drive has a take lets it go only once home
    * holds it, and only after the owner has chosen; it is recorded as kept by
-   * Drive in the same write.
+   * Drive in the same write. Home is asked only under "until Drive has it
+   * too" (`voice-send.test.ts`), so that and none yet are the choices here.
    */
   it.each([
     [null, true],
-    ["home", false],
     ["drive", false],
   ] as const)(
     "LG1: on home's word that Drive has it, with the choice %s, the take stays: %s",

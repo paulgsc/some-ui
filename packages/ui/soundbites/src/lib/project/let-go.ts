@@ -11,8 +11,8 @@
  * Until the owner chooses, no take leaves. A take home does not hold never
  * leaves, whatever the choice (`letGoRefusal` in `./model`).
  */
-import type { Project, ProjectTake } from "./model"
-import { homeHolds } from "./model"
+import type { Project, ProjectEvent, ProjectTake } from "./model"
+import { homeHolds, step } from "./model"
 
 /** Every choice, in the order Studio offers them. */
 export const LET_GO_CHOICES = ["home", "drive"] as const
@@ -43,4 +43,28 @@ export function waitingCount(projects: ReadonlyArray<Project>): number {
     (sum, project) => sum + waitingTakes(project).length,
     0
   )
+}
+
+/**
+ * `project` with take `id` marked kept by Drive and let go, on the owner's
+ * "Drive has it" or home's word that Drive has it: null when it is not a take
+ * home holds still on the phone, since Drive's word alone keeps a take here,
+ * or when the project refuses either.
+ */
+export function driveHasItIn(project: Project, id: string): Project | null {
+  const take = project.takes.find((each) => each.id === id)
+  if (take === undefined || !take.onPhone || !homeHolds(take)) return null
+  const events: ReadonlyArray<ProjectEvent> = [
+    ...(take.keptBy.includes("drive")
+      ? []
+      : [{ type: "keptBy", take: id, keeper: "drive" } as const]),
+    { type: "letGo", take: id },
+  ]
+  let at = project
+  for (const event of events) {
+    const next = step({ project: at, taking: null, closing: null }, event)
+    if (next.refused !== null) return null
+    at = next.state.project
+  }
+  return at
 }

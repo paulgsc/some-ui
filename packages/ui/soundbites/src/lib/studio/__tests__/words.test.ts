@@ -216,6 +216,20 @@ describe("Studio's words", () => {
         expect(full(letGo, waiting)).not.toMatch(/evict|deleted|removed/i)
   })
 
+  it("say a take kept until Drive has it goes on the owner's tap or on home's word, never that home looks in Drive (LG1, HF11)", () => {
+    const { says, chosen, driveHasIt } = STUDIO_WORDS.letGo
+    const { noRoom } = STUDIO_WORDS.notice
+    expect(says.drive).toContain(`tap “${driveHasIt}”`)
+    expect(says.drive).toMatch(/Claude finds it in Drive .*hears so from home/)
+    expect(chosen.drive).toMatch(
+      /Claude finds it in Drive .*hears so from home/
+    )
+    expect(noRoom("drive", 0)).toMatch(/hears so from home/)
+    for (const words of [says.drive, chosen.drive, noRoom("drive", 0)])
+      expect(words).not.toMatch(/home sees|sees it in Drive/)
+    expect(chosen.home).toBe(says.home)
+  })
+
   it("never say takes were kept where a sitting wasn't saved", () => {
     expect(STUDIO_WORDS.done.notSaved).not.toMatch(/takes are kept/)
   })

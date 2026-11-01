@@ -111,7 +111,7 @@ const DRIVE_HAS_IT = "Drive has it"
 /** What each choice does, as Start says it under the choice. */
 const LET_GO_SAYS = {
   home: "Takes leave the phone once home has them.",
-  drive: `Each take stays on the phone until Drive has it too. It goes once home sees it in Drive, the next time Claude reads the takes there, or when you tap “${DRIVE_HAS_IT}”.`,
+  drive: `Each take stays on the phone until Drive has it too. It goes when you tap “${DRIVE_HAS_IT}”, or once Claude finds it in Drive and this phone next hears so from home.`,
 } as const satisfies Record<LetGo, string>
 
 /**
@@ -128,7 +128,7 @@ function makingRoom(letGo: LetGoChoice, waiting: number): string {
   if (letGo === null)
     return "Takes leave the phone once home holds them and you choose when. Start offers that choice once home holds a take."
   if (letGo === "drive")
-    return `Takes leave the phone once home holds them and you tap “${DRIVE_HAS_IT}” on each, and the room they held is free.`
+    return `Takes leave the phone once home holds them and Drive has them too, when you tap “${DRIVE_HAS_IT}” or this phone hears so from home, and the room they held is free.`
   return "Takes leave the phone once home holds them, and the room they held is free."
 }
 
@@ -341,7 +341,7 @@ export const STUDIO_WORDS = {
     chosen: {
       home: LET_GO_SAYS.home,
       drive:
-        "Each take home has stays on the phone until home sees it in Drive too, or you say Drive has it.",
+        "Each take home has stays on the phone until you say Drive has it too, or Claude finds it in Drive and this phone next hears so from home.",
     } satisfies Record<LetGo, string>,
     notKept:
       "That choice couldn't be kept on the phone, so nothing changed. Try again?",
