@@ -4,6 +4,8 @@
  */
 import { assertNever } from "@some-ui/core-utils"
 import type { Idea, Shot } from "@some-ui/video-render"
+import type { TakeButtonView, TakeRowView } from "@some-ui/voice-capture"
+import { NEARLY_UP_MS } from "@some-ui/voice-capture"
 import type { Cut } from "@soundbites/lib/journal/primer"
 import type { Finish } from "@soundbites/lib/project/finish"
 import { finishOf } from "@soundbites/lib/project/finish"
@@ -13,6 +15,7 @@ import { latest } from "@soundbites/lib/project/model"
 import { originConfirmed, originsWaiting } from "@soundbites/lib/project/origin"
 import { capFor, chosenTake, scriptOf } from "@soundbites/lib/project/script"
 
+import type { StudioState } from "./machine"
 import type { SittingKind, Whose } from "./words"
 import { STUDIO_WORDS } from "./words"
 
@@ -291,5 +294,70 @@ export function originView(
     whose: whoseOf(project, shot.idea),
     confirmed: originConfirmed(project, shot.id),
     take: chosenTake(project, shot.id)?.id ?? null,
+  }
+}
+
+/**
+ * The scene's take as the take pattern's parts draw it (`TakeButton`,
+ * `TakeRow` in `@some-ui/shared`): the button, which records the scene's
+ * first take or, once it has one, records it again ("Again" adds a take,
+ * and the new one is the scene's chosen take); and the chosen take as a
+ * row, with Play it back while its audio is on this phone. The project
+ * model stays the record of every take (`project/model.ts`): this only
+ * projects the machine's activity and the chosen take onto the parts.
+ */
+export function recordTake(
+  state: StudioState,
+  view: RecordView
+): { readonly button: TakeButtonView; readonly row: TakeRowView | null } {
+  const { activity } = state
+  const settled = activity.kind === "idle" || activity.kind === "playing"
+  const button = ((): TakeButtonView => {
+    switch (activity.kind) {
+      case "opening": {
+        return { kind: "opening" }
+      }
+      case "recording": {
+        return {
+          kind: "recording",
+          elapsedMs: activity.elapsed,
+          capMs: activity.capMs,
+          level: activity.level,
+          nearlyUp: activity.capMs - activity.elapsed <= NEARLY_UP_MS,
+          clock: "elapsed",
+        }
+      }
+      case "saving": {
+        return { kind: "keeping" }
+      }
+      case "idle":
+      case "playing": {
+        return { kind: "ready", again: view.take !== null }
+      }
+      default: {
+        return assertNever(activity)
+      }
+    }
+  })()
+  const { take } = view
+  if (take === null) return { button, row: null }
+  return {
+    button,
+    row: {
+      take: {
+        id: take.id,
+        answers: take.shot,
+        durationMs: take.durationMs,
+        recordedAt: take.recordedAt,
+        standing: "current",
+        kept: take.keptBy.includes("home")
+          ? { place: "home", since: null }
+          : { place: "phone" },
+      },
+      playing: activity.kind === "playing" && activity.take === take.id,
+      canPlay: settled && take.onPhone,
+      canRedo: settled,
+      canLetGo: false,
+    },
   }
 }

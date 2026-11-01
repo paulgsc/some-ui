@@ -82,8 +82,8 @@ const WALKS: Record<
     {
       screen: "Record, a take kept",
       go: async (page): Promise<void> => {
-        await tap(page, "Done, keep it")
-        await page.getByRole("button", { name: "Again" }).waitFor()
+        await tap(page, "Stop, and keep it")
+        await page.getByRole("button", { name: "Record it again" }).waitFor()
       },
     },
     {

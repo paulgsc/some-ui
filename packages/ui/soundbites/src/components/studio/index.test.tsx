@@ -1,14 +1,18 @@
 import { inMemoryStorage } from "@some-ui/core-utils"
 import { REVIEW_SCHEMA } from "@some-ui/video-render"
 import type { Playback } from "@some-ui/voice-capture"
+import { TAKE_WORDS } from "@some-ui/voice-capture"
 import type { StudioProps } from "@soundbites/components/studio"
 import { Studio } from "@soundbites/components/studio"
-import { fakeMic } from "@soundbites/lib/fake-mic"
 import { memoryProjectStore } from "@soundbites/lib/project/memory-store"
 import type { Project } from "@soundbites/lib/project/model"
 import { newProject } from "@soundbites/lib/project/model"
 import { cutListOf } from "@soundbites/lib/project/script"
-import { primer, PRIMER_TEXT } from "@soundbites/lib/studio/__tests__/fixture"
+import {
+  primer,
+  PRIMER_TEXT,
+  speaking,
+} from "@soundbites/lib/studio/__tests__/fixture"
 import { keptLetGo } from "@soundbites/lib/studio/let-go-store"
 import type { StudioPorts } from "@soundbites/lib/studio/runtime"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
@@ -29,7 +33,7 @@ function setup(
     <Studio
       ports={{
         store: memory.store,
-        startRecording: fakeMic(),
+        startRecording: speaking(),
         now: () => Date.UTC(2026, 9, 30, 10) + 1_000 * tick++,
         newId: () => `t${tick}`,
         readText: () => Promise.resolve(text),
@@ -60,9 +64,22 @@ async function openPrimer(): Promise<void> {
 }
 
 async function takeOne(): Promise<void> {
-  fireEvent.click(await screen.findByRole("button", { name: W.record.talk }))
-  fireEvent.click(await screen.findByRole("button", { name: W.record.stop }))
-  await screen.findByRole("button", { name: W.record.again })
+  // The take pattern's button: tap to talk, tap to stop, then again.
+  fireEvent.click(
+    await screen.findByRole("button", { name: TAKE_WORDS.buttonLabel.ready })
+  )
+  fireEvent.click(
+    await screen.findByRole("button", {
+      name: TAKE_WORDS.buttonLabel.recording,
+    })
+  )
+  await screen.findByRole("button", { name: TAKE_WORDS.buttonLabel.again })
+  // The scene's chosen take, as the pattern's row, with Play it back.
+  expect(
+    screen.getByRole("button", {
+      name: TAKE_WORDS.rowLabel(TAKE_WORDS.play, 4_000),
+    })
+  ).toBeEnabled()
 }
 
 describe("Studio", () => {
