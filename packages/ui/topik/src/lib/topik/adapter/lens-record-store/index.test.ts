@@ -5,6 +5,7 @@ import {
   LENS_RECORD_MAX,
   lensRecordForExport,
   lensRecordHeldByHome,
+  onLensRecordWritten,
 } from "@topik/lib/topik/adapter/lens-record-store"
 import type { LensRecordEntry } from "@topik/lib/topik/read-aloud/lens/record"
 import { afterEach, describe, expect, it } from "vitest"
@@ -96,6 +97,26 @@ describe("the lens record store", () => {
       { line: "other" },
       { line: "school", situation: chosen },
     ])
+  })
+
+  it("tells its listeners of each write it keeps, and of none it refuses (HF5)", () => {
+    const storage = memoryStorage()
+    const store = createLensRecordStore(storage)
+    let told = 0
+    const stop = onLensRecordWritten(() => {
+      told += 1
+    })
+    store.add(entry(NOW))
+    // The same item seen further is a write too: home keeps each version.
+    store.add(entry(NOW, { right: false }))
+    expect(told).toBe(2)
+    storage.full = true
+    store.add(entry(NOW, { line: "refused" }))
+    expect(told).toBe(2)
+    storage.full = false
+    stop()
+    store.add(entry(NOW, { line: "unheard" }))
+    expect(told).toBe(2)
   })
 
   it("flags a session racing once any of its entries was", () => {

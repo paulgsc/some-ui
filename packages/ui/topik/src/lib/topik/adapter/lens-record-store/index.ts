@@ -10,7 +10,8 @@
  * again for the same item (its session, line and showing) replaces it: that
  * is the same item seen further, not more history. Kept only where the host
  * has the export to carry it (the phone app); nothing here reads it back but
- * that export and `full`.
+ * that export and `full`, and each write kept is told to those listening
+ * (`onLensRecordWritten`), so the drain asks to send it.
  *
  * A failed write costs the next export that entry and nothing else
  * (Thm. 7.2), so it throws nothing (Prop. 7.2): a full quota, a private
@@ -49,6 +50,20 @@ let heldNow: () => Held = () => () => false
  */
 export function lensRecordHeldByHome(next: () => Held): void {
   heldNow = next
+}
+
+/** Those told of each entry the record keeps (www's drain, to send it). */
+const written = new Set<() => void>()
+
+/**
+ * Calls `listener` after each write the record keeps, an entry added or
+ * rewritten, in any store on this page. Returns an unsubscribe.
+ */
+export function onLensRecordWritten(listener: () => void): () => void {
+  written.add(listener)
+  return (): void => {
+    written.delete(listener)
+  }
 }
 
 export type LensRecordStore = {
@@ -200,6 +215,8 @@ export function createLensRecordStore(
         kept = kept.filter((candidate) => candidate !== room)
       }
       refused = !writeStored(storage, [...kept, entry])
+      if (refused) return
+      for (const listener of written) listener()
     },
     full: (): boolean => {
       const stored = readStored(storage)

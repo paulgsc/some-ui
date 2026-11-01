@@ -652,9 +652,9 @@ was silent, so the run ended as if all had gone.
 ### LA15: a paired phone drains what it keeps to home on its own, at the moments its person is using the app
 
 Everything the phone keeps for home (aph, the Jobs record, Practice's
-record with its written reflections and asks for the next scene, the
-soundbites' records and LeetType's answer notes, voice notes) goes through
-one wiring (`lib/home-link/lanes.ts`):
+record with its written reflections, asks for the next scene, the
+soundbites' records, LeetType's answer notes and the grammar-lens record,
+voice notes) goes through one wiring (`lib/home-link/lanes.ts`):
 each declares its lane (its exchange, how its record moves, its sheet's
 counts; `aph.ts`, `jobs.ts`, `practice.ts`, `voice.ts`), and every lane
 shares the runtime (`kept-runtime.ts`), the watch (`kept-watch.ts`) and the
@@ -674,7 +674,9 @@ home answers with it unchanged (`packages/ui/aph/src/lib/__tests__/sync.test.ts`
 `home.test.ts`; `lib/jobs/__tests__/home.test.ts`; `lib/home-link/__tests__/drain.test.ts`,
 which also holds that the drain sends only finished sessions and what
 changed since home last held it, lets nothing go, and stops before its next
-request; `voice-send.test.ts`), one run at a time and home being busy said
+request; `voice-send.test.ts`), that Practice's lane asks for a run on a
+new soundbite, LeetType answer note or lens entry and counts each waiting
+until home holds it (`practice.test.ts`), one run at a time and home being busy said
 as such (`kept.test.ts`), and that the shell's drain sends nothing unpaired
 and sends once paired on the moments below, while a mark sends nothing of
 its own (`components/__tests__/device-home-glyph.test.tsx`). What no test
@@ -744,10 +746,21 @@ can say is when a run is asked for:
   `exchangeJobs` no longer makes it in every run that gets that far; a hunk
   to `lib/home-link/practice.ts` that makes the lane's `revision` or
   `subscribe` follow anything but the sessions cache, `onKept`, Studio's
-  store, the reflections store (HF3) and the asks store (`lib/scene-ask`,
-  HF4), or its `exchange` anything but
+  store, the reflections store (HF3), the asks store (`lib/scene-ask`,
+  HF4), LeetType's answer notes (`leetypeNotesMoved`, HF5) and the
+  soundbites and lens record as `lib/home-link/practice-reads.ts` last read
+  them (HF5), or that drops one of those from it, drops from its waiting
+  count any of the sessions, written reflections, asks, notes or lens
+  entries home lacks, or makes its `exchange` anything but
   `drainHome` over the phone's own ports (`./going`) under the run's
-  `pairing`; a hunk to `lib/home-link/drain.ts` that takes home's copy in,
+  `pairing`; a hunk to `lib/home-link/practice-reads.ts` that reads either
+  store other than on its watch starting, the soundbites' hand-in or
+  change (their store's `subscribe`), or, once the phone is paired, a write
+  to the lens record (topik's `onLensRecordWritten`), or that keeps a list
+  of the soundbites that started before a newer one; a hunk to topik's
+  `adapter/lens-record-store` that keeps an entry without telling
+  `onLensRecordWritten`'s listeners, or to `lib/leetype-takes` that keeps
+  or lets go of a note without moving `leetypeNotesMoved`; a hunk to `lib/home-link/drain.ts` that takes home's copy in,
   lets a phone session go, lets anything else go but through `letGoHeld`
   (LA16) and `letGoHeldPrompts` (LA18), or confirms what home holds
   (`confirmHeld`), or sends other than through `copyHome`, `sendKept`,
@@ -791,7 +804,8 @@ can say is when a run is asked for:
   renames or moves any file, function or constant this claim names without
   carrying the claim to its new place.
 - _Scope:_ `apps/www/src/lib/home-link/kept-watch.ts`, `lanes.ts`,
-  `kept-runtime.ts`, `aph.ts`, `jobs.ts`, `practice.ts`, `voice.ts`,
+  `kept-runtime.ts`, `aph.ts`, `jobs.ts`, `practice.ts`,
+  `practice-reads.ts`, `voice.ts`,
   `drain.ts`, `going.ts`, `leetype-log.ts`, `notes.ts`, `lens-record.ts`,
   `sent.ts`, `model.ts`, `runtime.ts`, `routine.ts`,
   `routine-model.ts`, `apps/www/src/components/device-home-glyph.tsx`,
@@ -806,7 +820,9 @@ can say is when a run is asked for:
   `packages/ui/topik/src/lib/topik/adapter/server/routine-files-queries/index.ts`,
   `packages/ui/topik/src/lib/topik/adapter/routine-files/index.ts`,
   `packages/ui/topik/src/components/topik/handheld/handheld-lesson/index.tsx`,
-  `packages/ui/topik/src/components/topik/study-session/index.tsx`.
+  `packages/ui/topik/src/components/topik/study-session/index.tsx`,
+  `packages/ui/topik/src/lib/topik/adapter/lens-record-store/index.ts`,
+  `apps/www/src/lib/leetype-takes/index.ts`.
 - _Why not enforced:_ whether a moment is one where the person is using the
   app is a reading of intent: a test sees a listener or a query run, not why
   it is there, and a lint rule cannot tell a press handler from an effect

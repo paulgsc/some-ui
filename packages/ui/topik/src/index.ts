@@ -78,6 +78,7 @@ export type { LensRecordExport } from "./lib/topik/adapter/lens-record-store"
 export {
   lensRecordForExport,
   lensRecordHeldByHome,
+  onLensRecordWritten,
 } from "./lib/topik/adapter/lens-record-store"
 export type {
   LensTakes,

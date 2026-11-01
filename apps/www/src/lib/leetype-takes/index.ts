@@ -62,9 +62,12 @@ const notes = boundedList("some-ui:leetype-take-notes", MAX, isNote)
 
 // Home holds none until the voice lane says otherwise (`leetypeNotesHeldByHome`).
 let notesHeld: () => (id: string) => boolean = () => () => false
-/** Those reading the port, told when the notes' room changes. */
+/** Those reading the port or the notes, told when the notes or their room change. */
 const notesListeners = new Set<() => void>()
+/** Moves with each change to the notes or their room. */
+let notesRevision = 0
 const notesMoved = (): void => {
+  notesRevision += 1
   for (const listener of notesListeners) listener()
 }
 
@@ -146,6 +149,20 @@ export const leetypeTakesDesk = desk
 
 /** The notes as kept, for the drain (`lib/home-link`). */
 export const leetypeNotes = (): ReadonlyArray<LeetypeTakeNote> => notes.read()
+
+/**
+ * For `useSyncExternalStore` and the drain's lane (`lib/home-link/practice`):
+ * moves each time a note is kept or let go, or their room changes.
+ */
+export const leetypeNotesMoved = {
+  getSnapshot: (): number => notesRevision,
+  subscribe(listener: () => void): () => void {
+    notesListeners.add(listener)
+    return (): void => {
+      notesListeners.delete(listener)
+    }
+  },
+}
 
 /**
  * How to read what home holds of the notes, read back: those may make room
