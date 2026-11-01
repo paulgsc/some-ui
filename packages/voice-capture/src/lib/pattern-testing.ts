@@ -1,10 +1,13 @@
 /**
  * Stand-ins for the take pattern's other ports, beside the
  * simulated microphone in `@some-ui/voice-capture/testing`: a player whose
- * playbacks end when the test says, and a screen's store of takes held in
+ * playbacks end when the test says, a screen's store of takes held in
  * memory that keeps D2 and D3 as a real store must (a redo supersedes the
- * earlier take in the same write; Let go sets a take aside, keeping it).
+ * earlier take in the same write; Let go sets a take aside, keeping it), and
+ * a shelf of audio held in memory, for a screen's own store under test.
  */
+import type { BlobShelf } from "./blob-shelf"
+import { ShelfFullError } from "./blob-shelf"
 import type { Playback, Player } from "./player"
 import type { Take } from "./recorder"
 import type { KeepResult } from "./take-kit"
@@ -115,6 +118,33 @@ export function memoryTakes(options: {
               ? new Blob(["v"], { type: "audio/webm" })
               : null)
         ),
+    },
+  }
+}
+
+export type MemoryShelf = BlobShelf & {
+  /** Every `put` from now on refuses as a phone out of room does. */
+  readonly fill: (full: boolean) => void
+}
+
+/** A `BlobShelf` in memory: what is put is there until removed. */
+export function memoryShelf(): MemoryShelf {
+  const audio = new Map<string, Blob>()
+  let full = false
+  return {
+    put: (id, blob): Promise<void> => {
+      if (full) return Promise.reject(new ShelfFullError())
+      audio.set(id, blob)
+      return Promise.resolve()
+    },
+    get: (id) => Promise.resolve(audio.get(id) ?? null),
+    remove: (ids): Promise<void> => {
+      for (const id of ids) audio.delete(id)
+      return Promise.resolve()
+    },
+    ids: () => Promise.resolve([...audio.keys()]),
+    fill: (on): void => {
+      full = on
     },
   }
 }
