@@ -1,7 +1,7 @@
 import type { JSX, SubmitEvent } from "react"
 import { useState } from "react"
 import { formatTimecode } from "@some-ui/core-utils"
-import { Button, Input } from "@some-ui/shared"
+import { Button, Input, useConfirmSheet } from "@some-ui/shared"
 import { X } from "lucide-react"
 
 import { useMinuteClock } from "@/lib/clock"
@@ -44,7 +44,9 @@ function describe(reflection: Reflection): string {
 
 /**
  * Reflecting on one session, at any moment of it or after: say it (phone),
- * type it, or tap how it is going.
+ * type it, or tap how it is going. The spoken ones are the take pattern's
+ * rows (`DeviceReflectionVoice`); the written ones are listed below, and
+ * letting one go asks first, since it cannot be brought back here.
  */
 export const ReflectPanel = ({
   sessionId,
@@ -58,10 +60,31 @@ export const ReflectPanel = ({
   const now = useMinuteClock().getTime()
   const [text, setText] = useState("")
   const [refused, setRefused] = useState<string | null>(null)
+  const { ask, sheet } = useConfirmSheet()
 
-  const own = inOrder(kept.filter((r) => r.sessionId === sessionId))
+  // A spoken one is the take pattern's row, above.
+  const own = inOrder(
+    kept.filter((r) => r.sessionId === sessionId && r.body.kind !== "voice")
+  )
   const answers = answersOf(kept, sessionId)?.answers ?? {}
   const stale = staleCount(kept, now)
+
+  // The phone asks in a sheet; the desktop web keeps the browser's dialog
+  // (CLAUDE.md, "The phone and the desktop web are separate surfaces").
+  const confirmLetGo = (id: string, at: string): void => {
+    if (import.meta.env.VITE_DEVICE_BACKEND !== "true") {
+      if (confirm(`Let go of the one at ${at}? It can't be brought back.`)) {
+        letGo([id])
+      }
+      return
+    }
+    ask({
+      title: "Let this one go?",
+      description: `The one at ${at} leaves this phone and can't be brought back here. One home already has stays on home.`,
+      confirm: "Let it go",
+      onConfirm: () => letGo([id]),
+    })
+  }
 
   const said = (result: KeepResult): boolean => {
     setRefused(result === "kept" ? null : REFUSED[result])
@@ -182,7 +205,7 @@ export const ReflectPanel = ({
                     variant="ghost"
                     className="size-8 shrink-0"
                     aria-label={`Let go of the one at ${at}`}
-                    onClick={() => letGo([reflection.id])}
+                    onClick={() => confirmLetGo(reflection.id, at)}
                   >
                     <X className="size-3.5" aria-hidden />
                   </Button>
@@ -192,6 +215,7 @@ export const ReflectPanel = ({
           </ul>
         </div>
       )}
+      {sheet}
     </div>
   )
 }

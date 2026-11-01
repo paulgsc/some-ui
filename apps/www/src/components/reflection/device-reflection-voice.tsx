@@ -1,81 +1,52 @@
 /**
- * A voice reflection: tap to talk, tap to keep. Device build only, like this
- * module (`build.paths.ts`). The take is `lib/reflection-voice`'s; this only
- * renders its state and forwards taps.
+ * Spoken reflections on the take pattern's parts: tap to talk, tap to keep,
+ * then each one's row with where it is kept, Play, Redo and Let it go. Up to
+ * twenty a session, beside each other (`REFLECTION_TAKE_OPTIONS`). Device
+ * build only, like this module (`build.paths.ts`). The takes are
+ * `lib/reflection-voice`'s; this only renders them and forwards taps.
  */
 import type { JSX } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
-import { formatTimecode } from "@some-ui/core-utils"
-import { Button } from "@some-ui/shared"
-import type { VoiceNoteOutcome, VoiceNoteState } from "@some-ui/voice-capture"
-import { RECORDING_FAILURE_COPY, VOICE_NOTE_SAID } from "@some-ui/voice-capture"
-import { Mic, Square } from "lucide-react"
+import { TakeItem, useTakePattern } from "@some-ui/shared"
+import { takeItemView } from "@some-ui/voice-capture"
 
+import type { ReflectionTakes } from "@/lib/reflection-voice"
 import { phoneVoiceNote } from "@/lib/reflection-voice"
 
-const SAID: Record<VoiceNoteOutcome, string> = {
-  ...VOICE_NOTE_SAID,
-  // The spoken reflections' audio has a size on this phone of its own
-  // (`lib/reflection-voice/budget`); a written one always has room.
-  full: "No room on this phone for another spoken one: let one go, or type it.",
+type VoiceProps = {
+  sessionId: string
+  /** How far into the session now, or null after it ended. */
+  atMs: number | null
 }
 
-function note(state: VoiceNoteState): string | null {
-  if (state.kind === "blocked") return RECORDING_FAILURE_COPY[state.reason]
-  if (state.kind === "idle" && state.last !== null) return SAID[state.last]
-  return null
+/** One session's spoken reflections, over `voice`. */
+export const ReflectionTakeList = ({
+  voice,
+  sessionId,
+  atMs,
+}: VoiceProps & { voice: ReflectionTakes }): JSX.Element => {
+  const { pattern } = voice
+  const taken = useTakePattern(pattern)
+  const takes = useSyncExternalStore(voice.subscribe, voice.getSnapshot)
+  useEffect(() => (): void => pattern.leave(), [pattern])
+  const view = takeItemView(taken, takes, sessionId, pattern.options)
+  return (
+    <TakeItem
+      view={view}
+      label="Spoken reflections"
+      onTap={() => voice.tap(atMs, view.supersedes)}
+      onPlay={pattern.play}
+      onRedo={(id) => voice.tap(atMs, id)}
+      onLetGo={pattern.letGo}
+    />
+  )
 }
 
 export const DeviceReflectionVoice = ({
   sessionId,
   atMs,
-}: {
-  sessionId: string
-  /** How far into the session now, or null after it ended. */
-  atMs: number | null
-}): JSX.Element => {
+}: VoiceProps): JSX.Element => {
   // eslint-disable-next-line owner-guard/no-mount-snapshot -- a runtime made once per mount, keyed by `sessionId` where it is rendered
   const [voice] = useState(() => phoneVoiceNote(sessionId))
-  const state = useSyncExternalStore(voice.subscribe, voice.getSnapshot)
-  useEffect(() => (): void => voice.leave(), [voice])
-
-  const said = note(state)
-  const phase = state.kind === "taking" ? state.phase : null
-  const busy =
-    state.kind === "saving" || (phase !== null && phase.kind !== "recording")
-
-  return (
-    <div className="flex flex-col gap-1.5">
-      {phase?.kind === "recording" ? (
-        <Button
-          type="button"
-          variant="destructive"
-          className="h-12 w-full gap-2 text-base"
-          onClick={voice.stop}
-        >
-          <Square className="size-4" aria-hidden />
-          Keep it ({formatTimecode(phase.elapsed)})
-        </Button>
-      ) : (
-        <Button
-          type="button"
-          className="h-12 w-full gap-2 text-base"
-          disabled={busy}
-          onClick={() => voice.start(atMs)}
-        >
-          <Mic className="size-4" aria-hidden />
-          {phase?.kind === "opening"
-            ? "Opening the microphone..."
-            : busy
-              ? "Keeping it..."
-              : "Talk"}
-        </Button>
-      )}
-      {said !== null && (
-        <p role="status" className="text-muted-foreground text-sm">
-          {said}
-        </p>
-      )}
-    </div>
-  )
+  return <ReflectionTakeList voice={voice} sessionId={sessionId} atMs={atMs} />
 }

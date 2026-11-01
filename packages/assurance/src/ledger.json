@@ -1801,7 +1801,7 @@
       "store": "phone:reflection-audio",
       "class": "record",
       "growth": "bounded: REFLECTION_AUDIO_MAX_BYTES = 20 x 240,000 = 4,800,000 B of spoken reflections' audio; a take past it is refused (the reflection-voice budget, #2265). The reflections list beside it has no cap of its own since HF3: the offline set is the newest REFLECTION_LIMIT = 20, and past them only the written ones home does not hold (LA16).",
-      "horizon": "a written reflection past the offline set goes once home holds it (LA16); a spoken one's audio only when its person lets it go, since an export is a copy (LG1)",
+      "horizon": "a written reflection past the offline set goes once home holds it (LA16); a spoken one's audio only when its person lets it go from the hand-off, asked first, since a row's Let go sets it aside, kept (D3, MIC5), and an export is a copy (LG1)",
       "family": "what-is-kept"
     },
     {

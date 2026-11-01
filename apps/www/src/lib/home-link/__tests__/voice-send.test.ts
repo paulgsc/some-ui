@@ -93,6 +93,7 @@ vi.mock("@/lib/reflection-voice", () => ({
   isSaving: (): boolean => false,
   onAudioSettled: () => (): void => undefined,
   reflectionAudio: (): unknown => ({ get: () => Promise.resolve(null) }),
+  reflectionNotesKept: (): void => undefined,
 }))
 vi.mock("@/lib/scene-voice", () => ({
   phoneSceneVoice: (): unknown => ({

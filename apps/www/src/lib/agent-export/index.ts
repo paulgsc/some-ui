@@ -34,7 +34,12 @@ import type { LensTake } from "@/lib/lens-takes"
 import { lensTakesForExport } from "@/lib/lens-takes"
 import { isSaving, reflectionAudio } from "@/lib/reflection-voice"
 import type { Reflection } from "@/lib/session-reflection"
-import { inOrder, QUESTIONS, reflections } from "@/lib/session-reflection"
+import {
+  inOrder,
+  inView,
+  QUESTIONS,
+  reflections,
+} from "@/lib/session-reflection"
 import {
   allPathCounts,
   allStops,
@@ -198,6 +203,9 @@ async function writeOut(
 ): Promise<Written> {
   const out: Written = { bySession: new Map(), files: [], sent: [] }
   for (const reflection of inOrder(kept)) {
+    // Recorded again or set aside: kept on the phone and home, not shared
+    // as the session's (D2, D3), so a hand-off never lets it go either.
+    if (!inView(reflection)) continue
     const { sessionId } = reflection
     let group = out.bySession.get(sessionId)
     if (!group) {

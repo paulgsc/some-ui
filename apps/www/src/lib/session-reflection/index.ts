@@ -36,6 +36,7 @@ export {
   bySession,
   describeAge,
   inOrder,
+  inView,
   OFFLINE_SET_WORDS,
   QUESTIONS,
   REFLECTION_LIMIT,
@@ -191,6 +192,21 @@ export const reflections = {
       }),
       id
     )
+  },
+
+  /**
+   * Marks a spoken reflection out of its session's view, kept: recorded
+   * again by a Redo (D2) or set aside (D3). False if the device would not
+   * store that.
+   */
+  standAside(id: string, standing: "earlier" | "set-aside"): boolean {
+    const written = list.update((r) =>
+      r.id === id && r.body.kind === "voice"
+        ? { ...r, body: { ...r.body, standing } }
+        : r
+    )
+    changed()
+    return written
   },
 
   /**
