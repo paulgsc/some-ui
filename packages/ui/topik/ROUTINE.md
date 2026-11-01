@@ -15,6 +15,9 @@ reflection (part D), and every run leaves a record of itself in the mailbox
 (step 12), which the phone shows as when the routine last ran and what it
 brought.
 
+After each pass home leaves the reflections bookkeeping in the mailbox as its
+index (2b); when it stands, the run reads it instead of counting.
+
 The run works in Google Drive (the Google Drive connector), the checkout,
 GitHub (the GitHub MCP tools, `mcp__github__*`; load them with ToolSearch if
 they are deferred), and the mailbox (`curl`). It changes nothing in the repo:
@@ -27,6 +30,9 @@ reviewed change here. The decks' shape and length are `deck-prompt.md`'s
 is the bug.
 
 ## Before anything
+
+First run `node -e 'console.log(new Date().toISOString())'` and keep what it
+prints: it is when this run started (2b's `--now`, step 12's `startedAt`).
 
 1. Find the Google Doc titled `README — Drive SOP` in My Drive (its parent is
    My Drive's root; ignore copies in Archive/) and read it before any write; it
@@ -51,7 +57,7 @@ is the bug.
 
 2a. The mailbox. `JOBS_MAILBOX_URL` (no trailing slash) and
 `JOBS_MAILBOX_TOKEN` are set in this environment. If either is unset or empty,
-skip every mailbox step (6a, 10a, part D, 10b, 12, and "Voice notes" waits),
+skip every mailbox step (2b, 6a, 10a, part D, 10b, 12, and "Voice notes" waits),
 carry on with Drive alone, and say so in the summary. Otherwise check it once:
 
 ```sh
@@ -71,6 +77,48 @@ record, and the mailbox carries this run what it reads of each (part A, step
 3, and part B, step 7); the reflections and prompts shared to Drive before the
 phone sent them home stay in `Study ledger/reflections` and `Dramas/requests`,
 read as before, until HF6 (paulgsc/some-ui#2181) retires that path.
+
+2b. Home's index. If the mailbox is usable, list its `index` folder:
+
+```sh
+curl -sS --max-time 30 -H "Authorization: Bearer $JOBS_MAILBOX_TOKEN" \
+  "$JOBS_MAILBOX_URL/v1/index/items?after=0&limit=50"
+```
+
+The mailbox keeps one index per routine, the newest: take the item whose name
+starts `index-reflections-` (if a listing ever shows two, the greater name is
+the newer). The index is home's view of what it holds, not a record, so there
+is no older one to read or ask for. Fetch it from `index/items/<name>` as
+"Voice notes" fetches a transcript, and check its `sha256`. A `404` means home
+put a newer one since the listing: list again, once.
+
+It stands for this run when it reads as a reflections index and the time this
+run started is before its `validUntil` (or its `validUntil` is `null`). Don't
+judge that by eye: save the index, and every scene folder in `Read aloud/sets`
+and in each dated folder of `Read aloud/archive` (step 3 lists them; download
+nothing) as `[{"name":"<folder name>","description":"<its description>"},...]`,
+both in scratch files outside the checkout, and run, from `packages/ui/topik`:
+
+```sh
+node scripts/stands.mjs --now <when this run started> <absolute path of the index> <absolute path of the folders>
+```
+
+Give it the start time you kept before step 1.
+
+It prints `stands`, `why` (each reason it doesn't, in the owner's terms) and
+`lacking`: the bases of the routine's scene folders Drive holds that home
+doesn't (a scene retired before the mailbox, or one whose put failed).
+
+When the index doesn't stand, or there is none, or 2a skipped the mailbox, do
+the bookkeeping as written below, and say why in the summary in the owner's
+terms ("Home hadn't caught up, so this run counted the lessons itself"). When it
+stands, each step below says what it replaces ("When home's index stands").
+The run never redoes or second-guesses what the index says. What only Drive
+holds the index can't say, so the run still reads it: the reflections in
+`Study ledger/reflections` and the prompts in `Dramas/requests`, the scene
+folders in `lacking`, and which written reflections a Drive reflection file
+already holds. A name in the index's `skipped` is a file home couldn't read:
+say so in the summary.
 
 ### Voice notes
 
@@ -118,6 +166,20 @@ Once per run, list the folder, live and archived, as 10b lists a folder. Then:
   For an older prompt with too few matches, ask back the archived transcripts
   put (their `putAt`) between a day before the prompt's stamp and seven days
   after it, at most ten a run; a later run matches them by body.
+
+**When home's index stands (2b)**, a reflection group or a drama prompt read
+from the mailbox has its notes in the index (step 3's `reflections`, step 7's
+`prompts`): its `notes`, each the phone's `note` id (and, for a prompt, the
+voice `file` its `notes` line names) and its newest `transcript` (`name` and
+`sha256`, or `null` while home hasn't heard it), and its `voice`. Its
+`voice.state` is `heard` (every note has a transcript, or it has none),
+`waiting` (one hasn't, and its two days, from `voice.since` to `voice.until`,
+aren't over: it waits, as below) or `missed` (they are over: answer it from
+what it says in writing, as below). Don't list the `transcript` folder or work
+out the wait for these: fetch each transcript by that name as "Each transcript
+you use" says, and check its bytes against that `sha256` as well. A missing
+one is asked back as "Archived" says, and then it waits. A reflection or
+prompt read from Drive keeps the rules above.
 
 A note home hasn't heard is one with no transcript to use (for an older drama
 prompt, fewer distinct notes than voice files beside it), including one asked
@@ -205,6 +267,17 @@ step 12 doesn't run. Voice notes never go to the mailbox from this run.
    The routine cannot ask an archived reflection back, so a group whose
    reflections have left the listing waits no more and is not counted.
 
+   **When home's index stands (2b)**, the mailbox's side of this step is its
+   `reflections`: each group of written reflections no scene home holds
+   answers, newest first, with its `base`, `session`, `day`, the names of its
+   reflections in the order they were written, `newestAt`, and `settled`
+   (`false` while its newest is under two hours old: it waits for the next
+   run). Don't list the `reflection` folder or group the reflections
+   yourself: fetch each named one as above. A reflection is answered when its
+   base is in the index's `answered.scenes` or a scene folder in Drive answers
+   it as above; a group whose reflections a Drive reflection file holds
+   belongs to that file, as above.
+
    Take the unanswered ones, from the mailbox and from Drive together,
    newest first, skipping any that wait on a voice note ("Voice notes"), at
    most three this run. If there are none, go to part B.
@@ -220,12 +293,16 @@ step 12 doesn't run. Voice notes never go to the mailbox from this run.
      note asks for everyday life (vary it from the scenes already in
      `Read aloud/sets`), and a `premise`, one English sentence that fits what
      the note mentions about studying; every line of both decks belongs in that
-     scene;
+     scene. When home's index stands (2b), the scenes to vary from are its
+     `recent` (the latest three, newest first, each with its `genre`) and this
+     run's own;
    - level: the one the learner asked for in the note, else the level the
      session was studied at (TOPIK 1-2 -> read-aloud level 1-2, higher -> 3),
      which only a Drive file carries: for a mailbox group, else the level in
      the name of the newest folder in `Read aloud/sets` whose description is
-     `answers:` or `stock:`, else 1;
+     `answers:` or `stock:`, else 1; when home's index stands (2b), that
+     newest folder is this run's own newest scene, else the first of its
+     `recent` with a `level`;
    - the read-aloud deck: `practice: "read-aloud"`, one pool sized for a
      sitting, as many lines as the deck prompt's table gives the deck's level
      and a few over, no `lens` on any line, `id` kebab-case and unique (e.g. a slug of
@@ -243,7 +320,11 @@ step 12 doesn't run. Voice notes never go to the mailbox from this run.
    - do not reuse a word id from
      `packages/some-content/prompts/read-aloud-generator/sets/*.json` or from any
      deck under `Read aloud/` (scenes and archive alike) unless it is the same
-     dictionary form (same `lemma`); do reuse it when it is.
+     dictionary form (same `lemma`); do reuse it when it is. When home's index
+     stands (2b), the decks under `Read aloud/` are its `words` (each id with
+     its `lemma`, from every deck home holds), the decks of the folders in its
+     `lacking` (download those only), the Starter and Level one scenes (the
+     repo's `sets/*.json` above) and this run's own decks.
 
    If the reflection's scene folder exists with one file, write only the other,
    in the same context (read the existing one for it), and skip part C: that
@@ -354,6 +435,13 @@ file it, and still write the pair.
    that wait on a voice note, at most two this run. If there are none, go
    to part D.
 
+   **When home's index stands (2b)**, the mailbox's side of this step is its
+   `prompts`: each drama prompt no drama home holds answers, oldest first,
+   by its `name` here and its stamp (`prompt`), with its `notes` and `voice`.
+   Don't list the `prompt` or `drama` folders to join them: fetch each named
+   one as above. A prompt is answered when its stamp is in the index's
+   `answered.dramas` or Drive holds its drama as above.
+
 8. For each: read the prompt (a mailbox file's `text`, or a Drive file with
    download_file_content; either is plain markdown) and
    read what home heard in each voice note beside it, in the order the prompt
@@ -404,6 +492,13 @@ and `<folder>/<name>` is not in the newest `opened` list. If no `opened` file
 exists yet, count as unopened only the lessons put in the last 7 days. This
 run's own puts are listed too, and count.
 
+**When home's index stands (2b)**, D1 and D2 are its `unopened`: `count`
+lessons put in the last 30 days that the newest `opened` list doesn't name (in
+the last 7 days while there is none), `lessons` naming each as
+`<folder>/<name>`, and `opened` the list it went by. Add this run's own puts
+(6a and 10a, and 10b's), which it doesn't count yet, and list none of the
+`opened`, `scene` and `drama` folders for it.
+
 D3. If fewer than 3 are unopened, write 3 minus that many stock scenes, at most
 3 this run. A stock scene is a word set pair written, checked, uploaded and put
 exactly as in steps 4 to 6a, with these differences:
@@ -411,11 +506,13 @@ exactly as in steps 4 to 6a, with these differences:
 - it answers no reflection: there is no voice note and no part C; its
   base is `<today>_stock_<n>` (today as YYYY-MM-DD, America/Los_Angeles; n = 1,
   2 or 3, the first not already used by a folder in `Read aloud/sets` or a name
-  in the mailbox's `scene` folder);
+  in the mailbox's `scene` folder, or, when home's index stands (2b), a base in
+  its `answered.scenes`);
 - its folder in `Read aloud/sets` is named as any scene's, with the description
   `stock: <base>` instead of `answers: <base>`;
-- context: a genre not used by the last three scenes in `Read aloud/sets`, and a
-  premise of your own that a learner at that level would enjoy;
+- context: a genre not used by the last three scenes in `Read aloud/sets` (when
+  home's index stands, its `recent` and this run's own scenes, newest first),
+  and a premise of your own that a learner at that level would enjoy;
 - level: the level in the name of the newest folder in `Read aloud/sets` whose
   description is `answers:` or `stock:`, else 1;
 - `from`: `kept ready on <Mon D>`;
@@ -446,21 +543,27 @@ dramas this run. Only folders whose description is `answers: <base>` or
 and never put anything from `Read aloud/archive/`. This step reads Drive and
 writes only to the mailbox.
 
+**When home's index stands (2b)**, list neither folder: a scene folder in
+`Read aloud/sets` is in the mailbox when its base is in the index's
+`answered.scenes` (so the ones to put are those of its `lacking` in
+`Read aloud/sets`), and a drama when its `drama-<stamp>` is in
+`answered.dramas`. This run's own puts are in the mailbox already.
+
 11. Never edit, move, rename or trash anything in `Study ledger/`, `Archive/` or
     `Read aloud/archive/`, nor the Starter or Level one scenes in
     `Read aloud/sets`, nor any scene folder you did not create this run. Triage
     `Inbox/` per the SOP if it holds anything.
 
 12. Record this run in the mailbox. Skip only if 2a skipped the mailbox;
-    otherwise this step runs even when the run stops early. Note the UTC time
-    when you started this run, and write one scratch file with `node` or `jq`,
+    otherwise this step runs even when the run stops early. Take the start time
+    you kept before step 1, and write one scratch file with `node` or `jq`,
     not by hand:
 
 ```json
 {
   "schema": "some-ui.routine-run/1",
   "routine": "reflections",
-  "startedAt": "<when this run started, ISO-8601 UTC>",
+  "startedAt": "<the start time you kept before step 1>",
   "finishedAt": "<now, ISO-8601 UTC>",
   "outcome": "done | partly | stopped",
   "found": {
