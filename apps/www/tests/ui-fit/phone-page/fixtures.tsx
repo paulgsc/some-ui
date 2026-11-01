@@ -40,6 +40,7 @@ import {
   run,
 } from "@some-ui/soundbites/fixtures"
 import { ONE_TAKE } from "@some-ui/voice-capture"
+import type { MicScript } from "@some-ui/voice-capture/testing"
 import {
   simulatedMicrophone,
   simulatedPattern,
@@ -174,12 +175,18 @@ function newIdea(refuse: boolean): () => JSX.Element {
   const simulated = simulatedPattern({
     options: { ...ONE_TAKE, send: "on-confirm" },
   })
-  if (refuse) {
-    simulated.mic.script({
-      ...SPEAKING,
-      open: { kind: "refuse", reason: "denied", ms: 0 },
-    })
+  // Each take hears four seconds, however soon the walk taps to stop it.
+  const speaking: MicScript = { ...SPEAKING, durationMs: 4_000 }
+  const refused: MicScript = {
+    ...SPEAKING,
+    open: { kind: "refuse", reason: "denied", ms: 0 },
   }
+  simulated.mic.script(
+    ...(refuse ? [refused] : []),
+    speaking,
+    speaking,
+    speaking
+  )
   const storage = once(inMemoryStorage())
   const takes = bundleTakesOf(simulated)
   const ports = {

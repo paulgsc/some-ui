@@ -327,6 +327,7 @@ const Card = ({
   takes,
   snapshot,
   active,
+  offset,
   dispatch,
 }: {
   state: BundleState
@@ -335,6 +336,12 @@ const Card = ({
   takes: BundleTakes
   snapshot: TakePatternSnapshot
   active: boolean
+  /** Where it sits beside the card on screen, and the finger's travel. */
+  offset: {
+    readonly cards: number
+    readonly px: number
+    readonly easing: boolean
+  }
   dispatch: Dispatch
 }): JSX.Element => {
   const answers = answersOf(state.draft.id, question)
@@ -354,7 +361,13 @@ const Card = ({
       aria-hidden={!active}
       inert={!active}
       data-card={question}
-      className="flex w-full shrink-0 flex-col gap-3 px-1"
+      className={[
+        "col-start-1 row-start-1 flex min-w-0 flex-col gap-3 px-1",
+        offset.easing ? "transition-transform duration-200 ease-out" : "",
+      ].join(" ")}
+      style={{
+        transform: `translateX(calc(${offset.cards * 100}% + ${offset.px}px))`,
+      }}
     >
       <p className="text-muted-foreground text-xs font-semibold">
         {WORDS.questionOf(n, of)}
@@ -469,22 +482,16 @@ const Questions = ({
       </nav>
       <div
         data-swipe="cards"
-        className="touch-pan-y overflow-hidden"
+        className="touch-pan-y"
         onPointerDown={down}
         onPointerMove={move}
         onPointerUp={up}
         onPointerCancel={() => setDrag(null)}
       >
-        <div
-          className={
-            drag === null
-              ? "flex transition-transform duration-200 ease-out"
-              : "flex"
-          }
-          style={{
-            transform: `translateX(calc(${-state.index * 100}% + ${dx}px))`,
-          }}
-        >
+        {/* The cards share one cell, each moved sideways by its distance
+            from the card on screen, so the row clips them and none of them
+            is wider than the phone. */}
+        <div className="grid overflow-hidden">
           {IDEA_QUESTIONS.map((question, i) => (
             <Card
               key={question}
@@ -494,6 +501,11 @@ const Questions = ({
               takes={takes}
               snapshot={snapshot}
               active={i === state.index}
+              offset={{
+                cards: i - state.index,
+                px: dx,
+                easing: drag === null,
+              }}
               dispatch={dispatch}
             />
           ))}
