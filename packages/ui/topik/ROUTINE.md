@@ -97,8 +97,11 @@ nothing) as `[{"name":"<folder name>","description":"<its description>"},...]`,
 both in scratch files outside the checkout, and run, from `packages/ui/topik`:
 
 ```sh
-node scripts/stands.mjs --now <when this run started, ISO-8601 UTC> <absolute path of the index> <absolute path of the folders>
+node scripts/stands.mjs --now <when this run started> <absolute path of the index> <absolute path of the folders>
 ```
+
+Give the start time as `node -e 'console.log(new Date().toISOString())'` printed it
+when the run began.
 
 It prints `stands`, `why` (each reason it doesn't, in the owner's terms) and
 `lacking`: the bases of the routine's scene folders Drive holds that home
