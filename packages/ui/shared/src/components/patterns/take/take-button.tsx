@@ -65,8 +65,9 @@ function toneOf(view: TakeButtonView): "rest" | "live" | "quiet" {
 
 /**
  * The take pattern's button: tap to start, tap to stop (D1).
- * While it records it shows the time against the cap, breathes with the
- * input's level, and warns when the time is nearly up; while the microphone
+ * While it records it shows the time against the cap (or the time left,
+ * under the options' `clock: "left"`), breathes with the input's level, and
+ * warns when the time is nearly up; while the microphone
  * opens it can still be tapped, which lets the take go. Its words are the
  * pattern's (`TAKE_WORDS`); it renders `view` and forwards taps, nothing
  * else.
@@ -134,9 +135,12 @@ export const TakeButton = ({
             aria-hidden="true"
           />
           <span className="text-sm font-semibold tabular-nums">
-            {words.elapsed(recording.elapsedMs, recording.capMs)}
+            {recording.clock === "left"
+              ? words.left(recording.capMs - recording.elapsedMs)
+              : words.elapsed(recording.elapsedMs, recording.capMs)}
           </span>
-          {recording.nearlyUp && (
+          {/* A countdown already says how little is left. */}
+          {recording.nearlyUp && recording.clock === "elapsed" && (
             <span className="text-xs font-medium">
               {words.nearlyUp(recording.capMs - recording.elapsedMs)}
             </span>

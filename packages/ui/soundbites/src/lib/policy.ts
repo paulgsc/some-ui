@@ -1,10 +1,13 @@
+import type { PatternTake, TakePatternOptions } from "@some-ui/voice-capture"
+
 import type { Soundbite } from "./types"
 
 /**
  * At most this many soundbites are kept on the phone: an offline set (HF5,
- * #2180). A seventh replaces one home holds, the oldest unless the person
- * picked another, and is refused while home holds none: nothing leaves the
- * phone before home holds it.
+ * #2180). A seventh replaces one home holds (one set aside first, then one a
+ * Redo superseded, then the oldest listed) unless the person picked
+ * another, and is refused while home holds none: nothing leaves the phone
+ * before home holds it.
  */
 export const SOUNDBITE_LIMIT = 6
 
@@ -45,6 +48,46 @@ export const SOUNDBITE_TAKE_LIMITS = {
   maxMs: SOUNDBITE_MAX_MS,
 } as const
 
+/** What every soundbite answers: the page is one item, "why not today". */
+export const SOUNDBITE_ITEM = "soundbites"
+
+/**
+ * The take pattern's options the page picks (`@some-ui/voice-capture`):
+ * - many beside each other, and at `SOUNDBITE_LIMIT` the next makes room
+ *   (`make-room`): the store lets go the one home holds that the person
+ *   picked, or the oldest, and refuses while home holds none (`displacedBy`);
+ * - each played on its own, Redo and Let go as every screen has them (D2,
+ *   D3: neither removes anything);
+ * - the button counts down the minute (`clock: "left"`).
+ */
+export const SOUNDBITE_TAKES: TakePatternOptions = {
+  takes: { per: "many", max: SOUNDBITE_LIMIT, full: "make-room" },
+  limits: SOUNDBITE_TAKE_LIMITS,
+  redo: "supersede",
+  letGo: "set-aside",
+  play: "each",
+  clock: "left",
+}
+
+/**
+ * The kept soundbites as the take pattern lists them: on home once home
+ * holds one (audio and record both, `held`), on this phone until then. The
+ * phone isn't told when home took them in, so not since when.
+ */
+export function patternTakes(
+  kept: ReadonlyArray<Soundbite>,
+  held: (id: string) => boolean
+): Array<PatternTake> {
+  return kept.map((bite) => ({
+    id: bite.id,
+    answers: SOUNDBITE_ITEM,
+    durationMs: bite.durationMs,
+    recordedAt: bite.recordedAt,
+    standing: bite.standing ?? "current",
+    kept: held(bite.id) ? { place: "home", since: null } : { place: "phone" },
+  }))
+}
+
 /** Newest first: the order the page lists them in. */
 export function byNewest(bites: ReadonlyArray<Soundbite>): Array<Soundbite> {
   return [...bites].sort((a, b) => b.recordedAt.localeCompare(a.recordedAt))
@@ -53,11 +96,33 @@ export function byNewest(bites: ReadonlyArray<Soundbite>): Array<Soundbite> {
 /** Home holds none: what a caller the home link never told assumes. */
 const NONE_HELD = (): boolean => false
 
+/** Set aside first, then earlier, then current: the order room is made in. */
+const LEAVES_FIRST: Readonly<
+  Record<NonNullable<Soundbite["standing"]> | "current", number>
+> = { "set-aside": 0, earlier: 1, current: 2 }
+
+/**
+ * The held ones in the order they make room: a soundbite let go (D3) before
+ * one a Redo superseded (D2), before one still listed, and the oldest first
+ * within each.
+ */
+function inLeavingOrder(
+  kept: ReadonlyArray<Soundbite>,
+  held: (id: string) => boolean
+): Array<Soundbite> {
+  const rank = (bite: Soundbite): number =>
+    LEAVES_FIRST[bite.standing ?? "current"]
+  return byNewest(kept.filter((bite) => held(bite.id)))
+    .reverse()
+    .sort((a, b) => rank(a) - rank(b))
+}
+
 /**
  * Which kept soundbite the next one will replace, or null while there is
  * room, or while home holds none of them. Only one `held` says home holds
  * may be replaced: `choice` is the one the person picked, honoured while it
- * is still kept and held; otherwise the oldest held.
+ * is still kept and held; otherwise the first of `inLeavingOrder`: one set
+ * aside, then one superseded, then the oldest still listed.
  */
 export function nextReplaced(
   kept: ReadonlyArray<Soundbite>,
@@ -66,17 +131,17 @@ export function nextReplaced(
   limit = SOUNDBITE_LIMIT
 ): Soundbite | null {
   if (kept.length < limit) return null
-  const leavable = kept.filter((bite) => held(bite.id))
-  const chosen = leavable.find((bite) => bite.id === choice)
-  return chosen ?? byNewest(leavable).at(-1) ?? null
+  const leaving = inLeavingOrder(kept, held)
+  const chosen = leaving.find((bite) => bite.id === choice)
+  return chosen ?? leaving[0] ?? null
 }
 
 /**
  * The ids a new soundbite displaces so that, with it, no more than `limit`
- * are kept: `nextReplaced` first, then the oldest of the rest home holds for
- * as long as there are still too many (only after the limit was lowered, or
- * a write elsewhere raced this one). Null when home holds too few to make
- * room: the new one is then refused, and none goes.
+ * are kept: `nextReplaced` first, then the rest home holds in the same
+ * order for as long as there are still too many (only after the limit was
+ * lowered, or a write elsewhere raced this one). Null when home holds too
+ * few to make room: the new one is then refused, and none goes.
  */
 export function displacedBy(
   kept: ReadonlyArray<Soundbite>,
@@ -88,9 +153,7 @@ export function displacedBy(
   if (excess <= 0) return []
   const first = nextReplaced(kept, choice, held, limit)
   if (first === null) return null
-  const rest = byNewest(
-    kept.filter((bite) => bite.id !== first.id && held(bite.id))
-  ).reverse()
+  const rest = inLeavingOrder(kept, held).filter((bite) => bite.id !== first.id)
   if (rest.length < excess - 1) return null
   return [first.id, ...rest.slice(0, excess - 1).map((bite) => bite.id)]
 }

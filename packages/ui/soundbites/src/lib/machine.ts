@@ -1,62 +1,39 @@
 /**
- * The soundbites page as one state machine: `step(state, event)` returns the
- * next state and the effects to run, and does nothing else. No React, no
- * microphone, no database, no clock: `runtime.ts` runs the effects against
- * those and feeds their results back in as events, and the component only
- * renders a state and turns taps into events (docs/monorepo-boundaries.md,
- * "Inside a React package: the component is not the coordinator").
+ * The soundbites page, apart from its takes, as one state machine:
+ * `step(state, event)` returns the next state and the effects to run, and
+ * does nothing else. A take (record, hear it, Redo, Let go) is the take
+ * pattern's (`@some-ui/voice-capture`'s `takePattern`, with the options in
+ * `./policy`), so this keeps no copy of one: the page tells the pattern when
+ * to start (an auto-start) and when it has gone (`leaveTake`), and keeps
+ * what is the page's own. `runtime.ts` runs the effects and feeds their
+ * results back in as events, and the component only renders a state and
+ * turns taps into events (docs/monorepo-boundaries.md, "Inside a React
+ * package: the component is not the coordinator").
  *
  * Rules that hold by structure, not by each async path remembering them:
  *
- * - **One activity at a time.** Playing, opening the microphone, recording
- *   and saving are arms of one union, so "playing while the microphone
- *   opens" (or while recording) cannot be written down. Pressing record
- *   while playing stops the playback in the same step.
  * - **The list shown is a read that succeeded, or unknown.** `Library` is
  *   `reading`, `unreadable` or `read`; there is no stale list and no zero
- *   that was not read.
- * - **A late result for something superseded is dropped here.** Reads and
- *   plays carry the sequence number of the request that asked for them, and
- *   any result whose number is not the latest is ignored.
- * - **Nothing records while the page is off screen.** A take recording when
- *   the page is hidden is finished and kept; a microphone that opens while
- *   it is hidden is let go; an auto-start that arrives while it is hidden
- *   waits until it is shown. Either order of events ends the same way, and
- *   the runtime reports the page's visibility before it reports arrival.
+ *   that was not read. A read whose number is not the latest is dropped.
+ * - **Nothing records while the page is off screen.** Hidden, or left, the
+ *   pattern is told the page went (`leaveTake`): a take recording is kept,
+ *   one still opening is let go. An auto-start that arrives while the page
+ *   is hidden waits until it is shown. The runtime reports the page's
+ *   visibility before it reports arrival.
  * - **A store change from elsewhere is read.** Another instance of this page
  *   (the one left mid-take, still saving) can commit after this one read
  *   the list; the store reports each commit, and the list is re-read.
  * - **The way in is kept until a take is stored.** `source` says how the
  *   person got here and becomes "direct" only on `saved`, so a retry after a
  *   failed save still records the way in.
- *
- * This is our machine, not a mirror of the browser's. `playing` means "we
- * asked to play and have not been told it stopped", `recording` begins only
- * once the recorder has said it started, and nothing here reads
- * `MediaRecorder.state`, `Audio.paused` or IndexedDB's state. Those reach us
- * only as events.
+ * - **The seventh makes room as the person picked.** `choice` is the kept
+ *   one picked to be replaced next, carried to the save (`keptBite`), and
+ *   cleared once a save used it or the list no longer has it.
  */
 import { assertNever } from "@some-ui/core-utils"
-import type {
-  RecordingFailure,
-  Take,
-  TakePhase,
-  TakeStep,
-} from "@some-ui/voice-capture"
-import {
-  discardTake,
-  finishTake,
-  openTake,
-  stepTake,
-} from "@some-ui/voice-capture"
+import type { Take } from "@some-ui/voice-capture"
 
-import { formatDuration } from "./format"
-import {
-  byNewest,
-  SOUNDBITE_TAKE_LIMITS as LIMITS,
-  SOUNDBITE_LIMIT,
-  SOUNDBITE_MAX_MS,
-} from "./policy"
+import { byNewest, SOUNDBITE_MAX_MS } from "./policy"
 import type { Soundbite, SoundbiteContext, SoundbiteSource } from "./types"
 
 /** What the app knows when a take is kept, apart from the way in. */
@@ -67,18 +44,6 @@ type Library =
   | { readonly kind: "unreadable" }
   | { readonly kind: "read"; readonly kept: ReadonlyArray<Soundbite> }
 
-export type Activity =
-  | { readonly kind: "idle" }
-  | { readonly kind: "playing"; readonly id: string; readonly seq: number }
-  | { readonly kind: "opening" }
-  | {
-      readonly kind: "recording"
-      readonly startedAt: number
-      readonly elapsed: number
-      readonly level: number
-    }
-  | { readonly kind: "saving" }
-
 export type SoundbitesState = {
   /** Whether the page is mounted. A take cut short by leaving is kept. */
   readonly page: "new" | "here" | "left"
@@ -87,41 +52,20 @@ export type SoundbitesState = {
   /** An auto-start asked for while the page was hidden, for when it shows. */
   readonly autoStartPending: boolean
   readonly library: Library
-  readonly activity: Activity
-  /** Why the microphone last refused, until the next try. */
-  readonly blocked: RecordingFailure | null
   /** The kept one the person picked to be replaced next, if any. */
   readonly choice: string | null
   readonly notice: string
   readonly source: SoundbiteSource
   /** The latest list read asked for; a result for any other is stale. */
   readonly readSeq: number
-  /** The latest play asked for; a result for any other is stale. */
-  readonly playSeq: number
-  /**
-   * Saves and removes this page has asked for and not yet heard back on.
-   * Each one re-reads the list when it lands, so a store change seen
-   * meanwhile only needs noting (`changedMeanwhile`), not a read of its own.
-   */
-  readonly writing: number
-  readonly changedMeanwhile: boolean
-  /** A save's read, which says how many are kept once it lands. */
-  readonly keptNote: {
-    readonly seq: number
-    readonly durationMs: number
-  } | null
 }
 
-/** What the person does. */
+/** What the person does, apart from the take pattern's own taps. */
 export type SoundbitesIntent =
-  | { readonly type: "recordPressed" }
-  | { readonly type: "discardPressed" }
-  | { readonly type: "playPressed"; readonly id: string }
-  | { readonly type: "deleteConfirmed"; readonly id: string }
   | { readonly type: "replacePicked"; readonly id: string }
   | { readonly type: "retryRead" }
 
-/** What the page, the clock and the ports report. */
+/** What the page and the ports report. */
 type SoundbitesSignal =
   | { readonly type: "arrived"; readonly autoStart: boolean }
   | { readonly type: "left" }
@@ -129,55 +73,27 @@ type SoundbitesSignal =
   | { readonly type: "shown" }
   /** The store committed a change, possibly from another page instance. */
   | { readonly type: "storeChanged" }
-  | { readonly type: "ticked"; readonly now: number; readonly level: number }
-  | { readonly type: "micOpened"; readonly at: number }
-  | { readonly type: "micFailed"; readonly reason: RecordingFailure }
-  | {
-      readonly type: "taken"
-      readonly take: Take
-      readonly id: string
-      readonly at: string
-      readonly situation: SoundbiteSituation
-    }
-  | { readonly type: "takeFailed" }
-  | { readonly type: "saved"; readonly bite: Soundbite }
-  | { readonly type: "saveFailed"; readonly full: boolean }
+  /** A take was stored. */
+  | { readonly type: "saved" }
+  | { readonly type: "setAsideFailed" }
   | {
       readonly type: "listed"
       readonly seq: number
       readonly kept: ReadonlyArray<Soundbite>
     }
   | { readonly type: "listFailed"; readonly seq: number }
-  | { readonly type: "audioLoaded"; readonly seq: number; readonly audio: Blob }
-  | { readonly type: "audioMissing"; readonly seq: number }
-  | { readonly type: "audioUnreadable"; readonly seq: number }
-  | { readonly type: "playbackEnded"; readonly seq: number }
-  | { readonly type: "removed"; readonly id: string }
-  | { readonly type: "removeFailed" }
 
 export type SoundbitesEvent = SoundbitesIntent | SoundbitesSignal
 
 export type SoundbitesEffect =
-  | { readonly type: "openMic" }
-  | { readonly type: "finishTake" }
-  | { readonly type: "discardTake" }
-  | { readonly type: "startClock" }
-  | { readonly type: "stopClock" }
-  | {
-      readonly type: "save"
-      readonly bite: Soundbite
-      readonly audio: Blob
-      readonly replace: string | null
-    }
   | { readonly type: "read"; readonly seq: number }
-  | { readonly type: "loadAudio"; readonly id: string; readonly seq: number }
-  | {
-      readonly type: "startPlayback"
-      readonly audio: Blob
-      readonly seq: number
-    }
-  | { readonly type: "stopPlayback" }
-  | { readonly type: "remove"; readonly id: string }
+  /**
+   * The take pattern's tap, starting a take: nothing is under way while the
+   * page arrives or is hidden, so it starts one.
+   */
+  | { readonly type: "startTake" }
+  /** The page went, or went off screen: the pattern's `leave`. */
+  | { readonly type: "leaveTake" }
   | { readonly type: "announceAutoStart" }
 
 export type Step = {
@@ -186,14 +102,7 @@ export type Step = {
 }
 
 export const NOTICES = {
-  tooShort: "Too short to keep. Tap, talk, then tap again.",
-  notKept: "That one couldn't be kept. Try again?",
-  full: "No room for that one: this phone keeps six until a home it's paired with has them. Delete one, or record it again once home has one of them.",
-  thrownAway: "Thrown away. Nothing kept.",
-  audioMissing: "That recording's audio is missing.",
-  notPlayable: "That recording couldn't be played.",
-  notDeleted: "That one couldn't be deleted. Try again?",
-  notStarted: "The screen went away before the microphone opened. Tap to talk.",
+  notSetAside: "That one couldn't be set aside. Try again?",
 } as const
 
 export function initialState(source: SoundbiteSource): SoundbitesState {
@@ -202,103 +111,54 @@ export function initialState(source: SoundbiteSource): SoundbitesState {
     visible: true,
     autoStartPending: false,
     library: { kind: "reading" },
-    activity: { kind: "idle" },
-    blocked: null,
     choice: null,
     notice: "",
     source,
     readSeq: 0,
-    playSeq: 0,
-    writing: 0,
-    changedMeanwhile: false,
-    keptNote: null,
   }
-}
-
-/** Whether the list's play and delete controls take a tap. */
-export function canUseKept(activity: Activity): boolean {
-  return activity.kind === "idle" || activity.kind === "playing"
 }
 
 const stay = (state: SoundbitesState): Step => ({ state, effects: [] })
-
-/** `saving` waits on the recorder for the take first, then on the store. */
-const FINISHING: TakePhase = { kind: "finishing" }
-
-/** A take still under way, as the page's activity. */
-function taking(
-  state: SoundbitesState,
-  next: TakeStep & { kind: "taking" }
-): Step {
-  const { phase } = next
-  return {
-    state: {
-      ...state,
-      activity: phase.kind === "finishing" ? { kind: "saving" } : phase,
-    },
-    effects: next.effects,
-  }
-}
 
 function read(state: SoundbitesState): Step {
   const seq = state.readSeq + 1
   return { state: { ...state, readSeq: seq }, effects: [{ type: "read", seq }] }
 }
 
-function startRecording(state: SoundbitesState): Step {
+function autoStarted(state: SoundbitesState): Step {
   return {
-    state: {
-      ...state,
-      activity: { kind: "opening" },
-      blocked: null,
-      notice: "",
-    },
-    effects: [
-      ...(state.activity.kind === "playing"
-        ? [{ type: "stopPlayback" } as const]
-        : []),
-      ...openTake().effects,
-    ],
+    state: { ...state, autoStartPending: false, notice: "" },
+    effects: [{ type: "announceAutoStart" }, { type: "startTake" }],
   }
 }
 
-function finishRecording(state: SoundbitesState): Step {
-  if (state.activity.kind !== "recording") return stay(state)
-  const next = finishTake(state.activity)
-  return next.kind === "taking" ? taking(state, next) : stay(state)
-}
-
 /**
- * One of this page's writes has landed. A write that changed the store
- * re-reads the list; one that failed re-reads only if the store changed
- * meanwhile (another page instance's save, say).
+ * The soundbite a kept take becomes: what the app knew as it was handed
+ * over, the way in, and the one it replaces at the cap (`choice`).
  */
-function writeLanded(state: SoundbitesState, changed: boolean): Step {
-  const writing = Math.max(0, state.writing - 1)
-  const settled = { ...state, writing }
-  if (!changed && !state.changedMeanwhile) return stay(settled)
-  if (writing > 0 && !changed) return stay(settled)
-  return read({ ...settled, changedMeanwhile: false })
-}
-
-/** Whether `seq` is the play the page is still waiting on. */
-function isCurrentPlay(state: SoundbitesState, seq: number): boolean {
-  return state.activity.kind === "playing" && state.activity.seq === seq
-}
-
-function stopPlay(state: SoundbitesState, notice?: string): Step {
+export function keptBite(
+  state: SoundbitesState,
+  take: Take,
+  kept: {
+    readonly id: string
+    readonly at: string
+    readonly situation: SoundbiteSituation
+  }
+): { readonly bite: Soundbite; readonly replace: string | null } {
   return {
-    state: {
-      ...state,
-      activity: { kind: "idle" },
-      notice: notice ?? state.notice,
+    bite: {
+      id: kept.id,
+      recordedAt: kept.at,
+      durationMs: Math.min(take.durationMs, SOUNDBITE_MAX_MS),
+      mimeType: take.mimeType,
+      bytes: take.blob.size,
+      context: { ...kept.situation, source: state.source },
     },
-    effects: [{ type: "stopPlayback" }],
+    replace: state.choice,
   }
 }
 
 export function step(state: SoundbitesState, event: SoundbitesEvent): Step {
-  const { activity } = state
   switch (event.type) {
     case "arrived": {
       // Arriving again after leaving is StrictMode's remount, or a return
@@ -313,270 +173,67 @@ export function step(state: SoundbitesState, event: SoundbitesEvent): Step {
           state: { ...here.state, autoStartPending: true },
           effects: here.effects,
         }
-      const started = startRecording(here.state)
+      const started = autoStarted(here.state)
       return {
         state: started.state,
-        effects: [
-          ...here.effects,
-          { type: "announceAutoStart" },
-          ...started.effects,
-        ],
+        effects: [...here.effects, ...started.effects],
       }
     }
 
     case "left": {
-      const gone = { ...state, page: "left" as const }
-      if (activity.kind === "recording") return finishRecording(gone)
-      if (activity.kind === "playing") return stopPlay(gone)
-      return stay(gone)
+      return {
+        state: { ...state, page: "left" },
+        effects: [{ type: "leaveTake" }],
+      }
     }
 
     case "hidden": {
-      return finishRecording({ ...state, visible: false })
+      return {
+        state: { ...state, visible: false },
+        effects: [{ type: "leaveTake" }],
+      }
     }
 
     case "shown": {
       const shown = { ...state, visible: true }
-      if (!state.autoStartPending || activity.kind !== "idle")
-        return stay(shown)
-      const started = startRecording({ ...shown, autoStartPending: false })
-      return {
-        state: started.state,
-        effects: [{ type: "announceAutoStart" }, ...started.effects],
-      }
+      if (!state.autoStartPending || state.page === "left") return stay(shown)
+      return autoStarted(shown)
     }
 
     case "storeChanged": {
-      // A save or delete committed, maybe by the page instance that was
+      // A save or a mark committed, maybe by the page instance that was
       // left mid-take: re-read, so a remount does not keep a pre-save list.
-      // While a write of ours is out, its landing re-reads anyway.
-      if (state.writing > 0) return stay({ ...state, changedMeanwhile: true })
-      return state.page === "here" ? read(state) : stay(state)
-    }
-
-    case "recordPressed": {
-      if (activity.kind === "idle" || activity.kind === "playing")
-        return startRecording(state)
-      return finishRecording(state)
-    }
-
-    case "discardPressed": {
-      if (activity.kind !== "recording") return stay(state)
-      return {
-        state: {
-          ...state,
-          activity: { kind: "idle" },
-          notice: NOTICES.thrownAway,
-        },
-        effects: discardTake(activity).effects,
-      }
-    }
-
-    case "ticked": {
-      if (activity.kind !== "recording") return stay(state)
-      const next = stepTake(activity, event, LIMITS)
-      return next.kind === "taking" ? taking(state, next) : stay(state)
-    }
-
-    case "micOpened": {
-      if (activity.kind !== "opening") return stay(state)
-      // Left, or hidden, while the microphone was opening: let it go.
-      // Nothing records while the page is off screen.
-      if (state.page === "left" || !state.visible)
-        return {
-          state: {
-            ...state,
-            activity: { kind: "idle" },
-            notice: state.page === "left" ? state.notice : NOTICES.notStarted,
-          },
-          effects: [{ type: "discardTake" }],
-        }
-      const next = stepTake({ kind: "opening" }, event, LIMITS)
-      return next.kind === "taking" ? taking(state, next) : stay(state)
-    }
-
-    case "micFailed": {
-      if (activity.kind !== "opening") return stay(state)
-      const next = stepTake({ kind: "opening" }, event, LIMITS)
-      if (next.kind !== "blocked") return stay(state)
-      return stay({
-        ...state,
-        activity: { kind: "idle" },
-        blocked: next.reason,
-      })
-    }
-
-    case "taken": {
-      if (activity.kind !== "saving") return stay(state)
-      const next = stepTake(FINISHING, event, LIMITS)
-      if (next.kind === "short")
-        return stay({
-          ...state,
-          activity: { kind: "idle" },
-          notice: NOTICES.tooShort,
-        })
-      if (next.kind !== "kept") return stay(state)
-      const { take } = next
-      const bite: Soundbite = {
-        id: event.id,
-        recordedAt: event.at,
-        durationMs: Math.min(take.durationMs, SOUNDBITE_MAX_MS),
-        mimeType: take.mimeType,
-        bytes: take.blob.size,
-        context: { ...event.situation, source: state.source },
-      }
-      return {
-        state: { ...state, writing: state.writing + 1 },
-        effects: [
-          { type: "save", bite, audio: take.blob, replace: state.choice },
-        ],
-      }
-    }
-
-    case "takeFailed": {
-      if (activity.kind !== "saving") return stay(state)
-      return stay({
-        ...state,
-        activity: { kind: "idle" },
-        notice: NOTICES.notKept,
-      })
-    }
-
-    case "saveFailed": {
-      if (activity.kind !== "saving") return stay(state)
-      return writeLanded(
-        {
-          ...state,
-          activity: { kind: "idle" },
-          notice: event.full ? NOTICES.full : NOTICES.notKept,
-        },
-        false
-      )
+      // A write landed, so an earlier one that failed is old news.
+      const settled = { ...state, notice: "" }
+      return state.page === "here" ? read(settled) : stay(settled)
     }
 
     case "saved": {
-      if (activity.kind !== "saving") return stay(state)
-      // Stored. A re-read that fails after this must not say otherwise, or
-      // the retry it invites would keep it twice: the list goes unknown and
-      // the notice still says kept.
-      const next = writeLanded(
-        {
-          ...state,
-          activity: { kind: "idle" },
-          source: "direct",
-          choice: null,
-          notice: `Kept, ${formatDuration(event.bite.durationMs)}.`,
-        },
-        true
-      )
-      return {
-        state: {
-          ...next.state,
-          keptNote: {
-            seq: next.state.readSeq,
-            durationMs: event.bite.durationMs,
-          },
-        },
-        effects: next.effects,
-      }
+      return stay({ ...state, source: "direct", choice: null, notice: "" })
+    }
+
+    case "setAsideFailed": {
+      return stay({ ...state, notice: NOTICES.notSetAside })
     }
 
     case "listed": {
       if (event.seq !== state.readSeq) return stay(state)
       const kept = byNewest(event.kept)
-      const note = state.keptNote?.seq === event.seq ? state.keptNote : null
       return stay({
         ...state,
         library: { kind: "read", kept },
         // A pick let go elsewhere (a share's hand-off, say) is no pick.
         choice: kept.some((b) => b.id === state.choice) ? state.choice : null,
-        keptNote: null,
-        notice:
-          note === null
-            ? state.notice
-            : `Kept, ${formatDuration(note.durationMs)}. ${kept.length} of ${SOUNDBITE_LIMIT} on this phone.`,
       })
     }
 
     case "listFailed": {
       if (event.seq !== state.readSeq) return stay(state)
-      return stay({
-        ...state,
-        library: { kind: "unreadable" },
-        keptNote: null,
-      })
+      return stay({ ...state, library: { kind: "unreadable" } })
     }
 
     case "retryRead": {
       return read({ ...state, library: { kind: "reading" } })
-    }
-
-    case "playPressed": {
-      if (activity.kind === "playing" && activity.id === event.id)
-        return stopPlay(state)
-      if (!canUseKept(activity)) return stay(state)
-      const seq = state.playSeq + 1
-      return {
-        state: {
-          ...state,
-          playSeq: seq,
-          activity: { kind: "playing", id: event.id, seq },
-        },
-        effects: [
-          ...(activity.kind === "playing"
-            ? [{ type: "stopPlayback" } as const]
-            : []),
-          { type: "loadAudio", id: event.id, seq },
-        ],
-      }
-    }
-
-    case "audioLoaded": {
-      if (!isCurrentPlay(state, event.seq)) return stay(state)
-      return {
-        state,
-        effects: [
-          { type: "startPlayback", audio: event.audio, seq: event.seq },
-        ],
-      }
-    }
-
-    case "audioMissing": {
-      if (!isCurrentPlay(state, event.seq)) return stay(state)
-      return stopPlay(state, NOTICES.audioMissing)
-    }
-
-    case "audioUnreadable": {
-      if (!isCurrentPlay(state, event.seq)) return stay(state)
-      return stopPlay(state, NOTICES.notPlayable)
-    }
-
-    case "playbackEnded": {
-      if (!isCurrentPlay(state, event.seq)) return stay(state)
-      return stopPlay(state)
-    }
-
-    case "deleteConfirmed": {
-      if (!canUseKept(activity)) return stay(state)
-      const stopped =
-        activity.kind === "playing" && activity.id === event.id
-          ? stopPlay(state)
-          : stay(state)
-      return {
-        state: { ...stopped.state, writing: stopped.state.writing + 1 },
-        effects: [...stopped.effects, { type: "remove", id: event.id }],
-      }
-    }
-
-    case "removed": {
-      return writeLanded(
-        { ...state, choice: state.choice === event.id ? null : state.choice },
-        true
-      )
-    }
-
-    case "removeFailed": {
-      return writeLanded({ ...state, notice: NOTICES.notDeleted }, false)
     }
 
     case "replacePicked": {

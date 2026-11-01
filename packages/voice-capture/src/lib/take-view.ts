@@ -33,12 +33,17 @@ export type TakeButtonView =
       readonly level: number
       /** In the last `NEARLY_UP_MS` before the cap. */
       readonly nearlyUp: boolean
+      /** The options' `clock`: count the time run, or the time left. */
+      readonly clock: TakePatternOptions["clock"]
     }
   /** Stopped, being kept: nothing to tap. */
   | { readonly kind: "keeping" }
   /** Another item's take is under way on this screen. */
   | { readonly kind: "elsewhere" }
-  /** As many takes as the item keeps (`takes.max`): Redo or Let go makes room. */
+  /**
+   * As many takes as the item keeps (`takes.max`, `full: "refuse"`): Redo
+   * or Let go makes room.
+   */
   | { readonly kind: "full"; readonly max: number }
 
 /** One take's row: what it offers now. */
@@ -110,7 +115,11 @@ function buttonOf(
   switch (take.kind) {
     case "idle": {
       const { takes } = options
-      if (takes.per === "many" && current.length >= takes.max) {
+      if (
+        takes.per === "many" &&
+        takes.full === "refuse" &&
+        current.length >= takes.max
+      ) {
         return { kind: "full", max: takes.max }
       }
       return { kind: "ready", again: takes.per === "one" && current.length > 0 }
@@ -126,6 +135,7 @@ function buttonOf(
         capMs: take.capMs,
         level: take.level,
         nearlyUp: take.capMs - take.elapsedMs <= NEARLY_UP_MS,
+        clock: options.clock,
       }
     }
     default: {

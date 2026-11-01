@@ -4,6 +4,14 @@
  * the page and talking. The app notes the when and the around-what itself
  * (`SoundbiteContext`), so the person only ever supplies the why.
  *
+ * The take is the take pattern's (`@some-ui/voice-capture`), with the
+ * page's options (`SOUNDBITE_TAKES` in `lib/policy`): its button, counting
+ * down the minute, and its rows, each with Play, Redo and Let it go. Let it
+ * go sets a soundbite aside (D3): out of the list, still kept, so it asks
+ * nothing first. The page's own extras sit in the pattern's slots: what the
+ * app noted, under each row's length, and "Replace this one next instead",
+ * in the row's `extra`.
+ *
  * Bounded twice: a take stops itself at `SOUNDBITE_MAX_MS`, and the phone
  * keeps `SOUNDBITE_LIMIT`. Once full, the next one replaces the one
  * `lib/policy` picks, or one the person marks instead, a choice made
@@ -14,34 +22,37 @@
  * left. What was said up to then is the soundbite.
  *
  * This component only renders and forwards taps. What happens, in what
- * order, and which late result still counts is `lib/machine.ts`; talking to
- * the microphone, the database and `Audio` is `lib/runtime.ts`. It owns one
+ * order, and which late result still counts is `lib/machine.ts` and the
+ * take pattern; talking to the microphone, the database and `Audio` is
+ * `lib/runtime.ts`. It owns one
  * runtime for as long as it is mounted, attached while it is
  * (docs/monorepo-boundaries.md, "Inside a React package").
  */
 import type { JSX, ReactNode } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
-import { cn } from "@some-ui/core-utils"
-import { BrandMark, Button, TalkGlyph, useConfirmSheet } from "@some-ui/shared"
-import { RECORDING_FAILURE_COPY } from "@some-ui/voice-capture"
 import {
-  describeContext,
-  formatDuration,
-  formatWhen,
-} from "@soundbites/lib/format"
+  BrandMark,
+  Button,
+  TakeButton,
+  TakeRows,
+  useTakePattern,
+} from "@some-ui/shared"
+import type { TakeRowView } from "@some-ui/voice-capture"
+import { TAKE_WORDS, takeItemView, takeSaid } from "@some-ui/voice-capture"
+import { describeContext, formatWhen } from "@soundbites/lib/format"
 import { homeHeld, homeHoldsNow } from "@soundbites/lib/home-held"
-import type { Activity, SoundbiteSituation } from "@soundbites/lib/machine"
-import { canUseKept } from "@soundbites/lib/machine"
+import type { SoundbiteSituation } from "@soundbites/lib/machine"
 import { phonePorts } from "@soundbites/lib/phone"
 import {
   nextReplaced,
+  patternTakes,
+  SOUNDBITE_ITEM,
   SOUNDBITE_LIMIT,
-  SOUNDBITE_MAX_MS,
 } from "@soundbites/lib/policy"
 import type { SoundbitesPorts } from "@soundbites/lib/runtime"
 import { createSoundbites } from "@soundbites/lib/runtime"
-import type { Soundbite, SoundbiteSource } from "@soundbites/lib/types"
-import { Pause, Play, Square, Trash2 } from "lucide-react"
+import type { SoundbiteSource } from "@soundbites/lib/types"
+import { replacedBy, SOUNDBITE_WORDS as WORDS } from "@soundbites/lib/words"
 
 export type SoundbitesProps = {
   /** Where the app stands. Read once, as each soundbite is kept. */
@@ -100,165 +111,6 @@ function askFor(source: SoundbiteSource): {
       }
 }
 
-/** The last stretch of a take, when the fill warns that time is nearly up. */
-const WARN_MS = 10_000
-
-/** What the big button does when pressed, for a screen reader. */
-const RECORD_LABELS: Record<Activity["kind"], string> = {
-  idle: "Start talking",
-  playing: "Start talking",
-  opening: "Opening the microphone",
-  recording: "Done, keep it",
-  saving: "Keeping it",
-}
-
-const RecordButton = ({
-  activity,
-  onPress,
-}: {
-  activity: Activity
-  onPress: () => void
-}): JSX.Element => {
-  const recording = activity.kind === "recording"
-  const elapsed = recording ? activity.elapsed : 0
-  const level = recording ? activity.level : 0
-  const busy = activity.kind === "opening" || activity.kind === "saving"
-  const progress = recording ? Math.min(1, elapsed / SOUNDBITE_MAX_MS) : 0
-  const warning = recording && SOUNDBITE_MAX_MS - elapsed <= WARN_MS
-
-  const label = RECORD_LABELS[activity.kind]
-
-  return (
-    <button
-      type="button"
-      onClick={onPress}
-      disabled={busy}
-      aria-label={label}
-      aria-pressed={recording}
-      className={cn(
-        "relative mx-auto flex size-44 flex-col items-center justify-center gap-1.5 overflow-hidden rounded-full shadow-lg transition-[transform,background-color] duration-100 [@media(max-height:479px)]:size-36",
-        "focus-visible:ring-ring focus-visible:ring-offset-background focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
-        "disabled:opacity-70",
-        recording
-          ? "bg-destructive/15 text-foreground ring-destructive ring-[3px] ring-inset"
-          : "bg-brand text-brand-foreground active:scale-95"
-      )}
-      // The input level breathes the button while it listens: proof the
-      // microphone hears, without a word on screen.
-      style={recording ? { transform: `scale(${1 + level * 0.12})` } : {}}
-    >
-      {/* The take fills the button from the bottom as the minute runs. */}
-      <span
-        aria-hidden
-        className={cn(
-          "absolute inset-x-0 bottom-0 transition-[height] duration-100",
-          warning ? "bg-warning" : "bg-destructive"
-        )}
-        style={{ height: `${progress * 100}%` }}
-      />
-      {recording ? (
-        // On its own chip, so it reads over the fill at any height.
-        <span className="bg-background text-foreground relative flex flex-col items-center gap-1 rounded-2xl px-4 py-2">
-          <Square className="size-7 fill-current" aria-hidden="true" />
-          <span className="text-sm font-semibold tabular-nums">
-            {formatDuration(SOUNDBITE_MAX_MS - elapsed)} left
-          </span>
-        </span>
-      ) : (
-        <>
-          <TalkGlyph
-            className={cn("size-10", busy && "motion-safe:animate-pulse")}
-          />
-          <span className="text-base font-bold">
-            {busy ? "…" : "Tap to talk"}
-          </span>
-        </>
-      )}
-    </button>
-  )
-}
-
-const KeptSoundbite = ({
-  bite,
-  now,
-  full,
-  isNextReplaced,
-  playing,
-  disabled,
-  onPlay,
-  onReplaceInstead,
-  onDelete,
-}: {
-  bite: Soundbite
-  now: Date
-  full: boolean
-  isNextReplaced: boolean
-  playing: boolean
-  disabled: boolean
-  onPlay: () => void
-  onReplaceInstead: () => void
-  onDelete: () => void
-}): JSX.Element => {
-  const when = formatWhen(bite.recordedAt, now)
-  return (
-    <li
-      className={cn(
-        "bg-card border-border/50 flex items-center gap-3 rounded-2xl border p-3",
-        isNextReplaced && "border-warning/60 bg-warning/5"
-      )}
-    >
-      <Button
-        size="icon"
-        className="bg-brand text-brand-foreground hover:bg-brand/85 size-11 shrink-0 rounded-full"
-        onClick={onPlay}
-        disabled={disabled}
-        aria-label={playing ? `Stop playing ${when}` : `Play ${when}`}
-      >
-        {playing ? (
-          <Pause className="size-4" aria-hidden="true" />
-        ) : (
-          <Play className="size-4" aria-hidden="true" />
-        )}
-      </Button>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium">
-          {when}{" "}
-          <span className="text-muted-foreground tabular-nums">
-            · {formatDuration(bite.durationMs)}
-          </span>
-        </p>
-        <p className="text-muted-foreground truncate text-xs">
-          {describeContext(bite.context, bite.recordedAt)}
-        </p>
-        {full &&
-          (isNextReplaced ? (
-            <p className="text-xs font-medium text-warning">
-              Replaced by your next one
-            </p>
-          ) : (
-            <button
-              type="button"
-              onClick={onReplaceInstead}
-              className="text-muted-foreground hover:text-foreground text-xs underline-offset-2 hover:underline"
-            >
-              Replace this one next instead
-            </button>
-          ))}
-      </div>
-      <Button
-        size="icon"
-        variant="ghost"
-        className="text-muted-foreground hover:text-destructive shrink-0"
-        onClick={onDelete}
-        disabled={disabled}
-        aria-label={`Delete ${when}`}
-      >
-        <Trash2 className="size-4" aria-hidden="true" />
-      </Button>
-    </li>
-  )
-}
-
 export const Soundbites = ({
   situation,
   source = "direct",
@@ -284,8 +136,9 @@ export const Soundbites = ({
   const state = useSyncExternalStore(runtime.subscribe, runtime.getSnapshot)
   // Read so what home holds, said again, renders the offer again.
   useSyncExternalStore(homeHeld.subscribe, homeHeld.getSnapshot)
-  const { activity, library, choice, notice, blocked } = state
-  const { dispatch } = runtime
+  const { library, choice, notice } = state
+  const { dispatch, pattern } = runtime
+  const take = useTakePattern(pattern)
 
   const now = new Date()
   // What the page asks for follows the runtime's way in, not the prop: the
@@ -293,30 +146,55 @@ export const Soundbites = ({
   // "Talk now" back into "Not today?", and the runtime alone knows when a
   // stored take has made the next one "direct".
   const ask = askFor(state.source)
-  const recording = activity.kind === "recording"
-  const usable = canUseKept(activity)
   const kept = library.kind === "read" ? library.kept : null
   const full = kept !== null && kept.length >= SOUNDBITE_LIMIT
   // One reading of what home holds for this render, not one per soundbite.
   const held = homeHoldsNow()
   const replaced = kept === null ? null : nextReplaced(kept, choice, held)
-  const playingId = activity.kind === "playing" ? activity.id : null
+  const bites = new Map((kept ?? []).map((bite) => [bite.id, bite]))
+  const view = takeItemView(
+    take,
+    patternTakes(kept ?? [], held),
+    SOUNDBITE_ITEM,
+    pattern.options
+  )
+  const said = view.said === null ? null : takeSaid(TAKE_WORDS, view.said)
 
-  const confirmSheet = useConfirmSheet()
-  const remove = (bite: Soundbite, when: string): void =>
-    confirmSheet.ask({
-      title: "Delete this soundbite?",
-      description: `The soundbite from ${when} leaves this phone, and can't be brought back.`,
-      confirm: "Delete it",
-      onConfirm: () => dispatch({ type: "deleteConfirmed", id: bite.id }),
-    })
+  /** What the app noted, under a row's length. */
+  const describe = ({ id }: { id: string }): ReactNode => {
+    const bite = bites.get(id)
+    if (bite === undefined) return undefined
+    return `${formatWhen(bite.recordedAt, now)} · ${describeContext(bite.context, bite.recordedAt)}`
+  }
+
+  /** The row's extra (the pattern's slot): which one the next replaces. */
+  const replaceNext = (row: TakeRowView): ReactNode => {
+    const { id } = row.take
+    if (!full || !held(id)) return undefined
+    if (replaced?.id === id)
+      return (
+        <span className="text-warning px-2 text-xs font-medium">
+          Replaced by your next one
+        </span>
+      )
+    return (
+      <Button
+        type="button"
+        size="sm"
+        variant="ghost"
+        className="text-muted-foreground"
+        onClick={() => dispatch({ type: "replacePicked", id })}
+      >
+        Replace this one next instead
+      </Button>
+    )
+  }
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-6 pb-8">
       {/* A phone held sideways (under 480px tall: the height half of the
           `handheld` variant in @some-ui/styles) has no room to stack the
-          header over the button, and stacked, "Throw it away" fell below
-          the fold mid-take. There they sit side by side instead. */}
+          header over the button, so there they sit side by side. */}
       <div className="flex flex-col gap-6 [@media(max-height:479px)]:flex-row [@media(max-height:479px)]:items-center [@media(max-height:479px)]:gap-8">
         <header className="space-y-1 text-center [@media(max-height:479px)]:flex-1 [@media(max-height:479px)]:text-left">
           <h1 className="text-2xl font-semibold tracking-tight">{ask.title}</h1>
@@ -324,48 +202,27 @@ export const Soundbites = ({
         </header>
 
         <div className="flex flex-col items-center gap-3">
-          <RecordButton
-            activity={activity}
-            onPress={() => dispatch({ type: "recordPressed" })}
+          <TakeButton
+            view={view.button}
+            size="large"
+            onTap={() => pattern.tap(SOUNDBITE_ITEM, view.supersedes)}
           />
-          {recording ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => dispatch({ type: "discardPressed" })}
-            >
-              Throw it away
-            </Button>
-          ) : (
-            // Holds the line the button above takes while recording, so the
-            // page does not jump when a take starts.
-            <div className="h-9" aria-hidden="true" />
-          )}
           <p
             aria-live="polite"
+            data-take-ended={
+              view.said?.kind === "ended" ? view.said.ended.seq : undefined
+            }
             className="text-muted-foreground min-h-5 text-center text-sm"
           >
-            {notice}
+            {said}
           </p>
-        </div>
-      </div>
-
-      {blocked !== null && activity.kind === "idle" && (
-        <div
-          role="alert"
-          className="border-destructive/40 bg-destructive/5 space-y-3 rounded-lg border p-4 text-sm"
-        >
-          <p>{RECORDING_FAILURE_COPY[blocked]}</p>
-          {blocked !== "unsupported" && (
-            <Button
-              size="sm"
-              onClick={() => dispatch({ type: "recordPressed" })}
-            >
-              Try again
-            </Button>
+          {notice !== "" && (
+            <p role="alert" className="text-destructive text-center text-sm">
+              {notice}
+            </p>
           )}
         </div>
-      )}
+      </div>
 
       {ask.starters && (
         <section aria-label="If you're stuck" className="space-y-2">
@@ -391,7 +248,8 @@ export const Soundbites = ({
             On this phone
           </h2>
           {/* Only a count that was read: before a read succeeds (or when
-              it failed) there is no number to show, and 0 would say empty. */}
+              it failed) there is no number to show, and 0 would say empty.
+              Set aside and earlier ones are kept too, so they count. */}
           {kept !== null && (
             <span className="bg-brand text-brand-foreground rounded-full px-3 py-0.5 text-xs font-bold tabular-nums">
               {kept.length} of {SOUNDBITE_LIMIT} kept
@@ -401,20 +259,17 @@ export const Soundbites = ({
 
         {full && replaced !== null && (
           <p className="text-muted-foreground text-xs">
-            Full. Your next one replaces{" "}
+            {WORDS.fullReplaces}{" "}
             <span className="text-foreground font-medium">
               {formatWhen(replaced.recordedAt, now)}
             </span>
-            {choice === null ? ", the oldest home has" : ""}. Pick another below
-            to replace that one instead.
+            {WORDS.whichGoes[replacedBy(replaced, choice)]}
+            {WORDS.pickAnother}
           </p>
         )}
 
         {full && replaced === null && (
-          <p className="text-muted-foreground text-xs">
-            Full. These stay on this phone until a home it&apos;s paired with
-            has them, and then your next one replaces the oldest.
-          </p>
+          <p className="text-muted-foreground text-xs">{WORDS.fullNoneHeld}</p>
         )}
 
         {library.kind === "unreadable" ? (
@@ -422,11 +277,7 @@ export const Soundbites = ({
             role="alert"
             className="bg-muted/40 space-y-3 rounded-2xl p-4 text-center text-sm"
           >
-            <p className="text-muted-foreground">
-              Couldn&apos;t read what&apos;s on this phone. If it is full, your
-              next one replaces the oldest home has, or isn&apos;t kept while
-              home has none.
-            </p>
+            <p className="text-muted-foreground">{WORDS.unreadable}</p>
             <Button
               size="sm"
               variant="outline"
@@ -441,35 +292,17 @@ export const Soundbites = ({
             Nothing kept yet.
           </p>
         ) : (
-          <ul className="space-y-2">
-            {kept.map((bite) => {
-              const when = formatWhen(bite.recordedAt, now)
-              return (
-                <KeptSoundbite
-                  key={bite.id}
-                  bite={bite}
-                  now={now}
-                  full={full && held(bite.id)}
-                  isNextReplaced={replaced?.id === bite.id}
-                  playing={playingId === bite.id}
-                  disabled={!usable}
-                  onPlay={() => dispatch({ type: "playPressed", id: bite.id })}
-                  onReplaceInstead={() =>
-                    dispatch({ type: "replacePicked", id: bite.id })
-                  }
-                  onDelete={() => remove(bite, when)}
-                />
-              )
-            })}
-          </ul>
+          <TakeRows
+            view={view}
+            onPlay={pattern.play}
+            onRedo={(id) => pattern.tap(SOUNDBITE_ITEM, id)}
+            onLetGo={pattern.letGo}
+            describe={describe}
+            extra={replaceNext}
+          />
         )}
       </section>
-      {footer?.(
-        activity.kind === "opening" ||
-          activity.kind === "recording" ||
-          activity.kind === "saving"
-      )}
-      {confirmSheet.sheet}
+      {footer?.(take.take.kind !== "idle")}
     </div>
   )
 }

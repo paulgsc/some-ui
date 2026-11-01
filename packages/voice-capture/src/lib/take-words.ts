@@ -36,6 +36,8 @@ export type TakeWords = {
   }
   /** "0:12 / 1:00": how long it has run, against the cap. */
   readonly elapsed: (elapsedMs: number, capMs: number) => string
+  /** "0:48 left": the time left before the cap, for `clock: "left"`. */
+  readonly left: (leftMs: number) => string
   /** The last stretch before the cap. */
   readonly nearlyUp: (leftMs: number) => string
   /** A take's length. */
@@ -89,6 +91,9 @@ export const TAKE_WORDS: TakeWords = {
   },
   elapsed: (elapsedMs, capMs) =>
     `${formatTimecode(elapsedMs)} / ${formatTimecode(capMs)}`,
+  // Rounded up, so it reads 0:00 only once the take has stopped.
+  left: (leftMs) =>
+    `${formatTimecode(Math.max(0, Math.ceil(leftMs / 1_000)) * 1_000)} left`,
   nearlyUp: (leftMs) => {
     const seconds = Math.max(0, Math.ceil(leftMs / 1_000))
     return `${seconds} second${seconds === 1 ? "" : "s"} left`
