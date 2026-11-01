@@ -49,8 +49,9 @@ do:
   (2b's `lacking`): scenes retired before the mailbox opened, and scenes
   whose folder an earlier run wrote and whose mailbox put failed. Their decks
   are read for word ids (step 4), and each answers the reflection its folder
-  names. A run without Drive can't read them, so a word id it writes may
-  already mean another word in one of them: it says so in the summary.
+  names. A run without Drive can't read them, so it may answer a reflection
+  one of them already answers, and a word id it writes may already mean
+  another word in one of them: it says so in the summary.
 - **The `Inbox/` triage** (step 11).
 
 The scheduled task's prompt points at this file, so a change to the run is a
@@ -390,10 +391,10 @@ Voice notes never go to the mailbox from this run.
 
    If an earlier run's scene folder for the reflection (its description
    `answers: <base>`) holds one file only, that run stopped between its two
-   uploads after it triaged the reflection: skip part C for it, and write the
-   pair in the same context and under the same title as that file (read it
-   for it), so step 6's title is the folder's name. Its Drive copy finishes
-   that folder (6a).
+   uploads after it triaged the reflection: skip part C for it, keep that
+   file's deck unchanged as its half of the envelope and write only the
+   other, in its context and with its `title` and `from` (read the file for
+   them). Its Drive copy finishes that folder (6a).
 
 5. Check each deck the way the phone will. Save the deck as bare JSON to a
    scratch file outside the checkout and run, from `packages/ui/topik`,
@@ -409,7 +410,9 @@ Voice notes never go to the mailbox from this run.
    answers `201` or `200` marks the reflection answered and triaged, so put
    it only after part C for it is done, or has failed with the reason in the
    summary. Its title is `TOPIK <level> · <genre> · <title>`, where `<level>`
-   is the decks' highest line level. Write one scratch file holding
+   is the decks' highest line level; a scene that finishes an earlier run's
+   folder (step 4's last paragraph) takes that folder's name as its title.
+   Write one scratch file holding
    `{"schema":"some-ui.routine-scene/1","answers":"<base>","title":"<its title>","decks":[<the read-aloud deck>,<the lens deck>]}`,
    each deck the JSON you checked, unchanged (build it with `node` or `jq`
    from the two deck files, not by hand), then:
