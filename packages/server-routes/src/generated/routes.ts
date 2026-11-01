@@ -81,7 +81,9 @@ export type ServerRoute =
   | "/api/v1/tabs/reconcile"
   | "/api/v1/tabs/summaries"
   | "/api/v1/utter"
-  | "/api/v1/voice-notes/:id";
+  | "/api/v1/voice-notes/:id"
+  | "/api/v1/voice-notes/:id/heard"
+  | "/api/v1/voice-notes/on-drive";
 
 /** Routes NOT nested under API_BASE_PATH. */
 export type UnversionedRoute =
