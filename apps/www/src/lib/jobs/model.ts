@@ -86,6 +86,12 @@ export type VoiceNote = {
    */
   standing?: "earlier" | "set-aside"
   /**
+   * When it was set aside, ISO 8601, written with its standing and never
+   * after: home's mark is sent with it (MIC2). Absent on one not set aside,
+   * and on one set aside before the phone noted when.
+   */
+  setAsideAt?: string
+  /**
    * For a note out of the draft: the event that recorded its form, by what
    * home is told it belongs to (`<day>:<pick>`, or the scout's id) and when.
    * It goes home under that, and leaves the form (#2443).
@@ -256,8 +262,11 @@ export type JobsAction =
     }
   /** A note kept; `supersedes` names the draft's note a Redo recorded again (D2). */
   | { type: "voice-kept"; note: VoiceNote; supersedes?: string | null }
-  /** A draft's note set aside, kept (D3); one the record names stays as it is. */
-  | { type: "voice-set-aside"; id: string }
+  /**
+   * A draft's note set aside at `at` (ISO 8601), kept (D3); one the record
+   * names stays as it is.
+   */
+  | { type: "voice-set-aside"; id: string; at: string }
   /**
    * Home holds these notes, so their audio leaves the phone and their
    * entries go with it; the log still names them.
@@ -304,14 +313,15 @@ export function isPickStep(e: JobEvent): e is JobEvent & PickRef {
 }
 
 /**
- * `state`'s notes with draft note `id` out of its draft as `standing`; the
- * same array when there is no such note. A note the record names is part of
- * the record, and stays as it is.
+ * `state`'s notes with draft note `id` out of its draft as `standing`, set
+ * aside at `at` when given; the same array when there is no such note. A
+ * note the record names is part of the record, and stays as it is.
  */
 function standAside(
   state: JobsState,
   id: string | null,
-  standing: "earlier" | "set-aside"
+  standing: "earlier" | "set-aside",
+  at?: string
 ): ReadonlyArray<VoiceNote> {
   const note = state.voice.find((n) => n.id === id)
   if (
@@ -321,7 +331,11 @@ function standAside(
   ) {
     return state.voice
   }
-  return state.voice.map((n) => (n === note ? { ...n, standing } : n))
+  const out: VoiceNote =
+    at === undefined
+      ? { ...note, standing }
+      : { ...note, standing, setAsideAt: at }
+  return state.voice.map((n) => (n === note ? out : n))
 }
 
 /**
@@ -592,7 +606,7 @@ export function step(state: JobsState, action: JobsAction): JobsState {
       }
     }
     case "voice-set-aside": {
-      const voice = standAside(state, action.id, "set-aside")
+      const voice = standAside(state, action.id, "set-aside", action.at)
       return voice === state.voice ? state : { ...state, voice }
     }
     case "voice-held": {

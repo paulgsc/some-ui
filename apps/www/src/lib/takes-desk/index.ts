@@ -44,7 +44,8 @@ const isTake = (value: unknown): value is Take =>
   typeof Reflect.get(value, "takenAt") === "number" &&
   typeof Reflect.get(value, "durationMs") === "number" &&
   typeof Reflect.get(value, "mimeType") === "string" &&
-  STANDINGS.includes(Reflect.get(value, "standing"))
+  STANDINGS.includes(Reflect.get(value, "standing")) &&
+  ["undefined", "number"].includes(typeof Reflect.get(value, "setAsideAt"))
 
 /** What either desk offers besides its runtime. */
 type DeskShelf = {
@@ -114,9 +115,12 @@ export function deskList(key: string, max: number): PatternTakesPorts["takes"] {
           other.id === supersedes ? { ...other, standing: "earlier" } : other
       ),
     remove: (ids): boolean => list.remove(({ id }) => ids.includes(id)),
-    setAside: (id): boolean =>
+    // A take set aside once keeps the time it was first let go.
+    setAside: (id, at): boolean =>
       list.update((take) =>
-        take.id === id ? { ...take, standing: "set-aside" } : take
+        take.id === id && take.standing !== "set-aside"
+          ? { ...take, standing: "set-aside", setAsideAt: at }
+          : take
       ),
   }
 }

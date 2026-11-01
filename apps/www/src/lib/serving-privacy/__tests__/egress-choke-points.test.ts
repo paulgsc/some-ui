@@ -17,7 +17,9 @@
  *   `lib/device-backend/native-http` may name it, only `lib/home-link` may
  *   call that module, and only the Home server block, the study list's
  *   "Let it go" and the phone-full offer's "Remove it", the drain and
- *   marks of what this phone keeps on home (LA15), what hands aph's lane to
+ *   marks of what this phone keeps on home (LA15; its voice run also sends
+ *   one `PUT /voice-notes/:id/set-aside` per note let go on the phone that
+ *   home holds, from `lib/home-link/set-aside`, MIC2), what hands aph's lane to
  *   them, Settings' readout of what is kept where, the readout and port
  *   of the routine's files in Korean (whose read sends one
  *   `GET /routine/files` and whose telling of what was opened one
@@ -116,6 +118,13 @@ const ON_DRIVE_SENDS = [['"GET"', "onDrivePath(chunk)"]]
 /** LA8, IH1: the read of one take's words, and the one request it may send. */
 const HEARD_READ = "lib/home-link/heard.ts"
 const HEARD_SENDS = [['"GET"', "heardPath(id)"]]
+
+/**
+ * LA8, LA13 (MIC2): the voice lane's set-aside marks, and the one request
+ * they may send, once per mark due.
+ */
+const SET_ASIDE_SEND = "lib/home-link/set-aside.ts"
+const SET_ASIDE_SENDS = [['"PUT"', "setAsidePath(mark)"]]
 
 /** Every call of a function named `send` in `text`, as its arguments' text. */
 function sendCalls(path: string, text: string): Array<Array<string>> {
@@ -547,6 +556,19 @@ describe("LA8: the phone reaches home through one module", () => {
         /from "\.\/on-drive"|from "@\/lib\/home-link\/on-drive"/.test(read(f))
       )
     expect(readers).toEqual(["lib/home-link/voice-copy.ts"])
+  })
+
+  it("sends nothing from the set-aside marks but one bodiless PUT of /voice-notes/:id/set-aside per mark, and only the voice lane's run sends them (MIC2)", () => {
+    expect(sendCalls(SET_ASIDE_SEND, read(SET_ASIDE_SEND))).toEqual(
+      SET_ASIDE_SENDS
+    )
+    expect(read(SET_ASIDE_SEND)).toContain("/set-aside?")
+    const senders = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /from "\.\/set-aside"|from "@\/lib\/home-link\/set-aside"/.test(read(f))
+      )
+    expect(senders).toEqual(["lib/home-link/voice-copy.ts"])
   })
 
   it("still finds what it is meant to guard", () => {

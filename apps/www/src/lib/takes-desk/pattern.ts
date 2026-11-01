@@ -50,8 +50,11 @@ export type PatternTakesPorts = {
      */
     add: (take: Take, supersedes?: string | null) => boolean
     remove: (ids: ReadonlyArray<string>) => boolean
-    /** Marks a take set aside, keeping it. Says whether the device stored it. */
-    setAside: (id: string) => boolean
+    /**
+     * Marks a take set aside at `at` (ms since the epoch), keeping it. Says
+     * whether the device stored it.
+     */
+    setAside: (id: string, at: number) => boolean
   }
   /** A take whose audio is being written, and when done. */
   saving: (id: string, inFlight: boolean) => void
@@ -177,7 +180,7 @@ export function createPatternTakes(
         )
       },
       setAside: (id, done) => {
-        const stored = ports.takes.setAside(id)
+        const stored = ports.takes.setAside(id, ports.now())
         if (stored) publish()
         done(stored)
       },

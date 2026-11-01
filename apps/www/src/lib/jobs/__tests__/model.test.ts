@@ -296,11 +296,18 @@ describe("step", () => {
       note: "",
       voice: ["v1"],
     })
-    state = step(state, { type: "voice-set-aside", id: "v1" })
-    state = step(state, { type: "voice-set-aside", id: "v2" })
-    expect(state.voice.map((v) => [v.id, v.standing])).toEqual([
-      ["v1", undefined],
-      ["v2", "set-aside"],
+    const at = "2026-11-01T09:15:00.000Z"
+    state = step(state, { type: "voice-set-aside", id: "v1", at })
+    state = step(state, { type: "voice-set-aside", id: "v2", at })
+    // A second Let go moves nothing: the first time stands (MIC2).
+    state = step(state, {
+      type: "voice-set-aside",
+      id: "v2",
+      at: "2026-11-02T00:00:00.000Z",
+    })
+    expect(state.voice.map((v) => [v.id, v.standing, v.setAsideAt])).toEqual([
+      ["v1", undefined, undefined],
+      ["v2", "set-aside", at],
     ])
     expect(draftVoice(state, "o")).toEqual([])
     expect(formTakes(state, "o")).toMatchObject([

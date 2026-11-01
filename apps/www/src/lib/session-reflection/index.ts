@@ -196,15 +196,22 @@ export const reflections = {
 
   /**
    * Marks a spoken reflection out of its session's view, kept: recorded
-   * again by a Redo (D2) or set aside (D3). False if the device would not
-   * store that.
+   * again by a Redo (D2), or set aside (D3) at `at` (ISO 8601; now unless a
+   * test gives its own), which a later call never moves. False if the
+   * device would not store that.
    */
-  standAside(id: string, standing: "earlier" | "set-aside"): boolean {
-    const written = list.update((r) =>
-      r.id === id && r.body.kind === "voice"
-        ? { ...r, body: { ...r.body, standing } }
-        : r
-    )
+  standAside(
+    id: string,
+    standing: "earlier" | "set-aside",
+    at = new Date().toISOString()
+  ): boolean {
+    const written = list.update((r) => {
+      if (r.id !== id || r.body.kind !== "voice") return r
+      if (r.body.standing === "set-aside") return r
+      return standing === "set-aside"
+        ? { ...r, body: { ...r.body, standing, setAsideAt: at } }
+        : { ...r, body: { ...r.body, standing } }
+    })
     changed()
     return written
   },

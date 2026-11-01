@@ -7,6 +7,11 @@
  * offered again while its own screen still has it. A copy goes once home
  * holds its note: the copy of a note home refused stays, since it may be
  * the only one. `sweep` clears a copy the record never named.
+ *
+ * The same record keeps the set-aside marks owed to home (`owe`, MIC2) and
+ * hands the ones due to `lib/home-link/set-aside` (`marks`). A mark storage
+ * would not keep stays owed in memory, and is owed again on the next launch
+ * while its take is still set aside on this phone.
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
 import { openRecord, writeRecord } from "@some-ui/core-utils"
@@ -15,9 +20,16 @@ import type { BlobShelf } from "@some-ui/voice-capture"
 import { ShelfFullError } from "@some-ui/voice-capture"
 
 import type { Encoded, VoiceHomePort } from "./home"
-import type { CopyEnd, VoiceHomeEvent, VoiceHomeState, VoiceOut } from "./model"
+import type {
+  AsidePort,
+  CopyEnd,
+  VoiceHomeEvent,
+  VoiceHomeState,
+  VoiceOut,
+} from "./model"
 import {
   INITIAL_VOICE_HOME,
+  marksDue,
   parseVoiceHome,
   settled,
   stepVoiceHome,
@@ -48,6 +60,14 @@ export type VoiceHome = {
   copy: (note: VoiceOut, audio: Blob) => Promise<CopyEnd>
   /** What `./home`'s exchange reads and answers through. */
   keeping: VoiceHomePort
+  /**
+   * The owner set note `id` aside at `at` (ISO 8601): home is owed its mark,
+   * once. A note already owed, answered or refused is left as it is, so the
+   * first time stands.
+   */
+  owe: (id: string, at: string) => void
+  /** What `lib/home-link/set-aside`'s marks read and answer through. */
+  marks: AsidePort
   /** Clears copies the record names neither waiting nor refused. Best effort. */
   sweep: () => void
 }
@@ -121,6 +141,15 @@ export function createVoiceHome(ports: VoiceHomePorts): VoiceHome {
           // is kept, so the next `sweep` clears one that fails to go.
           shelf.remove([answer.id]).catch(() => undefined)
         }
+      },
+    },
+    owe(id, at): void {
+      apply({ kind: "aside", id, at })
+    },
+    marks: {
+      due: () => marksDue(state),
+      answered(kind, id): void {
+        apply({ kind, id })
       },
     },
     sweep(): void {

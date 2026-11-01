@@ -39,10 +39,11 @@ export type SoundbiteStore = {
     supersedes?: string | null
   ) => Promise<void>
   /**
-   * Sets `id` aside (D3): out of the page's list, still kept, audio and
-   * all, until home holds it and a seventh makes room (`./policy`).
+   * Sets `id` aside (D3) at `at` (ISO 8601): out of the page's list, still
+   * kept, audio and all, until home holds it and a seventh makes room
+   * (`./policy`). One set aside already keeps its first time.
    */
-  setAside: (id: string) => Promise<void>
+  setAside: (id: string, at: string) => Promise<void>
   /**
    * Calls `listener` after each write commits, on this page, so a page
    * showing the list can re-read it. Returns an unsubscribe.
@@ -190,11 +191,13 @@ export function indexedDbSoundbiteStore(): SoundbiteStore {
       changed()
     },
 
-    async setAside(id): Promise<void> {
+    async setAside(id, at): Promise<void> {
       const tx = (await connect()).transaction(META, "readwrite")
       const meta = tx.objectStore(META)
       const row: unknown = await result(meta.get(id))
-      if (isSoundbite(row)) meta.put({ ...row, standing: "set-aside" })
+      if (isSoundbite(row) && row.standing !== "set-aside") {
+        meta.put({ ...row, standing: "set-aside", setAsideAt: at })
+      }
       await done(tx)
       changed()
     },

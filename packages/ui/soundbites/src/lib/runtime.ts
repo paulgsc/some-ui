@@ -125,7 +125,7 @@ export function createSoundbites(
         )
       },
       setAside: (id, done) => {
-        ports.store.setAside(id).then(
+        ports.store.setAside(id, new Date(ports.now()).toISOString()).then(
           () => done(true),
           () => {
             done(false)

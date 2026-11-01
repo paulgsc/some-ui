@@ -60,6 +60,12 @@ export type Take = {
    * or set aside (D3). Absent for the item's take, and on every lens take.
    */
   standing?: "earlier" | "set-aside"
+  /**
+   * When it was set aside (ms since the epoch), written with its standing
+   * and never after: home's mark is sent with it (MIC2). Absent on one not
+   * set aside, and on one set aside before the desk noted when.
+   */
+  setAsideAt?: number
 }
 
 export type TakesPorts = {

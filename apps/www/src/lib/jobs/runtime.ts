@@ -214,7 +214,13 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
         )
       },
       setAside: (id, done) => {
-        done(commit({ type: "voice-set-aside", id }))
+        done(
+          commit({
+            type: "voice-set-aside",
+            id,
+            at: ports.now().toISOString(),
+          })
+        )
       },
       audio: (id) => ports.audio.get(id),
     },

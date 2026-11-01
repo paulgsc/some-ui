@@ -564,7 +564,11 @@ describe("Soundbites", () => {
     expect(screen.queryByRole("dialog")).toBeNull()
     expect(await screen.findByText(W.setAside.phone)).toBeInTheDocument()
     await waitFor(() => expect(rows()).toHaveLength(1))
-    expect(kept.get("only")?.bite.standing).toBe("set-aside")
+    expect(kept.get("only")?.bite).toMatchObject({
+      standing: "set-aside",
+      // When it was let go, for home's mark (MIC2).
+      setAsideAt: expect.stringMatching(/^\d{4}-\d\d-\d\dT/),
+    })
     expect(kept.size).toBe(2)
     expect(screen.getByText("2 of 6 kept")).toBeVisible()
   })

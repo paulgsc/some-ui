@@ -78,6 +78,12 @@ type ReflectionBody =
        * (D2) or set aside (D3). Absent for one in view.
        */
       standing?: "earlier" | "set-aside"
+      /**
+       * When it was set aside, ISO 8601, written with its standing and never
+       * after: home's mark is sent with it (MIC2). Absent on one not set
+       * aside, and on one set aside before the phone noted when.
+       */
+      setAsideAt?: string
     }
 
 export type Reflection = {
@@ -254,12 +260,16 @@ function bodyOf(value: unknown): ReflectionBody | null {
     const mimeType = field("mimeType")
     const bytes = field("bytes")
     const standing = field("standing")
+    const setAsideAt = field("setAsideAt")
     if (
       typeof durationMs !== "number" ||
       typeof mimeType !== "string" ||
       typeof bytes !== "number"
     ) {
       return null
+    }
+    if (standing === "set-aside" && typeof setAsideAt === "string") {
+      return { kind, durationMs, mimeType, bytes, standing, setAsideAt }
     }
     return standing === "earlier" || standing === "set-aside"
       ? { kind, durationMs, mimeType, bytes, standing }

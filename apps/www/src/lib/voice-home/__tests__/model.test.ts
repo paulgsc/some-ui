@@ -13,7 +13,10 @@ import type {
   VoiceOut,
 } from "@/lib/voice-home/model"
 import {
+  ASIDE_ANSWERED_MAX,
   INITIAL_VOICE_HOME,
+  marksDue,
+  NO_ASIDE,
   NO_PASS,
   NO_ROOM,
   parseVoiceHome,
@@ -80,6 +83,7 @@ describe("the record of voice notes on their way home", () => {
         { id: "n2", why: "home holds another recording under its name" },
       ],
       roomless: [],
+      aside: NO_ASIDE,
     })
     expect(settled(refused, "n2")).toBe(true)
     expect(copied(refused, OTHER)).toBe(refused)
@@ -120,12 +124,111 @@ describe("the record of voice notes on their way home", () => {
     }
   })
 
-  it("reads a record written before it noted when home held each note, guessing no time (MIC3)", () => {
+  it("reads a record written before it noted when home held each note, guessing no time (MIC3), or any set-aside mark (MIC2)", () => {
     const before = { waiting: [], held: ["n1"], refused: [], roomless: [] }
     expect(parseVoiceHome(JSON.stringify(before))).toEqual({
       ...before,
       heldAt: {},
+      aside: NO_ASIDE,
     })
+  })
+})
+
+describe("the set-aside marks owed to home (MIC2)", () => {
+  const LET_GO = "2026-11-01T09:15:00.000Z"
+  const step = (
+    state: VoiceHomeState,
+    ...events: ReadonlyArray<Parameters<typeof stepVoiceHome>[1]>
+  ): VoiceHomeState => events.reduce(stepVoiceHome, state)
+  const held = step(copied(copied(INITIAL_VOICE_HOME, NOTE), OTHER), {
+    kind: "held",
+    id: "n1",
+    at: HEARD,
+  })
+
+  it("owes a mark once, the first time standing, and makes it due only for a note home holds", () => {
+    const owed = step(
+      held,
+      { kind: "aside", id: "n1", at: LET_GO },
+      { kind: "aside", id: "n2", at: LET_GO }
+    )
+    expect(owed.aside.owed).toEqual([
+      { id: "n1", at: LET_GO },
+      { id: "n2", at: LET_GO },
+    ])
+    expect(
+      stepVoiceHome(owed, {
+        kind: "aside",
+        id: "n1",
+        at: "2026-11-02T00:00:00.000Z",
+      })
+    ).toBe(owed)
+    // n2 waits to go home: its mark waits with it.
+    expect(marksDue(owed)).toEqual([{ id: "n1", at: LET_GO }])
+    expect(
+      marksDue(step(owed, { kind: "held", id: "n2", at: HEARD }))
+    ).toHaveLength(2)
+  })
+
+  it("answers a mark for good once taken or never takeable, and never owes it again", () => {
+    for (const kind of ["marked", "unmarkable"] as const) {
+      const answered = step(
+        held,
+        { kind: "aside", id: "n1", at: LET_GO },
+        { kind, id: "n1" }
+      )
+      expect(answered.aside).toEqual({ owed: [], answered: ["n1"] })
+      expect(
+        stepVoiceHome(answered, { kind: "aside", id: "n1", at: LET_GO })
+      ).toBe(answered)
+      // An answer for a mark not owed moves nothing.
+      expect(stepVoiceHome(answered, { kind, id: "n2" })).toBe(answered)
+    }
+  })
+
+  it("drops a mark owed for a note home refused, and owes none for one", () => {
+    const owed = step(held, { kind: "aside", id: "n2", at: LET_GO })
+    const refused = step(owed, { kind: "refused", id: "n2", why: "x" })
+    expect(refused.aside.owed).toEqual([])
+    expect(
+      stepVoiceHome(refused, { kind: "aside", id: "n2", at: LET_GO })
+    ).toBe(refused)
+  })
+
+  it("remembers at most ASIDE_ANSWERED_MAX answers, the newest, so a forgotten one costs a repeat", () => {
+    let state = INITIAL_VOICE_HOME
+    for (let i = 0; i <= ASIDE_ANSWERED_MAX; i += 1) {
+      state = step(
+        state,
+        { kind: "aside", id: `n${String(i)}`, at: LET_GO },
+        { kind: "marked", id: `n${String(i)}` }
+      )
+    }
+    expect(state.aside.answered).toHaveLength(ASIDE_ANSWERED_MAX)
+    expect(state.aside.answered[0]).toBe("n1")
+    // The oldest is owed again, and home's answer to it is the same.
+    expect(
+      step(state, { kind: "aside", id: "n0", at: LET_GO }).aside.owed
+    ).toEqual([{ id: "n0", at: LET_GO }])
+  })
+
+  it("reads the marks back, and refuses a record whose marks it can't read", () => {
+    const state = step(
+      held,
+      { kind: "aside", id: "n1", at: LET_GO },
+      { kind: "aside", id: "n2", at: LET_GO },
+      { kind: "marked", id: "n1" }
+    )
+    expect(parseVoiceHome(JSON.stringify(state))).toEqual(state)
+    for (const aside of [
+      [],
+      { owed: [{ id: "n1" }], answered: [] },
+      { owed: [], answered: [1] },
+      { owed: [] },
+    ]) {
+      const raw = JSON.stringify({ ...state, aside })
+      expect([raw, parseVoiceHome(raw)]).toEqual([raw, null])
+    }
   })
 })
 

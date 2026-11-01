@@ -10,6 +10,12 @@
  * only grow, so a note is never copied twice. A copy pass says what it
  * could not copy (`CopyPass`), and the run after it says why (`runEnd`,
  * LA14).
+ *
+ * A note the owner let go where it was recorded (D3, epic #2368) owes home
+ * its set-aside mark (`aside`, MIC2 #2372): noted once, with when, from the
+ * first time this phone sees it set aside, and kept even after the note
+ * leaves this phone, until home takes the mark or never can. Home takes it
+ * only for a note it holds (`marksDue`).
  */
 import type { HomeExchanged } from "@some-ui/core-utils"
 import { assertNever, isRecord } from "@some-ui/core-utils"
@@ -51,6 +57,31 @@ export type VoiceOut = {
 
 type VoiceRefusal = { readonly id: string; readonly why: string }
 
+/** A set-aside mark home is owed: the note, and when it was let go (ISO 8601). */
+export type AsideMark = { readonly id: string; readonly at: string }
+
+/**
+ * How many answered marks this phone remembers, newest kept. A take still
+ * set aside on this phone past them is owed its mark again, and home's
+ * answer to a repeat is the same `204`, the first mark's time standing: so
+ * forgetting one costs one request, never a mark.
+ */
+export const ASIDE_ANSWERED_MAX = 1000
+
+/** Set-aside marks on their way home, and those home answered for good. */
+export type AsideState = {
+  /** Owed, oldest first: each sent once home holds its note. */
+  readonly owed: ReadonlyArray<AsideMark>
+  /**
+   * The notes whose mark home answered for good, oldest first, at most
+   * `ASIDE_ANSWERED_MAX`: it took the mark, or never will (a time it can't
+   * read), so neither is owed again.
+   */
+  readonly answered: ReadonlyArray<string>
+}
+
+export const NO_ASIDE: AsideState = { owed: [], answered: [] }
+
 export type VoiceHomeState = {
   /** Copied for home and not held there yet, oldest first. */
   readonly waiting: ReadonlyArray<VoiceOut>
@@ -69,6 +100,8 @@ export type VoiceHomeState = {
    * again, at each change to the store that holds it.
    */
   readonly roomless: ReadonlyArray<string>
+  /** Set-aside marks owed to home, and those it took (MIC2). */
+  readonly aside: AsideState
 }
 
 export const INITIAL_VOICE_HOME: VoiceHomeState = {
@@ -77,6 +110,7 @@ export const INITIAL_VOICE_HOME: VoiceHomeState = {
   heldAt: {},
   refused: [],
   roomless: [],
+  aside: NO_ASIDE,
 }
 
 /** What home said of a note: it holds it, or it never will. */
@@ -90,6 +124,21 @@ export type VoiceHomeEvent =
   /** Home holds it, as this phone heard at `at` (ISO 8601). */
   | { readonly kind: "held"; readonly id: string; readonly at: string }
   | { readonly kind: "refused"; readonly id: string; readonly why: string }
+  /** The owner set this note aside at `at`, as this phone first saw it. */
+  | { readonly kind: "aside"; readonly id: string; readonly at: string }
+  /** Home took the note's set-aside mark. */
+  | { readonly kind: "marked"; readonly id: string }
+  /** Home will never take the note's mark (a time it can't read). */
+  | { readonly kind: "unmarkable"; readonly id: string }
+
+/**
+ * What home's set-aside marks are read and answered through
+ * (`lib/home-link/set-aside`): the marks due, and home's answer for good.
+ */
+export type AsidePort = {
+  readonly due: () => ReadonlyArray<AsideMark>
+  readonly answered: (kind: "marked" | "unmarkable", id: string) => void
+}
 
 /** `id` is copied, held or refused: nothing more to do for it here. */
 export function settled(state: VoiceHomeState, id: string): boolean {
@@ -114,6 +163,19 @@ export function keptIn(state: VoiceHomeState): (id: string) => TakeKept {
     return waiting.has(id) ? { place: "going" } : { place: "phone" }
   }
 }
+
+/**
+ * The marks home can take now: those owed for a note it holds, oldest
+ * first. A mark for a note home does not hold yet waits for it.
+ */
+export function marksDue(state: VoiceHomeState): ReadonlyArray<AsideMark> {
+  const held = new Set(state.held)
+  return state.aside.owed.filter((mark) => held.has(mark.id))
+}
+
+/** `aside` with the mark for `id` no longer owed. */
+const unowed = (aside: AsideState, id: string): ReadonlyArray<AsideMark> =>
+  aside.owed.filter((mark) => mark.id !== id)
 
 const without = (
   ids: ReadonlyArray<string>,
@@ -154,7 +216,34 @@ export function stepVoiceHome(
             ...state,
             waiting,
             refused: [...state.refused, { id: event.id, why: event.why }],
+            // A note home will never hold can never take its mark.
+            aside: { ...state.aside, owed: unowed(state.aside, event.id) },
           }
+    }
+    case "aside": {
+      const { owed, answered } = state.aside
+      if (
+        owed.some((mark) => mark.id === event.id) ||
+        answered.includes(event.id) ||
+        state.refused.some((refusal) => refusal.id === event.id)
+      ) {
+        return state
+      }
+      return {
+        ...state,
+        aside: { owed: [...owed, { id: event.id, at: event.at }], answered },
+      }
+    }
+    case "marked":
+    case "unmarkable": {
+      if (!state.aside.owed.some((mark) => mark.id === event.id)) return state
+      const answered = [...state.aside.answered, event.id].slice(
+        -ASIDE_ANSWERED_MAX
+      )
+      return {
+        ...state,
+        aside: { owed: unowed(state.aside, event.id), answered },
+      }
     }
     default: {
       return assertNever(event)
@@ -277,6 +366,24 @@ function isRefusal(value: unknown): value is VoiceRefusal {
   return isRecord(value) && isString(value.id) && isString(value.why)
 }
 
+const isMark = (value: unknown): value is AsideMark =>
+  isRecord(value) && isString(value.id) && isString(value.at)
+
+/** The record's `aside`, or none owed for one written before MIC2. */
+function asideOf(value: unknown): AsideState | null {
+  if (value === undefined) return NO_ASIDE
+  if (
+    !isRecord(value) ||
+    !Array.isArray(value.owed) ||
+    !value.owed.every(isMark) ||
+    !Array.isArray(value.answered) ||
+    !value.answered.every(isString)
+  ) {
+    return null
+  }
+  return { owed: value.owed, answered: value.answered }
+}
+
 /** The stored record, or null for one this build cannot read. */
 export function parseVoiceHome(raw: string): VoiceHomeState | null {
   let value: unknown
@@ -299,12 +406,14 @@ export function parseVoiceHome(raw: string): VoiceHomeState | null {
     return null
   }
   const heldAt = heldAtOf(value.heldAt)
-  if (heldAt === null) return null
+  const aside = asideOf(value.aside)
+  if (heldAt === null || aside === null) return null
   return {
     waiting: value.waiting,
     held: value.held,
     heldAt,
     refused: value.refused,
     roomless: value.roomless,
+    aside,
   }
 }
