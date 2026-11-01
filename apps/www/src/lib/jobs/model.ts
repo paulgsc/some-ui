@@ -42,6 +42,8 @@ import {
   pacificDay,
   TRACKS,
 } from "@some-ui/job-desk"
+import type { PatternTake } from "@some-ui/voice-capture"
+import { ON_PHONE } from "@some-ui/voice-capture"
 
 import type { NoticeAction, NoticeState } from "./notice"
 import { NO_NOTICE, stepNotice } from "./notice"
@@ -76,6 +78,19 @@ export type VoiceNote = {
   durationMs: number
   /** Whose note it is, until an event names it. */
   owner: string
+  /** When it was kept, ISO; a note kept before the phone noted that has none. */
+  at?: string
+  /**
+   * Out of its form's draft, kept (MIC5): recorded again by a Redo (D2) or
+   * set aside (D3). Absent for a note in the draft.
+   */
+  standing?: "earlier" | "set-aside"
+  /**
+   * For a note out of the draft: the event that recorded its form, by what
+   * home is told it belongs to (`<day>:<pick>`, or the scout's id) and when.
+   * It goes home under that, and leaves the form (#2443).
+   */
+  filed?: { ref: string; at: string }
 }
 
 /** A scout as the form makes it; the runtime gives it its `id`. */
@@ -239,8 +254,10 @@ export type JobsAction =
       runs?: ReadonlyArray<JobsRun>
       at: string
     }
-  | { type: "voice-kept"; note: VoiceNote }
-  | { type: "voice-dropped"; ids: ReadonlyArray<string> }
+  /** A note kept; `supersedes` names the draft's note a Redo recorded again (D2). */
+  | { type: "voice-kept"; note: VoiceNote; supersedes?: string | null }
+  /** A draft's note set aside, kept (D3); one the record names stays as it is. */
+  | { type: "voice-set-aside"; id: string }
   /**
    * Home holds these notes, so their audio leaves the phone and their
    * entries go with it; the log still names them.
@@ -286,7 +303,95 @@ export function isPickStep(e: JobEvent): e is JobEvent & PickRef {
   return "pickId" in e && e.type !== "read"
 }
 
-/** Voice ids the log names: no longer a draft's to drop. */
+/**
+ * `state`'s notes with draft note `id` out of its draft as `standing`; the
+ * same array when there is no such note. A note the record names is part of
+ * the record, and stays as it is.
+ */
+function standAside(
+  state: JobsState,
+  id: string | null,
+  standing: "earlier" | "set-aside"
+): ReadonlyArray<VoiceNote> {
+  const note = state.voice.find((n) => n.id === id)
+  if (
+    note === undefined ||
+    note.standing !== undefined ||
+    named(state.log).has(note.id)
+  ) {
+    return state.voice
+  }
+  return state.voice.map((n) => (n === note ? { ...n, standing } : n))
+}
+
+/**
+ * The form `event` records, and what home is told its notes belong to: a
+ * pass, fit note or debrief's pick, or a scout; null for an event of no form.
+ */
+function formOf(event: JobEvent): { owner: string; ref: string } | null {
+  switch (event.type) {
+    case "passed": {
+      return {
+        owner: pickOwner(event.day, event.pickId, "pass"),
+        ref: `${event.day}:${event.pickId}`,
+      }
+    }
+    case "fit-note": {
+      return {
+        owner: pickOwner(event.day, event.pickId, "fit"),
+        ref: `${event.day}:${event.pickId}`,
+      }
+    }
+    case "debrief": {
+      return {
+        owner: pickOwner(event.day, event.pickId, "debrief"),
+        ref: `${event.day}:${event.pickId}`,
+      }
+    }
+    case "scout": {
+      return { owner: SCOUT_OWNER, ref: event.scout.id }
+    }
+    case "taken":
+    case "archived":
+    case "resume-ready":
+    case "apply-opened":
+    case "read":
+    case "outcome":
+    case "outcome-withdrawn":
+    case "disagree":
+    case "arrived":
+    case "shared": {
+      return null
+    }
+    default: {
+      return assertNever(event)
+    }
+  }
+}
+
+/**
+ * `state`'s notes once `event` records its form: the form's notes out of the
+ * draft (recorded again or set aside) are filed with the event, so the next
+ * draft of that form starts with none, and each goes home under the event
+ * (#2443). The same array when there are none.
+ */
+function filedAside(
+  state: JobsState,
+  event: JobEvent
+): ReadonlyArray<VoiceNote> {
+  const form = formOf(event)
+  if (form === null) return state.voice
+  const filed = { ref: form.ref, at: event.at }
+  const aside = formVoice(state, form.owner).filter(
+    (note) => note.standing !== undefined
+  )
+  if (aside.length === 0) return state.voice
+  return state.voice.map((note) =>
+    aside.includes(note) ? { ...note, filed } : note
+  )
+}
+
+/** Voice ids the log names: no longer a draft's to set aside. */
 function named(log: ReadonlyArray<JobEvent>): Set<string> {
   const ids = new Set<string>()
   for (const e of log) if ("voice" in e) for (const id of e.voice) ids.add(id)
@@ -478,15 +583,17 @@ export function step(state: JobsState, action: JobsAction): JobsState {
     }
     case "voice-kept": {
       if (state.voice.some((n) => n.id === action.note.id)) return state
-      return { ...state, voice: [...state.voice, action.note] }
+      return {
+        ...state,
+        voice: [
+          ...standAside(state, action.supersedes ?? null, "earlier"),
+          action.note,
+        ],
+      }
     }
-    case "voice-dropped": {
-      // Only a draft's: a note an event names is part of the record.
-      const keep = named(state.log)
-      const voice = state.voice.filter(
-        (n) => keep.has(n.id) || !action.ids.includes(n.id)
-      )
-      return voice.length === state.voice.length ? state : { ...state, voice }
+    case "voice-set-aside": {
+      const voice = standAside(state, action.id, "set-aside")
+      return voice === state.voice ? state : { ...state, voice }
     }
     case "voice-held": {
       const voice = state.voice.filter((n) => !action.ids.includes(n.id))
@@ -496,11 +603,12 @@ export function step(state: JobsState, action: JobsAction): JobsState {
       if (!fits(state, action.event)) return state
       const event: JobEvent = { ...action.event, ...action.stamp }
       const log = [...state.log, event]
+      const voice = filedAside(state, event)
       if (event.type !== "shared" || action.since === undefined) {
-        return { ...state, log }
+        return { ...state, log, voice }
       }
       const carried = { ...state.carried, [event.id]: action.since }
-      return { ...state, log, carried }
+      return { ...state, log, voice, carried }
     }
     case "record-all": {
       let next = state
@@ -801,13 +909,40 @@ export function timedMinutes(
   return minutes <= TIMED_UP_TO_MINUTES ? minutes : null
 }
 
-/** The voice notes `owner` has that no event names yet: a form's draft. */
+/**
+ * The voice notes `owner` has that no event names yet, those out of the
+ * draft among them: what the form's take rows list.
+ */
+function formVoice(state: JobsState, owner: string): ReadonlyArray<VoiceNote> {
+  const keep = named(state.log)
+  return state.voice.filter(
+    (n) => n.owner === owner && !keep.has(n.id) && n.filed === undefined
+  )
+}
+
+/**
+ * `owner`'s notes as the take pattern lists them, answering `owner`. A
+ * draft's note goes home only once an event names it, so each is kept on
+ * this phone.
+ */
+export function formTakes(state: JobsState, owner: string): Array<PatternTake> {
+  return formVoice(state, owner).map((note, at) => ({
+    id: note.id,
+    answers: owner,
+    durationMs: note.durationMs,
+    // A note kept before the phone noted when sorts by the order kept.
+    recordedAt: note.at ?? new Date(at).toISOString(),
+    standing: note.standing ?? "current",
+    kept: ON_PHONE,
+  }))
+}
+
+/** The voice notes in `owner`'s draft: what its event names once recorded. */
 export function draftVoice(
   state: JobsState,
   owner: string
 ): ReadonlyArray<VoiceNote> {
-  const keep = named(state.log)
-  return state.voice.filter((n) => n.owner === owner && !keep.has(n.id))
+  return formVoice(state, owner).filter((n) => n.standing === undefined)
 }
 
 /** The owner a pick's pass, fit note or debrief records its voice notes under. */

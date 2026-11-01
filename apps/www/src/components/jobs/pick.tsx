@@ -255,7 +255,7 @@ const Decide = ({
             value={note}
             onChange={(e) => keep({ note: e.target.value })}
           />
-          <VoiceNotes owner={owner} notes={voice} hint={sayWhyAloud} />
+          <VoiceNotes owner={owner} hint={sayWhyAloud} />
           <Button
             type="button"
             variant="destructive"
@@ -532,11 +532,7 @@ const FitNote = ({
           jobs.draft(owner, { form: "fit", note: e.target.value })
         }
       />
-      <VoiceNotes
-        owner={owner}
-        notes={voice}
-        hint="Or say it, up to a minute"
-      />
+      <VoiceNotes owner={owner} hint={sayItAloud} />
       <Button
         type="button"
         variant="outline"
@@ -686,7 +682,7 @@ const Ending = ({
               value={what}
               onChange={(e) => keep({ what: e.target.value })}
             />
-            <VoiceNotes owner={owner} notes={voice} hint={sayItAloud} />
+            <VoiceNotes owner={owner} hint={sayItAloud} />
           </section>
         </>
       ) : (
