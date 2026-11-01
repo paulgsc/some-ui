@@ -2,6 +2,7 @@ import { inMemoryStorage } from "@some-ui/core-utils"
 import { REVIEW_SCHEMA } from "@some-ui/video-render"
 import type { Playback } from "@some-ui/voice-capture"
 import { TAKE_WORDS } from "@some-ui/voice-capture"
+import { simulatedMicrophone, SPEAKING } from "@some-ui/voice-capture/testing"
 import type { StudioProps } from "@soundbites/components/studio"
 import { Studio } from "@soundbites/components/studio"
 import { memoryProjectStore } from "@soundbites/lib/project/memory-store"
@@ -16,7 +17,7 @@ import {
 import { keptLetGo } from "@soundbites/lib/studio/let-go-store"
 import type { StudioPorts } from "@soundbites/lib/studio/runtime"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 
 const W = STUDIO_WORDS
@@ -117,6 +118,33 @@ describe("Studio", () => {
       await screen.findByText("One pick missed, and here is why.")
     ).toBeInTheDocument()
     expect(screen.getByText(W.record.read)).toBeInTheDocument()
+  })
+
+  it("lets a take go when its button is tapped while the microphone opens", async () => {
+    const mic = simulatedMicrophone({ now: Date.now })
+    mic.script({ ...SPEAKING, open: { kind: "cue" } })
+    setup(undefined, [], PRIMER_TEXT, { startRecording: mic.startRecording })
+    await openPrimer()
+    fireEvent.click(screen.getByRole("button", { name: /^Record/ }))
+    fireEvent.click(
+      await screen.findByRole("button", { name: TAKE_WORDS.buttonLabel.ready })
+    )
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: TAKE_WORDS.buttonLabel.opening,
+      })
+    )
+    expect(await screen.findByText(W.notice.early)).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: TAKE_WORDS.buttonLabel.ready })
+    ).toBeInTheDocument()
+    // Opened after all: let go at once, never recording.
+    act(() => mic.answer("open"))
+    await waitFor(() => expect(mic.discarded()).toBe(1))
+    expect(mic.open()).toBe(0)
+    expect(
+      screen.queryByRole("button", { name: TAKE_WORDS.buttonLabel.recording })
+    ).toBeNull()
   })
 
   it("done for now asks how it went, then says where it was left and offers the share", async () => {

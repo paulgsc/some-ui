@@ -11,7 +11,7 @@ import type { Finish } from "@soundbites/lib/project/finish"
 import { finishOf } from "@soundbites/lib/project/finish"
 import { waitingTakes } from "@soundbites/lib/project/let-go"
 import type { Note, Project, ProjectTake } from "@soundbites/lib/project/model"
-import { latest } from "@soundbites/lib/project/model"
+import { homeHolds, latest } from "@soundbites/lib/project/model"
 import { originConfirmed, originsWaiting } from "@soundbites/lib/project/origin"
 import { capFor, chosenTake, scriptOf } from "@soundbites/lib/project/script"
 
@@ -307,8 +307,8 @@ export function originView(
  * projects the machine's activity and the chosen take onto the parts.
  */
 export function recordTake(
-  state: StudioState,
-  view: RecordView
+  state: Pick<StudioState, "activity">,
+  view: Pick<RecordView, "take">
 ): { readonly button: TakeButtonView; readonly row: TakeRowView | null } {
   const { activity } = state
   const settled = activity.kind === "idle" || activity.kind === "playing"
@@ -350,13 +350,18 @@ export function recordTake(
         durationMs: take.durationMs,
         recordedAt: take.recordedAt,
         standing: "current",
-        kept: take.keptBy.includes("home")
+        // On home once home holds it; on this phone, going home, until
+        // then; on neither, no place (a take carried in without its audio).
+        kept: homeHolds(take)
           ? { place: "home", since: null }
-          : { place: "phone" },
+          : take.onPhone
+            ? { place: "going" }
+            : null,
       },
       playing: activity.kind === "playing" && activity.take === take.id,
       canPlay: settled && take.onPhone,
-      canRedo: settled,
+      // Recording it again is the button's ("Tap to record again").
+      canRedo: false,
       canLetGo: false,
     },
   }

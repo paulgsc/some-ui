@@ -34,6 +34,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { TakeList } from "../take-list"
+import { TakeRow } from "../take-row"
 
 const ONE: TakePatternOptions = {
   takes: { per: "one" },
@@ -249,6 +250,31 @@ describe("the take button, row and list", () => {
     await pass(6_100)
     expect(live()).toHaveTextContent(W.left(9_000))
     expect(live()).not.toHaveTextContent(W.nearlyUp(9_000))
+  })
+
+  it("says no place for a take on neither this phone nor home", () => {
+    render(
+      <ul>
+        <TakeRow
+          row={{
+            take: {
+              id: "t1",
+              answers: "card-1",
+              durationMs: 4_000,
+              recordedAt: "2026-11-01T09:00:00.000Z",
+              standing: "current",
+              kept: null,
+            },
+            playing: false,
+            canPlay: false,
+            canRedo: false,
+            canLetGo: false,
+          }}
+          onPlay={() => undefined}
+        />
+      </ul>
+    )
+    expect(screen.getByRole("listitem")).toHaveTextContent(/^0:04$/)
   })
 
   it("draws a screen's own action in the row's extra slot", async () => {

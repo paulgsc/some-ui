@@ -115,7 +115,14 @@ export const TakeRows = ({
               row={row}
               onPlay={() => onPlay(row.take.id)}
               onRedo={() => onRedo(row.take.id)}
-              onLetGo={() => onLetGo(row.take.id, row.take.kept.place)}
+              // A take on neither this phone nor home has nowhere to set
+              // it aside.
+              onLetGo={
+                row.take.kept === null
+                  ? undefined
+                  : (): void =>
+                      onLetGo(row.take.id, row.take.kept?.place ?? "phone")
+              }
               extra={extra?.(row)}
             >
               {describe?.(row.take)}
