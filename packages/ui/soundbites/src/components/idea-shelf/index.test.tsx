@@ -99,6 +99,31 @@ describe("IdeaShelf", () => {
     expect(screen.getByText("the model called Detroit")).toBeTruthy()
   })
 
+  it("ST26: shows a sent idea by its title, and a said answer as said until home has heard it", async () => {
+    setup([
+      {
+        id: "idea-2",
+        at: AT,
+        questions: 1,
+        answers: [
+          { question: "what", versions: [], takes: [{ at: AT, take: "t1" }] },
+        ],
+        passed: ["takeaway", "spark", "picture"],
+        about: {
+          title: "Two hearings, one word",
+          topic: null,
+          keywords: [],
+          format: "short",
+        },
+        sent: [AT],
+      },
+    ])
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Two hearings, one word/ })
+    )
+    expect(screen.getByText(W.saidNoWords)).toBeTruthy()
+  })
+
   it("shows Claude's scenes, then the video they became, linked to that video", async () => {
     const { projects, shared } = setup([caught()])
     fireEvent.click(await screen.findByRole("button", { name: /week 8/ }))

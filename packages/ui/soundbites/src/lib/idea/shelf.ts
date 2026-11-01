@@ -24,10 +24,6 @@
  *   a second tap while one is being made, or once a video names the idea,
  *   does nothing: the video made is counted the moment the store says so,
  *   before the videos are read again.
- * - **A said answer gets home's words** (ST26). An answer sent as a take
- *   has no words on the phone; each time the ideas are read, home is asked
- *   for the words of each such answer's take (`hear`), and words that come
- *   are kept as what was heard, so the idea reads, and shares, as text.
  * - **A pick answers only the pick asked for.** Picks are numbered, opening
  *   or leaving an idea starts the count again, and a late read of an
  *   earlier one changes nothing.
@@ -39,7 +35,7 @@ import { newProject } from "@soundbites/lib/project/model"
 import { cutListOf, projectIdFor } from "@soundbites/lib/project/script"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
 
-import type { AnswerTo, Idea } from "./model"
+import type { Idea } from "./model"
 import {
   isAside,
   latestDraft,
@@ -48,8 +44,6 @@ import {
   stageOf,
   withAside,
   withReply,
-  withWords,
-  wordsFor,
 } from "./model"
 import type { Reply } from "./reply"
 import { readReply } from "./reply"
@@ -102,13 +96,6 @@ export type ShelfState = {
 export type ShelfOp =
   | { readonly kind: "reply"; readonly idea: string; readonly reply: Reply }
   | { readonly kind: "aside"; readonly idea: string; readonly aside: boolean }
-  /** Home's words for a said answer that has none yet (ST26). */
-  | {
-      readonly kind: "heard"
-      readonly idea: string
-      readonly question: AnswerTo
-      readonly words: string
-    }
 
 /** Taps, as the component sends them. */
 export type ShelfIntent =
@@ -146,20 +133,12 @@ export type ShelfEvent =
       readonly at: string
     }
   | { readonly type: "replyUnreadable"; readonly seq: number }
-  /** Home's words for a said answer's take (ST26). */
-  | {
-      readonly type: "heard"
-      readonly idea: string
-      readonly question: AnswerTo
-      readonly words: string
-      readonly at: string
-    }
   | {
       readonly type: "kept"
       /** The ideas as kept, or null when nothing was. */
       readonly ideas: ReadonlyArray<Idea> | null
-      /** What it says once kept: nothing, for home's words (ST26). */
-      readonly notice: ShelfNotice | null
+      /** What it says once kept. */
+      readonly notice: ShelfNotice
     }
   | {
       readonly type: "made"
@@ -175,14 +154,7 @@ export type ShelfEffect =
       readonly type: "keep"
       readonly op: ShelfOp
       readonly at: string
-      readonly notice: ShelfNotice | null
-    }
-  /** Ask home for the words of a said answer's take (ST26). */
-  | {
-      readonly type: "hear"
-      readonly idea: string
-      readonly question: AnswerTo
-      readonly take: string
+      readonly notice: ShelfNotice
     }
   /** Make `project` where no project has its id. */
   | { readonly type: "create"; readonly project: Project }
@@ -284,47 +256,10 @@ export function applyShelf(
 ): ReadonlyArray<Idea> {
   return ideas.map((idea) => {
     if (idea.id !== op.idea) return idea
-    switch (op.kind) {
-      case "reply": {
-        return withReply(idea, op.reply, at) ?? idea
-      }
-      case "aside": {
-        return withAside(idea, op.aside, at)
-      }
-      case "heard": {
-        // Only an answer still without words: words already kept stay.
-        return wordsFor(idea, op.question) === null
-          ? withWords(idea, op.question, [
-              { at, how: "heard", words: op.words },
-            ])
-          : idea
-      }
-      default: {
-        return assertNever(op)
-      }
-    }
+    return op.kind === "reply"
+      ? (withReply(idea, op.reply, at) ?? idea)
+      : withAside(idea, op.aside, at)
   })
-}
-
-/** Each said answer with no words yet, and its take now (ST26). */
-function unheard(
-  ideas: ReadonlyArray<Idea>
-): ReadonlyArray<Extract<ShelfEffect, { type: "hear" }>> {
-  return ideas.flatMap((idea) =>
-    idea.answers.flatMap((answer) => {
-      const take = answer.takes?.at(-1)?.take
-      return take === undefined || answer.versions.length > 0
-        ? []
-        : [
-            {
-              type: "hear" as const,
-              idea: idea.id,
-              question: answer.question,
-              take,
-            },
-          ]
-    })
-  )
 }
 
 /** The project Claude's latest scenes for `idea` start, made at `at`. */
@@ -430,37 +365,14 @@ export function step(state: ShelfState, event: ShelfEvent): ShelfStep {
         return screen.kind === "loading"
           ? same({ ...state, screen: { kind: "unreadable" } })
           : same({ ...state, notice: "notKept" })
-      return {
-        state: {
-          ...state,
-          ideas: event.ideas,
-          screen:
-            screen.kind === "loading"
-              ? { kind: "list", aside: false }
-              : placed(screen, event.ideas),
-        },
-        effects: unheard(event.ideas),
-      }
-    }
-    case "heard": {
-      const words = event.words.trim()
-      if (words === "") return same(state)
-      return {
-        state,
-        effects: [
-          {
-            type: "keep",
-            op: {
-              kind: "heard",
-              idea: event.idea,
-              question: event.question,
-              words,
-            },
-            at: event.at,
-            notice: null,
-          },
-        ],
-      }
+      return same({
+        ...state,
+        ideas: event.ideas,
+        screen:
+          screen.kind === "loading"
+            ? { kind: "list", aside: false }
+            : placed(screen, event.ideas),
+      })
     }
     case "videosListed": {
       return same({

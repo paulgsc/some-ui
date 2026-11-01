@@ -83,7 +83,8 @@ const HOME_LINK_CALLERS = new Set([
   "components/settings/device-storage.tsx",
   // LA8, IH1 (MIC10): Studio's idea answers, which read the pairing and ask
   // home for a take's words while the screen shows it being heard; and a new
-  // idea's screen (ST26), which reads only whether the phone is paired.
+  // idea's screen (ST26, `ideaHome`), which reads whether the phone is paired
+  // and listens for that changing, asking home nothing.
   "lib/idea-hearing/index.ts",
 ])
 
