@@ -183,7 +183,7 @@ record (§9) and the summary (§10). Nothing ends a run before those two.
    either, but its picks are real, so leave its name in `drive.json`: the
    index doesn't stand while it is there, and §2's bookkeeping counts its
    picks from Drive. Name it in the summary as a digest that can't go home,
-   and say that home's index won't stand until it is gone from `Brief/`. A
+   whose `Brief/` copy is the only one carrying its picks, so it stays. A
    `422` about the request itself (its content type, or a body that couldn't
    be read) is not the digest's: the next run puts it again.
    Count what you put back, by kind, for §10.
