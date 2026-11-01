@@ -473,6 +473,7 @@ describe("the study list's Let it go", () => {
       kind: "unknown",
       summary: "SQLite failed",
       retryable: true,
+      cause: new Error("SQLITE_BUSY"),
     })
     await expect(
       letGo("a", "paired", "home", {
