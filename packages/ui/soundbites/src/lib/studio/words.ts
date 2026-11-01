@@ -10,8 +10,13 @@ import type { RecordingFailure } from "@some-ui/voice-capture"
 import {
   RECORDING_FAILURE_COPY,
   TAKE_ENDING_WORDS,
+  TAKE_WORDS,
 } from "@some-ui/voice-capture"
-import type { IdeaStage, QuestionId } from "@soundbites/lib/idea/model"
+import type {
+  IdeaFormat,
+  IdeaStage,
+  QuestionId,
+} from "@soundbites/lib/idea/model"
 import type { ShelfNotice } from "@soundbites/lib/idea/shelf"
 import type { LetGo, LetGoChoice } from "@soundbites/lib/project/let-go"
 
@@ -654,6 +659,127 @@ export const STUDIO_WORDS = {
       `Answer the ${n === 1 ? "one" : n} you skipped last time`,
     another: "Another idea",
     back: "Back to Studio",
+  },
+
+  /**
+   * A new idea as one bundle (ST26): what it is, its questions swiped
+   * between and each said and heard back, then the whole idea looked over
+   * and sent together. Voice going wrong is said as what you meant to do,
+   * never how it failed; typing is marked as the fallback it is.
+   */
+  bundle: {
+    heading: "New idea",
+    back: "Back to Studio",
+    backLabel: "Back",
+    reading: "Opening your idea…",
+    unreadable:
+      "What this phone keeps for ideas couldn't be read, so nothing new can be kept yet.",
+    readAgain: "Try again",
+    about: {
+      heading: "What is it?",
+      dated: (iso: string): string =>
+        `${new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" })} · dated for you`,
+      madeFor: "Made for",
+      formats: {
+        short: "Short · vertical",
+        video: "Video · wide",
+      } satisfies Record<IdeaFormat, string>,
+      title: "Title",
+      titleHint: "A few words you'll know it by",
+      titleLeft: (n: number): string =>
+        `${n} character${n === 1 ? "" : "s"} left`,
+      topic: "Subject",
+      keywords: "Keywords",
+      pickAny: "pick any",
+      start: "Start the questions",
+    },
+    questionOf: (n: number, of: number): string => `Question ${n} of ${of}`,
+    canWait: "you can leave this one",
+    needed: "This one is needed before the idea can go home.",
+    swipeOn: "Swipe on to leave it for now.",
+    /** Each dot above the cards, for a screen reader. */
+    dot: {
+      said: (n: number): string => `Question ${n}, said`,
+      typed: (n: number): string => `Question ${n}, typed`,
+      failed: (n: number): string =>
+        `Question ${n}, your voice didn't come through`,
+      later: (n: number): string => `Question ${n}, left for later`,
+      open: (n: number): string => `Question ${n}, not said yet`,
+    },
+    prev: (n: number): string => `← ${n}`,
+    next: (n: number): string => `${n} →`,
+    last: "Last one",
+    failed: {
+      title: "You wanted to say this. Your voice didn't come through.",
+      line: "Nothing was kept. Try again, or come back to it later.",
+      again: "Try saying it again",
+      later: "Come back later",
+      type: "Type it this once",
+    },
+    typing: {
+      mark: "Typing instead · voice didn't work",
+      hint: "A few words are enough. You can say it properly later.",
+      left: (n: number): string => `${n} character${n === 1 ? "" : "s"} left`,
+      voice: "Try voice again",
+      keep: "Keep these words",
+    },
+    typed: {
+      mark: "Typed, because voice didn't work",
+      sayInstead: "Say it instead",
+    },
+    later: {
+      line: "Left for later. It's marked on the dots above, and the idea won't go home without what it needs.",
+      sayNow: "Say it now",
+    },
+    saidCount: (n: number, of: number): string =>
+      `${n} of ${of} answered · all on this phone until you send`,
+    toReview: "Look it over before sending",
+    review: {
+      noTitle: "No title yet",
+      change: "Change",
+      kept: "Kept on this phone only. Nothing has been sent.",
+      playAll: "Play all, in order",
+      stopAll: "Stop",
+      deleteAll: "Delete all",
+      notSaid: "Not said yet",
+      typed: "Typed, because voice didn't work",
+      sayIt: "Say it",
+      delete: "Delete",
+      needsTitle: "Give it a title to send it.",
+      needsFirst: "Say what the video is to send it.",
+      away: "Home is out of reach. Send keeps the idea here, whole, and it goes home when you're back in reach.",
+      unpaired:
+        "This phone isn't paired with home. Send keeps the idea here, whole, and it goes home once it is.",
+      send: (n: number): string =>
+        `Send the idea home · ${plural(n, "answer", "answers")}`,
+    },
+    confirm: {
+      answerTitle: "Delete this answer?",
+      answerLine: (ask: string): string =>
+        `“${ask}” hasn't left this phone, so deleting it removes it for good. You can say it again.`,
+      allTitle: "Delete the whole idea?",
+      allLine:
+        "None of it has left this phone, so its title and every answer are removed for good.",
+      yes: "Delete for good",
+      keep: "Keep it",
+    },
+    notice: {
+      deleted: TAKE_WORDS.discarded,
+      deletedAll: TAKE_WORDS.discarded,
+      notKept:
+        "This phone couldn't keep that change, so it would be lost if you left now.",
+      notSent:
+        "This phone couldn't keep the idea, so nothing was sent. It's all still here.",
+      notDeleted: "That couldn't be deleted, so it's still here.",
+    },
+    sent: {
+      title: "Sent, as one idea",
+      near: "Kept on this phone as one idea, dated. What you said goes home now, and its title and the rest follow once home keeps ideas.",
+      away: "Kept on this phone as one idea, dated. It goes home when you're back in reach.",
+      unpaired:
+        "Kept on this phone as one idea, dated. It goes home once this phone is paired with home.",
+      another: "Another idea",
+    },
   },
 
   /**

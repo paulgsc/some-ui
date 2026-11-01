@@ -1,19 +1,11 @@
 import type { JSX } from "react"
-import type { IdeaListener, WingLink } from "@some-ui/soundbites"
-import { homeHearing, NewIdeaPage } from "@some-ui/soundbites"
+import { useState } from "react"
+import type { WingLink } from "@some-ui/soundbites"
+import { NewIdeaPage } from "@some-ui/soundbites"
 import { createFileRoute, Link } from "@tanstack/react-router"
 
-import { phoneIdeaListener } from "@/lib/idea-hearing"
-
-/**
- * In the Android app, each answer said as a take home hears, or the phone's
- * recognizer on a phone not paired with home (`lib/idea-hearing`); typed
- * words elsewhere.
- */
-const ports: { listener: IdeaListener } | undefined =
-  import.meta.env.VITE_DEVICE_BACKEND === "true"
-    ? { listener: phoneIdeaListener(homeHearing) }
-    : undefined
+import { ideaHome } from "@/lib/idea-hearing"
+import { ideaBundleTakes } from "@/lib/idea-takes"
 
 const StudioLink: WingLink = ({ className, children }) => (
   <Link to="/journal" className={className}>
@@ -21,10 +13,21 @@ const StudioLink: WingLink = ({ className, children }) => (
   </Link>
 )
 
-/** New idea, in the Studio wing (STUDIO ST18). */
-const IdeaRoute = (): JSX.Element => (
-  <NewIdeaPage ports={ports} backLink={StudioLink} />
-)
+/**
+ * New idea, in the Studio wing (STUDIO ST26): one bundle, its answers said
+ * as takes that wait on the phone until the whole idea is sent.
+ */
+const IdeaRoute = (): JSX.Element => {
+  // The desk's runtime is the phone's one; built when the page first shows.
+  const [takes] = useState(ideaBundleTakes)
+  return (
+    <NewIdeaPage
+      takes={takes}
+      ports={{ home: ideaHome }}
+      backLink={StudioLink}
+    />
+  )
+}
 
 export const Route = createFileRoute("/_dashboard/_apk/journal/idea")({
   component: IdeaRoute,

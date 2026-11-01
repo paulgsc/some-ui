@@ -15,6 +15,7 @@ import type {
   TakePatternSnapshot,
   TakePlace,
 } from "./take-pattern"
+import { discards } from "./take-pattern"
 
 /** The last stretch of a take, when the button warns that time is nearly up. */
 export const NEARLY_UP_MS = 10_000
@@ -54,6 +55,11 @@ export type TakeRowView = {
   readonly canPlay: boolean
   readonly canRedo: boolean
   readonly canLetGo: boolean
+  /**
+   * It never left this phone and waits for the screen to send its item
+   * (`send: "on-confirm"`): Let go deletes it for good.
+   */
+  readonly unsent: boolean
 }
 
 /** The one line said beside the button, once, for this item. */
@@ -179,6 +185,8 @@ export function takeItemView(
   const ids = new Set(
     takes.filter((take) => take.answers === answers).map((take) => take.id)
   )
+  const unsent = (take: PatternTake): boolean =>
+    take.kept !== null && discards(options, take.kept.place)
   return {
     button: buttonOf(snapshot, answers, current, options),
     supersedes: options.takes.per === "one" ? (current[0]?.id ?? null) : null,
@@ -189,6 +197,7 @@ export function takeItemView(
       canPlay: quiet && (options.play === "each" || at === 0),
       canRedo: quiet,
       canLetGo: quiet,
+      unsent: unsent(take),
     })),
     earlier: earlier.map((take) => ({
       take,
@@ -196,6 +205,7 @@ export function takeItemView(
       canPlay: quiet && options.play === "each",
       canRedo: false,
       canLetGo: false,
+      unsent: unsent(take),
     })),
   }
 }

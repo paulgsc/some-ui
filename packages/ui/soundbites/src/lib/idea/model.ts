@@ -18,6 +18,11 @@
  * - **What Claude made of it is kept beside it** (`drafts`, newest last),
  *   and setting it aside is a mark that can be taken back (`shelved`):
  *   nothing about an idea is let go.
+ * - **A new idea is one bundle** (ST26): what it is (`about`: its title,
+ *   topic, keywords and format) and its answers, each said as a take
+ *   (`takes`) or, only when voice didn't work, typed. It is kept here only
+ *   once it is sent (`sent`), whole; until then it is a draft
+ *   (`./draft`), which nothing reads but its screen.
  */
 import { canonicalJson } from "@some-ui/core-utils"
 import type { Primer } from "@soundbites/lib/journal/primer"
@@ -59,10 +64,44 @@ export type AnswerWords = {
   readonly words: string
 }
 
+/** A take said for an answer (ST26): its id on this phone's desk of takes. */
+export type AnswerTake = {
+  /** ISO time it was recorded. */
+  readonly at: string
+  readonly take: string
+}
+
 type Answer = {
   readonly question: AnswerTo
-  /** Oldest first; the last is the answer now. Never empty. */
+  /**
+   * Oldest first; the last is the answer's words now. Empty only for an
+   * answer said as a take whose words home hasn't given back (ST26).
+   */
   readonly versions: ReadonlyArray<AnswerWords>
+  /** The takes said for it, oldest first; the last is its take now (ST26). */
+  readonly takes?: ReadonlyArray<AnswerTake>
+}
+
+/** What a video is made for (ST26): a Short (vertical) or a Video (wide). */
+export const IDEA_FORMATS = ["short", "video"] as const
+
+export type IdeaFormat = (typeof IDEA_FORMATS)[number]
+
+/** The longest title, on this phone as on home (the owner, #2453). */
+export const TITLE_MAX = 80
+
+/** The longest typed answer, on this phone as on home. */
+export const TYPED_MAX = 1_000
+
+/** What an idea is (ST26), as its owner said before sending it. */
+export type IdeaAbout = {
+  /** One to `TITLE_MAX` characters, trimmed. */
+  readonly title: string
+  /** One of the topics kept on home (the owner's word is "subject"). */
+  readonly topic: string | null
+  /** Picked from the keywords kept on home, each once. */
+  readonly keywords: ReadonlyArray<string>
+  readonly format: IdeaFormat
 }
 
 export type Idea = {
@@ -82,6 +121,10 @@ export type Idea = {
   readonly drafts?: ReadonlyArray<Draft>
   /** Each time it was set aside or brought back, in order. */
   readonly shelved?: ReadonlyArray<Shelving>
+  /** What it is (ST26), once it was sent as one bundle. */
+  readonly about?: IdeaAbout
+  /** Each time it was sent as one bundle (ST26), as ISO times, in order. */
+  readonly sent?: ReadonlyArray<string>
 }
 
 /** A question Claude asked back about an idea. */
@@ -163,8 +206,13 @@ export function wordsFor(idea: Idea, question: AnswerTo): string | null {
 }
 
 /** The idea's first answer now: what the video is. */
-export function firstWords(idea: Idea): string {
+function firstWords(idea: Idea): string {
   return idea.answers[0]?.versions.at(-1)?.words ?? ""
+}
+
+/** What the idea is called: its title (ST26), or else its first answer. */
+export function ideaName(idea: Idea): string {
+  return idea.about?.title ?? firstWords(idea)
 }
 
 /** What Claude made of the idea last, if it made anything. */
@@ -340,7 +388,16 @@ function ideaGrows(before: Idea, after: Idea): boolean {
     !keepsAll(before.asked, after.asked) ||
     !keepsAll(before.drafts, after.drafts) ||
     !keepsAll(before.shelved, after.shelved) ||
+    !keepsAll(before.sent, after.sent) ||
     (after.asked?.length ?? 0) > FOLLOW_UPS.length
+  ) {
+    return false
+  }
+  // What an idea is stays as it was sent.
+  if (
+    before.about !== undefined &&
+    (after.about === undefined ||
+      canonicalJson(before.about) !== canonicalJson(after.about))
   ) {
     return false
   }
@@ -348,6 +405,7 @@ function ideaGrows(before: Idea, after: Idea): boolean {
     const kept = after.answers[i]
     return (
       kept?.question === answer.question &&
+      keepsAll(answer.takes, kept.takes) &&
       answer.versions.every((version, j) => {
         const same = kept.versions[j]
         return same !== undefined && sameWords(version, same)

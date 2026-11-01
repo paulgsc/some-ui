@@ -15,7 +15,7 @@ import { IdeaCapture } from "@soundbites/components/idea"
 import { Notice } from "@soundbites/components/notice"
 import type { Idea, IdeaStage } from "@soundbites/lib/idea/model"
 import {
-  firstWords,
+  ideaName,
   isFollowUp,
   latestDraft,
   skippedAsks,
@@ -103,7 +103,7 @@ const List = ({
               className="bg-card border-border/60 focus-visible:ring-ring flex w-full flex-col gap-1 rounded-2xl border px-4 py-3 text-left focus-visible:ring-2 focus-visible:outline-none"
             >
               <span className="line-clamp-2 text-base font-bold">
-                {firstWords(idea)}
+                {ideaName(idea)}
               </span>
               <span className="text-muted-foreground text-xs font-semibold">
                 {stageLine(idea, stageOf(idea, videos))}
@@ -243,7 +243,7 @@ const OneIdea = ({
           {stageLine(idea, stage)}
         </p>
         <h2 className="text-2xl font-extrabold text-balance">
-          {firstWords(idea)}
+          {ideaName(idea)}
         </h2>
       </header>
 

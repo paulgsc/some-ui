@@ -48,6 +48,7 @@ const IDLE: TakePatternSnapshot = {
   playback: { kind: "quiet" },
   unplayable: null,
   setAside: null,
+  discarded: null,
 }
 
 const taken = (
@@ -95,12 +96,30 @@ describe("one item's takes", () => {
       canPlay: true,
       canRedo: true,
       canLetGo: true,
+      unsent: false,
     })
     expect(view.earlier[0]).toMatchObject({
       canPlay: true,
       canRedo: false,
       canLetGo: false,
+      unsent: false,
     })
+  })
+
+  it('marks a take that never left the phone under `send: "on-confirm"`, and only that one (ST26)', () => {
+    const held: TakePatternOptions = { ...ONE, send: "on-confirm" }
+    const takes = [
+      taken("t1", "01", { standing: "earlier", kept: { place: "going" } }),
+      taken("t2", "02"),
+    ]
+    const view = takeItemView(IDLE, takes, "card-1", held)
+    expect(view.current[0]?.unsent).toBe(true)
+    expect(view.earlier[0]?.unsent).toBe(false)
+    expect(takeItemView(IDLE, takes, "card-1", ONE).current[0]?.unsent).toBe(
+      false
+    )
+    expect(TAKE_WORDS.discard).toBe("Delete")
+    expect(TAKE_WORDS.place.unsent).toMatch(/Nothing has been sent/)
   })
 
   it("adds beside under `many`, up to its max, and plays only the newest under `latest`", () => {
@@ -158,6 +177,7 @@ describe("one item's takes", () => {
       canPlay: false,
       canRedo: false,
       canLetGo: false,
+      unsent: false,
     })
     expect(takeItemView(recording, [], "card-2", ONE).button).toEqual({
       kind: "recording",

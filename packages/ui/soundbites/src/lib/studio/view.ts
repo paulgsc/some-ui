@@ -363,6 +363,7 @@ export function recordTake(
       // Recording it again is the button's ("Tap to record again").
       canRedo: false,
       canLetGo: false,
+      unsent: false,
     },
   }
 }

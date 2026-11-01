@@ -46,10 +46,17 @@ const isTake = (value: unknown): value is Take =>
   typeof Reflect.get(value, "durationMs") === "number" &&
   typeof Reflect.get(value, "mimeType") === "string" &&
   STANDINGS.includes(Reflect.get(value, "standing")) &&
-  ["undefined", "number"].includes(typeof Reflect.get(value, "setAsideAt"))
+  ["undefined", "number"].includes(typeof Reflect.get(value, "setAsideAt")) &&
+  ["undefined", "true"].includes(String(Reflect.get(value, "waits")))
 
 /** Whether a take is in its item's view: neither recorded again nor set aside. */
 export const inView = (take: Take): boolean => take.standing === undefined
+
+/**
+ * Whether a take may go home: every take, but on a desk whose takes wait
+ * for their item (`send: "on-confirm"`), only once the screen sent it.
+ */
+export const sent = (take: Take): boolean => take.waits !== true
 
 /** What either desk offers besides its runtime. */
 type DeskShelf = {
@@ -75,7 +82,10 @@ type DeskShelf = {
    * earliest such; null when this phone holds none.
    */
   readonly keptOn: (line: string, since: number) => string | null
-  /** The takes as kept, newest first, for the copy home. */
+  /**
+   * The takes as kept, newest first, for the copy home: on a desk whose
+   * takes wait for their item (`send: "on-confirm"`), only those sent.
+   */
   readonly kept: () => ReadonlyArray<Take>
   /** A take's audio, or null when it is gone. */
   readonly audio: (id: string) => Promise<Blob | null>
@@ -133,6 +143,15 @@ export function deskList(key: string, max: number): PatternTakesPorts["takes"] {
           other.id === supersedes ? { ...other, standing: "earlier" } : other
       ),
     remove: (ids): boolean => list.remove(({ id }) => ids.includes(id)),
+    // Only a take that never left the phone can be deleted for good (ST26).
+    discard: (ids): boolean =>
+      list.remove(({ id, waits }) => waits === true && ids.includes(id)),
+    release: (ids): boolean =>
+      list.update((take) => {
+        if (take.waits !== true || !ids.includes(take.id)) return take
+        const { waits: _sent, ...released } = take
+        return released
+      }),
     // A take set aside once keeps the time it was first let go.
     setAside: (id, at): boolean =>
       list.update((take) =>
@@ -226,7 +245,7 @@ function desk<R extends Runtime>(
       return Promise.all(
         takes
           .read()
-          .filter(inView)
+          .filter((take) => inView(take) && sent(take))
           .map(async (take) => {
             try {
               return { take, audio: await audio.get(take.id), read: true }
@@ -237,7 +256,7 @@ function desk<R extends Runtime>(
       )
     },
     keptOn: (line, since): string | null => keptOn(takes.read(), line, since),
-    kept: takes.read,
+    kept: () => takes.read().filter(sent),
     audio: (id) => shelf.shelf().get(id),
     keptWhere: (next): void => {
       where = next
