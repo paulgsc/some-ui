@@ -589,6 +589,43 @@ describe("home's set-aside mark on a note let go on the phone (MIC2)", () => {
     expect(marksIn(heard)).toHaveLength(ASIDE_OWED_MAX)
   })
 
+  it("owes nothing, tells no one and steps no further when storage refuses every write, a note set aside before marks were owed listed (Codex on #2451)", async () => {
+    const storage = memoryStorage()
+    storage.setItem(
+      "some-ui:voice-home",
+      JSON.stringify({ ...INITIAL_VOICE_HOME, held: ["s1", "s2"] })
+    )
+    const refusing = {
+      ...storage,
+      setItem: (): void => {
+        throw new DOMException("full", "QuotaExceededError")
+      },
+    }
+    const voiceHome = createVoiceHome({
+      storage: refusing,
+      shelf: shelf(),
+      encode: () => Promise.resolve({ base64: "", sha256: "s" }),
+      now: Date.now,
+    })
+    fakes.home = voiceHome
+    // Set aside before Let go owed marks: the lane owes it on its pass.
+    fakes.scene = [sceneNote("s1", "set-aside"), sceneNote("s2")]
+    let told = 0
+    const stop = voiceHome.subscribe(() => {
+      told += 1
+    })
+    const heard: Array<string> = []
+    expect(await sendVoice(home(heard))).toEqual({ kind: "synced" })
+    expect(() => {
+      watchVoiceNotes()()
+    }).not.toThrow()
+    stop()
+    expect(voiceHome.owe("s1", LET_GO, "scene")).toBe(false)
+    expect(told).toBe(0)
+    expect(voiceHome.getSnapshot().aside.owed).toEqual([])
+    expect(marksIn(heard)).toEqual([])
+  })
+
   it("reads when a note was set aside off any record, a time it can't read as none", () => {
     expect(asideAt({ standing: "set-aside", setAsideAt: LET_GO })).toBe(LET_GO)
     expect(asideAt({ standing: "set-aside", setAsideAt: LET_GO_MS })).toBe(

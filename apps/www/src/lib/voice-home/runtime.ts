@@ -109,7 +109,15 @@ export function createVoiceHome(ports: VoiceHomePorts): VoiceHome {
   let stored = writable ? state : INITIAL_VOICE_HOME
   const listeners = new Set<() => void>()
 
-  /** Steps the record; false when the step could not be kept in storage. */
+  /**
+   * Steps the record; false when the step could not be kept in storage. A
+   * step that adds what must outlast the launch (a copy, a mark owed) is
+   * taken only once storage kept it: refused, it is neither held in memory
+   * nor told to anyone, so nothing listening can act on it or step again
+   * in answer. A step that only takes away, or that records home's word,
+   * is held in memory even when storage refused it: the next kept write
+   * carries it, and until then the record only sends less.
+   */
   const apply = (event: VoiceHomeEvent): boolean => {
     const next = stepVoiceHome(state, event)
     if (next === state) return true
@@ -117,8 +125,11 @@ export function createVoiceHome(ports: VoiceHomePorts): VoiceHome {
       writable &&
       writeRecord(storage, STORAGE_KEY, JSON.stringify(next), parseVoiceHome)
     // A copy the record cannot name for good is no copy: a later launch
-    // would sweep it while the person may have let the note go.
-    if (!kept && event.kind === "copied") return false
+    // would sweep it while the person may have let the note go. A mark the
+    // record cannot keep is owed nowhere, and Let go sets nothing aside.
+    if (!kept && (event.kind === "copied" || event.kind === "aside")) {
+      return false
+    }
     state = next
     if (kept) stored = next
     for (const listener of listeners) listener()
@@ -171,12 +182,9 @@ export function createVoiceHome(ports: VoiceHomePorts): VoiceHome {
       },
     },
     owe(id, at, from): boolean {
+      // Refused, the step is taken nowhere: nothing to take back.
       apply({ kind: "aside", id, at, from })
-      if (owes(stored, id)) return true
-      // Not owed as storage keeps it: owed nowhere, so no later write
-      // carries a mark for a note that was not set aside.
-      apply({ kind: "unowed", id })
-      return false
+      return owes(stored, id)
     },
     unowe(id): void {
       apply({ kind: "unowed", id })
