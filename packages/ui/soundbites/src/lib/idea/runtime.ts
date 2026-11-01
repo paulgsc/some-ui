@@ -36,11 +36,6 @@ export type ListenTake = {
   readonly answers: string
   /** The take is kept, and its words are on their way (IH1). */
   readonly onHearing: () => void
-  /**
-   * A take was kept that home won't hear for this answer: let go while
-   * under way, or silent (IH1).
-   */
-  readonly onTook: () => void
 }
 
 /**
@@ -130,7 +125,6 @@ export function createIdeaCapture(
           {
             answers,
             onHearing: () => send({ type: "hearing", seq }),
-            onTook: () => send({ type: "took" }),
           }
         )
         listening = mine

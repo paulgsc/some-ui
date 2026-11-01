@@ -323,19 +323,42 @@ function namedBy(kept: ReadonlyArray<Idea>): ReadonlySet<string> {
   )
 }
 
-/** The takes listed, and those nothing will send dropped. */
+/**
+ * The draft with what a take now answers taken off it: typed words a take
+ * said instead replaced, and a mark leaving the question for later. A take
+ * kept after the screen went (Say it instead, then leaving) is told no
+ * screen, so this is read from the takes, not their ending.
+ */
+function answeredBy(state: Pick<BundleState, "draft" | "takes">): IdeaDraft {
+  return IDEA_QUESTIONS.reduce(
+    (draft, question) =>
+      currentTake(state, question) === null
+        ? draft
+        : withoutTyped(withoutLater(draft, question), question),
+    state.draft
+  )
+}
+
+/**
+ * The takes listed: what they answer taken off the draft, and kept, and
+ * those nothing will send dropped.
+ */
 function withTakes(
   state: BundleState,
   takes: ReadonlyArray<PatternTake>,
   kept: ReadonlyArray<Idea> | null
 ): BundleStep {
-  const next = { ...state, takes }
+  const listed = { ...state, takes }
+  const draft = answeredBy(listed)
+  const next = draft === listed.draft ? listed : { ...listed, draft }
+  const keep: ReadonlyArray<BundleEffect> =
+    draft === listed.draft ? [] : [{ type: "keepDraft", draft }]
   const drop = droppable(next, kept)
   return drop.length === 0
-    ? same(next)
+    ? { state: next, effects: keep }
     : {
         state: { ...next, dropping: [...next.dropping, ...drop] },
-        effects: [{ type: "drop", takes: drop }],
+        effects: [...keep, { type: "drop", takes: drop }],
       }
 }
 

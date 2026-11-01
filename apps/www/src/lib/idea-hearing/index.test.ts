@@ -42,7 +42,6 @@ describe("IH1: where an idea answer's words come from", () => {
     const take = {
       answers: "idea:i1:what",
       onHearing: vi.fn(),
-      onTook: vi.fn(),
     }
     const words = vi.fn()
     const ready = vi.fn()

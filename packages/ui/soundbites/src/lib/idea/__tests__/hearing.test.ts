@@ -242,7 +242,6 @@ describe("IH1: an answer said as a take, its words from home", () => {
         words: "a short about the week 8 picks",
       }),
     ])
-    expect(run.state().took).toBe(true)
     // Nothing more is asked once the words came.
     await vi.advanceTimersByTimeAsync(10 * pollMs)
     expect(run.asked()).toHaveLength(3)
@@ -307,7 +306,6 @@ describe("IH1: an answer said as a take, its words from home", () => {
       // What can listen now is asked again (www's `lib/idea-hearing` skips
       // home for a while once it didn't answer).
       expect(run.voiceChecks()).toBe(2)
-      expect(run.state().took).toBe(true)
       expect(run.kept()).toEqual(["take-1"])
       await vi.advanceTimersByTimeAsync(deadlineMs)
       expect(run.asked()).toHaveLength(1)
@@ -400,7 +398,6 @@ describe("IH1: an answer said as a take, its words from home", () => {
     expect(phaseOf(run.state())).toBe("idle")
     expect(run.state().notice).toBe("notHeard")
     expect(run.kept()).toEqual(["take-1"])
-    expect(run.state().took).toBe(true)
     await vi.advanceTimersByTimeAsync(deadlineMs)
     expect(run.asked()).toEqual([])
   })
@@ -414,7 +411,6 @@ describe("IH1: an answer said as a take, its words from home", () => {
     expect(phaseOf(run.state())).toBe("typing")
     await vi.advanceTimersByTimeAsync(1_000)
     expect(run.kept()).toEqual(["take-1"])
-    expect(run.state().took).toBe(true)
     await vi.advanceTimersByTimeAsync(deadlineMs)
     expect(run.asked()).toEqual([])
   })

@@ -197,6 +197,26 @@ describe("a new idea as one bundle (ST26)", () => {
       expect(effects).toEqual([{ type: "open" }])
     })
 
+    it("takes off the draft what a take kept since answers: typed words said instead, and a mark for later", () => {
+      const { state, effects } = run([
+        { type: "entered", at: AT },
+        opened(
+          draft({
+            about: { ...draft().about, title: "x" },
+            typed: { what: "typed first", takeaway: "still typed" },
+            later: ["spark", "picture"],
+          }),
+          [take("t1", "what"), take("t22", "spark")]
+        ),
+      ])
+      expect(state.draft.typed).toEqual({ takeaway: "still typed" })
+      expect(state.draft.later).toEqual(["picture"])
+      expect(effects).toEqual([
+        { type: "open" },
+        { type: "keepDraft", draft: state.draft },
+      ])
+    })
+
     it("keeps waiting a take whose idea nothing readable owns: its draft or idea may only have been unreadable", () => {
       const { effects } = run([
         { type: "entered", at: AT },

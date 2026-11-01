@@ -45,6 +45,8 @@ type Phone = {
   readonly release: ReturnType<typeof vi.fn>
   /** Hides the page, as the app sent to the background does, or shows it. */
   readonly page: (hidden: boolean) => void
+  /** The screen goes. */
+  readonly detach: () => void
 }
 
 let ids = 0
@@ -77,11 +79,11 @@ function phone(
       }
     },
   })
-  bundle.attach()
+  const detach = bundle.attach()
   const page = (hidden: boolean): void => {
     for (const listener of watching) listener(hidden)
   }
-  return { bundle, simulated, drafts, ideas, release, page }
+  return { bundle, simulated, drafts, ideas, release, page, detach }
 }
 
 /** Says the answer on the card at `question`: a tap, talk, a tap. */
@@ -293,6 +295,38 @@ describe("a new idea, end to end on the simulated microphone (ST26)", () => {
     expect(again.ideas.list()).toEqual([])
     expect(simulated.store.getSnapshot().map((take) => take.id)).toEqual(said)
     expect(again.release).not.toHaveBeenCalled()
+  })
+
+  it("says it instead, then leaves mid-take: the take kept after the screen went replaces the typed words", async () => {
+    const storage = inMemoryStorage()
+    const simulated = simulatedPattern({
+      options: { ...ONE_TAKE, send: "on-confirm" },
+    })
+    const first = phone(storage, simulated)
+    titled(first)
+    simulated.mic.script({
+      ...SPEAKING,
+      open: { kind: "refuse", reason: "denied", ms: 10 },
+    })
+    first.bundle.dispatch({ type: "tap", question: "what" })
+    await pass(50)
+    first.bundle.dispatch({ type: "typeInstead", question: "what" })
+    first.bundle.dispatch({ type: "typed", question: "what", text: "typed" })
+    first.bundle.dispatch({ type: "keepTyped", question: "what" })
+    // Say it instead, and leave while it records.
+    first.bundle.dispatch({ type: "tap", question: "what" })
+    await pass(2_000)
+    first.detach()
+    await pass(100)
+    expect(simulated.store.getSnapshot()).toHaveLength(1)
+    const again = phone(storage, simulated)
+    expect(again.drafts.read()?.typed).toEqual({})
+    again.bundle.dispatch({ type: "askDelete", question: "what" })
+    again.bundle.dispatch({ type: "confirmed" })
+    expect(simulated.store.getSnapshot()).toEqual([])
+    // Deleted, the answer is gone: the typed words don't come back.
+    expect(again.bundle.getSnapshot().draft.typed).toEqual({})
+    expect(again.drafts.read()?.typed).toEqual({})
   })
 
   it("starts no take when the draft it would answer couldn't be kept", async () => {

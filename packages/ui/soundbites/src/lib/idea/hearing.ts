@@ -154,8 +154,6 @@ export type HearingEvent =
 type HearingEffect =
   /** Tell the screen home is hearing the take. */
   | { readonly type: "hearing" }
-  /** Tell the screen a take was kept, though home won't hear it for it. */
-  | { readonly type: "took" }
   /** Keep the take under way, and send it home as any other. */
   | { readonly type: "leave" }
   | { readonly type: "ask"; readonly id: string }
@@ -254,7 +252,7 @@ function ended(
   if (phase.kind === "leaving") {
     return {
       state: { ...state, phase: DONE },
-      effects: id === null ? [] : [{ type: "took" }],
+      effects: [],
     }
   }
   if (phase.kind !== "taking") return { state, effects: [] }
@@ -269,10 +267,7 @@ function ended(
     // to give, so it is said at once, as a recognizer that heard nothing.
     return {
       state: { ...state, phase: DONE },
-      effects: [
-        { type: "took" },
-        { type: "settle", result: { kind: "heard", words: "" } },
-      ],
+      effects: [{ type: "settle", result: { kind: "heard", words: "" } }],
     }
   }
   return {
@@ -523,10 +518,6 @@ export function homeHearing(ports: HearingPorts): IdeaListener {
             take?.onHearing()
             return
           }
-          case "took": {
-            take?.onTook()
-            return
-          }
           case "leave": {
             takes.leave()
             return
@@ -600,8 +591,8 @@ export function homeHearing(ports: HearingPorts): IdeaListener {
           if (state.phase.kind === "taking") takes.stop()
         },
         cancel: (): void => {
-          // A take under way is kept and goes home, and the screen is told
-          // once it is (`took`); the listening is over either way.
+          // A take under way is kept and goes home; the listening is over
+          // either way.
           send({ type: "cancel" })
           // Ignored by the machine, which has moved on from it.
           settle({ kind: "failed" })

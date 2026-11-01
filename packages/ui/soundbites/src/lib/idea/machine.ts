@@ -114,8 +114,6 @@ export type IdeaState = {
   readonly notice: IdeaNotice
   /** The last listening's number. */
   readonly seq: number
-  /** A take of the idea's answers was kept on its way home (IH1). */
-  readonly took: boolean
 }
 
 /** What a write does to the ideas the store holds now. */
@@ -185,7 +183,6 @@ export type IdeaEvent =
   /** The listening's take is kept, and home is hearing it (IH1). */
   | { readonly type: "hearing"; readonly seq: number }
   /** A take was kept that home won't hear for an answer (IH1). */
-  | { readonly type: "took" }
   | { readonly type: "partial"; readonly seq: number; readonly words: string }
   | {
       readonly type: "listened"
@@ -225,7 +222,6 @@ export function initialIdeaState(ideaId: string): IdeaState {
     ideaId,
     notice: null,
     seq: 0,
-    took: false,
   }
 }
 
@@ -632,14 +628,10 @@ function stepOn(state: IdeaState, event: IdeaEvent): IdeaStep {
       ) {
         return same({
           ...state,
-          took: true,
           screen: { ...screen, phase: { kind: "hearing", seq: event.seq } },
         })
       }
       return same(state)
-    }
-    case "took": {
-      return state.took ? same(state) : same({ ...state, took: true })
     }
     case "partial": {
       if (
