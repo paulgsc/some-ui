@@ -108,7 +108,7 @@ function maxBytes(limits: TakeLimits): number {
 
 /** What a runtime needs of the desk, and what it gives back. */
 type Runtime = {
-  readonly letGo: (ids: ReadonlyArray<string>) => void
+  readonly letGo: (ids: ReadonlyArray<string>) => boolean
   readonly recount: () => void
 }
 

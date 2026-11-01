@@ -80,8 +80,11 @@ export type PatternPhone = {
   readonly takes: PatternTakes
   /** No new take can be kept until home holds some of those kept. */
   readonly full: () => boolean
-  /** Lets these takes go, with their audio: the sweep's, for audio that never landed. */
-  readonly letGo: (ids: ReadonlyArray<string>) => void
+  /**
+   * Lets these takes go, with their audio: the sweep's, for audio that never
+   * landed. Says whether the list stored it.
+   */
+  readonly letGo: (ids: ReadonlyArray<string>) => boolean
   /** Where takes are kept has changed: each row, and `full`. */
   readonly recount: () => void
 }
@@ -134,14 +137,16 @@ export function createPatternTakes(
     )
   }
 
-  const letGo = (ids: ReadonlyArray<string>): void => {
-    if (ids.length === 0) return
+  const letGo = (ids: ReadonlyArray<string>): boolean => {
+    if (ids.length === 0) return true
     // The list first: audio whose entry stays would leave a silent take.
-    if (ports.takes.remove(ids)) {
+    const stored = ports.takes.remove(ids)
+    if (stored) {
       // Ignored: audio no take names is cleared by the next sweep.
       ports.audio.remove(ids).catch(() => undefined)
     }
     publish()
+    return stored
   }
 
   const pattern = takePattern(
@@ -156,8 +161,13 @@ export function createPatternTakes(
           done({ outcome: "full" })
           return
         }
+        // RM1: a room not made keeps nothing, so the list never drops a
+        // take at its cap to fit this one.
         const room = makesRoom(ports.takes.read(), limits.max, held, takenAt)
-        if (room !== null) letGo([room.id])
+        if (room !== null && !letGo([room.id])) {
+          done({ outcome: "failed" })
+          return
+        }
         const id = ports.newId()
         shelveTake(
           ports,

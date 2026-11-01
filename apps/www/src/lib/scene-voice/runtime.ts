@@ -62,7 +62,7 @@ export type PhoneSceneVoice = SceneVoice & {
    * Lets these notes go, with their audio: the sweep's, for a note whose
    * audio never landed.
    */
-  remove: (ids: ReadonlyArray<string>) => void
+  remove: (ids: ReadonlyArray<string>) => boolean
 }
 
 /** What every note of the draft answers: the ref home is told it by. */
@@ -157,8 +157,13 @@ export function createSceneVoice(ports: SceneVoicePorts): PhoneSceneVoice {
           done({ outcome: "full" })
           return
         }
+        // RM1: a room not made keeps nothing, so the list never drops a
+        // note at its cap to fit this one.
         const room = roomFor()
-        if (room !== null) remove([room.id])
+        if (room !== null && !remove([room.id])) {
+          done({ outcome: "failed" })
+          return
+        }
         const id = ports.newId()
         const entry: KeptSceneNote = {
           id,
@@ -213,12 +218,15 @@ export function createSceneVoice(ports: SceneVoicePorts): PhoneSceneVoice {
     }
   })
 
-  const remove = (ids: ReadonlyArray<string>): void => {
-    if (ids.length === 0 || !ports.notes.remove(ids)) return
+  /** Lets these notes go, with their audio; says whether the list stored it. */
+  const remove = (ids: ReadonlyArray<string>): boolean => {
+    if (ids.length === 0) return true
+    if (!ports.notes.remove(ids)) return false
     // Ignored: audio no note names is cleared by the next sweep
     // (`sweepSceneVoice`).
     ports.audio.remove(ids).catch(() => undefined)
     publish()
+    return true
   }
 
   return {

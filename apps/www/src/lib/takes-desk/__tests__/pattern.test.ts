@@ -147,6 +147,22 @@ describe("createPatternTakes", () => {
     expect((await on.shelf.ids()).sort()).toEqual(["n2", "n3"])
   })
 
+  it("keeps nothing when the room it makes at its cap is not stored, dropping none home lacks (RM1)", async () => {
+    const on = desk(2)
+    await take(on, "a")
+    await take(on, "b")
+    on.home.held("n2")
+    on.phone.recount()
+    // The phone refuses the write that lets n2 go, and stores the next.
+    vi.spyOn(Storage.prototype, "setItem").mockImplementationOnce(() => {
+      throw new DOMException("full", "QuotaExceededError")
+    })
+    await take(on, "c")
+    vi.restoreAllMocks()
+    expect(on.phone.pattern.getSnapshot().ended?.ending).toBe("failed")
+    expect(on.listed().map(({ id }) => id)).toEqual(["n2", "n1"])
+  })
+
   it("lets a take go with its audio when the sweep finds it silent", async () => {
     const on = desk()
     await take(on, "a")

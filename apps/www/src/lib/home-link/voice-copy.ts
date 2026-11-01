@@ -51,10 +51,12 @@
  * - _Family:_ every share kind (reflections; the study-context export with
  *   its soundbites, grammar-lens entries and takes, and LeetType answers and
  *   takes; Studio takes) and every cap that makes room (soundbites, lens
- *   takes, LeetType takes and answer notes, Studio idea takes, and the grammar-lens record,
- *   HF5 #2180; the session budget's offer of the oldest finished session,
- *   "Remove it", #2422) × every home state (held; waiting; unpaired; off the LAN,
- *   which the phone sees alike as not held); for Studio takes, × every
+ *   takes, LeetType takes and answer notes, Studio idea takes, scene notes,
+ *   and the grammar-lens record, HF5 #2180; the session budget's offer of
+ *   the oldest finished session, "Remove it", #2422), whether the phone
+ *   stores the room it makes or not (RM1, `lib/takes-desk/runtime.ts`),
+ *   × every home state (held; waiting; unpaired; off the LAN, which the
+ *   phone sees alike as not held); for Studio takes, × every
  *   choice (none yet, once home has them, until Drive has it too) × the
  *   owner's "Drive has it" on the take (tapped or not), home's word that
  *   Drive has it (said, not said, or not read) and the share sheet's

@@ -138,8 +138,8 @@ export type PhoneTakes = {
   playLast: () => void
   /** The item is done: a take under way is kept, and the last is forgotten. */
   reset: () => void
-  /** Lets these takes go, with their audio. */
-  letGo: (ids: ReadonlyArray<string>) => void
+  /** Lets these takes go, with their audio; says whether the list stored it. */
+  letGo: (ids: ReadonlyArray<string>) => boolean
   /** Says `full` again: what home holds has changed. */
   recount: () => void
   /** Whether home holds take `id`, as last read back (`held`). */
@@ -160,6 +160,20 @@ export function homeHolds(kept: TakeKept): boolean {
  * The item a new one makes room by letting go at `max`: the oldest by `at`
  * of those home holds (`held`), or null while there is room or home holds
  * none. The takes' and LeetType's answer notes' (`lib/leetype-takes`).
+ *
+ * **RM1: making room never drops what home lacks.**
+ * - _Claim:_ at a store's cap, a new take or note is kept only once the
+ *   letting go of the one `makesRoom` names was stored; when it was not, the
+ *   keep ends `failed` and adds nothing, so the list's bound
+ *   (`boundedList`, which slices past its limit) never drops another.
+ * - _Family:_ every cap that makes room through `makesRoom` (the kit desk,
+ *   `createTakes`; the pattern desk, `./pattern`; the scene notes,
+ *   `lib/scene-voice`; LeetType's answer notes) × the letting go stored or
+ *   refused × the new entry stored or refused.
+ * - _Proof:_ each store's test "keeps nothing when the room it makes … is
+ *   not stored (RM1)" (`__tests__/runtime.test.ts`, `__tests__/pattern.test.ts`,
+ *   `lib/scene-voice/runtime.test.ts`); LeetType's notes refuse first
+ *   (`phoneSpokenTakes().note`).
  */
 export function makesRoom<T extends { readonly id: string }>(
   items: ReadonlyArray<T>,
@@ -208,16 +222,18 @@ export function createTakes(ports: TakesPorts, limits: TakeLimits): PhoneTakes {
     )
   }
 
-  /** Lets these takes go, with their audio, and says so. */
-  const letGo = (ids: ReadonlyArray<string>): void => {
-    if (ids.length === 0) return
-    if (last && ids.includes(last.id)) last = null
+  /** Lets these takes go, with their audio; says whether the list stored it. */
+  const letGo = (ids: ReadonlyArray<string>): boolean => {
+    if (ids.length === 0) return true
     // The list first: audio whose entry stays would leave a silent take.
-    if (ports.takes.remove(ids)) {
+    const stored = ports.takes.remove(ids)
+    if (stored) {
+      if (last && ids.includes(last.id)) last = null
       // Ignored: audio no take names is cleared by the next sweep.
       ports.audio.remove(ids).catch(() => undefined)
     }
     publish()
+    return stored
   }
 
   const kit = takeKit(
@@ -241,7 +257,12 @@ export function createTakes(ports: TakesPorts, limits: TakeLimits): PhoneTakes {
           ports.held,
           takenAt
         )
-        if (room !== null) letGo([room.id])
+        // RM1: a room not made keeps nothing, so the list never drops a
+        // take at its cap to fit this one.
+        if (room !== null && !letGo([room.id])) {
+          done({ outcome: "failed" })
+          return
+        }
         shelveTake(
           ports,
           id,

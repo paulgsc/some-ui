@@ -22,7 +22,8 @@ import {
 /** The draft's list in memory, as the phone's keeps it (`./index`). */
 function memoryNotes(
   listed: Array<KeptSceneNote>,
-  stores = true
+  stores = true,
+  removes = (): boolean => true
 ): SceneVoicePorts["notes"] {
   const write = (next: Array<KeptSceneNote>): boolean => {
     if (!stores) return false
@@ -40,7 +41,7 @@ function memoryNotes(
         note,
       ]),
     remove: (ids): boolean =>
-      write(listed.filter(({ id }) => !ids.includes(id))),
+      removes() && write(listed.filter(({ id }) => !ids.includes(id))),
     prompted: (ids): boolean =>
       write(
         listed.map((note) =>
@@ -61,8 +62,14 @@ function phone(
   listed: Array<KeptSceneNote> = [],
   {
     stores = true,
+    removes,
     kept = (): TakeKept => ({ place: "phone" }),
-  }: { stores?: boolean; kept?: (id: string) => TakeKept } = {}
+  }: {
+    stores?: boolean
+    /** Whether the list stores a note let go; it does unless said. */
+    removes?: () => boolean
+    kept?: (id: string) => TakeKept
+  } = {}
 ): {
   voice: PhoneSceneVoice
   audio: ReturnType<typeof memoryShelf>
@@ -76,7 +83,7 @@ function phone(
     owner: microphoneOwner(),
     player: simulatedPlayer(),
     audio,
-    notes: memoryNotes(listed, stores),
+    notes: memoryNotes(listed, stores, removes),
     saving: () => undefined,
     now: Date.now,
     newId: () => `n${(next += 1)}`,
@@ -251,6 +258,26 @@ describe("createSceneVoice", () => {
     expect(listed.map(({ id }) => id)).toContain("aside-3")
     expect(listed).toHaveLength(SCENE_NOTES_KEPT)
     expect(ids(voice)).toEqual(["draft", "n1"])
+  })
+
+  it("keeps nothing when the room it makes at twenty is not stored, dropping none home lacks (RM1)", async () => {
+    const aside = Array.from({ length: SCENE_NOTES_KEPT - 1 }, (_, index) =>
+      note(`aside-${index}`, {
+        standing: "set-aside",
+        at: new Date(index * 1_000).toISOString(),
+      })
+    )
+    const { voice, listed, audio } = phone([note("draft"), ...aside], {
+      removes: () => false,
+      kept: (id) =>
+        id === "aside-0" ? { place: "home", since: null } : { place: "going" },
+    })
+    expect(voice.getSnapshot().full).toBe(false)
+    await talk(voice)
+    expect(voice.pattern.getSnapshot().ended?.ending).toBe("failed")
+    expect(listed).toHaveLength(SCENE_NOTES_KEPT)
+    expect(listed.map(({ id }) => id)).toContain("aside-0")
+    expect(await audio.ids()).toEqual([])
   })
 
   it("takes the audio back out when its entry cannot be listed", async () => {

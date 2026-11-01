@@ -267,6 +267,21 @@ describe("createTakes", () => {
     expect(p.listed[0]?.id).toBe("t1")
   })
 
+  it("keeps nothing when the room it makes at forty is not stored, dropping none home lacks (RM1)", async () => {
+    const full = Array.from({ length: LENS_TAKES_MAX }, (_, index) =>
+      kept(`old-${index}`, NOW - index)
+    )
+    const p = ports(full)
+    p.takes.remove = (): boolean => false
+    const takes = createTakes(p, LIMITS)
+    p.home.add("old-5")
+    takes.recount()
+    await take(takes)
+    expect(takes.getSnapshot().ended?.end).toBe("failed")
+    expect(p.audio.put).not.toHaveBeenCalled()
+    expect(p.listed.map(({ id }) => id)).toEqual(full.map(({ id }) => id))
+  })
+
   it("is full once a kept take is the fortieth", async () => {
     const p = ports(
       Array.from({ length: LENS_TAKES_MAX - 1 }, (_, index) =>
