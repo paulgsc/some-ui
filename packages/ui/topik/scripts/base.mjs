@@ -10,12 +10,22 @@ const raw = readArg("pnpm --filter @some-ui/topik base <groups.json>")
 await withSource(
   "/src/lib/topik/reflection-base/index.ts",
   ({ groupBases, readGroups }) => {
-    const read = readGroups(JSON.parse(raw))
-    if ("refused" in read) {
+    const refuse = (why) => {
       process.stdout.write(
-        `The groups don't read as [{"day":"YYYY-MM-DD","session":"<id>"}, ...]: ${read.refused} doesn't.\n`
+        `The groups don't read as [{"day":"YYYY-MM-DD","session":"<id>"}, ...]: ${why}.\n`
       )
       process.exitCode = 1
+    }
+    let parsed
+    try {
+      parsed = JSON.parse(raw)
+    } catch {
+      refuse("the file isn't JSON")
+      return
+    }
+    const read = readGroups(parsed)
+    if ("refused" in read) {
+      refuse(`${read.refused} doesn't`)
       return
     }
     process.stdout.write(

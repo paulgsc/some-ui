@@ -8,9 +8,9 @@ import { z } from "zod"
  *
  * RB1 (ROUTINE.md, "What review holds"): two groups of one day never share a
  * base, and a scene under the earlier base answers a group only when no other
- * group of that day, answered or not, has the same one; `index.test.ts`,
- * "RB1", holds it over each id form, and the run takes bases only from
- * `scripts/base.mjs`.
+ * group of that day still in the listing, answered or not, has the same one;
+ * `index.test.ts`, "RB1", holds it over each id form, and the run takes bases
+ * only from `scripts/base.mjs`.
  */
 
 /** One session's written reflections on one day. */

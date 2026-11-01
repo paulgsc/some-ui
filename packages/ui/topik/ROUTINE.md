@@ -180,21 +180,22 @@ step 12 doesn't run. Voice notes never go to the mailbox from this run.
    session's first 8 (`<day>_reflection_session-` for most): that scene
    answers the group only when no other group of that day still in the
    listing, answered or not, has the same earlier base, and otherwise none of
-   them. Don't work either base out by eye: save every group the listing's
+   them. A group whose session has no letter, digit or `-` can't be named, so
+   leave it out of what follows, skip it, and say so in the summary. Don't
+   work either base out by eye: save every group the listing's
    reflections make, answered or not, as
    `[{"day":"<day>","session":"<session>"},...]` in a scratch file outside the
    checkout and run, from `packages/ui/topik`,
    `node scripts/base.mjs <absolute path of the file>`. The file takes the
    reflections a Drive file holds too, grouped as the others are, though they
-   are still answered with their file: home counts every group it gathered,
+   are still answered with their file: home's index counts every group it
+   gathered (paulgsc/server `mailbox/index/reflections.rs`, `waiting_groups`),
    and whether an earlier base names one group turns on all of that day's. It
    prints each group with its `base` and its `earlier` base,
    which is `null` when a scene under it answers none. A group is answered by
    a scene that carries its `base`, or its `earlier` base when that isn't
-   `null`. If it says the groups don't read, it names the entry: fix the file
-   and run it again. A group whose session has no letter, digit or `-` can't
-   be named, so leave it out of the file, skip it, and say so in the summary.
-   A group whose newest `at` is under two hours old waits for the
+   `null`. If it fails or says the groups don't read (it names the entry when
+   it can), fix the file and run it again. A group whose newest `at` is under two hours old waits for the
    next run, since more of that session may be on its way; a reflection
    written on the same day after its group was answered is not answered
    again (say so in the summary). Its spoken reflections ("Voice notes",
@@ -539,17 +540,19 @@ and is not retried.
   part every session id shares, or that drops the earlier-base clause or
   changes when it answers a group; a hunk that deletes, renames or moves
   `scripts/base.mjs` without step 3 following it; a hunk in `scripts/base.mjs`
-  that prints anything other than `groupBases(readGroups(<the file>))` or the
-  entry `readGroups` names when it refuses the file, or that loads another
-  module; a hunk that moves or renames `src/lib/topik/reflection-base/index.ts`
-  or its `groupBases`/`readGroups` exports without `base.mjs` following; or a
-  hunk in `apps/www/src/lib/tenant/session-id.ts` or
-  `apps/www/src/lib/tenant/sessions-repository/index.ts` that mints a
-  session's id other than with `newSessionId`.
-- _Scope:_ this file's step 3, `scripts/base.mjs`,
+  that prints anything other than `groupBases(readGroups(<the file>))` or
+  that the groups don't read, or that passes `withSource` any path but
+  `/src/lib/topik/reflection-base/index.ts`; a hunk in `scripts/source.mjs`
+  that changes what `readArg` reads or what `withSource` loads; a hunk that
+  moves or renames `src/lib/topik/reflection-base/index.ts` or its
+  `groupBases`/`readGroups` exports without `base.mjs` following; a hunk
+  anywhere under `apps/www/src` that gives a new session an id other than one
+  `newSessionId` returned; or a hunk that deletes, skips or narrows the "RB1"
+  `describe` in either test file named below.
+- _Scope:_ this file's step 3, `scripts/base.mjs`, `scripts/source.mjs`,
   `src/lib/topik/reflection-base/index.ts`, and the phone's session ids:
-  `newSessionId` in `apps/www/src/lib/tenant/session-id.ts`, which
-  `sessions-repository/index.ts` calls. Home's `new_session_id` makes ids of
+  `newSessionId` in `apps/www/src/lib/tenant/session-id.ts` and every caller
+  of it under `apps/www/src`. Home's `new_session_id` makes ids of
   the same form and lives in paulgsc/server, outside this repo.
 - _Why not a test alone:_ the rule itself is a test's.
   `src/lib/topik/reflection-base/index.test.ts`, "RB1", holds `baseOf`,
@@ -560,3 +563,9 @@ and is not retried.
   part, in both its forms. What no test sees is that the run, which follows
   this file by hand, calls `scripts/base.mjs`, and that the script prints what
   the module computes.
+- _Tolerance:_ a group that arrives late for a day whose other groups have all
+  left the listing, when one of them was answered under the earlier base, is
+  taken as answered by that scene. Earlier-base scenes were written only
+  before this rule (2026-10-31 and 2026-11-01), and a reflection leaves the
+  listing only once home archives it, at least 30 days on, so such a group
+  would have to arrive more than a month late.
