@@ -384,7 +384,7 @@ export const GenerateLesson = ({
             asks={sceneAsk}
             prompt={prompt}
             notes={notes}
-            disabled={voice !== null && voice.take.kind !== "idle"}
+            disabled={voice?.taking === true}
             onAsked={(text) => onPromptHandedOff?.(text)}
           />
         )}

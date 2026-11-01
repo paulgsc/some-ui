@@ -18,7 +18,7 @@ import type {
 import type { PatternTake } from "@some-ui/voice-capture"
 
 import { boundedList } from "@/lib/bounded-list"
-import { makesRoom, patternDesk } from "@/lib/takes-desk"
+import { inView, makesRoom, patternDesk } from "@/lib/takes-desk"
 
 export type { Take as LeetypeTake } from "@/lib/takes-desk"
 
@@ -178,10 +178,25 @@ export function leetypeNotesHeldByHome(
   notesMoved()
 }
 
-/** The notes and the takes with their audio, for the study-context export. */
+/**
+ * The notes and the takes with their audio, for the study-context export:
+ * those in view. A take recorded again or set aside is out of what routines
+ * read (D2, D3), and so is the note of what it answered.
+ */
 export async function leetypeTakesForExport(): Promise<{
   notes: Array<LeetypeTakeNote>
   takes: Awaited<ReturnType<typeof desk.forExport>>
 }> {
-  return { notes: notes.read(), takes: await desk.forExport() }
+  const aside = new Set(
+    desk
+      .kept()
+      .filter((take) => !inView(take))
+      .map(({ id }) => id)
+  )
+  return {
+    notes: notes
+      .read()
+      .filter((note) => note.take === null || !aside.has(note.take)),
+    takes: await desk.forExport(),
+  }
 }

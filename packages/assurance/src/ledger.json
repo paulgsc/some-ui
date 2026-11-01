@@ -1878,8 +1878,8 @@
     {
       "store": "phone:scene-voice",
       "class": "record",
-      "growth": "bounded: SCENE_NOTES_MAX = 5 notes per draft, SCENE_AUDIO_MAX_BYTES = 5 x 240,000 = 1,200,000 B.",
-      "horizon": "notes leave when the person lets the draft go, or once home holds them and holds the ask that named them (letGo, prompted, LA18); sweepSceneVoice drops audio no note names and notes whose audio never landed",
+      "growth": "bounded: SCENE_NOTES_MAX = 5 notes in the draft; SCENE_NOTES_KEPT = 20 notes on the phone, those set aside or recorded again counted until home holds them; past 20 a new note makes room with the oldest home holds out of the draft, and is refused while there is none; SCENE_AUDIO_MAX_BYTES = 20 x 240,000 = 4,800,000 B (raised from 5 when Redo and Let go began keeping notes: MIC5, paulgsc/some-ui#2439 review).",
+      "horizon": "a note leaves the phone only once home holds it and holds the ask that named it, or holds it and it is out of the draft, set aside or recorded again (letGo, prompted, LA18; D2, D3); sweepSceneVoice drops audio no note names and notes whose audio never landed",
       "family": "what-is-kept"
     },
     {

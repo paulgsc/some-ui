@@ -69,10 +69,14 @@ type ItemTakes = { count: number; lastMs: number; heardFirst: boolean }
 
 export type LensRuntime = {
   dispatch: (event: LensEvent) => void
-  /** Starts a take of the current item's line, during its reveal. */
-  startTake: () => void
-  /** Plays the item's last take back, the speech stopped first. */
-  playTake: () => void
+  /**
+   * The take button's tap, during the reveal: starts a take of the current
+   * item's line, the speech stopped first, superseding `supersedes` once
+   * kept (a Redo, D2), or stops the take under way (D1).
+   */
+  tapTake: (supersedes?: string | null) => void
+  /** Plays one of the line's takes, or stops it, the speech stopped first. */
+  playTake: (id: string) => void
   begin: () => void
   hearCue: () => void
   hearLine: () => void
@@ -179,12 +183,17 @@ export function createLensRuntime(
    * one still being read, which `playing` does not show yet.
    */
   const stopPlayback = (): void => {
-    options().takes?.stop()
+    options().takes?.pattern.stopPlaying()
   }
 
   /** A take is opening, recording or being kept. */
   const taking = (): boolean =>
-    (options().takes?.getSnapshot().take.kind ?? "idle") !== "idle"
+    (options().takes?.pattern.getSnapshot().take.kind ?? "idle") !== "idle"
+
+  /** The screen went, or the item closed: a take under way is kept, nothing plays. */
+  const leaveTakes = (): void => {
+    options().takes?.pattern.leave()
+  }
 
   const keep = (index: number, at: number): void => {
     const item = state.items[index]
@@ -247,26 +256,27 @@ export function createLensRuntime(
    * Follows one take from its start to its end, outside React, so a take
    * the learner left mid-way still lands on the item it was started on.
    * Whether the line was heard is read when recording begins; the take
-   * counts only once kept (not too short, not refused, not failed).
+   * counts only once kept (not too short, not refused, not failed): its
+   * ending names the take, which the port lists by then.
    */
   const follow = (port: LensTakes, index: number): (() => void) => {
+    const { pattern } = port
     const forSet = set
-    const before = port.getSnapshot().kept?.id ?? null
+    const before = pattern.getSnapshot().ended?.seq ?? 0
     let heardFirst: boolean | null = null
-    let started = false
-    const unsubscribe = port.subscribe(() => {
-      const { take, kept: landedTake } = port.getSnapshot()
+    const unsubscribe = pattern.subscribe(() => {
+      const { take, ended } = pattern.getSnapshot()
       if (take.kind === "recording" && heardFirst === null) {
         heardFirst = forSet === set && lineHeard.has(index)
       }
-      if (take.kind !== "idle") {
-        started = true
-        return
-      }
-      if (!started) return
+      if (ended === null || ended.seq === before) return
       unsubscribe()
-      if (landedTake && landedTake.id !== before && heardFirst !== null) {
-        landed(forSet, index, landedTake.durationMs, heardFirst)
+      const kept =
+        ended.ending === "kept" && ended.id !== null
+          ? port.getSnapshot().takes.find(({ id }) => id === ended.id)
+          : undefined
+      if (kept && heardFirst !== null) {
+        landed(forSet, index, kept.durationMs, heardFirst)
       }
     })
     return unsubscribe
@@ -307,7 +317,7 @@ export function createLensRuntime(
       }
       case "closed": {
         keep(effect.index, effect.at)
-        options().takes?.reset()
+        leaveTakes()
         return
       }
       case "stop-speech": {
@@ -355,22 +365,29 @@ export function createLensRuntime(
       stopPlayback()
       say(item.korean, "line")
     },
-    startTake: (): void => {
+    tapTake: (supersedes = null): void => {
       const item = currentItem(state)
       const port = options().takes
       if (!item || !port || state.phase.name !== "reveal") return
+      const { pattern } = port
+      // D1: a tap while a take is under way stops it.
+      if (taking()) {
+        pattern.tap(item.lineId)
+        return
+      }
+      if (port.getSnapshot().full) return
       stopSpeech()
       publish()
       const unfollow = follow(port, state.cursor)
-      port.start(item.lineId)
-      // Refused at once (full, or a take already under way): nothing to follow.
-      if (port.getSnapshot().take.kind === "idle") unfollow()
+      pattern.tap(item.lineId, supersedes)
+      // Refused at once (another screen holds the microphone): nothing to follow.
+      if (!taking()) unfollow()
     },
-    playTake: (): void => {
+    playTake: (id): void => {
       if (taking()) return
       stopSpeech()
       publish()
-      options().takes?.playLast()
+      options().takes?.pattern.play(id)
     },
     hide: (): void => {
       clearTimer()
@@ -378,11 +395,11 @@ export function createLensRuntime(
       // under way is written into it again once kept (`follow`).
       keep(state.cursor, now())
       // No microphone or playback in the background; a take is kept.
-      options().takes?.stop()
+      leaveTakes()
       dispatch({ type: "hidden", at: now() })
     },
     hold: (): void => {
-      options().takes?.stop()
+      leaveTakes()
       dispatch({ type: "held", at: now() })
     },
     show: (): void => dispatch({ type: "shown", at: now() }),
@@ -390,7 +407,7 @@ export function createLensRuntime(
       // Left with an item answered: it closes here. A remount (React's
       // development double mount) shows it again.
       keep(state.cursor, now())
-      options().takes?.reset()
+      leaveTakes()
       dispatch({ type: "hidden", at: now() })
       clearTimer()
       stopSpeech()

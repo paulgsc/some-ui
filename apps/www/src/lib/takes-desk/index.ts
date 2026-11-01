@@ -2,11 +2,11 @@
  * A desk of takes on the phone: the audio on a shelf of its own and the
  * takes in a list, one runtime per page load. Two runtimes sit on it:
  *
- * - `takesDesk`: the take kit's (`./runtime`), the grammar lens's port
- *   (`lib/lens-takes`).
+ * - `takesDesk`: the take kit's (`./runtime`), Studio's idea answers
+ *   (`lib/idea-takes`).
  * - `patternDesk`: the take pattern's (`./pattern`), with Redo and Let go:
- *   Rust Rounds' notes (`lib/rust-rounds`) and LeetType's spoken answers
- *   (`lib/leetype-takes`).
+ *   Rust Rounds' notes (`lib/rust-rounds`), LeetType's spoken answers
+ *   (`lib/leetype-takes`) and the grammar lens's takes (`lib/lens-takes`).
  *
  * A desk whose takes go home as voice notes (`lib/home-link/voice-copy`,
  * HF5 #2180) is told where each is kept (`keptWhere`): what home holds may
@@ -26,7 +26,7 @@ import {
 
 import { boundedList } from "@/lib/bounded-list"
 
-import type { PatternPhone, PatternTakesPorts } from "./pattern"
+import type { DeskShape, PatternPhone, PatternTakesPorts } from "./pattern"
 import { createPatternTakes } from "./pattern"
 import type { PhoneTakes, Take, TakeLimits } from "./runtime"
 import { createTakes, homeHolds } from "./runtime"
@@ -47,6 +47,9 @@ const isTake = (value: unknown): value is Take =>
   STANDINGS.includes(Reflect.get(value, "standing")) &&
   ["undefined", "number"].includes(typeof Reflect.get(value, "setAsideAt"))
 
+/** Whether a take is in its item's view: neither recorded again nor set aside. */
+export const inView = (take: Take): boolean => take.standing === undefined
+
 /** What either desk offers besides its runtime. */
 type DeskShelf = {
   /**
@@ -56,9 +59,12 @@ type DeskShelf = {
    */
   readonly sweep: () => void
   /**
-   * The takes as kept, newest first, each with its audio: null when it is
-   * gone, and `read` false when the shelf could not be read, so that take,
-   * whose audio may still be there, is not counted as gone with the export.
+   * The takes in their items' view, newest first, each with its audio: null
+   * when it is gone, and `read` false when the shelf could not be read, so
+   * that take, whose audio may still be there, is not counted as gone with
+   * the export. A take a Redo recorded again (D2) or Let go set aside (D3)
+   * is kept and goes home, but is out of what routines read, so it is not
+   * exported.
    */
   readonly forExport: () => Promise<
     Array<{ take: Take; audio: Blob | null; read: boolean }>
@@ -91,6 +97,11 @@ type DeskOptions = {
   readonly limits: TakeLimits
 }
 
+type PatternDeskOptions = DeskOptions & {
+  /** How many takes an item keeps, and which play: one each unless said. */
+  readonly shape?: DeskShape | undefined
+}
+
 /** The shelf's own cap: a full desk of full-length takes at the soundbites' bitrate. */
 function maxBytes(limits: TakeLimits): number {
   return limits.max * (limits.maxMs / 1000) * (SOUNDBITE_BITS_PER_SECOND / 8)
@@ -98,7 +109,7 @@ function maxBytes(limits: TakeLimits): number {
 
 /** What a runtime needs of the desk, and what it gives back. */
 type Runtime = {
-  readonly letGo: (ids: ReadonlyArray<string>) => void
+  readonly letGo: (ids: ReadonlyArray<string>) => boolean
   readonly recount: () => void
 }
 
@@ -205,13 +216,16 @@ function desk<R extends Runtime>(
     forExport: (): ReturnType<DeskShelf["forExport"]> => {
       const audio = shelf.shelf()
       return Promise.all(
-        takes.read().map(async (take) => {
-          try {
-            return { take, audio: await audio.get(take.id), read: true }
-          } catch {
-            return { take, audio: null, read: false }
-          }
-        })
+        takes
+          .read()
+          .filter(inView)
+          .map(async (take) => {
+            try {
+              return { take, audio: await audio.get(take.id), read: true }
+            } catch {
+              return { take, audio: null, read: false }
+            }
+          })
       )
     },
     keptOn: (line, since): string | null => keptOn(takes.read(), line, since),
@@ -224,12 +238,14 @@ function desk<R extends Runtime>(
   }
 }
 
-/** The lens's desk, on the take kit (`./runtime`). */
+/** A desk on the take kit (`./runtime`): Studio's idea answers. */
 export function takesDesk(options: DeskOptions): TakesDesk {
   return desk(options, (ports) => createTakes(ports, options.limits))
 }
 
 /** A desk on the take pattern (`./pattern`): Redo and Let go. */
-export function patternDesk(options: DeskOptions): PatternDesk {
-  return desk(options, (ports) => createPatternTakes(ports, options.limits))
+export function patternDesk(options: PatternDeskOptions): PatternDesk {
+  return desk(options, (ports) =>
+    createPatternTakes(ports, options.limits, options.shape)
+  )
 }

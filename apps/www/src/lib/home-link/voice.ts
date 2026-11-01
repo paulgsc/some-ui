@@ -54,7 +54,7 @@ export const voiceLane: Lane = {
     const bites = phoneGameBites()
     useSyncExternalStore(bites.subscribe, bites.getSnapshot)
     useSyncExternalStore(storesRead.subscribe, storesRead.getSnapshot)
-    const lens = lensTakesDesk.phone()
+    const lens = lensTakesDesk.phone().takes
     useSyncExternalStore(lens.subscribe, lens.getSnapshot)
     const leetype = leetypeTakesDesk.phone().takes
     useSyncExternalStore(leetype.subscribe, leetype.getSnapshot)

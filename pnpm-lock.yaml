@@ -1665,6 +1665,9 @@ importers:
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
+      '@some-ui/voice-capture':
+        specifier: workspace:*
+        version: link:../../voice-capture
       '@tanstack/react-query':
         specifier: ^5.66.11
         version: 5.101.1(react@19.2.8)
