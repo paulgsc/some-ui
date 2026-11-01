@@ -1,6 +1,5 @@
 /**
- * The take kit (MIC1, #2371): what a screen uses to record, in place of
- * wrapping `voiceNoteRuntime` itself. One take at a time, started and
+ * The take kit: what a screen uses to record. One take at a time, started and
  * stopped by a tap (D1), its phase, elapsed time against the cap and level
  * while it runs, and exactly one ending once it is over, which the kit
  * records in its own step: no layer above keeps a copy of "a take is under
@@ -16,11 +15,9 @@
  * A screen's parameters, not copies: what each take answers (`start`'s
  * `answers`, carried to its ending), the cap and the minimum (`limits`).
  * One current take or many, Redo, Let go and playing a take back are the
- * take pattern's (`./take-pattern`, MIC2 #2372), which embeds this step.
+ * take pattern's (`./take-pattern`), which embeds this step.
  *
- * Every ending has words: a screen's table is a `TakeEndingWords`, so an
- * ending added here fails to compile until every screen says it. The
- * properties every trace of the kit keeps (VC2, VC3) are `./properties`.
+ * The properties every trace of the kit keeps (VC2, VC3) are `./properties`.
  */
 import { assertNever } from "@some-ui/core-utils"
 
@@ -307,7 +304,6 @@ export function takeKit(ports: TakeKitPorts, limits: TakeLimits): TakeKit {
       if (effect.type === "keep") {
         let answered = false
         ports.keep(effect.take, effect.answers, (result) => {
-          // Once: a second answer is for nobody.
           if (answered) return
           answered = true
           dispatch({ type: "kept", result })

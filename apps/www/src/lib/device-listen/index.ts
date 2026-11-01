@@ -24,10 +24,9 @@
  * call's deadline can.
  *
  * The recognizer borrows the phone's one microphone (`phoneMicrophone`,
- * MIC1 #2371) for each listening, as every take does, and gives it back once
- * the listening ends: a listening asked for while a take records ends
- * `notStarted` at once, and a take started while the recognizer listens is
- * refused in words, so the two never fight over the microphone.
+ * `@some-ui/voice-capture`'s `owner.ts`) for each listening and gives it
+ * back once the listening ends: a listening asked for while a take records
+ * ends `notStarted` at once.
  */
 import { assertNever } from "@some-ui/core-utils"
 import type {

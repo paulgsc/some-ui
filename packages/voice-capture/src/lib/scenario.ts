@@ -1,5 +1,5 @@
 /**
- * The scenario family (MIC1, #2371): every trace of a person, a page and a
+ * The scenario family: every trace of a person, a page and a
  * microphone that the takes on a phone must survive, as a fast-check
  * arbitrary, and the runner that plays one trace against real screens and
  * checks every property (`../lib/properties.ts`, VC2 and VC3) on it.
@@ -29,6 +29,7 @@ import type { RecordingFailure, StartRecording } from "./recorder"
 import type { MicScript, SimulatedMicrophone } from "./simulated-microphone"
 import { simulatedMicrophone } from "./simulated-microphone"
 import type { TakeDeadlines, TakeLimits } from "./take"
+import { FINISH_DEADLINE_MS, OPEN_DEADLINE_MS } from "./take"
 import type {
   KeepResult,
   TakeEndingWords,
@@ -75,16 +76,23 @@ export type ScenarioBounds = {
 /** A take is 60 s at most, at least half a second; the phone's own deadlines. */
 export const SCENARIO_BOUNDS: ScenarioBounds = {
   limits: { minMs: 500, maxMs: 60_000 },
-  deadlines: { openMs: 60_000, finishMs: 15_000 },
+  deadlines: { openMs: OPEN_DEADLINE_MS, finishMs: FINISH_DEADLINE_MS },
   tickMs: 200,
 }
 
-const REASONS: ReadonlyArray<RecordingFailure> = [
-  "denied",
-  "busy",
-  "unsupported",
-  "failed",
-]
+/**
+ * Every way the microphone refuses but `elsewhere`, which the phone's owner
+ * says: a reason added to `RecordingFailure` fails to compile here.
+ */
+const REFUSALS: {
+  readonly [Reason in Exclude<RecordingFailure, "elsewhere">]: Reason
+} = {
+  denied: "denied",
+  busy: "busy",
+  unsupported: "unsupported",
+  failed: "failed",
+}
+const REASONS: ReadonlyArray<RecordingFailure> = Object.values(REFUSALS)
 
 /** A span of time: at once, a moment, a while, or past a deadline. */
 function span(bound: number): fc.Arbitrary<number> {

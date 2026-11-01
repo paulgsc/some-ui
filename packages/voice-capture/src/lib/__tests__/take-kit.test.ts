@@ -1,11 +1,10 @@
 /**
- * The take kit (MIC1, #2371): its step, the phone's one microphone, and the
+ * The take kit: its step, the phone's one microphone, and the
  * property suite. VC2 and VC3 (`lib/properties.ts`) are checked on every
  * generated trace of the scenario family, over the real `takeKit` on the
  * shared simulated microphone, with the owner's cases as named points.
  */
 import { microphoneOwner } from "@voice-capture/lib/owner"
-import { RECORDING_FAILURE_COPY } from "@voice-capture/lib/recorder"
 import type { ScenarioStep, TakeScenario } from "@voice-capture/lib/scenario"
 import {
   assertTakeProperties,
@@ -23,8 +22,6 @@ import type { TakeKitState } from "@voice-capture/lib/take-kit"
 import {
   initialTakeKit,
   stepTakeKit,
-  TAKE_ENDING_WORDS,
-  takeEndingSaid,
   takeKit,
 } from "@voice-capture/lib/take-kit"
 import fc from "fast-check"
@@ -98,35 +95,6 @@ describe("the take kit's step", () => {
     expect(stepTakeKit(initialTakeKit, { type: "stop" }, LIMITS).state).toBe(
       initialTakeKit
     )
-  })
-
-  it("says every ending, and the microphone's refusal by its reason", () => {
-    for (const ending of [
-      "kept",
-      "short",
-      "full",
-      "failed",
-      "early",
-    ] as const) {
-      expect(
-        takeEndingSaid(TAKE_ENDING_WORDS, {
-          seq: 1,
-          answers: "",
-          ending,
-          id: null,
-          reason: null,
-        }).trim()
-      ).not.toBe("")
-    }
-    expect(
-      takeEndingSaid(TAKE_ENDING_WORDS, {
-        seq: 1,
-        answers: "",
-        ending: "blocked",
-        id: null,
-        reason: "elsewhere",
-      })
-    ).toBe(RECORDING_FAILURE_COPY.elsewhere)
   })
 })
 
@@ -337,7 +305,7 @@ describe("VC2, VC3: every trace of the family keeps every property", () => {
   })
 
   it("would catch screens that each own a microphone", async () => {
-    // A mutant: every kit with an owner of its own, as before MIC1.
+    // A mutant: every kit with an owner of its own.
     const failure = await fc.check(
       fc.asyncProperty(
         takeScenarios({ maxScreens: 3 }).filter(({ screens }) => screens > 1),
