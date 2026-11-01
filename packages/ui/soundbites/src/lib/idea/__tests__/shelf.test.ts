@@ -470,6 +470,40 @@ describe("the idea shelf", () => {
     expect(asked).toEqual(["t2", "t3", "t3"])
   })
 
+  it("ST26: asks home for one answer's words at a time, and again after the link was busy", async () => {
+    const said = (id: string, take: string): Idea => ({
+      id,
+      at: AT,
+      questions: 1,
+      answers: [{ question: "what", versions: [], takes: [{ at: AT, take }] }],
+      passed: [],
+    })
+    let out = 0
+    let busyOnce = true
+    const on = shelf([said("idea-a", "ta"), said("idea-b", "tb")], {
+      heard: async (take) => {
+        out += 1
+        try {
+          if (out > 1) return { kind: "busy" }
+          await settle()
+          if (take === "tb" && busyOnce) {
+            busyOnce = false
+            return { kind: "busy" }
+          }
+          return { kind: "heard", text: `words of ${take}` }
+        } finally {
+          out -= 1
+        }
+      },
+    })
+    await new Promise((resolve) => {
+      setTimeout(resolve, 1_200)
+    })
+    expect(
+      (on.store.list() ?? []).map((idea) => idea.answers[0]?.versions[0]?.words)
+    ).toEqual(["words of ta", "words of tb"])
+  })
+
   it("says so when the kept ideas can't be read", () => {
     const loading = step(initialShelfState(), { type: "entered", at: AT })
     expect(

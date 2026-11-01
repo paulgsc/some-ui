@@ -12,6 +12,12 @@ import type { ShelfEffect, ShelfEvent, ShelfIntent, ShelfState } from "./shelf"
 import { applyShelf, initialShelfState, step, videosOf } from "./shelf"
 import type { IdeaStore } from "./store"
 
+type Hear = Extract<ShelfEffect, { type: "hear" }>
+
+/** How often a busy link is asked again for one answer's words, and after how long. */
+const BUSY_TRIES = 3
+const BUSY_WAIT_MS = 1_000
+
 export type ShelfPorts = {
   ideas: IdeaStore
   projects: Pick<ProjectStore, "list" | "update">
@@ -46,6 +52,37 @@ export function createIdeaShelf(ports: ShelfPorts): ShelfRuntime {
       for (const listener of listeners) listener()
     }
     for (const effect of next.effects) run(effect)
+  }
+
+  /**
+   * Said answers whose words to ask home for, one at a time: home's link
+   * runs one call at a time, and answers any other `busy`.
+   */
+  const waiting: Array<Hear & { readonly tries: number }> = []
+  let asking = false
+  const hearNext = (): void => {
+    const { heard } = ports
+    const next = waiting.shift()
+    if (heard === undefined || asking || next === undefined) {
+      if (next !== undefined) waiting.unshift(next)
+      return
+    }
+    asking = true
+    const { idea, question } = next
+    void heard(next.take).then((answer) => {
+      asking = false
+      if (answer.kind === "heard") {
+        send({ type: "heard", idea, question, words: answer.text, at: at() })
+      } else if (answer.kind === "busy" && next.tries < BUSY_TRIES) {
+        // The link was busy with another run: ask again a moment later.
+        setTimeout(() => {
+          waiting.push({ ...next, tries: next.tries + 1 })
+          hearNext()
+        }, BUSY_WAIT_MS)
+      }
+      // Not heard yet, or home can't be asked: the next reading asks again.
+      hearNext()
+    })
   }
 
   function run(effect: ShelfEffect): void {
@@ -89,14 +126,11 @@ export function createIdeaShelf(ports: ShelfPorts): ShelfRuntime {
         return
       }
       case "hear": {
-        const { heard } = ports
-        if (heard === undefined) return
-        const { idea, question } = effect
-        void heard(effect.take).then((answer) => {
-          // Not heard yet, or home can't be asked: the next reading asks again.
-          if (answer.kind !== "heard") return
-          send({ type: "heard", idea, question, words: answer.text, at: at() })
-        })
+        if (ports.heard === undefined) return
+        if (!waiting.some((each) => each.take === effect.take)) {
+          waiting.push({ ...effect, tries: 0 })
+        }
+        hearNext()
         return
       }
       case "create": {
