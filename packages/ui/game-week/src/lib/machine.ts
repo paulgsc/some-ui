@@ -7,9 +7,13 @@
  *
  * Rules that hold by structure:
  *
- * - **One bite at a time.** Opening, recording, finishing and asking are
- *   arms of one union; a tap that would start a second bite while one is
- *   under way does nothing.
+ * - **A bite is a take of the take pattern** (`@some-ui/voice-capture`),
+ *   whose step this embeds (`takes`, with `BITE_TAKES`): it opens, records,
+ *   finishes and ends exactly as every screen's take does, and plays a kept
+ *   bite back. This keeps no copy of that, only what is the bite's own (what
+ *   it is said about, when talking started, the quiet so far).
+ * - **One bite at a time.** Taking and asking are arms of one union, and a
+ *   tap that would start a second bite while one is under way does nothing.
  * - **A tap opens the microphone in the same step** (GW1): the `openMic`
  *   effect leaves with the step that read the tap.
  * - **A bite stops itself** (GW2): after the mode's quiet once talking was
@@ -34,8 +38,23 @@
  *   opens after that is let go.
  */
 import { assertNever } from "@some-ui/core-utils"
-import type { RecordingFailure, Take } from "@some-ui/voice-capture"
-import { finishTake, openTake, stepTake } from "@some-ui/voice-capture"
+import type {
+  PatternTake,
+  RecordingFailure,
+  Take,
+  TakeEnded,
+  TakeKitView,
+  TakePatternEffect,
+  TakePatternEvent,
+  TakePatternOptions,
+  TakePatternState,
+} from "@some-ui/voice-capture"
+import {
+  initialTakePattern,
+  ON_PHONE,
+  stepTakePattern,
+  takeKitView,
+} from "@some-ui/voice-capture"
 
 import type { BiteMoment, KeptBite, Said } from "./bite"
 import { biteFields, pickedAfter } from "./bite"
@@ -56,27 +75,34 @@ export const UNDO_MS = 5_000
  */
 export const ASK_HOLD_MS = 10 * 60_000
 
+/** What every bite answers: the screen's one item. */
+export const BITE_ITEM = "game-week"
+
+/**
+ * The take pattern's options for a bite: each bite stands on its own (the
+ * screen lists the newest, `max: 1`, and the next makes room), within
+ * `BITE_LIMITS`, played back on its row. Redo and Let go aren't offered:
+ * a bite is Undone while its hold lasts, and past it is on its way home.
+ */
+export const BITE_TAKES: TakePatternOptions = {
+  takes: { per: "many", max: 1, full: "make-room" },
+  limits: BITE_LIMITS,
+  redo: "supersede",
+  letGo: "set-aside",
+  play: "each",
+  clock: "elapsed",
+}
+
 export type Activity =
   | { readonly kind: "idle" }
+  /** A bite under way: the take is `takes`'; this is what it is about. */
   | {
-      readonly kind: "opening"
+      readonly kind: "taking"
       readonly said: Said
       readonly moment: BiteMoment
-    }
-  | {
-      readonly kind: "recording"
-      readonly said: Said
-      readonly moment: BiteMoment
-      readonly startedAt: number
-      readonly elapsed: number
-      readonly level: number
+      /** When the microphone opened; null while it opens. */
+      readonly startedAt: number | null
       readonly quiet: Quiet
-    }
-  | {
-      readonly kind: "finishing"
-      readonly said: Said
-      readonly moment: BiteMoment
-      readonly startedAt: number
     }
   /** A bite said first, kept; asking what it was about. */
   | {
@@ -107,6 +133,10 @@ export type GameWeekState = {
   readonly offer: Offer | null
   readonly prefs: Prefs
   readonly activity: Activity
+  /** The take pattern's state: the bite's take, and what plays. */
+  readonly takes: TakePatternState
+  /** The newest bite kept on this visit, as its row shows it; null for none. */
+  readonly lastBite: PatternTake | null
   /**
    * Bites handed to the store and not yet kept, each with the hold the
    * store has for it (an answer given meanwhile moves it): Undo's end.
@@ -136,6 +166,8 @@ export type GameWeekIntent =
   | { readonly type: "pickGame"; readonly gameId: string }
   | { readonly type: "toggleWatching"; readonly gameId: string }
   | { readonly type: "pickMode"; readonly mode: ModeId }
+  /** Plays the bite on its row, or stops it while it plays. */
+  | { readonly type: "play"; readonly id: string }
 
 /** What the page, the clock, home and the store report. */
 type GameWeekSignal =
@@ -145,7 +177,12 @@ type GameWeekSignal =
   | { readonly type: "shown" }
   | { readonly type: "clock"; readonly now: number }
   | { readonly type: "fed"; readonly feed: Feed }
-  | { readonly type: "ticked"; readonly now: number; readonly level: number }
+  | {
+      readonly type: "ticked"
+      readonly now: number
+      readonly level: number
+      readonly metered?: boolean | undefined
+    }
   | { readonly type: "micOpened"; readonly at: number }
   | { readonly type: "micFailed"; readonly reason: RecordingFailure }
   | {
@@ -163,15 +200,13 @@ type GameWeekSignal =
       readonly onItsWay: boolean
     }
   | { readonly type: "undoFailed" }
+  | Extract<TakePatternEvent, { type: "loaded" | "played" }>
 
 export type GameWeekEvent = GameWeekIntent | GameWeekSignal
 
 export type GameWeekEffect =
-  | { readonly type: "openMic" }
-  | { readonly type: "startClock" }
-  | { readonly type: "stopClock" }
-  | { readonly type: "finishTake" }
-  | { readonly type: "discardTake" }
+  /** The take pattern's: the microphone, the clock and the playback. */
+  | Exclude<TakePatternEffect, { type: "keep" | "setAside" }>
   | { readonly type: "keep"; readonly bite: KeptBite; readonly audio: Blob }
   | {
       readonly type: "amend"
@@ -197,6 +232,8 @@ export function initialState(prefs: Prefs, now: number): GameWeekState {
     offer: null,
     prefs,
     activity: { kind: "idle" },
+    takes: initialTakePattern,
+    lastBite: null,
     keeping: [],
     undo: null,
     blocked: null,
@@ -262,6 +299,73 @@ function closeUndo(state: GameWeekState): Step {
   }
 }
 
+/** The bite's take as the screen shows it. */
+function takeOf(state: GameWeekState): TakeKitView {
+  return takeKitView(state.takes.kit, BITE_LIMITS)
+}
+
+/** Where the screen is: at rest, a take's phase, or asking about a bite. */
+export function phaseOf(
+  state: GameWeekState
+): "idle" | "opening" | "recording" | "finishing" | "asking" {
+  if (state.activity.kind === "asking") return "asking"
+  const take = takeOf(state)
+  if (take.kind === "keeping") return "finishing"
+  return take.kind
+}
+
+/**
+ * The take pattern's step on `event`. What it hands to keep comes back as
+ * `keep`, for the bite to be made of; the rest are this screen's effects.
+ */
+function withTakes(
+  state: GameWeekState,
+  event: TakePatternEvent
+): Step & { readonly keep: Take | null } {
+  const next = stepTakePattern(state.takes, event, BITE_TAKES)
+  let keep: Take | null = null
+  const effects: Array<GameWeekEffect> = []
+  for (const effect of next.effects) {
+    if (effect.type === "keep") keep = effect.take
+    else if (effect.type !== "setAside") effects.push(effect)
+  }
+  const moved =
+    next.state === state.takes ? state : { ...state, takes: next.state }
+  return { ...ended(moved, state.takes.kit.ended), effects, keep }
+}
+
+/**
+ * A take that ended other than kept leaves the screen at rest, saying how;
+ * a kept one is the bite's (`taken`).
+ */
+function ended(state: GameWeekState, before: TakeEnded | null): Step {
+  const last = state.takes.kit.ended
+  if (last === before || last === null || last.ending === "kept")
+    return stay(state)
+  const rest = { ...state, activity: { kind: "idle" } as const }
+  switch (last.ending) {
+    case "short": {
+      return stay({ ...rest, notice: NOTICES.tooShort })
+    }
+    case "early": {
+      return stay({
+        ...rest,
+        notice: state.page === "left" ? state.notice : NOTICES.notStarted,
+      })
+    }
+    case "blocked": {
+      return stay({ ...rest, blocked: last.reason ?? "failed" })
+    }
+    case "failed":
+    case "full": {
+      return stay({ ...rest, notice: NOTICES.notTaken })
+    }
+    default: {
+      return assertNever(last.ending)
+    }
+  }
+}
+
 function start(state: GameWeekState, said: Said): Step {
   const game = currentGame(state)
   if (game === null) return stay({ ...state, notice: NOTICES.pickFirst })
@@ -274,33 +378,36 @@ function start(state: GameWeekState, said: Said): Step {
     mode: state.prefs.mode,
   }
   const closed = closeUndo(state)
-  return {
-    state: {
+  const opened = withTakes(
+    {
       ...closed.state,
-      activity: { kind: "opening", said, moment },
+      activity: {
+        kind: "taking",
+        said,
+        moment,
+        startedAt: null,
+        quiet: NOT_HEARD,
+      },
       blocked: null,
       notice: "",
     },
-    effects: [...openTake().effects, ...closed.effects],
+    { type: "tap", answers: BITE_ITEM, supersedes: null }
+  )
+  return {
+    state: opened.state,
+    effects: [...opened.effects, ...closed.effects],
   }
 }
 
+/** Stops a bite recording and keeps it; nothing for one still opening. */
 function finish(state: GameWeekState): Step {
-  const { activity } = state
-  if (activity.kind !== "recording") return stay(state)
-  const next = finishTake(activity)
-  return {
-    state: {
-      ...state,
-      activity: {
-        kind: "finishing",
-        said: activity.said,
-        moment: activity.moment,
-        startedAt: activity.startedAt,
-      },
-    },
-    effects: next.effects,
-  }
+  if (takeOf(state).kind !== "recording") return stay(state)
+  return withTakes(state, { type: "tap", answers: BITE_ITEM, supersedes: null })
+}
+
+/** The page went, or went off screen: a bite recording is kept. */
+function gone(state: GameWeekState): Step {
+  return withTakes(state, { type: "left" })
 }
 
 /** Leaving the asking screen: what the bite was about is settled as `fields`. */
@@ -361,12 +468,11 @@ export function step(state: GameWeekState, event: GameWeekEvent): Step {
     }
 
     case "left": {
-      const gone = { ...state, page: "left" as const }
-      return finish(gone)
+      return gone({ ...state, page: "left" })
     }
 
     case "hidden": {
-      return finish({ ...state, visible: false })
+      return gone({ ...state, visible: false })
     }
 
     case "shown": {
@@ -399,7 +505,8 @@ export function step(state: GameWeekState, event: GameWeekEvent): Step {
     }
 
     case "say": {
-      if (activity.kind !== "idle") return stay(state)
+      if (activity.kind !== "idle" || takeOf(state).kind !== "idle")
+        return stay(state)
       return start(state, event.said)
     }
 
@@ -408,75 +515,55 @@ export function step(state: GameWeekState, event: GameWeekEvent): Step {
     }
 
     case "micOpened": {
-      if (activity.kind !== "opening") return stay(state)
-      if (state.page === "left" || !state.visible)
-        return {
-          state: {
-            ...state,
-            activity: { kind: "idle" },
-            notice: state.page === "left" ? state.notice : NOTICES.notStarted,
-          },
-          effects: [{ type: "discardTake" }],
-        }
-      const next = stepTake({ kind: "opening" }, event, BITE_LIMITS)
+      const opened = withTakes(state, event)
+      const { activity: now } = opened.state
+      if (takeOf(opened.state).kind !== "recording" || now.kind !== "taking")
+        return opened
       return {
+        ...opened,
         state: {
-          ...state,
+          ...opened.state,
           now: event.at,
-          activity: {
-            kind: "recording",
-            said: activity.said,
-            moment: activity.moment,
-            startedAt: event.at,
-            elapsed: 0,
-            level: 0,
-            quiet: NOT_HEARD,
-          },
+          activity: { ...now, startedAt: event.at },
         },
-        effects: next.effects,
       }
     }
 
-    case "micFailed": {
-      if (activity.kind !== "opening") return stay(state)
-      return stay({
-        ...state,
-        activity: { kind: "idle" },
-        blocked: event.reason,
-      })
+    case "micFailed":
+    case "takeFailed":
+    case "loaded":
+    case "played": {
+      return withTakes(state, event)
     }
 
     case "ticked": {
-      if (activity.kind !== "recording") return stay(state)
-      const next = stepTake(activity, event, BITE_LIMITS)
-      const quiet = hear(activity.quiet, event.level, event.now)
-      const recording = {
-        ...activity,
-        elapsed: Math.min(event.now - activity.startedAt, BITE_LIMITS.maxMs),
-        level: event.level,
-        quiet,
+      const ticked = withTakes({ ...state, now: event.now }, event)
+      const { activity: taking } = ticked.state
+      // The minute: the take stopped itself.
+      if (takeOf(ticked.state).kind !== "recording" || taking.kind !== "taking")
+        return ticked
+      const quiet = hear(taking.quiet, event.level, event.now)
+      const heard = {
+        ...ticked.state,
+        activity: { ...taking, quiet },
       }
-      const ticked = { ...state, now: event.now, activity: recording }
-      // The minute: the take itself stops.
-      if (next.kind === "taking" && next.phase.kind === "finishing")
-        return finish(ticked)
       if (
-        quietEnough(quiet, event.now, MODE_RULES[activity.moment.mode].quietMs)
+        !quietEnough(quiet, event.now, MODE_RULES[taking.moment.mode].quietMs)
       )
-        return finish(ticked)
-      return stay(ticked)
+        return { state: heard, effects: ticked.effects }
+      const stopped = finish(heard)
+      return {
+        state: stopped.state,
+        effects: [...ticked.effects, ...stopped.effects],
+      }
     }
 
     case "taken": {
-      if (activity.kind !== "finishing") return stay(state)
-      const next = stepTake({ kind: "finishing" }, event, BITE_LIMITS)
-      if (next.kind !== "kept")
-        return stay({
-          ...state,
-          activity: { kind: "idle" },
-          notice: NOTICES.tooShort,
-        })
-      const { take } = next
+      if (activity.kind !== "taking") return stay(state)
+      const handed = withTakes(state, { type: "taken", take: event.take })
+      const take = handed.keep
+      if (take === null) return handed
+      const startedAt = activity.startedAt ?? event.at
       const saidFirst = activity.said.how === "said-first"
       const bite: KeptBite = {
         id: event.id,
@@ -484,46 +571,56 @@ export function step(state: GameWeekState, event: GameWeekEvent): Step {
         at: new Date(event.at).toISOString(),
         contentType: take.mimeType,
         durationMs: Math.min(take.durationMs, BITE_LIMITS.maxMs),
-        fields: biteFields(activity.said, activity.moment, activity.startedAt),
+        fields: biteFields(activity.said, activity.moment, startedAt),
         holdUntil: event.at + (saidFirst ? ASK_HOLD_MS : UNDO_MS),
       }
-      const kept = {
-        ...state,
+      // The store holds a bite it could not keep yet and tries again, so the
+      // take is kept the moment it is handed over (GW3).
+      const kept = withTakes(handed.state, {
+        type: "kept",
+        result: { outcome: "kept", id: bite.id },
+      })
+      const at = {
+        ...kept.state,
         now: event.at,
         keeping: [
           ...state.keeping,
           { id: bite.id, holdUntil: bite.holdUntil, held: false },
         ],
+        lastBite: {
+          id: bite.id,
+          answers: BITE_ITEM,
+          durationMs: bite.durationMs,
+          recordedAt: bite.at,
+          standing: "current",
+          kept: ON_PHONE,
+        },
         notice: keptLine(bite.durationMs),
-      }
-      const keep: GameWeekEffect = { type: "keep", bite, audio: take.blob }
+      } satisfies GameWeekState
+      const effects: Array<GameWeekEffect> = [
+        ...handed.effects,
+        ...kept.effects,
+        { type: "keep", bite, audio: take.blob },
+      ]
       if (!saidFirst || state.page === "left")
-        return {
-          state: { ...kept, activity: { kind: "idle" } },
-          effects: [keep],
-        }
+        return { state: { ...at, activity: { kind: "idle" } }, effects }
       return {
         state: {
-          ...kept,
+          ...at,
           activity: {
             kind: "asking",
             bite,
             moment: activity.moment,
-            startedAt: activity.startedAt,
-            offer: offerView(kept),
+            startedAt,
+            offer: offerView(at),
           },
         },
-        effects: [keep],
+        effects,
       }
     }
 
-    case "takeFailed": {
-      if (activity.kind !== "finishing") return stay(state)
-      return stay({
-        ...state,
-        activity: { kind: "idle" },
-        notice: NOTICES.notTaken,
-      })
+    case "play": {
+      return withTakes(state, event)
     }
 
     case "kept": {
@@ -584,9 +681,15 @@ export function step(state: GameWeekState, event: GameWeekEvent): Step {
       const { undo } = state
       if (undo === null || (undo.until !== null && state.now >= undo.until))
         return stay(state)
+      // Its row goes, and nothing plays what was thrown away.
+      const { playback } = state.takes
+      const quiet =
+        playback.kind !== "quiet" && playback.id === undo.id
+          ? withTakes(state, { type: "stopPlaying" })
+          : stay(state)
       return {
         state: {
-          ...state,
+          ...quiet.state,
           undo: null,
           // A bite the store still holds to try again is thrown away there.
           keeping: state.keeping.filter(({ id }) => id !== undo.id),
@@ -594,9 +697,10 @@ export function step(state: GameWeekState, event: GameWeekEvent): Step {
             activity.kind === "asking" && activity.bite.id === undo.id
               ? { kind: "idle" }
               : activity,
+          lastBite: state.lastBite?.id === undo.id ? null : state.lastBite,
           notice: NOTICES.thrownAway,
         },
-        effects: [{ type: "undo", id: undo.id }],
+        effects: [...quiet.effects, { type: "undo", id: undo.id }],
       }
     }
 

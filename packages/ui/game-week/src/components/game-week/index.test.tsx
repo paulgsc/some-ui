@@ -3,6 +3,12 @@ import type { OutboxPort } from "@game-week/lib/ports"
 import { storedPrefs } from "@game-week/lib/ports"
 import type { GameWeekPorts } from "@game-week/lib/runtime"
 import { WORDS } from "@game-week/lib/words"
+import { microphoneOwner, TAKE_WORDS } from "@some-ui/voice-capture"
+import {
+  simulatedMicrophone,
+  simulatedPlayer,
+  SPEAKING,
+} from "@some-ui/voice-capture/testing"
 import { act, fireEvent, render, screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 
@@ -12,18 +18,15 @@ const NOW = Date.UTC(2026, 10, 1, 21)
 
 function ports(feed = fixtureFeed(() => NOW)): GameWeekPorts {
   return {
-    startRecording: () =>
-      Promise.resolve({
-        level: () => 0.4,
-        finish: () =>
-          Promise.resolve({
-            blob: new Blob(["said"]),
-            mimeType: "audio/webm",
-            durationMs: 3_000,
-          }),
-        discard: () => undefined,
-      }),
+    // The shared simulated microphone, hearing three seconds of talking.
+    startRecording: simulatedMicrophone({
+      now: () => NOW,
+      fallback: { ...SPEAKING, level: 0.4, durationMs: 3_000 },
+    }).startRecording,
+    owner: microphoneOwner(),
+    player: simulatedPlayer(),
     store: {
+      audio: () => Promise.resolve(new Blob(["said"])),
       keep: () => Promise.resolve(),
       amend: () => Promise.resolve("noted"),
       release: () => Promise.resolve(),
@@ -62,11 +65,27 @@ describe("GameWeek", () => {
       screen.getByText("2 bites wait on this phone until home has them.")
     ).toBeTruthy()
     const card = screen.getByText("3rd & 9 at the SEA 38", { selector: "span" })
-    await act(async () => {
-      fireEvent.click(card)
-      await Promise.resolve()
+    fireEvent.click(card)
+    const stop = await screen.findByRole("button", {
+      name: TAKE_WORDS.buttonLabel.recording,
     })
-    expect(screen.getByRole("button", { name: WORDS.done })).toBeTruthy()
+    expect(stop).toHaveTextContent(TAKE_WORDS.elapsed(0, 60_000))
+    expect(screen.getByRole("meter", { name: "Level" })).toBeTruthy()
+
+    // Done keeps it: the bite's row, with Play, and Undo while it is held.
+    await act(async () => {
+      fireEvent.click(stop)
+      await new Promise((resolve) => setTimeout(resolve, 5))
+    })
+    expect(screen.getByText("Kept, 3 s.")).toBeTruthy()
+    const play = screen.getByRole("button", {
+      name: TAKE_WORDS.rowLabel(TAKE_WORDS.play, 3_000),
+    })
+    expect(play).toBeEnabled()
+    expect(play.closest("li")).toHaveTextContent(
+      `0:03 · ${TAKE_WORDS.place.phone}`
+    )
+    expect(screen.getByRole("button", { name: WORDS.undo })).toBeTruthy()
   })
 
   it("with no offer for the game, still lets me say it first", () => {

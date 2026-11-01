@@ -1,7 +1,14 @@
 /**
  * Game day on the phone: tap what is happening and say it. One tap opens the
- * microphone, a quiet moment (or Done, or the minute) stops it, and the bite
- * is kept on the phone at once, waiting there until home holds it.
+ * microphone, a quiet moment (or a tap on the take button, or the minute)
+ * stops it, and the bite is kept on the phone at once, waiting there until
+ * home holds it.
+ *
+ * The bite is a take of the take pattern (`@some-ui/voice-capture`): while
+ * it records, the pattern's button (tap to stop, the time against the cap),
+ * beside the screen's own level meter and quiet bar; once kept, the bite's
+ * row (its length, where it is kept, Play), with Undo in the row's extra
+ * slot while the bite's hold lasts.
  *
  * This component only renders and forwards taps. What happens and in what
  * order is `lib/machine.ts`; the microphone, the store and home's feed are
@@ -15,16 +22,21 @@ import { useEffect, useState, useSyncExternalStore } from "react"
 import type { Said } from "@game-week/lib/bite"
 import type { Game, JustHappened, OfferCard } from "@game-week/lib/feed"
 import type { Activity, GameWeekState, OfferView } from "@game-week/lib/machine"
-import { currentGame, isWatching, offerView } from "@game-week/lib/machine"
+import {
+  BITE_ITEM,
+  BITE_TAKES,
+  currentGame,
+  isWatching,
+  offerView,
+} from "@game-week/lib/machine"
 import type { ModeId } from "@game-week/lib/modes"
-import { BITE_LIMITS, MODE_RULES, MODES } from "@game-week/lib/modes"
+import { MODE_RULES, MODES } from "@game-week/lib/modes"
 import type { OutboxPort } from "@game-week/lib/ports"
 import { quietFill } from "@game-week/lib/quiet"
 import type { GameWeekPorts } from "@game-week/lib/runtime"
 import { createGameWeek } from "@game-week/lib/runtime"
 import {
   ago,
-  clock,
   MINUTE_LINE,
   MODE_WORDS,
   outboxLine,
@@ -44,8 +56,15 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
+  TakeButton,
+  TakeRow,
 } from "@some-ui/shared"
-import { RECORDING_FAILURE_COPY } from "@some-ui/voice-capture"
+import type { TakeButtonView } from "@some-ui/voice-capture"
+import {
+  RECORDING_FAILURE_COPY,
+  takeItemView,
+  takePatternSnapshot,
+} from "@some-ui/voice-capture"
 import { Eye, EyeOff, List, Mic, Settings2 } from "lucide-react"
 
 import { ScenarioIcon } from "./scenario-icon"
@@ -262,19 +281,21 @@ const Offers = ({
 
 const Recording = ({
   activity,
+  button,
   now,
   onDone,
 }: {
-  activity: Extract<Activity, { kind: "recording" | "opening" | "finishing" }>
+  activity: Extract<Activity, { kind: "taking" }>
+  /** The take pattern's button for the bite: Done, the time against the cap. */
+  button: TakeButtonView
   now: number
   onDone: () => void
 }): JSX.Element => {
-  const recording = activity.kind === "recording"
-  const level = recording ? activity.level : 0
-  const elapsed = recording ? activity.elapsed : 0
-  const fill = recording
-    ? quietFill(activity.quiet, now, MODE_RULES[activity.moment.mode].quietMs)
-    : 0
+  const level = button.kind === "recording" ? button.level : 0
+  const fill =
+    button.kind === "recording"
+      ? quietFill(activity.quiet, now, MODE_RULES[activity.moment.mode].quietMs)
+      : 0
   const { said } = activity
   return (
     <section
@@ -298,23 +319,18 @@ const Recording = ({
           ? WORDS.sayingFirst
           : scenarioOf(said.scenario).name}
       </p>
-      <div className="flex w-full max-w-xs items-center gap-3">
+      <div
+        role="meter"
+        aria-label="Level"
+        aria-valuemin={0}
+        aria-valuemax={1}
+        aria-valuenow={level}
+        className="bg-muted h-2 w-full max-w-xs overflow-hidden rounded-full"
+      >
         <div
-          role="meter"
-          aria-label="Level"
-          aria-valuemin={0}
-          aria-valuemax={1}
-          aria-valuenow={level}
-          className="bg-muted h-2 flex-1 overflow-hidden rounded-full"
-        >
-          <div
-            className="bg-brand h-full transition-[width] duration-100"
-            style={{ width: `${level * 100}%` }}
-          />
-        </div>
-        <span className="text-sm font-semibold tabular-nums">
-          {clock(elapsed)} / {clock(BITE_LIMITS.maxMs)}
-        </span>
+          className="bg-brand h-full transition-[width] duration-100"
+          style={{ width: `${level * 100}%` }}
+        />
       </div>
       <div className="w-full max-w-xs space-y-1">
         <div className="bg-muted h-1.5 overflow-hidden rounded-full">
@@ -327,14 +343,7 @@ const Recording = ({
           {WORDS.quietBar}
         </p>
       </div>
-      <Button
-        size="lg"
-        onClick={onDone}
-        disabled={!recording}
-        className="h-16 w-full max-w-xs rounded-full text-xl font-bold"
-      >
-        {WORDS.done}
-      </Button>
+      <TakeButton view={button} onTap={onDone} />
     </section>
   )
 }
@@ -483,6 +492,15 @@ export const GameWeek = ({ ports, outbox }: GameWeekProps): JSX.Element => {
     dispatch(asking ? { type: "answer", said } : { type: "say", said })
   }
   const outboxWords = outboxLine(waiting)
+  // The bite as the take pattern's parts show it: its button while it
+  // records, and the newest bite kept as a row.
+  const bite = takeItemView(
+    takePatternSnapshot(state.takes, BITE_TAKES),
+    state.lastBite === null ? [] : [state.lastBite],
+    BITE_ITEM,
+    BITE_TAKES
+  )
+  const [row] = bite.current
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-4 pb-8">
@@ -525,11 +543,10 @@ export const GameWeek = ({ ports, outbox }: GameWeekProps): JSX.Element => {
         )}
       </header>
 
-      {activity.kind === "opening" ||
-      activity.kind === "recording" ||
-      activity.kind === "finishing" ? (
+      {activity.kind === "taking" ? (
         <Recording
           activity={activity}
+          button={bite.button}
           now={now}
           onDone={() => dispatch({ type: "done" })}
         />
@@ -579,20 +596,30 @@ export const GameWeek = ({ ports, outbox }: GameWeekProps): JSX.Element => {
         </p>
       )}
 
-      <div aria-live="polite" className="flex min-h-9 items-center gap-3">
-        <p className="text-muted-foreground min-w-0 flex-1 text-sm">
-          {state.notice}
-        </p>
-        {state.undo !== null && !asking && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => dispatch({ type: "undo" })}
-          >
-            {WORDS.undo}
-          </Button>
-        )}
-      </div>
+      <p aria-live="polite" className="text-muted-foreground min-h-9 text-sm">
+        {state.notice}
+      </p>
+
+      {row !== undefined && !asking && (
+        <ul>
+          <TakeRow
+            row={row}
+            onPlay={() => dispatch({ type: "play", id: row.take.id })}
+            // Undo, while the bite's hold lasts: the row's extra slot.
+            extra={
+              state.undo?.id === row.take.id ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => dispatch({ type: "undo" })}
+                >
+                  {WORDS.undo}
+                </Button>
+              ) : undefined
+            }
+          />
+        </ul>
+      )}
 
       {outboxWords !== "" && (
         <p className="text-muted-foreground text-xs">{outboxWords}</p>

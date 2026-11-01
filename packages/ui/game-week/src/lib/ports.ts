@@ -45,6 +45,8 @@ export type BiteStore = {
   release: (id: string) => Promise<void>
   /** Throws a held-back bite away; rejects once it is no longer held back. */
   undo: (id: string) => Promise<void>
+  /** A kept bite's audio while this phone has it; null once it has gone. */
+  audio: (id: string) => Promise<Blob | null>
   /** Whether the bite `id` is kept on this phone, not only held to try again. */
   isKept: (id: string) => boolean
   /** Calls `listener` after each change to what is kept; returns the unsubscribe. */

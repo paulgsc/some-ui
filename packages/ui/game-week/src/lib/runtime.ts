@@ -1,6 +1,7 @@
 /**
  * Runs the recorder's machine (`machine.ts`) against the outside world. It
- * holds the handles (the take, the page clock, home's feed), turns each
+ * holds the handles (the take, the playback, the page clock, home's feed:
+ * the take pattern's effects run here as its own runtime runs them), turns each
  * effect into a call on a port and each result into an event, and decides
  * nothing: whether a result still matters is `step`'s. Plain TypeScript, so
  * deleting React deletes none of this.
@@ -11,8 +12,14 @@
  * the detach: the bite outlives the page.
  */
 import { assertNever } from "@some-ui/core-utils"
-import type { StartRecording } from "@some-ui/voice-capture"
-import { takeRunner } from "@some-ui/voice-capture"
+import type {
+  MicOwner,
+  Playback,
+  Player,
+  StartRecording,
+  TakeDeadlines,
+} from "@some-ui/voice-capture"
+import { audioPlayer, takeRunner } from "@some-ui/voice-capture"
 
 import type { FeedPort } from "./feed"
 import type {
@@ -43,6 +50,12 @@ export type GameWeekPorts = {
    * each change. Returns an unsubscribe.
    */
   onVisibility: (listener: (hidden: boolean) => void) => () => void
+  /** Plays a kept bite back; the kit's `audioPlayer` unless a test gives its own. */
+  player?: Player | undefined
+  /** The phone's one microphone unless a test gives its own. */
+  owner?: MicOwner | undefined
+  /** The microphone's deadlines unless a test gives its own. */
+  deadlines?: TakeDeadlines | undefined
 }
 
 export type GameWeekRuntime = {
@@ -56,6 +69,8 @@ export type GameWeekRuntime = {
 export function createGameWeek(ports: GameWeekPorts): GameWeekRuntime {
   let state = initialState(ports.prefs.read(), ports.now())
   const listeners = new Set<() => void>()
+  const player = ports.player ?? audioPlayer
+  let playback: Playback | null = null
 
   const dispatch = (event: GameWeekEvent): void => {
     const next = step(state, event)
@@ -71,6 +86,8 @@ export function createGameWeek(ports: GameWeekPorts): GameWeekRuntime {
       startRecording: ports.startRecording,
       now: ports.now,
       tickMs: TAKE_TICK_MS,
+      owner: ports.owner,
+      deadlines: ports.deadlines,
     },
     (signal) =>
       dispatch(
@@ -96,6 +113,30 @@ export function createGameWeek(ports: GameWeekPorts): GameWeekRuntime {
       case "finishTake":
       case "discardTake": {
         take.run(effect)
+        return
+      }
+      case "loadAudio": {
+        const { play } = effect
+        ports.store.audio(effect.id).then(
+          (audio) => dispatch({ type: "loaded", play, audio }),
+          () => dispatch({ type: "loaded", play, audio: null })
+        )
+        return
+      }
+      case "playAudio": {
+        playback?.stop()
+        const { play } = effect
+        const started = player.play(effect.audio)
+        playback = started
+        void started.ended.then(() => {
+          if (playback === started) playback = null
+          dispatch({ type: "played", play })
+        })
+        return
+      }
+      case "stopAudio": {
+        playback?.stop()
+        playback = null
         return
       }
       case "keep": {
