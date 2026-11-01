@@ -66,6 +66,7 @@ export {
 } from "./lib/take-kit"
 export type {
   PatternPlayback,
+  PlaybackEffect,
   PatternTake,
   TakePattern,
   TakePatternEffect,
@@ -86,6 +87,7 @@ export {
   ONE_TAKE,
   takePattern,
   takePatternSnapshot,
+  takePlayback,
 } from "./lib/take-pattern"
 export type {
   TakeButtonView,

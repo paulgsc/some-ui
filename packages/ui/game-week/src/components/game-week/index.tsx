@@ -23,8 +23,7 @@ import type { Said } from "@game-week/lib/bite"
 import type { Game, JustHappened, OfferCard } from "@game-week/lib/feed"
 import type { Activity, GameWeekState, OfferView } from "@game-week/lib/machine"
 import {
-  BITE_ITEM,
-  BITE_TAKES,
+  biteView,
   currentGame,
   isWatching,
   offerView,
@@ -60,11 +59,7 @@ import {
   TakeRow,
 } from "@some-ui/shared"
 import type { TakeButtonView } from "@some-ui/voice-capture"
-import {
-  RECORDING_FAILURE_COPY,
-  takeItemView,
-  takePatternSnapshot,
-} from "@some-ui/voice-capture"
+import { RECORDING_FAILURE_COPY, TAKE_WORDS } from "@some-ui/voice-capture"
 import { Eye, EyeOff, List, Mic, Settings2 } from "lucide-react"
 
 import { ScenarioIcon } from "./scenario-icon"
@@ -494,13 +489,8 @@ export const GameWeek = ({ ports, outbox }: GameWeekProps): JSX.Element => {
   const outboxWords = outboxLine(waiting)
   // The bite as the take pattern's parts show it: its button while it
   // records, and the newest bite kept as a row.
-  const bite = takeItemView(
-    takePatternSnapshot(state.takes, BITE_TAKES),
-    state.lastBite === null ? [] : [state.lastBite],
-    BITE_ITEM,
-    BITE_TAKES
-  )
-  const [row] = bite.current
+  const bite = biteView(state)
+  const { row } = bite
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-4 pb-8">
@@ -596,28 +586,31 @@ export const GameWeek = ({ ports, outbox }: GameWeekProps): JSX.Element => {
         </p>
       )}
 
-      <p aria-live="polite" className="text-muted-foreground min-h-9 text-sm">
-        {state.notice}
-      </p>
+      <div aria-live="polite" className="flex min-h-9 items-center gap-3">
+        <p className="text-muted-foreground min-w-0 flex-1 text-sm">
+          {state.notice}
+        </p>
+        {/* Whichever bite Undo is open on: a keep can answer after the
+            next bite is taken. */}
+        {state.undo !== null && !asking && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => dispatch({ type: "undo" })}
+          >
+            {WORDS.undo}
+          </Button>
+        )}
+      </div>
 
-      {row !== undefined && !asking && (
+      {row !== null && !asking && (
         <ul>
           <TakeRow
             row={row}
             onPlay={() => dispatch({ type: "play", id: row.take.id })}
-            // Undo, while the bite's hold lasts: the row's extra slot.
-            extra={
-              state.undo?.id === row.take.id ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => dispatch({ type: "undo" })}
-                >
-                  {WORDS.undo}
-                </Button>
-              ) : undefined
-            }
-          />
+          >
+            {bite.unplayable ? TAKE_WORDS.unplayable : undefined}
+          </TakeRow>
         </ul>
       )}
 

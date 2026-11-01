@@ -52,6 +52,8 @@ export const NOTICES = {
     "Too late to note what that was about: that bite is on its way home as Later.",
   pickFirst: "Pick a game first.",
   notStarted: "The screen went away before the microphone opened.",
+  // The take pattern's own words for a take stopped while it opened.
+  early: TAKE_ENDING_WORDS.early,
 } as const
 
 /** What a kept bite's toast says. */

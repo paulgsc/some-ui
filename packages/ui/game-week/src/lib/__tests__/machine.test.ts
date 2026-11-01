@@ -45,6 +45,14 @@ describe("a tap", () => {
     expect(next.effects).toContainEqual({ type: "openMic" })
   })
 
+  it("lets a bite go when tapped again while the microphone opens", () => {
+    const opening = step(here(), { type: "say", said: THIRD }).state
+    const next = step(opening, { type: "done" })
+    expect(next.effects).toContainEqual({ type: "discardTake" })
+    expect(phaseOf(next.state)).toBe("idle")
+    expect(next.state.notice).toBe(NOTICES.early)
+  })
+
   it("starts nothing while a bite is under way", () => {
     const next = step(recording(), { type: "say", said: { how: "said-first" } })
     expect(next.effects).toEqual([])
@@ -146,7 +154,10 @@ describe("keeping a bite (GW3, GW4)", () => {
       { type: "taken", take: take(), id: "b1", at: T0 + 5_000 },
       { type: "kept", id: "b1" }
     ).state
-    expect(kept.lastBite).toMatchObject({ id: "b1", durationMs: 4_000 })
+    expect(kept.lastBite).toMatchObject({
+      take: { id: "b1", durationMs: 4_000, kept: { place: "going" } },
+      stored: true,
+    })
     const asked = step(kept, { type: "play", id: "b1" })
     expect(asked.effects).toEqual([{ type: "loadAudio", id: "b1", play: 1 }])
     const playing = step(asked.state, {
