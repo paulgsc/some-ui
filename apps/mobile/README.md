@@ -182,12 +182,14 @@ holds the APK to it).
 - **Letting go is how the phone makes room, and it is always the person's
   act.** The app is client first: nothing requires a server, and a paired
   phone sends to its own home on its own (HF8), but nothing leaves the
-  phone until the person says so. A finished session (completed, not
-  today's: `mayLeavePhone`) leaves the phone only once home holds it, when
-  **Clear finished sessions home holds** reads it back and finds it as the
-  phone has it; an archive is a copy and lets nothing go (LG1). Unfinished
-  sessions and today's always stay, since the study card and the nudge
-  read them.
+  phone until the person says so. On a paired phone a session leaves only
+  once home holds it as the phone has it (LA8): **Clear finished sessions
+  home holds** reads back the finished ones (completed, not today's:
+  `mayLeavePhone`), and the study list's **Let it go** and the phone-full
+  offer's **Remove it** copy the one session home and read it back first.
+  Nothing else lets a session go, so unfinished sessions and today's stay
+  unless the person lets one go, since the study card and the nudge read
+  them.
 - **Sending is archiving.** A finished session's record is context for an
   agent shaping the next lesson, not something the person reads back: the
   app is for studying, not a dashboard of it. So nothing that left the
@@ -661,13 +663,9 @@ does leave; the rest stay, and the line says so. It sends nothing.
 
 Home no longer knowing the phone, or no answer, ends a run there.
 
-**Archive finished sessions**, in the This phone block, shares a copy: one
-file (`sessions-<day>.json`, every finished session's full record) through
-Android's share sheet, so the person picks where it goes (Drive, say:
-`Study ledger › sessions`). The sessions stay on the phone: nothing is let
-go on a third party's word (LG1, HF2 #2177), so only the clear above frees
-their room. Written reflections go home on their own (above); the whole
-study-context export still carries them as a copy (**Share with an agent**).
+Written reflections go home on their own (above); the whole study-context
+export still carries them as a copy (**Share with an agent**), and nothing
+is let go on a third party's word (LG1).
 
 The sync goes through Capacitor's native HTTP (`device-backend/native-http`).
 The app's page is `https://localhost`, so a browser `fetch` to
@@ -1040,7 +1038,7 @@ them through the app's own plugin, `ListenPlugin.java` (registered in
 ## Not done yet
 
 - **Nothing syncs back, on purpose.** A session that left the phone is not
-  brought back, and an archive is not imported: a finished session's record
+  brought back: a finished session's record
   is for an agent to read when it shapes the next lesson, not for the phone
   to show again.
 - **Nothing here has run on a phone yet.** CI builds and launches it in an
