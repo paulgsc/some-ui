@@ -31,6 +31,7 @@ import type {
   StartRecording,
   TakeDeadlines,
   TakeEnding,
+  TakeKept,
   TakeKitView,
 } from "@some-ui/voice-capture"
 import {
@@ -116,6 +117,16 @@ export type PhoneTakes = Omit<LensTakes, "getSnapshot"> & {
   recount: () => void
   /** Whether home holds take `id`, as last read back (`held`). */
   held: (id: string) => boolean
+}
+
+/**
+ * Whether home holds a take, so it may make room at a desk's cap (HF5): only
+ * one on home. A take going home is on this phone alone until home holds it,
+ * and letting it go would lose it (MIC3). Every desk reads `held` through
+ * this.
+ */
+export function homeHolds(kept: TakeKept): boolean {
+  return kept.place === "home"
 }
 
 /**

@@ -7,15 +7,17 @@
  * still waits, and goes once there is room; one the phone fails to copy,
  * or whose record storage won't keep, fails the run as the phone's fault;
  * a Jobs note let go once its share arrived is never offered; a store
- * that can't be listed holds back none of the others; and the soundbites
- * hear again what home holds once the voice lane holds a bite's audio (OS1).
+ * that can't be listed holds back none of the others; the soundbites hear
+ * again what home holds once the voice lane holds a bite's audio (OS1); and
+ * each note says where it is kept, and since when, as the lane holds it
+ * (MIC3).
  */
 import type { HomeCall } from "@some-ui/core-utils"
 import { reportFailure } from "@some-ui/intent-kit"
 import type { Soundbite } from "@some-ui/soundbites"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import type { BlobShelf } from "@some-ui/voice-capture"
-import { ShelfFullError } from "@some-ui/voice-capture"
+import { keptSaid, ShelfFullError, TAKE_WORDS } from "@some-ui/voice-capture"
 import { renderHook } from "@testing-library/react"
 import { beforeAll, describe, expect, it, vi } from "vitest"
 
@@ -24,6 +26,7 @@ import { useUnsendable, voiceLane } from "@/lib/home-link/voice"
 import {
   sendVoice,
   storesRead,
+  voiceKept,
   watchVoiceNotes,
 } from "@/lib/home-link/voice-copy"
 import type { JobEvent, JobsState } from "@/lib/jobs/model"
@@ -48,6 +51,8 @@ const fakes = vi.hoisted(
     letGo: "home" | "drive" | null
     waitingIds: ReadonlyArray<string>
     onDrive: Array<ReadonlyArray<string>>
+    /** Whether the phone is paired with home. */
+    paired: boolean
   } => ({
     jobs: null,
     audio: new Map(),
@@ -56,6 +61,7 @@ const fakes = vi.hoisted(
     letGo: null,
     waitingIds: [],
     onDrive: [],
+    paired: true,
   })
 )
 
@@ -107,7 +113,7 @@ vi.mock("@/lib/home-link/lanes", () => ({
 }))
 vi.mock("@/lib/home-link", () => ({
   homeLink: (): unknown => ({ subscribe: () => (): void => undefined }),
-  paired: (): boolean => true,
+  paired: (): boolean => fakes.paired,
   pairingOf: (): string => PAIRING,
 }))
 vi.mock("@some-ui/topik", () => ({
@@ -203,8 +209,9 @@ const send: HomeCall = (_method, path) => {
 function setUp(
   room: number,
   audio: Record<string, Blob | Error | null>,
-  { arrived = false, storage = memoryStorage() } = {}
+  { arrived = false, storage = memoryStorage(), now = Date.now } = {}
 ): void {
+  fakes.paired = true
   fakes.jobs = record(Object.keys(audio), arrived)
   fakes.scene = []
   fakes.audio = new Map(
@@ -214,6 +221,7 @@ function setUp(
     storage,
     shelf: shelf(room),
     encode: () => Promise.resolve({ base64: "", sha256: "s" }),
+    now,
   })
 }
 
@@ -251,6 +259,28 @@ describe("the voice lane's run, after its copy pass (LA14)", () => {
     setUp(5, { v1: new Blob(["a"]) }, { storage })
     expect(await sendVoice(send)).toEqual({ kind: "failed", why: "fault" })
     expect(waiting()).toBe(1)
+  })
+
+  it("MIC3: says a note is kept on this phone, going home while its copy waits and the phone is paired, then on home since this phone heard so; one no lane carries stays kept on this phone", async () => {
+    const heard = "2026-11-01T09:15:00.000Z"
+    setUp(5, { v1: new Blob(["a"]) }, { now: () => Date.parse(heard) })
+    const said = (id: string): string => keptSaid(TAKE_WORDS, voiceKept(id))
+    expect(said("v1")).toBe(TAKE_WORDS.place.phone)
+
+    const busy: HomeCall = () => Promise.resolve({ status: 503, body: "" })
+    expect((await sendVoice(busy)).kind).toBe("failed")
+    expect(said("v1")).toBe(TAKE_WORDS.place.going)
+    // Unpaired, its copy goes nowhere: kept here until paired again.
+    fakes.paired = false
+    expect(said("v1")).toBe(TAKE_WORDS.place.phone)
+    fakes.paired = true
+    expect(said("v1")).toBe(TAKE_WORDS.place.going)
+
+    expect(await sendVoice(send)).toEqual({ kind: "synced" })
+    expect(voiceKept("v1")).toEqual({ place: "home", since: heard })
+    expect(said("v1")).toBe(TAKE_WORDS.place.homeSince(TAKE_WORDS.when(heard)))
+    // Rust Rounds' notes go home in no lane yet (RR6, #2237).
+    expect(said("rust-rounds-note")).toBe(TAKE_WORDS.place.phone)
   })
 
   it("offers a Jobs note whose share arrived like any other, and names it gone when its audio is (LG1)", async () => {

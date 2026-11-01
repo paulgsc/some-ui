@@ -14,7 +14,13 @@ import { assertTakeProperties } from "@some-ui/voice-capture/testing"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { Take, TakesPorts } from "@/lib/takes-desk/runtime"
-import { createTakes } from "@/lib/takes-desk/runtime"
+import { createTakes, homeHolds } from "@/lib/takes-desk/runtime"
+import type { VoiceOut } from "@/lib/voice-home/model"
+import {
+  INITIAL_VOICE_HOME,
+  keptIn,
+  stepVoiceHome,
+} from "@/lib/voice-home/model"
 
 const LENS_TAKES_MAX = 40
 const LIMITS = { max: LENS_TAKES_MAX, maxMs: 30_000 }
@@ -204,6 +210,42 @@ describe("createTakes", () => {
     await take(takes)
     expect(p.listed[0]?.id).toBe("t1")
     expect(p.listed).toHaveLength(LENS_TAKES_MAX - 1)
+  })
+
+  it("refuses a take at forty while the others only wait to go home, letting none go (MIC3)", async () => {
+    const full = Array.from({ length: LENS_TAKES_MAX }, (_, index) =>
+      kept(`old-${index}`, NOW - index)
+    )
+    const p = ports(full)
+    // Every copy waits in the voice lane; home holds none of them yet.
+    const lane = full.reduce(
+      (state, { id }) =>
+        stepVoiceHome(state, {
+          kind: "copied",
+          note: {
+            id,
+            of: "lens",
+            ref: "older",
+            at: new Date(NOW).toISOString(),
+            contentType: "audio/webm",
+          } satisfies VoiceOut,
+        }),
+      INITIAL_VOICE_HOME
+    )
+    const where = keptIn(lane)
+    expect(where("old-0")).toEqual({ place: "going" })
+    // As the desk reads `held` from where each take is (`../index`).
+    const takes = createTakes(
+      { ...p, held: (id) => homeHolds(where(id)) },
+      LIMITS
+    )
+    expect(takes.getSnapshot().full).toBe(true)
+    takes.start("school-bus")
+    await settle()
+    expect(takes.getSnapshot().take.kind).toBe("idle")
+    expect(p.audio.put).not.toHaveBeenCalled()
+    expect(p.audio.remove).not.toHaveBeenCalled()
+    expect(p.listed).toHaveLength(LENS_TAKES_MAX)
   })
 
   it("makes room at forty by letting go the oldest take home holds, and only one home holds (HF5)", async () => {

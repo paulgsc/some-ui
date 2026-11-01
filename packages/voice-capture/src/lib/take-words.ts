@@ -10,7 +10,7 @@ import { assertNever, formatTimecode } from "@some-ui/core-utils"
 
 import type { TakeEndingWords } from "./take-kit"
 import { TAKE_ENDING_WORDS, takeEndingSaid } from "./take-kit"
-import type { TakePlace } from "./take-pattern"
+import type { TakeKept, TakePlace } from "./take-pattern"
 import type { TakeButtonView, TakeSaid } from "./take-view"
 
 export type TakeWords = {
@@ -40,7 +40,19 @@ export type TakeWords = {
   readonly nearlyUp: (leftMs: number) => string
   /** A take's length. */
   readonly length: (ms: number) => string
-  readonly place: Readonly<Record<TakePlace, string>>
+  /**
+   * Where a take is kept (MIC3), as its store read it from what home told
+   * this phone: `keptSaid` picks one.
+   */
+  readonly place: {
+    readonly phone: string
+    readonly going: string
+    /** On home, when this phone didn't note since when. */
+    readonly home: string
+    readonly homeSince: (when: string) => string
+  }
+  /** A moment, as `place.homeSince` says it: its day and time. */
+  readonly when: (iso: string) => string
   readonly play: string
   readonly stop: string
   readonly redo: string
@@ -83,9 +95,18 @@ export const TAKE_WORDS: TakeWords = {
   },
   length: (ms) => formatTimecode(ms),
   place: {
-    phone: "On this phone",
+    phone: "Kept on this phone",
+    going: "On this phone, going home",
     home: "On home",
+    homeSince: (when) => `On home since ${when}`,
   },
+  when: (iso) =>
+    new Date(iso).toLocaleString(undefined, {
+      day: "numeric",
+      month: "short",
+      hour: "numeric",
+      minute: "2-digit",
+    }),
   play: "Play",
   stop: "Stop",
   redo: "Redo",
@@ -94,7 +115,8 @@ export const TAKE_WORDS: TakeWords = {
     `${action} the take of ${formatTimecode(lengthMs)}`,
   earlier: (count) => `Earlier take${count === 1 ? "" : "s"} (${count})`,
   setAside: {
-    phone: "Set aside. It stays on this phone until home has it.",
+    phone: "Set aside. It stays on this phone.",
+    going: "Set aside. It stays on this phone until home has it.",
     home: "Set aside. Home keeps it.",
   },
   unplayable: "Couldn't play that take.",
@@ -134,6 +156,24 @@ export function buttonLabel(words: TakeWords, view: TakeButtonView): string {
     return view.again ? words.buttonLabel.again : words.buttonLabel.ready
   }
   return words.buttonLabel[view.kind]
+}
+
+/** Where a take is kept, and since when. */
+export function keptSaid(words: TakeWords, kept: TakeKept): string {
+  switch (kept.place) {
+    case "phone":
+    case "going": {
+      return words.place[kept.place]
+    }
+    case "home": {
+      return kept.since === null
+        ? words.place.home
+        : words.place.homeSince(words.when(kept.since))
+    }
+    default: {
+      return assertNever(kept)
+    }
+  }
 }
 
 /** The line said beside the button. */

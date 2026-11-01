@@ -31,6 +31,8 @@ const NOTE: VoiceOut = {
   contentType: "audio/webm;codecs=opus",
 }
 const OTHER: VoiceOut = { ...NOTE, id: "n2" }
+/** When this phone heard home say it holds a note. */
+const HEARD = "2026-10-25T03:12:00.000Z"
 
 const copied = (state: VoiceHomeState, note: VoiceOut): VoiceHomeState =>
   stepVoiceHome(state, { kind: "copied", note })
@@ -56,10 +58,13 @@ describe("the record of voice notes on their way home", () => {
 
   it("moves a waiting note to held or refused, once, and never copies it again", () => {
     const two = copied(copied(INITIAL_VOICE_HOME, NOTE), OTHER)
-    const held = stepVoiceHome(two, { kind: "held", id: "n1" })
+    const held = stepVoiceHome(two, { kind: "held", id: "n1", at: HEARD })
     expect(held.waiting).toEqual([OTHER])
     expect(held.held).toEqual(["n1"])
-    expect(stepVoiceHome(held, { kind: "held", id: "n1" })).toBe(held)
+    expect(held.heldAt).toEqual({ n1: HEARD })
+    expect(
+      stepVoiceHome(held, { kind: "held", id: "n1", at: "2026-12-01T00:00Z" })
+    ).toBe(held)
     expect(copied(held, NOTE)).toBe(held)
 
     const refused = stepVoiceHome(held, {
@@ -70,6 +75,7 @@ describe("the record of voice notes on their way home", () => {
     expect(refused).toEqual({
       waiting: [],
       held: ["n1"],
+      heldAt: { n1: HEARD },
       refused: [
         { id: "n2", why: "home holds another recording under its name" },
       ],
@@ -106,10 +112,20 @@ describe("the record of voice notes on their way home", () => {
       JSON.stringify({ ...state, waiting: [{ ...bite, fields: { how: 1 } }] }),
       JSON.stringify({ ...state, waiting: [{ ...bite, fields: { of: "x" } }] }),
       JSON.stringify({ ...state, refused: [{ id: "n" }] }),
+      JSON.stringify({ ...state, heldAt: { n1: 1 } }),
+      JSON.stringify({ ...state, heldAt: [] }),
       JSON.stringify({ waiting: [], held: [], refused: [] }),
     ]) {
       expect([raw, parseVoiceHome(raw)]).toEqual([raw, null])
     }
+  })
+
+  it("reads a record written before it noted when home held each note, guessing no time (MIC3)", () => {
+    const before = { waiting: [], held: ["n1"], refused: [], roomless: [] }
+    expect(parseVoiceHome(JSON.stringify(before))).toEqual({
+      ...before,
+      heldAt: {},
+    })
   })
 })
 

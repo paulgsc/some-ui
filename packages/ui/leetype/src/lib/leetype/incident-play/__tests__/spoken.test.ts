@@ -151,7 +151,10 @@ describe("a spoken answer", () => {
     const item = runtime.getSnapshot().take?.item
     expect(item?.current).toEqual([
       expect.objectContaining({
-        take: expect.objectContaining({ id: "take-1", place: "phone" }),
+        take: expect.objectContaining({
+          id: "take-1",
+          kept: { place: "phone" },
+        }),
         canPlay: true,
         canRedo: true,
         canLetGo: true,

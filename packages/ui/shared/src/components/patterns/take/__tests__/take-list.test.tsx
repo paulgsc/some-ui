@@ -132,6 +132,39 @@ describe("the take button, row and list", () => {
     expect(on.mic.open()).toBe(0)
   })
 
+  it("says on each row where its take is kept, and since when once home holds it (MIC3)", () => {
+    const since = "2026-11-01T09:15:00.000Z"
+    const kept = (
+      id: string,
+      minute: number,
+      where: PatternTake["kept"]
+    ): PatternTake => ({
+      id,
+      answers: "card-1",
+      durationMs: 2_000,
+      recordedAt: `2026-11-01T09:0${minute}:00.000Z`,
+      standing: "current",
+      kept: where,
+    })
+    const on = phone()
+    render(
+      <Screen
+        {...screenOn(on, { ...ONE, takes: { per: "many", max: 5 } }, [
+          kept("t1", 1, { place: "phone" }),
+          kept("t2", 2, { place: "going" }),
+          kept("t3", 3, { place: "home", since }),
+        ])}
+      />
+    )
+    expect(
+      screen.getAllByRole("listitem").map((row) => row.textContent)
+    ).toEqual([
+      expect.stringContaining(W.place.homeSince(W.when(since))),
+      expect.stringContaining(W.place.going),
+      expect.stringContaining(W.place.phone),
+    ])
+  })
+
   it("keeps a take it didn't hear, says so, and offers Redo beside it (D4)", async () => {
     const on = phone()
     on.mic.script({ ...SPEAKING, level: 0.04 })

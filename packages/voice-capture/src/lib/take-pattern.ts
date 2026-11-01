@@ -81,8 +81,33 @@ export const ONE_TAKE: TakePatternOptions = {
   play: "each",
 }
 
-/** Where a take is kept, in the person's terms (`./take-words`). */
-export type TakePlace = "phone" | "home"
+/**
+ * Where a take is kept, in the person's terms (`./take-words`): on this
+ * phone alone, on this phone and waiting to go home, or on home.
+ */
+export type TakePlace = "phone" | "going" | "home"
+
+/**
+ * Where a take is kept, and since when (MIC3), as its screen's store reads
+ * it from what home has told this phone. A kind of take that goes home
+ * nowhere stays `phone`: nothing here says it will go.
+ */
+export type TakeKept =
+  /** On this phone alone. */
+  | { readonly place: "phone" }
+  /** On this phone, its copy waiting to go home. */
+  | { readonly place: "going" }
+  | {
+      readonly place: "home"
+      /**
+       * When this phone heard home say it holds the take, as an ISO time;
+       * null when it heard before it noted when.
+       */
+      readonly since: string | null
+    }
+
+/** A take on this phone alone: where every take starts. */
+export const ON_PHONE: TakeKept = { place: "phone" }
 
 /** Where a take stands in its item: its take, an earlier one (D2), or set aside (D3). */
 export type TakeStanding = "current" | "earlier" | "set-aside"
@@ -96,7 +121,7 @@ export type PatternTake = {
   /** When it was recorded, as an ISO time; newest first in a list. */
   readonly recordedAt: string
   readonly standing: TakeStanding
-  readonly place: TakePlace
+  readonly kept: TakeKept
 }
 
 /** What plays: nothing, a take whose audio is being read, or a take playing. */

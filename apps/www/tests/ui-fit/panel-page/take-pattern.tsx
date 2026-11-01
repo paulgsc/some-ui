@@ -31,7 +31,7 @@ const take = (
   durationMs: 47_000,
   recordedAt: `2026-10-31T09:${String(minute).padStart(2, "0")}:00.000Z`,
   standing: "current",
-  place: "phone",
+  kept: { place: "phone" },
   ...over,
 })
 
@@ -42,9 +42,16 @@ const take = (
  */
 const SEED: ReadonlyArray<PatternTake> = [
   take("a1", "card", 1, { standing: "earlier", durationMs: 3_000 }),
-  take("a2", "card", 2, { standing: "earlier", place: "home" }),
-  take("a3", "card", 3),
-  take("b1", "line", 4, { place: "home", durationMs: 59_000 }),
+  take("a2", "card", 2, {
+    standing: "earlier",
+    kept: { place: "home", since: null },
+  }),
+  take("a3", "card", 3, { kept: { place: "going" } }),
+  // The longest place line: on home, with the day and time since.
+  take("b1", "line", 4, {
+    kept: { place: "home", since: "2026-12-31T23:59:00.000Z" },
+    durationMs: 59_000,
+  }),
   take("b2", "line", 5),
   take("b3", "line", 6, { durationMs: 600 }),
 ]

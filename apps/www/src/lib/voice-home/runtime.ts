@@ -30,6 +30,8 @@ export type VoiceHomePorts = {
   storage: KeyedStorage | null
   shelf: BlobShelf
   encode: (blob: Blob) => Promise<Encoded>
+  /** When home's word is heard, noted as the take's "since" (MIC3). */
+  now: () => number
 }
 
 export type VoiceHome = {
@@ -108,12 +110,16 @@ export function createVoiceHome(ports: VoiceHomePorts): VoiceHome {
       state: () => state,
       audio: (id) => shelf.get(id),
       encode: ports.encode,
-      answered(event): void {
-        apply(event)
-        if (event.kind === "held") {
+      answered(answer): void {
+        apply(
+          answer.kind === "held"
+            ? { ...answer, at: new Date(ports.now()).toISOString() }
+            : answer
+        )
+        if (answer.kind === "held") {
           // Ignored: a copy home holds is named by no record once this step
           // is kept, so the next `sweep` clears one that fails to go.
-          shelf.remove([event.id]).catch(() => undefined)
+          shelf.remove([answer.id]).catch(() => undefined)
         }
       },
     },
