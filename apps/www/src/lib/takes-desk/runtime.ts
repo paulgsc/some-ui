@@ -13,8 +13,7 @@
  * - **Every take's end is said** (VC2, `@some-ui/voice-capture`'s
  *   `voice-note.ts`). `ended` names how each take ended and the line it was
  *   started on, apart from `reset`'s hush, so a caller that moved on still
- *   hears that a take it left was kept or lost. A take let go before the
- *   microphone opened ends `early`, and is said like any other.
+ *   hears that a take it left was kept or lost.
  * - **The last take is the item's.** `reset` forgets it, so the next item
  *   starts with none; a take still being kept when that happens is kept, but
  *   is not the next item's last. `kept` names every take kept, for the
@@ -75,8 +74,7 @@ export type TakesPorts = {
 
 /**
  * How a take ended, whatever `reset` has hushed since: every take that
- * starts ends in exactly one, `seq` counting them. `early` is a take let go
- * before the microphone opened; `blocked` one the microphone refused, why in
+ * starts ends in exactly one, `seq` counting them. For `blocked`, why is in
  * the snapshot's `blocked`.
  */
 type TakeEnded = {

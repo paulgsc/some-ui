@@ -29,7 +29,7 @@
  *   `lib/takes-desk/__tests__/runtime.test.ts` ("VC2") over the real
  *   `createTakes`, with a recorder that opens on cue, for each order; the
  *   `Record` types over every ending in `VOICE_NOTE_SAID` and Rust Rounds'
- *   `WORDS.takeEnded`. Declared for #2370.
+ *   `WORDS.takeEnded`.
  */
 import { assertNever } from "@some-ui/core-utils"
 

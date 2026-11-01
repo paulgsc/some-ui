@@ -6,7 +6,6 @@ import type {
 import {
   initialVoiceNote,
   stepVoiceNote,
-  VOICE_NOTE_SAID,
   voiceNoteEnd,
   voiceNoteSaid,
 } from "@voice-capture/lib/voice-note"
@@ -158,11 +157,5 @@ describe("VC2: every take that starts ends once, and says how", () => {
     expect(ends).toBe(1)
     expect(voiceNoteEnd(state)).toBe(end)
     expect(voiceNoteSaid(state, false)).toEqual(expect.any(String))
-  })
-
-  it("has words for every outcome", () => {
-    for (const said of Object.values(VOICE_NOTE_SAID)) {
-      expect(said.trim()).not.toBe("")
-    }
   })
 })

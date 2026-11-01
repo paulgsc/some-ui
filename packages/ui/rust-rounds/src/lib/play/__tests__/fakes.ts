@@ -5,8 +5,7 @@
  *
  * The microphone keeps www's takes desk's phases (`lib/takes-desk`): a take
  * starts `opening`, records once `open` is called, and one stopped before
- * then ends `early` (VC2). MIC1 (#2371) replaces this with the one simulated
- * microphone every screen's tests share.
+ * then ends `early` (VC2).
  */
 import type { NoteView, TakeEnd } from "@rust-rounds/lib/play/machine"
 import type { NotesPort, RustRoundsPorts } from "@rust-rounds/lib/play/runtime"
