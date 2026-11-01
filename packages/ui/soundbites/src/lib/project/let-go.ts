@@ -5,8 +5,7 @@
  *
  * - `home`: a take leaves once home holds it.
  * - `drive`: a take home holds stays until Drive has it too: the owner's tap
- *   on that take ("Drive has it"), or home's word that it found the take's
- *   recording in Drive.
+ *   on that take ("Drive has it").
  *
  * Until the owner chooses, no take leaves. A take home does not hold never
  * leaves, whatever the choice (`letGoRefusal` in `./model`).
@@ -23,25 +22,13 @@ export type LetGo = (typeof LET_GO_CHOICES)[number]
 /** The choice as kept: null until the owner makes it. */
 export type LetGoChoice = LetGo | null
 
-/** Whether `id` names a take home has said Drive has. */
-export type OnDrive = (id: string) => boolean
-
-/** Home has said Drive has none. */
-export const NONE_ON_DRIVE: OnDrive = () => false
-
 /**
- * Whether a take home holds may leave the phone now, by the owner's choice:
- * never before they choose; under `drive`, only on home's word that Drive
- * has it (`onDrive`). The owner's own "Drive has it" is a tap on that take,
- * which lets it go there and then.
+ * Whether a take home holds may leave the phone on home's word alone, by the
+ * owner's choice: only under `home`. Under `drive` it leaves on the owner's
+ * tap on that take ("Drive has it"), and never before they choose.
  */
-export function mayLeave(
-  choice: LetGoChoice,
-  id: string,
-  onDrive: OnDrive
-): boolean {
-  if (choice === null) return false
-  return choice === "home" || onDrive(id)
+export function mayLeave(choice: LetGoChoice): boolean {
+  return choice === "home"
 }
 
 /** The takes home holds that are still on the phone: they wait on the choice. */

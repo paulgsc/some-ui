@@ -60,14 +60,14 @@
  *   ("LG1": an ask removes no scene note), `lib/scene-voice`'s
  *   `runtime.test.ts` ("LG1": `letGo` removes the notes home holds that an
  *   ask home holds carried, and no other),
- *   soundbites' `project/__tests__/model.test.ts` and
- *   `studio/__tests__/studio.test.ts` ("LG1": a take kept by Drive stays on
- *   the phone; only `home` lets it go), soundbites'
- *   `project/__tests__/home.test.ts` ("LG1": every choice × Drive's word,
- *   home holding the take) and `studio/__tests__/studio.test.ts` ("a take
- *   home holds (HF11, LG1)": nothing before the choice, every one on "once
- *   home has them", only the tapped one on "until Drive has it too", none
- *   when the choice can't be kept), and for the caps (HF5) soundbites'
+ *   soundbites' `project/__tests__/model.test.ts` ("LG1": a take kept by
+ *   Drive stays on the phone; only `home` lets it go),
+ *   `project/__tests__/home.test.ts` ("LG1": every choice, home holding the
+ *   take) and `studio/__tests__/studio.test.ts` ("LG1": a take kept by Drive
+ *   stays on the phone; "a take home holds (HF11, LG1)": nothing before the
+ *   choice, every one on "once home has them", only the tapped one on "until
+ *   Drive has it too", none when the choice can't be kept), and for the caps
+ *   (HF5) soundbites'
  *   `__tests__/policy.test.ts` and `components/soundbites/index.test.tsx`,
  *   `lib/takes-desk/__tests__/runtime.test.ts`,
  *   `lib/leetype-takes/index.test.ts` and topik's

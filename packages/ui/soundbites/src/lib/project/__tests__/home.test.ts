@@ -63,26 +63,19 @@ describe("Studio's takes on their way home", () => {
 
   /**
    * LG1 (HF11): a take leaves only once home holds it and the owner's
-   * choice allows it, over every choice (none yet, home, Drive) × whether
-   * home has said Drive has it.
+   * choice allows it, over every choice (none yet, home, Drive). Under
+   * Drive, home holding it never lets it go: the owner's tap does
+   * (`studio/__tests__/studio.test.ts`).
    */
   it.each([
-    [null, false, true],
-    [null, true, true],
-    ["home", false, false],
-    ["home", true, false],
-    ["drive", false, true],
-    ["drive", true, false],
+    [null, true],
+    ["home", false],
+    ["drive", true],
   ] as const)(
-    "LG1: with the choice %s and Drive's word %s, the take home holds stays: %s",
-    async (choice, drive, stays) => {
+    "LG1: with the choice %s, the take home holds stays: %s",
+    async (choice, stays) => {
       const memory = memoryProjectStore([twoTakes()])
-      await letGoHeldTakes(
-        memory.store,
-        new Set(["t1"]),
-        choice,
-        (id) => drive && id === "t1"
-      )
+      await letGoHeldTakes(memory.store, new Set(["t1"]), choice)
       const [project] = await memory.store.list()
       // Home holding it is kept either way, so it is not sent again.
       expect(project?.takes[0]).toMatchObject({

@@ -1636,6 +1636,13 @@
       "family": "what-is-kept"
     },
     {
+      "store": "phone:studio-let-go",
+      "class": "record",
+      "growth": "Per change of the owner's choice of when a Studio take home holds leaves the phone (HF11): one entry of about 45 B, the choice and when it was made, append-only; no cap (`some-ui:studio:let-go`).",
+      "horizon": "the phone keeps every choice",
+      "family": "what-is-kept"
+    },
+    {
       "store": "phone:job-voice",
       "class": "record",
       "growth": "bounded: JOB_VOICE_MAX_BYTES = 40 x 240,000 = 9,600,000 B of Jobs voice notes.",

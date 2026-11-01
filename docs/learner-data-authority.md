@@ -536,7 +536,8 @@ next scene (`next-scene`), by when it was kept, shared or not (HF2, #2177;
 (Undo, and what a bite said first was about) has run out; a Studio take
 still on the phone by its project, scene and take
 (`<project>:<shot>:<take>`), when it was recorded, its audio leaving the
-phone once home holds it (soundbites' `letGoHeldTakes`); a soundbite, once
+phone once home holds it (soundbites' `letGoHeldTakes`) and the owner's
+choice allows it (LG1); a soundbite, once
 its page has handed its store in (`lib/soundbite-keeping`), by how it came
 to be recorded and when; a grammar-lens take by its line, and a LeetType
 take by its session file and screen (`<file>:<screen>`), each by when it was

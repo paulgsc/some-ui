@@ -8,8 +8,8 @@
  * the phone, marked, for that choice.
  * Sending is the app's home link's (www `lib/home-link/voice-copy`).
  */
-import type { LetGoChoice, OnDrive } from "./let-go"
-import { mayLeave, NONE_ON_DRIVE } from "./let-go"
+import type { LetGoChoice } from "./let-go"
+import { mayLeave } from "./let-go"
 import type { Project, ProjectEvent } from "./model"
 import { homeHolds, step } from "./model"
 import type { ProjectStore } from "./store"
@@ -70,19 +70,18 @@ export function heldByHome(
 }
 
 /**
- * Marks every take home holds as kept there and lets the audio of each the
- * owner's choice allows leave the phone (`mayLeave`: none before they
- * choose; under "keep until Drive has it", only those home says Drive has),
- * project by project, each in its own write; how many projects changed.
+ * Marks every take home holds as kept there and, where the owner's choice
+ * allows it (`mayLeave`: only under "let takes go once home has them"), lets
+ * its audio leave the phone, project by project, each in its own write; how
+ * many projects changed.
  */
 export async function letGoHeldTakes(
   store: ProjectStore,
   held: ReadonlySet<string>,
-  choice: LetGoChoice,
-  onDrive: OnDrive = NONE_ON_DRIVE
+  choice: LetGoChoice
 ): Promise<number> {
   if (held.size === 0) return 0
-  const leaves = (id: string): boolean => mayLeave(choice, id, onDrive)
+  const leaves = (): boolean => mayLeave(choice)
   const projects = await store.list()
   let changed = 0
   for (const project of projects) {

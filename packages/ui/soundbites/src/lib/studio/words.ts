@@ -108,6 +108,12 @@ const LET_GO_CHOICE_WORDS = {
 /** What Start's "Drive has it" is called, wherever another screen names it. */
 const DRIVE_HAS_IT = "Drive has it"
 
+/** What each choice does, as Start says it under the choice. */
+const LET_GO_SAYS = {
+  home: "Takes leave the phone once home has them.",
+  drive: `Each take stays on the phone until Drive has it too. Tap “${DRIVE_HAS_IT}” once it does.`,
+} as const satisfies Record<LetGo, string>
+
 /**
  * What frees room on the phone for takes (HF11, #2401): the takes home
  * holds, once the owner's choice lets them go, and what to do where they
@@ -120,9 +126,9 @@ function makingRoom(letGo: LetGoChoice, waiting: number): string {
   if (waiting > 0 && letGo === "drive")
     return `Home has ${takes} still on the phone, kept until Drive has ${waiting === 1 ? "it" : "them"} too. On Start, tap “${DRIVE_HAS_IT}” on each one Drive holds.`
   if (letGo === null)
-    return "Takes leave the phone once home holds them and you choose when, on Start."
+    return "Takes leave the phone once home holds them and you choose when. Start offers that choice once home holds a take."
   if (letGo === "drive")
-    return "Takes leave the phone once home and Drive both have them, and the room they held is free."
+    return `Takes leave the phone once home holds them and you tap “${DRIVE_HAS_IT}” on each, and the room they held is free.`
   return "Takes leave the phone once home holds them, and the room they held is free."
 }
 
@@ -330,13 +336,10 @@ export const STUDIO_WORDS = {
     ask: (n: number): string =>
       `Home has ${plural(n, "take", "takes")} from this phone. Nothing leaves the phone until you choose when.`,
     choices: LET_GO_CHOICE_WORDS,
-    says: {
-      home: "Takes leave the phone once home has them.",
-      drive: `Each take stays on the phone until Drive has it too. Tap “${DRIVE_HAS_IT}” once it does.`,
-    } satisfies Record<LetGo, string>,
+    says: LET_GO_SAYS,
     change: "You can change this at any time.",
     chosen: {
-      home: "Takes leave the phone once home has them.",
+      home: LET_GO_SAYS.home,
       drive:
         "Each take home has stays on the phone until you say Drive has it too.",
     } satisfies Record<LetGo, string>,

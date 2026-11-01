@@ -203,7 +203,14 @@ describe("Studio's words", () => {
     expect(noRoom(null, 2)).toContain(choices.home)
     expect(noRoom(null, 2)).toContain(choices.drive)
     expect(noRoom("drive", 1)).toContain(`tap “${driveHasIt}”`)
+    // Before any take waits, the choice isn't on Start yet, and the words say when it is.
     expect(noRoom(null, 0)).toMatch(/you choose when/)
+    expect(noRoom(null, 0)).toMatch(
+      /Start offers that choice once home holds a take/
+    )
+    // Under "drive", a take leaves on the owner's tap, never on its own.
+    expect(noRoom("drive", 0)).toContain(`tap “${driveHasIt}”`)
+    expect(noRoom("drive", 0)).not.toMatch(/Drive both/)
     for (const letGo of [null, "home", "drive"] as const)
       for (const waiting of [0, 3])
         expect(full(letGo, waiting)).not.toMatch(/evict|deleted|removed/i)
