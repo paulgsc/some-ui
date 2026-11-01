@@ -103,4 +103,14 @@ describe("reflectionsIndexStands", () => {
       lacking: [],
     })
   })
+
+  it("does not stand on a bare day, which Date.parse would read as midnight UTC", () => {
+    for (const now of ["2026-11-01", "2026-11-01T09:00:00"]) {
+      expect(reflectionsIndexStands(INDEX, now, DRIVE)).toEqual({
+        stands: false,
+        why: ["The run's own time doesn't read."],
+        lacking: [],
+      })
+    }
+  })
 })

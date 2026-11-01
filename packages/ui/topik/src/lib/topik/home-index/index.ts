@@ -51,8 +51,9 @@ const baseOf = (description: string): string | null =>
   /^(?:answers|stock): (\S+)$/.exec(description.trim())?.[1] ?? null
 
 /**
- * ROUTINE.md, "Home's index": it stands for a run at `now` when it reads as
- * one and `now` is before its `validUntil` (or it has none). It names too the
+ * ROUTINE.md, "Home's index": it stands for a run at `now`, an ISO-8601
+ * instant with its offset, when it reads as one and `now` is before its
+ * `validUntil` (or it has none). It names too the
  * routine scene folders Drive holds that home has not counted, whose decks
  * the run reads itself.
  */
@@ -80,7 +81,9 @@ export function reflectionsIndexStands(
     ),
   ].sort()
   const why: Array<string> = []
-  if (Number.isNaN(Date.parse(now))) {
+  // The same instant the index's times are, offset and all: `Date.parse`
+  // alone would read a bare "2026-11-01" as that midnight in UTC.
+  if (!Instant.safeParse(now).success) {
     why.push("The run's own time doesn't read.")
   } else if (validUntil !== null && Date.parse(now) >= Date.parse(validUntil)) {
     why.push(
