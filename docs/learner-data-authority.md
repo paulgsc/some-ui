@@ -83,9 +83,10 @@ nothing go, and "Archive finished sessions" is gone: home already holds
 finished sessions. The study list's "Let it go" keeps a home copy first: on
 a paired phone it copies the session home, whatever its status, reads it
 back, and lets the phone's copy go only once home holds it as it is and it
-is unchanged since (LA8). A phone that is not paired has no home to keep a
-copy, so there it deletes as it always did, and its confirm says the session
-can't be brought back.
+is unchanged since (LA8). Home keeps its plan, status and times, but not
+its `createdAt`: on home that is the day it reached home. A phone that is
+not paired has no home to keep a copy, so there it deletes as it always did,
+and its confirm says the session can't be brought back.
 
 HF11 (#2401; the owner, 2026-10-31: "no silent behavior … a purposeful
 action by user") stops a Studio take leaving the phone the moment home holds
@@ -404,9 +405,13 @@ declared (checked by reading every call site and by the tests named).
   status, is copied home (`copyHome`) and read back (`readHeld`) in one run
   of the link, and the phone lets go of its own copy only if `confirmHeld`
   reports it held and it is unchanged since it was read
-  (`letGoUnchanged`); otherwise it stays. On a phone known to be unpaired
-  (`pairingIn`), whose confirm (`promiseOf`) says it can't be brought back,
-  it is deleted as before and nothing is sent. Nothing on home is deleted.
+  (`letGoUnchanged`); otherwise it stays. Home's copy keeps its plan,
+  status and times but for `createdAt`, which on home is the day it reached
+  home (home sets it on create, and `sameRecord` does not compare it), so a
+  draft or scheduled session let go reads there as made that day. On a
+  phone known to be unpaired (`pairingIn`), whose confirm (`promiseOf`)
+  says it can't be brought back, it is deleted as before and nothing is
+  sent. Nothing on home is deleted.
   Nothing but the drain and Korean's look is sent when the app or Settings
   opens, on resume, on a timer or on a network change: making the runtime
   and `load` read only the phone's own record. There is no retry; a sync, a
@@ -431,7 +436,9 @@ declared (checked by reading every call site and by the tests named).
   anywhere but a press handler in the Home server block or a module that
   block calls, or the study list's let-go (`letSessionGo`) started from
   anywhere but its confirm's `onConfirm`, or that confirm no longer saying
-  what its promise is (`LET_GO.question` in `lib/home-link/words.ts`); one that calls its `keep` from anywhere but
+  what its promise is (`LET_GO.question` in `lib/home-link/words.ts`), or a
+  hunk in `components/sessions/device-let-go.tsx` whose `onConfirm` passes
+  a promise other than the one its `LET_GO.question` was given; one that calls its `keep` from anywhere but
   `lib/home-link/lanes.ts` (LA15) and `lib/home-link/routine.ts`; one that
   has `lib/home-link/on-drive.ts` send anything but its `GET`s, one per 100
   waiting takes, or lets
@@ -516,7 +523,8 @@ declared (checked by reading every call site and by the tests named).
   each take a second press, and the clear only reads). Held when the
   study list's let-go joined it (HF5), by reading its one caller
   (`components/sessions/device-let-go.tsx` starts `letSessionGo` only in the
-  confirm's `onConfirm`) and by `sessions.test.ts`'s "the study list's Let
+  confirm's `onConfirm`, with the promise its `LET_GO.question` was given)
+  and by `sessions.test.ts`'s "the study list's Let
   it go" (an unfinished session leaves once home holds it as it is, and
   nothing else goes; an unreachable, refusing or forgetting home, a busy
   link, a read-back that differs and a session changed since keep it; an
@@ -524,7 +532,9 @@ declared (checked by reading every call site and by the tests named).
   is never kept by a plain delete) and
   `routes/_dashboard/sessions/__tests__/index.phone.test.tsx` (the confirm
   says home keeps it on a paired phone and that it can't be brought back on
-  an unpaired one; an unreachable home leaves it here, said in the row).
+  an unpaired one; once home holds it the row leaves and says home keeps
+  it; an unreachable home leaves it here, said in the row; a failed plain
+  delete is reported and retried).
 
 ### LA9 (retired): aph is sent home only while its person is using it
 

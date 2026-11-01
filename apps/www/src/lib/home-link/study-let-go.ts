@@ -14,9 +14,17 @@
  *
  * One request run, no retry: a run the link is already busy with, or one
  * Stop or the background ends, keeps the session (CLAUDE.md, "Never lose
- * the record").
+ * the record"). Home's copy carries the session's plan, status and times,
+ * but not its `createdAt`: home dates it the day it reached home.
+ *
+ * A failure that is not home's word or silence (home turning it away, a
+ * fault on this phone) is reported (`reportFailure`), as the sync's are; the
+ * plain delete's own failure is thrown, so the row shows it with a retry and
+ * reports it as every intent's failure is (IR1, `lib/intent/report.ts`).
  */
 import type { HomeCall } from "@some-ui/core-utils"
+import type { ForeignFailure } from "@some-ui/intent-kit"
+import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
 import {
@@ -38,8 +46,11 @@ import { causedBy, copyHome, HomeForgotPhoneError, readHeld } from "./sessions"
 /** What the confirm said happens: home keeps it, or nothing does. */
 export type LetGoPromise = "home" | "phone-only"
 
-/** The phone's pairing as the let-go reads it, once its record is read. */
-export type Pairing = "paired" | "unpaired" | "unsure"
+/**
+ * The phone's pairing as the let-go reads it: "unreadable" when its record is
+ * there but could not be read just now, "unsure" while it is being read.
+ */
+export type Pairing = "paired" | "unpaired" | "unreadable" | "unsure"
 
 /** How a let-go ended, for its line (`./words`' `LET_GO.ended`). */
 export type LetGoEnd =
@@ -51,16 +62,24 @@ export type LetGoEnd =
   | { readonly kind: "missing" }
   /** Home does not hold it as the phone does, so it stays. */
   | { readonly kind: "not-held" }
-  /** It changed on the phone after home read it back, so it stays. */
+  /**
+   * It changed on the phone since the phone read it, before the copy, so
+   * what home holds is not it as it is now; it stays.
+   */
   | { readonly kind: "changed" }
   | { readonly kind: "unreachable" }
   | { readonly kind: "forgotten" }
+  /** Home answered that it is busy. */
   | { readonly kind: "busy" }
+  /** This phone's own link is busy, most often sending to home itself. */
+  | { readonly kind: "phone-busy" }
   | { readonly kind: "stopped" }
   /** Home answered, and did not take it. */
-  | { readonly kind: "refused" }
+  | { readonly kind: "refused"; readonly error: unknown }
   /** Home was promised, and the phone is not paired now. */
   | { readonly kind: "unpaired" }
+  /** Home was promised, and the phone could not read its pairing just now. */
+  | { readonly kind: "unreadable" }
   /** This phone could not let it go: `held` says whether home holds it. */
   | {
       readonly kind: "not-let-go"
@@ -79,16 +98,19 @@ export type LetGoPorts = {
   letGo: (held: ReadonlyArray<SessionRecord>) => Promise<number>
   /** Today's delete, for a phone that is not paired. */
   remove: (id: string) => Promise<void>
+  /** Where a failure goes to be read later: `reportFailure`. */
+  report: (failure: ForeignFailure) => void
 }
 
-/** The pairing in `state`; "unsure" while it is read, or can't be. */
+/** The port a let-go's failure is reported under. */
+const PORT = "home-link"
+
+/** The pairing in `state`. */
 function pairingIn(state: HomeLinkState): Pairing {
   const { link } = state
   if (link.kind === "paired") return "paired"
-  if (link.kind === "unpaired" && link.note !== "unreadable") {
-    return "unpaired"
-  }
-  return "unsure"
+  if (link.kind === "reading") return "unsure"
+  return link.note === "unreadable" ? "unreadable" : "unpaired"
 }
 
 /**
@@ -121,6 +143,7 @@ function phonePorts(): LetGoPorts {
       return left
     },
     remove: (id) => sessionsRepository.remove(id),
+    report: reportFailure,
   }
 }
 
@@ -161,37 +184,75 @@ async function copyThenRead(
 /**
  * Lets the session `id` go as `promised` says: home keeps it first on a
  * paired phone, and on one known to be unpaired it is deleted. Calls
- * `refresh` once it left. Never throws: how it ended is said.
+ * `refresh` with the end once the list changed (it left, or was gone
+ * already), before it resolves, so a row that leaves with it still says so.
+ * How it ended is said; only the plain delete's own failure is thrown.
  */
 export async function letSessionGo(
   id: string,
   promised: LetGoPromise,
-  refresh: () => unknown = () => undefined,
+  refresh: (end: LetGoEnd) => unknown = () => undefined,
   ports: LetGoPorts = phonePorts()
 ): Promise<LetGoEnd> {
+  const pairing = await ports.pairing()
+  if (pairing === "unpaired" && promised === "phone-only") {
+    await ports.remove(id)
+    return said(refresh, { kind: "deleted" })
+  }
+  const end = await keptHome(id, pairing, refresh, ports)
+  if (end.kind === "not-let-go") {
+    ports.report({
+      port: PORT,
+      error: {
+        ...toIntentError(end.error),
+        summary: end.held
+          ? "Home holds a session this phone couldn't let go."
+          : "This phone couldn't let a session go.",
+      },
+    })
+  } else if (end.kind === "refused") {
+    ports.report({
+      port: PORT,
+      error: {
+        ...toIntentError(end.error),
+        summary: "Home didn't take a session it was asked to keep.",
+      },
+    })
+  }
+  return end
+}
+
+/** Why `pairing` keeps the session, when it is not "paired". */
+function notPaired(pairing: Pairing): LetGoEnd | null {
+  if (pairing === "paired") return null
+  return pairing === "unreadable"
+    ? { kind: "unreadable" }
+    : { kind: "unpaired" }
+}
+
+/** The copy home, the read back and the let-go, on a paired phone. */
+async function keptHome(
+  id: string,
+  pairing: Pairing,
+  refresh: (end: LetGoEnd) => unknown,
+  ports: LetGoPorts
+): Promise<LetGoEnd> {
+  const unpaired = notPaired(pairing)
+  if (unpaired !== null) return unpaired
   let session: SessionRecord | null
-  let pairing: Pairing
   try {
-    pairing = await ports.pairing()
-    if (pairing === "unpaired" && promised === "phone-only") {
-      await ports.remove(id)
-      refresh()
-      return { kind: "deleted" }
-    }
-    if (pairing !== "paired") return { kind: "unpaired" }
     session = await ports.session(id)
   } catch (error) {
     return { kind: "not-let-go", held: false, error }
   }
-  if (session === null) {
-    refresh()
-    return { kind: "missing" }
-  }
+  if (session === null) return said(refresh, { kind: "missing" })
   const asked = session
   let read: Read
   try {
     const run = await ports.run((send) => copyThenRead(send, asked))
-    if (run === null) return { kind: "busy" }
+    // The link runs nothing while busy, or once the phone is unpaired.
+    if (run === null)
+      return notPaired(await ports.pairing()) ?? { kind: "phone-busy" }
     if (run.kind === "stopped") return { kind: "stopped" }
     read = run.value
   } catch (error) {
@@ -206,8 +267,13 @@ export async function letSessionGo(
     return { kind: "not-let-go", held: true, error }
   }
   if (left === 0) return { kind: "changed" }
-  refresh()
-  return { kind: "kept-home" }
+  return said(refresh, { kind: "kept-home" })
+}
+
+/** `end`, once `refresh` has been told it. */
+function said(refresh: (end: LetGoEnd) => unknown, end: LetGoEnd): LetGoEnd {
+  refresh(end)
+  return end
 }
 
 /** Why a run ended before home held the session. */
@@ -221,7 +287,7 @@ function endOf(error: unknown, busy: boolean): LetGoEnd {
     causedBy(error, FileHostNotConfiguredError) ||
     causedBy(error, SessionNotFoundError)
   ) {
-    return { kind: "refused" }
+    return { kind: "refused", error }
   }
   return { kind: "not-let-go", held: false, error }
 }

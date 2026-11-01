@@ -289,15 +289,27 @@ describe("the study list's Let it go", () => {
       { kind: "unreachable" },
       { kind: "forgotten" },
       { kind: "busy" },
+      { kind: "phone-busy" },
       { kind: "stopped" },
-      { kind: "refused" },
+      { kind: "refused", error: new Error("500") },
       { kind: "unpaired" },
+      { kind: "unreadable" },
       { kind: "not-let-go", held: true, error: new Error("locked") },
       { kind: "not-let-go", held: false, error: new Error("locked") },
     ]
     const lines = ends.map((end) => LET_GO.ended(end, "home.example"))
     expect(new Set(lines).size).toBe(lines.length)
     expect(lines[0]).toBe("Gone from this phone. home.example keeps it.")
+    // Whose busy it is: home's answer, or this phone's own sending.
+    expect(lines[7]).toBe(
+      "home.example is busy just now. Try again in a minute; it stays on this phone."
+    )
+    expect(lines[8]).toBe(
+      "This phone is busy sending to home.example. Try again in a minute; it stays on this phone."
+    )
+    expect(lines[12]).toBe(
+      "This phone couldn't read its pairing with home just now, so it stays here. Try again."
+    )
     // Every end but the two that left says the session is still here.
     expect(
       lines

@@ -26,7 +26,7 @@ import {
   promiseOf,
 } from "@/lib/home-link/study-let-go"
 import { LET_GO } from "@/lib/home-link/words"
-import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
+import { useAsyncIntent } from "@/lib/intent"
 import { IntentFailure } from "@/lib/intent/render"
 import type { SessionRecord } from "@/lib/tenant"
 import { sessionsKey } from "@/lib/tenant"
@@ -49,16 +49,16 @@ export function useHomeLetGo(session: SessionRecord): LetGoControl {
   const promise = promiseOf(link)
   // The promise travels with the tap: what the confirm said is what runs,
   // however the pairing moved while it was open.
+  // Said from the flow, not an effect: the row unmounts once the list it
+  // refreshes no longer holds the session.
   const letGo = useAsyncIntent(
     ({ id, promised }: { id: string; promised: LetGoPromise }) =>
-      letSessionGo(id, promised, () => {
+      letSessionGo(id, promised, (end: LetGoEnd) => {
+        if (end.kind === "kept-home") toast.success(LET_GO.ended(end, host))
         void queryClient.invalidateQueries({ queryKey: sessionsKey })
       }),
     { presentation: "interactive" }
   )
-  useIntentEffect(letGo, (end: LetGoEnd) => {
-    if (end.kind === "kept-home") toast.success(LET_GO.ended(end, host))
-  })
 
   const lines = matchIntent(letGo.state, {
     idle: (): JSX.Element | null => null,

@@ -296,6 +296,9 @@ export const LET_GO = {
       case "busy": {
         return `${host} is busy just now. Try again in a minute; ${stays}.`
       }
+      case "phone-busy": {
+        return `This phone is busy sending to ${host}. Try again in a minute; ${stays}.`
+      }
       case "stopped": {
         return "Stopped. It stays on this phone."
       }
@@ -304,6 +307,9 @@ export const LET_GO = {
       }
       case "unpaired": {
         return "This phone isn't paired with home right now, so it stays here. Pair it in Settings, or try again."
+      }
+      case "unreadable": {
+        return "This phone couldn't read its pairing with home just now, so it stays here. Try again."
       }
       case "not-let-go": {
         return end.held

@@ -349,10 +349,12 @@ describe("letting the phone's copies go once home holds them", () => {
 describe("the study list's Let it go", () => {
   let removed: Array<string>
   let refreshed: number
+  let reported: Array<string>
 
   beforeEach(() => {
     removed = []
     refreshed = 0
+    reported = []
   })
 
   /** The flow over the phone's sessions, the link's `send` and `pairing`. */
@@ -382,6 +384,9 @@ describe("the study list's Let it go", () => {
           phone.sessions = phone.sessions.filter((s) => s.id !== asked)
           return Promise.resolve()
         },
+        report: (failure) => {
+          reported.push(`${failure.port}: ${failure.error.summary}`)
+        },
         ...over,
       }
     )
@@ -408,6 +413,8 @@ describe("the study list's Let it go", () => {
     await expect(letGo("a")).resolves.toEqual({ kind: "unreachable" })
     expect(phone.sessions.map((s) => s.id)).toEqual(["a"])
     expect(refreshed).toBe(0)
+    // Home's silence is said on screen, and is not a fault to log.
+    expect(reported).toEqual([])
   })
 
   it("keeps it when home turns it away, forgets the phone, or the link is busy", async () => {
@@ -416,15 +423,46 @@ describe("the study list's Let it go", () => {
       method === "POST"
         ? Promise.resolve({ status: 500, body: "{}" })
         : send(method, path, body)
-    await expect(letGo("a")).resolves.toEqual({ kind: "refused" })
+    await expect(letGo("a")).resolves.toMatchObject({ kind: "refused" })
+    expect(reported).toEqual([
+      "home-link: Home didn't take a session it was asked to keep.",
+    ])
     phone.send = (method, path, body): Promise<HomeAnswer> =>
       method === "POST"
         ? Promise.resolve({ status: 401, body: "{}" })
         : send(method, path, body)
     await expect(letGo("a")).resolves.toEqual({ kind: "forgotten" })
+    // The link runs nothing while it is busy: this phone's own, not home's.
     await expect(
       letGo("a", "paired", "home", { run: () => Promise.resolve(null) })
-    ).resolves.toEqual({ kind: "busy" })
+    ).resolves.toEqual({ kind: "phone-busy" })
+    // Or once the phone was unpaired while it was asking.
+    let reads = 0
+    await expect(
+      letGo("a", "paired", "home", {
+        run: () => Promise.resolve(null),
+        pairing: () => Promise.resolve(++reads === 1 ? "paired" : "unpaired"),
+      })
+    ).resolves.toEqual({ kind: "unpaired" })
+    expect(phone.sessions.map((s) => s.id)).toEqual(["a"])
+  })
+
+  it("reports a fault on this phone, before home holds it or after", async () => {
+    phone.sessions = [onPhone("a", "draft")]
+    await expect(
+      letGo("a", "paired", "home", {
+        session: () => Promise.reject(new Error("locked")),
+      })
+    ).resolves.toMatchObject({ kind: "not-let-go", held: false })
+    await expect(
+      letGo("a", "paired", "home", {
+        letGo: () => Promise.reject(new Error("locked")),
+      })
+    ).resolves.toMatchObject({ kind: "not-let-go", held: true })
+    expect(reported).toEqual([
+      "home-link: This phone couldn't let a session go.",
+      "home-link: Home holds a session this phone couldn't let go.",
+    ])
     expect(phone.sessions.map((s) => s.id)).toEqual(["a"])
   })
 
@@ -445,7 +483,8 @@ describe("the study list's Let it go", () => {
     await expect(letGo("a")).resolves.toEqual({ kind: "not-held" })
     expect(phone.sessions.map((s) => s.id)).toEqual(["a"])
 
-    // Saved on the phone after home read it back: the read is stale.
+    // Saved on the phone after the phone read it for the copy: what home
+    // holds is no longer it as it is.
     phone.send = async (method, path, body): Promise<HomeAnswer> => {
       const answer = await send(method, path, body)
       if (method === "GET" && path !== "/sessions") {
@@ -472,13 +511,28 @@ describe("the study list's Let it go", () => {
     expect(sent).toEqual([])
   })
 
+  it("throws the plain delete's own failure, for the row to show and retry", async () => {
+    phone.sessions = [onPhone("a", "draft")]
+    await expect(
+      letGo("a", "unpaired", "phone-only", {
+        remove: () => Promise.reject(new Error("locked")),
+      })
+    ).rejects.toThrow("locked")
+    expect(phone.sessions.map((s) => s.id)).toEqual(["a"])
+    expect(refreshed).toBe(0)
+  })
+
   it("never deletes without home once the confirm promised home", async () => {
     phone.sessions = [onPhone("a", "draft")]
     await expect(letGo("a", "unpaired", "home")).resolves.toEqual({
       kind: "unpaired",
     })
-    await expect(letGo("a", "unsure", "phone-only")).resolves.toEqual({
+    await expect(letGo("a", "unsure", "home")).resolves.toEqual({
       kind: "unpaired",
+    })
+    // A pairing that could not be read is said as that, and keeps it too.
+    await expect(letGo("a", "unreadable", "home")).resolves.toEqual({
+      kind: "unreadable",
     })
     expect(removed).toEqual([])
     expect(phone.sessions.map((s) => s.id)).toEqual(["a"])
