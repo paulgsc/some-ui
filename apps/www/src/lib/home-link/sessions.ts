@@ -7,8 +7,10 @@
  * on home is deleted, and a copy cannot be taken back from here.
  *
  * The clear (`./clear`) reads the finished sessions back (`readHeld`,
- * `confirmHeld`), so it lets go of those home holds exactly. The plan and
- * receipt are `lib/tenant/sessions-copy`'s.
+ * `confirmHeld`), so it lets go of those home holds exactly; the study
+ * list's "Let it go" (`./study-let-go`) copies its one session, of any
+ * status, then reads it back the same way. The plan and receipt are
+ * `lib/tenant/sessions-copy`'s.
  */
 import type { HomeCall } from "@some-ui/core-utils"
 
@@ -60,7 +62,8 @@ export function causedBy(
 /**
  * Copies `local` home through `send`, reading home only to plan the copy,
  * and confirms nothing: the drain's half (`./drain`), which never lets a
- * phone session go.
+ * phone session go, and the first half of the study list's "Let it go"
+ * (`./study-let-go`), which reads back before it does.
  */
 export function copyHome(
   send: HomeCall,
@@ -74,7 +77,8 @@ export function copyHome(
 
 /**
  * Reads back each of `leaving` from home into `held` (`confirmHeld`), for
- * the clear (`./clear`): what ended it, if anything did, and whether home
+ * the clear (`./clear`) and the study list's "Let it go"
+ * (`./study-let-go`): what ended it, if anything did, and whether home
  * answered any read as busy. Sends nothing.
  */
 export async function readHeld(

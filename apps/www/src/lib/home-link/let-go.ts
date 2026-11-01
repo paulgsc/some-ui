@@ -1,7 +1,8 @@
 /**
- * The one way a finished session leaves this phone: on home's word, once
- * home has read it back as the phone holds it (`./clear`, LA8, LG1). The
- * clear is its one caller.
+ * How a session leaves this phone on home's word: once home has read it back
+ * as the phone holds it (LA8, LG1). Its two callers are the
+ * clear of finished sessions home holds (`./clear`) and the study list's
+ * "Let it go" of one session (`./study-let-go`).
  */
 import { deviceBackend } from "@/lib/device-backend/boot"
 import { removeUnchanged } from "@/lib/device-backend/handlers/sessions"

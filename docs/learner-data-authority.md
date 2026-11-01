@@ -32,24 +32,25 @@ Each invariant below still describes the code, and holds until the change that
 moves its code retires or rewords it in the same PR; a hunk that moves code
 toward this frame without doing so is a finding.
 
-| Invariant                                                                                                            | Moved by          |
-| -------------------------------------------------------------------------------------------------------------------- | ----------------- |
-| LA7 (a reflection reaches no server) (done: LA7 retired, LA16 declared)                                              | HF3, #2178        |
-| LA8's "only on a tap"; LA9–LA11 and LA13's consent; LA12 (consent to read) (done: LA9–LA12 retired, LA15 declared)   | HF8, #2182        |
-| LA6's reporting reset on every sign-in, on the owner's `lan` build                                                   | HF8, #2182 (open) |
-| LA13's scene notes copied only once a drama prompt is shared (done: copied once kept)                                | HF2, #2177        |
-| Every share sheet's let-go (done: HF1, #2176, promise LG1); the Jobs share sheet itself and the archive's (done)     | HF2, #2177        |
-| The drama prompt's share sheet, and its scene notes let go on a share (done: LA18 declared, LA13 reworded)           | HF4, #2179        |
-| LA13's notes (done: soundbites, lens and LeetType takes); LA15's drain (done: their notes); the archive (done: gone) | HF5, #2180        |
-| LG1's Studio takes, which left the phone as soon as home held them (done: they wait on the owner's choice)           | HF11, #2401       |
+| Invariant                                                                                                                                                                                        | Moved by          |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------- |
+| LA7 (a reflection reaches no server) (done: LA7 retired, LA16 declared)                                                                                                                          | HF3, #2178        |
+| LA8's "only on a tap"; LA9–LA11 and LA13's consent; LA12 (consent to read) (done: LA9–LA12 retired, LA15 declared)                                                                               | HF8, #2182        |
+| LA6's reporting reset on every sign-in, on the owner's `lan` build                                                                                                                               | HF8, #2182 (open) |
+| LA13's scene notes copied only once a drama prompt is shared (done: copied once kept)                                                                                                            | HF2, #2177        |
+| Every share sheet's let-go (done: HF1, #2176, promise LG1); the Jobs share sheet itself and the archive's (done)                                                                                 | HF2, #2177        |
+| The drama prompt's share sheet, and its scene notes let go on a share (done: LA18 declared, LA13 reworded)                                                                                       | HF4, #2179        |
+| LA13's notes (done: soundbites, lens and LeetType takes); LA15's drain (done: their notes); the archive (done: gone); LA8's one tap (done: the study list's "Let it go" keeps a home copy first) | HF5, #2180        |
+| LG1's Studio takes, which left the phone as soon as home held them (done: they wait on the owner's choice)                                                                                       | HF11, #2401       |
 
 HF8 (#2182, owner's decision D3: no per-domain switch, and no consent log told
 to home or enforced by home) removed the phone's consent machinery: the
 per-pairing consent log and its telling to home, the choice to show the
 routine's files, the two-press marks, aph's way back, and Settings' ledger of
 choices. A paired phone drains everything it keeps (LA15); the only choice is
-the pairing, and the only tap that lets anything leave the phone is the clear
-of finished sessions home holds (LA8). The server half (paulgsc/server#598)
+the pairing, and the only taps that let anything leave the phone on home's
+word are the clear of finished sessions home holds and the study list's "Let
+it go" (LA8). The server half (paulgsc/server#598)
 removed `handlers/sharing.rs`, the `sharing_choice` table and every `409
 sharing_stopped`, so HF2 (#2177) removed the phone's transitional reading of
 that answer (`stoppedOnHome`). LA6's reporting reset is still to move.
@@ -79,8 +80,12 @@ drain (LA15), and each capped store is an offline set: at its cap a new one
 makes room with the oldest home holds, and is refused while home holds none
 (LG1). The study-context export is a copy for the owner's own agent that lets
 nothing go, and "Archive finished sessions" is gone: home already holds
-finished sessions. The study list's delete does not keep a home copy first
-yet (the HF5 issue).
+finished sessions. The study list's "Let it go" keeps a home copy first: on
+a paired phone it copies the session home, whatever its status, reads it
+back, and lets the phone's copy go only once home holds it as it is and it
+is unchanged since (LA8). A phone that is not paired has no home to keep a
+copy, so there it deletes as it always did, and its confirm says the session
+can't be brought back.
 
 HF11 (#2401; the owner, 2026-10-31: "no silent behavior … a purposeful
 action by user") stops a Studio take leaving the phone the moment home holds
@@ -124,7 +129,7 @@ Which authority a build starts in depends on what it can reach (`Backend`):
 | Session probe (`GET /auth/session`)                                                    | never made                                   | at boot, only because the account was chosen                                                                                                                                                                                                                                                                                                                                | the same                                   |
 | Passkey ceremonies                                                                     | only when the person starts one              | the same                                                                                                                                                                                                                                                                                                                                                                    | the same                                   |
 | Lesson, round and vocab reads                                                          | made, **without credentials**                | made, without credentials                                                                                                                                                                                                                                                                                                                                                   | the same                                   |
-| This device's sessions                                                                 | stay here                                    | copied only by "Copy to my account", per account, after a confirmation; the phone's finished ones, to its paired home, by the drain (LA15), and freed from the phone only by "Clear finished sessions home holds", which reads each back first (LA8)                                                                                                                        | the same                                   |
+| This device's sessions                                                                 | stay here                                    | copied only by "Copy to my account", per account, after a confirmation; the phone's finished ones, to its paired home, by the drain (LA15), and one of any status by the study list's "Let it go"; freed from the phone on home's word only by "Clear finished sessions home holds" and that "Let it go", each of which reads home's copy back first (LA8)                  | the same                                   |
 | `/signals`, `/presence/lease`                                                          | never                                        | never                                                                                                                                                                                                                                                                                                                                                                       | sent                                       |
 | Push subscription                                                                      | never                                        | never                                                                                                                                                                                                                                                                                                                                                                       | the account's, on the person's own taps    |
 | Reflections                                                                            | on the device, never sent                    | on a paired phone, each written one sent to home by the drain and kept there, which hands its text to the Jobs mailbox for the routine; a spoken one's audio as its voice note; the one-tap answers never sent; the phone keeps its newest 20, and past them only the written ones home does not hold (LA13, LA16)                                                          | the same                                   |
@@ -393,10 +398,19 @@ declared (checked by reading every call site and by the tests named).
   (`readHeld`, `confirmHeld`) and confirmed held exactly as the phone does
   (`sameRecord`), and the phone then lets go of its own copy of those alone,
   each unchanged since it was read (`letGoUnchanged`); the clear sends
-  nothing. Nothing on home is deleted. Nothing but the drain and Korean's
-  look is sent when the app or Settings opens, on resume, on a timer or on
-  a network change: making the runtime and `load` read only the phone's own
-  record. There is no retry; a sync, a clear or a drain's run ends at Stop,
+  nothing. The one other tap is the study list's "Let it go"
+  (`components/sessions/device-let-go.tsx`, `lib/home-link/study-let-go`),
+  after a confirm that says home keeps it: the one session it names, of any
+  status, is copied home (`copyHome`) and read back (`readHeld`) in one run
+  of the link, and the phone lets go of its own copy only if `confirmHeld`
+  reports it held and it is unchanged since it was read
+  (`letGoUnchanged`); otherwise it stays. On a phone known to be unpaired
+  (`pairingIn`), whose confirm (`promiseOf`) says it can't be brought back,
+  it is deleted as before and nothing is sent. Nothing on home is deleted.
+  Nothing but the drain and Korean's look is sent when the app or Settings
+  opens, on resume, on a timer or on a network change: making the runtime
+  and `load` read only the phone's own record. There is no retry; a sync, a
+  clear, a let-go or a drain's run ends at Stop,
   or when the app goes to the background, before its next request, and is
   over only once every request it started has settled.
   The pairing's credential is sent only to the base stored with it, over
@@ -415,7 +429,9 @@ declared (checked by reading every call site and by the tests named).
   `CapacitorHttp`, call `native-http`, call `lib/home-link`); one that calls
   a `homeLink()` method that sends (`pair`, `unpair`, `sync`, `send`) from
   anywhere but a press handler in the Home server block or a module that
-  block calls; one that calls its `keep` from anywhere but
+  block calls, or the study list's let-go (`letSessionGo`) started from
+  anywhere but its confirm's `onConfirm`, or that confirm no longer saying
+  what its promise is (`LET_GO.question` in `lib/home-link/words.ts`); one that calls its `keep` from anywhere but
   `lib/home-link/lanes.ts` (LA15) and `lib/home-link/routine.ts`; one that
   has `lib/home-link/on-drive.ts` send anything but its `GET`s, one per 100
   waiting takes, or lets
@@ -433,10 +449,18 @@ declared (checked by reading every call site and by the tests named).
   `lib/device-backend/handlers/sessions`) to pass a session that is not
   completed or that was started or finished today, or that deletes,
   renames or moves it, or replaces a call to it with a condition of its
-  own, without the same test at every site that picks what may leave; one
-  that deletes or weakens `removeUnchanged`'s `updated_at` match (in the
-  same file), or lets `letGoUnchanged` (`lib/home-link/let-go`) delete by
-  any other route, or be called but by the clear; one that makes `confirmHeld` write, or compare less than
+  own, without the same test at every site that picks on its own what may
+  leave (the study list's let-go picks none: it asks about the one session
+  the person named); one that lets that let-go remove a session
+  `confirmHeld` did not report held, or any session but the one named, or
+  send anything but `copyHome`'s and `readHeld`'s requests, or call
+  `ports.remove` (the plain delete) unless its confirm promised no copy
+  (`promiseOf`) and `pairingIn` reads the phone as unpaired; one that
+  widens `promiseOf` to promise no copy while the pairing is anything but
+  unpaired; one that deletes or weakens `removeUnchanged`'s `updated_at`
+  match (in the same file), or lets `letGoUnchanged` (`lib/home-link/let-go`)
+  delete by any other route, or be called but by the clear and the study
+  list's let-go; one that makes `confirmHeld` write, or compare less than
   everything a copy carries (`sameRecord`); one that passes `copySessionsTo`
   anything but session records (a reflection, a stop or a soundbite: LA16),
   or lets `homeTransport` send a method other than `GET`, `POST` or
@@ -470,9 +494,9 @@ declared (checked by reading every call site and by the tests named).
   `CapacitorHttp` named only in `native-http`, whose index only
   `lib/home-link/index.ts` imports as a value (its `no-answer` sibling holds
   an error class and no request), and `lib/home-link` imported only by the
-  Home server block, Settings' readout of what is kept on home, the drain
-  and the marks of the records it sends, what hands aph's lane to them, and
-  the routine's readout and port; the routine's read sends one
+  Home server block, the study list's let-go, Settings' readout of what is
+  kept on home, the drain and the marks of the records it sends, what hands
+  aph's lane to them, and the routine's readout and port; the routine's read sends one
   `GET /routine/files` and one `PUT /routine/opened` and nothing else; and
   `confirmHeld` is called only in `lib/home-link/sessions.ts`). What a test
   cannot say is that a call site in that block is a tap: a lint rule cannot
@@ -489,7 +513,18 @@ declared (checked by reading every call site and by the tests named).
   today's, a changed one and one home could not be asked about stay) and
   `components/settings/__tests__/device-section.test.tsx` (opening Settings,
   paired or not, sends nothing and offers no choice; unpairing and the clear
-  each take a second press, and the clear only reads).
+  each take a second press, and the clear only reads). Held when the
+  study list's let-go joined it (HF5), by reading its one caller
+  (`components/sessions/device-let-go.tsx` starts `letSessionGo` only in the
+  confirm's `onConfirm`) and by `sessions.test.ts`'s "the study list's Let
+  it go" (an unfinished session leaves once home holds it as it is, and
+  nothing else goes; an unreachable, refusing or forgetting home, a busy
+  link, a read-back that differs and a session changed since keep it; an
+  unpaired phone deletes it as before and sends nothing; a promise of home
+  is never kept by a plain delete) and
+  `routes/_dashboard/sessions/__tests__/index.phone.test.tsx` (the confirm
+  says home keeps it on a paired phone and that it can't be brought back on
+  an unpaired one; an unreachable home leaves it here, said in the row).
 
 ### LA9 (retired): aph is sent home only while its person is using it
 
@@ -689,8 +724,9 @@ shares the runtime (`kept-runtime.ts`), the watch (`kept-watch.ts`) and the
 app shell's mounting of it (`components/device-home-glyph.tsx`'s
 `HomeLanes`, on every screen of the Android app; aph's lane while aph's
 screens hand its store in, since only they may import `@some-ui/aph`). There
-is no choice: a paired phone drains, and the only tap that lets anything
-leave the phone is LA8's clear (what goes on its own once home holds it, as
+is no choice: a paired phone drains, and the only taps that let anything leave
+the phone on home's word are LA8's clear and the study list's "Let it
+go" (what goes on its own once home holds it, as
 aph's changes and the written reflections past the offline set do, is each
 record's own invariant: LA16 for reflections, LA18 for asks). Korean's look at the routine's files
 (`routine.ts`) is read the same way, by the lesson's own query.
@@ -1037,7 +1073,8 @@ a scene note goes only once `prompted` and held (`lib/scene-voice`'s
   entries and takes, and LeetType answers and takes) stay on the phone, the
   share being a copy that releases nothing (LG1, HF1 #2176; HF5 #2180). The
   phone's Home server block syncs, pairs, unpairs and clears
-  finished sessions home holds on a tap (LA8); a paired phone drains what it
+  finished sessions home holds on a tap, and the study list's "Let it go"
+  copies its one session home before it leaves (LA8); a paired phone drains what it
   keeps to home on its own, since home is the owner's own store (LA15), and
   Korean reads the routine's files from it. The share sheet and the speech
   provider reach beyond home, and the share sheet's "arrived" is the

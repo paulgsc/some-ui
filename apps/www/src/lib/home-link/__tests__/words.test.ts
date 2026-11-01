@@ -9,9 +9,10 @@ import { describe, expect, it } from "vitest"
 import type { ClearEnd } from "@/lib/home-link/clear"
 import type { KeptRun, KeptState } from "@/lib/home-link/kept-model"
 import { INITIAL_KEPT } from "@/lib/home-link/kept-model"
+import type { LetGoEnd } from "@/lib/home-link/study-let-go"
 import type { LaneFacts } from "@/lib/home-link/words"
 import * as words from "@/lib/home-link/words"
-import { CLEAR, laneView, lastLook, WORDS } from "@/lib/home-link/words"
+import { CLEAR, laneView, lastLook, LET_GO, WORDS } from "@/lib/home-link/words"
 import { HOW_ORDER, MARK_WORDS, WHERE_ORDER } from "@/lib/sharing-marks"
 
 import { MACHINERY } from "./machinery"
@@ -274,6 +275,48 @@ describe("the clear's words", () => {
     )
     // The sweep above can't call `ended` with an end: it says these here.
     expect(lines.filter((line) => MACHINERY.test(line))).toEqual([])
+  })
+})
+
+describe("the study list's Let it go", () => {
+  it("says each end in the person's terms, and what the confirm promises", () => {
+    const ends: Array<LetGoEnd> = [
+      { kind: "kept-home" },
+      { kind: "deleted" },
+      { kind: "missing" },
+      { kind: "not-held" },
+      { kind: "changed" },
+      { kind: "unreachable" },
+      { kind: "forgotten" },
+      { kind: "busy" },
+      { kind: "stopped" },
+      { kind: "refused" },
+      { kind: "unpaired" },
+      { kind: "not-let-go", held: true, error: new Error("locked") },
+      { kind: "not-let-go", held: false, error: new Error("locked") },
+    ]
+    const lines = ends.map((end) => LET_GO.ended(end, "home.example"))
+    expect(new Set(lines).size).toBe(lines.length)
+    expect(lines[0]).toBe("Gone from this phone. home.example keeps it.")
+    // Every end but the two that left says the session is still here.
+    expect(
+      lines
+        .filter((_, i) => i > 2)
+        .every((line) => /stays|still here/.test(line))
+    ).toBe(true)
+    const asked = [
+      LET_GO.question("Evening reading", "home", "home.example"),
+      LET_GO.question("Evening reading", "phone-only", "home"),
+    ]
+    expect(asked).toEqual([
+      '"Evening reading" leaves this phone, and home.example keeps it. If home.example can\'t, it stays here.',
+      '"Evening reading" leaves this phone, and can\'t be brought back.',
+    ])
+    expect(
+      [...lines, ...asked, LET_GO.working("home.example")].filter((line) =>
+        MACHINERY.test(line)
+      )
+    ).toEqual([])
   })
 })
 
