@@ -2232,6 +2232,12 @@
       "family": "voice-heard"
     },
     {
+      "store": "server:voice_note_set_aside",
+      "class": "record",
+      "growth": "Per voice note the owner lets go on the phone (D3, epic #2368; paulgsc/server invariant 23): one tiny row (the note's id, when it was let go, when home recorded it), append-only, the first mark standing, at most one per voice note, so bounded by voice_note's rows.",
+      "family": "voice-heard"
+    },
+    {
       "store": "server:voice_transcript",
       "class": "derived",
       "growth": "Per transcription attempt per note per model: one ending (heard/silent) per note and model plus up to ATTEMPTS = 3 failures; text only; append-only.",

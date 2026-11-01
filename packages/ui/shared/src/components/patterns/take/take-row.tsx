@@ -73,10 +73,12 @@ export const TakeRow = ({
             <span className="tabular-nums">
               {words.length(take.durationMs)}
             </span>
-            <span className="text-muted-foreground">
-              {" · "}
-              {keptSaid(words, take.kept)}
-            </span>
+            {take.kept !== null && (
+              <span className="text-muted-foreground">
+                {" · "}
+                {keptSaid(words, take.kept)}
+              </span>
+            )}
           </p>
           {children !== undefined && (
             <div className="text-muted-foreground truncate text-xs">
