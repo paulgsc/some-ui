@@ -15,14 +15,8 @@ reflection (part D), and every run leaves a record of itself in the mailbox
 (step 12), which the phone shows as when the routine last ran and what it
 brought.
 
-Home keeps every scene, drama, written reflection, drama prompt and voice note
-the mailbox carries, and after each of its passes it leaves the bookkeeping
-this file used to have the run do itself in the mailbox too: home's index
-(2b), the latest only. When the index stands, the run reads from it which
-reflections and prompts are unanswered, which word ids are taken, the latest
-scenes' genres and levels, how many lessons wait unopened and which voice
-notes are still waited on, and downloads nothing to work them out. It still
-reads what only Drive holds, as below.
+After each pass home leaves the reflections bookkeeping in the mailbox as its
+index (2b); when it stands, the run reads it instead of counting.
 
 The run works in Google Drive (the Google Drive connector), the checkout,
 GitHub (the GitHub MCP tools, `mcp__github__*`; load them with ToolSearch if
@@ -118,8 +112,8 @@ The run never redoes or second-guesses what the index says. What only Drive
 holds the index can't say, so the run still reads it: the reflections in
 `Study ledger/reflections` and the prompts in `Dramas/requests`, the scene
 folders in `lacking`, and which written reflections a Drive reflection file
-already holds. Its `asOf` is when home last took in anything it counts: a
-reflection sent after that, or this run's own puts, it doesn't count yet.
+already holds. A name in the index's `skipped` is a file home couldn't read:
+say so in the summary.
 
 ### Voice notes
 
@@ -254,8 +248,7 @@ step 12 doesn't run. Voice notes never go to the mailbox from this run.
    yourself: fetch each named one as above. A reflection is answered when its
    base is in the index's `answered.scenes` or a scene folder in Drive answers
    it as above; a group whose reflections a Drive reflection file holds
-   belongs to that file, as above. A name in `skipped` is a file home
-   couldn't read: say so in the summary.
+   belongs to that file, as above.
 
    Take the unanswered ones, from the mailbox and from Drive together,
    newest first, skipping any that wait on a voice note ("Voice notes"), at
@@ -419,8 +412,7 @@ file it, and still write the pair.
    by its `name` here and its stamp (`prompt`), with its `notes` and `voice`.
    Don't list the `prompt` or `drama` folders to join them: fetch each named
    one as above. A prompt is answered when its stamp is in the index's
-   `answered.dramas` or Drive holds its drama as above. A name in `skipped`
-   is a file home couldn't read: say so in the summary.
+   `answered.dramas` or Drive holds its drama as above.
 
 8. For each: read the prompt (a mailbox file's `text`, or a Drive file with
    download_file_content; either is plain markdown) and

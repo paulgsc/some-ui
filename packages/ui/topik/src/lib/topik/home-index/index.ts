@@ -1,13 +1,13 @@
 import { z } from "zod"
 
+const Instant = z.iso.datetime({ offset: true })
+
 /**
  * Home's reflections index, as far as the run reads it to decide whether it
  * stands (ROUTINE.md, "Home's index"). Home writes the whole of it
  * (paulgsc/server `mailbox::index::reflections`); the run holds it to these
  * fields and nothing deeper.
  */
-const Instant = z.iso.datetime({ offset: true })
-
 const HomeIndexSchema = z.object({
   schema: z.literal("some-ui.routine-index/1"),
   routine: z.literal("reflections"),
@@ -41,7 +41,7 @@ export type ReflectionsStanding = {
   /**
    * The bases of the routine's scene folders Drive holds that the index
    * does not name (`answers:` or `stock:`): read their decks for word ids,
-   * and count them answered, as before.
+   * and count them answered.
    */
   readonly lacking: ReadonlyArray<string>
 }

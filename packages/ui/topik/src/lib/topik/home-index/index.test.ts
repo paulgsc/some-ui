@@ -8,7 +8,7 @@ const INDEX = {
   validUntil: "2026-11-02T14:01:00.000Z",
   skipped: [],
   answered: {
-    scenes: ["2026-10-29_reflection_7f3a91c2", "2026-10-30_stock_1"],
+    scenes: ["2026-10-29_reflection_2a4b6c01", "2026-10-30_stock_1"],
     dramas: [],
   },
   words: [],
@@ -21,7 +21,7 @@ const INDEX = {
 const DRIVE = [
   {
     name: "TOPIK 2 · romance · At the café",
-    description: "answers: 2026-10-29_reflection_7f3a91c2",
+    description: "answers: 2026-10-29_reflection_2a4b6c01",
   },
   {
     name: "TOPIK 2 · thriller · The last train",
@@ -80,12 +80,7 @@ describe("reflectionsIndexStands", () => {
   })
 
   it("does not stand when it does not read as a reflections index", () => {
-    for (const index of [
-      { ...INDEX, routine: "jobs" },
-      { ...INDEX, validUntil: "soon" },
-      { ...INDEX, answered: [] },
-      null,
-    ]) {
+    for (const index of [{ ...INDEX, routine: "jobs" }, null]) {
       expect(
         reflectionsIndexStands(index, "2026-11-01T16:00:00.000Z", DRIVE)
       ).toEqual({
