@@ -59,7 +59,7 @@ function sittingsOf(events: ReadonlyArray<TimeEvent>): Array<EventLog> {
  * names it (`keyOf`, soundbites' `sittingKey`); an answer whose sitting the
  * projects no longer name is left out.
  */
-export function reportsOf(
+function reportsOf(
   friction: ReadonlyArray<Friction>,
   projects: ReadonlyArray<Project>,
   keyOf: (sitting: Sitting) => string
