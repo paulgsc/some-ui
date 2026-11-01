@@ -2176,6 +2176,12 @@
       "family": "what-is-kept"
     },
     {
+      "store": "server:studio_take_on_drive",
+      "class": "record",
+      "growth": "Per Studio take home holds that a build-journal session's list of Drive's takes (the mailbox's brief, drive-takes-<stamp>.json, SHA-256s only) first names: one tiny row (the take's id, when the session looked, the list's name, when home recorded it), append-only, at most one per studio voice note, so bounded by voice_note's studio rows (paulgsc/some-ui#2401, HF11; paulgsc/server invariant 23).",
+      "family": "what-is-kept"
+    },
+    {
       "store": "server:drama_prompt",
       "class": "record",
       "growth": "Per ask for the next scene the phone sends (its stamp and the prompt's markdown, about 40 KB; paulgsc/server invariant 31), one row per stamp, append-only, text <= MAX_TEXT_BYTES = 256 KiB; each is filed once for the mailbox's prompt folder as it arrives.",
