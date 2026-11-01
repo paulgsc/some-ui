@@ -447,6 +447,62 @@ export type TakePatternPorts = Omit<TakeKitPorts, "keep"> & {
   readonly player?: Player | undefined
 }
 
+/** The pattern's playback effects. */
+export type PlaybackEffect = Extract<
+  TakePatternEffect,
+  { type: "loadAudio" | "playAudio" | "stopAudio" }
+>
+
+/**
+ * Runs the pattern's playback effects: reads a take's audio through
+ * `audio` and plays one at a time through `player`, and reports each as
+ * the pattern's `loaded` and `played`. Which answer is stale is the step's.
+ * `takePattern` runs it, and so does a screen whose own machine embeds
+ * `stepTakePattern` (Game Week).
+ */
+export function takePlayback(
+  ports: Pick<TakePatternPorts, "audio" | "player">,
+  dispatch: (
+    event: Extract<TakePatternEvent, { type: "loaded" | "played" }>
+  ) => void
+): { readonly run: (effect: PlaybackEffect) => void } {
+  const player = ports.player ?? audioPlayer
+  let playback: { readonly stop: () => void } | null = null
+  return {
+    run(effect): void {
+      switch (effect.type) {
+        case "loadAudio": {
+          const { play } = effect
+          ports.audio(effect.id).then(
+            (audio) => dispatch({ type: "loaded", play, audio }),
+            () => dispatch({ type: "loaded", play, audio: null })
+          )
+          return
+        }
+        case "playAudio": {
+          playback?.stop()
+          const { play } = effect
+          const started = player.play(effect.audio)
+          playback = started
+          void started.ended.then(() => {
+            if (playback === started) playback = null
+            dispatch({ type: "played", play })
+          })
+          return
+        }
+        case "stopAudio": {
+          playback?.stop()
+          playback = null
+          return
+        }
+        default: {
+          assertNever(effect)
+        }
+      }
+    },
+  }
+}
+
 /**
  * Runs `stepTakePattern` over the ports. It holds the microphone through
  * `takeRunner` and one playback at a time, hands a finished take to `keep`,
@@ -459,8 +515,6 @@ export function takePattern(
   let state = initialTakePattern
   const listeners = new Set<() => void>()
   let snapshot = takePatternSnapshot(state, options)
-  let playback: { readonly stop: () => void } | null = null
-  const player = ports.player ?? audioPlayer
 
   const dispatch = (event: TakePatternEvent): void => {
     const next = stepTakePattern(state, event, options)
@@ -482,6 +536,8 @@ export function takePattern(
     },
     dispatch
   )
+
+  const playback = takePlayback(ports, dispatch)
 
   const run = (effect: TakePatternEffect): void => {
     switch (effect.type) {
@@ -506,28 +562,10 @@ export function takePattern(
         })
         return
       }
-      case "loadAudio": {
-        const { play } = effect
-        ports.audio(effect.id).then(
-          (audio) => dispatch({ type: "loaded", play, audio }),
-          () => dispatch({ type: "loaded", play, audio: null })
-        )
-        return
-      }
-      case "playAudio": {
-        playback?.stop()
-        const { play } = effect
-        const started = player.play(effect.audio)
-        playback = started
-        void started.ended.then(() => {
-          if (playback === started) playback = null
-          dispatch({ type: "played", play })
-        })
-        return
-      }
+      case "loadAudio":
+      case "playAudio":
       case "stopAudio": {
-        playback?.stop()
-        playback = null
+        playback.run(effect)
         return
       }
       case "openMic":
