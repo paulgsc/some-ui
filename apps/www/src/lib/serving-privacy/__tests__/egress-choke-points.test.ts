@@ -83,6 +83,13 @@ const ROUTINE_SENDS = [
   ['"PUT"', '"/routine/opened"', "JSON.stringify({ opened: keys })"],
 ]
 
+/**
+ * LA8, LA15 (HF11): the voice lane's read of which Studio takes home knows
+ * Drive holds, and the one request it may send.
+ */
+const ON_DRIVE_READ = "lib/home-link/on-drive.ts"
+const ON_DRIVE_SENDS = [['"GET"', "onDrivePath(chunk)"]]
+
 /** Every call of a function named `send` in `text`, as its arguments' text. */
 function sendCalls(path: string, text: string): Array<Array<string>> {
   const found: Array<Array<string>> = []
@@ -476,6 +483,19 @@ describe("LA8: the phone reaches home through one module", () => {
 
   it("sends nothing from the routine's read but one GET /routine/files and one PUT /routine/opened", () => {
     expect(sendCalls(ROUTINE_READ, read(ROUTINE_READ))).toEqual(ROUTINE_SENDS)
+  })
+
+  it("sends nothing from the read of which takes Drive has but its GETs of /voice-notes/on-drive, one per 100 waiting takes, and only the voice lane's run reads it (HF11)", () => {
+    expect(sendCalls(ON_DRIVE_READ, read(ON_DRIVE_READ))).toEqual(
+      ON_DRIVE_SENDS
+    )
+    expect(read(ON_DRIVE_READ)).toContain("/voice-notes/on-drive?ids=")
+    const readers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /from "\.\/on-drive"|from "@\/lib\/home-link\/on-drive"/.test(read(f))
+      )
+    expect(readers).toEqual(["lib/home-link/voice-copy.ts"])
   })
 
   it("still finds what it is meant to guard", () => {

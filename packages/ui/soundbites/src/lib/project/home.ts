@@ -9,7 +9,7 @@
  * Sending is the app's home link's (www `lib/home-link/voice-copy`).
  */
 import type { LetGoChoice } from "./let-go"
-import { mayLeave } from "./let-go"
+import { driveHasItIn, mayLeave, waitingTakes } from "./let-go"
 import type { Project, ProjectEvent } from "./model"
 import { homeHolds, step } from "./model"
 import type { ProjectStore } from "./store"
@@ -82,14 +82,65 @@ export async function letGoHeldTakes(
 ): Promise<number> {
   if (held.size === 0) return 0
   const leaves = (): boolean => mayLeave(choice)
+  return writeEach(store, (project) => heldByHome(project, held, leaves))
+}
+
+/**
+ * Writes what `change` makes of each project in `store` it changes, each in
+ * its own write, `change` run again on the project as that write reads it;
+ * how many projects changed.
+ */
+async function writeEach(
+  store: ProjectStore,
+  change: (project: Project) => Project | null
+): Promise<number> {
   const projects = await store.list()
   let changed = 0
   for (const project of projects) {
-    if (heldByHome(project, held, leaves) === null) continue
+    if (change(project) === null) continue
     const written = await store.update(project.id, (now) =>
-      now === null ? null : heldByHome(now, held, leaves)
+      now === null ? null : change(now)
     )
     if (written.changed) changed++
   }
   return changed
+}
+
+/** The ids of the takes home holds still on the phone, over `projects`: what home is asked about Drive for. */
+export function waitingIds(
+  projects: ReadonlyArray<Project>
+): ReadonlyArray<string> {
+  return projects.flatMap((project) =>
+    waitingTakes(project).map((take) => take.id)
+  )
+}
+
+/**
+ * `project` with each take home holds and home says Drive has too
+ * (`onDrive`, HF11) marked kept by Drive and let go (`driveHasItIn`); null
+ * when it changes nothing.
+ */
+function onDriveByHome(
+  project: Project,
+  onDrive: ReadonlySet<string>
+): Project | null {
+  let at = project
+  for (const take of waitingTakes(project)) {
+    if (onDrive.has(take.id)) at = driveHasItIn(at, take.id) ?? at
+  }
+  return at === project ? null : at
+}
+
+/**
+ * Lets the audio of each take home holds and says Drive has too leave the
+ * phone, once the owner has chosen (none before they choose), project by
+ * project, each in its own write; how many projects changed.
+ */
+export async function letGoOnDrive(
+  store: ProjectStore,
+  onDrive: ReadonlySet<string>,
+  choice: LetGoChoice
+): Promise<number> {
+  if (onDrive.size === 0 || choice === null) return 0
+  return writeEach(store, (project) => onDriveByHome(project, onDrive))
 }
