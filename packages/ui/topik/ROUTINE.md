@@ -35,19 +35,22 @@ do:
   phone can't reach home, so "Open new words from storage" picks a scene's
   word sets from `Read aloud/sets`, and "Open a scene from storage" a drama
   from `Dramas/requests` (the owner's decision D4, paulgsc/some-ui#2183).
-  Each copy is of a scene or drama home already holds. A step reads one back
-  only where home's has left the mailbox's live items (step 4's words, step
-  8's last drama), since one asked back arrives after the run.
-- **Reflections and prompts only Drive holds:** those the phone shared to
-  `Study ledger/reflections` and `Dramas/requests` before it sent them home
-  (HF3, HF4). A phone still on an APK from before those keeps sharing there,
-  so a run without Drive leaves them waiting for one with it.
+  Each copy is of a scene or drama home already holds. The run reads Drive
+  for what the mailbox's live files don't give it (one asked back from home
+  arrives after the run): a drama older than the live ones (step 8), and,
+  while home's index doesn't stand, every deck under `Read aloud/` for step
+  4's word ids, since a copy doesn't say whether home's scene is still
+  live.
+- **Reflections and prompts only Drive holds:** a phone on an APK without
+  HF3 and HF4 shares them to `Study ledger/reflections` and `Dramas/requests`
+  instead of sending them home, and Drive keeps each one shared there. A run
+  without Drive leaves them waiting for one with it.
 - **Scenes only Drive holds:** the routine's scene folders home doesn't
-  (2b's `lacking`: scenes retired before the mailbox opened, and any whose
-  put failed when Drive was still this run's record). Their decks are read
-  for word ids (step 4), and each answers the reflection its folder names. A
-  run without Drive can't read them, so a word id it writes may already mean
-  another word in one of them: it says so in the summary.
+  (2b's `lacking`): scenes retired before the mailbox opened, and scenes
+  whose folder an earlier run wrote and whose mailbox put failed. Their decks
+  are read for word ids (step 4), and each answers the reflection its folder
+  names. A run without Drive can't read them, so a word id it writes may
+  already mean another word in one of them: it says so in the summary.
 - **The `Inbox/` triage** (step 11).
 
 The scheduled task's prompt points at this file, so a change to the run is a
@@ -102,10 +105,11 @@ curl -sS --max-time 30 -o /dev/null -w '%{http_code}\n' \
 never print the token, and don't turn on shell tracing (`set -x`). If either
 variable is unset or empty, or the check answers anything else (`401` is a
 wrong token, `404` a mailbox not yet taking scenes, `000` no network), this run
-can't reach home: write nothing anywhere, skip parts A to D and step 12, and
-say so in the summary. A scene or drama Drive alone held would never reach
-the phone's list, since no step puts Drive's files home, so what waits is
-answered by the next run that reaches the mailbox.
+can't reach home: write nothing anywhere, skip parts A to D, step 11 (the
+`Inbox/` triage) and step 12, and say so in the summary. A scene or drama
+Drive alone held would never reach the phone's list, since no step puts
+Drive's files home, so what waits is answered by the next run that reaches
+the mailbox.
 
 To list a folder:
 
@@ -151,10 +155,10 @@ Give it the start time you kept before step 1.
 
 It prints `stands`, `why` (each reason it doesn't, in the owner's terms) and
 `lacking`: the bases of the routine's scene folders Drive holds that home
-doesn't (a scene retired before the mailbox, or one whose put failed). Only a
-folder an earlier run wrote carries such a base, in its description
-(`answers: <base>` or `stock: <base>`); this run writes none (6a), since each
-folder it writes is a copy of a scene home holds. Without Drive, `lacking` is
+doesn't ("What still needs Drive"). Only a folder an earlier run wrote
+carries such a base, in its description (`answers: <base>` or
+`stock: <base>`); this run writes none (6a), since each folder it writes is a
+copy of a scene home holds. Without Drive, `lacking` is
 empty because nothing was listed, not because home holds every scene.
 
 When the index doesn't stand, or there is none, do the bookkeeping as written
@@ -162,11 +166,8 @@ below, from the mailbox (and, with Drive, from what only Drive holds), and say
 why in the summary in the owner's terms ("Home hadn't caught up, so this run
 counted the lessons itself"). When it stands, each step below says what it
 replaces ("When home's index stands"). The run never redoes or second-guesses
-what the index says. What only Drive holds the index can't say, so with Drive
-the run still reads it: the reflections in `Study ledger/reflections` and the
-prompts in `Dramas/requests`, the scene folders in `lacking`, and which
-written reflections a Drive reflection file already holds. A name in the
-index's `skipped` is a file home couldn't read: say so in the summary.
+what the index says. A name in the index's `skipped` is a file home couldn't
+read: say so in the summary.
 
 ### Voice notes
 
@@ -353,13 +354,13 @@ Voice notes never go to the mailbox from this run.
      (2b), its `recent` (the latest three, newest first, each with its
      `genre`), or otherwise the three newest live items in the mailbox's
      `scene` folder (fetch each; its `title` names its genre);
-   - level: the one the learner asked for in the note, else the level the
-     session was studied at (TOPIK 1-2 -> read-aloud level 1-2, higher -> 3),
-     which only a Drive file carries: for a mailbox group, else the level in
-     the title of the newest scene home holds, else 1. That newest scene is
-     this run's own newest, else, when home's index stands (2b), the first of
-     its `recent` with a `level`, or otherwise the newest live item in the
-     mailbox's `scene` folder;
+   - level: the one the learner asked for in the note, else the session's
+     level (TOPIK 1-2 -> read-aloud level 1-2, higher -> 3; only a Drive file
+     carries one); for a mailbox group, the level in the title of the newest
+     scene home holds, else 1. That newest scene is this run's own newest,
+     else, when home's index stands (2b), the first of its `recent` with a
+     `level`, or otherwise the newest live item in the mailbox's `scene`
+     folder;
    - the read-aloud deck: `practice: "read-aloud"`, one pool sized for a
      sitting, as many lines as the deck prompt's table gives the deck's level
      and a few over, no `lens` on any line, `id` kebab-case and unique (e.g. a slug of
@@ -390,7 +391,9 @@ Voice notes never go to the mailbox from this run.
    If an earlier run's scene folder for the reflection (its description
    `answers: <base>`) holds one file only, that run stopped between its two
    uploads after it triaged the reflection: skip part C for it, and write the
-   pair in the same context as that file (read it for it).
+   pair in the same context and under the same title as that file (read it
+   for it), so step 6's title is the folder's name. Its Drive copy finishes
+   that folder (6a).
 
 5. Check each deck the way the phone will. Save the deck as bare JSON to a
    scratch file outside the checkout and run, from `packages/ui/topik`,
@@ -435,7 +438,9 @@ description, and upload the two decks into it as `read-aloud.json` and
 disableConversionToGoogleType true. Confirm each result's mimeType is
 application/json and its fileSize equals your local file's byte count. A copy
 that fails goes in the summary; the scene is home's either way, and no later
-run makes the copy.
+run makes the copy. For a scene that finishes an earlier run's folder (step
+4's last paragraph), make no new folder: upload only the deck that folder
+lacks into it, under its name there, and leave its description as it is.
 
 ## Part C: product feedback (done for each reflection inside step 4)
 
@@ -546,7 +551,7 @@ fence), contentMimeType application/json, disableConversionToGoogleType true.
 Confirm the result's mimeType is application/json and its fileSize equals your
 local file's byte count. A copy that fails goes in the summary. Never edit,
 rename or move a prompt, a voice note or a drama: home keeps which prompts are
-answered, so no run moves an older set to `Dramas/played/` any more.
+answered.
 
 ## Part D: keep three lessons ready
 
@@ -591,7 +596,8 @@ exactly as in steps 4 to 6a, with these differences:
 11. With Drive: never edit, move, rename or trash anything in `Study ledger/`,
     `Archive/`, `Dramas/` or `Read aloud/archive/`, nor the Starter or Level
     one scenes in `Read aloud/sets`, nor any scene folder you did not create
-    this run. Triage `Inbox/` per the SOP if it holds anything.
+    this run, except the deck 6a uploads into an earlier run's half-written
+    folder. Triage `Inbox/` per the SOP if it holds anything.
 
 12. Record this run in the mailbox. Skip only if 2a skipped the mailbox;
     otherwise this step runs even when the run stops early. Take the start time
