@@ -12,8 +12,9 @@
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
     "lint:js": "NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
     "prettier": "prettier . --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tests/tsconfig.json",
+    "test": "vitest",
+    "test:e2e": "vite build --config tests/real-microphone/vite.config.ts && playwright test --config tests/real-microphone/playwright.config.ts"
   },
   "dependencies": {
     "@some-ui/core-utils": "workspace:*",
@@ -21,8 +22,10 @@
     "fast-check": "^4.10.2"
   },
   "devDependencies": {
+    "@playwright/test": "1.62.1",
     "@some-ui/tsconfig": "workspace:*",
-    "@some-ui/vite-config": "workspace:*"
+    "@some-ui/vite-config": "workspace:*",
+    "vite": "^8.3.5"
   },
   "repository": {
     "type": "git",

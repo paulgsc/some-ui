@@ -9,6 +9,9 @@
  * default once it is empty: opens at once, hears speech, finishes at once.
  * An opening `on cue` waits for `answer`, for tests that order things by
  * hand.
+ *
+ * Scripted as a clip (`tests/real-microphone/cases.ts`), it must end each
+ * of that suite's cases as the real recorder in Chromium does (MIC9).
  */
 import { assertNever } from "@some-ui/core-utils"
 
