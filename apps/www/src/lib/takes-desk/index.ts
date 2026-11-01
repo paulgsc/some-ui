@@ -8,14 +8,21 @@
  *   Rust Rounds' notes (`lib/rust-rounds`) and LeetType's spoken answers
  *   (`lib/leetype-takes`).
  *
- * Each take goes home as a voice note (`lib/home-link/voice-copy`, HF5
- * #2180), which tells the desk what home holds (`heldByHome`). Phone-only
+ * A desk whose takes go home as voice notes (`lib/home-link/voice-copy`,
+ * HF5 #2180) is told where each is kept (`keptWhere`): what home holds may
+ * make room, and a pattern desk's rows say where each take is (MIC3). A desk
+ * no lane tells keeps every take on this phone, and says so. Phone-only
  * (`build.paths.ts`).
  */
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import { SOUNDBITE_BITS_PER_SECOND } from "@some-ui/soundbites/contract"
-import type { Player } from "@some-ui/voice-capture"
-import { audioPlayer, micRecorder, savingShelf } from "@some-ui/voice-capture"
+import type { Player, TakeKept } from "@some-ui/voice-capture"
+import {
+  audioPlayer,
+  micRecorder,
+  ON_PHONE,
+  savingShelf,
+} from "@some-ui/voice-capture"
 
 import { boundedList } from "@/lib/bounded-list"
 
@@ -65,10 +72,11 @@ type DeskShelf = {
   /** A take's audio, or null when it is gone. */
   readonly audio: (id: string) => Promise<Blob | null>
   /**
-   * What home holds of the takes, read back, from the voice notes' lane
-   * (`lib/home-link/voice-copy`): those may make room for a new take.
+   * Where each take is kept, from the voice notes' lane
+   * (`lib/home-link/voice-copy`): those home holds may make room for a new
+   * take, and a pattern desk's rows say it (MIC3).
    */
-  readonly heldByHome: (held: (id: string) => boolean) => void
+  readonly keptWhere: (where: (id: string) => TakeKept) => void
 }
 
 export type TakesDesk = DeskShelf & { readonly phone: () => PhoneTakes }
@@ -128,7 +136,12 @@ export function keptOn(
 
 function desk<R extends Runtime>(
   options: DeskOptions,
-  make: (ports: PatternTakesPorts & { readonly player: Player }) => R
+  make: (
+    ports: PatternTakesPorts & {
+      readonly player: Player
+      readonly held: (id: string) => boolean
+    }
+  ) => R
 ): DeskShelf & { readonly phone: () => R } {
   const takes = deskList(options.key, options.limits.max)
   // Nothing keeps it free; the device's measured budget (`withRoom`) still
@@ -138,8 +151,8 @@ function desk<R extends Runtime>(
     maxBytes: maxBytes(options.limits),
   })
 
-  // Home holds none until the voice notes' lane says otherwise.
-  let held: (id: string) => boolean = () => false
+  // On this phone until the voice notes' lane says otherwise.
+  let where: (id: string) => TakeKept = () => ON_PHONE
   let runtime: R | null = null
   const phone = (): R => {
     runtime ??= make({
@@ -152,7 +165,8 @@ function desk<R extends Runtime>(
       player: audioPlayer,
       now: () => Date.now(),
       newId: () => crypto.randomUUID(),
-      held: (id) => held(id),
+      kept: (id) => where(id),
+      held: (id) => where(id).place === "home",
     })
     return runtime
   }
@@ -199,8 +213,8 @@ function desk<R extends Runtime>(
     keptOn: (line, since): string | null => keptOn(takes.read(), line, since),
     kept: takes.read,
     audio: (id) => shelf.shelf().get(id),
-    heldByHome: (next): void => {
-      held = next
+    keptWhere: (next): void => {
+      where = next
       runtime?.recount()
     },
   }

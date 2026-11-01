@@ -8,6 +8,7 @@ import type { RecordingFailure } from "@voice-capture/lib/recorder"
 import type { TakeEnded } from "@voice-capture/lib/take-kit"
 import type {
   PatternTake,
+  TakeKept,
   TakePatternOptions,
   TakePatternSnapshot,
 } from "@voice-capture/lib/take-pattern"
@@ -16,6 +17,7 @@ import { takeItemView } from "@voice-capture/lib/take-view"
 import {
   buttonLabel,
   buttonSaid,
+  keptSaid,
   TAKE_WORDS,
   takeSaid,
 } from "@voice-capture/lib/take-words"
@@ -57,7 +59,7 @@ const taken = (
   durationMs: 7_000,
   recordedAt: `2026-10-31T10:${at}:00.000Z`,
   standing: "current",
-  place: "phone",
+  kept: { place: "phone" },
   ...over,
 })
 
@@ -155,7 +157,12 @@ describe("one item's takes", () => {
   })
 
   it("says a take set aside, or one that couldn't play, beside its own item", () => {
-    const takes = [taken("t1", "01", { standing: "set-aside", place: "home" })]
+    const takes = [
+      taken("t1", "01", {
+        standing: "set-aside",
+        kept: { place: "home", since: null },
+      }),
+    ]
     const aside = { ...IDLE, setAside: { id: "t1", place: "home" as const } }
     expect(takeItemView(aside, takes, "card-1", ONE).said).toEqual({
       kind: "setAside",
@@ -199,6 +206,14 @@ const ENDINGS: ReadonlyArray<TakeEnding> = [
   "blocked",
 ]
 
+/** Every place a take can be kept (MIC3). */
+const KEPT: ReadonlyArray<TakeKept> = [
+  { place: "phone" },
+  { place: "going" },
+  { place: "home", since: "2026-11-01T09:15:00.000Z" },
+  { place: "home", since: null },
+]
+
 function everyLine(): Array<string> {
   const buttons: Array<TakeButtonView> = [
     { kind: "ready", again: false },
@@ -220,6 +235,7 @@ function everyLine(): Array<string> {
       (ending): TakeSaid => ({ kind: "ended", ended: ended(ending) })
     ),
     { kind: "setAside", place: "phone" },
+    { kind: "setAside", place: "going" },
     { kind: "setAside", place: "home" },
     { kind: "unplayable" },
   ]
@@ -232,8 +248,7 @@ function everyLine(): Array<string> {
     w.nearlyUp(9_100),
     w.nearlyUp(1_000),
     w.length(7_400),
-    w.place.phone,
-    w.place.home,
+    ...KEPT.map((kept) => keptSaid(w, kept)),
     w.play,
     w.stop,
     w.redo,
@@ -249,6 +264,20 @@ describe("the take pattern's words", () => {
     const lines = everyLine()
     expect(lines.filter((line) => line.trim() === "")).toEqual([])
     expect(lines.filter((line) => MACHINERY.test(line))).toEqual([])
+  })
+
+  it("say where each take is kept, and since when only once the phone noted it (MIC3)", () => {
+    const w = TAKE_WORDS
+    const since = "2026-11-01T09:15:00.000Z"
+    expect(KEPT.map((kept) => keptSaid(w, kept))).toEqual([
+      "Kept on this phone",
+      "On this phone, going home",
+      `On home since ${w.when(since)}`,
+      "On home",
+    ])
+    // Its day and time, never the stored form.
+    expect(w.when(since)).not.toContain("2026-11-01")
+    expect(w.when(since)).toMatch(/\d/)
   })
 
   it("read a length as a recording's clock, and the time left in whole seconds", () => {

@@ -74,7 +74,7 @@ export const TakeItem = ({
               row={row}
               onPlay={() => onPlay(row.take.id)}
               onRedo={() => onRedo(row.take.id)}
-              onLetGo={() => onLetGo(row.take.id, row.take.place)}
+              onLetGo={() => onLetGo(row.take.id, row.take.kept.place)}
             >
               {describe?.(row.take)}
             </TakeRow>

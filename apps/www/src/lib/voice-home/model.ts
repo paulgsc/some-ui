@@ -13,6 +13,7 @@
  */
 import type { HomeExchanged } from "@some-ui/core-utils"
 import { assertNever, isRecord } from "@some-ui/core-utils"
+import type { TakeKept } from "@some-ui/voice-capture"
 
 /** What a note is said for, as home's `PUT /voice-notes/:id` takes `of`. */
 type VoiceOf =
@@ -54,6 +55,12 @@ export type VoiceHomeState = {
   readonly waiting: ReadonlyArray<VoiceOut>
   /** What home holds, in the order it said so. */
   readonly held: ReadonlyArray<string>
+  /**
+   * When this phone heard home say it holds each note, ISO 8601 (MIC3): what
+   * a take's row says "since". A note held before the phone noted when has
+   * none, and nothing here guesses one.
+   */
+  readonly heldAt: Readonly<Record<string, string>>
   /** What home will never hold, with why. */
   readonly refused: ReadonlyArray<VoiceRefusal>
   /**
@@ -66,14 +73,21 @@ export type VoiceHomeState = {
 export const INITIAL_VOICE_HOME: VoiceHomeState = {
   waiting: [],
   held: [],
+  heldAt: {},
   refused: [],
   roomless: [],
 }
 
+/** What home said of a note: it holds it, or it never will. */
+export type NoteAnswered =
+  | { readonly kind: "held"; readonly id: string }
+  | { readonly kind: "refused"; readonly id: string; readonly why: string }
+
 export type VoiceHomeEvent =
   | { readonly kind: "copied"; readonly note: VoiceOut }
   | { readonly kind: "roomless"; readonly id: string }
-  | { readonly kind: "held"; readonly id: string }
+  /** Home holds it, as this phone heard at `at` (ISO 8601). */
+  | { readonly kind: "held"; readonly id: string; readonly at: string }
   | { readonly kind: "refused"; readonly id: string; readonly why: string }
 
 /** `id` is copied, held or refused: nothing more to do for it here. */
@@ -83,6 +97,21 @@ export function settled(state: VoiceHomeState, id: string): boolean {
     state.held.includes(id) ||
     state.refused.some((refusal) => refusal.id === id)
   )
+}
+
+/**
+ * Where each note is kept, by what home has told this phone (MIC3): on home
+ * once home said it holds it, since when this phone heard so; going home
+ * while its copy waits; on this phone alone otherwise, which is also where
+ * a note home refused stays. Made once per record, for a screen's rows.
+ */
+export function keptIn(state: VoiceHomeState): (id: string) => TakeKept {
+  const held = new Set(state.held)
+  const waiting = new Set(state.waiting.map((note) => note.id))
+  return (id): TakeKept => {
+    if (held.has(id)) return { place: "home", since: state.heldAt[id] ?? null }
+    return waiting.has(id) ? { place: "going" } : { place: "phone" }
+  }
 }
 
 const without = (
@@ -114,7 +143,12 @@ export function stepVoiceHome(
       if (!state.waiting.some((note) => note.id === event.id)) return state
       const waiting = state.waiting.filter((note) => note.id !== event.id)
       return event.kind === "held"
-        ? { ...state, waiting, held: [...state.held, event.id] }
+        ? {
+            ...state,
+            waiting,
+            held: [...state.held, event.id],
+            heldAt: { ...state.heldAt, [event.id]: event.at },
+          }
         : {
             ...state,
             waiting,
@@ -226,6 +260,18 @@ function isOut(value: unknown): value is VoiceOut {
   )
 }
 
+/** The record's `heldAt`, or `{}` for one written before it was noted. */
+function heldAtOf(value: unknown): Record<string, string> | null {
+  if (value === undefined) return {}
+  if (!isRecord(value)) return null
+  const heldAt: Record<string, string> = {}
+  for (const [id, at] of Object.entries(value)) {
+    if (!isString(at)) return null
+    heldAt[id] = at
+  }
+  return heldAt
+}
+
 function isRefusal(value: unknown): value is VoiceRefusal {
   return isRecord(value) && isString(value.id) && isString(value.why)
 }
@@ -251,9 +297,12 @@ export function parseVoiceHome(raw: string): VoiceHomeState | null {
   ) {
     return null
   }
+  const heldAt = heldAtOf(value.heldAt)
+  if (heldAt === null) return null
   return {
     waiting: value.waiting,
     held: value.held,
+    heldAt,
     refused: value.refused,
     roomless: value.roomless,
   }

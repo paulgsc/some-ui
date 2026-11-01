@@ -9,14 +9,17 @@
  * - **One current take per item** (`per: "one"`). A Redo's take becomes the
  *   item's take and the one it supersedes an earlier take, in the same write
  *   (D2). Let go marks a take set aside (D3). Neither removes anything: both
- *   stay listed, with their audio, and go home as every take does.
+ *   stay listed, with their audio, and go home as every take of their kind
+ *   does.
  * - **Bounded as the lens's desk is** (HF5, #2180): at most `limits.max`
  *   takes, each at most `limits.maxMs`. At the most a new take makes room by
- *   letting go the oldest take home holds (`held`); with none held it is
+ *   letting go the oldest take home holds (`kept`); with none held it is
  *   refused, and the pattern says so. Takes leave otherwise only by `letGo`,
  *   which the desk's sweep calls for a take whose audio never landed.
- * - **Where each take is kept** is read from `held`: on home once home holds
- *   its audio, on this phone until then.
+ * - **Where each take is kept**, and since when, is read from `kept` (MIC3):
+ *   on this phone, going home while its copy waits in the voice lane, or on
+ *   home since this phone heard home hold it. A desk whose kind no lane
+ *   carries is never told, so each of its takes is kept on this phone.
  */
 import { SOUNDBITE_MIN_MS } from "@some-ui/soundbites/contract"
 import type {
@@ -26,6 +29,7 @@ import type {
   Player,
   StartRecording,
   TakeDeadlines,
+  TakeKept,
   TakePattern,
   TakePatternOptions,
 } from "@some-ui/voice-capture"
@@ -53,8 +57,8 @@ export type PatternTakesPorts = {
   saving: (id: string, inFlight: boolean) => void
   now: () => number
   newId: () => string
-  /** Whether home holds this take's audio, read back (`lib/home-link`). */
-  held: (id: string) => boolean
+  /** Where this take is kept, from what home told this phone (`lib/home-link`). */
+  kept: (id: string) => TakeKept
   /** The kit's `audioPlayer` unless a test gives its own. */
   player?: Player | undefined
   /** The phone's one microphone unless a test gives its own. */
@@ -77,7 +81,7 @@ export type PatternPhone = {
   readonly full: () => boolean
   /** Lets these takes go, with their audio: the sweep's, for audio that never landed. */
   readonly letGo: (ids: ReadonlyArray<string>) => void
-  /** What home holds has changed: where each take is kept, and `full`. */
+  /** Where takes are kept has changed: each row, and `full`. */
   readonly recount: () => void
 }
 
@@ -95,6 +99,7 @@ export function createPatternTakes(
   limits: TakeLimits
 ): PatternPhone {
   const listeners = new Set<() => void>()
+  const held = (id: string): boolean => ports.kept(id).place === "home"
   const listed = (): ReadonlyArray<PatternTake> =>
     ports.takes.read().map(
       (take): PatternTake => ({
@@ -103,7 +108,7 @@ export function createPatternTakes(
         durationMs: take.durationMs,
         recordedAt: new Date(take.takenAt).toISOString(),
         standing: take.standing ?? "current",
-        place: ports.held(take.id) ? "home" : "phone",
+        kept: ports.kept(take.id),
       })
     )
   let snapshot = listed()
@@ -116,7 +121,7 @@ export function createPatternTakes(
     const takes = ports.takes.read()
     return (
       takes.length >= limits.max &&
-      makesRoom(takes, limits.max, ports.held, takenAt) === null
+      makesRoom(takes, limits.max, held, takenAt) === null
     )
   }
 
@@ -142,12 +147,7 @@ export function createPatternTakes(
           done({ outcome: "full" })
           return
         }
-        const room = makesRoom(
-          ports.takes.read(),
-          limits.max,
-          ports.held,
-          takenAt
-        )
+        const room = makesRoom(ports.takes.read(), limits.max, held, takenAt)
         if (room !== null) letGo([room.id])
         const id = ports.newId()
         shelveTake(

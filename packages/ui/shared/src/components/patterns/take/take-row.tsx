@@ -1,6 +1,6 @@
 import type { JSX, ReactNode } from "react"
 import type { TakeRowView } from "@some-ui/voice-capture"
-import { TAKE_WORDS } from "@some-ui/voice-capture"
+import { keptSaid, TAKE_WORDS } from "@some-ui/voice-capture"
 import { Pause, Play } from "lucide-react"
 
 import { cn } from "../../../lib/utils"
@@ -21,11 +21,12 @@ export type TakeRowProps = {
 }
 
 /**
- * One take: where it is kept and how long it is, Play and
- * Stop, Redo, and Let it go. Let it go sets the take aside (D3), which keeps
- * it, so it asks nothing first; a step that can't be undone would go through
- * `ConfirmSheet`, and the pattern has none. A control the row can't offer
- * now (a take under way) stays in place, disabled, so nothing jumps.
+ * One take: how long it is and where it is kept, since when once home
+ * holds it (MIC3), Play and Stop, Redo, and Let it go. Let it go sets the
+ * take aside (D3), which keeps it, so it asks nothing first; a step that
+ * can't be undone would go through `ConfirmSheet`, and the pattern has none.
+ * A control the row can't offer now (a take under way) stays in place,
+ * disabled, so nothing jumps.
  */
 export const TakeRow = ({
   row,
@@ -67,7 +68,7 @@ export const TakeRow = ({
             </span>
             <span className="text-muted-foreground">
               {" · "}
-              {words.place[take.place]}
+              {keptSaid(words, take.kept)}
             </span>
           </p>
           {children !== undefined && (

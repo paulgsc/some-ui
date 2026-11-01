@@ -38,8 +38,13 @@ function port(
       const text = await blob.text()
       return { base64: btoa(text), sha256: `sha-of-${text}` }
     },
-    answered: (event): void => {
-      state = stepVoiceHome(state, event)
+    answered: (answer): void => {
+      state = stepVoiceHome(
+        state,
+        answer.kind === "held"
+          ? { ...answer, at: "2026-10-25T03:12:00Z" }
+          : answer
+      )
     },
   }
 }

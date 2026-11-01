@@ -61,7 +61,7 @@ describe("createPatternTakes", () => {
         durationMs: 4_000,
         recordedAt: expect.any(String),
         standing: "current",
-        place: "phone",
+        kept: { place: "phone" },
       },
     ])
     expect(await on.shelf.ids()).toEqual(["n1"])
@@ -92,14 +92,19 @@ describe("createPatternTakes", () => {
     expect(await on.shelf.ids()).toEqual(["n1"])
   })
 
-  it("says a take is on home once home holds it", async () => {
+  it("says a take is going home while its copy waits, and on home since this phone heard so (MIC3)", async () => {
     const on = desk()
     await take(on, "card")
-    on.home.add("n1")
+    const kept = (): unknown => on.phone.takes.getSnapshot()[0]?.kept
+    on.home.copied("n1")
     on.phone.recount()
-    expect(on.phone.takes.getSnapshot()).toEqual([
-      expect.objectContaining({ id: "n1", place: "home" }),
-    ])
+    expect(kept()).toEqual({ place: "going" })
+    on.home.held("n1", "2026-11-01T09:15:00.000Z")
+    on.phone.recount()
+    expect(kept()).toEqual({
+      place: "home",
+      since: "2026-11-01T09:15:00.000Z",
+    })
   })
 
   it("refuses a take at its cap while home holds none, letting none go", async () => {
@@ -118,7 +123,7 @@ describe("createPatternTakes", () => {
     const on = desk(2)
     await take(on, "a")
     await take(on, "b")
-    on.home.add("n1")
+    on.home.held("n1")
     on.phone.recount()
     expect(on.phone.full()).toBe(false)
     await take(on, "c")

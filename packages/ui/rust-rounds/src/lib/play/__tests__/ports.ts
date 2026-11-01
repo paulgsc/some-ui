@@ -41,7 +41,7 @@ export const keptNote = (id: string, line: string): PatternTake => ({
   durationMs: 4_000,
   recordedAt: "2099-01-01T00:00:00.000Z",
   standing: "current",
-  place: "phone",
+  kept: { place: "phone" },
 })
 
 /** Storage whose log refuses every write while it is full, as a phone out of room does. */

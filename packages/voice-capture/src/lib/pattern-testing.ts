@@ -17,12 +17,12 @@ import { simulatedMicrophone } from "./simulated-microphone"
 import type { KeepResult } from "./take-kit"
 import type {
   PatternTake,
+  TakeKept,
   TakePattern,
   TakePatternOptions,
   TakePatternPorts,
-  TakePlace,
 } from "./take-pattern"
-import { ONE_TAKE, takePattern } from "./take-pattern"
+import { ON_PHONE, ONE_TAKE, takePattern } from "./take-pattern"
 
 export type SimulatedPlayer = Player & {
   /** Playbacks under way now. */
@@ -75,7 +75,7 @@ export type MemoryTakes = {
 export function memoryTakes(options: {
   readonly now: () => number
   readonly seed?: ReadonlyArray<PatternTake> | undefined
-  readonly place?: TakePlace | undefined
+  readonly kept?: TakeKept | undefined
 }): MemoryTakes {
   let takes: ReadonlyArray<PatternTake> = options.seed ?? []
   const audio = new Map<string, Blob>()
@@ -122,7 +122,7 @@ export function memoryTakes(options: {
             durationMs: take.durationMs,
             recordedAt: new Date(options.now()).toISOString(),
             standing: "current",
-            place: options.place ?? "phone",
+            kept: options.kept ?? ON_PHONE,
           },
         ])
         done({ outcome: "kept", id })

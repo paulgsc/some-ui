@@ -94,6 +94,7 @@ import { assertNever } from "@some-ui/core-utils"
 import type { KeptBite } from "@some-ui/game-week"
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import type { Soundbite } from "@some-ui/soundbites"
+import type { TakeKept } from "@some-ui/voice-capture"
 
 import { phoneGameBites } from "@/lib/game-bites"
 import { jobVoiceAudio, phoneJobs } from "@/lib/jobs"
@@ -115,8 +116,13 @@ import { onSoundbitesKept, soundbiteKeeping } from "@/lib/soundbite-keeping"
 import { onStudioKept, studioKeeping } from "@/lib/studio-keeping"
 import { phoneVoiceHome } from "@/lib/voice-home"
 import { exchangeVoice } from "@/lib/voice-home/home"
-import type { CopyPass, Unsendable, VoiceOut } from "@/lib/voice-home/model"
-import { NO_PASS, passWith, runEnd } from "@/lib/voice-home/model"
+import type {
+  CopyPass,
+  Unsendable,
+  VoiceHomeState,
+  VoiceOut,
+} from "@/lib/voice-home/model"
+import { keptIn, NO_PASS, passWith, runEnd } from "@/lib/voice-home/model"
 
 import { homeLink, paired } from "./index"
 import { lensEntriesHeld } from "./lens-record"
@@ -573,6 +579,23 @@ function heldIds(): ReadonlySet<string> {
 
 const voiceHeld = (id: string): boolean => heldIds().has(id)
 
+/** Where each note is kept, made again only when the record changes. */
+let kept: {
+  readonly from: VoiceHomeState
+  readonly of: (id: string) => TakeKept
+} | null = null
+
+/**
+ * Where a take of a kind this lane carries is kept, and since when (MIC3):
+ * what its desk's rows say. A kind no lane carries is never asked, so its
+ * rows say it is kept on this phone.
+ */
+export function voiceKept(id: string): TakeKept {
+  const state = phoneVoiceHome().getSnapshot()
+  if (kept?.from !== state) kept = { from: state, of: keptIn(state) }
+  return kept.of(id)
+}
+
 /** A store whose notes leave this phone once home holds them. */
 type LetsGo = { letGo: (homeHolds: ReadonlySet<string>) => unknown }
 
@@ -634,13 +657,14 @@ export function holdNotes(): void {
 /**
  * Hands each offline set what home holds, read back, so it may make room at
  * its cap with those and no others (HF5): the lens takes and LeetType takes
- * by their voice notes, the stores of study notes (`holdNotes`), and the
+ * by their voice notes, with where each is kept for their rows (MIC3,
+ * `voiceKept`), the stores of study notes (`holdNotes`), and the
  * grammar-lens record by each entry as it is now. Each reads `sent` once per
  * look.
  */
 function holdOffline(): void {
-  lensTakesDesk.heldByHome(voiceHeld)
-  leetypeTakesDesk.heldByHome(voiceHeld)
+  lensTakesDesk.keptWhere(voiceKept)
+  leetypeTakesDesk.keptWhere(voiceKept)
   holdNotes()
   holdLensRecord()
 }

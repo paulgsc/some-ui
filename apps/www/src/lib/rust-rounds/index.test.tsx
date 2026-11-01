@@ -78,7 +78,7 @@ describe("Rust Rounds on the simulated microphone", () => {
     })
   }
 
-  it("keeps a note tapped on, said and tapped off, with the time against the cap, and says where", async () => {
+  it("keeps a note tapped on, said and tapped off, with the time against the cap, and says it is kept on this phone", async () => {
     const { mic, desk } = speakStep()
     mic.script({ ...SPEAKING, open: { kind: "after", ms: 300 } })
     tap()
@@ -91,16 +91,12 @@ describe("Rust Rounds on the simulated microphone", () => {
     // Kept: the card offers it again, and its row says where it is.
     expect(screen.getByText(TAKE_WORDS.ended.kept)).toBeTruthy()
     expect(take().getAttribute("aria-label")).toBe(TAKE_WORDS.buttonLabel.again)
+    // No lane takes Rust Rounds' notes home yet (RR6, #2237): kept here.
     expect(screen.getByText(new RegExp(TAKE_WORDS.place.phone))).toBeTruthy()
     expect(mic.open()).toBe(0)
     expect(desk.listed()).toEqual([
       expect.objectContaining({ line: "rust-rounds:indexing-01/a" }),
     ])
-
-    // Once home holds it, the row says so.
-    desk.home.add(desk.listed()[0].id)
-    act(() => desk.phone.recount())
-    expect(screen.getByText(new RegExp(TAKE_WORDS.place.home))).toBeTruthy()
   })
 
   it("says a tap that stops it before the microphone opened, and lets the microphone go when it does (MIC0)", async () => {
