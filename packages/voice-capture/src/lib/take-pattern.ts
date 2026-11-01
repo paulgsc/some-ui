@@ -138,7 +138,12 @@ export type PatternTake = {
   /** When it was recorded, as an ISO time; newest first in a list. */
   readonly recordedAt: string
   readonly standing: TakeStanding
-  readonly kept: TakeKept
+  /**
+   * Where it is kept; null when it is on neither this phone nor home (a
+   * Studio take carried in whose audio stayed behind), and the row then
+   * says no place.
+   */
+  readonly kept: TakeKept | null
 }
 
 /** What plays: nothing, a take whose audio is being read, or a take playing. */

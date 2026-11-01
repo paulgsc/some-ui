@@ -341,7 +341,7 @@ export function biteView(state: GameWeekState): {
     row:
       row === undefined
         ? null
-        : { ...row, canPlay: row.canPlay && row.take.kept.place !== "home" },
+        : { ...row, canPlay: row.canPlay && row.take.kept?.place !== "home" },
     unplayable: view.said?.kind === "unplayable",
   }
 }
