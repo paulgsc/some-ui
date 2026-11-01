@@ -394,7 +394,11 @@ Voice notes never go to the mailbox from this run.
    uploads after it triaged the reflection: skip part C for it, keep that
    file's deck unchanged as its half of the envelope and write only the
    other, in its context and with its `title` and `from` (read the file for
-   them). Its Drive copy finishes that folder (6a).
+   them). Its Drive copy finishes that folder (6a). If the kept deck fails
+   step 5's check, drop the resume (part C stays skipped): write a fresh pair
+   under a new title, put it (6) and give it a new copy folder (6a), as for
+   any scene. Leave the half-written folder as it is: home's scene answers
+   the reflection from then on.
 
 5. Check each deck the way the phone will. Save the deck as bare JSON to a
    scratch file outside the checkout and run, from `packages/ui/topik`,
