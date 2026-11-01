@@ -1,3 +1,5 @@
+import type { PatternTake, TakePatternOptions } from "@some-ui/voice-capture"
+
 import type { Soundbite } from "./types"
 
 /**
@@ -44,6 +46,46 @@ export const SOUNDBITE_TAKE_LIMITS = {
   minMs: SOUNDBITE_MIN_MS,
   maxMs: SOUNDBITE_MAX_MS,
 } as const
+
+/** What every soundbite answers: the page is one item, "why not today". */
+export const SOUNDBITE_ITEM = "soundbites"
+
+/**
+ * The take pattern's options the page picks (`@some-ui/voice-capture`):
+ * - many beside each other, and at `SOUNDBITE_LIMIT` the next makes room
+ *   (`make-room`): the store lets go the one home holds that the person
+ *   picked, or the oldest, and refuses while home holds none (`displacedBy`);
+ * - each played on its own, Redo and Let go as every screen has them (D2,
+ *   D3: neither removes anything);
+ * - the button counts down the minute (`clock: "left"`).
+ */
+export const SOUNDBITE_TAKES: TakePatternOptions = {
+  takes: { per: "many", max: SOUNDBITE_LIMIT, full: "make-room" },
+  limits: SOUNDBITE_TAKE_LIMITS,
+  redo: "supersede",
+  letGo: "set-aside",
+  play: "each",
+  clock: "left",
+}
+
+/**
+ * The kept soundbites as the take pattern lists them: on home once home
+ * holds one (audio and record both, `held`), on this phone until then. The
+ * phone isn't told when home took them in, so not since when.
+ */
+export function patternTakes(
+  kept: ReadonlyArray<Soundbite>,
+  held: (id: string) => boolean
+): Array<PatternTake> {
+  return kept.map((bite) => ({
+    id: bite.id,
+    answers: SOUNDBITE_ITEM,
+    durationMs: bite.durationMs,
+    recordedAt: bite.recordedAt,
+    standing: bite.standing ?? "current",
+    kept: held(bite.id) ? { place: "home", since: null } : { place: "phone" },
+  }))
+}
 
 /** Newest first: the order the page lists them in. */
 export function byNewest(bites: ReadonlyArray<Soundbite>): Array<Soundbite> {

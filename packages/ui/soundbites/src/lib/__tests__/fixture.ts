@@ -25,7 +25,8 @@ export function bite(id: string, minutesAgo: number): Soundbite {
 
 /**
  * The IndexedDB store's contract, in memory: the same `displacedBy` on save,
- * so a test of the page exercises the cap exactly as the phone applies it.
+ * so a test of the page exercises the cap exactly as the phone applies it,
+ * and a Redo and a Let go mark a soundbite as the phone's store does.
  */
 export function memoryStore(initial: ReadonlyArray<Soundbite> = []): {
   store: SoundbiteStore
@@ -45,17 +46,28 @@ export function memoryStore(initial: ReadonlyArray<Soundbite> = []): {
         Promise.resolve(byNewest([...kept.values()].map((k) => k.bite))),
       audio: (id): Promise<Blob | null> =>
         Promise.resolve(kept.get(id)?.audio ?? null),
-      save: (b, audio, replace): Promise<void> => {
+      save: (b, audio, replace, supersedes = null): Promise<void> => {
         const all = [...kept.values()].map((k) => k.bite)
         const leaving = displacedBy(all, replace, homeHoldsNow())
         if (leaving === null) return Promise.reject(new SoundbitesFullError())
         for (const id of leaving) kept.delete(id)
+        const redone = supersedes === null ? undefined : kept.get(supersedes)
+        if (redone !== undefined && supersedes !== null)
+          kept.set(supersedes, {
+            ...redone,
+            bite: { ...redone.bite, standing: "earlier" },
+          })
         kept.set(b.id, { bite: b, audio })
         changed()
         return Promise.resolve()
       },
-      remove: (ids): Promise<void> => {
-        for (const id of ids) kept.delete(id)
+      setAside: (id): Promise<void> => {
+        const each = kept.get(id)
+        if (each !== undefined)
+          kept.set(id, {
+            ...each,
+            bite: { ...each.bite, standing: "set-aside" },
+          })
         changed()
         return Promise.resolve()
       },

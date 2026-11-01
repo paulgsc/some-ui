@@ -46,6 +46,7 @@ const OPTIONS: TakePatternOptions = {
   redo: "supersede",
   letGo: "set-aside",
   play: "each",
+  clock: "elapsed",
 }
 
 const take = {

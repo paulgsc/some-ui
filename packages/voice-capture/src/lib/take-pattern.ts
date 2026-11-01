@@ -47,10 +47,21 @@ import type {
 } from "./take-kit"
 import { initialTakeKit, stepTakeKit, takeKitView, TICK_MS } from "./take-kit"
 
-/** One current take per item, or many beside each other, up to `max`. */
+/**
+ * One current take per item, or many beside each other, up to `max`. At
+ * `max`, `full` says what the next take does: `refuse` withdraws the button
+ * until Redo or Let go makes room; `make-room` leaves it ready, and the
+ * screen's store makes room as it keeps the new take, or answers `full`
+ * when it can't (Soundbites' seventh, which lets go one home holds: the one
+ * the person picked, or the oldest).
+ */
 export type TakesPerItem =
   | { readonly per: "one" }
-  | { readonly per: "many"; readonly max: number }
+  | {
+      readonly per: "many"
+      readonly max: number
+      readonly full: "refuse" | "make-room"
+    }
 
 /**
  * The pattern's options: the closed set a screen picks from, as a shadcn
@@ -66,6 +77,11 @@ export type TakePatternOptions = {
   readonly letGo: "set-aside"
   /** Play on every take listed, or only on the newest. */
   readonly play: "each" | "latest"
+  /**
+   * What the button counts while it records: the time run against the cap
+   * ("0:12 / 1:00"), or the time left ("0:48 left", Soundbites' countdown).
+   */
+  readonly clock: "elapsed" | "left"
 }
 
 /**
@@ -79,6 +95,7 @@ export const ONE_TAKE: TakePatternOptions = {
   redo: "supersede",
   letGo: "set-aside",
   play: "each",
+  clock: "elapsed",
 }
 
 /**

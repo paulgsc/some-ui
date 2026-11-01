@@ -29,14 +29,23 @@ export type SoundbiteStore = {
    * replaces `replace` if that is still kept and home holds it, else the
    * oldest home holds. Rejects with `SoundbitesFullError`, keeping nothing,
    * while home holds none to replace, past `SOUNDBITES_MAX_BYTES` or past
-   * the device's room.
+   * the device's room. When `supersedes` names one still kept, it becomes
+   * an earlier one in the same write (D2): a Redo of it.
    */
-  save: (bite: Soundbite, audio: Blob, replace: string | null) => Promise<void>
-  /** Lets go of each of `ids` still kept, in one transaction. */
-  remove: (ids: ReadonlyArray<string>) => Promise<void>
+  save: (
+    bite: Soundbite,
+    audio: Blob,
+    replace: string | null,
+    supersedes?: string | null
+  ) => Promise<void>
   /**
-   * Calls `listener` after each save or remove commits, on this page, so a
-   * page showing the list can re-read it. Returns an unsubscribe.
+   * Sets `id` aside (D3): out of the page's list, still kept, audio and
+   * all, until home holds it and a seventh makes room (`./policy`).
+   */
+  setAside: (id: string) => Promise<void>
+  /**
+   * Calls `listener` after each write commits, on this page, so a page
+   * showing the list can re-read it. Returns an unsubscribe.
    */
   subscribe: (listener: () => void) => () => void
 }
@@ -113,7 +122,7 @@ export function indexedDbSoundbiteStore(): SoundbiteStore {
       return blob instanceof Blob ? blob : null
     },
 
-    async save(bite, audio, replace): Promise<void> {
+    async save(bite, audio, replace, supersedes = null): Promise<void> {
       const db = await connect()
       const leaving = displacedBy(
         await allKept(db.transaction(META, "readonly").objectStore(META)),
@@ -168,6 +177,10 @@ export function indexedDbSoundbiteStore(): SoundbiteStore {
             meta.delete(id)
             audios.delete(id)
           }
+          const redone = kept.find(
+            (each) => each.id === supersedes && !displaced.includes(each.id)
+          )
+          if (redone !== undefined) meta.put({ ...redone, standing: "earlier" })
           meta.put(bite)
           audios.put(audio, bite.id)
           await done(tx)
@@ -177,12 +190,11 @@ export function indexedDbSoundbiteStore(): SoundbiteStore {
       changed()
     },
 
-    async remove(ids): Promise<void> {
-      const tx = (await connect()).transaction([META, AUDIO], "readwrite")
-      for (const id of ids) {
-        tx.objectStore(META).delete(id)
-        tx.objectStore(AUDIO).delete(id)
-      }
+    async setAside(id): Promise<void> {
+      const tx = (await connect()).transaction(META, "readwrite")
+      const meta = tx.objectStore(META)
+      const row: unknown = await result(meta.get(id))
+      if (isSoundbite(row)) meta.put({ ...row, standing: "set-aside" })
       await done(tx)
       changed()
     },

@@ -4,11 +4,10 @@
  * table, in the person's terms: what is kept where, and what to do next,
  * never the machinery (`__tests__/words.test.ts` holds that).
  */
-import { formatSize, listed } from "@some-ui/core-utils"
+import { formatSize, formatTimecode, listed } from "@some-ui/core-utils"
 import type { Idea, Look, Voice } from "@some-ui/video-render"
 import type { RecordingFailure } from "@some-ui/voice-capture"
 import { RECORDING_FAILURE_COPY } from "@some-ui/voice-capture"
-import { formatDuration } from "@soundbites/lib/format"
 import type { IdeaStage, QuestionId } from "@soundbites/lib/idea/model"
 import type { ShelfNotice } from "@soundbites/lib/idea/shelf"
 import type { LetGo, LetGoChoice } from "@soundbites/lib/project/let-go"
@@ -457,15 +456,15 @@ export const STUDIO_WORDS = {
     notThisVideo:
       "That render is of a version this phone doesn't have. Open Claude's version first.",
     noteLabel: "Your note",
-    noteHere: (ms: number): string => `Note here · ${formatDuration(ms)}`,
+    noteHere: (ms: number): string => `Note here · ${formatTimecode(ms)}`,
     noted: "Noted, pinned to this moment.",
     /** Saying a note instead of typing it (ST5), pinned where it was begun. */
-    say: (ms: number): string => `Say a note · ${formatDuration(ms)}`,
+    say: (ms: number): string => `Say a note · ${formatTimecode(ms)}`,
     gettingReady: "Getting ready…",
     listening: "Listening…",
     stop: "Done talking",
     finishing: "Finishing…",
-    keepSaid: (ms: number): string => `Note this at ${formatDuration(ms)}`,
+    keepSaid: (ms: number): string => `Note this at ${formatTimecode(ms)}`,
     again: "Say it again",
     drop: "Let it go",
     heardNothing: "Didn't hear anything. Say it again, or type it.",

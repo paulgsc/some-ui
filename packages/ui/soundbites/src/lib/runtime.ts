@@ -1,19 +1,24 @@
 /**
- * Runs the soundbites machine (`machine.ts`) against the outside world. It
- * holds the handles (the recording, the playback, the clock), turns each
- * effect into a call on a port, and turns each result into an event. It
- * decides nothing: whether a result still matters, what to do next and what
- * the page shows are all `step`'s. It is plain TypeScript, so deleting React
- * deletes none of this.
- *
- * The ports are the browser's machines, which we do not control
- * (`getUserMedia`/`MediaRecorder`, `Audio`, IndexedDB, the page's visibility).
- * Each is reached through a narrow function whose results come back as our
- * own events, and nothing here records the state of one of them.
+ * Runs the soundbites page (`machine.ts`) and its take pattern against the
+ * outside world. The take (the microphone, the clock, a playback) is the
+ * take pattern's runtime (`@some-ui/voice-capture`'s `takePattern`, with
+ * the page's options, `SOUNDBITE_TAKES`), over the page's store: `keep`
+ * saves a take as a soundbite (`keptBite`), `setAside` marks one let go
+ * (D3), `audio` reads one back. This holds the pattern and the store's
+ * subscription, turns each page effect into a call, and each result into an
+ * event. It decides nothing: whether a result still matters and what the
+ * page shows are `step`'s and the pattern's. It is plain TypeScript, so
+ * deleting React deletes none of this.
  */
 import { assertNever } from "@some-ui/core-utils"
-import type { Playback, Player, StartRecording } from "@some-ui/voice-capture"
-import { takeRunner } from "@some-ui/voice-capture"
+import type {
+  MicOwner,
+  Player,
+  StartRecording,
+  TakeDeadlines,
+  TakePattern,
+} from "@some-ui/voice-capture"
+import { takePattern } from "@some-ui/voice-capture"
 
 import type {
   SoundbitesEffect,
@@ -22,8 +27,8 @@ import type {
   SoundbiteSituation,
   SoundbitesState,
 } from "./machine"
-import { initialState, step } from "./machine"
-import { TAKE_TICK_MS } from "./policy"
+import { initialState, keptBite, step } from "./machine"
+import { SOUNDBITE_ITEM, SOUNDBITE_TAKES, TAKE_TICK_MS } from "./policy"
 import type { SoundbiteStore } from "./store"
 import { SoundbitesFullError } from "./store"
 import type { SoundbiteSource } from "./types"
@@ -41,6 +46,10 @@ export type SoundbitesPorts = {
    * unsubscribe.
    */
   onVisibility: (listener: (hidden: boolean) => void) => () => void
+  /** The phone's one microphone unless a test gives its own. */
+  owner?: MicOwner | undefined
+  /** The microphone's deadlines unless a test gives its own. */
+  deadlines?: TakeDeadlines | undefined
 }
 
 export type SoundbitesOptions = {
@@ -56,12 +65,15 @@ export type SoundbitesRuntime = {
   getSnapshot: () => SoundbitesState
   subscribe: (listener: () => void) => () => void
   dispatch: (intent: SoundbitesIntent) => void
+  /** The page's take pattern: its button, rows and what plays. */
+  pattern: TakePattern
   /** Where the app stands, read once as each take is kept. */
   setSituation: (situation: () => SoundbiteSituation) => void
   /**
    * The page is showing: reads the list, auto-starts if asked, and listens
-   * for the page being hidden or shown and for the store changing. Returns the matching detach, which keeps a
-   * take in progress. Attaching again after detaching resumes.
+   * for the page being hidden or shown and for the store changing. Returns
+   * the matching detach, which keeps a take in progress. Attaching again
+   * after detaching resumes.
    */
   attach: () => () => void
 }
@@ -72,7 +84,8 @@ export function createSoundbites(
 ): SoundbitesRuntime {
   let state = initialState(options.source)
   let situation: (() => SoundbiteSituation) | null = null
-  let playback: Playback | null = null
+  /** Counts attaches, so a detach followed at once by one is no leaving. */
+  let attachments = 0
   const listeners = new Set<() => void>()
 
   const dispatch = (event: SoundbitesEvent): void => {
@@ -84,54 +97,45 @@ export function createSoundbites(
     for (const effect of next.effects) run(effect)
   }
 
-  // The take's own results become this page's events; a kept take is
-  // stamped here with what the app knew as it was handed over.
-  const take = takeRunner(
+  const pattern = takePattern(
     {
       startRecording: ports.startRecording,
       now: ports.now,
+      owner: ports.owner,
+      deadlines: ports.deadlines,
+      player: ports.player,
       tickMs: TAKE_TICK_MS,
+      // A kept take is stamped here with what the app knew as it was
+      // handed over.
+      keep: (take, _answers, supersedes, done) => {
+        const { bite, replace } = keptBite(state, take, {
+          id: ports.newId(),
+          at: new Date(ports.now()).toISOString(),
+          situation: readSituation(),
+        })
+        ports.store.save(bite, take.blob, replace, supersedes).then(
+          () => {
+            dispatch({ type: "saved" })
+            done({ outcome: "kept", id: bite.id })
+          },
+          (error: unknown) =>
+            done({
+              outcome: error instanceof SoundbitesFullError ? "full" : "failed",
+            })
+        )
+      },
+      setAside: (id) => {
+        ports.store
+          .setAside(id)
+          .catch(() => dispatch({ type: "setAsideFailed" }))
+      },
+      audio: (id) => ports.store.audio(id),
     },
-    (signal) =>
-      dispatch(
-        signal.type === "taken"
-          ? {
-              ...signal,
-              id: ports.newId(),
-              at: new Date(ports.now()).toISOString(),
-              situation: readSituation(),
-            }
-          : signal
-      )
+    SOUNDBITE_TAKES
   )
-
-  const stopPlayback = (): void => {
-    playback?.stop()
-    playback = null
-  }
 
   function run(effect: SoundbitesEffect): void {
     switch (effect.type) {
-      case "openMic":
-      case "startClock":
-      case "stopClock":
-      case "finishTake":
-      case "discardTake": {
-        take.run(effect)
-        return
-      }
-      case "save": {
-        const { bite } = effect
-        ports.store.save(bite, effect.audio, effect.replace).then(
-          () => dispatch({ type: "saved", bite }),
-          (error: unknown) =>
-            dispatch({
-              type: "saveFailed",
-              full: error instanceof SoundbitesFullError,
-            })
-        )
-        return
-      }
       case "read": {
         const { seq } = effect
         ports.store.list().then(
@@ -140,37 +144,12 @@ export function createSoundbites(
         )
         return
       }
-      case "loadAudio": {
-        const { seq } = effect
-        ports.store.audio(effect.id).then(
-          (audio) =>
-            dispatch(
-              audio === null
-                ? { type: "audioMissing", seq }
-                : { type: "audioLoaded", seq, audio }
-            ),
-          () => dispatch({ type: "audioUnreadable", seq })
-        )
+      case "startTake": {
+        pattern.tap(SOUNDBITE_ITEM)
         return
       }
-      case "startPlayback": {
-        stopPlayback()
-        const { seq } = effect
-        playback = ports.player.play(effect.audio)
-        const report = (): void => dispatch({ type: "playbackEnded", seq })
-        playback.ended.then(report, report)
-        return
-      }
-      case "stopPlayback": {
-        stopPlayback()
-        return
-      }
-      case "remove": {
-        const { id } = effect
-        ports.store.remove([id]).then(
-          () => dispatch({ type: "removed", id }),
-          () => dispatch({ type: "removeFailed" })
-        )
+      case "leaveTake": {
+        pattern.leave()
         return
       }
       case "announceAutoStart": {
@@ -201,10 +180,13 @@ export function createSoundbites(
       }
     },
     dispatch,
+    pattern,
     setSituation(next): void {
       situation = next
     },
     attach(): () => void {
+      attachments += 1
+      const attachment = attachments
       // Visibility first: an auto-start must know whether the page is on
       // screen before it opens the microphone.
       const unwatchPage = ports.onVisibility((hidden) =>
@@ -217,7 +199,12 @@ export function createSoundbites(
       return () => {
         unwatchPage()
         unwatchStore()
-        dispatch({ type: "left" })
+        // Left, unless attached again at once: StrictMode's remount
+        // detaches and attaches in one go, and a take still opening must
+        // not be let go for it.
+        queueMicrotask(() => {
+          if (attachments === attachment) dispatch({ type: "left" })
+        })
       }
     },
   }
