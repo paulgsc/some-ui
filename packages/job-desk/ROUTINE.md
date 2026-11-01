@@ -138,7 +138,7 @@ record (§9) and the summary (§10). Nothing ends a run before those two.
 
    It prints `stands`, `why` (each reason it doesn't, in my terms), and
    what Drive holds that the index lacks: `digests` and `backfill` to put
-   back (below), and `later`, which can't go home.
+   back (below), and `later`, which can't go home (below).
 
    For each file Drive holds that the index lacks, put it back for home to
    count, once, its bytes exactly as Drive holds them, as §8.5 puts today's
@@ -149,18 +149,21 @@ record (§9) and the summary (§10). Nothing ends a run before those two.
 
    - **A digest** in `Brief/` (its `digests`): always. It is one a run put in
      Drive alone, on a day the mailbox wasn't usable (step 1).
-   - **A decisions or scouts file from before the mailbox** (its
-     `backfill`), one named for a day before 2026-10-23 (`decisions-2026-10-20.json`,
+   - **A decisions or scouts file only Drive holds** (its `backfill`), one
+     named for a day before 2026-11-04 (`decisions-2026-10-20.json`,
      `scouts-20261021T101500.json`): the one-time backfill I agreed to
-     (https://github.com/paulgsc/server/issues/509#issuecomment-6547096403).
+     (https://github.com/paulgsc/server/issues/509#issuecomment-6547096403),
+     widened to the day the phone files every Jobs file home
+     (https://github.com/paulgsc/some-ui/issues/2393#issuecomment-6552332294).
      The mailbox takes these names in `brief` only for a day from
-     2026-10-17, when the phone could first share one, through 2026-10-22,
+     2026-10-17, when the phone could first share one, through 2026-11-03,
      so the backfill ends by itself once Drive's old files are in. Home
      counts them as mine and names them in `from.backfill`.
-   - **A decisions or scouts file named for 2026-10-23 or later** (its
-     `later`) is one only Drive holds ("What still needs Drive"). The
-     mailbox refuses it (`422`), so don't put it. While one is in Drive and
-     not in the index, the index doesn't stand; say which in the summary.
+   - **A decisions or scouts file named for 2026-11-04 or later** (its
+     `later`, "What still needs Drive"): the phone files these home itself,
+     so one only Drive holds is not expected. The mailbox refuses it (`422`),
+     so don't put it; while one is in Drive and not in the index, the index
+     doesn't stand: say which in the summary.
 
    A `409` means the mailbox holds other bytes under that name: say so in
    the summary. A `422` for a backfill file means the mailbox refuses it (its
@@ -962,6 +965,6 @@ why; the files taken in from it; or that it was skipped, and why); Drive
 read from it because only Drive holds it, any name whose bytes differed from
 the mailbox's, or, without it, what that left undone); home's index (whether
 it stood, and when it didn't, why, and what was put back for home to count:
-digests, and pre-mailbox decisions and scouts files, and any the mailbox
+digests, and decisions and scouts files only Drive holds, and any the mailbox
 refused, which can't go home); the run record (its outcome and problems, and
 whether the mailbox took it); and anything skipped, with why.

@@ -10,6 +10,7 @@
  * after it has.
  */
 import type {
+  LetGoChoice,
   Project,
   ProjectStore,
   Sitting,
@@ -31,8 +32,22 @@ type StudioKeeping = {
   readonly notesForHome: (
     projects: ReadonlyArray<Project>
   ) => ReadonlyArray<StudioNote>
-  /** Lets the audio of each take home holds (`held`) leave the phone. */
+  /**
+   * Marks each take home holds (`held`) as kept there, and lets the audio of
+   * each the owner's choice allows leave the phone (HF11, LG1).
+   */
   readonly letGoHeldTakes: (held: ReadonlySet<string>) => Promise<number>
+  /** The owner's choice of when a take home holds leaves the phone, as kept. */
+  readonly letGo: () => LetGoChoice
+  /** The ids of the takes home holds that are still on the phone. */
+  readonly waitingIds: (
+    projects: ReadonlyArray<Project>
+  ) => ReadonlyArray<string>
+  /**
+   * Lets go each take home holds and says Drive has too (`onDrive`), as the
+   * owner's choice allows (HF11, LG1).
+   */
+  readonly letGoOnDrive: (onDrive: ReadonlySet<string>) => Promise<number>
   readonly sittingKey: (sitting: Sitting) => string
 }
 

@@ -15,7 +15,8 @@
  *   every field it keeps;
  * - a Studio take still on the phone (`@some-ui/soundbites`' `notesForHome`,
  *   handed in by Studio's route, `lib/studio-keeping`): `studio`, the take as
- *   `<project>:<shot>:<take>`, when it was recorded;
+ *   `<project>:<shot>:<take>`, when it was recorded; once home holds it, it
+ *   waits on the phone for the owner's choice of when it leaves (HF11);
  * - a soundbite (`@some-ui/soundbites`' store, handed in by its page,
  *   `lib/soundbite-keeping`; HF5 #2180): `soundbite`, how it came to be
  *   recorded, when it was; its record goes as a study note (`./notes`);
@@ -37,13 +38,23 @@
  *   item's audio or record leaves only once home has read it back (`held`,
  *   `letGoHeld`, the clear of finished sessions home holds, and a capped
  *   store making room with what home holds), and a Drive copy is only ever
- *   a copy.
+ *   a copy. A Studio take's audio leaves only once home holds it **and** the
+ *   owner's choice allows it (HF11, #2401; soundbites' `lib/project/let-go`):
+ *   none before they choose, every one under "Let takes go once home has
+ *   them", and under "Keep each until Drive has it too" only the one they
+ *   tap "Drive has it" on, or one home says Drive has
+ *   (`./on-drive`: a Build Journal session's list of Drive's takes, which
+ *   home matches by SHA-256; home never reaches Drive).
  * - _Family:_ every share kind (reflections; the study-context export with
  *   its soundbites, grammar-lens entries and takes, and LeetType answers and
  *   takes; Studio takes) and every cap that makes room (soundbites, lens
  *   takes, LeetType takes and answer notes, and the grammar-lens record,
  *   HF5 #2180) × every home state (held; waiting; unpaired; off the LAN,
- *   which the phone sees alike as not held).
+ *   which the phone sees alike as not held); for Studio takes, × every
+ *   choice (none yet, once home has them, until Drive has it too) × the
+ *   owner's "Drive has it" on the take (tapped or not), home's word that
+ *   Drive has it (said, not said, or not read) and the share sheet's
+ *   "They're in Drive" (said or not), which lets nothing go.
  * - _Proof:_ `lib/jobs/__tests__/runtime.test.ts` ("LG1": home's word lets
  *   a note's audio go, and a file a run missed is filed again with the audio
  *   still on the phone), `lib/agent-export/index.test.ts`
@@ -52,9 +63,18 @@
  *   ("LG1": an ask removes no scene note), `lib/scene-voice`'s
  *   `runtime.test.ts` ("LG1": `letGo` removes the notes home holds that an
  *   ask home holds carried, and no other),
- *   soundbites' `project/__tests__/model.test.ts` and
- *   `studio/__tests__/studio.test.ts` ("LG1": a take kept by Drive stays on
- *   the phone; only `home` lets it go), and for the caps (HF5) soundbites'
+ *   soundbites' `project/__tests__/model.test.ts` ("LG1": a take kept by
+ *   Drive stays on the phone; only `home` lets it go),
+ *   `project/__tests__/home.test.ts` ("LG1": every choice, home holding the
+ *   take; "LG1: on home's word…": none before the choice, and a take home
+ *   does not hold never) and `studio/__tests__/studio.test.ts` ("LG1": a
+ *   take kept by Drive stays on the phone; "a take home holds (HF11, LG1)":
+ *   nothing before the choice, every one on "once home has them", only the
+ *   tapped one on "until Drive has it too", none when the choice can't be
+ *   kept), `lib/home-link/__tests__/voice-send.test.ts` ("LG1": home's word
+ *   is asked for only under "until Drive has it too", and a read that fails
+ *   lets nothing go) and `on-drive.test.ts` ("LG1": an answer that is not
+ *   home's word is none), and for the caps (HF5) soundbites'
  *   `__tests__/policy.test.ts` and `components/soundbites/index.test.tsx`,
  *   `lib/takes-desk/__tests__/runtime.test.ts`,
  *   `lib/leetype-takes/index.test.ts` and topik's
@@ -93,6 +113,7 @@ import { NO_PASS, passWith, runEnd } from "@/lib/voice-home/model"
 import { homeLink, paired } from "./index"
 import { lensEntriesHeld } from "./lens-record"
 import { notesHeld } from "./notes"
+import { askOnDrive } from "./on-drive"
 
 /** A finished voice reflection, as home is told it; null for any other. */
 export function reflectionNote(reflection: Reflection): VoiceOut | null {
@@ -474,19 +495,59 @@ function copySoon(): void {
     })
 }
 
+/** Home's word on Drive could not be read or acted on, to the native log. */
+function unheard(error: unknown): void {
+  reportFailure({
+    port: "voice notes (which takes Drive has)",
+    error: {
+      ...toIntentError(error),
+      summary:
+        "Home couldn't be asked which Studio takes Drive has, so those takes stay on this phone.",
+    },
+  })
+}
+
+/**
+ * Under "Keep each until Drive has it too", asks home which of the Studio
+ * takes it holds, still on this phone, a Build Journal session found in
+ * Drive (`./on-drive`, HF11), and lets those go, as the owner's choice allows (LG1). Under any
+ * other choice it asks nothing: "once home has them" lets them go already,
+ * and before a choice none leaves. What it cannot read lets nothing go, and
+ * the run it rides ends as its notes did.
+ */
+async function letGoOnHomesWord(send: HomeCall): Promise<void> {
+  const studio = studioKeeping()
+  if (studio?.letGo() !== "drive") return
+  try {
+    const ids = studio.waitingIds(await studio.store.list())
+    if (ids.length === 0) return
+    const onDrive = await askOnDrive(send, ids)
+    if (onDrive === null) {
+      unheard(new Error("home did not answer which takes Drive has"))
+      return
+    }
+    await studio.letGoOnDrive(onDrive)
+  } catch (error) {
+    unheard(error)
+  }
+}
+
 /**
  * The voice lane's exchange: a copy pass first, so a note the watch could
  * not copy yet (no room, storage that would not keep its record) is tried
- * again, then each copy waiting sent (`exchangeVoice`). A run that sent all
- * it had still fails, saying why, if that pass left a note it could copy
- * uncopied (`runEnd`, LA14).
+ * again, then each copy waiting sent (`exchangeVoice`), then, once that
+ * synced, home's word on which Studio takes Drive has (`letGoOnHomesWord`).
+ * A run that sent all it had still fails, saying why, if that pass left a
+ * note it could copy uncopied (`runEnd`, LA14).
  */
 export async function sendVoice(send: HomeCall): Promise<HomeExchanged> {
   copySoon()
   const running = copying
   if (running !== null) await running
   const pass = running === null ? NO_PASS : lastPass
-  return runEnd(pass, await exchangeVoice(phoneVoiceHome().keeping, send))
+  const exchanged = await exchangeVoice(phoneVoiceHome().keeping, send)
+  if (exchanged.kind === "synced") await letGoOnHomesWord(send)
+  return runEnd(pass, exchanged)
 }
 
 /** Home's held notes as a set, made again only when the list changes. */

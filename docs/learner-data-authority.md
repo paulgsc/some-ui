@@ -41,6 +41,7 @@ toward this frame without doing so is a finding.
 | Every share sheet's let-go (done: HF1, #2176, promise LG1); the Jobs share sheet itself and the archive's (done)     | HF2, #2177        |
 | The drama prompt's share sheet, and its scene notes let go on a share (done: LA18 declared, LA13 reworded)           | HF4, #2179        |
 | LA13's notes (done: soundbites, lens and LeetType takes); LA15's drain (done: their notes); the archive (done: gone) | HF5, #2180        |
+| LG1's Studio takes, which left the phone as soon as home held them (done: they wait on the owner's choice)           | HF11, #2401       |
 
 HF8 (#2182, owner's decision D3: no per-domain switch, and no consent log told
 to home or enforced by home) removed the phone's consent machinery: the
@@ -80,6 +81,22 @@ makes room with the oldest home holds, and is refused while home holds none
 nothing go, and "Archive finished sessions" is gone: home already holds
 finished sessions. The study list's delete does not keep a home copy first
 yet (the HF5 issue).
+
+HF11 (#2401; the owner, 2026-10-31: "no silent behavior … a purposeful
+action by user") stops a Studio take leaving the phone the moment home holds
+it, which left a take home received before it was shared to Drive with no way
+to Drive from the phone. Once home holds a take, Studio's Start offers one
+choice, kept on the phone and changeable: "Let takes go once home has them",
+or "Keep each until Drive has it too", where each take home holds waits with
+its own "Drive has it". Until the owner chooses, none leaves, and at the takes
+cap Record names the choice that would free room (LG1). Home confirming that
+Drive has a take lets it go too (route a on #2401, the owner's decision):
+a Build Journal session puts the SHA-256 of each take it finds in Drive in
+the Jobs mailbox, home matches them against the takes it holds
+(paulgsc/server `studio_take_on_drive`), and the voice lane's run asks home,
+by one `GET /voice-notes/on-drive` per 100 waiting takes, of their ids
+(`lib/home-link/on-drive.ts`), only under "Keep each until Drive has it
+too". Home never reaches Drive.
 
 ## The two questions
 
@@ -360,7 +377,10 @@ declared (checked by reading every call site and by the tests named).
   `lib/device-backend/native-http` (the one module that names
   `CapacitorHttp`), which only `lib/home-link` calls, and, but for the drain
   of what this phone keeps (LA15: aph, the Jobs record, Practice's record,
-  voice notes, through `lib/home-link/lanes`) and Korean's look at the
+  voice notes, through `lib/home-link/lanes`, whose voice run also reads,
+  by one `GET /voice-notes/on-drive` per 100 waiting takes in
+  `lib/home-link/on-drive.ts`, which
+  Studio takes home holds it knows Drive holds too, HF11) and Korean's look at the
   routine's files (`lib/home-link/routine`, one `GET /routine/files` per
   look and one `PUT /routine/opened` of names per open, started by the
   lesson's own query and the open), which are the other callers of
@@ -397,6 +417,9 @@ declared (checked by reading every call site and by the tests named).
   anywhere but a press handler in the Home server block or a module that
   block calls; one that calls its `keep` from anywhere but
   `lib/home-link/lanes.ts` (LA15) and `lib/home-link/routine.ts`; one that
+  has `lib/home-link/on-drive.ts` send anything but its `GET`s, one per 100
+  waiting takes, or lets
+  anything but the voice run (`voice-copy.ts`'s `sendVoice`) read it; one that
   sends from `createHomeLink` or `load`, or, outside LA15's watch and
   Korean's look, from a `useEffect`, a timer, a `visibilitychange` or
   `online` listener; one that retries a failed home request, or queues one
@@ -524,7 +547,8 @@ next scene (`next-scene`), by when it was kept, shared or not (HF2, #2177;
 (Undo, and what a bite said first was about) has run out; a Studio take
 still on the phone by its project, scene and take
 (`<project>:<shot>:<take>`), when it was recorded, its audio leaving the
-phone once home holds it (soundbites' `letGoHeldTakes`); a soundbite, once
+phone once home holds it (soundbites' `letGoHeldTakes`) and the owner's
+choice allows it (LG1); a soundbite, once
 its page has handed its store in (`lib/soundbite-keeping`), by how it came
 to be recorded and when; a grammar-lens take by its line, and a LeetType
 take by its session file and screen (`<file>:<screen>`), each by when it was
@@ -548,11 +572,13 @@ only from the lane's hook and the scene notes read for home only there
   only `useVoiceHome`'s effect starts, and from the lane's exchange,
   `sendVoice`); the lane's runs are asked for as LA15 says, its
   exchange is `sendVoice` (a copy pass, then `exchangeVoice` over the
-  store's `keeping`, its end read with the pass's by `runEnd`, LA14), and a
-  copy goes only once home holds its note. Letting a note go where it was
-  recorded never removes its copy, and the drama's draft lets a scene note
-  go on home's word only once home holds the ask that named it too
-  (`prompted`, which only LA18's `letGoHeldPrompts` sets).
+  store's `keeping`, its end read with the pass's by `runEnd`, LA14, then,
+  only once that exchange is `synced`, one `letGoOnHomesWord(send)`, home's
+  word on which Studio takes Drive has, HF11, which does not change the
+  run's end), and a copy goes only once home holds its note. Letting a note
+  go where it was recorded never removes its copy, and the drama's draft
+  lets a scene note go on home's word only once home holds the ask that
+  named it too (`prompted`, which only LA18's `letGoHeldPrompts` sets).
 - _Falsified by:_ a hunk LA15's falsifier names for the shared files; a hunk
   to `lib/scene-voice/runtime.ts` that lets `letGo` remove a scene note that
   is not `prompted` (an ask home holds named it, LA18) or that home does not
@@ -561,11 +587,13 @@ only from the lane's hook and the scene notes read for home only there
   `copyAll`, removes its `paired()` checks (before every note and again
   after its audio is read), starts
   `copySoon` from anything but `watchVoiceNotes`, its subscriptions and
-  `sendVoice`, or makes `sendVoice` anything but a copy pass and then
-  `exchangeVoice` over `phoneVoiceHome().keeping`, whose end only `runEnd`
-  may change; a hunk to `lib/home-link/lanes.ts` that makes `paired`
-  anything but the link holding a pairing; a hunk to
-  `lib/home-link/voice.ts` that makes the lane's `exchange` anything but
+  `sendVoice`, or makes `sendVoice` anything but a copy pass, then
+  `exchangeVoice` over `phoneVoiceHome().keeping`, then one
+  `letGoOnHomesWord(send)` only after a `synced` exchange, whose end only
+  `runEnd` may change (so also one that lets `letGoOnHomesWord` throw, or
+  its outcome reach what `sendVoice` returns); a hunk to
+  `lib/home-link/lanes.ts` that makes `paired` anything but the link
+  holding a pairing; a hunk to `lib/home-link/voice.ts` that makes the lane's `exchange` anything but
   `sendVoice`, or calls `watchVoiceNotes` from anywhere but `useVoiceHome`'s
   effect, or drops its cleanup; a hunk to `lib/scene-voice` that makes
   `sceneNotes` read anything but the draft's list, or lists a note before
@@ -674,7 +702,9 @@ home answers with it unchanged (`packages/ui/aph/src/lib/__tests__/sync.test.ts`
 `home.test.ts`; `lib/jobs/__tests__/home.test.ts`; `lib/home-link/__tests__/drain.test.ts`,
 which also holds that the drain sends only finished sessions and what
 changed since home last held it, lets nothing go, and stops before its next
-request; `voice-send.test.ts`), that Practice's lane asks for a run on a
+request; `voice-send.test.ts`, which also holds that the voice run asks
+home which Studio takes Drive has only under "Keep each until Drive has it
+too", HF11, and lets go only what home names), that Practice's lane asks for a run on a
 new soundbite, LeetType answer note or lens entry and counts each waiting
 until home holds it (`practice.test.ts`), one run at a time and home being busy said
 as such (`kept.test.ts`), and that the shell's drain sends nothing unpaired

@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto"
+import { readFileSync } from "node:fs"
+import { fileURLToPath } from "node:url"
 import type { Deps } from "@mailbox/core"
 import {
   ARCHIVE_MIN_AGE_DAYS,
@@ -295,20 +297,25 @@ describe("roles", () => {
   })
 })
 
-describe("the routine's backfill of pre-mailbox files (MB2)", () => {
+describe("the routine's backfill of files only Drive holds (MB2)", () => {
   const OLD_DECISIONS = "decisions-2026-10-20.json"
   const OLD_SCOUTS = "scouts-20261022T235959.json"
 
-  it("the routine puts a decisions or scouts file from before the mailbox in brief, once, and home reads it", async () => {
+  it("the routine puts a decisions or scouts file only Drive holds in brief, once, and home reads it", async () => {
     const d = deps()
-    // The days from the phone's first share (2026-10-17) to the mailbox's.
+    // The days from the phone's first share (2026-10-17) to the last before
+    // it filed every Jobs file home (DRIVE_ONLY_ENDED, 2026-11-04).
     for (const [name, body] of [
       [OLD_DECISIONS, DECISIONS],
       ["decisions-2026-10-17.json", DECISIONS],
       ["decisions-2026-10-20-2.json", DECISIONS],
       ["decisions-2026-10-22-99.json", DECISIONS],
+      ["decisions-2026-10-23.json", DECISIONS],
+      ["decisions-2026-10-26-5.json", DECISIONS],
+      ["decisions-2026-11-03.json", DECISIONS],
       ["scouts-20261017T000000.json", SCOUTS],
       [OLD_SCOUTS, SCOUTS],
+      ["scouts-20261103T235959.json", SCOUTS],
     ] as const) {
       expect([name, (await put(d, "brief", name, { body })).status]).toEqual([
         name,
@@ -330,13 +337,13 @@ describe("the routine's backfill of pre-mailbox files (MB2)", () => {
     ).toBe(409)
   })
 
-  it("takes only a name the phone could have written before the mailbox opened, and holds each to its own schema", async () => {
+  it("takes only a name the phone could have written before it filed every Jobs file home, and holds each to its own schema", async () => {
     const d = deps()
     for (const [name, body] of [
-      // From the day the mailbox opened.
-      ["decisions-2026-10-23.json", DECISIONS],
-      ["decisions-2026-11-02-3.json", DECISIONS],
-      ["scouts-20261023T000000.json", SCOUTS],
+      // From the day the phone files every Jobs file home.
+      ["decisions-2026-11-04.json", DECISIONS],
+      ["decisions-2026-11-09-3.json", DECISIONS],
+      ["scouts-20261104T000000.json", SCOUTS],
       // Before the phone could share one, or in no year it could.
       ["decisions-2026-10-16.json", DECISIONS],
       ["scouts-20261016T235959.json", SCOUTS],
@@ -392,6 +399,154 @@ describe("the routine's backfill of pre-mailbox files (MB2)", () => {
     expect(
       (await put(d, "decisions", OLD_DECISIONS, { body: DECISIONS })).status
     ).toBe(403)
+  })
+})
+
+describe("the build-journal session's list of the takes Drive holds (MB2, HF11)", () => {
+  const SHA_A = "a".repeat(64)
+  const SHA_B = `${"0123456789abcdef".repeat(4)}`
+  const LIST = {
+    schema: "some-ui.drive-takes/1",
+    at: "2026-11-01T09:15:00.000Z",
+    takes: [{ sha256: SHA_A }, { sha256: SHA_B }],
+  }
+  const NAME = "drive-takes-20261101T091500Z.json"
+
+  it("the routine puts one in brief, once, and home reads it there", async () => {
+    const d = deps()
+    const body = JSON.stringify(LIST)
+    expect((await put(d, "brief", NAME, { body })).status).toBe(201)
+    expect((await put(d, "brief", NAME, { body })).status).toBe(200)
+    expect(
+      (
+        await put(d, "brief", NAME, {
+          body: JSON.stringify({ ...LIST, takes: [] }),
+        })
+      ).status
+    ).toBe(409)
+    const read = await send(d, "GET", `/v1/brief/items/${NAME}`, {
+      token: HOME,
+    })
+    expect(read.status).toBe(200)
+    expect(await read.text()).toBe(body)
+    // Home lists it with the digests, so it needs no listing of its own.
+    const listed = await send(d, "GET", "/v1/brief/items", { token: HOME })
+    expect(await json(listed)).toMatchObject({
+      items: [expect.objectContaining({ name: NAME })],
+    })
+    // A folder the phone puts in does not take its name.
+    expect(
+      (await put(d, "decisions", NAME, { token: HOME, body })).status
+    ).toBe(422)
+  })
+
+  it("takes an empty list: Drive holds no takes yet", async () => {
+    const d = deps()
+    const body = JSON.stringify({ ...LIST, takes: [] })
+    expect((await put(d, "brief", NAME, { body })).status).toBe(201)
+  })
+
+  it("takes only SHA-256s and when Drive was listed: no audio, no Drive file or link", async () => {
+    const d = deps()
+    const shapes: ReadonlyArray<readonly [unknown, string]> = [
+      [
+        { ...LIST, audio: "UklGRg==" },
+        "a list of takes carries no audio: Drive and home keep it",
+      ],
+      [
+        { ...LIST, driveFolder: "x" },
+        "a list of takes names no Drive file or link",
+      ],
+      [{ ...LIST, folder: "takes" }, "folder is not part of a list of takes"],
+      [
+        { ...LIST, takes: [{ sha256: SHA_A, fileId: "1AbC" }] },
+        "a list of takes names no Drive file or link",
+      ],
+      [
+        { ...LIST, takes: [{ sha256: SHA_A, name: "take.webm" }] },
+        "name is not part of a take: only its sha256",
+      ],
+      [
+        { ...LIST, takes: [{ sha256: SHA_A, bytes: 3 }] },
+        "a list of takes carries no audio: Drive and home keep it",
+      ],
+      [
+        {
+          ...LIST,
+          takes: [{ sha256: SHA_A }],
+          note: "https://drive.google.com/file/d/1AbC",
+        },
+        "a list of takes names no Drive file or link",
+      ],
+      [
+        { ...LIST, takes: [{ sha256: SHA_A.toUpperCase() }] },
+        "sha256 must be the recording's SHA-256, in lower-case hex",
+      ],
+      [
+        { ...LIST, takes: [{ sha256: "a".repeat(63) }] },
+        "sha256 must be the recording's SHA-256, in lower-case hex",
+      ],
+      [{ ...LIST, takes: [SHA_A] }, "each take must be an object"],
+      [
+        { ...LIST, takes: [{ sha256: SHA_A }, { sha256: SHA_A }] },
+        "each take is named once",
+      ],
+      [{ ...LIST, takes: { sha256: SHA_A } }, "takes must be a list"],
+      [{ ...LIST, at: "today" }, "at must be when Drive's takes were listed"],
+      [
+        { ...LIST, at: "2026-11-01T09:15:01.000Z" },
+        "the name must carry when Drive's takes were listed, in UTC",
+      ],
+      [
+        {
+          ...LIST,
+          takes: Array.from({ length: 10_001 }, (_, n) => ({
+            sha256: n.toString(16).padStart(64, "0"),
+          })),
+        },
+        "takes may name at most 10000",
+      ],
+    ]
+    for (const [body, why] of shapes) {
+      const answer = await put(d, "brief", NAME, { body: JSON.stringify(body) })
+      expect([why, answer.status]).toEqual([why, 422])
+      expect(await json(answer)).toEqual({ error: why })
+    }
+    for (const name of [
+      "drive-takes-20261101T091500.json",
+      "drive-takes-2026-11-01.json",
+      "drive-takes-20261101T091500Z.webm",
+      "takes-20261101T091500Z.json",
+    ]) {
+      const answer = await put(d, "brief", name, {
+        body: JSON.stringify(LIST),
+      })
+      expect([name, answer.status]).toEqual([name, 422])
+    }
+    const wrong = await put(d, "brief", NAME, { body: DIGEST })
+    expect(await json(wrong)).toEqual({
+      error: "the body's schema must be some-ui.drive-takes/1",
+    })
+  })
+
+  it("refuses a key given twice, whose first value JSON.parse would drop unread", async () => {
+    const d = deps()
+    const take = (inner: string): string =>
+      `{"schema":"${LIST.schema}","at":"${LIST.at}","takes":[${inner}]}`
+    // A Drive id under a key the last value then hides, in a take and at the top.
+    for (const body of [
+      take(`{"sha256":"1AbCdEfGhIjKlMnOp","sha256":"${SHA_A}"}`),
+      take(`{"sha256":12345,"sha256":"${SHA_A}"}`),
+      take(String.raw`{"sh\u0061256":"1AbC","sha256":"${SHA_A}"}`),
+      `{"at":"1AbCdEfGhIjKlMnOp",${take(`{"sha256":"${SHA_A}"}`).slice(1)}`,
+    ]) {
+      const answer = await put(d, "brief", NAME, { body })
+      expect([body, answer.status]).toEqual([body, 422])
+      expect(await json(answer)).toEqual({ error: "each key is given once" })
+    }
+    // The same list, spaced and with each key once, is taken.
+    const spaced = take(`{ "sha256" : "${SHA_A}" }`).replaceAll(",", ", ")
+    expect((await put(d, "brief", NAME, { body: spaced })).status).toBe(201)
   })
 })
 
@@ -2058,5 +2213,19 @@ describe("when storage fails", () => {
     const written = await put(d, "brief", DIGEST_NAME, { body: DIGEST })
     expect(written.status).toBe(503)
     expect(reported).toHaveLength(2)
+  })
+})
+
+describe("the backfill's last day", () => {
+  it("is the day job-desk's index check holds too, which neither file can import", () => {
+    const bound = (path: string): string | undefined =>
+      /const DRIVE_ONLY_ENDED = "(\d{4}-\d{2}-\d{2})"/.exec(
+        readFileSync(fileURLToPath(new URL(path, import.meta.url).href), "utf8")
+      )?.[1]
+    const worker = bound("../core.ts")
+    expect(worker).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    expect(bound("../../../../packages/job-desk/src/home-index.ts")).toBe(
+      worker
+    )
   })
 })

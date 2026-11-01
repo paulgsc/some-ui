@@ -28,11 +28,13 @@ const HomeIndexSchema = z.object({
 })
 
 /**
- * The day the mailbox opened: a file named for an earlier day is pre-mailbox.
- * The Worker holds the same day (`apps/mailbox/src/core.ts`), which cannot
- * import this package.
+ * The first day the phone files every Jobs file home: a file named for an
+ * earlier day may be one only Drive holds, which the mailbox takes as the
+ * backfill (paulgsc/some-ui#2393). The Worker holds the same day
+ * (`DRIVE_ONLY_ENDED` in `apps/mailbox/src/core.ts`), which cannot import
+ * this package.
  */
-const MAILBOX_OPENED = "2026-10-23"
+const DRIVE_ONLY_ENDED = "2026-11-04"
 
 /**
  * What Drive's `some-ui jobs/` folders hold, by file name. Only the Jobs
@@ -53,15 +55,17 @@ export type IndexStanding = {
   /** Digests Drive holds that the index lacks: put each in `brief`. */
   readonly digests: ReadonlyArray<string>
   /**
-   * Pre-mailbox decisions and scouts files Drive holds that the index lacks:
-   * the one-time backfill, each put in `brief` under its Drive name.
+   * Decisions and scouts files only Drive holds, named for a day before
+   * `DRIVE_ONLY_ENDED`, that the index lacks: the one-time backfill, each put
+   * in `brief` under its Drive name.
    */
   readonly backfill: ReadonlyArray<string>
   /**
-   * Later decisions and scouts files only Drive holds: a phone on an APK
-   * without HF2 shares a file that names a voice note to Drive alone, and the
-   * mailbox refuses such a file under its Drive name. Drive gets no new ones
-   * once the owner installs an APK with HF2 (#2393).
+   * Files named for `DRIVE_ONLY_ENDED` or later that Drive holds and the index
+   * lacks: the mailbox refuses them. A phone on an APK without HF2 shared a
+   * file that names a voice note to Drive alone; the owner's phone has HF2
+   * since 2026-10-31 and files every Jobs file home, so none is expected
+   * past home's next index (#2393).
    */
   readonly later: ReadonlyArray<string>
 }
@@ -106,7 +110,7 @@ export function indexStands(
   ]
   const before = (name: string): boolean => {
     const day = decisionsFileDay(name) ?? scoutsFileDay(name)
-    return day !== null && day < MAILBOX_OPENED
+    return day !== null && day < DRIVE_ONLY_ENDED
   }
   const backfill = files.filter(before)
   const later = files.filter((name) => !before(name))
