@@ -148,6 +148,32 @@ describe("the quiet stop (GW2)", () => {
 describe("keeping a bite (GW3, GW4)", () => {
   const stopped = (): GameWeekState => step(recording(), { type: "done" }).state
 
+  it("offers Undo only on the bite on screen: one kept late goes home instead", () => {
+    const aTaken = run(stopped(), {
+      type: "taken",
+      take: take(),
+      id: "a",
+      at: T0 + 5_000,
+    }).state
+    const bTaken = run(
+      aTaken,
+      { type: "say", said: THIRD },
+      { type: "micOpened", at: T0 + 6_000 },
+      { type: "done" },
+      { type: "taken", take: take(), id: "b", at: T0 + 9_000 }
+    ).state
+    // A's keep answers only now.
+    const lateA = step(bTaken, { type: "kept", id: "a" })
+    expect(lateA.effects).toEqual([{ type: "release", id: "a" }])
+    expect(lateA.state.undo).toBeNull()
+    const keptB = step(lateA.state, { type: "kept", id: "b" })
+    expect(keptB.state.undo).toEqual({ id: "b", until: T0 + 9_000 + UNDO_MS })
+    expect(step(keptB.state, { type: "undo" }).effects).toContainEqual({
+      type: "undo",
+      id: "b",
+    })
+  })
+
   it("lists the kept bite as its row, plays it, and Undo takes the row and the sound away", () => {
     const kept = run(
       stopped(),
