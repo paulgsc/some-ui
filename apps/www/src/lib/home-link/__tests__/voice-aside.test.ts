@@ -16,9 +16,10 @@ import type { BlobShelf } from "@some-ui/voice-capture"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { setAsidePath } from "@/lib/home-link/set-aside"
-import { sendVoice } from "@/lib/home-link/voice-copy"
+import { sendVoice, watchVoiceNotes } from "@/lib/home-link/voice-copy"
 import type { JobsState, VoiceNote } from "@/lib/jobs/model"
 import { EMPTY } from "@/lib/jobs/model"
+import type { KeptSceneNote } from "@/lib/scene-voice"
 import type { Reflection } from "@/lib/session-reflection/policy"
 import type { Take } from "@/lib/takes-desk"
 import type { VoiceHome } from "@/lib/voice-home/runtime"
@@ -33,7 +34,10 @@ const { AUDIO, desk } = vi.hoisted(() => {
       kept: takes,
       audio,
       keptWhere: (): void => undefined,
-      phone: () => ({ subscribe: () => (): void => undefined }),
+      phone: () => ({
+        subscribe: () => (): void => undefined,
+        takes: { subscribe: () => (): void => undefined },
+      }),
     }),
   }
 })
@@ -47,6 +51,7 @@ const fakes = vi.hoisted(
     bites: Array<Soundbite>
     lens: Array<Take>
     leetype: Array<Take>
+    scene: Array<KeptSceneNote>
   } => ({
     home: null,
     reflections: [],
@@ -54,6 +59,7 @@ const fakes = vi.hoisted(
     bites: [],
     lens: [],
     leetype: [],
+    scene: [],
   })
 )
 
@@ -111,9 +117,18 @@ vi.mock("@/lib/game-bites", () => ({
 vi.mock("@/lib/scene-voice", () => ({
   phoneSceneVoice: (): unknown => ({
     subscribe: () => (): void => undefined,
-    letGo: (): void => undefined,
+    // As the draft does: a note home holds leaves once out of the draft.
+    letGo: (holds: ReadonlySet<string>): void => {
+      fakes.scene = fakes.scene.filter(
+        (note) => !(holds.has(note.id) && note.standing !== undefined)
+      )
+    },
   }),
-  sceneNotes: { read: (): Array<never> => [], audio: AUDIO },
+  sceneNotes: { read: (): Array<KeptSceneNote> => fakes.scene, audio: AUDIO },
+  sceneNotesKept: (): void => undefined,
+}))
+vi.mock("@some-ui/topik", () => ({
+  lensRecordHeldByHome: (): void => undefined,
 }))
 vi.mock("@/lib/voice-home", () => ({
   phoneVoiceHome: (): VoiceHome | null => fakes.home,
@@ -230,6 +245,18 @@ function jobs(id: string, standing?: "earlier" | "set-aside"): JobsState {
   return { ...EMPTY, voice: [note] }
 }
 
+const sceneNote = (
+  id: string,
+  standing?: "earlier" | "set-aside"
+): KeptSceneNote => ({
+  id,
+  durationMs: 4000,
+  mimeType: "audio/mp4",
+  at: "2026-11-01T08:00:00.000Z",
+  ...(standing === undefined ? {} : { standing }),
+  ...(standing === "set-aside" ? { setAsideAt: LET_GO } : {}),
+})
+
 /** Each store that goes home and lets a take be set aside, keeping `id` as `standing`. */
 const STORES: ReadonlyArray<
   readonly [string, (id: string, standing?: "earlier" | "set-aside") => void]
@@ -264,6 +291,12 @@ const STORES: ReadonlyArray<
       fakes.leetype = [take(id, standing)]
     },
   ],
+  [
+    "a scene note",
+    (id, standing): void => {
+      fakes.scene = [sceneNote(id, standing)]
+    },
+  ],
 ]
 
 beforeEach(() => {
@@ -278,6 +311,7 @@ beforeEach(() => {
   fakes.bites = []
   fakes.lens = []
   fakes.leetype = []
+  fakes.scene = []
 })
 
 describe("home's set-aside mark on a note let go on the phone (MIC2)", () => {
@@ -351,6 +385,21 @@ describe("home's set-aside mark on a note let go on the phone (MIC2)", () => {
     expect(await sendVoice(home(later))).toEqual({ kind: "synced" })
     // Nothing to copy again: only the mark goes.
     expect(later).toEqual([setAsidePath({ id: "b1", at: LET_GO })])
+  })
+
+  it("keeps the mark of a note that leaves the phone on home's word, set aside after home held it", async () => {
+    fakes.scene = [sceneNote("s1")]
+    await sendVoice(home([]))
+    expect(fakes.home?.getSnapshot().held).toEqual(["s1"])
+    // Let go once home held it: the draft lets it go on home's word, at
+    // once, before any run could send its mark.
+    fakes.scene = [sceneNote("s1", "set-aside")]
+    watchVoiceNotes()()
+    expect(fakes.scene).toEqual([])
+
+    const heard: Array<string> = []
+    expect(await sendVoice(home(heard))).toEqual({ kind: "synced" })
+    expect(heard).toEqual([setAsidePath({ id: "s1", at: LET_GO })])
   })
 
   it("marks a take set aside before its store noted when as of when this phone first saw it", async () => {

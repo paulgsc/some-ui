@@ -28,7 +28,8 @@ const isNote = (value: unknown): value is KeptSceneNote =>
   typeof Reflect.get(value, "mimeType") === "string" &&
   ["string", "undefined"].includes(typeof Reflect.get(value, "at")) &&
   ["boolean", "undefined"].includes(typeof Reflect.get(value, "prompted")) &&
-  STANDINGS.includes(Reflect.get(value, "standing"))
+  STANDINGS.includes(Reflect.get(value, "standing")) &&
+  ["string", "undefined"].includes(typeof Reflect.get(value, "setAsideAt"))
 
 const list = boundedList("some-ui:scene-voice", SCENE_NOTES_KEPT, isNote)
 
@@ -47,9 +48,11 @@ const notes: SceneVoicePorts["notes"] = {
     list.update((note) =>
       ids.includes(note.id) ? { ...note, prompted: true } : note
     ),
-  setAside: (ids): boolean =>
+  setAside: (ids, at): boolean =>
     list.update((note) =>
-      ids.includes(note.id) ? { ...note, standing: "set-aside" } : note
+      ids.includes(note.id) && note.standing !== "set-aside"
+        ? { ...note, standing: "set-aside", setAsideAt: at }
+        : note
     ),
 }
 

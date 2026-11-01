@@ -415,6 +415,7 @@ export function candidates(): Array<Candidate> {
   const now = new Date()
   const scene = sceneNotes.read().map((kept) => ({
     note: sceneNote(kept, now),
+    aside: asideAt(kept),
     audio: (): Promise<Blob | null> => sceneNotes.audio(kept.id),
   }))
   const bites = phoneGameBites()

@@ -49,12 +49,14 @@ function memoryNotes(
           ids.includes(note.id) ? { ...note, prompted: true } : note
         )
       ),
-    setAside: (ids): boolean =>
+    setAside: (ids, at): boolean =>
       asides() &&
       write(
         listed.map(
           (note): KeptSceneNote =>
-            ids.includes(note.id) ? { ...note, standing: "set-aside" } : note
+            ids.includes(note.id) && note.standing !== "set-aside"
+              ? { ...note, standing: "set-aside", setAsideAt: at }
+              : note
         )
       ),
   }
@@ -157,6 +159,9 @@ describe("createSceneVoice", () => {
       ["n1", "set-aside"],
       ["n2", undefined],
     ])
+    // When it was let go, for home's mark (MIC2).
+    expect(listed[0]?.setAsideAt).toMatch(/^\d{4}-\d\d-\d\dT/)
+    expect(listed[1]?.setAsideAt).toBeUndefined()
     expect(await audio.ids()).toEqual(["n1", "n2"])
   })
 

@@ -50,6 +50,12 @@ export type KeptSceneNote = SceneNote & {
   readonly at?: string
   readonly prompted?: boolean
   readonly standing?: "earlier" | "set-aside"
+  /**
+   * When it was set aside, ISO 8601, written with its standing and never
+   * after: home's mark is sent with it (MIC2). Absent on one not set aside,
+   * and on one set aside before the phone noted when.
+   */
+  readonly setAsideAt?: string
 }
 
 /** Topik's port, and what the voice lane and the drain tell it. */
@@ -89,8 +95,11 @@ export type SceneVoicePorts = {
     remove: (ids: ReadonlyArray<string>) => boolean
     /** Marks these notes carried by an ask home holds; says whether it stored. */
     prompted: (ids: ReadonlyArray<string>) => boolean
-    /** Marks these notes set aside, keeping them; says whether it stored. */
-    setAside: (ids: ReadonlyArray<string>) => boolean
+    /**
+     * Marks these notes set aside at `at` (ISO 8601), keeping them; one set
+     * aside already keeps its first time. Says whether it stored.
+     */
+    setAside: (ids: ReadonlyArray<string>, at: string) => boolean
   }
   /** A note whose audio is being written, and when done. */
   saving: (id: string, inFlight: boolean) => void
@@ -189,7 +198,10 @@ export function createSceneVoice(ports: SceneVoicePorts): PhoneSceneVoice {
         )
       },
       setAside: (id, done) => {
-        const stored = ports.notes.setAside([id])
+        const stored = ports.notes.setAside(
+          [id],
+          new Date(ports.now()).toISOString()
+        )
         if (stored) publish()
         done(stored)
       },
