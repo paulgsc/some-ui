@@ -59,7 +59,8 @@ export type IndexStanding = {
   readonly backfill: ReadonlyArray<string>
   /**
    * Later decisions and scouts files only Drive holds: the mailbox refuses
-   * them, and the phone sends them home itself (#2177).
+   * them, and the phone, which sends every new one home since HF2 (#2177),
+   * doesn't send these old ones (#2393).
    */
   readonly later: ReadonlyArray<string>
 }
