@@ -171,6 +171,38 @@ A restore has to be able to open what it brings back, which is why the SQLite
 plugin's unused encryption is off (`capacitor.config.ts` says why; the review
 holds the APK to it).
 
+- **Nothing the person made is deleted without their yes.** A session save
+  or shelf keep that would cross the budget is refused. The app then names
+  the oldest finished session (never today's or an unfinished one) and
+  removes it only if the person agrees ("Remove it"). On a phone known to
+  be unpaired there is no home to keep it, so a removed one is gone, as
+  the offer says. Otherwise it is copied home first and leaves only once
+  home holds it as it is; if home can't keep it, it stays, and the offer
+  says why.
+- **Letting go is how the phone makes room, and it is always the person's
+  act.** The app is client first: nothing requires a server, and a paired
+  phone sends to its own home on its own (HF8), but nothing leaves the
+  phone until the person says so. On a paired phone a session leaves only
+  once home holds it as the phone has it (LA8): **Clear finished sessions
+  home holds** reads back the finished ones (completed, not today's:
+  `mayLeavePhone`), and the study list's **Let it go** and the phone-full
+  offer's **Remove it** copy the one session home and read it back first.
+  Nothing else lets a session go, so unfinished sessions and today's stay
+  unless the person lets one go, since the study card and the nudge read
+  them.
+- **Sending is archiving.** A finished session's record is context for an
+  agent shaping the next lesson, not something the person reads back: the
+  app is for studying, not a dashboard of it. So nothing that left the
+  phone is listed, fetched or restored here. Reflections are meant to be
+  made during a session and shared soon after, while the session is still
+  on the phone.
+- **Published content follows its source.** A sync deletes the lessons home
+  stopped listing, and skips what would not fit. All of it is reported.
+- **Presence leases** are trimmed to the server's own 16.
+
+The database runs with `auto_vacuum = FULL`, so deleted rows leave the file
+Android backs up.
+
 ### Diagnostics
 
 A release WebView's console reaches nothing: Capacitor forwards it to logcat
@@ -186,33 +218,6 @@ It carries each failure the app reported through `callForeign`
 `device storage: opened` once the database is open, and nothing a person
 wrote. The launch test fails a run without that line, or with a device
 storage failure (`launch/launch-test.sh`).
-
-- **Nothing the person made is deleted without their yes.** A session save
-  or shelf keep that would cross the budget is refused. The app then names
-  the oldest finished session (never today's or an unfinished one) and
-  removes it only if the person agrees. Unless it was copied home or
-  archived, a removed one is gone.
-- **Letting go is how the phone makes room, and it is always the person's
-  act.** The app is client first: nothing requires a server, and a paired
-  phone sends to its own home on its own (HF8), but nothing leaves the
-  phone until the person says so. A finished session (completed, not
-  today's: `mayLeavePhone`) leaves the phone only once home holds it, when
-  **Clear finished sessions home holds** reads it back and finds it as the
-  phone has it; an archive is a copy and lets nothing go (LG1). Unfinished
-  sessions and today's always stay, since the study card and the nudge
-  read them.
-- **Sending is archiving.** A finished session's record is context for an
-  agent shaping the next lesson, not something the person reads back: the
-  app is for studying, not a dashboard of it. So nothing that left the
-  phone is listed, fetched or restored here. Reflections are meant to be
-  made during a session and shared soon after, while the session is still
-  on the phone.
-- **Published content follows its source.** A sync deletes the lessons home
-  stopped listing, and skips what would not fit. All of it is reported.
-- **Presence leases** are trimmed to the server's own 16.
-
-The database runs with `auto_vacuum = FULL`, so deleted rows leave the file
-Android backs up.
 
 ### What content is on the phone
 
@@ -624,8 +629,8 @@ the header, and Settings → Home, say what is kept where, what waits, and how
 the last send went, with **Send now** for what waits.
 
 - **Sessions** go as their records (plan, status and times), finished ones
-  only; their reflections, stops and soundbites stay on the phone
-  (`docs/learner-data-authority.md`, LA7). Each is created on home once, and
+  only; their stops and soundbites stay on the phone, and their written
+  reflections go as their own part (below). Each is created on home once, and
   the phone keeps a receipt of what home made. A session that moved on since
   its copy (renamed, say) has home's copy patched to match. Nothing on home
   is deleted, and the drain lets nothing go.
@@ -637,6 +642,16 @@ the last send went, with **Send now** for what waits.
   counted and said.
 - **LeetType sessions** and **Studio sittings and answers** go the same way,
   event by event and read back, and stay on the phone.
+- **Written reflections** go next, one PUT each, and count as home's only once
+  home answers with each as sent; the drain then lets go of the ones past the
+  phone's offline set that home holds (`docs/learner-data-authority.md`,
+  LA16).
+- **Asks for the next scene** go last, one PUT each of the prompt's stamp and
+  markdown, and count as home's only once home answers with each as sent.
+  Home hands each to the reflections routine through the Jobs mailbox, and
+  the drama comes back through home. The drain then lets go of each ask home
+  holds but the newest, and marks the scene notes it named, which leave the
+  draft once home holds them too (LA18). The drain's let-gos are these two.
 - **aph**, the **Jobs record** and **voice notes** go by their own
   exchanges, below.
 
@@ -648,12 +663,9 @@ does leave; the rest stay, and the line says so. It sends nothing.
 
 Home no longer knowing the phone, or no answer, ends a run there.
 
-**Archive finished sessions**, in the This phone block, shares a copy: one
-file (`sessions-<day>.json`, every finished session's full record) through
-Android's share sheet, so the person picks where it goes (Drive, say:
-`Study ledger › sessions`). The sessions stay on the phone: nothing is let
-go on a third party's word (LG1, HF2 #2177), so only the clear above frees
-their room. Reflections keep their own share (**Share with an agent**).
+Written reflections go home on their own (above); the whole study-context
+export still carries them as a copy (**Share with an agent**), and nothing
+is let go on a third party's word (LG1).
 
 The sync goes through Capacitor's native HTTP (`device-backend/native-http`).
 The app's page is `https://localhost`, so a browser `fetch` to
@@ -751,7 +763,7 @@ Not yet: LeetType runs its own session clock from its mount, which +5 min
 does not reach, so a LeetType session extended past its planned end shows
 LeetType's own "Session complete" inside the activity until the session ends.
 
-## Reflections: said while fresh, handed off, not kept
+## Reflections: said while fresh, kept on home
 
 A reflection is one thing said about a session while it is fresh: a voice
 note (**Talk**), a typed line, or the one-tap answers (worth it, pace,
@@ -761,25 +773,25 @@ screen), and the wrap offers the same panel; each reflection carries its
 session's ID and how far into it it was said. The session keeps running
 while the sheet is open, and a take in progress when it closes is kept.
 
-They are for the next session, not an archive. The phone keeps at most 20
-across every session (`REFLECTION_LIMIT`, `lib/session-reflection`); nothing
-is dropped to make room, so at 20 the panel offers only the way out. One
-older than a week reads as **stale**. The study list says how many slots are
-taken and how long the oldest has waited ("To hand off"), and each session's
-card says how many it has, how old, and **Share**. In the panel, each of the
-session's reflections has its own share beside its let go, so one said
-mid-session can go out at once. Sharing (one reflection, one session, or
-all of them, through the share sheet: one file per session named for its date,
-name and ID, each voice note beside it, with the session's stops and the
-read-aloud practice record, `lib/agent-export`) then asks whether
-they arrived: Android says "shared" as soon as an app is picked, even if the
-person backs out of it. Yes takes them off the phone, so a reflection shared
-mid-session is not in its session's file again at the end (both files carry
-the session's name, so a folder can hold two of that name), and leaves
-"Reflections shared" on the card; **Let go** removes them unshared. A voice reflection's audio is on a shelf of its own
-(`lib/reflection-voice`), counted toward the 20 and never toward the
-soundbites' six. Nothing about a reflection reaches the home server
-(`docs/learner-data-authority.md`, LA7).
+There is always room for another written one. Each typed line goes to home
+with the drain, one PUT each, and counts as home's only once home answers with
+it as it was sent (`lib/home-link/reflections`); home keeps it for good and
+hands the reflections routine what it reads of it (the line, its session and
+when) through the Jobs mailbox, so nothing goes through the share sheet. The
+phone keeps an offline set, its newest 20 reflections (`REFLECTION_LIMIT`,
+`lib/session-reflection`), and past it only the written ones home does not
+hold yet: one leaves the phone on its own only once it is past the set and
+home holds it. A spoken reflection goes home as its voice note, and the one-tap
+answers stay on the phone. One older than a week reads as **stale**. The study
+list says how many are kept and how long the oldest has waited, and each
+session's card says how many it has and how old; **Let go** removes them from
+the phone (a written one home holds stays on home). A voice reflection's audio
+is on a shelf of its own (`lib/reflection-voice`), whose size is 20 takes, and
+never counts toward the soundbites' six: when that shelf is full, a new spoken
+one is refused until one is let go, and a typed one still has room. The whole
+study-context export (Soundbites) still carries reflections as a copy, and
+"They arrived" there only marks their sessions as shared: it takes nothing off
+the phone (`docs/learner-data-authority.md`, LA16).
 
 ## A session cut short still closes
 
@@ -1026,7 +1038,7 @@ them through the app's own plugin, `ListenPlugin.java` (registered in
 ## Not done yet
 
 - **Nothing syncs back, on purpose.** A session that left the phone is not
-  brought back, and an archive is not imported: a finished session's record
+  brought back: a finished session's record
   is for an agent to read when it shapes the next lesson, not for the phone
   to show again.
 - **Nothing here has run on a phone yet.** CI builds and launches it in an

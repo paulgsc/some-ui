@@ -18,12 +18,13 @@ import type { ComponentProps, JSX } from "react"
 import { HANDHELD_MAX_HEIGHT } from "@some-ui/react-hooks"
 import { SpeechProvider } from "@some-ui/speech"
 import { webSpeech } from "@some-ui/speech/web-speech"
-import type { Dish, LessonItem, ReadAloudDeck } from "@some-ui/topik"
+import type { Dish, LessonItem, ReadAloudDeck, SceneAsk } from "@some-ui/topik"
 // This page is its own build (`build:fit`) and in no shipped bundle, so the
 // eager edge the rule guards against costs nothing here, and the quiz stages
 // are reachable through no lazy entry.
 // eslint-disable-next-line lazy-registry/no-eager-registry-import
 import {
+  AskScene,
   DramaLesson,
   intakeTree,
   lastDramaOf,
@@ -34,7 +35,6 @@ import {
   QuizPanel,
   RepCard,
   SetCard,
-  SharePrompt,
 } from "@some-ui/topik"
 
 import { PANELS } from "@/lib/playable"
@@ -68,6 +68,21 @@ const TEXT_INPUT: Question = {
 }
 
 const noop = (): void => undefined
+
+/**
+ * An ask home holds: the longest line the ask shows under its button
+ * (`lib/scene-ask`'s `ASK_WORDS.held`, which is phone-only, so this is a
+ * copy; `lib/scene-ask/index.test.ts` holds it to the original).
+ */
+export const FIT_HELD = {
+  said: "Home has your ask from Oct 31, 9:15 AM. Home's morning routine writes the scene, and it comes back to your list.",
+  held: true,
+}
+const FIT_ASKS: SceneAsk = {
+  getSnapshot: () => FIT_HELD,
+  subscribe: () => noop,
+  ask: () => true,
+}
 
 /** Mid-quiz on the first question; each stage below overrides what it needs. */
 const QUIZ: QuizPanelProps = {
@@ -274,14 +289,14 @@ const dramaStage = (
         save: noop,
         subscribe: () => noop,
       }}
-      // The phone offers the next episode's share first in the dock.
+      // The phone offers the next episode's ask first in the dock.
       ending={
-        <SharePrompt
-          share={() => new Promise(noop)}
+        <AskScene
+          asks={FIT_ASKS}
           label="다음 화 쓰기"
           labelLang="ko"
           prompt={() => ""}
-          onShared={noop}
+          onAsked={noop}
         />
       }
       short={short}

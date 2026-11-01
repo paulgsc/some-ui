@@ -1,3 +1,4 @@
+import { inMemoryStorage } from "@some-ui/core-utils"
 import { REVIEW_SCHEMA } from "@some-ui/video-render"
 import type { Playback } from "@some-ui/voice-capture"
 import type { StudioProps } from "@soundbites/components/studio"
@@ -8,6 +9,8 @@ import type { Project } from "@soundbites/lib/project/model"
 import { newProject } from "@soundbites/lib/project/model"
 import { cutListOf } from "@soundbites/lib/project/script"
 import { primer, PRIMER_TEXT } from "@soundbites/lib/studio/__tests__/fixture"
+import { keptLetGo } from "@soundbites/lib/studio/let-go-store"
+import type { StudioPorts } from "@soundbites/lib/studio/runtime"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
@@ -17,7 +20,8 @@ const W = STUDIO_WORDS
 function setup(
   share?: StudioProps["share"],
   initial: ReadonlyArray<Project> = [],
-  text = PRIMER_TEXT
+  text = PRIMER_TEXT,
+  more: Partial<StudioPorts> = {}
 ): ReturnType<typeof memoryProjectStore> {
   const memory = memoryProjectStore(initial)
   let tick = 0
@@ -39,6 +43,7 @@ function setup(
             stop: vi.fn(),
           }),
         },
+        ...more,
       }}
       share={share}
     />
@@ -145,6 +150,53 @@ describe("Studio", () => {
         { went: "smooth", gotInTheWay: null },
       ])
     )
+  })
+
+  it("offers when takes leave once home holds one, and under keep until Drive has it lets a take go only on its Drive has it (HF11)", async () => {
+    const video = newProject("held", {
+      author: "claude",
+      message: "Primer",
+      at: "2026-10-29T09:00:00.000Z",
+      cutList: cutListOf(primer()),
+      primer: primer(),
+    }).project
+    const held: Project = {
+      ...video,
+      takes: [
+        {
+          id: "t1",
+          shot: "path",
+          recordedAt: "2026-10-29T09:05:00.000Z",
+          durationMs: 4_000,
+          mimeType: "audio/webm",
+          keptBy: ["home"],
+          onPhone: true,
+        },
+      ],
+      chosen: { path: "t1" },
+    }
+    const storage = inMemoryStorage()
+    const memory = setup(undefined, [held], PRIMER_TEXT, {
+      letGo: keptLetGo(() => storage),
+    })
+    const card = await screen.findByRole("region", { name: W.letGo.heading })
+    expect(card).toHaveTextContent(W.letGo.ask(1))
+    // Nothing to confirm until the owner chooses.
+    expect(
+      screen.queryByRole("button", { name: W.letGo.driveHasIt })
+    ).toBeNull()
+    fireEvent.click(screen.getByRole("button", { name: W.letGo.choices.drive }))
+    expect(await screen.findByText(W.letGo.says.drive)).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: W.letGo.choices.drive })
+    ).toHaveAttribute("aria-pressed", "true")
+    expect(memory.audio.has("held:t1")).toBe(true)
+    fireEvent.click(
+      screen.getByRole("button", { name: W.letGo.driveHasItFor(1, 4_000) })
+    )
+    expect(await screen.findByText(W.letGo.driveLeft)).toBeInTheDocument()
+    expect(memory.audio.has("held:t1")).toBe(false)
+    expect(keptLetGo(() => storage).read()).toBe("drive")
   })
 
   it("lists the other videos holding takes on the phone, and opens one", async () => {

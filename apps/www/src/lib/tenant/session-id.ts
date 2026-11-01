@@ -28,7 +28,12 @@ export function isSessionId(text: string): text is SessionId {
   return SHAPE.test(text)
 }
 
-/** A fresh id, in the shape every session store takes. */
+/**
+ * A fresh id, in the shape every session store takes, and the only way the
+ * phone mints one. RB1 (`packages/ui/topik/ROUTINE.md`): its last 8 characters
+ * are random, since the reflections routine names a session by them
+ * (`__tests__/session-id.test.ts`, "RB1").
+ */
 export function newSessionId(): SessionId {
   const id = generateId("session")
   if (isSessionId(id)) return id

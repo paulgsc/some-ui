@@ -9,9 +9,10 @@ import { describe, expect, it } from "vitest"
 import type { ClearEnd } from "@/lib/home-link/clear"
 import type { KeptRun, KeptState } from "@/lib/home-link/kept-model"
 import { INITIAL_KEPT } from "@/lib/home-link/kept-model"
+import type { LetGoEnd } from "@/lib/home-link/study-let-go"
 import type { LaneFacts } from "@/lib/home-link/words"
 import * as words from "@/lib/home-link/words"
-import { CLEAR, laneView, lastLook, WORDS } from "@/lib/home-link/words"
+import { CLEAR, laneView, lastLook, LET_GO, WORDS } from "@/lib/home-link/words"
 import { HOW_ORDER, MARK_WORDS, WHERE_ORDER } from "@/lib/sharing-marks"
 
 import { MACHINERY } from "./machinery"
@@ -134,6 +135,8 @@ describe("each lane's sharing words", () => {
     expect(view.rows.map((row) => row.text)).toEqual([
       "Only on this phone",
       "Only on this phone",
+      "Only on this phone",
+      "Only on this phone",
     ])
   })
 
@@ -151,7 +154,7 @@ describe("each lane's sharing words", () => {
       WORDS.practice,
       facts({
         paired: true,
-        held: { sessions: 3, shelf: 1 },
+        held: { sessions: 3, shelf: 1, reflections: 4, prompts: 2 },
         refused: { shelf: 2 },
         run: { ...INITIAL_KEPT, last: { kind: "synced", at: 1 } },
       })
@@ -164,6 +167,8 @@ describe("each lane's sharing words", () => {
     expect(view.rows.map((row) => row.text)).toEqual([
       "3 sessions on home",
       "1 kept item on home · 2 kept items home didn't take",
+      "4 written reflections on home",
+      "2 asks for the next scene on home",
     ])
   })
 
@@ -228,7 +233,7 @@ describe("each lane's sharing words", () => {
       where: "kept",
       how: "busy",
       word: "Home busy",
-      line: "Home is busy right now. 2 sessions wait on this phone and go next time.",
+      line: "Home is busy right now. 2 sessions, reflections and asks wait on this phone and go next time.",
     })
     expect(laneView(WORDS.aph, busy).line).toBe(
       "Home is busy right now. 2 changes wait on this phone and go next time."
@@ -270,6 +275,82 @@ describe("the clear's words", () => {
     )
     // The sweep above can't call `ended` with an end: it says these here.
     expect(lines.filter((line) => MACHINERY.test(line))).toEqual([])
+  })
+})
+
+describe("the study list's Let it go", () => {
+  it("says each end in the person's terms, and what the confirm promises", () => {
+    const ends: Array<LetGoEnd> = [
+      { kind: "kept-home" },
+      { kind: "deleted" },
+      { kind: "missing" },
+      { kind: "not-held" },
+      { kind: "changed" },
+      { kind: "unreachable" },
+      { kind: "forgotten" },
+      { kind: "busy" },
+      { kind: "phone-busy" },
+      { kind: "stopped" },
+      { kind: "refused", error: new Error("500") },
+      { kind: "unpaired" },
+      { kind: "unreadable" },
+      { kind: "not-let-go", held: true, error: new Error("locked") },
+      { kind: "not-let-go", held: false, error: new Error("locked") },
+    ]
+    const lines = ends.map((end) => LET_GO.ended(end, "home.example"))
+    expect(new Set(lines).size).toBe(lines.length)
+    expect(lines[0]).toBe("Gone from this phone. home.example keeps it.")
+    // Whose busy it is: home's answer, or this phone's own sending.
+    expect(lines[7]).toBe(
+      "home.example is busy just now. Try again in a minute; it stays on this phone."
+    )
+    expect(lines[8]).toBe(
+      "This phone is busy sending to home.example. Try again in a minute; it stays on this phone."
+    )
+    expect(lines[12]).toBe(
+      "This phone couldn't read its pairing with home just now, so it stays here. Try again."
+    )
+    // Every end but the two that left says the session is still here.
+    expect(
+      lines
+        .filter((_, i) => i > 2)
+        .every((line) => /stays|still here/.test(line))
+    ).toBe(true)
+    const asked = [
+      LET_GO.question("Evening reading", "home", "home.example"),
+      LET_GO.question("Evening reading", "phone-only", "home"),
+    ]
+    expect(asked).toEqual([
+      '"Evening reading" leaves this phone, and home.example keeps it. If home.example can\'t, it stays here.',
+      '"Evening reading" leaves this phone, and can\'t be brought back.',
+    ])
+    // The phone-full offer asks the same let-go in its own words (PF1); the
+    // host, "home" while the pairing is unsure, never opens a sentence.
+    const offered = [
+      LET_GO.room.question(
+        "Evening reading",
+        "9/1/2026",
+        "home",
+        "home.example"
+      ),
+      LET_GO.room.question("Evening reading", "9/1/2026", "home", "home"),
+      LET_GO.room.question("Evening reading", "9/1/2026", "phone-only", "home"),
+    ]
+    expect(offered).toEqual([
+      "Remove “Evening reading” (finished 9/1/2026) to make room? It leaves this phone, and home.example keeps it. If home.example can't, it stays here.",
+      "Remove “Evening reading” (finished 9/1/2026) to make room? It leaves this phone, and home keeps it. If home can't, it stays here.",
+      "Remove “Evening reading” (finished 9/1/2026) to make room? It leaves this phone, and can't be brought back.",
+    ])
+    expect(offered.filter((line) => /(^|[.?!] )home/.test(line))).toEqual([])
+    expect(
+      [
+        ...lines,
+        ...asked,
+        ...offered,
+        LET_GO.working("home.example"),
+        LET_GO.room.working,
+      ].filter((line) => MACHINERY.test(line))
+    ).toEqual([])
   })
 })
 

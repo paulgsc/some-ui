@@ -16,7 +16,7 @@ import type { ITopikMetadataRepository } from "@topik/lib/topik"
 import { SessionConfigProvider } from "@topik/lib/topik/adapter/context/session-config-context"
 import type { LastDramaStore } from "@topik/lib/topik/adapter/last-drama-store"
 import { createLastDramaStore } from "@topik/lib/topik/adapter/last-drama-store"
-import type { FileShare } from "@topik/lib/topik/adapter/next-scene-share"
+import type { SceneAsk } from "@topik/lib/topik/adapter/next-scene-ask"
 import type { PastedLessonStore } from "@topik/lib/topik/adapter/pasted-lesson"
 import {
   createPastedLessonStore,
@@ -74,7 +74,7 @@ type RenderOptions = {
   tones?: ToneContextFactory | null
   treeFeed?: TreeFeed
   servedPoints?: ReturnType<typeof createServedPointStore>
-  share?: FileShare
+  sceneAsk?: SceneAsk
   sceneFileHint?: string
   wordSetHint?: string
   routineFeed?: RoutineFeed
@@ -94,7 +94,7 @@ function renderLesson({
   tones,
   treeFeed,
   servedPoints = createServedPointStore(memoryStorage()),
-  share,
+  sceneAsk,
   sceneFileHint,
   wordSetHint,
   routineFeed,
@@ -110,7 +110,7 @@ function renderLesson({
           metadataRepository,
           speaker,
           ...(treeFeed ? { treeFeed } : {}),
-          ...(share ? { share } : {}),
+          ...(sceneAsk ? { sceneAsk } : {}),
           ...(sceneFileHint ? { sceneFileHint } : {}),
           ...(wordSetHint ? { wordSetHint } : {}),
           ...(feed ? { routineFeed: feed } : {}),
@@ -1296,14 +1296,18 @@ describe("HandheldLesson", () => {
       expect(pasted.getTree()).toBeNull()
     })
 
-    it("shares the next scene's prompt at an ending, carrying the drama just played (MKJ-S8)", async () => {
+    it("asks home for the next scene at an ending, carrying the drama just played", async () => {
       const pasted = createPastedLessonStore(memoryStorage())
       pasted.setTree(workedLesson())
       const last = createLastDramaStore(memoryStorage())
-      const share = vi.fn<FileShare>(() =>
-        Promise.resolve({ status: "succeeded", value: "shared" })
-      )
-      renderLesson({ pastedStore: pasted, lastDrama: last, share })
+      const ask = vi.fn<SceneAsk["ask"]>(() => true)
+      const kept = { said: "Kept on this phone.", held: false }
+      const sceneAsk: SceneAsk = {
+        getSnapshot: () => kept,
+        subscribe: () => () => undefined,
+        ask,
+      }
+      renderLesson({ pastedStore: pasted, lastDrama: last, sceneAsk })
       fireEvent.click(await screen.findByText("첫 차"))
       click(/Next/)
       click(/Next/)
@@ -1316,13 +1320,15 @@ describe("HandheldLesson", () => {
         target: { value: "more revenge" },
       })
       click(/다음 화 쓰기/)
-      expect(document.body.textContent).not.toMatch(EXERCISE_FRAMING)
 
-      const file = share.mock.calls[0]?.[0]
-      expect(file?.text).toContain('Last drama:\n"첫 차", level 2.')
-      expect(file?.text).toContain('what next: "more revenge"')
-      // Shared is handed off: the free text it carried goes (Rem. 7.4), from
-      // the store and from the field on screen.
+      const asked = ask.mock.calls[0]?.[0]
+      expect(asked?.stamp).toMatch(/^drama-\d{8}T\d{9}Z$/)
+      expect(asked?.text).toContain('Last drama:\n"첫 차", level 2.')
+      expect(asked?.text).toContain('what next: "more revenge"')
+      expect(document.body.textContent).not.toMatch(EXERCISE_FRAMING)
+      expect(screen.getByText("Kept on this phone.")).toBeTruthy()
+      // Kept on the phone is handed off: the ask carries the free text
+      // (Rem. 7.4), so it goes from the store and from the field on screen.
       await vi.waitFor(() => expect(last.get()?.review).toBeUndefined())
       expect(screen.getByRole("textbox")).toHaveProperty("value", "")
     })

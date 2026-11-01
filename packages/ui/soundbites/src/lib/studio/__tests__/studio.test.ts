@@ -24,13 +24,14 @@ import { memoryProjectStore } from "@soundbites/lib/project/memory-store"
 import type { CutListShape, Project } from "@soundbites/lib/project/model"
 import { latest, newProject } from "@soundbites/lib/project/model"
 import { cutListOf, TAIL_MS } from "@soundbites/lib/project/script"
+import { keptLetGo } from "@soundbites/lib/studio/let-go-store"
 import type { OriginFix, Speaking } from "@soundbites/lib/studio/machine"
 import {
   initialStudioState,
   projectOf,
   step,
 } from "@soundbites/lib/studio/machine"
-import type { StudioRuntime } from "@soundbites/lib/studio/runtime"
+import type { StudioPorts, StudioRuntime } from "@soundbites/lib/studio/runtime"
 import { createStudio } from "@soundbites/lib/studio/runtime"
 import { keptTimeLog } from "@soundbites/lib/studio/time-store"
 import { othersOnPhone, startView } from "@soundbites/lib/studio/view"
@@ -50,7 +51,8 @@ function studio(
   mic: StartRecording = fakeMic(),
   prefix = "t",
   takeDeadlines?: TakeDeadlines,
-  listener?: IdeaListener
+  listener?: IdeaListener,
+  extra: Partial<StudioPorts> = {}
 ): Running {
   let tick = 0
   let ids = 0
@@ -73,6 +75,7 @@ function studio(
         stop: vi.fn(),
       }),
     },
+    ...extra,
   })
   const detach = runtime.attach()
   return { ...runtime, detach }
@@ -225,7 +228,9 @@ describe("recording a scene", () => {
     await until(runtime, settledWrites)
     runtime.dispatch({ type: "recordPressed" })
     expect(runtime.getSnapshot().activity.kind).toBe("idle")
-    expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.notice.noRoom)
+    expect(runtime.getSnapshot().notice).toBe(
+      STUDIO_WORDS.notice.noRoom(null, 0)
+    )
   })
 
   it("refused for room as it is kept keeps nothing of it, and says what to do", async () => {
@@ -245,7 +250,7 @@ describe("recording a scene", () => {
     expect(projectIn(runtime)).toEqual(before)
     expect(memory.projects.get(before.id)).toEqual(before)
     expect(memory.audio.size).toBe(0)
-    expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.notice.full)
+    expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.notice.full(null, 0))
   })
 })
 
@@ -349,6 +354,118 @@ describe("takes that arrived in Drive", () => {
       onPhone: true,
     })
     expect(memory.audio.has(`${id}:t1`)).toBe(true)
+  })
+})
+
+describe("a take home holds (HF11, LG1)", () => {
+  /** p1: home holds t1 (scene 1), and t2 (scene 2) only the phone has. */
+  function held(): Project {
+    return run(
+      started(),
+      { type: "takeStarted", shot: "a" },
+      take("t1", "a"),
+      { type: "takeStarted", shot: "b" },
+      take("t2", "b"),
+      { type: "keptBy", take: "t1", keeper: "home" }
+    ).project
+  }
+
+  /** Studio on `memory`, read, with the choice kept in `storage`. */
+  async function on(
+    memory: ReturnType<typeof memoryProjectStore>,
+    storage: Storage | null
+  ): Promise<Running> {
+    const runtime = studio(memory, fakeMic(), "t", undefined, undefined, {
+      letGo: keptLetGo(() => storage),
+    })
+    await until(runtime, (state) => state.shelf.kind === "read")
+    return runtime
+  }
+
+  const onPhone = (runtime: StudioRuntime, id: string): boolean | undefined =>
+    projectIn(runtime).takes.find((each) => each.id === id)?.onPhone
+
+  it("stays on the phone until the owner chooses, and nothing but the choice lets it go", async () => {
+    const memory = memoryProjectStore([held()])
+    const runtime = await on(memory, inMemoryStorage())
+    expect(runtime.getSnapshot().letGo).toBeNull()
+    runtime.dispatch({ type: "driveHasIt", project: "p1", take: "t1" })
+    await until(runtime, settledWrites)
+    expect(onPhone(runtime, "t1")).toBe(true)
+    expect(memory.audio.has("p1:t1")).toBe(true)
+  })
+
+  it("goes once the owner chooses home, takes home doesn't hold stay, and the choice is kept", async () => {
+    const memory = memoryProjectStore([held()])
+    const storage = inMemoryStorage()
+    const runtime = await on(memory, storage)
+    runtime.dispatch({ type: "letGoChosen", letGo: "home" })
+    await until(runtime, (state) => state.notice === STUDIO_WORDS.letGo.left(1))
+    expect(onPhone(runtime, "t1")).toBe(false)
+    expect(memory.audio.has("p1:t1")).toBe(false)
+    expect(onPhone(runtime, "t2")).toBe(true)
+    expect(memory.audio.has("p1:t2")).toBe(true)
+    expect(keptLetGo(() => storage).read()).toBe("home")
+    // The next Studio opens with it.
+    const next = await on(memoryProjectStore([held()]), storage)
+    expect(next.getSnapshot().letGo).toBe("home")
+  })
+
+  it("under keep until Drive has it, stays until the owner says Drive has it, and that lets only it go", async () => {
+    const memory = memoryProjectStore([held()])
+    const runtime = await on(memory, inMemoryStorage())
+    runtime.dispatch({ type: "letGoChosen", letGo: "drive" })
+    await until(runtime, (state) => state.letGo === "drive")
+    expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.letGo.chosen.drive)
+    await until(runtime, settledWrites)
+    expect(memory.audio.has("p1:t1")).toBe(true)
+    // A take home doesn't hold stays, Drive or not.
+    runtime.dispatch({ type: "driveHasIt", project: "p1", take: "t2" })
+    await until(runtime, settledWrites)
+    expect(onPhone(runtime, "t2")).toBe(true)
+    runtime.dispatch({ type: "driveHasIt", project: "p1", take: "t1" })
+    await until(
+      runtime,
+      (state) => state.notice === STUDIO_WORDS.letGo.driveLeft
+    )
+    expect(projectIn(runtime).takes[0]).toMatchObject({
+      keptBy: ["home", "drive"],
+      onPhone: false,
+    })
+    expect(memory.audio.has("p1:t1")).toBe(false)
+    expect(memory.audio.has("p1:t2")).toBe(true)
+  })
+
+  it("changed from Drive to home lets go what home holds", async () => {
+    const memory = memoryProjectStore([held()])
+    const runtime = await on(memory, inMemoryStorage())
+    runtime.dispatch({ type: "letGoChosen", letGo: "drive" })
+    await until(runtime, (state) => state.letGo === "drive")
+    runtime.dispatch({ type: "letGoChosen", letGo: "home" })
+    await until(runtime, (state) => state.notice === STUDIO_WORDS.letGo.left(1))
+    expect(memory.audio.has("p1:t1")).toBe(false)
+  })
+
+  it("is not chosen when the phone can't keep the choice, and says so", async () => {
+    const memory = memoryProjectStore([held()])
+    const runtime = await on(memory, null)
+    runtime.dispatch({ type: "letGoChosen", letGo: "home" })
+    await until(runtime, (state) => state.notice === STUDIO_WORDS.letGo.notKept)
+    expect(runtime.getSnapshot().letGo).toBeNull()
+    await until(runtime, settledWrites)
+    expect(memory.audio.has("p1:t1")).toBe(true)
+  })
+
+  it("filling the room, makes Record say it waits on the owner's choice and name it", async () => {
+    const memory = memoryProjectStore([held()], 3)
+    const runtime = await on(memory, inMemoryStorage())
+    runtime.dispatch({ type: "recordChosen" })
+    await until(runtime, settledWrites)
+    runtime.dispatch({ type: "recordPressed" })
+    expect(runtime.getSnapshot().activity.kind).toBe("idle")
+    expect(runtime.getSnapshot().notice).toBe(
+      STUDIO_WORDS.notice.noRoom(null, 1)
+    )
   })
 })
 
@@ -805,7 +922,7 @@ describe("what the screen says reached Drive", () => {
     await until(runtime, (state) => state.activity.kind === "recording")
     runtime.dispatch({ type: "doneForNowPressed" })
     await until(runtime, (state) => state.closed !== "saving")
-    expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.notice.full)
+    expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.notice.full(null, 0))
   })
 })
 

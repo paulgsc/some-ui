@@ -19,6 +19,7 @@ import { TAKE_TICK_MS } from "@soundbites/lib/policy"
 import type { ProjectStore } from "@soundbites/lib/project/store"
 import { ProjectFullError } from "@soundbites/lib/project/store"
 
+import type { LetGoStore } from "./let-go-store"
 import type {
   StudioEffect,
   StudioEvent,
@@ -46,6 +47,11 @@ export type StudioPorts = {
   onVisibility: (listener: (hidden: boolean) => void) => () => void
   /** Where the time log is kept (ST9); nothing is logged without one. */
   timeLog?: TimeLogStore
+  /**
+   * Where the owner's choice of when a take home holds leaves the phone is
+   * kept (HF11); without one no choice is kept, and no take leaves.
+   */
+  letGo?: LetGoStore
   /** How long the microphone may take to answer; `takeRunner`'s unless a test says. */
   takeDeadlines?: TakeDeadlines
   /** The phone's recognizer, for a note said in Watch (ST5); none means typed notes. */
@@ -65,7 +71,7 @@ export function createStudio(
   ports: StudioPorts,
   open: string | null = null
 ): StudioRuntime {
-  let state = initialStudioState(open)
+  let state = initialStudioState(open, ports.letGo?.read() ?? null)
   let playback: Playback | null = null
   let listening: Listening | null = null
   const listener = ports.listener ?? NO_LISTENER
@@ -118,6 +124,14 @@ export function createStudio(
         ports.store.carryJournal(effect.at).then(
           (carried) => send({ type: "carried", carried }),
           () => send({ type: "carryFailed" })
+        )
+        return
+      }
+      case "keepLetGo": {
+        send(
+          ports.letGo?.choose(effect.letGo, effect.at) === true
+            ? { type: "letGoKept", letGo: effect.letGo }
+            : { type: "letGoNotKept" }
         )
         return
       }

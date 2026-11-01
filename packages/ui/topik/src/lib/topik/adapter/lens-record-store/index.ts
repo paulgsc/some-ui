@@ -1,13 +1,17 @@
 /**
  * The grammar-lens record on the device (adaptive-learning canon Rem. 4.18,
- * Rem. 7.5): entries from `lens/record`, at most a thousand. Nothing here
- * lets an entry go unseen: no age, no eviction of the oldest, and an export
- * is a copy that lets none go (LG1). At the bound a new entry is not kept,
- * and `full` says so, for the session to tell the learner. An entry written
+ * Rem. 7.5): entries from `lens/record`, at most a thousand, an offline set
+ * (HF5, #2180). Each goes home (www's drain, to home's Korean record as
+ * `lens`), and nothing here lets an entry go before home holds it: no age,
+ * and an export is a copy that lets none go (LG1). At the bound a new entry
+ * makes room by letting go the oldest home holds as it is (`heldByHome`,
+ * which the home link sets); while home holds none it is not kept, and
+ * `full` says so, for the session to tell the learner. An entry written
  * again for the same item (its session, line and showing) replaces it: that
  * is the same item seen further, not more history. Kept only where the host
  * has the export to carry it (the phone app); nothing here reads it back but
- * that export and `full`.
+ * that export and `full`, and each write kept is told to those listening
+ * (`onLensRecordWritten`), so the drain asks to send it.
  *
  * A failed write costs the next export that entry and nothing else
  * (Thm. 7.2), so it throws nothing (Prop. 7.2): a full quota, a private
@@ -33,6 +37,34 @@ export const LENS_RECORD_KEY = "topik:lens-record"
 
 /** Rem. 4.18's bound: about seven hundred kilobytes of `localStorage`. */
 export const LENS_RECORD_MAX = 1000
+
+type Held = (entry: LensRecordEntry) => boolean
+
+// Home holds none until the home link says otherwise.
+let heldNow: () => Held = () => () => false
+
+/**
+ * What home holds of the record, as it is, read back (www's home link): only
+ * those may make room for a new entry at the bound. `next` is asked once per
+ * look at the record, for a reading of what home holds then.
+ */
+export function lensRecordHeldByHome(next: () => Held): void {
+  heldNow = next
+}
+
+/** Those told of each entry the record keeps (www's drain, to send it). */
+const written = new Set<() => void>()
+
+/**
+ * Calls `listener` after each write the record keeps, an entry added or
+ * rewritten, in any store on this page. Returns an unsubscribe.
+ */
+export function onLensRecordWritten(listener: () => void): () => void {
+  written.add(listener)
+  return (): void => {
+    written.delete(listener)
+  }
+}
 
 export type LensRecordStore = {
   /**
@@ -146,6 +178,24 @@ function writeStored(
   )
 }
 
+/**
+ * The stored entry a new one may replace at the bound: the earliest closed
+ * of those home holds as they are; null while home holds none. An entry
+ * this build cannot read is never one.
+ */
+function oldestHeld(stored: ReadonlyArray<unknown>): unknown {
+  const held = heldNow()
+  let oldest: { stored: unknown; closedAt: string } | null = null
+  for (const candidate of stored) {
+    const entry = parsed(candidate)
+    if (entry === null || !held(entry)) continue
+    if (oldest === null || entry.closedAt < oldest.closedAt) {
+      oldest = { stored: candidate, closedAt: entry.closedAt }
+    }
+  }
+  return oldest === null ? null : oldest.stored
+}
+
 export function createLensRecordStore(
   storage: KeyedStorage | null = localStorageOrNull()
 ): LensRecordStore {
@@ -155,17 +205,26 @@ export function createLensRecordStore(
     add: (entry): void => {
       const stored = readStored(storage)
       if (!stored.writable) return
-      const kept = stored.value.filter((candidate) => {
+      let kept = stored.value.filter((candidate) => {
         const earlier = parsed(candidate)
         return !earlier || !sameItem(earlier, entry)
       })
-      if (kept.length >= LENS_RECORD_MAX) return
+      if (kept.length >= LENS_RECORD_MAX) {
+        const room = oldestHeld(kept)
+        if (room === null) return
+        kept = kept.filter((candidate) => candidate !== room)
+      }
       refused = !writeStored(storage, [...kept, entry])
+      if (refused) return
+      for (const listener of written) listener()
     },
     full: (): boolean => {
       const stored = readStored(storage)
       return (
-        refused || !stored.writable || stored.value.length >= LENS_RECORD_MAX
+        refused ||
+        !stored.writable ||
+        (stored.value.length >= LENS_RECORD_MAX &&
+          oldestHeld(stored.value) === null)
       )
     },
   }

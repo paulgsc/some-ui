@@ -1,8 +1,10 @@
 import type { Soundbite } from "./types"
 
 /**
- * At most this many soundbites are kept on the phone. A seventh never waits
- * on a decision: it replaces one, the oldest unless the person picked another.
+ * At most this many soundbites are kept on the phone: an offline set (HF5,
+ * #2180). A seventh replaces one home holds, the oldest unless the person
+ * picked another, and is refused while home holds none: nothing leaves the
+ * phone before home holds it.
  */
 export const SOUNDBITE_LIMIT = 6
 
@@ -48,36 +50,48 @@ export function byNewest(bites: ReadonlyArray<Soundbite>): Array<Soundbite> {
   return [...bites].sort((a, b) => b.recordedAt.localeCompare(a.recordedAt))
 }
 
+/** Home holds none: what a caller the home link never told assumes. */
+const NONE_HELD = (): boolean => false
+
 /**
  * Which kept soundbite the next one will replace, or null while there is
- * room. `choice` is the one the person picked, honoured while it is still
- * kept; otherwise the oldest.
+ * room, or while home holds none of them. Only one `held` says home holds
+ * may be replaced: `choice` is the one the person picked, honoured while it
+ * is still kept and held; otherwise the oldest held.
  */
 export function nextReplaced(
   kept: ReadonlyArray<Soundbite>,
   choice: string | null,
+  held: (id: string) => boolean = NONE_HELD,
   limit = SOUNDBITE_LIMIT
 ): Soundbite | null {
   if (kept.length < limit) return null
-  const chosen = kept.find((bite) => bite.id === choice)
-  return chosen ?? byNewest(kept).at(-1) ?? null
+  const leavable = kept.filter((bite) => held(bite.id))
+  const chosen = leavable.find((bite) => bite.id === choice)
+  return chosen ?? byNewest(leavable).at(-1) ?? null
 }
 
 /**
  * The ids a new soundbite displaces so that, with it, no more than `limit`
- * are kept: `nextReplaced` first, then the oldest of the rest for as long as
- * there are still too many (only after the limit was lowered, or a write
- * elsewhere raced this one).
+ * are kept: `nextReplaced` first, then the oldest of the rest home holds for
+ * as long as there are still too many (only after the limit was lowered, or
+ * a write elsewhere raced this one). Null when home holds too few to make
+ * room: the new one is then refused, and none goes.
  */
 export function displacedBy(
   kept: ReadonlyArray<Soundbite>,
   choice: string | null,
+  held: (id: string) => boolean = NONE_HELD,
   limit = SOUNDBITE_LIMIT
-): Array<string> {
-  const first = nextReplaced(kept, choice, limit)
-  if (first === null) return []
-  const rest = byNewest(kept.filter((bite) => bite.id !== first.id)).reverse()
+): Array<string> | null {
   const excess = kept.length + 1 - limit
+  if (excess <= 0) return []
+  const first = nextReplaced(kept, choice, held, limit)
+  if (first === null) return null
+  const rest = byNewest(
+    kept.filter((bite) => bite.id !== first.id && held(bite.id))
+  ).reverse()
+  if (rest.length < excess - 1) return null
   return [first.id, ...rest.slice(0, excess - 1).map((bite) => bite.id)]
 }
 

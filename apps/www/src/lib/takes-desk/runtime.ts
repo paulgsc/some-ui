@@ -4,10 +4,12 @@
  * voice note, each kept take's audio on a shelf and its entry in a list,
  * and the last one played back.
  *
- * - **Bounded on its own, and never evicted.** At most `limits.max` takes,
- *   each at most `limits.maxMs`. At the most a new take is refused and
- *   `full` says so; takes leave only by `letGo`, which `takesDesk`'s sweep
- *   calls for a take whose audio never landed.
+ * - **Bounded on its own, an offline set, and nothing evicted before home
+ *   holds it** (HF5, #2180). At most `limits.max` takes, each at most
+ *   `limits.maxMs`. At the most a new take makes room by letting go the
+ *   oldest take home holds (`held`); with none held it is refused and
+ *   `full` says so. Takes leave otherwise only by `letGo`, which
+ *   `takesDesk`'s sweep calls for a take whose audio never landed.
  * - **Every take's end is said** (VC2, `@some-ui/voice-capture`'s
  *   `voice-note.ts`). `ended` names how each take ended and the line it was
  *   started on, apart from `reset`'s hush, so a caller that moved on still
@@ -67,6 +69,8 @@ export type TakesPorts = {
   player: Player
   now: () => number
   newId: () => string
+  /** Whether home holds this take's audio, read back (`lib/home-link`). */
+  held: (id: string) => boolean
 }
 
 /**
@@ -96,7 +100,32 @@ export type PhoneTakes = Omit<LensTakes, "getSnapshot"> & {
   getSnapshot: () => DeskSnapshot
   /** Lets these takes go, with their audio. */
   letGo: (ids: ReadonlyArray<string>) => void
+  /** Says `full` again: what home holds has changed. */
+  recount: () => void
 }
+
+/**
+ * The item a new one makes room by letting go at `max`: the oldest by `at`
+ * of those home holds (`held`), or null while there is room or home holds
+ * none. The takes' and LeetType's answer notes' (`lib/leetype-takes`).
+ */
+export function makesRoom<T extends { readonly id: string }>(
+  items: ReadonlyArray<T>,
+  max: number,
+  held: (id: string) => boolean,
+  at: (item: T) => number
+): T | null {
+  if (items.length < max) return null
+  let oldest: T | null = null
+  for (const item of items) {
+    if (held(item.id) && (oldest === null || at(item) < at(oldest))) {
+      oldest = item
+    }
+  }
+  return oldest
+}
+
+const takenAt = (take: Take): number => take.takenAt
 
 export function createTakes(ports: TakesPorts, limits: TakeLimits): PhoneTakes {
   const listeners = new Set<() => void>()
@@ -112,7 +141,25 @@ export function createTakes(ports: TakesPorts, limits: TakeLimits): PhoneTakes {
   // Reset hushes the last take's outcome, which was about the item before.
   let quiet = false
 
-  const full = (): boolean => ports.takes.read().length >= limits.max
+  const full = (): boolean => {
+    const takes = ports.takes.read()
+    return (
+      takes.length >= limits.max &&
+      makesRoom(takes, limits.max, ports.held, takenAt) === null
+    )
+  }
+
+  /** Lets these takes go, with their audio, and says so. */
+  const letGo = (ids: ReadonlyArray<string>): void => {
+    if (ids.length === 0) return
+    if (last && ids.includes(last.id)) last = null
+    // The list first: audio whose entry stays would leave a silent take.
+    if (ports.takes.remove(ids)) {
+      // Ignored: audio no take names is cleared by the next sweep.
+      ports.audio.remove(ids).catch(() => undefined)
+    }
+    publish()
+  }
 
   const note = voiceNoteRuntime(
     {
@@ -127,6 +174,13 @@ export function createTakes(ports: TakesPorts, limits: TakeLimits): PhoneTakes {
           saved("full")
           return
         }
+        const room = makesRoom(
+          ports.takes.read(),
+          limits.max,
+          ports.held,
+          takenAt
+        )
+        if (room !== null) letGo([room.id])
         shelveTake(
           ports,
           id,
@@ -242,15 +296,9 @@ export function createTakes(ports: TakesPorts, limits: TakeLimits): PhoneTakes {
         () => undefined
       )
     },
-    letGo: (ids): void => {
-      if (ids.length === 0) return
-      if (last && ids.includes(last.id)) last = null
-      // The list first: audio whose entry stays would leave a silent take.
-      if (ports.takes.remove(ids)) {
-        // Ignored: audio no take names is cleared by the next sweep.
-        ports.audio.remove(ids).catch(() => undefined)
-      }
-      publish()
+    letGo,
+    recount: (): void => {
+      if (full() !== snapshot.full) publish()
     },
     reset: (): void => {
       item += 1

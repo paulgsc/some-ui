@@ -1,7 +1,6 @@
 /**
- * Takes kept (adaptive-learning canon Rem. 4.16): at most forty. None
- * expires and none is evicted; past forty a new take is refused until a
- * confirmed export lets the shared ones go.
+ * Takes kept (adaptive-learning canon Rem. 4.16): at most forty; see
+ * `lib/takes-desk/runtime`.
  */
 export const LENS_TAKES_MAX = 40
 

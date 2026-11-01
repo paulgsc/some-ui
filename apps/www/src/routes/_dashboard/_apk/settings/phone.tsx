@@ -1,10 +1,7 @@
 import type { JSX } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 
-import {
-  DeviceArchive,
-  DeviceStorageSummary,
-} from "@/components/settings/device-storage"
+import { DeviceStorageSummary } from "@/components/settings/device-storage"
 import {
   SettingsBlock,
   SettingsPage,
@@ -15,7 +12,6 @@ const PhonePage = (): JSX.Element => (
     {import.meta.env.VITE_DEVICE_BACKEND === "true" ? (
       <SettingsBlock>
         <DeviceStorageSummary />
-        <DeviceArchive />
       </SettingsBlock>
     ) : null}
   </SettingsPage>

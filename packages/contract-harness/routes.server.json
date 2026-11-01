@@ -424,6 +424,20 @@
       "module": "routine"
     },
     {
+      "method": "PUT",
+      "path": "/routine/prompts/:stamp",
+      "full_path": "/api/v1/routine/prompts/:stamp",
+      "versioned": true,
+      "module": "routine"
+    },
+    {
+      "method": "PUT",
+      "path": "/routine/reflections/:id",
+      "full_path": "/api/v1/routine/reflections/:id",
+      "versioned": true,
+      "module": "routine"
+    },
+    {
       "method": "GET",
       "path": "/rust-rounds",
       "full_path": "/api/v1/rust-rounds",
@@ -569,6 +583,13 @@
       "full_path": "/api/v1/studio/sittings/:sitting/events/:id",
       "versioned": true,
       "module": "studio_log"
+    },
+    {
+      "method": "PUT",
+      "path": "/study-notes/:kind/:id",
+      "full_path": "/api/v1/study-notes/:kind/:id",
+      "versioned": true,
+      "module": "study_notes"
     },
     {
       "method": "GET",

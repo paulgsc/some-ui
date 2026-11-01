@@ -36,7 +36,9 @@ function ports(listed: Array<Take> = []): TakesPorts & {
   listed: Array<Take>
   audio: BlobShelf
   ended: () => void
+  home: Set<string>
 } {
+  const home = new Set<string>()
   const audio: BlobShelf = {
     put: vi.fn(() => Promise.resolve()),
     get: () => Promise.resolve(new Blob(["abc"])),
@@ -49,6 +51,8 @@ function ports(listed: Array<Take> = []): TakesPorts & {
   return {
     listed,
     audio,
+    home,
+    held: (id) => home.has(id),
     ended: () => end(),
     startRecording: () => Promise.resolve(recording(4_000)),
     takes: {
@@ -153,7 +157,7 @@ describe("createTakes", () => {
     expect(takes.getSnapshot().kept).toEqual({ id: "t2", durationMs: 4_000 })
   })
 
-  it("refuses a take past forty, evicting none, until shared takes are let go", async () => {
+  it("refuses a take past forty while home holds none, evicting none", async () => {
     const full = Array.from({ length: LENS_TAKES_MAX }, (_, index) =>
       kept(`old-${index}`, NOW - 400 * 24 * 60 * 60 * 1000 - index)
     )
@@ -172,6 +176,25 @@ describe("createTakes", () => {
     await take(takes)
     expect(p.listed[0]?.id).toBe("t1")
     expect(p.listed).toHaveLength(LENS_TAKES_MAX - 1)
+  })
+
+  it("makes room at forty by letting go the oldest take home holds, and only one home holds (HF5)", async () => {
+    const full = Array.from({ length: LENS_TAKES_MAX }, (_, index) =>
+      kept(`old-${index}`, NOW - index)
+    )
+    const p = ports(full)
+    const takes = createTakes(p, LIMITS)
+    p.home.add("old-2").add("old-5")
+    expect(takes.getSnapshot().full).toBe(true)
+    takes.recount()
+    expect(takes.getSnapshot().full).toBe(false)
+    await take(takes)
+    // old-5 is older than old-2: it goes, and nothing home lacks.
+    expect(p.audio.remove).toHaveBeenCalledWith(["old-5"])
+    expect(p.listed.map(({ id }) => id)).not.toContain("old-5")
+    expect(p.listed.map(({ id }) => id)).toContain("old-2")
+    expect(p.listed).toHaveLength(LENS_TAKES_MAX)
+    expect(p.listed[0]?.id).toBe("t1")
   })
 
   it("is full once a kept take is the fortieth", async () => {

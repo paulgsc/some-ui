@@ -23,6 +23,9 @@ export default defineConfig({
       "@/build.paths": resolve(import.meta.dirname, "./build.paths.ts"),
       "@/build.minify": resolve(import.meta.dirname, "./build.minify.ts"),
       "@/file-host.dev": resolve(import.meta.dirname, "./file-host.dev.ts"),
+      // tsconfig's `@tests/*`: a unit test holds a fit page's copy to its
+      // original (`lib/scene-ask/index.test.ts`).
+      "@tests": resolve(import.meta.dirname, "./tests"),
       // Mirrors vite.config.ts's "@" -> "./src" alias, which this config
       // doesn't extend.
       "@": resolve(import.meta.dirname, "./src"),

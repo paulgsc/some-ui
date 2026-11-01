@@ -13,6 +13,7 @@ export { STUDIO_WORDS } from "./lib/studio/words"
 export { sittingKey } from "./lib/studio/time-log"
 export type { TimeEvent } from "./lib/studio/time-log"
 export { keptTimeLog } from "./lib/studio/time-store"
+export { keptLetGo } from "./lib/studio/let-go-store"
 export { Soundbites } from "./components/soundbites"
 export type { SoundbitesProps } from "./components/soundbites"
 export type { SoundbiteSituation } from "./lib/machine"
@@ -30,9 +31,16 @@ export type {
   Sitting,
 } from "./lib/project/model"
 export { anchorAt, cutListAt, newProject, step } from "./lib/project/model"
-export { letGoHeldTakes, notesForHome } from "./lib/project/home"
+export {
+  letGoHeldTakes,
+  letGoOnDrive,
+  notesForHome,
+  waitingIds,
+} from "./lib/project/home"
 export type { StudioNote } from "./lib/project/home"
 export { ProjectFullError, ProjectRewriteError } from "./lib/project/store"
 export type { Friction, ProjectStore } from "./lib/project/store"
+export type { LetGoChoice } from "./lib/project/let-go"
 export type { SoundbiteStore } from "./lib/store"
+export { soundbitesHeldByHome } from "./lib/home-held"
 export type { Soundbite, SoundbiteContext, SoundbiteSource } from "./lib/types"

@@ -2,7 +2,7 @@ import { createContext, useContext } from "react"
 import type { ShelfPort } from "@some-ui/shared"
 import type { Speaker } from "@some-ui/speech"
 import type { LensTakes } from "@topik/lib/topik/adapter/lens-takes"
-import type { FileShare } from "@topik/lib/topik/adapter/next-scene-share"
+import type { SceneAsk } from "@topik/lib/topik/adapter/next-scene-ask"
 import type { RoutineFeed } from "@topik/lib/topik/adapter/routine-files"
 import type { SceneVoice } from "@topik/lib/topik/adapter/scene-voice"
 import type { TreeFeed } from "@topik/lib/topik/adapter/tree-feed"
@@ -36,7 +36,11 @@ export type SessionConfig = {
    * read by the handheld lesson only. Absent, it lists none.
    */
   routineFeed?: RoutineFeed
-  share?: FileShare
+  /**
+   * Asks the owner's home for the next scene (`adapter/next-scene-ask`):
+   * the Android app's. Absent, the prompt goes by the clipboard alone.
+   */
+  sceneAsk?: SceneAsk
   sceneVoice?: SceneVoice
   sceneFileHint?: string
   wordSetHint?: string

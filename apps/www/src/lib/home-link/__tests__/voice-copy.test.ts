@@ -12,8 +12,12 @@ import { describe, expect, it } from "vitest"
 import {
   gameNote,
   jobsNotes,
+  leetypeNote,
+  lensNote,
   reflectionNote,
+  refOf,
   sceneNote,
+  soundbiteNote,
   unsendable,
 } from "@/lib/home-link/voice-copy"
 import type { JobEvent, JobsState, VoiceNote } from "@/lib/jobs/model"
@@ -29,6 +33,51 @@ const voice = (id: string, owner = "draft"): VoiceNote => ({
 })
 
 describe("what each voice note is told home as", () => {
+  it("tells a soundbite by how it came to be recorded, a lens take by its line and a LeetType take by its file and screen (HF5)", () => {
+    const takenAt = Date.parse("2026-11-01T09:12:00.000Z")
+    const take = { id: "t1", takenAt, durationMs: 3000, mimeType: "audio/webm" }
+    expect(lensNote({ ...take, line: "two-cups" })).toEqual({
+      id: "t1",
+      of: "lens",
+      ref: "two-cups",
+      at: "2026-11-01T09:12:00.000Z",
+      contentType: "audio/webm",
+    })
+    expect(leetypeNote({ ...take, line: "two-sum.json#explain-1" }).ref).toBe(
+      "two-sum.json:explain-1"
+    )
+    expect(
+      soundbiteNote({
+        id: "b1",
+        recordedAt: "2026-11-01T09:00:00.000Z",
+        durationMs: 5000,
+        mimeType: "audio/webm;codecs=opus",
+        bytes: 9,
+        context: {
+          source: "reminder",
+          lastSessionAt: null,
+          openSessions: 0,
+          timeZone: "UTC",
+        },
+      })
+    ).toEqual({
+      id: "b1",
+      of: "soundbite",
+      ref: "reminder",
+      at: "2026-11-01T09:00:00.000Z",
+      contentType: "audio/webm;codecs=opus",
+    })
+  })
+
+  it("makes any line a ref home takes", () => {
+    expect(refOf("a line/with spaces#and more")).toBe(
+      "a-line-with-spaces-and-more"
+    )
+    expect(refOf("x".repeat(300))).toHaveLength(200)
+    expect(refOf("")).toBe("-")
+    expect(refOf("ok_line.v2:s3-1")).toBe("ok_line.v2:s3-1")
+  })
+
   it("tells a scene note as the drama's next scene, by when it was kept, recorded and never shared", () => {
     const now = new Date("2026-10-31T12:00:00.000Z")
     const kept = { id: "s1", durationMs: 4000, mimeType: "audio/mp4" }

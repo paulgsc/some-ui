@@ -21,7 +21,6 @@ import { installShareSidecar } from "@/lib/share-files"
 import { releasePushWhenLeavingTheAccount } from "@/lib/study-nudge/leave-account"
 import { listenForWingEntry } from "@/lib/wings/entry"
 import { ErrorState, NotFound, RoutePending } from "@/components/housekeeping"
-import { DeviceReflectionsArrival } from "@/components/reflection/device-reflections-arrival"
 
 import { routeTree } from "./routeTree.gen"
 
@@ -99,10 +98,6 @@ if (rootElement && !rootElement.innerHTML) {
     <StrictMode>
       <AppProviders>
         <RouterProvider router={router} />
-        {/* Beside the routes, so a share's question outlives its screen. */}
-        {import.meta.env.VITE_DEVICE_BACKEND === "true" && (
-          <DeviceReflectionsArrival />
-        )}
       </AppProviders>
     </StrictMode>
   )

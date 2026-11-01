@@ -11,6 +11,7 @@ export type {
 export {
   profileQuery,
   sessionQuery,
+  sessionsKey,
   sessionsQuery,
   settingsQuery,
 } from "./queries"

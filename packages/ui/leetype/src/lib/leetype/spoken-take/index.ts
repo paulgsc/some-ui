@@ -12,9 +12,9 @@ export type SpokenTakeSnapshot = {
   readonly said: string | null
   /** The take kept since the last `reset`. */
   readonly last: { readonly id: string; readonly durationMs: number } | null
-  /** No new take can be kept until the takes are shared. */
+  /** No new take can be kept until home holds some of those kept. */
   readonly full: boolean
-  /** No answer can be kept at all, typed included, until they are shared. */
+  /** No answer can be kept at all, typed included, until home holds some. */
   readonly notesFull: boolean
 }
 

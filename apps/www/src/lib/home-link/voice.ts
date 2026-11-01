@@ -12,6 +12,8 @@ import type { OutboxPort, OutboxView } from "@some-ui/game-week"
 import type { PhoneBite } from "@/lib/game-bites"
 import { phoneGameBites } from "@/lib/game-bites"
 import { phoneJobs } from "@/lib/jobs"
+import { leetypeTakesDesk } from "@/lib/leetype-takes"
+import { lensTakesDesk } from "@/lib/lens-takes"
 import { reflections } from "@/lib/session-reflection"
 import { phoneVoiceHome } from "@/lib/voice-home"
 import type { Unsendable, VoiceHomeState } from "@/lib/voice-home/model"
@@ -24,7 +26,7 @@ import {
   candidates,
   copyPasses,
   sendVoice,
-  studioRead,
+  storesRead,
   unsendable,
   watchVoiceNotes,
 } from "./voice-copy"
@@ -37,14 +39,18 @@ export const voiceLane: Lane = {
   useCounts: (): LaneCounts => {
     const home = phoneVoiceHome()
     const state = useSyncExternalStore(home.subscribe, home.getSnapshot)
-    // Read so a reflection, Jobs note, game bite or Studio take added
-    // renders the offer again.
+    // Read so a reflection, Jobs note, game bite, Studio take, soundbite,
+    // lens take or LeetType take added renders the offer again.
     useSyncExternalStore(reflections.subscribe, reflections.getSnapshot)
     const jobs = phoneJobs()
     useSyncExternalStore(jobs.subscribe, jobs.getSnapshot)
     const bites = phoneGameBites()
     useSyncExternalStore(bites.subscribe, bites.getSnapshot)
-    useSyncExternalStore(studioRead.subscribe, studioRead.getSnapshot)
+    useSyncExternalStore(storesRead.subscribe, storesRead.getSnapshot)
+    const lens = lensTakesDesk.phone()
+    useSyncExternalStore(lens.subscribe, lens.getSnapshot)
+    const leetype = leetypeTakesDesk.phone()
+    useSyncExternalStore(leetype.subscribe, leetype.getSnapshot)
     const { gone } = useSyncExternalStore(
       copyPasses.subscribe,
       copyPasses.getSnapshot
