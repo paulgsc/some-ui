@@ -450,9 +450,9 @@
           "kind": "OA2",
           "property": "outcome",
           "claim": "Every voice note sent home gets a transcript or a recorded reason it has none, its set-aside mark among them.",
-          "requirement": "Each note home holds gets a row; a failed hearing is recorded and tried again on at most ATTEMPTS (3) passes, then stays recorded as failed, so no note is left without an outcome after three passes. A note set aside (D3) before it was heard leaves the queue, its mark the recorded reason; the phone sends that mark once for each note it set aside that home holds, and keeps it owed until home takes it.",
+          "requirement": "Each note home holds gets a row; a failed hearing is recorded and tried again on at most ATTEMPTS (3) passes, then stays recorded as failed, so no note is left without an outcome after three passes. A note set aside (D3) before it was heard leaves the queue, its mark the recorded reason; the phone sends that mark once for each note it set aside that home holds, and keeps it owed until home takes it. While home has no route for the mark (a server before paulgsc/server#638), the phone keeps at most ASIDE_OWED_MAX (500) owed marks; past that it drops the oldest whose notes have left the phone, and home's routines go on reading those notes.",
           "verdict": "holds",
-          "conclusion": "Every note gets a row, and a failure is retried a few times and then kept as failed. A note I let go before home heard it is not heard, and home keeps its mark saying so; the phone owes the mark at Let go, before the note is set aside, for every kind of note that can be let go, and sends it once home holds the note.",
+          "conclusion": "Every note gets a row, and a failure is retried a few times and then kept as failed. A note I let go before home heard it is not heard, and home keeps its mark saying so; the phone owes the mark at Let go, before the note is set aside, for every kind of note that can be let go, and sends it once home holds the note. While home runs a server without the mark's route, the phone keeps at most 500 marks owed, and past that the oldest of notes no longer on the phone are dropped and those notes stay read.",
           "evidence": [
             {
               "class": "measured",
@@ -482,8 +482,8 @@
           "amendments": [
             {
               "on": "2026-11-01",
-              "change": "A note set aside before home heard it is no longer heard: its set-aside mark is the recorded reason it has no transcript.",
-              "why": "The owner's D3 is what changes VH1: set aside means out of what routines read, kept on home, and the transcriber's queue is one of those reads. Keeping the mark in a table of its own (shape B) was the session's choice under the owner's direction to go with recommendations (some-ui#2372 comment 6559370232).",
+              "change": "A note set aside before home heard it is no longer heard: its set-aside mark is the recorded reason it has no transcript. While home has no route for the mark, the phone keeps at most 500 owed and drops the oldest of notes no longer on it, which home then goes on reading.",
+              "why": "The owner's D3 is what changes VH1: set aside means out of what routines read, kept on home, and the transcriber's queue is one of those reads. Keeping the mark in a table of its own (shape B) was the session's choice under the owner's direction to go with recommendations (some-ui#2372 comment 6559370232), as was the 500-mark cap on what the phone keeps owed for a home without the route (#2451).",
               "decision": "https://github.com/paulgsc/some-ui/issues/2368"
             }
           ]
