@@ -4,7 +4,11 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { leetypeTakesForExport, phoneSpokenTakes } from "@/lib/leetype-takes"
+import {
+  leetypeNotesHeldByHome,
+  leetypeTakesForExport,
+  phoneSpokenTakes,
+} from "@/lib/leetype-takes"
 
 vi.mock("@some-ui/voice-capture", async (actual) => {
   const shelf = {
@@ -36,6 +40,7 @@ const NOTE = {
 
 beforeEach(() => {
   localStorage.clear()
+  leetypeNotesHeldByHome(() => (): boolean => false)
 })
 
 describe("phoneSpokenTakes", () => {
@@ -47,7 +52,7 @@ describe("phoneSpokenTakes", () => {
     ])
   })
 
-  it("refuses a note past forty and says it is full, evicting none", async () => {
+  it("refuses a note past forty while home holds none, and says it is full, evicting none", async () => {
     const takes = phoneSpokenTakes()
     for (let index = 0; index < 40; index++) {
       takes.note({ ...NOTE, typed: String(index) })
@@ -58,6 +63,52 @@ describe("phoneSpokenTakes", () => {
     expect(notes).toHaveLength(40)
     expect(notes.map(({ typed }) => typed)).not.toContain("one too many")
     expect(notes.map(({ typed }) => typed)).toContain("0")
+  })
+
+  it("makes room past forty by letting go the oldest note home holds, and only one it holds (HF5)", async () => {
+    const takes = phoneSpokenTakes()
+    const now = vi.spyOn(Date, "now")
+    for (let index = 0; index < 40; index++) {
+      now.mockReturnValue(1_000 + index)
+      takes.note({ ...NOTE, typed: String(index) })
+    }
+    now.mockRestore()
+    const before = (await leetypeTakesForExport()).notes
+    const home = new Set(
+      before
+        .filter(({ typed }) => typed === "3" || typed === "7")
+        .map(({ id }) => id)
+    )
+    leetypeNotesHeldByHome(
+      () =>
+        (id): boolean =>
+          home.has(id)
+    )
+    expect(takes.getSnapshot()).toMatchObject({ notesFull: false })
+    expect(takes.note({ ...NOTE, typed: "forty-one" })).toBe(true)
+    const typed = (await leetypeTakesForExport()).notes.map(({ typed: t }) => t)
+    expect(typed).toHaveLength(40)
+    expect(typed).toContain("forty-one")
+    expect(typed).not.toContain("3")
+    expect(typed).toContain("7")
+    expect(typed).toContain("0")
+  })
+
+  it("tells a screen reading it when home comes to hold notes, so a full record takes an answer again (HF5)", () => {
+    const takes = phoneSpokenTakes()
+    for (let index = 0; index < 40; index++) {
+      takes.note({ ...NOTE, typed: String(index) })
+    }
+    const heard = vi.fn()
+    const stop = takes.subscribe(heard)
+    expect(takes.getSnapshot()).toMatchObject({ notesFull: true })
+    leetypeNotesHeldByHome(() => (): boolean => true)
+    expect(heard).toHaveBeenCalled()
+    expect(takes.getSnapshot()).toMatchObject({ notesFull: false })
+    stop()
+    heard.mockClear()
+    leetypeNotesHeldByHome(() => (): boolean => false)
+    expect(heard).not.toHaveBeenCalled()
   })
 
   it("gives the same snapshot until something changes", () => {

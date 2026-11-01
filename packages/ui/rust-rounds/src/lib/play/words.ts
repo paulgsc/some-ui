@@ -48,7 +48,6 @@ export const WORDS = {
   opening: "Opening the microphone…",
   listening: "Listening. Let go to keep it.",
   keeping: "Keeping it…",
-  /** Every ending but `blocked`, which is said in the microphone's own words. */
   takeEnded: {
     kept: "Kept on this phone.",
     short: "Too short to keep. Hold, talk, then let go.",

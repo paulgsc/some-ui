@@ -104,7 +104,7 @@ describe("createSceneVoice", () => {
     expect(voice.getSnapshot()).toMatchObject({ notes: [], said: null })
   })
 
-  it("lets go the notes home holds that a shared prompt carried, and no other (LG1)", async () => {
+  it("lets go the notes home holds that an ask home holds carried, and no other (LG1)", async () => {
     const p = ports()
     const voice = createSceneVoice(p)
     await talk(voice)

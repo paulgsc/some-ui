@@ -13,9 +13,9 @@
  *   it was opening, its arrival is discarded, never recorded.
  *
  * **VC2: every take that starts ends once, and its ending has words.**
- * Declared for #2370; its claim, family and proof are in `./properties.ts`,
- * where MIC1 (#2371) moved them beside VC3. A take stopped or left while
- * the microphone is still opening ends `early`, never silently.
+ * Its claim, family and proof are in `./properties.ts`, beside VC3. A take
+ * stopped or left while the microphone is still opening ends `early`, never
+ * silently.
  */
 import { assertNever } from "@some-ui/core-utils"
 

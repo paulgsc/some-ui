@@ -1,5 +1,8 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
-import type { FileShare } from "@topik/lib/topik/adapter/next-scene-share"
+import type {
+  SceneAsk,
+  SceneAskSnapshot,
+} from "@topik/lib/topik/adapter/next-scene-ask"
 import type {
   SceneNote,
   SceneVoice,
@@ -202,25 +205,66 @@ describe("GenerateLesson's spoken scene", () => {
     { id: "n2", durationMs: 9_000, mimeType: "audio/webm" },
   ]
 
-  it("shares the draft's voice notes with the prompt, named in it, and keeps them on the phone (LG1)", async () => {
+  it("asks home with the draft's voice notes named by id, keeps them on the phone, and says what the host says (LG1)", () => {
     const draft = draftOf(notes)
-    const share = vi.fn<FileShare>(() =>
-      Promise.resolve({ status: "succeeded", value: "shared" })
+    let snapshot: SceneAskSnapshot = { said: "Nothing asked yet.", held: false }
+    const listeners = new Set<() => void>()
+    const ask = vi.fn<SceneAsk["ask"]>(() => {
+      snapshot = { said: "Home has your ask.", held: true }
+      for (const listener of listeners) listener()
+      return true
+    })
+    const onPromptHandedOff = vi.fn<(prompt: string) => void>()
+    const { buildPrompt } = renderGenerate({
+      sceneVoice: draft,
+      onPromptHandedOff,
+      sceneAsk: {
+        getSnapshot: () => snapshot,
+        subscribe: (listener) => {
+          listeners.add(listener)
+          return (): void => {
+            listeners.delete(listener)
+          }
+        },
+        ask,
+      },
+    })
+    expect(screen.getByText("Nothing asked yet.")).toBeTruthy()
+    expect(screen.getByText(/go with your ask/)).toBeTruthy()
+    click(/Ask for the next scene/)
+    const asked = ask.mock.calls[0]?.[0]
+    expect(asked?.notes).toEqual(["n1", "n2"])
+    expect(asked?.stamp).toMatch(/^drama-\d{8}T\d{9}Z$/)
+    expect(asked?.text).toContain(
+      `<!-- notes: {"${asked?.stamp ?? ""}.voice-1.webm":"n1"`
     )
-    const { buildPrompt } = renderGenerate({ share, sceneVoice: draft })
-    expect(screen.getByText("Voice note 1 · 0:42")).toBeTruthy()
-    click(/Share the next scene's prompt/)
-    const file = share.mock.calls[0]?.[0]
-    const named = file?.notes ?? []
-    expect(named.map(({ id }) => id)).toEqual(["n1", "n2"])
     expect(buildPrompt).toHaveBeenCalledWith(
-      expect.objectContaining({ voiceNotes: named.map(({ name }) => name) })
+      expect.objectContaining({
+        voiceNotes: [
+          `${asked?.stamp ?? ""}.voice-1.webm`,
+          `${asked?.stamp ?? ""}.voice-2.webm`,
+        ],
+      })
     )
-    // A Drive share is a copy: nothing asks whether it arrived, and the
-    // notes stay until home holds them.
-    await screen.findByText(/Share the next scene's prompt/)
-    expect(screen.queryByText(/reach your drive/)).toBeNull()
+    expect(onPromptHandedOff).toHaveBeenCalledOnce()
+    expect(screen.getByText("Home has your ask.")).toBeTruthy()
     expect(draft.remove).not.toHaveBeenCalled()
+  })
+
+  it("says so when the phone could not keep an ask, and hands nothing off", () => {
+    const onPromptHandedOff = vi.fn<(prompt: string) => void>()
+    const none = { said: "Nothing asked yet.", held: false }
+    renderGenerate({
+      onPromptHandedOff,
+      sceneAsk: {
+        getSnapshot: () => none,
+        subscribe: () => (): void => undefined,
+        ask: () => false,
+      },
+    })
+    click(/Ask for the next scene/)
+    expect(screen.getByRole("alert").textContent).toMatch(/couldn't keep/)
+    expect(onPromptHandedOff).not.toHaveBeenCalled()
   })
 
   it("opens on the draft left open, and starts another only once it is let go", () => {

@@ -23,7 +23,12 @@ import type {
   StudioProps,
   WingLink,
 } from "@some-ui/soundbites"
-import { keptTimeLog, NewIdeaPage, StudioHome } from "@some-ui/soundbites"
+import {
+  keptLetGo,
+  keptTimeLog,
+  NewIdeaPage,
+  StudioHome,
+} from "@some-ui/soundbites"
 import {
   cutListOf,
   fakeMic,
@@ -105,6 +110,22 @@ const REVIEWED: Project = ((): Project => {
   return { ...reviewed, ready: [{ rev: 2, at: AT }] }
 })()
 
+/**
+ * Every scene taken and home holding each take, still on the phone: Start
+ * asks when takes leave the phone, and under "keep until Drive has it"
+ * lists each with its "Drive has it" (HF11).
+ */
+const HELD: Project = ((): Project => {
+  const all = run(
+    projectFromPrimer("fit-held", PRIMER, AT),
+    ...FIT_CUTS.flatMap((cut) => taken(cut.id))
+  ).project
+  return {
+    ...all,
+    takes: all.takes.map((take) => ({ ...take, keptBy: ["home"] })),
+  }
+})()
+
 const noop = (): void => undefined
 
 /** A recognizer that is there and never finishes, so each screen offers to listen. */
@@ -125,8 +146,15 @@ function studioPorts(
     store: memoryProjectStore(projects).store,
     startRecording: fakeMic(),
     timeLog: keptTimeLog(inMemoryStorage),
+    // Kept as long as the page is: a choice made on Start stays made.
+    letGo: keptLetGo(once(inMemoryStorage())),
     listener,
   }
+}
+
+/** `storage`, the same one on every look. */
+function once(storage: Storage): () => Storage {
+  return () => storage
 }
 
 /** A link to `href`, as an anchor: the page has no router. */
@@ -161,6 +189,7 @@ export const PHONE_FIXTURES = {
   "studio-fresh": studioOn([FRESH]),
   "studio-taken": studioOn([TAKEN]),
   "studio-reviewed": studioOn([REVIEWED]),
+  "studio-held": studioOn([HELD]),
 
   /** New idea (`/journal/idea`). */
   idea: (): JSX.Element => (

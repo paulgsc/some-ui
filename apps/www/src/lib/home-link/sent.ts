@@ -3,15 +3,20 @@
  * carries only what changed since: each finished session's `updatedAt` as
  * it was copied, each kept shelf item's digest as home answered for it,
  * each LeetType session's digest as home read it back (`./leetype-log`),
- * each Studio sitting's and answer's (`./studio-log`), and the digests home
+ * each Studio sitting's and answer's (`./studio-log`), each written
+ * reflection's as home answered it (`./reflections`), each ask for the next
+ * scene's as home answered it (`./prompts`), each study note's SHA-256 as
+ * home answered for it (`./notes`), each grammar-lens entry's digest as home
+ * read it back (`./lens-record`), and the digests home
  * refused, so the drain does not offer an unchanged refused item again
  * (it goes once its bytes change). Kept for one pairing (`pairing`, the
  * link's id for it): another pairing starts from nothing. Bookkeeping, not
  * the record: lost, it only means sending again, which home answers as
- * unchanged.
+ * unchanged, and keeping the written reflections home holds until then.
  */
 import type { KeyedStorage, Salvaged } from "@some-ui/core-utils"
 import {
+  canonicalJson,
   fnv1a,
   isRecord,
   jsonOf,
@@ -33,6 +38,10 @@ export type Sent = {
   readonly refused: Readonly<Record<string, string>>
   readonly leetype: Readonly<Record<string, string>>
   readonly studio: Readonly<Record<string, string>>
+  readonly reflections: Readonly<Record<string, string>>
+  readonly prompts: Readonly<Record<string, string>>
+  readonly notes: Readonly<Record<string, string>>
+  readonly lens: Readonly<Record<string, string>>
 }
 
 type Store = KeyedStorage | null
@@ -44,6 +53,10 @@ const emptyFor = (pairing: string): Sent => ({
   refused: {},
   leetype: {},
   studio: {},
+  reflections: {},
+  prompts: {},
+  notes: {},
+  lens: {},
 })
 
 /** The string entries of `value`, and whether every entry was one. */
@@ -73,6 +86,10 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
   const refused = stringsOf(parsed.refused)
   const leetype = stringsOf(parsed.leetype)
   const studio = stringsOf(parsed.studio)
+  const reflections = stringsOf(parsed.reflections)
+  const prompts = stringsOf(parsed.prompts)
+  const notes = stringsOf(parsed.notes)
+  const lens = stringsOf(parsed.lens)
   return {
     value: {
       pairing: parsed.pairing,
@@ -81,10 +98,22 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
       refused: refused.value,
       leetype: leetype.value,
       studio: studio.value,
+      reflections: reflections.value,
+      prompts: prompts.value,
+      notes: notes.value,
+      lens: lens.value,
     },
-    whole: [sessions, shelf, refused, leetype, studio].every(
-      (kind) => kind.whole
-    ),
+    whole: [
+      sessions,
+      shelf,
+      refused,
+      leetype,
+      studio,
+      reflections,
+      prompts,
+      notes,
+      lens,
+    ].every((kind) => kind.whole),
   }
 }
 
@@ -92,6 +121,34 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
 export function readSent(storage: Store, pairing: string): Sent {
   const sent = openKept<Sent | null>(storage, SENT_KEY, readSentRecord, null)
   return sent.value?.pairing === pairing ? sent.value : emptyFor(pairing)
+}
+
+/**
+ * What a run carries of a record `sent` remembers by key (the study notes,
+ * the grammar-lens record), and which of those keys still name something on
+ * the phone, so `sent` forgets the rest.
+ */
+export type KeyedGoing<T> = {
+  readonly going: ReadonlyArray<T>
+  /** True for a key whose item is on the phone, or may be (unread). */
+  readonly onPhone: (key: string) => boolean
+}
+
+/** For each map `sent` keeps only while its item is on the phone, which stay. */
+export type Staying = {
+  readonly notes?: (key: string) => boolean
+  readonly lens?: (key: string) => boolean
+}
+
+/** `record` with only the keys `stays` keeps; all of them without it. */
+function keptOnly(
+  record: Record<string, string>,
+  stays: ((key: string) => boolean) | undefined
+): Record<string, string> {
+  if (stays === undefined) return record
+  return Object.fromEntries(
+    Object.entries(record).filter(([key]) => stays(key))
+  )
 }
 
 /** `record` without the keys `answered` holds. */
@@ -107,12 +164,15 @@ function without(
 /**
  * `sent` with what home now holds added; unwritten, the next send repeats
  * it. A kept item is held or refused, never both: home's latest answer for
- * it replaces the other.
+ * it replaces the other. The study notes and the grammar-lens record keep
+ * only the keys `stays` says are still on the phone: those stores let items
+ * go at their caps, and one value in `localStorage` must not outgrow them.
  */
 export function rememberSent(
   storage: Store,
   sent: Sent,
-  more: Partial<Omit<Sent, "pairing">>
+  more: Partial<Omit<Sent, "pairing">>,
+  stays: Staying = {}
 ): Sent {
   const next: Sent = {
     pairing: sent.pairing,
@@ -121,6 +181,10 @@ export function rememberSent(
     refused: { ...without(sent.refused, more.shelf), ...more.refused },
     leetype: { ...sent.leetype, ...more.leetype },
     studio: { ...sent.studio, ...more.studio },
+    reflections: { ...sent.reflections, ...more.reflections },
+    prompts: { ...sent.prompts, ...more.prompts },
+    notes: keptOnly({ ...sent.notes, ...more.notes }, stays.notes),
+    lens: keptOnly({ ...sent.lens, ...more.lens }, stays.lens),
   }
   // Unwritten (full): the next send carries these again, and home says
   // unchanged.
@@ -145,6 +209,16 @@ export function sessionsHeld(
   sessions: ReadonlyArray<SessionRecord>
 ): Record<string, string> {
   return Object.fromEntries(sessions.map((s) => [s.id, s.updatedAt]))
+}
+
+/**
+ * A held entry for an item that goes home whole (`./reflections`,
+ * `./prompts`): a bounded fingerprint of what went, its canonical JSON's
+ * length and FNV-1a.
+ */
+export function fingerprintOf(wire: unknown): string {
+  const json = canonicalJson(wire)
+  return `${String(json.length)}:${String(fnv1a(json))}`
 }
 
 /** A held entry for a log home keeps (`./leetype-log`): its events, by id. */
@@ -199,15 +273,22 @@ export async function shelfToSend(
   return { changed, digests }
 }
 
-/** How many sessions and kept items this phone knows home holds, or refused. */
+/**
+ * How many sessions, kept items, written reflections and asks for the next
+ * scene this phone knows home holds, and kept items home refused.
+ */
 export function heldCounts(sent: Sent): {
   sessions: number
   shelf: number
   refused: number
+  reflections: number
+  prompts: number
 } {
   return {
     sessions: Object.keys(sent.sessions).length,
     shelf: Object.keys(sent.shelf).length,
     refused: Object.keys(sent.refused).length,
+    reflections: Object.keys(sent.reflections).length,
+    prompts: Object.keys(sent.prompts).length,
   }
 }

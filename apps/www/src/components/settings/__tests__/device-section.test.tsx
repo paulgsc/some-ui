@@ -85,7 +85,7 @@ vi.mock("@/lib/tenant/queries", () => ({
       Promise.resolve([...home.sessions]),
   },
 }))
-vi.mock("@/lib/session-archive", () => ({
+vi.mock("@/lib/home-link/let-go", () => ({
   letGoUnchanged: (sessions: ReadonlyArray<SessionRecord>): Promise<number> => {
     home.gone.push(...sessions.map((s) => s.id))
     return Promise.resolve(sessions.length)

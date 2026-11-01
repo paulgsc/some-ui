@@ -18,3 +18,5 @@ const desk = takesDesk({
 export const phoneLensTakes = desk.phone
 export const sweepLensTakes = desk.sweep
 export const lensTakesForExport = desk.forExport
+/** The desk, for the copy home (`lib/home-link/voice-copy`). */
+export const lensTakesDesk = desk

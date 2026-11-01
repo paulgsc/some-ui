@@ -72,8 +72,8 @@ const SummaryDetail = ({
       )}
       {full && (
         <p className="text-warning text-sm">
-          The record is full and keeps no new answers. Share your study context
-          with an agent to make room.
+          The record is full and keeps no new answers until a home this phone is
+          paired with has the ones on it.
         </p>
       )}
     </div>

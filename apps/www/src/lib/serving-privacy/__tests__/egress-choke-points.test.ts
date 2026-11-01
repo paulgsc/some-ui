@@ -15,12 +15,13 @@
  *   `no-restricted-globals` cannot see it, and `no-restricted-imports`
  *   misses a dynamic `import()` and `Capacitor.Plugins.CapacitorHttp`: only
  *   `lib/device-backend/native-http` may name it, only `lib/home-link` may
- *   call that module, and only the Home server block, the drain and marks
- *   of what this phone keeps on home (LA15), what hands aph's lane to them,
- *   Settings' readout of what is kept where, and the readout and port of
- *   the routine's files in Korean (whose read sends one `GET /routine/files`
- *   and whose telling of what was opened one `PUT /routine/opened`) may
- *   call `lib/home-link`.
+ *   call that module, and only the Home server block, the study list's
+ *   "Let it go" and the phone-full offer's "Remove it", the drain and
+ *   marks of what this phone keeps on home (LA15), what hands aph's lane to
+ *   them, Settings' readout of what is kept where, and the readout and port
+ *   of the routine's files in Korean (whose read sends one
+ *   `GET /routine/files` and whose telling of what was opened one
+ *   `PUT /routine/opened`) may call `lib/home-link`.
  *
  * The last group feeds the checks known-bad sources, so a check that stopped
  * looking cannot stay green.
@@ -63,7 +64,23 @@ const HOME_LINK_CALLERS = new Set([
   // LA13: game day's line of what of its bites waits on the phone for home
   // (`gameOutbox`), which reads and sends nothing.
   "routes/_dashboard/_apk/game-week.tsx",
+  // LA8: the study list's "Let it go" of one session, a tap after a confirm,
+  // which copies it home and reads it back before the phone lets it go.
+  "components/sessions/device-let-go.tsx",
+  // LA8, PF1: the phone-full offer's "Remove it", the same let-go of the one
+  // session it names, on its press.
+  "components/settings/device-storage.tsx",
 ])
+
+/**
+ * LA8: who may start a session's let-go (`components/sessions/device-let-go`,
+ * whose `useSessionLetGo` starts it with no confirm): the study list's row,
+ * after its confirm, and the phone-full offer's "Remove it".
+ */
+const LET_GO_CALLERS = [
+  "components/settings/device-storage.tsx",
+  "routes/_dashboard/sessions/index.tsx",
+]
 
 /**
  * LA15: the one wiring of every record this phone drains to home, which
@@ -82,6 +99,13 @@ const ROUTINE_SENDS = [
   ['"GET"', '"/routine/files"'],
   ['"PUT"', '"/routine/opened"', "JSON.stringify({ opened: keys })"],
 ]
+
+/**
+ * LA8, LA15 (HF11): the voice lane's read of which Studio takes home knows
+ * Drive holds, and the one request it may send.
+ */
+const ON_DRIVE_READ = "lib/home-link/on-drive.ts"
+const ON_DRIVE_SENDS = [['"GET"', "onDrivePath(chunk)"]]
 
 /** Every call of a function named `send` in `text`, as its arguments' text. */
 function sendCalls(path: string, text: string): Array<Array<string>> {
@@ -462,6 +486,18 @@ describe("LA8: the phone reaches home through one module", () => {
     ).toEqual([])
   })
 
+  it("starts a session's let-go only from the study list and the phone-full offer (LA8)", () => {
+    // `useSessionLetGo` hands out a `start` with no confirm of its own: each
+    // caller asks first, in its own words.
+    const isLetGo = (module: string): boolean =>
+      module === "components/sessions/device-let-go"
+    expect(
+      sources
+        .filter((f) => valueImportsOf(f, read(f), isLetGo).length > 0)
+        .sort()
+    ).toEqual(LET_GO_CALLERS)
+  })
+
   it("calls the link's keep only from the drain and Korean's look (LA15)", () => {
     const keeps = (f: string): boolean => /\.keep\(/.test(read(f))
     const reach = sources.filter(
@@ -476,6 +512,19 @@ describe("LA8: the phone reaches home through one module", () => {
 
   it("sends nothing from the routine's read but one GET /routine/files and one PUT /routine/opened", () => {
     expect(sendCalls(ROUTINE_READ, read(ROUTINE_READ))).toEqual(ROUTINE_SENDS)
+  })
+
+  it("sends nothing from the read of which takes Drive has but its GETs of /voice-notes/on-drive, one per 100 waiting takes, and only the voice lane's run reads it (HF11)", () => {
+    expect(sendCalls(ON_DRIVE_READ, read(ON_DRIVE_READ))).toEqual(
+      ON_DRIVE_SENDS
+    )
+    expect(read(ON_DRIVE_READ)).toContain("/voice-notes/on-drive?ids=")
+    const readers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /from "\.\/on-drive"|from "@\/lib\/home-link\/on-drive"/.test(read(f))
+      )
+    expect(readers).toEqual(["lib/home-link/voice-copy.ts"])
   })
 
   it("still finds what it is meant to guard", () => {

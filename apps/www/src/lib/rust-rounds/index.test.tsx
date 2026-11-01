@@ -111,6 +111,7 @@ function deskOn(
       },
       now: Date.now,
       newId: () => `n${(next += 1)}`,
+      held: () => false,
     },
     { max: Number.POSITIVE_INFINITY, maxMs: 60_000 }
   )
