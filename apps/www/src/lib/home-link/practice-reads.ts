@@ -5,9 +5,10 @@
  * their store in, `lib/soundbite-keeping`), the grammar-lens record (topik's,
  * loaded only once the phone is paired, as `./voice-copy`'s reading of what
  * home holds is), LeetType's finished sessions (`@some-ui/leetype`'s log,
- * loaded the same way, read again on each event that can finish a session,
- * #2425) and Studio's answers to how a sitting went (its projects, read only
- * asynchronously, once Studio's route has handed them in, #2425). Each change
+ * loaded the same way, read again on each event that can finish a session)
+ * and Studio's record (each write to its projects heard, and its answers to
+ * how a sitting went read, only asynchronously, once Studio's route has
+ * handed them in). Each change
  * to any of them is read here first, so the lane's revision and waiting count
  * can follow it. LeetType's answer notes need no read here: they are read as
  * they are (`lib/leetype-takes`). Nor does Studio's time log, which is read
@@ -24,11 +25,12 @@ import { onSoundbitesKept, soundbiteKeeping } from "@/lib/soundbite-keeping"
 import { onStudioKept, studioKeeping } from "@/lib/studio-keeping"
 
 import { homeLink, paired } from "./index"
+import { finishedOnPhone } from "./leetype-log"
 import type { LensEntry } from "./lens-record"
 import { lensDigest, lensKey } from "./lens-record"
 import { digestOf } from "./sent"
 import type { StudioReport } from "./studio-log"
-import { reportsOf } from "./studio-log"
+import { studioReportsOnPhone } from "./studio-log"
 
 export type PracticeRead = {
   /** The soundbites as last listed; none until their store is handed in and read. */
@@ -43,15 +45,20 @@ export type PracticeRead = {
   readonly leetypeAsIs: number
   /** Studio's answers to how a sitting went; none until Studio is handed in and read. */
   readonly studioReports: ReadonlyArray<StudioReport>
+  /** Moves with Studio's hand-in and each write to its projects. */
+  readonly studioWrites: number
 }
+
+/** One number for a list of `key@digest`s. */
+const keyed = (keys: ReadonlyArray<string>): number => fnv1a(keys.join("|"))
 
 /** What `lensAsIs` is for `entries`; an unread record reads as an empty one. */
 const asIs = (entries: ReadonlyArray<LensEntry>): number =>
-  fnv1a(entries.map((e) => `${lensKey(e)}@${lensDigest(e)}`).join("|"))
+  keyed(entries.map((e) => `${lensKey(e)}@${lensDigest(e)}`))
 
 /** What `leetypeAsIs` is for `sessions`. */
 const sessionsAsIs = (sessions: ReadonlyArray<HomeSession>): number =>
-  fnv1a(sessions.map((s) => `${s.session}@${digestOf(s)}`).join("|"))
+  keyed(sessions.map((s) => `${s.session}@${digestOf(s)}`))
 
 const UNREAD: PracticeRead = {
   bites: [],
@@ -60,6 +67,7 @@ const UNREAD: PracticeRead = {
   leetype: [],
   leetypeAsIs: sessionsAsIs([]),
   studioReports: [],
+  studioWrites: 0,
 }
 
 let read: PracticeRead = UNREAD
@@ -171,14 +179,11 @@ export function watchPracticeStores(): () => void {
     if (logAsked || !paired()) return
     logAsked = true
     import("@some-ui/leetype").then(
-      ({ createSessionLogStore, finishedSessions, onSessionLogged }) => {
+      (leetype) => {
         if (!live) return
         let finished = new Set<string>()
         const readLog = (): void => {
-          const store = createSessionLogStore()
-          const sessions = store.readOnly
-            ? []
-            : finishedSessions(store.getSnapshot().log)
+          const sessions = finishedOnPhone(leetype)
           finished = new Set(sessions.map((s) => s.session))
           moved({
             ...read,
@@ -186,12 +191,13 @@ export function watchPracticeStores(): () => void {
             leetypeAsIs: sessionsAsIs(sessions),
           })
         }
+        // As `finishedSessions` (leetype's `session-log/home.ts`) decides.
         const finishes = (event: SessionEvent): boolean =>
           event.type === "started" ||
           event.type === "ended" ||
           finished.has(event.session)
         stops.push(
-          onSessionLogged((event) => {
+          leetype.onSessionLogged((event) => {
             if (finishes(event)) readLog()
           })
         )
@@ -211,13 +217,9 @@ export function watchPracticeStores(): () => void {
     if (studio === null) return
     studioAsked += 1
     const asked = studioAsked
-    Promise.all([studio.store.list(), studio.store.friction()]).then(
-      ([projects, friction]) => {
-        if (!live || asked !== studioAsked) return
-        moved({
-          ...read,
-          studioReports: reportsOf(friction, projects, studio.sittingKey),
-        })
+    studioReportsOnPhone(studio).then(
+      (studioReports) => {
+        if (live && asked === studioAsked) moved({ ...read, studioReports })
       },
       () => {
         // Ignored: the drain's own read (`./going`'s `studioGoing`) meets
@@ -225,13 +227,17 @@ export function watchPracticeStores(): () => void {
       }
     )
   }
+  const studioWrote = (): void => {
+    moved({ ...read, studioWrites: read.studioWrites + 1 })
+    readStudio()
+  }
   let studioHeard = false
   const studioHanded = (): void => {
     const studio = studioKeeping()
     if (studio === null || studioHeard) return
     studioHeard = true
-    stops.push(studio.store.subscribe(readStudio))
-    readStudio()
+    stops.push(studio.store.subscribe(studioWrote))
+    studioWrote()
   }
 
   const onLink = (): void => {

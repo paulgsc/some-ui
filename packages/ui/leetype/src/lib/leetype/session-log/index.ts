@@ -23,15 +23,13 @@ export { finishedSessions } from "./home"
  * was not kept and no refusal passes unseen. The snapshot is what was kept
  * when the store opened plus this store's own appends; one store serves the
  * app, and another's appends to other sessions show from the next open.
- * Each kept event is also told to `onSessionLogged`'s listeners, whichever
- * store kept it.
  */
 export type SessionLogSnapshot = {
   readonly log: SessionLog
   readonly problem: string | null
 }
 
-/** Those told of each event a store on this page keeps (www's drain, to send a finished session). */
+/** Those told of each event a store on this page keeps. */
 const logged = new Set<(event: SessionEvent) => void>()
 
 /**

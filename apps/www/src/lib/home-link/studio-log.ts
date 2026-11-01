@@ -11,6 +11,8 @@ import type { HomeCall } from "@some-ui/core-utils"
 import { canonicalJson } from "@some-ui/core-utils"
 import type { Friction, Project, Sitting, TimeEvent } from "@some-ui/soundbites"
 
+import type { studioKeeping } from "@/lib/studio-keeping"
+
 import type { EventLog, LogReport } from "./leetype-log"
 import { bucketOf, sendLogs } from "./leetype-log"
 import type { Sent } from "./sent"
@@ -127,4 +129,15 @@ export async function sendStudio(
     report[bucket] += 1
     if (bucket === "held") held(reportKey(answer.id), canonicalJson(answer))
   }
+}
+
+/** Studio's answers to how each sitting went, as home is told them. */
+export async function studioReportsOnPhone(
+  studio: Exclude<ReturnType<typeof studioKeeping>, null>
+): Promise<Array<StudioReport>> {
+  const [list, friction] = await Promise.all([
+    studio.store.list(),
+    studio.store.friction(),
+  ])
+  return reportsOf(friction, list, studio.sittingKey)
 }

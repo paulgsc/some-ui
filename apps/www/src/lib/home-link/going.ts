@@ -24,6 +24,7 @@ import { studioKeeping } from "@/lib/studio-keeping"
 import { sessionsRepository } from "@/lib/tenant/queries"
 import type { SessionRecord } from "@/lib/tenant/types"
 
+import { finishedOnPhone } from "./leetype-log"
 import type { LensEntry } from "./lens-record"
 import { lensKey, lensToSend } from "./lens-record"
 import type { StudyNote } from "./notes"
@@ -34,7 +35,7 @@ import { heldWritten, writtenToSend } from "./reflections"
 import type { KeyedGoing, Sent } from "./sent"
 import { logToSend, readSent } from "./sent"
 import type { StudioGoing } from "./studio-log"
-import { reportsOf, studioToSend } from "./studio-log"
+import { studioReportsOnPhone, studioToSend } from "./studio-log"
 
 /** This phone's sessions and kept items. Reads only this phone. */
 export async function readPhone(): Promise<{
@@ -55,13 +56,8 @@ export async function logGoing(
   pairing: string,
   storage: KeyedStorage | null
 ): Promise<Array<HomeSession>> {
-  const { createSessionLogStore, finishedSessions } = await import(
-    "@some-ui/leetype"
-  )
-  const store = createSessionLogStore()
-  if (store.readOnly) return []
   return logToSend(
-    finishedSessions(store.getSnapshot().log),
+    finishedOnPhone(await import("@some-ui/leetype")),
     readSent(storage, pairing)
   )
 }
@@ -76,13 +72,9 @@ export async function studioGoing(
 ): Promise<StudioGoing> {
   const studio = studioKeeping()
   if (studio === null) return { sittings: [], reports: [] }
-  const [list, friction] = await Promise.all([
-    studio.store.list(),
-    studio.store.friction(),
-  ])
   return studioToSend(
     studio.timeLog(),
-    reportsOf(friction, list, studio.sittingKey),
+    await studioReportsOnPhone(studio),
     readSent(storage, pairing)
   )
 }

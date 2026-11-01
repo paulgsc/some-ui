@@ -962,10 +962,10 @@ can say is when a run is asked for:
   `readDigests`, `fileOutgoing` or `fileNotice` (`lib/jobs/home.ts`) so
   `exchangeJobs` no longer makes it in every run that gets that far; a hunk
   to `lib/home-link/practice.ts` that makes the lane's `revision` or
-  `subscribe` follow anything but the sessions cache, `onKept`, Studio's
-  store, the reflections store (HF3), the asks store (`lib/scene-ask`,
-  HF4), LeetType's answer notes (`leetypeNotesMoved`, HF5) and the
-  soundbites, lens record and LeetType's finished sessions as
+  `subscribe` follow anything but the sessions cache, `onKept`, the
+  reflections store (HF3), the asks store (`lib/scene-ask`, HF4),
+  LeetType's answer notes (`leetypeNotesMoved`, HF5) and the soundbites,
+  lens record, LeetType's finished sessions and Studio's writes as
   `lib/home-link/practice-reads.ts` last read them (HF5, #2425), or that
   drops one of those from it, drops from its waiting count any of the
   sessions, written reflections, asks, notes, lens entries, finished
@@ -983,7 +983,10 @@ can say is when a run is asked for:
   one already finished, or that keeps a list of the soundbites or of
   Studio's answers that started before a newer one; a hunk to
   `@some-ui/leetype`'s `session-log` that keeps an event without telling
-  `onSessionLogged`'s listeners, or tells them of one it refused; a hunk to topik's
+  `onSessionLogged`'s listeners, or tells them of one it refused, or to its
+  `home.ts` that lets an event other than a start or an end finish a
+  session, or one already finished take in no later event, without
+  `practice-reads.ts`'s `finishes` following it; a hunk to topik's
   `adapter/lens-record-store` that keeps an entry without telling
   `onLensRecordWritten`'s listeners, or to `lib/leetype-takes` that keeps
   or lets go of a note without moving `leetypeNotesMoved`; a hunk to `lib/home-link/drain.ts` that takes home's copy in,
@@ -1053,7 +1056,9 @@ can say is when a run is asked for:
   `packages/ui/topik/src/components/topik/study-session/index.tsx`,
   `packages/ui/topik/src/lib/topik/adapter/lens-record-store/index.ts`,
   `apps/www/src/lib/leetype-takes/index.ts`,
-  `packages/ui/leetype/src/lib/leetype/session-log/index.ts`.
+  `apps/www/src/lib/home-link/studio-log.ts`, `apps/www/src/lib/studio-keeping/index.ts`,
+  `packages/ui/leetype/src/lib/leetype/session-log/index.ts`,
+  `packages/ui/leetype/src/lib/leetype/session-log/home.ts`.
 - _Why not enforced:_ whether a moment is one where the person is using the
   app is a reading of intent: a test sees a listener or a query run, not why
   it is there, and a lint rule cannot tell a press handler from an effect
@@ -1074,7 +1079,8 @@ can say is when a run is asked for:
   pairing. Amended for #2425 by reading `practice-reads.ts`'s two new reads:
   LeetType's log only on its watch starting once paired and in
   `onSessionLogged`'s listener, Studio's projects only on its hand-in and
-  its store's `subscribe`.
+  its store's `subscribe`, which `practice-reads.ts` alone now holds for
+  the lane.
 - _Tolerance:_ Studio's time log tells no one of a write, so a screen
   entered or left in Studio asks for no run, and Practice's waiting count
   shows it from the count's next redraw (#2425).

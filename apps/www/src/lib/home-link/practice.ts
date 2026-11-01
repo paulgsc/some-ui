@@ -8,13 +8,12 @@
  * record (`./lens-record`). Its record moves with the sessions the app has
  * read (React Query's `sessionsKey`), each shelf keep (`onKept`), each write
  * to Studio's projects, each change to the reflections and the asks, each
- * soundbite and lens entry as last read (`./practice-reads`) and each
- * change to LeetType's answer notes, and LeetType's finished sessions as
- * last read (#2425), so a finished session, a newly kept item, a kept take,
+ * soundbite, lens entry and finished LeetType session as last read
+ * (`./practice-reads`) and each change to LeetType's answer notes, so a finished session, a newly kept item, a kept take,
  * a typed reflection, an ask, a soundbite, an answer's note, a lens answer
  * or a LeetType session finishing asks for a run. Its waiting count is the
  * sessions, written reflections, asks, notes, lens entries, finished
- * LeetType sessions and Studio's sittings and answers home lacks (#2425):
+ * LeetType sessions and Studio's sittings and answers home lacks:
  * Studio's time log is read as it is when counted, since nothing tells of a
  * write to it, and its answers as last read.
  * Once a run's notes part ends, the soundbites and LeetType's answer notes
@@ -30,7 +29,7 @@ import { sceneAsks } from "@/lib/scene-ask"
 import { reflections } from "@/lib/session-reflection"
 import { useReflections } from "@/lib/session-reflection/use-reflections"
 import { onKept } from "@/lib/shelf-client"
-import { onStudioKept, studioKeeping } from "@/lib/studio-keeping"
+import { studioKeeping } from "@/lib/studio-keeping"
 import { useSessions } from "@/lib/tenant"
 import { sessionsKey } from "@/lib/tenant/queries"
 import type { SessionRecord } from "@/lib/tenant/types"
@@ -75,8 +74,6 @@ onKept(() => {
   shelfKeeps += 1
 })
 
-let studioWrites = 0
-
 export const practiceLane: Lane = {
   id: "practice",
   exchange: (send, { pairing }) => {
@@ -100,7 +97,7 @@ export const practiceLane: Lane = {
     fnv1a(
       [
         shelfKeeps,
-        studioWrites,
+        practiceRead.getSnapshot().studioWrites,
         ...cachedSessions().map((s) => `${s.id}@${s.updatedAt}`),
         ...reflections.getSnapshot().kept.map((r) => `${r.id}@${r.createdAt}`),
         ...sceneAsks
@@ -123,24 +120,6 @@ export const practiceLane: Lane = {
     const unsubscribeCache = queryClient.getQueryCache().subscribe((event) => {
       if (isSessionsQuery(event.query.queryHash)) listener()
     })
-    // A kept take is a write to its project, once Studio has handed it in.
-    const onStudio = (): void => {
-      studioWrites += 1
-      listener()
-    }
-    let unsubscribeStudio: (() => void) | null = null
-    const handed = (): void => {
-      if (unsubscribeStudio !== null) return
-      const studio = studioKeeping()
-      if (studio !== null) {
-        unsubscribeStudio = studio.store.subscribe(onStudio)
-      }
-    }
-    handed()
-    const unsubscribeHanded = onStudioKept(() => {
-      handed()
-      onStudio()
-    })
     return () => {
       unsubscribeShelf()
       unsubscribeReflections()
@@ -149,8 +128,6 @@ export const practiceLane: Lane = {
       unsubscribeRead()
       stopReads()
       unsubscribeCache()
-      unsubscribeHanded()
-      unsubscribeStudio?.()
     }
   },
   useCounts: (): LaneCounts => {
@@ -161,8 +138,7 @@ export const practiceLane: Lane = {
     // Read again whenever an ask is kept or let go.
     useSyncExternalStore(sceneAsks.subscribe, sceneAsks.getSnapshot)
     const asked = sceneAsks.kept()
-    // Read again whenever a soundbite, an answer's note, a lens entry, a
-    // finished LeetType session or a Studio answer moves.
+    // Read again whenever what `./practice-reads` last read moves.
     const { bites, lens, leetype, studioReports } = useSyncExternalStore(
       practiceRead.subscribe,
       practiceRead.getSnapshot
