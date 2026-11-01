@@ -157,7 +157,7 @@ export const JOB_VOICE_NOTES = 40
  */
 const JOB_VOICE_OPTIONS: TakePatternOptions = {
   ...ONE_TAKE,
-  takes: { per: "many", max: JOB_VOICE_NOTES },
+  takes: { per: "many", max: JOB_VOICE_NOTES, full: "refuse" },
   limits: { minMs: SOUNDBITE_MIN_MS, maxMs: SOUNDBITE_MAX_MS },
 }
 
@@ -213,8 +213,8 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
             )
         )
       },
-      setAside: (id) => {
-        commit({ type: "voice-set-aside", id })
+      setAside: (id, done) => {
+        done(commit({ type: "voice-set-aside", id }))
       },
       audio: (id) => ports.audio.get(id),
     },

@@ -34,7 +34,7 @@ import { REFLECTION_REFUSED } from "./words"
 /** The reflections' choice of the pattern's options. */
 const REFLECTION_TAKE_OPTIONS: TakePatternOptions = {
   ...ONE_TAKE,
-  takes: { per: "many", max: REFLECTION_LIMIT },
+  takes: { per: "many", max: REFLECTION_LIMIT, full: "refuse" },
   limits: SOUNDBITE_TAKE_LIMITS,
 }
 
