@@ -1178,14 +1178,14 @@ describe("home's indexes", () => {
       expect(response.status).toBe(422)
       return json(response)
     }
-    expect(await refused({ ...JOBS, routine: "reflections" })).toEqual({
-      error: "routine must be jobs",
+    expect(await refused({ ...JOBS, routine: "topik" })).toEqual({
+      error: "routine must be jobs or reflections",
     })
     expect(await refused(JOBS, "index-topik-20261031T144502118Z.json")).toEqual(
       { error: "the name must carry the body's routine" }
     )
     expect(await refused({ ...JOBS, drafts: [] })).toEqual({
-      error: "drafts is not part of the jobs index",
+      error: "drafts is not part of a jobs index",
     })
     const { picked: _, ...short } = JOBS
     expect(await refused(short)).toEqual({
@@ -1274,11 +1274,117 @@ describe("home's indexes", () => {
       [withNote("data:audio/webm;base64,GkXfo59ChoEBQveBAULygQRC"), audio],
       [withNote("A".repeat(300)), audio],
       [withNote("https://drive.google.com/file/d/1AbC/view"), drive],
+      [JSON.stringify({ ...JOBS, audio: "take-1" }), audio],
+      [JSON.stringify({ ...JOBS, driveId: "1AbC" }), drive],
     ] as const) {
       const response = await asHome(d, NAME, body)
       expect(response.status).toBe(422)
       expect(await json(response)).toEqual(why)
     }
+  })
+})
+
+describe("home's reflections index", () => {
+  const REFLECTIONS = {
+    schema: "some-ui.routine-index/1",
+    routine: "reflections",
+    asOf: "2026-10-31T14:45:02.118Z",
+    validUntil: "2026-11-02T14:01:00.000Z",
+    skipped: [],
+    answered: {
+      scenes: ["2026-10-29_reflection_2a4b6c01", "2026-10-30_stock_1"],
+      dramas: ["drama-20261029T071503120Z"],
+    },
+    words: [{ id: "coffee", lemma: "커피" }],
+    recent: [
+      {
+        name: "scene-2026-10-30_stock_1.json",
+        answers: "2026-10-30_stock_1",
+        title: "TOPIK 2 · thriller · The last train",
+        level: 2,
+        genre: "thriller",
+      },
+    ],
+    unopened: {
+      count: 1,
+      lessons: ["scene/scene-2026-10-30_stock_1.json"],
+      opened: "opened-20261031T000000000Z.json",
+    },
+    reflections: [
+      {
+        base: "2026-10-31_reflection_2a4b6c01",
+        session: "session-7f3a91c2-5d1e-4b6a-9c3f-0e8d2a4b6c01",
+        day: "2026-10-31",
+        reflections: ["reflection-r1.json"],
+        newestAt: "2026-10-31T14:00:00.000Z",
+        settled: true,
+        notes: [{ note: "k3v9qa", transcript: null }],
+        voice: {
+          state: "waiting",
+          since: "2026-10-31T14:01:00.000Z",
+          until: "2026-11-02T14:01:00.000Z",
+        },
+      },
+    ],
+    prompts: [],
+  }
+  const NAME = "index-reflections-20261031T144502118Z.json"
+  const asHome = (
+    d: Deps,
+    name: string,
+    body: unknown = REFLECTIONS
+  ): Promise<Response> =>
+    put(d, "index", name, { token: HOME, body: JSON.stringify(body) })
+
+  it("keeps a validUntil of null as home put it", async () => {
+    const d = deps()
+    const body = { ...REFLECTIONS, validUntil: null }
+    expect((await asHome(d, NAME, body)).status).toBe(201)
+    expect(await json(await send(d, "GET", `/v1/index/items/${NAME}`))).toEqual(
+      body
+    )
+  })
+
+  it("takes only a reflections index's own shape, and says why not", async () => {
+    const d = deps()
+    const refused = async (body: Record<string, unknown>): Promise<unknown> => {
+      const response = await asHome(d, NAME, body)
+      expect(response.status).toBe(422)
+      return json(response)
+    }
+    expect(await refused({ ...REFLECTIONS, day: "2026-10-31" })).toEqual({
+      error: "day is not part of a reflections index",
+    })
+    const { words: _, ...short } = REFLECTIONS
+    expect(await refused(short)).toEqual({
+      error: "the reflections index carries words",
+    })
+    for (const validUntil of [
+      "2026-10-31T14:45:02.118Z",
+      "2026-10-30T00:00:00.000Z",
+      "in two days",
+      "2026-11-02",
+    ]) {
+      expect(await refused({ ...REFLECTIONS, validUntil })).toEqual({
+        error: "validUntil must be a moment after asOf, or null",
+      })
+    }
+    expect(await refused({ ...REFLECTIONS, asOf: null })).toEqual({
+      error: "validUntil must be a moment after asOf, or null",
+    })
+    expect(await refused({ ...REFLECTIONS, asOf: "this morning" })).toEqual({
+      error: "asOf must be when home last took in what the index counts",
+    })
+    expect(await refused({ ...REFLECTIONS, answered: [] })).toEqual({
+      error: "answered must be an object",
+    })
+    expect(await refused({ ...REFLECTIONS, prompts: {} })).toEqual({
+      error: "prompts must be a list",
+    })
+    expect(
+      (await asHome(d, NAME, { ...REFLECTIONS, asOf: null, validUntil: null }))
+        .status
+    ).toBe(201)
   })
 })
 
