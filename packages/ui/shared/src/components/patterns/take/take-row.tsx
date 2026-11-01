@@ -17,6 +17,12 @@ export type TakeRowProps = {
   onLetGo?: (() => void) | undefined
   /** The screen's words about what the take answers, under its length. */
   children?: ReactNode
+  /**
+   * The screen's own action on this take, beside Redo and Let it go: the
+   * pattern's named slot for an extra a screen keeps (Soundbites' "Replace
+   * this one next", Studio's word fixing, ST24 #2322).
+   */
+  extra?: ReactNode
   className?: string
 }
 
@@ -34,6 +40,7 @@ export const TakeRow = ({
   onRedo,
   onLetGo,
   children,
+  extra,
   className,
 }: TakeRowProps): JSX.Element => {
   const words = TAKE_WORDS
@@ -78,8 +85,11 @@ export const TakeRow = ({
           )}
         </div>
       </div>
-      {(onRedo !== undefined || onLetGo !== undefined) && (
-        <div className="flex flex-wrap justify-end gap-1">
+      {(onRedo !== undefined ||
+        onLetGo !== undefined ||
+        extra !== undefined) && (
+        <div className="flex flex-wrap items-center justify-end gap-1">
+          {extra}
           {onRedo !== undefined && (
             <Button
               type="button"

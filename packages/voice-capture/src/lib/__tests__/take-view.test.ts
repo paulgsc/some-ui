@@ -30,11 +30,12 @@ const ONE: TakePatternOptions = {
   redo: "supersede",
   letGo: "set-aside",
   play: "each",
+  clock: "elapsed",
 }
 
 const MANY: TakePatternOptions = {
   ...ONE,
-  takes: { per: "many", max: 2 },
+  takes: { per: "many", max: 2, full: "refuse" },
   play: "latest",
 }
 
@@ -117,6 +118,34 @@ describe("one item's takes", () => {
     })
   })
 
+  it("stays ready at its max under `make-room`, for the store to make room (Soundbites)", () => {
+    const takes = [taken("t1", "01"), taken("t2", "02")]
+    const roomy: TakePatternOptions = {
+      ...MANY,
+      takes: { per: "many", max: 2, full: "make-room" },
+    }
+    expect(takeItemView(IDLE, takes, "card-1", roomy).button).toEqual({
+      kind: "ready",
+      again: false,
+    })
+  })
+
+  it('counts the time left under `clock: "left"` (Soundbites\' countdown)', () => {
+    const recording: TakePatternSnapshot = {
+      ...IDLE,
+      take: { kind: "recording", elapsedMs: 12_000, capMs: 60_000, level: 0.3 },
+      answers: "card-1",
+    }
+    const left = { ...ONE, clock: "left" } as const
+    expect(takeItemView(recording, [], "card-1", left).button).toMatchObject({
+      kind: "recording",
+      clock: "left",
+    })
+    expect(TAKE_WORDS.left(60_000 - 12_000)).toBe("0:48 left")
+    expect(TAKE_WORDS.left(47_100)).toBe("0:48 left")
+    expect(TAKE_WORDS.left(0)).toBe("0:00 left")
+  })
+
   it("waits every row while a take is under way, and says another item's take", () => {
     const recording: TakePatternSnapshot = {
       ...IDLE,
@@ -136,6 +165,7 @@ describe("one item's takes", () => {
       capMs: 60_000,
       level: 0.4,
       nearlyUp: true,
+      clock: "elapsed",
     })
   })
 
@@ -225,6 +255,7 @@ function everyLine(): Array<string> {
       capMs: 60_000,
       level: 0.3,
       nearlyUp: false,
+      clock: "elapsed",
     },
     { kind: "keeping" },
     { kind: "elsewhere" },
@@ -245,6 +276,7 @@ function everyLine(): Array<string> {
     ...said.map((line) => takeSaid(w, line)),
     ...REASONS.map((reason) => w.ended.blocked(reason)),
     w.elapsed(12_000, 60_000),
+    w.left(48_000),
     w.nearlyUp(9_100),
     w.nearlyUp(1_000),
     w.length(7_400),

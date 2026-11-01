@@ -47,10 +47,21 @@ import type {
 } from "./take-kit"
 import { initialTakeKit, stepTakeKit, takeKitView, TICK_MS } from "./take-kit"
 
-/** One current take per item, or many beside each other, up to `max`. */
+/**
+ * One current take per item, or many beside each other, up to `max`. At
+ * `max`, `full` says what the next take does: `refuse` withdraws the button
+ * until Redo or Let go makes room; `make-room` leaves it ready, and the
+ * screen's store makes room as it keeps the new take, or answers `full`
+ * when it can't (Soundbites' seventh, which lets go one home holds: the one
+ * the person picked, or the oldest).
+ */
 export type TakesPerItem =
   | { readonly per: "one" }
-  | { readonly per: "many"; readonly max: number }
+  | {
+      readonly per: "many"
+      readonly max: number
+      readonly full: "refuse" | "make-room"
+    }
 
 /**
  * The pattern's options: the closed set a screen picks from, as a shadcn
@@ -66,6 +77,11 @@ export type TakePatternOptions = {
   readonly letGo: "set-aside"
   /** Play on every take listed, or only on the newest. */
   readonly play: "each" | "latest"
+  /**
+   * What the button counts while it records: the time run against the cap
+   * ("0:12 / 1:00"), or the time left ("0:48 left", Soundbites' countdown).
+   */
+  readonly clock: "elapsed" | "left"
 }
 
 /**
@@ -79,6 +95,7 @@ export const ONE_TAKE: TakePatternOptions = {
   redo: "supersede",
   letGo: "set-aside",
   play: "each",
+  clock: "elapsed",
 }
 
 /**
@@ -170,6 +187,8 @@ export type TakePatternEvent =
   | { readonly type: "stopPlaying" }
   /** D3: sets a take aside. */
   | { readonly type: "letGo"; readonly id: string; readonly place: TakePlace }
+  /** The screen's store couldn't mark it: it stays the item's, unsaid. */
+  | { readonly type: "setAsideFailed"; readonly id: string }
   /** The screen went: a take under way is kept, and nothing plays. */
   | { readonly type: "left" }
   | {
@@ -333,6 +352,10 @@ export function stepTakePattern(
         effects: [...quiet.effects, { type: "setAside", id: event.id }],
       }
     }
+    case "setAsideFailed": {
+      if (state.setAside?.id !== event.id) return { state, effects: [] }
+      return { state: { ...state, setAside: null }, effects: [] }
+    }
     case "micOpened":
     case "micFailed":
     case "ticked":
@@ -412,8 +435,12 @@ export type TakePatternPorts = Omit<TakeKitPorts, "keep"> & {
     supersedes: string | null,
     done: (result: KeepResult) => void
   ) => void
-  /** Marks a take set aside (D3): out of the item, kept. */
-  readonly setAside: (id: string) => void
+  /**
+   * Marks a take set aside (D3): out of the item, kept. Then says, once,
+   * whether the store kept the mark; a take it couldn't mark stays the
+   * item's, and the line saying it was set aside goes.
+   */
+  readonly setAside: (id: string, done: (stored: boolean) => void) => void
   /** A take's audio, or null when it can't be read. */
   readonly audio: (id: string) => Promise<Blob | null>
   /** Defaults to the kit's `audioPlayer`. */
@@ -469,7 +496,14 @@ export function takePattern(
         return
       }
       case "setAside": {
-        ports.setAside(effect.id)
+        const { id } = effect
+        let answered = false
+        ports.setAside(id, (stored) => {
+          // Once: a second answer is for nobody.
+          if (answered) return
+          answered = true
+          if (!stored) dispatch({ type: "setAsideFailed", id })
+        })
         return
       }
       case "loadAudio": {

@@ -16,7 +16,7 @@ import {
 
 const MANY: TakePatternOptions = {
   ...ONE_TAKE,
-  takes: { per: "many", max: 3 },
+  takes: { per: "many", max: 3, full: "refuse" },
   play: "latest",
 }
 
