@@ -16,6 +16,7 @@ import {
   draftVoice,
   EMPTY,
   formTakes,
+  pickOwner,
   kitOf,
   openOf,
   progressOf,
@@ -330,6 +331,35 @@ describe("step", () => {
       ["v2", undefined],
     ])
     expect(draftVoice(state, "o").map((v) => v.id)).toEqual(["v2"])
+  })
+
+  it("files the form's notes out of the draft with the event that records it, so the next draft starts with none (#2443)", () => {
+    const owner = pickOwner(DAY, SW.id, "pass")
+    const note = (id: string): VoiceNote => ({
+      id,
+      mimeType: "audio/webm",
+      durationMs: 2000,
+      owner,
+    })
+    let state = step(opened, { type: "voice-kept", note: note("v1") })
+    state = step(state, {
+      type: "voice-kept",
+      note: note("v2"),
+      supersedes: "v1",
+    })
+    state = record(state, {
+      type: "passed",
+      ...ref(),
+      reasons: [],
+      note: "",
+      voice: draftVoice(state, owner).map(({ id }) => id),
+    })
+    expect(formTakes(state, owner)).toEqual([])
+    expect(state.voice.find((v) => v.id === "v1")?.filed).toEqual({
+      ref: `${DAY}:${SW.id}`,
+      at: expect.any(String),
+    })
+    expect(state.voice.find((v) => v.id === "v2")?.filed).toBeUndefined()
   })
 })
 

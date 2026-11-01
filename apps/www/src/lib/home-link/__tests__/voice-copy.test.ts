@@ -283,4 +283,36 @@ describe("what each voice note is told home as", () => {
       gone: 1,
     })
   })
+
+  it("sends a form's note filed out of its draft home under the event that recorded the form (#2443)", () => {
+    const state: JobsState = {
+      ...EMPTY,
+      voice: [
+        {
+          id: "aside",
+          mimeType: "audio/webm",
+          durationMs: 2_000,
+          owner: "2026-10-25/acme/pass",
+          standing: "set-aside",
+          filed: { ref: "2026-10-25:acme", at: "2026-10-25T09:00:00.000Z" },
+        },
+        {
+          id: "draft",
+          mimeType: "audio/webm",
+          durationMs: 2_000,
+          owner: "2026-10-25/acme/pass",
+          standing: "set-aside",
+        },
+      ],
+    }
+    expect(jobsNotes(state)).toEqual([
+      {
+        id: "aside",
+        of: "jobs",
+        ref: "2026-10-25:acme",
+        at: "2026-10-25T09:00:00.000Z",
+        contentType: "audio/webm",
+      },
+    ])
+  })
 })

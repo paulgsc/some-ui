@@ -85,6 +85,12 @@ export type VoiceNote = {
    * set aside (D3). Absent for a note in the draft.
    */
   standing?: "earlier" | "set-aside"
+  /**
+   * For a note out of the draft: the event that recorded its form, by what
+   * home is told it belongs to (`<day>:<pick>`, or the scout's id) and when.
+   * It goes home under that, and leaves the form (#2443).
+   */
+  filed?: { ref: string; at: string }
 }
 
 /** A scout as the form makes it; the runtime gives it its `id`. */
@@ -318,6 +324,73 @@ function standAside(
   return state.voice.map((n) => (n === note ? { ...n, standing } : n))
 }
 
+/**
+ * The form `event` records, and what home is told its notes belong to: a
+ * pass, fit note or debrief's pick, or a scout; null for an event of no form.
+ */
+function formOf(event: JobEvent): { owner: string; ref: string } | null {
+  switch (event.type) {
+    case "passed": {
+      return {
+        owner: pickOwner(event.day, event.pickId, "pass"),
+        ref: `${event.day}:${event.pickId}`,
+      }
+    }
+    case "fit-note": {
+      return {
+        owner: pickOwner(event.day, event.pickId, "fit"),
+        ref: `${event.day}:${event.pickId}`,
+      }
+    }
+    case "debrief": {
+      return {
+        owner: pickOwner(event.day, event.pickId, "debrief"),
+        ref: `${event.day}:${event.pickId}`,
+      }
+    }
+    case "scout": {
+      return { owner: SCOUT_OWNER, ref: event.scout.id }
+    }
+    case "taken":
+    case "archived":
+    case "resume-ready":
+    case "apply-opened":
+    case "read":
+    case "outcome":
+    case "outcome-withdrawn":
+    case "disagree":
+    case "arrived":
+    case "shared": {
+      return null
+    }
+    default: {
+      return assertNever(event)
+    }
+  }
+}
+
+/**
+ * `state`'s notes once `event` records its form: the form's notes out of the
+ * draft (recorded again or set aside) are filed with the event, so the next
+ * draft of that form starts with none, and each goes home under the event
+ * (#2443). The same array when there are none.
+ */
+function filedAside(
+  state: JobsState,
+  event: JobEvent
+): ReadonlyArray<VoiceNote> {
+  const form = formOf(event)
+  if (form === null) return state.voice
+  const filed = { ref: form.ref, at: event.at }
+  const aside = formVoice(state, form.owner).filter(
+    (note) => note.standing !== undefined
+  )
+  if (aside.length === 0) return state.voice
+  return state.voice.map((note) =>
+    aside.includes(note) ? { ...note, filed } : note
+  )
+}
+
 /** Voice ids the log names: no longer a draft's to set aside. */
 function named(log: ReadonlyArray<JobEvent>): Set<string> {
   const ids = new Set<string>()
@@ -530,11 +603,12 @@ export function step(state: JobsState, action: JobsAction): JobsState {
       if (!fits(state, action.event)) return state
       const event: JobEvent = { ...action.event, ...action.stamp }
       const log = [...state.log, event]
+      const voice = filedAside(state, event)
       if (event.type !== "shared" || action.since === undefined) {
-        return { ...state, log }
+        return { ...state, log, voice }
       }
       const carried = { ...state.carried, [event.id]: action.since }
-      return { ...state, log, carried }
+      return { ...state, log, voice, carried }
     }
     case "record-all": {
       let next = state
@@ -839,12 +913,11 @@ export function timedMinutes(
  * The voice notes `owner` has that no event names yet, those out of the
  * draft among them: what the form's take rows list.
  */
-export function formVoice(
-  state: JobsState,
-  owner: string
-): ReadonlyArray<VoiceNote> {
+function formVoice(state: JobsState, owner: string): ReadonlyArray<VoiceNote> {
   const keep = named(state.log)
-  return state.voice.filter((n) => n.owner === owner && !keep.has(n.id))
+  return state.voice.filter(
+    (n) => n.owner === owner && !keep.has(n.id) && n.filed === undefined
+  )
 }
 
 /**
