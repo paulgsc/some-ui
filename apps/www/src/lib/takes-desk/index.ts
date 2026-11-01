@@ -143,9 +143,16 @@ export function deskList(key: string, max: number): PatternTakesPorts["takes"] {
           other.id === supersedes ? { ...other, standing: "earlier" } : other
       ),
     remove: (ids): boolean => list.remove(({ id }) => ids.includes(id)),
-    // Only a take that never left the phone can be deleted for good (ST26).
-    discard: (ids): boolean =>
-      list.remove(({ id, waits }) => waits === true && ids.includes(id)),
+    // Only a take that never left the phone can be deleted for good (ST26):
+    // this is the one place that holds it.
+    discard: (ids): ReadonlyArray<string> | null => {
+      const waiting = list
+        .read()
+        .filter(({ id, waits }) => waits === true && ids.includes(id))
+        .map(({ id }) => id)
+      if (waiting.length === 0) return []
+      return list.remove(({ id }) => waiting.includes(id)) ? waiting : null
+    },
     release: (ids): boolean =>
       list.update((take) => {
         if (take.waits !== true || !ids.includes(take.id)) return take

@@ -7,10 +7,10 @@
  * happened, and decides nothing: which answer still counts is the step's.
  *
  * Send is three writes in one order: the idea joins the ideas kept, which
- * only grow; then its takes are let go home; then the draft is cleared. A
- * Send stopped between them leaves takes a kept idea names waiting, which
- * the next opening lets go (`settle`), and a draft already kept, which it
- * clears.
+ * only grow; then the takes it names are let go home; then the draft is
+ * cleared. A Send stopped between them leaves takes a kept idea names
+ * waiting, which the next opening lets go (`settle`), and a draft already
+ * kept, which it clears.
  */
 import { assertNever } from "@some-ui/core-utils"
 import type { PatternTake, TakePattern } from "@some-ui/voice-capture"
@@ -111,6 +111,11 @@ export function createIdeaBundle(ports: BundlePorts): BundleRuntime {
         return
       }
       case "tap": {
+        if (effect.draft !== undefined) {
+          const kept = ports.drafts.write(effect.draft)
+          send({ type: "draftKept", kept })
+          if (!kept) return
+        }
         pattern.tap(effect.answers, effect.supersedes)
         return
       }
@@ -122,12 +127,14 @@ export function createIdeaBundle(ports: BundlePorts): BundleRuntime {
         pattern.stopPlaying()
         return
       }
-      case "deleteTake": {
-        pattern.letGo(effect.take, "phone")
-        send({
-          type: "deleted",
-          deleted: pattern.getSnapshot().discarded === effect.take,
-        })
+      case "deleteTakes": {
+        send({ type: "deleted", deleted: ports.takes.discard(effect.takes) })
+        return
+      }
+      case "drop": {
+        // Ignored: a take that couldn't be dropped is dropped at the next
+        // opening, and waits on the phone, unsent, until then.
+        ports.takes.discard(effect.takes)
         return
       }
       case "deleteAll": {
@@ -144,7 +151,6 @@ export function createIdeaBundle(ports: BundlePorts): BundleRuntime {
         )
         const sent = kept?.find((each) => each.id === idea.id) ?? null
         if (sent !== null) {
-          // A take not let go now is let go at the next opening (`settle`).
           ports.takes.release(effect.takes)
           ports.drafts.write(null)
         }

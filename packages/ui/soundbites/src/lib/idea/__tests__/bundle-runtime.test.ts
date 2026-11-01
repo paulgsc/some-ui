@@ -47,9 +47,10 @@ function phone(
   storage = inMemoryStorage(),
   simulated = simulatedPattern({
     options: { ...ONE_TAKE, send: "on-confirm" },
-  })
+  }),
+  draftsOf: (kept: DraftStore) => DraftStore = (kept) => kept
 ): Phone {
-  const drafts = keptDraftStore(() => storage)
+  const drafts = draftsOf(keptDraftStore(() => storage))
   const ideas = keptIdeaStore(() => storage)
   const takes = bundleTakesOf(simulated)
   const release = vi.fn(takes.release)
@@ -143,7 +144,10 @@ describe("a new idea, end to end on the simulated microphone (ST26)", () => {
     })
     on.bundle.dispatch({ type: "tap", question: "what" })
     await pass(50)
-    expect(on.bundle.getSnapshot().modes.what).toEqual({ kind: "failed" })
+    expect(on.bundle.getSnapshot().modes.what).toEqual({
+      kind: "failed",
+      full: false,
+    })
     on.bundle.dispatch({ type: "typeInstead", question: "what" })
     on.bundle.dispatch({
       type: "typed",
@@ -170,6 +174,53 @@ describe("a new idea, end to end on the simulated microphone (ST26)", () => {
     expect(on.release).not.toHaveBeenCalled()
   })
 
+  it("says an answer again: the take it replaced is deleted for good, so one take per answer waits", async () => {
+    const on = phone()
+    titled(on)
+    await say(on, "what")
+    const [first] = on.simulated.store.getSnapshot()
+    await say(on, "what")
+    await say(on, "what")
+    const left = on.simulated.store.getSnapshot()
+    expect(left).toHaveLength(1)
+    expect(left[0]?.id).not.toBe(first?.id)
+    expect(on.release).not.toHaveBeenCalled()
+  })
+
+  it("sends nothing of an answer said again and then deleted, and only the takes the idea names", async () => {
+    const on = phone()
+    titled(on)
+    await say(on, "what")
+    const [what] = on.simulated.store.getSnapshot()
+    await say(on, "spark")
+    await say(on, "spark")
+    on.bundle.dispatch({ type: "askDelete", question: "spark" })
+    on.bundle.dispatch({ type: "confirmed" })
+    expect(on.simulated.store.getSnapshot().map((take) => take.id)).toEqual([
+      what?.id,
+    ])
+    on.bundle.dispatch({ type: "review" })
+    on.bundle.dispatch({ type: "send" })
+    expect(on.release).toHaveBeenCalledTimes(1)
+    expect(on.release).toHaveBeenCalledWith([what?.id])
+    expect(on.ideas.list()?.[0]?.answers.map((each) => each.question)).toEqual([
+      "what",
+    ])
+  })
+
+  it("starts no take when the draft it would answer couldn't be kept", async () => {
+    const on = phone(inMemoryStorage(), undefined, (kept) => ({
+      ...kept,
+      write: (): boolean => false,
+    }))
+    titled(on)
+    on.bundle.dispatch({ type: "tap", question: "what" })
+    await pass(2_000)
+    expect(on.simulated.pattern.getSnapshot().take.kind).toBe("idle")
+    expect(on.simulated.store.getSnapshot()).toEqual([])
+    expect(on.bundle.getSnapshot().notice).toBe("notKept")
+  })
+
   it("deletes the whole idea, title and every take, for good", async () => {
     const on = phone()
     titled(on)
@@ -187,7 +238,7 @@ describe("a new idea, end to end on the simulated microphone (ST26)", () => {
     })
   })
 
-  it("lets go, on opening, the waiting takes of an idea a Send kept but stopped short of letting go", async () => {
+  it("after a Send cut short, lets go on opening only the takes the kept idea names, and deletes the rest", async () => {
     const storage = inMemoryStorage()
     const simulated = simulatedPattern({
       options: { ...ONE_TAKE, send: "on-confirm" },
@@ -196,6 +247,8 @@ describe("a new idea, end to end on the simulated microphone (ST26)", () => {
     titled(first)
     await say(first, "what")
     const [taken] = simulated.store.getSnapshot()
+    // Said, but not in the idea the Send kept.
+    await say(first, "spark")
     const idea: Idea = {
       id: first.bundle.getSnapshot().draft.id,
       at: new Date(0).toISOString(),
@@ -211,7 +264,11 @@ describe("a new idea, end to end on the simulated microphone (ST26)", () => {
     }
     first.ideas.keep((ideas) => [...ideas, idea])
     const again = phone(storage, simulated)
+    expect(again.release).toHaveBeenCalledTimes(1)
     expect(again.release).toHaveBeenCalledWith([taken?.id])
+    expect(simulated.store.getSnapshot().map((take) => take.id)).toEqual([
+      taken?.id,
+    ])
     expect(again.drafts.read()).toBeNull()
     expect(again.bundle.getSnapshot().screen).toBe("about")
   })

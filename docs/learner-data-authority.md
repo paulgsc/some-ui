@@ -704,7 +704,12 @@ only from the lane's hook and the scene notes read for home only there
   its own. The stores with Let go are spoken reflections, Jobs notes, scene
   notes, soundbites (through `soundbitesOweMarks`), and lens and LeetType
   takes; Rust Rounds takes owe none until their notes go home (RR6, `from`
-  null); game bites, Studio takes and idea takes have no Let go. A mark
+  null); game bites, Studio takes and the answers to Claude's questions
+  about an idea have no Let go. A new idea's takes (ST26) owe no marks
+  either (their desk's `from` is null): before Send, its Delete, a Redo
+  and the clean-up of takes nothing will send delete for good a take that
+  still `waits`, through the desk's `discard`, and nothing lets one go
+  once it no longer waits. A mark
   goes to home only while its note reads set aside where it is kept, or
   is listed nowhere by its store, read this pass (`marksSendable`; the
   soundbites count as read only once the pass has read them): one whose
@@ -729,7 +734,12 @@ only from the lane's hook and the scene notes read for home only there
   `deskList` that clears `waits` anywhere but `release`, or lets `discard`
   remove a take that no longer waits; one to soundbites'
   `lib/idea/bundle-runtime.ts` that calls `release` before the ideas kept
-  hold the idea (`send`), or in `settle` for takes no kept idea names (ST26);
+  hold the idea (`send`), or for takes no kept idea names (`send`'s and
+  `settle`'s takes, from `lib/idea/bundle.ts`' `namedBy`) (ST26); one to
+  `lib/idea-takes/index.ts`, `bundle-runtime.ts` or `bundle.ts` that lets
+  the new idea's desk (`bundleDesk`, whose `from` is null) let go a take
+  that no longer `waits`: a call of its pattern's `letGo`, or a removal
+  there but through `discard`;
   a hunk to `lib/scene-voice/runtime.ts` that lets `letGo` remove a scene note that
   is not `prompted` (an ask home holds named it, LA18) or that home does not
   hold; a hunk
@@ -781,7 +791,8 @@ only from the lane's hook and the scene notes read for home only there
 - _Scope:_ LA15's shared files, `apps/www/src/lib/home-link/voice.ts`,
   `voice-copy.ts`, `set-aside.ts`, `apps/www/src/lib/voice-home/**`,
   `apps/www/src/lib/voice-marks/**`, `apps/www/src/lib/takes-desk/pattern.ts`
-  and `index.ts`, `packages/ui/soundbites/src/lib/idea/bundle-runtime.ts`,
+  and `index.ts`, `apps/www/src/lib/idea-takes/index.ts`,
+  `packages/ui/soundbites/src/lib/idea/bundle-runtime.ts` and `bundle.ts`,
   `apps/www/src/lib/jobs/runtime.ts`, `apps/www/src/lib/reflection-voice/index.ts`,
   `packages/ui/soundbites/src/lib/runtime.ts` and `aside-marks.ts`,
   `apps/www/src/lib/scene-voice/index.ts`, `runtime.ts`,

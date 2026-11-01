@@ -13,15 +13,23 @@
  *
  * - **Nothing leaves before Send.** Each take is kept on the take pattern
  *   with `send: "on-confirm"`, waiting on the phone; Send adds the idea,
- *   whole and dated, to the ideas kept, and only then lets its takes go
- *   (`send`'s `release`).
+ *   whole and dated, to the ideas kept, and only then lets go the takes it
+ *   names (`send`'s `release`), and only those (`settle` too).
+ * - **One take per answer before Send.** Saying an answer again replaces
+ *   its take: once the new one is kept, the one it replaced, which never
+ *   left the phone, is deleted for good (`drop`). So is a waiting take no
+ *   draft or kept idea names (a Send cut short, a draft that couldn't be
+ *   kept), when the screen opens.
  * - **Deleting before Send is gone for good, and asks first** (the owner's
- *   ruling on #2265): one answer (`askDelete`, then `confirmed`) or the
- *   whole idea (`askDeleteAll`). Nothing else deletes.
+ *   ruling on #2265): one answer, every take it has (`askDelete`, then
+ *   `confirmed`), or the whole idea (`askDeleteAll`). Besides `drop`,
+ *   nothing else deletes.
+ * - **A take starts only once its draft is kept** (`tap`'s `draft`), so no
+ *   take answers a draft this phone doesn't hold.
  * - **Typing is the fallback, never the default.** A card offers typing only
  *   once voice didn't come through for it (a take the microphone refused,
- *   that failed, or that had no room), and a typed answer offers "Say it
- *   instead": a take kept for it takes the typed words' place.
+ *   or that failed) or the phone had no room for one, and a typed answer
+ *   offers "Say it instead": a take kept for it takes the typed words' place.
  * - **Nothing moves while a take is under way**: a swipe, a dot, Look it
  *   over and Back wait until it ends, and leaving the screen keeps it.
  * - **One play at a time.** Play all plays each answer's take in order,
@@ -52,8 +60,11 @@ type BundleScreen =
 
 /** A card's own state, besides its take and typed words. */
 type CardMode =
-  /** Voice didn't come through for it: nothing was kept. */
-  | { readonly kind: "failed" }
+  /**
+   * Nothing was kept: voice didn't come through for it, or (`full`) the
+   * phone holds as many takes as it can until home has them.
+   */
+  | { readonly kind: "failed"; readonly full: boolean }
   /** Typing instead, because voice didn't work. */
   | { readonly kind: "typing"; readonly text: string }
 
@@ -98,6 +109,8 @@ export type BundleState = {
   readonly notice: BundleNotice | null
   /** The idea just sent, on the sent screen. */
   readonly sent: Idea | null
+  /** Takes already asked to be dropped (`drop`), so none is asked twice. */
+  readonly dropping: ReadonlyArray<string>
 }
 
 type Stamp = { readonly at: string }
@@ -173,16 +186,26 @@ export type BundleEvent =
 export type BundleEffect =
   | { readonly type: "open" }
   | { readonly type: "keepDraft"; readonly draft: IdeaDraft | null }
-  /** D1's tap: starts a take answering `answers`, or stops the one under way. */
+  /**
+   * D1's tap: starts a take answering `answers`, or stops the one under way.
+   * With `draft`, the draft is kept first, and the take starts only if it
+   * was (`draftKept`).
+   */
   | {
       readonly type: "tap"
       readonly answers: string
       readonly supersedes: string | null
+      readonly draft?: IdeaDraft
     }
   | { readonly type: "play"; readonly take: string }
   | { readonly type: "stopPlaying" }
-  /** Deletes a take that never left the phone, for good. */
-  | { readonly type: "deleteTake"; readonly take: string }
+  /** Deletes an answer's takes, which never left the phone, for good. */
+  | { readonly type: "deleteTakes"; readonly takes: ReadonlyArray<string> }
+  /**
+   * Deletes, for good and saying nothing, waiting takes nothing will send:
+   * replaced by a newer take of their answer, or named by no draft or idea.
+   */
+  | { readonly type: "drop"; readonly takes: ReadonlyArray<string> }
   /** Deletes the draft and every take it has, for good. */
   | { readonly type: "deleteAll"; readonly takes: ReadonlyArray<string> }
   /**
@@ -194,7 +217,7 @@ export type BundleEffect =
       readonly idea: Idea
       readonly takes: ReadonlyArray<string>
     }
-  /** Lets the takes of ideas already kept go home. */
+  /** Lets the takes ideas already kept name, still waiting, go home. */
   | { readonly type: "settle"; readonly takes: ReadonlyArray<string> }
   /** The screen went: a take under way is kept, and nothing plays. */
   | { readonly type: "leave" }
@@ -219,6 +242,7 @@ export function initialBundle(id: string, at: string): BundleState {
     reach: "unpaired",
     notice: null,
     sent: null,
+    dropping: [],
   }
 }
 
@@ -244,6 +268,62 @@ function currentTake(
       .filter((take) => take.answers === answers && take.standing === "current")
       .sort((a, b) => b.recordedAt.localeCompare(a.recordedAt))[0] ?? null
   )
+}
+
+/** Every take answering `question`, whatever its standing. */
+function takesOf(
+  state: Pick<BundleState, "draft" | "takes">,
+  question: QuestionId
+): ReadonlyArray<PatternTake> {
+  const answers = answersOf(state.draft.id, question)
+  return state.takes.filter((take) => take.answers === answers)
+}
+
+/**
+ * The waiting takes nothing will send: the draft's takes each replaced by
+ * its answer's take now, and, with `kept`, every take neither the draft nor
+ * a kept idea names. None already asked for.
+ */
+function droppable(
+  state: Pick<BundleState, "draft" | "takes" | "dropping">,
+  kept: ReadonlyArray<Idea> | null
+): ReadonlyArray<string> {
+  const named = kept === null ? null : namedBy(kept)
+  return state.takes
+    .filter((take) => {
+      if (take.waits !== true || state.dropping.includes(take.id)) return false
+      const question = questionOf(state.draft.id, take.answers)
+      if (question !== null) return currentTake(state, question)?.id !== take.id
+      return named !== null && !named.has(take.id)
+    })
+    .map((take) => take.id)
+}
+
+/** The takes the ideas kept name. */
+function namedBy(kept: ReadonlyArray<Idea>): ReadonlySet<string> {
+  return new Set(
+    kept.flatMap((idea) =>
+      idea.answers.flatMap((answer) =>
+        (answer.takes ?? []).map((each) => each.take)
+      )
+    )
+  )
+}
+
+/** The takes listed, and those nothing will send dropped. */
+function withTakes(
+  state: BundleState,
+  takes: ReadonlyArray<PatternTake>,
+  kept: ReadonlyArray<Idea> | null
+): BundleStep {
+  const next = { ...state, takes }
+  const drop = droppable(next, kept)
+  return drop.length === 0
+    ? same(next)
+    : {
+        state: { ...next, dropping: [...next.dropping, ...drop] },
+        effects: [{ type: "drop", takes: drop }],
+      }
 }
 
 /** How a question stands: said, typed, or neither yet. */
@@ -275,9 +355,8 @@ export function answeredCount(
 }
 
 /**
- * The idea a draft sends: what it is, each answer said (its takes, oldest
- * first, the current one last) or typed, and the questions with neither
- * passed over.
+ * The idea a draft sends: what it is, each answer said (its one take) or
+ * typed, and the questions with neither passed over.
  */
 export function bundleIdea(
   state: Pick<BundleState, "draft" | "takes">,
@@ -287,23 +366,8 @@ export function bundleIdea(
   const answers = IDEA_QUESTIONS.flatMap((question) => {
     const current = currentTake(state, question)
     if (current !== null) {
-      const answers = answersOf(draft.id, question)
-      const takes = state.takes
-        .filter(
-          (take) =>
-            take.answers === answers &&
-            take.standing !== "set-aside" &&
-            take.id !== current.id
-        )
-        .sort((a, b) => a.recordedAt.localeCompare(b.recordedAt))
-        .map((take): AnswerTake => ({ at: take.recordedAt, take: take.id }))
-      return [
-        {
-          question,
-          versions: [],
-          takes: [...takes, { at: current.recordedAt, take: current.id }],
-        },
-      ]
+      const said: AnswerTake = { at: current.recordedAt, take: current.id }
+      return [{ question, versions: [], takes: [said] }]
     }
     const typed = draft.typed[question]
     return typed === undefined
@@ -424,11 +488,9 @@ function tapped(state: BundleState, question: QuestionId): BundleStep {
       index: IDEA_QUESTIONS.indexOf(question),
       screen: "questions",
     },
-    // Kept first, so the takes it is about to have are named by a kept draft.
-    effects: [
-      { type: "keepDraft", draft },
-      { type: "tap", answers, supersedes: current?.id ?? null },
-    ],
+    // The draft is kept first, so the take is named by a draft this phone
+    // holds; one it couldn't keep starts no take.
+    effects: [{ type: "tap", answers, supersedes: current?.id ?? null, draft }],
   }
 }
 
@@ -447,7 +509,12 @@ function takeEnded(state: BundleState, ended: TakeEnded): BundleStep {
     case "full": {
       // A card that has its take keeps it; the pattern says how this one ended.
       if (currentTake(state, question) !== null) return same(state)
-      return same(withMode(state, question, { kind: "failed" }))
+      return same(
+        withMode(state, question, {
+          kind: "failed",
+          full: ended.ending === "full",
+        })
+      )
     }
     case "short":
     case "early": {
@@ -590,12 +657,16 @@ function onIntent(
         }
       }
       const { question } = confirm
-      const take = currentTake(state, question)
       const closed = { ...state, confirm: null }
-      if (take !== null) {
+      if (currentTake(state, question) !== null) {
         return {
           state: closed,
-          effects: [{ type: "deleteTake", take: take.id }],
+          effects: [
+            {
+              type: "deleteTakes",
+              takes: takesOf(state, question).map((take) => take.id),
+            },
+          ],
         }
       }
       const typed = withoutTyped(draft, question)
@@ -677,16 +748,13 @@ function onIntent(
       if (state.screen !== "review" || missing(state) !== null) {
         return same(state)
       }
-      return then(hushed(state), (quiet) => ({
-        state: quiet,
-        effects: [
-          {
-            type: "send",
-            idea: bundleIdea(quiet, event.at),
-            takes: draftTakes(quiet).map((take) => take.id),
-          },
-        ],
-      }))
+      return then(hushed(state), (quiet) => {
+        const idea = bundleIdea(quiet, event.at)
+        return {
+          state: quiet,
+          effects: [{ type: "send", idea, takes: [...namedBy([idea])] }],
+        }
+      })
     }
     case "readAgain": {
       return state.screen === "unreadable"
@@ -725,53 +793,37 @@ export function stepBundle(state: BundleState, event: BundleEvent): BundleStep {
       if (draft === undefined || kept === null) {
         return same({ ...state, screen: "unreadable", lists })
       }
-      const opened = { ...state, lists, takes: event.takes }
-      // A take a kept idea names, still on this phone alone, waits on a
-      // Send that kept the idea and couldn't let it go: it goes now.
-      const named = new Set(
-        kept.flatMap((idea) =>
-          idea.answers.flatMap((answer) =>
-            (answer.takes ?? []).map((each) => each.take)
-          )
-        )
-      )
-      const settle: ReadonlyArray<BundleEffect> = event.takes.some(
-        (take) => named.has(take.id) && take.kept?.place === "phone"
-      )
-        ? [
-            {
-              type: "settle",
-              takes: event.takes
-                .filter((take) => named.has(take.id))
-                .map((take) => take.id),
-            },
-          ]
-        : []
+      // A take a kept idea names that still waits, waits on a Send that
+      // kept the idea and couldn't let it go: it goes now.
+      const named = namedBy(kept)
+      const waiting = event.takes
+        .filter((take) => take.waits === true && named.has(take.id))
+        .map((take) => take.id)
+      const settle: ReadonlyArray<BundleEffect> =
+        waiting.length === 0 ? [] : [{ type: "settle", takes: waiting }]
       const fresh = newDraft(event.id, event.at, lists)
-      if (draft === null) {
-        return {
-          state: { ...opened, draft: fresh, screen: "about" },
-          effects: settle,
-        }
+      // Sent before the screen could clear it, the draft goes.
+      const sent = draft !== null && kept.some((idea) => idea.id === draft.id)
+      const resumed = draft === null || sent ? null : draft
+      const opened: BundleState = {
+        ...state,
+        lists,
+        draft: resumed ?? fresh,
+        screen:
+          resumed !== null && resumed.about.title !== ""
+            ? "questions"
+            : "about",
       }
-      if (kept.some((idea) => idea.id === draft.id)) {
-        // Sent before the screen could clear it: it goes.
-        return {
-          state: { ...opened, draft: fresh, screen: "about" },
-          effects: [...settle, { type: "keepDraft", draft: null }],
-        }
-      }
-      return {
-        state: {
-          ...opened,
-          draft,
-          screen: draft.about.title === "" ? "about" : "questions",
-        },
-        effects: settle,
-      }
+      return then(withTakes(opened, event.takes, kept), (listed) => ({
+        state: listed,
+        effects: [
+          ...settle,
+          ...(sent ? [{ type: "keepDraft" as const, draft: null }] : []),
+        ],
+      }))
     }
     case "takes": {
-      return same({ ...state, takes: event.takes })
+      return withTakes(state, event.takes, null)
     }
     case "busy": {
       return event.busy === state.busy
@@ -873,7 +925,7 @@ export function stepBundle(state: BundleState, event: BundleEvent): BundleStep {
 
 /** Where a card is: its take under way, a block of its own, or its take. */
 export type CardView =
-  | { readonly kind: "failed" }
+  | { readonly kind: "failed"; readonly full: boolean }
   | { readonly kind: "typing"; readonly text: string }
   | { readonly kind: "typed"; readonly words: string }
   | { readonly kind: "later" }

@@ -69,6 +69,7 @@ const take = (
   recordedAt: `2026-11-01T09:0${id.length % 10}:00.000Z`,
   standing: "current",
   kept: { place: "phone" },
+  waits: true,
   ...over,
 })
 
@@ -137,7 +138,7 @@ describe("a new idea as one bundle (ST26)", () => {
       }
     })
 
-    it("clears a draft already sent, and lets go the takes a kept idea names that still wait", () => {
+    it("after a Send cut short: clears the draft, lets go only the takes the kept idea names, and deletes the rest", () => {
       const sent: Idea = {
         id: "idea-1",
         at: AT,
@@ -151,15 +152,59 @@ describe("a new idea as one bundle (ST26)", () => {
         { type: "entered", at: AT },
         opened(
           draft({ about: { ...draft().about, title: "x" } }),
-          [take("t1", "what")],
+          [
+            take("t1", "what"),
+            // Replaced before Send, and never named by the idea.
+            take("t22", "what", { standing: "earlier" }),
+            // Already gone home: neither let go again nor deleted.
+            take("t333", "spark", { waits: undefined }),
+          ],
           [sent]
         ),
       ])
       expect(state.draft.id).toBe("fresh")
       expect(effects).toEqual([
         { type: "open" },
+        { type: "drop", takes: ["t22"] },
         { type: "settle", takes: ["t1"] },
         { type: "keepDraft", draft: null },
+      ])
+    })
+
+    it("lets nothing go, and rewrites nothing, when every take a kept idea names has gone", () => {
+      const sent: Idea = {
+        id: "idea-0",
+        at: AT,
+        questions: 1,
+        answers: [
+          { question: "what", versions: [], takes: [{ at: AT, take: "t1" }] },
+        ],
+        passed: [],
+      }
+      const { effects } = run([
+        { type: "entered", at: AT },
+        opened(
+          null,
+          [
+            {
+              ...take("t1", "what", { waits: undefined }),
+              answers: "idea:idea-0:what",
+            },
+          ],
+          [sent]
+        ),
+      ])
+      expect(effects).toEqual([{ type: "open" }])
+    })
+
+    it("deletes a waiting take no draft or kept idea names: one whose draft couldn't be kept", () => {
+      const { effects } = run([
+        { type: "entered", at: AT },
+        opened(null, [{ ...take("t1", "what"), answers: "idea:lost:what" }]),
+      ])
+      expect(effects).toEqual([
+        { type: "open" },
+        { type: "drop", takes: ["t1"] },
       ])
     })
   })
@@ -249,15 +294,51 @@ describe("a new idea as one bundle (ST26)", () => {
   })
 
   describe("saying an answer", () => {
-    it("keeps the draft before the take starts, and redoes the answer's take", () => {
+    it("starts a take only with the draft it answers, kept first", () => {
       const at = onQuestions({}, [take("t1", "what")])
       const { effects } = run([tap({ type: "tap", question: "what" })], at)
-      expect(effects.map((effect) => effect.type)).toEqual(["keepDraft", "tap"])
-      expect(effects[1]).toEqual({
-        type: "tap",
-        answers: "idea:idea-1:what",
-        supersedes: "t1",
+      expect(effects).toEqual([
+        {
+          type: "tap",
+          answers: "idea:idea-1:what",
+          supersedes: "t1",
+          draft: at.draft,
+        },
+      ])
+    })
+
+    it("says it again: once the new take is kept, the one it replaced is deleted for good, and only once", () => {
+      const at = onQuestions({}, [take("t1", "what")])
+      const redone = run([tap({ type: "tap", question: "what" })], at).state
+      const now = take("t22", "what", {
+        recordedAt: "2026-11-01T09:03:00.000Z",
       })
+      const replaced = [now, take("t1", "what", { standing: "earlier" })]
+      const listed = run([{ type: "takes", takes: replaced }], redone)
+      expect(listed.effects).toEqual([{ type: "drop", takes: ["t1"] }])
+      expect(cardView(listed.state, "what", false)).toEqual({ kind: "take" })
+      // Listed again before the desk has dropped it: not asked twice.
+      expect(
+        run([{ type: "takes", takes: replaced }], listed.state).effects
+      ).toEqual([])
+      // A take already gone home is never deleted here.
+      expect(
+        run(
+          [
+            {
+              type: "takes",
+              takes: [
+                now,
+                take("t4444", "what", {
+                  standing: "earlier",
+                  waits: undefined,
+                }),
+              ],
+            },
+          ],
+          redone
+        ).effects
+      ).toEqual([])
     })
 
     it("stops the take under way on its tap, and nothing else", () => {
@@ -281,7 +362,10 @@ describe("a new idea as one bundle (ST26)", () => {
     it("says so on a card with no answer, for a refusal, a failure or no room", () => {
       for (const ending of ["blocked", "failed", "full"] as const) {
         const { state } = run([ended(ending)], onQuestions())
-        expect(cardView(state, "what", false)).toEqual({ kind: "failed" })
+        expect(cardView(state, "what", false)).toEqual({
+          kind: "failed",
+          full: ending === "full",
+        })
       }
       // Too short is the pattern's to say, and the card stays as it was.
       expect(
@@ -364,15 +448,19 @@ describe("a new idea as one bundle (ST26)", () => {
   })
 
   describe("deleting before Send", () => {
-    it("asks first, then deletes the answer's take for good", () => {
-      const at = onQuestions({}, [take("t1", "what")])
+    it("asks first, then deletes every take the answer has for good", () => {
+      const at = onQuestions({}, [
+        take("t1", "what"),
+        take("t22", "what", { standing: "earlier" }),
+        take("t333", "spark"),
+      ])
       const asked = run([tap({ type: "askDelete", question: "what" })], at)
       expect(asked.state.confirm).toEqual({ kind: "answer", question: "what" })
       expect(
         run([tap({ type: "keepIt" })], asked.state).state.confirm
       ).toBeNull()
       const { state, effects } = run([tap({ type: "confirmed" })], asked.state)
-      expect(effects).toEqual([{ type: "deleteTake", take: "t1" }])
+      expect(effects).toEqual([{ type: "deleteTakes", takes: ["t1", "t22"] }])
       expect(
         run([{ type: "deleted", deleted: true }], state).state.notice
       ).toBe("deleted")
@@ -472,9 +560,8 @@ describe("a new idea as one bundle (ST26)", () => {
       ).state
       const { effects } = run([tap({ type: "send" })], review)
       const idea = bundleIdea(review, LATER)
-      expect(effects).toEqual([
-        { type: "send", idea, takes: ["t1", "t2", "t3"] },
-      ])
+      // Only the take each answer has now: the rest are never sent.
+      expect(effects).toEqual([{ type: "send", idea, takes: ["t2"] }])
       expect(idea).toEqual({
         id: "idea-1",
         at: AT,
@@ -489,10 +576,7 @@ describe("a new idea as one bundle (ST26)", () => {
           {
             question: "what",
             versions: [],
-            takes: [
-              { at: "2026-11-01T09:01:00.000Z", take: "t1" },
-              { at: "2026-11-01T09:02:00.000Z", take: "t2" },
-            ],
+            takes: [{ at: "2026-11-01T09:02:00.000Z", take: "t2" }],
           },
           {
             question: "spark",
@@ -502,6 +586,46 @@ describe("a new idea as one bundle (ST26)", () => {
         passed: ["takeaway", "picture"],
         sent: [LATER],
       })
+    })
+
+    it("sends nothing for an answer said again, then deleted", () => {
+      const at = onQuestions({ typed: { what: "typed" } }, [
+        take("t1", "spark"),
+      ])
+      const redone = run(
+        [
+          tap({ type: "tap", question: "spark" }),
+          {
+            type: "takes",
+            takes: [
+              take("t22", "spark", { recordedAt: "2026-11-01T09:03:00.000Z" }),
+              take("t1", "spark", { standing: "earlier" }),
+            ],
+          },
+          tap({ type: "askDelete", question: "spark" }),
+          tap({ type: "confirmed" }),
+        ],
+        at
+      )
+      expect(redone.effects.slice(-2)).toEqual([
+        { type: "drop", takes: ["t1"] },
+        { type: "deleteTakes", takes: ["t22", "t1"] },
+      ])
+      const sent = run(
+        [
+          { type: "takes", takes: [] },
+          { type: "deleted", deleted: true },
+          tap({ type: "review" }),
+          tap({ type: "send" }),
+        ],
+        redone.state
+      )
+      const [send] = sent.effects
+      expect(send).toMatchObject({ type: "send", takes: [] })
+      expect(
+        send?.type === "send" &&
+          send.idea.answers.map((answer) => answer.question)
+      ).toEqual(["what"])
     })
 
     it("says it was sent once kept, and that nothing was when it wasn't", () => {

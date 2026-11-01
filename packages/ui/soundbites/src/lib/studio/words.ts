@@ -695,6 +695,7 @@ export const STUDIO_WORDS = {
       typed: (n: number): string => `Question ${n}, typed`,
       failed: (n: number): string =>
         `Question ${n}, your voice didn't come through`,
+      full: (n: number): string => `Question ${n}, no room to record it`,
       later: (n: number): string => `Question ${n}, left for later`,
       open: (n: number): string => `Question ${n}, not said yet`,
     },
@@ -707,6 +708,12 @@ export const STUDIO_WORDS = {
       again: "Try saying it again",
       later: "Come back later",
       type: "Type it this once",
+    },
+    /** No room for another take until home has the ones on this phone. */
+    full: {
+      title:
+        "This phone holds as many recordings as it can until home has them.",
+      line: "Nothing was kept. Type this one, or come back to it once home is in reach.",
     },
     typing: {
       mark: "Typing instead · voice didn't work",
@@ -739,11 +746,12 @@ export const STUDIO_WORDS = {
       delete: "Delete",
       needsTitle: "Give it a title to send it.",
       needsFirst: "Say what the video is to send it.",
-      away: "Home is out of reach. Send keeps the idea here, whole, and it goes home when you're back in reach.",
-      unpaired:
-        "This phone isn't paired with home. Send keeps the idea here, whole, and it goes home once it is.",
+      away: "Home is out of reach. The idea is kept here, whole, and goes home when you're back in reach.",
       send: (n: number): string =>
         `Send the idea home · ${plural(n, "answer", "answers")}`,
+      /** Home is out of reach, or this phone isn't paired with it. */
+      keep: (n: number): string =>
+        `Keep the idea · ${plural(n, "answer", "answers")}`,
     },
     confirm: {
       answerTitle: "Delete this answer?",
@@ -767,9 +775,9 @@ export const STUDIO_WORDS = {
     sent: {
       title: "Sent, as one idea",
       near: "Kept on this phone as one idea, dated. What you said goes home now, and its title and the rest follow once home keeps ideas.",
+      /** Home is out of reach, or this phone isn't paired with it. */
+      kept: "Kept, goes home when you're back in reach",
       away: "Kept on this phone as one idea, dated. It goes home when you're back in reach.",
-      unpaired:
-        "Kept on this phone as one idea, dated. It goes home once this phone is paired with home.",
       another: "Another idea",
     },
   },
@@ -800,7 +808,7 @@ export const STUDIO_WORDS = {
     claudeAsked: "Claude asked",
     notAnswered: "Not answered yet",
     /** A said answer whose words home hasn't given back yet (ST26). */
-    saidNoWords: "Said. Its words show here once home has heard it.",
+    saidNoWords: "Said. Its words come once home has heard it.",
     skipped: "Skipped",
     share: "Share with Claude",
     sharing: "Preparing…",

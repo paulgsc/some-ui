@@ -72,9 +72,10 @@ export type PatternTakesPorts = {
     setAside: (id: string, at: number) => boolean
     /**
      * Removes these takes, of those still waiting for their item to be sent
-     * (`waits`) and no others. Says whether the device stored it.
+     * (`waits`) and no others. Gives the ids removed, or null when the
+     * device couldn't store it.
      */
-    discard: (ids: ReadonlyArray<string>) => boolean
+    discard: (ids: ReadonlyArray<string>) => ReadonlyArray<string> | null
     /** Lets these waiting takes go home. Says whether the device stored it. */
     release: (ids: ReadonlyArray<string>) => boolean
   }
@@ -169,6 +170,7 @@ export function createPatternTakes(
         recordedAt: new Date(take.takenAt).toISOString(),
         standing: take.standing ?? "current",
         kept: keptOf(take),
+        ...(take.waits === true ? { waits: true as const } : {}),
       })
     )
   let snapshot = listed()
@@ -198,19 +200,15 @@ export function createPatternTakes(
   }
 
   const discard = (ids: ReadonlyArray<string>): boolean => {
-    const waiting = ports.takes
-      .read()
-      .filter((take) => take.waits === true && ids.includes(take.id))
-      .map((take) => take.id)
-    if (waiting.length === 0) return ids.length === 0
-    // The list first, as `letGo`; it removes only the waiting ones.
-    const stored = ports.takes.discard(waiting)
-    if (stored) {
+    // The list first, as `letGo`; it removes only the waiting ones, and the
+    // audio goes only for those.
+    const removed = ports.takes.discard(ids)
+    if (removed !== null && removed.length > 0) {
       // Ignored: audio no take names is cleared by the next sweep.
-      ports.audio.remove(waiting).catch(() => undefined)
+      ports.audio.remove(removed).catch(() => undefined)
     }
     publish()
-    return stored && waiting.length === ids.length
+    return removed !== null && removed.length === ids.length
   }
 
   const release = (ids: ReadonlyArray<string>): boolean => {

@@ -9,9 +9,9 @@
  * the finger is down, and what a release means is `swipeOf`'s. vitest's
  * pointer events don't reproduce a phone's touch (CK7, #2386).
  */
-import type { JSX, PointerEvent, ReactNode } from "react"
-import { useEffect, useId, useState, useSyncExternalStore } from "react"
-import { assertNever } from "@some-ui/core-utils"
+import type { JSX, MouseEvent, PointerEvent, ReactNode } from "react"
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react"
+import { assertNever, cn } from "@some-ui/core-utils"
 import {
   Button,
   ConfirmSheet,
@@ -195,7 +195,10 @@ const About = ({
 
 /** A dot's label: how its question stands. */
 function dotLabel(state: BundleState, question: QuestionId, n: number): string {
-  if (state.modes[question]?.kind === "failed") return WORDS.dot.failed(n)
+  const mode = state.modes[question]
+  if (mode?.kind === "failed") {
+    return mode.full ? WORDS.dot.full(n) : WORDS.dot.failed(n)
+  }
   const how = answered(state, question)
   if (how !== null) return WORDS.dot[how](n)
   return state.draft.later.includes(question)
@@ -203,11 +206,18 @@ function dotLabel(state: BundleState, question: QuestionId, n: number): string {
     : WORDS.dot.open(n)
 }
 
+/**
+ * Nothing was kept for a card. Voice didn't come through, so it can be said
+ * again; or (`full`) the phone has no room for another take until home has
+ * the ones it holds, so saying it again would fail the same way.
+ */
 const Failed = ({
   question,
+  full,
   dispatch,
 }: {
   question: QuestionId
+  full: boolean
   dispatch: Dispatch
 }): JSX.Element => (
   <div className="flex flex-col gap-3">
@@ -217,13 +227,19 @@ const Failed = ({
     >
       <MicOff className="mt-1 size-5 shrink-0" aria-hidden="true" />
       <div className="space-y-1">
-        <p className="font-bold">{WORDS.failed.title}</p>
-        <p className="text-muted-foreground text-sm">{WORDS.failed.line}</p>
+        <p className="font-bold">
+          {full ? WORDS.full.title : WORDS.failed.title}
+        </p>
+        <p className="text-muted-foreground text-sm">
+          {full ? WORDS.full.line : WORDS.failed.line}
+        </p>
       </div>
     </div>
-    <Button size="lg" onClick={() => dispatch({ type: "tap", question })}>
-      {WORDS.failed.again}
-    </Button>
+    {!full && (
+      <Button size="lg" onClick={() => dispatch({ type: "tap", question })}>
+        {WORDS.failed.again}
+      </Button>
+    )}
     <div className="grid grid-cols-2 gap-2">
       <Button
         variant="outline"
@@ -361,10 +377,10 @@ const Card = ({
       aria-hidden={!active}
       inert={!active}
       data-card={question}
-      className={[
+      className={cn(
         "col-start-1 row-start-1 flex min-w-0 flex-col gap-3 px-1",
-        offset.easing ? "transition-transform duration-200 ease-out" : "",
-      ].join(" ")}
+        offset.easing && "transition-transform duration-200 ease-out"
+      )}
       style={{
         transform: `translateX(calc(${offset.cards * 100}% + ${offset.px}px))`,
       }}
@@ -378,7 +394,7 @@ const Card = ({
       </h2>
       <p className="text-muted-foreground">{ASK[question].hint}</p>
       {card.kind === "failed" && (
-        <Failed question={question} dispatch={dispatch} />
+        <Failed question={question} full={card.full} dispatch={dispatch} />
       )}
       {card.kind === "typing" && (
         <Typing question={question} text={card.text} dispatch={dispatch} />
@@ -432,7 +448,12 @@ const Questions = ({
 }): JSX.Element => {
   // The finger's travel while it is down: the gesture's own, not the idea's.
   const [drag, setDrag] = useState<{ x: number; dx: number } | null>(null)
+  // A swipe that began on a button ends in that button's click: it is
+  // swallowed, so a swipe never also starts a take. Cleared by the next
+  // touch, so a swipe that ended off any button holds back nothing.
+  const swiped = useRef(false)
   const down = (event: PointerEvent): void => {
+    swiped.current = false
     if (state.busy) return
     setDrag({ x: event.clientX, dx: 0 })
   }
@@ -443,7 +464,15 @@ const Questions = ({
     if (drag === null) return
     const to = swipeOf(drag.dx)
     setDrag(null)
-    if (to !== null) dispatch({ type: "swipe", to })
+    if (to === null) return
+    swiped.current = true
+    dispatch({ type: "swipe", to })
+  }
+  const click = (event: MouseEvent): void => {
+    if (!swiped.current) return
+    swiped.current = false
+    event.preventDefault()
+    event.stopPropagation()
   }
   const dx = drag?.dx ?? 0
   return (
@@ -464,7 +493,7 @@ const Questions = ({
             >
               <span
                 data-dot={how ?? (failed ? "failed" : "open")}
-                className={[
+                className={cn(
                   "h-2.5 rounded-full border-2",
                   i === state.index ? "w-6" : "w-2.5",
                   how === "said"
@@ -473,8 +502,8 @@ const Questions = ({
                       ? "bg-muted-foreground border-muted-foreground border-dashed"
                       : failed
                         ? "border-destructive"
-                        : "border-muted-foreground/60",
-                ].join(" ")}
+                        : "border-muted-foreground/60"
+                )}
               />
             </button>
           )
@@ -487,6 +516,7 @@ const Questions = ({
         onPointerMove={move}
         onPointerUp={up}
         onPointerCancel={() => setDrag(null)}
+        onClickCapture={click}
       >
         {/* The cards share one cell, each moved sideways by its distance
             from the card on screen, so the row clips them and none of them
@@ -541,7 +571,7 @@ const Review = ({
   const { about } = state.draft
   const needs = missing(state)
   const n = answeredCount(state)
-  const unsent = state.reach === "near" ? null : WORDS.review[state.reach]
+  const near = state.reach === "near"
   return (
     <div className="flex flex-col gap-4">
       <header className="space-y-2">
@@ -657,15 +687,17 @@ const Review = ({
             : WORDS.review.needsFirst}
         </p>
       )}
-      {unsent !== null && (
-        <p className="text-muted-foreground text-center text-sm">{unsent}</p>
+      {!near && (
+        <p className="text-muted-foreground text-center text-sm">
+          {WORDS.review.away}
+        </p>
       )}
       <Button
         size="lg"
         disabled={needs !== null}
         onClick={() => dispatch({ type: "send" })}
       >
-        {WORDS.review.send(n)}
+        {near ? WORDS.review.send(n) : WORDS.review.keep(n)}
       </Button>
     </div>
   )
@@ -681,12 +713,15 @@ const Sent = ({
   back: ReactNode
 }): JSX.Element => {
   const about = state.sent?.about
+  const near = state.reach === "near"
   return (
     <div className="flex flex-col gap-3">
       <h2 aria-live="polite" className="text-3xl font-extrabold">
-        {WORDS.sent.title}
+        {near ? WORDS.sent.title : WORDS.sent.kept}
       </h2>
-      <p className="text-muted-foreground">{WORDS.sent[state.reach]}</p>
+      <p className="text-muted-foreground">
+        {near ? WORDS.sent.near : WORDS.sent.away}
+      </p>
       {about !== undefined && (
         <div className="bg-card rounded-2xl p-4">
           <p className="font-semibold">{about.title}</p>

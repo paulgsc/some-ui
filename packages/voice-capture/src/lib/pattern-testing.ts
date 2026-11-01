@@ -146,6 +146,7 @@ export function memoryTakes(options: {
             recordedAt: new Date(options.now()).toISOString(),
             standing: "current",
             kept: options.held === true ? ON_PHONE : (options.kept ?? ON_PHONE),
+            ...(options.held === true ? { waits: true as const } : {}),
           },
         ])
         done({ outcome: "kept", id })
@@ -175,12 +176,11 @@ export function memoryTakes(options: {
       const sent = ids.filter((id) => waiting.delete(id))
       if (sent.length > 0) {
         write(
-          takes.map(
-            (take): PatternTake =>
-              sent.includes(take.id)
-                ? { ...take, kept: { place: "going" } }
-                : take
-          )
+          takes.map((take): PatternTake => {
+            if (!sent.includes(take.id)) return take
+            const { waits: _sent, ...released } = take
+            return { ...released, kept: { place: "going" } }
+          })
         )
       }
       return true

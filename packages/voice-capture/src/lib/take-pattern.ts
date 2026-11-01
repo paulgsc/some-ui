@@ -157,6 +157,11 @@ export type PatternTake = {
    * says no place.
    */
   readonly kept: TakeKept | null
+  /**
+   * Under `send: "on-confirm"`: true while it waits on this phone for its
+   * item to be sent; absent once sent, and on every other pattern's take.
+   */
+  readonly waits?: true
 }
 
 /** What plays: nothing, a take whose audio is being read, or a take playing. */

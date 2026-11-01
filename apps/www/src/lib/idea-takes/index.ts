@@ -42,8 +42,8 @@ const desk = takesDesk({
 /** A new idea's answers (ST26): each waits on the phone until it is sent. */
 const bundleDesk = patternDesk({
   key: "some-ui:idea-bundle-takes",
-  // Sent ideas' takes have no Let go here: a new idea's Delete is for good,
-  // and only of a take that never left the phone.
+  // No set-aside marks: a take here is let go only by a new idea's Delete,
+  // Redo or clean-up before Send, for good, and only while it waits (LA13).
   from: null,
   dbName: "some-ui.idea-bundle-takes",
   limits: { max: MAX, maxMs: MAX_MS },
@@ -59,15 +59,7 @@ export const ideaTakesDesk = desk
 export const ideaBundleDesk = bundleDesk
 
 /** The phone's desk of a new idea's takes, as its screen uses it (ST26). */
-export function ideaBundleTakes(): BundleTakes {
-  const phone = bundleDesk.phone()
-  return {
-    pattern: phone.pattern,
-    takes: phone.takes,
-    discard: phone.discard,
-    release: phone.release,
-  }
-}
+export const ideaBundleTakes = (): BundleTakes => bundleDesk.phone()
 
 /** The desk's snapshot as an idea's answers read it. */
 function ideaTakeSnapshot(snapshot: DeskSnapshot): IdeaTakeSnapshot {

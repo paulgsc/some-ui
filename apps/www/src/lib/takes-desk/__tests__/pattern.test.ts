@@ -117,6 +117,12 @@ describe("createPatternTakes", () => {
       expect(on.listed().map(({ id }) => id)).toEqual(["n2", "n1"])
       expect(on.phone.discard(["n2"])).toBe(true)
       expect(on.listed().map(({ id }) => id)).toEqual(["n1"])
+      // Asked for a sent take beside a waiting one, it deletes only the
+      // waiting one's audio.
+      await take(on, "idea:i1:picture")
+      expect(on.phone.discard(["n1", "n3"])).toBe(false)
+      await settle()
+      expect(await on.shelf.ids()).toEqual(["n1"])
     })
   })
 
