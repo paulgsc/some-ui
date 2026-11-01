@@ -8,9 +8,11 @@
  *
  * - **Nothing is sent but by a method a tap called,** or by `keep`, which
  *   only `lib/home-link/lanes` calls, for the drain of what this phone keeps
- *   (LA15), and `lib/home-link/routine`, for Korean's look at the routine's
- *   files. Creating the runtime and `load` read only the phone's own
- *   record; nothing is sent on a timer.
+ *   (LA15), `lib/home-link/routine`, for Korean's look at the routine's
+ *   files, and `lib/home-link/heard`, which reads home's words for an idea
+ *   answer's take while the idea screen shows it (MIC10). Creating the
+ *   runtime and `load` read only the phone's own record; the one read on a
+ *   timer is that last one, bounded by its screen.
  * - **No retry.** A failed request is said once and left; the next tap, or
  *   the drain's next ask (LA15), is the next try.
  * - **Stop, and the background, end a sync, a send or a keep** after the request
@@ -152,8 +154,9 @@ export type HomeLink = {
     run: (send: HomeCall) => Promise<T>
   ) => Promise<SyncOutcome<T> | null>
   /**
-   * As `send`, for the drain of what this phone keeps (`./lanes`, LA15)
-   * and Korean's look at the routine's files (`./routine`).
+   * As `send`, for the drain of what this phone keeps (`./lanes`, LA15),
+   * Korean's look at the routine's files (`./routine`), and an idea
+   * answer's words (`./heard`).
    */
   keep: <T>(
     run: (send: HomeCall) => Promise<T>
