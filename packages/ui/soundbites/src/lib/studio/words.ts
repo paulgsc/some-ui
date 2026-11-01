@@ -799,6 +799,8 @@ export const STUDIO_WORDS = {
     yourAnswers: "Your answers",
     claudeAsked: "Claude asked",
     notAnswered: "Not answered yet",
+    /** A said answer whose words home hasn't given back yet (ST26). */
+    saidNoWords: "Said. Its words show here once home has heard it.",
     skipped: "Skipped",
     share: "Share with Claude",
     sharing: "Preparing…",

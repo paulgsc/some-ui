@@ -545,6 +545,14 @@ function onIntent(
       })
       const [first, ...rest] = queue
       if (first === undefined) return same(state)
+      // A take already playing stops first; its end starts the queue, from
+      // the first answer.
+      if (state.playing !== null) {
+        return {
+          state: { ...state, playAll: queue, notice: null },
+          effects: [{ type: "stopPlaying" }],
+        }
+      }
       return {
         state: { ...state, playAll: rest, notice: null },
         effects: [{ type: "play", take: first }],

@@ -321,7 +321,7 @@ export function withWords(
         ? [...idea.answers, { question, versions }]
         : idea.answers.map((answer) =>
             answer === held
-              ? { question, versions: [...answer.versions, ...versions] }
+              ? { ...answer, versions: [...answer.versions, ...versions] }
               : answer
           ),
   }

@@ -3,7 +3,7 @@ import type { IdeaListener, IdeaShare } from "@some-ui/soundbites"
 import { homeHearing, IdeaShelf, STUDIO_WORDS } from "@some-ui/soundbites"
 import { createFileRoute, Link } from "@tanstack/react-router"
 
-import { phoneIdeaListener } from "@/lib/idea-hearing"
+import { ideaWords, phoneIdeaListener } from "@/lib/idea-hearing"
 import { useAsyncIntent } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import { shareIdea } from "@/lib/journal-share"
@@ -37,6 +37,9 @@ const capture: { listener: IdeaListener } | undefined = device
   ? { listener: phoneIdeaListener(homeHearing) }
   : undefined
 
+/** Home's words for a new idea's said answers (ST26), in the Android app. */
+const shelf = device ? { heard: ideaWords } : undefined
+
 const share: IdeaShare | undefined = device
   ? (props): JSX.Element => <ShareIdea {...props} />
   : undefined
@@ -62,6 +65,7 @@ const IdeasRoute = (): JSX.Element => (
       {WORDS.heading}
     </h1>
     <IdeaShelf
+      ports={shelf}
       capture={capture}
       share={share}
       studio={openVideo}

@@ -30,6 +30,12 @@ import { askHeard } from "@/lib/home-link/heard"
 import { ideaTakes } from "@/lib/idea-takes"
 
 /**
+ * Home's words for a take, by its id (`lib/home-link/heard`): what the idea
+ * shelf asks for a said answer of a new idea with no words yet (ST26).
+ */
+export const ideaWords = askHeard
+
+/**
  * How long after home didn't answer the answers skip it: a run of answers
  * said away from home, short enough that home is tried again soon after
  * the phone is back.

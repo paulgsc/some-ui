@@ -7,6 +7,7 @@
 import { assertNever } from "@some-ui/core-utils"
 import type { ProjectStore } from "@soundbites/lib/project/store"
 
+import type { HeardAnswer } from "./hearing"
 import type { ShelfEffect, ShelfEvent, ShelfIntent, ShelfState } from "./shelf"
 import { applyShelf, initialShelfState, step, videosOf } from "./shelf"
 import type { IdeaStore } from "./store"
@@ -18,6 +19,11 @@ export type ShelfPorts = {
   now: () => number
   /** The text of a file picked; rejects when it can't be read. */
   readText: (file: Blob) => Promise<string>
+  /**
+   * Home's words for a take, by its id; never rejects (www's
+   * `lib/home-link/heard`). Absent where there is no home to ask.
+   */
+  heard?: ((take: string) => Promise<HeardAnswer>) | undefined
 }
 
 export type ShelfRuntime = {
@@ -80,6 +86,17 @@ export function createIdeaShelf(ports: ShelfPorts): ShelfRuntime {
         const notice =
           applied.changed || op.kind !== "reply" ? effect.notice : "alreadyKept"
         send({ type: "kept", ideas, notice })
+        return
+      }
+      case "hear": {
+        const { heard } = ports
+        if (heard === undefined) return
+        const { idea, question } = effect
+        void heard(effect.take).then((answer) => {
+          // Not heard yet, or home can't be asked: the next reading asks again.
+          if (answer.kind !== "heard") return
+          send({ type: "heard", idea, question, words: answer.text, at: at() })
+        })
         return
       }
       case "create": {

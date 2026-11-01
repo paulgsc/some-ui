@@ -420,6 +420,56 @@ describe("the idea shelf", () => {
     ).toEqual({ kind: "idea", id: "idea-1" })
   })
 
+  it("ST26: gives a said answer home's words once home has heard it, and asks again while it hasn't", async () => {
+    const said: Idea = {
+      id: "idea-2",
+      at: AT,
+      questions: 1,
+      answers: [
+        {
+          question: "what",
+          versions: [],
+          takes: [
+            { at: AT, take: "t1" },
+            { at: AT, take: "t2" },
+          ],
+        },
+        { question: "spark", versions: [], takes: [{ at: AT, take: "t3" }] },
+      ],
+      passed: [],
+      about: {
+        title: "Two hearings",
+        topic: null,
+        keywords: [],
+        format: "short",
+      },
+      sent: [AT],
+    }
+    const asked: Array<string> = []
+    const on = shelf([said], {
+      heard: (take) => {
+        asked.push(take)
+        return Promise.resolve(
+          take === "t2"
+            ? { kind: "heard", text: " two hearings, one word " }
+            : { kind: "notYet" }
+        )
+      },
+    })
+    await settle()
+    // The answer's take now, not an earlier one; and every answer without words.
+    expect(asked).toEqual(["t2", "t3"])
+    const [kept] = on.store.list() ?? []
+    expect(kept?.answers[0]?.versions).toEqual([
+      { at: LATER, how: "heard", words: "two hearings, one word" },
+    ])
+    expect(kept?.answers[1]?.versions).toEqual([])
+    // Read again, only the one still without words is asked about.
+    on.runtime.dispatch({ type: "readAgain" })
+    await settle()
+    expect(asked).toEqual(["t2", "t3", "t3"])
+  })
+
   it("says so when the kept ideas can't be read", () => {
     const loading = step(initialShelfState(), { type: "entered", at: AT })
     expect(

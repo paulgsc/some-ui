@@ -150,7 +150,15 @@ const Answers = ({ idea }: { idea: Idea }): JSX.Element => (
                 <dt className="text-muted-foreground text-xs">
                   {STUDIO_WORDS.idea.questions[question].ask}
                 </dt>
-                <dd className="text-sm">{versions.at(-1)?.words}</dd>
+                {/* A said answer reads as text once home has heard it (ST26). */}
+                <dd
+                  className={cn(
+                    "text-sm",
+                    versions.length === 0 && "text-muted-foreground"
+                  )}
+                >
+                  {versions.at(-1)?.words ?? WORDS.saidNoWords}
+                </dd>
               </div>,
             ]
       )}

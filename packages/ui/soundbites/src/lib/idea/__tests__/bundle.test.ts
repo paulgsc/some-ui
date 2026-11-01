@@ -552,6 +552,29 @@ describe("a new idea as one bundle (ST26)", () => {
       expect(done.state.playAll).toBeNull()
     })
 
+    it("plays from the first answer when one is already playing", () => {
+      const review = run(
+        [tap({ type: "review" })],
+        onQuestions({}, [take("t1", "what"), take("t333", "picture")])
+      ).state
+      const playing = run(
+        [tap({ type: "play", take: "t1" }), { type: "playing", take: "t1" }],
+        review
+      ).state
+      const all = run([tap({ type: "playAll" })], playing)
+      expect(all.effects).toEqual([{ type: "stopPlaying" }])
+      const started = run([{ type: "playing", take: null }], all.state)
+      expect(started.effects).toEqual([{ type: "play", take: "t1" }])
+      const next = run(
+        [
+          { type: "playing", take: "t1" },
+          { type: "playing", take: null },
+        ],
+        started.state
+      )
+      expect(next.effects).toEqual([{ type: "play", take: "t333" }])
+    })
+
     it("stops on Stop, or on any other play", () => {
       const review = run(
         [tap({ type: "review" })],
