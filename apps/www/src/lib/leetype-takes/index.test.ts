@@ -114,9 +114,8 @@ describe("phoneSpokenTakes", () => {
   it("gives the same snapshot until something changes", () => {
     const takes = phoneSpokenTakes()
     expect(takes.getSnapshot()).toBe(takes.getSnapshot())
-    expect(takes.getSnapshot()).toMatchObject({
-      recording: false,
-      last: null,
+    expect(takes.getSnapshot()).toEqual({
+      takes: [],
       full: false,
       notesFull: false,
     })

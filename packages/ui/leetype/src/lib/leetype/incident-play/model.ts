@@ -134,6 +134,11 @@ export type Play = {
   readonly asked: boolean
   /** A spoken answer given on the record screen in view, before its rubric. */
   readonly spoken: SpokenAnswer | null
+  /**
+   * The record screen in view's rubric has been shown this visit: an answer
+   * given again after Let go shows it, and logs `rubric-shown`, no more.
+   */
+  readonly rubricSeen: boolean
   /** Rounds played this session, returns aside: the short form plays one. */
   readonly rounds: number
   readonly ended: "declared" | "left" | null
@@ -151,8 +156,13 @@ export type PlayInput =
   | { readonly type: "leave" }
   /** A spoken answer passed: its abstention, a struggle (Def. 9.4). */
   | { readonly type: "pass" }
-  /** A spoken answer given; its rubric shows next (Ax. 9.2). */
+  /**
+   * A spoken answer given; its rubric shows next (Ax. 9.2). A take given
+   * over a recorded answer is its Redo (D2), the answer now.
+   */
   | { readonly type: "answered"; readonly answer: SpokenAnswer }
+  /** The recorded answer's take was let go (D3): no answer yet again. */
+  | { readonly type: "withdrawn" }
   /** The rubric points the learner ticks for their answer. */
   | { readonly type: "ticked"; readonly ticks: ReadonlyArray<string> }
 
@@ -277,7 +287,14 @@ function firstEnd(file: SessionFile): string | null {
 
 function ended(play: Play, screen: string, ctx: StepContext): Stepped {
   return {
-    play: { ...play, screen, reveal: null, spoken: null, ended: "declared" },
+    play: {
+      ...play,
+      screen,
+      reveal: null,
+      spoken: null,
+      rubricSeen: false,
+      ended: "declared",
+    },
     events: [
       {
         ...stamp(play, ctx),
@@ -310,6 +327,7 @@ function detour(play: Play, take: TakeParked): Play {
     placing: null,
     asked: take.asked,
     spoken: null,
+    rubricSeen: false,
     resume: play.resume ?? { scope, screen, placement, placing, asked },
   }
 }
@@ -389,6 +407,7 @@ function enter(
       shownAt: ctx.at,
       reveal: null,
       spoken: null,
+      rubricSeen: false,
       resume: null,
     }
     return { play: resumed, events: [] }
@@ -409,6 +428,7 @@ function enter(
     placing,
     asked: extra.asked ?? false,
     spoken: null,
+    rubricSeen: false,
     rounds: play.rounds + (freshRound ? 1 : 0),
   }
   return screen?.type === "end"
@@ -445,6 +465,7 @@ export function startPlay(
     resume: null,
     asked: false,
     spoken: null,
+    rubricSeen: false,
     rounds: 0,
     ended: null,
   }
@@ -520,15 +541,16 @@ export function rubricShown(
   }))
 }
 
-/** The rubric of the record screen in view comes into view after `spoken`. */
+/** The rubric of the record screen in view comes into view after `spoken`, logged once a visit. */
 function showRubric(
   play: Play,
   screen: RecordScreen,
   spoken: SpokenAnswer,
   ctx: StepContext
 ): Stepped {
+  if (play.rubricSeen) return { play: { ...play, spoken }, events: [] }
   return {
-    play: { ...play, spoken },
+    play: { ...play, spoken, rubricSeen: true },
     events: rubricShown(
       {
         session: play.session,
@@ -813,8 +835,17 @@ export function step(play: Play, input: PlayInput, ctx: StepContext): Stepped {
         : unchanged
     }
     case "answered": {
-      return screen.type === "record" && play.spoken === null
-        ? showRubric(play, screen, input.answer, ctx)
+      if (screen.type !== "record") return unchanged
+      if (play.spoken === null)
+        return showRubric(play, screen, input.answer, ctx)
+      // A Redo's take: the rubric is already in view.
+      return play.spoken.as === "recorded" && input.answer.as === "recorded"
+        ? { play: { ...play, spoken: input.answer }, events: [] }
+        : unchanged
+    }
+    case "withdrawn": {
+      return screen.type === "record" && play.spoken?.as === "recorded"
+        ? { play: { ...play, spoken: null }, events: [] }
         : unchanged
     }
     case "ticked": {

@@ -1361,6 +1361,9 @@ importers:
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
+      '@some-ui/voice-capture':
+        specifier: workspace:*
+        version: link:../../voice-capture
       '@some-ui/wasm-loader':
         specifier: workspace:*
         version: link:../../wasm-loader
@@ -1485,6 +1488,9 @@ importers:
       '@some-ui/shared':
         specifier: workspace:*
         version: link:../shared
+      '@some-ui/voice-capture':
+        specifier: workspace:*
+        version: link:../../voice-capture
       lucide-react:
         specifier: 'catalog:'
         version: 0.562.0(react@19.2.8)

@@ -54,6 +54,11 @@ export type Take = {
   takenAt: number
   durationMs: number
   mimeType: string
+  /**
+   * Out of its item's view, kept (`./pattern`): superseded by a Redo (D2)
+   * or set aside (D3). Absent for the item's take, and on every lens take.
+   */
+  standing?: "earlier" | "set-aside"
 }
 
 export type TakesPorts = {
@@ -93,7 +98,7 @@ type TakeEnded = {
   readonly id: string | null
 }
 
-export type DeskSnapshot = LensTakeSnapshot & {
+type DeskSnapshot = LensTakeSnapshot & {
   /** The last take to end, never hushed. */
   readonly ended: TakeEnded | null
   /** Why the microphone refused the last take, while it is refused. */
