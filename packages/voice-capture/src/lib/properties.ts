@@ -28,7 +28,10 @@
  *   real desk and the simulated microphone; `TakeEndingWords` and
  *   `VOICE_NOTE_SAID` are `Record`s over every ending. `voiceNoteRuntime`
  *   dispatches the same `stepVoiceNote` the kit embeds, so it is covered
- *   through the step until MIC5 moves its screens.
+ *   through the step until MIC5 moves its screens. The simulated
+ *   microphone those run on is held to the real one by
+ *   `tests/real-microphone` (MIC9): named cases on the real `micRecorder`
+ *   in Chromium, which fail when the two end a case differently.
  *
  * **VC3: the phone's microphone is held by at most one take, only while
  * that take is under way, and audio is kept only for a take that was

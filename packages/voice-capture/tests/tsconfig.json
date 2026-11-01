@@ -1,0 +1,13 @@
+{
+  "extends": "@some-ui/tsconfig/tsconfig.ui.json",
+  "compilerOptions": {
+    "composite": false,
+    "noEmit": true,
+    "paths": {
+      "@voice-capture/*": ["../src/*"]
+    },
+    "rootDir": ".."
+  },
+  "include": ["**/*.ts"],
+  "exclude": ["**/dist"]
+}

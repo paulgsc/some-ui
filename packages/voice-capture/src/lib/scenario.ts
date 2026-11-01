@@ -26,7 +26,7 @@ import type {
 } from "./properties"
 import { initialTakeMonitor, stepTakeMonitor } from "./properties"
 import type { RecordingFailure, StartRecording } from "./recorder"
-import type { MicScript, SimulatedMicrophone } from "./simulated-microphone"
+import type { MicScript } from "./simulated-microphone"
 import { simulatedMicrophone } from "./simulated-microphone"
 import type { TakeDeadlines, TakeLimits } from "./take"
 import { FINISH_DEADLINE_MS, OPEN_DEADLINE_MS } from "./take"
@@ -317,33 +317,59 @@ export function boundOf(bounds: ScenarioBounds): number {
   )
 }
 
+/** The microphone a run opens, and how many streams it holds open now. */
+export type ScenarioMicrophone = {
+  readonly startRecording: StartRecording
+  readonly open: () => number
+}
+
+/** The page a run hides and shows, where a real one is under test. */
+export type ScenarioPage = {
+  readonly hide: () => void
+  readonly show: () => void
+}
+
+/** An ending a screen said, in the order the screens said them. */
+export type ScenarioEnding = ObservedEnding & { readonly screen: string }
+
 export type ScenarioRun = {
   readonly violations: ReadonlyArray<TakeViolation>
-  readonly mic: SimulatedMicrophone
+  readonly mic: ScenarioMicrophone
   /** Takes started, and endings said, across the screens. */
   readonly started: number
   readonly ended: number
+  readonly endings: ReadonlyArray<ScenarioEnding>
 }
 
 /**
- * Plays `scenario` against the screens `build` makes on one simulated
- * microphone and one owner, then lets every deadline pass, and returns the
- * properties the trace broke (none, when it holds).
+ * Plays `scenario` against the screens `build` makes on one microphone and
+ * one owner, then lets every deadline pass, and returns the properties the
+ * trace broke (none, when it holds) and the endings said.
+ *
+ * The microphone is the simulated one, answering as `scenario.mic` says,
+ * unless `harness.microphone` is given: the real recorder in Chromium
+ * (MIC9, `tests/real-microphone`), which `scenario.mic` does not script.
  */
 export async function runTakeScenario(
   scenario: TakeScenario,
   harness: {
     readonly build: (phone: ScenarioPhone) => ScenarioBuild
-    /** Moves the test's fake clock, running what falls due. */
+    /** Moves the test's clock, running what falls due. */
     readonly advance: (ms: number) => Promise<unknown>
     readonly now: () => number
     readonly bounds?: ScenarioBounds | undefined
+    readonly microphone?: ScenarioMicrophone | undefined
+    /**
+     * Where a page is under test, `hide` and `show` hide and show it, and
+     * each screen watches it as a screen does (`onPageVisibility`). Absent,
+     * a `hide` makes every screen leave.
+     */
+    readonly page?: ScenarioPage | undefined
   }
 ): Promise<ScenarioRun> {
   const bounds = harness.bounds ?? SCENARIO_BOUNDS
   const bound = { boundMs: boundOf(bounds) }
-  const mic = simulatedMicrophone({ now: harness.now })
-  mic.script(...scenario.mic)
+  const mic = harness.microphone ?? scriptedMicrophone(scenario, harness.now)
   const owner = microphoneOwner()
   const built = harness.build({
     startRecording: mic.startRecording,
@@ -357,6 +383,7 @@ export async function runTakeScenario(
   const violations: Array<TakeViolation> = []
   let started = 0
   let ended = 0
+  const endings: Array<ScenarioEnding> = []
   const observe = (observation: TakeObservation): void => {
     const next = stepTakeMonitor(monitor, observation, bound)
     monitor = next.monitor
@@ -371,14 +398,19 @@ export async function runTakeScenario(
       }
       if (now.underway === was.underway && now.seq === was.seq) return
       if (!was.underway && now.underway) started += 1
-      if (now.seq !== was.seq) ended += 1
+      const observed = screen.ended()
+      if (now.seq !== was.seq) {
+        ended += 1
+        if (observed !== null)
+          endings.push({ ...observed, screen: `screen-${at}` })
+      }
       was = now
       observe({
         kind: "screen",
         at: harness.now(),
         screen: `screen-${at}`,
         underway: now.underway,
-        ended: screen.ended(),
+        ended: observed,
       })
     })
   })
@@ -403,10 +435,17 @@ export async function runTakeScenario(
         break
       }
       case "hide": {
-        for (const screen of built.screens) screen.leave()
+        if (harness.page === undefined) {
+          for (const screen of built.screens) screen.leave()
+        } else {
+          harness.page.hide()
+        }
         break
       }
-      case "show":
+      case "show": {
+        harness.page?.show()
+        break
+      }
       case "wait": {
         break
       }
@@ -427,7 +466,17 @@ export async function runTakeScenario(
     audio: built.audio(),
   })
   for (const stop of unsubscribe) stop()
-  return { violations, mic, started, ended }
+  return { violations, mic, started, ended, endings }
+}
+
+/** The simulated microphone, answering each opening as `scenario.mic` says. */
+function scriptedMicrophone(
+  scenario: TakeScenario,
+  now: () => number
+): ScenarioMicrophone {
+  const mic = simulatedMicrophone({ now })
+  mic.script(...scenario.mic)
+  return mic
 }
 
 /**
