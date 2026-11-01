@@ -75,7 +75,7 @@ export type AsideMark = {
 export const ASIDE_UNFOUND_MAX = 5
 
 /** A mark home never took, and why: a time it couldn't read, or no such note. */
-export type GivenUp = AsideMark & { readonly why: "unreadable" | "unfound" }
+type GivenUp = AsideMark & { readonly why: "unreadable" | "unfound" }
 
 /**
  * How many answered marks this phone remembers, newest kept. A take still
