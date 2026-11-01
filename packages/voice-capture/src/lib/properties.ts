@@ -7,7 +7,6 @@
  * step over the phone's own trace.
  *
  * **VC2: every take that starts ends once, and its ending has words.**
- * Declared for #2370 in `voice-note.ts`; MIC1 moves its proof here.
  *
  * - _Claim:_ a take started through the take kit, or through
  *   `voiceNoteRuntime` or www's `lib/takes-desk`, reaches exactly one
@@ -42,7 +41,6 @@
  *   take was let go is open until the same run of callbacks discards it.
  * - _Family:_ VC2's.
  * - _Proof:_ VC2's tests, which check every property on every trace.
- *   Declared for #2371.
  */
 import { assertNever } from "@some-ui/core-utils"
 
