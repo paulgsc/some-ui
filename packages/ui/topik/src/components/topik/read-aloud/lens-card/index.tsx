@@ -13,7 +13,7 @@
 
 import type { JSX, ReactNode } from "react"
 import { assertNever, cn } from "@some-ui/core-utils"
-import { Button, TakeItem, TakeRow } from "@some-ui/shared"
+import { Button, TakeItem } from "@some-ui/shared"
 import type { TakeItemView, TakePlace } from "@some-ui/voice-capture"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
 import type { Tense } from "@topik/lib/topik/read-aloud/content"
@@ -223,39 +223,6 @@ const LineTakes = ({
   take: NonNullable<LensCardProps["take"]>
 }): JSX.Element => {
   const { view } = take
-  if (take.full && !take.taking) {
-    return (
-      <div data-slot="lens-take" className="flex flex-col gap-2">
-        <p role="status" className="text-muted-foreground text-xs">
-          {
-            "This phone has kept as many takes as it can until a home it's paired with has the ones on it."
-          }
-        </p>
-        {view.current.length > 0 && (
-          <ul className="space-y-2">
-            {view.current.map((row) => (
-              <TakeRow
-                key={row.take.id}
-                row={row}
-                onPlay={() => take.onPlay(row.take.id)}
-                // A take on neither this phone nor home has nowhere to set
-                // it aside, as `TakeItem` offers none.
-                onLetGo={
-                  row.take.kept === null
-                    ? undefined
-                    : (): void =>
-                        take.onLetGo(
-                          row.take.id,
-                          row.take.kept?.place ?? "phone"
-                        )
-                }
-              />
-            ))}
-          </ul>
-        )}
-      </div>
-    )
-  }
   return (
     <div data-slot="lens-take">
       <TakeItem
@@ -265,6 +232,11 @@ const LineTakes = ({
         onPlay={take.onPlay}
         onRedo={take.onRedo}
         onLetGo={take.onLetGo}
+        full={
+          take.full && !take.taking
+            ? "This phone has kept as many takes as it can until a home it's paired with has the ones on it."
+            : undefined
+        }
       />
     </div>
   )

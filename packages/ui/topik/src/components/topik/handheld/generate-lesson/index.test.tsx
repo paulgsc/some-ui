@@ -1,4 +1,11 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react"
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react"
 import type {
   SceneAsk,
   SceneAskSnapshot,
@@ -236,21 +243,36 @@ describe("GenerateLesson's spoken scene", () => {
     expect(onPromptHandedOff).not.toHaveBeenCalled()
   })
 
-  it("records nothing while the phone keeps as many notes as it can, and still plays and lets each go", () => {
-    renderGenerate({ sceneVoice: sceneDraft(notes, { full: true }) })
+  it("records nothing while the phone keeps as many notes as it can, and still plays each, earlier ones too, and lets each go", async () => {
+    const earlier = {
+      ...draftNote("n0", 5_000, 0),
+      standing: "earlier" as const,
+    }
+    const draft = sceneDraft([earlier, ...notes], { full: true })
+    renderGenerate({ sceneVoice: draft })
     expect(screen.getByRole("status").textContent).toMatch(
       /kept as many voice notes as it can\. One you let go makes room once a home it's paired with has it/
     )
     expect(document.querySelector("[data-take]")).toBeNull()
-    expect(
-      screen.getAllByRole("button", { name: /^Play the take/ })
-    ).toHaveLength(2)
     expect(
       screen.getAllByRole("button", { name: /^Let it go the take/ })
     ).toHaveLength(2)
     expect(
       screen.queryAllByRole("button", { name: /^Redo the take/ })
     ).toHaveLength(0)
+    // The earlier one a Redo superseded stays, collapsed, and plays.
+    expect(screen.getByText("Earlier take (1)")).toBeTruthy()
+    const plays = screen.getAllByRole("button", { name: /^Play the take/ })
+    expect(plays).toHaveLength(3)
+    fireEvent.click(
+      within(screen.getByRole("group")).getByRole("button", {
+        name: /^Play the take/,
+      })
+    )
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+    expect(draft.player.playing()).toBe(1)
   })
 
   it("opens on the draft left open, and starts another by setting it aside, kept (D3)", () => {

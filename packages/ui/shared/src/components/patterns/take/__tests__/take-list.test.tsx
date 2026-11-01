@@ -30,7 +30,7 @@ import {
   simulatedPlayer,
   SPEAKING,
 } from "@some-ui/voice-capture/testing"
-import { act, fireEvent, render, screen } from "@testing-library/react"
+import { act, fireEvent, render, screen, within } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { TakeList } from "../take-list"
@@ -275,6 +275,53 @@ describe("the take button, row and list", () => {
       </ul>
     )
     expect(screen.getByRole("listitem")).toHaveTextContent(/^0:04$/)
+  })
+
+  it("says the screen's full words in the button's place, offers no Redo, and still plays and lets go every take", async () => {
+    const take = (
+      id: string,
+      standing: PatternTake["standing"]
+    ): PatternTake => ({
+      id,
+      answers: "card-1",
+      durationMs: 2_000,
+      recordedAt: `2026-11-01T09:0${id.slice(1)}:00.000Z`,
+      standing,
+      kept: { place: "phone" },
+    })
+    const on = phone()
+    const { pattern, store } = screenOn(
+      on,
+      { ...ONE, takes: { per: "many", max: 5, full: "refuse" } },
+      [take("t1", "earlier"), take("t2", "current")]
+    )
+    render(
+      <TakeList
+        pattern={pattern}
+        answers="card-1"
+        takes={store.getSnapshot()}
+        full="Full until home has some."
+      />
+    )
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Full until home has some."
+    )
+    expect(screen.queryByRole("button", { name: /talk|record/i })).toBeNull()
+    expect(
+      screen.queryByRole("button", { name: new RegExp(`^${W.redo}`) })
+    ).toBeNull()
+    expect(
+      screen.getAllByRole("button", { name: new RegExp(`^${W.letGo}`) })
+    ).toHaveLength(1)
+    expect(screen.getByText(W.earlier(1))).toBeInTheDocument()
+    const plays = screen.getAllByRole("button", { name: /^Play/ })
+    expect(plays).toHaveLength(2)
+    // The earlier one's, under its collapsed group.
+    fireEvent.click(
+      within(screen.getByRole("group")).getByRole("button", { name: /^Play/ })
+    )
+    await pass(0)
+    expect(on.player.playing()).toBe(1)
   })
 
   it("draws a screen's own action in the row's extra slot", async () => {
