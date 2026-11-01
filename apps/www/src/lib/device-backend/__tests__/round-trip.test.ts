@@ -161,9 +161,16 @@ describe("sessions on the device", () => {
     })
     expect(caughtUp.createdAt).toBe("2026-08-01T09:00:00.000+00:00")
     expect(caughtUp.updatedAt).not.toBe(undated.updatedAt)
-    await expect(
-      sessions.create({ ...draft, layoutMode: "basic", createdAt: "soon" })
-    ).rejects.toMatchObject({ status: 422 })
+    // Read as chrono reads it: no date or hour `Date.parse` would roll over.
+    for (const createdAt of [
+      "soon",
+      "2026-02-30T09:00:00Z",
+      "2026-08-31T24:00:00Z",
+    ]) {
+      await expect(
+        sessions.create({ ...draft, layoutMode: "basic", createdAt })
+      ).rejects.toMatchObject({ status: 422 })
+    }
     await expect(
       sessions.update(undated.id, {
         createdAt: new Date(clock + 6 * 60_000).toISOString(),

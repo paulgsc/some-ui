@@ -201,14 +201,42 @@ async function insertIfAbsent(
 /** How far past now a sent `createdAt` may be (`CREATED_AT_AHEAD`). */
 const CREATED_AT_AHEAD_MS = 5 * 60_000
 
-/**
- * RFC 3339's shape (a date, a time and an offset), then `Date.parse`. Near
- * chrono's `parse_from_rfc3339`, which file_host uses, but not the same on
- * an impossible date or a leap second (`2026-02-30`, `24:00:00`,
- * `23:59:60`), which no client of this backend sends.
- */
+/** RFC 3339's shape: a date, a time and an offset (`Z` or `±hh:mm`). */
 const RFC3339 =
-  /^\d{4}-\d{2}-\d{2}[Tt ]\d{2}:\d{2}:\d{2}(\.\d+)?([Zz]|[+-]\d{2}:\d{2})$/
+  /^(\d{4})-(\d{2})-(\d{2})[Tt ](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?([Zz]|[+-]\d{2}:\d{2})$/
+
+/**
+ * `sent` as an instant, as chrono's `parse_from_rfc3339` (file_host's) reads
+ * it, or `NaN`. `Date.parse` rolls an impossible date or hour over
+ * (`2026-02-30`, `24:00:00`), so its fields must read back as they were
+ * sent. A leap second (`23:59:60`), which chrono takes, is `NaN` here.
+ */
+function instantOf(sent: string): number {
+  const parts = RFC3339.exec(sent)
+  if (parts === null) return Number.NaN
+  const at = Date.parse(sent)
+  if (Number.isNaN(at)) return Number.NaN
+  const [, year, month, day, hour, minute, second, zone] = parts
+  const offset =
+    zone.toUpperCase() === "Z"
+      ? 0
+      : (zone.startsWith("-") ? -1 : 1) *
+        (Number(zone.slice(1, 3)) * 60 + Number(zone.slice(4, 6))) *
+        60_000
+  const local = new Date(at + offset)
+  const fields = [
+    local.getUTCFullYear(),
+    local.getUTCMonth() + 1,
+    local.getUTCDate(),
+    local.getUTCHours(),
+    local.getUTCMinutes(),
+    local.getUTCSeconds(),
+  ]
+  const asSent = [year, month, day, hour, minute, second].map(Number)
+  return fields.every((field, index) => field === asSent[index])
+    ? at
+    : Number.NaN
+}
 
 /**
  * A sent `createdAt` (`created_at_of`): absent or `null` is `undefined`, a
@@ -228,7 +256,7 @@ function createdAtField(
       ),
     }
   }
-  const at = RFC3339.test(sent) ? Date.parse(sent) : Number.NaN
+  const at = instantOf(sent)
   if (Number.isNaN(at)) {
     return {
       ok: false,
