@@ -1,29 +1,39 @@
 import type { Rule, Scope } from "eslint"
 import type * as ESTree from "estree"
 
-import { keyName, propertyName } from "./ast-names.js"
+import { keyName, propertyName, staticText } from "./ast-names.js"
 
 /**
  * MIC7 (#2377): the microphone has one owner, `@some-ui/voice-capture`, and
  * a screen records through its take pattern. Outside the owner's files
- * (`owner`, a path fragment) this reports:
+ * (`owner`, a path fragment) this reports the ways in ordinary code takes:
  *
- *   - `getUserMedia` read off anything (`navigator.mediaDevices`, say), and
- *     `new MediaRecorder(…)`: the browser's microphone, opened by hand;
- *   - an import or re-export of the kit's take machinery (`machinery`, such
- *     as `takeRunner` and `stepTake`) from its entry, or a read of one off
- *     a namespace import: a take of a screen's own beside the pattern's;
- *   - an import of the kit by a path past its entry (`@some-ui/voice-capture/src/…`,
- *     a relative `voice-capture/src/…`), other than its `/testing` entry;
+ *   - `getUserMedia`, read off anything (`navigator.mediaDevices`, say) or
+ *     destructured out of it, and the `MediaRecorder` global as a value
+ *     (`new MediaRecorder(…)`, `window.MediaRecorder`, `{ MediaRecorder }`):
+ *     the browser's microphone, opened by hand;
+ *   - the kit's take machinery (`machinery`, such as `takeRunner` and
+ *     `stepTake`) imported, re-exported, read or destructured off a
+ *     namespace (`import * as kit`, `await import(entry)`), or spied on
+ *     (`vi.spyOn(kit, "takeRunner")`): a take of a screen's own beside the
+ *     pattern's;
+ *   - an import of the kit, static or dynamic, by a path past its entry
+ *     (`@some-ui/voice-capture/src/…`, a relative `voice-capture/src/…`),
+ *     other than its `/testing` entry; and that entry itself where
+ *     `testingAllowed` is false (the phone's own code);
  *   - a port factory (`ports`: `micRecorder` → `startRecording`) used other
  *     than as a call handed straight to its slot, `{ startRecording:
  *     micRecorder(…) }` or a parameter default `startRecording =
  *     micRecorder(…)`: anything else drives the recorder by hand.
  *
- * Types are not reported: naming `StartRecording` opens nothing.
+ * Types are not reported: naming `StartRecording`, or re-exporting a type,
+ * opens nothing. Code bent on getting past it (`Reflect.get`, an alias of
+ * a namespace) is out of its scope: it catches the drift ordinary code makes.
  */
 
 type Ports = ReadonlyMap<string, string>
+
+const GLOBALS = new Set(["window", "globalThis", "self"])
 
 function stringArray(value: unknown): ReadonlyArray<string> {
   return Array.isArray(value)
@@ -39,9 +49,23 @@ function importedName(spec: ESTree.ImportSpecifier): string | null {
       : null
 }
 
-/** typescript-eslint's `import type` / `import { type x }`, not in ESTree. */
+/**
+ * typescript-eslint's `import type`, `import { type x }`, `export type …`
+ * and `export { type x }`, none of which is in ESTree.
+ */
 function typeOnly(node: ESTree.Node): boolean {
-  return Reflect.get(node, "importKind") === "type"
+  return (
+    Reflect.get(node, "importKind") === "type" ||
+    Reflect.get(node, "exportKind") === "type"
+  )
+}
+
+/** A module specifier written as a string, or a template with no `${}`. */
+function staticSource(node: ESTree.Node | null | undefined): string | null {
+  if (node?.type === "Literal" && typeof node.value === "string")
+    return node.value
+  if (node?.type === "TemplateLiteral") return staticText(node)
+  return null
 }
 
 /** The name of the slot a call is handed to, if it is handed straight to one. */
@@ -59,6 +83,31 @@ function slotOf(call: Rule.Node): string | null {
   return null
 }
 
+/** The names an object pattern takes out, nested patterns included. */
+function patternKeys(pattern: ESTree.ObjectPattern): Array<string> {
+  return pattern.properties.flatMap((property) => {
+    if (property.type !== "Property") return []
+    const name = keyName(property.key, property.computed)
+    return name === null ? [] : [name]
+  })
+}
+
+/** `import(source)`, awaited or not. */
+function importOf(node: ESTree.Node | null | undefined): string | null {
+  const call = node?.type === "AwaitExpression" ? node.argument : node
+  return call?.type === "ImportExpression" ? staticSource(call.source) : null
+}
+
+/** `vi.spyOn` or `vitest.spyOn`. */
+function isSpyOn(callee: ESTree.Node): boolean {
+  return (
+    callee.type === "MemberExpression" &&
+    callee.object.type === "Identifier" &&
+    (callee.object.name === "vi" || callee.object.name === "vitest") &&
+    propertyName(callee) === "spyOn"
+  )
+}
+
 export const noLocalMicrophone: Rule.RuleModule = {
   meta: {
     type: "problem",
@@ -73,6 +122,7 @@ export const noLocalMicrophone: Rule.RuleModule = {
           owner: { type: "string" },
           entry: { type: "string" },
           testing: { type: "string" },
+          testingAllowed: { type: "boolean" },
           machinery: { type: "array", items: { type: "string" } },
           ports: {
             type: "object",
@@ -90,7 +140,11 @@ export const noLocalMicrophone: Rule.RuleModule = {
         '`{{name}}` is @some-ui/voice-capture\'s own take machinery. A screen records through the take pattern (`takePattern`, `stepTakePattern`, `takeKit`) instead of running a take of its own. docs/monorepo-boundaries.md, "Patterns: whole flows, one closed set of options".',
       pastEntry:
         "Import @some-ui/voice-capture from `{{entry}}` (or its tests' `{{testing}}`), not by a path past its entry.",
+      testing:
+        "`{{testing}}` is for tests: the phone's own code records on the real microphone, through `{{entry}}`.",
       port: "Hand `{{name}}(…)` straight to a pattern's `{{slot}}` port (`{ {{slot}}: {{name}}(…) }`); anything else drives the microphone by hand.",
+      spied:
+        "Spying on the kit's `{{name}}` swaps it for a copy written here. Give the code under test the simulated microphone from `{{testing}}` instead.",
     },
   },
   create(context) {
@@ -98,6 +152,8 @@ export const noLocalMicrophone: Rule.RuleModule = {
     const owner = String(Reflect.get(Object(options), "owner"))
     const entry = String(Reflect.get(Object(options), "entry"))
     const testing = String(Reflect.get(Object(options), "testing"))
+    const testingAllowed =
+      Reflect.get(Object(options), "testingAllowed") !== false
     const machinery = new Set(
       stringArray(Reflect.get(Object(options), "machinery"))
     )
@@ -118,10 +174,31 @@ export const noLocalMicrophone: Rule.RuleModule = {
       return /(^|\/)voice-capture\/(src|dist)\//.test(source)
     }
 
-    // The kit's port factories and namespaces as this file imports them.
+    /** Reports a source past the entry, or the testing one where it is not allowed. */
+    function checkSource(
+      node: ESTree.Node,
+      source: string,
+      types = false
+    ): boolean {
+      if (pastEntry(source)) {
+        context.report({
+          node,
+          messageId: "pastEntry",
+          data: { entry, testing },
+        })
+        return true
+      }
+      if (source === testing && !testingAllowed && !types) {
+        context.report({ node, messageId: "testing", data: { entry, testing } })
+        return true
+      }
+      return false
+    }
+
+    // The kit's port factories and namespaces as this file holds them.
     const portVariables = new Map<Scope.Variable, string>()
     const namespaces = new Set<Scope.Variable>()
-    const watched = new Set<string>()
+    const watched = new Set<string>(["MediaRecorder"])
 
     /** `callee` is `name`, the port factory: it must be called into its slot. */
     function checkPort(callee: Rule.Node, name: string): void {
@@ -138,6 +215,76 @@ export const noLocalMicrophone: Rule.RuleModule = {
           messageId: "port",
           data: { name, slot },
         })
+    }
+
+    /** A name taken out of the kit some other way than a call into a slot. */
+    function checkTaken(node: ESTree.Node, name: string): void {
+      if (machinery.has(name))
+        context.report({ node, messageId: "machinery", data: { name } })
+      const slot = ports.get(name)
+      if (slot !== undefined)
+        context.report({ node, messageId: "port", data: { name, slot } })
+    }
+
+    function watchNamespace(variable: Scope.Variable): void {
+      namespaces.add(variable)
+      watched.add(variable.name)
+    }
+
+    /** `id` reads the kit's namespace: by member, by destructuring, or spied on. */
+    function checkNamespace(id: ESTree.Identifier & Rule.Node): void {
+      const parent = id.parent
+      if (parent.type === "MemberExpression" && parent.object === id) {
+        const name = propertyName(parent)
+        if (name === null) return
+        if (machinery.has(name))
+          context.report({
+            node: parent,
+            messageId: "machinery",
+            data: { name },
+          })
+        checkPort(parent, name)
+        return
+      }
+      const pattern =
+        parent.type === "VariableDeclarator" && parent.init === id
+          ? parent.id
+          : parent.type === "AssignmentExpression" && parent.right === id
+            ? parent.left
+            : null
+      if (pattern?.type === "ObjectPattern") {
+        for (const name of patternKeys(pattern)) checkTaken(parent, name)
+        return
+      }
+      if (
+        parent.type === "CallExpression" &&
+        parent.arguments[0] === id &&
+        isSpyOn(parent.callee)
+      ) {
+        const name = staticSource(parent.arguments[1])
+        if (name !== null && (machinery.has(name) || ports.has(name)))
+          context.report({
+            node: parent,
+            messageId: "spied",
+            data: { name, testing },
+          })
+      }
+    }
+
+    /** A bare `MediaRecorder` read as a value from the page's globals. */
+    function checkMediaRecorder(
+      node: ESTree.Identifier & Rule.Node,
+      reference: Scope.Reference
+    ): void {
+      if (reference.resolved !== null) return
+      // typescript-eslint marks a type position's reference; ESLint's own
+      // Reference type does not carry the flag.
+      if (Reflect.get(reference, "isTypeReference") === true) return
+      context.report({
+        node,
+        messageId: "browserMicrophone",
+        data: { name: "MediaRecorder" },
+      })
     }
 
     function reportExported(
@@ -163,56 +310,52 @@ export const noLocalMicrophone: Rule.RuleModule = {
           for (const spec of statement.specifiers) {
             if (spec.type === "ImportDefaultSpecifier" || typeOnly(spec))
               continue
-            const name =
-              spec.type === "ImportSpecifier" ? importedName(spec) : null
-            if (spec.type === "ImportSpecifier" && !ports.has(name ?? ""))
+            const variables = context.sourceCode.getDeclaredVariables(spec)
+            if (spec.type === "ImportNamespaceSpecifier") {
+              for (const variable of variables) watchNamespace(variable)
               continue
-            watched.add(spec.local.name)
-            for (const variable of context.sourceCode.getDeclaredVariables(
-              spec
-            )) {
-              if (name === null) namespaces.add(variable)
-              else portVariables.set(variable, name)
             }
+            const name = importedName(spec)
+            if (name === null || !ports.has(name)) continue
+            watched.add(spec.local.name)
+            for (const variable of variables) portVariables.set(variable, name)
           }
         }
       },
       Identifier(node): void {
         if (!watched.has(node.name)) return
-        const variable = context.sourceCode
+        const reference = context.sourceCode
           .getScope(node)
-          .references.find(
-            (reference) => reference.identifier === node
-          )?.resolved
-        if (variable == null) return
-        const port = portVariables.get(variable)
-        if (port !== undefined) {
-          checkPort(node, port)
+          .references.find((candidate) => candidate.identifier === node)
+        if (reference === undefined) return
+        if (node.name === "MediaRecorder") {
+          checkMediaRecorder(node, reference)
           return
         }
-        if (!namespaces.has(variable)) return
-        const member = node.parent
-        if (member.type !== "MemberExpression" || member.object !== node) return
-        const name = propertyName(member)
-        if (name === null) return
-        if (machinery.has(name))
-          context.report({
-            node: member,
-            messageId: "machinery",
-            data: { name },
-          })
-        checkPort(member, name)
+        const variable = reference.resolved
+        if (variable === null) return
+        const port = portVariables.get(variable)
+        if (port !== undefined) checkPort(node, port)
+        else if (namespaces.has(variable)) checkNamespace(node)
+      },
+      VariableDeclarator(node): void {
+        const source = importOf(node.init)
+        if (source !== entry) return
+        // `const { takeRunner } = await import(entry)`, or a namespace kept
+        // whole: `const kit = await import(entry)`.
+        if (node.id.type === "ObjectPattern")
+          for (const name of patternKeys(node.id)) checkTaken(node, name)
+        else
+          for (const variable of context.sourceCode.getDeclaredVariables(node))
+            watchNamespace(variable)
+      },
+      ImportExpression(node): void {
+        const source = staticSource(node.source)
+        if (source !== null) checkSource(node, source)
       },
       ImportDeclaration(node): void {
         const source = String(node.source.value)
-        if (pastEntry(source)) {
-          context.report({
-            node,
-            messageId: "pastEntry",
-            data: { entry, testing },
-          })
-          return
-        }
+        if (checkSource(node, source, typeOnly(node))) return
         if (source !== entry || typeOnly(node)) return
         for (const spec of node.specifiers) {
           if (spec.type !== "ImportSpecifier" || typeOnly(spec)) continue
@@ -226,26 +369,14 @@ export const noLocalMicrophone: Rule.RuleModule = {
       ExportNamedDeclaration(node): void {
         if (node.source == null) return
         const source = String(node.source.value)
-        if (pastEntry(source)) {
-          context.report({
-            node,
-            messageId: "pastEntry",
-            data: { entry, testing },
-          })
-          return
-        }
+        if (checkSource(node, source, typeOnly(node))) return
         if (source === entry && !typeOnly(node))
           reportExported(node, node.specifiers)
       },
       ExportAllDeclaration(node): void {
         const source = String(node.source.value)
-        if (pastEntry(source))
-          context.report({
-            node,
-            messageId: "pastEntry",
-            data: { entry, testing },
-          })
-        else if (source === entry && !typeOnly(node))
+        if (checkSource(node, source, typeOnly(node))) return
+        if (source === entry && !typeOnly(node))
           context.report({
             node,
             messageId: "machinery",
@@ -253,26 +384,33 @@ export const noLocalMicrophone: Rule.RuleModule = {
           })
       },
       MemberExpression(node): void {
-        if (propertyName(node) === "getUserMedia")
+        const name = propertyName(node)
+        if (name === "getUserMedia")
           context.report({
             node,
             messageId: "browserMicrophone",
-            data: { name: "getUserMedia" },
+            data: { name },
+          })
+        if (
+          name === "MediaRecorder" &&
+          node.object.type === "Identifier" &&
+          GLOBALS.has(node.object.name)
+        )
+          context.report({
+            node,
+            messageId: "browserMicrophone",
+            data: { name },
           })
       },
-      NewExpression(node): void {
-        const callee = node.callee
-        const name =
-          callee.type === "Identifier"
-            ? callee.name
-            : callee.type === "MemberExpression"
-              ? propertyName(callee)
-              : null
-        if (name === "MediaRecorder")
+      // `const { getUserMedia } = navigator.mediaDevices`, nested
+      // (`{ mediaDevices: { getUserMedia } }`) or not, and `{ MediaRecorder }`.
+      "ObjectPattern > Property"(node: ESTree.Property & Rule.Node): void {
+        const name = keyName(node.key, node.computed)
+        if (name === "getUserMedia" || name === "MediaRecorder")
           context.report({
             node,
             messageId: "browserMicrophone",
-            data: { name: "new MediaRecorder" },
+            data: { name },
           })
       },
     }

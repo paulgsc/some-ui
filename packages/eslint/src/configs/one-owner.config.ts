@@ -11,11 +11,12 @@ import { defineConfig } from "eslint/config"
  * so `@some-extension/common` is theirs. A copy that has to stay carries a
  * disable that says why.
  *
- * The microphone has one owner too, `@some-ui/voice-capture` (MIC7, #2377):
- * outside it, nothing opens the microphone or runs a take of its own
- * (`no-local-microphone`), no test writes a microphone by hand
- * (`no-hand-written-microphone`), and no screen keeps its own copy of how a
- * take ended (`no-local-take-words`).
+ * The microphone has one owner too, `@some-ui/voice-capture` (MIC7, #2377).
+ * Outside it these flag the ways in ordinary code takes: opening the
+ * microphone or running a take of its own (`no-local-microphone`), a
+ * microphone written by hand in a test (`no-hand-written-microphone`), and a
+ * screen's own copy of how a take ended (`no-local-take-words`). Code written
+ * to get past them (`Reflect.get`, an aliased namespace or `vi`) is not.
  */
 export const oneOwnerPlugin = {
   meta: { name: "one-owner", version: "0.0.1" },
@@ -62,7 +63,7 @@ export const microphoneOwner = {
  * The opening clause of each sentence in the kit's ending table
  * (`TAKE_ENDING_WORDS`: `VOICE_NOTE_SAID`, `RECORDING_FAILURE_COPY` and
  * `unheard`). Its "Kept." is left out: a one-word lead would match every
- * screen's own "Kept 5 s." line. `tests/one-owner.lint.test.ts` reads the
+ * screen's own "Kept 5 s." line. `tests/one-owner-microphone.lint.test.ts` reads the
  * kit's table and fails when the two part.
  */
 /* eslint-disable one-owner/no-local-take-words -- the rule's own list of the kit's lines, not a screen's copy */
@@ -82,6 +83,11 @@ export const takeEndingLeads = [
 
 const SOURCES = "**/*.{js,mjs,cjs,jsx,ts,tsx,cts,mts}"
 const TESTS = ["**/*.test.*", "**/__tests__/**"]
+/**
+ * Everything that runs only under a test runner, as `overrides-tests`
+ * counts it: the e2e and ui-fit trees, specs and their fixtures.
+ */
+const TEST_CODE = [...TESTS, "**/*.spec.*", "**/tests/**"]
 
 export default defineConfig([
   {
@@ -110,6 +116,19 @@ export default defineConfig([
           entry: microphoneOwner.entry,
           testing: microphoneOwner.testing,
         },
+      ],
+    },
+  },
+  {
+    // The phone's own code records on the real microphone: the simulated
+    // one, `/testing`, is for tests alone.
+    files: [SOURCES],
+    ignores: TEST_CODE,
+    plugins: { "one-owner": oneOwnerPlugin },
+    rules: {
+      "one-owner/no-local-microphone": [
+        "error",
+        { ...microphoneOwner, testingAllowed: false },
       ],
     },
   },

@@ -7,7 +7,9 @@ import type * as ESTree from "estree"
  * Outside the owner's files (`owner`, a path fragment) a string, a
  * template's first text or a JSX text that starts with one of those
  * sentences' opening clause (`leads`: "Too short to keep", "Another screen
- * is recording", …) is a screen's own copy of it and is reported. A screen
+ * is recording", …), in any case and with either apostrophe, is a screen's
+ * own copy of it and is reported. A paraphrase is not: a screen may say its
+ * own thing in its own words. A screen
  * reads the kit's line, or its own table starts from the kit's.
  */
 export const noLocalTakeWords: Rule.RuleModule = {
@@ -42,10 +44,20 @@ export const noLocalTakeWords: Rule.RuleModule = {
     const filename = context.filename.replaceAll("\\", "/")
     if (filename.includes(owner)) return {}
 
+    // Compared as a person reads them: any case, either apostrophe.
+    const said = (text: string): string =>
+      text
+        .trimStart()
+        .replaceAll(/[\u2018\u2019]/g, "'")
+        .toLowerCase()
+    const folded = leads.map((lead) => [lead, said(lead)] as const)
+
     function check(node: ESTree.Node, text: string | null | undefined): void {
       if (text == null) return
-      const said = text.trimStart()
-      const lead = leads.find((candidate) => said.startsWith(candidate))
+      const reads = said(text)
+      const lead = folded.find(([, candidate]) =>
+        reads.startsWith(candidate)
+      )?.[0]
       if (lead !== undefined)
         context.report({ node, messageId: "copy", data: { lead } })
     }

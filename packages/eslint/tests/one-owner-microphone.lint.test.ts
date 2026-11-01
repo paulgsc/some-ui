@@ -7,9 +7,7 @@
 
 import { readFileSync } from "node:fs"
 import path from "node:path"
-import {
-  microphoneOwner,
-  oneOwnerPlugin,
+import oneOwnerConfig, {
   takeEndingLeads,
 } from "@eslint/configs/one-owner.config.js"
 import typescriptParser from "@typescript-eslint/parser"
@@ -30,6 +28,7 @@ const WORDS = "one-owner/no-local-take-words"
 
 const KIT_FILE = "fixtures/packages/voice-capture/src/lib/take-kit.ts"
 
+/** The rules as every preset carries them: tests, specs and source each get theirs. */
 function makeConfig(): Array<Linter.Config> {
   return defineConfig([
     {
@@ -38,23 +37,8 @@ function makeConfig(): Array<Linter.Config> {
         parser: typescriptParser,
         parserOptions: { ecmaFeatures: { jsx: true } },
       },
-      plugins: { "one-owner": oneOwnerPlugin },
-      rules: {
-        [MIC]: ["error", microphoneOwner],
-        [FAKE]: [
-          "error",
-          {
-            owner: microphoneOwner.owner,
-            entry: microphoneOwner.entry,
-            testing: microphoneOwner.testing,
-          },
-        ],
-        [WORDS]: [
-          "error",
-          { owner: microphoneOwner.owner, leads: takeEndingLeads },
-        ],
-      },
     },
+    ...oneOwnerConfig,
   ])
 }
 
@@ -136,6 +120,52 @@ describe("lint: one-owner/no-local-microphone", () => {
       "micRecorder off a namespace, driven by hand",
       'import * as kit from "@some-ui/voice-capture"\nexport const open = () => kit.micRecorder({})()',
     ],
+    [
+      "takeRunner destructured off a namespace",
+      'import * as kit from "@some-ui/voice-capture"\nconst { takeRunner } = kit\nexport { takeRunner }',
+    ],
+    [
+      "micRecorder destructured off a namespace",
+      'import * as kit from "@some-ui/voice-capture"\nconst { micRecorder: mic } = kit\nexport const ports = { startRecording: mic({}) }',
+    ],
+    [
+      "getUserMedia destructured off mediaDevices",
+      "const { getUserMedia } = navigator.mediaDevices\nexport const open = getUserMedia",
+    ],
+    [
+      "getUserMedia destructured out of navigator",
+      "const { mediaDevices: { getUserMedia } } = navigator\nexport const open = getUserMedia",
+    ],
+    [
+      "mediaDevices destructured, then read",
+      "const { mediaDevices } = navigator\nexport const open = () => mediaDevices.getUserMedia({ audio: true })",
+    ],
+    ["MediaRecorder kept as a value", "export const R = MediaRecorder"],
+    [
+      "MediaRecorder's static read",
+      "export const ok = MediaRecorder.isTypeSupported('audio/webm')",
+    ],
+    [
+      "a typeof MediaRecorder check",
+      "export const can = typeof MediaRecorder !== 'undefined'",
+    ],
+    [
+      "MediaRecorder destructured off window",
+      "const { MediaRecorder: R } = window\nexport { R }",
+    ],
+    ["globalThis.MediaRecorder", "export const R = globalThis.MediaRecorder"],
+    [
+      "a dynamic import past the entry",
+      'export const load = () => import("@some-ui/voice-capture/src/lib/take")',
+    ],
+    [
+      "machinery destructured from a dynamic import",
+      'export async function load() { const { takeRunner } = await import("@some-ui/voice-capture"); return takeRunner }',
+    ],
+    [
+      "machinery off a dynamic import kept whole",
+      'export async function load() { const kit = await import("@some-ui/voice-capture"); return kit.stepTake }',
+    ],
   ])("fires on %s", async (shape, code) => {
     expectMessageForRule(await lint(code), MIC, shape)
   })
@@ -164,19 +194,67 @@ export type Step = TakeStep | TakeSignal | TakeLimits
 export { stepTakePattern, takeKit, TAKE_WORDS }`,
     ],
     [
-      "the testing entry",
-      'import { simulatedMicrophone } from "@some-ui/voice-capture/testing"\nexport const mic = simulatedMicrophone',
-    ],
-    [
       "a key named micRecorder in a mock factory",
       "export const fake = { micRecorder: () => null, getUserMediaCalls: 0 }",
     ],
     [
-      "MediaRecorder named in a type or a static",
-      "export type R = MediaRecorder\nexport const ok = MediaRecorder.isTypeSupported('audio/webm')",
+      "MediaRecorder named as a type",
+      "export type R = MediaRecorder\nexport let held: MediaRecorder | null = null",
+    ],
+    [
+      "a local named MediaRecorder",
+      "const MediaRecorder = { name: 'mine' }\nexport const r = MediaRecorder",
+    ],
+    [
+      "type-only re-exports",
+      'export type * from "@some-ui/voice-capture"\nexport type { TakeStep } from "@some-ui/voice-capture"\nexport { type takeRunner } from "@some-ui/voice-capture"',
+    ],
+    [
+      "the pattern from a dynamic import",
+      'export async function load() { const { takePattern } = await import("@some-ui/voice-capture"); const kit = await import("@some-ui/voice-capture"); return [takePattern, kit.ONE_TAKE] }',
+    ],
+    [
+      "an unrelated destructure and spy",
+      'import { vi } from "vitest"\nconst api = { open: () => null }\nconst { open } = api\nvi.spyOn(api, "open")\nexport { open }',
     ],
   ])("stays quiet on %s", async (shape, code) => {
     expectNoMessageForRule(await lint(code), MIC, shape)
+  })
+
+  it.each([
+    ["machinery", "takeRunner"],
+    ["the port", "micRecorder"],
+  ])("fires on a spy on %s off a namespace", async (_, name) => {
+    const code = `import * as kit from "@some-ui/voice-capture"
+import { vi } from "vitest"
+vi.spyOn(kit, "${name}")`
+    expectMessageForRule(await lint(code, "src/lib/screen.test.ts"), MIC, name)
+  })
+
+  it.each([
+    ["src/lib/phone.ts", "the phone's own code"],
+    ["src/fixtures.tsx", "a fixture module the app could bundle"],
+  ])("fires on %s importing the testing entry (%s)", async (file, shape) => {
+    const code =
+      'import { simulatedMicrophone } from "@some-ui/voice-capture/testing"\nexport const mic = simulatedMicrophone'
+    expectMessageForRule(await lint(code, file), MIC, shape)
+  })
+
+  it.each([
+    ["src/lib/phone.test.ts", "a test"],
+    ["src/lib/__tests__/fakes.ts", "a test helper"],
+    ["tests/ui-fit/panel-page/take.tsx", "a ui-fit page"],
+    ["src/lib/take.spec.ts", "a spec"],
+  ])("allows the testing entry in %s (%s)", async (file, shape) => {
+    const code =
+      'import { simulatedMicrophone } from "@some-ui/voice-capture/testing"\nexport const mic = simulatedMicrophone'
+    expectNoMessageForRule(await lint(code, file), MIC, shape)
+  })
+
+  it("allows a type-only import of the testing entry in source", async () => {
+    const code =
+      'import type { MicScript } from "@some-ui/voice-capture/testing"\nexport type S = MicScript'
+    expectNoMessageForRule(await lint(code), MIC, "import type")
   })
 
   it("stays quiet in the kit's own files", async () => {
@@ -246,6 +324,34 @@ describe("lint: one-owner/no-hand-written-microphone", () => {
       'vi.doMock("@some-ui/voice-capture")',
       'import { vi } from "vitest"\nvi.doMock(`@some-ui/voice-capture`, () => ({}))',
     ],
+    [
+      "vi.mock of a path past the entry",
+      'import { vi } from "vitest"\nvi.mock("@some-ui/voice-capture/src/lib/recorder", () => ({}))',
+    ],
+    [
+      "vi.mock of import()",
+      'import { vi } from "vitest"\nvi.mock(import("@some-ui/voice-capture"), () => ({}))',
+    ],
+    [
+      "vitest.mock",
+      'import { vitest } from "vitest"\nvitest.mock("@some-ui/voice-capture", () => ({}))',
+    ],
+    [
+      "vi.fn typed StartRecording",
+      `${types}import { vi } from "vitest"\nexport const start = vi.fn<StartRecording>()`,
+    ],
+    [
+      "an angle-bracket Recording assertion",
+      `${types}export const r = <Recording>{ level: () => 0 }`,
+    ],
+    [
+      "a class implementing Recording",
+      `${types}export class Held implements Recording { level = (): number => 0; finish = (): Promise<Take> => Promise.reject(new Error("x")); discard = (): void => undefined }`,
+    ],
+    [
+      "a class with a recording's members",
+      "export class Held { level(): number { return 0 } finish(): Promise<never> { return new Promise(() => undefined) } discard(): void {} }",
+    ],
   ])("fires on %s", async (shape, code) => {
     expectMessageForRule(
       await lint(code, "src/lib/screen.test.ts"),
@@ -287,6 +393,14 @@ export function opened(mic: StartRecording = speaking()): StartRecording { retur
       "a mock of another module",
       'import { vi } from "vitest"\nvi.mock("@some-ui/core-utils", () => ({}))',
     ],
+    [
+      "a vi.fn of another type",
+      `${types}import { vi } from "vitest"\nexport const done = vi.fn<(take: Take) => void>()`,
+    ],
+    [
+      "a class with only some of a recording's members",
+      "export class Clip { finish(): void {} level = 3 }",
+    ],
   ])("stays quiet on %s", async (shape, code) => {
     expectNoMessageForRule(
       await lint(code, "src/lib/screen.test.ts"),
@@ -315,6 +429,14 @@ describe("lint: one-owner/no-local-take-words", () => {
       "JSX text",
       "export const Note = () => <p> Kept, but I didn't hear you.</p>",
     ],
+    [
+      "another case",
+      'export const WORDS = { tooShort: "too short to keep, tap again" }',
+    ],
+    [
+      "a curly apostrophe",
+      'export const WORDS = { full: "There\u2019s no room for another voice note." }',
+    ],
   ])("fires on %s", async (shape, code) => {
     expectMessageForRule(await lint(code, "src/lib/words.tsx"), WORDS, shape)
   })
@@ -327,6 +449,10 @@ describe("lint: one-owner/no-local-take-words", () => {
     [
       "a sentence that only mentions the words later",
       'export const note = "The take was too short to keep."',
+    ],
+    [
+      "a screen's own paraphrase",
+      'export const WORDS = { full: "No room on the phone for that take, so it wasn\u2019t kept.", short: "That was too quick to keep." }',
     ],
   ])("stays quiet on %s", async (shape, code) => {
     expectNoMessageForRule(await lint(code, "src/lib/words.tsx"), WORDS, shape)
@@ -377,6 +503,10 @@ function tableStrings(file: string, name: string): Array<string> {
     const value: unknown = Reflect.get(node, "value")
     if (here && type === "Literal" && typeof value === "string")
       found.push(value)
+    // A template's text, as a person reads it up to its first `${}`.
+    const cooked: unknown = Reflect.get(Object(value), "cooked")
+    if (here && type === "TemplateElement" && typeof cooked === "string")
+      found.push(cooked)
     for (const [key, child] of Object.entries(node)) {
       if (key === "parent" || key === "typeAnnotation") continue
       const children: Array<unknown> = Array.isArray(child) ? child : [child]

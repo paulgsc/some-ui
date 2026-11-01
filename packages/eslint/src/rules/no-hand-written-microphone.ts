@@ -11,19 +11,33 @@ import { keyName, propertyName, staticText } from "./ast-names.js"
  *   - a function whose declared return type is the kit's `Recording`, or a
  *     `Promise` of one: it builds a recording;
  *   - an object literal given that type (a variable's annotation, `as`,
- *     `satisfies`), and any object literal with a recording's own members,
- *     `level`, `finish` and `discard`, whatever its annotation;
+ *     `satisfies`, `<Recording>`), and any object literal or class with a
+ *     recording's own members, `level`, `finish` and `discard`, whatever
+ *     its annotation, or a class that `implements` either kit type;
  *   - a function literal given the kit's `StartRecording` type the same
- *     ways: a microphone of its own;
- *   - `vi.mock` or `vi.doMock` of the kit's entry, which swaps the kit for a
- *     copy written in the test.
+ *     ways, and `vi.fn<StartRecording>()`: a microphone of its own;
+ *   - `vi.mock` or `vi.doMock` (or `vitest.…`) of any path into the kit, by
+ *     string or `import(…)`, which swaps it for a copy written in the test.
  *
  * The two type names count only where they are imported from `entry`, so a
  * local `Recording` component or type is not read as the kit's. A parameter
- * typed `StartRecording` is not reported: it takes the simulated one.
+ * typed `StartRecording` is not reported: it takes the simulated one. An
+ * alias of `vi` is out of scope: this catches what ordinary tests write.
  */
 
 const RECORDING_MEMBERS = ["level", "finish", "discard"] as const
+
+/** The test runner's globals a mock is made through. */
+const TEST_GLOBALS = new Set(["vi", "vitest"])
+
+/** A module named as a string, a template with no `${}`, or `import(…)`'s. */
+function sourceOf(node: ESTree.Node | undefined): string | null {
+  if (node?.type === "Literal" && typeof node.value === "string")
+    return node.value
+  if (node?.type === "TemplateLiteral") return staticText(node)
+  if (node?.type === "ImportExpression") return sourceOf(node.source)
+  return null
+}
 
 type Named = { recording: Set<string>; start: Set<string> }
 
@@ -95,6 +109,15 @@ export const noHandWrittenMicrophone: Rule.RuleModule = {
 
     const named: Named = { recording: new Set(), start: new Set() }
 
+    /** Any path into the kit: its entry, `/testing`, or past either. */
+    function isKit(source: string): boolean {
+      return (
+        source === entry ||
+        source.startsWith(`${entry}/`) ||
+        /(^|\/)voice-capture\/(src|dist)\//.test(source)
+      )
+    }
+
     function kitType(type: unknown, promised: boolean): keyof Named | null {
       const name = referred(type, promised)
       if (name === null) return null
@@ -150,7 +173,9 @@ export const noHandWrittenMicrophone: Rule.RuleModule = {
         typed(node, node.init, annotationOf(node.id))
       },
       // TypeScript-only nodes: the selector strings are not in ESTree's map.
-      "TSAsExpression, TSSatisfiesExpression"(node: Rule.Node): void {
+      "TSAsExpression, TSSatisfiesExpression, TSTypeAssertion"(
+        node: Rule.Node
+      ): void {
         typed(node, field(node, "expression"), field(node, "typeAnnotation"))
       },
       ObjectExpression(node): void {
@@ -163,25 +188,60 @@ export const noHandWrittenMicrophone: Rule.RuleModule = {
         )
         if (RECORDING_MEMBERS.every((member) => keys.has(member))) report(node)
       },
+      "ClassDeclaration, ClassExpression"(
+        node: (ESTree.ClassDeclaration | ESTree.ClassExpression) & Rule.Node
+      ): void {
+        const implemented: unknown = field(node, "implements")
+        const names = Array.isArray(implemented)
+          ? implemented.map((clause: unknown) =>
+              field(field(clause, "expression"), "name")
+            )
+          : []
+        const kit = names.some(
+          (name) =>
+            typeof name === "string" &&
+            (named.recording.has(name) || named.start.has(name))
+        )
+        const members = new Set(
+          node.body.body.map((member) =>
+            member.type === "MethodDefinition" ||
+            member.type === "PropertyDefinition"
+              ? keyName(member.key, member.computed)
+              : null
+          )
+        )
+        if (kit || RECORDING_MEMBERS.every((member) => members.has(member)))
+          report(node)
+      },
       CallExpression(node): void {
         const callee = node.callee
         if (callee.type !== "MemberExpression") return
-        if (callee.object.type !== "Identifier" || callee.object.name !== "vi")
+        if (
+          callee.object.type !== "Identifier" ||
+          !TEST_GLOBALS.has(callee.object.name)
+        )
           return
         const how = propertyName(callee)
+        if (how === "fn") {
+          // `vi.fn<StartRecording>()`: a microphone made of a mock.
+          const params: unknown = field(
+            field(node, "typeArguments") ?? field(node, "typeParameters"),
+            "params"
+          )
+          if (
+            Array.isArray(params) &&
+            params.some((param: unknown) => kitType(param, true) !== null)
+          )
+            report(node)
+          return
+        }
         if (how !== "mock" && how !== "doMock") return
-        const first = node.arguments[0]
-        const target =
-          first?.type === "Literal"
-            ? first.value
-            : first?.type === "TemplateLiteral"
-              ? staticText(first)
-              : null
-        if (target === entry)
+        const target = sourceOf(node.arguments[0])
+        if (target !== null && isKit(target))
           context.report({
             node,
             messageId: "mock",
-            data: { how, entry, testing },
+            data: { how, entry: target, testing },
           })
       },
     }
