@@ -1215,6 +1215,7 @@ describe("home's reflections index", () => {
       "2026-10-31T14:45:02.118Z",
       "2026-10-30T00:00:00.000Z",
       "in two days",
+      "2026-11-02",
     ]) {
       expect(await refused({ ...REFLECTIONS, validUntil })).toEqual({
         error: "validUntil must be a moment after asOf, or null",
