@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   gameNote,
+  ideaNote,
   jobsNotes,
   leetypeNote,
   lensNote,
@@ -46,6 +47,14 @@ describe("what each voice note is told home as", () => {
     expect(leetypeNote({ ...take, line: "two-sum.json#explain-1" }).ref).toBe(
       "two-sum.json:explain-1"
     )
+    // MIC10: an idea answer's take goes as a Studio note, by what it answers.
+    expect(ideaNote({ ...take, line: "idea:3f2a-9c:takeaway" })).toEqual({
+      id: "t1",
+      of: "studio",
+      ref: "idea:3f2a-9c:takeaway",
+      at: "2026-11-01T09:12:00.000Z",
+      contentType: "audio/webm",
+    })
     expect(
       soundbiteNote({
         id: "b1",

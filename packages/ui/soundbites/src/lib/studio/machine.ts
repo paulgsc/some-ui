@@ -979,7 +979,12 @@ function speak(
         case "notStarted": {
           return stay(withScreen({ speaking: null }, WORDS.watch.notStarted))
         }
-        case "failed": {
+        // Only home's hearing ends the last three (`lib/idea/hearing`), which
+        // Watch's spoken notes don't use: said as any listening that failed.
+        case "failed":
+        case "kept":
+        case "notKept":
+        case "refused": {
           return stay(withScreen({ speaking: null }, WORDS.watch.notHeard))
         }
         default: {

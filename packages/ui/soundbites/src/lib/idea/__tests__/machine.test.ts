@@ -21,10 +21,17 @@ function run(
   events: ReadonlyArray<IdeaEvent>,
   start: IdeaState = initialIdeaState("idea-1"),
   ideas: Array<Idea> = []
-): { state: IdeaState; ideas: ReadonlyArray<Idea>; listens: Array<number> } {
+): {
+  state: IdeaState
+  ideas: ReadonlyArray<Idea>
+  listens: Array<number>
+  /** How often it asked whether the phone can listen. */
+  checks: number
+} {
   let state = start
   let kept: ReadonlyArray<Idea> = ideas
   const listens: Array<number> = []
+  let checks = 0
   const queue = [...events]
   while (queue.length > 0) {
     const event = queue.shift()
@@ -39,9 +46,10 @@ function run(
         queue.unshift({ type: "kept", ideas: kept })
       }
       if (effect.type === "listen") listens.push(effect.seq)
+      if (effect.type === "checkVoice") checks += 1
     }
   }
-  return { state, ideas: kept, listens }
+  return { state, ideas: kept, listens, checks }
 }
 
 const tap = (intent: Exclude<IdeaIntent, { type: "another" }>): IdeaEvent => ({
@@ -145,6 +153,48 @@ describe("catching an idea", () => {
     expect(state.voice).toBe("unavailable")
     expect(state.screen).toMatchObject({
       phase: { kind: "typing", draft: "half" },
+    })
+  })
+
+  it("IH1: asks again what can listen as each question opens while it can't, and offers Say it once it can", () => {
+    const away = run([
+      ...OPENED,
+      tap({ type: "talk" }),
+      {
+        type: "listened",
+        seq: 1,
+        result: { kind: "kept", on: "phone", why: "away" },
+      },
+    ])
+    expect(screenOf(away.state)).toBe("ask:what:typing")
+    expect(away.state.notice).toBe("awayOnPhone")
+    // Entering asked once; home not answering asks again.
+    expect(away.checks).toBe(2)
+    const typing = run(
+      [
+        { type: "voiceChecked", available: false },
+        tap({ type: "draft", text: "typed idea" }),
+        tap({ type: "save" }),
+      ],
+      away.state
+    )
+    expect(screenOf(typing.state)).toBe("ask:takeaway:typing")
+    expect(typing.checks).toBe(1)
+    const back = run([{ type: "voiceChecked", available: true }], typing.state)
+    expect(screenOf(back.state)).toBe("ask:takeaway:idle")
+    expect(back.state.voice).toBe("ready")
+  })
+
+  it("keeps a question's typing when the phone can listen again only once words are typed", () => {
+    const { state } = run([
+      { type: "entered", at: AT },
+      { type: "listed", ideas: [] },
+      { type: "voiceChecked", available: false },
+      tap({ type: "draft", text: "half typed" }),
+      { type: "voiceChecked", available: true },
+    ])
+    expect(state.screen).toMatchObject({
+      phase: { kind: "typing", draft: "half typed" },
     })
   })
 

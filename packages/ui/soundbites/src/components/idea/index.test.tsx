@@ -10,19 +10,22 @@ import { describe, expect, it } from "vitest"
 
 const W = STUDIO_WORDS.idea
 
-/** A recognizer the test speaks through. */
+/** A recognizer, or home hearing a take, the test speaks through. */
 function fakeListener(): {
   listener: IdeaListener
   say: (words: string) => void
+  hearing: () => void
   finish: (result: Listened) => void
 } {
   let onWords: (words: string) => void = () => undefined
+  let onHearing: () => void = () => undefined
   let settle: (result: Listened) => void = () => undefined
   return {
     listener: {
       available: () => Promise.resolve(true),
-      listen: (heard): Listening => {
+      listen: (heard, _ready, take): Listening => {
         onWords = heard
+        onHearing = take?.onHearing ?? ((): void => undefined)
         return {
           done: new Promise<Listened>((resolve) => {
             settle = resolve
@@ -33,6 +36,7 @@ function fakeListener(): {
       },
     },
     say: (words) => onWords(words),
+    hearing: () => onHearing(),
     finish: (result) => settle(result),
   }
 }
@@ -73,6 +77,27 @@ describe("IdeaCapture", () => {
     expect(store.list()?.[0]?.answers[0]?.versions[0]?.words).toBe(
       "a short about game day"
     )
+  })
+
+  it("IH1: says home is hearing a kept take, then gives its words, or says where the take is kept and takes typed words", async () => {
+    const voice = fakeListener()
+    setup(voice.listener)
+    fireEvent.click(await screen.findByRole("button", { name: W.talk }))
+    fireEvent.click(screen.getByRole("button", { name: W.stop }))
+    act(() => voice.hearing())
+    expect(screen.getByText(W.hearing)).toBeTruthy()
+    expect(screen.getByRole("button", { name: W.type })).toBeTruthy()
+    await act(async () => {
+      voice.finish({ kind: "kept", on: "phone", why: "away" })
+      await Promise.resolve()
+    })
+    expect(screen.getByText(W.awayOnPhone)).toBeTruthy()
+    const box = screen.getByRole("textbox", { name: W.questions.what.ask })
+    fireEvent.change(box, { target: { value: "typed after all" } })
+    fireEvent.click(screen.getByRole("button", { name: W.keepWords }))
+    expect(
+      screen.getByRole("heading", { name: W.questions.takeaway.ask })
+    ).toBeTruthy()
   })
 
   it("takes typed words when the phone can't listen", async () => {

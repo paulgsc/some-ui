@@ -12,6 +12,7 @@ import { Notice } from "@soundbites/components/notice"
 import type {
   AskPhase,
   IdeaIntent,
+  IdeaNotice,
   IdeaState,
 } from "@soundbites/lib/idea/machine"
 import { questionNumber } from "@soundbites/lib/idea/machine"
@@ -46,6 +47,14 @@ export type IdeaCaptureProps = {
 }
 
 type Dispatch = (intent: IdeaIntent) => void
+
+/** A notice, in Studio's words. */
+function noticeSaid(notice: IdeaNotice): string {
+  if (notice === null) return ""
+  return typeof notice === "string"
+    ? WORDS[notice]
+    : WORDS.refused(notice.refused)
+}
 
 /** Where a listening with no words yet is (LS1). */
 function hearingWhere(
@@ -148,6 +157,15 @@ const Ask = ({
           {WORDS.finishing}
         </p>
       )}
+      {phase.kind === "hearing" && (
+        <div
+          aria-live="polite"
+          className="bg-card border-border/60 min-h-24 space-y-1 rounded-2xl border p-3"
+        >
+          <p className="text-lg">{WORDS.hearing}</p>
+          <p className="text-muted-foreground text-sm">{WORDS.hearingLine}</p>
+        </div>
+      )}
 
       {phase.kind === "idle" && canTalk && (
         <Button size="lg" onClick={() => dispatch({ type: "talk" })}>
@@ -183,7 +201,7 @@ const Ask = ({
         <Words phase={phase} dispatch={dispatch} label={ask} />
       )}
 
-      <Notice text={state.notice === null ? "" : WORDS[state.notice]} />
+      <Notice text={noticeSaid(state.notice)} />
       {state.voice === "unavailable" && phase.kind === "typing" && (
         <p className="text-muted-foreground text-xs">{WORDS.noVoice}</p>
       )}
@@ -191,7 +209,8 @@ const Ask = ({
       <div className="flex flex-wrap gap-2">
         {(phase.kind === "idle" ||
           phase.kind === "listening" ||
-          phase.kind === "finishing") && (
+          phase.kind === "finishing" ||
+          phase.kind === "hearing") && (
           <Button
             variant="ghost"
             size="sm"
@@ -265,7 +284,9 @@ const Kept = ({
       <h2 role="status" className="text-2xl font-extrabold">
         {WORDS.kept}
       </h2>
-      <p className="text-muted-foreground text-sm">{WORDS.keptLine(answers)}</p>
+      <p className="text-muted-foreground text-sm">
+        {WORDS.keptLine(answers, state.took)}
+      </p>
       {skipped > 0 && (
         <Button
           variant="outline"

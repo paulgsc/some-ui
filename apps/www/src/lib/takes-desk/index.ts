@@ -24,7 +24,7 @@ import { createPatternTakes } from "./pattern"
 import type { PhoneTakes, Take, TakeLimits } from "./runtime"
 import { createTakes } from "./runtime"
 
-export type { Take } from "./runtime"
+export type { DeskSnapshot, PhoneTakes, Take } from "./runtime"
 export { makesRoom } from "./runtime"
 
 const STANDINGS: ReadonlyArray<unknown> = [undefined, "earlier", "set-aside"]
