@@ -37,8 +37,8 @@ kept only for what the mailbox can't carry or the phone can't reach:
   `Dramas/requests`, `Dramas/played`, `Read aloud/sets`, `Read aloud/archive` and
   `some-ui jobs/Brief`, `Decisions` and `Scout`. Among them are Jobs decisions and scouts
   files: a phone on an APK without HF2 shared a file that names a voice note to Drive alone.
-  One named for a day the Jobs run's backfill covers (before 2026-11-04) goes home that way,
-  and the mailbox refuses a later one (`stands` lists it as `later`). The owner's phone has
+  One named for a day before 2026-11-04 goes home through the Jobs run's backfill, and the
+  mailbox refuses a later one (`stands` lists it as `later`). The owner's phone has
   had HF2 since 2026-10-31 and files every Jobs file home, so no new one is expected (#2393).
 - **The rest of the tree:** `Inbox/`, `Vlog/playoff-delta/week-NN` and `published`,
   `some-ui jobs/Recommended resume`, `Archive/`, and the `Publish ledger` sheet. The doc

@@ -41,8 +41,9 @@ couldn't do:
   isn't usable, all of `Brief/`.
 - **A digest only Drive holds:** one a run put there alone, on a day the
   mailbox wasn't usable (§0.1) or when a usable mailbox didn't take it
-  (§8.5). It has picks. Only a run with both the mailbox and Drive puts it
-  home (§0.5), and a run without Drive can't count it (§2).
+  (§8.5). One from §8.5 has picks; one from a day the mailbox wasn't usable
+  has none. Only a run with both the mailbox and Drive puts it home (§0.5),
+  and a run without Drive can't count it (§2).
 - **Decisions and scouts files only Drive holds** (paulgsc/some-ui#2393). A
   phone on an APK without HF2 shared a file that names a voice note to Drive
   alone. One named for a day §0.5's backfill covers (before 2026-11-04) goes
@@ -176,7 +177,12 @@ record (§9) and the summary (§10). Nothing ends a run before those two.
    as one that can't go home, take its name out of `drive.json`, and run
    `stands` again; that second answer is the one that counts. The run keeps
    nothing between days, so the next run puts it, meets the same `422` and
-   does the same. Count what you put back, by kind, for §10.
+   does the same. A digest the mailbox refuses (`413` `too_big`, or a `422`
+   naming why) can't go home either, and no index will count it: name it in
+   the summary as a digest that can't go home, take its name out of
+   `drive.json`, and run `stands` again; that second answer is the one that
+   counts. The next run puts it, meets the same refusal and does the same.
+   Count what you put back, by kind, for §10.
 
    When the index doesn't stand, or there is none, or the mailbox isn't
    usable, do §2's bookkeeping as written, from the mailbox and, for what
@@ -338,10 +344,7 @@ back). For a name both hold, the mailbox's bytes are the file; if Drive's
 differ, say so in the summary. Without Drive, say in the summary that what
 only Drive holds wasn't counted: a digest only Drive holds is one of those,
 and its picks count toward neither the queue nor "never picked again", so
-the run could pick past `MAX_OPEN_PICKS` or pick one of them again. When a
-decisions file names a digest day that no mailbox listing, live or
-archived, shows, that digest is one only Drive holds: hold the search back
-as for an unread digest (above), and say why in the summary.
+the run could pick past `MAX_OPEN_PICKS` or pick one of them again.
 
 With Drive and no usable mailbox (§0.1), Drive's `Brief/`, `Decisions/` and
 `Scout/` are all this run can read, and they lack every decisions file that
@@ -865,9 +868,11 @@ shorter limit, first person, the gaps) is yours to hold.
    `409` means the mailbox already holds a different digest for today (a
    second run raced this one): that one is the record, so say so in the
    summary, don't retry, and put nothing in Drive (step 6). Anything else:
-   say so in the summary and go on to step 6, whose copy the next run puts
-   home (§0.5). The mailbox holds a name for good, with the bytes it was
-   first given, so only a digest that passed step 4 goes there.
+   say so in the summary and go on to step 6. The next run puts that copy
+   home (§0.5), unless the mailbox refused the digest itself (`413`
+   `too_big`, or `422`): that one stays in Drive alone, and §0.5 names it as
+   a digest that can't go home. The mailbox holds a name for good, with the
+   bytes it was first given, so only a digest that passed step 4 goes there.
 
 6. The Drive copy, for refreshing away from home ("What still needs Drive"),
    if this session has Drive (§0.2) and step 5 didn't answer `409`: upload
@@ -920,9 +925,9 @@ so it is written even when nothing else was. The shape is `JobsRunSchema` in
   without the Drive connector is not `partly` for that alone: what it leaves
   undone ("What still needs Drive") goes in the summary. A search held back
   is `partly` even when the missing connector is why (an archived digest it
-  couldn't read, a digest only Drive holds): that rule wins. Otherwise it is
-  `done`. Picking nothing is `done`: weak postings or full places are what
-  the run found, not something it failed at.
+  couldn't read): that rule wins. Otherwise it is `done`. Picking nothing is
+  `done`: weak postings or full places are what the run found, not something
+  it failed at.
 - `found` is what the run read: `postings` is the digest's `seen` (0 when it
   searched nothing), `scouts` and `decisions` the new Scout and Decisions
   files it took in (§2).
