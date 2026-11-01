@@ -172,9 +172,32 @@ step 12 doesn't run. Voice notes never go to the mailbox from this run.
    never again. The others are grouped by session and by the day of their
    `at` in `America/Los_Angeles`, and each group is one reflection to
    answer. Its base is `<day>_reflection_<session8>`, where `<session8>` is
-   the session's first 8 letters, digits or `-`, as written; the scene's
-   folder description and mailbox name carry it exactly as a Drive file's
-   base does. A group whose newest `at` is under two hours old waits for the
+   the session's last 8 letters, digits or `-`, as written: every id the phone
+   or home makes now starts `session-`, so its first 8 are the same for all of
+   those (RB1). The scene's folder description and mailbox name carry it
+   exactly as a Drive file's base does. Earlier runs took the first 8, so a
+   scene may carry a group's earlier base, `<day>_reflection_` and the
+   session's first 8 (`<day>_reflection_session-` for most): that scene
+   answers the group only when no other group of that day still in the
+   listing, answered or not, has the same earlier base, and otherwise none of
+   them. A group whose session has no letter, digit or `-` can't be named, so
+   leave it out of what follows, skip it, and say so in the summary. Don't
+   work either base out by eye: save every group the listing's
+   reflections make, answered or not, as
+   `[{"day":"<day>","session":"<session>"},...]` in a scratch file outside the
+   checkout and run, from `packages/ui/topik`,
+   `node scripts/base.mjs <absolute path of the file>`. The file takes the
+   reflections a Drive file holds too, grouped as the others are, though they
+   are still answered with their file: home's index counts every group it
+   gathered (paulgsc/server
+   `apps/servers/file_host/src/mailbox/index/reflections.rs`, `waiting_groups`),
+   and whether an earlier base names one group turns on all of that day's. It
+   prints each group with its `base` and its `earlier` base,
+   which is `null` when a scene under it answers none. A group is answered by
+   a scene that carries its `base`, or its `earlier` base when that isn't
+   `null`. If it says the groups don't read, fix what it names and run it
+   again; if the command or path was wrong, fix that and run it again; if it
+   fails any other way, stop part A, say why in the summary, and go to part B. A group whose newest `at` is under two hours old waits for the
    next run, since more of that session may be on its way; a reflection
    written on the same day after its group was answered is not answered
    again (say so in the summary). Its spoken reflections ("Voice notes",
@@ -503,3 +526,36 @@ and is not retried.
     home hasn't heard it;
     and anything you skipped and why. If nothing was new anywhere, say so in
     one line.
+
+## What review holds
+
+**RB1: a reflection group's base tells its sessions apart.**
+
+The rule is a test's: `src/lib/topik/reflection-base/index.test.ts`, "RB1",
+holds `baseOf`, `earlierBaseOf` and `groupBases` (the session id's last 8
+letters, digits or `-`; an earlier-base scene answers a group only when no
+other group of that day still in the listing, answered or not, has the same
+earlier base) over each id form, and
+`apps/www/src/lib/tenant/__tests__/session-id.test.ts`, "RB1", holds that the
+last 8 of every id `newSessionId` makes are random. What follows is the one
+part no test can see.
+
+- _Claim:_ step 3 has the run take every group's base from
+  `scripts/base.mjs`, and `scripts/base.mjs` prints
+  `groupBases(readGroups(<the file>))` of the module it loads,
+  `src/lib/topik/reflection-base/index.ts`, or says that the groups don't
+  read.
+- _Falsified by_ a hunk in this file's step 3 that has the run work out a base
+  any other way, or that drops or changes the earlier-base clause; a hunk in
+  `scripts/base.mjs` that prints anything else or loads another module; or a
+  hunk that deletes, renames or moves `scripts/base.mjs` without step 3
+  following it.
+- _Scope:_ this file's step 3 and `scripts/base.mjs`.
+- _Why not enforced:_ the run follows this file by hand, so whether it calls
+  the script is something only a reader of this file can check.
+- _Tolerance:_ a group that arrives late for a day whose other groups have all
+  left the listing, when one of them was answered under the earlier base, is
+  taken as answered by that scene. Earlier-base scenes are written only by runs
+  from HF3 (#2396, 2026-10-31) until RB1 reached main, and a reflection leaves
+  the listing only once home archives it, at least 30 days on, so such a group
+  would have to arrive more than a month late.
