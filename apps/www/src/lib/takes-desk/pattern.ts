@@ -176,8 +176,10 @@ export function createPatternTakes(
             )
         )
       },
-      setAside: (id) => {
-        if (ports.takes.setAside(id)) publish()
+      setAside: (id, done) => {
+        const stored = ports.takes.setAside(id)
+        if (stored) publish()
+        done(stored)
       },
       audio: (id) => ports.audio.get(id),
     },

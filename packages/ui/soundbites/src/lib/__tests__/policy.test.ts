@@ -36,6 +36,22 @@ describe("the cap", () => {
     expect(displacedBy(kept(6), null, held)).toEqual(["b3"])
   })
 
+  it("makes room from one set aside first, then one superseded, then the oldest", () => {
+    const marked = kept(6).map((each) =>
+      each.id === "b0"
+        ? { ...each, standing: "set-aside" as const }
+        : each.id === "b1"
+          ? { ...each, standing: "earlier" as const }
+          : each
+    )
+    expect(nextReplaced(marked, null, all)?.id).toBe("b0")
+    expect(displacedBy(marked, null, all)).toEqual(["b0"])
+    // Two too many: the set-aside one, then the superseded one.
+    expect(displacedBy(marked, null, all, 5)).toEqual(["b0", "b1"])
+    // A pick still wins.
+    expect(displacedBy(marked, "b3", all)).toEqual(["b3"])
+  })
+
   it("lets none go and refuses the next while home holds none (HF5)", () => {
     expect(nextReplaced(kept(6), null)).toBeNull()
     expect(displacedBy(kept(6), null)).toBeNull()
