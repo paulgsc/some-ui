@@ -37,17 +37,32 @@ const entry = (
   ...overrides,
 })
 
+/**
+ * A record already at the bound: one entry 400 days old named `oldest`, then
+ * `l1` … `l999`, written once. Filling it with a thousand adds rewrote the
+ * whole record each time, which took 15.7 s on a busy CI host (EG1's host
+ * load), past even a raised timeout; the bound is what these tests are about.
+ */
+function atTheBound(oldest: string): ReturnType<typeof memoryStorage> {
+  const entries = [
+    entry(NOW - 400 * DAY, { line: oldest }),
+    ...Array.from({ length: LENS_RECORD_MAX - 1 }, (_, i) =>
+      entry(NOW - (i + 1), { line: `l${String(i + 1)}` })
+    ),
+  ]
+  return memoryStorage([
+    [LENS_RECORD_KEY, JSON.stringify({ version: 1, entries })],
+  ])
+}
+
 describe("the lens record store", () => {
   afterEach(() => {
     lensRecordHeldByHome(() => (): boolean => false)
   })
 
   it("keeps every entry however old, and none past the bound while home holds none", () => {
-    const storage = memoryStorage()
+    const storage = atTheBound("old")
     const store = createLensRecordStore(storage)
-    store.add(entry(NOW - 400 * DAY, { line: "old" }))
-    for (let n = 1; n < LENS_RECORD_MAX; n += 1)
-      store.add(entry(NOW - n, { line: `l${n}` }))
     expect(store.full()).toBe(true)
     store.add(entry(NOW, { line: "refused" }))
     // A rewrite of an item already kept still lands.
@@ -57,16 +72,11 @@ describe("the lens record store", () => {
     expect(entries[0]?.line).toBe("old")
     expect(entries.some((e) => e.line === "refused")).toBe(false)
     expect(entries.find((e) => e.line === "l1")?.right).toBe(false)
-    // A thousand adds, each rewriting the whole record: about 1.2 s here and
-    // 5.1 to 5.8 s on CI's runner, past vitest's 5 s default.
-  }, 15_000)
+  })
 
   it("makes room at the bound with the earliest entry home holds, and only one it holds (HF5)", () => {
-    const storage = memoryStorage()
+    const storage = atTheBound("oldest")
     const store = createLensRecordStore(storage)
-    store.add(entry(NOW - 400 * DAY, { line: "oldest" }))
-    for (let n = 1; n < LENS_RECORD_MAX; n += 1)
-      store.add(entry(NOW - n, { line: `l${n}` }))
     lensRecordHeldByHome(
       () =>
         (e): boolean =>
@@ -80,7 +90,7 @@ describe("the lens record store", () => {
     expect(lines).toContain("oldest")
     expect(lines).not.toContain("l9")
     expect(lines).toContain("l5")
-  }, 15_000)
+  })
 
   it("replaces an entry written again for the same item", () => {
     const storage = memoryStorage()
