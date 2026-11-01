@@ -15,8 +15,8 @@
  * - **Every take is kept.** A new take is chosen for its shot; the take it
  *   replaces stays, unchosen, and can be chosen again.
  * - **Nothing leaves the phone unconfirmed.** A take's audio is let go only
- *   once home has said it holds a copy (`letGoRefusal`), and its record
- *   stays either way. The save that marks it off the phone is the one
+ *   once home has said it holds a copy (`letGoRefusal`), and then only as
+ *   the owner chose (`./let-go`, HF11), and its record stays either way. The save that marks it off the phone is the one
  *   that lets its audio go, checked again in the store (`isAppendOnly`).
  * - **Closing a sitting mid-take keeps the take.** The take is finished
  *   first, and the sitting closes once it is kept or has failed.
