@@ -21,7 +21,8 @@
  *   alone; paired and unreachable: it stays, said in the offer, which stays
  *   open; shown paired and unpaired by the tap: it stays; shown while the
  *   pairing can't be read: home is promised and it stays; unpaired: today's
- *   delete), and for each end over the same flow,
+ *   delete; and a line of why it stayed keeps the host the offer asked
+ *   about once the pairing moves), and for each end over the same flow,
  *   `lib/home-link/__tests__/sessions.test.ts`'s "the study list's Let it go"
  *   (a promise of home is never kept by a plain delete; an unreachable,
  *   refusing or forgetting home, a busy link, a read-back that differs and a
@@ -256,6 +257,30 @@ describe("the phone-full offer", () => {
     expect(deletes[0]).toContain("session-1")
     expect(letGo.ids).toEqual([])
     expect(storage.settled).toBe(1)
+  })
+
+  it("names the host the offer asked about in why it stayed, after the pairing moves", async () => {
+    home.state = PAIRED
+    home.send = (): Promise<never> => Promise.reject(noAnswer())
+    render(withQueryClient(<DeviceStoragePrompt />))
+    await pressRemove()
+    const said =
+      "Couldn't reach home.example. Are you on the home network? It stays on this phone."
+    expect(await screen.findByText(said)).toBeTruthy()
+
+    // Unpaired since, and the prompt drawn again.
+    home.state = UNPAIRED
+    act(() => {
+      if (storage.view !== null) storage.view = { ...storage.view }
+      for (const listener of storage.listeners) listener()
+    })
+
+    expect(
+      screen.getByText(
+        `Remove “Evening reading” (finished ${finished}) to make room? It leaves this phone, and can't be brought back.`
+      )
+    ).toBeTruthy()
+    expect(screen.getByText(said)).toBeTruthy()
   })
 
   it("PF1: shown paired, keeps it here when the phone is unpaired by the tap: what the offer said is what runs", async () => {

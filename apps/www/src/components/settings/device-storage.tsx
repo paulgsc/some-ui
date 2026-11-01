@@ -21,7 +21,7 @@ import { HardDrive } from "lucide-react"
 import type { RemovableSession } from "@/lib/device-backend/handlers/sessions"
 import type { DeviceStorageView } from "@/lib/device-backend/storage-view"
 import { deviceStorage } from "@/lib/device-backend/storage-view"
-import type { LetGoEnd } from "@/lib/home-link/study-let-go"
+import type { LetGoEnd, LetGoRun } from "@/lib/home-link/study-let-go"
 import { leftPhone } from "@/lib/home-link/study-let-go"
 import { LET_GO } from "@/lib/home-link/words"
 import { useIntentEffect } from "@/lib/intent"
@@ -68,13 +68,15 @@ const closes = (end: LetGoEnd): boolean =>
 
 /**
  * Why the offered session is still here, once a let-go ended with it
- * staying. A failure is said by the button's own, with its retry.
+ * staying, naming the host the offer asked about. A failure is said by the
+ * button's own, with its retry.
  */
-function stayedLine(state: Intent<LetGoEnd>, host: string): string | null {
+function stayedLine(state: Intent<LetGoRun>): string | null {
   return matchIntent(state, {
     idle: () => null,
     working: () => null,
-    succeeded: (end) => (closes(end) ? null : LET_GO.ended(end, host)),
+    succeeded: ({ end, host }) =>
+      closes(end) ? null : LET_GO.ended(end, host),
     failed: () => null,
   })
 }
@@ -91,10 +93,10 @@ const RemoveOffer = ({
 }): JSX.Element => {
   const letGo = useSessionLetGo()
   const { host, promise } = letGo
-  useIntentEffect(letGo, (end) => {
+  useIntentEffect(letGo, ({ end }) => {
     if (closes(end)) void deviceStorage.settle()
   })
-  const stayed = stayedLine(letGo.state, host)
+  const stayed = stayedLine(letGo.state)
   return (
     <>
       <p>
@@ -112,8 +114,9 @@ const RemoveOffer = ({
       <div className="flex gap-2">
         <IntentButton
           state={letGo.state}
-          // What this offer says is what runs: the promise it rendered with.
-          onPress={() => letGo.start(session.id, promise)}
+          // What this offer says is what runs: the promise and the host it
+          // rendered with.
+          onPress={() => letGo.start(session.id, promise, host)}
           size="sm"
           variant="destructive"
           idleLabel={LET_GO.room.confirm}

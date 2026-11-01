@@ -440,7 +440,8 @@ declared (checked by reading every call site and by the tests named).
   `CapacitorHttp`, call `native-http`, call `lib/home-link`); one that calls
   a `homeLink()` method that sends (`pair`, `unpair`, `sync`, `send`) from
   anywhere but a press handler in the Home server block or a module that
-  block calls, or the study list's let-go (`letSessionGo`) started from
+  block calls, or the study list's let-go (`letSessionGo`, run through
+  `letSessionGoFor`, which only keeps the asked host beside its end) started from
   anywhere but its confirm's `onConfirm` and the phone-full offer's "Remove
   it" `onPress` (`components/settings/device-storage.tsx`), or that confirm
   or that offer no longer saying what its promise is (`LET_GO.question`,
