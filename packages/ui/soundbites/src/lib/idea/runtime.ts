@@ -78,8 +78,6 @@ export type IdeaPorts = {
   listener: IdeaListener
   /** Milliseconds since the epoch. */
   now: () => number
-  /** A new idea's id: letters, digits and dashes. */
-  newId: () => string
   /** As `SoundbitesPorts.onVisibility`: now, then on each change. */
   onVisibility: (listener: (hidden: boolean) => void) => () => void
 }
@@ -92,15 +90,12 @@ export type IdeaRuntime = {
   attach: () => () => void
 }
 
-/**
- * `focus`: an idea whose waiting questions from Claude are to be answered
- * (ST19), by id; with none, New idea.
- */
+/** `focus`: the idea whose waiting questions from Claude are answered (ST19), by id. */
 export function createIdeaCapture(
   ports: IdeaPorts,
-  focus: string | null = null
+  focus: string
 ): IdeaRuntime {
-  let state = initialIdeaState(ports.newId(), focus)
+  let state = initialIdeaState(focus)
   let listening: Listening | null = null
   const listeners = new Set<() => void>()
   const at = (): string => new Date(ports.now()).toISOString()
@@ -155,10 +150,10 @@ export function createIdeaCapture(
         return
       }
       case "keep": {
-        const { op, at } = effect
+        const { op } = effect
         send({
           type: "kept",
-          ideas: ports.store.keep((ideas) => apply(ideas, op, at)),
+          ideas: ports.store.keep((ideas) => apply(ideas, op)),
         })
         return
       }
@@ -176,12 +171,7 @@ export function createIdeaCapture(
         listeners.delete(listener)
       }
     },
-    dispatch: (intent) =>
-      send(
-        intent.type === "another"
-          ? { ...intent, at: at(), id: ports.newId() }
-          : { ...intent, at: at() }
-      ),
+    dispatch: (intent) => send({ ...intent, at: at() }),
     attach(): () => void {
       send({ type: "entered", at: at() })
       const unwatchPage = ports.onVisibility((hidden) => {

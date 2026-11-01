@@ -152,20 +152,6 @@ function answerTo(idea: Idea, question: AnswerTo): Answer | undefined {
 }
 
 /**
- * The question the idea is open at: the first neither answered nor passed
- * over, or null once every question has been met.
- */
-export function openQuestion(idea: Idea): QuestionId | null {
-  return (
-    IDEA_QUESTIONS.find(
-      (question) =>
-        answerTo(idea, question) === undefined &&
-        !idea.passed.includes(question)
-    ) ?? null
-  )
-}
-
-/**
  * The first of Claude's questions about the idea neither answered nor passed
  * over, or null when none waits.
  */
@@ -300,14 +286,6 @@ export function withAside(idea: Idea, aside: boolean, at: string): Idea {
   return isAside(idea) === aside
     ? idea
     : { ...idea, shelved: [...(idea.shelved ?? []), { at, aside }] }
-}
-
-/** Questions passed over and still unanswered, in the questions' order. */
-export function unanswered(idea: Idea): ReadonlyArray<QuestionId> {
-  return IDEA_QUESTIONS.filter(
-    (question) =>
-      answerTo(idea, question) === undefined && idea.passed.includes(question)
-  )
 }
 
 /** A new idea, with its first answer. */

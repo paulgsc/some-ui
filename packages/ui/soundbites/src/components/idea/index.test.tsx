@@ -1,5 +1,6 @@
 import { inMemoryStorage } from "@some-ui/core-utils"
 import { IdeaCapture } from "@soundbites/components/idea"
+import { asked } from "@soundbites/lib/idea/__tests__/fixture"
 import type { Listened } from "@soundbites/lib/idea/machine"
 import type { IdeaListener, Listening } from "@soundbites/lib/idea/runtime"
 import { NO_LISTENER } from "@soundbites/lib/idea/runtime"
@@ -44,14 +45,14 @@ function fakeListener(): {
 function setup(listener: IdeaListener): ReturnType<typeof keptIdeaStore> {
   const storage = inMemoryStorage()
   const store = keptIdeaStore(() => storage)
-  let tick = 0
+  store.keep(() => [asked()])
   render(
     <IdeaCapture
+      answering="idea-1"
       ports={{
         listener,
         store,
-        now: () => Date.UTC(2026, 9, 30, 10) + 1_000 * tick,
-        newId: () => `idea-${tick++}`,
+        now: () => Date.UTC(2026, 9, 30, 10),
         onVisibility: () => (): void => undefined,
       }}
     />
@@ -59,7 +60,11 @@ function setup(listener: IdeaListener): ReturnType<typeof keptIdeaStore> {
   return store
 }
 
-describe("IdeaCapture", () => {
+/** Claude's questions about the idea, as `asked` puts them. */
+const FIRST = "Which week?"
+const NEXT = "Why now?"
+
+describe("IdeaCapture, on Claude's questions about an idea (ST19)", () => {
   it("shows the words as they're spoken and keeps them as text", async () => {
     const voice = fakeListener()
     const store = setup(voice.listener)
@@ -71,10 +76,8 @@ describe("IdeaCapture", () => {
       await Promise.resolve()
     })
     fireEvent.click(screen.getByRole("button", { name: W.right }))
-    expect(
-      screen.getByRole("heading", { name: W.questions.takeaway.ask })
-    ).toBeTruthy()
-    expect(store.list()?.[0]?.answers[0]?.versions[0]?.words).toBe(
+    expect(screen.getByRole("heading", { name: NEXT })).toBeTruthy()
+    expect(store.list()?.[0]?.answers.at(-1)?.versions[0]?.words).toBe(
       "a short about game day"
     )
   })
@@ -92,25 +95,21 @@ describe("IdeaCapture", () => {
       await Promise.resolve()
     })
     expect(screen.getByText(W.awayOnPhone)).toBeTruthy()
-    const box = screen.getByRole("textbox", { name: W.questions.what.ask })
+    const box = screen.getByRole("textbox", { name: FIRST })
     fireEvent.change(box, { target: { value: "typed after all" } })
     fireEvent.click(screen.getByRole("button", { name: W.keepWords }))
-    expect(
-      screen.getByRole("heading", { name: W.questions.takeaway.ask })
-    ).toBeTruthy()
+    expect(screen.getByRole("heading", { name: NEXT })).toBeTruthy()
   })
 
   it("takes typed words when the phone can't listen", async () => {
     setup(NO_LISTENER)
     const box = await screen.findByRole("textbox", {
-      name: W.questions.what.ask,
+      name: FIRST,
     })
     expect(screen.queryByRole("button", { name: W.talk })).toBeNull()
     expect(screen.getByText(W.noVoice)).toBeTruthy()
     fireEvent.change(box, { target: { value: "typed idea" } })
     fireEvent.click(screen.getByRole("button", { name: W.keepWords }))
-    expect(
-      screen.getByRole("heading", { name: W.questions.takeaway.ask })
-    ).toBeTruthy()
+    expect(screen.getByRole("heading", { name: NEXT })).toBeTruthy()
   })
 })

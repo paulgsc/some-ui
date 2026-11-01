@@ -53,7 +53,6 @@ function setup(
         listener: NO_LISTENER,
         // Answered later than Claude asked.
         now: () => Date.parse(LATER),
-        newId: () => "unused",
         onVisibility: () => (): void => undefined,
       }}
       share={({ file }) => (

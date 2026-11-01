@@ -67,13 +67,12 @@ export function phoneStudioPorts(): StudioPorts {
   }
 }
 
-/** Catching an idea; the recognizer is the build's to add (www). */
+/** Answering Claude's questions about an idea; the recognizer is the build's to add (www). */
 export function phoneIdeaPorts(): IdeaPorts {
   return {
     store: keptIdeaStore(),
     listener: NO_LISTENER,
     now: () => Date.now(),
-    newId: () => crypto.randomUUID(),
     onVisibility: onPageVisibility,
   }
 }

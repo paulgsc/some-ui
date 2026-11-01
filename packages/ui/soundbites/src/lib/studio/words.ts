@@ -588,7 +588,6 @@ export const STUDIO_WORDS = {
   idea: {
     newIdea: "New idea",
     newIdeaLine: "Say what the video is, the moment it comes.",
-    heading: "New idea",
     reading: "Opening your ideas…",
     unreadable:
       "The ideas kept on this phone couldn't be read, so nothing new can be kept yet.",
@@ -649,15 +648,8 @@ export const STUDIO_WORDS = {
     refused: (reason: RecordingFailure): string =>
       RECORDING_FAILURE_COPY[reason],
     kept: "Kept. Come back to it any time.",
-    keptLine: (n: number, took: boolean): string =>
-      took
-        ? `${plural(n, "answer", "answers")} kept as text on this phone. What you said is kept too, on home once it has it.`
-        : `${plural(n, "answer", "answers")} kept as text on this phone. No sound was kept.`,
     answerSkipped: (n: number): string =>
       `Answer the ${n === 1 ? "one" : n} you skipped`,
-    answerSkippedEarlier: (n: number): string =>
-      `Answer the ${n === 1 ? "one" : n} you skipped last time`,
-    another: "Another idea",
     back: "Back to Studio",
   },
 
