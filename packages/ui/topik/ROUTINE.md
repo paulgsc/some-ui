@@ -31,6 +31,9 @@ is the bug.
 
 ## Before anything
 
+First run `node -e 'console.log(new Date().toISOString())'` and keep what it
+prints: it is when this run started (2b's `--now`, step 12's `startedAt`).
+
 1. Find the Google Doc titled `README — Drive SOP` in My Drive (its parent is
    My Drive's root; ignore copies in Archive/) and read it before any write; it
    is the rule for where files go and what they are named, and wins over this
@@ -100,8 +103,7 @@ both in scratch files outside the checkout, and run, from `packages/ui/topik`:
 node scripts/stands.mjs --now <when this run started> <absolute path of the index> <absolute path of the folders>
 ```
 
-Give the start time as `node -e 'console.log(new Date().toISOString())'` printed it
-when the run began.
+Give it the start time you kept before step 1.
 
 It prints `stands`, `why` (each reason it doesn't, in the owner's terms) and
 `lacking`: the bases of the routine's scene folders Drive holds that home
@@ -530,15 +532,15 @@ writes only to the mailbox.
     `Inbox/` per the SOP if it holds anything.
 
 12. Record this run in the mailbox. Skip only if 2a skipped the mailbox;
-    otherwise this step runs even when the run stops early. Note the UTC time
-    when you started this run, and write one scratch file with `node` or `jq`,
+    otherwise this step runs even when the run stops early. Take the start time
+    you kept before step 1, and write one scratch file with `node` or `jq`,
     not by hand:
 
 ```json
 {
   "schema": "some-ui.routine-run/1",
   "routine": "reflections",
-  "startedAt": "<when this run started, ISO-8601 UTC>",
+  "startedAt": "<the start time you kept before step 1>",
   "finishedAt": "<now, ISO-8601 UTC>",
   "outcome": "done | partly | stopped",
   "found": {
