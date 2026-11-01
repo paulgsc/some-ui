@@ -20,12 +20,9 @@ type SoundbiteKeeping = {
   /**
    * How to read what home holds of them, audio and record both, once per
    * look: those may make room for a new one at the cap (soundbites'
-   * `soundbitesHeldByHome`), one set aside (`standing`) only once its mark
-   * is safe (LA13).
+   * `soundbitesHeldByHome`).
    */
-  readonly heldByHome: (
-    next: () => (id: string, standing?: string) => boolean
-  ) => void
+  readonly heldByHome: (next: () => (id: string) => boolean) => void
 }
 
 const soundbites = handedIn<SoundbiteKeeping>()

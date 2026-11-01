@@ -14,8 +14,10 @@
  *
  * - `204`, marked or already marked (the first time stands): answered;
  * - `404`, home holds no such note for this phone's account: still owed,
- *   and asked again on the next run, up to `ASIDE_UNFOUND_MAX` runs, then
- *   given up (a phone paired again with another account never finds it);
+ *   and asked again on every run, said to the native log once per mark a
+ *   launch. It is never given up: a `404` is also what a home without the
+ *   route answers, and one paired again with another account only costs a
+ *   request a run;
  * - `422` naming `at`, a time home can't read: answered for good, since no
  *   later run could send another, and said to the native log;
  * - `401`: home no longer knows this phone, and the run ends there;
@@ -36,8 +38,15 @@ export function setAsidePath(mark: AsideMark): string {
   return `/voice-notes/${encodeURIComponent(mark.id)}/set-aside?${query.toString()}`
 }
 
-/** A mark home did not take, to the native log. */
+/** The marks whose `404` this launch has already told the native log. */
+const unfoundSaid = new Set<string>()
+
+/** A mark home did not take, to the native log (a `404` once a launch). */
 function untaken(mark: AsideMark, status: number): void {
+  if (status === 404) {
+    if (unfoundSaid.has(mark.id)) return
+    unfoundSaid.add(mark.id)
+  }
   reportFailure({
     port: "voice notes (set aside on home)",
     error: {
@@ -46,7 +55,7 @@ function untaken(mark: AsideMark, status: number): void {
       ),
       summary:
         status === 404
-          ? "Home didn't find a voice note set aside on this phone; it is asked again next time, a few times at most."
+          ? "Home didn't find a voice note set aside on this phone, so it is asked again next time."
           : "Home couldn't read when a voice note was set aside, so it isn't marked set aside there.",
     },
   })
@@ -65,7 +74,7 @@ export async function markSetAside(
     }
     if (answer.status === 401) return { kind: "forgotten" }
     if (answer.status === 404 || answer.status === 422) {
-      port.answered(answer.status === 404 ? "unfound" : "unmarkable", mark.id)
+      if (answer.status === 422) port.answered("unmarkable", mark.id)
       untaken(mark, answer.status)
       continue
     }

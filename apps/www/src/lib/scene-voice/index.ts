@@ -11,7 +11,6 @@ import type { TakeKept } from "@some-ui/voice-capture"
 import { micRecorder, ON_PHONE, savingShelf } from "@some-ui/voice-capture"
 
 import { boundedList } from "@/lib/bounded-list"
-import { NONE_MARKED } from "@/lib/takes-desk/runtime"
 
 import { SCENE_AUDIO_MAX_BYTES, SCENE_NOTES_KEPT } from "./budget"
 import type { KeptSceneNote, PhoneSceneVoice, SceneVoicePorts } from "./runtime"
@@ -65,20 +64,13 @@ const shelf = savingShelf({
 let voice: PhoneSceneVoice | null = null
 // On this phone until the voice lane says otherwise.
 let where: (id: string) => TakeKept = () => ON_PHONE
-let marked: (id: string) => boolean = NONE_MARKED
 
 /**
  * Where each note is kept, from the voice lane (`lib/home-link/voice-copy`,
- * MIC3): what each row says; and which set-aside marks are safe, without
- * which a note set aside never leaves (LA13). Builds no runtime that is not
- * there yet.
+ * MIC3): what each row says. Builds no runtime that is not there yet.
  */
-export function sceneNotesKept(
-  next: (id: string) => TakeKept,
-  safe: (id: string) => boolean = NONE_MARKED
-): void {
+export function sceneNotesKept(next: (id: string) => TakeKept): void {
   where = next
-  marked = safe
   voice?.recount()
 }
 
@@ -91,7 +83,6 @@ export function phoneSceneVoice(): PhoneSceneVoice {
     now: () => Date.now(),
     newId: () => crypto.randomUUID(),
     kept: (id) => where(id),
-    marked: (id) => marked(id),
   })
   return voice
 }

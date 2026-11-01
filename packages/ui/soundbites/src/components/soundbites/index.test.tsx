@@ -14,6 +14,7 @@ import {
 import type { SoundbitesProps } from "@soundbites/components/soundbites"
 import { Soundbites } from "@soundbites/components/soundbites"
 import { bite, memoryStore } from "@soundbites/lib/__tests__/fixture"
+import { soundbitesOweMarks } from "@soundbites/lib/aside-marks"
 import { formatWhen } from "@soundbites/lib/format"
 import { soundbitesHeldByHome } from "@soundbites/lib/home-held"
 import type { SoundbiteSituation } from "@soundbites/lib/machine"
@@ -585,6 +586,33 @@ describe("Soundbites", () => {
     // The pattern takes back its word: no line says it was set aside.
     expect(screen.queryByText(W.setAside.phone)).toBeNull()
     expect(rows()).toHaveLength(1)
+  })
+
+  it("sets one aside only once its mark is owed, and takes the mark back when the store won't set it aside (MIC2)", async () => {
+    const unowed: Array<string> = []
+    let keeps = false
+    soundbitesOweMarks({
+      owe: () => keeps,
+      unowe: (id): void => {
+        unowed.push(id)
+      },
+    })
+    try {
+      const { kept, store } = setup({ kept: [bite("only", 5)] })
+      await tap(W.rowLabel(W.letGo, 12_000))
+      expect(
+        await screen.findByText("That one couldn't be set aside. Try again?")
+      ).toBeInTheDocument()
+      expect(kept.get("only")?.bite.standing).toBeUndefined()
+
+      keeps = true
+      vi.spyOn(store, "setAside").mockRejectedValueOnce(new Error("busy"))
+      await tap(W.rowLabel(W.letGo, 12_000))
+      await waitFor(() => expect(unowed).toEqual(["only"]))
+      expect(kept.get("only")?.bite.standing).toBeUndefined()
+    } finally {
+      soundbitesOweMarks({ owe: () => true, unowe: () => undefined })
+    }
   })
 
   it("makes room at the cap from one let go before any still listed", async () => {

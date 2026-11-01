@@ -36,8 +36,11 @@ import type {
 } from "@some-ui/voice-capture"
 import { ONE_TAKE, shelveTake, takePattern } from "@some-ui/voice-capture"
 
+import type { MarkOwing } from "@/lib/voice-marks"
+import { setAsideOwing } from "@/lib/voice-marks"
+
 import type { Take, TakeLimits } from "./runtime"
-import { makesRoom, mayLeave, NONE_MARKED } from "./runtime"
+import { homeHolds, makesRoom } from "./runtime"
 
 export type PatternTakesPorts = {
   startRecording: StartRecording
@@ -63,11 +66,8 @@ export type PatternTakesPorts = {
   newId: () => string
   /** Where this take is kept, from what home told this phone (`lib/home-link`). */
   kept: (id: string) => TakeKept
-  /**
-   * Whether a take's set-aside mark is safe (`mayLeave`); none is unless
-   * the voice lane says so.
-   */
-  marked?: ((id: string) => boolean) | undefined
+  /** What owes home a take's set-aside mark; the phone's unless a test gives its own. */
+  marks?: MarkOwing | undefined
   /** The kit's `audioPlayer` unless a test gives its own. */
   player?: Player | undefined
   /** The phone's one microphone unless a test gives its own. */
@@ -119,10 +119,7 @@ export function createPatternTakes(
   shape: DeskShape = ONE_TAKE
 ): PatternPhone {
   const listeners = new Set<() => void>()
-  const marked = ports.marked ?? NONE_MARKED
-  // A take set aside makes room only once its mark is safe (LA13).
-  const held = (id: string, take: Take): boolean =>
-    mayLeave(take, ports.kept(id), marked)
+  const held = (id: string): boolean => homeHolds(ports.kept(id))
   const listed = (): ReadonlyArray<PatternTake> =>
     ports.takes.read().map(
       (take): PatternTake => ({
@@ -206,8 +203,15 @@ export function createPatternTakes(
             )
         )
       },
+      // LA13: set aside only once its mark is owed (`lib/voice-marks`).
       setAside: (id, done) => {
-        const stored = ports.takes.setAside(id, ports.now())
+        const at = ports.now()
+        const stored = setAsideOwing(
+          id,
+          new Date(at).toISOString(),
+          () => ports.takes.setAside(id, at),
+          ports.marks
+        )
         if (stored) publish()
         done(stored)
       },

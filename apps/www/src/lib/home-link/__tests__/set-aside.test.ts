@@ -61,7 +61,7 @@ describe("home's set-aside mark (MIC2)", () => {
     expect(marks.answers).toEqual([["marked", "n1"]])
   })
 
-  it("tells the record of a mark home found no note for and one it can't read, and goes on to the next", async () => {
+  it("keeps a mark home found no note for owed, gives up only one home can't read, and goes on to the next", async () => {
     vi.mocked(reportFailure).mockClear()
     const marks = port([
       { id: "missing", at: AT },
@@ -74,10 +74,14 @@ describe("home's set-aside mark (MIC2)", () => {
     ).toEqual({ kind: "synced" })
     expect(sent).toHaveLength(3)
     expect(marks.answers).toEqual([
-      ["unfound", "missing"],
       ["unmarkable", "unreadable"],
       ["marked", "n3"],
     ])
+    expect(vi.mocked(reportFailure)).toHaveBeenCalledTimes(2)
+    // Asked again on the next run, and quietly: its 404 was said once.
+    const again = port([{ id: "missing", at: AT }])
+    await markSetAside(again, home({ missing: 404 }, []))
+    expect(again.answers).toEqual([])
     expect(vi.mocked(reportFailure)).toHaveBeenCalledTimes(2)
   })
 

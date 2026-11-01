@@ -684,19 +684,24 @@ only from the lane's hook and the scene notes read for home only there
   go where it was recorded never removes its copy, and the drama's draft
   lets a scene note go on home's word only once home holds the ask that
   named it too (`prompted`, which only LA18's `letGoHeldPrompts` sets).
-  The mark owed for a note set aside (`standing: "set-aside"`, never a
-  Redo's `earlier`) is noted in the voice-home record (`oweMarks`) on every
-  copy pass, in `holdOffline` whether or not the phone is paired, and first
-  in `letGoHeld`; and no note home holds that is set aside leaves this phone
-  until its mark is safe (`markSafe`: owed in the record as storage last
-  kept it, or answered there for good). The exits by which a note home
-  holds leaves are these, and each asks it: `letGoHeld`, which hands no
-  store (game bites, Jobs notes, scene notes, Studio takes) a set-aside
-  note whose mark is unsafe as held; the scene draft's own `letGo` and its
-  make-room (`roomFor`); a pattern desk's make-room (lens, LeetType and Rust
-  Rounds takes, `mayLeave` over the `marked` the lane hands `keptWhere`);
-  and the soundbites' make-room (`inLeavingOrder`, which asks `held` with
-  each one's standing). The kit's desk (idea takes) has no Let go.
+  A note is set aside only once its mark is owed in the voice-home record
+  as storage keeps it: every Let go (`standing: "set-aside"`; a Redo's
+  `earlier` owes none) goes through `lib/voice-marks`' `setAsideOwing`,
+  which owes the mark (`owe`, which says no when storage refused it and
+  then holds it nowhere) before the store writes the standing, writes
+  nothing when it can't, and takes the mark back when that write fails.
+  Whether home holds the note yet, and whether the phone is paired, do not
+  matter: `marksDue` sends a mark only once home holds its note. So no exit
+  that lets a held note go needs a check of its own. The stores with Let go
+  are spoken reflections, Jobs notes, scene notes, soundbites (through
+  `soundbitesOweMarks`), and lens, LeetType and Rust Rounds takes; game
+  bites, Studio takes and idea takes have none. A note set aside before
+  marks were owed at Let go, or while no lane was wired (`voiceMarks`
+  answers yes until `watchVoiceNotes` wires it), is owed on the first pass
+  that lists it (`oweMarks` in `copyAll` and first in `letGoHeld`), and
+  until then may leave as before. A mark home answers `404` for stays owed
+  and is asked for again on every run, never given up: a `404` is also
+  what a home without the route answers.
 - _Falsified by:_ a hunk LA15's falsifier names for the shared files; a hunk
   to `lib/scene-voice/runtime.ts` that lets `letGo` remove a scene note that
   is not `prompted` (an ask home holds named it, LA18) or that home does not
@@ -710,19 +715,20 @@ only from the lane's hook and the scene notes read for home only there
   `synced` exchange, one `letGoOnHomesWord(send)` and one `markSetAside`
   over the same store's `marks`, whose end only `runEnd` may change (so
   also one that lets `letGoOnHomesWord` throw, or its outcome reach what
-  `sendVoice` returns); one that drops `oweMarks` from `copyAll` or
-  `holdOffline`, or moves it in `letGoHeld` after a store's `letGo`, hands
-  `letGoHeld`'s stores held ids it did not filter by what `oweMarks` found
-  unsafe, or has a candidate's `aside` say a note is set aside for any
-  standing but `set-aside`; a hunk that adds a way for a note home holds
-  to leave the phone other than the exits the claim names, or makes one of
-  them let a set-aside note go without asking its mark (`mayLeave` or
-  `marked` dropped from `lib/takes-desk/pattern.ts` or
-  `lib/scene-voice/runtime.ts`, `NONE_MARKED` replaced by a default that
-  says yes, `held(bite.id)` without its standing in soundbites'
-  `inLeavingOrder`, or `keptWhere` and `sceneNotesKept` called without
-  `markSafe`); one to `lib/voice-home/runtime.ts` that has `owe` or
-  `markSafe` say safe of a mark storage did not keep; a hunk to
+  `sendVoice` returns); one that drops `oweMarks` from `copyAll`, or moves
+  it in `letGoHeld` after a store's `letGo`, or has a candidate's `aside`
+  say a note is set aside for any standing but `set-aside`; a hunk that
+  writes a `set-aside` standing anywhere but inside a `setAsideOwing`
+  write (the `setAside` ports of `lib/takes-desk/pattern.ts`,
+  `lib/scene-voice/runtime.ts` and `lib/jobs/runtime.ts`, and
+  `lib/reflection-voice/index.ts`' `setAside`) or soundbites' `setAside`
+  port after `asideMarks().owe` (`packages/ui/soundbites/src/lib/runtime.ts`),
+  that writes it when the mark was not owed or keeps it when the mark was
+  taken back, or that drops `wireVoiceMarks` from `watchVoiceNotes` or
+  `soundbitesOweMarks(voiceMarks)` from the soundbites route; one to
+  `lib/voice-home/runtime.ts` that has `owe` say yes of a mark storage did
+  not keep, or keep one it refused in memory; one to
+  `lib/home-link/set-aside.ts` that gives up a mark on a `404`; a hunk to
   `lib/home-link/lanes.ts` that makes `paired` anything but the link
   holding a pairing; a hunk to `lib/home-link/voice.ts` that makes the lane's `exchange` anything but
   `sendVoice`, or calls `watchVoiceNotes` from anywhere but `useVoiceHome`'s
@@ -739,8 +745,9 @@ only from the lane's hook and the scene notes read for home only there
   that names only its body.
 - _Scope:_ LA15's shared files, `apps/www/src/lib/home-link/voice.ts`,
   `voice-copy.ts`, `set-aside.ts`, `apps/www/src/lib/voice-home/**`,
-  `apps/www/src/lib/takes-desk/**`, `packages/ui/soundbites/src/lib/policy.ts`
-  and `home-held.ts`,
+  `apps/www/src/lib/voice-marks/**`, `apps/www/src/lib/takes-desk/pattern.ts`,
+  `apps/www/src/lib/jobs/runtime.ts`, `apps/www/src/lib/reflection-voice/index.ts`,
+  `packages/ui/soundbites/src/lib/runtime.ts` and `aside-marks.ts`,
   `apps/www/src/lib/scene-voice/index.ts`, `runtime.ts`,
   `apps/www/src/lib/soundbite-keeping/index.ts`.
 - _Tolerance:_ a note let go before the watch copies it (the app closed in
@@ -755,8 +762,12 @@ only from the lane's hook and the scene notes read for home only there
   gone, are never copied, and Settings says so (LA14). A note recorded on a
   phone that was never paired is not copied until it is. A scene note kept
   before HF2 noted when is told home as of its copy. A note set aside
-  whose audio never landed on the phone is let go by its store's sweep
-  (SV1, the takes desk's) without waiting for its mark.
+  before marks were owed at Let go, or before the lane was wired, may leave
+  the phone before the pass that owes its mark. A mark owed for a note that
+  never reaches home (a Rust Rounds note, until RR6; one let go before it
+  was copied, on a phone never paired again) stays owed for good. On the
+  soundbites page, whose store writes asynchronously, a run between the
+  owe and a write that then fails could send a mark the phone takes back.
 - _Why not enforced:_ which files call the copy, the watch and the scene
   notes' read are pinned (`egress-choke-points`). Whether each call
   copies only while the phone is paired is a reading of its guard, which a
@@ -771,15 +782,17 @@ only from the lane's hook and the scene notes read for home only there
   `useVoiceHome`'s effect, which returns its cleanup; `useVoiceHome` only in
   `HomeLanes`, which `_dashboard.tsx` mounts under `VITE_DEVICE_BACKEND`;
   `shelf.remove` in the runtime only on `held` and in `sweep`, which keeps
-  waiting and refused copies. For MIC2, by reading `oweMarks`' three calls
-  (in `copyAll` after the sources are read, in `holdOffline` and first in
-  `letGoHeld`), every exit the claim names (every caller of `makesRoom`, the kit's and LeetType's answer notes having no Let go,
-  the scene's and the Jobs `letGo`, soundbites' `inLeavingOrder`), and
-  `asideAt`, which answers only for `set-aside`; what each store keeps,
-  each exit's wait for a safe mark and each answer home gives are held by
-  `voice-aside.test.ts`, `set-aside.test.ts`,
-  `lib/voice-home/__tests__/model.test.ts`, `lib/takes-desk/__tests__/pattern.test.ts`,
-  `lib/scene-voice/runtime.test.ts` and soundbites' `policy.test.ts`.
+  waiting and refused copies. For MIC2, by reading every write of a
+  `set-aside` standing (`grep -rn '"set-aside"'`: the five `setAside`
+  ports, each inside `setAsideOwing` or after `owe`, and the stores' own
+  writes, which only those ports call), `oweMarks`' two calls (in `copyAll`
+  after the sources are read, and first in `letGoHeld`) and `asideAt`,
+  which answers only for `set-aside`; that each store owes before it
+  writes, and writes nothing without, is held by its own test (the desk's
+  `pattern.test.ts`, `scene-voice/runtime.test.ts`, `jobs/__tests__/runtime.test.ts`,
+  soundbites' `components/soundbites/index.test.tsx`, `voice-marks/index.test.ts`),
+  and the marks' path end to end by `voice-aside.test.ts`, `set-aside.test.ts`
+  and `lib/voice-home/__tests__/model.test.ts` and `runtime.test.ts`.
 
 ### LA14: Settings never says a voice note waits that this phone cannot send
 

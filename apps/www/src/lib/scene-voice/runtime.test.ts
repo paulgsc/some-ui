@@ -18,6 +18,7 @@ import {
   NEXT_SCENE,
   sweepNotes,
 } from "@/lib/scene-voice/runtime"
+import type { MarkOwing } from "@/lib/voice-marks"
 
 /** The draft's list in memory, as the phone's keeps it (`./index`). */
 function memoryNotes(
@@ -69,7 +70,7 @@ function phone(
     removes,
     asides,
     kept = (): TakeKept => ({ place: "phone" }),
-    marked = (): boolean => true,
+    marks,
   }: {
     stores?: boolean
     /** Whether the list stores a note let go; it does unless said. */
@@ -77,8 +78,8 @@ function phone(
     /** Whether the list stores a note set aside; it does unless said. */
     asides?: () => boolean
     kept?: (id: string) => TakeKept
-    /** Whether a note's set-aside mark is safe; every one is unless said. */
-    marked?: (id: string) => boolean
+    /** What owes a note's set-aside mark; one that always keeps unless said. */
+    marks?: MarkOwing
   } = {}
 ): {
   voice: PhoneSceneVoice
@@ -98,7 +99,7 @@ function phone(
     now: Date.now,
     newId: () => `n${(next += 1)}`,
     kept,
-    marked,
+    marks,
   })
   return { voice, audio, listed }
 }
@@ -167,6 +168,29 @@ describe("createSceneVoice", () => {
     expect(listed[0]?.setAsideAt).toMatch(/^\d{4}-\d\d-\d\dT/)
     expect(listed[1]?.setAsideAt).toBeUndefined()
     expect(await audio.ids()).toEqual(["n1", "n2"])
+  })
+
+  it("sets a note aside only once its mark is owed, and takes the mark back when the list won't store it (LA13)", async () => {
+    let keeps = false
+    const unowed: Array<string> = []
+    const marks: MarkOwing = {
+      owe: () => keeps,
+      unowe: (id): void => {
+        unowed.push(id)
+      },
+    }
+    const { voice, listed } = phone([], { marks })
+    await talk(voice)
+    voice.pattern.letGo("n1", "phone")
+    expect(listed[0]?.standing).toBeUndefined()
+    expect(voice.pattern.getSnapshot().setAside).toBeNull()
+
+    keeps = true
+    const refusing = phone([], { marks, asides: () => false })
+    await talk(refusing.voice)
+    refusing.voice.pattern.letGo("n1", "phone")
+    expect(refusing.listed[0]?.standing).toBeUndefined()
+    expect(unowed).toEqual(["n1"])
   })
 
   it("takes back the set-aside line when the phone won't store the note set aside", async () => {
@@ -281,34 +305,6 @@ describe("createSceneVoice", () => {
     expect(listed.map(({ id }) => id)).toContain("aside-3")
     expect(listed).toHaveLength(SCENE_NOTES_KEPT)
     expect(ids(voice)).toEqual(["draft", "n1"])
-  })
-
-  it("lets no note set aside leave, on home's word or to make room, before its mark is safe (LA13)", async () => {
-    const aside = Array.from({ length: SCENE_NOTES_KEPT - 1 }, (_, index) =>
-      note(`aside-${index}`, {
-        standing: "set-aside",
-        at: new Date(index * 1_000).toISOString(),
-      })
-    )
-    const safe = new Set<string>()
-    const { voice, listed } = phone([note("draft"), ...aside], {
-      kept: () => ({ place: "home", since: null }),
-      marked: (id) => safe.has(id),
-    })
-    // Home holds every one, but no mark is safe: none may go.
-    expect(voice.getSnapshot().full).toBe(true)
-    voice.letGo(new Set(aside.map(({ id }) => id)))
-    expect(listed).toHaveLength(SCENE_NOTES_KEPT)
-    await talk(voice)
-    expect(voice.pattern.getSnapshot().ended?.ending).toBe("full")
-
-    safe.add("aside-2")
-    voice.recount()
-    await talk(voice)
-    expect(voice.pattern.getSnapshot().ended?.ending).toBe("kept")
-    expect(listed.map(({ id }) => id)).not.toContain("aside-2")
-    voice.letGo(new Set(aside.map(({ id }) => id)))
-    expect(listed.map(({ id }) => id)).toContain("aside-0")
   })
 
   it("keeps nothing when the room it makes at twenty is not stored, dropping none home lacks (RM1)", async () => {

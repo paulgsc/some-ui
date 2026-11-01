@@ -27,8 +27,8 @@
  * Home answers `204` with no body, marked or already marked, which no probe
  * may cause: a mark is kept for good. A note the caller doesn't hold is a
  * `404`, and a time home can't read a `422` naming `at`; both write nothing,
- * and the phone reads each by its status alone (a `404` is asked again on a
- * few runs, then given up).
+ * and the phone reads each by its status alone (a `404` stays owed and is
+ * asked again on the next run).
  */
 
 import { z } from "zod"

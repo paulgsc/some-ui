@@ -18,6 +18,7 @@ import {
   keptIn,
   stepVoiceHome,
 } from "@/lib/voice-home/model"
+import type { MarkOwing } from "@/lib/voice-marks"
 
 export type TestDesk = {
   readonly phone: PatternPhone
@@ -34,8 +35,6 @@ export type TestDesk = {
     readonly copied: (id: string) => void
     /** Home holds a take, as this phone heard at `at`. */
     readonly held: (id: string, at?: string) => void
-    /** The take's set-aside mark is owed, kept as the record keeps it (LA13). */
-    readonly owe: (id: string) => void
   }
   readonly keptOn: (line: string, since: number) => string | null
 }
@@ -46,7 +45,8 @@ let desks = 0
 export function testDesk(
   mic: SimulatedMicrophone,
   owner: MicOwner,
-  limits: TakeLimits
+  limits: TakeLimits,
+  marks?: MarkOwing
 ): TestDesk {
   desks += 1
   const takes = deskList(`test-desk-${String(desks)}`, limits.max)
@@ -77,7 +77,7 @@ export function testDesk(
       now: Date.now,
       newId: () => `n${(next += 1)}`,
       kept,
-      marked: (id) => lane.aside.owed.some((mark) => mark.id === id),
+      marks,
     },
     limits
   )
@@ -90,13 +90,6 @@ export function testDesk(
       held: (id, at = new Date(Date.now()).toISOString()): void => {
         copied(id)
         lane = stepVoiceHome(lane, { kind: "held", id, at })
-      },
-      owe: (id): void => {
-        lane = stepVoiceHome(lane, {
-          kind: "aside",
-          id,
-          at: new Date(Date.now()).toISOString(),
-        })
       },
     },
     keptOn: (line, since) => keptOn(takes.read(), line, since),

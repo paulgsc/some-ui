@@ -214,6 +214,40 @@ describe("createJobsRuntime", () => {
     }
   })
 
+  it("sets a note aside only once its mark is owed, with when it was let go (LA13)", async () => {
+    vi.useFakeTimers()
+    try {
+      let keeps = false
+      const owed: Array<[string, string]> = []
+      const p = ports({
+        now: () => new Date(Date.now()),
+        marks: {
+          owe: (id, at): boolean => {
+            owed.push([id, at])
+            return keeps
+          },
+          unowe: (): void => undefined,
+        },
+      })
+      const runtime = createJobsRuntime(p)
+      const { voice } = runtime
+      voice.tap("o", null)
+      await vi.advanceTimersByTimeAsync(3_000)
+      voice.tap("o")
+      await vi.advanceTimersByTimeAsync(0)
+      const id = String(runtime.getSnapshot().state.voice[0]?.id)
+      voice.letGo(id, "phone")
+      expect(runtime.getSnapshot().state.voice[0]?.standing).toBeUndefined()
+      keeps = true
+      voice.letGo(id, "phone")
+      const note = runtime.getSnapshot().state.voice.at(0)
+      expect(note?.standing).toBe("set-aside")
+      expect(owed.at(-1)).toEqual([id, note?.setAsideAt])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it("files what a run missed again, with the audio still on the phone (LG1)", async () => {
     let now = new Date("2026-10-18T19:00:00Z")
     const p = ports({ now: () => now })

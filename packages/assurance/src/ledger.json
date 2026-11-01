@@ -452,7 +452,7 @@
           "claim": "Every voice note sent home gets a transcript or a recorded reason it has none, its set-aside mark among them.",
           "requirement": "Each note home holds gets a row; a failed hearing is recorded and tried again on at most ATTEMPTS (3) passes, then stays recorded as failed, so no note is left without an outcome after three passes. A note set aside (D3) before it was heard leaves the queue, its mark the recorded reason; the phone sends that mark once for each note it set aside that home holds, and keeps it owed until home takes it.",
           "verdict": "holds",
-          "conclusion": "Every note gets a row, and a failure is retried a few times and then kept as failed. A note I let go before home heard it is not heard, and home keeps its mark saying so; the phone sends the mark for every kind of note that can be let go, and lets none of them leave the phone before its mark is safely noted.",
+          "conclusion": "Every note gets a row, and a failure is retried a few times and then kept as failed. A note I let go before home heard it is not heard, and home keeps its mark saying so; the phone owes the mark at Let go, before the note is set aside, for every kind of note that can be let go, and sends it once home holds the note.",
           "evidence": [
             {
               "class": "measured",
@@ -1937,7 +1937,7 @@
     {
       "store": "phone:voice-home",
       "class": "cache",
-      "growth": "bounded: VOICE_HOME_MAX_BYTES = 100 x 240,000 = 24,000,000 B of copies of voice notes not yet held by home. Its record (`some-ui:voice-home`) also keeps the set-aside marks owed to home, one per note let go until home answers it or it is given up (ASIDE_UNFOUND_MAX = 5 runs home finds no such note), and at most ASIDE_ANSWERED_MAX = 1,000 ids home answered and as many marks given up (MIC2).",
+      "growth": "bounded: VOICE_HOME_MAX_BYTES = 100 x 240,000 = 24,000,000 B of copies of voice notes not yet held by home. Its record (`some-ui:voice-home`) also keeps the set-aside marks owed to home, one per note let go until home answers it (a note that never reaches home, such as a Rust Rounds note until RR6, keeps its mark owed), and at most ASIDE_ANSWERED_MAX = 1,000 ids home answered (MIC2).",
       "horizon": "A copy leaves once home holds the note; a copy home refuses stays on the phone for good (voice-home runtime's sweep keeps it), still counted in the pool.",
       "family": "voice-heard"
     },

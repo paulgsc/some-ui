@@ -10,8 +10,8 @@
  *
  * The same record keeps the set-aside marks owed to home (`owe`, MIC2) and
  * hands the ones due to `lib/home-link/set-aside` (`marks`). A mark storage
- * would not keep stays owed in memory, and is owed again on the next launch
- * while its take is still set aside on this phone.
+ * would not keep is owed nowhere, and `owe` says so: Let go then sets
+ * nothing aside (`lib/voice-marks`, LA13).
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
 import { openRecord, writeRecord } from "@some-ui/core-utils"
@@ -63,26 +63,27 @@ export type VoiceHome = {
   /**
    * The owner set note `id` aside at `at` (ISO 8601): home is owed its mark,
    * once. A note already owed, answered or refused is left as it is, so the
-   * first time stands. Says whether the mark is now safe (`markSafe`).
+   * first time stands. Says whether the record as storage keeps it now owes
+   * the mark, has it answered, or needs none (home refused the note); a mark
+   * storage would not keep is owed nowhere, not even in memory.
    */
   owe: (id: string, at: string) => boolean
-  /**
-   * Whether note `id`'s set-aside mark is safe (MIC2, LA13): owed in the
-   * record as storage last kept it, or answered there for good. Only then
-   * may a held note set aside leave this phone: a mark owed only in memory
-   * is lost if the app closes, and with the note gone nothing owes it again.
-   */
-  markSafe: (id: string) => boolean
+  /** Takes back a mark owed for a set-aside write that did not happen. */
+  unowe: (id: string) => void
   /** What `lib/home-link/set-aside`'s marks read and answer through. */
   marks: AsidePort
   /** Clears copies the record names neither waiting nor refused. Best effort. */
   sweep: () => void
 }
 
-/** `id`'s mark owed or answered in `record`. */
-function markSafe(record: VoiceHomeState, id: string): boolean {
+/** `record` owes `id`'s mark, has it answered, or needs none (refused). */
+function owes(record: VoiceHomeState, id: string): boolean {
   const { owed, answered } = record.aside
-  return answered.includes(id) || owed.some((mark) => mark.id === id)
+  return (
+    answered.includes(id) ||
+    owed.some((mark) => mark.id === id) ||
+    record.refused.some((refusal) => refusal.id === id)
+  )
 }
 
 export function createVoiceHome(ports: VoiceHomePorts): VoiceHome {
@@ -161,17 +162,15 @@ export function createVoiceHome(ports: VoiceHomePorts): VoiceHome {
     },
     owe(id, at): boolean {
       apply({ kind: "aside", id, at })
-      // Owed in memory only, after a write storage refused: try it again.
-      if (
-        !markSafe(stored, id) &&
-        writable &&
-        writeRecord(storage, STORAGE_KEY, JSON.stringify(state), parseVoiceHome)
-      ) {
-        stored = state
-      }
-      return markSafe(stored, id)
+      if (owes(stored, id)) return true
+      // Not owed as storage keeps it: owed nowhere, so no later write
+      // carries a mark for a note that was not set aside.
+      apply({ kind: "unowed", id })
+      return false
     },
-    markSafe: (id) => markSafe(stored, id),
+    unowe(id): void {
+      apply({ kind: "unowed", id })
+    },
     marks: {
       due: () => marksDue(state),
       answered(kind, id): void {

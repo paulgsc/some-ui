@@ -146,4 +146,40 @@ describe("the voice notes on their way home", () => {
       expect(s.held.size).toBe(0)
     }
   })
+
+  it("owes a set-aside mark only as storage keeps it, holding none storage refused, and takes one back (MIC2)", () => {
+    const backing = memoryStorage()
+    let full = false
+    const storage = {
+      ...backing,
+      setItem: (key: string, value: string): void => {
+        if (full) throw new DOMException("full", "QuotaExceededError")
+        backing.setItem(key, value)
+      },
+    }
+    const home = createVoiceHome({ storage, shelf: shelf(), encode, now })
+    expect(home.owe("n1", HEARD)).toBe(true)
+    full = true
+    expect(home.owe("n2", HEARD)).toBe(false)
+    // Owed nowhere, not even in memory, so no later write carries it.
+    expect(home.getSnapshot().aside.owed.map(({ id }) => id)).toEqual(["n1"])
+    full = false
+    expect(home.owe("n2", HEARD)).toBe(true)
+    const relaunched = createVoiceHome({ storage, shelf: shelf(), encode, now })
+    expect(relaunched.getSnapshot().aside.owed.map(({ id }) => id)).toEqual([
+      "n1",
+      "n2",
+    ])
+    relaunched.unowe("n2")
+    expect(relaunched.getSnapshot().aside.owed.map(({ id }) => id)).toEqual([
+      "n1",
+    ])
+    // With no storage at all, nothing is ever owed as storage keeps it.
+    expect(
+      createVoiceHome({ storage: null, shelf: shelf(), encode, now }).owe(
+        "n1",
+        HEARD
+      )
+    ).toBe(false)
+  })
 })

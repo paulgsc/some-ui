@@ -52,23 +52,6 @@ describe("the cap", () => {
     expect(displacedBy(marked, "b3", all)).toEqual(["b3"])
   })
 
-  it("asks with each one's standing, passing over one set aside home's word doesn't let go yet (MIC2)", () => {
-    const aside = kept(6).map((each) =>
-      each.id === "b5" ? { ...each, standing: "set-aside" as const } : each
-    )
-    // Home holds every one, but b5's mark is not safe.
-    const unsafe = (_id: string, standing?: string): boolean =>
-      standing !== "set-aside"
-    expect(nextReplaced(aside, null, unsafe)?.id).toBe("b4")
-    expect(displacedBy(aside, "b5", unsafe)).toEqual(["b4"])
-    // With only it held, there is no room: the next is refused.
-    expect(
-      displacedBy(aside, null, (id, standing) =>
-        id === "b5" ? unsafe(id, standing) : false
-      )
-    ).toBeNull()
-  })
-
   it("lets none go and refuses the next while home holds none (HF5)", () => {
     expect(nextReplaced(kept(6), null)).toBeNull()
     expect(displacedBy(kept(6), null)).toBeNull()

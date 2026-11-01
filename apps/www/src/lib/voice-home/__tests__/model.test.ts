@@ -14,7 +14,6 @@ import type {
 } from "@/lib/voice-home/model"
 import {
   ASIDE_ANSWERED_MAX,
-  ASIDE_UNFOUND_MAX,
   INITIAL_VOICE_HOME,
   marksDue,
   NO_ASIDE,
@@ -172,16 +171,13 @@ describe("the set-aside marks owed to home (MIC2)", () => {
   })
 
   it("answers a mark for good once taken or never takeable, and never owes it again", () => {
-    for (const [kind, givenUp] of [
-      ["marked", []],
-      ["unmarkable", [{ id: "n1", at: LET_GO, why: "unreadable" }]],
-    ] as const) {
+    for (const kind of ["marked", "unmarkable"] as const) {
       const answered = step(
         held,
         { kind: "aside", id: "n1", at: LET_GO },
         { kind, id: "n1" }
       )
-      expect(answered.aside).toEqual({ owed: [], answered: ["n1"], givenUp })
+      expect(answered.aside).toEqual({ owed: [], answered: ["n1"] })
       expect(
         stepVoiceHome(answered, { kind: "aside", id: "n1", at: LET_GO })
       ).toBe(answered)
@@ -190,24 +186,13 @@ describe("the set-aside marks owed to home (MIC2)", () => {
     }
   })
 
-  it("gives a mark up, kept as given up, once home has found no such note on ASIDE_UNFOUND_MAX runs", () => {
-    let state = step(held, { kind: "aside", id: "n1", at: LET_GO })
-    for (let run = 1; run < ASIDE_UNFOUND_MAX; run += 1) {
-      state = stepVoiceHome(state, { kind: "unfound", id: "n1" })
-      expect(state.aside.owed).toEqual([{ id: "n1", at: LET_GO, unfound: run }])
-      expect(marksDue(state)).toHaveLength(1)
-    }
-    state = stepVoiceHome(state, { kind: "unfound", id: "n1" })
-    expect(state.aside).toEqual({
-      owed: [],
-      answered: ["n1"],
-      givenUp: [
-        { id: "n1", at: LET_GO, unfound: ASIDE_UNFOUND_MAX, why: "unfound" },
-      ],
-    })
-    expect(stepVoiceHome(state, { kind: "aside", id: "n1", at: LET_GO })).toBe(
-      state
+  it("takes back a mark owed for a set-aside write that did not happen, and none answered", () => {
+    const owed = step(held, { kind: "aside", id: "n1", at: LET_GO })
+    expect(stepVoiceHome(owed, { kind: "unowed", id: "n1" }).aside).toEqual(
+      NO_ASIDE
     )
+    const answered = step(owed, { kind: "marked", id: "n1" })
+    expect(stepVoiceHome(answered, { kind: "unowed", id: "n1" })).toBe(answered)
   })
 
   it("drops a mark owed for a note home refused, and owes none for one", () => {
@@ -241,21 +226,25 @@ describe("the set-aside marks owed to home (MIC2)", () => {
       held,
       { kind: "aside", id: "n1", at: LET_GO },
       { kind: "aside", id: "n2", at: LET_GO },
-      { kind: "marked", id: "n1" },
-      { kind: "unfound", id: "n2" }
+      { kind: "marked", id: "n1" }
     )
     expect(parseVoiceHome(JSON.stringify(state))).toEqual(state)
+    // An earlier build's record: a count of runs home found no note, and
+    // marks given up, are read past.
+    const earlier = {
+      ...state,
+      aside: {
+        owed: [{ id: "n2", at: LET_GO, unfound: 2 }],
+        answered: ["n1"],
+        givenUp: [{ id: "n9", at: LET_GO, why: "unfound" }],
+      },
+    }
+    expect(parseVoiceHome(JSON.stringify(earlier))).toEqual(state)
     for (const aside of [
       [],
-      { owed: [{ id: "n1" }], answered: [], givenUp: [] },
-      { owed: [], answered: [1], givenUp: [] },
-      { owed: [], answered: [], givenUp: [{ id: "n1", at: LET_GO }] },
-      {
-        owed: [{ id: "n1", at: LET_GO, unfound: "1" }],
-        answered: [],
-        givenUp: [],
-      },
-      { owed: [], answered: [] },
+      { owed: [{ id: "n1" }], answered: [] },
+      { owed: [], answered: [1] },
+      { owed: [] },
     ]) {
       const raw = JSON.stringify({ ...state, aside })
       expect([raw, parseVoiceHome(raw)]).toEqual([raw, null])

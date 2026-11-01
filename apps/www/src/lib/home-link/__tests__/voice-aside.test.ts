@@ -15,7 +15,6 @@ import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import type { BlobShelf } from "@some-ui/voice-capture"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { readSent, rememberSent } from "@/lib/home-link/sent"
 import { setAsidePath } from "@/lib/home-link/set-aside"
 import { asideAt, sendVoice, watchVoiceNotes } from "@/lib/home-link/voice-copy"
 import type { JobsState, VoiceNote } from "@/lib/jobs/model"
@@ -23,30 +22,19 @@ import { EMPTY } from "@/lib/jobs/model"
 import type { KeptSceneNote } from "@/lib/scene-voice"
 import type { Reflection } from "@/lib/session-reflection/policy"
 import type { Take } from "@/lib/takes-desk"
-import { ASIDE_UNFOUND_MAX } from "@/lib/voice-home/model"
 import type { VoiceHome } from "@/lib/voice-home/runtime"
 import { createVoiceHome } from "@/lib/voice-home/runtime"
+import { setAsideOwing, voiceMarks } from "@/lib/voice-marks"
 
-/**
- * A note's audio, a takes desk over `takes`, as the voice lane reads them,
- * and what the lane last told each store may leave the phone: the lens
- * desk's safe marks, and the soundbites' held reading.
- */
-const { AUDIO, desk, told } = vi.hoisted(() => {
+/** A note's audio, and a takes desk over `takes`, as the voice lane reads them. */
+const { AUDIO, desk } = vi.hoisted(() => {
   const audio = (): Promise<Blob | null> => Promise.resolve(new Blob(["a"]))
-  const told: {
-    lens: ((id: string) => boolean) | null
-    bites: ((id: string, standing?: string) => boolean) | null
-  } = { lens: null, bites: null }
   return {
     AUDIO: audio,
-    told,
-    desk: (takes: () => ReadonlyArray<unknown>, name?: "lens"): unknown => ({
+    desk: (takes: () => ReadonlyArray<unknown>): unknown => ({
       kept: takes,
       audio,
-      keptWhere: (_where: unknown, marked: (id: string) => boolean): void => {
-        if (name !== undefined) told[name] = marked
-      },
+      keptWhere: (): void => undefined,
       phone: () => ({
         subscribe: () => (): void => undefined,
         takes: { subscribe: () => (): void => undefined },
@@ -105,11 +93,7 @@ vi.mock("@/lib/soundbite-keeping", () => ({
       audio: AUDIO,
       subscribe: () => (): void => undefined,
     },
-    heldByHome: (
-      next: () => (id: string, standing?: string) => boolean
-    ): void => {
-      told.bites = next()
-    },
+    heldByHome: (): void => undefined,
   }),
   onSoundbitesKept: () => (): void => undefined,
 }))
@@ -118,7 +102,7 @@ vi.mock("@/lib/studio-keeping", () => ({
   onStudioKept: () => (): void => undefined,
 }))
 vi.mock("@/lib/lens-takes", () => ({
-  lensTakesDesk: desk(() => fakes.lens, "lens"),
+  lensTakesDesk: desk(() => fakes.lens),
 }))
 vi.mock("@/lib/leetype-takes", () => ({
   leetypeTakesDesk: desk(() => fakes.leetype),
@@ -370,7 +354,7 @@ describe("home's set-aside mark on a note let go on the phone (MIC2)", () => {
     expect(await sendVoice(home(first, () => 404))).toEqual({ kind: "synced" })
     expect(marksIn(first)).toHaveLength(1)
     expect(fakes.home?.getSnapshot().aside.owed).toEqual([
-      { id: "n1", at: LET_GO, unfound: 1 },
+      { id: "n1", at: LET_GO },
     ])
 
     const second: Array<string> = []
@@ -381,22 +365,18 @@ describe("home's set-aside mark on a note let go on the phone (MIC2)", () => {
     expect(marksIn(third)).toEqual([])
   })
 
-  it("gives a mark up once home has found no such note on ASIDE_UNFOUND_MAX runs, keeping it as given up and asking no more", async () => {
+  it("keeps asking for a mark home finds no note for, run after run, without giving it up", async () => {
     fakes.bites = [bite("n1", "set-aside")]
-    for (let run = 0; run < ASIDE_UNFOUND_MAX; run += 1) {
+    for (let run = 0; run < 8; run += 1) {
       const heard: Array<string> = []
       expect(await sendVoice(home(heard, () => 404))).toEqual({
         kind: "synced",
       })
       expect(marksIn(heard)).toHaveLength(1)
     }
-    expect(fakes.home?.getSnapshot().aside).toMatchObject({
-      owed: [],
-      givenUp: [{ id: "n1", why: "unfound" }],
-    })
-    const after: Array<string> = []
-    await sendVoice(home(after, () => 404))
-    expect(marksIn(after)).toEqual([])
+    expect(fakes.home?.getSnapshot().aside.owed).toEqual([
+      { id: "n1", at: LET_GO },
+    ])
   })
 
   it("keeps a mark owed when its request got no answer, and the run throws as the lane's other requests do", async () => {
@@ -425,7 +405,7 @@ describe("home's set-aside mark on a note let go on the phone (MIC2)", () => {
     expect(later).toEqual([setAsidePath({ id: "b1", at: LET_GO })])
   })
 
-  it("keeps the mark of a note that leaves the phone on home's word, set aside after home held it", async () => {
+  it("owes the mark of a note set aside before Let go owed marks, before it leaves the phone on home's word", async () => {
     fakes.scene = [sceneNote("s1")]
     await sendVoice(home([]))
     expect(fakes.home?.getSnapshot().held).toEqual(["s1"])
@@ -440,41 +420,7 @@ describe("home's set-aside mark on a note let go on the phone (MIC2)", () => {
     expect(heard).toEqual([setAsidePath({ id: "s1", at: LET_GO })])
   })
 
-  it("keeps a scene note set aside on the phone while storage won't keep its mark, and lets it go once it does (LA13)", async () => {
-    const storage = memoryStorage()
-    let full = false
-    const tight = {
-      ...storage,
-      setItem: (key: string, value: string): void => {
-        if (full) throw new DOMException("full", "QuotaExceededError")
-        storage.setItem(key, value)
-      },
-    }
-    fakes.home = createVoiceHome({
-      storage: tight,
-      shelf: shelf(),
-      encode: () => Promise.resolve({ base64: "", sha256: "s" }),
-      now: Date.now,
-    })
-    fakes.scene = [sceneNote("s1")]
-    await sendVoice(home([]))
-    expect(fakes.home.getSnapshot().held).toEqual(["s1"])
-
-    full = true
-    fakes.scene = [sceneNote("s1", "set-aside")]
-    watchVoiceNotes()()
-    // Owed in memory only: the note stays, so a later launch owes it again.
-    expect(fakes.home.getSnapshot().aside.owed).toHaveLength(1)
-    expect(fakes.home.markSafe("s1")).toBe(false)
-    expect(fakes.scene).toHaveLength(1)
-
-    full = false
-    watchVoiceNotes()()
-    expect(fakes.home.markSafe("s1")).toBe(true)
-    expect(fakes.scene).toEqual([])
-  })
-
-  it("owes the mark of a held take set aside on a phone no longer paired, and only then lets its store make room with it (LA13)", async () => {
+  it("owes the mark at Let go through the lane it wires, so a note that leaves at once keeps it, and sets nothing aside when storage won't keep it (LA13)", async () => {
     const storage = memoryStorage()
     let full = false
     fakes.home = createVoiceHome({
@@ -489,38 +435,59 @@ describe("home's set-aside mark on a note let go on the phone (MIC2)", () => {
       encode: () => Promise.resolve({ base64: "", sha256: "s" }),
       now: Date.now,
     })
-    fakes.lens = [take("n1")]
-    fakes.bites = [bite("b1")]
+    fakes.scene = [sceneNote("s1"), sceneNote("s2")]
     await sendVoice(home([]))
-    expect(fakes.home.getSnapshot().held).toEqual(["b1", "n1"])
-    // Practice's run left b1's record on home too.
-    rememberSent(localStorage, readSent(localStorage, "pairing-1"), {
-      notes: { "soundbite:b1": "sha" },
-    })
+    const stop = watchVoiceNotes()
+    const letGo = (id: string): boolean =>
+      setAsideOwing(id, LET_GO, () => {
+        fakes.scene = fakes.scene.map((note) =>
+          note.id === id ? sceneNote(id, "set-aside") : note
+        )
+        return true
+      })
 
-    // Away from home, both let go while storage won't keep a mark.
-    fakes.paired = false
-    fakes.lens = [take("n1", "set-aside")]
-    fakes.bites = [bite("b1", "set-aside")]
     full = true
-    watchVoiceNotes()()
-    expect(told.lens?.("n1")).toBe(false)
-    expect(told.bites?.("b1", "set-aside")).toBe(false)
-    // Held all the same, as its row says.
-    expect(told.bites?.("b1")).toBe(true)
-
+    expect(letGo("s1")).toBe(false)
+    expect(fakes.scene.map(({ standing }) => standing)).toEqual([
+      undefined,
+      undefined,
+    ])
     full = false
+    expect(letGo("s2")).toBe(true)
+    stop()
+    // Unwired, Let go owes nothing: no lane, nothing goes home under a mark.
+    expect(voiceMarks.owe("s9", LET_GO)).toBe(true)
+    expect(fakes.home.getSnapshot().aside.owed).toEqual([
+      { id: "s2", at: LET_GO },
+    ])
+
+    // The draft lets s2 go on home's word; its mark goes all the same.
     watchVoiceNotes()()
-    expect(told.lens?.("n1")).toBe(true)
-    // The soundbites are read only on a paired pass: until then the one set
-    // aside makes no room.
-    expect(told.bites?.("b1", "set-aside")).toBe(false)
-    fakes.paired = true
+    expect(fakes.scene.map(({ id }) => id)).toEqual(["s1"])
     const heard: Array<string> = []
-    await sendVoice(home(heard))
-    watchVoiceNotes()()
-    expect(told.bites?.("b1", "set-aside")).toBe(true)
-    expect(marksIn(heard)).toHaveLength(2)
+    expect(await sendVoice(home(heard))).toEqual({ kind: "synced" })
+    expect(heard).toEqual([setAsidePath({ id: "s2", at: LET_GO })])
+  })
+
+  it("sends the mark of a spoken reflection set aside, then let go with the session's hand-off before home held it", async () => {
+    fakes.reflections = [reflection("r1")]
+    const stop = watchVoiceNotes()
+    expect(
+      setAsideOwing("r1", LET_GO, () => {
+        fakes.reflections = [reflection("r1", "set-aside")]
+        return true
+      })
+    ).toBe(true)
+    stop()
+    // Home busy: the copy waits on this phone.
+    const busy: HomeCall = () => Promise.resolve({ status: 503, body: "" })
+    expect((await sendVoice(busy)).kind).toBe("failed")
+    // The hand-off lets the reflection and its audio go (letGoReflections).
+    fakes.reflections = []
+    const heard: Array<string> = []
+    expect(await sendVoice(home(heard))).toEqual({ kind: "synced" })
+    expect(heard.at(0)).toMatch(/^\/voice-notes\/r1\?/)
+    expect(marksIn(heard)).toEqual([setAsidePath({ id: "r1", at: LET_GO })])
   })
 
   it("reads when a note was set aside off any record, a time it can't read as none", () => {
@@ -528,7 +495,14 @@ describe("home's set-aside mark on a note let go on the phone (MIC2)", () => {
     expect(asideAt({ standing: "set-aside", setAsideAt: LET_GO_MS })).toBe(
       LET_GO
     )
-    for (const setAsideAt of ["soon", "", Number.NaN, Infinity, {}]) {
+    for (const setAsideAt of [
+      "soon",
+      "",
+      Number.NaN,
+      Infinity,
+      8.64e15 + 1,
+      {},
+    ]) {
       expect(asideAt({ standing: "set-aside", setAsideAt })).toBeNull()
     }
     expect(asideAt({ standing: "set-aside" })).toBeNull()

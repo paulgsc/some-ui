@@ -20,6 +20,8 @@ import type {
 } from "@some-ui/voice-capture"
 import { takePattern } from "@some-ui/voice-capture"
 
+import type { MarkOwing } from "./aside-marks"
+import { asideMarks } from "./aside-marks"
 import type {
   SoundbitesEffect,
   SoundbitesEvent,
@@ -48,6 +50,8 @@ export type SoundbitesPorts = {
   onVisibility: (listener: (hidden: boolean) => void) => () => void
   /** The phone's one microphone unless a test gives its own. */
   owner?: MicOwner | undefined
+  /** What owes home a soundbite's set-aside mark, unless a test gives its own. */
+  marks?: MarkOwing | undefined
   /** The microphone's deadlines unless a test gives its own. */
   deadlines?: TakeDeadlines | undefined
 }
@@ -124,12 +128,24 @@ export function createSoundbites(
             })
         )
       },
+      // Set aside only once its mark is owed (MIC2): a mark storage won't
+      // keep sets nothing aside, and a write that fails takes it back.
       setAside: (id, done) => {
-        ports.store.setAside(id, new Date(ports.now()).toISOString()).then(
+        const at = new Date(ports.now()).toISOString()
+        const marks = ports.marks ?? asideMarks()
+        const failed = (): void => {
+          done(false)
+          dispatch({ type: "setAsideFailed" })
+        }
+        if (!marks.owe(id, at)) {
+          failed()
+          return
+        }
+        ports.store.setAside(id, at).then(
           () => done(true),
           () => {
-            done(false)
-            dispatch({ type: "setAsideFailed" })
+            marks.unowe(id)
+            failed()
           }
         )
       },
