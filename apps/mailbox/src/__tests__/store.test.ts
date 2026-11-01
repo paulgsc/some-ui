@@ -96,7 +96,7 @@ describe("the migration", () => {
     }
     const jobs1 = "index-jobs-20261031T150000000Z.json"
     const jobs2 = "index-jobs-20261101T150000000Z.json"
-    const topik = "index-topik-20261102T150000000Z.json"
+    const reflections = "index-reflections-20261102T150000000Z.json"
     index(jobs1)
     const leaves = "an item leaves only into archived"
     const drop = (name: string): void => {
@@ -105,7 +105,7 @@ describe("the migration", () => {
     expect(() => {
       drop(jobs1)
     }).toThrow(leaves)
-    index(topik)
+    index(reflections)
     expect(() => {
       drop(jobs1)
     }).toThrow(leaves)
@@ -114,13 +114,13 @@ describe("the migration", () => {
       drop(jobs2)
     }).toThrow(leaves)
     expect(() => {
-      drop(topik)
+      drop(reflections)
     }).toThrow(leaves)
     expect(() => {
       drop(jobs1)
     }).not.toThrow()
     expect(db.exec("SELECT name FROM item ORDER BY seq").at(0)?.values).toEqual(
-      [[topik], [jobs2]]
+      [[reflections], [jobs2]]
     )
   })
 
@@ -367,19 +367,21 @@ describe.each([
     const home = (text: string): NewItem => item(text, { putBy: "home" })
     const jobs1 = "index-jobs-20261031T150000000Z.json"
     const jobs2 = "index-jobs-20261101T150000000Z.json"
-    const topik = "index-topik-20261030T150000000Z.json"
+    const reflections = "index-reflections-20261030T150000000Z.json"
     expect(await store.put("index", jobs1, home("1"))).toEqual({
       change: "added",
       seq: 1,
     })
-    expect((await store.put("index", topik, home("t"))).change).toBe("added")
+    expect((await store.put("index", reflections, home("t"))).change).toBe(
+      "added"
+    )
     expect(await store.put("index", jobs1, home("1"))).toEqual({
       change: "unchanged",
       seq: 1,
     })
     expect((await store.put("index", jobs2, home("2"))).change).toBe("added")
     expect((await store.list("index", 0, 50)).map((meta) => meta.name)).toEqual(
-      [topik, jobs2]
+      [reflections, jobs2]
     )
     expect(await store.get("index", jobs1)).toBeNull()
     expect(await store.archivedOf("index", jobs1)).toBeNull()
@@ -387,7 +389,7 @@ describe.each([
       change: "superseded",
     })
     expect((await store.list("index", 0, 50)).map((meta) => meta.name)).toEqual(
-      [topik, jobs2]
+      [reflections, jobs2]
     )
     expect(
       new TextDecoder().decode((await store.get("index", jobs2))?.bytes)

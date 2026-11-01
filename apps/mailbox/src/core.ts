@@ -319,8 +319,6 @@ function promptRefusal(
   return null
 }
 
-/** The routines home computes an index for (README, "What a put must satisfy"). */
-const INDEX_ROUTINES: ReadonlySet<unknown> = new Set(["jobs"])
 /** The keys of a `some-ui.routine-index/1` body for the jobs routine; any other is refused. */
 const JOBS_INDEX_KEYS: ReadonlySet<string> = new Set([
   "schema",
@@ -335,29 +333,47 @@ const JOBS_INDEX_KEYS: ReadonlySet<string> = new Set([
   "notes",
   "picked",
 ])
+/** The keys of a `some-ui.routine-index/1` body for the reflections routine; any other is refused. */
+const REFLECTIONS_INDEX_KEYS: ReadonlySet<string> = new Set([
+  "schema",
+  "routine",
+  "asOf",
+  "validUntil",
+  "skipped",
+  "answered",
+  "words",
+  "recent",
+  "unopened",
+  "reflections",
+  "prompts",
+])
 const NO_AUDIO_INDEX = "an index carries no audio: home keeps the audio"
 const NO_DRIVE_INDEX = "an index names no Drive file"
 
-/**
- * README, "What a put must satisfy": an index is home's bookkeeping for one
- * routine, its own keys only, and text.
- */
-function indexRefusal(
-  body: Readonly<Record<string, unknown>>,
-  text: string,
-  name: string
+/** One routine's index shape past its keys: why it is refused, or `null`. */
+type IndexShape = (body: Readonly<Record<string, unknown>>) => string | null
+
+function shapeOf(
+  objects: ReadonlyArray<string>,
+  lists: ReadonlyArray<string>,
+  body: Readonly<Record<string, unknown>>
 ): string | null {
-  const carried = carriesRefusal(text, NO_AUDIO_INDEX, NO_DRIVE_INDEX)
-  if (carried !== null) return carried
-  if (!INDEX_ROUTINES.has(body.routine)) return "routine must be jobs"
-  if (!name.startsWith(`index-${String(body.routine)}-`)) {
-    return "the name must carry the body's routine"
+  for (const key of objects) {
+    if (!isRecord(body[key])) return `${key} must be an object`
   }
-  const keys = Object.keys(body)
-  const extra = keys.find((key) => !JOBS_INDEX_KEYS.has(key))
-  if (extra !== undefined) return `${extra} is not part of the jobs index`
-  const missing = [...JOBS_INDEX_KEYS].find((key) => !(key in body))
-  if (missing !== undefined) return `the jobs index carries ${missing}`
+  for (const key of lists) {
+    if (!Array.isArray(body[key])) return `${key} must be a list`
+  }
+  return null
+}
+
+const asOfRefusal = (body: Readonly<Record<string, unknown>>): string | null =>
+  body.asOf !== null && !isInstant(body.asOf)
+    ? "asOf must be when home last took in what the index counts"
+    : null
+
+/** The jobs index: a day, the last day its queue holds, and its parts. */
+const jobsShape: IndexShape = (body) => {
   if (!isCalendarDay(body.day)) return "day must be the day the index is for"
   if (
     body.validThrough !== null &&
@@ -365,16 +381,72 @@ function indexRefusal(
   ) {
     return "validThrough must be a day from day on, or null"
   }
-  if (body.asOf !== null && !isInstant(body.asOf)) {
-    return "asOf must be when home last took in what the index counts"
+  return (
+    asOfRefusal(body) ??
+    shapeOf(["from", "queue", "new"], ["skipped", "notes", "picked"], body)
+  )
+}
+
+/**
+ * The reflections index: the moment it next changes, after `asOf`, and its
+ * parts.
+ */
+const reflectionsShape: IndexShape = (body) => {
+  const asOf = asOfRefusal(body)
+  if (asOf !== null) return asOf
+  if (
+    body.validUntil !== null &&
+    (!isInstant(body.validUntil) ||
+      body.asOf === null ||
+      Date.parse(String(body.validUntil)) <= Date.parse(String(body.asOf)))
+  ) {
+    return "validUntil must be a moment after asOf, or null"
   }
-  for (const key of ["from", "queue", "new"] as const) {
-    if (!isRecord(body[key])) return `${key} must be an object`
+  return shapeOf(
+    ["answered", "unopened"],
+    ["skipped", "words", "recent", "reflections", "prompts"],
+    body
+  )
+}
+
+/** The routines home computes an index for (README, "What a put must satisfy"), each with its keys and shape. */
+const INDEX_ROUTINES: ReadonlyMap<
+  unknown,
+  { readonly keys: ReadonlySet<string>; readonly shape: IndexShape }
+> = new Map([
+  ["jobs", { keys: JOBS_INDEX_KEYS, shape: jobsShape }],
+  ["reflections", { keys: REFLECTIONS_INDEX_KEYS, shape: reflectionsShape }],
+])
+
+/**
+ * README, "What a put must satisfy": an index is home's bookkeeping for one
+ * routine, that routine's own keys only, and text.
+ */
+function indexRefusal(
+  body: Readonly<Record<string, unknown>>,
+  text: string,
+  name: string
+): string | null {
+  const routine = INDEX_ROUTINES.get(body.routine)
+  if (routine === undefined) {
+    return `routine must be ${[...INDEX_ROUTINES.keys()].join(" or ")}`
   }
-  for (const key of ["skipped", "notes", "picked"] as const) {
-    if (!Array.isArray(body[key])) return `${key} must be a list`
+  const what = `${String(body.routine)} index`
+  const shape = shapeRefusal(
+    body,
+    text,
+    routine.keys,
+    NO_AUDIO_INDEX,
+    NO_DRIVE_INDEX,
+    what
+  )
+  if (shape !== null) return shape
+  if (!name.startsWith(`index-${String(body.routine)}-`)) {
+    return "the name must carry the body's routine"
   }
-  return null
+  const missing = [...routine.keys].find((key) => !(key in body))
+  if (missing !== undefined) return `the ${what} carries ${missing}`
+  return routine.shape(body)
 }
 
 /**
