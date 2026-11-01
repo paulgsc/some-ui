@@ -33,7 +33,12 @@ import { readdirSync, readFileSync } from "node:fs"
 import { dirname, join, posix, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import ts from "typescript"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
+
+// EG1: each scan here reads and parses every source file in www, so its time
+// grows with the tree, not with the change. vitest's 5 s default left no room
+// on a busy CI host, where the LA8 scan took 5.1 s.
+vi.setConfig({ testTimeout: 30_000 })
 
 /** apps/www/src/lib/serving-privacy/__tests__ -> apps/www/src. */
 const SRC = resolve(dirname(fileURLToPath(import.meta.url)), "../../..")
