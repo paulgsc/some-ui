@@ -62,8 +62,10 @@ export type IndexStanding = {
   readonly backfill: ReadonlyArray<string>
   /**
    * Files named for `DRIVE_ONLY_ENDED` or later that Drive holds and the index
-   * lacks: the mailbox refuses them; the phone files them home, so one should
-   * only show up until home's next index.
+   * lacks: the mailbox refuses them. A phone on an APK without HF2 shared a
+   * file that names a voice note to Drive alone; the owner's phone has HF2
+   * since 2026-10-31 and files every Jobs file home, so none is expected
+   * past home's next index (#2393).
    */
   readonly later: ReadonlyArray<string>
 }
