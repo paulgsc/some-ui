@@ -18,7 +18,7 @@ export type TakeListProps = {
   takes: ReadonlyArray<PatternTake>
 } & Pick<
   TakeItemProps,
-  "label" | "describe" | "words" | "extra" | "size" | "className"
+  "label" | "describe" | "words" | "extra" | "full" | "size" | "className"
 >
 
 /**

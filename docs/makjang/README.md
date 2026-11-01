@@ -917,28 +917,35 @@ connector, say):
 
 On a phone, the scene a learner wants is often long (what should happen,
 who, how it should feel), and typing it is the worst part of asking for
-one. So "Write your own drama" opens on the scene first, said aloud: tap to
-talk and tap to keep, as a voice reflection is, as many times as it takes
-(up to five notes of a minute each). A typed line stays beside it, and
-level and genre fold away under a line that says what they are.
+one. So "Write your own drama" opens on the scene first, said aloud on the
+take pattern (`docs/monorepo-boundaries.md`, "Patterns"): tap to talk and
+tap to keep, as many times as it takes (up to five notes of a minute each),
+then each note's row with where it is kept, Play, Redo and Let it go. A
+typed line stays beside it, and level and genre fold away under a line that
+says what they are.
 
 - **One draft.** The notes are one draft, kept on the device (their audio on
   its own IndexedDB shelf, their list in `localStorage`) across leaving the
   screen and closing the app. "Write your own drama" continues the open
   draft; another scene starts only once this one is let go, by asking for it
-  or by discarding it ("Start a different scene").
+  or by setting it aside ("Start a different scene"). Redo keeps the note it
+  records again, out of the draft (D2), and Let go sets a note aside, kept
+  (D3): nothing the person taps removes a note.
 - **They go with the ask.** Each note goes home as a voice note once it is
   kept (HF2, #2177), and the ask names each one by the phone's id under its
   file name, `drama-<stamp>.voice-<n>.<ext>` (the recording's type), in the
   order said (`Scene, spoken`), so the routine reads what home heard before
   it writes. The clipboard cannot carry audio, so a copied prompt goes
   without them, and the screen says so.
-- **They leave once home holds them.** A note leaves the draft once home
-  holds it and the ask that named it (LA13, LA18), never on a share's
-  word.
+- **They leave once home holds them.** A note leaves the phone once home
+  holds it and the ask that named it (LA13, LA18), or once home holds it
+  and it is out of the draft, never on a share's word. Until then a note
+  out of the draft is kept on the phone, which keeps twenty notes in all:
+  past them a new note makes room by letting go the oldest home holds that
+  is out of the draft, and is refused while there is none.
 - **Where it runs.** Recording is the Android app's (www's `lib/scene-voice`,
-  over `@some-ui/voice-capture`'s voice note, which voice reflections run
-  too). Topik holds only the `SceneVoice` port; without it the scene is
+  over `@some-ui/voice-capture`'s take pattern). Topik holds only the
+  `SceneVoice` port and draws the pattern's parts; without it the scene is
   typed.
 
 ### Pulling a scene back (MKJ-S10)

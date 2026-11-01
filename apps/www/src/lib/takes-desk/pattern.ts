@@ -6,11 +6,12 @@
  * on a shelf and its entry in a list, as the lens's desk keeps them
  * (`./runtime`).
  *
- * - **One current take per item** (`per: "one"`). A Redo's take becomes the
- *   item's take and the one it supersedes an earlier take, in the same write
- *   (D2). Let go marks a take set aside (D3). Neither removes anything: both
- *   stay listed, with their audio, and go home as every take of their kind
- *   does.
+ * - **One current take per item** (`per: "one"`, Rust Rounds and LeetType),
+ *   or many beside each other (the grammar lens, `DeskShape`). A Redo's take
+ *   becomes the item's take and the one it supersedes an earlier take, in
+ *   the same write (D2). Let go marks a take set aside (D3). Neither removes
+ *   anything: both stay listed, with their audio, and go home as every take
+ *   of their kind does.
  * - **Bounded as the lens's desk is** (HF5, #2180): at most `limits.max`
  *   takes, each at most `limits.maxMs`. At the most a new take makes room by
  *   letting go the oldest take home holds (`kept`); with none held it is
@@ -79,24 +80,35 @@ export type PatternPhone = {
   readonly takes: PatternTakes
   /** No new take can be kept until home holds some of those kept. */
   readonly full: () => boolean
-  /** Lets these takes go, with their audio: the sweep's, for audio that never landed. */
-  readonly letGo: (ids: ReadonlyArray<string>) => void
+  /**
+   * Lets these takes go, with their audio: the sweep's, for audio that never
+   * landed. Says whether the list stored it.
+   */
+  readonly letGo: (ids: ReadonlyArray<string>) => boolean
   /** Where takes are kept has changed: each row, and `full`. */
   readonly recount: () => void
 }
 
 const takenAt = (take: Take): number => take.takenAt
 
-function deskPatternOptions(limits: TakeLimits): TakePatternOptions {
+/** How many takes an item keeps, and which of them play: `ONE_TAKE`'s unless a desk says. */
+export type DeskShape = Pick<TakePatternOptions, "takes" | "play">
+
+function deskPatternOptions(
+  limits: TakeLimits,
+  shape: DeskShape
+): TakePatternOptions {
   return {
     ...ONE_TAKE,
+    ...shape,
     limits: { minMs: SOUNDBITE_MIN_MS, maxMs: limits.maxMs },
   }
 }
 
 export function createPatternTakes(
   ports: PatternTakesPorts,
-  limits: TakeLimits
+  limits: TakeLimits,
+  shape: DeskShape = ONE_TAKE
 ): PatternPhone {
   const listeners = new Set<() => void>()
   const held = (id: string): boolean => homeHolds(ports.kept(id))
@@ -125,14 +137,16 @@ export function createPatternTakes(
     )
   }
 
-  const letGo = (ids: ReadonlyArray<string>): void => {
-    if (ids.length === 0) return
+  const letGo = (ids: ReadonlyArray<string>): boolean => {
+    if (ids.length === 0) return true
     // The list first: audio whose entry stays would leave a silent take.
-    if (ports.takes.remove(ids)) {
+    const stored = ports.takes.remove(ids)
+    if (stored) {
       // Ignored: audio no take names is cleared by the next sweep.
       ports.audio.remove(ids).catch(() => undefined)
     }
     publish()
+    return stored
   }
 
   const pattern = takePattern(
@@ -147,8 +161,13 @@ export function createPatternTakes(
           done({ outcome: "full" })
           return
         }
+        // RM1: a room not made keeps nothing, so the list never drops a
+        // take at its cap to fit this one.
         const room = makesRoom(ports.takes.read(), limits.max, held, takenAt)
-        if (room !== null) letGo([room.id])
+        if (room !== null && !letGo([room.id])) {
+          done({ outcome: "failed" })
+          return
+        }
         const id = ports.newId()
         shelveTake(
           ports,
@@ -183,7 +202,7 @@ export function createPatternTakes(
       },
       audio: (id) => ports.audio.get(id),
     },
-    deskPatternOptions(limits)
+    deskPatternOptions(limits, shape)
   )
 
   return {

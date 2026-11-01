@@ -122,3 +122,34 @@ describe("phoneSpokenTakes", () => {
     })
   })
 })
+
+// Last: the desk is the page's one, and reads its list once.
+describe("leetypeTakesForExport", () => {
+  it("exports neither a take out of view nor the note of what it answered (D2, D3)", async () => {
+    localStorage.setItem(
+      "some-ui:leetype-takes",
+      JSON.stringify([
+        {
+          id: "kept",
+          line: "t1-01#s15",
+          takenAt: 2,
+          durationMs: 3_000,
+          mimeType: "audio/webm",
+        },
+        {
+          id: "aside",
+          line: "t1-01#s15",
+          takenAt: 1,
+          durationMs: 3_000,
+          mimeType: "audio/webm",
+          standing: "set-aside",
+        },
+      ])
+    )
+    phoneSpokenTakes().note({ ...NOTE, take: "aside", typed: null })
+    phoneSpokenTakes().note({ ...NOTE, take: "kept", typed: null })
+    const { notes, takes } = await leetypeTakesForExport()
+    expect(takes.map(({ take }) => take.id)).toEqual(["kept"])
+    expect(notes.map(({ take }) => take)).toEqual(["kept"])
+  })
+})
