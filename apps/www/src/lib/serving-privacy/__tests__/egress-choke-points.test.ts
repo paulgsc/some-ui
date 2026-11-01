@@ -35,9 +35,11 @@ import { fileURLToPath } from "node:url"
 import ts from "typescript"
 import { describe, expect, it, vi } from "vitest"
 
-// EG1: each scan here reads and parses every source file in www, so its time
-// grows with the tree, not with the change. vitest's 5 s default left no room
-// on a busy CI host, where the LA8 scan took 5.1 s.
+// EG1: a scan fails only on a violation, not on a busy CI host. Each scan
+// reads and parses every source file in www; vitest's 5 s default left no
+// room on a busy host, where the LA8 scan took 5.1 s. 30 s covers host load
+// on today's tree. Tolerance: a tree whose scan nears 30 s, which then wants
+// the files parsed once for every check, not a larger number here.
 vi.setConfig({ testTimeout: 30_000 })
 
 /** apps/www/src/lib/serving-privacy/__tests__ -> apps/www/src. */
