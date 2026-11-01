@@ -16,20 +16,23 @@
  *
  * - _Claim:_ a take started on a voice note reaches exactly one ending
  *   (`VoiceNoteEnd`), within the take's deadlines (VC1), and every ending
- *   has a sentence the screen says: `VOICE_NOTE_SAID` (a `Record` over every
- *   `VoiceNoteOutcome`) or the microphone's reason (`RECORDING_FAILURE_COPY`).
- *   A take stopped or left while the microphone is still opening ends
- *   `early`, never silently.
+ *   has a sentence in the runtime's snapshot (`said`): `VOICE_NOTE_SAID` (a
+ *   `Record` over every `VoiceNoteOutcome`) or the microphone's reason
+ *   (`RECORDING_FAILURE_COPY`). A take stopped or left while the microphone
+ *   is still opening ends `early`, never silently. On Rust Rounds' card the
+ *   sentence is on screen.
  * - _Family:_ every order of start, stop and leave against the microphone's
  *   answer (opens before the stop, opens after it, never opens, refuses),
- *   on every screen built on `voiceNoteRuntime` or www's `lib/takes-desk`
- *   (LeetType's answers, the grammar lens, Rust Rounds, scene voice,
- *   reflection voice, Jobs notes).
+ *   for `stepVoiceNote` and www's `lib/takes-desk`, and Rust Rounds' card on
+ *   screen. That each other screen on them (LeetType's answers, the grammar
+ *   lens, scene voice, reflection voice, Jobs notes) renders `said` is
+ *   outside it until the screen moves to the take pattern (MIC4, MIC5).
  * - _Proof:_ `voice-note.test.ts` ("VC2") over the pure step; www's
  *   `lib/takes-desk/__tests__/runtime.test.ts` ("VC2") over the real
- *   `createTakes`, with a recorder that opens on cue, for each order; the
- *   `Record` types over every ending in `VOICE_NOTE_SAID` and Rust Rounds'
- *   `WORDS.takeEnded`.
+ *   `createTakes`, with a recorder that opens on cue, for each order; Rust
+ *   Rounds' component test "says a take let go before the microphone was
+ *   listening"; the `Record` types over every ending in `VOICE_NOTE_SAID`
+ *   and Rust Rounds' `WORDS.takeEnded`.
  */
 import { assertNever } from "@some-ui/core-utils"
 
