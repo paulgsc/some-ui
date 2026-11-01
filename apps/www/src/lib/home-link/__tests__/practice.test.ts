@@ -5,12 +5,21 @@
  * soundbite, LeetType answer note or grammar-lens entry moves its revision,
  * so its watch asks for a run, and each counts as waiting until this phone
  * knows home holds it. Once its run has sent them, their stores hear what
- * home holds (OS1).
+ * home holds (OS1). A LeetType session finishing asks for a run too, and
+ * it and Studio's sittings and answers count as waiting until home holds
+ * them (#2425).
  */
 import { createHash } from "node:crypto"
 import { useSyncExternalStore } from "react"
 import type { HomeCall } from "@some-ui/core-utils"
-import type { Soundbite } from "@some-ui/soundbites"
+import { canonicalJson } from "@some-ui/core-utils"
+import type { HomeSession, SessionEvent } from "@some-ui/leetype"
+import type {
+  Friction,
+  Project,
+  Soundbite,
+  TimeEvent,
+} from "@some-ui/soundbites"
 import { act, renderHook } from "@testing-library/react"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 
@@ -22,13 +31,19 @@ import type { LensEntry } from "@/lib/home-link/lens-record"
 import { lensDigest, lensKey } from "@/lib/home-link/lens-record"
 import { notesHeld } from "@/lib/home-link/notes"
 import { practiceLane } from "@/lib/home-link/practice"
-import { readSent, rememberSent, SENT_KEY } from "@/lib/home-link/sent"
+import {
+  digestOf,
+  readSent,
+  rememberSent,
+  SENT_KEY,
+} from "@/lib/home-link/sent"
 import {
   leetypeNotes,
   leetypeNotesHeldByHome,
   phoneSpokenTakes,
 } from "@/lib/leetype-takes"
 import { keepSoundbites } from "@/lib/soundbite-keeping"
+import { keepStudio } from "@/lib/studio-keeping"
 
 const fakes = vi.hoisted(
   (): {
@@ -40,6 +55,11 @@ const fakes = vi.hoisted(
     bitesHeld: Array<() => (id: string) => boolean>
     /** The voice notes home holds, as the voice lane last heard. */
     voiceHeld: Array<string>
+    /** LeetType's finished sessions, as its log reads now. */
+    finished: Array<HomeSession>
+    /** How often LeetType's log was opened. */
+    logOpened: number
+    logHeard: Set<(event: SessionEvent) => void>
   } => ({
     bites: [],
     bitesHeard: new Set(),
@@ -47,6 +67,9 @@ const fakes = vi.hoisted(
     lensHeard: new Set(),
     bitesHeld: [],
     voiceHeld: [],
+    finished: [],
+    logOpened: 0,
+    logHeard: new Set(),
   })
 )
 
@@ -96,6 +119,19 @@ vi.mock("@/lib/voice-home", () => ({
 vi.mock("@/lib/tenant", () => ({
   useSessions: (): { data: Array<never> } => ({ data: [] }),
 }))
+vi.mock("@some-ui/leetype", () => ({
+  createSessionLogStore: (): unknown => {
+    fakes.logOpened += 1
+    return { readOnly: false, getSnapshot: () => ({ log: [], problem: null }) }
+  },
+  finishedSessions: (): Array<HomeSession> => fakes.finished,
+  onSessionLogged: (listener: (event: SessionEvent) => void): (() => void) => {
+    fakes.logHeard.add(listener)
+    return (): void => {
+      fakes.logHeard.delete(listener)
+    }
+  },
+}))
 vi.mock("@some-ui/topik", () => ({
   lensRecordForExport: (): unknown => ({ entries: fakes.lens, sessions: [] }),
   onLensRecordWritten: (listener: () => void): (() => void) => {
@@ -122,6 +158,25 @@ const BITE: Soundbite = {
     timeZone: "UTC",
   },
 }
+
+/** A finished LeetType session, in its home form. */
+const SESSION: HomeSession = {
+  session: "s1",
+  events: [
+    {
+      id: "e1",
+      at: "2026-11-01T09:00:00.000Z",
+      session: "s1",
+      type: "ended",
+      how: "declared",
+      file: "f",
+      screen: "x",
+    },
+  ],
+}
+
+/** What an event the log keeps carries besides its type and session. */
+const LOGGED = { id: "x", at: "2026-11-01T09:00:00.000Z" }
 
 const ENTRY: LensEntry = {
   session: "2026-11-01T09:00:00.000Z",
@@ -170,6 +225,8 @@ function watched(): { want: ReturnType<typeof vi.fn>; stop: () => void } {
 function homeHolds(more: {
   notes?: Record<string, string>
   lens?: Record<string, string>
+  leetype?: Record<string, string>
+  studio?: Record<string, string>
 }): void {
   rememberSent(localStorage, readSent(localStorage, PAIRING), more)
 }
@@ -335,5 +392,126 @@ describe("Practice's lane, for HF5's records", () => {
     fakes.voiceHeld = []
     expect(held?.()("b1")).toBe(false)
     shown.unmount()
+  })
+
+  it("#2425: a LeetType session finishing asks for a run, and it and Studio's sittings and answers count until home holds them", async () => {
+    const { want, stop } = watched()
+    // Paired, so LeetType's log is watched once it loads.
+    await vi.waitFor(() => {
+      expect(fakes.logHeard.size).toBe(1)
+    })
+    want.mockClear()
+    const counts = renderHook(() => practiceLane.useCounts())
+    const before = counts.result.current.waiting
+
+    /** Tells the log's listeners it kept `event`. */
+    const logged = (event: SessionEvent): void => {
+      act(() => {
+        for (const listener of fakes.logHeard) listener(event)
+      })
+    }
+
+    // A step of a session under way reads nothing and asks for nothing.
+    const opened = fakes.logOpened
+    logged({ ...LOGGED, session: "s2", type: "parked", file: "f", screen: "x" })
+    expect(fakes.logOpened).toBe(opened)
+    expect(want).not.toHaveBeenCalled()
+
+    // The session ending is read, asks for a run and counts as waiting.
+    fakes.finished = [SESSION]
+    logged({
+      ...LOGGED,
+      session: "s1",
+      type: "ended",
+      how: "declared",
+      file: "f",
+      screen: "x",
+    })
+    expect(want).toHaveBeenCalledTimes(1)
+    expect(counts.result.current.waiting).toBe(before + 1)
+
+    homeHolds({ leetype: { s1: digestOf(SESSION) } })
+    counts.rerender()
+    expect(counts.result.current.waiting).toBe(before)
+
+    // Studio, once its route hands its record in: one sitting and its answer.
+    const projects: Array<Project> = [
+      {
+        schema: "some-ui.studio-project/1",
+        id: "p1",
+        revisions: [],
+        notes: [],
+        takes: [],
+        chosen: {},
+        sittings: [
+          {
+            id: "k1",
+            openedAt: "2026-11-01T10:00:00.000Z",
+            closedAt: "2026-11-01T10:20:00.000Z",
+            done: "",
+            next: "",
+            shot: null,
+          },
+        ],
+      },
+    ]
+    const friction: Array<Friction> = [
+      {
+        project: "p1",
+        sitting: "k1",
+        shot: null,
+        at: "2026-11-01T10:20:00.000Z",
+        went: "smooth",
+        gotInTheWay: null,
+      },
+    ]
+    const timeLog: Array<TimeEvent> = [
+      {
+        id: "t1",
+        at: "2026-11-01T10:00:00.000Z",
+        sitting: "k1",
+        kind: "record",
+        type: "sitting_opened",
+        screen: null,
+      },
+    ]
+    await act(async () => {
+      keepStudio({
+        store: {
+          list: () => Promise.resolve(projects),
+          audio: () => Promise.resolve(null),
+          friction: () => Promise.resolve(friction),
+          subscribe: () => (): void => undefined,
+        },
+        timeLog: () => timeLog,
+        notesForHome: () => [],
+        letGoHeldTakes: () => Promise.resolve(0),
+        letGo: () => "home",
+        waitingIds: () => [],
+        letGoOnDrive: () => Promise.resolve(0),
+        sittingKey: (sitting) => sitting.id,
+      })
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+    expect(counts.result.current.waiting).toBe(before + 2)
+
+    homeHolds({
+      studio: {
+        k1: digestOf({ events: timeLog }),
+        "report:k1": canonicalJson({
+          at: "2026-11-01T10:20:00.000Z",
+          how: "smooth",
+          id: "k1",
+          kind: "record",
+          sitting: "k1",
+        }),
+      },
+    })
+    counts.rerender()
+    expect(counts.result.current.waiting).toBe(before)
+
+    counts.unmount()
+    stop()
+    expect(fakes.logHeard.size).toBe(0)
   })
 })

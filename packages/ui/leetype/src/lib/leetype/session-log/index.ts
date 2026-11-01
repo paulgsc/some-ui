@@ -23,10 +23,28 @@ export { finishedSessions } from "./home"
  * was not kept and no refusal passes unseen. The snapshot is what was kept
  * when the store opened plus this store's own appends; one store serves the
  * app, and another's appends to other sessions show from the next open.
+ * Each kept event is also told to `onSessionLogged`'s listeners, whichever
+ * store kept it.
  */
 export type SessionLogSnapshot = {
   readonly log: SessionLog
   readonly problem: string | null
+}
+
+/** Those told of each event a store on this page keeps (www's drain, to send a finished session). */
+const logged = new Set<(event: SessionEvent) => void>()
+
+/**
+ * Calls `listener` with each event any store on this page keeps, after it
+ * is kept. Returns an unsubscribe.
+ */
+export function onSessionLogged(
+  listener: (event: SessionEvent) => void
+): () => void {
+  logged.add(listener)
+  return (): void => {
+    logged.delete(listener)
+  }
 }
 
 export type SessionLogStore = {
@@ -83,6 +101,7 @@ export function createSessionLogStore(
       }
       sessions.set(event.session, events)
       publish({ log: [...sessions.values()].flat(), problem: null })
+      for (const listener of logged) listener(event)
       return true
     },
   }

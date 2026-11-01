@@ -9,11 +9,14 @@
  * read (React Query's `sessionsKey`), each shelf keep (`onKept`), each write
  * to Studio's projects, each change to the reflections and the asks, each
  * soundbite and lens entry as last read (`./practice-reads`) and each
- * change to LeetType's answer notes, so a finished session, a newly kept
- * item, a kept take, a typed reflection, an ask, a soundbite, an answer's
- * note or a lens answer asks for a run; a LeetType session finishing goes
- * on the next ask (the app coming back, say). Its waiting count is the
- * sessions, written reflections, asks, notes and lens entries home lacks.
+ * change to LeetType's answer notes, and LeetType's finished sessions as
+ * last read (#2425), so a finished session, a newly kept item, a kept take,
+ * a typed reflection, an ask, a soundbite, an answer's note, a lens answer
+ * or a LeetType session finishing asks for a run. Its waiting count is the
+ * sessions, written reflections, asks, notes, lens entries, finished
+ * LeetType sessions and Studio's sittings and answers home lacks (#2425):
+ * Studio's time log is read as it is when counted, since nothing tells of a
+ * write to it, and its answers as last read.
  * Once a run's notes part ends, the soundbites and LeetType's answer notes
  * hear what home now holds of them (`./voice-copy`'s `holdNotes`, OS1), so
  * a screen that said "full" can take one again.
@@ -53,7 +56,9 @@ import { practiceRead, watchPracticeStores } from "./practice-reads"
 import { promptsToSend } from "./prompts"
 import { writtenToSend } from "./reflections"
 import type { Sent } from "./sent"
-import { heldCounts, readSent, sessionsToSend } from "./sent"
+import { heldCounts, logToSend, readSent, sessionsToSend } from "./sent"
+import type { StudioReport } from "./studio-log"
+import { studioToSend } from "./studio-log"
 import { holdNotes } from "./voice-copy"
 
 function cachedSessions(): ReadonlyArray<SessionRecord> {
@@ -105,6 +110,7 @@ export const practiceLane: Lane = {
         ...practiceRead.getSnapshot().bites.map((b) => `bite:${b.id}`),
         ...leetypeNotes().map((n) => `note:${n.id}`),
         practiceRead.getSnapshot().lensAsIs,
+        practiceRead.getSnapshot().leetypeAsIs,
       ].join("|")
     ),
   subscribe(listener): () => void {
@@ -155,8 +161,9 @@ export const practiceLane: Lane = {
     // Read again whenever an ask is kept or let go.
     useSyncExternalStore(sceneAsks.subscribe, sceneAsks.getSnapshot)
     const asked = sceneAsks.kept()
-    // Read again whenever a soundbite, an answer's note or a lens entry moves.
-    const { bites, lens } = useSyncExternalStore(
+    // Read again whenever a soundbite, an answer's note, a lens entry, a
+    // finished LeetType session or a Studio answer moves.
+    const { bites, lens, leetype, studioReports } = useSyncExternalStore(
       practiceRead.subscribe,
       practiceRead.getSnapshot
     )
@@ -183,11 +190,27 @@ export const practiceLane: Lane = {
           : writtenToSend(kept, held).length +
             promptsToSend(asked, held).length +
             notesToSend(notesOf(bites, leetypeNotes()), held).length +
-            lensToSend(lens, held).length),
+            lensToSend(lens, held).length +
+            logToSend(leetype, held).length +
+            studioWaiting(studioReports, held)),
       hidden: 0,
       pulled: true,
     }
   },
+}
+
+/**
+ * How many of Studio's sittings and answers home does not hold as they are
+ * now: none until Studio's route has handed its record in.
+ */
+function studioWaiting(
+  reports: ReadonlyArray<StudioReport>,
+  held: Sent
+): number {
+  const studio = studioKeeping()
+  if (studio === null) return 0
+  const going = studioToSend(studio.timeLog(), reports, held)
+  return going.sittings.length + going.reports.length
 }
 
 /** What this phone knows the paired home holds; nothing when unpaired. */

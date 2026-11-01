@@ -887,8 +887,9 @@ changed since home last held it, lets nothing go, and stops before its next
 request; `voice-send.test.ts`, which also holds that the voice run asks
 home which Studio takes Drive has only under "Keep each until Drive has it
 too", HF11, and lets go only what home names), that Practice's lane asks for a run on a
-new soundbite, LeetType answer note or lens entry and counts each waiting
-until home holds it, and that once its run has sent them LeetType's answer
+new soundbite, LeetType answer note or lens entry, or on a LeetType session
+finishing, and counts each, with Studio's sittings and answers, waiting
+until home holds it (#2425), and that once its run has sent them LeetType's answer
 notes stop saying full with no other redraw and the soundbites' page is
 handed what home holds again (`practice.test.ts`, OS1), as it is when the
 voice lane comes to hold a soundbite's audio after that run
@@ -964,18 +965,25 @@ can say is when a run is asked for:
   `subscribe` follow anything but the sessions cache, `onKept`, Studio's
   store, the reflections store (HF3), the asks store (`lib/scene-ask`,
   HF4), LeetType's answer notes (`leetypeNotesMoved`, HF5) and the
-  soundbites and lens record as `lib/home-link/practice-reads.ts` last read
-  them (HF5), or that drops one of those from it, drops from its waiting
-  count any of the sessions, written reflections, asks, notes or lens
-  entries home lacks, or makes its `exchange` anything but
+  soundbites, lens record and LeetType's finished sessions as
+  `lib/home-link/practice-reads.ts` last read them (HF5, #2425), or that
+  drops one of those from it, drops from its waiting count any of the
+  sessions, written reflections, asks, notes, lens entries, finished
+  LeetType sessions or Studio sittings and answers home lacks (Studio's
+  time log read as it is when counted, #2425), or makes its `exchange` anything but
   `drainHome` over the phone's own ports (`./going`, and `./voice-copy`'s
   `holdNotes`, which only hands the soundbites and LeetType's answer notes
   how to read what home holds of them, OS1) under the run's `pairing`; a
-  hunk to `lib/home-link/practice-reads.ts` that reads either
+  hunk to `lib/home-link/practice-reads.ts` that reads a
   store other than on its watch starting, the soundbites' hand-in or
-  change (their store's `subscribe`), or, once the phone is paired, a write
-  to the lens record (topik's `onLensRecordWritten`), or that keeps a list
-  of the soundbites that started before a newer one; a hunk to topik's
+  change (their store's `subscribe`), Studio's hand-in or a write to its
+  projects (their store's `subscribe`), or, once the phone is paired, a write
+  to the lens record (topik's `onLensRecordWritten`) or an event LeetType's
+  log keeps (`onSessionLogged`) that starts or ends a session or belongs to
+  one already finished, or that keeps a list of the soundbites or of
+  Studio's answers that started before a newer one; a hunk to
+  `@some-ui/leetype`'s `session-log` that keeps an event without telling
+  `onSessionLogged`'s listeners, or tells them of one it refused; a hunk to topik's
   `adapter/lens-record-store` that keeps an entry without telling
   `onLensRecordWritten`'s listeners, or to `lib/leetype-takes` that keeps
   or lets go of a note without moving `leetypeNotesMoved`; a hunk to `lib/home-link/drain.ts` that takes home's copy in,
@@ -1044,7 +1052,8 @@ can say is when a run is asked for:
   `packages/ui/topik/src/components/topik/handheld/handheld-lesson/index.tsx`,
   `packages/ui/topik/src/components/topik/study-session/index.tsx`,
   `packages/ui/topik/src/lib/topik/adapter/lens-record-store/index.ts`,
-  `apps/www/src/lib/leetype-takes/index.ts`.
+  `apps/www/src/lib/leetype-takes/index.ts`,
+  `packages/ui/leetype/src/lib/leetype/session-log/index.ts`.
 - _Why not enforced:_ whether a moment is one where the person is using the
   app is a reading of intent: a test sees a listener or a query run, not why
   it is there, and a lint rule cannot tell a press handler from an effect
@@ -1062,7 +1071,13 @@ can say is when a run is asked for:
   `refetchOnMount` and `refetchOnWindowFocus`, `refetchOnReconnect` and
   `retry` off, and no interval; no timer or listener in `routine.ts` but
   `onLink`, whose listeners only settle and drop what waits under another
-  pairing.
+  pairing. Amended for #2425 by reading `practice-reads.ts`'s two new reads:
+  LeetType's log only on its watch starting once paired and in
+  `onSessionLogged`'s listener, Studio's projects only on its hand-in and
+  its store's `subscribe`.
+- _Tolerance:_ Studio's time log tells no one of a write, so a screen
+  entered or left in Studio asks for no run, and Practice's waiting count
+  shows it from the count's next redraw (#2425).
 
 ### LA16: written reflections are kept on home, append-only, and the phone lets one go only once home holds it
 
