@@ -35,8 +35,8 @@ export const ReflectionTakeList = ({
   return (
     <div className="flex flex-col gap-1.5">
       <TakeItem
-        // What the phone refused replaces the pattern's line, which would
-        // say the step was done (#2438 makes it the pattern's).
+        // A Redo the phone half-stored replaces the pattern's line, which
+        // would say it was kept; a refused Let go the pattern unsays itself.
         view={refused === null ? view : { ...view, said: null }}
         words={REFLECTION_TAKE_WORDS}
         label="Spoken reflections"

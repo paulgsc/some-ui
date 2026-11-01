@@ -19,10 +19,11 @@ export const REFLECTION_TAKE_WORDS: TakeWords = {
   },
 }
 
-/** Said when the phone would not store what a row's step changed. */
-export const REFLECTION_REFUSED = {
-  setAside:
-    "This phone couldn't set that one aside, so it is still this session's. Try again.",
-  supersede:
-    "This phone kept the new one but couldn't move the earlier one out of view, so both are this session's. Let one go to set it aside.",
-} as const
+/**
+ * Said when the phone kept a Redo's take but would not store the earlier one
+ * moved out of view. A Let go the phone won't store is the pattern's to
+ * unsay (`setAsideFailed`); a refused Redo has no such path, since the take
+ * itself was kept.
+ */
+export const REDO_REFUSED =
+  "This phone kept the new one but couldn't move the earlier one out of view, so both are this session's. Let one go to set it aside."

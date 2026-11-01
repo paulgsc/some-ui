@@ -29,7 +29,7 @@ import { ONE_TAKE, ShelfFullError, takePattern } from "@some-ui/voice-capture"
 import type { KeepResult, Reflection } from "@/lib/session-reflection"
 import { REFLECTION_LIMIT } from "@/lib/session-reflection"
 
-import { REFLECTION_REFUSED } from "./words"
+import { REDO_REFUSED } from "./words"
 
 /** The reflections' choice of the pattern's options. */
 const REFLECTION_TAKE_OPTIONS: TakePatternOptions = {
@@ -77,8 +77,9 @@ export type ReflectionTakes = {
   /** The session's spoken reflections as the pattern lists them; the same array while nothing changed. */
   readonly getSnapshot: () => ReadonlyArray<PatternTake>
   /**
-   * What the phone would not store of a row's step (`REFLECTION_REFUSED`),
-   * until the next tap or step; null while nothing was refused.
+   * `REDO_REFUSED` once the phone kept a Redo's take but not the earlier one
+   * moved out of view, until the next tap or step; null otherwise. A refused
+   * Let go is the pattern's (`setAside`'s `done`).
    */
   readonly refused: () => string | null
   readonly subscribe: (listener: () => void) => () => void
@@ -136,7 +137,7 @@ export function createVoiceNote(
           () => {
             ports.saving(id, false)
             if (supersedes !== null && !ports.supersede(supersedes)) {
-              say(REFLECTION_REFUSED.supersede)
+              say(REDO_REFUSED)
             }
             done({ outcome: "kept", id })
           },
@@ -149,8 +150,10 @@ export function createVoiceNote(
           }
         )
       },
-      setAside: (id) => {
-        say(ports.setAside(id) ? null : REFLECTION_REFUSED.setAside)
+      // A Let go the phone won't store: the pattern takes its line back.
+      setAside: (id, done) => {
+        say(null)
+        done(ports.setAside(id))
       },
       audio: (id) => ports.audio.get(id),
     },

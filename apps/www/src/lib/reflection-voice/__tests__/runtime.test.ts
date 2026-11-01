@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { testReflections } from "@/lib/reflection-voice/__tests__/takes"
 import type { ReflectionTakes } from "@/lib/reflection-voice/runtime"
-import { REFLECTION_REFUSED } from "@/lib/reflection-voice/words"
+import { REDO_REFUSED } from "@/lib/reflection-voice/words"
 
 const pass = async (ms = 0): Promise<void> => {
   await vi.advanceTimersByTimeAsync(ms)
@@ -104,14 +104,16 @@ describe("createVoiceNote", () => {
     expect(phone.voice.pattern.getSnapshot().ended?.ending).toBe("full")
   })
 
-  it("says so when the phone won't store a take set aside or recorded again, and keeps it the session's", async () => {
+  it("unsays a Let go the phone won't store, says a Redo it half-stored, and keeps both the session's", async () => {
     const phone = testReflections("s1", { standsAside: () => false })
     await talk(phone.voice, null)
     phone.voice.pattern.letGo("v1", "phone")
-    expect(phone.voice.refused()).toBe(REFLECTION_REFUSED.setAside)
+    // The pattern takes back its "Set aside" line; nothing else is said.
+    expect(phone.voice.pattern.getSnapshot().setAside).toBeNull()
+    expect(phone.voice.refused()).toBeNull()
     expect(phone.voice.getSnapshot()).toMatchObject([{ standing: "current" }])
     await talk(phone.voice, null, "v1")
-    expect(phone.voice.refused()).toBe(REFLECTION_REFUSED.supersede)
+    expect(phone.voice.refused()).toBe(REDO_REFUSED)
     expect(phone.voice.getSnapshot().map(({ standing }) => standing)).toEqual([
       "current",
       "current",
