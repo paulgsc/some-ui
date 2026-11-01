@@ -3,7 +3,15 @@ export type { IdeaCaptureProps } from "./components/idea"
 export { IdeaShelf } from "./components/idea-shelf"
 export type { IdeaShare, IdeaShelfProps } from "./components/idea-shelf"
 export type { Listened } from "./lib/idea/machine"
-export type { IdeaListener, Listening } from "./lib/idea/runtime"
+export type { IdeaListener, Listening, ListenTake } from "./lib/idea/runtime"
+export type {
+  HeardAnswer,
+  HearingPorts,
+  HearingTiming,
+  IdeaTakes,
+  IdeaTakeSnapshot,
+} from "./lib/idea/hearing"
+export { homeHearing } from "./lib/idea/hearing"
 export { Studio } from "./components/studio"
 export type { StudioProps, StudioShare } from "./components/studio"
 export { NewIdeaPage, StudioHome } from "./components/wing"

@@ -22,7 +22,10 @@
  *   recorded, when it was; its record goes as a study note (`./notes`);
  * - a grammar-lens take (`lib/lens-takes`): `lens`, the line, when taken;
  * - a LeetType spoken answer's take (`lib/leetype-takes`): `leetype`, the
- *   session file and screen, when taken; its note goes as a study note.
+ *   session file and screen, when taken; its note goes as a study note;
+ * - a Studio idea answer's take (`lib/idea-takes`, MIC10): `studio`, the
+ *   answer as `idea:<idea>:<question>`, when taken; home gives its words back
+ *   to the idea screen (`./heard`).
  *
  * Copying deletes nothing where the note was recorded; letting it go there
  * leaves the copy, which goes once home holds the note. Each pass says what
@@ -48,7 +51,7 @@
  * - _Family:_ every share kind (reflections; the study-context export with
  *   its soundbites, grammar-lens entries and takes, and LeetType answers and
  *   takes; Studio takes) and every cap that makes room (soundbites, lens
- *   takes, LeetType takes and answer notes, and the grammar-lens record,
+ *   takes, LeetType takes and answer notes, Studio idea takes, and the grammar-lens record,
  *   HF5 #2180; the session budget's offer of the oldest finished session,
  *   "Remove it", #2422) × every home state (held; waiting; unpaired; off the LAN,
  *   which the phone sees alike as not held); for Studio takes, × every
@@ -97,6 +100,8 @@ import type { Soundbite } from "@some-ui/soundbites"
 import type { TakeKept } from "@some-ui/voice-capture"
 
 import { phoneGameBites } from "@/lib/game-bites"
+import type { IdeaTake } from "@/lib/idea-takes"
+import { ideaTakesDesk } from "@/lib/idea-takes"
 import { jobVoiceAudio, phoneJobs } from "@/lib/jobs"
 import type { JobEvent, JobsState } from "@/lib/jobs/model"
 import type { LeetypeTake } from "@/lib/leetype-takes"
@@ -238,6 +243,20 @@ export function leetypeNote(take: LeetypeTake): VoiceOut {
   }
 }
 
+/**
+ * A Studio idea answer's take (its `line` is `idea:<idea>:<question>`), as
+ * home is told it: a Studio note, whose `ref` home reads as any other.
+ */
+export function ideaNote(take: IdeaTake): VoiceOut {
+  return {
+    id: take.id,
+    of: "studio",
+    ref: refOf(take.line),
+    at: new Date(take.takenAt).toISOString(),
+    contentType: take.mimeType,
+  }
+}
+
 /** A soundbite, as home is told it. */
 export function soundbiteNote(bite: Soundbite): VoiceOut {
   return {
@@ -353,6 +372,10 @@ export function candidates(): Array<Candidate> {
     note: leetypeNote(take),
     audio: (): Promise<Blob | null> => leetypeTakesDesk.audio(take.id),
   }))
+  const ideas = ideaTakesDesk.kept().map((take) => ({
+    note: ideaNote(take),
+    audio: (): Promise<Blob | null> => ideaTakesDesk.audio(take.id),
+  }))
   return [
     ...said,
     ...named,
@@ -362,6 +385,7 @@ export function candidates(): Array<Candidate> {
     ...soundbites,
     ...lens,
     ...leetype,
+    ...ideas,
   ]
 }
 
@@ -656,8 +680,8 @@ export function holdNotes(): void {
 
 /**
  * Hands each offline set what home holds, read back, so it may make room at
- * its cap with those and no others (HF5): the lens takes and LeetType takes
- * by their voice notes, with where each is kept for their rows (MIC3,
+ * its cap with those and no others (HF5): the lens takes, LeetType takes and
+ * Studio idea takes by their voice notes, with where each is kept (MIC3,
  * `voiceKept`), the stores of study notes (`holdNotes`), and the
  * grammar-lens record by each entry as it is now. Each reads `sent` once per
  * look.
@@ -665,6 +689,7 @@ export function holdNotes(): void {
 function holdOffline(): void {
   lensTakesDesk.keptWhere(voiceKept)
   leetypeTakesDesk.keptWhere(voiceKept)
+  ideaTakesDesk.keptWhere(voiceKept)
   holdNotes()
   holdLensRecord()
 }
@@ -694,7 +719,8 @@ export function watchVoiceNotes(): () => void {
         // A bite's release (Undo closed) is a change to its record.
         phoneGameBites().subscribe(copySoon),
         lensTakesDesk.phone().subscribe(copySoon),
-        leetypeTakesDesk.phone().takes.subscribe(copySoon)
+        leetypeTakesDesk.phone().takes.subscribe(copySoon),
+        ideaTakesDesk.phone().subscribe(copySoon)
       )
     }
     // A kept take is a write to its project, once Studio has handed it in.
