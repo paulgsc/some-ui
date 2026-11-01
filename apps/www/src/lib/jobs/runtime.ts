@@ -155,7 +155,7 @@ export const JOB_VOICE_NOTES = 40
  * The forms' choice of the pattern's options: many notes a form, beside
  * each other, each played; a note is a take of a soundbite's length.
  */
-export const JOB_VOICE_OPTIONS: TakePatternOptions = {
+const JOB_VOICE_OPTIONS: TakePatternOptions = {
   ...ONE_TAKE,
   takes: { per: "many", max: JOB_VOICE_NOTES },
   limits: { minMs: SOUNDBITE_MIN_MS, maxMs: SOUNDBITE_MAX_MS },

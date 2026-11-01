@@ -106,10 +106,22 @@ export const VoiceNotes = ({
 }): JSX.Element => {
   const { state } = useJobs()
   const { voice } = phoneJobs()
-  // Leaving the form ends its note under way rather than recording on.
+  // Leaving the form ends its note under way rather than recording on, and
+  // stops one of its notes playing, whose Stop goes with it.
   useEffect(
     () => (): void => {
-      if (voice.getSnapshot().answers === owner) voice.leave()
+      const { answers, playback } = voice.getSnapshot()
+      if (answers === owner) {
+        voice.leave()
+        return
+      }
+      const mine = formTakes(phoneJobs().getSnapshot().state, owner)
+      if (
+        playback.kind !== "quiet" &&
+        mine.some(({ id }) => id === playback.id)
+      ) {
+        voice.stopPlaying()
+      }
     },
     [voice, owner]
   )
