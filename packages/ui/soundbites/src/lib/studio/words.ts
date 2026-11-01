@@ -7,7 +7,10 @@
 import { formatSize, formatTimecode, listed } from "@some-ui/core-utils"
 import type { Idea, Look, Voice } from "@some-ui/video-render"
 import type { RecordingFailure } from "@some-ui/voice-capture"
-import { RECORDING_FAILURE_COPY } from "@some-ui/voice-capture"
+import {
+  RECORDING_FAILURE_COPY,
+  TAKE_ENDING_WORDS,
+} from "@some-ui/voice-capture"
 import type { IdeaStage, QuestionId } from "@soundbites/lib/idea/model"
 import type { ShelfNotice } from "@soundbites/lib/idea/shelf"
 import type { LetGo, LetGoChoice } from "@soundbites/lib/project/let-go"
@@ -258,16 +261,9 @@ export const STUDIO_WORDS = {
     read: "Read it word for word",
     claudeNote: "Claude's note",
     mustStayTrue: (n: number): string => `Must stay true · ${n}`,
-    talk: "Start talking",
-    opening: "Opening the microphone",
-    stop: "Done, keep it",
-    keeping: "Keeping it",
-    again: "Again",
     keepNext: "Keep · next scene",
     keepLast: "Keep · that's every scene",
     previous: "Previous scene",
-    play: "Play it back",
-    stopPlaying: "Stop",
     throwAway: "Throw it away",
     doneForNow: "Done for now",
     runs: (ms: number): string => `This scene runs ${seconds(ms)}`,
@@ -293,6 +289,8 @@ export const STUDIO_WORDS = {
     thrownAway: "Thrown away. Nothing kept.",
     notStarted:
       "The screen went away before the microphone opened. Tap to talk.",
+    // The take pattern's own words for a take stopped while it opened.
+    early: TAKE_ENDING_WORDS.early,
     notSaved: "That change couldn't be saved, so nothing changed. Try again?",
     unreadableFile:
       "That couldn't be opened. Pick it again, or ask Claude for it again.",

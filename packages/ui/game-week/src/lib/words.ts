@@ -5,6 +5,7 @@
  * every phrase these functions can make to that.
  */
 import { counted, dayOf, formatDay } from "@some-ui/core-utils"
+import { TAKE_ENDING_WORDS } from "@some-ui/voice-capture"
 
 import type { ModeId } from "./modes"
 import type { OutboxView } from "./ports"
@@ -24,7 +25,6 @@ export const WORDS = {
   justHappened: "Just happened",
   sayItFirst: "Say it first",
   sayItFirstHint: "Talk now, say what it was about after.",
-  done: "Done",
   quietBar: "Stops when you go quiet",
   askTitle: "What was that about?",
   later: "Later: home works it out from what I said",
@@ -37,7 +37,8 @@ export const WORDS = {
 } as const
 
 export const NOTICES = {
-  tooShort: "Too short to keep. Tap, talk, then tap Done.",
+  // The take pattern's own words for a take too short to keep.
+  tooShort: TAKE_ENDING_WORDS.short,
   notTaken: "That one couldn't be kept. Try again?",
   notKept:
     "That bite couldn't be kept on this phone yet. The app holds it and keeps trying while it's open.",
@@ -51,6 +52,8 @@ export const NOTICES = {
     "Too late to note what that was about: that bite is on its way home as Later.",
   pickFirst: "Pick a game first.",
   notStarted: "The screen went away before the microphone opened.",
+  // The take pattern's own words for a take stopped while it opened.
+  early: TAKE_ENDING_WORDS.early,
 } as const
 
 /** What a kept bite's toast says. */
@@ -61,13 +64,6 @@ export function keptLine(durationMs: number): string {
 /** `ms` as whole seconds, "4 s". */
 function seconds(ms: number): string {
   return `${Math.max(0, Math.round(ms / 1000))} s`
-}
-
-/** A bite's elapsed time, "0:07". */
-export function clock(ms: number): string {
-  const total = Math.max(0, Math.floor(ms / 1000))
-  const s = total % 60
-  return `${Math.floor(total / 60)}:${s < 10 ? "0" : ""}${s}`
 }
 
 /** How long ago something happened, "40 s ago", "2 min ago". */
