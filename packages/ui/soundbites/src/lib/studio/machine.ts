@@ -63,6 +63,7 @@ import { assertNever } from "@some-ui/core-utils"
 import type { Idea, Look, Review, Voice } from "@some-ui/video-render"
 import { readReview } from "@some-ui/video-render"
 import type { RecordingFailure, Take, TakePhase } from "@some-ui/voice-capture"
+// eslint-disable-next-line one-owner/no-local-microphone -- Studio runs its own take until its machine embeds the take kit (#2442)
 import {
   discardTake,
   finishTake,

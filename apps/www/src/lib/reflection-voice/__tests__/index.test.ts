@@ -18,6 +18,7 @@ const removeAudio = vi.hoisted(() => vi.fn(() => Promise.resolve()))
 const shelved = vi.hoisted(() => new Set<string>())
 
 // IndexedDB's stand-in: jsdom has none.
+// eslint-disable-next-line one-owner/no-hand-written-microphone -- stands in for the shelf this module builds on import, which no seam lets a test hand in (#2447)
 vi.mock("@some-ui/voice-capture", async (actual) => {
   const shelf = {
     put: (id: string): Promise<void> => {

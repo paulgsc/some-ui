@@ -278,6 +278,7 @@ export const STUDIO_WORDS = {
 
   notice: {
     kept: (ms: number): string => `Kept ${seconds(ms)}.`,
+    // eslint-disable-next-line one-owner/no-local-take-words -- Studio says its own endings until its machine embeds the take kit (#2442)
     tooShort: "Too short to keep. Tap, talk, then tap again.",
     notKept: "That take couldn't be kept. Try again?",
     full: (letGo: LetGoChoice, waiting: number): string =>

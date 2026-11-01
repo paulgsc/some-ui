@@ -238,6 +238,15 @@ yet is not added ahead of its case.
 | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Take**: record, see where it's kept, hear it, redo it, let it go | `@some-ui/voice-capture`: `takePattern`, `takeItemView`, `TAKE_WORDS` (on the take kit) | `TakeButton`, `TakeRow` (with an `extra` slot for a screen's own action on a take), `TakeRows` (an item's rows, for a screen whose button sits apart from its list), `TakeItem` (a view and taps, for a screen whose machine stands between), `TakeList`; tests on `@some-ui/voice-capture/testing`'s simulated microphone and scenario family | `TakePatternOptions`: `takes` (one, or many up to a max that refuses the next or makes room for it), `limits`, `redo: "supersede"` (D2), `letGo: "set-aside"` (D3), `play` (each or latest), `clock` (the time run, or the time left) |
 
+The take pattern's kit, `@some-ui/voice-capture`, is the microphone's one
+owner. Outside it, `one-owner/no-local-microphone`,
+`one-owner/no-hand-written-microphone` and `one-owner/no-local-take-words`
+(MIC7, #2377) flag the other ways in that ordinary code takes: opening the
+browser's microphone, running a take of its own, a microphone written by hand
+in a test, and a copy of how a take ended. Each exemption is an
+`eslint-disable` that says why; code written to get past them (`Reflect.get`,
+an alias of a namespace or of `vi`) is out of their scope.
+
 ## A port translates: the foreign boundary
 
 A port to an API this codebase does not own has to answer what can go wrong,
