@@ -44,6 +44,8 @@ export const WORDS = {
   onlyCard: "The only card in this concept, again.",
   sayThis: "Say it",
   holdToSpeak: "Hold to speak",
+  /** Held, and the microphone is not on yet. */
+  opening: "Opening the microphone…",
   listening: "Listening. Let go to keep it.",
   keeping: "Keeping it…",
   takeEnded: {
@@ -51,7 +53,10 @@ export const WORDS = {
     short: "Too short to keep. Hold, talk, then let go.",
     full: "There's no room on this phone for another voice note.",
     failed: "Couldn't keep that one. Hold to try again.",
-  } satisfies Readonly<Record<Exclude<TakeEnd, "blocked" | "none">, string>>,
+    early:
+      "That ended before the microphone was listening, so nothing was kept. Hold until it says Listening, then talk.",
+    missing: "The note you started here wasn't kept. Hold to say it again.",
+  } satisfies Readonly<Record<Exclude<TakeEnd, "blocked">, string>>,
   /** A card left before its note was kept, and the note was lost. */
   noteLost: (concept: string, number: number): string =>
     `The note on ${concept}, card ${number} couldn't be kept.`,

@@ -97,7 +97,7 @@ const RunView = ({ run }: { run: RustcRun | null }): JSX.Element => {
 function saidLine(state: PlayState): string | null {
   const { said, notes } = state
   if (said === "blocked") return notes.blocked
-  if (said === null || said === "none") return null
+  if (said === null) return null
   return WORDS.takeEnded[said]
 }
 
@@ -137,9 +137,11 @@ const HoldToSpeak = ({
         <Mic aria-hidden className="size-5" />
         {take.kind === "keeping"
           ? WORDS.keeping
-          : busy
-            ? WORDS.listening
-            : WORDS.holdToSpeak}
+          : take.kind === "opening"
+            ? WORDS.opening
+            : busy
+              ? WORDS.listening
+              : WORDS.holdToSpeak}
       </HoldButton>
       {said !== null && (
         <p role="status" className="text-muted-foreground text-sm">

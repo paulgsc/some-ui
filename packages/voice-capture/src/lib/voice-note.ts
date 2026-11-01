@@ -11,6 +11,28 @@
  *   mid-take finishes it and keeps it, as the soundbites page does.
  * - **A microphone that opens too late is let go.** If the person left while
  *   it was opening, its arrival is discarded, never recorded.
+ *
+ * **VC2: every take that starts ends once, and its ending has words.**
+ *
+ * - _Claim:_ a take started on a voice note reaches exactly one ending
+ *   (`VoiceNoteEnd`), within the take's deadlines (VC1), and every ending
+ *   has a sentence in the runtime's snapshot (`said`): `VOICE_NOTE_SAID` (a
+ *   `Record` over every `VoiceNoteOutcome`) or the microphone's reason
+ *   (`RECORDING_FAILURE_COPY`). A take stopped or left while the microphone
+ *   is still opening ends `early`, never silently. On Rust Rounds' card the
+ *   sentence is on screen.
+ * - _Family:_ every order of start, stop and leave against the microphone's
+ *   answer (opens before the stop, opens after it, never opens, refuses),
+ *   for `stepVoiceNote` and www's `lib/takes-desk`, and Rust Rounds' card on
+ *   screen. That each other screen on them (LeetType's answers, the grammar
+ *   lens, scene voice, reflection voice, Jobs notes) renders `said` is
+ *   outside it until the screen moves to the take pattern (MIC4, MIC5).
+ * - _Proof:_ `voice-note.test.ts` ("VC2") over the pure step; www's
+ *   `lib/takes-desk/__tests__/runtime.test.ts` ("VC2") over the real
+ *   `createTakes`, with a recorder that opens on cue, for each order; Rust
+ *   Rounds' component test "says a take let go before the microphone was
+ *   listening"; the `Record` types over every ending in `VOICE_NOTE_SAID`
+ *   and Rust Rounds' `WORDS.takeEnded`.
  */
 import { assertNever } from "@some-ui/core-utils"
 
@@ -27,8 +49,14 @@ import type {
 } from "./take"
 import { discardTake, finishTake, openTake, stepTake, takeRunner } from "./take"
 
-/** How the last take ended, said once beside the button. */
-export type VoiceNoteOutcome = "kept" | "short" | "full" | "failed"
+/**
+ * How the last take ended, said once beside the button. `early`: stopped or
+ * left while the microphone was still opening, so nothing was recorded.
+ */
+export type VoiceNoteOutcome = "kept" | "short" | "full" | "failed" | "early"
+
+/** Every way a take ends (VC2): an outcome, or the microphone refused it. */
+export type VoiceNoteEnd = VoiceNoteOutcome | "blocked"
 
 export type VoiceNoteState =
   | { readonly kind: "idle"; readonly last: VoiceNoteOutcome | null }
@@ -77,8 +105,10 @@ function after(next: TakeStep, atMs: number | null): Next {
     case "blocked": {
       return { state: { kind: "blocked", reason: next.reason }, effects }
     }
+    // Only a take still opening is discarded here: a recording one is
+    // finished and kept (`stepVoiceNote`).
     case "discarded": {
-      return { state: { kind: "idle", last: null }, effects }
+      return { state: { kind: "idle", last: "early" }, effects }
     }
     default: {
       return assertNever(next)
@@ -127,6 +157,17 @@ export const VOICE_NOTE_SAID: Readonly<Record<VoiceNoteOutcome, string>> = {
   short: "Too short to keep. Tap, talk, then tap again.",
   full: "There's no room for another voice note.",
   failed: "Couldn't keep that one. Try again.",
+  early:
+    "That ended before the microphone was listening, so nothing was kept. Try again.",
+}
+
+/**
+ * How the take that just ended ended, once the note is at rest: null while
+ * a take is under way, or before any has ended.
+ */
+export function voiceNoteEnd(state: VoiceNoteState): VoiceNoteEnd | null {
+  if (state.kind === "blocked") return "blocked"
+  return state.kind === "idle" ? state.last : null
 }
 
 /** A voice note's take as a screen shows it. */

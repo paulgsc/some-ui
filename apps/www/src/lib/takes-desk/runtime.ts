@@ -10,9 +10,10 @@
  *   oldest take home holds (`held`); with none held it is refused and
  *   `full` says so. Takes leave otherwise only by `letGo`, which
  *   `takesDesk`'s sweep calls for a take whose audio never landed.
- * - **Every take's end is said.** `ended` names how each take ended and the
- *   line it was started on, apart from `reset`'s hush, so a caller that
- *   moved on still hears that a take it left was kept or lost.
+ * - **Every take's end is said** (VC2, `@some-ui/voice-capture`'s
+ *   `voice-note.ts`). `ended` names how each take ended and the line it was
+ *   started on, apart from `reset`'s hush, so a caller that moved on still
+ *   hears that a take it left was kept or lost.
  * - **The last take is the item's.** `reset` forgets it, so the next item
  *   starts with none; a take still being kept when that happens is kept, but
  *   is not the next item's last. `kept` names every take kept, for the
@@ -26,11 +27,12 @@ import type {
   Player,
   RecordingFailure,
   StartRecording,
-  VoiceNoteOutcome,
+  VoiceNoteEnd,
 } from "@some-ui/voice-capture"
 import {
   shelveTake,
   takeView,
+  voiceNoteEnd,
   voiceNoteRuntime,
   voiceNoteSaid,
 } from "@some-ui/voice-capture"
@@ -72,15 +74,14 @@ export type TakesPorts = {
 
 /**
  * How a take ended, whatever `reset` has hushed since: every take that
- * starts ends in exactly one, `seq` counting them. `none` is a take let go
- * before the microphone opened; `blocked` one the microphone refused, why in
+ * starts ends in exactly one, `seq` counting them. For `blocked`, why is in
  * the snapshot's `blocked`.
  */
 type TakeEnded = {
   readonly seq: number
   /** What the take was started on (`start`'s `reading`). */
   readonly line: string
-  readonly end: VoiceNoteOutcome | "blocked" | "none"
+  readonly end: VoiceNoteEnd
   /** The kept take's id, when `end` is `kept`. */
   readonly id: string | null
 }
@@ -226,8 +227,8 @@ export function createTakes(ports: TakesPorts, limits: TakeLimits): PhoneTakes {
     // A take ends when the note leaves taking or saving, however it ends.
     const state = note.getSnapshot()
     const now = state.kind === "taking" || state.kind === "saving"
-    if (busy && !now) {
-      const end = state.kind === "blocked" ? "blocked" : (state.last ?? "none")
+    const end = voiceNoteEnd(state)
+    if (busy && end !== null) {
       ended = {
         seq: (ended?.seq ?? 0) + 1,
         line: taking.line,

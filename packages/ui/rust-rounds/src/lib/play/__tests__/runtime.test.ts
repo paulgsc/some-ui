@@ -97,6 +97,7 @@ describe("the worked example", () => {
     })
 
     runtime.dispatch({ type: "holdToSpeak" })
+    ports.notes.open()
     expect(ports.notes.started).toEqual([
       lineOf({ round: INDEXING_01.id, card: "a" }),
     ])
@@ -106,6 +107,7 @@ describe("the worked example", () => {
 
     // One note a card: holding again starts nothing.
     runtime.dispatch({ type: "holdToSpeak" })
+    ports.notes.open()
     expect(ports.notes.started).toHaveLength(1)
 
     runtime.dispatch({ type: "showRustc" })
@@ -124,6 +126,7 @@ describe("the worked example", () => {
     runtime.dispatch({ type: "continue" })
     runtime.dispatch({ type: "pick", pick: "Prints z" })
     runtime.dispatch({ type: "holdToSpeak" })
+    ports.notes.open()
     runtime.dispatch({ type: "next" })
     // Moved on at once; the card waits for its note.
     expect(visitOf(runtime.getSnapshot())).toBe("b:choose")
@@ -142,6 +145,7 @@ describe("the worked example", () => {
     runtime.dispatch({ type: "continue" })
     runtime.dispatch({ type: "pick", pick: "Prints z" })
     runtime.dispatch({ type: "holdToSpeak" })
+    ports.notes.open()
     runtime.dispatch({ type: "next" })
     ports.notes.land(null)
     expect(storedLog(ports.storage)).toEqual([
@@ -157,6 +161,7 @@ describe("the worked example", () => {
     runtime.dispatch({ type: "continue" })
     runtime.dispatch({ type: "pick", pick: "Prints z" })
     runtime.dispatch({ type: "holdToSpeak" })
+    ports.notes.open()
     runtime.dispatch({ type: "next" })
     ports.notes.lose("failed")
     expect(runtime.getSnapshot().lost).toEqual({
@@ -174,6 +179,7 @@ describe("the worked example", () => {
     runtime.dispatch({ type: "play", concept: "indexing" })
     runtime.dispatch({ type: "pick", pick: "Prints z" })
     runtime.dispatch({ type: "holdToSpeak" })
+    ports.notes.open()
     for (let n = 0; n < 4; n += 1) runtime.dispatch({ type: "next" })
     // a waits on its note: b, c, d were new, then a again only as played.
     expect(runtime.getSnapshot().place?.visit).toMatchObject({
@@ -301,6 +307,7 @@ describe("leaving and coming back", () => {
     runtime.dispatch({ type: "continue" })
     runtime.dispatch({ type: "pick", pick: "Prints z" })
     runtime.dispatch({ type: "holdToSpeak" })
+    notes.open()
     runtime.dispatch({ type: "next" })
     detach()
     expect(notes.getSnapshot().take.kind).toBe("keeping")
@@ -325,6 +332,7 @@ describe("leaving and coming back", () => {
     first.dispatch({ type: "continue" })
     first.dispatch({ type: "pick", pick: "Prints z" })
     first.dispatch({ type: "holdToSpeak" })
+    notes.open()
     first.dispatch({ type: "letGo" })
     first.dispatch({ type: "next" })
     detach()
@@ -345,6 +353,7 @@ describe("leaving and coming back", () => {
     first.dispatch({ type: "continue" })
     first.dispatch({ type: "pick", pick: "Prints z" })
     first.dispatch({ type: "holdToSpeak" })
+    notes.open()
     first.dispatch({ type: "next" })
     // Never detached: both hear the same microphone, both hold the card.
     const second = opened(fakePorts(storage, notes))
@@ -366,6 +375,7 @@ describe("leaving and coming back", () => {
     first.dispatch({ type: "continue" })
     first.dispatch({ type: "pick", pick: "Prints z" })
     first.dispatch({ type: "holdToSpeak" })
+    notes.open()
     detach()
     notes.land("note-a")
 
@@ -388,11 +398,13 @@ describe("leaving and coming back", () => {
     first.dispatch({ type: "continue" })
     first.dispatch({ type: "pick", pick: "Prints z" })
     first.dispatch({ type: "holdToSpeak" })
+    notes.open()
     detach()
 
     const again = opened(fakePorts(storage, notes))
     // Still being kept: no second take starts over it.
     again.dispatch({ type: "holdToSpeak" })
+    notes.open()
     expect(notes.started).toHaveLength(1)
     notes.land("note-a")
     expect(again.getSnapshot()).toMatchObject({
@@ -412,6 +424,7 @@ describe("leaving and coming back", () => {
     first.dispatch({ type: "continue" })
     first.dispatch({ type: "pick", pick: "Prints z" })
     first.dispatch({ type: "holdToSpeak" })
+    notes.open()
     first.dispatch({ type: "next" })
     // The app is ended before the note's end is heard; the desk kept it.
     expect(keptRounds(storage).open().pending).toHaveLength(1)
@@ -431,10 +444,12 @@ describe("leaving and coming back", () => {
 
   it("logs a card an ended app left waiting as it stood when the phone holds no note", () => {
     const storage = inMemoryStorage()
-    const first = opened(fakePorts(storage))
+    const notes = fakeNotes()
+    const first = opened(fakePorts(storage, notes))
     first.dispatch({ type: "continue" })
     first.dispatch({ type: "pick", pick: "Prints z" })
     first.dispatch({ type: "holdToSpeak" })
+    notes.open()
     first.dispatch({ type: "next" })
     opened(fakePorts(storage))
     expect(storedLog(storage)).toEqual([
@@ -494,6 +509,7 @@ describe("leaving and coming back", () => {
     first.dispatch({ type: "continue" })
     first.dispatch({ type: "pick", pick: "Prints z" })
     first.dispatch({ type: "holdToSpeak" })
+    notes.open()
     first.dispatch({ type: "next" })
     notes.land("note-a")
     expect(storedLog(storage)).toEqual([])
@@ -530,6 +546,7 @@ describe("leaving and coming back", () => {
     first.dispatch({ type: "continue" })
     first.dispatch({ type: "pick", pick: "Prints z" })
     first.dispatch({ type: "holdToSpeak" })
+    notes.open()
     first.dispatch({ type: "next" })
     const { pending } = keptRounds(storage).open()
     notes.land("note-a")
@@ -588,6 +605,7 @@ describe("the tutor's page", () => {
     runtime.dispatch({ type: "continue" })
     runtime.dispatch({ type: "pick", pick: "Prints z" })
     runtime.dispatch({ type: "holdToSpeak" })
+    ports.notes.open()
     runtime.dispatch({ type: "next" })
     runtime.dispatch({ type: "tutor" })
     runtime.dispatch({ type: "copyLog" })
@@ -699,6 +717,36 @@ describe("the tutor's page", () => {
 })
 
 describe("the microphone", () => {
+  it("says a take let go before the microphone opened, and the card can be held again (VC2)", () => {
+    const ports = fakePorts()
+    const runtime = opened(ports)
+    runtime.dispatch({ type: "continue" })
+    runtime.dispatch({ type: "pick", pick: "Prints z" })
+    runtime.dispatch({ type: "holdToSpeak" })
+    expect(ports.notes.getSnapshot().take.kind).toBe("opening")
+    runtime.dispatch({ type: "letGo" })
+    expect(runtime.getSnapshot()).toMatchObject({ taking: null, said: "early" })
+    runtime.dispatch({ type: "holdToSpeak" })
+    expect(ports.notes.started).toHaveLength(2)
+  })
+
+  it("says a take an earlier opening left on the card on screen, when the phone holds no note from it", () => {
+    const storage = inMemoryStorage()
+    const notes = fakeNotes()
+    const first = opened(fakePorts(storage, notes))
+    first.dispatch({ type: "continue" })
+    first.dispatch({ type: "pick", pick: "Prints z" })
+    first.dispatch({ type: "holdToSpeak" })
+    notes.open()
+    // The app is ended mid-take, on this card; the phone kept no note.
+    const again = opened(fakePorts(storage))
+    expect(again.getSnapshot()).toMatchObject({
+      taking: null,
+      said: "missing",
+    })
+    expect(again.getSnapshot().place?.visit.card).toBe("a")
+  })
+
   it("lets a take refused by the microphone end with none, and the card moves on", () => {
     const notes = fakeNotes()
     notes.refuse("The microphone is off for this app.")
@@ -724,6 +772,7 @@ describe("the microphone", () => {
     runtime.dispatch({ type: "continue" })
     runtime.dispatch({ type: "pick", pick: "Prints z" })
     runtime.dispatch({ type: "holdToSpeak" })
+    ports.notes.open()
     ports.notes.lose("full")
     expect(runtime.getSnapshot()).toMatchObject({ noRoom: true, taking: null })
     runtime.dispatch({ type: "next" })
@@ -733,6 +782,7 @@ describe("the microphone", () => {
     // Room was made: the next card's take is kept.
     runtime.dispatch({ type: "pick", pick: "Prints 122" })
     runtime.dispatch({ type: "holdToSpeak" })
+    ports.notes.open()
     expect(ports.notes.started).toHaveLength(2)
     ports.notes.land("note-b")
     expect(runtime.getSnapshot()).toMatchObject({
