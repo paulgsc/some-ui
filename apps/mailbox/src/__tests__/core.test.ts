@@ -530,7 +530,7 @@ describe("the build-journal session's list of the takes Drive holds (MB2, HF11)"
     for (const body of [
       take(`{"sha256":"1AbCdEfGhIjKlMnOp","sha256":"${SHA_A}"}`),
       take(`{"sha256":12345,"sha256":"${SHA_A}"}`),
-      take(`{"sh\u0061256":"1AbC","sha256":"${SHA_A}"}`),
+      take(String.raw`{"sh\u0061256":"1AbC","sha256":"${SHA_A}"}`),
       `{"at":"1AbCdEfGhIjKlMnOp",${take(`{"sha256":"${SHA_A}"}`).slice(1)}`,
     ]) {
       const answer = await put(d, "brief", NAME, { body })
