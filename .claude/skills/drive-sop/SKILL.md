@@ -31,7 +31,7 @@ kept only for what the mailbox can't carry or the phone can't reach:
 - **Copies for refreshing away from home** (D4, #2183): the phone can't reach home there, so
   it picks from Drive. The Jobs run copies each digest to `some-ui jobs/Brief` after the
   mailbox takes it, or puts it there alone when the mailbox can't take it (a later run puts
-  that one home). The reflections run copies each scene to a folder of `Read aloud/sets` and
+  that one home, unless the mailbox refused the digest itself). The reflections run copies each scene to a folder of `Read aloud/sets` and
   each drama to `Dramas/requests`, each only after home has it.
 - **What only Drive holds, read and never rewritten,** in `Study ledger/reflections`,
   `Dramas/requests`, `Dramas/played`, `Read aloud/sets`, `Read aloud/archive` and
