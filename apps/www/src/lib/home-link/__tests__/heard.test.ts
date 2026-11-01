@@ -59,6 +59,12 @@ describe("home's words for a take (MIC10, GET /voice-notes/:id/heard)", () => {
     ).toEqual({ kind: "heard", text: "" })
   })
 
+  it("reads home, or a gateway before it, saying it is busy as busy", () => {
+    for (const status of [429, 502, 503, 504]) {
+      expect(readHeard({ status, body: "" })).toEqual({ kind: "busy" })
+    }
+  })
+
   it("reads anything else as home not answering as it should", () => {
     for (const odd of [
       { status: 500, body: "" },

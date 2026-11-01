@@ -20,8 +20,8 @@ import {
   stepHearing,
 } from "@soundbites/lib/idea/hearing"
 import type { IdeaState } from "@soundbites/lib/idea/machine"
-import type { IdeaListener } from "@soundbites/lib/idea/runtime"
-import { createIdeaCapture } from "@soundbites/lib/idea/runtime"
+import type { IdeaListener, Listening } from "@soundbites/lib/idea/runtime"
+import { createIdeaCapture, NO_LISTENER } from "@soundbites/lib/idea/runtime"
 import { keptIdeaStore } from "@soundbites/lib/idea/store"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -97,6 +97,10 @@ function capture(options: {
   mic?: ReadonlyArray<MicScript>
   keeps?: ReadonlyArray<KeepScript>
   full?: boolean
+  /** How long home takes to answer each ask. */
+  answerMs?: number
+  /** The screen's listener made from home's hearing. */
+  around?: (home: IdeaListener) => IdeaListener
 }): {
   /** The takes this phone has read back that home holds. */
   homeHolds: Set<string>
@@ -135,16 +139,20 @@ function capture(options: {
       const answer =
         (queue.length > 1 ? queue.shift() : queue[0]) ??
         ({ kind: "notHeld" } as const)
-      return Promise.resolve(answer)
+      const { answerMs } = options
+      return answerMs === undefined
+        ? Promise.resolve(answer)
+        : new Promise((resolve) => setTimeout(() => resolve(answer), answerMs))
     },
     now,
     onVisibility: visible.onVisibility,
   })
+  const around = options.around?.(hearing) ?? hearing
   const listener: IdeaListener = {
-    ...hearing,
+    ...around,
     available: () => {
       voiceChecks += 1
-      return hearing.available()
+      return around.available()
     },
   }
   const storage = inMemoryStorage()
@@ -299,6 +307,69 @@ describe("IH1: an answer said as a take, its words from home", () => {
       expect(run.asked()).toHaveLength(1)
     }
   )
+
+  it("ends the wait at the deadline while an ask is still out, and drops its late words", async () => {
+    // The first ask goes a poll after the take is kept, and home answers
+    // it only well after the deadline.
+    const run = capture({
+      answers: [{ kind: "heard", text: "too late" }],
+      answerMs: deadlineMs,
+    })
+    await say(run)
+    await vi.advanceTimersByTimeAsync(deadlineMs - 1)
+    expect(phaseOf(run.state())).toBe("hearing")
+    await vi.advanceTimersByTimeAsync(1)
+    expect(phaseOf(run.state())).toBe("typing")
+    expect(run.state().notice).toBe("keptOnPhone")
+    await vi.advanceTimersByTimeAsync(deadlineMs)
+    expect(phaseOf(run.state())).toBe("typing")
+    expect(run.asked()).toHaveLength(1)
+  })
+
+  it("offers Say it again on the same screen once home is no longer skipped", async () => {
+    // As www's `lib/idea-hearing` does on a phone with no recognizer: for
+    // a while after home didn't answer, nothing can listen.
+    const AWAY = 5 * 60_000
+    let until = Number.NEGATIVE_INFINITY
+    const run = capture({
+      answers: [{ kind: "unreachable" }, { kind: "heard", text: "back" }],
+      around: (home): IdeaListener => ({
+        available: () => Promise.resolve(Date.now() >= until),
+        listen: (onWords, onReady, take): Listening => {
+          if (Date.now() < until) return NO_LISTENER.listen(onWords, onReady)
+          const listening = home.listen(onWords, onReady, take)
+          return {
+            ...listening,
+            done: listening.done.then((result) => {
+              if (result.kind === "kept" && result.why === "away") {
+                until = Date.now() + AWAY
+              }
+              return result
+            }),
+          }
+        },
+      }),
+    })
+    await say(run)
+    await vi.advanceTimersByTimeAsync(pollMs)
+    expect(run.state().notice).toBe("awayOnPhone")
+    expect(run.state().voice).toBe("unavailable")
+    run.dispatch({ type: "draft", text: "typed idea" })
+    run.dispatch({ type: "save" })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(phaseOf(run.state())).toBe("typing")
+    await vi.advanceTimersByTimeAsync(AWAY)
+    run.dispatch({ type: "draft", text: "typed too" })
+    run.dispatch({ type: "save" })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(run.state().voice).toBe("ready")
+    expect(phaseOf(run.state())).toBe("idle")
+    await say(run)
+    await vi.advanceTimersByTimeAsync(pollMs)
+    expect(run.state().screen).toMatchObject({
+      phase: { kind: "heard", words: "back" },
+    })
+  })
 
   it("asks again at the next poll when the link was busy", async () => {
     const run = capture({
@@ -471,7 +542,7 @@ describe("stepHearing", () => {
       { type: "tick", now: NOW + pollMs, holds: false },
       HEARING_TIMING
     )
-    expect(asking.effects).toEqual([{ type: "ask", id: "t1" }])
+    expect(asking.effects[0]).toEqual({ type: "ask", id: "t1" })
     const cancelled = stepHearing(
       asking.state,
       { type: "cancel" },
@@ -513,6 +584,33 @@ describe("stepHearing", () => {
     ).toEqual([])
   })
 
+  it("takes no words that come at or after the deadline", () => {
+    const asking = stepHearing(
+      kept(initialHearing),
+      { type: "tick", now: NOW + pollMs, holds: false },
+      HEARING_TIMING
+    )
+    expect(asking.effects).toEqual([
+      { type: "ask", id: "t1" },
+      { type: "wait", ms: deadlineMs - pollMs },
+    ])
+    expect(
+      stepHearing(
+        asking.state,
+        {
+          type: "answered",
+          now: NOW + deadlineMs,
+          holds: false,
+          answer: { kind: "heard", text: "late" },
+        },
+        HEARING_TIMING
+      ).effects
+    ).toEqual([
+      { type: "clearWait" },
+      { type: "settle", result: { kind: "kept", on: "home", why: "late" } },
+    ])
+  })
+
   it("never has two asks out: a tick while one is out does nothing", () => {
     const asking = stepHearing(
       kept(initialHearing),
@@ -532,6 +630,7 @@ describe("stepHearing", () => {
         { type: "shown", now: NOW + 2 * pollMs, holds: false },
         HEARING_TIMING
       ).effects
-    ).toEqual([])
+      // No second ask: only the deadline timer, which hiding cleared.
+    ).toEqual([{ type: "wait", ms: deadlineMs - 2 * pollMs }])
   })
 })

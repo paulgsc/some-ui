@@ -20,7 +20,7 @@ import type { HearingPorts, IdeaListener, Listening } from "@some-ui/soundbites"
 import { onPageVisibility } from "@some-ui/voice-capture"
 
 import { deviceListener } from "@/lib/device-listen"
-import { homeLink, paired } from "@/lib/home-link"
+import { homeLink, pairingOf } from "@/lib/home-link"
 import { askHeard } from "@/lib/home-link/heard"
 import { ideaTakes } from "@/lib/idea-takes"
 
@@ -32,20 +32,27 @@ import { ideaTakes } from "@/lib/idea-takes"
 export const AWAY_MS = 5 * 60_000
 
 /**
- * Home's hearing while `paired` says so, `device` otherwise, and `device`
- * for `AWAY_MS` after home's hearing ended with home not answering.
+ * Home's hearing while the phone holds a pairing, `device` otherwise, and
+ * `device` for `AWAY_MS` after home's hearing ended with home not
+ * answering, while the phone holds the same pairing.
  */
 export function eitherListener(ports: {
   /** Settles once the phone's pairing has been read; never rejects. */
   loaded: () => Promise<void>
-  paired: () => boolean
+  /** The id of the pairing the phone holds now, or `null`. */
+  pairing: () => string | null
   home: IdeaListener
   device: IdeaListener
   /** Milliseconds since the epoch. */
   now: () => number
 }): IdeaListener {
-  let awayUntil = Number.NEGATIVE_INFINITY
-  const home = (): boolean => ports.paired() && ports.now() >= awayUntil
+  /** Home didn't answer: the pairing then, and until when it is skipped. */
+  let away: { readonly pairing: string; readonly until: number } | null = null
+  const home = (): boolean => {
+    const pairing = ports.pairing()
+    if (pairing === null) return false
+    return away?.pairing !== pairing || ports.now() >= away.until
+  }
   const which = (): IdeaListener => (home() ? ports.home : ports.device)
   return {
     available: () => ports.loaded().then(() => which().available()),
@@ -57,8 +64,13 @@ export function eitherListener(ports: {
         // Marked before the screen hears of it, so its next look at what
         // can listen (`available`) already skips home.
         done: listening.done.then((result) => {
-          if (result.kind === "kept" && result.why === "away") {
-            awayUntil = ports.now() + AWAY_MS
+          const pairing = ports.pairing()
+          if (
+            result.kind === "kept" &&
+            result.why === "away" &&
+            pairing !== null
+          ) {
+            away = { pairing, until: ports.now() + AWAY_MS }
           }
           return result
         }),
@@ -89,7 +101,7 @@ export function phoneIdeaListener(
   }
   return eitherListener({
     loaded: () => homeLink().load(),
-    paired,
+    pairing: () => pairingOf(),
     home: {
       available: () => homeListener().available(),
       listen: (onWords, onReady, take) =>

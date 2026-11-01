@@ -17,7 +17,8 @@
  *   listen, and from the moment it says it can't, the question takes typed
  *   words; "Type instead" is always there, while home hears a take too, and
  *   a take whose words don't come in time is kept and the question takes
- *   typed words (IH1, `./hearing`).
+ *   typed words (IH1, `./hearing`). Each question that opens while it can't
+ *   listen asks again, so "Say it" comes back once it can.
  * - **A tap is answered on screen** (LS1, www's `lib/device-listen`): a
  *   listening shows it is getting ready until the recognizer says it is
  *   listening, Done talking shows it is finishing until the words come,
@@ -567,7 +568,36 @@ function onAsk(
   }
 }
 
+/** Whether `after` shows a question `before` didn't. */
+function opensQuestion(before: IdeaState, after: IdeaState): boolean {
+  const was = before.screen
+  const now = after.screen
+  if (now.kind !== "ask") return false
+  return (
+    was.kind !== "ask" ||
+    was.question !== now.question ||
+    before.ideaId !== after.ideaId
+  )
+}
+
+/**
+ * The machine's step. A question that opens while the phone can't listen
+ * asks again whether it can: what the listener can do changes while the
+ * screen shows (home skipped for a while once it didn't answer, IH1).
+ */
 export function step(state: IdeaState, event: IdeaEvent): IdeaStep {
+  const next = stepOn(state, event)
+  if (
+    next.state.voice !== "unavailable" ||
+    !opensQuestion(state, next.state) ||
+    next.effects.some((effect) => effect.type === "checkVoice")
+  ) {
+    return next
+  }
+  return { ...next, effects: [...next.effects, { type: "checkVoice" }] }
+}
+
+function stepOn(state: IdeaState, event: IdeaEvent): IdeaStep {
   const { screen } = state
   switch (event.type) {
     case "entered":
@@ -629,6 +659,18 @@ export function step(state: IdeaState, event: IdeaEvent): IdeaStep {
           ...next,
           screen: { ...screen, phase: { kind: "typing", draft: "" } },
         })
+      }
+      // The phone can listen again: a question typing only because it
+      // couldn't (no "Type instead" is offered then) and with nothing typed
+      // yet offers "Say it".
+      if (
+        screen.kind === "ask" &&
+        state.voice === "unavailable" &&
+        voice === "ready" &&
+        screen.phase.kind === "typing" &&
+        screen.phase.draft === ""
+      ) {
+        return same({ ...next, screen: { ...screen, phase: { kind: "idle" } } })
       }
       return same(next)
     }

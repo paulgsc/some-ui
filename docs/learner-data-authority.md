@@ -396,8 +396,8 @@ declared (checked by reading every call site and by the tests named).
   `keep`: one `GET /voice-notes/:id/heard` every 5 s while the idea screen
   shows a take home is hearing, never while the page is hidden, for at most
   3 minutes from the take's keeping; once home didn't answer, none more for
-  that take, nor for any for 5 minutes; the owner's direction on #2428,
-  2026-11-01, and IH1), which are the other callers of
+  that take, nor for any for 5 minutes on that pairing; the owner's
+  direction on #2428, 2026-11-01, and IH1), which are the other callers of
   `lib/home-link`, is started by a tap in the Home server block of Settings
   (`components/settings/device-section.tsx`): the sync (published lessons
   and dramas, read with no credential), pairing (the code only), unpairing,

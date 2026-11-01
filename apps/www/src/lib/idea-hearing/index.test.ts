@@ -33,7 +33,7 @@ describe("IH1: where an idea answer's words come from", () => {
     const device = fake("device", false)
     const listener = eitherListener({
       loaded: () => Promise.resolve(),
-      paired: () => true,
+      pairing: () => "p1",
       home,
       device,
       now: () => 0,
@@ -59,7 +59,7 @@ describe("IH1: where an idea answer's words come from", () => {
     const device = fake("device", false)
     const listener = eitherListener({
       loaded: () => Promise.resolve(),
-      paired: () => false,
+      pairing: () => null,
       home,
       device,
       now: () => 0,
@@ -84,7 +84,7 @@ describe("IH1: where an idea answer's words come from", () => {
             resolve()
           }
         }),
-      paired: () => paired,
+      pairing: () => (paired ? "p1" : null),
       home: fake("home", true),
       device: fake("device", false),
       now: () => 0,
@@ -106,7 +106,7 @@ describe("IH1: where an idea answer's words come from", () => {
       const device = fake("device", recognizer)
       const listener = eitherListener({
         loaded: () => Promise.resolve(),
-        paired: () => true,
+        pairing: () => "p1",
         home,
         device,
         now: () => now,
@@ -131,12 +131,32 @@ describe("IH1: where an idea answer's words come from", () => {
     const device = fake("device", false)
     const listener = eitherListener({
       loaded: () => Promise.resolve(),
-      paired: () => true,
+      pairing: () => "p1",
       home,
       device,
       now: () => 0,
     })
     await listener.listen(vi.fn(), vi.fn()).done
+    expect(await listener.available()).toBe(true)
+    await listener.listen(vi.fn(), vi.fn()).done
+    expect(home.listened).toHaveLength(2)
+    expect(device.listened).toEqual([])
+  })
+
+  it("tries home again at once when the phone is paired anew within the window", async () => {
+    let pairing = "p1"
+    const home = fake("home", true, { kind: "kept", on: "phone", why: "away" })
+    const device = fake("device", false)
+    const listener = eitherListener({
+      loaded: () => Promise.resolve(),
+      pairing: () => pairing,
+      home,
+      device,
+      now: () => 0,
+    })
+    await listener.listen(vi.fn(), vi.fn()).done
+    expect(await listener.available()).toBe(false)
+    pairing = "p2"
     expect(await listener.available()).toBe(true)
     await listener.listen(vi.fn(), vi.fn()).done
     expect(home.listened).toHaveLength(2)

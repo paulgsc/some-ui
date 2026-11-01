@@ -17,20 +17,22 @@
  *
  * - _Claim:_ on a phone paired with home, "Say it" records a take through the
  *   take kit, whatever recognizer the phone has; once kept, the screen says
- *   home is hearing it and asks home every `pollMs` while the page shows,
- *   never while it is hidden, until `deadlineMs` from the take's keeping;
- *   home's words go to That's right / Fix. It stops waiting at once, the
- *   take kept and the question taking typed words, when the take is silent
- *   (D4), when home doesn't answer (it can't be reached), and when home
- *   says it knows no words for a take the phone has read back that home
- *   holds; otherwise at the deadline. Where it says the take is kept comes
- *   from what the phone has read back of home (or home's own word that it
- *   holds it), never from home not knowing it. A take let go while under
- *   way (Type instead, Skip, the screen going) is kept, and the screen
- *   counts it. A phone never paired listens through its recognizer as
- *   before (LS1), and with neither, takes typed words; for `AWAY_MS` after
- *   home didn't answer, www's `lib/idea-hearing` hears through the
- *   recognizer when the phone has one, and takes typed words when not.
+ *   home is hearing it and asks home every `pollMs` while the page shows, never
+ *   while it is hidden, until `deadlineMs` from the take's keeping; home's
+ *   words go to That's right / Fix, unless they come after the deadline, which
+ *   an ask still out doesn't move. It stops waiting at once, the take kept and
+ *   the question taking typed words, when the take is silent (D4), when home
+ *   doesn't answer (it can't be reached), and when home says it knows no words
+ *   for a take the phone has read back that home holds; otherwise at the
+ *   deadline. Where it says the take is kept comes from what the phone has read
+ *   back of home (or home's own word that it holds it), never from home not
+ *   knowing it. A take let go while under way (Type instead, Skip, the screen
+ *   going) is kept, and the screen counts it. A phone never paired listens
+ *   through its recognizer as before (LS1), and with neither, takes typed
+ *   words; for `AWAY_MS` after home didn't answer, while the phone holds the
+ *   same pairing, www's `lib/idea-hearing` hears through the recognizer when
+ *   the phone has one, and takes typed words when not, and the next question
+ *   to open after that offers "Say it" again (`./machine`'s `step`).
  * - _Family:_ hosts with and without an on-device recognizer × home paired
  *   or not × home reachable, busy or not × the take held by home or not yet
  *   (as read back, and as home says) × home's words arriving, never, or
@@ -41,13 +43,15 @@
  * - _Proof:_ `__tests__/hearing.test.ts` ("IH1"): over the shared simulated
  *   microphone, the real take kit and a fake home, each ending reaches the
  *   screen that says it, a hidden page asks nothing, a busy link is asked
- *   again, the deadline ends in typing with the take kept where the phone
+ *   again, an ask still out at the deadline doesn't move it and its late words
+ *   are dropped, "Say it" comes back on the same screen once home is no longer
+ *   skipped, the deadline ends in typing with the take kept where the phone
  *   read back it is, no answer and a missing read for a held take settle at
  *   once, a silent take settles without asking, and a cancel during a take
- *   counts it; www's `lib/idea-takes` test ("IH1") runs the same through
- *   the real desk's mapping; www's `lib/idea-hearing` test ("IH1"):
- *   paired, home hears; unpaired, the recognizer listens unchanged; home
- *   not answering, the recognizer or typing for `AWAY_MS`.
+ *   counts it; www's `lib/idea-takes` test ("IH1") runs the same through the
+ *   real desk's mapping; www's `lib/idea-hearing` test ("IH1"): paired, home
+ *   hears; unpaired, the recognizer listens unchanged; home not answering, the
+ *   recognizer or typing for `AWAY_MS`.
  * - _Tolerance:_ a take whose words come after the deadline, or after the
  *   screen moved on, does not fill that answer in later: the take is kept,
  *   and the answer is the words typed. A take the read-back has not yet
@@ -212,7 +216,16 @@ function keptAs(
   }
 }
 
-/** The next ask: now, unless the page is hidden or the time is up. */
+/** The next poll: in `pollMs`, or at the deadline if that comes first. */
+function nextPoll(phase: Waiting, now: number, timing: HearingTiming): number {
+  return Math.min(timing.pollMs, phase.until - now)
+}
+
+/**
+ * The next ask: now, unless the page is hidden or the time is up. While it
+ * is out the one timer is set for the deadline, so an ask home is slow to
+ * answer can't stretch the wait past it.
+ */
 function askNext(
   state: HearingState,
   phase: Waiting,
@@ -223,7 +236,10 @@ function askNext(
   if (state.hidden) return { state: { ...state, phase }, effects: [] }
   return {
     state: { ...state, phase: { ...phase, asking: true } },
-    effects: [{ type: "ask", id: phase.id }],
+    effects: [
+      { type: "ask", id: phase.id },
+      { type: "wait", ms: phase.until - now },
+    ],
   }
 }
 
@@ -283,6 +299,11 @@ function answered(
   timing: HearingTiming
 ): Next {
   const { answer, holds } = event
+  if (event.now >= phase.until) {
+    // Past the deadline: whatever home says now is too late for this answer.
+    const said = answer.kind === "notYet" || answer.kind === "heard"
+    return keptAs(state, phase.held || holds || said, "late")
+  }
   switch (answer.kind) {
     case "heard": {
       return {
@@ -316,10 +337,11 @@ function answered(
     asking: false,
     held: phase.held || answer.kind === "notYet",
   }
-  if (event.now >= next.until) return keptAs(state, next.held || holds, "late")
   return {
     state: { ...state, phase: next },
-    effects: state.hidden ? [] : [{ type: "wait", ms: timing.pollMs }],
+    effects: state.hidden
+      ? []
+      : [{ type: "wait", ms: nextPoll(next, event.now, timing) }],
   }
 }
 
@@ -335,8 +357,13 @@ export function stepHearing(
       return ended(state, phase, event, timing)
     }
     case "tick": {
-      if (phase.kind !== "waiting" || phase.asking) {
-        return { state, effects: [] }
+      if (phase.kind !== "waiting") return { state, effects: [] }
+      if (phase.asking) {
+        // The deadline, with an ask still out: the wait ends now, and its
+        // answer, when it comes, is dropped.
+        return event.now >= phase.until
+          ? keptAs(state, phase.held || event.holds, "late")
+          : { state, effects: [] }
       }
       return askNext(state, phase, event.now, event.holds)
     }
@@ -356,9 +383,16 @@ export function stepHearing(
     case "shown": {
       if (!state.hidden) return { state, effects: [] }
       const shown = { ...state, hidden: false }
-      // Back on screen: ask at once, unless an ask is already out.
-      if (phase.kind !== "waiting" || phase.asking) {
-        return { state: shown, effects: [] }
+      if (phase.kind !== "waiting") return { state: shown, effects: [] }
+      // Back on screen: ask at once, unless an ask is already out, whose
+      // deadline timer hiding the page cleared.
+      if (phase.asking) {
+        return event.now >= phase.until
+          ? keptAs(shown, phase.held || event.holds, "late")
+          : {
+              state: shown,
+              effects: [{ type: "wait", ms: phase.until - event.now }],
+            }
       }
       return askNext(shown, phase, event.now, event.holds)
     }

@@ -11,10 +11,12 @@
  * - `200` `{ "heard": { "text", "heardAt" } }`: what home heard, other
  *   fields ignored.
  *
- * A link already busy with another run (or stopped by the page going) is
- * `busy`: nothing was asked, and the screen asks again on its next poll.
- * Anything else, or no answer, is `unreachable`: home can't give the words
- * now, and the screen stops waiting for them.
+ * A link already busy with another run (or stopped by the page going), and
+ * home saying it is busy (`429`, as the link reads it) or that a gateway
+ * before it is (`502`, `503`, `504`), is `busy`: the screen asks again on
+ * its next poll. Anything else, an unreadable body, or no answer, is
+ * `unreachable`: home can't give the words now, and the screen stops
+ * waiting for them.
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { readAs } from "@some-ui/core-utils"
@@ -33,9 +35,13 @@ export function heardPath(id: string): string {
   return `/voice-notes/${encodeURIComponent(id)}/heard`
 }
 
+/** Statuses that say home, or what is before it, is busy for now. */
+const BUSY = new Set([429, 502, 503, 504])
+
 /** What home's answer says of the note's words. */
 export function readHeard(answer: HomeAnswer): HeardAnswer {
   if (answer.status === 404) return { kind: "notHeld" }
+  if (BUSY.has(answer.status)) return { kind: "busy" }
   if (answer.status !== 200) return { kind: "unreachable" }
   const read = readAs(Heard, answer.body)
   if (read === null) return { kind: "unreachable" }
