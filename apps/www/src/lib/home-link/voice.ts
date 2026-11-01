@@ -49,7 +49,7 @@ export const voiceLane: Lane = {
     useSyncExternalStore(storesRead.subscribe, storesRead.getSnapshot)
     const lens = lensTakesDesk.phone()
     useSyncExternalStore(lens.subscribe, lens.getSnapshot)
-    const leetype = leetypeTakesDesk.phone()
+    const leetype = leetypeTakesDesk.phone().takes
     useSyncExternalStore(leetype.subscribe, leetype.getSnapshot)
     const { gone } = useSyncExternalStore(
       copyPasses.subscribe,

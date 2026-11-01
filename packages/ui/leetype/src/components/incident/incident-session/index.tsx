@@ -197,8 +197,9 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
             glossary={play.file.glossary ?? {}}
             spoken={play.spoken}
             take={take}
-            onRecordStart={runtime.record}
-            onRecordStop={runtime.stopRecording}
+            onTap={runtime.tapTake}
+            onPlay={runtime.playTake}
+            onLetGo={runtime.letGoTake}
             onTyped={(text): void =>
               dispatch({ type: "answered", answer: { as: "typed", text } })
             }

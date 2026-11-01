@@ -2,10 +2,13 @@ import type { SessionLogStore } from "@leetype/lib/leetype/session-log"
 import { parkedNow } from "@leetype/lib/leetype/session-log/model"
 import type {
   SpokenTakes,
-  SpokenTakeSnapshot,
+  SpokenTakeView,
 } from "@leetype/lib/leetype/spoken-take"
+import { answersOf } from "@leetype/lib/leetype/spoken-take"
 import type { SessionFile } from "@leetype/types/session-file"
 import { rubricText } from "@leetype/types/session-file"
+import type { TakePlace } from "@some-ui/voice-capture"
+import { takeItemView } from "@some-ui/voice-capture"
 
 import type { Play, PlayInput, Stepped } from "./model"
 import {
@@ -34,8 +37,11 @@ export type IncidentPlaySnapshot = {
    * shows it.
    */
   readonly problem: string | null
-  /** The microphone, when the host gives one (`spoken-take`). */
-  readonly take: SpokenTakeSnapshot | null
+  /**
+   * The record screen in view's take, on the host's microphone
+   * (`spoken-take`); null with none, or off a record screen.
+   */
+  readonly take: SpokenTakeView | null
   /** The declared length has run (Prop. 9.6): offered, never forced. */
   readonly timeUp: boolean
 }
@@ -71,8 +77,9 @@ const MINUTE_MS = 60_000
  * opens. An event the log refuses is not retried: the play goes on, and
  * `problem` carries the log's own word on it until a later append is kept,
  * or, when the log has none, that an answer's notes were not kept.
- * A take that lands for the record screen in view answers it; one that
- * lands after the learner moved on answers nothing. What it listens to (the
+ * A take kept for the record screen in view answers it, a Redo's in place of
+ * the one before (D2), and Let go withdraws the answer its take gave (D3);
+ * one kept after the learner moved on answers nothing. What it listens to (the
  * microphone, the app's visibility, the timer) it holds only between
  * `attach` and the cleanup `attach` returns, so a surface that mounts twice
  * (React's StrictMode) holds them once, and the timer runs on to the same
@@ -82,9 +89,14 @@ export class IncidentPlayRuntime {
   private snapshot: IncidentPlaySnapshot
   private readonly listeners = new Set<() => void>()
   private readonly session: string
-  /** The record screen a take was started on, and the take answered last. */
+  /** The record screen a take was started on, in this visit of it. */
   private takingFor: string | null = null
-  private answeredTake: string | null = null
+  /** The last take's ending heard, by the pattern's count. */
+  private heardSeq = 0
+  /** The takes kept for the screen in view, in this visit of it. */
+  private visitTakes: ReadonlySet<string> = new Set<string>()
+  /** What `take` was made from, so it is the same object while they are. */
+  private takeFrom: ReadonlyArray<unknown> = []
   /** Background time since the screen in view came into view. */
   private hiddenSince: number | null = null
   private hiddenTotal = 0
@@ -97,12 +109,8 @@ export class IncidentPlayRuntime {
 
   constructor(private readonly ports: IncidentPlayPorts) {
     this.session = ports.newId()
-    this.snapshot = {
-      play: null,
-      problem: null,
-      take: ports.takes?.getSnapshot() ?? null,
-      timeUp: false,
-    }
+    this.heardSeq = ports.takes?.pattern.getSnapshot().ended?.seq ?? 0
+    this.snapshot = { play: null, problem: null, take: null, timeUp: false }
   }
 
   /** Listens to the ports until the returned cleanup runs. */
@@ -110,6 +118,7 @@ export class IncidentPlayRuntime {
     const { takes, visibility } = this.ports
     const unsubscribe = [
       takes?.subscribe(this.onTake),
+      takes?.pattern.subscribe(this.onTake),
       visibility?.subscribe(this.onVisibility),
     ]
     if (visibility?.hidden()) this.hiddenSince ??= this.ports.now()
@@ -120,7 +129,7 @@ export class IncidentPlayRuntime {
     return () => {
       this.attached = false
       this.takingFor = null
-      takes?.stop()
+      takes?.pattern.leave()
       this.cancelTimer()
       for (const off of unsubscribe) off?.()
     }
@@ -188,19 +197,41 @@ export class IncidentPlayRuntime {
     this.apply(step(play, input, this.context()))
   }
 
-  /** Starts a take of the answer on the record screen in view. */
-  record = (): void => {
+  /**
+   * D1: starts a take of the answer on the record screen in view, a Redo
+   * of its recorded answer included, or stops the take under way.
+   */
+  tapTake = (): void => {
     const play = this.snapshot.play
-    if (play?.file.screens[play.screen]?.type !== "record") return
-    // A take already there landed late, for an earlier visit: it is never
-    // this one's answer.
-    this.answeredTake = this.ports.takes?.getSnapshot().last?.id ?? null
+    const pattern = this.ports.takes?.pattern
+    if (pattern === undefined || !onRecord(play)) return
+    const answers = answersOf(play.fileName, play.screen)
+    const now = pattern.getSnapshot()
+    if (now.take.kind !== "idle") {
+      if (now.answers === answers) pattern.tap(answers)
+      return
+    }
+    const { spoken } = play
+    if (spoken !== null && spoken.as !== "recorded") return
     this.takingFor = play.screen
-    this.ports.takes?.start({ file: play.fileName, screen: play.screen })
+    pattern.tap(answers, spoken?.take ?? null)
   }
 
-  stopRecording = (): void => {
-    this.ports.takes?.stop()
+  /** Plays a take of this answer, or stops it while it plays. */
+  playTake = (id: string): void => {
+    this.ports.takes?.pattern.play(id)
+  }
+
+  /** D3: sets the recorded answer's take aside, and the answer is withdrawn. */
+  letGoTake = (id: string, place: TakePlace): void => {
+    const play = this.snapshot.play
+    const pattern = this.ports.takes?.pattern
+    if (pattern === undefined || !onRecord(play)) return
+    if (play.spoken?.as !== "recorded" || play.spoken.take !== id) return
+    // The row's actions wait while a take is under way.
+    if (pattern.getSnapshot().take.kind !== "idle") return
+    pattern.letGo(id, place)
+    this.dispatch({ type: "withdrawn" })
   }
 
   /** Sets the timer for what is left of the declared length. */
@@ -230,29 +261,62 @@ export class IncidentPlayRuntime {
   }
 
   private readonly onTake = (): void => {
-    const take = this.ports.takes?.getSnapshot() ?? null
     const play = this.snapshot.play
-    const last = take?.last ?? null
-    this.snapshot = { ...this.snapshot, take }
-    if (
-      play !== null &&
-      last !== null &&
-      last.id !== this.answeredTake &&
-      this.takingFor === play.screen &&
-      play.spoken === null
-    ) {
-      this.answeredTake = last.id
-      this.dispatch({
-        type: "answered",
-        answer: {
-          as: "recorded",
-          take: last.id,
-          seconds: last.durationMs / 1000,
-        },
-      })
-      return
+    const ended = this.ports.takes?.pattern.getSnapshot().ended ?? null
+    if (ended !== null && ended.seq > this.heardSeq) {
+      this.heardSeq = ended.seq
+      const kept = ended.ending === "kept" && onRecord(play) ? ended.id : null
+      if (
+        kept !== null &&
+        onRecord(play) &&
+        this.takingFor === play.screen &&
+        ended.answers === answersOf(play.fileName, play.screen)
+      ) {
+        this.visitTakes = new Set([...this.visitTakes, kept])
+        const take = this.ports.takes
+          ?.getSnapshot()
+          .takes.find(({ id }) => id === kept)
+        this.dispatch({
+          type: "answered",
+          answer: {
+            as: "recorded",
+            take: kept,
+            seconds: (take?.durationMs ?? 0) / 1000,
+          },
+        })
+      }
     }
+    const take = this.takeOf(this.snapshot.play)
+    if (take === this.snapshot.take) return
+    this.snapshot = { ...this.snapshot, take }
     this.publish()
+  }
+
+  /** The record screen in view's take, as the pattern's parts show it. */
+  private takeOf(play: Play | null): SpokenTakeView | null {
+    const takes = this.ports.takes
+    if (takes === undefined || !onRecord(play)) return null
+    const spoken = takes.getSnapshot()
+    const pattern = takes.pattern.getSnapshot()
+    const from = [play, spoken, pattern, this.visitTakes, this.takingFor]
+    const same = from.every((input, at) => input === this.takeFrom[at])
+    if (same && this.snapshot.take !== null) return this.snapshot.take
+    this.takeFrom = from
+    const { takes: kept, full, notesFull } = spoken
+    // Only this visit's takes are this answer's: the same screen played
+    // another time answers afresh.
+    const view = takeItemView(
+      pattern,
+      kept.filter(({ id }) => this.visitTakes.has(id)),
+      answersOf(play.fileName, play.screen),
+      takes.pattern.options
+    )
+    // How a take ended is said only for one started in this visit.
+    const item =
+      view.said?.kind === "ended" && this.takingFor !== play.screen
+        ? { ...view, said: null }
+        : view
+    return { item, full, notesFull }
   }
 
   /** The screens of `file` still parked, by the log. */
@@ -284,16 +348,23 @@ export class IncidentPlayRuntime {
     }
     if (play.screen !== before?.screen || play.ended !== before.ended) {
       this.takingFor = null
+      this.visitTakes = new Set()
       this.hiddenTotal = 0
       if (this.hiddenSince !== null) this.hiddenSince = this.ports.now()
-      if (play.file.screens[play.screen]?.type === "record") {
-        this.ports.takes?.reset()
-      }
+      // A take under way is kept, and answers nothing; nothing plays on.
+      this.ports.takes?.pattern.leave()
     }
     if (play.ended !== null) this.cancelTimer()
     const problem = this.ports.log.getSnapshot().problem ?? this.unkept
-    if (play === before && problem === this.snapshot.problem) return
-    this.snapshot = { ...this.snapshot, play, problem }
+    const take = this.takeOf(play)
+    if (
+      play === before &&
+      problem === this.snapshot.problem &&
+      take === this.snapshot.take
+    ) {
+      return
+    }
+    this.snapshot = { ...this.snapshot, play, problem, take }
     this.publish()
   }
 
@@ -350,4 +421,9 @@ export const pageVisibility: Visibility = {
     document.addEventListener("visibilitychange", listener)
     return () => document.removeEventListener("visibilitychange", listener)
   },
+}
+
+/** The play is on a record screen. */
+function onRecord(play: Play | null): play is Play {
+  return play?.file.screens[play.screen]?.type === "record"
 }

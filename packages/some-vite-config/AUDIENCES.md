@@ -251,7 +251,10 @@ What it cannot see, by construction:
 routes off a profile's path ship there as stubs in the startup chunk and as page chunks
 (about 67 KiB in the APK; the `apk` gate's pages in `lan` and `pages`, and the `lan` gate's
 in `pages`). The gates and `keepToMobileSurface` keep them from rendering; the bytes are still
-paid. Each entry goes with the change that gives that deployable its own route tree.
+paid. Each entry goes with the change that gives that deployable its own route tree. And
+`lan` and `pages` carry about 3.5 KiB of `@some-ui/voice-capture`, the take pattern's view and
+words, which LeetType's record screen draws only with a microphone the web builds do not give
+it (#2433).
 
 ## Known gaps
 

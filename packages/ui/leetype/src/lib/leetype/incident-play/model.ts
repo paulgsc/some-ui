@@ -151,8 +151,13 @@ export type PlayInput =
   | { readonly type: "leave" }
   /** A spoken answer passed: its abstention, a struggle (Def. 9.4). */
   | { readonly type: "pass" }
-  /** A spoken answer given; its rubric shows next (Ax. 9.2). */
+  /**
+   * A spoken answer given; its rubric shows next (Ax. 9.2). A take given
+   * over a recorded answer is its Redo (D2), the answer now.
+   */
   | { readonly type: "answered"; readonly answer: SpokenAnswer }
+  /** The recorded answer's take was let go (D3): no answer yet again. */
+  | { readonly type: "withdrawn" }
   /** The rubric points the learner ticks for their answer. */
   | { readonly type: "ticked"; readonly ticks: ReadonlyArray<string> }
 
@@ -813,8 +818,17 @@ export function step(play: Play, input: PlayInput, ctx: StepContext): Stepped {
         : unchanged
     }
     case "answered": {
-      return screen.type === "record" && play.spoken === null
-        ? showRubric(play, screen, input.answer, ctx)
+      if (screen.type !== "record") return unchanged
+      if (play.spoken === null)
+        return showRubric(play, screen, input.answer, ctx)
+      // A Redo's take: the rubric is already in view.
+      return play.spoken.as === "recorded" && input.answer.as === "recorded"
+        ? { play: { ...play, spoken: input.answer }, events: [] }
+        : unchanged
+    }
+    case "withdrawn": {
+      return screen.type === "record" && play.spoken?.as === "recorded"
+        ? { play: { ...play, spoken: null }, events: [] }
         : unchanged
     }
     case "ticked": {
