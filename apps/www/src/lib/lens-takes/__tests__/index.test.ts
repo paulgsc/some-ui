@@ -37,13 +37,19 @@ function listed(...ids: Array<string>): void {
   localStorage.setItem(
     KEY,
     JSON.stringify(
-      ids.map((id) => ({
-        id,
-        line: "school-bus",
-        takenAt: 1_760_000_000_000,
-        durationMs: 3_000,
-        mimeType: "audio/webm",
-      }))
+      ids.map((entry) => {
+        const at = entry.indexOf(":")
+        const id = at < 0 ? entry : entry.slice(0, at)
+        const standing = at < 0 ? undefined : entry.slice(at + 1)
+        return {
+          id,
+          line: "school-bus",
+          takenAt: 1_760_000_000_000,
+          durationMs: 3_000,
+          mimeType: "audio/webm",
+          ...(standing === undefined ? {} : { standing }),
+        }
+      })
     )
   )
 }
@@ -75,6 +81,16 @@ describe("lensTakesForExport", () => {
       ["b", false, true],
       ["c", false, false],
     ])
+  })
+})
+
+describe("lensTakesForExport, out of view", () => {
+  it("leaves out a take recorded again or set aside, which stays on the phone (D2, D3)", async () => {
+    shelved.add("a").add("b").add("c")
+    listed("a", "b:earlier", "c:set-aside")
+    const out = await lensTakesForExport()
+    expect(out.map(({ take }) => take.id)).toEqual(["a"])
+    expect(ids()).toEqual(["a", "b", "c"])
   })
 })
 

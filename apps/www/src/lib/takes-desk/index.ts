@@ -46,6 +46,9 @@ const isTake = (value: unknown): value is Take =>
   typeof Reflect.get(value, "mimeType") === "string" &&
   STANDINGS.includes(Reflect.get(value, "standing"))
 
+/** Whether a take is in its item's view: neither recorded again nor set aside. */
+export const inView = (take: Take): boolean => take.standing === undefined
+
 /** What either desk offers besides its runtime. */
 type DeskShelf = {
   /**
@@ -55,9 +58,12 @@ type DeskShelf = {
    */
   readonly sweep: () => void
   /**
-   * The takes as kept, newest first, each with its audio: null when it is
-   * gone, and `read` false when the shelf could not be read, so that take,
-   * whose audio may still be there, is not counted as gone with the export.
+   * The takes in their items' view, newest first, each with its audio: null
+   * when it is gone, and `read` false when the shelf could not be read, so
+   * that take, whose audio may still be there, is not counted as gone with
+   * the export. A take a Redo recorded again (D2) or Let go set aside (D3)
+   * is kept and goes home, but is out of what routines read, so it is not
+   * exported.
    */
   readonly forExport: () => Promise<
     Array<{ take: Take; audio: Blob | null; read: boolean }>
@@ -206,13 +212,16 @@ function desk<R extends Runtime>(
     forExport: (): ReturnType<DeskShelf["forExport"]> => {
       const audio = shelf.shelf()
       return Promise.all(
-        takes.read().map(async (take) => {
-          try {
-            return { take, audio: await audio.get(take.id), read: true }
-          } catch {
-            return { take, audio: null, read: false }
-          }
-        })
+        takes
+          .read()
+          .filter(inView)
+          .map(async (take) => {
+            try {
+              return { take, audio: await audio.get(take.id), read: true }
+            } catch {
+              return { take, audio: null, read: false }
+            }
+          })
       )
     },
     keptOn: (line, since): string | null => keptOn(takes.read(), line, since),
