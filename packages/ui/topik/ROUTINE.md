@@ -48,10 +48,12 @@ do:
 - **Scenes only Drive holds:** the routine's scene folders home doesn't
   (2b's `lacking`): scenes retired before the mailbox opened, and scenes
   whose folder an earlier run wrote and whose mailbox put failed. Their decks
-  are read for word ids (step 4), and each answers the reflection its folder
-  names. A run without Drive can't read them, so it may answer a reflection
-  one of them already answers, and a word id it writes may already mean
-  another word in one of them: it says so in the summary.
+  are read for word ids (step 4), and one that holds both files answers the
+  reflection its folder names, as step 3 says: when home's index stands, only
+  under the group's `base`, never under an earlier one. A run without Drive
+  can't read them, so it may answer a reflection one of them already
+  answers, and a word id it writes may already mean another word in one of
+  them: it says so in the summary.
 - **The `Inbox/` triage** (step 11).
 
 The scheduled task's prompt points at this file, so a change to the run is a
@@ -331,9 +333,21 @@ Voice notes never go to the mailbox from this run.
    reflections in the order they were written, `newestAt`, and `settled`
    (`false` while its newest is under two hours old: it waits for the next
    run). Don't list the `reflection` folder or group the reflections
-   yourself: fetch each named one as above. A reflection is answered when its
-   base is in the index's `answered.scenes` or a scene folder in Drive answers
-   it as above; a group whose reflections a Drive reflection file holds
+   yourself: fetch each named one as above. Home has already applied the
+   earlier-base rule above to the scenes it holds, and each group's `base` is
+   the session's last 8; don't run `scripts/base.mjs` for these groups. The
+   index lists only the groups no scene home holds answers, so the run can't
+   count a day's other groups or tell whether an earlier base is shared. A
+   group of the index is answered only by a scene folder only Drive holds: one
+   whose base in 2b's `lacking` is the group's `base` and that holds both
+   files, as above. One that carries the group's `base` and holds one file
+   only is finished as step 4's last paragraph says. A scene in `lacking`
+   under an earlier base (`<day>_reflection_` and a session's first 8,
+   `<day>_reflection_session-` for most) answers no group of the index,
+   whichever session it seems to match, and is never finished for one:
+   matched by eye, one old scene could hide a second session's reflection. A
+   group such a scene did answer is then answered again, with a second scene
+   (RB1's Tolerance). A group whose reflections a Drive reflection file holds
    belongs to that file, as above.
 
    Take the unanswered ones, from the mailbox and from Drive together,
@@ -700,16 +714,29 @@ last 8 of every id `newSessionId` makes are random. What follows is the one
 part no test can see.
 
 - _Claim:_ step 3 has the run take every group's base from
-  `scripts/base.mjs`, and `scripts/base.mjs` prints
+  `scripts/base.mjs`, or, when home's index stands, from the index's
+  `reflections` with only a scene carrying a group's `base` (none under an
+  earlier base) in 2b's `lacking` answering it, and `scripts/base.mjs` prints
   `groupBases(readGroups(<the file>))` of the module it loads,
   `src/lib/topik/reflection-base/index.ts`, or says that the groups don't
   read.
 - _Falsified by_ a hunk in this file's step 3 that has the run work out a base
   any other way, or that drops or changes the earlier-base clause; a hunk in
-  `scripts/base.mjs` that prints anything else or loads another module; or a
-  hunk that deletes, renames or moves `scripts/base.mjs` without step 3
-  following it.
-- _Scope:_ this file's step 3 and `scripts/base.mjs`.
+  step 3's "When home's index stands (2b)" passage that has a scene in
+  `lacking` answer an index group under any base but the group's `base`, or
+  that drops or changes the sentence saying an earlier-base scene there
+  answers none; a hunk that changes which bases `lacking` holds (`baseOf` or
+  `reflectionsIndexStands` in `src/lib/topik/home-index/index.ts`, or
+  `scripts/stands.mjs`) or 2b's definition of `lacking` without that passage
+  following it; a hunk in `scripts/base.mjs` that prints anything else or
+  loads another module; or a hunk that deletes, renames or moves
+  `scripts/base.mjs` without step 3 following it.
+- _Scope:_ this file's step 3 and 2b's definition of `lacking`,
+  `scripts/base.mjs`, `scripts/stands.mjs` and
+  `src/lib/topik/home-index/index.ts`. Outside it: the index's `base` (the
+  session's last 8) and its groups are paulgsc/server's `base_of` and
+  `waiting_groups` (`apps/servers/file_host/src/mailbox/index/reflections.rs`),
+  a dependency no hunk here can show.
 - _Why not enforced:_ the run follows this file by hand, so whether it calls
   the script is something only a reader of this file can check.
 - _Tolerance:_ a group that arrives late for a day whose other groups have all
@@ -717,4 +744,7 @@ part no test can see.
   taken as answered by that scene. Earlier-base scenes are written only by runs
   from HF3 (#2396, 2026-10-31) until RB1 reached main, and a reflection leaves
   the listing only once home archives it, at least 30 days on, so such a group
-  would have to arrive more than a month late.
+  would have to arrive more than a month late. And when home's index stands, a
+  group an earlier-base scene only Drive holds answers is answered again, with
+  a second scene: such a scene is one an earlier run wrote in that span whose
+  mailbox put failed, and its reflections must still be in the listing.

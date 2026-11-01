@@ -40,8 +40,10 @@ export type ReflectionsStanding = {
   readonly why: ReadonlyArray<string>
   /**
    * The bases of the routine's scene folders Drive holds that the index
-   * does not name (`answers:` or `stock:`): read their decks for word ids,
-   * and count them answered.
+   * does not name (`answers:` or `stock:`): read their decks for word ids.
+   * An `answers:` folder holding both files answers the index group whose
+   * `base` it carries; one under an earlier base answers none, and a `stock:`
+   * one never does (ROUTINE.md, step 3, RB1).
    */
   readonly lacking: ReadonlyArray<string>
 }

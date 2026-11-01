@@ -10,7 +10,8 @@ import { z } from "zod"
  * base, and a scene under the earlier base answers a group only when no other
  * group of that day still in the listing, answered or not, has the same one;
  * `index.test.ts`, "RB1", holds it over each id form, and the run takes bases
- * only from `scripts/base.mjs`.
+ * only from `scripts/base.mjs`, or from home's index when it stands, where an
+ * earlier-base scene only Drive holds answers no group.
  */
 
 /** One session's written reflections on one day. */
