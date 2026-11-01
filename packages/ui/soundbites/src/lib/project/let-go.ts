@@ -26,7 +26,8 @@ export type LetGoChoice = LetGo | null
 /**
  * Whether a take home holds may leave the phone on home's word alone, by the
  * owner's choice: only under `home`. Under `drive` it leaves on the owner's
- * tap on that take ("Drive has it"), and never before they choose.
+ * tap on that take ("Drive has it") or on home's word that Drive has it
+ * (`letGoOnDrive`), and never before they choose.
  */
 export function mayLeave(choice: LetGoChoice): boolean {
   return choice === "home"

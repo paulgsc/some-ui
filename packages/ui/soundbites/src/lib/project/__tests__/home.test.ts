@@ -67,7 +67,8 @@ describe("Studio's takes on their way home", () => {
    * LG1 (HF11): a take leaves only once home holds it and the owner's
    * choice allows it, over every choice (none yet, home, Drive). Under
    * Drive, home holding it never lets it go: the owner's tap does
-   * (`studio/__tests__/studio.test.ts`).
+   * (`studio/__tests__/studio.test.ts`), or home's word that Drive has it
+   * (the `letGoOnDrive` cases below).
    */
   it.each([
     [null, true],

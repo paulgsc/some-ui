@@ -485,7 +485,7 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(sendCalls(ROUTINE_READ, read(ROUTINE_READ))).toEqual(ROUTINE_SENDS)
   })
 
-  it("sends nothing from the read of which takes Drive has but one GET /voice-notes/on-drive, and only the voice lane's run reads it (HF11)", () => {
+  it("sends nothing from the read of which takes Drive has but its GETs of /voice-notes/on-drive, one per 100 waiting takes, and only the voice lane's run reads it (HF11)", () => {
     expect(sendCalls(ON_DRIVE_READ, read(ON_DRIVE_READ))).toEqual(
       ON_DRIVE_SENDS
     )
