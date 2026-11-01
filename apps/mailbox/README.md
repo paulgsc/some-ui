@@ -18,8 +18,10 @@ latest scenes, the lessons waiting unopened and which reflections and prompts st
 voice note), so a routine reads it instead of rebuilding it. The index is a view of what home
 keeps, so only the latest of each routine's stays. For the reflections routine: each **written
 reflection** home keeps (`reflection`), its text only, and each **drama prompt** (`prompt`),
-the next scene's prompt as the phone asked for it, its markdown only. Each side reaches it with
-its own token, so the files move between them without a hand-carried step.
+the next scene's prompt as the phone asked for it, its markdown only. For the Build Journal:
+the build-journal session's **list of the Studio takes Drive holds** (`drive-takes-…` in
+`brief`), SHA-256s only, so home can tell the phone which takes Drive has too. Each side
+reaches it with its own token, so the files move between them without a hand-carried step.
 
 ## Why it exists
 
@@ -37,6 +39,7 @@ cloud routine ◀──GET transcript── [ mailbox ] ◀──PUT transcript�
 cloud routine ◀──GET index── [ mailbox ] ◀──PUT index── home (after each pass, when it changed)
 cloud routine ◀──GET reflection── [ mailbox ] ◀──PUT reflection── home ◀── phone (a written reflection)
 cloud routine ◀──GET prompt── [ mailbox ] ◀──PUT prompt── home ◀── phone (Ask for the next scene)
+build journal ──PUT brief (drive-takes)──▶ [ mailbox ] ◀──GET brief── home ──▶ phone (Drive has it)
 ```
 
 The phone talks to home only. The mailbox carries no audio: home keeps the audio
@@ -99,7 +102,9 @@ Every request needs `Authorization: Bearer <token>`. Every answer is JSON, or th
 | anything else                                            | `404`; a method the path does not take is `405` with `Allow`. A missing or wrong token is `401`, a token that may not do this is `403`, and storage failing is `503`.                                                                                                                                                                                   |
 
 The folders are `brief`, `decisions`, `scout`, `scene`, `drama`, `run`, `opened`, `leetype`,
-`leetype-log`, `transcript`, `index`, `reflection` and `prompt`.
+`leetype-log`, `transcript`, `index`, `reflection` and `prompt`. `brief` also holds the
+build-journal session's lists of the takes Drive holds (`drive-takes-…`), which home finds
+in the listing it makes of `brief` every pass anyway, so they cost no listing of their own.
 
 **`seq` only grows, and it has gaps.** SQLite hands out a number for every put that reaches the
 table, including a put of a name already held (`unchanged` or `conflict`), which stores nothing.
@@ -167,13 +172,15 @@ role, and it is the owner's call, so it is not built.
   `drama-YYYYMMDDTHHMMSSmmmZ.prompt.json`, named for the prompt's stamp as the phone names it
   (the moment it was asked for, in UTC to the millisecond, as home's
   `PUT /api/v1/routine/prompts/:stamp` takes it), so the drama that answers it is the
-  `drama` folder's `drama-<stamp>.json`.
+  `drama` folder's `drama-<stamp>.json`. `brief` also takes `drive-takes-YYYYMMDDTHHMMSSZ.json`
+  (MB2, the owner's route a on paulgsc/some-ui#2401), named for when the build-journal session
+  listed Drive's takes folder, in UTC to the second, so each list goes under a new name.
   Anything else, an audio file's name included, is `422`.
 - **Content type** `application/json` (parameters such as `charset` are ignored), and the body
   must be UTF-8 JSON with no byte-order mark.
 - **Schema**: the top-level `schema` must be `some-ui.job-digest/1`, `some-ui.job-decisions/1`,
   `some-ui.job-scouts/1`, `some-ui.routine-scene/1`, `some-ui.routine-drama/1`, `some-ui.routine-run/1`,
-  `some-ui.routine-opened/1`, `some-ui.leetype-session/1`, `some-ui.leetype-log/1`, `some-ui.voice-transcript/1`, `some-ui.routine-index/1`, `some-ui.reflection/1` or `some-ui.drama-prompt/1` to match the folder. The Worker checks that and nothing deeper, except for a transcript, an index, a reflection and a prompt (below); the readers validate the full shape.
+  `some-ui.routine-opened/1`, `some-ui.leetype-session/1`, `some-ui.leetype-log/1`, `some-ui.voice-transcript/1`, `some-ui.routine-index/1`, `some-ui.reflection/1` or `some-ui.drama-prompt/1` to match the folder (and `some-ui.drive-takes/1` for a list of Drive's takes in `brief`). The Worker checks that and nothing deeper, except for a transcript, an index, a reflection, a prompt and a list of Drive's takes (below); the readers validate the full shape.
 - **A scene** is `{"schema":"some-ui.routine-scene/1","answers":"<reflection>","title":"<the
 scene folder's name>","decks":[<read-aloud deck>,<lens deck>]}`, each deck exactly as the
   phone's word set check takes it. **A drama** is `{"schema":"some-ui.routine-drama/1",
@@ -292,6 +299,22 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
   as sent carries a `data:` URI, a Drive link or a run of 256 or more base64 characters, by
   the transcript's tests. A prompt is about 40 KB today, most of it the tree prompt; home
   takes one of at most 256 KiB of text, so a file is well under the cap.
+- **A list of the takes Drive holds** is
+  `{"schema":"some-ui.drive-takes/1","at","takes":[{"sha256"}]}`: when the build-journal
+  session listed Drive's Build Journal takes folder (an instant, which the name carries to the
+  second in UTC), and the SHA-256 of each recording it found there, in lower-case hex, each
+  once, at most 10,000. That is all home needs to match a take it holds (paulgsc/server keeps
+  each Studio take's SHA-256, ST25): no audio, no Drive file name, id or link, and no take's
+  name or scene (owner, route a on paulgsc/some-ui#2401: "go with route a"). Home gets no
+  Drive credential. An empty `takes` says Drive holds none. The Worker holds this shape itself,
+  as it holds a reflection's: every key is required, any other key is `422` (`a list of takes
+carries no audio: Drive and home keep it` when it names audio or bytes, `a list of takes
+names no Drive file or link` when it names Drive or a file id), a take with any key but
+  `sha256` is `422`, and so is a body whose text as sent carries a `data:` URI, a Drive link or
+  a run of 256 or more base64 characters, by the transcript's tests, or that gives any key twice
+  (`each key is given once`: `JSON.parse` keeps a repeated key's last value, so a first one, a
+  Drive id say, would be kept unread). A list is about 78 bytes a take, so 10,000 takes stay
+  under the cap.
 - **Size**: at most 1,048,576 bytes. A declared `Content-Length` over that is refused before
   the body is read, and a body that declares nothing is cut off as it passes the cap. Real
   files are under 20 KB, except LeetType session files: Thread 1's first file is 30 KB
@@ -465,7 +488,11 @@ how each was checked when this workspace landed.
   day from 2026-10-17, when the phone could first share one, through 2026-11-03, the day
   before the phone files every Jobs file home (`FOLDERS`' `backfill`, `FIRST_SHARED`,
   `DRIVE_ONLY_ENDED`; widened from the day the mailbox opened by the owner's decision on
-  paulgsc/some-ui#2393, https://github.com/paulgsc/some-ui/issues/2393#issuecomment-6552332294), so the files it can add there are a closed set. Every request passes `authenticate` and then one of `serve`'s
+  paulgsc/some-ui#2393, https://github.com/paulgsc/some-ui/issues/2393#issuecomment-6552332294), so the files it can add there are a closed set. `brief` also takes the build-journal session's list
+  of the takes Drive holds (`FOLDERS`' `also`, `drive-takes-…`, `driveTakesRefusal`; the
+  owner's route a, 2026-10-31,
+  [paulgsc/some-ui#2401](https://github.com/paulgsc/some-ui/issues/2401#issuecomment-6549482554)),
+  which only the routine role puts and home reads with the digests. Every request passes `authenticate` and then one of `serve`'s
   `may(grant.get | put | ask | move)` checks before anything reaches the store.
 - _Falsified by_ a hunk that adds, removes or renames a role; adds a folder to, or removes one
   from, any role's `get`, `put`, `ask` or `move` list; changes which secret a role reads, or
@@ -475,7 +502,10 @@ how each was checked when this workspace landed.
   a route in `METHODS`; renames, moves or deletes the `ROLES` table; or adds a `backfill`
   folder to any folder, loosens `SHARED_NAMES` or `sharedDay`, moves `FIRST_SHARED` or
   `DRIVE_ONLY_ENDED`, or lets `kindOf` take a backfill name `sharedDay` does not read or for a
-  day outside them; when the PR description does not name the owner's decision to do so.
+  day outside them; or adds a kind to any folder's `also`, loosens the `drive-takes` name or
+  `driveTakesRefusal` (a key beyond `schema`, `at` and `takes`, or beyond `sha256` per take),
+  or removes `kindOf`'s reading of `also`; when the PR description does not name the owner's
+  decision to do so.
 - _Scope:_ `apps/mailbox/src/core.ts` and `wrangler.jsonc`.
 - _Why not enforced:_ `__tests__/core.test.ts` pins today's matrix (every role against every
   folder and method), but a hunk that changes the table and the test together passes it. A test
@@ -527,7 +557,14 @@ how each was checked when this workspace landed.
   `ROLES` has three entries; `core.test.ts` pins `prompt` as it pins `reflection`: home puts
   it and may not read it, the routine reads it and may neither put it, list it as archived
   nor ask it back (`ASKED`, every record but `reflection` and `prompt`), and the archive role
-  reads and moves it.
+  reads and moves it. _Checked at the Drive takes amendment (the owner's route a on
+  paulgsc/some-ui#2401, 2026-10-31: "go with route a, I'll re-save the skill",
+  [the decision](https://github.com/paulgsc/some-ui/issues/2401#issuecomment-6549482554)):_
+  `ROLES` has three entries and is unchanged; `brief`'s `also` holds one kind, the
+  `drive-takes` list, which `kindOf` takes only under its own name and holds to its own
+  schema and `driveTakesRefusal`; `core.test.ts` pins that the routine puts one, home reads it
+  and may not put it, and that a body naming audio, bytes, a Drive file, id or link, a take's
+  name, or any key but `schema`, `at` and `takes` (`sha256` per take) is refused.
 
 **MB3: No token reaches the repo or a log.**
 

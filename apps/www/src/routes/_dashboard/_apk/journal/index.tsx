@@ -8,6 +8,7 @@ import type {
   WingLink,
 } from "@some-ui/soundbites"
 import {
+  keptLetGo,
   keptTimeLog,
   letGoHeldTakes,
   notesForHome,
@@ -110,7 +111,8 @@ const StudioRoute = (): JSX.Element => {
       store,
       timeLog: () => keptTimeLog().read(),
       notesForHome,
-      letGoHeldTakes: (held) => letGoHeldTakes(store, held),
+      // As the owner chose, read at each let-go (HF11, LG1): none before.
+      letGoHeldTakes: (held) => letGoHeldTakes(store, held, keptLetGo().read()),
       sittingKey,
     })
   }, [])

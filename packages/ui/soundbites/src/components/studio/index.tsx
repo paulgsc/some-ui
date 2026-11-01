@@ -25,6 +25,7 @@ import { FilePick } from "@soundbites/components/file-pick"
 import { Notice } from "@soundbites/components/notice"
 import { phoneStudioPorts } from "@soundbites/lib/phone"
 import { finishOf } from "@soundbites/lib/project/finish"
+import { LET_GO_CHOICES, waitingCount } from "@soundbites/lib/project/let-go"
 import type { Project } from "@soundbites/lib/project/model"
 import { latest } from "@soundbites/lib/project/model"
 import { lengthFor } from "@soundbites/lib/project/script"
@@ -46,6 +47,7 @@ import {
   recordView,
   startView,
   takesOnPhone,
+  waitingView,
 } from "@soundbites/lib/studio/view"
 import {
   askedAt,
@@ -160,6 +162,105 @@ const Steps = ({
   )
 }
 
+/**
+ * When a take home holds leaves the phone (HF11): the owner's one choice,
+ * offered once home holds a take and changeable after, and under "until
+ * Drive has it too" each take of this video home holds, with its "Drive has
+ * it".
+ */
+const LetGoCard = ({
+  state,
+  project,
+  dispatch,
+}: {
+  state: StudioState
+  project: Project | null
+  dispatch: Dispatch
+}): JSX.Element | null => {
+  const waiting = waitingCount(
+    state.shelf.kind === "read" ? state.shelf.projects : []
+  )
+  if (waiting === 0 && state.letGo === null) return null
+  const takes =
+    state.letGo === "drive" && project !== null ? waitingView(project) : []
+  return (
+    <section
+      aria-label={WORDS.letGo.heading}
+      className="border-border/60 space-y-2.5 rounded-2xl border p-3 text-sm"
+    >
+      <h3 className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
+        {WORDS.letGo.heading}
+      </h3>
+      <p>
+        {state.letGo === null
+          ? WORDS.letGo.ask(waiting)
+          : WORDS.letGo.says[state.letGo]}
+      </p>
+      <div className="flex flex-col gap-2">
+        {LET_GO_CHOICES.map((letGo) => (
+          <Button
+            key={letGo}
+            size="sm"
+            className="h-auto min-h-9 whitespace-normal"
+            variant={state.letGo === letGo ? "default" : "outline"}
+            aria-pressed={state.letGo === letGo}
+            onClick={() => dispatch({ type: "letGoChosen", letGo })}
+          >
+            {WORDS.letGo.choices[letGo]}
+          </Button>
+        ))}
+      </div>
+      {state.letGo !== null && (
+        <p className="text-muted-foreground text-xs">{WORDS.letGo.change}</p>
+      )}
+      {project !== null && takes.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-muted-foreground text-xs font-bold">
+            {WORDS.letGo.waiting(takes.length)}
+          </p>
+          <ul className="flex flex-col gap-2">
+            {takes.map((take) => (
+              <li
+                key={take.id}
+                className="border-border/60 flex items-center gap-3 rounded-xl border px-3 py-2"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-bold">
+                    {WORDS.letGo.take(take.scene, take.durationMs)}
+                  </span>
+                  {take.shared && (
+                    <span className="text-muted-foreground block text-xs">
+                      {WORDS.letGo.shared}
+                    </span>
+                  )}
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="shrink-0"
+                  aria-label={WORDS.letGo.driveHasItFor(
+                    take.scene,
+                    take.durationMs
+                  )}
+                  onClick={() =>
+                    dispatch({
+                      type: "driveHasIt",
+                      project: project.id,
+                      take: take.id,
+                    })
+                  }
+                >
+                  {WORDS.letGo.driveHasIt}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </section>
+  )
+}
+
 const Start = ({
   state,
   project,
@@ -264,6 +365,7 @@ const Start = ({
           {shareFor(share, project, dispatch)}
         </div>
       )}
+      <LetGoCard state={state} project={project} dispatch={dispatch} />
       {others.length > 0 && (
         <section className="space-y-2">
           <h3 className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">

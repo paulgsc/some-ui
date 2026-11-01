@@ -7,6 +7,7 @@ import type { Idea, Shot } from "@some-ui/video-render"
 import type { Cut } from "@soundbites/lib/journal/primer"
 import type { Finish } from "@soundbites/lib/project/finish"
 import { finishOf } from "@soundbites/lib/project/finish"
+import { waitingTakes } from "@soundbites/lib/project/let-go"
 import type { Note, Project, ProjectTake } from "@soundbites/lib/project/model"
 import { latest } from "@soundbites/lib/project/model"
 import { originConfirmed, originsWaiting } from "@soundbites/lib/project/origin"
@@ -171,6 +172,32 @@ export function opensOn(project: Project, shotId: string): string | null {
 /** How many of a project's takes still have their audio on the phone. */
 export function takesOnPhone(project: Project): number {
   return project.takes.filter((take) => take.onPhone).length
+}
+
+/** A take home holds that is still on the phone, as Start lists it (HF11). */
+export type WaitingTake = {
+  readonly id: string
+  /** Its scene's number in the latest version; null for a scene since dropped. */
+  readonly scene: number | null
+  readonly durationMs: number
+  /** Whether the owner said it reached Drive when they shared it. */
+  readonly shared: boolean
+}
+
+/** The takes of `project` home holds that wait on the phone, oldest first. */
+export function waitingView(project: Project): ReadonlyArray<WaitingTake> {
+  const { shots } = latest(project).cutList
+  return [...waitingTakes(project)]
+    .sort((a, b) => a.recordedAt.localeCompare(b.recordedAt))
+    .map((take) => {
+      const n = shots.findIndex((shot) => shot.id === take.shot) + 1
+      return {
+        id: take.id,
+        scene: n === 0 ? null : n,
+        durationMs: take.durationMs,
+        shared: take.keptBy.includes("drive"),
+      }
+    })
 }
 
 type OtherVideo = {

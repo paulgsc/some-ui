@@ -11,6 +11,7 @@ import { RECORDING_FAILURE_COPY } from "@some-ui/voice-capture"
 import { formatDuration } from "@soundbites/lib/format"
 import type { IdeaStage, QuestionId } from "@soundbites/lib/idea/model"
 import type { ShelfNotice } from "@soundbites/lib/idea/shelf"
+import type { LetGo, LetGoChoice } from "@soundbites/lib/project/let-go"
 
 /**
  * Whose idea a scene presents (ST16), as the person reads it: theirs, with
@@ -98,9 +99,43 @@ const VOICE_WORDS = {
 const shapeStatus = (look: Look, voice: Voice): string =>
   `${LOOK_WORDS[look].name} look, ${VOICE_WORDS[voice].name} voice`
 
-/** What sharing frees: the room the shared takes held. */
-const MAKING_ROOM =
-  "Takes leave the phone once home holds them, and the room they held is free."
+/** Each choice of when a take home holds leaves the phone, as Studio offers it. */
+const LET_GO_CHOICE_WORDS = {
+  home: "Let takes go once home has them",
+  drive: "Keep each until Drive has it too",
+} as const satisfies Record<LetGo, string>
+
+/** What Start's "Drive has it" is called, wherever another screen names it. */
+const DRIVE_HAS_IT = "Drive has it"
+
+/** What each choice does, as Start says it under the choice. */
+const LET_GO_SAYS = {
+  home: "Takes leave the phone once home has them.",
+  drive: `Each take stays on the phone until Drive has it too. Tap “${DRIVE_HAS_IT}” once it does.`,
+} as const satisfies Record<LetGo, string>
+
+/**
+ * What frees room on the phone for takes (HF11, #2401): the takes home
+ * holds, once the owner's choice lets them go, and what to do where they
+ * wait on it (`waiting` of them).
+ */
+function makingRoom(letGo: LetGoChoice, waiting: number): string {
+  const takes = plural(waiting, "take", "takes")
+  if (waiting > 0 && letGo === null)
+    return `Home has ${takes} still on the phone, waiting on your choice. On Start, choose when takes leave the phone: “${LET_GO_CHOICE_WORDS.home}” or “${LET_GO_CHOICE_WORDS.drive}”.`
+  if (waiting > 0 && letGo === "drive")
+    return `Home has ${takes} still on the phone, kept until Drive has ${waiting === 1 ? "it" : "them"} too. On Start, tap “${DRIVE_HAS_IT}” on each one Drive holds.`
+  if (letGo === null)
+    return "Takes leave the phone once home holds them and you choose when. Start offers that choice once home holds a take."
+  if (letGo === "drive")
+    return `Takes leave the phone once home holds them and you tap “${DRIVE_HAS_IT}” on each, and the room they held is free.`
+  return "Takes leave the phone once home holds them, and the room they held is free."
+}
+
+/** How a take is named in the list of those home holds. */
+function takeLine(scene: number | null, ms: number): string {
+  return `${scene === null ? "A scene since dropped" : `Scene ${scene}`} · ${seconds(ms)}`
+}
 
 /** `under a minute`, `1 min`, `1 h 05 min`. */
 function minutes(ms: number): string {
@@ -200,7 +235,7 @@ export const STUDIO_WORDS = {
       `${plural(n, "take", "takes")} on the phone`,
     open: "Open",
     shareLine:
-      "This video's takes are on the phone. Share them with Claude so a session can hear them; they stay here until home holds them.",
+      "This video's takes are on the phone. Share them with Claude so a session can hear them; they stay here until home holds them, then leave as you choose.",
     sittings: {
       record: "Record",
       watch: "Watch",
@@ -250,8 +285,10 @@ export const STUDIO_WORDS = {
     kept: (ms: number): string => `Kept ${seconds(ms)}.`,
     tooShort: "Too short to keep. Tap, talk, then tap again.",
     notKept: "That take couldn't be kept. Try again?",
-    full: `No room on the phone for that take, so it wasn't kept. ${MAKING_ROOM}`,
-    noRoom: `No room on the phone for another take. ${MAKING_ROOM}`,
+    full: (letGo: LetGoChoice, waiting: number): string =>
+      `No room on the phone for that take, so it wasn't kept. ${makingRoom(letGo, waiting)}`,
+    noRoom: (letGo: LetGoChoice, waiting: number): string =>
+      `No room on the phone for another take. ${makingRoom(letGo, waiting)}`,
     spent:
       "The video's time is all used. Record a long scene again, shorter, to make room.",
     thrownAway: "Thrown away. Nothing kept.",
@@ -287,7 +324,37 @@ export const STUDIO_WORDS = {
     cleared: (n: number): string =>
       `${plural(n, "piece", "pieces")} of the old Journal tab that Studio couldn't use ${n === 1 ? "was" : "were"} let go.`,
     arrived: (n: number): string =>
-      `${plural(n, "take", "takes")} in Drive too. ${n === 1 ? "It leaves" : "They leave"} the phone once home holds ${n === 1 ? "it" : "them"}.`,
+      `${plural(n, "take", "takes")} in Drive too. ${n === 1 ? "It stays" : "They stay"} on the phone until home holds ${n === 1 ? "it" : "them"}, then ${n === 1 ? "leaves" : "leave"} as you choose.`,
+  },
+
+  /**
+   * When a take home holds leaves the phone (HF11, #2401): the owner's one
+   * choice, on Start once home holds a take, and each take waiting on it.
+   */
+  letGo: {
+    heading: "When takes leave the phone",
+    ask: (n: number): string =>
+      `Home has ${plural(n, "take", "takes")} from this phone. Nothing leaves the phone until you choose when.`,
+    choices: LET_GO_CHOICE_WORDS,
+    says: LET_GO_SAYS,
+    change: "You can change this at any time.",
+    chosen: {
+      home: LET_GO_SAYS.home,
+      drive:
+        "Each take home has stays on the phone until you say Drive has it too.",
+    } satisfies Record<LetGo, string>,
+    notKept:
+      "That choice couldn't be kept on the phone, so nothing changed. Try again?",
+    waiting: (n: number): string =>
+      `${plural(n, "take", "takes")} home has, still on the phone`,
+    take: takeLine,
+    shared: "You shared this one to Drive.",
+    driveHasIt: DRIVE_HAS_IT,
+    driveHasItFor: (scene: number | null, ms: number): string =>
+      `${DRIVE_HAS_IT}: ${takeLine(scene, ms)}`,
+    left: (n: number): string =>
+      `${plural(n, "take", "takes")} left the phone. Home has ${n === 1 ? "it" : "them"}.`,
+    driveLeft: "That take left the phone. Home and Drive both have it.",
   },
 
   done: {
@@ -317,14 +384,14 @@ export const STUDIO_WORDS = {
     sharing: "Preparing…",
     notYet: "Not yet",
     shareLine:
-      "Your video and your takes, for Claude, to Drive. They stay on this phone until home holds them.",
+      "Your video and your takes, for Claude, to Drive. They stay on this phone until home holds them, then leave as you choose.",
   },
 
   share: {
     title: "Studio takes",
     arrivedTitle: "Did they reach Drive?",
     arrivedLine:
-      "Once they're in Drive, Claude can hear them. The takes stay on this phone until home holds them.",
+      "Once they're in Drive, Claude can hear them. The takes stay on this phone until home holds them, then leave as you choose.",
     arrivedYes: "They're in Drive",
     arrivedNo: "Not yet",
   },
