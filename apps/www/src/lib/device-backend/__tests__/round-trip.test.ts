@@ -145,6 +145,40 @@ describe("sessions on the device", () => {
     await expect(sessions.list()).resolves.toHaveLength(1)
   })
 
+  it("dates a copy by when it was made, on create and on a patch", async () => {
+    const sessions = createHttpSessionsRepository(transport())
+    const draft = { name: "Commute", activities: [], scenes: [] }
+    const dated = await sessions.create({
+      ...draft,
+      layoutMode: "basic",
+      createdAt: "2026-09-01T18:00:00+09:00",
+    })
+    expect(dated.createdAt).toBe("2026-09-01T09:00:00.000+00:00")
+    const undated = await sessions.create({ ...draft, layoutMode: "basic" })
+    clock += 1000
+    const caughtUp = await sessions.update(undated.id, {
+      createdAt: "2026-08-01T09:00:00.000Z",
+    })
+    expect(caughtUp.createdAt).toBe("2026-08-01T09:00:00.000+00:00")
+    expect(caughtUp.updatedAt).not.toBe(undated.updatedAt)
+    // Read as chrono reads it: no date or hour `Date.parse` would roll over.
+    for (const createdAt of [
+      "soon",
+      "2026-02-30T09:00:00Z",
+      "2026-08-31T24:00:00Z",
+    ]) {
+      await expect(
+        sessions.create({ ...draft, layoutMode: "basic", createdAt })
+      ).rejects.toMatchObject({ status: 422 })
+    }
+    await expect(
+      sessions.update(undated.id, {
+        createdAt: new Date(clock + 6 * 60_000).toISOString(),
+      })
+    ).rejects.toMatchObject({ status: 422 })
+    await expect(sessions.list()).resolves.toHaveLength(2)
+  })
+
   it("reports a missing session the way the LAN build does", async () => {
     const sessions = createHttpSessionsRepository(transport())
     await expect(

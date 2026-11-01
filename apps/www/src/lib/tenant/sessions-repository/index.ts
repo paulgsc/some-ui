@@ -77,10 +77,19 @@ export type CreateSessionInput = {
   activities: Array<StoredSessionActivity>
   scenes: Array<SceneConfig>
   layoutMode: "basic" | "advanced"
+  /**
+   * When it was made where it was made, for a copy: `file_host` dates the
+   * session by it (paulgsc/server#630), and so, for parity, does this store.
+   */
+  createdAt?: string
 }
 
+/**
+ * `createdAt` is a copy's to send, catching up one made before home took it
+ * on create; nothing else sends it.
+ */
 export type UpdateSessionInput = Partial<
-  Omit<SessionRecord, "id" | "createdAt" | "updatedAt">
+  Omit<SessionRecord, "id" | "updatedAt">
 >
 
 /**
@@ -152,7 +161,7 @@ export class SessionsRepository implements SessionsStore {
       scenes: input.scenes,
       layoutMode: input.layoutMode,
       totalDurationMs: totalDurationOf(input.scenes),
-      createdAt: now,
+      createdAt: input.createdAt ?? now,
       updatedAt: now,
     }
 

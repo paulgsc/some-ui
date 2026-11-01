@@ -25,6 +25,7 @@ import { createDeviceFetch } from "@/lib/device-backend/interceptor"
 import { clearHeld } from "@/lib/home-link/clear"
 import { drainHome } from "@/lib/home-link/drain"
 import { letGoUnchanged } from "@/lib/home-link/let-go"
+import { SENT_KEY } from "@/lib/home-link/sent"
 import {
   causedBy,
   HomeForgotPhoneError,
@@ -325,6 +326,66 @@ describe("letting the phone's copies go once home holds them", () => {
     expect(phone.sessions).toEqual([])
     const there = await createHttpSessionsRepository(homeTransport(send)).list()
     expect(there.map((s) => s.name)).toEqual(["Renamed"])
+  })
+
+  it("dates a session drained before home kept createdAt once, then lets it go", async () => {
+    phone.sessions = [onPhone("a", "completed")]
+    // The phone before paulgsc/server#630 sent no `createdAt`, and its sent
+    // entry was the session's `updatedAt` alone.
+    const undated: HomeCall = (method, path, body) =>
+      send(
+        method,
+        path,
+        typeof body === "string"
+          ? JSON.stringify({ ...JSON.parse(body), createdAt: undefined })
+          : body
+      )
+    phone.send = undated
+    await drainHome(undated, {
+      read: () => Promise.resolve({ local: [...phone.sessions], kept: [] }),
+      logGoing: () => Promise.resolve([]),
+      studioGoing: () => Promise.resolve({ sittings: [], reports: [] }),
+      reflectionsGoing: () => [],
+      letGoHeld: () => undefined,
+      promptsGoing: () => [],
+      letGoHeldPrompts: () => undefined,
+      notesGoing: () => Promise.resolve({ going: [], onPhone: () => true }),
+      holdNotes: () => undefined,
+      lensGoing: () => Promise.resolve({ going: [], onPhone: () => true }),
+      pairing: PAIRING,
+      storage,
+    })
+    storage.setItem(
+      SENT_KEY,
+      JSON.stringify({
+        pairing: PAIRING,
+        sessions: { a: onPhone("a", "completed").updatedAt },
+      })
+    )
+    phone.send = send
+    await expect(clear()).resolves.toEqual({
+      kind: "cleared",
+      freed: 0,
+      kept: 1,
+    })
+
+    sent = []
+    await expect(drain()).resolves.toEqual({ kind: "synced" })
+    expect(sent.filter((call) => !call.startsWith("GET "))).toEqual([
+      expect.stringMatching(/^PATCH \/sessions\//),
+    ])
+    sent = []
+    await drain()
+    expect(sent).toEqual([])
+    await expect(clear()).resolves.toEqual({
+      kind: "cleared",
+      freed: 1,
+      kept: 0,
+    })
+    const there = await createHttpSessionsRepository(homeTransport(send)).list()
+    expect(there).toMatchObject([
+      { createdAt: "2026-10-14T09:00:00.000+00:00" },
+    ])
   })
 
   it("keeps a session home does not hold as it is, or can't be read back", async () => {
