@@ -295,7 +295,7 @@ describe("roles", () => {
   })
 })
 
-describe("the routine's backfill of pre-mailbox files (MB2)", () => {
+describe("the routine's backfill of files only Drive holds (MB2)", () => {
   const OLD_DECISIONS = "decisions-2026-10-20.json"
   const OLD_SCOUTS = "scouts-20261022T235959.json"
 

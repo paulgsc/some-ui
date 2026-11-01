@@ -133,11 +133,12 @@ role, and it is the owner's call, so it is not built.
 ### What a put must satisfy
 
 - **Name**, anchored to its folder: `brief` takes `digest-YYYY-MM-DD.json`, and, from the
-  routine's one-time backfill (MB2, below), a pre-mailbox `decisions-YYYY-MM-DD.json`,
+  routine's one-time backfill (MB2, below), a `decisions-YYYY-MM-DD.json`,
   `decisions-YYYY-MM-DD-<n>.json` (`<n>` from 2 to 99, no leading zero, as the phone numbers
   a later share that day) or `scouts-YYYYMMDDTHHMMSS.json` (a time on the clock) under its
   Drive name, only for a real calendar day from 2026-10-17, the first day the phone could
-  share one, through 2026-10-22, the day before the mailbox opened, and each with its own
+  share one, through 2026-11-03, the day before the phone files every Jobs file home, that
+  only Drive holds, and each with its own
   schema (`some-ui.job-decisions/1` or `some-ui.job-scouts/1`); `decisions` takes
   `decisions-YYYY-MM-DD.json` or `decisions-YYYY-MM-DD-<n>.json`; `scout` takes
   `scouts-YYYYMMDDTHHMMSS.json`; `scene` takes `scene-<reflection>.json` or
@@ -509,10 +510,13 @@ how each was checked when this workspace landed.
   `index`, and `core.test.ts` pins that no role archives `index`, lists it as archived or
   asked for, or asks for it; `brief`'s `backfill` is the `decisions` and `scout` folders'
   own rules, taken only for a name `sharedDay` reads as a day from `FIRST_SHARED`
-  (2026-10-17) to before `DRIVE_ONLY_ENDED` (2026-11-04; 2026-10-23 until the owner widened
-  it, paulgsc/some-ui#2393), and `core.test.ts` pins the first and last days taken and the
-  days either side, impossible dates and times, share numbers
+  (2026-10-17) to before `MAILBOX_OPENED` (2026-10-23), and `core.test.ts` pins the first
+  and last days taken and the days either side, impossible dates and times, share numbers
   the phone never writes, the schemas, and that only the routine puts one. _Checked at the
+  backfill widening (2026-11-01, paulgsc/some-ui#2393, "yes on 2393, widen the
+  backfill"):_ `kindOf` refuses a day `>= DRIVE_ONLY_ENDED` (2026-11-04), which replaces
+  `MAILBOX_OPENED`, and `core.test.ts` pins 2026-10-16 and 2026-10-17 and 2026-11-03 and
+  2026-11-04, for decisions and scouts. _Checked at the
   reflection amendment (the owner's decision D2 on paulgsc/some-ui#2174, 2026-10-26: written
   reflections reach the routine by the mailbox as the routine's minimum, as spoken
   transcripts do; paulgsc/some-ui#2178):_ `ROLES` has three entries; `core.test.ts` pins

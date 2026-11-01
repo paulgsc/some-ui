@@ -537,9 +537,9 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
     folder: "brief",
     name: /^digest-\d{4}-\d{2}-\d{2}\.json$/,
     schema: "some-ui.job-digest/1",
-    // The Jobs decisions and scouts files from before the mailbox, which only
-    // Drive holds, put back once under their Drive names so home counts them
-    // in its index (MB2, owner, 2026-10-31).
+    // The Jobs decisions and scouts files only Drive holds, put back once under
+    // their Drive names so home counts them in its index (MB2, owner,
+    // 2026-10-31, widened 2026-11-01, paulgsc/some-ui#2393).
     backfill: [DECISIONS, SCOUT],
   },
   DECISIONS,

@@ -55,13 +55,15 @@ export type IndexStanding = {
   /** Digests Drive holds that the index lacks: put each in `brief`. */
   readonly digests: ReadonlyArray<string>
   /**
-   * Pre-mailbox decisions and scouts files Drive holds that the index lacks:
-   * the one-time backfill, each put in `brief` under its Drive name.
+   * Decisions and scouts files only Drive holds, named for a day before
+   * `DRIVE_ONLY_ENDED`, that the index lacks: the one-time backfill, each put
+   * in `brief` under its Drive name.
    */
   readonly backfill: ReadonlyArray<string>
   /**
-   * Later decisions and scouts files only Drive holds: the mailbox refuses
-   * them, and the phone sends them home itself (#2177).
+   * Files named for `DRIVE_ONLY_ENDED` or later that only Drive holds: the
+   * mailbox refuses them, and none is expected, since the phone files them
+   * home.
    */
   readonly later: ReadonlyArray<string>
 }

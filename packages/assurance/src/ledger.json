@@ -2084,7 +2084,7 @@
     {
       "store": "server:mailbox_item",
       "class": "record",
-      "growth": "Per file home reads from the Jobs mailbox (digests, run records, scene/drama lessons, ...): its bytes verbatim, each <= 1 MiB (mailbox MAX_BODY_BYTES); append-only. Once, the routine's backfill adds the Jobs decisions and scouts files from before the mailbox to brief (owner, paulgsc/server#509): the mailbox takes only a name the phone writes (a real calendar day, a decisions share number 2 to 99, a scouts stamp at a real time) for a day from 2026-10-17, when the phone could first share one, through 2026-11-03, the day before the phone files every Jobs file home (widened by the owner, paulgsc/some-ui#2393), so a closed set.",
+      "growth": "Per file home reads from the Jobs mailbox (digests, run records, scene/drama lessons, ...): its bytes verbatim, each <= 1 MiB (mailbox MAX_BODY_BYTES); append-only. Once, the routine's backfill adds the Jobs decisions and scouts files only Drive holds to brief (owner, paulgsc/server#509): the mailbox takes only a name the phone writes (a real calendar day, a decisions share number 2 to 99, a scouts stamp at a real time) for a day from 2026-10-17, when the phone could first share one, through 2026-11-03, the day before the phone files every Jobs file home (widened by the owner, paulgsc/some-ui#2393), so a closed set.",
       "family": "routine-to-home"
     },
     {

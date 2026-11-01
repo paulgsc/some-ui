@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs"
 import { indexStands } from "@job-desk/home-index"
 import { describe, expect, it } from "vitest"
 
@@ -71,21 +72,29 @@ describe("whether home's index stands (ROUTINE.md §0.5)", () => {
         "decisions-2026-10-18.json",
         "decisions-2026-10-22-2.json",
         "decisions-2026-10-27.json",
+        "decisions-2026-11-03.json",
         "decisions-2026-11-04.json",
       ],
-      scout: [...DRIVE.scout, "scouts-20261023T000000.json"],
+      scout: [
+        ...DRIVE.scout,
+        "scouts-20261023T000000.json",
+        "scouts-20261103T235959.json",
+        "scouts-20261104T000000.json",
+      ],
     }
     expect(indexStands(index(), "2026-11-01", drive)).toEqual({
       stands: false,
-      why: ["Home hasn't counted 6 file(s) Drive holds."],
+      why: ["Home hasn't counted 9 file(s) Drive holds."],
       digests: ["digest-2026-10-19.json"],
       backfill: [
         "decisions-2026-10-18.json",
         "decisions-2026-10-22-2.json",
         "decisions-2026-10-27.json",
+        "decisions-2026-11-03.json",
         "scouts-20261023T000000.json",
+        "scouts-20261103T235959.json",
       ],
-      later: ["decisions-2026-11-04.json"],
+      later: ["decisions-2026-11-04.json", "scouts-20261104T000000.json"],
     })
   })
 
@@ -102,5 +111,17 @@ describe("whether home's index stands (ROUTINE.md §0.5)", () => {
         ...NOTHING,
       })
     }
+  })
+})
+
+describe("the backfill's last day", () => {
+  it("is the day the mailbox Worker holds too, which neither file can import", () => {
+    const bound = (path: string): string | undefined =>
+      /const DRIVE_ONLY_ENDED = "(\d{4}-\d{2}-\d{2})"/.exec(
+        readFileSync(new URL(path, import.meta.url), "utf8")
+      )?.[1]
+    const routine = bound("../home-index.ts")
+    expect(routine).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    expect(bound("../../../../apps/mailbox/src/core.ts")).toBe(routine)
   })
 })

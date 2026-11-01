@@ -103,7 +103,7 @@ record (§9) and the summary (§10). Nothing ends a run before those two.
 
    It prints `stands`, `why` (each reason it doesn't, in my terms), and
    what Drive holds that the index lacks: `digests` and `backfill` to put
-   back (below), and `later`, which waits on the phone.
+   back (below), and `later`, which can't go home (below).
 
    For each file Drive holds that the index lacks, put it back for home to
    count, once, its bytes exactly as Drive holds them, as §8.6 puts today's
@@ -883,6 +883,6 @@ mailbox (whether the digest was added, was already there or was refused, and
 why; the files taken in from it; any name whose bytes differed from Drive's; or
 that it was skipped, and why); home's index (whether it stood, and when it
 didn't, why, and what was put back for home to count: digests, and
-pre-mailbox decisions and scouts files, and any the mailbox refused, which
+decisions and scouts files only Drive holds, and any the mailbox refused, which
 can't go home); the run record (its outcome and problems, and
 whether the mailbox took it); and anything skipped, with why.
