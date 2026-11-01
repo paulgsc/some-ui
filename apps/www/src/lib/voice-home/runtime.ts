@@ -78,6 +78,8 @@ export type VoiceHome = {
    * whose copy neither waits nor is held: they can never be taken.
    */
   forget: (ids: ReadonlyArray<string>) => void
+  /** Drops the marks owed for `ids`, held or not (`ASIDE_OWED_MAX`). */
+  drop: (ids: ReadonlyArray<string>) => void
   /** What `lib/home-link/set-aside`'s marks read and answer through. */
   marks: AsidePort
   /** Clears copies the record names neither waiting nor refused. Best effort. */
@@ -181,6 +183,9 @@ export function createVoiceHome(ports: VoiceHomePorts): VoiceHome {
     },
     forget(ids): void {
       if (ids.length > 0) apply({ kind: "gone", ids })
+    },
+    drop(ids): void {
+      if (ids.length > 0) apply({ kind: "overflow", ids })
     },
     marks: {
       due: () => marksDue(state),

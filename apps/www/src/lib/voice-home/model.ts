@@ -77,6 +77,17 @@ export type AsideMark = {
  */
 export const ASIDE_ANSWERED_MAX = 1000
 
+/**
+ * How many owed marks the voice lane keeps once their notes have left the
+ * phone (`lib/home-link/voice-copy`'s `settleMarks`): past it the oldest of
+ * those is dropped. A home without the set-aside route answers every mark
+ * `404`, so until it runs one that takes them, marks of notes home holds
+ * and the phone let go would otherwise grow for good. A mark whose note is
+ * still on the phone is never dropped; those are bounded by the stores'
+ * own caps.
+ */
+export const ASIDE_OWED_MAX = 500
+
 /** Set-aside marks on their way home, and those home answered for good. */
 export type AsideState = {
   /** Owed, oldest first: each sent once home holds its note. */
@@ -155,6 +166,8 @@ export type VoiceHomeEvent =
    * of theirs can ever be taken.
    */
   | { readonly kind: "gone"; readonly ids: ReadonlyArray<string> }
+  /** These marks are dropped past `ASIDE_OWED_MAX`, held or not. */
+  | { readonly kind: "overflow"; readonly ids: ReadonlyArray<string> }
 
 /**
  * What home's set-aside marks are read and answered through
@@ -275,6 +288,12 @@ export function stepVoiceHome(
         (mark) =>
           !gone.has(mark.id) || held.has(mark.id) || waiting.has(mark.id)
       )
+      if (owed.length === state.aside.owed.length) return state
+      return { ...state, aside: { ...state.aside, owed } }
+    }
+    case "overflow": {
+      const dropped = new Set(event.ids)
+      const owed = state.aside.owed.filter((mark) => !dropped.has(mark.id))
       if (owed.length === state.aside.owed.length) return state
       return { ...state, aside: { ...state.aside, owed } }
     }

@@ -147,7 +147,13 @@ import type {
   VoiceHomeState,
   VoiceOut,
 } from "@/lib/voice-home/model"
-import { keptIn, NO_PASS, passWith, runEnd } from "@/lib/voice-home/model"
+import {
+  ASIDE_OWED_MAX,
+  keptIn,
+  NO_PASS,
+  passWith,
+  runEnd,
+} from "@/lib/voice-home/model"
 import { wireVoiceMarks } from "@/lib/voice-marks"
 
 import { homeLink, paired } from "./index"
@@ -433,7 +439,9 @@ function standingsRead(
  * whose note is listed as current is taken back, its set-aside write never
  * having landed; one whose note no store it could be in lists, read, and
  * whose copy neither waits nor is held is forgotten, since it left the
- * phone before home had it and no mark of it can be taken.
+ * phone before home had it and no mark of it can be taken; and past
+ * `ASIDE_OWED_MAX`, the oldest marks of notes that left the phone are
+ * dropped, so a home that never takes a mark leaves the record bounded.
  */
 function settleMarks(listed: ReadonlyArray<Candidate>): void {
   const home = phoneVoiceHome()
@@ -443,9 +451,22 @@ function settleMarks(listed: ReadonlyArray<Candidate>): void {
   for (const mark of owed) {
     if (standing.get(mark.id) === false) home.unowe(mark.id)
   }
-  home.forget(
-    owed
-      .filter((mark) => !standing.has(mark.id) && readNow(mark.from))
+  const left = owed.filter(
+    (mark) => !standing.has(mark.id) && readNow(mark.from)
+  )
+  home.forget(left.map(({ id }) => id))
+  // Past the cap, the oldest marks of notes that left the phone go, home
+  // holding them or not: a home without the set-aside route never takes
+  // one. A mark whose note is on the phone, or waits to go home, stays.
+  const kept = home.getSnapshot()
+  const over = kept.aside.owed.length - ASIDE_OWED_MAX
+  if (over <= 0) return
+  const waiting = new Set(kept.waiting.map((note) => note.id))
+  const gone = new Set(left.map(({ id }) => id))
+  home.drop(
+    kept.aside.owed
+      .filter((mark) => gone.has(mark.id) && !waiting.has(mark.id))
+      .slice(0, over)
       .map(({ id }) => id)
   )
 }

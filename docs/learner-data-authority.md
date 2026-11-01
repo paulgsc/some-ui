@@ -704,8 +704,11 @@ only from the lane's hook and the scene notes read for home only there
   closed between the owe and the soundbites' write), is taken back by the
   next copy pass (`settleMarks`). A pass also forgets a mark whose note
   its store, read, no longer lists and whose copy neither waits nor is
-  held, so marks owed stay bounded by the notes on this phone and on their
-  way home. A note set aside before marks were owed at Let go, or while no
+  held, and past `ASIDE_OWED_MAX` (500) owed marks drops the oldest whose
+  note has left the phone, home holding it or not (a home without the
+  route answers every mark `404`); a mark whose note is still on the phone,
+  or whose copy waits, is never dropped, so the cap is passed only by
+  those, which the stores' own caps bound. Marks owed stay bounded. A note set aside before marks were owed at Let go, or while no
   lane was wired (`voiceMarks` answers yes until `watchVoiceNotes` wires
   it, first), is owed on the first pass that lists it (`oweMarks` in
   `copyAll` and first in `letGoHeld`), and until then may leave as before.
@@ -739,7 +742,9 @@ only from the lane's hook and the scene notes read for home only there
   first in `watchVoiceNotes`; one that lets `sendVoice` hand `markSetAside`
   a mark `marksSendable` does not pass, or reads the soundbites' standing
   from a list the pass did not read; one that drops `settleMarks` from
-  `copyAll`, or has it forget a mark whose copy waits or is held; one that
+  `copyAll`, or has it forget a mark whose copy waits or is held, or drop
+  past `ASIDE_OWED_MAX` one whose note is listed or whose copy waits, or
+  any but the oldest; one that
   gives a takes desk whose takes go home (`lib/lens-takes`,
   `lib/leetype-takes`) a `from` of null, or a store the wrong `from`; one to
   `lib/voice-home/runtime.ts` that has `owe` say yes of a mark storage did
@@ -783,7 +788,10 @@ only from the lane's hook and the scene notes read for home only there
   set-aside write lands after a pass read it as current has its mark taken
   back by that pass and owed again by the next, which reads it set aside;
   if a new soundbite makes room with it in between, home never gets its
-  mark.
+  mark. While home runs a server without the set-aside route (before
+  paulgsc/server#638), marks past `ASIDE_OWED_MAX` are lost, the oldest of
+  those whose notes left the phone first; once home runs one with it, the
+  marks owed drain.
 - _Why not enforced:_ which files call the copy, the watch and the scene
   notes' read are pinned (`egress-choke-points`). Whether each call
   copies only while the phone is paired is a reading of its guard, which a

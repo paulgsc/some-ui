@@ -22,6 +22,7 @@ import { EMPTY } from "@/lib/jobs/model"
 import type { KeptSceneNote } from "@/lib/scene-voice"
 import type { Reflection } from "@/lib/session-reflection/policy"
 import type { Take } from "@/lib/takes-desk"
+import { ASIDE_OWED_MAX, INITIAL_VOICE_HOME } from "@/lib/voice-home/model"
 import type { VoiceHome } from "@/lib/voice-home/runtime"
 import { createVoiceHome } from "@/lib/voice-home/runtime"
 import { setAsideOwing, voiceMarks } from "@/lib/voice-marks"
@@ -548,6 +549,44 @@ describe("home's set-aside mark on a note let go on the phone (MIC2)", () => {
     fakes.bitesHanded = true
     await sendVoice(home([]))
     expect(fakes.home?.getSnapshot().aside.owed).toEqual([])
+  })
+
+  it("keeps at most ASIDE_OWED_MAX marks of notes that left the phone while home answers every one 404, dropping the oldest, and never one whose note is on the phone", async () => {
+    const left = Array.from(
+      { length: ASIDE_OWED_MAX + 20 },
+      (_, n) => `gone-${String(n)}`
+    )
+    // An older home: it holds every note, and takes no mark. The oldest
+    // mark of all is a note still on the phone, set aside in the draft.
+    const held = ["s-kept", ...left]
+    const storage = memoryStorage()
+    storage.setItem(
+      "some-ui:voice-home",
+      JSON.stringify({
+        ...INITIAL_VOICE_HOME,
+        held,
+        aside: {
+          owed: held.map((id) => ({ id, at: LET_GO, from: "scene" })),
+          answered: [],
+        },
+      })
+    )
+    fakes.home = createVoiceHome({
+      storage,
+      shelf: shelf(),
+      encode: () => Promise.resolve({ base64: "", sha256: "s" }),
+      now: Date.now,
+    })
+    fakes.scene = [sceneNote("s-kept", "set-aside")]
+    const heard: Array<string> = []
+    expect(await sendVoice(home(heard, () => 404))).toEqual({
+      kind: "synced",
+    })
+    const owed = fakes.home.getSnapshot().aside.owed.map(({ id }) => id)
+    expect(owed).toHaveLength(ASIDE_OWED_MAX)
+    expect(owed[0]).toBe("s-kept")
+    expect(owed.slice(1)).toEqual(left.slice(-(ASIDE_OWED_MAX - 1)))
+    expect(marksIn(heard)).toHaveLength(ASIDE_OWED_MAX)
   })
 
   it("reads when a note was set aside off any record, a time it can't read as none", () => {

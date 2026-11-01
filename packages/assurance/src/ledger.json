@@ -1937,7 +1937,7 @@
     {
       "store": "phone:voice-home",
       "class": "cache",
-      "growth": "bounded: VOICE_HOME_MAX_BYTES = 100 x 240,000 = 24,000,000 B of copies of voice notes not yet held by home. Its record (`some-ui:voice-home`) also keeps the set-aside marks owed to home, one per note let go until home answers it, forgotten once a pass finds its note listed nowhere and its copy neither waiting nor held, so bounded by the notes on this phone and on their way home; and at most ASIDE_ANSWERED_MAX = 1,000 ids home answered (MIC2).",
+      "growth": "bounded: VOICE_HOME_MAX_BYTES = 100 x 240,000 = 24,000,000 B of copies of voice notes not yet held by home. Its record (`some-ui:voice-home`) also keeps the set-aside marks owed to home, one per note let go until home answers it, forgotten once a pass finds its note listed nowhere and its copy neither waiting nor held; past ASIDE_OWED_MAX = 500, the oldest of those whose notes left the phone are dropped (a home without the set-aside route answers every mark 404), and only marks of notes still on the phone, which the stores' caps bound, may pass it; and at most ASIDE_ANSWERED_MAX = 1,000 ids home answered (MIC2).",
       "horizon": "A copy leaves once home holds the note; a copy home refuses stays on the phone for good (voice-home runtime's sweep keeps it), still counted in the pool.",
       "family": "voice-heard"
     },
