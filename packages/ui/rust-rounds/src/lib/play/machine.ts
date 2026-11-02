@@ -77,6 +77,7 @@ import type { Held } from "./held"
 import {
   findingsNow,
   locate,
+  mergeHeld,
   nextCard,
   notesNow,
   playable,
@@ -242,6 +243,8 @@ type PlaySignal =
       readonly record: KeptRecord
       readonly ok: boolean
     }
+  /** What plays, as stored after any write of it. */
+  | { readonly type: "held"; readonly held: Held }
 
 /** An intent, stamped with when it happened (ISO 8601) by the runtime. */
 export type PlayEvent = (PlayIntent & { readonly at: string }) | PlaySignal
@@ -1025,6 +1028,7 @@ const SIGNALS: ReadonlySet<string> = new Set<PlaySignal["type"]>([
   "hidden",
   "left",
   "stored",
+  "held",
 ])
 
 const isSignal = (event: PlayEvent): event is PlaySignal =>
@@ -1062,6 +1066,14 @@ export function step(state: PlayState, event: PlayEvent): Step {
       return state.taking === null && state.notes.playback.kind === "quiet"
         ? stay(state)
         : { state, effects: [{ type: "stopNote" }] }
+    }
+    case "held": {
+      // Rounds are only added, so the card on screen and every card waiting
+      // on a note are still held; one with no run may now have one. What
+      // this session holds and the phone did not keep stays too.
+      return event.held === state.held
+        ? stay(state)
+        : stay({ ...state, held: mergeHeld(event.held, state.held) })
     }
     case "stored": {
       const failed = !event.ok

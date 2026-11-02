@@ -3,7 +3,8 @@
  * clear of finished sessions home holds and the study list's "Let it go",
  * one at a time, each started by a tap (LA8,
  * docs/learner-data-authority.md); the drain of everything the
- * phone keeps (aph, the Jobs record, Practice's record, voice notes), which
+ * phone keeps (aph, the Jobs record, Practice's record, voice notes, Rust
+ * Rounds' rounds, whose run also brings home's rounds and runs back), which
  * a paired phone sends on its own while the app is open (`./lanes`, LA15);
  * and Korean's look at the routine's files on home (`./routine`).
  * Phone-only (`build.paths.ts`).

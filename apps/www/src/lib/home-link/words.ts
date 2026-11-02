@@ -150,6 +150,19 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
     clash: null,
     unread: null,
   },
+  "rust-rounds": {
+    markLabel: "Where Rust Rounds is kept",
+    title: "Rust Rounds and home",
+    rows: [{ kind: "rounds", label: "Rounds", one: "round" }],
+    waits: waits("pasted round"),
+    phoneOnly: `Rust Rounds is only on this phone, and its rounds have no runs from home. ${PAIR}`,
+    partly:
+      "Some rounds are on home. A round you paste stays on this phone until it is paired again.",
+    footnote:
+      "A round you paste goes to home, which runs each of its programs through rustc and keeps what it printed. While the app is open, this phone brings home's rounds and those runs here, so every card plays without home. This phone keeps every round it has.",
+    clash: null,
+    unread: null,
+  },
 }
 
 /** The words every lane's sheet shares. */
@@ -170,7 +183,7 @@ export function unsentLines({ gone }: Unsendable): Array<string> {
 
 /** Settings' Home server block, once paired: what goes, and when. */
 export const HOME_BLOCK = {
-  lead: "Everything this phone keeps goes to home on its own while the app is open: finished sessions, kept items, LeetType sessions and spoken answers, Studio sittings, soundbites, written reflections, asks for the next scene, the Jobs record, voice notes, and aph while it is open. Nothing leaves this phone until home has read it back.",
+  lead: "Everything this phone keeps goes to home on its own while the app is open: finished sessions, kept items, LeetType sessions and spoken answers, Studio sittings, soundbites, written reflections, asks for the next scene, the Jobs record, voice notes, rounds you paste in Rust Rounds, and aph while it is open. Rust Rounds also brings home's rounds and their runs here. Nothing leaves this phone until home has read it back.",
 } as const
 
 /** Settings' readout of what this phone keeps on home, and what waits. */
@@ -182,6 +195,7 @@ export const KEPT_ON_HOME = {
     aph: "aph",
     jobs: "The Jobs record",
     voice: "Voice notes",
+    "rust-rounds": "Rust Rounds",
   } satisfies Record<LaneId, string>,
   neverTitle: "Never sent",
   never: [
@@ -204,6 +218,7 @@ export const KEPT_ON_HOME = {
     aph: "aph",
     jobs: "Jobs",
     voice: "Settings",
+    "rust-rounds": "Rust Rounds",
   } satisfies Record<LaneId, string>,
 } as const
 

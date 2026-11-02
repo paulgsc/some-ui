@@ -15,7 +15,9 @@
  *   written with the next addition, or by `flush` at the next opening, and
  *   `append` says false until every one of them is in the log.
  * - `HELD_KEY`, what plays: the rounds taken, rustc's recorded runs, every
- *   version of the tutor notes (`./held`).
+ *   version of the tutor notes, and what the phone knows of the rounds home
+ *   holds (`./held`). `hold` merges (`mergeHeld`), and every keeper of the
+ *   same storage hears each write (`subscribe`).
  * - `PLACE_KEY`, the card on screen and how far into it, so leaving at any
  *   card and coming back lands on it with nothing lost; the take under way
  *   (`taking`) and the cards left while their voice note was still being
@@ -45,7 +47,7 @@ import { openKept, readJson, writeKept } from "@some-ui/core-utils"
 import { z } from "zod"
 
 import type { Held } from "./held"
-import { NOTHING_HELD } from "./held"
+import { mergeHeld, NOTHING_HELD, NOTHING_ON_HOME } from "./held"
 import { HELD_KEY, LOG_KEY, PLACE_KEY } from "./keys"
 import type { LogAdd, SessionHead } from "./log"
 import { appendToLog, EMPTY_LOG, holdsAdd } from "./log"
@@ -118,6 +120,28 @@ const HeldSchema = z.strictObject({
   runs: z.record(z.string(), RustcRunSchema),
   notes: z.array(TutorNotesSchema),
   notesMissing: z.boolean(),
+  // Absent from a record kept before the phone talked to home: it knew of
+  // no round there.
+  home: z
+    .strictObject({
+      sent: z.array(z.string()),
+      fetched: z.array(z.string()),
+      refused: z.array(
+        z.strictObject({
+          id: z.string(),
+          why: z.enum(["other-round", "not-taken"]),
+        })
+      ),
+      unread: z.array(z.string()),
+      ended: z.array(z.string()).default([]),
+    })
+    .default(() => ({
+      sent: [...NOTHING_ON_HOME.sent],
+      fetched: [...NOTHING_ON_HOME.fetched],
+      refused: [...NOTHING_ON_HOME.refused],
+      unread: [...NOTHING_ON_HOME.unread],
+      ended: [...NOTHING_ON_HOME.ended],
+    })),
 })
 
 const TitleSchema = z.strictObject({
@@ -228,14 +252,42 @@ export type RoundsStore = {
   readonly append: (head: SessionHead, add: LogAdd) => boolean
   /** Writes the additions the log refused before; false while any is not kept. */
   readonly flush: () => boolean
-  /** Keeps what plays; false when the phone did not keep it. */
+  /** What plays, as stored now. */
+  readonly held: () => Held
+  /** Keeps what plays (`mergeHeld`); false when the phone did not keep it. */
   readonly hold: (held: Held) => boolean
+  /**
+   * Calls `listener` after each write of what plays, by any keeper of the
+   * same storage. Returns an unsubscribe.
+   */
+  readonly subscribe: (listener: () => void) => () => void
   /** Keeps where the session is; false when the phone did not keep it. */
   readonly place: (whereabouts: Whereabouts) => boolean
 }
 
+/** Who hears a write of what plays, by the storage it was written to. */
+const heldListeners = new WeakMap<KeyedStorage, Set<() => void>>()
+
+function listenersOf(storage: KeyedStorage): Set<() => void> {
+  const found = heldListeners.get(storage)
+  if (found !== undefined) return found
+  const made = new Set<() => void>()
+  heldListeners.set(storage, made)
+  return made
+}
+
 /** The records in `storage`; with none (or one that throws), nothing is kept. */
 export function keptRounds(storage: KeyedStorage | null): RoundsStore {
+  /** What plays as stored, and whether it may be written over. */
+  const keptHeld = (): { held: Held; writable: boolean } => {
+    const kept = openKept(storage, HELD_KEY, readHeld, {
+      v: 1,
+      ...NOTHING_HELD,
+    })
+    const { v: _held, ...held } = kept.value
+    return { held, writable: kept.writable }
+  }
+  const openHeld = (): Held => keptHeld().held
   const openPlace = (): z.infer<typeof PlaceRecordSchema> =>
     openKept(storage, PLACE_KEY, readPlace, NO_PLACE).value
   /**
@@ -273,10 +325,7 @@ export function keptRounds(storage: KeyedStorage | null): RoundsStore {
 
   return {
     open(): Opened {
-      const { v: _held, ...held } = openKept(storage, HELD_KEY, readHeld, {
-        v: 1,
-        ...NOTHING_HELD,
-      }).value
+      const held = openHeld()
       const { v: _place, unlogged: refused, ...whereabouts } = openPlace()
       unlogged ??= refused
       return {
@@ -288,8 +337,28 @@ export function keptRounds(storage: KeyedStorage | null): RoundsStore {
     },
     append: (head, add): boolean => write([...waiting(), { head, add }]),
     flush: (): boolean => write(waiting()),
+    held: openHeld,
     hold(held): boolean {
-      return writeKept(storage, HELD_KEY, { v: 1, ...held }, readHeld)
+      const stored = keptHeld()
+      if (!stored.writable) return false
+      const written = writeKept(
+        storage,
+        HELD_KEY,
+        { v: 1, ...mergeHeld(stored.held, held) },
+        readHeld
+      )
+      if (written && storage !== null) {
+        for (const listener of [...listenersOf(storage)]) listener()
+      }
+      return written
+    },
+    subscribe(listener): () => void {
+      if (storage === null) return (): void => {}
+      const listeners = listenersOf(storage)
+      listeners.add(listener)
+      return (): void => {
+        listeners.delete(listener)
+      }
     },
     place(whereabouts): boolean {
       return writeKept(

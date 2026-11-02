@@ -72,6 +72,11 @@ export type RustRoundsPorts = {
    * each change. Returns an unsubscribe.
    */
   readonly onVisibility: (listener: (hidden: boolean) => void) => () => void
+  /**
+   * Whether this build reaches a home that runs programs; false on the
+   * viewer's sample (Pages), where a card with no run says none comes with it.
+   */
+  readonly home: boolean
 }
 
 export type RustRoundsRuntime = {
@@ -224,7 +229,14 @@ export function createRustRounds(ports: RustRoundsPorts): RustRoundsRuntime {
       const stopVisibility = ports.onVisibility((hidden) => {
         if (hidden) send({ type: "hidden" })
       })
+      // What home sent while the screen was away, then each write after.
+      const hear = (): void => {
+        send({ type: "held", held: ports.store.held() })
+      }
+      const stopHeld = ports.store.subscribe(hear)
+      hear()
       return (): void => {
+        stopHeld()
         stopVisibility()
         // Ends a take under way; its end is the next opening's to hear.
         send({ type: "left" })

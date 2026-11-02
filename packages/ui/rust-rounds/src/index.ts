@@ -46,6 +46,8 @@ export {
 } from "./lib/worked-example"
 export type { RustRoundsProps } from "./components/rust-rounds"
 export { RustRounds } from "./components/rust-rounds"
+export type { RoundsCounts, RoundsHomePort } from "./lib/home"
+export { exchangeRounds, roundsCounts, roundsTaken } from "./lib/home"
 export type { NotesPort, RustRoundsPorts } from "./lib/play/runtime"
 export type { RoundsStore } from "./lib/play/store"
 export { keptRounds } from "./lib/play/store"

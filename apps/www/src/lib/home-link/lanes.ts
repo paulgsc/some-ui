@@ -1,9 +1,10 @@
 /**
  * One wiring for every record this phone drains to its paired home (aph,
- * the Jobs record, Practice, voice notes; LA15,
+ * the Jobs record, Practice, voice notes, Rust Rounds' rounds; LA15,
  * docs/learner-data-authority.md). A lane declares what it is (`Lane`;
- * `./aph`, `./jobs`, `./practice`, `./voice`), and this module does the
- * rest, once for all of them: one runtime per lane per page load over the
+ * `./aph`, `./jobs`, `./practice`, `./voice`, `./rust-rounds`), and this
+ * module does the rest, once for all of them: one runtime per lane per page
+ * load over the
  * link's `keep` (`./kept-runtime`), and the watch (`./kept-watch`) for as
  * long as `useLaneHome` is mounted (the app shell mounts every lane's,
  * `components/device-home-glyph.tsx`'s `HomeLanes`; aph's once its screens
@@ -22,7 +23,7 @@ import type { HomeLinkState } from "./model"
 import type { LaneView } from "./words"
 import { laneView, WORDS } from "./words"
 
-export type LaneId = "practice" | "aph" | "jobs" | "voice"
+export type LaneId = "practice" | "aph" | "jobs" | "voice" | "rust-rounds"
 
 /** What a lane's record holds of one kind, as the sheet names it. */
 export type LaneKind =
@@ -33,6 +34,7 @@ export type LaneKind =
   | "aph"
   | "jobs"
   | "voice"
+  | "rounds"
 
 /** What a lane's sheet counts, as its record says. */
 export type LaneCounts = {

@@ -26,6 +26,7 @@ function fixturePorts(): RustRoundsPorts {
     now: () => Date.now(),
     newId: () => "fit",
     onVisibility: () => () => undefined,
+    home: true,
   }
 }
 

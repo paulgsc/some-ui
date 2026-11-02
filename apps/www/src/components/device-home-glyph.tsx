@@ -2,7 +2,8 @@
  * The drain of what this phone keeps to its paired home, and its marks
  * (LA15, docs/learner-data-authority.md). `HomeLanes`, mounted by the app
  * shell on every screen of the Android app, runs every lane's watch
- * (`useLaneHome`), so Practice's record, the Jobs record and voice notes go
+ * (`useLaneHome`), so Practice's record, the Jobs record, voice notes and
+ * Rust Rounds' rounds go
  * from any wing, and aph's once its screens hand its store in. A record's
  * mark, in the header while its wing shows, says where it is kept, at a
  * glance, and opens a sheet with what is on home, what waits and Send now;
@@ -33,6 +34,7 @@ import {
   useLaneView,
 } from "@/lib/home-link/lanes"
 import { practiceLane } from "@/lib/home-link/practice"
+import { rustRoundsLane } from "@/lib/home-link/rust-rounds"
 import { useVoiceHome } from "@/lib/home-link/voice"
 import { SHEET, WORDS } from "@/lib/home-link/words"
 import type { WingId } from "@/lib/wings"
@@ -188,6 +190,7 @@ export const HomeLanes = (): JSX.Element => {
     <>
       <LaneWatch lane={practiceLane} />
       <LaneWatch lane={jobsLane} />
+      <LaneWatch lane={rustRoundsLane} />
       <VoiceWatch />
       {aph === null ? null : <LaneWatch key={aph.id} lane={aph} />}
     </>

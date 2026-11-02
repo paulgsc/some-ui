@@ -589,12 +589,14 @@
     {
       "id": "rust-rounds-recorded",
       "name": "Rust Rounds' programs get run on home",
-      "why": "A Rust Rounds round sent home is kept there; home queues each of its programs and, in the background, hands each to the sandboxed rust-runner and keeps what rustc printed, so a card can show a run made on home. Nothing on the phone sends rounds home yet: RR4b (some-ui#2347) is the story that adds it.",
+      "why": "A Rust Rounds round sent home is kept there; home queues each of its programs and, in the background, hands each to the sandboxed rust-runner and keeps what rustc printed, so a card can show a run made on home. A paired phone sends each round pasted on it home, and brings home's rounds and the runs recorded of them back, through its home-link lane while the app is open (RR4b, some-ui#2347); how that lane's runs went is Settings' readout of what this phone keeps on home.",
       "paths": [
         "server:apps/servers/file_host/src/rust_rounds",
         "server:crates/db/rust_round",
         "server:crates/rust_rounds_wire",
-        "server:crates/rust_runner"
+        "server:crates/rust_runner",
+        "some-ui:packages/ui/rust-rounds/src/lib/home",
+        "some-ui:apps/www/src/lib/home-link/rust-rounds.ts"
       ],
       "modules": ["rust_rounds"],
       "objectives": [
@@ -1965,7 +1967,7 @@
     {
       "store": "phone:rust-rounds-held",
       "class": "record",
-      "growth": "Per round taken from a tutor's reply (a few KB of cards), each version of the tutor notes taken with one, and one recorded rustc run per card home records (RR3); only added to, never rewritten or dropped; no cap (`some-ui:rust-rounds.held`).",
+      "growth": "Per round taken from a tutor's reply or from home (a few KB of cards, at most 32 KiB, home's ROUND_CEILING, for one from home), each version of the tutor notes taken with one, one recorded rustc run per read or variant card, filled once when the phone brings it from home (RR4b, at most 4 KiB of what the program printed on each stream), per round the phone knows home holds, refused or can't read, its id, and per card whose program home ended for good without a recording, its key; only added to, never rewritten or dropped, by the session and by the lane alike (each write is merged into what is stored); no cap (`some-ui:rust-rounds.held`).",
       "family": "what-is-kept"
     },
     {

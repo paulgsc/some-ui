@@ -12,7 +12,11 @@
  * measured room (`withRoom`) refuses a note, which the session then says,
  * never letting one go.
  */
-import type { NotesPort, RustRoundsPorts } from "@some-ui/rust-rounds"
+import type {
+  NotesPort,
+  RoundsStore,
+  RustRoundsPorts,
+} from "@some-ui/rust-rounds"
 import { keptRounds } from "@some-ui/rust-rounds"
 import { onPageVisibility } from "@some-ui/voice-capture"
 
@@ -48,6 +52,19 @@ export function notesPort(
   return { pattern, takes, keptOn: on.keptOn }
 }
 
+let rounds: RoundsStore | null = null
+
+/**
+ * What plays, kept in this device's storage, for the exchange with home
+ * (`lib/home-link/rust-rounds`, RR4b): one per page load. The session makes
+ * its own over the same storage on each mount, and each hears the other's
+ * writes (`subscribe`).
+ */
+export function phoneRounds(): RoundsStore {
+  rounds ??= keptRounds(browserLocalStorage)
+  return rounds
+}
+
 /** The ports the session reads once, on mount. */
 export function phoneRustRoundsPorts(): RustRoundsPorts {
   return {
@@ -57,5 +74,6 @@ export function phoneRustRoundsPorts(): RustRoundsPorts {
     now: () => Date.now(),
     newId: () => crypto.randomUUID(),
     onVisibility: onPageVisibility,
+    home: true,
   }
 }

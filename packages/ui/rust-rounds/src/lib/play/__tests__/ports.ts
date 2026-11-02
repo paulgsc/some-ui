@@ -94,5 +94,6 @@ export function testPorts(
       return `session-${ids}`
     },
     onVisibility: () => () => undefined,
+    home: true,
   }
 }
