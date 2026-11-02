@@ -108,7 +108,7 @@ type DeskOptions = {
   readonly limits: TakeLimits
   /**
    * The store home is told the takes are kept in, for their set-aside marks
-   * (`lib/voice-marks`); null for takes that go home in no lane yet, or have
+   * (`lib/voice-marks`); null for takes that go home in no lane, or have
    * no Let go.
    */
   readonly from: MarkFrom | null

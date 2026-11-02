@@ -713,9 +713,9 @@ only from the lane's hook and the scene notes read for home only there
   the phone is paired, do not matter: `marksDue` sends a mark only once
   home holds its note. So no exit that lets a held note go needs a check of
   its own. The stores with Let go are spoken reflections, Jobs notes, scene
-  notes, soundbites (through `soundbitesOweMarks`), and lens and LeetType
-  takes; Rust Rounds takes owe none until their notes go home (RR6, `from`
-  null); game bites, Studio takes and the answers to Claude's questions
+  notes, soundbites (through `soundbitesOweMarks`), and lens, LeetType
+  and Rust Rounds takes (Rust Rounds' since its notes go home, RR6, `from`
+  `rust-round`); game bites, Studio takes and the answers to Claude's questions
   about an idea have no Let go. A new idea's takes (ST26) owe no marks
   either (their desk's `from` is null): before Send, its Delete, a Redo
   and the clean-up of a kept idea's takes it doesn't name delete for good

@@ -5,19 +5,21 @@
  * reaches the network: every card plays from what is on the phone.
  * Phone-only (`build.paths.ts`).
  *
- * The voice notes are taken on the take pattern (`patternDesk`). They wait
- * on this phone, each named by id in the log; a Redo's earlier note and one set
- * aside stay there too. What sends them home is RR6 (#2237). Until then the
- * desk keeps every one: it has no count of its own, and only the device's
- * measured room (`withRoom`) refuses a note, which the session then says,
- * never letting one go.
+ * The voice notes are taken on the take pattern (`patternDesk`), each named
+ * by id in the log; a Redo's earlier note and one set aside stay too. Each
+ * goes home as a voice note said for `rust-round` (RR6, #2237), through the
+ * voice lane (`lib/home-link/voice-copy`), named as `homeRef` says
+ * (`rustRoundRef`); Let go owes
+ * home its set-aside mark. The desk keeps every note on this phone: it has
+ * no count of its own, and only the device's measured room (`withRoom`)
+ * refuses a note, which the session then says, never letting one go.
  */
 import type {
   NotesPort,
   RoundsStore,
   RustRoundsPorts,
 } from "@some-ui/rust-rounds"
-import { keptRounds } from "@some-ui/rust-rounds"
+import { homeRef, keptRounds } from "@some-ui/rust-rounds"
 import { onPageVisibility } from "@some-ui/voice-capture"
 
 import { copyText } from "@/lib/clipboard"
@@ -25,13 +27,14 @@ import type { PatternDesk } from "@/lib/takes-desk"
 import { patternDesk } from "@/lib/takes-desk"
 import { browserLocalStorage } from "@/lib/tenant/storage"
 
+export type { Take as RustRoundTake } from "@/lib/takes-desk"
+
 /** A note runs up to a minute (#2235: "up to 60 s"). */
 const NOTE_MAX_MS = 60_000
 
 const desk = patternDesk({
   key: "some-ui:rust-rounds.notes",
-  // Its notes go home in no lane yet (RR6, #2237), so Let go owes no mark.
-  from: null,
+  from: "rust-round",
   dbName: "some-ui.rust-rounds-notes",
   // No count of its own: only the device's room refuses a note.
   limits: { max: Number.POSITIVE_INFINITY, maxMs: NOTE_MAX_MS },
@@ -39,6 +42,22 @@ const desk = patternDesk({
 
 /** Audio no note names, and a note whose audio never landed. */
 export const sweepRustRoundsNotes = desk.sweep
+
+/** The desk, for the copy home (`lib/home-link/voice-copy`). */
+export const rustRoundsDesk = desk
+
+/**
+ * What home is told each note was said on (`homeRef`), read against the
+ * rounds this phone holds now, so a refine card names the note it brings
+ * back. Read once per look; null while a note can't be named truly (home
+ * doesn't hold its round as played here, or its card isn't among the
+ * rounds read) or for a line no card makes, and the note waits on this
+ * phone.
+ */
+export function rustRoundRef(): (line: string) => string | null {
+  const { held } = keptRounds(browserLocalStorage).open()
+  return (line) => homeRef(line, held)
+}
 
 /**
  * A desk as the session's microphone: its take pattern and the notes it

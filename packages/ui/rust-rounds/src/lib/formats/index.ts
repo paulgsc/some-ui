@@ -22,11 +22,21 @@ export const ROUND_SCHEMA = "some-ui.rust-round/1"
 export const LOG_SCHEMA = "some-ui.rust-round-log/1"
 export const NOTES_SCHEMA = "some-ui.rust-tutor-notes/1"
 
-/** Lower-case words joined by `-`: round, card, concept and edge ids. */
+/** Lower-case words joined by `-`: round, card, concept and edge ids, unanchored. */
+export const SLUG = "[a-z0-9]+(?:-[a-z0-9]+)*"
+
+/**
+ * The longest id home keeps, in characters (paulgsc/server `is_slug` and
+ * `voice_repo::is_note_id`): a round or note id past it would play here,
+ * and every note said on it be refused at home for good.
+ */
+const MAX_ID_CHARS = 64
+
 const SlugSchema = z
   .string()
+  .max(MAX_ID_CHARS, `an id is at most ${MAX_ID_CHARS} characters`)
   .regex(
-    /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+    new RegExp(`^${SLUG}$`),
     "use lower-case letters, digits and single hyphens (like indexing-01)"
   )
 
@@ -34,8 +44,8 @@ const SlugSchema = z
 const NoteIdSchema = z
   .string()
   .regex(
-    /^[A-Za-z0-9._:-]{1,128}$/,
-    "a note id is 1-128 letters, digits, '.', '_', ':' or '-'"
+    new RegExp(`^[A-Za-z0-9._:-]{1,${MAX_ID_CHARS}}$`),
+    `a note id is 1-${MAX_ID_CHARS} letters, digits, '.', '_', ':' or '-'`
   )
 
 /** Text with something in it. Kept as written: a program's whitespace is part of it. */

@@ -24,6 +24,7 @@ export type MarkFrom =
   | "soundbite"
   | "lens"
   | "leetype"
+  | "rust-round"
 
 /** What owes home a note's set-aside mark, and takes one back. */
 export type MarkOwing = {
@@ -58,8 +59,8 @@ export function wireVoiceMarks(owing: MarkOwing): () => void {
  * Sets note `id`, kept in `from`, aside at `at` with its mark owed: the
  * mark first, then `write` (the store's standing). Nothing is written when
  * the mark could not be kept, and the mark is taken back when the write
- * fails. A store whose notes go home in no lane yet (`from` null: Rust
- * Rounds, until RR6 #2237) owes none. Says whether the note is set aside.
+ * fails. A store whose notes go home in no lane (`from` null) owes none.
+ * Says whether the note is set aside.
  */
 export function setAsideOwing(
   id: string,

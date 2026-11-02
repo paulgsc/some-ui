@@ -89,7 +89,7 @@ export type PatternTakesPorts = {
   marks?: MarkOwing | undefined
   /**
    * The store home is told the takes are kept in, for their set-aside marks;
-   * null for a desk whose takes go home in no lane yet (Rust Rounds).
+   * null for a desk whose takes go home in no lane, or have no Let go.
    */
   from: MarkFrom | null
   /** The kit's `audioPlayer` unless a test gives its own. */
