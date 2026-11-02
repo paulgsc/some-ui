@@ -31,6 +31,7 @@ type VoiceOf =
   | "soundbite"
   | "lens"
   | "leetype"
+  | "rust-round"
 
 /** One note as home is told it: what it belongs to, and when it was recorded. */
 export type VoiceOut = {
@@ -42,7 +43,9 @@ export type VoiceOut = {
    * game's ESPN id, the Studio take (`<project>:<shot>:<take>`, or an idea
    * answer's `idea:<idea>:<question>`), how a
    * soundbite came to be recorded (its `context.source`), the grammar-lens
-   * line read aloud, LeetType's session file and screen (`<file>:<screen>`).
+   * line read aloud, LeetType's session file and screen (`<file>:<screen>`),
+   * the Rust Rounds card (`<round>:<card>`, and on a refine card the
+   * earlier note it brings back, `<round>:<card>:<note>`).
    */
   readonly ref: string
   /** When it was recorded, ISO 8601. */
@@ -398,6 +401,7 @@ const OFS: ReadonlySet<unknown> = new Set([
   "soundbite",
   "lens",
   "leetype",
+  "rust-round",
 ])
 
 /** Extra fields a note's own query carries, never one of `of`, `ref` or `at`. */

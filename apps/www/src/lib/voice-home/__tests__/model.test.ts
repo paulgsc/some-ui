@@ -100,8 +100,15 @@ describe("the record of voice notes on their way home", () => {
       ref: "401772981",
       fields: { how: "said-first", strip: "", watching: "1" },
     }
+    // RR6: a Rust Rounds note waits as any note does.
+    const said: VoiceOut = {
+      ...NOTE,
+      id: "r1",
+      of: "rust-round",
+      ref: "indexing-01:a",
+    }
     const state = stepVoiceHome(
-      copied(copied(INITIAL_VOICE_HOME, NOTE), bite),
+      copied(copied(copied(INITIAL_VOICE_HOME, NOTE), bite), said),
       {
         kind: "roomless",
         id: "n3",

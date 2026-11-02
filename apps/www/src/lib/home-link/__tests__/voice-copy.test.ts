@@ -17,6 +17,7 @@ import {
   lensNote,
   reflectionNote,
   refOf,
+  rustRoundNote,
   sceneNote,
   soundbiteNote,
   unsendable,
@@ -34,6 +35,26 @@ const voice = (id: string, owner = "draft"): VoiceNote => ({
 })
 
 describe("what each voice note is told home as", () => {
+  it("tells a Rust Rounds note by the card its line names, and one no card makes goes nowhere (RR6)", () => {
+    const take = {
+      id: "r1",
+      line: "rust-rounds:borrowing-01/say-again",
+      takenAt: Date.parse("2026-11-02T18:20:00.000Z"),
+      durationMs: 3000,
+      mimeType: "audio/webm",
+    }
+    const ref = (line: string): string | null =>
+      line === take.line ? "borrowing-01:say-again:n0" : null
+    expect(rustRoundNote(take, ref)).toEqual({
+      id: "r1",
+      of: "rust-round",
+      ref: "borrowing-01:say-again:n0",
+      at: "2026-11-02T18:20:00.000Z",
+      contentType: "audio/webm",
+    })
+    expect(rustRoundNote({ ...take, line: "elsewhere" }, ref)).toBeNull()
+  })
+
   it("tells a soundbite by how it came to be recorded, a lens take by its line and a LeetType take by its file and screen (HF5)", () => {
     const takenAt = Date.parse("2026-11-01T09:12:00.000Z")
     const take = { id: "t1", takenAt, durationMs: 3000, mimeType: "audio/webm" }

@@ -24,6 +24,10 @@
  * - a grammar-lens take (`lib/lens-takes`): `lens`, the line, when taken;
  * - a LeetType spoken answer's take (`lib/leetype-takes`): `leetype`, the
  *   session file and screen, when taken; its note goes as a study note;
+ * - a Rust Rounds note (`lib/rust-rounds`, RR6 #2237): `rust-round`, the card
+ *   as `<round>:<card>`, and on a refine card the earlier note it brings
+ *   back as `<round>:<card>:<note>` (`@some-ui/rust-rounds`' `homeRef`), when
+ *   taken; its transcript reaches the tutor through the mailbox;
  * - a Studio idea answer's take (`lib/idea-takes`, MIC10): `studio`, the
  *   answer as `idea:<idea>:<question>`, when taken; home gives its words back
  *   to the idea screen (`./heard`). A new idea's take (ST26) goes the same
@@ -38,7 +42,8 @@
  * A note the owner let go where it was recorded (`standing: "set-aside"`,
  * D3 on epic #2368) owes home its set-aside mark (MIC2 #2372), so home's
  * routines stop reading it. Every store with Let go (reflections, Jobs
- * notes, scene notes, soundbites, lens and LeetType takes; game bites,
+ * notes, scene notes, soundbites, lens and LeetType takes, Rust Rounds
+ * notes; game bites,
  * Studio takes and idea takes have none) sets a note aside through
  * `lib/voice-marks`. Let go owes the mark in the voice-home record before it writes the
  * standing (`lib/voice-marks`, which `watchVoiceNotes` wires), where it
@@ -133,6 +138,8 @@ import {
   reflectionAudio,
   reflectionNotesKept,
 } from "@/lib/reflection-voice"
+import type { RustRoundTake } from "@/lib/rust-rounds"
+import { rustRoundRef, rustRoundsDesk } from "@/lib/rust-rounds"
 import type { KeptSceneNote } from "@/lib/scene-voice"
 import { phoneSceneVoice, sceneNotes, sceneNotesKept } from "@/lib/scene-voice"
 import { reflections } from "@/lib/session-reflection"
@@ -302,6 +309,26 @@ export function leetypeNote(take: LeetypeTake): VoiceOut {
     at: new Date(take.takenAt).toISOString(),
     contentType: take.mimeType,
   }
+}
+
+/**
+ * A Rust Rounds note, as home is told it: by `ref`, what its line names
+ * (`rustRoundRef`); null for a line no card makes, which goes nowhere.
+ */
+export function rustRoundNote(
+  take: RustRoundTake,
+  ref: (line: string) => string | null
+): VoiceOut | null {
+  const named = ref(take.line)
+  return named === null
+    ? null
+    : {
+        id: take.id,
+        of: "rust-round",
+        ref: named,
+        at: new Date(take.takenAt).toISOString(),
+        contentType: take.mimeType,
+      }
 }
 
 /**
@@ -532,6 +559,21 @@ export function candidates(): Array<Candidate> {
     audio: (): Promise<Blob | null> => leetypeTakesDesk.audio(take.id),
     aside: asideAt(take),
   }))
+  const rustTakes = rustRoundsDesk.kept()
+  // The rounds are read only when there are notes to name.
+  const rustRef = rustTakes.length === 0 ? null : rustRoundRef()
+  const rust = rustTakes.flatMap((take) => {
+    const note = rustRef === null ? null : rustRoundNote(take, rustRef)
+    return note === null
+      ? []
+      : [
+          {
+            note,
+            audio: (): Promise<Blob | null> => rustRoundsDesk.audio(take.id),
+            aside: asideAt(take),
+          },
+        ]
+  })
   const ideas = ideaTakesDesk.kept().map((take) => ({
     note: ideaNote(take),
     audio: (): Promise<Blob | null> => ideaTakesDesk.audio(take.id),
@@ -552,6 +594,7 @@ export function candidates(): Array<Candidate> {
     ...soundbites,
     ...lens,
     ...leetype,
+    ...rust,
     ...ideas,
     ...bundled,
   ]
@@ -880,8 +923,9 @@ export function holdNotes(): void {
 
 /**
  * Hands each offline set what home holds, read back, so it may make room at
- * its cap with those and no others (HF5): the lens takes, LeetType takes and
- * Studio idea takes by their voice notes, with where each is kept (MIC3,
+ * its cap with those and no others (HF5): the lens takes, LeetType takes,
+ * Rust Rounds notes and Studio idea takes by their voice notes, with where
+ * each is kept (MIC3,
  * `voiceKept`), where each scene note and each spoken reflection is kept,
  * the stores of study notes (`holdNotes`), and the grammar-lens record by
  * each entry as it is now. Each reads `sent` once per look.
@@ -889,6 +933,7 @@ export function holdNotes(): void {
 function holdOffline(): void {
   lensTakesDesk.keptWhere(voiceKept)
   leetypeTakesDesk.keptWhere(voiceKept)
+  rustRoundsDesk.keptWhere(voiceKept)
   ideaTakesDesk.keptWhere(voiceKept)
   ideaBundleDesk.keptWhere(voiceKept)
   sceneNotesKept(voiceKept)
@@ -923,6 +968,7 @@ export function watchVoiceNotes(): () => void {
         phoneGameBites().subscribe(copySoon),
         lensTakesDesk.phone().takes.subscribe(copySoon),
         leetypeTakesDesk.phone().takes.subscribe(copySoon),
+        rustRoundsDesk.phone().takes.subscribe(copySoon),
         ideaTakesDesk.phone().subscribe(copySoon),
         // A new idea's takes go once it is sent (ST26): its Send is a change.
         ideaBundleDesk.phone().takes.subscribe(copySoon)

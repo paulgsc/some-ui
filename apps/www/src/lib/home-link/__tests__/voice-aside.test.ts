@@ -53,6 +53,7 @@ const fakes = vi.hoisted(
     bites: Array<Soundbite>
     lens: Array<Take>
     leetype: Array<Take>
+    rust: Array<Take>
     scene: Array<KeptSceneNote>
     paired: boolean
     /** Whether the soundbites page has handed its store in this launch. */
@@ -64,6 +65,7 @@ const fakes = vi.hoisted(
     bites: [],
     lens: [],
     leetype: [],
+    rust: [],
     scene: [],
     paired: true,
     bitesHanded: true,
@@ -114,6 +116,10 @@ vi.mock("@/lib/lens-takes", () => ({
 vi.mock("@/lib/leetype-takes", () => ({
   leetypeTakesDesk: desk(() => fakes.leetype),
   leetypeNotesHeldByHome: (): void => undefined,
+}))
+vi.mock("@/lib/rust-rounds", () => ({
+  rustRoundsDesk: desk(() => fakes.rust),
+  rustRoundRef: () => (): string => "indexing-01:a",
 }))
 vi.mock("@/lib/idea-takes", () => ({
   ideaTakesDesk: desk(() => []),
@@ -305,6 +311,12 @@ const STORES: ReadonlyArray<
     },
   ],
   [
+    "a Rust Rounds note",
+    (id, standing): void => {
+      fakes.rust = [take(id, standing)]
+    },
+  ],
+  [
     "a scene note",
     (id, standing): void => {
       fakes.scene = [sceneNote(id, standing)]
@@ -324,6 +336,7 @@ beforeEach(() => {
   fakes.bites = []
   fakes.lens = []
   fakes.leetype = []
+  fakes.rust = []
   fakes.scene = []
   fakes.paired = true
   fakes.bitesHanded = true

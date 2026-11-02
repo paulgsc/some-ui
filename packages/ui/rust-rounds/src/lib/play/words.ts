@@ -57,7 +57,7 @@ export const WORDS = {
     `The note on ${concept}, card ${number} couldn't be kept.`,
   /** The phone's room for voice notes is used up; on the menu and the speak step. */
   noRoom:
-    "This phone has no room left for voice notes. Sending them home comes next; until then, every card still plays.",
+    "This phone has no room left for new voice notes. Every card still plays.",
   earlierNote: "Your earlier note",
   earlierNoteMissing:
     "Your earlier note isn't on this phone yet. Say it again anyway.",

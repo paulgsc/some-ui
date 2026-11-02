@@ -15,8 +15,9 @@
  * waiting on its note) is kept with the place, and the next opening settles
  * it from what the phone holds. Each route mount makes a runtime, and all of
  * them share one microphone, so a detached one that went on hearing it would
- * act on records a newer one now owns. Voice notes wait on the phone in the microphone's own list;
- * sending them and the log home is RR6 (#2237) and RR7 (#2238).
+ * act on records a newer one now owns. Voice notes wait on the phone in the
+ * microphone's own list, which the app's voice lane sends home (RR6,
+ * #2237); sending the log home is RR7 (#2238).
  */
 import { assertNever } from "@some-ui/core-utils"
 import type {
