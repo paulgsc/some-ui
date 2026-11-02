@@ -988,6 +988,15 @@ describe("voice transcripts", () => {
     expect((await asHome(deps(), NAME, JSON.stringify(take))).status).toBe(201)
   })
 
+  it("takes a Rust Rounds note's transcript, named by its card and what it refines (RR6)", async () => {
+    for (const ref of ["indexing-01:a", "indexing-01:refine-a:n0"]) {
+      const said = { ...HEARD, of: "rust-round", ref }
+      expect((await asHome(deps(), NAME, JSON.stringify(said))).status).toBe(
+        201
+      )
+    }
+  })
+
   it("takes only a transcript's own shape", async () => {
     const d = deps()
     const { text: _text, ...untold } = HEARD
@@ -1030,7 +1039,7 @@ describe("voice transcripts", () => {
       [{ ...HEARD, note: "k3v" }, "the name must carry the note's id"],
       [
         { ...HEARD, of: "diary" },
-        "of must be reflection, jobs, scene or studio",
+        "of must be reflection, jobs, scene, studio or rust-round",
       ],
       [{ ...HEARD, ref: 7 }, "ref must name what the note belongs to"],
       [{ ...HEARD, at: "soon" }, "at must be when the note was recorded"],
