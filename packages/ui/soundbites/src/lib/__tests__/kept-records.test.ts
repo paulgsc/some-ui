@@ -2,7 +2,8 @@
  * @vitest-environment jsdom
  *
  * KR1 (`@some-ui/vite-config/vitest/kept-records`) over soundbites' records
- * in the page's storage: Studio's caught ideas (ST18) and its time log (ST9).
+ * in the page's storage: Studio's caught ideas (ST18), its time log (ST9) and
+ * the owner's choice of when a take home holds leaves the phone (HF11).
  * Takes and projects are kept in IndexedDB, under their own rules
  * (`project/store`).
  */
@@ -14,6 +15,7 @@ import type {
 import { describeKeptRecords } from "@some-ui/vite-config/vitest/kept-records"
 import { newIdea } from "@soundbites/lib/idea/model"
 import { IDEAS_KEY, keptIdeaStore } from "@soundbites/lib/idea/store"
+import { keptLetGo, LET_GO_KEY } from "@soundbites/lib/studio/let-go-store"
 import type { TimeEvent } from "@soundbites/lib/studio/time-log"
 import { keptTimeLog, TIME_LOG_KEY } from "@soundbites/lib/studio/time-store"
 
@@ -29,6 +31,19 @@ const opened = (id: string): TimeEvent => ({
 })
 
 const stores: ReadonlyArray<KeptStore> = [
+  {
+    name: "Studio's choice of when takes leave the phone",
+    key: LET_GO_KEY,
+    older: '"home"',
+    partly: JSON.stringify([{ letGo: "home", at: AT }, { letGo: "never" }]),
+    open: (storage): KeptHandle => {
+      const letGo = keptLetGo(() => storage)
+      return {
+        write: (): unknown => letGo.choose("drive", AT),
+        read: (): unknown => letGo.read(),
+      }
+    },
+  },
   {
     name: "Studio's time log",
     key: TIME_LOG_KEY,

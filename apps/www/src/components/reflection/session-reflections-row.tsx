@@ -4,30 +4,26 @@ import { Badge } from "@some-ui/shared"
 import { Check, NotebookPen } from "lucide-react"
 
 import { useMinuteClock } from "@/lib/clock"
-import { bySession, describeAge } from "@/lib/session-reflection"
+import { bySession, describeAge, inView } from "@/lib/session-reflection"
 import { useReflections } from "@/lib/session-reflection/use-reflections"
 
-import { DeviceShareReflections } from "./device-share-reflections"
-
 /**
- * A session card's line about its reflections: how many wait and how old,
- * with Share on the phone; or that they were shared; or, for a finished
- * session with neither, that there are none. Nothing for a draft.
+ * A session card's line about its reflections: how many are kept and how
+ * old; or that they were shared; or, for a finished session with neither,
+ * that there are none. Nothing for a draft.
  */
 export const SessionReflectionsRow = ({
   sessionId,
-  name,
   finished,
 }: {
   sessionId: string
-  /** The session's name, which says whose Share this is. */
-  name: string
   finished: boolean
 }): JSX.Element | null => {
   const { kept, shared } = useReflections()
   const now = useMinuteClock().getTime()
   const group = bySession(
-    kept.filter((r) => r.sessionId === sessionId),
+    // One recorded again or set aside is kept, but not the session's.
+    kept.filter((r) => r.sessionId === sessionId && inView(r)),
     now
   ).at(0)
   const sharedAt = shared.find((m) => m.sessionId === sessionId)?.sharedAt
@@ -41,13 +37,6 @@ export const SessionReflectionsRow = ({
           {describeAge(group.oldestMs)} old
         </span>
         {group.stale && <Badge variant="secondary">stale</Badge>}
-        {import.meta.env.VITE_DEVICE_BACKEND === "true" && (
-          <DeviceShareReflections
-            sessionIds={[sessionId]}
-            label="Share"
-            title={`Share the reflections from "${name}"`}
-          />
-        )}
       </div>
     )
   }

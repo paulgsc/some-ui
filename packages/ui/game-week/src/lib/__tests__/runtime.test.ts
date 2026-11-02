@@ -1,11 +1,17 @@
 import type { KeptBite } from "@game-week/lib/bite"
 import { fixtureFeed } from "@game-week/lib/feed"
-import { ASK_HOLD_MS } from "@game-week/lib/machine"
+import { ASK_HOLD_MS, phaseOf } from "@game-week/lib/machine"
 import type { BiteStore } from "@game-week/lib/ports"
 import { INITIAL_PREFS, parsePrefs, storedPrefs } from "@game-week/lib/ports"
 import type { GameWeekPorts } from "@game-week/lib/runtime"
 import { createGameWeek } from "@game-week/lib/runtime"
 import { NOTICES } from "@game-week/lib/words"
+import { microphoneOwner } from "@some-ui/voice-capture"
+import {
+  simulatedMicrophone,
+  simulatedPlayer,
+  SPEAKING,
+} from "@some-ui/voice-capture/testing"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { T0 } from "./fixture"
@@ -54,7 +60,10 @@ function memoryStore(failKeep = false): MemoryStore {
       store.held.delete(id)
       return Promise.resolve()
     },
+    audio: (id) =>
+      Promise.resolve(store.kept.has(id) ? new Blob(["said"]) : null),
     isKept: (id) => store.kept.has(id),
+    homeSince: () => null,
     subscribe(listener): () => void {
       listeners.add(listener)
       return (): void => {
@@ -74,17 +83,13 @@ function ports(
   page: Page = { now: T0, show: () => undefined }
 ): GameWeekPorts {
   return {
-    startRecording: () =>
-      Promise.resolve({
-        level: () => level,
-        finish: () =>
-          Promise.resolve({
-            blob: new Blob(["said"], { type: "audio/webm" }),
-            mimeType: "audio/webm",
-            durationMs: ((page.now += 3_000), 3_000),
-          }),
-        discard: () => undefined,
-      }),
+    // The shared simulated microphone, hearing three seconds at `level`.
+    startRecording: simulatedMicrophone({
+      now: () => page.now,
+      fallback: { ...SPEAKING, level, durationMs: 3_000 },
+    }).startRecording,
+    owner: microphoneOwner(),
+    player: simulatedPlayer(),
     store,
     feed: fixtureFeed(() => T0),
     prefs: storedPrefs(null),
@@ -113,7 +118,7 @@ describe("createGameWeek", () => {
       said: { how: "offered", scenario: "in.sack", context: "Pressure" },
     })
     await vi.advanceTimersByTimeAsync(0)
-    expect(runtime.getSnapshot().activity.kind).toBe("recording")
+    expect(phaseOf(runtime.getSnapshot())).toBe("recording")
     detach()
     await vi.advanceTimersByTimeAsync(0)
     expect([...store.kept.keys()]).toEqual(["bite-1"])

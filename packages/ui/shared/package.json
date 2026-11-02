@@ -56,6 +56,7 @@
     "@some-ui/core-utils": "workspace:*",
     "@some-ui/react-hooks": "workspace:*",
     "@some-ui/styles": "workspace:*",
+    "@some-ui/voice-capture": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "catalog:",
@@ -64,6 +65,7 @@
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
+    "@some-ui/vite-config": "workspace:*",
     "@types/prismjs": "^1.26.5",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"

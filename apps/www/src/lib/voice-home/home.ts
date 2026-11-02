@@ -17,7 +17,7 @@ import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 import { readAs, refusalOf, unexpectedAnswer } from "@some-ui/core-utils"
 import { z } from "zod"
 
-import type { VoiceHomeEvent, VoiceHomeState, VoiceOut } from "./model"
+import type { NoteAnswered, VoiceHomeState, VoiceOut } from "./model"
 
 /** Home's ceiling for one note (`voice_repo::NOTE_CEILING`). */
 export const NOTE_CEILING = 1024 * 1024
@@ -31,9 +31,7 @@ export type VoiceHomePort = {
   audio: (id: string) => Promise<Blob | null>
   encode: (blob: Blob) => Promise<Encoded>
   /** What home said of a note: held, or refused for good. */
-  answered: (
-    event: Extract<VoiceHomeEvent, { kind: "held" | "refused" }>
-  ) => void
+  answered: (answer: NoteAnswered) => void
 }
 
 const NoteAnswer = z.object({

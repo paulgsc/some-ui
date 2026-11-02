@@ -13,9 +13,9 @@
 
 import type { JSX, ReactNode } from "react"
 import { assertNever, cn } from "@some-ui/core-utils"
-import { Button } from "@some-ui/shared"
+import { Button, TakeItem } from "@some-ui/shared"
+import type { TakeItemView, TakePlace } from "@some-ui/voice-capture"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
-import type { LensTakeSnapshot } from "@topik/lib/topik/adapter/lens-takes"
 import type { Tense } from "@topik/lib/topik/read-aloud/content"
 import { TENSES } from "@topik/lib/topik/read-aloud/content"
 import type {
@@ -35,7 +35,7 @@ import type {
 import type { LensPlaying } from "@topik/lib/topik/read-aloud/lens/runtime"
 import type { MistakeId } from "@topik/lib/topik/read-aloud/mistakes"
 import { MISTAKES } from "@topik/lib/topik/read-aloud/mistakes"
-import { Check, Ear, Eye, Mic, Play, Square, Volume2, X } from "lucide-react"
+import { Check, Ear, Eye, Volume2, X } from "lucide-react"
 
 type LensCardProps = {
   item: LensItem
@@ -53,12 +53,20 @@ type LensCardProps = {
   onNext: () => void
   onHearCue: () => void
   onHearLine: () => void
-  /** The learner's takes of the line (Rem. 4.16); absent, none is offered. */
+  /**
+   * The learner's takes of the line (Rem. 4.16), as the take pattern shows
+   * them: many a line, the newest played. Absent, none is offered.
+   */
   take?: {
-    snapshot: LensTakeSnapshot
-    onStart: () => void
-    onStop: () => void
-    onPlay: () => void
+    view: TakeItemView
+    /** A take is under way: what would sound into it waits. */
+    taking: boolean
+    /** No new take can be kept until home holds some of those kept. */
+    full: boolean
+    onTap: () => void
+    onRedo: (id: string) => void
+    onPlay: (id: string) => void
+    onLetGo: (id: string, place: TakePlace) => void
   }
 }
 
@@ -203,69 +211,33 @@ const ModeIcon = ({ modality }: { modality: CueModality }): JSX.Element => (
   </span>
 )
 
-/** Record yourself reading the line as authored, then play it back (Rem. 4.16). */
-const TakeRow = ({
+/**
+ * Record yourself reading the line as authored, then play it back (Rem.
+ * 4.16): the take pattern's parts. While the phone has kept as many as it
+ * can, nothing records, the line says what makes room, and the takes still
+ * play.
+ */
+const LineTakes = ({
   take,
 }: {
   take: NonNullable<LensCardProps["take"]>
 }): JSX.Element => {
-  const { snapshot } = take
-  const state = snapshot.take
+  const { view } = take
   return (
-    <div data-slot="lens-take" className="flex flex-col gap-1">
-      <div className="flex gap-2">
-        {state.kind === "recording" ? (
-          <Button
-            variant="destructive"
-            className="h-12 min-w-0 flex-1 gap-2 rounded-2xl"
-            onClick={take.onStop}
-          >
-            <Square className="size-4" /> Stop{" "}
-            <span className="tabular-nums">
-              {(state.elapsedMs / 1000).toFixed(1)}s
-            </span>
-          </Button>
-        ) : (
-          <Button
-            variant="outline"
-            className="h-12 min-w-0 flex-1 gap-2 rounded-2xl"
-            disabled={state.kind !== "idle" || snapshot.full}
-            onClick={take.onStart}
-          >
-            <Mic className="size-5" />
-            {state.kind === "opening"
-              ? "Opening the microphone…"
-              : state.kind === "keeping"
-                ? "Keeping it…"
-                : snapshot.full
-                  ? "No room for a take"
-                  : snapshot.last
-                    ? "Again"
-                    : "Record yourself"}
-          </Button>
-        )}
-        {snapshot.last && state.kind === "idle" && (
-          <Button
-            variant="outline"
-            className={cn(
-              "h-12 gap-2 rounded-2xl",
-              snapshot.playing && "ring-primary ring-2"
-            )}
-            onClick={take.onPlay}
-          >
-            <Play className="size-4" /> Mine{" "}
-            <span className="tabular-nums">
-              {(snapshot.last.durationMs / 1000).toFixed(1)}s
-            </span>
-          </Button>
-        )}
-      </div>
-      {(snapshot.said ?? snapshot.full) && (
-        <span role="status" className="text-muted-foreground text-xs">
-          {snapshot.said ??
-            "Share your study context with an agent to make room."}
-        </span>
-      )}
+    <div data-slot="lens-take">
+      <TakeItem
+        view={view}
+        label="Your takes of B"
+        onTap={take.onTap}
+        onPlay={take.onPlay}
+        onRedo={take.onRedo}
+        onLetGo={take.onLetGo}
+        full={
+          take.full && !take.taking
+            ? "This phone has kept as many takes as it can until a home it's paired with has the ones on it."
+            : undefined
+        }
+      />
     </div>
   )
 }
@@ -521,7 +493,7 @@ export const LensCard = ({
   )
 
   // A take under way holds what would sound into it, and the next item.
-  const recording = take !== undefined && take.snapshot.take.kind !== "idle"
+  const recording = take?.taking === true
   const cueButton = (label: string): JSX.Element => (
     <Button
       variant="outline"
@@ -638,7 +610,7 @@ export const LensCard = ({
             </Button>
           </div>
         )}
-        {take && <TakeRow take={take} />}
+        {take && <LineTakes take={take} />}
         <Button
           className="h-12 rounded-2xl"
           disabled={recording}
@@ -656,7 +628,11 @@ export const LensCard = ({
       stage={stage}
       dock={dock}
       longForm={revealed}
-      dockScrolls={revealed && outcome?.situation != null}
+      // The situation's options and the line's takes can outgrow the dock.
+      dockScrolls={
+        revealed &&
+        (outcome?.situation != null || (take?.view.current.length ?? 0) > 0)
+      }
     />
   )
 }

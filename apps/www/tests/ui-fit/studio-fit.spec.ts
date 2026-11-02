@@ -82,8 +82,8 @@ const WALKS: Record<
     {
       screen: "Record, a take kept",
       go: async (page): Promise<void> => {
-        await tap(page, "Done, keep it")
-        await page.getByRole("button", { name: "Again" }).waitFor()
+        await tap(page, "Stop, and keep it")
+        await page.getByRole("button", { name: "Record it again" }).waitFor()
       },
     },
     {
@@ -245,25 +245,79 @@ const WALKS: Record<
       },
     },
   ],
+  "studio-held": [
+    {
+      // Home holds every take, and nothing leaves until the owner chooses.
+      screen: "Start, home holds the takes: when they leave",
+      go: async (page): Promise<void> => {
+        await start(page)
+        await page
+          .getByRole("button", { name: "Keep each until Drive has it too" })
+          .waitFor()
+      },
+    },
+    {
+      screen: "Start, each take kept until Drive has it",
+      go: async (page): Promise<void> => {
+        await tap(page, "Keep each until Drive has it too")
+        await page
+          .getByRole("button", { name: /^Drive has it: Scene 3/ })
+          .waitFor()
+      },
+    },
+  ],
   idea: [
     {
-      screen: "New idea, the first question",
+      screen: "New idea, what it is",
       go: (page) =>
-        page.getByRole("button", { name: "Say it" }).waitFor({
+        page.getByRole("button", { name: "Start the questions" }).waitFor({
           timeout: 10_000,
         }),
     },
-    { screen: "New idea, typed", go: (page) => tap(page, "Type instead") },
     {
-      screen: "New idea, the next question",
+      screen: "New idea, the first question",
       go: async (page): Promise<void> => {
         await page
-          .getByRole("textbox")
-          .fill(
-            "A short on the week the model called Detroit and what it got wrong."
-          )
-        await tap(page, "Keep these words")
+          .getByRole("textbox", { name: "Title" })
+          .fill("Two hearings, one word")
+        await tap(page, "Start the questions")
+        await page.getByRole("button", { name: "Start talking" }).waitFor()
       },
+    },
+    {
+      screen: "New idea, recording",
+      go: (page) => tap(page, "Start talking"),
+    },
+    {
+      screen: "New idea, an answer said and heard back",
+      go: async (page): Promise<void> => {
+        await tap(page, "Stop, and keep it")
+        await page.getByRole("button", { name: /^Delete the take/ }).waitFor()
+      },
+    },
+    {
+      screen: "New idea, looked over",
+      go: async (page): Promise<void> => {
+        await tap(page, "Look it over before sending")
+        await page.getByRole("button", { name: "Delete all" }).waitFor()
+      },
+    },
+  ],
+  "idea-voice-lost": [
+    {
+      screen: "New idea, voice didn't come through",
+      go: async (page): Promise<void> => {
+        await page
+          .getByRole("textbox", { name: "Title" })
+          .fill("Two hearings, one word")
+        await tap(page, "Start the questions")
+        await tap(page, "Start talking")
+        await page.getByRole("button", { name: "Type it this once" }).waitFor()
+      },
+    },
+    {
+      screen: "New idea, typing instead",
+      go: (page) => tap(page, "Type it this once"),
     },
   ],
 }

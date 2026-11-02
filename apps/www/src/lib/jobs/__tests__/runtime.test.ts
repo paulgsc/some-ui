@@ -1,10 +1,10 @@
 import { inMemoryStorage } from "@some-ui/core-utils"
 import type { KeyedStorage } from "@some-ui/core-utils"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import { isFile } from "@/lib/jobs/files"
 import type { PickRef } from "@/lib/jobs/model"
-import { EMPTY } from "@/lib/jobs/model"
+import { draftVoice, EMPTY, formTakes } from "@/lib/jobs/model"
 import type { NoticeAsked, NoticePort } from "@/lib/jobs/runtime"
 import { createJobsRuntime } from "@/lib/jobs/runtime"
 import { STORAGE_KEY, writeStored } from "@/lib/jobs/stored"
@@ -179,6 +179,100 @@ describe("createJobsRuntime", () => {
     runtime.sweep()
     await settle()
     expect(await p.audio.ids()).toEqual(["v2"])
+  })
+
+  it("keeps a form's voice note under its owner, and Redo and Let go keep every note out of the draft (D2, D3)", async () => {
+    vi.useFakeTimers()
+    try {
+      const p = ports({ now: () => new Date(Date.now()) })
+      const runtime = createJobsRuntime(p)
+      const { voice } = runtime
+      const talk = async (supersedes: string | null = null): Promise<void> => {
+        voice.tap("o", supersedes)
+        await vi.advanceTimersByTimeAsync(3_000)
+        voice.tap("o")
+        await vi.advanceTimersByTimeAsync(0)
+      }
+      await talk()
+      await talk()
+      const [first, second] = runtime
+        .getSnapshot()
+        .state.voice.map(({ id }) => id)
+      await talk(first)
+      voice.letGo(String(second), "phone")
+      const { state } = runtime.getSnapshot()
+      expect(state.voice.map((n) => [n.owner, n.standing])).toEqual([
+        ["o", "earlier"],
+        ["o", "set-aside"],
+        ["o", undefined],
+      ])
+      expect(draftVoice(state, "o")).toHaveLength(1)
+      expect(formTakes(state, "o")).toHaveLength(3)
+      expect(await p.audio.ids()).toHaveLength(3)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("sets a note aside only once its mark is owed, owing before it writes, and takes the mark back when the record won't keep the standing (LA13)", async () => {
+    vi.useFakeTimers()
+    try {
+      let keeps = false
+      let full = false
+      const log: Array<string> = []
+      const backing = inMemoryStorage()
+      const p = ports({
+        now: () => new Date(Date.now()),
+        storage: {
+          ...backing,
+          setItem: (key: string, value: string): void => {
+            if (value.includes("set-aside")) log.push("write")
+            if (full) throw new DOMException("full", "QuotaExceededError")
+            backing.setItem(key, value)
+          },
+        },
+        marks: {
+          owe: (id, at, from): boolean => {
+            log.push(`owe ${id} ${at} ${from}`)
+            return keeps
+          },
+          unowe: (id): void => {
+            log.push(`unowe ${id}`)
+          },
+        },
+      })
+      const runtime = createJobsRuntime(p)
+      const { voice } = runtime
+      voice.tap("o", null)
+      await vi.advanceTimersByTimeAsync(3_000)
+      voice.tap("o")
+      await vi.advanceTimersByTimeAsync(0)
+      const id = String(runtime.getSnapshot().state.voice[0]?.id)
+      const at = new Date(Date.now()).toISOString()
+
+      // A mark storage won't keep: nothing is set aside, nothing written.
+      voice.letGo(id, "phone")
+      expect(runtime.getSnapshot().state.voice[0]?.standing).toBeUndefined()
+      expect(log).toEqual([`owe ${id} ${at} jobs`])
+
+      // A record that won't keep the standing: the mark is taken back.
+      keeps = true
+      full = true
+      log.length = 0
+      voice.letGo(id, "phone")
+      expect(runtime.getSnapshot().state.voice[0]?.standing).toBeUndefined()
+      expect(log).toEqual([`owe ${id} ${at} jobs`, "write", `unowe ${id}`])
+
+      full = false
+      log.length = 0
+      voice.letGo(id, "phone")
+      const note = runtime.getSnapshot().state.voice.at(0)
+      expect(note?.standing).toBe("set-aside")
+      expect(note?.setAsideAt).toBe(at)
+      expect(log).toEqual([`owe ${id} ${at} jobs`, "write"])
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it("files what a run missed again, with the audio still on the phone (LG1)", async () => {

@@ -3,15 +3,20 @@
  * finished voice note a routine hears, copied for home while the phone is
  * paired (`./voice-copy`, which says which notes and how each is told), and
  * sent through the one wiring (`./lanes`) by `exchangeVoice`
- * (`lib/voice-home/home`). There is no mark: the app shell mounts
- * `useVoiceHome` on every screen, so notes go from any wing.
+ * (`lib/voice-home/home`), then the set-aside marks owed for notes the
+ * owner let go (`./set-aside`, MIC2). The lane has no wing mark of its
+ * own: the app shell mounts `useVoiceHome` on every screen, so notes go
+ * from any wing.
  */
 import { useEffect, useSyncExternalStore } from "react"
 import type { OutboxPort, OutboxView } from "@some-ui/game-week"
 
 import type { PhoneBite } from "@/lib/game-bites"
 import { phoneGameBites } from "@/lib/game-bites"
+import { ideaBundleDesk, ideaTakesDesk } from "@/lib/idea-takes"
 import { phoneJobs } from "@/lib/jobs"
+import { leetypeTakesDesk } from "@/lib/leetype-takes"
+import { lensTakesDesk } from "@/lib/lens-takes"
 import { reflections } from "@/lib/session-reflection"
 import { phoneVoiceHome } from "@/lib/voice-home"
 import type { Unsendable, VoiceHomeState } from "@/lib/voice-home/model"
@@ -24,7 +29,7 @@ import {
   candidates,
   copyPasses,
   sendVoice,
-  studioRead,
+  storesRead,
   unsendable,
   watchVoiceNotes,
 } from "./voice-copy"
@@ -32,19 +37,33 @@ import {
 export const voiceLane: Lane = {
   id: "voice",
   exchange: sendVoice,
-  revision: () => phoneVoiceHome().getSnapshot().waiting.length,
+  // A mark owed for a note set aside (MIC2) is something to send too.
+  revision: () => {
+    const { waiting, aside } = phoneVoiceHome().getSnapshot()
+    return waiting.length + aside.owed.length
+  },
   subscribe: (listener) => phoneVoiceHome().subscribe(listener),
   useCounts: (): LaneCounts => {
     const home = phoneVoiceHome()
     const state = useSyncExternalStore(home.subscribe, home.getSnapshot)
-    // Read so a reflection, Jobs note, game bite or Studio take added
+    // Read so a reflection, Jobs note, game bite, Studio take, soundbite,
+    // lens take, LeetType take or idea take added, or a new idea's sent,
     // renders the offer again.
     useSyncExternalStore(reflections.subscribe, reflections.getSnapshot)
     const jobs = phoneJobs()
     useSyncExternalStore(jobs.subscribe, jobs.getSnapshot)
     const bites = phoneGameBites()
     useSyncExternalStore(bites.subscribe, bites.getSnapshot)
-    useSyncExternalStore(studioRead.subscribe, studioRead.getSnapshot)
+    useSyncExternalStore(storesRead.subscribe, storesRead.getSnapshot)
+    const lens = lensTakesDesk.phone().takes
+    useSyncExternalStore(lens.subscribe, lens.getSnapshot)
+    const leetype = leetypeTakesDesk.phone().takes
+    useSyncExternalStore(leetype.subscribe, leetype.getSnapshot)
+    const ideas = ideaTakesDesk.phone()
+    useSyncExternalStore(ideas.subscribe, ideas.getSnapshot)
+    // A new idea's takes, released by its Send (ST26).
+    const bundle = ideaBundleDesk.phone().takes
+    useSyncExternalStore(bundle.subscribe, bundle.getSnapshot)
     const { gone } = useSyncExternalStore(
       copyPasses.subscribe,
       copyPasses.getSnapshot

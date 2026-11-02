@@ -43,7 +43,7 @@ export const ACCOUNT_ERASES = {
     },
     {
       label: "Filed with home for the mailbox",
-      text: "The decisions and scouts you filed with home, which lessons you opened, what home heard in your voice notes, how each LeetType session went, and home's note of each one it passed on.",
+      text: "The decisions and scouts you filed with home, which lessons you opened, what home heard in your voice notes, how each LeetType session went, your written reflections, the scenes you asked for, and home's note of each one it passed on.",
     },
     {
       label: "LeetType sessions",
@@ -54,8 +54,20 @@ export const ACCOUNT_ERASES = {
       text: "Every word set your phone sent home, and what it kept as you read: how long each word is given, how often each sentence was shown and read to the end, your grammar lens answers, your practice record, where you left off and your answers at a sitting's end, every change to them included.",
     },
     {
+      label: "Written reflections",
+      text: "Each reflection you typed about a session and your phone sent home, word for word, with when you wrote it.",
+    },
+    {
+      label: "Asks for the next scene",
+      text: "Each next scene you asked for and your phone sent home, word for word, with when you asked.",
+    },
+    {
       label: "Voice notes, game bites included",
       text: "Each voice note your phone sent home, its sound included, and what home heard in it; for a game-day bite, also what it was about and what the screen showed as you said it.",
+    },
+    {
+      label: "What the phone noted beside a soundbite or a LeetType answer",
+      text: "When each soundbite was recorded and what your phone noted around it, and for each LeetType spoken answer, its prompt and rubric, the points you ticked and what you typed.",
     },
     {
       label: "Rust Rounds' rounds",

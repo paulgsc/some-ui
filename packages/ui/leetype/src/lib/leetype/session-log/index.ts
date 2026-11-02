@@ -29,6 +29,22 @@ export type SessionLogSnapshot = {
   readonly problem: string | null
 }
 
+/** Those told of each event a store on this page keeps. */
+const logged = new Set<(event: SessionEvent) => void>()
+
+/**
+ * Calls `listener` with each event any store on this page keeps, after it
+ * is kept. Returns an unsubscribe.
+ */
+export function onSessionLogged(
+  listener: (event: SessionEvent) => void
+): () => void {
+  logged.add(listener)
+  return (): void => {
+    logged.delete(listener)
+  }
+}
+
 export type SessionLogStore = {
   getSnapshot(): SessionLogSnapshot
   subscribe(listener: () => void): () => void
@@ -83,6 +99,7 @@ export function createSessionLogStore(
       }
       sessions.set(event.session, events)
       publish({ log: [...sessions.values()].flat(), problem: null })
+      for (const listener of logged) listener(event)
       return true
     },
   }

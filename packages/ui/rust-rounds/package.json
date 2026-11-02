@@ -25,6 +25,7 @@
   "dependencies": {
     "@some-ui/core-utils": "workspace:*",
     "@some-ui/shared": "workspace:*",
+    "@some-ui/voice-capture": "workspace:*",
     "lucide-react": "catalog:",
     "zod": "catalog:"
   },

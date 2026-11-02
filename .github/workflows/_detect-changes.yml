@@ -64,6 +64,9 @@ jobs:
               # skip the build that runs it.
               - 'packages/ui/resume/**'
               - 'packages/contract-harness/README.md'
+              # The real-microphone suite's clips and page (MIC9), which the
+              # globs above miss: a clip changes what the real recorder hears.
+              - 'packages/voice-capture/tests/**'
               - '!**/*.md'
             extensions:
               - 'extensions/**'
@@ -78,4 +81,7 @@ jobs:
               - '.github/workflows/**'
               - '.github/actions/**'
               - 'flake.nix'
+              # Pins the Chromium (ci-playwright) every e2e step drives, so a
+              # lock-only bump (bot/flake-update) reaches node-e2e.
+              - 'flake.lock'
               - 'nix/**'

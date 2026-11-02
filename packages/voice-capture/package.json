@@ -2,7 +2,7 @@
   "name": "@some-ui/voice-capture",
   "private": true,
   "version": "0.0.1",
-  "description": "The phone's microphone as one take at a time, a voice note kept from it, and IndexedDB to keep the audio.",
+  "description": "The phone's microphone as one take at a time, a voice note kept from it, IndexedDB to keep the audio, and the take pattern's machine and words.",
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.build.json && vite build",
@@ -12,16 +12,20 @@
     "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
     "lint:js": "NODE_OPTIONS='--max_old_space_size=4096' eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
     "prettier": "prettier . --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tests/tsconfig.json",
+    "test": "vitest",
+    "test:e2e": "vite build --config tests/real-microphone/vite.config.ts && playwright test --config tests/real-microphone/playwright.config.ts"
   },
   "dependencies": {
     "@some-ui/core-utils": "workspace:*",
-    "@some-ui/intent-kit": "workspace:*"
+    "@some-ui/intent-kit": "workspace:*",
+    "fast-check": "^4.10.2"
   },
   "devDependencies": {
+    "@playwright/test": "1.62.1",
     "@some-ui/tsconfig": "workspace:*",
-    "@some-ui/vite-config": "workspace:*"
+    "@some-ui/vite-config": "workspace:*",
+    "vite": "^8.3.5"
   },
   "repository": {
     "type": "git",
@@ -47,6 +51,11 @@
       "types": "./dist/@some-ui/voice-capture.d.ts",
       "import": "./dist/@some-ui/voice-capture.es.js",
       "default": "./dist/@some-ui/voice-capture.es.js"
+    },
+    "./testing": {
+      "types": "./dist/@some-ui/voice-capture/testing.d.ts",
+      "import": "./dist/@some-ui/voice-capture/testing.es.js",
+      "default": "./dist/@some-ui/voice-capture/testing.es.js"
     }
   }
 }

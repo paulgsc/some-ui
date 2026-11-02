@@ -1,38 +1,29 @@
 /**
- * A take of the learner reading a grammar-lens line aloud (adaptive-learning
- * canon Rem. 4.16). Recording, keeping the audio and playing it back are the
- * phone's (www's `lib/lens-takes`, over `@some-ui/voice-capture`), so this is
- * the port only; topik renders its snapshot and forwards taps.
+ * The learner's takes of grammar-lens lines (adaptive-learning canon Rem.
+ * 4.16), on the take pattern (`@some-ui/voice-capture`). Recording, keeping
+ * the audio and where each take is kept are the phone's (www's
+ * `lib/lens-takes`, a desk of takes on the pattern), so this is the port
+ * only: the lens runtime taps the pattern for the line in view, and the card
+ * draws the pattern's parts.
+ *
+ * The phone's desk chooses the lens's options: many takes a line, beside each
+ * other (`takes: { per: "many" }`), and only the newest plays
+ * (`play: "latest"`), as "Mine" did.
  */
 
-import type { VoiceTake } from "@topik/lib/topik/adapter/voice-take"
+import type { PatternTake, TakePattern } from "@some-ui/voice-capture"
 
 export type LensTakeSnapshot = {
-  take: VoiceTake
-  /** Said once beside the button: how the last take ended, or why none can. */
-  said: string | null
-  /** The last take kept since the last `reset`: the one "Mine" plays. */
-  last: { id: string; durationMs: number } | null
-  /**
-   * The last take kept, whatever item it was started on: a take cut off by
-   * leaving lands after `reset`, and the record still counts it.
-   */
-  kept: { id: string; durationMs: number } | null
-  /** The last take is playing back. */
-  playing: boolean
-  /** No new take can be kept until the takes are shared (Rem. 4.16). */
-  full: boolean
+  /** The takes kept, as the take pattern lists them; the same array while nothing changed. */
+  readonly takes: ReadonlyArray<PatternTake>
+  /** No new take can be kept until home holds some of those kept. */
+  readonly full: boolean
 }
 
 export type LensTakes = {
-  getSnapshot: () => LensTakeSnapshot
-  subscribe: (listener: () => void) => () => void
-  /** Starts a take of `line` (a line id), the line as authored. */
-  start: (line: string) => void
-  /** Ends a take under way and keeps it, and stops a playback. */
-  stop: () => void
-  /** Plays the last take back. */
-  playLast: () => void
-  /** The item is done: a take under way is kept, and the last is forgotten. */
-  reset: () => void
+  /** The phone's take pattern, on which a line's takes are taken. */
+  readonly pattern: TakePattern
+  /** The same object while nothing changed. */
+  readonly getSnapshot: () => LensTakeSnapshot
+  readonly subscribe: (listener: () => void) => () => void
 }

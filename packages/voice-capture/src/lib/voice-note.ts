@@ -11,6 +11,11 @@
  *   mid-take finishes it and keeps it, as the soundbites page does.
  * - **A microphone that opens too late is let go.** If the person left while
  *   it was opening, its arrival is discarded, never recorded.
+ *
+ * **VC2: every take that starts ends once, and its ending has words.**
+ * Its claim, family and proof are in `./properties.ts`, beside VC3. A take
+ * stopped or left while the microphone is still opening ends `early`, never
+ * silently.
  */
 import { assertNever } from "@some-ui/core-utils"
 
@@ -27,8 +32,18 @@ import type {
 } from "./take"
 import { discardTake, finishTake, openTake, stepTake, takeRunner } from "./take"
 
-/** How the last take ended, said once beside the button. */
-export type VoiceNoteOutcome = "kept" | "short" | "full" | "failed"
+/**
+ * How the last take ended, said once beside the button. `early`: stopped or
+ * left while the microphone was still opening, so nothing was recorded.
+ */
+export type VoiceNoteOutcome = "kept" | "short" | "full" | "failed" | "early"
+
+/**
+ * Every way a take ends (VC2): an outcome, or the microphone refused it.
+ * The take kit's ending (`./take-kit`); a screen's words for it are a
+ * `TakeEndingWords`.
+ */
+export type TakeEnding = VoiceNoteOutcome | "blocked"
 
 export type VoiceNoteState =
   | { readonly kind: "idle"; readonly last: VoiceNoteOutcome | null }
@@ -47,7 +62,7 @@ export type VoiceNoteEvent =
   | TakeSignal
   | { type: "saved"; outcome: VoiceNoteOutcome }
 
-type VoiceNoteEffect =
+export type VoiceNoteEffect =
   | TakeEffect
   | { type: "save"; take: Take; atMs: number | null }
 
@@ -77,8 +92,10 @@ function after(next: TakeStep, atMs: number | null): Next {
     case "blocked": {
       return { state: { kind: "blocked", reason: next.reason }, effects }
     }
+    // Only a take still opening is discarded here: a recording one is
+    // finished and kept (`stepVoiceNote`).
     case "discarded": {
-      return { state: { kind: "idle", last: null }, effects }
+      return { state: { kind: "idle", last: "early" }, effects }
     }
     default: {
       return assertNever(next)
@@ -127,6 +144,17 @@ export const VOICE_NOTE_SAID: Readonly<Record<VoiceNoteOutcome, string>> = {
   short: "Too short to keep. Tap, talk, then tap again.",
   full: "There's no room for another voice note.",
   failed: "Couldn't keep that one. Try again.",
+  early:
+    "That ended before the microphone was listening, so nothing was kept. Try again.",
+}
+
+/**
+ * How the take that just ended ended, once the note is at rest: null while
+ * a take is under way, or before any has ended.
+ */
+export function takeEnding(state: VoiceNoteState): TakeEnding | null {
+  if (state.kind === "blocked") return "blocked"
+  return state.kind === "idle" ? state.last : null
 }
 
 /** A voice note's take as a screen shows it. */

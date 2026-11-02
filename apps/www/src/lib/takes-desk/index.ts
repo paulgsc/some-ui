@@ -1,21 +1,41 @@
 /**
- * A desk of takes on the phone (`./runtime`): the microphone, the audio on a
- * shelf of its own, and the takes in a list, one runtime per page load.
- * A take leaves only when its audio never landed (`sweep`). Grammar-lens
- * takes (`lib/lens-takes`) and
- * LeetType's spoken answers (`lib/leetype-takes`) each keep one.
- * Phone-only (`build.paths.ts`).
+ * A desk of takes on the phone: the audio on a shelf of its own and the
+ * takes in a list, one runtime per page load. Two runtimes sit on it:
+ *
+ * - `takesDesk`: the take kit's (`./runtime`), Studio's idea answers
+ *   (`lib/idea-takes`).
+ * - `patternDesk`: the take pattern's (`./pattern`), with Redo and Let go:
+ *   Rust Rounds' notes (`lib/rust-rounds`), LeetType's spoken answers
+ *   (`lib/leetype-takes`) and the grammar lens's takes (`lib/lens-takes`).
+ *
+ * A desk whose takes go home as voice notes (`lib/home-link/voice-copy`,
+ * HF5 #2180) is told where each is kept (`keptWhere`): what home holds may
+ * make room, and a pattern desk's rows say where each take is (MIC3). A desk
+ * no lane tells keeps every take on this phone, and says so. Phone-only
+ * (`build.paths.ts`).
  */
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import { SOUNDBITE_BITS_PER_SECOND } from "@some-ui/soundbites/contract"
-import { audioPlayer, micRecorder, savingShelf } from "@some-ui/voice-capture"
+import type { Player, TakeKept } from "@some-ui/voice-capture"
+import {
+  audioPlayer,
+  micRecorder,
+  ON_PHONE,
+  savingShelf,
+} from "@some-ui/voice-capture"
 
 import { boundedList } from "@/lib/bounded-list"
+import type { MarkFrom } from "@/lib/voice-marks"
 
+import type { DeskShape, PatternPhone, PatternTakesPorts } from "./pattern"
+import { createPatternTakes } from "./pattern"
 import type { PhoneTakes, Take, TakeLimits } from "./runtime"
-import { createTakes } from "./runtime"
+import { createTakes, homeHolds } from "./runtime"
 
-export type { DeskSnapshot, Take } from "./runtime"
+export type { DeskSnapshot, PhoneTakes, Take } from "./runtime"
+export { makesRoom } from "./runtime"
+
+const STANDINGS: ReadonlyArray<unknown> = [undefined, "earlier", "set-aside"]
 
 const isTake = (value: unknown): value is Take =>
   typeof value === "object" &&
@@ -24,10 +44,22 @@ const isTake = (value: unknown): value is Take =>
   typeof Reflect.get(value, "line") === "string" &&
   typeof Reflect.get(value, "takenAt") === "number" &&
   typeof Reflect.get(value, "durationMs") === "number" &&
-  typeof Reflect.get(value, "mimeType") === "string"
+  typeof Reflect.get(value, "mimeType") === "string" &&
+  STANDINGS.includes(Reflect.get(value, "standing")) &&
+  ["undefined", "number"].includes(typeof Reflect.get(value, "setAsideAt")) &&
+  ["undefined", "true"].includes(String(Reflect.get(value, "waits")))
 
-export type TakesDesk = {
-  readonly phone: () => PhoneTakes
+/** Whether a take is in its item's view: neither recorded again nor set aside. */
+export const inView = (take: Take): boolean => take.standing === undefined
+
+/**
+ * Whether a take may go home: every take, but on a desk whose takes wait
+ * for their item (`send: "on-confirm"`), only once the screen sent it.
+ */
+export const sent = (take: Take): boolean => take.waits !== true
+
+/** What either desk offers besides its runtime. */
+type DeskShelf = {
   /**
    * Each half without the other: audio no take names (the app closed
    * between writing it and listing it), and a take whose audio never
@@ -35,9 +67,12 @@ export type TakesDesk = {
    */
   readonly sweep: () => void
   /**
-   * The takes as kept, newest first, each with its audio: null when it is
-   * gone, and `read` false when the shelf could not be read, so that take,
-   * whose audio may still be there, is not counted as gone with the export.
+   * The takes in their items' view, newest first, each with its audio: null
+   * when it is gone, and `read` false when the shelf could not be read, so
+   * that take, whose audio may still be there, is not counted as gone with
+   * the export. A take a Redo recorded again (D2) or Let go set aside (D3)
+   * is kept and goes home, but is out of what routines read, so it is not
+   * exported.
    */
   readonly forExport: () => Promise<
     Array<{ take: Take; audio: Blob | null; read: boolean }>
@@ -47,6 +82,41 @@ export type TakesDesk = {
    * earliest such; null when this phone holds none.
    */
   readonly keptOn: (line: string, since: number) => string | null
+  /**
+   * The takes as kept, newest first, for the copy home: on a desk whose
+   * takes wait for their item (`send: "on-confirm"`), only those sent.
+   */
+  readonly kept: () => ReadonlyArray<Take>
+  /** A take's audio, or null when it is gone. */
+  readonly audio: (id: string) => Promise<Blob | null>
+  /**
+   * Where each take is kept, from the voice notes' lane
+   * (`lib/home-link/voice-copy`): those home holds may make room for a new
+   * take, and a pattern desk's rows say it (MIC3).
+   */
+  readonly keptWhere: (where: (id: string) => TakeKept) => void
+}
+
+export type TakesDesk = DeskShelf & { readonly phone: () => PhoneTakes }
+
+export type PatternDesk = DeskShelf & { readonly phone: () => PatternPhone }
+
+type DeskOptions = {
+  /** The list's `localStorage` key and the shelf's database. */
+  readonly key: string
+  readonly dbName: string
+  readonly limits: TakeLimits
+  /**
+   * The store home is told the takes are kept in, for their set-aside marks
+   * (`lib/voice-marks`); null for takes that go home in no lane yet, or have
+   * no Let go.
+   */
+  readonly from: MarkFrom | null
+}
+
+type PatternDeskOptions = DeskOptions & {
+  /** How many takes an item keeps, and which play: one each unless said. */
+  readonly shape?: DeskShape | undefined
 }
 
 /** The shelf's own cap: a full desk of full-length takes at the soundbites' bitrate. */
@@ -54,19 +124,74 @@ function maxBytes(limits: TakeLimits): number {
   return limits.max * (limits.maxMs / 1000) * (SOUNDBITE_BITS_PER_SECOND / 8)
 }
 
-export function takesDesk(options: {
-  /** The list's `localStorage` key and the shelf's database. */
-  readonly key: string
-  readonly dbName: string
-  readonly limits: TakeLimits
-}): TakesDesk {
-  const list = boundedList(options.key, options.limits.max, isTake)
-  const takes = {
+/** What a runtime needs of the desk, and what it gives back. */
+type Runtime = {
+  readonly letGo: (ids: ReadonlyArray<string>) => boolean
+  readonly recount: () => void
+}
+
+/** The desk's list in `localStorage` under `key`, at most `max` takes long. */
+export function deskList(key: string, max: number): PatternTakesPorts["takes"] {
+  const list = boundedList(key, max, isTake)
+  return {
     read: list.read,
-    add: (take: Take): boolean => list.put(take, ({ id }) => id === take.id),
-    remove: (ids: ReadonlyArray<string>): boolean =>
-      list.remove(({ id }) => ids.includes(id)),
+    add: (take, supersedes): boolean =>
+      list.put(
+        take,
+        ({ id }) => id === take.id,
+        (other) =>
+          other.id === supersedes ? { ...other, standing: "earlier" } : other
+      ),
+    remove: (ids): boolean => list.remove(({ id }) => ids.includes(id)),
+    // Only a take that never left the phone can be deleted for good (ST26):
+    // this is the one place that holds it.
+    discard: (ids): ReadonlyArray<string> | null => {
+      const waiting = list
+        .read()
+        .filter(({ id, waits }) => waits === true && ids.includes(id))
+        .map(({ id }) => id)
+      if (waiting.length === 0) return []
+      return list.remove(({ id }) => waiting.includes(id)) ? waiting : null
+    },
+    release: (ids): boolean =>
+      list.update((take) => {
+        if (take.waits !== true || !ids.includes(take.id)) return take
+        const { waits: _sent, ...released } = take
+        return released
+      }),
+    // A take set aside once keeps the time it was first let go.
+    setAside: (id, at): boolean =>
+      list.update((take) =>
+        take.id === id && take.standing !== "set-aside"
+          ? { ...take, standing: "set-aside", setAsideAt: at }
+          : take
+      ),
   }
+}
+
+/** `DeskShelf.keptOn` over `takes`. */
+export function keptOn(
+  takes: ReadonlyArray<Take>,
+  line: string,
+  since: number
+): string | null {
+  return (
+    takes
+      .filter((take) => take.line === line && take.takenAt >= since)
+      .sort((a, b) => a.takenAt - b.takenAt)[0]?.id ?? null
+  )
+}
+
+function desk<R extends Runtime>(
+  options: DeskOptions,
+  make: (
+    ports: PatternTakesPorts & {
+      readonly player: Player
+      readonly held: (id: string) => boolean
+    }
+  ) => R
+): DeskShelf & { readonly phone: () => R } {
+  const takes = deskList(options.key, options.limits.max)
   // Nothing keeps it free; the device's measured budget (`withRoom`) still
   // refuses a take the phone has no room for.
   const shelf = savingShelf({
@@ -74,22 +199,24 @@ export function takesDesk(options: {
     maxBytes: maxBytes(options.limits),
   })
 
-  let runtime: PhoneTakes | null = null
-  const phone = (): PhoneTakes => {
-    runtime ??= createTakes(
-      {
-        startRecording: micRecorder({
-          bitsPerSecond: SOUNDBITE_BITS_PER_SECOND,
-        }),
-        audio: shelf.shelf(),
-        takes,
-        saving: shelf.saving,
-        player: audioPlayer,
-        now: () => Date.now(),
-        newId: () => crypto.randomUUID(),
-      },
-      options.limits
-    )
+  // On this phone until the voice notes' lane says otherwise.
+  let where: (id: string) => TakeKept = () => ON_PHONE
+  let runtime: R | null = null
+  const phone = (): R => {
+    runtime ??= make({
+      startRecording: micRecorder({
+        bitsPerSecond: SOUNDBITE_BITS_PER_SECOND,
+      }),
+      audio: shelf.shelf(),
+      takes,
+      saving: shelf.saving,
+      player: audioPlayer,
+      now: () => Date.now(),
+      newId: () => crypto.randomUUID(),
+      kept: (id) => where(id),
+      from: options.from,
+      held: (id) => homeHolds(where(id)),
+    })
     return runtime
   }
 
@@ -120,22 +247,39 @@ export function takesDesk(options: {
           })
         })
     },
-    forExport: (): ReturnType<TakesDesk["forExport"]> => {
+    forExport: (): ReturnType<DeskShelf["forExport"]> => {
       const audio = shelf.shelf()
       return Promise.all(
-        takes.read().map(async (take) => {
-          try {
-            return { take, audio: await audio.get(take.id), read: true }
-          } catch {
-            return { take, audio: null, read: false }
-          }
-        })
+        takes
+          .read()
+          .filter((take) => inView(take) && sent(take))
+          .map(async (take) => {
+            try {
+              return { take, audio: await audio.get(take.id), read: true }
+            } catch {
+              return { take, audio: null, read: false }
+            }
+          })
       )
     },
-    keptOn: (line, since): string | null =>
-      takes
-        .read()
-        .filter((take) => take.line === line && take.takenAt >= since)
-        .sort((a, b) => a.takenAt - b.takenAt)[0]?.id ?? null,
+    keptOn: (line, since): string | null => keptOn(takes.read(), line, since),
+    kept: () => takes.read().filter(sent),
+    audio: (id) => shelf.shelf().get(id),
+    keptWhere: (next): void => {
+      where = next
+      runtime?.recount()
+    },
   }
+}
+
+/** A desk on the take kit (`./runtime`): Studio's idea answers. */
+export function takesDesk(options: DeskOptions): TakesDesk {
+  return desk(options, (ports) => createTakes(ports, options.limits))
+}
+
+/** A desk on the take pattern (`./pattern`): Redo and Let go. */
+export function patternDesk(options: PatternDeskOptions): PatternDesk {
+  return desk(options, (ports) =>
+    createPatternTakes(ports, options.limits, options.shape)
+  )
 }

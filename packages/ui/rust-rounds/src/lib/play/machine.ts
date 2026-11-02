@@ -42,6 +42,13 @@
  *   is killed, only the cards still in `pending` survive to the next opening.
  * - **rustc's result is never compared with the pick on screen.** The
  *   tutor's guess is checked only to log `tutorGuessedWrong`.
+ * - **A card's kept note is the card's note**, on the take pattern
+ *   (`@some-ui/voice-capture`). A Redo's note, once kept, is the card's
+ *   note, a card left mid-Redo's included, and the earlier one stays on the
+ *   phone (D2); one not kept leaves the card the note it had. Let go sets
+ *   the card's note aside, kept (D3), and the card has none. The pattern's
+ *   snapshot (`notes`) is the only record of a take under way; `taking` is
+ *   what the place record keeps of it for the next opening.
  */
 import type {
   CardEvent,
@@ -53,6 +60,12 @@ import { expectMatches } from "@rust-rounds/lib/formats"
 import { intakeReply } from "@rust-rounds/lib/intake"
 import { copyForTutor } from "@rust-rounds/lib/tutor-copy"
 import { assertNever } from "@some-ui/core-utils"
+import type {
+  TakeEnded,
+  TakeEnding,
+  TakePatternSnapshot,
+  TakePlace,
+} from "@some-ui/voice-capture"
 
 import type { Held } from "./held"
 import {
@@ -75,36 +88,22 @@ import type {
   Visit,
 } from "./store"
 
-/** A voice take as the screen shows it. */
-type TakeView =
-  | { readonly kind: "idle" }
-  | { readonly kind: "opening" }
-  | { readonly kind: "recording" }
-  | { readonly kind: "keeping" }
+/**
+ * How a take ended, as the take pattern says (`TakeEnding`); or, for a take
+ * an earlier opening left, that the phone holds no note from it (`missing`).
+ */
+type TakeEnd = TakeEnding | "missing"
 
 /**
- * How a take ended: kept, too short, no room, failed to keep, refused by
- * the microphone, or let go before it opened.
+ * What the card on screen says of its note, until the next card: how its
+ * last take ended, in the pattern's words (none in silence, VC2), that the
+ * phone holds no note from a take an earlier opening left, or that its note
+ * was set aside (D3).
  */
-export type TakeEnd = "kept" | "short" | "full" | "failed" | "blocked" | "none"
-
-/** The microphone's voice notes, as the session reads them. */
-export type NoteView = {
-  readonly take: TakeView
-  /**
-   * The last take to end, whatever card it was said on; `seq` counts every
-   * take that ends, so a new one is told from the last.
-   */
-  readonly ended: {
-    readonly seq: number
-    readonly line: string
-    readonly end: TakeEnd
-    /** The note kept, when `end` is `kept`. */
-    readonly note: string | null
-  } | null
-  /** Why the microphone refused the last take, in the person's words. */
-  readonly blocked: string | null
-}
+type NoteSaid =
+  | { readonly kind: "ended"; readonly ended: TakeEnded }
+  | { readonly kind: "missing" }
+  | { readonly kind: "setAside"; readonly place: TakePlace }
 
 /** What became of a pasted reply. */
 type ReplyAnswer =
@@ -149,13 +148,14 @@ export type PlayState = {
   readonly head: SessionHead
   /** The card on screen, not logged yet; the menu's Continue returns to it. */
   readonly place: Place | null
-  readonly notes: NoteView
+  /** The take pattern's snapshot: the take under way, the last one to end, what plays. */
+  readonly notes: TakePatternSnapshot
   /** The take under way: the card it was started on, and when. */
   readonly taking: Taking | null
   /** Cards left while their voice note was still being kept. */
   readonly pending: ReadonlyArray<Pending>
-  /** How the last take on the card on screen ended, until the next card. */
-  readonly said: TakeEnd | null
+  /** What the card on screen says of its note, until the next card. */
+  readonly said: NoteSaid | null
   /** A card left whose note could not be kept, until the next card. */
   readonly lost: Title | null
   /**
@@ -173,8 +173,12 @@ export type PlayIntent =
   | { readonly type: "continue" }
   | { readonly type: "play"; readonly concept: string | null }
   | { readonly type: "pick"; readonly pick: string }
-  | { readonly type: "holdToSpeak" }
-  | { readonly type: "letGo" }
+  /** D1: starts a take of the card's note, Redo included, or stops it. */
+  | { readonly type: "tapNote" }
+  /** Plays the card's note, or stops it while it plays. */
+  | { readonly type: "playNote" }
+  /** D3: sets the card's note aside; `place` is where it is kept. */
+  | { readonly type: "letGoNote"; readonly place: TakePlace }
   | { readonly type: "showRustc" }
   | { readonly type: "next" }
   | { readonly type: "pin" }
@@ -187,7 +191,7 @@ export type PlayIntent =
 
 /** What the microphone, the clipboard, the page and the store report. */
 type PlaySignal =
-  | { readonly type: "notes"; readonly view: NoteView }
+  | { readonly type: "notes"; readonly view: TakePatternSnapshot }
   /**
    * The session opened: the note the phone holds for each card left
    * waiting on one, and whether a take is still under way.
@@ -226,8 +230,20 @@ export type PlayEffect =
       readonly taking: Taking | null
       readonly pending: ReadonlyArray<Pending>
     }
-  | { readonly type: "startNote"; readonly line: string }
+  /** The pattern's tap: a take on `line`, superseding `supersedes` once kept. */
+  | {
+      readonly type: "tapNote"
+      readonly line: string
+      readonly supersedes: string | null
+    }
+  /** A take under way is kept, and nothing plays. */
   | { readonly type: "stopNote" }
+  | { readonly type: "playNote"; readonly id: string }
+  | {
+      readonly type: "setAsideNote"
+      readonly id: string
+      readonly place: TakePlace
+    }
   | { readonly type: "copy"; readonly seq: number; readonly text: string }
 
 export type Step = {
@@ -254,7 +270,7 @@ const KEPT: Readonly<Record<KeptRecord, boolean>> = {
 export function initialState(
   opened: Opened,
   head: SessionHead,
-  notes: NoteView
+  notes: TakePatternSnapshot
 ): PlayState {
   const place =
     opened.place !== null &&
@@ -336,7 +352,10 @@ function leaving(
   }
 }
 
-/** Appends a card's event, with the note it ended with. */
+/**
+ * Appends a card's event, with the note it ended with: `note`, a take kept
+ * since it was left, in place of the one it was left with (D2).
+ */
 function logCard(
   state: PlayState,
   left: { event: CardEvent; guessedWrong: boolean },
@@ -344,7 +363,7 @@ function logCard(
 ): Step {
   const add: LogAdd = {
     kind: "card",
-    event: { ...left.event, note: left.event.note ?? note },
+    event: { ...left.event, note: note ?? left.event.note },
     guessedWrong: left.guessedWrong,
   }
   const log = holdsAdd(state.log, add)
@@ -461,10 +480,11 @@ function moveOn(state: PlayState, at: string, menu: string | null): Step {
     current
   )
   // The take is ended last: its end may be heard at once, and the card
-  // waiting on it is kept with the place by then.
-  const stop: ReadonlyArray<PlayEffect> = left.stopping
-    ? [{ type: "stopNote" }]
-    : []
+  // waiting on it is kept with the place by then. A note playing stops.
+  const stop: ReadonlyArray<PlayEffect> =
+    left.stopping || state.notes.playback.kind !== "quiet"
+      ? [{ type: "stopNote" }]
+      : []
   if (ref === null) {
     const next = { ...left.state, screen: { kind: "menu" } as const }
     return {
@@ -481,15 +501,17 @@ function moveOn(state: PlayState, at: string, menu: string | null): Step {
 
 /**
  * A take on `line` ended: settle the card on screen, or the card left
- * waiting on it. The take no longer under way is kept as such.
+ * waiting on it. The take no longer under way is kept as such. `said` is
+ * what the card on screen says of it.
  */
 function settle(
   state: PlayState,
   line: string,
   end: TakeEnd,
-  note: string | null
+  note: string | null,
+  said: NoteSaid | null
 ): Step {
-  const settled = settleCard(state, line, end, note)
+  const settled = settleCard(state, line, end, note, said)
   const saved = settled.effects.some((effect) => effect.type === "savePlace")
   return settled.state.taking === state.taking || saved
     ? settled
@@ -503,7 +525,8 @@ function settleCard(
   state: PlayState,
   line: string,
   end: TakeEnd,
-  note: string | null
+  note: string | null,
+  said: NoteSaid | null
 ): Step {
   const base: PlayState = {
     ...state,
@@ -512,7 +535,9 @@ function settleCard(
   }
   const waiting = base.pending.find((each) => each.line === line)
   if (waiting !== undefined) {
-    const lostIt = end === "failed" || end === "full"
+    // A Redo that was not kept leaves the card the note it was left with.
+    const lostIt =
+      (end === "failed" || end === "full") && waiting.event.note === null
     const next: PlayState = {
       ...base,
       pending: base.pending.filter((each) => each !== waiting),
@@ -526,19 +551,23 @@ function settleCard(
   }
   const { place } = base
   if (place === null || lineOf(place.visit) !== line) return stay(base)
-  const shown = { ...base, said: end }
-  if (end !== "kept" || note === null || place.visit.note !== null) {
+  const shown = { ...base, said }
+  // A kept take is the card's note, a Redo's in place of the one before (D2).
+  if (end !== "kept" || note === null || place.visit.note === note) {
     return stay(shown)
   }
   return withVisit(shown, place, { ...place.visit, note })
 }
 
-function onNotes(state: PlayState, view: NoteView): Step {
+function onNotes(state: PlayState, view: TakePatternSnapshot): Step {
   const before = state.notes.ended?.seq ?? 0
   const next = { ...state, notes: view }
   const { ended } = view
   if (ended === null || ended.seq <= before) return stay(next)
-  return settle(next, ended.line, ended.end, ended.note)
+  return settle(next, ended.answers, ended.ending, ended.id, {
+    kind: "ended",
+    ended,
+  })
 }
 
 /** Settles the cards a session ended while they waited on a note. */
@@ -551,12 +580,11 @@ function onReopened(
   for (const { line, note } of found) {
     // A take still under way may yet land; its end settles it then.
     if (note === null && busy) continue
-    const settled = settle(
-      step.state,
-      line,
-      note === null ? "none" : "kept",
-      note
-    )
+    // A note found is shown on its card; none found is said.
+    const settled =
+      note === null
+        ? settle(step.state, line, "missing", null, { kind: "missing" })
+        : settle(step.state, line, "kept", note, null)
     step = {
       state: settled.state,
       effects: [...step.effects, ...settled.effects],
@@ -635,14 +663,20 @@ function onIntent(state: PlayState, event: PlayIntent & { at: string }): Step {
         picked: event.pick,
       })
     }
-    case "holdToSpeak": {
+    case "tapNote": {
       const shown = onScreen(state)
       if (shown?.place.visit.stage !== "speak") return stay(state)
-      if (shown.place.visit.note !== null || state.taking !== null) {
-        return stay(state)
+      const { visit } = shown.place
+      const line = lineOf(visit)
+      const { take, answers } = state.notes
+      if (take.kind !== "idle") {
+        // D1: a tap stops this card's take; another card's is left to end.
+        return answers === line
+          ? { state, effects: [{ type: "tapNote", line, supersedes: null }] }
+          : stay(state)
       }
-      if (state.notes.take.kind !== "idle") return stay(state)
-      const line = lineOf(shown.place.visit)
+      // A take an earlier opening left may yet land on this card.
+      if (state.taking !== null) return stay(state)
       const next: PlayState = {
         ...state,
         said: null,
@@ -652,13 +686,38 @@ function onIntent(state: PlayState, event: PlayIntent & { at: string }): Step {
       // is gone still finds this card at the next opening.
       return {
         state: next,
-        effects: [savePlace(next), { type: "startNote", line }],
+        effects: [
+          savePlace(next),
+          { type: "tapNote", line, supersedes: visit.note },
+        ],
       }
     }
-    case "letGo": {
-      return state.taking === null
+    case "playNote": {
+      const note = onScreen(state)?.place.visit.note ?? null
+      return note === null
         ? stay(state)
-        : { state, effects: [{ type: "stopNote" }] }
+        : { state, effects: [{ type: "playNote", id: note }] }
+    }
+    case "letGoNote": {
+      const shown = onScreen(state)
+      // The row's actions wait while a take is under way.
+      if (shown === null || state.notes.take.kind !== "idle") {
+        return stay(state)
+      }
+      const { note } = shown.place.visit
+      if (note === null) return stay(state)
+      const step = withVisit(
+        { ...state, said: { kind: "setAside", place: event.place } },
+        shown.place,
+        { ...shown.place.visit, note: null }
+      )
+      return {
+        state: step.state,
+        effects: [
+          ...step.effects,
+          { type: "setAsideNote", id: note, place: event.place },
+        ],
+      }
     }
     case "showRustc": {
       const shown = onScreen(state)
@@ -791,8 +850,8 @@ export function step(state: PlayState, event: PlayEvent): Step {
     case "left": {
       // A take under way is ended and kept by the microphone. It, and a card
       // waiting on it, stay kept with the place until its end, or the next
-      // opening, settles them.
-      return state.taking === null
+      // opening, settles them. A note playing stops.
+      return state.taking === null && state.notes.playback.kind === "quiet"
         ? stay(state)
         : { state, effects: [{ type: "stopNote" }] }
     }

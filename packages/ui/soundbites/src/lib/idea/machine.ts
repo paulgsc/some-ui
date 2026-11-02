@@ -1,20 +1,26 @@
 /**
- * Catching an idea (STUDIO ST18) as one state machine: one question per
- * screen, the words appearing as they're spoken, then That's right, Fix the
- * words or Say it again. `step(state, event)` returns the next state and the
- * effects to run and does nothing else; `runtime.ts` runs them against the
- * phone's recognizer and the idea store, and the component renders a state
- * and turns taps into events (docs/monorepo-boundaries.md, "Inside a React
- * package").
+ * Answering Claude's questions about an idea (STUDIO ST19), as one state
+ * machine: one question per screen, the words appearing as they're spoken
+ * (or once home has heard the take, `./hearing`), then That's right, Fix
+ * the words or Say it again. A new idea is caught as one bundle instead
+ * (ST26, `./bundle`).
+ * `step(state, event)` returns the next state and the effects to run and
+ * does nothing else; `runtime.ts` runs them against the listener (home
+ * hearing a take, or the phone's recognizer) and the idea store, and the
+ * component renders a state and turns taps into events
+ * (docs/monorepo-boundaries.md, "Inside a React package").
  *
  * Rules that hold by structure:
  *
  * - **Only confirmed words are kept**, and each answer the moment it is
  *   confirmed, so a call, a locked screen or a closed app loses at most the
  *   answer being spoken. A fix keeps the words first heard beside it.
- * - **Capture never waits on voice.** Until the recognizer says it can
+ * - **Capture never waits on voice.** Until the listener says it can
  *   listen, and from the moment it says it can't, the question takes typed
- *   words; "Type instead" is always there.
+ *   words; "Type instead" is always there, while home hears a take too, and
+ *   a take whose words don't come in time is kept and the question takes
+ *   typed words (IH1, `./hearing`). Each question that opens while it can't
+ *   listen asks again, so "Say it" comes back once it can.
  * - **A tap is answered on screen** (LS1, www's `lib/device-listen`): a
  *   listening shows it is getting ready until the recognizer says it is
  *   listening, Done talking shows it is finishing until the words come,
@@ -24,27 +30,21 @@
  * - **A write is a change, never a copy.** `keep` hands the store an
  *   operation it applies to the ideas it holds (`apply`), and the screen's
  *   idea is only ever the store's answer.
- * - **Reopening resumes.** The newest idea still open at a question opens
- *   there; otherwise a new idea starts at the first question.
- * - **Claude's questions are answered only when asked for** (ST19). A
- *   capture opened on one idea (`focus`, from the idea shelf) asks only
- *   Claude's questions about it still waiting, one per screen, the same way,
- *   or, with none waiting, the first one skipped; New idea never opens on
- *   them. One skipped waits on nothing and is answered later, as the
- *   idea's own are.
+ * - **Claude's questions are answered only when asked for** (ST19). The
+ *   capture is opened on one idea (its id, from the idea shelf) and asks
+ *   only Claude's questions about it still waiting, one per screen, or,
+ *   with none waiting, the first one skipped. One skipped waits on nothing
+ *   and is answered later.
  */
 import { assertNever } from "@some-ui/core-utils"
+import type { RecordingFailure } from "@some-ui/voice-capture"
 
 import type { AnswerTo, AnswerWords, Idea } from "./model"
 import {
   IDEA_QUESTIONS,
   isFollowUp,
-  isRequired,
-  newIdea,
   openFollowUp,
-  openQuestion,
   skippedAsks,
-  unanswered,
   withPassed,
   withWords,
 } from "./model"
@@ -64,6 +64,8 @@ export type AskPhase =
     }
   /** Done talking: waiting on the words, briefly. */
   | { readonly kind: "finishing"; readonly seq: number; readonly words: string }
+  /** The take is kept, and home is hearing it (IH1): the words come later. */
+  | { readonly kind: "hearing"; readonly seq: number }
   | { readonly kind: "heard"; readonly words: string }
   | {
       readonly kind: "fixing"
@@ -82,11 +84,24 @@ type IdeaScreen =
     }
   | { readonly kind: "kept" }
 
-type IdeaNotice =
+export type IdeaNotice =
   | "notHeard"
   | "listenFailed"
   | "listenNotStarted"
   | "notKept"
+  /** A take was kept, and its words didn't come in time (IH1): where it is. */
+  | "keptOnHome"
+  | "keptOnPhone"
+  /** A take home holds, and home can't give its words back (IH1). */
+  | "homeNoWords"
+  /** A take was kept, and home couldn't be reached (IH1): where it is. */
+  | "awayOnHome"
+  | "awayOnPhone"
+  /** A take couldn't be kept: no room, or it failed. */
+  | "takeFull"
+  | "takeNotKept"
+  /** The microphone refused a take, and why. */
+  | { readonly refused: RecordingFailure }
   | null
 
 export type IdeaState = {
@@ -94,18 +109,11 @@ export type IdeaState = {
   readonly voice: Voice
   /** The idea as the store last kept it; null until its first answer. */
   readonly idea: Idea | null
-  /** The idea being caught: `idea`'s id, or the one it will have. */
+  /** The idea whose questions from Claude are asked, by id. */
   readonly ideaId: string
-  /**
-   * The newest other idea with questions skipped and still unanswered,
-   * offered on a new idea's first screen so they can still be answered.
-   */
-  readonly skipped: Idea | null
   readonly notice: IdeaNotice
   /** The last listening's number. */
   readonly seq: number
-  /** The idea whose waiting questions from Claude are asked, if one is. */
-  readonly focus: string | null
 }
 
 /** What a write does to the ideas the store holds now. */
@@ -130,6 +138,20 @@ export type Listened =
   /** The recognizer never said it was listening (LS1). */
   | { readonly kind: "notStarted" }
   | { readonly kind: "failed" }
+  /**
+   * The take was kept, and home's words for it didn't come (IH1): where it
+   * is kept now, and why: not in time (`late`), home can't give them back
+   * (`noWords`), or home couldn't be reached (`away`).
+   */
+  | {
+      readonly kind: "kept"
+      readonly on: "home" | "phone"
+      readonly why: "late" | "noWords" | "away"
+    }
+  /** The take couldn't be kept: no room for it, or keeping it failed. */
+  | { readonly kind: "notKept"; readonly why: "full" | "failed" }
+  /** The microphone refused the take. */
+  | { readonly kind: "refused"; readonly reason: RecordingFailure }
 
 /** Taps, as the component sends them. */
 export type IdeaIntent =
@@ -142,15 +164,12 @@ export type IdeaIntent =
   | { readonly type: "save" }
   | { readonly type: "skip" }
   | { readonly type: "answerSkipped" }
-  | { readonly type: "another" }
   | { readonly type: "readAgain" }
 
 type Stamp = { readonly at: string }
 
 export type IdeaEvent =
-  | (Exclude<IdeaIntent, { readonly type: "another" }> & Stamp)
-  /** With the new idea's id. */
-  | { readonly type: "another"; readonly at: string; readonly id: string }
+  | (IdeaIntent & Stamp)
   | ({ readonly type: "entered" } & Stamp)
   | { readonly type: "left" }
   | { readonly type: "hidden" }
@@ -161,6 +180,8 @@ export type IdeaEvent =
     }
   | { readonly type: "voiceChecked"; readonly available: boolean }
   | { readonly type: "ready"; readonly seq: number }
+  /** The listening's take is kept, and home is hearing it (IH1). */
+  | { readonly type: "hearing"; readonly seq: number }
   | { readonly type: "partial"; readonly seq: number; readonly words: string }
   | {
       readonly type: "listened"
@@ -176,7 +197,12 @@ export type IdeaEvent =
 export type IdeaEffect =
   | { readonly type: "read" }
   | { readonly type: "checkVoice" }
-  | { readonly type: "listen"; readonly seq: number }
+  | {
+      readonly type: "listen"
+      readonly seq: number
+      /** What a take of it answers (`takeAnswers`). */
+      readonly answers: string
+    }
   | { readonly type: "stopListening" }
   | { readonly type: "cancelListening" }
   | { readonly type: "keep"; readonly op: IdeaOp; readonly at: string }
@@ -186,37 +212,36 @@ export type IdeaStep = {
   readonly effects: ReadonlyArray<IdeaEffect>
 }
 
-export function initialIdeaState(
-  ideaId: string,
-  focus: string | null = null
-): IdeaState {
+/** `ideaId`: the idea whose questions from Claude are asked. */
+export function initialIdeaState(ideaId: string): IdeaState {
   return {
     screen: { kind: "loading" },
     voice: "checking",
     idea: null,
     ideaId,
-    skipped: null,
     notice: null,
     seq: 0,
-    focus,
   }
 }
 
 /**
+ * What a take of `question` answers, as the take is kept and told home
+ * (`idea:<idea>:<question>`, a Studio note's `ref`).
+ */
+function takeAnswers(ideaId: string, question: AnswerTo): string {
+  return `idea:${ideaId}:${question}`
+}
+
+/**
  * The ideas with `op` applied, for the store to keep; unchanged when the
- * op names an idea the store doesn't hold and it isn't a first answer.
+ * op names an idea the store doesn't hold.
  */
 export function apply(
   ideas: ReadonlyArray<Idea>,
-  op: IdeaOp,
-  at: string
+  op: IdeaOp
 ): ReadonlyArray<Idea> {
   const held = ideas.find((idea) => idea.id === op.idea)
-  if (held === undefined) {
-    return op.kind === "words"
-      ? [...ideas, newIdea(op.idea, at, op.question, op.versions)]
-      : ideas
-  }
+  if (held === undefined) return ideas
   const changed =
     op.kind === "words"
       ? withWords(held, op.question, op.versions)
@@ -240,37 +265,54 @@ function ask(state: IdeaState, question: AnswerTo): IdeaState {
   }
 }
 
-/** The newest idea besides `id` with skipped questions still unanswered. */
-function newestSkipped(ideas: ReadonlyArray<Idea>, id: string): Idea | null {
+type Underway = Extract<
+  AskPhase,
+  { kind: "listening" | "finishing" | "hearing" }
+>
+
+/** A listening is under way: started, finishing, or its take being heard. */
+function isUnderway(phase: AskPhase): phase is Underway {
   return (
-    ideas
-      .filter((idea) => idea.id !== id && unanswered(idea).length > 0)
-      .at(-1) ?? null
+    phase.kind === "listening" ||
+    phase.kind === "finishing" ||
+    phase.kind === "hearing"
   )
 }
 
-/** The newest kept idea still open at a question, if any. */
-function resumable(ideas: ReadonlyArray<Idea>): Idea | undefined {
-  return ideas.filter((idea) => openQuestion(idea) !== null).at(-1)
+/** Whether a listening numbered `seq` is on screen, under way. */
+function underway(phase: AskPhase, seq: number): phase is Underway {
+  return isUnderway(phase) && phase.seq === seq
 }
 
-/** Whether a listening numbered `seq` is on screen, started or finishing. */
-function hearing(
-  phase: AskPhase,
-  seq: number
-): phase is Extract<AskPhase, { kind: "listening" | "finishing" }> {
-  return (
-    (phase.kind === "listening" || phase.kind === "finishing") &&
-    phase.seq === seq
-  )
+/** The words a listening under way has heard so far. */
+function sofarOf(phase: Underway): string {
+  return phase.kind === "hearing" ? "" : phase.words.trim()
+}
+
+/** Where a take whose words didn't come is kept, and why, as a notice. */
+function keptNotice(result: Extract<Listened, { kind: "kept" }>): IdeaNotice {
+  switch (result.why) {
+    case "late": {
+      return result.on === "home" ? "keptOnHome" : "keptOnPhone"
+    }
+    case "noWords": {
+      return "homeNoWords"
+    }
+    case "away": {
+      return result.on === "home" ? "awayOnHome" : "awayOnPhone"
+    }
+    default: {
+      return assertNever(result.why)
+    }
+  }
 }
 
 function listened(state: IdeaState, seq: number, result: Listened): IdeaStep {
   const { screen } = state
-  if (screen.kind !== "ask" || !hearing(screen.phase, seq)) {
+  if (screen.kind !== "ask" || !underway(screen.phase, seq)) {
     return same(state)
   }
-  const sofar = screen.phase.words.trim()
+  const sofar = sofarOf(screen.phase)
   const at = (phase: AskPhase, notice: IdeaNotice): IdeaStep =>
     same({ ...state, screen: { ...screen, phase }, notice })
   switch (result.kind) {
@@ -297,6 +339,23 @@ function listened(state: IdeaState, seq: number, result: Listened): IdeaStep {
       // This question takes typed words; the next may try the voice again.
       return at({ kind: "typing", draft: sofar }, "listenNotStarted")
     }
+    case "kept": {
+      // The take is kept; its words for this answer are typed (IH1).
+      const typing = at({ kind: "typing", draft: sofar }, keptNotice(result))
+      // Home didn't answer: what the listener can do next may have changed.
+      return result.why === "away"
+        ? { ...typing, effects: [{ type: "checkVoice" }] }
+        : typing
+    }
+    case "notKept": {
+      return at(
+        { kind: "idle" },
+        result.why === "full" ? "takeFull" : "takeNotKept"
+      )
+    }
+    case "refused": {
+      return at({ kind: "idle" }, { refused: result.reason })
+    }
     default: {
       return assertNever(result)
     }
@@ -322,14 +381,9 @@ function keepWords(
   }
 }
 
-/** The question `idea` is open at: Claude's, for a capture focused on it. */
-function nextFor(state: IdeaState, idea: Idea): AnswerTo | null {
-  return state.focus === null ? openQuestion(idea) : openFollowUp(idea)
-}
-
-/** On to the idea's next open question, or the kept screen. */
+/** On to the next of Claude's questions waiting, or the kept screen. */
 function advance(state: IdeaState, idea: Idea): IdeaState {
-  const next = nextFor(state, idea)
+  const next = openFollowUp(idea)
   const moved = { ...state, idea, notice: null }
   return next === null
     ? { ...moved, screen: { kind: "kept" } }
@@ -354,7 +408,9 @@ function onAsk(
         ...withPhase({ kind: "listening", seq, ready: false, words: "" }, null),
         seq,
       },
-      effects: [{ type: "listen", seq }],
+      effects: [
+        { type: "listen", seq, answers: takeAnswers(state.ideaId, question) },
+      ],
     }
   }
   switch (event.type) {
@@ -402,9 +458,9 @@ function onAsk(
       if (phase.kind === "idle") {
         return same(withPhase({ kind: "typing", draft: "" }))
       }
-      return phase.kind === "listening" || phase.kind === "finishing"
+      return isUnderway(phase)
         ? {
-            state: withPhase({ kind: "typing", draft: phase.words }),
+            state: withPhase({ kind: "typing", draft: sofarOf(phase) }),
             effects: [{ type: "cancelListening" }],
           }
         : same(state)
@@ -442,11 +498,10 @@ function onAsk(
       )
     }
     case "skip": {
-      if (isRequired(question) || state.idea === null) return same(state)
-      const effects: Array<IdeaEffect> =
-        phase.kind === "listening" || phase.kind === "finishing"
-          ? [{ type: "cancelListening" }]
-          : []
+      if (state.idea === null) return same(state)
+      const effects: Array<IdeaEffect> = isUnderway(phase)
+        ? [{ type: "cancelListening" }]
+        : []
       effects.push({
         type: "keep",
         op: { kind: "pass", idea: state.ideaId, question },
@@ -455,7 +510,6 @@ function onAsk(
       return { state: withPhase({ kind: "idle" }), effects }
     }
     case "answerSkipped":
-    case "another":
     case "readAgain": {
       return same(state)
     }
@@ -465,7 +519,36 @@ function onAsk(
   }
 }
 
+/** Whether `after` shows a question `before` didn't. */
+function opensQuestion(before: IdeaState, after: IdeaState): boolean {
+  const was = before.screen
+  const now = after.screen
+  if (now.kind !== "ask") return false
+  return (
+    was.kind !== "ask" ||
+    was.question !== now.question ||
+    before.ideaId !== after.ideaId
+  )
+}
+
+/**
+ * The machine's step. A question that opens while the phone can't listen
+ * asks again whether it can: what the listener can do changes while the
+ * screen shows (home skipped for a while once it didn't answer, IH1).
+ */
 export function step(state: IdeaState, event: IdeaEvent): IdeaStep {
+  const next = stepOn(state, event)
+  if (
+    next.state.voice !== "unavailable" ||
+    !opensQuestion(state, next.state) ||
+    next.effects.some((effect) => effect.type === "checkVoice")
+  ) {
+    return next
+  }
+  return { ...next, effects: [...next.effects, { type: "checkVoice" }] }
+}
+
+function stepOn(state: IdeaState, event: IdeaEvent): IdeaStep {
   const { screen } = state
   switch (event.type) {
     case "entered":
@@ -483,34 +566,15 @@ export function step(state: IdeaState, event: IdeaEvent): IdeaStep {
       if (event.ideas === null) {
         return same({ ...state, screen: { kind: "unreadable" } })
       }
-      if (state.focus !== null) {
-        const focused = event.ideas.find((idea) => idea.id === state.focus)
-        if (focused === undefined)
-          return same({ ...state, screen: { kind: "unreadable" } })
-        const [skipped] =
-          openFollowUp(focused) === null ? skippedAsks(focused) : []
-        const on = { ...state, ideaId: focused.id }
-        return same(
-          skipped === undefined
-            ? advance(on, focused)
-            : ask({ ...on, idea: focused }, skipped)
-        )
-      }
-      const resumed = resumable(event.ideas)
-      if (resumed === undefined) {
-        const skipped = newestSkipped(event.ideas, state.ideaId)
-        return same(ask({ ...state, skipped }, IDEA_QUESTIONS[0]))
-      }
+      const focused = event.ideas.find((idea) => idea.id === state.ideaId)
+      if (focused === undefined)
+        return same({ ...state, screen: { kind: "unreadable" } })
+      const [skipped] =
+        openFollowUp(focused) === null ? skippedAsks(focused) : []
       return same(
-        ask(
-          {
-            ...state,
-            idea: resumed,
-            ideaId: resumed.id,
-            skipped: newestSkipped(event.ideas, resumed.id),
-          },
-          openQuestion(resumed) ?? IDEA_QUESTIONS[0]
-        )
+        skipped === undefined
+          ? advance(state, focused)
+          : ask({ ...state, idea: focused }, skipped)
       )
     }
     case "voiceChecked": {
@@ -528,6 +592,18 @@ export function step(state: IdeaState, event: IdeaEvent): IdeaStep {
           screen: { ...screen, phase: { kind: "typing", draft: "" } },
         })
       }
+      // The phone can listen again: a question typing only because it
+      // couldn't (no "Type instead" is offered then) and with nothing typed
+      // yet offers "Say it".
+      if (
+        screen.kind === "ask" &&
+        state.voice === "unavailable" &&
+        voice === "ready" &&
+        screen.phase.kind === "typing" &&
+        screen.phase.draft === ""
+      ) {
+        return same({ ...next, screen: { ...screen, phase: { kind: "idle" } } })
+      }
       return same(next)
     }
     case "ready": {
@@ -543,8 +619,25 @@ export function step(state: IdeaState, event: IdeaEvent): IdeaStep {
       }
       return same(state)
     }
+    case "hearing": {
+      if (
+        screen.kind === "ask" &&
+        underway(screen.phase, event.seq) &&
+        screen.phase.kind !== "hearing"
+      ) {
+        return same({
+          ...state,
+          screen: { ...screen, phase: { kind: "hearing", seq: event.seq } },
+        })
+      }
+      return same(state)
+    }
     case "partial": {
-      if (screen.kind === "ask" && hearing(screen.phase, event.seq)) {
+      if (
+        screen.kind === "ask" &&
+        underway(screen.phase, event.seq) &&
+        screen.phase.kind !== "hearing"
+      ) {
         return same({
           ...state,
           screen: { ...screen, phase: { ...screen.phase, words: event.words } },
@@ -558,11 +651,7 @@ export function step(state: IdeaState, event: IdeaEvent): IdeaStep {
     case "kept": {
       if (event.ideas === null) return same({ ...state, notice: "notKept" })
       const idea = event.ideas.find((kept) => kept.id === state.ideaId)
-      const next = {
-        ...state,
-        skipped: newestSkipped(event.ideas, state.ideaId),
-      }
-      return same(idea === undefined ? next : advance(next, idea))
+      return same(idea === undefined ? state : advance(state, idea))
     }
     case "hidden": {
       return screen.kind === "ask" && screen.phase.kind === "listening"
@@ -583,8 +672,7 @@ export function step(state: IdeaState, event: IdeaEvent): IdeaStep {
         : same(state)
     }
     case "left": {
-      return screen.kind === "ask" &&
-        (screen.phase.kind === "listening" || screen.phase.kind === "finishing")
+      return screen.kind === "ask" && isUnderway(screen.phase)
         ? {
             state: {
               ...state,
@@ -595,41 +683,11 @@ export function step(state: IdeaState, event: IdeaEvent): IdeaStep {
         : same(state)
     }
     case "answerSkipped": {
-      // The idea just kept, from its Kept screen; or, from a new idea's
-      // first screen with nothing kept yet, the newest one with questions
-      // skipped.
-      const fromKept = screen.kind === "kept" ? state.idea : null
-      const fromNew =
-        screen.kind === "ask" &&
-        state.idea === null &&
-        (screen.phase.kind === "idle" || screen.phase.kind === "typing")
-          ? state.skipped
-          : null
-      const idea = fromKept ?? fromNew
-      const skippedOf = state.focus === null ? unanswered : skippedAsks
-      const [first] = idea === null ? [] : skippedOf(idea)
-      if (idea === null || first === undefined) return same(state)
-      return same(
-        ask(
-          {
-            ...state,
-            idea,
-            ideaId: idea.id,
-            skipped: fromNew === null ? state.skipped : null,
-            notice: null,
-          },
-          first
-        )
-      )
-    }
-    case "another": {
-      if (screen.kind !== "kept") return same(state)
-      return same(
-        ask(
-          { ...state, idea: null, ideaId: event.id, notice: null, focus: null },
-          IDEA_QUESTIONS[0]
-        )
-      )
+      // From the Kept screen: the first of Claude's questions skipped.
+      const idea = screen.kind === "kept" ? state.idea : null
+      const [first] = idea === null ? [] : skippedAsks(idea)
+      if (first === undefined) return same(state)
+      return same(ask({ ...state, notice: null }, first))
     }
     case "talk":
     case "stopTalking":

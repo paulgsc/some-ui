@@ -1,11 +1,11 @@
 /**
- * Where soundbites live: the WebView's IndexedDB, on the phone, and nowhere
- * else. Blobs go in as they are (no base64), metadata beside them, and the
- * cap is enforced in the same transaction as the write, so no sequence of
- * saves can leave more than `SOUNDBITE_LIMIT` on the phone.
+ * Where soundbites live on the phone: the WebView's IndexedDB. Blobs go in
+ * as they are (no base64), metadata beside them, and the cap is enforced in
+ * the same transaction as the write, so no sequence of saves can leave more
+ * than `SOUNDBITE_LIMIT` on the phone (what a save past it lets go:
+ * `./policy`).
  *
- * Not the device backend's SQLite: these are not `file_host` data, the
- * server has no route for them, and audio is the one thing that database
+ * Not the device backend's SQLite: audio is the one thing that database
  * would hold as large opaque values for no query to read.
  */
 import {
@@ -16,6 +16,7 @@ import {
   withRoom,
 } from "@some-ui/voice-capture"
 
+import { homeHoldsNow } from "./home-held"
 import { byNewest, displacedBy, fitsMaxBytes, SOUNDBITE_LIMIT } from "./policy"
 import type { Soundbite } from "./types"
 
@@ -25,16 +26,27 @@ export type SoundbiteStore = {
   audio: (id: string) => Promise<Blob | null>
   /**
    * Keeps `bite` with its audio. When the phone already holds the limit, it
-   * replaces `replace` if that is still kept, else the oldest. Rejects with
-   * `SoundbitesFullError`, keeping nothing, past `SOUNDBITES_MAX_BYTES` or
-   * the device's room.
+   * replaces `replace` if that is still kept and home holds it, else the
+   * oldest home holds. Rejects with `SoundbitesFullError`, keeping nothing,
+   * while home holds none to replace, past `SOUNDBITES_MAX_BYTES` or past
+   * the device's room. When `supersedes` names one still kept, it becomes
+   * an earlier one in the same write (D2): a Redo of it.
    */
-  save: (bite: Soundbite, audio: Blob, replace: string | null) => Promise<void>
-  /** Lets go of each of `ids` still kept, in one transaction. */
-  remove: (ids: ReadonlyArray<string>) => Promise<void>
+  save: (
+    bite: Soundbite,
+    audio: Blob,
+    replace: string | null,
+    supersedes?: string | null
+  ) => Promise<void>
   /**
-   * Calls `listener` after each save or remove commits, on this page, so a
-   * page showing the list can re-read it. Returns an unsubscribe.
+   * Sets `id` aside (D3) at `at` (ISO 8601): out of the page's list, still
+   * kept, audio and all, until home holds it and a seventh makes room
+   * (`./policy`). One set aside already keeps its first time.
+   */
+  setAside: (id: string, at: string) => Promise<void>
+  /**
+   * Calls `listener` after each write commits, on this page, so a page
+   * showing the list can re-read it. Returns an unsubscribe.
    */
   subscribe: (listener: () => void) => () => void
 }
@@ -111,13 +123,15 @@ export function indexedDbSoundbiteStore(): SoundbiteStore {
       return blob instanceof Blob ? blob : null
     },
 
-    async save(bite, audio, replace): Promise<void> {
+    async save(bite, audio, replace, supersedes = null): Promise<void> {
       const db = await connect()
       const leaving = displacedBy(
         await allKept(db.transaction(META, "readonly").objectStore(META)),
         replace,
+        homeHoldsNow(),
         SOUNDBITE_LIMIT
       )
+      if (leaving === null) throw new SoundbitesFullError()
       const freed = await bytesOf(db, AUDIO, leaving)
       await withRoom(
         audio.size - freed,
@@ -128,7 +142,16 @@ export function indexedDbSoundbiteStore(): SoundbiteStore {
           // Read and evict inside the one transaction: the cap holds even if two
           // saves overlap (a second tab of the WebView, say).
           const kept = await allKept(meta)
-          const displaced = displacedBy(kept, replace, SOUNDBITE_LIMIT)
+          const displaced = displacedBy(
+            kept,
+            replace,
+            homeHoldsNow(),
+            SOUNDBITE_LIMIT
+          )
+          if (displaced === null) {
+            tx.abort()
+            throw new SoundbitesFullError()
+          }
           const staying = await Promise.all(
             kept
               .filter((each) => !displaced.includes(each.id))
@@ -155,6 +178,10 @@ export function indexedDbSoundbiteStore(): SoundbiteStore {
             meta.delete(id)
             audios.delete(id)
           }
+          const redone = kept.find(
+            (each) => each.id === supersedes && !displaced.includes(each.id)
+          )
+          if (redone !== undefined) meta.put({ ...redone, standing: "earlier" })
           meta.put(bite)
           audios.put(audio, bite.id)
           await done(tx)
@@ -164,11 +191,12 @@ export function indexedDbSoundbiteStore(): SoundbiteStore {
       changed()
     },
 
-    async remove(ids): Promise<void> {
-      const tx = (await connect()).transaction([META, AUDIO], "readwrite")
-      for (const id of ids) {
-        tx.objectStore(META).delete(id)
-        tx.objectStore(AUDIO).delete(id)
+    async setAside(id, at): Promise<void> {
+      const tx = (await connect()).transaction(META, "readwrite")
+      const meta = tx.objectStore(META)
+      const row: unknown = await result(meta.get(id))
+      if (isSoundbite(row) && row.standing !== "set-aside") {
+        meta.put({ ...row, standing: "set-aside", setAsideAt: at })
       }
       await done(tx)
       changed()

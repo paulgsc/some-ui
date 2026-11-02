@@ -1361,6 +1361,9 @@ importers:
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
+      '@some-ui/voice-capture':
+        specifier: workspace:*
+        version: link:../../voice-capture
       '@some-ui/wasm-loader':
         specifier: workspace:*
         version: link:../../wasm-loader
@@ -1485,6 +1488,9 @@ importers:
       '@some-ui/shared':
         specifier: workspace:*
         version: link:../shared
+      '@some-ui/voice-capture':
+        specifier: workspace:*
+        version: link:../../voice-capture
       lucide-react:
         specifier: 'catalog:'
         version: 0.562.0(react@19.2.8)
@@ -1564,6 +1570,9 @@ importers:
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
+      '@some-ui/voice-capture':
+        specifier: workspace:*
+        version: link:../../voice-capture
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -1583,6 +1592,9 @@ importers:
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../../tsconfig
+      '@some-ui/vite-config':
+        specifier: workspace:*
+        version: link:../../some-vite-config
       '@types/prismjs':
         specifier: ^1.26.5
         version: 1.26.6
@@ -1653,6 +1665,9 @@ importers:
       '@some-ui/styles':
         specifier: workspace:*
         version: link:../../some-styles
+      '@some-ui/voice-capture':
+        specifier: workspace:*
+        version: link:../../voice-capture
       '@tanstack/react-query':
         specifier: ^5.66.11
         version: 5.101.1(react@19.2.8)
@@ -1761,13 +1776,22 @@ importers:
       '@some-ui/intent-kit':
         specifier: workspace:*
         version: link:../intent-kit
+      fast-check:
+        specifier: ^4.10.2
+        version: 4.10.2
     devDependencies:
+      '@playwright/test':
+        specifier: 1.62.1
+        version: 1.62.1
       '@some-ui/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       '@some-ui/vite-config':
         specifier: workspace:*
         version: link:../some-vite-config
+      vite:
+        specifier: ^8.3.5
+        version: 8.3.5(@types/node@26.0.1)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.1)
 
   packages/wasm-loader:
     devDependencies:

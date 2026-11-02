@@ -1,11 +1,10 @@
-import { defineConfig } from "vitest/config"
+import { defineDomTest } from "@some-ui/vite-config/vitest"
 
-// Only `lib/` is tested here, in `node`: the shelf's runtime and port
-// helpers are plain TypeScript. The components that read them are covered
+// `lib/` is plain TypeScript; the take pattern's parts
+// (`components/patterns/take`) are rendered in jsdom over the real pattern
+// runtime and the shared simulated microphone. Other components are covered
 // where an activity mounts them (`@some-ui/leetype`, `@some-ui/topik`).
-export default defineConfig({
-  test: {
-    environment: "node",
-    include: ["src/**/*.test.ts"],
-  },
+export default defineDomTest({
+  include: ["src/**/*.test.{ts,tsx}"],
+  setupFiles: ["./vitest.setup.ts"],
 })

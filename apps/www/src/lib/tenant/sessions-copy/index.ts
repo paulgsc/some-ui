@@ -17,6 +17,14 @@
  * account's copy no longer matching the device patches it to match, so the
  * account never keeps a stale one and the phone can let its own go.
  *
+ * **Dated where it was made.** A create sends the session's `createdAt`,
+ * which home keeps (paulgsc/server#630), and `sameRecord` compares it. A
+ * copy home dated on arrival therefore differs, and is dated by the patch
+ * of the next copy that plans it: a let-go's, or the drain's, which sends
+ * each finished session drained before then once more (`home-link/sent`'s
+ * held entry names `createdAt`). The clear sends nothing, so it frees such
+ * a copy only after that.
+ *
  * **Resumable.** There is no import endpoint: a copy is a create then a patch.
  * The receipt is written after each (`complete: false`, then `true`), so a
  * retry finishes an incomplete copy rather than creating another.
@@ -229,6 +237,7 @@ function caughtUp(
   session: SessionRecord
 ): Parameters<SessionsStore["update"]>[1] {
   return {
+    createdAt: session.createdAt,
     name: session.name,
     activities: session.activities,
     scenes: session.scenes,
@@ -343,6 +352,7 @@ export async function runTransfer(
           activities: session.activities,
           scenes: session.scenes,
           layoutMode: session.layoutMode,
+          createdAt: session.createdAt,
         })
       } catch (error) {
         if (error instanceof FileHostResponseError) answeredNo(session.id)
@@ -432,10 +442,14 @@ function sameStamp(
   return Date.parse(a) === Date.parse(b)
 }
 
-/** Everything a copy carries: its content and what `restoration` restores. */
+/**
+ * Everything a copy carries: its content, when it was made, and what
+ * `restoration` restores.
+ */
 function sameRecord(device: SessionRecord, account: SessionRecord): boolean {
   return (
     sameContent(device, account) &&
+    sameStamp(device.createdAt, account.createdAt) &&
     device.status === account.status &&
     device.totalDurationMs === account.totalDurationMs &&
     (device.finalElapsedMs ?? null) === (account.finalElapsedMs ?? null) &&

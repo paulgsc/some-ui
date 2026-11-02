@@ -4,9 +4,11 @@ import {
   LENS_RECORD_KEY,
   LENS_RECORD_MAX,
   lensRecordForExport,
+  lensRecordHeldByHome,
+  onLensRecordWritten,
 } from "@topik/lib/topik/adapter/lens-record-store"
 import type { LensRecordEntry } from "@topik/lib/topik/read-aloud/lens/record"
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it } from "vitest"
 
 const DAY = 24 * 60 * 60 * 1000
 const NOW = Date.UTC(2026, 9, 17)
@@ -35,13 +37,39 @@ const entry = (
   ...overrides,
 })
 
+/**
+ * A record already at the bound: one entry 400 days old named `oldest`, then
+ * `l1` … `l999`, written once.
+ *
+ * LR1: the bound tests below fail only on a broken bound, not because the
+ * host is slow.
+ * - Claim: their setup costs one write, whatever `LENS_RECORD_MAX` is.
+ * - Family: host load (shared with EG1 in serving-privacy's egress scans).
+ * - Proof: this fixture. Filling the record with a thousand adds rewrote the
+ *   whole record each time, quadratic in the bound: 15.7 s on a busy CI host,
+ *   past even a raised timeout. Seeded, each test runs a handful of adds, well
+ *   inside vitest's 5 s default.
+ */
+function atTheBound(oldest: string): ReturnType<typeof memoryStorage> {
+  const entries = [
+    entry(NOW - 400 * DAY, { line: oldest }),
+    ...Array.from({ length: LENS_RECORD_MAX - 1 }, (_, i) =>
+      entry(NOW - (i + 1), { line: `l${String(i + 1)}` })
+    ),
+  ]
+  return memoryStorage([
+    [LENS_RECORD_KEY, JSON.stringify({ version: 1, entries })],
+  ])
+}
+
 describe("the lens record store", () => {
-  it("keeps every entry however old, and none past the bound until shared", () => {
-    const storage = memoryStorage()
+  afterEach(() => {
+    lensRecordHeldByHome(() => (): boolean => false)
+  })
+
+  it("keeps every entry however old, and none past the bound while home holds none", () => {
+    const storage = atTheBound("old")
     const store = createLensRecordStore(storage)
-    store.add(entry(NOW - 400 * DAY, { line: "old" }))
-    for (let n = 1; n < LENS_RECORD_MAX; n += 1)
-      store.add(entry(NOW - n, { line: `l${n}` }))
     expect(store.full()).toBe(true)
     store.add(entry(NOW, { line: "refused" }))
     // A rewrite of an item already kept still lands.
@@ -51,9 +79,25 @@ describe("the lens record store", () => {
     expect(entries[0]?.line).toBe("old")
     expect(entries.some((e) => e.line === "refused")).toBe(false)
     expect(entries.find((e) => e.line === "l1")?.right).toBe(false)
-    // A thousand adds, each rewriting the whole record: about 1.2 s here and
-    // 5.1 to 5.8 s on CI's runner, past vitest's 5 s default.
-  }, 15_000)
+  })
+
+  it("makes room at the bound with the earliest entry home holds, and only one it holds (HF5)", () => {
+    const storage = atTheBound("oldest")
+    const store = createLensRecordStore(storage)
+    lensRecordHeldByHome(
+      () =>
+        (e): boolean =>
+          e.line === "l5" || e.line === "l9"
+    )
+    expect(store.full()).toBe(false)
+    store.add(entry(NOW, { line: "new" }))
+    const lines = lensRecordForExport(storage).entries.map((e) => e.line)
+    expect(lines).toHaveLength(LENS_RECORD_MAX)
+    expect(lines).toContain("new")
+    expect(lines).toContain("oldest")
+    expect(lines).not.toContain("l9")
+    expect(lines).toContain("l5")
+  })
 
   it("replaces an entry written again for the same item", () => {
     const storage = memoryStorage()
@@ -70,6 +114,26 @@ describe("the lens record store", () => {
       { line: "other" },
       { line: "school", situation: chosen },
     ])
+  })
+
+  it("tells its listeners of each write it keeps, and of none it refuses (HF5)", () => {
+    const storage = memoryStorage()
+    const store = createLensRecordStore(storage)
+    let told = 0
+    const stop = onLensRecordWritten(() => {
+      told += 1
+    })
+    store.add(entry(NOW))
+    // The same item seen further is a write too: home keeps each version.
+    store.add(entry(NOW, { right: false }))
+    expect(told).toBe(2)
+    storage.full = true
+    store.add(entry(NOW, { line: "refused" }))
+    expect(told).toBe(2)
+    storage.full = false
+    stop()
+    store.add(entry(NOW, { line: "unheard" }))
+    expect(told).toBe(2)
   })
 
   it("flags a session racing once any of its entries was", () => {
