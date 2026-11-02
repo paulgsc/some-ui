@@ -62,7 +62,6 @@ const RoundListSchema = z.object({
 
 const TextSchema = z.string().refine((text) => text.trim() !== "")
 
-/** RR1's `RustcRunSchema` (`packages/ui/rust-rounds/src/lib/formats`), copied. */
 const RustcRunSchema = z.discriminatedUnion("outcome", [
   z.strictObject({
     outcome: z.literal("compile-error"),

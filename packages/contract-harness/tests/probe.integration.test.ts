@@ -82,9 +82,13 @@ beforeAll(async () => {
       return
     }
     // A paired phone's route: answers only the phone's bearer token, as
-    // file_host's `Paired` extractor does, and a browser's cookie a 403.
+    // file_host's `Paired` extractor does, and a browser's cookie a 403. A
+    // cookie sent beside the token is a 403 too, so a probe that sends both
+    // fails.
     if (key === "GET /api/v1/phone") {
-      const paired = req.headers.authorization === "Bearer t0ken"
+      const paired =
+        req.headers.authorization === "Bearer t0ken" &&
+        req.headers.cookie === undefined
       const status = paired ? 200 : req.headers.cookie === undefined ? 401 : 403
       res.writeHead(status, { "content-type": "application/json" })
       res.end(JSON.stringify(paired ? { id: 1 } : { error: "no" }))

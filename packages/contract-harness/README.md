@@ -105,9 +105,9 @@ from `--session-cookie`, and skipped without one. A contract marked
 `paired: true` is for a route only a paired phone may call (the server's
 `subject::Paired`, as on `/rust-rounds`): it is sent with
 `Authorization: Bearer` from `--phone-token`, never with the cookie, and
-skipped without one. The server stores a phone's token under a different
-digest from a browser's, so a cookie value does not open a phone's session:
-write the browser's `403` as a `session` contract of its own.
+skipped without one (why a cookie cannot stand in: `paired` in
+`src/contract.ts`). Write the browser's `403` as a `session` contract of its
+own.
 
 Exit code is non-zero for drift failures, failed probes and transport errors.
 Warnings do not fail the run.
