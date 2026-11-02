@@ -6,10 +6,10 @@
  * app's profile) at the phone's sizes (`PHONE_VIEWPORTS`, 780x390 among
  * them), in each phase it shows something (`./phone-page/pull.tsx`). Each
  * must leave the page as it was (the measure the panel sweep uses), keep its
- * words on one line, and sit inside the phone across; at rest (armed,
- * checking, done, failed, offline) it shows whole inside the page body,
- * below the header. Pulling, it is still coming down from under the header,
- * and the body clips what has not come down yet.
+ * words on one line (two for a failure that names what), and sit inside the
+ * phone across; at rest (armed, checking, done, failed, offline) it shows
+ * whole inside the page body, below the header. Pulling, it is still coming
+ * down from under the header, and the body clips what has not come down yet.
  *
  * Run against a built phone page:
  *
@@ -36,6 +36,7 @@ const PHASES = {
   "pull-checking": true,
   "pull-done": true,
   "pull-failed": true,
+  "pull-failed-named": true,
   "pull-offline": true,
 } as const satisfies Record<PullId, boolean>
 
@@ -89,7 +90,11 @@ test.describe("the drag-down indicator fits the phone", () => {
           }
         })
 
-        expect(fit.lines, "the words wrap").toBe(1)
+        // One line, but a failure that names what it could not read may
+        // take two on a narrow phone.
+        expect(fit.lines, "the words wrap").toBeLessThanOrEqual(
+          fixture === "pull-failed-named" ? 2 : 1
+        )
         expect(fit.left).toBeGreaterThanOrEqual(0)
         expect(fit.right).toBeLessThanOrEqual(fit.width)
         expect(fit.pageWidth).toBeLessThanOrEqual(fit.width)

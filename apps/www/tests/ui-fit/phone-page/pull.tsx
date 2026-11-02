@@ -41,8 +41,28 @@ export const PULL_FIXTURES = {
   "pull-armed": at({ kind: "armed", from: FROM, distance: MAX_PX }),
   "pull-checking": at({ kind: "checking", pull: 1, shown: true }),
   "pull-done": at({ kind: "done", pull: 1, at: AT }),
-  "pull-failed": at({ kind: "failed", pull: 1, at: AT, offline: false }),
-  "pull-offline": at({ kind: "failed", pull: 1, at: AT, offline: true }),
+  "pull-failed": at({
+    kind: "failed",
+    pull: 1,
+    at: AT,
+    offline: false,
+    unread: [],
+  }),
+  // The longest a failure says: two long names, then how many more.
+  "pull-failed-named": at({
+    kind: "failed",
+    pull: 1,
+    at: AT,
+    offline: false,
+    unread: ["today’s digest", "the morning run", "what home holds"],
+  }),
+  "pull-offline": at({
+    kind: "failed",
+    pull: 1,
+    at: AT,
+    offline: true,
+    unread: [],
+  }),
 } satisfies Record<string, () => JSX.Element>
 
 export type PullId = keyof typeof PULL_FIXTURES

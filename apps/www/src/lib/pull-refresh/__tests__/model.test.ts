@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest"
 
 import type {
+  CheckEnd,
   Phase,
   PullEffect,
   PullEvent,
@@ -25,6 +26,7 @@ import {
 
 const FROM = { x: 100, y: 50 }
 const AT = 1_762_000_000_000
+const DIGEST = "today’s digest"
 
 /** Each phase, and a check still out after its page moved on. */
 const PHASES = {
@@ -35,7 +37,7 @@ const PHASES = {
   checking: { kind: "checking", pull: 1, shown: true },
   unseen: { kind: "checking", pull: 1, shown: false },
   done: { kind: "done", pull: 1, at: AT },
-  failed: { kind: "failed", pull: 1, at: AT, offline: false },
+  failed: { kind: "failed", pull: 1, at: AT, offline: false, unread: [DIGEST] },
 } as const satisfies Record<string, Phase>
 
 type PhaseName = keyof typeof PHASES
@@ -49,13 +51,16 @@ const below = (dy: number, dx = 0): PullEvent => ({
   at: { x: FROM.x + dx, y: FROM.y + dy },
 })
 
-const settled = (
-  pull: number,
-  end: "read" | "offline" | "unread"
-): PullEvent => ({
+const ENDS = {
+  read: { kind: "read" },
+  offline: { kind: "offline" },
+  unread: { kind: "unread", what: [DIGEST] },
+} as const satisfies Record<string, CheckEnd>
+
+const settled = (pull: number, end: keyof typeof ENDS): PullEvent => ({
   type: "settled",
   pull,
-  end,
+  end: ENDS[end],
   at: AT,
 })
 
@@ -236,13 +241,22 @@ describe("step: what each arm carries", () => {
     expect(step(done, settled(2, "unread"))[0]).toBe(done)
   })
 
-  it("says when there was no connection to read with", () => {
+  it("says when there was no connection to read with, or names what it could not read", () => {
     const [offline] = step(stateOf("checking"), EVENTS.offline)
     expect(offline.phase).toEqual({
       kind: "failed",
       pull: 1,
       at: AT,
       offline: true,
+      unread: [],
+    })
+    const [unread] = step(stateOf("checking"), EVENTS.unread)
+    expect(unread.phase).toEqual({
+      kind: "failed",
+      pull: 1,
+      at: AT,
+      offline: false,
+      unread: [DIGEST],
     })
   })
 

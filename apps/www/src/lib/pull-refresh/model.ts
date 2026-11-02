@@ -66,14 +66,16 @@ export type Phase =
   /** Pull `pull` finished at `at` (epoch ms). */
   | { readonly kind: "done"; readonly pull: number; readonly at: number }
   /**
-   * Pull `pull` could not read everything again, at `at`; `offline` when
-   * the phone had no connection to read with.
+   * Pull `pull` could not read everything again, at `at`: `offline` when
+   * the phone had no connection to read with, else `unread` names what, as
+   * the person knows it (empty when nothing said what).
    */
   | {
       readonly kind: "failed"
       readonly pull: number
       readonly at: number
       readonly offline: boolean
+      readonly unread: ReadonlyArray<string>
     }
 
 export type PullState = {
@@ -109,9 +111,13 @@ export type PullEvent =
 
 /**
  * How a check ended: everything read again, nothing read for want of a
- * connection, or something could not be read (or did not answer in time).
+ * connection, or something could not be read (or did not answer in time),
+ * `what` naming it as the person knows it.
  */
-export type CheckEnd = "read" | "offline" | "unread"
+export type CheckEnd =
+  | { readonly kind: "read" }
+  | { readonly kind: "offline" }
+  | { readonly kind: "unread"; readonly what: ReadonlyArray<string> }
 
 export type PullEffect =
   /** Read again what the page shows, then answer `settled` for `pull`. */
@@ -219,11 +225,18 @@ export function step(state: PullState, event: PullEvent): Step {
       // The page that asked has moved on: its answer paints nothing.
       if (!phase.shown) return to(state, IDLE)
       const { pull, at } = event
+      const { end } = event
       const [ended, afterMs]: readonly [Phase, number] =
-        event.end === "read"
+        end.kind === "read"
           ? [{ kind: "done", pull, at }, DONE_MS]
           : [
-              { kind: "failed", pull, at, offline: event.end === "offline" },
+              {
+                kind: "failed",
+                pull,
+                at,
+                offline: end.kind === "offline",
+                unread: end.kind === "unread" ? end.what : [],
+              },
               FAILED_MS,
             ]
       return [{ ...state, phase: ended }, [{ kind: "fade", pull, afterMs }]]
