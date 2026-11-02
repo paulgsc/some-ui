@@ -8,17 +8,16 @@ import type { PullPorts } from "./runtime"
 
 /**
  * The query cache's calls a pull makes: read again every query a mounted
- * screen shows, failing if any read fails, then look for one still waiting
- * for a connection. The app's `QueryClient` is one.
+ * screen shows, then look for one whose read failed or still waits for a
+ * connection. The app's `QueryClient` is one.
  */
 export type PullCache = {
-  readonly refetchQueries: (
-    filters: { readonly type: "active" },
-    options: { readonly throwOnError: true }
-  ) => Promise<void>
+  readonly refetchQueries: (filters: {
+    readonly type: "active"
+  }) => Promise<void>
   readonly getQueryCache: () => {
     readonly findAll: (filters: { readonly type: "active" }) => ReadonlyArray<{
-      readonly state: { readonly fetchStatus: string }
+      readonly state: { readonly fetchStatus: string; readonly status: string }
     }>
   }
 }
@@ -47,16 +46,22 @@ export function readsOnScreen(
   return {
     readAgain: async (): Promise<"read" | "offline"> => {
       if (!network.isOnline()) return "offline"
+      // A failed read is found in the cache, not thrown: with `throwOnError`
+      // the cache leaves a paused read's promise uncaught, and it rejects
+      // unhandled once that read is cancelled.
       await Promise.all([
-        queryClient.refetchQueries({ type: "active" }, { throwOnError: true }),
+        queryClient.refetchQueries({ type: "active" }),
         router.invalidate(),
       ])
+      const queries = queryClient.getQueryCache().findAll({ type: "active" })
+      if (queries.some((query) => query.state.status === "error")) {
+        throw new Error("a read on screen failed")
+      }
       // A read that finds no connection pauses, and `refetchQueries` does
       // not wait for it: nothing was read, whatever it resolved.
-      const paused = queryClient
-        .getQueryCache()
-        .findAll({ type: "active" })
-        .some((query) => query.state.fetchStatus === "paused")
+      const paused = queries.some(
+        (query) => query.state.fetchStatus === "paused"
+      )
       return paused ? "offline" : "read"
     },
     onLeave: (listener) =>
