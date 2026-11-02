@@ -57,11 +57,9 @@
  *        (admitted by its card, held by its own date) yields `skip`, so
  *        Skip moves on rather than stopping at "Not here."; until a `held`
  *        finds somewhere to go, `stranded` names that page.
- *  R11 — A Mix is music once it plays a video whole in the lane (QD15):
- *        its id joins `musicMixes`, every card is re-decided, and under
- *        Music mix its rows with no date are plated (QD3's amendment).
- *        Like `played`, `musicMixes` is the tab's: `nav` keeps it, and only
- *        `start` empties it.
+ *  R11 — Under Music mix, a row of a Mix's playlist (`list=RD…`) with no
+ *        date is plated (QD3's amendment); a card's view needs only its own
+ *        evidence and the mode, and every other mode holds the row.
  *  R12 — The course follows every step (`course/course.ts`). After each
  *        event, the marks of the watch page's playlist are worked out again
  *        from the rows the Sensor last read (`queued`), each row's view, the
@@ -190,7 +188,6 @@ function fold(state: CoreState, event: CoreEvent): Step {
           autoplay: event.autoplay,
           unknownShapes: EMPTY_UNKNOWN_SHAPES,
           played: [],
-          musicMixes: [],
           arriving: null,
           stranded: null,
           queue: [],
@@ -443,7 +440,7 @@ function adopt(
       t,
       state.boundaryDays,
       state.rules.signs,
-      undatedShown(state, state.rules, observation),
+      undatedShown(state.rules, observation),
       state.session
     ),
     firstSeenAt: t,
@@ -482,7 +479,7 @@ function reobserve(
     t,
     state.boundaryDays,
     state.rules.signs,
-    undatedShown(state, state.rules, merged),
+    undatedShown(state.rules, merged),
     state.session
   )
   const next: CardState = { ...card, observation: merged, view, lastSeenAt: t }
@@ -608,7 +605,7 @@ function watched(
     landed === "held" && state.autoplay === "skip" && !merged.miniplayer
   const actions: Array<Action> = moved ? [watchAction(next, state.rules)] : []
   if (skip) actions.push({ kind: "skip" })
-  const step: Step = {
+  return {
     state: {
       ...state,
       watch: next,
@@ -625,13 +622,6 @@ function watched(
           : null,
     },
     actions,
-  }
-  // R11: a Mix that plays music whole is a music Mix from now on.
-  if (withMusicMix(state.musicMixes, next) === state.musicMixes) return step
-  const marked = redecide(step.state, state.boundaryDays, state.rules)
-  return {
-    state: marked.state,
-    actions: [...step.actions, ...marked.actions],
   }
 }
 
@@ -694,8 +684,6 @@ function redecide(state: CoreState, boundaryDays: number, rules: Rules): Step {
       actions.push(watchAction(watch, rules))
     }
   }
-  // R11: a page the new rules show whole marks its Mix, as a reading does.
-  const musicMixes = withMusicMix(state.musicMixes, watch)
   const cards = new Map<CardKey, CardState>()
   for (const card of state.cards.values()) {
     const view = decide(
@@ -703,7 +691,7 @@ function redecide(state: CoreState, boundaryDays: number, rules: Rules): Step {
       card.lastSeenAt,
       boundaryDays,
       rules.signs,
-      undatedShown({ musicMixes }, rules, card.observation),
+      undatedShown(rules, card.observation),
       state.session
     )
     const next: CardState = { ...card, view }
@@ -712,20 +700,7 @@ function redecide(state: CoreState, boundaryDays: number, rules: Rules): Step {
       actions.push(render(next), stateFact(next))
   }
   return {
-    state: { ...state, boundaryDays, rules, cards, watch, musicMixes },
+    state: { ...state, boundaryDays, rules, cards, watch },
     actions,
   }
-}
-
-/** R11: the Mixes known to be music, with the page's own once it is whole. */
-function withMusicMix(
-  musicMixes: ReadonlyArray<string>,
-  watch: WatchState | null
-): ReadonlyArray<string> {
-  const mix =
-    watch?.observation.miniplayer === false ? watch.observation.mix : null
-  if (mix === null || watch?.view !== "whole" || musicMixes.includes(mix)) {
-    return musicMixes
-  }
-  return [...musicMixes, mix]
 }

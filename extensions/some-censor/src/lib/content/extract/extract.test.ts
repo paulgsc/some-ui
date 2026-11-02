@@ -568,7 +568,6 @@ describe("readWatch (#1805)", () => {
       title: "Me at the zoo",
       channelName: null,
       artist: false,
-      mix: null,
     })
   })
 
@@ -585,7 +584,6 @@ describe("readWatch (#1805)", () => {
       title: null,
       channelName: null,
       artist: false,
-      mix: null,
     })
   })
 
@@ -636,30 +634,7 @@ describe("readWatch (#1805)", () => {
       title: null,
       channelName: null,
       artist: false,
-      mix: null,
     })
-  })
-})
-
-describe("the page's Mix", () => {
-  it("reads the Mix the shown watch page plays in from its address", () => {
-    document.body.innerHTML = `<ytd-app><ytd-page-manager><ytd-watch-flexy video-id="jNQ"></ytd-watch-flexy></ytd-page-manager></ytd-app>`
-    const before = window.location.href
-    try {
-      window.history.replaceState(null, "", "/watch?v=jNQ&list=RDjNQ#t=1")
-      expect(readWatch(document)?.mix).toBe("RDjNQ")
-      document.querySelector("ytd-watch-flexy")?.setAttribute("hidden", "")
-      document
-        .querySelector("ytd-app")
-        ?.setAttribute("miniplayer-is-active", "")
-      expect(
-        readWatch(document)?.mix,
-        "the miniplayer's page is not the address's"
-      ).toBeNull()
-    } finally {
-      window.history.replaceState(null, "", before)
-      document.body.innerHTML = ""
-    }
   })
 })
 
