@@ -134,6 +134,17 @@ async function gateStatusAt(url: string): Promise<Map<string, string>> {
   return new Map(router.state.matches.map((m) => [m.routeId, m.status]))
 }
 
+// HL1: this file fails only when a gate is wrong, not when the host is busy.
+// - Claim: loading the route tree, this hook's one slow step, finishes inside
+//   the hook's timeout.
+// - Family: host load (shared with EG1 and LR1).
+// - Proof: the 30 s timeout on this hook. Loading `@/routeTree.gen` costs 1.6 s
+//   on an idle machine. The CI runner runs every package's tests at once:
+//   there the whole file took 9.5 s on a passing run, nearly all of it this
+//   hook, against vitest's 10 s default, and the hook timed out in 2 of the 9
+//   red Trunk runs between 1 and 2 November. 30 s is 3 times that run, and
+//   still ends a hang.
+// - Tolerance: a host more than 3 times slower than that CI run.
 beforeAll(async () => {
   const { workspaces } = readAudienceWorkspaces(workspaceRoots)
   for (const w of workspaces) {
@@ -162,7 +173,7 @@ beforeAll(async () => {
       }
     })
   )
-})
+}, 30_000)
 
 describe("audience gates", () => {
   it("each gate directory is a layout route with routes under it", () => {

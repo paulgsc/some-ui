@@ -146,6 +146,16 @@ describe("createSpeechAdapter - mode-driven selection", () => {
 })
 
 describe("createSpeechAdapter - property: configuration decides, nothing else", () => {
+  // HL1: the property below fails only when the registry picks the wrong
+  // entry, not when the host is busy.
+  // - Claim: its 100 generated cases finish inside the test's timeout.
+  // - Family: host load (shared with EG1 and LR1).
+  // - Proof: the 30 s timeout on the test. The cases cost 0.7 s on an idle
+  //   machine. The CI runner runs every package's tests at once: there they
+  //   took 4.9 s of vitest's 5 s default, and timed out in 7 of the 9 red
+  //   Trunk runs between 1 and 2 November. 30 s is 6 times that run, and
+  //   still ends a hang.
+  // - Tolerance: a host more than 6 times slower than that CI run.
   it("always returns the registry entry for the resolved mode", () => {
     fc.assert(
       fc.property(
@@ -176,7 +186,7 @@ describe("createSpeechAdapter - property: configuration decides, nothing else", 
       ),
       { numRuns: 100 }
     )
-  })
+  }, 30_000)
 
   it("never exposes the endpoint or the key on the adapter it returns", () => {
     fc.assert(
