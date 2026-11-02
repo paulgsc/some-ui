@@ -607,11 +607,11 @@ function pick(
   }
 }
 
-/** Where a revealed pick goes on: a slow pick to `onHesitate`, if authored. */
+/** Where a revealed pick goes on: LTY2 (canon Def. 9.4, Rem. 11.11). */
 function onward(screen: ChoiceScreen, reveal: Reveal): string | undefined {
   const option = screen.options[reveal.option]
-  const slow = reveal.answer.response !== "abstained" && reveal.answer.slow
-  return slow && screen.onHesitate !== undefined
+  const hesitated = reveal.answer.response === "correct" && reveal.answer.slow
+  return hesitated && screen.onHesitate !== undefined
     ? screen.onHesitate
     : option?.next
 }
