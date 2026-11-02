@@ -461,6 +461,50 @@ const sentSince = (from: number): Array<string> =>
     .map((call) => new URL(call.url).pathname.split("/").slice(0, 4).join("/"))
 
 describe("a pull (PULL3)", () => {
+  it("is up to date when home answers every lane, which take the one link in turn", async () => {
+    home.answer = (): Promise<{ status: number; body: string }> =>
+      Promise.resolve({ status: 200, body: "{}" })
+    const { useHomePull, useLaneHome } = await import("@/lib/home-link/lanes")
+    type Lane = Parameters<typeof useLaneHome>[0]
+    const SYNCED: Awaited<ReturnType<Lane["exchange"]>> = { kind: "synced" }
+    const lanes = (["practice", "jobs", "rust-rounds"] as const).map(
+      (id): Lane => ({
+        id,
+        exchange: (send) => send("PUT", `/${id}/1`).then(() => SYNCED),
+        revision: () => 0,
+        subscribe: () => () => undefined,
+        useCounts: (): never => {
+          throw new Error("unused")
+        },
+      })
+    )
+    const Watch = ({ lane }: { lane: Lane }): null => {
+      useLaneHome(lane)
+      return null
+    }
+    const Pull = (): null => {
+      useHomePull()
+      return null
+    }
+    render(
+      <>
+        <Pull />
+        {lanes.map((lane) => (
+          <Watch key={lane.id} lane={lane} />
+        ))}
+      </>
+    )
+    // The watches' first runs, turned away from the link in turn and asked
+    // again as it frees, have each reached home.
+    await waitFor(() => expect(new Set(sentSince(0)).size).toBe(3))
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)))
+    const before = home.sent.length
+    expect(await pull()).toEqual([])
+    expect(sentSince(before).sort()).toEqual(
+      ["/api/v1/jobs", "/api/v1/practice", "/api/v1/rust-rounds"].sort()
+    )
+  })
+
   it("asks every lane the shell drains for one run, and the mark says how it went", async () => {
     await mount()
     await waitFor(() => expect(mark().textContent).toContain("No answer"))

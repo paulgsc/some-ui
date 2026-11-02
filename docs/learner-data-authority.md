@@ -958,8 +958,10 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   away; from `askLane`, which a mark's sheet and Settings' readout call
   only from their Send now button; or, for a pull (a drag down from the top
   of a page, PULL3, the owner's D1 on #2456, 2026-11-02), from `pullKept`,
-  which only `homeRefresher` (`lib/home-link/pull.ts`) calls, once for each
-  lane `useLaneHome` watches at that moment, through the refresher that
+  which only `homeRefresher` (`lib/home-link/pull.ts`) calls, for each lane
+  `useLaneHome` watches when its turn comes, one lane at a time, and once
+  more for a lane whose run the link turned away, once the link frees up
+  (the moment its watch asks it again too), through the refresher that
   `useHomePull` registers on `screenRefreshers` while `HomeLanes` is
   mounted. Nothing asks on a timer. A run goes
   under the pairing the phone holds when it starts (`laneExchange`), and
@@ -988,7 +990,9 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   visible; a hunk that calls `pullKept` from anywhere but `homeRefresher`,
   or `homeRefresher` from anywhere but `useHomePull`'s effect; a hunk to
   `lib/home-link/pull.ts` that asks a lane other than through `pullKept`,
-  asks any but the lanes `watched` names when the pull asks, or lets a pull
+  asks any but the lanes `watched` names when its turn comes, asks two lanes
+  at once, asks a lane again but after a run the link turned away (`busy`)
+  and the link freeing up (`free`), or more than once again, or lets a pull
   read as in step when a run that answered it ended in a way `resynced`
   (`kept-model.ts`) does not accept; a hunk to `lib/home-link/kept-runtime.ts` or
   `kept-model.ts` that answers a pull with a run other than the one

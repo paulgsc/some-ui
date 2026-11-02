@@ -8,9 +8,6 @@
  * One run at a time, by structure: asking while one runs only marks that
  * another is wanted once it ends, so a burst of edits is one more run, not
  * one each.
- *
- * A pull (PULL3) waits for the run that answers it (`answersPull`), and
- * counts as having resynced only once that run did (`resynced`).
  */
 import type { HomeExchanged } from "@some-ui/core-utils"
 import { assertNever } from "@some-ui/core-utils"

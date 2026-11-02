@@ -154,11 +154,6 @@ describe("a record kept on home", () => {
 })
 
 describe("a pull's run (PULL3)", () => {
-  it("is answered by the run it starts", async () => {
-    const home = homeWith({})
-    await expect(home.pull()).resolves.toEqual({ kind: "synced", at: 7 })
-  })
-
   it("asked while a run is under way, is answered by the run after it", async () => {
     const ends: Array<HomeExchanged> = [
       { kind: "synced" },

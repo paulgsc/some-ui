@@ -124,7 +124,10 @@ export function useLaneHome(lane: Lane): KeptState {
  */
 export function useHomePull(): void {
   useEffect(
-    () => screenRefreshers.register(homeRefresher(() => watched, document)),
+    () =>
+      screenRefreshers.register(
+        homeRefresher({ watched: () => watched, doc: document })
+      ),
     []
   )
 }
