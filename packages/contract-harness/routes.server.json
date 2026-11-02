@@ -789,6 +789,13 @@
     },
     {
       "method": "GET",
+      "path": "/voice-notes/kept",
+      "full_path": "/api/v1/voice-notes/kept",
+      "versioned": true,
+      "module": "voice"
+    },
+    {
+      "method": "GET",
       "path": "/voice-notes/on-drive",
       "full_path": "/api/v1/voice-notes/on-drive",
       "versioned": true,
