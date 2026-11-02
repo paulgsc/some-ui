@@ -92,6 +92,7 @@ export type ServerRoute =
   | "/api/v1/voice-notes/:id/audio"
   | "/api/v1/voice-notes/:id/heard"
   | "/api/v1/voice-notes/:id/set-aside"
+  | "/api/v1/voice-notes/kept"
   | "/api/v1/voice-notes/on-drive";
 
 /** Routes NOT nested under API_BASE_PATH. */
