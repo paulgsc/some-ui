@@ -26,7 +26,11 @@ const BORROW: Round = {
   ],
 }
 
-const HELD = { ...NOTHING_HELD, rounds: [BORROW] }
+const HELD: Held = {
+  ...NOTHING_HELD,
+  rounds: [BORROW],
+  home: { ...NOTHING_HELD.home, sent: [BORROW.id] },
+}
 
 describe("homeRef", () => {
   it("names a card by its round and id, joined as home's rule allows", () => {
@@ -60,25 +64,26 @@ describe("homeRef", () => {
     expect(homeRef(line, HELD)).not.toBeNull()
   })
 
-  it("names no card of a round home holds another version of, so the note waits", () => {
+  it("names a card only of a round home holds as played here, so a note on any other waits", () => {
     const line = lineOf({ round: "borrowing-01", card: "say-again" })
-    const refused = (why: "other-round" | "not-taken"): Held => ({
+    const named = "borrowing-01:say-again:9f1c2d3e-0000-4000-8000-000000000001"
+    const onHome = (home: Partial<Held["home"]>): Held => ({
       ...HELD,
-      home: { ...HELD.home, refused: [{ id: "borrowing-01", why }] },
+      home: { ...NOTHING_HELD.home, ...home },
     })
-    expect(homeRef(line, refused("other-round"))).toBeNull()
-    // A round home refused outright holds no other card under its name.
-    expect(homeRef(line, refused("not-taken"))).toBe(
-      "borrowing-01:say-again:9f1c2d3e-0000-4000-8000-000000000001"
-    )
-    // Another round's refusal leaves this one's notes named.
-    const other: Held = {
-      ...HELD,
-      home: {
-        ...HELD.home,
-        refused: [{ id: "lifetimes-01", why: "other-round" }],
-      },
+    // Not sent yet: home may hold another round under its id.
+    expect(homeRef(line, onHome({}))).toBeNull()
+    expect(homeRef(line, onHome({ fetched: ["borrowing-01"] }))).toBe(named)
+    // Home holds another round under its id, or read it before it could say.
+    for (const why of ["other-round", "not-taken"] as const) {
+      const refused = onHome({ refused: [{ id: "borrowing-01", why }] })
+      expect(homeRef(line, refused)).toBeNull()
     }
-    expect(homeRef(line, other)).not.toBeNull()
+    // Another round's standing leaves this one's notes named.
+    const other = onHome({
+      sent: ["borrowing-01"],
+      refused: [{ id: "lifetimes-01", why: "other-round" }],
+    })
+    expect(homeRef(line, other)).toBe(named)
   })
 })

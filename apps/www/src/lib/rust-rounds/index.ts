@@ -49,9 +49,10 @@ export const rustRoundsDesk = desk
 /**
  * What home is told each note was said on (`homeRef`), read against the
  * rounds this phone holds now, so a refine card names the note it brings
- * back. Read once per look; null while a note can't be named truly (its
- * round is another on home, or its card isn't among the rounds read) or
- * for a line no card makes, and the note waits on this phone.
+ * back. Read once per look; null while a note can't be named truly (home
+ * doesn't hold its round as played here, or its card isn't among the
+ * rounds read) or for a line no card makes, and the note waits on this
+ * phone.
  */
 export function rustRoundRef(): (line: string) => string | null {
   const { held } = keptRounds(browserLocalStorage).open()
