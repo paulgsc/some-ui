@@ -1252,9 +1252,7 @@ describe("HandheldLesson", () => {
     })
 
     it("QO1: Try again while the dramas are on their way asks for them once", async () => {
-      // The list already shows dramas, and a refresh of it failed: the state
-      // where a reload that cancelled and refetched stacked one more request
-      // per tap, since `list` never reads the cancel.
+      // The list already shows dramas, and a refresh of it failed.
       let answer: (trees: Array<typeof TEA>) => void = () => undefined
       const list = vi
         .fn<TreeFeed["list"]>()

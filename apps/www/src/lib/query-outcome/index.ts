@@ -83,10 +83,8 @@ export function queryOutcome<T>(
   result: UseQueryResult<T>,
   mapError: (error: unknown) => IntentError = mapFileHostError
 ): QueryOutcome<T> {
-  // QO1: a retry joins the read in flight. TanStack's default
-  // (`cancelRefetch: true`) cancels it and starts another, and the tenant
-  // query functions never read the `signal`, so every tap of "Try again"
-  // while the read was on its way sent one more GET.
+  // QO1: join the read in flight; the tenant query functions ignore `signal`,
+  // so TanStack's default cancel would leave it running beside a second.
   const retry = (): void => {
     void result.refetch({ cancelRefetch: false })
   }

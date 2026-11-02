@@ -437,7 +437,7 @@
     {
       "id": "repeated-reads",
       "name": "A read you ask for again while it is on its way is sent once",
-      "why": "\"Try again\", reopening the lesson already open, and a second scene picker all repeat a read the app already has on its way; each repeat used to send one more request, and every answer but the last was thrown away.",
+      "why": "\"Try again\", reopening the lesson already open, and a second scene picker all repeat a read the app already has on its way.",
       "paths": [
         "some-ui:apps/www/src/lib/query-outcome",
         "some-ui:apps/www/src/components/composer/scene-editor",

@@ -8,8 +8,9 @@
  * left the first GET running beside the second.
  */
 
+import { createTestQueryClient } from "@/test-support/query-client"
 import { toIntentError } from "@some-ui/intent-kit"
-import { QueryClient, QueryObserver } from "@tanstack/react-query"
+import { QueryObserver } from "@tanstack/react-query"
 import { describe, expect, it } from "vitest"
 
 import { queryOutcome } from "@/lib/query-outcome"
@@ -68,11 +69,9 @@ function pendingRead(): {
 }
 
 describe("QO1: a retry while a read is on its way joins it", () => {
-  it("for every run of taps, answers, failures and refreshes (up to 5 steps), at most one request is running", async () => {
+  it("for every run of taps, answers, failures and refreshes (up to 5 steps), a tap starts a request only when none is running, and at most one runs", async () => {
     for (const run of runs(5)) {
-      const client = new QueryClient({
-        defaultOptions: { queries: { retry: false } },
-      })
+      const client = createTestQueryClient()
       const read = pendingRead()
       const observer = new QueryObserver(client, {
         queryKey: ["qo1"],
@@ -98,7 +97,9 @@ describe("QO1: a retry while a read is on its way joins it", () => {
                 : undefined
           retry?.()
           await flush()
-          if (wasRunning) expect(read.started(), run.join(",")).toBe(before)
+          // A tap joins a request on its way, and starts one only when none is.
+          const expected = wasRunning || !retry ? before : before + 1
+          expect(read.started(), run.join(",")).toBe(expected)
         } else if (next === "refresh") {
           void observer.refetch({ cancelRefetch: false })
           await flush()
@@ -112,41 +113,5 @@ describe("QO1: a retry while a read is on its way joins it", () => {
       unsubscribe()
       client.clear()
     }
-  })
-
-  it("five taps of Try again on a page that still shows data make one request", async () => {
-    const client = new QueryClient({
-      defaultOptions: { queries: { retry: false } },
-    })
-    const read = pendingRead()
-    const observer = new QueryObserver(client, {
-      queryKey: ["qo1"],
-      queryFn: read.queryFn,
-    })
-    const unsubscribe = observer.subscribe(() => undefined)
-    await flush()
-    read.settle(true)
-    await flush()
-    void observer.refetch()
-    await flush()
-    read.settle(false)
-    await flush()
-
-    const outcome = queryOutcome(observer.getCurrentResult(), toIntentError)
-    expect(outcome.status).toBe("ready")
-    const retry =
-      outcome.status === "ready" ? outcome.refreshError?.retry : undefined
-    expect(retry).toBeDefined()
-    const before = read.started()
-    for (let tap = 0; tap < 5; tap += 1) {
-      const current = queryOutcome(observer.getCurrentResult(), toIntentError)
-      if (current.status === "ready") current.refreshError?.retry()
-      await flush()
-    }
-    expect(read.started()).toBe(before + 1)
-    expect(read.running()).toBe(1)
-
-    unsubscribe()
-    client.clear()
   })
 })

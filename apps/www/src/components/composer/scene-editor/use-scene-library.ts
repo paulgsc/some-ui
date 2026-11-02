@@ -2,10 +2,8 @@
  * Scene library: the scene-specific policy (types, normalization, fallback,
  * key derivation) over the generic library loader (`lib/library/load`).
  *
- * QO1: the library is loaded once per page, however many pickers mount. The
- * load is one query (`sceneLibraryQuery`), never stale and never collected,
- * so a picker that mounts while it is on its way joins it, one that unmounts
- * leaves it running for the rest, and one that mounts later reads the cache.
+ * QO1: the library is loaded once per page, however many pickers mount
+ * (`sceneLibraryQuery`).
  */
 
 import { HttpFileDiscovery, HttpJsonLoader } from "@some-ui/fetch-kit"
