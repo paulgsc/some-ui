@@ -20,10 +20,13 @@ const AND = new Intl.ListFormat("en", { type: "conjunction" })
 /** The most a failure names before it counts the rest. */
 const NAMED = 2
 
-/** `unread` as a list the pill can hold: two names, then how many more. */
+/**
+ * `unread` as a list the pill can hold: two names, then how many more (three
+ * long names don't fit a narrow phone's two lines).
+ */
 const listed = (unread: ReadonlyArray<string>): string =>
   AND.format(
-    unread.length > NAMED + 1
+    unread.length > NAMED
       ? [...unread.slice(0, NAMED), `${unread.length - NAMED} more`]
       : unread
   )

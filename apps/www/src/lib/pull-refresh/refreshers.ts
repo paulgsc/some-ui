@@ -26,22 +26,27 @@ export type Refreshers = {
    * Runs every refresher registered now, together, and resolves once each
    * has answered or been dropped (its screen went away, so its answer is
    * stale and left out), to the `what` of each that could not read. One
-   * check at a time: asked while one is out, it answers with that one, so a
-   * refresher's `checkAgain` never runs twice at once.
+   * check per refresher at a time: one whose check is still out is not asked
+   * again, and this ask waits on that answer, so its `checkAgain` never runs
+   * twice at once, while one registered since is asked now.
    */
   readonly checkAll: () => Promise<ReadonlyArray<string>>
 }
 
-type Entry = { readonly refresher: Refresher; live: boolean }
+type Entry = {
+  readonly refresher: Refresher
+  live: boolean
+  /** Its check still out, which a new ask waits on. */
+  out: Promise<string | null> | null
+}
 
 export function createRefreshers(): Refreshers {
   const entries = new Set<Entry>()
   /** Wakes a check waiting on an entry that was just dropped. */
   const dropped = new Set<() => void>()
-  let out: Promise<ReadonlyArray<string>> | null = null
 
   const register = (refresher: Refresher): (() => void) => {
-    const entry: Entry = { refresher, live: true }
+    const entry: Entry = { refresher, live: true, out: null }
     entries.add(entry)
     return (): void => {
       if (!entry.live) return
@@ -71,15 +76,21 @@ export function createRefreshers(): Refreshers {
         .then(settle(null), settle(entry.refresher.what))
     })
 
-  const checkAll = (): Promise<ReadonlyArray<string>> => {
-    if (out !== null) return out
-    const check = Promise.all(Array.from(entries, answerOf)).then((answers) => {
-      out = null
-      return answers.filter((what): what is string => what !== null)
+  /** `entry`'s check still out, or a new one. */
+  const askOf = (entry: Entry): Promise<string | null> => {
+    if (entry.out !== null) return entry.out
+    const answer = answerOf(entry).then((unread) => {
+      entry.out = null
+      return unread
     })
-    out = check
-    return check
+    entry.out = answer
+    return answer
   }
+
+  const checkAll = (): Promise<ReadonlyArray<string>> =>
+    Promise.all(Array.from(entries, askOf)).then((answers) =>
+      answers.filter((what): what is string => what !== null)
+    )
 
   return { register, checkAll }
 }

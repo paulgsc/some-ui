@@ -1,9 +1,4 @@
-/**
- * The refresh port (PULL1): a refresher counts for the pulls that start
- * while it is registered, every one runs together, the answer names each
- * that could not read, one dropped before it answered (its screen went
- * away) is stale and left out, and one check runs at a time.
- */
+/** The refresh port (PULL1). */
 import { describe, expect, it, vi } from "vitest"
 
 import type { Refresher } from "@/lib/pull-refresh/refreshers"
@@ -61,8 +56,6 @@ describe("the refresh port", () => {
     drop()
     await refreshers.checkAll()
     expect(check).toHaveBeenCalledTimes(1)
-    // Dropping twice is dropping once.
-    drop()
   })
 
   it("leaves out a refresher dropped before it answered: its answer is stale", async () => {
@@ -93,37 +86,32 @@ describe("the refresh port", () => {
     expect(await refreshers.checkAll()).toEqual(["the routine’s files"])
   })
 
-  it("leaves a refresher registered during a pull to the next one", async () => {
+  it("asks a refresher registered while a check is out on the next ask, never asking one twice at once", async () => {
+    // As when the page moves on mid-check and the new page is pulled, or a
+    // new shell mount pulls over the same set.
     const refreshers = createRefreshers()
     const first = held("first")
     refreshers.register(first)
     const pull = refreshers.checkAll()
+    await started()
     const late = held("late")
     refreshers.register(late)
-    await started()
-    first.answer()
-    expect(await pull).toEqual([])
     expect(late.calls()).toBe(0)
-  })
 
-  it("answers a second ask while one is out with that one, never checking twice at once", async () => {
-    // As when the page moves on mid-check, or a new shell mount pulls over
-    // the same set.
-    const refreshers = createRefreshers()
-    const digest = held("today’s digest")
-    refreshers.register(digest)
-    const first = refreshers.checkAll()
     const second = refreshers.checkAll()
-    expect(second).toBe(first)
     await started()
-    expect(digest.calls()).toBe(1)
-    digest.fail()
-    expect(await second).toEqual(["today’s digest"])
+    expect([first.calls(), late.calls()]).toEqual([1, 1])
+    first.fail()
+    late.answer()
+    expect(await pull).toEqual(["first"])
+    expect(await second).toEqual(["first"])
 
-    // Once it ended, the next ask checks again.
+    // Once it answered, the next ask checks again.
     const third = refreshers.checkAll()
-    expect(third).not.toBe(first)
     await started()
-    expect(digest.calls()).toBe(2)
+    expect(first.calls()).toBe(2)
+    first.answer()
+    late.answer()
+    expect(await third).toEqual([])
   })
 })

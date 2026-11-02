@@ -48,18 +48,13 @@ export const PULL_FIXTURES = {
     offline: false,
     unread: [],
   }),
-  // As many names as a failure says: two, then how many more.
+  // The longest a failure says: two long names, then how many more.
   "pull-failed-named": at({
     kind: "failed",
     pull: 1,
     at: AT,
     offline: false,
-    unread: [
-      "this page",
-      "today’s digest",
-      "the morning run",
-      "what home holds",
-    ],
+    unread: ["today’s digest", "the morning run", "what home holds"],
   }),
   "pull-offline": at({
     kind: "failed",

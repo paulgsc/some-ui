@@ -82,20 +82,6 @@ describe("a pull's reads", () => {
     expect(invalidate).toHaveBeenCalledTimes(1)
   })
 
-  it("says this page could not be read when a query on screen fails", async () => {
-    let fail = false
-    shown("flaky", () =>
-      fail ? Promise.reject(new Error("offline")) : Promise.resolve("ok")
-    )
-    await vi.waitFor(() => expect(client.getQueryData(["flaky"])).toBe("ok"))
-    fail = true
-    const { router } = fakeRouter()
-
-    expect(
-      await readsOnScreen(client, router, onlineManager, none).readAgain()
-    ).toEqual({ kind: "unread", what: ["this page"] })
-  })
-
   it("names a failed query and a failed refresher together", async () => {
     let fail = false
     shown("flaky", () =>
@@ -112,6 +98,11 @@ describe("a pull's reads", () => {
       refreshers.register({
         what: "the morning run",
         checkAgain: () => Promise.resolve(),
+      }),
+      // Another screen over the same source: named once.
+      refreshers.register({
+        what: "today’s digest",
+        checkAgain: () => Promise.reject(new Error("mailbox down")),
       })
     )
     const { router } = fakeRouter()

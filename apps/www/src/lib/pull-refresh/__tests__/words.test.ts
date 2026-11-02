@@ -49,9 +49,7 @@ describe("the drag-down's words", () => {
     )
     expect(
       PULL_WORDS.failed(["this page", "today’s digest", "the morning run"])
-    ).toBe(
-      "Couldn’t check this page, today’s digest, and the morning run just now"
-    )
+    ).toBe("Couldn’t check this page, today’s digest, and 1 more just now")
     expect(
       PULL_WORDS.failed(["this page", "today’s digest", "a", "b", "c"])
     ).toBe("Couldn’t check this page, today’s digest, and 3 more just now")
