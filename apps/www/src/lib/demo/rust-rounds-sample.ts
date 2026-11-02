@@ -183,6 +183,7 @@ export function viewerRustRoundsPorts(): RustRoundsPorts {
   const store = keptRounds(browserLocalStorage)
   if (store.open().held.rounds.length === 0) {
     store.hold({
+      ...store.held(),
       rounds: [BORROWING_01],
       runs: Object.fromEntries(
         Object.entries(BORROWING_01_RUNS).map(([card, run]) => [
