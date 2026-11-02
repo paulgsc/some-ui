@@ -117,12 +117,10 @@ The choices, besides an on/off switch and Diagnostics:
   Music mix is the mode for listening to a Mix started from a music video
   (2026-10-28). A Mix's rows carry no date, so every other mode holds them and
   the Mix stops after a few songs; Music mix shows them on their plates, so it
-  plays on, recent songs included. Under it any Mix counts as music (owner,
-  2026-10-31, #2214): the owner picks the mode only while listening to music,
-  so it no longer waits for the Mix to play a video whole in the lane, which a
-  lyric video or a label channel without the badge never did. The cost is a
-  non-music Mix's undated rows, shown on their plates too. It was Open until
-  then, and a stored "open" still reads as it.
+  plays on, recent songs included. Under it any Mix counts as music (#2214,
+  why in `QD3`'s amendment); the cost is a non-music Mix's undated rows, shown
+  on their plates too. It was Open until then, and a stored "open" still reads
+  as it.
 
 - **When autoplay reaches a held video:** stop (default), or skip to the next
   video in the playlist or Up next that isn't held and hasn't played in this

@@ -57,11 +57,9 @@
  *        (admitted by its card, held by its own date) yields `skip`, so
  *        Skip moves on rather than stopping at "Not here."; until a `held`
  *        finds somewhere to go, `stranded` names that page.
- *  R11 — Under Music mix, any Mix counts as music (owner, 2026-10-31): a
- *        row of a Mix's playlist (`list=RD…`) with no date is plated (QD3's
- *        amendment), from the first reading, whatever has played. Nothing
- *        remembers a Mix, so a card's view needs only its own evidence and
- *        the mode; every other mode holds the row.
+ *  R11 — Under Music mix, a row of a Mix's playlist (`list=RD…`) with no
+ *        date is plated (QD3's amendment); a card's view needs only its own
+ *        evidence and the mode, and every other mode holds the row.
  *  R12 — The course follows every step (`course/course.ts`). After each
  *        event, the marks of the watch page's playlist are worked out again
  *        from the rows the Sensor last read (`queued`), each row's view, the
