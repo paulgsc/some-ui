@@ -4,10 +4,11 @@
  * records voice, whose audio its own module keeps beside this list under each
  * reflection's id (`lib/reflection-voice`).
  *
- * LA7 (docs/learner-data-authority.md): nothing here reaches a server. A
- * reflection leaves the device only when the person shares it, through the
- * share sheet (`lib/agent-export`), and leaves the phone for good when they do.
- * The import guard is `eslint.config.js`.
+ * LA16 (docs/learner-data-authority.md): nothing here reaches a server. A
+ * written reflection goes home through the drain (`lib/home-link/reflections`),
+ * which tells this store what home holds (`trimOffline`); a spoken one goes as
+ * its voice note (LA13), and the one-tap answers stay here. The import guard
+ * is `eslint.config.js`.
  */
 import {
   jsonOf,
@@ -23,9 +24,9 @@ import type { Answers, Reflection } from "./policy"
 import {
   admit,
   answersOf,
+  beyondOffline,
   fromLegacy,
   parseReflection,
-  REFLECTION_LIMIT,
   STALE_AFTER_MS,
   withAnswers,
 } from "./policy"
@@ -35,9 +36,11 @@ export {
   bySession,
   describeAge,
   inOrder,
-  NO_ROOM,
+  inView,
+  OFFLINE_SET_WORDS,
   QUESTIONS,
   REFLECTION_LIMIT,
+  REFLECTION_TEXT_MAX,
   staleCount,
 } from "./policy"
 export type { Answers, Reflection } from "./policy"
@@ -57,11 +60,13 @@ export type ReflectionsSnapshot = {
 }
 
 /** What keeping one came to. `failed`: the device would not store it. */
-export type KeepResult = "kept" | "full" | "failed"
+export type KeepResult = "kept" | "failed"
 
+// No limit of its own: the offline set is `./policy`'s, so the list never
+// drops one home does not hold (`boundedList` slices silently past a limit).
 const list = boundedList(
   KEY,
-  REFLECTION_LIMIT,
+  Number.POSITIVE_INFINITY,
   (value): value is Reflection => parseReflection(value) !== null
 )
 
@@ -101,10 +106,8 @@ function migrateLegacy(now: number): void {
   // goes only once every row is stored; otherwise it is read again next
   // time, and `legacy-<sessionId>` ids keep the move idempotent.
   let movedAll = true
-  for (const reflection of moved.slice(0, REFLECTION_LIMIT).reverse()) {
-    movedAll &&=
-      admit(list.read(), reflection).kind === "kept" &&
-      list.put(reflection, (r) => r.id === reflection.id)
+  for (const reflection of [...moved].reverse()) {
+    movedAll &&= list.put(reflection, (r) => r.id === reflection.id)
   }
   if (!movedAll) return
   // A row it could not move over goes nowhere: the old list is copied
@@ -135,10 +138,9 @@ function onStorage(event: StorageEvent): void {
     changed()
 }
 
-/** Writes `id` as `result` has it (kept, or gone); `failed` if refused. */
-function put(result: ReturnType<typeof admit>, id: string): KeepResult {
-  if (result.kind === "full") return "full"
-  const incoming = result.next.find((r) => r.id === id)
+/** Writes `id` as `next` has it (kept, or gone); `failed` if refused. */
+function put(next: ReadonlyArray<Reflection>, id: string): KeepResult {
+  const incoming = next.find((r) => r.id === id)
   const written = incoming
     ? list.put(incoming, (r) => r.id === id)
     : list.remove((r) => r.id === id)
@@ -168,7 +170,7 @@ export const reflections = {
     return snapshot
   },
 
-  /** Keeps a typed line or a voice note's metadata; never displaces one. */
+  /** Keeps a typed line or a voice note's metadata; never refuses for room. */
   keep(reflection: Reflection): KeepResult {
     return put(admit(list.read(), reflection), reflection.id)
   },
@@ -193,6 +195,28 @@ export const reflections = {
   },
 
   /**
+   * Marks a spoken reflection out of its session's view, kept: recorded
+   * again by a Redo (D2), or set aside (D3) at `at` (ISO 8601; now unless a
+   * test gives its own), which a later call never moves. False if the
+   * device would not store that.
+   */
+  standAside(
+    id: string,
+    standing: "earlier" | "set-aside",
+    at = new Date().toISOString()
+  ): boolean {
+    const written = list.update((r) => {
+      if (r.id !== id || r.body.kind !== "voice") return r
+      if (r.body.standing === "set-aside") return r
+      return standing === "set-aside"
+        ? { ...r, body: { ...r.body, standing, setAsideAt: at } }
+        : { ...r, body: { ...r.body, standing } }
+    })
+    changed()
+    return written
+  },
+
+  /**
    * Removes these for good; false if the device would not store that. A
    * voice note's audio is its module's to remove.
    */
@@ -203,7 +227,19 @@ export const reflections = {
     return removed
   },
 
-  /** These sessions' reflections went out through the share sheet. */
+  /**
+   * Lets go of the reflections past the offline set that `held` names,
+   * which home holds as they are (LA16; the drain alone calls it, with the
+   * written reflections home read back).
+   */
+  trimOffline(held: ReadonlySet<string>): void {
+    const gone = new Set(beyondOffline(list.read(), held))
+    if (gone.size === 0) return
+    list.remove((r) => gone.has(r.id))
+    changed()
+  },
+
+  /** These sessions' reflections went out in the whole export's share. */
   markShared(sessionIds: ReadonlyArray<string>, at: Date = new Date()): void {
     for (const sessionId of new Set(sessionIds)) {
       marks.put(

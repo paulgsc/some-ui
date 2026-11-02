@@ -19,12 +19,13 @@ import {
   useSyncExternalStore,
 } from "react"
 import { cn } from "@some-ui/core-utils"
-import { Button } from "@some-ui/shared"
+import { Button, TakeButton, TakeRow } from "@some-ui/shared"
 import { LOOKS, VOICES } from "@some-ui/video-render"
 import { FilePick } from "@soundbites/components/file-pick"
 import { Notice } from "@soundbites/components/notice"
 import { phoneStudioPorts } from "@soundbites/lib/phone"
 import { finishOf } from "@soundbites/lib/project/finish"
+import { LET_GO_CHOICES, waitingCount } from "@soundbites/lib/project/let-go"
 import type { Project } from "@soundbites/lib/project/model"
 import { latest } from "@soundbites/lib/project/model"
 import { lengthFor } from "@soundbites/lib/project/script"
@@ -43,9 +44,11 @@ import {
   opensOn,
   originView,
   othersOnPhone,
+  recordTake,
   recordView,
   startView,
   takesOnPhone,
+  waitingView,
 } from "@soundbites/lib/studio/view"
 import {
   askedAt,
@@ -55,7 +58,7 @@ import {
 } from "@soundbites/lib/studio/watch"
 import type { SittingKind, Snag, Went } from "@soundbites/lib/studio/words"
 import { SITTING_KINDS, STUDIO_WORDS } from "@soundbites/lib/studio/words"
-import { Mic, Pause, Play, Square } from "lucide-react"
+import { Mic, Square } from "lucide-react"
 
 const WORDS = STUDIO_WORDS
 
@@ -157,6 +160,105 @@ const Steps = ({
         </ul>
       )}
     </ol>
+  )
+}
+
+/**
+ * When a take home holds leaves the phone (HF11): the owner's one choice,
+ * offered once home holds a take and changeable after, and under "until
+ * Drive has it too" each take of this video home holds, with its "Drive has
+ * it".
+ */
+const LetGoCard = ({
+  state,
+  project,
+  dispatch,
+}: {
+  state: StudioState
+  project: Project | null
+  dispatch: Dispatch
+}): JSX.Element | null => {
+  const waiting = waitingCount(
+    state.shelf.kind === "read" ? state.shelf.projects : []
+  )
+  if (waiting === 0 && state.letGo === null) return null
+  const takes =
+    state.letGo === "drive" && project !== null ? waitingView(project) : []
+  return (
+    <section
+      aria-label={WORDS.letGo.heading}
+      className="border-border/60 space-y-2.5 rounded-2xl border p-3 text-sm"
+    >
+      <h3 className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
+        {WORDS.letGo.heading}
+      </h3>
+      <p>
+        {state.letGo === null
+          ? WORDS.letGo.ask(waiting)
+          : WORDS.letGo.says[state.letGo]}
+      </p>
+      <div className="flex flex-col gap-2">
+        {LET_GO_CHOICES.map((letGo) => (
+          <Button
+            key={letGo}
+            size="sm"
+            className="h-auto min-h-9 whitespace-normal"
+            variant={state.letGo === letGo ? "default" : "outline"}
+            aria-pressed={state.letGo === letGo}
+            onClick={() => dispatch({ type: "letGoChosen", letGo })}
+          >
+            {WORDS.letGo.choices[letGo]}
+          </Button>
+        ))}
+      </div>
+      {state.letGo !== null && (
+        <p className="text-muted-foreground text-xs">{WORDS.letGo.change}</p>
+      )}
+      {project !== null && takes.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-muted-foreground text-xs font-bold">
+            {WORDS.letGo.waiting(takes.length)}
+          </p>
+          <ul className="flex flex-col gap-2">
+            {takes.map((take) => (
+              <li
+                key={take.id}
+                className="border-border/60 flex items-center gap-3 rounded-xl border px-3 py-2"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-bold">
+                    {WORDS.letGo.take(take.scene, take.durationMs)}
+                  </span>
+                  {take.shared && (
+                    <span className="text-muted-foreground block text-xs">
+                      {WORDS.letGo.shared}
+                    </span>
+                  )}
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="shrink-0"
+                  aria-label={WORDS.letGo.driveHasItFor(
+                    take.scene,
+                    take.durationMs
+                  )}
+                  onClick={() =>
+                    dispatch({
+                      type: "driveHasIt",
+                      project: project.id,
+                      take: take.id,
+                    })
+                  }
+                >
+                  {WORDS.letGo.driveHasIt}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -264,6 +366,7 @@ const Start = ({
           {shareFor(share, project, dispatch)}
         </div>
       )}
+      <LetGoCard state={state} project={project} dispatch={dispatch} />
       {others.length > 0 && (
         <section className="space-y-2">
           <h3 className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
@@ -367,15 +470,11 @@ const Record = ({
   const recording = activity.kind === "recording"
   const settled = isSettled(activity)
   const taken = view.take !== null && settled
-  const playing = activity.kind === "playing" && activity.take === view.take?.id
   const keep = view.cut?.keep ?? []
-  const label = recording
-    ? WORDS.record.stop
-    : activity.kind === "opening"
-      ? WORDS.record.opening
-      : activity.kind === "saving"
-        ? WORDS.record.keeping
-        : WORDS.record.talk
+  // The take pattern's parts: the button (a tap records the scene, or
+  // records it again: "Again" adds a take, which becomes the chosen one),
+  // and the chosen take as a row.
+  const take = recordTake(state, view)
   return (
     <section
       aria-label={WORDS.record.sceneOf(view.n, view.of)}
@@ -426,49 +525,33 @@ const Record = ({
           </ul>
         </details>
       )}
-      {taken ? (
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            variant="outline"
-            onClick={() => dispatch({ type: "recordPressed" })}
-          >
-            <Mic className="size-4" aria-hidden="true" />
-            {WORDS.record.again}
-          </Button>
-          {/* Wraps: on the narrowest phone (360px) a column is 160px, less
-              than "Keep · next scene" on one line, and the last scene's
-              label is longer. `whitespace-normal`, not `text-wrap`: the
-              button's own `whitespace-nowrap` is a shorthand that resets
-              text-wrap, and wins in the cascade. */}
-          <Button
-            className="h-auto min-h-10 whitespace-normal"
-            onClick={() => dispatch({ type: "keepNextPressed" })}
-          >
-            {view.last ? WORDS.record.keepLast : WORDS.record.keepNext}
-          </Button>
-        </div>
-      ) : (
-        <div className="flex justify-center">
-          <button
-            type="button"
-            onClick={() => dispatch({ type: "recordPressed" })}
-            disabled={activity.kind === "opening" || activity.kind === "saving"}
-            aria-pressed={recording}
-            aria-label={label}
-            className={cn(
-              "focus-visible:ring-ring focus-visible:ring-offset-background grid size-20 place-items-center rounded-full shadow-lg focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-60",
-              recording
-                ? "bg-destructive text-white"
-                : "bg-brand text-brand-foreground"
-            )}
-          >
-            {recording ? (
-              <Square className="size-7" aria-hidden="true" />
-            ) : (
-              <Mic className="size-8" aria-hidden="true" />
-            )}
-          </button>
-        </div>
+      <div className="flex justify-center">
+        <TakeButton
+          view={take.button}
+          onTap={() => dispatch({ type: "recordPressed" })}
+        />
+      </div>
+      {take.row !== null && (
+        <ul>
+          <TakeRow
+            row={take.row}
+            onPlay={() => dispatch({ type: "playPressed" })}
+            // The row's `extra` slot is where ST24's word fixing goes
+            // (#2322): hear the take with its words lit, and fix them.
+          />
+        </ul>
+      )}
+      {taken && (
+        // Wraps: on the narrowest phone the last scene's label is long.
+        // `whitespace-normal`, not `text-wrap`: the button's own
+        // `whitespace-nowrap` is a shorthand that resets text-wrap, and
+        // wins in the cascade.
+        <Button
+          className="h-auto min-h-10 whitespace-normal"
+          onClick={() => dispatch({ type: "keepNextPressed" })}
+        >
+          {view.last ? WORDS.record.keepLast : WORDS.record.keepNext}
+        </Button>
       )}
       <p className="text-center font-mono text-sm tabular-nums">
         {lengthLine(view, state)}
@@ -481,21 +564,6 @@ const Record = ({
             onClick={() => dispatch({ type: "discardPressed" })}
           >
             {WORDS.record.throwAway}
-          </Button>
-        )}
-        {view.take?.onPhone === true && !recording && (
-          <Button
-            variant="link"
-            size="sm"
-            disabled={!settled}
-            onClick={() => dispatch({ type: "playPressed" })}
-          >
-            {playing ? (
-              <Pause className="size-3.5" aria-hidden="true" />
-            ) : (
-              <Play className="size-3.5" aria-hidden="true" />
-            )}
-            {playing ? WORDS.record.stopPlaying : WORDS.record.play}
           </Button>
         )}
       </div>

@@ -3,10 +3,10 @@ import { openKept, salvageList, writeKept } from "@some-ui/core-utils"
 import type { SceneConfig } from "@some-ui/types"
 
 import type { SessionId } from "@/lib/tenant/session-id"
+import { newSessionId } from "@/lib/tenant/session-id"
 import {
   browserLocalStorage,
   delay,
-  generateId,
   MOCK_LATENCY_MS,
   NotKeptError,
 } from "@/lib/tenant/storage"
@@ -77,10 +77,19 @@ export type CreateSessionInput = {
   activities: Array<StoredSessionActivity>
   scenes: Array<SceneConfig>
   layoutMode: "basic" | "advanced"
+  /**
+   * When it was made where it was made, for a copy: `file_host` dates the
+   * session by it (paulgsc/server#630), and so, for parity, does this store.
+   */
+  createdAt?: string
 }
 
+/**
+ * `createdAt` is a copy's to send, catching up one made before home took it
+ * on create; nothing else sends it.
+ */
 export type UpdateSessionInput = Partial<
-  Omit<SessionRecord, "id" | "createdAt" | "updatedAt">
+  Omit<SessionRecord, "id" | "updatedAt">
 >
 
 /**
@@ -145,14 +154,14 @@ export class SessionsRepository implements SessionsStore {
     await delay(this.latencyMs)
     const now = new Date().toISOString()
     const record: SessionRecord = {
-      id: generateId("session"),
+      id: newSessionId(),
       name: input.name,
       status: "draft",
       activities: input.activities,
       scenes: input.scenes,
       layoutMode: input.layoutMode,
       totalDurationMs: totalDurationOf(input.scenes),
-      createdAt: now,
+      createdAt: input.createdAt ?? now,
       updatedAt: now,
     }
 
@@ -213,7 +222,7 @@ export class SessionsRepository implements SessionsStore {
     const now = new Date().toISOString()
     const copy: SessionRecord = {
       ...source,
-      id: generateId("session"),
+      id: newSessionId(),
       name: `${source.name} (copy)`,
       status: "draft",
       startedAt: undefined,

@@ -1,7 +1,7 @@
 import type { JSX, SubmitEvent } from "react"
 import { useState } from "react"
 import { formatTimecode } from "@some-ui/core-utils"
-import { Button, Input } from "@some-ui/shared"
+import { Button, Input, useConfirmSheet } from "@some-ui/shared"
 import { X } from "lucide-react"
 
 import { useMinuteClock } from "@/lib/clock"
@@ -9,9 +9,8 @@ import type { KeepResult, Reflection } from "@/lib/session-reflection"
 import {
   answersOf,
   inOrder,
-  NO_ROOM,
   QUESTIONS,
-  REFLECTION_LIMIT,
+  REFLECTION_TEXT_MAX,
   reflections,
   staleCount,
 } from "@/lib/session-reflection"
@@ -19,19 +18,30 @@ import { useReflections } from "@/lib/session-reflection/use-reflections"
 import { ToggleChips } from "@/components/player/toggle-chips"
 
 import { DeviceReflectionVoice } from "./device-reflection-voice"
-import { DeviceShareReflections } from "./device-share-reflections"
-import { HandOff } from "./hand-off"
 import { letGo } from "./let-go"
 
 const REFUSED: Record<Exclude<KeepResult, "kept">, string> = {
-  full: NO_ROOM,
   failed: "The phone wouldn't store that. Try again.",
 }
 
-function describe(reflection: Reflection): string {
+/** What the count says beside it: where reflections are kept. */
+function where(): string {
+  return import.meta.env.VITE_DEVICE_BACKEND === "true"
+    ? "written ones go to home while paired"
+    : "kept in this browser"
+}
+
+/** A typed line or the one-tap answers: what the panel lists. */
+type Written = Reflection & {
+  body: Exclude<Reflection["body"], { kind: "voice" }>
+}
+
+const isWritten = (reflection: Reflection): reflection is Written =>
+  reflection.body.kind !== "voice"
+
+function describe(reflection: Written): string {
   const { body } = reflection
   if (body.kind === "text") return `"${body.text}"`
-  if (body.kind === "voice") return `Voice · ${formatTimecode(body.durationMs)}`
   return QUESTIONS.flatMap((question) => {
     const answer = body.answers[question.key]
     const label = question.options.find(([id]) => id === answer)?.[1]
@@ -41,9 +51,9 @@ function describe(reflection: Reflection): string {
 
 /**
  * Reflecting on one session, at any moment of it or after: say it (phone),
- * type it, or tap how it is going. Every reflection counts toward one cap
- * across all sessions; once it is reached, this offers the way out (share or
- * let go) instead of a place to add another.
+ * type it, or tap how it is going. The spoken ones are the take pattern's
+ * rows (`DeviceReflectionVoice`); the written ones are listed below, and
+ * letting one go asks first, since it cannot be brought back here.
  */
 export const ReflectPanel = ({
   sessionId,
@@ -57,11 +67,31 @@ export const ReflectPanel = ({
   const now = useMinuteClock().getTime()
   const [text, setText] = useState("")
   const [refused, setRefused] = useState<string | null>(null)
+  const { ask, sheet } = useConfirmSheet()
 
-  const own = inOrder(kept.filter((r) => r.sessionId === sessionId))
+  // A spoken one is the take pattern's row, above.
+  const own = inOrder(
+    kept.filter((r): r is Written => r.sessionId === sessionId && isWritten(r))
+  )
   const answers = answersOf(kept, sessionId)?.answers ?? {}
-  const full = kept.length >= REFLECTION_LIMIT
   const stale = staleCount(kept, now)
+
+  // The phone asks in a sheet; the desktop web keeps the browser's dialog
+  // (CLAUDE.md, "The phone and the desktop web are separate surfaces").
+  const confirmLetGo = (id: string, at: string): void => {
+    if (import.meta.env.VITE_DEVICE_BACKEND !== "true") {
+      if (confirm(`Let go of the one at ${at}? It can't be brought back.`)) {
+        letGo([id])
+      }
+      return
+    }
+    ask({
+      title: "Let this one go?",
+      description: `The one at ${at} leaves this phone and can't be brought back here. One home already has stays on home.`,
+      confirm: "Let it go",
+      onConfirm: () => letGo([id]),
+    })
+  }
 
   const said = (result: KeepResult): boolean => {
     setRefused(result === "kept" ? null : REFUSED[result])
@@ -85,9 +115,8 @@ export const ReflectPanel = ({
   return (
     <div className="flex flex-col gap-4">
       <p className="text-muted-foreground text-sm">
-        {kept.length} of {REFLECTION_LIMIT} kept
-        {stale > 0 ? ` · ${stale} stale` : ""} · share them while they&apos;re
-        fresh
+        {kept.length} kept
+        {stale > 0 ? ` · ${stale} stale` : ""} · {where()}
       </p>
 
       {import.meta.env.VITE_DEVICE_BACKEND === "true" && (
@@ -95,42 +124,30 @@ export const ReflectPanel = ({
           key={sessionId}
           sessionId={sessionId}
           atMs={atMs}
-          full={full}
         />
       )}
-      {full ? (
-        <div className="flex flex-col gap-2">
-          <p className="font-medium">Time to hand these off</p>
-          <p className="text-muted-foreground text-sm">
-            All {REFLECTION_LIMIT} are taken. Reflections are for acting on, not
-            keeping: share them for your agent, or let the stale ones go, to
-            make room.
-          </p>
-          <HandOff />
-        </div>
-      ) : (
-        <form onSubmit={keepText} className="flex gap-2">
-          <Input
-            aria-label="Type a reflection"
-            placeholder={
-              import.meta.env.VITE_DEVICE_BACKEND === "true"
-                ? "or type a line..."
-                : "What's on your mind?"
-            }
-            value={text}
-            onChange={(event) => setText(event.target.value)}
-            className="h-11"
-          />
-          <Button
-            type="submit"
-            variant="outline"
-            className="h-11"
-            disabled={text.trim() === ""}
-          >
-            Keep
-          </Button>
-        </form>
-      )}
+      <form onSubmit={keepText} className="flex gap-2">
+        <Input
+          aria-label="Type a reflection"
+          placeholder={
+            import.meta.env.VITE_DEVICE_BACKEND === "true"
+              ? "or type a line..."
+              : "What's on your mind?"
+          }
+          value={text}
+          maxLength={REFLECTION_TEXT_MAX}
+          onChange={(event) => setText(event.target.value)}
+          className="h-11"
+        />
+        <Button
+          type="submit"
+          variant="outline"
+          className="h-11"
+          disabled={text.trim() === ""}
+        >
+          Keep
+        </Button>
+      </form>
 
       <div className="flex flex-col gap-2">
         {QUESTIONS.map((question) => (
@@ -189,23 +206,13 @@ export const ReflectPanel = ({
                   <span className="min-w-0 flex-1 truncate">
                     {describe(reflection)}
                   </span>
-                  {import.meta.env.VITE_DEVICE_BACKEND === "true" && (
-                    <DeviceShareReflections
-                      sessionIds={[sessionId]}
-                      only={[reflection.id]}
-                      title={`Share the one at ${at}`}
-                      size="icon"
-                      variant="ghost"
-                      className="size-8 shrink-0"
-                    />
-                  )}
                   <Button
                     type="button"
                     size="icon"
                     variant="ghost"
                     className="size-8 shrink-0"
                     aria-label={`Let go of the one at ${at}`}
-                    onClick={() => letGo([reflection.id])}
+                    onClick={() => confirmLetGo(reflection.id, at)}
                   >
                     <X className="size-3.5" aria-hidden />
                   </Button>
@@ -215,6 +222,7 @@ export const ReflectPanel = ({
           </ul>
         </div>
       )}
+      {sheet}
     </div>
   )
 }

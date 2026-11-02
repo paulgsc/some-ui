@@ -11,6 +11,7 @@ export {
   createSessionLogStore,
   finishedSessions,
   ledgerOf,
+  onSessionLogged,
   summariesOf,
 } from "./lib/leetype/session-log"
 export type {

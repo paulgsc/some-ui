@@ -8,7 +8,9 @@
  *
  * - MB1 (retired): an item never changes, and leaves `item` only into
  *   `archived`; MB5 carries it, with home's index's exception.
- * - MB2: `ROLES` is the one place a token is mapped to what it may do.
+ * - MB2: `ROLES` is the one place a token is mapped to what it may do, and
+ *   `FOLDERS`' `backfill` and `also` the only kinds a folder takes beyond its
+ *   own.
  * - MB3: no token reaches the repo or a log.
  * - MB4: the Cloudflare account has no payment method (account state, not
  *   reviewable).
@@ -126,6 +128,28 @@ function carriesRefusal(
 }
 
 /**
+ * The start every lane's shape check shares: audio or a Drive link anywhere
+ * in the text as sent, then a key outside `keys`, refused as audio, as Drive
+ * or as `not part of a <what>`. `null` when neither.
+ */
+function shapeRefusal(
+  body: Readonly<Record<string, unknown>>,
+  text: string,
+  keys: ReadonlySet<string>,
+  noAudio: string,
+  noDrive: string,
+  what: string
+): string | null {
+  const carried = carriesRefusal(text, noAudio, noDrive)
+  if (carried !== null) return carried
+  const extra = Object.keys(body).find((key) => !keys.has(key))
+  if (extra === undefined) return null
+  if (AUDIO_KEY.test(extra)) return noAudio
+  if (DRIVE_KEY.test(extra)) return noDrive
+  return `${extra} is not part of a ${what}`
+}
+
+/**
  * README, "What a put must satisfy": a transcript is text, and only its own
  * keys.
  */
@@ -134,14 +158,15 @@ function transcriptRefusal(
   text: string,
   name: string
 ): string | null {
-  const carried = carriesRefusal(text, NO_AUDIO, NO_DRIVE)
-  if (carried !== null) return carried
-  const extra = Object.keys(body).find((key) => !TRANSCRIPT_KEYS.has(key))
-  if (extra !== undefined) {
-    if (AUDIO_KEY.test(extra)) return NO_AUDIO
-    if (DRIVE_KEY.test(extra)) return NO_DRIVE
-    return `${extra} is not part of a transcript`
-  }
+  const shape = shapeRefusal(
+    body,
+    text,
+    TRANSCRIPT_KEYS,
+    NO_AUDIO,
+    NO_DRIVE,
+    "transcript"
+  )
+  if (shape !== null) return shape
   if (typeof body.note !== "string" || !NOTE_ID.test(body.note)) {
     return "note must be the note's id"
   }
@@ -206,8 +231,170 @@ function wordsRefusal(words: unknown): string | null {
   return null
 }
 
-/** The routines home computes an index for (README, "What a put must satisfy"). */
-const INDEX_ROUTINES: ReadonlySet<unknown> = new Set(["jobs"])
+/**
+ * The keys of a `some-ui.reflection/1` body: only what the reflections
+ * routine reads of a written reflection (paulgsc/some-ui#2174, D2). Any
+ * other is refused.
+ */
+const REFLECTION_KEYS: ReadonlySet<string> = new Set([
+  "schema",
+  "reflection",
+  "session",
+  "at",
+  "text",
+])
+const NO_AUDIO_REFLECTION =
+  "a reflection carries no audio: a spoken one goes as its transcript"
+const NO_DRIVE_REFLECTION = "a reflection names no Drive file"
+
+/**
+ * README, "What a put must satisfy": a written reflection is its text, the
+ * session it is about and when it was written, and nothing else.
+ */
+function reflectionRefusal(
+  body: Readonly<Record<string, unknown>>,
+  text: string,
+  name: string
+): string | null {
+  const shape = shapeRefusal(
+    body,
+    text,
+    REFLECTION_KEYS,
+    NO_AUDIO_REFLECTION,
+    NO_DRIVE_REFLECTION,
+    "reflection"
+  )
+  if (shape !== null) return shape
+  if (typeof body.reflection !== "string") {
+    return "reflection must be the reflection's id"
+  }
+  if (name !== `reflection-${body.reflection}.json`) {
+    return "the name must carry the reflection's id"
+  }
+  if (typeof body.session !== "string" || !NOTE_REF.test(body.session)) {
+    return "session must name the session it is about"
+  }
+  if (!isInstant(body.at)) return "at must be when it was written"
+  if (typeof body.text !== "string" || body.text.trim() === "") {
+    return "text must be what was written"
+  }
+  return null
+}
+
+/**
+ * The keys of a `some-ui.drama-prompt/1` body: only what the reflections
+ * routine reads of the next scene's prompt (paulgsc/some-ui#2174, D2). Any
+ * other is refused.
+ */
+const PROMPT_KEYS: ReadonlySet<string> = new Set(["schema", "prompt", "text"])
+const NO_AUDIO_PROMPT =
+  "a prompt carries no audio: its scene notes go as their transcripts"
+const NO_DRIVE_PROMPT = "a prompt names no Drive file"
+
+/**
+ * README, "What a put must satisfy": the next scene's prompt is its stamp
+ * and its markdown, and nothing else.
+ */
+function promptRefusal(
+  body: Readonly<Record<string, unknown>>,
+  text: string,
+  name: string
+): string | null {
+  const shape = shapeRefusal(
+    body,
+    text,
+    PROMPT_KEYS,
+    NO_AUDIO_PROMPT,
+    NO_DRIVE_PROMPT,
+    "prompt"
+  )
+  if (shape !== null) return shape
+  if (typeof body.prompt !== "string") {
+    return "prompt must be the prompt's stamp"
+  }
+  if (name !== `${body.prompt}.prompt.json`) {
+    return "the name must carry the prompt's stamp"
+  }
+  if (typeof body.text !== "string" || body.text.trim() === "") {
+    return "text must be the prompt"
+  }
+  return null
+}
+
+/** The keys of a `some-ui.drive-takes/1` body; any other is refused. */
+const DRIVE_TAKES_KEYS: ReadonlySet<string> = new Set(["schema", "at", "takes"])
+/** The keys of each take a `some-ui.drive-takes/1` body lists. */
+const DRIVE_TAKE_KEYS: ReadonlySet<string> = new Set(["sha256"])
+/** Most takes one list names: far above the Build Journal's, and under MAX_BODY_BYTES at ~78 B each. */
+const DRIVE_TAKES_MAX = 10_000
+const NO_AUDIO_TAKES =
+  "a list of takes carries no audio: Drive and home keep it"
+const NO_DRIVE_TAKES = "a list of takes names no Drive file or link"
+
+/** `at` as a list's name carries it: `YYYYMMDDTHHMMSSZ`, in UTC. */
+function stampOf(at: string): string {
+  return `${new Date(at).toISOString().slice(0, 19).replace(/[-:]/g, "")}Z`
+}
+
+/**
+ * README, "What a put must satisfy": the build-journal session's word on
+ * which Studio takes Drive holds (paulgsc/some-ui#2401, route a), as the
+ * SHA-256 of each recording it found in the takes folder, and when it
+ * looked. Nothing else: no audio, no Drive link, name or id.
+ */
+function driveTakesRefusal(
+  body: Readonly<Record<string, unknown>>,
+  text: string,
+  name: string
+): string | null {
+  const shape = shapeRefusal(
+    body,
+    text,
+    DRIVE_TAKES_KEYS,
+    NO_AUDIO_TAKES,
+    NO_DRIVE_TAKES,
+    "list of takes"
+  )
+  if (shape !== null) return shape
+  if (!isInstant(body.at)) return "at must be when Drive's takes were listed"
+  if (name !== `drive-takes-${stampOf(String(body.at))}.json`) {
+    return "the name must carry when Drive's takes were listed, in UTC"
+  }
+  const { takes } = body
+  if (!Array.isArray(takes)) return "takes must be a list"
+  if (takes.length > DRIVE_TAKES_MAX) {
+    return `takes may name at most ${DRIVE_TAKES_MAX}`
+  }
+  const seen = new Set<string>()
+  for (const take of takes) {
+    if (!isRecord(take)) return "each take must be an object"
+    const extra = Object.keys(take).find((key) => !DRIVE_TAKE_KEYS.has(key))
+    if (extra !== undefined) {
+      if (AUDIO_KEY.test(extra)) return NO_AUDIO_TAKES
+      if (DRIVE_KEY.test(extra)) return NO_DRIVE_TAKES
+      return `${extra} is not part of a take: only its sha256`
+    }
+    if (typeof take.sha256 !== "string" || !SHA256_HEX.test(take.sha256)) {
+      return "sha256 must be the recording's SHA-256, in lower-case hex"
+    }
+    if (seen.has(take.sha256)) return "each take is named once"
+    seen.add(take.sha256)
+  }
+  // `JSON.parse` keeps a key given twice by its last value, so a first one
+  // (a Drive id, say) would be kept here unread. Every key and value this
+  // shape takes is quote-free (checked above), so each is two of the text's
+  // `"`: the text as sent holds more only where a key is given twice.
+  if (quotes(text) !== quotes(JSON.stringify(body))) {
+    return "each key is given once"
+  }
+  return null
+}
+
+/** How many `"` `text` holds. */
+function quotes(text: string): number {
+  return text.split('"').length - 1
+}
+
 /** The keys of a `some-ui.routine-index/1` body for the jobs routine; any other is refused. */
 const JOBS_INDEX_KEYS: ReadonlySet<string> = new Set([
   "schema",
@@ -222,29 +409,47 @@ const JOBS_INDEX_KEYS: ReadonlySet<string> = new Set([
   "notes",
   "picked",
 ])
+/** The keys of a `some-ui.routine-index/1` body for the reflections routine; any other is refused. */
+const REFLECTIONS_INDEX_KEYS: ReadonlySet<string> = new Set([
+  "schema",
+  "routine",
+  "asOf",
+  "validUntil",
+  "skipped",
+  "answered",
+  "words",
+  "recent",
+  "unopened",
+  "reflections",
+  "prompts",
+])
 const NO_AUDIO_INDEX = "an index carries no audio: home keeps the audio"
 const NO_DRIVE_INDEX = "an index names no Drive file"
 
-/**
- * README, "What a put must satisfy": an index is home's bookkeeping for one
- * routine, its own keys only, and text.
- */
-function indexRefusal(
-  body: Readonly<Record<string, unknown>>,
-  text: string,
-  name: string
+/** One routine's index shape past its keys: why it is refused, or `null`. */
+type IndexShape = (body: Readonly<Record<string, unknown>>) => string | null
+
+function shapeOf(
+  objects: ReadonlyArray<string>,
+  lists: ReadonlyArray<string>,
+  body: Readonly<Record<string, unknown>>
 ): string | null {
-  const carried = carriesRefusal(text, NO_AUDIO_INDEX, NO_DRIVE_INDEX)
-  if (carried !== null) return carried
-  if (!INDEX_ROUTINES.has(body.routine)) return "routine must be jobs"
-  if (!name.startsWith(`index-${String(body.routine)}-`)) {
-    return "the name must carry the body's routine"
+  for (const key of objects) {
+    if (!isRecord(body[key])) return `${key} must be an object`
   }
-  const keys = Object.keys(body)
-  const extra = keys.find((key) => !JOBS_INDEX_KEYS.has(key))
-  if (extra !== undefined) return `${extra} is not part of the jobs index`
-  const missing = [...JOBS_INDEX_KEYS].find((key) => !(key in body))
-  if (missing !== undefined) return `the jobs index carries ${missing}`
+  for (const key of lists) {
+    if (!Array.isArray(body[key])) return `${key} must be a list`
+  }
+  return null
+}
+
+const asOfRefusal = (body: Readonly<Record<string, unknown>>): string | null =>
+  body.asOf !== null && !isInstant(body.asOf)
+    ? "asOf must be when home last took in what the index counts"
+    : null
+
+/** The jobs index: a day, the last day its queue holds, and its parts. */
+const jobsShape: IndexShape = (body) => {
   if (!isCalendarDay(body.day)) return "day must be the day the index is for"
   if (
     body.validThrough !== null &&
@@ -252,31 +457,90 @@ function indexRefusal(
   ) {
     return "validThrough must be a day from day on, or null"
   }
-  if (body.asOf !== null && !isInstant(body.asOf)) {
-    return "asOf must be when home last took in what the index counts"
-  }
-  for (const key of ["from", "queue", "new"] as const) {
-    if (!isRecord(body[key])) return `${key} must be an object`
-  }
-  for (const key of ["skipped", "notes", "picked"] as const) {
-    if (!Array.isArray(body[key])) return `${key} must be a list`
-  }
-  return null
+  return (
+    asOfRefusal(body) ??
+    shapeOf(["from", "queue", "new"], ["skipped", "notes", "picked"], body)
+  )
 }
 
 /**
- * MB2's backfill (owner, 2026-10-31, paulgsc/server#509) takes a
- * pre-mailbox Jobs file only under a name for a day from `FIRST_SHARED`
- * up to, not including, `MAILBOX_OPENED`, so the files it can take are a
- * closed set. `FIRST_SHARED` is the day the phone could first share one:
- * paulgsc/some-ui#1884 (the Jobs wing, `decisionsFileName` and
- * `scoutsFileName`) landed on 2026-10-17 at 21:06 in America/Los_Angeles,
- * and the phone names a file for its own day. `MAILBOX_OPENED` is the day
- * the mailbox opened; `@some-ui/job-desk`'s `home-index.ts` holds the same
- * day for the routine, which cannot import this Worker.
+ * The reflections index: the moment it next changes, after `asOf`, and its
+ * parts.
+ */
+const reflectionsShape: IndexShape = (body) => {
+  const asOf = asOfRefusal(body)
+  if (asOf !== null) return asOf
+  if (
+    body.validUntil !== null &&
+    (!isInstant(body.validUntil) ||
+      body.asOf === null ||
+      Date.parse(String(body.validUntil)) <= Date.parse(String(body.asOf)))
+  ) {
+    return "validUntil must be a moment after asOf, or null"
+  }
+  return shapeOf(
+    ["answered", "unopened"],
+    ["skipped", "words", "recent", "reflections", "prompts"],
+    body
+  )
+}
+
+/** The routines home computes an index for (README, "What a put must satisfy"), each with its keys and shape. */
+const INDEX_ROUTINES: ReadonlyMap<
+  unknown,
+  { readonly keys: ReadonlySet<string>; readonly shape: IndexShape }
+> = new Map([
+  ["jobs", { keys: JOBS_INDEX_KEYS, shape: jobsShape }],
+  ["reflections", { keys: REFLECTIONS_INDEX_KEYS, shape: reflectionsShape }],
+])
+
+/**
+ * README, "What a put must satisfy": an index is home's bookkeeping for one
+ * routine, that routine's own keys only, and text.
+ */
+function indexRefusal(
+  body: Readonly<Record<string, unknown>>,
+  text: string,
+  name: string
+): string | null {
+  const routine = INDEX_ROUTINES.get(body.routine)
+  if (routine === undefined) {
+    return `routine must be ${[...INDEX_ROUTINES.keys()].join(" or ")}`
+  }
+  const what = `${String(body.routine)} index`
+  const shape = shapeRefusal(
+    body,
+    text,
+    routine.keys,
+    NO_AUDIO_INDEX,
+    NO_DRIVE_INDEX,
+    what
+  )
+  if (shape !== null) return shape
+  if (!name.startsWith(`index-${String(body.routine)}-`)) {
+    return "the name must carry the body's routine"
+  }
+  const missing = [...routine.keys].find((key) => !(key in body))
+  if (missing !== undefined) return `the ${what} carries ${missing}`
+  return routine.shape(body)
+}
+
+/**
+ * MB2's backfill (owner, 2026-10-31, paulgsc/server#509, widened 2026-11-01,
+ * paulgsc/some-ui#2393) takes a Jobs file only Drive holds only under a name
+ * for a day from `FIRST_SHARED` up to, not including, `DRIVE_ONLY_ENDED`, so
+ * the files it can take are a closed set. `FIRST_SHARED` is the day the phone
+ * could first share one: paulgsc/some-ui#1884 (the Jobs wing,
+ * `decisionsFileName` and `scoutsFileName`) landed on 2026-10-17 at 21:06 in
+ * America/Los_Angeles, and the phone names a file for its own day.
+ * `DRIVE_ONLY_ENDED` is the first day the phone files every Jobs file home:
+ * the APK carrying HF2 (paulgsc/some-ui#2394), built and installed by then,
+ * stops sharing one that names a voice note to Drive alone.
+ * `@some-ui/job-desk`'s `home-index.ts` holds the same day for the routine,
+ * which cannot import this Worker.
  */
 const FIRST_SHARED = "2026-10-17"
-const MAILBOX_OPENED = "2026-10-23"
+const DRIVE_ONLY_ENDED = "2026-11-04"
 
 /**
  * The names of a Jobs decisions or scouts file exactly as the phone writes
@@ -319,16 +583,24 @@ type FolderRules = {
   /**
    * MB2's backfill: the folders whose files this one also takes, under each
    * one's name and schema, once each, and only as `sharedDay` reads the name,
-   * for a day from `FIRST_SHARED` to before `MAILBOX_OPENED`.
+   * for a day from `FIRST_SHARED` to before `DRIVE_ONLY_ENDED`.
    */
   readonly backfill?: ReadonlyArray<FolderRules>
+  /**
+   * MB2: the other kinds of file this folder takes, each under its own
+   * name, schema and deeper check, so a reader that lists the folder anyway
+   * finds them with no listing of its own (MI6).
+   */
+  readonly also?: ReadonlyArray<FolderRules>
 }
 
 /** The rules `name` is held to in `rules`' folder, or `null` for a name it does not take. */
 function kindOf(rules: FolderRules, name: string): FolderRules | null {
   if (rules.name.test(name)) return rules
+  const also = rules.also?.find((kind) => kind.name.test(name))
+  if (also !== undefined) return also
   const day = sharedDay(name)
-  if (day === null || day < FIRST_SHARED || day >= MAILBOX_OPENED) return null
+  if (day === null || day < FIRST_SHARED || day >= DRIVE_ONLY_ENDED) return null
   return rules.backfill?.find((kind) => kind.name.test(name)) ?? null
 }
 
@@ -349,10 +621,21 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
     folder: "brief",
     name: /^digest-\d{4}-\d{2}-\d{2}\.json$/,
     schema: "some-ui.job-digest/1",
-    // The Jobs decisions and scouts files from before the mailbox, which only
-    // Drive holds, put back once under their Drive names so home counts them
-    // in its index (MB2, owner, 2026-10-31).
+    // The Jobs decisions and scouts files only Drive holds, put back once under
+    // their Drive names so home counts them in its index (MB2, owner,
+    // 2026-10-31, widened 2026-11-01, paulgsc/some-ui#2393).
     backfill: [DECISIONS, SCOUT],
+    // The build-journal session's list of the Studio takes Drive holds, by
+    // SHA-256, for home to match against the takes it holds (MB2, the
+    // owner's route a, paulgsc/some-ui#2401).
+    also: [
+      {
+        folder: "brief",
+        name: /^drive-takes-\d{8}T\d{6}Z\.json$/,
+        schema: "some-ui.drive-takes/1",
+        refuses: driveTakesRefusal,
+      },
+    ],
   },
   DECISIONS,
   SCOUT,
@@ -414,6 +697,21 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
     schema: "some-ui.voice-transcript/1",
     refuses: transcriptRefusal,
   },
+  {
+    // One written reflection, as home keeps it, named for the phone's id.
+    folder: "reflection",
+    name: /^reflection-[A-Za-z0-9_-]{1,64}\.json$/,
+    schema: "some-ui.reflection/1",
+    refuses: reflectionRefusal,
+  },
+  {
+    // The next scene's prompt, as home keeps it, named for its stamp as the
+    // drama that answers it is.
+    folder: "prompt",
+    name: /^drama-\d{8}T\d{9}Z\.prompt\.json$/,
+    schema: "some-ui.drama-prompt/1",
+    refuses: promptRefusal,
+  },
 ]
 
 /** The Worker secrets. An unset or empty one never authenticates anyone. */
@@ -453,9 +751,16 @@ const RECORDS: ReadonlyArray<Folder> = [
   "leetype",
   "leetype-log",
   "transcript",
+  "reflection",
+  "prompt",
 ]
 
 const ALL: ReadonlyArray<Folder> = [...RECORDS, "index"]
+
+/** Every record but `reflection` and `prompt`, which the routine never asks back (README, "Who may do what"; MI6). */
+const ASKED: ReadonlyArray<Folder> = RECORDS.filter(
+  (folder) => folder !== "reflection" && folder !== "prompt"
+)
 
 /** MB2. Another role (the phone's, say) is the owner's call, not a code change. */
 const ROLES: ReadonlyArray<Grant> = [
@@ -464,14 +769,23 @@ const ROLES: ReadonlyArray<Grant> = [
     token: (tokens) => tokens.routine,
     get: ALL,
     put: ["brief", "scene", "drama", "run", "leetype"],
-    ask: RECORDS,
+    ask: ASKED,
     move: [],
   },
   {
     role: "home",
     token: (tokens) => tokens.home,
     get: ["brief", "scene", "drama", "run", "leetype"],
-    put: ["decisions", "scout", "opened", "leetype-log", "transcript", "index"],
+    put: [
+      "decisions",
+      "scout",
+      "opened",
+      "leetype-log",
+      "transcript",
+      "index",
+      "reflection",
+      "prompt",
+    ],
     ask: [],
     move: [],
   },

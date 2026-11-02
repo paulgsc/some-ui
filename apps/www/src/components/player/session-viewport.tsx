@@ -19,7 +19,8 @@ import {
 } from "@/lib/orchestrator"
 import { PANELS } from "@/lib/playable"
 import { createRoutineFilesClient } from "@/lib/routine-files"
-import { phoneSceneVoice, shareDramaPrompt } from "@/lib/scene-voice"
+import { sceneAsks } from "@/lib/scene-ask"
+import { phoneSceneVoice } from "@/lib/scene-voice"
 import { lookIn, runsNatively } from "@/lib/share-files"
 import { createShelfClient } from "@/lib/shelf-client"
 import type { SessionRecord } from "@/lib/tenant"
@@ -36,13 +37,13 @@ import { useLiveLayoutEditor } from "./use-live-layout-editor"
 import { withWebOnlyNotes } from "./web-only-note"
 
 /**
- * The drama's share sheet and microphone: gated on native, not the device
+ * The drama's ask of home and microphone: gated on native, not the device
  * build, since that build in a desktop browser has only the plugins' web
- * stubs.
+ * stubs and pairs with no home.
  */
 const ON_PHONE =
   import.meta.env.VITE_DEVICE_BACKEND === "true" && runsNatively()
-const PHONE_SHARE = ON_PHONE ? shareDramaPrompt : undefined
+const PHONE_SCENE_ASK = ON_PHONE ? sceneAsks : undefined
 const PHONE_SCENE_VOICE = ON_PHONE ? phoneSceneVoice() : undefined
 const PHONE_LENS_TAKES = ON_PHONE ? phoneLensTakes() : undefined
 const PHONE_SPOKEN_TAKES = ON_PHONE ? phoneSpokenTakes() : undefined
@@ -160,7 +161,7 @@ export const SessionViewport = ({
           // What the reflections routine left on home: the account's, as
           // `shelf` is, or, in the app, through its paired home.
           routineFiles,
-          share: PHONE_SHARE,
+          sceneAsk: PHONE_SCENE_ASK,
           sceneVoice: PHONE_SCENE_VOICE,
           // Read at render: main.tsx installs the sidecar after imports run.
           sceneFileHint: ON_PHONE ? lookIn("drama-tree") : undefined,

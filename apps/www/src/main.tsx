@@ -11,6 +11,7 @@ import ReactDOM from "react-dom/client"
 import { seedDemo } from "@/lib/demo"
 import { bootDeviceBackend } from "@/lib/device-backend/boot"
 import { driveFiling } from "@/lib/drive-filing"
+import { sweepIdeaTakes } from "@/lib/idea-takes"
 import { listenForNoticeTaps } from "@/lib/jobs/notice-native"
 import { sweepLeetypeTakes } from "@/lib/leetype-takes"
 import { sweepLensTakes } from "@/lib/lens-takes"
@@ -21,7 +22,6 @@ import { installShareSidecar } from "@/lib/share-files"
 import { releasePushWhenLeavingTheAccount } from "@/lib/study-nudge/leave-account"
 import { listenForWingEntry } from "@/lib/wings/entry"
 import { ErrorState, NotFound, RoutePending } from "@/components/housekeeping"
-import { DeviceReflectionsArrival } from "@/components/reflection/device-reflections-arrival"
 
 import { routeTree } from "./routeTree.gen"
 
@@ -46,13 +46,15 @@ import.meta.glob(
 // before the app renders and anything issues a request. A no-op elsewhere.
 bootDeviceBackend()
 
-// Voice reflections, scene notes, grammar-lens takes, LeetType takes and Rust
-// Rounds' notes, and their audio, each without the other.
+// Voice reflections, scene notes, grammar-lens takes, LeetType takes, Rust
+// Rounds' notes and Studio's idea takes, and their audio, each without the
+// other.
 if (import.meta.env.VITE_DEVICE_BACKEND === "true") {
   sweepOrphans()
   sweepLensTakes()
   sweepLeetypeTakes()
   sweepRustRoundsNotes()
+  sweepIdeaTakes()
   sweepSceneVoice()
   installShareSidecar(driveFiling())
 }
@@ -99,10 +101,6 @@ if (rootElement && !rootElement.innerHTML) {
     <StrictMode>
       <AppProviders>
         <RouterProvider router={router} />
-        {/* Beside the routes, so a share's question outlives its screen. */}
-        {import.meta.env.VITE_DEVICE_BACKEND === "true" && (
-          <DeviceReflectionsArrival />
-        )}
       </AppProviders>
     </StrictMode>
   )

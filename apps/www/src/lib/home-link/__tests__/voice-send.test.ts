@@ -6,19 +6,32 @@
  * as waiting; one with no room fails the run as the phone's lack of room,
  * still waits, and goes once there is room; one the phone fails to copy,
  * or whose record storage won't keep, fails the run as the phone's fault;
- * and a Jobs note let go once its share arrived is never offered.
+ * a Jobs note let go once its share arrived is never offered; a store
+ * that can't be listed holds back none of the others; the soundbites hear
+ * again what home holds once the voice lane holds a bite's audio (OS1); and
+ * each note says where it is kept, and since when, as the lane holds it
+ * (MIC3).
  */
 import type { HomeCall } from "@some-ui/core-utils"
+import { reportFailure } from "@some-ui/intent-kit"
+import type { Soundbite } from "@some-ui/soundbites"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import type { BlobShelf } from "@some-ui/voice-capture"
-import { ShelfFullError } from "@some-ui/voice-capture"
+import { keptSaid, ShelfFullError, TAKE_WORDS } from "@some-ui/voice-capture"
 import { renderHook } from "@testing-library/react"
-import { describe, expect, it, vi } from "vitest"
+import { beforeAll, describe, expect, it, vi } from "vitest"
 
+import { readSent, rememberSent } from "@/lib/home-link/sent"
 import { useUnsendable, voiceLane } from "@/lib/home-link/voice"
-import { sendVoice } from "@/lib/home-link/voice-copy"
+import {
+  sendVoice,
+  storesRead,
+  voiceKept,
+  watchVoiceNotes,
+} from "@/lib/home-link/voice-copy"
 import type { JobEvent, JobsState } from "@/lib/jobs/model"
 import { EMPTY } from "@/lib/jobs/model"
+import { keepSoundbites } from "@/lib/soundbite-keeping"
 import { keepStudio } from "@/lib/studio-keeping"
 import type { VoiceHome } from "@/lib/voice-home/runtime"
 import { createVoiceHome } from "@/lib/voice-home/runtime"
@@ -34,13 +47,29 @@ const fakes = vi.hoisted(
       mimeType: string
       at: string
     }>
-  } => ({ jobs: null, audio: new Map(), home: null, scene: [] })
+    /** Studio's choice and its waiting takes, as its route hands them in. */
+    letGo: "home" | "drive" | null
+    waitingIds: ReadonlyArray<string>
+    onDrive: Array<ReadonlyArray<string>>
+    /** Whether the phone is paired with home. */
+    paired: boolean
+  } => ({
+    jobs: null,
+    audio: new Map(),
+    home: null,
+    scene: [],
+    letGo: null,
+    waitingIds: [],
+    onDrive: [],
+    paired: true,
+  })
 )
 
 vi.mock("@/lib/jobs", () => ({
   phoneJobs: (): unknown => ({
     getSnapshot: () => fakes.jobs,
     subscribe: () => (): void => undefined,
+    letGo: (): void => undefined,
   }),
   jobVoiceAudio: (): unknown => ({
     get: (id: string): Promise<Blob | null> => {
@@ -64,6 +93,7 @@ vi.mock("@/lib/reflection-voice", () => ({
   isSaving: (): boolean => false,
   onAudioSettled: () => (): void => undefined,
   reflectionAudio: (): unknown => ({ get: () => Promise.resolve(null) }),
+  reflectionNotesKept: (): void => undefined,
 }))
 vi.mock("@/lib/scene-voice", () => ({
   phoneSceneVoice: (): unknown => ({
@@ -75,6 +105,7 @@ vi.mock("@/lib/scene-voice", () => ({
     audio: (id: string): Promise<Blob | null> =>
       Promise.resolve(id === "s1" ? new Blob(["s"]) : null),
   },
+  sceneNotesKept: (): void => undefined,
 }))
 vi.mock("@/lib/voice-home", () => ({
   phoneVoiceHome: (): VoiceHome | null => fakes.home,
@@ -83,9 +114,16 @@ vi.mock("@/lib/home-link/lanes", () => ({
   useLaneHome: (): unknown => null,
 }))
 vi.mock("@/lib/home-link", () => ({
-  homeLink: vi.fn(),
-  paired: (): boolean => true,
+  homeLink: (): unknown => ({ subscribe: () => (): void => undefined }),
+  paired: (): boolean => fakes.paired,
+  pairingOf: (): string => PAIRING,
 }))
+vi.mock("@some-ui/topik", () => ({
+  lensRecordHeldByHome: (): void => undefined,
+}))
+
+/** The pairing home's record is kept under, in this test's storage. */
+const PAIRING = "pairing-1"
 vi.mock("@some-ui/intent-kit", async (actual) => ({
   ...(await actual<object>()),
   reportFailure: vi.fn(),
@@ -173,8 +211,9 @@ const send: HomeCall = (_method, path) => {
 function setUp(
   room: number,
   audio: Record<string, Blob | Error | null>,
-  { arrived = false, storage = memoryStorage() } = {}
+  { arrived = false, storage = memoryStorage(), now = Date.now } = {}
 ): void {
+  fakes.paired = true
   fakes.jobs = record(Object.keys(audio), arrived)
   fakes.scene = []
   fakes.audio = new Map(
@@ -184,6 +223,7 @@ function setUp(
     storage,
     shelf: shelf(room),
     encode: () => Promise.resolve({ base64: "", sha256: "s" }),
+    now,
   })
 }
 
@@ -223,6 +263,28 @@ describe("the voice lane's run, after its copy pass (LA14)", () => {
     expect(waiting()).toBe(1)
   })
 
+  it("MIC3: says a note is kept on this phone, going home while its copy waits and the phone is paired, then on home since this phone heard so; one no lane carries stays kept on this phone", async () => {
+    const heard = "2026-11-01T09:15:00.000Z"
+    setUp(5, { v1: new Blob(["a"]) }, { now: () => Date.parse(heard) })
+    const said = (id: string): string => keptSaid(TAKE_WORDS, voiceKept(id))
+    expect(said("v1")).toBe(TAKE_WORDS.place.phone)
+
+    const busy: HomeCall = () => Promise.resolve({ status: 503, body: "" })
+    expect((await sendVoice(busy)).kind).toBe("failed")
+    expect(said("v1")).toBe(TAKE_WORDS.place.going)
+    // Unpaired, its copy goes nowhere: kept here until paired again.
+    fakes.paired = false
+    expect(said("v1")).toBe(TAKE_WORDS.place.phone)
+    fakes.paired = true
+    expect(said("v1")).toBe(TAKE_WORDS.place.going)
+
+    expect(await sendVoice(send)).toEqual({ kind: "synced" })
+    expect(voiceKept("v1")).toEqual({ place: "home", since: heard })
+    expect(said("v1")).toBe(TAKE_WORDS.place.homeSince(TAKE_WORDS.when(heard)))
+    // Rust Rounds' notes go home in no lane yet (RR6, #2237).
+    expect(said("rust-rounds-note")).toBe(TAKE_WORDS.place.phone)
+  })
+
   it("offers a Jobs note whose share arrived like any other, and names it gone when its audio is (LG1)", async () => {
     setUp(5, { r1: null, r2: null }, { arrived: true })
     expect(await sendVoice(send)).toEqual({ kind: "synced" })
@@ -233,32 +295,46 @@ describe("the voice lane's run, after its copy pass (LA14)", () => {
   })
 })
 
+/**
+ * Hands Studio's store in, as its route does: one take, t1, home doesn't hold
+ * yet. `keepStudio` has no undo, so every test after sees it too.
+ */
+function handStudioIn(): void {
+  const take = new Blob(["take"])
+  keepStudio({
+    store: {
+      list: () => Promise.resolve([]),
+      audio: (project: string, id: string) =>
+        Promise.resolve(project === "p1" && id === "t1" ? take : null),
+      friction: () => Promise.resolve([]),
+      subscribe: () => (): void => undefined,
+    },
+    timeLog: () => [],
+    notesForHome: () => [
+      {
+        id: "t1",
+        ref: "p1:s1:t1",
+        at: "2026-10-29T08:00:00.000Z",
+        contentType: "audio/webm",
+        project: "p1",
+      },
+    ],
+    letGoHeldTakes: () => Promise.resolve(0),
+    letGo: () => fakes.letGo,
+    waitingIds: () => fakes.waitingIds,
+    letGoOnDrive: (onDrive) => {
+      fakes.onDrive.push([...onDrive])
+      return Promise.resolve(1)
+    },
+    sittingKey: () => "s",
+  })
+}
+
 describe("Studio's takes, once its route hands them in (ST12)", () => {
   it("are counted waiting once read, copied for home as studio notes, and not counted once held", async () => {
     setUp(5, {})
     expect(waiting()).toBe(0)
-    const take = new Blob(["take"])
-    keepStudio({
-      store: {
-        list: () => Promise.resolve([]),
-        audio: (project: string, id: string) =>
-          Promise.resolve(project === "p1" && id === "t1" ? take : null),
-        friction: () => Promise.resolve([]),
-        subscribe: () => (): void => undefined,
-      },
-      timeLog: () => [],
-      notesForHome: () => [
-        {
-          id: "t1",
-          ref: "p1:s1:t1",
-          at: "2026-10-29T08:00:00.000Z",
-          contentType: "audio/webm",
-          project: "p1",
-        },
-      ],
-      letGoHeldTakes: () => Promise.resolve(0),
-      sittingKey: () => "s",
-    })
+    handStudioIn()
     const sent: Array<string> = []
     const recording: HomeCall = (method, path, init) => {
       sent.push(path)
@@ -268,6 +344,60 @@ describe("Studio's takes, once its route hands them in (ST12)", () => {
     expect(fakes.home?.getSnapshot().held).toEqual(["t1"])
     expect(sent.some((path) => path.includes("of=studio"))).toBe(true)
     expect(waiting()).toBe(0)
+    // No choice yet: home is not asked which takes Drive has.
+    expect(sent.some((path) => path.includes("on-drive"))).toBe(false)
+  })
+
+  /**
+   * LG1 (HF11): home's word that Drive has a take is asked for only under
+   * "Keep each until Drive has it too", after the notes synced, and lets go
+   * only what home named; a read that fails lets nothing go.
+   */
+  describe("home's word on which takes Drive has (LG1, HF11)", () => {
+    beforeAll(handStudioIn)
+
+    it.each([
+      ["home", false],
+      [null, false],
+      ["drive", true],
+    ] as const)(
+      "LG1: with the choice %s, home is asked which takes Drive has: %s",
+      async (letGo, asked) => {
+        setUp(5, {})
+        fakes.letGo = letGo
+        fakes.waitingIds = ["t1", "t:9"]
+        fakes.onDrive = []
+        const sent: Array<string> = []
+        const answering: HomeCall = (method, path, init) => {
+          sent.push(path)
+          if (path.startsWith("/voice-notes/on-drive"))
+            return Promise.resolve({
+              status: 200,
+              body: JSON.stringify({
+                onDrive: [{ note: "t1", listedAt: "2026-11-01T09:15:00.000Z" }],
+              }),
+            })
+          return send(method, path, init)
+        }
+        expect(await sendVoice(answering)).toEqual({ kind: "synced" })
+        expect(sent.includes("/voice-notes/on-drive?ids=t1,t%3A9")).toBe(asked)
+        expect(fakes.onDrive).toEqual(asked ? [["t1"]] : [])
+      }
+    )
+
+    it("LG1: a home that can't say which takes Drive has lets none go, and the run still ends as its notes did", async () => {
+      setUp(5, {})
+      fakes.letGo = "drive"
+      fakes.waitingIds = ["t1"]
+      fakes.onDrive = []
+      const old: HomeCall = (method, path, init) =>
+        path.startsWith("/voice-notes/on-drive")
+          ? Promise.resolve({ status: 404, body: "{}" })
+          : send(method, path, init)
+      expect(await sendVoice(old)).toEqual({ kind: "synced" })
+      expect(fakes.onDrive).toEqual([])
+      fakes.letGo = null
+    })
   })
 })
 
@@ -295,5 +425,100 @@ describe("the drama's scene notes (HF2)", () => {
     expect(sent).toContain(
       "/voice-notes/s1?of=scene&ref=next-scene&at=2026-10-31T08%3A00%3A00.000Z"
     )
+  })
+})
+
+describe("the soundbites, once their page hands them in (HF5)", () => {
+  /** What the soundbites' store answers its next list with. */
+  let listed: () => Promise<Array<Soundbite>> = () => Promise.resolve([])
+  /** Whether home held b1, read as each reading is handed to their page. */
+  const told: Array<boolean> = []
+  const bite: Soundbite = {
+    id: "b1",
+    recordedAt: "2026-10-31T08:30:00.000Z",
+    durationMs: 5000,
+    mimeType: "audio/webm",
+    bytes: 4,
+    context: {
+      source: "reminder",
+      lastSessionAt: null,
+      openSessions: 0,
+      timeZone: "UTC",
+    },
+  }
+  // Last: `keepSoundbites` has no undo, so every test after would list them.
+  beforeAll(() => {
+    keepSoundbites({
+      store: {
+        list: () => listed(),
+        audio: (id: string) =>
+          Promise.resolve(id === "b1" ? new Blob(["bite"]) : null),
+        subscribe: () => (): void => undefined,
+      },
+      heldByHome: (next): void => {
+        told.push(next()("b1"))
+      },
+    })
+  })
+
+  it("are copied as soundbites, and each read tells the lane's count", async () => {
+    setUp(5, {})
+    listed = (): Promise<Array<Soundbite>> => Promise.resolve([bite])
+    const heard = vi.fn()
+    const stop = storesRead.subscribe(heard)
+    const sent: Array<string> = []
+    const recording: HomeCall = (method, path, init) => {
+      sent.push(path)
+      return send(method, path, init)
+    }
+    expect(await sendVoice(recording)).toEqual({ kind: "synced" })
+    stop()
+    expect(heard).toHaveBeenCalled()
+    expect(fakes.home?.getSnapshot().held).toContain("b1")
+    expect(sent.some((path) => path.includes("of=soundbite"))).toBe(true)
+  })
+
+  it("that can't be listed are reported, fail the run as the phone's fault, and hold back none of the others", async () => {
+    setUp(5, { v1: new Blob(["a"]) })
+    fakes.scene = [
+      {
+        id: "s1",
+        durationMs: 4000,
+        mimeType: "audio/mp4",
+        at: "2026-10-31T09:00:00.000Z",
+      },
+    ]
+    listed = (): Promise<Array<Soundbite>> =>
+      Promise.reject(new Error("metadata unreadable"))
+    vi.mocked(reportFailure).mockClear()
+    expect(await sendVoice(send)).toEqual({ kind: "failed", why: "fault" })
+    // The Jobs note and the scene note after it went all the same.
+    expect(fakes.home?.getSnapshot().held).toEqual(
+      expect.arrayContaining(["v1", "s1"])
+    )
+    expect(vi.mocked(reportFailure)).toHaveBeenCalledWith(
+      expect.objectContaining({ port: "voice notes (list soundbites)" })
+    )
+  })
+
+  it("OS1: once Practice's run has their record home, the voice lane holding a bite's audio tells their page again", async () => {
+    setUp(5, {})
+    listed = (): Promise<Array<Soundbite>> => Promise.resolve([bite])
+    // Practice's run left b1's record on home; its audio is not there yet.
+    rememberSent(localStorage, readSent(localStorage, PAIRING), {
+      notes: { "soundbite:b1": "sha" },
+    })
+    const stop = watchVoiceNotes()
+    const before = told.length
+    expect(before).toBeGreaterThan(0)
+
+    expect(await sendVoice(send)).toEqual({ kind: "synced" })
+    expect(fakes.home?.getSnapshot().held).toContain("b1")
+    stop()
+    // Every reading handed before home held the audio said not held; the
+    // one handed once it did says held.
+    expect(told.length).toBeGreaterThan(before)
+    expect(told.slice(0, -1).every((held) => !held)).toBe(true)
+    expect(told.at(-1)).toBe(true)
   })
 })

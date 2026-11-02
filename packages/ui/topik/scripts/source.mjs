@@ -8,13 +8,18 @@ import { createServer } from "vite"
 
 const topik = resolve(import.meta.dirname, "..")
 
+const readText = (file) =>
+  readFileSync(resolve(process.env.INIT_CWD ?? process.cwd(), file), "utf8")
+
+/** The JSON in `file`, resolved against where the command was typed. */
+export function readJson(file) {
+  return JSON.parse(readText(file))
+}
+
 export function readArg(usage) {
   const [file] = process.argv.slice(2)
   if (!file) throw new Error(`usage: ${usage}`)
-  return readFileSync(
-    resolve(process.env.INIT_CWD ?? process.cwd(), file),
-    "utf8"
-  )
+  return readText(file)
 }
 
 export async function withSource(path, use) {
