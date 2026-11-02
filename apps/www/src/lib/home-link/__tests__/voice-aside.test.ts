@@ -36,6 +36,8 @@ const { AUDIO, desk } = vi.hoisted(() => {
       kept: takes,
       audio,
       keptWhere: (): void => undefined,
+      letGo: (): Promise<void> => Promise.resolve(),
+      audioFrom: (): void => undefined,
       phone: () => ({
         subscribe: () => (): void => undefined,
         takes: { subscribe: () => (): void => undefined },

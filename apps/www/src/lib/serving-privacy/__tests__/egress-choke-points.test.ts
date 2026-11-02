@@ -25,7 +25,10 @@
  *   `GET /routine/files` and whose telling of what was opened one
  *   `PUT /routine/opened`), and Studio's idea answers asking home for a
  *   take's words (`lib/idea-hearing`, whose read sends one
- *   `GET /voice-notes/:id/heard`) may call `lib/home-link`.
+ *   `GET /voice-notes/:id/heard`) may call `lib/home-link`. The voice lane
+ *   also hands Rust Rounds' notes a way to hear a note from home
+ *   (`lib/home-link/voice-audio`, RR6, whose read sends one
+ *   `GET /voice-notes/:id/audio` per play), read only by that lane.
  *
  * The last group feeds the checks known-bad sources, so a check that stopped
  * looking cannot stay green.
@@ -108,6 +111,7 @@ const KEEPERS = new Set([
   "lib/home-link/kept-runtime.ts",
   "lib/home-link/routine.ts",
   "lib/home-link/heard.ts",
+  "lib/home-link/voice-audio.ts",
 ])
 
 /** The routine's read, and the two requests it may send. */
@@ -127,6 +131,10 @@ const ON_DRIVE_SENDS = [['"GET"', "onDrivePath(chunk)"]]
 /** LA8, IH1: the read of one take's words, and the one request it may send. */
 const HEARD_READ = "lib/home-link/heard.ts"
 const HEARD_SENDS = [['"GET"', "heardPath(id)"]]
+
+/** LA8, RR6: the read of one Rust Rounds note's audio, and the one request it may send. */
+const AUDIO_READ = "lib/home-link/voice-audio.ts"
+const AUDIO_SENDS = [['"GET"', "audioPath(id)"]]
 
 /**
  * LA8, LA13 (MIC2): the voice lane's set-aside marks, and the one request
@@ -537,6 +545,20 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(read("lib/home-link/lanes.ts")).toContain("homeLink().keep(")
     expect(read(ROUTINE_READ)).toContain("homeLink().keep(")
     expect(read(HEARD_READ)).toContain("homeLink().keep(")
+    expect(read(AUDIO_READ)).toContain("homeLink().keep(")
+  })
+
+  it("sends nothing from the read of a note's audio but one GET of /voice-notes/:id/audio, and only the voice lane reads it (RR6)", () => {
+    expect(sendCalls(AUDIO_READ, read(AUDIO_READ))).toEqual(AUDIO_SENDS)
+    expect(read(AUDIO_READ)).toContain("/audio`")
+    const readers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /from "\.\/voice-audio"|from "@\/lib\/home-link\/voice-audio"/.test(
+          read(f)
+        )
+      )
+    expect(readers).toEqual(["lib/home-link/voice-copy.ts"])
   })
 
   it("sends nothing from the read of a take's words but one GET of /voice-notes/:id/heard, and only Studio's idea answers read it (IH1)", () => {

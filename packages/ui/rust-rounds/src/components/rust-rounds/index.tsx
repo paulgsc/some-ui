@@ -172,6 +172,50 @@ const VoiceNote = ({
   )
 }
 
+/**
+ * A refine card's earlier note: Play, from this phone or from home once its
+ * audio left (RR6), and what came of it.
+ */
+const EarlierNote = ({
+  state,
+  note,
+  dispatch,
+}: {
+  state: PlayState
+  note: string
+  dispatch: Dispatch
+}): JSX.Element => {
+  const { playback, unplayable } = state.notes
+  const playing = playback.kind !== "quiet" && playback.id === note
+  const said =
+    playback.kind === "loading" && playback.id === note
+      ? WORDS.earlierNoteReading
+      : unplayable === note
+        ? WORDS.earlierNoteUnplayable
+        : null
+  return (
+    <section className="bg-muted/40 flex flex-col items-start gap-2 rounded-xl p-3">
+      <h3 className="text-muted-foreground text-xs font-semibold">
+        {WORDS.earlierNote}
+      </h3>
+      <Button
+        size="sm"
+        variant="outline"
+        aria-pressed={playing}
+        disabled={state.notes.take.kind !== "idle"}
+        onClick={() => dispatch({ type: "playEarlier" })}
+      >
+        {playing ? WORDS.stopEarlier : WORDS.playEarlier}
+      </Button>
+      {said !== null && (
+        <p role="status" className="text-sm">
+          {said}
+        </p>
+      )}
+    </section>
+  )
+}
+
 /** The program a read or variant card shows, with rustc's span once seen. */
 const Program = ({
   round,
@@ -282,12 +326,7 @@ const CardScreen = ({
 
       {card.kind === "refine" ? (
         <>
-          <section className="bg-muted/40 flex flex-col gap-1 rounded-xl p-3">
-            <h3 className="text-muted-foreground text-xs font-semibold">
-              {WORDS.earlierNote}
-            </h3>
-            <p className="text-sm">{WORDS.earlierNoteMissing}</p>
-          </section>
+          <EarlierNote state={state} note={card.note} dispatch={dispatch} />
           <section className="flex flex-col gap-1">
             <h3 className="text-muted-foreground text-xs font-semibold">
               {WORDS.fromTutor}

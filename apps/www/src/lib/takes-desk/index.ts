@@ -11,8 +11,10 @@
  * A desk whose takes go home as voice notes (`lib/home-link/voice-copy`,
  * HF5 #2180) is told where each is kept (`keptWhere`): what home holds may
  * make room, and a pattern desk's rows say where each take is (MIC3). A desk
- * no lane tells keeps every take on this phone, and says so. Phone-only
- * (`build.paths.ts`).
+ * no lane tells keeps every take on this phone, and says so. A desk whose
+ * audio leaves (`audioLeaves`, Rust Rounds, RR6 #2237) lets each take's
+ * audio go once home holds it (`letGo`), keeping the take listed, and hears
+ * it from home after (`audioFrom`). Phone-only (`build.paths.ts`).
  */
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import { SOUNDBITE_BITS_PER_SECOND } from "@some-ui/soundbites/contract"
@@ -47,7 +49,8 @@ const isTake = (value: unknown): value is Take =>
   typeof Reflect.get(value, "mimeType") === "string" &&
   STANDINGS.includes(Reflect.get(value, "standing")) &&
   ["undefined", "number"].includes(typeof Reflect.get(value, "setAsideAt")) &&
-  ["undefined", "true"].includes(String(Reflect.get(value, "waits")))
+  ["undefined", "true"].includes(String(Reflect.get(value, "waits"))) &&
+  ["undefined", "true"].includes(String(Reflect.get(value, "onHome")))
 
 /** Whether a take is in its item's view: neither recorded again nor set aside. */
 export const inView = (take: Take): boolean => take.standing === undefined
@@ -95,6 +98,15 @@ type DeskShelf = {
    * take, and a pattern desk's rows say it (MIC3).
    */
   readonly keptWhere: (where: (id: string) => TakeKept) => void
+  /**
+   * On a desk whose audio leaves (`audioLeaves`), once a way to hear it from
+   * home is wired (`audioFrom`): lets the audio of each take `homeHolds`
+   * names go from this phone, keeping the take listed and marked `onHome`
+   * first (LG1). Anywhere else it does nothing.
+   */
+  readonly letGo: (homeHolds: ReadonlySet<string>) => Promise<void>
+  /** Where a take whose audio is not on this phone is heard from: home's. */
+  readonly audioFrom: (back: (id: string) => Promise<Blob | null>) => void
 }
 
 export type TakesDesk = DeskShelf & { readonly phone: () => PhoneTakes }
@@ -112,6 +124,14 @@ type DeskOptions = {
    * no Let go.
    */
   readonly from: MarkFrom | null
+  /**
+   * Each take's audio leaves this phone once home holds it, and is heard
+   * from home after (Rust Rounds, RR6): the take stays listed. Without it,
+   * every take's audio stays until the take does.
+   */
+  readonly audioLeaves?: true | undefined
+  /** The audio's shelf: on this device unless a test gives one in memory. */
+  readonly shelf?: ReturnType<typeof savingShelf> | undefined
 }
 
 type PatternDeskOptions = DeskOptions & {
@@ -130,10 +150,25 @@ type Runtime = {
   readonly recount: () => void
 }
 
+/** A desk's list: the pattern's, and the mark that a take's audio left. */
+type DeskList = PatternTakesPorts["takes"] & {
+  /**
+   * Marks these takes as heard from home (`onHome`), once each. Says whether
+   * the device stored it.
+   */
+  readonly markOnHome: (ids: ReadonlyArray<string>) => boolean
+}
+
 /** The desk's list in `localStorage` under `key`, at most `max` takes long. */
-export function deskList(key: string, max: number): PatternTakesPorts["takes"] {
+export function deskList(key: string, max: number): DeskList {
   const list = boundedList(key, max, isTake)
   return {
+    markOnHome: (ids): boolean =>
+      list.update((take) =>
+        ids.includes(take.id) && take.onHome !== true
+          ? { ...take, onHome: true }
+          : take
+      ),
     read: list.read,
     add: (take, supersedes): boolean =>
       list.put(
@@ -194,13 +229,17 @@ function desk<R extends Runtime>(
   const takes = deskList(options.key, options.limits.max)
   // Nothing keeps it free; the device's measured budget (`withRoom`) still
   // refuses a take the phone has no room for.
-  const shelf = savingShelf({
-    dbName: options.dbName,
-    maxBytes: maxBytes(options.limits),
-  })
+  const shelf =
+    options.shelf ??
+    savingShelf({
+      dbName: options.dbName,
+      maxBytes: maxBytes(options.limits),
+    })
 
   // On this phone until the voice notes' lane says otherwise.
   let where: (id: string) => TakeKept = () => ON_PHONE
+  // No way back from home until the lane wires one (`audioFrom`).
+  let back: ((id: string) => Promise<Blob | null>) | null = null
   let runtime: R | null = null
   const phone = (): R => {
     runtime ??= make({
@@ -216,6 +255,7 @@ function desk<R extends Runtime>(
       kept: (id) => where(id),
       from: options.from,
       held: (id) => homeHolds(where(id)),
+      back: () => back,
     })
     return runtime
   }
@@ -230,8 +270,9 @@ function desk<R extends Runtime>(
       audio
         .ids()
         .then(async (stored) => {
+          // A take heard from home is not silent: its audio left on purpose.
           const silent = listed
-            .filter(({ id }) => !stored.includes(id))
+            .filter(({ id, onHome }) => onHome !== true && !stored.includes(id))
             .map(({ id }) => id)
           // Through the runtime, so a screen showing the takes sees them go.
           if (silent.length > 0) phone().letGo(silent)
@@ -268,6 +309,24 @@ function desk<R extends Runtime>(
     keptWhere: (next): void => {
       where = next
       runtime?.recount()
+    },
+    letGo: async (holds): Promise<void> => {
+      if (options.audioLeaves !== true || back === null) return
+      const going = takes
+        .read()
+        .filter(
+          (take) =>
+            take.onHome !== true && take.waits !== true && holds.has(take.id)
+        )
+        .map(({ id }) => id)
+      if (going.length === 0) return
+      // LG1: the mark first, so audio is never gone from a take that still
+      // reads as this phone's alone; a mark not stored lets nothing go.
+      if (!takes.markOnHome(going)) return
+      await shelf.shelf().remove(going)
+    },
+    audioFrom: (next): void => {
+      back = next
     },
   }
 }
