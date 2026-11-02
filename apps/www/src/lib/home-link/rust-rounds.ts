@@ -1,12 +1,6 @@
 /**
- * Rust Rounds' lane (RR4b, #2347; LA15, docs/learner-data-authority.md):
- * each round pasted on this phone that home doesn't hold yet goes home, so
- * home's rust-runner records its programs, and the rounds home holds come
- * back with the runs recorded of them (`exchangeRounds`, in
- * `@some-ui/rust-rounds`'s `lib/home`), through the one wiring (`./lanes`).
- * The app shell mounts its watch on every screen, so rounds and runs are
- * fetched ahead whenever the phone is near home and the app is open, and
- * the session plays from the phone alone: no screen waits on this.
+ * Rust Rounds' lane (RR4b, #2347; LA15): `exchangeRounds` in
+ * `@some-ui/rust-rounds`'s `lib/home`, through the one wiring (`./lanes`).
  *
  * Its record moves with each round taken on this phone, never with one taken
  * from home. The lane has no wing mark: Settings' readout says where the

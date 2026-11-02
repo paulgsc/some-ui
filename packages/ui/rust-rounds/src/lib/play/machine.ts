@@ -46,10 +46,6 @@
  *   card logs it (`fromMyDesk`) when anything was pasted, once its note has
  *   landed if a take on it was under way (`deskPending`, kept with the place
  *   as `pending` is). Nothing on the step waits: Back is always there.
- * - **What home sends plays as it lands.** A round home holds, or a run home
- *   recorded, reaches an open session as `held` (the store's merge of every
- *   write), and the card on screen shows a run once one is held. No step
- *   waits for it.
  * - **rustc's result is never compared with the pick on screen.** The
  *   tutor's guess is checked only to log `tutorGuessedWrong`.
  * - **A card's kept note is the card's note**, on the take pattern
@@ -246,10 +242,7 @@ type PlaySignal =
       readonly record: KeptRecord
       readonly ok: boolean
     }
-  /**
-   * What plays, as stored after a write by the session or by the exchange
-   * with home: only ever more rounds and runs than the session held.
-   */
+  /** What plays, as stored after any write of it. */
   | { readonly type: "held"; readonly held: Held }
 
 /** An intent, stamped with when it happened (ISO 8601) by the runtime. */

@@ -2,9 +2,7 @@
  * Rust Rounds' ports on the phone (`@some-ui/rust-rounds`, #2235): its kept
  * records in this device's storage, its voice notes on a takes desk of their
  * own (`lib/takes-desk`), the clipboard, the clock and the page. Nothing here
- * reaches the network: every card plays from what is on the phone. A paired
- * phone's lane (`lib/home-link/rust-rounds`, RR4b) sends pasted rounds home
- * and adds home's rounds and runs to what plays, through `phoneRounds`.
+ * reaches the network: every card plays from what is on the phone.
  * Phone-only (`build.paths.ts`).
  *
  * The voice notes are taken on the take pattern (`patternDesk`). They wait

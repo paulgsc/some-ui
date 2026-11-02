@@ -14,9 +14,7 @@
  *   pasted here is sent home (`lib/home`), and the rounds home holds come
  *   back with the runs home recorded of their programs: a round the phone
  *   lacks is appended, and a card's run is filled in once and never
- *   replaced. Two writers keep this record, the session and the exchange
- *   with home, so a write is merged into what is stored (`mergeHeld`), never
- *   laid over it.
+ *   replaced. Every write is merged (`mergeHeld`).
  */
 import type {
   Card,

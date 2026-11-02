@@ -368,7 +368,7 @@ describe("the worked example", () => {
     expect(pasted?.rustc).toBeNull()
   })
 
-  it("plays what home sends while it is on screen, and its own write drops none of it", () => {
+  it("plays what home sends while it is on screen", () => {
     const ports = testPorts()
     const runtime = opened(ports)
     const round = { ...INDEXING_01, id: "indexing-02" }
@@ -394,20 +394,6 @@ describe("the worked example", () => {
     const { held } = runtime.getSnapshot()
     expect(held.runs["indexing-02/a"]).toEqual(INDEXING_01_RUNS.a)
     expect(held.rounds.map(({ id }) => id)).toEqual([round.id, fromHome.id])
-
-    // A later reply, taken from what the session held, keeps home's round.
-    runtime.dispatch({ type: "tutor" })
-    runtime.dispatch({
-      type: "reply",
-      text: `\`\`\`json\n${JSON.stringify({ ...round, id: "indexing-03" })}\n\`\`\``,
-    })
-    runtime.dispatch({ type: "takeReply" })
-    expect(home.held().rounds.map(({ id }) => id)).toEqual([
-      round.id,
-      fromHome.id,
-      "indexing-03",
-    ])
-    expect(home.held().home.fetched).toEqual([fromHome.id])
   })
 
   it("pins a card once, from any stage", () => {

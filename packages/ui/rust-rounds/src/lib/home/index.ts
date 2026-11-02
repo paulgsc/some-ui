@@ -35,6 +35,7 @@ import {
 } from "@rust-rounds/lib/formats"
 import type { Held, HomeRefusal } from "@rust-rounds/lib/play/held"
 import { cardKey, playable, runOf } from "@rust-rounds/lib/play/held"
+import type { RoundsStore } from "@rust-rounds/lib/play/store"
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 import { canonicalJson, readAs, unexpectedAnswer } from "@some-ui/core-utils"
 import { z } from "zod"
@@ -50,12 +51,7 @@ const roundPath = (id: string): string =>
 export const READS_PER_EXCHANGE = 20
 
 /** What the exchange reads and writes of what plays. */
-export type RoundsHomePort = {
-  /** What plays, as stored now. */
-  readonly held: () => Held
-  /** Merges `held` into what is stored; false when the phone did not keep it. */
-  readonly hold: (held: Held) => boolean
-}
+export type RoundsHomePort = Pick<RoundsStore, "held" | "hold">
 
 const RoundListSchema = z.object({
   rounds: z.array(z.object({ id: z.string() })),
@@ -193,14 +189,12 @@ function takeFromHome(held: Held, from: RoundFromHome): Held {
     const run = recorded(program.runs)
     if (run !== null) runs[key] = run
   }
-  const taken =
-    mine === undefined
-      ? {
-          rounds: [...held.rounds, round],
-          home: { ...held.home, fetched: [...held.home.fetched, round.id] },
-        }
-      : {}
-  return { ...held, runs, ...taken }
+  return mine === undefined
+    ? withHome(
+        { ...held, runs, rounds: [...held.rounds, round] },
+        { fetched: [...held.home.fetched, round.id] }
+      )
+    : { ...held, runs }
 }
 
 const FORGOTTEN: HomeExchanged = { kind: "forgotten" }
@@ -248,7 +242,7 @@ export async function exchangeRounds(
     const from = readAs(RoundWithRunsSchema, answer.body)
     const kept = keep((held) =>
       from === null
-        ? { ...held, home: { ...held.home, unread: [...held.home.unread, id] } }
+        ? withHome(held, { unread: [...held.home.unread, id] })
         : takeFromHome(held, from)
     )
     if (kept === false) return NOT_KEPT

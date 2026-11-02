@@ -941,14 +941,8 @@ as such (`kept.test.ts`), and that the shell's drain sends nothing unpaired
 and sends once paired on the moments below, while a mark sends nothing of
 its own (`components/__tests__/device-home-glyph.test.tsx`). What no test
 can say is when a run is asked for. Rust Rounds' lane
-(`rust-rounds.ts`) is held by `packages/ui/rust-rounds/src/lib/home/index.test.ts`:
-a pasted round goes home once, home's rounds and recorded runs are only
-added to what plays (a card's run is filled once, only a recorded run is
-taken, a round under an id the phone holds other cards under is left on
-home), at most `READS_PER_EXCHANGE` rounds are read in a run, the rounds the
-phone lacks first, and nothing the session wrote while the run was on its
-way is lost; and by `components/__tests__/device-home-glyph.test.tsx`, which
-holds that the shell's drain runs it.
+(`rust-rounds.ts`) is held by `packages/ui/rust-rounds/src/lib/home/index.test.ts`
+and `components/__tests__/device-home-glyph.test.tsx`.
 
 - _Claim:_ `askKept` (`lib/home-link/kept-watch.ts`) asks for a run of a lane
   only while the phone is paired and the document is visible, and only at a

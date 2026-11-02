@@ -16,11 +16,8 @@
  *   `append` says false until every one of them is in the log.
  * - `HELD_KEY`, what plays: the rounds taken, rustc's recorded runs, every
  *   version of the tutor notes, and what the phone knows of the rounds home
- *   holds (`./held`). Two writers keep it, the session and the exchange with
- *   home (`lib/home`), so `hold` merges into what is stored (`mergeHeld`)
- *   and never lays a stale copy over it; every keeper of the same storage
- *   hears each write (`subscribe`), so an open session plays what home sent
- *   while it is on screen.
+ *   holds (`./held`). `hold` merges (`mergeHeld`), and every keeper of the
+ *   same storage hears each write (`subscribe`).
  * - `PLACE_KEY`, the card on screen and how far into it, so leaving at any
  *   card and coming back lands on it with nothing lost; the take under way
  *   (`taking`) and the cards left while their voice note was still being
@@ -50,7 +47,7 @@ import { openKept, readJson, writeKept } from "@some-ui/core-utils"
 import { z } from "zod"
 
 import type { Held } from "./held"
-import { mergeHeld, NOTHING_HELD } from "./held"
+import { mergeHeld, NOTHING_HELD, NOTHING_ON_HOME } from "./held"
 import { HELD_KEY, LOG_KEY, PLACE_KEY } from "./keys"
 import type { LogAdd, SessionHead } from "./log"
 import { appendToLog, EMPTY_LOG, holdsAdd } from "./log"
@@ -137,7 +134,12 @@ const HeldSchema = z.strictObject({
       ),
       unread: z.array(z.string()),
     })
-    .default(() => ({ sent: [], fetched: [], refused: [], unread: [] })),
+    .default(() => ({
+      sent: [...NOTHING_ON_HOME.sent],
+      fetched: [...NOTHING_ON_HOME.fetched],
+      refused: [...NOTHING_ON_HOME.refused],
+      unread: [...NOTHING_ON_HOME.unread],
+    })),
 })
 
 const TitleSchema = z.strictObject({
@@ -250,10 +252,7 @@ export type RoundsStore = {
   readonly flush: () => boolean
   /** What plays, as stored now. */
   readonly held: () => Held
-  /**
-   * Keeps what plays, merged into what is stored (`mergeHeld`): nothing
-   * stored is dropped. False when the phone did not keep it.
-   */
+  /** Keeps what plays (`mergeHeld`); false when the phone did not keep it. */
   readonly hold: (held: Held) => boolean
   /**
    * Calls `listener` after each write of what plays, by any keeper of the
@@ -277,13 +276,16 @@ function listenersOf(storage: KeyedStorage): Set<() => void> {
 
 /** The records in `storage`; with none (or one that throws), nothing is kept. */
 export function keptRounds(storage: KeyedStorage | null): RoundsStore {
-  const openHeld = (): Held => {
-    const { v: _held, ...held } = openKept(storage, HELD_KEY, readHeld, {
+  /** What plays as stored, and whether it may be written over. */
+  const keptHeld = (): { held: Held; writable: boolean } => {
+    const kept = openKept(storage, HELD_KEY, readHeld, {
       v: 1,
       ...NOTHING_HELD,
-    }).value
-    return held
+    })
+    const { v: _held, ...held } = kept.value
+    return { held, writable: kept.writable }
   }
+  const openHeld = (): Held => keptHeld().held
   const openPlace = (): z.infer<typeof PlaceRecordSchema> =>
     openKept(storage, PLACE_KEY, readPlace, NO_PLACE).value
   /**
@@ -335,16 +337,12 @@ export function keptRounds(storage: KeyedStorage | null): RoundsStore {
     flush: (): boolean => write(waiting()),
     held: openHeld,
     hold(held): boolean {
-      const stored = openKept(storage, HELD_KEY, readHeld, {
-        v: 1,
-        ...NOTHING_HELD,
-      })
+      const stored = keptHeld()
       if (!stored.writable) return false
-      const { v: _held, ...before } = stored.value
       const written = writeKept(
         storage,
         HELD_KEY,
-        { v: 1, ...mergeHeld(before, held) },
+        { v: 1, ...mergeHeld(stored.held, held) },
         readHeld
       )
       if (written && storage !== null) {

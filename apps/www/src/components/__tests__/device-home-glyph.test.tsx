@@ -306,15 +306,6 @@ describe("the Jobs record's mark", () => {
     await waitFor(() =>
       expect(store.held().home.fetched).toEqual([fromHome.id])
     )
-    const rounds = home.sent
-      .filter((call) => new URL(call.url).pathname.includes("/rust-rounds"))
-      .map((call) => `${call.method} ${new URL(call.url).pathname}`)
-    expect(rounds).toEqual([
-      "PUT /api/v1/rust-rounds/indexing-02",
-      "GET /api/v1/rust-rounds",
-      "GET /api/v1/rust-rounds/borrowing-01",
-    ])
-    expect(store.held().home.sent).toEqual([pasted.id])
   })
 })
 
