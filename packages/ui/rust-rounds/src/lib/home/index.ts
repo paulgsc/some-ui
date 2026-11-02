@@ -34,7 +34,12 @@ import {
   RustcRunSchema,
 } from "@rust-rounds/lib/formats"
 import type { Held, HomeRefusal } from "@rust-rounds/lib/play/held"
-import { cardKey, playable, runOf } from "@rust-rounds/lib/play/held"
+import {
+  cardKey,
+  noRunWillCome,
+  playable,
+  runOf,
+} from "@rust-rounds/lib/play/held"
 import type { RoundsStore } from "@rust-rounds/lib/play/store"
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 import { canonicalJson, readAs, unexpectedAnswer } from "@some-ui/core-utils"
@@ -122,8 +127,10 @@ function afterSend(held: Held, id: string, status: number): Held | null {
  * The rounds home lists to read: first each the phone lacks, then each it
  * holds as home does with a card that has no run on the phone yet, each
  * newest first, as home lists them; none the phone holds other cards under,
- * can't read, or still has to send. At most `READS_PER_EXCHANGE`, so rounds
- * waiting on home's runs never keep a new round from coming.
+ * can't read, or still has to send. A card whose program home ended for
+ * good is not waiting (`OnHome.ended`), so rounds home will never run can't
+ * fill the reads. At most `READS_PER_EXCHANGE`, so rounds waiting on home's
+ * runs never keep a new round from coming.
  */
 function roundsToRead(
   held: Held,
@@ -146,12 +153,18 @@ function roundsToRead(
     // home's only once home took it.
     if (mine !== rounds[0] && !onHome.has(id)) continue
     const programs = [...resolvePrograms(mine).keys()]
-    if (programs.some((card) => runOf(held, { round: id, card }) === null)) {
+    const waits = (card: string): boolean =>
+      runOf(held, { round: id, card }) === null &&
+      !noRunWillCome(held, { round: id, card })
+    if (programs.some(waits)) {
       unrun.push(id)
     }
   }
   return [...lacking, ...unrun].slice(0, READS_PER_EXCHANGE)
 }
+
+/** How home ended a program for good without a recording. */
+const ENDED_FOR_GOOD: ReadonlySet<string> = new Set(["refused", "runner-lost"])
 
 /** The first run home recorded of a program, as the phone reads one. */
 function recorded(
@@ -167,7 +180,8 @@ function recorded(
 
 /**
  * `held` with what home holds of one round added: the round, if the phone
- * lacks it, and each card's first recorded run the phone has none of. A
+ * lacks it, each card's first recorded run the phone has none of, and each
+ * card home ended for good with no recording, which waits no more. A
  * round the phone can't read is noted, so it is not read again; one the
  * phone holds other cards under is left as it is.
  */
@@ -183,18 +197,23 @@ function takeFromHome(held: Held, from: RoundFromHome): Held {
   }
   const programs = resolvePrograms(round)
   const runs: Record<string, RustcRun> = { ...held.runs }
+  const ended = new Set(held.home.ended)
   for (const program of from.programs) {
     const key = cardKey({ round: round.id, card: program.card })
     if (!programs.has(program.card) || runs[key] !== undefined) continue
     const run = recorded(program.runs)
     if (run !== null) runs[key] = run
+    else if (program.runs.some(({ ended: how }) => ENDED_FOR_GOOD.has(how))) {
+      ended.add(key)
+    }
   }
+  const next = withHome({ ...held, runs }, { ended: [...ended] })
   return mine === undefined
     ? withHome(
-        { ...held, runs, rounds: [...held.rounds, round] },
+        { ...next, rounds: [...held.rounds, round] },
         { fetched: [...held.home.fetched, round.id] }
       )
-    : { ...held, runs }
+    : next
 }
 
 const FORGOTTEN: HomeExchanged = { kind: "forgotten" }

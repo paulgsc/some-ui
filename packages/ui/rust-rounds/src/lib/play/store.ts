@@ -133,12 +133,14 @@ const HeldSchema = z.strictObject({
         })
       ),
       unread: z.array(z.string()),
+      ended: z.array(z.string()).default([]),
     })
     .default(() => ({
       sent: [...NOTHING_ON_HOME.sent],
       fetched: [...NOTHING_ON_HOME.fetched],
       refused: [...NOTHING_ON_HOME.refused],
       unread: [...NOTHING_ON_HOME.unread],
+      ended: [...NOTHING_ON_HOME.ended],
     })),
 })
 

@@ -1967,7 +1967,7 @@
     {
       "store": "phone:rust-rounds-held",
       "class": "record",
-      "growth": "Per round taken from a tutor's reply or from home (a few KB of cards, at most 32 KiB, home's ROUND_CEILING, for one from home), each version of the tutor notes taken with one, one recorded rustc run per read or variant card, filled once when the phone brings it from home (RR4b, at most 4 KiB of what the program printed on each stream), and per round the phone knows home holds, refused or can't read, its id; only added to, never rewritten or dropped, by the session and by the lane alike (each write is merged into what is stored); no cap (`some-ui:rust-rounds.held`).",
+      "growth": "Per round taken from a tutor's reply or from home (a few KB of cards, at most 32 KiB, home's ROUND_CEILING, for one from home), each version of the tutor notes taken with one, one recorded rustc run per read or variant card, filled once when the phone brings it from home (RR4b, at most 4 KiB of what the program printed on each stream), per round the phone knows home holds, refused or can't read, its id, and per card whose program home ended for good without a recording, its key; only added to, never rewritten or dropped, by the session and by the lane alike (each write is merged into what is stored); no cap (`some-ui:rust-rounds.held`).",
       "family": "what-is-kept"
     },
     {

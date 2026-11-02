@@ -74,6 +74,9 @@ export const WORDS = {
   rustcPrinted: "What rustc printed",
   noRun:
     "No run of this program is on this phone yet. It shows here once home has run it and this phone has been near home.",
+  /** A card whose program home could not run, and never will. */
+  noRunWillCome:
+    "Home couldn't run this program, so no run of it will come. The card plays without one.",
   compiling: "rustc printed while compiling",
   printed: "It printed",
   printedNothing: "It printed nothing.",

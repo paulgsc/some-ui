@@ -14,7 +14,12 @@ import {
   roundsTaken,
   roundsToSend,
 } from "@rust-rounds/lib/home"
-import { NOTHING_HELD, playable, runOf } from "@rust-rounds/lib/play/held"
+import {
+  noRunWillCome,
+  NOTHING_HELD,
+  playable,
+  runOf,
+} from "@rust-rounds/lib/play/held"
 import { keptRounds } from "@rust-rounds/lib/play/store"
 import { INDEXING_01, INDEXING_01_RUNS } from "@rust-rounds/lib/worked-example"
 import type { HomeAnswer, HomeCall } from "@some-ui/core-utils"
@@ -182,6 +187,9 @@ describe("exchangeRounds", () => {
     expect(roundsTaken(held)).toBe(0)
     expect(runOf(held, { round: PASTED.id, card: "a" })).toEqual(PRINTS)
     expect(runOf(held, { round: PASTED.id, card: "b" })).toBeNull()
+    // Home refused b's program for good: it waits for no run.
+    expect(noRunWillCome(held, { round: PASTED.id, card: "b" })).toBe(true)
+    expect(noRunWillCome(held, { round: PASTED.id, card: "c" })).toBe(false)
   })
 
   it("keeps a card's first run, and the worked example's bundled runs stand", async () => {
@@ -252,6 +260,42 @@ describe("exchangeRounds", () => {
     })
     // What landed before the failure is kept.
     expect(store.held().home.sent).toEqual([PASTED.id])
+  })
+
+  it("reads an older round once home records it, behind READS_PER_EXCHANGE newer rounds home will never run", async () => {
+    const store = phone()
+    const at = home()
+    const programs = [...resolvePrograms(PASTED).keys()]
+    at.rounds.set("old-01", { ...PASTED, id: "old-01" })
+    await exchangeRounds(store, at.send)
+    expect(store.held().home.fetched).toEqual(["old-01"])
+
+    // Newer rounds, every program refused or lost for good.
+    for (let n = 0; n < READS_PER_EXCHANGE; n += 1) {
+      const id = `blocked-${String(n + 10)}`
+      at.rounds.set(id, { ...PASTED, id })
+      for (const [index, card] of programs.entries()) {
+        at.runs.set(`${id}/${card}`, [
+          {
+            ended: index % 2 === 0 ? "refused" : "runner-lost",
+            rustc: STOPPED,
+          },
+        ])
+      }
+    }
+    await exchangeRounds(store, at.send)
+    expect(store.held().home.fetched).toHaveLength(READS_PER_EXCHANGE + 1)
+
+    // The old round's programs are recorded at last.
+    for (const card of programs) {
+      at.runs.set(`old-01/${card}`, [{ ended: "recorded", rustc: PRINTS }])
+    }
+    at.calls.length = 0
+    await exchangeRounds(store, at.send)
+    expect(at.calls).toEqual(["GET /rust-rounds", "GET /rust-rounds/old-01"])
+    for (const card of programs) {
+      expect(runOf(store.held(), { round: "old-01", card })).toEqual(PRINTS)
+    }
   })
 
   it("reads at most READS_PER_EXCHANGE rounds, newest first, and notes one it can't read", async () => {

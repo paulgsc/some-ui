@@ -1148,11 +1148,15 @@ and `components/__tests__/device-home-glyph.test.tsx`.
 - _Tolerance:_ Studio's time log tells no one of a write, so a screen
   entered or left in Studio asks for no run, and Practice's waiting count
   shows it from the count's next redraw (#2425). Rust Rounds: a round home
-  holds whose programs home has not recorded yet (recording is off, or the
-  runner is down) is read again on each run, at most `READS_PER_EXCHANGE`
-  of them, until home has; and what the phone knows home holds is of the
-  home it learned it from, so pairing with another home sends no round
-  sent to the first (RR4b, #2347).
+  holds with a program home has not recorded yet (recording is off, or the
+  runner is down) is read again on each run, the rounds the phone lacks
+  first, at most `READS_PER_EXCHANGE` in all, until home has; a program home
+  ended for good without a recording (refused, or lost twice) is marked on
+  its card (`ended`) and waits no more, so such rounds never fill the reads,
+  and a recording home makes of it later under another toolchain is not
+  fetched; and what the phone knows home holds is of the home it learned it
+  from, so pairing with another home sends no round sent to the first
+  (RR4b, #2347).
 
 ### LA16: written reflections are kept on home, append-only, and the phone lets one go only once home holds it
 

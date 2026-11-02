@@ -21,6 +21,7 @@ import {
   deskConcepts,
   locate,
   newRounds,
+  noRunWillCome,
   playable,
   refinesWaiting,
   runOf,
@@ -62,9 +63,20 @@ const Printed = ({
 )
 
 /** rustc's recorded result, laid out from its JSON, as printed. */
-const RunView = ({ run }: { run: RustcRun | null }): JSX.Element => {
+const RunView = ({
+  run,
+  ended,
+}: {
+  run: RustcRun | null
+  /** Home ended the program for good without a run: none will come. */
+  ended: boolean
+}): JSX.Element => {
   if (run === null) {
-    return <p className="text-muted-foreground text-sm">{WORDS.noRun}</p>
+    return (
+      <p className="text-muted-foreground text-sm">
+        {ended ? WORDS.noRunWillCome : WORDS.noRun}
+      </p>
+    )
   }
   const compiling =
     run.outcome !== "compile-error" && run.compileStderr !== "" ? (
@@ -332,7 +344,15 @@ const CardScreen = ({
               />
             </>
           )}
-          {visit.stage === "see" && <RunView run={run} />}
+          {visit.stage === "see" && (
+            <RunView
+              run={run}
+              ended={noRunWillCome(state.held, {
+                round: visit.round,
+                card: visit.card,
+              })}
+            />
+          )}
           <Actions>
             {visit.stage !== "see" && (
               <Button

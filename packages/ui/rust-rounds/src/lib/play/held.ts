@@ -54,6 +54,12 @@ export type OnHome = {
   readonly refused: ReadonlyArray<HomeRefusal>
   /** Rounds home holds that this phone can't read, so doesn't play. */
   readonly unread: ReadonlyArray<string>
+  /**
+   * Cards, by `cardKey`, whose program home ended for good without a
+   * recording (refused, or the runner lost twice): no run of it will come,
+   * so the card stops waiting for one and is not asked about again.
+   */
+  readonly ended: ReadonlyArray<string>
 }
 
 export type Held = {
@@ -73,6 +79,7 @@ export const NOTHING_ON_HOME: OnHome = {
   fetched: [],
   refused: [],
   unread: [],
+  ended: [],
 }
 
 export const NOTHING_HELD: Held = {
@@ -132,6 +139,7 @@ export function mergeHeld(stored: Held, next: Held): Held {
       unread: joined(stored.home.unread, next.home.unread).filter(
         (id) => !onHome.has(id)
       ),
+      ended: joined(stored.home.ended, next.home.ended),
     },
   }
 }
@@ -152,6 +160,10 @@ export function runOf(held: Held, ref: CardRef): RustcRun | null {
     ? (INDEXING_01_RUNS[ref.card] ?? null)
     : null
 }
+
+/** Home ended the card's program for good without a run (`OnHome.ended`). */
+export const noRunWillCome = (held: Held, ref: CardRef): boolean =>
+  held.home.ended.includes(cardKey(ref))
 
 /** The tutor notes written last: the worked example's before any were taken. */
 export function notesNow(held: Held): TutorNotes {
