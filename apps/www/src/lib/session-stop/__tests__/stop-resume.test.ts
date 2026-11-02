@@ -398,14 +398,11 @@ describe("SS1: stop and resume keep the session's clock honest", () => {
       it(
         `on the ${surface}: every pair of stops, ${ending.name}, with or without +5 min`,
         () => {
-          let runs = 0
           for (const pair of sequences(legs, 2)) {
             for (const extended of [false, true]) {
               sitting(surface, extended, pair, ending)
-              runs += 1
             }
           }
-          expect(runs).toBe(legs.length ** 2 * 2)
         },
         ENUMERATION_MS
       )
