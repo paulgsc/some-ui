@@ -5,19 +5,23 @@
  * `handlers/leetype_log.rs`, docs/identity.md invariant 18: a spoken answer
  * without its ticks), then one read of the session back, compared event by
  * event (LA8). Phone to home only, and the phone keeps its whole log:
- * nothing here lets an event go.
+ * nothing here lets an event go. Beside it, `sendWhole`, the one PUT per
+ * item the written reflections (`./reflections`) and the asks for the next
+ * scene (`./prompts`) go by, and `sendEach`, the one PUT per item the study
+ * notes (`./notes`) and the grammar-lens record (`./lens-record`) go by.
  */
 import type { HomeCall } from "@some-ui/core-utils"
-import { canonicalJson, isRecord } from "@some-ui/core-utils"
-import type { HomeSession } from "@some-ui/leetype"
+import { canonicalJson, isRecord, jsonOf } from "@some-ui/core-utils"
+import type { HomeSession, SessionLog, SessionLogStore } from "@some-ui/leetype"
 
-import { digestOf } from "./sent"
+import { digestOf, fingerprintOf } from "./sent"
 import type { EndedReport } from "./shelf"
 import { answerOrEnd } from "./shelf"
 
 /**
  * How a log's part of a send went (LeetType's sessions, Studio's sittings
- * and answers); filled as it goes, so a stop keeps it.
+ * and answers, the study notes, the grammar-lens record); filled as it goes,
+ * so a stop keeps it.
  */
 export type LogReport = EndedReport & {
   /** Entries home now holds as they are, read back. */
@@ -34,6 +38,116 @@ export type LogReport = EndedReport & {
 export function bucketOf(status: number): "held" | "refused" | "other" {
   if (status === 200) return "held"
   return status === 409 || status === 422 ? "refused" : "other"
+}
+
+/** A kind of item that goes home whole, one PUT each, and comes back in home's answer. */
+export type WholeLane<T> = {
+  /** Where each goes: this, then its id. */
+  readonly path: string
+  /** What goes of one item. */
+  readonly wire: (item: T) => unknown
+  /** The key home's answer holds the item under. */
+  readonly key: string
+  /** The item's id: the last part of its path, and its key in `sent`. */
+  readonly id: (item: T) => string
+}
+
+/** Whether `held` (the lane's map in `./sent`) says home holds `item` as it is now. */
+export const heldBy =
+  <T>(lane: WholeLane<T>, held: Readonly<Record<string, string>>) =>
+  (item: T): boolean =>
+    held[lane.id(item)] === fingerprintOf(lane.wire(item))
+
+/**
+ * Sends `going` through `send`, one PUT each, into `report` (a refusal or
+ * an answer that does not hold what was sent is counted, and that item
+ * stays on the phone, to go again with the next run); `held` hears each one
+ * home holds as sent, by its id and fingerprint (`fingerprintOf`).
+ */
+export async function sendWhole<T>(
+  lane: WholeLane<T>,
+  going: ReadonlyArray<T>,
+  send: HomeCall,
+  report: LogReport,
+  held: (id: string, fingerprint: string) => void
+): Promise<void> {
+  for (const item of going) {
+    const wire = lane.wire(item)
+    const id = lane.id(item)
+    const answer = await answerOrEnd(
+      send,
+      report,
+      "PUT",
+      `${lane.path}/${encodeURIComponent(id)}`,
+      JSON.stringify(wire)
+    )
+    if (answer === null) return
+    const bucket = bucketOf(answer.status)
+    if (bucket !== "held") {
+      report[bucket] += 1
+      continue
+    }
+    const parsed = jsonOf(answer.body)
+    const fingerprint = fingerprintOf(wire)
+    if (
+      isRecord(parsed) &&
+      isRecord(parsed[lane.key]) &&
+      canonicalJson(parsed[lane.key]) === canonicalJson(wire)
+    ) {
+      report.held += 1
+      held(id, fingerprint)
+    } else {
+      report.differs += 1
+    }
+  }
+}
+
+/** How `sendEach` sends one kind of item, and reads home's answer for it. */
+export type EachSent<T> = {
+  /** Where the item is PUT. */
+  readonly path: (item: T) => string
+  /** What is sent: its canonical JSON (`canonicalJson`). */
+  readonly body: (item: T) => unknown
+  /**
+   * The item's key and digest for `held`, when home's 200 answer (`body`)
+   * holds `text` as sent; null when it holds other bytes.
+   */
+  readonly heldAs: (
+    item: T,
+    text: string,
+    body: string
+  ) => Promise<readonly [string, string] | null>
+}
+
+/**
+ * Sends each item through `send` as one PUT of its body, into `report`, by
+ * `bucketOf` its status; a 200 home answers for other bytes differs. `held`
+ * hears each item home holds as sent, by its key and digest.
+ */
+export async function sendEach<T>(
+  items: ReadonlyArray<T>,
+  as: EachSent<T>,
+  send: HomeCall,
+  report: LogReport,
+  held: (key: string, digest: string) => void
+): Promise<void> {
+  for (const item of items) {
+    const text = canonicalJson(as.body(item))
+    const answer = await answerOrEnd(send, report, "PUT", as.path(item), text)
+    if (answer === null) return
+    const bucket = bucketOf(answer.status)
+    if (bucket !== "held") {
+      report[bucket] += 1
+      continue
+    }
+    const holds = await as.heldAs(item, text, answer.body)
+    if (holds === null) {
+      report.differs += 1
+    } else {
+      report.held += 1
+      held(...holds)
+    }
+  }
 }
 
 export function emptyLogReport(): LogReport {
@@ -132,4 +246,16 @@ export async function sendLogs(
       report.differs += 1
     }
   }
+}
+
+/**
+ * This phone's finished LeetType sessions, in their home form, read through
+ * `@some-ui/leetype` once it is loaded; none when the log can't be read.
+ */
+export function finishedOnPhone(leetype: {
+  readonly createSessionLogStore: () => SessionLogStore
+  readonly finishedSessions: (log: SessionLog) => Array<HomeSession>
+}): Array<HomeSession> {
+  const store = leetype.createSessionLogStore()
+  return store.readOnly ? [] : leetype.finishedSessions(store.getSnapshot().log)
 }

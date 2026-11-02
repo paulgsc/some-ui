@@ -23,15 +23,26 @@ beforeEach(() => {
 })
 
 describe("reflections", () => {
-  it("keeps up to the limit across sessions, then refuses until some go", () => {
-    for (let i = 0; i < REFLECTION_LIMIT; i++)
+  it("never refuses one for room, and drops none past the offline set (LA16)", () => {
+    const many = REFLECTION_LIMIT * 3
+    for (let i = 0; i < many; i++)
       expect(reflections.keep(line(`r${i}`, `s${i % 3}`))).toBe("kept")
+    expect(reflections.getSnapshot().kept).toHaveLength(many)
+  })
 
-    expect(reflections.keep(line("over"))).toBe("full")
-    expect(reflections.getSnapshot().kept).toHaveLength(REFLECTION_LIMIT)
-
-    reflections.letGo(["r0"])
-    expect(reflections.keep(line("over"))).toBe("kept")
+  it("lets go only the ones past the offline set that home holds", () => {
+    for (let i = 0; i < REFLECTION_LIMIT + 2; i++) {
+      const at = new Date(Date.UTC(2026, 9, 11, 12, i)).toISOString()
+      reflections.keep({ ...line(`r${i}`), createdAt: at })
+    }
+    // r0 and r1 are the two oldest, past the newest twenty; home holds r0
+    // and the newest, r21.
+    reflections.trimOffline(new Set(["r0", "r21"]))
+    const ids = reflections.getSnapshot().kept.map((r) => r.id)
+    expect(ids).toHaveLength(REFLECTION_LIMIT + 1)
+    expect(ids).not.toContain("r0")
+    expect(ids).toContain("r1")
+    expect(ids).toContain("r21")
   })
 
   it("tells subscribers of each write, and reads it afresh", () => {

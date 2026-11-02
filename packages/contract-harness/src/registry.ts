@@ -21,6 +21,7 @@ import { contracts as koreanContracts } from "../contracts/korean.contract"
 import { contracts as leetypeFileContracts } from "../contracts/leetype-files.contract"
 import { contracts as leetypeLogContracts } from "../contracts/leetype-log.contract"
 import { contracts as routineContracts } from "../contracts/routine.contract"
+import { contracts as rustRoundContracts } from "../contracts/rust-rounds.contract"
 import { contracts as sessionContracts } from "../contracts/sessions.contract"
 import { contracts as shelfContracts } from "../contracts/shelf.contract"
 import { contracts as studyNudgeContracts } from "../contracts/study-nudge.contract"
@@ -40,6 +41,7 @@ export const allContracts: ReadonlyArray<Contract> = [
   ...leetypeFileContracts,
   ...leetypeLogContracts,
   ...routineContracts,
+  ...rustRoundContracts,
   ...sessionContracts,
   ...shelfContracts,
   ...studyNudgeContracts,

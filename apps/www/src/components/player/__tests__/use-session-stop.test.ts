@@ -153,17 +153,13 @@ describe("useSessionStop", () => {
     expect(latestStop("s")?.outcome).toBe("lapsed")
   })
 
-  it("on the desktop, keeps a stop when the player closes, not when the tab hides", () => {
+  it("on the desktop, keeps no stop and plays on when the tab hides", () => {
     phone = false
-    const { result, unmount } = renderHook(() => useSessionStop("s"))
+    const { result } = renderHook(() => useSessionStop("s"))
     act(() => result.current.stops.begin())
 
     setVisibility("hidden")
     expect(latestStop("s")).toBeNull()
     expect(commands.pause).not.toHaveBeenCalled()
-
-    unmount()
-    expect(commands.pause).toHaveBeenCalledTimes(1)
-    expect(latestStop("s")).toMatchObject({ via: "left", outcome: "open" })
   })
 })

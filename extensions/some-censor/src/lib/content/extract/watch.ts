@@ -5,13 +5,10 @@
  *
  * The page is read from the DOM, not the URL: `ytd-page-manager` keeps a
  * page an SPA navigation left behind as a `[hidden]` child, and the one
- * child it shows is the page on screen. The one exception is the Mix the
- * shown page plays in, which only its address names; the
- * miniplayer's page is not the address's, so it reads none.
+ * child it shows is the page on screen.
  */
 
 import type { WatchObservation } from "@censor/lib/content/core/observation"
-import { parseMixHref } from "@censor/lib/content/core/parse"
 import { ARTIST_BADGE } from "@censor/lib/content/extract/meta"
 import type { VideoId } from "@censor/types/ids"
 import { asVideoId } from "@censor/types/ids"
@@ -60,17 +57,12 @@ export function readWatch(doc: Document): WatchObservation | null {
       dates: [],
       miniplayer: false,
       ...NO_LANE,
-      mix: null,
     }
   }
   const page = doc.querySelector(WATCH_PAGE)
   if (page === null) return null
   const miniplayer = page.hasAttribute("hidden")
   if (miniplayer && doc.querySelector(MINIPLAYER) === null) return null
-  const mix = miniplayer
-    ? null
-    : parseMixHref(doc.defaultView?.location.href ?? "")
-
   const id = page.getAttribute("video-id")
   const videoId = id === null || id === "" ? null : asVideoId(id)
   const metadata = page.querySelector("ytd-watch-metadata")
@@ -82,7 +74,6 @@ export function readWatch(doc: Document): WatchObservation | null {
       dates: [],
       miniplayer,
       ...NO_LANE,
-      mix,
     }
   }
   if (miniplayer && playsAnother(doc, metadata)) {
@@ -94,7 +85,6 @@ export function readWatch(doc: Document): WatchObservation | null {
       dates: [],
       miniplayer,
       ...NO_LANE,
-      mix,
     }
   }
   const dates: Array<string> = []
@@ -116,7 +106,6 @@ export function readWatch(doc: Document): WatchObservation | null {
     title: metadata.querySelector(PAGE_TITLE)?.textContent.trim() || null,
     channelName: metadata.querySelector(OWNER_NAME)?.textContent.trim() || null,
     artist: metadata.querySelector(`${OWNER} ${ARTIST_BADGE}`) !== null,
-    mix,
   }
 }
 

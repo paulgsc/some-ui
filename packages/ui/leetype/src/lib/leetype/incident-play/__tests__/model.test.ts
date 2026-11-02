@@ -147,19 +147,7 @@ describe("an incident session's steps", () => {
     ])
   })
 
-  it("counts a pick slower than twice the median as a struggle, and goes where a slow pick goes", () => {
-    const slow = playThrough([START, RIGHT, ON], { median: 400, gapMs: 1000 })
-    expect(slow.events).toContainEqual(
-      expect.objectContaining({
-        type: "picked",
-        answer: { response: "correct", slow: true },
-      })
-    )
-    expect(slow.play.screen).toBe("s03")
-    expect(slow.events).toContainEqual(
-      expect.objectContaining({ type: "parked", screen: "s02" })
-    )
-    // No median yet: never slow, however long the pick took.
+  it("judges no pick slow before there is a median, however long it took", () => {
     const unjudged = playThrough([START, RIGHT], {
       median: null,
       gapMs: 60_000,
@@ -221,6 +209,62 @@ describe("an incident session's steps", () => {
     expect(play.ended).toBe("declared")
     expect(events.at(-1)).toMatchObject({ type: "ended", how: "declared" })
   })
+})
+
+/**
+ * LTY2 (#2332, canon Def. 9.4, Rem. 9.6, Rem. 11.11): a revealed pick goes on
+ * to the round's `onHesitate` only when it is correct and slow, and otherwise
+ * to its own option's `next`, so a slow incorrect pick takes the incorrect
+ * response's follow-up and Def. 9.4's three responses stay three in routing.
+ *
+ * The Family, enumerated below on round 1 (s02) of variant B: the response
+ * (correct, incorrect, abstained) × slow (more than twice the median, or
+ * not; an abstention carries no slowness, however long it took) × whether
+ * the round authors an `onHesitate`, here one distinct from every option's
+ * `next`, so each route is told apart.
+ */
+describe("LTY2: only a slow correct pick goes to onHesitate", () => {
+  const withHesitate = (onHesitate: string | undefined): typeof FILE => {
+    const raw = structuredClone(FILE)
+    const round = raw.screens.s02
+    if (round?.type === "choice") {
+      if (onHesitate === undefined) delete round.onHesitate
+      else round.onHesitate = onHesitate
+    }
+    return SessionFileSchema.parse(raw)
+  }
+  const responses = [
+    { response: "correct", option: 0, next: "s05" },
+    { response: "incorrect", option: 1, next: "s03" },
+    { response: "abstained", option: 4, next: "s03" },
+  ] as const
+  const family = responses.flatMap((one) =>
+    [true, false].flatMap((slow) =>
+      [true, false].map((authored) => ({ ...one, slow, authored }))
+    )
+  )
+
+  it.each(family)(
+    "response: $response, slow: $slow, onHesitate authored: $authored",
+    ({ response, option, next, slow, authored }) => {
+      const file = withHesitate(authored ? "s07" : undefined)
+      // The pick takes 1000 ms; it is slow past twice a 400 ms median.
+      const { play, events } = playThrough(
+        [START, { type: "pick", option }, ON],
+        { file, median: slow ? 400 : 600, gapMs: 1000 }
+      )
+      const hesitated = response === "correct" && slow
+      expect(play.screen).toBe(hesitated && authored ? "s07" : next)
+      expect(events).toContainEqual(
+        expect.objectContaining({
+          type: "picked",
+          answer: response === "abstained" ? { response } : { response, slow },
+        })
+      )
+      const struggled = response !== "correct" || slow
+      expect(events.some((event) => event.type === "parked")).toBe(struggled)
+    }
+  )
 })
 
 describe("medianSelectionMs", () => {

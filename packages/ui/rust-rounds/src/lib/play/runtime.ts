@@ -6,8 +6,8 @@
  * TypeScript, so deleting React deletes none of this.
  *
  * Its ports (#2235): what is held and the log (`store`, through the one
- * kept-record reader), the microphone (`notes`), the clipboard, the clock
- * and the page. None of them is the network: every card plays from what is
+ * kept-record reader), the microphone (`notes`: the phone's take pattern
+ * and the notes it keeps), the clipboard, the clock and the page. None of them is the network: every card plays from what is
  * on the phone.
  *
  * Only an attached runtime acts: it hears the microphone from `attach` to its
@@ -19,25 +19,24 @@
  * sending them and the log home is RR6 (#2237) and RR7 (#2238).
  */
 import { assertNever } from "@some-ui/core-utils"
+import type { PatternTake, TakePattern } from "@some-ui/voice-capture"
 
-import type {
-  NoteView,
-  PlayEffect,
-  PlayEvent,
-  PlayIntent,
-  PlayState,
-} from "./machine"
+import type { PlayEffect, PlayEvent, PlayIntent, PlayState } from "./machine"
 import { initialState, step } from "./machine"
 import type { RoundsStore } from "./store"
 
-/** The microphone's voice notes: a list on the phone, one take at a time. */
+/**
+ * The microphone's voice notes: the phone's take pattern, one take at a
+ * time, each answering a card's line (`lineOf`), and the notes it keeps.
+ */
 export type NotesPort = {
-  readonly getSnapshot: () => NoteView
-  readonly subscribe: (listener: () => void) => () => void
-  /** Starts a take said on `line` (`lineOf`); nothing while one is under way. */
-  readonly start: (line: string) => void
-  /** Ends a take under way and keeps it. */
-  readonly stop: () => void
+  /** One current note per card (`per: "one"`), Redo and Let go. */
+  readonly pattern: TakePattern
+  /** The notes kept, as the pattern lists them; the same array while nothing changed. */
+  readonly takes: {
+    readonly getSnapshot: () => ReadonlyArray<PatternTake>
+    readonly subscribe: (listener: () => void) => () => void
+  }
   /**
    * The note kept on `line` at or after `since` (ms since the epoch), the
    * earliest such; null when the phone holds none.
@@ -78,7 +77,7 @@ export function createRustRounds(ports: RustRoundsPorts): RustRoundsRuntime {
   let state = initialState(
     ports.store.open(),
     { id: ports.newId(), startedAt: iso(ports.now()) },
-    ports.notes.getSnapshot()
+    ports.notes.pattern.getSnapshot()
   )
   const listeners = new Set<() => void>()
 
@@ -121,12 +120,20 @@ export function createRustRounds(ports: RustRoundsPorts): RustRoundsRuntime {
         })
         return
       }
-      case "startNote": {
-        ports.notes.start(effect.line)
+      case "tapNote": {
+        ports.notes.pattern.tap(effect.line, effect.supersedes)
         return
       }
       case "stopNote": {
-        ports.notes.stop()
+        ports.notes.pattern.leave()
+        return
+      }
+      case "playNote": {
+        ports.notes.pattern.play(effect.id)
+        return
+      }
+      case "setAsideNote": {
+        ports.notes.pattern.letGo(effect.id, effect.place)
         return
       }
       case "copy": {
@@ -153,11 +160,12 @@ export function createRustRounds(ports: RustRoundsPorts): RustRoundsRuntime {
     },
     dispatch: (intent): void => send({ ...intent, at: iso(ports.now()) }),
     attach(): () => void {
-      const stopNotes = ports.notes.subscribe(() =>
-        send({ type: "notes", view: ports.notes.getSnapshot() })
+      const { pattern } = ports.notes
+      const stopNotes = pattern.subscribe(() =>
+        send({ type: "notes", view: pattern.getSnapshot() })
       )
       // What changed between making the runtime and attaching it.
-      send({ type: "notes", view: ports.notes.getSnapshot() })
+      send({ type: "notes", view: pattern.getSnapshot() })
       // Additions an earlier opening's log refused: written before any new one.
       if (state.notKept.log) {
         send({ type: "stored", record: "log", ok: ports.store.flush() })
@@ -176,7 +184,7 @@ export function createRustRounds(ports: RustRoundsPorts): RustRoundsRuntime {
             line,
             note: ports.notes.keptOn(line, since),
           })),
-          busy: ports.notes.getSnapshot().take.kind !== "idle",
+          busy: pattern.getSnapshot().take.kind !== "idle",
         })
       }
       const stopVisibility = ports.onVisibility((hidden) => {

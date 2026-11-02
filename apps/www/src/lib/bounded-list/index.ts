@@ -22,10 +22,15 @@ export function boundedList<T>(
 ): {
   read: () => Array<T>
   /**
-   * Puts `item` first, replacing the one `same` matches. Says whether the
-   * device stored it (false: full or missing storage).
+   * Puts `item` first, replacing the one `same` matches, and rewrites the
+   * others with `others` in the same write. Says whether the device stored
+   * it (false: full or missing storage).
    */
-  put: (item: T, same: (other: T) => boolean) => boolean
+  put: (
+    item: T,
+    same: (other: T) => boolean,
+    others?: (other: T) => T
+  ) => boolean
   remove: (same: (other: T) => boolean) => boolean
   /** Rewrites each item in place, keeping the order. Says whether it stored. */
   update: (change: (item: T) => T) => boolean
@@ -41,8 +46,8 @@ export function boundedList<T>(
     write(next(open().value))
   return {
     read: () => open().value,
-    put: (item, same) =>
-      change((kept) => [item, ...kept.filter((x) => !same(x))]),
+    put: (item, same, others = (other): T => other) =>
+      change((kept) => [item, ...kept.filter((x) => !same(x)).map(others)]),
     remove: (same) => change((kept) => kept.filter((x) => !same(x))),
     update: (each) => change((kept) => kept.map(each)),
   }

@@ -15,8 +15,10 @@ import {
   DIGESTS_KEPT,
   draftVoice,
   EMPTY,
+  formTakes,
   kitOf,
   openOf,
+  pickOwner,
   progressOf,
   RUNS_KEPT,
   standingOf,
@@ -278,7 +280,7 @@ describe("step", () => {
     )
   })
 
-  it("lets a draft's voice note go, and never one the record names", () => {
+  it("sets a draft's voice note aside, kept, and never one the record names (D3)", () => {
     const note = (id: string): VoiceNote => ({
       id,
       mimeType: "audio/webm",
@@ -294,9 +296,77 @@ describe("step", () => {
       note: "",
       voice: ["v1"],
     })
-    state = step(state, { type: "voice-dropped", ids: ["v1", "v2"] })
-    expect(state.voice.map((v) => v.id)).toEqual(["v1"])
+    const at = "2026-11-01T09:15:00.000Z"
+    state = step(state, { type: "voice-set-aside", id: "v1", at })
+    state = step(state, { type: "voice-set-aside", id: "v2", at })
+    // A second Let go moves nothing: the first time stands (MIC2).
+    state = step(state, {
+      type: "voice-set-aside",
+      id: "v2",
+      at: "2026-11-02T00:00:00.000Z",
+    })
+    expect(state.voice.map((v) => [v.id, v.standing, v.setAsideAt])).toEqual([
+      ["v1", undefined, undefined],
+      ["v2", "set-aside", at],
+    ])
     expect(draftVoice(state, "o")).toEqual([])
+    expect(formTakes(state, "o")).toMatchObject([
+      {
+        id: "v2",
+        answers: "o",
+        standing: "set-aside",
+        kept: { place: "phone" },
+      },
+    ])
+  })
+
+  it("keeps the draft's note a Redo records again, out of the draft (D2)", () => {
+    const note = (id: string): VoiceNote => ({
+      id,
+      mimeType: "audio/webm",
+      durationMs: 2000,
+      owner: "o",
+    })
+    let state = step(opened, { type: "voice-kept", note: note("v1") })
+    state = step(state, {
+      type: "voice-kept",
+      note: note("v2"),
+      supersedes: "v1",
+    })
+    expect(state.voice.map((v) => [v.id, v.standing])).toEqual([
+      ["v1", "earlier"],
+      ["v2", undefined],
+    ])
+    expect(draftVoice(state, "o").map((v) => v.id)).toEqual(["v2"])
+  })
+
+  it("files the form's notes out of the draft with the event that records it, so the next draft starts with none (#2443)", () => {
+    const owner = pickOwner(DAY, SW.id, "pass")
+    const note = (id: string): VoiceNote => ({
+      id,
+      mimeType: "audio/webm",
+      durationMs: 2000,
+      owner,
+    })
+    let state = step(opened, { type: "voice-kept", note: note("v1") })
+    state = step(state, {
+      type: "voice-kept",
+      note: note("v2"),
+      supersedes: "v1",
+    })
+    state = record(state, {
+      type: "passed",
+      ...ref(),
+      reasons: [],
+      note: "",
+      voice: draftVoice(state, owner).map(({ id }) => id),
+    })
+    expect(formTakes(state, owner)).toEqual([])
+    expect(state.voice.find((v) => v.id === "v1")?.filed).toEqual({
+      ref: `${DAY}:${SW.id}`,
+      at: expect.any(String),
+    })
+    expect(state.voice.find((v) => v.id === "v2")?.filed).toBeUndefined()
   })
 })
 

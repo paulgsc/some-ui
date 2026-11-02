@@ -209,6 +209,44 @@ navigate(...)`, and state that is coordination without awaiting anything,
 such as a ref that holds a handle. Those surface as review findings instead,
 and `.claude/skills/steward/SKILL.md` says what a cluster of them means.
 
+## Patterns: whole flows, one closed set of options
+
+A design system has three tiers: **tokens** (colour, type, spacing, radius:
+`@some-ui/styles`), **components** (a button, a sheet: `packages/ui/shared`'s
+`components/ui`), and **patterns**, whole flows a person goes through. shadcn
+gives the component tier a closed, typed set of options (`cva` variants): a
+screen picks `variant: "outline"` and never restyles a copy. A pattern does the
+same for a flow, and is four things:
+
+1. **A pure machine**: a state union and a step, with a runtime over ports, in
+   a package with no React (the shape in the section above).
+2. **Its parts**: the components the flow needs, in
+   `packages/ui/shared/src/components/patterns/<name>`. They render a pure
+   projection of the machine's snapshot and dispatch its intents, as a Zag.js
+   `connect` maps a machine onto markup; they decide nothing.
+3. **Its words**: one pure table in the person's terms, tested for them
+   (CLAUDE.md, "State in the person's terms"). A screen adds its item's words
+   around the parts, never its own copy of a line the pattern says.
+4. **A closed options type**: the only way a screen may make it differ.
+
+A screen chooses options; it never redraws a part. A need outside the options
+becomes a new option in the pattern, added in the pull request that needs it
+with the case it serves, never a fork in the screen. An option no part honours
+yet is not added ahead of its case.
+
+| Pattern                                                            | Machine and words                                                                       | Parts                                                                                                                                                                                                                                                                                                                                          | Options                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Take**: record, see where it's kept, hear it, redo it, let it go | `@some-ui/voice-capture`: `takePattern`, `takeItemView`, `TAKE_WORDS` (on the take kit) | `TakeButton`, `TakeRow` (with an `extra` slot for a screen's own action on a take), `TakeRows` (an item's rows, for a screen whose button sits apart from its list), `TakeItem` (a view and taps, for a screen whose machine stands between), `TakeList`; tests on `@some-ui/voice-capture/testing`'s simulated microphone and scenario family | `TakePatternOptions`: `takes` (one, or many up to a max that refuses the next or makes room for it), `limits`, `redo: "supersede"` (D2), `letGo: "set-aside"` (D3), `play` (each or latest), `clock` (the time run, or the time left), `send` (at once, or `on-confirm`: each take waits on the phone until the screen sends its item, and Delete of one that never left is for good; Studio's idea, ST26) |
+
+The take pattern's kit, `@some-ui/voice-capture`, is the microphone's one
+owner. Outside it, `one-owner/no-local-microphone`,
+`one-owner/no-hand-written-microphone` and `one-owner/no-local-take-words`
+(MIC7, #2377) flag the other ways in that ordinary code takes: opening the
+browser's microphone, running a take of its own, a microphone written by hand
+in a test, and a copy of how a take ended. Each exemption is an
+`eslint-disable` that says why; code written to get past them (`Reflect.get`,
+an alias of a namespace or of `vi`) is out of their scope.
+
 ## A port translates: the foreign boundary
 
 A port to an API this codebase does not own has to answer what can go wrong,

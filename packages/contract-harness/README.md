@@ -93,8 +93,21 @@ pnpm --filter @some-ui/contract-harness contract --only mood_events.list
 ```
 
 Flags: `--base-url`, `--routes`, `--only`, `--drift-only`,
-`--include-mutations`, `--show-uncovered`, `--timeout`, `--json`, `--help`.
-`CONTRACT_BASE_URL` works instead of `--base-url`.
+`--include-mutations`, `--show-uncovered`, `--timeout`, `--session-cookie`,
+`--phone-token`, `--json`, `--help`. `CONTRACT_BASE_URL`,
+`CONTRACT_SESSION_COOKIE` and `CONTRACT_PHONE_TOKEN` work instead of the
+flags they name.
+
+### Per-person and paired-phone routes
+
+A contract marked `session: true` is sent with the `__Host-session` cookie
+from `--session-cookie`, and skipped without one. A contract marked
+`paired: true` is for a route only a paired phone may call (the server's
+`subject::Paired`, as on `/rust-rounds`): it is sent with
+`Authorization: Bearer` from `--phone-token`, never with the cookie, and
+skipped without one (why a cookie cannot stand in: `paired` in
+`src/contract.ts`). Write the browser's `403` as a `session` contract of its
+own.
 
 Exit code is non-zero for drift failures, failed probes and transport errors.
 Warnings do not fail the run.
@@ -221,7 +234,7 @@ Worth knowing before trusting a green run.
 pnpm --filter @some-ui/contract-harness test
 ```
 
-48 tests. The integration suite stands up a real HTTP server and drives each
+53 tests. The integration suite stands up a real HTTP server and drives each
 detector against a concrete divergence — a renamed field, a widened type, a
 moved route, a phantom optional — because a drift detector nobody has watched
 fail is just a green light with extra steps.

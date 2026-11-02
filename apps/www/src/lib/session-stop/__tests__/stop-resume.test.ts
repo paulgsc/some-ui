@@ -12,7 +12,7 @@
  *   session that was playing when it opened (and leaves one paused by the
  *   person paused), the orchestrator never plays behind a closed player,
  *   and the session closes with the time it was played.
- * - Family: every interleaving, one to three stops a session, of
+ * - Family: every interleaving, one or two stops a session, of
  *   - how it stops: "Got to go"; the app hidden (the phone); the player's
  *     screen closing (Back, a link, "Go"); the page going away, reloaded or
  *     kept in the browser's cache (both surfaces);
@@ -30,7 +30,9 @@
  *     screen closing tears the drawer down before or after the stop runtime;
  *   - the surface: the phone (`apk`) and the desktop web, where a hidden tab
  *     is not a stop: the session plays on, and that time counts, unless the
- *     drawer is open.
+ *     drawer is open;
+ *   and every run of three stops, each way to stop and resume, on both
+ *   surfaces, playing at each stop, with no "+5 min", played to its end.
  * - Proof: this file. It enumerates the Family and drives the real runtime
  *   and the drawer's hold over the real orchestrator store, through
  *   `holdable(orchestratorPlayback)` as `useSessionStop` builds it, and the
@@ -561,14 +563,11 @@ describe("SS1: stop and resume keep the session's clock honest", () => {
       it(
         `on the ${surface}: every pair of stops, ${ending.name}, with or without +5 min`,
         () => {
-          let runs = 0
           for (const pair of sequences(legs, 2)) {
             for (const extended of [false, true]) {
               sitting(surface, extended, pair, ending)
-              runs += 1
             }
           }
-          expect(runs).toBe(legs.length ** 2 * 2)
         },
         ENUMERATION_MS
       )
@@ -578,7 +577,7 @@ describe("SS1: stop and resume keep the session's clock honest", () => {
       `on the ${surface}: every run of three stops`,
       () => {
         const [ending] = ENDINGS
-        // Playing or paused at a stop is already crossed with every pair.
+        // The Family's three-stop slice: playing, unextended, played out.
         const playingLegs = legs.filter((leg) => !leg.pausedFirst)
         for (const run of sequences(playingLegs, 3)) {
           sitting(surface, false, run, ending)

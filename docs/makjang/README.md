@@ -829,13 +829,49 @@ first on the start screen.
   genre-specific). That is how #1708's "a learner-defined genre" lands without
   the schema change it once assumed.
 
+## Asking home for the next scene (HF4)
+
+On the owner's phone the next scene goes home, not to a drive (#2179; the
+owner's decisions D1 and D2 on #2174). "Ask for the next scene", beside
+"Copy the prompt" and as 다음 화 쓰기 at a drama's ending, keeps the prompt
+on the phone (www's `lib/scene-ask`, topik's `SceneAsk` port), and the
+phone's drain sends it to the owner's home server when it is there
+(`docs/learner-data-authority.md`, LA18). Home keeps it for good
+(paulgsc/server `drama_prompt`) and hands it, as the routine's minimum (its
+stamp and markdown), to the Jobs mailbox, where the reflections routine reads
+it and writes the drama (`packages/ui/topik/ROUTINE.md`, part B). The drama
+comes back the way every routine lesson does: through home, to "From the
+routine".
+
+- **What goes:** the same markdown the file contract below describes, under
+  the same stamp, so the drama that answers it is `drama-<stamp>.json`. Its
+  scene notes are not sent with it: each went home as a voice note when it
+  was kept, and the routine reads what home heard in it, found by the id the
+  prompt's `notes` line names.
+- **What the screen says:** where the ask is and since when, in the
+  person's terms: kept on this phone until home has it, then that home has
+  it and the routine writes the scene.
+- **What leaves the phone:** an ask, once home has answered with it as it
+  was sent and a newer one is kept; and each scene note it named, once home
+  holds the note and the ask both. Nothing goes on a share's word.
+- **Free text:** an ask kept on the phone is handed off, so the review's
+  free text it carried is deleted (Rem. 7.4): the ask now carries it home.
+
 ## The loop through the learner's drive
 
 The main path is a drama the learner creates: their own model writes it from
-the tree prompt, and it plays on their device. Inside the Android app the
-prompt can travel as a file, so the learner's drive can carry the loop and
-their own agent can answer it unattended. We run no agent and no server for
-it; the only contract is the files. Its canon line is Remark 8.3 (v1.15).
+the tree prompt, and it plays on their device. The prompt can travel as a
+file, so a learner's drive can carry the loop and their own agent can
+answer it unattended. We run no agent and no server for it; the only
+contract is the files. Its canon line is Remark 8.3 (v1.15).
+
+This loop was a product adapter for other learners, off the owner's path
+(the owner's decision D5 on #2174). The owner's phone asks home instead
+(above). Its code (topik's `FileShare` port and `SharePrompt`) is removed,
+since no host injected it (the owner, on #2179: "delete it, it's
+unreached"); git history keeps it. The file contract below still holds: an
+ask's markdown is the same file. Pulling a scene back from storage (MKJ-S10)
+stays on the owner's phone, for refreshing away from home (D4).
 
 ### Sharing the next scene (MKJ-S8)
 
@@ -848,11 +884,11 @@ it; the only contract is the files. Its canon line is Remark 8.3 (v1.15).
   다음 화 쓰기 (write the next episode), since what happens next is the
   reason to come back; and beside "Copy the prompt" when the learner starts
   a new drama.
-- **How:** Android's share sheet, through the host's `FileShare` port, the
-  same mechanism soundbites' "Share with an agent" uses. Only the Android app
-  injects it; elsewhere the prompt is copied.
-  Backing out of the sheet is not a failure. A build without the plugin
-  withdraws the button.
+- **How:** a share sheet, through a host's `FileShare` port, the same
+  mechanism soundbites' "Share with an agent" uses. That code is removed
+  with the loop's (above); where no ask is offered, the prompt is copied.
+  Backing out of the sheet was not a failure, and a build without the
+  plugin withdrew the button.
 - **Free text:** a prompt the learner sent is handed off, so the review's
   free text it carried is deleted (Rem. 7.4), as after a copy. The shared
   file itself stays in the app's cache until the next share replaces it:
@@ -881,27 +917,35 @@ connector, say):
 
 On a phone, the scene a learner wants is often long (what should happen,
 who, how it should feel), and typing it is the worst part of asking for
-one. So "Write your own drama" opens on the scene first, said aloud: tap to
-talk and tap to keep, as a voice reflection is, as many times as it takes
-(up to five notes of a minute each). A typed line stays beside it, and
-level and genre fold away under a line that says what they are.
+one. So "Write your own drama" opens on the scene first, said aloud on the
+take pattern (`docs/monorepo-boundaries.md`, "Patterns"): tap to talk and
+tap to keep, as many times as it takes (up to five notes of a minute each),
+then each note's row with where it is kept, Play, Redo and Let it go. A
+typed line stays beside it, and level and genre fold away under a line that
+says what they are.
 
 - **One draft.** The notes are one draft, kept on the device (their audio on
   its own IndexedDB shelf, their list in `localStorage`) across leaving the
   screen and closing the app. "Write your own drama" continues the open
-  draft; another scene starts only once this one is let go, by sharing it
-  or by discarding it ("Start a different scene").
-- **They travel with the prompt.** Share writes the prompt and every note
-  beside it, `drama-<stamp>.voice-<n>.<ext>` (the recording's type), and the request names them
-  (`Scene, spoken`), so the agent listens before it writes. The clipboard
-  cannot carry audio, so a copied prompt goes without them, and the screen
-  says so.
-- **They leave once they arrived.** Android reports "shared" as soon as an
-  app is picked, so the screen asks whether they reached the drive, and lets
-  the notes go only on "yes", as reflections do.
+  draft; another scene starts only once this one is let go, by asking for it
+  or by setting it aside ("Start a different scene"). Redo keeps the note it
+  records again, out of the draft (D2), and Let go sets a note aside, kept
+  (D3): nothing the person taps removes a note.
+- **They go with the ask.** Each note goes home as a voice note once it is
+  kept (HF2, #2177), and the ask names each one by the phone's id under its
+  file name, `drama-<stamp>.voice-<n>.<ext>` (the recording's type), in the
+  order said (`Scene, spoken`), so the routine reads what home heard before
+  it writes. The clipboard cannot carry audio, so a copied prompt goes
+  without them, and the screen says so.
+- **They leave once home holds them.** A note leaves the phone once home
+  holds it and the ask that named it (LA13, LA18), or once home holds it
+  and it is out of the draft, never on a share's word. Until then a note
+  out of the draft is kept on the phone, which keeps twenty notes in all:
+  past them a new note makes room by letting go the oldest home holds that
+  is out of the draft, and is refused while there is none.
 - **Where it runs.** Recording is the Android app's (www's `lib/scene-voice`,
-  over `@some-ui/voice-capture`'s voice note, which voice reflections run
-  too). Topik holds only the `SceneVoice` port; without it the scene is
+  over `@some-ui/voice-capture`'s take pattern). Topik holds only the
+  `SceneVoice` port and draws the pattern's parts; without it the scene is
   typed.
 
 ### Pulling a scene back (MKJ-S10)

@@ -9,6 +9,7 @@ import {
   currentGame,
   initialState,
   offerView,
+  phaseOf,
   step,
   UNDO_MS,
 } from "@game-week/lib/machine"
@@ -40,14 +41,22 @@ const tick = (ms: number, level: number): GameWeekEvent => ({
 describe("a tap", () => {
   it("opens the microphone in the same step (GW1)", () => {
     const next = step(here(), { type: "say", said: THIRD })
-    expect(next.state.activity.kind).toBe("opening")
+    expect(phaseOf(next.state)).toBe("opening")
     expect(next.effects).toContainEqual({ type: "openMic" })
+  })
+
+  it("lets a bite go when tapped again while the microphone opens", () => {
+    const opening = step(here(), { type: "say", said: THIRD }).state
+    const next = step(opening, { type: "done" })
+    expect(next.effects).toContainEqual({ type: "discardTake" })
+    expect(phaseOf(next.state)).toBe("idle")
+    expect(next.state.notice).toBe(NOTICES.early)
   })
 
   it("starts nothing while a bite is under way", () => {
     const next = step(recording(), { type: "say", said: { how: "said-first" } })
     expect(next.effects).toEqual([])
-    expect(next.state.activity.kind).toBe("recording")
+    expect(phaseOf(next.state)).toBe("recording")
   })
 
   it("starts nothing without a game, and says why", () => {
@@ -62,9 +71,7 @@ describe("a tap", () => {
 
   it("notes what the screen showed when talking started", () => {
     const state = recording()
-    expect(
-      state.activity.kind === "recording" && state.activity.moment
-    ).toEqual({
+    expect(state.activity.kind === "taking" && state.activity.moment).toEqual({
       gameId: "401772981",
       seq: 41,
       strip: FEED.offer?.strip,
@@ -83,9 +90,9 @@ describe("the quiet stop (GW2)", () => {
       tick(200, 0.01),
       tick(quiet + 100, 0.01)
     )
-    expect(before.state.activity.kind).toBe("recording")
+    expect(phaseOf(before.state)).toBe("recording")
     const after = step(before.state, tick(quiet + 200, 0.01))
-    expect(after.state.activity.kind).toBe("finishing")
+    expect(phaseOf(after.state)).toBe("finishing")
     expect(after.effects).toContainEqual({ type: "finishTake" })
   })
 
@@ -97,13 +104,13 @@ describe("the quiet stop (GW2)", () => {
       tick(200, 0),
       tick(2_300, 0)
     )
-    expect(s.state.activity.kind).toBe("recording")
-    expect(step(s.state, tick(3_200, 0)).state.activity.kind).toBe("finishing")
+    expect(phaseOf(s.state)).toBe("recording")
+    expect(phaseOf(step(s.state, tick(3_200, 0)).state)).toBe("finishing")
   })
 
   it("never stops on quiet before anything was heard", () => {
     const s = run(recording(), tick(100, 0), tick(5_000, 0), tick(30_000, 0))
-    expect(s.state.activity.kind).toBe("recording")
+    expect(phaseOf(s.state)).toBe("recording")
   })
 
   it("talking again empties the quiet bar", () => {
@@ -114,27 +121,25 @@ describe("the quiet stop (GW2)", () => {
       tick(1_900, 0.4),
       tick(3_000, 0)
     )
-    expect(s.state.activity.kind).toBe("recording")
+    expect(phaseOf(s.state)).toBe("recording")
   })
 
   it("always stops at one minute", () => {
     const s = run(recording(), tick(100, 0.5), tick(59_900, 0.6))
-    expect(s.state.activity.kind).toBe("recording")
+    expect(phaseOf(s.state)).toBe("recording")
     const end = step(s.state, tick(60_000, 0.6))
-    expect(end.state.activity.kind).toBe("finishing")
+    expect(phaseOf(end.state)).toBe("finishing")
     expect(end.effects).toContainEqual({ type: "finishTake" })
   })
 
   it("Done stops it", () => {
     const next = step(recording(), { type: "done" })
-    expect(next.state.activity.kind).toBe("finishing")
+    expect(phaseOf(next.state)).toBe("finishing")
   })
 
   it("leaving, or the screen going off, stops and keeps it", () => {
-    expect(step(recording(), { type: "left" }).state.activity.kind).toBe(
-      "finishing"
-    )
-    expect(step(recording(), { type: "hidden" }).state.activity.kind).toBe(
+    expect(phaseOf(step(recording(), { type: "left" }).state)).toBe("finishing")
+    expect(phaseOf(step(recording(), { type: "hidden" }).state)).toBe(
       "finishing"
     )
   })
@@ -143,6 +148,59 @@ describe("the quiet stop (GW2)", () => {
 describe("keeping a bite (GW3, GW4)", () => {
   const stopped = (): GameWeekState => step(recording(), { type: "done" }).state
 
+  it("offers Undo only on the bite on screen: one kept late goes home instead", () => {
+    const aTaken = run(stopped(), {
+      type: "taken",
+      take: take(),
+      id: "a",
+      at: T0 + 5_000,
+    }).state
+    const bTaken = run(
+      aTaken,
+      { type: "say", said: THIRD },
+      { type: "micOpened", at: T0 + 6_000 },
+      { type: "done" },
+      { type: "taken", take: take(), id: "b", at: T0 + 9_000 }
+    ).state
+    // A's keep answers only now.
+    const lateA = step(bTaken, { type: "kept", id: "a" })
+    expect(lateA.effects).toEqual([{ type: "release", id: "a" }])
+    expect(lateA.state.undo).toBeNull()
+    const keptB = step(lateA.state, { type: "kept", id: "b" })
+    expect(keptB.state.undo).toEqual({ id: "b", until: T0 + 9_000 + UNDO_MS })
+    expect(step(keptB.state, { type: "undo" }).effects).toContainEqual({
+      type: "undo",
+      id: "b",
+    })
+  })
+
+  it("lists the kept bite as its row, plays it, and Undo takes the row and the sound away", () => {
+    const kept = run(
+      stopped(),
+      { type: "taken", take: take(), id: "b1", at: T0 + 5_000 },
+      { type: "kept", id: "b1" }
+    ).state
+    expect(kept.lastBite).toMatchObject({
+      take: { id: "b1", durationMs: 4_000, kept: { place: "going" } },
+      stored: true,
+    })
+    const asked = step(kept, { type: "play", id: "b1" })
+    expect(asked.effects).toEqual([{ type: "loadAudio", id: "b1", play: 1 }])
+    const playing = step(asked.state, {
+      type: "loaded",
+      play: 1,
+      audio: new Blob(["v"]),
+    })
+    expect(playing.effects).toMatchObject([{ type: "playAudio", play: 1 }])
+    const undone = step(playing.state, { type: "undo" })
+    expect(undone.effects).toEqual([
+      { type: "stopAudio" },
+      { type: "undo", id: "b1" },
+    ])
+    expect(undone.state.lastBite).toBeNull()
+    expect(undone.state.takes.playback).toEqual({ kind: "quiet" })
+  })
+
   it("keeps it the moment it is taken, held back for Undo", () => {
     const next = step(stopped(), {
       type: "taken",
@@ -150,7 +208,7 @@ describe("keeping a bite (GW3, GW4)", () => {
       id: "b1",
       at: T0 + 5_000,
     })
-    expect(next.state.activity.kind).toBe("idle")
+    expect(phaseOf(next.state)).toBe("idle")
     expect(next.state.keeping).toEqual([
       { id: "b1", holdUntil: T0 + 5_000 + UNDO_MS, held: false },
     ])
@@ -294,7 +352,7 @@ describe("say it first", () => {
     )
     expect(keep?.type === "keep" && keep.bite.fields.how).toBe("said-first")
     expect(keep?.type === "keep" && "scenario" in keep.bite.fields).toBe(false)
-    expect(s.state.activity.kind).toBe("asking")
+    expect(phaseOf(s.state)).toBe("asking")
   })
 
   it("offers what could be happening as it stopped, with Undo open", () => {
@@ -306,7 +364,7 @@ describe("say it first", () => {
     // An open question lasts as long as the bite's hold.
     const later = step(state, { type: "clock", now: T0 + 60_000 })
     expect(later.effects).toEqual([])
-    expect(later.state.activity.kind).toBe("asking")
+    expect(phaseOf(later.state)).toBe("asking")
   })
 
   it("closes the question and Undo when the bite's hold runs out, leaving it Later", () => {
@@ -318,7 +376,7 @@ describe("say it first", () => {
     const closed = step(state, { type: "clock", now: ends })
     // The store already let it go as it was: nothing to amend or release.
     expect(closed.effects).toEqual([])
-    expect(closed.state.activity.kind).toBe("idle")
+    expect(phaseOf(closed.state)).toBe("idle")
     expect(closed.state.undo).toBeNull()
     expect(closed.state.notice).toBe(NOTICES.askClosed)
     expect(step(closed.state, { type: "undo" }).effects).toEqual([])
@@ -344,7 +402,7 @@ describe("say it first", () => {
       { type: "taken", take: take(), id: "b2", at: T0 + 5_000 },
       { type: "keepFailed", id: "b2" }
     )
-    expect(s.state.activity.kind).toBe("asking")
+    expect(phaseOf(s.state)).toBe("asking")
     expect(s.state.undo).toEqual({ id: "b2", until: null })
   })
 
@@ -356,7 +414,7 @@ describe("say it first", () => {
       context: "31-yard catch",
     }
     const next = step(state, { type: "answer", said })
-    expect(next.state.activity.kind).toBe("idle")
+    expect(phaseOf(next.state)).toBe("idle")
     const [amend] = next.effects
     expect(amend).toMatchObject({
       type: "amend",
@@ -375,7 +433,7 @@ describe("say it first", () => {
   it("Undo while asking throws it away", () => {
     const next = step(asking(), { type: "undo" })
     expect(next.effects).toEqual([{ type: "undo", id: "b2" }])
-    expect(next.state.activity.kind).toBe("idle")
+    expect(phaseOf(next.state)).toBe("idle")
   })
 
   it("an answer before the keep lands still amends, and Undo opens on the keep", () => {
@@ -651,7 +709,7 @@ describe("modes (GW25)", () => {
       gameId: "401772981",
     }).state
     const s = recording(THIRD, off)
-    expect(s.activity.kind === "recording" && s.activity.moment.watching).toBe(
+    expect(s.activity.kind === "taking" && s.activity.moment.watching).toBe(
       false
     )
   })

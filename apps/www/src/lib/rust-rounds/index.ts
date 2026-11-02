@@ -5,28 +5,29 @@
  * reaches the network: every card plays from what is on the phone.
  * Phone-only (`build.paths.ts`).
  *
- * The voice notes wait on this phone, each named by id in the log. What
- * sends them home is RR6 (#2237). Until then the desk keeps every one: it
- * has no count of its own, and only the device's measured room (`withRoom`)
- * refuses a note, which the session then says, never letting one go.
+ * The voice notes are taken on the take pattern (`patternDesk`). They wait
+ * on this phone, each named by id in the log; a Redo's earlier note and one set
+ * aside stay there too. What sends them home is RR6 (#2237). Until then the
+ * desk keeps every one: it has no count of its own, and only the device's
+ * measured room (`withRoom`) refuses a note, which the session then says,
+ * never letting one go.
  */
-import type { NotesPort, NoteView, RustRoundsPorts } from "@some-ui/rust-rounds"
+import type { NotesPort, RustRoundsPorts } from "@some-ui/rust-rounds"
 import { keptRounds } from "@some-ui/rust-rounds"
-import {
-  onPageVisibility,
-  RECORDING_FAILURE_COPY,
-} from "@some-ui/voice-capture"
+import { onPageVisibility } from "@some-ui/voice-capture"
 
 import { copyText } from "@/lib/clipboard"
-import type { DeskSnapshot } from "@/lib/takes-desk"
-import { takesDesk } from "@/lib/takes-desk"
+import type { PatternDesk } from "@/lib/takes-desk"
+import { patternDesk } from "@/lib/takes-desk"
 import { browserLocalStorage } from "@/lib/tenant/storage"
 
-/** A note runs up to a minute (#2235: "Hold to speak, up to 60 s"). */
+/** A note runs up to a minute (#2235: "up to 60 s"). */
 const NOTE_MAX_MS = 60_000
 
-const desk = takesDesk({
+const desk = patternDesk({
   key: "some-ui:rust-rounds.notes",
+  // Its notes go home in no lane yet (RR6, #2237), so Let go owes no mark.
+  from: null,
   dbName: "some-ui.rust-rounds-notes",
   // No count of its own: only the device's room refuses a note.
   limits: { max: Number.POSITIVE_INFINITY, maxMs: NOTE_MAX_MS },
@@ -35,49 +36,23 @@ const desk = takesDesk({
 /** Audio no note names, and a note whose audio never landed. */
 export const sweepRustRoundsNotes = desk.sweep
 
-/** The desk's snapshot as the session reads it: its own ends, never its sentences. */
-export function noteView(snapshot: DeskSnapshot): NoteView {
-  const { take, ended, blocked } = snapshot
-  return {
-    take: take.kind === "recording" ? { kind: "recording" } : take,
-    ended:
-      ended === null
-        ? null
-        : {
-            seq: ended.seq,
-            line: ended.line,
-            end: ended.end,
-            note: ended.id,
-          },
-    blocked: blocked === null ? null : RECORDING_FAILURE_COPY[blocked],
-  }
-}
-
-/** The desk as the session's microphone; the same view while nothing changed. */
-function notesPort(): NotesPort {
-  let from: DeskSnapshot | null = null
-  let view: NoteView | null = null
-  return {
-    getSnapshot(): NoteView {
-      const now = desk.phone().getSnapshot()
-      if (view === null || now !== from) {
-        from = now
-        view = noteView(now)
-      }
-      return view
-    },
-    subscribe: (listener) => desk.phone().subscribe(listener),
-    start: (line) => desk.phone().start(line),
-    stop: () => desk.phone().stop(),
-    keptOn: desk.keptOn,
-  }
+/**
+ * A desk as the session's microphone: its take pattern and the notes it
+ * keeps. The phone's is `desk`; tests give theirs over the simulated
+ * microphone.
+ */
+export function notesPort(
+  on: Pick<PatternDesk, "phone" | "keptOn">
+): NotesPort {
+  const { pattern, takes } = on.phone()
+  return { pattern, takes, keptOn: on.keptOn }
 }
 
 /** The ports the session reads once, on mount. */
 export function phoneRustRoundsPorts(): RustRoundsPorts {
   return {
     store: keptRounds(browserLocalStorage),
-    notes: notesPort(),
+    notes: notesPort(desk),
     copy: copyText,
     now: () => Date.now(),
     newId: () => crypto.randomUUID(),

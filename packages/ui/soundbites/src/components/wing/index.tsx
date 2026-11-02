@@ -5,8 +5,8 @@
  * (www's ui-fit phone page) mounts the same pages the routes do.
  */
 import type { JSX, ReactNode } from "react"
-import type { IdeaCaptureProps } from "@soundbites/components/idea"
-import { IdeaCapture } from "@soundbites/components/idea"
+import type { IdeaBundleProps } from "@soundbites/components/idea-bundle"
+import { IdeaBundle } from "@soundbites/components/idea-bundle"
 import type { StudioProps } from "@soundbites/components/studio"
 import { Studio } from "@soundbites/components/studio"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
@@ -83,25 +83,25 @@ export const StudioHome = ({
   </div>
 )
 
-type NewIdeaPageProps = Omit<IdeaCaptureProps, "back"> & {
+type NewIdeaPageProps = Omit<IdeaBundleProps, "back"> & {
   /** The link back to the wing's Home. */
   backLink: WingLink
 }
 
-/** New idea (ST18), with the way back to the wing's Home. */
+/** New idea (ST26: one bundle), with the way back to the wing's Home. */
 export const NewIdeaPage = ({
   backLink: BackLink,
-  ...capture
+  ...bundle
 }: NewIdeaPageProps): JSX.Element => (
   <div className="mx-auto flex w-full max-w-md flex-col gap-4">
     <h1 className="text-muted-foreground text-sm font-bold tracking-wider uppercase">
-      {WORDS.idea.heading}
+      {WORDS.bundle.heading}
     </h1>
-    <IdeaCapture
-      {...capture}
+    <IdeaBundle
+      {...bundle}
       back={
         <BackLink className="text-muted-foreground text-sm underline underline-offset-4">
-          {WORDS.idea.back}
+          {WORDS.bundle.back}
         </BackLink>
       }
     />
