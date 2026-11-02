@@ -36,6 +36,9 @@ export const notToday = (day: string): string =>
 export const newerHeld = (day: string): string =>
   `These are ${formatDay(day)}’s picks. Newer ones are on this phone too.`
 
+/** What a pull on a Jobs screen checks again, for "Couldn’t check … just now" (`./pull`). */
+export const PULL_CHECKS = "the morning run and its picks"
+
 /** The file picker, where Drive is a way in (`lib/jobs/morning`). */
 export const openFromDrive = "Open picks from Drive"
 

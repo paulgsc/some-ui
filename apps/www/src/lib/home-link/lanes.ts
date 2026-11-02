@@ -17,12 +17,13 @@ import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 
 import { homeLink, paired, pairingOf, useHomeLink } from "./index"
-import type { KeptState } from "./kept-model"
+import type { KeptRun, KeptState } from "./kept-model"
 import type { Kept, KeptPorts } from "./kept-runtime"
 import { createKept, laneExchange } from "./kept-runtime"
 import type { KeptRecord } from "./kept-watch"
 import { askKept, watchKept } from "./kept-watch"
 import type { HomeLinkState } from "./model"
+import type { HomeRefresher } from "./pull"
 import { homeRefresher } from "./pull"
 import type { LaneView } from "./words"
 import { laneView, WORDS } from "./words"
@@ -118,18 +119,28 @@ export function useLaneHome(lane: Lane): KeptState {
   return useLaneRun(lane)
 }
 
+let homePull: HomeRefresher | null = null
+
+/** The one pull of home, made on first use (`document` is read then). */
+function homePullOf(): HomeRefresher {
+  homePull ??= homeRefresher({ watched: () => watched, doc: document })
+  return homePull
+}
+
 /**
  * While mounted (the app shell's `HomeLanes`), a pull asks every watched
  * lane for a run and hears how each ended (`./pull`, PULL3; LA15).
  */
 export function useHomePull(): void {
-  useEffect(
-    () =>
-      screenRefreshers.register(
-        homeRefresher({ watched: () => watched, doc: document })
-      ),
-    []
-  )
+  useEffect(() => screenRefreshers.register(homePullOf()), [])
+}
+
+/**
+ * How `lane`'s run in the pull under way ended (`./pull`'s `ended`), for a
+ * screen that names that lane in its own words (Jobs, PULL2).
+ */
+export function pulledLane(lane: Lane): Promise<KeptRun | null> {
+  return homePullOf().ended(wire(lane).sending)
 }
 
 /**

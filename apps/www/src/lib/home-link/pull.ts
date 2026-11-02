@@ -12,7 +12,9 @@
  *
  * Each run ends in its lane's runtime (`./kept-runtime`), so the marks that
  * read it (the header's, Settings') show how the pull went, lane by lane;
- * the pull itself says only whether all of them got in step.
+ * the pull itself says only whether all of them got in step. A screen that
+ * shows one lane hears that lane's end in the same pull (`ended`; Jobs'
+ * morning run, PULL2) and names it in its own words.
  */
 import type { Refresher } from "@/lib/pull-refresh/refreshers"
 
@@ -49,12 +51,22 @@ function linkFree(): Promise<void> {
   })
 }
 
+/** Home as a pull reads it again, and each lane's end in that pull. */
+export type HomeRefresher = Refresher & {
+  /**
+   * How `lane`'s run in the pull under way ended, starting that pull if
+   * none is out (the refresher's own ask in the same pull joins it); null
+   * when the pull asked nothing of it.
+   */
+  readonly ended: (lane: Kept) => Promise<KeptRun | null>
+}
+
 /** Home as a pull reads it again: every lane `watched` names, one at a time. */
 export function homeRefresher({
   watched,
   doc,
   free = linkFree,
-}: HomePullPorts): Refresher {
+}: HomePullPorts): HomeRefresher {
   const pullLane = async (lane: Kept): Promise<KeptRun | null> => {
     const end = await pullKept(lane, doc)
     if (end?.kind !== "busy") return end
@@ -62,16 +74,34 @@ export function homeRefresher({
     // Its screens may have gone while it waited (aph's).
     return watched().has(lane) ? pullKept(lane, doc) : null
   }
+  /** Each lane's end in the pull still out; null once it is done. */
+  let out: ReadonlyMap<Kept, Promise<KeptRun | null>> | null = null
+  const pull = (): ReadonlyMap<Kept, Promise<KeptRun | null>> => {
+    if (out !== null) return out
+    const ends = new Map<Kept, Promise<KeptRun | null>>()
+    let turn: Promise<void> = Promise.resolve()
+    for (const lane of Array.from(watched())) {
+      const end = turn.then(() => (watched().has(lane) ? pullLane(lane) : null))
+      ends.set(lane, end)
+      turn = end.then(
+        () => undefined,
+        () => undefined
+      )
+    }
+    out = ends
+    void turn.then(() => {
+      if (out === ends) out = null
+    })
+    return ends
+  }
   return {
     what: PULL_HOME.what,
     checkAgain: async (): Promise<void> => {
-      let short = false
-      for (const lane of Array.from(watched())) {
-        if (!watched().has(lane)) continue
-        const end = await pullLane(lane)
-        if (end !== null && !resynced(end)) short = true
+      const ends = await Promise.all(pull().values())
+      if (ends.some((end) => end !== null && !resynced(end))) {
+        throw new Error("a lane did not get in step with home")
       }
-      if (short) throw new Error("a lane did not get in step with home")
     },
+    ended: (lane) => pull().get(lane) ?? Promise.resolve(null),
   }
 }

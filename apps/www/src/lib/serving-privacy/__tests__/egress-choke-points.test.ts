@@ -89,6 +89,10 @@ const HOME_LINK_CALLERS = new Set([
   // idea's screen (ST26, `ideaHome`), which reads whether the phone is paired
   // and listens for that changing, asking home nothing.
   "lib/idea-hearing/index.ts",
+  // LA15, PULL2: a pull on a Jobs screen or the status page hears how the
+  // jobs lane's run in the pull of home ended (`pulledLane`), asking nothing
+  // of its own.
+  "lib/jobs/pull.ts",
 ])
 
 /**

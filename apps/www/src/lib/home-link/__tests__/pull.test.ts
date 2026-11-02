@@ -126,6 +126,25 @@ describe("a pull's ask of home", () => {
     expect(lanes[0]?.runs).toBe(0)
   })
 
+  it("tells a screen its lane's end in the pull under way, one run a lane between them (PULL2)", async () => {
+    const [shown, other] = [lane(silent), lane(synced)]
+    const home = homeRefresher({
+      watched: () => new Set([other, shown]),
+      doc: { visibilityState: "visible" },
+      free: () => Promise.resolve(),
+    })
+    const heard = home.ended(shown)
+    const all = home.checkAgain()
+    expect(await heard).toEqual({ kind: "unreachable", at: 7 })
+    await expect(all).rejects.toThrow()
+    expect([other.runs, shown.runs]).toEqual([1, 1])
+    // That pull is over: the next one asks again, and a lane not watched
+    // hears nothing.
+    expect(await home.ended(other)).toEqual({ kind: "synced", at: 7 })
+    expect(other.runs).toBe(2)
+    expect(await home.ended(lane(synced))).toBeNull()
+  })
+
   it("asks only the lanes still watched when their turn comes", async () => {
     const lanes = new Set<Lane>()
     const gone = lane(synced)

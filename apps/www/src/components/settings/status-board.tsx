@@ -8,6 +8,7 @@
  * (`./failure-log`). It reads; it sends nothing.
  */
 import type { JSX } from "react"
+import { useEffect } from "react"
 import { cn } from "@some-ui/core-utils"
 import { MarkLegend } from "@some-ui/shared"
 // Only the status route imports this module, and route splitting makes that
@@ -26,6 +27,7 @@ import { hasAudience } from "@/lib/build-profile"
 import { useMinuteClock } from "@/lib/clock"
 import { kindJourney } from "@/lib/jobs/journey"
 import { everyMorning, morningOf } from "@/lib/jobs/morning"
+import { registerJobsPull } from "@/lib/jobs/pull"
 import { everyJourney } from "@/lib/journey"
 import type { How } from "@/lib/sharing-marks"
 import { MARK_WORDS } from "@/lib/sharing-marks"
@@ -255,6 +257,8 @@ export const StatusBoard = (): JSX.Element => {
   const now = useMinuteClock()
   const routineFiles = useHomeRoutineFiles()
   const routine = useRoutineStatus(routineFiles?.key ?? "", now)
+  // A pull here names the morning run when it couldn't check it (PULL2).
+  useEffect(registerJobsPull, [])
   const rows = [
     ...lanes.rows,
     morningRow(morningOf(files.state, lanes.paired, now), now),

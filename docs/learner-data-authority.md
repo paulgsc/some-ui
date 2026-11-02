@@ -942,7 +942,9 @@ run it asked for, or by the run under way when none goes on after it), and
 that the shell's drain sends nothing unpaired and sends once paired on the
 moments below, a pull among them, asking each watched lane once and saying
 the pull fell short when one lane's run did, while a mark sends nothing of
-its own (`components/__tests__/device-home-glyph.test.tsx`). What no test
+its own (`components/__tests__/device-home-glyph.test.tsx`), and that a
+screen hears its lane's end in the pull under way, one run a lane between
+them (`lib/home-link/__tests__/pull.test.ts`). What no test
 can say is when a run is asked for. Rust Rounds' lane
 (`rust-rounds.ts`) is held by `packages/ui/rust-rounds/src/lib/home/index.test.ts`
 and `components/__tests__/device-home-glyph.test.tsx`.
@@ -963,7 +965,12 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   more for a lane whose run the link turned away, once the link frees up
   (the moment its watch asks it again too), through the refresher that
   `useHomePull` registers on `screenRefreshers` while `HomeLanes` is
-  mounted. Nothing asks on a timer. A run goes
+  mounted. In the same pull, that refresher's `ended` tells a screen how
+  its lane's run ended: `pulledLane` reads it, only for the Jobs refresher
+  (`lib/jobs/pull.ts`, PULL2, registered while the Jobs screens or the
+  status page show), and it joins the pull under way, or starts the one
+  the refresher's own ask in that pull joins, so each lane is still asked
+  once, in turn. Nothing asks on a timer. A run goes
   under the pairing the phone holds when it starts (`laneExchange`), and
   the link's `send` refuses a request once the phone stops or goes to the
   background. For aph, the first run on a paired phone moves its record to
@@ -988,12 +995,18 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   changes anything the cleanup `watchKept` returns undoes, or removes
   `mayAsk`'s check that the phone is paired or that the document is
   visible; a hunk that calls `pullKept` from anywhere but `homeRefresher`,
-  or `homeRefresher` from anywhere but `useHomePull`'s effect; a hunk to
+  `homeRefresher` from anywhere but `lanes.ts`'s `homePullOf`, or
+  registers it anywhere but `useHomePull`'s effect; a hunk that calls
+  `pulledLane` from anywhere but `lib/jobs/pull.ts`'s `jobsRefresher`, or
+  registers that refresher (`registerJobsPull`) from anywhere but an effect
+  in `routes/_dashboard/_apk/jobs.tsx` or
+  `components/settings/status-board.tsx`; a hunk to
   `lib/home-link/pull.ts` that asks a lane other than through `pullKept`,
   asks any but the lanes `watched` names when its turn comes, asks two lanes
   at once, asks a lane again other than after a run the link turned away
   (`busy`) and the link freeing up (`free`), or more than once again, drops
-  that one ask again, or lets a pull
+  that one ask again, lets `ended` or `checkAgain` start a pull while one
+  is out, or lets a pull
   read as in step when a run that answered it ended in a way `resynced`
   (`kept-model.ts`) does not accept; a hunk to `lib/home-link/kept-runtime.ts` or
   `kept-model.ts` that answers a pull with a run other than the one
