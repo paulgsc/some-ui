@@ -2,7 +2,6 @@
  * What the app shows about the phone's storage (`device-backend/storage`):
  * how much of the budget is in use, the removals not yet shown, and, after
  * a session save was refused, which session it could remove to make room.
- * A pull reads it again (`check`, PULL4).
  */
 import { deviceBackend } from "@/lib/device-backend/boot"
 import type { RemovableSession } from "@/lib/device-backend/handlers/sessions"
@@ -24,19 +23,20 @@ export type DeviceStorageView = {
 let snapshot: DeviceStorageView | null = null
 let full: DeviceStorageView["full"] = null
 const listeners = new Set<() => void>()
-/** A pull's read still out, which another pull joins. */
-let checking: Promise<void> | null = null
+/** The newest read started: an older one that lands after it is stale. */
+let latest = 0
 
 /** Reads the phone's storage again: whether it could. */
 async function read(): Promise<boolean> {
+  const mine = ++latest
   let read = false
   try {
     const { context } = await deviceBackend()
-    snapshot = {
-      use: await storageUse(context.db, context.budget),
-      notice: await readPruneNotice(context.db),
-      full,
-    }
+    const use = await storageUse(context.db, context.budget)
+    const notice = await readPruneNotice(context.db)
+    // A read started since saw the room after this one did (a notice
+    // dismissed, say), so this answer is left out.
+    if (mine === latest) snapshot = { use, notice, full }
     read = true
   } catch {
     // Ignored: not shown this time; the next refresh tries again.
@@ -75,17 +75,9 @@ export const deviceStorage = {
   refresh(): Promise<void> {
     return read().then(() => undefined)
   },
-  /**
-   * A pull's read (`lib/pull-refresh/refreshers`): rejects when it could not
-   * read, and joins one still out, so every screen showing it reads it once.
-   */
+  /** A pull's read (`lib/pull-refresh/refreshers`): rejects when it could not read. */
   check(): Promise<void> {
-    checking ??= read()
-      .then(orThrow)
-      .finally(() => {
-        checking = null
-      })
-    return checking
+    return read().then(orThrow)
   },
   /** Room was made, or the person declined: stop asking until the next refusal. */
   settle(): Promise<void> {
