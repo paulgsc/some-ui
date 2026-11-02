@@ -805,10 +805,10 @@ cutting study short can be read over time.
   with six optional reasons, **Go**, and **Oops, keep going**, which forgets
   a mis-tap.
 - **Leaving** mid-session is a stop too, with nothing to tap: the app going
-  to the background, or Back or a link in the app closing the session's
-  screen. Back within a minute it was a glance, and is forgotten, even after
-  the screen closed: the session goes on from where it was (playing, even if
-  it had been paused, once the screen had closed).
+  to the background or being closed, or Back or a link in the app closing the
+  session's screen. Back within a minute it was a glance, and is forgotten,
+  even after the screen closed: the session goes on from where it was
+  (playing, even if it had been paused, once the screen had closed).
 - **Within 30 minutes** of the stop the person can **Pick up where you left
   off** (exactly, in the player they left; once reopened, the clock goes on
   from where it stopped, so time played adds up, and the activity starts its
@@ -829,8 +829,14 @@ departure the app cannot see, such as a crash while on screen, leaves no stop
 and only one more open, and the session starts again from the beginning when
 reopened. A finished session played again keeps no stop on Back. The policy is
 one pure `step` in `apps/www/src/lib/session-stop`, run by `./runtime`; the
-player only forwards taps, `visibilitychange` and its own closing. The app
-sends them, and the counts, nowhere: they leave the
+player only forwards taps, `visibilitychange`, the page going away and its
+own closing. The desktop web keeps the same stops and offers the same
+pick-up, except that a hidden tab is not a stop there: the session plays on,
+and that time counts. However often a session stops and resumes, on either,
+its clock stands still while it is stopped and goes on from where it
+stopped, so the time it closes with is the time played (promise SS1,
+`__tests__/stop-resume.test.ts` there). The app sends them, and the counts,
+nowhere: they leave the
 phone in what the person shares (both shares in `lib/agent-export` carry
 them) and, as WebView storage, in Android's backup ("What the phone keeps",
 PD3), and they never reach the home server: reading them across devices

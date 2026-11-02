@@ -35,6 +35,9 @@ vi.mock("@/lib/orchestrator", async () => {
     start: (): void => {
       played.starts += 1
     },
+    // Read as the player closes, which leaves the session on both surfaces.
+    pause: (): void => undefined,
+    mode: { is_running: false, is_paused: false },
   }
   return {
     ...actual,
@@ -42,7 +45,8 @@ vi.mock("@/lib/orchestrator", async () => {
     useOrchestratorClock: (): { current_time: number } => ({
       current_time: 0,
     }),
-    // `getState` too: the stop hook reads the store when a session starts.
+    // `getState` too: the stop hook reads the store as a session starts and
+    // as the player closes.
     useOrchestratorStore: Object.assign(
       <T,>(select: (s: typeof store) => T): T => select(store),
       { getState: (): typeof store => store }

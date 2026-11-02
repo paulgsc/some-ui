@@ -23,12 +23,18 @@ export type StopRuntime = {
   pickUp: () => void
   done: () => void
   /**
-   * A minute clock and, `onPhone`, leaving and coming back: the app hidden
-   * and shown, and the returned cleanup (the player unmounting, by Back or a
-   * link) as leaving.
+   * A minute clock, and leaving and coming back. On both surfaces the
+   * returned cleanup (the player unmounting, by Back or a link) and the page
+   * going away (`pagehide`: a tab closed, a reload, the app torn down) leave,
+   * and the page shown again from the browser's cache comes back. On the
+   * phone the app hidden and shown does too; a hidden desktop tab is a
+   * normal way to work, so it is not a stop.
    */
-  connect: (onPhone: boolean) => () => void
+  connect: (surface: Surface) => () => void
 }
+
+/** Which build the player runs in: `hasAudience("apk")`, read by the caller. */
+export type Surface = "phone" | "desktop"
 
 /** One player mount's stop: runs `step` and its effects, owns the clock. */
 export function createStopRuntime(
@@ -94,29 +100,40 @@ export function createStopRuntime(
     tap: () => dispatch(here("tap")),
     pickUp: () => dispatch({ type: "pickUp", now: now() }),
     done: () => dispatch({ type: "done", now: now() }),
-    connect: (onPhone) => {
+    connect: (surface) => {
+      const visibleEvent = (): StopEvent => ({ type: "visible", now: now() })
+      // The player gone for good keeps a stop only once `begin` ran: not for
+      // a finished session played again, nor in StrictMode's first cleanup,
+      // which precedes it. Either way the app-wide orchestrator pauses, or it
+      // plays on unseen.
+      const leave = (): void => {
+        if (begun) dispatch(here("hidden"))
+        else playback.pause()
+      }
       const onVisibility = (): void =>
         dispatch(
           document.visibilityState === "hidden"
             ? here("hidden")
-            : { type: "visible", now: now() }
+            : visibleEvent()
         )
-      if (onPhone) {
+      const onPageShow = (event: PageTransitionEvent): void => {
+        if (event.persisted) dispatch(visibleEvent())
+      }
+      if (surface === "phone") {
         document.addEventListener("visibilitychange", onVisibility)
       }
+      window.addEventListener("pagehide", leave)
+      window.addEventListener("pageshow", onPageShow)
       const clock = setInterval(
         () => dispatch({ type: "tick", now: now() }),
         60_000
       )
       return () => {
         document.removeEventListener("visibilitychange", onVisibility)
+        window.removeEventListener("pagehide", leave)
+        window.removeEventListener("pageshow", onPageShow)
         clearInterval(clock)
-        if (!onPhone) return
-        // Either way the app-wide orchestrator pauses, or it plays on unseen.
-        // A stop is kept only once `begin` ran: not for a finished session
-        // played again, nor in StrictMode's first cleanup, which precedes it.
-        if (begun) dispatch(here("hidden"))
-        else playback.pause()
+        leave()
       }
     },
   }
