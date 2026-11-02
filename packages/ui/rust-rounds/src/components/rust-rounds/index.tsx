@@ -26,7 +26,7 @@ import {
 import type { PlayIntent, PlayState } from "@rust-rounds/lib/play/machine"
 import { cardNote } from "@rust-rounds/lib/play/note"
 import type { NotesPort, RustRoundsPorts } from "@rust-rounds/lib/play/runtime"
-import { createRustRounds } from "@rust-rounds/lib/play/runtime"
+import { createRustRounds, NO_MICROPHONE } from "@rust-rounds/lib/play/runtime"
 import type { Visit } from "@rust-rounds/lib/play/store"
 import { runHeading, WORDS } from "@rust-rounds/lib/play/words"
 import { Button, CodeCard, TakeItem, Textarea } from "@some-ui/shared"
@@ -34,7 +34,7 @@ import type { PatternTake } from "@some-ui/voice-capture"
 import { Pin } from "lucide-react"
 
 export type RustRoundsProps = {
-  /** The phone's ports, or the viewer's sample's. Read once, on mount. */
+  /** The phone's ports. Read once, on mount. */
   ports: RustRoundsPorts
 }
 
@@ -97,30 +97,17 @@ const RunView = ({ run }: { run: RustcRun | null }): JSX.Element => {
   )
 }
 
-/**
- * What a card's voice note needs besides the session: the microphone and
- * the notes the phone keeps; no port, and so no notes, in a build with no
- * microphone.
- */
+/** What a card's voice note needs besides the session: the notes the phone keeps. */
 type Notes = {
   readonly port: NotesPort | null
   readonly takes: ReadonlyArray<PatternTake>
-}
-
-/** The notes of a build with no microphone: none, ever, the same array. */
-const NONE: ReadonlyArray<PatternTake> = []
-const NO_TAKES: NotesPort["takes"] = {
-  getSnapshot: () => NONE,
-  subscribe: () => () => undefined,
 }
 
 /**
  * The card's voice note, on the take pattern's parts: tap to talk and tap
  * to stop, then where it's kept, Play, Redo and Let it go. Once a take found
  * the phone had no room, a card with no note says so in place of the button:
- * the next card tries again. In a build with no microphone (the viewer's
- * sample on Pages, #2241) it says what it would do there instead, and the
- * card's own actions carry on.
+ * the next card tries again.
  */
 const VoiceNote = ({
   state,
@@ -519,7 +506,7 @@ export const RustRounds = ({ ports }: RustRoundsProps): JSX.Element => {
   /* eslint-enable owner-guard/no-mount-snapshot */
   useEffect(() => runtime.attach(), [runtime])
   const state = useSyncExternalStore(runtime.subscribe, runtime.getSnapshot)
-  const notes = port?.takes ?? NO_TAKES
+  const notes = port?.takes ?? NO_MICROPHONE.takes
   const takes = useSyncExternalStore(notes.subscribe, notes.getSnapshot)
   const { dispatch } = runtime
 

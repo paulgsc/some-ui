@@ -14,7 +14,6 @@ import { viewerRustRoundsPorts } from "@/lib/demo/rust-rounds-sample"
  * sample data (`components/provenance-strip`, the Practice wing's).
  */
 const ViewerRustRounds = (): JSX.Element => {
-  // Made once per mount: the session reads them once.
   const [ports] = useState(viewerRustRoundsPorts)
   return <RustRounds ports={ports} />
 }

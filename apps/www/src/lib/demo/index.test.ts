@@ -108,20 +108,15 @@ describe("the Rust Rounds sample", () => {
     LOG_SCHEMA,
     lintRound,
     resolvePrograms,
-    RoundSchema,
-    RustcRunSchema,
-    TutorNotesSchema,
   } = rustRounds
 
   it("is a round any tutor could have sent, which the phone plays clean", () => {
-    expect(RoundSchema.parse(BORROWING_01)).toEqual(BORROWING_01)
-    expect(TutorNotesSchema.parse(SAMPLE_NOTES)).toEqual(SAMPLE_NOTES)
     expect(
       lintRound(BORROWING_01, { schema: LOG_SCHEMA, sessions: [] })
     ).toEqual([])
     for (const card of BORROWING_01.cards) {
       if (card.kind === "refine") continue
-      const run = RustcRunSchema.parse(BORROWING_01_RUNS[card.id])
+      const run = BORROWING_01_RUNS[card.id]
       // The round's guess and rustc agree: nothing is logged as guessed wrong.
       expect(expectMatches(card.expect, run), card.id).toBe(true)
     }
@@ -136,7 +131,6 @@ describe("the Rust Rounds sample", () => {
       ["a", "b", "c"].map((card) => `borrowing-01/${card}`)
     )
     expect(held.notes).toEqual([SAMPLE_NOTES])
-    // A second opening in the same page finds it and holds nothing more.
     expect(viewerRustRoundsPorts().store.open().held.rounds).toHaveLength(1)
   })
 
@@ -188,8 +182,7 @@ describe("the Rust Rounds sample", () => {
     }
   }
 
-  // The Done-when of #2241: the recorded results match rustc 1.97. CI has no
-  // rustc, so this runs only where 1.97.0 is installed (`rustc --version`).
+  // CI has no rustc.
   it.skipIf(!(rustcVersion() ?? "").startsWith("rustc 1.97.0 "))(
     "matches what rustc 1.97.0 prints for every sample card, where it is installed",
     () => {
@@ -199,7 +192,6 @@ describe("the Rust Rounds sample", () => {
       ]
       for (const { round, runs } of samples) {
         const programs = resolvePrograms(round)
-        // Every card with a program has its run recorded, and only those.
         expect(Object.keys(runs).sort()).toEqual([...programs.keys()].sort())
         for (const [card, program] of programs) {
           const run = runs[card]

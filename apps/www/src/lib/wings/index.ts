@@ -151,7 +151,6 @@ export const ROOMS: ReadonlyArray<Room> = [
   { id: "soundbites", wing: "practice", roots: ["/soundbites"], tab: "Bites" },
   // Opened from Practice Home's card (#2235, the owner's D2), not a tab.
   { id: "rust-rounds", wing: "practice", roots: ["/rust-rounds"] },
-  // The viewer's way to try it on Pages, with sample rounds (#2241).
   {
     id: "rust-rounds-sample",
     wing: "practice",

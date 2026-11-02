@@ -7,8 +7,7 @@
  *
  * Its ports (#2235): what is held and the log (`store`, through the one
  * kept-record reader), the microphone (`notes`: the phone's take pattern
- * and the notes it keeps; none in the viewer's sample on Pages, #2241), the
- * clipboard, the clock and the page. None of them is the network: every card
+ * and the notes it keeps), the clipboard, the clock and the page. None of them is the network: every card
  * plays from what is on the phone.
  *
  * Only an attached runtime acts: it hears the microphone from `attach` to its
@@ -59,7 +58,8 @@ export type RustRoundsPorts = {
   /**
    * The microphone; null in a build that has none (the viewer's sample on
    * Pages, #2241). There the speak step says what it would do in place of
-   * the take button, so no take ever starts.
+   * the take button, so no take ever starts, and the session reads the
+   * pattern at rest (`NO_MICROPHONE`).
    */
   readonly notes: NotesPort | null
   /** Puts `text` on the clipboard; rejects when it could not. */
@@ -88,18 +88,21 @@ export type RustRoundsRuntime = {
 
 const iso = (ms: number): string => new Date(ms).toISOString()
 
-/**
- * The take pattern at rest, as the kit itself makes it: what the session
- * sees of a microphone where the build has none (`RustRoundsPorts.notes`).
- */
-const AT_REST: TakePatternSnapshot = takePatternSnapshot(
-  initialTakePattern,
-  ONE_TAKE
-)
+const NONE: ReadonlyArray<PatternTake> = []
+
+/** Where `notes` is null: the pattern at rest, as the kit makes it, and no notes. */
+export const NO_MICROPHONE: {
+  readonly snapshot: TakePatternSnapshot
+  readonly takes: NotesPort["takes"]
+} = {
+  snapshot: takePatternSnapshot(initialTakePattern, ONE_TAKE),
+  takes: { getSnapshot: () => NONE, subscribe: () => () => undefined },
+}
 
 export function createRustRounds(ports: RustRoundsPorts): RustRoundsRuntime {
   const pattern = ports.notes?.pattern ?? null
-  const notesNow = (): TakePatternSnapshot => pattern?.getSnapshot() ?? AT_REST
+  const notesNow = (): TakePatternSnapshot =>
+    pattern?.getSnapshot() ?? NO_MICROPHONE.snapshot
   let state = initialState(
     ports.store.open(),
     { id: ports.newId(), startedAt: iso(ports.now()) },
@@ -146,8 +149,6 @@ export function createRustRounds(ports: RustRoundsPorts): RustRoundsRuntime {
         })
         return
       }
-      // With no microphone the screen offers none of these, and a hidden
-      // page or a detach has no take to end.
       case "tapNote": {
         pattern?.tap(effect.line, effect.supersedes)
         return

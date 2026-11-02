@@ -8,16 +8,10 @@
  * - **Nothing is kept.** The session's records are the page's storage, which
  *   on this build is an in-memory copy (`./viewer-storage`): a reload starts
  *   over, and nothing of the owner's is here.
- * - **No microphone.** The speak step says what it would do on the phone and
- *   the card carries on (`notes: null`).
  * - **No home.** Every card plays from what is bundled; nothing is fetched.
  *
- * `BORROWING_01_RUNS` is what rustc 1.97.0 (2d8144b78 2026-07-07) printed
- * for each card's program, saved as `main.rs` and built with `rustc
- * --edition 2021 main.rs`, then run with no environment, as the worked
- * example's runs were recorded. The span is the first error's primary span
- * from `--error-format=json`. `lib/demo`'s test compiles every sample
- * program again where rustc 1.97.0 is installed and holds these to it.
+ * `BORROWING_01_RUNS` is what rustc 1.97.0 (2d8144b78 2026-07-07) printed,
+ * recorded as `record` in `lib/demo`'s test does it.
  */
 import type {
   Round,
@@ -31,6 +25,7 @@ import {
   NOTES_SCHEMA,
   ROUND_SCHEMA,
 } from "@some-ui/rust-rounds"
+import { onPageVisibility } from "@some-ui/voice-capture"
 
 import { copyText } from "@/lib/clipboard"
 import { browserLocalStorage } from "@/lib/tenant/storage"
@@ -180,8 +175,8 @@ export const BORROWING_01_RUNS: Readonly<Record<string, RustcRun>> = {
 
 /**
  * The viewer's Rust Rounds: the session's own store over the page's storage,
- * given the sample round when it holds nothing yet; no microphone; the
- * clipboard for "Copy for a tutor". A viewer may paste a tutor's reply too:
+ * given the sample round when it holds nothing yet, and the clipboard for
+ * "Copy for a tutor". A viewer may paste a tutor's reply too:
  * it plays as on the phone, and goes with the reload like the rest.
  */
 export function viewerRustRoundsPorts(): RustRoundsPorts {
@@ -205,8 +200,6 @@ export function viewerRustRoundsPorts(): RustRoundsPorts {
     copy: copyText,
     now: () => Date.now(),
     newId: () => crypto.randomUUID(),
-    // Only a take under way listens for the page being hidden, and the
-    // sample has no microphone to take one.
-    onVisibility: () => () => undefined,
+    onVisibility: onPageVisibility,
   }
 }
