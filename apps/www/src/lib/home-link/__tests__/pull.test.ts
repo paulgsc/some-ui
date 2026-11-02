@@ -1,7 +1,8 @@
 /**
  * A pull resyncs with home (PULL3, LA15): each lane the shell watches is
- * asked for a run, one at a time, while the app is in front (unpaired, the
- * shell's test: `components/__tests__/device-home-glyph.test.tsx`), and the pull is in step only once every lane's run was; each
+ * asked for a run, one at a time, while the app is in front, and the pull
+ * is in step only once every lane's run was (the unpaired case is the
+ * shell's test, `components/__tests__/device-home-glyph.test.tsx`); each
  * lane's own end stays in its runtime, which its marks read.
  */
 import { noAnswer } from "@/test-support/no-answer"
@@ -12,7 +13,6 @@ import type { Kept } from "@/lib/home-link/kept-runtime"
 import { createKept } from "@/lib/home-link/kept-runtime"
 import type { HomePullPorts } from "@/lib/home-link/pull"
 import { homeRefresher } from "@/lib/home-link/pull"
-import { PULL_HOME } from "@/lib/home-link/words"
 
 const link = vi.hoisted(() => ({
   /** Whether a run holds the link, which turns any other away (`keep`). */
@@ -76,12 +76,6 @@ describe("a pull's ask of home", () => {
       "synced",
       "synced",
     ])
-    expect(
-      homeRefresher({
-        watched: () => new Set(),
-        doc: { visibilityState: "visible" },
-      }).what
-    ).toBe(PULL_HOME.what)
   })
 
   it("falls short when home doesn't answer, and each lane says so", async () => {

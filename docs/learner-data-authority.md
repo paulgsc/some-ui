@@ -991,8 +991,9 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   or `homeRefresher` from anywhere but `useHomePull`'s effect; a hunk to
   `lib/home-link/pull.ts` that asks a lane other than through `pullKept`,
   asks any but the lanes `watched` names when its turn comes, asks two lanes
-  at once, asks a lane again but after a run the link turned away (`busy`)
-  and the link freeing up (`free`), or more than once again, or lets a pull
+  at once, asks a lane again other than after a run the link turned away
+  (`busy`) and the link freeing up (`free`), or more than once again, drops
+  that one ask again, or lets a pull
   read as in step when a run that answered it ended in a way `resynced`
   (`kept-model.ts`) does not accept; a hunk to `lib/home-link/kept-runtime.ts` or
   `kept-model.ts` that answers a pull with a run other than the one
