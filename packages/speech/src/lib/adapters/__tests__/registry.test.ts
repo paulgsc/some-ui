@@ -4,7 +4,7 @@ import { httpSpeech } from "@speech/lib/adapters/http"
 import { webSpeech } from "@speech/lib/adapters/web-speech"
 import { createControllableAdapter } from "@speech/lib/testing"
 import fc from "fast-check"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 /**
  * What this file is really pinning is a boundary, not a lookup table: a
@@ -144,6 +144,14 @@ describe("createSpeechAdapter - mode-driven selection", () => {
     expect(disposals).toBe(1)
   })
 })
+
+// HL1: a test in this file fails only when the registry is wrong, not on a
+// busy CI host. Whichever property runs first pays fast-check's start-up: 0.7 s
+// on an idle machine, but 4.5 to 4.9 s of vitest's 5 s default on the CI
+// runner, which starts every package's tests at once. 30 s covers it.
+// Tolerance: a host nearing 30 s, which wants the start-up cost cut, not a
+// larger number here.
+vi.setConfig({ testTimeout: 30_000 })
 
 describe("createSpeechAdapter - property: configuration decides, nothing else", () => {
   it("always returns the registry entry for the resolved mode", () => {

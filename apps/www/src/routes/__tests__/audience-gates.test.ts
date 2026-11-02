@@ -134,6 +134,12 @@ async function gateStatusAt(url: string): Promise<Map<string, string>> {
   return new Map(router.state.matches.map((m) => [m.routeId, m.status]))
 }
 
+// HL1: this file fails only when a gate is wrong, not on a busy CI host. The
+// route-tree load in this hook is most of the file's time: 1.6 s on an idle
+// machine, and on the CI runner, which starts every package's tests at once,
+// the whole file took 7.1 to 9.5 s against the hook's 10 s default. 30 s
+// covers it. Tolerance: a host nearing 30 s, which wants the load cut, not a
+// larger number here.
 beforeAll(async () => {
   const { workspaces } = readAudienceWorkspaces(workspaceRoots)
   for (const w of workspaces) {
@@ -162,7 +168,7 @@ beforeAll(async () => {
       }
     })
   )
-})
+}, 30_000)
 
 describe("audience gates", () => {
   it("each gate directory is a layout route with routes under it", () => {
