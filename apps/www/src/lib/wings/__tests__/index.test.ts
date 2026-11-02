@@ -96,6 +96,13 @@ describe("wings", () => {
       "Sessions",
       "Profile",
     ])
+    // The viewer's sample, only in the viewer's build that serves it.
+    expect(navOf(wing("practice"), true).map((room) => room.nav)).toEqual([
+      "Home",
+      "Sessions",
+      "Rust Rounds",
+      "Profile",
+    ])
     expect(webSettingsOf(wing("practice"))).toBe("/practice/settings")
     expect(navOf(wing("self"))).toEqual([])
     expect(webSettingsOf(wing("self"))).toBeNull()

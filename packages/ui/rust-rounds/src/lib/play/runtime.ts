@@ -7,8 +7,8 @@
  *
  * Its ports (#2235): what is held and the log (`store`, through the one
  * kept-record reader), the microphone (`notes`: the phone's take pattern
- * and the notes it keeps), the clipboard, the clock and the page. None of them is the network: every card plays from what is
- * on the phone.
+ * and the notes it keeps), the clipboard, the clock and the page. None of them is the network: every card
+ * plays from what is on the phone.
  *
  * Only an attached runtime acts: it hears the microphone from `attach` to its
  * detach and no longer. What it leaves unsettled (a take under way, a card
@@ -19,7 +19,16 @@
  * sending them and the log home is RR6 (#2237) and RR7 (#2238).
  */
 import { assertNever } from "@some-ui/core-utils"
-import type { PatternTake, TakePattern } from "@some-ui/voice-capture"
+import type {
+  PatternTake,
+  TakePattern,
+  TakePatternSnapshot,
+} from "@some-ui/voice-capture"
+import {
+  initialTakePattern,
+  ONE_TAKE,
+  takePatternSnapshot,
+} from "@some-ui/voice-capture"
 
 import type { PlayEffect, PlayEvent, PlayIntent, PlayState } from "./machine"
 import { initialState, step } from "./machine"
@@ -46,7 +55,13 @@ export type NotesPort = {
 
 export type RustRoundsPorts = {
   readonly store: RoundsStore
-  readonly notes: NotesPort
+  /**
+   * The microphone; null in a build that has none (the viewer's sample on
+   * Pages, #2241). There the speak step says what it would do in place of
+   * the take button, so no take ever starts, and the session reads the
+   * pattern at rest (`NO_MICROPHONE`).
+   */
+  readonly notes: NotesPort | null
   /** Puts `text` on the clipboard; rejects when it could not. */
   readonly copy: (text: string) => Promise<void>
   /** Milliseconds since the epoch. */
@@ -73,11 +88,25 @@ export type RustRoundsRuntime = {
 
 const iso = (ms: number): string => new Date(ms).toISOString()
 
+const NONE: ReadonlyArray<PatternTake> = []
+
+/** Where `notes` is null: the pattern at rest, as the kit makes it, and no notes. */
+export const NO_MICROPHONE: {
+  readonly snapshot: TakePatternSnapshot
+  readonly takes: NotesPort["takes"]
+} = {
+  snapshot: takePatternSnapshot(initialTakePattern, ONE_TAKE),
+  takes: { getSnapshot: () => NONE, subscribe: () => () => undefined },
+}
+
 export function createRustRounds(ports: RustRoundsPorts): RustRoundsRuntime {
+  const pattern = ports.notes?.pattern ?? null
+  const notesNow = (): TakePatternSnapshot =>
+    pattern?.getSnapshot() ?? NO_MICROPHONE.snapshot
   let state = initialState(
     ports.store.open(),
     { id: ports.newId(), startedAt: iso(ports.now()) },
-    ports.notes.pattern.getSnapshot()
+    notesNow()
   )
   const listeners = new Set<() => void>()
 
@@ -121,19 +150,19 @@ export function createRustRounds(ports: RustRoundsPorts): RustRoundsRuntime {
         return
       }
       case "tapNote": {
-        ports.notes.pattern.tap(effect.line, effect.supersedes)
+        pattern?.tap(effect.line, effect.supersedes)
         return
       }
       case "stopNote": {
-        ports.notes.pattern.leave()
+        pattern?.leave()
         return
       }
       case "playNote": {
-        ports.notes.pattern.play(effect.id)
+        pattern?.play(effect.id)
         return
       }
       case "setAsideNote": {
-        ports.notes.pattern.letGo(effect.id, effect.place)
+        pattern?.letGo(effect.id, effect.place)
         return
       }
       case "copy": {
@@ -160,12 +189,12 @@ export function createRustRounds(ports: RustRoundsPorts): RustRoundsRuntime {
     },
     dispatch: (intent): void => send({ ...intent, at: iso(ports.now()) }),
     attach(): () => void {
-      const { pattern } = ports.notes
-      const stopNotes = pattern.subscribe(() =>
-        send({ type: "notes", view: pattern.getSnapshot() })
-      )
+      const stopNotes =
+        pattern?.subscribe(() =>
+          send({ type: "notes", view: pattern.getSnapshot() })
+        ) ?? ((): void => undefined)
       // What changed between making the runtime and attaching it.
-      send({ type: "notes", view: pattern.getSnapshot() })
+      send({ type: "notes", view: notesNow() })
       // Additions an earlier opening's log refused: written before any new one.
       if (state.notKept.log) {
         send({ type: "stored", record: "log", ok: ports.store.flush() })
@@ -182,9 +211,9 @@ export function createRustRounds(ports: RustRoundsPorts): RustRoundsRuntime {
           type: "reopened",
           found: [...unsettled].map(([line, since]) => ({
             line,
-            note: ports.notes.keptOn(line, since),
+            note: ports.notes?.keptOn(line, since) ?? null,
           })),
-          busy: pattern.getSnapshot().take.kind !== "idle",
+          busy: notesNow().take.kind !== "idle",
         })
       }
       const stopVisibility = ports.onVisibility((hidden) => {

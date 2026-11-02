@@ -26,7 +26,7 @@ import {
 import type { PlayIntent, PlayState } from "@rust-rounds/lib/play/machine"
 import { cardNote } from "@rust-rounds/lib/play/note"
 import type { NotesPort, RustRoundsPorts } from "@rust-rounds/lib/play/runtime"
-import { createRustRounds } from "@rust-rounds/lib/play/runtime"
+import { createRustRounds, NO_MICROPHONE } from "@rust-rounds/lib/play/runtime"
 import type { Visit } from "@rust-rounds/lib/play/store"
 import { runHeading, WORDS } from "@rust-rounds/lib/play/words"
 import { Button, CodeCard, TakeItem, Textarea } from "@some-ui/shared"
@@ -99,7 +99,7 @@ const RunView = ({ run }: { run: RustcRun | null }): JSX.Element => {
 
 /** What a card's voice note needs besides the session: the notes the phone keeps. */
 type Notes = {
-  readonly port: NotesPort
+  readonly port: NotesPort | null
   readonly takes: ReadonlyArray<PatternTake>
 }
 
@@ -120,6 +120,10 @@ const VoiceNote = ({
   notes: Notes
   dispatch: Dispatch
 }): JSX.Element => {
+  const { port } = notes
+  if (port === null) {
+    return <p className="text-muted-foreground text-sm">{WORDS.noMicrophone}</p>
+  }
   if (state.noRoom && visit.note === null) {
     return <p className="text-muted-foreground text-sm">{WORDS.noRoom}</p>
   }
@@ -127,7 +131,7 @@ const VoiceNote = ({
     state,
     visit,
     notes.takes,
-    notes.port.pattern.options
+    port.pattern.options
   )
   return (
     <div className="flex flex-col gap-2">
@@ -502,10 +506,8 @@ export const RustRounds = ({ ports }: RustRoundsProps): JSX.Element => {
   /* eslint-enable owner-guard/no-mount-snapshot */
   useEffect(() => runtime.attach(), [runtime])
   const state = useSyncExternalStore(runtime.subscribe, runtime.getSnapshot)
-  const takes = useSyncExternalStore(
-    port.takes.subscribe,
-    port.takes.getSnapshot
-  )
+  const notes = port?.takes ?? NO_MICROPHONE.takes
+  const takes = useSyncExternalStore(notes.subscribe, notes.getSnapshot)
   const { dispatch } = runtime
 
   return (

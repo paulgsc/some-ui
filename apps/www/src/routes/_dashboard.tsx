@@ -30,6 +30,7 @@ import {
   ListVideo,
   Settings,
   SlidersHorizontal,
+  SquareTerminal,
   User,
 } from "lucide-react"
 
@@ -90,6 +91,7 @@ const NAV_ICONS: Partial<
   lessons: BookOpenText,
   "resume-build": FileText,
   resume: FileText,
+  "rust-rounds-sample": SquareTerminal,
 }
 
 /**

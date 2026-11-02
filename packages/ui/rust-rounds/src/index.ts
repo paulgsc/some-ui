@@ -39,7 +39,11 @@ export {
 } from "./lib/lint"
 export type { TutorCopyInput } from "./lib/tutor-copy"
 export { copyForTutor } from "./lib/tutor-copy"
-export { INDEXING_01, INDEXING_01_NOTES } from "./lib/worked-example"
+export {
+  INDEXING_01,
+  INDEXING_01_NOTES,
+  INDEXING_01_RUNS,
+} from "./lib/worked-example"
 export type { RustRoundsProps } from "./components/rust-rounds"
 export { RustRounds } from "./components/rust-rounds"
 export type { NotesPort, RustRoundsPorts } from "./lib/play/runtime"

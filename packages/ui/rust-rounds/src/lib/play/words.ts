@@ -93,6 +93,8 @@ export const WORDS = {
   fixCopied: "Copied. Paste it back to the tutor.",
   showText: "Show the text",
   backToCards: "Back to the cards",
+  noMicrophone:
+    "On my phone I'd tap here and say it out loud, and the note would be kept for the tutor. This sample has no microphone, so nothing is recorded: carry on.",
 } as const
 
 /** What rustc did with the program, said plainly; its output follows as printed. */

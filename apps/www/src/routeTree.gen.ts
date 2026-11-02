@@ -25,6 +25,7 @@ import { Route as DashboardAppRouteImport } from './routes/_dashboard/app'
 import { Route as DashboardJobRunRouteImport } from './routes/_dashboard/job-run'
 import { Route as DashboardProfileRouteImport } from './routes/_dashboard/profile'
 import { Route as DashboardResumeRouteImport } from './routes/_dashboard/resume'
+import { Route as DashboardRustRoundsSampleRouteImport } from './routes/_dashboard/rust-rounds-sample'
 import { Route as DashboardApkAphRouteImport } from './routes/_dashboard/_apk/aph'
 import { Route as DashboardApkFoyerRouteImport } from './routes/_dashboard/_apk/foyer'
 import { Route as DashboardApkGameWeekRouteImport } from './routes/_dashboard/_apk/game-week'
@@ -133,6 +134,12 @@ const DashboardResumeRoute = DashboardResumeRouteImport.update({
   path: '/resume',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardRustRoundsSampleRoute =
+  DashboardRustRoundsSampleRouteImport.update({
+    id: '/rust-rounds-sample',
+    path: '/rust-rounds-sample',
+    getParentRoute: () => DashboardRoute,
+  } as any)
 const DashboardApkAphRoute = DashboardApkAphRouteImport.update({
   id: '/aph',
   path: '/aph',
@@ -309,6 +316,7 @@ export interface FileRoutesByFullPath {
   '/job-run': typeof DashboardJobRunRoute
   '/profile': typeof DashboardProfileRoute
   '/resume': typeof DashboardResumeRoute
+  '/rust-rounds-sample': typeof DashboardRustRoundsSampleRoute
   '/aph': typeof DashboardApkAphRouteWithChildren
   '/foyer': typeof DashboardApkFoyerRoute
   '/game-week': typeof DashboardApkGameWeekRoute
@@ -354,6 +362,7 @@ export interface FileRoutesByTo {
   '/job-run': typeof DashboardJobRunRoute
   '/profile': typeof DashboardProfileRoute
   '/resume': typeof DashboardResumeRoute
+  '/rust-rounds-sample': typeof DashboardRustRoundsSampleRoute
   '/foyer': typeof DashboardApkFoyerRoute
   '/game-week': typeof DashboardApkGameWeekRoute
   '/rust-rounds': typeof DashboardApkRustRoundsRoute
@@ -401,6 +410,7 @@ export interface FileRoutesById {
   '/_dashboard/job-run': typeof DashboardJobRunRoute
   '/_dashboard/profile': typeof DashboardProfileRoute
   '/_dashboard/resume': typeof DashboardResumeRoute
+  '/_dashboard/rust-rounds-sample': typeof DashboardRustRoundsSampleRoute
   '/_dashboard/_apk/aph': typeof DashboardApkAphRouteWithChildren
   '/_dashboard/_apk/foyer': typeof DashboardApkFoyerRoute
   '/_dashboard/_apk/game-week': typeof DashboardApkGameWeekRoute
@@ -448,6 +458,7 @@ export interface FileRouteTypes {
     | '/job-run'
     | '/profile'
     | '/resume'
+    | '/rust-rounds-sample'
     | '/aph'
     | '/foyer'
     | '/game-week'
@@ -493,6 +504,7 @@ export interface FileRouteTypes {
     | '/job-run'
     | '/profile'
     | '/resume'
+    | '/rust-rounds-sample'
     | '/foyer'
     | '/game-week'
     | '/rust-rounds'
@@ -539,6 +551,7 @@ export interface FileRouteTypes {
     | '/_dashboard/job-run'
     | '/_dashboard/profile'
     | '/_dashboard/resume'
+    | '/_dashboard/rust-rounds-sample'
     | '/_dashboard/_apk/aph'
     | '/_dashboard/_apk/foyer'
     | '/_dashboard/_apk/game-week'
@@ -696,6 +709,13 @@ declare module '@tanstack/react-router' {
       path: '/resume'
       fullPath: '/resume'
       preLoaderRoute: typeof DashboardResumeRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/rust-rounds-sample': {
+      id: '/_dashboard/rust-rounds-sample'
+      path: '/rust-rounds-sample'
+      fullPath: '/rust-rounds-sample'
+      preLoaderRoute: typeof DashboardRustRoundsSampleRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/_dashboard/_apk/aph': {
@@ -1003,6 +1023,7 @@ interface DashboardRouteChildren {
   DashboardJobRunRoute: typeof DashboardJobRunRoute
   DashboardProfileRoute: typeof DashboardProfileRoute
   DashboardResumeRoute: typeof DashboardResumeRoute
+  DashboardRustRoundsSampleRoute: typeof DashboardRustRoundsSampleRoute
   DashboardPracticeSettingsRoute: typeof DashboardPracticeSettingsRoute
   DashboardSessionsSessionIdRoute: typeof DashboardSessionsSessionIdRoute
   DashboardSessionsNewRoute: typeof DashboardSessionsNewRoute
@@ -1019,6 +1040,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardJobRunRoute: DashboardJobRunRoute,
   DashboardProfileRoute: DashboardProfileRoute,
   DashboardResumeRoute: DashboardResumeRoute,
+  DashboardRustRoundsSampleRoute: DashboardRustRoundsSampleRoute,
   DashboardPracticeSettingsRoute: DashboardPracticeSettingsRoute,
   DashboardSessionsSessionIdRoute: DashboardSessionsSessionIdRoute,
   DashboardSessionsNewRoute: DashboardSessionsNewRoute,
