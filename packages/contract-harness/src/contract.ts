@@ -101,6 +101,17 @@ export type Contract<TResponse = unknown> = {
    * `__Host-session` cookie's value from the browser's storage inspector.
    */
   session?: boolean
+  /**
+   * Marks a contract whose route answers only a paired phone (paulgsc/server
+   * `subject::Paired`): the server reads the session from
+   * `Authorization: Bearer` alone, `401` without one and `403` for a
+   * browser's cookie session. Probed only when a phone's token is supplied
+   * (`--phone-token`), sent as that header and never as a cookie; skipped,
+   * with that reason, otherwise. A phone's token opens a different session
+   * from a browser's cookie of the same bytes, so a `session` cookie cannot
+   * stand in for one. Never set together with `session`.
+   */
+  paired?: boolean
 }
 
 /**

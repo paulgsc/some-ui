@@ -56,6 +56,7 @@ type Options = {
   json: boolean
   timeoutMs: number
   sessionCookie: string | undefined
+  phoneToken: string | undefined
 }
 
 function parseArgs(argv: ReadonlyArray<string>): Options {
@@ -84,6 +85,7 @@ function parseArgs(argv: ReadonlyArray<string>): Options {
     timeoutMs: Number.isFinite(parsedTimeout) ? parsedTimeout : 10_000,
     sessionCookie:
       value("--session-cookie") ?? process.env["CONTRACT_SESSION_COOKIE"],
+    phoneToken: value("--phone-token") ?? process.env["CONTRACT_PHONE_TOKEN"],
   }
 }
 
@@ -99,6 +101,8 @@ pnpm --filter @some-ui/contract-harness contract [options]
   --timeout <ms>          per-request timeout (default 10000)
   --session-cookie <val>  a signed-in __Host-session value, for per-person routes
                           (or $CONTRACT_SESSION_COOKIE); without it they are skipped
+  --phone-token <val>     a paired phone's session token, for paired-phone routes
+                          (or $CONTRACT_PHONE_TOKEN); without it they are skipped
   --json                  emit the raw run report as JSON instead of text
   --help                  this
 
@@ -173,6 +177,7 @@ async function main(): Promise<number> {
           baseUrl: options.baseUrl,
           timeoutMs: options.timeoutMs,
           sessionCookie: options.sessionCookie,
+          phoneToken: options.phoneToken,
         })
       )
     }

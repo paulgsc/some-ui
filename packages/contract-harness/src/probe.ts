@@ -59,6 +59,8 @@ export type ProbeOptions = {
   timeoutMs?: number
   /** The `__Host-session` cookie's value, for contracts marked `session`. */
   sessionCookie?: string
+  /** A paired phone's session token, for contracts marked `paired`. */
+  phoneToken?: string
 }
 
 const SESSION_COOKIE = "__Host-session"
@@ -114,6 +116,38 @@ export async function probeContract(
     }
   }
 
+  if (contract.session === true && contract.paired === true) {
+    // Not sent. The server reads a bearer before a cookie, so a request
+    // carrying both would prove only the phone's half and read as both.
+    return {
+      ...base,
+      status: "failed",
+      findings: [
+        {
+          code: "credential-ambiguous",
+          severity: "fail",
+          message:
+            "contract is marked both `session` and `paired`; a route answers one kind of session, so declare one contract per kind",
+        },
+      ],
+    }
+  }
+
+  if (contract.paired === true && options.phoneToken === undefined) {
+    return {
+      ...base,
+      status: "skipped",
+      findings: [
+        {
+          code: "phone-skipped",
+          severity: "info",
+          message:
+            "paired-phone route; pass --phone-token (or $CONTRACT_PHONE_TOKEN) to run it",
+        },
+      ],
+    }
+  }
+
   const binding = bindPath(template, contract.request?.path)
   const findings: Array<Finding> = []
 
@@ -157,6 +191,9 @@ export async function probeContract(
         ...(hasBody ? { "content-type": "application/json" } : {}),
         ...(contract.session === true && options.sessionCookie !== undefined
           ? { cookie: `${SESSION_COOKIE}=${options.sessionCookie}` }
+          : {}),
+        ...(contract.paired === true && options.phoneToken !== undefined
+          ? { authorization: `Bearer ${options.phoneToken}` }
           : {}),
         ...contract.request?.headers,
       },
