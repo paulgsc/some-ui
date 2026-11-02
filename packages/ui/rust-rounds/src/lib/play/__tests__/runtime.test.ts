@@ -222,6 +222,7 @@ describe("the worked example", () => {
       runs: {},
       notes: [],
       notesMissing: false,
+      home: NOTHING_ON_HOME,
     })
     const notes = testNotes([
       keptNote("earlier-1", "rust-rounds:indexing-01/a"),
