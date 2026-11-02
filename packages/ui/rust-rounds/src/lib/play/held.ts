@@ -10,6 +10,13 @@
  *   appended, and every version of the tutor notes is kept, oldest first.
  * - **There is no last card.** `nextCard` offers the cards not played yet,
  *   then the one played longest ago, so Next always has somewhere to go.
+ * - **What home holds is only added to as well** (RR4b, #2347). A round
+ *   pasted here is sent home (`lib/home`), and the rounds home holds come
+ *   back with the runs home recorded of their programs: a round the phone
+ *   lacks is appended, and a card's run is filled in once and never
+ *   replaced. Two writers keep this record, the session and the exchange
+ *   with home, so a write is merged into what is stored (`mergeHeld`), never
+ *   laid over it.
  */
 import type {
   Card,
@@ -26,9 +33,33 @@ import {
   INDEXING_01_NOTES,
   INDEXING_01_RUNS,
 } from "@rust-rounds/lib/worked-example"
+import { canonicalJson } from "@some-ui/core-utils"
+
+/**
+ * Why home did not take a round sent from here: it holds another round
+ * under that id (`other-round`), or it refused the round itself
+ * (`not-taken`). Either way the round stays here and plays, and is not
+ * sent again.
+ */
+export type HomeRefusal = {
+  readonly id: string
+  readonly why: "other-round" | "not-taken"
+}
+
+/** What this phone knows of the rounds home holds, by round id. */
+export type OnHome = {
+  /** Rounds taken here that home took when this phone sent them. */
+  readonly sent: ReadonlyArray<string>
+  /** Rounds this phone took from home, which it did not hold before. */
+  readonly fetched: ReadonlyArray<string>
+  /** Rounds taken here that home did not take. */
+  readonly refused: ReadonlyArray<HomeRefusal>
+  /** Rounds home holds that this phone can't read, so doesn't play. */
+  readonly unread: ReadonlyArray<string>
+}
 
 export type Held = {
-  /** Rounds taken from a tutor, in the order taken. */
+  /** Rounds taken from a tutor, or from home, in the order taken. */
   readonly rounds: ReadonlyArray<Round>
   /** rustc's recorded run of a card's program, by `cardKey`. */
   readonly runs: Readonly<Record<string, RustcRun>>
@@ -36,6 +67,14 @@ export type Held = {
   readonly notes: ReadonlyArray<TutorNotes>
   /** The last reply taken carried no tutor notes: the next tutor hears so. */
   readonly notesMissing: boolean
+  readonly home: OnHome
+}
+
+export const NOTHING_ON_HOME: OnHome = {
+  sent: [],
+  fetched: [],
+  refused: [],
+  unread: [],
 }
 
 export const NOTHING_HELD: Held = {
@@ -43,10 +82,61 @@ export const NOTHING_HELD: Held = {
   runs: {},
   notes: [],
   notesMissing: false,
+  home: NOTHING_ON_HOME,
 }
 
 /** A card's name across rounds: `indexing-01/a`. */
-const cardKey = (ref: CardRef): string => `${ref.round}/${ref.card}`
+export const cardKey = (ref: CardRef): string => `${ref.round}/${ref.card}`
+
+/** `ids`, then each of `more` not among them. */
+function joined(
+  ids: ReadonlyArray<string>,
+  more: ReadonlyArray<string>
+): ReadonlyArray<string> {
+  const seen = new Set(ids)
+  const added = more.filter((id) => !seen.has(id))
+  return added.length === 0 ? ids : [...ids, ...new Set(added)]
+}
+
+/**
+ * `next` written over `stored`, keeping everything `stored` holds: its
+ * rounds, the run of each card it holds one for, every version of the tutor
+ * notes and what it knows of home, with what `next` adds after. The session
+ * and the exchange with home each write what they read earlier, so neither
+ * may drop what the other wrote since. Whether the last reply carried tutor
+ * notes is `next`'s, which only the session's reply changes.
+ */
+export function mergeHeld(stored: Held, next: Held): Held {
+  const ids = new Set(stored.rounds.map((round) => round.id))
+  const notes = new Set(stored.notes.map((each) => canonicalJson(each)))
+  const sent = joined(stored.home.sent, next.home.sent)
+  const fetched = joined(stored.home.fetched, next.home.fetched)
+  const onHome = new Set([...sent, ...fetched])
+  const refusedIds = new Set(stored.home.refused.map(({ id }) => id))
+  return {
+    rounds: [
+      ...stored.rounds,
+      ...next.rounds.filter((round) => !ids.has(round.id)),
+    ],
+    runs: { ...next.runs, ...stored.runs },
+    notes: [
+      ...stored.notes,
+      ...next.notes.filter((each) => !notes.has(canonicalJson(each))),
+    ],
+    notesMissing: next.notesMissing,
+    home: {
+      sent,
+      fetched,
+      refused: [
+        ...stored.home.refused,
+        ...next.home.refused.filter(({ id }) => !refusedIds.has(id)),
+      ].filter(({ id }) => !onHome.has(id)),
+      unread: joined(stored.home.unread, next.home.unread).filter(
+        (id) => !onHome.has(id)
+      ),
+    },
+  }
+}
 
 /** Every round the phone can play: the worked example, then those taken. */
 export function playable(held: Held): ReadonlyArray<Round> {

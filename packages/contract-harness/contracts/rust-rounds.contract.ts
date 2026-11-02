@@ -3,8 +3,9 @@
  * each of their programs (paulgsc/server `routes/rust_rounds.rs` and
  * `handlers/rust_rounds.rs`, RR3 #2234; the round format is RR1's
  * `some-ui.rust-round/1`, `packages/ui/rust-rounds/src/lib/formats`). The
- * phone will fetch the list and each round with its runs, and send a pasted
- * round home, through the app's home link (RR4b #2347).
+ * phone fetches the list and each round with its runs, and sends a pasted
+ * round home, through the app's home link (RR4b #2347,
+ * `packages/ui/rust-rounds/src/lib/home`).
  *
  * Hand-written: `RoundListSchema` is the server's `RoundList` of
  * `rust_round_repo::RoundEntry`, and `RoundWithRunsSchema` its

@@ -8,6 +8,7 @@
  */
 import { RustRounds } from "@rust-rounds/components/rust-rounds"
 import { testPorts } from "@rust-rounds/lib/play/__tests__/ports"
+import { NOTHING_ON_HOME } from "@rust-rounds/lib/play/held"
 import { keptRounds } from "@rust-rounds/lib/play/store"
 import { runHeading, WORDS } from "@rust-rounds/lib/play/words"
 import { INDEXING_01, INDEXING_01_RUNS } from "@rust-rounds/lib/worked-example"
@@ -199,6 +200,7 @@ describe("Rust Rounds on the phone", () => {
       runs: {},
       notes: [],
       notesMissing: false,
+      home: NOTHING_ON_HOME,
     })
     render(<RustRounds ports={testPorts(storage)} />)
     press("borrowing")

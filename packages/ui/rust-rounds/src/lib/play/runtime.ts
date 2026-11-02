@@ -224,7 +224,14 @@ export function createRustRounds(ports: RustRoundsPorts): RustRoundsRuntime {
       const stopVisibility = ports.onVisibility((hidden) => {
         if (hidden) send({ type: "hidden" })
       })
+      // What home sent while the screen was away, then each write after.
+      const hear = (): void => {
+        send({ type: "held", held: ports.store.held() })
+      }
+      const stopHeld = ports.store.subscribe(hear)
+      hear()
       return (): void => {
+        stopHeld()
         stopVisibility()
         // Ends a take under way; its end is the next opening's to hear.
         send({ type: "left" })

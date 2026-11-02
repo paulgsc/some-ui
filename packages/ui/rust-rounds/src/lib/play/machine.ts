@@ -46,6 +46,10 @@
  *   card logs it (`fromMyDesk`) when anything was pasted, once its note has
  *   landed if a take on it was under way (`deskPending`, kept with the place
  *   as `pending` is). Nothing on the step waits: Back is always there.
+ * - **What home sends plays as it lands.** A round home holds, or a run home
+ *   recorded, reaches an open session as `held` (the store's merge of every
+ *   write), and the card on screen shows a run once one is held. No step
+ *   waits for it.
  * - **rustc's result is never compared with the pick on screen.** The
  *   tutor's guess is checked only to log `tutorGuessedWrong`.
  * - **A card's kept note is the card's note**, on the take pattern
@@ -242,6 +246,11 @@ type PlaySignal =
       readonly record: KeptRecord
       readonly ok: boolean
     }
+  /**
+   * What plays, as stored after a write by the session or by the exchange
+   * with home: only ever more rounds and runs than the session held.
+   */
+  | { readonly type: "held"; readonly held: Held }
 
 /** An intent, stamped with when it happened (ISO 8601) by the runtime. */
 export type PlayEvent = (PlayIntent & { readonly at: string }) | PlaySignal
@@ -1025,6 +1034,7 @@ const SIGNALS: ReadonlySet<string> = new Set<PlaySignal["type"]>([
   "hidden",
   "left",
   "stored",
+  "held",
 ])
 
 const isSignal = (event: PlayEvent): event is PlaySignal =>
@@ -1062,6 +1072,13 @@ export function step(state: PlayState, event: PlayEvent): Step {
       return state.taking === null && state.notes.playback.kind === "quiet"
         ? stay(state)
         : { state, effects: [{ type: "stopNote" }] }
+    }
+    case "held": {
+      // Rounds are only added, so the card on screen and every card waiting
+      // on a note are still held; one with no run may now have one.
+      return event.held === state.held
+        ? stay(state)
+        : stay({ ...state, held: event.held })
     }
     case "stored": {
       const failed = !event.ok

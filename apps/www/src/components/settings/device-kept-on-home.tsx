@@ -26,6 +26,7 @@ import type {
 } from "@/lib/home-link/lanes"
 import { askLane, laneReading, useLaneView } from "@/lib/home-link/lanes"
 import { practiceLane } from "@/lib/home-link/practice"
+import { rustRoundsLane } from "@/lib/home-link/rust-rounds"
 import { useUnsendable, voiceLane } from "@/lib/home-link/voice"
 import {
   KEPT_ON_HOME,
@@ -53,6 +54,7 @@ const PAGES: Readonly<Record<LaneId, BoardPage>> = {
   aph: "aph",
   jobs: "jobs",
   voice: "home-settings",
+  "rust-rounds": "practice",
 }
 
 /**
@@ -189,6 +191,14 @@ const VoiceRow = (): JSX.Element => (
   />
 )
 
+const RustRoundsRow = (): JSX.Element => (
+  <Row
+    id="rust-rounds"
+    reading={useLaneView(rustRoundsLane)}
+    lane={rustRoundsLane}
+  />
+)
+
 /**
  * Each record kept on home as the status page shows it (#2165): where it is
  * kept and how its last send went, read without a watch of its own
@@ -207,6 +217,7 @@ export function useLaneRows(): {
       laneRow("aph", useAphReading()),
       laneRow("jobs", useLaneView(jobsLane)),
       laneRow("voice", useLaneView(voiceLane), unsentLines(useUnsendable())),
+      laneRow("rust-rounds", useLaneView(rustRoundsLane)),
     ],
     paired: practice.paired,
   }
@@ -223,6 +234,7 @@ export const KeptOnHome = (): JSX.Element => (
       <AphRow />
       <JobsRow />
       <VoiceRow />
+      <RustRoundsRow />
     </ul>
     <div className="space-y-1">
       <p className="text-sm font-medium">{KEPT_ON_HOME.neverTitle}</p>

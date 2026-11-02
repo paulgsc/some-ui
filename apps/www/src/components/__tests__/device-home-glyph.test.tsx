@@ -275,6 +275,47 @@ describe("the Jobs record's mark", () => {
     fireEvent.click(mark(/Where the Jobs record is kept/))
     expect(screen.getByText(/2 events wait on this phone/)).toBeTruthy()
   })
+
+  it("sends a round pasted in Rust Rounds home from the shell, and brings home's rounds back (RR4b)", async () => {
+    const { INDEXING_01, keptRounds } = await import("@some-ui/rust-rounds")
+    const pasted = { ...INDEXING_01, id: "indexing-02" }
+    const store = keptRounds(localStorage)
+    store.hold({ ...store.held(), rounds: [pasted] })
+    const fromHome = { ...INDEXING_01, id: "borrowing-01" }
+    home.answer = (call): Promise<{ status: number; body: string }> => {
+      const path = new URL(call.url).pathname
+      if (!path.includes("/rust-rounds")) return unreachable()
+      if (call.method === "PUT")
+        return Promise.resolve({ status: 201, body: "{}" })
+      if (path.endsWith("/rust-rounds")) {
+        return Promise.resolve({
+          status: 200,
+          body: JSON.stringify({ rounds: [{ id: fromHome.id }] }),
+        })
+      }
+      return Promise.resolve({
+        status: 200,
+        body: JSON.stringify({
+          id: fromHome.id,
+          round: fromHome,
+          programs: [],
+        }),
+      })
+    }
+    await mount("jobs")
+    await waitFor(() =>
+      expect(store.held().home.fetched).toEqual([fromHome.id])
+    )
+    const rounds = home.sent
+      .filter((call) => new URL(call.url).pathname.includes("/rust-rounds"))
+      .map((call) => `${call.method} ${new URL(call.url).pathname}`)
+    expect(rounds).toEqual([
+      "PUT /api/v1/rust-rounds/indexing-02",
+      "GET /api/v1/rust-rounds",
+      "GET /api/v1/rust-rounds/borrowing-01",
+    ])
+    expect(store.held().home.sent).toEqual([pasted.id])
+  })
 })
 
 /** aph's store, kept on home with two changes waiting, or on this phone with `entries` entries. */

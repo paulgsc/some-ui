@@ -388,7 +388,8 @@ declared (checked by reading every call site and by the tests named).
   `lib/device-backend/native-http` (the one module that names
   `CapacitorHttp`), which only `lib/home-link` calls, and, but for the drain
   of what this phone keeps (LA15: aph, the Jobs record, Practice's record,
-  voice notes, through `lib/home-link/lanes`, whose voice run also reads,
+  Rust Rounds' rounds, whose run also reads home's rounds and their runs
+  back, voice notes, through `lib/home-link/lanes`, whose voice run also reads,
   by one `GET /voice-notes/on-drive` per 100 waiting takes in
   `lib/home-link/on-drive.ts`, which
   Studio takes home holds it knows Drive holds too, HF11, and sends, by one
@@ -903,7 +904,9 @@ was silent, so the run ended as if all had gone.
 Everything the phone keeps for home (aph, the Jobs record, Practice's
 record with its written reflections, asks for the next scene, the
 soundbites' records, LeetType's answer notes and the grammar-lens record,
-voice notes) goes through one wiring (`lib/home-link/lanes.ts`):
+voice notes, and the rounds pasted in Rust Rounds, whose run also brings
+home's rounds and the runs home recorded back to the phone, RR4b) goes
+through one wiring (`lib/home-link/lanes.ts`):
 each declares its lane (its exchange, how its record moves, its sheet's
 counts; `aph.ts`, `jobs.ts`, `practice.ts`, `voice.ts`), and every lane
 shares the runtime (`kept-runtime.ts`), the watch (`kept-watch.ts`) and the
@@ -937,7 +940,15 @@ voice lane comes to hold a soundbite's audio after that run
 as such (`kept.test.ts`), and that the shell's drain sends nothing unpaired
 and sends once paired on the moments below, while a mark sends nothing of
 its own (`components/__tests__/device-home-glyph.test.tsx`). What no test
-can say is when a run is asked for:
+can say is when a run is asked for. Rust Rounds' lane
+(`rust-rounds.ts`) is held by `packages/ui/rust-rounds/src/lib/home/index.test.ts`:
+a pasted round goes home once, home's rounds and recorded runs are only
+added to what plays (a card's run is filled once, only a recorded run is
+taken, a round under an id the phone holds other cards under is left on
+home), at most `READS_PER_EXCHANGE` rounds are read in a run, the rounds the
+phone lacks first, and nothing the session wrote while the run was on its
+way is lost; and by `components/__tests__/device-home-glyph.test.tsx`, which
+holds that the shell's drain runs it.
 
 - _Claim:_ `askKept` (`lib/home-link/kept-watch.ts`) asks for a run of a lane
   only while the phone is paired and the document is visible, and only at a
@@ -1039,7 +1050,18 @@ can say is when a run is asked for:
   (`leetypeNotesHeldByHome`) and the soundbites (their `heldByHome`) how to
   read what home holds of them; a hunk to `lib/home-link/leetype-log.ts` that
   lets `sendEach` count an item held on any answer but a `200` its `heldAs`
-  accepts; a hunk to `lib/home-link/notes.ts` that counts a note held
+  accepts; a hunk to `lib/home-link/rust-rounds.ts` that makes the lane's
+  `revision` anything but `roundsTaken` of what plays (the rounds taken on
+  this phone, never one taken from home), its `subscribe` anything but the
+  store's, or its `exchange` anything but `exchangeRounds` over
+  `phoneRounds()`; a hunk to `@some-ui/rust-rounds`'s `lib/home` that sends
+  anything but one `PUT` of a round `roundsToSend` names, one
+  `GET /rust-rounds` and at most `READS_PER_EXCHANGE` `GET`s of a round
+  `roundsToRead` names, or that writes what plays other than through its
+  port's `hold`; a hunk to its `lib/play/store.ts` whose `hold` writes what
+  plays other than merged into what is stored (`mergeHeld`), or to
+  `lib/play/held.ts` whose `mergeHeld` drops a round, a run, a version of
+  the tutor notes or a round home holds that is stored; a hunk to `lib/home-link/notes.ts` that counts a note held
   without home's `200` naming the SHA-256 of the bytes sent, or to
   `lib/home-link/lens-record.ts` that counts an entry held without home's
   `200` carrying it back as sent, or makes `lensEntriesHeld` (the reading
@@ -1098,7 +1120,11 @@ can say is when a run is asked for:
   `apps/www/src/lib/leetype-takes/index.ts`,
   `apps/www/src/lib/home-link/studio-log.ts`, `apps/www/src/lib/studio-keeping/index.ts`,
   `packages/ui/leetype/src/lib/leetype/session-log/index.ts`,
-  `packages/ui/leetype/src/lib/leetype/session-log/home.ts`.
+  `packages/ui/leetype/src/lib/leetype/session-log/home.ts`,
+  `apps/www/src/lib/home-link/rust-rounds.ts`,
+  `packages/ui/rust-rounds/src/lib/home/index.ts`,
+  `packages/ui/rust-rounds/src/lib/play/store.ts`,
+  `packages/ui/rust-rounds/src/lib/play/held.ts`.
 - _Why not enforced:_ whether a moment is one where the person is using the
   app is a reading of intent: a test sees a listener or a query run, not why
   it is there, and a lint rule cannot tell a press handler from an effect
@@ -1120,10 +1146,19 @@ can say is when a run is asked for:
   LeetType's log only on its watch starting once paired and in
   `onSessionLogged`'s listener, Studio's projects only on its hand-in and
   its store's `subscribe`, which `practice-reads.ts` alone now holds for
-  the lane.
+  the lane. Amended for RR4b (#2347) by reading Rust Rounds' lane: its
+  watch only in `HomeLanes`' `LaneWatch`, its Send now only in Settings'
+  readout, its revision `roundsTaken`, which a round taken from home does
+  not move, and `exchangeRounds`' three requests, each answer kept as it
+  lands.
 - _Tolerance:_ Studio's time log tells no one of a write, so a screen
   entered or left in Studio asks for no run, and Practice's waiting count
-  shows it from the count's next redraw (#2425).
+  shows it from the count's next redraw (#2425). Rust Rounds: a round home
+  holds whose programs home has not recorded yet (recording is off, or the
+  runner is down) is read again on each run, at most `READS_PER_EXCHANGE`
+  of them, until home has; and what the phone knows home holds is of the
+  home it learned it from, so pairing with another home sends no round
+  sent to the first (RR4b, #2347).
 
 ### LA16: written reflections are kept on home, append-only, and the phone lets one go only once home holds it
 

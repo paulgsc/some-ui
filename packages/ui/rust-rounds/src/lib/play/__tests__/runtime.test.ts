@@ -7,6 +7,7 @@
  */
 import type { CardEvent } from "@rust-rounds/lib/formats"
 import { RoundLogSchema } from "@rust-rounds/lib/formats"
+import { NOTHING_ON_HOME } from "@rust-rounds/lib/play/held"
 import type { PlayState } from "@rust-rounds/lib/play/machine"
 import { lineOf } from "@rust-rounds/lib/play/machine"
 import type { RustRoundsRuntime } from "@rust-rounds/lib/play/runtime"
@@ -304,6 +305,7 @@ describe("the worked example", () => {
       runs: {},
       notes: [],
       notesMissing: false,
+      home: NOTHING_ON_HOME,
     })
     const runtime = opened(testPorts(storage))
     runtime.dispatch({ type: "play", concept: "borrowing" })
@@ -327,6 +329,7 @@ describe("the worked example", () => {
       runs: { "indexing-02/a": INDEXING_01_RUNS.a! },
       notes: [],
       notesMissing: false,
+      home: NOTHING_ON_HOME,
     })
     const runtime = opened(testPorts(storage))
     runtime.dispatch({ type: "continue" })
@@ -363,6 +366,48 @@ describe("the worked example", () => {
       (event) => event.round === "indexing-02"
     )
     expect(pasted?.rustc).toBeNull()
+  })
+
+  it("plays what home sends while it is on screen, and its own write drops none of it", () => {
+    const ports = testPorts()
+    const runtime = opened(ports)
+    const round = { ...INDEXING_01, id: "indexing-02" }
+    runtime.dispatch({ type: "tutor" })
+    runtime.dispatch({
+      type: "reply",
+      text: `\`\`\`json\n${JSON.stringify(round)}\n\`\`\``,
+    })
+    runtime.dispatch({ type: "takeReply" })
+    runtime.dispatch({ type: "continue" })
+    for (let n = 0; n < 4; n += 1) runtime.dispatch({ type: "next" })
+    runtime.dispatch({ type: "showRustc" })
+
+    // The exchange with home keeps its own store over the same storage.
+    const home = keptRounds(ports.storage)
+    const fromHome = { ...INDEXING_01, id: "borrowing-01" }
+    home.hold({
+      ...home.held(),
+      rounds: [...home.held().rounds, fromHome],
+      runs: { "indexing-02/a": INDEXING_01_RUNS.a! },
+      home: { ...NOTHING_ON_HOME, fetched: [fromHome.id] },
+    })
+    const { held } = runtime.getSnapshot()
+    expect(held.runs["indexing-02/a"]).toEqual(INDEXING_01_RUNS.a)
+    expect(held.rounds.map(({ id }) => id)).toEqual([round.id, fromHome.id])
+
+    // A later reply, taken from what the session held, keeps home's round.
+    runtime.dispatch({ type: "tutor" })
+    runtime.dispatch({
+      type: "reply",
+      text: `\`\`\`json\n${JSON.stringify({ ...round, id: "indexing-03" })}\n\`\`\``,
+    })
+    runtime.dispatch({ type: "takeReply" })
+    expect(home.held().rounds.map(({ id }) => id)).toEqual([
+      round.id,
+      fromHome.id,
+      "indexing-03",
+    ])
+    expect(home.held().home.fetched).toEqual([fromHome.id])
   })
 
   it("pins a card once, from any stage", () => {
