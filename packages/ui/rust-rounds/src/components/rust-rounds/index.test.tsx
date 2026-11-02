@@ -247,6 +247,27 @@ describe("Rust Rounds on the phone", () => {
     ).toBeInTheDocument()
   })
 
+  it("says what the paste step's note would do where there is no microphone, and Back still logs the paste", () => {
+    const ports = { ...testPorts(), notes: null }
+    render(<RustRounds ports={ports} />)
+    press(WORDS.start)
+    press(WORDS.pasteError)
+    expect(screen.getByText(WORDS.noMicrophone)).toBeInTheDocument()
+    expect(
+      screen.queryByRole("button", { name: TAKE_WORDS.buttonLabel.ready })
+    ).toBeNull()
+    fireEvent.change(screen.getByLabelText(WORDS.deskLabel), {
+      target: { value: "error[E0277]" },
+    })
+    expectNothingDisabled()
+    press(WORDS.deskBack)
+    expect(screen.getByText(WORDS.cardTitle("indexing", 1))).toBeInTheDocument()
+    const [session] = keptRounds(ports.storage).open().log.sessions
+    expect(session?.fromMyDesk).toEqual([
+      expect.objectContaining({ pasted: "error[E0277]", note: null }),
+    ])
+  })
+
   it("pastes an error from any card, with nothing on the step waiting, and goes back to the card (RR4c)", async () => {
     const ports = testPorts()
     ports.notes.mic.script({

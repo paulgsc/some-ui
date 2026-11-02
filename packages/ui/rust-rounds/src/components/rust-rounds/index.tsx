@@ -448,7 +448,9 @@ const DeskScreen = ({
         />
       </label>
       <p className="text-sm">{WORDS.deskSay}</p>
-      {state.noRoom && desk.note === null ? (
+      {notes.port === null ? (
+        <p className="text-muted-foreground text-sm">{WORDS.noMicrophone}</p>
+      ) : state.noRoom && desk.note === null ? (
         <p className="text-muted-foreground text-sm">{WORDS.noRoom}</p>
       ) : (
         <TakeItem
