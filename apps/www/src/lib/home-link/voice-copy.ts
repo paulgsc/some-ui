@@ -25,9 +25,8 @@
  * - a LeetType spoken answer's take (`lib/leetype-takes`): `leetype`, the
  *   session file and screen, when taken; its note goes as a study note;
  * - a Rust Rounds note (`lib/rust-rounds`, RR6 #2237): `rust-round`, the card
- *   as `<round>:<card>`, and on a refine card the earlier note it brings
- *   back as `<round>:<card>:<note>` (`@some-ui/rust-rounds`' `homeRef`), when
- *   taken; its transcript reaches the tutor through the mailbox;
+ *   it was said on as `@some-ui/rust-rounds`' `homeRef` names it, when taken;
+ *   its transcript reaches the tutor through the mailbox;
  * - a Studio idea answer's take (`lib/idea-takes`, MIC10): `studio`, the
  *   answer as `idea:<idea>:<question>`, when taken; home gives its words back
  *   to the idea screen (`./heard`). A new idea's take (ST26) goes the same
@@ -559,11 +558,10 @@ export function candidates(): Array<Candidate> {
     audio: (): Promise<Blob | null> => leetypeTakesDesk.audio(take.id),
     aside: asideAt(take),
   }))
-  const rustTakes = rustRoundsDesk.kept()
-  // The rounds are read only when there are notes to name.
-  const rustRef = rustTakes.length === 0 ? null : rustRoundRef()
-  const rust = rustTakes.flatMap((take) => {
-    const note = rustRef === null ? null : rustRoundNote(take, rustRef)
+  let rustRef: ((line: string) => string | null) | undefined
+  const rust = rustRoundsDesk.kept().flatMap((take) => {
+    rustRef ??= rustRoundRef()
+    const note = rustRoundNote(take, rustRef)
     return note === null
       ? []
       : [

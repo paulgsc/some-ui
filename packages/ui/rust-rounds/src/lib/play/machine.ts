@@ -62,7 +62,7 @@ import type {
   Round,
   RoundLog,
 } from "@rust-rounds/lib/formats"
-import { expectMatches } from "@rust-rounds/lib/formats"
+import { expectMatches, SLUG } from "@rust-rounds/lib/formats"
 import { intakeReply } from "@rust-rounds/lib/intake"
 import { copyForTutor } from "@rust-rounds/lib/tutor-copy"
 import { assertNever } from "@some-ui/core-utils"
@@ -294,6 +294,14 @@ export const lineOf = (ref: CardRef): string =>
  * line can be one: a round id holds no `:`.
  */
 export const deskLine = (at: string): string => `rust-rounds:desk:${at}`
+
+const LINE = new RegExp(`^rust-rounds:(${SLUG})/(${SLUG})$`)
+
+/** The card `lineOf` names; null for a line it never makes. */
+export function cardOfLine(line: string): CardRef | null {
+  const [, round, card] = LINE.exec(line) ?? []
+  return round === undefined || card === undefined ? null : { round, card }
+}
 
 const KEPT: Readonly<Record<KeptRecord, boolean>> = {
   log: false,

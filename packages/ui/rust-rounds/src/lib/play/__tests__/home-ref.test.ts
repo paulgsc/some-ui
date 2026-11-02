@@ -27,16 +27,12 @@ const BORROW: Round = {
 
 const HELD = { ...NOTHING_HELD, rounds: [BORROW] }
 
-/** Home's `ref` rule (paulgsc/server `voice_repo::is_name`). */
-const HOME_REF = /^[A-Za-z0-9_.:-]{1,200}$/
-
 describe("homeRef", () => {
   it("names a card by its round and id, joined as home's rule allows", () => {
     const card = INDEXING_01.cards[0]
     if (card === undefined) throw new Error("the worked example has a card")
     const ref = homeRef(lineOf({ round: INDEXING_01.id, card: card.id }), HELD)
     expect(ref).toBe(`${INDEXING_01.id}:${card.id}`)
-    expect(ref).toMatch(HOME_REF)
   })
 
   it("names the earlier note a refine card brings back, so the pair is home's record", () => {
@@ -47,7 +43,6 @@ describe("homeRef", () => {
     expect(ref).toBe(
       "borrowing-01:say-again:9f1c2d3e-0000-4000-8000-000000000001"
     )
-    expect(ref).toMatch(HOME_REF)
   })
 
   it("names no card for a line no card makes", () => {

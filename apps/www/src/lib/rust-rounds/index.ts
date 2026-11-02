@@ -8,8 +8,8 @@
  * The voice notes are taken on the take pattern (`patternDesk`), each named
  * by id in the log; a Redo's earlier note and one set aside stay too. Each
  * goes home as a voice note said for `rust-round` (RR6, #2237), through the
- * voice lane (`lib/home-link/voice-copy`), named by its card and, on a
- * refine card, the earlier note it brings back (`rustRoundRef`); Let go owes
+ * voice lane (`lib/home-link/voice-copy`), named as `homeRef` says
+ * (`rustRoundRef`); Let go owes
  * home its set-aside mark. The desk keeps every note on this phone: it has
  * no count of its own, and only the device's measured room (`withRoom`)
  * refuses a note, which the session then says, never letting one go.

@@ -22,11 +22,13 @@ export const ROUND_SCHEMA = "some-ui.rust-round/1"
 export const LOG_SCHEMA = "some-ui.rust-round-log/1"
 export const NOTES_SCHEMA = "some-ui.rust-tutor-notes/1"
 
-/** Lower-case words joined by `-`: round, card, concept and edge ids. */
+/** Lower-case words joined by `-`: round, card, concept and edge ids, unanchored. */
+export const SLUG = "[a-z0-9]+(?:-[a-z0-9]+)*"
+
 const SlugSchema = z
   .string()
   .regex(
-    /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+    new RegExp(`^${SLUG}$`),
     "use lower-case letters, digits and single hyphens (like indexing-01)"
   )
 
