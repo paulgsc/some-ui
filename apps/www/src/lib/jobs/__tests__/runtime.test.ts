@@ -1,8 +1,9 @@
 import { inMemoryStorage } from "@some-ui/core-utils"
-import type { KeyedStorage } from "@some-ui/core-utils"
+import type { HomeCall, KeyedStorage } from "@some-ui/core-utils"
 import { describe, expect, it, vi } from "vitest"
 
 import { isFile } from "@/lib/jobs/files"
+import { exchangeJobs } from "@/lib/jobs/home"
 import type { PickRef } from "@/lib/jobs/model"
 import { draftVoice, EMPTY, formTakes } from "@/lib/jobs/model"
 import type { NoticeAsked, NoticePort } from "@/lib/jobs/runtime"
@@ -370,6 +371,42 @@ describe("createJobsRuntime", () => {
     const [scout, outcome] = runtime.getSnapshot().state.log
     expect(scout).toMatchObject({ type: "scout", scout: { id: "sc-id1" } })
     expect(outcome).toMatchObject({ type: "outcome", on: "2026-10-19" })
+  })
+
+  it("leaves a form's draft and a take in hand as they are while a run with home takes picks in (PULL2)", async () => {
+    vi.useFakeTimers()
+    try {
+      const runtime = createJobsRuntime(
+        ports({ now: () => new Date(Date.now()) })
+      )
+      runtime.draft("o", { form: "fit", note: "Half typed" })
+      runtime.voice.tap("o", null)
+      await vi.advanceTimersByTimeAsync(1_000)
+      const take = runtime.voice.getSnapshot()
+      const { drafts } = runtime.getSnapshot()
+
+      const today = digest("2026-10-18")
+      const send: HomeCall = (_method, path) =>
+        Promise.resolve({
+          status: 200,
+          body: JSON.stringify(
+            path.startsWith("/jobs/digests")
+              ? { digests: [{ day: today.day, digest: today }] }
+              : { events: [], runs: [] }
+          ),
+        })
+      await exchangeJobs(runtime.keeping, send)
+
+      expect(runtime.getSnapshot().state.current).toBe(today.day)
+      expect(runtime.getSnapshot().drafts).toEqual(drafts)
+      expect(runtime.voice.getSnapshot()).toEqual(take)
+      await vi.advanceTimersByTimeAsync(2_000)
+      runtime.voice.tap("o")
+      await vi.advanceTimersByTimeAsync(0)
+      expect(runtime.getSnapshot().state.voice).toHaveLength(1)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it("keeps each form's draft between launches, apart from the record, until what settles it is kept (JB1)", async () => {
