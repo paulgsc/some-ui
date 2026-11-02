@@ -34,7 +34,7 @@ import type { PatternTake } from "@some-ui/voice-capture"
 import { Pin } from "lucide-react"
 
 export type RustRoundsProps = {
-  /** The phone's ports. Read once, on mount. */
+  /** The phone's ports, or the viewer's sample's. Read once, on mount. */
   ports: RustRoundsPorts
 }
 
@@ -97,17 +97,30 @@ const RunView = ({ run }: { run: RustcRun | null }): JSX.Element => {
   )
 }
 
-/** What a card's voice note needs besides the session: the notes the phone keeps. */
+/**
+ * What a card's voice note needs besides the session: the microphone and
+ * the notes the phone keeps; no port, and so no notes, in a build with no
+ * microphone.
+ */
 type Notes = {
-  readonly port: NotesPort
+  readonly port: NotesPort | null
   readonly takes: ReadonlyArray<PatternTake>
+}
+
+/** The notes of a build with no microphone: none, ever, the same array. */
+const NONE: ReadonlyArray<PatternTake> = []
+const NO_TAKES: NotesPort["takes"] = {
+  getSnapshot: () => NONE,
+  subscribe: () => () => undefined,
 }
 
 /**
  * The card's voice note, on the take pattern's parts: tap to talk and tap
  * to stop, then where it's kept, Play, Redo and Let it go. Once a take found
  * the phone had no room, a card with no note says so in place of the button:
- * the next card tries again.
+ * the next card tries again. In a build with no microphone (the viewer's
+ * sample on Pages, #2241) it says what it would do there instead, and the
+ * card's own actions carry on.
  */
 const VoiceNote = ({
   state,
@@ -120,6 +133,10 @@ const VoiceNote = ({
   notes: Notes
   dispatch: Dispatch
 }): JSX.Element => {
+  const { port } = notes
+  if (port === null) {
+    return <p className="text-muted-foreground text-sm">{WORDS.noMicrophone}</p>
+  }
   if (state.noRoom && visit.note === null) {
     return <p className="text-muted-foreground text-sm">{WORDS.noRoom}</p>
   }
@@ -127,7 +144,7 @@ const VoiceNote = ({
     state,
     visit,
     notes.takes,
-    notes.port.pattern.options
+    port.pattern.options
   )
   return (
     <div className="flex flex-col gap-2">
@@ -502,10 +519,8 @@ export const RustRounds = ({ ports }: RustRoundsProps): JSX.Element => {
   /* eslint-enable owner-guard/no-mount-snapshot */
   useEffect(() => runtime.attach(), [runtime])
   const state = useSyncExternalStore(runtime.subscribe, runtime.getSnapshot)
-  const takes = useSyncExternalStore(
-    port.takes.subscribe,
-    port.takes.getSnapshot
-  )
+  const notes = port?.takes ?? NO_TAKES
+  const takes = useSyncExternalStore(notes.subscribe, notes.getSnapshot)
   const { dispatch } = runtime
 
   return (

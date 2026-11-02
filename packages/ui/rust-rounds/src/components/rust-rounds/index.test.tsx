@@ -208,12 +208,15 @@ describe("Rust Rounds on the phone", () => {
   })
 
   it("says what the speak step would do where there is no microphone, and carries on", () => {
-    const ports = { ...fakePorts(), notes: null }
+    const ports = { ...testPorts(), notes: null }
     render(<RustRounds ports={ports} />)
     press(WORDS.start)
     press("Not sure")
     expect(screen.getByText(WORDS.noMicrophone)).toBeInTheDocument()
-    expect(screen.queryByRole("button", { name: WORDS.holdToSpeak })).toBeNull()
+    // The take button is withdrawn, not offered to fail.
+    expect(
+      screen.queryByRole("button", { name: TAKE_WORDS.buttonLabel.ready })
+    ).toBeNull()
     expectNothingDisabled()
     press(WORDS.skipToRustc)
     expect(
