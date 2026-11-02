@@ -54,15 +54,16 @@ export function readsOnScreen(
         router.invalidate(),
       ])
       const queries = queryClient.getQueryCache().findAll({ type: "active" })
+      // A read that finds no connection pauses, and `refetchQueries` does
+      // not wait for it: nothing was read, whatever it resolved, and a
+      // paused query keeps any error from before.
+      if (queries.some((query) => query.state.fetchStatus === "paused")) {
+        return "offline"
+      }
       if (queries.some((query) => query.state.status === "error")) {
         throw new Error("a read on screen failed")
       }
-      // A read that finds no connection pauses, and `refetchQueries` does
-      // not wait for it: nothing was read, whatever it resolved.
-      const paused = queries.some(
-        (query) => query.state.fetchStatus === "paused"
-      )
-      return paused ? "offline" : "read"
+      return "read"
     },
     onLeave: (listener) =>
       router.subscribe("onBeforeNavigate", (event) => {

@@ -5,10 +5,12 @@
  * A drag arms only when it starts with the page at its top, goes down before
  * it goes sideways or up, and travels `ARM_PX` (after `RESISTANCE`). Letting
  * go armed checks again; letting go short of that does nothing. One check at
- * a time: while one is out a new drag is ignored, even after the page moved
- * on (`left`), when the check is still out but shows nothing and its answer
- * paints nothing. A check that has not answered by `CHECK_MS` (a read paused
- * mid-retry by a lost connection never does) failed. `./runtime` runs the
+ * a time until its deadline: while one is out a new drag is ignored, even
+ * after the page moved on (`left`), when the check is still out but shows
+ * nothing and its answer paints nothing. A check that has not answered by
+ * `CHECK_MS` (a read paused mid-retry by a lost connection never does)
+ * failed, and the next pull may start another while its reads still run;
+ * the late answer is dropped. `./runtime` runs the
  * effects over the page's touches and its reads; React only shows the state
  * (`components/pull-to-check`).
  *
@@ -30,8 +32,10 @@ export const DONE_MS = 2_000
 /** How long a check that could not finish stays said. */
 export const FAILED_MS = 5_000
 /**
- * How long a check may take before it counts as failed: past the app's
- * query retries (three, the last 4 s after the one before).
+ * How long a check may take before it counts as failed: past most checks'
+ * query retries (three, 1 s, 2 s and 4 s apart), but not every retry on a
+ * slow connection, whose attempts may take up to 10 s each; such a check
+ * says it failed and its page may still update after.
  */
 export const CHECK_MS = 20_000
 

@@ -105,12 +105,20 @@ describe("a pull's reads", () => {
     expect(invalidate).not.toHaveBeenCalled()
   })
 
-  it("does not take a read the cache paused for a connection as read", async () => {
+  it("does not take a read the cache paused for a connection as read, nor as failed", async () => {
     // The cache resolves `refetchQueries` at once for a query it paused, as
-    // when the connection drops between the check's start and its reads.
+    // when the connection drops between the check's start and its reads; a
+    // paused query whose last read failed keeps that error beside its data.
     const read = vi.fn(() => Promise.resolve("a"))
     shown("on", read)
-    await vi.waitFor(() => expect(client.getQueryData(["on"])).toBe("a"))
+    let fail = false
+    shown("flaky", () =>
+      fail ? Promise.reject(new Error("earlier")) : Promise.resolve("ok")
+    )
+    await vi.waitFor(() => expect(client.getQueryData(["flaky"])).toBe("ok"))
+    fail = true
+    await client.refetchQueries({ queryKey: ["flaky"] })
+    expect(client.getQueryState(["flaky"])?.status).toBe("error")
     onlineManager.setOnline(false)
     const { router } = fakeRouter()
 
