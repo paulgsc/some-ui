@@ -9,6 +9,9 @@
  * TanStack keeps the last good `data` while a background refetch fails
  * (reachable via `sessionsQuery`'s `refetchOnMount: true`). `failed` would
  * discard usable content; a bare `ready` would hide that it is stale.
+ *
+ * QO1: a retry while the read is on its way joins it; at most one request
+ * per read is running (`index.test.ts`).
  */
 
 import type { IntentError } from "@some-ui/intent-kit"
@@ -80,8 +83,10 @@ export function queryOutcome<T>(
   result: UseQueryResult<T>,
   mapError: (error: unknown) => IntentError = mapFileHostError
 ): QueryOutcome<T> {
+  // QO1: join the read in flight; the tenant query functions ignore `signal`,
+  // so TanStack's default cancel would leave it running beside a second.
   const retry = (): void => {
-    void result.refetch()
+    void result.refetch({ cancelRefetch: false })
   }
 
   if (result.data !== undefined) {

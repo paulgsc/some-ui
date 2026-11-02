@@ -687,7 +687,9 @@ export const HandheldLesson = ({
         sceneFileHint={sceneFileHint}
         loading={!feed.isError && (feed.isLoading || lessons.isLoading)}
         error={feed.isError ? "Couldn't load the dramas." : null}
-        onReload={() => void feed.refetch()}
+        // QO1: joins a reload already on its way. The default cancels it and
+        // starts another, and `feed.list` never reads the cancel.
+        onReload={() => void feed.refetch({ cancelRefetch: false })}
         onCreate={() => setGenerating({})}
         draftNotes={draft?.notes.length ?? 0}
         keep={

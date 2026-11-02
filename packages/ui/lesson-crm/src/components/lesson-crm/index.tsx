@@ -298,6 +298,17 @@ export const LessonCrm = ({
   const open = (key: string): void => {
     const lesson = lessons.find((candidate) => candidate.key === key)
     if (!lesson) return
+    // QO1: the lesson already open starts nothing - no second read beside
+    // the one on its way, and no reset of the editor - but its row still
+    // takes a phone back to it. Only a read that failed is asked for again.
+    if (
+      editing.kind === "stored" &&
+      editing.key === key &&
+      read.state.status !== "failed"
+    ) {
+      setPane(landingPane(editing))
+      return
+    }
     selection.current += 1
     const turn = claimSource(true)
     const next: Editing = { kind: "stored", key }

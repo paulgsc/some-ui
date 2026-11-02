@@ -1,14 +1,19 @@
 /**
  * Scene library: the scene-specific policy (types, normalization, fallback,
- * key derivation) over the generic library engine. No discovery or loading.
+ * key derivation) over the generic library loader (`lib/library/load`).
+ *
+ * QO1: the library is loaded once per page, however many pickers mount
+ * (`sceneLibraryQuery`).
  */
 
 import { HttpFileDiscovery, HttpJsonLoader } from "@some-ui/fetch-kit"
 import type { SceneConfig } from "@some-ui/types"
 import { SceneConfigSchema, UILayoutIntentSchema } from "@some-ui/types"
+import { queryOptions, useQuery } from "@tanstack/react-query"
 import { z } from "zod"
 
-import { useRecursiveLibrary } from "@/hooks/use-recursive-library"
+import type { LibraryConfig } from "@/lib/library/load"
+import { loadLibrary } from "@/lib/library/load"
 
 /** Raw file format: array of UI layout intents */
 const SceneUIFileSchema = z.array(UILayoutIntentSchema)
@@ -23,13 +28,8 @@ type SceneLibraryItem = {
 
 /** Return type for the scene library hook */
 export type UseSceneLibraryReturn = {
-  getScene: (key: string) => SceneConfig | undefined
   getLibraryItems: () => Array<SceneLibraryItem>
-  library: Map<string, SceneConfig>
   loading: boolean
-  reload: () => Promise<void>
-  entries: () => Array<[string, SceneConfig]>
-  get: (key: string) => SceneConfig | undefined
 }
 
 /**
@@ -59,39 +59,45 @@ const deriveSceneKey = (filePath: string): string => {
   return fileName.replace(".json", "")
 }
 
-/** The scene-specific configuration for the generic library engine. */
+const sceneLibrary: LibraryConfig<SceneUIFile, SceneConfig> = {
+  rootPath: "/scenes",
+  extension: ".json",
+  discovery: new HttpFileDiscovery("/scenes/manifest.json"),
+  loader: new HttpJsonLoader(),
+  rawSchema: SceneUIFileSchema,
+  normalize: normalizeScene,
+  fallback: createFallbackScene,
+  deriveKey: deriveSceneKey,
+}
+
+/**
+ * The scene files are the build's own assets: they change only with it, so a
+ * whole load stays fresh for the page. A load that failed or fell back for a
+ * file is stale at once, so the next picker to mount asks again.
+ */
+const sceneLibraryQuery = queryOptions({
+  queryKey: ["scene-library"] as const,
+  queryFn: () => loadLibrary(sceneLibrary),
+  staleTime: ({ state }) =>
+    state.data?.kind === "loaded" && state.data.fileErrors.length === 0
+      ? Infinity
+      : 0,
+  gcTime: Infinity,
+})
+
+const NO_SCENES: ReadonlyMap<string, SceneConfig> = new Map()
+
 export const useSceneLibrary = (): UseSceneLibraryReturn => {
-  const result = useRecursiveLibrary<SceneUIFile, SceneConfig>({
-    rootPath: "/scenes",
-    extension: ".json",
-    discovery: new HttpFileDiscovery("/scenes/manifest.json"),
-    loader: new HttpJsonLoader(),
-    rawSchema: SceneUIFileSchema,
-    normalize: normalizeScene,
-    fallback: createFallbackScene,
-    deriveKey: deriveSceneKey,
-  })
-
-  // Add scene-specific convenience methods
-  const getLibraryItems = (): Array<SceneLibraryItem> => {
-    return result.entries().map(([key, config]) => ({
-      key,
-      displayName: config.scene_name,
-      config,
-    }))
-  }
-
-  const getScene = (key: string): SceneConfig | undefined => {
-    return result.get(key)
-  }
+  const { data } = useQuery(sceneLibraryQuery)
+  const library = data?.kind === "loaded" ? data.library : NO_SCENES
 
   return {
-    ...result,
-    getScene,
-    getLibraryItems,
-    // Maintain backward compatibility
-    library: result.library,
-    loading: result.loading,
-    reload: result.reload,
+    getLibraryItems: (): Array<SceneLibraryItem> =>
+      Array.from(library, ([key, config]) => ({
+        key,
+        displayName: config.scene_name,
+        config,
+      })),
+    loading: data === undefined,
   }
 }

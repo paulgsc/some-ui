@@ -435,6 +435,46 @@
       ]
     },
     {
+      "id": "repeated-reads",
+      "name": "A read you ask for again while it is on its way is sent once",
+      "why": "\"Try again\", reopening the lesson already open, and a second scene picker all repeat a read the app already has on its way.",
+      "paths": [
+        "some-ui:apps/www/src/lib/query-outcome",
+        "some-ui:apps/www/src/components/composer/scene-editor",
+        "some-ui:packages/ui/topik/src/components/topik/handheld/handheld-lesson",
+        "some-ui:packages/ui/lesson-crm/src/components/lesson-crm"
+      ],
+      "modules": [],
+      "objectives": [
+        {
+          "id": "QO1",
+          "kind": "RE3",
+          "property": "work",
+          "claim": "A retry or re-selection of a read already on its way joins it; at most one request per read is running.",
+          "requirement": "At most 1 request in flight per read for: \"Try again\" on every page that reads through queryOutcome (profile, app, sessions, a session, new session, study settings, practice, the device voice) and on TOPIK handheld's dramas, which join the fetch on its way instead of cancelling it; reopening the lesson already open in the lesson CRM, which starts nothing unless its read failed; and the scene library, loaded once per page for every picker. Requests in flight are bounded by the distinct reads asked for while one is on its way: opening another lesson still starts its own read, and the one it replaces runs on, since the CRM's read takes no cancel.",
+          "verdict": "holds",
+          "conclusion": "Tapping Try again, reopening the open lesson, or opening a second scene picker while the read is on its way sends nothing more. The lesson CRM's read of a lesson you have moved away from is not stopped, and a refresh the app starts itself (an invalidation after a change) still follows TanStack's own default.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "Before the fix, each tap of Try again on a page that still showed data sent one more GET and cancelled none of them (the query functions ignore the cancel), each click on the open lesson re-read it and reset the editor, and every mounted scene picker fetched the manifest and every scene file.",
+              "ref": "some-ui#2277"
+            }
+          ],
+          "proof": [
+            "some-ui:apps/www/src/lib/query-outcome/index.test.ts#QO1",
+            "some-ui:packages/ui/topik/src/components/topik/handheld/handheld-lesson/index.test.tsx#QO1",
+            "some-ui:packages/ui/lesson-crm/src/components/lesson-crm/index.test.tsx#QO1",
+            "some-ui:apps/www/src/components/composer/scene-editor/use-scene-library.test.tsx#QO1"
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        }
+      ]
+    },
+    {
       "id": "voice-heard",
       "name": "Voice notes sent home get heard",
       "why": "The phone sends a voice note home; home transcribes it in the background, and the transcript is what the routine reads. A note I let go on the phone is set aside on home, kept, and the routines read it no more (D3).",
