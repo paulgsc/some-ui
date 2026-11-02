@@ -48,6 +48,7 @@ import {
   MobileSettingsLink,
   MobileWayOut,
 } from "@/components/mobile-shell"
+import { PageBody } from "@/components/page-body"
 import { ProvenanceStrip } from "@/components/provenance-strip"
 import { DeviceStoragePrompt } from "@/components/settings/device-storage"
 import { SiteLauncher } from "@/components/site-launcher"
@@ -268,20 +269,9 @@ const DashboardLayout = (): JSX.Element => {
         {import.meta.env.VITE_DEVICE_BACKEND === "true" ? (
           <DeviceStoragePrompt />
         ) : null}
-        <div
-          className={cn(
-            "flex-1",
-            // 24px on every side is a desktop budget the bounded routes on a
-            // phone cannot afford.
-            bareViewport ? "p-0" : "p-4 sm:p-6",
-            // scroll-intent: page — an ordinary document route scrolls as a
-            // page; bounded routes take the overflow-hidden branch (docs/ui-fit,
-            // docs/session-viewport/02-kill-the-cutoff.md).
-            isBoundedRoute ? "min-h-0 overflow-hidden" : "overflow-auto"
-          )}
-        >
+        <PageBody bounded={isBoundedRoute} bare={bareViewport}>
           <Outlet />
-        </div>
+        </PageBody>
         {/* A persistent bar may not paint over a bounded surface
             (docs/session-viewport/05-the-mobile-shell.md §4). */}
         {MOBILE_APP && !isBoundedRoute && <MobileNav pathname={pathname} />}

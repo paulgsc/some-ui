@@ -32,6 +32,7 @@ import {
   walk,
 } from "./harness"
 import type { PhoneId } from "./phone-page/fixtures"
+import type { PullId } from "./phone-page/pull"
 import { fitReviewText } from "./phone-page/studio-seed"
 
 /** Start's sitting rows carry their status in their name: match the head. */
@@ -55,11 +56,12 @@ const PLANTED = {
 
 /**
  * The walks, one per fixture, each in the order the owner meets the screens
- * from that Start. Keyed by every fixture but the planted ones, so a fixture
+ * from that Start. Keyed by every fixture but the planted ones and the
+ * drag-down indicator's (`./pull-fit.spec.ts`), so a fixture
  * no walk reaches fails tsc.
  */
 const WALKS: Record<
-  Exclude<PhoneId, keyof typeof PLANTED>,
+  Exclude<PhoneId, keyof typeof PLANTED | PullId>,
   ReadonlyArray<Stop>
 > = {
   "studio-empty": [
