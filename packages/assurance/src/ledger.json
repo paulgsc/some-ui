@@ -1456,13 +1456,18 @@
           "evidence": [
             {
               "class": "structural",
-              "says": "DatabaseBehindBuild fires when dependency_up{dependency=\"schema\"} has read 0 for 5 minutes, unless sqlite reads 0 too; metrics::periodic re-runs every /ready check every 10 s, each bounded at 2 s, so the gauge is fresh without anyone asking /ready; promtool tests it in CI.",
+              "says": "DatabaseBehindBuild fires when dependency_up{dependency=\"schema\"} has read 0 for 5 minutes, unless sqlite reads 0 too; promtool tests it in CI.",
               "ref": "server:infra/prometheus/rules/home.yml"
+            },
+            {
+              "class": "structural",
+              "says": "metrics::periodic re-runs every /ready check every 10 s, each bounded at 2 s, so the gauge is fresh without anyone asking /ready.",
+              "ref": "server:apps/servers/file_host/src/metrics/periodic.rs"
             },
             {
               "class": "derived",
               "says": "Worst case while file_host answers: the gauge reads 0 within 12 s of the database falling behind, the rule fires 300 s later, Prometheus evaluates within 15 s and Grafana's rule runs within 60 s, about 387 s in all. The promtool tests evaluate once a minute, so they do not prove the seconds.",
-              "ref": "server:apps/servers/file_host/src/metrics/periodic.rs"
+              "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
             },
             {
               "class": "structural",
