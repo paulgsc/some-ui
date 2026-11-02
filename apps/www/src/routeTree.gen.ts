@@ -52,6 +52,7 @@ import { Route as DashboardApkJournalIndexRouteImport } from './routes/_dashboar
 import { Route as DashboardApkJournalIdeaRouteImport } from './routes/_dashboard/_apk/journal/idea'
 import { Route as DashboardApkJournalIdeasRouteImport } from './routes/_dashboard/_apk/journal/ideas'
 import { Route as DashboardApkPracticeIndexRouteImport } from './routes/_dashboard/_apk/practice/index'
+import { Route as DashboardApkSettingsDataRouteImport } from './routes/_dashboard/_apk/settings/data'
 import { Route as DashboardApkSettingsHomeRouteImport } from './routes/_dashboard/_apk/settings/home'
 import { Route as DashboardApkSettingsPhoneRouteImport } from './routes/_dashboard/_apk/settings/phone'
 import { Route as DashboardApkSettingsStatusRouteImport } from './routes/_dashboard/_apk/settings/status'
@@ -277,6 +278,12 @@ const DashboardApkPracticeIndexRoute =
     path: '/practice/',
     getParentRoute: () => DashboardApkRoute,
   } as any)
+const DashboardApkSettingsDataRoute =
+  DashboardApkSettingsDataRouteImport.update({
+    id: '/settings/data',
+    path: '/settings/data',
+    getParentRoute: () => DashboardApkRoute,
+  } as any)
 const DashboardApkSettingsHomeRoute =
   DashboardApkSettingsHomeRouteImport.update({
     id: '/settings/home',
@@ -339,6 +346,7 @@ export interface FileRoutesByFullPath {
   '/jobs/scout': typeof DashboardApkJobsScoutRoute
   '/journal/idea': typeof DashboardApkJournalIdeaRoute
   '/journal/ideas': typeof DashboardApkJournalIdeasRoute
+  '/settings/data': typeof DashboardApkSettingsDataRoute
   '/settings/home': typeof DashboardApkSettingsHomeRoute
   '/settings/phone': typeof DashboardApkSettingsPhoneRoute
   '/settings/status': typeof DashboardApkSettingsStatusRoute
@@ -383,6 +391,7 @@ export interface FileRoutesByTo {
   '/jobs/scout': typeof DashboardApkJobsScoutRoute
   '/journal/idea': typeof DashboardApkJournalIdeaRoute
   '/journal/ideas': typeof DashboardApkJournalIdeasRoute
+  '/settings/data': typeof DashboardApkSettingsDataRoute
   '/settings/home': typeof DashboardApkSettingsHomeRoute
   '/settings/phone': typeof DashboardApkSettingsPhoneRoute
   '/settings/status': typeof DashboardApkSettingsStatusRoute
@@ -433,6 +442,7 @@ export interface FileRoutesById {
   '/_dashboard/_apk/jobs/scout': typeof DashboardApkJobsScoutRoute
   '/_dashboard/_apk/journal/idea': typeof DashboardApkJournalIdeaRoute
   '/_dashboard/_apk/journal/ideas': typeof DashboardApkJournalIdeasRoute
+  '/_dashboard/_apk/settings/data': typeof DashboardApkSettingsDataRoute
   '/_dashboard/_apk/settings/home': typeof DashboardApkSettingsHomeRoute
   '/_dashboard/_apk/settings/phone': typeof DashboardApkSettingsPhoneRoute
   '/_dashboard/_apk/settings/status': typeof DashboardApkSettingsStatusRoute
@@ -481,6 +491,7 @@ export interface FileRouteTypes {
     | '/jobs/scout'
     | '/journal/idea'
     | '/journal/ideas'
+    | '/settings/data'
     | '/settings/home'
     | '/settings/phone'
     | '/settings/status'
@@ -525,6 +536,7 @@ export interface FileRouteTypes {
     | '/jobs/scout'
     | '/journal/idea'
     | '/journal/ideas'
+    | '/settings/data'
     | '/settings/home'
     | '/settings/phone'
     | '/settings/status'
@@ -574,6 +586,7 @@ export interface FileRouteTypes {
     | '/_dashboard/_apk/jobs/scout'
     | '/_dashboard/_apk/journal/idea'
     | '/_dashboard/_apk/journal/ideas'
+    | '/_dashboard/_apk/settings/data'
     | '/_dashboard/_apk/settings/home'
     | '/_dashboard/_apk/settings/phone'
     | '/_dashboard/_apk/settings/status'
@@ -900,6 +913,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardApkPracticeIndexRouteImport
       parentRoute: typeof DashboardApkRoute
     }
+    '/_dashboard/_apk/settings/data': {
+      id: '/_dashboard/_apk/settings/data'
+      path: '/settings/data'
+      fullPath: '/settings/data'
+      preLoaderRoute: typeof DashboardApkSettingsDataRouteImport
+      parentRoute: typeof DashboardApkRoute
+    }
     '/_dashboard/_apk/settings/home': {
       id: '/_dashboard/_apk/settings/home'
       path: '/settings/home'
@@ -975,6 +995,7 @@ interface DashboardApkRouteChildren {
   DashboardApkSoundbitesRoute: typeof DashboardApkSoundbitesRoute
   DashboardApkJournalIdeaRoute: typeof DashboardApkJournalIdeaRoute
   DashboardApkJournalIdeasRoute: typeof DashboardApkJournalIdeasRoute
+  DashboardApkSettingsDataRoute: typeof DashboardApkSettingsDataRoute
   DashboardApkSettingsHomeRoute: typeof DashboardApkSettingsHomeRoute
   DashboardApkSettingsPhoneRoute: typeof DashboardApkSettingsPhoneRoute
   DashboardApkSettingsStatusRoute: typeof DashboardApkSettingsStatusRoute
@@ -991,6 +1012,7 @@ const DashboardApkRouteChildren: DashboardApkRouteChildren = {
   DashboardApkSoundbitesRoute: DashboardApkSoundbitesRoute,
   DashboardApkJournalIdeaRoute: DashboardApkJournalIdeaRoute,
   DashboardApkJournalIdeasRoute: DashboardApkJournalIdeasRoute,
+  DashboardApkSettingsDataRoute: DashboardApkSettingsDataRoute,
   DashboardApkSettingsHomeRoute: DashboardApkSettingsHomeRoute,
   DashboardApkSettingsPhoneRoute: DashboardApkSettingsPhoneRoute,
   DashboardApkSettingsStatusRoute: DashboardApkSettingsStatusRoute,

@@ -338,7 +338,8 @@ jobs:
                 tests/ui-fit/jobs-status-fit.spec.ts \
                 tests/ui-fit/code-card-fit.spec.ts \
                 tests/ui-fit/studio-fit.spec.ts \
-                tests/ui-fit/pull-fit.spec.ts
+                tests/ui-fit/pull-fit.spec.ts \
+                tests/ui-fit/settings-bar-fit.spec.ts
           else
             echo "No UI files changed."
           fi

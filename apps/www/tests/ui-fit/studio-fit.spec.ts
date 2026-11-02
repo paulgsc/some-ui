@@ -31,8 +31,7 @@ import {
   tap,
   walk,
 } from "./harness"
-import type { PhoneId } from "./phone-page/fixtures"
-import type { PullId } from "./phone-page/pull"
+import type { StudioId } from "./phone-page/fixtures"
 import { fitReviewText } from "./phone-page/studio-seed"
 
 /** Start's sitting rows carry their status in their name: match the head. */
@@ -52,7 +51,7 @@ const start = (page: Page): Promise<void> =>
 const PLANTED = {
   "planted-overflow": "leak",
   "planted-wide": "wide",
-} as const satisfies Partial<Record<PhoneId, "leak" | "wide">>
+} as const satisfies Partial<Record<StudioId, "leak" | "wide">>
 
 /**
  * The walks, one per fixture, each in the order the owner meets the screens
@@ -61,7 +60,7 @@ const PLANTED = {
  * no walk reaches fails tsc.
  */
 const WALKS: Record<
-  Exclude<PhoneId, keyof typeof PLANTED | PullId>,
+  Exclude<StudioId, keyof typeof PLANTED>,
   ReadonlyArray<Stop>
 > = {
   "studio-empty": [

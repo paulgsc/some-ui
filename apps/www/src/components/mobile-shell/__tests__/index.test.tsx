@@ -8,7 +8,7 @@
  */
 
 import type * as ReactRouterModule from "@tanstack/react-router"
-import { cleanup, render, screen } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import type * as BuildProfileModule from "@/lib/build-profile"
@@ -66,12 +66,56 @@ describe("MobileNav", () => {
     expect(screen.queryByText("Bites")).toBeNull()
   })
 
-  it("has no bar in a wing of one room, or outside every wing", () => {
-    for (const pathname of ["/aph", "/foyer", "/settings"]) {
+  it("has no bar in a wing of one room, or in the foyer", () => {
+    for (const pathname of ["/aph", "/foyer", "/auth"]) {
       const { container } = render(<MobileNav pathname={pathname} />)
       expect(container.querySelector("nav"), pathname).toBeNull()
       cleanup()
     }
+  })
+
+  it("gives Settings a bar of its pages, and More for the rest (MD1)", () => {
+    render(<MobileNav pathname="/settings/phone" />)
+
+    expect(screen.getByRole("navigation").getAttribute("aria-label")).toBe(
+      "Settings pages"
+    )
+    expect(targetOf("Running")).toBe("/settings/status")
+    expect(targetOf("Phone")).toBe("/settings/phone")
+    expect(targetOf("Home")).toBe("/settings/home")
+    expect(targetOf("My data")).toBe("/settings/data")
+    expect(
+      screen.getByText("Phone").closest("a")?.getAttribute("aria-current")
+    ).toBe("page")
+    expect(screen.queryByText("Appearance")).toBeNull()
+
+    fireEvent.click(screen.getByRole("button", { name: "More" }))
+    expect(targetOf("Appearance")).toBe("/settings/appearance")
+  })
+
+  it("closes More's list whenever the page changes, Android's back included", () => {
+    const { rerender } = render(<MobileNav pathname="/settings/phone" />)
+    fireEvent.click(screen.getByRole("button", { name: "More" }))
+    expect(screen.getByText("Appearance")).toBeTruthy()
+
+    rerender(<MobileNav pathname="/settings/status" />)
+
+    expect(screen.queryByText("Appearance")).toBeNull()
+  })
+
+  it("marks More as where you are on a page it lists", () => {
+    render(<MobileNav pathname="/settings/appearance" />)
+
+    expect(
+      screen.getByRole("button", { name: "More" }).getAttribute("aria-current")
+    ).toBe("page")
+  })
+
+  it("has no Settings bar in a build without the phone's pages (A3)", () => {
+    carriesApk = false
+    const { container } = render(<MobileNav pathname="/settings/appearance" />)
+
+    expect(container.querySelector("nav")).toBeNull()
   })
 })
 

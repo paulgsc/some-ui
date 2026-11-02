@@ -49,6 +49,7 @@ import {
 } from "@some-ui/voice-capture/testing"
 
 import { PULL_FIXTURES } from "./pull"
+import { SettingsBar } from "./settings-bar"
 import { FIT_CUTS, FIT_PRIMER_TEXT } from "./studio-seed"
 
 const AT = "2026-10-30T09:00:00.000Z"
@@ -232,7 +233,8 @@ function studioOn(projects: ReadonlyArray<Project>): () => JSX.Element {
   return StudioFixture
 }
 
-export const PHONE_FIXTURES = {
+/** Studio's fixtures, which `../studio-fit.spec.ts` walks, every one. */
+const STUDIO_FIXTURES = {
   /** Start with no video: the primer pick alone. */
   "studio-empty": studioOn([]),
   "studio-fresh": studioOn([FRESH]),
@@ -244,9 +246,6 @@ export const PHONE_FIXTURES = {
   idea: newIdea(false),
   /** New idea, where the microphone refuses the first take. */
   "idea-voice-lost": newIdea(true),
-
-  /** The drag-down indicator, each phase (`./pull`, `../pull-fit.spec.ts`). */
-  ...PULL_FIXTURES,
 
   // A box that asserts a height its content cannot fit, which the body's
   // scroll does not excuse: the leak the sweep must see.
@@ -264,6 +263,16 @@ export const PHONE_FIXTURES = {
       too wide
     </div>
   ),
+} satisfies Record<string, () => JSX.Element>
+
+export type StudioId = keyof typeof STUDIO_FIXTURES
+
+export const PHONE_FIXTURES = {
+  ...STUDIO_FIXTURES,
+  /** The drag-down indicator, each phase (`./pull`, `../pull-fit.spec.ts`). */
+  ...PULL_FIXTURES,
+  /** Settings' bar of pages, for `../settings-bar-fit.spec.ts`. */
+  "settings-bar": SettingsBar,
 } satisfies Record<string, () => JSX.Element>
 
 export type PhoneId = keyof typeof PHONE_FIXTURES

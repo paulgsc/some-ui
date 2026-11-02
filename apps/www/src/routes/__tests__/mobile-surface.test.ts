@@ -74,6 +74,11 @@ async function landingOf(url: string): Promise<string> {
   return router.state.location.pathname
 }
 
+/** The routes on the surface that open another page of it (`deskBar`, lib/front-desk). */
+const OPENS_ON: Partial<Record<string, string>> = {
+  "/settings": "/settings/status",
+}
+
 beforeAll(async () => {
   // Loaders prefetch from `file_host`; nothing here should reach a network.
   vi.stubGlobal("fetch", () => Promise.reject(new Error("offline in tests")))
@@ -93,8 +98,20 @@ describe("the Android app's surface", () => {
 
   it("opens a route on the surface where it was asked for", async () => {
     for (const url of urls.filter(isOnMobileSurface)) {
-      expect(await landingOf(url), url).toBe(url)
+      expect(await landingOf(url), url).toBe(OPENS_ON[url] ?? url)
     }
+  })
+
+  it("replaces /settings in history, so back from its first page leaves Settings", async () => {
+    const history = createMemoryHistory({ initialEntries: ["/settings"] })
+    const router = createRouter({
+      routeTree,
+      history,
+      context: { queryClient: new QueryClient() },
+    })
+    await router.load()
+    expect(router.state.location.pathname).toBe(OPENS_ON["/settings"])
+    expect(history.length).toBe(1)
   })
 
   it("sends every other route to the phone's foyer", async () => {

@@ -169,7 +169,7 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
 export const SHEET = {
   sendNow: "Send now",
   pairFirst: PAIR,
-  settings: "Pairing, what waits and clearing space: Settings",
+  settings: "Pairing, and what you send home: Settings, Home",
 } as const
 
 /** What Settings says of the voice notes this phone holds and can't send home, if any (LA14). */

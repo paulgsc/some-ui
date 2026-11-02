@@ -160,6 +160,9 @@ export const INTENT_FAILURE_FIXTURE = "intent-failure"
 /** Rust Rounds' screens (RR4), walked by `./rust-rounds-fit.spec.ts`. */
 export const RUST_ROUNDS_FIXTURE = "rust-rounds"
 
+/** Settings' bar of pages (MD1), measured by `./settings-bar-fit.spec.ts`. */
+export const SETTINGS_BAR_FIXTURE = "settings-bar"
+
 /** The take pattern's parts, measured by `./take-pattern-fit.spec.ts`. */
 export const TAKE_PATTERN_FIXTURE = "take-pattern"
 

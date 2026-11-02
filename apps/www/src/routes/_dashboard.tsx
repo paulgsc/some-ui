@@ -233,7 +233,7 @@ const DashboardLayout = (): JSX.Element => {
       {!MOBILE_APP && <DashboardSidebarContent pathname={pathname} />}
       <SidebarInset
         className={cn(
-          !isBoundedRoute && barOf(pathname).length > 0 && "rail:pl-[6rem]"
+          !isBoundedRoute && barOf(pathname) !== null && "rail:pl-[6rem]"
         )}
       >
         {!bareViewport && (
