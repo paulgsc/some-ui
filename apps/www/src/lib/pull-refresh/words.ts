@@ -20,6 +20,7 @@ export const PULL_WORDS = {
   checking: "Checking again…",
   done: (when: string): string => `Up to date at ${when}`,
   failed: "Couldn’t check everything just now",
+  offline: "No connection: showing what was here",
 } as const
 
 /** What the indicator says in `phase`, or null when it shows nothing. */
@@ -39,13 +40,13 @@ export function pullWords(
       return PULL_WORDS.armed
     }
     case "checking": {
-      return PULL_WORDS.checking
+      return phase.shown ? PULL_WORDS.checking : null
     }
     case "done": {
       return PULL_WORDS.done(when(phase.at))
     }
     case "failed": {
-      return PULL_WORDS.failed
+      return phase.offline ? PULL_WORDS.offline : PULL_WORDS.failed
     }
     default: {
       return assertNever(phase)

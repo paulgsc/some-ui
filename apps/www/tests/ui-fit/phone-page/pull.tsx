@@ -39,9 +39,10 @@ const at = (phase: Phase): (() => JSX.Element) => {
 export const PULL_FIXTURES = {
   "pull-pulling": at({ kind: "pulling", from: FROM, distance: ARM_PX / 2 }),
   "pull-armed": at({ kind: "armed", from: FROM, distance: MAX_PX }),
-  "pull-checking": at({ kind: "checking", pull: 1 }),
+  "pull-checking": at({ kind: "checking", pull: 1, shown: true }),
   "pull-done": at({ kind: "done", pull: 1, at: AT }),
-  "pull-failed": at({ kind: "failed", pull: 1, at: AT }),
+  "pull-failed": at({ kind: "failed", pull: 1, at: AT, offline: false }),
+  "pull-offline": at({ kind: "failed", pull: 1, at: AT, offline: true }),
 } satisfies Record<string, () => JSX.Element>
 
 export type PullId = keyof typeof PULL_FIXTURES

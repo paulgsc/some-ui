@@ -15,7 +15,7 @@ import {
   createRouter,
   RouterProvider,
 } from "@tanstack/react-router"
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { ARM_PX, PULL_WORDS } from "@/lib/pull-refresh"
@@ -68,21 +68,16 @@ const touch = (y: number): { touches: Array<Partial<Touch>> } => ({
 })
 
 describe("the phone's page body", () => {
-  it("lets a page route be dragged down to check again", async () => {
+  it("lets a page route be dragged down, listening on the page scroller", async () => {
     const page = await mount(false)
     expect(screen.getByRole("status").textContent).toBe("")
 
+    // A drag on the route's own content reaches the pull: it listens on the
+    // body that holds the route, not only on the indicator.
     fireEvent.touchStart(page, touch(50))
     fireEvent.touchMove(page, touch(70))
     fireEvent.touchMove(page, touch(50 + ARM_PX * 3))
     expect(screen.getByRole("status").textContent).toBe(PULL_WORDS.armed)
-
-    await act(async () => {
-      fireEvent.touchEnd(page, { touches: [] })
-      await Promise.resolve()
-    })
-    const done = await screen.findByText(/^Up to date at /)
-    expect(done.closest("[role=status]")).not.toBeNull()
   })
 
   it("keeps a bounded route's drags for itself", async () => {

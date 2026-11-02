@@ -1,18 +1,21 @@
 /**
  * Runs `./model`'s `step` over a page scroller's touches and the reads a
- * check makes. It owns the touch listeners, the root's overscroll, the fade
+ * check makes. It owns the touch listeners, the root's overscroll, the
  * timers and the route subscription; `step` decides which answer is stale.
  */
-import type { Point, PullEffect, PullEvent, PullState } from "./model"
+import { assertNever } from "@some-ui/core-utils"
+
+import type { CheckEnd, Point, PullEffect, PullEvent, PullState } from "./model"
 import { INITIAL_PULL, step } from "./model"
 
 /** What a check reaches, behind ports. */
 export type PullPorts = {
   /**
-   * Reads again everything the page shows. Resolves when all of it came
-   * back, rejects when any of it could not be read.
+   * Reads again everything the page shows. Resolves `read` when all of it
+   * came back, `offline` when there was no connection to read with, and
+   * rejects when any of it could not be read.
    */
-  readonly readAgain: () => Promise<void>
+  readonly readAgain: () => Promise<Exclude<CheckEnd, "unread">>
   /** Calls `listener` each time the page moves to another route. */
   readonly onLeave: (listener: () => void) => () => void
   /** Epoch ms, for when a check finished. */
@@ -60,21 +63,35 @@ function firstTouch(touches: TouchList): Point | null {
 export function createPullRuntime(ports: PullPorts): PullRuntime {
   let state: PullState = INITIAL_PULL
   const listeners = new Set<() => void>()
-  const timers = new Set<ReturnType<typeof setTimeout>>()
 
+  const settle = (pull: number, end: CheckEnd): void =>
+    dispatch({ type: "settled", pull, end, at: ports.now() })
+
+  // Each timer is bounded (`CHECK_MS`, `DONE_MS`, `FAILED_MS`) and only
+  // moves the machine on, so a detach leaves them to run out. The deadline
+  // must: a read that never answers would otherwise hold every later pull.
   const run = (effect: PullEffect): void => {
-    if (effect.kind === "check") {
-      const { pull } = effect
-      const settle = (outcome: "done" | "failed") => (): void =>
-        dispatch({ type: "settled", pull, outcome, at: ports.now() })
-      ports.readAgain().then(settle("done"), settle("failed"))
-      return
+    const { pull } = effect
+    switch (effect.kind) {
+      case "check": {
+        ports.readAgain().then(
+          (end) => settle(pull, end),
+          () => settle(pull, "unread")
+        )
+        return
+      }
+      case "deadline": {
+        setTimeout(() => settle(pull, "unread"), effect.afterMs)
+        return
+      }
+      case "fade": {
+        setTimeout(() => dispatch({ type: "faded", pull }), effect.afterMs)
+        return
+      }
+      default: {
+        assertNever(effect)
+      }
     }
-    const timer = setTimeout(() => {
-      timers.delete(timer)
-      dispatch({ type: "faded", pull: effect.pull })
-    }, effect.afterMs)
-    timers.add(timer)
   }
 
   function dispatch(event: PullEvent): void {
@@ -123,9 +140,7 @@ export function createPullRuntime(ports: PullPorts): PullRuntime {
       scroller.removeEventListener("touchcancel", onCancel)
       root.style.overscrollBehaviorY = overscroll
       stopLeaving()
-      timers.forEach(clearTimeout)
-      timers.clear()
-      // Whatever was out is stale now: its answer finds the pull gone.
+      // Whatever was out paints nothing now.
       dispatch({ type: "left" })
     }
   }

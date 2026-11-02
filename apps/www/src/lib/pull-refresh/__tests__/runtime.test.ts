@@ -2,15 +2,17 @@
  * @vitest-environment jsdom
  *
  * The drag-down's runtime over a real scroller's touches (PULL0): a pull at
- * the top checks again once, a drag anywhere else is the page's own, and an
- * answer that lands after the page moved on, or after the gesture was taken
- * away, paints nothing.
+ * the top checks again once, a drag anywhere else is the page's own, a check
+ * that never answers ends at its deadline, and an answer that lands after the
+ * page moved on, or after the gesture was taken away, paints nothing, while
+ * the check still holds the next pull until it ends.
  */
 import { fireEvent } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
   ARM_PX,
+  CHECK_MS,
   DONE_MS,
   FAILED_MS,
   RESISTANCE,
@@ -20,7 +22,10 @@ import { atTop, createPullRuntime } from "@/lib/pull-refresh/runtime"
 
 const AT = 1_762_000_000_000
 
-type Pending = { resolve: () => void; reject: (error: Error) => void }
+type Pending = {
+  resolve: (end?: "read" | "offline") => void
+  reject: (error: Error) => void
+}
 
 let scroller: HTMLDivElement
 let inner: HTMLDivElement
@@ -31,7 +36,9 @@ let detach: () => void
 
 const ports = (): PullPorts => ({
   readAgain: () =>
-    new Promise<void>((resolve, reject) => reads.push({ resolve, reject })),
+    new Promise<"read" | "offline">((resolve, reject) =>
+      reads.push({ resolve: (end = "read") => resolve(end), reject })
+    ),
   onLeave: (listener) => {
     leave.push(listener)
     return () => {
@@ -112,10 +119,27 @@ describe("a pull from the top of the page", () => {
     expect(reads).toHaveLength(0)
   })
 
-  it("ignores a second pull while the first is out", () => {
+  it("ends a check that never answers at its deadline, and takes the next pull", async () => {
+    // A read paused mid-retry by a lost connection never settles.
     drag(FAR)
+    vi.advanceTimersByTime(CHECK_MS - 1)
+    expect(kind()).toBe("checking")
+    vi.advanceTimersByTime(1)
+    expect(runtime.getState().phase).toEqual({
+      kind: "failed",
+      pull: 1,
+      at: AT,
+      offline: false,
+    })
     drag(FAR)
-    expect(reads).toHaveLength(1)
+    expect(reads).toHaveLength(2)
+    // The first read, answering at last, says nothing over the second.
+    reads[0].resolve()
+    await flush()
+    expect(runtime.getState().phase).toMatchObject({
+      kind: "checking",
+      pull: 2,
+    })
   })
 
   it("tells its subscribers only when something changed", () => {
@@ -164,13 +188,22 @@ describe("a drag that is the page's own", () => {
 })
 
 describe("an answer that lands late", () => {
-  it("paints nothing once the page moved to another route", async () => {
+  it("paints nothing once the page moved to another route, and holds the next pull until it ends", async () => {
     drag(FAR)
     leave.forEach((listener) => listener())
-    expect(kind()).toBe("idle")
+    expect(runtime.getState().phase).toEqual({
+      kind: "checking",
+      pull: 1,
+      shown: false,
+    })
+    // One check at a time, across routes too.
+    drag(FAR)
+    expect(reads).toHaveLength(1)
     reads[0].resolve()
     await flush()
     expect(kind()).toBe("idle")
+    drag(FAR)
+    expect(reads).toHaveLength(2)
   })
 
   it("paints nothing once the gesture was taken away, which leaves the page as it was", async () => {

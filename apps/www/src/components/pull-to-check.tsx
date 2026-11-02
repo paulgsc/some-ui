@@ -8,7 +8,7 @@
 import type { JSX } from "react"
 import { useCallback, useState, useSyncExternalStore } from "react"
 import { assertNever, cn } from "@some-ui/core-utils"
-import { useQueryClient } from "@tanstack/react-query"
+import { onlineManager, useQueryClient } from "@tanstack/react-query"
 import { useRouter } from "@tanstack/react-router"
 import { ArrowDown, Check, CircleAlert, RefreshCw } from "lucide-react"
 
@@ -112,7 +112,7 @@ export const PullToCheck = (): JSX.Element => {
   const queryClient = useQueryClient()
   // Made once per mount: the router and the cache are the app's singletons.
   const [runtime] = useState(() =>
-    createPullRuntime(readsOnScreen(queryClient, router))
+    createPullRuntime(readsOnScreen(queryClient, router, onlineManager))
   )
   const { phase } = useSyncExternalStore(
     runtime.subscribe,

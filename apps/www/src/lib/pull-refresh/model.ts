@@ -4,11 +4,13 @@
  *
  * A drag arms only when it starts with the page at its top, goes down before
  * it goes sideways or up, and travels `ARM_PX` (after `RESISTANCE`). Letting
- * go armed checks again; letting go short of that does nothing. While a check
- * is out a new drag is ignored, and a check's answer counts only for the pull
- * that asked it (`settled.pull`): one that lands after the page moved on
- * (`left`) paints nothing. `./runtime` runs the effects over the page's
- * touches and its reads; React only shows the state (`components/pull-to-check`).
+ * go armed checks again; letting go short of that does nothing. One check at
+ * a time: while one is out a new drag is ignored, even after the page moved
+ * on (`left`), when the check is still out but shows nothing and its answer
+ * paints nothing. A check that has not answered by `CHECK_MS` (a read paused
+ * mid-retry by a lost connection never does) failed. `./runtime` runs the
+ * effects over the page's touches and its reads; React only shows the state
+ * (`components/pull-to-check`).
  *
  * The page is never reloaded (epic #2456, D3): checking again re-reads what is
  * on screen, and what is in hand stays.
@@ -27,6 +29,11 @@ export const SLOP_PX = 10
 export const DONE_MS = 2_000
 /** How long a check that could not finish stays said. */
 export const FAILED_MS = 5_000
+/**
+ * How long a check may take before it counts as failed: past the app's
+ * query retries (three, the last 4 s after the one before).
+ */
+export const CHECK_MS = 20_000
 
 export type Point = { readonly x: number; readonly y: number }
 
@@ -43,12 +50,27 @@ export type Phase =
     }
   /** Down past `ARM_PX`: letting go checks again. */
   | { readonly kind: "armed"; readonly from: Point; readonly distance: number }
-  /** Pull number `pull` is checking. */
-  | { readonly kind: "checking"; readonly pull: number }
+  /**
+   * Pull number `pull` is checking; `shown` until the page that asked moves
+   * on, after which it is still out but its answer paints nothing.
+   */
+  | {
+      readonly kind: "checking"
+      readonly pull: number
+      readonly shown: boolean
+    }
   /** Pull `pull` finished at `at` (epoch ms). */
   | { readonly kind: "done"; readonly pull: number; readonly at: number }
-  /** Pull `pull` could not read everything again, at `at`. */
-  | { readonly kind: "failed"; readonly pull: number; readonly at: number }
+  /**
+   * Pull `pull` could not read everything again, at `at`; `offline` when
+   * the phone had no connection to read with.
+   */
+  | {
+      readonly kind: "failed"
+      readonly pull: number
+      readonly at: number
+      readonly offline: boolean
+    }
 
 export type PullState = {
   /** Pulls checked so far: the next one is `pulls + 1`. */
@@ -69,11 +91,11 @@ export type PullEvent =
   | { readonly type: "touchMove"; readonly at: Point }
   | { readonly type: "touchEnd" }
   | { readonly type: "touchCancel" }
-  /** Pull `pull`'s reads came back, all of them or not. */
+  /** Pull `pull`'s check ended at `at`, how `end` says. */
   | {
       readonly type: "settled"
       readonly pull: number
-      readonly outcome: "done" | "failed"
+      readonly end: CheckEnd
       readonly at: number
     }
   /** Pull `pull`'s outcome has been shown long enough. */
@@ -81,9 +103,21 @@ export type PullEvent =
   /** The page moved to another route, or the gesture was taken away. */
   | { readonly type: "left" }
 
+/**
+ * How a check ended: everything read again, nothing read for want of a
+ * connection, or something could not be read (or did not answer in time).
+ */
+export type CheckEnd = "read" | "offline" | "unread"
+
 export type PullEffect =
   /** Read again what the page shows, then answer `settled` for `pull`. */
   | { readonly kind: "check"; readonly pull: number }
+  /** Answer `settled: unread` for `pull` after `afterMs`, if nothing did. */
+  | {
+      readonly kind: "deadline"
+      readonly pull: number
+      readonly afterMs: number
+    }
   /** Answer `faded` for `pull` after `afterMs`. */
   | { readonly kind: "fade"; readonly pull: number; readonly afterMs: number }
 
@@ -160,8 +194,11 @@ export function step(state: PullState, event: PullEvent): Step {
       if (phase.kind === "armed") {
         const pull = state.pulls + 1
         return [
-          { pulls: pull, phase: { kind: "checking", pull } },
-          [{ kind: "check", pull }],
+          { pulls: pull, phase: { kind: "checking", pull, shown: true } },
+          [
+            { kind: "check", pull },
+            { kind: "deadline", pull, afterMs: CHECK_MS },
+          ],
         ]
       }
       return inHand(phase) ? to(state, IDLE) : stay(state)
@@ -170,16 +207,22 @@ export function step(state: PullState, event: PullEvent): Step {
       return inHand(phase) ? to(state, IDLE) : stay(state)
     }
     case "settled": {
-      // An answer for a pull that is no longer out (the page moved on) is stale.
+      // Only the first answer for the pull that is out counts: the deadline
+      // after the reads, or the reads after the deadline, find it gone.
       if (phase.kind !== "checking" || phase.pull !== event.pull) {
         return stay(state)
       }
-      const outcome = { kind: event.outcome, pull: event.pull, at: event.at }
-      const afterMs = event.outcome === "done" ? DONE_MS : FAILED_MS
-      return [
-        { ...state, phase: outcome },
-        [{ kind: "fade", pull: event.pull, afterMs }],
-      ]
+      // The page that asked has moved on: its answer paints nothing.
+      if (!phase.shown) return to(state, IDLE)
+      const { pull, at } = event
+      const [ended, afterMs]: readonly [Phase, number] =
+        event.end === "read"
+          ? [{ kind: "done", pull, at }, DONE_MS]
+          : [
+              { kind: "failed", pull, at, offline: event.end === "offline" },
+              FAILED_MS,
+            ]
+      return [{ ...state, phase: ended }, [{ kind: "fade", pull, afterMs }]]
     }
     case "faded": {
       return (phase.kind === "done" || phase.kind === "failed") &&
@@ -188,6 +231,10 @@ export function step(state: PullState, event: PullEvent): Step {
         : stay(state)
     }
     case "left": {
+      // A check still out stays out, unseen: one at a time.
+      if (phase.kind === "checking") {
+        return phase.shown ? to(state, { ...phase, shown: false }) : stay(state)
+      }
       return phase.kind === "idle" ? stay(state) : to(state, IDLE)
     }
     default: {

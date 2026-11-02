@@ -7,9 +7,9 @@
  * them), in each phase it shows something (`./phone-page/pull.tsx`). Each
  * must leave the page as it was (the measure the panel sweep uses), keep its
  * words on one line, and sit inside the phone across; at rest (armed,
- * checking, done, failed) it shows whole inside the page body, below the
- * header. Pulling, it is still coming down from under the header, and the
- * body clips what has not come down yet.
+ * checking, done, failed, offline) it shows whole inside the page body,
+ * below the header. Pulling, it is still coming down from under the header,
+ * and the body clips what has not come down yet.
  *
  * Run against a built phone page:
  *
@@ -36,6 +36,7 @@ const PHASES = {
   "pull-checking": true,
   "pull-done": true,
   "pull-failed": true,
+  "pull-offline": true,
 } as const satisfies Record<PullId, boolean>
 
 test.describe("the drag-down indicator fits the phone", () => {

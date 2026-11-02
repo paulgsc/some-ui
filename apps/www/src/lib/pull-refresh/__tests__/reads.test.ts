@@ -4,7 +4,11 @@
  * a query that fails fails the check; and only a move to another route counts
  * as leaving the page.
  */
-import { QueryClient, QueryObserver } from "@tanstack/react-query"
+import {
+  onlineManager,
+  QueryClient,
+  QueryObserver,
+} from "@tanstack/react-query"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import type { PullRouter } from "@/lib/pull-refresh/reads"
@@ -49,7 +53,11 @@ function shown(key: string, read: () => Promise<string>): void {
 afterEach(() => {
   stops.splice(0).forEach((stop) => stop())
   client.clear()
+  onlineManager.setOnline(true)
 })
+
+/** The network as the cache sees it, but told it is online regardless. */
+const sayOnline = { isOnline: (): boolean => true }
 
 describe("a pull's reads", () => {
   it("reads again what is on screen, fresh or not, and runs the loaders", async () => {
@@ -60,7 +68,9 @@ describe("a pull's reads", () => {
     await vi.waitFor(() => expect(onScreen).toHaveBeenCalledTimes(1))
     const { router, invalidate } = fakeRouter()
 
-    await readsOnScreen(client, router).readAgain()
+    expect(await readsOnScreen(client, router, onlineManager).readAgain()).toBe(
+      "read"
+    )
 
     expect(onScreen).toHaveBeenCalledTimes(2)
     expect(offScreen).toHaveBeenCalledTimes(1)
@@ -76,13 +86,44 @@ describe("a pull's reads", () => {
     fail = true
     const { router } = fakeRouter()
 
-    await expect(readsOnScreen(client, router).readAgain()).rejects.toThrow()
+    await expect(
+      readsOnScreen(client, router, onlineManager).readAgain()
+    ).rejects.toThrow()
+  })
+
+  it("reads nothing, and says so, with no connection", async () => {
+    const read = vi.fn(() => Promise.resolve("a"))
+    shown("on", read)
+    await vi.waitFor(() => expect(client.getQueryData(["on"])).toBe("a"))
+    onlineManager.setOnline(false)
+    const { router, invalidate } = fakeRouter()
+
+    expect(await readsOnScreen(client, router, onlineManager).readAgain()).toBe(
+      "offline"
+    )
+    expect(read).toHaveBeenCalledTimes(1)
+    expect(invalidate).not.toHaveBeenCalled()
+  })
+
+  it("does not take a read the cache paused for a connection as read", async () => {
+    // The cache resolves `refetchQueries` at once for a query it paused, as
+    // when the connection drops between the check's start and its reads.
+    const read = vi.fn(() => Promise.resolve("a"))
+    shown("on", read)
+    await vi.waitFor(() => expect(client.getQueryData(["on"])).toBe("a"))
+    onlineManager.setOnline(false)
+    const { router } = fakeRouter()
+
+    expect(await readsOnScreen(client, router, sayOnline).readAgain()).toBe(
+      "offline"
+    )
+    expect(read).toHaveBeenCalledTimes(1)
   })
 
   it("leaves the page only when the route's path changes", () => {
     const { router, navigate } = fakeRouter()
     const left = vi.fn()
-    const stop = readsOnScreen(client, router).onLeave(left)
+    const stop = readsOnScreen(client, router, onlineManager).onLeave(left)
     navigate({ pathChanged: false })
     expect(left).not.toHaveBeenCalled()
     navigate({ pathChanged: true })

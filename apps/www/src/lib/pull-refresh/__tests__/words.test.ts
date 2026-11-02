@@ -16,15 +16,26 @@ const PHASES: ReadonlyArray<Phase> = [
   { kind: "tracking", from: FROM },
   { kind: "pulling", from: FROM, distance: 10 },
   { kind: "armed", from: FROM, distance: 70 },
-  { kind: "checking", pull: 1 },
+  { kind: "checking", pull: 1, shown: true },
   { kind: "done", pull: 1, at: AT },
-  { kind: "failed", pull: 1, at: AT },
+  { kind: "failed", pull: 1, at: AT, offline: false },
+  { kind: "failed", pull: 1, at: AT, offline: true },
 ]
 
 describe("the drag-down's words", () => {
   it("say nothing until a drag has gone down", () => {
     expect(pullWords({ kind: "idle" })).toBeNull()
     expect(pullWords({ kind: "tracking", from: FROM })).toBeNull()
+  })
+
+  it("say nothing of a check whose page has moved on", () => {
+    expect(pullWords({ kind: "checking", pull: 1, shown: false })).toBeNull()
+  })
+
+  it("say there was no connection, and that the page shows what it had", () => {
+    expect(pullWords({ kind: "failed", pull: 1, at: AT, offline: true })).toBe(
+      "No connection: showing what was here"
+    )
   })
 
   it("say since when the page is up to date", () => {
