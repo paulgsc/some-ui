@@ -3,15 +3,21 @@
  * handed to `@capacitor/share`, so the person picks where they go (Drive,
  * say). Nothing here sends anything anywhere. Phone-only (`build.paths.ts`).
  */
-import type { ForeignPort, ForeignVerdict } from "@some-ui/intent-kit"
+import type {
+  ForeignOutcome,
+  ForeignPort,
+  ForeignVerdict,
+} from "@some-ui/intent-kit"
 import {
   callForeign,
   ForeignDeadlineError,
   reportFailure,
 } from "@some-ui/intent-kit"
-import type { FileShare } from "@some-ui/topik"
 
 import { isMissingPlugin } from "@/lib/intent/foreign"
+
+/** What a share came to: the person sent the files on, or backed out. */
+type Shared = Promise<ForeignOutcome<"shared" | "cancelled">>
 
 /** Writing the files: a few megabytes at most (`SOUNDBITES_MAX_BYTES`). */
 const WRITE_DEADLINE_MS = 60_000
@@ -117,22 +123,14 @@ const sharing = new Map<string, Promise<unknown>>()
  * out of the sheet is `cancelled`, not a failure. Shares to one `dir` run one
  * at a time, so a second never deletes files a sheet still holds open.
  */
-export function shareFiles(
-  dir: string,
-  title: string,
-  files: Files
-): ReturnType<FileShare> {
-  const run = (): ReturnType<FileShare> => writeAndShare(dir, title, files)
+export function shareFiles(dir: string, title: string, files: Files): Shared {
+  const run = (): Shared => writeAndShare(dir, title, files)
   const share = (sharing.get(dir) ?? Promise.resolve()).then(run, run)
   sharing.set(dir, share)
   return share
 }
 
-async function writeAndShare(
-  dir: string,
-  title: string,
-  files: Files
-): ReturnType<FileShare> {
+async function writeAndShare(dir: string, title: string, files: Files): Shared {
   const written = await callForeign({
     port: PORT,
     deadlineMs: WRITE_DEADLINE_MS,

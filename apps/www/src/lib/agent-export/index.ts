@@ -3,14 +3,12 @@
  * (Claude, ChatGPT) to read, handed to Android's share sheet so the person
  * picks where they go (Drive, say); nothing here sends anything anywhere.
  *
- * Two shares. `shareAgentExport` is everything: one `context.json` (sessions,
+ * One share, `shareAgentExport`: everything, as one `context.json` (sessions,
  * each with its reflections and path counts, stops, soundbites and the
- * read-aloud practice record) and every recording beside it.
- * `shareReflections` is the reflections of the sessions named, or some of
- * them, one file per session named for it with that session's stops and path
- * counts and the practice record, each voice note beside its file. Either way, the
+ * read-aloud practice record) and every recording beside it. The
  * reflections that went out read as shared once the person says they arrived
- * (`arrivals`, `handOff`).
+ * (`handOff`). Written reflections reach the routine from home through the
+ * Jobs mailbox (LA16).
  *
  * Phone-only: rendered only in the device build, so no other profile ships it
  * (`build.paths.ts`).
@@ -36,7 +34,12 @@ import type { LensTake } from "@/lib/lens-takes"
 import { lensTakesForExport } from "@/lib/lens-takes"
 import { isSaving, reflectionAudio } from "@/lib/reflection-voice"
 import type { Reflection } from "@/lib/session-reflection"
-import { inOrder, QUESTIONS, reflections } from "@/lib/session-reflection"
+import {
+  inOrder,
+  inView,
+  QUESTIONS,
+  reflections,
+} from "@/lib/session-reflection"
 import {
   allPathCounts,
   allStops,
@@ -67,10 +70,10 @@ const GRAMMAR_LENS = [
 ].join(" ")
 
 const LENS_TAKES =
-  "`lensTakes` are the learner's own recordings of a grammar-lens line read aloud, made after its reveal, newest first: which `line`, when (`takenAt`, ms since the epoch), how long, and the audio as the file named in `file` (null: the audio could not be read). Nothing graded them. At most 40 are kept on the phone, each at most 30 seconds, and they stay there: this file is a copy. Listen for how the line is read, beside its `grammarLens` entries. Null means the app could not read them."
+  "`lensTakes` are the learner's own recordings of a grammar-lens line read aloud, made after its reveal, newest first, those they kept as their reading (one they recorded again or set aside is not here): which `line`, when (`takenAt`, ms since the epoch), how long, and the audio as the file named in `file` (null: the audio could not be read). Nothing graded them. On a phone paired with the learner's home server, each also goes there, and that server keeps every one. The phone keeps at most 40, each at most 30 seconds, and lets one go only once that server has it. This file is a copy. Listen for how the line is read, beside its `grammarLens` entries. Null means the app could not read them."
 
 const LEETYPE_ANSWERS =
-  "`leetypeAnswers` are the learner's spoken answers in LeetType's phone sessions (Def. 9.5 of docs/canon/complexity-witness-canon.typ), newest first: for each, the session file and its record screen (`file`, `screen`), the one-sentence `prompt`, the `rubric` shown only after answering, the points the learner ticked (`ticks`: their own reading of it, never a grade), and either the take's audio as the file named in `audio` (null: no take, or its audio could not be read) or, where they could not speak, the `typed` answer. `leetypeTakes` lists every take kept, with or without an answer noted (the app closed before the ticks). At most 40 of each are kept on the phone, each take at most 60 seconds, and they stay there: this file is a copy. The weekly review reads them: what the learner can now explain, what they still cannot, and which readings to place. Null means the app could not read them."
+  "`leetypeAnswers` are the learner's spoken answers in LeetType's phone sessions (Def. 9.5 of docs/canon/complexity-witness-canon.typ), newest first: for each, the session file and its record screen (`file`, `screen`), the one-sentence `prompt`, the `rubric` shown only after answering, the points the learner ticked (`ticks`: their own reading of it, never a grade), and either the take's audio as the file named in `audio` (null: no take, or its audio could not be read) or, where they could not speak, the `typed` answer. `leetypeTakes` lists every take kept as an answer's, with or without an answer noted (the app closed before the ticks); one the learner recorded again or set aside is not here, nor is the note of what it answered. On a phone paired with the learner's home server, each also goes there, and that server keeps every one. The phone keeps at most 40 of each, each take at most 60 seconds, and lets one go only once that server has it. This file is a copy. The weekly review reads them: what the learner can now explain, what they still cannot, and which readings to place. Null means the app could not read them."
 
 const LEETYPE_SESSIONS =
   "`leetypeSessions` says how each LeetType session went, in the order they started, derived from the phone's session log (Prop. 9.4 of docs/canon/complexity-witness-canon.typ) and carrying none of its events: the log itself stays on the phone until it goes home (some-ui #1934), never here. For each: the session file (`file`), the `form` (full, or short: one incident and its take), when it started, and how it `ended` (\"declared\": it reached its end; \"left\": the learner left at a round boundary; null: neither yet). `rounds` are the rounds first picked in that session, each with its whole funnel so far, later sessions included: the first `picked` answer (correct, incorrect or abstained), whether that was a struggle (`struggled`: not correct, or slow), the readings `placed` for it after a struggle, what was done with them (`reading`: opened, saved, read or skipped, each with its reading), the returns played (`returned`, each answer with whether it was slow and whether it was `assisted`: the round's answer was shown since its last struggle, by a take's rubric, the round's worked confirmation, or the reveal of a correct, unhurried pick or return of it), and whether the round is `solved`: a correct, unhurried pick, or such a return unassisted, since its last struggle, replays included (as the phone's end screen counts parked rounds, except that an assisted return takes a round off the end screen and is still unsolved here, and a struggle left on its reveal when the app closed is unsolved here). `replays` are rounds played again after their first pick; a replay's own answer changes nothing, and the readings and returns after it join the round's funnel. `spoken` lists the spoken answers: passed, recorded or typed, and `strong` when the ticks reached what the screen asks. Null means the app could not read the log."
@@ -100,17 +103,6 @@ const ABOUT = [
   LEETYPE_ANSWERS,
   LEETYPE_SESSIONS,
   LEETYPE_ROUND_LEDGER,
-].join("\n")
-
-const ABOUT_REFLECTIONS = [
-  "Reflections from the some-ui study app on the learner's phone, about one study session, for an agent helping them.",
-  "Each is something the learner said while it was fresh: a typed line, a voice note (its audio is the file named in `file`), or one-tap answers (`legend` reads them).",
-  "`atMs` is how far into the session it was said; null means after the session ended.",
-  STOPS,
-  PATHS,
-  READ_ALOUD_PRACTICE,
-  READ_ALOUD_FEEDBACK,
-  "Use them to shape the next session. The reflections stay on the phone: this file is a copy.",
 ].join("\n")
 
 function soundbiteFile(bite: Soundbite): string {
@@ -211,6 +203,9 @@ async function writeOut(
 ): Promise<Written> {
   const out: Written = { bySession: new Map(), files: [], sent: [] }
   for (const reflection of inOrder(kept)) {
+    // Recorded again or set aside: kept on the phone and home, not shared
+    // as the session's (D2, D3), so a hand-off never lets it go either.
+    if (!inView(reflection)) continue
     const { sessionId } = reflection
     let group = out.bySession.get(sessionId)
     if (!group) {
@@ -339,7 +334,7 @@ function timeZone(): string {
  * then back out of it, so the sessions of the reflections in `sent` read as
  * shared only once the person says they arrived (`handOff`).
  */
-export type ShareResult = {
+type ShareResult = {
   outcome: "shared" | "cancelled"
   sent: ReadonlyArray<string>
 }
@@ -360,10 +355,7 @@ export type AgentExportResult = ShareResult & {
   }
 }
 
-/**
- * The person says these arrived: their sessions read as shared. No route
- * takes a written reflection home yet (#2178).
- */
+/** The person says these arrived: their sessions read as shared. */
 export function handOff(ids: ReadonlyArray<string>, at = new Date()): void {
   const sent = new Set(ids)
   const sessionIds = reflections
@@ -373,109 +365,16 @@ export function handOff(ids: ReadonlyArray<string>, at = new Date()): void {
   if (sessionIds.length > 0) reflections.markShared(sessionIds, at)
 }
 
-export type ReflectionPick = {
-  sessionIds: ReadonlyArray<string>
-  only?: ReadonlyArray<string>
-}
-
-/**
- * Reflection shares Android called "shared", oldest first, each waiting on
- * the person's word that it arrived. Held here, not by the button that
- * shared: mid-session the share sheet sends the app to the background, and
- * the session's chrome remounts (`live-player.tsx`), the drawer and its
- * button with it, so only a question asked from outside them survives.
- */
-let awaiting: ReadonlyArray<ReadonlyArray<string>> = []
-const awaitingListeners = new Set<() => void>()
-
-function setAwaiting(next: ReadonlyArray<ReadonlyArray<string>>): void {
-  awaiting = next
-  awaitingListeners.forEach((listener) => listener())
-}
-
-export const arrivals = {
-  subscribe(listener: () => void): () => void {
-    awaitingListeners.add(listener)
-    return () => awaitingListeners.delete(listener)
-  },
-  getSnapshot: (): ReadonlyArray<ReadonlyArray<string>> => awaiting,
-  /**
-   * The person's answer for `batch`: arrived hands it off; otherwise it
-   * stays on the phone to share again. Only the first answer counts.
-   */
-  answer(
-    batch: ReadonlyArray<string>,
-    arrived: boolean,
-    at = new Date()
-  ): void {
-    if (!awaiting.includes(batch)) return
-    setAwaiting(awaiting.filter((b) => b !== batch))
-    if (arrived) handOff(batch, at)
-  },
-}
-
-/**
- * Shares the reflections picked, one file per session. Some of a session's
- * are named and written as all of them would be; once handed off they leave
- * the phone, so a later share of the session carries only the rest. What
- * went out waits in `arrivals`.
- */
-export async function shareReflections(
-  { sessionIds, only }: ReflectionPick,
-  now: () => Date = () => new Date()
-): Promise<ShareResult> {
-  const wanted = new Set(sessionIds)
-  const picked = only ? new Set(only) : null
-  const kept = reflections
-    .getSnapshot()
-    .kept.filter(
-      (r) => wanted.has(r.sessionId) && (picked === null || picked.has(r.id))
-    )
-  const sessions = await sessionsRepository.list()
-  const exportedAt = now().toISOString()
-  const { bySession, files, sent } = await writeOut(kept, sessions, exportedAt)
-  const practice = await readAloudPractice()
-  const feedback = await readAloudFeedback()
-  const stops = allStops()
-  const jsons = [...bySession].map(([sessionId, { base, entries }]) => {
-    const session = sessions.find((s) => s.id === sessionId)
-    return {
-      name: `${base}.json`,
-      data: JSON.stringify(
-        {
-          about: ABOUT_REFLECTIONS,
-          exportedAt,
-          timeZone: timeZone(),
-          legend: { reflectionQuestions: QUESTIONS, stopReasons: REASONS },
-          session: session ? summary(session) : { id: sessionId },
-          reflections: entries,
-          stops: stops.filter((stop) => stop.sessionId === sessionId),
-          paths: pathCounts(sessionId),
-          readAloudPractice: practice,
-          readAloudFeedback: feedback,
-        },
-        null,
-        2
-      ),
-    }
-  })
-  const outcome = await foreignValue({
-    outcome: shareFiles("reflections", "Study session reflections", [
-      ...jsons,
-      ...files,
-    ]),
-  })
-  if (outcome === "shared" && sent.length > 0) setAwaiting([...awaiting, sent])
-  return { outcome, sent }
-}
-
 /** Opens the share sheet with everything, reflections nested per session. */
 export async function shareAgentExport(
   soundbites: SoundbiteReader,
   now: () => Date = () => new Date()
 ): Promise<AgentExportResult> {
   const audio = new Map<string, Blob>()
-  const bites = await soundbites.list()
+  // One let go (D3) is kept, but out of what an agent reads.
+  const bites = (await soundbites.list()).filter(
+    (bite) => bite.standing !== "set-aside"
+  )
   for (const bite of bites) {
     const blob = await soundbites.audio(bite.id)
     if (blob) audio.set(bite.id, blob)

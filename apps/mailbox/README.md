@@ -13,9 +13,15 @@ sessions went. For voice notes: what home heard in each one (`transcript`), text
 routines read it instead of hearing the audio themselves. For the routines' bookkeeping: an
 **index** per routine (`index`), which home computes from what it holds after each pass (for
 the Jobs routine, the queue, what is new since the last digest and each waiting note's newest
-transcript), so a routine reads it instead of rebuilding it. The index is a view of what home
-keeps, so only the latest of each routine's stays. Each side reaches it with
-its own token, so the files move between them without a hand-carried step.
+transcript; for the reflections routine, what is answered, the word ids its decks use, its
+latest scenes, the lessons waiting unopened and which reflections and prompts still wait on a
+voice note), so a routine reads it instead of rebuilding it. The index is a view of what home
+keeps, so only the latest of each routine's stays. For the reflections routine: each **written
+reflection** home keeps (`reflection`), its text only, and each **drama prompt** (`prompt`),
+the next scene's prompt as the phone asked for it, its markdown only. For the Build Journal:
+the build-journal session's **list of the Studio takes Drive holds** (`drive-takes-…` in
+`brief`), SHA-256s only, so home can tell the phone which takes Drive has too. Each side
+reaches it with its own token, so the files move between them without a hand-carried step.
 
 ## Why it exists
 
@@ -31,6 +37,9 @@ cloud routine ──PUT leetype──▶ [ mailbox ] ◀──GET leetype── 
 cloud routine ◀──GET leetype-log── [ mailbox ] ◀──PUT leetype-log── home ◀── phone (Send to home)
 cloud routine ◀──GET transcript── [ mailbox ] ◀──PUT transcript── home ◀── phone (a voice note)
 cloud routine ◀──GET index── [ mailbox ] ◀──PUT index── home (after each pass, when it changed)
+cloud routine ◀──GET reflection── [ mailbox ] ◀──PUT reflection── home ◀── phone (a written reflection)
+cloud routine ◀──GET prompt── [ mailbox ] ◀──PUT prompt── home ◀── phone (Ask for the next scene)
+build journal ──PUT brief (drive-takes)──▶ [ mailbox ] ◀──GET brief── home ──▶ phone (Drive has it)
 ```
 
 The phone talks to home only. The mailbox carries no audio: home keeps the audio
@@ -69,7 +78,11 @@ about it (owner, 2026-10-23):
    A file put back counts its 30 days again from its return.
 
 Nothing is deleted for good: the bytes are home's before the mailbox lets them go, and the
-`archived` row stays. Home's index is not archived (above, "What it keeps"): home can compute
+`archived` row stays.
+
+A written reflection (`reflection`) and a drama prompt (`prompt`) are archived the same way,
+except that home lists each folder only once a file it put there is old enough, and the routine
+cannot ask for one back (see "Who may do what"). Home's index is not archived (above, "What it keeps"): home can compute
 the same bytes again from what it keeps.
 
 ## API
@@ -89,7 +102,9 @@ Every request needs `Authorization: Bearer <token>`. Every answer is JSON, or th
 | anything else                                            | `404`; a method the path does not take is `405` with `Allow`. A missing or wrong token is `401`, a token that may not do this is `403`, and storage failing is `503`.                                                                                                                                                                                   |
 
 The folders are `brief`, `decisions`, `scout`, `scene`, `drama`, `run`, `opened`, `leetype`,
-`leetype-log`, `transcript` and `index`.
+`leetype-log`, `transcript`, `index`, `reflection` and `prompt`. `brief` also holds the
+build-journal session's lists of the takes Drive holds (`drive-takes-…`), which home finds
+in the listing it makes of `brief` every pass anyway, so they cost no listing of their own.
 
 **`seq` only grows, and it has gaps.** SQLite hands out a number for every put that reaches the
 table, including a put of a name already held (`unchanged` or `conflict`), which stores nothing.
@@ -99,14 +114,21 @@ then six repeats, then `seq 8`). Page with `after` set to the highest `seq` you 
 
 ### Who may do what
 
-| Secret          | Role      | May                                                                                                                                           |
-| --------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ROUTINE_TOKEN` | `routine` | read every folder; put `brief`, `scene`, `drama`, `run` and `leetype`; list what is archived and ask for it back, in every folder but `index` |
-| `HOME_TOKEN`    | `home`    | read `brief`, `scene`, `drama`, `run` and `leetype`; put `decisions`, `scout`, `opened`, `leetype-log`, `transcript` and `index`              |
-| `ARCHIVE_TOKEN` | `archive` | read every folder; archive a file, put an archived one back and list the open asks, in every folder but `index`                               |
+| Secret          | Role      | May                                                                                                                                                                      |
+| --------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ROUTINE_TOKEN` | `routine` | read every folder; put `brief`, `scene`, `drama`, `run` and `leetype`; list what is archived and ask for it back, in every folder but `index`, `reflection` and `prompt` |
+| `HOME_TOKEN`    | `home`    | read `brief`, `scene`, `drama`, `run` and `leetype`; put `decisions`, `scout`, `opened`, `leetype-log`, `transcript`, `index`, `reflection` and `prompt`                 |
+| `ARCHIVE_TOKEN` | `archive` | read every folder; archive a file, put an archived one back and list the open asks, in every folder but `index`                                                          |
 
 The routine role is every scheduled routine's: the Jobs digest, the study reflections and,
 once it is scheduled, the LeetType review each put to their own folders.
+
+The routine cannot list archived reflections or ask one back. Home holds every reflection it
+puts (`written_reflection` in `paulgsc/server`), so it archives one by what it put, listing the
+folder only once one is old enough, and never answers an ask for it: a pass with nothing to do
+then makes no request for `reflection` at all. A reflection archived before the routine
+answered it is no longer offered to the routine; home still keeps it. Home holds every drama
+prompt it puts too (`drama_prompt` in `paulgsc/server`).
 
 Home holds two tokens. `archive` is apart from `home` so the token home uses every pass cannot
 drop a byte. A secret that is unset or empty authenticates no one, and one value set for two
@@ -116,11 +138,12 @@ role, and it is the owner's call, so it is not built.
 ### What a put must satisfy
 
 - **Name**, anchored to its folder: `brief` takes `digest-YYYY-MM-DD.json`, and, from the
-  routine's one-time backfill (MB2, below), a pre-mailbox `decisions-YYYY-MM-DD.json`,
+  routine's one-time backfill (MB2, below), a `decisions-YYYY-MM-DD.json`,
   `decisions-YYYY-MM-DD-<n>.json` (`<n>` from 2 to 99, no leading zero, as the phone numbers
-  a later share that day) or `scouts-YYYYMMDDTHHMMSS.json` (a time on the clock) under its
-  Drive name, only for a real calendar day from 2026-10-17, the first day the phone could
-  share one, through 2026-10-22, the day before the mailbox opened, and each with its own
+  a later share that day) or `scouts-YYYYMMDDTHHMMSS.json` (a time on the clock) that only
+  Drive holds, under its Drive name, only for a real calendar day from 2026-10-17, the first
+  day the phone could share one, through 2026-11-03, the day before the phone files every
+  Jobs file home, and each with its own
   schema (`some-ui.job-decisions/1` or `some-ui.job-scouts/1`); `decisions` takes
   `decisions-YYYY-MM-DD.json` or `decisions-YYYY-MM-DD-<n>.json`; `scout` takes
   `scouts-YYYYMMDDTHHMMSS.json`; `scene` takes `scene-<reflection>.json` or
@@ -143,13 +166,21 @@ role, and it is the owner's call, so it is not built.
   and the highest `<n>` is the newest; and `index` takes `index-<routine>-YYYYMMDDTHHMMSSmmmZ.json`,
   named for the routine (lower-case letters) and when home computed it, in UTC to the
   millisecond, so each change goes under a new name, the greatest name is the newest, and the
-  folder holds one per routine.
+  folder holds one per routine; and `reflection` takes `reflection-<id>.json`, named for the
+  phone's id for the written reflection (1 to 64 letters, digits, `-` or `_`, as home's
+  `PUT /api/v1/routine/reflections/:id` takes it); and `prompt` takes
+  `drama-YYYYMMDDTHHMMSSmmmZ.prompt.json`, named for the prompt's stamp as the phone names it
+  (the moment it was asked for, in UTC to the millisecond, as home's
+  `PUT /api/v1/routine/prompts/:stamp` takes it), so the drama that answers it is the
+  `drama` folder's `drama-<stamp>.json`. `brief` also takes `drive-takes-YYYYMMDDTHHMMSSZ.json`
+  (MB2, the owner's route a on paulgsc/some-ui#2401), named for when the build-journal session
+  listed Drive's takes folder, in UTC to the second, so each list goes under a new name.
   Anything else, an audio file's name included, is `422`.
 - **Content type** `application/json` (parameters such as `charset` are ignored), and the body
   must be UTF-8 JSON with no byte-order mark.
 - **Schema**: the top-level `schema` must be `some-ui.job-digest/1`, `some-ui.job-decisions/1`,
   `some-ui.job-scouts/1`, `some-ui.routine-scene/1`, `some-ui.routine-drama/1`, `some-ui.routine-run/1`,
-  `some-ui.routine-opened/1`, `some-ui.leetype-session/1`, `some-ui.leetype-log/1`, `some-ui.voice-transcript/1` or `some-ui.routine-index/1` to match the folder. The Worker checks that and nothing deeper, except for a transcript and an index (below); the readers validate the full shape.
+  `some-ui.routine-opened/1`, `some-ui.leetype-session/1`, `some-ui.leetype-log/1`, `some-ui.voice-transcript/1`, `some-ui.routine-index/1`, `some-ui.reflection/1` or `some-ui.drama-prompt/1` to match the folder (and `some-ui.drive-takes/1` for a list of Drive's takes in `brief`). The Worker checks that and nothing deeper, except for a transcript, an index, a reflection, a prompt and a list of Drive's takes (below); the readers validate the full shape.
 - **A scene** is `{"schema":"some-ui.routine-scene/1","answers":"<reflection>","title":"<the
 scene folder's name>","decks":[<read-aloud deck>,<lens deck>]}`, each deck exactly as the
   phone's word set check takes it. **A drama** is `{"schema":"some-ui.routine-drama/1",
@@ -176,7 +207,7 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
 "text","language","model","heardAt","words"}`: the note's phone id (the id in its exported file name,
   `<base>_voice-<at>-<id>`, in a Jobs voice entry, and in a drama prompt's `notes` line), what
   it belongs to (`of` is `reflection` with `ref` its session, `jobs` with the pick or scout, `scene` with the drama prompt's
-  stamp, or `studio` with a Studio take's `<project>:<shot>:<take>`), when it was recorded, what home heard, the language heard (Whisper's code, `en` or
+  stamp, or `studio` with a Studio take's `<project>:<shot>:<take>`, or an idea answer's `idea:<idea>:<question>`), when it was recorded, what home heard, the language heard (Whisper's code, `en` or
   `ko`), the model that heard it, and when; and `words`, each word heard as
   `{"text","startMs","endMs","p","language"}`: its time in milliseconds from the note's start,
   how sure the model was of it, 0 to 1, and the language it was heard in (Whisper's code).
@@ -194,9 +225,13 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
   `data:`, say), or a bare Drive id in any field, which looks like any other id. **An index**
   is home's bookkeeping for one routine, deterministic from what home holds (paulgsc/server
   `mailbox::index`, paulgsc/server#509): the same rows give the same bytes, and home keeps no
-  copy. Home puts a new one only when something it counts arrives or an open pick lapses: a
-  new day alone moves nothing else, so a day with neither puts none. Its `routine` names the routine, as the file's
-  name does; `jobs` is the only one so far. The Jobs index is
+  copy. Home puts a new one only when something it counts arrives or a moment the index
+  carries passes (for the Jobs index, an open pick lapsing): a new day alone moves nothing
+  else, so a day with neither puts none. Its `routine` names the routine, as the file's
+  name does: `jobs` or `reflections`. The Worker holds every index to its routine's keys and
+  no other, a name that carries the body's `routine`, and no audio or Drive link, by the same
+  tests as a transcript, each refusal with its reason (`an index carries no audio` or
+  `an index names no Drive file`). The Jobs index is
   `{"schema":"some-ui.routine-index/1","routine":"jobs","day","validThrough","asOf","from","skipped","queue","new","notes","picked"}`:
   `day`, the day in America/Los_Angeles home computed it on; `validThrough`, the last day its
   queue holds with nothing new arriving (the day before the first open pick no decision answers
@@ -212,22 +247,83 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
   `notes`, each voice note a file names that no digest lists in `notesDone`, with the phone's id
   for it and the name and SHA-256 of its newest transcript here (`[{"file","in","note","transcript"}]`);
   and `picked`, every posting a digest picked or a decisions file names, by fingerprint.
-  `packages/job-desk/ROUTINE.md` says how the routine reads it. The Worker holds its shape as it
-  holds a transcript's: those keys and no other, a `day` that is a calendar day
-  (`YYYY-MM-DD`, and `2026-02-30` is not one), a `validThrough` that is a calendar day no
-  earlier than `day` or `null`, an `asOf` that is an
-  instant or `null`, `from`, `queue` and `new` objects, `skipped`, `notes` and `picked` lists, a
-  name that carries the body's `routine`, and no audio or Drive link, by the same tests, each
-  refusal with its reason (`an index carries no audio` or `an index names no Drive file`).
-  Nothing in it is audio or points at audio: notes are named by their file name and id, and
+  `packages/job-desk/ROUTINE.md` says how the routine reads it. The Worker holds it to a `day`
+  that is a calendar day (`YYYY-MM-DD`, and `2026-02-30` is not one), a `validThrough` that is
+  a calendar day no earlier than `day` or `null`, an `asOf` that is an instant or `null`,
+  `from`, `queue` and `new` objects, and `skipped`, `notes` and `picked` lists. Nothing in it
+  is audio or points at audio: notes are named by their file name and id, and transcripts by
+  their name here.
+  The reflections index is
+  `{"schema":"some-ui.routine-index/1","routine":"reflections","asOf","validUntil","skipped","answered","words","recent","unopened","reflections","prompts"}`
+  (paulgsc/server `mailbox::index::reflections`): `asOf`, when home last took in something
+  it counts, or `null`; `validUntil`, the first moment still to come at which it would say
+  something else with nothing new arriving (a group of reflections settling two hours after
+  its newest, a voice note's two-day wait ending, a lesson leaving the unopened window), or
+  `null` when none is, so it stands until then; `skipped`, the files it could not read as
+  their schema; `answered`, the bases its scenes answer and the prompts its dramas answer
+  (`{"scenes","dramas"}`); `words`, every word id its scenes' decks use with its dictionary
+  form (`[{"id","lemma"}]`); `recent`, the latest three scenes, newest first
+  (`[{"name","answers","title","level","genre"}]`); `unopened`, how many of the routine's
+  lessons wait unopened and which, and the list of opened lessons it went by
+  (`{"count","lessons","opened"}`); `reflections`, each group of written reflections no scene
+  answers, newest first, with its notes
+  (`[{"base","session","day","reflections","newestAt","settled","notes":[{"note","transcript"}],"voice":{"state","since","until"}}]`);
+  and `prompts`, each drama prompt no drama answers, oldest first
+  (`[{"name","prompt","notes":[{"file","note","transcript"}],"voice":{…}}]`).
+  `packages/ui/topik/ROUTINE.md` says how the routine reads it. The Worker holds it to an
+  `asOf` that is an instant or `null`, a `validUntil` that is an instant later than `asOf` or
+  `null`, `answered` and `unopened` objects, and `skipped`, `words`, `recent`, `reflections`
+  and `prompts` lists. It carries no reflection's, prompt's or transcript's words:
+  reflections and prompts are named by their names here and ids, notes by their ids, and
   transcripts by their name here.
+- **A written reflection** is `{"schema":"some-ui.reflection/1","reflection","session","at","text"}`:
+  the phone's id for it (which the name carries), the session it is about (the phone's id for
+  it, as a reflection transcript's `ref` names it), when it was written, and the typed line.
+  That is the routine's minimum (paulgsc/some-ui#2174, decision D2): no answer to the one-tap
+  questions, no time into the session, no session name, no audio. The Worker holds this shape
+  itself, as it holds a transcript's: every key is required, any other key is `422`
+  (`a reflection carries no audio: a spoken one goes as its transcript` when it names audio,
+  `a reflection names no Drive file` when it names Drive), a name that does not carry the
+  body's `reflection` is `422`, and so is a body whose text as sent carries a `data:` URI, a
+  Drive link or a run of 256 or more base64 characters, by the transcript's tests.
+- **A drama prompt** is `{"schema":"some-ui.drama-prompt/1","prompt","text"}`: the prompt's
+  stamp (`drama-YYYYMMDDTHHMMSSmmmZ`, which the name carries) and the next scene's prompt as
+  the phone wrote it, the markdown a Drive share carried as `drama-<stamp>.prompt.md`: the
+  note for an agent, the line naming each scene note's id, and the tree prompt with its
+  request and the last drama. That is the routine's minimum (paulgsc/some-ui#2174, decision
+  D2): no audio and no Drive link. A scene note is named by its id only; what home heard in
+  it is its `transcript`. The Worker holds this shape itself, as it holds a reflection's:
+  every key is required, and any other key is `422`. One that names audio is refused with
+  `a prompt carries no audio: its scene notes go as their transcripts`, and one that names
+  Drive with `a prompt names no Drive file`. A name that does not carry the body's `prompt` is `422`, and so is a body whose text
+  as sent carries a `data:` URI, a Drive link or a run of 256 or more base64 characters, by
+  the transcript's tests. A prompt is about 40 KB today, most of it the tree prompt; home
+  takes one of at most 256 KiB of text, so a file is well under the cap.
+- **A list of the takes Drive holds** is
+  `{"schema":"some-ui.drive-takes/1","at","takes":[{"sha256"}]}`: when the build-journal
+  session listed Drive's Build Journal takes folder (an instant, which the name carries to the
+  second in UTC), and the SHA-256 of each recording it found there, in lower-case hex, each
+  once, at most 10,000. That is all home needs to match a take it holds (paulgsc/server keeps
+  each Studio take's SHA-256, ST25): no audio, no Drive file name, id or link, and no take's
+  name or scene (owner, route a on paulgsc/some-ui#2401: "go with route a"). Home gets no
+  Drive credential. An empty `takes` says Drive holds none. The Worker holds this shape itself,
+  as it holds a reflection's: every key is required, any other key is `422` (`a list of takes
+carries no audio: Drive and home keep it` when it names audio or bytes, `a list of takes
+names no Drive file or link` when it names Drive or a file id), a take with any key but
+  `sha256` is `422`, and so is a body whose text as sent carries a `data:` URI, a Drive link or
+  a run of 256 or more base64 characters, by the transcript's tests, or that gives any key twice
+  (`each key is given once`: `JSON.parse` keeps a repeated key's last value, so a first one, a
+  Drive id say, would be kept unread). A list is about 78 bytes a take, so 10,000 takes stay
+  under the cap.
 - **Size**: at most 1,048,576 bytes. A declared `Content-Length` over that is refused before
   the body is read, and a body that declares nothing is cut off as it passes the cap. Real
   files are under 20 KB, except LeetType session files: Thread 1's first file is 30 KB
   for two rounds, and the ten-round draft was 140 KB. A Jobs index grows with what it names
   for good (`from` and `picked`: a file name or a fingerprint, tens of bytes, for every file
   and pick), so a few hundred bytes a day; only the latest is kept, and home puts none over
-  the cap.
+  the cap. A reflections index grows with the bases answered (tens of bytes each) and the
+  distinct word ids the decks use (about 35 bytes each, a few new ones per scene), so about
+  1 KB a day; the rest of it is bounded by what still waits.
 
 ## Limits
 
@@ -378,18 +474,25 @@ how each was checked when this workspace landed.
 
 - _Claim:_ the `ROLES` table in `src/core.ts` is the only place a token is mapped to what it
   may do, and it holds exactly three roles: `routine` (get every folder, put `brief`, `scene`,
-  `drama`, `run` and `leetype`, ask every folder but `index`), `home` (get `brief`, `scene`,
-  `drama`, `run` and `leetype`, put `decisions`, `scout`, `opened`, `leetype-log`,
-  `transcript` and `index`) and `archive` (get every folder, move every folder but `index`;
-  owner, 2026-10-23, and `scene` and `drama` the same day; `run` and `opened` 2026-10-24;
-  `leetype` and `leetype-log` 2026-10-24 too; `transcript` 2026-10-25; `index` 2026-10-31,
-  paulgsc/server#509, and kept out of `ask` and `move` the same day, since it is a view and
-  not a record). The routine's `brief` also takes its one-time backfill: a Jobs decisions or
+  `drama`, `run` and `leetype`, ask every folder but `index`, `reflection` and `prompt`), `home`
+  (get `brief`, `scene`, `drama`, `run` and `leetype`, put `decisions`, `scout`, `opened`,
+  `leetype-log`, `transcript`, `index`, `reflection` and `prompt`) and `archive` (get every folder, move
+  every folder but `index`; owner, 2026-10-23, and `scene` and `drama` the same day; `run` and
+  `opened` 2026-10-24; `leetype` and `leetype-log` 2026-10-24 too; `transcript` 2026-10-25;
+  `index` 2026-10-31, paulgsc/server#509, and kept out of `ask` and `move` the same day, since
+  it is a view and not a record; `reflection` 2026-10-26, paulgsc/some-ui#2174 decision D2, and
+  kept out of `ask` so home lists nothing of it while nothing is due; `prompt` the same day
+  and decision, paulgsc/some-ui#2179, kept out of `ask` for the same reason). The routine's `brief` also takes its one-time backfill: a Jobs decisions or
   scouts file under its Drive name, only as the phone names one (`sharedDay`: a real calendar
   day, a decisions share number from 2 to 99, a scouts stamp at a real time) and only for a
-  day from 2026-10-17, when the phone could first share one, through 2026-10-22, the day
-  before the mailbox opened (`FOLDERS`' `backfill`, `FIRST_SHARED`, `MAILBOX_OPENED`), so the
-  files it can add there are a closed set. Every request passes `authenticate` and then one of `serve`'s
+  day from 2026-10-17, when the phone could first share one, through 2026-11-03, the day
+  before the phone files every Jobs file home (`FOLDERS`' `backfill`, `FIRST_SHARED`,
+  `DRIVE_ONLY_ENDED`; widened from the day the mailbox opened by the owner's decision on
+  paulgsc/some-ui#2393, https://github.com/paulgsc/some-ui/issues/2393#issuecomment-6552332294), so the files it can add there are a closed set. `brief` also takes the build-journal session's list
+  of the takes Drive holds (`FOLDERS`' `also`, `drive-takes-…`, `driveTakesRefusal`; the
+  owner's route a, 2026-10-31,
+  [paulgsc/some-ui#2401](https://github.com/paulgsc/some-ui/issues/2401#issuecomment-6549482554)),
+  which only the routine role puts and home reads with the digests. Every request passes `authenticate` and then one of `serve`'s
   `may(grant.get | put | ask | move)` checks before anything reaches the store.
 - _Falsified by_ a hunk that adds, removes or renames a role; adds a folder to, or removes one
   from, any role's `get`, `put`, `ask` or `move` list; changes which secret a role reads, or
@@ -398,8 +501,11 @@ how each was checked when this workspace landed.
   checked against; lets `handle` reach `serve` or the store without a grant; adds a method to
   a route in `METHODS`; renames, moves or deletes the `ROLES` table; or adds a `backfill`
   folder to any folder, loosens `SHARED_NAMES` or `sharedDay`, moves `FIRST_SHARED` or
-  `MAILBOX_OPENED`, or lets `kindOf` take a backfill name `sharedDay` does not read or for a
-  day outside them; when the PR description does not name the owner's decision to do so.
+  `DRIVE_ONLY_ENDED`, or lets `kindOf` take a backfill name `sharedDay` does not read or for a
+  day outside them; or adds a kind to any folder's `also`, loosens the `drive-takes` name or
+  `driveTakesRefusal` (a key beyond `schema`, `at` and `takes`, or beyond `sha256` per take),
+  or removes `kindOf`'s reading of `also`; when the PR description does not name the owner's
+  decision to do so.
 - _Scope:_ `apps/mailbox/src/core.ts` and `wrangler.jsonc`.
 - _Why not enforced:_ `__tests__/core.test.ts` pins today's matrix (every role against every
   folder and method), but a hunk that changes the table and the test together passes it. A test
@@ -436,7 +542,29 @@ how each was checked when this workspace landed.
   own rules, taken only for a name `sharedDay` reads as a day from `FIRST_SHARED`
   (2026-10-17) to before `MAILBOX_OPENED` (2026-10-23), and `core.test.ts` pins the first
   and last days taken and the days either side, impossible dates and times, share numbers
-  the phone never writes, the schemas, and that only the routine puts one.
+  the phone never writes, the schemas, and that only the routine puts one. _Checked at the
+  backfill widening (2026-11-01, paulgsc/some-ui#2393, "yes on 2393, widen the
+  backfill"):_ `kindOf` refuses a day `>= DRIVE_ONLY_ENDED` (2026-11-04), which replaces
+  `MAILBOX_OPENED`, and `core.test.ts` pins 2026-10-16 and 2026-10-17 and 2026-11-03 and
+  2026-11-04, for decisions and scouts. _Checked at the
+  reflection amendment (the owner's decision D2 on paulgsc/some-ui#2174, 2026-10-26: written
+  reflections reach the routine by the mailbox as the routine's minimum, as spoken
+  transcripts do; paulgsc/some-ui#2178):_ `ROLES` has three entries; `core.test.ts` pins
+  `reflection`: home puts it and may not read it, the routine reads it and may neither put
+  it, list it as archived nor ask it back (`ASKED`, every record but `reflection`), and the
+  archive role reads and moves it. _Checked at the drama prompt amendment (the same decision
+  D2: drama prompts go to the mailbox as the routine's minimum; paulgsc/some-ui#2179):_
+  `ROLES` has three entries; `core.test.ts` pins `prompt` as it pins `reflection`: home puts
+  it and may not read it, the routine reads it and may neither put it, list it as archived
+  nor ask it back (`ASKED`, every record but `reflection` and `prompt`), and the archive role
+  reads and moves it. _Checked at the Drive takes amendment (the owner's route a on
+  paulgsc/some-ui#2401, 2026-10-31: "go with route a, I'll re-save the skill",
+  [the decision](https://github.com/paulgsc/some-ui/issues/2401#issuecomment-6549482554)):_
+  `ROLES` has three entries and is unchanged; `brief`'s `also` holds one kind, the
+  `drive-takes` list, which `kindOf` takes only under its own name and holds to its own
+  schema and `driveTakesRefusal`; `core.test.ts` pins that the routine puts one, home reads it
+  and may not put it, and that a body naming audio, bytes, a Drive file, id or link, a take's
+  name, or any key but `schema`, `at` and `takes` (`sha256` per take) is refused.
 
 **MB3: No token reaches the repo or a log.**
 

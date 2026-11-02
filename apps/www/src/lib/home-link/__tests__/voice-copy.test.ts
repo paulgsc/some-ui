@@ -11,9 +11,14 @@ import { describe, expect, it } from "vitest"
 
 import {
   gameNote,
+  ideaNote,
   jobsNotes,
+  leetypeNote,
+  lensNote,
   reflectionNote,
+  refOf,
   sceneNote,
+  soundbiteNote,
   unsendable,
 } from "@/lib/home-link/voice-copy"
 import type { JobEvent, JobsState, VoiceNote } from "@/lib/jobs/model"
@@ -29,6 +34,59 @@ const voice = (id: string, owner = "draft"): VoiceNote => ({
 })
 
 describe("what each voice note is told home as", () => {
+  it("tells a soundbite by how it came to be recorded, a lens take by its line and a LeetType take by its file and screen (HF5)", () => {
+    const takenAt = Date.parse("2026-11-01T09:12:00.000Z")
+    const take = { id: "t1", takenAt, durationMs: 3000, mimeType: "audio/webm" }
+    expect(lensNote({ ...take, line: "two-cups" })).toEqual({
+      id: "t1",
+      of: "lens",
+      ref: "two-cups",
+      at: "2026-11-01T09:12:00.000Z",
+      contentType: "audio/webm",
+    })
+    expect(leetypeNote({ ...take, line: "two-sum.json#explain-1" }).ref).toBe(
+      "two-sum.json:explain-1"
+    )
+    // MIC10: an idea answer's take goes as a Studio note, by what it answers.
+    expect(ideaNote({ ...take, line: "idea:3f2a-9c:takeaway" })).toEqual({
+      id: "t1",
+      of: "studio",
+      ref: "idea:3f2a-9c:takeaway",
+      at: "2026-11-01T09:12:00.000Z",
+      contentType: "audio/webm",
+    })
+    expect(
+      soundbiteNote({
+        id: "b1",
+        recordedAt: "2026-11-01T09:00:00.000Z",
+        durationMs: 5000,
+        mimeType: "audio/webm;codecs=opus",
+        bytes: 9,
+        context: {
+          source: "reminder",
+          lastSessionAt: null,
+          openSessions: 0,
+          timeZone: "UTC",
+        },
+      })
+    ).toEqual({
+      id: "b1",
+      of: "soundbite",
+      ref: "reminder",
+      at: "2026-11-01T09:00:00.000Z",
+      contentType: "audio/webm;codecs=opus",
+    })
+  })
+
+  it("makes any line a ref home takes", () => {
+    expect(refOf("a line/with spaces#and more")).toBe(
+      "a-line-with-spaces-and-more"
+    )
+    expect(refOf("x".repeat(300))).toHaveLength(200)
+    expect(refOf("")).toBe("-")
+    expect(refOf("ok_line.v2:s3-1")).toBe("ok_line.v2:s3-1")
+  })
+
   it("tells a scene note as the drama's next scene, by when it was kept, recorded and never shared", () => {
     const now = new Date("2026-10-31T12:00:00.000Z")
     const kept = { id: "s1", durationMs: 4000, mimeType: "audio/mp4" }
@@ -224,5 +282,37 @@ describe("what each voice note is told home as", () => {
     expect(unsendable(pass, (id) => id === "r2")).toEqual({
       gone: 1,
     })
+  })
+
+  it("sends a form's note filed out of its draft home under the event that recorded the form (#2443)", () => {
+    const state: JobsState = {
+      ...EMPTY,
+      voice: [
+        {
+          id: "aside",
+          mimeType: "audio/webm",
+          durationMs: 2_000,
+          owner: "2026-10-25/acme/pass",
+          standing: "set-aside",
+          filed: { ref: "2026-10-25:acme", at: "2026-10-25T09:00:00.000Z" },
+        },
+        {
+          id: "aside-unfiled",
+          mimeType: "audio/webm",
+          durationMs: 2_000,
+          owner: "2026-10-25/acme/pass",
+          standing: "set-aside",
+        },
+      ],
+    }
+    expect(jobsNotes(state)).toEqual([
+      {
+        id: "aside",
+        of: "jobs",
+        ref: "2026-10-25:acme",
+        at: "2026-10-25T09:00:00.000Z",
+        contentType: "audio/webm",
+      },
+    ])
   })
 })

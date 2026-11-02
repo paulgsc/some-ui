@@ -4,14 +4,18 @@
  */
 import { assertNever } from "@some-ui/core-utils"
 import type { Idea, Shot } from "@some-ui/video-render"
+import type { TakeButtonView, TakeRowView } from "@some-ui/voice-capture"
+import { NEARLY_UP_MS } from "@some-ui/voice-capture"
 import type { Cut } from "@soundbites/lib/journal/primer"
 import type { Finish } from "@soundbites/lib/project/finish"
 import { finishOf } from "@soundbites/lib/project/finish"
+import { waitingTakes } from "@soundbites/lib/project/let-go"
 import type { Note, Project, ProjectTake } from "@soundbites/lib/project/model"
-import { latest } from "@soundbites/lib/project/model"
+import { homeHolds, latest } from "@soundbites/lib/project/model"
 import { originConfirmed, originsWaiting } from "@soundbites/lib/project/origin"
 import { capFor, chosenTake, scriptOf } from "@soundbites/lib/project/script"
 
+import type { StudioState } from "./machine"
 import type { SittingKind, Whose } from "./words"
 import { STUDIO_WORDS } from "./words"
 
@@ -173,6 +177,32 @@ export function takesOnPhone(project: Project): number {
   return project.takes.filter((take) => take.onPhone).length
 }
 
+/** A take home holds that is still on the phone, as Start lists it (HF11). */
+export type WaitingTake = {
+  readonly id: string
+  /** Its scene's number in the latest version; null for a scene since dropped. */
+  readonly scene: number | null
+  readonly durationMs: number
+  /** Whether the owner said it reached Drive when they shared it. */
+  readonly shared: boolean
+}
+
+/** The takes of `project` home holds that wait on the phone, oldest first. */
+export function waitingView(project: Project): ReadonlyArray<WaitingTake> {
+  const { shots } = latest(project).cutList
+  return [...waitingTakes(project)]
+    .sort((a, b) => a.recordedAt.localeCompare(b.recordedAt))
+    .map((take) => {
+      const n = shots.findIndex((shot) => shot.id === take.shot) + 1
+      return {
+        id: take.id,
+        scene: n === 0 ? null : n,
+        durationMs: take.durationMs,
+        shared: take.keptBy.includes("drive"),
+      }
+    })
+}
+
 type OtherVideo = {
   readonly id: string
   readonly title: string
@@ -264,5 +294,76 @@ export function originView(
     whose: whoseOf(project, shot.idea),
     confirmed: originConfirmed(project, shot.id),
     take: chosenTake(project, shot.id)?.id ?? null,
+  }
+}
+
+/**
+ * The scene's take as the take pattern's parts draw it (`TakeButton`,
+ * `TakeRow` in `@some-ui/shared`): the button, which records the scene's
+ * first take or, once it has one, records it again ("Again" adds a take,
+ * and the new one is the scene's chosen take); and the chosen take as a
+ * row, with Play it back while its audio is on this phone. The project
+ * model stays the record of every take (`project/model.ts`): this only
+ * projects the machine's activity and the chosen take onto the parts.
+ */
+export function recordTake(
+  state: Pick<StudioState, "activity">,
+  view: Pick<RecordView, "take">
+): { readonly button: TakeButtonView; readonly row: TakeRowView | null } {
+  const { activity } = state
+  const settled = activity.kind === "idle" || activity.kind === "playing"
+  const button = ((): TakeButtonView => {
+    switch (activity.kind) {
+      case "opening": {
+        return { kind: "opening" }
+      }
+      case "recording": {
+        return {
+          kind: "recording",
+          elapsedMs: activity.elapsed,
+          capMs: activity.capMs,
+          level: activity.level,
+          nearlyUp: activity.capMs - activity.elapsed <= NEARLY_UP_MS,
+          clock: "elapsed",
+        }
+      }
+      case "saving": {
+        return { kind: "keeping" }
+      }
+      case "idle":
+      case "playing": {
+        return { kind: "ready", again: view.take !== null }
+      }
+      default: {
+        return assertNever(activity)
+      }
+    }
+  })()
+  const { take } = view
+  if (take === null) return { button, row: null }
+  return {
+    button,
+    row: {
+      take: {
+        id: take.id,
+        answers: take.shot,
+        durationMs: take.durationMs,
+        recordedAt: take.recordedAt,
+        standing: "current",
+        // On home once home holds it; on this phone, going home, until
+        // then; on neither, no place (a take carried in without its audio).
+        kept: homeHolds(take)
+          ? { place: "home", since: null }
+          : take.onPhone
+            ? { place: "going" }
+            : null,
+      },
+      playing: activity.kind === "playing" && activity.take === take.id,
+      canPlay: settled && take.onPhone,
+      // Recording it again is the button's ("Tap to record again").
+      canRedo: false,
+      canLetGo: false,
+      unsent: false,
+    },
   }
 }

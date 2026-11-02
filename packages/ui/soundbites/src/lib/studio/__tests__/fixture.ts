@@ -1,3 +1,5 @@
+import type { StartRecording } from "@some-ui/voice-capture"
+import { simulatedMicrophone, SPEAKING } from "@some-ui/voice-capture/testing"
 import { primerOf } from "@soundbites/fixtures"
 import type { Primer } from "@soundbites/lib/journal/primer"
 
@@ -34,3 +36,15 @@ export const PRIMER_TEXT = JSON.stringify({
 })
 
 export const primer = (): Primer => primerOf(PRIMER_TEXT)
+
+/**
+ * The shared simulated microphone (`@some-ui/voice-capture/testing`),
+ * hearing `durationMs` of speech per take, `bytes` of it: it opens at once
+ * and never refuses.
+ */
+export function speaking(durationMs = 4_000, bytes = 5): StartRecording {
+  return simulatedMicrophone({
+    now: Date.now,
+    fallback: { ...SPEAKING, durationMs, bytes },
+  }).startRecording
+}

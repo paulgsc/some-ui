@@ -3,13 +3,18 @@
  * whose answer was lost is found by that id, or sent again under it, and
  * makes one session on a home that creates once per id
  * (paulgsc/server#432); a home that mints its own still gets no duplicate,
- * by the content match the browser's transfer uses.
+ * by the content match the browser's transfer uses. A copy is dated by when
+ * the phone made it (paulgsc/server#630).
  */
 import { inMemoryStorage } from "@some-ui/core-utils"
 import { describe, expect, it } from "vitest"
 
 import { FileHostResponseError } from "@/lib/file-host-config/client"
-import { copySessionsTo } from "@/lib/tenant/sessions-copy"
+import {
+  confirmHeld,
+  copySessionsTo,
+  emptyHeldReport,
+} from "@/lib/tenant/sessions-copy"
 import type {
   CreateSessionInput,
   SessionsStore,
@@ -35,20 +40,27 @@ type Home = SessionsStore & {
   lists: number
 }
 
+/** The moment a home that dates its own copies made them. */
+const ARRIVED = "2026-11-01T12:00:00+00:00"
+
 /**
  * Home's sessions. `named` takes the create's id as file_host does since
  * #432 (once per id); otherwise home mints its own, as before it. `lose`
  * answers nothing to the next `lose` creates, after making them; `drop`
- * answers nothing to the next `drop`, and makes none.
+ * answers nothing to the next `drop`, and makes none. `dates` keeps the
+ * create's `createdAt`, as file_host does since #630; otherwise a copy is
+ * dated `ARRIVED`.
  */
 function home({
   named,
   lose = 0,
   drop = 0,
+  dates = true,
 }: {
   named: boolean
   lose?: number
   drop?: number
+  dates?: boolean
 }): Home {
   const held = new Map<string, SessionRecord>()
   const creates: Array<string | undefined> = []
@@ -76,6 +88,7 @@ function home({
         ...input,
         id,
         status: "draft" as const,
+        createdAt: dates ? (input.createdAt ?? ARRIVED) : ARRIVED,
       }
       held.set(id, record)
       if (losing > 0) {
@@ -167,5 +180,38 @@ describe("a phone's copy names each create's id", () => {
     expect(there.creates).toHaveLength(2)
     expect(there.creates[1]).not.toBe(there.creates[0])
     expect(there.held.size).toBe(1)
+  })
+})
+
+describe("a copy is dated by when the phone made it", () => {
+  it("sends the phone's createdAt, and home's copy is held as it is", async () => {
+    const there = home({ named: true })
+    const receipt = inMemoryStorage()
+    await copySessionsTo([SESSION], there, receipt)
+    expect([...there.held.values()]).toMatchObject([
+      { createdAt: SESSION.createdAt },
+    ])
+    const report = emptyHeldReport()
+    await confirmHeld([SESSION], there, report, receipt)
+    expect(report.held).toEqual([SESSION.id])
+  })
+
+  it("dates a copy home made on arrival, so it is then held", async () => {
+    const there = home({ named: true, dates: false })
+    const receipt = inMemoryStorage()
+    await copySessionsTo([SESSION], there, receipt)
+    const before = emptyHeldReport()
+    await confirmHeld([SESSION], there, before, receipt)
+    expect(before.differs).toEqual([SESSION.id])
+
+    const again = await copySessionsTo([SESSION], there, receipt)
+    expect(again.outcome).toEqual({ kind: "copied", copied: 1 })
+    expect(there.creates).toHaveLength(1)
+    expect([...there.held.values()]).toMatchObject([
+      { createdAt: SESSION.createdAt },
+    ])
+    const after = emptyHeldReport()
+    await confirmHeld([SESSION], there, after, receipt)
+    expect(after.held).toEqual([SESSION.id])
   })
 })

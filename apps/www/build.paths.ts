@@ -111,7 +111,10 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/clipboard/**",
   "apps/www/src/lib/drive-filing/**",
   "apps/www/src/lib/game-bites/**",
+  "apps/www/src/lib/handed-in/**",
   "apps/www/src/lib/home-link/**",
+  "apps/www/src/lib/idea-hearing/**",
+  "apps/www/src/lib/idea-takes/**",
   "apps/www/src/lib/jobs/**",
   "apps/www/src/lib/journal-share/**",
   "apps/www/src/lib/lens-takes/**",
@@ -119,9 +122,10 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/leetype-takes/**",
   "apps/www/src/lib/reflection-voice/**",
   "apps/www/src/lib/rust-rounds/**",
+  "apps/www/src/lib/scene-ask/**",
   "apps/www/src/lib/scene-voice/**",
-  "apps/www/src/lib/session-archive/**",
   "apps/www/src/lib/share-files/**",
+  "apps/www/src/lib/soundbite-keeping/**",
   "apps/www/src/lib/studio-keeping/**",
   "apps/www/src/lib/takes-desk/**",
   "apps/www/src/lib/voice-home/**",
@@ -139,6 +143,7 @@ const DEVICE_MODULES = [
   "apps/www/src/components/auth/device-*.tsx",
   "apps/www/src/components/settings/device-*.tsx",
   "apps/www/src/components/reflection/device-*.tsx",
+  "apps/www/src/components/sessions/device-*.tsx",
   "packages/voice-capture/**",
   "node_modules/@capacitor/**",
   "node_modules/@capacitor-community/**",
@@ -164,6 +169,9 @@ type Debt = PathRules<Profile>["debt"][number]
 
 const SHARED_ROUTE_TREE =
   "every profile builds the one shared route tree; removed when this deployable gets its own"
+
+const TAKE_PATTERN_ON_THE_WEB =
+  "LeetType's record screen and play runtime use the take pattern's view and words, which the web builds bundle and never run: they give LeetType no microphone, so it offers typing only. Removed when those words and the view get a subpath entry of their own, or LeetType's web builds stop bundling the take parts (#2433)"
 
 export const paths: PathRules<Profile> = definePaths<Profile>({
   exclusive: [
@@ -365,6 +373,13 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
         module: "apps/www/src/routes/_dashboard/_apk**",
         why: SHARED_ROUTE_TREE,
       })
+    ),
+    ...(["lan", "pages"] as const).flatMap(
+      (profile): Array<Debt> =>
+        [
+          "packages/voice-capture/dist/@some-ui/voice-capture.es.js",
+          "packages/voice-capture/dist/take-pattern-*.js",
+        ].map((module) => ({ profile, module, why: TAKE_PATTERN_ON_THE_WEB }))
     ),
     {
       profile: "pages",

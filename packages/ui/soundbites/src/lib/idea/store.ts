@@ -17,7 +17,14 @@ import { PrimerSchema } from "@soundbites/lib/project/file"
 import { z } from "zod"
 
 import type { Idea } from "./model"
-import { ANSWER_TO, FOLLOW_UPS, grows, WORDS_HOW } from "./model"
+import {
+  ANSWER_TO,
+  FOLLOW_UPS,
+  grows,
+  IDEA_FORMATS,
+  TITLE_MAX,
+  WORDS_HOW,
+} from "./model"
 
 export const IDEAS_KEY = "some-ui:studio:ideas"
 
@@ -26,18 +33,25 @@ const IdeaSchema: z.ZodType<Idea> = z.object({
   at: z.string(),
   questions: z.number().int().positive(),
   answers: z.array(
-    z.object({
-      question: z.enum(ANSWER_TO),
-      versions: z
-        .array(
+    z
+      .object({
+        question: z.enum(ANSWER_TO),
+        versions: z.array(
           z.object({
             at: z.string(),
             how: z.enum(WORDS_HOW),
             words: z.string(),
           })
-        )
-        .min(1),
-    })
+        ),
+        takes: z
+          .array(z.object({ at: z.string(), take: z.string().min(1) }))
+          .optional(),
+      })
+      // Words, or a take said for it (ST26): never neither.
+      .refine(
+        (answer) =>
+          answer.versions.length > 0 || (answer.takes?.length ?? 0) > 0
+      )
   ),
   passed: z.array(z.enum(ANSWER_TO)),
   asked: z
@@ -54,6 +68,15 @@ const IdeaSchema: z.ZodType<Idea> = z.object({
     .array(z.object({ at: z.string(), primer: PrimerSchema }))
     .optional(),
   shelved: z.array(z.object({ at: z.string(), aside: z.boolean() })).optional(),
+  about: z
+    .object({
+      title: z.string().trim().min(1).max(TITLE_MAX),
+      topic: z.string().nullable(),
+      keywords: z.array(z.string()),
+      format: z.enum(IDEA_FORMATS),
+    })
+    .optional(),
+  sent: z.array(z.string()).optional(),
 })
 
 function isIdea(value: unknown): value is Idea {

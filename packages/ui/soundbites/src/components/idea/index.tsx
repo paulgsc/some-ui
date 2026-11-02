@@ -1,8 +1,9 @@
 /**
- * Catching a video idea the moment it comes (STUDIO ST18): one question per
- * screen in large type, one button to say it. Renders `lib/idea/machine.ts`'s
- * state and forwards taps; its words are Studio's (`idea`). Opened on one
- * idea (`answering`, ST19), it asks Claude's questions about it the same way.
+ * Answering Claude's questions about an idea (STUDIO ST19), opened on it
+ * from the idea shelf: one question per screen in large type, one button to
+ * say it. Renders `lib/idea/machine.ts`'s state and forwards taps; its words
+ * are Studio's (`idea`). A new idea is caught as one bundle instead
+ * (`../idea-bundle`, ST26).
  */
 import type { JSX, ReactNode } from "react"
 import { useEffect, useId, useState, useSyncExternalStore } from "react"
@@ -12,16 +13,12 @@ import { Notice } from "@soundbites/components/notice"
 import type {
   AskPhase,
   IdeaIntent,
+  IdeaNotice,
   IdeaState,
 } from "@soundbites/lib/idea/machine"
 import { questionNumber } from "@soundbites/lib/idea/machine"
 import type { AnswerTo, Idea } from "@soundbites/lib/idea/model"
-import {
-  isFollowUp,
-  isRequired,
-  skippedAsks,
-  unanswered,
-} from "@soundbites/lib/idea/model"
+import { isFollowUp, skippedAsks } from "@soundbites/lib/idea/model"
 import type { IdeaPorts } from "@soundbites/lib/idea/runtime"
 import { createIdeaCapture } from "@soundbites/lib/idea/runtime"
 import { phoneIdeaPorts } from "@soundbites/lib/phone"
@@ -38,14 +35,19 @@ export type IdeaCaptureProps = {
   ports?: Partial<IdeaPorts>
   /** The way back to Studio, as the app links it. */
   back?: ReactNode
-  /**
-   * The idea whose questions from Claude to ask (ST19), by id; with none,
-   * New idea. Read once, on mount.
-   */
-  answering?: string
+  /** The idea whose questions from Claude to ask (ST19), by id. Read once, on mount. */
+  answering: string
 }
 
 type Dispatch = (intent: IdeaIntent) => void
+
+/** A notice, in Studio's words. */
+function noticeSaid(notice: IdeaNotice): string {
+  if (notice === null) return ""
+  return typeof notice === "string"
+    ? WORDS[notice]
+    : WORDS.refused(notice.refused)
+}
 
 /** Where a listening with no words yet is (LS1). */
 function hearingWhere(
@@ -148,6 +150,15 @@ const Ask = ({
           {WORDS.finishing}
         </p>
       )}
+      {phase.kind === "hearing" && (
+        <div
+          aria-live="polite"
+          className="bg-card border-border/60 min-h-24 space-y-1 rounded-2xl border p-3"
+        >
+          <p className="text-lg">{WORDS.hearing}</p>
+          <p className="text-muted-foreground text-sm">{WORDS.hearingLine}</p>
+        </div>
+      )}
 
       {phase.kind === "idle" && canTalk && (
         <Button size="lg" onClick={() => dispatch({ type: "talk" })}>
@@ -183,7 +194,7 @@ const Ask = ({
         <Words phase={phase} dispatch={dispatch} label={ask} />
       )}
 
-      <Notice text={state.notice === null ? "" : WORDS[state.notice]} />
+      <Notice text={noticeSaid(state.notice)} />
       {state.voice === "unavailable" && phase.kind === "typing" && (
         <p className="text-muted-foreground text-xs">{WORDS.noVoice}</p>
       )}
@@ -191,7 +202,8 @@ const Ask = ({
       <div className="flex flex-wrap gap-2">
         {(phase.kind === "idle" ||
           phase.kind === "listening" ||
-          phase.kind === "finishing") && (
+          phase.kind === "finishing" ||
+          phase.kind === "hearing") && (
           <Button
             variant="ghost"
             size="sm"
@@ -200,18 +212,7 @@ const Ask = ({
             {WORDS.type}
           </Button>
         )}
-        {state.idea === null &&
-          state.skipped !== null &&
-          (phase.kind === "idle" || phase.kind === "typing") && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => dispatch({ type: "answerSkipped" })}
-            >
-              {WORDS.answerSkippedEarlier(unanswered(state.skipped).length)}
-            </Button>
-          )}
-        {!isRequired(question) && state.idea !== null && (
+        {state.idea !== null && (
           <Button
             variant="ghost"
             size="sm"
@@ -234,49 +235,25 @@ const Kept = ({
   dispatch: Dispatch
   back: ReactNode
 }): JSX.Element => {
-  const answers = state.idea?.answers.length ?? 0
-  if (state.focus !== null) {
-    const asks = state.idea === null ? 0 : skippedAsks(state.idea).length
-    return (
-      <div className="flex flex-col gap-3">
-        <h2 role="status" className="text-2xl font-extrabold">
-          {WORDS.kept}
-        </h2>
-        <p className="text-muted-foreground text-sm">
-          {asks === 0
-            ? STUDIO_WORDS.shelf.answered
-            : STUDIO_WORDS.shelf.answeredSkipping(asks)}
-        </p>
-        {asks > 0 && (
-          <Button
-            variant="outline"
-            onClick={() => dispatch({ type: "answerSkipped" })}
-          >
-            {WORDS.answerSkipped(asks)}
-          </Button>
-        )}
-        {back}
-      </div>
-    )
-  }
-  const skipped = state.idea === null ? 0 : unanswered(state.idea).length
+  const asks = state.idea === null ? 0 : skippedAsks(state.idea).length
   return (
     <div className="flex flex-col gap-3">
       <h2 role="status" className="text-2xl font-extrabold">
         {WORDS.kept}
       </h2>
-      <p className="text-muted-foreground text-sm">{WORDS.keptLine(answers)}</p>
-      {skipped > 0 && (
+      <p className="text-muted-foreground text-sm">
+        {asks === 0
+          ? STUDIO_WORDS.shelf.answered
+          : STUDIO_WORDS.shelf.answeredSkipping(asks)}
+      </p>
+      {asks > 0 && (
         <Button
           variant="outline"
           onClick={() => dispatch({ type: "answerSkipped" })}
         >
-          {WORDS.answerSkipped(skipped)}
+          {WORDS.answerSkipped(asks)}
         </Button>
       )}
-      <Button onClick={() => dispatch({ type: "another" })}>
-        {WORDS.another}
-      </Button>
       {back}
     </div>
   )
@@ -289,7 +266,7 @@ export const IdeaCapture = ({
 }: IdeaCaptureProps): JSX.Element => {
   /* eslint-disable owner-guard/no-mount-snapshot -- the runtime is created once per mount, as Studio's is */
   const [runtime] = useState(() =>
-    createIdeaCapture({ ...phoneIdeaPorts(), ...ports }, answering ?? null)
+    createIdeaCapture({ ...phoneIdeaPorts(), ...ports }, answering)
   )
   /* eslint-enable owner-guard/no-mount-snapshot */
   useEffect(() => runtime.attach(), [runtime])

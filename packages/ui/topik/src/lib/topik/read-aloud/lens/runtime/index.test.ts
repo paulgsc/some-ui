@@ -1,8 +1,7 @@
 import type { Speaker, SpeechOutcome } from "@some-ui/speech"
-import type {
-  LensTakes,
-  LensTakeSnapshot,
-} from "@topik/lib/topik/adapter/lens-takes"
+import type { LensTakes } from "@topik/lib/topik/adapter/lens-takes"
+import type { TestLensTakes } from "@topik/lib/topik/adapter/lens-takes/__tests__/takes"
+import { lensTakes } from "@topik/lib/topik/adapter/lens-takes/__tests__/takes"
 import type { LensAnswer } from "@topik/lib/topik/read-aloud/lens/items"
 import {
   currentItem,
@@ -42,65 +41,13 @@ function fakeSpeech(outcome: SpeechOutcome = { kind: "heard" }): FakeSpeech {
   return speech
 }
 
-/**
- * A take port whose take runs until stopped, then is kept at 2 s. A reset
- * mid-take leaves it being kept, for `land` to finish later; `short` ends
- * one with nothing kept.
- */
-function fakeTakes(): LensTakes & {
-  stops: number
-  tick: (elapsedMs: number) => void
-  land: (durationMs: number) => void
-  short: () => void
-} {
-  let snapshot: LensTakeSnapshot = {
-    take: { kind: "idle" },
-    said: null,
-    last: null,
-    kept: null,
-    playing: false,
-    full: false,
-  }
-  const listeners = new Set<() => void>()
-  let count = 0
-  const set = (next: Partial<LensTakeSnapshot>): void => {
-    snapshot = { ...snapshot, ...next }
-    for (const listener of listeners) listener()
-  }
-  const keep = (durationMs: number, mine: boolean): void => {
-    count += 1
-    const kept = { id: `k${count}`, durationMs }
-    set({ take: { kind: "idle" }, kept, ...(mine ? { last: kept } : {}) })
-  }
-  const port = {
-    stops: 0,
-    getSnapshot: (): LensTakeSnapshot => snapshot,
-    subscribe: (listener: () => void): (() => void) => {
-      listeners.add(listener)
-      return () => listeners.delete(listener)
-    },
-    start: (): void => set({ take: { kind: "recording", elapsedMs: 0 } }),
-    stop: (): void => {
-      port.stops += 1
-      if (snapshot.playing) set({ playing: false })
-      if (snapshot.take.kind === "recording") keep(2000, true)
-    },
-    playLast: (): void => set({ playing: true }),
-    reset: (): void =>
-      set({
-        take:
-          snapshot.take.kind === "recording"
-            ? { kind: "keeping" }
-            : snapshot.take,
-        last: null,
-      }),
-    tick: (elapsedMs: number): void =>
-      set({ take: { kind: "recording", elapsedMs } }),
-    land: (durationMs: number): void => keep(durationMs, false),
-    short: (): void => set({ take: { kind: "idle" } }),
-  }
-  return port
+/** Lets the simulated microphone and the pattern answer for `ms`. */
+const pass = async (ms = 0): Promise<void> => {
+  await vi.advanceTimersByTimeAsync(ms)
 }
+
+const taking = (takes: TestLensTakes): string =>
+  takes.pattern.getSnapshot().take.kind
 
 function harness(
   speech: Speaker,
@@ -368,9 +315,9 @@ describe("createLensRuntime", () => {
     for (const entry of cued) expect(entry.cue).toBe("glyph")
   })
 
-  it("stops a take when hidden, voices nothing into one, and asks whether B was heard before the first", () => {
+  it("stops a take when hidden, voices nothing into one, and asks whether B was heard before the first", async () => {
     const speech = fakeSpeech()
-    const takes = fakeTakes()
+    const takes = lensTakes()
     const { runtime, last, entries } = harness(speech, takes)
     runtime.begin()
     runtime.dispatch({
@@ -382,26 +329,30 @@ describe("createLensRuntime", () => {
       runtime.dispatch({ type: "skip-probes", at: runtime.now() })
     }
     const said = speech.said.length
-    runtime.startTake()
+    runtime.tapTake()
+    await pass(2_000)
     runtime.hearLine()
     expect(speech.said).toHaveLength(said)
     runtime.hide()
-    expect(takes.getSnapshot().take.kind).toBe("idle")
+    await pass()
+    expect(taking(takes)).toBe("idle")
     runtime.show()
     // Heard only after the first take: the first was not after hearing.
     runtime.hearLine()
-    runtime.startTake()
-    takes.stop()
+    runtime.tapTake()
+    await pass(2_000)
+    runtime.tapTake()
+    await pass()
     runtime.dispatch({ type: "next", at: runtime.now() })
     expect(entries.at(-1)?.take).toEqual({
       count: 2,
-      lastMs: 2000,
+      lastMs: 2_000,
       heardFirst: false,
     })
   })
 
-  it("counts a take the learner left mid-way on its item, once it is kept", () => {
-    const takes = fakeTakes()
+  it("counts a take the learner left mid-way on its item, once it is kept", async () => {
+    const takes = lensTakes()
     const { runtime, last, entries } = harness(fakeSpeech(), takes)
     runtime.begin()
     const line = currentItem(last().state)?.lineId
@@ -413,20 +364,21 @@ describe("createLensRuntime", () => {
     if (last().state.phase.name === "step-down") {
       runtime.dispatch({ type: "skip-probes", at: runtime.now() })
     }
-    runtime.startTake()
-    takes.tick(3_200)
+    runtime.tapTake()
+    await pass(3_200)
     runtime.dispose()
     expect(entries.at(-1)).toMatchObject({ line, take: null })
     // Kept after the session closed: the entry is written again with it.
-    takes.land(3_200)
+    await pass()
     expect(entries.at(-1)).toMatchObject({
       line,
       take: { count: 1, lastMs: 3_200 },
     })
+    expect(takes.store.getSnapshot()).toMatchObject([{ answers: line }])
   })
 
-  it("counts no take that was not kept, and asks about hearing at the first kept", () => {
-    const takes = fakeTakes()
+  it("counts no take that was not kept, and asks about hearing at the first kept", async () => {
+    const takes = lensTakes()
     const { runtime, last, entries } = harness(fakeSpeech(), takes)
     runtime.begin()
     runtime.dispatch({
@@ -438,23 +390,74 @@ describe("createLensRuntime", () => {
       runtime.dispatch({ type: "skip-probes", at: runtime.now() })
     }
     // Too short to keep, before B was heard.
-    runtime.startTake()
-    takes.short()
+    runtime.tapTake()
+    await pass(200)
+    runtime.tapTake()
+    await pass()
+    expect(takes.pattern.getSnapshot().ended?.ending).toBe("short")
     runtime.hearLine()
-    runtime.startTake()
-    takes.stop()
+    runtime.tapTake()
+    await pass(2_000)
+    runtime.tapTake()
+    await pass()
     runtime.dispatch({ type: "next", at: runtime.now() })
     expect(entries.at(-1)?.take).toEqual({
       count: 1,
-      lastMs: 2000,
+      lastMs: 2_000,
       heardFirst: true,
     })
   })
 
-  it("never plays the take and the speech at once", () => {
+  it("supersedes the take a Redo records again, keeping both (D2)", async () => {
+    const takes = lensTakes()
+    const { runtime, last } = harness(fakeSpeech(), takes)
+    runtime.begin()
+    runtime.dispatch({
+      type: "answer",
+      at: runtime.now(),
+      answer: firstAnswer(last()),
+    })
+    if (last().state.phase.name === "step-down") {
+      runtime.dispatch({ type: "skip-probes", at: runtime.now() })
+    }
+    runtime.tapTake()
+    await pass(2_000)
+    runtime.tapTake()
+    await pass()
+    const first = takes.store.getSnapshot()[0]?.id ?? ""
+    runtime.tapTake(first)
+    await pass(2_000)
+    runtime.tapTake()
+    await pass()
+    expect(
+      takes.store.getSnapshot().map(({ id, standing }) => [id, standing])
+    ).toEqual([
+      [first, "earlier"],
+      [expect.any(String), "current"],
+    ])
+  })
+
+  it("starts no take while the phone has no room for one", () => {
+    const takes = lensTakes({ full: true })
+    const { runtime, last } = harness(fakeSpeech(), takes)
+    runtime.begin()
+    runtime.dispatch({
+      type: "answer",
+      at: runtime.now(),
+      answer: firstAnswer(last()),
+    })
+    if (last().state.phase.name === "step-down") {
+      runtime.dispatch({ type: "skip-probes", at: runtime.now() })
+    }
+    runtime.tapTake()
+    expect(taking(takes)).toBe("idle")
+    expect(takes.mic.asked()).toBe(0)
+  })
+
+  it("never plays the take and the speech at once", async () => {
     const speech = fakeSpeech()
     const stop = vi.spyOn(speech, "stop")
-    const takes = fakeTakes()
+    const takes = lensTakes()
     const { runtime, last } = harness(speech, takes)
     runtime.begin()
     runtime.dispatch({
@@ -465,17 +468,22 @@ describe("createLensRuntime", () => {
     if (last().state.phase.name === "step-down") {
       runtime.dispatch({ type: "skip-probes", at: runtime.now() })
     }
-    runtime.startTake()
-    takes.stop()
+    runtime.tapTake()
+    await pass(2_000)
+    runtime.tapTake()
+    await pass()
+    const id = takes.store.getSnapshot()[0]?.id ?? ""
     stop.mockClear()
-    runtime.playTake()
+    runtime.playTake(id)
     expect(stop).toHaveBeenCalled()
-    expect(takes.getSnapshot().playing).toBe(true)
+    await pass()
+    expect(takes.player.playing()).toBe(1)
     runtime.hearLine()
-    expect(takes.getSnapshot().playing).toBe(false)
+    expect(takes.player.playing()).toBe(0)
     // A playback still being read is not yet playing; it is stopped anyway.
-    const stops = takes.stops
+    runtime.playTake(id)
     runtime.hearLine()
-    expect(takes.stops).toBe(stops + 1)
+    await pass()
+    expect(takes.player.playing()).toBe(0)
   })
 })

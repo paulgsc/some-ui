@@ -16,13 +16,13 @@ import { browserLocalStorage } from "@/lib/tenant/storage"
 
 import { nativeNotice } from "./notice-native"
 import type { JobsRuntime } from "./runtime"
-import { createJobsRuntime } from "./runtime"
+import { createJobsRuntime, JOB_VOICE_NOTES } from "./runtime"
 
 /**
  * Room for the voice notes not yet let go: a minute each, up to forty. A
  * note leaves once home holds it (LG1).
  */
-const JOB_VOICE_MAX_BYTES = 40 * SOUNDBITE_TAKE_MAX_BYTES
+const JOB_VOICE_MAX_BYTES = JOB_VOICE_NOTES * SOUNDBITE_TAKE_MAX_BYTES
 
 const shelf = savingShelf({
   dbName: "some-ui.job-voice",

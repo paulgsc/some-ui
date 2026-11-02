@@ -67,6 +67,12 @@ run. Edit them here, check them with those tests, and copy them again.
 
 ## The loop through the learner's drive
 
+This is the loop for a learner who keeps their own drive and their own
+agent (the owner's decision D5 on paulgsc/some-ui#2174). The owner's own run
+is `packages/ui/topik/ROUTINE.md`: it reads the reflections from home
+through the Jobs mailbox, puts each pair home, and keeps which reflections
+are answered there, not in a folder's description.
+
 The learner never has to ask for a deck. The reflection they already share
 after a session is the request, and a scheduled agent answers it while they
 are away, with a pair of sets in one context: one to read aloud, one for the

@@ -475,6 +475,36 @@ jobs:
             echo "No burn-in or renderer files changed."
           fi
 
+      # MIC9 (#2379): the real recorder (packages/voice-capture's recorder.ts:
+      # getUserMedia, MediaRecorder, the level meter), which every other test
+      # replaces. Chromium plays a committed clip as its microphone, the page
+      # plays each case on the real take kit and then on the simulated
+      # microphone, and a case fails when the two end differently. Scoped to
+      # the package, intent-kit (the recorder's opening waits through its
+      # callForeign), and the lockfile and flake, which pin Playwright and the
+      # Chromium it drives (_detect-changes.yml lists the clips under `node`
+      # and flake.lock under `ci`, so this job runs for both). Its page is its
+      # own Vite build, so only voice-capture's dependencies are built here.
+      # The spec path is passed, per "scoped test:e2e invocations" above.
+      # Uploads nothing.
+      - name: E2E — the real recorder agrees with the simulated microphone (voice-capture)
+        run: |
+          files=$(git diff --name-only --diff-filter=ACMR HEAD^1 -- \
+            'packages/voice-capture/**' \
+            'packages/intent-kit/**' \
+            'pnpm-lock.yaml' \
+            'flake.lock' || true)
+          if [ -n "$files" ]; then
+            nix develop .#ci --command pnpm turbo run build \
+              --filter='@some-ui/voice-capture^...' \
+              --concurrency=100%
+            nix develop .#ci-playwright --command \
+              pnpm --filter @some-ui/voice-capture test:e2e \
+                tests/real-microphone/real-microphone.spec.ts
+          else
+            echo "No files the real recorder's suite runs on changed."
+          fi
+
   # ── Dependency license audit ────────────────────────────────────────────
   deny:
     name: Deny Checks

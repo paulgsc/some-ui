@@ -167,11 +167,11 @@
             "tighter": "lower"
           },
           "verdict": "broken",
-          "conclusion": "Each request has a 30-second limit but the pass has none: at today's constants a full pass may make up to 821 calls, about 6.8 hours of waiting in the worst case.",
+          "conclusion": "Each request has a 30-second limit but the pass has none: at today's constants a full pass may make up to 842 calls, about 7.0 hours of waiting in the worst case.",
           "evidence": [
             {
               "class": "derived",
-              "says": "Inbound 5 folders × (10 pages + 20 gets) = 150, outbound 20, the Jobs index 1 put, restore 10 folders × (1 + 50) = 510, archive 10 folders × 10 pages + 20 × (get + archive) = 140: 821 calls, × 30 s ≈ 24,630 s. Filing transcripts and LeetType logs makes no call, and archiving walks 10 of the 11 folders (not index).",
+              "says": "Inbound 5 folders × (10 pages + 20 gets) = 150, outbound 20, the routines' indexes 2 puts (jobs and reflections), restore 10 folders × (1 + 50) = 510, archive 12 folders × 10 pages + 20 × (get + archive) = 160: 842 calls, × 30 s ≈ 25,260 s. Filing transcripts and LeetType logs makes no call, archiving walks 12 of the 13 folders (not index), reflection's and prompt's only once one is due, and restore walks the 10 the routine can ask back (not index, reflection or prompt; paulgsc/some-ui#2178, #2179). Drama prompts share outbound's 20, and the build-journal session's lists of Drive's takes ride brief, sharing inbound's listing and its 20 gets (paulgsc/some-ui#2401).",
               "ref": "server:apps/servers/file_host/src/mailbox/pass.rs"
             }
           ],
@@ -197,7 +197,7 @@
           "evidence": [
             {
               "class": "derived",
-              "says": "96 passes a day × 5 folder listings (brief, scene, drama, run, leetype) = 480; with archiving, + 10 wanted listings + 10 archive listings = 25 a pass, 2,400 a day. Filing LeetType logs reads home's database only. Home's index (index) adds no listing: archiving walks every folder but it (ARCHIVES), the routine's backfill rides brief, which a pass lists anyway, and with no files home computes no index. Once it holds some, it puts one only when a file it counts arrives or an open pick lapses (the index's validThrough), never for the day turning alone, so a day with no arrival and no lapse is exactly 2,400; the day a pick lapses adds one put, which is work, not idle (paulgsc/server#509).",
+              "says": "96 passes a day × 5 folder listings (brief, scene, drama, run, leetype) = 480; with archiving, + 10 wanted listings + 10 archive listings = 25 a pass, 2,400 a day. Filing LeetType logs reads home's database only. Home's index (index) adds no listing: archiving walks every folder but it (ARCHIVES), the routine's backfill rides brief, which a pass lists anyway, and with no files home computes no index. Once it holds some, it puts one only when a file it counts arrives or an open pick lapses (the index's validThrough), never for the day turning alone, so a day with no arrival and no lapse is exactly 2,400; the day a pick lapses adds one put, which is work, not idle (paulgsc/server#509). Written reflections (reflection) add no request either: home puts each when the phone sends it, which is work, never lists its asks (the routine cannot ask one back, apps/mailbox ASKED), and lists its live files only once a reflection it filed has been in the mailbox for MAILBOX_ARCHIVE_DAYS and is not yet archived, which it reads from its own tables (mailbox_repo::filed_due), so a pass with nothing to do is still 25 requests (paulgsc/some-ui#2178). Drama prompts (prompt) are the same, by the same tables (mailbox_repo::filed_due, unanswered_archives) (paulgsc/some-ui#2179). The reflections routine's index (index-reflections-*) adds no listing either: home computes it from its own tables (mailbox_repo::reflections_inputs) after each pass, and puts one only when something it counts arrives or leaves (a scene, drama, written reflection, drama prompt, list of opened lessons, reflection or scene voice note or its transcript) or a moment it carries passes (its validUntil: a group of reflections settling two hours after its newest, a reflection's or prompt's two-day wait for a voice note ending, a batch of lessons leaving the unopened window). Each such moment is owed to a record that arrived, so it adds one put on that pass, which is work, not idle, and a pass with nothing new and no moment passed is still 25 requests (an_idle_pass_makes_twenty_five_requests_and_none_reaches_the_index; paulgsc/server#509). The build-journal session's lists of the takes Drive holds add no listing either: they live in brief (drive-takes-<stamp>.json), which a pass lists anyway, and home gets one only when a new one is listed, which is work, not idle; archiving already walks brief (paulgsc/some-ui#2401).",
               "ref": "server:apps/servers/file_host/src/mailbox/pass.rs"
             }
           ],
@@ -437,9 +437,10 @@
     {
       "id": "voice-heard",
       "name": "Voice notes sent home get heard",
-      "why": "The phone sends a voice note home; home transcribes it in the background, and the transcript is what the routine reads.",
+      "why": "The phone sends a voice note home; home transcribes it in the background, and the transcript is what the routine reads. A note I let go on the phone is set aside on home, kept, and the routines read it no more (D3).",
       "paths": [
         "some-ui:apps/www/src/lib/voice-home",
+        "some-ui:apps/www/src/lib/home-link/set-aside.ts",
         "server:apps/servers/file_host/src/transcribe"
       ],
       "modules": ["voice"],
@@ -448,25 +449,44 @@
           "id": "VH1",
           "kind": "OA2",
           "property": "outcome",
-          "claim": "Every voice note sent home gets a transcript or a recorded reason it has none.",
-          "requirement": "Each note home holds gets a row; a failed hearing is recorded and tried again on at most ATTEMPTS (3) passes, then stays recorded as failed, so no note is left without an outcome after three passes.",
+          "claim": "Every voice note sent home gets a transcript or a recorded reason it has none, its set-aside mark among them.",
+          "requirement": "Each note home holds gets a row; a failed hearing is recorded and tried again on at most ATTEMPTS (3) passes, then stays recorded as failed, so no note is left without an outcome after three passes. A note set aside (D3) before it was heard leaves the queue, its mark the recorded reason; the phone sends that mark once for each note it set aside that home holds, and keeps it owed until home takes it. While home has no route for the mark (a server before paulgsc/server#638), the phone keeps at most ASIDE_OWED_MAX (500) owed marks; past that it drops the oldest whose notes have left the phone, and home's routines go on reading those notes.",
           "verdict": "holds",
-          "conclusion": "Every note gets a row, and a failure is retried a few times and then kept as failed.",
+          "conclusion": "Every note gets a row, and a failure is retried a few times and then kept as failed. A note I let go before home heard it is not heard, and home keeps its mark saying so; the phone owes the mark at Let go, before the note is set aside, for every kind of note that can be let go, and sends it once home holds the note. While home runs a server without the mark's route, the phone keeps at most 500 marks owed, and past that the oldest of notes no longer on the phone are dropped and those notes stay read.",
           "evidence": [
             {
               "class": "measured",
               "says": "A pass gives every note a row and retries a failure a few times.",
               "ref": "server:apps/servers/file_host/src/transcribe/pass.rs"
+            },
+            {
+              "class": "measured",
+              "says": "The transcriber's queue skips a note set aside, which keeps its row in voice_note_set_aside.",
+              "ref": "server:crates/db/voice/src/set_aside.rs"
+            },
+            {
+              "class": "measured",
+              "says": "The voice lane sends the mark of a note set aside in each store that goes home, once home holds it, once only, and again after home found no note.",
+              "ref": "some-ui:apps/www/src/lib/home-link/__tests__/voice-aside.test.ts"
             }
           ],
           "proof": [
-            "server:apps/servers/file_host/src/transcribe/pass.rs#every_note_gets_a_row_and_a_failure_is_retried_a_few_times"
+            "server:apps/servers/file_host/src/transcribe/pass.rs#every_note_gets_a_row_and_a_failure_is_retried_a_few_times",
+            "server:crates/db/voice/src/set_aside.rs#the_transcribers_queue_skips_a_note_set_aside",
+            "some-ui:apps/www/src/lib/home-link/__tests__/voice-aside.test.ts#home's set-aside mark on a note let go on the phone (MIC2)"
           ],
           "watch": {
             "by": "dashboard",
             "ref": "server:infra/grafana/dashboards/transcribe.jsonnet"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-11-01",
+              "change": "A note set aside before home heard it is no longer heard: its set-aside mark is the recorded reason it has no transcript. While home has no route for the mark, the phone keeps at most 500 owed and drops the oldest of notes no longer on it, which home then goes on reading.",
+              "why": "The owner's D3 is what changes VH1: set aside means out of what routines read, kept on home, and the transcriber's queue is one of those reads. Keeping the mark in a table of its own (shape B) was the session's choice under the owner's direction to go with recommendations (some-ui#2372 comment 6559370232), as was the 500-mark cap on what the phone keeps owed for a home without the route (#2451).",
+              "decision": "https://github.com/paulgsc/some-ui/issues/2368"
+            }
+          ]
         },
         {
           "id": "VH2",
@@ -1353,7 +1373,7 @@
             },
             {
               "class": "structural",
-              "says": "The phone's audio caps add up to about 2.22 times the 25 MiB pool, and voice-home's alone (24 MB) is about 91% of it; a save past the pool is refused, so nothing is lost, but one store can leave the others no room.",
+              "says": "The phone's audio caps add up to about 2.22 times the 25 MiB pool before Studio's two desks of idea takes (9,600,000 B each: answers to Claude's questions since MIC10, a new idea's answers since ST26), and about 2.95 times with them; voice-home's alone (24 MB) is about 91% of it; a save past the pool is refused, so nothing is lost, but one store can leave the others no room.",
               "ref": "some-ui:apps/www/src/lib/device-backend/storage/index.ts"
             },
             {
@@ -1449,6 +1469,10 @@
       "why": "Answers whether the process is up; nothing is owed after."
     },
     {
+      "module": "ideas",
+      "why": "The owner's ideas and the lists they pick from (ST26, paulgsc/server#645); each write answers with what home now holds, and the phone compares it with what it sent."
+    },
+    {
       "module": "korean",
       "why": "Reads and writes Korean lists; each write answers with what it kept."
     },
@@ -1475,6 +1499,10 @@
     {
       "module": "studio_log",
       "why": "Writes Studio's sitting log and friction reports; each answers with what it kept, and the phone reads it back."
+    },
+    {
+      "module": "study_notes",
+      "why": "Writes a soundbite's record or a LeetType answer's note; each answers with the SHA-256 of what it kept, and the phone checks it against what it sent."
     },
     {
       "module": "subjects",
@@ -1511,7 +1539,7 @@
     {
       "store": "mailbox:item",
       "class": "cache",
-      "growth": "Per file the routine or home puts (folders brief, decisions, scout, scene, drama, run, leetype, transcript ...), body <= MAX_BODY_BYTES = 1,048,576; a few KB a day per README; bytes leave once archived. Home's index (index) is one per routine, the latest only: putting a new one drops the one before in the same write, and it is never archived (owner, paulgsc/server#509).",
+      "growth": "Per file the routine or home puts (folders brief, decisions, scout, scene, drama, run, opened, leetype, leetype-log, transcript, index, reflection, prompt), body <= MAX_BODY_BYTES = 1,048,576; a few KB a day per README (a written reflection is its typed line, its session and when, paulgsc/some-ui#2178; a drama prompt about 40 KB per ask, its text at most 256 KiB, paulgsc/some-ui#2179; a list of the takes Drive holds about 78 B a take, at most 10,000 takes, one per build-journal session that lists Drive's takes folder, in brief, paulgsc/some-ui#2401); bytes leave once archived. Home's index (index) is one per routine (jobs, reflections), the latest only: putting a new one drops the one before of its routine in the same write, and it is never archived (owner, paulgsc/server#509). The reflections index grows by about 1 KB a day (the bases answered and the distinct word ids its decks use); the rest of it is bounded by what still waits.",
       "horizon": "a file's bytes are deleted once it has been live >= 30 days (ARCHIVE_MIN_AGE_DAYS) and home has archived them (home waits MAILBOX_ARCHIVE_DAYS, >= 30); metadata moves to `archived`. An index's row and bytes go when home puts a newer one of its routine, with no `archived` row",
       "family": "routine-to-home"
     },
@@ -1613,15 +1641,29 @@
     {
       "store": "phone:home-sent",
       "class": "cache",
-      "growth": "Per finished session, kept shelf item and LeetType session home holds or refused (one digest or updatedAt each), for one pairing; no cap (`some-ui.home.sent.v1`).",
+      "growth": "Per finished session, kept shelf item, LeetType session, Studio sitting, written reflection and ask for the next scene home holds or refused (one digest, fingerprint or updatedAt each), for one pairing; no cap (`some-ui.home.sent.v1`).",
       "horizon": "a new pairing starts it over (the next write replaces the old pairing's record); a refused digest leaves when home later holds the item, and refused digests of items no longer kept are dropped (home-link/standing.ts)",
       "family": "what-is-kept"
     },
     {
       "store": "phone:ideas",
       "class": "record",
-      "growth": "Per video idea caught in Studio (ST18): the confirmed text of up to four answers, each a few versions (what was heard, then any fix), and since ST19 (#2301) up to three questions Claude asked back with their answers, each primer Claude fleshed it out into (up to 24 scenes of text), and a mark each time it is set aside or brought back; append-only; no audio is ever written, so nothing is discarded (owner, 2026-10-30, #2300); no cap (`some-ui:studio:ideas`).",
+      "growth": "Per video idea caught in Studio (ST18): the confirmed text of up to four answers, each a few versions (what was heard, then any fix), and since ST19 (#2301) up to three questions Claude asked back with their answers, each primer Claude fleshed it out into (up to 24 scenes of text), and a mark each time it is set aside or brought back; since ST26 (#2453) a new idea is added only when it is sent, whole: what it is (a title of at most 80 characters, a subject, keywords, a format), each answer's take ids and home's words once heard, and when it was sent; append-only; no audio is ever written, so nothing is discarded (owner, 2026-10-30, #2300); no cap (`some-ui:studio:ideas`).",
       "horizon": "an idea is never let go",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:idea-draft",
+      "class": "cache",
+      "growth": "One new idea before it is sent (ST26, #2453): its title (at most 80 characters), subject, keywords, format, the questions left for later and any answer typed because voice didn't work (at most 1,000 characters each), a few KB; overwritten on each change (`some-ui:studio:idea-draft`).",
+      "horizon": "cleared once Send has kept the idea whole in phone:ideas, or on Delete all, which is for good: nothing in it has left the phone (owner, #2453, decision 4; docs/discard-sites.md)",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:idea-takes",
+      "class": "record",
+      "growth": "bounded: two desks of Studio's idea takes (answers to Claude's questions, MIC10 #2428, `some-ui:idea-takes`; a new idea's answers, ST26 #2453, `some-ui:idea-bundle-takes`), each an offline set of 40 takes of <= 60 s: 40 x 60 x 4,000 = 9,600,000 B each; past 40, a new one makes room with the oldest home holds, and is refused while home holds none.",
+      "horizon": "a take leaves the phone only to make room at 40, and only once home holds it (HF5 #2180, LG1); a new idea's take waits on the phone until the idea is sent, and one deleted before Send is gone for good (owner, #2453, decision 4); a take whose audio never landed is swept",
       "family": "what-is-kept"
     },
     {
@@ -1632,10 +1674,17 @@
       "family": "what-is-kept"
     },
     {
+      "store": "phone:studio-let-go",
+      "class": "record",
+      "growth": "Per change of the owner's choice of when a Studio take home holds leaves the phone (HF11): one entry of about 45 B, the choice and when it was made, append-only; no cap (`some-ui:studio:let-go`).",
+      "horizon": "the phone keeps every choice",
+      "family": "what-is-kept"
+    },
+    {
       "store": "phone:job-voice",
       "class": "record",
-      "growth": "bounded: JOB_VOICE_MAX_BYTES = 40 x 240,000 = 9,600,000 B of Jobs voice notes.",
-      "horizon": "a note's audio leaves once home holds it (letGo, LG1); a Drive share is a copy",
+      "growth": "bounded: JOB_VOICE_MAX_BYTES = JOB_VOICE_NOTES (40) x 240,000 = 9,600,000 B of Jobs voice notes; past it a take is refused.",
+      "horizon": "a note's audio leaves once home holds it (letGo, LG1), and nothing else removes one: a draft's note set aside or recorded again (D2, D3, MIC5) is filed with the event that records its form and goes home under it, then leaves the same way; one on a form never recorded stays on the phone (#2443); a Drive share is a copy",
       "family": "what-is-kept"
     },
     {
@@ -1655,7 +1704,7 @@
       "store": "phone:journal",
       "class": "record",
       "growth": "Studio's projects (every revision, note, take and sitting, append-only), and one row per sitting saying how it went (`friction`); the Journal tab's one episode, if a build before Studio kept one, is moved into a project the first time Studio opens, and every row of the Journal tab's stores it doesn't move is let go, unless the episode reads but can't become a project, when it all stays (owner, 2026-10-30, #2251). JOURNAL_TAKES_MAX_BYTES = 2 x 360 s x 4,000 B/s = 2,880,000 B covers the projects' takes' audio and what the Journal tab's stores still hold, together; a few notices a closed screen couldn't say wait in `notices` until the next Start says them.",
-      "horizon": "a project is never let go, and a take's audio leaves the phone only once home holds a copy (LG1); Drive's is a copy",
+      "horizon": "a project is never let go, and a take's audio leaves the phone only once home holds a copy and the owner's choice allows it: never before they choose, and under keep-until-Drive only on their Drive has it or home's word that a Build Journal session found it in Drive (LG1, HF11 #2401); Drive's is a copy, and at the cap Record names the choice instead of evicting",
       "family": "what-is-kept"
     },
     {
@@ -1694,22 +1743,22 @@
     {
       "store": "phone:leetype-takes",
       "class": "record",
-      "growth": "bounded: 40 spoken answers, each <= 60 s: 40 x 60 x 4,000 = 9,600,000 B; past 40 refused.",
-      "horizon": "none: a study-context export is a copy (LG1), and nothing sends them home yet (#1934); only a take whose audio never landed is swept",
+      "growth": "bounded: an offline set of 40 spoken answers, each <= 60 s: 40 x 60 x 4,000 = 9,600,000 B, and 40 answer notes; past 40, a new one makes room with the oldest home holds, and is refused while home holds none.",
+      "horizon": "a take, or a note, leaves the phone only to make room at 40, and only once home holds it (HF5 #2180, LG1); a study-context export is a copy; a take whose audio never landed is swept",
       "family": "what-is-kept"
     },
     {
       "store": "phone:lens-record",
       "class": "record",
-      "growth": "Per grammar-lens item seen (session, line, showing): one entry each, rewritten in place for the same item; LENS_RECORD_MAX = 1,000 entries (about 700 KB), a new one past it refused, never evicted (`topik:lens-record`).",
-      "horizon": "none: a study-context export is a copy (LG1), and nothing sends the record home yet (#2180)",
+      "growth": "Per grammar-lens item seen (session, line, showing): one entry each, rewritten in place for the same item; an offline set of LENS_RECORD_MAX = 1,000 entries (about 700 KB): past it, a new one makes room with the earliest home holds as it is, and is refused while home holds none (`topik:lens-record`).",
+      "horizon": "an entry leaves the phone only to make room at 1,000, and only once home holds it as it is (HF5 #2180, LG1); a study-context export is a copy",
       "family": "what-is-kept"
     },
     {
       "store": "phone:lens-takes",
       "class": "record",
-      "growth": "bounded: LENS_TAKES_MAX = 40 takes, each <= 30 s: 40 x 30 x 4,000 = 4,800,000 B; past 40 refused, never evicted.",
-      "horizon": "none: a study-context export is a copy (LG1), and nothing sends them home yet (#2180); only a take whose audio never landed is swept",
+      "growth": "bounded: an offline set of LENS_TAKES_MAX = 40 takes, each <= 30 s: 40 x 30 x 4,000 = 4,800,000 B; past 40, a new take makes room with the oldest home holds, and is refused while home holds none.",
+      "horizon": "a take leaves the phone only to make room at 40, and only once home holds it (HF5 #2180, LG1); a study-context export is a copy; a take whose audio never landed is swept",
       "family": "what-is-kept"
     },
     {
@@ -1789,8 +1838,8 @@
     {
       "store": "phone:reflection-audio",
       "class": "record",
-      "growth": "bounded: REFLECTION_LIMIT = 20 reflections across all sessions; REFLECTION_AUDIO_MAX_BYTES = 20 x 240,000 = 4,800,000 B; a 21st is refused (\"nothing is dropped to make room\").",
-      "horizon": "none automatic: a share is a copy (LG1), so room comes back only by letting some go",
+      "growth": "bounded: REFLECTION_AUDIO_MAX_BYTES = 20 x 240,000 = 4,800,000 B of spoken reflections' audio; a take past it is refused (the reflection-voice budget, #2265). The reflections list beside it has no cap of its own since HF3: the offline set is the newest REFLECTION_LIMIT = 20, and past them only the written ones home does not hold (LA16).",
+      "horizon": "a written reflection past the offline set goes once home holds it (LA16); a spoken one's audio only when its person lets it go from the hand-off, asked first, since a row's Let go sets it aside, kept (D3, MIC5), and an export is a copy (LG1)",
       "family": "what-is-kept"
     },
     {
@@ -1847,8 +1896,15 @@
     {
       "store": "phone:scene-voice",
       "class": "record",
-      "growth": "bounded: SCENE_NOTES_MAX = 5 notes per draft, SCENE_AUDIO_MAX_BYTES = 5 x 240,000 = 1,200,000 B.",
-      "horizon": "notes leave when the person lets the draft go, or once home holds them and a shared prompt carried them (letGo, LG1); a shared prompt is a copy; sweepSceneVoice drops audio no note names and notes whose audio never landed",
+      "growth": "bounded: SCENE_NOTES_MAX = 5 notes in the draft; SCENE_NOTES_KEPT = 20 notes on the phone, those set aside or recorded again counted until home holds them; past 20 a new note makes room with the oldest home holds out of the draft, and is refused while there is none; SCENE_AUDIO_MAX_BYTES = 20 x 240,000 = 4,800,000 B (raised from 5 when Redo and Let go began keeping notes: MIC5, paulgsc/some-ui#2439 review).",
+      "horizon": "a note leaves the phone only once home holds it and holds the ask that named it, or holds it and it is out of the draft, set aside or recorded again (letGo, prompted, LA18; D2, D3); sweepSceneVoice drops audio no note names and notes whose audio never landed",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:scene-asks",
+      "class": "record",
+      "growth": "Per ask for the next scene (HF4, #2179): its stamp, when, the prompt's markdown (about 40 KB, most of it the tree prompt) and the ids of the scene notes it names; no cap, since each waits on the phone until home holds it (`some-ui:scene-asks`).",
+      "horizon": "an ask goes once home answers with it as it was sent (paulgsc/server drama_prompt, append-only) and a newer ask is kept; the newest stays to say home has it (LA18)",
       "family": "what-is-kept"
     },
     {
@@ -1880,8 +1936,8 @@
     {
       "store": "phone:soundbites",
       "class": "record",
-      "growth": "bounded: SOUNDBITE_LIMIT = 6 takes, each <= 1 min at 32 kbps (240,000 B), SOUNDBITES_MAX_BYTES = 1,440,000 B; a 7th replaces the oldest (or the one picked).",
-      "horizon": "the 7th take displaces the oldest kept (or the one the person picked)",
+      "growth": "bounded: an offline set of SOUNDBITE_LIMIT = 6 takes, each <= 1 min at 32 kbps (240,000 B), SOUNDBITES_MAX_BYTES = 1,440,000 B; a 7th replaces the oldest home holds (or the one picked of those), and is refused while home holds none.",
+      "horizon": "a soundbite leaves the phone only to make room for a 7th, and only once home holds its audio and its record (HF5 #2180, LG1); or when the person deletes it",
       "family": "what-is-kept"
     },
     {
@@ -1899,7 +1955,7 @@
     {
       "store": "phone:voice-home",
       "class": "cache",
-      "growth": "bounded: VOICE_HOME_MAX_BYTES = 100 x 240,000 = 24,000,000 B of copies of voice notes not yet held by home.",
+      "growth": "bounded: VOICE_HOME_MAX_BYTES = 100 x 240,000 = 24,000,000 B of copies of voice notes not yet held by home. Its record (`some-ui:voice-home`) also keeps the set-aside marks owed to home, one per note let go until home answers it, forgotten once a pass finds its note listed nowhere and its copy neither waiting nor held; past ASIDE_OWED_MAX = 500, the oldest of those whose notes left the phone are dropped (a home without the set-aside route answers every mark 404), and only marks of notes still on the phone, which the stores' caps bound, may pass it; and at most ASIDE_ANSWERED_MAX = 1,000 ids home answered (MIC2).",
       "horizon": "A copy leaves once home holds the note; a copy home refuses stays on the phone for good (voice-home runtime's sweep keeps it), still counted in the pool.",
       "family": "voice-heard"
     },
@@ -2059,6 +2115,12 @@
       "family": "archive-restore"
     },
     {
+      "store": "server:mailbox_archive_answer",
+      "class": "telemetry",
+      "growth": "Per ask home made the mailbox to drop a written reflection or a drama prompt it archived that got an answer (archived/unchanged/mismatch/refused/gone): tiny rows, no key, append-only; one per reflection or prompt archived, as none is ever put back (prompts since HF4, #2179). An ask that heard none is made again, by name, on the next pass (paulgsc/server invariant 21).",
+      "family": "archive-restore"
+    },
+    {
       "store": "server:mailbox_handed",
       "class": "telemetry",
       "growth": "Per hand-off attempt home made that got an answer it keeps (added/unchanged/conflict/refused); tiny rows, no key, append-only.",
@@ -2067,13 +2129,13 @@
     {
       "store": "server:mailbox_item",
       "class": "record",
-      "growth": "Per file home reads from the Jobs mailbox (digests, run records, scene/drama lessons, ...): its bytes verbatim, each <= 1 MiB (mailbox MAX_BODY_BYTES); append-only. Once, the routine's backfill adds the Jobs decisions and scouts files from before the mailbox to brief (owner, paulgsc/server#509): the mailbox takes only a name the phone writes (a real calendar day, a decisions share number 2 to 99, a scouts stamp at a real time) for a day from 2026-10-17, when the phone could first share one, through 2026-10-22, so a closed set.",
+      "growth": "Per file home reads from the Jobs mailbox (digests, run records, scene/drama lessons, ...): its bytes verbatim, each <= 1 MiB (mailbox MAX_BODY_BYTES); append-only. Once, the routine's backfill adds the Jobs decisions and scouts files only Drive holds to brief (owner, paulgsc/server#509): the mailbox takes only a name the phone writes (a real calendar day, a decisions share number 2 to 99, a scouts stamp at a real time) for a day from 2026-10-17, when the phone could first share one, through 2026-11-03, the day before the phone files every Jobs file home (widened by the owner, paulgsc/some-ui#2393), so a closed set.",
       "family": "routine-to-home"
     },
     {
       "store": "server:mailbox_outgoing",
       "class": "record",
-      "growth": "Per file the phone (or the poller, for transcripts and LeetType session logs) files for the mailbox (decisions, scout, opened, transcript, leetype-log), bytes verbatim; append-only. A LeetType session's log is filed again as log-<session>.r<n>.json only when an event of it arrives home after its last copy, and each copy repeats every earlier event of the session. The Jobs index adds nothing here or in mailbox_handed or mailbox_archive: it is a view home recomputes from these records and keeps no copy of, so the mailbox holds one index per routine, the latest only (owner, paulgsc/server#509).",
+      "growth": "Per file the phone (or the poller, for transcripts and LeetType session logs) files for the mailbox (decisions, scout, opened, transcript, leetype-log, reflection, prompt), bytes verbatim; append-only. A LeetType session's log is filed again as log-<session>.r<n>.json only when an event of it arrives home after its last copy, and each copy repeats every earlier event of the session. The routines' indexes (jobs, reflections) add nothing here or in mailbox_handed or mailbox_archive: each is a view home recomputes from these records and keeps no copy of, so the mailbox holds one index per routine, the latest only (owner, paulgsc/server#509).",
       "family": "routine-to-home"
     },
     {
@@ -2153,6 +2215,24 @@
       "family": "what-is-kept"
     },
     {
+      "store": "server:written_reflection",
+      "class": "record",
+      "growth": "Per written reflection the phone sends (a typed line, its session, when and how far in; paulgsc/server invariant 29), one row per id, append-only, body <= BODY_CEILING = 64 KiB, text <= 10,000 characters; each is filed once for the mailbox's reflection folder as it arrives.",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:studio_take_on_drive",
+      "class": "record",
+      "growth": "Per Studio take home holds that a build-journal session's list of Drive's takes (the mailbox's brief, drive-takes-<stamp>.json, SHA-256s only) first names: one tiny row (the take's id, when the session looked, the list's name, when home recorded it), append-only, at most one per studio voice note, so bounded by voice_note's studio rows (paulgsc/some-ui#2401, HF11; paulgsc/server invariant 23).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:drama_prompt",
+      "class": "record",
+      "growth": "Per ask for the next scene the phone sends (its stamp and the prompt's markdown, about 40 KB; paulgsc/server invariant 31), one row per stamp, append-only, text <= MAX_TEXT_BYTES = 256 KiB; each is filed once for the mailbox's prompt folder as it arrives.",
+      "family": "what-is-kept"
+    },
+    {
       "store": "server:studio_friction",
       "class": "record",
       "growth": "Per Studio sitting the owner rates at its end: how it went, the cause chosen, the sitting kind, the shot, an optional voice note id (server #553); one tiny row, append-only.",
@@ -2165,6 +2245,42 @@
       "family": "what-is-kept"
     },
     {
+      "store": "server:idea_answer",
+      "class": "record",
+      "growth": "Per answer of an idea's revision: the question and either a studio voice note's id or the words typed when voice failed (<= MAX_TYPED_CHARS = 1,000 characters); at most 4 per revision (question set 1); append-only (paulgsc/server invariant 32).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:idea_furnishing",
+      "class": "record",
+      "growth": "Per change of an idea's \"still furnishing\" mark: one tiny row, the latest standing; a mark that changes nothing writes nothing; append-only (paulgsc/server invariant 32).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:idea_list_mark",
+      "class": "record",
+      "growth": "Per entry the owner adds to or takes off the topics or keywords list: one tiny row (entry <= 40 characters), the latest per entry standing over the seeds; a mark that changes nothing writes nothing; append-only (paulgsc/server invariant 32).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:idea_revision",
+      "class": "record",
+      "growth": "Per send of an idea that changes it (ST26): title <= 80 characters, topic, format, <= 20 keywords, the question set's version and its times; the same bundle again writes nothing; append-only (paulgsc/server invariant 32).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:idea_set_aside",
+      "class": "record",
+      "growth": "Per idea the owner sets aside: one tiny row, the first mark standing, at most one per idea, so bounded by idea_revision's ideas; append-only (paulgsc/server invariant 32).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:study_note",
+      "class": "record",
+      "growth": "Per soundbite (its record) and per LeetType spoken answer (its note: prompt, rubric, ticks, what was typed), as the phone sends it (some-ui #2180, HF5): one JSON body each, at most BODY_CEILING = 64 KiB, a few hundred bytes in practice; append-only, kept for good.",
+      "family": "what-is-kept"
+    },
+    {
       "store": "server:tabs",
       "class": "cache",
       "growth": "Per distinct URL captured by the browser extension (upsert by URL hash), with the page's extracted content as a JSON blob; no subject column.",
@@ -2174,13 +2290,19 @@
     {
       "store": "server:voice_note",
       "class": "record",
-      "growth": "Per voice note sent home (reflection, jobs, scene, game, studio): one small metadata row; append-only.",
+      "growth": "Per voice note sent home (reflection, jobs, scene, game, studio, soundbite, lens, leetype): one small metadata row; append-only.",
       "family": "voice-heard"
     },
     {
       "store": "server:voice_note_audio",
       "class": "record",
       "growth": "Per voice note: its audio bytes, about 240 KB a minute at the phone's 32 kbps (migration), at most NOTE_CEILING = 1 MiB per note; append-only, kept for good; the migration says the bytes move out of the DB once they pass about 20 GB.",
+      "family": "voice-heard"
+    },
+    {
+      "store": "server:voice_note_set_aside",
+      "class": "record",
+      "growth": "Per voice note the owner lets go on the phone (D3, epic #2368; paulgsc/server invariant 23): one tiny row (the note's id, when it was let go, when home recorded it), append-only, the first mark standing, at most one per voice note, so bounded by voice_note's rows.",
       "family": "voice-heard"
     },
     {

@@ -38,6 +38,7 @@ export function phoneVoiceHome(): VoiceHome {
         base64: await base64(blob),
         sha256: await sha256Hex(await blob.arrayBuffer()),
       }),
+      now: () => Date.now(),
     })
     voiceHome.sweep()
   }

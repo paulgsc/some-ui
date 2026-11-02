@@ -5,7 +5,6 @@
 import { MODES } from "@game-week/lib/modes"
 import {
   ago,
-  clock,
   keptLine,
   MINUTE_LINE,
   MODE_WORDS,
@@ -102,8 +101,6 @@ describe("the recorder's words", () => {
   })
 
   it("counts time the way the screen shows it", () => {
-    expect(clock(7_400)).toBe("0:07")
-    expect(clock(60_000)).toBe("1:00")
     expect(ago(40_000)).toBe("40 s ago")
     expect(ago(150_000)).toBe("2 min ago")
   })
