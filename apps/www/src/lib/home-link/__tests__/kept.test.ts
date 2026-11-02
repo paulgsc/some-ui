@@ -153,6 +153,42 @@ describe("a record kept on home", () => {
   })
 })
 
+describe("a pull's run (PULL3)", () => {
+  it("asked while a run is under way, is answered by the run after it", async () => {
+    const ends: Array<HomeExchanged> = [
+      { kind: "synced" },
+      { kind: "failed", why: "full" },
+    ]
+    let pulled: Promise<unknown> | null = null
+    let home: Kept | null = null
+    home = homeWith({
+      exchange: () => {
+        pulled ??= home?.pull() ?? null
+        return Promise.resolve(ends.shift() ?? { kind: "synced" })
+      },
+    })
+    home.want()
+    await settled(home)
+    await expect(pulled).resolves.toEqual({ kind: "failed", why: "full" })
+  })
+
+  it("asked while a run is under way that none follows, is answered by that run", async () => {
+    let runs = 0
+    let pulled: Promise<unknown> | null = null
+    let home: Kept | null = null
+    home = homeWith({
+      exchange: () => {
+        runs += 1
+        pulled ??= home?.pull() ?? null
+        return Promise.reject(noAnswer())
+      },
+    })
+    home.want()
+    await expect(pulled).resolves.toEqual({ kind: "unreachable", at: 7 })
+    expect(runs).toBe(1)
+  })
+})
+
 describe("stepKept", () => {
   it("asks for one more run at most, after one that reached home or was turned away", () => {
     const running = stepKept(INITIAL_KEPT, { type: "wanted" })

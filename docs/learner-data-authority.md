@@ -937,23 +937,33 @@ notes stop saying full with no other redraw and the soundbites' page is
 handed what home holds again (`practice.test.ts`, OS1), as it is when the
 voice lane comes to hold a soundbite's audio after that run
 (`voice-send.test.ts`, OS1), one run at a time and home being busy said
-as such (`kept.test.ts`), and that the shell's drain sends nothing unpaired
-and sends once paired on the moments below, while a mark sends nothing of
+as such (`kept.test.ts`, which also holds that a pull is answered by the
+run it asked for, or by the run under way when none goes on after it), and
+that the shell's drain sends nothing unpaired and sends once paired on the
+moments below, a pull among them, asking each watched lane once and saying
+the pull fell short when one lane's run did, while a mark sends nothing of
 its own (`components/__tests__/device-home-glyph.test.tsx`). What no test
 can say is when a run is asked for. Rust Rounds' lane
 (`rust-rounds.ts`) is held by `packages/ui/rust-rounds/src/lib/home/index.test.ts`
 and `components/__tests__/device-home-glyph.test.tsx`.
 
-- _Claim:_ `askKept` (`lib/home-link/kept-watch.ts`) asks for a run of a lane
-  only while the phone is paired and the document is visible, and only at a
-  moment its person is using the app: from `watchKept`, which only
+- _Claim:_ `askKept` and `pullKept` (`lib/home-link/kept-watch.ts`) ask for
+  a run of a lane only while the phone is paired and the document is
+  visible, and only at a moment its person is using the app: from `watchKept`, which only
   `useLaneHome` starts, for as long as `HomeLanes` is mounted (every screen
   of the Android app; aph's lane for as long as its screens hand it in), on
   the watch starting, a move of the lane's revision (its record changed on
   this phone), the app coming back to the foreground, the network coming
   back, the phone being paired, or the link freeing up after turning a run
-  away; or from `askLane`, which a mark's sheet and Settings' readout call
-  only from their Send now button. Nothing asks on a timer. A run goes
+  away; from `askLane`, which a mark's sheet and Settings' readout call
+  only from their Send now button; or, for a pull (a drag down from the top
+  of a page, PULL3, the owner's D1 on #2456, 2026-11-02), from `pullKept`,
+  which only `homeRefresher` (`lib/home-link/pull.ts`) calls, for each lane
+  `useLaneHome` watches when its turn comes, one lane at a time, and once
+  more for a lane whose run the link turned away, once the link frees up
+  (the moment its watch asks it again too), through the refresher that
+  `useHomePull` registers on `screenRefreshers` while `HomeLanes` is
+  mounted. Nothing asks on a timer. A run goes
   under the pairing the phone holds when it starts (`laneExchange`), and
   the link's `send` refuses a request once the phone stops or goes to the
   background. For aph, the first run on a paired phone moves its record to
@@ -971,12 +981,28 @@ and `components/__tests__/device-home-glyph.test.tsx`.
 - _Falsified by:_ a hunk to `lib/home-link/kept-watch.ts` that reaches
   `askKept` from anything but `watchKept`'s record subscription, its link
   subscription, its `visibilitychange` and `online` listeners and its first
-  ask, adds a timer, changes when a listener asks (the record subscription's
+  ask, has `pullKept` ask other than through `mayAsk` and the lane's `pull`,
+  adds a timer, changes when a listener asks (the record subscription's
   check that the revision moved, the link subscription's test for a new
   pairing or for the link freeing up after a run it turned away), removes or
   changes anything the cleanup `watchKept` returns undoes, or removes
-  `askKept`'s check that the phone is paired or that the document is
-  visible; a hunk to `lib/home-link/lanes.ts` that calls `watchKept` from
+  `mayAsk`'s check that the phone is paired or that the document is
+  visible; a hunk that calls `pullKept` from anywhere but `homeRefresher`,
+  or `homeRefresher` from anywhere but `useHomePull`'s effect; a hunk to
+  `lib/home-link/pull.ts` that asks a lane other than through `pullKept`,
+  asks any but the lanes `watched` names when its turn comes, asks two lanes
+  at once, asks a lane again other than after a run the link turned away
+  (`busy`) and the link freeing up (`free`), or more than once again, drops
+  that one ask again, or lets a pull
+  read as in step when a run that answered it ended in a way `resynced`
+  (`kept-model.ts`) does not accept; a hunk to `lib/home-link/kept-runtime.ts` or
+  `kept-model.ts` that answers a pull with a run other than the one
+  `answersPull` names; a hunk to `lib/home-link/lanes.ts` that adds a
+  lane's runtime to `watched` anywhere but `useLaneHome`'s effect, leaves it
+  there past that effect's cleanup, or keeps `useHomePull`'s effect from
+  returning the drop `register` returns; a hunk to
+  `components/device-home-glyph.tsx` that calls `useHomePull` anywhere but
+  `HomeLanes`; a hunk to `lib/home-link/lanes.ts` that calls `watchKept` from
   anywhere but `useLaneHome`'s effect, passes it anything but `wire(lane)`'s
   `record` and `sending`, keeps that effect from returning the cleanup
   `watchKept` returns, calls `askKept` from anywhere but `askLane`, makes
@@ -1092,7 +1118,7 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   renames or moves any file, function or constant this claim names without
   carrying the claim to its new place.
 - _Scope:_ `apps/www/src/lib/home-link/kept-watch.ts`, `lanes.ts`,
-  `kept-runtime.ts`, `aph.ts`, `jobs.ts`, `practice.ts`,
+  `kept-runtime.ts`, `kept-model.ts`, `pull.ts`, `aph.ts`, `jobs.ts`, `practice.ts`,
   `practice-reads.ts`, `voice.ts`,
   `drain.ts`, `going.ts`, `voice-copy.ts`'s `holdNotes`, `leetype-log.ts`,
   `notes.ts`, `lens-record.ts`,

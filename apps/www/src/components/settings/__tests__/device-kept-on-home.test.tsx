@@ -4,7 +4,8 @@
  * Settings' readout of what this phone keeps on home (LA15): it reads the
  * phone's own pairing and what each record says, sends nothing on its own,
  * says each record's state in its own words, and never says a voice note waits that this phone can't send (LA14). The
- * status page's rows for the same records (#2165) come from here too.
+ * status page's rows for the same records (#2165) come from here too. Each
+ * row's marks move with its record's runs, a pull's included (PULL3).
  */
 import {
   act,
@@ -30,6 +31,10 @@ const home = vi.hoisted(
     voiceWaiting: number
     /** Runs the voice lane's exchange made. */
     runs: number
+    /** Whether the voice lane's runs find home. */
+    voiceAnswers: boolean
+    /** The shell's watch of the voice lane, once a test mounts the shell. */
+    watchVoice: (() => unknown) | null
   } => ({
     sent: [],
     record: JSON.stringify({ base: "https://home.example/api/v1", token: "t" }),
@@ -38,6 +43,8 @@ const home = vi.hoisted(
     unsent: { gone: 0 },
     voiceWaiting: 0,
     runs: 0,
+    voiceAnswers: true,
+    watchVoice: null,
   })
 )
 
@@ -90,13 +97,18 @@ vi.mock("@/lib/jobs", async () => {
 vi.mock("@/lib/tenant", () => ({
   useSessions: (): { data: Array<SessionRecord> } => ({ data: [] }),
 }))
-vi.mock("@/lib/home-link/voice", () => ({
-  useUnsendable: (): Unsendable => home.unsent,
-  voiceLane: {
+vi.mock("@/lib/home-link/voice", () => {
+  const voiceLane = {
     id: "voice",
     exchange: (): Promise<unknown> => {
       home.runs += 1
-      return Promise.resolve({ kind: "synced" })
+      // Home's silence as this test's module registry (renewed by
+      // `vi.resetModules`) knows it.
+      return home.voiceAnswers
+        ? Promise.resolve({ kind: "synced" })
+        : import("@/test-support/no-answer").then(({ noAnswer }) =>
+            Promise.reject(noAnswer())
+          )
     },
     revision: (): number => 0,
     subscribe: (): (() => void) => () => undefined,
@@ -107,8 +119,13 @@ vi.mock("@/lib/home-link/voice", () => ({
       hidden: 0,
       pulled: true,
     }),
-  },
-}))
+  } as const
+  return {
+    useUnsendable: (): Unsendable => home.unsent,
+    voiceLane,
+    useVoiceHome: (): unknown => home.watchVoice?.() ?? null,
+  }
+})
 
 afterEach(() => {
   cleanup()
@@ -124,6 +141,8 @@ afterEach(() => {
   home.unsent = { gone: 0 }
   home.voiceWaiting = 0
   home.runs = 0
+  home.voiceAnswers = true
+  home.watchVoice = null
 })
 
 async function mount(): Promise<void> {
@@ -218,5 +237,47 @@ describe("the status page's rows", () => {
       mark: { kind: "lane", where: "kept", how: null },
     })
     expect(board.paired).toBe(true)
+  })
+})
+
+describe("a pull on Settings (PULL3)", () => {
+  /** How voice notes' last exchange went, as their row's mark draws it. */
+  const voiceHow = (): string | null =>
+    screen
+      .getByText("Voice notes")
+      .closest("li")
+      ?.querySelector("[data-how]")
+      ?.getAttribute("data-how") ?? null
+
+  it("moves a record's marks once home answers it again", async () => {
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      get: () => "visible",
+    })
+    home.voiceAnswers = false
+    // The shell watches the voice lane as `useVoiceHome` does.
+    const { useLaneHome } = await import("@/lib/home-link/lanes")
+    const { voiceLane } = await import("@/lib/home-link/voice")
+    home.watchVoice = function useShellVoice(): unknown {
+      return useLaneHome(voiceLane)
+    }
+    const { HomeLanes } = await import("@/components/device-home-glyph")
+    const { KeptOnHome } = await import(
+      "@/components/settings/device-kept-on-home"
+    )
+    render(
+      <>
+        <HomeLanes />
+        <KeptOnHome />
+      </>
+    )
+    await waitFor(() => expect(voiceHow()).toBe("no-answer"))
+    const runs = home.runs
+
+    home.voiceAnswers = true
+    const { screenRefreshers } = await import("@/lib/pull-refresh/refreshers")
+    await act(() => screenRefreshers.checkAll())
+    expect(home.runs).toBe(runs + 1)
+    expect(voiceHow()).toBe("current")
   })
 })

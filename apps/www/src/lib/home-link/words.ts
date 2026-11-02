@@ -183,8 +183,11 @@ export function unsentLines({ gone }: Unsendable): Array<string> {
 
 /** Settings' Home server block, once paired: what goes, and when. */
 export const HOME_BLOCK = {
-  lead: "Everything this phone keeps goes to home on its own while the app is open: finished sessions, kept items, LeetType sessions and spoken answers, Studio sittings, soundbites, written reflections, asks for the next scene, the Jobs record, voice notes, rounds you paste in Rust Rounds, and aph while it is open. Rust Rounds also brings home's rounds and their runs here. Nothing leaves this phone until home has read it back.",
+  lead: "Everything this phone keeps goes to home on its own while the app is open: finished sessions, kept items, LeetType sessions and spoken answers, Studio sittings, soundbites, written reflections, asks for the next scene, the Jobs record, voice notes, rounds you paste in Rust Rounds, and aph while it is open. Rust Rounds also brings home's rounds and their runs here. Nothing leaves this phone until home has read it back. Dragging a page down from its top sends what waits and checks home again.",
 } as const
+
+/** What a drag down names when this phone couldn't get in step with home (PULL3). */
+export const PULL_HOME = { what: "home" } as const
 
 /** Settings' readout of what this phone keeps on home, and what waits. */
 export const KEPT_ON_HOME = {

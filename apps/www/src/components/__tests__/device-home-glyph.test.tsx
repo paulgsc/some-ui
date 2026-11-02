@@ -4,7 +4,8 @@
  * LA15 in the header and the app shell: each wing's mark says where its
  * record is kept and what waits, and sends nothing of its own; the shell's
  * drain (`HomeLanes`) sends nothing unpaired, and once paired sends on the
- * moments the watch names and says how it went; Send now asks for a run.
+ * moments the watch names and says how it went; Send now asks for a run,
+ * and so does a pull, once for each lane the shell watches (PULL3).
  */
 
 import { markForm } from "@/test-support/mark-form"
@@ -440,5 +441,99 @@ describe("aph's mark", () => {
         "Home is busy right now."
       )
     )
+  })
+})
+
+/** Pulls as the page does, through the screens' refreshers: what it couldn't check. */
+async function pull(): Promise<ReadonlyArray<string>> {
+  const { screenRefreshers } = await import("@/lib/pull-refresh/refreshers")
+  let unread: ReadonlyArray<string> = []
+  await act(async () => {
+    unread = await screenRefreshers.checkAll()
+  })
+  return unread
+}
+
+/** What each request sent since `from` reached: its path's first part after the base. */
+const sentSince = (from: number): Array<string> =>
+  home.sent
+    .slice(from)
+    .map((call) => new URL(call.url).pathname.split("/").slice(0, 4).join("/"))
+
+describe("a pull (PULL3)", () => {
+  it("is up to date when home answers every lane, which take the one link in turn", async () => {
+    home.answer = (): Promise<{ status: number; body: string }> =>
+      Promise.resolve({ status: 200, body: "{}" })
+    const { useHomePull, useLaneHome } = await import("@/lib/home-link/lanes")
+    type Lane = Parameters<typeof useLaneHome>[0]
+    const SYNCED: Awaited<ReturnType<Lane["exchange"]>> = { kind: "synced" }
+    const lanes = (["practice", "jobs", "rust-rounds"] as const).map(
+      (id): Lane => ({
+        id,
+        exchange: (send) => send("PUT", `/${id}/1`).then(() => SYNCED),
+        revision: () => 0,
+        subscribe: () => () => undefined,
+        useCounts: (): never => {
+          throw new Error("unused")
+        },
+      })
+    )
+    const Watch = ({ lane }: { lane: Lane }): null => {
+      useLaneHome(lane)
+      return null
+    }
+    const Pull = (): null => {
+      useHomePull()
+      return null
+    }
+    render(
+      <>
+        <Pull />
+        {lanes.map((lane) => (
+          <Watch key={lane.id} lane={lane} />
+        ))}
+      </>
+    )
+    // The watches' first runs, turned away from the link in turn and asked
+    // again as it frees, have each reached home.
+    await waitFor(() => expect(new Set(sentSince(0)).size).toBe(3))
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)))
+    const before = home.sent.length
+    expect(await pull()).toEqual([])
+    expect(sentSince(before).sort()).toEqual(
+      ["/api/v1/jobs", "/api/v1/practice", "/api/v1/rust-rounds"].sort()
+    )
+  })
+
+  it("asks every lane the shell drains for one run, and the mark says how it went", async () => {
+    await mount()
+    await waitFor(() => expect(mark().textContent).toContain("No answer"))
+    // The watch's first runs, each one request home doesn't answer, are over.
+    await waitFor(() => expect(new Set(sentSince(0)).size).toBe(3))
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)))
+    const before = home.sent.length
+    const { PULL_HOME } = await import("@/lib/home-link/words")
+    expect(await pull()).toEqual([PULL_HOME.what])
+    // One run each: Practice's sessions, the Jobs record, Rust Rounds'.
+    expect(sentSince(before).sort()).toEqual(
+      ["/api/v1/jobs", "/api/v1/rust-rounds", "/api/v1/sessions"].sort()
+    )
+    expect(mark().textContent).toContain("No answer")
+  })
+
+  it("asks nothing, and says nothing of home, while the phone isn't paired", async () => {
+    home.credential = null
+    await mount()
+    expect(await pull()).toEqual([])
+    expect(home.sent).toEqual([])
+  })
+
+  it("is no longer asked once the shell's drain is gone", async () => {
+    await mount()
+    cleanup()
+    await act(() => Promise.resolve())
+    const before = home.sent.length
+    expect(await pull()).toEqual([])
+    expect(home.sent.length).toBe(before)
   })
 })

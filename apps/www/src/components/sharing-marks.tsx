@@ -1,8 +1,9 @@
 /**
  * The sharing mark's two axes (`lib/sharing-marks`): where a
  * record is kept, and how its last exchange with home went, each a mark of
- * its own, and their legend. Drawn by the header's mark and by the status
- * page; it reads nothing and sends nothing.
+ * its own, and their legend. Drawn by the header's mark, by Settings' readout
+ * of what is kept on home and by the status page; it reads nothing and sends
+ * nothing.
  */
 import type { JSX } from "react"
 import { cn } from "@some-ui/core-utils"
@@ -115,6 +116,22 @@ export const HOW_TONE: Record<How, string> = {
   fault: "text-warning",
   failed: "text-warning",
 }
+
+/** A record's two marks side by side, each in its own tone. */
+export const LaneMarks = ({
+  where,
+  how,
+}: {
+  where: Where
+  how: How | null
+}): JSX.Element => (
+  <span className="flex shrink-0 items-center gap-1">
+    <WhereMark where={where} className={cn("size-5", WHERE_TONE[where])} />
+    {how === null ? null : (
+      <HowMark how={how} className={cn("size-4", HOW_TONE[how])} />
+    )}
+  </span>
+)
 
 /** The tone a lane's words wear: how it went, if that says anything. */
 export const toneOf = (where: Where, how: How | null): string =>
