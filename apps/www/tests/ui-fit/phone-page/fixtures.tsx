@@ -1,5 +1,6 @@
 /**
- * Every state the Studio sweep walks (`../studio-fit.spec.ts`), by id: the
+ * Every state the Studio sweep walks (`../studio-fit.spec.ts`), and the
+ * drag-down indicator's (`./pull`, `../pull-fit.spec.ts`), by id: the
  * phone's Studio (`@some-ui/soundbites`) on fakes, opened on a video in
  * each standing the sweep needs, and New idea beside it. The spec taps from
  * each fixture's Start to the screens that standing reaches.
@@ -47,6 +48,7 @@ import {
   SPEAKING,
 } from "@some-ui/voice-capture/testing"
 
+import { PULL_FIXTURES } from "./pull"
 import { FIT_CUTS, FIT_PRIMER_TEXT } from "./studio-seed"
 
 const AT = "2026-10-30T09:00:00.000Z"
@@ -242,6 +244,9 @@ export const PHONE_FIXTURES = {
   idea: newIdea(false),
   /** New idea, where the microphone refuses the first take. */
   "idea-voice-lost": newIdea(true),
+
+  /** The drag-down indicator, each phase (`./pull`, `../pull-fit.spec.ts`). */
+  ...PULL_FIXTURES,
 
   // A box that asserts a height its content cannot fit, which the body's
   // scroll does not excuse: the leak the sweep must see.
