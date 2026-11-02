@@ -8,7 +8,7 @@
  *   does not move while it is stopped, each resume goes on from the clock
  *   position and the scene its stop left, and the session closes with the
  *   time it was played.
- * - Family: every interleaving, one to three stops a session, of
+ * - Family: every interleaving, one or two stops a session, of
  *   - how it stops: "Got to go"; the app hidden (the phone); the player's
  *     screen closing (Back, a link, "Go"); the page going away, reloaded or
  *     kept in the browser's cache (both surfaces);
@@ -18,7 +18,9 @@
  *   - playing, or paused by the person, when it stopped;
  *   - with or without a "+5 min" first;
  *   - the surface: the phone (`apk`) and the desktop web, where a hidden tab
- *     is not a stop: the session plays on, and that time counts.
+ *     is not a stop: the session plays on, and that time counts;
+ *   and every run of three stops, each way to stop and resume, on both
+ *   surfaces, playing at each stop, with no "+5 min", played to its end.
  * - Proof: this file. It enumerates the Family and drives the real runtime,
  *   the real orchestrator store through `orchestratorPlayback`, and the real
  *   engine, each reopening reconfiguring it from zero as `LivePlayer` does.
@@ -412,7 +414,7 @@ describe("SS1: stop and resume keep the session's clock honest", () => {
       `on the ${surface}: every run of three stops`,
       () => {
         const [ending] = ENDINGS
-        // Playing or paused at a stop is already crossed with every pair.
+        // The Family's three-stop slice: playing, unextended, played out.
         const playingLegs = legs.filter((leg) => !leg.pausedFirst)
         for (const run of sequences(playingLegs, 3)) {
           sitting(surface, false, run, ending)
