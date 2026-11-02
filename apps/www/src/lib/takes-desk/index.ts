@@ -314,16 +314,17 @@ function desk<R extends Runtime>(
       if (options.audioLeaves !== true || back === null) return
       const going = takes
         .read()
-        .filter(
-          (take) =>
-            take.onHome !== true && take.waits !== true && holds.has(take.id)
-        )
+        .filter((take) => take.waits !== true && holds.has(take.id))
         .map(({ id }) => id)
       if (going.length === 0) return
       // LG1: the mark first, so audio is never gone from a take that still
       // reads as this phone's alone; a mark not stored lets nothing go.
       if (!takes.markOnHome(going)) return
-      await shelf.shelf().remove(going)
+      // Marked earlier too: audio a removal left behind goes on this pass.
+      const audio = shelf.shelf()
+      const stored = await audio.ids()
+      const left = going.filter((id) => stored.includes(id))
+      if (left.length > 0) await audio.remove(left)
     },
     audioFrom: (next): void => {
       back = next

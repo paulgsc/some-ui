@@ -88,6 +88,16 @@ describe("LG1 (RR6): a Rust Rounds note's audio leaves only once home holds it",
     ])
   })
 
+  it("lets audio go on a later pass when its removal failed after the mark", async () => {
+    const { desk, shelf } = await deskOf(["a"], true)
+    desk.audioFrom(fromHome)
+    vi.spyOn(shelf, "remove").mockRejectedValueOnce(new Error("closed"))
+    await expect(desk.letGo(new Set(["a"]))).rejects.toThrow("closed")
+    expect(desk.kept()[0]?.onHome).toBe(true)
+    await desk.letGo(new Set(["a"]))
+    expect(await shelf.ids()).toEqual([])
+  })
+
   it("lets nothing go on a desk whose audio stays", async () => {
     const { desk, shelf } = await deskOf(["a"], false)
     desk.audioFrom(fromHome)

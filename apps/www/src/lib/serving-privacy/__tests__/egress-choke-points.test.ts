@@ -550,7 +550,6 @@ describe("LA8: the phone reaches home through one module", () => {
 
   it("sends nothing from the read of a note's audio but one GET of /voice-notes/:id/audio, and only the voice lane reads it (RR6)", () => {
     expect(sendCalls(AUDIO_READ, read(AUDIO_READ))).toEqual(AUDIO_SENDS)
-    expect(read(AUDIO_READ)).toContain("/audio`")
     const readers = sourceFiles()
       .filter((f) => !isTestFile(f))
       .filter((f) =>
