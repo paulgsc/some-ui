@@ -260,8 +260,6 @@ export async function exchangeRounds(
   if (listed === null) return { kind: "failed", why: "the rounds: unreadable" }
 
   const ids = listed.rounds.map(({ id }) => id)
-  // A round home fails to answer for is skipped, so the rest are still read;
-  // the first such answer is what the exchange reports.
   let failed: number | null = null
   for (const id of roundsToRead(port.held(), ids)) {
     const answer = await send("GET", roundPath(id))

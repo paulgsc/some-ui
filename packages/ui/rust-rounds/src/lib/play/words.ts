@@ -77,6 +77,9 @@ export const WORDS = {
   /** A card whose program home could not run, or ran into a run this phone can't show. */
   noRunWillCome:
     "Home couldn't run this program, or ran it in a way this phone can't show, so no run of it will come. The card plays without one.",
+  /** A card of a round home didn't take. */
+  noRunRefused:
+    "Home didn't take this round, so no run of it will come. The card plays without one.",
   /** A card of a round this phone couldn't read as home holds it. */
   noRunUnread:
     "This phone couldn't read what home holds of this round, so no run of it will show here. The card plays without one.",

@@ -56,7 +56,8 @@ export type OnHome = {
   readonly unread: ReadonlyArray<string>
   /**
    * Cards, by `cardKey`, whose program home ended for good without a
-   * recording (refused, or the runner lost twice): no run of it will come,
+   * recording the phone can read (refused, the runner lost twice, or
+   * recorded in a shape this phone can't read): no run of it will come,
    * so the card stops waiting for one and is not asked about again.
    */
   readonly ended: ReadonlyArray<string>
@@ -166,14 +167,15 @@ export const noRunWillCome = (held: Held, ref: CardRef): boolean =>
 
 /**
  * Why a card has no run on the phone: one may still come from home
- * (`waits`), home ended its program for good (`ended`), this phone couldn't
- * read its round as home holds it, so reads it no more (`unread`), or the
- * build has no home (`no-home`).
+ * (`waits`), home ended its program for good (`ended`), home didn't take
+ * its round (`refused`), this phone couldn't read its round as home holds
+ * it, so reads it no more (`unread`), or the build has no home (`no-home`).
  */
-export type NoRun = "waits" | "ended" | "unread" | "no-home"
+export type NoRun = "waits" | "ended" | "refused" | "unread" | "no-home"
 
 export function whyNoRun(held: Held, ref: CardRef, home: boolean): NoRun {
   if (!home) return "no-home"
+  if (held.home.refused.some(({ id }) => id === ref.round)) return "refused"
   if (held.home.unread.includes(ref.round)) return "unread"
   return noRunWillCome(held, ref) ? "ended" : "waits"
 }

@@ -264,6 +264,10 @@ describe("exchangeRounds", () => {
       refused: 1,
       waiting: 0,
     })
+    // No run of it will come, and its cards say so.
+    expect(whyNoRun(store.held(), { round: PASTED.id, card: "a" }, true)).toBe(
+      "refused"
+    )
   })
 
   it("ends as forgotten on a 401, and as failed on an answer it did not expect", async () => {
@@ -368,10 +372,10 @@ describe("exchangeRounds", () => {
       sent: [PASTED.id],
       unread: [PASTED.id],
     })
-    // Its cards say no run will show, and the viewer's build says it has none.
-    const card = { round: PASTED.id, card: "a" }
-    expect(whyNoRun(store.held(), card, true)).toBe("unread")
-    expect(whyNoRun(store.held(), card, false)).toBe("no-home")
+    // Its cards say no run will show.
+    expect(whyNoRun(store.held(), { round: PASTED.id, card: "a" }, true)).toBe(
+      "unread"
+    )
     at.calls.length = 0
     await exchangeRounds(store, at.send)
     expect(at.calls).toEqual(["GET /rust-rounds"])

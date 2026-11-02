@@ -63,13 +63,15 @@ const Printed = ({
   </section>
 )
 
-/** rustc's recorded result, laid out from its JSON, as printed. */
 const NO_RUN_WORDS: Readonly<Record<NoRun, string>> = {
   waits: WORDS.noRun,
   ended: WORDS.noRunWillCome,
+  refused: WORDS.noRunRefused,
   unread: WORDS.noRunUnread,
   "no-home": WORDS.noRunHere,
 }
+
+/** rustc's recorded result, laid out from its JSON, as printed. */
 
 const RunView = ({
   run,
