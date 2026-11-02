@@ -413,6 +413,28 @@ describe("LessonCrm on a wide screen: a list rail and a step workflow", () => {
     expect(screen.getByText("pasted-reply.md")).toBeInTheDocument()
   })
 
+  it("QO1: on a phone, tapping the open lesson's row goes back to it without reading it again", async () => {
+    const client = fakeClient([lesson("a")])
+    await mount(client, true)
+    const row = (): HTMLElement =>
+      screen.getByRole("button", { name: /Lesson a/ })
+
+    fireEvent.click(row())
+    await settle()
+    expect(screen.getByRole("tab", { name: "Check" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    )
+    fireEvent.click(screen.getByRole("tab", { name: "Lessons" }))
+    fireEvent.click(row())
+    await settle()
+    expect(screen.getByRole("tab", { name: "Check" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    )
+    expect(client.read).toHaveBeenCalledTimes(1)
+  })
+
   it("QO1: opening the lesson already open asks again once its read failed", async () => {
     const client = fakeClient([lesson("a")])
     vi.mocked(client.read)
