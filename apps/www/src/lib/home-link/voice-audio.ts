@@ -59,7 +59,7 @@ export function readAudio(answer: HomeAnswer, id: string): HomeAudio | null {
 }
 
 /** `audio` as something to play, once its bytes hash to home's SHA-256. */
-export async function checkedAudio(audio: HomeAudio): Promise<Blob | null> {
+async function checkedAudio(audio: HomeAudio): Promise<Blob | null> {
   const hash = await sha256Hex(audio.bytes.buffer)
   return hash === audio.sha256
     ? new Blob([audio.bytes], { type: audio.contentType })
