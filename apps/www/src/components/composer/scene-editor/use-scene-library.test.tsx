@@ -79,4 +79,38 @@ describe("QO1: the scene library is loaded once per page", () => {
       "/scenes/manifest.json",
     ])
   })
+
+  it("a load that failed is asked for again by the next picker, and a whole one is not", async () => {
+    let manifestDown = true
+    const urls: Array<string> = []
+    vi.stubGlobal("fetch", (input: string) => {
+      urls.push(input)
+      if (input === "/scenes/manifest.json" && manifestDown)
+        return Promise.resolve(new Response("down", { status: 503 }))
+      const body =
+        input === "/scenes/manifest.json" ? ["/scenes/a.json"] : SCENE
+      return Promise.resolve(Response.json(body))
+    })
+    const wrapper = queryClientWrapper()
+
+    const first = renderHook(() => useSceneLibrary(), { wrapper })
+    await waitFor(() => {
+      expect(first.result.current.loading).toBe(false)
+    })
+    expect(first.result.current.getLibraryItems()).toEqual([])
+    first.unmount()
+
+    manifestDown = false
+    const second = renderHook(() => useSceneLibrary(), { wrapper })
+    await waitFor(() => {
+      expect(second.result.current.getLibraryItems()).toHaveLength(1)
+    })
+    second.unmount()
+
+    const fetched = urls.length
+    const third = renderHook(() => useSceneLibrary(), { wrapper })
+    expect(third.result.current.getLibraryItems()).toHaveLength(1)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(urls).toHaveLength(fetched)
+  })
 })

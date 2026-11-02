@@ -70,11 +70,18 @@ const sceneLibrary: LibraryConfig<SceneUIFile, SceneConfig> = {
   deriveKey: deriveSceneKey,
 }
 
-/** The scene files are the build's own assets: they change only with it. */
+/**
+ * The scene files are the build's own assets: they change only with it, so a
+ * whole load stays fresh for the page. A load that failed or fell back for a
+ * file is stale at once, so the next picker to mount asks again.
+ */
 const sceneLibraryQuery = queryOptions({
   queryKey: ["scene-library"] as const,
   queryFn: () => loadLibrary(sceneLibrary),
-  staleTime: Infinity,
+  staleTime: ({ state }) =>
+    state.data?.kind === "loaded" && state.data.fileErrors.length === 0
+      ? Infinity
+      : 0,
   gcTime: Infinity,
 })
 
