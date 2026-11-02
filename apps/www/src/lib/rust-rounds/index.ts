@@ -74,5 +74,6 @@ export function phoneRustRoundsPorts(): RustRoundsPorts {
     now: () => Date.now(),
     newId: () => crypto.randomUUID(),
     onVisibility: onPageVisibility,
+    home: true,
   }
 }

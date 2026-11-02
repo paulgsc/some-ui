@@ -1151,12 +1151,17 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   holds with a program home has not recorded yet (recording is off, or the
   runner is down) is read again on each run, the rounds the phone lacks
   first, at most `READS_PER_EXCHANGE` in all, until home has; a program home
-  ended for good without a recording (refused, or lost twice) is marked on
-  its card (`ended`) and waits no more, so such rounds never fill the reads,
-  and a recording home makes of it later under another toolchain is not
-  fetched; and what the phone knows home holds is of the home it learned it
-  from, so pairing with another home sends no round sent to the first
-  (RR4b, #2347).
+  ended for good without a recording the phone can read (refused, lost
+  twice, or recorded in a shape it can't read) is marked on its card
+  (`ended`) and waits no more, so such rounds never fill the reads, and a
+  recording home makes of it later under another toolchain is fetched only
+  while another card of its round still waits; a round whose answer the
+  phone can't read is marked (`unread`) and never read again, an update
+  that could read it included, and its cards say no run will show; a round
+  home fails to answer for is skipped for that exchange, which reads the
+  rest and reports the failure; and what the phone knows home holds is of
+  the home it learned it from, so pairing with another home sends no round
+  sent to the first (RR4b, #2347).
 
 ### LA16: written reflections are kept on home, append-only, and the phone lets one go only once home holds it
 

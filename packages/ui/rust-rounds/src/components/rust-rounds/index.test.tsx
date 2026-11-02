@@ -306,6 +306,7 @@ describe("Rust Rounds on the phone", () => {
       runs: {},
       notes: [],
       notesMissing: false,
+      home: NOTHING_ON_HOME,
     })
     render(<RustRounds ports={testPorts(storage)} />)
     expect(

@@ -72,6 +72,11 @@ export type RustRoundsPorts = {
    * each change. Returns an unsubscribe.
    */
   readonly onVisibility: (listener: (hidden: boolean) => void) => () => void
+  /**
+   * Whether this build reaches a home that runs programs; false on the
+   * viewer's sample (Pages), where a card with no run says none comes with it.
+   */
+  readonly home: boolean
 }
 
 export type RustRoundsRuntime = {

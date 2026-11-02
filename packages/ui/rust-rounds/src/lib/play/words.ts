@@ -74,9 +74,15 @@ export const WORDS = {
   rustcPrinted: "What rustc printed",
   noRun:
     "No run of this program is on this phone yet. It shows here once home has run it and this phone has been near home.",
-  /** A card whose program home could not run, and never will. */
+  /** A card whose program home could not run, or ran into a run this phone can't show. */
   noRunWillCome:
-    "Home couldn't run this program, so no run of it will come. The card plays without one.",
+    "Home couldn't run this program, or ran it in a way this phone can't show, so no run of it will come. The card plays without one.",
+  /** A card of a round this phone couldn't read as home holds it. */
+  noRunUnread:
+    "This phone couldn't read what home holds of this round, so no run of it will show here. The card plays without one.",
+  /** A card with no run in a build with no home: the viewer's sample. */
+  noRunHere:
+    "No run of this program comes with this sample. The card plays without one.",
   compiling: "rustc printed while compiling",
   printed: "It printed",
   printedNothing: "It printed nothing.",

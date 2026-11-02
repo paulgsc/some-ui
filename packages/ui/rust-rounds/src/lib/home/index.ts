@@ -22,7 +22,8 @@
  *   home's runs is put on its cards.
  * - **Bounded.** One `PUT` per round waiting to go, one list, and at most
  *   `READS_PER_EXCHANGE` rounds read, newest first; the rest are read by a
- *   later exchange. A round the phone can't read is not read again.
+ *   later exchange. A round the phone can't read is not read again, and a
+ *   round home fails to answer for is skipped, the rest still read.
  * - **Each answer is kept as it lands**, read fresh from the store and
  *   written back at once, so an exchange stopped part way keeps what came,
  *   and a round pasted meanwhile is not written over.
@@ -163,8 +164,15 @@ function roundsToRead(
   return [...lacking, ...unrun].slice(0, READS_PER_EXCHANGE)
 }
 
-/** How home ended a program for good without a recording. */
-const ENDED_FOR_GOOD: ReadonlySet<string> = new Set(["refused", "runner-lost"])
+/**
+ * How home ended a program for good with no recording the phone can play:
+ * refused, the runner lost twice, or recorded in a shape this phone can't read.
+ */
+const ENDED_FOR_GOOD: ReadonlySet<string> = new Set([
+  "refused",
+  "runner-lost",
+  "recorded",
+])
 
 /** The first run home recorded of a program, as the phone reads one. */
 function recorded(
@@ -181,7 +189,7 @@ function recorded(
 /**
  * `held` with what home holds of one round added: the round, if the phone
  * lacks it, each card's first recorded run the phone has none of, and each
- * card home ended for good with no recording, which waits no more. A
+ * card home ended for good with no recording it can read, which waits no more. A
  * round the phone can't read is noted, so it is not read again; one the
  * phone holds other cards under is left as it is.
  */
@@ -252,12 +260,18 @@ export async function exchangeRounds(
   if (listed === null) return { kind: "failed", why: "the rounds: unreadable" }
 
   const ids = listed.rounds.map(({ id }) => id)
+  // A round home fails to answer for is skipped, so the rest are still read;
+  // the first such answer is what the exchange reports.
+  let failed: number | null = null
   for (const id of roundsToRead(port.held(), ids)) {
     const answer = await send("GET", roundPath(id))
     if (answer.status === 401) return FORGOTTEN
     // Gone since it was listed (a round goes only with its account).
     if (answer.status === 404) continue
-    if (answer.status !== 200) return unexpectedAnswer("a round", answer.status)
+    if (answer.status !== 200) {
+      failed ??= answer.status
+      continue
+    }
     const from = readAs(RoundWithRunsSchema, answer.body)
     const kept = keep((held) =>
       from === null
@@ -266,5 +280,7 @@ export async function exchangeRounds(
     )
     if (kept === false) return NOT_KEPT
   }
-  return { kind: "synced" }
+  return failed === null
+    ? { kind: "synced" }
+    : unexpectedAnswer("a round", failed)
 }

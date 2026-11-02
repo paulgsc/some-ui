@@ -64,6 +64,7 @@ describe("Rust Rounds on the simulated microphone", () => {
           now: Date.now,
           newId: () => `session-${(ids += 1)}`,
           onVisibility: () => (): void => undefined,
+          home: true,
         }}
       />
     )

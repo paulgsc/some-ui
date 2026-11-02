@@ -19,6 +19,7 @@ import {
   NOTHING_HELD,
   playable,
   runOf,
+  whyNoRun,
 } from "@rust-rounds/lib/play/held"
 import { keptRounds } from "@rust-rounds/lib/play/store"
 import { INDEXING_01, INDEXING_01_RUNS } from "@rust-rounds/lib/worked-example"
@@ -45,7 +46,10 @@ const STOPPED: RustcRun = {
   stderr: "",
 }
 
-type Run = { ended: "recorded" | "refused" | "runner-lost"; rustc: RustcRun }
+type Run = {
+  ended: "recorded" | "refused" | "runner-lost"
+  rustc: RustcRun | Record<string, never>
+}
 
 type Forced = (method: string, path: string) => HomeAnswer | null
 
@@ -192,6 +196,22 @@ describe("exchangeRounds", () => {
     expect(noRunWillCome(held, { round: PASTED.id, card: "c" })).toBe(false)
   })
 
+  it("stops waiting on a card whose only recording the phone can't read", async () => {
+    const store = phone([PASTED])
+    const at = home()
+    const programs = [...resolvePrograms(PASTED).keys()]
+    for (const card of programs) {
+      at.runs.set(`${PASTED.id}/${card}`, [{ ended: "recorded", rustc: {} }])
+    }
+    await exchangeRounds(store, at.send)
+    for (const card of programs) {
+      expect(noRunWillCome(store.held(), { round: PASTED.id, card })).toBe(true)
+    }
+    at.calls.length = 0
+    await exchangeRounds(store, at.send)
+    expect(at.calls).toEqual(["GET /rust-rounds"])
+  })
+
   it("keeps a card's first run, and the worked example's bundled runs stand", async () => {
     const store = phone()
     const at = home()
@@ -260,6 +280,20 @@ describe("exchangeRounds", () => {
     })
     // What landed before the failure is kept.
     expect(store.held().home.sent).toEqual([PASTED.id])
+  })
+
+  it("skips a round home fails to answer for, reads the rest, and reports the failure", async () => {
+    const store = phone()
+    const at = home()
+    at.rounds.set("indexing-10", { ...PASTED, id: "indexing-10" })
+    at.rounds.set("indexing-11", { ...PASTED, id: "indexing-11" })
+    at.answer = (_method, path): HomeAnswer | null =>
+      path === "/rust-rounds/indexing-11" ? { status: 500, body: "" } : null
+
+    expect(await exchangeRounds(store, at.send)).toMatchObject({
+      kind: "failed",
+    })
+    expect(store.held().home.fetched).toEqual(["indexing-10"])
   })
 
   it("reads an older round once home records it, behind READS_PER_EXCHANGE newer rounds home will never run", async () => {
@@ -334,6 +368,10 @@ describe("exchangeRounds", () => {
       sent: [PASTED.id],
       unread: [PASTED.id],
     })
+    // Its cards say no run will show, and the viewer's build says it has none.
+    const card = { round: PASTED.id, card: "a" }
+    expect(whyNoRun(store.held(), card, true)).toBe("unread")
+    expect(whyNoRun(store.held(), card, false)).toBe("no-home")
     at.calls.length = 0
     await exchangeRounds(store, at.send)
     expect(at.calls).toEqual(["GET /rust-rounds"])

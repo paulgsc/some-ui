@@ -202,5 +202,6 @@ export function viewerRustRoundsPorts(): RustRoundsPorts {
     now: () => Date.now(),
     newId: () => crypto.randomUUID(),
     onVisibility: onPageVisibility,
+    home: false,
   }
 }

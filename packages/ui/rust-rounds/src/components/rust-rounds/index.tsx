@@ -21,11 +21,12 @@ import {
   deskConcepts,
   locate,
   newRounds,
-  noRunWillCome,
   playable,
   refinesWaiting,
   runOf,
+  whyNoRun,
 } from "@rust-rounds/lib/play/held"
+import type { NoRun } from "@rust-rounds/lib/play/held"
 import type { PlayIntent, PlayState } from "@rust-rounds/lib/play/machine"
 import { cardNote, deskNote } from "@rust-rounds/lib/play/note"
 import type { NotesPort, RustRoundsPorts } from "@rust-rounds/lib/play/runtime"
@@ -63,20 +64,23 @@ const Printed = ({
 )
 
 /** rustc's recorded result, laid out from its JSON, as printed. */
+const NO_RUN_WORDS: Readonly<Record<NoRun, string>> = {
+  waits: WORDS.noRun,
+  ended: WORDS.noRunWillCome,
+  unread: WORDS.noRunUnread,
+  "no-home": WORDS.noRunHere,
+}
+
 const RunView = ({
   run,
-  ended,
+  none,
 }: {
   run: RustcRun | null
-  /** Home ended the program for good without a run: none will come. */
-  ended: boolean
+  /** Why there is no run, when `run` is null. */
+  none: NoRun
 }): JSX.Element => {
   if (run === null) {
-    return (
-      <p className="text-muted-foreground text-sm">
-        {ended ? WORDS.noRunWillCome : WORDS.noRun}
-      </p>
-    )
+    return <p className="text-muted-foreground text-sm">{NO_RUN_WORDS[none]}</p>
   }
   const compiling =
     run.outcome !== "compile-error" && run.compileStderr !== "" ? (
@@ -218,10 +222,13 @@ const NextButton = ({ dispatch }: { dispatch: Dispatch }): JSX.Element => (
 const CardScreen = ({
   state,
   notes,
+  home,
   dispatch,
 }: {
   state: PlayState
   notes: Notes
+  /** The build reaches a home (`RustRoundsPorts.home`). */
+  home: boolean
   dispatch: Dispatch
 }): JSX.Element | null => {
   const { place } = state
@@ -347,10 +354,11 @@ const CardScreen = ({
           {visit.stage === "see" && (
             <RunView
               run={run}
-              ended={noRunWillCome(state.held, {
-                round: visit.round,
-                card: visit.card,
-              })}
+              none={whyNoRun(
+                state.held,
+                { round: visit.round, card: visit.card },
+                home
+              )}
             />
           )}
           <Actions>
@@ -588,9 +596,10 @@ export const RustRounds = ({ ports }: RustRoundsProps): JSX.Element => {
   // The runtime owns the store, the microphone and the clipboard for this
   // mount, so it is made once, from the ports it arrived with.
   /* eslint-disable owner-guard/no-mount-snapshot -- the runtime is created once per mount (see above) */
-  const [{ runtime, port }] = useState(() => ({
+  const [{ runtime, port, home }] = useState(() => ({
     runtime: createRustRounds(ports),
     port: ports.notes,
+    home: ports.home,
   }))
   /* eslint-enable owner-guard/no-mount-snapshot */
   useEffect(() => runtime.attach(), [runtime])
@@ -616,7 +625,12 @@ export const RustRounds = ({ ports }: RustRoundsProps): JSX.Element => {
         <MenuScreen state={state} dispatch={dispatch} />
       )}
       {state.screen.kind === "card" && (
-        <CardScreen state={state} notes={{ port, takes }} dispatch={dispatch} />
+        <CardScreen
+          state={state}
+          notes={{ port, takes }}
+          home={home}
+          dispatch={dispatch}
+        />
       )}
       {state.screen.kind === "desk" && (
         <DeskScreen state={state} notes={{ port, takes }} dispatch={dispatch} />

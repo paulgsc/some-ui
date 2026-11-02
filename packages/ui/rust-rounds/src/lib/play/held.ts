@@ -164,6 +164,20 @@ export function runOf(held: Held, ref: CardRef): RustcRun | null {
 export const noRunWillCome = (held: Held, ref: CardRef): boolean =>
   held.home.ended.includes(cardKey(ref))
 
+/**
+ * Why a card has no run on the phone: one may still come from home
+ * (`waits`), home ended its program for good (`ended`), this phone couldn't
+ * read its round as home holds it, so reads it no more (`unread`), or the
+ * build has no home (`no-home`).
+ */
+export type NoRun = "waits" | "ended" | "unread" | "no-home"
+
+export function whyNoRun(held: Held, ref: CardRef, home: boolean): NoRun {
+  if (!home) return "no-home"
+  if (held.home.unread.includes(ref.round)) return "unread"
+  return noRunWillCome(held, ref) ? "ended" : "waits"
+}
+
 /** The tutor notes written last: the worked example's before any were taken. */
 export function notesNow(held: Held): TutorNotes {
   return held.notes.at(-1) ?? INDEXING_01_NOTES
