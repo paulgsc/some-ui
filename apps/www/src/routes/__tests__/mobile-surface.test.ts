@@ -102,6 +102,18 @@ describe("the Android app's surface", () => {
     }
   })
 
+  it("replaces /settings in history, so back from its first page leaves Settings", async () => {
+    const history = createMemoryHistory({ initialEntries: ["/settings"] })
+    const router = createRouter({
+      routeTree,
+      history,
+      context: { queryClient: new QueryClient() },
+    })
+    await router.load()
+    expect(router.state.location.pathname).toBe(OPENS_ON["/settings"])
+    expect(history.length).toBe(1)
+  })
+
   it("sends every other route to the phone's foyer", async () => {
     for (const url of urls.filter((u) => !isOnMobileSurface(u))) {
       expect(await landingOf(url), url).toBe(MOBILE_ENTRY)
