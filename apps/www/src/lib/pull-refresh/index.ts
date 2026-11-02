@@ -3,7 +3,8 @@
  *
  * `./model` is the gesture's policy (a state union and pure `step`),
  * `./runtime` runs it over a page scroller's touches, `./reads` is what a
- * pull reads again, and `./words` is everything the indicator says. Phone
+ * pull reads again, `./refreshers` is the port a screen's runtime registers
+ * its own reads on, and `./words` is everything the indicator says. Phone
  * only (D4): the shell attaches it in the Android app's build, on a page
  * route, never a bounded one (D2).
  */

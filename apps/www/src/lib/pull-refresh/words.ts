@@ -14,12 +14,32 @@ const timeOfDay = (at: number): string =>
     minute: "2-digit",
   })
 
+/** "a, b, and c": the indicator speaks English, as every screen here does. */
+const AND = new Intl.ListFormat("en", { type: "conjunction" })
+
+/** The most a failure names before it counts the rest. */
+const NAMED = 2
+
+/** `unread` as a list the pill can hold: two names, then how many more. */
+const listed = (unread: ReadonlyArray<string>): string =>
+  AND.format(
+    unread.length > NAMED + 1
+      ? [...unread.slice(0, NAMED), `${unread.length - NAMED} more`]
+      : unread
+  )
+
 export const PULL_WORDS = {
   pulling: "Drag down to check again",
   armed: "Let go to check again",
   checking: "Checking again…",
   done: (when: string): string => `Up to date at ${when}`,
-  failed: "Couldn’t check everything just now",
+  /** What the queries and loaders of the page in view are, when one fails. */
+  page: "this page",
+  /** `unread` names what could not be read; empty when nothing said what. */
+  failed: (unread: ReadonlyArray<string>): string =>
+    unread.length === 0
+      ? "Couldn’t check everything just now"
+      : `Couldn’t check ${listed(unread)} just now`,
   offline: "No connection: showing what was here",
 } as const
 
@@ -46,7 +66,9 @@ export function pullWords(
       return PULL_WORDS.done(when(phase.at))
     }
     case "failed": {
-      return phase.offline ? PULL_WORDS.offline : PULL_WORDS.failed
+      return phase.offline
+        ? PULL_WORDS.offline
+        : PULL_WORDS.failed(phase.unread)
     }
     default: {
       return assertNever(phase)

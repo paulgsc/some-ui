@@ -18,8 +18,9 @@ const PHASES: ReadonlyArray<Phase> = [
   { kind: "armed", from: FROM, distance: 70 },
   { kind: "checking", pull: 1, shown: true },
   { kind: "done", pull: 1, at: AT },
-  { kind: "failed", pull: 1, at: AT, offline: false },
-  { kind: "failed", pull: 1, at: AT, offline: true },
+  { kind: "failed", pull: 1, at: AT, offline: false, unread: [] },
+  { kind: "failed", pull: 1, at: AT, offline: false, unread: ["this page"] },
+  { kind: "failed", pull: 1, at: AT, offline: true, unread: [] },
 ]
 
 describe("the drag-down's words", () => {
@@ -33,9 +34,27 @@ describe("the drag-down's words", () => {
   })
 
   it("say there was no connection, and that the page shows what it had", () => {
-    expect(pullWords({ kind: "failed", pull: 1, at: AT, offline: true })).toBe(
-      "No connection: showing what was here"
+    expect(
+      pullWords({ kind: "failed", pull: 1, at: AT, offline: true, unread: [] })
+    ).toBe("No connection: showing what was here")
+  })
+
+  it("name what could not be read, two at most and how many more", () => {
+    expect(PULL_WORDS.failed([])).toBe("Couldn’t check everything just now")
+    expect(PULL_WORDS.failed(["this page"])).toBe(
+      "Couldn’t check this page just now"
     )
+    expect(PULL_WORDS.failed(["this page", "today’s digest"])).toBe(
+      "Couldn’t check this page and today’s digest just now"
+    )
+    expect(
+      PULL_WORDS.failed(["this page", "today’s digest", "the morning run"])
+    ).toBe(
+      "Couldn’t check this page, today’s digest, and the morning run just now"
+    )
+    expect(
+      PULL_WORDS.failed(["this page", "today’s digest", "a", "b", "c"])
+    ).toBe("Couldn’t check this page, today’s digest, and 3 more just now")
   })
 
   it("say since when the page is up to date", () => {

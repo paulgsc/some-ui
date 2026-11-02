@@ -92,7 +92,7 @@ export const PullIndicator = ({
         }}
       >
         {words !== null && (
-          <p className="bg-background text-foreground flex max-w-full items-center gap-2 rounded-full border px-3 py-1.5 text-sm shadow-md">
+          <p className="bg-background text-foreground flex max-w-full items-center gap-2 rounded-2xl border px-3 py-1.5 text-sm text-balance shadow-md">
             <PhaseIcon phase={phase} />
             <span>{words}</span>
           </p>

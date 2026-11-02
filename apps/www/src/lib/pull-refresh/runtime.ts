@@ -11,11 +11,10 @@ import { INITIAL_PULL, step } from "./model"
 /** What a check reaches, behind ports. */
 export type PullPorts = {
   /**
-   * Reads again everything the page shows. Resolves `read` when all of it
-   * came back, `offline` when there was no connection to read with, and
-   * rejects when any of it could not be read.
+   * Reads again everything the page shows, and resolves to how that ended.
+   * A rejection is a check that said nothing of what it could not read.
    */
-  readonly readAgain: () => Promise<Exclude<CheckEnd, "unread">>
+  readonly readAgain: () => Promise<CheckEnd>
   /** Calls `listener` each time the page moves to another route. */
   readonly onLeave: (listener: () => void) => () => void
   /** Epoch ms, for when a check finished. */
@@ -66,6 +65,7 @@ export function createPullRuntime(ports: PullPorts): PullRuntime {
 
   const settle = (pull: number, end: CheckEnd): void =>
     dispatch({ type: "settled", pull, end, at: ports.now() })
+  const unsaid: CheckEnd = { kind: "unread", what: [] }
 
   // Each timer is bounded (`CHECK_MS`, `DONE_MS`, `FAILED_MS`) and only
   // moves the machine on, so a detach leaves them to run out. The deadline
@@ -76,12 +76,12 @@ export function createPullRuntime(ports: PullPorts): PullRuntime {
       case "check": {
         ports.readAgain().then(
           (end) => settle(pull, end),
-          () => settle(pull, "unread")
+          () => settle(pull, unsaid)
         )
         return
       }
       case "deadline": {
-        setTimeout(() => settle(pull, "unread"), effect.afterMs)
+        setTimeout(() => settle(pull, unsaid), effect.afterMs)
         return
       }
       case "fade": {

@@ -17,13 +17,14 @@ import {
   FAILED_MS,
   RESISTANCE,
 } from "@/lib/pull-refresh/model"
+import type { CheckEnd } from "@/lib/pull-refresh/model"
 import type { PullPorts, PullRuntime } from "@/lib/pull-refresh/runtime"
 import { atTop, createPullRuntime } from "@/lib/pull-refresh/runtime"
 
 const AT = 1_762_000_000_000
 
 type Pending = {
-  resolve: (end?: "read" | "offline") => void
+  resolve: (end?: CheckEnd) => void
   reject: (error: Error) => void
 }
 
@@ -36,8 +37,8 @@ let detach: () => void
 
 const ports = (): PullPorts => ({
   readAgain: () =>
-    new Promise<"read" | "offline">((resolve, reject) =>
-      reads.push({ resolve: (end = "read") => resolve(end), reject })
+    new Promise<CheckEnd>((resolve, reject) =>
+      reads.push({ resolve: (end = { kind: "read" }) => resolve(end), reject })
     ),
   onLeave: (listener) => {
     leave.push(listener)
@@ -130,6 +131,7 @@ describe("a pull from the top of the page", () => {
       pull: 1,
       at: AT,
       offline: false,
+      unread: [],
     })
     drag(FAR)
     expect(reads).toHaveLength(2)

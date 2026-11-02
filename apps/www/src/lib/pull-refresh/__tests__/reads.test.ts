@@ -13,6 +13,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 import type { PullRouter } from "@/lib/pull-refresh/reads"
 import { readsOnScreen } from "@/lib/pull-refresh/reads"
+import { createRefreshers } from "@/lib/pull-refresh/refreshers"
 
 type Navigated = { pathChanged: boolean }
 
@@ -43,6 +44,8 @@ const client = new QueryClient({
   defaultOptions: { queries: { retry: false, staleTime: Infinity } },
 })
 const stops: Array<() => void> = []
+/** No screen has registered anything. */
+const none = createRefreshers()
 
 /** A query a mounted screen shows, until the test ends. */
 function shown(key: string, read: () => Promise<string>): void {
@@ -68,16 +71,18 @@ describe("a pull's reads", () => {
     await vi.waitFor(() => expect(onScreen).toHaveBeenCalledTimes(1))
     const { router, invalidate } = fakeRouter()
 
-    expect(await readsOnScreen(client, router, onlineManager).readAgain()).toBe(
-      "read"
-    )
+    expect(
+      await readsOnScreen(client, router, onlineManager, none).readAgain()
+    ).toEqual({
+      kind: "read",
+    })
 
     expect(onScreen).toHaveBeenCalledTimes(2)
     expect(offScreen).toHaveBeenCalledTimes(1)
     expect(invalidate).toHaveBeenCalledTimes(1)
   })
 
-  it("fails when something on screen could not be read", async () => {
+  it("says this page could not be read when a query on screen fails", async () => {
     let fail = false
     shown("flaky", () =>
       fail ? Promise.reject(new Error("offline")) : Promise.resolve("ok")
@@ -86,9 +91,34 @@ describe("a pull's reads", () => {
     fail = true
     const { router } = fakeRouter()
 
-    await expect(
-      readsOnScreen(client, router, onlineManager).readAgain()
-    ).rejects.toThrow()
+    expect(
+      await readsOnScreen(client, router, onlineManager, none).readAgain()
+    ).toEqual({ kind: "unread", what: ["this page"] })
+  })
+
+  it("names a failed query and a failed refresher together", async () => {
+    let fail = false
+    shown("flaky", () =>
+      fail ? Promise.reject(new Error("down")) : Promise.resolve("ok")
+    )
+    await vi.waitFor(() => expect(client.getQueryData(["flaky"])).toBe("ok"))
+    fail = true
+    const refreshers = createRefreshers()
+    stops.push(
+      refreshers.register({
+        what: "today’s digest",
+        checkAgain: () => Promise.reject(new Error("mailbox down")),
+      }),
+      refreshers.register({
+        what: "the morning run",
+        checkAgain: () => Promise.resolve(),
+      })
+    )
+    const { router } = fakeRouter()
+
+    expect(
+      await readsOnScreen(client, router, onlineManager, refreshers).readAgain()
+    ).toEqual({ kind: "unread", what: ["this page", "today’s digest"] })
   })
 
   it("reads nothing, and says so, with no connection", async () => {
@@ -98,9 +128,11 @@ describe("a pull's reads", () => {
     onlineManager.setOnline(false)
     const { router, invalidate } = fakeRouter()
 
-    expect(await readsOnScreen(client, router, onlineManager).readAgain()).toBe(
-      "offline"
-    )
+    expect(
+      await readsOnScreen(client, router, onlineManager, none).readAgain()
+    ).toEqual({
+      kind: "offline",
+    })
     expect(read).toHaveBeenCalledTimes(1)
     expect(invalidate).not.toHaveBeenCalled()
   })
@@ -122,16 +154,20 @@ describe("a pull's reads", () => {
     onlineManager.setOnline(false)
     const { router } = fakeRouter()
 
-    expect(await readsOnScreen(client, router, sayOnline).readAgain()).toBe(
-      "offline"
-    )
+    expect(
+      await readsOnScreen(client, router, sayOnline, none).readAgain()
+    ).toEqual({
+      kind: "offline",
+    })
     expect(read).toHaveBeenCalledTimes(1)
   })
 
   it("leaves the page only when the route's path changes", () => {
     const { router, navigate } = fakeRouter()
     const left = vi.fn()
-    const stop = readsOnScreen(client, router, onlineManager).onLeave(left)
+    const stop = readsOnScreen(client, router, onlineManager, none).onLeave(
+      left
+    )
     navigate({ pathChanged: false })
     expect(left).not.toHaveBeenCalled()
     navigate({ pathChanged: true })
