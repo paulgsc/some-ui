@@ -8,6 +8,9 @@
  * One run at a time, by structure: asking while one runs only marks that
  * another is wanted once it ends, so a burst of edits is one more run, not
  * one each.
+ *
+ * A pull (PULL3) waits for the run that answers it (`answersPull`), and
+ * counts as having resynced only once that run did (`resynced`).
  */
 import type { HomeExchanged } from "@some-ui/core-utils"
 import { assertNever } from "@some-ui/core-utils"
@@ -39,6 +42,25 @@ export const INITIAL_KEPT: KeptState = {
   running: false,
   again: false,
   last: null,
+}
+
+/**
+ * Whether a run that just ended, leaving `next`, answers a pull: always for
+ * a pull asked while nothing ran, since this run is the one it started; for
+ * one asked while a run was under way (`midRun`), only when no run goes on
+ * after it, since one that goes on is the run the pull asked for.
+ */
+export function answersPull(midRun: boolean, next: KeptState): boolean {
+  return !midRun || !next.running
+}
+
+/**
+ * Whether a run's end leaves this phone in step with home: everything it
+ * had to send went, and home's record was read; or the phone is no longer
+ * paired, so there is no home to be in step with.
+ */
+export function resynced(run: KeptRun): boolean {
+  return run.kind === "synced" || run.kind === "unpaired"
 }
 
 export function stepKept(state: KeptState, event: KeptEvent): KeptState {

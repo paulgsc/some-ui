@@ -51,9 +51,9 @@ import { FailureLog } from "@/components/settings/failure-log"
 import {
   HOW_TONE,
   HowMark,
+  LaneMarks,
   SharingLegend,
   toneOf,
-  WHERE_TONE,
   WhereMark,
 } from "@/components/sharing-marks"
 
@@ -122,17 +122,7 @@ const RowMarkView = ({ mark }: { mark: RowMark }): JSX.Element => {
       />
     )
   }
-  return (
-    <span className="flex shrink-0 items-center gap-1">
-      <WhereMark
-        where={mark.where}
-        className={cn("size-5", WHERE_TONE[mark.where])}
-      />
-      {mark.how === null ? null : (
-        <HowMark how={mark.how} className={cn("size-4", HOW_TONE[mark.how])} />
-      )}
-    </span>
-  )
+  return <LaneMarks where={mark.where} how={mark.how} />
 }
 
 /** Where each row leads: the Android app's pages, as this page is one. */

@@ -2,7 +2,8 @@
  * Settings' readout of what this phone keeps on its paired home (LA15,
  * docs/learner-data-authority.md): one row per record, each kind it holds
  * and how much is on home, what waits on this phone, how the last send went
- * and Send now; what is never sent; and, for voice notes, what this phone
+ * (its marks, `components/sharing-marks`, which a pull moves too, PULL3) and
+ * Send now; what is never sent; and, for voice notes, what this phone
  * can't send and why (LA14). Its words are
  * `lib/home-link/words`'s alone, and it mounts no watch of its own: the app
  * shell drains every lane (`components/device-home-glyph.tsx`), and this
@@ -39,6 +40,7 @@ import { NOTICE_WORDS, noticeSaid } from "@/lib/jobs/words"
 import type { BoardPage, BoardRow } from "@/lib/status-board"
 import { BOARD_WORDS } from "@/lib/status-board/words"
 import { useJobs } from "@/components/jobs/parts"
+import { LaneMarks } from "@/components/sharing-marks"
 
 const NO_COUNTS: LaneCounts = {
   held: {},
@@ -110,7 +112,12 @@ const Row = ({
   const row = laneRow(id, reading, more)
   return (
     <li className="space-y-2 py-3">
-      <p className="text-sm font-medium">{row.name}</p>
+      <div className="flex items-center gap-2">
+        {row.mark.kind === "lane" ? (
+          <LaneMarks where={row.mark.where} how={row.mark.how} />
+        ) : null}
+        <p className="text-sm font-medium">{row.name}</p>
+      </div>
       <p className="text-muted-foreground text-xs" role="status">
         {row.line}
       </p>

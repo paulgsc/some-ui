@@ -14,7 +14,7 @@ import { SyncStoppedError } from "@/lib/device-backend/home-sync"
 import { ForeignCallError } from "@/lib/intent/foreign"
 
 import type { KeptEvent, KeptRun, KeptState } from "./kept-model"
-import { INITIAL_KEPT, stepKept } from "./kept-model"
+import { answersPull, INITIAL_KEPT, stepKept } from "./kept-model"
 import type { Lane } from "./lanes"
 import type { HomeLink } from "./runtime"
 import { noticingBusy, unanswered } from "./runtime"
@@ -37,15 +37,34 @@ export type Kept = {
   subscribe: (listener: () => void) => () => void
   /** Asks for a run: now, or once the one under way ends. */
   want: () => void
+  /**
+   * Asks for a run as `want` does, and resolves to how the run that answers
+   * it ended (`answersPull`).
+   */
+  pull: () => Promise<KeptRun>
 }
+
+/** A pull waiting for its run: `midRun` while a run it did not start is under way. */
+type Waiting = { midRun: boolean; readonly answer: (run: KeptRun) => void }
 
 export function createKept(ports: KeptPorts): Kept {
   let state = INITIAL_KEPT
   const listeners = new Set<() => void>()
+  const pulls = new Set<Waiting>()
   const dispatch = (event: KeptEvent): void => {
     const next = stepKept(state, event)
     if (next === state) return
     state = next
+    if (event.type === "ran") {
+      for (const waiting of pulls) {
+        if (answersPull(waiting.midRun, next)) {
+          pulls.delete(waiting)
+          waiting.answer(event.run)
+        } else {
+          waiting.midRun = false
+        }
+      }
+    }
     for (const listener of listeners) listener()
   }
 
@@ -87,6 +106,12 @@ export function createKept(ports: KeptPorts): Kept {
     }
   }
 
+  const want = (): void => {
+    const idle = !state.running
+    dispatch({ type: "wanted" })
+    if (idle && state.running) void loop()
+  }
+
   return {
     getSnapshot: () => state,
     subscribe(listener): () => void {
@@ -95,11 +120,12 @@ export function createKept(ports: KeptPorts): Kept {
         listeners.delete(listener)
       }
     },
-    want(): void {
-      const idle = !state.running
-      dispatch({ type: "wanted" })
-      if (idle && state.running) void loop()
-    },
+    want,
+    pull: (): Promise<KeptRun> =>
+      new Promise((answer) => {
+        pulls.add({ midRun: state.running, answer })
+        want()
+      }),
   }
 }
 

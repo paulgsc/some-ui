@@ -8,10 +8,13 @@
  * link's `keep` (`./kept-runtime`), and the watch (`./kept-watch`) for as
  * long as `useLaneHome` is mounted (the app shell mounts every lane's,
  * `components/device-home-glyph.tsx`'s `HomeLanes`; aph's once its screens
- * hand its store in, `useHandLane`).
+ * hand its store in, `useHandLane`), and a pull's ask of every lane so
+ * watched (`useHomePull`, `./pull`).
  */
 import { useEffect, useSyncExternalStore } from "react"
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
+
+import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 
 import { homeLink, paired, pairingOf, useHomeLink } from "./index"
 import type { KeptState } from "./kept-model"
@@ -20,6 +23,7 @@ import { createKept, laneExchange } from "./kept-runtime"
 import type { KeptRecord } from "./kept-watch"
 import { askKept, watchKept } from "./kept-watch"
 import type { HomeLinkState } from "./model"
+import { homeRefresher } from "./pull"
 import type { LaneView } from "./words"
 import { laneView, WORDS } from "./words"
 
@@ -72,6 +76,9 @@ type Wired = {
 
 const wired = new Map<LaneId, Wired>()
 
+/** The runtimes of the lanes `useLaneHome` watches now: what a pull asks. */
+const watched = new Set<Kept>()
+
 /** How every run here reaches home: through the link, one at a time. */
 const LINK_PORTS: Omit<KeptPorts, "exchange"> = {
   keep: (run) => homeLink().keep(run),
@@ -101,9 +108,25 @@ function wire(lane: Lane): Wired {
 export function useLaneHome(lane: Lane): KeptState {
   useEffect(() => {
     const { record, sending } = wire(lane)
-    return watchKept(record, sending)
+    const unwatch = watchKept(record, sending)
+    watched.add(sending)
+    return (): void => {
+      watched.delete(sending)
+      unwatch()
+    }
   }, [lane])
   return useLaneRun(lane)
+}
+
+/**
+ * While mounted (the app shell's `HomeLanes`), a pull asks every watched
+ * lane for a run and hears how each ended (`./pull`, PULL3; LA15).
+ */
+export function useHomePull(): void {
+  useEffect(
+    () => screenRefreshers.register(homeRefresher(() => watched, document)),
+    []
+  )
 }
 
 /**

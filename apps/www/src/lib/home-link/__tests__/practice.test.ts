@@ -222,6 +222,7 @@ function watched(): { want: ReturnType<typeof vi.fn>; stop: () => void } {
     getSnapshot: () => INITIAL_KEPT,
     subscribe: () => (): void => undefined,
     want,
+    pull: () => Promise.reject(new Error("the watch never pulls")),
   }
   const stop = watchKept(
     { revision: practiceLane.revision, subscribe: practiceLane.subscribe },

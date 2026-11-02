@@ -1,13 +1,14 @@
 /**
  * When a record this phone drains to home asks for a run (LA15,
  * docs/learner-data-authority.md): only while the phone is paired and the
- * app is in the foreground, at the moments that invariant names. Never on a
- * timer.
+ * app is in the foreground, at the moments that invariant names, a pull
+ * among them (`pullKept`, PULL3). Never on a timer.
  *
  * The one wiring (`./lanes`) hands in each lane's record and its runtime
  * (`./kept-runtime`); this module names no record.
  */
 import { homeLink, paired, pairingOf } from "./index"
+import type { KeptRun } from "./kept-model"
 import type { Kept } from "./kept-runtime"
 
 /** A record as the watch sees it. */
@@ -17,11 +18,24 @@ export type KeptRecord = {
   subscribe: (listener: () => void) => () => void
 }
 
+/** The document as an ask reads it: whether the app is in front. */
+type Front = Pick<Document, "visibilityState">
+
+/** Whether a run may be asked for: the phone is paired and the app is in front. */
+const mayAsk = (doc: Front): boolean =>
+  paired() && doc.visibilityState === "visible"
+
 /** Asks for a run when the phone is paired and the app is in front. */
 export function askKept(home: Kept, doc: Document): void {
-  if (!paired()) return
-  if (doc.visibilityState !== "visible") return
-  home.want()
+  if (mayAsk(doc)) home.want()
+}
+
+/**
+ * A pull's ask (`./pull`): as `askKept`, resolving to how the run that
+ * answers it ended, or to null when nothing was asked.
+ */
+export function pullKept(home: Kept, doc: Front): Promise<KeptRun | null> {
+  return mayAsk(doc) ? home.pull() : Promise.resolve(null)
 }
 
 /**
