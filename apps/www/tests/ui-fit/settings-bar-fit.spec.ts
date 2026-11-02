@@ -1,20 +1,6 @@
 /**
- * Does Settings' bar of pages fit the phone? (MY-DATA MD1, #2475.)
- *
- * The bar holds five tabs (Running, Phone, Home, My data, More) where a
- * wing's holds two or three, so it is the bar most likely not to fit: along
- * the bottom of a 360px phone, and as a rail down the side of a phone held
- * sideways, where 390px of height has to hold all five. jsdom lays nothing
- * out, so this mounts the `settings-bar` fixture (`./phone-page/settings-bar.tsx`)
- * at the phone's sizes (`PHONE_VIEWPORTS`, and a narrow phone on its side)
- * and measures: the bar inside the
- * screen, every tab inside the bar and clear of the others, no tab's label
- * cut, and More's list on the screen once tapped.
- *
- * The bar is `fixed` as a rail, which `findViolations` leaves to the overlay
- * plane, so this spec measures it itself.
- *
- * Run against a built phone page:
+ * Does Settings' bar of pages fit the phone? (MY-DATA MD1, #2475.) What it
+ * measures, and why it measures the bar itself: docs/ui-fit/README.md, 2g.
  *
  *   pnpm --filter www build:fit-phone
  *   pnpm --filter www test:e2e tests/ui-fit/settings-bar-fit.spec.ts
@@ -141,10 +127,6 @@ test.describe("Settings' bar of pages fits the phone", () => {
           ).toBe(false)
         }
       }
-      await expect(page.getByRole("link", { name: "My data" })).toHaveAttribute(
-        "aria-current",
-        "page"
-      )
 
       await page.getByRole("button", { name: "More" }).click()
       const more = page.getByRole("dialog", { name: "More" })

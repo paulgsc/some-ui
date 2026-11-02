@@ -32,9 +32,12 @@ export type Concern = {
   readonly lead: string
 }
 
+/** The desk's root: its pages are under it (`/auth` is the desk's too). */
+export const DESK_ROOT = "/settings"
+
 /** A concern's own page. */
-export const pageOf = (id: ConcernId): `/settings/${ConcernId}` =>
-  `/settings/${id}`
+export const pageOf = (id: ConcernId): `${typeof DESK_ROOT}/${ConcernId}` =>
+  `${DESK_ROOT}/${id}`
 
 const CONCERNS: Readonly<Record<ConcernId, Concern>> = {
   status: {
@@ -113,7 +116,9 @@ export type DeskBar = {
 
 /**
  * The desk's bar in this build: the phone's alone, since the desktop web
- * reaches the pages by their cards. Null where there is none.
+ * reaches the pages by their cards. Null where there is none. Where there is
+ * one, it is the way between the pages, so the phone has no card list:
+ * `/settings` opens on the bar's first page, and a page has no link back.
  */
 export function deskBar(
   build: DeskBuild = { phone: hasAudience("apk"), viewer: VIEWER_BUILD }

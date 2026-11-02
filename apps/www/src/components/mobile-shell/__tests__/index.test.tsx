@@ -93,6 +93,16 @@ describe("MobileNav", () => {
     expect(targetOf("Appearance")).toBe("/settings/appearance")
   })
 
+  it("closes More's list whenever the page changes, Android's back included", () => {
+    const { rerender } = render(<MobileNav pathname="/settings/phone" />)
+    fireEvent.click(screen.getByRole("button", { name: "More" }))
+    expect(screen.getByText("Appearance")).toBeTruthy()
+
+    rerender(<MobileNav pathname="/settings/status" />)
+
+    expect(screen.queryByText("Appearance")).toBeNull()
+  })
+
   it("marks More as where you are on a page it lists", () => {
     render(<MobileNav pathname="/settings/appearance" />)
 

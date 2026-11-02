@@ -8,9 +8,6 @@
  * Each mounts the page its route mounts (`StudioHome`, `NewIdeaPage`), with
  * plain anchors for the route's links, since the page has no router.
  *
- * `settings-bar` is not Studio's: it is Settings' bar of pages, swept by
- * `../settings-bar-fit.spec.ts`.
- *
  * `planted-overflow` and `planted-wide` are not screens. They are the sweep's
  * self-tests: a box of a fixed height around content that cannot fit, and a
  * row wider than the phone, so a harness that silently measures nothing, or

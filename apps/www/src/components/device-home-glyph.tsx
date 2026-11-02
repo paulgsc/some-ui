@@ -24,6 +24,7 @@ import {
 } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
 
+import { pageOf } from "@/lib/front-desk"
 import { pairingOf, useHomeLink } from "@/lib/home-link"
 import { jobsLane } from "@/lib/home-link/jobs"
 import type { Lane } from "@/lib/home-link/lanes"
@@ -123,7 +124,7 @@ const LaneMark = ({ lane }: { lane: Lane }): JSX.Element => {
             <p className="text-muted-foreground text-sm">{words.footnote}</p>
             <SharingLegend className="rounded-2xl border p-3" />
             <Link
-              to="/settings"
+              to={pageOf("home")}
               onClick={() => setOpen(false)}
               className="text-sm font-medium underline"
             >

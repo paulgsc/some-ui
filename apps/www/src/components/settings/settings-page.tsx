@@ -46,11 +46,7 @@ export const ConcernCard = ({ item }: { item: Concern }): JSX.Element => (
   </Link>
 )
 
-/**
- * A concern's page. On the desktop web it leads back to the desk's cards; on
- * the phone the bar of pages (`components/mobile-shell`) is the way between
- * them, and the desk has no list to go back to.
- */
+/** A concern's page, with a link back to the desk's cards where it has them (`deskBar`). */
 export const SettingsPage = ({
   id,
   children,

@@ -74,11 +74,7 @@ async function landingOf(url: string): Promise<string> {
   return router.state.location.pathname
 }
 
-/**
- * The routes on the surface that open another page of it: Settings has no
- * list on the phone and opens on its bar's first page (`lib/front-desk`,
- * MY-DATA MD1).
- */
+/** The routes on the surface that open another page of it (`deskBar`, lib/front-desk). */
 const OPENS_ON: Partial<Record<string, string>> = {
   "/settings": "/settings/status",
 }

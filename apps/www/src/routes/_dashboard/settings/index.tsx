@@ -14,11 +14,7 @@ import {
   SettingsBlock,
 } from "@/components/settings/settings-page"
 
-/**
- * The front desk (lib/wings): a card per concern (`lib/front-desk`). The
- * phone has no card list: its bar of pages is the way between them, so it
- * opens on the bar's first page.
- */
+/** The front desk (lib/wings): a card per concern (`lib/front-desk`, `deskBar`). */
 const FrontDesk = (): JSX.Element => (
   <div className="max-w-xl space-y-4">
     <PageHeading title={FRONT_DESK_WORDS.title} lead={FRONT_DESK_WORDS.lead} />

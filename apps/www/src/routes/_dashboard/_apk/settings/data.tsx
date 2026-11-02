@@ -7,11 +7,7 @@ import {
   SettingsPage,
 } from "@/components/settings/settings-page"
 
-/**
- * My data: what you keep, where, and how it grows (MY-DATA, paulgsc/some-ui#2473).
- * MD1 gives it its tab in the bar; MD2 (#2476) fills it. Until then it says
- * where those things are shown today.
- */
+/** My data (MY-DATA, paulgsc/some-ui#2473). */
 const DataPage = (): JSX.Element => (
   <SettingsPage id="data">
     <SettingsBlock>
