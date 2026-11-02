@@ -134,9 +134,6 @@ export const FRONT_DESK_WORDS = {
   /** The bar's own name, for a screen reader. */
   bar: "Settings pages",
   more: "More",
-  /** My data before its page is filled (MD2, paulgsc/some-ui#2476). */
-  dataEmpty:
-    "Nothing is shown here yet. For now, what this phone keeps is on This phone, and what home keeps is on Home.",
   viewerTitle: "Sample data",
   viewer:
     "You're trying my toolkit on sample data. Nothing you do here is kept: a reload starts over. Only I sign in, on my home network, where my own data stays.",

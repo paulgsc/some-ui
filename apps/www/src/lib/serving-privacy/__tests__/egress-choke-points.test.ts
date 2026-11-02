@@ -28,7 +28,10 @@
  *   `GET /voice-notes/:id/heard`) may call `lib/home-link`. The voice lane
  *   also hands Rust Rounds' notes a way to hear a note from home
  *   (`lib/home-link/voice-audio`, RR6, whose read sends one
- *   `GET /voice-notes/:id/audio` per play), read only by that lane.
+ *   `GET /voice-notes/:id/audio` per play), read only by that lane. My data
+ *   (`lib/my-data`, MD2) asks home what it keeps
+ *   (`lib/home-link/kept-read`, whose read sends one `GET /voice-notes/kept`
+ *   per open or drag down).
  *
  * The last group feeds the checks known-bad sources, so a check that stopped
  * looking cannot stay green.
@@ -93,6 +96,9 @@ const HOME_LINK_CALLERS = new Set([
   // jobs lane's run in the pull of home ended (`pulledLane`), asking nothing
   // of its own.
   "lib/jobs/pull.ts",
+  // LA8 (MY-DATA MD2): My data, which reads the recordings the voice lane
+  // lists and where each is kept, and asks home what it keeps.
+  "lib/my-data/index.ts",
 ])
 
 /**
@@ -116,6 +122,7 @@ const KEEPERS = new Set([
   "lib/home-link/routine.ts",
   "lib/home-link/heard.ts",
   "lib/home-link/voice-audio.ts",
+  "lib/home-link/kept-read.ts",
 ])
 
 /** The routine's read, and the two requests it may send. */
@@ -139,6 +146,10 @@ const HEARD_SENDS = [['"GET"', "heardPath(id)"]]
 /** LA8, RR6: the read of one Rust Rounds note's audio, and the one request it may send. */
 const AUDIO_READ = "lib/home-link/voice-audio.ts"
 const AUDIO_SENDS = [['"GET"', "audioPath(id)"]]
+
+/** LA8, MD2: the read of what home keeps, and the one request it may send. */
+const KEPT_READ = "lib/home-link/kept-read.ts"
+const KEPT_SENDS = [['"GET"', "keptPath(of)"]]
 
 /**
  * LA8, LA13 (MIC2): the voice lane's set-aside marks, and the one request
@@ -550,6 +561,18 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(read(ROUTINE_READ)).toContain("homeLink().keep(")
     expect(read(HEARD_READ)).toContain("homeLink().keep(")
     expect(read(AUDIO_READ)).toContain("homeLink().keep(")
+    expect(read(KEPT_READ)).toContain("homeLink().keep(")
+  })
+
+  it("sends nothing from the read of what home keeps but one GET of /voice-notes/kept, and only My data reads it (MD2)", () => {
+    expect(sendCalls(KEPT_READ, read(KEPT_READ))).toEqual(KEPT_SENDS)
+    expect(read(KEPT_READ)).toContain('"/voice-notes/kept"')
+    const readers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /from "\.\/kept-read"|from "@\/lib\/home-link\/kept-read"/.test(read(f))
+      )
+    expect(readers).toEqual(["lib/my-data/index.ts"])
   })
 
   it("sends nothing from the read of a note's audio but one GET of /voice-notes/:id/audio, and only the voice lane reads it (RR6)", () => {

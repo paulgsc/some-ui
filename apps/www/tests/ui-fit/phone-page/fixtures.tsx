@@ -48,6 +48,7 @@ import {
   SPEAKING,
 } from "@some-ui/voice-capture/testing"
 
+import { MY_DATA_FIXTURES } from "./my-data"
 import { PULL_FIXTURES } from "./pull"
 import { SettingsBar } from "./settings-bar"
 import { FIT_CUTS, FIT_PRIMER_TEXT } from "./studio-seed"
@@ -273,6 +274,8 @@ export const PHONE_FIXTURES = {
   ...PULL_FIXTURES,
   /** Settings' bar of pages, for `../settings-bar-fit.spec.ts`. */
   "settings-bar": SettingsBar,
+  /** My data, its overview and a kind's list (`../my-data-fit.spec.ts`). */
+  ...MY_DATA_FIXTURES,
 } satisfies Record<string, () => JSX.Element>
 
 export type PhoneId = keyof typeof PHONE_FIXTURES

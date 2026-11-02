@@ -371,13 +371,22 @@ and clear of the others, no label cut, and More's list on screen once
 tapped. It sweeps `PHONE_VIEWPORTS` and a narrow phone on its side
 (780x360), the shortest height five tabs on the rail have to fit.
 
+### 2h. `apps/www/tests/ui-fit/my-data-fit.spec.ts` (Playwright, My data)
+
+My data (MY-DATA MD2) is the phone's page of what you keep: three figures,
+three charts, each kind of recording, and a kind's list. The phone page's
+`my-data`, `my-data-unpaired` and `my-data-kind` fixtures draw it with every
+kind and the widest numbers it says, and the spec sweeps each at
+`PHONE_VIEWPORTS` with `findViolations` and a check that nothing is wider
+than the phone, once more with the tables shown.
+
 ### 3. CI
 
 The ui-fit specs ran nowhere until #899. `pnpm test:ui-fit` existed, this
 document called them "the actual gate", and no workflow invoked them — which
 is its own lesson about where guardrails actually live. `pr.yml` now builds
 the panel page and the phone page and runs `panel-fit`, `incident-fit`,
-`studio-fit`, `settings-bar-fit`, `launcher-fit` and `exercise-shell-fit` whenever a PR touches `packages/ui/**`, `packages/some-content-registry/**`,
+`studio-fit`, `settings-bar-fit`, `my-data-fit`, `launcher-fit` and `exercise-shell-fit` whenever a PR touches `packages/ui/**`, `packages/some-content-registry/**`,
 `packages/some-styles/**`, `apps/www/src/**`, `apps/www/tests/ui-fit/**`,
 www's build config (the list is in `pr.yml`), the root `package.json` or
 `pnpm-lock.yaml`.

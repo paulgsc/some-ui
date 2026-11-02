@@ -404,7 +404,13 @@ declared (checked by reading every call site and by the tests named).
   shows a take home is hearing, never while the page is hidden, for at most
   3 minutes from the take's keeping; once home didn't answer, none more for
   that take, nor for any for 5 minutes on that pairing; the owner's
-  direction on #2428, 2026-11-01, and IH1), which are the other callers of
+  direction on #2428, 2026-11-01, and IH1), and My data asking home what it
+  keeps (`lib/my-data`, through `lib/home-link/kept-read`'s `keep`: one
+  `GET /voice-notes/kept`, with `?of=` on a kind's page, each time a My
+  data page opens or is dragged down, sending nothing of the phone's but the
+  kind; while the link is busy with another run, which sends nothing, it
+  asks again a second later, at most ten times in all; #2476, whose page
+  shows home's counts), which are the other callers of
   `lib/home-link`, is started by a tap in the Home server block of Settings
   (`components/settings/device-section.tsx`): the sync (published lessons
   and dramas, read with no credential), pairing (the code only), unpairing,
@@ -434,8 +440,8 @@ declared (checked by reading every call site and by the tests named).
   (`useSessionLetGo`) of the one session it offers, the oldest finished one
   (`oldestRemovable`), started on its press after an offer that says what
   it promises (`LET_GO.room.question`). Nothing on home is deleted.
-  Nothing but the drain, Korean's look and the idea screen's ask for a
-  take's words is sent when the app or Settings
+  Nothing but the drain, Korean's look, the idea screen's ask for a
+  take's words and My data's read is sent when the app or Settings
   opens, on resume, on a timer or on a network change: making the runtime
   and `load` read only the phone's own record. There is no retry; a sync, a
   clear, a let-go or a drain's run ends at Stop,
@@ -469,8 +475,13 @@ declared (checked by reading every call site and by the tests named).
   route but `letSessionGo` (`useDeleteSession`, `sessionsRepository`), or
   that calls `useSessionLetGo`'s `start` (which asks nothing itself) from
   anywhere but those two, or widens the egress test's `LET_GO_CALLERS`; one that calls its `keep` from anywhere but
-  `lib/home-link/lanes.ts` (LA15), `lib/home-link/routine.ts` and
-  `lib/home-link/heard.ts`; one that has `heard.ts` send anything but one
+  `lib/home-link/lanes.ts` (LA15), `lib/home-link/routine.ts`,
+  `lib/home-link/heard.ts`, `lib/home-link/voice-audio.ts` (RR6) and
+  `lib/home-link/kept-read.ts`; one that has
+  `kept-read.ts` send anything but one `GET` of `keptPath(of)` per ask, lets
+  anything but `lib/my-data` read it, or has `lib/my-data` ask it but when a
+  My data page opens or is dragged down, or ask again but while the link is
+  busy, more than ten times in all; one that has `heard.ts` send anything but one
   `GET` of `heardPath(id)` per ask, lets anything but `lib/idea-hearing`
   read it, or has `@some-ui/soundbites`' `stepHearing` ask while the page is
   hidden, more often than `pollMs`, with a second ask out, or past
@@ -482,7 +493,8 @@ declared (checked by reading every call site and by the tests named).
   `setAsidePath(mark)` per mark `due`, with no body, or lets anything but
   the voice run call it; one that
   sends from `createHomeLink` or `load`, or, outside LA15's watch,
-  Korean's look and the idea screen's ask for a take's words, from a
+  Korean's look, the idea screen's ask for a take's words and My data's
+  read, from a
   `useEffect`, a timer, a `visibilitychange` or
   `online` listener; one that retries a failed home request, or queues one
   for later, outside LA15; one that lets the clear start without its
