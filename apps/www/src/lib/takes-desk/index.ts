@@ -312,18 +312,28 @@ function desk<R extends Runtime>(
     },
     letGo: async (holds): Promise<void> => {
       if (options.audioLeaves !== true || back === null) return
+      const audio = shelf.shelf()
+      const stored = await audio.ids()
+      // Marked earlier too, while its audio is still here: a removal that
+      // failed after the mark is done on this pass.
       const going = takes
         .read()
-        .filter((take) => take.waits !== true && holds.has(take.id))
-        .map(({ id }) => id)
+        .filter(
+          (take) =>
+            take.waits !== true &&
+            holds.has(take.id) &&
+            (take.onHome !== true || stored.includes(take.id))
+        )
       if (going.length === 0) return
       // LG1: the mark first, so audio is never gone from a take that still
       // reads as this phone's alone; a mark not stored lets nothing go.
-      if (!takes.markOnHome(going)) return
-      // Marked earlier too: audio a removal left behind goes on this pass.
-      const audio = shelf.shelf()
-      const stored = await audio.ids()
-      const left = going.filter((id) => stored.includes(id))
+      const unmarked = going.filter(({ onHome }) => onHome !== true)
+      if (
+        unmarked.length > 0 &&
+        !takes.markOnHome(unmarked.map(({ id }) => id))
+      )
+        return
+      const left = going.map(({ id }) => id).filter((id) => stored.includes(id))
       if (left.length > 0) await audio.remove(left)
     },
     audioFrom: (next): void => {
