@@ -770,8 +770,14 @@ note (**Talk**), a typed line, or the one-tap answers (worth it, pace,
 energy: one set per session, changed in place). **Reflect** sits in the
 strip above the activity for the whole session (beside the controls on a wide
 screen), and the wrap offers the same panel; each reflection carries its
-session's ID and how far into it it was said. The session keeps running
-while the sheet is open, and a take in progress when it closes is kept.
+session's ID and how far into it it was said. The session waits while the
+sheet is open (#1870): its clock stands still, so reflecting is not counted
+as time played, and closing the sheet plays it on from there (a session the
+person had paused stays paused). Leaving with the sheet open is a stop like
+any other, taken where the session was before the sheet opened. A take in
+progress when the sheet closes is kept. Inside the session, only an activity
+that follows its pause waits too: read-aloud does; LeetType's own clock and
+the drama do not follow it yet.
 
 There is always room for another written one. Each typed line goes to home
 with the drain, one PUT each, and counts as home's only once home answers with

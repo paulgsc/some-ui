@@ -46,7 +46,7 @@ export const LivePlayer = ({
 }: LivePlayerProps): JSX.Element => {
   const configure = useOrchestratorStore((s) => s.configure)
   const start = useOrchestratorStore((s) => s.start)
-  const { state: stop, stops } = useSessionStop(session.id)
+  const { state: stop, stops, hold } = useSessionStop(session.id)
   const closedAt = stop.kind === "closed" ? stop.stop : null
   // Until this mount's configure resolves, the app-wide store still holds
   // the previous session's terminal mode.
@@ -154,6 +154,7 @@ export const LivePlayer = ({
             scenes={session.scenes}
             onPlay={() => void start()}
             onGotToGo={stops.tap}
+            holdSession={hold}
           />
         )}
         <SessionViewport
@@ -167,6 +168,7 @@ export const LivePlayer = ({
           <ReflectButton
             sessionId={session.id}
             atMs={currentTime}
+            hold={hold}
             className="self-center"
           />
         )}

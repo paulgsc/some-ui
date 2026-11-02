@@ -25,6 +25,14 @@ let running = true
 let paused = false
 let remaining = 554_000
 const gotToGo = vi.fn()
+const release = vi.fn()
+const holdSession = vi.fn(() => release)
+
+// The panel's own workings are its tests'; here only the sheet opening and
+// closing around it matters.
+vi.mock("@/components/reflection/reflect-panel", () => ({
+  ReflectPanel: (): null => null,
+}))
 
 // The orchestrator store is faked: this file is about what the chrome renders
 // and which command a tap issues.
@@ -81,6 +89,7 @@ const mount = (): ReturnType<typeof render> =>
         scenes={[]}
         onPlay={vi.fn()}
         onGotToGo={gotToGo}
+        holdSession={holdSession}
       />
     )
   )
@@ -92,6 +101,8 @@ function open(): void {
 }
 
 beforeEach(() => {
+  holdSession.mockClear()
+  release.mockClear()
   running = true
   paused = false
   remaining = 554_000
@@ -129,6 +140,27 @@ describe("SessionChrome", () => {
     expect(screen.queryByRole("button", { name: /^pause$/i })).toBeNull()
     expect(screen.queryByRole("button", { name: /^stop$/i })).toBeNull()
     expect(screen.queryByText(/remaining/i)).toBeNull()
+  })
+
+  it("holds the session while Reflect's sheet is open, and lets go as it closes", () => {
+    mount()
+    expect(holdSession).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole("button", { name: /^reflect$/i }))
+    expect(holdSession).toHaveBeenCalledTimes(1)
+    expect(release).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole("button", { name: /^close$/i }))
+    expect(release).toHaveBeenCalledTimes(1)
+  })
+
+  it("lets go of the session if the strip goes with Reflect's sheet open", () => {
+    const { unmount } = mount()
+    fireEvent.click(screen.getByRole("button", { name: /^reflect$/i }))
+
+    unmount()
+
+    expect(release).toHaveBeenCalledTimes(1)
   })
 
   it("leaves the way out to the nudge's Wrap up in the last minutes", () => {

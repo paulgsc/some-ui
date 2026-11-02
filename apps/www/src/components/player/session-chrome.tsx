@@ -45,6 +45,7 @@ import {
   useOrchestratorStore,
   usePrimaryScene,
 } from "@/lib/orchestrator"
+import type { Release } from "@/lib/session-stop/playback"
 import { isWindingDown } from "@/lib/wind-down"
 import { AudioIndicator } from "@/components/audio/audio-indicator"
 import { ReflectButton } from "@/components/reflection/reflect-button"
@@ -59,6 +60,8 @@ type SessionChromeProps = {
   onPlay: () => void
   /** Stops now and keeps the stop; the player shows what follows. */
   onGotToGo: () => void
+  /** Keeps the session waiting while the reflection drawer is open. */
+  holdSession: () => Release
 }
 
 export const SessionChrome = ({
@@ -66,6 +69,7 @@ export const SessionChrome = ({
   scenes,
   onPlay,
   onGotToGo,
+  holdSession,
 }: SessionChromeProps): JSX.Element => {
   const [open, setOpen] = useState(false)
   const isRunning = useIsRunning()
@@ -120,7 +124,11 @@ export const SessionChrome = ({
           </Button>
         )}
         <WindDownNudge className="min-w-0 flex-1" />
-        <ReflectButton sessionId={sessionId} atMs={currentTime} />
+        <ReflectButton
+          sessionId={sessionId}
+          atMs={currentTime}
+          hold={holdSession}
+        />
         <Button
           type="button"
           variant="ghost"

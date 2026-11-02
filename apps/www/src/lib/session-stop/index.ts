@@ -16,9 +16,9 @@ import { finishedNaturally } from "@/lib/wind-down"
  * mean for a stop. `./runtime` runs its effects over `./playback`; React only
  * forwards events.
  *
- * SS1: a stopped session's clock stays put, each resume goes on from its
- * stop, and the session closes with the time it played
- * (`__tests__/stop-resume.test.ts`).
+ * SS1: a stopped session's clock stays put, and so does one behind the open
+ * reflection drawer; each resume goes on from where it was left, and the
+ * session closes with the time it played (`__tests__/stop-resume.test.ts`).
  */
 
 export const REASONS = [
