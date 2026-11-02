@@ -71,7 +71,12 @@ test.describe("the drag-down indicator fits the phone", () => {
           const box = p.getBoundingClientRect()
           const room = body.getBoundingClientRect()
           return {
-            lines: words.getClientRects().length,
+            // The words are a flex item, one box however many lines it
+            // holds: count them by height.
+            lines: Math.round(
+              words.getBoundingClientRect().height /
+                parseFloat(getComputedStyle(words).lineHeight)
+            ),
             left: box.left,
             right: box.right,
             top: box.top,
