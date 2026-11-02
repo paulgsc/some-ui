@@ -1479,6 +1479,60 @@
             "by": "none"
           },
           "amendments": []
+        },
+        {
+          "id": "AV2",
+          "kind": "OA6",
+          "property": "outcome",
+          "claim": "If home's database is behind the build it runs, you are told within 7 minutes, while home's server runs.",
+          "requirement": "While file_host answers Prometheus, an alert fires when /ready's schema check has read the database as missing migrations this build needs for 5 minutes, unless SQLite itself is down; the check runs every 10 s without anyone asking /ready, and the alert reaches the owner within 7 minutes of the database falling behind, Prometheus's 15 s evaluation and Grafana's 1 min check included, and its delivery is tested. A SQLite that is down is /ready's own unavailable answer, and a file_host that stops answering is FileHostDown's to report.",
+          "bound": {
+            "value": 420,
+            "unit": "seconds",
+            "tighter": "lower"
+          },
+          "verdict": "holds",
+          "conclusion": "While home's server runs, Slack tells you within about 6.5 minutes when the database is behind the build, inside the 7 promised; a database down altogether, or a server that stops answering, is reported elsewhere, and Grafana itself is not yet watched.",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "DatabaseBehindBuild fires when dependency_up{dependency=\"schema\"} has read 0 for 5 minutes, unless sqlite reads 0 too; promtool tests it in CI.",
+              "ref": "server:infra/prometheus/rules/home.yml"
+            },
+            {
+              "class": "structural",
+              "says": "metrics::periodic re-runs every /ready check every 10 s, each bounded at 2 s, so the gauge is fresh without anyone asking /ready.",
+              "ref": "server:apps/servers/file_host/src/metrics/periodic.rs"
+            },
+            {
+              "class": "derived",
+              "says": "Worst case while file_host answers: the gauge reads 0 within 12 s of the database falling behind, the rule fires 300 s later, Prometheus evaluates within 15 s and Grafana's rule runs within 60 s, about 387 s in all. The promtool tests evaluate once a minute, so they do not prove the seconds.",
+              "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
+            },
+            {
+              "class": "structural",
+              "says": "Grafana reads what Prometheus has firing from ALERTS and sends each alert to the Slack contact point, one message per alert.",
+              "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
+            },
+            {
+              "class": "measured",
+              "says": "On home on 2026-10-30, the contact point's test, a Grafana-evaluated error alert and a live FileHostDown from Prometheus (03:46 UTC, through home-alerts.yml's home_watchers route) all reached the owner's Slack.",
+              "ref": "server#525"
+            },
+            {
+              "class": "unknown",
+              "says": "Nothing watches Grafana itself, the one thing that delivers home's alerts.",
+              "ref": "some-ui#2289"
+            }
+          ],
+          "proof": [
+            "server:infra/prometheus/rules/home.test.yml#DatabaseBehindBuild"
+          ],
+          "watch": {
+            "by": "alert",
+            "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
+          },
+          "amendments": []
         }
       ]
     }
