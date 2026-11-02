@@ -3,6 +3,7 @@
  * names the earlier note it refines, in the `ref` home's rule takes.
  */
 import type { Round } from "@rust-rounds/lib/formats"
+import type { Held } from "@rust-rounds/lib/play/held"
 import { NOTHING_HELD } from "@rust-rounds/lib/play/held"
 import { homeRef } from "@rust-rounds/lib/play/home-ref"
 import { lineOf } from "@rust-rounds/lib/play/machine"
@@ -49,9 +50,35 @@ describe("homeRef", () => {
     for (const line of ["", "rust-rounds:", "lens:two-cups", "rust-rounds:a"]) {
       expect(homeRef(line, HELD)).toBeNull()
     }
-    // A card of a round the phone no longer holds is still named.
-    expect(homeRef(lineOf({ round: "gone-01", card: "a" }), HELD)).toBe(
-      "gone-01:a"
+  })
+
+  it("names no card the phone's rounds don't hold, so a refine take never goes without its note", () => {
+    // As when the kept record can't be read and nothing comes back held.
+    const line = lineOf({ round: "borrowing-01", card: "say-again" })
+    expect(homeRef(line, NOTHING_HELD)).toBeNull()
+    expect(homeRef(lineOf({ round: "gone-01", card: "a" }), HELD)).toBeNull()
+    expect(homeRef(line, HELD)).not.toBeNull()
+  })
+
+  it("names no card of a round home holds another version of, so the note waits", () => {
+    const line = lineOf({ round: "borrowing-01", card: "say-again" })
+    const refused = (why: "other-round" | "not-taken"): Held => ({
+      ...HELD,
+      home: { ...HELD.home, refused: [{ id: "borrowing-01", why }] },
+    })
+    expect(homeRef(line, refused("other-round"))).toBeNull()
+    // A round home refused outright holds no other card under its name.
+    expect(homeRef(line, refused("not-taken"))).toBe(
+      "borrowing-01:say-again:9f1c2d3e-0000-4000-8000-000000000001"
     )
+    // Another round's refusal leaves this one's notes named.
+    const other: Held = {
+      ...HELD,
+      home: {
+        ...HELD.home,
+        refused: [{ id: "lifetimes-01", why: "other-round" }],
+      },
+    }
+    expect(homeRef(line, other)).not.toBeNull()
   })
 })

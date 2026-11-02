@@ -97,6 +97,31 @@ describe("the three schemas", () => {
     expect(refusedAt(withCards(READ, same))).toBeNull()
   })
 
+  it("refuse a round or note id longer than home keeps (64 characters)", () => {
+    const long = (n: number): string => "a".repeat(n)
+    expect(refusedAt({ ...INDEXING_01, id: long(64) })).toBeNull()
+    expect(refusedAt({ ...INDEXING_01, id: long(65) })).toEqual(["id"])
+    expect(refusedAt(withFirstCard({ ...READ, id: long(65) }))).toEqual([
+      "cards",
+      0,
+      "id",
+    ])
+    const refine = (note: string): Card => ({
+      kind: "refine",
+      id: "e",
+      note,
+      nudge: "rustc names a trait here.",
+      aim: "understand",
+      say: "Say which trait is missing.",
+    })
+    expect(refusedAt(withCards(READ, refine(long(64))))).toBeNull()
+    expect(refusedAt(withCards(READ, refine(long(65))))).toEqual([
+      "cards",
+      1,
+      "note",
+    ])
+  })
+
   it("refuse an edge that is both open and smooth", () => {
     const [concept] = INDEXING_01_NOTES.concepts
     const both = {

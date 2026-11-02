@@ -137,7 +137,7 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
       {
         kind: "voice",
         label:
-          "Spoken reflections, soundbites, lens and LeetType takes, Jobs, game and scene notes, Studio takes",
+          "Spoken reflections, soundbites, lens and LeetType takes, Jobs, game, scene and Rust Rounds notes, Studio takes",
         one: "voice note",
       },
     ],

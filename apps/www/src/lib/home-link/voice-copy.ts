@@ -312,7 +312,8 @@ export function leetypeNote(take: LeetypeTake): VoiceOut {
 
 /**
  * A Rust Rounds note, as home is told it: by `ref`, what its line names
- * (`rustRoundRef`); null for a line no card makes, which goes nowhere.
+ * (`rustRoundRef`); null while it names no card truly, and the note
+ * waits on this phone.
  */
 export function rustRoundNote(
   take: RustRoundTake,

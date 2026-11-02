@@ -85,7 +85,8 @@ A round is one object:
 
 - `schema`: always `"some-ui.rust-round/1"`.
 - `id`: the round's id, `<concept>-NN`, such as `indexing-02`. Never reuse an
-  id. Ids are lower-case letters, digits and single hyphens.
+  id. Ids are lower-case letters, digits and single hyphens, at most 64
+  characters.
 - `by`: which tutor wrote it, such as `claude-routine`, `chatgpt` or
   `claude-chat`.
 - `concept`: the concept it works on, such as `indexing` or `borrowing`.
@@ -132,7 +133,7 @@ Every card has a `kind` and an `id`, unique within the round, such as `a`.
 
 **A `refine` card** brings back an earlier voice note to say again:
 
-- `note`: the id of a voice note from the log.
+- `note`: the id of a voice note from the log (at most 64 characters).
 - `nudge`: one or two sentences toward rustc's terms, without saying the
   owner was wrong, such as "rustc's message names a trait. Which one?"
 - `aim`: the Bloom step the new take reaches for: `remember`, `understand`,
