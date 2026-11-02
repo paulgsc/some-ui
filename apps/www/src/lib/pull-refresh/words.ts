@@ -38,6 +38,8 @@ export const PULL_WORDS = {
   done: (when: string): string => `Up to date at ${when}`,
   /** What the queries and loaders of the page in view are, when one fails. */
   page: "this page",
+  /** The phone's room, as Settings and the phone-full offer show it (PULL4). */
+  room: "room on this phone",
   /** `unread` names what could not be read; empty when nothing said what. */
   failed: (unread: ReadonlyArray<string>): string =>
     unread.length === 0

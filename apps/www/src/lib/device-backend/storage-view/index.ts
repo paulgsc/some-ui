@@ -23,19 +23,31 @@ export type DeviceStorageView = {
 let snapshot: DeviceStorageView | null = null
 let full: DeviceStorageView["full"] = null
 const listeners = new Set<() => void>()
+/** The newest read started: an older one that lands after it is stale. */
+let latest = 0
 
-async function read(): Promise<void> {
+/** Reads the phone's storage again: whether it could. */
+async function read(): Promise<boolean> {
+  const mine = ++latest
+  let read = false
   try {
     const { context } = await deviceBackend()
-    snapshot = {
-      use: await storageUse(context.db, context.budget),
-      notice: await readPruneNotice(context.db),
-      full,
-    }
+    const use = await storageUse(context.db, context.budget)
+    const notice = await readPruneNotice(context.db)
+    // A read started since saw the room after this one did (a notice
+    // dismissed, say), so this answer is left out.
+    if (mine === latest) snapshot = { use, notice, full }
+    read = true
   } catch {
     // Ignored: not shown this time; the next refresh tries again.
   }
   for (const listener of listeners) listener()
+  return read
+}
+
+/** Rejects when `read` could not, as a pull's refresher says it. */
+const orThrow = (ok: boolean): void => {
+  if (!ok) throw new Error("this phone's storage could not be read")
 }
 
 onSaveRefused((spare) => {
@@ -61,12 +73,16 @@ export const deviceStorage = {
     return snapshot
   },
   refresh(): Promise<void> {
-    return read()
+    return read().then(() => undefined)
+  },
+  /** A pull's read (`lib/pull-refresh/refreshers`): rejects when it could not read. */
+  check(): Promise<void> {
+    return read().then(orThrow)
   },
   /** Room was made, or the person declined: stop asking until the next refusal. */
   settle(): Promise<void> {
     full = null
-    return read()
+    return read().then(() => undefined)
   },
   async dismiss(shown: PruneNotice): Promise<void> {
     try {
