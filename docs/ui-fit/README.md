@@ -360,13 +360,24 @@ clean at 360px until `findViolations` read the body for its intent. A
 (a page scrolls down, never across), and the page plants one of each
 (`planted-overflow`, `planted-wide`) to prove the sweep sees them.
 
+### 2g. `apps/www/tests/ui-fit/settings-bar-fit.spec.ts` (Playwright, Settings' bar of pages)
+
+On the phone, Settings is reached by a bar of its pages (MY-DATA MD1): five
+tabs where a wing's bar holds two or three, along the bottom upright and as
+a rail on the phone's side. The rail is `fixed`, which `findViolations`
+leaves to the overlay plane, so this spec measures the bar itself on the
+phone page's `settings-bar` fixture: inside the screen, every tab inside it
+and clear of the others, no label cut, and More's list on screen once
+tapped. It sweeps `PHONE_VIEWPORTS` and a narrow phone on its side
+(780x360), the shortest height five tabs on the rail have to fit.
+
 ### 3. CI
 
 The ui-fit specs ran nowhere until #899. `pnpm test:ui-fit` existed, this
 document called them "the actual gate", and no workflow invoked them — which
 is its own lesson about where guardrails actually live. `pr.yml` now builds
 the panel page and the phone page and runs `panel-fit`, `incident-fit`,
-`studio-fit`, `launcher-fit` and `exercise-shell-fit` whenever a PR touches `packages/ui/**`, `packages/some-content-registry/**`,
+`studio-fit`, `settings-bar-fit`, `launcher-fit` and `exercise-shell-fit` whenever a PR touches `packages/ui/**`, `packages/some-content-registry/**`,
 `packages/some-styles/**`, `apps/www/src/**`, `apps/www/tests/ui-fit/**`,
 www's build config (the list is in `pr.yml`), the root `package.json` or
 `pnpm-lock.yaml`.

@@ -11,7 +11,7 @@ import { Link } from "@tanstack/react-router"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 
 import type { Concern, ConcernId } from "@/lib/front-desk"
-import { concern, FRONT_DESK_WORDS, pageOf } from "@/lib/front-desk"
+import { concern, deskBar, FRONT_DESK_WORDS, pageOf } from "@/lib/front-desk"
 
 export const PageHeading = ({
   title,
@@ -46,6 +46,11 @@ export const ConcernCard = ({ item }: { item: Concern }): JSX.Element => (
   </Link>
 )
 
+/**
+ * A concern's page. On the desktop web it leads back to the desk's cards; on
+ * the phone the bar of pages (`components/mobile-shell`) is the way between
+ * them, and the desk has no list to go back to.
+ */
 export const SettingsPage = ({
   id,
   children,
@@ -54,13 +59,15 @@ export const SettingsPage = ({
   children: ReactNode
 }): JSX.Element => (
   <div className="max-w-xl space-y-4">
-    <Link
-      to="/settings"
-      className="text-muted-foreground hover:text-foreground -ml-1 inline-flex items-center gap-1 text-sm"
-    >
-      <ChevronLeft className="size-4" aria-hidden />
-      {FRONT_DESK_WORDS.title}
-    </Link>
+    {deskBar() === null ? (
+      <Link
+        to="/settings"
+        className="text-muted-foreground hover:text-foreground -ml-1 inline-flex items-center gap-1 text-sm"
+      >
+        <ChevronLeft className="size-4" aria-hidden />
+        {FRONT_DESK_WORDS.title}
+      </Link>
+    ) : null}
     <PageHeading title={concern(id).title} lead={concern(id).lead} />
     {children}
   </div>
