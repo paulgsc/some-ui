@@ -607,11 +607,7 @@ function pick(
   }
 }
 
-/**
- * Where a revealed pick goes on (LTY2, canon Def. 9.4, Rem. 11.11): a slow
- * correct pick to `onHesitate`, if authored; every other pick, a slow
- * incorrect one included, to its option's own `next`.
- */
+/** Where a revealed pick goes on: LTY2 (canon Def. 9.4, Rem. 11.11). */
 function onward(screen: ChoiceScreen, reveal: Reveal): string | undefined {
   const option = screen.options[reveal.option]
   const hesitated = reveal.answer.response === "correct" && reveal.answer.slow

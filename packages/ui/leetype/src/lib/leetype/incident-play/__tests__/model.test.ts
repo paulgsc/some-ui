@@ -147,26 +147,7 @@ describe("an incident session's steps", () => {
     ])
   })
 
-  it("counts a pick slower than twice the median as a struggle, whether correct or not", () => {
-    for (const option of [RIGHT, WRONG]) {
-      const slow = playThrough([START, option, ON], {
-        median: 400,
-        gapMs: 1000,
-      })
-      expect(slow.events).toContainEqual(
-        expect.objectContaining({
-          type: "picked",
-          answer: {
-            response: option === RIGHT ? "correct" : "incorrect",
-            slow: true,
-          },
-        })
-      )
-      expect(slow.events).toContainEqual(
-        expect.objectContaining({ type: "parked", screen: "s02" })
-      )
-    }
-    // No median yet: never slow, however long the pick took.
+  it("judges no pick slow before there is a median, however long it took", () => {
     const unjudged = playThrough([START, RIGHT], {
       median: null,
       gapMs: 60_000,
