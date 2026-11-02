@@ -60,7 +60,7 @@ const GLYPHS: Partial<Record<string, Glyph>> = {
 }
 
 /** One tab of a bar: a room of the wing, or a page of the desk. */
-export type BarTab = {
+type BarTab = {
   readonly id: string
   readonly label: string
   readonly to: keyof FileRoutesByTo
