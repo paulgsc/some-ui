@@ -70,14 +70,14 @@ describe("a voice note", () => {
     })
   })
 
-  it("discards a microphone that opens after the person left", () => {
+  it("lets go of a microphone still opening when the person leaves, and of one that opens anyway", () => {
     const { state, effects } = run([
       { type: "start", atMs: null },
       { type: "left" },
       { type: "micOpened", at: 0 },
     ])
-    expect(state).toEqual({ kind: "idle", last: null })
-    expect(effects).toEqual(["openMic", "discardTake"])
+    expect(state).toEqual({ kind: "idle", last: "early" })
+    expect(effects).toEqual(["openMic", "discardTake", "discardTake"])
   })
 
   it("says why the microphone did not open, and can try again", () => {

@@ -38,6 +38,7 @@ import {
 } from "react"
 import { assertNever, cn, dayOf } from "@some-ui/core-utils"
 import { Button, KeepOnShelf, KeptShelf } from "@some-ui/shared"
+import { AskScene } from "@topik/components/topik/handheld/ask-scene"
 import { CastSheet } from "@topik/components/topik/handheld/cast-sheet"
 import { DramaLesson } from "@topik/components/topik/handheld/drama-lesson"
 import { GenerateLesson } from "@topik/components/topik/handheld/generate-lesson"
@@ -48,7 +49,6 @@ import {
   RoutineStatus,
   useHeldRuns,
 } from "@topik/components/topik/handheld/routine-status"
-import { SharePrompt } from "@topik/components/topik/handheld/share-prompt"
 import { ReadAloudScreen } from "@topik/components/topik/read-aloud/read-aloud-screen"
 import { useSessionConfig } from "@topik/lib/topik/adapter/context/session-config-context"
 import { useLessonPrompt } from "@topik/lib/topik/adapter/hooks/use-lesson-prompt"
@@ -190,7 +190,7 @@ export const HandheldLesson = ({
     treeFeed,
     routineFeed,
     metadataRepository,
-    share,
+    sceneAsk,
     sceneVoice,
     sceneFileHint,
     wordSetHint,
@@ -580,13 +580,13 @@ export const HandheldLesson = ({
           }
           last={last}
           ending={
-            share && (
-              <SharePrompt
-                share={share}
+            sceneAsk && (
+              <AskScene
+                asks={sceneAsk}
                 label="다음 화 쓰기"
                 labelLang="ko"
                 prompt={() => lessonPrompt.prompt({ level: heldLevel })}
-                onShared={lessonPrompt.handedOff}
+                onAsked={lessonPrompt.handedOff}
               />
             )
           }
@@ -652,7 +652,7 @@ export const HandheldLesson = ({
           buildPrompt={lessonPrompt.prompt}
           onPromptHandedOff={lessonPrompt.handedOff}
           onStartTree={startTree}
-          share={share}
+          sceneAsk={sceneAsk}
           sceneVoice={sceneVoice}
           short={short}
           kept={

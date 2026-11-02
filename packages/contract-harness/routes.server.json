@@ -424,6 +424,20 @@
       "module": "routine"
     },
     {
+      "method": "PUT",
+      "path": "/routine/prompts/:stamp",
+      "full_path": "/api/v1/routine/prompts/:stamp",
+      "versioned": true,
+      "module": "routine"
+    },
+    {
+      "method": "PUT",
+      "path": "/routine/reflections/:id",
+      "full_path": "/api/v1/routine/reflections/:id",
+      "versioned": true,
+      "module": "routine"
+    },
+    {
       "method": "GET",
       "path": "/rust-rounds",
       "full_path": "/api/v1/rust-rounds",
@@ -571,6 +585,13 @@
       "module": "studio_log"
     },
     {
+      "method": "PUT",
+      "path": "/study-notes/:kind/:id",
+      "full_path": "/api/v1/study-notes/:kind/:id",
+      "versioned": true,
+      "module": "study_notes"
+    },
+    {
       "method": "GET",
       "path": "/subjects/me/stats",
       "full_path": "/api/v1/subjects/me/stats",
@@ -672,6 +693,27 @@
       "method": "PUT",
       "path": "/voice-notes/:id",
       "full_path": "/api/v1/voice-notes/:id",
+      "versioned": true,
+      "module": "voice"
+    },
+    {
+      "method": "GET",
+      "path": "/voice-notes/:id/heard",
+      "full_path": "/api/v1/voice-notes/:id/heard",
+      "versioned": true,
+      "module": "voice"
+    },
+    {
+      "method": "PUT",
+      "path": "/voice-notes/:id/set-aside",
+      "full_path": "/api/v1/voice-notes/:id/set-aside",
+      "versioned": true,
+      "module": "voice"
+    },
+    {
+      "method": "GET",
+      "path": "/voice-notes/on-drive",
+      "full_path": "/api/v1/voice-notes/on-drive",
       "versioned": true,
       "module": "voice"
     },

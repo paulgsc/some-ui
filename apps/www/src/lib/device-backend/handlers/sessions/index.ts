@@ -9,6 +9,9 @@
  * - a create may name its id (`is_session_id`): one that is not a session's
  *   is a `422`, and one already held answers with that session unchanged,
  *   so the same create sent again makes one session;
+ * - a create or a patch may send `createdAt` (`created_at_of`): an RFC 3339
+ *   time at most five minutes past now dates the session, kept in UTC;
+ *   anything else is a `422`;
  * - `DELETE /sessions/:id` answers `{ removed }` and never `404`;
  * - `layout` has three states: absent (SQL `NULL`), explicit `null` (the
  *   text `'null'`), or a tree;
@@ -195,6 +198,82 @@ async function insertIfAbsent(
   return changes > 0 ? session : find(db, session.id)
 }
 
+/** How far past now a sent `createdAt` may be (`CREATED_AT_AHEAD`). */
+const CREATED_AT_AHEAD_MS = 5 * 60_000
+
+/** RFC 3339's shape: a date, a time and an offset (`Z` or `±hh:mm`). */
+const RFC3339 =
+  /^(\d{4})-(\d{2})-(\d{2})[Tt ](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?([Zz]|[+-]\d{2}:\d{2})$/
+
+/**
+ * `sent` as an instant, as chrono's `parse_from_rfc3339` (file_host's) reads
+ * it, or `NaN`. `Date.parse` rolls an impossible date or hour over
+ * (`2026-02-30`, `24:00:00`), so its fields must read back as they were
+ * sent. A leap second (`23:59:60`), which chrono takes, is `NaN` here.
+ */
+function instantOf(sent: string): number {
+  const parts = RFC3339.exec(sent)
+  if (parts === null) return Number.NaN
+  const at = Date.parse(sent)
+  if (Number.isNaN(at)) return Number.NaN
+  const [, year, month, day, hour, minute, second, zone] = parts
+  const offset =
+    zone.toUpperCase() === "Z"
+      ? 0
+      : (zone.startsWith("-") ? -1 : 1) *
+        (Number(zone.slice(1, 3)) * 60 + Number(zone.slice(4, 6))) *
+        60_000
+  const local = new Date(at + offset)
+  const fields = [
+    local.getUTCFullYear(),
+    local.getUTCMonth() + 1,
+    local.getUTCDate(),
+    local.getUTCHours(),
+    local.getUTCMinutes(),
+    local.getUTCSeconds(),
+  ]
+  const asSent = [year, month, day, hour, minute, second].map(Number)
+  return fields.every((field, index) => field === asSent[index])
+    ? at
+    : Number.NaN
+}
+
+/**
+ * A sent `createdAt` (`created_at_of`): absent or `null` is `undefined`, a
+ * time is it in UTC, and anything else the refusal to answer with.
+ */
+function createdAtField(
+  body: Record<string, unknown>,
+  nowMs: number
+): { ok: true; value: string | undefined } | { ok: false; response: Response } {
+  const sent = body.createdAt ?? undefined
+  if (sent === undefined) return { ok: true, value: undefined }
+  if (typeof sent !== "string") {
+    return {
+      ok: false,
+      response: shapeRejected(
+        "invalid type for `createdAt`, expected a string"
+      ),
+    }
+  }
+  const at = instantOf(sent)
+  if (Number.isNaN(at)) {
+    return {
+      ok: false,
+      response: unprocessable({ createdAt: ["is an RFC 3339 time"] }),
+    }
+  }
+  if (at > nowMs + CREATED_AT_AHEAD_MS) {
+    return {
+      ok: false,
+      response: unprocessable({
+        createdAt: ["is no more than five minutes past home's clock"],
+      }),
+    }
+  }
+  return { ok: true, value: rfc3339(at) }
+}
+
 /** Absent -> `undefined`; explicit `null` -> `"null"`; a tree -> its JSON. */
 function layoutField(body: Record<string, unknown>): string | null | undefined {
   if (!("layout" in body)) return undefined
@@ -226,9 +305,12 @@ export async function removeUnchanged(
 }
 
 /**
- * Whether the phone may let its copy of `session` go, to make room or once
- * home or an archive holds it: finished, and not one the study card and
- * nudge read as studied today. Unfinished work always stays.
+ * Whether the phone may let its copy of `session` go on its own, to make
+ * room or once home holds it (the clear, the phone-full offer): finished,
+ * and not one the study card and nudge read as studied today. Unfinished
+ * work stays through those. The study list's "Let it go" is the exception:
+ * the person names the session, of any status, and it leaves once home
+ * holds it (`lib/home-link/study-let-go`).
  */
 export function mayLeavePhone(
   session: Pick<SessionRecord, "status" | "startedAt" | "completedAt">,
@@ -332,7 +414,10 @@ export const sessionRoutes: ReadonlyArray<DeviceRoute> = [
           id: ["is session- and 16 to 56 letters, digits, - and _"],
         })
       }
-      const stamp = rfc3339(now())
+      const clock = now()
+      const stamp = rfc3339(clock)
+      const createdAt = createdAtField(input, clock)
+      if (!createdAt.ok) return createdAt.response
       const layout = layoutField(input)
       const session: Stored = {
         id: named ?? newSessionId(),
@@ -341,7 +426,7 @@ export const sessionRoutes: ReadonlyArray<DeviceRoute> = [
         origin: "user",
         layoutMode: input.layoutMode,
         totalDurationMs: totalDurationOf(scenes),
-        createdAt: stamp,
+        createdAt: createdAt.value ?? stamp,
         updatedAt: stamp,
         startedAt: null,
         completedAt: null,
@@ -384,10 +469,13 @@ export const sessionRoutes: ReadonlyArray<DeviceRoute> = [
       ) {
         return shapeRejected("unknown `layoutMode`")
       }
+      const clock = now()
+      const createdAt = createdAtField(patch, clock)
+      if (!createdAt.ok) return createdAt.response
       return budgetedAnswer(db, budget, params.id ?? null, async () => {
         const current = await find(db, params.id ?? "")
         if (current === null) return notFound()
-        const next: Stored = { ...current, updatedAt: rfc3339(now()) }
+        const next: Stored = { ...current, updatedAt: rfc3339(clock) }
         if (typeof patch.name === "string") next.name = patch.name
         if (typeof patch.status === "string") next.status = patch.status
         if (patch.origin === "user" || patch.origin === "system") {
@@ -418,6 +506,13 @@ export const sessionRoutes: ReadonlyArray<DeviceRoute> = [
           next.finalElapsedMs = patch.finalElapsedMs
         }
         await write(db, next)
+        // `write` never moves `created_at`, as `upsert` does not; this does.
+        if (createdAt.value !== undefined) {
+          await db.run(
+            "UPDATE sessions SET created_at = ? WHERE id = ? AND subject_id = ?",
+            [createdAt.value, next.id, DEVICE_SUBJECT]
+          )
+        }
         const stored = await find(db, next.id)
         return stored === null ? notFound() : json(200, toWire(stored))
       })

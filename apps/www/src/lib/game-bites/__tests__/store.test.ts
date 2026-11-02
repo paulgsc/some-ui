@@ -8,7 +8,7 @@
 import type { KeyedStorage } from "@some-ui/core-utils"
 import type { KeptBite } from "@some-ui/game-week"
 import type { BlobShelf } from "@some-ui/voice-capture"
-import { ShelfFullError } from "@some-ui/voice-capture"
+import { memoryShelf } from "@some-ui/voice-capture/testing"
 import { describe, expect, it } from "vitest"
 
 import { isReady, parseGameBites, stepGameBites } from "@/lib/game-bites/model"
@@ -49,24 +49,6 @@ function memoryStorage(refuse = false): KeyedStorage & {
       map.set(key, value)
     },
     removeItem: (key): void => void map.delete(key),
-  }
-}
-
-function memoryShelf(full = false): BlobShelf & { blobs: Map<string, Blob> } {
-  const blobs = new Map<string, Blob>()
-  return {
-    blobs,
-    put: (id, blob): Promise<void> => {
-      if (full) return Promise.reject(new ShelfFullError())
-      blobs.set(id, blob)
-      return Promise.resolve()
-    },
-    get: (id): Promise<Blob | null> => Promise.resolve(blobs.get(id) ?? null),
-    remove: (ids): Promise<void> => {
-      for (const id of ids) blobs.delete(id)
-      return Promise.resolve()
-    },
-    ids: (): Promise<Array<string>> => Promise.resolve([...blobs.keys()]),
   }
 }
 
@@ -190,12 +172,12 @@ describe("createGameBites", () => {
       ...world().ports,
     })
     await expect(noRecord.keep(bite("b1"), new Blob(["x"]))).rejects.toThrow()
-    expect(refusing.blobs.size).toBe(0)
+    await expect(refusing.ids()).resolves.toEqual([])
     expect(noRecord.unkept()).toBe(1)
 
     const full = createGameBites({
       storage: memoryStorage(),
-      shelf: memoryShelf(true),
+      shelf: memoryShelf({ full: true }),
       ...world().ports,
     })
     await expect(full.keep(bite("b1"), new Blob(["x"]))).rejects.toThrow()
@@ -222,7 +204,7 @@ describe("createGameBites", () => {
       expect(store.unkept()).toBe(0)
       expect(store.isKept("b1")).toBe(true)
       expect(store.getSnapshot().map(({ id }) => id)).toEqual(["b1"])
-      expect(shelf.blobs.has("b1")).toBe(true)
+      await expect(shelf.get("b1")).resolves.toBeInstanceOf(Blob)
       expect(heard).toBeGreaterThan(0)
     }
   })
@@ -335,7 +317,7 @@ describe("createGameBites", () => {
     const undone = store.undo("b1")
     await Promise.all([kept, undone])
     expect(store.getSnapshot()).toEqual([])
-    expect(shelf.blobs.size).toBe(0)
+    expect(await shelf.ids()).toEqual([])
   })
 
   it("holds a bite back until released, then never lets it go", async () => {
@@ -369,7 +351,7 @@ describe("createGameBites", () => {
       { ...bite("b1"), holdUntil: T0, homeSince: T0 + 1 },
       { ...bite("b2"), holdUntil: T0 },
     ])
-    expect([...shelf.blobs.keys()]).toEqual(["b2"])
+    expect(await shelf.ids()).toEqual(["b2"])
     expect(store.ready().map(({ id }) => id)).toEqual(["b2"])
     // A later answer keeps the first time; a later launch reads it back.
     await clock.advance(1)
@@ -380,7 +362,7 @@ describe("createGameBites", () => {
 
   it("lets nothing go that home doesn't hold, that is still held back, or that the record doesn't name", async () => {
     const shelf = memoryShelf()
-    shelf.blobs.set("b9", new Blob(["unnamed"]))
+    await shelf.put("b9", new Blob(["unnamed"]))
     const store = createGameBites({
       storage: memoryStorage(),
       shelf,
@@ -392,7 +374,7 @@ describe("createGameBites", () => {
     // b1 is still held back for Undo; b9 is on the shelf, named by no record.
     await store.letGo(new Set(["b1", "b9"]))
     expect(store.getSnapshot().some((b) => "homeSince" in b)).toBe(false)
-    expect([...shelf.blobs.keys()].sort()).toEqual(["b1", "b2", "b9"])
+    expect((await shelf.ids()).sort()).toEqual(["b1", "b2", "b9"])
   })
 
   it("lets the audio go at the next call when the first removal failed", async () => {
@@ -410,10 +392,10 @@ describe("createGameBites", () => {
     await store.release("b1")
     await clock.advance(1)
     await store.letGo(new Set(["b1"]))
-    expect([...shelf.blobs.keys()]).toEqual(["b1"])
+    expect(await shelf.ids()).toEqual(["b1"])
     failing = false
     await store.letGo(new Set(["b1"]))
-    expect([...shelf.blobs.keys()]).toEqual([])
+    expect(await shelf.ids()).toEqual([])
   })
 
   it("keeps the record of a bite home holds, even if the clock goes back", async () => {
@@ -439,10 +421,10 @@ describe("createGameBites", () => {
     const storage = memoryStorage()
     storage.map.set("some-ui:game-bites", "[{broken")
     const shelf = memoryShelf()
-    shelf.blobs.set("b1", new Blob(["said"]))
+    await shelf.put("b1", new Blob(["said"]))
     const store = createGameBites({ storage, shelf, ...world().ports })
     await store.letGo(new Set(["b1"]))
-    expect([...shelf.blobs.keys()]).toEqual(["b1"])
+    expect(await shelf.ids()).toEqual(["b1"])
   })
 
   it("lets no audio go when storage won't keep the record saying home holds it", async () => {
@@ -455,7 +437,7 @@ describe("createGameBites", () => {
     await clock.advance(1)
     storage.refuse = true
     await store.letGo(new Set(["b1"]))
-    expect([...shelf.blobs.keys()]).toEqual(["b1"])
+    expect(await shelf.ids()).toEqual(["b1"])
     expect(store.getSnapshot()[0]).not.toHaveProperty("homeSince")
   })
 
@@ -517,14 +499,14 @@ describe("createGameBites", () => {
     ]
     for (const [how, storage] of opens) {
       const shelf = memoryShelf()
-      shelf.blobs.set("b1", new Blob(["said"]))
+      await shelf.put("b1", new Blob(["said"]))
       const store = createGameBites({
         storage: storage(),
         shelf,
         ...world().ports,
       })
       await store.release("b9").catch(() => undefined)
-      expect([...shelf.blobs.keys()], how).toEqual(["b1"])
+      expect(await shelf.ids(), how).toEqual(["b1"])
     }
   })
 
@@ -532,12 +514,12 @@ describe("createGameBites", () => {
     const storage = memoryStorage()
     const shelf = memoryShelf()
     storage.map.set("some-ui:game-bites.keeping", JSON.stringify([bite("b1")]))
-    shelf.blobs.set("b1", new Blob(["said"]))
-    shelf.blobs.set("named-by-nothing", new Blob(["kept anyway"]))
+    await shelf.put("b1", new Blob(["said"]))
+    await shelf.put("named-by-nothing", new Blob(["kept anyway"]))
     const store = createGameBites({ storage, shelf, ...world().ports })
     await store.release("b1")
     expect(store.getSnapshot().map(({ id }) => id)).toEqual(["b1"])
-    expect([...shelf.blobs.keys()]).toEqual(["b1", "named-by-nothing"])
+    expect(await shelf.ids()).toEqual(["b1", "named-by-nothing"])
     expect(storage.map.get("some-ui:game-bites.keeping")).toBe("[]")
   })
 })

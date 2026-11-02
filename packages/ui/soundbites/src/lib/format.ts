@@ -2,12 +2,6 @@ import type { SoundbiteContext } from "./types"
 
 const DAY_MS = 86_400_000
 
-/** `0:07`, `1:00`. */
-export function formatDuration(ms: number): string {
-  const seconds = Math.max(0, Math.round(ms / 1_000))
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`
-}
-
 function startOfDay(date: Date): number {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
 }

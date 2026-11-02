@@ -8,12 +8,7 @@
  * at its first `quietMs`; without one, the bite runs to Done or the minute.
  */
 
-/**
- * Below this the microphone hears no talking. The meter stretches speech
- * (about 0.05 to 0.2 RMS) by four, so talking reads 0.2 and up; a room's
- * hum and a TV across it read lower.
- */
-const QUIET_LEVEL = 0.12
+import { HEARD_FLOOR } from "@some-ui/voice-capture"
 
 export type Quiet = {
   /** Whether talking has been heard yet in this bite. */
@@ -26,7 +21,7 @@ export const NOT_HEARD: Quiet = { heard: false, since: null }
 
 /** `quiet` after one reading of the level at `now`. */
 export function hear(quiet: Quiet, level: number, now: number): Quiet {
-  if (level >= QUIET_LEVEL) return { heard: true, since: null }
+  if (level >= HEARD_FLOOR) return { heard: true, since: null }
   if (!quiet.heard) return quiet
   return { heard: true, since: quiet.since ?? now }
 }

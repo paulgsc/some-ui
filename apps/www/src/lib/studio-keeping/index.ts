@@ -10,6 +10,7 @@
  * after it has.
  */
 import type {
+  LetGoChoice,
   Project,
   ProjectStore,
   Sitting,
@@ -17,8 +18,10 @@ import type {
   TimeEvent,
 } from "@some-ui/soundbites"
 
+import { handedIn } from "@/lib/handed-in"
+
 /** What the lanes need of Studio, handed in by its route. */
-export type StudioKeeping = {
+type StudioKeeping = {
   /** What the lanes read of Studio's projects. */
   readonly store: Pick<
     ProjectStore,
@@ -29,30 +32,32 @@ export type StudioKeeping = {
   readonly notesForHome: (
     projects: ReadonlyArray<Project>
   ) => ReadonlyArray<StudioNote>
-  /** Lets the audio of each take home holds (`held`) leave the phone. */
+  /**
+   * Marks each take home holds (`held`) as kept there, and lets the audio of
+   * each the owner's choice allows leave the phone (HF11, LG1).
+   */
   readonly letGoHeldTakes: (held: ReadonlySet<string>) => Promise<number>
+  /** The owner's choice of when a take home holds leaves the phone, as kept. */
+  readonly letGo: () => LetGoChoice
+  /** The ids of the takes home holds that are still on the phone. */
+  readonly waitingIds: (
+    projects: ReadonlyArray<Project>
+  ) => ReadonlyArray<string>
+  /**
+   * Lets go each take home holds and says Drive has too (`onDrive`), as the
+   * owner's choice allows (HF11, LG1).
+   */
+  readonly letGoOnDrive: (onDrive: ReadonlySet<string>) => Promise<number>
   readonly sittingKey: (sitting: Sitting) => string
 }
 
-let keeping: StudioKeeping | null = null
-const listeners = new Set<() => void>()
+const studio = handedIn<StudioKeeping>()
 
 /** Studio's route hands its pieces in; the lanes then carry its record. */
-export function keepStudio(handed: StudioKeeping): void {
-  if (keeping !== null) return
-  keeping = handed
-  for (const listener of listeners) listener()
-}
+export const keepStudio = studio.keep
 
 /** Studio's pieces, once its route has handed them in; null until then. */
-export function studioKeeping(): StudioKeeping | null {
-  return keeping
-}
+export const studioKeeping = studio.kept
 
 /** Calls `listener` once Studio's pieces are handed in. */
-export function onStudioKept(listener: () => void): () => void {
-  listeners.add(listener)
-  return (): void => {
-    listeners.delete(listener)
-  }
-}
+export const onStudioKept = studio.onKept

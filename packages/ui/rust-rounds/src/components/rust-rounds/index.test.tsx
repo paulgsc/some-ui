@@ -1,21 +1,39 @@
 /**
  * The session's screens (#2235): a walk through every screen choosing Skip
- * and Next only, the worked example's rustc results shown as printed, the
- * microphone held and let go, and the tutor's page. Every control a screen
- * offers is enabled: nothing waits on a choice.
+ * and Next only, the worked example's rustc results shown as printed, a
+ * voice note tapped on and off, heard, redone and let go on the take
+ * pattern's parts, and the tutor's page. Every control a screen
+ * offers is enabled: nothing waits on a choice. The microphone is the
+ * simulated one every screen's tests share, on faked timers.
  */
 import { RustRounds } from "@rust-rounds/components/rust-rounds"
-import { fakePorts } from "@rust-rounds/lib/play/__tests__/fakes"
+import { testPorts } from "@rust-rounds/lib/play/__tests__/ports"
 import { keptRounds } from "@rust-rounds/lib/play/store"
 import { WORDS } from "@rust-rounds/lib/play/words"
 import { INDEXING_01, INDEXING_01_RUNS } from "@rust-rounds/lib/worked-example"
 import { inMemoryStorage } from "@some-ui/core-utils"
+import { TAKE_WORDS } from "@some-ui/voice-capture"
+import { SPEAKING, takeButton as take } from "@some-ui/voice-capture/testing"
 import { act, fireEvent, render, screen } from "@testing-library/react"
-import { describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const press = (name: string | RegExp): void => {
   fireEvent.click(screen.getByRole("button", { name }))
 }
+
+const settle = async (ms = 0): Promise<void> => {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(ms)
+  })
+}
+
+beforeEach(() => {
+  vi.useFakeTimers()
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 function expectNothingDisabled(): void {
   for (const button of screen.getAllByRole("button")) {
@@ -25,7 +43,7 @@ function expectNothingDisabled(): void {
 
 describe("Rust Rounds on the phone", () => {
   it("walks the menu, every card of the worked example and the tutor's page with Skip and Next alone", () => {
-    const ports = fakePorts()
+    const ports = testPorts()
     render(<RustRounds ports={ports} />)
 
     // The menu: one tap into cards.
@@ -92,7 +110,7 @@ describe("Rust Rounds on the phone", () => {
   })
 
   it("marks rustc's span on the program once its result is shown", () => {
-    render(<RustRounds ports={fakePorts()} />)
+    render(<RustRounds ports={testPorts()} />)
     press(WORDS.start)
     const program = screen.getByRole("figure", { name: WORDS.program })
     expect(program.querySelector("mark[data-code-span]")).toBeNull()
@@ -104,16 +122,74 @@ describe("Rust Rounds on the phone", () => {
     ).toHaveTextContent("r")
   })
 
-  it("says a take too short to keep, in the person's words", () => {
-    const ports = fakePorts()
+  it("says a take too short to keep, in the pattern's words", async () => {
+    const ports = testPorts()
+    ports.notes.mic.script({ ...SPEAKING, open: { kind: "cue" } })
     render(<RustRounds ports={ports} />)
     press(WORDS.start)
     press("Not sure")
-    const hold = screen.getByRole("button", { name: WORDS.holdToSpeak })
-    fireEvent.pointerDown(hold)
-    fireEvent.pointerUp(hold)
-    act(() => ports.notes.land(null))
-    expect(screen.getByRole("status")).toHaveTextContent(WORDS.takeEnded.short)
+    press(TAKE_WORDS.buttonLabel.ready)
+    expect(take()).toHaveTextContent(TAKE_WORDS.button.opening)
+    await act(async () => {
+      ports.notes.mic.answer("open")
+      await vi.advanceTimersByTimeAsync(400)
+    })
+    // Tap to stop, with the time against the cap.
+    expect(take()).toHaveTextContent("0:00 / 1:00")
+    press(TAKE_WORDS.buttonLabel.recording)
+    await settle()
+    expect(screen.getByText(TAKE_WORDS.ended.short)).toBeInTheDocument()
+  })
+
+  it("says a take tapped off before the microphone was listening (VC2)", async () => {
+    const ports = testPorts()
+    ports.notes.mic.script({ ...SPEAKING, open: { kind: "cue" } })
+    render(<RustRounds ports={ports} />)
+    press(WORDS.start)
+    press("Not sure")
+    press(TAKE_WORDS.buttonLabel.ready)
+    press(TAKE_WORDS.buttonLabel.opening)
+    await settle()
+    expect(screen.getByText(TAKE_WORDS.ended.early)).toBeInTheDocument()
+    // Nothing was kept, so the card still offers to talk.
+    expect(take()).toHaveAccessibleName(TAKE_WORDS.buttonLabel.ready)
+  })
+
+  it("keeps a note, says where, plays it, redoes it and lets it go (D2, D3)", async () => {
+    const ports = testPorts()
+    render(<RustRounds ports={ports} />)
+    press(WORDS.start)
+    press("Not sure")
+    press(TAKE_WORDS.buttonLabel.ready)
+    await settle(3_000)
+    press(TAKE_WORDS.buttonLabel.recording)
+    await settle()
+    expect(screen.getByText(TAKE_WORDS.ended.kept)).toBeInTheDocument()
+    expect(
+      screen.getByText(new RegExp(TAKE_WORDS.place.phone))
+    ).toBeInTheDocument()
+    press(TAKE_WORDS.rowLabel(TAKE_WORDS.play, 3_000))
+    await settle()
+    expect(ports.notes.player.playing()).toBe(1)
+    press(TAKE_WORDS.rowLabel(TAKE_WORDS.stop, 3_000))
+    expect(ports.notes.player.playing()).toBe(0)
+
+    // Redo: the new take is the card's; the first stays on the phone.
+    press(TAKE_WORDS.rowLabel(TAKE_WORDS.redo, 3_000))
+    await settle(5_000)
+    press(TAKE_WORDS.buttonLabel.recording)
+    await settle()
+    expect(
+      screen.getByRole("button", {
+        name: TAKE_WORDS.rowLabel(TAKE_WORDS.play, 5_000),
+      })
+    ).toBeInTheDocument()
+    expect(ports.notes.store.getSnapshot()).toHaveLength(2)
+
+    press(TAKE_WORDS.rowLabel(TAKE_WORDS.letGo, 5_000))
+    expect(screen.getByText(TAKE_WORDS.setAside.phone)).toBeInTheDocument()
+    expect(take()).toHaveAccessibleName(TAKE_WORDS.buttonLabel.ready)
+    expect(ports.notes.store.getSnapshot()).toHaveLength(2)
   })
 
   it("offers plain Skip on a card with no run of its program on the phone", () => {
@@ -124,7 +200,7 @@ describe("Rust Rounds on the phone", () => {
       notes: [],
       notesMissing: false,
     })
-    render(<RustRounds ports={fakePorts(storage)} />)
+    render(<RustRounds ports={testPorts(storage)} />)
     press("borrowing")
     expect(screen.queryByRole("button", { name: WORDS.skipToRustc })).toBeNull()
     press(WORDS.skip)
@@ -132,7 +208,7 @@ describe("Rust Rounds on the phone", () => {
   })
 
   it("takes a tutor's reply, and says what to send back for one it can't", () => {
-    render(<RustRounds ports={fakePorts()} />)
+    render(<RustRounds ports={testPorts()} />)
     press(WORDS.tutor)
     const reply = screen.getByLabelText(WORDS.replyLabel)
     fireEvent.change(reply, { target: { value: '{"cards": []}' } })

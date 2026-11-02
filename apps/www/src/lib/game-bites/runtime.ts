@@ -313,6 +313,7 @@ export function createGameBites(ports: GameBitesPorts): GameBites {
       }),
     unkept: () => held.length,
     isKept: (id) => bites.some((bite) => bite.id === id),
+    homeSince: (id) => bites.find((bite) => bite.id === id)?.homeSince ?? null,
     audio: (id) => shelf.get(id),
     keep: (bite, audio) =>
       inTurn(async () => {

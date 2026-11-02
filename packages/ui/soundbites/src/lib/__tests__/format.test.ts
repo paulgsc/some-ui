@@ -1,18 +1,5 @@
-import {
-  describeContext,
-  formatDuration,
-  formatWhen,
-} from "@soundbites/lib/format"
+import { describeContext, formatWhen } from "@soundbites/lib/format"
 import { describe, expect, it } from "vitest"
-
-describe("formatDuration", () => {
-  it("reads as minutes and seconds", () => {
-    expect(formatDuration(0)).toBe("0:00")
-    expect(formatDuration(7_400)).toBe("0:07")
-    expect(formatDuration(60_000)).toBe("1:00")
-    expect(formatDuration(-5)).toBe("0:00")
-  })
-})
 
 describe("formatWhen", () => {
   const now = new Date(2026, 9, 1, 21, 30)

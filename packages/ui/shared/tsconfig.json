@@ -2,8 +2,8 @@
   "extends": "@some-ui/tsconfig/rollupconfig.json",
   "compilerOptions": {
     "types": ["node"],
-    "rootDir": "./src"
+    "rootDir": "."
   },
-  "include": ["src"],
+  "include": ["src", "vitest.config.ts", "vitest.setup.ts"],
   "exclude": ["node_modules", "build"]
 }

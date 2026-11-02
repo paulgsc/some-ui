@@ -4,13 +4,21 @@
  * table, in the person's terms: what is kept where, and what to do next,
  * never the machinery (`__tests__/words.test.ts` holds that).
  */
-import { formatSize, listed } from "@some-ui/core-utils"
+import { formatSize, formatTimecode, listed } from "@some-ui/core-utils"
 import type { Idea, Look, Voice } from "@some-ui/video-render"
 import type { RecordingFailure } from "@some-ui/voice-capture"
-import { RECORDING_FAILURE_COPY } from "@some-ui/voice-capture"
-import { formatDuration } from "@soundbites/lib/format"
-import type { IdeaStage, QuestionId } from "@soundbites/lib/idea/model"
+import {
+  RECORDING_FAILURE_COPY,
+  TAKE_ENDING_WORDS,
+  TAKE_WORDS,
+} from "@some-ui/voice-capture"
+import type {
+  IdeaFormat,
+  IdeaStage,
+  QuestionId,
+} from "@soundbites/lib/idea/model"
 import type { ShelfNotice } from "@soundbites/lib/idea/shelf"
+import type { LetGo, LetGoChoice } from "@soundbites/lib/project/let-go"
 
 /**
  * Whose idea a scene presents (ST16), as the person reads it: theirs, with
@@ -98,9 +106,43 @@ const VOICE_WORDS = {
 const shapeStatus = (look: Look, voice: Voice): string =>
   `${LOOK_WORDS[look].name} look, ${VOICE_WORDS[voice].name} voice`
 
-/** What sharing frees: the room the shared takes held. */
-const MAKING_ROOM =
-  "Takes leave the phone once home holds them, and the room they held is free."
+/** Each choice of when a take home holds leaves the phone, as Studio offers it. */
+const LET_GO_CHOICE_WORDS = {
+  home: "Let takes go once home has them",
+  drive: "Keep each until Drive has it too",
+} as const satisfies Record<LetGo, string>
+
+/** What Start's "Drive has it" is called, wherever another screen names it. */
+const DRIVE_HAS_IT = "Drive has it"
+
+/** What each choice does, as Start says it under the choice. */
+const LET_GO_SAYS = {
+  home: "Takes leave the phone once home has them.",
+  drive: `Each take stays on the phone until Drive has it too. It goes when you tap “${DRIVE_HAS_IT}”, or once Claude finds it in Drive and this phone next hears so from home.`,
+} as const satisfies Record<LetGo, string>
+
+/**
+ * What frees room on the phone for takes (HF11, #2401): the takes home
+ * holds, once the owner's choice lets them go, and what to do where they
+ * wait on it (`waiting` of them).
+ */
+function makingRoom(letGo: LetGoChoice, waiting: number): string {
+  const takes = plural(waiting, "take", "takes")
+  if (waiting > 0 && letGo === null)
+    return `Home has ${takes} still on the phone, waiting on your choice. On Start, choose when takes leave the phone: “${LET_GO_CHOICE_WORDS.home}” or “${LET_GO_CHOICE_WORDS.drive}”.`
+  if (waiting > 0 && letGo === "drive")
+    return `Home has ${takes} still on the phone, kept until Drive has ${waiting === 1 ? "it" : "them"} too. On Start, tap “${DRIVE_HAS_IT}” on each one Drive holds.`
+  if (letGo === null)
+    return "Takes leave the phone once home holds them and you choose when. Start offers that choice once home holds a take."
+  if (letGo === "drive")
+    return `Takes leave the phone once home holds them and Drive has them too, when you tap “${DRIVE_HAS_IT}” or this phone hears so from home, and the room they held is free.`
+  return "Takes leave the phone once home holds them, and the room they held is free."
+}
+
+/** How a take is named in the list of those home holds. */
+function takeLine(scene: number | null, ms: number): string {
+  return `${scene === null ? "A scene since dropped" : `Scene ${scene}`} · ${seconds(ms)}`
+}
 
 /** `under a minute`, `1 min`, `1 h 05 min`. */
 function minutes(ms: number): string {
@@ -200,7 +242,7 @@ export const STUDIO_WORDS = {
       `${plural(n, "take", "takes")} on the phone`,
     open: "Open",
     shareLine:
-      "This video's takes are on the phone. Share them with Claude so a session can hear them; they stay here until home holds them.",
+      "This video's takes are on the phone. Share them with Claude so a session can hear them; they stay here until home holds them, then leave as you choose.",
     sittings: {
       record: "Record",
       watch: "Watch",
@@ -224,16 +266,9 @@ export const STUDIO_WORDS = {
     read: "Read it word for word",
     claudeNote: "Claude's note",
     mustStayTrue: (n: number): string => `Must stay true · ${n}`,
-    talk: "Start talking",
-    opening: "Opening the microphone",
-    stop: "Done, keep it",
-    keeping: "Keeping it",
-    again: "Again",
     keepNext: "Keep · next scene",
     keepLast: "Keep · that's every scene",
     previous: "Previous scene",
-    play: "Play it back",
-    stopPlaying: "Stop",
     throwAway: "Throw it away",
     doneForNow: "Done for now",
     runs: (ms: number): string => `This scene runs ${seconds(ms)}`,
@@ -248,15 +283,20 @@ export const STUDIO_WORDS = {
 
   notice: {
     kept: (ms: number): string => `Kept ${seconds(ms)}.`,
+    // eslint-disable-next-line one-owner/no-local-take-words -- Studio says its own endings until its machine embeds the take kit (#2442)
     tooShort: "Too short to keep. Tap, talk, then tap again.",
     notKept: "That take couldn't be kept. Try again?",
-    full: `No room on the phone for that take, so it wasn't kept. ${MAKING_ROOM}`,
-    noRoom: `No room on the phone for another take. ${MAKING_ROOM}`,
+    full: (letGo: LetGoChoice, waiting: number): string =>
+      `No room on the phone for that take, so it wasn't kept. ${makingRoom(letGo, waiting)}`,
+    noRoom: (letGo: LetGoChoice, waiting: number): string =>
+      `No room on the phone for another take. ${makingRoom(letGo, waiting)}`,
     spent:
       "The video's time is all used. Record a long scene again, shorter, to make room.",
     thrownAway: "Thrown away. Nothing kept.",
     notStarted:
       "The screen went away before the microphone opened. Tap to talk.",
+    // The take pattern's own words for a take stopped while it opened.
+    early: TAKE_ENDING_WORDS.early,
     notSaved: "That change couldn't be saved, so nothing changed. Try again?",
     unreadableFile:
       "That couldn't be opened. Pick it again, or ask Claude for it again.",
@@ -287,7 +327,37 @@ export const STUDIO_WORDS = {
     cleared: (n: number): string =>
       `${plural(n, "piece", "pieces")} of the old Journal tab that Studio couldn't use ${n === 1 ? "was" : "were"} let go.`,
     arrived: (n: number): string =>
-      `${plural(n, "take", "takes")} in Drive too. ${n === 1 ? "It leaves" : "They leave"} the phone once home holds ${n === 1 ? "it" : "them"}.`,
+      `${plural(n, "take", "takes")} in Drive too. ${n === 1 ? "It stays" : "They stay"} on the phone until home holds ${n === 1 ? "it" : "them"}, then ${n === 1 ? "leaves" : "leave"} as you choose.`,
+  },
+
+  /**
+   * When a take home holds leaves the phone (HF11, #2401): the owner's one
+   * choice, on Start once home holds a take, and each take waiting on it.
+   */
+  letGo: {
+    heading: "When takes leave the phone",
+    ask: (n: number): string =>
+      `Home has ${plural(n, "take", "takes")} from this phone. Nothing leaves the phone until you choose when.`,
+    choices: LET_GO_CHOICE_WORDS,
+    says: LET_GO_SAYS,
+    change: "You can change this at any time.",
+    chosen: {
+      home: LET_GO_SAYS.home,
+      drive:
+        "Each take home has stays on the phone until you say Drive has it too, or Claude finds it in Drive and this phone next hears so from home.",
+    } satisfies Record<LetGo, string>,
+    notKept:
+      "That choice couldn't be kept on the phone, so nothing changed. Try again?",
+    waiting: (n: number): string =>
+      `${plural(n, "take", "takes")} home has, still on the phone`,
+    take: takeLine,
+    shared: "You shared this one to Drive.",
+    driveHasIt: DRIVE_HAS_IT,
+    driveHasItFor: (scene: number | null, ms: number): string =>
+      `${DRIVE_HAS_IT}: ${takeLine(scene, ms)}`,
+    left: (n: number): string =>
+      `${plural(n, "take", "takes")} left the phone. Home has ${n === 1 ? "it" : "them"}.`,
+    driveLeft: "That take left the phone. Home and Drive both have it.",
   },
 
   done: {
@@ -317,14 +387,14 @@ export const STUDIO_WORDS = {
     sharing: "Preparing…",
     notYet: "Not yet",
     shareLine:
-      "Your video and your takes, for Claude, to Drive. They stay on this phone until home holds them.",
+      "Your video and your takes, for Claude, to Drive. They stay on this phone until home holds them, then leave as you choose.",
   },
 
   share: {
     title: "Studio takes",
     arrivedTitle: "Did they reach Drive?",
     arrivedLine:
-      "Once they're in Drive, Claude can hear them. The takes stay on this phone until home holds them.",
+      "Once they're in Drive, Claude can hear them. The takes stay on this phone until home holds them, then leave as you choose.",
     arrivedYes: "They're in Drive",
     arrivedNo: "Not yet",
   },
@@ -390,15 +460,15 @@ export const STUDIO_WORDS = {
     notThisVideo:
       "That render is of a version this phone doesn't have. Open Claude's version first.",
     noteLabel: "Your note",
-    noteHere: (ms: number): string => `Note here · ${formatDuration(ms)}`,
+    noteHere: (ms: number): string => `Note here · ${formatTimecode(ms)}`,
     noted: "Noted, pinned to this moment.",
     /** Saying a note instead of typing it (ST5), pinned where it was begun. */
-    say: (ms: number): string => `Say a note · ${formatDuration(ms)}`,
+    say: (ms: number): string => `Say a note · ${formatTimecode(ms)}`,
     gettingReady: "Getting ready…",
     listening: "Listening…",
     stop: "Done talking",
     finishing: "Finishing…",
-    keepSaid: (ms: number): string => `Note this at ${formatDuration(ms)}`,
+    keepSaid: (ms: number): string => `Note this at ${formatTimecode(ms)}`,
     again: "Say it again",
     drop: "Let it go",
     heardNothing: "Didn't hear anything. Say it again, or type it.",
@@ -518,7 +588,6 @@ export const STUDIO_WORDS = {
   idea: {
     newIdea: "New idea",
     newIdeaLine: "Say what the video is, the moment it comes.",
-    heading: "New idea",
     reading: "Opening your ideas…",
     unreadable:
       "The ideas kept on this phone couldn't be read, so nothing new can be kept yet.",
@@ -546,6 +615,10 @@ export const STUDIO_WORDS = {
     listening: "Listening…",
     stop: "Done talking",
     finishing: "Finishing…",
+    /** The take is kept, and home is hearing it (IH1). */
+    hearing: "Home is hearing it…",
+    hearingLine:
+      "What you said is kept. Your words come back from home in a minute or two.",
     right: "That's right",
     fix: "Fix the words",
     again: "Say it again",
@@ -559,15 +632,154 @@ export const STUDIO_WORDS = {
     listenFailed: "Couldn't hear that. Try again, or type it.",
     listenNotStarted: "Listening isn't working right now. Type it instead.",
     notKept: "Couldn't keep that on this phone. Your words are still here.",
+    keptOnHome:
+      "Home has what you said but hasn't heard it yet. Type the words for now.",
+    keptOnPhone:
+      "What you said is kept on this phone and goes home later. Type the words for now.",
+    homeNoWords:
+      "Home has what you said but can't give the words back yet. Type the words for now.",
+    awayOnHome:
+      "Home can't be reached right now. It has what you said. Type the words for now.",
+    awayOnPhone:
+      "Home can't be reached right now. What you said is kept on this phone and goes home later. Type the words for now.",
+    takeFull:
+      "There's no room on this phone for another take until home has the ones before it. Type it instead.",
+    takeNotKept: "Couldn't keep that take. Try again, or type it.",
+    refused: (reason: RecordingFailure): string =>
+      RECORDING_FAILURE_COPY[reason],
     kept: "Kept. Come back to it any time.",
-    keptLine: (n: number): string =>
-      `${plural(n, "answer", "answers")} kept as text on this phone. No sound was kept.`,
     answerSkipped: (n: number): string =>
       `Answer the ${n === 1 ? "one" : n} you skipped`,
-    answerSkippedEarlier: (n: number): string =>
-      `Answer the ${n === 1 ? "one" : n} you skipped last time`,
-    another: "Another idea",
     back: "Back to Studio",
+  },
+
+  /**
+   * A new idea as one bundle (ST26): what it is, its questions swiped
+   * between and each said and heard back, then the whole idea looked over
+   * and sent together. Voice going wrong is said as what you meant to do,
+   * never how it failed; typing is marked as the fallback it is.
+   */
+  bundle: {
+    heading: "New idea",
+    back: "Back to Studio",
+    backLabel: "Back",
+    reading: "Opening your idea…",
+    unreadable:
+      "What this phone keeps for ideas couldn't be read, so nothing new can be kept yet.",
+    readAgain: "Try again",
+    about: {
+      heading: "What is it?",
+      dated: (iso: string): string =>
+        `${new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" })} · dated for you`,
+      madeFor: "Made for",
+      formats: {
+        short: "Short · vertical",
+        video: "Video · wide",
+      } satisfies Record<IdeaFormat, string>,
+      title: "Title",
+      titleHint: "A few words you'll know it by",
+      titleLeft: (n: number): string =>
+        `${n} character${n === 1 ? "" : "s"} left`,
+      topic: "Subject",
+      keywords: "Keywords",
+      pickAny: "pick any",
+      start: "Start the questions",
+    },
+    questionOf: (n: number, of: number): string => `Question ${n} of ${of}`,
+    canWait: "you can leave this one",
+    needed: "This one is needed before the idea can go home.",
+    swipeOn: "Swipe on to leave it for now.",
+    /** Each dot above the cards, for a screen reader. */
+    dot: {
+      said: (n: number): string => `Question ${n}, said`,
+      typed: (n: number): string => `Question ${n}, typed`,
+      failed: (n: number): string =>
+        `Question ${n}, your voice didn't come through`,
+      full: (n: number): string => `Question ${n}, no room to record it`,
+      later: (n: number): string => `Question ${n}, left for later`,
+      open: (n: number): string => `Question ${n}, not said yet`,
+    },
+    prev: (n: number): string => `← ${n}`,
+    next: (n: number): string => `${n} →`,
+    last: "Last one",
+    failed: {
+      title: "You wanted to say this. Your voice didn't come through.",
+      line: "Nothing was kept. Try again, or come back to it later.",
+      again: "Try saying it again",
+      later: "Come back later",
+      type: "Type it this once",
+    },
+    /** No room for another take until home has the ones on this phone. */
+    full: {
+      title:
+        "This phone holds as many recordings as it can until home has them.",
+      line: "Nothing was kept. Type this one, or come back to it once home is in reach.",
+    },
+    typing: {
+      mark: "Typing instead · voice didn't work",
+      hint: "A few words are enough. You can say it properly later.",
+      left: (n: number): string => `${n} character${n === 1 ? "" : "s"} left`,
+      voice: "Try voice again",
+      keep: "Keep these words",
+    },
+    typed: {
+      mark: "Typed, because voice didn't work",
+      sayInstead: "Say it instead",
+    },
+    later: {
+      line: "Left for later. It's marked on the dots above, and the idea won't go home without what it needs.",
+      sayNow: "Say it now",
+    },
+    saidCount: (n: number, of: number): string =>
+      `${n} of ${of} answered · all on this phone until you send`,
+    toReview: "Look it over before sending",
+    review: {
+      noTitle: "No title yet",
+      change: "Change",
+      kept: "Kept on this phone only. Nothing has been sent.",
+      playAll: "Play all, in order",
+      stopAll: "Stop",
+      deleteAll: "Delete all",
+      notSaid: "Not said yet",
+      typed: "Typed, because voice didn't work",
+      sayIt: "Say it",
+      delete: "Delete",
+      needsTitle: "Give it a title to send it.",
+      needsFirst: "Say what the video is to send it.",
+      away: "Home is out of reach. The idea is kept here, whole, and goes home when you're back in reach.",
+      send: (n: number): string =>
+        `Send the idea home · ${plural(n, "answer", "answers")}`,
+      /** Home is out of reach, or this phone isn't paired with it. */
+      keep: (n: number): string =>
+        `Keep the idea · ${plural(n, "answer", "answers")}`,
+    },
+    confirm: {
+      answerTitle: "Delete this answer?",
+      answerLine: (ask: string): string =>
+        `“${ask}” hasn't left this phone, so deleting it removes it for good. You can say it again.`,
+      allTitle: "Delete the whole idea?",
+      allLine:
+        "None of it has left this phone, so its title and every answer are removed for good.",
+      yes: "Delete for good",
+      keep: "Keep it",
+    },
+    notice: {
+      deleted: TAKE_WORDS.discarded,
+      deletedAll: TAKE_WORDS.discarded,
+      notKept:
+        "This phone couldn't keep that change, so it would be lost if you left now.",
+      notSent:
+        "This phone couldn't keep the idea, so nothing was sent. It's all still here.",
+      notDeleted: "That couldn't be deleted, so it's still here.",
+    },
+    sent: {
+      title: "Sent, as one idea",
+      near: "Kept on this phone as one idea, dated. What you said goes home now, and its title and the rest follow once home keeps ideas.",
+      /** Home is out of reach, or this phone isn't paired with it. */
+      kept: "Kept, goes home when you're back in reach",
+      away: "Kept on this phone as one idea, dated. It goes home when you're back in reach.",
+      another: "Another idea",
+    },
   },
 
   /**
@@ -595,6 +807,8 @@ export const STUDIO_WORDS = {
     yourAnswers: "Your answers",
     claudeAsked: "Claude asked",
     notAnswered: "Not answered yet",
+    /** A said answer whose words home hasn't given back yet (ST26). */
+    saidNoWords: "Said. Its words come once home has heard it.",
     skipped: "Skipped",
     share: "Share with Claude",
     sharing: "Preparing…",

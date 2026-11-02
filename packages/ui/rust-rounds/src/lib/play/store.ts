@@ -84,7 +84,10 @@ export type Pending = {
   /** When the take was started (ms since the epoch). */
   readonly since: number
   readonly title: Title
-  /** The card's event, its note still null. */
+  /**
+   * The card's event, with the note it had when left: null, or the note a
+   * Redo under way would supersede (D2).
+   */
   readonly event: CardEvent
   readonly guessedWrong: boolean
 }

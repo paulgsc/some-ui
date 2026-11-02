@@ -5,10 +5,14 @@
  *
  * A reflection is one thing said about a session while it was fresh: a voice
  * note, a typed line, or the three one-tap answers (one set per session).
- * Each carries its session's ID. They are for the next session, not an
- * archive, so the phone keeps at most `REFLECTION_LIMIT` of them across every
- * session, nothing is dropped to make room, and one older than
- * `STALE_AFTER_MS` reads as stale. Room comes back only by letting some go.
+ * Each carries its session's ID, and one older than `STALE_AFTER_MS` reads as
+ * stale.
+ *
+ * Home keeps the written ones (LA16, docs/learner-data-authority.md): the
+ * phone keeps an offline set, the newest `REFLECTION_LIMIT`, and past it only
+ * what home does not hold yet. So a new reflection is never refused for lack
+ * of room (`admit`), and one leaves on its own only once it is past the
+ * offline set and home holds it (`beyondOffline`).
  */
 
 export const QUESTIONS = [
@@ -45,11 +49,17 @@ type QuestionKey = (typeof QUESTIONS)[number]["key"]
 
 export type Answers = Partial<Record<QuestionKey, string>>
 
-/** k: every reflection on the phone, all sessions together. */
+/**
+ * k: the offline set, the newest reflections the phone keeps across every
+ * session even once home holds them, for when it is away from home.
+ */
 export const REFLECTION_LIMIT = 20
 
-/** What a reflection refused for want of a slot says. */
-export const NO_ROOM = "No room for another on this phone: let one go first."
+/** What the phone keeps of them, in the person's terms: true paired or not. */
+export const OFFLINE_SET_WORDS = `This phone keeps your newest ${String(REFLECTION_LIMIT)} reflections, and older written ones until home has them.`
+
+/** The most characters one typed line holds; home takes no more. */
+export const REFLECTION_TEXT_MAX = 10_000
 
 /** Older than a week, a reflection no longer says how things are going. */
 export const STALE_AFTER_MS = 7 * 24 * 60 * 60_000
@@ -58,7 +68,23 @@ type ReflectionBody =
   | { kind: "answers"; answers: Answers }
   | { kind: "text"; text: string }
   /** The audio is kept beside it, under the reflection's `id`. */
-  | { kind: "voice"; durationMs: number; mimeType: string; bytes: number }
+  | {
+      kind: "voice"
+      durationMs: number
+      mimeType: string
+      bytes: number
+      /**
+       * Out of its session's view, kept (MIC5): recorded again by a Redo
+       * (D2) or set aside (D3). Absent for one in view.
+       */
+      standing?: "earlier" | "set-aside"
+      /**
+       * When it was set aside, ISO 8601, written with its standing and never
+       * after: home's mark is sent with it (MIC2). Absent on one not set
+       * aside, and on one set aside before the phone noted when.
+       */
+      setAsideAt?: string
+    }
 
 export type Reflection = {
   id: string
@@ -70,20 +96,39 @@ export type Reflection = {
   body: ReflectionBody
 }
 
-/** The result of asking to keep one: room is never made by dropping another. */
-export type Kept =
-  | { kind: "kept"; next: Array<Reflection> }
-  | { kind: "full"; next: ReadonlyArray<Reflection> }
-
-/** Puts `incoming` in, replacing the one with its `id`; full at the limit. */
+/** Puts `incoming` in first, replacing the one with its `id`. */
 export function admit(
   kept: ReadonlyArray<Reflection>,
-  incoming: Reflection,
+  incoming: Reflection
+): Array<Reflection> {
+  return [incoming, ...kept.filter((r) => r.id !== incoming.id)]
+}
+
+/**
+ * The ids of the reflections past the offline set (the newest `limit`, by
+ * when each was said) that `held` names: what may leave the phone, since
+ * home holds each. Nothing home does not hold is ever among them.
+ */
+export function beyondOffline(
+  kept: ReadonlyArray<Reflection>,
+  held: ReadonlySet<string>,
   limit = REFLECTION_LIMIT
-): Kept {
-  const others = kept.filter((r) => r.id !== incoming.id)
-  if (others.length >= limit) return { kind: "full", next: kept }
-  return { kind: "kept", next: [incoming, ...others] }
+): Array<string> {
+  return [...kept]
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(limit)
+    .filter((r) => held.has(r.id))
+    .map((r) => r.id)
+}
+
+/**
+ * Whether a reflection is in its session's view: every written one, and a
+ * spoken one neither recorded again nor set aside. One out of view is kept,
+ * and goes home, but is not shared or shown as the session's.
+ */
+export function inView(reflection: Reflection): boolean {
+  const { body } = reflection
+  return body.kind !== "voice" || body.standing === undefined
 }
 
 /** The one-tap answers kept for `sessionId`, if any. */
@@ -99,22 +144,19 @@ export function answersOf(
 }
 
 /**
- * Sets `sessionId`'s answers. Its one set is replaced in place, so a changed
- * answer costs no slot; clearing every answer lets the set go.
+ * Sets `sessionId`'s answers. Its one set is replaced in place; clearing
+ * every answer lets the set go.
  */
 export function withAnswers(
   kept: ReadonlyArray<Reflection>,
   sessionId: string,
   answers: Answers,
   made: { id: string; createdAt: string; atMs: number | null }
-): Kept {
+): Array<Reflection> {
   const existing = answersOf(kept, sessionId)
   const given = clean(answers)
   if (Object.keys(given).length === 0) {
-    return {
-      kind: "kept",
-      next: kept.filter((r) => r.id !== existing?.id),
-    }
+    return kept.filter((r) => r.id !== existing?.id)
   }
   return admit(kept, {
     id: existing?.id ?? made.id,
@@ -180,7 +222,9 @@ export function bySession(
 }
 
 /** One session's, in the order they were said. */
-export function inOrder(kept: ReadonlyArray<Reflection>): Array<Reflection> {
+export function inOrder<R extends Reflection>(
+  kept: ReadonlyArray<R>
+): Array<R> {
   return [...kept].sort((a, b) => a.createdAt.localeCompare(b.createdAt))
 }
 
@@ -215,11 +259,21 @@ function bodyOf(value: unknown): ReflectionBody | null {
     const durationMs = field("durationMs")
     const mimeType = field("mimeType")
     const bytes = field("bytes")
-    return typeof durationMs === "number" &&
-      typeof mimeType === "string" &&
-      typeof bytes === "number"
-      ? { kind, durationMs, mimeType, bytes }
-      : null
+    const standing = field("standing")
+    const setAsideAt = field("setAsideAt")
+    if (
+      typeof durationMs !== "number" ||
+      typeof mimeType !== "string" ||
+      typeof bytes !== "number"
+    ) {
+      return null
+    }
+    if (standing === "set-aside" && typeof setAsideAt === "string") {
+      return { kind, durationMs, mimeType, bytes, standing, setAsideAt }
+    }
+    return standing === "earlier" || standing === "set-aside"
+      ? { kind, durationMs, mimeType, bytes, standing }
+      : { kind, durationMs, mimeType, bytes }
   }
   return null
 }
@@ -249,7 +303,7 @@ export function parseReflection(value: unknown): Reflection | null {
  * The list before reflections had dates: one set of answers per session,
  * `{ id: sessionId, answers }`. Each becomes an answers reflection dated
  * `staleAt`, since nothing says when it was given and it is from before this
- * version: it reads as stale, so it is among the first to share or let go.
+ * version: it reads as stale.
  */
 export function fromLegacy(
   rows: ReadonlyArray<unknown>,

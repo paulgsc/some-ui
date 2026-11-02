@@ -30,6 +30,15 @@ describe("boundedList", () => {
     expect(list.read()).toEqual([4, 3])
   })
 
+  it("rewrites the others in the same write as a put", () => {
+    list.put(1, is(1))
+    list.put(2, is(2))
+    const setItem = vi.spyOn(Storage.prototype, "setItem")
+    list.put(5, is(5), (other) => other * 10)
+    expect(setItem).toHaveBeenCalledOnce()
+    expect(list.read()).toEqual([5, 20, 10])
+  })
+
   it("says whether the device stored each write", () => {
     expect(list.put(1, is(1))).toBe(true)
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
