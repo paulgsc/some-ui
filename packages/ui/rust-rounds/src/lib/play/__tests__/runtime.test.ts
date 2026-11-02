@@ -12,7 +12,12 @@ import type { PlayState } from "@rust-rounds/lib/play/machine"
 import { lineOf } from "@rust-rounds/lib/play/machine"
 import type { RustRoundsRuntime } from "@rust-rounds/lib/play/runtime"
 import { createRustRounds } from "@rust-rounds/lib/play/runtime"
-import { keptRounds, LOG_KEY, PLACE_KEY } from "@rust-rounds/lib/play/store"
+import {
+  HELD_KEY,
+  keptRounds,
+  LOG_KEY,
+  PLACE_KEY,
+} from "@rust-rounds/lib/play/store"
 import {
   INDEXING_01,
   INDEXING_01_NOTES,
@@ -366,6 +371,35 @@ describe("the worked example", () => {
       (event) => event.round === "indexing-02"
     )
     expect(pasted?.rustc).toBeNull()
+  })
+
+  it("keeps a round it took that the phone refused to keep when home's write lands", () => {
+    const storage = inMemoryStorage()
+    const setItem = storage.setItem.bind(storage)
+    let full = true
+    storage.setItem = (key, value): void => {
+      if (full && key === HELD_KEY) throw new Error("QuotaExceededError")
+      setItem(key, value)
+    }
+    const runtime = opened(testPorts(storage))
+    const round = { ...INDEXING_01, id: "indexing-02" }
+    runtime.dispatch({ type: "tutor" })
+    runtime.dispatch({
+      type: "reply",
+      text: `\`\`\`json\n${JSON.stringify(round)}\n\`\`\``,
+    })
+    runtime.dispatch({ type: "takeReply" })
+    expect(runtime.getSnapshot().notKept.held).toBe(true)
+
+    full = false
+    const home = keptRounds(storage)
+    home.hold({
+      ...home.held(),
+      runs: { "indexing-01/a": INDEXING_01_RUNS.a! },
+    })
+    const { held } = runtime.getSnapshot()
+    expect(held.rounds.map(({ id }) => id)).toEqual([round.id])
+    expect(held.runs["indexing-01/a"]).toEqual(INDEXING_01_RUNS.a)
   })
 
   it("plays what home sends while it is on screen", () => {

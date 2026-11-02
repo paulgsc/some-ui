@@ -77,6 +77,7 @@ import type { Held } from "./held"
 import {
   findingsNow,
   locate,
+  mergeHeld,
   nextCard,
   notesNow,
   playable,
@@ -1068,10 +1069,11 @@ export function step(state: PlayState, event: PlayEvent): Step {
     }
     case "held": {
       // Rounds are only added, so the card on screen and every card waiting
-      // on a note are still held; one with no run may now have one.
+      // on a note are still held; one with no run may now have one. What
+      // this session holds and the phone did not keep stays too.
       return event.held === state.held
         ? stay(state)
-        : stay({ ...state, held: event.held })
+        : stay({ ...state, held: mergeHeld(event.held, state.held) })
     }
     case "stored": {
       const failed = !event.ok

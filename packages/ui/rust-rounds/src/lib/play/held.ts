@@ -136,9 +136,8 @@ export function mergeHeld(stored: Held, next: Held): Held {
         ...stored.home.refused,
         ...next.home.refused.filter(({ id }) => !refusedIds.has(id)),
       ].filter(({ id }) => !onHome.has(id)),
-      unread: joined(stored.home.unread, next.home.unread).filter(
-        (id) => !onHome.has(id)
-      ),
+      // A round can be on home and still not read back here.
+      unread: joined(stored.home.unread, next.home.unread),
       ended: joined(stored.home.ended, next.home.ended),
     },
   }

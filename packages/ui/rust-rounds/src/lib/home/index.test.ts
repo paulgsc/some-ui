@@ -322,6 +322,23 @@ describe("exchangeRounds", () => {
     expect(store.held().home.fetched).toHaveLength(READS_PER_EXCHANGE + 5)
   })
 
+  it("does not read again a round it sent whose answer it couldn't read", async () => {
+    const store = phone([PASTED])
+    const at = home()
+    at.answer = (method, path): HomeAnswer | null =>
+      method === "GET" && path.endsWith(PASTED.id)
+        ? { status: 200, body: "{}" }
+        : null
+    await exchangeRounds(store, at.send)
+    expect(store.held().home).toMatchObject({
+      sent: [PASTED.id],
+      unread: [PASTED.id],
+    })
+    at.calls.length = 0
+    await exchangeRounds(store, at.send)
+    expect(at.calls).toEqual(["GET /rust-rounds"])
+  })
+
   it("loses nothing the session wrote while it ran, and the session's stale write loses nothing it took", async () => {
     const store = phone([PASTED])
     const stale = store.held()
