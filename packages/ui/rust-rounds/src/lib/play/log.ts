@@ -4,7 +4,12 @@
  * nothing already logged is rewritten or dropped (CLAUDE.md, "Never lose the
  * record"). A session has a start and no end: leaving is not finishing.
  */
-import type { CardEvent, CardRef, RoundLog } from "@rust-rounds/lib/formats"
+import type {
+  CardEvent,
+  CardRef,
+  DeskPaste,
+  RoundLog,
+} from "@rust-rounds/lib/formats"
 import { LOG_SCHEMA } from "@rust-rounds/lib/formats"
 
 export const EMPTY_LOG: RoundLog = { schema: LOG_SCHEMA, sessions: [] }
@@ -21,12 +26,20 @@ export type LogAdd =
       readonly guessedWrong: boolean
     }
   | { readonly kind: "pin"; readonly ref: CardRef }
+  /** An error pasted from the owner's own code, and the note said on it. */
+  | { readonly kind: "desk"; readonly paste: DeskPaste }
 
 /**
- * `log` already holds `add`: the same card's event, left at the same moment.
- * A pin is never held this way; `appendToLog` adds a pin once by itself.
+ * `log` already holds `add`: the same card's event, left at the same moment,
+ * or a paste from the desk made at the same moment. A pin is never held this
+ * way; `appendToLog` adds a pin once by itself.
  */
 export function holdsAdd(log: RoundLog, add: LogAdd): boolean {
+  if (add.kind === "desk") {
+    return log.sessions.some((session) =>
+      session.fromMyDesk.some((each) => each.at === add.paste.at)
+    )
+  }
   if (add.kind !== "card") return false
   const { round, card, at } = add.event
   return log.sessions.some((session) =>
@@ -62,16 +75,18 @@ export function appendToLog(
   const next =
     add.kind === "pin"
       ? { ...session, pinned: withRef(session.pinned, add.ref) }
-      : {
-          ...session,
-          cards: [...session.cards, add.event],
-          tutorGuessedWrong: add.guessedWrong
-            ? withRef(session.tutorGuessedWrong, {
-                round: add.event.round,
-                card: add.event.card,
-              })
-            : session.tutorGuessedWrong,
-        }
+      : add.kind === "desk"
+        ? { ...session, fromMyDesk: [...session.fromMyDesk, add.paste] }
+        : {
+            ...session,
+            cards: [...session.cards, add.event],
+            tutorGuessedWrong: add.guessedWrong
+              ? withRef(session.tutorGuessedWrong, {
+                  round: add.event.round,
+                  card: add.event.card,
+                })
+              : session.tutorGuessedWrong,
+          }
   return {
     ...log,
     sessions:

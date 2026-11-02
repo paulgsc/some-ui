@@ -75,6 +75,8 @@ const stores: ReadonlyArray<KeptStore> = [
           place: PLACE,
           taking: { line: "rust-rounds:indexing-01/b", since: 1 },
           pending: [],
+          desk: null,
+          deskPending: [],
         }),
       read: (): unknown => {
         const { place, taking, pending } = keptRounds(storage).open()

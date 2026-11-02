@@ -1971,7 +1971,7 @@
     {
       "store": "phone:rust-rounds-log",
       "class": "record",
-      "growth": "Per card played in Rust Rounds: one event (pick, note id, rustc's recorded run as printed, up to ~4 KB), and per pin; append-only, nothing logged is rewritten; no cap until RR7 (#2238) keeps it on home (`some-ui:rust-rounds.log`).",
+      "growth": "Per card played in Rust Rounds: one event (pick, note id, rustc's recorded run as printed, up to ~4 KB), per pin, and per error pasted from the desk (the text as pasted and a note id, RR4c); append-only, nothing logged is rewritten; no cap until RR7 (#2238) keeps it on home (`some-ui:rust-rounds.log`).",
       "family": "what-is-kept"
     },
     {
@@ -1984,7 +1984,7 @@
     {
       "store": "phone:rust-rounds-place",
       "class": "record",
-      "growth": "bounded: one slot, the Rust Rounds card on screen and how far into it (stage, pick, note id), replaced as each card is entered and played (`some-ui:rust-rounds.place`).",
+      "growth": "bounded: one slot, the Rust Rounds card on screen and how far into it (stage, pick, note id), replaced as each card is entered and played, with the error being pasted from the desk while its step is open and each paste left while its note was still being kept, until that note lands (RR4c) (`some-ui:rust-rounds.place`).",
       "family": "what-is-kept"
     },
     {

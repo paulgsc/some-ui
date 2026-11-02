@@ -44,17 +44,24 @@ stopped.
    an edge until it is smooth, then move to the next edge. With no open edges
    left in a concept, start a new concept. A card the owner skipped may come
    back, as it was or as a variant.
-3. **Mark an edge smooth** when the owner says, in their own words, what rustc
+3. **Answer an error from the owner's desk.** An entry in the log's
+   `fromMyDesk` is an error rustc gave the owner in their own code, pasted
+   from any card, with what they said about it. Treat it as a rough edge in
+   its own right: build the next round's cards from it, a toy binary that
+   gives the same error for the same reason, then variants along it, and list
+   the entry's `at` in the round's `fromMyDesk`. The phone marks that
+   concept "your error" on its menu.
+4. **Mark an edge smooth** when the owner says, in their own words, what rustc
    says: the same trait, the same check, at the same moment. Move it from
    `open` to `smooth`, keep its notes, and add the note that showed it. A note
    that explains, in rustc's terms, something no edge covers yet can go
    straight into `smooth` as a new edge, citing that note.
-4. **Never score, and never state a level.** No choice is right or wrong, so no
+5. **Never score, and never state a level.** No choice is right or wrong, so no
    choice has a `correct`, and no card has a rubric or a score. No `ask`,
    `say` or `nudge` praises, grades, or tells the owner they were wrong. The
    only feedback is rustc's output, which the app shows as printed. A Bloom
    step (`aim`) appears only inside a refine card's prompt.
-5. **Compile each program before you put the round, if you can.** Run every
+6. **Compile each program before you put the round, if you can.** Run every
    card's program, a variant's after its hunk, in its own sandbox, with a
    current stable rustc, and write what happened as the card's `expect`. This
    check is a courtesy for drafting. Home records every program again, in its
@@ -86,6 +93,11 @@ A round is one object:
   them. It can be empty when the concept is new.
 - `cards`: one or more cards, played in order. There is no last card: when
   the round runs out, the owner moves on to the next one.
+- `fromMyDesk` (optional): the errors from the owner's desk the round was
+  built from, each by its `at` in the log's `fromMyDesk`, such as
+  `["2026-11-02T19:04:11.000Z"]`. Leave it out for a round built from
+  anything else. A round that names one marks its concept "your error" on
+  the menu.
 
 Every card has a `kind` and an `id`, unique within the round, such as `a`.
 
@@ -152,6 +164,7 @@ below, and reports them to the next tutor under "Problems in the last round":
 - **A hunk that changes its line.** `replace` differs from the line there.
 - **Every choice has a `say`** that is not blank.
 - **A refine card names a note the log has.**
+- **`fromMyDesk` names pastes the log has**, each by its `at`.
 
 Each program is a whole binary with `fn main`, uses only `std`, reads no
 input, touches no files or network, and finishes at once. Home treats every

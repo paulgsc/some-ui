@@ -99,6 +99,15 @@ export function locate(
     : { round, card, number: index + 1 }
 }
 
+/** The concepts with a round built from an error pasted from the desk (RR4c). */
+export function deskConcepts(rounds: ReadonlyArray<Round>): Set<string> {
+  return new Set(
+    rounds
+      .filter((round) => (round.fromMyDesk ?? []).length > 0)
+      .map((round) => round.concept)
+  )
+}
+
 /** Each concept the rounds cover, once, in the order first held. */
 export function conceptsOf(rounds: ReadonlyArray<Round>): Array<string> {
   return [...new Set(rounds.map((round) => round.concept))]

@@ -14,8 +14,8 @@ import type {
 import { takeItemView } from "@some-ui/voice-capture"
 
 import type { PlayState } from "./machine"
-import { lineOf } from "./machine"
-import type { Visit } from "./store"
+import { deskLine, lineOf } from "./machine"
+import type { DeskDraft, Visit } from "./store"
 import { WORDS } from "./words"
 
 export type CardNote = {
@@ -25,28 +25,59 @@ export type CardNote = {
   readonly aside: string | null
 }
 
+/**
+ * The note of `line` as the pattern's parts show it: its row is `note`
+ * alone, and a take that couldn't play is said by the pattern; anything
+ * else said is `said`, the caller's reading of the session's.
+ */
+function noteView(
+  state: PlayState,
+  line: string,
+  note: string | null,
+  said: TakeItemView["said"],
+  takes: ReadonlyArray<PatternTake>,
+  options: TakePatternOptions
+): TakeItemView {
+  const mine = takes.filter((take) => take.id === note)
+  const view = takeItemView(state.notes, mine, line, options)
+  return { ...view, said: view.said?.kind === "unplayable" ? view.said : said }
+}
+
+/**
+ * The paste's voice note on the desk step (RR4c): what it says is this
+ * step's, never a card's take that ended while the step was open.
+ */
+export function deskNote(
+  state: PlayState,
+  desk: DeskDraft,
+  takes: ReadonlyArray<PatternTake>,
+  options: TakePatternOptions
+): TakeItemView {
+  const line = deskLine(desk.at)
+  const { said } = state
+  const ours =
+    said?.kind === "setAside" ||
+    (said?.kind === "ended" && said.ended.answers === line)
+  return noteView(state, line, desk.note, ours ? said : null, takes, options)
+}
+
 export function cardNote(
   state: PlayState,
   visit: Visit,
   takes: ReadonlyArray<PatternTake>,
   options: TakePatternOptions
 ): CardNote {
-  const line = lineOf(visit)
-  const mine = takes.filter((take) => take.id === visit.note)
-  const view = takeItemView(state.notes, mine, line, options)
   const { said } = state
   return {
-    item: {
-      ...view,
-      // A take that couldn't play is said by the pattern; the rest by the
-      // session, for this visit.
-      said:
-        view.said?.kind === "unplayable"
-          ? view.said
-          : said === null || said.kind === "missing"
-            ? null
-            : said,
-    },
+    item: noteView(
+      state,
+      lineOf(visit),
+      visit.note,
+      // For this visit, until the next card.
+      said === null || said.kind === "missing" ? null : said,
+      takes,
+      options
+    ),
     aside: said?.kind === "missing" ? WORDS.noteMissing : null,
   }
 }

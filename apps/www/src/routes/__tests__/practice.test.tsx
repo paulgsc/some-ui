@@ -230,6 +230,8 @@ describe("Practice's Rust Rounds card", () => {
       },
       taking: null,
       pending: [],
+      desk: null,
+      deskPending: [],
     })
     renderWith({ data: [], isError: false })
 

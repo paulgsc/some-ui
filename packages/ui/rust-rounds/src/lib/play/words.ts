@@ -92,6 +92,15 @@ export const WORDS = {
   copyFix: "Copy what to fix",
   fixCopied: "Copied. Paste it back to the tutor.",
   showText: "Show the text",
+  /** On every card: the way to the desk step (RR4c). */
+  pasteError: "Paste an error",
+  deskHeading: "An error from your own code",
+  deskLabel: "Paste it as rustc printed it",
+  deskSay: "Say what you make of it, if you like.",
+  /** Back from the desk step; what was pasted goes to the tutor. */
+  deskBack: "Back to the card",
+  /** Beside a concept on the menu whose round was built from a pasted error. */
+  yourError: "your error",
   backToCards: "Back to the cards",
   noMicrophone:
     "On my phone I'd tap here and say it out loud, and the note would be kept for the tutor. This sample has no microphone, so nothing is recorded: carry on.",
