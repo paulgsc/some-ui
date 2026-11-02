@@ -104,25 +104,13 @@ export type Pending = {
 export type Taking = { readonly line: string; readonly since: number }
 
 /**
- * An error being pasted from the desk, from any card (RR4c): when the step
- * opened, which names it (`at`), the text as pasted so far, and the note
- * said on it; null while none is kept.
+ * An error being pasted from the desk, from any card (RR4c): the paste as it
+ * will be logged, named by when its step opened, its text possibly blank yet.
  */
-export type DeskDraft = {
-  readonly at: string
-  readonly pasted: string
-  readonly note: string | null
-}
+export type DeskDraft = DeskPaste
 
-/** A paste left while its voice note was still being kept: logged once it lands. */
-export type DeskPending = {
-  /** What the take was started on (`deskLine`). */
-  readonly line: string
-  /** When the take was started (ms since the epoch). */
-  readonly since: number
-  /** The paste, with the note it had when left. */
-  readonly paste: DeskPaste
-}
+/** A paste left while its voice note was still being kept (`deskLine`): logged once it lands. */
+export type DeskPending = Taking & { readonly paste: DeskPaste }
 
 const HeldSchema = z.strictObject({
   v: z.literal(1),
@@ -186,22 +174,9 @@ const PlaceRecordSchema = z.strictObject({
     })
   ),
   // Absent from a record kept before the desk step: none open, none waiting.
-  desk: z
-    .strictObject({
-      at: z.string(),
-      pasted: z.string(),
-      note: z.string().nullable(),
-    })
-    .nullable()
-    .default(null),
+  desk: DeskPasteSchema.extend({ pasted: z.string() }).nullable().default(null),
   deskPending: z
-    .array(
-      z.strictObject({
-        line: z.string(),
-        since: z.number(),
-        paste: DeskPasteSchema,
-      })
-    )
+    .array(TakingSchema.extend({ paste: DeskPasteSchema }))
     .default([]),
 })
 
@@ -216,10 +191,7 @@ const readLog = readJson(parsed(RoundLogSchema))
 const readHeld = readJson(parsed(HeldSchema))
 const readPlace = readJson(parsed(PlaceRecordSchema))
 
-/**
- * Where the session was: the card on screen, the take under way, the cards
- * waiting on a note, the error being pasted and the pastes waiting on a note.
- */
+/** Where the session was: the card on screen, the take under way, and the cards waiting on a note. */
 type Whereabouts = {
   readonly place: Place | null
   readonly taking: Taking | null

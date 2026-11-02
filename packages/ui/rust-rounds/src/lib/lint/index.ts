@@ -27,7 +27,6 @@ export type Finding =
   | { kind: "hunk-changes-nothing"; card: string }
   | { kind: "choice-without-say"; card: string; choice: number }
   | { kind: "unknown-note"; card: string; note: string }
-  /** The round's `fromMyDesk` names a paste the log doesn't have (RR4c). */
   | { kind: "unknown-desk-paste"; at: string }
   /** The reply carried no tutor notes (`lib/intake`). */
   | { kind: "no-tutor-notes" }

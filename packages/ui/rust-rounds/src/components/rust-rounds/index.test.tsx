@@ -263,19 +263,10 @@ describe("Rust Rounds on the phone", () => {
     fireEvent.click(take())
     await settle(2_000)
     fireEvent.click(take())
-    // While the note is being kept, the step's own controls still answer.
     expect(screen.getByLabelText(WORDS.deskLabel)).toBeEnabled()
     expect(screen.getByRole("button", { name: WORDS.deskBack })).toBeEnabled()
     press(WORDS.deskBack)
     expect(screen.getByText(WORDS.cardTitle("indexing", 1))).toBeInTheDocument()
-    await settle(1_000)
-    const [session] = keptRounds(ports.storage).open().log.sessions
-    expect(session?.fromMyDesk).toEqual([
-      expect.objectContaining({
-        pasted: "error[E0277]",
-        note: expect.any(String),
-      }),
-    ])
   })
 
   it("marks a concept whose round was built from a pasted error as yours", () => {

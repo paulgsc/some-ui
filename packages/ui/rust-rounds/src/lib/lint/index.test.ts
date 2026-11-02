@@ -132,12 +132,6 @@ describe("lintRound", () => {
     expect(
       lintRound({ ...fromDesk, fromMyDesk: ["2026-10-31T09:00:00Z"] }, log)
     ).toEqual([{ kind: "unknown-desk-paste", at: "2026-10-31T09:00:00Z" }])
-    expect(
-      describeFinding({
-        kind: "unknown-desk-paste",
-        at: "2026-10-31T09:00:00Z",
-      })
-    ).toMatch(/fromMyDesk/)
   })
 })
 

@@ -59,7 +59,6 @@
 import type {
   CardEvent,
   CardRef,
-  DeskPaste,
   Round,
   RoundLog,
 } from "@rust-rounds/lib/formats"
@@ -407,17 +406,77 @@ function logCard(
   left: { event: CardEvent; guessedWrong: boolean },
   note: string | null
 ): Step {
-  const add: LogAdd = {
+  return logAdd(state, {
     kind: "card",
     event: { ...left.event, note: note ?? left.event.note },
     guessedWrong: left.guessedWrong,
-  }
+  })
+}
+
+/** Appends `add` to the log, once: neither log adds what it already holds. */
+function logAdd(state: PlayState, add: LogAdd): Step {
   const log = holdsAdd(state.log, add)
     ? state.log
     : appendToLog(state.log, state.head, add)
   return {
     state: { ...state, log },
     effects: [{ type: "append", head: state.head, add }],
+  }
+}
+
+/**
+ * A tap on the note of `line` (a card's or a paste's), whose kept note is
+ * `note`: D1, it stops that line's take, and leaves another line's to end;
+ * with none under way, it starts one, a Redo of `note` when there is one.
+ */
+function tapNoteOn(
+  state: PlayState,
+  line: string,
+  note: string | null,
+  at: string
+): Step {
+  const { take, answers } = state.notes
+  if (take.kind !== "idle") {
+    return answers === line
+      ? { state, effects: [{ type: "tapNote", line, supersedes: null }] }
+      : stay(state)
+  }
+  // A take an earlier opening left may yet land on this line.
+  if (state.taking !== null) return stay(state)
+  const next: PlayState = {
+    ...state,
+    said: null,
+    taking: { line, since: Date.parse(at) },
+  }
+  // Kept before the take starts, so a note that lands after the screen is
+  // gone still finds its line at the next opening.
+  return {
+    state: next,
+    effects: [savePlace(next), { type: "tapNote", line, supersedes: note }],
+  }
+}
+
+/** Plays `note`, or stops it while it plays; nothing when there is none. */
+const playNoteOf = (state: PlayState, note: string | null): Step =>
+  note === null
+    ? stay(state)
+    : { state, effects: [{ type: "playNote", id: note }] }
+
+/**
+ * D3: sets `note` aside, kept at `place`; `cleared` takes it off its card or
+ * paste. The row's actions wait while a take is under way.
+ */
+function letGoOf(
+  state: PlayState,
+  note: string | null,
+  place: TakePlace,
+  cleared: (state: PlayState) => Step
+): Step {
+  if (note === null || state.notes.take.kind !== "idle") return stay(state)
+  const step = cleared({ ...state, said: { kind: "setAside", place } })
+  return {
+    state: step.state,
+    effects: [...step.effects, { type: "setAsideNote", id: note, place }],
   }
 }
 
@@ -612,18 +671,6 @@ function settleCard(
   return withVisit(shown, place, { ...place.visit, note })
 }
 
-/** Logs a paste from the desk, once. */
-function logDesk(state: PlayState, paste: DeskPaste): Step {
-  const add: LogAdd = { kind: "desk", paste }
-  const log = holdsAdd(state.log, add)
-    ? state.log
-    : appendToLog(state.log, state.head, add)
-  return {
-    state: { ...state, log },
-    effects: [{ type: "append", head: state.head, add }],
-  }
-}
-
 /**
  * A take on a paste's `line` ended: log the paste left waiting on it, with
  * the note if it was kept, or put the note on the paste being made.
@@ -642,10 +689,10 @@ function settleDesk(
       deskPending: base.deskPending.filter((each) => each !== waiting),
     }
     const kept = end === "kept" && note !== null
-    const logged = logDesk(
-      next,
-      kept ? { ...waiting.paste, note } : waiting.paste
-    )
+    const logged = logAdd(next, {
+      kind: "desk",
+      paste: kept ? { ...waiting.paste, note } : waiting.paste,
+    })
     return {
       state: logged.state,
       effects: [...logged.effects, savePlace(logged.state)],
@@ -683,16 +730,15 @@ function deskBack(state: PlayState, desk: DeskDraft): Step {
     const next = { ...closed, taking: taking === null ? state.taking : null }
     return { state: next, effects: [savePlace(next), ...stop] }
   }
-  const paste: DeskPaste = { at: desk.at, pasted: desk.pasted, note: desk.note }
   if (taking !== null) {
     const next: PlayState = {
       ...closed,
-      deskPending: [...state.deskPending, { line, since: taking.since, paste }],
+      deskPending: [...state.deskPending, { ...taking, paste: desk }],
     }
     // Kept with the place before the take ends, so its note finds the paste.
     return { state: next, effects: [savePlace(next), ...stop] }
   }
-  const logged = logDesk(closed, paste)
+  const logged = logAdd(closed, { kind: "desk", paste: desk })
   return {
     state: logged.state,
     effects: [...logged.effects, savePlace(logged.state), ...stop],
@@ -726,54 +772,22 @@ function onDesk(state: PlayState, event: DeskIntent & { at: string }): Step {
     return { state: next, effects: [savePlace(next)] }
   }
   if (state.screen.kind !== "desk" || desk === null) return stay(state)
-  const line = deskLine(desk.at)
   switch (event.type) {
     case "deskText": {
       const next = { ...state, desk: { ...desk, pasted: event.text } }
       return { state: next, effects: [savePlace(next)] }
     }
     case "deskTapNote": {
-      const { take, answers } = state.notes
-      if (take.kind !== "idle") {
-        return answers === line
-          ? { state, effects: [{ type: "tapNote", line, supersedes: null }] }
-          : stay(state)
-      }
-      if (state.taking !== null) return stay(state)
-      const next: PlayState = {
-        ...state,
-        said: null,
-        taking: { line, since: Date.parse(event.at) },
-      }
-      return {
-        state: next,
-        effects: [
-          savePlace(next),
-          { type: "tapNote", line, supersedes: desk.note },
-        ],
-      }
+      return tapNoteOn(state, deskLine(desk.at), desk.note, event.at)
     }
     case "deskPlayNote": {
-      return desk.note === null
-        ? stay(state)
-        : { state, effects: [{ type: "playNote", id: desk.note }] }
+      return playNoteOf(state, desk.note)
     }
     case "deskLetGoNote": {
-      if (desk.note === null || state.notes.take.kind !== "idle") {
-        return stay(state)
-      }
-      const next: PlayState = {
-        ...state,
-        desk: { ...desk, note: null },
-        said: { kind: "setAside", place: event.place },
-      }
-      return {
-        state: next,
-        effects: [
-          savePlace(next),
-          { type: "setAsideNote", id: desk.note, place: event.place },
-        ],
-      }
+      return letGoOf(state, desk.note, event.place, (cleared) => {
+        const next = { ...cleared, desk: { ...desk, note: null } }
+        return { state: next, effects: [savePlace(next)] }
+      })
     }
     case "deskBack": {
       return deskBack(state, desk)
@@ -900,57 +914,18 @@ function onIntent(state: PlayState, event: PlayIntent & { at: string }): Step {
       const shown = onScreen(state)
       if (shown?.place.visit.stage !== "speak") return stay(state)
       const { visit } = shown.place
-      const line = lineOf(visit)
-      const { take, answers } = state.notes
-      if (take.kind !== "idle") {
-        // D1: a tap stops this card's take; another card's is left to end.
-        return answers === line
-          ? { state, effects: [{ type: "tapNote", line, supersedes: null }] }
-          : stay(state)
-      }
-      // A take an earlier opening left may yet land on this card.
-      if (state.taking !== null) return stay(state)
-      const next: PlayState = {
-        ...state,
-        said: null,
-        taking: { line, since: Date.parse(event.at) },
-      }
-      // Kept before the take starts, so a note that lands after the screen
-      // is gone still finds this card at the next opening.
-      return {
-        state: next,
-        effects: [
-          savePlace(next),
-          { type: "tapNote", line, supersedes: visit.note },
-        ],
-      }
+      return tapNoteOn(state, lineOf(visit), visit.note, event.at)
     }
     case "playNote": {
-      const note = onScreen(state)?.place.visit.note ?? null
-      return note === null
-        ? stay(state)
-        : { state, effects: [{ type: "playNote", id: note }] }
+      return playNoteOf(state, onScreen(state)?.place.visit.note ?? null)
     }
     case "letGoNote": {
       const shown = onScreen(state)
-      // The row's actions wait while a take is under way.
-      if (shown === null || state.notes.take.kind !== "idle") {
-        return stay(state)
-      }
-      const { note } = shown.place.visit
-      if (note === null) return stay(state)
-      const step = withVisit(
-        { ...state, said: { kind: "setAside", place: event.place } },
-        shown.place,
-        { ...shown.place.visit, note: null }
+      if (shown === null) return stay(state)
+      const { visit } = shown.place
+      return letGoOf(state, visit.note, event.place, (cleared) =>
+        withVisit(cleared, shown.place, { ...visit, note: null })
       )
-      return {
-        state: step.state,
-        effects: [
-          ...step.effects,
-          { type: "setAsideNote", id: note, place: event.place },
-        ],
-      }
     }
     case "showRustc": {
       const shown = onScreen(state)

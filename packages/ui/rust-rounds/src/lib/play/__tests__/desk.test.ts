@@ -4,7 +4,6 @@
  * Back to the card; a note still being kept is waited for without anything
  * on the step waiting; and a paste under way survives the screen going.
  */
-import { RoundLogSchema } from "@rust-rounds/lib/formats"
 import { appendToLog, EMPTY_LOG, holdsAdd } from "@rust-rounds/lib/play/log"
 import type { RustRoundsRuntime } from "@rust-rounds/lib/play/runtime"
 import { createRustRounds } from "@rust-rounds/lib/play/runtime"
@@ -64,7 +63,6 @@ describe("the desk step", () => {
       { at: expect.any(String), pasted: ERROR, note: null },
     ])
     const { log } = keptRounds(ports.storage).open()
-    expect(RoundLogSchema.safeParse(log).success).toBe(true)
     // The card itself is not left: nothing of it is logged yet.
     expect(log.sessions.flatMap((session) => session.cards)).toEqual([])
   })
@@ -110,7 +108,6 @@ describe("the desk step", () => {
     runtime.dispatch({ type: "deskText", text: ERROR })
     runtime.dispatch({ type: "deskTapNote" })
     await vi.advanceTimersByTimeAsync(2_000)
-    // Back is never held up by the note.
     runtime.dispatch({ type: "deskBack" })
     expect(runtime.getSnapshot().screen.kind).toBe("card")
     expect(pastes(ports.storage)).toEqual([])

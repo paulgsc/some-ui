@@ -420,9 +420,7 @@ const MenuScreen = ({
 
 /**
  * Pasting an error from the desk (RR4c): the text as pasted, an optional
- * voice note on the take pattern's parts, and back to the card. Nothing on
- * it waits: Back is there while a note is being kept, which the paste then
- * waits for on its own.
+ * voice note on the take pattern's parts, and back to the card.
  */
 const DeskScreen = ({
   state,
