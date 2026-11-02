@@ -90,6 +90,14 @@ vi.mock("@/lib/home-link/going", () => ({
   logGoing: (): Promise<Array<never>> => Promise.resolve([]),
   studioGoing: (): Promise<unknown> =>
     Promise.resolve({ sittings: [], reports: [] }),
+  reflectionsGoing: (): Array<never> => [],
+  letGoHeldReflections: (): void => undefined,
+  promptsGoing: (): Array<never> => [],
+  letGoHeldPrompts: (): void => undefined,
+  notesGoing: (): Promise<unknown> =>
+    Promise.resolve({ going: [], onPhone: () => true }),
+  lensGoing: (): Promise<unknown> =>
+    Promise.resolve({ going: [], onPhone: () => true }),
 }))
 vi.mock("@/lib/jobs", () => ({
   phoneJobs: (): unknown => ({
@@ -205,7 +213,7 @@ describe("Practice's sharing mark", () => {
     await act(() => Promise.resolve())
     expect(home.sent).toEqual([])
     fireEvent.click(mark())
-    expect(screen.getAllByText("Only on this phone")).toHaveLength(2)
+    expect(screen.getAllByText("Only on this phone")).toHaveLength(4)
     expect(
       screen.getAllByText(/Pair this phone with home in Settings/).length
     ).toBeGreaterThan(0)

@@ -54,6 +54,8 @@ export type ServerRoute =
   | "/api/v1/push/vapid-key"
   | "/api/v1/routine/files"
   | "/api/v1/routine/opened"
+  | "/api/v1/routine/prompts/:stamp"
+  | "/api/v1/routine/reflections/:id"
   | "/api/v1/rust-rounds"
   | "/api/v1/rust-rounds/:id"
   | "/api/v1/sessions"
@@ -68,6 +70,7 @@ export type ServerRoute =
   | "/api/v1/studio/sittings"
   | "/api/v1/studio/sittings/:sitting/events"
   | "/api/v1/studio/sittings/:sitting/events/:id"
+  | "/api/v1/study-notes/:kind/:id"
   | "/api/v1/subjects/me/stats"
   | "/api/v1/sync/:collection/batch"
   | "/api/v1/tabs"
@@ -78,7 +81,10 @@ export type ServerRoute =
   | "/api/v1/tabs/reconcile"
   | "/api/v1/tabs/summaries"
   | "/api/v1/utter"
-  | "/api/v1/voice-notes/:id";
+  | "/api/v1/voice-notes/:id"
+  | "/api/v1/voice-notes/:id/heard"
+  | "/api/v1/voice-notes/:id/set-aside"
+  | "/api/v1/voice-notes/on-drive";
 
 /** Routes NOT nested under API_BASE_PATH. */
 export type UnversionedRoute =

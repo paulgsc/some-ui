@@ -1,4 +1,7 @@
-import { createSessionLogStore } from "@leetype/lib/leetype/session-log"
+import {
+  createSessionLogStore,
+  onSessionLogged,
+} from "@leetype/lib/leetype/session-log"
 import type { SessionEvent } from "@leetype/lib/leetype/session-log/model"
 import { INDEX_KEY, sessionKey } from "@leetype/lib/leetype/session-log/stored"
 import type { KeyedStorage } from "@some-ui/core-utils"
@@ -34,6 +37,23 @@ describe("createSessionLogStore", () => {
       started("e1", "a"),
       started("e2", "b"),
     ])
+  })
+
+  it("tells onSessionLogged each event a store keeps, whichever store, and none it refuses", () => {
+    const storage = memoryStorage()
+    const one = createSessionLogStore(storage)
+    const two = createSessionLogStore(storage)
+    const told: Array<string> = []
+    const stop = onSessionLogged((event) => told.push(event.id))
+    one.append(started("e1", "a"))
+    two.append(started("e2", "b"))
+    storage.full = true
+    expect(one.append(started("e3", "c"))).toBe(false)
+    expect(told).toEqual(["e1", "e2"])
+    stop()
+    storage.full = false
+    one.append(started("e4", "d"))
+    expect(told).toEqual(["e1", "e2"])
   })
 
   it("adds to what another store over the same storage kept", () => {

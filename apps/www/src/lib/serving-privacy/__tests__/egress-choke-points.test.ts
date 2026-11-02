@@ -15,12 +15,17 @@
  *   `no-restricted-globals` cannot see it, and `no-restricted-imports`
  *   misses a dynamic `import()` and `Capacitor.Plugins.CapacitorHttp`: only
  *   `lib/device-backend/native-http` may name it, only `lib/home-link` may
- *   call that module, and only the Home server block, the drain and marks
- *   of what this phone keeps on home (LA15), what hands aph's lane to them,
- *   Settings' readout of what is kept where, and the readout and port of
- *   the routine's files in Korean (whose read sends one `GET /routine/files`
- *   and whose telling of what was opened one `PUT /routine/opened`) may
- *   call `lib/home-link`.
+ *   call that module, and only the Home server block, the study list's
+ *   "Let it go" and the phone-full offer's "Remove it", the drain and
+ *   marks of what this phone keeps on home (LA15; its voice run also sends
+ *   one `PUT /voice-notes/:id/set-aside` per note let go on the phone that
+ *   home holds, from `lib/home-link/set-aside`, MIC2), what hands aph's lane to
+ *   them, Settings' readout of what is kept where, the readout and port
+ *   of the routine's files in Korean (whose read sends one
+ *   `GET /routine/files` and whose telling of what was opened one
+ *   `PUT /routine/opened`), and Studio's idea answers asking home for a
+ *   take's words (`lib/idea-hearing`, whose read sends one
+ *   `GET /voice-notes/:id/heard`) may call `lib/home-link`.
  *
  * The last group feeds the checks known-bad sources, so a check that stopped
  * looking cannot stay green.
@@ -30,7 +35,14 @@ import { readdirSync, readFileSync } from "node:fs"
 import { dirname, join, posix, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import ts from "typescript"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
+
+// EG1: a scan fails only on a violation, not on a busy CI host. Each scan
+// reads and parses every source file in www; vitest's 5 s default left no
+// room on a busy host, where the LA8 scan took 5.1 s. 30 s covers host load
+// on today's tree. Tolerance: a tree whose scan nears 30 s, which then wants
+// the files parsed once for every check, not a larger number here.
+vi.setConfig({ testTimeout: 30_000 })
 
 /** apps/www/src/lib/serving-privacy/__tests__ -> apps/www/src. */
 const SRC = resolve(dirname(fileURLToPath(import.meta.url)), "../../..")
@@ -63,7 +75,28 @@ const HOME_LINK_CALLERS = new Set([
   // LA13: game day's line of what of its bites waits on the phone for home
   // (`gameOutbox`), which reads and sends nothing.
   "routes/_dashboard/_apk/game-week.tsx",
+  // LA8: the study list's "Let it go" of one session, a tap after a confirm,
+  // which copies it home and reads it back before the phone lets it go.
+  "components/sessions/device-let-go.tsx",
+  // LA8, PF1: the phone-full offer's "Remove it", the same let-go of the one
+  // session it names, on its press.
+  "components/settings/device-storage.tsx",
+  // LA8, IH1 (MIC10): Studio's idea answers, which read the pairing and ask
+  // home for a take's words while the screen shows it being heard; and a new
+  // idea's screen (ST26, `ideaHome`), which reads whether the phone is paired
+  // and listens for that changing, asking home nothing.
+  "lib/idea-hearing/index.ts",
 ])
+
+/**
+ * LA8: who may start a session's let-go (`components/sessions/device-let-go`,
+ * whose `useSessionLetGo` starts it with no confirm): the study list's row,
+ * after its confirm, and the phone-full offer's "Remove it".
+ */
+const LET_GO_CALLERS = [
+  "components/settings/device-storage.tsx",
+  "routes/_dashboard/sessions/index.tsx",
+]
 
 /**
  * LA15: the one wiring of every record this phone drains to home, which
@@ -74,6 +107,7 @@ const KEEPERS = new Set([
   "lib/home-link/lanes.ts",
   "lib/home-link/kept-runtime.ts",
   "lib/home-link/routine.ts",
+  "lib/home-link/heard.ts",
 ])
 
 /** The routine's read, and the two requests it may send. */
@@ -82,6 +116,24 @@ const ROUTINE_SENDS = [
   ['"GET"', '"/routine/files"'],
   ['"PUT"', '"/routine/opened"', "JSON.stringify({ opened: keys })"],
 ]
+
+/**
+ * LA8, LA15 (HF11): the voice lane's read of which Studio takes home knows
+ * Drive holds, and the one request it may send.
+ */
+const ON_DRIVE_READ = "lib/home-link/on-drive.ts"
+const ON_DRIVE_SENDS = [['"GET"', "onDrivePath(chunk)"]]
+
+/** LA8, IH1: the read of one take's words, and the one request it may send. */
+const HEARD_READ = "lib/home-link/heard.ts"
+const HEARD_SENDS = [['"GET"', "heardPath(id)"]]
+
+/**
+ * LA8, LA13 (MIC2): the voice lane's set-aside marks, and the one request
+ * they may send, once per mark due.
+ */
+const SET_ASIDE_SEND = "lib/home-link/set-aside.ts"
+const SET_ASIDE_SENDS = [['"PUT"', "setAsidePath(mark)"]]
 
 /** Every call of a function named `send` in `text`, as its arguments' text. */
 function sendCalls(path: string, text: string): Array<Array<string>> {
@@ -462,6 +514,18 @@ describe("LA8: the phone reaches home through one module", () => {
     ).toEqual([])
   })
 
+  it("starts a session's let-go only from the study list and the phone-full offer (LA8)", () => {
+    // `useSessionLetGo` hands out a `start` with no confirm of its own: each
+    // caller asks first, in its own words.
+    const isLetGo = (module: string): boolean =>
+      module === "components/sessions/device-let-go"
+    expect(
+      sources
+        .filter((f) => valueImportsOf(f, read(f), isLetGo).length > 0)
+        .sort()
+    ).toEqual(LET_GO_CALLERS)
+  })
+
   it("calls the link's keep only from the drain and Korean's look (LA15)", () => {
     const keeps = (f: string): boolean => /\.keep\(/.test(read(f))
     const reach = sources.filter(
@@ -472,10 +536,48 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(reach.filter(keeps)).toEqual([])
     expect(read("lib/home-link/lanes.ts")).toContain("homeLink().keep(")
     expect(read(ROUTINE_READ)).toContain("homeLink().keep(")
+    expect(read(HEARD_READ)).toContain("homeLink().keep(")
+  })
+
+  it("sends nothing from the read of a take's words but one GET of /voice-notes/:id/heard, and only Studio's idea answers read it (IH1)", () => {
+    expect(sendCalls(HEARD_READ, read(HEARD_READ))).toEqual(HEARD_SENDS)
+    expect(read(HEARD_READ)).toContain("/heard`")
+    const readers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /from "\.\/heard"|from "@\/lib\/home-link\/heard"/.test(read(f))
+      )
+    expect(readers).toEqual(["lib/idea-hearing/index.ts"])
   })
 
   it("sends nothing from the routine's read but one GET /routine/files and one PUT /routine/opened", () => {
     expect(sendCalls(ROUTINE_READ, read(ROUTINE_READ))).toEqual(ROUTINE_SENDS)
+  })
+
+  it("sends nothing from the read of which takes Drive has but its GETs of /voice-notes/on-drive, one per 100 waiting takes, and only the voice lane's run reads it (HF11)", () => {
+    expect(sendCalls(ON_DRIVE_READ, read(ON_DRIVE_READ))).toEqual(
+      ON_DRIVE_SENDS
+    )
+    expect(read(ON_DRIVE_READ)).toContain("/voice-notes/on-drive?ids=")
+    const readers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /from "\.\/on-drive"|from "@\/lib\/home-link\/on-drive"/.test(read(f))
+      )
+    expect(readers).toEqual(["lib/home-link/voice-copy.ts"])
+  })
+
+  it("sends nothing from the set-aside marks but one bodiless PUT of /voice-notes/:id/set-aside per mark, and only the voice lane's run sends them (MIC2)", () => {
+    expect(sendCalls(SET_ASIDE_SEND, read(SET_ASIDE_SEND))).toEqual(
+      SET_ASIDE_SENDS
+    )
+    expect(read(SET_ASIDE_SEND)).toContain("/set-aside?")
+    const senders = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /from "\.\/set-aside"|from "@\/lib\/home-link\/set-aside"/.test(read(f))
+      )
+    expect(senders).toEqual(["lib/home-link/voice-copy.ts"])
   })
 
   it("still finds what it is meant to guard", () => {

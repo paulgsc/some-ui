@@ -115,6 +115,14 @@
     },
     "packages/ui/shared": {
       "ignoreDependencies": ["clsx", "tailwind-merge"]
+    },
+    "packages/voice-capture": {
+      "entry": [
+        "src/index.ts",
+        "src/testing.ts",
+        "tests/real-microphone/*.spec.ts",
+        "tests/real-microphone/clips/make-clips.ts"
+      ]
     }
   }
 }

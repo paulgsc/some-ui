@@ -418,7 +418,7 @@
       "type": "record",
       "pinned": "In 45 seconds, out loud: why did Raft's authors bother, given Multi-Paxos?",
       "title": "Round 4 · Speak · why Raft?",
-      "body": "Hold to record, up to 60 seconds. The rubric appears only after you have recorded. Your recording is kept with its prompt, rubric and ticks, and exported to Drive for the weekly review.",
+      "body": "Tap to record, and tap again to stop, up to 60 seconds. The rubric appears only after you have recorded. Your recording is kept with its prompt, rubric and ticks, and exported to Drive for the weekly review.",
       "prompt": "Multi-Paxos already replicates a log with a stable leader. In 45 seconds, out loud: why did Raft's authors bother?",
       "maxSeconds": 60,
       "rubric": [
@@ -436,7 +436,7 @@
       "type": "record",
       "pinned": "In 45 seconds, out loud: why did Raft's authors bother, given Multi-Paxos?",
       "title": "Round 4 · Speak · why Raft?",
-      "body": "Hold to record, up to 60 seconds. The rubric appears only after you have recorded. Your recording is kept with its prompt, rubric and ticks, and exported to Drive for the weekly review.",
+      "body": "Tap to record, and tap again to stop, up to 60 seconds. The rubric appears only after you have recorded. Your recording is kept with its prompt, rubric and ticks, and exported to Drive for the weekly review.",
       "prompt": "Multi-Paxos already replicates a log with a stable leader. In 45 seconds, out loud: why did Raft's authors bother?",
       "maxSeconds": 60,
       "rubric": [
@@ -692,7 +692,7 @@
       "type": "record",
       "pinned": "In 45 seconds, out loud: why did Raft's authors bother, given Multi-Paxos?",
       "title": "Round 4 · Speak · why Raft? (back from its reading)",
-      "body": "Hold to record, up to 60 seconds. The rubric appears only after you have recorded. Your recording is kept with its prompt, rubric and ticks, and exported to Drive for the weekly review.",
+      "body": "Tap to record, and tap again to stop, up to 60 seconds. The rubric appears only after you have recorded. Your recording is kept with its prompt, rubric and ticks, and exported to Drive for the weekly review.",
       "prompt": "Multi-Paxos already replicates a log with a stable leader. In 45 seconds, out loud: why did Raft's authors bother?",
       "maxSeconds": 60,
       "rubric": [

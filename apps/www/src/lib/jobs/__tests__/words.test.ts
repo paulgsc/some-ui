@@ -122,6 +122,7 @@ const SAID: Readonly<Record<keyof typeof words, ReadonlyArray<string>>> = {
   frictionLabels: Object.values(words.frictionLabels),
   whatHappened: [words.whatHappened],
   sayItAloud: [words.sayItAloud],
+  voiceGoesHome: [words.voiceGoesHome],
   endedAs: (["submitted", "gave-up", "closed"] as const).map(words.endedAs),
   outcomeLabels: Object.values(words.outcomeLabels),
   outcomeOn: [words.outcomeOn("rejected", DAY)],

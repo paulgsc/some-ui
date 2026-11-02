@@ -18,6 +18,8 @@ export type RecordingFailure =
   | "unsupported"
   /** Another app holds the microphone (a call, say). */
   | "busy"
+  /** Another screen of this app is recording (`owner.ts`). */
+  | "elsewhere"
   | "failed"
 
 /** What to tell the person when the microphone refuses, in their words. */
@@ -25,6 +27,7 @@ export const RECORDING_FAILURE_COPY: Record<RecordingFailure, string> = {
   denied:
     "The microphone is off for Some UI. Turn it on under Android Settings → Apps → Some UI → Permissions → Microphone, then try again.",
   busy: "Another app is using the microphone. Try again once it lets go.",
+  elsewhere: "Another screen is recording. Stop that one, then try again.",
   unsupported: "This phone's web view can't record audio.",
   failed: "The microphone didn't start. Try again.",
 }
@@ -34,6 +37,7 @@ const PORT = "microphone (getUserMedia, MediaRecorder)"
 const KIND: Record<RecordingFailure, IntentErrorKind> = {
   denied: "rejected",
   busy: "unreachable",
+  elsewhere: "unreachable",
   unsupported: "unavailable",
   failed: "unknown",
 }
@@ -55,6 +59,11 @@ export type Take = { blob: Blob; mimeType: string; durationMs: number }
 export type Recording = {
   /** How loud the input is right now, 0 (silence) to 1. */
   level: () => number
+  /**
+   * Whether `level` is measuring right now: false where the meter is a flat
+   * zero (no Web Audio, or a context that would not start). Absent: unknown.
+   */
+  metered?: () => boolean
   /** Stops, releases the microphone, and resolves with what was said. */
   finish: () => Promise<Take>
   /** Stops and releases the microphone, keeping nothing. */
@@ -97,6 +106,7 @@ function failureOf(error: unknown): RecordingFailure {
  */
 function meter(stream: MediaStream): {
   level: () => number
+  metered: () => boolean
   close: () => void
 } {
   try {
@@ -119,11 +129,12 @@ function meter(stream: MediaStream): {
         // Speech sits around 0.05-0.2 RMS; stretch it across the meter.
         return Math.min(1, Math.sqrt(sum / samples.length) * 4)
       },
+      metered: () => context.state === "running",
       // Ignored: the meter is done either way.
       close: () => void context.close().catch(() => undefined),
     }
   } catch {
-    return { level: () => 0, close: () => undefined }
+    return { level: () => 0, metered: () => false, close: () => undefined }
   }
 }
 
@@ -221,6 +232,7 @@ async function startMicRecording(bitsPerSecond: number): Promise<Recording> {
 
   return {
     level: levels.level,
+    metered: levels.metered,
     async finish(): Promise<Take> {
       const durationMs = performance.now() - startedAt
       stop()

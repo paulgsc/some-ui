@@ -1,47 +1,69 @@
+/**
+ * A spoken answer on the take pattern, over the simulated microphone every
+ * screen's tests share (`spoken-take/__tests__/phone`), on faked timers: the
+ * take kept is the answer, Redo's in its place, and Let go withdraws it.
+ */
 import { IncidentPlayRuntime } from "@leetype/lib/leetype/incident-play"
 import { AB_FIXTURES } from "@leetype/lib/leetype/session-file/__tests__/fixtures"
 import { createSessionLogStore } from "@leetype/lib/leetype/session-log"
-import type {
-  SpokenTakes,
-  SpokenTakeSnapshot,
-} from "@leetype/lib/leetype/spoken-take"
+import type { SpokenTakes } from "@leetype/lib/leetype/spoken-take"
+import { phoneTakes } from "@leetype/lib/leetype/spoken-take/__tests__/phone"
 import { rubricText, SessionFileSchema } from "@leetype/types/session-file"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
-import { describe, expect, it, vi } from "vitest"
+import { SPEAKING } from "@some-ui/voice-capture/testing"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const FILE = SessionFileSchema.parse(AB_FIXTURES[1]?.raw)
 const TAKE = FILE.screens.s15
 const RUBRIC = TAKE?.type === "record" ? rubricText(TAKE) : []
 
-/** A microphone the test lands takes on. */
-function fakeTakes(): SpokenTakes & {
-  land: (id: string, durationMs: number) => void
-} {
-  let snapshot: SpokenTakeSnapshot = {
-    recording: false,
-    said: null,
-    last: null,
-    full: false,
-    notesFull: false,
-  }
-  const listeners = new Set<() => void>()
-  const publish = (next: SpokenTakeSnapshot): void => {
-    snapshot = next
-    for (const listener of listeners) listener()
-  }
-  return {
-    getSnapshot: () => snapshot,
-    subscribe: (listener): (() => void) => {
-      listeners.add(listener)
-      return (): void => void listeners.delete(listener)
+/** A file opening on a take whose rubric names the round after it. */
+const COVERED = SessionFileSchema.parse({
+  title: "Covered",
+  oneLine: "A take whose rubric names its round.",
+  session: { kind: "incident", budgetMinutes: 30 },
+  start: "t1",
+  screens: {
+    t1: {
+      type: "record",
+      prompt: "Why did the write not stick?",
+      maxSeconds: 60,
+      rubric: [{ text: "The write needs a majority", covers: ["r1"] }],
+      weakIfFewerThan: 0,
+      next: "r1",
     },
-    start: vi.fn(() => publish({ ...snapshot, recording: true })),
-    stop: vi.fn(),
-    reset: vi.fn(() => publish({ ...snapshot, last: null })),
-    note: vi.fn(() => true),
-    land: (id, durationMs): void =>
-      publish({ ...snapshot, recording: false, last: { id, durationMs } }),
-  }
+    r1: {
+      type: "choice",
+      options: [
+        { label: "Right", next: "t1", correct: true },
+        { label: "Not sure", next: "t1", abstain: true },
+      ],
+    },
+  },
+})
+
+beforeEach(() => {
+  vi.useFakeTimers()
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+})
+
+/** The microphone's timers run `ms` on. */
+const settle = async (ms = 0): Promise<void> => {
+  await vi.advanceTimersByTimeAsync(ms)
+}
+
+/** Taps a take on, talks `ms`, taps it off, and lets it be kept. */
+async function answerAloud(
+  runtime: IncidentPlayRuntime,
+  ms: number
+): Promise<void> {
+  runtime.tapTake()
+  await settle(ms)
+  runtime.tapTake()
+  await settle()
 }
 
 /** Plays variant B's short form to its take on s15. */
@@ -69,14 +91,15 @@ function atTheTake(takes: SpokenTakes): {
 }
 
 describe("a spoken answer", () => {
-  it("is taken on the microphone, then ticked, and goes on when strong", () => {
-    const takes = fakeTakes()
+  it("is taken on the microphone, then ticked, and goes on when strong", async () => {
+    const takes = phoneTakes()
     const { runtime, log } = atTheTake(takes)
-    expect(takes.reset).toHaveBeenCalled()
 
-    runtime.record()
-    expect(takes.start).toHaveBeenCalledWith({ file: "t1-01", screen: "s15" })
-    takes.land("take-1", 41_000)
+    await answerAloud(runtime, 41_000)
+    expect(takes.mic.asked()).toBe(1)
+    expect(takes.store.getSnapshot()).toEqual([
+      expect.objectContaining({ id: "take-1", answers: "t1-01#s15" }),
+    ])
     expect(runtime.getSnapshot().play?.spoken).toEqual({
       as: "recorded",
       take: "take-1",
@@ -109,8 +132,151 @@ describe("a spoken answer", () => {
     expect(runtime.getSnapshot().play?.screen).toBe("s21")
   })
 
+  it("shows the take's button, time against the cap, and once kept its row", async () => {
+    const takes = phoneTakes()
+    const { runtime } = atTheTake(takes)
+    expect(runtime.getSnapshot().take?.item.button).toEqual({
+      kind: "ready",
+      again: false,
+    })
+    runtime.tapTake()
+    await settle(2_000)
+    expect(runtime.getSnapshot().take?.item.button).toMatchObject({
+      kind: "recording",
+      elapsedMs: 2_000,
+      capMs: 60_000,
+    })
+    runtime.tapTake()
+    await settle()
+    const item = runtime.getSnapshot().take?.item
+    expect(item?.current).toEqual([
+      expect.objectContaining({
+        take: expect.objectContaining({
+          id: "take-1",
+          kept: { place: "phone" },
+        }),
+        canPlay: true,
+        canRedo: true,
+        canLetGo: true,
+        unsent: false,
+      }),
+    ])
+    runtime.playTake("take-1")
+    await settle()
+    expect(takes.player.playing()).toBe(1)
+  })
+
+  it("takes a Redo's take as the answer, keeping the earlier one (D2)", async () => {
+    const takes = phoneTakes()
+    const { runtime, log } = atTheTake(takes)
+    await answerAloud(runtime, 10_000)
+    const shown = log
+      .getSnapshot()
+      .log.filter((event) => event.type === "rubric-shown").length
+    await answerAloud(runtime, 20_000)
+    expect(runtime.getSnapshot().play?.spoken).toEqual({
+      as: "recorded",
+      take: "take-2",
+      seconds: 20,
+    })
+    expect(takes.store.getSnapshot()).toEqual([
+      expect.objectContaining({ id: "take-1", standing: "earlier" }),
+      expect.objectContaining({ id: "take-2", standing: "current" }),
+    ])
+    // The rubric was already in view: shown once.
+    expect(
+      log.getSnapshot().log.filter((event) => event.type === "rubric-shown")
+    ).toHaveLength(shown)
+    runtime.dispatch({ type: "ticked", ticks: RUBRIC })
+    expect(takes.note).toHaveBeenCalledWith(
+      expect.objectContaining({ take: "take-2" })
+    )
+  })
+
+  it("waits on a Redo under way before Done, then settles the Redo's take", async () => {
+    const takes = phoneTakes()
+    const { runtime, log } = atTheTake(takes)
+    await answerAloud(runtime, 10_000)
+    runtime.tapTake()
+    await settle(3_000)
+    expect(runtime.getSnapshot().take?.answering).toBe(true)
+    runtime.dispatch({ type: "ticked", ticks: RUBRIC })
+    expect(runtime.getSnapshot().play?.screen).toBe("s15")
+    expect(takes.note).not.toHaveBeenCalled()
+
+    runtime.tapTake()
+    await settle()
+    expect(runtime.getSnapshot().take?.answering).toBe(false)
+    runtime.dispatch({ type: "ticked", ticks: RUBRIC })
+    expect(
+      log.getSnapshot().log.find((event) => event.type === "spoken")
+    ).toMatchObject({ answer: { as: "recorded", seconds: 3 } })
+    expect(takes.note).toHaveBeenCalledWith(
+      expect.objectContaining({ take: "take-2" })
+    )
+  })
+
+  it("keeps a take under way when the answer is typed instead, and it answers nothing", async () => {
+    const takes = phoneTakes()
+    const { runtime } = atTheTake(takes)
+    runtime.tapTake()
+    await settle(5_000)
+    runtime.typeInstead()
+    await settle(60_000)
+    expect(takes.store.getSnapshot()).toHaveLength(1)
+    expect(runtime.getSnapshot().play?.spoken).toBeNull()
+    expect(runtime.getSnapshot().take?.item.current).toEqual([])
+  })
+
+  it("lets a recorded answer's take go, kept, and the answer with it (D3)", async () => {
+    const takes = phoneTakes()
+    const { runtime } = atTheTake(takes)
+    await answerAloud(runtime, 10_000)
+    runtime.letGoTake("take-1", "phone")
+    expect(runtime.getSnapshot().play?.spoken).toBeNull()
+    expect(takes.store.getSnapshot()).toEqual([
+      expect.objectContaining({ id: "take-1", standing: "set-aside" }),
+    ])
+    expect(runtime.getSnapshot().take?.item).toMatchObject({
+      button: { kind: "ready", again: false },
+      said: { kind: "setAside", place: "phone" },
+      current: [],
+    })
+    // Answered again, aloud.
+    await answerAloud(runtime, 5_000)
+    expect(runtime.getSnapshot().play?.spoken).toMatchObject({
+      as: "recorded",
+      take: "take-2",
+    })
+  })
+
+  it("shows the rubric once a visit, however often the take is answered", async () => {
+    const takes = phoneTakes()
+    const log = createSessionLogStore(memoryStorage())
+    let id = 0
+    const runtime = new IncidentPlayRuntime({
+      log,
+      now: (): number => 0,
+      newId: (): string => `id${String(++id)}`,
+      takes,
+    })
+    runtime.attach()
+    runtime.start({ fileName: "covered", file: COVERED, form: "full" })
+    const shown = (): number =>
+      log.getSnapshot().log.filter((event) => event.type === "rubric-shown")
+        .length
+    await answerAloud(runtime, 10_000)
+    expect(shown()).toBe(1)
+    runtime.letGoTake("take-1", "phone")
+    await answerAloud(runtime, 5_000)
+    expect(runtime.getSnapshot().play?.spoken).toMatchObject({
+      take: "take-2",
+    })
+    expect(shown()).toBe(1)
+  })
+
   it("is weak with fewer ticks than asked, and places its reading", () => {
-    const takes = fakeTakes()
+    const takes = phoneTakes()
     const { runtime, log } = atTheTake(takes)
     runtime.dispatch({
       type: "answered",
@@ -143,10 +309,12 @@ describe("a spoken answer", () => {
     )
   })
 
-  it("answers nothing with a take that lands after the learner moved on", () => {
-    const takes = fakeTakes()
+  it("answers nothing with a take that lands after the learner moved on", async () => {
+    const takes = phoneTakes()
     const { runtime } = atTheTake(takes)
-    runtime.record()
+    takes.mic.script({ ...SPEAKING, finish: { kind: "after", ms: 10_000 } })
+    runtime.tapTake()
+    await settle(5_000)
     runtime.dispatch({ type: "pass" })
     // A pass shows the rubric before going on (Def. 9.5).
     expect(runtime.getSnapshot().play?.spoken).toEqual({ as: "passed" })
@@ -162,23 +330,27 @@ describe("a spoken answer", () => {
       asked: true,
     })
     expect(runtime.getSnapshot().play?.screen).toBe("s15")
-    takes.land("late", 5_000)
+    await settle(10_000)
+    expect(takes.store.getSnapshot()).toHaveLength(1)
     expect(runtime.getSnapshot().play?.spoken).toBeNull()
+    // Nor is its ending said on this visit.
+    expect(runtime.getSnapshot().take?.item).toMatchObject({
+      button: { kind: "ready", again: false },
+      said: null,
+      current: [],
+    })
     expect(takes.note).not.toHaveBeenCalled()
 
-    // Recording again: the late take is still the port's last, and is not
-    // taken for this answer; the new one is.
-    runtime.record()
-    expect(runtime.getSnapshot().play?.spoken).toBeNull()
-    takes.land("fresh", 7_000)
+    // Recording again: the new take is this answer.
+    await answerAloud(runtime, 7_000)
     expect(runtime.getSnapshot().play?.spoken).toMatchObject({
       as: "recorded",
-      take: "fresh",
+      take: "take-2",
     })
   })
 
-  it("still answers the record screen after the surface mounts twice", () => {
-    const takes = fakeTakes()
+  it("still answers the record screen after the surface mounts twice", async () => {
+    const takes = phoneTakes()
     const log = createSessionLogStore(memoryStorage())
     let id = 0
     const runtime = new IncidentPlayRuntime({
@@ -200,8 +372,7 @@ describe("a spoken answer", () => {
     ] as const) {
       runtime.dispatch(input)
     }
-    runtime.record()
-    takes.land("take-1", 30_000)
+    await answerAloud(runtime, 30_000)
     expect(runtime.getSnapshot().play?.spoken).toMatchObject({
       as: "recorded",
       take: "take-1",
@@ -209,7 +380,7 @@ describe("a spoken answer", () => {
   })
 
   it("says so when the phone could not keep what an answer said", () => {
-    const takes = { ...fakeTakes(), note: vi.fn(() => false) }
+    const takes = { ...phoneTakes(), note: vi.fn(() => false) }
     const { runtime } = atTheTake(takes)
     runtime.dispatch({
       type: "answered",

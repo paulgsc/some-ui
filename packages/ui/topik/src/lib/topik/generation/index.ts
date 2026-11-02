@@ -248,8 +248,11 @@ const noteIdsLine = (
   return `<!-- notes: ${ids} -->`
 }
 
-/** The name every file of one share starts with. */
-const sceneStamp = (at: Date): string =>
+/**
+ * The name every file of one share starts with, and an ask's stamp: the
+ * drama that answers it is `<stamp>.json`.
+ */
+export const sceneStamp = (at: Date): string =>
   `drama-${at.toISOString().replace(/[-:.]/g, "")}`
 
 /** The `index`th voice note shared with the prompt made at `at`. */
