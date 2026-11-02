@@ -1979,8 +1979,8 @@
     {
       "store": "phone:rust-rounds-notes",
       "class": "record",
-      "growth": "Per Rust Rounds voice note (up to a minute at 32 kbps, ~240 KB), kept on the phone for good: each goes home (RR6, #2237), and the phone keeps it after home holds it too; no count of its own (max = +Infinity), so notes grow until the device's measured room (withRoom, the 25 MiB pool) refuses one, which the session says on the menu and the card; none is ever evicted (`some-ui:rust-rounds.notes`, `some-ui.rust-rounds-notes`).",
-      "horizon": "nothing lets them go yet: notes go home (RR6, #2237), but the phone keeps every one, counted against the shared 25 MiB pool, until the audio-back half of #2237 lands",
+      "growth": "Per Rust Rounds voice note (up to a minute at 32 kbps, ~240 KB) while its audio is on the phone: each goes home (RR6, #2237), and its audio leaves once home holds it (`audioLeaves`, LG1), the note staying listed; no count of its own (max = +Infinity), so notes home does not hold yet grow until the device's measured room (withRoom, the 25 MiB pool) refuses one, which the session says on the menu and the card; none is evicted to make room (`some-ui:rust-rounds.notes`, `some-ui.rust-rounds-notes`).",
+      "horizon": "a note's audio leaves the phone only once home holds it (RR6 #2237, LG1), and plays from home after (`GET /voice-notes/:id/audio`, the owner's D4); the note's listing stays",
       "family": "what-is-kept"
     },
     {
