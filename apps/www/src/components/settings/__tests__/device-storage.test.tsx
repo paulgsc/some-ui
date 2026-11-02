@@ -98,13 +98,14 @@ vi.mock("@/lib/home-link", async () => {
   }
 })
 
-/** The phone's storage as the prompt reads it, and each settle. */
+/** The phone's storage as the prompt reads it, each settle and each pull's read. */
 const storage = vi.hoisted(
   (): {
     view: DeviceStorageView | null
     listeners: Set<() => void>
     settled: number
-  } => ({ view: null, listeners: new Set(), settled: 0 })
+    checked: number
+  } => ({ view: null, listeners: new Set(), settled: 0, checked: 0 })
 )
 
 vi.mock("@/lib/device-backend/storage-view", () => ({
@@ -122,6 +123,10 @@ vi.mock("@/lib/device-backend/storage-view", () => ({
       return Promise.resolve()
     },
     dismiss: (): Promise<void> => Promise.resolve(),
+    check: (): Promise<void> => {
+      storage.checked += 1
+      return Promise.resolve()
+    },
   },
 }))
 
@@ -135,9 +140,10 @@ vi.mock("@/lib/home-link/let-go", () => ({
 }))
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
-const { DeviceStoragePrompt } = await import(
+const { DeviceStoragePrompt, DeviceStorageSummary } = await import(
   "@/components/settings/device-storage"
 )
+const { screenRefreshers } = await import("@/lib/pull-refresh/refreshers")
 
 const FINISHED = sessionRecord({
   id: "session-1",
@@ -156,6 +162,7 @@ beforeEach(() => {
   home.state = UNPAIRED
   home.send = null
   storage.settled = 0
+  storage.checked = 0
   storage.view = {
     use: { databaseBytes: 0, webViewBytes: 0, quotaBytes: 25 * 1024 * 1024 },
     notice: null,
@@ -345,5 +352,16 @@ describe("the phone-full offer", () => {
     expect(storage.settled).toBe(1)
     expect(deletes).toEqual([])
     expect(letGo.ids).toEqual([])
+  })
+})
+
+describe("a pull (PULL4)", () => {
+  it("reads the phone's room again while it shows, and not once it is gone", async () => {
+    const { unmount } = render(<DeviceStorageSummary />)
+    await expect(screenRefreshers.checkAll()).resolves.toEqual([])
+    expect(storage.checked).toBe(1)
+    unmount()
+    await screenRefreshers.checkAll()
+    expect(storage.checked).toBe(1)
   })
 })

@@ -26,7 +26,12 @@ import { leftPhone } from "@/lib/home-link/study-let-go"
 import { LET_GO } from "@/lib/home-link/words"
 import { useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
+import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
+import { PULL_WORDS } from "@/lib/pull-refresh/words"
 import { useSessionLetGo } from "@/components/sessions/device-let-go"
+
+/** What a pull reads again while the phone's room shows (PULL4). */
+const ROOM = { what: PULL_WORDS.room, checkAgain: deviceStorage.check }
 
 function useDeviceStorage(): DeviceStorageView | null {
   const view = useSyncExternalStore(
@@ -35,6 +40,7 @@ function useDeviceStorage(): DeviceStorageView | null {
   )
   useEffect(() => {
     void deviceStorage.refresh()
+    return screenRefreshers.register(ROOM)
   }, [])
   return view
 }
