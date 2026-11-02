@@ -160,6 +160,21 @@ export function itemName(at: string): string {
   return `${onDay(at)}, ${clock.format(new Date(at))}`
 }
 
+/**
+ * Which of this phone's recordings aren't counted yet, and why: a page
+ * hands its recordings in when it opens.
+ */
+export function unreadLine(
+  unread: ReadonlyArray<"studio" | "soundbite">
+): string | null {
+  const pages = unread.map((store) =>
+    store === "studio" ? "Studio" : "Soundbites"
+  )
+  if (pages.length === 0) return null
+  const named = pages.join(" and ")
+  return `${named} ${pages.length === 1 ? "hasn't" : "haven't"} been opened since the app started, so ${pages.length === 1 ? "its" : "their"} recordings on this phone aren't counted yet.`
+}
+
 /** How many there are, said for the "where" chart's name. */
 export const recordingsCount = (n: number): string => counted(n, "recording")
 
@@ -176,13 +191,13 @@ export function homeLine(home: HomeReading["kind"]): string | null {
       return "Asking home what it keeps…"
     }
     case "unpaired": {
-      return "This phone isn't paired with home, so only what's on this phone is counted. Pair on Home."
+      return "This phone isn't paired with home, so only what isn't on home yet is counted. Pair on Home."
     }
     case "unreachable": {
-      return "Home didn't answer, so only what's on this phone is counted. Drag down to try again."
+      return "Home didn't answer, so only what isn't on home yet is counted. Drag down to try again."
     }
     case "older": {
-      return "Home can't say what it keeps until it runs a newer version, so only what's on this phone is counted."
+      return "Home can't say what it keeps until it runs a newer version, so only what isn't on home yet is counted."
     }
     default: {
       return assertNever(home)

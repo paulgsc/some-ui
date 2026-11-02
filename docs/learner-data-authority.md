@@ -476,7 +476,8 @@ declared (checked by reading every call site and by the tests named).
   that calls `useSessionLetGo`'s `start` (which asks nothing itself) from
   anywhere but those two, or widens the egress test's `LET_GO_CALLERS`; one that calls its `keep` from anywhere but
   `lib/home-link/lanes.ts` (LA15), `lib/home-link/routine.ts`,
-  `lib/home-link/heard.ts` and `lib/home-link/kept-read.ts`; one that has
+  `lib/home-link/heard.ts`, `lib/home-link/voice-audio.ts` (RR6) and
+  `lib/home-link/kept-read.ts`; one that has
   `kept-read.ts` send anything but one `GET` of `keptPath(of)` per ask, lets
   anything but `lib/my-data` read it, or has `lib/my-data` ask it but when a
   My data page opens or is dragged down, or ask again but while the link is

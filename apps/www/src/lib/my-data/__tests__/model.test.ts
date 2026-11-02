@@ -209,6 +209,21 @@ describe("a kind's list", () => {
     expect(view.since).toBe("2026-09-12T10:00:00.000Z")
   })
 
+  it("counts a recording home lists as home's, though this phone hasn't heard yet", () => {
+    const view = kindOf(
+      "studio",
+      "studio",
+      listed,
+      [note({ id: "on-home", at: "2026-10-20T09:00:00.000Z" })],
+      NOW
+    )
+    expect(view.notes).toBe(3)
+    expect(view.items.map((item) => [item.id, item.where])).toEqual([
+      ["on-home", "home"],
+      ["aside", "aside"],
+    ])
+  })
+
   it("leaves out a list home gave for another kind", () => {
     const view = kindOf("studio", "lens", listed, [], NOW)
     expect(view.items).toEqual([])

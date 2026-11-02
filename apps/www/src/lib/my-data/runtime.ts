@@ -6,7 +6,7 @@
  */
 import type { Player } from "@some-ui/voice-capture"
 
-import type { HomeReading, Of, PhoneNote } from "./model"
+import type { HomeReading, Of, PhoneRead } from "./model"
 import type { MyDataEvent, MyDataState } from "./state"
 import { INITIAL_MY_DATA, stepMyData } from "./state"
 
@@ -14,7 +14,7 @@ export type MyDataPorts = {
   /** What home keeps, with `of`'s newest when asked; never rejects. */
   readonly askHome: (of: Of | null) => Promise<HomeReading>
   /** This phone's recordings; never rejects (one it can't read is left out). */
-  readonly readPhone: () => Promise<ReadonlyArray<PhoneNote>>
+  readonly readPhone: () => Promise<PhoneRead>
   /** Recording `id`'s audio on this phone, or null. */
   readonly audioOf: (id: string) => Promise<Blob | null>
   readonly player: Player
@@ -40,6 +40,8 @@ export function createMyData(ports: MyDataPorts): MyData {
   let state = INITIAL_MY_DATA
   const listeners = new Set<() => void>()
   let playback: { readonly id: string; readonly stop: () => void } | null = null
+  /** The latest ask to play: an earlier one whose audio lands late plays nothing. */
+  let asked: object | null = null
 
   const dispatch = (event: MyDataEvent): void => {
     const next = stepMyData(state, event)
@@ -68,13 +70,15 @@ export function createMyData(ports: MyDataPorts): MyData {
 
   const play = async (id: string): Promise<void> => {
     stop()
+    const ask = {}
+    asked = ask
     dispatch({ type: "played", id })
     const audio = await ports
       .audioOf(id)
       // Ignored: audio this phone can't read plays nothing, and its row
       // offers Play again.
       .catch(() => null)
-    if (state.playing !== id) return
+    if (asked !== ask || state.playing !== id) return
     if (audio === null) {
       dispatch({ type: "stopped", id })
       return
@@ -106,6 +110,7 @@ export function createMyData(ports: MyDataPorts): MyData {
       void play(id)
     },
     stop(): void {
+      asked = null
       const { playing } = state
       stop()
       if (playing !== null) dispatch({ type: "stopped", id: playing })

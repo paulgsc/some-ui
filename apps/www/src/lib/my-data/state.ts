@@ -12,7 +12,7 @@
  */
 import { assertNever } from "@some-ui/core-utils"
 
-import type { HomeReading, Of, PhoneNote } from "./model"
+import type { HomeReading, Of, PhoneRead } from "./model"
 
 export type MyDataState = {
   readonly seq: number
@@ -20,7 +20,7 @@ export type MyDataState = {
   readonly of: Of | null
   readonly home: HomeReading
   /** This phone's recordings, or null until read. */
-  readonly phone: ReadonlyArray<PhoneNote> | null
+  readonly phone: PhoneRead | null
   /** The recording playing now, by id. */
   readonly playing: string | null
 }
@@ -43,7 +43,7 @@ export type MyDataEvent =
   | {
       readonly type: "phoneRead"
       readonly seq: number
-      readonly phone: ReadonlyArray<PhoneNote>
+      readonly phone: PhoneRead
     }
   | { readonly type: "played"; readonly id: string }
   | { readonly type: "stopped"; readonly id: string }

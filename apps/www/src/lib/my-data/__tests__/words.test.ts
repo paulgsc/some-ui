@@ -17,6 +17,7 @@ import {
   kindLead,
   kindLine,
   MY_DATA,
+  unreadLine,
   WHERE_WORDS,
 } from "@/lib/my-data/words"
 
@@ -48,6 +49,9 @@ describe("My data's words", () => {
       MY_DATA.kind.play(itemName(AT)),
       MY_DATA.kind.stop(itemName(AT)),
       MY_DATA.kind.newest(5, 8),
+      ...[unreadLine(["studio"]), unreadLine(["studio", "soundbite"])].filter(
+        (line): line is string => line !== null
+      ),
       kindLine(4, AT, true),
       kindLead(4, 2_048, AT),
       itemLine(AT, 2_048),

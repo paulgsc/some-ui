@@ -2,7 +2,7 @@
 import type { Playback, Player } from "@some-ui/voice-capture"
 import { describe, expect, it } from "vitest"
 
-import type { HomeReading, Of, PhoneNote } from "@/lib/my-data/model"
+import type { HomeReading, Of, PhoneRead } from "@/lib/my-data/model"
 import type { MyDataPorts } from "@/lib/my-data/runtime"
 import { createMyData } from "@/lib/my-data/runtime"
 
@@ -18,16 +18,19 @@ function deferred<T>(): Deferred<T> {
 const flush = (): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, 0))
 
-const PHONE: ReadonlyArray<PhoneNote> = [
-  {
-    id: "a",
-    of: "studio",
-    at: "2026-11-01T09:00:00.000Z",
-    bytes: 10,
-    held: false,
-    going: true,
-  },
-]
+const PHONE: PhoneRead = {
+  notes: [
+    {
+      id: "a",
+      of: "studio",
+      at: "2026-11-01T09:00:00.000Z",
+      bytes: 10,
+      held: false,
+      going: true,
+    },
+  ],
+  unread: [],
+}
 
 /** Ports whose home answers wait until the test answers them, in the order asked. */
 function ports(): {
@@ -64,8 +67,7 @@ function ports(): {
         home.push({ of, answer })
         return answer.promise
       },
-      readPhone: (): Promise<ReadonlyArray<PhoneNote>> =>
-        Promise.resolve(PHONE),
+      readPhone: (): Promise<PhoneRead> => Promise.resolve(PHONE),
       audioOf: (id): Promise<Blob | null> =>
         Promise.resolve(id === "gone" ? null : new Blob([id])),
       player,
@@ -129,6 +131,28 @@ describe("My data's runtime", () => {
     await flush()
     data.stop()
     expect(played[2]?.stopped).toBe(true)
+    expect(data.getSnapshot().playing).toBeNull()
+  })
+
+  it("plays only the latest ask when an earlier one's audio lands late", async () => {
+    const { ports: p, played } = ports()
+    const audio = new Map<string, Array<(blob: Blob) => void>>()
+    const data = createMyData({
+      ...p,
+      audioOf: (id) =>
+        new Promise((resolve) => {
+          audio.set(id, [...(audio.get(id) ?? []), resolve])
+        }),
+    })
+    data.play("a")
+    data.play("b")
+    data.play("a")
+    for (const resolve of audio.get("a") ?? []) resolve(new Blob(["a"]))
+    for (const resolve of audio.get("b") ?? []) resolve(new Blob(["b"]))
+    await flush()
+    expect(played).toHaveLength(1)
+    data.stop()
+    expect(played[0]?.stopped).toBe(true)
     expect(data.getSnapshot().playing).toBeNull()
   })
 

@@ -523,6 +523,18 @@ async function readStudio(): Promise<void> {
 }
 
 export function candidates(): Array<Candidate> {
+  return listed(studioTakes, soundbites)
+}
+
+/**
+ * Every note on this phone that could go home, Studio's takes and the
+ * soundbites taken as given (`studio`, `sounds`): the copy pass's own reads,
+ * or My data's (`recordingsOnPhone`).
+ */
+function listed(
+  studio: ReadonlyArray<Candidate>,
+  sounds: ReadonlyArray<Candidate>
+): Array<Candidate> {
   const said = reflections
     .getSnapshot()
     .kept.filter((reflection) => !isSaving(reflection.id))
@@ -598,14 +610,81 @@ export function candidates(): Array<Candidate> {
     ...named,
     ...scene,
     ...game,
-    ...studioTakes,
-    ...soundbites,
+    ...studio,
+    ...sounds,
     ...lens,
     ...leetype,
     ...rust,
     ...ideas,
     ...bundled,
   ]
+}
+
+/** A recording on this phone, for My data: what it is, and its audio. */
+export type OnPhone = {
+  readonly id: string
+  readonly of: VoiceOut["of"]
+  /** When it was recorded, ISO 8601. */
+  readonly at: string
+  readonly audio: () => Promise<Blob | null>
+}
+
+/**
+ * Every recording on this phone, for My data (MY-DATA MD2, #2476): what
+ * `candidates` lists, with Studio's takes and the soundbites read now
+ * rather than as the last copy pass read them (none runs while unpaired),
+ * and the Rust Rounds notes that wait on the phone because their line names
+ * no card home could hold. Reads only: the copy pass's own lists and marks
+ * are left as they are. `unread` names the stores not handed in yet in this
+ * run of the app (Studio's and the soundbites' pages hand theirs in), whose
+ * recordings are then not listed.
+ */
+export async function recordingsOnPhone(): Promise<{
+  readonly notes: ReadonlyArray<OnPhone>
+  readonly unread: ReadonlyArray<"studio" | "soundbite">
+}> {
+  const unread: Array<"studio" | "soundbite"> = []
+  const studio = studioKeeping()
+  const takes: ReadonlyArray<Candidate> =
+    studio === null
+      ? []
+      : studio
+          .notesForHome(await studio.store.list())
+          .map(({ project, ...note }) => ({
+            note: { ...note, of: "studio" },
+            audio: (): Promise<Blob | null> =>
+              studio.store.audio(project, note.id),
+          }))
+  if (studio === null) unread.push("studio")
+  const kept = soundbiteKeeping()
+  const bites: ReadonlyArray<Candidate> =
+    kept === null
+      ? []
+      : (await kept.store.list()).map((bite) => ({
+          note: soundbiteNote(bite),
+          audio: (): Promise<Blob | null> => kept.store.audio(bite.id),
+        }))
+  if (kept === null) unread.push("soundbite")
+  const ref = rustRoundRef()
+  const unnamed: ReadonlyArray<OnPhone> = rustRoundsDesk
+    .kept()
+    .filter((take) => rustRoundNote(take, ref) === null)
+    .map((take) => ({
+      id: take.id,
+      of: "rust-round",
+      at: new Date(take.takenAt).toISOString(),
+      audio: (): Promise<Blob | null> => rustRoundsDesk.audio(take.id),
+    }))
+  const notes: ReadonlyArray<OnPhone> = [
+    ...listed(takes, bites).map(({ note, audio }) => ({
+      id: note.id,
+      of: note.of,
+      at: note.at,
+      audio,
+    })),
+    ...unnamed,
+  ]
+  return { notes, unread }
 }
 
 /** A game bite, as home is told it. */

@@ -21,17 +21,23 @@ import type { HomeExchanged } from "@some-ui/core-utils"
 import { assertNever, isRecord } from "@some-ui/core-utils"
 import type { TakeKept } from "@some-ui/voice-capture"
 
-/** What a note is said for, as home's `PUT /voice-notes/:id` takes `of`. */
-type VoiceOf =
-  | "reflection"
-  | "jobs"
-  | "scene"
-  | "game"
-  | "studio"
-  | "soundbite"
-  | "lens"
-  | "leetype"
-  | "rust-round"
+/**
+ * What a note is said for, as home's `PUT /voice-notes/:id` takes `of`, in
+ * home's order (`voice_repo::Of`).
+ */
+export const VOICE_OFS = [
+  "reflection",
+  "jobs",
+  "scene",
+  "game",
+  "studio",
+  "soundbite",
+  "lens",
+  "leetype",
+  "rust-round",
+] as const
+
+type VoiceOf = (typeof VOICE_OFS)[number]
 
 /** One note as home is told it: what it belongs to, and when it was recorded. */
 export type VoiceOut = {
@@ -391,17 +397,7 @@ export function runEnd(
 
 const isString = (value: unknown): value is string => typeof value === "string"
 
-const OFS: ReadonlySet<unknown> = new Set([
-  "reflection",
-  "jobs",
-  "scene",
-  "game",
-  "studio",
-  "soundbite",
-  "lens",
-  "leetype",
-  "rust-round",
-])
+const OFS: ReadonlySet<unknown> = new Set(VOICE_OFS)
 
 /** Extra fields a note's own query carries, never one of `of`, `ref` or `at`. */
 function isFields(value: unknown): boolean {

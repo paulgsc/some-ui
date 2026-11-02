@@ -5,16 +5,17 @@
  * module wires the runtime to the phone: home through its read of what it
  * keeps (`lib/home-link/kept-read`, LA8), and this phone's recordings as
  * the voice lane lists them and says where each is kept
- * (`lib/home-link/voice-copy`'s `candidates` and `voiceKept`). Phone-only
+ * (`lib/home-link/voice-copy`'s `recordingsOnPhone` and `voiceKept`). Phone-only
  * (`build.paths.ts`).
  */
 import { assertNever } from "@some-ui/core-utils"
+import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import { audioPlayer } from "@some-ui/voice-capture"
 
 import { askKept } from "@/lib/home-link/kept-read"
-import { candidates, voiceKept } from "@/lib/home-link/voice-copy"
+import { recordingsOnPhone, voiceKept } from "@/lib/home-link/voice-copy"
 
-import type { HomeReading, Of, PhoneNote } from "./model"
+import type { HomeReading, Of, PhoneNote, PhoneRead } from "./model"
 import { readKept } from "./model"
 import type { MyData } from "./runtime"
 import { createMyData } from "./runtime"
@@ -56,31 +57,46 @@ async function askHome(of: Of | null): Promise<HomeReading> {
   return { kind: "unreachable" }
 }
 
-async function readPhone(): Promise<ReadonlyArray<PhoneNote>> {
+async function readPhone(): Promise<PhoneRead> {
+  const { notes, unread } = await recordingsOnPhone().catch(
+    (error: unknown) => {
+      reportFailure({
+        port: "my data: this phone's recordings",
+        error: toIntentError(error),
+      })
+      return { notes: [], unread: [] }
+    }
+  )
   const read = await Promise.all(
-    candidates().map(async ({ note, audio }): Promise<PhoneNote | null> => {
+    notes.map(async ({ id, of, at, audio }): Promise<PhoneNote | null> => {
       const blob = await audio()
         // Ignored: a recording whose audio this phone can't read isn't
         // counted this time; the next open or drag down reads it again.
         .catch(() => null)
       if (blob === null) return null
       // Where every screen's row says it is (MIC3).
-      const { place } = voiceKept(note.id)
+      const { place } = voiceKept(id)
       return {
-        id: note.id,
-        of: note.of,
-        at: note.at,
+        id,
+        of,
+        at,
+        // IndexedDB hands back a handle whose size is known without its
+        // bytes being read.
         bytes: blob.size,
         held: place === "home",
         going: place === "going",
       }
     })
   )
-  return read.filter((note): note is PhoneNote => note !== null)
+  return {
+    notes: read.filter((note): note is PhoneNote => note !== null),
+    unread,
+  }
 }
 
 async function audioOf(id: string): Promise<Blob | null> {
-  const found = candidates().find(({ note }) => note.id === id)
+  const { notes } = await recordingsOnPhone()
+  const found = notes.find((note) => note.id === id)
   return found === undefined ? null : found.audio()
 }
 

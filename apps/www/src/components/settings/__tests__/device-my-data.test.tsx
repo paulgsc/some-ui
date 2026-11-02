@@ -179,11 +179,13 @@ describe("on the phone", () => {
       seq: 1,
       of: null,
       home: HOME,
-      phone: PHONE,
+      phone: { notes: PHONE, unread: ["studio"] },
       playing: null,
     }
     const { unmount } = render(<DeviceMyData />)
     expect(runtime.open).toHaveBeenCalledWith(null)
+    // Studio's recordings on this phone aren't counted until it opens.
+    expect(screen.getByText(/Studio hasn't been opened/)).toBeTruthy()
     await expect(screenRefreshers.checkAll()).resolves.toEqual([])
     expect(runtime.checkAgain).toHaveBeenCalledTimes(1)
     unmount()

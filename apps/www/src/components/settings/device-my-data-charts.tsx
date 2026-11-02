@@ -6,8 +6,7 @@
  *   the baseline.
  * - **How it grows on home:** one 2px line with a 10% wash, an end dot with
  *   a surface ring and its value beside it; hairline grid. One series, so
- *   no legend: the title names it. Each week answers a hover or a long
- *   press with its numbers.
+ *   no legend: the title names it. Each week's number is in the table.
  * - **Where your recordings are:** a thin segmented bar (8px, 2px surface
  *   gaps, no text) over the list that gives each part's name and count.
  *   The parts read as steps along the way home, so they are one hue's ramp,
@@ -145,7 +144,6 @@ export const GrowthLine = ({
   const ticks = [0, top / 2, top]
   const labelled = [0, Math.floor((growth.length - 1) / 2), growth.length - 1]
   const lastValue = values.at(-1) ?? 0
-  const band = (W - PAD.left - PAD.right) / Math.max(growth.length, 1)
   return (
     <Card title={MY_DATA.growth.title} sub={MY_DATA.growth.sub}>
       <svg
@@ -210,18 +208,6 @@ export const GrowthLine = ({
         >
           {mb(last.bytes)}
         </text>
-        {growth.map((week, i) => (
-          <rect
-            key={week.week}
-            x={x(i) - band / 2}
-            y={PAD.top}
-            width={band}
-            height={H - PAD.top - PAD.bottom}
-            fill="transparent"
-          >
-            <title>{`Week of ${weekOf(week.week)} · ${mb(week.bytes)} MB`}</title>
-          </rect>
-        ))}
       </svg>
       <p className="text-muted-foreground text-xs">{MY_DATA.growth.phone}</p>
     </Card>

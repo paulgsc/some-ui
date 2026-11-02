@@ -19,22 +19,13 @@ import { readAs } from "@some-ui/core-utils"
 import { z } from "zod"
 
 import type { VoiceOut } from "@/lib/voice-home/model"
+import { VOICE_OFS } from "@/lib/voice-home/model"
 
 /** What a recording was said for, as home names it. */
 export type Of = VoiceOut["of"]
 
-/** Every kind of recording home keeps, in home's order (`voice_repo::Of`). */
-export const KINDS = [
-  "reflection",
-  "jobs",
-  "scene",
-  "game",
-  "studio",
-  "soundbite",
-  "lens",
-  "leetype",
-  "rust-round",
-] as const satisfies ReadonlyArray<Of>
+/** Every kind of recording home keeps, in home's order. */
+export const KINDS = VOICE_OFS
 
 export function isKind(name: string): name is Of {
   return KINDS.some((kind) => kind === name)
@@ -103,6 +94,16 @@ export type PhoneNote = {
   readonly held: boolean
   /** Its copy waits to go home while the phone is paired. */
   readonly going: boolean
+}
+
+/**
+ * This phone's recordings as read, and the stores not handed in yet in this
+ * run of the app, whose recordings are not among them (Studio's and the
+ * soundbites' pages hand theirs in).
+ */
+export type PhoneRead = {
+  readonly notes: ReadonlyArray<PhoneNote>
+  readonly unread: ReadonlyArray<"studio" | "soundbite">
 }
 
 /** Where a recording is kept, as the page says it. */
@@ -289,12 +290,19 @@ export function kindOf(
   phone: ReadonlyArray<PhoneNote>,
   now: Date
 ): KindView {
-  const line = overviewOf(home, phone, now).kinds.find((k) => k.of === of)
-  const mine = phone.filter((note) => note.of === of)
+  const homeList =
+    home.kind === "read" && listed === of ? home.kept.notes : null
+  const onList = new Set((homeList ?? []).map((note) => note.id))
+  // A recording home lists is home's, whatever this phone last heard.
+  const known = phone.map((note) =>
+    onList.has(note.id) ? { ...note, held: true } : note
+  )
+  const line = overviewOf(home, known, now).kinds.find((k) => k.of === of)
+  const mine = known.filter((note) => note.of === of)
   const here = new Set(mine.map((note) => note.id))
   const fromHome: ReadonlyArray<KindItem> =
-    home.kind === "read" && listed === of
-      ? (home.kept.notes ?? []).map((note) => ({
+    homeList !== null
+      ? homeList.map((note) => ({
           id: note.id,
           at: note.recordedAt,
           bytes: note.size,
@@ -302,9 +310,8 @@ export function kindOf(
           playable: here.has(note.id),
         }))
       : []
-  const onList = new Set(fromHome.map((item) => item.id))
   const fromPhone: ReadonlyArray<KindItem> = mine
-    .filter((note) => !note.held && !onList.has(note.id))
+    .filter((note) => !note.held)
     .map((note) => ({
       id: note.id,
       at: note.at,

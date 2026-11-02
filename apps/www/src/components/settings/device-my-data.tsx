@@ -22,7 +22,11 @@ import { ChevronLeft, ChevronRight, Lock, Pause, Play } from "lucide-react"
 import { hasAudience } from "@/lib/build-profile"
 import type { KindItem, MyDataState, Of, Overview } from "@/lib/my-data"
 import { isKind, kindOf, overviewOf, phoneMyData } from "@/lib/my-data"
-import type { KindLine as KindLineOf, KindView } from "@/lib/my-data/model"
+import type {
+  KindLine as KindLineOf,
+  KindView,
+  PhoneRead,
+} from "@/lib/my-data/model"
 import {
   homeLine,
   itemLine,
@@ -32,6 +36,7 @@ import {
   kindLead,
   kindLine,
   MY_DATA,
+  unreadLine,
   WHERE_WORDS,
 } from "@/lib/my-data/words"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
@@ -117,17 +122,22 @@ const KindRow = ({ kind }: { kind: KindLineOf }): JSX.Element => {
 
 export const MyDataOverview = ({
   overview,
-  phoneRead = true,
+  unread = [],
 }: {
   overview: Overview
-  /** This phone's recordings are counted (false while they are read). */
-  phoneRead?: boolean
+  /**
+   * The stores whose recordings on this phone aren't counted yet, or null
+   * while this phone's recordings are read.
+   */
+  unread?: PhoneRead["unread"] | null
 }): JSX.Element => {
   const [tables, setTables] = useState(false)
   return (
     <div className="space-y-5">
       <Status line={homeLine(overview.home)} />
-      <Status line={phoneRead ? null : MY_DATA.phoneReading} />
+      <Status
+        line={unread === null ? MY_DATA.phoneReading : unreadLine(unread)}
+      />
       <div className="grid grid-cols-3 gap-2">
         <Tile
           value={
@@ -253,14 +263,18 @@ export const MyDataKind = ({
   playing,
   onPlay,
   onStop,
+  unread = [],
 }: {
   view: KindView
   playing: string | null
   onPlay: (id: string) => void
   onStop: () => void
+  /** This kind's store, when its recordings on this phone aren't counted yet. */
+  unread?: PhoneRead["unread"]
 }): JSX.Element => (
   <div className="space-y-4">
     <Status line={homeLine(view.home)} />
+    <Status line={unreadLine(unread)} />
     <p className="text-muted-foreground text-sm">
       {kindLead(view.notes, view.bytes, view.since)}
     </p>
@@ -309,8 +323,8 @@ export const DeviceMyData = (): JSX.Element => {
   const state = useMyData(null)
   return (
     <MyDataOverview
-      overview={overviewOf(state.home, state.phone ?? [], new Date())}
-      phoneRead={state.phone !== null}
+      overview={overviewOf(state.home, state.phone?.notes ?? [], new Date())}
+      unread={state.phone?.unread ?? null}
     />
   )
 }
@@ -338,7 +352,14 @@ const KindList = ({ of }: { of: Of }): JSX.Element => {
   const data = phoneMyData()
   return (
     <MyDataKind
-      view={kindOf(of, state.of, state.home, state.phone ?? [], new Date())}
+      view={kindOf(
+        of,
+        state.of,
+        state.home,
+        state.phone?.notes ?? [],
+        new Date()
+      )}
+      unread={(state.phone?.unread ?? []).filter((store) => store === of)}
       playing={state.playing}
       onPlay={data.play}
       onStop={data.stop}
