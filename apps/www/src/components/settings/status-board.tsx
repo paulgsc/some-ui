@@ -257,7 +257,6 @@ export const StatusBoard = (): JSX.Element => {
   const now = useMinuteClock()
   const routineFiles = useHomeRoutineFiles()
   const routine = useRoutineStatus(routineFiles?.key ?? "", now)
-  // A pull here names the morning run when it couldn't check it (PULL2).
   useEffect(registerJobsPull, [])
   const rows = [
     ...lanes.rows,
