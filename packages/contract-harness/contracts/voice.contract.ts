@@ -29,6 +29,17 @@
  * `404`, and a time home can't read a `422` naming `at`; both write nothing,
  * and the phone reads each by its status alone (a `404` stays owed and is
  * asked again on the next run).
+ *
+ * A Rust Rounds note's audio back from home (`GET /voice-notes/:id/audio`,
+ * RR6 some-ui#2237, the owner's D4): the phone asks for it when it plays a
+ * note whose audio is not on it (`apps/www/src/lib/home-link/voice-audio.ts`).
+ * It is a paired phone's route (`subject::Paired`), as `/rust-rounds` is, so
+ * no session is a `401`, a browser's cookie session a `403`, and a paired
+ * contract runs only with `--phone-token`. A note the caller doesn't hold,
+ * or holds of another kind, is a `404`. The `200` can't be probed (no probe
+ * may keep a note), so its shape is declared and skipped, and is held by the
+ * server's own test (`handlers/voice.rs`,
+ * `a_paired_phone_reads_its_own_rust_round_notes_audio_back`).
  */
 
 import { z } from "zod"
@@ -42,6 +53,17 @@ import { defineContract } from "../src/contract"
  */
 const NoteHeardSchema = z.object({
   heard: z.object({ text: z.string(), heardAt: z.string() }).nullable(),
+})
+
+/**
+ * The phone's read of a note's audio (`voice-audio.ts`'s `NoteAudio`): its
+ * id, container, the SHA-256 of its bytes, and the bytes as base64.
+ */
+const NoteAudioSchema = z.object({
+  id: z.string(),
+  contentType: z.string(),
+  sha256: z.string().regex(/^[0-9a-f]{64}$/),
+  audio: z.string(),
 })
 
 /** Home's refusal of a mark's time: `details.at` names why (`put_set_aside`). */
@@ -119,5 +141,49 @@ export const contracts = [
     request: { path: { id: "a-note-home-holds" } },
     expect: { status: 200, schema: NoteHeardSchema },
     skip: "needs a voice note home holds, which no probe may keep and the contract run doesn't seed",
+  }),
+  defineContract({
+    id: "voice.audio_signed_out",
+    module: "voice",
+    method: "GET",
+    path: "/voice-notes/:id/audio",
+    summary:
+      "a note's audio is a paired phone's: without a session it is a 401",
+    request: { path: { id: "contract-harness-does-not-exist" } },
+    expect: { status: 401 },
+  }),
+  defineContract({
+    id: "voice.audio_browser",
+    module: "voice",
+    session: true,
+    method: "GET",
+    path: "/voice-notes/:id/audio",
+    summary:
+      "a note's audio is a paired phone's: a browser's cookie session is a 403",
+    request: { path: { id: "contract-harness-does-not-exist" } },
+    expect: { status: 403 },
+  }),
+  defineContract({
+    id: "voice.audio_unknown",
+    module: "voice",
+    paired: true,
+    method: "GET",
+    path: "/voice-notes/:id/audio",
+    summary:
+      "the audio of a note the caller doesn't hold is a 404, and the note can't play",
+    request: { path: { id: "contract-harness-does-not-exist" } },
+    expect: { status: 404 },
+  }),
+  defineContract({
+    id: "voice.audio",
+    module: "voice",
+    paired: true,
+    method: "GET",
+    path: "/voice-notes/:id/audio",
+    summary:
+      "a Rust Rounds note's audio as home holds it, with its container and SHA-256, the SHA-256 its ETag",
+    request: { path: { id: "a-rust-round-note-home-holds" } },
+    expect: { status: 200, schema: NoteAudioSchema },
+    skip: "needs a Rust Rounds note home holds, which no probe may keep and the contract run doesn't seed",
   }),
 ]

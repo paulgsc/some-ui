@@ -199,6 +199,51 @@ describe("the worked example", () => {
     expect(ports.notes.player.playing()).toBe(0)
   })
 
+  it("plays a refine card's earlier note, and nothing on any other card (RR6)", async () => {
+    const storage = inMemoryStorage()
+    keptRounds(storage).hold({
+      rounds: [
+        {
+          ...INDEXING_01,
+          id: "borrowing-01",
+          concept: "borrowing",
+          cards: [
+            {
+              kind: "refine",
+              id: "say-again",
+              note: "earlier-1",
+              nudge: "rustc names a trait here.",
+              aim: "understand",
+              say: "Say which trait is missing.",
+            },
+          ],
+        },
+      ],
+      runs: {},
+      notes: [],
+      notesMissing: false,
+      home: NOTHING_ON_HOME,
+    })
+    const notes = testNotes([
+      keptNote("earlier-1", "rust-rounds:indexing-01/a"),
+    ])
+    const ports = testPorts(storage, notes)
+    const runtime = opened(ports)
+    runtime.dispatch({ type: "continue" })
+    runtime.dispatch({ type: "playEarlier" })
+    await settle()
+    expect(ports.notes.player.playing()).toBe(0)
+
+    runtime.dispatch({ type: "play", concept: "borrowing" })
+    runtime.dispatch({ type: "playEarlier" })
+    await settle()
+    expect(ports.notes.player.playing()).toBe(1)
+    expect(runtime.getSnapshot().notes.playback).toMatchObject({
+      kind: "playing",
+      id: "earlier-1",
+    })
+  })
+
   it("logs a card left mid-take once its note lands", async () => {
     const ports = testPorts()
     ports.notes.mic.script({

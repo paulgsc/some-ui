@@ -57,10 +57,15 @@ export const WORDS = {
     `The note on ${concept}, card ${number} couldn't be kept.`,
   /** The phone's room for voice notes is used up; on the menu and the speak step. */
   noRoom:
-    "This phone has no room left for new voice notes. Every card still plays.",
+    "This phone has no room left for new voice notes until home holds the ones on it. Every card still plays.",
   earlierNote: "Your earlier note",
-  earlierNoteMissing:
-    "Your earlier note isn't on this phone yet. Say it again anyway.",
+  playEarlier: "Play your earlier note",
+  stopEarlier: "Stop",
+  /** Its audio is being read: from this phone, or from home once it left. */
+  earlierNoteReading: "Getting your earlier note…",
+  /** Neither this phone nor home gave its audio back. */
+  earlierNoteUnplayable:
+    "Your earlier note can't play right now: it isn't on this phone, and home didn't give it back. Say it again anyway.",
   fromTutor: "From the tutor",
   aim: {
     remember: "Recall it",

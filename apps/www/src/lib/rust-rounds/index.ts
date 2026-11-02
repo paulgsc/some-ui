@@ -9,10 +9,13 @@
  * by id in the log; a Redo's earlier note and one set aside stay too. Each
  * goes home as a voice note said for `rust-round` (RR6, #2237), through the
  * voice lane (`lib/home-link/voice-copy`), named as `homeRef` says
- * (`rustRoundRef`); Let go owes
- * home its set-aside mark. The desk keeps every note on this phone: it has
- * no count of its own, and only the device's measured room (`withRoom`)
- * refuses a note, which the session then says, never letting one go.
+ * (`rustRoundRef`); Let go owes home its set-aside mark. Once home holds a
+ * note, its audio leaves this phone and the note stays listed
+ * (`audioLeaves`), which makes room; it plays from home after
+ * (`lib/home-link/voice-audio`), as a refine card's earlier note does. The
+ * desk has no count of its own: only the device's measured room
+ * (`withRoom`) refuses a note, which the session then says, never letting
+ * one go before home holds it.
  */
 import type {
   NotesPort,
@@ -35,6 +38,7 @@ const NOTE_MAX_MS = 60_000
 const desk = patternDesk({
   key: "some-ui:rust-rounds.notes",
   from: "rust-round",
+  audioLeaves: true,
   dbName: "some-ui.rust-rounds-notes",
   // No count of its own: only the device's room refuses a note.
   limits: { max: Number.POSITIVE_INFINITY, maxMs: NOTE_MAX_MS },

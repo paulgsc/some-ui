@@ -91,6 +91,13 @@ export type Take = {
    * and on every other desk's take.
    */
   waits?: true
+  /**
+   * On a desk whose audio leaves once home holds it (`audioLeaves`, Rust
+   * Rounds, RR6): true once it has, so the take is heard from home and no
+   * sweep reads it as lost. Written before the audio goes and never after;
+   * absent on every other desk's take.
+   */
+  onHome?: true
 }
 
 export type TakesPorts = {

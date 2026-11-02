@@ -195,6 +195,11 @@ export type PlayIntent =
   | { readonly type: "tapNote" }
   /** Plays the card's note, or stops it while it plays. */
   | { readonly type: "playNote" }
+  /**
+   * On a refine card, plays the earlier note it brings back, or stops it
+   * while it plays: from this phone, or from home once its audio left (RR6).
+   */
+  | { readonly type: "playEarlier" }
   /** D3: sets the card's note aside; `place` is where it is kept. */
   | { readonly type: "letGoNote"; readonly place: TakePlace }
   | { readonly type: "showRustc" }
@@ -929,6 +934,12 @@ function onIntent(state: PlayState, event: PlayIntent & { at: string }): Step {
     }
     case "playNote": {
       return playNoteOf(state, onScreen(state)?.place.visit.note ?? null)
+    }
+    case "playEarlier": {
+      const shown = onScreen(state)
+      return shown?.card.kind === "refine"
+        ? { state, effects: [{ type: "playNote", id: shown.card.note }] }
+        : stay(state)
     }
     case "letGoNote": {
       const shown = onScreen(state)

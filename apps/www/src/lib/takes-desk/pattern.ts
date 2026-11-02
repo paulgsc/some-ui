@@ -27,6 +27,10 @@
  *   Let go deletes a waiting take for good with its audio (`discard`, the
  *   owner's ruling on #2265), and nothing else: one already sent is never
  *   deleted here.
+ * - **A take whose audio is not on this phone is heard from home** (`back`,
+ *   Rust Rounds, RR6 #2237): one whose audio left once home held it, or an
+ *   earlier note a refine card brings back. With no `back`, or none home
+ *   gives, it can't play, and the pattern says so.
  */
 import { SOUNDBITE_MIN_MS } from "@some-ui/soundbites/contract"
 import type {
@@ -92,6 +96,12 @@ export type PatternTakesPorts = {
    * null for a desk whose takes go home in no lane, or have no Let go.
    */
   from: MarkFrom | null
+  /**
+   * A take's audio from home, for one this phone does not hold (RR6); null
+   * when home doesn't give it. Read at each play, so a lane wired later is
+   * heard; absent on a desk whose audio never leaves.
+   */
+  back?: (() => ((id: string) => Promise<Blob | null>) | null) | undefined
   /** The kit's `audioPlayer` unless a test gives its own. */
   player?: Player | undefined
   /** The phone's one microphone unless a test gives its own. */
@@ -281,7 +291,12 @@ export function createPatternTakes(
       discard: (id, done) => {
         done(discard([id]))
       },
-      audio: (id) => ports.audio.get(id),
+      audio: async (id) => {
+        const here = await ports.audio.get(id)
+        if (here !== null) return here
+        const home = ports.back?.() ?? null
+        return home === null ? null : home(id)
+      },
     },
     deskPatternOptions(limits, shape)
   )

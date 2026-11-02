@@ -26,7 +26,9 @@
  *   session file and screen, when taken; its note goes as a study note;
  * - a Rust Rounds note (`lib/rust-rounds`, RR6 #2237): `rust-round`, the card
  *   it was said on as `@some-ui/rust-rounds`' `homeRef` names it, when taken;
- *   its transcript reaches the tutor through the mailbox;
+ *   its transcript reaches the tutor through the mailbox; once home holds
+ *   it, its audio leaves this phone and the note stays listed, heard from
+ *   home after (`./voice-audio`);
  * - a Studio idea answer's take (`lib/idea-takes`, MIC10): `studio`, the
  *   answer as `idea:<idea>:<question>`, when taken; home gives its words back
  *   to the idea screen (`./heard`). A new idea's take (ST26) goes the same
@@ -67,7 +69,9 @@
  *   them", and under "Keep each until Drive has it too" only the one they
  *   tap "Drive has it" on, or one home says Drive has
  *   (`./on-drive`: a Build Journal session's list of Drive's takes, which
- *   home matches by SHA-256; home never reaches Drive).
+ *   home matches by SHA-256; home never reaches Drive). A Rust Rounds
+ *   note's audio leaves only once home holds it, its take staying listed
+ *   and marked as heard from home first (RR6, `lib/takes-desk`'s `letGo`).
  * - _Family:_ every share kind (reflections; the study-context export with
  *   its soundbites, grammar-lens entries and takes, and LeetType answers and
  *   takes; Studio takes) and every cap that makes room (soundbites, lens
@@ -75,6 +79,7 @@
  *   and the grammar-lens record, HF5 #2180; the session budget's offer of
  *   the oldest finished session, "Remove it", #2422), whether the phone
  *   stores the room it makes or not (RM1, `lib/takes-desk/runtime.ts`),
+ *   and the audio of each Rust Rounds note home holds (RR6),
  *   × every home state (held; waiting; unpaired; off the LAN, which the
  *   phone sees alike as not held); for Studio takes, × every
  *   choice (none yet, once home has them, until Drive has it too) × the
@@ -106,6 +111,9 @@
  *   `lib/leetype-takes/index.test.ts` and topik's
  *   `adapter/lens-record-store/index.test.ts` (each "HF5": at the cap only
  *   one home holds makes room, and with none held the new one is refused),
+ *   and for Rust Rounds' notes `lib/takes-desk/__tests__/audio-leaves.test.ts`
+ *   ("LG1 (RR6)": only a note home holds lets its audio go, its take stays
+ *   listed and plays from home, and a mark not stored lets nothing go),
  *   and for the session budget
  *   `components/settings/__tests__/device-storage.test.tsx` ("PF1": the
  *   offered session leaves on home's word alone, and stays when home can't
@@ -169,6 +177,7 @@ import { lensEntriesHeld } from "./lens-record"
 import { notesHeld } from "./notes"
 import { askOnDrive } from "./on-drive"
 import { markSetAside } from "./set-aside"
+import { askAudio } from "./voice-audio"
 
 /**
  * When a note was set aside (D3), ISO 8601, as its store recorded it
@@ -866,7 +875,8 @@ type LetsGo = { letGo: (homeHolds: ReadonlySet<string>) => unknown }
 /**
  * Hands what home now holds to each store of game bites (`lib/game-bites`),
  * Jobs voice notes, scene notes and Studio takes, whose `letGo` says which
- * of them leave this phone (LG1). A note set aside before Let go owed its
+ * of them leave this phone, and to Rust Rounds' notes, whose audio leaves
+ * while each stays listed (LG1). A note set aside before Let go owed its
  * mark is owed it first (`oweMarks`).
  */
 function letGoHeld(): void {
@@ -880,6 +890,7 @@ function letGoHeld(): void {
     phoneSceneVoice(),
   ]
   for (const store of stores) void store.letGo(holds)
+  rustRoundsDesk.letGo(holds).catch(reported)
   studioKeeping()?.letGoHeldTakes(holds).catch(reported)
 }
 
@@ -933,6 +944,7 @@ function holdOffline(): void {
   lensTakesDesk.keptWhere(voiceKept)
   leetypeTakesDesk.keptWhere(voiceKept)
   rustRoundsDesk.keptWhere(voiceKept)
+  rustRoundsDesk.audioFrom(askAudio)
   ideaTakesDesk.keptWhere(voiceKept)
   ideaBundleDesk.keptWhere(voiceKept)
   sceneNotesKept(voiceKept)
