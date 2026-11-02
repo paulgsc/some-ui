@@ -27,6 +27,8 @@ export type Finding =
   | { kind: "hunk-changes-nothing"; card: string }
   | { kind: "choice-without-say"; card: string; choice: number }
   | { kind: "unknown-note"; card: string; note: string }
+  /** The round's `fromMyDesk` names a paste the log doesn't have (RR4c). */
+  | { kind: "unknown-desk-paste"; at: string }
   /** The reply carried no tutor notes (`lib/intake`). */
   | { kind: "no-tutor-notes" }
 
@@ -99,6 +101,12 @@ export function lintRound(round: Round, log: RoundLog): Array<Finding> {
   const findings: Array<Finding> = []
   const programs = resolvePrograms(round)
   const seen = notesSeen(log)
+  const pasted = new Set(
+    log.sessions.flatMap((session) => session.fromMyDesk.map(({ at }) => at))
+  )
+  for (const at of round.fromMyDesk ?? []) {
+    if (!pasted.has(at)) findings.push({ kind: "unknown-desk-paste", at })
+  }
 
   const measure = (card: string, lines: Array<string>, first: number): void => {
     lines.forEach((text, index) => {
@@ -156,6 +164,9 @@ export function lintRound(round: Round, log: RoundLog): Array<Finding> {
 export function describeFinding(finding: Finding): string {
   if (finding.kind === "no-tutor-notes") {
     return "The reply carried no tutor notes: send them with every round, rewritten."
+  }
+  if (finding.kind === "unknown-desk-paste") {
+    return `\`fromMyDesk\` names "${finding.at}", which no paste in the log's \`fromMyDesk\` has as its \`at\`; name only pastes from the log.`
   }
   const card = `card "${finding.card}"`
   switch (finding.kind) {

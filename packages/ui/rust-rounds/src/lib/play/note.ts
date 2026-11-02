@@ -14,8 +14,8 @@ import type {
 import { takeItemView } from "@some-ui/voice-capture"
 
 import type { PlayState } from "./machine"
-import { lineOf } from "./machine"
-import type { Visit } from "./store"
+import { deskLine, lineOf } from "./machine"
+import type { DeskDraft, Visit } from "./store"
 import { WORDS } from "./words"
 
 export type CardNote = {
@@ -23,6 +23,30 @@ export type CardNote = {
   readonly item: TakeItemView
   /** What the session says beside them, in its own words; null for nothing. */
   readonly aside: string | null
+}
+
+/**
+ * The paste's voice note on the desk step (RR4c), as a card's is: its row is
+ * the paste's own note, and what it says is this step's, never a card's
+ * take that ended while the step was open.
+ */
+export function deskNote(
+  state: PlayState,
+  desk: DeskDraft,
+  takes: ReadonlyArray<PatternTake>,
+  options: TakePatternOptions
+): TakeItemView {
+  const line = deskLine(desk.at)
+  const mine = takes.filter((take) => take.id === desk.note)
+  const view = takeItemView(state.notes, mine, line, options)
+  const { said } = state
+  const ours =
+    said?.kind === "setAside" ||
+    (said?.kind === "ended" && said.ended.answers === line)
+  return {
+    ...view,
+    said: view.said?.kind === "unplayable" ? view.said : ours ? said : null,
+  }
 }
 
 export function cardNote(

@@ -126,6 +126,18 @@ describe("lintRound", () => {
       ],
     }
     expect(lintRound(roundOf(READ, refine("note-desk")), log)).toEqual([])
+    // A round built from that paste names it by when it was made (RR4c).
+    const fromDesk = { ...roundOf(READ), fromMyDesk: ["2026-10-30T09:00:00Z"] }
+    expect(lintRound(fromDesk, log)).toEqual([])
+    expect(
+      lintRound({ ...fromDesk, fromMyDesk: ["2026-10-31T09:00:00Z"] }, log)
+    ).toEqual([{ kind: "unknown-desk-paste", at: "2026-10-31T09:00:00Z" }])
+    expect(
+      describeFinding({
+        kind: "unknown-desk-paste",
+        at: "2026-10-31T09:00:00Z",
+      })
+    ).toMatch(/fromMyDesk/)
   })
 })
 

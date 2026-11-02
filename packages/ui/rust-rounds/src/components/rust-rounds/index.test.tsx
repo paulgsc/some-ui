@@ -246,4 +246,57 @@ describe("Rust Rounds on the phone", () => {
       screen.getByText(WORDS.replyTaken("indexing", 4))
     ).toBeInTheDocument()
   })
+
+  it("pastes an error from any card, with nothing on the step waiting, and goes back to the card (RR4c)", async () => {
+    const ports = testPorts()
+    ports.notes.mic.script({
+      ...SPEAKING,
+      finish: { kind: "after", ms: 1_000 },
+    })
+    render(<RustRounds ports={ports} />)
+    press(WORDS.start)
+    press(WORDS.pasteError)
+    expect(screen.getByText(WORDS.deskHeading)).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText(WORDS.deskLabel), {
+      target: { value: "error[E0277]" },
+    })
+    fireEvent.click(take())
+    await settle(2_000)
+    fireEvent.click(take())
+    // While the note is being kept, the step's own controls still answer.
+    expect(screen.getByLabelText(WORDS.deskLabel)).toBeEnabled()
+    expect(screen.getByRole("button", { name: WORDS.deskBack })).toBeEnabled()
+    press(WORDS.deskBack)
+    expect(screen.getByText(WORDS.cardTitle("indexing", 1))).toBeInTheDocument()
+    await settle(1_000)
+    const [session] = keptRounds(ports.storage).open().log.sessions
+    expect(session?.fromMyDesk).toEqual([
+      expect.objectContaining({
+        pasted: "error[E0277]",
+        note: expect.any(String),
+      }),
+    ])
+  })
+
+  it("marks a concept whose round was built from a pasted error as yours", () => {
+    const storage = inMemoryStorage()
+    keptRounds(storage).hold({
+      rounds: [
+        {
+          ...INDEXING_01,
+          id: "borrowing-01",
+          concept: "borrowing",
+          fromMyDesk: ["2026-11-02T19:04:11.000Z"],
+        },
+      ],
+      runs: {},
+      notes: [],
+      notesMissing: false,
+    })
+    render(<RustRounds ports={testPorts(storage)} />)
+    expect(
+      screen.getByRole("button", { name: `borrowing · ${WORDS.yourError}` })
+    ).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "indexing" })).toBeInTheDocument()
+  })
 })

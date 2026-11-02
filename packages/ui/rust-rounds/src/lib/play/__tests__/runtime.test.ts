@@ -656,8 +656,8 @@ describe("leaving and coming back", () => {
     await settle()
     // Kept to write again, and still waiting too: the place's last write
     // did not survive the app being ended.
-    const { place, taking } = keptRounds(storage).open()
-    keptRounds(storage).place({ place, taking, pending })
+    const { place, taking, desk, deskPending } = keptRounds(storage).open()
+    keptRounds(storage).place({ place, taking, pending, desk, deskPending })
     expect(keptRounds(storage).open()).toMatchObject({
       unlogged: 1,
       pending: [expect.objectContaining({ line: pending[0]?.line })],

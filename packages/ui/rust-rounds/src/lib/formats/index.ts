@@ -203,6 +203,12 @@ export const RoundSchema = z
     /** The rough edges it targets, by the tutor notes' `edge` ids. */
     edges: z.array(SlugSchema),
     cards: z.array(CardSchema).min(1, "a round has at least one card"),
+    /**
+     * The errors from the owner's desk the round was built from, by each
+     * one's `at` in the log's `fromMyDesk`; absent, or empty, for a round
+     * built from anything else. The menu marks its concept "your error".
+     */
+    fromMyDesk: z.array(WhenSchema).optional(),
   })
   .superRefine((round, ctx) => {
     uniqueIds(
@@ -323,11 +329,12 @@ export const CardEventSchema = z.strictObject({
 export type CardEvent = z.infer<typeof CardEventSchema>
 
 /** An error the owner pasted from their own code, and what they said about it. */
-const DeskPasteSchema = z.strictObject({
+export const DeskPasteSchema = z.strictObject({
   at: WhenSchema,
   pasted: TextSchema,
   note: NoteIdSchema.nullable(),
 })
+export type DeskPaste = z.infer<typeof DeskPasteSchema>
 
 /**
  * One opening of the app. It has a start and no end: leaving is not

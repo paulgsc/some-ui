@@ -40,6 +40,12 @@
  *   across openings too while the place record keeps the queue
  *   (`initialState`, `flush`). If that write is refused as well and the app
  *   is killed, only the cards still in `pending` survive to the next opening.
+ * - **An error from the desk is pasted from any card** (RR4c): its step is a
+ *   screen of the machine (`desk`), kept with the place as it is typed, with
+ *   an optional voice note on the take pattern, as a card's is. Back to the
+ *   card logs it (`fromMyDesk`) when anything was pasted, once its note has
+ *   landed if a take on it was under way (`deskPending`, kept with the place
+ *   as `pending` is). Nothing on the step waits: Back is always there.
  * - **rustc's result is never compared with the pick on screen.** The
  *   tutor's guess is checked only to log `tutorGuessedWrong`.
  * - **A card's kept note is the card's note**, on the take pattern
@@ -53,6 +59,7 @@
 import type {
   CardEvent,
   CardRef,
+  DeskPaste,
   Round,
   RoundLog,
 } from "@rust-rounds/lib/formats"
@@ -80,6 +87,8 @@ import type { LogAdd, SessionHead } from "./log"
 import { appendToLog, holdsAdd } from "./log"
 import type {
   Again,
+  DeskDraft,
+  DeskPending,
   Opened,
   Pending,
   Place,
@@ -132,6 +141,8 @@ type CopyState =
 type Screen =
   | { readonly kind: "menu" }
   | { readonly kind: "card" }
+  /** Pasting an error from the desk, from the card on screen (`desk`). */
+  | { readonly kind: "desk" }
   | {
       readonly kind: "tutor"
       readonly reply: string
@@ -154,7 +165,14 @@ export type PlayState = {
   readonly taking: Taking | null
   /** Cards left while their voice note was still being kept. */
   readonly pending: ReadonlyArray<Pending>
-  /** What the card on screen says of its note, until the next card. */
+  /** The error being pasted from the desk; null while the step is closed. */
+  readonly desk: DeskDraft | null
+  /** Pastes left while their voice note was still being kept. */
+  readonly deskPending: ReadonlyArray<DeskPending>
+  /**
+   * What the card on screen, or the desk step while it is open, says of its
+   * note, until the next card or the step closes.
+   */
   readonly said: NoteSaid | null
   /** A card left whose note could not be kept, until the next card. */
   readonly lost: Title | null
@@ -188,6 +206,18 @@ export type PlayIntent =
   | { readonly type: "reply"; readonly text: string }
   | { readonly type: "takeReply" }
   | { readonly type: "copyFix" }
+  /** Opens the desk step from the card on screen (RR4c). */
+  | { readonly type: "desk" }
+  /** The text in the desk step, as pasted or typed so far. */
+  | { readonly type: "deskText"; readonly text: string }
+  /** Starts a take of the paste's note, Redo included, or stops it. */
+  | { readonly type: "deskTapNote" }
+  /** Plays the paste's note, or stops it while it plays. */
+  | { readonly type: "deskPlayNote" }
+  /** Sets the paste's note aside; `place` is where it is kept. */
+  | { readonly type: "deskLetGoNote"; readonly place: TakePlace }
+  /** Back to the card: the paste is logged, if anything was pasted. */
+  | { readonly type: "deskBack" }
 
 /** What the microphone, the clipboard, the page and the store report. */
 type PlaySignal =
@@ -229,6 +259,8 @@ export type PlayEffect =
       readonly place: Place | null
       readonly taking: Taking | null
       readonly pending: ReadonlyArray<Pending>
+      readonly desk: DeskDraft | null
+      readonly deskPending: ReadonlyArray<DeskPending>
     }
   /** The pattern's tap: a take on `line`, superseding `supersedes` once kept. */
   | {
@@ -255,6 +287,12 @@ export type Step = {
 export const lineOf = (ref: CardRef): string =>
   `rust-rounds:${ref.round}/${ref.card}`
 
+/**
+ * A paste's name in the microphone's list: when its step opened. No card's
+ * line can be one: a round id holds no `:`.
+ */
+export const deskLine = (at: string): string => `rust-rounds:desk:${at}`
+
 const KEPT: Readonly<Record<KeptRecord, boolean>> = {
   log: false,
   held: false,
@@ -277,8 +315,12 @@ export function initialState(
     locate(playable(opened.held), opened.place.visit) !== null
       ? opened.place
       : null
+  // A paste left open is open again, on the card it was pasted from.
+  const desk = place === null ? null : opened.desk
   return {
-    screen: { kind: place === null ? "menu" : "card" },
+    screen: {
+      kind: desk !== null ? "desk" : place === null ? "menu" : "card",
+    },
     held: opened.held,
     log: opened.log,
     head,
@@ -286,6 +328,8 @@ export function initialState(
     notes,
     taking: opened.taking,
     pending: opened.pending,
+    desk,
+    deskPending: opened.deskPending,
     said: null,
     lost: null,
     noRoom: false,
@@ -303,6 +347,8 @@ const savePlace = (state: PlayState): PlayEffect => ({
   place: state.place,
   taking: state.taking,
   pending: state.pending,
+  desk: state.desk,
+  deskPending: state.deskPending,
 })
 
 /** The card on screen with its round, while the screen shows one. */
@@ -409,9 +455,9 @@ function leave(
   return { ...logCard(cleared, left, null), stopping: false }
 }
 
-/** The log as it will stand once every card waiting on a note is logged. */
+/** The log as it will stand once every card and paste waiting on a note is logged. */
 function logWithPending(state: PlayState): RoundLog {
-  return state.pending.reduce(
+  const cards = state.pending.reduce(
     (log, waiting) =>
       appendToLog(log, state.head, {
         kind: "card",
@@ -419,6 +465,11 @@ function logWithPending(state: PlayState): RoundLog {
         guessedWrong: waiting.guessedWrong,
       }),
     state.log
+  )
+  return state.deskPending.reduce(
+    (log, waiting) =>
+      appendToLog(log, state.head, { kind: "desk", paste: waiting.paste }),
+    cards
   )
 }
 
@@ -533,6 +584,8 @@ function settleCard(
     taking: state.taking?.line === line ? null : state.taking,
     noRoom: end === "full" ? true : end === "kept" ? false : state.noRoom,
   }
+  if (line.startsWith(deskLine("")))
+    return settleDesk(base, line, end, note, said)
   const waiting = base.pending.find((each) => each.line === line)
   if (waiting !== undefined) {
     // A Redo that was not kept leaves the card the note it was left with.
@@ -557,6 +610,178 @@ function settleCard(
     return stay(shown)
   }
   return withVisit(shown, place, { ...place.visit, note })
+}
+
+/** Logs a paste from the desk, once. */
+function logDesk(state: PlayState, paste: DeskPaste): Step {
+  const add: LogAdd = { kind: "desk", paste }
+  const log = holdsAdd(state.log, add)
+    ? state.log
+    : appendToLog(state.log, state.head, add)
+  return {
+    state: { ...state, log },
+    effects: [{ type: "append", head: state.head, add }],
+  }
+}
+
+/**
+ * A take on a paste's `line` ended: log the paste left waiting on it, with
+ * the note if it was kept, or put the note on the paste being made.
+ */
+function settleDesk(
+  base: PlayState,
+  line: string,
+  end: TakeEnd,
+  note: string | null,
+  said: NoteSaid | null
+): Step {
+  const waiting = base.deskPending.find((each) => each.line === line)
+  if (waiting !== undefined) {
+    const next: PlayState = {
+      ...base,
+      deskPending: base.deskPending.filter((each) => each !== waiting),
+    }
+    const kept = end === "kept" && note !== null
+    const logged = logDesk(
+      next,
+      kept ? { ...waiting.paste, note } : waiting.paste
+    )
+    return {
+      state: logged.state,
+      effects: [...logged.effects, savePlace(logged.state)],
+    }
+  }
+  const { desk } = base
+  if (desk === null || deskLine(desk.at) !== line) return stay(base)
+  const shown = { ...base, said: base.screen.kind === "desk" ? said : null }
+  if (end !== "kept" || note === null || desk.note === note) {
+    return stay(shown)
+  }
+  const next = { ...shown, desk: { ...desk, note } }
+  return { state: next, effects: [savePlace(next)] }
+}
+
+/**
+ * Back to the card from the desk step: the paste is logged when anything was
+ * pasted, at once, or once its note lands when a take on it is under way.
+ * Nothing pasted logs nothing.
+ */
+function deskBack(state: PlayState, desk: DeskDraft): Step {
+  const closed: PlayState = {
+    ...state,
+    screen: { kind: state.place === null ? "menu" : "card" },
+    desk: null,
+    said: null,
+  }
+  const line = deskLine(desk.at)
+  const taking = state.taking?.line === line ? state.taking : null
+  const stop: ReadonlyArray<PlayEffect> =
+    taking !== null || state.notes.playback.kind !== "quiet"
+      ? [{ type: "stopNote" }]
+      : []
+  if (desk.pasted.trim() === "") {
+    const next = { ...closed, taking: taking === null ? state.taking : null }
+    return { state: next, effects: [savePlace(next), ...stop] }
+  }
+  const paste: DeskPaste = { at: desk.at, pasted: desk.pasted, note: desk.note }
+  if (taking !== null) {
+    const next: PlayState = {
+      ...closed,
+      deskPending: [...state.deskPending, { line, since: taking.since, paste }],
+    }
+    // Kept with the place before the take ends, so its note finds the paste.
+    return { state: next, effects: [savePlace(next), ...stop] }
+  }
+  const logged = logDesk(closed, paste)
+  return {
+    state: logged.state,
+    effects: [...logged.effects, savePlace(logged.state), ...stop],
+  }
+}
+
+/** What the person does on the desk step, and the tap that opens it. */
+type DeskIntent = Extract<
+  PlayIntent,
+  {
+    readonly type:
+      | "desk"
+      | "deskText"
+      | "deskTapNote"
+      | "deskPlayNote"
+      | "deskLetGoNote"
+      | "deskBack"
+  }
+>
+
+function onDesk(state: PlayState, event: DeskIntent & { at: string }): Step {
+  const { desk } = state
+  if (event.type === "desk") {
+    if (state.screen.kind !== "card" || state.place === null) return stay(state)
+    const next: PlayState = {
+      ...state,
+      screen: { kind: "desk" },
+      desk: { at: event.at, pasted: "", note: null },
+      said: null,
+    }
+    return { state: next, effects: [savePlace(next)] }
+  }
+  if (state.screen.kind !== "desk" || desk === null) return stay(state)
+  const line = deskLine(desk.at)
+  switch (event.type) {
+    case "deskText": {
+      const next = { ...state, desk: { ...desk, pasted: event.text } }
+      return { state: next, effects: [savePlace(next)] }
+    }
+    case "deskTapNote": {
+      const { take, answers } = state.notes
+      if (take.kind !== "idle") {
+        return answers === line
+          ? { state, effects: [{ type: "tapNote", line, supersedes: null }] }
+          : stay(state)
+      }
+      if (state.taking !== null) return stay(state)
+      const next: PlayState = {
+        ...state,
+        said: null,
+        taking: { line, since: Date.parse(event.at) },
+      }
+      return {
+        state: next,
+        effects: [
+          savePlace(next),
+          { type: "tapNote", line, supersedes: desk.note },
+        ],
+      }
+    }
+    case "deskPlayNote": {
+      return desk.note === null
+        ? stay(state)
+        : { state, effects: [{ type: "playNote", id: desk.note }] }
+    }
+    case "deskLetGoNote": {
+      if (desk.note === null || state.notes.take.kind !== "idle") {
+        return stay(state)
+      }
+      const next: PlayState = {
+        ...state,
+        desk: { ...desk, note: null },
+        said: { kind: "setAside", place: event.place },
+      }
+      return {
+        state: next,
+        effects: [
+          savePlace(next),
+          { type: "setAsideNote", id: desk.note, place: event.place },
+        ],
+      }
+    }
+    case "deskBack": {
+      return deskBack(state, desk)
+    }
+    default: {
+      return assertNever(event)
+    }
+  }
 }
 
 function onNotes(state: PlayState, view: TakePatternSnapshot): Step {
@@ -641,6 +866,14 @@ function copying(state: PlayState, what: CopyWhat, text: string): Step {
 
 function onIntent(state: PlayState, event: PlayIntent & { at: string }): Step {
   switch (event.type) {
+    case "desk":
+    case "deskText":
+    case "deskTapNote":
+    case "deskPlayNote":
+    case "deskLetGoNote":
+    case "deskBack": {
+      return onDesk(state, event)
+    }
     case "continue": {
       return state.place === null
         ? moveOn(state, event.at, null)

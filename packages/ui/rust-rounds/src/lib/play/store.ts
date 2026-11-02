@@ -20,13 +20,21 @@
  *   card and coming back lands on it with nothing lost; the take under way
  *   (`taking`) and the cards left while their voice note was still being
  *   kept (`pending`), so a note that lands after the screen was left, or the
- *   app was ended, still finds its card at the next opening; and the
- *   additions the log refused (`unlogged`), which only the store writes.
+ *   app was ended, still finds its card at the next opening; an error being
+ *   pasted from the desk (`desk`), and those left while their note was still
+ *   being kept (`deskPending`), the same way (RR4c); and the additions the
+ *   log refused (`unlogged`), which only the store writes.
  */
-import type { CardEvent, CardRef, RoundLog } from "@rust-rounds/lib/formats"
+import type {
+  CardEvent,
+  CardRef,
+  DeskPaste,
+  RoundLog,
+} from "@rust-rounds/lib/formats"
 import {
   CardEventSchema,
   CardRefSchema,
+  DeskPasteSchema,
   RoundLogSchema,
   RoundSchema,
   RustcRunSchema,
@@ -95,6 +103,27 @@ export type Pending = {
 /** A take under way: the card it was started on (`lineOf`), and when (ms since the epoch). */
 export type Taking = { readonly line: string; readonly since: number }
 
+/**
+ * An error being pasted from the desk, from any card (RR4c): when the step
+ * opened, which names it (`at`), the text as pasted so far, and the note
+ * said on it; null while none is kept.
+ */
+export type DeskDraft = {
+  readonly at: string
+  readonly pasted: string
+  readonly note: string | null
+}
+
+/** A paste left while its voice note was still being kept: logged once it lands. */
+export type DeskPending = {
+  /** What the take was started on (`deskLine`). */
+  readonly line: string
+  /** When the take was started (ms since the epoch). */
+  readonly since: number
+  /** The paste, with the note it had when left. */
+  readonly paste: DeskPaste
+}
+
 const HeldSchema = z.strictObject({
   v: z.literal(1),
   rounds: z.array(RoundSchema),
@@ -122,6 +151,7 @@ const UnloggedSchema = z.strictObject({
       guessedWrong: z.boolean(),
     }),
     z.strictObject({ kind: z.literal("pin"), ref: CardRefSchema }),
+    z.strictObject({ kind: z.literal("desk"), paste: DeskPasteSchema }),
   ]),
 })
 
@@ -155,6 +185,24 @@ const PlaceRecordSchema = z.strictObject({
       guessedWrong: z.boolean(),
     })
   ),
+  // Absent from a record kept before the desk step: none open, none waiting.
+  desk: z
+    .strictObject({
+      at: z.string(),
+      pasted: z.string(),
+      note: z.string().nullable(),
+    })
+    .nullable()
+    .default(null),
+  deskPending: z
+    .array(
+      z.strictObject({
+        line: z.string(),
+        since: z.number(),
+        paste: DeskPasteSchema,
+      })
+    )
+    .default([]),
 })
 
 function parsed<T>(schema: z.ZodType<T>): (value: unknown) => T | null {
@@ -168,11 +216,16 @@ const readLog = readJson(parsed(RoundLogSchema))
 const readHeld = readJson(parsed(HeldSchema))
 const readPlace = readJson(parsed(PlaceRecordSchema))
 
-/** Where the session was: the card on screen, the take under way, and the cards waiting on a note. */
+/**
+ * Where the session was: the card on screen, the take under way, the cards
+ * waiting on a note, the error being pasted and the pastes waiting on a note.
+ */
 type Whereabouts = {
   readonly place: Place | null
   readonly taking: Taking | null
   readonly pending: ReadonlyArray<Pending>
+  readonly desk: DeskDraft | null
+  readonly deskPending: ReadonlyArray<DeskPending>
 }
 
 /** What the store opened: each record, or what stands in for one it could not read. */
@@ -189,6 +242,8 @@ const NO_PLACE: z.infer<typeof PlaceRecordSchema> = {
   taking: null,
   unlogged: [],
   pending: [],
+  desk: null,
+  deskPending: [],
 }
 
 export type RoundsStore = {

@@ -145,6 +145,8 @@ export function createRustRounds(ports: RustRoundsPorts): RustRoundsRuntime {
             place: effect.place,
             taking: effect.taking,
             pending: effect.pending,
+            desk: effect.desk,
+            deskPending: effect.deskPending,
           }),
         })
         return
@@ -199,13 +201,16 @@ export function createRustRounds(ports: RustRoundsPorts): RustRoundsRuntime {
       if (state.notKept.log) {
         send({ type: "stored", record: "log", ok: ports.store.flush() })
       }
-      // The take and the cards an earlier opening left unsettled: the phone
-      // may hold their notes.
+      // The take, and the cards and pastes an earlier opening left
+      // unsettled: the phone may hold their notes.
       const unsettled = new Map<string, number>()
       if (state.taking !== null) {
         unsettled.set(state.taking.line, state.taking.since)
       }
       for (const { line, since } of state.pending) unsettled.set(line, since)
+      for (const { line, since } of state.deskPending) {
+        unsettled.set(line, since)
+      }
       if (unsettled.size > 0) {
         send({
           type: "reopened",

@@ -1,7 +1,8 @@
 /**
  * Rust Rounds on the phone: open it, stay as long as you like, leave
  * whenever (#2235). The menu, a card (read and choose, speak, see rustc's
- * result; a refine card's earlier note and nudge) and the tutor's page.
+ * result; a refine card's earlier note and nudge), the step that pastes an
+ * error from the desk, from any card (RR4c), and the tutor's page.
  * There is no end screen, nothing counts the time, and nothing is scored.
  *
  * This component only renders and forwards taps. What happens and in what
@@ -17,6 +18,7 @@ import type { Card, Round, RustcRun } from "@rust-rounds/lib/formats"
 import { programLines, resolvePrograms } from "@rust-rounds/lib/formats"
 import {
   conceptsOf,
+  deskConcepts,
   locate,
   newRounds,
   playable,
@@ -24,7 +26,7 @@ import {
   runOf,
 } from "@rust-rounds/lib/play/held"
 import type { PlayIntent, PlayState } from "@rust-rounds/lib/play/machine"
-import { cardNote } from "@rust-rounds/lib/play/note"
+import { cardNote, deskNote } from "@rust-rounds/lib/play/note"
 import type { NotesPort, RustRoundsPorts } from "@rust-rounds/lib/play/runtime"
 import { createRustRounds, NO_MICROPHONE } from "@rust-rounds/lib/play/runtime"
 import type { Visit } from "@rust-rounds/lib/play/store"
@@ -243,6 +245,14 @@ const CardScreen = ({
           {WORDS.menu}
         </Button>
       </header>
+      <Button
+        size="sm"
+        variant="ghost"
+        className="-mt-2 self-start"
+        onClick={() => dispatch({ type: "desk" })}
+      >
+        {WORDS.pasteError}
+      </Button>
       {visit.again !== "fresh" && (
         <p className="text-muted-foreground -mt-2 text-sm">
           {visit.again === "same" ? WORDS.onlyCard : WORDS.playedBefore}
@@ -351,6 +361,7 @@ const MenuScreen = ({
   // Only what a tutor sent: the worked example is the first round, not news.
   const fresh = newRounds(state.held.rounds, state.log)
   const refines = refinesWaiting(rounds, state.log)
+  const yours = deskConcepts(rounds)
   const { place } = state
   return (
     <div className="flex min-w-0 flex-col gap-4">
@@ -389,6 +400,11 @@ const MenuScreen = ({
               onClick={() => dispatch({ type: "play", concept })}
             >
               {concept ?? WORDS.mixed}
+              {concept !== null && yours.has(concept) && (
+                <span className="text-muted-foreground text-xs">
+                  · {WORDS.yourError}
+                </span>
+              )}
             </Button>
           ))}
         </div>
@@ -396,6 +412,59 @@ const MenuScreen = ({
       <Actions>
         <Button variant="ghost" onClick={() => dispatch({ type: "tutor" })}>
           {WORDS.tutor}
+        </Button>
+      </Actions>
+    </div>
+  )
+}
+
+/**
+ * Pasting an error from the desk (RR4c): the text as pasted, an optional
+ * voice note on the take pattern's parts, and back to the card. Nothing on
+ * it waits: Back is there while a note is being kept, which the paste then
+ * waits for on its own.
+ */
+const DeskScreen = ({
+  state,
+  notes,
+  dispatch,
+}: {
+  state: PlayState
+  notes: Notes
+  dispatch: Dispatch
+}): JSX.Element | null => {
+  const { desk } = state
+  if (state.screen.kind !== "desk" || desk === null) return null
+  return (
+    <div className="flex min-w-0 flex-col gap-4">
+      <h2 className="font-semibold">{WORDS.deskHeading}</h2>
+      <label className="flex flex-col gap-1 text-sm font-semibold">
+        {WORDS.deskLabel}
+        <Textarea
+          value={desk.pasted}
+          rows={6}
+          className="font-mono text-xs"
+          onChange={(event) =>
+            dispatch({ type: "deskText", text: event.target.value })
+          }
+        />
+      </label>
+      <p className="text-sm">{WORDS.deskSay}</p>
+      {state.noRoom && desk.note === null ? (
+        <p className="text-muted-foreground text-sm">{WORDS.noRoom}</p>
+      ) : (
+        <TakeItem
+          view={deskNote(state, desk, notes.takes, notes.port.pattern.options)}
+          label={WORDS.voiceNote}
+          onTap={() => dispatch({ type: "deskTapNote" })}
+          onPlay={() => dispatch({ type: "deskPlayNote" })}
+          onRedo={() => dispatch({ type: "deskTapNote" })}
+          onLetGo={(_, place) => dispatch({ type: "deskLetGoNote", place })}
+        />
+      )}
+      <Actions>
+        <Button onClick={() => dispatch({ type: "deskBack" })}>
+          {WORDS.deskBack}
         </Button>
       </Actions>
     </div>
@@ -528,6 +597,9 @@ export const RustRounds = ({ ports }: RustRoundsProps): JSX.Element => {
       )}
       {state.screen.kind === "card" && (
         <CardScreen state={state} notes={{ port, takes }} dispatch={dispatch} />
+      )}
+      {state.screen.kind === "desk" && (
+        <DeskScreen state={state} notes={{ port, takes }} dispatch={dispatch} />
       )}
       {state.screen.kind === "tutor" && (
         <TutorScreen state={state} dispatch={dispatch} />
