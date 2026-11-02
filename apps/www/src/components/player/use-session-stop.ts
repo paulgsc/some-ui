@@ -9,8 +9,7 @@ import { createStopRuntime } from "@/lib/session-stop/runtime"
 
 /**
  * Wiring only: the runtime for this player mount, its state as a snapshot,
- * which surface's leaving it listens for (`StopRuntime.connect`), and `hold`,
- * which keeps the session waiting while the reflection drawer is open
+ * which surface's leaving it listens for (`StopRuntime.connect`), and `hold`
  * (`holdable`).
  */
 export function useSessionStop(sessionId: string): {

@@ -35,8 +35,6 @@ export const ReflectButton = ({
   className?: string
 }): JSX.Element => {
   const [open, setOpen] = useState(false)
-  // The sheet open is the external hold's lifetime: kept while it is open,
-  // let go as it closes or unmounts.
   useEffect(() => (open ? hold() : undefined), [open, hold])
   const { kept } = useReflections()
   // One recorded again or set aside is kept, but not the session's (D2, D3).

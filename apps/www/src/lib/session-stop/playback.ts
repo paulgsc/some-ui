@@ -3,11 +3,8 @@ import { primaryOf, useOrchestratorStore } from "@/lib/orchestrator"
 import type { Playback } from "./runtime"
 
 /**
- * The app-wide orchestrator as a stop's playback port, on both surfaces.
- *
- * Anything else that holds the session still (the reflection drawer, #1870)
- * holds it through `holdable` over this same port, so a stop and a hold
- * agree on whether the session is playing.
+ * The app-wide orchestrator as a stop's playback port, on both surfaces. The
+ * reflection drawer holds it through `holdable` below.
  */
 export const orchestratorPlayback: Playback = {
   position: () => {
@@ -40,8 +37,7 @@ export type Release = () => void
 
 /**
  * `playback`, which something can hold still for a while: the reflection
- * drawer, open (#1870). Made once per player mount; the stop runtime plays
- * through `playback` and the drawer calls `hold`.
+ * drawer, open (#1870).
  *
  * While any hold is kept the session waits: paused underneath, its clock
  * still, but still playing as far as a stop can tell, if it was playing
@@ -61,6 +57,12 @@ export function holdable(base: Playback): {
   let wantsPlay = false
 
   const held = (): boolean => holds.size > 0
+  // Starts it playing, then pauses it again underneath while it is held.
+  const play = (run: () => void): void => {
+    wantsPlay = true
+    run()
+    if (held()) base.pause()
+  }
 
   const playback: Playback = {
     position: () => {
@@ -76,14 +78,10 @@ export function holdable(base: Playback): {
       if (!held()) base.resume()
     },
     start: () => {
-      wantsPlay = true
-      base.start()
-      if (held()) base.pause()
+      play(() => base.start())
     },
     restart: (elapsedMs, plannedMs) => {
-      wantsPlay = true
-      base.restart(elapsedMs, plannedMs)
-      if (held()) base.pause()
+      play(() => base.restart(elapsedMs, plannedMs))
     },
     end: () => {
       wantsPlay = false

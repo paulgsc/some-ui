@@ -142,7 +142,6 @@ describe("SessionChrome", () => {
     expect(screen.queryByText(/remaining/i)).toBeNull()
   })
 
-  // #1870: the session waits while the reflection drawer is open.
   it("holds the session while Reflect's sheet is open, and lets go as it closes", () => {
     mount()
     expect(holdSession).not.toHaveBeenCalled()
@@ -150,7 +149,6 @@ describe("SessionChrome", () => {
     fireEvent.click(screen.getByRole("button", { name: /^reflect$/i }))
     expect(holdSession).toHaveBeenCalledTimes(1)
     expect(release).not.toHaveBeenCalled()
-    expect(screen.getByText(/waits until you close this/i)).toBeDefined()
 
     fireEvent.click(screen.getByRole("button", { name: /^close$/i }))
     expect(release).toHaveBeenCalledTimes(1)

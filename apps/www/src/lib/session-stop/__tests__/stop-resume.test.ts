@@ -44,8 +44,8 @@
  *   an activity that follows the host's pause waits behind the drawer
  *   (topik's read-aloud does; leetype's own clock, topik's desktop
  *   conversation and the drama do not follow it yet); Skip and seek move the
- *   clock by design, so "time
- *   played" is the clock's, not the wall's; a departure the app cannot see
+ *   clock by design, so "time played" is the clock's, not the wall's; a
+ *   departure the app cannot see
  *   (a crash on screen) leaves no stop; a session the player never took over
  *   (a scheduled one, a finished one played again) keeps none.
  */
@@ -156,7 +156,7 @@ function open(): void {
 
 /**
  * The player unmounting. Its drawer goes too, after the stop runtime
- * disconnects or, `drawerFirst`, before it: either way nothing plays on.
+ * disconnects or, `drawerFirst`, before it.
  */
 function close(drawerFirst = false): void {
   if (drawerFirst) closeDrawer()
