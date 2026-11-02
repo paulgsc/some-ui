@@ -1,0 +1,191 @@
+/**
+ * Everything My data says (MY-DATA MD2, #2476), in the person's terms: what
+ * is kept where, and since when, never the machinery (CLAUDE.md, "State in
+ * the person's terms"). Pure; `./__tests__/words.test.ts` holds it to that.
+ */
+import { assertNever, counted, formatSize } from "@some-ui/core-utils"
+
+import type { HomeReading, Of, Where } from "./model"
+
+/** Each kind of recording, as the person knows it. */
+export const KIND_NAMES: Readonly<Record<Of, string>> = {
+  studio: "Studio takes and idea answers",
+  reflection: "Spoken reflections",
+  game: "Game bites",
+  leetype: "LeetType answers",
+  lens: "Grammar lens takes",
+  scene: "Scene notes",
+  soundbite: "Soundbites",
+  jobs: "Jobs notes",
+  "rust-round": "Rust Rounds notes",
+}
+
+/** Where a recording is kept. */
+export const WHERE_WORDS: Readonly<Record<Where, string>> = {
+  home: "On home",
+  aside: "Set aside, on home",
+  going: "Going home",
+  phone: "Only on this phone",
+}
+
+/**
+ * What you keep for good: your record over time, with no delete anywhere
+ * (the owner's rule on #2474: we never delete work). Named here, without
+ * counts: how much home keeps of each isn't read yet.
+ */
+export const KEPT_FOR_GOOD: ReadonlyArray<string> = [
+  "Study sessions",
+  "Written reflections",
+  "Ideas",
+  "Practice results",
+  "Korean record",
+  "The Jobs record",
+  "Self entries",
+  "LeetType sessions",
+  "Rust Rounds",
+  "Asks for the next scene",
+  "Studio's log",
+]
+
+const day = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+})
+const shortDay = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+})
+const clock = new Intl.DateTimeFormat("en-GB", {
+  hour: "2-digit",
+  minute: "2-digit",
+})
+
+/** `12 Sep 2026`. */
+export const onDay = (at: string): string => day.format(new Date(at))
+
+/** A week on the chart, by its Monday: `14 Sep`. */
+export const weekOf = (monday: string): string =>
+  shortDay.format(new Date(`${monday}T12:00:00Z`))
+
+/** One megabyte as the charts count it, the same as `formatSize`'s. */
+export const MB = 1024 * 1024
+
+export const MY_DATA = {
+  tiles: {
+    home: "kept on home",
+    phone: "not on home yet",
+    recordings: "recordings",
+  },
+  /** A tile whose number home hasn't given. */
+  unknown: "–",
+  space: {
+    title: "Space by kind of recording",
+    sub: "MB, on home and this phone",
+  },
+  growth: {
+    title: "How it grows on home",
+    sub: "MB kept on home, week by week",
+    /** What the chart can't show, said under it. */
+    phone:
+      "This phone keeps no history of its own room, so only home's is drawn.",
+    empty: "Nothing has reached home yet.",
+  },
+  where: {
+    title: "Where your recordings are",
+  },
+  table: { show: "Show as a table", hide: "Hide the tables" },
+  tableCaptions: {
+    kinds: "Recordings by kind",
+    growth: "How it grows on home (MB)",
+    where: "Where your recordings are",
+  },
+  tableHeads: {
+    kind: "Kind",
+    count: "How many",
+    mb: "MB",
+    week: "Week of",
+    home: "On home",
+    where: "Where",
+  },
+  recordings: "Recordings",
+  none: "No recordings yet.",
+  /** Before this phone's recordings are counted. */
+  phoneReading: "Counting what's on this phone…",
+  /** What a drag down reads again, for its "Couldn't check … just now". */
+  pullWhat: "what home keeps",
+  keptTitle: "Kept for good",
+  kept: "Kept for good. These are your record over time, so there's no delete for them.",
+  keptNotShown: "How much home keeps of these isn't shown here yet.",
+  /** A kind's list. */
+  kind: {
+    back: "My data",
+    unknown: "There's no such kind of recording.",
+    empty: "None of these yet.",
+    play: (when: string): string => `Play the recording of ${when}`,
+    stop: (when: string): string => `Stop the recording of ${when}`,
+    newest: (shown: number, total: number): string =>
+      `Showing the newest ${shown} of ${total}.`,
+  },
+} as const
+
+/** A kind's line: `214 · since 12 Sep 2026`, and where it is when not home. */
+export function kindLine(
+  notes: number,
+  since: string,
+  phoneOnly: boolean
+): string {
+  const where = phoneOnly ? " · not on home yet" : ""
+  return `${notes} · since ${onDay(since)}${where}`
+}
+
+/** The kind page's lead: `214 kept · 72.0 MB · since 12 Sep 2026`. */
+export function kindLead(
+  notes: number,
+  bytes: number,
+  since: string | null
+): string {
+  const kept = `${notes} kept · ${formatSize(bytes)}`
+  return since === null ? kept : `${kept} · since ${onDay(since)}`
+}
+
+/** One recording's line in a kind's list: `1 Nov · 21:12 · 288.0 KB`. */
+export function itemLine(at: string, bytes: number): string {
+  const when = new Date(at)
+  return `${shortDay.format(when)} · ${clock.format(when)} · ${formatSize(bytes)}`
+}
+
+/** One recording's name, for a screen reader: `1 Nov 2026, 21:12`. */
+export function itemName(at: string): string {
+  return `${onDay(at)}, ${clock.format(new Date(at))}`
+}
+
+/** How many there are, said for the "where" chart's name. */
+export const recordingsCount = (n: number): string => counted(n, "recording")
+
+/**
+ * What the page says about home's side when it has no numbers from home,
+ * or null when it has them.
+ */
+export function homeLine(home: HomeReading["kind"]): string | null {
+  switch (home) {
+    case "read": {
+      return null
+    }
+    case "reading": {
+      return "Asking home what it keeps…"
+    }
+    case "unpaired": {
+      return "This phone isn't paired with home, so only what's on this phone is counted. Pair on Home."
+    }
+    case "unreachable": {
+      return "Home didn't answer, so only what's on this phone is counted. Drag down to try again."
+    }
+    case "older": {
+      return "Home can't say what it keeps until it runs a newer version, so only what's on this phone is counted."
+    }
+    default: {
+      return assertNever(home)
+    }
+  }
+}

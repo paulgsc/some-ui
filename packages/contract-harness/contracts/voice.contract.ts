@@ -40,6 +40,14 @@
  * may keep a note), so its shape is declared and skipped, and is held by the
  * server's own test (`handlers/voice.rs`,
  * `a_paired_phone_reads_its_own_rust_round_notes_audio_back`).
+ *
+ * What home keeps of the caller's notes (`GET /voice-notes/kept`, MD2
+ * some-ui#2476): My data asks for it each time it opens or is dragged down
+ * (`apps/www/src/lib/home-link/kept-read.ts`, read by `lib/my-data`). A paired
+ * phone's route, as the audio read is: no session is a `401`, a browser's a
+ * `403`. The contract run's paired phone holds no notes, so its `200` is the
+ * empty answer, which the harness probes for its shape; an `of` naming no
+ * kind is a `422`.
  */
 
 import { z } from "zod"
@@ -64,6 +72,41 @@ const NoteAudioSchema = z.object({
   contentType: z.string(),
   sha256: z.string().regex(/^[0-9a-f]{64}$/),
   audio: z.string(),
+})
+
+/**
+ * The phone's read of what home keeps (`lib/my-data/model.ts`'s `Kept`):
+ * each kind's count, room, set-aside count and earliest; what reached home
+ * each week; and with `of`, that kind's newest.
+ */
+const KeptSchema = z.object({
+  kinds: z.array(
+    z.object({
+      of: z.string(),
+      notes: z.number().int(),
+      bytes: z.number().int(),
+      setAside: z.number().int(),
+      since: z.string(),
+    })
+  ),
+  weeks: z.array(
+    z.object({
+      week: z.string(),
+      notes: z.number().int(),
+      bytes: z.number().int(),
+    })
+  ),
+  notes: z
+    .array(
+      z.object({
+        id: z.string(),
+        recordedAt: z.string(),
+        storedAt: z.string(),
+        size: z.number().int(),
+        setAsideAt: z.string().nullable(),
+      })
+    )
+    .nullable(),
 })
 
 /** Home's refusal of a mark's time: `details.at` names why (`put_set_aside`). */
@@ -185,5 +228,47 @@ export const contracts = [
     request: { path: { id: "a-rust-round-note-home-holds" } },
     expect: { status: 200, schema: NoteAudioSchema },
     skip: "needs a Rust Rounds note home holds, which no probe may keep and the contract run doesn't seed",
+  }),
+  defineContract({
+    id: "voice.kept_signed_out",
+    module: "voice",
+    method: "GET",
+    path: "/voice-notes/kept",
+    summary:
+      "what home keeps is a paired phone's: without a session it is a 401",
+    request: {},
+    expect: { status: 401 },
+  }),
+  defineContract({
+    id: "voice.kept_browser",
+    module: "voice",
+    session: true,
+    method: "GET",
+    path: "/voice-notes/kept",
+    summary:
+      "what home keeps is a paired phone's: a browser's cookie session is a 403",
+    request: {},
+    expect: { status: 403 },
+  }),
+  defineContract({
+    id: "voice.kept",
+    module: "voice",
+    paired: true,
+    method: "GET",
+    path: "/voice-notes/kept",
+    summary:
+      "what home keeps of the caller's notes: each kind's count and room, what reached it each week, and the newest of the kind asked about",
+    request: { query: { of: "studio" } },
+    expect: { status: 200, schema: KeptSchema },
+  }),
+  defineContract({
+    id: "voice.kept_unknown_kind",
+    module: "voice",
+    paired: true,
+    method: "GET",
+    path: "/voice-notes/kept",
+    summary: "an of that names no kind of note is a 422, and nothing is read",
+    request: { query: { of: "diary" } },
+    expect: { status: 422 },
   }),
 ]
