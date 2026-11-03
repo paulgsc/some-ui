@@ -24,11 +24,12 @@
 # here) "wing entered: <id>", where the alias is .Wing<Id>; both are
 # MainActivity's own lines under the same tag. At each wing's root a drag down
 # from near the top of the page must check again (PULL5, epic #2456): the
-# page's pull answers each check's end with a "pull checked: <how>" line in
-# the same log (lib/pull-refresh's PULL_CHECKED), so a gesture the WebView or
-# a scroller ate fails here, since no test elsewhere drags a real WebView.
-# How the check ended (read, offline, unread) is listed, not failed: the
-# emulator has no home to read. Back pressed at a wing's root,
+# page's pull writes a "pull checked: <how>" line in the same log for each
+# check that ends on the page that asked (lib/pull-refresh's `note` port), so
+# a gesture the WebView or a scroller ate fails here, since no test elsewhere
+# drags a real WebView. A drag the wing's own navigation interrupted is
+# tried once more. How the check ended (read, offline, unread) is listed,
+# not failed: the emulator has no home to read. Back pressed at a wing's root,
 # entered by its icon, must leave the app: MainActivity's back handling is
 # reached by nothing else, since the monkey run below never presses back.
 #
@@ -99,7 +100,8 @@ native_count() {
 # the header, on the page, far past the pull's arming distance at any
 # density. `wm size` prints an override line after the physical one when
 # there is one, and the last is what is drawn.
-size=$(adb shell wm size | tr -d '\r' | grep -oE "[0-9]+x[0-9]+" | tail -1)
+size=$(adb shell wm size | tr -d '\r' | grep -oE "[0-9]+x[0-9]+" | tail -1 || true)
+size=${size:-1080x1920}
 width=${size%x*}
 height=${size#*x}
 pull_down() {
@@ -131,22 +133,27 @@ for component in $aliases; do
   fi
   sleep 2
   adb exec-out screencap -p > "$out/wing-$id.png" || true
-  # Up to 30 s for the check's end: its own deadline is 20 s (CHECK_MS).
-  before=$(native_count "pull checked")
-  pull_down
+  # Only on a running app: a wing that was never entered already failed.
+  [ -n "$pid" ] || continue
+  # Up to 30 s for the check's end, twice: its own deadline is 20 s
+  # (CHECK_MS), and a drag the wing's navigation landed on ends silently.
   pulled=""
-  for _ in $(seq 1 30); do
-    if [ "$(native_count "pull checked")" -gt "$before" ]; then
-      pulled=$(grep -E "\bSomeUI\b.*pull checked" "$out/logcat.txt" | tail -1 \
-        | grep -oE "pull checked: [a-z]+" | sed 's/pull checked: //')
-      break
-    fi
-    sleep 1
+  for _ in 1 2; do
+    before=$(native_count "pull checked: [a-z]+")
+    pull_down
+    for _ in $(seq 1 30); do
+      if [ "$(native_count "pull checked: [a-z]+")" -gt "$before" ]; then
+        pulled=$(grep -oE "\bSomeUI\b.*pull checked: [a-z]+" "$out/logcat.txt" \
+          | tail -1 | grep -oE "[a-z]+$" || true)
+        break 2
+      fi
+      sleep 1
+    done
   done
   if [ -z "$pulled" ]; then
-    failures+=("a drag down at the $id wing's root never checked again: no \"pull checked\" line (logcat.txt)")
+    failures+=("a drag down at the $id wing's root never checked again, twice: no \"pull checked\" line (logcat.txt)")
   else
-    pulls+=("$id: $pulled")
+    pulls+=("$id:$pulled")
   fi
 done
 
@@ -211,7 +218,7 @@ events=$(grep -oE "Events injected: [0-9]+" "$out/monkey.txt" | grep -oE "[0-9]+
   echo
   echo "- Release APK: \`$(basename "$apk")\`, installed and started on the emulator."
   echo "- Wings entered by their icons: **${wings[*]:-none}**$([ -n "$back_left" ] && echo "; back at the last one's root left the app")."
-  echo "- A drag down at each wing's root checked again: **$(IFS=,; echo "${pulls[*]:-none}" | sed 's/,/, /g')** (how each check ended; the emulator has no home)."
+  echo "- A drag down at each wing's root checked again: **${pulls[*]:-none}** (how each check ended; the emulator has no home)."
   echo "- Monkey events injected: **$events**."
   echo "- Failures the app reported to its native log: **$reported** (native-log.txt)."
   grep -o "foreign-failure.*" "$out/native-log.txt" | sort | uniq -c | head -5 | sed 's/^ */  - /' || true

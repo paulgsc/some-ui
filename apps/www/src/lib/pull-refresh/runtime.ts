@@ -27,35 +27,20 @@ export type PullPorts = {
   /** Epoch ms, for when a check finished. */
   readonly now: () => number
   /**
-   * Writes one line where a check's end can be seen from outside the page:
-   * the phone's own log, which the APK's launch test reads (PULL5, #2462).
+   * Gets one line, "pull checked: read", "offline" or "unread", for each
+   * check that ends while its page still shows it (one whose page moved on
+   * ends silently): the phone's own log, which the APK's launch test reads
+   * (PULL5, #2462). How it ended, never what it read.
    */
   readonly note?: (line: string) => void
 }
 
-/** What every line `note` gets starts with; the launch test greps for it. */
-const PULL_CHECKED = "pull checked"
-
-/** The line a check's end becomes: how it ended, never what it read. */
+/** The line a check that ended in `phase` becomes, if it ended there. */
 function pullNote(phase: Phase): string | null {
-  switch (phase.kind) {
-    case "done": {
-      return `${PULL_CHECKED}: read`
-    }
-    case "failed": {
-      return `${PULL_CHECKED}: ${phase.offline ? "offline" : "unread"}`
-    }
-    case "idle":
-    case "tracking":
-    case "pulling":
-    case "armed":
-    case "checking": {
-      return null
-    }
-    default: {
-      return assertNever(phase)
-    }
-  }
+  if (phase.kind === "done") return "pull checked: read"
+  if (phase.kind === "failed")
+    return `pull checked: ${phase.offline ? "offline" : "unread"}`
+  return null
 }
 
 export type PullRuntime = {
@@ -135,8 +120,7 @@ export function createPullRuntime(ports: PullPorts): PullRuntime {
     const [next, effects] = step(state, event)
     effects.forEach(run)
     if (next === state) return
-    const ended =
-      next.phase.kind !== state.phase.kind ? pullNote(next.phase) : null
+    const ended = state.phase.kind === "checking" ? pullNote(next.phase) : null
     state = next
     if (ended !== null) ports.note?.(ended)
     listeners.forEach((listener) => listener())

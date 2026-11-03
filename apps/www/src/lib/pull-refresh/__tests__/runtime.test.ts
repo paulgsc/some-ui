@@ -105,7 +105,13 @@ describe("a pull from the top of the page", () => {
 
     vi.advanceTimersByTime(DONE_MS)
     expect(kind()).toBe("idle")
-    expect(notes).toHaveLength(1)
+  })
+
+  it("notes a check that found no connection as offline", async () => {
+    drag(FAR)
+    reads[0].resolve({ kind: "offline" })
+    await flush()
+    expect(notes).toEqual(["pull checked: offline"])
   })
 
   it("says so when something could not be read, for longer, and notes that", async () => {
@@ -148,6 +154,8 @@ describe("a pull from the top of the page", () => {
       kind: "checking",
       pull: 2,
     })
+    // The deadline noted the first; its late answer notes nothing.
+    expect(notes).toEqual(["pull checked: unread"])
   })
 
   it("tells its subscribers only when something changed", () => {
@@ -210,6 +218,7 @@ describe("an answer that lands late", () => {
     reads[0].resolve()
     await flush()
     expect(kind()).toBe("idle")
+    expect(notes).toEqual([])
     drag(FAR)
     expect(reads).toHaveLength(2)
   })
