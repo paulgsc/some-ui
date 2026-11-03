@@ -579,6 +579,9 @@ importers:
       '@some-ui/contract-harness':
         specifier: workspace:*
         version: link:../../packages/contract-harness
+      '@some-ui/engagement':
+        specifier: workspace:*
+        version: link:../../packages/engagement
       '@some-ui/video-render':
         specifier: workspace:*
         version: link:../../packages/video-render
@@ -840,6 +843,15 @@ importers:
       tailwind-merge:
         specifier: ^3.6.0
         version: 3.6.0
+    devDependencies:
+      '@some-ui/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@some-ui/vite-config':
+        specifier: workspace:*
+        version: link:../some-vite-config
+
+  packages/engagement:
     devDependencies:
       '@some-ui/tsconfig':
         specifier: workspace:*

@@ -85,6 +85,7 @@
   "devDependencies": {
     "@playwright/test": "1.62.1",
     "@some-ui/contract-harness": "workspace:*",
+    "@some-ui/engagement": "workspace:*",
     "@some-ui/video-render": "workspace:*",
     "@vitejs/plugin-react": "^6.1.2",
     "vite": "^8.3.5"

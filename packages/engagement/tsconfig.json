@@ -1,0 +1,14 @@
+{
+  "extends": "@some-ui/tsconfig/rollupconfig.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "declarationDir": "./",
+    "composite": true,
+    "rootDir": ".",
+    "paths": {
+      "@engagement/*": ["./src/*"]
+    }
+  },
+  "include": ["eslint.config.js", "vite.config.ts", "vitest.config.ts", "src"],
+  "exclude": ["node_modules", "build", "dist"]
+}
