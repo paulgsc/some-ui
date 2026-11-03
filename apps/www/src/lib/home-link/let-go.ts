@@ -8,7 +8,7 @@ import { deviceBackend } from "@/lib/device-backend/boot"
 import { removeUnchanged } from "@/lib/device-backend/handlers/sessions"
 import { deviceStorage } from "@/lib/device-backend/storage-view"
 import { clearDurableFailure } from "@/lib/intent/durable-failure"
-import { forgetCopies } from "@/lib/tenant/sessions-copy"
+import { forgetCopies } from "@/lib/tenant/copy-receipt"
 
 /** A session as home read it back: what `letGoUnchanged` checks. */
 export type SessionAsOf = { readonly id: string; readonly updatedAt: string }
@@ -17,7 +17,7 @@ export type SessionAsOf = { readonly id: string; readonly updatedAt: string }
  * Lets go of the phone's copy of each of `held`, which home has read back,
  * only if it is unchanged since home read it, and of what the phone kept
  * about each one that left: its autosave failure and its copy receipt
- * (STORAGE's SL1, #2268). Returns how many left.
+ * (SL1, #2268). Returns how many left.
  */
 export async function letGoUnchanged(
   held: ReadonlyArray<SessionAsOf>

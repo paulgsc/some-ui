@@ -41,10 +41,6 @@ import {
 
 import type * as BuildProfileModule from "@/lib/build-profile"
 import type { HomeLink, HomeLinkState } from "@/lib/home-link"
-import {
-  readDurableFailure,
-  writeDurableFailure,
-} from "@/lib/intent/durable-failure"
 import type * as TenantModule from "@/lib/tenant"
 import type { SessionRecord } from "@/lib/tenant"
 
@@ -258,7 +254,6 @@ describe("sessions list on the phone", () => {
   it("on a paired phone, lets it go once home holds it, says so, and the row leaves", async () => {
     home.state = PAIRED
     home.send = keepingHome()
-    writeDurableFailure("session-1", { kind: "unknown", summary: "Not saved" })
     render(withQueryClient(<SessionsRoute />))
 
     const sheet = openMenuAndLetGo()
@@ -272,9 +267,9 @@ describe("sessions list on the phone", () => {
     )
     expect(await screen.findByText("No sessions yet.")).toBeTruthy()
     expect(screen.queryByText("Evening reading")).toBeNull()
-    // Nothing deleted it but home's word, and its warning went with it.
+    // Nothing deleted it but home's word. What the phone kept about it goes
+    // in `letGoUnchanged`, mocked here (SL1, `home-link/__tests__/sessions`).
     expect(deletes).toEqual([])
-    expect(readDurableFailure("session-1")).toBeNull()
   })
 
   it("on a paired phone, says home keeps it, and keeps it here when home can't be reached", async () => {

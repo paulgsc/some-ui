@@ -14,7 +14,7 @@ import { openNodeSqlite } from "@/test-support/node-sqlite-driver"
 import { inMemoryStorage } from "@some-ui/core-utils"
 import type { HomeAnswer, HomeCall, KeyedStorage } from "@some-ui/core-utils"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { openDeviceBackend } from "@/lib/device-backend/backend"
 import type * as SessionHandlers from "@/lib/device-backend/handlers/sessions"
@@ -137,6 +137,10 @@ beforeEach(async () => {
   phone.sessions = []
   phone.send = send
   phone.receipt = receipt
+})
+
+afterEach(() => {
+  vi.unstubAllGlobals()
 })
 
 const homeFetch = (): typeof fetch =>
@@ -321,7 +325,6 @@ describe("letting the phone's copies go once home holds them", () => {
     expect(readDurableFailure("a")).toBeNull()
     expect(readDurableFailure("c")).not.toBeNull()
     expect(copied()).toEqual(["c"])
-    vi.unstubAllGlobals()
     // What left the phone is still on home, as it was.
     const there = await createHttpSessionsRepository(homeTransport(send)).list()
     expect(there.find((s) => s.name === "Session a")).toMatchObject({

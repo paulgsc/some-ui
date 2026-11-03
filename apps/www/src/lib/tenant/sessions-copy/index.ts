@@ -36,100 +36,31 @@
  * home for that id, adopts it if there, and otherwise sends the same create
  * again. A home that predates it mints its own id, so a retry that does not
  * find the named one, and the browser's transfer, which names none, still
- * adopt an unclaimed account session with the same name, layout, activities
- * and scenes before creating. That may adopt an identical session the
- * account already held: it costs a copy, never makes a duplicate.
+ * adopt an unclaimed account session with the same name, layout, activities,
+ * scenes and `createdAt` before creating. That may adopt an identical
+ * session the account already held, made at the same instant: it costs a
+ * copy. A home that predates paulgsc/server#630 dates a copy on arrival, so
+ * there a lost create is made again: a duplicate, never another session's
+ * record patched over.
  *
- * It deletes nothing remotely, and locally only its own receipt's entries for
- * sessions that have left this device (`forgetCopies`).
+ * It deletes nothing, locally or remotely. The receipt is
+ * `lib/tenant/copy-receipt`'s, which forgets a session's entries once it has
+ * left this device.
  */
 
 import type { KeyedStorage } from "@some-ui/core-utils"
-import {
-  canonicalJson,
-  openKept,
-  salvageEntries,
-  writeKept,
-} from "@some-ui/core-utils"
+import { canonicalJson, writeKept } from "@some-ui/core-utils"
 
 import { StaleAuthorityError } from "@/lib/authority"
 import { FileHostResponseError } from "@/lib/file-host-config/client"
+import type { Copy } from "@/lib/tenant/copy-receipt"
+import { readCopies, readReceipt, RECEIPT_KEY } from "@/lib/tenant/copy-receipt"
 import type { SessionId } from "@/lib/tenant/session-id"
-import { isSessionId, newSessionId } from "@/lib/tenant/session-id"
+import { newSessionId } from "@/lib/tenant/session-id"
 import type { SessionsStore } from "@/lib/tenant/sessions-repository"
 import { keptSessions } from "@/lib/tenant/sessions-repository"
 import { browserLocalStorage, NotKeptError } from "@/lib/tenant/storage"
 import type { SessionRecord } from "@/lib/tenant/types"
-
-/** Versioned alongside the store it describes, so a change is a new key. */
-const RECEIPT_KEY = "some-ui.tenant.sessions.transfers.v1"
-
-type Copy = {
-  /**
-   * The id the server answered with, or `null` for an attempt to create one
-   * whose answer never arrived.
-   */
-  readonly remoteId: string | null
-  /** For an attempt, the id its create named, if it named one. */
-  readonly named?: SessionId
-  /** The second step (restoring status and times) landed too. */
-  readonly complete: boolean
-}
-
-/** Device session id -> every copy ever made of it, in any account. */
-type Receipt = Record<string, Array<Copy>>
-
-/**
- * A copy as kept. `remoteId` may be absent: a create answered without an id
- * was kept that way, and is read as it always was.
- */
-function isCopy(value: unknown): value is Copy {
-  if (typeof value !== "object" || value === null) return false
-  const remoteId: unknown = Reflect.get(value, "remoteId")
-  const named: unknown = Reflect.get(value, "named")
-  return (
-    (remoteId === undefined ||
-      remoteId === null ||
-      typeof remoteId === "string") &&
-    // Every id ever minted here was `generateId("session")`'s, which fits.
-    (named === undefined ||
-      (typeof named === "string" && isSessionId(named))) &&
-    typeof Reflect.get(value, "complete") === "boolean"
-  )
-}
-
-const readCopies = salvageEntries((value): Array<Copy> | null =>
-  Array.isArray(value) && value.every(isCopy) ? value : null
-)
-
-/**
- * The receipt, read afresh each time (callers write into it); a receipt it
- * cannot read whole is copied aside first.
- */
-function readReceipt(storage: KeyedStorage): Receipt {
-  return { ...openKept(storage, RECEIPT_KEY, readCopies, {}).value }
-}
-
-/**
- * Drops the receipt's entries for `localIds`, sessions that have left this
- * device: let go once home holds them, or deleted (SL1, #2268). Nothing is
- * left to copy, so the receipt stays bounded by the sessions still here.
- *
- * Tolerance: a forgotten copy is no longer claimed, so a later create that
- * went unanswered, and whose named id home does not hold, may adopt it by
- * content as it may any unclaimed session the account holds (above). Best
- * effort: a receipt that cannot be written keeps the entries, as before.
- */
-export function forgetCopies(
-  localIds: ReadonlyArray<string>,
-  storage: KeyedStorage = browserLocalStorage
-): void {
-  if (localIds.length === 0) return
-  const receipt = readReceipt(storage)
-  if (!localIds.some((id) => id in receipt)) return
-  for (const id of localIds) Reflect.deleteProperty(receipt, id)
-  writeKept(storage, RECEIPT_KEY, receipt, readCopies)
-}
 
 export type TransferPlan = {
   /** On the device and nowhere in this account yet. */
@@ -240,7 +171,11 @@ export async function planTransfer(
         (candidate) =>
           !claimed.has(candidate.id) &&
           !named.has(candidate.id) &&
-          sameContent(session, candidate)
+          sameContent(session, candidate) &&
+          // A session is dated where it was made (#630), so this is never
+          // the copy of another session with the same plan, one that has
+          // left this device and is no longer claimed (`forgetCopies`).
+          sameStamp(session.createdAt, candidate.createdAt)
       )
       if (found !== undefined) {
         claimed.add(found.id)

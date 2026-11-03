@@ -28,8 +28,8 @@ import { authority, StaleAuthorityError } from "@/lib/authority"
 import { createFileHostTransport } from "@/lib/file-host-config/client"
 import { clearDurableFailure } from "@/lib/intent/durable-failure"
 
+import { forgetCopies } from "./copy-receipt"
 import { createHttpSessionsRepository } from "./http-sessions-repository"
-import { forgetCopies } from "./sessions-copy"
 import type {
   CreateSessionInput,
   SessionsStore,
@@ -101,8 +101,9 @@ export function createSessionsBackend(
     update: (id: string, patch: UpdateSessionInput): Promise<SessionRecord> =>
       through((s) => s.update(id, patch)),
     // A removed session's autosave-failure record has nothing left to warn
-    // about, and its copy receipt nothing left to copy; without this both
-    // stay in `localStorage` for good (SL1).
+    // about, and a device session's copy receipt nothing left to copy;
+    // without this both stay in `localStorage` for good (SL1). An account
+    // session has no receipt entry of its own, so forgetting it is a no-op.
     remove: async (id: string): Promise<void> => {
       await through((s) => s.remove(id))
       clearDurableFailure(id)
