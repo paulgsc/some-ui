@@ -14,6 +14,7 @@ import { routesByPath } from "@/test-support/route-tree"
 import { PIPELINES, UNMEASURED } from "@some-ui/engagement"
 import { beforeAll, describe, expect, it } from "vitest"
 
+import { REASONS } from "@/lib/session-stop"
 import { wingOf, WINGS } from "@/lib/wings"
 
 /** Every route's path as a link names it, with its id (which names its layouts). */
@@ -74,5 +75,13 @@ describe("engagement: every route in a wing has its affordances placed", () => {
           if (id.includes("/_apk/")) expect(a.surface, at).toBe("apk")
           if (id.includes("/_lan/")) expect(a.surface, at).toBe("web")
         }
+  })
+
+  it("answers why you stopped with lib/session-stop's REASONS", () => {
+    const answers = PIPELINES.find((p) => p.id === "study")
+      ?.affordances.filter((a) => a.id === "stop-reason")
+      .map((a) => a.answers)
+    const reasons = REASONS.map(([id, name]) => ({ id, name }))
+    expect(answers).toEqual([reasons, reasons])
   })
 })
