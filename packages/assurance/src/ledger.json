@@ -988,14 +988,14 @@
           "kind": "RE9",
           "property": "work",
           "claim": "What the study nudge keeps stays within its stated horizons.",
-          "requirement": "While the nudge is on, intervention_log keeps 90 days and activity_outcome a year (owner, 2026-10-28); with it off, both keep every row. Presence leases are at most 16 per person, and the charge and gate one row per person and class, either way.",
+          "requirement": "While the nudge is on, each pass sweeps intervention_log past 90 days and activity_outcome past a year (owner, 2026-10-28), at most RETENTION_SWEEP_LIMIT = 500 rows per table per pass, so a backlog (the nudge turned on again after a long while off) is gone once the passes catch up; with it off, both keep every row. Presence leases are at most 16 per person, and the charge and gate one row per person and class, either way.",
           "verdict": "holds",
           "proof": [
             "server:apps/servers/file_host/src/nudge/waker.rs#a_pass_deletes_exactly_the_intervention_history_past_the_retention_horizon",
             "server:apps/servers/file_host/src/main.rs#config.nudge_enabled",
             "some-ui:apps/www/src/lib/device-backend/__tests__/storage-bounds.test.ts#keeps the latest 16 contexts"
           ],
-          "conclusion": "Both sweeps run in the nudge waker, which runs only while the nudge is on, so the horizons hold while it is on and both logs keep every row while it is off, as stated.",
+          "conclusion": "Both sweeps run in the nudge waker, which runs only while the nudge is on, 500 rows per table per pass, so while it is on a log holds nothing past its horizon once its backlog is swept, and while it is off both logs keep every row, as stated.",
           "evidence": [
             {
               "class": "structural",
