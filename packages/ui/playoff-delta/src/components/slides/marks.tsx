@@ -200,7 +200,9 @@ export const Ladder = ({
           <b className="text-[4.4cqw]">{RUNGS[r].phrase}</b>
           <span className="pd-mono pd-small text-muted-foreground">
             {r === best && r === worst
-              ? "ours"
+              ? r === "out"
+                ? "no seat left"
+                : "ours"
               : r === best
                 ? "best still reachable"
                 : r === worst

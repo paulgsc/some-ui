@@ -6,6 +6,7 @@
 import type { JSX } from "react"
 import { SymbolGlyph } from "@playoff-delta/components/symbol"
 import { blocLine, legendFloor } from "@playoff-delta/lib/reading"
+import { MODEL } from "@playoff-delta/lib/slides"
 import { symbolFor } from "@playoff-delta/lib/symbols"
 import {
   CALLS,
@@ -122,7 +123,7 @@ export const Moves = (): JSX.Element => {
   return (
     <>
       <Kicker>What a result did</Kicker>
-      <h2 className="pd-q">Each result moved us toward a pole, or neither.</h2>
+      <h2 className="pd-q">Which way each result moved us.</h2>
       <div className="pd-lights">
         {COHORT_ORDER.map((c, i) => (
           <ResultLight
@@ -180,6 +181,9 @@ export const Objectives = (): JSX.Element => {
           </Reveal>
         ))}
       </div>
+      <Reveal at={3.2} className="pd-small text-muted-foreground">
+        {MODEL}
+      </Reveal>
     </>
   )
 }

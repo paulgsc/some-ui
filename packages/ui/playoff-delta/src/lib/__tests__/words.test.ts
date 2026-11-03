@@ -3,7 +3,7 @@ import {
   LEGEND_SLIDES,
   legendLine,
   narration,
-  slidesFor,
+  WEEK_SLIDES,
 } from "@playoff-delta/lib/slides"
 import {
   CALLS,
@@ -59,7 +59,7 @@ describe("the vocabulary", () => {
     const lines = [
       ...LEGEND_SLIDES.map((id) => legendLine(SAMPLE_SEASON, id)),
       ...SAMPLE_SEASON.weeks.flatMap((w) =>
-        slidesFor().map((id) => narration(SAMPLE_SEASON, w, id))
+        WEEK_SLIDES.map((id) => narration(SAMPLE_SEASON, w, id))
       ),
     ]
     for (const line of lines) {

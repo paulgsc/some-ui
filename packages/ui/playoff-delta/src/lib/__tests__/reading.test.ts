@@ -7,7 +7,6 @@ import {
   redsOf,
   rungOf,
   standingOf,
-  stepsOf,
 } from "@playoff-delta/lib/reading"
 import { SAMPLE_SEASON } from "@playoff-delta/lib/sample"
 import type { PoleGroup, Poles, StoryWeek } from "@playoff-delta/lib/story"
@@ -102,7 +101,7 @@ describe("the floor's proof", () => {
           games: 9,
         })
       )
-    ).toMatch(/^five rivals: 20½ wins banked/)
+    ).toMatch(/^Five rivals: 20½ wins banked/)
     expect(blocLine(group(12, 14, 13))).toBe(
       "LAR has 12 wins already: the floor is 12."
     )
@@ -114,13 +113,5 @@ describe("the bundled season", () => {
     const clean = SAMPLE_SEASON.weeks.filter(cleanRun)
     expect(clean.length).toBeGreaterThan(0)
     expect(clean.length).toBeLessThan(SAMPLE_SEASON.weeks.length)
-  })
-
-  it("closes the envelope by whole steps, and our own result is one of them", () => {
-    for (const w of SAMPLE_SEASON.weeks) {
-      const s = stepsOf(w, "division")
-      expect(s.best).toBeGreaterThanOrEqual(w.game?.won ? 1 : 0)
-      expect(s.worst).toBeGreaterThanOrEqual(w.game && !w.game.won ? 1 : 0)
-    }
   })
 })

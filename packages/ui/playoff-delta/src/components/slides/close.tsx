@@ -7,18 +7,19 @@ import type { JSX } from "react"
 import {
   callOf,
   capital,
+  countdownLine,
   ended,
   followed,
   greensOf,
   ladderOf,
   redsOf,
   sentence,
+  settled,
   standingOf,
 } from "@playoff-delta/lib/reading"
-import { wins } from "@playoff-delta/lib/story"
+import { MODEL } from "@playoff-delta/lib/slides"
 import {
   CALLS,
-  COUNTDOWNS,
   GROUPS,
   OBJECTIVES,
   POLES,
@@ -37,7 +38,7 @@ export const Standings = ({ week }: SlideProps): JSX.Element => {
         {(["division", "conference"] as const).map((key, i) => {
           const now = standingOf(after, key)
           const was = standingOf(before, key)
-          const settled = now === "clinched" || now === "out"
+          const done = settled(now)
           return (
             <Reveal key={key} at={0.4 + i * 0.8} className="pd-card">
               <span className="pd-mono pd-small text-muted-foreground">
@@ -53,17 +54,13 @@ export const Standings = ({ week }: SlideProps): JSX.Element => {
                 )}
               </span>
               <span className="pd-say">{capital(STANDINGS[now].means)}.</span>
-              {settled ? null : (
+              {done ? null : (
                 <span className="pd-mono pd-small flex flex-wrap gap-x-[3cqw]">
-                  <span>
-                    <b className="text-success">{wins(greensOf(after, key))}</b>{" "}
-                    {COUNTDOWNS.greens.phrase}
+                  <span className="text-success">
+                    {countdownLine(greensOf(after, key), "greens")}
                   </span>
-                  <span>
-                    <b className="text-destructive">
-                      {wins(redsOf(after, key))}
-                    </b>{" "}
-                    {COUNTDOWNS.reds.phrase}
+                  <span className="text-destructive">
+                    {countdownLine(redsOf(after, key), "reds")}
                   </span>
                 </span>
               )}
@@ -71,6 +68,9 @@ export const Standings = ({ week }: SlideProps): JSX.Element => {
           )
         })}
       </div>
+      <Reveal at={2} className="pd-small text-muted-foreground">
+        {MODEL}
+      </Reveal>
     </>
   )
 }
@@ -114,7 +114,7 @@ export const Season = ({ season, week }: SlideProps): JSX.Element => {
             {GROUPS[key].word}: {POLES.floor.word} up, {POLES.ceiling.word}{" "}
             down, ours between
           </span>
-          <svg className="pd-season h-[26cqw] w-full" aria-hidden="true">
+          <svg className="h-[26cqw] w-full" aria-hidden="true">
             {weeks.map((w, i) => {
               const p = w.poles.after
               // Side by side in the week's slot: the rivals right, ours left.

@@ -12,7 +12,7 @@
  *    (the ladder, and the call)
  */
 
-import { listed } from "@some-ui/core-utils"
+import { counted, listed } from "@some-ui/core-utils"
 
 import type {
   PoleGroup,
@@ -22,17 +22,18 @@ import type {
   StorySeason,
   StoryWeek,
 } from "./story"
-import { nameOf, wins } from "./story"
+import { nameOf, winCount, wins } from "./story"
 import {
   CALLS,
   CLEAN_RUN,
-  COHORTS,
+  COUNTDOWNS,
   numberWord,
   OBJECTIVES,
   POLES,
   RUNG_ORDER,
   RUNGS,
   STANDINGS,
+  STEPS,
   type Call,
   type GroupKey,
   type Rung,
@@ -128,47 +129,79 @@ export function cohortCounts(
 }
 
 /**
- * How the week moved a group's poles, in whole steps: the floor's rise and
- * our top's drop toward the worst case, the ceiling's drop and our wins
- * toward the best.
+ * How the week moved a group's poles, before to after, in wins: the ceiling
+ * falling and our wins rising our way, the floor rising and our best finish
+ * dropping against us.
  */
 export function stepsOf(
   week: StoryWeek,
   key: GroupKey
-): { readonly worst: number; readonly best: number } {
+): { readonly ours: number; readonly against: number } {
   const { before, after } = week.poles
-  const worst =
-    after[key].floor - before[key].floor + (before.us.high - after.us.high)
-  const best =
-    before[key].ceiling.lose -
-    after[key].ceiling.lose +
-    (after.us.low - before.us.low)
-  return { worst, best }
+  return {
+    ours:
+      before[key].ceiling.lose -
+      after[key].ceiling.lose +
+      (after.us.low - before.us.low),
+    against:
+      after[key].floor - before[key].floor + (before.us.high - after.us.high),
+  }
 }
 
-/** Nothing moved us toward the worst case: neither floor rose, and we lost no game. */
-export const cleanRun = (week: StoryWeek): boolean =>
-  stepsOf(week, "division").worst === 0 &&
-  stepsOf(week, "conference").worst === 0
+/** "2 steps our way", "½ step against us". */
+export const stepsLine = (x: number, side: keyof typeof STEPS): string =>
+  `${winCount(x, STEPS[side].one, STEPS[side].many)} ${STEPS[side].phrase}`
 
-/** The bloc's teams as said: named while few, counted past four. */
-const blocTeams = (group: PoleGroup): string =>
-  group.bloc.teams.length <= 4
-    ? listed(group.bloc.teams)
-    : `${numberWord(group.bloc.teams.length)} rivals`
+/** Neither floor rose and our best finish held. */
+export const cleanRun = (week: StoryWeek): boolean =>
+  stepsOf(week, "division").against === 0 &&
+  stepsOf(week, "conference").against === 0
 
 /** The floor's proof in one sentence. */
 export function blocLine(group: PoleGroup): string {
   const { teams, banked, games } = group.bloc
-  const who = blocTeams(group)
-  if (teams.length === 1 || games === 0)
-    return `${who} ${teams.length === 1 ? "has" : "have"} ${wins(banked)} ${banked === 1 ? "win" : "wins"} already: the floor is ${wins(group.floor)}.`
-  return `${who}: ${wins(banked)} wins banked and ${games} ${games === 1 ? "game" : "games"} left against each other. However those go, one of them reaches ${wins(group.floor)}.`
+  // A bloc with no games left between its teams is one team: no other is needed.
+  if (teams.length === 1)
+    return `${teams.join("")} has ${winCount(banked)} already: the floor is ${wins(group.floor)}.`
+  const who =
+    teams.length <= 4
+      ? listed(teams)
+      : `${capital(numberWord(teams.length))} rivals`
+  return `${who}: ${winCount(banked)} banked and ${counted(games, "game")} left against each other. However those go, one of them reaches ${wins(group.floor)}.`
 }
 
 /** The ceiling in one sentence. */
 export const ceilingLine = (group: PoleGroup): string =>
   `${group.ceiling.team} can still reach ${wins(group.ceiling.lose)}.`
+
+/** The conference's floor with our division held at its own, when that lifts it. */
+export function heldLine(poles: Poles): string | null {
+  return poles.held > poles.conference.floor
+    ? `Holding our division to its floor lifts the conference floor to ${wins(poles.held)}.`
+    : null
+}
+
+/** How a pole moved over the week: "held", or "from 7". */
+export function poleChange(before: number, after: number): string {
+  return before === after ? "held" : `from ${wins(before)}`
+}
+
+/** Our range in one sentence. */
+export const rangeLine = (poles: Poles): string =>
+  poles.us.low === poles.us.high
+    ? `We finish with ${winCount(poles.us.low)}.`
+    : `We can finish with ${wins(poles.us.low)} to ${winCount(poles.us.high)}.`
+
+/** A standing that nothing left can change. */
+export const settled = (standing: Standing): boolean =>
+  standing === "clinched" || standing === "out"
+
+/** A countdown with its words: "1 green to go", "3½ reds to spare". */
+export const countdownLine = (
+  x: number,
+  key: keyof typeof COUNTDOWNS
+): string =>
+  `${wins(x)} ${x === 1 ? COUNTDOWNS[key].one : COUNTDOWNS[key].phrase}`
 
 /** A standing as a sentence: "The division: in our hands." */
 const standingLine = (poles: Poles, key: GroupKey): string =>
@@ -188,28 +221,21 @@ export function ladderLine(poles: Poles): string {
 export const capital = (word: string): string =>
   `${word.charAt(0).toUpperCase()}${word.slice(1)}`
 
-/** Which way the week leaned for a group: the side that closed more steps. */
-function leanOf(week: StoryWeek, key: GroupKey): "best" | "worst" | "even" {
-  const { best, worst } = stepsOf(week, key)
-  if (best > worst) return "best"
-  if (worst > best) return "worst"
-  return "even"
-}
-
 /**
- * The week in one sentence: "[Clean run.] The division: [standing]; the #1
- * seed: [standing]. [Ladder.] [Call]."
+ * The week in one sentence: "[A clean run.] [Steps our way and against us,
+ * across the conference.] The division: [standing]. The #1 seed:
+ * [standing]. [Ladder.] [Call]."
  */
 export function sentence(week: StoryWeek): string {
   const after = week.poles.after
   const clean = cleanRun(week) ? `${capital(CLEAN_RUN.phrase)}. ` : ""
-  const lean = leanOf(week, "conference")
-  const leaned =
-    lean === "even"
-      ? "The week closed as much on each side."
-      : `The week leaned ${COHORTS[lean].phrase}.`
+  const { ours, against } = stepsOf(week, "conference")
+  const moved =
+    ours === 0 && against === 0
+      ? "Nothing moved."
+      : `The week: ${stepsLine(ours, "ours")}, ${stepsLine(against, "against")}.`
   const call = CALLS[callOf(week)].phrase
-  return `${clean}${leaned} ${standingLine(after, "division")} ${standingLine(after, "conference")} ${ladderLine(after)} ${call}.`
+  return `${clean}${moved} ${standingLine(after, "division")} ${standingLine(after, "conference")} ${ladderLine(after)} ${call}.`
 }
 
 /** The legend's floor sentence, from the season's first table. */

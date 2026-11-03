@@ -32,7 +32,6 @@ export const PIECES: Readonly<
     PieceNoun,
     {
       readonly noun: string
-      readonly plural: string
       /** Who plays it. */
       readonly who: string
       /** How its result can move us: the rule that never changes. */
@@ -42,26 +41,23 @@ export const PIECES: Readonly<
 > = {
   own: {
     noun: "our light",
-    plural: "our lights",
     who: "Us.",
     moves: "A win always helps.",
   },
   exported: {
     noun: "one-way",
-    plural: "one-ways",
     who: "A rival against the other conference.",
     moves:
-      "It only goes one way: their loss takes a win from a rival, so it helps us or does nothing.",
+      "It only goes one way at a time: the rival's loss helps us or does nothing, its win hurts us or does nothing.",
   },
   inside: {
     noun: "crossroads",
-    plural: "crossroads",
     who: "Two rivals.",
-    moves: "Forced: one of them gets the win, whichever way it goes.",
+    moves:
+      "Forced: one of them gets the win whichever way it goes, and which one can still move a pole.",
   },
   outside: {
     noun: "side street",
-    plural: "side streets",
     who: "Two teams outside our conference.",
     moves: "Never on our route.",
   },
@@ -96,8 +92,8 @@ export const POLES = {
 
 /** Our two groups of rivals. */
 export const GROUPS = {
-  division: { word: "our division", rivals: "division rivals" },
-  conference: { word: "our conference", rivals: "conference rivals" },
+  division: { word: "our division" },
+  conference: { word: "our conference" },
 } as const
 
 export type GroupKey = keyof typeof GROUPS
@@ -122,7 +118,8 @@ export const COHORTS: Readonly<
   forced: {
     phrase: "forced",
     verb: "forced",
-    means: "two rivals played: one of them had to win it",
+    means:
+      "two rivals played: one of them had to win it, and which one can still move a pole",
   },
   idle: {
     phrase: "idle",
@@ -142,7 +139,7 @@ export const COHORT_ORDER: ReadonlyArray<StoryCohort> = [
 /** Earned, and literal. */
 export const CLEAN_RUN = {
   phrase: "a clean run",
-  means: "a week where neither floor rose and we lost no game",
+  means: "a week where neither floor rose and our best finish held",
 } as const
 
 /** What we play for, against a group. */
@@ -182,14 +179,26 @@ export const STANDING_ORDER: ReadonlyArray<Standing> = [
 export const COUNTDOWNS = {
   greens: {
     phrase: "greens to go",
+    one: "green to go",
     means:
-      "our wins and the leading rival's losses still needed to clinch: each counts one",
+      "the most a rival can still reach, less our wins: each win of ours takes one off, and so does a loss by the only rival who can reach that far",
   },
   reds: {
     phrase: "reds to spare",
+    one: "red to spare",
     means:
-      "losses we can still afford, ours or the floor rising, before it's gone",
+      "our best finish, less the floor: each game we don't win spends one, and so does the floor rising",
   },
+} as const
+
+/**
+ * How far a week moved the poles, before to after. Counted in wins: the
+ * most a rival can reach falling and our own wins count our way, the floor
+ * rising and our best finish dropping count against us.
+ */
+export const STEPS = {
+  ours: { phrase: "our way", one: "step", many: "steps" },
+  against: { phrase: "against us", one: "step", many: "steps" },
 } as const
 
 export type Rung = "top" | "division" | "wildcard" | "out"

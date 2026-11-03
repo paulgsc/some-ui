@@ -9,7 +9,7 @@ import {
   LEGEND_SLIDES,
   legendLine,
   narration,
-  slidesFor,
+  WEEK_SLIDES,
 } from "@playoff-delta/lib/slides"
 import type { StorySeason } from "@playoff-delta/lib/story"
 import { render, screen } from "@testing-library/react"
@@ -39,7 +39,7 @@ describe("every slide of the bundled season", () => {
   it.each(CASES)(
     "week %i renders, with a voiceover line",
     (_, season, week) => {
-      for (const id of slidesFor()) {
+      for (const id of WEEK_SLIDES) {
         const Slide = SLIDES[id]
         render(<Slide season={season} week={week} />).unmount()
         expect(narration(season, week, id), id).not.toBe("")

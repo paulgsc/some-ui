@@ -8,7 +8,10 @@ import {
   ceilingLine,
   cleanRun,
   cohortCounts,
+  heldLine,
   movesOf,
+  poleChange,
+  stepsLine,
   stepsOf,
 } from "@playoff-delta/lib/reading"
 import { MODEL } from "@playoff-delta/lib/slides"
@@ -49,9 +52,7 @@ const GroupSlide = ({
           </span>
           <b className="pd-big block">{wins(g.floor)}</b>
           <span className="pd-small text-muted-foreground">
-            {g.floor === before[group].floor
-              ? "held"
-              : `from ${wins(before[group].floor)}`}
+            {poleChange(before[group].floor, g.floor)}
           </span>
         </div>
         <div>
@@ -60,9 +61,7 @@ const GroupSlide = ({
           </span>
           <b className="pd-big block">{wins(g.ceiling.lose)}</b>
           <span className="pd-small text-muted-foreground">
-            {g.ceiling.lose === before[group].ceiling.lose
-              ? "held"
-              : `from ${wins(before[group].ceiling.lose)}`}
+            {poleChange(before[group].ceiling.lose, g.ceiling.lose)}
           </span>
         </div>
       </div>
@@ -81,18 +80,12 @@ const GroupSlide = ({
       </Reveal>
       <Reveal at={2} className="pd-say">
         {ceilingLine(g)}
-        {group === "conference" && after.held > g.floor
-          ? ` Holding our division to its floor lifts the floor to ${wins(after.held)}.`
-          : ""}
+        {group === "conference" ? ` ${heldLine(after) ?? ""}` : ""}
       </Reveal>
       <Reveal at={2.6} className="pd-mono pd-small flex flex-wrap gap-x-[3cqw]">
-        <span>
-          toward the best case{" "}
-          <b className="text-success">{wins(moved.best)}</b>
-        </span>
-        <span>
-          toward the worst{" "}
-          <b className="text-destructive">{wins(moved.worst)}</b>
+        <span className="text-success">{stepsLine(moved.ours, "ours")}</span>
+        <span className="text-destructive">
+          {stepsLine(moved.against, "against")}
         </span>
       </Reveal>
     </>
@@ -159,7 +152,9 @@ export const Results = ({ week }: SlideProps): JSX.Element => {
         </Reveal>
       ))}
       {cleanRun(week) ? (
-        <span className="pd-badge pd-in">{CLEAN_RUN.phrase}</span>
+        <Reveal at={2.1}>
+          <span className="pd-badge">{CLEAN_RUN.phrase}</span>
+        </Reveal>
       ) : null}
       <Reveal at={2.4} className="pd-small text-muted-foreground">
         A move is the poles as they are against the same week with that one

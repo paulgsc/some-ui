@@ -263,9 +263,9 @@
     border: 0.6cqw solid var(--foreground);
   }
 
+  /* Faint by its colour: the pop's fill ends at full opacity. */
   .pd-light--idle {
-    background: var(--muted-foreground);
-    opacity: 0.35;
+    background: color-mix(in oklab, var(--muted-foreground) 35%, transparent);
   }
 
   /* ------------------------------------------------------------ envelope */
@@ -348,18 +348,25 @@
     color: var(--destructive);
   }
 
-  /* The ladder: the rungs still open lit, the rest faint. */
+  /* The ladder: the rungs still open lit, the rest faint. The faintness is
+     on the children, since the rung's reveal ends at full opacity. */
   .pd-rung {
     align-items: baseline;
     border-left: 1cqw solid var(--border);
     display: flex;
     justify-content: space-between;
-    opacity: 0.45;
     padding: 1cqw 0 1cqw 3cqw;
+  }
+
+  .pd-rung > * {
+    opacity: 0.45;
   }
 
   .pd-rung--open {
     border-left-color: var(--primary);
+  }
+
+  .pd-rung--open > * {
     opacity: 1;
   }
 

@@ -18,15 +18,21 @@ import {
   ceilingLine,
   cleanRun,
   cohortCounts,
+  countdownLine,
   ended,
   followed,
   greensOf,
+  heldLine,
   ladderLine,
   legendFloor,
   movesOf,
+  poleChange,
+  rangeLine,
   redsOf,
   sentence,
+  settled,
   standingOf,
+  stepsLine,
   stepsOf,
 } from "./reading"
 import { nameOf, wins, type StorySeason, type StoryWeek } from "./story"
@@ -49,7 +55,8 @@ import {
   type GroupKey,
 } from "./words"
 
-const WEEK_SLIDES = [
+/** A week's slides, in order: every week shows each one. */
+export const WEEK_SLIDES = [
   "division",
   "conference",
   "results",
@@ -77,9 +84,6 @@ export const isLegendSlide = (id: SlideId): id is LegendSlide =>
 
 /** The legend's place among the weeks: before the first. */
 export const LEGEND_WEEK = 0
-
-/** Every week shows every slide: each reading has something to say. */
-export const slidesFor = (): ReadonlyArray<WeekSlide> => WEEK_SLIDES
 
 /** Milliseconds a slide holds when playing unattended: its reveal, then a beat. */
 export const HOLD_MS: Readonly<Record<SlideId, number>> = {
@@ -140,15 +144,7 @@ export function legendLine(season: StorySeason, id: LegendSlide): string {
 function polesLine(week: StoryWeek, key: GroupKey): string {
   const { before, after } = week.poles
   const g = after[key]
-  const floor =
-    g.floor === before[key].floor
-      ? `The floor held at ${wins(g.floor)}`
-      : `The floor rose from ${wins(before[key].floor)} to ${wins(g.floor)}`
-  const ceiling =
-    g.ceiling.lose === before[key].ceiling.lose
-      ? `the ceiling held at ${wins(g.ceiling.lose)}`
-      : `the ceiling fell from ${wins(before[key].ceiling.lose)} to ${wins(g.ceiling.lose)}`
-  return `${floor}; ${ceiling}. ${blocLine(g)} ${ceilingLine(g)}`
+  return `The floor: ${wins(g.floor)}, ${poleChange(before[key].floor, g.floor)}. The ceiling: ${wins(g.ceiling.lose)}, ${poleChange(before[key].ceiling.lose, g.ceiling.lose)}. ${blocLine(g)} ${ceilingLine(g)}`
 }
 
 /** The voiceover line for one slide of a week. */
@@ -160,14 +156,11 @@ export function narration(
   const after = week.poles.after
   switch (id) {
     case "division": {
-      return `Week ${week.week}. ${capital(GROUPS.division.word)}. ${polesLine(week, "division")} We can finish with ${wins(after.us.low)} to ${wins(after.us.high)}.`
+      return `Week ${week.week}. ${capital(GROUPS.division.word)}. ${polesLine(week, "division")} ${rangeLine(after)}`
     }
     case "conference": {
-      const held =
-        after.held > after.conference.floor
-          ? ` Holding our division to its floor lifts it to ${wins(after.held)}.`
-          : ""
-      return `${capital(GROUPS.conference.word)}. ${polesLine(week, "conference")}${held}`
+      const held = heldLine(after)
+      return `${capital(GROUPS.conference.word)}. ${polesLine(week, "conference")}${held === null ? "" : ` ${held}`}`
     }
     case "results": {
       const counts = cohortCounts(week, "conference")
@@ -187,15 +180,11 @@ export function narration(
     case "standings": {
       return (["division", "conference"] as const)
         .map((key) => {
-          const standing = STANDINGS[standingOf(after, key)].phrase
-          const greens = greensOf(after, key)
-          const reds = redsOf(after, key)
-          const counts =
-            standingOf(after, key) === "clinched" ||
-            standingOf(after, key) === "out"
-              ? ""
-              : `: ${wins(greens)} ${COUNTDOWNS.greens.phrase}, ${wins(reds)} ${COUNTDOWNS.reds.phrase}`
-          return `${capital(OBJECTIVES[key].word)}, ${standing.toLowerCase()}${counts}.`
+          const standing = standingOf(after, key)
+          const counts = settled(standing)
+            ? ""
+            : `: ${countdownLine(greensOf(after, key), "greens")}, ${countdownLine(redsOf(after, key), "reds")}`
+          return `${capital(OBJECTIVES[key].word)}, ${STANDINGS[standing].phrase.toLowerCase()}${counts}.`
         })
         .join(" ")
     }
@@ -208,14 +197,14 @@ export function narration(
       const last = weeks.at(-1)?.poles.after ?? after
       const closed = (key: GroupKey): string =>
         `the floor ${wins(first[key].floor)} to ${wins(last[key].floor)}, the ceiling ${wins(first[key].ceiling.lose)} to ${wins(last[key].ceiling.lose)}`
-      const leaned = weeks.reduce(
+      const moved = weeks.reduce(
         (sum, w) => {
           const s = stepsOf(w, "conference")
-          return { best: sum.best + s.best, worst: sum.worst + s.worst }
+          return { ours: sum.ours + s.ours, against: sum.against + s.against }
         },
-        { best: 0, worst: 0 }
+        { ours: 0, against: 0 }
       )
-      return `Over ${numberWord(weeks.length)} weeks followed. ${capital(GROUPS.division.word)}: ${closed("division")}. ${capital(GROUPS.conference.word)}: ${closed("conference")}. ${wins(leaned.best)} steps toward the best case, ${wins(leaned.worst)} toward the worst.`
+      return `Over ${numberWord(weeks.length)} ${weeks.length === 1 ? "week" : "weeks"} followed. ${capital(GROUPS.division.word)}: ${closed("division")}. ${capital(GROUPS.conference.word)}: ${closed("conference")}. ${capital(stepsLine(moved.ours, "ours"))}, ${stepsLine(moved.against, "against")}.`
     }
     case "outro": {
       const last = ended(season, week)

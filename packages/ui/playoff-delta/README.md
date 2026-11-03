@@ -18,12 +18,16 @@ suburb, making or missing each light.
   ceiling**: if everything goes against us, the most wins a rival can still
   reach. The two only ever close in.
 - **Pieces.** A game is named only by who plays: **our light** (us), a
-  **one-way** (a rival against the other conference), a **crossroads** (two
+  **one-way** (a rival against the other conference: its loss helps us or
+  does nothing, its win hurts us or does nothing), a **crossroads** (two
   rivals) and a **side street** (outside our conference). Each has a glyph
   (`src/lib/symbols.ts`).
 - **A result** moved us **toward the best case** (made), **toward the worst
-  case** (missed), was **forced** (two rivals: one had to win) or **idle**. A
-  week with nothing toward the worst case is **a clean run**.
+  case** (missed), was **forced** (two rivals: one had to win, and which one
+  can still move a pole) or **idle**, against the same week with it the other
+  way. **Steps our way** and **steps against us** count how far the week
+  moved the poles, before to after. A week where neither floor rose and our
+  best finish held is **a clean run**.
 - **An objective**, the division or the #1 seed, is **clinched**, **in our
   hands**, **needs help** or **out**, with **greens to go** and **reds to
   spare**.

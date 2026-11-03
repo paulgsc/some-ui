@@ -136,6 +136,10 @@ export function wins(x: number): string {
   return whole === 0 ? "½" : `${whole}½`
 }
 
+/** Wins with their noun: "1 win", "6½ wins". */
+export const winCount = (x: number, one = "win", many = `${one}s`): string =>
+  `${wins(x)} ${x === 1 ? one : many}`
+
 /** A change in wins, signed: "+1", "−½", "0". */
 export function steps(x: number): string {
   if (x === 0) return "0"

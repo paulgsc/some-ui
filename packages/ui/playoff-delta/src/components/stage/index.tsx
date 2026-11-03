@@ -1,10 +1,4 @@
-import {
-  useEffect,
-  useMemo,
-  useReducer,
-  type CSSProperties,
-  type JSX,
-} from "react"
+import { useEffect, useReducer, type CSSProperties, type JSX } from "react"
 import { LEGEND, SLIDES } from "@playoff-delta/components/slides"
 import { clampSlide, initialPlayer, step } from "@playoff-delta/lib/player"
 import { SAMPLE_SEASON } from "@playoff-delta/lib/sample"
@@ -15,7 +9,7 @@ import {
   LEGEND_WEEK,
   legendLine,
   narration,
-  slidesFor,
+  WEEK_SLIDES,
   type SlideId,
 } from "@playoff-delta/lib/slides"
 import type { StorySeason, StoryWeek } from "@playoff-delta/lib/story"
@@ -152,10 +146,8 @@ const WeekStory = ({
   record: boolean
   onWeekChange?: (week: number) => void
 }): JSX.Element => {
-  const ids: ReadonlyArray<SlideId> = useMemo(
-    () => (week === null ? LEGEND_SLIDES : slidesFor()),
-    [week]
-  )
+  const ids: ReadonlyArray<SlideId> =
+    week === null ? LEGEND_SLIDES : WEEK_SLIDES
   const count = ids.length
   const [player, dispatch] = useReducer(
     step,

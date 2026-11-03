@@ -1,5 +1,5 @@
 import { SAMPLE_SEASON } from "@playoff-delta/lib/sample"
-import { legendLine, narration, slidesFor } from "@playoff-delta/lib/slides"
+import { legendLine, narration, WEEK_SLIDES } from "@playoff-delta/lib/slides"
 import { describe, expect, it } from "vitest"
 
 const week1 = SAMPLE_SEASON.weeks[0]
@@ -7,10 +7,10 @@ if (!week1) throw new Error("no weeks")
 
 describe("the story", () => {
   it("opens on our division and closes on the week in one sentence", () => {
-    expect(slidesFor()[0]).toBe("division")
-    expect(slidesFor().at(-1)).toBe("outro")
+    expect(WEEK_SLIDES[0]).toBe("division")
+    expect(WEEK_SLIDES.at(-1)).toBe("outro")
     expect(narration(SAMPLE_SEASON, week1, "division")).toBe(
-      "Week 1. Our division. The floor rose from 2 to 3; the ceiling held at 17. LAR, SEA and ARI: 2 wins banked and 6 games left against each other. However those go, one of them reaches 3. LAR can still reach 17. We can finish with 1 to 17."
+      "Week 1. Our division. The floor: 3, from 2. The ceiling: 17, held. LAR, SEA and ARI: 2 wins banked and 6 games left against each other. However those go, one of them reaches 3. LAR can still reach 17. We can finish with 1 to 17 wins."
     )
   })
 
@@ -26,11 +26,13 @@ describe("the story", () => {
     )
   })
 
-  it("has a bye, and still reads its week", () => {
-    const bye = SAMPLE_SEASON.weeks.find((w) => w.game === null)
+  it("holds our range over a bye, and says so", () => {
+    const i = SAMPLE_SEASON.weeks.findIndex((w) => w.game === null)
+    const bye = SAMPLE_SEASON.weeks[i]
     if (!bye) throw new Error("the bundled season has no bye")
-    expect(narration(SAMPLE_SEASON, bye, "division")).toContain(
-      `Week ${bye.week}.`
-    )
+    expect(bye.poles.after.us).toEqual(bye.poles.before.us)
+    const range = narration(SAMPLE_SEASON, bye, "division").split(". ").at(-1)
+    expect(range).toMatch(/^We can finish with \d+ to \d+ wins\.$/)
+    expect(narration(SAMPLE_SEASON, bye, "outro")).not.toMatch(/^A clean run/)
   })
 })
