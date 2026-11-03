@@ -6,8 +6,7 @@
  * here until it is placed, and a route placed twice fails too.
  */
 
-import { QueryClient } from "@tanstack/react-query"
-import { createRouter } from "@tanstack/react-router"
+import { routesByPath } from "@/test-support/route-tree"
 import { beforeAll, describe, expect, it } from "vitest"
 
 import { FOYER, FRONT_DESK, owns, ROOMS } from "@/lib/wings"
@@ -16,14 +15,7 @@ import { FOYER, FRONT_DESK, owns, ROOMS } from "@/lib/wings"
 let paths: Array<string>
 
 beforeAll(async () => {
-  const { routeTree } = await import("@/routeTree.gen")
-  const router = createRouter({
-    routeTree,
-    context: { queryClient: new QueryClient() },
-  })
-  paths = Object.keys(router.routesByPath).map((path) =>
-    path.length > 1 ? path.replace(/\/$/, "") : path
-  )
+  paths = [...(await routesByPath()).keys()]
 }, 60_000)
 
 describe("wings: every route has one owner", () => {
