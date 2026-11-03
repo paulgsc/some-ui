@@ -152,7 +152,7 @@ describe("sessions at the budget", () => {
     const stale = asOf.map((s) =>
       s.id === kept ? { ...s, updatedAt: "2020-01-01T00:00:00Z" } : s
     )
-    await expect(removeUnchanged(db, stale)).resolves.toBe(1)
+    await expect(removeUnchanged(db, stale)).resolves.toEqual([gone])
     expect(await names()).toEqual(["kept"])
     expect(gone).not.toBe(kept)
   })

@@ -33,6 +33,10 @@ import {
 } from "@/lib/home-link/sessions"
 import type { LetGoPorts, Pairing } from "@/lib/home-link/study-let-go"
 import { letSessionGo } from "@/lib/home-link/study-let-go"
+import {
+  readDurableFailure,
+  writeDurableFailure,
+} from "@/lib/intent/durable-failure"
 import { ForeignCallError } from "@/lib/intent/foreign"
 import { createHttpSessionsRepository } from "@/lib/tenant/http-sessions-repository"
 import { copySessionsTo } from "@/lib/tenant/sessions-copy"
@@ -91,12 +95,12 @@ vi.mock("@/lib/device-backend/handlers/sessions", async (actual) => ({
   removeUnchanged: (
     _db: unknown,
     asOf: ReadonlyArray<{ id: string; updatedAt: string }>
-  ): Promise<number> => {
+  ): Promise<Array<string>> => {
     const gone = phone.sessions.filter((s) =>
       asOf.some((a) => a.id === s.id && a.updatedAt === s.updatedAt)
     )
     phone.sessions = phone.sessions.filter((s) => !gone.includes(s))
-    return Promise.resolve(gone.length)
+    return Promise.resolve(gone.map((s) => s.id))
   },
 }))
 vi.mock("@/lib/device-backend/storage-view", () => ({
@@ -173,6 +177,14 @@ function onPhone(id: string, status: SessionRecord["status"]): SessionRecord {
         }
       : {}),
   }
+}
+
+/** The device sessions the copy receipt names, in its order. */
+const copied = (): Array<string> => {
+  const kept: unknown = JSON.parse(
+    receipt.getItem("some-ui.tenant.sessions.transfers.v1") ?? "{}"
+  )
+  return typeof kept === "object" && kept !== null ? Object.keys(kept) : []
 }
 
 const copy = (
@@ -284,19 +296,32 @@ describe("letting the phone's copies go once home holds them", () => {
       letGo: letGoUnchanged,
     })
 
-  it("drains finished sessions, and the clear lets go of those home holds, keeping unfinished and today's", async () => {
+  it("drains finished sessions, and the clear lets go of those home holds and what the phone kept about them, keeping unfinished and today's", async () => {
     phone.sessions = [
       onPhone("a", "completed"),
       onPhone("b", "scheduled"),
       today("c"),
     ]
     await expect(drain()).resolves.toEqual({ kind: "synced" })
+    expect(copied()).toEqual(["a", "c"])
+    // The failure notes live in the page's localStorage, which this file's
+    // environment has no window for.
+    vi.stubGlobal("window", { localStorage: memoryStorage() })
+    const failure = { kind: "unreachable" as const, summary: "not saved" }
+    writeDurableFailure("a", failure)
+    writeDurableFailure("c", failure)
+    expect(readDurableFailure("a")).not.toBeNull()
     await expect(clear()).resolves.toEqual({
       kind: "cleared",
       freed: 1,
       kept: 0,
     })
     expect(phone.sessions.map((s) => s.id)).toEqual(["b", "c"])
+    // Nothing the phone kept about `a` outlives it (SL1); `c` keeps both.
+    expect(readDurableFailure("a")).toBeNull()
+    expect(readDurableFailure("c")).not.toBeNull()
+    expect(copied()).toEqual(["c"])
+    vi.unstubAllGlobals()
     // What left the phone is still on home, as it was.
     const there = await createHttpSessionsRepository(homeTransport(send)).list()
     expect(there.find((s) => s.name === "Session a")).toMatchObject({

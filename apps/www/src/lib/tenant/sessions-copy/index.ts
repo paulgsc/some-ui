@@ -40,7 +40,8 @@
  * and scenes before creating. That may adopt an identical session the
  * account already held: it costs a copy, never makes a duplicate.
  *
- * Nothing here deletes, locally or remotely.
+ * It deletes nothing remotely, and locally only its own receipt's entries for
+ * sessions that have left this device (`forgetCopies`).
  */
 
 import type { KeyedStorage } from "@some-ui/core-utils"
@@ -107,6 +108,27 @@ const readCopies = salvageEntries((value): Array<Copy> | null =>
  */
 function readReceipt(storage: KeyedStorage): Receipt {
   return { ...openKept(storage, RECEIPT_KEY, readCopies, {}).value }
+}
+
+/**
+ * Drops the receipt's entries for `localIds`, sessions that have left this
+ * device: let go once home holds them, or deleted (SL1, #2268). Nothing is
+ * left to copy, so the receipt stays bounded by the sessions still here.
+ *
+ * Tolerance: a forgotten copy is no longer claimed, so a later create that
+ * went unanswered, and whose named id home does not hold, may adopt it by
+ * content as it may any unclaimed session the account holds (above). Best
+ * effort: a receipt that cannot be written keeps the entries, as before.
+ */
+export function forgetCopies(
+  localIds: ReadonlyArray<string>,
+  storage: KeyedStorage = browserLocalStorage
+): void {
+  if (localIds.length === 0) return
+  const receipt = readReceipt(storage)
+  if (!localIds.some((id) => id in receipt)) return
+  for (const id of localIds) Reflect.deleteProperty(receipt, id)
+  writeKept(storage, RECEIPT_KEY, receipt, readCopies)
 }
 
 export type TransferPlan = {
