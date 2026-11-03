@@ -3,15 +3,16 @@ import { inMemoryStorage } from "@some-ui/core-utils"
 import type { Idea, Shot, ShotTime } from "@some-ui/video-render"
 import { REVIEW_SCHEMA } from "@some-ui/video-render"
 import type {
+  Listened,
+  Listening,
   Playback,
   StartRecording,
   Take,
   TakeDeadlines,
+  TurnListener,
 } from "@some-ui/voice-capture"
 import { simulatedMicrophone, SPEAKING } from "@some-ui/voice-capture/testing"
 import { episodeProjectOf } from "@soundbites/fixtures"
-import type { Listened } from "@soundbites/lib/idea/machine"
-import type { IdeaListener, Listening } from "@soundbites/lib/idea/runtime"
 import {
   run,
   shot,
@@ -57,7 +58,7 @@ function studio(
   mic: StartRecording = speaking(),
   prefix = "t",
   takeDeadlines?: TakeDeadlines,
-  listener?: IdeaListener,
+  listener?: TurnListener,
   extra: Partial<StudioPorts> = {}
 ): Running {
   let tick = 0
@@ -116,7 +117,7 @@ async function opened(
   memory = memoryProjectStore(),
   mic: StartRecording = speaking(),
   takeDeadlines?: TakeDeadlines,
-  listener?: IdeaListener
+  listener?: TurnListener
 ): Promise<Running> {
   const runtime = studio(memory, mic, "t", takeDeadlines, listener)
   await until(runtime, (state) => state.shelf.kind === "read")
@@ -1834,7 +1835,7 @@ describe("Watch", () => {
 
   /** A recognizer the test speaks through: ready, words as heard, then the end. */
   function fakeListener(available = true): {
-    listener: IdeaListener
+    listener: TurnListener
     ready: () => void
     say: (words: string) => void
     end: (result: Listened) => void
@@ -2069,7 +2070,7 @@ describe("Watch", () => {
   }
 
   async function watchingIdeas(
-    listener?: IdeaListener,
+    listener?: TurnListener,
     memory = memoryProjectStore([withIdeas()])
   ): Promise<Running> {
     const runtime = studio(memory, speaking(), "t", undefined, listener)

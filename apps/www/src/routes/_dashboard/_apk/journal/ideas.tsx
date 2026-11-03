@@ -1,6 +1,7 @@
 import type { JSX } from "react"
-import type { IdeaListener, IdeaShare } from "@some-ui/soundbites"
+import type { IdeaShare } from "@some-ui/soundbites"
 import { homeHearing, IdeaShelf, STUDIO_WORDS } from "@some-ui/soundbites"
+import type { TurnListener } from "@some-ui/voice-capture"
 import { createFileRoute, Link } from "@tanstack/react-router"
 
 import { phoneIdeaListener } from "@/lib/idea-hearing"
@@ -33,7 +34,7 @@ const device = import.meta.env.VITE_DEVICE_BACKEND === "true"
  * Claude's questions, answered as `idea.tsx`'s are, in the Android app
  * (`lib/idea-hearing`).
  */
-const capture: { listener: IdeaListener } | undefined = device
+const capture: { listener: TurnListener } | undefined = device
   ? { listener: phoneIdeaListener(homeHearing) }
   : undefined
 

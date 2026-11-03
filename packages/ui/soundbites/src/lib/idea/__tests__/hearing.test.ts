@@ -1,7 +1,7 @@
 /** @vitest-environment node */
 import { inMemoryStorage } from "@some-ui/core-utils"
-import type { TakeKit } from "@some-ui/voice-capture"
-import { microphoneOwner, takeKit } from "@some-ui/voice-capture"
+import type { Listening, TakeKit, TurnListener } from "@some-ui/voice-capture"
+import { microphoneOwner, NO_LISTENER, takeKit } from "@some-ui/voice-capture"
 import type { KeepScript, MicScript } from "@some-ui/voice-capture/testing"
 import {
   memoryKeep,
@@ -20,8 +20,7 @@ import {
   stepHearing,
 } from "@soundbites/lib/idea/hearing"
 import type { IdeaState } from "@soundbites/lib/idea/machine"
-import type { IdeaListener, Listening } from "@soundbites/lib/idea/runtime"
-import { createIdeaCapture, NO_LISTENER } from "@soundbites/lib/idea/runtime"
+import { createIdeaCapture } from "@soundbites/lib/idea/runtime"
 import { keptIdeaStore } from "@soundbites/lib/idea/store"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -102,7 +101,7 @@ function capture(options: {
   /** How long home takes to answer each ask. */
   answerMs?: number
   /** The screen's listener made from home's hearing. */
-  around?: (home: IdeaListener) => IdeaListener
+  around?: (home: TurnListener) => TurnListener
 }): {
   /** The takes this phone has read back that home holds. */
   homeHolds: Set<string>
@@ -134,7 +133,7 @@ function capture(options: {
   const visible = page()
   const homeHolds = new Set<string>()
   let voiceChecks = 0
-  const hearing: IdeaListener = homeHearing({
+  const hearing: TurnListener = homeHearing({
     takes: kitTakes(kit, options.full ?? false, (id) => homeHolds.has(id)),
     heard: (id) => {
       asked.push(id)
@@ -150,7 +149,7 @@ function capture(options: {
     onVisibility: visible.onVisibility,
   })
   const around = options.around?.(hearing) ?? hearing
-  const listener: IdeaListener = {
+  const listener: TurnListener = {
     ...around,
     available: () => {
       voiceChecks += 1
@@ -184,7 +183,7 @@ function capture(options: {
 
 function phaseOf(state: IdeaState): string {
   const { screen } = state
-  return screen.kind === "ask" ? screen.phase.kind : screen.kind
+  return screen.kind === "ask" ? state.turn.phase.kind : screen.kind
 }
 
 /** Until the take that was stopped has ended, a millisecond at a time. */
@@ -217,11 +216,12 @@ describe("IH1: an answer said as a take, its words from home", () => {
       ],
     })
     await vi.advanceTimersByTimeAsync(0)
-    expect(run.state().voice).toBe("ready")
+    expect(run.state().turn.voice).toBe("ready")
     run.dispatch({ type: "talk" })
     await vi.advanceTimersByTimeAsync(0)
-    expect(run.state().screen).toMatchObject({
-      phase: { kind: "listening", ready: true },
+    expect(run.state().turn.phase).toMatchObject({
+      kind: "listening",
+      ready: true,
     })
     await vi.advanceTimersByTimeAsync(2_000)
     run.dispatch({ type: "stopTalking" })
@@ -232,10 +232,11 @@ describe("IH1: an answer said as a take, its words from home", () => {
     expect(run.asked()).toEqual([])
     await vi.advanceTimersByTimeAsync(3 * pollMs)
     expect(run.asked()).toEqual(["take-1", "take-1", "take-1"])
-    expect(run.state().screen).toMatchObject({
-      phase: { kind: "heard", words: "a short about the week 8 picks" },
+    expect(run.state().turn.phase).toMatchObject({
+      kind: "heard",
+      words: "a short about the week 8 picks",
     })
-    run.dispatch({ type: "right" })
+    run.dispatch({ type: "meant" })
     expect(run.state().idea?.answers.at(-1)?.versions).toEqual([
       expect.objectContaining({
         how: "heard",
@@ -265,7 +266,7 @@ describe("IH1: an answer said as a take, its words from home", () => {
       expect(phaseOf(run.state())).toBe("hearing")
       await vi.advanceTimersByTimeAsync(pollMs)
       expect(phaseOf(run.state())).toBe("typing")
-      expect(run.state().notice).toBe(notice)
+      expect(run.state().turn.notice).toBe(notice)
       expect(run.kept()).toEqual(["take-1"])
       const asks = run.asked().length
       expect(asks).toBe(deadlineMs / pollMs - 1)
@@ -284,7 +285,7 @@ describe("IH1: an answer said as a take, its words from home", () => {
     run.homeHolds.add("take-1")
     await vi.advanceTimersByTimeAsync(pollMs)
     expect(phaseOf(run.state())).toBe("typing")
-    expect(run.state().notice).toBe("homeNoWords")
+    expect(run.state().turn.notice).toBe("homeNoWords")
     expect(run.asked()).toHaveLength(3)
     await vi.advanceTimersByTimeAsync(deadlineMs)
     expect(run.asked()).toHaveLength(3)
@@ -302,7 +303,7 @@ describe("IH1: an answer said as a take, its words from home", () => {
       expect(run.voiceChecks()).toBe(1)
       await vi.advanceTimersByTimeAsync(pollMs)
       expect(phaseOf(run.state())).toBe("typing")
-      expect(run.state().notice).toBe(notice)
+      expect(run.state().turn.notice).toBe(notice)
       // What can listen now is asked again (www's `lib/idea-hearing` skips
       // home for a while once it didn't answer).
       expect(run.voiceChecks()).toBe(2)
@@ -324,7 +325,7 @@ describe("IH1: an answer said as a take, its words from home", () => {
     expect(phaseOf(run.state())).toBe("hearing")
     await vi.advanceTimersByTimeAsync(1)
     expect(phaseOf(run.state())).toBe("typing")
-    expect(run.state().notice).toBe("keptOnPhone")
+    expect(run.state().turn.notice).toBe("keptOnPhone")
     await vi.advanceTimersByTimeAsync(deadlineMs)
     expect(phaseOf(run.state())).toBe("typing")
     expect(run.asked()).toHaveLength(1)
@@ -337,7 +338,7 @@ describe("IH1: an answer said as a take, its words from home", () => {
     let until = Number.NEGATIVE_INFINITY
     const run = capture({
       answers: [{ kind: "unreachable" }, { kind: "heard", text: "back" }],
-      around: (home): IdeaListener => ({
+      around: (home): TurnListener => ({
         available: () => Promise.resolve(Date.now() >= until),
         listen: (onWords, onReady, take): Listening => {
           if (Date.now() < until) return NO_LISTENER.listen(onWords, onReady)
@@ -356,8 +357,8 @@ describe("IH1: an answer said as a take, its words from home", () => {
     })
     await say(run)
     await vi.advanceTimersByTimeAsync(pollMs)
-    expect(run.state().notice).toBe("awayOnPhone")
-    expect(run.state().voice).toBe("unavailable")
+    expect(run.state().turn.notice).toBe("awayOnPhone")
+    expect(run.state().turn.voice).toBe("unavailable")
     run.dispatch({ type: "draft", text: "typed idea" })
     run.dispatch({ type: "save" })
     await vi.advanceTimersByTimeAsync(0)
@@ -366,12 +367,13 @@ describe("IH1: an answer said as a take, its words from home", () => {
     run.dispatch({ type: "draft", text: "typed too" })
     run.dispatch({ type: "save" })
     await vi.advanceTimersByTimeAsync(0)
-    expect(run.state().voice).toBe("ready")
+    expect(run.state().turn.voice).toBe("ready")
     expect(phaseOf(run.state())).toBe("idle")
     await say(run)
     await vi.advanceTimersByTimeAsync(pollMs)
-    expect(run.state().screen).toMatchObject({
-      phase: { kind: "heard", words: "back" },
+    expect(run.state().turn.phase).toMatchObject({
+      kind: "heard",
+      words: "back",
     })
   })
 
@@ -383,8 +385,9 @@ describe("IH1: an answer said as a take, its words from home", () => {
     await vi.advanceTimersByTimeAsync(pollMs)
     expect(phaseOf(run.state())).toBe("hearing")
     await vi.advanceTimersByTimeAsync(pollMs)
-    expect(run.state().screen).toMatchObject({
-      phase: { kind: "heard", words: "picks" },
+    expect(run.state().turn.phase).toMatchObject({
+      kind: "heard",
+      words: "picks",
     })
     expect(run.asked()).toHaveLength(2)
   })
@@ -396,7 +399,7 @@ describe("IH1: an answer said as a take, its words from home", () => {
     })
     await say(run)
     expect(phaseOf(run.state())).toBe("idle")
-    expect(run.state().notice).toBe("notHeard")
+    expect(run.state().turn.notice).toBe("notHeard")
     expect(run.kept()).toEqual(["take-1"])
     await vi.advanceTimersByTimeAsync(deadlineMs)
     expect(run.asked()).toEqual([])
@@ -434,9 +437,7 @@ describe("IH1: an answer said as a take, its words from home", () => {
     await vi.advanceTimersByTimeAsync(0)
     expect(run.asked()).toHaveLength(2)
     await vi.advanceTimersByTimeAsync(pollMs)
-    expect(run.state().screen).toMatchObject({
-      phase: { kind: "heard", words: "hi" },
-    })
+    expect(run.state().turn.phase).toMatchObject({ kind: "heard", words: "hi" })
   })
 
   it("ends in typing, the take kept on home, when the page shows again after the deadline", async () => {
@@ -449,7 +450,7 @@ describe("IH1: an answer said as a take, its words from home", () => {
     run.hide(false)
     await vi.advanceTimersByTimeAsync(0)
     expect(phaseOf(run.state())).toBe("typing")
-    expect(run.state().notice).toBe("keptOnHome")
+    expect(run.state().turn.notice).toBe("keptOnHome")
     expect(run.asked()).toHaveLength(1)
   })
 
@@ -479,7 +480,7 @@ describe("IH1: an answer said as a take, its words from home", () => {
     await say(run)
     await vi.advanceTimersByTimeAsync(pollMs)
     expect(phaseOf(run.state())).toBe("idle")
-    expect(run.state().notice).toBe("notHeard")
+    expect(run.state().turn.notice).toBe("notHeard")
   })
 
   it.each([
@@ -504,7 +505,7 @@ describe("IH1: an answer said as a take, its words from home", () => {
       const run = capture({ answers: [{ kind: "notYet" }], ...given })
       await say(run)
       expect(phaseOf(run.state())).toBe("idle")
-      expect(run.state().notice).toEqual(notice)
+      expect(run.state().turn.notice).toEqual(notice)
       await vi.advanceTimersByTimeAsync(deadlineMs)
       expect(run.asked()).toEqual([])
     }
@@ -518,7 +519,7 @@ describe("IH1: an answer said as a take, its words from home", () => {
     run.dispatch({ type: "stopTalking" })
     await untilEnded(run)
     expect(phaseOf(run.state())).toBe("idle")
-    expect(run.state().notice).toBe("notHeard")
+    expect(run.state().turn.notice).toBe("notHeard")
     expect(run.kept()).toEqual([])
   })
 })

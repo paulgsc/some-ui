@@ -7,15 +7,15 @@
  */
 import { assertNever } from "@some-ui/core-utils"
 import type {
+  Listening,
   Playback,
   Player,
   StartRecording,
   TakeDeadlines,
+  TurnListener,
 } from "@some-ui/voice-capture"
 // eslint-disable-next-line one-owner/no-local-microphone -- Studio runs its own take until its machine embeds the take kit (#2442)
-import { takeRunner } from "@some-ui/voice-capture"
-import type { IdeaListener, Listening } from "@soundbites/lib/idea/runtime"
-import { NO_LISTENER } from "@soundbites/lib/idea/runtime"
+import { NO_LISTENER, takeRunner } from "@some-ui/voice-capture"
 import { TAKE_TICK_MS } from "@soundbites/lib/policy"
 import type { ProjectStore } from "@soundbites/lib/project/store"
 import { ProjectFullError } from "@soundbites/lib/project/store"
@@ -56,7 +56,7 @@ export type StudioPorts = {
   /** How long the microphone may take to answer; `takeRunner`'s unless a test says. */
   takeDeadlines?: TakeDeadlines
   /** The phone's recognizer, for a note said in Watch (ST5); none means typed notes. */
-  listener?: IdeaListener
+  listener?: TurnListener
 }
 
 export type StudioRuntime = {

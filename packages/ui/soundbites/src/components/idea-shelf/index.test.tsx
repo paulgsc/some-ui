@@ -1,4 +1,5 @@
 import { inMemoryStorage } from "@some-ui/core-utils"
+import { NO_LISTENER, TURN_WORDS } from "@some-ui/voice-capture"
 import { IdeaShelf } from "@soundbites/components/idea-shelf"
 import {
   AT,
@@ -9,7 +10,6 @@ import {
 } from "@soundbites/lib/idea/__tests__/fixture"
 import type { Idea } from "@soundbites/lib/idea/model"
 import { withAside } from "@soundbites/lib/idea/model"
-import { NO_LISTENER } from "@soundbites/lib/idea/runtime"
 import type { ShelfPorts } from "@soundbites/lib/idea/shelf-runtime"
 import { keptIdeaStore } from "@soundbites/lib/idea/store"
 import { memoryProjectStore } from "@soundbites/lib/project/memory-store"
@@ -238,9 +238,7 @@ describe("IdeaShelf", () => {
     })
     expect(screen.getByText(W.askedOf(1, 1))).toBeTruthy()
     fireEvent.change(box, { target: { value: "week 8" } })
-    fireEvent.click(
-      screen.getByRole("button", { name: STUDIO_WORDS.idea.keepWords })
-    )
+    fireEvent.click(screen.getByRole("button", { name: TURN_WORDS.keepWords }))
     expect(screen.getByText(W.answered)).toBeTruthy()
     fireEvent.click(screen.getByRole("button", { name: W.backToIdea }))
     expect(screen.getByText(W.shareAgainLine)).toBeTruthy()

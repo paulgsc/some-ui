@@ -3,9 +3,9 @@
  * recorded through the shared take kit (`@some-ui/voice-capture`), kept on
  * the phone and sent home as a Studio voice note (www's
  * `lib/home-link/voice-copy`), and home's words for it are asked for until
- * they come (`heard`, www's `lib/home-link/heard`). `homeHearing` makes it an
- * `IdeaListener`, so the idea machine (`./machine`) takes its words as it
- * takes the recognizer's.
+ * they come (`heard`, www's `lib/home-link/heard`). `homeHearing` makes it a
+ * `TurnListener` (`@some-ui/voice-capture`'s turn), so the idea machine
+ * (`./machine`) takes its words as it takes the recognizer's.
  *
  * `stepHearing` is the pure step: one take, then the asking. `homeHearing`
  * runs it over ports: the take, home, the clock and the page's visibility,
@@ -58,10 +58,13 @@
  *   seen home holding is said kept on the phone.
  */
 import { assertNever } from "@some-ui/core-utils"
-import type { RecordingFailure, TakeEnding } from "@some-ui/voice-capture"
-
-import type { Listened } from "./machine"
-import type { IdeaListener, Listening } from "./runtime"
+import type {
+  Listened,
+  Listening,
+  RecordingFailure,
+  TakeEnding,
+  TurnListener,
+} from "@some-ui/voice-capture"
 
 /** What home said of a take's words, once asked. */
 export type HeardAnswer =
@@ -472,7 +475,7 @@ function settled(result: Listened): Listening {
  * Every answer said as a take and heard by home: always available, since
  * the take kit records on every phone that records at all.
  */
-export function homeHearing(ports: HearingPorts): IdeaListener {
+export function homeHearing(ports: HearingPorts): TurnListener {
   const timing = ports.timing ?? HEARING_TIMING
   return {
     available: () => Promise.resolve(true),

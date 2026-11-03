@@ -7,6 +7,7 @@
 import {
   audioPlayer,
   micRecorder,
+  NO_LISTENER,
   onPageVisibility,
 } from "@some-ui/voice-capture"
 
@@ -14,7 +15,6 @@ import type { BundlePorts } from "./idea/bundle-runtime"
 import { NO_HOME } from "./idea/bundle-runtime"
 import { IDEA_LISTS_SEED, keptDraftStore } from "./idea/draft"
 import type { IdeaPorts } from "./idea/runtime"
-import { NO_LISTENER } from "./idea/runtime"
 import type { ShelfPorts } from "./idea/shelf-runtime"
 import { keptIdeaStore } from "./idea/store"
 import { SOUNDBITE_BITS_PER_SECOND } from "./policy"

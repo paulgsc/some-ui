@@ -2,20 +2,17 @@
  * Answering Claude's questions about an idea (STUDIO ST19), opened on it
  * from the idea shelf: one question per screen in large type, one button to
  * say it. Renders `lib/idea/machine.ts`'s state and forwards taps; its words
- * are Studio's (`idea`). A new idea is caught as one bundle instead
+ * are the turn's (`TURN_WORDS`) around Studio's (`idea`). A new idea is caught as one bundle instead
  * (`../idea-bundle`, ST26).
  */
 import type { JSX, ReactNode } from "react"
 import { useEffect, useId, useState, useSyncExternalStore } from "react"
 import { assertNever } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
+import type { TurnPhase } from "@some-ui/voice-capture"
+import { TURN_WORDS, turnNoticeSaid } from "@some-ui/voice-capture"
 import { Notice } from "@soundbites/components/notice"
-import type {
-  AskPhase,
-  IdeaIntent,
-  IdeaNotice,
-  IdeaState,
-} from "@soundbites/lib/idea/machine"
+import type { IdeaIntent, IdeaState } from "@soundbites/lib/idea/machine"
 import { questionNumber } from "@soundbites/lib/idea/machine"
 import type { AnswerTo, Idea } from "@soundbites/lib/idea/model"
 import { isFollowUp, skippedAsks } from "@soundbites/lib/idea/model"
@@ -41,20 +38,12 @@ export type IdeaCaptureProps = {
 
 type Dispatch = (intent: IdeaIntent) => void
 
-/** A notice, in Studio's words. */
-function noticeSaid(notice: IdeaNotice): string {
-  if (notice === null) return ""
-  return typeof notice === "string"
-    ? WORDS[notice]
-    : WORDS.refused(notice.refused)
-}
-
 /** Where a listening with no words yet is (LS1). */
 function hearingWhere(
-  phase: Extract<AskPhase, { kind: "listening" | "finishing" }>
+  phase: Extract<TurnPhase, { kind: "listening" | "finishing" }>
 ): string {
-  if (phase.kind === "finishing") return WORDS.finishing
-  return phase.ready ? WORDS.listening : WORDS.gettingReady
+  if (phase.kind === "finishing") return TURN_WORDS.finishing
+  return phase.ready ? TURN_WORDS.listening : TURN_WORDS.gettingReady
 }
 
 const Words = ({
@@ -62,7 +51,7 @@ const Words = ({
   dispatch,
   label,
 }: {
-  phase: Extract<AskPhase, { kind: "fixing" | "typing" }>
+  phase: Extract<TurnPhase, { kind: "fixing" | "typing" }>
   dispatch: Dispatch
   label: string
 }): JSX.Element => {
@@ -80,14 +69,14 @@ const Words = ({
         className="bg-background border-border focus-visible:ring-ring min-h-28 w-full rounded-2xl border p-3 text-lg focus-visible:ring-2 focus-visible:outline-none"
       />
       <p id={hint} className="text-muted-foreground text-xs">
-        {WORDS.typeHint}
+        {TURN_WORDS.typeHint}
       </p>
       <Button
         size="lg"
         disabled={phase.draft.trim() === ""}
         onClick={() => dispatch({ type: "save" })}
       >
-        {WORDS.keepWords}
+        {TURN_WORDS.keepWords}
       </Button>
     </div>
   )
@@ -116,11 +105,12 @@ const Ask = ({
 }: {
   state: IdeaState
   question: AnswerTo
-  phase: AskPhase
+  phase: TurnPhase
   dispatch: Dispatch
 }): JSX.Element => {
   const { eyebrow, ask, hint } = wordsOf(question, state.idea)
-  const canTalk = state.voice === "ready"
+  const { voice, notice } = state.turn
+  const canTalk = voice === "ready"
   return (
     <div className="flex flex-col gap-4">
       <header className="space-y-1">
@@ -147,7 +137,7 @@ const Ask = ({
       )}
       {phase.kind === "finishing" && phase.words !== "" && (
         <p aria-live="polite" className="text-muted-foreground text-sm">
-          {WORDS.finishing}
+          {TURN_WORDS.finishing}
         </p>
       )}
       {phase.kind === "hearing" && (
@@ -155,37 +145,39 @@ const Ask = ({
           aria-live="polite"
           className="bg-card border-border/60 min-h-24 space-y-1 rounded-2xl border p-3"
         >
-          <p className="text-lg">{WORDS.hearing}</p>
-          <p className="text-muted-foreground text-sm">{WORDS.hearingLine}</p>
+          <p className="text-lg">{TURN_WORDS.hearing}</p>
+          <p className="text-muted-foreground text-sm">
+            {TURN_WORDS.hearingLine}
+          </p>
         </div>
       )}
 
       {phase.kind === "idle" && canTalk && (
         <Button size="lg" onClick={() => dispatch({ type: "talk" })}>
           <Mic className="size-5" aria-hidden="true" />
-          {WORDS.talk}
+          {TURN_WORDS.talk}
         </Button>
       )}
       {phase.kind === "listening" && (
         <Button size="lg" onClick={() => dispatch({ type: "stopTalking" })}>
           <Square className="size-5" aria-hidden="true" />
-          {WORDS.stop}
+          {TURN_WORDS.stop}
         </Button>
       )}
       {phase.kind === "heard" && (
         <div className="flex flex-col gap-2">
-          <Button size="lg" onClick={() => dispatch({ type: "right" })}>
-            {WORDS.right}
+          <Button size="lg" onClick={() => dispatch({ type: "meant" })}>
+            {TURN_WORDS.meant}
           </Button>
           <Button variant="outline" onClick={() => dispatch({ type: "fix" })}>
-            {WORDS.fix}
+            {TURN_WORDS.fix}
           </Button>
           {canTalk && (
             <Button
               variant="outline"
               onClick={() => dispatch({ type: "talk" })}
             >
-              {WORDS.again}
+              {TURN_WORDS.again}
             </Button>
           )}
         </div>
@@ -194,8 +186,8 @@ const Ask = ({
         <Words phase={phase} dispatch={dispatch} label={ask} />
       )}
 
-      <Notice text={noticeSaid(state.notice)} />
-      {state.voice === "unavailable" && phase.kind === "typing" && (
+      <Notice text={turnNoticeSaid(notice)} />
+      {voice === "unavailable" && phase.kind === "typing" && (
         <p className="text-muted-foreground text-xs">{WORDS.noVoice}</p>
       )}
 
@@ -209,7 +201,7 @@ const Ask = ({
             size="sm"
             onClick={() => dispatch({ type: "type" })}
           >
-            {WORDS.type}
+            {TURN_WORDS.type}
           </Button>
         )}
         {state.idea !== null && (
@@ -298,7 +290,7 @@ export const IdeaCapture = ({
         <Ask
           state={state}
           question={screen.question}
-          phase={screen.phase}
+          phase={state.turn.phase}
           dispatch={dispatch}
         />
       )
