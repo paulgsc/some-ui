@@ -15,9 +15,7 @@
  * - **The record kept for good** is home's count of it too
  *   (`GET /subjects/me/kept`, `./record`), read beside the recordings' on
  *   the overview.
- * - **Read only.** Nothing here sends, keeps or lets go of anything. A
- *   note home marks `deletable` is one My data may offer to delete (MD3,
- *   `./deleting`); every kind is switched off on home today, so none is.
+ * - **Read only.** Nothing here sends, keeps or lets go of anything.
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { readAs } from "@some-ui/core-utils"

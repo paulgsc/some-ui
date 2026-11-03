@@ -25,7 +25,6 @@ import {
   receiptParts,
   RECEIPTS,
   receiptsLine,
-  receiptTime,
   unreadLine,
   WHERE_WORDS,
 } from "@/lib/my-data/words"
@@ -101,8 +100,8 @@ describe("My data's words", () => {
       receiptParts([]),
       receiptKind("studio"),
       receiptKind("a newer kind"),
-      RECEIPTS.line(receiptKind("studio"), receiptTime(AT)),
-      RECEIPTS.deletedLine(receiptTime(AT)),
+      RECEIPTS.line(receiptKind("studio"), itemName(AT)),
+      RECEIPTS.deletedLine(itemName(AT)),
       RECEIPTS.wentLine(receiptParts(["recording"])),
     ]
     expect(said.filter((text) => MACHINERY.test(text))).toEqual([])

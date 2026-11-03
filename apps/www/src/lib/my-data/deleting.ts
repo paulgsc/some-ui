@@ -18,8 +18,6 @@
  *   delete nothing and are never asked again. Only no answer, or home or
  *   this phone being busy, offers Try again, a tap, and only for the notes
  *   home didn't answer. Nothing retries on its own.
- * - **The phone lets go of its own copy on a receipt, and only then**
- *   (`./deleting-runtime`; LG1's spirit, `lib/home-link/voice-copy`).
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { assertNever, readAs } from "@some-ui/core-utils"

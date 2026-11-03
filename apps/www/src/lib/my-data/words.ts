@@ -272,9 +272,6 @@ export function receiptKind(of: string): string {
     : "Recording"
 }
 
-/** A time on a receipt: `2 Nov 2026, 21:40`. */
-export const receiptTime = (at: string): string => itemName(at)
-
 /** "Delete…" and the sheet that asks once (MD3, #2477). */
 export const DELETING = {
   /** A row's "Delete…", and its name for a screen reader. */
@@ -349,7 +346,6 @@ export const DELETING = {
     title: "Receipt",
     what: "What",
     recorded: "Recorded",
-    reachedHome: "Reached home",
     size: "Size",
     deleted: "Deleted",
     went: "Went",

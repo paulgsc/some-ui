@@ -24,9 +24,9 @@ import type { DeleteSheet, Receipt } from "@/lib/my-data"
 import { retryable } from "@/lib/my-data/deleting"
 import {
   DELETING,
+  itemName,
   receiptKind,
   receiptParts,
-  receiptTime,
 } from "@/lib/my-data/words"
 
 const BIG = "h-12 rounded-2xl text-base"
@@ -35,9 +35,9 @@ const BIG = "h-12 rounded-2xl text-base"
 const ReceiptFacts = ({ receipt }: { receipt: Receipt }): JSX.Element => {
   const facts: ReadonlyArray<readonly [string, string]> = [
     [DELETING.receipt.what, receiptKind(receipt.of)],
-    [DELETING.receipt.recorded, receiptTime(receipt.recordedAt)],
+    [DELETING.receipt.recorded, itemName(receipt.recordedAt)],
     [DELETING.receipt.size, formatSize(receipt.size)],
-    [DELETING.receipt.deleted, receiptTime(receipt.deletedAt)],
+    [DELETING.receipt.deleted, itemName(receipt.deletedAt)],
     [DELETING.receipt.went, receiptParts(receipt.went)],
     [DELETING.receipt.stayed, receiptParts(receipt.stayed)],
   ]

@@ -10,11 +10,8 @@
  * Deleting (MD3, #2477) is offered on a kind's list only for a recording
  * home marks deletable (`lib/my-data`'s `offersDelete`): "Delete…" on its
  * row, or Select and "Delete n…", opens the sheet
- * (`./device-my-data-delete`), which asks once. Every kind is switched off
- * on home today, so no row offers it. The Deleted page lists the receipts.
- * A kind's page opened with `?note=<id>` opens the sheet on that recording
- * when it offers Delete…, so another screen's "Delete…" opens My data on a
- * record rather than deleting in place.
+ * (`./device-my-data-delete`), which asks once. The Deleted page lists the
+ * receipts.
  *
  * `MyDataOverview` and `MyDataKind` draw a snapshot; `DeviceMyData` and
  * `DeviceMyDataKind` read it from the runtime (`lib/my-data`), which a drag
@@ -79,7 +76,6 @@ import {
   receiptParts,
   RECEIPTS,
   receiptsLine,
-  receiptTime,
   unreadLine,
   WHERE_WORDS,
 } from "@/lib/my-data/words"
@@ -636,11 +632,11 @@ export const MyDataReceipts = ({
               <p className="font-medium">
                 {RECEIPTS.line(
                   receiptKind(receipt.of),
-                  receiptTime(receipt.recordedAt)
+                  itemName(receipt.recordedAt)
                 )}
               </p>
               <p className="text-muted-foreground text-xs">
-                {RECEIPTS.deletedLine(receiptTime(receipt.deletedAt))}
+                {RECEIPTS.deletedLine(itemName(receipt.deletedAt))}
               </p>
               <p className="text-muted-foreground text-xs">
                 {RECEIPTS.wentLine(receiptParts(receipt.went))}
