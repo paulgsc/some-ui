@@ -11,6 +11,7 @@
  * the sheet asking once with "Keep it" first, what it says once home
  * answered, and the Deleted page's receipts.
  */
+import type { JSX } from "react"
 import type * as ReactRouterModule from "@tanstack/react-router"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -271,19 +272,38 @@ describe("deleting from a kind's list (MD3)", () => {
     expect(screen.queryByText(DELETING.select)).toBeNull()
   })
 
-  it("offers Delete… on what home marks deletable, opening the sheet on it", () => {
+  it("offers Delete… on what home marks deletable, opening the sheet on it, and Select on several until it is cancelled", () => {
     const onDelete = vi.fn()
-    render(
+    const kind = (home: HomeReading): JSX.Element => (
       <MyDataKind
-        view={kindOf("studio", "studio", DELETABLE, [], NOW)}
+        view={kindOf("studio", "studio", home, [], NOW)}
         playing={null}
         onPlay={vi.fn()}
         onStop={vi.fn()}
         onDelete={onDelete}
       />
     )
+    const { rerender } = render(kind(DELETABLE))
     fireEvent.click(screen.getByText(DELETING.row))
     expect(onDelete).toHaveBeenCalledWith("studio", ["t1"])
+    const notes = DELETABLE.kept.notes ?? []
+    const two: HomeReading = {
+      kind: "read",
+      kept: {
+        kinds: [],
+        weeks: [],
+        notes: [...notes, ...notes.map((note) => ({ ...note, id: "t2" }))],
+      },
+    }
+    rerender(kind(two))
+    fireEvent.click(screen.getByText(DELETING.select))
+    for (const box of screen.getAllByRole("checkbox")) fireEvent.click(box)
+    fireEvent.click(screen.getByText(DELETING.deleteSelected(2)))
+    expect(onDelete).toHaveBeenLastCalledWith("studio", ["t1", "t2"])
+    // One went: still selecting, so Cancel stays to leave it.
+    rerender(kind(DELETABLE))
+    fireEvent.click(screen.getByText(DELETING.cancel))
+    expect(screen.getByText(DELETING.row)).toBeTruthy()
   })
 
   it("offers nothing while Studio's store isn't handed in, and says why", () => {

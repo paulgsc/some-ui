@@ -427,7 +427,7 @@ export const MyDataKind = ({
       <p className="text-muted-foreground text-sm">
         {kindLead(view.notes, view.bytes, view.since)}
       </p>
-      {offered.length > 1 ? (
+      {offered.length > 1 || selecting ? (
         <div className="flex gap-2.5">
           {selecting ? (
             <>
