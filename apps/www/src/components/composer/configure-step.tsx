@@ -78,8 +78,6 @@ export const ConfigureStep = ({
     // under the one being typed into.
     getItemKey: (item) => item.instanceId,
   })
-  // The shared pager (GES5): on the phone a swipe across the list turns
-  // its page as Prev and Next do.
   const { attach: attachPager } = usePager({
     canPrev: page > 0,
     canNext: page < pageCount - 1,

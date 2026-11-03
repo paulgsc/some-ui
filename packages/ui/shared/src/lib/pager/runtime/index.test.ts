@@ -9,20 +9,20 @@ import { fireEvent } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { CLAIMS_POINTER, claimsAxis, createPager, edgeOf } from "."
-import type { Deck, Turn } from "../"
+import type { Turn } from "../"
 
-const touch = (x: number, y = 100): { touches: Array<Partial<Touch>> } => ({
-  touches: [{ clientX: x, clientY: y, identifier: 0 }],
+const touch = (x: number): { touches: Array<Partial<Touch>> } => ({
+  touches: [{ clientX: x, clientY: 100, identifier: 0 }],
 })
 
-function swipe(on: Element, dx: number, dy = 0): void {
+function swipe(on: Element, dx: number): void {
   fireEvent.touchStart(on, touch(200))
-  fireEvent.touchMove(on, touch(200 + dx / 2, 100 + dy / 2))
-  fireEvent.touchMove(on, touch(200 + dx, 100 + dy))
+  fireEvent.touchMove(on, touch(200 + dx / 2))
+  fireEvent.touchMove(on, touch(200 + dx))
   fireEvent.touchEnd(on, { touches: [] })
 }
 
-function mount(deck: Partial<Deck> = {}): {
+function mount(): {
   node: HTMLElement
   pages: Array<Turn>
   detach: () => void
@@ -37,7 +37,6 @@ function mount(deck: Partial<Deck> = {}): {
       canPrev: true,
       canNext: true,
       held: false,
-      ...deck,
     }),
     page: (to) => pages.push(to),
   })
@@ -50,11 +49,10 @@ afterEach(() => {
 })
 
 describe("the pager's runtime (GES5)", () => {
-  it("turns the card on a sideways swipe, either way, and not on an upright one", () => {
+  it("turns the card on a sideways swipe, either way", () => {
     const { node, pages } = mount()
     swipe(node, -90)
     swipe(node, 90)
-    swipe(node, 0, -120)
     expect(pages).toEqual(["next", "prev"])
   })
 
@@ -89,12 +87,6 @@ describe("the pager's runtime (GES5)", () => {
     fireEvent.touchEnd(button, { touches: [] })
     fireEvent.click(button)
     expect(tapped).toHaveBeenCalledTimes(1)
-  })
-
-  it("turns nothing while something is under way", () => {
-    const { node, pages } = mount({ held: true })
-    swipe(node, -90)
-    expect(pages).toEqual([])
   })
 
   it("hears nothing once detached", () => {

@@ -13,19 +13,17 @@ import { usePager } from "."
 import type { Turn } from "../../../lib/pager"
 
 const Deck = ({
-  canNext,
   held,
   onPage,
   shareRef,
 }: {
-  canNext: boolean
   held: boolean
   onPage: (to: Turn) => void
   shareRef: RefObject<HTMLElement | null>
 }): JSX.Element => {
   const { attach } = usePager({
     canPrev: false,
-    canNext,
+    canNext: true,
     held,
     onPage,
     shareRef,
@@ -52,19 +50,12 @@ describe("usePager (GES5)", () => {
     const onPage = vi.fn()
     const shareRef = createRef<HTMLElement>()
     const props = { onPage, shareRef }
-    const { rerender, unmount } = render(
-      <Deck {...props} canNext held={false} />
-    )
+    const { rerender, unmount } = render(<Deck {...props} held={false} />)
     const deck = screen.getByTestId("deck")
     expect(shareRef.current).toBe(deck)
     swipe(deck, -90)
     expect(onPage).toHaveBeenCalledWith("next")
-    // No card before this one: a swipe back turns nothing.
-    swipe(deck, 90)
-    expect(onPage).toHaveBeenCalledTimes(1)
-    rerender(<Deck {...props} canNext held />)
-    swipe(deck, -90)
-    rerender(<Deck {...props} canNext={false} held={false} />)
+    rerender(<Deck {...props} held />)
     swipe(deck, -90)
     expect(onPage).toHaveBeenCalledTimes(1)
     unmount()

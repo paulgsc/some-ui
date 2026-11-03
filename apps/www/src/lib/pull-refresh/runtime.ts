@@ -135,8 +135,6 @@ export function createPullRuntime(ports: PullPorts): PullRuntime {
       dispatch({
         type: "touchStart",
         at,
-        // A surface that claims an upright drag (a vertical deck, a
-        // drag-and-drop list) keeps it: the touch is not a pull (GES5).
         atTop: atTop(event.target, scroller) && !claimsAxis(event.target, "y"),
         fingers: event.touches.length,
       })

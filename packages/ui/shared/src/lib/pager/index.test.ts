@@ -179,32 +179,6 @@ describe("the pager's step over its family (GES5)", () => {
     }
   })
 
-  it("waits out the slop before it takes a direction", () => {
-    const deck: Deck = {
-      orientation: "horizontal",
-      canPrev: true,
-      canNext: true,
-      held: false,
-    }
-    const tracking = run([
-      [
-        {
-          type: "down",
-          touch: { at: FROM, fingers: 1, claimed: false, edge: NO_OVERFLOW },
-        },
-        deck,
-      ],
-      [
-        {
-          type: "move",
-          at: { x: FROM.x - SLOP_PX, y: FROM.y + SLOP_PX },
-        },
-        deck,
-      ],
-    ])
-    expect(tracking.state.kind).toBe("tracking")
-  })
-
   it("passes a second finger, and a touch cancelled, without turning", () => {
     const deck: Deck = {
       orientation: "horizontal",

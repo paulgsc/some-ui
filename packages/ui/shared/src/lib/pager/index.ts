@@ -9,14 +9,8 @@
  * a visible control that does the same; no screen carries its own swipe code.
  * Held by:
  *
- * - this `step`, tested over the whole family (`./index.test.ts`): each
- *   direction, a horizontal and a vertical deck, something under way, the
- *   first and the last card, a card that overflows, and a surface that
- *   already claims the pointer;
- * - `pnpm check:gestures` (`packages/eslint/src/gestures.ts`), which fails a
- *   touch or pointer handler on a phone surface outside this pager's runtime
- *   and the pull's (`apps/www/src/lib/pull-refresh/runtime.ts`), and a
- *   `PageControls` with no pager beside it.
+ * - this `step`, tested over its whole family (`./index.test.ts`);
+ * - `pnpm check:gestures` (`packages/eslint/src/gestures.ts`).
  *
  * Tolerance: desktop web is out (the phone and the desktop are separate
  * surfaces), and so is paging by keyboard.

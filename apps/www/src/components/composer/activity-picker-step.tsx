@@ -119,8 +119,6 @@ export const ActivityPickerStep = ({
     next: nextPage,
     previous: previousPage,
   } = useFittedPage(visible, { minPerPage: 1, maxPerPage: 12 })
-  // The shared pager (GES5): on the phone a swipe across the list turns
-  // its page as Prev and Next do.
   const { attach: attachPager } = usePager({
     canPrev: page > 0,
     canNext: page < pageCount - 1,
@@ -144,8 +142,6 @@ export const ActivityPickerStep = ({
     next: nextManifestPage,
     previous: previousManifestPage,
   } = useFittedPage(numberedItems, { minPerPage: 1, maxPerPage: 20 })
-  // The shared pager (GES5): on the phone a swipe across the list turns
-  // its page as Prev and Next do.
   const { attach: attachManifestPager } = usePager({
     canPrev: manifestPage > 0,
     canNext: manifestPage < manifestPageCount - 1,

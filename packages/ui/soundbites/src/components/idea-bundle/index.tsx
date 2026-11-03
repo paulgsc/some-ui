@@ -5,9 +5,8 @@
  * over and sent together. Renders `lib/idea/bundle.ts`'s state and forwards
  * taps; its words are Studio's (`bundle`), and the take's are the pattern's.
  *
- * The swipe is the shared pager's (`usePager`, GES5): it hands back how far
- * the card follows the finger, and a swipe turns a card as a dot does.
- * vitest's touches don't reproduce a phone's (CK7, #2386).
+ * The swipe is the shared pager's (`usePager`, GES5). vitest's touches don't
+ * reproduce a phone's (CK7, #2386).
  */
 import type { JSX, ReactNode } from "react"
 import { useEffect, useId, useState, useSyncExternalStore } from "react"
@@ -446,8 +445,6 @@ const Questions = ({
   snapshot: TakePatternSnapshot
   dispatch: Dispatch
 }): JSX.Element => {
-  // The shared pager (GES5): a swipe turns a card as a dot does, and none
-  // turns while a take is under way.
   const { attach, offset, dragging } = usePager({
     canPrev: state.index > 0,
     canNext: state.index < IDEA_QUESTIONS.length - 1,

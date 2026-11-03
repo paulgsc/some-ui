@@ -23,6 +23,8 @@
 // `PageControls` nor the pager (buttons that step an index), which review
 // holds (REVIEW.md, "Second implementations and code left behind").
 
+import { workspaceRootOf } from "./vestiges.ts"
+
 /** Where the phone's two gestures live. */
 const GESTURE_MODULES: ReadonlySet<string> = new Set([
   "packages/ui/shared/src/lib/pager/runtime/index.ts",
@@ -88,16 +90,6 @@ export type GestureViolation =
 /** A line that is only a comment: `//`, or inside a block's `*` lines. */
 const COMMENT = /^\s*(?:\/\/|\/\*|\*)/
 
-/** The workspace manifest that owns `file`: the nearest `package.json`. */
-function manifestOf(file: string, tracked: ReadonlySet<string>): string | null {
-  const parts = file.split("/")
-  for (let end = parts.length - 1; end > 0; end -= 1) {
-    const manifest = [...parts.slice(0, end), "package.json"].join("/")
-    if (tracked.has(manifest)) return manifest
-  }
-  return null
-}
-
 /** A manifest's `someUi.audience`, if it says one. */
 function audienceOf(text: string): string | null {
   try {
@@ -132,8 +124,10 @@ export function findGestureViolations(
     if (!file.startsWith("packages/") || file.startsWith("packages/eslint/")) {
       return false
     }
-    const manifest = manifestOf(file, all)
-    if (manifest === null) return true
+    const workspace = workspaceRootOf(file)
+    if (workspace === undefined) return true
+    const manifest = `${workspace}/package.json`
+    if (!all.has(manifest)) return true
     if (!audiences.has(manifest)) {
       audiences.set(manifest, audienceOf(read(manifest)))
     }

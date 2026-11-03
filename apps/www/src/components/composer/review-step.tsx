@@ -79,8 +79,6 @@ export const ReviewStep = ({
     next: nextPage,
     previous: previousPage,
   } = useFittedPage(numberedItems, { minPerPage: 1, maxPerPage: 20 })
-  // The shared pager (GES5): on the phone a swipe across the list turns
-  // its page as Prev and Next do.
   const { attach: attachPager } = usePager({
     canPrev: page > 0,
     canNext: page < pageCount - 1,

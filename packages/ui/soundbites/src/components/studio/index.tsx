@@ -541,8 +541,6 @@ const Record = ({
   // records it again: "Again" adds a take, which becomes the chosen one),
   // and the chosen take as a row.
   const take = recordTake(state, view)
-  // The shared pager (GES5): a swipe turns the scene as Previous and Keep
-  // and next do, only where they show, and never while a take is under way.
   const { attach, offset, dragging } = usePager({
     canPrev: view.n > 1,
     canNext: taken && !view.last,

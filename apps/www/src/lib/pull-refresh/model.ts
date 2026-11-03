@@ -178,9 +178,7 @@ function touchStart(
 function touchMove(state: PullState, at: Point): Step {
   const { phase } = state
   if (phase.kind === "tracking") {
-    // The phone's one direction lock, which the shared pager reads too
-    // (GES5): a touch it locks sideways is a swipe, and up is the page
-    // scrolling; neither is a pull.
+    // Sideways is a swipe, and up is the page scrolling: neither is a pull.
     const lock = lockOf(phase.from, at)
     if (lock === null) return stay(state)
     if (lock === "x" || at.y < phase.from.y) return to(state, IDLE)
