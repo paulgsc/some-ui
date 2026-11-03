@@ -25,6 +25,7 @@ import { contracts as rustRoundContracts } from "../contracts/rust-rounds.contra
 import { contracts as sessionContracts } from "../contracts/sessions.contract"
 import { contracts as shelfContracts } from "../contracts/shelf.contract"
 import { contracts as studyNudgeContracts } from "../contracts/study-nudge.contract"
+import { contracts as subjectContracts } from "../contracts/subjects.contract"
 import { contracts as tabContracts } from "../contracts/tabs.contract"
 import { contracts as voiceContracts } from "../contracts/voice.contract"
 import type { Contract } from "./contract"
@@ -45,6 +46,7 @@ export const allContracts: ReadonlyArray<Contract> = [
   ...sessionContracts,
   ...shelfContracts,
   ...studyNudgeContracts,
+  ...subjectContracts,
   ...tabContracts,
   ...voiceContracts,
 ]
