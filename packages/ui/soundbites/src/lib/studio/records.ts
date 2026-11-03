@@ -7,8 +7,9 @@
  * data's sheet does, once it opens on the take (MD3).
  *
  * `recordsView` is pure; `createStudioRecords` reads the projects and what
- * home marks deletable over ports, and plays one take at a time; which late
- * answer is stale is decided here, by numbering each read and each play.
+ * home marks deletable over ports, asking home one ask at a time, and plays
+ * one take at a time; which late answer is stale is decided here, by
+ * numbering each read and each play.
  */
 import type {
   PatternTake,
@@ -105,6 +106,9 @@ const INITIAL: RecordsState = {
 export function createStudioRecords(ports: RecordsPorts): StudioRecords {
   let state = INITIAL
   let reads = 0
+  let attachments = 0
+  let asking = false
+  let askAgain = false
   let plays = 0
   let stopPlaying: (() => void) | null = null
   const listeners = new Set<() => void>()
@@ -125,8 +129,28 @@ export function createStudioRecords(ports: RecordsPorts): StudioRecords {
         if (seq === reads) set({ ...state, projects: "unreadable" })
       }
     )
+    askDeletable()
+  }
+
+  /**
+   * One ask of what home marks deletable at a time: a write while one is
+   * out asks once more after it lands, however many writes there were, so
+   * a run of writes (a lane letting takes go) is not a run of asks.
+   */
+  const askDeletable = (): void => {
+    if (asking) {
+      askAgain = true
+      return
+    }
+    asking = true
+    const at = attachments
     void ports.deletable().then((deletable) => {
-      if (seq === reads) set({ ...state, deletable })
+      asking = false
+      if (at === attachments) set({ ...state, deletable })
+      if (askAgain) {
+        askAgain = false
+        askDeletable()
+      }
     })
   }
 
@@ -178,6 +202,8 @@ export function createStudioRecords(ports: RecordsPorts): StudioRecords {
         unsubscribe()
         stop()
         reads += 1
+        attachments += 1
+        askAgain = false
       }
     },
   }

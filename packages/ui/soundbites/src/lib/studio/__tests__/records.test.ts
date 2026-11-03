@@ -44,6 +44,33 @@ describe("what Studio keeps (MD4)", () => {
     expect(row?.take.deleted).toBe(deleted)
   })
 
+  it("asks home what it marks deletable one ask at a time, and once more for the writes meanwhile", async () => {
+    const memory = memoryProjectStore([twoTakes()])
+    const answers: Array<(deletable: ReadonlySet<string>) => void> = []
+    const deletable = vi.fn(
+      () =>
+        new Promise<ReadonlySet<string>>((resolve) => {
+          answers.push(resolve)
+        })
+    )
+    const records = createStudioRecords({
+      store: memory.store,
+      deletable,
+      player: { play: vi.fn() },
+    })
+    const detach = records.attach()
+    await letGoHeldTakes(memory.store, new Set(["t1"]), null)
+    await letGoHeldTakes(memory.store, new Set(["t2"]), null)
+    expect(deletable).toHaveBeenCalledTimes(1)
+    answers[0]?.(new Set(["t1"]))
+    await vi.waitFor(() => expect(deletable).toHaveBeenCalledTimes(2))
+    answers[1]?.(new Set(["t1", "t2"]))
+    await vi.waitFor(() =>
+      expect(records.getSnapshot().deletable).toEqual(new Set(["t1", "t2"]))
+    )
+    detach()
+  })
+
   it("plays one take at a time, and a late audio read for an earlier one plays nothing", async () => {
     const memory = memoryProjectStore([twoTakes()])
     const played: Array<Blob> = []

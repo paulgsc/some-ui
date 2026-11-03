@@ -412,7 +412,8 @@ declared (checked by reading every call site and by the tests named).
   data page opens or is dragged down, once after a delete home answered
   with a receipt while a My data page shows (`refreshShown`, MD3), and one
   `?of=studio` each time Studio's "What Studio keeps" opens or its projects
-  change while it shows, for the takes it offers Delete… on
+  change while it shows, one at a time (changes while one is out ask once
+  more after it), for the takes it offers Delete… on
   (`deletableStudioTakes`, MD4 #2478), sending nothing of the phone's but
   the kind; while the link is busy with another run, which sends nothing, it
   asks again a second later, at most ten times in all; #2476, whose page
