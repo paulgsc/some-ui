@@ -22,7 +22,7 @@
  * - **Grouping and sorting are the phone's** (paulgsc/server#645): home
  *   lists newest begun first, and `groupsOf` does the rest.
  */
-import { assertNever } from "@some-ui/core-utils"
+import { assertNever, dayOf } from "@some-ui/core-utils"
 
 import type { Idea, IdeaFormat } from "./model"
 import { withWords } from "./model"
@@ -101,8 +101,9 @@ export type IdeaGroup = {
   readonly ideas: ReadonlyArray<HomeIdea>
 }
 
-/** The day an idea was begun, as `YYYY-MM-DD`. */
-const dayOf = (idea: HomeIdea): string => idea.createdAt.slice(0, 10)
+/** The day on this phone's calendar an idea was begun, as `YYYY-MM-DD`. */
+export const dayBegun = (idea: HomeIdea): string =>
+  dayOf(new Date(idea.createdAt))
 
 function sorted(
   ideas: ReadonlyArray<HomeIdea>,
@@ -140,7 +141,7 @@ function keysOf(
       return [idea.format]
     }
     case "date": {
-      return [dayOf(idea)]
+      return [dayBegun(idea)]
     }
     case "keyword": {
       return idea.keywords.length === 0 ? [null] : idea.keywords
@@ -161,9 +162,8 @@ export function groupsOf(
   groupBy: GroupBy,
   sortBy: SortBy
 ): ReadonlyArray<IdeaGroup> {
-  const order = groupBy === "date" ? sorted(ideas, "newest") : ideas
   const groups = new Map<string | null, Array<HomeIdea>>()
-  for (const idea of sorted(order, groupBy === "date" ? "newest" : sortBy)) {
+  for (const idea of sorted(ideas, groupBy === "date" ? "newest" : sortBy)) {
     for (const key of keysOf(idea, groupBy)) {
       groups.set(key, [...(groups.get(key) ?? []), idea])
     }

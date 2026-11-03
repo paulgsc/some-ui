@@ -1,4 +1,6 @@
+import { simulatedPattern } from "@some-ui/voice-capture/testing"
 import { IdeasOnHome } from "@soundbites/components/ideas-on-home"
+import type { BundleTakes } from "@soundbites/lib/idea/bundle-runtime"
 import type { HomeIdea, HomeLists } from "@soundbites/lib/idea/on-home"
 import type { IdeasHome } from "@soundbites/lib/idea/on-home-runtime"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
@@ -70,6 +72,8 @@ function home(more: Partial<IdeasHome> = {}): IdeasHome {
 
 const settle = (): Promise<void> => act(() => Promise.resolve())
 
+const NO_TAKES: ReturnType<BundleTakes["takes"]["getSnapshot"]> = []
+
 describe("Ideas on home (ST26 c)", () => {
   it("lists home's ideas by subject, opens one with home's words, and marks it still furnishing", async () => {
     const furnish = vi.fn(home().furnish)
@@ -86,6 +90,23 @@ describe("Ideas on home (ST26 c)", () => {
     expect(furnish).toHaveBeenCalledWith("i1", true)
     expect(screen.getByRole("button", { name: W.furnishing })).toBeTruthy()
     expect(screen.getByText(W.notice.furnishing)).toBeTruthy()
+  })
+
+  it("stops what it played once the idea is left", async () => {
+    const { pattern } = simulatedPattern()
+    const stopPlaying = vi.spyOn(pattern, "stopPlaying")
+    const takes: BundleTakes = {
+      pattern,
+      takes: { getSnapshot: () => NO_TAKES, subscribe: () => () => undefined },
+      discard: () => true,
+      release: () => true,
+    }
+    render(<IdeasOnHome home={home()} takes={takes} />)
+    await settle()
+    fireEvent.click(screen.getByRole("button", { name: /Why the mic clips/ }))
+    expect(stopPlaying).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole("button", { name: W.back }))
+    expect(stopPlaying).toHaveBeenCalledTimes(1)
   })
 
   it("groups by keyword and sorts by title when asked", async () => {

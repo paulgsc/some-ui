@@ -4,7 +4,12 @@
  * table, in the person's terms: what is kept where, and what to do next,
  * never the machinery (`__tests__/words.test.ts` holds that).
  */
-import { formatSize, formatTimecode, listed } from "@some-ui/core-utils"
+import {
+  formatDay,
+  formatSize,
+  formatTimecode,
+  listed,
+} from "@some-ui/core-utils"
 import type { Idea, Look, Voice } from "@some-ui/video-render"
 import type { RecordingFailure } from "@some-ui/voice-capture"
 import {
@@ -957,11 +962,7 @@ export const STUDIO_WORDS = {
       video: "Video · wide",
     } satisfies Record<IdeaFormat, string>,
     noKeyword: "No keyword",
-    day: (day: string): string =>
-      new Date(`${day}T12:00:00Z`).toLocaleDateString(undefined, {
-        month: "short",
-        day: "numeric",
-      }),
+    day: formatDay,
     answers: (n: number): string => plural(n, "answer", "answers"),
     furnishingMark: "Still furnishing",
     furnish: "Mark still furnishing",

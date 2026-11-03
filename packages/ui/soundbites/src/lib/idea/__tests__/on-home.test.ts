@@ -95,6 +95,20 @@ describe("ideas on home, grouped and sorted on the phone (ST26 c)", () => {
     expect(words.map((g) => g.key)).toEqual(["voice", null, "home"])
     expect(ids(words)).toEqual([["c", "a"], ["b"], ["a"]])
   })
+
+  it("dates an idea by the day it was begun on this phone's calendar", () => {
+    const zone = process.env.TZ
+    process.env.TZ = "America/Los_Angeles"
+    try {
+      // 18:30 on Nov 1 in California is already Nov 2 in UTC.
+      const evening = onHome("e", "2026-11-02T01:30:00.000Z")
+      expect(groupsOf([evening], "date", "newest").map((g) => g.key)).toEqual([
+        "2026-11-01",
+      ])
+    } finally {
+      process.env.TZ = zone
+    }
+  })
 })
 
 describe("home's words for a said answer, kept on the phone (ST26 c)", () => {
@@ -165,6 +179,44 @@ describe("home's words for a said answer, kept on the phone (ST26 c)", () => {
     expect(runtime.getSnapshot().ideas.kind).toBe("read")
     // New idea picks from the lists as home said them.
     expect(lists.read()).toEqual({ topics: ["Studio"], keywords: [] })
+    detach()
+  })
+})
+
+describe("the lists as home last said them, for New idea (ST26 c)", () => {
+  it("are kept from each change home takes, not only from a read", async () => {
+    const storage = inMemoryStorage()
+    const after = { topics: ["Studio"], keywords: ["phone"] }
+    const home: IdeasHome = {
+      ideas: () =>
+        Promise.resolve({ kind: "read", value: { ideas: [], more: false } }),
+      lists: () =>
+        Promise.resolve({
+          kind: "read",
+          value: { topics: ["Studio"], keywords: [] },
+        }),
+      furnish: vi.fn(),
+      setAside: vi.fn(),
+      entry: () => Promise.resolve({ kind: "written", value: after }),
+    }
+    const lists = keptIdeaLists(() => storage)
+    const runtime = createIdeasOnHome({
+      home,
+      ideas: keptIdeaStore(() => storage),
+      lists,
+    })
+    const detach = runtime.attach(true)
+    await vi.waitFor(() =>
+      expect(runtime.getSnapshot().lists.kind).toBe("read")
+    )
+    runtime.dispatch({
+      type: "entry",
+      list: "keywords",
+      name: "phone",
+      listed: true,
+    })
+    await vi.waitFor(() => expect(runtime.getSnapshot().notice).toBe("added"))
+    expect(lists.read()).toEqual(after)
     detach()
   })
 })

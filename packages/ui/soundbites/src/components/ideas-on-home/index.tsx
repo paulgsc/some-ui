@@ -26,6 +26,7 @@ import type {
   OnHomeState,
 } from "@soundbites/lib/idea/on-home"
 import {
+  dayBegun,
   GROUP_BY,
   groupsOf,
   isEntry,
@@ -124,7 +125,7 @@ function groupName(state: OnHomeState, key: string | null): string {
 /** An idea's line under its title: when, what for, its subject and answers. */
 function metaOf(idea: HomeIdea): string {
   return [
-    WORDS.day(idea.createdAt.slice(0, 10)),
+    WORDS.day(dayBegun(idea)),
     WORDS.formats[idea.format],
     idea.topic,
     WORDS.answers(idea.answers.length),
@@ -279,6 +280,14 @@ const OneIdea = ({
     takes?.takes.getSnapshot ?? noTakes
   )
   const playable = new Set(onPhone.map((take) => take.id))
+  // Leaving the idea (back, set aside, or the page) stops what it played,
+  // or was loading to play: the desk is the phone's one, and outlives it.
+  useEffect(
+    () => (): void => {
+      takes?.pattern.stopPlaying()
+    },
+    [takes]
+  )
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">

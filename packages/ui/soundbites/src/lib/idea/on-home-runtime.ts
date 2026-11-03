@@ -123,11 +123,10 @@ export function createIdeasOnHome(ports: OnHomePorts): OnHomeRuntime {
       }
       case "entry": {
         const { listed } = effect
-        later(ports.home.entry(effect.list, effect.name, listed), (write) => ({
-          type: "entryDone",
-          listed,
-          write,
-        }))
+        later(ports.home.entry(effect.list, effect.name, listed), (write) => {
+          if (write.kind === "written") remember(write.value)
+          return { type: "entryDone", listed, write }
+        })
         return
       }
       case "fill": {
