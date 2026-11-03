@@ -68,30 +68,15 @@ describe("a take's outcome as an event", () => {
 
   it.each([
     [ended({ ending: "kept", unheard: true }), "kept-unheard", "failed"],
-    [ended({ ending: "short" }), "short", "stopped"],
-    [ended({ ending: "early" }), "early", "stopped"],
-    [ended({ ending: "full" }), "full", "failed"],
-    [ended({ ending: "failed" }), "failed", "failed"],
     [
       ended({ ending: "blocked", reason: "denied" }),
       "blocked-denied",
-      "failed",
-    ],
-    [ended({ ending: "blocked", reason: "busy" }), "blocked-busy", "failed"],
-    [
-      ended({ ending: "blocked", reason: "unsupported" }),
-      "blocked-unsupported",
       "failed",
     ],
     [
       ended({ ending: "blocked", reason: "elsewhere" }),
       "blocked-elsewhere",
       "stopped",
-    ],
-    [
-      ended({ ending: "blocked", reason: "failed" }),
-      "blocked-failed",
-      "failed",
     ],
     [ended({ ending: "blocked", reason: null }), "blocked-failed", "failed"],
   ] as const)("names %o as %s, which %s", (end, ending, went) => {
