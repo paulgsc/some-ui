@@ -1434,7 +1434,9 @@ reaches:
   that button, the sheet shows `DELETING.goes` and `DELETING.stays`, with
   "Keep it" first. A sheet is asked (`asked`) only for recordings
   `offersDelete` passes. Every other delete of a recording on the phone (a
-  draft's) sends nothing to home.
+  draft's) neither imports the link or My data nor calls `deleteNotes`, and
+  none sits in a module that reaches the link; what it reaches past its own
+  file is LA20's.
 - _Falsified by:_
   - a hunk to `deleting-runtime.ts` that calls `ports.deleteNotes` other
     than in `run`, starts `run` but after a `confirmed` the step accepted,
@@ -1453,8 +1455,10 @@ reaches:
     "Keep it";
   - a hunk to a draft's delete (a store's delete, remove or discard of a
     recording that never reached home, anywhere in `apps/www` or
-    `packages`) that imports `lib/home-link`, calls `deleteNotes`, or
-    hands its recording to anything that sends;
+    `packages`) whose file, as it stands after the diff, imports
+    `lib/home-link` or `lib/my-data` or calls `deleteNotes`; or a hunk that
+    puts a draft's delete in a module under `lib/home-link/` or one the
+    egress test's `HOME_LINK_CALLERS` lists;
   - a hunk that reaches the link's `send` under a name other than `send`,
     which the checks above read by name;
   - a hunk that narrows or deletes the "LA19 (MD5)" checks, or widens
@@ -1487,6 +1491,20 @@ reaches:
       Rounds' deletes, the reflection and scene voice budgets) live in
       packages or in `lib/` modules outside LA8's `HOME_LINK_CALLERS`, so
       none of them reaches the link.
+
+### LA20 (not reviewable): a draft's delete reaches nothing that sends, through any chain of calls
+
+A draft's delete hands its recording to its own store, often through a port
+its host wires, and what that chain reaches is open-ended: no hunk, its
+changed file or a named file can settle it, so a reviewer should neither
+flag nor clear a diff on it. LA19's falsifier holds the part a hunk shows
+(the draft's own file). What is mechanical is held by test: LA8's checks
+(only `lib/home-link` and the egress test's `HOME_LINK_CALLERS` import the
+link) and LA19's (only `lib/home-link/delete-note.ts` sends a `DELETE`, only
+My data's delete runtime calls it, and no other source names a `DELETE`
+beside a `/voice-notes/` path), so no chain can delete a record on home. It
+was true when declared (MD5, #2479), by the reading listed under LA19's
+"Held when declared". Tracked: #2473, the MY-DATA epic.
 
 ## Not covered, on purpose
 
