@@ -3,7 +3,7 @@
  * renders it and a test checks it without a store or a microphone.
  */
 import { assertNever } from "@some-ui/core-utils"
-import type { Idea, Shot } from "@some-ui/video-render"
+import type { EpisodePin, Idea, Shot } from "@some-ui/video-render"
 import type { TakeButtonView, TakeRowView } from "@some-ui/voice-capture"
 import { NEARLY_UP_MS } from "@some-ui/voice-capture"
 import type { Cut } from "@soundbites/lib/journal/primer"
@@ -16,7 +16,7 @@ import { originConfirmed, originsWaiting } from "@soundbites/lib/project/origin"
 import { capFor, chosenTake, scriptOf } from "@soundbites/lib/project/script"
 
 import type { StudioState } from "./machine"
-import type { SittingKind, Whose } from "./words"
+import type { EpisodeStanding, SittingKind, Whose } from "./words"
 import { STUDIO_WORDS } from "./words"
 
 type SittingRow = {
@@ -31,7 +31,12 @@ export type StartView = {
   readonly title: string
   readonly standing: string
   readonly sittings: ReadonlyArray<SittingRow>
+  /** What an episode's show made for it (SHOW SH3); null for a video of your own. */
+  readonly made: ReadonlyArray<MadeRow> | null
 }
+
+/** One thing an episode's show made, on its Start. */
+type MadeRow = { readonly name: string; readonly line: string }
 
 /** The last closed sitting's log lines, if a sitting has closed. */
 function lastLog(project: Project): { done: string; next: string } | null {
@@ -53,43 +58,149 @@ function takenCount(project: Project): number {
 }
 
 export function startView(project: Project): StartView {
-  const scenes = latest(project).cutList.shots.length
+  const { shots } = latest(project).cutList
+  const scenes = shots.length
+  const clips = shots.filter((shot) => shot.picture.kind === "capture").length
+  const { episode } = project
+  const words = STUDIO_WORDS.show
+  const sittings: ReadonlyArray<SittingRow> = [
+    {
+      kind: "record",
+      status: STUDIO_WORDS.recordStatus(takenCount(project), scenes),
+      open: true,
+      // The one sitting the phone runs today, so the most useful one.
+      startHere: true,
+    },
+    {
+      kind: "watch",
+      status: STUDIO_WORDS.watch.status(
+        changesWaiting(project),
+        originsWaiting(project).length
+      ),
+      open: true,
+      startHere: false,
+    },
+    {
+      kind: "shape",
+      status: STUDIO_WORDS.shape.status(
+        latest(project).cutList.look,
+        latest(project).cutList.voice
+      ),
+      open: true,
+      startHere: false,
+    },
+    {
+      kind: "finish",
+      status: finishStatus(finishOf(project)),
+      open: true,
+      startHere: false,
+    },
+  ]
   return {
     title: latest(project).cutList.title,
     standing: STUDIO_WORDS.standing(lastLog(project)),
-    sittings: [
+    sittings:
+      episode === undefined
+        ? sittings
+        : sittings.filter((row) => row.kind !== "shape"),
+    made:
+      episode === undefined
+        ? null
+        : [
+            { name: words.data, line: words.dataLine(episode.period) },
+            { name: words.clips(clips), line: words.clipsLine },
+            { name: words.says, line: words.saysLine },
+          ],
+  }
+}
+
+/** Where an episode stands: released, ready, under way, or waiting for your voice. */
+function standingOf(project: Project): EpisodeStanding {
+  const finish = finishOf(project)
+  if (finish.kind === "released" || finish.kind === "ready") {
+    return finish.kind
+  }
+  return takenCount(project) > 0 ? "going" : "voice"
+}
+
+type Episodic = Project & { readonly episode: EpisodePin }
+
+/** When an episode was opened on the phone: its first version. */
+const openedAt = (project: Project): string => project.revisions[0]?.at ?? ""
+
+/** The episodes of `show` on the phone, the one opened last first. */
+function episodesOf(
+  projects: ReadonlyArray<Project>,
+  show: string
+): ReadonlyArray<Episodic> {
+  return projects
+    .filter((each): each is Episodic => each.episode?.show === show)
+    .sort((a, b) => openedAt(b).localeCompare(openedAt(a)))
+}
+
+/** A show on Start (SHOW SH3). */
+export type ShowRow = {
+  readonly show: string
+  readonly line: string
+  /** Where its newest episode stands. */
+  readonly standing: string
+}
+
+/** The shows the phone holds an episode of, by name. */
+export function showsOnPhone(
+  projects: ReadonlyArray<Project>
+): ReadonlyArray<ShowRow> {
+  const shows = [
+    ...new Set(projects.flatMap((each) => each.episode?.show ?? [])),
+  ].sort((a, b) => a.localeCompare(b))
+  return shows.flatMap((show) => {
+    const episodes = episodesOf(projects, show)
+    const [newest] = episodes
+    if (newest === undefined) return []
+    return [
       {
-        kind: "record",
-        status: STUDIO_WORDS.recordStatus(takenCount(project), scenes),
-        open: true,
-        // The one sitting the phone runs today, so the most useful one.
-        startHere: true,
-      },
-      {
-        kind: "watch",
-        status: STUDIO_WORDS.watch.status(
-          changesWaiting(project),
-          originsWaiting(project).length
+        show,
+        line: STUDIO_WORDS.show.episodesHeld(
+          episodes.length,
+          newest.episode.period
         ),
-        open: true,
-        startHere: false,
+        standing: STUDIO_WORDS.show.standing[standingOf(newest)],
       },
-      {
-        kind: "shape",
-        status: STUDIO_WORDS.shape.status(
-          latest(project).cutList.look,
-          latest(project).cutList.voice
-        ),
-        open: true,
-        startHere: false,
-      },
-      {
-        kind: "finish",
-        status: finishStatus(finishOf(project)),
-        open: true,
-        startHere: false,
-      },
-    ],
+    ]
+  })
+}
+
+export type ShowView = {
+  readonly show: string
+  /** Its version as its newest episode pins it. */
+  readonly version: string
+  readonly plans: string
+  readonly episodes: ReadonlyArray<{
+    readonly id: string
+    readonly period: string
+    readonly standing: string
+  }>
+}
+
+/** A show's screen: its version, and each episode of it on the phone. */
+export function showView(
+  projects: ReadonlyArray<Project>,
+  show: string
+): ShowView | null {
+  const episodes = episodesOf(projects, show)
+  const [newest] = episodes
+  if (newest === undefined) return null
+  const { look, voice, shots } = latest(newest).cutList
+  const words = STUDIO_WORDS.show
+  return {
+    show,
+    version: words.version(newest.episode.format.version, shots.length),
+    plans: words.plans(look, voice),
+    episodes: episodes.map((each) => ({
+      id: each.id,
+      period: each.episode.period,
+      standing: words.standing[standingOf(each)],
+    })),
   }
 }
 
@@ -218,14 +329,22 @@ export function othersOnPhone(
   projects: ReadonlyArray<Project>,
   current: string | null
 ): ReadonlyArray<OtherVideo> {
-  return projects
-    .filter((each) => each.id !== current && takesOnPhone(each) > 0)
-    .map((each) => ({
-      id: each.id,
-      title: latest(each).cutList.title,
-      onPhone: takesOnPhone(each),
-    }))
-    .sort((a, b) => b.onPhone - a.onPhone || a.title.localeCompare(b.title))
+  return (
+    projects
+      // An episode is reached from its show (`showsOnPhone`).
+      .filter(
+        (each) =>
+          each.id !== current &&
+          each.episode === undefined &&
+          takesOnPhone(each) > 0
+      )
+      .map((each) => ({
+        id: each.id,
+        title: latest(each).cutList.title,
+        onPhone: takesOnPhone(each),
+      }))
+      .sort((a, b) => b.onPhone - a.onPhone || a.title.localeCompare(b.title))
+  )
 }
 
 /** One version of the video, for History: newest first. */

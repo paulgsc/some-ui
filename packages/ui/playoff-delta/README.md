@@ -79,8 +79,8 @@ slides above, a compile-time template, and pins each version under
 code, so a change to the slides (their order, names, points or holds)
 fails until a new version is pinned. An episode is
 `episodeFor(season, week, sum, inMs)`: a primer the phone's Studio opens
-(each scene's point and the facts a take keeps, voiced ad-lib), pinned to
-the format, the series and `sum`, with a cut list whose pictures are the
+(each scene's point and the facts a take keeps, voiced ad-lib), listed
+under the show "Playoff Delta" and pinned to the format, the series and `sum`, with a cut list whose pictures are the
 clips, each starting at `inMs`. The recorder sums the season as the stage
 read it (its contract JSON), not the published file's bytes.
 The schemas are `@some-ui/video-render`'s (`format.ts`, `episode.ts`).

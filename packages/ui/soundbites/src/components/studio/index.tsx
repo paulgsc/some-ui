@@ -46,6 +46,8 @@ import {
   othersOnPhone,
   recordTake,
   recordView,
+  showsOnPhone,
+  showView,
   startView,
   takesOnPhone,
   waitingView,
@@ -61,6 +63,10 @@ import { SITTING_KINDS, STUDIO_WORDS } from "@soundbites/lib/studio/words"
 import { Mic, Square } from "lucide-react"
 
 const WORDS = STUDIO_WORDS
+
+/** A row of a list that opens what it names: a show, or an episode of one. */
+const LIST_ROW =
+  "border-border/60 focus-visible:ring-ring flex w-full items-center gap-3 rounded-2xl border px-3 py-2 text-left focus-visible:ring-2 focus-visible:outline-none"
 
 export type StudioShare = (props: {
   project: Project
@@ -278,10 +284,9 @@ const Start = ({
   ideas: StudioProps["ideas"]
 }): JSX.Element => {
   const view = project === null ? null : startView(project)
-  const others = othersOnPhone(
-    state.shelf.kind === "read" ? state.shelf.projects : [],
-    state.current
-  )
+  const held = state.shelf.kind === "read" ? state.shelf.projects : []
+  const others = othersOnPhone(held, state.current)
+  const shows = showsOnPhone(held)
   return (
     <div className="flex flex-col gap-3">
       <header className="space-y-1">
@@ -296,6 +301,28 @@ const Start = ({
         </p>
       </header>
       {view === null && <Steps newIdea={newIdea?.big} ideas={ideas?.step} />}
+      {view?.made != null && (
+        <section className="bg-muted/40 space-y-2 rounded-2xl p-3">
+          <h3 className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
+            {WORDS.show.made}
+          </h3>
+          <ul className="flex flex-col gap-2">
+            {view.made.map((row) => (
+              <li key={row.name}>
+                <span className="block text-sm font-bold">{row.name}</span>
+                <span className="text-muted-foreground block text-xs">
+                  {row.line}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {view?.made != null && (
+        <h3 className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
+          {WORDS.show.yours}
+        </h3>
+      )}
       {view !== null && (
         <ul className="flex flex-col gap-2">
           {view.sittings.map((row) => (
@@ -367,10 +394,48 @@ const Start = ({
         </div>
       )}
       <LetGoCard state={state} project={project} dispatch={dispatch} />
+      {view?.made != null && (
+        <p className="text-muted-foreground text-xs">{WORDS.show.footer}</p>
+      )}
+      {shows.length > 0 && (
+        <section className="space-y-2">
+          <h3 className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
+            {WORDS.show.shows}
+          </h3>
+          <p className="text-muted-foreground text-xs">
+            {WORDS.show.showsLine}
+          </p>
+          <ul className="flex flex-col gap-2">
+            {shows.map((row) => (
+              <li key={row.show}>
+                <button
+                  type="button"
+                  onClick={() =>
+                    dispatch({ type: "showChosen", show: row.show })
+                  }
+                  className={LIST_ROW}
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-bold">
+                      {row.show}
+                    </span>
+                    <span className="text-muted-foreground block text-xs">
+                      {row.line}
+                    </span>
+                  </span>
+                  <span className="bg-muted shrink-0 rounded-full px-2.5 py-1 text-xs font-bold">
+                    {row.standing}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       {others.length > 0 && (
         <section className="space-y-2">
           <h3 className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
-            {WORDS.start.others}
+            {shows.length > 0 ? WORDS.show.own : WORDS.start.others}
           </h3>
           <ul className="flex flex-col gap-2">
             {others.map((other) => (
@@ -788,6 +853,68 @@ const Shape = ({
       <Button variant="ghost" onClick={() => dispatch({ type: "shapeBack" })}>
         {WORDS.shape.back}
       </Button>
+    </div>
+  )
+}
+
+/** A show (SHOW SH3): its version, and its episodes on this phone. */
+const Show = ({
+  state,
+  show,
+  dispatch,
+}: {
+  state: StudioState
+  show: string
+  dispatch: Dispatch
+}): JSX.Element | null => {
+  const view = showView(
+    state.shelf.kind === "read" ? state.shelf.projects : [],
+    show
+  )
+  if (view === null) return null
+  return (
+    <div className="flex flex-col gap-3">
+      <Button
+        variant="ghost"
+        className="self-start"
+        onClick={() => dispatch({ type: "quietBack" })}
+      >
+        {WORDS.show.back}
+      </Button>
+      <header className="space-y-1">
+        <h2 className="text-2xl font-extrabold">{view.show}</h2>
+        <p className="text-muted-foreground text-sm">{WORDS.show.intro}</p>
+      </header>
+      <div className="border-border/60 rounded-2xl border px-4 py-2.5">
+        <span className="block text-sm font-bold">{view.version}</span>
+        <span className="text-muted-foreground block text-xs">
+          {view.plans}
+        </span>
+      </div>
+      <h3 className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
+        {WORDS.show.episodes}
+      </h3>
+      <ul className="flex flex-col gap-2">
+        {view.episodes.map((episode) => (
+          <li key={episode.id}>
+            <button
+              type="button"
+              onClick={() =>
+                dispatch({ type: "projectOpened", project: episode.id })
+              }
+              className={LIST_ROW}
+            >
+              <span className="min-w-0 flex-1 text-sm font-bold">
+                {episode.period}
+              </span>
+              <span className="bg-muted shrink-0 rounded-full px-2.5 py-1 text-xs font-bold">
+                {episode.standing}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+      <p className="text-muted-foreground text-xs">{WORDS.show.pinned}</p>
     </div>
   )
 }
@@ -1459,6 +1586,8 @@ export const Studio = ({
     )
   if (screen.kind === "finish" && project !== null)
     return <Finish state={state} project={project} dispatch={dispatch} />
+  if (screen.kind === "show")
+    return <Show state={state} show={screen.show} dispatch={dispatch} />
   return (
     <Start
       state={state}

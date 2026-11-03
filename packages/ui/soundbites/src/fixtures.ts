@@ -5,6 +5,7 @@
  * IndexedDB, the microphone or the page's storage. The microphone they
  * record on is the shared simulated one (`@some-ui/voice-capture/testing`).
  */
+import { parseEpisode } from "@some-ui/video-render"
 import type { TakePattern } from "@some-ui/voice-capture"
 import type { MemoryTakes } from "@some-ui/voice-capture/testing"
 
@@ -13,8 +14,10 @@ import type { Primer } from "./lib/journal/primer"
 import { readPrimer } from "./lib/journal/primer"
 import type { ProjectEvent, ProjectState } from "./lib/project/model"
 import { step } from "./lib/project/model"
+import { projectFromEpisode } from "./lib/project/script"
 
 export { memoryProjectStore } from "./lib/project/memory-store"
+
 export { cutListOf, projectFromPrimer } from "./lib/project/script"
 
 /** The primer `text` reads as; throws if it does not read. */
@@ -23,6 +26,18 @@ export function primerOf(text: string): Primer {
   if (!reading.ok)
     throw new Error(`the primer does not read: ${reading.problem}`)
   return reading.primer
+}
+
+/** The project the episode file `text` opens as; throws if it is no episode. */
+export function episodeProjectOf(
+  id: string,
+  text: string,
+  at: string
+): ProjectState {
+  const episode = parseEpisode(JSON.parse(text))
+  if (!episode.ok)
+    throw new Error(`the episode does not read: ${episode.problems.join("; ")}`)
+  return projectFromEpisode(id, episode.value, primerOf(text), at)
 }
 
 /** `events` in order from `state`, each one accepted; throws on a refusal. */

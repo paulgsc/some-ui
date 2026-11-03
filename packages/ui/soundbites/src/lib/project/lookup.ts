@@ -33,3 +33,7 @@ export function primerAt(project: Project, rev: number): Primer | null {
   }
   return found
 }
+
+/** A cut list's scenes, by id, in order. */
+export const shotIds = (shape: CutListShape): Array<string> =>
+  shape.shots.map((each) => each.id)

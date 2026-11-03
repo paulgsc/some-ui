@@ -4,17 +4,23 @@
  * travel with every share, and any sitting or session resumes from it alone.
  *
  * Reading checks every revision as the renderer would (`parseCutList`), so
- * a file the phone accepts is one the renderer can draw at any revision.
+ * a file the phone accepts is one the renderer can draw at any revision, and
+ * one opened from an episode keeps its format at every revision (`formatKept`).
  */
 import { canonicalJson, isRecord, jsonOf } from "@some-ui/core-utils"
 import type { Parsed } from "@some-ui/video-render"
-import { CutListSchema, IdeaSchema, parseCutList } from "@some-ui/video-render"
+import {
+  CutListSchema,
+  EpisodePinSchema,
+  IdeaSchema,
+  parseCutList,
+} from "@some-ui/video-render"
 import { ANSWER_ID, IDEA_ID } from "@soundbites/lib/journal/primer"
 import { z } from "zod"
 
 import { sameJson, shotIn } from "./lookup"
 import type { Project } from "./model"
-import { cutListAt, PROJECT_SCHEMA } from "./model"
+import { cutListAt, formatKept, PROJECT_SCHEMA } from "./model"
 
 const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/)
 const at = z.iso.datetime()
@@ -103,6 +109,7 @@ const ProjectSchema = z.object({
       })
     )
     .optional(),
+  episode: EpisodePinSchema.optional(),
 })
 
 /** The project as its file: every object's keys in order, two-space indents. */
@@ -126,6 +133,8 @@ function shapeProblems(project: Project): Array<string> {
       problems.push(
         ...cutList.problems.map((line) => `rev ${revision.rev}: ${line}`)
       )
+    if (!formatKept(project, revision.cutList))
+      problems.push(`rev ${revision.rev}: leaves the episode's format`)
   })
   for (const note of project.notes) {
     const revision = project.revisions.find((each) => each.rev === note.rev)
