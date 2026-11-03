@@ -15,6 +15,7 @@
  * scene is left out only where the format says it may be.
  */
 
+import { isRecord } from "@some-ui/core-utils"
 import { z } from "zod"
 
 import { CUT_LIST_SCHEMA, parseCutList, problemsOf } from "./cut-list"
@@ -44,22 +45,29 @@ const EpisodeCutSchema = z.object({
     .max(PRIMER_V2_BUDGET_MS / 1_000),
 })
 
+/** What pins an episode: its show, its format version, its period and its data. */
+export const EpisodePinSchema = z.object({
+  schema: z.literal(EPISODE_SCHEMA),
+  /** The show it is an episode of, as the phone names it: "Playoff Delta". */
+  show: words,
+  format: z.object({ id: words, version: z.number().int() }),
+  /** Which period it is: "2026 week 7". */
+  period: words,
+  /** The data it read: where it came from, and a sum its `source` names. */
+  data: z.object({
+    source: words,
+    sha256: z.string().regex(/^[0-9a-f]{64}$/),
+  }),
+})
+
+export type EpisodePin = z.infer<typeof EpisodePinSchema>
+
 const EpisodeSchema = z.object({
   version: z.literal(2),
   title: words,
   voice: z.literal("ad-lib"),
   cuts: z.array(EpisodeCutSchema).min(1).max(PRIMER_V2_CUTS),
-  episode: z.object({
-    schema: z.literal(EPISODE_SCHEMA),
-    format: z.object({ id: words, version: z.number().int() }),
-    /** Which period it is: "2026 week 7". */
-    period: words,
-    /** The data it read: where it came from, and a sum its `source` names. */
-    data: z.object({
-      source: words,
-      sha256: z.string().regex(/^[0-9a-f]{64}$/),
-    }),
-  }),
+  episode: EpisodePinSchema,
 })
 
 export type Episode = z.infer<typeof EpisodeSchema> & {
@@ -67,6 +75,7 @@ export type Episode = z.infer<typeof EpisodeSchema> & {
 }
 
 export type EpisodeInput = {
+  readonly show: string
   readonly title: string
   readonly period: string
   readonly data: { readonly source: string; readonly sha256: string }
@@ -124,6 +133,7 @@ export function episodeOf(
     })),
     episode: {
       schema: EPISODE_SCHEMA,
+      show: input.show,
       format: { id: format.id, version: format.version },
       period: input.period,
       data: input.data,
@@ -154,5 +164,26 @@ export function episodeOf(
     })),
   })
   if (!cutList.ok) return cutList
+  return { ok: true, value: { ...parsed.data, cutList: cutList.value } }
+}
+
+/**
+ * An episode file as the phone reads it: the primer, the pins and a cut list
+ * the renderer can draw, whose scenes are the primer's cuts, in order. Any
+ * other file is not an episode, whatever primer it may also be.
+ */
+export function parseEpisode(raw: unknown): Parsed<Episode> {
+  const parsed = EpisodeSchema.safeParse(raw)
+  if (!parsed.success)
+    return { ok: false, problems: problemsOf(parsed.error, "episode") }
+  const cutList = parseCutList(isRecord(raw) ? raw["cutList"] : undefined)
+  if (!cutList.ok) return cutList
+  const cuts = parsed.data.cuts.map((cut) => cut.id)
+  const shots = cutList.value.shots.map((shot) => shot.cut ?? shot.id)
+  if (cuts.join("\n") !== shots.join("\n"))
+    return {
+      ok: false,
+      problems: ["cutList: its scenes are not the primer's cuts, in order"],
+    }
   return { ok: true, value: { ...parsed.data, cutList: cutList.value } }
 }

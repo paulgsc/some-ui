@@ -8,7 +8,7 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { clipFile, episodeOf } from "@video-render/episode"
+import { clipFile, episodeOf, parseEpisode } from "@video-render/episode"
 import type { EpisodeInput } from "@video-render/episode"
 import { FORMAT_SCHEMA, parseFormat } from "@video-render/format"
 import type { Format } from "@video-render/format"
@@ -52,6 +52,7 @@ const format = (version: number): Format => ({
 const SUM = "a".repeat(64)
 
 const input = (keep: EpisodeInput["keep"]): EpisodeInput => ({
+  show: "Weekly",
   title: "Weekly, week 3",
   period: "week 3",
   data: { source: "weekly/3.json", sha256: SUM },
@@ -112,6 +113,7 @@ describe("an episode", () => {
     })
     expect(e.episode).toEqual({
       schema: "some-ui.show-episode/1",
+      show: "Weekly",
       format: { id: "weekly", version: 1 },
       period: "week 3",
       data: { source: "weekly/3.json", sha256: SUM },
@@ -130,5 +132,26 @@ describe("an episode", () => {
 
   it("says what is wrong instead of guessing", () => {
     expect(episodeOf(format(1), input([[]])).ok).toBe(false)
+  })
+})
+
+describe("an episode file", () => {
+  const made = episodeOf(format(1), input([["3 wins"], null, []]))
+  if (!made.ok) throw new Error(made.problems.join("; "))
+  const file: unknown = JSON.parse(JSON.stringify(made.value))
+
+  it("reads back as the episode written", () => {
+    expect(parseEpisode(file)).toEqual({ ok: true, value: made.value })
+  })
+
+  it("is not a bare primer, nor one whose scenes are not its cuts", () => {
+    const { cutList: _, ...primer } = made.value
+    expect(parseEpisode(primer).ok).toBe(false)
+    const shots = [...made.value.cutList.shots].reverse()
+    const swapped = { ...made.value, cutList: { ...made.value.cutList, shots } }
+    expect(parseEpisode(swapped)).toEqual({
+      ok: false,
+      problems: ["cutList: its scenes are not the primer's cuts, in order"],
+    })
   })
 })

@@ -34,10 +34,12 @@ Each module's header says why it is the way it is.
   a format, the ordered scenes every episode has (name, picture source,
   hold, when left out), versioned as a series is (`readFormat`). An episode
   is a format applied to one period's data by a pure function (`episodeOf`):
-  a primer version 2 the phone's Studio opens, the episode's pins (format,
-  period, the data's sum) and a cut list whose pictures are the recorded
-  clips. Playoff Delta's formats and episodes come from its own workspace
-  (`packages/ui/playoff-delta/src/lib/show.ts`).
+  a primer version 2 the phone's Studio opens, the episode's pins (its
+  show's name, format, period, the data's sum) and a cut list whose pictures
+  are the recorded clips. `parseEpisode` reads an episode file back, as
+  Studio does to open it as an episode (SH3), and refuses one whose cut
+  list's scenes are not its cuts. Playoff Delta's formats and episodes come
+  from its own workspace (`packages/ui/playoff-delta/src/lib/show.ts`).
 - `src/resolve.ts`, `src/timing.ts`: each lever from the layer that sets
   it; each scene placed in whole frames.
 - `src/plan.ts`: the ffmpeg calls, as data. `src/render.ts` runs them over

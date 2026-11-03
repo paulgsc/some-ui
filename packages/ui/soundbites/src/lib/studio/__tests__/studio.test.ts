@@ -34,12 +34,17 @@ import {
 import type { StudioPorts, StudioRuntime } from "@soundbites/lib/studio/runtime"
 import { createStudio } from "@soundbites/lib/studio/runtime"
 import { keptTimeLog } from "@soundbites/lib/studio/time-store"
-import { othersOnPhone, startView } from "@soundbites/lib/studio/view"
+import {
+  othersOnPhone,
+  showsOnPhone,
+  showView,
+  startView,
+} from "@soundbites/lib/studio/view"
 import { ideaAsking } from "@soundbites/lib/studio/watch"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
 import { describe, expect, it, vi } from "vitest"
 
-import { AT, primer, PRIMER_TEXT, speaking } from "./fixture"
+import { AT, episodeText, primer, PRIMER_TEXT, speaking } from "./fixture"
 
 const NOW = Date.UTC(2026, 9, 30, 10)
 
@@ -182,6 +187,105 @@ describe("a primer opened in Studio", () => {
     // Scene "path" kept its fit to its take through the new primer.
     expect(latest(project).cutList.shots[0]?.take?.outMs).toBe(4_000)
     expect(primerAt(project, 3)?.cuts[1]?.point).toBe("The miss, again")
+  })
+})
+
+describe("an episode opened in Studio (SHOW SH3)", () => {
+  /** Picks `text` on Start, and waits until the phone holds `count` videos. */
+  async function pick(
+    runtime: StudioRuntime,
+    text: string,
+    count: number
+  ): Promise<void> {
+    const seq = runtime.getSnapshot().pickSeq
+    runtime.dispatch({
+      type: "primerPicked",
+      file: new Blob([text], { type: "application/json" }),
+    })
+    await until(
+      runtime,
+      (state) =>
+        state.pickSeq > seq &&
+        projectsOfState(state).length === count &&
+        projectOf(state) !== null &&
+        settledWrites(state)
+    )
+  }
+
+  it("is an episode over its clips, with no Shape, and its takes keep the format", async () => {
+    const memory = memoryProjectStore()
+    const runtime = studio(memory)
+    await until(runtime, (state) => state.shelf.kind === "read")
+    await pick(runtime, episodeText(), 1)
+    const project = projectIn(runtime)
+    expect(project.episode?.show).toBe("Weekly")
+    expect(latest(project).cutList.shots.map((s) => s.picture.kind)).toEqual([
+      "capture",
+      "capture",
+    ])
+    const view = startView(project)
+    expect(view.sittings.map((row) => row.kind)).toEqual([
+      "record",
+      "watch",
+      "finish",
+    ])
+    expect(view.made?.map((row) => row.name)).toEqual([
+      STUDIO_WORDS.show.data,
+      STUDIO_WORDS.show.clips(2),
+      STUDIO_WORDS.show.says,
+    ])
+    runtime.dispatch({ type: "shapeChosen" })
+    expect(runtime.getSnapshot().screen.kind).toBe("start")
+    runtime.dispatch({ type: "recordChosen" })
+    await recordOne(runtime)
+    const after = projectIn(runtime)
+    expect(after.chosen).toEqual({ open: "t1" })
+    expect(latest(after).cutList.shots[0]?.picture.kind).toBe("capture")
+  })
+
+  it("picked again, opens the one the phone holds", async () => {
+    const memory = memoryProjectStore()
+    const runtime = studio(memory)
+    await until(runtime, (state) => state.shelf.kind === "read")
+    await pick(runtime, episodeText(), 1)
+    await pick(runtime, PRIMER_TEXT, 2)
+    const own = projectIn(runtime)
+    // A primer over an episode is a video of your own, never its next version.
+    expect(own.episode).toBeUndefined()
+    expect(runtime.getSnapshot().choosing).toBeNull()
+    await pick(runtime, episodeText(), 2)
+    await until(runtime, (state) => projectOf(state)?.episode !== undefined)
+    expect(projectsOfState(runtime.getSnapshot())).toHaveLength(2)
+    expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.show.held)
+  })
+
+  it("lists each show's episodes, and opens one from its show", async () => {
+    const memory = memoryProjectStore()
+    const runtime = studio(memory)
+    await until(runtime, (state) => state.shelf.kind === "read")
+    await pick(runtime, episodeText("week 3"), 1)
+    await pick(runtime, episodeText("week 4", "b"), 2)
+    const held = projectsOfState(runtime.getSnapshot())
+    expect(showsOnPhone(held)).toEqual([
+      {
+        show: "Weekly",
+        line: STUDIO_WORDS.show.episodesHeld(2, "week 4"),
+        standing: STUDIO_WORDS.show.standing.voice,
+      },
+    ])
+    runtime.dispatch({ type: "showChosen", show: "Weekly" })
+    expect(runtime.getSnapshot().screen).toEqual({
+      kind: "show",
+      show: "Weekly",
+    })
+    const view = showView(held, "Weekly")
+    expect(view?.version).toBe(STUDIO_WORDS.show.version(1, 2))
+    const week3 = view?.episodes.find((each) => each.period === "week 3")
+    if (week3 === undefined) throw new Error("no week 3")
+    runtime.dispatch({ type: "projectOpened", project: week3.id })
+    const state = runtime.getSnapshot()
+    expect(state.screen.kind).toBe("start")
+    expect(projectOf(state)?.episode?.period).toBe("week 3")
   })
 })
 

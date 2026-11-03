@@ -1,3 +1,5 @@
+import type { Format } from "@some-ui/video-render"
+import { episodeOf, FORMAT_SCHEMA } from "@some-ui/video-render"
 import type { StartRecording } from "@some-ui/voice-capture"
 import { simulatedMicrophone, SPEAKING } from "@some-ui/voice-capture/testing"
 import { primerOf } from "@soundbites/fixtures"
@@ -36,6 +38,36 @@ export const PRIMER_TEXT = JSON.stringify({
 })
 
 export const primer = (): Primer => primerOf(PRIMER_TEXT)
+
+const WEEKLY: Format = {
+  schema: FORMAT_SCHEMA,
+  id: "weekly",
+  version: 1,
+  title: "Weekly",
+  series: { id: "weekly", version: 1 },
+  look: "calm",
+  scenes: ["open", "close"].map((id) => ({
+    id,
+    name: `The ${id}`,
+    point: `How it ${id}s`,
+    picture: { kind: "capture", from: "a slide", cssWidth: 1080 },
+    holdMs: 6_000,
+  })),
+}
+
+/** An episode file of the show Weekly, for `period`: two scenes over clips. */
+export function episodeText(period = "week 3", sum = "a"): string {
+  const made = episodeOf(WEEKLY, {
+    show: "Weekly",
+    title: `Weekly, ${period}`,
+    period,
+    data: { source: `weekly/${period}.json`, sha256: sum.repeat(64) },
+    keep: [["3 wins"], ["One loss"]],
+    inMs: (i) => 900 + i,
+  })
+  if (!made.ok) throw new Error(made.problems.join("; "))
+  return JSON.stringify(made.value)
+}
 
 /**
  * The shared simulated microphone (`@some-ui/voice-capture/testing`),

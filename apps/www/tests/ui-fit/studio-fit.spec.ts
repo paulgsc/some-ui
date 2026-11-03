@@ -246,6 +246,20 @@ const WALKS: Record<
       },
     },
   ],
+  "studio-episode": [
+    { screen: "Start, an episode of a show", go: start },
+    {
+      screen: "A show, its episodes on the phone",
+      go: (page) => tap(page, /^Playoff Delta, followed/),
+    },
+    {
+      screen: "Start, the earlier episode",
+      go: async (page): Promise<void> => {
+        await tap(page, /^2026 week 7/)
+        await start(page)
+      },
+    },
+  ],
   "studio-held": [
     {
       // Home holds every take, and nothing leaves until the owner chooses.

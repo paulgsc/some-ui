@@ -59,9 +59,9 @@
  *   the page is hidden or left is finished and kept; a microphone that opens
  *   then, or once the Record screen is gone, is let go.
  */
-import { assertNever } from "@some-ui/core-utils"
-import type { Idea, Look, Review, Voice } from "@some-ui/video-render"
-import { readReview } from "@some-ui/video-render"
+import { assertNever, jsonOf } from "@some-ui/core-utils"
+import type { Episode, Idea, Look, Review, Voice } from "@some-ui/video-render"
+import { parseEpisode, readReview } from "@some-ui/video-render"
 import type { RecordingFailure, Take, TakePhase } from "@some-ui/voice-capture"
 // eslint-disable-next-line one-owner/no-local-microphone -- Studio runs its own take until its machine embeds the take kit (#2442)
 import {
@@ -96,6 +96,7 @@ import {
   currentOf,
   cutListOf,
   fitted,
+  projectFromEpisode,
   projectFromPrimer,
   projectIdFor,
   resumeAt,
@@ -153,6 +154,8 @@ type StudioScreen =
     }
   /** Finish (ST7): ready for YouTube, or the one thing missing. */
   | { readonly kind: "finish" }
+  /** A show (SHOW SH3): its format and its episodes on this phone, by show name. */
+  | { readonly kind: "show"; readonly show: string }
   /** Start's quiet links (ST4): the video's versions, and time spent. */
   | { readonly kind: "history" }
   | {
@@ -218,7 +221,13 @@ type Shelf =
  * when it starts.
  */
 type Pending = { readonly project: string } & (
-  | { readonly kind: "create"; readonly primer: Primer; readonly at: string }
+  | {
+      readonly kind: "create"
+      readonly primer: Primer
+      readonly at: string
+      /** The episode file it opens, when it is one (SHOW SH3). */
+      readonly episode?: Episode
+    }
   | { readonly kind: "revise"; readonly primer: Primer; readonly at: string }
   | { readonly kind: "open"; readonly at: string }
   | {
@@ -400,6 +409,8 @@ export type StudioIntent =
   | { readonly type: "linkPasted"; readonly text: string }
   | { readonly type: "watchChosen" }
   | { readonly type: "historyChosen" }
+  /** A show on Start (SHOW SH3), by its name. */
+  | { readonly type: "showChosen"; readonly show: string }
   | { readonly type: "timeChosen" }
   /** Back to Start from a quiet link's screen. */
   | { readonly type: "quietBack" }
@@ -669,8 +680,12 @@ function applied(project: Project | null, pending: Pending): Project | null {
   switch (pending.kind) {
     case "create": {
       if (project !== null) return null
-      return projectFromPrimer(pending.project, pending.primer, pending.at)
-        .project
+      const { episode, primer, at } = pending
+      return (
+        episode === undefined
+          ? projectFromPrimer(pending.project, primer, at)
+          : projectFromEpisode(pending.project, episode, primer, at)
+      ).project
     }
     case "revise": {
       if (project === null) return null
@@ -1496,6 +1511,33 @@ function then(first: Step, next: (state: StudioState) => Step): Step {
 }
 
 /** The screen once the project changed under it: its scene, if still there. */
+/**
+ * An episode file picked on Start (SHOW SH3): the episode this phone holds
+ * already, if it has it (the same show, format, period and data), opened;
+ * else a new project of it.
+ */
+function pickedEpisode(
+  state: StudioState,
+  episode: Episode,
+  primer: Primer,
+  at: string
+): Step {
+  const held = projectsOf(state).find(
+    (each) =>
+      each.episode !== undefined && sameJson(each.episode, episode.episode)
+  )
+  const cleared = { ...state, choosing: null, primerProblem: null }
+  if (held !== undefined)
+    return stay({ ...cleared, current: held.id, notice: WORDS.show.held })
+  return enqueue(cleared, {
+    kind: "create",
+    project: projectIdFor(primer.title, at),
+    primer,
+    episode,
+    at,
+  })
+}
+
 function placed(screen: StudioScreen, project: Project | null): StudioScreen {
   if (screen.kind !== "record") return screen
   if (project === null) return { kind: "start" }
@@ -1826,7 +1868,10 @@ export function step(state: StudioState, event: StudioEvent): Step {
       if (isProjectFile(event.text)) return pickedProject(state, event.text)
       if (isIdeaReply(event.text))
         return stay({ ...state, primerProblem: WORDS.start.ideaReply })
+      const episode = parseEpisode(jsonOf(event.text))
       const reading = readPrimer(event.text)
+      if (episode.ok && reading.ok)
+        return pickedEpisode(state, episode.value, reading.primer, event.at)
       // What is wrong names cuts and fields: for the session that wrote the
       // file (`PrimerReading`), never the screen (SW1).
       if (!reading.ok)
@@ -1835,7 +1880,8 @@ export function step(state: StudioState, event: StudioEvent): Step {
       // shelf, holding the idea, can check (ST19).
       if (reading.primer.idea !== undefined)
         return stay({ ...state, primerProblem: WORDS.start.ideaReply })
-      if (project === null)
+      // A primer is never a next version of an episode: its scenes are the format's.
+      if (project === null || project.episode !== undefined)
         return enqueue(state, {
           kind: "create",
           project: projectIdFor(reading.primer.title, event.at),
@@ -1884,7 +1930,13 @@ export function step(state: StudioState, event: StudioEvent): Step {
     }
 
     case "shapeChosen": {
-      if (project === null || screen.kind !== "start" || !isSettled(activity))
+      // An episode's look and voice are its show's (SHOW SH3).
+      if (
+        project === null ||
+        project.episode !== undefined ||
+        screen.kind !== "start" ||
+        !isSettled(activity)
+      )
         return stay(state)
       const { look, voice } = latest(project).cutList
       return enqueue(
@@ -1974,8 +2026,25 @@ export function step(state: StudioState, event: StudioEvent): Step {
         : stay(state)
     }
 
+    case "showChosen": {
+      if (
+        screen.kind !== "start" ||
+        !isSettled(activity) ||
+        !projectsOf(state).some((each) => each.episode?.show === event.show)
+      )
+        return stay(state)
+      return stay({
+        ...state,
+        screen: { kind: "show", show: event.show },
+        notice: "",
+        choosing: null,
+      })
+    }
+
     case "quietBack": {
-      return screen.kind === "history" || screen.kind === "time"
+      return screen.kind === "history" ||
+        screen.kind === "time" ||
+        screen.kind === "show"
         ? stay({ ...state, screen: { kind: "start" } })
         : stay(state)
     }
@@ -2640,13 +2709,14 @@ export function step(state: StudioState, event: StudioEvent): Step {
 
     case "projectOpened": {
       if (
-        screen.kind !== "start" ||
+        (screen.kind !== "start" && screen.kind !== "show") ||
         !isSettled(activity) ||
         !projectsOf(state).some((each) => each.id === event.project)
       )
         return stay(state)
       return stay({
         ...state,
+        screen: { kind: "start" },
         current: event.project,
         notice: "",
         choosing: null,

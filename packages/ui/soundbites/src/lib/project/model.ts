@@ -24,12 +24,16 @@
  *   and its link stay as written, it takes no new note, and a change makes
  *   the next revision.
  * - **The owner's word on whose idea a scene is stays** (ST5, `./origin`).
+ * - **An episode keeps its format** (SHOW SH3). A project opened from an
+ *   episode file is pinned to it (`episode`), and a version that changes
+ *   its scenes, their order, its series, its look or its voice is refused
+ *   (`formatKept`): those are the show's, and only the voice is the owner's.
  * - **A note follows its shot.** It is pinned to (revision, shot, offset),
  *   and `anchorAt` finds that shot in any later revision by id, or says the
  *   shot is gone; its time is read from the renderer's shot times.
  */
 import { assertNever } from "@some-ui/core-utils"
-import type { CutList, ShotTime } from "@some-ui/video-render"
+import type { CutList, EpisodePin, ShotTime } from "@some-ui/video-render"
 import type { Primer } from "@soundbites/lib/journal/primer"
 
 import { finishOf, isReleased, youtubeLink } from "./finish"
@@ -118,6 +122,11 @@ export type Project = {
    * project from before Watch asked it.
    */
   readonly origins?: ReadonlyArray<OriginMark>
+  /**
+   * The episode it was opened from (SHOW SH3): its show, format version,
+   * period and data. Absent on a video of your own.
+   */
+  readonly episode?: EpisodePin
 }
 
 /** A take under way, and the sitting waiting on it to close. */
@@ -205,6 +214,7 @@ export type Refusal =
   | "noLink"
   | "otherIdea"
   | "notYours"
+  | "notInFormat"
 
 export type ProjectStep = {
   readonly state: ProjectState
@@ -214,7 +224,8 @@ export type ProjectStep = {
 
 export function newProject(
   id: string,
-  first: Omit<Revision, "rev">
+  first: Omit<Revision, "rev">,
+  episode?: EpisodePin
 ): ProjectState {
   return {
     project: {
@@ -225,10 +236,29 @@ export function newProject(
       takes: [],
       chosen: {},
       sittings: [],
+      ...(episode === undefined ? {} : { episode }),
     },
     taking: null,
     closing: null,
   }
+}
+
+/**
+ * Whether `cutList` keeps an episode's format as its first version has it:
+ * the same scenes in the same order, and the show's series, look and voice.
+ * A video of your own keeps no format, so any version keeps it.
+ */
+export function formatKept(project: Project, cutList: CutListShape): boolean {
+  const first = project.revisions[0]
+  if (project.episode === undefined || first === undefined) return true
+  const scenes = (shape: CutListShape): ReadonlyArray<string> =>
+    shape.shots.map((shot) => shot.id)
+  return (
+    sameJson(scenes(cutList), scenes(first.cutList)) &&
+    sameJson(cutList.series, first.cutList.series) &&
+    cutList.look === first.cutList.look &&
+    cutList.voice === first.cutList.voice
+  )
 }
 
 export function latest(project: Project): Revision {
@@ -471,6 +501,8 @@ export function step(state: ProjectState, event: ProjectEvent): ProjectStep {
   switch (event.type) {
     case "revised": {
       const { type: _, ...revision } = event
+      if (!formatKept(project, revision.cutList))
+        return refuse(state, "notInFormat")
       return changed(state, {
         ...project,
         revisions: [

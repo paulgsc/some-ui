@@ -76,6 +76,7 @@ describe("an episode", () => {
       const e = got.value
       const slides = week === LEGEND_WEEK ? LEGEND_SLIDES : WEEK_SLIDES
       expect(e.cuts.map((c) => c.id)).toEqual([...slides])
+      expect(e.episode.show).toBe("Playoff Delta")
       expect(e.episode.data).toEqual({
         source: `playoff-delta/${season.label}/${season.team}.json`,
         sha256: SUM,

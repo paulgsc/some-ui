@@ -35,11 +35,14 @@ import {
 import {
   bundleTakesOf,
   cutListOf,
+  episodeProjectOf,
   memoryProjectStore,
   primerOf,
   projectFromPrimer,
   run,
 } from "@some-ui/soundbites/fixtures"
+import type { Format } from "@some-ui/video-render"
+import { episodeOf, FORMAT_SCHEMA } from "@some-ui/video-render"
 import { ONE_TAKE } from "@some-ui/voice-capture"
 import type { MicScript } from "@some-ui/voice-capture/testing"
 import {
@@ -71,6 +74,41 @@ const taken = (shot: string): ReadonlyArray<ProjectEvent> => [
     },
   },
 ]
+
+/**
+ * A show's format whose names and points run as long as Playoff Delta's,
+ * so its episodes fill Start and the show's screen (SHOW SH3).
+ */
+const FIT_FORMAT: Format = {
+  schema: FORMAT_SCHEMA,
+  id: "fit-week",
+  version: 1,
+  title: "A week of the fit show",
+  series: { id: "fit-week", version: 1 },
+  look: "calm",
+  scenes: FIT_CUTS.map((cut) => ({
+    id: cut.id,
+    name: cut.artifact,
+    point: cut.point,
+    picture: { kind: "capture", from: "the stage's slide", cssWidth: 1080 },
+    holdMs: cut.targetSec * 1_000,
+  })),
+}
+
+/** The episode of week `week`, opened at `at`: nothing recorded yet. */
+function episodeFor(week: number, at: string): Project {
+  const made = episodeOf(FIT_FORMAT, {
+    show: "Playoff Delta, followed from the 49ers' side of the bracket",
+    title: `Playoff Delta, 2026 week ${week}`,
+    period: `2026 week ${week}, every game played`,
+    data: { source: `fit/2026/week-${week}.json`, sha256: "a".repeat(64) },
+    keep: FIT_CUTS.map((cut) => ("keep" in cut ? [...cut.keep] : [])),
+    inMs: (index) => 1_200 + index,
+  })
+  if (!made.ok) throw new Error(made.problems.join("; "))
+  return episodeProjectOf(`fit-episode-${week}`, JSON.stringify(made.value), at)
+    .project
+}
 
 /** Nothing recorded yet: Record opens on scene 1 before any take. */
 const FRESH: Project = projectFromPrimer("fit-fresh", PRIMER, AT).project
@@ -242,6 +280,12 @@ const STUDIO_FIXTURES = {
   "studio-taken": studioOn([TAKEN]),
   "studio-reviewed": studioOn([REVIEWED]),
   "studio-held": studioOn([HELD]),
+  /** Two episodes of a show and a video of your own, Start on the newest episode. */
+  "studio-episode": studioOn([
+    FRESH,
+    episodeFor(7, "2026-10-29T09:00:00.000Z"),
+    episodeFor(8, "2026-11-03T09:00:00.000Z"),
+  ]),
 
   /** New idea (`/journal/idea`). */
   idea: newIdea(false),

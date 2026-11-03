@@ -1,17 +1,21 @@
 /** @vitest-environment node */
-import { parseCutList } from "@some-ui/video-render"
-import { cutListAt } from "@soundbites/lib/project/model"
+import { parseCutList, parseEpisode } from "@some-ui/video-render"
+import { primerOf } from "@soundbites/fixtures"
+import { projectFile, readProjectFile } from "@soundbites/lib/project/file"
+import type { CutListShape, ProjectEvent } from "@soundbites/lib/project/model"
+import { cutListAt, latest, step } from "@soundbites/lib/project/model"
 import {
   capFor,
   currentOf,
   cutListOf,
   fitted,
   lengthFor,
+  projectFromEpisode,
   projectIdFor,
   resumeAt,
   TAIL_MS,
 } from "@soundbites/lib/project/script"
-import { primer } from "@soundbites/lib/studio/__tests__/fixture"
+import { episodeText, primer } from "@soundbites/lib/studio/__tests__/fixture"
 import { describe, expect, it } from "vitest"
 
 import { AT, run, shot, started, take } from "./fixture"
@@ -142,5 +146,77 @@ describe("the project the Studio opens on", () => {
     const fitsTheFile = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/
     expect(projectIdFor("x".repeat(90), AT)).toMatch(fitsTheFile)
     expect(cutListAt(started().project, 1)).not.toBeNull()
+  })
+})
+
+describe("an episode (SHOW SH3)", () => {
+  const opened = (): ReturnType<typeof projectFromEpisode> => {
+    const text = episodeText()
+    const episode = parseEpisode(JSON.parse(text))
+    if (!episode.ok) throw new Error(episode.problems.join("; "))
+    return projectFromEpisode("e1", episode.value, primerOf(text), AT)
+  }
+
+  it("opens over its clips, in its show's series, pinned", () => {
+    const { project } = opened()
+    const { cutList } = project.revisions[0] ?? {}
+    expect(cutList?.series).toEqual({ id: "weekly", version: 1 })
+    expect(cutList?.shots.map((each) => each.picture.kind)).toEqual([
+      "capture",
+      "capture",
+    ])
+    expect(project.episode).toMatchObject({
+      show: "Weekly",
+      format: { id: "weekly", version: 1 },
+      period: "week 3",
+    })
+    expect(readProjectFile(projectFile(project)).ok).toBe(true)
+  })
+
+  it("takes a take and keeps its format, and refuses to leave it", () => {
+    const state = run(
+      opened(),
+      { type: "takeStarted", shot: "open" },
+      take("t1", "open")
+    )
+    const { cutList } = latest(state.project)
+    const fit = fitted(cutList, "open", {
+      id: "t1",
+      shot: "open",
+      mimeType: "audio/webm",
+      durationMs: 9_000,
+    })
+    const revised = (shape: CutListShape): ProjectEvent => ({
+      type: "revised",
+      author: "claude",
+      message: "A change",
+      at: AT,
+      cutList: shape,
+    })
+    expect(step(state, revised(fit)).refused).toBeNull()
+    const leaving = [
+      { ...cutList, shots: cutList.shots.slice(1) },
+      { ...cutList, shots: [...cutList.shots].reverse() },
+      { ...cutList, look: "lively" as const },
+      { ...cutList, voice: "read" as const },
+      { ...cutList, series: { id: "build-journal-short", version: 1 } },
+    ]
+    for (const shape of leaving)
+      expect(step(state, revised(shape)).refused).toBe("notInFormat")
+    // A file holding such a version is not one the phone opens.
+    const forced = {
+      ...state.project,
+      revisions: [
+        ...state.project.revisions,
+        {
+          rev: 3,
+          author: "claude" as const,
+          message: "A change",
+          at: AT,
+          cutList: leaving[0] ?? cutList,
+        },
+      ],
+    }
+    expect(readProjectFile(projectFile(forced)).ok).toBe(false)
   })
 })

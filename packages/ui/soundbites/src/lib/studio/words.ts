@@ -189,6 +189,9 @@ function ideasToConfirm(n: number): string {
   return `Whose idea: ${plural(n, "scene", "scenes")} to confirm`
 }
 
+/** Where an episode stands, on its show's list (SHOW SH3). */
+export type EpisodeStanding = "voice" | "going" | "ready" | "released"
+
 function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`
 }
@@ -418,6 +421,45 @@ export const STUDIO_WORDS = {
 
   /** Start's quiet links (ST4). */
   quiet: { history: "History", time: "Time spent" },
+
+  /** Shows and their episodes (SHOW SH3). */
+  show: {
+    shows: "Shows",
+    showsLine:
+      "Made every week from that week's data. You voice it, and the show makes everything else.",
+    own: "Your own videos",
+    ownLine:
+      "Something new, starting from your idea. Claude shapes it with you.",
+    episodesHeld: (n: number, newest: string): string =>
+      `${plural(n, "episode", "episodes")} on the phone · newest: ${newest}`,
+    back: "Studio",
+    intro:
+      "Each episode is made from that week's data. You voice it, and the show makes everything else.",
+    version: (version: number, scenes: number): string =>
+      `Version ${version} · ${plural(scenes, "scene", "scenes")}`,
+    plans: shapeStatus,
+    episodes: "Episodes on this phone",
+    standing: {
+      voice: "Ready to voice",
+      going: "In progress",
+      ready: "Ready to upload",
+      released: "Up on YouTube",
+    } satisfies Record<EpisodeStanding, string>,
+    pinned:
+      "Each episode stays on the version of the show and the data it was made with.",
+    made: "Made for you",
+    yours: "Yours",
+    data: "The data",
+    dataLine: (period: string): string =>
+      `${period}, as it was published. This episode keeps that copy.`,
+    clips: (n: number): string => `${plural(n, "clip", "clips")} of the slides`,
+    clipsLine: "Recorded off the phone, one per scene.",
+    says: "What each scene must say",
+    saysLine: "Points and facts, filled in from the week's data.",
+    footer:
+      "Every scene is the show's. For something outside it, start a video of your own.",
+    held: "That episode is already on this phone. Here it is.",
+  },
 
   history: {
     heading: "Every version",

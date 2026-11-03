@@ -72,6 +72,9 @@ export function formatOf(kind: FormatKind): Format {
 const sourceOf = (season: StorySeason): string =>
   `playoff-delta/${season.label}/${season.team}.json`
 
+/** The show both formats are episodes of, as Studio names it. */
+const SHOW = "Playoff Delta"
+
 /**
  * One week's episode (`LEGEND_WEEK`, 0, for the legend), or every reason
  * there isn't one. `sha256` is the sum of the season as the stage read it
@@ -87,6 +90,7 @@ export function episodeFor(
   const data = { source: sourceOf(season), sha256 }
   if (week === LEGEND_WEEK) {
     return episodeOf(formatOf("legend"), {
+      show: SHOW,
       title: "Playoff Delta, the legend",
       period: `${season.label}, the legend`,
       data,
@@ -97,6 +101,7 @@ export function episodeFor(
   const shown = season.weeks.find((w) => w.week === week)
   if (!shown) return { ok: false, problems: [`the season has no week ${week}`] }
   return episodeOf(formatOf("week"), {
+    show: SHOW,
     title: `Playoff Delta, ${season.label} week ${week}`,
     period: `${season.label} week ${week}`,
     data,
