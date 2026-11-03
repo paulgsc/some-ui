@@ -541,6 +541,7 @@ describe("Practice's lane, for HF5's records", () => {
         timeLog: () => timeLog,
         notesForHome: () => [],
         letGoHeldTakes: () => Promise.resolve(0),
+        letGoDeletedTakes: () => Promise.resolve(0),
         letGo: () => "home",
         waitingIds: () => [],
         letGoOnDrive: () => Promise.resolve(0),

@@ -1,6 +1,7 @@
 /** @vitest-environment node */
 import {
   heldByHome,
+  letGoDeletedTakes,
   letGoHeldTakes,
   letGoOnDrive,
   notesForHome,
@@ -62,6 +63,25 @@ describe("Studio's takes on their way home", () => {
     expect([...memory.audio.keys()]).toEqual(["p1:t1"])
     expect(await letGoHeldTakes(memory.store, new Set(["t2"]), "home")).toBe(0)
   })
+
+  it.each([null, "home", "drive"] as const)(
+    "lets go of a take home deleted for good (MD3) whatever the choice (%s), its record kept in its shot",
+    async (choice) => {
+      const memory = memoryProjectStore([twoTakes()])
+      // A take home holds and waits on the choice, then home deletes it.
+      await letGoHeldTakes(memory.store, new Set(["t1"]), choice)
+      expect(await letGoDeletedTakes(memory.store, new Set(["t1"]))).toBe(
+        choice === "home" ? 0 : 1
+      )
+      expect([...memory.audio.keys()]).toEqual(["p1:t2"])
+      const [project] = await memory.store.list()
+      expect(project?.takes).toEqual([
+        expect.objectContaining({ id: "t1", keptBy: ["home"], onPhone: false }),
+        expect.objectContaining({ id: "t2", keptBy: [], onPhone: true }),
+      ])
+      expect(await letGoDeletedTakes(memory.store, new Set())).toBe(0)
+    }
+  )
 
   /**
    * LG1 (HF11): a take leaves only once home holds it and the owner's

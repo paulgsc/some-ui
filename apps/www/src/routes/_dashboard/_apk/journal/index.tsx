@@ -5,6 +5,7 @@ import type { Project, StudioShare, WingLink } from "@some-ui/soundbites"
 import {
   keptLetGo,
   keptTimeLog,
+  letGoDeletedTakes,
   letGoHeldTakes,
   letGoOnDrive,
   notesForHome,
@@ -111,6 +112,8 @@ const StudioRoute = (): JSX.Element => {
       notesForHome,
       // As the owner chose, read at each let-go (HF11, LG1): none before.
       letGoHeldTakes: (held) => letGoHeldTakes(store, held, keptLetGo().read()),
+      // Home's receipt for a take My data deleted (MD3): whatever the choice.
+      letGoDeletedTakes: (deleted) => letGoDeletedTakes(store, deleted),
       letGo: () => keptLetGo().read(),
       waitingIds,
       // Home's word that Drive has a take too (HF11), as the owner chose.

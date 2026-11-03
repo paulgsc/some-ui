@@ -9,6 +9,8 @@ import { describe, expect, it } from "vitest"
 import { MACHINERY } from "@/lib/home-link/__tests__/machinery"
 import { KINDS } from "@/lib/my-data/model"
 import {
+  DELETABLE_NAMES,
+  DELETING,
   homeLine,
   itemLine,
   itemName,
@@ -19,6 +21,11 @@ import {
   kindLead,
   kindLine,
   MY_DATA,
+  receiptKind,
+  receiptParts,
+  RECEIPTS,
+  receiptsLine,
+  receiptTime,
   unreadLine,
   WHERE_WORDS,
 } from "@/lib/my-data/words"
@@ -64,6 +71,52 @@ describe("My data's words", () => {
       itemLine(AT, 2_048),
     ]
     expect(said.filter((text) => MACHINERY.test(text))).toEqual([])
+  })
+
+  it("never name the machinery when deleting, nor on a receipt (MD3)", () => {
+    const said = [
+      ...strings(DELETING),
+      ...strings(DELETABLE_NAMES),
+      ...strings(RECEIPTS),
+      ...[1, 3].flatMap((n) => [
+        DELETING.title("studio", n),
+        ...DELETING.goes(n),
+        ...DELETING.stays(n),
+        DELETING.keep(n),
+        DELETING.confirm(n),
+        DELETING.gone(n),
+        DELETING.kept(1, n),
+        DELETING.notHeld(1, n),
+        DELETING.unanswered(1, n),
+        DELETING.unreachable(n),
+        DELETING.deleteSelected(n),
+      ]),
+      DELETING.rowName(itemName(AT)),
+      DELETING.selectName(itemName(AT)),
+      ...(["reading", "unpaired", "unreachable", "older", "read"] as const)
+        .map(receiptsLine)
+        .filter((line): line is string => line !== null),
+      receiptParts(["recording", "words", "set-aside mark"]),
+      receiptParts(["mailbox copy", "drive copy", "a newer part"]),
+      receiptParts([]),
+      receiptKind("studio"),
+      receiptKind("a newer kind"),
+      RECEIPTS.line(receiptKind("studio"), receiptTime(AT)),
+      RECEIPTS.deletedLine(receiptTime(AT)),
+      RECEIPTS.wentLine(receiptParts(["recording"])),
+    ]
+    expect(said.filter((text) => MACHINERY.test(text))).toEqual([])
+    // Home's fixed words never reach the screen as they are.
+    expect(
+      said.filter((text) => /set-aside mark|mailbox copy|drive copy/.test(text))
+    ).toEqual([])
+  })
+
+  it("say what went and stayed as a sentence", () => {
+    expect(receiptParts(["recording", "words"])).toBe(
+      "The recording and home's words for it"
+    )
+    expect(receiptParts([])).toBe("Nothing else")
   })
 
   it("say where home's numbers are missing, and say nothing once they're in", () => {

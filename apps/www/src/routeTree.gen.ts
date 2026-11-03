@@ -57,6 +57,7 @@ import { Route as DashboardApkSettingsPhoneRouteImport } from './routes/_dashboa
 import { Route as DashboardApkSettingsStatusRouteImport } from './routes/_dashboard/_apk/settings/status'
 import { Route as DashboardApkSettingsDataIndexRouteImport } from './routes/_dashboard/_apk/settings/data/index'
 import { Route as DashboardApkSettingsDataKindRouteImport } from './routes/_dashboard/_apk/settings/data/$kind'
+import { Route as DashboardApkSettingsDataDeletedRouteImport } from './routes/_dashboard/_apk/settings/data/deleted'
 import { Route as DashboardApkJobsPickDayPickIdRouteImport } from './routes/_dashboard/_apk/jobs/pick/$day/$pickId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -309,6 +310,12 @@ const DashboardApkSettingsDataKindRoute =
     path: '/settings/data/$kind',
     getParentRoute: () => DashboardApkRoute,
   } as any)
+const DashboardApkSettingsDataDeletedRoute =
+  DashboardApkSettingsDataDeletedRouteImport.update({
+    id: '/settings/data/deleted',
+    path: '/settings/data/deleted',
+    getParentRoute: () => DashboardApkRoute,
+  } as any)
 const DashboardApkJobsPickDayPickIdRoute =
   DashboardApkJobsPickDayPickIdRouteImport.update({
     id: '/pick/$day/$pickId',
@@ -361,6 +368,7 @@ export interface FileRoutesByFullPath {
   '/journal/': typeof DashboardApkJournalIndexRoute
   '/practice/': typeof DashboardApkPracticeIndexRoute
   '/settings/data/$kind': typeof DashboardApkSettingsDataKindRoute
+  '/settings/data/deleted': typeof DashboardApkSettingsDataDeletedRoute
   '/settings/data/': typeof DashboardApkSettingsDataIndexRoute
   '/jobs/pick/$day/$pickId': typeof DashboardApkJobsPickDayPickIdRoute
 }
@@ -407,6 +415,7 @@ export interface FileRoutesByTo {
   '/journal': typeof DashboardApkJournalIndexRoute
   '/practice': typeof DashboardApkPracticeIndexRoute
   '/settings/data/$kind': typeof DashboardApkSettingsDataKindRoute
+  '/settings/data/deleted': typeof DashboardApkSettingsDataDeletedRoute
   '/settings/data': typeof DashboardApkSettingsDataIndexRoute
   '/jobs/pick/$day/$pickId': typeof DashboardApkJobsPickDayPickIdRoute
 }
@@ -459,6 +468,7 @@ export interface FileRoutesById {
   '/_dashboard/_apk/journal/': typeof DashboardApkJournalIndexRoute
   '/_dashboard/_apk/practice/': typeof DashboardApkPracticeIndexRoute
   '/_dashboard/_apk/settings/data/$kind': typeof DashboardApkSettingsDataKindRoute
+  '/_dashboard/_apk/settings/data/deleted': typeof DashboardApkSettingsDataDeletedRoute
   '/_dashboard/_apk/settings/data/': typeof DashboardApkSettingsDataIndexRoute
   '/_dashboard/_apk/jobs/pick/$day/$pickId': typeof DashboardApkJobsPickDayPickIdRoute
 }
@@ -509,6 +519,7 @@ export interface FileRouteTypes {
     | '/journal/'
     | '/practice/'
     | '/settings/data/$kind'
+    | '/settings/data/deleted'
     | '/settings/data/'
     | '/jobs/pick/$day/$pickId'
   fileRoutesByTo: FileRoutesByTo
@@ -555,6 +566,7 @@ export interface FileRouteTypes {
     | '/journal'
     | '/practice'
     | '/settings/data/$kind'
+    | '/settings/data/deleted'
     | '/settings/data'
     | '/jobs/pick/$day/$pickId'
   id:
@@ -606,6 +618,7 @@ export interface FileRouteTypes {
     | '/_dashboard/_apk/journal/'
     | '/_dashboard/_apk/practice/'
     | '/_dashboard/_apk/settings/data/$kind'
+    | '/_dashboard/_apk/settings/data/deleted'
     | '/_dashboard/_apk/settings/data/'
     | '/_dashboard/_apk/jobs/pick/$day/$pickId'
   fileRoutesById: FileRoutesById
@@ -961,6 +974,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardApkSettingsDataKindRouteImport
       parentRoute: typeof DashboardApkRoute
     }
+    '/_dashboard/_apk/settings/data/deleted': {
+      id: '/_dashboard/_apk/settings/data/deleted'
+      path: '/settings/data/deleted'
+      fullPath: '/settings/data/deleted'
+      preLoaderRoute: typeof DashboardApkSettingsDataDeletedRouteImport
+      parentRoute: typeof DashboardApkRoute
+    }
     '/_dashboard/_apk/jobs/pick/$day/$pickId': {
       id: '/_dashboard/_apk/jobs/pick/$day/$pickId'
       path: '/pick/$day/$pickId'
@@ -1021,6 +1041,7 @@ interface DashboardApkRouteChildren {
   DashboardApkJournalIndexRoute: typeof DashboardApkJournalIndexRoute
   DashboardApkPracticeIndexRoute: typeof DashboardApkPracticeIndexRoute
   DashboardApkSettingsDataKindRoute: typeof DashboardApkSettingsDataKindRoute
+  DashboardApkSettingsDataDeletedRoute: typeof DashboardApkSettingsDataDeletedRoute
   DashboardApkSettingsDataIndexRoute: typeof DashboardApkSettingsDataIndexRoute
 }
 
@@ -1039,6 +1060,7 @@ const DashboardApkRouteChildren: DashboardApkRouteChildren = {
   DashboardApkJournalIndexRoute: DashboardApkJournalIndexRoute,
   DashboardApkPracticeIndexRoute: DashboardApkPracticeIndexRoute,
   DashboardApkSettingsDataKindRoute: DashboardApkSettingsDataKindRoute,
+  DashboardApkSettingsDataDeletedRoute: DashboardApkSettingsDataDeletedRoute,
   DashboardApkSettingsDataIndexRoute: DashboardApkSettingsDataIndexRoute,
 }
 

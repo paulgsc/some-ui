@@ -47,7 +47,8 @@
  * phone's route, as the audio read is: no session is a `401`, a browser's a
  * `403`. The contract run's paired phone holds no notes, so its `200` is the
  * empty answer, which the harness probes for its shape; an `of` naming no
- * kind is a `422`.
+ * kind is a `422`. Each note says whether My data may delete it
+ * (`deletable`, MD3 some-ui#2477).
  */
 
 import { z } from "zod"
@@ -104,6 +105,7 @@ const KeptSchema = z.object({
         storedAt: z.string(),
         size: z.number().int(),
         setAsideAt: z.string().nullable(),
+        deletable: z.boolean(),
       })
     )
     .nullable(),

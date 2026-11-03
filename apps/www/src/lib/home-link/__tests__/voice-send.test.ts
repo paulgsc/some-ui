@@ -320,6 +320,7 @@ function handStudioIn(): void {
       },
     ],
     letGoHeldTakes: () => Promise.resolve(0),
+    letGoDeletedTakes: () => Promise.resolve(0),
     letGo: () => fakes.letGo,
     waitingIds: () => fakes.waitingIds,
     letGoOnDrive: (onDrive) => {

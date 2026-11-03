@@ -8,21 +8,44 @@
  * the voice lane lists them and says where each is kept
  * (`lib/home-link/voice-copy`'s `recordingsOnPhone` and `voiceKept`). Phone-only
  * (`build.paths.ts`).
+ *
+ * Deleting a record home keeps (MD3, #2477) is `./deleting` and
+ * `./deleting-runtime`, wired here to home's delete
+ * (`lib/home-link/delete-note`, a tap's `send`, LA8) and, on home's receipt
+ * alone, the voice lane's let-go of this phone's copy
+ * (`lib/home-link/voice-copy`'s `letGoDeleted`); the Deleted page's receipts
+ * are `./receipts`, read through `lib/home-link/deleted-read` (LA8).
  */
 import { assertNever } from "@some-ui/core-utils"
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import { audioPlayer } from "@some-ui/voice-capture"
 
+import { deleteNotes } from "@/lib/home-link/delete-note"
+import { askDeleted } from "@/lib/home-link/deleted-read"
 import { askKept } from "@/lib/home-link/kept-read"
-import { recordingsOnPhone, voiceKept } from "@/lib/home-link/voice-copy"
+import {
+  letGoDeleted,
+  recordingsOnPhone,
+  voiceKept,
+} from "@/lib/home-link/voice-copy"
 
+import type { DeletableKind, ReceiptsReading } from "./deleting"
+import { readReceipts } from "./deleting"
+import type { Deleting } from "./deleting-runtime"
+import { createDeleting } from "./deleting-runtime"
 import type { HomeReading, Of, PhoneNote, PhoneRead } from "./model"
 import { readKept } from "./model"
+import type { Receipts } from "./receipts"
+import { createReceipts } from "./receipts"
 import type { MyData } from "./runtime"
 import { createMyData } from "./runtime"
 
 export type { KindItem, Of, Overview, Where } from "./model"
 export { isKind, kindOf, overviewOf, WHERE_ORDER } from "./model"
+export type { DeletableKind, DeleteSheet, Receipt } from "./deleting"
+export { isDeletableKind, offersDelete } from "./deleting"
+export type { Deleting } from "./deleting-runtime"
+export type { Receipts, ReceiptsState } from "./receipts"
 export type { MyData } from "./runtime"
 export type { MyDataState } from "./state"
 
@@ -39,6 +62,31 @@ async function askHome(of: Of | null): Promise<HomeReading> {
     switch (asked.kind) {
       case "answered": {
         return readKept(asked.answer, asked.record)
+      }
+      case "unpaired": {
+        return { kind: "unpaired" }
+      }
+      case "unreachable": {
+        return { kind: "unreachable" }
+      }
+      case "busy": {
+        await wait(WAIT_MS)
+        break
+      }
+      default: {
+        return assertNever(asked)
+      }
+    }
+  }
+  return { kind: "unreachable" }
+}
+
+async function askReceipts(): Promise<ReceiptsReading> {
+  for (let tried = 0; tried < TRIES; tried += 1) {
+    const asked = await askDeleted()
+    switch (asked.kind) {
+      case "answered": {
+        return readReceipts(asked.answer)
       }
       case "unpaired": {
         return { kind: "unpaired" }
@@ -112,4 +160,34 @@ export function phoneMyData(): MyData {
     player: audioPlayer,
   })
   return myData
+}
+
+/** How this phone lets go of its own copies of each kind home deleted. */
+const LETS_GO: Readonly<
+  Record<DeletableKind, (ids: ReadonlyArray<string>) => Promise<boolean>>
+> = {
+  studio: letGoDeleted,
+}
+
+let deleting: Deleting | null = null
+
+/** Made on first use, so importing this module sends nothing. */
+export function phoneDeleting(): Deleting {
+  deleting ??= createDeleting({
+    deleteNotes,
+    letGo: (of, ids) => LETS_GO[of](ids),
+    reread: () => {
+      const data = phoneMyData()
+      data.open(data.getSnapshot().of)
+    },
+  })
+  return deleting
+}
+
+let receipts: Receipts | null = null
+
+/** Made on first use, so importing this module reads nothing. */
+export function phoneReceipts(): Receipts {
+  receipts ??= createReceipts({ askHome: askReceipts })
+  return receipts
 }

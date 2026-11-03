@@ -210,6 +210,7 @@ describe("a kind's list", () => {
           storedAt: "2026-10-20T09:01:00.000Z",
           size: 3_000,
           setAsideAt: null,
+          deletable: true,
         },
         {
           id: "aside",
@@ -217,6 +218,7 @@ describe("a kind's list", () => {
           storedAt: "2026-10-10T09:01:00.000Z",
           size: 3_000,
           setAsideAt: "2026-10-11T09:00:00.000Z",
+          deletable: false,
         },
       ],
     },
@@ -241,6 +243,7 @@ describe("a kind's list", () => {
         bytes: 100,
         where: "going",
         playable: true,
+        deletable: false,
       },
       {
         id: "on-home",
@@ -248,6 +251,7 @@ describe("a kind's list", () => {
         bytes: 3_000,
         where: "home",
         playable: true,
+        deletable: true,
       },
       {
         id: "aside",
@@ -255,6 +259,7 @@ describe("a kind's list", () => {
         bytes: 3_000,
         where: "aside",
         playable: false,
+        deletable: false,
       },
     ])
     expect(view.notes).toBe(4)
@@ -273,6 +278,31 @@ describe("a kind's list", () => {
     expect(view.items.map((item) => [item.id, item.where])).toEqual([
       ["on-home", "home"],
       ["aside", "aside"],
+    ])
+  })
+
+  it("reads a note as not deletable when home doesn't say (MD3: an older home)", () => {
+    const answer = {
+      status: 200,
+      body: JSON.stringify({
+        ...KEPT,
+        notes: [
+          {
+            id: "older",
+            recordedAt: "2026-10-20T09:00:00.000Z",
+            storedAt: "2026-10-20T09:01:00.000Z",
+            size: 3_000,
+            setAsideAt: null,
+          },
+        ],
+      }),
+    }
+    const home = readKept(answer)
+    expect(home.kind === "read" ? home.kept.notes : null).toEqual([
+      expect.objectContaining({ id: "older", deletable: false }),
+    ])
+    expect(kindOf("studio", "studio", home, [], NOW).items).toEqual([
+      expect.objectContaining({ id: "older", deletable: false }),
     ])
   })
 

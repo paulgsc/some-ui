@@ -44,6 +44,7 @@ export type {
 } from "./lib/project/model"
 export { anchorAt, cutListAt, newProject, step } from "./lib/project/model"
 export {
+  letGoDeletedTakes,
   letGoHeldTakes,
   letGoOnDrive,
   notesForHome,

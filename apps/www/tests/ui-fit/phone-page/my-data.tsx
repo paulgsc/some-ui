@@ -48,6 +48,9 @@ const HOME: HomeReading = {
       storedAt: "2026-10-31T00:00:00.000Z",
       size: 1_000_000,
       setAsideAt: i % 3 === 0 ? "2026-10-31T00:00:00.000Z" : null,
+      // As home will mark takes once they're switched on (MD3): every row
+      // that offers Delete… is drawn beside those that don't.
+      deletable: i % 2 === 0,
     })),
   },
 }
@@ -89,6 +92,7 @@ export const MY_DATA_FIXTURES = {
       playing="phone-0"
       onPlay={noop}
       onStop={noop}
+      onDelete={noop}
     />
   )),
 } satisfies Record<string, () => JSX.Element>

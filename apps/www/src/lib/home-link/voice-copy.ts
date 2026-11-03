@@ -948,6 +948,40 @@ export function voiceKept(id: string): TakeKept {
   return where.place === "going" && !paired() ? ON_PHONE : where
 }
 
+/**
+ * Lets go of this phone's own copies of the notes home deleted for good
+ * from My data (MY-DATA MD3, #2477), each named by home's receipt, and of
+ * nothing else. Studio takes are the one kind My data can delete: a take's
+ * audio leaves the phone whatever the owner's let-go choice, its record
+ * staying in its shot
+ * (`@some-ui/soundbites`' `letGoDeletedTakes`); and any set-aside mark still
+ * owed for one is dropped, since home holds no note to mark now. Resolves
+ * false when Studio's store isn't handed in or the write failed (said to
+ * the native log); never rejects. The one caller is `lib/my-data`'s delete,
+ * on home's receipt.
+ */
+export async function letGoDeleted(
+  ids: ReadonlyArray<string>
+): Promise<boolean> {
+  phoneVoiceHome().drop(ids)
+  const studio = studioKeeping()
+  if (studio === null) return false
+  try {
+    await studio.letGoDeletedTakes(new Set(ids))
+    return true
+  } catch (error) {
+    reportFailure({
+      port: "my data: this phone's copy of what home deleted",
+      error: {
+        ...toIntentError(error),
+        summary:
+          "Home deleted a recording for good, and this phone couldn't let its own copy go.",
+      },
+    })
+    return false
+  }
+}
+
 /** A store whose notes leave this phone once home holds them. */
 type LetsGo = { letGo: (homeHolds: ReadonlySet<string>) => unknown }
 

@@ -5,7 +5,16 @@
  * charts (`./device-my-data-charts`), each kind of recording with how many
  * and since when, a kind's list, newest first, playable where its audio is
  * on this phone, and what is kept for good, with how many home keeps of
- * each and since when (MD2b, #2519). Nothing here deletes.
+ * each and since when (MD2b, #2519).
+ *
+ * Deleting (MD3, #2477) is offered on a kind's list only for a recording
+ * home marks deletable (`lib/my-data`'s `offersDelete`): "Delete…" on its
+ * row, or Select and "Delete n…", opens the sheet
+ * (`./device-my-data-delete`), which asks once. Every kind is switched off
+ * on home today, so no row offers it. The Deleted page lists the receipts.
+ * A kind's page opened with `?note=<id>` opens the sheet on that recording
+ * when it offers Delete…, so another screen's "Delete…" opens My data on a
+ * record rather than deleting in place.
  *
  * `MyDataOverview` and `MyDataKind` draw a snapshot; `DeviceMyData` and
  * `DeviceMyDataKind` read it from the runtime (`lib/my-data`), which a drag
@@ -14,15 +23,39 @@
  * an inline `import.meta.env.VITE_DEVICE_BACKEND === "true"`.
  */
 import type { JSX } from "react"
-import { useEffect, useState, useSyncExternalStore } from "react"
+import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { formatSize } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
-import { ChevronLeft, ChevronRight, Lock, Pause, Play } from "lucide-react"
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Lock,
+  Pause,
+  Play,
+} from "lucide-react"
 
 import { hasAudience } from "@/lib/build-profile"
-import type { KindItem, MyDataState, Of, Overview } from "@/lib/my-data"
-import { isKind, kindOf, overviewOf, phoneMyData } from "@/lib/my-data"
+import type {
+  DeletableKind,
+  DeleteSheet,
+  KindItem,
+  MyDataState,
+  Of,
+  Overview,
+  ReceiptsState,
+} from "@/lib/my-data"
+import {
+  isDeletableKind,
+  isKind,
+  kindOf,
+  offersDelete,
+  overviewOf,
+  phoneDeleting,
+  phoneMyData,
+  phoneReceipts,
+} from "@/lib/my-data"
 import type {
   KindLine as KindLineOf,
   KindView,
@@ -31,6 +64,7 @@ import type {
 import type { RecordReading } from "@/lib/my-data/record"
 import { RECORD_KINDS } from "@/lib/my-data/record"
 import {
+  DELETING,
   homeLine,
   itemLine,
   itemName,
@@ -41,6 +75,11 @@ import {
   kindLead,
   kindLine,
   MY_DATA,
+  receiptKind,
+  receiptParts,
+  RECEIPTS,
+  receiptsLine,
+  receiptTime,
   unreadLine,
   WHERE_WORDS,
 } from "@/lib/my-data/words"
@@ -53,6 +92,7 @@ import {
   WHERE_FILL,
   WhereBar,
 } from "./device-my-data-charts"
+import { DeleteSheetView } from "./device-my-data-delete"
 
 const Status = ({ line }: { line: string | null }): JSX.Element | null =>
   line === null ? null : (
@@ -228,25 +268,66 @@ export const MyDataOverview = ({
         )}
       </Section>
       <KeptForGood record={record} />
+      {hasAudience("apk") ? (
+        <Link
+          to="/settings/data/deleted"
+          className={`hover:bg-accent bg-card rounded-xl border ${ROW}`}
+        >
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-medium">{RECEIPTS.row}</span>
+            <span className="text-muted-foreground block text-xs">
+              {RECEIPTS.rowLine}
+            </span>
+          </span>
+          <ChevronRight
+            className="text-muted-foreground size-4 shrink-0"
+            aria-hidden
+          />
+        </Link>
+      ) : null}
     </div>
   )
 }
+
+/** What a row offers for deleting: nothing, "Delete…", or a box to select it. */
+type RowDelete =
+  | { readonly kind: "none" }
+  | { readonly kind: "offer"; readonly onAsk: () => void }
+  | {
+      readonly kind: "select"
+      readonly selected: boolean
+      readonly onToggle: () => void
+    }
 
 const Item = ({
   item,
   playing,
   onPlay,
   onStop,
+  remove = { kind: "none" },
 }: {
   item: KindItem
   playing: boolean
   onPlay: (id: string) => void
   onStop: () => void
+  remove?: RowDelete
 }): JSX.Element => {
   const name = itemName(item.at)
   return (
     <li className="flex min-h-12 items-center gap-3 px-3 py-2">
-      {item.playable ? (
+      {remove.kind === "select" ? (
+        <Button
+          variant="outline"
+          size="icon"
+          className="size-11 shrink-0 rounded-full"
+          role="checkbox"
+          aria-checked={remove.selected}
+          aria-label={DELETING.selectName(name)}
+          onClick={remove.onToggle}
+        >
+          {remove.selected ? <Check className="size-4" aria-hidden /> : null}
+        </Button>
+      ) : item.playable ? (
         <Button
           variant="outline"
           size="icon"
@@ -278,6 +359,17 @@ const Item = ({
           {WHERE_WORDS[item.where]}
         </span>
       </span>
+      {remove.kind === "offer" ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-destructive min-h-11 shrink-0"
+          aria-label={DELETING.rowName(name)}
+          onClick={remove.onAsk}
+        >
+          {DELETING.row}
+        </Button>
+      ) : null}
     </li>
   )
 }
@@ -288,6 +380,7 @@ export const MyDataKind = ({
   onPlay,
   onStop,
   unread = [],
+  onDelete,
 }: {
   view: KindView
   playing: string | null
@@ -295,35 +388,102 @@ export const MyDataKind = ({
   onStop: () => void
   /** This kind's store, when its recordings on this phone aren't counted yet. */
   unread?: PhoneRead["unread"]
-}): JSX.Element => (
-  <div className="space-y-4">
-    <Status line={homeLine(view.home)} />
-    <Status line={unreadLine(unread)} />
-    <p className="text-muted-foreground text-sm">
-      {kindLead(view.notes, view.bytes, view.since)}
-    </p>
-    {view.items.length === 0 ? (
-      <p className="text-muted-foreground text-sm">{MY_DATA.kind.empty}</p>
-    ) : (
-      <ul className="bg-card divide-y rounded-xl border">
-        {view.items.map((item) => (
-          <Item
-            key={item.id}
-            item={item}
-            playing={playing === item.id}
-            onPlay={onPlay}
-            onStop={onStop}
-          />
-        ))}
-      </ul>
-    )}
-    {view.items.length < view.notes ? (
-      <p className="text-muted-foreground text-xs">
-        {MY_DATA.kind.newest(view.items.length, view.notes)}
+  /** Opens the delete sheet on `ids`; without it, nothing offers Delete…. */
+  onDelete?: (of: DeletableKind, ids: ReadonlyArray<string>) => void
+}): JSX.Element => {
+  const [selecting, setSelecting] = useState(false)
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
+  const { of } = view
+  const offered =
+    onDelete === undefined || !isDeletableKind(of)
+      ? []
+      : view.items.filter((item) => offersDelete(of, item, unread))
+  const offers = new Set(offered.map((item) => item.id))
+  const waits =
+    onDelete !== undefined &&
+    offered.length === 0 &&
+    view.items.some((item) => item.deletable) &&
+    unread.some((store) => store === of)
+  const chosen = [...selected].filter((id) => offers.has(id))
+  const ask = (ids: ReadonlyArray<string>): void => {
+    if (onDelete !== undefined && isDeletableKind(of)) onDelete(of, ids)
+  }
+  const removeOf = (item: KindItem): RowDelete => {
+    if (!offers.has(item.id)) return { kind: "none" }
+    if (!selecting) return { kind: "offer", onAsk: () => ask([item.id]) }
+    return {
+      kind: "select",
+      selected: selected.has(item.id),
+      onToggle: () =>
+        setSelected((now) => {
+          const next = new Set(now)
+          if (next.has(item.id)) next.delete(item.id)
+          else next.add(item.id)
+          return next
+        }),
+    }
+  }
+  return (
+    <div className="space-y-4">
+      <Status line={homeLine(view.home)} />
+      <Status line={unreadLine(unread)} />
+      {waits ? <Status line={DELETING.waitsOnStudio} /> : null}
+      <p className="text-muted-foreground text-sm">
+        {kindLead(view.notes, view.bytes, view.since)}
       </p>
-    ) : null}
-  </div>
-)
+      {offered.length > 1 ? (
+        <div className="flex gap-2.5">
+          {selecting ? (
+            <>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSelecting(false)
+                  setSelected(new Set())
+                }}
+              >
+                {DELETING.cancel}
+              </Button>
+              <Button
+                variant="outline"
+                className="text-destructive"
+                disabled={chosen.length === 0}
+                onClick={() => ask(chosen)}
+              >
+                {DELETING.deleteSelected(chosen.length)}
+              </Button>
+            </>
+          ) : (
+            <Button variant="outline" onClick={() => setSelecting(true)}>
+              {DELETING.select}
+            </Button>
+          )}
+        </div>
+      ) : null}
+      {view.items.length === 0 ? (
+        <p className="text-muted-foreground text-sm">{MY_DATA.kind.empty}</p>
+      ) : (
+        <ul className="bg-card divide-y rounded-xl border">
+          {view.items.map((item) => (
+            <Item
+              key={item.id}
+              item={item}
+              playing={playing === item.id}
+              onPlay={onPlay}
+              onStop={onStop}
+              remove={removeOf(item)}
+            />
+          ))}
+        </ul>
+      )}
+      {view.items.length < view.notes ? (
+        <p className="text-muted-foreground text-xs">
+          {MY_DATA.kind.newest(view.items.length, view.notes)}
+        </p>
+      ) : null}
+    </div>
+  )
+}
 
 /** The runtime's snapshot for the page at `of`, read again on mount and on a drag down. */
 function useMyData(of: Of | null): MyDataState {
@@ -372,33 +532,160 @@ const KindHeading = ({ of }: { of: Of | null }): JSX.Element => (
   </div>
 )
 
-const KindList = ({ of }: { of: Of }): JSX.Element => {
+/** The delete sheet's snapshot, and its runtime. */
+function useDeleting(): {
+  sheet: DeleteSheet
+  deleting: ReturnType<typeof phoneDeleting>
+} {
+  const deleting = phoneDeleting()
+  const { sheet } = useSyncExternalStore(
+    deleting.subscribe,
+    deleting.getSnapshot
+  )
+  return { sheet, deleting }
+}
+
+const KindList = ({
+  of,
+  note,
+}: {
+  of: Of
+  note: string | undefined
+}): JSX.Element => {
   const state = useMyData(of)
   const data = phoneMyData()
+  const { sheet, deleting } = useDeleting()
+  const view = kindOf(
+    of,
+    state.of,
+    state.home,
+    state.phone?.notes ?? [],
+    new Date()
+  )
+  const unread = (state.phone?.unread ?? []).filter((store) => store === of)
+  // `?note=` opens the sheet on that recording once, when it offers Delete….
+  const opened = useRef<string | null>(null)
+  const named = view.items.find((item) => item.id === note)
+  const offersNamed =
+    named !== undefined &&
+    isDeletableKind(of) &&
+    offersDelete(of, named, unread)
+  useEffect(() => {
+    if (note === undefined || !offersNamed || !isDeletableKind(of)) return
+    if (opened.current === note) return
+    opened.current = note
+    deleting.ask(of, [note])
+  }, [deleting, note, of, offersNamed])
   return (
-    <MyDataKind
-      view={kindOf(
-        of,
-        state.of,
-        state.home,
-        state.phone?.notes ?? [],
-        new Date()
-      )}
-      unread={(state.phone?.unread ?? []).filter((store) => store === of)}
-      playing={state.playing}
-      onPlay={data.play}
-      onStop={data.stop}
-    />
+    <>
+      <MyDataKind
+        view={view}
+        unread={unread}
+        playing={state.playing}
+        onPlay={data.play}
+        onStop={data.stop}
+        onDelete={deleting.ask}
+      />
+      <DeleteSheetView
+        sheet={sheet}
+        onConfirm={deleting.confirm}
+        onClose={deleting.close}
+      />
+    </>
   )
 }
 
-/** The page of the kind the address names, or says there's no such kind. */
-export const DeviceMyDataKind = ({ kind }: { kind: string }): JSX.Element => {
+/**
+ * The page of the kind the address names, or says there's no such kind;
+ * `note`, from `?note=`, opens the delete sheet on that recording.
+ */
+export const DeviceMyDataKind = ({
+  kind,
+  note,
+}: {
+  kind: string
+  note?: string
+}): JSX.Element => {
   const of = isKind(kind) ? kind : null
   return (
     <>
       <KindHeading of={of} />
-      {of === null ? null : <KindList of={of} />}
+      {of === null ? null : <KindList of={of} note={note} />}
+    </>
+  )
+}
+
+/** The Deleted page's list: each receipt, newest first. */
+export const MyDataReceipts = ({
+  state,
+}: {
+  state: ReceiptsState
+}): JSX.Element => {
+  const { reading } = state
+  return (
+    <div className="space-y-4">
+      <p className="text-muted-foreground text-sm">{RECEIPTS.lead}</p>
+      <Status line={receiptsLine(reading.kind)} />
+      {reading.kind === "read" && reading.receipts.length === 0 ? (
+        <p className="text-muted-foreground text-sm">{RECEIPTS.empty}</p>
+      ) : null}
+      {reading.kind === "read" && reading.receipts.length > 0 ? (
+        <ul className="bg-card divide-y rounded-xl border">
+          {reading.receipts.map((receipt) => (
+            <li key={receipt.id} className="space-y-0.5 px-4 py-3 text-sm">
+              <p className="font-medium">
+                {RECEIPTS.line(
+                  receiptKind(receipt.of),
+                  receiptTime(receipt.recordedAt)
+                )}
+              </p>
+              <p className="text-muted-foreground text-xs">
+                {RECEIPTS.deletedLine(receiptTime(receipt.deletedAt))}
+              </p>
+              <p className="text-muted-foreground text-xs">
+                {RECEIPTS.wentLine(receiptParts(receipt.went))}
+              </p>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {reading.kind === "read" && reading.receipts.length < reading.total ? (
+        <p className="text-muted-foreground text-xs">
+          {MY_DATA.kind.newest(reading.receipts.length, reading.total)}
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
+/** The Deleted page, read on mount and on a drag down. */
+export const DeviceMyDataReceipts = (): JSX.Element => {
+  const receipts = phoneReceipts()
+  const state = useSyncExternalStore(receipts.subscribe, receipts.getSnapshot)
+  useEffect(() => {
+    receipts.open()
+    return screenRefreshers.register({
+      what: RECEIPTS.pullWhat,
+      checkAgain: receipts.checkAgain,
+    })
+  }, [receipts])
+  return (
+    <>
+      <div className="space-y-1">
+        {hasAudience("apk") ? (
+          <Link
+            to="/settings/data"
+            className="text-muted-foreground hover:text-foreground -ml-1 inline-flex items-center gap-1 text-sm"
+          >
+            <ChevronLeft className="size-4" aria-hidden />
+            {RECEIPTS.back}
+          </Link>
+        ) : null}
+        <h1 className="text-2xl font-semibold tracking-tight">
+          {RECEIPTS.title}
+        </h1>
+      </div>
+      <MyDataReceipts state={state} />
     </>
   )
 }

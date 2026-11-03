@@ -32,7 +32,9 @@
  *   (`lib/my-data`, MD2) asks home what it keeps
  *   (`lib/home-link/kept-read`, whose read sends one `GET /voice-notes/kept`
  *   per open or drag down, and on the overview one `GET /subjects/me/kept`
- *   of the record kept for good, MD2b).
+ *   of the record kept for good, MD2b), and what home deleted for good
+ *   (`lib/home-link/deleted-read`, MD3, whose read sends one
+ *   `GET /voice-notes/deleted` per open or drag down of its Deleted page).
  *
  * The last group feeds the checks known-bad sources, so a check that stopped
  * looking cannot stay green.
@@ -124,6 +126,7 @@ const KEEPERS = new Set([
   "lib/home-link/heard.ts",
   "lib/home-link/voice-audio.ts",
   "lib/home-link/kept-read.ts",
+  "lib/home-link/deleted-read.ts",
 ])
 
 /** The routine's read, and the two requests it may send. */
@@ -154,6 +157,10 @@ const KEPT_SENDS = [
   ['"GET"', "keptPath(of)"],
   ['"GET"', '"/subjects/me/kept"'],
 ]
+
+/** LA8, MD3: the read of what home deleted, and the one request it may send. */
+const DELETED_READ = "lib/home-link/deleted-read.ts"
+const DELETED_SENDS = [['"GET"', "DELETED_PATH"]]
 
 /**
  * LA8, LA13 (MIC2): the voice lane's set-aside marks, and the one request
@@ -566,6 +573,20 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(read(HEARD_READ)).toContain("homeLink().keep(")
     expect(read(AUDIO_READ)).toContain("homeLink().keep(")
     expect(read(KEPT_READ)).toContain("homeLink().keep(")
+    expect(read(DELETED_READ)).toContain("homeLink().keep(")
+  })
+
+  it("sends nothing from the read of what home deleted but one GET of /voice-notes/deleted, and only My data reads it (MD3)", () => {
+    expect(sendCalls(DELETED_READ, read(DELETED_READ))).toEqual(DELETED_SENDS)
+    expect(read(DELETED_READ)).toContain('"/voice-notes/deleted"')
+    const readers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /from "\.\/deleted-read"|from "@\/lib\/home-link\/deleted-read"/.test(
+          read(f)
+        )
+      )
+    expect(readers).toEqual(["lib/my-data/index.ts"])
   })
 
   it("sends nothing from the read of what home keeps but one GET of /voice-notes/kept and one of /subjects/me/kept, and only My data reads it (MD2, MD2b)", () => {
