@@ -62,6 +62,12 @@ const Kept = z.object({
         storedAt: z.string(),
         size: z.number().int().nonnegative(),
         setAsideAt: z.string().nullable(),
+        /**
+         * Home marks a note My data may offer to delete (MD3, #2477): its
+         * kind is switched on and it is not the work. An older home says
+         * nothing, which is no.
+         */
+        deletable: z.boolean().default(false),
       })
     )
     .nullable(),
@@ -288,6 +294,12 @@ export type KindItem = {
   readonly where: Where
   /** Its audio is on this phone, so it plays here. */
   readonly playable: boolean
+  /**
+   * Home said My data may offer to delete it (MD3, #2477). Whether the page
+   * does is `./deleting`'s `offersDelete`, which also asks whether this
+   * phone can let its own copy go.
+   */
+  readonly deletable: boolean
 }
 
 export type KindView = {
@@ -332,6 +344,7 @@ export function kindOf(
           bytes: note.size,
           where: note.setAsideAt === null ? "home" : "aside",
           playable: here.has(note.id),
+          deletable: note.deletable,
         }))
       : []
   const fromPhone: ReadonlyArray<KindItem> = mine
@@ -342,6 +355,9 @@ export function kindOf(
       bytes: note.bytes,
       where: note.going ? "going" : "phone",
       playable: true,
+      // Only home's word makes a recording deletable: one home doesn't hold
+      // is a draft, deleted where it was made.
+      deletable: false,
     }))
   return {
     of,

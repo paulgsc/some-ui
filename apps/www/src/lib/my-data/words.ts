@@ -3,9 +3,12 @@
  * is kept where, and since when, never the machinery (CLAUDE.md, "State in
  * the person's terms"). Pure; `./__tests__/words.test.ts` holds it to that.
  */
-import { assertNever, counted, formatSize } from "@some-ui/core-utils"
+import { assertNever, counted, formatSize, listed } from "@some-ui/core-utils"
 
+import type { DeletableKind, ReceiptsReading } from "./deleting"
+import { isDeletableKind } from "./deleting"
 import type { HomeReading, Of, Where } from "./model"
+import { isKind } from "./model"
 import type { RecordHeld, RecordKind, RecordReading } from "./record"
 
 /** Each kind of recording, as the person knows it. */
@@ -230,6 +233,161 @@ export function homeLine(home: HomeReading["kind"]): string | null {
     }
     case "older": {
       return "Home can't say what it keeps until it runs a newer version, so only what isn't on home yet is counted."
+    }
+    default: {
+      return assertNever(home)
+    }
+  }
+}
+
+/** Each kind My data can delete, one and many, as the sheet names it. */
+export const DELETABLE_NAMES: Readonly<
+  Record<DeletableKind, { readonly one: string; readonly many: string }>
+> = {
+  studio: { one: "Studio take", many: "Studio takes" },
+}
+
+/** What went or stayed with a deleted recording, as home's receipt names it. */
+const RECEIPT_PARTS: Readonly<Record<string, string>> = {
+  recording: "the recording",
+  words: "home's words for it",
+  "set-aside mark": "its Let go mark",
+  "mailbox copy": "a copy of its words in the Jobs mailbox",
+  "drive copy": "its copy in Drive",
+}
+
+/** A receipt's list of what went or stayed, as a sentence: `the recording and home's words for it`. */
+export function receiptParts(parts: ReadonlyArray<string>): string {
+  if (parts.length === 0) return "Nothing else"
+  const said = listed(
+    parts.map((part) => RECEIPT_PARTS[part] ?? "something else")
+  )
+  return said.charAt(0).toUpperCase() + said.slice(1)
+}
+
+/** What kind a receipt's recording was. */
+export function receiptKind(of: string): string {
+  return isKind(of) && isDeletableKind(of)
+    ? DELETABLE_NAMES[of].one
+    : "Recording"
+}
+
+/** "Delete…" and the sheet that asks once (MD3, #2477). */
+export const DELETING = {
+  /** A row's "Delete…", and its name for a screen reader. */
+  row: "Delete…",
+  rowName: (when: string): string => `Delete the recording of ${when}…`,
+  select: "Select",
+  cancel: "Cancel",
+  selectName: (when: string): string => `Select the recording of ${when}`,
+  deleteSelected: (n: number): string =>
+    n === 0 ? "Delete…" : `Delete ${String(n)}…`,
+  /** When a kind's store isn't handed in, so its copies can't be let go. */
+  waitsOnStudio:
+    "Studio hasn't been opened since the app started, so its takes can't be deleted here yet.",
+  title: (of: DeletableKind, n: number): string =>
+    n === 1
+      ? `Delete this ${DELETABLE_NAMES[of].one} for good?`
+      : `Delete ${String(n)} ${DELETABLE_NAMES[of].many} for good?`,
+  goesTitle: "Goes for good",
+  staysTitle: "Stays",
+  goes: (n: number): ReadonlyArray<string> =>
+    n === 1
+      ? ["The recording, on home and on this phone", "Home's words for it"]
+      : ["The recordings, on home and on this phone", "Home's words for them"],
+  stays: (n: number): ReadonlyArray<string> =>
+    n === 1
+      ? [
+          "Its place in its shot, in Studio",
+          "Any copy of its words already in the Jobs mailbox",
+          "Its copy in your Drive, if it has one. This app can't reach Drive: delete it there if you want it gone.",
+          "A receipt: what kind it was, when it was recorded, how big it was, and when it was deleted. Never what you said.",
+        ]
+      : [
+          "Each one's place in its shot, in Studio",
+          "Any copy of their words already in the Jobs mailbox",
+          "Their copies in your Drive, if they have any. This app can't reach Drive: delete them there if you want them gone.",
+          "A receipt for each: what kind it was, when it was recorded, how big it was, and when it was deleted. Never what you said.",
+        ],
+  keep: (n: number): string => (n === 1 ? "Keep it" : "Keep them"),
+  confirm: (n: number): string =>
+    n === 1 ? "Delete for good" : `Delete ${String(n)} for good`,
+  deleting: "Deleting…",
+  done: "Done",
+  tryAgain: "Try again",
+  allReceipts: "All receipts",
+  /** The title once home answered. */
+  gone: (n: number): string =>
+    n === 1 ? "Deleted for good" : `${String(n)} deleted for good`,
+  nothing: "Nothing was deleted",
+  letting: "Letting this phone's copy go…",
+  letFailed:
+    "Home deleted it for good, and this phone couldn't let its own copy go just now.",
+  kept: (n: number, of: number): string =>
+    of === 1
+      ? "Home keeps this one, so nothing was deleted, on home or on this phone."
+      : `Home keeps ${String(n)} of them, so ${n === 1 ? "it wasn't" : "they weren't"} deleted.`,
+  notHeld: (n: number, of: number): string =>
+    of === 1
+      ? "Home doesn't have this one any more, so there was nothing there to delete. This phone kept its copy."
+      : `Home didn't have ${String(n)} of them any more, so there was nothing there to delete.`,
+  forgotten:
+    "Home no longer knows this phone, so nothing more was deleted. Pair again on Home.",
+  unanswered: (n: number, of: number): string =>
+    of === 1
+      ? "Home didn't answer, so it is still kept, on home and on this phone, as before. Try again when this phone can reach home."
+      : `Home didn't answer for ${String(n)} of them, so ${n === 1 ? "it is" : "they are"} still kept, on home and on this phone.`,
+  unpaired:
+    "This phone isn't paired with home, so nothing home keeps can be deleted from here. Pair on Home.",
+  busy: "This phone was busy with home just then, so nothing was deleted. Try again in a moment.",
+  unreachable: (n: number): string =>
+    `Home couldn't be reached from here, so ${n === 1 ? "it is" : "they are"} still kept, on home and on this phone, as before. Try again when this phone can reach home.`,
+  receipt: {
+    title: "Receipt",
+    what: "What",
+    recorded: "Recorded",
+    size: "Size",
+    deleted: "Deleted",
+    went: "Went",
+    stayed: "Stayed",
+    kept: "This receipt is kept for good on home. It never holds what you said.",
+  },
+} as const
+
+/** My data's Deleted page: the receipts. */
+export const RECEIPTS = {
+  /** The overview's way in. */
+  row: "Deleted",
+  rowLine: "What went, and when",
+  title: "Deleted",
+  back: "My data",
+  lead: "Each recording you deleted, and when. None of them holds what you said.",
+  empty: "Nothing has been deleted.",
+  /** What a drag down reads again. */
+  pullWhat: "what home deleted",
+  line: (kind: string, recorded: string): string =>
+    `${kind}, recorded ${recorded}`,
+  deletedLine: (at: string): string => `Deleted ${at}`,
+  wentLine: (went: string): string => `Went: ${went}`,
+} as const
+
+/** What the Deleted page says when it has no receipts from home, or null. */
+export function receiptsLine(home: ReceiptsReading["kind"]): string | null {
+  switch (home) {
+    case "read": {
+      return null
+    }
+    case "reading": {
+      return "Asking home what was deleted…"
+    }
+    case "unpaired": {
+      return "This phone isn't paired with home, so it can't say what was deleted. Pair on Home."
+    }
+    case "unreachable": {
+      return "Home didn't answer. Drag down to try again."
+    }
+    case "older": {
+      return "Home can't list what was deleted until it runs a newer version."
     }
     default: {
       return assertNever(home)

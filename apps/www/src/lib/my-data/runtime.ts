@@ -30,6 +30,11 @@ export type MyData = {
    * rejects when home was asked and didn't answer.
    */
   readonly checkAgain: () => Promise<void>
+  /**
+   * Reads the shown page again only while a page reads the snapshot, as
+   * after a delete (MD3), so what went leaves it; with none, asks nothing.
+   */
+  readonly refreshShown: () => void
   /** Plays recording `id`, stopping any other. */
   readonly play: (id: string) => void
   /** Stops what is playing. */
@@ -105,6 +110,9 @@ export function createMyData(ports: MyDataPorts): MyData {
     async checkAgain(): Promise<void> {
       const home = await read(state.of)
       if (home.kind === "unreachable") throw new Error("home didn't answer")
+    },
+    refreshShown(): void {
+      if (listeners.size > 0) void read(state.of)
     },
     play(id): void {
       void play(id)

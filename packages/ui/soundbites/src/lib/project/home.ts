@@ -86,6 +86,23 @@ export async function letGoHeldTakes(
 }
 
 /**
+ * Lets the audio of each take home deleted for good (`deleted`, by id, each
+ * answered with home's receipt: MY-DATA MD3, www `lib/my-data`) leave the
+ * phone, whatever the owner's let-go choice: home's receipt says the take
+ * is gone from home on the owner's own "Delete for good", so this phone's
+ * copy goes too. The take's record stays in its shot, marked kept by home
+ * as it was before home deleted it, and off the phone. Project by project,
+ * each in its own write; how many projects changed.
+ */
+export async function letGoDeletedTakes(
+  store: ProjectStore,
+  deleted: ReadonlySet<string>
+): Promise<number> {
+  if (deleted.size === 0) return 0
+  return writeEach(store, (project) => heldByHome(project, deleted, () => true))
+}
+
+/**
  * Writes what `change` makes of each project in `store` it changes, each in
  * its own write, `change` run again on the project as that write reads it;
  * how many projects changed.

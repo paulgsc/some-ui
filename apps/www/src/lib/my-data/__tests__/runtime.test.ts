@@ -113,6 +113,20 @@ describe("My data's runtime", () => {
     await expect(unpaired).resolves.toBeUndefined()
   })
 
+  it("reads the shown page again after a delete only while a page shows it (MD3)", () => {
+    const { ports: p, home } = ports()
+    const data = createMyData(p)
+    data.open("studio")
+    data.refreshShown()
+    expect(home).toHaveLength(1)
+    const unsubscribe = data.subscribe(() => undefined)
+    data.refreshShown()
+    expect(home.map((each) => each.of)).toEqual(["studio", "studio"])
+    unsubscribe()
+    data.refreshShown()
+    expect(home).toHaveLength(2)
+  })
+
   it("plays one recording at a time, and one that ends clears only itself", async () => {
     const { ports: p, played } = ports()
     const data = createMyData(p)

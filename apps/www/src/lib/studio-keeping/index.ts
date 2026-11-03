@@ -37,6 +37,12 @@ type StudioKeeping = {
    * each the owner's choice allows leave the phone (HF11, LG1).
    */
   readonly letGoHeldTakes: (held: ReadonlySet<string>) => Promise<number>
+  /**
+   * Lets the audio of each take home deleted for good leave the phone, on
+   * home's receipt alone (MY-DATA MD3; `lib/home-link/voice-copy`'s
+   * `letGoDeleted`).
+   */
+  readonly letGoDeletedTakes: (deleted: ReadonlySet<string>) => Promise<number>
   /** The owner's choice of when a take home holds leaves the phone, as kept. */
   readonly letGo: () => LetGoChoice
   /** The ids of the takes home holds that are still on the phone. */
