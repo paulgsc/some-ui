@@ -28,6 +28,9 @@ import { createVoiceHome } from "@/lib/voice-home/runtime"
 import { setAsideOwing, voiceMarks } from "@/lib/voice-marks"
 
 /** A note's audio, and a takes desk over `takes`, as the voice lane reads them. */
+/** The pairing a run goes under. */
+const AT_PAIRING = { pairing: "p1" }
+
 const { AUDIO, desk } = vi.hoisted(() => {
   const audio = (): Promise<Blob | null> => Promise.resolve(new Blob(["a"]))
   return {
@@ -350,13 +353,17 @@ describe("home's set-aside mark on a note let go on the phone (MIC2)", () => {
     async (_kind, keep) => {
       keep("n1", "set-aside")
       const heard: Array<string> = []
-      expect(await sendVoice(home(heard))).toEqual({ kind: "synced" })
+      expect(await sendVoice(home(heard), AT_PAIRING)).toEqual({
+        kind: "synced",
+      })
       // The note went first, then its mark, in the same run.
       expect(heard.at(-2)).toMatch(/^\/voice-notes\/n1\?/)
       expect(marksIn(heard)).toEqual([setAsidePath({ id: "n1", at: LET_GO })])
 
       const again: Array<string> = []
-      expect(await sendVoice(home(again))).toEqual({ kind: "synced" })
+      expect(await sendVoice(home(again), AT_PAIRING)).toEqual({
+        kind: "synced",
+      })
       expect(again).toEqual([])
     }
   )
@@ -366,10 +373,14 @@ describe("home's set-aside mark on a note let go on the phone (MIC2)", () => {
     async (_kind, keep) => {
       keep("n1", "earlier")
       const heard: Array<string> = []
-      expect(await sendVoice(home(heard))).toEqual({ kind: "synced" })
+      expect(await sendVoice(home(heard), AT_PAIRING)).toEqual({
+        kind: "synced",
+      })
       expect(fakes.home?.getSnapshot().held).toEqual(["n1"])
       keep("n1")
-      expect(await sendVoice(home(heard))).toEqual({ kind: "synced" })
+      expect(await sendVoice(home(heard), AT_PAIRING)).toEqual({
+        kind: "synced",
+      })
       expect(marksIn(heard)).toEqual([])
     }
   )
@@ -377,17 +388,24 @@ describe("home's set-aside mark on a note let go on the phone (MIC2)", () => {
   it("keeps a mark home found no note for owed, and sends it on a later run", async () => {
     fakes.lens = [take("n1", "set-aside")]
     const first: Array<string> = []
-    expect(await sendVoice(home(first, () => 404))).toEqual({ kind: "synced" })
+    expect(
+      await sendVoice(
+        home(first, () => 404),
+        AT_PAIRING
+      )
+    ).toEqual({ kind: "synced" })
     expect(marksIn(first)).toHaveLength(1)
     expect(fakes.home?.getSnapshot().aside.owed).toMatchObject([
       { id: "n1", at: LET_GO },
     ])
 
     const second: Array<string> = []
-    expect(await sendVoice(home(second))).toEqual({ kind: "synced" })
+    expect(await sendVoice(home(second), AT_PAIRING)).toEqual({
+      kind: "synced",
+    })
     expect(marksIn(second)).toEqual([setAsidePath({ id: "n1", at: LET_GO })])
     const third: Array<string> = []
-    await sendVoice(home(third))
+    await sendVoice(home(third), AT_PAIRING)
     expect(marksIn(third)).toEqual([])
   })
 
@@ -395,7 +413,12 @@ describe("home's set-aside mark on a note let go on the phone (MIC2)", () => {
     fakes.bites = [bite("n1", "set-aside")]
     for (let run = 0; run < 8; run += 1) {
       const heard: Array<string> = []
-      expect(await sendVoice(home(heard, () => 404))).toEqual({
+      expect(
+        await sendVoice(
+          home(heard, () => 404),
+          AT_PAIRING
+        )
+      ).toEqual({
         kind: "synced",
       })
       expect(marksIn(heard)).toHaveLength(1)
@@ -411,7 +434,7 @@ describe("home's set-aside mark on a note let go on the phone (MIC2)", () => {
       path.includes("/set-aside?")
         ? Promise.reject(new Error("no answer"))
         : home([])(method, path, body)
-    await expect(sendVoice(lost)).rejects.toThrow("no answer")
+    await expect(sendVoice(lost, AT_PAIRING)).rejects.toThrow("no answer")
     expect(fakes.home?.getSnapshot().aside.owed).toMatchObject([
       { id: "n1", at: LET_GO },
     ])
@@ -420,20 +443,20 @@ describe("home's set-aside mark on a note let go on the phone (MIC2)", () => {
   it("marks a soundbite home already held once it is set aside (Codex on #2441)", async () => {
     fakes.bites = [bite("b1")]
     const sent: Array<string> = []
-    expect(await sendVoice(home(sent))).toEqual({ kind: "synced" })
+    expect(await sendVoice(home(sent), AT_PAIRING)).toEqual({ kind: "synced" })
     expect(fakes.home?.getSnapshot().held).toEqual(["b1"])
     expect(marksIn(sent)).toEqual([])
 
     fakes.bites = [bite("b1", "set-aside")]
     const later: Array<string> = []
-    expect(await sendVoice(home(later))).toEqual({ kind: "synced" })
+    expect(await sendVoice(home(later), AT_PAIRING)).toEqual({ kind: "synced" })
     // Nothing to copy again: only the mark goes.
     expect(later).toEqual([setAsidePath({ id: "b1", at: LET_GO })])
   })
 
   it("owes the mark of a note set aside before Let go owed marks, before it leaves the phone on home's word", async () => {
     fakes.scene = [sceneNote("s1")]
-    await sendVoice(home([]))
+    await sendVoice(home([]), AT_PAIRING)
     expect(fakes.home?.getSnapshot().held).toEqual(["s1"])
     // Let go once home held it: the draft lets it go on home's word, at
     // once, before any run could send its mark.
@@ -442,7 +465,7 @@ describe("home's set-aside mark on a note let go on the phone (MIC2)", () => {
     expect(fakes.scene).toEqual([])
 
     const heard: Array<string> = []
-    expect(await sendVoice(home(heard))).toEqual({ kind: "synced" })
+    expect(await sendVoice(home(heard), AT_PAIRING)).toEqual({ kind: "synced" })
     expect(heard).toEqual([setAsidePath({ id: "s1", at: LET_GO })])
   })
 
@@ -462,7 +485,7 @@ describe("home's set-aside mark on a note let go on the phone (MIC2)", () => {
       now: Date.now,
     })
     fakes.scene = [sceneNote("s1"), sceneNote("s2")]
-    await sendVoice(home([]))
+    await sendVoice(home([]), AT_PAIRING)
     const stop = watchVoiceNotes()
     const letGo = (id: string): boolean =>
       setAsideOwing(id, "scene", LET_GO, () => {
@@ -491,7 +514,7 @@ describe("home's set-aside mark on a note let go on the phone (MIC2)", () => {
     watchVoiceNotes()()
     expect(fakes.scene.map(({ id }) => id)).toEqual(["s1"])
     const heard: Array<string> = []
-    expect(await sendVoice(home(heard))).toEqual({ kind: "synced" })
+    expect(await sendVoice(home(heard), AT_PAIRING)).toEqual({ kind: "synced" })
     expect(heard).toEqual([setAsidePath({ id: "s2", at: LET_GO })])
   })
 
@@ -507,46 +530,48 @@ describe("home's set-aside mark on a note let go on the phone (MIC2)", () => {
     stop()
     // Home busy: the copy waits on this phone.
     const busy: HomeCall = () => Promise.resolve({ status: 503, body: "" })
-    expect((await sendVoice(busy)).kind).toBe("failed")
+    expect((await sendVoice(busy, AT_PAIRING)).kind).toBe("failed")
     // The hand-off lets the reflection and its audio go (letGoReflections).
     fakes.reflections = []
     const heard: Array<string> = []
-    expect(await sendVoice(home(heard))).toEqual({ kind: "synced" })
+    expect(await sendVoice(home(heard), AT_PAIRING)).toEqual({ kind: "synced" })
     expect(heard.at(0)).toMatch(/^\/voice-notes\/r1\?/)
     expect(marksIn(heard)).toEqual([setAsidePath({ id: "r1", at: LET_GO })])
   })
 
   it("sends no mark for a soundbite its store still lists as current, and takes it back: the write is pending, or the app closed before it landed", async () => {
     fakes.bites = [bite("b1")]
-    await sendVoice(home([]))
+    await sendVoice(home([]), AT_PAIRING)
     expect(fakes.home?.getSnapshot().held).toEqual(["b1"])
     const stop = watchVoiceNotes()
     // Owed at Let go, its write to the soundbites' store not landed.
     expect(voiceMarks.owe("b1", LET_GO, "soundbite")).toBe(true)
     stop()
     const heard: Array<string> = []
-    expect(await sendVoice(home(heard))).toEqual({ kind: "synced" })
+    expect(await sendVoice(home(heard), AT_PAIRING)).toEqual({ kind: "synced" })
     expect(marksIn(heard)).toEqual([])
     expect(fakes.home?.getSnapshot().aside.owed).toEqual([])
   })
 
   it("holds back a mark for a note that isn't listed while its store isn't read this launch, and sends it once it is", async () => {
     fakes.bites = [bite("b1")]
-    await sendVoice(home([]))
+    await sendVoice(home([]), AT_PAIRING)
     const stop = watchVoiceNotes()
     expect(voiceMarks.owe("b1", LET_GO, "soundbite")).toBe(true)
     stop()
     // A new launch: the soundbites page hasn't handed its store in yet.
     fakes.bitesHanded = false
     const unread: Array<string> = []
-    expect(await sendVoice(home(unread))).toEqual({ kind: "synced" })
+    expect(await sendVoice(home(unread), AT_PAIRING)).toEqual({
+      kind: "synced",
+    })
     expect(marksIn(unread)).toEqual([])
     expect(fakes.home?.getSnapshot().aside.owed).toHaveLength(1)
 
     fakes.bitesHanded = true
     fakes.bites = [bite("b1", "set-aside")]
     const read: Array<string> = []
-    expect(await sendVoice(home(read))).toEqual({ kind: "synced" })
+    expect(await sendVoice(home(read), AT_PAIRING)).toEqual({ kind: "synced" })
     expect(marksIn(read)).toEqual([setAsidePath({ id: "b1", at: LET_GO })])
   })
 
@@ -559,13 +584,13 @@ describe("home's set-aside mark on a note let go on the phone (MIC2)", () => {
     // Both let go from the phone before any copy was made.
     fakes.paired = true
     fakes.bitesHanded = false
-    await sendVoice(home([]))
+    await sendVoice(home([]), AT_PAIRING)
     // The reflections are read at each look; the soundbites aren't yet.
     expect(fakes.home?.getSnapshot().aside.owed.map(({ id }) => id)).toEqual([
       "b1",
     ])
     fakes.bitesHanded = true
-    await sendVoice(home([]))
+    await sendVoice(home([]), AT_PAIRING)
     expect(fakes.home?.getSnapshot().aside.owed).toEqual([])
   })
 
@@ -597,7 +622,12 @@ describe("home's set-aside mark on a note let go on the phone (MIC2)", () => {
     })
     fakes.scene = [sceneNote("s-kept", "set-aside")]
     const heard: Array<string> = []
-    expect(await sendVoice(home(heard, () => 404))).toEqual({
+    expect(
+      await sendVoice(
+        home(heard, () => 404),
+        AT_PAIRING
+      )
+    ).toEqual({
       kind: "synced",
     })
     const owed = fakes.home.getSnapshot().aside.owed.map(({ id }) => id)
@@ -633,7 +663,7 @@ describe("home's set-aside mark on a note let go on the phone (MIC2)", () => {
       told += 1
     })
     const heard: Array<string> = []
-    expect(await sendVoice(home(heard))).toEqual({ kind: "synced" })
+    expect(await sendVoice(home(heard), AT_PAIRING)).toEqual({ kind: "synced" })
     expect(() => {
       watchVoiceNotes()()
     }).not.toThrow()
@@ -677,7 +707,9 @@ describe("home's set-aside mark on a note let go on the phone (MIC2)", () => {
     vi.useFakeTimers({ now: Date.parse("2026-11-01T11:00:00.000Z") })
     try {
       const heard: Array<string> = []
-      expect(await sendVoice(home(heard))).toEqual({ kind: "synced" })
+      expect(await sendVoice(home(heard), AT_PAIRING)).toEqual({
+        kind: "synced",
+      })
       expect(marksIn(heard)).toEqual([
         setAsidePath({ id: "n1", at: "2026-11-01T11:00:00.000Z" }),
       ])
@@ -692,10 +724,13 @@ describe("home's set-aside mark on a note let go on the phone (MIC2)", () => {
     vi.useFakeTimers({ now: Date.parse("2026-11-01T11:00:00.000Z") })
     try {
       const heard: Array<string> = []
-      await sendVoice(home(heard, () => 404))
+      await sendVoice(
+        home(heard, () => 404),
+        AT_PAIRING
+      )
       vi.setSystemTime(Date.parse("2026-11-02T11:00:00.000Z"))
       const later: Array<string> = []
-      await sendVoice(home(later))
+      await sendVoice(home(later), AT_PAIRING)
       expect(marksIn(later)).toEqual([
         setAsidePath({ id: "n1", at: "2026-11-01T11:00:00.000Z" }),
       ])

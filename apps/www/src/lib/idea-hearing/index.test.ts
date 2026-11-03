@@ -2,7 +2,7 @@
 import type { Listened, Listening, TurnListener } from "@some-ui/voice-capture"
 import { describe, expect, it, vi } from "vitest"
 
-import { AWAY_MS, eitherListener } from "@/lib/idea-hearing"
+import { AWAY_MS, eitherListener, reachOf } from "@/lib/idea-hearing"
 
 /** A listener that says who it is in what it hears, unless told otherwise. */
 function fake(
@@ -160,5 +160,15 @@ describe("IH1: where an idea answer's words come from", () => {
     await listener.listen(vi.fn(), vi.fn()).done
     expect(home.listened).toHaveLength(2)
     expect(device.listened).toEqual([])
+  })
+})
+
+describe("where a new idea goes (ST26 b)", () => {
+  it("is away while the voice lane's last run found home out of reach, near otherwise, and unpaired with no pairing", () => {
+    expect(reachOf(null, { kind: "unreachable", at: 1 })).toBe("unpaired")
+    expect(reachOf("p1", { kind: "unreachable", at: 1 })).toBe("away")
+    expect(reachOf("p1", { kind: "synced", at: 2 })).toBe("near")
+    expect(reachOf("p1", { kind: "failed", why: "room" })).toBe("near")
+    expect(reachOf("p1", null)).toBe("near")
   })
 })

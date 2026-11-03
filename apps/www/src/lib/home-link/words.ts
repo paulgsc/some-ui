@@ -140,8 +140,9 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
           "Spoken reflections, soundbites, lens and LeetType takes, Jobs, game, scene and Rust Rounds notes, Studio takes",
         one: "voice note",
       },
+      { kind: "ideas", label: "Studio ideas, each sent whole", one: "idea" },
     ],
-    waits: waits("voice note"),
+    waits: waits("voice note or idea", "voice notes and ideas"),
     phoneOnly: `Voice notes are only on this phone, and in Drive when you share them. ${PAIR}`,
     partly:
       "Some voice notes are on home. New ones stay on this phone until it is paired again.",
@@ -202,7 +203,7 @@ export function unsentLines({ gone }: Unsendable): Array<string> {
 
 /** Settings' Home server block, once paired: what goes, and when. */
 export const HOME_BLOCK = {
-  lead: "Everything this phone keeps goes to home on its own while the app is open: finished sessions, kept items, LeetType sessions and spoken answers, Studio sittings, soundbites, written reflections, asks for the next scene, the Jobs record, voice notes, rounds you paste in Rust Rounds, a note of how each recording ended, and aph while it is open. Rust Rounds also brings home's rounds and their runs here. Nothing leaves this phone until home has read it back. Dragging a page down from its top sends what waits and checks home again.",
+  lead: "Everything this phone keeps goes to home on its own while the app is open: finished sessions, kept items, LeetType sessions and spoken answers, Studio sittings, soundbites, written reflections, asks for the next scene, the Jobs record, voice notes, the Studio ideas you send, rounds you paste in Rust Rounds, a note of how each recording ended, and aph while it is open. Rust Rounds also brings home's rounds and their runs here. Nothing leaves this phone until home has read it back. Dragging a page down from its top sends what waits and checks home again.",
 } as const
 
 /** What a drag down names when this phone couldn't get in step with home (PULL3). */

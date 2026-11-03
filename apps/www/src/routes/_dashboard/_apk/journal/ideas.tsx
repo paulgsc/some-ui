@@ -1,10 +1,17 @@
 import type { JSX } from "react"
+import { useEffect } from "react"
 import type { IdeaShare } from "@some-ui/soundbites"
-import { homeHearing, IdeaShelf, STUDIO_WORDS } from "@some-ui/soundbites"
+import {
+  homeHearing,
+  IdeaShelf,
+  keptIdeasForHome,
+  STUDIO_WORDS,
+} from "@some-ui/soundbites"
 import type { TurnListener } from "@some-ui/voice-capture"
 import { createFileRoute, Link } from "@tanstack/react-router"
 
 import { phoneIdeaListener } from "@/lib/idea-hearing"
+import { keepIdeas } from "@/lib/idea-keeping"
 import { useAsyncIntent } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import { shareIdea } from "@/lib/journal-share"
@@ -57,26 +64,32 @@ const link =
   "text-muted-foreground text-sm underline underline-offset-4 self-start"
 
 /** Your ideas, in the Studio wing (STUDIO ST19): every idea kept, and where each is. */
-const IdeasRoute = (): JSX.Element => (
-  <div className="mx-auto flex w-full max-w-md flex-col gap-4">
-    <h1 className="text-muted-foreground text-sm font-bold tracking-wider uppercase">
-      {WORDS.heading}
-    </h1>
-    <IdeaShelf
-      capture={capture}
-      share={share}
-      studio={openVideo}
-      newIdea={
-        <Link to="/journal/idea" className={link}>
-          {STUDIO_WORDS.idea.newIdea}
-        </Link>
-      }
-    />
-    <Link to="/journal" className={link}>
-      {STUDIO_WORDS.idea.back}
-    </Link>
-  </div>
-)
+const IdeasRoute = (): JSX.Element => {
+  // The ideas sent whole go home once a route has handed them in (ST26).
+  useEffect(() => {
+    if (device) keepIdeas({ forHome: keptIdeasForHome() })
+  }, [])
+  return (
+    <div className="mx-auto flex w-full max-w-md flex-col gap-4">
+      <h1 className="text-muted-foreground text-sm font-bold tracking-wider uppercase">
+        {WORDS.heading}
+      </h1>
+      <IdeaShelf
+        capture={capture}
+        share={share}
+        studio={openVideo}
+        newIdea={
+          <Link to="/journal/idea" className={link}>
+            {STUDIO_WORDS.idea.newIdea}
+          </Link>
+        }
+      />
+      <Link to="/journal" className={link}>
+        {STUDIO_WORDS.idea.back}
+      </Link>
+    </div>
+  )
+}
 
 export const Route = createFileRoute("/_dashboard/_apk/journal/ideas")({
   component: IdeasRoute,

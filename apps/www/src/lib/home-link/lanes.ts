@@ -45,6 +45,7 @@ export type LaneKind =
   | "aph"
   | "jobs"
   | "voice"
+  | "ideas"
   | "rounds"
   | "endings"
 
@@ -148,6 +149,16 @@ export function useHomePull(): void {
  */
 export function pulledLane(lane: Lane): Promise<KeptRun | null> {
   return homePullOf().ended(wire(lane).sending)
+}
+
+/**
+ * How draining `lane` to home is going, read outside React and without a
+ * watch of its own: for a screen's runtime that says where what it keeps
+ * goes (a new idea's, ST26).
+ */
+export function laneRun(lane: Lane): Pick<Kept, "getSnapshot" | "subscribe"> {
+  const { sending } = wire(lane)
+  return { getSnapshot: sending.getSnapshot, subscribe: sending.subscribe }
 }
 
 /**

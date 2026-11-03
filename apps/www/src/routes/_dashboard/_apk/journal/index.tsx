@@ -3,6 +3,7 @@ import { useEffect, useState } from "react"
 import { useConfirmSheet } from "@some-ui/shared"
 import type { Project, StudioShare, WingLink } from "@some-ui/soundbites"
 import {
+  keptIdeasForHome,
   keptLetGo,
   keptTimeLog,
   letGoDeletedTakes,
@@ -21,6 +22,7 @@ import { audioPlayer } from "@some-ui/voice-capture"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 
 import { deviceListener } from "@/lib/device-listen"
+import { keepIdeas } from "@/lib/idea-keeping"
 import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import { shareStudio } from "@/lib/journal-share"
@@ -166,6 +168,8 @@ const StudioRoute = (): JSX.Element => {
         letGoOnDrive(store, onDrive, keptLetGo().read()),
       sittingKey,
     })
+    // The ideas sent whole go home once a route has handed them in (ST26).
+    keepIdeas({ forHome: keptIdeasForHome() })
   }, [])
   if (records === true && import.meta.env.VITE_DEVICE_BACKEND === "true") {
     return <Records />

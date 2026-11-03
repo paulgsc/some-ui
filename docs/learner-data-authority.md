@@ -149,6 +149,7 @@ Which authority a build starts in depends on what it can reach (`Backend`):
 | The routine's word sets and dramas (home's)                                            | not read                                     | read with the account's session while Korean is open; in the Android app, from the paired home with the pairing's key while Korean is open, nothing of the phone's sent but which it opened, by name, its newest files and its run records kept on the phone (LA15)                                                                                                                                                                                                                                                                                                                                                                                     | the same                                   |
 | LeetType session log (the phone's)                                                     | on the phone, never sent                     | its finished sessions copied to the paired home by the drain, each event without a spoken answer's ticks, read back before it counts as held; the phone keeps its whole log (LA15); for home's owner alone (its only account, or the one `MAILBOX_SUBJECT` names), home passes each finished session it holds on to the Jobs mailbox on Cloudflare, for the routine to read                                                                                                                                                                                                                                                                             | the same                                   |
 | Studio's time log and answers (the phone's)                                            | on the phone, never sent                     | each sitting's time log and its answer to how it went, copied to the paired home by the drain, the log read back before it counts as held; the phone keeps its whole log (LA15)                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | the same                                   |
+| Studio's ideas (the phone's)                                                           | on the phone, never sent                     | on a paired phone, each idea sent whole goes to the paired home by the voice lane as one bundle (its title, subject, keywords, format, when it was begun and sent, and each answer as its take's voice note by id or its typed words), once home holds those notes; the phone keeps every idea whole (LA13, LA15)                                                                                                                                                                                                                                                                                                                                       | the same                                   |
 | Speech                                                                                 | the browser's own voice                      | the server's speech service                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | the same                                   |
 | Reminders                                                                              | the client's own policy, while a tab is open | the client's own policy, while a tab is open                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | the server's push, with the browser closed |
 
@@ -397,7 +398,9 @@ declared (checked by reading every call site and by the tests named).
   Studio takes home holds it knows Drive holds too, HF11, and sends, by one
   bodiless `PUT /voice-notes/:id/set-aside` per mark due in
   `lib/home-link/set-aside.ts`, home's set-aside mark for each note let go
-  on the phone that home holds, MIC2) and Korean's look at the
+  on the phone that home holds, MIC2, and by one `PUT /ideas/:id` per
+  Studio idea sent whole that home doesn't hold as it is, in
+  `lib/home-link/ideas.ts`, ST26) and Korean's look at the
   routine's files (`lib/home-link/routine`, one `GET /routine/files` per
   look and one `PUT /routine/opened` of names per open, started by the
   lesson's own query and the open), and Studio's idea answers asking home
@@ -956,7 +959,8 @@ was silent, so the run ended as if all had gone.
 Everything the phone keeps for home (aph, the Jobs record, Practice's
 record with its written reflections, asks for the next scene, the
 soundbites' records, LeetType's answer notes and the grammar-lens record,
-voice notes, and the rounds pasted in Rust Rounds, whose run also brings
+voice notes and Studio's ideas sent whole (ST26, which the voice lane carries
+after the notes their answers name), and the rounds pasted in Rust Rounds, whose run also brings
 home's rounds and the runs home recorded back to the phone, RR4b, and the
 notes of how each take ended, CK2, `app-events.ts`) goes
 through one wiring (`lib/home-link/lanes.ts`):
@@ -982,7 +986,11 @@ which also holds that the drain sends only finished sessions and what
 changed since home last held it, lets nothing go, and stops before its next
 request; `voice-send.test.ts`, which also holds that the voice run asks
 home which Studio takes Drive has only under "Keep each until Drive has it
-too", HF11, and lets go only what home names), that Practice's lane asks for a run on a
+too", HF11, and lets go only what home names, and that a Studio idea sent
+whole goes after the run's notes, once, counted waiting until home holds it;
+`ideas.test.ts`, which holds that an idea counts held only on a `200` that
+carries it back, waits while home lacks its notes or keeps no ideas, and is
+not offered again while home holds or refused it as it is), that Practice's lane asks for a run on a
 new soundbite, LeetType answer note or lens entry, or on a LeetType session
 finishing, and counts each, with Studio's sittings and answers, waiting
 until home holds it (#2425), and that once its run has sent them LeetType's answer
@@ -1131,7 +1139,19 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   (LA16) and `letGoHeldPrompts` (LA18), or confirms what home holds
   (`confirmHeld`), or sends other than through `copyHome`, `sendKept`,
   `sendLog`, `sendStudio`, `sendReflections` (LA16), `sendPrompts` (LA18),
-  `sendNotes` and `sendLens`; a hunk to `lib/home-link/voice-copy.ts` that
+  `sendNotes` and `sendLens`; a hunk to `lib/home-link/ideas.ts` that sends
+  anything but one `PUT /ideas/:id` of each bundle `ideasToSend` names,
+  counts an idea held on any answer but a `200` that `carriesBack` accepts,
+  remembers an answer anywhere but `sent.ideas` under the run's pairing, or
+  lets anything on the phone go; a hunk to `lib/home-link/voice-copy.ts`
+  that has `sendVoice` send the ideas before `exchangeVoice` synced, or
+  drops them from its run; a hunk to `lib/home-link/voice.ts` that drops
+  the ideas waiting from the lane's `revision` or its waiting count, or
+  `ideasMoved` from its `subscribe`; a hunk to `lib/idea-keeping` that has
+  `sendingStore` keep anything its store would not, or keep a change
+  without `ideaMoved`, or a hunk to `routes/_dashboard/_apk/journal/idea.tsx`
+  that hands the new idea's screen an ideas store other than
+  `sendingStore`'s; a hunk to `lib/home-link/voice-copy.ts` that
   makes `holdNotes` do anything but hand LeetType's answer notes
   (`leetypeNotesHeldByHome`) and the soundbites (their `heldByHome`) how to
   read what home holds of them; a hunk to `lib/home-link/leetype-log.ts` that
@@ -1205,6 +1225,8 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   `packages/ui/topik/src/lib/topik/adapter/lens-record-store/index.ts`,
   `apps/www/src/lib/leetype-takes/index.ts`,
   `apps/www/src/lib/home-link/studio-log.ts`, `apps/www/src/lib/studio-keeping/index.ts`,
+  `apps/www/src/lib/home-link/ideas.ts`, `apps/www/src/lib/idea-keeping/index.ts`,
+  `apps/www/src/routes/_dashboard/_apk/journal/idea.tsx`,
   `packages/ui/leetype/src/lib/leetype/session-log/index.ts`,
   `packages/ui/leetype/src/lib/leetype/session-log/home.ts`,
   `apps/www/src/lib/home-link/rust-rounds.ts`,
@@ -1236,7 +1258,11 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   watch only in `HomeLanes`' `LaneWatch`, its Send now only in Settings'
   readout, its revision `roundsTaken`, which a round taken from home does
   not move, and `exchangeRounds`' three requests, each answer kept as it
-  lands.
+  lands. Amended for ST26 (b) (#2453) by reading the ideas' part: one
+  `PUT` per idea `ideasToSend` names, only inside `sendVoice` after its
+  notes' exchange synced, and the lane's revision and count reading
+  `ideasWaiting`, which `ideasMoved` (a Send kept, or home's answer
+  remembered) tells.
 - _Tolerance:_ Studio's time log tells no one of a write, so a screen
   entered or left in Studio asks for no run, and Practice's waiting count
   shows it from the count's next redraw (#2425). Rust Rounds: a round home

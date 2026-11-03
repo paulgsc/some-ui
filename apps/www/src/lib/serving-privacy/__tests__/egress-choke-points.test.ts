@@ -98,7 +98,8 @@ const HOME_LINK_CALLERS = new Set([
   // LA8, IH1 (MIC10): Studio's idea answers, which read the pairing and ask
   // home for a take's words while the screen shows it being heard; and a new
   // idea's screen (ST26, `ideaHome`), which reads whether the phone is paired
-  // and listens for that changing, asking home nothing.
+  // and how the voice lane's last run ended, and listens for either
+  // changing, asking home nothing.
   "lib/idea-hearing/index.ts",
   // LA15, PULL2: a pull on a Jobs screen or the status page hears how the
   // jobs lane's run in the pull of home ended (`pulledLane`), asking nothing
