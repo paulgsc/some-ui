@@ -37,7 +37,7 @@ export type Surroundings = {
 
 const ID = /^[A-Z]{1,4}\d+$/
 const KIND = /^(OA[1-9]|RE([1-9]|10))$/
-const ISSUE = /^(some-ui|server)#\d+$/
+export const ISSUE = /^(some-ui|server)#\d+$/
 /** A file and a name in it: a test's title, a function, a promise's ID. */
 const PROOF = /^(some-ui|server):([^#\s]+)#(.{3,})$/
 /** Where the owner decided: an issue, a pull request, or a comment on one. */
@@ -46,6 +46,16 @@ const DECISION =
 const LEDGER = "ledger"
 const STORE = /^(server|mailbox|phone):[a-z0-9][a-z0-9_.-]*$/
 const WATCH_ORDER: Record<WatchBy, number> = { none: 0, dashboard: 1, alert: 2 }
+
+/** The path a `some-ui:` ref names, when nothing in the tree is there. */
+export function missingSomeUiPath(
+  ref: string | undefined,
+  exists: Surroundings["exists"]
+): string | null {
+  if (!ref?.startsWith("some-ui:")) return null
+  const path = ref.slice("some-ui:".length).split("#")[0] ?? ""
+  return exists(path) ? null : path
+}
 
 /** The ledger on its own: shape beyond parsing, proofs, issues, coverage. */
 export function findLedgerViolations(
@@ -61,9 +71,8 @@ export function findLedgerViolations(
     what: string,
     ref: string | undefined
   ): void => {
-    if (!ref?.startsWith("some-ui:")) return
-    const path = ref.slice("some-ui:".length).split("#")[0] ?? ""
-    if (!around.exists(path)) flag(id, `${what} ${path} does not exist`)
+    const missing = missingSomeUiPath(ref, around.exists)
+    if (missing !== null) flag(id, `${what} ${missing} does not exist`)
   }
 
   const seen = new Set<string>()
@@ -307,6 +316,10 @@ function weakenings(before: Objective, after: Objective): Array<string> {
   if (before.property !== after.property) out.push("its property changed")
   if (WATCH_ORDER[after.watch.by] < WATCH_ORDER[before.watch.by])
     out.push(`its watch went from ${before.watch.by} to ${after.watch.by}`)
+  const running = new Set(after.watch.checks ?? [])
+  const dropped = (before.watch.checks ?? []).filter((c) => !running.has(c))
+  if (dropped.length > 0)
+    out.push(`its watch no longer runs ${dropped.join(", ")}`)
   const bound = loosened(before.bound, after.bound)
   if (bound) out.push(bound)
   if (!before.retired && after.retired) out.push("it retired")
