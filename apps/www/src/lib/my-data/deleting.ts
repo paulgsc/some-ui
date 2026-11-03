@@ -18,6 +18,10 @@
  *   delete nothing and are never asked again. Only no answer, or home or
  *   this phone being busy, offers Try again, a tap, and only for the notes
  *   home didn't answer. Nothing retries on its own.
+ *
+ * LA19 (docs/learner-data-authority.md): `deleting` is reached only from
+ * `asking` or an `ended` sheet's `retryable` notes, and `asked` only for
+ * what `offersDelete` passes.
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { assertNever, readAs } from "@some-ui/core-utils"

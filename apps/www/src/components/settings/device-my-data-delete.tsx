@@ -6,6 +6,9 @@
  * didn't answer. It draws `lib/my-data`'s `DeleteSheet` and calls back; the
  * delete itself is `lib/my-data/deleting-runtime`'s. Every word is
  * `lib/my-data/words`' `DELETING`. Phone build only.
+ *
+ * LA19 (docs/learner-data-authority.md): `onConfirm` is the only way a
+ * delete starts, from a sheet that has said what goes and what stays.
  */
 import type { JSX } from "react"
 import { assertNever, formatSize } from "@some-ui/core-utils"

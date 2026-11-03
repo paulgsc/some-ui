@@ -12,6 +12,9 @@
  *   too. Nothing home did not answer with a receipt is let go.
  * - **Then My data reads again** (`reread`) while a page of it shows, so
  *   the list no longer shows what went.
+ *
+ * LA19 (docs/learner-data-authority.md): `ports.deleteNotes` runs only in
+ * `run`, after `stepDeleting` accepted a `confirmed` from the sheet.
  */
 import type { DeleteAsked } from "@/lib/home-link/delete-note"
 

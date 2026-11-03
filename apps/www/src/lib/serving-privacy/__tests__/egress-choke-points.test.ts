@@ -36,6 +36,11 @@
  *   (`lib/home-link/deleted-read`, MD3, whose read sends one
  *   `GET /voice-notes/deleted` per open or drag down of its Deleted page).
  *
+ * - **LA19 (MY-DATA MD5): only My data deletes a record on home.** Only
+ *   `lib/home-link/delete-note` sends home a `DELETE`, only `lib/my-data`
+ *   imports it, and only its delete runtime calls it
+ *   (docs/learner-data-authority.md holds the rest).
+ *
  * The last group feeds the checks known-bad sources, so a check that stopped
  * looking cannot stay green.
  */
@@ -169,6 +174,31 @@ const DELETED_SENDS = [['"GET"', "DELETED_PATH"]]
 const SET_ASIDE_SEND = "lib/home-link/set-aside.ts"
 const SET_ASIDE_SENDS = [['"PUT"', "setAsidePath(mark)"]]
 
+/** LA19 (MD5): the one module that sends home a delete, and what it sends. */
+const DELETE_SEND = "lib/home-link/delete-note.ts"
+const DELETE_SENDS = [['"DELETE"', "deletePath(id)"]]
+
+/**
+ * LA19 (MD5): the requests to home whose method is not written where they
+ * are sent, and why none of them can be a `DELETE`.
+ */
+const VARIABLE_METHOD_SENDS = [
+  // The Jobs notice's filing, `PUT` or `DELETE` of `/jobs/notice` alone: it
+  // files and unfiles a push token, never a record.
+  "lib/jobs/home.ts",
+  // `noticingBusy`'s wrapper, which passes its caller's method through.
+  "lib/home-link/runtime.ts",
+  // The sessions copy's transport, which throws on anything but `GET`,
+  // `POST` and `PATCH` before it sends.
+  "lib/home-link/sessions.ts",
+  // The shelf's `answerOrEnd`, whose method is typed `"GET" | "PUT"`.
+  "lib/home-link/shelf.ts",
+]
+
+/** LA19 (MD5): the one module that hands My data's delete runtime its port. */
+const DELETE_WIRING = "lib/my-data/index.ts"
+const DELETE_RUNTIME = "lib/my-data/deleting-runtime.ts"
+
 /** Every call of a function named `send` in `text`, as its arguments' text. */
 function sendCalls(path: string, text: string): Array<Array<string>> {
   const found: Array<Array<string>> = []
@@ -184,6 +214,41 @@ function sendCalls(path: string, text: string): Array<Array<string>> {
     }
   })
   return found
+}
+
+/**
+ * LA19: every request to home in `text` (a `send` with a method and a path)
+ * whose method is a `DELETE`, or is not written there, as its arguments.
+ */
+function deleteRisks(
+  path: string,
+  text: string
+): { deletes: Array<Array<string>>; variable: Array<Array<string>> } {
+  const requests = sendCalls(path, text).filter((args) => args.length >= 2)
+  // A template with a substitution names its method elsewhere.
+  const literal = (arg: string | undefined): boolean =>
+    arg !== undefined && /^(["'`]).*\1$/s.test(arg) && !arg.includes("${")
+  return {
+    deletes: requests.filter((args) =>
+      /^["'`]DELETE["'`]$/.test(args[0] ?? "")
+    ),
+    variable: requests.filter((args) => !literal(args[0])),
+  }
+}
+
+/**
+ * LA19: whether `text` names a `DELETE` in a string beside a string naming a
+ * `/voice-notes/` path: a request to home's delete however it is sent.
+ */
+function namesVoiceDelete(path: string, text: string): boolean {
+  const found = { method: false, voice: false }
+  walk(parse(path, text), (node) => {
+    if (ts.isStringLiteralLike(node) || ts.isTemplateHead(node)) {
+      if (node.text === "DELETE") found.method = true
+      if (node.text.includes("/voice-notes/")) found.voice = true
+    }
+  })
+  return found.method && found.voice
 }
 
 /** Every mention of `CapacitorHttp` in `text`: an import, a member, a string. */
@@ -770,6 +835,91 @@ describe("the checks themselves", () => {
     expect(
       networkLintDisables("x.ts", "// eslint-disable-next-line no-console")
     ).toEqual([])
+  })
+})
+
+describe("LA19 (MD5): only My data deletes a record on home", () => {
+  const sources = sourceFiles().filter((f) => !isTestFile(f))
+  const read = (f: string): string => readFileSync(join(SRC, f), "utf8")
+
+  it("sends a DELETE to home from delete-note alone, one of deletePath(id) per note", () => {
+    const deleting = sources.filter(
+      (f) => deleteRisks(f, read(f)).deletes.length > 0
+    )
+    expect(deleting).toEqual([DELETE_SEND])
+    expect(sendCalls(DELETE_SEND, read(DELETE_SEND))).toEqual([
+      // The run itself, handed to the link's `send`.
+      [expect.stringMatching(/^async \(send\) =>/)],
+      ...DELETE_SENDS,
+    ])
+  })
+
+  it("sends a method not written where it is sent only from the four callers that can't be a DELETE", () => {
+    expect(
+      sources.filter((f) => deleteRisks(f, read(f)).variable.length > 0).sort()
+    ).toEqual([...VARIABLE_METHOD_SENDS].sort())
+    expect(
+      deleteRisks("lib/jobs/home.ts", read("lib/jobs/home.ts")).variable
+    ).toEqual([
+      [
+        "filing.method",
+        '"/jobs/notice"',
+        "JSON.stringify({ token: filing.token })",
+      ],
+    ])
+    expect(read("lib/home-link/sessions.ts")).toContain(
+      'if (method !== "GET" && method !== "POST" && method !== "PATCH")'
+    )
+    expect(read("lib/home-link/shelf.ts")).toContain('method: "GET" | "PUT"')
+  })
+
+  it("names a DELETE beside a voice-notes path nowhere but delete-note", () => {
+    expect(sources.filter((f) => namesVoiceDelete(f, read(f)))).toEqual([
+      DELETE_SEND,
+    ])
+  })
+
+  it("is imported by My data alone, which hands it to its delete runtime as one port", () => {
+    const isDelete = (module: string): boolean =>
+      module === "lib/home-link/delete-note"
+    expect(
+      sources.filter((f) => valueImportsOf(f, read(f), isDelete).length > 0)
+    ).toEqual([DELETE_WIRING])
+    const wiring = read(DELETE_WIRING)
+    expect(wiring.match(/\bdeleteNotes\b/g)).toHaveLength(2)
+    expect(wiring).toMatch(/createDeleting\(\{\s*deleteNotes,/)
+    // The runtime calls the port once, in its run.
+    expect(read(DELETE_RUNTIME).match(/ports\.deleteNotes\(/g)).toHaveLength(1)
+    expect(
+      sources
+        .filter((f) => f !== DELETE_RUNTIME)
+        .filter((f) => /\.deleteNotes\(/.test(read(f)))
+    ).toEqual([])
+  })
+
+  it("flags a second sender, a variable method and a hidden voice-notes delete", () => {
+    expect(
+      deleteRisks("x.ts", 'void send("DELETE", `/voice-notes/${id}`)').deletes
+    ).toHaveLength(1)
+    expect(
+      deleteRisks("x.ts", "void send(how, path); void homeLink().send(run)")
+        .variable
+    ).toEqual([["how", "path"]])
+    expect(
+      deleteRisks("x.ts", "void send(`${how}`, path)").variable
+    ).toHaveLength(1)
+    expect(
+      namesVoiceDelete(
+        "x.ts",
+        'void request(`/voice-notes/${id}`, { method: "DELETE" })'
+      )
+    ).toBe(true)
+    expect(
+      namesVoiceDelete(
+        "x.ts",
+        '// "DELETE" /voice-notes/x\nvoid get("/voice-notes/kept")'
+      )
+    ).toBe(false)
   })
 })
 
