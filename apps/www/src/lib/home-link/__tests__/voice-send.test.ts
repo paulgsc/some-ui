@@ -374,7 +374,7 @@ describe("Studio's takes, once its route hands them in (ST12)", () => {
     handStudioIn()
     const unanswered: HomeCall = () => Promise.reject(new Error("no answer"))
     // Home stored the upload, and its answer never came back.
-    await expect(sendVoice(unanswered)).rejects.toThrow()
+    await expect(sendVoice(unanswered, AT_PAIRING)).rejects.toThrow()
     expect(fakes.home?.getSnapshot().waiting.map((note) => note.id)).toEqual([
       "t1",
     ])
