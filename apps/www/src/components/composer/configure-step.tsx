@@ -19,6 +19,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  usePager,
 } from "@some-ui/shared"
 
 import { ActivityIcon } from "@/components/activity-icon"
@@ -77,11 +78,19 @@ export const ConfigureStep = ({
     // under the one being typed into.
     getItemKey: (item) => item.instanceId,
   })
+  // The shared pager (GES5): on the phone a swipe across the list turns
+  // its page as Prev and Next do.
+  const { attach: attachPager } = usePager({
+    canPrev: page > 0,
+    canNext: page < pageCount - 1,
+    onPage: (to) => (to === "next" ? nextPage() : previousPage()),
+    shareRef: viewportRef,
+  })
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4">
       <div
-        ref={viewportRef}
+        ref={attachPager}
         data-scroll-intent="fitted-residue"
         className={
           // scroll-intent: fitted-residue — see activity-picker-step.tsx's

@@ -25,6 +25,7 @@ import {
   CardTitle,
   PageControls,
   Switch,
+  usePager,
 } from "@some-ui/shared"
 import type { SceneConfig } from "@some-ui/types"
 
@@ -57,11 +58,19 @@ const BasicSceneList = ({ scenes }: BasicSceneListProps): JSX.Element => {
     previous,
     next,
   } = useFittedPage(scenes, { minPerPage: 1, maxPerPage: 20 })
+  // The shared pager (GES5): on the phone a swipe across the list turns
+  // its page as Prev and Next do.
+  const { attach: attachPager } = usePager({
+    canPrev: page > 0,
+    canNext: page < pageCount - 1,
+    onPage: (to) => (to === "next" ? next() : previous()),
+    shareRef: viewportRef,
+  })
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
       <div
-        ref={viewportRef}
+        ref={attachPager}
         data-scroll-intent="fitted-residue"
         className={
           // scroll-intent: fitted-residue — see activity-picker-step.tsx's
@@ -204,21 +213,26 @@ export const ArrangementStep = ({
               </p>
             </CardHeader>
             <CardContent>
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext
-                  items={scenes.map((_, i) => `scene-${i}`)}
-                  strategy={verticalListSortingStrategy}
+              {/* The drag-and-drop list claims the pointer (GES5): a pager
+                  around it, or a pull from the page's top, leaves its touches
+                  to it. */}
+              <div data-claims-pointer="both">
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
                 >
-                  <OrchestratorTimeline
-                    scenes={scenes}
-                    onEditScene={handleEditScene}
-                  />
-                </SortableContext>
-              </DndContext>
+                  <SortableContext
+                    items={scenes.map((_, i) => `scene-${i}`)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <OrchestratorTimeline
+                      scenes={scenes}
+                      onEditScene={handleEditScene}
+                    />
+                  </SortableContext>
+                </DndContext>
+              </div>
             </CardContent>
           </Card>
 

@@ -2,8 +2,11 @@
  * Dragging down from the top of a phone page to check again (PULL0, #2457):
  * the gesture's whole policy, as one state union and a pure `step`.
  *
- * A drag arms only when it starts with the page at its top, goes down before
- * it goes sideways or up, and travels `ARM_PX` (after `RESISTANCE`). Letting
+ * A drag arms only when it starts with the page at its top, off any surface
+ * that claims the pointer upright (a vertical pager's deck, a drag-and-drop
+ * list), goes down before it goes sideways or up by the shared pager's one
+ * direction lock (`lockOf`, `SLOP_PX`, GES5), and travels `ARM_PX` (after
+ * `RESISTANCE`). Letting
  * go armed checks again; letting go short of that does nothing. One check at
  * a time until its deadline: while one is out a new drag is ignored, even
  * after the page moved on (`left`), when the check is still out but shows
@@ -18,6 +21,7 @@
  * on screen, and what is in hand stays.
  */
 import { assertNever } from "@some-ui/core-utils"
+import { lockOf } from "@some-ui/shared"
 
 /** How far the indicator travels per pixel the finger does: the pull resists. */
 export const RESISTANCE = 0.5
@@ -25,8 +29,6 @@ export const RESISTANCE = 0.5
 export const ARM_PX = 64
 /** The furthest the indicator travels, however far the finger goes. */
 export const MAX_PX = 96
-/** Finger travel before a touch counts as going one way or another. */
-export const SLOP_PX = 10
 /** How long "Up to date" stays before the indicator goes. */
 export const DONE_MS = 2_000
 /** How long a check that could not finish stays said. */
@@ -176,13 +178,13 @@ function touchStart(
 function touchMove(state: PullState, at: Point): Step {
   const { phase } = state
   if (phase.kind === "tracking") {
-    const dx = Math.abs(at.x - phase.from.x)
-    const dy = at.y - phase.from.y
-    // Up is the page scrolling, and sideways is a swipe: neither is a pull.
-    if (dy < -SLOP_PX) return to(state, IDLE)
-    if (dx > SLOP_PX && dx >= dy) return to(state, IDLE)
-    if (dy > SLOP_PX && dy > dx) return to(state, dragged(phase.from, at))
-    return stay(state)
+    // The phone's one direction lock, which the shared pager reads too
+    // (GES5): a touch it locks sideways is a swipe, and up is the page
+    // scrolling; neither is a pull.
+    const lock = lockOf(phase.from, at)
+    if (lock === null) return stay(state)
+    if (lock === "x" || at.y < phase.from.y) return to(state, IDLE)
+    return to(state, dragged(phase.from, at))
   }
   if (phase.kind === "pulling" || phase.kind === "armed") {
     return to(state, dragged(phase.from, at))

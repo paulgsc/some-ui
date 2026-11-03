@@ -83,6 +83,17 @@ async function takeOne(): Promise<void> {
   ).toBeEnabled()
 }
 
+/** A finger across `on`, `dx` pixels, as the shared pager hears it. */
+function swipeAcross(on: Element, dx: number): void {
+  const at = (x: number): { touches: Array<Partial<Touch>> } => ({
+    touches: [{ clientX: x, clientY: 300, identifier: 0 }],
+  })
+  fireEvent.touchStart(on, at(200))
+  fireEvent.touchMove(on, at(200 + dx / 2))
+  fireEvent.touchMove(on, at(200 + dx))
+  fireEvent.touchEnd(on, { touches: [] })
+}
+
 describe("Studio", () => {
   it("shows the loop as steps with no video, then Record as the place to start once Claude's scenes are opened", async () => {
     setup()
@@ -118,6 +129,45 @@ describe("Studio", () => {
       await screen.findByText("One pick missed, and here is why.")
     ).toBeInTheDocument()
     expect(screen.getByText(W.record.read)).toBeInTheDocument()
+  })
+
+  it("swipes between scenes through the shared pager, as Previous and Keep and next do, and never mid-take (GES5)", async () => {
+    setup()
+    await openPrimer()
+    fireEvent.click(screen.getByRole("button", { name: /^Record/ }))
+    await screen.findByText("Following the model paid off this week")
+    const scene = (): HTMLElement =>
+      screen.getByRole("region", { name: /^Scene \d of \d/ })
+    // No take yet, so no Keep and next: a swipe on goes nowhere either.
+    swipeAcross(scene(), -90)
+    expect(scene()).toHaveAccessibleName(W.record.sceneOf(1, 3))
+    // Mid-take, nothing turns.
+    fireEvent.click(
+      await screen.findByRole("button", { name: TAKE_WORDS.buttonLabel.ready })
+    )
+    await screen.findByRole("button", {
+      name: TAKE_WORDS.buttonLabel.recording,
+    })
+    swipeAcross(scene(), -90)
+    expect(scene()).toHaveAccessibleName(W.record.sceneOf(1, 3))
+    fireEvent.click(
+      screen.getByRole("button", { name: TAKE_WORDS.buttonLabel.recording })
+    )
+    await screen.findByRole("button", { name: TAKE_WORDS.buttonLabel.again })
+    // With its take, a swipe on turns the scene, and one back returns.
+    swipeAcross(scene(), -90)
+    expect(
+      await screen.findByText("One pick missed, and here is why.")
+    ).toBeInTheDocument()
+    expect(scene()).toHaveAccessibleName(W.record.sceneOf(2, 3))
+    // Both visible controls are still there.
+    expect(
+      screen.getByRole("button", { name: W.record.previous })
+    ).toBeEnabled()
+    swipeAcross(scene(), 90)
+    expect(
+      await screen.findByText("Following the model paid off this week")
+    ).toBeInTheDocument()
   })
 
   it("lets a take go when its button is tapped while the microphone opens", async () => {

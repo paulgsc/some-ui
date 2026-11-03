@@ -264,6 +264,20 @@ Android only"), not a declared invariant: a reviewer judges the hunk.
 
 Held by: `pnpm check:android-only`
 
+**A card of several turns by the one pager** (GES5, #2524). On the phone, a surface that
+shows one card of several (a question, a scene, a page of a list) turns it by a swipe through
+`usePager` (`@some-ui/shared`; its policy and family tests are `packages/ui/shared/src/lib/pager`),
+beside the visible control that does the same, and nothing else carries touch or pointer code:
+the pull down from a page's top (`apps/www/src/lib/pull-refresh`) is the other gesture, and it
+reads the pager's one direction lock. A surface that claims the pointer for itself (a
+drag-and-drop list) carries `data-claims-pointer`. `pnpm check:gestures`
+(`scripts/check-gestures.ts`, rule in `packages/eslint/src/gestures.ts`; also in root `pnpm lint`)
+fails a touch or pointer handler on a phone source outside those two runtimes, and a
+`PageControls` rendered without `usePager` beside it. A paged surface built from neither (buttons
+stepping an index) is review's.
+
+Held by: `pnpm check:gestures`
+
 ## Vestiges
 
 A workspace earns its place only while something live points to it: an app, a shipped

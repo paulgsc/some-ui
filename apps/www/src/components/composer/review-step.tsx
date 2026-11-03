@@ -24,6 +24,7 @@ import {
   ROOMY_WHEN_TALL,
   SHORT_WINDOW_ONLY,
   TALL_WINDOW_ONLY,
+  usePager,
 } from "@some-ui/shared"
 import type { SceneConfig } from "@some-ui/types"
 
@@ -78,6 +79,14 @@ export const ReviewStep = ({
     next: nextPage,
     previous: previousPage,
   } = useFittedPage(numberedItems, { minPerPage: 1, maxPerPage: 20 })
+  // The shared pager (GES5): on the phone a swipe across the list turns
+  // its page as Prev and Next do.
+  const { attach: attachPager } = usePager({
+    canPrev: page > 0,
+    canNext: page < pageCount - 1,
+    onPage: (to) => (to === "next" ? nextPage() : previousPage()),
+    shareRef: viewportRef,
+  })
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4">
@@ -106,7 +115,7 @@ export const ReviewStep = ({
           className={cn("flex min-h-0 flex-1 flex-col gap-3", ROOMY_WHEN_TALL)}
         >
           <div
-            ref={viewportRef}
+            ref={attachPager}
             data-scroll-intent="fitted-residue"
             className={
               // scroll-intent: fitted-residue — see activity-picker-step.tsx's

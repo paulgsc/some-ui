@@ -669,6 +669,21 @@ jobs:
       - name: Check the Android-only tokens
         run: nix develop .#ci --command node scripts/check-android-only.ts
 
+  # ── Gestures (repo-wide) ───────────────────────────────────────────────
+  # GES5 (packages/ui/shared/src/lib/pager): on the phone, a touch or pointer
+  # handler lives only in the shared pager's runtime and the pull's, and a
+  # PageControls comes with the pager (packages/eslint/src/gestures.ts). No
+  # `changes` gate, for test-layout's reason: a handler can land in any
+  # workspace. No install (Node's type stripping).
+  gestures:
+    name: Gestures
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/nix-setup
+      - name: Check the phone's gestures
+        run: nix develop .#ci --command node scripts/check-gestures.ts
+
   # ── Canon citations (repo-wide) ────────────────────────────────────────
   # CN1 (docs/canon/scripts/check-citations.sh): every canon lives in
   # docs/canon and every cited canon path resolves. No `changes` gate: a
@@ -746,6 +761,7 @@ jobs:
         assurance,
         branch-rules,
         android-only,
+        gestures,
         canon,
         commit-trailers,
         toolchain,

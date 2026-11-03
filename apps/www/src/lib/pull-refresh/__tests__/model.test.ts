@@ -3,6 +3,7 @@
  * table. A row the table leaves out fails, so a new phase or event cannot
  * land without saying what it does in each of the others.
  */
+import { SLOP_PX } from "@some-ui/shared"
 import { describe, expect, it } from "vitest"
 
 import type {
@@ -19,7 +20,6 @@ import {
   FAILED_MS,
   MAX_PX,
   RESISTANCE,
-  SLOP_PX,
   step,
   travel,
 } from "@/lib/pull-refresh/model"
@@ -273,7 +273,7 @@ describe("step: what each arm carries", () => {
     expect(travel(ARM_PX / RESISTANCE)).toBe(ARM_PX)
   })
 
-  it("a touch inside the slop decides nothing", () => {
+  it("a touch inside the pager's one slop decides nothing (GES5)", () => {
     const state = stateOf("tracking")
     expect(step(state, below(SLOP_PX, SLOP_PX))[0]).toBe(state)
   })

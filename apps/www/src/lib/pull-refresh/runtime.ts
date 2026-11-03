@@ -4,6 +4,7 @@
  * timers and the route subscription; `step` decides which answer is stale.
  */
 import { assertNever } from "@some-ui/core-utils"
+import { claimsAxis } from "@some-ui/shared"
 
 import type {
   CheckEnd,
@@ -134,7 +135,9 @@ export function createPullRuntime(ports: PullPorts): PullRuntime {
       dispatch({
         type: "touchStart",
         at,
-        atTop: atTop(event.target, scroller),
+        // A surface that claims an upright drag (a vertical deck, a
+        // drag-and-drop list) keeps it: the touch is not a pull (GES5).
+        atTop: atTop(event.target, scroller) && !claimsAxis(event.target, "y"),
         fingers: event.touches.length,
       })
     }

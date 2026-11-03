@@ -409,6 +409,43 @@ describe("recording a scene", () => {
   })
 })
 
+describe("a swipe on Record (GES5)", () => {
+  it("turns the scene as Previous and Keep and next do: on only once it has its take, never past the last, never mid-take", async () => {
+    const memory = memoryProjectStore()
+    const runtime = await opened(memory)
+    runtime.dispatch({ type: "recordChosen" })
+    const shot = (): unknown => runtime.getSnapshot().screen
+    // No take yet: no Keep and next, so a swipe on stays.
+    runtime.dispatch({ type: "sceneSwiped", to: "next" })
+    expect(shot()).toEqual({ kind: "record", shot: "path" })
+    // Mid-take, nothing turns.
+    runtime.dispatch({ type: "recordPressed" })
+    await until(runtime, (state) => state.activity.kind === "recording")
+    runtime.dispatch({ type: "sceneSwiped", to: "next" })
+    expect(shot()).toEqual({ kind: "record", shot: "path" })
+    runtime.dispatch({ type: "recordPressed" })
+    await until(
+      runtime,
+      (state) => state.activity.kind === "idle" && settledWrites(state)
+    )
+    runtime.dispatch({ type: "sceneSwiped", to: "next" })
+    expect(shot()).toEqual({ kind: "record", shot: "miss" })
+    runtime.dispatch({ type: "sceneSwiped", to: "prev" })
+    expect(shot()).toEqual({ kind: "record", shot: "path" })
+    // Back from the first scene, and on from the last, stay where they are:
+    // a swipe never ends the sitting.
+    runtime.dispatch({ type: "sceneSwiped", to: "prev" })
+    expect(shot()).toEqual({ kind: "record", shot: "path" })
+    runtime.dispatch({ type: "keepNextPressed" })
+    await recordOne(runtime)
+    runtime.dispatch({ type: "keepNextPressed" })
+    await recordOne(runtime)
+    expect(shot()).toEqual({ kind: "record", shot: "next" })
+    runtime.dispatch({ type: "sceneSwiped", to: "next" })
+    expect(shot()).toEqual({ kind: "record", shot: "next" })
+  })
+})
+
 describe("a sitting", () => {
   it("stopped after any take resumes on the same scene", async () => {
     const memory = memoryProjectStore()

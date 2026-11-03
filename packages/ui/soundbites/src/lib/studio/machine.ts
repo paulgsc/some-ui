@@ -93,6 +93,7 @@ import type { Note, Project, ProjectTake } from "@soundbites/lib/project/model"
 import { latest, step as stepProject } from "@soundbites/lib/project/model"
 import {
   capFor,
+  chosenTake,
   currentOf,
   cutListOf,
   fitted,
@@ -446,6 +447,8 @@ export type StudioIntent =
   | { readonly type: "discardPressed" }
   | { readonly type: "keepNextPressed" }
   | { readonly type: "previousPressed" }
+  /** A swipe across Record's scene (the shared pager, GES5). */
+  | { readonly type: "sceneSwiped"; readonly to: "next" | "prev" }
   | { readonly type: "playPressed" }
   | { readonly type: "doneForNowPressed" }
   | { readonly type: "wentChosen"; readonly went: Went }
@@ -2675,6 +2678,19 @@ export function step(state: StudioState, event: StudioEvent): Step {
     case "previousPressed": {
       if (project === null || screen.kind !== "record") return stay(state)
       return moveTo(state, sceneBeside(project, screen.shot, -1))
+    }
+
+    case "sceneSwiped": {
+      // A swipe turns the scene as a visible control does: back as
+      // Previous, on as Keep and next, which shows only once the scene has
+      // its take. It never ends the sitting, and like both it waits while a
+      // take is under way (`moveTo`).
+      if (project === null || screen.kind !== "record") return stay(state)
+      if (event.to === "prev") {
+        return moveTo(state, sceneBeside(project, screen.shot, -1))
+      }
+      if (chosenTake(project, screen.shot) === null) return stay(state)
+      return moveTo(state, sceneBeside(project, screen.shot, 1))
     }
 
     case "doneForNowPressed": {

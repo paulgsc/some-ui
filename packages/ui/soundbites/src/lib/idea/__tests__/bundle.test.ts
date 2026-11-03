@@ -11,7 +11,6 @@ import {
   cardView,
   initialBundle,
   stepBundle,
-  swipeOf,
 } from "@soundbites/lib/idea/bundle"
 import type { IdeaDraft } from "@soundbites/lib/idea/draft"
 import { IDEA_LISTS_SEED, newDraft } from "@soundbites/lib/idea/draft"
@@ -304,13 +303,6 @@ describe("a new idea as one bundle (ST26)", () => {
       expect(run([{ type: "hidden" }], busy).effects).toEqual([
         { type: "leave" },
       ])
-    })
-
-    it("tells a swipe from a tap by how far the finger went", () => {
-      expect(swipeOf(-61)).toBe("next")
-      expect(swipeOf(75)).toBe("prev")
-      expect(swipeOf(-20)).toBeNull()
-      expect(swipeOf(59)).toBeNull()
     })
   })
 

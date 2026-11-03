@@ -5,18 +5,19 @@
  * over and sent together. Renders `lib/idea/bundle.ts`'s state and forwards
  * taps; its words are Studio's (`bundle`), and the take's are the pattern's.
  *
- * The swipe is a pointer gesture on the cards: its travel is held here while
- * the finger is down, and what a release means is `swipeOf`'s. vitest's
- * pointer events don't reproduce a phone's touch (CK7, #2386).
+ * The swipe is the shared pager's (`usePager`, GES5): it hands back how far
+ * the card follows the finger, and a swipe turns a card as a dot does.
+ * vitest's touches don't reproduce a phone's (CK7, #2386).
  */
-import type { JSX, MouseEvent, PointerEvent, ReactNode } from "react"
-import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react"
+import type { JSX, ReactNode } from "react"
+import { useEffect, useId, useState, useSyncExternalStore } from "react"
 import { assertNever, cn } from "@some-ui/core-utils"
 import {
   Button,
   ConfirmSheet,
   TakeItem,
   TakeRows,
+  usePager,
   useTakePattern,
 } from "@some-ui/shared"
 import type { TakePatternSnapshot } from "@some-ui/voice-capture"
@@ -31,7 +32,6 @@ import {
   answeredCount,
   cardView,
   missing,
-  swipeOf,
 } from "@soundbites/lib/idea/bundle"
 import type {
   BundlePorts,
@@ -446,35 +446,14 @@ const Questions = ({
   snapshot: TakePatternSnapshot
   dispatch: Dispatch
 }): JSX.Element => {
-  // The finger's travel while it is down: the gesture's own, not the idea's.
-  const [drag, setDrag] = useState<{ x: number; dx: number } | null>(null)
-  // A swipe that began on a button ends in that button's click: it is
-  // swallowed, so a swipe never also starts a take. Cleared by the next
-  // touch, so a swipe that ended off any button holds back nothing.
-  const swiped = useRef(false)
-  const down = (event: PointerEvent): void => {
-    swiped.current = false
-    if (state.busy) return
-    setDrag({ x: event.clientX, dx: 0 })
-  }
-  const move = (event: PointerEvent): void => {
-    if (drag !== null) setDrag({ ...drag, dx: event.clientX - drag.x })
-  }
-  const up = (): void => {
-    if (drag === null) return
-    const to = swipeOf(drag.dx)
-    setDrag(null)
-    if (to === null) return
-    swiped.current = true
-    dispatch({ type: "swipe", to })
-  }
-  const click = (event: MouseEvent): void => {
-    if (!swiped.current) return
-    swiped.current = false
-    event.preventDefault()
-    event.stopPropagation()
-  }
-  const dx = drag?.dx ?? 0
+  // The shared pager (GES5): a swipe turns a card as a dot does, and none
+  // turns while a take is under way.
+  const { attach, offset, dragging } = usePager({
+    canPrev: state.index > 0,
+    canNext: state.index < IDEA_QUESTIONS.length - 1,
+    held: state.busy,
+    onPage: (to) => dispatch({ type: "swipe", to }),
+  })
   return (
     <div className="flex flex-col gap-3">
       <nav className="flex items-center justify-center gap-1">
@@ -509,15 +488,7 @@ const Questions = ({
           )
         })}
       </nav>
-      <div
-        data-swipe="cards"
-        className="touch-pan-y"
-        onPointerDown={down}
-        onPointerMove={move}
-        onPointerUp={up}
-        onPointerCancel={() => setDrag(null)}
-        onClickCapture={click}
-      >
+      <div ref={attach} data-swipe="cards">
         {/* The cards share one cell, each moved sideways by its distance
             from the card on screen, so the row clips them and none of them
             is wider than the phone. */}
@@ -533,8 +504,8 @@ const Questions = ({
               active={i === state.index}
               offset={{
                 cards: i - state.index,
-                px: dx,
-                easing: drag === null,
+                px: offset,
+                easing: !dragging,
               }}
               dispatch={dispatch}
             />
