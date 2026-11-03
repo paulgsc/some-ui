@@ -20,6 +20,7 @@ import {
 import { Link } from "@tanstack/react-router"
 import { CircleCheck, CircleMinus, CloudOff, ReceiptText } from "lucide-react"
 
+import { hasAudience } from "@/lib/build-profile"
 import type { DeleteSheet, Receipt } from "@/lib/my-data"
 import { retryable } from "@/lib/my-data/deleting"
 import {
@@ -263,7 +264,7 @@ const Ended = ({
             {DELETING.tryAgain}
           </Button>
         ) : null}
-        {gone.length > 0 ? (
+        {gone.length > 0 && hasAudience("apk") ? (
           <Button variant="outline" size="lg" className={BIG} asChild>
             <Link to="/settings/data/deleted" onClick={onClose}>
               {DELETING.allReceipts}
