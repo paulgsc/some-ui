@@ -1,5 +1,5 @@
 /** @vitest-environment node */
-import type { IdeaListener, Listened, Listening } from "@some-ui/soundbites"
+import type { Listened, Listening, TurnListener } from "@some-ui/voice-capture"
 import { describe, expect, it, vi } from "vitest"
 
 import { AWAY_MS, eitherListener } from "@/lib/idea-hearing"
@@ -9,7 +9,7 @@ function fake(
   name: string,
   available: boolean,
   result: Listened = { kind: "heard", words: name }
-): IdeaListener & {
+): TurnListener & {
   listened: Array<unknown>
 } {
   const listened: Array<unknown> = []

@@ -19,12 +19,8 @@
  * in by the idea screens' routes (`routes/_dashboard/_apk/journal`), which
  * may import it. Phone-only (`build.paths.ts`).
  */
-import type {
-  HearingPorts,
-  IdeaHome,
-  IdeaListener,
-  Listening,
-} from "@some-ui/soundbites"
+import type { HearingPorts, IdeaHome } from "@some-ui/soundbites"
+import type { Listening, TurnListener } from "@some-ui/voice-capture"
 import { onPageVisibility } from "@some-ui/voice-capture"
 
 import { deviceListener } from "@/lib/device-listen"
@@ -49,11 +45,11 @@ export function eitherListener(ports: {
   loaded: () => Promise<void>
   /** The id of the pairing the phone holds now, or `null`. */
   pairing: () => string | null
-  home: IdeaListener
-  device: IdeaListener
+  home: TurnListener
+  device: TurnListener
   /** Milliseconds since the epoch. */
   now: () => number
-}): IdeaListener {
+}): TurnListener {
   /** Home didn't answer: the pairing then, and until when it is skipped. */
   let away: { readonly pairing: string; readonly until: number } | null = null
   const home = (): boolean => {
@@ -61,7 +57,7 @@ export function eitherListener(ports: {
     if (pairing === null) return false
     return away?.pairing !== pairing || ports.now() >= away.until
   }
-  const which = (): IdeaListener => (home() ? ports.home : ports.device)
+  const which = (): TurnListener => (home() ? ports.home : ports.device)
   return {
     available: () => ports.loaded().then(() => which().available()),
     listen: (onWords, onReady, take): Listening => {
@@ -88,7 +84,7 @@ export function eitherListener(ports: {
 }
 
 /** One per page load, over the phone's one desk of idea takes. */
-let home: IdeaListener | null = null
+let home: TurnListener | null = null
 
 /**
  * The idea screens' listener: home hearing each take (`hear`, soundbites'
@@ -96,9 +92,9 @@ let home: IdeaListener | null = null
  * listens) while paired, the phone's recognizer otherwise.
  */
 export function phoneIdeaListener(
-  hear: (ports: HearingPorts) => IdeaListener
-): IdeaListener {
-  const homeListener = (): IdeaListener => {
+  hear: (ports: HearingPorts) => TurnListener
+): TurnListener {
+  const homeListener = (): TurnListener => {
     home ??= hear({
       takes: ideaTakes(),
       heard: askHeard,

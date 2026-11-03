@@ -3,9 +3,8 @@ import { fileURLToPath } from "node:url"
 import type {
   HeardAnswer,
   homeHearing as HomeHearing,
-  Listened,
 } from "@some-ui/soundbites"
-import type { BlobShelf, Playback } from "@some-ui/voice-capture"
+import type { BlobShelf, Listened, Playback } from "@some-ui/voice-capture"
 import { microphoneOwner } from "@some-ui/voice-capture"
 import { simulatedMicrophone, SPEAKING } from "@some-ui/voice-capture/testing"
 import { afterEach, describe, expect, it, vi } from "vitest"

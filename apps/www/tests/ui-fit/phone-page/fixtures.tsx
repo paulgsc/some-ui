@@ -18,7 +18,6 @@
 import type { JSX } from "react"
 import { inMemoryStorage } from "@some-ui/core-utils"
 import type {
-  IdeaListener,
   Project,
   ProjectEvent,
   StudioProps,
@@ -43,6 +42,7 @@ import {
 } from "@some-ui/soundbites/fixtures"
 import type { Format } from "@some-ui/video-render"
 import { episodeOf, FORMAT_SCHEMA } from "@some-ui/video-render"
+import type { TurnListener } from "@some-ui/voice-capture"
 import { ONE_TAKE } from "@some-ui/voice-capture"
 import type { MicScript } from "@some-ui/voice-capture/testing"
 import {
@@ -199,7 +199,7 @@ const HELD: Project = ((): Project => {
 const noop = (): void => undefined
 
 /** A recognizer that is there and never finishes, so each screen offers to listen. */
-const listener: IdeaListener = {
+const listener: TurnListener = {
   available: () => Promise.resolve(true),
   listen: () => ({
     done: new Promise(() => undefined),

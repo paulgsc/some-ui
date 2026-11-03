@@ -39,8 +39,12 @@ import {
   ForeignDeadlineError,
   reportFailure,
 } from "@some-ui/intent-kit"
-import type { IdeaListener, Listened, Listening } from "@some-ui/soundbites"
-import type { MicOwner } from "@some-ui/voice-capture"
+import type {
+  Listened,
+  Listening,
+  MicOwner,
+  TurnListener,
+} from "@some-ui/voice-capture"
 import { phoneMicrophone } from "@some-ui/voice-capture"
 
 import { isMissingPlugin, pluginCode } from "@/lib/intent/foreign"
@@ -328,7 +332,7 @@ function listen(
 export function createDeviceListener(
   deadlines: ListenDeadlines = LISTEN_DEADLINES,
   owner: MicOwner = phoneMicrophone
-): IdeaListener {
+): TurnListener {
   return {
     available: () =>
       callForeign<boolean>({
@@ -346,4 +350,4 @@ export function createDeviceListener(
   }
 }
 
-export const deviceListener: IdeaListener = createDeviceListener()
+export const deviceListener: TurnListener = createDeviceListener()

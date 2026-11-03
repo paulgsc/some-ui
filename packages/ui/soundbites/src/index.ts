@@ -8,8 +8,6 @@ export { keptDraftStore } from "./lib/idea/draft"
 export { keptIdeaStore } from "./lib/idea/store"
 export { IdeaShelf } from "./components/idea-shelf"
 export type { IdeaShare, IdeaShelfProps } from "./components/idea-shelf"
-export type { Listened } from "./lib/idea/machine"
-export type { IdeaListener, Listening, ListenTake } from "./lib/idea/runtime"
 export type {
   HeardAnswer,
   HearingPorts,

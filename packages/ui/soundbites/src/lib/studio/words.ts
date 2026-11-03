@@ -667,43 +667,9 @@ export const STUDIO_WORDS = {
         hint: "One picture: the scene you see first.",
       },
     } satisfies Record<QuestionId, { ask: string; hint: string }>,
-    talk: "Say it",
-    gettingReady: "Getting ready…",
-    listening: "Listening…",
-    stop: "Done talking",
-    finishing: "Finishing…",
-    /** The take is kept, and home is hearing it (IH1). */
-    hearing: "Home is hearing it…",
-    hearingLine:
-      "What you said is kept. Your words come back from home in a minute or two.",
-    right: "That's right",
-    fix: "Fix the words",
-    again: "Say it again",
-    type: "Type instead",
-    typeHint: "Type it the way you'd say it.",
-    keepWords: "Keep these words",
     skip: "Skip for now",
     noVoice:
       "Talking isn't available on this phone right now, so type it. Speech needs the microphone and the phone's offline English.",
-    notHeard: "Didn't hear anything. Try again, or type it.",
-    listenFailed: "Couldn't hear that. Try again, or type it.",
-    listenNotStarted: "Listening isn't working right now. Type it instead.",
-    notKept: "Couldn't keep that on this phone. Your words are still here.",
-    keptOnHome:
-      "Home has what you said but hasn't heard it yet. Type the words for now.",
-    keptOnPhone:
-      "What you said is kept on this phone and goes home later. Type the words for now.",
-    homeNoWords:
-      "Home has what you said but can't give the words back yet. Type the words for now.",
-    awayOnHome:
-      "Home can't be reached right now. It has what you said. Type the words for now.",
-    awayOnPhone:
-      "Home can't be reached right now. What you said is kept on this phone and goes home later. Type the words for now.",
-    takeFull:
-      "There's no room on this phone for another take until home has the ones before it. Type it instead.",
-    takeNotKept: "Couldn't keep that take. Try again, or type it.",
-    refused: (reason: RecordingFailure): string =>
-      RECORDING_FAILURE_COPY[reason],
     kept: "Kept. Come back to it any time.",
     answerSkipped: (n: number): string =>
       `Answer the ${n === 1 ? "one" : n} you skipped`,

@@ -62,7 +62,12 @@
 import { assertNever, isRecord, jsonOf } from "@some-ui/core-utils"
 import type { Episode, Idea, Look, Review, Voice } from "@some-ui/video-render"
 import { EPISODE_SCHEMA, parseEpisode, readReview } from "@some-ui/video-render"
-import type { RecordingFailure, Take, TakePhase } from "@some-ui/voice-capture"
+import type {
+  Listened,
+  RecordingFailure,
+  Take,
+  TakePhase,
+} from "@some-ui/voice-capture"
 // eslint-disable-next-line one-owner/no-local-microphone -- Studio runs its own take until its machine embeds the take kit (#2442)
 import {
   discardTake,
@@ -70,7 +75,6 @@ import {
   openTake,
   stepTake,
 } from "@some-ui/voice-capture"
-import type { Listened } from "@soundbites/lib/idea/machine"
 import { isIdeaReply } from "@soundbites/lib/idea/reply"
 import type { Primer } from "@soundbites/lib/journal/primer"
 import { readPrimer } from "@soundbites/lib/journal/primer"

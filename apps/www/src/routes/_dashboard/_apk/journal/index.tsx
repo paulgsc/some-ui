@@ -1,12 +1,7 @@
 import type { JSX } from "react"
 import { useEffect } from "react"
 import { useConfirmSheet } from "@some-ui/shared"
-import type {
-  IdeaListener,
-  Project,
-  StudioShare,
-  WingLink,
-} from "@some-ui/soundbites"
+import type { Project, StudioShare, WingLink } from "@some-ui/soundbites"
 import {
   keptLetGo,
   keptTimeLog,
@@ -20,6 +15,7 @@ import {
   StudioHome,
   waitingIds,
 } from "@some-ui/soundbites"
+import type { TurnListener } from "@some-ui/voice-capture"
 import { createFileRoute, Link } from "@tanstack/react-router"
 
 import { deviceListener } from "@/lib/device-listen"
@@ -74,7 +70,7 @@ const ShareStudio = ({
 }
 
 /** The phone's recognizer for a note said in Watch, in the Android app (ST5). */
-const studioPorts: { listener: IdeaListener } | undefined =
+const studioPorts: { listener: TurnListener } | undefined =
   import.meta.env.VITE_DEVICE_BACKEND === "true"
     ? { listener: deviceListener }
     : undefined
