@@ -80,7 +80,7 @@
     skill
   ]
   #v(1em)
-  #text(size: 9.5pt)[Version 1.21 --- 2026-10-21]
+  #text(size: 9.5pt)[Version 1.22 --- 2026-11-03]
   #v(2cm)
 ]
 
@@ -1099,6 +1099,23 @@ before it can update a belief about $mu$ (Prop. 9.1).
   report; carrying reflections would be a new amendment.
 ]
 
+#remark("3.9", name: "A spoken reflection, heard at home")[
+  Remark 3.8's "nothing transcribes it" is amended for the owner's deployment
+  (Rem. 7.7) and no other. There a spoken reflection goes home as a voice note
+  once it is kept, while the phone is paired with home, and home, where its
+  hearing is turned on, transcribes it on its own hardware and keeps the words
+  it heard beside the recording, never instead of it: the recording stays the
+  reflection. Home is the owner's own storage (Rem. 7.7), so this is no
+  departure from Remark 7.3, and Remark 3.7's platform recognizer, which may
+  send the audio to its vendor, does not come back with it. The same holds of
+  every take Remark 4.16 keeps as a spoken reflection is kept. The words home
+  heard are not an observation (Def. 3.1) any more than the reflection is, and
+  Proposition 3.4 keeps them out of every belief update and every draw. They
+  leave home only as Remark 7.7 lets anything leave it. Where there is no home
+  --- the Pages build, and every learner who is not the owner --- Remark 3.8
+  holds as filed.
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 = The Exercise: Instrument and Intervention
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1954,6 +1971,81 @@ rather than as *data*, and the remedy is to exhibit the data.
   understood (the owner, \#1839). What it asked survives as Remark 4.15's
   step-down; what it reached for is Definition 4.9's, in a session of its own
   (Cor. 4.8).
+]
+
+#definition("4.10", name: "Spoken turn")[
+  A *spoken turn* is an exercise (Def. 4.1) in five steps. (1) The *prime*:
+  its content instance $c$, what is put in front of the learner --- a
+  moment, a feeling or a scene, in Hangul. (2) One *take*: the learner
+  speaks, and the recording is the response. (3) The take *heard*: the words
+  home transcribed from it, with the prime as the hearing's context
+  (Prop. 8.5). (4) The learner's *confirmation* of the words heard, one of
+  *meant* (they are what the learner meant to say), *again* (another take
+  for the same prime, the first kept), or *fixed* (the learner writes the
+  words they meant, kept beside the words first heard). (5) The *reply*: the
+  next turn's prime. A track may add a way out of the confirmation of its
+  own; each lands with an amendment of its own.
+
+  Its direction is production (Def. 4.2), meaning $->$ spoken form, and its
+  response is spoken and *observed*: unlike Definition 4.8's rep, the take
+  is captured, and it is observed through the words heard of it and the
+  learner's confirmation. Nothing in the turn has a right answer. For a
+  spoken turn, Definition 4.1's $c$ is a stimulus with an empty answer
+  sequence; its $k$ is extended to a set $K_e$ as Definition 4.8 extends it,
+  the concepts the prime is authored with, and that set may be empty, since
+  the turn credits nothing (Cor. 4.9). Nothing else in Definition 4.1
+  changes.
+
+  Which content supplies the reply, and when, is not settled here. A reply
+  authored ahead of time is content under Proposition 8.1 and needs nothing
+  new. A reply written by a model while the learner waits is class IV at
+  runtime (Def. 8.1), which Proposition 8.1 places at authoring time, so
+  admitting it is a later amendment (the owner's decision D1 on issue
+  \#2545), and this one does not make it.
+]
+
+#corollary("4.9", name: "The spoken-turn valuation, declared")[
+  The handheld renderer of `packages/ui/topik` gains the spoken turn
+  (Def. 4.10). Corollary 4.4's capability set, $p_"response" in
+  {"selection", "assembly"}$, is extended by $p_"response" = "spoken"$,
+  observed, for this exercise alone, and only where the take is captured and
+  heard: the phone app, paired with home. Where the take cannot be captured
+  the turn is not offered, as Corollary 4.6's rep is not offered without
+  its audio; Corollary 4.4's line and check are unchanged. The valuation:
+  $p_"direction" = "production"$;
+  $p_"response" = "spoken"$, observed;
+  $p_"modality" = "glyph"$ for the prime, with the drama's renditions
+  (Rems. 9.2, 9.3) where a scene primes it;
+  $p_"hint" = "none"$;
+  $p_"pressure" = "none"$ --- nothing times a turn;
+  $p_"scored" = "false"$; $p_"credited" = "false"$;
+  $p_"retry" = "free"$, realised as *again*;
+  $p_"repeat" = "none"$;
+  $p_"reveal" = "heard"$, a new value of an existing dimension (Thm. 4.1):
+  the words home heard of the learner's own take, shown back as theirs. It
+  is not a hint and not an answer: it discloses nothing the learner did not
+  say, and there is no answer for it to sit beside.
+
+  Three decisions are named rather than glossed. (i) *The confirmation is
+  the learner's word*, checked by nothing. It makes the words heard an
+  observation of what the learner said, never of whether it was right, and
+  it is the confidence Proposition 8.2 (i) asks a sensor's output to carry.
+  (ii) *Everything is kept.* Every take, the words heard of it and the
+  confirmation are kept, a fix beside the words first heard and never
+  instead of them, on the device and home (Rem. 7.7); a turn's record is a
+  record outside the envelope (Rem. 7.5), and the bound it is kept under
+  lands with the source that keeps it. (iii) *A turn without its words is
+  complete.* Where home's hearing is absent --- not paired, turned off, or
+  the words not back --- the take is kept, the turn says it is not heard
+  yet, and the learner may write the words, confirm them once they come, or
+  move on (Prop. 8.5 (iv)).
+
+  As in Corollaries 4.3--4.6, $p_"credited" = "false"$ makes
+  Proposition 3.1 and Corollary 3.2 hold vacuously. Remark 4.5's trigger
+  carries over with a condition: when O3 exists, a confirmed turn is an
+  observation of production with no deterministic grader (Prop. 8.3), so
+  crediting it needs a grader admitted first. No surface shows a turn as
+  right, wrong, scored or levelled.
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -3149,6 +3241,34 @@ estimating a cost.
   app may still be reading it when the sheet closes.
 ]
 
+#proposition("8.5", name: "Home's hearing is a sensor inside the turn")[
+  Home's transcription of a take is class III (Def. 8.1): it maps speech
+  into text, by a speech model with Axiom 8.1's properties --- slow against
+  a frame, non-deterministic, and possibly absent. It is admitted at runtime
+  on the terms of Proposition 8.2, with condition (iii) amended for the
+  spoken turn (Def. 4.10): its words may come back while the turn is open,
+  because nothing waits on them. Each condition, for the turn:
+  (i) the words heard are an observation of the take, held as text beside
+  it, whose confidence is the learner's confirmation (Cor. 4.9 (i)); they
+  are never a belief write;
+  (ii) the schema is closed --- the words as text, or nothing yet --- and an
+  answer from home that does not read so is discarded, leaving the take
+  unheard, never shown;
+  (iii) the hearing is asked for once the take is kept, and no step of the
+  turn waits on it: the turn is complete with the take alone, the learner
+  may move on at any moment, and the next prime is drawn as it would be
+  without the words, so no policy decision reads them (Thm. 8.1). A reply
+  that answers what was said would read them, and is the later amendment
+  Definition 4.10 names;
+  (iv) without home, or with its hearing off, a take is kept unheard, and
+  the turn is as Corollary 4.9 (iii) says.
+  The prime may go with the take as the hearing's context. It is content,
+  the same for every learner (Rem. 7.3), and it biases what is heard toward
+  itself, which is what the confirmation is there to catch (§12). Home is
+  the owner's own storage (Rem. 7.7), so neither the take nor its prime
+  leaves the boundary to be heard.
+]
+
 // ═══════════════════════════════════════════════════════════════════════════
 = The Renderer
 // ═══════════════════════════════════════════════════════════════════════════
@@ -3544,6 +3664,29 @@ is added. It is filed ahead of the source it describes.
    describes it. O3 still does not exist for either to write into.],
 )
 
+#heading(level: 2)[Update --- TALK7 (v1.22): `packages/ui/topik` spoken turn]
+
+As above, earlier rows are retained and this one is added. It is filed ahead
+of the source it describes.
+
+#table(
+  columns: (3.3cm, 3.5cm, 1fr),
+  stroke: 0.4pt,
+  inset: 6pt,
+  [*Surface*], [*Current learner model*], [*What changed, and what did not*],
+
+  [`packages/ui/topik`, spoken turn],
+  [No belief and no persistence of competence. The learner's takes, the
+   words home heard of each, and their confirmations, kept on the device
+   and home (Cor. 4.9 (ii))],
+  [A new exercise on the surface (Def. 4.10, Cor. 4.9): a prime in Hangul,
+   one take, the words home heard of it shown back, and the learner's own
+   word on whether that is what they meant. Nothing is picked, graded or
+   scored, and home's hearing is a sensor nothing waits on (Prop. 8.5). The
+   reply between turns is authored content until a later amendment says
+   otherwise. O3 still does not exist for it to write into.],
+)
+
 #heading(level: 2)[The unreconciled duplication]
 
 The most consequential finding of the audit is not in the table. Two
@@ -3775,6 +3918,17 @@ would cost.
   and which misform was chosen carries nothing. Cost: grammar-lens items are
   drawn from lines below the learner's level, or the ladder gains lower
   rungs. Detectable from the step-down's last rung in Remark 4.18's record.
+
++ *The prime speaks for the learner.* The prime goes with the take as the
+  hearing's context (Prop. 8.5), so a take said badly can come back as the
+  phrase the prime suggests rather than the one said, and the learner,
+  hearing what they hoped to say, confirms it. If takes heard again without
+  the prime come back as something else on turns the learner confirmed as
+  meant, the confirmation is not observing the speech, and Corollary 4.9's
+  words heard measure the prime. Cost: the prime is withheld from the
+  hearing, or each take is heard both ways and both are shown, and
+  Proposition 8.5's admission of the prime is withdrawn. Detectable from
+  the record, since every hearing of a take is kept beside it.
 
 // ═══════════════════════════════════════════════════════════════════════════
 = Amendment Protocol
@@ -4099,6 +4253,27 @@ mark and a sheet of its facts. Remark 4.9's sitting list, which landed with
 \#1976 without an entry here, is recorded with it. Motivated by the owner's
 wish to see which sentences they have been shown (\#1965, \#1977). Filed
 with `packages/ui/topik`'s tally. Moves the front-matter version line.
+
+*v1.22 --- 2026-11-03.* Admits the spoken turn on the handheld surface, as
+new items: an exercise of production whose spoken response is observed, in
+five steps --- a prime in Hangul, one take, the words home heard of it, the
+learner's confirmation (meant, again, or fixed), and a reply --- with an
+empty answer sequence (Def. 4.10); its valuation, extending Corollary 4.4's
+capability set by an observed spoken response for this exercise alone, with
+$p_"reveal"$ gaining *heard*, nothing scored or credited, and every take,
+hearing and confirmation kept (Cor. 4.9); home's hearing as a class III
+sensor inside the turn, amending Proposition 8.2 (iii) because nothing waits
+on it (Prop. 8.5); and a spoken reflection heard at home, amending
+Remark 3.8's "nothing transcribes it" for the owner's deployment
+(Rem. 3.9). A reply a model writes while the learner waits is not admitted:
+it waits on the owner's decision D1 (\#2545). Remark 7.7, which landed with
+\#2184 without an entry here, is recorded with it. Adds a TALK7 row to §10
+and a falsifier to §12. Motivated by the owner's direction that a session is
+a conversation, spoken, heard in context and confirmed, with no choices and
+no right or wrong (\#2545), and by home's Whisper, which already hears
+the voice notes sent to it where it is turned on (paulgsc/server\#460). Filed ahead of `packages/ui/topik`'s
+spoken turn (TALK8, \#2553) and the turn pattern it runs on (TALK1,
+\#2546). Moves the front-matter version line.
 
 #pagebreak()
 
