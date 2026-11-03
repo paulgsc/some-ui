@@ -1,5 +1,7 @@
 export * from "./authorship"
 export * from "./cut-list"
+export * from "./episode"
+export * from "./format"
 export * from "./hearings"
 export * from "./plan"
 export * from "./plans"

@@ -7,8 +7,6 @@ import {
   isLegendSlide,
   LEGEND_SLIDES,
   LEGEND_WEEK,
-  legendLine,
-  narration,
   WEEK_SLIDES,
   type SlideId,
 } from "@playoff-delta/lib/slides"
@@ -75,7 +73,7 @@ const Frame = ({
   at,
   running,
   fill,
-  script,
+  data,
   onBack,
   onNext,
 }: {
@@ -86,8 +84,11 @@ const Frame = ({
   at: number
   running: boolean
   fill: boolean
-  /** Record mode: the week, its slides, holds and voiceover, for the recorder. */
-  script?: string
+  /**
+   * Record mode: the season the frame plays, for the recorder, which makes
+   * the episode from it (`lib/show`) and sums its bytes.
+   */
+  data?: string
   onBack?: () => void
   onNext?: () => void
 }): JSX.Element => {
@@ -96,7 +97,7 @@ const Frame = ({
     <div
       className={`pd-frame bg-background text-foreground ${fill ? "pd-frame--fill" : "border-border h-full max-w-full rounded-[calc(var(--radius)+0.75rem)] border"}`}
       data-slide={id}
-      data-pd-script={script}
+      data-pd-season={data}
     >
       <Segments ids={ids} at={at} running={running} />
       <div className="pd-meta">
@@ -118,18 +119,6 @@ const Frame = ({
     </div>
   )
 }
-
-/** The voiceover line for one slide of an episode. */
-const lineOf = (
-  season: StorySeason,
-  week: StoryWeek | null,
-  id: SlideId
-): string =>
-  isLegendSlide(id)
-    ? legendLine(season, id)
-    : week === null
-      ? ""
-      : narration(season, week, id)
 
 /** One episode's story (a week, or the legend); keyed by it, so a new one starts from its first slide. */
 const WeekStory = ({
@@ -198,14 +187,7 @@ const WeekStory = ({
         at={at}
         running={false}
         fill
-        script={JSON.stringify({
-          week: week?.week ?? LEGEND_WEEK,
-          slides: ids.map((slide) => ({
-            slide,
-            holdMs: HOLD_MS[slide],
-            line: lineOf(season, week, slide),
-          })),
-        })}
+        data={JSON.stringify(season)}
       />
     )
 

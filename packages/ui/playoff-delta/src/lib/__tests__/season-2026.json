@@ -1,0 +1,1767 @@
+{
+  "version": 6,
+  "label": "2026",
+  "seasonLength": 17,
+  "team": "SF",
+  "names": {
+    "ARI": "Cardinals",
+    "ATL": "Falcons",
+    "BAL": "Ravens",
+    "BUF": "Bills",
+    "CAR": "Panthers",
+    "CHI": "Bears",
+    "CIN": "Bengals",
+    "CLE": "Browns",
+    "DAL": "Cowboys",
+    "DEN": "Broncos",
+    "DET": "Lions",
+    "GB": "Packers",
+    "HOU": "Texans",
+    "IND": "Colts",
+    "JAX": "Jaguars",
+    "KC": "Chiefs",
+    "LAC": "Chargers",
+    "LAR": "Rams",
+    "LV": "Raiders",
+    "MIA": "Dolphins",
+    "MIN": "Vikings",
+    "NE": "Patriots",
+    "NO": "Saints",
+    "NYG": "Giants",
+    "NYJ": "Jets",
+    "PHI": "Eagles",
+    "PIT": "Steelers",
+    "SEA": "Seahawks",
+    "SF": "Niners",
+    "TB": "Buccaneers",
+    "TEN": "Titans",
+    "WAS": "Commanders"
+  },
+  "conference": "NFC",
+  "rivals": ["LAR", "SEA", "ARI"],
+  "weeks": [
+    {
+      "week": 1,
+      "record": {
+        "w": 0,
+        "l": 0
+      },
+      "game": {
+        "opponent": "LAR",
+        "won": true,
+        "relation": "division"
+      },
+      "pending": {
+        "before": 272,
+        "after": 256
+      },
+      "poles": {
+        "before": {
+          "us": {
+            "low": 0.0,
+            "high": 17.0
+          },
+          "division": {
+            "floor": 2.0,
+            "bloc": {
+              "teams": ["LAR", "SEA", "ARI"],
+              "banked": 0.0,
+              "games": 6
+            },
+            "ceiling": {
+              "lose": 17.0,
+              "win": 15.0,
+              "team": "LAR"
+            }
+          },
+          "conference": {
+            "floor": 6.0,
+            "bloc": {
+              "teams": [
+                "DAL",
+                "WAS",
+                "NYG",
+                "DET",
+                "GB",
+                "MIN",
+                "CHI",
+                "TB",
+                "ATL",
+                "NO",
+                "CAR",
+                "LAR",
+                "SEA",
+                "ARI"
+              ],
+              "banked": 0.0,
+              "games": 73
+            },
+            "ceiling": {
+              "lose": 17.0,
+              "win": 17.0,
+              "team": "PHI"
+            }
+          },
+          "held": 7.0,
+          "seeds": {
+            "best": 1,
+            "worst": null
+          }
+        },
+        "after": {
+          "us": {
+            "low": 1.0,
+            "high": 17.0
+          },
+          "division": {
+            "floor": 3.0,
+            "bloc": {
+              "teams": ["LAR", "SEA", "ARI"],
+              "banked": 2.0,
+              "games": 6
+            },
+            "ceiling": {
+              "lose": 17.0,
+              "win": 15.0,
+              "team": "SEA"
+            }
+          },
+          "conference": {
+            "floor": 6.0,
+            "bloc": {
+              "teams": [
+                "WAS",
+                "NYG",
+                "DET",
+                "GB",
+                "MIN",
+                "CHI",
+                "TB",
+                "ATL",
+                "NO",
+                "CAR",
+                "LAR",
+                "SEA",
+                "ARI"
+              ],
+              "banked": 6.0,
+              "games": 61
+            },
+            "ceiling": {
+              "lose": 17.0,
+              "win": 17.0,
+              "team": "PHI"
+            }
+          },
+          "held": 7.0,
+          "seeds": {
+            "best": 1,
+            "worst": null
+          }
+        }
+      },
+      "results": [
+        {
+          "home": "SEA",
+          "away": "NE",
+          "winner": "SEA",
+          "kind": "exported",
+          "division": {
+            "cohort": "idle",
+            "floor": 0.0,
+            "ceiling": 0.0
+          },
+          "conference": {
+            "cohort": "idle",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "LAR",
+          "away": "SF",
+          "winner": "SF",
+          "kind": "own",
+          "division": {
+            "cohort": "best",
+            "floor": 0.0,
+            "ceiling": 0.0
+          },
+          "conference": {
+            "cohort": "best",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "PIT",
+          "away": "ATL",
+          "winner": "PIT",
+          "kind": "exported",
+          "division": null,
+          "conference": {
+            "cohort": "idle",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "CIN",
+          "away": "TB",
+          "winner": "CIN",
+          "kind": "exported",
+          "division": null,
+          "conference": {
+            "cohort": "idle",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "DET",
+          "away": "NO",
+          "winner": "DET",
+          "kind": "inside",
+          "division": null,
+          "conference": {
+            "cohort": "forced",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "CAR",
+          "away": "CHI",
+          "winner": "CHI",
+          "kind": "inside",
+          "division": null,
+          "conference": {
+            "cohort": "forced",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "LAC",
+          "away": "ARI",
+          "winner": "ARI",
+          "kind": "exported",
+          "division": {
+            "cohort": "idle",
+            "floor": 0.0,
+            "ceiling": 0.0
+          },
+          "conference": {
+            "cohort": "idle",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "PHI",
+          "away": "WAS",
+          "winner": "PHI",
+          "kind": "inside",
+          "division": null,
+          "conference": {
+            "cohort": "forced",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "MIN",
+          "away": "GB",
+          "winner": "MIN",
+          "kind": "inside",
+          "division": null,
+          "conference": {
+            "cohort": "forced",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "NYG",
+          "away": "DAL",
+          "winner": "NYG",
+          "kind": "inside",
+          "division": null,
+          "conference": {
+            "cohort": "forced",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        }
+      ]
+    },
+    {
+      "week": 2,
+      "record": {
+        "w": 1,
+        "l": 0
+      },
+      "game": {
+        "opponent": "MIA",
+        "won": true,
+        "relation": "other"
+      },
+      "pending": {
+        "before": 256,
+        "after": 240
+      },
+      "poles": {
+        "before": {
+          "us": {
+            "low": 1.0,
+            "high": 17.0
+          },
+          "division": {
+            "floor": 3.0,
+            "bloc": {
+              "teams": ["LAR", "SEA", "ARI"],
+              "banked": 2.0,
+              "games": 6
+            },
+            "ceiling": {
+              "lose": 17.0,
+              "win": 15.0,
+              "team": "SEA"
+            }
+          },
+          "conference": {
+            "floor": 6.0,
+            "bloc": {
+              "teams": [
+                "WAS",
+                "NYG",
+                "DET",
+                "GB",
+                "MIN",
+                "CHI",
+                "TB",
+                "ATL",
+                "NO",
+                "CAR",
+                "LAR",
+                "SEA",
+                "ARI"
+              ],
+              "banked": 6.0,
+              "games": 61
+            },
+            "ceiling": {
+              "lose": 17.0,
+              "win": 17.0,
+              "team": "PHI"
+            }
+          },
+          "held": 7.0,
+          "seeds": {
+            "best": 1,
+            "worst": null
+          }
+        },
+        "after": {
+          "us": {
+            "low": 2.0,
+            "high": 17.0
+          },
+          "division": {
+            "floor": 3.0,
+            "bloc": {
+              "teams": ["LAR", "SEA"],
+              "banked": 3.0,
+              "games": 2
+            },
+            "ceiling": {
+              "lose": 17.0,
+              "win": 15.0,
+              "team": "SEA"
+            }
+          },
+          "conference": {
+            "floor": 6.0,
+            "bloc": {
+              "teams": ["DET", "GB", "MIN", "CHI", "TB", "ATL", "NO", "CAR"],
+              "banked": 7.0,
+              "games": 35
+            },
+            "ceiling": {
+              "lose": 17.0,
+              "win": 16.0,
+              "team": "PHI"
+            }
+          },
+          "held": 7.0,
+          "seeds": {
+            "best": 1,
+            "worst": null
+          }
+        }
+      },
+      "results": [
+        {
+          "home": "BUF",
+          "away": "DET",
+          "winner": "BUF",
+          "kind": "exported",
+          "division": null,
+          "conference": {
+            "cohort": "idle",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "NYJ",
+          "away": "GB",
+          "winner": "GB",
+          "kind": "exported",
+          "division": null,
+          "conference": {
+            "cohort": "idle",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "BAL",
+          "away": "NO",
+          "winner": "NO",
+          "kind": "exported",
+          "division": null,
+          "conference": {
+            "cohort": "idle",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "TEN",
+          "away": "PHI",
+          "winner": "PHI",
+          "kind": "exported",
+          "division": null,
+          "conference": {
+            "cohort": "idle",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "CHI",
+          "away": "MIN",
+          "winner": "MIN",
+          "kind": "inside",
+          "division": null,
+          "conference": {
+            "cohort": "forced",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "TB",
+          "away": "CLE",
+          "winner": "CLE",
+          "kind": "exported",
+          "division": null,
+          "conference": {
+            "cohort": "idle",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "ATL",
+          "away": "CAR",
+          "winner": "CAR",
+          "kind": "inside",
+          "division": null,
+          "conference": {
+            "cohort": "forced",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "DAL",
+          "away": "WAS",
+          "winner": "DAL",
+          "kind": "inside",
+          "division": null,
+          "conference": {
+            "cohort": "forced",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "SF",
+          "away": "MIA",
+          "winner": "SF",
+          "kind": "own",
+          "division": {
+            "cohort": "best",
+            "floor": 0.0,
+            "ceiling": 0.0
+          },
+          "conference": {
+            "cohort": "best",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "ARI",
+          "away": "SEA",
+          "winner": "SEA",
+          "kind": "inside",
+          "division": {
+            "cohort": "forced",
+            "floor": 0.0,
+            "ceiling": 0.0
+          },
+          "conference": {
+            "cohort": "forced",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "LAR",
+          "away": "NYG",
+          "winner": "LAR",
+          "kind": "inside",
+          "division": {
+            "cohort": "idle",
+            "floor": 0.0,
+            "ceiling": 0.0
+          },
+          "conference": {
+            "cohort": "forced",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        }
+      ]
+    },
+    {
+      "week": 3,
+      "record": {
+        "w": 2,
+        "l": 0
+      },
+      "game": {
+        "opponent": "ARI",
+        "won": true,
+        "relation": "division"
+      },
+      "pending": {
+        "before": 240,
+        "after": 224
+      },
+      "poles": {
+        "before": {
+          "us": {
+            "low": 2.0,
+            "high": 17.0
+          },
+          "division": {
+            "floor": 3.0,
+            "bloc": {
+              "teams": ["LAR", "SEA"],
+              "banked": 3.0,
+              "games": 2
+            },
+            "ceiling": {
+              "lose": 17.0,
+              "win": 15.0,
+              "team": "SEA"
+            }
+          },
+          "conference": {
+            "floor": 6.0,
+            "bloc": {
+              "teams": ["DET", "GB", "MIN", "CHI", "TB", "ATL", "NO", "CAR"],
+              "banked": 7.0,
+              "games": 35
+            },
+            "ceiling": {
+              "lose": 17.0,
+              "win": 16.0,
+              "team": "PHI"
+            }
+          },
+          "held": 7.0,
+          "seeds": {
+            "best": 1,
+            "worst": null
+          }
+        },
+        "after": {
+          "us": {
+            "low": 3.0,
+            "high": 17.0
+          },
+          "division": {
+            "floor": 3.0,
+            "bloc": {
+              "teams": ["LAR", "SEA"],
+              "banked": 3.0,
+              "games": 2
+            },
+            "ceiling": {
+              "lose": 16.0,
+              "win": 14.0,
+              "team": "SEA"
+            }
+          },
+          "conference": {
+            "floor": 7.0,
+            "bloc": {
+              "teams": [
+                "PHI",
+                "DAL",
+                "WAS",
+                "NYG",
+                "DET",
+                "GB",
+                "MIN",
+                "CHI",
+                "TB",
+                "ATL",
+                "NO",
+                "CAR",
+                "LAR",
+                "SEA",
+                "ARI"
+              ],
+              "banked": 21.0,
+              "games": 70
+            },
+            "ceiling": {
+              "lose": 17.0,
+              "win": 16.0,
+              "team": "MIN"
+            }
+          },
+          "held": 7.0,
+          "seeds": {
+            "best": 1,
+            "worst": null
+          }
+        }
+      },
+      "results": [
+        {
+          "home": "GB",
+          "away": "ATL",
+          "winner": "ATL",
+          "kind": "inside",
+          "division": null,
+          "conference": {
+            "cohort": "forced",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "CLE",
+          "away": "CAR",
+          "winner": "CLE",
+          "kind": "exported",
+          "division": null,
+          "conference": {
+            "cohort": "idle",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "WAS",
+          "away": "SEA",
+          "winner": "WAS",
+          "kind": "inside",
+          "division": {
+            "cohort": "best",
+            "floor": -1.0,
+            "ceiling": -1.0
+          },
+          "conference": {
+            "cohort": "forced",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "NYG",
+          "away": "TEN",
+          "winner": "NYG",
+          "kind": "exported",
+          "division": null,
+          "conference": {
+            "cohort": "worst",
+            "floor": 1.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "DET",
+          "away": "NYJ",
+          "winner": "DET",
+          "kind": "exported",
+          "division": null,
+          "conference": {
+            "cohort": "worst",
+            "floor": 1.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "TB",
+          "away": "MIN",
+          "winner": "MIN",
+          "kind": "inside",
+          "division": null,
+          "conference": {
+            "cohort": "forced",
+            "floor": 0.0,
+            "ceiling": 1.0
+          }
+        },
+        {
+          "home": "SF",
+          "away": "ARI",
+          "winner": "SF",
+          "kind": "own",
+          "division": {
+            "cohort": "best",
+            "floor": -1.0,
+            "ceiling": 0.0
+          },
+          "conference": {
+            "cohort": "best",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "DAL",
+          "away": "BAL",
+          "winner": "BAL",
+          "kind": "exported",
+          "division": null,
+          "conference": {
+            "cohort": "idle",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "NO",
+          "away": "LV",
+          "winner": "LV",
+          "kind": "exported",
+          "division": null,
+          "conference": {
+            "cohort": "idle",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "DEN",
+          "away": "LAR",
+          "winner": "DEN",
+          "kind": "exported",
+          "division": {
+            "cohort": "best",
+            "floor": -1.0,
+            "ceiling": 0.0
+          },
+          "conference": {
+            "cohort": "idle",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "CHI",
+          "away": "PHI",
+          "winner": "CHI",
+          "kind": "inside",
+          "division": null,
+          "conference": {
+            "cohort": "forced",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        }
+      ]
+    },
+    {
+      "week": 4,
+      "record": {
+        "w": 3,
+        "l": 0
+      },
+      "game": {
+        "opponent": "DEN",
+        "won": true,
+        "relation": "other"
+      },
+      "pending": {
+        "before": 224,
+        "after": 208
+      },
+      "poles": {
+        "before": {
+          "us": {
+            "low": 3.0,
+            "high": 17.0
+          },
+          "division": {
+            "floor": 3.0,
+            "bloc": {
+              "teams": ["LAR", "SEA"],
+              "banked": 3.0,
+              "games": 2
+            },
+            "ceiling": {
+              "lose": 16.0,
+              "win": 14.0,
+              "team": "SEA"
+            }
+          },
+          "conference": {
+            "floor": 7.0,
+            "bloc": {
+              "teams": [
+                "PHI",
+                "DAL",
+                "WAS",
+                "NYG",
+                "DET",
+                "GB",
+                "MIN",
+                "CHI",
+                "TB",
+                "ATL",
+                "NO",
+                "CAR",
+                "LAR",
+                "SEA",
+                "ARI"
+              ],
+              "banked": 21.0,
+              "games": 70
+            },
+            "ceiling": {
+              "lose": 17.0,
+              "win": 16.0,
+              "team": "MIN"
+            }
+          },
+          "held": 7.0,
+          "seeds": {
+            "best": 1,
+            "worst": null
+          }
+        },
+        "after": {
+          "us": {
+            "low": 4.0,
+            "high": 17.0
+          },
+          "division": {
+            "floor": 4.0,
+            "bloc": {
+              "teams": ["LAR", "SEA"],
+              "banked": 5.0,
+              "games": 2
+            },
+            "ceiling": {
+              "lose": 16.0,
+              "win": 14.0,
+              "team": "SEA"
+            }
+          },
+          "conference": {
+            "floor": 7.0,
+            "bloc": {
+              "teams": [
+                "DAL",
+                "WAS",
+                "NYG",
+                "DET",
+                "GB",
+                "MIN",
+                "CHI",
+                "TB",
+                "ATL",
+                "NO",
+                "CAR",
+                "LAR",
+                "SEA",
+                "ARI"
+              ],
+              "banked": 28.0,
+              "games": 57
+            },
+            "ceiling": {
+              "lose": 17.0,
+              "win": 16.0,
+              "team": "MIN"
+            }
+          },
+          "held": 7.0,
+          "seeds": {
+            "best": 1,
+            "worst": null
+          }
+        }
+      },
+      "results": [
+        {
+          "home": "WAS",
+          "away": "IND",
+          "winner": "IND",
+          "kind": "exported",
+          "division": null,
+          "conference": {
+            "cohort": "idle",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "HOU",
+          "away": "DAL",
+          "winner": "DAL",
+          "kind": "exported",
+          "division": null,
+          "conference": {
+            "cohort": "idle",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "PHI",
+          "away": "LAR",
+          "winner": "LAR",
+          "kind": "inside",
+          "division": {
+            "cohort": "idle",
+            "floor": 0.0,
+            "ceiling": 0.0
+          },
+          "conference": {
+            "cohort": "forced",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "NYG",
+          "away": "ARI",
+          "winner": "NYG",
+          "kind": "inside",
+          "division": {
+            "cohort": "idle",
+            "floor": 0.0,
+            "ceiling": 0.0
+          },
+          "conference": {
+            "cohort": "forced",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "CHI",
+          "away": "NYJ",
+          "winner": "CHI",
+          "kind": "exported",
+          "division": null,
+          "conference": {
+            "cohort": "idle",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "TB",
+          "away": "GB",
+          "winner": "GB",
+          "kind": "inside",
+          "division": null,
+          "conference": {
+            "cohort": "forced",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "MIN",
+          "away": "MIA",
+          "winner": "MIN",
+          "kind": "exported",
+          "division": null,
+          "conference": {
+            "cohort": "worst",
+            "floor": 0.0,
+            "ceiling": 1.0
+          }
+        },
+        {
+          "home": "SF",
+          "away": "DEN",
+          "winner": "SF",
+          "kind": "own",
+          "division": {
+            "cohort": "best",
+            "floor": 0.0,
+            "ceiling": 0.0
+          },
+          "conference": {
+            "cohort": "best",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "SEA",
+          "away": "LAC",
+          "winner": "SEA",
+          "kind": "exported",
+          "division": {
+            "cohort": "worst",
+            "floor": 0.0,
+            "ceiling": 1.0
+          },
+          "conference": {
+            "cohort": "idle",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "CAR",
+          "away": "DET",
+          "winner": "CAR",
+          "kind": "inside",
+          "division": null,
+          "conference": {
+            "cohort": "forced",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "NO",
+          "away": "ATL",
+          "winner": "ATL",
+          "kind": "inside",
+          "division": null,
+          "conference": {
+            "cohort": "forced",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        }
+      ]
+    },
+    {
+      "week": 5,
+      "record": {
+        "w": 4,
+        "l": 0
+      },
+      "game": {
+        "opponent": "SEA",
+        "won": true,
+        "relation": "division"
+      },
+      "pending": {
+        "before": 208,
+        "after": 193
+      },
+      "poles": {
+        "before": {
+          "us": {
+            "low": 4.0,
+            "high": 17.0
+          },
+          "division": {
+            "floor": 4.0,
+            "bloc": {
+              "teams": ["LAR", "SEA"],
+              "banked": 5.0,
+              "games": 2
+            },
+            "ceiling": {
+              "lose": 16.0,
+              "win": 14.0,
+              "team": "SEA"
+            }
+          },
+          "conference": {
+            "floor": 7.0,
+            "bloc": {
+              "teams": [
+                "DAL",
+                "WAS",
+                "NYG",
+                "DET",
+                "GB",
+                "MIN",
+                "CHI",
+                "TB",
+                "ATL",
+                "NO",
+                "CAR",
+                "LAR",
+                "SEA",
+                "ARI"
+              ],
+              "banked": 28.0,
+              "games": 57
+            },
+            "ceiling": {
+              "lose": 17.0,
+              "win": 16.0,
+              "team": "MIN"
+            }
+          },
+          "held": 7.0,
+          "seeds": {
+            "best": 1,
+            "worst": null
+          }
+        },
+        "after": {
+          "us": {
+            "low": 5.0,
+            "high": 17.0
+          },
+          "division": {
+            "floor": 4.0,
+            "bloc": {
+              "teams": ["LAR", "SEA"],
+              "banked": 5.0,
+              "games": 2
+            },
+            "ceiling": {
+              "lose": 15.0,
+              "win": 14.0,
+              "team": "SEA"
+            }
+          },
+          "conference": {
+            "floor": 7.0,
+            "bloc": {
+              "teams": [
+                "PHI",
+                "DAL",
+                "NYG",
+                "DET",
+                "GB",
+                "MIN",
+                "CHI",
+                "TB",
+                "ATL",
+                "NO",
+                "CAR",
+                "LAR",
+                "SEA"
+              ],
+              "banked": 32.5,
+              "games": 47
+            },
+            "ceiling": {
+              "lose": 17.0,
+              "win": 16.0,
+              "team": "MIN"
+            }
+          },
+          "held": 7.0,
+          "seeds": {
+            "best": 1,
+            "worst": null
+          }
+        }
+      },
+      "results": [
+        {
+          "home": "DAL",
+          "away": "TB",
+          "winner": "TB",
+          "kind": "inside",
+          "division": null,
+          "conference": {
+            "cohort": "forced",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "JAX",
+          "away": "PHI",
+          "winner": "JAX",
+          "kind": "exported",
+          "division": null,
+          "conference": {
+            "cohort": "idle",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "GB",
+          "away": "CHI",
+          "winner": "GB",
+          "kind": "inside",
+          "division": null,
+          "conference": {
+            "cohort": "forced",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "NO",
+          "away": "MIN",
+          "winner": "MIN",
+          "kind": "inside",
+          "division": null,
+          "conference": {
+            "cohort": "forced",
+            "floor": 0.0,
+            "ceiling": 1.0
+          }
+        },
+        {
+          "home": "SEA",
+          "away": "SF",
+          "winner": "SF",
+          "kind": "own",
+          "division": {
+            "cohort": "best",
+            "floor": 0.0,
+            "ceiling": -1.0
+          },
+          "conference": {
+            "cohort": "best",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "ARI",
+          "away": "DET",
+          "winner": "DET",
+          "kind": "inside",
+          "division": {
+            "cohort": "idle",
+            "floor": 0.0,
+            "ceiling": 0.0
+          },
+          "conference": {
+            "cohort": "forced",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "ATL",
+          "away": "BAL",
+          "winner": "BAL",
+          "kind": "exported",
+          "division": null,
+          "conference": {
+            "cohort": "idle",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "LAR",
+          "away": "BUF",
+          "winner": "BUF",
+          "kind": "exported",
+          "division": {
+            "cohort": "idle",
+            "floor": 0.0,
+            "ceiling": 0.0
+          },
+          "conference": {
+            "cohort": "idle",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        }
+      ]
+    },
+    {
+      "week": 6,
+      "record": {
+        "w": 5,
+        "l": 0
+      },
+      "game": {
+        "opponent": "WAS",
+        "won": true,
+        "relation": "conference"
+      },
+      "pending": {
+        "before": 193,
+        "after": 179
+      },
+      "poles": {
+        "before": {
+          "us": {
+            "low": 5.0,
+            "high": 17.0
+          },
+          "division": {
+            "floor": 4.0,
+            "bloc": {
+              "teams": ["LAR", "SEA"],
+              "banked": 5.0,
+              "games": 2
+            },
+            "ceiling": {
+              "lose": 15.0,
+              "win": 14.0,
+              "team": "SEA"
+            }
+          },
+          "conference": {
+            "floor": 7.0,
+            "bloc": {
+              "teams": [
+                "PHI",
+                "DAL",
+                "NYG",
+                "DET",
+                "GB",
+                "MIN",
+                "CHI",
+                "TB",
+                "ATL",
+                "NO",
+                "CAR",
+                "LAR",
+                "SEA"
+              ],
+              "banked": 32.5,
+              "games": 47
+            },
+            "ceiling": {
+              "lose": 17.0,
+              "win": 16.0,
+              "team": "MIN"
+            }
+          },
+          "held": 7.0,
+          "seeds": {
+            "best": 1,
+            "worst": null
+          }
+        },
+        "after": {
+          "us": {
+            "low": 6.0,
+            "high": 17.0
+          },
+          "division": {
+            "floor": 4.0,
+            "bloc": {
+              "teams": ["LAR", "SEA"],
+              "banked": 5.0,
+              "games": 2
+            },
+            "ceiling": {
+              "lose": 14.0,
+              "win": 13.0,
+              "team": "SEA"
+            }
+          },
+          "conference": {
+            "floor": 7.0,
+            "bloc": {
+              "teams": ["DET", "GB", "MIN", "CHI"],
+              "banked": 16.0,
+              "games": 9
+            },
+            "ceiling": {
+              "lose": 17.0,
+              "win": 16.0,
+              "team": "MIN"
+            }
+          },
+          "held": 7.0,
+          "seeds": {
+            "best": 1,
+            "worst": null
+          }
+        }
+      },
+      "results": [
+        {
+          "home": "DEN",
+          "away": "SEA",
+          "winner": "DEN",
+          "kind": "exported",
+          "division": {
+            "cohort": "best",
+            "floor": 0.0,
+            "ceiling": -1.0
+          },
+          "conference": {
+            "cohort": "idle",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "PHI",
+          "away": "CAR",
+          "winner": "CAR",
+          "kind": "inside",
+          "division": null,
+          "conference": {
+            "cohort": "forced",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "NYG",
+          "away": "NO",
+          "winner": "NO",
+          "kind": "inside",
+          "division": null,
+          "conference": {
+            "cohort": "forced",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "TB",
+          "away": "PIT",
+          "winner": "PIT",
+          "kind": "exported",
+          "division": null,
+          "conference": {
+            "cohort": "idle",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "ATL",
+          "away": "CHI",
+          "winner": "CHI",
+          "kind": "inside",
+          "division": null,
+          "conference": {
+            "cohort": "forced",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "LAR",
+          "away": "ARI",
+          "winner": "ARI",
+          "kind": "inside",
+          "division": {
+            "cohort": "forced",
+            "floor": 0.0,
+            "ceiling": 0.0
+          },
+          "conference": {
+            "cohort": "forced",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "GB",
+          "away": "DAL",
+          "winner": "GB",
+          "kind": "inside",
+          "division": null,
+          "conference": {
+            "cohort": "forced",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "SF",
+          "away": "WAS",
+          "winner": "SF",
+          "kind": "own",
+          "division": {
+            "cohort": "best",
+            "floor": 0.0,
+            "ceiling": 0.0
+          },
+          "conference": {
+            "cohort": "best",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        }
+      ]
+    },
+    {
+      "week": 7,
+      "record": {
+        "w": 6,
+        "l": 0
+      },
+      "game": {
+        "opponent": "ATL",
+        "won": false,
+        "relation": "conference"
+      },
+      "pending": {
+        "before": 179,
+        "after": 165
+      },
+      "poles": {
+        "before": {
+          "us": {
+            "low": 6.0,
+            "high": 17.0
+          },
+          "division": {
+            "floor": 4.0,
+            "bloc": {
+              "teams": ["LAR", "SEA"],
+              "banked": 5.0,
+              "games": 2
+            },
+            "ceiling": {
+              "lose": 14.0,
+              "win": 13.0,
+              "team": "SEA"
+            }
+          },
+          "conference": {
+            "floor": 7.0,
+            "bloc": {
+              "teams": ["DET", "GB", "MIN", "CHI"],
+              "banked": 16.0,
+              "games": 9
+            },
+            "ceiling": {
+              "lose": 17.0,
+              "win": 16.0,
+              "team": "MIN"
+            }
+          },
+          "held": 7.0,
+          "seeds": {
+            "best": 1,
+            "worst": null
+          }
+        },
+        "after": {
+          "us": {
+            "low": 6.0,
+            "high": 16.0
+          },
+          "division": {
+            "floor": 5.0,
+            "bloc": {
+              "teams": ["LAR", "SEA"],
+              "banked": 7.0,
+              "games": 2
+            },
+            "ceiling": {
+              "lose": 14.0,
+              "win": 13.0,
+              "team": "SEA"
+            }
+          },
+          "conference": {
+            "floor": 7.0,
+            "bloc": {
+              "teams": ["GB", "MIN", "CHI", "TB", "ATL", "NO", "CAR"],
+              "banked": 25.0,
+              "games": 18
+            },
+            "ceiling": {
+              "lose": 17.0,
+              "win": 16.0,
+              "team": "MIN"
+            }
+          },
+          "held": 8.0,
+          "seeds": {
+            "best": 1,
+            "worst": null
+          }
+        }
+      },
+      "results": [
+        {
+          "home": "CHI",
+          "away": "NE",
+          "winner": "CHI",
+          "kind": "exported",
+          "division": null,
+          "conference": {
+            "cohort": "idle",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "NO",
+          "away": "PIT",
+          "winner": "PIT",
+          "kind": "exported",
+          "division": null,
+          "conference": {
+            "cohort": "idle",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "HOU",
+          "away": "NYG",
+          "winner": "NYG",
+          "kind": "exported",
+          "division": null,
+          "conference": {
+            "cohort": "idle",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "MIN",
+          "away": "IND",
+          "winner": "MIN",
+          "kind": "exported",
+          "division": null,
+          "conference": {
+            "cohort": "worst",
+            "floor": 0.0,
+            "ceiling": 1.0
+          }
+        },
+        {
+          "home": "ATL",
+          "away": "SF",
+          "winner": "ATL",
+          "kind": "own",
+          "division": {
+            "cohort": "worst",
+            "floor": 0.0,
+            "ceiling": 0.0
+          },
+          "conference": {
+            "cohort": "worst",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "CAR",
+          "away": "TB",
+          "winner": "TB",
+          "kind": "inside",
+          "division": null,
+          "conference": {
+            "cohort": "forced",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "ARI",
+          "away": "DEN",
+          "winner": "DEN",
+          "kind": "exported",
+          "division": {
+            "cohort": "idle",
+            "floor": 0.0,
+            "ceiling": 0.0
+          },
+          "conference": {
+            "cohort": "idle",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "LV",
+          "away": "LAR",
+          "winner": "LAR",
+          "kind": "exported",
+          "division": {
+            "cohort": "worst",
+            "floor": 1.0,
+            "ceiling": 0.0
+          },
+          "conference": {
+            "cohort": "idle",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "DET",
+          "away": "GB",
+          "winner": "DET",
+          "kind": "inside",
+          "division": null,
+          "conference": {
+            "cohort": "forced",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "SEA",
+          "away": "KC",
+          "winner": "SEA",
+          "kind": "exported",
+          "division": {
+            "cohort": "worst",
+            "floor": 1.0,
+            "ceiling": 1.0
+          },
+          "conference": {
+            "cohort": "idle",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        },
+        {
+          "home": "PHI",
+          "away": "DAL",
+          "winner": "DAL",
+          "kind": "inside",
+          "division": null,
+          "conference": {
+            "cohort": "forced",
+            "floor": 0.0,
+            "ceiling": 0.0
+          }
+        }
+      ]
+    }
+  ]
+}

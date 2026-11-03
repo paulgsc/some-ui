@@ -1,8 +1,8 @@
 # @some-ui/playoff-delta
 
 The weekly vlog's story stage: one team's regular-season week as a 9:16
-story, made to be screen-recorded for YouTube Shorts with a voiceover per
-slide. Web only (`someUi.audience: "web"`); `apps/www` serves it at
+story, made to be screen-recorded for YouTube Shorts, voiced in your own
+words over each slide. Web only (`someUi.audience: "web"`); `apps/www` serves it at
 `/playoff-delta` through the web surface's door.
 
 Every week it says two numbers about our rivals, over every way the rest of
@@ -56,8 +56,9 @@ before handing it to the stage.
 
 ## The story
 
-Two kinds of episode (`src/lib/slides.ts`), each slide with a fixed hold and
-a voiceover line written from the same data it draws:
+Two kinds of episode (`src/lib/slides.ts`), each slide with a fixed hold, a
+point a take over it makes, and the facts the take keeps, written from the
+same data the slide draws:
 
 - **The legend** (week 0), played once: the pieces, the poles on the
   season's first table (our division held to 2 wins, our conference to 6),
@@ -68,6 +69,19 @@ a voiceover line written from the same data it draws:
   each result moved us → where each objective stands → the ladder and the
   call → the season's envelope, closing → the week in one sentence.
 
+## The show
+
+Playoff Delta is a show (SHOW epic, #2525): every week is an episode of the
+same format, fed that week's data, and the owner brings only the voice.
+`src/lib/show.ts` makes both formats (the week's and the legend's) from the
+slides above, a compile-time template, and pins each version under
+`src/show/formats/<id>/v<n>.json`. Its test holds the newest equal to the
+code, so a change to the slides fails until a new version is pinned. An
+episode is `episodeFor(season, week, sum)`: a primer the phone's Studio opens
+(each scene's point and facts, voiced ad-lib), pinned to the format, the
+series and the season's sum, with a cut list whose pictures are the clips.
+The schemas are `@some-ui/video-render`'s (`format.ts`, `episode.ts`).
+
 ## Recording
 
 ```sh
@@ -76,8 +90,9 @@ pnpm --filter www record:playoff-delta --week 9
 pnpm --filter www record:playoff-delta --week 0   # the legend
 ```
 
-`apps/www/tests/record/playoff-delta.ts` writes one clip and still per slide
-and `voiceover.md`; its header has the options.
+`apps/www/tests/record/playoff-delta.ts` writes one clip and still per
+scene and `episode.json`, made from the season the stage played; its header
+has the options.
 
 ## Next
 

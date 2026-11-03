@@ -1,0 +1,76 @@
+{
+  "schema": "some-ui.show-format/1",
+  "id": "playoff-delta-week",
+  "version": 1,
+  "title": "Playoff Delta week",
+  "series": {
+    "id": "playoff-delta-week",
+    "version": 1
+  },
+  "look": "calm",
+  "scenes": [
+    {
+      "id": "division",
+      "name": "Our division",
+      "picture": {
+        "kind": "capture",
+        "from": "the stage's division slide"
+      },
+      "holdMs": 9000
+    },
+    {
+      "id": "conference",
+      "name": "Our conference",
+      "picture": {
+        "kind": "capture",
+        "from": "the stage's conference slide"
+      },
+      "holdMs": 9000
+    },
+    {
+      "id": "results",
+      "name": "The results",
+      "picture": {
+        "kind": "capture",
+        "from": "the stage's results slide"
+      },
+      "holdMs": 9000
+    },
+    {
+      "id": "standings",
+      "name": "Where we stand",
+      "picture": {
+        "kind": "capture",
+        "from": "the stage's standings slide"
+      },
+      "holdMs": 8000
+    },
+    {
+      "id": "ladder",
+      "name": "The ladder",
+      "picture": {
+        "kind": "capture",
+        "from": "the stage's ladder slide"
+      },
+      "holdMs": 7000
+    },
+    {
+      "id": "season",
+      "name": "The season",
+      "picture": {
+        "kind": "capture",
+        "from": "the stage's season slide"
+      },
+      "holdMs": 7000
+    },
+    {
+      "id": "outro",
+      "name": "In one line",
+      "picture": {
+        "kind": "capture",
+        "from": "the stage's outro slide"
+      },
+      "holdMs": 6000
+    }
+  ]
+}

@@ -5,12 +5,7 @@
  */
 import { LEGEND, SLIDES } from "@playoff-delta/components/slides"
 import { SAMPLE_SEASON } from "@playoff-delta/lib/sample"
-import {
-  LEGEND_SLIDES,
-  legendLine,
-  narration,
-  WEEK_SLIDES,
-} from "@playoff-delta/lib/slides"
+import { LEGEND_SLIDES, WEEK_SLIDES } from "@playoff-delta/lib/slides"
 import type { StorySeason } from "@playoff-delta/lib/story"
 import { render, screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
@@ -36,16 +31,12 @@ const CASES = [
 ]
 
 describe("every slide of the bundled season", () => {
-  it.each(CASES)(
-    "week %i renders, with a voiceover line",
-    (_, season, week) => {
-      for (const id of WEEK_SLIDES) {
-        const Slide = SLIDES[id]
-        render(<Slide season={season} week={week} />).unmount()
-        expect(narration(season, week, id), id).not.toBe("")
-      }
+  it.each(CASES)("week %i renders", (_, season, week) => {
+    for (const id of WEEK_SLIDES) {
+      const Slide = SLIDES[id]
+      render(<Slide season={season} week={week} />).unmount()
     }
-  )
+  })
 
   it("says a week with no seat left is a dead end, marked as a proof", () => {
     const [week] = OUT.weeks
@@ -61,9 +52,8 @@ describe("every slide of the bundled season", () => {
 })
 
 describe("the legend", () => {
-  it.each(LEGEND_SLIDES)("%s renders, with a voiceover line", (id) => {
+  it.each(LEGEND_SLIDES)("%s renders", (id) => {
     const Slide = LEGEND[id]
     render(<Slide season={SAMPLE_SEASON} />).unmount()
-    expect(legendLine(SAMPLE_SEASON, id)).not.toBe("")
   })
 })

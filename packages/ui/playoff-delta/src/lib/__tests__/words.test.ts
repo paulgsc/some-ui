@@ -1,9 +1,10 @@
 import { SAMPLE_SEASON } from "@playoff-delta/lib/sample"
 import {
   LEGEND_SLIDES,
-  legendLine,
-  narration,
+  legendFacts,
+  SCENES,
   WEEK_SLIDES,
+  weekFacts,
 } from "@playoff-delta/lib/slides"
 import {
   CALLS,
@@ -55,11 +56,12 @@ describe("the vocabulary", () => {
     }
   })
 
-  it("says every week and the legend in it", () => {
+  it("says every scene, every week and the legend in it", () => {
     const lines = [
-      ...LEGEND_SLIDES.map((id) => legendLine(SAMPLE_SEASON, id)),
+      ...Object.values(SCENES).flatMap((scene) => [scene.name, scene.point]),
+      ...LEGEND_SLIDES.flatMap((id) => legendFacts(SAMPLE_SEASON, id)),
       ...SAMPLE_SEASON.weeks.flatMap((w) =>
-        WEEK_SLIDES.map((id) => narration(SAMPLE_SEASON, w, id))
+        WEEK_SLIDES.flatMap((id) => weekFacts(SAMPLE_SEASON, w, id))
       ),
     ]
     for (const line of lines) {

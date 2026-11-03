@@ -1,0 +1,67 @@
+{
+  "schema": "some-ui.show-format/1",
+  "id": "playoff-delta-legend",
+  "version": 1,
+  "title": "Playoff Delta, the legend",
+  "series": {
+    "id": "playoff-delta-week",
+    "version": 1
+  },
+  "look": "calm",
+  "scenes": [
+    {
+      "id": "legend",
+      "name": "The legend",
+      "picture": {
+        "kind": "capture",
+        "from": "the stage's legend slide"
+      },
+      "holdMs": 6500
+    },
+    {
+      "id": "pieces",
+      "name": "The pieces",
+      "picture": {
+        "kind": "capture",
+        "from": "the stage's pieces slide"
+      },
+      "holdMs": 10000
+    },
+    {
+      "id": "poles",
+      "name": "The poles",
+      "picture": {
+        "kind": "capture",
+        "from": "the stage's poles slide"
+      },
+      "holdMs": 10000
+    },
+    {
+      "id": "moves",
+      "name": "What a result did",
+      "picture": {
+        "kind": "capture",
+        "from": "the stage's moves slide"
+      },
+      "holdMs": 8000
+    },
+    {
+      "id": "objectives",
+      "name": "What we play for",
+      "picture": {
+        "kind": "capture",
+        "from": "the stage's objectives slide"
+      },
+      "holdMs": 9000
+    },
+    {
+      "id": "calls",
+      "name": "The ladder and the call",
+      "picture": {
+        "kind": "capture",
+        "from": "the stage's calls slide"
+      },
+      "holdMs": 8000
+    }
+  ]
+}

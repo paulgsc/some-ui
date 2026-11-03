@@ -122,8 +122,8 @@ export function parseSeries(raw: unknown): Parsed<Series> {
     : { ok: false, problems: problemsOf(parsed.error, "series") }
 }
 
-/** A version's file in its series' folder. */
-export const seriesFile = (version: number): string => `v${version}.json`
+/** A version's file in its folder: a series', or a show's format (`format.ts`). */
+export const versionFile = (version: number): string => `v${version}.json`
 
 /** The version a file in a series' folder holds, or null for any other file. */
 export function versionOfFile(name: string): number | null {

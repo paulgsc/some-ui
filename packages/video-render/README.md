@@ -30,6 +30,14 @@ Each module's header says why it is the way it is.
   still opens and closes the video and its record counts them as an
   agent's, drawn by code. `review.json` lists only the video's own scenes,
   so no note is pinned to the series'.
+- `src/format.ts`, `src/episode.ts`: a show (SHOW, #2525) is a series plus
+  a format, the ordered scenes every episode has (name, picture source,
+  hold, when left out), versioned as a series is (`readFormat`). An episode
+  is a format applied to one period's data by a pure function (`episodeOf`):
+  a primer version 2 the phone's Studio opens, the episode's pins (format,
+  period, the data's sum) and a cut list whose pictures are the recorded
+  clips. Playoff Delta's formats and episodes come from its own workspace
+  (`packages/ui/playoff-delta/src/lib/show.ts`).
 - `src/resolve.ts`, `src/timing.ts`: each lever from the layer that sets
   it; each scene placed in whole frames.
 - `src/plan.ts`: the ffmpeg calls, as data. `src/render.ts` runs them over
