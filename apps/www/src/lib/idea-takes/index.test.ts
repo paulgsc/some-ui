@@ -51,6 +51,7 @@ function desk(max = 40): {
   const holds = new Set<string>()
   const phone = createTakes(
     {
+      screen: "test",
       startRecording: mic.startRecording,
       audio,
       takes: {

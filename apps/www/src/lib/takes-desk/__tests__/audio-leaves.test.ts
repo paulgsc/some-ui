@@ -44,6 +44,7 @@ async function deskOf(
   const shelf = memoryShelf()
   const desk = patternDesk({
     key,
+    screen: "test",
     dbName: key,
     from: "rust-round",
     limits: LIMITS,
@@ -139,6 +140,7 @@ describe("a take whose audio is not on this phone plays from home (RR6)", () => 
     const player = simulatedPlayer()
     const phone = createPatternTakes(
       {
+        screen: "test",
         startRecording: simulatedMicrophone({ now: Date.now }).startRecording,
         owner: microphoneOwner(),
         audio: shelf,

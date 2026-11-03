@@ -109,6 +109,7 @@ function renderedScreens(
       const store = memoryTakes({ now: phone.now })
       const pattern = takePattern(
         {
+          screen: "test",
           startRecording: phone.startRecording,
           now: phone.now,
           owner: phone.owner,

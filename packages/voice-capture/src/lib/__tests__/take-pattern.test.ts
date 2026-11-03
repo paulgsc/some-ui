@@ -25,6 +25,8 @@ import {
   SPEAKING,
 } from "@voice-capture/lib/simulated-microphone"
 import { TAKE_ENDING_WORDS, takeEndingSaid } from "@voice-capture/lib/take-kit"
+import type { TakeOutcome } from "@voice-capture/lib/take-outcomes"
+import { setTakeOutcomes } from "@voice-capture/lib/take-outcomes"
 import type {
   TakePattern,
   TakePatternEffect,
@@ -302,14 +304,18 @@ describe("the take pattern's runtime, on the simulated microphone", () => {
   })
   afterEach(() => {
     vi.useRealTimers()
+    setTakeOutcomes(null)
   })
 
   it("redoes a take: keeps the new one superseding the old, and stops what plays first", async () => {
+    const outcomes: Array<TakeOutcome> = []
+    setTakeOutcomes((outcome) => outcomes.push(outcome))
     const mic = simulatedMicrophone({ now: Date.now })
     const kept: Array<{ answers: string; supersedes: string | null }> = []
     const player = simulatedPlayer()
     const pattern = takePattern(
       {
+        screen: "test",
         startRecording: mic.startRecording,
         now: Date.now,
         owner: microphoneOwner(),
@@ -342,6 +348,10 @@ describe("the take pattern's runtime, on the simulated microphone", () => {
       ending: "kept",
       id: "t2",
     })
+    expect(outcomes).toMatchObject([
+      { screen: "test", ended: { ending: "kept", id: "t2" } },
+    ])
+    expect(outcomes[0]?.durationMs).toBeGreaterThan(0)
     expect(mic.open()).toBe(0)
   })
 
@@ -349,6 +359,7 @@ describe("the take pattern's runtime, on the simulated microphone", () => {
     const setAside = vi.fn()
     const pattern = takePattern(
       {
+        screen: "test",
         startRecording: simulatedMicrophone({ now: Date.now }).startRecording,
         now: Date.now,
         owner: microphoneOwner(),
@@ -370,6 +381,7 @@ describe("the take pattern's runtime, on the simulated microphone", () => {
     )
     const pattern = takePattern(
       {
+        screen: "test",
         startRecording: simulatedMicrophone({ now: Date.now }).startRecording,
         now: Date.now,
         owner: microphoneOwner(),
@@ -389,6 +401,7 @@ describe("the take pattern's runtime, on the simulated microphone", () => {
   it("says a take whose audio is gone", async () => {
     const pattern = takePattern(
       {
+        screen: "test",
         startRecording: simulatedMicrophone({ now: Date.now }).startRecording,
         now: Date.now,
         owner: microphoneOwner(),
@@ -434,6 +447,7 @@ function patternScreens(
       patternScreen(
         takePattern(
           {
+            screen: "test",
             startRecording: phone.startRecording,
             now: phone.now,
             owner: phone.owner,
@@ -482,6 +496,7 @@ describe("VC2, VC3: every trace of the family keeps every property on pattern sc
     mic.script(SPEAKING)
     const pattern = takePattern(
       {
+        screen: "test",
         startRecording: mic.startRecording,
         now: Date.now,
         owner: microphoneOwner(),

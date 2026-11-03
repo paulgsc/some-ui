@@ -56,8 +56,7 @@ import {
   shelfToSend,
 } from "./sent"
 import { causedBy, copyHome, HomeForgotPhoneError } from "./sessions"
-import type { EndedReport } from "./shelf"
-import { emptyReport, HomeUnansweredError, sendKept } from "./shelf"
+import { emptyReport, endedPart, sendKept } from "./shelf"
 import type { StudioGoing } from "./studio-log"
 import { sendStudio } from "./studio-log"
 
@@ -124,13 +123,6 @@ function answeredCopy(error: unknown): HomeExchanged | null {
   return error instanceof SessionNotFoundError
     ? unexpectedAnswer("a session", 404)
     : null
-}
-
-/** How a part ended the run, when home did not answer it as asked: said or thrown. */
-function endedPart(report: EndedReport): HomeExchanged | null {
-  if (report.forgotten) return { kind: "forgotten" }
-  if (report.unreachable) throw new HomeUnansweredError()
-  return null
 }
 
 /**

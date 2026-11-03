@@ -33,6 +33,7 @@ const MAX = 40
 
 const desk = takesDesk({
   key: "some-ui:idea-takes",
+  screen: "studio.idea-answers",
   // The kit's desk: no Let go.
   from: null,
   dbName: "some-ui.idea-takes",
@@ -42,6 +43,7 @@ const desk = takesDesk({
 /** A new idea's answers (ST26): each waits on the phone until it is sent. */
 const bundleDesk = patternDesk({
   key: "some-ui:idea-bundle-takes",
+  screen: "studio.new-idea",
   // No set-aside marks: a take here is let go only by a new idea's Delete,
   // Redo or clean-up before Send, for good, and only while it waits (LA13).
   from: null,

@@ -69,6 +69,7 @@ function screen(): Screen {
   const owner = microphoneOwner()
   const store = memoryTakes({ now: Date.now, seed: SEED })
   const ports = {
+    screen: "ui-fit",
     startRecording: mic.startRecording,
     now: Date.now,
     owner,

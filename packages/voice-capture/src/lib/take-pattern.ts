@@ -51,6 +51,7 @@ import type {
   TakeKitView,
 } from "./take-kit"
 import { initialTakeKit, stepTakeKit, takeKitView, TICK_MS } from "./take-kit"
+import { reportTakeEnded } from "./take-outcomes"
 
 /**
  * One current take per item, or many beside each other, up to `max`. At
@@ -236,6 +237,8 @@ export type TakePatternEvent =
       readonly type: "tap"
       readonly answers: string
       readonly supersedes: string | null
+      /** When, by the runtime's clock (`ports.now`); a test may leave it out. */
+      readonly at?: number | undefined
     }
   /** Plays a take, or stops it when it is the one playing. */
   | { readonly type: "play"; readonly id: string }
@@ -608,6 +611,7 @@ export function takePattern(
   const dispatch = (event: TakePatternEvent): void => {
     const next = stepTakePattern(state, event, options)
     if (next.state !== state) {
+      reportTakeEnded(ports.screen, state.kit, next.state.kit)
       state = next.state
       snapshot = takePatternSnapshot(state, options)
       for (const listener of listeners) listener()
@@ -694,7 +698,7 @@ export function takePattern(
       }
     },
     tap: (answers, supersedes = null) =>
-      dispatch({ type: "tap", answers, supersedes }),
+      dispatch({ type: "tap", answers, supersedes, at: ports.now() }),
     play: (id) => dispatch({ type: "play", id }),
     stopPlaying: () => dispatch({ type: "stopPlaying" }),
     letGo: (id, place) => dispatch({ type: "letGo", id, place }),

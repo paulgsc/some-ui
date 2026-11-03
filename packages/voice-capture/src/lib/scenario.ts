@@ -293,6 +293,7 @@ export function kitScreens(
       kitScreen(
         makeKit(
           {
+            screen: "test",
             startRecording: phone.startRecording,
             now: phone.now,
             keep: kept.keep,

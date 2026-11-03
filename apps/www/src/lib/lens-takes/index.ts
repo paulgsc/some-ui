@@ -18,6 +18,7 @@ export type { Take as LensTake } from "@/lib/takes-desk"
 
 const desk = patternDesk({
   key: "some-ui:lens-takes",
+  screen: "topik.grammar-lens",
   from: "lens",
   dbName: "some-ui.lens-takes",
   limits: { max: LENS_TAKES_MAX, maxMs: LENS_TAKE_MAX_MS },

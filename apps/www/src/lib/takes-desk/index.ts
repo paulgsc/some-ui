@@ -116,6 +116,8 @@ export type PatternDesk = DeskShelf & { readonly phone: () => PatternPhone }
 type DeskOptions = {
   /** The list's `localStorage` key and the shelf's database. */
   readonly key: string
+  /** The screen recording, as each take's outcome names it (CK2). */
+  readonly screen: string
   readonly dbName: string
   readonly limits: TakeLimits
   /**
@@ -243,6 +245,7 @@ function desk<R extends Runtime>(
   let runtime: R | null = null
   const phone = (): R => {
     runtime ??= make({
+      screen: options.screen,
       startRecording: micRecorder({
         bitsPerSecond: SOUNDBITE_BITS_PER_SECOND,
       }),

@@ -74,6 +74,10 @@ export const ACCOUNT_ERASES = {
       text: "Each round sent home, as the tutor wrote it: its cards, which of your voice notes a card answered, and the tutor's nudges.",
     },
     {
+      label: "How each recording ended",
+      text: "For each recording your phone sent home a note of: which screen it was on, whether it was kept, stopped or failed, how long the microphone took to open, how long it ran and how loud it got. Never the sound or what you said.",
+    },
+    {
       label: "Studio's time log",
       text: "When each Studio screen was open in a sitting, and how each sitting went: what got in the way, and the scene you were on.",
     },

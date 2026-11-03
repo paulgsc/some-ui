@@ -163,6 +163,25 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
     clash: null,
     unread: null,
   },
+  "app-events": {
+    markLabel: "Where the notes of how recordings ended are kept",
+    title: "How recordings ended, and home",
+    rows: [
+      {
+        kind: "endings",
+        label: "How each recording ended",
+        one: "note",
+      },
+    ],
+    waits: waits("note"),
+    phoneOnly: `The notes of how each recording ended are only on this phone. ${PAIR}`,
+    partly:
+      "Some notes of how recordings ended are on home. New ones stay on this phone until it is paired again.",
+    footnote:
+      "Each recording leaves a short note: which screen it was on, whether it was kept, stopped or failed, how long the microphone took to open, how long it ran and how loud it got. Never the sound or what you said. A note leaves this phone once home has it.",
+    clash: null,
+    unread: null,
+  },
 }
 
 /** The words every lane's sheet shares. */
@@ -183,7 +202,7 @@ export function unsentLines({ gone }: Unsendable): Array<string> {
 
 /** Settings' Home server block, once paired: what goes, and when. */
 export const HOME_BLOCK = {
-  lead: "Everything this phone keeps goes to home on its own while the app is open: finished sessions, kept items, LeetType sessions and spoken answers, Studio sittings, soundbites, written reflections, asks for the next scene, the Jobs record, voice notes, rounds you paste in Rust Rounds, and aph while it is open. Rust Rounds also brings home's rounds and their runs here. Nothing leaves this phone until home has read it back. Dragging a page down from its top sends what waits and checks home again.",
+  lead: "Everything this phone keeps goes to home on its own while the app is open: finished sessions, kept items, LeetType sessions and spoken answers, Studio sittings, soundbites, written reflections, asks for the next scene, the Jobs record, voice notes, rounds you paste in Rust Rounds, a note of how each recording ended, and aph while it is open. Rust Rounds also brings home's rounds and their runs here. Nothing leaves this phone until home has read it back. Dragging a page down from its top sends what waits and checks home again.",
 } as const
 
 /** What a drag down names when this phone couldn't get in step with home (PULL3). */
@@ -199,6 +218,7 @@ export const KEPT_ON_HOME = {
     jobs: "The Jobs record",
     voice: "Voice notes",
     "rust-rounds": "Rust Rounds",
+    "app-events": "How each recording ended",
   } satisfies Record<LaneId, string>,
   neverTitle: "Never sent",
   never: [
@@ -222,6 +242,7 @@ export const KEPT_ON_HOME = {
     jobs: "Jobs",
     voice: "Settings",
     "rust-rounds": "Rust Rounds",
+    "app-events": "Settings",
   } satisfies Record<LaneId, string>,
 } as const
 

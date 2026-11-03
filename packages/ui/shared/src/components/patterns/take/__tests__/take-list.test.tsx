@@ -67,6 +67,7 @@ function screenOn(
   const store = memoryTakes({ now: Date.now, seed })
   const pattern = takePattern(
     {
+      screen: "test",
       startRecording: on.mic.startRecording,
       now: Date.now,
       owner: on.owner,

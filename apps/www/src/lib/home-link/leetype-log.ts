@@ -6,8 +6,8 @@
  * without its ticks), then one read of the session back, compared event by
  * event (LA8). Phone to home only, and the phone keeps its whole log:
  * nothing here lets an event go. Beside it, `sendWhole`, the one PUT per
- * item the written reflections (`./reflections`) and the asks for the next
- * scene (`./prompts`) go by, and `sendEach`, the one PUT per item the study
+ * item the written reflections (`./reflections`), the asks for the next
+ * scene (`./prompts`) and the app events (`./app-events-send`) go by, and `sendEach`, the one PUT per item the study
  * notes (`./notes`) and the grammar-lens record (`./lens-record`) go by.
  */
 import type { HomeCall } from "@some-ui/core-utils"
@@ -62,14 +62,16 @@ export const heldBy =
  * Sends `going` through `send`, one PUT each, into `report` (a refusal or
  * an answer that does not hold what was sent is counted, and that item
  * stays on the phone, to go again with the next run); `held` hears each one
- * home holds as sent, by its id and fingerprint (`fingerprintOf`).
+ * home holds as sent, by its id and fingerprint (`fingerprintOf`), and
+ * `refused` each id home refused.
  */
 export async function sendWhole<T>(
   lane: WholeLane<T>,
   going: ReadonlyArray<T>,
   send: HomeCall,
   report: LogReport,
-  held: (id: string, fingerprint: string) => void
+  held: (id: string, fingerprint: string) => void,
+  refused: (id: string) => void = () => undefined
 ): Promise<void> {
   for (const item of going) {
     const wire = lane.wire(item)
@@ -85,6 +87,7 @@ export async function sendWhole<T>(
     const bucket = bucketOf(answer.status)
     if (bucket !== "held") {
       report[bucket] += 1
+      if (bucket === "refused") refused(id)
       continue
     }
     const parsed = jsonOf(answer.body)

@@ -27,6 +27,8 @@ import {
   takeEndingSaid,
   takeKit,
 } from "@voice-capture/lib/take-kit"
+import type { TakeOutcome } from "@voice-capture/lib/take-outcomes"
+import { setTakeOutcomes } from "@voice-capture/lib/take-outcomes"
 import fc from "fast-check"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -165,6 +167,76 @@ describe("the take kit's step", () => {
   })
 })
 
+describe("each take's outcome (CK2, TE2)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+    setTakeOutcomes(null)
+  })
+
+  it("reports every ending once, from the screen, with how long it took and how loud it got", async () => {
+    const outcomes: Array<TakeOutcome> = []
+    setTakeOutcomes((outcome) => outcomes.push(outcome))
+    const mic = simulatedMicrophone({ now: Date.now })
+    mic.script({ ...SPEAKING, open: { kind: "cue" } })
+    const kit = takeKit(
+      {
+        screen: "jobs.pass",
+        startRecording: mic.startRecording,
+        now: Date.now,
+        keep: (_, __, done) => done({ outcome: "kept", id: "k1" }),
+        owner: microphoneOwner(),
+      },
+      LIMITS
+    )
+    const started = Date.now()
+    kit.tap("item")
+    await vi.advanceTimersByTimeAsync(300)
+    mic.answer("open")
+    await vi.advanceTimersByTimeAsync(3_000)
+    kit.tap("item")
+    await vi.advanceTimersByTimeAsync(0)
+    expect(outcomes).toHaveLength(1)
+    const [kept] = outcomes
+    expect(kept).toMatchObject({
+      screen: "jobs.pass",
+      ended: { ending: "kept", id: "k1" },
+      startedAt: started,
+      readyMs: 300,
+      peak: SPEAKING.level,
+    })
+    expect(kept?.durationMs).toBeGreaterThan(2_500)
+
+    kit.tap("item")
+    kit.tap("item")
+    expect(outcomes.map((o) => o.ended.ending)).toEqual(["kept", "early"])
+    expect(outcomes[1]).toMatchObject({ readyMs: null, durationMs: null })
+  })
+
+  it("never lets a sink that throws reach the take", async () => {
+    setTakeOutcomes(() => {
+      throw new Error("full")
+    })
+    const mic = simulatedMicrophone({ now: Date.now })
+    const kit = takeKit(
+      {
+        screen: "test",
+        startRecording: mic.startRecording,
+        now: Date.now,
+        keep: vi.fn(),
+        owner: microphoneOwner(),
+      },
+      LIMITS
+    )
+    kit.tap("x")
+    kit.tap("x")
+    await vi.advanceTimersByTimeAsync(0)
+    expect(kit.getSnapshot().ended?.ending).toBe("early")
+  })
+})
+
 describe("one take at a time per phone", () => {
   beforeEach(() => {
     vi.useFakeTimers()
@@ -179,7 +251,13 @@ describe("one take at a time per phone", () => {
     const keep = vi.fn()
     const kit = (): ReturnType<typeof takeKit> =>
       takeKit(
-        { startRecording: mic.startRecording, now: Date.now, keep, owner },
+        {
+          screen: "test",
+          startRecording: mic.startRecording,
+          now: Date.now,
+          keep,
+          owner,
+        },
         LIMITS
       )
     const first = kit()
@@ -212,6 +290,7 @@ describe("one take at a time per phone", () => {
     const owner = microphoneOwner()
     const kit = takeKit(
       {
+        screen: "test",
         startRecording: mic.startRecording,
         now: Date.now,
         keep: vi.fn(),
@@ -237,6 +316,7 @@ describe("one take at a time per phone", () => {
       const owner = microphoneOwner()
       const kit = takeKit(
         {
+          screen: "test",
           startRecording: mic.startRecording,
           now: Date.now,
           keep: (_, __, done) => done({ outcome: "kept", id: "k" }),

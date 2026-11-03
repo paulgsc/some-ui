@@ -11,7 +11,7 @@
  * there. Stop, or the app
  * going to the background, ends it before the next item.
  */
-import type { HomeAnswer, HomeCall } from "@some-ui/core-utils"
+import type { HomeAnswer, HomeCall, HomeExchanged } from "@some-ui/core-utils"
 
 import { stringFieldOf } from "@/lib/device-backend/common"
 import type { Kept } from "@/lib/device-backend/handlers/shelf"
@@ -35,6 +35,13 @@ export type EndedReport = {
   forgotten: boolean
   /** A request got no answer, or home was busy; nothing after it was sent. */
   unreachable: boolean
+}
+
+/** How a send ended the run, when home did not answer it as asked: said or thrown. */
+export function endedPart(report: EndedReport): HomeExchanged | null {
+  if (report.forgotten) return { kind: "forgotten" }
+  if (report.unreachable) throw new HomeUnansweredError()
+  return null
 }
 
 /**

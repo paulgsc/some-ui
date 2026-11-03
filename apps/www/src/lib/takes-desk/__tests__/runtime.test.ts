@@ -56,6 +56,7 @@ function ports(listed: Array<Take> = []): TakesPorts & {
   let next = 0
   let end: () => void = () => undefined
   return {
+    screen: "test",
     listed,
     audio,
     home,

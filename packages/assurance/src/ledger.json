@@ -475,6 +475,114 @@
       ]
     },
     {
+      "id": "take-endings",
+      "name": "Every take says how it ended, and home hears it",
+      "why": "A take that failed on the phone while every test was green was found only by luck (MIC0, some-ui#2370). Every real take now leaves a note of how it ended, so a failure shows in what real use leaves, not only in the steps someone thought to try (CHECKS, some-ui#2369).",
+      "paths": [
+        "some-ui:packages/voice-capture/src/lib/take-outcomes.ts",
+        "some-ui:apps/www/src/lib/app-events",
+        "some-ui:apps/www/src/lib/home-link/app-events-send.ts"
+      ],
+      "modules": ["app_events"],
+      "objectives": [
+        {
+          "id": "TE1",
+          "kind": "OA2",
+          "property": "outcome",
+          "claim": "Every take a screen on the take kit starts ends exactly once, in an ending of the kit's closed union, and is said.",
+          "requirement": "Of every take started on the kit or the pattern, exactly one ending (kept, short, early, full, failed or blocked with its reason), recorded in the kit's own step; none ends twice and none is left without one, whatever the order of taps, the microphone's answers and the clock.",
+          "verdict": "holds",
+          "conclusion": "Every generated trace of taps, microphone answers and ticks over the real kit ends each take once. This is the code over a simulated microphone: a real phone's microphone is checked by nothing yet (CK5, some-ui#2384).",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "The property suite runs VC2's monitor over every generated trace of the scenario family, on the real kit and the real pattern.",
+              "ref": "some-ui:packages/voice-capture/src/lib/properties.ts#VC2"
+            }
+          ],
+          "proof": [
+            "some-ui:packages/voice-capture/src/lib/__tests__/take-kit.test.ts#VC2"
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        },
+        {
+          "id": "TE2",
+          "kind": "OA2",
+          "property": "outcome",
+          "claim": "Every take's ending leaves a note on the phone that waits until home holds it exactly as sent, and only then leaves the phone.",
+          "requirement": "Each ending the kit records is handed to the app's store once, from the screen that recorded it, with its timings and nothing of what was said. A note leaves the phone only once home has answered with it as sent; one home refused, answered otherwise or never answered stays. At most 500 wait: past that a new note is not kept, and none waiting is let go for it.",
+          "verdict": "holds",
+          "conclusion": "Every ending of a take on the kit or the pattern reaches the store, and the lane lets a note go only on home's answer holding it as sent. On the phone only: whether home then keeps it is TE3's.",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "Each runtime reports the ending its step recorded, so a screen cannot leave a take out.",
+              "ref": "some-ui:packages/voice-capture/src/lib/take-outcomes.ts"
+            }
+          ],
+          "proof": [
+            "some-ui:packages/voice-capture/src/lib/__tests__/take-kit.test.ts#TE2",
+            "some-ui:apps/www/src/lib/app-events/index.test.ts#TE2",
+            "some-ui:apps/www/src/lib/home-link/__tests__/app-events.test.ts#TE2"
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        },
+        {
+          "id": "TE3",
+          "kind": "OA3",
+          "property": "outcome",
+          "claim": "Home keeps each note it is sent once, append-only, and answers with it as kept, so a resend stores nothing new.",
+          "requirement": "A PUT of a note home lacks stores it and answers with it; the same note again is unchanged; a different note under its id is refused and nothing is replaced. A note holds the process, the screen, the ending and how it went, timings, a peak level and the build, every text field an id from the code: home refuses any other field (the owner's C3).",
+          "verdict": "unproven",
+          "conclusion": "Home's side is in its pull request (server: app_event_repo and handlers::app_events) and holds nothing until that merges.",
+          "evidence": [
+            {
+              "class": "unknown",
+              "says": "Home serves no route for the notes until its pull request merges, so nothing it keeps can be measured yet.",
+              "ref": "some-ui#2381"
+            }
+          ],
+          "tracked": "some-ui#2381",
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        },
+        {
+          "id": "TE4",
+          "kind": "RE9",
+          "property": "work",
+          "claim": "What the notes of how takes ended keep grows by a take, and stays small.",
+          "requirement": "On the phone, at most 500 notes of about 300 B wait, each leaving once home holds it. On home, one row per note, a few hundred bytes, append-only; the rate is stated from measurement.",
+          "verdict": "unproven",
+          "conclusion": "The phone's store is bounded at 500 notes; home's grows by a row per take, unmeasured until home's table exists and is sampled.",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "The phone keeps at most APP_EVENTS_WAITING notes and lets each go once home holds it.",
+              "ref": "some-ui:apps/www/src/lib/app-events/index.ts"
+            },
+            {
+              "class": "unknown",
+              "says": "Home's table only grows, and no sample of it has been read: it does not exist until the server's pull request merges.",
+              "ref": "some-ui#2381"
+            }
+          ],
+          "tracked": "some-ui#2381",
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        }
+      ]
+    },
+    {
       "id": "voice-heard",
       "name": "Voice notes sent home get heard",
       "why": "The phone sends a voice note home; home transcribes it in the background, and the transcript is what the routine reads. A note I let go on the phone is set aside on home, kept, and the routines read it no more (D3).",
@@ -2429,6 +2537,19 @@
       "class": "derived",
       "growth": "Per heard transcript per note and model: one row per word heard (text, start_ms, end_ms from the note's start), about 150 rows a minute of speech; written with its transcript; append-only; leaves with the account.",
       "family": "voice-heard"
+    },
+    {
+      "store": "phone:app-events",
+      "class": "telemetry",
+      "growth": "bounded: APP_EVENTS_WAITING = 500 notes of how a take ended (about 300 B each, 150 KB), each waiting until home holds it; past 500 a new one is not kept (`some-ui:app-events`).",
+      "horizon": "a note leaves once home answers with it as sent",
+      "family": "take-endings"
+    },
+    {
+      "store": "server:app_event",
+      "class": "telemetry",
+      "growth": "Per obligation the phone ran to an ending (a take today, about one row a take, a few hundred bytes each), append-only; no horizon (CK2, server app_event_repo).",
+      "family": "take-endings"
     }
   ],
   "processes": [
@@ -2436,8 +2557,8 @@
       "id": "phone-recording",
       "name": "Recording on the phone",
       "why": "Every screen that records a take (Rust Rounds, LeetType, the grammar lens, scene and reflection voice, Jobs notes, Soundbites, Studio, Game Week) opens the microphone through one kit, keeps the take on the phone, and says how it went. MIC0 (some-ui#2370) failed here while every test was green, and was found only by luck.",
-      "serves": [],
-      "witnesses": [],
+      "serves": ["take-endings"],
+      "witnesses": ["TE1", "TE2", "TE3", "TE4"],
       "segments": [
         {
           "id": "take",
@@ -2462,6 +2583,30 @@
           "owner": "ours",
           "on": "phone",
           "paths": ["some-ui:packages/voice-capture/src/lib/blob-shelf.ts"]
+        },
+        {
+          "id": "note",
+          "name": "The note of how a take ended, kept on the phone until home holds it, and its lane home. Ours.",
+          "owner": "ours",
+          "on": "phone",
+          "paths": [
+            "some-ui:apps/www/src/lib/app-events",
+            "some-ui:apps/www/src/lib/home-link/app-events-send.ts"
+          ]
+        },
+        {
+          "id": "home-network",
+          "name": "The phone reaches home over the home network, as the paired phone.",
+          "owner": "network",
+          "on": "between",
+          "paths": []
+        },
+        {
+          "id": "kept-on-home",
+          "name": "Home keeps each note append-only and counts them per screen. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": ["server:apps/servers/file_host/src/handlers/app_events.rs"]
         }
       ],
       "signals": [
@@ -2471,9 +2616,9 @@
           "ref": "some-ui:apps/www/src/lib/failure-log"
         },
         {
-          "says": "Every take records how it ended, how long the microphone took to open, its length and peak level, and the screen it came from, and home keeps those outcomes (CK2).",
-          "status": "planned",
-          "tracked": "some-ui#2381"
+          "says": "Every take records how it ended, how long the microphone took to open, its length and peak level, the screen it came from and the build, and the note goes home through its own lane (CK2); home keeps them and counts them per screen (`GET /app-events/summary`).",
+          "status": "live",
+          "ref": "some-ui:apps/www/src/lib/app-events"
         }
       ],
       "checks": [
