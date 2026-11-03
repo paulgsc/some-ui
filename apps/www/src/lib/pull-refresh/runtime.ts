@@ -5,7 +5,14 @@
  */
 import { assertNever } from "@some-ui/core-utils"
 
-import type { CheckEnd, Point, PullEffect, PullEvent, PullState } from "./model"
+import type {
+  CheckEnd,
+  Phase,
+  Point,
+  PullEffect,
+  PullEvent,
+  PullState,
+} from "./model"
 import { INITIAL_PULL, step } from "./model"
 
 /** What a check reaches, behind ports. */
@@ -19,6 +26,21 @@ export type PullPorts = {
   readonly onLeave: (listener: () => void) => () => void
   /** Epoch ms, for when a check finished. */
   readonly now: () => number
+  /**
+   * Gets one line, "pull checked: read", "offline" or "unread", for each
+   * check that ends while its page still shows it (one whose page moved on
+   * ends silently): the phone's own log, which the APK's launch test reads
+   * (PULL5, #2462). How it ended, never what it read.
+   */
+  readonly note?: (line: string) => void
+}
+
+/** The line a check that ended in `phase` becomes, if it ended there. */
+function pullNote(phase: Phase): string | null {
+  if (phase.kind === "done") return "pull checked: read"
+  if (phase.kind === "failed")
+    return `pull checked: ${phase.offline ? "offline" : "unread"}`
+  return null
 }
 
 export type PullRuntime = {
@@ -98,7 +120,9 @@ export function createPullRuntime(ports: PullPorts): PullRuntime {
     const [next, effects] = step(state, event)
     effects.forEach(run)
     if (next === state) return
+    const ended = state.phase.kind === "checking" ? pullNote(next.phase) : null
     state = next
+    if (ended !== null) ports.note?.(ended)
     listeners.forEach((listener) => listener())
   }
 

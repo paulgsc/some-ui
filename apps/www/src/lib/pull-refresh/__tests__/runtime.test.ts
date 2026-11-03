@@ -32,6 +32,7 @@ let scroller: HTMLDivElement
 let inner: HTMLDivElement
 let reads: Array<Pending>
 let leave: Array<() => void>
+let notes: Array<string>
 let runtime: PullRuntime
 let detach: () => void
 
@@ -47,6 +48,7 @@ const ports = (): PullPorts => ({
     }
   },
   now: () => AT,
+  note: (line) => notes.push(line),
 })
 
 const touch = (y: number, x = 100): { touches: Array<Partial<Touch>> } => ({
@@ -70,6 +72,7 @@ beforeEach(() => {
   vi.useFakeTimers()
   reads = []
   leave = []
+  notes = []
   scroller = document.createElement("div")
   inner = document.createElement("div")
   scroller.append(inner)
@@ -85,7 +88,7 @@ afterEach(() => {
 })
 
 describe("a pull from the top of the page", () => {
-  it("arms past ARM_PX, checks again once on letting go, and says it is done", async () => {
+  it("arms past ARM_PX, checks again once on letting go, says it is done, and notes it once", async () => {
     fireEvent.touchStart(inner, touch(50))
     fireEvent.touchMove(inner, touch(50 + 30))
     expect(kind()).toBe("pulling")
@@ -98,16 +101,25 @@ describe("a pull from the top of the page", () => {
     reads[0].resolve()
     await flush()
     expect(runtime.getState().phase).toEqual({ kind: "done", pull: 1, at: AT })
+    expect(notes).toEqual(["pull checked: read"])
 
     vi.advanceTimersByTime(DONE_MS)
     expect(kind()).toBe("idle")
   })
 
-  it("says so when something could not be read, for longer", async () => {
+  it("notes a check that found no connection as offline", async () => {
+    drag(FAR)
+    reads[0].resolve({ kind: "offline" })
+    await flush()
+    expect(notes).toEqual(["pull checked: offline"])
+  })
+
+  it("says so when something could not be read, for longer, and notes that", async () => {
     drag(FAR)
     reads[0].reject(new Error("offline"))
     await flush()
     expect(kind()).toBe("failed")
+    expect(notes).toEqual(["pull checked: unread"])
     vi.advanceTimersByTime(DONE_MS)
     expect(kind()).toBe("failed")
     vi.advanceTimersByTime(FAILED_MS - DONE_MS)
@@ -142,6 +154,8 @@ describe("a pull from the top of the page", () => {
       kind: "checking",
       pull: 2,
     })
+    // The deadline noted the first; its late answer notes nothing.
+    expect(notes).toEqual(["pull checked: unread"])
   })
 
   it("tells its subscribers only when something changed", () => {
@@ -204,6 +218,7 @@ describe("an answer that lands late", () => {
     reads[0].resolve()
     await flush()
     expect(kind()).toBe("idle")
+    expect(notes).toEqual([])
     drag(FAR)
     expect(reads).toHaveLength(2)
   })

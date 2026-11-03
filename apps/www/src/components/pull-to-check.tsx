@@ -12,6 +12,7 @@ import { onlineManager, useQueryClient } from "@tanstack/react-query"
 import { useRouter } from "@tanstack/react-router"
 import { ArrowDown, Check, CircleAlert, RefreshCw } from "lucide-react"
 
+import { writeNativeLog } from "@/lib/native-log"
 import type { Phase } from "@/lib/pull-refresh"
 import {
   ARM_PX,
@@ -112,7 +113,10 @@ export const PullToCheck = (): JSX.Element => {
   const queryClient = useQueryClient()
   // Made once per mount: the router and the cache are the app's singletons.
   const [runtime] = useState(() =>
-    createPullRuntime(readsOnScreen(queryClient, router, onlineManager))
+    createPullRuntime({
+      ...readsOnScreen(queryClient, router, onlineManager),
+      note: writeNativeLog,
+    })
   )
   const { phase } = useSyncExternalStore(
     runtime.subscribe,
