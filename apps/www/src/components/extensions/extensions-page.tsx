@@ -20,7 +20,7 @@ import { ThemeSwitcher } from "@/components/theme-switcher"
 const CHIP =
   "text-muted-foreground hover:text-foreground bg-background/70 pointer-events-auto inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-sm backdrop-blur transition-colors"
 
-/** The build serves the stage (`lib/site-map`), so the front door names it. */
+/** The build offers the stage (`lib/site-map`), so the front door names it. */
 const OFFERS_PLAYOFF_DELTA = destinationsHere().some(
   (d) => d.to === "/playoff-delta"
 )

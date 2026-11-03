@@ -6,7 +6,7 @@ import { ArrowRight, Globe, Lock, Settings, Sparkles } from "lucide-react"
 
 import { useAuthoritySnapshot } from "@/lib/authority"
 import type { Destination } from "@/lib/site-map"
-import { destinationsHere } from "@/lib/site-map"
+import { destinationsHere, GROUP_TITLE } from "@/lib/site-map"
 import { webWingsHere } from "@/lib/wings"
 import { DemoLink } from "@/components/demo-link"
 import { ExtensionsPage } from "@/components/extensions/extensions-page"
@@ -48,7 +48,15 @@ const DestinationCard = ({
 }
 
 /**
- * What "Published from here" lists: the destinations this build serves that
+ * What leads the page: the administrative destinations, which only the home
+ * network's build offers (`lib/purpose`).
+ */
+const RUNNING = destinationsHere().filter((d) => d.purpose === "administration")
+
+const WINGS_HERE = webWingsHere()
+
+/**
+ * What "Published from here" lists: the destinations this build offers that
  * are published somewhere, each with its channel and, where one exists, a
  * demo.
  */
@@ -57,10 +65,10 @@ const PUBLISHED = destinationsHere().filter(
 )
 
 /**
- * The owner's "/" on the home network: the web's foyer. First the wings to go
- * into (lib/wings), then what is published from here, each with its channel
- * (`lib/site-map`). A visitor with no session gets the extensions tour
- * instead (see `Root`).
+ * The web's foyer: how the system is running (the home network's build only,
+ * `lib/purpose`), then the wings to go into (`lib/wings`), then what is
+ * published from here, each with its channel (`lib/site-map`). A visitor with
+ * no session gets the extensions tour instead (see `Root`).
  */
 const Landing = (): JSX.Element => (
   <main className="bg-background text-foreground relative min-h-svh">
@@ -81,25 +89,44 @@ const Landing = (): JSX.Element => (
           Where to?
         </h1>
       </div>
-      <nav aria-label="Wings" className="grid gap-4 sm:grid-cols-3">
-        {webWingsHere().map((wing) => (
-          <div key={wing.id} className="relative">
+      {RUNNING.length > 0 && (
+        <nav
+          aria-label={GROUP_TITLE.running}
+          className="grid gap-4 sm:grid-cols-3"
+        >
+          {RUNNING.map(({ to, title, blurb, icon }) => (
             <DestinationCard
-              to={wing.web.home}
-              title={wing.name}
-              blurb={wing.web.job}
-              icon={WING_GLYPHS[wing.id] ?? Sparkles}
-              cta="Go in"
+              key={to}
+              to={to}
+              title={title}
+              blurb={blurb}
+              icon={icon}
+              cta="Open"
             />
-            {wing.web.lanOnly && (
-              <span className="bg-foreground text-background absolute top-4 right-4 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium">
-                <Lock className="size-3" aria-hidden />
-                Home network
-              </span>
-            )}
-          </div>
-        ))}
-      </nav>
+          ))}
+        </nav>
+      )}
+      {WINGS_HERE.length > 0 && (
+        <nav aria-label="Wings" className="grid gap-4 sm:grid-cols-3">
+          {WINGS_HERE.map((wing) => (
+            <div key={wing.id} className="relative">
+              <DestinationCard
+                to={wing.web.home}
+                title={wing.name}
+                blurb={wing.web.job}
+                icon={WING_GLYPHS[wing.id] ?? Sparkles}
+                cta="Go in"
+              />
+              {wing.web.lanOnly && (
+                <span className="bg-foreground text-background absolute top-4 right-4 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium">
+                  <Lock className="size-3" aria-hidden />
+                  Home network
+                </span>
+              )}
+            </div>
+          ))}
+        </nav>
+      )}
       <section aria-labelledby="published" className="space-y-3">
         <div className="flex items-baseline justify-between gap-3">
           <h2
