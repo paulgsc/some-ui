@@ -7,6 +7,7 @@
  * page moved on, or after the gesture was taken away, paints nothing, while
  * the check still holds the next pull until it ends.
  */
+import { CLAIMS_POINTER } from "@some-ui/shared"
 import { fireEvent } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -188,6 +189,18 @@ describe("a drag that is the page's own", () => {
     expect(atTop(inner, scroller)).toBe(false)
     scroller.scrollTop = 0
     expect(atTop(null, scroller)).toBe(true)
+  })
+
+  it("never arms on a surface that claims an upright drag, and arms beside a sideways deck (GES5)", () => {
+    inner.setAttribute(CLAIMS_POINTER, "both")
+    drag(FAR)
+    inner.setAttribute(CLAIMS_POINTER, "y")
+    drag(FAR)
+    expect(reads).toHaveLength(0)
+    // A horizontal pager's deck claims only sideways: a drag down is a pull.
+    inner.setAttribute(CLAIMS_POINTER, "x")
+    drag(FAR)
+    expect(reads).toHaveLength(1)
   })
 
   it("never arms for two fingers", () => {

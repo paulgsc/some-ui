@@ -988,12 +988,3 @@ export function cardView(
     ? { kind: "later" }
     : { kind: "take" }
 }
-
-/** A swipe's travel, as a step: past `SWIPE_PX` either way, a card over. */
-const SWIPE_PX = 60
-
-export function swipeOf(dx: number): "next" | "prev" | null {
-  if (dx <= -SWIPE_PX) return "next"
-  if (dx >= SWIPE_PX) return "prev"
-  return null
-}

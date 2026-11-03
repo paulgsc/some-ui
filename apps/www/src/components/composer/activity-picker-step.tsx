@@ -11,6 +11,7 @@ import {
   CardContent,
   PageControls,
   TALL_WINDOW_ONLY,
+  usePager,
 } from "@some-ui/shared"
 import { Plus, X } from "lucide-react"
 
@@ -118,6 +119,12 @@ export const ActivityPickerStep = ({
     next: nextPage,
     previous: previousPage,
   } = useFittedPage(visible, { minPerPage: 1, maxPerPage: 12 })
+  const { attach: attachPager } = usePager({
+    canPrev: page > 0,
+    canNext: page < pageCount - 1,
+    onPage: (to) => (to === "next" ? nextPage() : previousPage()),
+    shareRef: viewportRef,
+  })
 
   // Numbered against the full list before paginating, so the badge shows the
   // instance's position in the session. Memoized because `useFittedPage`
@@ -135,6 +142,13 @@ export const ActivityPickerStep = ({
     next: nextManifestPage,
     previous: previousManifestPage,
   } = useFittedPage(numberedItems, { minPerPage: 1, maxPerPage: 20 })
+  const { attach: attachManifestPager } = usePager({
+    canPrev: manifestPage > 0,
+    canNext: manifestPage < manifestPageCount - 1,
+    onPage: (to) =>
+      to === "next" ? nextManifestPage() : previousManifestPage(),
+    shareRef: manifestViewportRef,
+  })
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-2 [@media(min-height:640px)]:gap-4">
@@ -170,7 +184,7 @@ export const ActivityPickerStep = ({
           ) : (
             <div className={cn("flex flex-col gap-3", catalogueShare)}>
               <div
-                ref={viewportRef}
+                ref={attachPager}
                 data-scroll-intent="fitted-residue"
                 className={
                   // scroll-intent: fitted-residue — `useFittedPage` makes the
@@ -260,7 +274,7 @@ export const ActivityPickerStep = ({
             </span>
           </p>
           <div
-            ref={manifestViewportRef}
+            ref={attachManifestPager}
             data-scroll-intent="fitted-residue"
             className={
               // scroll-intent: fitted-residue — see the catalogue box above.

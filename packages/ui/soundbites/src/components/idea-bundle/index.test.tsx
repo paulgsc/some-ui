@@ -3,8 +3,8 @@
  * shared simulated microphone, with `send: "on-confirm"`, and the real draft
  * and idea stores in a page's storage: what a person sees at each step.
  *
- * The swipe is driven with synthetic pointer events, which prove the
- * gesture's arithmetic and what it moves, not a phone's touch (CK7, #2386).
+ * The swipe is driven with synthetic touches through the shared pager, which
+ * prove what it moves, not a phone's touch (CK7, #2386).
  */
 import { inMemoryStorage } from "@some-ui/core-utils"
 import { ONE_TAKE, TAKE_WORDS } from "@some-ui/voice-capture"
@@ -20,13 +20,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const WORDS = STUDIO_WORDS.bundle
 const ASK = STUDIO_WORDS.idea.questions
-
-// jsdom has no PointerEvent, so a fired one would lose its `clientX`: a
-// MouseEvent of the pointer's type carries it, as a phone's does.
-if (typeof window.PointerEvent === "undefined") {
-  class PointerEvent extends MouseEvent {}
-  vi.stubGlobal("PointerEvent", PointerEvent)
-}
 
 beforeEach(() => {
   vi.useFakeTimers()
@@ -86,9 +79,13 @@ function drag(dx: number, from?: HTMLElement): void {
   const cards = document.querySelector<HTMLElement>("[data-swipe='cards']")
   if (cards === null) throw new Error("no cards")
   const on = from ?? cards
-  fireEvent.pointerDown(on, { clientX: 200 })
-  fireEvent.pointerMove(on, { clientX: 200 + dx })
-  fireEvent.pointerUp(on, { clientX: 200 + dx })
+  const at = (x: number): { touches: Array<Partial<Touch>> } => ({
+    touches: [{ clientX: x, clientY: 300, identifier: 0 }],
+  })
+  fireEvent.touchStart(on, at(200))
+  fireEvent.touchMove(on, at(200 + dx / 2))
+  fireEvent.touchMove(on, at(200 + dx))
+  fireEvent.touchEnd(on, { touches: [] })
   fireEvent.click(on)
 }
 

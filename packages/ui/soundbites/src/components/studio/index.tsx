@@ -2,7 +2,8 @@
  * Studio on the phone: a video made in sittings, each screen one task
  * (STUDIO ST4). Start says where things stand and offers the sittings;
  * Record shows one scene at a time, its point in large type, and one button
- * to say it; Done for now asks how the sitting went and says where the next
+ * to say it, turned by Previous and Keep and next or by a swipe (the shared
+ * pager, GES5); Done for now asks how the sitting went and says where the next
  * one opens.
  *
  * Only renders and forwards taps: what happens and in what order is
@@ -19,7 +20,7 @@ import {
   useSyncExternalStore,
 } from "react"
 import { cn } from "@some-ui/core-utils"
-import { Button, TakeButton, TakeRow } from "@some-ui/shared"
+import { Button, TakeButton, TakeRow, usePager } from "@some-ui/shared"
 import { LOOKS, VOICES } from "@some-ui/video-render"
 import { FilePick } from "@soundbites/components/file-pick"
 import { Notice } from "@soundbites/components/notice"
@@ -540,10 +541,23 @@ const Record = ({
   // records it again: "Again" adds a take, which becomes the chosen one),
   // and the chosen take as a row.
   const take = recordTake(state, view)
+  const { attach, offset, dragging } = usePager({
+    canPrev: view.n > 1,
+    canNext: taken && !view.last,
+    held: !settled,
+    onPage: (to) => dispatch({ type: "sceneSwiped", to }),
+  })
   return (
     <section
+      ref={attach}
       aria-label={WORDS.record.sceneOf(view.n, view.of)}
-      className="flex flex-col gap-3"
+      className={cn(
+        "flex flex-col gap-3",
+        !dragging && "transition-transform duration-200 ease-out"
+      )}
+      style={
+        offset === 0 ? undefined : { transform: `translateX(${offset}px)` }
+      }
     >
       <div className="text-muted-foreground flex items-center justify-between gap-2 text-[11px] font-bold tracking-wider uppercase">
         <span>{WORDS.record.sceneOf(view.n, view.of)}</span>
