@@ -8,6 +8,8 @@ export type ServerRoute =
   | "/api/v1/aph"
   | "/api/v1/aph/entries/:id"
   | "/api/v1/aph/settings"
+  | "/api/v1/app-events/:id"
+  | "/api/v1/app-events/summary"
   | "/api/v1/auth/account"
   | "/api/v1/auth/pairing/finish"
   | "/api/v1/auth/pairing/start"
@@ -93,6 +95,7 @@ export type ServerRoute =
   | "/api/v1/voice-notes/:id/audio"
   | "/api/v1/voice-notes/:id/heard"
   | "/api/v1/voice-notes/:id/set-aside"
+  | "/api/v1/voice-notes/deleted"
   | "/api/v1/voice-notes/kept"
   | "/api/v1/voice-notes/on-drive";
 
