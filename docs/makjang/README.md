@@ -240,9 +240,6 @@ it ahead of the source that builds it (TALK8, TALK9):
    take alone, and no draw reads them. The prime may go with the take as
    the hearing's context, which is what the confirmation is there to check
    (the canon's falsifier "The prime speaks for the learner").
-4. **A spoken reflection is heard at home** (Rem. 3.9), which brings
-   Remark 3.8's "nothing transcribes it" up to date for the owner's
-   deployment.
 
 Not admitted: a scene partner's line written by a model while the learner
 waits. That waits on the owner's decision D1 (#2545), and until an amendment
@@ -490,8 +487,7 @@ Def. 8.2, Axiom 8.1).
 words home heard of a take are shown back as the learner's own (canon
 Cor. 4.9, `p_reveal` = heard). They reveal only what the learner said, and
 they are an observation of it made by home's hearing (Prop. 8.5), not a line
-of the story. A scene's lines stay authored: a line a model writes in answer
-to what was said is not admitted until the canon admits it (D1, #2545).
+of the story.
 
 | Port   | Today                                                    | Later                                              | Falls back to   |
 | ------ | -------------------------------------------------------- | -------------------------------------------------- | --------------- |

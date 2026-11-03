@@ -2028,8 +2028,7 @@ rather than as *data*, and the remedy is to exhibit the data.
 
   Three decisions are named rather than glossed. (i) *The confirmation is
   the learner's word*, checked by nothing. It makes the words heard an
-  observation of what the learner said, never of whether it was right, and
-  it is the confidence Proposition 8.2 (i) asks a sensor's output to carry.
+  observation of what the learner said, never of whether it was right.
   (ii) *Everything is kept.* Every take, the words heard of it and the
   confirmation are kept, a fix beside the words first heard and never
   instead of them, on the device and home (Rem. 7.7); a turn's record is a
@@ -2044,8 +2043,7 @@ rather than as *data*, and the remedy is to exhibit the data.
   Proposition 3.1 and Corollary 3.2 hold vacuously. Remark 4.5's trigger
   carries over with a condition: when O3 exists, a confirmed turn is an
   observation of production with no deterministic grader (Prop. 8.3), so
-  crediting it needs a grader admitted first. No surface shows a turn as
-  right, wrong, scored or levelled.
+  crediting it needs a grader admitted first.
 ]
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -3255,8 +3253,7 @@ estimating a cost.
   answer from home that does not read so is discarded, leaving the take
   unheard, never shown;
   (iii) the hearing is asked for once the take is kept, and no step of the
-  turn waits on it: the turn is complete with the take alone, the learner
-  may move on at any moment, and the next prime is drawn as it would be
+  turn waits on it (Cor. 4.9 (iii)): the next prime is drawn as it would be
   without the words, so no policy decision reads them (Thm. 8.1). A reply
   that answers what was said would read them, and is the later amendment
   Definition 4.10 names;
