@@ -12,6 +12,8 @@
  *    (the ladder, and the call)
  */
 
+import { listed } from "@some-ui/core-utils"
+
 import type {
   PoleGroup,
   Poles,
@@ -149,16 +151,10 @@ export const cleanRun = (week: StoryWeek): boolean =>
   stepsOf(week, "division").worst === 0 &&
   stepsOf(week, "conference").worst === 0
 
-/** "LAR, SEA and ARI". */
-function teamList(teams: ReadonlyArray<string>): string {
-  if (teams.length <= 1) return teams.join("")
-  return `${teams.slice(0, -1).join(", ")} and ${teams.at(-1) ?? ""}`
-}
-
 /** The bloc's teams as said: named while few, counted past four. */
 const blocTeams = (group: PoleGroup): string =>
   group.bloc.teams.length <= 4
-    ? teamList(group.bloc.teams)
+    ? listed(group.bloc.teams)
     : `${numberWord(group.bloc.teams.length)} rivals`
 
 /** The floor's proof in one sentence. */
