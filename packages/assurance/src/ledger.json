@@ -2413,6 +2413,12 @@
       "family": "voice-heard"
     },
     {
+      "store": "server:voice_note_deletion",
+      "class": "record",
+      "growth": "Per voice note the owner deletes for good from My data (MD3, #2477; paulgsc/server invariant 23): one small receipt row (the note's id and kind, three times, its size, what went and what stayed in fixed words), append-only and never deleted but with the account, at most one per voice note. No kind is switched on yet, so it holds nothing.",
+      "family": "voice-heard"
+    },
+    {
       "store": "server:voice_transcript",
       "class": "derived",
       "growth": "Per transcription attempt per note per model: one ending (heard/silent) per note and model plus up to ATTEMPTS = 3 failures; text only; append-only.",
