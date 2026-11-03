@@ -275,7 +275,6 @@ const topik: Pipeline = {
         { id: "paste-reply", name: "Pasting its reply" },
       ],
     },
-    // A drama kept on the shelf.
     {
       id: "kept-drama",
       surface: "apk",
@@ -420,7 +419,6 @@ const rustRounds: Pipeline = {
       emits: ["offered", "taken", "passed-over"],
       touches: true,
     },
-    // The tutor's page.
     {
       id: "tutor",
       surface: "apk",
@@ -445,7 +443,6 @@ const leetype: Pipeline = {
   wing: "practice",
   domain: "algorithms",
   affordances: [
-    // The session file picker.
     {
       id: "session-file",
       surface: "apk",
@@ -459,7 +456,6 @@ const leetype: Pipeline = {
         { id: "reading", name: "In a reading" },
       ],
     },
-    // A reading placed after a struggle.
     {
       id: "reading",
       surface: "apk",
@@ -469,7 +465,6 @@ const leetype: Pipeline = {
       emits: ["offered", "taken", "passed-over"],
       touches: true,
     },
-    // A pointer after a solved round.
     {
       id: "pointer",
       surface: "apk",
@@ -479,7 +474,6 @@ const leetype: Pipeline = {
       emits: ["offered", "taken", "passed-over"],
       touches: true,
     },
-    // A round parked, to return to.
     {
       id: "parked-round",
       surface: "apk",

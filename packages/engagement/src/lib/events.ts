@@ -1,8 +1,7 @@
 /**
  * The vocabulary every pipeline uses to say whether it gets used (ENGAGE
  * ENG1, epic #2533): five events, one closed union, so no wing invents its
- * own (LeetType's session log and Studio's sitting report each did, for
- * itself alone).
+ * own.
  *
  * - `offered`: an affordance was put in front of the owner, on a surface.
  *   What counts as the offer is the registry's, per affordance
@@ -24,9 +23,7 @@
  *
  * **What an event may carry** (CK's C3, the epic's default (a)): which
  * pipeline and affordance, which surface, timings, and how it ended. No
- * words, no audio, no item content. `checkEvent` holds that mechanically: it
- * refuses any field outside each kind's own, and any place, answer or
- * ending that is not a declared id, so free text has nowhere to go.
+ * words, no audio, no item content. `checkEvent` holds it.
  */
 
 /** Where an affordance is: the Android app, or the desktop web. */
@@ -34,7 +31,6 @@ export type Surface = "apk" | "web"
 
 export const SURFACES: ReadonlyArray<Surface> = ["apk", "web"]
 
-/** The five events, and nothing else: "came back" is computed (above). */
 export const EVENT_KINDS = [
   "offered",
   "taken",

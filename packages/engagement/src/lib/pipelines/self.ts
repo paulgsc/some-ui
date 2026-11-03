@@ -47,7 +47,6 @@ const aph: Pipeline = {
       emits: ["offered", "taken", "passed-over"],
       touches: true,
     },
-    // Trend.
     {
       id: "trend",
       surface: "apk",

@@ -10,34 +10,20 @@
  * allows.
  */
 
+import { routesByPath } from "@/test-support/route-tree"
 import { PIPELINES, UNMEASURED } from "@some-ui/engagement"
-import { QueryClient } from "@tanstack/react-query"
-import { createRouter } from "@tanstack/react-router"
 import { beforeAll, describe, expect, it } from "vitest"
 
-import { owns, ROOMS, WINGS } from "@/lib/wings"
+import { wingOf, WINGS } from "@/lib/wings"
 
 /** Every route's path as a link names it, with its id (which names its layouts). */
 let routes: Map<string, string>
 
 beforeAll(async () => {
-  const { routeTree } = await import("@/routeTree.gen")
-  const router = createRouter({
-    routeTree,
-    context: { queryClient: new QueryClient() },
-  })
-  routes = new Map(
-    Object.entries(router.routesByPath).map(([path, route]) => [
-      path.length > 1 ? path.replace(/\/$/, "") : path,
-      route.id,
-    ])
-  )
+  routes = await routesByPath()
 }, 60_000)
 
-/** The wing whose room owns `path`, or undefined outside every wing. */
-function wingAt(path: string): string | undefined {
-  return ROOMS.find((room) => room.roots.some((root) => owns(root, path)))?.wing
-}
+const wingAt = (path: string): string | undefined => wingOf(path)?.id
 
 const offeredOn = new Set(
   PIPELINES.flatMap((p) => p.affordances.flatMap((a) => a.routes))

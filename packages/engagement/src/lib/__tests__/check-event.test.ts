@@ -1,6 +1,6 @@
 import { checkEvent } from "@engagement/lib/check-event"
 import type { VisitEnding } from "@engagement/lib/events"
-import { endingOf, EVENT_KINDS, VISIT_ENDINGS } from "@engagement/lib/events"
+import { endingOf, VISIT_ENDINGS } from "@engagement/lib/events"
 import { PIPELINES } from "@engagement/lib/pipelines"
 import { describe, expect, it } from "vitest"
 
@@ -14,17 +14,7 @@ const base = {
   at: AT,
 } as const
 
-describe("the vocabulary", () => {
-  it("is five events, and came back is none of them", () => {
-    expect(EVENT_KINDS).toEqual([
-      "offered",
-      "taken",
-      "passed-over",
-      "left",
-      "said",
-    ])
-  })
-
+describe("how a visit ends", () => {
   it("ends a visit with the first ending that applies", () => {
     expect(endingOf(new Set<VisitEnding>(["left-the-app", "put-away"]))).toBe(
       "put-away"

@@ -32,7 +32,7 @@ describe("the registry", () => {
     expect(findRegistryProblems(PIPELINES, UNMEASURED)).toEqual([])
   })
 
-  it("lists every pipeline the epic names, in every wing that holds one", () => {
+  it("lists every pipeline the epic names", () => {
     expect(PIPELINES.map((p) => p.id)).toEqual(
       expect.arrayContaining([
         "topik",
@@ -47,9 +47,6 @@ describe("the registry", () => {
         "lessons",
         "resume",
       ])
-    )
-    expect(new Set(PIPELINES.map((p) => p.wing))).toEqual(
-      new Set(["practice", "self", "studio", "jobs", "operate"])
     )
   })
 

@@ -1,5 +1,14 @@
 /** Jobs: the phone's picks and finds, and the desktop's morning run. */
-import type { Pipeline } from "@engagement/lib/registry"
+import type { Choice, Pipeline } from "@engagement/lib/registry"
+
+/** A pick's steps (`lib/jobs/words`' `steps`). */
+const PICK_STEPS: ReadonlyArray<Choice> = [
+  { id: "read", name: "Read" },
+  { id: "decide", name: "Decide" },
+  { id: "resume", name: "Résumé" },
+  { id: "apply", name: "Apply" },
+  { id: "ending", name: "Ending" },
+]
 
 const jobs: Pipeline = {
   id: "jobs",
@@ -16,14 +25,7 @@ const jobs: Pipeline = {
       offer: "listed",
       emits: ["offered", "taken", "passed-over", "left"],
       touches: true,
-      // A pick's steps (`lib/jobs/words`' `steps`).
-      places: [
-        { id: "read", name: "Read" },
-        { id: "decide", name: "Decide" },
-        { id: "resume", name: "Résumé" },
-        { id: "apply", name: "Apply" },
-        { id: "ending", name: "Ending" },
-      ],
+      places: PICK_STEPS,
     },
     // Every other pick of the digest, and earlier days' still open, behind a tap.
     {
@@ -34,13 +36,7 @@ const jobs: Pipeline = {
       offer: "listed",
       emits: ["offered", "taken", "passed-over", "left"],
       touches: true,
-      places: [
-        { id: "read", name: "Read" },
-        { id: "decide", name: "Decide" },
-        { id: "resume", name: "Résumé" },
-        { id: "apply", name: "Apply" },
-        { id: "ending", name: "Ending" },
-      ],
+      places: PICK_STEPS,
     },
     // Scout: a posting I found myself, for the run's second opinion.
     {

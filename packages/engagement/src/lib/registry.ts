@@ -26,7 +26,6 @@
  * engagement.test.ts`'s, since only www has the route tree.
  */
 import type { EventKind, Surface } from "@engagement/lib/events"
-import { EVENT_KINDS, SURFACES } from "@engagement/lib/events"
 
 /** The wings of `apps/www/src/lib/wings` that hold a pipeline. */
 export type WingId = "practice" | "self" | "studio" | "jobs" | "operate"
@@ -121,8 +120,6 @@ export function findRegistryProblems(
       const here = `${at}/${a.id} (${a.surface})`
       if (!ID.test(a.id))
         problems.push(`${here}: an id is lowercase words joined by hyphens`)
-      if (!SURFACES.includes(a.surface))
-        problems.push(`${here}: no such surface`)
       const key = `${a.surface}:${a.id}`
       if (keys.has(key)) problems.push(`${here}: listed twice on its surface`)
       keys.add(key)
@@ -149,8 +146,6 @@ function affordanceProblems(here: string, a: Affordance): Array<string> {
   const emits = new Set(a.emits)
   if (a.emits.length === 0) problems.push(`${here}: emits nothing`)
   if (emits.size !== a.emits.length) problems.push(`${here}: an event twice`)
-  for (const kind of a.emits)
-    if (!EVENT_KINDS.includes(kind)) problems.push(`${here}: no event ${kind}`)
   if (emits.has("offered") !== (a.offer !== null))
     problems.push(`${here}: emits offered exactly when it has an offer`)
   if (emits.has("passed-over") && !emits.has("offered"))

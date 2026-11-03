@@ -1,5 +1,13 @@
 /** Operate: what gets published, on the home network's web (`lan`). */
-import type { Pipeline } from "@engagement/lib/registry"
+import type { Choice, Pipeline } from "@engagement/lib/registry"
+
+/** A stored lesson's panes (`packages/ui/lesson-crm/src/lib/panes.ts`). */
+const LESSON_PANES: ReadonlyArray<Choice> = [
+  { id: "lesson", name: "The lesson" },
+  { id: "details", name: "Its details" },
+  { id: "preview", name: "Its preview" },
+  { id: "check", name: "Its check" },
+]
 
 /** The lesson CRM (`packages/ui/lesson-crm`). */
 const lessons: Pipeline = {
@@ -17,13 +25,7 @@ const lessons: Pipeline = {
       offer: "listed",
       emits: ["offered", "taken", "passed-over", "left"],
       touches: true,
-      // Its panes (`lib/panes.ts`), as a stored lesson has them.
-      places: [
-        { id: "lesson", name: "The lesson" },
-        { id: "details", name: "Its details" },
-        { id: "preview", name: "Its preview" },
-        { id: "check", name: "Its check" },
-      ],
+      places: LESSON_PANES,
     },
     // A new lesson, from its prompt.
     {
@@ -34,13 +36,7 @@ const lessons: Pipeline = {
       offer: "listed",
       emits: ["offered", "taken", "passed-over", "left"],
       touches: true,
-      places: [
-        { id: "prompt", name: "Its prompt" },
-        { id: "lesson", name: "The lesson" },
-        { id: "details", name: "Its details" },
-        { id: "preview", name: "Its preview" },
-        { id: "check", name: "Its check" },
-      ],
+      places: [{ id: "prompt", name: "Its prompt" }, ...LESSON_PANES],
     },
   ],
 }
