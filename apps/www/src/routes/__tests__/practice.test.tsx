@@ -218,10 +218,7 @@ describe("Practice's Rust Rounds card", () => {
         visit: {
           round: "indexing-01",
           card: "c",
-          stage: "speak",
-          picked: "Panics",
           note: null,
-          shown: false,
           pinned: false,
           again: "fresh",
         },
