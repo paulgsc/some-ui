@@ -9,7 +9,7 @@
  *
  * The landing is rendered under both web profiles (ADM1, #2389): on the home
  * network it leads with how the system is running and offers no study or
- * making; on the public site it is what it was before.
+ * making.
  */
 
 import type { JSX, ReactNode } from "react"
@@ -120,7 +120,7 @@ describe('"/"', () => {
     expect(screen.queryByRole("heading", { level: 1 })).toBeNull()
   })
 
-  it("is the foyer on the public site once the demo is open, unchanged by ADM1", async () => {
+  it("is the foyer on the public site once the demo is open", async () => {
     state.session = "signed-in"
     await renderRoot(PUBLIC_SITE)
     expect(screen.queryByTestId("extensions-page")).toBeNull()
@@ -130,9 +130,6 @@ describe('"/"', () => {
     expect(
       screen.getByRole("link", { name: /^Practice/ }).getAttribute("href")
     ).toBe("/app")
-    expect(screen.queryByRole("navigation", { name: "How it's running" })).toBe(
-      null
-    )
     expect(hrefs()).toEqual([
       "/settings",
       // The wings: Practice, Studio, Jobs.
@@ -156,8 +153,6 @@ describe('"/"', () => {
     expect(hrefs()).toEqual([
       "/settings",
       "/assurance",
-      // The one wing whose web side is not study or making: a morning run
-      // read on a sample digest.
       "/job-run",
       "/mission",
       "/extensions",

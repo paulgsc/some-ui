@@ -23,10 +23,6 @@ import { offeredHere } from "@/lib/purpose"
  * A3 (packages/some-vite-config/AUDIENCES.md): a destination on a gated route
  * names that route's audience, and `destinationsHere` drops it from a build
  * without the audience, so no link to it is ever rendered there.
- *
- * Each also names its purpose (`lib/purpose`), and `destinationsHere` drops
- * one this build's navigation does not offer: on the home network, study and
- * making (ADM1, #2389). The page itself still loads by its address.
  */
 export type Destination = {
   readonly to:
@@ -46,7 +42,10 @@ export type Destination = {
    * passkey session (`routes/_dashboard/_lan.tsx`).
    */
   readonly audience: Audience
-  /** What it is for, which decides the builds whose navigation offers it. */
+  /**
+   * What it is for, which decides the builds whose navigation offers it
+   * (`lib/purpose`).
+   */
   readonly purpose: Purpose
   /** Its group in the site launcher; absent where the sidebar holds it. */
   readonly launcher?: DestinationGroup
@@ -79,10 +78,6 @@ export const GROUP_TITLE: Readonly<Record<DestinationGroup, string>> = {
  * page and launcher lead with it.
  */
 const DESTINATIONS: ReadonlyArray<Destination> = [
-  // Administration: the system's health, its accounting and storage, its
-  // promises. CHECKS' "Is it working?" (CK8, #2388) joins here as a "lan"
-  // page in the `running` group once its route exists, as do the storage and
-  // record views after it.
   {
     to: "/assurance",
     title: "Promises",

@@ -45,8 +45,6 @@ export type Wing = {
    * The wing on the desktop web: its Home and what you come in for there,
    * which differ from the phone's (Studio records the Playoff Delta stage on
    * the desktop, voice takes on the phone). Null where the web has none.
-   * Its purpose (`lib/purpose`) decides the builds whose navigation offers
-   * it: on the home network, study and making leave (ADM1, #2389).
    */
   web: { home: Path; job: string; purpose: Purpose; lanOnly?: true } | null
   /**
@@ -242,7 +240,7 @@ export function webWingsHere(): ReadonlyArray<
 
 /**
  * Whether `wing` has a side on the desktop web's navigation in this build
- * (A3, and `lib/purpose`). Its routes still load by their address.
+ * (A3, `lib/purpose`).
  */
 function onWebHere(wing: Wing): boolean {
   return (

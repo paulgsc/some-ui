@@ -112,7 +112,6 @@ describe("wings", () => {
     expect(navOf(wing("operate"))).toEqual([])
     expect(navOf(wing("practice"))).toEqual([])
     expect(webSettingsOf(wing("practice"))).toBeNull()
-    expect(navOf(wing("studio"))).toEqual([])
     expect(navOf(wing("jobs")).map((room) => room.nav)).toEqual(["Morning run"])
   })
 

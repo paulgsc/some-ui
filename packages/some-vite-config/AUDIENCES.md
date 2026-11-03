@@ -57,16 +57,15 @@ every wing's web side in `src/lib/wings` names a purpose (`administration`,
   The build carrying `lan`, the owner's desktop, offers administration (the system's
   health, accounting and storage, its promises) and presentation (the mission, the résumé,
   the published extensions). Study and making leave its navigation.
-- **Every other build offers what viewers try**, and no administration: the public site's
-  navigation is what it was before the rule.
+- **Every other build offers what viewers try** (presentation, study and making), and no
+  administration.
 - **Navigation only.** A page that is not offered still loads by its address and its
   workspace is still bundled, so links and history keep working. Dropping study and
   making from the `lan` bundle is a follow-up once nothing in `lan` points at them.
 
 `destinationsHere` and the wings' `onWebHere` apply the rule, so a component never checks
-the build itself. `src/lib/purpose/index.test.ts`, `src/routes/__tests__/index.test.tsx`,
-`src/components/site-launcher/__tests__/index.test.tsx` and `src/lib/wings/__tests__` hold
-it under both web profiles.
+the build itself. The tests of `src/lib/wings`, the site launcher and `/` hold it under both
+web profiles.
 
 ## What is enforced, and what is not
 

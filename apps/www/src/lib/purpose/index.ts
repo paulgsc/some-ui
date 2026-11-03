@@ -16,16 +16,9 @@ import { hasAudience } from "@/lib/build-profile"
 export type Purpose = "administration" | "presentation" | "study" | "making"
 
 /**
- * The per-build rule beside the audiences (ADM1, #2389;
+ * The purposes each build's navigation offers (ADM1, #2389):
  * packages/some-vite-config/AUDIENCES.md, "What each build's navigation
- * offers"). The build that carries the home network's audience is the
- * owner's desktop, and it is administration-first: it offers administration
- * and presentation, and study and making leave its navigation. Every other
- * build offers what viewers try (the public site) and no administration.
- *
- * Navigation only: a route that is not offered still loads by its address,
- * and its workspace is still bundled. Which workspaces a build carries is
- * the audiences' question, never this one.
+ * offers", says why, and that it is navigation only.
  */
 const OFFERED: Readonly<
   Record<"home-network" | "elsewhere", ReadonlySet<Purpose>>

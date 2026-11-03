@@ -48,13 +48,11 @@ const DestinationCard = ({
 }
 
 /**
- * What leads the page: the administrative destinations this build offers
- * (`lib/purpose`), which only the home network's navigation does (ADM1,
- * #2389). Elsewhere it is empty and the page starts with the wings.
+ * What leads the page: the administrative destinations, which only the home
+ * network's build offers (`lib/purpose`).
  */
 const RUNNING = destinationsHere().filter((d) => d.purpose === "administration")
 
-/** The wings to go into, where this build's navigation offers any. */
 const WINGS_HERE = webWingsHere()
 
 /**
@@ -67,12 +65,10 @@ const PUBLISHED = destinationsHere().filter(
 )
 
 /**
- * The web's foyer. On the home network, the owner's desktop, it is
- * administration-first (ADM1, #2389): first how the system is running, then
- * any wing whose purpose the build offers, then what is published from here,
- * each with its channel (`lib/site-map`, `lib/wings`, `lib/purpose`). On the
- * public site, with the demo open, it is the wings and what is published. A
- * visitor with no session gets the extensions tour instead (see `Root`).
+ * The web's foyer: how the system is running (the home network's build only,
+ * `lib/purpose`), then the wings to go into (`lib/wings`), then what is
+ * published from here, each with its channel (`lib/site-map`). A visitor with
+ * no session gets the extensions tour instead (see `Root`).
  */
 const Landing = (): JSX.Element => (
   <main className="bg-background text-foreground relative min-h-svh">

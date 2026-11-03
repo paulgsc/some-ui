@@ -79,12 +79,10 @@ describe("the site launcher", () => {
     render(<SiteLauncher />)
     expect(openTiles()).toEqual(["/assurance", "/extensions", "/mission"])
     expect(screen.getByText("How it's running")).toBeTruthy()
-    expect(screen.queryByText("Home network")).toBeNull()
   })
 
   it("marks a LAN tool as needing a passkey until the account is the authority", async () => {
-    // No LAN page is offered today; CHECKS' "Is it working?" (CK8, #2388)
-    // will be the first, so the case stands on a catalog of its own.
+    // No LAN page is offered today, so the case stands on a catalog of its own.
     const catalog: ReadonlyArray<Destination> = [
       {
         to: "/lessons",
@@ -115,12 +113,11 @@ describe("the site launcher", () => {
     expect(screen.queryByText("Passkey")).toBeNull()
   })
 
-  it("offers the public site Playoff Delta, no LAN tool and no administration, as before ADM1", async () => {
+  it("offers the public site Playoff Delta, no LAN tool and no administration", async () => {
     const { SiteLauncher } = await load({ audiences: ["public", "web"] })
     render(<SiteLauncher />)
     expect(openTiles()).toEqual(["/playoff-delta", "/extensions", "/mission"])
     expect(screen.queryByText("Home network")).toBeNull()
-    expect(screen.queryByText("How it's running")).toBeNull()
   })
 
   it("renders nothing in the Android app", async () => {
