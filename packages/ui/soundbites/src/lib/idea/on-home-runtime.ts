@@ -123,10 +123,12 @@ export function createIdeasOnHome(ports: OnHomePorts): OnHomeRuntime {
       }
       case "entry": {
         const { listed } = effect
-        later(ports.home.entry(effect.list, effect.name, listed), (write) => {
+        const written = ports.home.entry(effect.list, effect.name, listed)
+        // Kept even once the screen is left: home took the change either way.
+        void written.then((write) => {
           if (write.kind === "written") remember(write.value)
-          return { type: "entryDone", listed, write }
         })
+        later(written, (write) => ({ type: "entryDone", listed, write }))
         return
       }
       case "fill": {

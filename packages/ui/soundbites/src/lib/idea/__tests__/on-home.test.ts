@@ -4,6 +4,7 @@ import { keptIdeaLists } from "@soundbites/lib/idea/draft"
 import type { Idea } from "@soundbites/lib/idea/model"
 import type {
   HomeIdea,
+  HomeLists,
   OnHomeEffect,
   OnHomeEvent,
   OnHomeState,
@@ -97,8 +98,8 @@ describe("ideas on home, grouped and sorted on the phone (ST26 c)", () => {
   })
 
   it("dates an idea by the day it was begun on this phone's calendar", () => {
-    const zone = process.env.TZ
-    process.env.TZ = "America/Los_Angeles"
+    // Unstubbed, an unset TZ is unset again, not the string "undefined".
+    vi.stubEnv("TZ", "America/Los_Angeles")
     try {
       // 18:30 on Nov 1 in California is already Nov 2 in UTC.
       const evening = onHome("e", "2026-11-02T01:30:00.000Z")
@@ -106,7 +107,7 @@ describe("ideas on home, grouped and sorted on the phone (ST26 c)", () => {
         "2026-11-01",
       ])
     } finally {
-      process.env.TZ = zone
+      vi.unstubAllEnvs()
     }
   })
 })
@@ -218,6 +219,46 @@ describe("the lists as home last said them, for New idea (ST26 c)", () => {
     await vi.waitFor(() => expect(runtime.getSnapshot().notice).toBe("added"))
     expect(lists.read()).toEqual(after)
     detach()
+  })
+
+  it("are kept from a change home takes after the screen is left", async () => {
+    const storage = inMemoryStorage()
+    const after = { topics: ["Studio"], keywords: ["phone"] }
+    let land: (lists: HomeLists) => void = () => undefined
+    const home: IdeasHome = {
+      ideas: () =>
+        Promise.resolve({ kind: "read", value: { ideas: [], more: false } }),
+      lists: () =>
+        Promise.resolve({
+          kind: "read",
+          value: { topics: ["Studio"], keywords: [] },
+        }),
+      furnish: vi.fn(),
+      setAside: vi.fn(),
+      entry: () =>
+        new Promise((resolve) => {
+          land = (value): void => resolve({ kind: "written", value })
+        }),
+    }
+    const lists = keptIdeaLists(() => storage)
+    const runtime = createIdeasOnHome({
+      home,
+      ideas: keptIdeaStore(() => storage),
+      lists,
+    })
+    const detach = runtime.attach(true)
+    await vi.waitFor(() =>
+      expect(runtime.getSnapshot().lists.kind).toBe("read")
+    )
+    runtime.dispatch({
+      type: "entry",
+      list: "keywords",
+      name: "phone",
+      listed: true,
+    })
+    detach()
+    land(after)
+    await vi.waitFor(() => expect(lists.read()).toEqual(after))
   })
 })
 
