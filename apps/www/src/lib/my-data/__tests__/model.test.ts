@@ -67,6 +67,58 @@ describe("home's answer", () => {
   })
 })
 
+describe("home's count of the record kept for good (MD2b)", () => {
+  const kept = { status: 200, body: JSON.stringify(KEPT) }
+  const record = (body: unknown, status = 200): HomeReading =>
+    readKept(kept, { status, body: JSON.stringify(body) })
+
+  it("reads each kind's count and since when, beside the recordings", () => {
+    expect(
+      record({
+        kinds: [
+          { kind: "sessions", count: 214, since: "2026-09-12T10:00:00.000Z" },
+          { kind: "scene-asks", count: 3, since: "2026-10-31T07:15:03.120Z" },
+        ],
+      })
+    ).toEqual({
+      ...READ,
+      record: {
+        kind: "read",
+        held: {
+          sessions: { count: 214, since: "2026-09-12T10:00:00.000Z" },
+          "scene-asks": { count: 3, since: "2026-10-31T07:15:03.120Z" },
+        },
+      },
+    })
+  })
+
+  it("leaves out a kind it doesn't know, and none at all", () => {
+    expect(
+      record({
+        kinds: [
+          { kind: "diary", count: 2, since: "2026-09-12T10:00:00.000Z" },
+          { kind: "jobs", count: 0, since: "2026-09-12T10:00:00.000Z" },
+        ],
+      })
+    ).toEqual({ ...READ, record: { kind: "read", held: {} } })
+  })
+
+  it("says when home runs an older version, or answered what can't be read", () => {
+    expect(record({}, 404)).toEqual({ ...READ, record: { kind: "older" } })
+    expect(record({}, 500)).toEqual({
+      ...READ,
+      record: { kind: "unreachable" },
+    })
+    expect(
+      record({ kinds: [{ kind: "jobs", count: 1, since: "yesterday" }] })
+    ).toEqual({ ...READ, record: { kind: "unreachable" } })
+  })
+
+  it("isn't there on a kind's page, which doesn't ask", () => {
+    expect(readKept(kept)).toEqual(READ)
+  })
+})
+
 describe("the overview", () => {
   it("counts a recording once: home's when home holds it, this phone's when not yet", () => {
     const view = overviewOf(

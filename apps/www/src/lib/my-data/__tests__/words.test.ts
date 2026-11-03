@@ -8,11 +8,14 @@ import { describe, expect, it } from "vitest"
 
 import { MACHINERY } from "@/lib/home-link/__tests__/machinery"
 import { KINDS } from "@/lib/my-data/model"
+import { RECORD_KINDS } from "@/lib/my-data/record"
 import {
   homeLine,
   itemLine,
   itemName,
   KEPT_FOR_GOOD,
+  keptLine,
+  keptNote,
   KIND_NAMES,
   kindLead,
   kindLine,
@@ -37,12 +40,21 @@ describe("My data's words", () => {
     expect(Object.keys(KIND_NAMES).sort()).toEqual([...KINDS].sort())
   })
 
+  it("name every kind of record kept for good, in its order", () => {
+    expect(Object.keys(KEPT_FOR_GOOD)).toEqual([...RECORD_KINDS])
+  })
+
   it("never name the machinery", () => {
     const said = [
       ...strings(MY_DATA),
       ...strings(KIND_NAMES),
       ...strings(WHERE_WORDS),
-      ...KEPT_FOR_GOOD,
+      ...Object.values(KEPT_FOR_GOOD),
+      keptLine({ count: 12, since: AT }),
+      keptLine(undefined),
+      ...(["older", "unreachable"] as const)
+        .map((kind) => keptNote({ kind }))
+        .filter((line): line is string => line !== null),
       ...(["reading", "unpaired", "unreachable", "older", "read"] as const)
         .map(homeLine)
         .filter((line): line is string => line !== null),

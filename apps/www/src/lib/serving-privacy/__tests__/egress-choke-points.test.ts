@@ -31,7 +31,8 @@
  *   `GET /voice-notes/:id/audio` per play), read only by that lane. My data
  *   (`lib/my-data`, MD2) asks home what it keeps
  *   (`lib/home-link/kept-read`, whose read sends one `GET /voice-notes/kept`
- *   per open or drag down).
+ *   per open or drag down, and on the overview one `GET /subjects/me/kept`
+ *   of the record kept for good, MD2b).
  *
  * The last group feeds the checks known-bad sources, so a check that stopped
  * looking cannot stay green.
@@ -149,7 +150,10 @@ const AUDIO_SENDS = [['"GET"', "audioPath(id)"]]
 
 /** LA8, MD2: the read of what home keeps, and the one request it may send. */
 const KEPT_READ = "lib/home-link/kept-read.ts"
-const KEPT_SENDS = [['"GET"', "keptPath(of)"]]
+const KEPT_SENDS = [
+  ['"GET"', "keptPath(of)"],
+  ['"GET"', "RECORD_PATH"],
+]
 
 /**
  * LA8, LA13 (MIC2): the voice lane's set-aside marks, and the one request
@@ -564,9 +568,12 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(read(KEPT_READ)).toContain("homeLink().keep(")
   })
 
-  it("sends nothing from the read of what home keeps but one GET of /voice-notes/kept, and only My data reads it (MD2)", () => {
+  it("sends nothing from the read of what home keeps but one GET of /voice-notes/kept and one of /subjects/me/kept, and only My data reads it (MD2, MD2b)", () => {
     expect(sendCalls(KEPT_READ, read(KEPT_READ))).toEqual(KEPT_SENDS)
     expect(read(KEPT_READ)).toContain('"/voice-notes/kept"')
+    expect(read(KEPT_READ)).toContain(
+      'export const RECORD_PATH = "/subjects/me/kept"'
+    )
     const readers = sourceFiles()
       .filter((f) => !isTestFile(f))
       .filter((f) =>

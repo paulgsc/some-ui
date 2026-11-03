@@ -12,6 +12,9 @@
  *   still here that home hasn't said it holds, going home while its copy
  *   waits and the phone is paired, otherwise only on this phone (as every
  *   screen's row says it, `lib/home-link/voice-copy`'s `voiceKept`).
+ * - **The record kept for good** is home's count of it too
+ *   (`GET /subjects/me/kept`, `./record`), read beside the recordings' on
+ *   the overview.
  * - **Read only.** Nothing here sends, keeps or lets go of anything.
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
@@ -20,6 +23,9 @@ import { z } from "zod"
 
 import type { VoiceOut } from "@/lib/voice-home/model"
 import { VOICE_OFS } from "@/lib/voice-home/model"
+
+import type { RecordReading } from "./record"
+import { readRecord } from "./record"
 
 /** What a recording was said for, as home names it. */
 export type Of = VoiceOut["of"]
@@ -73,14 +79,32 @@ export type HomeReading =
   | { readonly kind: "unreachable" }
   /** Home answered, without this read: it runs an older version. */
   | { readonly kind: "older" }
-  | { readonly kind: "read"; readonly kept: HomeKept }
+  | {
+      readonly kind: "read"
+      readonly kept: HomeKept
+      /**
+       * What home keeps for good of the record (`./record`, MD2b), when
+       * the overview asked; absent on a kind's page.
+       */
+      readonly record?: RecordReading
+    }
 
-/** What home's answer to its read of what it keeps says (`lib/home-link/kept-read`). */
-export function readKept(answer: HomeAnswer): HomeReading {
+/**
+ * What home's answers to its read of what it keeps say
+ * (`lib/home-link/kept-read`): the recordings', and the record's when it
+ * was asked.
+ */
+export function readKept(
+  answer: HomeAnswer,
+  record: HomeAnswer | null = null
+): HomeReading {
   if (answer.status === 404) return { kind: "older" }
   if (answer.status !== 200) return { kind: "unreachable" }
   const kept = readAs(Kept, answer.body)
-  return kept === null ? { kind: "unreachable" } : { kind: "read", kept }
+  if (kept === null) return { kind: "unreachable" }
+  return record === null
+    ? { kind: "read", kept }
+    : { kind: "read", kept, record: readRecord(record) }
 }
 
 /** One recording on this phone, as the page needs it. */

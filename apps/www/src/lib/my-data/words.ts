@@ -6,6 +6,7 @@
 import { assertNever, counted, formatSize } from "@some-ui/core-utils"
 
 import type { HomeReading, Of, Where } from "./model"
+import type { RecordHeld, RecordKind, RecordReading } from "./record"
 
 /** Each kind of recording, as the person knows it. */
 export const KIND_NAMES: Readonly<Record<Of, string>> = {
@@ -30,22 +31,22 @@ export const WHERE_WORDS: Readonly<Record<Where, string>> = {
 
 /**
  * What you keep for good: your record over time, with no delete anywhere
- * (the owner's rule on #2474: we never delete work). Named here, without
- * counts: how much home keeps of each isn't read yet.
+ * (the owner's rule on #2474: we never delete work), each with how many
+ * home keeps (`./record`, MD2b). In `RECORD_KINDS`' order.
  */
-export const KEPT_FOR_GOOD: ReadonlyArray<string> = [
-  "Study sessions",
-  "Written reflections",
-  "Ideas",
-  "Practice results",
-  "Korean record",
-  "The Jobs record",
-  "Self entries",
-  "LeetType sessions",
-  "Rust Rounds",
-  "Asks for the next scene",
-  "Studio's log",
-]
+export const KEPT_FOR_GOOD: Readonly<Record<RecordKind, string>> = {
+  sessions: "Study sessions",
+  reflections: "Written reflections",
+  ideas: "Ideas",
+  practice: "Practice results",
+  korean: "Korean record",
+  jobs: "The Jobs record",
+  self: "Self entries",
+  leetype: "LeetType sessions",
+  "rust-rounds": "Rust Rounds",
+  "scene-asks": "Asks for the next scene",
+  "studio-log": "Studio's log",
+}
 
 const day = new Intl.DateTimeFormat("en-GB", {
   day: "numeric",
@@ -116,7 +117,8 @@ export const MY_DATA = {
   pullWhat: "what home keeps",
   keptTitle: "Kept for good",
   kept: "Kept for good. These are your record over time, so there's no delete for them.",
-  keptNotShown: "How much home keeps of these isn't shown here yet.",
+  /** A kind of the record home keeps none of. */
+  keptNone: "None on home yet",
   /** A kind's list. */
   kind: {
     back: "My data",
@@ -137,6 +139,36 @@ export function kindLine(
 ): string {
   const where = phoneOnly ? " · not on home yet" : ""
   return `${notes} · since ${onDay(since)}${where}`
+}
+
+/** A kind of the record's line: `214 on home · since 12 Sep 2026`, or none. */
+export function keptLine(held: RecordHeld | undefined): string {
+  return held === undefined
+    ? MY_DATA.keptNone
+    : `${held.count} on home · since ${onDay(held.since)}`
+}
+
+/**
+ * What the "Kept for good" list says about home's count when home answered
+ * the recordings' read but not the record's, or null. When home didn't
+ * answer at all, `homeLine` has said so above.
+ */
+export function keptNote(record: RecordReading | undefined): string | null {
+  if (record === undefined) return null
+  switch (record.kind) {
+    case "read": {
+      return null
+    }
+    case "older": {
+      return "Home can't say how many of these it keeps until it runs a newer version."
+    }
+    case "unreachable": {
+      return "Home didn't say how many of these it keeps. Drag down to try again."
+    }
+    default: {
+      return assertNever(record)
+    }
+  }
 }
 
 /** The kind page's lead: `214 kept · 72.0 MB · since 12 Sep 2026`. */

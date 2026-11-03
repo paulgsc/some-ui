@@ -406,7 +406,9 @@ declared (checked by reading every call site and by the tests named).
   that take, nor for any for 5 minutes on that pairing; the owner's
   direction on #2428, 2026-11-01, and IH1), and My data asking home what it
   keeps (`lib/my-data`, through `lib/home-link/kept-read`'s `keep`: one
-  `GET /voice-notes/kept`, with `?of=` on a kind's page, each time a My
+  `GET /voice-notes/kept`, with `?of=` on a kind's page, and on the
+  overview one `GET /subjects/me/kept` of how much home keeps for good of the
+  record in the same run (#2519, MD2b), each time a My
   data page opens or is dragged down, sending nothing of the phone's but the
   kind; while the link is busy with another run, which sends nothing, it
   asks again a second later, at most ten times in all; #2476, whose page
@@ -481,7 +483,8 @@ declared (checked by reading every call site and by the tests named).
   `lib/home-link/lanes.ts` (LA15), `lib/home-link/routine.ts`,
   `lib/home-link/heard.ts`, `lib/home-link/voice-audio.ts` (RR6) and
   `lib/home-link/kept-read.ts`; one that has
-  `kept-read.ts` send anything but one `GET` of `keptPath(of)` per ask, lets
+  `kept-read.ts` send anything but one `GET` of `keptPath(of)` per ask and,
+  when `of` is null, one `GET` of `RECORD_PATH`, lets
   anything but `lib/my-data` read it, or has `lib/my-data` ask it but when a
   My data page opens or is dragged down, or ask again but while the link is
   busy, more than ten times in all; one that has `heard.ts` send anything but one

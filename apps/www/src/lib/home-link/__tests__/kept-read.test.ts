@@ -39,13 +39,27 @@ describe("the read of what home keeps (MD2)", () => {
     expect(keptPath("rust-round")).toBe("/voice-notes/kept?of=rust-round")
   })
 
-  it("hands back home's answer to one GET", async () => {
+  it("hands back home's answer to one GET on a kind's page", async () => {
     answer = { status: 200, body: "{}" }
     await expect(askKept("studio")).resolves.toEqual({
       kind: "answered",
       answer,
+      record: null,
     })
     expect(asked).toEqual([["GET", "/voice-notes/kept?of=studio"]])
+  })
+
+  it("asks for the record's count beside it on the overview, in the same run (MD2b)", async () => {
+    answer = { status: 200, body: "{}" }
+    await expect(askKept(null)).resolves.toEqual({
+      kind: "answered",
+      answer,
+      record: answer,
+    })
+    expect(asked).toEqual([
+      ["GET", "/voice-notes/kept"],
+      ["GET", "/subjects/me/kept"],
+    ])
   })
 
   it("asks nothing while unpaired", async () => {

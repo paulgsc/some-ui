@@ -4,7 +4,8 @@
  * My data (MD2, #2476) as the phone draws it: the three figures, the
  * charts, each kind with how many and since when, a kind's list newest
  * first with Play where the audio is on this phone, and what is kept for
- * good. What the numbers are is `lib/my-data`'s, held by its tests.
+ * good with home's count of each (MD2b, #2519). What the numbers are is
+ * `lib/my-data`'s, held by its tests.
  */
 import type * as ReactRouterModule from "@tanstack/react-router"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
@@ -13,7 +14,14 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import type { MyDataState } from "@/lib/my-data"
 import type { HomeReading } from "@/lib/my-data/model"
 import { kindOf, overviewOf } from "@/lib/my-data/model"
-import { KEPT_FOR_GOOD, MY_DATA, onDay, WHERE_WORDS } from "@/lib/my-data/words"
+import { RECORD_KINDS } from "@/lib/my-data/record"
+import {
+  KEPT_FOR_GOOD,
+  keptNote,
+  MY_DATA,
+  onDay,
+  WHERE_WORDS,
+} from "@/lib/my-data/words"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 import {
   DeviceMyData,
@@ -130,8 +138,41 @@ describe("My data's overview", () => {
       "not on home yet"
     )
     expect(screen.getByText(MY_DATA.kept)).toBeTruthy()
-    for (const name of KEPT_FOR_GOOD)
-      expect(screen.getByText(name)).toBeTruthy()
+    for (const kind of RECORD_KINDS)
+      expect(screen.getByText(KEPT_FOR_GOOD[kind])).toBeTruthy()
+    // No count of the record until home gave one.
+    expect(screen.queryByText(MY_DATA.keptNone)).toBeNull()
+  })
+
+  it("says how many home keeps of each kind kept for good, and since when (MD2b)", () => {
+    render(
+      <MyDataOverview
+        overview={overviewOf(HOME, PHONE, NOW)}
+        record={{
+          kind: "read",
+          held: {
+            sessions: { count: 214, since: "2026-09-12T10:00:00.000Z" },
+          },
+        }}
+      />
+    )
+    const row = (kind: (typeof RECORD_KINDS)[number]): string | null =>
+      screen.getByText(KEPT_FOR_GOOD[kind]).closest("li")?.textContent ?? null
+    expect(row("sessions")).toContain(`214 on home · since ${SINCE}`)
+    expect(row("jobs")).toContain(MY_DATA.keptNone)
+  })
+
+  it("says when home can't count the record yet", () => {
+    render(
+      <MyDataOverview
+        overview={overviewOf(HOME, PHONE, NOW)}
+        record={{ kind: "older" }}
+      />
+    )
+    const older = keptNote({ kind: "older" })
+    expect(older).not.toBeNull()
+    expect(screen.getByText(older ?? "")).toBeTruthy()
+    expect(screen.queryByText(MY_DATA.keptNone)).toBeNull()
   })
 
   it("shows every number as a table on asking", () => {

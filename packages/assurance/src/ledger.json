@@ -1613,7 +1613,7 @@
     },
     {
       "module": "subjects",
-      "why": "Reads the subject's own stats; the answer is the outcome."
+      "why": "Reads the subject's own stats, and how much home keeps for good of its record; the answer is the outcome."
     },
     {
       "module": "sync",

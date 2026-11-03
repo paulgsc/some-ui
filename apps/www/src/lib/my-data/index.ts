@@ -3,7 +3,8 @@
  * grows, read only. `./model` is what the page shows, `./state` and
  * `./runtime` read it and play a recording, `./words` says it, and this
  * module wires the runtime to the phone: home through its read of what it
- * keeps (`lib/home-link/kept-read`, LA8), and this phone's recordings as
+ * keeps, the record's count with it on the overview
+ * (`lib/home-link/kept-read`, LA8), and this phone's recordings as
  * the voice lane lists them and says where each is kept
  * (`lib/home-link/voice-copy`'s `recordingsOnPhone` and `voiceKept`). Phone-only
  * (`build.paths.ts`).
@@ -37,7 +38,7 @@ async function askHome(of: Of | null): Promise<HomeReading> {
     const asked = await askKept(of)
     switch (asked.kind) {
       case "answered": {
-        return readKept(asked.answer)
+        return readKept(asked.answer, asked.record)
       }
       case "unpaired": {
         return { kind: "unpaired" }

@@ -4,7 +4,8 @@
  * https://claude.ai/artifact/5BvL59CmrjzxQ2JbUj15PN). Three figures, three
  * charts (`./device-my-data-charts`), each kind of recording with how many
  * and since when, a kind's list, newest first, playable where its audio is
- * on this phone, and what is kept for good. Nothing here deletes.
+ * on this phone, and what is kept for good, with how many home keeps of
+ * each and since when (MD2b, #2519). Nothing here deletes.
  *
  * `MyDataOverview` and `MyDataKind` draw a snapshot; `DeviceMyData` and
  * `DeviceMyDataKind` read it from the runtime (`lib/my-data`), which a drag
@@ -27,11 +28,15 @@ import type {
   KindView,
   PhoneRead,
 } from "@/lib/my-data/model"
+import type { RecordReading } from "@/lib/my-data/record"
+import { RECORD_KINDS } from "@/lib/my-data/record"
 import {
   homeLine,
   itemLine,
   itemName,
   KEPT_FOR_GOOD,
+  keptLine,
+  keptNote,
   KIND_NAMES,
   kindLead,
   kindLine,
@@ -120,11 +125,43 @@ const KindRow = ({ kind }: { kind: KindLineOf }): JSX.Element => {
   )
 }
 
+/** What is kept for good, with home's count of each once home gave it. */
+const KeptForGood = ({
+  record,
+}: {
+  record: RecordReading | undefined
+}): JSX.Element => (
+  <Section title={MY_DATA.keptTitle}>
+    <p className="bg-muted flex items-start gap-2 rounded-xl p-3 text-sm">
+      <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />
+      <span>{MY_DATA.kept}</span>
+    </p>
+    <ul className="bg-card divide-y rounded-xl border">
+      {RECORD_KINDS.map((kind) => (
+        <li key={kind} className="px-4 py-2.5">
+          <span className="block text-sm break-words">
+            {KEPT_FOR_GOOD[kind]}
+          </span>
+          {record?.kind === "read" ? (
+            <span className="text-muted-foreground block text-xs">
+              {keptLine(record.held[kind])}
+            </span>
+          ) : null}
+        </li>
+      ))}
+    </ul>
+    <Status line={keptNote(record)} />
+  </Section>
+)
+
 export const MyDataOverview = ({
   overview,
+  record,
   unread = [],
 }: {
   overview: Overview
+  /** Home's count of the record kept for good, once home answered. */
+  record?: RecordReading
   /**
    * The stores whose recordings on this phone aren't counted yet, or null
    * while this phone's recordings are read.
@@ -190,20 +227,7 @@ export const MyDataOverview = ({
           </ul>
         )}
       </Section>
-      <Section title={MY_DATA.keptTitle}>
-        <p className="bg-muted flex items-start gap-2 rounded-xl p-3 text-sm">
-          <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />
-          <span>{MY_DATA.kept}</span>
-        </p>
-        <ul className="bg-card divide-y rounded-xl border">
-          {KEPT_FOR_GOOD.map((name) => (
-            <li key={name} className="px-4 py-2.5 text-sm">
-              {name}
-            </li>
-          ))}
-        </ul>
-        <p className="text-muted-foreground text-xs">{MY_DATA.keptNotShown}</p>
-      </Section>
+      <KeptForGood record={record} />
     </div>
   )
 }
@@ -324,6 +348,7 @@ export const DeviceMyData = (): JSX.Element => {
   return (
     <MyDataOverview
       overview={overviewOf(state.home, state.phone?.notes ?? [], new Date())}
+      record={state.home.kind === "read" ? state.home.record : undefined}
       unread={state.phone?.unread ?? null}
     />
   )
