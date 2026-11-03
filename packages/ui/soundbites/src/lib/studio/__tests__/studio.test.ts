@@ -1772,6 +1772,63 @@ describe("Watch", () => {
     ])
   })
 
+  it("on an episode, asks what a note is about before keeping it (SH4)", async () => {
+    const runtime = studio(memoryProjectStore())
+    await until(runtime, (state) => state.shelf.kind === "read")
+    runtime.dispatch({
+      type: "primerPicked",
+      file: new Blob([episodeText()], { type: "application/json" }),
+    })
+    await until(
+      runtime,
+      (state) => projectOf(state)?.episode !== undefined && settledWrites(state)
+    )
+    const [, second] = await watching(runtime)
+    if (second === undefined) throw new Error("scenes")
+    const noteAt = async (
+      text: string,
+      about: "take" | "show"
+    ): Promise<void> => {
+      runtime.dispatch({ type: "playheadAt", ms: second.startMs + 250 })
+      runtime.dispatch({ type: "notedHere", text })
+      const { screen } = runtime.getSnapshot()
+      expect(screen.kind === "watch" && screen.asking?.text).toBe(text)
+      // Nothing is kept, and no other note is taken, until it is answered.
+      runtime.dispatch({ type: "notedHere", text: "Another" })
+      expect(projectIn(runtime).notes.some((n) => n.text === text)).toBe(false)
+      runtime.dispatch({ type: "aboutChosen", about })
+      await until(
+        runtime,
+        (state) =>
+          settledWrites(state) && state.notice === STUDIO_WORDS.watch.noted
+      )
+    }
+    await noteAt("Hold the close longer every week", "show")
+    const project = projectIn(runtime)
+    expect(project.notes).toEqual([
+      expect.objectContaining({
+        shot: second.id,
+        offsetMs: 250,
+        text: "Hold the close longer every week",
+        about: "show",
+        status: "open",
+      }),
+    ])
+    // A change to the show is for its next episodes: it holds back no Finish.
+    expect(finishOf(project).kind).not.toBe("note")
+    expect(showView([project], "Weekly")?.proposed).toEqual([
+      {
+        id: `${project.id}/${project.notes[0]?.id ?? ""}`,
+        text: "Hold the close longer every week",
+        from: STUDIO_WORDS.show.proposedFrom("week 3", "The close", 250),
+      },
+    ])
+    await noteAt("I rushed this one", "take")
+    const after = projectIn(runtime)
+    expect(after.notes.at(-1)).toMatchObject({ about: "take", status: "open" })
+    expect(finishOf(after).kind).toBe("note")
+  })
+
   /** A recognizer the test speaks through: ready, words as heard, then the end. */
   function fakeListener(available = true): {
     listener: IdeaListener

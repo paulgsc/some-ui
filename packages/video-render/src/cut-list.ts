@@ -167,6 +167,11 @@ export const CutListSchema = z.object({
         status: z.enum(["open", "applied", "declined", "confirmed"]),
         /** Why it was declined. */
         reason: z.string().min(1).optional(),
+        /**
+         * On an episode of a show (SHOW SH4): whether the note is about the
+         * owner's take, or proposes a change to the show for every episode.
+         */
+        about: z.enum(["take", "show"]).optional(),
       })
     )
     .default([]),

@@ -172,6 +172,12 @@ export function showsOnPhone(
 
 export type ShowView = {
   readonly show: string
+  /** Changes proposed to the show from its episodes (SH4), newest first. */
+  readonly proposed: ReadonlyArray<{
+    readonly id: string
+    readonly text: string
+    readonly from: string
+  }>
   /** Its version as its newest episode pins it. */
   readonly version: string
   readonly plans: string
@@ -192,8 +198,28 @@ export function showView(
   if (newest === undefined) return null
   const { look, voice, shots } = latest(newest).cutList
   const words = STUDIO_WORDS.show
+  const proposed = episodes.flatMap((each) =>
+    [...each.notes]
+      .filter((note) => note.about === "show")
+      .reverse()
+      .map((note) => {
+        const scene = scriptOf(each).scenes.find(
+          (one) => one.shot.id === note.shot
+        )
+        return {
+          id: `${each.id}/${note.id}`,
+          text: note.text,
+          from: words.proposedFrom(
+            each.episode.period,
+            scene?.cut?.artifact ?? note.shot,
+            note.offsetMs
+          ),
+        }
+      })
+  )
   return {
     show,
+    proposed,
     version: words.version(newest.episode.format.version, shots.length),
     plans: words.plans(look, voice),
     episodes: episodes.map((each) => ({

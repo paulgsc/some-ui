@@ -95,8 +95,11 @@ const FIT_FORMAT: Format = {
   })),
 }
 
-/** The episode of week `week`, opened at `at`: nothing recorded yet. */
-function episodeFor(week: number, at: string): Project {
+/**
+ * The episode of week `week`, opened at `at`, nothing recorded yet; with
+ * `proposed`, a change to the show the owner noted on its first scene (SH4).
+ */
+function episodeFor(week: number, at: string, proposed?: string): Project {
   const made = episodeOf(FIT_FORMAT, {
     show: "Playoff Delta, followed from the 49ers' side of the bracket",
     title: `Playoff Delta, 2026 week ${week}`,
@@ -106,8 +109,24 @@ function episodeFor(week: number, at: string): Project {
     inMs: (index) => 1_200 + index,
   })
   if (!made.ok) throw new Error(made.problems.join("; "))
-  return episodeProjectOf(`fit-episode-${week}`, JSON.stringify(made.value), at)
-    .project
+  const opened = episodeProjectOf(
+    `fit-episode-${week}`,
+    JSON.stringify(made.value),
+    at
+  )
+  if (proposed === undefined) return opened.project
+  return run(opened, {
+    type: "noted",
+    note: {
+      id: "fit-proposed",
+      rev: 1,
+      shot: FIT_CUTS[0].id,
+      offsetMs: 4_000,
+      author: "owner",
+      text: proposed,
+      about: "show",
+    },
+  }).project
 }
 
 /** Nothing recorded yet: Record opens on scene 1 before any take. */
@@ -283,7 +302,11 @@ const STUDIO_FIXTURES = {
   /** Two episodes of a show and a video of your own, Start on the newest episode. */
   "studio-episode": studioOn([
     FRESH,
-    episodeFor(7, "2026-10-29T09:00:00.000Z"),
+    episodeFor(
+      7,
+      "2026-10-29T09:00:00.000Z",
+      "Hold the division slide a beat longer every week, so the floor and the ceiling both land before the next scene."
+    ),
     episodeFor(8, "2026-11-03T09:00:00.000Z"),
   ]),
 
