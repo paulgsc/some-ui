@@ -240,6 +240,7 @@ export function simulatedPattern(
   let how: KeepResult["outcome"] = "kept"
   const pattern = takePattern(
     {
+      screen: "test",
       startRecording: mic.startRecording,
       now: Date.now,
       owner: microphoneOwner(),

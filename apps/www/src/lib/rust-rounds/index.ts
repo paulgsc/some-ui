@@ -37,6 +37,7 @@ const NOTE_MAX_MS = 60_000
 
 const desk = patternDesk({
   key: "some-ui:rust-rounds.notes",
+  screen: "rust-rounds.note",
   from: "rust-round",
   audioLeaves: true,
   dbName: "some-ui.rust-rounds-notes",

@@ -26,6 +26,7 @@ import type { RecordingFailure, StartRecording, Take } from "./recorder"
 import { RECORDING_FAILURE_COPY } from "./recorder"
 import type { TakeDeadlines, TakeLimits, TakeSignal } from "./take"
 import { takeRunner } from "./take"
+import { reportTakeEnded } from "./take-outcomes"
 import type {
   TakeEnding,
   VoiceNoteEffect,
@@ -59,7 +60,7 @@ export type TakeEnded = {
  * talking: speech reads 0.2 and up, a room's hum and a TV across it lower.
  * A take's loudest moment must reach it to count as heard (D4), and Game
  * Week's quiet stop reads the same line. To tune from the peaks CK2's
- * outcome events will carry (#2369).
+ * outcome events carry (CK2, #2381; `./take-outcomes`).
  */
 export const HEARD_FLOOR = 0.12
 
@@ -74,6 +75,15 @@ export type TakeKitState = {
    * reached; null while no read of it was measured.
    */
   readonly peak: number | null
+  /**
+   * When the take under way, or the last one, was started, by the runtime's
+   * clock; null when the start carried no time (a test's).
+   */
+  readonly startedAt: number | null
+  /** From that start to the microphone opening; null until it opens. */
+  readonly readyMs: number | null
+  /** The recording's length as the recorder handed it over; null until then. */
+  readonly durationMs: number | null
   readonly ended: TakeEnded | null
 }
 
@@ -83,9 +93,19 @@ export type KeepResult =
   | { readonly outcome: Extract<VoiceNoteOutcome, "full" | "failed"> }
 
 export type TakeKitEvent =
-  | { readonly type: "start"; readonly answers: string }
+  | {
+      readonly type: "start"
+      readonly answers: string
+      /** When, by the runtime's clock (`ports.now`); a test may leave it out. */
+      readonly at?: number | undefined
+    }
   /** D1: a tap starts a take when none is under way, and stops one that is. */
-  | { readonly type: "tap"; readonly answers: string }
+  | {
+      readonly type: "tap"
+      readonly answers: string
+      /** As `start`'s. */
+      readonly at?: number | undefined
+    }
   | { readonly type: "stop" }
   /** The screen went: a take under way is kept. */
   | { readonly type: "left" }
@@ -101,6 +121,9 @@ export const initialTakeKit: TakeKitState = {
   answers: "",
   keptId: null,
   peak: null,
+  startedAt: null,
+  readyMs: null,
+  durationMs: null,
   ended: null,
 }
 
@@ -120,7 +143,7 @@ export function stepTakeKit(
   limits: TakeLimits
 ): Next {
   const busy = underway(state.note)
-  let { answers, keptId, peak } = state
+  let { answers, keptId, peak, startedAt, readyMs, durationMs } = state
   let noteEvent: VoiceNoteEvent
   switch (event.type) {
     case "start":
@@ -132,6 +155,9 @@ export function stepTakeKit(
         answers = event.answers
         keptId = null
         peak = null
+        startedAt = event.at ?? null
+        readyMs = null
+        durationMs = null
         noteEvent = { type: "start", atMs: null }
       }
       break
@@ -148,11 +174,20 @@ export function stepTakeKit(
       noteEvent = event
       break
     }
+    case "micOpened": {
+      if (busy && readyMs === null && startedAt !== null)
+        readyMs = Math.max(0, event.at - startedAt)
+      noteEvent = event
+      break
+    }
+    case "taken": {
+      if (busy) durationMs = event.take.durationMs
+      noteEvent = event
+      break
+    }
     case "stop":
     case "left":
-    case "micOpened":
     case "micFailed":
-    case "taken":
     case "takeFailed": {
       noteEvent = event
       break
@@ -185,12 +220,24 @@ export function stepTakeKit(
     ended === state.ended &&
     answers === state.answers &&
     keptId === state.keptId &&
-    peak === state.peak
+    peak === state.peak &&
+    startedAt === state.startedAt &&
+    readyMs === state.readyMs &&
+    durationMs === state.durationMs
   ) {
     return { state, effects }
   }
   return {
-    state: { note: next.state, answers, keptId, peak, ended },
+    state: {
+      note: next.state,
+      answers,
+      keptId,
+      peak,
+      startedAt,
+      readyMs,
+      durationMs,
+      ended,
+    },
     effects,
   }
 }
@@ -290,6 +337,11 @@ export type TakeKit = {
 }
 
 export type TakeKitPorts = {
+  /**
+   * The screen recording, by the code's name for it (`jobs.pass`): what
+   * each take's outcome says it came from (`./take-outcomes`).
+   */
+  readonly screen: string
   readonly startRecording: StartRecording
   /** Milliseconds since the epoch. */
   readonly now: () => number
@@ -329,6 +381,7 @@ export function takeKit(ports: TakeKitPorts, limits: TakeLimits): TakeKit {
   const dispatch = (event: TakeKitEvent): void => {
     const next = stepTakeKit(state, event, limits)
     if (next.state !== state) {
+      reportTakeEnded(ports.screen, state, next.state)
       state = next.state
       snapshot = snapshotOf()
       for (const listener of listeners) listener()
@@ -366,8 +419,8 @@ export function takeKit(ports: TakeKitPorts, limits: TakeLimits): TakeKit {
         listeners.delete(listener)
       }
     },
-    tap: (answers) => dispatch({ type: "tap", answers }),
-    start: (answers) => dispatch({ type: "start", answers }),
+    tap: (answers) => dispatch({ type: "tap", answers, at: ports.now() }),
+    start: (answers) => dispatch({ type: "start", answers, at: ports.now() }),
     stop: () => dispatch({ type: "stop" }),
     leave: () => dispatch({ type: "left" }),
   }

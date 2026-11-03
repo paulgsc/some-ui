@@ -159,6 +159,7 @@ export function createSceneVoice(ports: SceneVoicePorts): PhoneSceneVoice {
 
   const pattern = takePattern(
     {
+      screen: "topik.scene-voice",
       startRecording: ports.startRecording,
       now: ports.now,
       owner: ports.owner,

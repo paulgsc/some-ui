@@ -101,6 +101,8 @@ export type Take = {
 }
 
 export type TakesPorts = {
+  /** The screen recording, as each take's outcome names it (CK2). */
+  screen: string
   startRecording: StartRecording
   audio: BlobShelf
   /** The kept takes, newest first. */
@@ -258,6 +260,7 @@ export function createTakes(ports: TakesPorts, limits: TakeLimits): PhoneTakes {
 
   const kit = takeKit(
     {
+      screen: ports.screen,
       startRecording: ports.startRecording,
       now: ports.now,
       owner: ports.owner,

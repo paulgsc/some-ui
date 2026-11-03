@@ -101,6 +101,7 @@ export function createVoiceNote(
 
   const pattern = takePattern(
     {
+      screen: "reflection.voice",
       startRecording: ports.startRecording,
       now: ports.now,
       owner: ports.owner,

@@ -389,7 +389,9 @@ declared (checked by reading every call site and by the tests named).
   `CapacitorHttp`), which only `lib/home-link` calls, and, but for the drain
   of what this phone keeps (LA15: aph, the Jobs record, Practice's record,
   Rust Rounds' rounds, whose run also reads home's rounds and their runs
-  back, voice notes, through `lib/home-link/lanes`, whose voice run also reads,
+  back, voice notes, the notes of how each take ended (CK2, one
+  `PUT /app-events/:id` each, `lib/home-link/app-events-send.ts`), through
+  `lib/home-link/lanes`, whose voice run also reads,
   by one `GET /voice-notes/on-drive` per 100 waiting takes in
   `lib/home-link/on-drive.ts`, which
   Studio takes home holds it knows Drive holds too, HF11, and sends, by one
@@ -920,7 +922,8 @@ Everything the phone keeps for home (aph, the Jobs record, Practice's
 record with its written reflections, asks for the next scene, the
 soundbites' records, LeetType's answer notes and the grammar-lens record,
 voice notes, and the rounds pasted in Rust Rounds, whose run also brings
-home's rounds and the runs home recorded back to the phone, RR4b) goes
+home's rounds and the runs home recorded back to the phone, RR4b, and the
+notes of how each take ended, CK2, `app-events.ts`) goes
 through one wiring (`lib/home-link/lanes.ts`):
 each declares its lane (its exchange, how its record moves, its sheet's
 counts; `aph.ts`, `jobs.ts`, `practice.ts`, `voice.ts`), and every lane

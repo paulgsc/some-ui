@@ -17,6 +17,7 @@ import type { JSX, ReactNode } from "react"
 import { Button, Label, Switch } from "@some-ui/shared"
 
 import { useHomeLink } from "@/lib/home-link"
+import { appEventsLane } from "@/lib/home-link/app-events"
 import { jobsLane } from "@/lib/home-link/jobs"
 import { INITIAL_KEPT } from "@/lib/home-link/kept-model"
 import type {
@@ -57,6 +58,7 @@ const PAGES: Readonly<Record<LaneId, BoardPage>> = {
   jobs: "jobs",
   voice: "home-settings",
   "rust-rounds": "practice",
+  "app-events": "home-settings",
 }
 
 /**
@@ -206,6 +208,14 @@ const RustRoundsRow = (): JSX.Element => (
   />
 )
 
+const AppEventsRow = (): JSX.Element => (
+  <Row
+    id="app-events"
+    reading={useLaneView(appEventsLane)}
+    lane={appEventsLane}
+  />
+)
+
 /**
  * Each record kept on home as the status page shows it (#2165): where it is
  * kept and how its last send went, read without a watch of its own
@@ -225,6 +235,7 @@ export function useLaneRows(): {
       laneRow("jobs", useLaneView(jobsLane)),
       laneRow("voice", useLaneView(voiceLane), unsentLines(useUnsendable())),
       laneRow("rust-rounds", useLaneView(rustRoundsLane)),
+      laneRow("app-events", useLaneView(appEventsLane)),
     ],
     paired: practice.paired,
   }
@@ -242,6 +253,7 @@ export const KeptOnHome = (): JSX.Element => (
       <JobsRow />
       <VoiceRow />
       <RustRoundsRow />
+      <AppEventsRow />
     </ul>
     <div className="space-y-1">
       <p className="text-sm font-medium">{KEPT_ON_HOME.neverTitle}</p>

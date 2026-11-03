@@ -28,7 +28,13 @@ import { homeRefresher } from "./pull"
 import type { LaneView } from "./words"
 import { laneView, WORDS } from "./words"
 
-export type LaneId = "practice" | "aph" | "jobs" | "voice" | "rust-rounds"
+export type LaneId =
+  | "practice"
+  | "aph"
+  | "jobs"
+  | "voice"
+  | "rust-rounds"
+  | "app-events"
 
 /** What a lane's record holds of one kind, as the sheet names it. */
 export type LaneKind =
@@ -40,6 +46,7 @@ export type LaneKind =
   | "jobs"
   | "voice"
   | "rounds"
+  | "endings"
 
 /** What a lane's sheet counts, as its record says. */
 export type LaneCounts = {

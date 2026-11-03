@@ -75,8 +75,8 @@ export function deviceFileHostBase(): URL | undefined {
 }
 
 /**
- * Installs the device backend in the device build, and its native log and
- * kept failure log, so a failure any native API reports reaches both from
+ * Installs the device backend in the device build, its native log and
+ * kept failure log, and the app events every take leaves (`@/lib/app-events`), so a failure any native API reports reaches both from
  * the start, not only from the first database request; a no-op in any other
  * build.
  */
@@ -91,6 +91,9 @@ export function bootDeviceBackend(): void {
   )
   void import("@/lib/failure-log").then(({ installFailureLog }) =>
     installFailureLog()
+  )
+  void import("@/lib/app-events").then(({ installAppEvents }) =>
+    installAppEvents()
   )
   void import("@/lib/device-backend/storage").then(
     ({ ANDROID_BACKUP_BUDGET, roomOn }) =>

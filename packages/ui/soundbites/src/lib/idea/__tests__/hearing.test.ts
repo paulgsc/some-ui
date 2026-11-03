@@ -121,6 +121,7 @@ function capture(options: {
   const keep = memoryKeep(options.keeps ?? [])
   const kit = takeKit(
     {
+      screen: "test",
       startRecording: mic.startRecording,
       now,
       keep: keep.keep,

@@ -26,6 +26,7 @@ import { Link } from "@tanstack/react-router"
 
 import { pageOf } from "@/lib/front-desk"
 import { pairingOf, useHomeLink } from "@/lib/home-link"
+import { appEventsLane } from "@/lib/home-link/app-events"
 import { jobsLane } from "@/lib/home-link/jobs"
 import type { Lane } from "@/lib/home-link/lanes"
 import {
@@ -195,6 +196,7 @@ export const HomeLanes = (): JSX.Element => {
       <LaneWatch lane={practiceLane} />
       <LaneWatch lane={jobsLane} />
       <LaneWatch lane={rustRoundsLane} />
+      <LaneWatch lane={appEventsLane} />
       <VoiceWatch />
       {aph === null ? null : <LaneWatch key={aph.id} lane={aph} />}
     </>

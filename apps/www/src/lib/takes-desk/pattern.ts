@@ -58,6 +58,8 @@ import type { Take, TakeLimits } from "./runtime"
 import { homeHolds, makesRoom } from "./runtime"
 
 export type PatternTakesPorts = {
+  /** The screen recording, as each take's outcome names it (CK2). */
+  screen: string
   startRecording: StartRecording
   audio: BlobShelf
   /** The kept takes, newest first. */
@@ -230,6 +232,7 @@ export function createPatternTakes(
 
   const pattern = takePattern(
     {
+      screen: ports.screen,
       startRecording: ports.startRecording,
       now: ports.now,
       owner: ports.owner,

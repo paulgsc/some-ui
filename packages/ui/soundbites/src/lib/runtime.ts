@@ -103,6 +103,7 @@ export function createSoundbites(
 
   const pattern = takePattern(
     {
+      screen: "soundbites",
       startRecording: ports.startRecording,
       now: ports.now,
       owner: ports.owner,

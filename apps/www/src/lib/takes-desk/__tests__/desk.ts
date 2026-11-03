@@ -69,6 +69,7 @@ export function testDesk(
   let next = 0
   const phone = createPatternTakes(
     {
+      screen: "test",
       startRecording: mic.startRecording,
       owner,
       audio: shelf,

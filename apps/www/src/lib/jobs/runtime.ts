@@ -191,6 +191,7 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
 
   const voice = takePattern(
     {
+      screen: "jobs.notes",
       startRecording: ports.startRecording,
       now: () => ports.now().getTime(),
       owner: ports.owner,
