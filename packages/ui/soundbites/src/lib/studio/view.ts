@@ -4,7 +4,11 @@
  */
 import { assertNever } from "@some-ui/core-utils"
 import type { EpisodePin, Idea, Shot } from "@some-ui/video-render"
-import type { TakeButtonView, TakeRowView } from "@some-ui/voice-capture"
+import type {
+  PatternTake,
+  TakeButtonView,
+  TakeRowView,
+} from "@some-ui/voice-capture"
 import { NEARLY_UP_MS } from "@some-ui/voice-capture"
 import type { Cut } from "@soundbites/lib/journal/primer"
 import type { Finish } from "@soundbites/lib/project/finish"
@@ -442,6 +446,25 @@ export function originView(
   }
 }
 
+/** A project's take as the take pattern's row draws it. */
+export function patternTakeOf(take: ProjectTake): PatternTake {
+  return {
+    id: take.id,
+    answers: take.shot,
+    durationMs: take.durationMs,
+    recordedAt: take.recordedAt,
+    standing: "current",
+    // On home once home holds it; on this phone, going home, until
+    // then; on neither, no place (a take carried in without its audio).
+    kept: homeHolds(take)
+      ? { place: "home", since: null }
+      : take.onPhone
+        ? { place: "going" }
+        : null,
+    ...(take.deletedAt === undefined ? {} : { deleted: take.deletedAt }),
+  }
+}
+
 /**
  * The scene's take as the take pattern's parts draw it (`TakeButton`,
  * `TakeRow` in `@some-ui/shared`): the button, which records the scene's
@@ -489,26 +512,16 @@ export function recordTake(
   return {
     button,
     row: {
-      take: {
-        id: take.id,
-        answers: take.shot,
-        durationMs: take.durationMs,
-        recordedAt: take.recordedAt,
-        standing: "current",
-        // On home once home holds it; on this phone, going home, until
-        // then; on neither, no place (a take carried in without its audio).
-        kept: homeHolds(take)
-          ? { place: "home", since: null }
-          : take.onPhone
-            ? { place: "going" }
-            : null,
-      },
+      take: patternTakeOf(take),
       playing: activity.kind === "playing" && activity.take === take.id,
       canPlay: settled && take.onPhone,
       // Recording it again is the button's ("Tap to record again").
       canRedo: false,
       canLetGo: false,
       unsent: false,
+      // Delete… is the record list's (`./records`), which knows what home
+      // marks deletable.
+      canDelete: false,
     },
   }
 }

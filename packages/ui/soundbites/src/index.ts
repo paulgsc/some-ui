@@ -17,6 +17,8 @@ export type {
 } from "./lib/idea/hearing"
 export { homeHearing } from "./lib/idea/hearing"
 export { Studio } from "./components/studio"
+export { StudioRecords } from "./components/studio-records"
+export type { StudioRecordsProps } from "./components/studio-records"
 export type { StudioProps, StudioShare } from "./components/studio"
 export { NewIdeaPage, StudioHome } from "./components/wing"
 export type { WingLink } from "./components/wing"

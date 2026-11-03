@@ -95,6 +95,13 @@ export type TakePatternOptions = {
    * and one that went is set aside as D3 says.
    */
   readonly send?: "at-once" | "on-confirm" | undefined
+  /**
+   * What a take that is a record offers for deleting it (MY-DATA MD4): by
+   * default nothing; `delete-in-my-data` offers Delete… on a take home
+   * marks deletable, which opens My data on it and never deletes in place.
+   * A take that never left the phone keeps its own Delete (a draft's).
+   */
+  readonly records?: "delete-in-my-data" | undefined
 }
 
 /**
@@ -162,6 +169,14 @@ export type PatternTake = {
    * item to be sent; absent once sent, and on every other pattern's take.
    */
   readonly waits?: true
+  /**
+   * Home marks it a record the owner may delete, from My data alone
+   * (MY-DATA MD3, MD4): under `records: "delete-in-my-data"` its row offers
+   * Delete…, which opens My data on it.
+   */
+  readonly deletable?: true
+  /** When this phone heard home deleted it for good (MD3), as an ISO time. */
+  readonly deleted?: string
 }
 
 /** What plays: nothing, a take whose audio is being read, or a take playing. */

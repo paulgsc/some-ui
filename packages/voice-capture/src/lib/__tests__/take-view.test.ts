@@ -311,6 +311,41 @@ function everyLine(): Array<string> {
   ]
 }
 
+describe("a record's Delete… (MD4)", () => {
+  it("offers it only under records: delete-in-my-data, on a take home marks deletable and hasn't deleted, never on an unsent one", () => {
+    const records: TakePatternOptions = {
+      ...ONE,
+      records: "delete-in-my-data",
+    }
+    const home = { kept: { place: "home", since: null } } as const
+    const takes = [
+      taken("t1", "00", { ...home, deletable: true }),
+      taken("t2", "01", { ...home }),
+    ]
+    const view = (
+      options: TakePatternOptions,
+      list = takes
+    ): ReturnType<typeof takeItemView> =>
+      takeItemView(IDLE, list, "card-1", options)
+    expect(view(ONE).current.map((row) => row.canDelete)).toEqual([false])
+    expect(view(ONE).earlier.map((row) => row.canDelete)).toEqual([false])
+    expect(view(records).current.map((row) => row.canDelete)).toEqual([false])
+    expect(view(records).earlier.map((row) => row.canDelete)).toEqual([true])
+    const gone = [
+      taken("t1", "00", {
+        ...home,
+        deletable: true,
+        deleted: "2026-11-02T09:00:00.000Z",
+      }),
+    ]
+    expect(view(records, gone).current[0]?.canDelete).toBe(false)
+    const unsent = [taken("t1", "00", { deletable: true })]
+    expect(
+      view({ ...records, send: "on-confirm" }, unsent).current[0]?.canDelete
+    ).toBe(false)
+  })
+})
+
 describe("the take pattern's words", () => {
   it("say every line in the person's terms", () => {
     const lines = everyLine()

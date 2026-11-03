@@ -78,6 +78,11 @@ export type ProjectTake = {
   readonly keptBy: ReadonlyArray<Keeper>
   /** Whether its audio is still on the phone. */
   readonly onPhone: boolean
+  /**
+   * When this phone heard home deleted it for good, from My data (MY-DATA
+   * MD3, MD4), as ISO 8601; set once, and then it stays.
+   */
+  readonly deletedAt?: string
 }
 
 export type Sitting = {
@@ -382,8 +387,9 @@ export function reaches(from: NoteStatus, to: NoteStatus): boolean {
 /**
  * Whether `after` only adds to `before`: every revision kept as it was, every
  * note, take and sitting still there as written. Only a note's status moves
- * on (keeping a reason once given), a take gains keepers, an open sitting
- * closes, and audio leaves the phone once home holds it (LG1).
+ * on (keeping a reason once given), a take gains keepers and, once, when
+ * home deleted it (MD4), an open sitting closes, and audio leaves the phone
+ * once home holds it (LG1).
  */
 export function isAppendOnly(before: Project, after: Project): boolean {
   if (before.id !== after.id) return false
@@ -409,9 +415,11 @@ export function isAppendOnly(before: Project, after: Project): boolean {
     return (
       now !== undefined &&
       sameJson(
-        { ...now, keptBy: null, onPhone: null },
-        { ...take, keptBy: null, onPhone: null }
+        { ...now, keptBy: null, onPhone: null, deletedAt: null },
+        { ...take, keptBy: null, onPhone: null, deletedAt: null }
       ) &&
+      // Home's deleting it is noted once, and then it stays.
+      (take.deletedAt === undefined || now.deletedAt === take.deletedAt) &&
       take.keptBy.every((keeper) => now.keptBy.includes(keeper)) &&
       (take.onPhone || !now.onPhone) &&
       (now.onPhone || !take.onPhone || homeHolds(now))

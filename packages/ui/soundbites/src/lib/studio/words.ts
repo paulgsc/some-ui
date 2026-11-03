@@ -899,6 +899,23 @@ export const STUDIO_WORDS = {
     } satisfies Record<ShelfNotice, string>,
   },
 
+  /**
+   * What Studio keeps (MD4): every take of every video, where each is kept
+   * and since when, and Delete… on one home lets you delete, which opens My
+   * data on it.
+   */
+  records: {
+    heading: "What Studio keeps",
+    open: "What Studio keeps",
+    reading: "Opening what Studio keeps…",
+    unreadable:
+      "Studio's videos on this phone couldn't be read, so their takes can't be shown yet.",
+    none: "No takes yet. Record one in a video's scenes.",
+    deleteLine:
+      "Delete… opens My data on a take, where deleting it is asked once and leaves a receipt. It shows only on takes home lets you delete.",
+    back: "Back to Studio",
+  },
+
   /** Where things stand, from the last sitting's log. */
   standing: (
     last: { readonly done: string; readonly next: string } | null

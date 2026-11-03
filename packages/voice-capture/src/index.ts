@@ -96,7 +96,7 @@ export type {
   TakeRowView,
   TakeSaid,
 } from "./lib/take-view"
-export { NEARLY_UP_MS, takeItemView } from "./lib/take-view"
+export { deletesInMyData, NEARLY_UP_MS, takeItemView } from "./lib/take-view"
 export type { TakeWords } from "./lib/take-words"
 export {
   buttonLabel,

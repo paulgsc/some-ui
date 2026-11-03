@@ -60,6 +60,11 @@ export type TakeRowView = {
    * (`send: "on-confirm"`): Let go deletes it for good.
    */
   readonly unsent: boolean
+  /**
+   * Offers Delete…, which opens My data on the take (`records:
+   * "delete-in-my-data"`, a take home marks deletable, not deleted yet).
+   */
+  readonly canDelete: boolean
 }
 
 /** The one line said beside the button, once, for this item. */
@@ -77,6 +82,22 @@ export type TakeItemView = {
   readonly current: ReadonlyArray<TakeRowView>
   /** Superseded takes, newest first, kept out of the item's view (D2). */
   readonly earlier: ReadonlyArray<TakeRowView>
+}
+
+/**
+ * Whether `take`'s row offers Delete… (MD4): the screen chose
+ * `records: "delete-in-my-data"`, and home marks the take deletable and
+ * hasn't deleted it.
+ */
+export function deletesInMyData(
+  options: Pick<TakePatternOptions, "records">,
+  take: Pick<PatternTake, "deletable" | "deleted">
+): boolean {
+  return (
+    options.records === "delete-in-my-data" &&
+    take.deletable === true &&
+    take.deleted === undefined
+  )
 }
 
 function newestFirst(a: PatternTake, b: PatternTake): number {
@@ -187,6 +208,8 @@ export function takeItemView(
   )
   const unsent = (take: PatternTake): boolean =>
     take.kept !== null && discards(options, take.kept.place)
+  const canDelete = (take: PatternTake): boolean =>
+    deletesInMyData(options, take) && !unsent(take)
   return {
     button: buttonOf(snapshot, answers, current, options),
     supersedes: options.takes.per === "one" ? (current[0]?.id ?? null) : null,
@@ -198,6 +221,7 @@ export function takeItemView(
       canRedo: quiet,
       canLetGo: quiet,
       unsent: unsent(take),
+      canDelete: canDelete(take),
     })),
     earlier: earlier.map((take) => ({
       take,
@@ -206,6 +230,7 @@ export function takeItemView(
       canRedo: false,
       canLetGo: false,
       unsent: unsent(take),
+      canDelete: canDelete(take),
     })),
   }
 }

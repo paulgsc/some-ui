@@ -15,6 +15,11 @@ export type TakeRowProps = {
   onRedo?: (() => void) | undefined
   /** Sets it aside (D3); absent for a take that offers no Let go. */
   onLetGo?: (() => void) | undefined
+  /**
+   * Opens My data on this record (MD4), shown while `row.canDelete`: the
+   * screen never deletes a record in place.
+   */
+  onDelete?: (() => void) | undefined
   /** The screen's words about what the take answers, under its length. */
   children?: ReactNode
   /**
@@ -32,7 +37,10 @@ export type TakeRowProps = {
  * take aside (D3), which keeps it, so it asks nothing first. A take that
  * never left the phone under `send: "on-confirm"` (`row.unsent`) says so,
  * and offers Delete instead, which deletes it for good: the screen asks
- * first (`ConfirmSheet`), since that can't be undone.
+ * first (`ConfirmSheet`), since that can't be undone. A take that is a
+ * record home marks deletable offers Delete… instead (`row.canDelete`,
+ * the pattern's `records: "delete-in-my-data"`), which opens My data on it
+ * (MD4); one home deleted says when.
  * A control the row can't offer now (a take under way) stays in place,
  * disabled, so nothing jumps.
  */
@@ -41,6 +49,7 @@ export const TakeRow = ({
   onPlay,
   onRedo,
   onLetGo,
+  onDelete,
   children,
   extra,
   className,
@@ -76,11 +85,18 @@ export const TakeRow = ({
             <span className="tabular-nums">
               {words.length(take.durationMs)}
             </span>
-            {take.kept !== null && (
+            {take.deleted !== undefined ? (
               <span className="text-muted-foreground">
                 {" · "}
-                {row.unsent ? words.place.unsent : keptSaid(words, take.kept)}
+                {words.place.deleted(words.when(take.deleted))}
               </span>
+            ) : (
+              take.kept !== null && (
+                <span className="text-muted-foreground">
+                  {" · "}
+                  {row.unsent ? words.place.unsent : keptSaid(words, take.kept)}
+                </span>
+              )
             )}
           </p>
           {children !== undefined && (
@@ -92,6 +108,7 @@ export const TakeRow = ({
       </div>
       {(onRedo !== undefined ||
         onLetGo !== undefined ||
+        (onDelete !== undefined && row.canDelete) ||
         extra !== undefined) && (
         <div className="flex flex-wrap items-center justify-end gap-1">
           {extra}
@@ -118,6 +135,18 @@ export const TakeRow = ({
               aria-label={words.rowLabel(letGo, take.durationMs)}
             >
               {letGo}
+            </Button>
+          )}
+          {onDelete !== undefined && row.canDelete && (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="text-muted-foreground"
+              onClick={onDelete}
+              aria-label={words.rowLabel(words.deleteRecord, take.durationMs)}
+            >
+              {words.deleteRecord}
             </Button>
           )}
         </div>
