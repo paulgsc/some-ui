@@ -422,11 +422,18 @@ declared (checked by reading every call site and by the tests named).
   (`deletableStudioTakes`, MD4 #2478), sending nothing of the phone's but
   the kind; while the link is busy with another run, which sends nothing, it
   asks again a second later, at most ten times in all; #2476, whose page
-  shows home's counts), and its Deleted page asking home what it deleted
+  shows home's counts), its Deleted page asking home what it deleted
   for good (through `lib/home-link/deleted-read`'s `keep`: one
   `GET /voice-notes/deleted` each time the page opens or is dragged down,
   sending nothing of the phone's, asking again while the link is busy as
-  the read of what home keeps does; MD3, #2477), which are the other callers of
+  the read of what home keeps does; MD3, #2477), and Studio's Ideas on home
+  (`lib/idea-home`, through `lib/home-link/idea-reads`'s `keep`: one
+  `GET /ideas` and one `GET /idea-lists` each time the screen opens or is
+  asked again, sending nothing of the phone's, and, on a tap, one
+  `PUT /ideas/:id/furnishing` of the mark, one bodiless
+  `PUT /ideas/:id/set-aside` after a confirm, or one `PUT` or `DELETE` of a
+  list's entry; while the link is busy with another run it asks again a
+  second later, at most ten times; ST26 (c), #2453), which are the other callers of
   `lib/home-link`, is started by a tap in the Home server block of Settings
   (`components/settings/device-section.tsx`): the sync (published lessons
   and dramas, read with no credential), pairing (the code only), unpairing,
@@ -470,7 +477,7 @@ declared (checked by reading every call site and by the tests named).
   it promises (`LET_GO.room.question`). Nothing on home is deleted but by
   My data's "Delete for good".
   Nothing but the drain, Korean's look, the idea screen's ask for a
-  take's words and My data's reads is sent when the app or Settings
+  take's words, My data's reads and Ideas on home's reads is sent when the app or Settings
   opens, on resume, on a timer or on a network change: making the runtime
   and `load` read only the phone's own record. There is no retry; a sync, a
   clear, a let-go or a drain's run ends at Stop,
@@ -506,7 +513,13 @@ declared (checked by reading every call site and by the tests named).
   anywhere but those two, or widens the egress test's `LET_GO_CALLERS`; one that calls its `keep` from anywhere but
   `lib/home-link/lanes.ts` (LA15), `lib/home-link/routine.ts`,
   `lib/home-link/heard.ts`, `lib/home-link/voice-audio.ts` (RR6),
-  `lib/home-link/kept-read.ts` and `lib/home-link/deleted-read.ts`; one that has
+  `lib/home-link/kept-read.ts`, `lib/home-link/deleted-read.ts` and
+  `lib/home-link/idea-reads.ts`; one that has `idea-reads.ts` send anything
+  but the one request `ideasPath` names per ask, lets anything but
+  `lib/idea-home` call it, or has `@some-ui/soundbites`' `stepOnHome` read
+  but on the screen opening or Try again, or write but on a tap (setting an
+  idea aside only after its confirm), or `lib/idea-home` ask again but while
+  the link is busy, more than ten times in all; one that has
   `kept-read.ts` send anything but one `GET` of `keptPath(of)` per ask and,
   when `of` is null, one `GET /subjects/me/kept`, lets
   anything but `lib/my-data` read it, or has `lib/my-data` ask it but when a
@@ -536,8 +549,8 @@ declared (checked by reading every call site and by the tests named).
   `setAsidePath(mark)` per mark `due`, with no body, or lets anything but
   the voice run call it; one that
   sends from `createHomeLink` or `load`, or, outside LA15's watch,
-  Korean's look, the idea screen's ask for a take's words and My data's
-  reads, from a
+  Korean's look, the idea screen's ask for a take's words, My data's
+  reads and Ideas on home's reads, from a
   `useEffect`, a timer, a `visibilitychange` or
   `online` listener; one that retries a failed home request, or queues one
   for later, outside LA15; one that lets the clear start without its
@@ -591,7 +604,9 @@ declared (checked by reading every call site and by the tests named).
   `android:dataExtractionRules` from the manifest, or renames
   `HomeCredentialPlugin.PREFS` without them.
 - _Scope:_ `apps/www/src` (the phone build), `apps/mobile/android`, and
-  `packages/ui/soundbites/src/lib/idea/hearing.ts` (when the idea screen asks).
+  `packages/ui/soundbites/src/lib/idea/hearing.ts` (when the idea screen asks)
+  and `packages/ui/soundbites/src/lib/idea/on-home.ts` (when Ideas on home
+  reads and writes).
 - _Why not enforced:_ who may reach home is, by test (`egress-choke-points`:
   `CapacitorHttp` named only in `native-http`, whose index only
   `lib/home-link/index.ts` imports as a value (its `no-answer` sibling holds
@@ -599,7 +614,11 @@ declared (checked by reading every call site and by the tests named).
   Home server block, the study list's let-go, the phone-full offer, Settings' readout of what is
   kept on home, the drain and the marks of the records it sends, what hands
   aph's lane to them, the routine's readout and port, and the idea screen's
-  listener (`lib/idea-hearing`); the routine's read sends one
+  listener (`lib/idea-hearing`), and Ideas on home (`lib/idea-home`, whose
+  requests are the four `idea-reads.ts` sends, and only it calls that
+  module; `lib/idea/__tests__/on-home.test.ts` holds that a read answers
+  only the one asked last, one write goes at a time and setting an idea
+  aside asks first); the routine's read sends one
   `GET /routine/files` and one `PUT /routine/opened` and nothing else, and
   the read of a take's words one `GET /voice-notes/:id/heard` and nothing
   else; and `confirmHeld` is called only in `lib/home-link/sessions.ts`).

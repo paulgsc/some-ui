@@ -108,6 +108,10 @@ const HOME_LINK_CALLERS = new Set([
   // LA8 (MY-DATA MD2): My data, which reads the recordings the voice lane
   // lists and where each is kept, and asks home what it keeps.
   "lib/my-data/index.ts",
+  // LA8 (ST26 c): Studio's Ideas on home, which asks home for the ideas and
+  // their lists as the screen opens or is asked again, and writes a mark or a
+  // list's entry on a tap.
+  "lib/idea-home/index.ts",
 ])
 
 /**
@@ -133,6 +137,7 @@ const KEEPERS = new Set([
   "lib/home-link/voice-audio.ts",
   "lib/home-link/kept-read.ts",
   "lib/home-link/deleted-read.ts",
+  "lib/home-link/idea-reads.ts",
 ])
 
 /** The routine's read, and the two requests it may send. */
@@ -167,6 +172,15 @@ const KEPT_SENDS = [
 /** LA8, MD3: the read of what home deleted, and the one request it may send. */
 const DELETED_READ = "lib/home-link/deleted-read.ts"
 const DELETED_SENDS = [['"GET"', "DELETED_PATH"]]
+
+/** LA8, ST26 (c): Ideas on home's requests, one per ask, and the ones it may send. */
+const IDEA_READS = "lib/home-link/idea-reads.ts"
+const IDEA_SENDS = [
+  ['"GET"', "path"],
+  ['"PUT"', "path", "JSON.stringify({ furnishing: ask.furnishing })"],
+  ['"PUT"', "path"],
+  ['ask.listed ? "PUT" : "DELETE"', "path"],
+]
 
 /**
  * LA8, LA13 (MIC2): the voice lane's set-aside marks, and the one request
@@ -664,6 +678,19 @@ describe("LA8: the phone reaches home through one module", () => {
         /from "\.\/kept-read"|from "@\/lib\/home-link\/kept-read"/.test(read(f))
       )
     expect(readers).toEqual(["lib/my-data/index.ts"])
+  })
+
+  it("sends nothing from Ideas on home but its four requests, and only it asks them (ST26 c)", () => {
+    expect(sendCalls(IDEA_READS, read(IDEA_READS))).toEqual(IDEA_SENDS)
+    expect(read(IDEA_READS)).toContain("homeLink().keep(")
+    const callers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /from "\.\/idea-reads"|from "@\/lib\/home-link\/idea-reads"/.test(
+          read(f)
+        )
+      )
+    expect(callers).toEqual(["lib/idea-home/index.ts"])
   })
 
   it("sends nothing from the read of a note's audio but one GET of /voice-notes/:id/audio, and only the voice lane reads it (RR6)", () => {

@@ -47,7 +47,7 @@ export type IdeaLists = {
 
 /**
  * The lists every idea starts with (the owner, paulgsc/server#645), until
- * the phone reads home's.
+ * the phone has read home's (`keptIdeaLists`).
  */
 export const IDEA_LISTS_SEED: IdeaLists = {
   topics: ["Studio", "LeetType", "Korean", "Playoff Delta", "Rust Rounds"],
@@ -59,6 +59,37 @@ export const IDEA_LISTS_SEED: IdeaLists = {
     "how it works",
     "behind the scenes",
   ],
+}
+
+const LISTS_KEY = "some-ui:studio:idea-lists"
+
+const ListsSchema: z.ZodType<IdeaLists> = z.object({
+  topics: z.array(z.string()),
+  keywords: z.array(z.string()),
+})
+
+const readLists = readJson((value) => {
+  const parsed = ListsSchema.safeParse(value)
+  return parsed.success ? parsed.data : null
+})
+
+/**
+ * The lists as home last said them (ST26 (c)), for a new idea to pick from:
+ * a copy, written each time Ideas on home reads them or changes one, and
+ * read when a new idea opens. Until home has said them, or when the copy
+ * can't be read, the seeds every list starts with. Written over freely: the
+ * lists are home's, which keeps every change.
+ */
+export function keptIdeaLists(
+  storage: () => KeyedStorage | null = localStorageOrNull
+): { read: () => IdeaLists; write: (lists: IdeaLists) => boolean } {
+  return {
+    read: (): IdeaLists =>
+      openKept<IdeaLists>(storage(), LISTS_KEY, readLists, IDEA_LISTS_SEED)
+        .value,
+    write: (lists): boolean =>
+      writeKept(storage(), LISTS_KEY, lists, readLists),
+  }
 }
 
 /** A new draft: a Short, on the first topic, with nothing said. */
