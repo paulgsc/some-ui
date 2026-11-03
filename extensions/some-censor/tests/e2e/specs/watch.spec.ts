@@ -27,8 +27,22 @@
  *       page admits instead; under Stop nothing opens (#1966).
  * W14 — Under Skip, when autoplay went on into a video whose own page turns
  *       out held, it moves on to the next video the page admits that has not
- *       played, rather than stopping at "Not here." (SK1). * W15 — Likewise when that page's Up next has nothing admitted yet and its
+ *       played, rather than stopping at "Not here." (SK1).
+ * W15 — Likewise when that page's Up next has nothing admitted yet and its
  *       cards arrive after the page is held (SK1).
+ *
+ * A watch page in a Mix, its playlist panel's rows ahead of Up next (#2215):
+ *
+ * W16 — Under Music mix, the Mix's rows with no date are plated, while a
+ *       row dated recent stays absent, and so does an undated card outside
+ *       the Mix (R11).
+ * W17 — Under Music mix and Skip, a held autoplay into the next row opens
+ *       the Mix's next admitted row, two rows on, an undated one, by that
+ *       row's own link, which keeps the Mix's `list=`, ahead of an admitted
+ *       Up next card; the course marks that row next (SK1, R11, R12).
+ * W18 — Under Standard, where the undated rows are absent, a row's video
+ *       admitted only by its copy in Up next is opened as the row, three
+ *       rows on, not the copy, so the Mix plays on (SK1).
  */
 
 import { SWITCHED_OFF_ATTRIBUTE } from "@censor/lib/content/selectors"
@@ -223,33 +237,35 @@ test("W9: the miniplayer going on to another video holds it", async ({
 
 /**
  * Fill Up next with cards, each `[videoId, age, channel name]`, in the list
- * YouTube draws them in.
+ * YouTube draws them in, after `before`'s markup, if any.
  */
 async function upNext(
   page: Page,
-  cards: ReadonlyArray<readonly [string, string, string]>
+  cards: ReadonlyArray<readonly [string, string, string]>,
+  before = ""
 ): Promise<void> {
-  await page.evaluate((list) => {
+  const html = `${before}<div id="related"><ytd-watch-next-secondary-results-renderer>${cards
+    .map(
+      ([id, age, channel]) =>
+        `<ytd-compact-video-renderer><a id="video-title" href="/watch?v=${id}">${id}</a><ytd-channel-name><yt-formatted-string>${channel}</yt-formatted-string></ytd-channel-name><a href="/@${id}">${channel}</a><div id="metadata-line"><span>1M views</span><span>${age}</span></div></ytd-compact-video-renderer>`
+    )
+    .join("")}</ytd-watch-next-secondary-results-renderer></div>`
+  await page.evaluate((side) => {
     const secondary = document.querySelector("#secondary")
-    if (secondary)
-      secondary.innerHTML = `<div id="related"><ytd-watch-next-secondary-results-renderer>${list
-        .map(
-          ([id, age, channel]) =>
-            `<ytd-compact-video-renderer><a id="video-title" href="/watch?v=${id}">${id}</a><ytd-channel-name><yt-formatted-string>${channel}</yt-formatted-string></ytd-channel-name><a href="/@${id}">${channel}</a><div id="metadata-line"><span>1M views</span><span>${age}</span></div></ytd-compact-video-renderer>`
-        )
-        .join("")}</ytd-watch-next-secondary-results-renderer></div>`
-  }, cards)
+    if (secondary) secondary.innerHTML = side
+  }, html)
 }
 
+/** How the card for `videoId` is decided, within `scope` if one is named. */
 async function stamped(
   page: Page,
   videoId: string,
-  view: string
+  view: string,
+  scope = ""
 ): Promise<void> {
-  await expect(page.locator(`[data-boyo-vid="${videoId}"]`)).toHaveAttribute(
-    "data-boyo",
-    view
-  )
+  await expect(
+    page.locator(`${scope} [data-boyo-vid="${videoId}"]`)
+  ).toHaveAttribute("data-boyo", view)
 }
 
 /**
@@ -464,4 +480,104 @@ test("W15: under Skip, a held page moves on once its Up next arrives", async ({
   expect(await opened(), "nothing to go to yet").toEqual([])
   await upNext(page, [["older_next", "10 years ago", "Chan"]])
   await expect.poll(opened).toEqual(["/watch?v=older_next"])
+})
+
+// ── A watch page in a Mix (#2215) ────────────────────────────────────────────
+
+const MIX = "list=RDvid_mix_seed"
+/** The page's own video, yt-watch-page's. */
+const NOW = "jNQXAC9IVRw"
+const ROWS = "#playlist"
+const CARDS = "#related"
+
+/**
+ * yt-watch-page as the second video of a Mix. Its panel's rows are shaped as
+ * yt-watch.html's row (#1848) and as www.youtube.com served a Mix's panel on
+ * 2026-11-03: no row shows a date, and each row's links carry `list=RD…`,
+ * `index=` and `pp=`. Up next holds copies of two rows, the third dated
+ * recent and the fifth old, an old video outside the Mix and an undated one.
+ */
+async function mixPage(fixture: {
+  goto(name: string): Promise<Page>
+}): Promise<Page> {
+  const page = await fixture.goto("yt-watch-page")
+  await watchView(page, "plated")
+  const rows = [
+    "vid_mix_seed",
+    NOW,
+    "vid_mix_next",
+    "vid_mix_ahead",
+    "vid_mix_last",
+  ]
+    .map((id, i) => {
+      const href = `/watch?v=${id}&amp;${MIX}&amp;index=${i + 1}&amp;pp=8AUB`
+      return `<ytd-playlist-panel-video-renderer id="playlist-items" lockup="true"><a id="wc-endpoint" class="yt-simple-endpoint" href="${href}"><div id="container"><div id="thumbnail-container"><ytd-thumbnail><a aria-hidden="true" id="thumbnail" href="${href}" tabindex="-1"><div class="thumbnail"></div></a></ytd-thumbnail></div><div id="meta"><h4><span id="video-title" title="${id}">${id}</span></h4><div id="byline-container"><span id="byline" title="Chan">Chan</span></div></div></div></a></ytd-playlist-panel-video-renderer>`
+    })
+    .join("")
+  await upNext(
+    page,
+    [
+      ["vid_mix_next", "3 hours ago", "Chan"],
+      ["vid_side_old", "9 years ago", "Chan"],
+      ["vid_mix_last", "9 years ago", "Chan"],
+      ["vid_side_undated", "", "Chan"],
+    ],
+    `<ytd-playlist-panel-renderer id="playlist"><div id="items" class="playlist-items">${rows}</div></ytd-playlist-panel-renderer>`
+  )
+  return page
+}
+
+test("W16: under Music mix, a Mix's undated rows are plated, and nothing else undated", async ({
+  fixture,
+}) => {
+  await fixture.settings({ mode: "mix" })
+  const page = await mixPage(fixture)
+  for (const id of ["vid_mix_seed", NOW, "vid_mix_ahead"]) {
+    await stamped(page, id, "plated", ROWS)
+  }
+  // A row dated by its copy in Up next goes by that date.
+  await stamped(page, "vid_mix_next", "absent", ROWS)
+  await stamped(page, "vid_mix_last", "plated", ROWS)
+  await stamped(page, "vid_side_undated", "absent", CARDS)
+})
+
+test("W17: under Music mix and Skip, a held autoplay opens the Mix's next admitted row", async ({
+  fixture,
+}) => {
+  await fixture.settings({ mode: "mix", autoplay: "skip" })
+  const page = await mixPage(fixture)
+  await stamped(page, "vid_mix_ahead", "plated", ROWS)
+  await stamped(page, "vid_side_old", "plated", CARDS)
+  for (const [id, mark] of [
+    [NOW, "now"],
+    ["vid_mix_ahead", "next"],
+  ] as const) {
+    await expect(
+      page.locator(`${ROWS} [data-boyo-vid="${id}"]`)
+    ).toHaveAttribute("data-boyo-course", mark)
+  }
+  const opened = await recordOpened(page)
+
+  expect(await reaches(page, "vid_mix_next", "1")).toBe(false)
+  await expect
+    .poll(opened)
+    .toEqual([`/watch?v=vid_mix_ahead&${MIX}&index=4&pp=8AUB`])
+})
+
+test("W18: Skip opens a Mix's row, not its copy in Up next", async ({
+  fixture,
+}) => {
+  // vid_mix_last is admitted only by its copy's date, and the copy's link
+  // leaves the Mix.
+  await fixture.settings({ autoplay: "skip" })
+  const page = await mixPage(fixture)
+  await stamped(page, "vid_mix_ahead", "absent", ROWS)
+  await stamped(page, "vid_mix_last", "plated", ROWS)
+  await stamped(page, "vid_mix_last", "plated", CARDS)
+  const opened = await recordOpened(page)
+
+  expect(await reaches(page, "vid_mix_next", "1")).toBe(false)
+  await expect
+    .poll(opened)
+    .toEqual([`/watch?v=vid_mix_last&${MIX}&index=5&pp=8AUB`])
 })
