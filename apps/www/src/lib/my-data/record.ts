@@ -62,11 +62,12 @@ export type RecordReading =
     }
   /** Home answered, without this read: it runs an older version. */
   | { readonly kind: "older" }
-  /** Another answer, or one the phone can't read. */
+  /** No answer, another answer, or one the phone can't read. */
   | { readonly kind: "unreachable" }
 
-/** What home's answer to its count of the record says. */
-export function readRecord(answer: HomeAnswer): RecordReading {
+/** What home's answer to its count of the record says, or that there was none. */
+export function readRecord(answer: HomeAnswer | "unanswered"): RecordReading {
+  if (answer === "unanswered") return { kind: "unreachable" }
   if (answer.status === 404) return { kind: "older" }
   if (answer.status !== 200) return { kind: "unreachable" }
   const kept = readAs(Kept, answer.body)

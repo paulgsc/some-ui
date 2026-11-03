@@ -96,7 +96,7 @@ export type HomeReading =
  */
 export function readKept(
   answer: HomeAnswer,
-  record: HomeAnswer | null = null
+  record: HomeAnswer | "unanswered" | null = null
 ): HomeReading {
   if (answer.status === 404) return { kind: "older" }
   if (answer.status !== 200) return { kind: "unreachable" }

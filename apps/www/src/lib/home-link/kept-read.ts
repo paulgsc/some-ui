@@ -11,8 +11,9 @@
  * #2519): per kind, how many and since when, sending nothing. What the page
  * makes of both is `lib/my-data`'s, their one reader.
  */
-import type { HomeAnswer } from "@some-ui/core-utils"
+import type { HomeAnswer, HomeCall } from "@some-ui/core-utils"
 
+import { SyncStoppedError } from "@/lib/device-backend/home-sync"
 import type { VoiceOut } from "@/lib/voice-home/model"
 
 import { homeLink, paired } from "./index"
@@ -29,8 +30,11 @@ export type KeptAsked =
   | {
       readonly kind: "answered"
       readonly answer: HomeAnswer
-      /** Home's count of the record, asked on the overview alone. */
-      readonly record: HomeAnswer | null
+      /**
+       * Home's count of the record, asked on the overview alone;
+       * `unanswered` when that request got no answer.
+       */
+      readonly record: HomeAnswer | "unanswered" | null
     }
   /** Not paired: nothing was asked. */
   | { readonly kind: "unpaired" }
@@ -45,12 +49,22 @@ export async function askKept(of: VoiceOut["of"] | null): Promise<KeptAsked> {
   try {
     const outcome = await homeLink().keep(async (send) => ({
       answer: await send("GET", keptPath(of)),
-      record: of === null ? await send("GET", "/subjects/me/kept") : null,
+      record: of === null ? await askRecord(send) : null,
     }))
     return outcome?.kind === "done"
       ? { kind: "answered", ...outcome.value }
       : { kind: "busy" }
   } catch {
     return { kind: "unreachable" }
+  }
+}
+
+/** The record's count, whose failure leaves the recordings' answer standing. */
+async function askRecord(send: HomeCall): Promise<HomeAnswer | "unanswered"> {
+  try {
+    return await send("GET", "/subjects/me/kept")
+  } catch (error) {
+    if (error instanceof SyncStoppedError) throw error
+    return "unanswered"
   }
 }

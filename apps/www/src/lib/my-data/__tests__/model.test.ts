@@ -103,8 +103,12 @@ describe("home's count of the record kept for good (MD2b)", () => {
     ).toEqual({ ...READ, record: { kind: "read", held: {} } })
   })
 
-  it("says when home runs an older version, or answered what can't be read", () => {
+  it("says when home runs an older version, didn't answer, or answered what can't be read", () => {
     expect(record({}, 404)).toEqual({ ...READ, record: { kind: "older" } })
+    expect(readKept(kept, "unanswered")).toEqual({
+      ...READ,
+      record: { kind: "unreachable" },
+    })
     expect(record({}, 500)).toEqual({
       ...READ,
       record: { kind: "unreachable" },
