@@ -108,8 +108,7 @@ type BoyoFixtures = {
   /** The host of the extension's own pages, for `chrome-extension://<id>/`. */
   extensionId: string
   fixture: {
-    /** Open a fixture page, with `search` as its address's query, if any. */
-    goto(name?: string, search?: string): Promise<Page>
+    goto(name?: string): Promise<Page>
     pollDebug(
       page: Page,
       predicate: (d: BoyoDebug) => boolean,
@@ -198,10 +197,10 @@ export const test = base.extend<BoyoFixtures & { page: Page }>({
   fixture: async ({ context }, use) => {
     const worker = await extensionWorker(context)
     await use({
-      async goto(name = "yt-home", search = "") {
+      async goto(name = "yt-home") {
         const page = await context.newPage()
         const filePath = path.join(FIXTURE_DIR, `${name}.html`)
-        await page.goto(`file://${filePath}${search}`)
+        await page.goto(`file://${filePath}`)
         return page
       },
       pollDebug,
