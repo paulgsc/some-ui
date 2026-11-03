@@ -560,7 +560,7 @@ OA1–OA9 and RE1–RE10). `packages/assurance/src/ledger.json` is the one recor
 family and its objectives, each `holds` with its proof or `broken`/`unproven` with its issue,
 and the registry of async process families (`processes`): each one's segments, split where
 ownership changes, what real use shows of it, and the checks that can run it.
-`/assurance` shows the promises to the owner and to anyone; CK8 (#2388) is to show the registry.
+`/assurance` shows the promises to the owner and to anyone.
 
 When a change touches what an objective describes, edit the ledger in the same PR: a verdict
 that improves names its proof, a new route module is placed in a family or in

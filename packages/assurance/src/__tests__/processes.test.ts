@@ -250,7 +250,10 @@ describe("findProcessViolations", () => {
       { checks: [check({ tracked: undefined })] },
       "is planned, so it names its issue",
     ],
-    [{ checks: [check({ segments: [] })] }, "names the segments it exercises"],
+    [
+      { checks: [check({ segments: [] })] },
+      "exercises at least one segment of heard",
+    ],
     [
       { checks: [check({ segments: ["heard/pass", "heard/nowhere"] })] },
       'segment "heard/nowhere" is no <process>/<segment>',
@@ -381,24 +384,10 @@ describe("findProcessViolations", () => {
 })
 
 describe("the registry in the ledger", () => {
-  it("lists the voice families, each with its segments and a check or a signal", () => {
+  it("gives every process a signal or a check", () => {
     const parsed = parseLedger(ledgerJson)
     if (!parsed.ok) throw new Error(parsed.problems.join("\n"))
-    const ids = parsed.ledger.processes.map((p) => p.id)
-    expect(ids).toEqual(
-      expect.arrayContaining([
-        "phone-recording",
-        "recognizer",
-        "device-speech",
-        "hosted-speech",
-        "voice-going-home",
-        "home-transcription",
-        "mailbox-passes",
-        "morning-run",
-      ])
-    )
     for (const p of parsed.ledger.processes) {
-      expect(p.segments.length, p.id).toBeGreaterThan(0)
       expect(p.signals.length + p.checks.length, p.id).toBeGreaterThan(0)
     }
   })

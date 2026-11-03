@@ -2,23 +2,19 @@
  * What `pnpm check:assurance` holds of the registry
  * (docs/operational-assurance.md, "The registry: every process family"), as
  * a pure function over the parsed ledger: every name a process, a check or
- * a watch uses exists, every ledger family is carried by a process or said
- * to span them all, and a family that nothing shows working is reported.
+ * a watch uses exists and every ledger family is carried by a process or said
+ * to span them all (errors), and a process nothing shows working is reported
+ * (warnings: a gap to see, not a reason to fail).
  */
-import type { Ledger, Process } from "./ledger.ts"
+import type { CheckStatus, Ledger, Process } from "./ledger.ts"
 import type { Finding, Surroundings } from "./rules.ts"
+import { ISSUE, missingSomeUiPath } from "./rules.ts"
 
 const NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
-const ISSUE = /^(some-ui|server)#\d+$/
 const PATH = /^(some-ui|server):[^\s#]+(?:#.+)?$/
 const REF = /^([a-z0-9-]+)\/([a-z0-9-]+)$/
 const REGISTRY = "registry"
 
-/**
- * The registry against the ledger and the tree. Errors are a name that
- * points at nothing and a family with no process; warnings are a process
- * nothing shows working, which is a gap to see, not a reason to fail.
- */
 export function findProcessViolations(
   ledger: Ledger,
   around: Pick<Surroundings, "exists">
@@ -31,15 +27,22 @@ export function findProcessViolations(
     findings.push({ id, message, level: "warning" })
   }
   const path = (id: string, what: string, ref: string): void => {
-    if (!PATH.test(ref)) {
+    if (!PATH.test(ref))
       flag(id, `${what} "${ref}" is some-ui:<path> or server:<path>`)
-      return
+    else {
+      const missing = missingSomeUiPath(ref, around.exists)
+      if (missing !== null) flag(id, `${what} ${missing} does not exist`)
     }
-    // The server's own `Assurance ledger` job is where a server path would
-    // be checked; this tree only holds its own.
-    if (!ref.startsWith("some-ui:")) return
-    const file = ref.slice("some-ui:".length).split("#")[0] ?? ""
-    if (!around.exists(file)) flag(id, `${what} ${file} does not exist`)
+  }
+  const liveOrPlanned = (
+    at: string,
+    item: { status: CheckStatus; ref?: string; tracked?: string }
+  ): void => {
+    if (item.status === "live") {
+      if (item.ref === undefined) flag(at, "is live, so it names a ref")
+      else path(at, "ref", item.ref)
+    } else if (!item.tracked || !ISSUE.test(item.tracked))
+      flag(at, "is planned, so it names its issue (some-ui#N or server#N)")
   }
 
   const families = new Set(ledger.families.map((f) => f.id))
@@ -91,12 +94,7 @@ export function findProcessViolations(
     }
 
     p.signals.forEach((signal, i) => {
-      const at = `${p.id} signal ${i + 1}`
-      if (signal.status === "live") {
-        if (signal.ref === undefined) flag(at, "is live, so it names a ref")
-        else path(at, "ref", signal.ref)
-      } else if (!signal.tracked || !ISSUE.test(signal.tracked))
-        flag(at, "is planned, so it names its issue (some-ui#N or server#N)")
+      liveOrPlanned(`${p.id} signal ${i + 1}`, signal)
     })
 
     const checkIds = new Set<string>()
@@ -107,13 +105,7 @@ export function findProcessViolations(
       if (checkIds.has(check.id))
         flag(at, "check id is used twice in its process")
       checkIds.add(check.id)
-      if (check.status === "live") {
-        if (check.ref === undefined) flag(at, "is live, so it names a ref")
-        else path(at, "ref", check.ref)
-      } else if (!check.tracked || !ISSUE.test(check.tracked))
-        flag(at, "is planned, so it names its issue (some-ui#N or server#N)")
-      if (check.segments.length === 0)
-        flag(at, "names the segments it exercises")
+      liveOrPlanned(at, check)
       if (!check.segments.some((ref) => ref.startsWith(`${p.id}/`)))
         flag(
           at,
