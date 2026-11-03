@@ -1453,10 +1453,11 @@ reaches:
   - a hunk to `device-my-data-delete.tsx` that drops `DELETING.goes` or
     `DELETING.stays` from the sheet that asks, or puts the confirm before
     "Keep it";
-  - a hunk to a draft's delete (a store's delete, remove or discard of a
-    recording that never reached home, anywhere in `apps/www` or
-    `packages`) whose file, as it stands after the diff, imports
-    `lib/home-link` or `lib/my-data` or calls `deleteNotes`; or a hunk that
+  - a hunk, to any line, in a file that holds a draft's delete (a store's
+    delete, remove or discard of a recording that never reached home,
+    anywhere in `apps/www` or `packages`) and that, as it stands after the
+    diff, imports `lib/home-link` or `lib/my-data` or calls `deleteNotes`;
+    or a hunk that
     puts a draft's delete in a module under `lib/home-link/` or one the
     egress test's `HOME_LINK_CALLERS` lists;
   - a hunk that reaches the link's `send` under a name other than `send`,

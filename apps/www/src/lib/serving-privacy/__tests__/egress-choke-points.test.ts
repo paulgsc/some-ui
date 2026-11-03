@@ -225,8 +225,9 @@ function deleteRisks(
   text: string
 ): { deletes: Array<Array<string>>; variable: Array<Array<string>> } {
   const requests = sendCalls(path, text).filter((args) => args.length >= 2)
+  // A template with a substitution names its method elsewhere.
   const literal = (arg: string | undefined): boolean =>
-    arg !== undefined && /^(["'`]).*\1$/s.test(arg)
+    arg !== undefined && /^(["'`]).*\1$/s.test(arg) && !arg.includes("${")
   return {
     deletes: requests.filter((args) =>
       /^["'`]DELETE["'`]$/.test(args[0] ?? "")
@@ -904,6 +905,9 @@ describe("LA19 (MD5): only My data deletes a record on home", () => {
       deleteRisks("x.ts", "void send(how, path); void homeLink().send(run)")
         .variable
     ).toEqual([["how", "path"]])
+    expect(
+      deleteRisks("x.ts", "void send(`${how}`, path)").variable
+    ).toHaveLength(1)
     expect(
       namesVoiceDelete(
         "x.ts",
