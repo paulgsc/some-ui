@@ -988,13 +988,18 @@
           "kind": "RE9",
           "property": "work",
           "claim": "What the study nudge keeps stays within its stated horizons.",
-          "requirement": "intervention_log keeps 90 days, activity_outcome a year (owner, 2026-10-28), presence leases at most 16 per person, and the charge and gate one row per person and class, whether or not the nudge is on.",
-          "verdict": "broken",
-          "conclusion": "The horizons are written into the sweeps, but the sweeps run only while the nudge is on, so with it off the two logs keep growing.",
+          "requirement": "While the nudge is on, each pass sweeps intervention_log past 90 days and activity_outcome past a year (owner, 2026-10-28), at most RETENTION_SWEEP_LIMIT = 500 rows per table per pass, so a backlog (the nudge turned on again after a long while off) is gone once the passes catch up; with it off, both keep every row. Presence leases are at most 16 per person, and the charge and gate one row per person and class, either way.",
+          "verdict": "holds",
+          "proof": [
+            "server:apps/servers/file_host/src/nudge/waker.rs#a_pass_deletes_exactly_the_intervention_history_past_the_retention_horizon",
+            "server:apps/servers/file_host/src/main.rs#config.nudge_enabled",
+            "some-ui:apps/www/src/lib/device-backend/__tests__/storage-bounds.test.ts#keeps the latest 16 contexts"
+          ],
+          "conclusion": "Both sweeps run in the nudge waker, which runs only while the nudge is on, 500 rows per table per pass, so while it is on a log holds nothing past its horizon once its backlog is swept, and while it is off both logs keep every row, as stated.",
           "evidence": [
             {
               "class": "structural",
-              "says": "The nudge waker, which runs prune_intervention_log and OutcomeRepository::prune, is spawned only while NUDGE_ENABLED is on, so with it off both logs keep every row (server#556).",
+              "says": "The nudge waker, which runs prune_intervention_log and OutcomeRepository::prune, is spawned only while NUDGE_ENABLED is on: the horizons hold while it is on, and with it off both logs keep every row.",
               "ref": "server:apps/servers/file_host/src/main.rs"
             },
             {
@@ -1003,12 +1008,18 @@
               "ref": "some-ui:apps/www/src/lib/device-backend/handlers/account/index.ts"
             }
           ],
-          "tracked": "server#556",
           "watch": {
             "by": "dashboard",
             "ref": "server:infra/grafana/dashboards/storage.jsonnet"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-11-03",
+              "change": "The horizons hold while the nudge is on; with it off, intervention_log and activity_outcome keep every row. The requirement no longer asks for the horizons whether or not the nudge is on.",
+              "why": "Running both sweeps whatever the nudge's setting would delete old study rows that today's code keeps while the nudge is off. Asked under \"Never lose the record\", the owner chose to state the sweeps as they run rather than discard more.",
+              "decision": "https://github.com/paulgsc/server/issues/556#issuecomment-6595864337"
+            }
+          ]
         }
       ]
     },
@@ -2399,6 +2410,12 @@
       "store": "server:voice_note_set_aside",
       "class": "record",
       "growth": "Per voice note the owner lets go on the phone (D3, epic #2368; paulgsc/server invariant 23): one tiny row (the note's id, when it was let go, when home recorded it), append-only, the first mark standing, at most one per voice note, so bounded by voice_note's rows.",
+      "family": "voice-heard"
+    },
+    {
+      "store": "server:voice_note_deletion",
+      "class": "record",
+      "growth": "Per voice note the owner deletes for good from My data (MD3, #2477; paulgsc/server invariant 23): one small receipt row (the note's id and kind, three times, its size, what went and what stayed in fixed words), append-only and never deleted but with the account, at most one per voice note. No kind is switched on yet, so it holds nothing.",
       "family": "voice-heard"
     },
     {

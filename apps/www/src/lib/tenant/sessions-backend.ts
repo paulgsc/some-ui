@@ -28,6 +28,7 @@ import { authority, StaleAuthorityError } from "@/lib/authority"
 import { createFileHostTransport } from "@/lib/file-host-config/client"
 import { clearDurableFailure } from "@/lib/intent/durable-failure"
 
+import { forgetCopies } from "./copy-receipt"
 import { createHttpSessionsRepository } from "./http-sessions-repository"
 import type {
   CreateSessionInput,
@@ -66,7 +67,8 @@ function defaultRemote(): (token: Authority) => SessionsStore | null {
 export function createSessionsBackend(
   deps: SessionsBackendDeps = {}
 ): SessionsStore {
-  const local = createSessionsRepository(deps.storage ?? browserLocalStorage)
+  const storage = deps.storage ?? browserLocalStorage
+  const local = createSessionsRepository(storage)
   const settle = deps.settle ?? resolveSessionIfChosen
   const remote = deps.remote ?? defaultRemote()
 
@@ -99,14 +101,18 @@ export function createSessionsBackend(
     update: (id: string, patch: UpdateSessionInput): Promise<SessionRecord> =>
       through((s) => s.update(id, patch)),
     // A removed session's autosave-failure record has nothing left to warn
-    // about; without this it stays in `localStorage` for good.
+    // about, and a device session's copy receipt nothing left to copy;
+    // without this both stay in `localStorage` for good (SL1). An account
+    // session has no receipt entry of its own, so forgetting it is a no-op.
     remove: async (id: string): Promise<void> => {
       await through((s) => s.remove(id))
       clearDurableFailure(id)
+      forgetCopies([id], storage)
     },
     removeMany: async (ids: ReadonlyArray<string>): Promise<void> => {
       await through((s) => s.removeMany(ids))
       for (const id of ids) clearDurableFailure(id)
+      forgetCopies(ids, storage)
     },
     updateStatusMany: (
       ids: ReadonlyArray<string>,

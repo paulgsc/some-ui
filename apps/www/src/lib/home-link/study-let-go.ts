@@ -31,7 +31,6 @@ import {
   FileHostNotConfiguredError,
   FileHostResponseError,
 } from "@/lib/file-host-config/client"
-import { clearDurableFailure } from "@/lib/intent/durable-failure"
 import { ForeignCallError } from "@/lib/intent/foreign"
 import { sessionsRepository } from "@/lib/tenant/queries"
 import { emptyHeldReport } from "@/lib/tenant/sessions-copy"
@@ -137,12 +136,7 @@ function phonePorts(): LetGoPorts {
       return pairingIn(link.getSnapshot())
     },
     run: (r) => homeLink().send(r),
-    letGo: async (held): Promise<number> => {
-      const left = await letGoUnchanged(held)
-      // As `sessionsRepository.remove` does: nothing left to warn about.
-      if (left > 0) for (const { id } of held) clearDurableFailure(id)
-      return left
-    },
+    letGo: letGoUnchanged,
     remove: (id) => sessionsRepository.remove(id),
     report: reportFailure,
   }
