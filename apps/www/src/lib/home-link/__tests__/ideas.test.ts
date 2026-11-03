@@ -13,12 +13,7 @@ import type { IdeaForHome } from "@some-ui/soundbites"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { describe, expect, it, vi } from "vitest"
 
-import {
-  ideaPath,
-  ideasWaiting,
-  phoneIdeas,
-  sendIdeas,
-} from "@/lib/home-link/ideas"
+import { ideasWaiting, phoneIdeas, sendIdeas } from "@/lib/home-link/ideas"
 import { ideasMoved, keepIdeas } from "@/lib/idea-keeping"
 
 vi.mock("@some-ui/intent-kit", async (actual) => ({
@@ -89,9 +84,8 @@ describe("Studio's ideas on home (ST26 b)", () => {
     stop()
     expect(sent).toEqual([
       ["PUT", "/ideas/i1", JSON.stringify(bundle("i1"))],
-      ["PUT", ideaPath("i/2"), JSON.stringify(bundle("i/2"))],
+      ["PUT", "/ideas/i%2F2", JSON.stringify(bundle("i/2"))],
     ])
-    expect(ideaPath("i/2")).toBe("/ideas/i%2F2")
     expect(moved).toHaveBeenCalledTimes(2)
     expect(ideasWaiting(storage, "p1")).toEqual({ waiting: 0, held: 2 })
 

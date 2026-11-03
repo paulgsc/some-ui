@@ -8,7 +8,7 @@ export { keptDraftStore } from "./lib/idea/draft"
 export { keptIdeaStore } from "./lib/idea/store"
 export type { IdeaStore } from "./lib/idea/store"
 export { keptIdeasForHome } from "./lib/idea/home"
-export type { AnswerForHome, IdeaForHome } from "./lib/idea/home"
+export type { IdeaForHome } from "./lib/idea/home"
 export { IdeaShelf } from "./components/idea-shelf"
 export type { IdeaShare, IdeaShelfProps } from "./components/idea-shelf"
 export type {

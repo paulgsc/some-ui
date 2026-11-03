@@ -161,14 +161,10 @@ export function laneRun(lane: Lane): Pick<Kept, "getSnapshot" | "subscribe"> {
   return { getSnapshot: sending.getSnapshot, subscribe: sending.subscribe }
 }
 
-/**
- * How draining `lane` to home is going, read without a watch of its own:
- * for a screen that shows a lane the app shell drains (a wing's mark,
- * Settings).
- */
+/** `laneRun` in React: for a screen that shows a lane the app shell drains (a wing's mark, Settings). */
 function useLaneRun(lane: Lane): KeptState {
-  const { sending } = wire(lane)
-  return useSyncExternalStore(sending.subscribe, sending.getSnapshot)
+  const run = laneRun(lane)
+  return useSyncExternalStore(run.subscribe, run.getSnapshot)
 }
 
 /**

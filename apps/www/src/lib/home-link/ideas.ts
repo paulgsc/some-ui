@@ -60,9 +60,7 @@ export function ideasHeld(
   ).length
 }
 
-/** The send's path. */
-export const ideaPath = (id: string): string =>
-  `/ideas/${encodeURIComponent(id)}`
+const ideaPath = (id: string): string => `/ideas/${encodeURIComponent(id)}`
 
 /** Whether a `200`'s body carries back the idea that was sent. */
 function carriesBack(body: string, bundle: IdeaForHome): boolean {

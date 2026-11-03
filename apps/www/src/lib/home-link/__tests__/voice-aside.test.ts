@@ -27,10 +27,10 @@ import type { VoiceHome } from "@/lib/voice-home/runtime"
 import { createVoiceHome } from "@/lib/voice-home/runtime"
 import { setAsideOwing, voiceMarks } from "@/lib/voice-marks"
 
-/** A note's audio, and a takes desk over `takes`, as the voice lane reads them. */
 /** The pairing a run goes under. */
 const AT_PAIRING = { pairing: "p1" }
 
+/** A note's audio, and a takes desk over `takes`, as the voice lane reads them. */
 const { AUDIO, desk } = vi.hoisted(() => {
   const audio = (): Promise<Blob | null> => Promise.resolve(new Blob(["a"]))
   return {

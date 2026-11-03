@@ -12,12 +12,12 @@
  * idea's own.
  */
 import type { Idea, IdeaFormat, QuestionId } from "./model"
-import { IDEA_QUESTIONS } from "./model"
+import { isFollowUp } from "./model"
 import type { IdeaStore } from "./store"
 import { keptIdeaStore } from "./store"
 
 /** One answer, as home takes it: a voice note's id, or typed words. */
-export type AnswerForHome =
+type AnswerForHome =
   | { readonly question: QuestionId; readonly note: string }
   | { readonly question: QuestionId; readonly typed: string }
 
@@ -37,10 +37,6 @@ export type IdeaForHome = {
   readonly answers: ReadonlyArray<AnswerForHome>
 }
 
-function isQuestion(question: string): question is QuestionId {
-  return IDEA_QUESTIONS.some((each) => each === question)
-}
-
 /**
  * `idea` as home keeps it, or null for one that has no bundle to send: not
  * sent whole, or sent with no topic (the lists were empty), which home would
@@ -55,7 +51,7 @@ export function ideaForHome(idea: Idea): IdeaForHome | null {
   const answers = idea.answers.flatMap(
     (answer): ReadonlyArray<AnswerForHome> => {
       const { question } = answer
-      if (!isQuestion(question)) return []
+      if (isFollowUp(question)) return []
       const take = answer.takes?.at(-1)
       if (take !== undefined) return [{ question, note: take.take }]
       const words = answer.versions.at(-1)?.words
