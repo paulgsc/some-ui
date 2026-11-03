@@ -84,9 +84,19 @@ export function claimsAxis(
   return false
 }
 
+/** Whether a person can scroll `node` along `axis`: `auto` or `scroll`. */
+function scrolls(node: Element, axis: Axis): boolean {
+  const style = node.ownerDocument.defaultView?.getComputedStyle(node)
+  const overflow = axis === "x" ? style?.overflowX : style?.overflowY
+  return overflow === "auto" || overflow === "scroll"
+}
+
 /**
  * Where the nearest scroller from `target` up to `deck` that overflows along
- * `axis` stands: at its start, at its end. None overflowing is at both.
+ * `axis` stands: at its start, at its end. None overflowing is at both. Only
+ * a box a person can scroll counts: one that clips (`overflow: hidden`, as a
+ * deck's row clips the cards beside the one on screen) or lets its content
+ * spill is no scroller, however far its content reaches.
  */
 export function edgeOf(
   target: EventTarget | null,
@@ -97,7 +107,7 @@ export function edgeOf(
   for (; node !== null; node = node.parentElement) {
     const size = axis === "x" ? node.scrollWidth : node.scrollHeight
     const box = axis === "x" ? node.clientWidth : node.clientHeight
-    if (size > box + 1) {
+    if (size > box + 1 && scrolls(node, axis)) {
       const at = axis === "x" ? node.scrollLeft : node.scrollTop
       return { start: at <= 0, end: at + box >= size - 1 }
     }

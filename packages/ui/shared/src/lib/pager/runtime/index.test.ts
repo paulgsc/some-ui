@@ -113,16 +113,29 @@ describe("what the runtime reads under the finger", () => {
     expect(claimsAxis(plain, "x")).toBe(true)
   })
 
-  it("reads where an overflowing scroller stands, and both ends for none", () => {
+  it("reads where an overflowing scroller stands, and both ends for none or for a box that only clips", () => {
     const deck = document.createElement("div")
+    const row = document.createElement("div")
     const card = document.createElement("div")
-    deck.append(card)
+    row.append(card)
+    deck.append(row)
     document.body.append(deck)
     expect(edgeOf(card, deck, "y")).toEqual({ start: true, end: true })
+    // The idea bundle's row: it clips the cards beside the one on screen,
+    // which reach past it, but nobody can scroll it, so it is no scroller.
+    row.style.overflow = "hidden"
+    Object.defineProperties(row, {
+      scrollWidth: { value: 1200 },
+      clientWidth: { value: 400 },
+    })
+    expect(edgeOf(card, deck, "x")).toEqual({ start: true, end: true })
+    // Nor is content that only spills.
     Object.defineProperties(card, {
       scrollHeight: { value: 900 },
       clientHeight: { value: 300 },
     })
+    expect(edgeOf(card, deck, "y")).toEqual({ start: true, end: true })
+    card.style.overflowY = "auto"
     expect(edgeOf(card, deck, "y")).toEqual({ start: true, end: false })
     card.scrollTop = 600
     expect(edgeOf(card, deck, "y")).toEqual({ start: false, end: true })
