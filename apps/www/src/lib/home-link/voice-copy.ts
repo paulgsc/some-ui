@@ -954,8 +954,10 @@ export function voiceKept(id: string): TakeKept {
  * nothing else. Studio takes are the one kind My data can delete: a take's
  * audio leaves the phone whatever the owner's let-go choice, its record
  * staying in its shot
- * (`@some-ui/soundbites`' `letGoDeletedTakes`); and any set-aside mark still
- * owed for one is dropped, since home holds no note to mark now. Resolves
+ * (`@some-ui/soundbites`' `letGoDeletedTakes`). A receipt is home's word
+ * that it held the note, so a copy still waiting for an answer this phone
+ * never heard goes as a held one does; and any set-aside mark still owed
+ * for one is dropped, since home holds no note to mark now. Resolves
  * false when Studio's store isn't handed in or the write failed (said to
  * the native log); never rejects. The one caller is `lib/my-data`'s delete,
  * on home's receipt.
@@ -963,7 +965,9 @@ export function voiceKept(id: string): TakeKept {
 export async function letGoDeleted(
   ids: ReadonlyArray<string>
 ): Promise<boolean> {
-  phoneVoiceHome().drop(ids)
+  const home = phoneVoiceHome()
+  for (const id of ids) home.keeping.answered({ kind: "held", id })
+  home.drop(ids)
   const studio = studioKeeping()
   if (studio === null) return false
   try {

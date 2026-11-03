@@ -24,6 +24,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest"
 import { readSent, rememberSent } from "@/lib/home-link/sent"
 import { useUnsendable, voiceLane } from "@/lib/home-link/voice"
 import {
+  letGoDeleted,
   sendVoice,
   storesRead,
   voiceKept,
@@ -51,6 +52,8 @@ const fakes = vi.hoisted(
     letGo: "home" | "drive" | null
     waitingIds: ReadonlyArray<string>
     onDrive: Array<ReadonlyArray<string>>
+    /** The takes Studio was told home deleted. */
+    deleted: Array<ReadonlyArray<string>>
     /** Whether the phone is paired with home. */
     paired: boolean
   } => ({
@@ -61,6 +64,7 @@ const fakes = vi.hoisted(
     letGo: null,
     waitingIds: [],
     onDrive: [],
+    deleted: [],
     paired: true,
   })
 )
@@ -320,7 +324,10 @@ function handStudioIn(): void {
       },
     ],
     letGoHeldTakes: () => Promise.resolve(0),
-    letGoDeletedTakes: () => Promise.resolve(0),
+    letGoDeletedTakes: (deleted) => {
+      fakes.deleted.push([...deleted])
+      return Promise.resolve(1)
+    },
     letGo: () => fakes.letGo,
     waitingIds: () => fakes.waitingIds,
     letGoOnDrive: (onDrive) => {
@@ -347,6 +354,22 @@ describe("Studio's takes, once its route hands them in (ST12)", () => {
     expect(waiting()).toBe(0)
     // No choice yet: home is not asked which takes Drive has.
     expect(sent.some((path) => path.includes("on-drive"))).toBe(false)
+  })
+
+  it("MD3: home's receipt retires a copy still waiting for an answer this phone never heard, and lets Studio's take go", async () => {
+    setUp(5, {})
+    handStudioIn()
+    const unanswered: HomeCall = () => Promise.reject(new Error("no answer"))
+    // Home stored the upload, and its answer never came back.
+    await expect(sendVoice(unanswered)).rejects.toThrow()
+    expect(fakes.home?.getSnapshot().waiting.map((note) => note.id)).toEqual([
+      "t1",
+    ])
+    fakes.deleted = []
+    expect(await letGoDeleted(["t1"])).toBe(true)
+    expect(fakes.home?.getSnapshot().waiting).toEqual([])
+    expect(await fakes.home?.keeping.audio("t1")).toBeNull()
+    expect(fakes.deleted).toEqual([["t1"]])
   })
 
   /**
