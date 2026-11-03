@@ -1,5 +1,5 @@
 export { PlayoffDeltaStage } from "./components/stage"
-export { episodeFor, formatId, formatOf, type FormatKind } from "./lib/show"
+export { episodeFor, formatOf, RECORDING } from "./lib/show"
 export {
   parseStorySeason,
   StorySeasonSchema,

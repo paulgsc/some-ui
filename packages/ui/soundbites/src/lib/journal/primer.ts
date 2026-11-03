@@ -1,3 +1,8 @@
+import {
+  PRIMER_CUT_ID,
+  PRIMER_CUT_TARGET_MIN_MS,
+  PRIMER_V2_CUTS,
+} from "@some-ui/video-render"
 import { JOURNAL_BUDGET_MAX_MS } from "@soundbites/lib/policy"
 
 /**
@@ -55,12 +60,12 @@ import { JOURNAL_BUDGET_MAX_MS } from "@soundbites/lib/policy"
  */
 
 /** A cut's target is a guide, never under this or over the budget. */
-const CUT_TARGET_MIN_MS = 3_000
+const CUT_TARGET_MIN_MS = PRIMER_CUT_TARGET_MIN_MS
 
 /** The longest and the most cuts each version allows. */
 const LIMITS = {
   1: { budgetMs: 180_000, cuts: 12 },
-  2: { budgetMs: JOURNAL_BUDGET_MAX_MS, cuts: 24 },
+  2: { budgetMs: JOURNAL_BUDGET_MAX_MS, cuts: PRIMER_V2_CUTS },
 } as const
 
 /** How the whole episode is voiced. */
@@ -104,7 +109,7 @@ export type PrimerReading =
    */
   | { readonly ok: false; readonly problem: string }
 
-const CUT_ID = /^[a-z0-9][a-z0-9-]{0,39}$/
+const CUT_ID = PRIMER_CUT_ID
 
 /** An idea's id, and the name of one of its answers (`lib/idea/model.ts`). */
 export const IDEA_ID = /^[\w-]{1,64}$/

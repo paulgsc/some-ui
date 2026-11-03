@@ -9,7 +9,6 @@
  */
 
 import {
-  clipFile,
   episodeOf,
   FORMAT_SCHEMA,
   type Episode,
@@ -30,8 +29,14 @@ import type { StorySeason } from "./story"
 
 export type FormatKind = "week" | "legend"
 
-/** The version `formatOf` gives, pinned as `v<n>.json` in its folder. */
-export const FORMAT_VERSION = 1
+/** The version `formatOf` gives of each, pinned as `v<n>.json` in its folder. */
+export const FORMAT_VERSION: Readonly<Record<FormatKind, number>> = {
+  week: 1,
+  legend: 1,
+}
+
+/** The size the recorder records the stage at, in CSS px: a 9:16 frame. */
+export const RECORDING = { width: 1080, height: 1920 } as const
 
 /** Both formats are drawn in the week's series (`@some-ui/video-render`'s sample). */
 const SERIES = { id: "playoff-delta-week", version: 1 } as const
@@ -45,14 +50,19 @@ export function formatOf(kind: FormatKind): Format {
   return {
     schema: FORMAT_SCHEMA,
     id: formatId(kind),
-    version: FORMAT_VERSION,
+    version: FORMAT_VERSION[kind],
     title: kind === "week" ? "Playoff Delta week" : "Playoff Delta, the legend",
     series: SERIES,
     look: "calm",
     scenes: slides.map((id) => ({
       id,
       name: SCENES[id].name,
-      picture: { kind: "capture", from: `the stage's ${id} slide` },
+      point: SCENES[id].point,
+      picture: {
+        kind: "capture",
+        from: `the stage's ${id} slide`,
+        cssWidth: RECORDING.width,
+      },
       holdMs: HOLD_MS[id],
     })),
   }
@@ -64,30 +74,24 @@ const sourceOf = (season: StorySeason): string =>
 
 /**
  * One week's episode (`LEGEND_WEEK`, 0, for the legend), or every reason
- * there isn't one. `sha256` is the sum of the season data it read; `inMs`
- * says where each recorded clip's slide starts.
+ * there isn't one. `sha256` is the sum of the season as the stage read it
+ * (its contract JSON), and `inMs` says where scene `index`'s slide starts in
+ * its recorded clip.
  */
 export function episodeFor(
   season: StorySeason,
   week: number,
   sha256: string,
-  inMs: (index: number) => number = () => 0
+  inMs: (index: number) => number
 ): Parsed<Episode> {
   const data = { source: sourceOf(season), sha256 }
-  const clip = (id: string, i: number): { source: string; inMs: number } => ({
-    source: clipFile(id, i),
-    inMs: inMs(i),
-  })
   if (week === LEGEND_WEEK) {
     return episodeOf(formatOf("legend"), {
       title: "Playoff Delta, the legend",
       period: `${season.label}, the legend`,
       data,
-      says: LEGEND_SLIDES.map((id) => ({
-        point: SCENES[id].point,
-        keep: legendFacts(season, id),
-      })),
-      clip,
+      keep: LEGEND_SLIDES.map((id) => legendFacts(season, id)),
+      inMs,
     })
   }
   const shown = season.weeks.find((w) => w.week === week)
@@ -96,10 +100,7 @@ export function episodeFor(
     title: `Playoff Delta, ${season.label} week ${week}`,
     period: `${season.label} week ${week}`,
     data,
-    says: WEEK_SLIDES.map((id) => ({
-      point: SCENES[id].point,
-      keep: weekFacts(season, shown, id),
-    })),
-    clip,
+    keep: WEEK_SLIDES.map((id) => weekFacts(season, shown, id)),
+    inMs,
   })
 }

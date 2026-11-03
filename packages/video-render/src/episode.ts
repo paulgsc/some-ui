@@ -1,24 +1,31 @@
 /**
  * An episode of a show (SHOW SH2, #2527): its format (`format.ts`) applied
- * to one period's data, made by a pure function, so the same format and data
- * give the same bytes. It pins the format version, the series version (in
- * its cut list) and the SHA-256 of the data it read, so an episode rendered
- * again after the data moves on still says what it said.
+ * to one period's data, made by a pure function, so the same format, data
+ * and clip starts give the same bytes. It pins the format version, the
+ * series version (in its cut list) and a sum of the data it read, so an
+ * episode rendered again after the data moves on still says what it said.
  *
  * The file is a primer, version 2, that the phone's Studio opens where it
  * opens any primer (soundbites' `journal/primer.ts` reads it and ignores the
- * rest): one cut per scene shown, each with its point and the facts a take
- * may neither drop nor contradict, voiced in your own words, its target the
- * scene's hold. Beside the primer it carries the episode's pins and a cut
- * list whose pictures are the recorded clips, ready for the renderer once
- * the takes are in.
+ * rest): one cut per scene shown, each with the format's point and the facts
+ * a take may neither drop nor contradict, voiced in your own words, its
+ * target the scene's hold. Beside the primer it carries the episode's pins
+ * and a cut list whose pictures are the recorded clips, ready for the
+ * renderer once the takes are in. An episode follows its format strictly: a
+ * scene is left out only where the format says it may be.
  */
 
 import { z } from "zod"
 
-import { CUT_LIST_SCHEMA, CutListSchema, problemsOf } from "./cut-list"
-import type { Parsed } from "./cut-list"
-import { FORMAT_SCENES_MAX, sceneId } from "./format"
+import { CUT_LIST_SCHEMA, parseCutList, problemsOf } from "./cut-list"
+import type { CutList, Parsed } from "./cut-list"
+import {
+  PRIMER_CUT_TARGET_MIN_MS,
+  PRIMER_V2_BUDGET_MS,
+  PRIMER_V2_CUTS,
+  sceneId,
+  words,
+} from "./format"
 import type { Format } from "./format"
 
 export const EPISODE_SCHEMA = "some-ui.show-episode/1"
@@ -26,90 +33,93 @@ export const EPISODE_SCHEMA = "some-ui.show-episode/1"
 const EpisodeCutSchema = z.object({
   id: sceneId,
   /** What the video shows during the cut: the scene's name. */
-  artifact: z.string().min(1),
+  artifact: words,
   /** What to make the case for, in your own words. */
-  point: z.string().min(1),
+  point: words,
   /** Facts a take may neither drop nor contradict. */
-  keep: z.array(z.string().min(1)),
-  targetSec: z.number().min(3),
+  keep: z.array(words),
+  targetSec: z
+    .number()
+    .min(PRIMER_CUT_TARGET_MIN_MS / 1_000)
+    .max(PRIMER_V2_BUDGET_MS / 1_000),
 })
 
-export const EpisodeSchema = z
-  .object({
-    version: z.literal(2),
-    title: z.string().min(1),
-    voice: z.literal("ad-lib"),
-    cuts: z.array(EpisodeCutSchema).min(1).max(FORMAT_SCENES_MAX),
-    episode: z.object({
-      schema: z.literal(EPISODE_SCHEMA),
-      format: z.object({ id: z.string().min(1), version: z.number().int() }),
-      /** Which period it is: "2026 week 7". */
-      period: z.string().min(1),
-      /** The data it read: where it came from, and its bytes' sum. */
-      data: z.object({
-        source: z.string().min(1),
-        sha256: z.string().regex(/^[0-9a-f]{64}$/),
-      }),
+const EpisodeSchema = z.object({
+  version: z.literal(2),
+  title: words,
+  voice: z.literal("ad-lib"),
+  cuts: z.array(EpisodeCutSchema).min(1).max(PRIMER_V2_CUTS),
+  episode: z.object({
+    schema: z.literal(EPISODE_SCHEMA),
+    format: z.object({ id: words, version: z.number().int() }),
+    /** Which period it is: "2026 week 7". */
+    period: words,
+    /** The data it read: where it came from, and a sum its `source` names. */
+    data: z.object({
+      source: words,
+      sha256: z.string().regex(/^[0-9a-f]{64}$/),
     }),
-    cutList: CutListSchema,
-  })
-  .refine(
-    (e) =>
-      e.cuts.length === e.cutList.shots.length &&
-      e.cuts.every((c, i) => e.cutList.shots[i]?.cut === c.id),
-    {
-      message: "each cut is one scene of the cut list, in order",
-      path: ["cuts"],
-    }
-  )
+  }),
+})
 
-export type Episode = z.infer<typeof EpisodeSchema>
-
-/** What one scene says this period: `null` leaves the scene out. */
-export type SceneSays = {
-  readonly point: string
-  readonly keep: ReadonlyArray<string>
-} | null
+export type Episode = z.infer<typeof EpisodeSchema> & {
+  readonly cutList: CutList
+}
 
 export type EpisodeInput = {
   readonly title: string
   readonly period: string
   readonly data: { readonly source: string; readonly sha256: string }
-  /** Per scene of the format, in order. */
-  readonly says: ReadonlyArray<SceneSays>
-  /** Each scene's clip, and where in it the scene starts. */
-  readonly clip: (
-    sceneId: string,
-    index: number
-  ) => { readonly source: string; readonly inMs: number }
+  /**
+   * Per scene of the format, in order: the facts a take over it keeps, or
+   * `null` to leave it out, which only a scene with a `skip` may be.
+   */
+  readonly keep: ReadonlyArray<ReadonlyArray<string> | null>
+  /** Where scene `index` of the format starts in its clip. */
+  readonly inMs: (index: number) => number
 }
+
+/** Scene `index`'s clip in the episode's folder: "01-division.webm". */
+export const clipFile = (scene: string, index: number): string =>
+  `${String(index + 1).padStart(2, "0")}-${scene}.webm`
 
 /** `format` applied to one period's data, or every reason it can't be. */
 export function episodeOf(
   format: Format,
   input: EpisodeInput
 ): Parsed<Episode> {
-  if (input.says.length !== format.scenes.length) {
+  if (input.keep.length !== format.scenes.length) {
     return {
       ok: false,
       problems: [
-        `the format has ${format.scenes.length} scenes, and ${input.says.length} were said`,
+        `the format has ${format.scenes.length} scenes, and facts were given for ${input.keep.length}`,
       ],
     }
   }
-  const shown = format.scenes.flatMap((scene, i) => {
-    const says = input.says[i]
-    return says ? [{ scene, says }] : []
+  const refused = format.scenes.filter(
+    (scene, i) => input.keep[i] === null && scene.skip === undefined
+  )
+  if (refused.length > 0) {
+    return {
+      ok: false,
+      problems: refused.map(
+        (scene) => `${scene.id}: the format never leaves this scene out`
+      ),
+    }
+  }
+  const shown = format.scenes.flatMap((scene, index) => {
+    const keep = input.keep[index]
+    return keep ? [{ scene, index, keep }] : []
   })
-  const raw = {
+  const parsed = EpisodeSchema.safeParse({
     version: 2,
     title: input.title,
     voice: "ad-lib",
-    cuts: shown.map(({ scene, says }) => ({
+    cuts: shown.map(({ scene, keep }) => ({
       id: scene.id,
       artifact: scene.name,
-      point: says.point,
-      keep: says.keep,
+      point: scene.point,
+      keep,
       targetSec: scene.holdMs / 1_000,
     })),
     episode: {
@@ -118,34 +128,31 @@ export function episodeOf(
       period: input.period,
       data: input.data,
     },
-    cutList: {
-      schema: CUT_LIST_SCHEMA,
-      title: input.title,
-      series: format.series,
-      look: format.look,
-      voice: "ad-lib",
-      shots: shown.map(({ scene }, i) => ({
-        id: scene.id,
-        cut: scene.id,
-        picture:
-          scene.picture.kind === "card"
-            ? { kind: "card" }
-            : {
-                kind: "capture",
-                ...input.clip(scene.id, i),
-                framing: { mode: "full" },
-              },
-        durationMs: scene.holdMs,
-        voice: "ad-lib",
-      })),
-    },
-  }
-  const parsed = EpisodeSchema.safeParse(raw)
-  return parsed.success
-    ? { ok: true, value: parsed.data }
-    : { ok: false, problems: problemsOf(parsed.error, "episode") }
+  })
+  if (!parsed.success)
+    return { ok: false, problems: problemsOf(parsed.error, "episode") }
+  const cutList = parseCutList({
+    schema: CUT_LIST_SCHEMA,
+    title: input.title,
+    series: format.series,
+    look: format.look,
+    voice: "ad-lib",
+    shots: shown.map(({ scene, index }) => ({
+      id: scene.id,
+      cut: scene.id,
+      picture:
+        scene.picture.kind === "card"
+          ? { kind: "card" }
+          : {
+              kind: "capture",
+              source: clipFile(scene.id, index),
+              inMs: input.inMs(index),
+              cssWidth: scene.picture.cssWidth,
+              framing: { mode: "full" },
+            },
+      durationMs: scene.holdMs,
+    })),
+  })
+  if (!cutList.ok) return cutList
+  return { ok: true, value: { ...parsed.data, cutList: cutList.value } }
 }
-
-/** A clip's file in the episode's folder: "01-division.webm". */
-export const clipFile = (scene: string, index: number): string =>
-  `${String(index + 1).padStart(2, "0")}-${scene}.webm`

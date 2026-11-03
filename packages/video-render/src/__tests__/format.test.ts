@@ -27,12 +27,14 @@ const format = (version: number): Format => ({
     {
       id: "open",
       name: "The open",
-      picture: { kind: "capture", from: "the open slide" },
+      point: "How it opened",
+      picture: { kind: "capture", from: "the open slide", cssWidth: 1080 },
       holdMs: 6000,
     },
     {
       id: "extra",
       name: "Extra",
+      point: "What else happened",
       picture: { kind: "card" },
       holdMs: 4000,
       skip: "left out when nothing happened",
@@ -40,7 +42,8 @@ const format = (version: number): Format => ({
     {
       id: "close",
       name: "The close",
-      picture: { kind: "capture", from: "the close slide" },
+      point: "How it closed",
+      picture: { kind: "capture", from: "the close slide", cssWidth: 1080 },
       holdMs: 5000,
     },
   ],
@@ -48,12 +51,12 @@ const format = (version: number): Format => ({
 
 const SUM = "a".repeat(64)
 
-const input = (says: EpisodeInput["says"]): EpisodeInput => ({
+const input = (keep: EpisodeInput["keep"]): EpisodeInput => ({
   title: "Weekly, week 3",
   period: "week 3",
   data: { source: "weekly/3.json", sha256: SUM },
-  says,
-  clip: (id, i) => ({ source: clipFile(id, i), inMs: 900 }),
+  keep,
+  inMs: (i) => 900 + i,
 })
 
 describe("a format", () => {
@@ -88,29 +91,24 @@ describe("a format", () => {
 
 describe("an episode", () => {
   it("is a cut and a scene per scene shown, in order, pinned", () => {
-    const got = episodeOf(
-      format(1),
-      input([
-        { point: "How it opened", keep: ["3 wins"] },
-        null,
-        { point: "How it closed", keep: [] },
-      ])
-    )
+    const got = episodeOf(format(1), input([["3 wins"], null, []]))
     if (!got.ok) throw new Error(got.problems.join("; "))
     const e = got.value
     expect(e.version).toBe(2)
-    expect(e.cuts.map((c) => [c.id, c.artifact, c.targetSec])).toEqual([
-      ["open", "The open", 6],
-      ["close", "The close", 5],
+    expect(e.cuts.map((c) => [c.id, c.point, c.targetSec])).toEqual([
+      ["open", "How it opened", 6],
+      ["close", "How it closed", 5],
     ])
     expect(e.cutList.shots.map((s) => [s.id, s.cut, s.durationMs])).toEqual([
       ["open", "open", 6000],
       ["close", "close", 5000],
     ])
+    // A clip is named and timed by its scene's place in the format.
     expect(e.cutList.shots[1]?.picture).toMatchObject({
       kind: "capture",
-      source: "02-close.webm",
-      inMs: 900,
+      source: clipFile("close", 2),
+      inMs: 902,
+      cssWidth: 1080,
     })
     expect(e.episode).toEqual({
       schema: "some-ui.show-episode/1",
@@ -121,10 +119,16 @@ describe("an episode", () => {
     expect(e.cutList.series).toEqual({ id: "weekly", version: 1 })
   })
 
+  it("leaves a scene out only where the format says it may", () => {
+    const strict = episodeOf(format(1), input([null, [], []]))
+    expect(strict).toEqual({
+      ok: false,
+      problems: ["open: the format never leaves this scene out"],
+    })
+    expect(episodeOf(format(1), input([[], [], []])).ok).toBe(true)
+  })
+
   it("says what is wrong instead of guessing", () => {
-    const short = episodeOf(format(1), input([null]))
-    expect(short.ok).toBe(false)
-    const none = episodeOf(format(1), input([null, null, null]))
-    expect(none.ok).toBe(false)
+    expect(episodeOf(format(1), input([[]])).ok).toBe(false)
   })
 })

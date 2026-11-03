@@ -76,10 +76,13 @@ same format, fed that week's data, and the owner brings only the voice.
 `src/lib/show.ts` makes both formats (the week's and the legend's) from the
 slides above, a compile-time template, and pins each version under
 `src/show/formats/<id>/v<n>.json`. Its test holds the newest equal to the
-code, so a change to the slides fails until a new version is pinned. An
-episode is `episodeFor(season, week, sum)`: a primer the phone's Studio opens
-(each scene's point and facts, voiced ad-lib), pinned to the format, the
-series and the season's sum, with a cut list whose pictures are the clips.
+code, so a change to the slides (their order, names, points or holds)
+fails until a new version is pinned. An episode is
+`episodeFor(season, week, sum, inMs)`: a primer the phone's Studio opens
+(each scene's point and the facts a take keeps, voiced ad-lib), pinned to
+the format, the series and `sum`, with a cut list whose pictures are the
+clips, each starting at `inMs`. The recorder sums the season as the stage
+read it (its contract JSON), not the published file's bytes.
 The schemas are `@some-ui/video-render`'s (`format.ts`, `episode.ts`).
 
 ## Recording

@@ -28,11 +28,16 @@ import { mkdir, rename, rm, writeFile } from "node:fs/promises"
 import { join, resolve } from "node:path"
 import { parseArgs } from "node:util"
 import { chromium, type BrowserContext, type Page } from "@playwright/test"
-import { episodeFor, formatOf, parseStorySeason } from "@some-ui/playoff-delta"
+import {
+  episodeFor,
+  formatOf,
+  parseStorySeason,
+  RECORDING,
+} from "@some-ui/playoff-delta"
 import { THEME_STORAGE_KEY } from "@some-ui/styles/theme"
+import { clipFile } from "@some-ui/video-render"
 import { serve } from "@tests/ui-fit/harness"
 
-const SIZE = { width: 1080, height: 1920 }
 /** After a slide's hold: a beat of stillness to cut on. */
 const TAIL_MS = 600
 
@@ -56,9 +61,6 @@ const browser = await chromium.launch(
 
 const fmt = (ms: number): string => `${(ms / 1000).toFixed(1)}s`
 
-/** "01", "02": clips sort in story order. */
-const ordinal = (i: number): string => String(i + 1).padStart(2, "0")
-
 const url = (slide: number): string =>
   `${site.origin}/playoff-delta?week=${week}&slide=${slide}&record=true`
 
@@ -67,9 +69,9 @@ async function open(
   video?: string
 ): Promise<{ context: BrowserContext; page: Page }> {
   const context = await browser.newContext({
-    viewport: SIZE,
+    viewport: RECORDING,
     deviceScaleFactor: 1,
-    ...(video ? { recordVideo: { dir: video, size: SIZE } } : {}),
+    ...(video ? { recordVideo: { dir: video, size: RECORDING } } : {}),
   })
   if (values.theme) {
     const theme = values.theme
@@ -86,7 +88,8 @@ async function open(
 try {
   await mkdir(outDir, { recursive: true })
 
-  // The season the stage plays, as it publishes it on the frame.
+  // The season the stage plays, as it publishes it on the frame. Its sum is
+  // of that JSON (the season as the stage read it), not of the file's bytes.
   const probe = await open()
   await probe.page.goto(url(0))
   const data = await probe.page
@@ -103,7 +106,8 @@ try {
   const starts: Array<number> = []
 
   for (const [i, scene] of scenes.entries()) {
-    const name = `${ordinal(i)}-${scene.id}`
+    const clip = clipFile(scene.id, i)
+    const name = clip.replace(/\.webm$/, "")
     const tmp = join(outDir, ".video")
     const { context, page } = await open(tmp)
     const opened = Date.now()
@@ -114,7 +118,7 @@ try {
     await page.screenshot({ path: join(outDir, `${name}.png`) })
     const video = page.video()
     await context.close()
-    if (video) await rename(await video.path(), join(outDir, `${name}.webm`))
+    if (video) await rename(await video.path(), join(outDir, clip))
     console.log(`recorded ${name} (slide from ${fmt(starts[i] ?? 0)})`)
   }
 
