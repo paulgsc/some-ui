@@ -10,6 +10,10 @@
  *
  * A request that fails on the way ends the run there: the notes answered
  * before it keep their answers, and those after it were not sent.
+ *
+ * LA19 (docs/learner-data-authority.md): the one sender of a `DELETE` to
+ * home, imported by `lib/my-data` alone and called by its delete runtime
+ * alone (the egress test's "LA19 (MD5)" checks).
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
 

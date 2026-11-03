@@ -1394,6 +1394,101 @@ a scene note goes only once `prompted` and held (`lib/scene-voice`'s
   only through topik's `AskScene`, from the port `session-viewport.tsx`
   hands it on the phone; and `lib/scene-ask` imports nothing that sends.
 
+### LA19: a record kept on home is deleted only from My data's sheet, and a draft's delete never reaches home
+
+The owner's rule on MY-DATA (#2473, MD0 #2474, 2026-11-01 and 2026-11-02):
+deleting is "dedicated to only one place". A record kept on home is
+deleted only from My data, white-gloved (MD3, #2477). A draft, something
+still being made that hasn't gone home (a retake, an unsent idea answer's
+Delete), is deleted where it was made, and that delete is the phone's
+alone.
+
+What is enforced by test, in
+`apps/www/src/lib/serving-privacy/__tests__/egress-choke-points.test.ts`
+("LA19 (MD5)"):
+
+- Of every request the phone sends home (`send(method, path, …)`), only
+  `lib/home-link/delete-note.ts` sends a `DELETE`, one of `deletePath(id)`
+  per note.
+- A request whose method isn't written where it is sent comes from one of
+  four pinned callers, none of which can send a `DELETE` to a record: the
+  Jobs notice's `/jobs/notice`, `noticingBusy`'s pass-through, the
+  sessions transport (`GET`, `POST`, `PATCH`) and the shelf (`GET`, `PUT`).
+- No other source names a `DELETE` beside a `/voice-notes/` path.
+- Only `lib/my-data/index.ts` imports `delete-note`, and it hands
+  `deleteNotes` to `createDeleting` as its one port. Only the delete runtime
+  calls that port, once.
+- LA8's checks hold who reaches the link at all: only `lib/home-link` and
+  its listed callers.
+
+What no test can say is when the runtime runs, and what a draft's delete
+reaches:
+
+- _Claim:_ in the Android app, `deleteNotes` is called only by
+  `createDeleting`'s `run` (`lib/my-data/deleting-runtime.ts`). That run
+  starts only when `stepDeleting` (`lib/my-data/deleting.ts`) has accepted
+  a `confirmed`. It accepts one only from an `asking` sheet, or from an
+  `ended` sheet's `retryable` notes. `confirm` is called only from the
+  sheet's "Delete for good" and Try again buttons (`DeleteSheetView`'s
+  `onConfirm`, `components/settings/device-my-data-delete.tsx`). Before
+  that button, the sheet shows `DELETING.goes` and `DELETING.stays`, with
+  "Keep it" first. A sheet is asked (`asked`) only for recordings
+  `offersDelete` passes. Every other delete of a recording on the phone (a
+  draft's) sends nothing to home.
+- _Falsified by:_
+  - a hunk to `deleting-runtime.ts` that calls `ports.deleteNotes` other
+    than in `run`, starts `run` but after a `confirmed` the step accepted,
+    or retries on its own;
+  - a hunk to `deleting.ts` that lets `stepDeleting` reach `deleting` from
+    any sheet but `asking`, or any `ended` sheet's notes but `retryable`'s;
+    widens `retryable` to a final answer (`kept`, `notHeld`, `forgotten`);
+    lets `asked` open on a kind not in `PHONE_LETS_GO`; or widens
+    `offersDelete` past home's `deletable`;
+  - a hunk that calls a `Deleting`'s `confirm` from anything but
+    `DeleteSheetView`'s `onConfirm`, or `ask` with recordings
+    `offersDelete` refuses (`components/settings/device-my-data.tsx`'s
+    `MyDataKind` and its `?note=` opening);
+  - a hunk to `device-my-data-delete.tsx` that drops `DELETING.goes` or
+    `DELETING.stays` from the sheet that asks, or puts the confirm before
+    "Keep it";
+  - a hunk to a draft's delete (a store's delete, remove or discard of a
+    recording that never reached home, anywhere in `apps/www` or
+    `packages`) that imports `lib/home-link`, calls `deleteNotes`, or
+    hands its recording to anything that sends;
+  - a hunk that reaches the link's `send` under a name other than `send`,
+    which the checks above read by name;
+  - a hunk that narrows or deletes the "LA19 (MD5)" checks, or widens
+    their allowlists (`DELETE_SEND`, `VARIABLE_METHOD_SENDS`,
+    `DELETE_WIRING`).
+- _Scope:_ `apps/www/src/lib/my-data/deleting.ts`, `deleting-runtime.ts`,
+  `index.ts`, `apps/www/src/lib/home-link/delete-note.ts`,
+  `apps/www/src/components/settings/device-my-data.tsx` and
+  `device-my-data-delete.tsx`. For a draft's delete: every module in
+  `apps/www` and `packages` that deletes a recording on the phone.
+- _Why not enforced:_
+  - The checks above hold who sends a `DELETE` and who holds the port.
+  - **Lint** can't hold that the port runs only after the person's confirm
+    in the sheet: that is a path through a component's props and the
+    step's states. A rule that followed it would have to trace every
+    caller of `confirm`.
+  - **A test** can show the step refuses a confirm it shouldn't take, and
+    `lib/my-data/__tests__/deleting.test.ts` does. It can't show that no
+    other caller reaches `confirm`, an open-ended set.
+  - Whether a module's own delete is of a draft or a record depends on
+    what it deletes, which no lexical check sees.
+  - Held when declared (MD5, #2479), checked by reading each:
+    - `ports.deleteNotes` is called only in `run`, after `confirm`'s
+      dispatch changed the state.
+    - `confirm` is passed only to `DeleteSheetView`'s `onConfirm`, in
+      `KindList`.
+    - `ask` is called only by `MyDataKind`, through `offersDelete`'s ids,
+      and by `KindList`'s `?note=` effect, guarded by `offersDelete`.
+    - The phone's draft deletes (Studio's retake and take removal, an idea
+      answer's Delete, the soundbites', lens and LeetType desks' and Rust
+      Rounds' deletes, the reflection and scene voice budgets) live in
+      packages or in `lib/` modules outside LA8's `HOME_LINK_CALLERS`, so
+      none of them reaches the link.
+
 ## Not covered, on purpose
 
 - **The shared origin.** On GitHub Pages every project under the same `github.io`
