@@ -120,7 +120,7 @@ export function episodeOf(
     const keep = input.keep[index]
     return keep ? [{ scene, index, keep }] : []
   })
-  const parsed = EpisodeSchema.safeParse({
+  return parseEpisode({
     version: 2,
     title: input.title,
     voice: "ad-lib",
@@ -138,33 +138,29 @@ export function episodeOf(
       period: input.period,
       data: input.data,
     },
+    cutList: {
+      schema: CUT_LIST_SCHEMA,
+      title: input.title,
+      series: format.series,
+      look: format.look,
+      voice: "ad-lib",
+      shots: shown.map(({ scene, index }) => ({
+        id: scene.id,
+        cut: scene.id,
+        picture:
+          scene.picture.kind === "card"
+            ? { kind: "card" }
+            : {
+                kind: "capture",
+                source: clipFile(scene.id, index),
+                inMs: input.inMs(index),
+                cssWidth: scene.picture.cssWidth,
+                framing: { mode: "full" },
+              },
+        durationMs: scene.holdMs,
+      })),
+    },
   })
-  if (!parsed.success)
-    return { ok: false, problems: problemsOf(parsed.error, "episode") }
-  const cutList = parseCutList({
-    schema: CUT_LIST_SCHEMA,
-    title: input.title,
-    series: format.series,
-    look: format.look,
-    voice: "ad-lib",
-    shots: shown.map(({ scene, index }) => ({
-      id: scene.id,
-      cut: scene.id,
-      picture:
-        scene.picture.kind === "card"
-          ? { kind: "card" }
-          : {
-              kind: "capture",
-              source: clipFile(scene.id, index),
-              inMs: input.inMs(index),
-              cssWidth: scene.picture.cssWidth,
-              framing: { mode: "full" },
-            },
-      durationMs: scene.holdMs,
-    })),
-  })
-  if (!cutList.ok) return cutList
-  return { ok: true, value: { ...parsed.data, cutList: cutList.value } }
 }
 
 /**

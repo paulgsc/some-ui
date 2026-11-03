@@ -1,6 +1,6 @@
 /** @vitest-environment node */
-import { parseCutList, parseEpisode } from "@some-ui/video-render"
-import { primerOf } from "@soundbites/fixtures"
+import { parseCutList } from "@some-ui/video-render"
+import { episodeProjectOf } from "@soundbites/fixtures"
 import { projectFile, readProjectFile } from "@soundbites/lib/project/file"
 import type { CutListShape, ProjectEvent } from "@soundbites/lib/project/model"
 import { cutListAt, latest, step } from "@soundbites/lib/project/model"
@@ -10,7 +10,6 @@ import {
   cutListOf,
   fitted,
   lengthFor,
-  projectFromEpisode,
   projectIdFor,
   resumeAt,
   TAIL_MS,
@@ -150,12 +149,8 @@ describe("the project the Studio opens on", () => {
 })
 
 describe("an episode (SHOW SH3)", () => {
-  const opened = (): ReturnType<typeof projectFromEpisode> => {
-    const text = episodeText()
-    const episode = parseEpisode(JSON.parse(text))
-    if (!episode.ok) throw new Error(episode.problems.join("; "))
-    return projectFromEpisode("e1", episode.value, primerOf(text), AT)
-  }
+  const opened = (): ReturnType<typeof episodeProjectOf> =>
+    episodeProjectOf("e1", episodeText(), AT)
 
   it("opens over its clips, in its show's series, pinned", () => {
     const { project } = opened()

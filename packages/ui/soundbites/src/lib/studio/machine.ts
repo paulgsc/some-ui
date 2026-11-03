@@ -225,7 +225,6 @@ type Pending = { readonly project: string } & (
       readonly kind: "create"
       readonly primer: Primer
       readonly at: string
-      /** The episode file it opens, when it is one (SHOW SH3). */
       readonly episode?: Episode
     }
   | { readonly kind: "revise"; readonly primer: Primer; readonly at: string }
@@ -1510,7 +1509,6 @@ function then(first: Step, next: (state: StudioState) => Step): Step {
   }
 }
 
-/** The screen once the project changed under it: its scene, if still there. */
 /**
  * An episode file picked on Start (SHOW SH3): the episode this phone holds
  * already, if it has it (the same show, format, period and data), opened;
@@ -1538,6 +1536,7 @@ function pickedEpisode(
   })
 }
 
+/** The screen once the project changed under it: its scene, if still there. */
 function placed(screen: StudioScreen, project: Project | null): StudioScreen {
   if (screen.kind !== "record") return screen
   if (project === null) return { kind: "start" }
@@ -1930,7 +1929,7 @@ export function step(state: StudioState, event: StudioEvent): Step {
     }
 
     case "shapeChosen": {
-      // An episode's look and voice are its show's (SHOW SH3).
+      // No Shape for an episode (`model.ts`, SH3).
       if (
         project === null ||
         project.episode !== undefined ||

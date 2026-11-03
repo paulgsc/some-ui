@@ -64,6 +64,10 @@ import { Mic, Square } from "lucide-react"
 
 const WORDS = STUDIO_WORDS
 
+/** A row of a list that opens what it names: a show, or an episode of one. */
+const LIST_ROW =
+  "border-border/60 focus-visible:ring-ring flex w-full items-center gap-3 rounded-2xl border px-3 py-2 text-left focus-visible:ring-2 focus-visible:outline-none"
+
 export type StudioShare = (props: {
   project: Project
   /** The person says the takes that went out arrived where they sent them. */
@@ -409,7 +413,7 @@ const Start = ({
                   onClick={() =>
                     dispatch({ type: "showChosen", show: row.show })
                   }
-                  className="border-border/60 focus-visible:ring-ring flex w-full items-center gap-3 rounded-2xl border px-3 py-2 text-left focus-visible:ring-2 focus-visible:outline-none"
+                  className={LIST_ROW}
                 >
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-bold">
@@ -853,8 +857,7 @@ const Shape = ({
   )
 }
 
-/** History (ST4's quiet link): every version of the video, newest first. */
-/** A show (SHOW SH3): its format, and its episodes on this phone. */
+/** A show (SHOW SH3): its version, and its episodes on this phone. */
 const Show = ({
   state,
   show,
@@ -899,7 +902,7 @@ const Show = ({
               onClick={() =>
                 dispatch({ type: "projectOpened", project: episode.id })
               }
-              className="border-border/60 focus-visible:ring-ring flex w-full items-center gap-3 rounded-2xl border px-3 py-2 text-left focus-visible:ring-2 focus-visible:outline-none"
+              className={LIST_ROW}
             >
               <span className="min-w-0 flex-1 text-sm font-bold">
                 {episode.period}
@@ -916,6 +919,7 @@ const Show = ({
   )
 }
 
+/** History (ST4's quiet link): every version of the video, newest first. */
 const History = ({
   project,
   dispatch,

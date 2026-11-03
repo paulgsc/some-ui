@@ -3,7 +3,7 @@
  * renders it and a test checks it without a store or a microphone.
  */
 import { assertNever } from "@some-ui/core-utils"
-import type { Idea, Shot } from "@some-ui/video-render"
+import type { EpisodePin, Idea, Shot } from "@some-ui/video-render"
 import type { TakeButtonView, TakeRowView } from "@some-ui/voice-capture"
 import { NEARLY_UP_MS } from "@some-ui/voice-capture"
 import type { Cut } from "@soundbites/lib/journal/primer"
@@ -13,7 +13,12 @@ import { waitingTakes } from "@soundbites/lib/project/let-go"
 import type { Note, Project, ProjectTake } from "@soundbites/lib/project/model"
 import { homeHolds, latest } from "@soundbites/lib/project/model"
 import { originConfirmed, originsWaiting } from "@soundbites/lib/project/origin"
-import { capFor, chosenTake, scriptOf } from "@soundbites/lib/project/script"
+import {
+  capFor,
+  chosenTake,
+  scriptOf,
+  touchedAt,
+} from "@soundbites/lib/project/script"
 
 import type { StudioState } from "./machine"
 import type { EpisodeStanding, SittingKind, Whose } from "./words"
@@ -98,7 +103,6 @@ export function startView(project: Project): StartView {
   return {
     title: latest(project).cutList.title,
     standing: STUDIO_WORDS.standing(lastLog(project)),
-    // An episode's look and voice are its show's: it has no Shape.
     sittings:
       episode === undefined
         ? sittings
@@ -123,25 +127,16 @@ function standingOf(project: Project): EpisodeStanding {
   return takenCount(project) > 0 ? "going" : "voice"
 }
 
-/** When anything last happened to a project, for ordering its show's episodes. */
-function lastAt(project: Project): string {
-  return project.revisions.reduce(
-    (at, each) => (each.at > at ? each.at : at),
-    project.takes.reduce(
-      (at, each) => (each.recordedAt > at ? each.recordedAt : at),
-      ""
-    )
-  )
-}
+type Episodic = Project & { readonly episode: EpisodePin }
 
 /** The episodes of `show` on the phone, the newest first. */
 function episodesOf(
   projects: ReadonlyArray<Project>,
   show: string
-): ReadonlyArray<Project> {
+): ReadonlyArray<Episodic> {
   return projects
-    .filter((each) => each.episode?.show === show)
-    .sort((a, b) => lastAt(b).localeCompare(lastAt(a)))
+    .filter((each): each is Episodic => each.episode?.show === show)
+    .sort((a, b) => touchedAt(b).localeCompare(touchedAt(a)))
 }
 
 /** A show on Start (SHOW SH3). */
@@ -162,7 +157,7 @@ export function showsOnPhone(
   return shows.flatMap((show) => {
     const episodes = episodesOf(projects, show)
     const [newest] = episodes
-    if (newest?.episode === undefined) return []
+    if (newest === undefined) return []
     return [
       {
         show,
@@ -188,31 +183,25 @@ export type ShowView = {
   }>
 }
 
-/** A show's screen: its format, and each episode of it on the phone. */
+/** A show's screen: its version, and each episode of it on the phone. */
 export function showView(
   projects: ReadonlyArray<Project>,
   show: string
 ): ShowView | null {
   const episodes = episodesOf(projects, show)
   const [newest] = episodes
-  if (newest?.episode === undefined) return null
+  if (newest === undefined) return null
   const { look, voice, shots } = latest(newest).cutList
   const words = STUDIO_WORDS.show
   return {
     show,
     version: words.version(newest.episode.format.version, shots.length),
     plans: words.plans(look, voice),
-    episodes: episodes.flatMap((each) =>
-      each.episode === undefined
-        ? []
-        : [
-            {
-              id: each.id,
-              period: each.episode.period,
-              standing: words.standing[standingOf(each)],
-            },
-          ]
-    ),
+    episodes: episodes.map((each) => ({
+      id: each.id,
+      period: each.episode.period,
+      standing: words.standing[standingOf(each)],
+    })),
   }
 }
 

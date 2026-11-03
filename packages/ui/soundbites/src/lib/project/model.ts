@@ -244,9 +244,9 @@ export function newProject(
 }
 
 /**
- * Whether `cutList` keeps an episode's format as its first version has it:
- * the same scenes in the same order, and the show's series, look and voice.
- * A video of your own keeps no format, so any version keeps it.
+ * Whether `cutList` keeps an episode's format as its first version has it
+ * (the header's SH3 rule). A video of your own keeps no format, so any
+ * version keeps it.
  */
 export function formatKept(project: Project, cutList: CutListShape): boolean {
   const first = project.revisions[0]
