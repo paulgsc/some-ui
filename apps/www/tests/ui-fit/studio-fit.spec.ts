@@ -291,6 +291,18 @@ const WALKS: Record<
       },
     },
   ],
+  "studio-episode-ready": [
+    {
+      // The show's title and description, each with its copy button (SH5).
+      screen: "Finish, an episode ready with its upload copy",
+      go: async (page): Promise<void> => {
+        await tap(page, sitting("Finish"))
+        await page
+          .getByRole("region", { name: "For the upload, from the show" })
+          .waitFor()
+      },
+    },
+  ],
   "studio-held": [
     {
       // Home holds every take, and nothing leaves until the owner chooses.

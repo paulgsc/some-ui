@@ -24,6 +24,10 @@
  *   and its link stay as written, it takes no new note, and a change makes
  *   the next revision.
  * - **The owner's word on whose idea a scene is stays** (ST5, `./origin`).
+ * - **A take's fact check is the session's, and the owner's word is theirs**
+ *   (SHOW SH5). `checks` holds each verdict a round brought (`./merge`),
+ *   `accepted` the owner's word to keep a take that didn't pass after three
+ *   rounds (PDM15); both only grow.
  * - **An episode keeps its format** (SHOW SH3). A project opened from an
  *   episode file is pinned to it (`episode`), and a version that changes
  *   its scenes, their order, its series, its look or the voice plan (the
@@ -37,7 +41,7 @@ import { assertNever } from "@some-ui/core-utils"
 import type { CutList, EpisodePin, ShotTime } from "@some-ui/video-render"
 import type { Primer } from "@soundbites/lib/journal/primer"
 
-import { finishOf, isReleased, youtubeLink } from "./finish"
+import { BEST_OF, finishOf, isReleased, youtubeLink } from "./finish"
 import { latestShot, sameJson, shotIds, shotIn } from "./lookup"
 import type { OriginMark } from "./origin"
 import { originRefusal } from "./origin"
@@ -104,6 +108,28 @@ type Mark = {
   readonly at: string
 }
 
+/**
+ * A take's fact check (ST21's take check, run by a session's round): whether
+ * it says every fact its scene must keep, and contradicts none (SHOW SH5).
+ */
+export type FactCheck = {
+  readonly take: string
+  /** ISO 8601, UTC. */
+  readonly at: string
+  readonly passed: boolean
+}
+
+/**
+ * The owner's word to keep scene `shot`'s take `take` though its fact check
+ * didn't pass, after three rounds of it (PDM15).
+ */
+type Accepted = {
+  readonly shot: string
+  readonly take: string
+  /** ISO 8601, UTC. */
+  readonly at: string
+}
+
 /** Where revision `rev` went up, as the owner pasted it once uploaded. */
 type Release = Mark & {
   /** `https://youtu.be/<id>` (`youtubeLink`). */
@@ -133,6 +159,10 @@ export type Project = {
    * period and data. Absent on a video of your own.
    */
   readonly episode?: EpisodePin
+  /** Each take's fact check, as rounds brought them, in order (SH5). */
+  readonly checks?: ReadonlyArray<FactCheck>
+  /** The owner's word on each take kept after three rounds (SH5). */
+  readonly accepted?: ReadonlyArray<Accepted>
 }
 
 /** A take under way, and the sitting waiting on it to close. */
@@ -188,6 +218,8 @@ export type ProjectEvent =
       "done" | "next" | "shot"
     >)
   | ({ readonly type: "markedReady" } & Mark)
+  /** The owner keeps scene `shot`'s chosen take after three rounds (SH5). */
+  | { readonly type: "bestKept"; readonly shot: string; readonly at: string }
   | ({ readonly type: "released" } & Release)
 
 export type ProjectEffect =
@@ -434,7 +466,9 @@ export function isAppendOnly(before: Project, after: Project): boolean {
         : sameJson(now, sitting))
     )
   })
-  const marks = (["ready", "released", "origins"] as const).every((key) =>
+  const marks = (
+    ["ready", "released", "origins", "checks", "accepted"] as const
+  ).every((key) =>
     (before[key] ?? []).every((mark, index) =>
       sameJson(mark, after[key]?.[index])
     )
@@ -688,6 +722,25 @@ export function step(state: ProjectState, event: ProjectEvent): ProjectStep {
       return changed(state, {
         ...project,
         ready: [...(project.ready ?? []), { rev: event.rev, at: event.at }],
+      })
+    }
+
+    case "bestKept": {
+      const finish = finishOf(project)
+      if (
+        finish.kind !== "facts" ||
+        finish.shot !== event.shot ||
+        finish.rounds < BEST_OF
+      )
+        return refuse(state, "notReady")
+      const take = project.chosen[event.shot]
+      if (take === undefined) return refuse(state, "noTake")
+      return changed(state, {
+        ...project,
+        accepted: [
+          ...(project.accepted ?? []),
+          { shot: event.shot, take, at: event.at },
+        ],
       })
     }
 

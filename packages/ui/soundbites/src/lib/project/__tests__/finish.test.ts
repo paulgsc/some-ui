@@ -1,7 +1,7 @@
 /** @vitest-environment node */
-import { finishOf, youtubeLink } from "@soundbites/lib/project/finish"
+import { BEST_OF, finishOf, youtubeLink } from "@soundbites/lib/project/finish"
 import { latestShot } from "@soundbites/lib/project/lookup"
-import type { ProjectState } from "@soundbites/lib/project/model"
+import type { FactCheck, ProjectState } from "@soundbites/lib/project/model"
 import { isAppendOnly, latest, step } from "@soundbites/lib/project/model"
 import { describe, expect, it } from "vitest"
 
@@ -150,6 +150,128 @@ describe("Finish's ready rule", () => {
     })
     expect(step(later, { type: "markedReady", rev: 1, at: AT }).refused).toBe(
       "notLatest"
+    )
+  })
+})
+
+/** `state` as an episode of the show Weekly (SH3's pins), its takes' checks as given. */
+function episode(
+  state: ProjectState,
+  checks: ReadonlyArray<FactCheck> = []
+): ProjectState {
+  return {
+    ...state,
+    project: {
+      ...state.project,
+      episode: {
+        schema: "some-ui.show-episode/1",
+        show: "Weekly",
+        format: { id: "weekly", version: 1 },
+        period: "week 3",
+        data: { source: "weekly/3.json", sha256: "a".repeat(64) },
+        upload: { title: "Weekly · week 3", description: "Week 3." },
+      },
+      checks,
+    },
+  }
+}
+
+const check = (take: string, passed: boolean): FactCheck => ({
+  take,
+  at: AT,
+  passed,
+})
+
+/** Scene `id` taken again as take `t-<id>-<n>`, so it is the one chosen. */
+const retaken = (state: ProjectState, id: string, n: number): ProjectState =>
+  run(state, { type: "takeStarted", shot: id }, take(`t-${id}-${n}`, id))
+
+describe("Finish on an episode (SH5): every take says its facts", () => {
+  it("waits on a take's check, naming the first scene without one", () => {
+    const state = episode(taken(started()), [check("t-a", true)])
+    expect(finishOf(state.project)).toEqual({
+      kind: "unchecked",
+      rev: 1,
+      shot: "b",
+      n: 2,
+    })
+  })
+
+  it("names a take whose check didn't pass, and how many of the scene's takes didn't", () => {
+    const state = episode(taken(started()), [
+      check("t-a", true),
+      check("t-b", false),
+      check("t-c", true),
+    ])
+    expect(finishOf(state.project)).toEqual({
+      kind: "facts",
+      rev: 1,
+      shot: "b",
+      n: 2,
+      rounds: 1,
+    })
+  })
+
+  it("reads a take's latest check: a later pass counts", () => {
+    const state = episode(taken(started()), [
+      check("t-a", false),
+      check("t-a", true),
+      check("t-b", true),
+      check("t-c", true),
+    ])
+    expect(finishOf(state.project)).toEqual({ kind: "unmarked", rev: 1 })
+    expect(finishOf(marked(state).project)).toEqual({ kind: "ready", rev: 1 })
+  })
+
+  it("lets the owner keep the chosen take after three rounds, and not before", () => {
+    const two = episode(retaken(taken(started()), "b", 2), [
+      check("t-a", true),
+      check("t-b", false),
+      check("t-b-2", false),
+      check("t-c", true),
+    ])
+    const early = step(two, { type: "bestKept", shot: "b", at: AT })
+    expect(early.refused).toBe("notReady")
+
+    const three = retaken(two, "b", 3)
+    const checked: ProjectState = {
+      ...three,
+      project: {
+        ...three.project,
+        checks: [...(three.project.checks ?? []), check("t-b-3", false)],
+      },
+    }
+    expect(finishOf(checked.project)).toMatchObject({
+      kind: "facts",
+      shot: "b",
+      rounds: BEST_OF,
+    })
+    const kept = step(checked, { type: "bestKept", shot: "b", at: AT })
+    expect(kept.refused).toBeNull()
+    expect(kept.state.project.accepted).toEqual([
+      { shot: "b", take: "t-b-3", at: AT },
+    ])
+    expect(isAppendOnly(checked.project, kept.state.project)).toBe(true)
+    expect(finishOf(kept.state.project)).toEqual({ kind: "unmarked", rev: 1 })
+    // Only what was kept: another take chosen there is checked again.
+    const again = retaken(kept.state, "b", 4)
+    expect(finishOf(again.project)).toMatchObject({
+      kind: "unchecked",
+      shot: "b",
+    })
+  })
+
+  it("asks a video of your own for no check", () => {
+    expect(finishOf(taken(started()).project)).toEqual({
+      kind: "unmarked",
+      rev: 1,
+    })
+  })
+
+  it("never lets a check or the owner's word go", () => {
+    const state = episode(taken(started()), [check("t-a", true)])
+    expect(isAppendOnly(state.project, { ...state.project, checks: [] })).toBe(
+      false
     )
   })
 })

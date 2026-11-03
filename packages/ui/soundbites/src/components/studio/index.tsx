@@ -25,7 +25,7 @@ import { LOOKS, VOICES } from "@some-ui/video-render"
 import { FilePick } from "@soundbites/components/file-pick"
 import { Notice } from "@soundbites/components/notice"
 import { phoneStudioPorts } from "@soundbites/lib/phone"
-import { finishOf } from "@soundbites/lib/project/finish"
+import { BEST_OF, finishOf } from "@soundbites/lib/project/finish"
 import { LET_GO_CHOICES, waitingCount } from "@soundbites/lib/project/let-go"
 import type { Project } from "@soundbites/lib/project/model"
 import { latest } from "@soundbites/lib/project/model"
@@ -75,11 +75,16 @@ export type StudioShare = (props: {
   onArrived: (takes: ReadonlyArray<string>) => void
 }) => ReactNode
 
+/** A button that copies `text`, where this build can (the clipboard); `what` names it. */
+export type StudioCopy = (props: { text: string; what: string }) => ReactNode
+
 export type StudioProps = {
   /** The phone's ports unless a test says otherwise. Read once, on mount. */
   ports?: Partial<StudioPorts>
   /** Sending the project to Claude, where this build can (the share sheet). */
   share?: StudioShare
+  /** Copying an episode's upload copy, where this build can (SH5). */
+  copy?: StudioCopy
   /**
    * The way to New idea (ST18), as the app links it: the one big button
    * while there is no video, a quiet link beside the sittings once there is.
@@ -1502,6 +1507,47 @@ const SpokenNote = ({
 }
 
 /**
+ * An episode's upload copy, as its show filled it from the week (SH5): the
+ * title and the description, each as text to select and, where this build
+ * can copy, a button that copies it. Uploading stays the owner's, by hand.
+ */
+const UploadCopy = ({
+  upload,
+  copy,
+}: {
+  upload: { readonly title: string; readonly description: string }
+  copy: StudioCopy | undefined
+}): JSX.Element => {
+  const words = WORDS.finish.upload
+  const parts = [
+    { what: words.title, text: upload.title },
+    { what: words.description, text: upload.description },
+  ]
+  return (
+    <section aria-label={words.heading} className="flex flex-col gap-2">
+      <h3 className="text-muted-foreground text-sm font-semibold">
+        {words.heading}
+      </h3>
+      {parts.map((part) => (
+        <div
+          key={part.what}
+          className="bg-muted/40 flex flex-col gap-1 rounded-xl px-3 py-2"
+        >
+          <span className="flex items-center justify-between gap-2">
+            <span className="text-muted-foreground text-xs">{part.what}</span>
+            {copy?.({ text: part.text, what: part.what.toLowerCase() })}
+          </span>
+          <p className="text-sm break-words whitespace-pre-line select-text">
+            {part.text}
+          </p>
+        </div>
+      ))}
+      <p className="text-muted-foreground text-sm">{words.line}</p>
+    </section>
+  )
+}
+
+/**
  * Finish (STUDIO ST7): ready for YouTube, or the one thing missing with a
  * button straight to it; once ready, the upload copy and the link it went
  * up at.
@@ -1510,10 +1556,12 @@ const Finish = ({
   state,
   project,
   dispatch,
+  copy,
 }: {
   state: StudioState
   project: Project
   dispatch: Dispatch
+  copy: StudioCopy | undefined
 }): JSX.Element => {
   const linkId = useId()
   const [link, setLink] = useState("")
@@ -1546,6 +1594,30 @@ const Finish = ({
           </Button>
         </>
       )}
+      {finish.kind === "unchecked" && (
+        <p className="text-sm">{words.unchecked(finish.n)}</p>
+      )}
+      {finish.kind === "facts" && (
+        <>
+          <p className="text-sm">
+            {finish.rounds >= BEST_OF
+              ? words.factsBest(finish.n)
+              : words.facts(finish.n)}
+          </p>
+          {finish.rounds >= BEST_OF && (
+            <Button size="lg" onClick={() => dispatch({ type: "bestKept" })}>
+              {words.keepBest}
+            </Button>
+          )}
+          <Button
+            size="lg"
+            variant={finish.rounds >= BEST_OF ? "outline" : "default"}
+            onClick={() => dispatch({ type: "finishGo" })}
+          >
+            {words.goTake(finish.n)}
+          </Button>
+        </>
+      )}
       {finish.kind === "unmarked" && (
         <>
           <p className="text-sm">{words.unmarked}</p>
@@ -1557,7 +1629,11 @@ const Finish = ({
       {finish.kind === "ready" && (
         <>
           <p className="text-base font-extrabold">{words.ready}</p>
-          <p className="text-muted-foreground text-sm">{words.uploadCopy}</p>
+          {project.episode?.upload === undefined ? (
+            <p className="text-muted-foreground text-sm">{words.uploadCopy}</p>
+          ) : (
+            <UploadCopy upload={project.episode.upload} copy={copy} />
+          )}
           <form
             className="flex flex-col gap-2"
             onSubmit={(event) => {
@@ -1606,6 +1682,7 @@ const Finish = ({
 export const Studio = ({
   ports,
   share,
+  copy,
   newIdea,
   ideas,
   initialProject,
@@ -1661,7 +1738,9 @@ export const Studio = ({
       />
     )
   if (screen.kind === "finish" && project !== null)
-    return <Finish state={state} project={project} dispatch={dispatch} />
+    return (
+      <Finish state={state} project={project} dispatch={dispatch} copy={copy} />
+    )
   if (screen.kind === "show")
     return <Show state={state} show={screen.show} dispatch={dispatch} />
   return (

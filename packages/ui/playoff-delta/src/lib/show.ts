@@ -14,18 +14,23 @@ import {
   type Episode,
   type Format,
   type Parsed,
+  type UploadCopy,
 } from "@some-ui/video-render"
 
+import { callOf, sentence } from "./reading"
 import {
   HOLD_MS,
   LEGEND_SLIDES,
   LEGEND_WEEK,
   legendFacts,
+  MODEL,
   SCENES,
   WEEK_SLIDES,
   weekFacts,
 } from "./slides"
-import type { StorySeason } from "./story"
+import type { StorySeason, StoryWeek } from "./story"
+import { nameOf } from "./story"
+import { CALLS, UPLOAD } from "./words"
 
 export type FormatKind = "week" | "legend"
 
@@ -76,6 +81,45 @@ const sourceOf = (season: StorySeason): string =>
 const SHOW = "Playoff Delta"
 
 /**
+ * The upload's copy for one week (null for the legend), from the same reading
+ * the short says: whose side, our own game, the week's sentence (the
+ * outro's) and the model every number is read under. `UPLOAD` holds the
+ * words.
+ */
+export function uploadOf(
+  season: StorySeason,
+  week: StoryWeek | null
+): UploadCopy {
+  const team = nameOf(season, season.team)
+  if (week === null) {
+    return {
+      title: UPLOAD.legendTitle(season.label),
+      description: [UPLOAD.legendOpening(season.label, team), MODEL].join(
+        "\n\n"
+      ),
+    }
+  }
+  const game =
+    week.game === null
+      ? UPLOAD.bye
+      : week.game.won
+        ? UPLOAD.won(nameOf(season, week.game.opponent))
+        : UPLOAD.lost(nameOf(season, week.game.opponent))
+  return {
+    title: UPLOAD.weekTitle(
+      season.label,
+      week.week,
+      CALLS[callOf(week)].phrase
+    ),
+    description: [
+      UPLOAD.weekOpening(season.label, week.week, team, game),
+      sentence(week),
+      MODEL,
+    ].join("\n\n"),
+  }
+}
+
+/**
  * One week's episode (`LEGEND_WEEK`, 0, for the legend), or every reason
  * there isn't one. `sha256` is the sum of the season as the stage read it
  * (its contract JSON), and `inMs` says where scene `index`'s slide starts in
@@ -94,6 +138,7 @@ export function episodeFor(
       title: "Playoff Delta, the legend",
       period: `${season.label}, the legend`,
       data,
+      upload: uploadOf(season, null),
       keep: LEGEND_SLIDES.map((id) => legendFacts(season, id)),
       inMs,
     })
@@ -105,6 +150,7 @@ export function episodeFor(
     title: `Playoff Delta, ${season.label} week ${week}`,
     period: `${season.label} week ${week}`,
     data,
+    upload: uploadOf(season, shown),
     keep: WEEK_SLIDES.map((id) => weekFacts(season, shown, id)),
     inMs,
   })

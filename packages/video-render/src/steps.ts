@@ -124,7 +124,7 @@ export const STEPS: ReadonlyArray<Step> = [
     now: "session",
     target: "home",
     milestone: "M1",
-    why: "Rules over a transcript (`take-check.ts`, ST21), no judgement of meaning.",
+    why: "Rules over a transcript (`take-check.ts`, ST21), no judgement of meaning. Each take's verdict goes back in the project file's `checks`, where Finish on an episode reads it (SHOW SH5).",
     blockedBy:
       "ST22 (paulgsc/server#577): how sure home was of each word, and ST13 (#2261): home running the check",
     reads: [{ file: "takes/" }, { file: "transcripts/" }],

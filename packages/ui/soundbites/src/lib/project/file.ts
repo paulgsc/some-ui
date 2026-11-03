@@ -111,6 +111,8 @@ const ProjectSchema = z.object({
     )
     .optional(),
   episode: EpisodePinSchema.optional(),
+  checks: z.array(z.object({ take: id, at, passed: z.boolean() })).optional(),
+  accepted: z.array(z.object({ shot: id, take: id, at })).optional(),
 })
 
 /** The project as its file: every object's keys in order, two-space indents. */
@@ -174,6 +176,18 @@ function shapeProblems(project: Project): Array<string> {
   for (const [shot, take] of Object.entries(project.chosen)) {
     if (!project.takes.some((each) => each.id === take && each.shot === shot))
       problems.push(`chosen.${shot}: no take ${take} for that shot`)
+  }
+  for (const [index, check] of (project.checks ?? []).entries()) {
+    if (!project.takes.some((each) => each.id === check.take))
+      problems.push(`checks.${index}: no take ${check.take}`)
+  }
+  for (const [index, mark] of (project.accepted ?? []).entries()) {
+    if (
+      !project.takes.some(
+        (each) => each.id === mark.take && each.shot === mark.shot
+      )
+    )
+      problems.push(`accepted.${index}: no take ${mark.take} for that shot`)
   }
   if (project.sittings.slice(0, -1).some((each) => each.closedAt === null))
     problems.push("sittings: only the last can be open")

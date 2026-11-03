@@ -8,7 +8,14 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { clipFile, episodeOf, parseEpisode } from "@video-render/episode"
+import {
+  clipFile,
+  episodeOf,
+  parseEpisode,
+  UPLOAD_DESCRIPTION_MAX_BYTES,
+  UPLOAD_TITLE_MAX_CHARS,
+  UploadCopySchema,
+} from "@video-render/episode"
 import type { EpisodeInput } from "@video-render/episode"
 import { FORMAT_SCHEMA, parseFormat } from "@video-render/format"
 import type { Format } from "@video-render/format"
@@ -56,6 +63,7 @@ const input = (keep: EpisodeInput["keep"]): EpisodeInput => ({
   title: "Weekly, week 3",
   period: "week 3",
   data: { source: "weekly/3.json", sha256: SUM },
+  upload: { title: "Weekly · week 3", description: "Week 3, as it went." },
   keep,
   inMs: (i) => 900 + i,
 })
@@ -117,6 +125,7 @@ describe("an episode", () => {
       format: { id: "weekly", version: 1 },
       period: "week 3",
       data: { source: "weekly/3.json", sha256: SUM },
+      upload: { title: "Weekly · week 3", description: "Week 3, as it went." },
     })
     expect(e.cutList.series).toEqual({ id: "weekly", version: 1 })
   })
@@ -132,6 +141,42 @@ describe("an episode", () => {
 
   it("says what is wrong instead of guessing", () => {
     expect(episodeOf(format(1), input([[]])).ok).toBe(false)
+  })
+})
+
+describe("an upload's copy", () => {
+  const fits = (title: string, description: string): boolean =>
+    UploadCopySchema.safeParse({ title, description }).success
+
+  it("fits YouTube's limits, counting a title in characters and a description in bytes", () => {
+    expect(fits("é".repeat(UPLOAD_TITLE_MAX_CHARS), "a")).toBe(true)
+    expect(fits("a".repeat(UPLOAD_TITLE_MAX_CHARS + 1), "a")).toBe(false)
+    // Two bytes each: 2,500 fit, one more does not.
+    const half = UPLOAD_DESCRIPTION_MAX_BYTES / 2
+    expect(fits("a", "é".repeat(half))).toBe(true)
+    expect(fits("a", "é".repeat(half + 1))).toBe(false)
+  })
+
+  it("refuses what YouTube refuses, and nothing at all", () => {
+    expect(fits("Week <3>", "a")).toBe(false)
+    expect(fits("a", "1 > 0")).toBe(false)
+    expect(fits(" ", "a")).toBe(false)
+    expect(fits("a", "")).toBe(false)
+  })
+
+  it("is refused in an episode whose copy breaks a limit", () => {
+    const long = episodeOf(format(1), {
+      ...input([[], [], []]),
+      upload: { title: "a".repeat(101), description: "a" },
+    })
+    expect(long.ok).toBe(false)
+  })
+
+  it("may be absent from an episode file made before shows carried one", () => {
+    const made = episodeOf(format(1), input([[], [], []]))
+    if (!made.ok) throw new Error(made.problems.join("; "))
+    const { upload: _, ...pins } = made.value.episode
+    expect(parseEpisode({ ...made.value, episode: pins }).ok).toBe(true)
   })
 })
 

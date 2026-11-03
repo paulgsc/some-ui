@@ -1,5 +1,5 @@
 import { inMemoryStorage } from "@some-ui/core-utils"
-import { REVIEW_SCHEMA } from "@some-ui/video-render"
+import { parseEpisode, REVIEW_SCHEMA } from "@some-ui/video-render"
 import type { Playback } from "@some-ui/voice-capture"
 import { TAKE_WORDS } from "@some-ui/voice-capture"
 import { simulatedMicrophone, SPEAKING } from "@some-ui/voice-capture/testing"
@@ -28,7 +28,8 @@ function setup(
   share?: StudioProps["share"],
   initial: ReadonlyArray<Project> = [],
   text = PRIMER_TEXT,
-  more: Partial<StudioPorts> = {}
+  more: Partial<StudioPorts> = {},
+  props: Partial<StudioProps> = {}
 ): ReturnType<typeof memoryProjectStore> {
   const memory = memoryProjectStore(initial)
   let tick = 0
@@ -53,6 +54,7 @@ function setup(
         ...more,
       }}
       share={share}
+      {...props}
     />
   )
   return memory
@@ -121,6 +123,72 @@ function swipeAcross(on: Element, dx: number): void {
 }
 
 describe("Studio", () => {
+  it("shows a ready episode's upload copy from its show, each part with its copy button (SH5)", async () => {
+    const episode = parseEpisode(JSON.parse(episodeText()))
+    if (!episode.ok) throw new Error(episode.problems.join("; "))
+    const { project } = newProject(
+      "ep",
+      {
+        author: "claude",
+        message: "First cut",
+        at: "2026-10-30T09:00:00.000Z",
+        cutList: cutListOf(primer()),
+      },
+      episode.value.episode
+    )
+    const at = "2026-10-30T09:00:00.000Z"
+    const shots = project.revisions[0]?.cutList.shots ?? []
+    // Every scene taken, each take's facts checked and passed, and marked.
+    const ready: Project = {
+      ...project,
+      takes: shots.map((each) => ({
+        id: `t-${each.id}`,
+        shot: each.id,
+        recordedAt: at,
+        durationMs: 4_000,
+        mimeType: "audio/webm",
+        keptBy: [],
+        onPhone: true,
+      })),
+      chosen: Object.fromEntries(
+        shots.map((each) => [each.id, `t-${each.id}`])
+      ),
+      checks: shots.map((each) => ({ take: `t-${each.id}`, at, passed: true })),
+      ready: [{ rev: 1, at }],
+    }
+    const copied: Array<string> = []
+    setup(
+      undefined,
+      [ready],
+      PRIMER_TEXT,
+      {},
+      {
+        copy: ({ text, what }) => (
+          <button type="button" onClick={() => copied.push(text)}>
+            {`Copy ${what}`}
+          </button>
+        ),
+      }
+    )
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: new RegExp(W.start.sittings.finish),
+      })
+    )
+    const upload = episode.value.episode.upload
+    if (upload === undefined) throw new Error("the fixture carries copy")
+    expect(
+      await screen.findByRole("region", { name: W.finish.upload.heading })
+    ).toBeInTheDocument()
+    expect(screen.getByText(upload.title)).toBeInTheDocument()
+    expect(screen.getByText(upload.description)).toBeInTheDocument()
+    expect(screen.queryByText(W.finish.uploadCopy)).toBeNull()
+    fireEvent.click(screen.getByRole("button", { name: "Copy title" }))
+    fireEvent.click(screen.getByRole("button", { name: "Copy description" }))
+    expect(copied).toEqual([upload.title, upload.description])
+    expect(screen.getByLabelText(W.finish.linkLabel)).toBeInTheDocument()
+  })
+
   it("shows the loop as steps with no video, then Record as the place to start once Claude's scenes are opened", async () => {
     setup()
     expect(await screen.findByText(W.start.empty)).toBeInTheDocument()

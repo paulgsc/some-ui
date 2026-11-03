@@ -9,10 +9,16 @@
  *   owner's mark on that revision. Missing ones are named in that order,
  *   one at a time, since each has its own place to go. A revision marked
  *   before Finish waited on the owner's word stays ready (owner, #2253).
+ * - **An episode's takes say their facts** (SHOW SH5). On an episode, each
+ *   scene's kept take also has a fact check that passed (ST21, as a round
+ *   brought it: `checks`), or the owner kept it after three rounds of it
+ *   (`accepted`, PDM15). Named after the takes, scene by scene: one not
+ *   checked yet, or one whose check didn't pass, with how many of the
+ *   scene's takes didn't.
  * - **Released** is the YouTube link the owner pastes after uploading by
  *   hand (owner, 2026-10-29: nothing here uploads).
  */
-import type { Note, Project } from "./model"
+import type { FactCheck, Note, Project } from "./model"
 import { originsWaiting } from "./origin"
 
 /** Where the latest revision stands, for Finish. */
@@ -25,6 +31,24 @@ export type Finish =
       readonly rev: number
       readonly shot: string
       readonly n: number
+    }
+  /** An episode's scene whose kept take has no fact check yet: the first, from 1. */
+  | {
+      readonly kind: "unchecked"
+      readonly rev: number
+      readonly shot: string
+      readonly n: number
+    }
+  /**
+   * An episode's scene whose kept take didn't pass its fact check, and how
+   * many of its takes haven't (`BEST_OF` or more: the owner may keep it).
+   */
+  | {
+      readonly kind: "facts"
+      readonly rev: number
+      readonly shot: string
+      readonly n: number
+      readonly rounds: number
     }
   /** Scenes whose idea waits on the owner's word: the first, from 1, and how many. */
   | {
@@ -57,12 +81,50 @@ export function finishOf(project: Project): Finish {
   const shot = shots[index]
   if (shot !== undefined)
     return { kind: "take", rev, shot: shot.id, n: index + 1 }
+  if (project.episode !== undefined) {
+    const facts = factsOf(project, rev, shots)
+    if (facts !== null) return facts
+  }
   if (isMarked(project, rev)) return { kind: "ready", rev }
   const waiting = originsWaiting(project)
   const [first] = waiting
   if (first !== undefined)
     return { kind: "idea", rev, ...first, count: waiting.length }
   return { kind: "unmarked", rev }
+}
+
+/** Rounds of a scene's take check after which the owner may keep the best (PDM15). */
+export const BEST_OF = 3
+
+/** A take's latest fact check, or undefined before its first. */
+function checkOf(project: Project, take: string): FactCheck | undefined {
+  return (project.checks ?? []).filter((each) => each.take === take).at(-1)
+}
+
+/** The first scene whose kept take doesn't yet say its facts, or null. */
+function factsOf(
+  project: Project,
+  rev: number,
+  shots: ReadonlyArray<{ readonly id: string }>
+): Finish | null {
+  for (const [index, shot] of shots.entries()) {
+    const take = project.chosen[shot.id]
+    if (take === undefined) continue
+    const check = checkOf(project, take)
+    if (check?.passed === true) continue
+    const kept = (project.accepted ?? []).some(
+      (each) => each.shot === shot.id && each.take === take
+    )
+    if (kept) continue
+    if (check === undefined)
+      return { kind: "unchecked", rev, shot: shot.id, n: index + 1 }
+    const rounds = project.takes.filter(
+      (each) =>
+        each.shot === shot.id && checkOf(project, each.id)?.passed === false
+    ).length
+    return { kind: "facts", rev, shot: shot.id, n: index + 1, rounds }
+  }
+  return null
 }
 
 /** Whether the owner marked revision `rev` ready. */

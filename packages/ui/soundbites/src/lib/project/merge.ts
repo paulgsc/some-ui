@@ -3,10 +3,11 @@
  * writes after a round, merged into the copy on the phone. Revisions are
  * append-only, so a merge only adds: the file's revisions past the phone's
  * latest, its new notes, and each kept note's status where the session
- * settled it (applied, or declined with its reason). Takes, the chosen
+ * settled it (applied, or declined with its reason), and each fact check
+ * the round ran on a take the phone holds (SHOW SH5). Takes, the chosen
  * take per scene, the sitting log, Finish's marks and the owner's word on
  * each scene's idea (`./origin`) are the phone's own record, and the file
- * can't change them; the session writes text only.
+ * can't change them; the session writes text and verdicts only.
  *
  * **When the phone made a version after sharing** (a take kept, a Shape
  * kept; #2317), the session's revisions are rebased onto the phone's: each
@@ -97,10 +98,19 @@ export function mergeIn(kept: Project, file: Project): Merged {
   const added = file.notes
     .filter((note) => !kept.notes.some((each) => each.id === note.id))
     .map((note): Note => ({ ...note, rev: renumber(note.rev) }))
+  // A verdict on a take this phone holds, not here already (SH5).
+  const checks = (file.checks ?? []).filter(
+    (check) =>
+      kept.takes.some((each) => each.id === check.take) &&
+      !(kept.checks ?? []).some((each) => sameJson(each, check))
+  )
   const merged: Project = {
     ...kept,
     revisions: [...kept.revisions, ...revisions],
     notes: [...settled, ...added],
+    ...(checks.length === 0
+      ? {}
+      : { checks: [...(kept.checks ?? []), ...checks] }),
   }
   if (sameJson(merged, kept))
     return clashes.length > 0 ? { kind: "kept", clashes } : { kind: "same" }

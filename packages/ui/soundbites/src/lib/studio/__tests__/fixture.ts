@@ -62,6 +62,10 @@ export function episodeText(period = "week 3", sum = "a"): string {
     title: `Weekly, ${period}`,
     period,
     data: { source: `weekly/${period}.json`, sha256: sum.repeat(64) },
+    upload: {
+      title: `Weekly · ${period}`,
+      description: `Weekly, ${period}, as it went.`,
+    },
     keep: [["3 wins"], ["One loss"]],
     inMs: (i) => 900 + i,
   })

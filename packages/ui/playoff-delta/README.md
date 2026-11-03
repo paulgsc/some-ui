@@ -83,6 +83,10 @@ fails until a new version is pinned. An episode is
 under the show "Playoff Delta" and pinned to the format, the series and `sum`, with a cut list whose pictures are the
 clips, each starting at `inMs`. The recorder sums the season as the stage
 read it (its contract JSON), not the published file's bytes.
+The episode also carries its upload's title and description (SH5),
+`uploadOf(season, week)`, worded in `UPLOAD` (`src/lib/words.ts`) under the
+same words rules as the slides and held to YouTube's limits; the phone's
+Finish shows them once the episode is ready, and the owner uploads by hand.
 The schemas are `@some-ui/video-render`'s (`format.ts`, `episode.ts`).
 
 ## Recording

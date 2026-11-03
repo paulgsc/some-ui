@@ -55,6 +55,30 @@ describe("the project file", () => {
     })
   })
 
+  it("carries each take's fact check and the owner's word on one (SH5), naming only takes it has", () => {
+    const project = {
+      ...worked(),
+      checks: [{ take: "t1", at: AT, passed: false }],
+      accepted: [{ shot: "a", take: "t1", at: AT }],
+    }
+    expect(readProjectFile(projectFile(project))).toEqual({
+      ok: true,
+      value: project,
+    })
+    const stray = {
+      ...project,
+      checks: [{ take: "t9", at: AT, passed: true }],
+      accepted: [{ shot: "b", take: "t1", at: AT }],
+    }
+    expect(readProjectFile(projectFile(stray))).toEqual({
+      ok: false,
+      problems: [
+        "checks.0: no take t9",
+        "accepted.0: no take t1 for that shot",
+      ],
+    })
+  })
+
   it("names every reason a file can't be resumed from", () => {
     const project = worked()
     const broken = {
