@@ -483,11 +483,7 @@ export type StudioIntent =
 /** What the page, the clock and the ports report. */
 type StudioSignal =
   | { readonly type: "entered"; readonly at: string }
-  /**
-   * A pull down to check again (SHOW SH6, through the shell's refresh port):
-   * read again what the phone keeps, and answer `checked` once that read
-   * lands.
-   */
+  /** A pull down to check again (SHOW SH6, the shell's refresh port). */
   | { readonly type: "checkAgain" }
   | { readonly type: "left" }
   | { readonly type: "hidden" }

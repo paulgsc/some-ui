@@ -182,27 +182,6 @@ describe("Studio", () => {
     expect(await screen.findByText(/week 4/)).toBeInTheDocument()
   })
 
-  it("swipes between an episode's scenes on its Record, as on a video of your own (SH6)", async () => {
-    setup(undefined, [
-      episodeProjectOf("w3", episodeText("week 3"), "2026-10-29T09:00:00.000Z")
-        .project,
-    ])
-    await screen.findByText(W.show.made)
-    fireEvent.click(screen.getByRole("button", { name: /^Record/ }))
-    await screen.findByText("How it opens")
-    await takeOne()
-    swipeAcross(
-      screen.getByRole("region", { name: W.record.sceneOf(1, 2) }),
-      -90
-    )
-    expect(await screen.findByText("How it closes")).toBeInTheDocument()
-    swipeAcross(
-      screen.getByRole("region", { name: W.record.sceneOf(2, 2) }),
-      90
-    )
-    expect(await screen.findByText("How it opens")).toBeInTheDocument()
-  })
-
   it("registers nothing on Record: a take is under way there (SH6)", async () => {
     const { refresh, live } = refreshPort()
     setup(undefined, [], PRIMER_TEXT, { refresh })

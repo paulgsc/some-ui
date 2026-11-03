@@ -105,8 +105,6 @@ const studioShare: StudioShare | undefined =
  * Making something to publish, so not a study tool and not under Practice's
  * soundbites, though it records the same way (`@some-ui/voice-capture`).
  * Opened from Your ideas on a video an idea became, it opens that one.
- * A pull down on Start or a show's screen reads the phone's videos again
- * through the shell's refresh port (SHOW SH6).
  */
 const StudioRoute = (): JSX.Element => {
   const { project } = Route.useSearch()
