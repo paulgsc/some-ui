@@ -70,16 +70,15 @@ const ShareStudio = ({
 }
 
 /**
- * The phone's recognizer for a note said in Watch, in the Android app (ST5),
+ * In the Android app: the phone's recognizer for a note said in Watch (ST5),
  * and the shell's refresh port, so a pull down on Start or a show reads the
- * phone's videos again (SHOW SH6).
+ * phone's videos again (SHOW SH6). Both are native-only (`build.paths.ts`),
+ * so a web build, where the flag is false, leaves them out of its bundle.
  */
-const studioPorts: ComponentProps<typeof StudioHome>["ports"] = {
-  ...(import.meta.env.VITE_DEVICE_BACKEND === "true"
-    ? { listener: deviceListener }
-    : {}),
-  refresh: screenRefreshers.register,
-}
+const studioPorts: ComponentProps<typeof StudioHome>["ports"] =
+  import.meta.env.VITE_DEVICE_BACKEND === "true"
+    ? { listener: deviceListener, refresh: screenRefreshers.register }
+    : undefined
 
 const IdeaLink: WingLink = ({ className, children }) => (
   <Link to="/journal/idea" className={className}>
