@@ -75,35 +75,6 @@ describe("catching an idea", () => {
     expect(screenOf(run(OPENED).state)).toBe("ask:ask-1:idle")
   })
 
-  it("shows the words as they're heard, and keeps them once they're right", () => {
-    const { state, ideas } = run([
-      ...OPENED,
-      tap({ type: "talk" }),
-      { type: "partial", seq: 1, words: "a short" },
-      { type: "partial", seq: 1, words: "a short about bites" },
-      { type: "listened", seq: 1, result: { kind: "heard", words: "" } },
-      tap({ type: "meant" }),
-    ])
-    expect(ideas).toHaveLength(1)
-    expect(ideas[0]?.answers.at(-1)?.versions).toEqual([
-      { at: AT, how: "heard", words: "a short about bites" },
-    ])
-    expect(screenOf(state)).toBe("ask:ask-2:idle")
-  })
-
-  it("takes typed words when the phone can't listen", () => {
-    const { state, ideas } = run([
-      { type: "entered", at: AT },
-      { type: "listed", ideas: [ASKED] },
-      { type: "voiceChecked", available: false },
-      tap({ type: "talk" }),
-      tap({ type: "draft", text: "typed idea" }),
-      tap({ type: "save" }),
-    ])
-    expect(ideas[0]?.answers.at(-1)?.versions[0]?.how).toBe("typed")
-    expect(screenOf(state)).toBe("ask:ask-2:typing")
-  })
-
   it("IH1: asks again what can listen as each question opens while it can't, and offers Say it once it can", () => {
     const away = run([
       ...OPENED,

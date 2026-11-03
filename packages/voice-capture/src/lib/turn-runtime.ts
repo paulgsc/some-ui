@@ -69,7 +69,8 @@ export type ListeningEffect =
       readonly answers: string
     }
 
-type ListeningEvent = Extract<
+/** The listener's answers, as turn events. */
+export type ListeningEvent = Extract<
   TurnEvent,
   { type: "voiceChecked" | "ready" | "hearing" | "partial" | "listened" }
 >

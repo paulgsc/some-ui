@@ -135,6 +135,7 @@ export type {
 export { initialTurn, isUnderway, nextTurn, stepTurn } from "./lib/turn"
 export type {
   ListeningEffect,
+  ListeningEvent,
   Listening,
   ListenTake,
   TurnListener,

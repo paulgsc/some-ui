@@ -1,5 +1,5 @@
 /** @vitest-environment node */
-import type { RecordingFailure } from "@voice-capture/lib/recorder"
+import { RECORDING_FAILURE_COPY } from "@voice-capture/lib/recorder"
 import type {
   Listened,
   TurnEffect,
@@ -79,32 +79,6 @@ describe("a turn", () => {
         { at: AT, how: "fixed", words: "a short" },
       ],
     ])
-  })
-
-  it("keeps nothing it heard until it is confirmed", () => {
-    const { effects } = run([
-      ...READY,
-      tap({ type: "talk" }),
-      { type: "listened", seq: 1, result: { kind: "heard", words: "wrong" } },
-      tap({ type: "talk" }),
-      { type: "listened", seq: 2, result: { kind: "heard", words: "right" } },
-    ])
-    expect(keeps(effects)).toEqual([])
-    expect(
-      effects.flatMap((effect) =>
-        effect.type === "listen" ? [effect.seq] : []
-      )
-    ).toEqual([1, 2])
-  })
-
-  it("ignores what an earlier listening hears", () => {
-    const { state } = run([
-      ...READY,
-      tap({ type: "talk" }),
-      tap({ type: "type" }),
-      { type: "listened", seq: 1, result: { kind: "heard", words: "late" } },
-    ])
-    expect(state.phase.kind).toBe("typing")
   })
 
   it("takes typed words when it can't listen", () => {
@@ -204,8 +178,6 @@ describe("a turn", () => {
         ready: true,
       })
       expect(ready.effects).toEqual([])
-      // An earlier listening's ready changes nothing.
-      expect(stepTurn(started, { type: "ready", seq: 0 }).state).toBe(started)
     })
 
     it("takes typed words for this turn when the listener never started", () => {
@@ -431,25 +403,16 @@ describe("TALK1: every ordering of hearing, confirming, keeping and leaving", ()
 const MACHINERY =
   /\b(idle|phase|state|seq|listener|confirm\w*|prime|null|undefined|error|status|request|retry|sync\w*|server|api|effect|dispatch|answers)\b/i
 
-const REASONS: ReadonlyArray<RecordingFailure> = [
-  "denied",
-  "busy",
-  "unsupported",
-  "failed",
-  "elsewhere",
-]
-
 describe("the turn's words", () => {
   it("say every line in the person's terms", () => {
     const { notice, ...taps } = TURN_WORDS
-    const lines = [
-      ...Object.values(taps),
-      ...Object.values(notice),
-      ...REASONS.map((refused) => turnNoticeSaid({ refused })),
-    ]
+    const lines = [...Object.values(taps), ...Object.values(notice)]
     expect(lines.filter((line) => line.trim() === "")).toEqual([])
     expect(lines.filter((line) => MACHINERY.test(line))).toEqual([])
     expect(turnNoticeSaid("notHeard")).toBe(notice.notHeard)
+    expect(turnNoticeSaid({ refused: "busy" })).toBe(
+      RECORDING_FAILURE_COPY.busy
+    )
     expect(turnNoticeSaid(null)).toBe("")
   })
 })

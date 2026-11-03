@@ -250,6 +250,20 @@ function keptNotice(result: Extract<Listened, { kind: "kept" }>): TurnNotice {
 
 const same = (state: TurnState): TurnStep => ({ state, effects: [] })
 
+/** Done talking, or the page hid: a listening finishes with its words. */
+function finish(state: TurnState): TurnStep {
+  const { phase } = state
+  return phase.kind === "listening"
+    ? {
+        state: {
+          ...state,
+          phase: { kind: "finishing", seq: phase.seq, words: phase.words },
+        },
+        effects: [{ type: "stopListening" }],
+      }
+    : same(state)
+}
+
 function listened(state: TurnState, seq: number, result: Listened): TurnStep {
   const { phase } = state
   if (!underway(phase, seq)) return same(state)
@@ -344,16 +358,7 @@ function onIntent(state: TurnState, event: TurnIntent & Stamp): TurnStep {
       }
     }
     case "stopTalking": {
-      return phase.kind === "listening"
-        ? {
-            state: withPhase({
-              kind: "finishing",
-              seq: phase.seq,
-              words: phase.words,
-            }),
-            effects: [{ type: "stopListening" }],
-          }
-        : same(state)
+      return finish(state)
     }
     case "meant": {
       return phase.kind === "heard"
@@ -482,15 +487,7 @@ export function stepTurn(state: TurnState, event: TurnEvent): TurnStep {
         : same(state)
     }
     case "hidden": {
-      return phase.kind === "listening"
-        ? {
-            state: {
-              ...state,
-              phase: { kind: "finishing", seq: phase.seq, words: phase.words },
-            },
-            effects: [{ type: "stopListening" }],
-          }
-        : same(state)
+      return finish(state)
     }
     case "left": {
       return isUnderway(phase)

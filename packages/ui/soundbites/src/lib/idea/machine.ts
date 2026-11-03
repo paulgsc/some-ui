@@ -1,19 +1,15 @@
 /**
  * Answering Claude's questions about an idea (STUDIO ST19), as one state
  * machine: one question per screen, each a turn (`@some-ui/voice-capture`'s
- * `stepTurn`, TALK1): the words appearing as they're spoken (or once home
- * has heard the take, `./hearing`), then That's right, Fix the words or Say
- * it again, and the reply is the next question. A new idea is caught as one
- * bundle instead (ST26, `./bundle`).
+ * `stepTurn`, TALK1) whose reply is the next question. A new idea is caught
+ * as one bundle instead (ST26, `./bundle`).
  * `step(state, event)` returns the next state and the effects to run and
  * does nothing else; `runtime.ts` runs them against the listener (home
  * hearing a take, or the phone's recognizer) and the idea store, and the
  * component renders a state and turns taps into events
  * (docs/monorepo-boundaries.md, "Inside a React package").
  *
- * Rules that hold by structure, beside the turn's own (only confirmed
- * words are kept, a fix beside the words first heard; speaking never waits
- * on voice; one listening at a time):
+ * Rules that hold by structure, beside the turn's own:
  *
  * - **Each answer is kept the moment it is confirmed**, so a call, a locked
  *   screen or a closed app loses at most the answer being spoken.
@@ -31,7 +27,7 @@
 import { assertNever } from "@some-ui/core-utils"
 import type {
   ListeningEffect,
-  TurnEvent,
+  ListeningEvent,
   TurnIntent,
   TurnState,
   TurnStep,
@@ -103,10 +99,7 @@ export type IdeaEvent =
       /** Null when the kept ideas couldn't be read. */
       readonly ideas: ReadonlyArray<Idea> | null
     }
-  | Extract<
-      TurnEvent,
-      { type: "voiceChecked" | "ready" | "hearing" | "partial" | "listened" }
-    >
+  | ListeningEvent
   | {
       readonly type: "kept"
       /** The ideas as kept, or null when nothing was. */
