@@ -907,7 +907,6 @@ export const STUDIO_WORDS = {
   records: {
     heading: "What Studio keeps",
     open: "What Studio keeps",
-    openLine: "Every take of every video, and where each one is kept.",
     reading: "Opening what Studio keeps…",
     unreadable:
       "Studio's videos on this phone couldn't be read, so their takes can't be shown yet.",

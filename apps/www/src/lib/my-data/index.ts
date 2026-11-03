@@ -153,10 +153,16 @@ async function audioOf(id: string): Promise<Blob | null> {
 export async function deletableStudioTakes(): Promise<ReadonlySet<string>> {
   const home = await askHome("studio")
   // This phone lets its own copy go only through Studio's store.
-  if (home.kind !== "read" || studioKeeping() === null) return new Set()
+  if (
+    home.kind !== "read" ||
+    studioKeeping() === null ||
+    !isDeletableKind("studio")
+  ) {
+    return new Set()
+  }
   return new Set(
     (home.kept.notes ?? [])
-      .filter((note) => note.deletable && isDeletableKind("studio"))
+      .filter((note) => note.deletable)
       .map((note) => note.id)
   )
 }

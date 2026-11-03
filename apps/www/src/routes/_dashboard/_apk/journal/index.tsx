@@ -102,14 +102,6 @@ const studioShare: StudioShare | undefined =
     : undefined
 
 /**
- * The Studio wing's Home (lib/wings): a video made in sittings (STUDIO
- * ST4), with the ways in to New idea (ST18) and Your ideas (ST19)
- * (`StudioHome`).
- * Making something to publish, so not a study tool and not under Practice's
- * soundbites, though it records the same way (`@some-ui/voice-capture`).
- * Opened from Your ideas on a video an idea became, it opens that one.
- */
-/**
  * What Studio keeps (MD4): every take, on the take pattern's rows, with
  * Delete… on one home marks deletable, which opens My data on it.
  */
@@ -146,6 +138,14 @@ const Records = (): JSX.Element => {
   )
 }
 
+/**
+ * The Studio wing's Home (lib/wings): a video made in sittings (STUDIO
+ * ST4), with the ways in to New idea (ST18) and Your ideas (ST19)
+ * (`StudioHome`).
+ * Making something to publish, so not a study tool and not under Practice's
+ * soundbites, though it records the same way (`@some-ui/voice-capture`).
+ * Opened from Your ideas on a video an idea became, it opens that one.
+ */
 const StudioRoute = (): JSX.Element => {
   const { project, records } = Route.useSearch()
   useEffect(() => {

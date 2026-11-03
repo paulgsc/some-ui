@@ -18,8 +18,10 @@ import type {
 } from "@some-ui/voice-capture"
 import { deletesInMyData } from "@some-ui/voice-capture"
 import type { Project, ProjectTake } from "@soundbites/lib/project/model"
-import { homeHolds, latest } from "@soundbites/lib/project/model"
+import { latest } from "@soundbites/lib/project/model"
 import type { ProjectStore } from "@soundbites/lib/project/store"
+
+import { patternTakeOf } from "./view"
 
 /** The take pattern's options for a record's row here. */
 const RECORDS: Pick<TakePatternOptions, "records"> = {
@@ -47,18 +49,8 @@ function patternTake(
   deletable: ReadonlySet<string>
 ): PatternTake {
   return {
-    id: take.id,
-    answers: take.shot,
-    durationMs: take.durationMs,
-    recordedAt: take.recordedAt,
-    standing: "current",
-    kept: homeHolds(take)
-      ? { place: "home", since: null }
-      : take.onPhone
-        ? { place: "going" }
-        : null,
+    ...patternTakeOf(take),
     ...(deletable.has(take.id) ? { deletable: true } : {}),
-    ...(take.deletedAt === undefined ? {} : { deleted: take.deletedAt }),
   }
 }
 
