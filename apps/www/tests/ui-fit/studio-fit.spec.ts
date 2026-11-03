@@ -275,16 +275,13 @@ const WALKS: Record<
       },
     },
     {
-      screen: "Start, after the note",
+      // The note kept for the show, listed among the show's proposed changes.
+      screen: "A show, its episodes on the phone",
       go: async (page): Promise<void> => {
         await tap(page, /^The show, every week/)
         await tap(page, "Back")
-        await start(page)
+        await tap(page, /^Playoff Delta, followed/)
       },
-    },
-    {
-      screen: "A show, its episodes on the phone",
-      go: (page) => tap(page, /^Playoff Delta, followed/),
     },
     {
       screen: "Start, the earlier episode",

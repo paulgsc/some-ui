@@ -1793,8 +1793,11 @@ describe("Watch", () => {
       runtime.dispatch({ type: "notedHere", text })
       const { screen } = runtime.getSnapshot()
       expect(screen.kind === "watch" && screen.asking?.text).toBe(text)
-      // Nothing is kept, and no other note is taken, until it is answered.
+      // Nothing is kept, no other note is taken, and Back doesn't drop it,
+      // until it is answered.
       runtime.dispatch({ type: "notedHere", text: "Another" })
+      runtime.dispatch({ type: "watchBack" })
+      expect(runtime.getSnapshot().screen.kind).toBe("watch")
       expect(projectIn(runtime).notes.some((n) => n.text === text)).toBe(false)
       runtime.dispatch({ type: "aboutChosen", about })
       await until(

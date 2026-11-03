@@ -83,6 +83,9 @@ export function mergeIn(kept: Project, file: Project): Merged {
   const settled = kept.notes.map((note): Note => {
     const there = file.notes.find((each) => each.id === note.id)
     if (there === undefined || !reaches(note.status, there.status)) return note
+    // A change proposed to the show is for its next version, never this
+    // episode's to settle (SH4).
+    if (note.about === "show") return note
     // A change that didn't come in hasn't applied the note.
     if (there.status === "applied" && clashed.has(note.shot)) return note
     // A reason may be given once; after that it stays as written.

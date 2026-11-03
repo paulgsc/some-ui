@@ -48,7 +48,6 @@ export function finishOf(project: Project): Finish {
   const rev = latestRev(project)
   const release = project.released?.find((each) => each.rev === rev)
   if (release !== undefined) return { kind: "released", rev, url: release.url }
-  // A change proposed to the show is for its next episodes, not this one (SH4).
   const note = project.notes.find(
     (each) => each.status === "open" && each.about !== "show"
   )

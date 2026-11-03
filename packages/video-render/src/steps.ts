@@ -148,7 +148,7 @@ export const STEPS: ReadonlyArray<Step> = [
     now: "session",
     target: "session",
     milestone: null,
-    why: "A note in the owner's words needs reading, not matching.",
+    why: "A note in the owner's words needs reading, not matching. A note about the show (`about: \"show\"`) is for the show's next version: leave it open, and change nothing in this episode for it.",
     reads: [{ field: "notes" }],
     writes: [{ field: "revisions" }, { field: "shots.overrides" }],
   },

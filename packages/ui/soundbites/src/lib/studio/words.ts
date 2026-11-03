@@ -513,7 +513,8 @@ export const STUDIO_WORDS = {
     about: {
       question: "What is it about?",
       take: "My take",
-      takeLine: "Record this scene again. Nothing else changes.",
+      takeLine:
+        "A note on how you said this scene, kept like any note until Claude answers it.",
       show: "The show, every week",
       showLine:
         "A change to the show for its next episodes. This one stays as it was made.",

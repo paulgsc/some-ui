@@ -184,7 +184,7 @@ type StudioScreen =
        * A note on an episode, until the owner says whether it is about the
        * take or the show (SHOW SH4): nothing is kept before then.
        */
-      readonly asking: Omit<Note, "status" | "reason" | "about"> | null
+      readonly asking: NoteDraft | null
       /** The scene the render opens at once read: Finish's first waiting on whose idea it is. */
       readonly startAt: string | null
     }
@@ -879,6 +879,9 @@ function applied(project: Project | null, pending: Pending): Project | null {
 
 type WatchScreen = Extract<StudioScreen, { kind: "watch" }>
 
+/** A note of the owner's, as written in Watch, before it is kept. */
+type NoteDraft = Omit<Note, "status" | "reason" | "about">
+
 /**
  * A spoken note in Watch (ST5), as ST18's questions are said: one listening
  * at a time, numbered, and the words heard shown back before they are kept.
@@ -1552,15 +1555,8 @@ function pickedEpisode(
   })
 }
 
-/**
- * A note of the owner's from Watch: kept at once on a video of your own;
- * on an episode, held until the owner says what it is about (SH4).
- */
-function noted(
-  state: StudioState,
-  project: Project,
-  note: Omit<Note, "status" | "reason" | "about">
-): Step {
+/** A note of the owner's from Watch: kept now, or held as `asking` on an episode. */
+function noted(state: StudioState, project: Project, note: NoteDraft): Step {
   const { screen } = state
   if (screen.kind !== "watch") return stay(state)
   if (project.episode !== undefined)
@@ -2107,7 +2103,8 @@ export function step(state: StudioState, event: StudioEvent): Step {
     }
 
     case "watchBack": {
-      if (screen.kind !== "watch") return stay(state)
+      // A note waiting for its answer is answered first, never dropped (SH4).
+      if (screen.kind !== "watch" || screen.asking !== null) return stay(state)
       return {
         state: { ...state, screen: { kind: "start" }, notice: "" },
         effects: stillHearing(screen.speaking)

@@ -51,7 +51,12 @@ export function changesIn(
   const timesOf = (rev: number): Review["shotTimes"] | null =>
     rev === review.rev ? review.shotTimes : null
   return project.notes
-    .filter((note) => note.status === "applied" && note.rev < review.rev)
+    .filter(
+      (note) =>
+        note.status === "applied" &&
+        note.about !== "show" &&
+        note.rev < review.rev
+    )
     .flatMap((note) => {
       const anchor = anchorAt(project, note, review.rev, timesOf)
       return anchor.kind === "here" && anchor.atMs !== null

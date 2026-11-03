@@ -1127,7 +1127,7 @@ const Watch = ({
             </div>
           )}
           {screen.asking !== null ? (
-            <NoteAbout dispatch={dispatch} />
+            <NoteAbout text={screen.asking.text} dispatch={dispatch} />
           ) : screen.origin !== null && scene !== null ? (
             <IdeaFix
               fix={screen.origin}
@@ -1167,17 +1167,24 @@ const Watch = ({
           )}
         </>
       )}
-      <Button variant="ghost" onClick={() => dispatch({ type: "watchBack" })}>
-        {words.back}
-      </Button>
+      {screen.asking === null && (
+        <Button variant="ghost" onClick={() => dispatch({ type: "watchBack" })}>
+          {words.back}
+        </Button>
+      )}
       <Notice text={state.notice} />
     </div>
   )
 }
 
-/** Watch's one main button: a typed note, pinned to the moment on screen. */
 /** On an episode (SHOW SH4): what the note just said or typed is about. */
-const NoteAbout = ({ dispatch }: { dispatch: Dispatch }): JSX.Element => {
+const NoteAbout = ({
+  text,
+  dispatch,
+}: {
+  text: string
+  dispatch: Dispatch
+}): JSX.Element => {
   const words = WORDS.watch.about
   return (
     <section
@@ -1186,6 +1193,9 @@ const NoteAbout = ({ dispatch }: { dispatch: Dispatch }): JSX.Element => {
       className="border-border/60 space-y-2 rounded-2xl border p-3"
     >
       <p className="text-sm font-bold">{words.question}</p>
+      <blockquote className="text-muted-foreground border-l-2 pl-2 text-sm">
+        {text}
+      </blockquote>
       {(["take", "show"] as const).map((about) => (
         <button
           key={about}
@@ -1205,6 +1215,7 @@ const NoteAbout = ({ dispatch }: { dispatch: Dispatch }): JSX.Element => {
   )
 }
 
+/** Watch's one main button: a typed note, pinned to the moment on screen. */
 const NoteHere = ({
   text,
   setText,
