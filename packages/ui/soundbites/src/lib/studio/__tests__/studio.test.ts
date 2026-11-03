@@ -9,6 +9,7 @@ import type {
   TakeDeadlines,
 } from "@some-ui/voice-capture"
 import { simulatedMicrophone, SPEAKING } from "@some-ui/voice-capture/testing"
+import { episodeProjectOf } from "@soundbites/fixtures"
 import type { Listened } from "@soundbites/lib/idea/machine"
 import type { IdeaListener, Listening } from "@soundbites/lib/idea/runtime"
 import {
@@ -252,6 +253,43 @@ describe("an episode opened in Studio (SHOW SH3)", () => {
     await until(runtime, (state) => projectOf(state)?.episode !== undefined)
     expect(projectsOfState(runtime.getSnapshot())).toHaveLength(2)
     expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.show.held)
+  })
+
+  it("refuses a file that says it is an episode and isn't one whole", async () => {
+    const runtime = studio(memoryProjectStore())
+    await until(runtime, (state) => state.shelf.kind === "read")
+    const text = episodeText().replace('"show":"Weekly",', "")
+    runtime.dispatch({ type: "primerPicked", file: new Blob([text]) })
+    await until(runtime, (state) => state.primerProblem !== null)
+    expect(runtime.getSnapshot().primerProblem).toBe(
+      STUDIO_WORDS.start.sentProblem
+    )
+    expect(projectsOfState(runtime.getSnapshot())).toEqual([])
+  })
+
+  it("names as newest the episode opened last, whatever was touched since", () => {
+    const week3 = run(
+      episodeProjectOf("w3", episodeText("week 3"), "2026-10-29T09:00:00.000Z"),
+      { type: "takeStarted", shot: "open" },
+      {
+        type: "taken",
+        take: {
+          id: "t1",
+          shot: "open",
+          recordedAt: "2026-11-04T09:00:00.000Z",
+          durationMs: 4_000,
+          mimeType: "audio/webm",
+        },
+      }
+    ).project
+    const week4 = episodeProjectOf(
+      "w4",
+      episodeText("week 4", "b"),
+      "2026-11-03T09:00:00.000Z"
+    ).project
+    expect(showsOnPhone([week3, week4])[0]?.line).toBe(
+      STUDIO_WORDS.show.episodesHeld(2, "week 4")
+    )
   })
 
   it("lists each show's episodes, and opens one from its show", async () => {

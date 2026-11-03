@@ -264,7 +264,7 @@ export function resumeAt(project: Project): string {
 }
 
 /** When anything last happened to a project: its newest revision, take or sitting. */
-export function touchedAt(project: Project): string {
+function touchedAt(project: Project): string {
   return [
     ...project.revisions.map((each) => each.at),
     ...project.takes.map((each) => each.recordedAt),

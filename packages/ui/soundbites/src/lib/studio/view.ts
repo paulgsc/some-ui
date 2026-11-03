@@ -13,12 +13,7 @@ import { waitingTakes } from "@soundbites/lib/project/let-go"
 import type { Note, Project, ProjectTake } from "@soundbites/lib/project/model"
 import { homeHolds, latest } from "@soundbites/lib/project/model"
 import { originConfirmed, originsWaiting } from "@soundbites/lib/project/origin"
-import {
-  capFor,
-  chosenTake,
-  scriptOf,
-  touchedAt,
-} from "@soundbites/lib/project/script"
+import { capFor, chosenTake, scriptOf } from "@soundbites/lib/project/script"
 
 import type { StudioState } from "./machine"
 import type { EpisodeStanding, SittingKind, Whose } from "./words"
@@ -65,6 +60,7 @@ function takenCount(project: Project): number {
 export function startView(project: Project): StartView {
   const { shots } = latest(project).cutList
   const scenes = shots.length
+  const clips = shots.filter((shot) => shot.picture.kind === "capture").length
   const { episode } = project
   const words = STUDIO_WORDS.show
   const sittings: ReadonlyArray<SittingRow> = [
@@ -112,7 +108,7 @@ export function startView(project: Project): StartView {
         ? null
         : [
             { name: words.data, line: words.dataLine(episode.period) },
-            { name: words.clips(scenes), line: words.clipsLine },
+            { name: words.clips(clips), line: words.clipsLine },
             { name: words.says, line: words.saysLine },
           ],
   }
@@ -129,14 +125,17 @@ function standingOf(project: Project): EpisodeStanding {
 
 type Episodic = Project & { readonly episode: EpisodePin }
 
-/** The episodes of `show` on the phone, the newest first. */
+/** When an episode was opened on the phone: its first version. */
+const openedAt = (project: Project): string => project.revisions[0]?.at ?? ""
+
+/** The episodes of `show` on the phone, the one opened last first. */
 function episodesOf(
   projects: ReadonlyArray<Project>,
   show: string
 ): ReadonlyArray<Episodic> {
   return projects
     .filter((each): each is Episodic => each.episode?.show === show)
-    .sort((a, b) => touchedAt(b).localeCompare(touchedAt(a)))
+    .sort((a, b) => openedAt(b).localeCompare(openedAt(a)))
 }
 
 /** A show on Start (SHOW SH3). */

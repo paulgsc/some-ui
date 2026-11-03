@@ -459,6 +459,8 @@ export const STUDIO_WORDS = {
     footer:
       "Every scene is the show's. For something outside it, start a video of your own.",
     held: "That episode is already on this phone. Here it is.",
+    notYet:
+      "Studio is still reading this phone. Open the episode again in a moment.",
   },
 
   history: {

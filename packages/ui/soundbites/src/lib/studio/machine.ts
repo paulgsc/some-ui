@@ -59,9 +59,9 @@
  *   the page is hidden or left is finished and kept; a microphone that opens
  *   then, or once the Record screen is gone, is let go.
  */
-import { assertNever, jsonOf } from "@some-ui/core-utils"
+import { assertNever, isRecord, jsonOf } from "@some-ui/core-utils"
 import type { Episode, Idea, Look, Review, Voice } from "@some-ui/video-render"
-import { parseEpisode, readReview } from "@some-ui/video-render"
+import { EPISODE_SCHEMA, parseEpisode, readReview } from "@some-ui/video-render"
 import type { RecordingFailure, Take, TakePhase } from "@some-ui/voice-capture"
 // eslint-disable-next-line one-owner/no-local-microphone -- Studio runs its own take until its machine embeds the take kit (#2442)
 import {
@@ -1520,13 +1520,21 @@ function pickedEpisode(
   primer: Primer,
   at: string
 ): Step {
-  const held = projectsOf(state).find(
-    (each) =>
-      each.episode !== undefined && sameJson(each.episode, episode.episode)
-  )
+  // Until the phone's videos are read, one it holds can't be told apart.
+  if (state.shelf.kind !== "read")
+    return stay({ ...state, primerProblem: WORDS.show.notYet })
+  const same = (pin: Episode["episode"] | undefined): boolean =>
+    pin !== undefined && sameJson(pin, episode.episode)
+  const held = projectsOf(state).find((each) => same(each.episode))
   const cleared = { ...state, choosing: null, primerProblem: null }
   if (held !== undefined)
     return stay({ ...cleared, current: held.id, notice: WORDS.show.held })
+  // One on its way to being kept is held too, once it lands.
+  const ways = [state.inFlight, ...state.queue, ...state.held]
+  if (
+    ways.some((each) => each?.kind === "create" && same(each.episode?.episode))
+  )
+    return stay(cleared)
   return enqueue(cleared, {
     kind: "create",
     project: projectIdFor(primer.title, at),
@@ -1534,6 +1542,13 @@ function pickedEpisode(
     episode,
     at,
   })
+}
+
+/** Whether `raw` says it is an episode file, whole or not. */
+function saysEpisode(raw: unknown): boolean {
+  return isRecord(raw) && isRecord(raw["episode"])
+    ? raw["episode"]["schema"] === EPISODE_SCHEMA
+    : false
 }
 
 /** The screen once the project changed under it: its scene, if still there. */
@@ -1867,10 +1882,15 @@ export function step(state: StudioState, event: StudioEvent): Step {
       if (isProjectFile(event.text)) return pickedProject(state, event.text)
       if (isIdeaReply(event.text))
         return stay({ ...state, primerProblem: WORDS.start.ideaReply })
-      const episode = parseEpisode(jsonOf(event.text))
+      const raw = jsonOf(event.text)
+      const episode = parseEpisode(raw)
       const reading = readPrimer(event.text)
       if (episode.ok && reading.ok)
         return pickedEpisode(state, episode.value, reading.primer, event.at)
+      // A file that says it is an episode and isn't one whole is never a
+      // video of your own.
+      if (saysEpisode(raw))
+        return stay({ ...state, primerProblem: WORDS.start.sentProblem })
       // What is wrong names cuts and fields: for the session that wrote the
       // file (`PrimerReading`), never the screen (SW1).
       if (!reading.ok)
@@ -1899,7 +1919,12 @@ export function step(state: StudioState, event: StudioEvent): Step {
       const cleared = { ...state, choosing: null }
       if (event.as === "cancel" || (event.as === "next" && project === null))
         return stay(cleared)
-      if (event.as === "next" && project !== null)
+      // An episode that landed while this was asked takes no primer's version.
+      if (
+        event.as === "next" &&
+        project !== null &&
+        project.episode === undefined
+      )
         return enqueue(cleared, {
           kind: "revise",
           project: project.id,
