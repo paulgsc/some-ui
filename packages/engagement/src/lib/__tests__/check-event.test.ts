@@ -31,6 +31,13 @@ describe("checkEvent: what an event may carry", () => {
   it.each([
     { ...base, kind: "offered" },
     { ...base, kind: "taken" },
+    {
+      ...base,
+      pipeline: "study",
+      affordance: "resume",
+      surface: "web",
+      kind: "taken",
+    },
     { ...base, kind: "passed-over", offeredAt: EARLIER, ending: "moved-on" },
     { ...base, kind: "left", startedAt: EARLIER, place: "your-turn" },
     {

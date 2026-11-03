@@ -102,11 +102,22 @@ const study: Pipeline = {
       emits: ["offered", "taken", "passed-over"],
       touches: false,
     },
+    // Home's Continue card: Resume the session left open.
+    {
+      id: "resume",
+      surface: "web",
+      name: "Resume the open session",
+      routes: ["/app", "/sessions/$sessionId"],
+      offer: "listed",
+      emits: ["offered", "taken", "passed-over"],
+      touches: false,
+    },
+    // Sessions, and Home's Recent sessions: any one opened again.
     {
       id: "session-list",
       surface: "web",
       name: "Your sessions",
-      routes: ["/sessions"],
+      routes: ["/app", "/sessions"],
       offer: "listed",
       emits: ["offered", "taken", "passed-over"],
       touches: false,
