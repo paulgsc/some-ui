@@ -1,6 +1,6 @@
 /**
  * One week read in the short's vocabulary (`./words`), as pure functions of
- * the week, so the slides and the voiceover say the same things. Every
+ * the week, so the slides and the facts each take keeps say the same. Every
  * reading is a fact about every way the rest of the season can go:
  *
  * 1. Where do our division's poles stand, and what forces the floor?

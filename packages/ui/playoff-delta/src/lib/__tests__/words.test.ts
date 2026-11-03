@@ -1,10 +1,12 @@
 import { SAMPLE_SEASON } from "@playoff-delta/lib/sample"
 import {
   LEGEND_SLIDES,
-  legendLine,
-  narration,
+  legendFacts,
+  SCENES,
   WEEK_SLIDES,
+  weekFacts,
 } from "@playoff-delta/lib/slides"
+import { parseStorySeason } from "@playoff-delta/lib/story"
 import {
   CALLS,
   CLEAN_RUN,
@@ -18,6 +20,10 @@ import {
   STANDINGS,
 } from "@playoff-delta/lib/words"
 import { describe, expect, it } from "vitest"
+
+import raw2026 from "./season-2026.json"
+
+const SEASON_2026 = parseStorySeason(raw2026)
 
 // Say what can happen (CLAUDE.md, "Say what it is"): never odds, and never
 // the statistics the grammar retired.
@@ -55,11 +61,14 @@ describe("the vocabulary", () => {
     }
   })
 
-  it("says every week and the legend in it", () => {
+  it("says every scene, every week of both seasons and the legend in it", () => {
     const lines = [
-      ...LEGEND_SLIDES.map((id) => legendLine(SAMPLE_SEASON, id)),
-      ...SAMPLE_SEASON.weeks.flatMap((w) =>
-        WEEK_SLIDES.map((id) => narration(SAMPLE_SEASON, w, id))
+      ...Object.values(SCENES).flatMap((scene) => [scene.name, scene.point]),
+      ...LEGEND_SLIDES.flatMap((id) => legendFacts(SAMPLE_SEASON, id)),
+      ...[SAMPLE_SEASON, SEASON_2026].flatMap((season) =>
+        season.weeks.flatMap((w) =>
+          WEEK_SLIDES.flatMap((id) => weekFacts(season, w, id))
+        )
       ),
     ]
     for (const line of lines) {

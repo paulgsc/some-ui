@@ -12,10 +12,12 @@ import { z } from "zod"
 
 import { parseCutList } from "./cut-list"
 import type { Parsed } from "./cut-list"
+import { parseFormat } from "./format"
+import type { Format } from "./format"
 import type { SourceFacts } from "./plan"
 import { render } from "./render"
 import type { Ports, Rendered, RenderOptions } from "./render"
-import { parseSeries, seriesFile, versionOfFile } from "./series"
+import { parseSeries, versionFile, versionOfFile } from "./series"
 import type { Series } from "./series"
 
 type Ran = {
@@ -185,14 +187,16 @@ export const readJson = async (file: string): Promise<unknown> =>
   JSON.parse(await readFile(file, "utf8"))
 
 /**
- * One version of the series in `dir` (`v<n>.json`, `series.ts`): the one
- * asked for, or the newest when none is. Refuses a file that is missing,
- * unreadable, or another series or version than its name says.
+ * One version of a versioned file in `dir` (`v<n>.json`, `series.ts`): the
+ * one asked for, or the newest when none is. Refuses a file that is
+ * missing, unreadable, or another version than its name says.
  */
-export async function readSeries(
+async function readVersioned<T extends { readonly version: number }>(
   dir: string,
+  what: string,
+  parse: (raw: unknown) => Parsed<T>,
   version?: number
-): Promise<Parsed<Series>> {
+): Promise<Parsed<T>> {
   const versions = (await readdir(dir).catch(() => []))
     .map(versionOfFile)
     .filter((v) => v !== null)
@@ -202,36 +206,48 @@ export async function readSeries(
       ok: false,
       problems: [
         version === undefined
-          ? `${dir} holds no version of a series`
-          : `${dir} holds no version ${version} of its series`,
+          ? `${dir} holds no version of a ${what}`
+          : `${dir} holds no version ${version} of its ${what}`,
       ],
     }
   }
   let raw: unknown
   try {
-    raw = await readJson(join(dir, seriesFile(wanted)))
+    raw = await readJson(join(dir, versionFile(wanted)))
   } catch (e) {
     return {
       ok: false,
-      problems: [`${seriesFile(wanted)} can't be read: ${String(e)}`],
+      problems: [`${versionFile(wanted)} can't be read: ${String(e)}`],
     }
   }
-  const series = parseSeries(raw)
-  if (!series.ok)
+  const parsed = parse(raw)
+  if (!parsed.ok)
     return {
       ok: false,
-      problems: ["The series can't be read:", ...series.problems],
+      problems: [`The ${what} can't be read:`, ...parsed.problems],
     }
-  if (series.value.version !== wanted) {
+  if (parsed.value.version !== wanted) {
     return {
       ok: false,
       problems: [
-        `${seriesFile(wanted)} says it is version ${series.value.version}`,
+        `${versionFile(wanted)} says it is version ${parsed.value.version}`,
       ],
     }
   }
-  return series
+  return parsed
 }
+
+/** One version of the series in `dir`, or the newest (`readVersioned`). */
+export const readSeries = (
+  dir: string,
+  version?: number
+): Promise<Parsed<Series>> => readVersioned(dir, "series", parseSeries, version)
+
+/** One version of a show's format in `dir`, or the newest (`format.ts`). */
+export const readFormat = (
+  dir: string,
+  version?: number
+): Promise<Parsed<Format>> => readVersioned(dir, "format", parseFormat, version)
 
 /**
  * Renders `<root>/cut-list.json` under the version of the series in

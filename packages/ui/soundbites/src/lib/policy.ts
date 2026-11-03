@@ -158,7 +158,12 @@ export function displacedBy(
   return [first.id, ...rest.slice(0, excess - 1).map((bite) => bite.id)]
 }
 
-/** The longest a Build Journal episode's takes may run in total: six minutes. */
+/**
+ * The longest a Build Journal episode's takes may run in total: six minutes,
+ * a version 2 primer's budget (`@some-ui/video-render`'s
+ * `PRIMER_V2_BUDGET_MS`, held equal by `journal/__tests__/primer.test.ts`;
+ * this module is the contract's, which imports no other workspace).
+ */
 export const JOURNAL_BUDGET_MAX_MS = 360_000
 
 /**

@@ -211,13 +211,14 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
     {
       modules: [
         "packages/video-render/src/cut-list.ts",
+        "packages/video-render/src/format.ts",
         "packages/video-render/src/plans.ts",
         "packages/video-render/src/review.ts",
         "packages/video-render/src/timing.ts",
         "packages/video-render/src/vocabulary.ts",
       ],
       profiles: [MOBILE_PROFILE],
-      why: "the cut list's schemas, which the phone's Studio project reads and checks, its timing, which fits a scene to its take as Record keeps it, and a review render's review.json, which Watch reads (@some-ui/soundbites, lib/project and lib/studio): the web builds render no video and keep no project",
+      why: "the cut list's schemas, which the phone's Studio project reads and checks, its timing, which fits a scene to its take as Record keeps it, a show format's primer limits, which Journal checks a primer against, and a review render's review.json, which Watch reads (@some-ui/soundbites, lib/project and lib/studio): the web builds render no video and keep no project",
     },
     {
       modules: ["packages/some-styles/src/theme/boundary.ts"],

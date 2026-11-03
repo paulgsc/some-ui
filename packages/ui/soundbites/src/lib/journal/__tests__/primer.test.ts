@@ -1,4 +1,11 @@
+import {
+  episodeOf,
+  FORMAT_SCHEMA,
+  PRIMER_V2_BUDGET_MS,
+  type Format,
+} from "@some-ui/video-render"
 import { cutV1, readPrimer } from "@soundbites/lib/journal/primer"
+import { JOURNAL_BUDGET_MAX_MS } from "@soundbites/lib/policy"
 import { describe, expect, it } from "vitest"
 
 const cut = (id: string, targetSec = 30): Record<string, unknown> => ({
@@ -277,6 +284,44 @@ describe("readPrimer, version 2", () => {
     expect(reading.ok && reading.primer.cuts.map((each) => each.from)).toEqual([
       ["what", "spark"],
       undefined,
+    ])
+  })
+})
+
+describe("an episode of a show (SHOW SH2)", () => {
+  it("is held to the same budget as a primer", () => {
+    expect(JOURNAL_BUDGET_MAX_MS).toBe(PRIMER_V2_BUDGET_MS)
+  })
+
+  it("opens as a primer, each cut voiced in your own words", () => {
+    const format: Format = {
+      schema: FORMAT_SCHEMA,
+      id: "weekly",
+      version: 1,
+      title: "Weekly",
+      series: { id: "weekly", version: 1 },
+      look: "calm",
+      scenes: [24, 10].map((holdSec, i) => ({
+        id: `scene-${i}`,
+        name: `Scene ${i}`,
+        point: `What scene ${i} shows`,
+        picture: { kind: "capture", from: "a slide", cssWidth: 1080 },
+        holdMs: holdSec * 1_000,
+      })),
+    }
+    const episode = episodeOf(format, {
+      title: "Weekly, week 3",
+      period: "week 3",
+      data: { source: "weekly/3.json", sha256: "0".repeat(64) },
+      keep: [["3 wins"], []],
+      inMs: () => 0,
+    })
+    if (!episode.ok) throw new Error(episode.problems.join("; "))
+    const read = readPrimer(JSON.stringify(episode.value))
+    if (!read.ok) throw new Error(read.problem)
+    expect(read.primer.cuts.map((c) => [c.id, c.voice, c.keep])).toEqual([
+      ["scene-0", "ad-lib", ["3 wins"]],
+      ["scene-1", "ad-lib", []],
     ])
   })
 })

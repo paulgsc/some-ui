@@ -1,8 +1,8 @@
 /**
  * The story's fixed order of slides, how long each holds when playing on its
- * own, and the voiceover line each one carries. A line is written from the
- * same week data the slide draws, so the narration and the screen state the
- * same facts.
+ * own, and what a take over each one says: its point, and the facts it
+ * keeps, written from the same week data the slide draws, so the voice and
+ * the screen state the same facts (`./show` makes them an episode).
  *
  * Two kinds of episode: the **legend**, played once, teaches the vocabulary
  * (`./words`); a **week** then uses it without teaching it again, one slide
@@ -106,33 +106,122 @@ export const HOLD_MS: Readonly<Record<SlideId, number>> = {
 export const MODEL =
   "Over every way the rest of the season can go. Standings only: a tie goes to us."
 
-/** The legend's voiceover, one line per slide. */
-export function legendLine(season: StorySeason, id: LegendSlide): string {
+/**
+ * What each slide is called, and the point a take over it makes in your own
+ * words: the episode's cut for it (`./show`). The point says what to
+ * motivate, not words to read.
+ */
+export const SCENES: Readonly<
+  Record<SlideId, { readonly name: string; readonly point: string }>
+> = {
+  division: {
+    name: "Our division",
+    point:
+      "Where our division's best case and worst case stand after this week, and which rivals' games force the floor.",
+  },
+  conference: {
+    name: "Our conference",
+    point:
+      "The same across the whole conference: the floor, the ceiling, and what forces the floor.",
+  },
+  results: {
+    name: "The results",
+    point:
+      "Which way this week's results moved us, and which of them were forced.",
+  },
+  standings: {
+    name: "Where we stand",
+    point:
+      "Where the division and the #1 seed stand now, and how far each is from changing.",
+  },
+  ladder: {
+    name: "The ladder",
+    point:
+      "How high we can still finish, how low, and whether to keep watching.",
+  },
+  season: {
+    name: "The season",
+    point: "How the envelope has closed over the weeks followed so far.",
+  },
+  outro: {
+    name: "In one line",
+    point: "The week in one breath, and what comes next.",
+  },
+  legend: {
+    name: "The legend",
+    point:
+      "Every week, two numbers about our rivals, the best case and the worst, and which way the week moved us.",
+  },
+  pieces: {
+    name: "The pieces",
+    point: "A game is named by who plays it, and that never changes.",
+  },
+  poles: {
+    name: "The poles",
+    point:
+      "The floor, the bloc that forces it, and the ceiling, on the season's first table.",
+  },
+  moves: {
+    name: "What a result did",
+    point: "Each result moved us toward a pole, was forced, or moved nothing.",
+  },
+  objectives: {
+    name: "What we play for",
+    point:
+      "The division and the #1 seed: where each can stand, and the two countdowns.",
+  },
+  calls: {
+    name: "The ladder and the call",
+    point: "The outcomes, best first, and when to keep watching or stop.",
+  },
+}
+
+/** The facts a take over a legend slide may neither drop nor contradict. */
+export function legendFacts(
+  season: StorySeason,
+  id: LegendSlide
+): ReadonlyArray<string> {
   switch (id) {
     case "legend": {
-      return "Every week, two numbers about our rivals: the best case and the worst. And which way the week moved us. First, the words we use."
+      return []
     }
     case "pieces": {
       return PIECE_ORDER.map((k) => {
         const p = PIECES[k]
         return `${capital(p.noun)}: ${p.who.toLowerCase()} ${p.moves}`
-      }).join(" ")
+      })
     }
     case "poles": {
-      return `${capital(POLES.floor.word)}: ${POLES.floor.means}. ${capital(POLES.bloc.word)}: ${POLES.bloc.means}. ${capital(POLES.ceiling.word)}: ${POLES.ceiling.means}. ${legendFloor(season)}`
+      return [
+        `${capital(POLES.floor.word)}: ${POLES.floor.means}.`,
+        `${capital(POLES.bloc.word)}: ${POLES.bloc.means}.`,
+        `${capital(POLES.ceiling.word)}: ${POLES.ceiling.means}.`,
+        legendFloor(season),
+      ]
     }
     case "moves": {
-      return `Each result moved us ${COHORT_ORDER.map((c) => (c === "best" || c === "worst" ? `${COHORTS[c].phrase}: ${COHORTS[c].means}` : `or was ${COHORTS[c].phrase}: ${COHORTS[c].means}`)).join("; ")}. ${capital(CLEAN_RUN.phrase)}: ${CLEAN_RUN.means}.`
+      return [
+        ...COHORT_ORDER.map(
+          (c) => `${capital(COHORTS[c].phrase)}: ${COHORTS[c].means}.`
+        ),
+        `${capital(CLEAN_RUN.phrase)}: ${CLEAN_RUN.means}.`,
+      ]
     }
     case "objectives": {
-      return `We play for ${OBJECTIVES.division.word} and ${OBJECTIVES.conference.word}. Each is ${STANDING_ORDER.map((s) => `${STANDINGS[s].phrase.toLowerCase()}, ${STANDINGS[s].means}`).join("; ")}. ${capital(COUNTDOWNS.greens.phrase)}: ${COUNTDOWNS.greens.means}. ${capital(COUNTDOWNS.reds.phrase)}: ${COUNTDOWNS.reds.means}.`
+      return [
+        `We play for ${OBJECTIVES.division.word} and ${OBJECTIVES.conference.word}.`,
+        ...STANDING_ORDER.map(
+          (s) => `${STANDINGS[s].phrase}: ${STANDINGS[s].means}.`
+        ),
+        `${capital(COUNTDOWNS.greens.phrase)}: ${COUNTDOWNS.greens.means}.`,
+        `${capital(COUNTDOWNS.reds.phrase)}: ${COUNTDOWNS.reds.means}.`,
+      ]
     }
     case "calls": {
-      return `The ladder, best first: ${RUNG_ORDER.map((r) => RUNGS[r].phrase).join(", ")}. Each week names the best rung still reachable and the worst already ours. Then the call: ${Object.values(
-        CALLS
-      )
-        .map((c) => `${c.phrase}, ${c.means}`)
-        .join("; ")}.`
+      return [
+        `The ladder, best first: ${RUNG_ORDER.map((r) => RUNGS[r].phrase).join(", ")}.`,
+        ...Object.values(CALLS).map((c) => `${c.phrase}: ${c.means}.`),
+      ]
     }
     default: {
       return assertNever(id)
@@ -140,63 +229,70 @@ export function legendLine(season: StorySeason, id: LegendSlide): string {
   }
 }
 
-/** A group's poles, before to after, in words. */
-function polesLine(week: StoryWeek, key: GroupKey): string {
+/** A group's poles, before to after, as facts. */
+function polesFacts(week: StoryWeek, key: GroupKey): ReadonlyArray<string> {
   const { before, after } = week.poles
   const g = after[key]
-  return `The floor: ${wins(g.floor)}, ${poleChange(before[key].floor, g.floor)}. The ceiling: ${wins(g.ceiling.lose)}, ${poleChange(before[key].ceiling.lose, g.ceiling.lose)}. ${blocLine(g)} ${ceilingLine(g)}`
+  return [
+    `The floor: ${wins(g.floor)}, ${poleChange(before[key].floor, g.floor)}.`,
+    `The ceiling: ${wins(g.ceiling.lose)}, ${poleChange(before[key].ceiling.lose, g.ceiling.lose)}.`,
+    blocLine(g),
+    ceilingLine(g),
+  ]
 }
 
-/** The voiceover line for one slide of a week. */
-export function narration(
+/** The facts a take over one slide of a week may neither drop nor contradict. */
+export function weekFacts(
   season: StorySeason,
   week: StoryWeek,
   id: WeekSlide
-): string {
+): ReadonlyArray<string> {
   const after = week.poles.after
   switch (id) {
     case "division": {
-      return `Week ${week.week}. ${capital(GROUPS.division.word)}. ${polesLine(week, "division")} ${rangeLine(after)}`
+      return [...polesFacts(week, "division"), rangeLine(after)]
     }
     case "conference": {
       const held = heldLine(after)
-      return `${capital(GROUPS.conference.word)}. ${polesLine(week, "conference")}${held === null ? "" : ` ${held}`}`
+      return [...polesFacts(week, "conference"), ...(held ? [held] : [])]
     }
     case "results": {
       const counts = cohortCounts(week, "conference")
-      const said = COHORT_ORDER.filter((c) => counts[c] > 0)
-        .map((c) => `${numberWord(counts[c])} ${COHORTS[c].phrase}`)
-        .join(", ")
       const worst = movesOf(week, "conference")
         .filter((m) => m.cohort === "worst" && m.result.kind !== "own")
         .map((m) => `${m.result.winner} won`)
-      const named =
-        worst.length > 0 && worst.length <= 3
-          ? ` Against us: ${worst.join(", ")}.`
-          : ""
-      const clean = cleanRun(week) ? ` ${capital(CLEAN_RUN.phrase)}.` : ""
-      return `${week.results.length} results touched our conference: ${said || "none"}.${named}${clean}`
+      return [
+        ...COHORT_ORDER.filter((c) => counts[c] > 0).map(
+          (c) => `${capital(numberWord(counts[c]))} ${COHORTS[c].phrase}.`
+        ),
+        ...(worst.length > 0 && worst.length <= 3
+          ? [`Against us: ${worst.join(", ")}.`]
+          : []),
+        ...(cleanRun(week) ? [`${capital(CLEAN_RUN.phrase)}.`] : []),
+      ]
     }
     case "standings": {
-      return (["division", "conference"] as const)
-        .map((key) => {
-          const standing = standingOf(after, key)
-          const counts = settled(standing)
-            ? ""
-            : `: ${countdownLine(greensOf(after, key), "greens")}, ${countdownLine(redsOf(after, key), "reds")}`
-          return `${capital(OBJECTIVES[key].word)}, ${STANDINGS[standing].phrase.toLowerCase()}${counts}.`
-        })
-        .join(" ")
+      return (["division", "conference"] as const).flatMap((key) => {
+        const standing = standingOf(after, key)
+        return [
+          `${capital(OBJECTIVES[key].word)}: ${STANDINGS[standing].phrase.toLowerCase()}.`,
+          ...(settled(standing)
+            ? []
+            : [
+                `${capital(countdownLine(greensOf(after, key), "greens"))}, ${countdownLine(redsOf(after, key), "reds")}.`,
+              ]),
+        ]
+      })
     }
     case "ladder": {
-      return `${ladderLine(after)} ${CALLS[callOf(week)].phrase}.`
+      return [ladderLine(after), `${CALLS[callOf(week)].phrase}.`]
     }
     case "season": {
       const weeks = followed(season, week)
       const first = weeks[0]?.poles.before ?? after
       const last = weeks.at(-1)?.poles.after ?? after
       const closed = (key: GroupKey): string =>
-        `the floor ${wins(first[key].floor)} to ${wins(last[key].floor)}, the ceiling ${wins(first[key].ceiling.lose)} to ${wins(last[key].ceiling.lose)}`
+        `${capital(GROUPS[key].word)}: the floor ${wins(first[key].floor)} to ${wins(last[key].floor)}, the ceiling ${wins(first[key].ceiling.lose)} to ${wins(last[key].ceiling.lose)}.`
       const moved = weeks.reduce(
         (sum, w) => {
           const s = stepsOf(w, "conference")
@@ -204,13 +300,20 @@ export function narration(
         },
         { ours: 0, against: 0 }
       )
-      return `Over ${numberWord(weeks.length)} ${weeks.length === 1 ? "week" : "weeks"} followed. ${capital(GROUPS.division.word)}: ${closed("division")}. ${capital(GROUPS.conference.word)}: ${closed("conference")}. ${capital(stepsLine(moved.ours, "ours"))}, ${stepsLine(moved.against, "against")}.`
+      return [
+        `${capital(numberWord(weeks.length))} ${weeks.length === 1 ? "week" : "weeks"} followed.`,
+        closed("division"),
+        closed("conference"),
+        `${capital(stepsLine(moved.ours, "ours"))}, ${stepsLine(moved.against, "against")}.`,
+      ]
     }
     case "outro": {
-      const last = ended(season, week)
-        ? `That's the series for the ${nameOf(season, season.team)}.`
-        : "Next week, we drive again."
-      return `${sentence(week)} ${last}`
+      return [
+        sentence(week),
+        ended(season, week)
+          ? `That's the series for the ${nameOf(season, season.team)}.`
+          : "Next week, we drive again.",
+      ]
     }
     default: {
       return assertNever(id)

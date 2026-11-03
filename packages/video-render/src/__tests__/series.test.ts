@@ -20,7 +20,7 @@ import {
   parseSeries,
   SERIES_INTRO,
   SERIES_OUTRO,
-  seriesFile,
+  versionFile,
   withSeries,
 } from "@video-render/series"
 import type { Series } from "@video-render/series"
@@ -43,7 +43,7 @@ const version = (n: number, design: string): Series =>
 
 async function publish(s: Series): Promise<void> {
   await writeFile(
-    join(root, SERIES_DIR, seriesFile(s.version)),
+    join(root, SERIES_DIR, versionFile(s.version)),
     JSON.stringify(s)
   )
 }
@@ -141,19 +141,19 @@ describe("a series' versions", () => {
       `${join(root, SERIES_DIR)} holds no version 9 of its series`,
     ])
     await writeFile(
-      join(root, SERIES_DIR, seriesFile(9)),
+      join(root, SERIES_DIR, versionFile(9)),
       JSON.stringify(version(2, "chalk"))
     )
     const misnamed = await readSeries(join(root, SERIES_DIR), 9)
     expect(misnamed.ok ? [] : misnamed.problems).toEqual([
       "v9.json says it is version 2",
     ])
-    await writeFile(join(root, SERIES_DIR, seriesFile(9)), "{ not json")
+    await writeFile(join(root, SERIES_DIR, versionFile(9)), "{ not json")
     const broken = await readSeries(join(root, SERIES_DIR), 9)
     expect(broken.ok ? [] : broken.problems).toEqual([
       expect.stringMatching(/^v9\.json can't be read: /),
     ])
-    await rm(join(root, SERIES_DIR, seriesFile(9)))
+    await rm(join(root, SERIES_DIR, versionFile(9)))
   })
 
   it("opens the newest when no version is asked for", async () => {
@@ -271,7 +271,7 @@ describe("a series' intro and outro", () => {
     const dir = join(root, "framed-series")
     await mkdir(dir)
     await writeFile(
-      join(dir, seriesFile(1)),
+      join(dir, versionFile(1)),
       JSON.stringify({
         ...version(1, "gridiron"),
         intro: { picture: card, durationMs: 400, burnIns: [] },
