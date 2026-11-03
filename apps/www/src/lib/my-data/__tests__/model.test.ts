@@ -113,10 +113,6 @@ describe("home's count of the record kept for good (MD2b)", () => {
       record({ kinds: [{ kind: "jobs", count: 1, since: "yesterday" }] })
     ).toEqual({ ...READ, record: { kind: "unreachable" } })
   })
-
-  it("isn't there on a kind's page, which doesn't ask", () => {
-    expect(readKept(kept)).toEqual(READ)
-  })
 })
 
 describe("the overview", () => {

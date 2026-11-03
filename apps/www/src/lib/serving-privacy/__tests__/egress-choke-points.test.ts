@@ -152,7 +152,7 @@ const AUDIO_SENDS = [['"GET"', "audioPath(id)"]]
 const KEPT_READ = "lib/home-link/kept-read.ts"
 const KEPT_SENDS = [
   ['"GET"', "keptPath(of)"],
-  ['"GET"', "RECORD_PATH"],
+  ['"GET"', '"/subjects/me/kept"'],
 ]
 
 /**
@@ -571,9 +571,6 @@ describe("LA8: the phone reaches home through one module", () => {
   it("sends nothing from the read of what home keeps but one GET of /voice-notes/kept and one of /subjects/me/kept, and only My data reads it (MD2, MD2b)", () => {
     expect(sendCalls(KEPT_READ, read(KEPT_READ))).toEqual(KEPT_SENDS)
     expect(read(KEPT_READ)).toContain('"/voice-notes/kept"')
-    expect(read(KEPT_READ)).toContain(
-      'export const RECORD_PATH = "/subjects/me/kept"'
-    )
     const readers = sourceFiles()
       .filter((f) => !isTestFile(f))
       .filter((f) =>

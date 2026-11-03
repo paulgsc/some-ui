@@ -484,7 +484,7 @@ declared (checked by reading every call site and by the tests named).
   `lib/home-link/heard.ts`, `lib/home-link/voice-audio.ts` (RR6) and
   `lib/home-link/kept-read.ts`; one that has
   `kept-read.ts` send anything but one `GET` of `keptPath(of)` per ask and,
-  when `of` is null, one `GET` of `RECORD_PATH`, lets
+  when `of` is null, one `GET /subjects/me/kept`, lets
   anything but `lib/my-data` read it, or has `lib/my-data` ask it but when a
   My data page opens or is dragged down, or ask again but while the link is
   busy, more than ten times in all; one that has `heard.ts` send anything but one

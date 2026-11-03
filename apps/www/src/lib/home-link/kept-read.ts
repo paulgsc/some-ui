@@ -24,9 +24,6 @@ export function keptPath(of: VoiceOut["of"] | null): string {
     : `/voice-notes/kept?of=${encodeURIComponent(of)}`
 }
 
-/** The read of how much home keeps for good of the record. */
-export const RECORD_PATH = "/subjects/me/kept"
-
 /** Home's answer, or why there is none. */
 export type KeptAsked =
   | {
@@ -42,16 +39,13 @@ export type KeptAsked =
   /** No answer. */
   | { readonly kind: "unreachable" }
 
-/**
- * Asks home once what it keeps, and on the overview (`of` null) how much it
- * keeps for good of the record, in one run of the link; never rejects.
- */
+/** Asks home once what it keeps, in one run of the link; never rejects. */
 export async function askKept(of: VoiceOut["of"] | null): Promise<KeptAsked> {
   if (!paired()) return { kind: "unpaired" }
   try {
     const outcome = await homeLink().keep(async (send) => ({
       answer: await send("GET", keptPath(of)),
-      record: of === null ? await send("GET", RECORD_PATH) : null,
+      record: of === null ? await send("GET", "/subjects/me/kept") : null,
     }))
     return outcome?.kind === "done"
       ? { kind: "answered", ...outcome.value }

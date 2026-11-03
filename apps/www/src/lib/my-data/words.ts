@@ -32,7 +32,7 @@ export const WHERE_WORDS: Readonly<Record<Where, string>> = {
 /**
  * What you keep for good: your record over time, with no delete anywhere
  * (the owner's rule on #2474: we never delete work), each with how many
- * home keeps (`./record`, MD2b). In `RECORD_KINDS`' order.
+ * home keeps (`./record`, MD2b).
  */
 export const KEPT_FOR_GOOD: Readonly<Record<RecordKind, string>> = {
   sessions: "Study sessions",

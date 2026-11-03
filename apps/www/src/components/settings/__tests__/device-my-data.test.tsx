@@ -14,6 +14,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import type { MyDataState } from "@/lib/my-data"
 import type { HomeReading } from "@/lib/my-data/model"
 import { kindOf, overviewOf } from "@/lib/my-data/model"
+import type { RecordKind } from "@/lib/my-data/record"
 import { RECORD_KINDS } from "@/lib/my-data/record"
 import {
   KEPT_FOR_GOOD,
@@ -156,7 +157,7 @@ describe("My data's overview", () => {
         }}
       />
     )
-    const row = (kind: (typeof RECORD_KINDS)[number]): string | null =>
+    const row = (kind: RecordKind): string | null =>
       screen.getByText(KEPT_FOR_GOOD[kind]).closest("li")?.textContent ?? null
     expect(row("sessions")).toContain(`214 on home · since ${SINCE}`)
     expect(row("jobs")).toContain(MY_DATA.keptNone)

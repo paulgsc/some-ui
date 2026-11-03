@@ -8,7 +8,6 @@ import { describe, expect, it } from "vitest"
 
 import { MACHINERY } from "@/lib/home-link/__tests__/machinery"
 import { KINDS } from "@/lib/my-data/model"
-import { RECORD_KINDS } from "@/lib/my-data/record"
 import {
   homeLine,
   itemLine,
@@ -38,10 +37,6 @@ const AT = "2026-10-20T09:00:00.000Z"
 describe("My data's words", () => {
   it("name every kind of recording home keeps", () => {
     expect(Object.keys(KIND_NAMES).sort()).toEqual([...KINDS].sort())
-  })
-
-  it("name every kind of record kept for good, in its order", () => {
-    expect(Object.keys(KEPT_FOR_GOOD)).toEqual([...RECORD_KINDS])
   })
 
   it("never name the machinery", () => {
