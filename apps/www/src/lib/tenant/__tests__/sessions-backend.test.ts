@@ -23,6 +23,9 @@ import {
 } from "@/lib/tenant/sessions-repository"
 import type { SessionRecord } from "@/lib/tenant/types"
 
+/** The copy receipt (`lib/tenant/sessions-copy`): device id -> its copies. */
+const RECEIPT = "some-ui.tenant.sessions.transfers.v1"
+
 const onDevice: SessionRecord = {
   id: "local-1",
   name: "Korean review",
@@ -118,19 +121,30 @@ describe("learning on the device", () => {
 })
 
 describe("removing a session", () => {
-  it("forgets its autosave failure, which has nothing left to warn about", async () => {
+  it("forgets its autosave failure and its copy receipt, which have nothing left to say (SL1)", async () => {
     const storage = inMemoryStorage()
     storage.setItem(STORAGE_KEY, JSON.stringify([onDevice]))
     const store = createSessionsBackend({ storage, remote: () => null })
     const failure = { kind: "unreachable" as const, summary: "not saved" }
     writeDurableFailure(onDevice.id, failure)
     writeDurableFailure("other", failure)
+    const copy = [{ remoteId: "home-1", complete: true }]
+    storage.setItem(
+      RECEIPT,
+      JSON.stringify({ [onDevice.id]: copy, other: copy, kept: copy })
+    )
+    const receipt = (): Array<string> => {
+      const kept: unknown = JSON.parse(storage.getItem(RECEIPT) ?? "{}")
+      return typeof kept === "object" && kept !== null ? Object.keys(kept) : []
+    }
 
     await store.remove(onDevice.id)
     expect(readDurableFailure(onDevice.id)).toBeNull()
+    expect(receipt()).toEqual(["other", "kept"])
 
     await store.removeMany(["other"])
     expect(readDurableFailure("other")).toBeNull()
+    expect(receipt()).toEqual(["kept"])
   })
 })
 

@@ -285,20 +285,20 @@ export type RemovableSession = { id: string; name: string; finishedAt: string }
 /**
  * Deletes each of `asOf` that is still exactly as it was then, by `id` and
  * `updatedAt` in one statement each, all in one transaction: a session saved
- * since is kept, however late that save lands. Returns how many went.
+ * since is kept, however late that save lands. Returns the ids that went.
  */
 export async function removeUnchanged(
   db: SqlDriver,
   asOf: ReadonlyArray<Pick<SessionRecord, "id" | "updatedAt">>
-): Promise<number> {
+): Promise<Array<string>> {
   return db.transaction(async () => {
-    let removed = 0
+    const removed: Array<string> = []
     for (const { id, updatedAt } of asOf) {
       const { changes } = await db.run(
         "DELETE FROM sessions WHERE subject_id = ? AND id = ? AND updated_at = ?",
         [DEVICE_SUBJECT, id, updatedAt]
       )
-      if (changes > 0) removed += 1
+      if (changes > 0) removed.push(id)
     }
     return removed
   })

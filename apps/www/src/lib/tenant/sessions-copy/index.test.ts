@@ -10,6 +10,7 @@ import { inMemoryStorage } from "@some-ui/core-utils"
 import { describe, expect, it } from "vitest"
 
 import { FileHostResponseError } from "@/lib/file-host-config/client"
+import { forgetCopies } from "@/lib/tenant/copy-receipt"
 import {
   confirmHeld,
   copySessionsTo,
@@ -164,6 +165,30 @@ describe("a phone's copy names each create's id", () => {
     // The twin made its own, under the id it named; the first kept its own.
     expect(there.held.size).toBe(2)
     expect(there.lists).toBe(1)
+  })
+
+  it("never adopts the copy of a session that left this device, whatever its plan", async () => {
+    const there = home({ named: true })
+    const receipt = inMemoryStorage()
+    await copySessionsTo([SESSION], there, receipt)
+    const left = [...there.held.values()]
+    forgetCopies([SESSION.id], receipt)
+    // A new session with the same plan, made later, whose create never landed.
+    const later = {
+      ...SESSION,
+      id: "local-2",
+      createdAt: "2026-10-15T09:00:00.000Z",
+    }
+    const dropping = home({ named: true, drop: 1 })
+    await copySessionsTo(
+      [later],
+      { ...there, create: dropping.create },
+      receipt
+    )
+    await copySessionsTo([later], there, receipt)
+    // It made its own; the copy of the one that left is as it was.
+    expect(there.held.size).toBe(2)
+    expect(there.held.get(left[0].id)).toEqual(left[0])
   })
 
   it("names a new id once home refuses one", async () => {
