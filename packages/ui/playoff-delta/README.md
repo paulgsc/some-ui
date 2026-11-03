@@ -5,44 +5,47 @@ story, made to be screen-recorded for YouTube Shorts with a voiceover per
 slide. Web only (`someUi.audience: "web"`); `apps/www` serves it at
 `/playoff-delta` through the web surface's door.
 
-Every week there was a best way for it to go. Each short shows how close
-the week came, where it broke away, and who came closest, in a vocabulary
-taught once and used every week after (`src/lib/words.ts`). All of it comes
-from one image: driving through a suburb, making or missing each light.
+Every week it says two numbers about our rivals, over every way the rest of
+the season can go, and which way the week moved us. Nothing is weighted:
+each number is an extreme with its proof. The vocabulary is taught once and
+used every week after (`src/lib/words.ts`), from one image: driving through a
+suburb, making or missing each light.
 
-- **Pieces.** A game is a piece, named only by who plays, so its noun never
-  changes: **our light** (us; a win always helps), a **one-way** (a team in
-  our race against the other conference: their loss helps us or does
-  nothing), a **crossroads** (two teams in our race: either way, depending on
-  who can afford the win) and a **side street** (two teams outside our race:
-  never on our route). Each has a glyph (`src/lib/symbols.ts`).
-- **Material.** What a piece is worth this week, its price: how far the best
-  week drops if it goes the other way. **Major** from a point, **minor** from
-  a quarter of a point, **idle** below that or within its sampling error. A
-  piece is **made** or **missed**; our result can **wake** one. A light's
-  size is its price, on the same scale every week.
-- **The week.** Of the ways the week could have gone, how many would have
-  left us worse, as a band: **All greens**, **Mostly green**,
-  **Stop-and-go**, **Mostly red**, **All reds**. The share of the ways in is
-  a fair game, so the bands' widths (10, 25, 30, 25 and 10 of every 100) are
-  how often a week lands in each. **A clean run** misses no major or minor
-  piece.
-- **Next week** is **rush hour**, **traffic** or an **empty road**, by how
-  far it can move us; then **the call**: **keep driving** or **park it** (our
-  rule: stop once the share is within 2% of either end, owner, 2026-10-27),
-  or **arrived** or a **dead end** (proofs, marked differently).
+- **The poles**, for our division's three rivals and our conference's
+  fifteen. **The floor**: if everything goes our way, the fewest wins our best
+  rival can be held to. **The bloc** is its proof: rivals who still play each
+  other, so however those games go, one of them reaches the floor. **The
+  ceiling**: if everything goes against us, the most wins a rival can still
+  reach. The two only ever close in.
+- **Pieces.** A game is named only by who plays: **our light** (us), a
+  **one-way** (a rival against the other conference: its loss helps us or
+  does nothing, its win hurts us or does nothing), a **crossroads** (two
+  rivals) and a **side street** (outside our conference). Each has a glyph
+  (`src/lib/symbols.ts`).
+- **A result** moved us **toward the best case** (made), **toward the worst
+  case** (missed), was **forced** (two rivals: one had to win, and which one
+  can still move a pole) or **idle**, against the same week with it the other
+  way. **Steps our way** and **steps against us** count how far the week
+  moved the poles, before to after. A week where neither floor rose and our
+  best finish held is **a clean run**.
+- **An objective**, the division or the #1 seed, is **clinched**, **in our
+  hands**, **needs help** or **out**, with **greens to go** and **reds to
+  spare**.
+- **The ladder**, best first: the #1 seed, a division title, a wild card,
+  out. Each week names the best rung still reachable and the worst already
+  ours. **The call**: **keep driving** while they are apart, **arrived** once
+  they meet on a seat, a **dead end** once no seat is left.
 
 The numbers are the point; the NFL is where they come from. Team codes are
 text, with no logos and no game footage (owner, 2026-10-27).
 
 ## What this package is, and is not
 
-It renders. It does not compute. The paths, the shares, the week's ways,
-the podium and the proofs come in as one JSON season, validated by
-`StorySeasonSchema` (`src/lib/story.ts`, contract version 5), and a malformed
-feed fails there rather than mid-render. Where no season is given, the stage
-plays `src/fixtures/season-2025.json`: the 2025 season as the engine
-evaluates it.
+It renders. It does not compute. The poles, the seeds and each result's
+move come in as one JSON season, validated by `StorySeasonSchema`
+(`src/lib/story.ts`, contract version 6), and a malformed feed fails there
+rather than mid-render. Where no season is given, the stage plays
+`src/fixtures/season-2025.json`: the 2025 season as the engine evaluates it.
 
 The real season comes from `paulgsc/server`'s `playoff-delta` job
 (`crates/playoff_delta`, whose README defines every field), which a weekly
@@ -56,29 +59,14 @@ before handing it to the stage.
 Two kinds of episode (`src/lib/slides.ts`), each slide with a fixed hold and
 a voiceover line written from the same data it draws:
 
-- **The legend** (week 0), played once: the pieces, their material, the
-  week's bands, next week and the call.
-- **A week**, one slide per question (`src/lib/reading.ts`), on the week's
-  ways: the best week and what it needed → the road from best to actual,
-  kickoff by kickoff → what our result left the league to do → the week's
-  band → the podium → next week (while a game is left) → the call → the
-  season so far → the week in one sentence:
-
-  > All reds. We missed our light; the league ran mostly red. Our loss woke
-  > four minors; we made one. Traffic next week, and we have a bye. Keep
-  > driving.
-
-The week's ways are every way its results could have gone, each counted
-against the same rests of the season, so the best week, the road, the
-band and the strip of the ways all come from one table and add up.
-
-## What the stage promises
-
-PDS1 (the verdict read off the paths) and PDS2 (a result coloured only by
-what the data proved) were retired by contract v2, and PDS3 (the path
-slide's words) by contract v3, which dropped the path slide. A light is made
-or missed by whether its game went the way the best week wanted, and sized
-by its price.
+- **The legend** (week 0), played once: the pieces, the poles on the
+  season's first table (our division held to 2 wins, our conference to 6),
+  what a result did, the objectives and their countdowns, the ladder and the
+  call.
+- **A week**, one slide per reading (`src/lib/reading.ts`): our division's
+  poles and the bloc that forces its floor → our conference's → which way
+  each result moved us → where each objective stands → the ladder and the
+  call → the season's envelope, closing → the week in one sentence.
 
 ## Recording
 
@@ -93,9 +81,7 @@ and `voiceover.md`; its header has the options.
 
 ## Next
 
-- **The NFL's tiebreakers in the count** (paulgsc/server#496): today a tie
-  goes to us, in the paths, the share and the clinch.
-- **A full clinch proof** (paulgsc/server#521): `clinched` is two short
-  proofs today, so an exit can come a week or two later than it could.
+- **The NFL's tiebreakers** (paulgsc/server#496): today a tie goes to us, in
+  every pole and seed.
 - **A landscape cut.** For long-form video, the portrait frame centered in a
   16:9 canvas with a side panel; a layout, not a redesign.

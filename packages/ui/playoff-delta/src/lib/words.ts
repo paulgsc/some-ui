@@ -1,26 +1,28 @@
 /**
- * The short's vocabulary (owner, 2026-10-28): every word it says about a
- * week, and every band and threshold behind one, in one pure table. A word
- * here works like a chess piece's name: taught once, in the legend episode,
- * then used every week to mean the same thing (`__tests__/words.test.ts`).
+ * The short's vocabulary (owner, 2026-11-03, on #2555): every word it says
+ * about a week, in one pure table. A word here works like a chess piece's
+ * name: taught once, in the legend episode, then used every week to mean the
+ * same thing (`__tests__/words.test.ts`).
  *
- * All of it comes from the image the show started with: driving through a
- * suburb, making or missing each light.
+ * The grammar is discrete events, never a weight: every number is an extreme
+ * over every way the rest of the season can go, with its proof.
  *
  * - **Pieces** are games, named only by who plays, so a noun never changes.
- * - **Material** is what a piece is worth this week: its price, in points of
- *   the share of the ways in.
- * - **The week** is a band of its rank: of the ways the week could have gone,
- *   how many would have left us worse. The share is a fair game, so a band's
- *   width is also how rare it is.
- * - **Next week** is a band of its spread; **the verdict** is a policy (keep
- *   driving, park it) or a proof (arrived, dead end), and they look different.
+ * - **The poles**: the floor (the best case for us) and the ceiling (the
+ *   worst), for our division's rivals and our conference's. The bloc is the
+ *   floor's proof.
+ * - **A result** moved us toward one pole, was forced, or was idle; made and
+ *   missed are the first two.
+ * - **An objective** (the division, the #1 seed) is clinched, in our hands,
+ *   needs help, or out, with two countdowns.
+ * - **The ladder** is the outcomes, best first; each week names the best rung
+ *   still reachable and the worst already ours. **The call** reads it.
  *
- * Words say what is counted ("of the ways the week could go"), never a
+ * Words say what can still happen ("however the rest goes"), never a
  * forecast (CLAUDE.md, "Say what it is").
  */
 
-import type { StoryKind, StoryPiece } from "./story"
+import type { StoryCohort, StoryKind } from "./story"
 
 /** A piece's noun: who plays decides it, and so how its result can move us. */
 export type PieceNoun = StoryKind | "outside"
@@ -30,7 +32,6 @@ export const PIECES: Readonly<
     PieceNoun,
     {
       readonly noun: string
-      readonly plural: string
       /** Who plays it. */
       readonly who: string
       /** How its result can move us: the rule that never changes. */
@@ -40,28 +41,24 @@ export const PIECES: Readonly<
 > = {
   own: {
     noun: "our light",
-    plural: "our lights",
     who: "Us.",
     moves: "A win always helps.",
   },
   exported: {
     noun: "one-way",
-    plural: "one-ways",
-    who: "A team in our race against the other conference.",
+    who: "A rival against the other conference.",
     moves:
-      "It only goes one way: their loss takes a win out of our race, so it helps us or does nothing.",
+      "It only goes one way at a time: the rival's loss helps us or does nothing, its win hurts us or does nothing.",
   },
   inside: {
     noun: "crossroads",
-    plural: "crossroads",
-    who: "Two teams in our race.",
+    who: "Two rivals.",
     moves:
-      "Either way: one of them gets the win, and which is better for us depends on who can afford it without passing us.",
+      "Forced: one of them gets the win whichever way it goes, and which one can still move a pole.",
   },
   outside: {
     noun: "side street",
-    plural: "side streets",
-    who: "Two teams outside our race.",
+    who: "Two teams outside our conference.",
     moves: "Never on our route.",
   },
 }
@@ -74,175 +71,178 @@ export const PIECE_ORDER: ReadonlyArray<PieceNoun> = [
   "outside",
 ]
 
-export type Material = "major" | "minor" | "idle"
-
-/** A piece's price, in share (points / 100), from which it is major. */
-const MAJOR = 0.01
-/** A piece's price from which it is minor: below it, too small to tell from zero. */
-const MINOR = 0.0025
-
-/**
- * What a piece is worth this week: major from a point, minor from a quarter
- * of a point, idle below that, or when its price is no bigger than its
- * sampling error.
- */
-export function materialOf(
-  piece: Pick<StoryPiece, "price" | "error">
-): Material {
-  if (piece.price <= piece.error || piece.price < MINOR) return "idle"
-  return piece.price >= MAJOR ? "major" : "minor"
-}
-
-/** Whether a piece is worth watching this week: major or minor. */
-export const live = (piece: Pick<StoryPiece, "price" | "error">): boolean =>
-  materialOf(piece) !== "idle"
-
-export const MATERIAL: Readonly<
-  Record<
-    Material,
-    { readonly word: string; readonly plural: string; readonly worth: string }
-  >
-> = {
-  major: { word: "major", plural: "majors", worth: "1 point or more" },
-  minor: { word: "minor", plural: "minors", worth: "¼ to 1 point" },
-  idle: {
-    word: "idle",
-    plural: "idle",
-    worth: "under ¼ point: too small to tell from zero",
+/** The poles, and the floor's proof. */
+export const POLES = {
+  floor: {
+    word: "the floor",
+    means:
+      "if everything goes our way, the fewest wins our best rival can be held to",
   },
-}
-
-/** The verbs: what a piece's result did, and what our result did to a piece. */
-export const VERBS = {
-  made: {
-    word: "made",
-    means: "it went the way the best week wanted",
+  ceiling: {
+    word: "the ceiling",
+    means:
+      "if everything goes against us, the most wins a rival can still reach",
   },
-  missed: {
-    word: "missed",
-    means: "it went the other way",
-  },
-  woke: {
-    word: "woke",
-    means: "idle before our result, major or minor after it",
+  bloc: {
+    word: "the bloc",
+    means:
+      "rivals who still play each other: however those games go, one of them reaches the floor",
   },
 } as const
 
-export type Band =
-  | "all-greens"
-  | "mostly-green"
-  | "stop-and-go"
-  | "mostly-red"
-  | "all-reds"
+/** Our two groups of rivals. */
+export const GROUPS = {
+  division: { word: "our division" },
+  conference: { word: "our conference" },
+} as const
 
-/**
- * The week's bands, best first, each from the rank it starts at: of the
- * week's ways, the share that would have left us worse. The share is a fair
- * game, so each band's width (10, 25, 30, 25, 10 of every 100) is how often a
- * week lands in it.
- */
-export const BANDS: ReadonlyArray<{
-  readonly band: Band
-  readonly from: number
-  readonly phrase: string
-}> = [
-  { band: "all-greens", from: 0.9, phrase: "All greens" },
-  { band: "mostly-green", from: 0.65, phrase: "Mostly green" },
-  { band: "stop-and-go", from: 0.35, phrase: "Stop-and-go" },
-  { band: "mostly-red", from: 0.1, phrase: "Mostly red" },
-  { band: "all-reds", from: 0, phrase: "All reds" },
+export type GroupKey = keyof typeof GROUPS
+
+/** A result's cohort, for one group. */
+export const COHORTS: Readonly<
+  Record<
+    StoryCohort,
+    { readonly phrase: string; readonly verb: string; readonly means: string }
+  >
+> = {
+  best: {
+    phrase: "toward the best case",
+    verb: "made",
+    means: "it lowered a rival's reach, or won us a game",
+  },
+  worst: {
+    phrase: "toward the worst case",
+    verb: "missed",
+    means: "it raised the floor or a rival's reach, or cost us a game",
+  },
+  forced: {
+    phrase: "forced",
+    verb: "forced",
+    means:
+      "two rivals played: one of them had to win it, and which one can still move a pole",
+  },
+  idle: {
+    phrase: "idle",
+    verb: "idle",
+    means: "neither pole moved",
+  },
+}
+
+/** The order cohorts are listed in. */
+export const COHORT_ORDER: ReadonlyArray<StoryCohort> = [
+  "best",
+  "worst",
+  "forced",
+  "idle",
 ]
-
-/** The band a rank lands in. */
-export function bandOf(rank: number): Band {
-  return BANDS.find((b) => rank >= b.from)?.band ?? "all-reds"
-}
-
-export const phraseOf = (band: Band): string =>
-  BANDS.find((b) => b.band === band)?.phrase ?? ""
-
-/** How wide a band is: how many of every 100 weeks land in it. */
-export function widthOf(band: Band): number {
-  const i = BANDS.findIndex((b) => b.band === band)
-  const top = i === 0 ? 1 : (BANDS[i - 1]?.from ?? 1)
-  return Math.round((top - (BANDS[i]?.from ?? 0)) * 100)
-}
 
 /** Earned, and literal. */
 export const CLEAN_RUN = {
   phrase: "a clean run",
-  means: "a week with a major or minor piece that missed none",
+  means: "a week where neither floor rose and our best finish held",
 } as const
 
-export type Stakes = "rush-hour" | "traffic" | "empty-road"
-
-/** Next week's spread, in share, from which it is rush hour, then traffic. */
-const RUSH_HOUR = 0.05
-const TRAFFIC = 0.01
-
-export function stakesOf(spread: number): Stakes {
-  if (spread >= RUSH_HOUR) return "rush-hour"
-  if (spread >= TRAFFIC) return "traffic"
-  return "empty-road"
-}
-
-export const STAKES: Readonly<
-  Record<Stakes, { readonly phrase: string; readonly means: string }>
+/** What we play for, against a group. */
+export const OBJECTIVES: Readonly<
+  Record<GroupKey, { readonly word: string; readonly against: string }>
 > = {
-  "rush-hour": {
-    phrase: "Rush hour",
-    means: "next week can move us 5 points or more",
-  },
-  traffic: { phrase: "Traffic", means: "next week can move us 1 to 5 points" },
-  "empty-road": {
-    phrase: "Empty road",
-    means: "next week can move us less than a point",
-  },
+  division: { word: "the division", against: "our division rivals" },
+  conference: { word: "the #1 seed", against: "the whole conference" },
 }
 
-export type Call = "keep-driving" | "park-it" | "arrived" | "dead-end"
+export type Standing = "clinched" | "hands" | "help" | "out"
+
+/** Where an objective stands; each is a fact about every way the rest can go. */
+export const STANDINGS: Readonly<
+  Record<Standing, { readonly phrase: string; readonly means: string }>
+> = {
+  clinched: { phrase: "Clinched", means: "ours however the rest goes" },
+  hands: {
+    phrase: "In our hands",
+    means: "if we win out it's ours, whatever else happens",
+  },
+  help: {
+    phrase: "Needs help",
+    means: "still there, if other results go our way",
+  },
+  out: { phrase: "Out", means: "no way left" },
+}
+
+export const STANDING_ORDER: ReadonlyArray<Standing> = [
+  "clinched",
+  "hands",
+  "help",
+  "out",
+]
+
+/** The two countdowns of an objective. */
+export const COUNTDOWNS = {
+  greens: {
+    phrase: "greens to go",
+    one: "green to go",
+    means:
+      "the most a rival can still reach, less our wins: each win of ours takes one off, and so does a loss by the only rival who can reach that far",
+  },
+  reds: {
+    phrase: "reds to spare",
+    one: "red to spare",
+    means:
+      "our best finish, less the floor: each game we don't win spends one, and so does the floor rising",
+  },
+} as const
 
 /**
- * The verdict's words. A policy is the owner's rule for when to stop
- * watching; a proof is a fact about every way the season can go. They are
- * said, and marked, differently.
+ * How far a week moved the poles, before to after. Counted in wins: the
+ * most a rival can reach falling and our own wins count our way, the floor
+ * rising and our best finish dropping count against us.
+ */
+export const STEPS = {
+  ours: { phrase: "our way", one: "step", many: "steps" },
+  against: { phrase: "against us", one: "step", many: "steps" },
+} as const
+
+export type Rung = "top" | "division" | "wildcard" | "out"
+
+/** The ladder of outcomes, best first: the utility, in order. */
+export const RUNGS: Readonly<
+  Record<Rung, { readonly phrase: string; readonly seeds: string }>
+> = {
+  top: { phrase: "the #1 seed", seeds: "seed 1" },
+  division: { phrase: "a division title", seeds: "seeds 2 to 4" },
+  wildcard: { phrase: "a wild card", seeds: "seeds 5 to 7" },
+  out: { phrase: "out", seeds: "no seed" },
+}
+
+export const RUNG_ORDER: ReadonlyArray<Rung> = [
+  "top",
+  "division",
+  "wildcard",
+  "out",
+]
+
+export type Call = "keep-driving" | "arrived" | "dead-end"
+
+/**
+ * The call, read off the ladder. Each is a fact, not a rule: the ladder is
+ * open, it closed on a seat, or no seat is left.
  */
 export const CALLS: Readonly<
-  Record<
-    Call,
-    {
-      readonly phrase: string
-      readonly kind: "policy" | "proof"
-      readonly means: string
-    }
-  >
+  Record<Call, { readonly phrase: string; readonly means: string }>
 > = {
   "keep-driving": {
     phrase: "Keep driving",
-    kind: "policy",
-    means: "keep watching",
-  },
-  "park-it": {
-    phrase: "Park it",
-    kind: "policy",
-    means: "98% or more of the ways in, or 2% or less: we stop watching",
+    means: "the best rung and the worst are still apart: there is more to see",
   },
   arrived: {
     phrase: "Arrived",
-    kind: "proof",
-    means: "in, whatever happens",
+    means:
+      "the best rung and the worst met on a seat: the rest of the season can't change which rung we land on",
   },
   "dead-end": {
     phrase: "Dead end",
-    kind: "proof",
-    means: "no way in is left",
+    means: "no seat is left",
   },
 }
-
-const MEDALS = ["gold", "silver", "bronze"] as const
-
-/** The medal a podium place earns: "gold" for 1. */
-export const medalOf = (place: number): string => MEDALS[place - 1] ?? ""
 
 /** "one" to "ten" in words, digits past that. */
 export function numberWord(n: number): string {

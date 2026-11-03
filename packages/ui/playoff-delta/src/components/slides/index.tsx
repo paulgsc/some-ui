@@ -1,27 +1,27 @@
 import type { ComponentType } from "react"
 import type { LegendSlide, WeekSlide } from "@playoff-delta/lib/slides"
 
-import { Outro, Podium, Season, Stake, Verdict } from "./close"
-import { BandsLegend, Calls, Legend, Material, Pieces } from "./legend"
-import type { SlideProps } from "./shared"
-import { Best, Given, Rank, Road } from "./week"
+import { LadderSlide, Outro, Season, Standings } from "./close"
+import { Calls, Legend, Moves, Objectives, Pieces, PolesLegend } from "./legend"
+import type { LegendProps, SlideProps } from "./shared"
+import { Conference, Division, Results } from "./week"
 
 export const SLIDES: Readonly<Record<WeekSlide, ComponentType<SlideProps>>> = {
-  best: Best,
-  road: Road,
-  given: Given,
-  rank: Rank,
-  podium: Podium,
-  stake: Stake,
-  verdict: Verdict,
+  division: Division,
+  conference: Conference,
+  results: Results,
+  standings: Standings,
+  ladder: LadderSlide,
   season: Season,
   outro: Outro,
 }
 
-export const LEGEND: Readonly<Record<LegendSlide, ComponentType>> = {
-  legend: Legend,
-  pieces: Pieces,
-  material: Material,
-  bands: BandsLegend,
-  calls: Calls,
-}
+export const LEGEND: Readonly<Record<LegendSlide, ComponentType<LegendProps>>> =
+  {
+    legend: Legend,
+    pieces: Pieces,
+    poles: PolesLegend,
+    moves: Moves,
+    objectives: Objectives,
+    calls: Calls,
+  }

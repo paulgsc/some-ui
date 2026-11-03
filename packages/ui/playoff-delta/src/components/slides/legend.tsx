@@ -1,25 +1,29 @@
 /**
- * The legend episode: the vocabulary, taught once (`@playoff-delta/lib/words`).
- * Every weekly short then uses these words and marks without teaching them
- * again.
+ * The legend episode: the vocabulary, taught once (`@playoff-delta/lib/words`)
+ * on the season's first table. Every weekly short then uses these words and
+ * marks without teaching them again.
  */
 import type { JSX } from "react"
 import { SymbolGlyph } from "@playoff-delta/components/symbol"
+import { blocLine, legendFloor } from "@playoff-delta/lib/reading"
+import { MODEL } from "@playoff-delta/lib/slides"
 import { symbolFor } from "@playoff-delta/lib/symbols"
 import {
-  BANDS,
   CALLS,
   CLEAN_RUN,
-  MATERIAL,
+  COHORT_ORDER,
+  COHORTS,
+  COUNTDOWNS,
+  OBJECTIVES,
   PIECE_ORDER,
   PIECES,
-  STAKES,
-  VERBS,
-  widthOf,
+  POLES,
+  STANDING_ORDER,
+  STANDINGS,
 } from "@playoff-delta/lib/words"
 
-import { BAND_CLASS, Bands, PieceLight } from "./marks"
-import { Kicker, Reveal } from "./shared"
+import { Envelope, Ladder, ResultLight, StandingChip } from "./marks"
+import { Kicker, Reveal, type LegendProps } from "./shared"
 
 export const Legend = (): JSX.Element => {
   return (
@@ -27,14 +31,14 @@ export const Legend = (): JSX.Element => {
       <Kicker>Playoff Delta · the legend</Kicker>
       <div className="my-auto flex flex-col gap-[4cqw]">
         <Reveal at={0.2} className="text-[9cqw] leading-[1.1] font-extrabold">
-          Every week there was a best way for it to go.
+          Every week, two numbers about our rivals.
         </Reveal>
         <Reveal
           at={1.2}
           className="text-muted-foreground text-[5.5cqw] font-semibold text-balance"
         >
-          Each short shows how close the week came, where it broke away, and who
-          came closest.
+          The best case and the worst, over every way the rest of the season can
+          go, and which way the week moved us.
         </Reveal>
         <Reveal at={2.2} className="text-[6cqw] font-bold">
           First, the words.
@@ -79,68 +83,106 @@ export const Pieces = (): JSX.Element => {
   )
 }
 
-export const Material = (): JSX.Element => {
-  const sizes = [
-    { m: "major", price: 0.05 },
-    { m: "minor", price: 0.005 },
-    { m: "idle", price: 0 },
-  ] as const
+export const PolesLegend = ({ season }: LegendProps): JSX.Element => {
+  const first = season.weeks[0]?.poles.before
   return (
     <>
-      <Kicker>What a piece is worth</Kicker>
-      <h2 className="pd-q">
-        Its price: how far the best week drops without it.
-      </h2>
+      <Kicker>The poles</Kicker>
+      <div className="flex flex-col gap-[1.6cqw]">
+        {(["floor", "bloc", "ceiling"] as const).map((k, i) => (
+          <Reveal key={k} at={0.4 + i * 0.5} className="pd-say">
+            <b>{POLES[k].word}</b>: {POLES[k].means}.
+          </Reveal>
+        ))}
+      </div>
+      {first ? (
+        <>
+          <Envelope
+            before={first}
+            after={first}
+            group="division"
+            max={season.seasonLength}
+            at={2}
+          />
+          <Reveal at={2.6} className="pd-card">
+            <span className="pd-mono pd-small text-muted-foreground">
+              before a snap
+            </span>
+            <span className="pd-say">{blocLine(first.division)}</span>
+          </Reveal>
+          <Reveal at={3.2} className="pd-small text-muted-foreground">
+            {legendFloor(season)}
+          </Reveal>
+        </>
+      ) : null}
+    </>
+  )
+}
+
+export const Moves = (): JSX.Element => {
+  return (
+    <>
+      <Kicker>What a result did</Kicker>
+      <h2 className="pd-q">Which way each result moved us.</h2>
       <div className="pd-lights">
-        {sizes.map(({ m, price }, i) => (
-          <PieceLight
-            key={m}
-            noun="exported"
-            material={m}
-            price={price}
-            state="waiting"
-            label={MATERIAL[m].word}
-            note={MATERIAL[m].worth}
+        {COHORT_ORDER.map((c, i) => (
+          <ResultLight
+            key={c}
+            noun={c === "forced" ? "inside" : "exported"}
+            cohort={c}
+            label={COHORTS[c].verb}
+            note={
+              COHORTS[c].phrase === COHORTS[c].verb
+                ? undefined
+                : COHORTS[c].phrase
+            }
             at={0.6 + i * 0.4}
           />
         ))}
       </div>
-      <div className="flex flex-col gap-[1.6cqw]">
-        {(["made", "missed", "woke"] as const).map((v, i) => (
-          <Reveal key={v} at={2 + i * 0.4} className="pd-say">
-            <b>{VERBS[v].word}</b>: {VERBS[v].means}
+      <div className="flex flex-col gap-[1.4cqw]">
+        {COHORT_ORDER.map((c, i) => (
+          <Reveal key={c} at={2.2 + i * 0.3} className="pd-say">
+            <b>{COHORTS[c].phrase}</b>: {COHORTS[c].means}
           </Reveal>
         ))}
       </div>
-      <Reveal at={3.4} className="pd-small text-muted-foreground">
-        A light&apos;s size is its price, on the same scale every week.
+      <Reveal at={3.6} className="pd-say">
+        <b>{CLEAN_RUN.phrase}</b>: {CLEAN_RUN.means}.
       </Reveal>
     </>
   )
 }
 
-export const BandsLegend = (): JSX.Element => {
+export const Objectives = (): JSX.Element => {
   return (
     <>
-      <Kicker>How a week went</Kicker>
+      <Kicker>What we play for</Kicker>
       <h2 className="pd-q">
-        Of the ways the week could have gone, how many would have left us worse?
+        {OBJECTIVES.division.word}, against {OBJECTIVES.division.against};{" "}
+        {OBJECTIVES.conference.word}, against {OBJECTIVES.conference.against}.
       </h2>
-      <Bands at={0.6} />
-      <div className="flex flex-col gap-[1.2cqw]">
-        {BANDS.map((b, i) => (
+      <div className="flex flex-col gap-[1.6cqw]">
+        {STANDING_ORDER.map((s, i) => (
           <Reveal
-            key={b.band}
-            at={1.6 + i * 0.25}
-            className="pd-mono pd-small flex justify-between"
+            key={s}
+            at={0.6 + i * 0.4}
+            className="flex items-center gap-[2cqw]"
           >
-            <b className={BAND_CLASS[b.band]}>{b.phrase}</b>
-            <span>{widthOf(b.band)} weeks in 100</span>
+            <StandingChip standing={s} />
+            <span className="pd-say">{STANDINGS[s].means}</span>
           </Reveal>
         ))}
       </div>
-      <Reveal at={3.2} className="pd-say">
-        <b>{CLEAN_RUN.phrase}</b>: {CLEAN_RUN.means}.
+      <div className="flex flex-col gap-[1.2cqw]">
+        {(["greens", "reds"] as const).map((k, i) => (
+          <Reveal key={k} at={2.4 + i * 0.4} className="pd-say">
+            <b>{COUNTDOWNS[k].phrase}</b>: {COUNTDOWNS[k].means}.
+          </Reveal>
+        ))}
+      </div>
+      <Reveal at={3.2} className="pd-small text-muted-foreground">
+        {MODEL}
       </Reveal>
     </>
   )
@@ -149,22 +191,15 @@ export const BandsLegend = (): JSX.Element => {
 export const Calls = (): JSX.Element => {
   return (
     <>
-      <Kicker>Next week, and the call</Kicker>
-      <div className="flex flex-col gap-[1.4cqw]">
-        {Object.entries(STAKES).map(([k, s], i) => (
-          <Reveal key={k} at={0.4 + i * 0.3} className="pd-say">
-            <b>{s.phrase}</b>: {s.means}
-          </Reveal>
-        ))}
-      </div>
+      <Kicker>The ladder, and the call</Kicker>
+      <Ladder best="top" worst="out" at={0.4} />
       <div className="flex flex-col gap-[1.4cqw]">
         {Object.entries(CALLS).map(([k, c], i) => (
           <Reveal key={k} at={1.6 + i * 0.35} className="pd-card">
-            <span className="pd-mono pd-small text-muted-foreground">
-              {c.kind === "proof" ? "proven" : "our rule"}
-            </span>
             <span className="pd-say">
-              <b className={c.kind === "proof" ? "pd-proof" : ""}>{c.phrase}</b>
+              <b className={k === "keep-driving" ? "" : "pd-proof"}>
+                {c.phrase}
+              </b>
               : {c.means}
             </span>
           </Reveal>

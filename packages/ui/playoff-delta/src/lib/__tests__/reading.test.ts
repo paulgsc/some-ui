@@ -1,110 +1,117 @@
 import {
+  blocLine,
   callOf,
   cleanRun,
-  costs,
-  leagueBand,
-  ownPart,
-  sentence,
-  weekBand,
-  woke,
+  greensOf,
+  ladderLine,
+  redsOf,
+  rungOf,
+  standingOf,
 } from "@playoff-delta/lib/reading"
-import type { StoryWeek } from "@playoff-delta/lib/story"
+import { SAMPLE_SEASON } from "@playoff-delta/lib/sample"
+import type { PoleGroup, Poles, StoryWeek } from "@playoff-delta/lib/story"
 import { describe, expect, it } from "vitest"
 
-import { SEASON7, WEEK7 } from "./week7"
+const group = (
+  floor: number,
+  lose: number,
+  win: number,
+  bloc: PoleGroup["bloc"] = { teams: ["LAR"], banked: floor, games: 0 }
+): PoleGroup => ({ floor, bloc, ceiling: { lose, win, team: "LAR" } })
 
-describe("week 7, read in the vocabulary", () => {
-  it("says the whole week in one sentence", () => {
-    expect(sentence(SEASON7, WEEK7)).toBe(
-      "All reds. We missed our light; the league ran mostly red. Our loss woke four minors; we made one. Traffic next week, and we have a bye. Keep driving."
-    )
+const poles = (
+  us: readonly [number, number],
+  division: PoleGroup,
+  seeds: Poles["seeds"] = { best: 1, worst: null }
+): Poles => ({
+  us: { low: us[0], high: us[1] },
+  division,
+  conference: division,
+  held: division.floor,
+  seeds,
+})
+
+describe("an objective's standing", () => {
+  it.each([
+    // our low reaches the ceiling: clinched
+    [[12, 14], group(9, 12, 11), "clinched"],
+    // winning out reaches the ceiling with us winning out
+    [[10, 14], group(9, 15, 14), "hands"],
+    // winning out reaches the floor only
+    [[10, 12], group(9, 15, 14), "help"],
+    [[10, 12], group(13, 15, 14), "out"],
+  ] as const)("%j against %j is %s", (us, g, standing) => {
+    expect(standingOf(poles(us, g), "division")).toBe(standing)
   })
 
-  it("splits the road at our light, and the drops add up to the gap", () => {
-    const c = costs(WEEK7)
-    expect(c.own).toBeCloseTo(0.0292, 10)
-    expect(c.own + c.league).toBeCloseTo(
-      WEEK7.ways.best - WEEK7.ways.actual,
-      10
-    )
-    expect(c.drops.reduce((a, b) => a + b, 0)).toBeCloseTo(
-      WEEK7.ways.best - WEEK7.ways.actual,
-      10
-    )
-  })
-
-  it("reads the bands and the pieces our loss woke", () => {
-    expect(weekBand(WEEK7)).toBe("all-reds")
-    expect(leagueBand(WEEK7)).toBe("mostly-red")
-    expect(ownPart(WEEK7)).toBe("missed")
-    expect(woke(WEEK7).map((p) => [p.game.want, p.made])).toEqual([
-      ["NE", false],
-      ["DEN", true],
-      ["LV", false],
-      ["KC", false],
-    ])
-    expect(cleanRun(WEEK7)).toBe(false)
+  it("counts down to it in whole steps", () => {
+    const p = poles([10, 14], group(9, 15, 14))
+    expect(greensOf(p, "division")).toBe(5)
+    expect(redsOf(p, "division")).toBe(5)
+    expect(greensOf(poles([12, 14], group(9, 12, 11)), "division")).toBe(0)
   })
 })
 
-describe("our part", () => {
-  const without = (over: Partial<StoryWeek>): StoryWeek => ({
-    ...WEEK7,
-    ...over,
+describe("the ladder", () => {
+  it.each([
+    [1, "top"],
+    [2, "division"],
+    [4, "division"],
+    [5, "wildcard"],
+    [7, "wildcard"],
+    [null, "out"],
+  ] as const)("seed %s stands on %s", (seed, rung) => {
+    expect(rungOf(seed)).toBe(rung)
   })
 
-  it("is a bye with no game, and a tie with a game none of the ways hold", () => {
-    expect(ownPart(without({ game: null }))).toBe("bye")
-    const ways = {
-      ...WEEK7.ways,
-      games: WEEK7.ways.games.filter((g) => g.kind !== "own"),
+  const week = (seeds: Poles["seeds"]): StoryWeek => {
+    const first = SAMPLE_SEASON.weeks[0]
+    if (!first) throw new Error("no weeks")
+    return {
+      ...first,
+      poles: { ...first.poles, after: { ...first.poles.after, seeds } },
     }
-    expect(ownPart(without({ ways }))).toBe("tie")
-  })
+  }
 
-  it("is idle when our light can't move us", () => {
-    const ways = {
-      ...WEEK7.ways,
-      games: WEEK7.ways.games.map((g) =>
-        g.kind === "own" ? { ...g, price: 0 } : g
-      ),
-    }
-    expect(ownPart(without({ ways }))).toBe("idle")
-  })
-
-  it("wakes nothing on a bye, and the league's band is the whole week's", () => {
-    const bye = without({ game: null, ways: { ...WEEK7.ways, given: null } })
-    expect(woke(bye)).toEqual([])
-    expect(leagueBand(bye)).toBe(weekBand(bye))
-  })
-
-  it("earns a clean run with no major or minor piece missed, and only with one", () => {
-    const ways = {
-      ...WEEK7.ways,
-      games: WEEK7.ways.games.map((g) => ({ ...g, winner: g.want })),
-    }
-    expect(cleanRun(without({ ways }))).toBe(true)
-    const still = {
-      ...ways,
-      games: ways.games.map((g) => ({ ...g, price: 0 })),
-    }
-    expect(cleanRun(without({ ways: still }))).toBe(false)
+  it("calls it open, arrived or a dead end", () => {
+    expect(callOf(week({ best: 1, worst: null }))).toBe("keep-driving")
+    expect(callOf(week({ best: 5, worst: 7 }))).toBe("arrived")
+    expect(callOf(week({ best: 2, worst: 5 }))).toBe("keep-driving")
+    expect(callOf(week({ best: null, worst: null }))).toBe("dead-end")
+    expect(ladderLine(week({ best: 5, worst: 6 }).poles.after)).toBe(
+      "A wild card, whatever happens."
+    )
   })
 })
 
-describe("the call", () => {
-  it("is a policy while watching or settled, a proof once clinched or out", () => {
-    expect(callOf(WEEK7)).toBe("keep-driving")
-    expect(callOf({ ...WEEK7, clinched: true })).toBe("arrived")
-    expect(callOf({ ...WEEK7, share: { ...WEEK7.share, after: 0.99 } })).toBe(
-      "park-it"
+describe("the floor's proof", () => {
+  it("names a few rivals and counts many", () => {
+    expect(
+      blocLine(
+        group(3, 17, 15, { teams: ["LAR", "SEA", "ARI"], banked: 2, games: 6 })
+      )
+    ).toBe(
+      "LAR, SEA and ARI: 2 wins banked and 6 games left against each other. However those go, one of them reaches 3."
     )
     expect(
-      callOf({
-        ...WEEK7,
-        paths: { ...WEEK7.paths, after: [null, null] },
-        share: { ...WEEK7.share, after: 0 },
-      })
-    ).toBe("dead-end")
+      blocLine(
+        group(7, 17, 17, {
+          teams: ["DAL", "WAS", "NYG", "DET", "GB"],
+          banked: 20.5,
+          games: 9,
+        })
+      )
+    ).toMatch(/^Five rivals: 20½ wins banked/)
+    expect(blocLine(group(12, 14, 13))).toBe(
+      "LAR has 12 wins already: the floor is 12."
+    )
+  })
+})
+
+describe("the bundled season", () => {
+  it("has clean runs and weeks that are not", () => {
+    const clean = SAMPLE_SEASON.weeks.filter(cleanRun)
+    expect(clean.length).toBeGreaterThan(0)
+    expect(clean.length).toBeLessThan(SAMPLE_SEASON.weeks.length)
   })
 })
