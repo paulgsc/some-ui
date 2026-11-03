@@ -1466,7 +1466,6 @@ reaches:
   `device-my-data-delete.tsx`. For a draft's delete: every module in
   `apps/www` and `packages` that deletes a recording on the phone.
 - _Why not enforced:_
-  - The checks above hold who sends a `DELETE` and who holds the port.
   - **Lint** can't hold that the port runs only after the person's confirm
     in the sheet: that is a path through a component's props and the
     step's states. A rule that followed it would have to trace every

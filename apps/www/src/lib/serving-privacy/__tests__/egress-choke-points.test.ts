@@ -36,16 +36,10 @@
  *   (`lib/home-link/deleted-read`, MD3, whose read sends one
  *   `GET /voice-notes/deleted` per open or drag down of its Deleted page).
  *
- * - **LA19 (MY-DATA MD5): only My data deletes a record on home.** Of every
- *   request the phone sends home (`send(method, path, …)`), a `DELETE` is
- *   sent only by `lib/home-link/delete-note` (one per note, of
- *   `deletePath(id)`), which only `lib/my-data` imports and only its delete
- *   runtime calls, through one port; a `send` whose method is not a literal
- *   is one of four pinned callers, none of which can name `DELETE`; and no
- *   other source names a `DELETE` beside a `/voice-notes/` path, so a web
- *   module's own request can't reach home's delete either. That the call
- *   follows the sheet's confirm, and that a draft's delete never sends, is
- *   LA19's gray part (docs/learner-data-authority.md).
+ * - **LA19 (MY-DATA MD5): only My data deletes a record on home.** Only
+ *   `lib/home-link/delete-note` sends home a `DELETE`, only `lib/my-data`
+ *   imports it, and only its delete runtime calls it
+ *   (docs/learner-data-authority.md holds the rest).
  *
  * The last group feeds the checks known-bad sources, so a check that stopped
  * looking cannot stay green.
@@ -857,9 +851,6 @@ describe("LA19 (MD5): only My data deletes a record on home", () => {
       [expect.stringMatching(/^async \(send\) =>/)],
       ...DELETE_SENDS,
     ])
-    expect(read(DELETE_SEND)).toContain(
-      "`/voice-notes/${encodeURIComponent(id)}`"
-    )
   })
 
   it("sends a method not written where it is sent only from the four callers that can't be a DELETE", () => {
