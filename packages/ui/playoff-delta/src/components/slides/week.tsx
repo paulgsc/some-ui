@@ -1,253 +1,169 @@
 /**
- * The week's first four questions, on its ways: the best week (1), the road
- * from best to actual in kickoff order (2), what our result left the league
- * to do (3), and the week's band among all its ways (4).
+ * The week's first three readings: our division's poles (1), our
+ * conference's (2), and which way each result moved us (3).
  */
 import type { JSX } from "react"
-import { SPREADS_DEFINED, spreadsOf } from "@playoff-delta/lib/luck"
 import {
+  blocLine,
+  ceilingLine,
   cleanRun,
-  costs,
-  leagueBand,
-  leagueClause,
-  leaguePieces,
-  ownPart,
-  piecesOf,
-  weekBand,
-  woke,
-  worseOf100,
-  type PieceRead,
+  cohortCounts,
+  movesOf,
+  stepsOf,
 } from "@playoff-delta/lib/reading"
-import { MODEL, over } from "@playoff-delta/lib/slides"
-import { percent, signed, size } from "@playoff-delta/lib/story"
-import { CLEAN_RUN, phraseOf } from "@playoff-delta/lib/words"
-
+import { MODEL } from "@playoff-delta/lib/slides"
+import { steps, wins, type StoryResult } from "@playoff-delta/lib/story"
 import {
-  BAND_CLASS,
-  Bands,
-  LIGHTS_SHOWN,
-  PieceLight,
-  priceNote,
-  Strip,
-} from "./marks"
+  CLEAN_RUN,
+  COHORT_ORDER,
+  COHORTS,
+  GROUPS,
+  POLES,
+  type GroupKey,
+} from "@playoff-delta/lib/words"
+
+import { Envelope, LIGHTS_SHOWN, ResultLight } from "./marks"
 import { Kicker, Reveal, type SlideProps } from "./shared"
 
-const label = (p: PieceRead): string =>
-  over(p.game.home, p.game.away, p.piece.want)
+/** "SEA over LAR". */
+const label = (r: StoryResult): string =>
+  `${r.winner} over ${r.winner === r.home ? r.away : r.home}`
 
-export const Best = ({ week }: SlideProps): JSX.Element => {
-  const { ways } = week
-  const pieces = piecesOf(week)
-  const live = [...pieces]
-    .filter((p) => p.material !== "idle")
-    .sort((a, b) => b.piece.price - a.piece.price)
-  const shown = live.slice(0, LIGHTS_SHOWN)
-  const more = live.length - shown.length
-  const idle = pieces.length - live.length
+const GroupSlide = ({
+  season,
+  week,
+  group,
+}: SlideProps & { group: GroupKey }): JSX.Element => {
+  const { before, after } = week.poles
+  const g = after[group]
+  const moved = stepsOf(week, group)
   return (
     <>
-      <Kicker>Week {week.week} · the best week</Kicker>
-      <div>
-        <b className="pd-big block">{percent(ways.best)}</b>
-        <span className="pd-say text-muted-foreground">
-          of the ways in, the best any way this week could leave us
-        </span>
-      </div>
-      <Reveal at={0.4}>
-        <Strip
-          low={ways.worst}
-          high={ways.best}
-          rows={ways.strip.slice(0, 1)}
-          marks={[
-            {
-              at: ways.mean[0] ?? ways.best,
-              label: `now ${percent(ways.mean[0] ?? 0)}`,
-              tone: "mean",
-              reveal: 0.9,
-            },
-            {
-              at: ways.best,
-              label: `best ${percent(ways.best)}`,
-              tone: "best",
-              reveal: 1.2,
-            },
-          ]}
-        />
-      </Reveal>
-      <Reveal at={1.6} className="pd-small text-muted-foreground">
-        It needed:
-      </Reveal>
-      <div className="pd-lights">
-        {shown.map((p, i) => (
-          <PieceLight
-            key={`${p.game.home}-${p.game.away}`}
-            noun={p.game.kind}
-            material={p.material}
-            price={p.piece.price}
-            state="waiting"
-            label={label(p)}
-            note={priceNote(p.piece.price)}
-            at={1.8 + i * 0.15}
-          />
-        ))}
-      </div>
-      <Reveal at={2.6} className="pd-small text-muted-foreground">
-        {more > 0 ? `${more} more major or minor. ` : ""}
-        {idle > 0
-          ? `${idle} more ${idle === 1 ? "game was" : "games were"} idle. `
-          : ""}
-        {ways.games.length} games, so{" "}
-        {Math.pow(2, ways.games.length).toLocaleString("en-US")} ways the week
-        could go.
-      </Reveal>
-    </>
-  )
-}
-
-export const Road = ({ week }: SlideProps): JSX.Element => {
-  const { ways } = week
-  const pieces = piecesOf(week)
-  const c = costs(week)
-  const step = 0.45
-  const start = 0.8
-  return (
-    <>
-      <Kicker>Week {week.week} · the road</Kicker>
-      <div>
-        <b className="pd-big block">
-          {percent(ways.best)} → {percent(ways.actual)}
-        </b>
-        <span className="pd-say text-muted-foreground">
-          the best week still possible, kickoff by kickoff
-        </span>
-      </div>
-      <Strip
-        low={ways.worst}
-        high={ways.best}
-        rows={ways.strip}
-        start={start}
-        step={step}
-        marks={[
-          {
-            at: ways.best,
-            label: `best ${percent(ways.best)}`,
-            tone: "best",
-            reveal: 0.4,
-          },
-          {
-            at: ways.actual,
-            label: `ours ${percent(ways.actual)}`,
-            tone: "actual",
-            reveal: start + pieces.length * step,
-          },
-        ]}
-      />
-      <div className="pd-road">
-        {pieces.map((p, i) => {
-          const drop = c.drops[i] ?? 0
-          return (
-            <PieceLight
-              key={`${p.game.home}-${p.game.away}`}
-              noun={p.game.kind}
-              material={p.material}
-              price={p.piece.price}
-              state={p.made ? "made" : "missed"}
-              label={p.game.winner}
-              note={drop > 0.00005 ? `−${size(drop)}` : "·"}
-              at={start + (i + 1) * step}
-              compact
-            />
-          )
-        })}
-      </div>
-      <Reveal
-        at={start + pieces.length * step + 0.3}
-        className="pd-mono pd-small flex flex-wrap gap-x-[3cqw]"
-      >
-        {ownPart(week) === "bye" || ownPart(week) === "tie" ? null : (
-          <span>
-            our light <b className="text-destructive">−{size(c.own)}</b>
+      <Kicker>
+        Week {week.week} · {GROUPS[group].word}
+      </Kicker>
+      <div className="grid grid-cols-2 gap-[3cqw]">
+        <div>
+          <span className="pd-mono pd-small text-muted-foreground">
+            {POLES.floor.word}
           </span>
-        )}
+          <b className="pd-big block">{wins(g.floor)}</b>
+          <span className="pd-small text-muted-foreground">
+            {g.floor === before[group].floor
+              ? "held"
+              : `from ${wins(before[group].floor)}`}
+          </span>
+        </div>
+        <div>
+          <span className="pd-mono pd-small text-muted-foreground">
+            {POLES.ceiling.word}
+          </span>
+          <b className="pd-big block">{wins(g.ceiling.lose)}</b>
+          <span className="pd-small text-muted-foreground">
+            {g.ceiling.lose === before[group].ceiling.lose
+              ? "held"
+              : `from ${wins(before[group].ceiling.lose)}`}
+          </span>
+        </div>
+      </div>
+      <Envelope
+        before={before}
+        after={after}
+        group={group}
+        max={season.seasonLength}
+        at={0.5}
+      />
+      <Reveal at={1.4} className="pd-card">
+        <span className="pd-mono pd-small text-muted-foreground">
+          {POLES.bloc.word}
+        </span>
+        <span className="pd-say">{blocLine(g)}</span>
+      </Reveal>
+      <Reveal at={2} className="pd-say">
+        {ceilingLine(g)}
+        {group === "conference" && after.held > g.floor
+          ? ` Holding our division to its floor lifts the floor to ${wins(after.held)}.`
+          : ""}
+      </Reveal>
+      <Reveal at={2.6} className="pd-mono pd-small flex flex-wrap gap-x-[3cqw]">
         <span>
-          the league <b className="text-destructive">−{size(c.league)}</b>
+          toward the best case{" "}
+          <b className="text-success">{wins(moved.best)}</b>
+        </span>
+        <span>
+          toward the worst{" "}
+          <b className="text-destructive">{wins(moved.worst)}</b>
         </span>
       </Reveal>
     </>
   )
 }
 
-export const Given = ({ week }: SlideProps): JSX.Element => {
-  const part = ownPart(week)
-  const band = leagueBand(week)
-  const key = (p: PieceRead): string => `${p.game.home}-${p.game.away}`
-  const awake = new Set(woke(week).map(key))
-  const shown = [...leaguePieces(week)]
-    .filter((p) => p.material !== "idle")
-    .sort((a, b) => b.piece.price - a.piece.price)
+export const Division = (props: SlideProps): JSX.Element => (
+  <GroupSlide {...props} group="division" />
+)
+
+export const Conference = (props: SlideProps): JSX.Element => (
+  <GroupSlide {...props} group="conference" />
+)
+
+export const Results = ({ week }: SlideProps): JSX.Element => {
+  const moves = movesOf(week, "conference")
+  // Ours first, then what moved a pole, the forced and idle last.
+  const order = (c: (typeof moves)[number]): number =>
+    c.result.kind === "own" ? -1 : COHORT_ORDER.indexOf(c.cohort)
+  const shown = [...moves]
+    .sort((a, b) => order(a) - order(b))
     .slice(0, LIGHTS_SHOWN)
-  const lead =
-    part === "bye" || part === "tie"
-      ? "no result of ours: the week was the league's"
-      : `given our ${part === "made" ? "win" : part === "missed" ? "loss" : "result"}`
+  const counts = cohortCounts(week, "conference")
+  const division = cohortCounts(week, "division")
   return (
     <>
-      <Kicker>Week {week.week} · the league</Kicker>
-      <div>
-        <span className="pd-say text-muted-foreground">{lead}, it ran</span>
-        <b className={`pd-big block ${BAND_CLASS[band]}`}>
-          {phraseOf(band).toLowerCase()}
-        </b>
-      </div>
-      <Reveal at={0.5} className="pd-say">
-        {leagueClause(week)}
-      </Reveal>
+      <Kicker>Week {week.week} · the results</Kicker>
+      <h2 className="pd-q">Which way did each result move us?</h2>
       <div className="pd-lights">
-        {shown.map((p, i) => (
-          <PieceLight
-            key={`${p.game.home}-${p.game.away}`}
-            noun={p.game.kind}
-            material={p.material}
-            price={p.piece.price}
-            state={p.made ? "made" : "missed"}
-            label={label(p)}
-            note={awake.has(key(p)) ? "woke" : priceNote(p.piece.price)}
-            at={1 + i * 0.2}
+        {shown.map((m, i) => (
+          <ResultLight
+            key={`${m.result.home}-${m.result.away}`}
+            noun={m.result.kind}
+            cohort={m.cohort}
+            label={label(m.result)}
+            note={[
+              COHORTS[m.cohort].verb,
+              m.floor === 0 ? "" : `floor ${steps(m.floor)}`,
+              m.ceiling === 0 ? "" : `ceiling ${steps(m.ceiling)}`,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+            at={0.4 + i * 0.15}
           />
         ))}
       </div>
-    </>
-  )
-}
-
-export const Rank = ({ week }: SlideProps): JSX.Element => {
-  const band = weekBand(week)
-  const spreads = spreadsOf(week)
-  return (
-    <>
-      <Kicker>Week {week.week} · how it went</Kicker>
-      <div>
-        <b className={`pd-big block ${BAND_CLASS[band]}`}>{phraseOf(band)}</b>
-        {cleanRun(week) ? (
-          <span className="pd-badge pd-in">{CLEAN_RUN.phrase}</span>
-        ) : null}
-      </div>
-      <Reveal at={0.3} className="pd-say">
-        Of every 100 ways the week could have gone,{" "}
-        <b>{worseOf100(week.ways.rank)}</b> would have left us worse.
-      </Reveal>
-      <Bands rank={week.ways.rank} at={0.6} />
-      {spreads === null ? null : (
-        <Reveal at={2.2} className="pd-mono pd-small">
-          the league alone: <b>{signed(spreads)}</b> spreads (±
-          {size(week.share.spread)} points is one)
+      {(
+        [
+          [GROUPS.conference.word, counts],
+          [GROUPS.division.word, division],
+        ] as const
+      ).map(([word, n], i) => (
+        <Reveal
+          key={word}
+          at={1.8 + i * 0.3}
+          className="pd-mono pd-small flex flex-wrap gap-x-[3cqw]"
+        >
+          <span className="text-muted-foreground">{word}</span>
+          {COHORT_ORDER.map((c) => (
+            <span key={c}>
+              {COHORTS[c].phrase} <b>{n[c]}</b>
+            </span>
+          ))}
         </Reveal>
-      )}
-      <Reveal at={2.6} className="pd-small text-muted-foreground">
-        {SPREADS_DEFINED} {MODEL}
-        {week.ways.exact
-          ? " Every way was counted."
-          : " The rest of the season was sampled."}
+      ))}
+      {cleanRun(week) ? (
+        <span className="pd-badge pd-in">{CLEAN_RUN.phrase}</span>
+      ) : null}
+      <Reveal at={2.4} className="pd-small text-muted-foreground">
+        A move is the poles as they are against the same week with that one
+        result the other way. {MODEL}
       </Reveal>
     </>
   )

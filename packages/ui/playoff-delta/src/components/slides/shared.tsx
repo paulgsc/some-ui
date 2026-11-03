@@ -6,6 +6,11 @@ export type SlideProps = {
   week: StoryWeek
 }
 
+/** The legend reads the season's first table. */
+export type LegendProps = {
+  season: StorySeason
+}
+
 /** A reveal delay, as the CSS custom property the reveals read. */
 export const delay = (
   seconds: number

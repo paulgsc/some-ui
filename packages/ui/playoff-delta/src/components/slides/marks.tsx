@@ -1,69 +1,136 @@
 /**
- * The marks every slide shares: a piece's light, the strip of the week's
- * ways, and the week's five bands. Each looks the same every week and in
- * the legend, so a viewer reads them without being taught again.
+ * The marks every slide shares: the envelope (our wins against a group's
+ * floor and ceiling, on one axis of wins), a result's light, an objective's
+ * standing, and the ladder. Each looks the same every week and in the
+ * legend, so a viewer reads them without being taught again.
  */
 import type { CSSProperties, JSX } from "react"
 import { SymbolGlyph } from "@playoff-delta/components/symbol"
-import { size } from "@playoff-delta/lib/story"
+import { rungIndex } from "@playoff-delta/lib/reading"
+import { wins, type PoleGroup, type Poles } from "@playoff-delta/lib/story"
 import { symbolFor } from "@playoff-delta/lib/symbols"
 import {
-  BANDS,
-  MATERIAL,
+  COHORTS,
   PIECES,
-  widthOf,
-  type Band,
-  type Material,
+  RUNG_ORDER,
+  RUNGS,
+  STANDINGS,
   type PieceNoun,
+  type Rung,
+  type Standing,
 } from "@playoff-delta/lib/words"
 
 import { delay } from "./shared"
 
-/**
- * A light's size is its price on one scale for every week: no bigger past
- * `LIGHT_FULL` (20 points), so the same size means the same worth in any
- * episode. Its area grows with the price.
- */
-const LIGHT_FULL = 0.2
-const lightSize = (price: number): string =>
-  `${4 + 9 * Math.sqrt(Math.min(price, LIGHT_FULL) / LIGHT_FULL)}cqw`
+/** A span on the axis of wins, as left and width in percent. */
+const span = (
+  from: number,
+  to: number,
+  max: number
+): CSSProperties & Record<"--l" | "--w", string> => ({
+  "--l": `${(Math.min(from, to) / max) * 100}%`,
+  "--w": `${(Math.max(Math.abs(to - from), 0.12) / max) * 100}%`,
+})
 
-export type LightState = "made" | "missed" | "waiting"
-
-const LIGHT_CLASS: Readonly<Record<LightState, string>> = {
-  made: "pd-light--made",
-  missed: "pd-light--missed",
-  waiting: "pd-light--waiting",
+/** Complete class strings, so a content scan sees every one. */
+const TONE_CLASS: Readonly<Record<"rivals" | "us", string>> = {
+  rivals: "pd-env__span--rivals",
+  us: "pd-env__span--us",
 }
 
-/** One piece: its glyph and noun, and its light, sized by its price. */
-export const PieceLight = ({
+/**
+ * One group's envelope: the rivals' span from the floor to the ceiling, and
+ * ours from losing out to winning out, after the week, over the same before
+ * it (faint). The axis runs from no wins to a whole season.
+ */
+export const Envelope = ({
+  before,
+  after,
+  group,
+  max,
+  at,
+}: {
+  before: Poles
+  after: Poles
+  group: "division" | "conference"
+  /** Games a team plays in a season: the axis's end. */
+  max: number
+  at: number
+}): JSX.Element => {
+  const row = (
+    label: string,
+    was: readonly [number, number],
+    now: readonly [number, number],
+    tone: "rivals" | "us",
+    reveal: number
+  ): JSX.Element => (
+    <div className="pd-env__row">
+      <span className="pd-mono pd-small">{label}</span>
+      <div className="pd-env__track">
+        <i
+          className="pd-env__span pd-env__span--was"
+          style={span(...was, max)}
+        />
+        <i
+          className={`pd-env__span ${TONE_CLASS[tone]} pd-in`}
+          style={{ ...span(...now, max), ...delay(reveal) }}
+        />
+      </div>
+      <span className="pd-mono pd-small text-right">
+        {wins(now[0])}–{wins(now[1])}
+      </span>
+    </div>
+  )
+  const g: PoleGroup = after[group]
+  const b: PoleGroup = before[group]
+  return (
+    <div className="pd-env">
+      {row(
+        "rivals",
+        [b.floor, b.ceiling.lose],
+        [g.floor, g.ceiling.lose],
+        "rivals",
+        at
+      )}
+      {row(
+        "us",
+        [before.us.low, before.us.high],
+        [after.us.low, after.us.high],
+        "us",
+        at + 0.4
+      )}
+      <div className="pd-env__axis pd-mono text-muted-foreground text-[2.4cqw]">
+        <span>0</span>
+        <span>{max} wins</span>
+      </div>
+    </div>
+  )
+}
+
+const COHORT_CLASS: Readonly<Record<keyof typeof COHORTS, string>> = {
+  best: "pd-light--made",
+  worst: "pd-light--missed",
+  forced: "pd-light--forced",
+  idle: "pd-light--idle",
+}
+
+/** One result: its piece's glyph and a light in its cohort's colour. */
+export const ResultLight = ({
   noun,
-  material,
-  price,
-  state,
+  cohort,
   label,
   note,
   at,
-  compact = false,
 }: {
   noun: PieceNoun
-  material: Material
-  price: number
-  state: LightState
-  /** "SF over ATL", or a team code. */
+  cohort: keyof typeof COHORTS
+  /** "SEA over LAR". */
   label: string
-  /** Under the label: the price, or "woke". */
+  /** Under the label: the steps it moved. */
   note?: string
   at: number
-  /** Without its noun and material written out: the glyph and size say them. */
-  compact?: boolean
 }): JSX.Element => {
   const s = symbolFor(noun)
-  const style: CSSProperties & Record<"--s", string> = {
-    ...delay(at),
-    "--s": lightSize(price),
-  }
   return (
     <div className="pd-light-cell">
       <div className="flex items-end gap-[1cqw]">
@@ -75,212 +142,75 @@ export const PieceLight = ({
         />
         <i
           role="img"
-          aria-label={`${PIECES[noun].noun}, ${MATERIAL[material].word}: ${label}, ${state}`}
-          className={`pd-light ${LIGHT_CLASS[state]} ${material === "idle" ? "pd-light--idle" : ""}`}
-          style={style}
+          aria-label={`${PIECES[noun].noun}: ${label}, ${COHORTS[cohort].phrase}`}
+          className={`pd-light ${COHORT_CLASS[cohort]}`}
+          style={delay(at)}
         />
       </div>
       <span className="pd-mono pd-small font-semibold">{label}</span>
-      {compact ? null : (
-        <span className="pd-mono text-muted-foreground text-[2.5cqw]">
-          {PIECES[noun].noun} · {MATERIAL[material].word}
-        </span>
-      )}
       {note ? <span className="pd-mono text-[2.5cqw]">{note}</span> : null}
     </div>
   )
 }
 
-/** The most lights a grid shows: the dearest, the rest counted. */
+/** The most lights a grid shows; the rest are counted. */
 export const LIGHTS_SHOWN = 8
 
-/** A price as the note under a light: "2.5 pts". */
-export const priceNote = (price: number): string => `${size(price)} pts`
-
-/** Grid lines, one per point of share, or per five when the strip is wide. */
-function gridOf(low: number, high: number): ReadonlyArray<number> {
-  const from = Math.ceil(low * 100)
-  const to = Math.floor(high * 100)
-  const step = to - from > 40 ? 5 : 1
-  const lines: Array<number> = []
-  for (let p = Math.ceil(from / step) * step; p <= to; p += step)
-    lines.push(p / 100)
-  return lines
+const STANDING_CLASS: Readonly<Record<Standing, string>> = {
+  clinched: "pd-standing--clinched",
+  hands: "pd-standing--hands",
+  help: "pd-standing--help",
+  out: "pd-standing--out",
 }
 
-type MarkTone = "best" | "mean" | "actual"
-
-/** Complete class strings, so a content scan sees every one. */
-const MARK_CLASS: Readonly<Record<MarkTone, string>> = {
-  best: "pd-ways__mark--best",
-  mean: "pd-ways__mark--mean",
-  actual: "pd-ways__mark--actual",
-}
-
-const KEY_CLASS: Readonly<Record<MarkTone, string>> = {
-  best: "pd-ways__key--best",
-  mean: "pd-ways__key--mean",
-  actual: "pd-ways__key--actual",
-}
+/** An objective's standing, as a stamp in its colour. */
+export const StandingChip = ({
+  standing,
+}: {
+  standing: Standing
+}): JSX.Element => (
+  <span className={`pd-standing ${STANDING_CLASS[standing]}`}>
+    {STANDINGS[standing].phrase}
+  </span>
+)
 
 /**
- * The week's ways as a histogram on a share axis: every way the week could
- * have gone, and then, row by row, the ways still possible after each result
- * in kickoff order, each drawn over the last (they nest, so the strip
- * narrows to the one way that happened). Heights grow with the log of a
- * bin's count, so one way still shows beside thousands.
+ * The ladder, best first: the rungs between the best still reachable and the
+ * worst already ours lit, the rest faint.
  */
-export const Strip = ({
-  low,
-  high,
-  rows,
-  marks,
-  start = 0.4,
-  step = 0,
+export const Ladder = ({
+  best,
+  worst,
+  at,
 }: {
-  low: number
-  high: number
-  /** Bin counts, from all the week's ways to the ways left. */
-  rows: ReadonlyArray<ReadonlyArray<number>>
-  /** Lines on the share axis: the best week, the mean, what happened. */
-  marks: ReadonlyArray<{
-    readonly at: number
-    readonly label: string
-    readonly tone: MarkTone
-    readonly reveal: number
-  }>
-  start?: number
-  /** Seconds between rows; 0 draws them together. */
-  step?: number
-}): JSX.Element => {
-  const span = high - low || 1
-  const x = (share: number): number => ((share - low) / span) * 100
-  const top = Math.log2(1 + Math.max(1, ...(rows[0] ?? [])))
-  const bins = rows[0]?.length ?? 20
-  const w = 100 / bins
-  return (
-    <div className="flex flex-col gap-[1cqw]">
-      <svg
-        viewBox="0 0 100 40"
-        preserveAspectRatio="none"
-        className="pd-ways h-[30cqw] w-full"
-        aria-hidden="true"
-      >
-        {gridOf(low, high).map((g) => (
-          <line
-            key={g}
-            className="pd-ways__grid"
-            x1={x(g)}
-            x2={x(g)}
-            y1={0}
-            y2={40}
-          />
-        ))}
-        {rows.map((row, r) => (
-          <g
-            // eslint-disable-next-line react/no-array-index-key -- a row is its place on the road
-            key={r}
-            className="pd-in pd-ways__row"
-            style={{
-              ...delay(start + r * step),
-              opacity: 0.25 + (0.75 * (r + 1)) / rows.length,
-            }}
-          >
-            {row.map((count, b) =>
-              count > 0 ? (
-                <rect
-                  // eslint-disable-next-line react/no-array-index-key -- a bin is its place on the axis
-                  key={b}
-                  x={b * w + 0.3}
-                  width={w - 0.6}
-                  y={40 - (Math.log2(1 + count) / top) * 38}
-                  height={(Math.log2(1 + count) / top) * 38}
-                />
-              ) : null
-            )}
-          </g>
-        ))}
-        {marks.map((m) => (
-          <line
-            key={m.tone}
-            className={`pd-in pd-ways__mark ${MARK_CLASS[m.tone]}`}
-            style={delay(m.reveal)}
-            x1={x(m.at)}
-            x2={x(m.at)}
-            y1={0}
-            y2={40}
-          />
-        ))}
-      </svg>
-      <div className="pd-mono text-muted-foreground flex justify-between text-[2.4cqw]">
-        <span>{(low * 100).toFixed(1)}%</span>
-        <span className="flex gap-[2.5cqw]">
-          {marks.map((m) => (
-            <span
-              key={m.tone}
-              className={`pd-in ${KEY_CLASS[m.tone]}`}
-              style={delay(m.reveal)}
-            >
-              {m.label}
-            </span>
-          ))}
-        </span>
-        <span>{(high * 100).toFixed(1)}%</span>
-      </div>
-    </div>
-  )
-}
-
-/** The class a band's colour comes from. */
-export const BAND_CLASS: Readonly<Record<Band, string>> = {
-  "all-greens": "pd-band--all-greens",
-  "mostly-green": "pd-band--mostly-green",
-  "stop-and-go": "pd-band--stop-and-go",
-  "mostly-red": "pd-band--mostly-red",
-  "all-reds": "pd-band--all-reds",
-}
-
-/**
- * The five bands at their fixed widths, worst on the left, with a rank
- * marked on it when given: the same bar every week.
- */
-export const Bands = ({
-  rank,
-  at = 0.4,
-}: {
-  rank?: number
-  at?: number
-}): JSX.Element => {
-  const worstFirst = [...BANDS].reverse()
-  return (
-    <div className="flex flex-col gap-[1cqw]">
-      <div className="pd-bands">
-        {worstFirst.map((b, i) => (
-          <div
-            key={b.band}
-            className={`pd-in pd-bands__band ${BAND_CLASS[b.band]}`}
-            // A zero basis, so a label's width never moves a boundary off
-            // the scale the rank's mark is placed on.
-            style={{
-              ...delay(at + i * 0.15),
-              flexGrow: widthOf(b.band),
-              flexBasis: 0,
-            }}
-          >
-            <span className="pd-mono">{b.phrase}</span>
-          </div>
-        ))}
-        {rank === undefined ? null : (
-          <i
-            className="pd-bands__mark"
-            style={{ ...delay(at + 1), left: `${rank * 100}%` }}
-          />
-        )}
-      </div>
-      <div className="pd-mono text-muted-foreground flex justify-between text-[2.4cqw]">
-        <span>0 of 100 ways worse</span>
-        <span>100 of 100 ways worse</span>
-      </div>
-    </div>
-  )
-}
+  best: Rung
+  worst: Rung
+  at: number
+}): JSX.Element => (
+  <div className="flex flex-col gap-[1.4cqw]">
+    {RUNG_ORDER.map((r, i) => {
+      const open =
+        rungIndex(r) >= rungIndex(best) && rungIndex(r) <= rungIndex(worst)
+      return (
+        <div
+          key={r}
+          className={`pd-rung pd-in ${open ? "pd-rung--open" : ""}`}
+          style={delay(at + i * 0.2)}
+        >
+          <b className="text-[4.4cqw]">{RUNGS[r].phrase}</b>
+          <span className="pd-mono pd-small text-muted-foreground">
+            {r === best && r === worst
+              ? "ours"
+              : r === best
+                ? "best still reachable"
+                : r === worst
+                  ? r === "out"
+                    ? "still possible"
+                    : "worst already ours"
+                  : RUNGS[r].seeds}
+          </span>
+        </div>
+      )
+    })}
+  </div>
+)

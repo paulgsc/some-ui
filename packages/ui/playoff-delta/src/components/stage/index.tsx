@@ -67,7 +67,7 @@ const SlideAt = ({
 }): JSX.Element | null => {
   if (isLegendSlide(id)) {
     const Slide = LEGEND[id]
-    return <Slide />
+    return <Slide season={season} />
   }
   if (week === null) return null
   const Slide = SLIDES[id]
@@ -132,7 +132,7 @@ const lineOf = (
   id: SlideId
 ): string =>
   isLegendSlide(id)
-    ? legendLine(id)
+    ? legendLine(season, id)
     : week === null
       ? ""
       : narration(season, week, id)
@@ -153,7 +153,7 @@ const WeekStory = ({
   onWeekChange?: (week: number) => void
 }): JSX.Element => {
   const ids: ReadonlyArray<SlideId> = useMemo(
-    () => (week === null ? LEGEND_SLIDES : slidesFor(week)),
+    () => (week === null ? LEGEND_SLIDES : slidesFor()),
     [week]
   )
   const count = ids.length

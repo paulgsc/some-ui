@@ -1,245 +1,224 @@
 /**
- * One week read in the short's vocabulary (`./words`): the seven questions
- * every short answers, as pure functions of the week, and the sentence that
- * says them all at once. The slides and the voiceover read the same answers.
+ * One week read in the short's vocabulary (`./words`), as pure functions of
+ * the week, so the slides and the voiceover say the same things. Every
+ * reading is a fact about every way the rest of the season can go:
  *
- * 1. What was the best week we could have had, and what did it need?
- *    (`ways.best`, its pieces)
- * 2. When did the best week break, and what did each break cost? (`road`)
- * 3. After our result, what did we need from everyone else, and did they get
- *    it? (`given`: what woke, what was made and missed)
- * 4. How good was the week we got, among all the weeks we could have got?
- *    (`rank`, as a band)
- * 5. Whose week came closest to their own best? (`podium`)
- * 6. What can next week do, and what is its best week? (`stake`)
- * 7. Keep watching, or exit? (`verdictOf`, as a call)
+ * 1. Where do our division's poles stand, and what forces the floor?
+ * 2. The same for our conference.
+ * 3. Which way did each result move us? (cohorts)
+ * 4. Where does each objective stand, and how far is it from changing?
+ *    (standings, countdowns)
+ * 5. What is the best rung still reachable, and the worst already ours?
+ *    (the ladder, and the call)
  */
 
-import { assertNever } from "@some-ui/intent-kit"
-
-import { followed, pastExit, verdictOf } from "./luck"
-import type { StoryPiece, StorySeason, StoryWeek, WayGame } from "./story"
+import type {
+  PoleGroup,
+  Poles,
+  StoryCohort,
+  StoryResult,
+  StorySeason,
+  StoryWeek,
+} from "./story"
+import { nameOf, wins } from "./story"
 import {
-  bandOf,
-  BANDS,
   CALLS,
   CLEAN_RUN,
-  live,
-  MATERIAL,
-  materialOf,
+  COHORTS,
   numberWord,
-  phraseOf,
-  STAKES,
-  stakesOf,
-  widthOf,
-  type Band,
+  OBJECTIVES,
+  POLES,
+  RUNG_ORDER,
+  RUNGS,
+  STANDINGS,
   type Call,
-  type Material,
+  type GroupKey,
+  type Rung,
+  type Standing,
 } from "./words"
 
-/** One of the week's games, read against one best way. */
-export type PieceRead = {
-  readonly game: WayGame
-  /** The piece it is read against: the week's best way, or given our result. */
-  readonly piece: StoryPiece
-  readonly material: Material
-  /** The result went the way that best way wanted. */
-  readonly made: boolean
+/** Where an objective stands against a group, under ties to us. */
+export function standingOf(poles: Poles, key: GroupKey): Standing {
+  const g = poles[key]
+  if (poles.us.low >= g.ceiling.lose) return "clinched"
+  if (poles.us.high >= g.ceiling.win) return "hands"
+  if (poles.us.high >= g.floor) return "help"
+  return "out"
 }
 
-const read = (game: WayGame, piece: StoryPiece): PieceRead => ({
-  game,
-  piece,
-  material: materialOf(piece),
-  made: game.winner === piece.want,
+/** Wins and rival losses still needed to clinch; 0 once clinched. */
+export const greensOf = (poles: Poles, key: GroupKey): number =>
+  Math.max(0, poles[key].ceiling.lose - poles.us.low)
+
+/** Losses we can still afford before an objective is gone; below 0 once out. */
+export const redsOf = (poles: Poles, key: GroupKey): number =>
+  poles.us.high - poles[key].floor
+
+/** The rung a seed stands on. */
+export function rungOf(seed: number | null): Rung {
+  if (seed === null) return "out"
+  if (seed === 1) return "top"
+  return seed <= 4 ? "division" : "wildcard"
+}
+
+/** The best rung still reachable and the worst already ours. */
+export const ladderOf = (
+  poles: Poles
+): { readonly best: Rung; readonly worst: Rung } => ({
+  best: rungOf(poles.seeds.best),
+  worst: rungOf(poles.seeds.worst),
 })
 
-/** The week's games against its best way (question 1), in kickoff order. */
-export const piecesOf = (week: StoryWeek): ReadonlyArray<PieceRead> =>
-  week.ways.games.map((g) => read(g, g))
+/** How far up the ladder a rung is: 0 is the top. */
+export const rungIndex = (rung: Rung): number => RUNG_ORDER.indexOf(rung)
 
-/** Our part this week. */
-export type OwnPart = "made" | "missed" | "idle" | "bye" | "tie"
-
-export function ownPart(week: StoryWeek): OwnPart {
-  if (week.game === null) return "bye"
-  const own = piecesOf(week).find((p) => p.game.kind === "own")
-  // A tied game is banked before the week, so it is none of the week's ways.
-  if (!own) return "tie"
-  if (own.material === "idle") return "idle"
-  return own.made ? "made" : "missed"
+/** The call after the week, read off its ladder. */
+export function callOf(week: StoryWeek): Call {
+  const { best, worst } = ladderOf(week.poles.after)
+  if (best === "out") return "dead-end"
+  return best === worst ? "arrived" : "keep-driving"
 }
 
-/**
- * The league's games read against the best way left after our result
- * (question 3), or against the week's best way on a bye or a tie.
- */
-export function leaguePieces(week: StoryWeek): ReadonlyArray<PieceRead> {
-  const { games, given } = week.ways
-  return games.flatMap((g, i) => {
-    if (g.kind === "own") return []
-    return [read(g, given?.pieces[i] ?? g)]
+/** The series' first call other than keep driving, which ends it; null while it runs. */
+function exitWeek(season: StorySeason): number | null {
+  return season.weeks.find((w) => callOf(w) !== "keep-driving")?.week ?? null
+}
+
+/** The series has ended by `week`. */
+export function ended(season: StorySeason, week: StoryWeek): boolean {
+  const stopped = exitWeek(season)
+  return stopped !== null && stopped <= week.week
+}
+
+/** The weeks followed up to `week`: through the exit, never past it. */
+export function followed(
+  season: StorySeason,
+  week: StoryWeek
+): ReadonlyArray<StoryWeek> {
+  const last = Math.min(week.week, exitWeek(season) ?? week.week)
+  return season.weeks.filter((w) => w.week <= last)
+}
+
+/** The week's results that touched a group, with their move for it. */
+export function movesOf(
+  week: StoryWeek,
+  key: GroupKey
+): ReadonlyArray<{
+  readonly result: StoryResult
+  readonly cohort: StoryCohort
+  readonly floor: number
+  readonly ceiling: number
+}> {
+  return week.results.flatMap((result) => {
+    const m = result[key]
+    return m === null ? [] : [{ result, ...m }]
   })
 }
 
-/** Pieces our result woke: idle in the week's best way, live given our result. */
-export function woke(week: StoryWeek): ReadonlyArray<PieceRead> {
-  const part = ownPart(week)
-  if (part !== "made" && part !== "missed") return []
-  return leaguePieces(week).filter(
-    (p) => p.material !== "idle" && !live(p.game)
-  )
-}
-
-/** The week's band (question 4). */
-export const weekBand = (week: StoryWeek): Band => bandOf(week.ways.rank)
-
-/** The league's band: its part alone, given our result; the whole week on a bye. */
-export const leagueBand = (week: StoryWeek): Band =>
-  bandOf(week.ways.given?.rank ?? week.ways.rank)
-
-/** The week's best way had a major or minor piece, and none was missed. */
-export const cleanRun = (week: StoryWeek): boolean => {
-  const liveOnes = piecesOf(week).filter((p) => p.material !== "idle")
-  return liveOnes.length > 0 && liveOnes.every((p) => p.made)
+/** How many of the week's results fell in each cohort, for a group. */
+export function cohortCounts(
+  week: StoryWeek,
+  key: GroupKey
+): Readonly<Record<StoryCohort, number>> {
+  const counts = { best: 0, worst: 0, forced: 0, idle: 0 }
+  for (const m of movesOf(week, key)) counts[m.cohort] += 1
+  return counts
 }
 
 /**
- * The road's drops (question 2): what each result cost the best week still
- * possible, in kickoff order, with ours apart from the league's.
+ * How the week moved a group's poles, in whole steps: the floor's rise and
+ * our top's drop toward the worst case, the ceiling's drop and our wins
+ * toward the best.
  */
-export function costs(week: StoryWeek): {
-  readonly drops: ReadonlyArray<number>
-  readonly own: number
-  readonly league: number
-} {
-  const { road, games } = week.ways
-  const drops = games.map((_, i) => (road[i] ?? 0) - (road[i + 1] ?? 0))
-  const own = drops.reduce(
-    (sum, d, i) => sum + (games[i]?.kind === "own" ? d : 0),
-    0
-  )
-  const total = week.ways.best - week.ways.actual
-  return { drops, own, league: total - own }
+export function stepsOf(
+  week: StoryWeek,
+  key: GroupKey
+): { readonly worst: number; readonly best: number } {
+  const { before, after } = week.poles
+  const worst =
+    after[key].floor - before[key].floor + (before.us.high - after.us.high)
+  const best =
+    before[key].ceiling.lose -
+    after[key].ceiling.lose +
+    (after.us.low - before.us.low)
+  return { worst, best }
 }
 
-/** The verdict as one of the vocabulary's calls (question 7). */
-export function callOf(week: StoryWeek): Call {
-  const v = verdictOf(week)
-  if (v.kind === "watch") return "keep-driving"
-  switch (v.why) {
-    case "clinched": {
-      return "arrived"
-    }
-    case "out": {
-      return "dead-end"
-    }
-    case "settled-in":
-    case "settled-out": {
-      return "park-it"
-    }
-    default: {
-      return assertNever(v.why)
-    }
-  }
+/** Nothing moved us toward the worst case: neither floor rose, and we lost no game. */
+export const cleanRun = (week: StoryWeek): boolean =>
+  stepsOf(week, "division").worst === 0 &&
+  stepsOf(week, "conference").worst === 0
+
+/** "LAR, SEA and ARI". */
+function teamList(teams: ReadonlyArray<string>): string {
+  if (teams.length <= 1) return teams.join("")
+  return `${teams.slice(0, -1).join(", ")} and ${teams.at(-1) ?? ""}`
 }
 
-/** "four minors", "a major", "two pieces": a count of pieces by their material. */
-function pieceCount(pieces: ReadonlyArray<PieceRead>): string {
-  const n = pieces.length
-  const kinds = new Set(pieces.map((p) => p.material))
-  const only = kinds.size === 1 ? [...kinds][0] : undefined
-  if (n === 1) return only ? `a ${MATERIAL[only].word}` : "a piece"
-  const noun = only ? MATERIAL[only].plural : "pieces"
-  return `${numberWord(n)} ${noun}`
+/** The bloc's teams as said: named while few, counted past four. */
+const blocTeams = (group: PoleGroup): string =>
+  group.bloc.teams.length <= 4
+    ? teamList(group.bloc.teams)
+    : `${numberWord(group.bloc.teams.length)} rivals`
+
+/** The floor's proof in one sentence. */
+export function blocLine(group: PoleGroup): string {
+  const { teams, banked, games } = group.bloc
+  const who = blocTeams(group)
+  if (teams.length === 1 || games === 0)
+    return `${who} ${teams.length === 1 ? "has" : "have"} ${wins(banked)} ${banked === 1 ? "win" : "wins"} already: the floor is ${wins(group.floor)}.`
+  return `${who}: ${wins(banked)} wins banked and ${games} ${games === 1 ? "game" : "games"} left against each other. However those go, one of them reaches ${wins(group.floor)}.`
 }
 
-/** "two majors and a minor": live pieces, majors first. */
-export function byMaterial(pieces: ReadonlyArray<PieceRead>): string {
-  const parts = (["major", "minor"] as const)
-    .map((m) => pieces.filter((p) => p.material === m))
-    .filter((group) => group.length > 0)
-    .map(pieceCount)
-  return parts.join(" and ")
+/** The ceiling in one sentence. */
+export const ceilingLine = (group: PoleGroup): string =>
+  `${group.ceiling.team} can still reach ${wins(group.ceiling.lose)}.`
+
+/** A standing as a sentence: "The division: in our hands." */
+const standingLine = (poles: Poles, key: GroupKey): string =>
+  `${capital(OBJECTIVES[key].word)}: ${STANDINGS[standingOf(poles, key)].phrase.toLowerCase()}.`
+
+/** The ladder in one sentence. */
+export function ladderLine(poles: Poles): string {
+  const { best, worst } = ladderOf(poles)
+  if (best === worst)
+    return best === "out"
+      ? "No seat is left."
+      : `${capital(RUNGS[best].phrase)}, whatever happens.`
+  return `As good as ${RUNGS[best].phrase}, as bad as ${worst === "out" ? "out" : RUNGS[worst].phrase}.`
 }
 
-const OWN_WORDS: Readonly<Record<OwnPart, string>> = {
-  made: "We made our light",
-  missed: "We missed our light",
-  idle: "Our light was idle",
-  bye: "We were parked: a bye",
-  tie: "Our game was a tie",
-}
+/** "Gold", from "gold". */
+export const capital = (word: string): string =>
+  `${word.charAt(0).toUpperCase()}${word.slice(1)}`
 
-/** What the league's pieces did, after our result: what woke, what was missed. */
-export function leagueClause(week: StoryWeek): string {
-  const awake = woke(week)
-  if (awake.length > 0) {
-    const made = awake.filter((p) => p.made).length
-    const ours = ownPart(week) === "made" ? "win" : "loss"
-    return `Our ${ours} woke ${pieceCount(awake)}; we made ${made === 0 ? "none" : numberWord(made)}.`
-  }
-  const liveOnes = leaguePieces(week).filter((p) => p.material !== "idle")
-  const missed = liveOnes.filter((p) => !p.made)
-  if (missed.length > 0) return `We missed ${byMaterial(missed)}.`
-  if (liveOnes.length > 0) return "We made every major and minor."
-  return "Every other piece was idle."
-}
-
-/** Next week, in words: its stakes, and whether we play. */
-export function stakesClause(week: StoryWeek): string {
-  const { stake } = week
-  if (!stake) return "No games are left."
-  const phrase = STAKES[stakesOf(stake.spread)].phrase
-  return `${phrase} next week${stake.opponent === null ? ", and we have a bye" : ""}.`
-}
-
-/** The verdict, in words: the call, or when we stopped. */
-function callClause(season: StorySeason, week: StoryWeek): string {
-  const stopped = pastExit(season, week)
-  if (stopped !== null) return `We stopped watching after week ${stopped}.`
-  return `${CALLS[callOf(week)].phrase}.`
+/** Which way the week leaned for a group: the side that closed more steps. */
+function leanOf(week: StoryWeek, key: GroupKey): "best" | "worst" | "even" {
+  const { best, worst } = stepsOf(week, key)
+  if (best > worst) return "best"
+  if (worst > best) return "worst"
+  return "even"
 }
 
 /**
- * The week in one sentence: "[Week]. We [made / missed] our light; the
- * league ran [phrase]. [What woke, what was missed.] [Stakes] next week.
- * [Verdict]."
+ * The week in one sentence: "[Clean run.] The division: [standing]; the #1
+ * seed: [standing]. [Ladder.] [Call]."
  */
-export function sentence(season: StorySeason, week: StoryWeek): string {
-  const band = phraseOf(weekBand(week))
-  const clean = cleanRun(week) ? `, ${CLEAN_RUN.phrase}` : ""
-  return [
-    `${band}${clean}.`,
-    `${OWN_WORDS[ownPart(week)]}; the league ran ${phraseOf(leagueBand(week)).toLowerCase()}.`,
-    leagueClause(week),
-    stakesClause(week),
-    callClause(season, week),
-  ].join(" ")
+export function sentence(week: StoryWeek): string {
+  const after = week.poles.after
+  const clean = cleanRun(week) ? `${capital(CLEAN_RUN.phrase)}. ` : ""
+  const lean = leanOf(week, "conference")
+  const leaned =
+    lean === "even"
+      ? "The week closed as much on each side."
+      : `The week leaned ${COHORTS[lean].phrase}.`
+  const call = CALLS[callOf(week)].phrase
+  return `${clean}${leaned} ${standingLine(after, "division")} ${standingLine(after, "conference")} ${ladderLine(after)} ${call}.`
 }
 
-/** Of every 100 ways the week could have gone, how many would have left us worse. */
-export const worseOf100 = (rank: number): number => Math.round(rank * 100)
-
-/** The season so far, through `week` or the exit: each band's weeks, and how many counting expects. */
-export function bandTally(
-  season: StorySeason,
-  week: StoryWeek
-): {
-  readonly weeks: ReadonlyArray<StoryWeek>
-  readonly bands: ReadonlyArray<{
-    readonly band: Band
-    readonly count: number
-    readonly expected: number
-  }>
-} {
-  const weeks = followed(season, week)
-  return {
-    weeks,
-    bands: BANDS.map(({ band }) => ({
-      band,
-      count: weeks.filter((w) => weekBand(w) === band).length,
-      expected: (weeks.length * widthOf(band)) / 100,
-    })),
-  }
+/** The legend's floor sentence, from the season's first table. */
+export function legendFloor(season: StorySeason): string {
+  const first = season.weeks[0]?.poles.before
+  if (!first) return ""
+  return `Before a snap, ${POLES.floor.word} is ${wins(first.division.floor)} for our division and ${wins(first.conference.floor)} for our conference, with the ${nameOf(season, season.team)} going ${wins(first.us.high)}-0.`
 }

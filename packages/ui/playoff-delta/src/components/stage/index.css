@@ -1,5 +1,5 @@
 /* The playoff-delta story stage: the 9:16 frame, its slide reveals, the symbol
-   algebra's paint and motions, and the paths grid. Authored CSS rather than
+   algebra's paint and motions, and the envelope. Authored CSS rather than
    utilities because most of it is SVG paint and keyframes; layout and type
    stay in the components' utilities.
 
@@ -221,8 +221,8 @@
 
   /* ------------------------------------------------------------ lights */
 
-  /* A week's results as lights: green made, red missed, sized by how far
-     each moved the share (--s), the team's own ringed. */
+  /* A week's results as lights: green toward the best case, red toward the
+     worst, a ring when forced, faint when idle. */
   .pd-lights {
     align-items: end;
     display: grid;
@@ -242,8 +242,8 @@
     animation: pd-pop 0.45s var(--d, 0s) both;
     border-radius: 50%;
     display: block;
-    height: var(--s);
-    width: var(--s);
+    height: 7cqw;
+    width: 7cqw;
   }
 
   .pd-light--made {
@@ -257,124 +257,127 @@
       color-mix(in oklab, var(--destructive) 45%, transparent);
   }
 
-  .pd-light--own {
-    outline: 0.6cqw solid var(--foreground);
-    outline-offset: 0.6cqw;
-  }
-
-  /* A piece not yet played: its light is a ring in the foreground. */
-  .pd-light--waiting {
+  /* Forced: one of two rivals had to win it, so it is a ring, not a light. */
+  .pd-light--forced {
     background: transparent;
     border: 0.6cqw solid var(--foreground);
   }
 
-  /* An idle piece is too small to tell from zero: drawn faint. */
   .pd-light--idle {
+    background: var(--muted-foreground);
     opacity: 0.35;
   }
 
-  /* The road: the week's pieces in kickoff order, one column each. */
-  .pd-road {
-    align-items: end;
-    display: grid;
-    gap: 2cqw 1cqw;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-  }
+  /* ------------------------------------------------------------ envelope */
 
-  /* ------------------------------------------------------------ the ways */
-
-  /* The week's ways on a share axis: each row of the road drawn over the
-     last, a point of share per grid line. */
-  .pd-ways rect {
-    fill: var(--muted-foreground);
-  }
-
-  .pd-ways__row {
-    animation-name: pd-fade;
-  }
-
-  .pd-ways__grid {
-    stroke: var(--border);
-    stroke-width: 0.2;
-    vector-effect: non-scaling-stroke;
-  }
-
-  .pd-ways__mark {
-    stroke-width: 2;
-    vector-effect: non-scaling-stroke;
-  }
-
-  .pd-ways__mark--best,
-  .pd-ways__key--best {
-    color: var(--success);
-    stroke: var(--success);
-  }
-
-  .pd-ways__mark--mean,
-  .pd-ways__key--mean {
-    color: var(--muted-foreground);
-    stroke: var(--muted-foreground);
-    stroke-dasharray: 3 3;
-  }
-
-  .pd-ways__mark--actual,
-  .pd-ways__key--actual {
-    color: var(--foreground);
-    stroke: var(--foreground);
-  }
-
-  /* ------------------------------------------------------------ bands */
-
-  /* The five bands, worst on the left, at their fixed widths. */
-  .pd-bands {
-    border-radius: 1cqw;
+  /* A group's envelope on one axis of wins: the rivals' floor to ceiling,
+     ours from losing out to winning out, over the same before the week. */
+  .pd-env {
     display: flex;
-    height: 9cqw;
-    overflow: visible;
+    flex-direction: column;
+    gap: 1.6cqw;
+  }
+
+  .pd-env__row {
+    align-items: center;
+    display: grid;
+    gap: 2cqw;
+    grid-template-columns: 11cqw minmax(0, 1fr) 15cqw;
+  }
+
+  .pd-env__track {
+    background: var(--muted);
+    border-radius: 1cqw;
+    height: 4cqw;
     position: relative;
   }
 
-  .pd-bands__band {
-    align-items: center;
-    background: color-mix(in oklab, currentcolor 18%, transparent);
-    border-inline: 0.3cqw solid var(--background);
-    display: flex;
-    font-size: 2.2cqw;
-    justify-content: center;
-    min-width: 0;
-    overflow: hidden;
-    text-align: center;
-  }
-
-  .pd-bands__mark {
-    animation: pd-pop 0.45s var(--d, 0s) both;
-    background: var(--foreground);
-    border-radius: 0.4cqw;
-    bottom: -1.5cqw;
+  .pd-env__span {
+    border-radius: 1cqw;
+    display: block;
+    height: 100%;
+    left: var(--l);
     position: absolute;
-    top: -1.5cqw;
-    transform: translateX(-50%);
-    width: 1cqw;
+    top: 0;
+    width: var(--w);
   }
 
-  .pd-band--all-greens {
+  .pd-env__span--was {
+    background: var(--border);
+  }
+
+  .pd-env__span--rivals {
+    background: var(--destructive);
+  }
+
+  .pd-env__span--us {
+    background: var(--success);
+  }
+
+  .pd-env__axis {
+    display: flex;
+    justify-content: space-between;
+    padding: 0 15cqw 0 13cqw;
+  }
+
+  /* ------------------------------------------------------------ standings */
+  .pd-standing {
+    border: 0.4cqw solid currentcolor;
+    border-radius: 999px;
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 3.2cqw;
+    letter-spacing: 0.06em;
+    padding: 0.6cqw 2.4cqw;
+    text-transform: uppercase;
+  }
+
+  .pd-standing--clinched {
     color: var(--success);
   }
 
-  .pd-band--mostly-green {
-    color: color-mix(in oklch, var(--success) 60%, var(--foreground));
+  .pd-standing--hands {
+    color: var(--primary);
   }
 
-  .pd-band--stop-and-go {
+  .pd-standing--help {
     color: var(--muted-foreground);
   }
 
-  .pd-band--mostly-red {
-    color: color-mix(in oklch, var(--destructive) 60%, var(--foreground));
+  .pd-standing--out {
+    color: var(--destructive);
   }
 
-  .pd-band--all-reds {
-    color: var(--destructive);
+  /* The ladder: the rungs still open lit, the rest faint. */
+  .pd-rung {
+    align-items: baseline;
+    border-left: 1cqw solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    opacity: 0.45;
+    padding: 1cqw 0 1cqw 3cqw;
+  }
+
+  .pd-rung--open {
+    border-left-color: var(--primary);
+    opacity: 1;
+  }
+
+  /* The season: one column a week, the rivals' floor to ceiling and ours. */
+  .pd-season__rivals,
+  .pd-season__us {
+    stroke-linecap: round;
+    stroke-width: 1.6cqw;
+  }
+
+  .pd-season__rivals {
+    stroke: var(--destructive);
+  }
+
+  .pd-season__us {
+    opacity: 0.85;
+    stroke: var(--success);
+    stroke-width: 0.8cqw;
   }
 
   /* Earned, so it reads as a stamp. */
@@ -398,24 +401,6 @@
     text-underline-offset: 1.2cqw;
   }
 
-  /* The weeks followed, a chip each in its band's colour. */
-  .pd-weeks {
-    display: grid;
-    gap: 1.2cqw;
-    grid-template-columns: repeat(9, minmax(0, 1fr));
-  }
-
-  .pd-weeks__week {
-    align-items: center;
-    aspect-ratio: 1;
-    background: color-mix(in oklab, currentcolor 22%, transparent);
-    border: 0.4cqw solid currentcolor;
-    border-radius: 1cqw;
-    display: flex;
-    font-size: 2.8cqw;
-    justify-content: center;
-  }
-
   .pd-card {
     background: var(--card);
     border: 1px solid var(--border);
@@ -424,33 +409,6 @@
     flex-direction: column;
     gap: 2cqw;
     padding: 2.6cqw 3cqw;
-  }
-
-  /* ------------------------------------------------------------ bars */
-  .pd-bar {
-    background: var(--muted);
-    border-radius: 1cqw;
-    height: 2cqw;
-    overflow: hidden;
-  }
-
-  .pd-bar > i {
-    animation: pd-grow 0.8s var(--d, 0s) cubic-bezier(0.2, 0.8, 0.2, 1) both;
-    background: var(--success);
-    display: block;
-    height: 100%;
-    transform-origin: left;
-  }
-
-  /* The share against the ends where following stops, --settled in from
-     each side, shaded. */
-  .pd-bar--settled {
-    background: linear-gradient(
-      90deg,
-      var(--border) var(--settled),
-      var(--muted) var(--settled) calc(100% - var(--settled)),
-      var(--border) calc(100% - var(--settled))
-    );
   }
 
   /* ------------------------------------------------------------ keyframes */
@@ -484,22 +442,6 @@
 
     to {
       opacity: 1;
-      transform: none;
-    }
-  }
-
-  @keyframes pd-fade {
-    from {
-      opacity: 0;
-    }
-  }
-
-  @keyframes pd-grow {
-    from {
-      transform: scaleX(0);
-    }
-
-    to {
       transform: none;
     }
   }
