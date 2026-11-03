@@ -5,11 +5,13 @@ import { TAKE_WORDS } from "@some-ui/voice-capture"
 import { simulatedMicrophone, SPEAKING } from "@some-ui/voice-capture/testing"
 import type { StudioProps } from "@soundbites/components/studio"
 import { Studio } from "@soundbites/components/studio"
+import { episodeProjectOf } from "@soundbites/fixtures"
 import { memoryProjectStore } from "@soundbites/lib/project/memory-store"
 import type { Project } from "@soundbites/lib/project/model"
 import { newProject } from "@soundbites/lib/project/model"
 import { cutListOf } from "@soundbites/lib/project/script"
 import {
+  episodeText,
   primer,
   PRIMER_TEXT,
   speaking,
@@ -54,6 +56,30 @@ function setup(
     />
   )
   return memory
+}
+
+type Refresher = Parameters<NonNullable<StudioPorts["refresh"]>>[0]
+
+/** The shell's refresh port, as a set: what is registered now. */
+function refreshPort(): {
+  refresh: NonNullable<StudioPorts["refresh"]>
+  live: Set<Refresher>
+} {
+  const live = new Set<Refresher>()
+  return {
+    live,
+    refresh: (refresher) => {
+      live.add(refresher)
+      return () => live.delete(refresher)
+    },
+  }
+}
+
+/** Every registered refresher's check, as a pull runs them. */
+async function pull(live: ReadonlySet<Refresher>): Promise<void> {
+  await act(async () => {
+    await Promise.all([...live].map((each) => each.checkAgain()))
+  })
 }
 
 async function openPrimer(): Promise<void> {
@@ -129,6 +155,41 @@ describe("Studio", () => {
       await screen.findByText("One pick missed, and here is why.")
     ).toBeInTheDocument()
     expect(screen.getByText(W.record.read)).toBeInTheDocument()
+  })
+
+  it("checks Start, a show and an episode's Start again on a pull through the refresh port, and Record not at all (SH6)", async () => {
+    const { refresh, live } = refreshPort()
+    const week = (period: string, sum: string, at: string): Project =>
+      episodeProjectOf(`w-${period}`, episodeText(period, sum), at).project
+    const memory = setup(
+      undefined,
+      [week("week 3", "a", "2026-10-29T09:00:00.000Z")],
+      PRIMER_TEXT,
+      { refresh }
+    )
+    // The episode's Start.
+    await screen.findByText(W.show.made)
+    expect([...live].map((each) => each.what)).toEqual([W.pullWhat])
+    fireEvent.click(screen.getByRole("button", { name: /^Weekly/ }))
+    await screen.findByText(W.show.episodes)
+    expect(live.size).toBe(1)
+    // An episode kept on the phone since, by something that told no screen,
+    // is on the show's screen once a pull checks again.
+    const week4 = week("week 4", "b", "2026-11-03T09:00:00.000Z")
+    memory.projects.set(week4.id, week4)
+    expect(screen.queryByText(/week 4/)).toBeNull()
+    await pull(live)
+    expect(await screen.findByText(/week 4/)).toBeInTheDocument()
+  })
+
+  it("registers nothing on Record: a take is under way there (SH6)", async () => {
+    const { refresh, live } = refreshPort()
+    setup(undefined, [], PRIMER_TEXT, { refresh })
+    await openPrimer()
+    expect(live.size).toBe(1)
+    fireEvent.click(screen.getByRole("button", { name: /^Record/ }))
+    await screen.findByText("Following the model paid off this week")
+    expect(live.size).toBe(0)
   })
 
   it("swipes between scenes through the shared pager, as Previous and Keep and next do (GES5)", async () => {

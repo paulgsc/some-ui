@@ -27,9 +27,10 @@ import type {
   StudioIntent,
   StudioState,
 } from "./machine"
-import { initialStudioState, step } from "./machine"
+import { initialStudioState, pullable, step } from "./machine"
 import { logBetween } from "./time-log"
 import type { TimeLogStore } from "./time-store"
+import { STUDIO_WORDS } from "./words"
 
 export type StudioPorts = {
   store: ProjectStore
@@ -57,7 +58,22 @@ export type StudioPorts = {
   takeDeadlines?: TakeDeadlines
   /** The phone's recognizer, for a note said in Watch (ST5); none means typed notes. */
   listener?: TurnListener
+  /**
+   * The shell's refresh port (PULL1), where the app has one: while Start or
+   * a show is on view (`pullable`), a pull reads the phone's videos again
+   * through `checkAgain` (SHOW SH6).
+   */
+  refresh?: StudioRefresh
 }
+
+/**
+ * Adds a refresher to every pull until the returned drop, as the shell's
+ * refresh port does (`apps/www/src/lib/pull-refresh/refreshers.ts`).
+ */
+type StudioRefresh = (refresher: {
+  readonly what: string
+  readonly checkAgain: () => Promise<void>
+}) => () => void
 
 export type StudioRuntime = {
   getSnapshot: () => StudioState
@@ -65,6 +81,12 @@ export type StudioRuntime = {
   dispatch: (intent: StudioIntent) => void
   /** The screen is showing. Returns the detach, which keeps a take in progress. */
   attach: () => () => void
+  /**
+   * Reads again what the phone keeps (a pull, SHOW SH6): resolves once that
+   * read lands, rejects if it could not be read. `step` decides which read
+   * answers; a pull's refresher (`StudioRefresh`) calls it.
+   */
+  checkAgain: () => Promise<void>
 }
 
 /** `open`: the video to open on, by id, rather than the latest touched. */
@@ -77,7 +99,30 @@ export function createStudio(
   let listening: Listening | null = null
   const listener = ports.listener ?? NO_LISTENER
   const listeners = new Set<() => void>()
+  /** The pulls waiting on `checked`. */
+  let checks: Array<{ resolve: () => void; reject: (error: Error) => void }> =
+    []
   const at = (): string => new Date(ports.now()).toISOString()
+  /** The refresher registered while the screen is `pullable`, to drop. */
+  let pulling: (() => void) | null = null
+
+  const checkAgain = (): Promise<void> =>
+    new Promise<void>((resolve, reject) => {
+      checks.push({ resolve, reject })
+      send({ type: "checkAgain" })
+    })
+
+  /** Registers a pull's refresher while the screen takes one, and drops it after. */
+  const followPull = (): void => {
+    const { refresh } = ports
+    const wanted = refresh !== undefined && pullable(state)
+    if (wanted && pulling === null) {
+      pulling = refresh({ what: STUDIO_WORDS.pullWhat, checkAgain })
+    } else if (!wanted && pulling !== null) {
+      pulling()
+      pulling = null
+    }
+  }
 
   const send = (event: StudioEvent): void => {
     const next = step(state, event)
@@ -86,6 +131,7 @@ export function createStudio(
       // is never held up for it.
       ports.timeLog?.append(logBetween(state, next.state, at(), ports.newId))
       state = next.state
+      followPull()
       for (const listener of listeners) listener()
     }
     for (const effect of next.effects) run(effect)
@@ -261,6 +307,15 @@ export function createStudio(
         listening = null
         return
       }
+      case "checked": {
+        const answered = checks
+        checks = []
+        for (const check of answered) {
+          if (effect.ok) check.resolve()
+          else check.reject(new Error("unread"))
+        }
+        return
+      }
       default: {
         assertNever(effect)
       }
@@ -276,6 +331,7 @@ export function createStudio(
       }
     },
     dispatch: (intent) => send({ ...intent, at: at() }),
+    checkAgain,
     attach(): () => void {
       const unwatchPage = ports.onVisibility((hidden) =>
         send({ type: hidden ? "hidden" : "shown" })

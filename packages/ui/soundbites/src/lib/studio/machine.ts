@@ -390,6 +390,14 @@ export type StudioState = {
   readonly closed: "saving" | "saved" | "failed" | null
   /** Each Done for now's close not yet settled, or whose answer waits. */
   readonly filings: ReadonlyArray<Filing>
+  /**
+   * A pull waiting on a read of the phone's videos (SH6), or null. `from` is
+   * the first read that may answer it: one asked once Studio's own writes
+   * had all landed, so a read already out when the pull came, while a write
+   * was still in flight, never does. Null until that read is asked. Whichever
+   * read from `from` on is the newest when it lands answers it.
+   */
+  readonly checking: { readonly from: number | null } | null
   readonly readSeq: number
   readonly pickSeq: number
   readonly playSeq: number
@@ -477,6 +485,8 @@ export type StudioIntent =
 /** What the page, the clock and the ports report. */
 type StudioSignal =
   | { readonly type: "entered"; readonly at: string }
+  /** A pull down to check again (SHOW SH6, the shell's refresh port). */
+  | { readonly type: "checkAgain" }
   | { readonly type: "left" }
   | { readonly type: "hidden" }
   | { readonly type: "shown" }
@@ -586,6 +596,8 @@ export type StudioEffect =
   | { readonly type: "listen"; readonly seq: number }
   | { readonly type: "stopListening" }
   | { readonly type: "cancelListening" }
+  /** A pull's read landed (`ok`) or could not be read. */
+  | { readonly type: "checked"; readonly ok: boolean }
 
 export type Step = {
   readonly state: StudioState
@@ -621,6 +633,7 @@ export function initialStudioState(
     held: [],
     closed: null,
     filings: [],
+    checking: null,
     readSeq: 0,
     pickSeq: 0,
     playSeq: 0,
@@ -648,14 +661,51 @@ function projectsOf(state: StudioState): ReadonlyArray<Project> {
   return state.shelf.kind === "read" ? state.shelf.projects : []
 }
 
+/**
+ * Whether a pull down checks this screen again (SHOW SH6): Start (Studio's
+ * home, or an episode's Start) and a show's screen, while on view. Record
+ * and Watch are not: a take or a note is under way there.
+ */
+export function pullable(state: StudioState): boolean {
+  return (
+    state.page === "here" &&
+    (state.screen.kind === "start" || state.screen.kind === "show")
+  )
+}
+
 /** The video on screen, as kept. */
 export function projectOf(state: StudioState): Project | null {
   return projectsOf(state).find((each) => each.id === state.current) ?? null
 }
 
+/** Whether Studio's own writes have all landed, and may be read back. */
+function writesSettled(state: StudioState): boolean {
+  return (
+    state.inFlight === null &&
+    state.queue.length === 0 &&
+    state.held.length === 0 &&
+    state.ready
+  )
+}
+
 function read(state: StudioState): Step {
   const seq = state.readSeq + 1
-  return { state: { ...state, readSeq: seq }, effects: [{ type: "read", seq }] }
+  // The first read once our writes landed is the one a waiting pull counts;
+  // one asked before then leaves the pull waiting on another after them.
+  const waiting = state.checking?.from === null
+  const settled = writesSettled(state)
+  const checking = waiting && settled ? { from: seq } : state.checking
+  const stale = waiting && !settled ? true : state.stale
+  return {
+    state: { ...state, readSeq: seq, checking, stale },
+    effects: [{ type: "read", seq }],
+  }
+}
+
+/** Whether the read that landed as `seq` answers a waiting pull. */
+function answers(state: StudioState, seq: number): boolean {
+  const from = state.checking?.from ?? null
+  return from !== null && seq >= from
 }
 
 /** Every take recorded since the open sitting began, as scene numbers. */
@@ -1846,6 +1896,21 @@ export function step(state: StudioState, event: StudioEvent): Step {
       return stay({ ...state, visible: true })
     }
 
+    case "checkAgain": {
+      const waiting = { ...state, checking: { from: null } }
+      // Ours first, as for a write from elsewhere: the read after them
+      // answers the pull, and one already out does not.
+      if (!writesSettled(state)) return stay({ ...waiting, stale: true })
+      // A read is out already, with nothing of ours before it: it answers.
+      if (state.shelf.kind === "reading")
+        return stay({ ...state, checking: { from: state.readSeq } })
+      return read(
+        state.shelf.kind === "unreadable"
+          ? { ...waiting, shelf: { kind: "reading" } }
+          : waiting
+      )
+    }
+
     case "retryRead": {
       return read({ ...state, shelf: { kind: "reading" } })
     }
@@ -1874,11 +1939,15 @@ export function step(state: StudioState, event: StudioEvent): Step {
         event.projects,
         kept ? state.current : (currentOf(event.projects)?.id ?? null)
       )
+      const answered = answers(state, event.seq)
       // Shown, so the store may let them go.
       return then(
         {
-          state: shown,
-          effects: keys.length === 0 ? [] : [{ type: "forget", keys }],
+          state: answered ? { ...shown, checking: null } : shown,
+          effects: [
+            ...(keys.length === 0 ? [] : [{ type: "forget" as const, keys }]),
+            ...(answered ? [{ type: "checked" as const, ok: true }] : []),
+          ],
         },
         pump
       )
@@ -1886,11 +1955,21 @@ export function step(state: StudioState, event: StudioEvent): Step {
 
     case "listFailed": {
       if (event.seq !== state.readSeq) return stay(state)
+      const answered: Step["effects"] = answers(state, event.seq)
+        ? [{ type: "checked", ok: false }]
+        : []
+      const unasked = answered.length > 0 ? { ...state, checking: null } : state
       // Once the store is on screen, a failed read leaves it there: Record
       // and its Stop stay, and the writes queued go on regardless.
       if (state.shelf.kind === "read")
-        return stay({ ...state, notice: WORDS.notice.behind })
-      return stay({ ...state, shelf: { kind: "unreadable" } })
+        return {
+          state: { ...unasked, notice: WORDS.notice.behind },
+          effects: answered,
+        }
+      return {
+        state: { ...unasked, shelf: { kind: "unreadable" } },
+        effects: answered,
+      }
     }
 
     case "primerPicked": {

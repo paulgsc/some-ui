@@ -1,4 +1,4 @@
-import type { JSX } from "react"
+import type { ComponentProps, JSX } from "react"
 import { useEffect } from "react"
 import { useConfirmSheet } from "@some-ui/shared"
 import type { Project, StudioShare, WingLink } from "@some-ui/soundbites"
@@ -16,13 +16,13 @@ import {
   StudioHome,
   waitingIds,
 } from "@some-ui/soundbites"
-import type { TurnListener } from "@some-ui/voice-capture"
 import { createFileRoute, Link } from "@tanstack/react-router"
 
 import { deviceListener } from "@/lib/device-listen"
 import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import { shareStudio } from "@/lib/journal-share"
+import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 import { keepStudio } from "@/lib/studio-keeping"
 
 const WORDS = STUDIO_WORDS
@@ -70,10 +70,15 @@ const ShareStudio = ({
   )
 }
 
-/** The phone's recognizer for a note said in Watch, in the Android app (ST5). */
-const studioPorts: { listener: TurnListener } | undefined =
+/**
+ * In the Android app: the phone's recognizer for a note said in Watch (ST5),
+ * and the shell's refresh port, so a pull down on Start or a show reads the
+ * phone's videos again (SHOW SH6). Both are native-only (`build.paths.ts`),
+ * so a web build, where the flag is false, leaves them out of its bundle.
+ */
+const studioPorts: ComponentProps<typeof StudioHome>["ports"] =
   import.meta.env.VITE_DEVICE_BACKEND === "true"
-    ? { listener: deviceListener }
+    ? { listener: deviceListener, refresh: screenRefreshers.register }
     : undefined
 
 const IdeaLink: WingLink = ({ className, children }) => (

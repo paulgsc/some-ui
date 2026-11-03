@@ -201,6 +201,11 @@ export const STUDIO_WORDS = {
   reading: "Opening your video…",
   unreadable: "Couldn't open the video kept on this phone.",
   readAgain: "Try again",
+  /**
+   * What a pull down on Start or a show reads again (SH6), for the shell's
+   * "Couldn't check … just now".
+   */
+  pullWhat: "your shows and videos on this phone",
 
   /**
    * Start says the loop in the person's terms. Every word in this table
