@@ -60,7 +60,7 @@ export const FIT_PRIMER_TEXT = JSON.stringify({
  * last, as long as its cut asks. Watch checks the title and the scenes'
  * ids against the version kept, not their lengths.
  */
-export function fitReviewText(rev: number): string {
+export function fitReviewText(rev: number, title = FIT_TITLE): string {
   let startMs = 0
   const shotTimes = FIT_CUTS.map((cut) => {
     const durationMs = cut.targetSec * 1_000
@@ -70,7 +70,7 @@ export function fitReviewText(rev: number): string {
   })
   return JSON.stringify({
     schema: FIT_REVIEW_SCHEMA,
-    title: FIT_TITLE,
+    title,
     rev,
     shotTimes,
   })

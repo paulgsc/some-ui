@@ -3,7 +3,8 @@
  * YouTube, or the one thing missing. Pure, so a screen renders it and the
  * project's `step` refuses a mark it doesn't allow by the same rule.
  *
- * - **Ready** is four things: no note open, a kept take on every scene,
+ * - **Ready** is four things: no note open (a change proposed to an
+ *   episode's show is for its next episodes, SH4), a kept take on every scene,
  *   the owner's word on whose idea each scene is (`./origin`), and the
  *   owner's mark on that revision. Missing ones are named in that order,
  *   one at a time, since each has its own place to go. A revision marked
@@ -47,7 +48,9 @@ export function finishOf(project: Project): Finish {
   const rev = latestRev(project)
   const release = project.released?.find((each) => each.rev === rev)
   if (release !== undefined) return { kind: "released", rev, url: release.url }
-  const note = project.notes.find((each) => each.status === "open")
+  const note = project.notes.find(
+    (each) => each.status === "open" && each.about !== "show"
+  )
   if (note !== undefined) return { kind: "note", rev, note }
   const shots = project.revisions.at(-1)?.cutList.shots ?? []
   const index = shots.findIndex((shot) => project.chosen[shot.id] === undefined)

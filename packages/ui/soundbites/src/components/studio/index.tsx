@@ -914,6 +914,26 @@ const Show = ({
           </li>
         ))}
       </ul>
+      {view.proposed.length > 0 && (
+        <section className="space-y-2">
+          <h3 className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
+            {WORDS.show.proposed}
+          </h3>
+          <ul className="flex flex-col gap-2">
+            {view.proposed.map((change) => (
+              <li
+                key={change.id}
+                className="border-border/60 rounded-2xl border px-3 py-2"
+              >
+                <span className="block text-sm">{change.text}</span>
+                <span className="text-muted-foreground block text-xs">
+                  {change.from}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <p className="text-muted-foreground text-xs">{WORDS.show.pinned}</p>
     </div>
   )
@@ -1106,7 +1126,9 @@ const Watch = ({
               </div>
             </div>
           )}
-          {screen.origin !== null && scene !== null ? (
+          {screen.asking !== null ? (
+            <NoteAbout text={screen.asking.text} dispatch={dispatch} />
+          ) : screen.origin !== null && scene !== null ? (
             <IdeaFix
               fix={screen.origin}
               initialText={screen.origin.draft ?? ""}
@@ -1145,11 +1167,51 @@ const Watch = ({
           )}
         </>
       )}
-      <Button variant="ghost" onClick={() => dispatch({ type: "watchBack" })}>
-        {words.back}
-      </Button>
+      {screen.asking === null && (
+        <Button variant="ghost" onClick={() => dispatch({ type: "watchBack" })}>
+          {words.back}
+        </Button>
+      )}
       <Notice text={state.notice} />
     </div>
+  )
+}
+
+/** On an episode (SHOW SH4): what the note just said or typed is about. */
+const NoteAbout = ({
+  text,
+  dispatch,
+}: {
+  text: string
+  dispatch: Dispatch
+}): JSX.Element => {
+  const words = WORDS.watch.about
+  return (
+    <section
+      role="group"
+      aria-label={words.question}
+      className="border-border/60 space-y-2 rounded-2xl border p-3"
+    >
+      <p className="text-sm font-bold">{words.question}</p>
+      <blockquote className="text-muted-foreground border-l-2 pl-2 text-sm">
+        {text}
+      </blockquote>
+      {(["take", "show"] as const).map((about) => (
+        <button
+          key={about}
+          type="button"
+          onClick={() => dispatch({ type: "aboutChosen", about })}
+          className={LIST_ROW}
+        >
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-bold">{words[about]}</span>
+            <span className="text-muted-foreground block text-xs">
+              {about === "take" ? words.takeLine : words.showLine}
+            </span>
+          </span>
+        </button>
+      ))}
+    </section>
   )
 }
 

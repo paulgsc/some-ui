@@ -51,6 +51,32 @@ describe("a version back from Claude", () => {
     ])
   })
 
+  it("leaves a change proposed to the show open, whatever the file says (SH4)", () => {
+    const kept = run(started(), {
+      type: "noted",
+      note: {
+        id: "n1",
+        rev: 1,
+        shot: "b",
+        offsetMs: 300,
+        author: "owner",
+        text: "Every week, slower here",
+        about: "show",
+      },
+    }).project
+    const back = run(
+      { project: kept, taking: null, closing: null },
+      { type: "noteSettled", id: "n1", status: "applied" },
+      revised("Scene 2 slower (n1)")
+    ).project
+    const merged = mergeIn(kept, back)
+    expect(merged.kind).toBe("merged")
+    if (merged.kind !== "merged") return
+    expect(merged.project.notes).toEqual([
+      expect.objectContaining({ id: "n1", about: "show", status: "open" }),
+    ])
+  })
+
   it("never changes the phone's takes, chosen takes or sittings", () => {
     const kept = shared()
     const back: Project = {

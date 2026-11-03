@@ -459,6 +459,9 @@ export const STUDIO_WORDS = {
     footer:
       "Every scene is the show's. For something outside it, start a video of your own.",
     held: "That episode is already on this phone. Here it is.",
+    proposed: "Changes you proposed",
+    proposedFrom: (period: string, scene: string, ms: number): string =>
+      `${period} · ${scene} · ${formatTimecode(ms)}`,
     notYet:
       "Studio is still reading this phone. Open the episode again in a moment.",
   },
@@ -506,6 +509,16 @@ export const STUDIO_WORDS = {
     noteLabel: "Your note",
     noteHere: (ms: number): string => `Note here · ${formatTimecode(ms)}`,
     noted: "Noted, pinned to this moment.",
+    /** On an episode (SHOW SH4), before a note is kept. */
+    about: {
+      question: "What is it about?",
+      take: "My take",
+      takeLine:
+        "A note on how you said this scene, kept like any note until Claude answers it.",
+      show: "The show, every week",
+      showLine:
+        "A change to the show for its next episodes. This one stays as it was made.",
+    },
     /** Saying a note instead of typing it (ST5), pinned where it was begun. */
     say: (ms: number): string => `Say a note · ${formatTimecode(ms)}`,
     gettingReady: "Getting ready…",

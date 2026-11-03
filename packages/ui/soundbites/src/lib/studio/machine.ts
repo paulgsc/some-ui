@@ -180,6 +180,11 @@ type StudioScreen =
       readonly speaking: Speaking | null
       /** A scene's idea being put right, until it is kept or left. */
       readonly origin: OriginFix | null
+      /**
+       * A note on an episode, until the owner says whether it is about the
+       * take or the show (SHOW SH4): nothing is kept before then.
+       */
+      readonly asking: NoteDraft | null
       /** The scene the render opens at once read: Finish's first waiting on whose idea it is. */
       readonly startAt: string | null
     }
@@ -418,6 +423,8 @@ export type StudioIntent =
   | { readonly type: "reviewPicked"; readonly files: ReadonlyArray<Blob> }
   | { readonly type: "playheadAt"; readonly ms: number }
   | { readonly type: "notedHere"; readonly text: string }
+  /** On an episode (SHOW SH4): what the note waiting to be kept is about. */
+  | { readonly type: "aboutChosen"; readonly about: "take" | "show" }
   /** Say a note at the moment on screen, instead of typing it. */
   | { readonly type: "speakPressed" }
   | { readonly type: "speakStopped" }
@@ -872,6 +879,9 @@ function applied(project: Project | null, pending: Pending): Project | null {
 
 type WatchScreen = Extract<StudioScreen, { kind: "watch" }>
 
+/** A note of the owner's, as written in Watch, before it is kept. */
+type NoteDraft = Omit<Note, "status" | "reason" | "about">
+
 /**
  * A spoken note in Watch (ST5), as ST18's questions are said: one listening
  * at a time, numbered, and the words heard shown back before they are kept.
@@ -1134,6 +1144,7 @@ function watchOpened(
         listen: "checking",
         speaking: null,
         origin: null,
+        asking: null,
         startAt,
       },
       notice: "",
@@ -1542,6 +1553,18 @@ function pickedEpisode(
     episode,
     at,
   })
+}
+
+/** A note of the owner's from Watch: kept now, or held as `asking` on an episode. */
+function noted(state: StudioState, project: Project, note: NoteDraft): Step {
+  const { screen } = state
+  if (screen.kind !== "watch") return stay(state)
+  if (project.episode !== undefined)
+    return stay({ ...state, notice: "", screen: { ...screen, asking: note } })
+  return enqueue(
+    { ...state, notice: "" },
+    { kind: "note", project: project.id, note }
+  )
 }
 
 /** Whether `raw` says it is an episode file, whole or not. */
@@ -2080,7 +2103,8 @@ export function step(state: StudioState, event: StudioEvent): Step {
     }
 
     case "watchBack": {
-      if (screen.kind !== "watch") return stay(state)
+      // A note waiting for its answer is answered first, never dropped (SH4).
+      if (screen.kind !== "watch" || screen.asking !== null) return stay(state)
       return {
         state: { ...state, screen: { kind: "start" }, notice: "" },
         effects: stillHearing(screen.speaking)
@@ -2106,6 +2130,7 @@ export function step(state: StudioState, event: StudioEvent): Step {
         screen.kind !== "watch" ||
         speaking?.phase !== "heard" ||
         screen.review === null ||
+        screen.asking !== null ||
         project === null
       )
         return stay(state)
@@ -2122,21 +2147,14 @@ export function step(state: StudioState, event: StudioEvent): Step {
           : stay(cleared)
       const here = shotAt(screen.review, speaking.atMs)
       if (here === null) return stay(cleared)
-      return enqueue(
-        { ...cleared, notice: "" },
-        {
-          kind: "note",
-          project: project.id,
-          note: {
-            id: noteIdAt(event.at),
-            rev: screen.review.rev,
-            shot: here.shot,
-            offsetMs: here.offsetMs,
-            author: "owner",
-            text: speaking.words,
-          },
-        }
-      )
+      return noted(cleared, project, {
+        id: noteIdAt(event.at),
+        rev: screen.review.rev,
+        shot: here.shot,
+        offsetMs: here.offsetMs,
+        author: "owner",
+        text: speaking.words,
+      })
     }
 
     case "reviewPicked": {
@@ -2215,20 +2233,27 @@ export function step(state: StudioState, event: StudioEvent): Step {
         return stay(state)
       const text = event.text.trim()
       const here = shotAt(screen.review, screen.atMs)
-      if (text === "" || here === null) return stay(state)
+      if (text === "" || here === null || screen.asking !== null)
+        return stay(state)
+      return noted(state, project, {
+        id: noteIdAt(event.at),
+        rev: screen.review.rev,
+        shot: here.shot,
+        offsetMs: here.offsetMs,
+        author: "owner",
+        text,
+      })
+    }
+
+    case "aboutChosen": {
+      if (screen.kind !== "watch" || screen.asking === null || project === null)
+        return stay(state)
       return enqueue(
-        { ...state, notice: "" },
+        { ...state, notice: "", screen: { ...screen, asking: null } },
         {
           kind: "note",
           project: project.id,
-          note: {
-            id: noteIdAt(event.at),
-            rev: screen.review.rev,
-            shot: here.shot,
-            offsetMs: here.offsetMs,
-            author: "owner",
-            text,
-          },
+          note: { ...screen.asking, about: event.about },
         }
       )
     }

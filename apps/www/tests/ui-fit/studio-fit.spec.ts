@@ -249,8 +249,39 @@ const WALKS: Record<
   "studio-episode": [
     { screen: "Start, an episode of a show", go: start },
     {
+      // A note on an episode asks what it is about before it is kept (SH4).
+      screen: "Watch, what a note on an episode is about",
+      go: async (page): Promise<void> => {
+        await tap(page, sitting("Watch"))
+        await page.locator('input[type="file"]').setInputFiles([
+          {
+            name: "review.mp4",
+            mimeType: "video/mp4",
+            buffer: Buffer.from("v"),
+          },
+          {
+            name: "review.json",
+            mimeType: "application/json",
+            buffer: Buffer.from(fitReviewText(1, "Playoff Delta, 2026 week 8")),
+          },
+        ])
+        await page
+          .getByLabel("Your note")
+          .fill("The ceiling line runs long for the phone; cut it to one line.")
+        await tap(page, /^Note here/)
+        await page
+          .getByRole("button", { name: /^The show, every week/ })
+          .waitFor()
+      },
+    },
+    {
+      // The note kept for the show, listed among the show's proposed changes.
       screen: "A show, its episodes on the phone",
-      go: (page) => tap(page, /^Playoff Delta, followed/),
+      go: async (page): Promise<void> => {
+        await tap(page, /^The show, every week/)
+        await tap(page, "Back")
+        await tap(page, /^Playoff Delta, followed/)
+      },
     },
     {
       screen: "Start, the earlier episode",
