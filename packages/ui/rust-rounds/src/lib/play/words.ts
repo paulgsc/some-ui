@@ -40,14 +40,10 @@ export const WORDS = {
     `${concept} · card ${number}`,
   program: "The program",
   oneLineChanged: (line: number): string => `Line ${line} changed`,
-  skipToRustc: "Skip, show me rustc",
-  /** Skip on a card with no run of its program on the phone. */
-  skip: "Skip",
   /** The card came up again, in a later turn. */
   playedBefore: "You've had this card before.",
   /** Next found no other card in this concept. */
   onlyCard: "The only card in this concept, again.",
-  sayThis: "Say it",
   /** What the card on screen says of its voice note. */
   voiceNote: "Your note",
   /** A take an earlier opening left here, of which the phone holds no note. */

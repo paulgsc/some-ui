@@ -48,7 +48,7 @@ describe("Rust Rounds on the simulated microphone", () => {
   }
 
   /** The session on a desk of its own, at the speak step of the first card. */
-  function speakStep(owner: MicOwner = microphoneOwner()): {
+  function onACard(owner: MicOwner = microphoneOwner()): {
     mic: SimulatedMicrophone
     desk: TestDesk
   } {
@@ -69,7 +69,6 @@ describe("Rust Rounds on the simulated microphone", () => {
       />
     )
     fireEvent.click(screen.getByRole("button", { name: "Start" }))
-    fireEvent.click(screen.getByRole("button", { name: "Not sure" }))
     return { mic, desk }
   }
 
@@ -80,7 +79,7 @@ describe("Rust Rounds on the simulated microphone", () => {
   }
 
   it("keeps a note tapped on, said and tapped off, with the time against the cap, and says it is kept on this phone", async () => {
-    const { mic, desk } = speakStep()
+    const { mic, desk } = onACard()
     mic.script({ ...SPEAKING, open: { kind: "after", ms: 300 } })
     tap()
     expect(take().textContent).toContain(TAKE_WORDS.button.opening)
@@ -101,7 +100,7 @@ describe("Rust Rounds on the simulated microphone", () => {
   })
 
   it("says a tap that stops it before the microphone opened, and lets the microphone go when it does (MIC0)", async () => {
-    const { mic } = speakStep()
+    const { mic } = onACard()
     mic.script({ ...SPEAKING, open: { kind: "cue" } })
     tap()
     tap()
@@ -121,7 +120,7 @@ describe("Rust Rounds on the simulated microphone", () => {
     })
     other.phone.pattern.tap("lens:line-1")
     await flush()
-    const { mic } = speakStep(owner)
+    const { mic } = onACard(owner)
     tap()
     await flush()
     expect(
@@ -131,7 +130,7 @@ describe("Rust Rounds on the simulated microphone", () => {
   })
 
   it("keeps a note run to the cap, which ends it", async () => {
-    const { mic } = speakStep()
+    const { mic } = onACard()
     tap()
     await flush(61_000)
     expect(screen.getByText(TAKE_WORDS.ended.kept)).toBeTruthy()
@@ -140,7 +139,7 @@ describe("Rust Rounds on the simulated microphone", () => {
   })
 
   it("says a note it didn't hear, with Redo beside it (D4)", async () => {
-    const { mic } = speakStep()
+    const { mic } = onACard()
     mic.script({ ...SPEAKING, level: 0.03 })
     tap()
     await flush(3_000)

@@ -54,9 +54,6 @@ import { appendToLog, EMPTY_LOG, holdsAdd } from "./log"
 
 export { HELD_KEY, LOG_KEY, PLACE_KEY } from "./keys"
 
-/** How far into a card: choosing, speaking to a choice, or seeing rustc's result. */
-type Stage = "choose" | "speak" | "see"
-
 /**
  * Whether the card was played before it came up: never, in an earlier turn,
  * or just now, the only card left to come back to.
@@ -65,13 +62,8 @@ export type Again = "fresh" | "played" | "same"
 
 /** The card on screen, and what has happened on it so far. */
 export type Visit = CardRef & {
-  readonly stage: Stage
-  /** The `pick` of the choice taken; null while none is. */
-  readonly picked: string | null
   /** The voice note said on this card; null while none is kept. */
   readonly note: string | null
-  /** rustc's result has been shown. */
-  readonly shown: boolean
   readonly pinned: boolean
   readonly again: Again
 }
@@ -171,16 +163,22 @@ const PlaceRecordSchema = z.strictObject({
   v: z.literal(1),
   place: z
     .strictObject({
-      visit: z.strictObject({
-        round: z.string(),
-        card: z.string(),
-        stage: z.enum(["choose", "speak", "see"]),
-        picked: z.string().nullable(),
-        note: z.string().nullable(),
-        shown: z.boolean(),
-        pinned: z.boolean(),
-        again: z.enum(["fresh", "played", "same"]),
-      }),
+      visit: z
+        .strictObject({
+          round: z.string(),
+          card: z.string(),
+          // A card's stage, pick and reveal, kept until TALK5 (#2550): read,
+          // so a place kept before it still opens, and dropped.
+          stage: z.enum(["choose", "speak", "see"]).optional(),
+          picked: z.string().nullable().optional(),
+          note: z.string().nullable(),
+          shown: z.boolean().optional(),
+          pinned: z.boolean(),
+          again: z.enum(["fresh", "played", "same"]),
+        })
+        .transform(
+          ({ stage: _stage, picked: _picked, shown: _shown, ...visit }) => visit
+        ),
       menu: z.string().nullable(),
       title: TitleSchema,
     })

@@ -41,7 +41,7 @@ describe("copyForTutor", () => {
   it("carries the instructions, one heading level down", () => {
     expect(copy).toMatch(/^# Rust Rounds: the log, for a tutor\n/)
     expect(copy).toContain("\n## Rust Rounds: the tutor's instructions\n")
-    expect(copy).toContain("\n### The round: `some-ui.rust-round/1`\n")
+    expect(copy).toContain("\n### The round: `some-ui.rust-round/2`\n")
   })
 
   it("holds a worked example the intake takes, as a reply would", () => {
@@ -53,14 +53,15 @@ describe("copyForTutor", () => {
     })
   })
 
-  it("puts each card's program, choices, transcript and rustc's output in the log", () => {
+  it("puts each card's program, question, transcript and rustc's output in the log, and what a card played before TALK5 picked", () => {
     const log = section(copy, "## The log")
     expect(log).toContain("#### indexing-01, card c (variant)")
     expect(log).toContain("    let c = &s[1..2];")
     expect(log).toContain(
-      '  - "Prints é" (picked): asks "Say which bytes of `s` the range `1..2` covers."'
+      '- Asked: "A range instead of an index. What does the result tell you is checked, and when?"'
     )
-    expect(log).toContain('  - "Panics": asks "Say what is checked')
+    expect(log).toContain('- Picked "Prints é".')
+    expect(log).not.toContain("(picked)")
     expect(log).toContain(`- Said \`note-0003\`: "${transcript("note-0003")}"`)
     expect(log).toContain("warning: unused variable: `r`")
     expect(log).toContain("end byte index 2 is not a char boundary")

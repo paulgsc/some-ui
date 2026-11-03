@@ -41,25 +41,7 @@ export const INDEXING_01: Round = {
       kind: "read",
       id: "a",
       program: PROGRAM,
-      ask: "What does rustc do with line 4?",
-      choices: [
-        {
-          pick: "Refuses to compile it",
-          say: "Say why rustc refuses `s[r]`: which trait is missing, and for which type?",
-        },
-        {
-          pick: "Prints z",
-          say: "Say what `s[r]` would have to return to print z, and what type `c` would be.",
-        },
-        {
-          pick: "Prints 122",
-          say: "Say what type `c` would need to be to print 122.",
-        },
-        {
-          pick: "Not sure",
-          say: "Say what you would check first to find out.",
-        },
-      ],
+      ask: "What is rustc telling you about line 4, and why does Rust do it this way?",
       expect: { outcome: "compile-error", code: "E0277" },
     },
     {
@@ -67,21 +49,7 @@ export const INDEXING_01: Round = {
       id: "b",
       of: "a",
       hunk: { line: 4, replace: "    let c = s.as_bytes()[r];" },
-      ask: "Line 4 now indexes the bytes. What happens?",
-      choices: [
-        {
-          pick: "Prints 122",
-          say: "Say what `s.as_bytes()` is, and why indexing it with `r` compiles when `s[r]` did not.",
-        },
-        {
-          pick: "Prints z",
-          say: "Say what type `c` is now, and how it would print as z.",
-        },
-        {
-          pick: "Not sure",
-          say: "Say what you think `as_bytes` hands back.",
-        },
-      ],
+      ask: "Line 4 now indexes the bytes. What changed in what rustc did, and what does that cost or buy you?",
       expect: { outcome: "prints", stdout: "122" },
     },
     {
@@ -89,25 +57,7 @@ export const INDEXING_01: Round = {
       id: "c",
       of: "a",
       hunk: { line: 4, replace: "    let c = &s[1..2];" },
-      ask: "A range instead of an index. What happens?",
-      choices: [
-        {
-          pick: "Refuses to compile it",
-          say: "Say which check stops it, and how rustc could make that check before it runs.",
-        },
-        {
-          pick: "Panics",
-          say: "Say what is checked, and why it is checked while the program runs.",
-        },
-        {
-          pick: "Prints é",
-          say: "Say which bytes of `s` the range `1..2` covers.",
-        },
-        {
-          pick: "Not sure",
-          say: "Say where é starts and ends in the bytes of `s`.",
-        },
-      ],
+      ask: "A range instead of an index. What does the result tell you is checked, and when?",
       expect: { outcome: "panics" },
     },
     {
@@ -115,21 +65,7 @@ export const INDEXING_01: Round = {
       id: "d",
       of: "a",
       hunk: { line: 4, replace: "    let c = &s[1..3];" },
-      ask: "The range now ends at byte 3. What happens?",
-      choices: [
-        {
-          pick: "Prints é",
-          say: "Say why `1..3` is a range rustc's slicing accepts here.",
-        },
-        {
-          pick: "Panics",
-          say: "Say which byte you think the range ends inside.",
-        },
-        {
-          pick: "Not sure",
-          say: "Say how many bytes é takes in UTF-8.",
-        },
-      ],
+      ask: "The range now ends at byte 3. Why is the result different from `1..2`, and how would another language you know handle it?",
       expect: { outcome: "prints", stdout: "é" },
     },
   ],

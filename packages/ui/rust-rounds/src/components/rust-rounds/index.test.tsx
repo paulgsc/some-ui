@@ -43,7 +43,7 @@ function expectNothingDisabled(): void {
 }
 
 describe("Rust Rounds on the phone", () => {
-  it("walks the menu, every card of the worked example and the tutor's page with Skip and Next alone", () => {
+  it("walks the menu, every card of the worked example and the tutor's page with Next alone, rustc's result on each card from the start", () => {
     const ports = testPorts()
     render(<RustRounds ports={ports} />)
 
@@ -55,27 +55,19 @@ describe("Rust Rounds on the phone", () => {
     press(WORDS.start)
 
     for (const card of INDEXING_01.cards) {
-      // Read and choose: the program, the question and its choices.
+      // The program, rustc's result and the question, with nothing to pick.
       expect(
         screen.getByRole("figure", { name: WORDS.program })
       ).toBeInTheDocument()
       if (card.kind !== "refine") {
         expect(screen.getByText(card.ask)).toBeInTheDocument()
-        for (const choice of card.choices) {
-          expect(
-            screen.getByRole("button", { name: choice.pick })
-          ).toBeInTheDocument()
-        }
       }
       if (card.kind === "variant") {
         expect(
           screen.getByText(WORDS.oneLineChanged(card.hunk.line))
         ).toBeInTheDocument()
       }
-      expectNothingDisabled()
-      press(WORDS.skipToRustc)
-
-      // See: rustc's recorded result, as printed, and Next.
+      // rustc's recorded result, as printed, and Next.
       const run = INDEXING_01_RUNS[card.id]!
       const printed =
         run.outcome === "compile-error"
@@ -110,12 +102,9 @@ describe("Rust Rounds on the phone", () => {
     expect(screen.getByText(WORDS.cardTitle("indexing", 1))).toBeInTheDocument()
   })
 
-  it("marks rustc's span on the program once its result is shown", () => {
+  it("marks rustc's span on the program from the start", () => {
     render(<RustRounds ports={testPorts()} />)
     press(WORDS.start)
-    const program = screen.getByRole("figure", { name: WORDS.program })
-    expect(program.querySelector("mark[data-code-span]")).toBeNull()
-    press(WORDS.skipToRustc)
     expect(
       screen
         .getByRole("figure", { name: WORDS.program })
@@ -128,7 +117,6 @@ describe("Rust Rounds on the phone", () => {
     ports.notes.mic.script({ ...SPEAKING, open: { kind: "cue" } })
     render(<RustRounds ports={ports} />)
     press(WORDS.start)
-    press("Not sure")
     press(TAKE_WORDS.buttonLabel.ready)
     expect(take()).toHaveTextContent(TAKE_WORDS.button.opening)
     await act(async () => {
@@ -147,7 +135,6 @@ describe("Rust Rounds on the phone", () => {
     ports.notes.mic.script({ ...SPEAKING, open: { kind: "cue" } })
     render(<RustRounds ports={ports} />)
     press(WORDS.start)
-    press("Not sure")
     press(TAKE_WORDS.buttonLabel.ready)
     press(TAKE_WORDS.buttonLabel.opening)
     await settle()
@@ -160,7 +147,6 @@ describe("Rust Rounds on the phone", () => {
     const ports = testPorts()
     render(<RustRounds ports={ports} />)
     press(WORDS.start)
-    press("Not sure")
     press(TAKE_WORDS.buttonLabel.ready)
     await settle(3_000)
     press(TAKE_WORDS.buttonLabel.recording)
@@ -193,7 +179,7 @@ describe("Rust Rounds on the phone", () => {
     expect(ports.notes.store.getSnapshot()).toHaveLength(2)
   })
 
-  it("offers plain Skip on a card with no run of its program on the phone", () => {
+  it("says so on a card with no run of its program on the phone", () => {
     const storage = inMemoryStorage()
     keptRounds(storage).hold({
       rounds: [{ ...INDEXING_01, id: "borrowing-01", concept: "borrowing" }],
@@ -204,23 +190,19 @@ describe("Rust Rounds on the phone", () => {
     })
     render(<RustRounds ports={testPorts(storage)} />)
     press("borrowing")
-    expect(screen.queryByRole("button", { name: WORDS.skipToRustc })).toBeNull()
-    press(WORDS.skip)
     expect(screen.getByText(WORDS.noRun)).toBeInTheDocument()
   })
 
-  it("says what the speak step would do where there is no microphone, and carries on", () => {
+  it("says what saying a note would do where there is no microphone, and carries on", () => {
     const ports = { ...testPorts(), notes: null }
     render(<RustRounds ports={ports} />)
     press(WORDS.start)
-    press("Not sure")
     expect(screen.getByText(WORDS.noMicrophone)).toBeInTheDocument()
     // The take button is withdrawn, not offered to fail.
     expect(
       screen.queryByRole("button", { name: TAKE_WORDS.buttonLabel.ready })
     ).toBeNull()
     expectNothingDisabled()
-    press(WORDS.skipToRustc)
     expect(
       screen.getByText(runHeading(INDEXING_01_RUNS.a!))
     ).toBeInTheDocument()

@@ -3,7 +3,9 @@
  * (paulgsc/some-ui#2231, #2232). No tutor holds memory of its own, so these
  * files are the whole contract: any agent can pick up where the last stopped.
  *
- * - `some-ui.rust-round/1`, a round of cards, goes down to the phone.
+ * - `some-ui.rust-round/2`, a round of cards, goes down to the phone. A
+ *   `/1` round, whose read and variant cards carried choices, is still
+ *   read: its choices are dropped, since nothing is picked (TALK5, #2550).
  * - `some-ui.rust-round-log/1`, what happened, goes up to the tutor.
  * - `some-ui.rust-tutor-notes/1`, the open and smoothed rough edges per
  *   concept, travels with every round.
@@ -12,13 +14,14 @@
  * field; a test holds it to naming every field these schemas have.
  *
  * Every object is strict: a key the format does not name is refused, so a
- * `correct` on a choice or a `rubric` on a card never gets in. The app
- * grades nothing.
+ * `rubric` or a `correct` on a card never gets in. The app grades nothing.
  */
 import { assertNever } from "@some-ui/core-utils"
 import { z } from "zod"
 
-export const ROUND_SCHEMA = "some-ui.rust-round/1"
+export const ROUND_SCHEMA = "some-ui.rust-round/2"
+/** The round as it was until TALK5: read and variant cards carried choices. */
+const ROUND_SCHEMA_V1 = "some-ui.rust-round/1"
 export const LOG_SCHEMA = "some-ui.rust-round-log/1"
 export const NOTES_SCHEMA = "some-ui.rust-tutor-notes/1"
 
@@ -79,30 +82,13 @@ const ExpectSchema = z.discriminatedUnion("outcome", [
 export type Expect = z.infer<typeof ExpectSchema>
 
 /**
- * One option on a card. Picking it chooses the sentence the owner is asked
- * to say; it is never scored. "Not sure" is an ordinary choice.
+ * A `/1` card's options, each the sentence picking it asked the owner to say.
+ * Read so a `/1` round still parses, then dropped: nothing is picked.
  */
-const ChoiceSchema = z.strictObject({
-  pick: TextSchema,
-  say: z.string({
-    error:
-      "every choice needs its `say`: the sentence picking it asks the owner to say",
-  }),
-})
-export type Choice = z.infer<typeof ChoiceSchema>
-
-const ChoicesSchema = z
-  .array(ChoiceSchema)
+const ChoicesV1Schema = z
+  .array(z.strictObject({ pick: TextSchema, say: z.string() }))
   .min(2, "a card offers 2 to 4 choices")
   .max(4, "a card offers 2 to 4 choices")
-  .superRefine((choices, ctx) =>
-    uniqueIds(
-      choices.map((choice) => choice.pick),
-      ctx,
-      (index) => [index, "pick"],
-      "pick"
-    )
-  )
 
 /** A whole program. Its lines end in `\n` alone, so a hunk's line numbers mean one thing. */
 const ProgramSchema = TextSchema.refine(
@@ -115,8 +101,8 @@ const ReadCardSchema = z.strictObject({
   kind: z.literal("read"),
   id: SlugSchema,
   program: ProgramSchema,
+  /** What the card asks the owner to talk about in rustc's result. */
   ask: TextSchema,
-  choices: ChoicesSchema,
   expect: ExpectSchema,
 })
 
@@ -141,7 +127,6 @@ const VariantCardSchema = z.strictObject({
   of: SlugSchema,
   hunk: HunkSchema,
   ask: TextSchema,
-  choices: ChoicesSchema,
   expect: ExpectSchema,
 })
 
@@ -171,6 +156,20 @@ const CardSchema = z.discriminatedUnion("kind", [
   RefineCardSchema,
 ])
 export type Card = z.infer<typeof CardSchema>
+
+/** A `/1` card: a read or variant card with its choices. */
+const CardV1Schema = z.discriminatedUnion("kind", [
+  ReadCardSchema.extend({ choices: ChoicesV1Schema }),
+  VariantCardSchema.extend({ choices: ChoicesV1Schema }),
+  RefineCardSchema,
+])
+
+/** A `/1` card as `/2` has it: without its choices. */
+function withoutChoices(card: z.infer<typeof CardV1Schema>): Card {
+  if (card.kind === "refine") return card
+  const { choices: _dropped, ...rest } = card
+  return rest
+}
 export type ReadCard = z.infer<typeof ReadCardSchema>
 export type VariantCard = z.infer<typeof VariantCardSchema>
 export type RefineCard = z.infer<typeof RefineCardSchema>
@@ -202,24 +201,50 @@ const UNPLAYABLE = {
   "line-out-of-range": "`hunk.line` is past the end of the program of `of`",
 } as const
 
+const roundFields = {
+  /** Unique across rounds, never reused: `<concept>-NN`. */
+  id: SlugSchema,
+  /** Which tutor wrote it: `claude-routine`, `chatgpt`, … */
+  by: TextSchema,
+  concept: SlugSchema,
+  /** The rough edges it targets, by the tutor notes' `edge` ids. */
+  edges: z.array(SlugSchema),
+  /**
+   * The errors from the owner's desk the round was built from, by each
+   * one's `at` in the log's `fromMyDesk`; absent, or empty, for a round
+   * built from anything else. The menu marks its concept "your error".
+   */
+  fromMyDesk: z.array(WhenSchema).optional(),
+}
+
+const CARDS_MIN = "a round has at least one card"
+
+/**
+ * A round, `/2`, or `/1` read as `/2` (its choices dropped). The phone keeps
+ * and plays only the `/2` shape.
+ */
 export const RoundSchema = z
-  .strictObject({
-    schema: z.literal(ROUND_SCHEMA),
-    /** Unique across rounds, never reused: `<concept>-NN`. */
-    id: SlugSchema,
-    /** Which tutor wrote it: `claude-routine`, `chatgpt`, … */
-    by: TextSchema,
-    concept: SlugSchema,
-    /** The rough edges it targets, by the tutor notes' `edge` ids. */
-    edges: z.array(SlugSchema),
-    cards: z.array(CardSchema).min(1, "a round has at least one card"),
-    /**
-     * The errors from the owner's desk the round was built from, by each
-     * one's `at` in the log's `fromMyDesk`; absent, or empty, for a round
-     * built from anything else. The menu marks its concept "your error".
-     */
-    fromMyDesk: z.array(WhenSchema).optional(),
-  })
+  .discriminatedUnion("schema", [
+    z.strictObject({
+      schema: z.literal(ROUND_SCHEMA),
+      ...roundFields,
+      cards: z.array(CardSchema).min(1, CARDS_MIN),
+    }),
+    z.strictObject({
+      schema: z.literal(ROUND_SCHEMA_V1),
+      ...roundFields,
+      cards: z.array(CardV1Schema).min(1, CARDS_MIN),
+    }),
+  ])
+  .transform((round) =>
+    round.schema === ROUND_SCHEMA
+      ? round
+      : {
+          ...round,
+          schema: ROUND_SCHEMA,
+          cards: round.cards.map(withoutChoices),
+        }
+  )
   .superRefine((round, ctx) => {
     uniqueIds(
       round.cards.map((card) => card.id),
@@ -322,7 +347,11 @@ export const CardEventSchema = z.strictObject({
   round: SlugSchema,
   card: SlugSchema,
   at: WhenSchema,
-  /** The `pick` of the choice taken, as shown; null when none was. */
+  /**
+   * The `pick` of the choice taken, as shown; null when none was. Always
+   * null since round `/2`, which has no choices (TALK5): kept so a card
+   * played before it reads as it was.
+   */
   picked: z.string().nullable(),
   /** The voice note said on this card; null when nothing was said. */
   note: NoteIdSchema.nullable(),
@@ -331,7 +360,11 @@ export const CardEventSchema = z.strictObject({
    * links both takes; null on any other card.
    */
   refines: NoteIdSchema.nullable(),
-  /** Moved on before rustc's result was shown. */
+  /**
+   * Moved on before rustc's result was shown. Always false since round
+   * `/2`: a card shows rustc's result from the start (TALK5). Whether
+   * anything was said is `note`.
+   */
   skipped: z.boolean(),
   /** The recorded run held for the card (shown unless `skipped`); null when none was held. */
   rustc: RustcRunSchema.nullable(),

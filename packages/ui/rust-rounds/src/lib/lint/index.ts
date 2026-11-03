@@ -25,7 +25,6 @@ export type Finding =
   | { kind: "tab"; card: string; line: number }
   | { kind: "program-too-long"; card: string; lines: number }
   | { kind: "hunk-changes-nothing"; card: string }
-  | { kind: "choice-without-say"; card: string; choice: number }
   | { kind: "unknown-note"; card: string; note: string }
   | { kind: "unknown-desk-paste"; at: string }
   /** The reply carried no tutor notes (`lib/intake`). */
@@ -145,16 +144,6 @@ export function lintRound(round: Round, log: RoundLog): Array<Finding> {
         findings.push({ kind: "hunk-changes-nothing", card: card.id })
       }
     }
-
-    card.choices.forEach((choice, index) => {
-      if (choice.say.trim() === "") {
-        findings.push({
-          kind: "choice-without-say",
-          card: card.id,
-          choice: index + 1,
-        })
-      }
-    })
   }
   return findings
 }
@@ -180,9 +169,6 @@ export function describeFinding(finding: Finding): string {
     }
     case "hunk-changes-nothing": {
       return `${card}: \`hunk.replace\` is the line already there; the variant changes nothing.`
-    }
-    case "choice-without-say": {
-      return `${card}, choice ${finding.choice}: \`say\` is blank; every choice asks the owner to say something.`
     }
     case "unknown-note": {
       return `${card}: refines note "${finding.note}", which the log never names; refine only notes from the log.`

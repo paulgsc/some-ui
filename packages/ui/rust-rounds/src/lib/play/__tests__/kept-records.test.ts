@@ -24,10 +24,7 @@ const PLACE: Place = {
   visit: {
     round: INDEXING_01.id,
     card: "b",
-    stage: "speak",
-    picked: "Prints 122",
     note: null,
-    shown: false,
     pinned: false,
     again: "fresh",
   },

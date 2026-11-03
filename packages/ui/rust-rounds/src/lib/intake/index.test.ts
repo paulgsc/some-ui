@@ -19,13 +19,10 @@ const NEXT_NOTES = { ...INDEXING_01_NOTES, round: "indexing-02" }
 
 const [READ, ...REST] = INDEXING_01.cards
 if (READ?.kind !== "read") throw new Error("the worked example changed shape")
-const [CHOICE] = READ.choices
-if (CHOICE === undefined) throw new Error("the worked example changed shape")
-
-/** The worked example's round with its first choice replaced; it may be malformed. */
-const withFirstChoice = (choice: object): unknown => ({
+/** The worked example's round with its first card changed; it may be malformed. */
+const withFirstCard = (card: object): unknown => ({
   ...INDEXING_01,
-  cards: [{ ...READ, choices: [choice, ...READ.choices.slice(1)] }, ...REST],
+  cards: [{ ...READ, ...card }, ...REST],
 })
 
 /** The violations of a reply the intake refused; fails the test if it took it. */
@@ -107,17 +104,17 @@ describe("intakeReply", () => {
     ])
   })
 
-  it("refuses a graded choice, telling the tutor the app never grades", () => {
-    const graded = withFirstChoice({ ...CHOICE, correct: true })
+  it("refuses a graded card, telling the tutor the app never grades", () => {
+    const graded = withFirstCard({ correct: true })
     expect(refusal(reply(graded, INDEXING_01_NOTES))).toEqual([
-      'round cards[0] ("a").choices[0]: remove `correct`. Rust Rounds never grades: no choice is right or wrong, and no card carries a rubric or a score.',
+      'round cards[0] ("a"): remove `correct`. Rust Rounds never grades: nothing said is right or wrong, and no card carries a rubric or a score.',
     ])
   })
 
-  it("refuses a choice with no `say`, naming where", () => {
-    const { say: _say, ...pickOnly } = CHOICE
-    expect(refusal(reply(withFirstChoice(pickOnly)))).toEqual([
-      'round cards[0] ("a").choices[0].say: every choice needs its `say`: the sentence picking it asks the owner to say',
+  it("refuses choices on a /2 card, naming where", () => {
+    const picks = withFirstCard({ choices: [{ pick: "Not sure", say: "" }] })
+    expect(refusal(reply(picks))).toEqual([
+      'round cards[0] ("a"): `choices` is not part of the format; remove it.',
     ])
   })
 
@@ -133,7 +130,7 @@ describe("intakeReply", () => {
   it("refuses a round with no schema tag", () => {
     const { schema: _schema, ...untagged } = INDEXING_01
     expect(refusal(reply(untagged))).toEqual([
-      'round schema: missing; it must be "some-ui.rust-round/1".',
+      'round schema: missing; it must be "some-ui.rust-round/2".',
     ])
   })
 
@@ -145,9 +142,9 @@ describe("intakeReply", () => {
     expect(refusal(reply(INDEXING_01, notesTwo))).toEqual([
       'tutor notes schema: "some-ui.rust-tutor-notes/2" is not this format\'s tag; it must be "some-ui.rust-tutor-notes/1".',
     ])
-    const roundTwo = { ...INDEXING_01, schema: "some-ui.rust-round/2" }
+    const roundTwo = { ...INDEXING_01, schema: "some-ui.rust-round/3" }
     expect(refusal(reply(roundTwo, INDEXING_01_NOTES))).toEqual([
-      'round schema: "some-ui.rust-round/2" is not this format\'s tag; it must be "some-ui.rust-round/1".',
+      'round schema: "some-ui.rust-round/3" is not this format\'s tag; it must be "some-ui.rust-round/2".',
     ])
     const { schema: _schema, ...untagged } = INDEXING_01_NOTES
     const otherTag = { ...untagged, schema: "rust-notes" }
