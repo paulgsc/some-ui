@@ -39,7 +39,7 @@ const entryOf = (answered: Answered, bundle: IdeaForHome): string =>
   `${answered} ${fingerprintOf(bundle)}`
 
 /** The ideas home doesn't hold as they are now, and hasn't refused as they are. */
-export function ideasToSend(
+function ideasToSend(
   ideas: ReadonlyArray<IdeaForHome>,
   sent: Sent
 ): ReadonlyArray<IdeaForHome> {

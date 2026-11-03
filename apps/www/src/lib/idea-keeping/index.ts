@@ -16,7 +16,7 @@ import type { IdeaForHome, IdeaStore } from "@some-ui/soundbites"
 import { handedIn } from "@/lib/handed-in"
 
 /** What the voice lane needs of the ideas, handed in by an idea route. */
-export type IdeaKeeping = {
+type IdeaKeeping = {
   /** Each idea sent whole, as home keeps it; null when they can't be read. */
   readonly forHome: () => ReadonlyArray<IdeaForHome> | null
 }
@@ -28,9 +28,6 @@ export const keepIdeas = ideas.keep
 
 /** The ideas' reading, once a route has handed it in; null until then. */
 export const ideaKeeping = ideas.kept
-
-/** Calls `listener` once the ideas' reading is handed in. */
-export const onIdeasKept = ideas.onKept
 
 let moves = 0
 const listeners = new Set<() => void>()
