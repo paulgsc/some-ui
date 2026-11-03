@@ -410,6 +410,59 @@ describe("recording a scene", () => {
   })
 })
 
+describe("a pull down to check again (SH6)", () => {
+  it("reads the phone's videos again, and answers once that read lands", async () => {
+    const memory = memoryProjectStore()
+    const runtime = await opened(memory)
+    // Kept on the phone by something that told no screen.
+    const other = { ...projectIn(runtime), id: "other" }
+    memory.projects.set(other.id, other)
+    await runtime.checkAgain()
+    expect(
+      projectsOfState(runtime.getSnapshot()).map((each) => each.id)
+    ).toContain("other")
+    expect(runtime.getSnapshot().checking).toBe(false)
+  })
+
+  it("says it could not read when the phone's videos could not be read", async () => {
+    const memory = memoryProjectStore()
+    const runtime = await opened(memory)
+    const list = vi
+      .spyOn(memory.store, "list")
+      .mockRejectedValueOnce(new Error("unreadable"))
+    await expect(runtime.checkAgain()).rejects.toThrow()
+    expect(list).toHaveBeenCalled()
+    // What was on screen stays, and the next pull reads again.
+    expect(runtime.getSnapshot().shelf.kind).toBe("read")
+    await runtime.checkAgain()
+  })
+
+  it("waits for its own writes, and the read after them answers", async () => {
+    const memory = memoryProjectStore()
+    const runtime = await opened(memory)
+    runtime.dispatch({ type: "recordChosen" })
+    let release: () => void = () => undefined
+    memory.gate.hold = (): Promise<void> =>
+      new Promise<void>((resolve) => {
+        release = resolve
+      })
+    runtime.dispatch({ type: "recordPressed" })
+    await until(runtime, (state) => state.activity.kind === "recording")
+    runtime.dispatch({ type: "recordPressed" })
+    await until(runtime, (state) => state.inFlight !== null)
+    let answered = false
+    const pull = runtime.checkAgain().then(() => {
+      answered = true
+    })
+    await Promise.resolve()
+    expect(answered).toBe(false)
+    memory.gate.hold = null
+    release()
+    await pull
+    expect(runtime.getSnapshot().inFlight).toBeNull()
+  })
+})
+
 describe("a swipe on Record (GES5)", () => {
   it("turns the scene as Previous and Keep and next do: on only once it has its take, never past the last, never mid-take", async () => {
     const memory = memoryProjectStore()

@@ -1,4 +1,4 @@
-import type { JSX } from "react"
+import type { ComponentProps, JSX } from "react"
 import { useEffect } from "react"
 import { useConfirmSheet } from "@some-ui/shared"
 import type { Project, StudioShare, WingLink } from "@some-ui/soundbites"
@@ -15,13 +15,13 @@ import {
   StudioHome,
   waitingIds,
 } from "@some-ui/soundbites"
-import type { TurnListener } from "@some-ui/voice-capture"
 import { createFileRoute, Link } from "@tanstack/react-router"
 
 import { deviceListener } from "@/lib/device-listen"
 import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import { shareStudio } from "@/lib/journal-share"
+import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 import { keepStudio } from "@/lib/studio-keeping"
 
 const WORDS = STUDIO_WORDS
@@ -69,11 +69,17 @@ const ShareStudio = ({
   )
 }
 
-/** The phone's recognizer for a note said in Watch, in the Android app (ST5). */
-const studioPorts: { listener: TurnListener } | undefined =
-  import.meta.env.VITE_DEVICE_BACKEND === "true"
+/**
+ * The phone's recognizer for a note said in Watch, in the Android app (ST5),
+ * and the shell's refresh port, so a pull down on Start or a show reads the
+ * phone's videos again (SHOW SH6).
+ */
+const studioPorts: ComponentProps<typeof StudioHome>["ports"] = {
+  ...(import.meta.env.VITE_DEVICE_BACKEND === "true"
     ? { listener: deviceListener }
-    : undefined
+    : {}),
+  refresh: screenRefreshers.register,
+}
 
 const IdeaLink: WingLink = ({ className, children }) => (
   <Link to="/journal/idea" className={className}>
@@ -99,6 +105,8 @@ const studioShare: StudioShare | undefined =
  * Making something to publish, so not a study tool and not under Practice's
  * soundbites, though it records the same way (`@some-ui/voice-capture`).
  * Opened from Your ideas on a video an idea became, it opens that one.
+ * A pull down on Start or a show's screen reads the phone's videos again
+ * through the shell's refresh port (SHOW SH6).
  */
 const StudioRoute = (): JSX.Element => {
   const { project } = Route.useSearch()

@@ -390,6 +390,12 @@ export type StudioState = {
   readonly closed: "saving" | "saved" | "failed" | null
   /** Each Done for now's close not yet settled, or whose answer waits. */
   readonly filings: ReadonlyArray<Filing>
+  /**
+   * A pull waits on the next read of the phone's videos to land (SH6):
+   * whichever read is the newest when it lands answers it, so a read a
+   * newer one replaced never does.
+   */
+  readonly checking: boolean
   readonly readSeq: number
   readonly pickSeq: number
   readonly playSeq: number
@@ -477,6 +483,12 @@ export type StudioIntent =
 /** What the page, the clock and the ports report. */
 type StudioSignal =
   | { readonly type: "entered"; readonly at: string }
+  /**
+   * A pull down to check again (SHOW SH6, through the shell's refresh port):
+   * read again what the phone keeps, and answer `checked` once that read
+   * lands.
+   */
+  | { readonly type: "checkAgain" }
   | { readonly type: "left" }
   | { readonly type: "hidden" }
   | { readonly type: "shown" }
@@ -586,6 +598,8 @@ export type StudioEffect =
   | { readonly type: "listen"; readonly seq: number }
   | { readonly type: "stopListening" }
   | { readonly type: "cancelListening" }
+  /** A pull's read landed (`ok`) or could not be read. */
+  | { readonly type: "checked"; readonly ok: boolean }
 
 export type Step = {
   readonly state: StudioState
@@ -621,6 +635,7 @@ export function initialStudioState(
     held: [],
     closed: null,
     filings: [],
+    checking: false,
     readSeq: 0,
     pickSeq: 0,
     playSeq: 0,
@@ -646,6 +661,18 @@ const stay = (state: StudioState): Step => ({ state, effects: [] })
 
 function projectsOf(state: StudioState): ReadonlyArray<Project> {
   return state.shelf.kind === "read" ? state.shelf.projects : []
+}
+
+/**
+ * Whether a pull down checks this screen again (SHOW SH6): Start (Studio's
+ * home, or an episode's Start) and a show's screen, while on view. Record
+ * and Watch are not: a take or a note is under way there.
+ */
+export function pullable(state: StudioState): boolean {
+  return (
+    state.page === "here" &&
+    (state.screen.kind === "start" || state.screen.kind === "show")
+  )
 }
 
 /** The video on screen, as kept. */
@@ -1846,6 +1873,24 @@ export function step(state: StudioState, event: StudioEvent): Step {
       return stay({ ...state, visible: true })
     }
 
+    case "checkAgain": {
+      const asked = { ...state, checking: true }
+      // A read is out already (the first, or one asked again): it answers.
+      if (state.shelf.kind === "reading") return stay(asked)
+      if (state.shelf.kind === "unreadable")
+        return read({ ...asked, shelf: { kind: "reading" } })
+      // Ours first, as for a write from elsewhere: the read after them
+      // answers the pull.
+      if (
+        state.inFlight !== null ||
+        state.queue.length > 0 ||
+        state.held.length > 0 ||
+        !state.ready
+      )
+        return stay({ ...asked, stale: true })
+      return read(asked)
+    }
+
     case "retryRead": {
       return read({ ...state, shelf: { kind: "reading" } })
     }
@@ -1874,11 +1919,17 @@ export function step(state: StudioState, event: StudioEvent): Step {
         event.projects,
         kept ? state.current : (currentOf(event.projects)?.id ?? null)
       )
+      const answered: ReadonlyArray<StudioEffect> = state.checking
+        ? [{ type: "checked", ok: true }]
+        : []
       // Shown, so the store may let them go.
       return then(
         {
-          state: shown,
-          effects: keys.length === 0 ? [] : [{ type: "forget", keys }],
+          state: { ...shown, checking: false },
+          effects: [
+            ...(keys.length === 0 ? [] : [{ type: "forget" as const, keys }]),
+            ...answered,
+          ],
         },
         pump
       )
@@ -1886,11 +1937,21 @@ export function step(state: StudioState, event: StudioEvent): Step {
 
     case "listFailed": {
       if (event.seq !== state.readSeq) return stay(state)
+      const answered: Step["effects"] = state.checking
+        ? [{ type: "checked", ok: false }]
+        : []
+      const unasked = { ...state, checking: false }
       // Once the store is on screen, a failed read leaves it there: Record
       // and its Stop stay, and the writes queued go on regardless.
       if (state.shelf.kind === "read")
-        return stay({ ...state, notice: WORDS.notice.behind })
-      return stay({ ...state, shelf: { kind: "unreadable" } })
+        return {
+          state: { ...unasked, notice: WORDS.notice.behind },
+          effects: answered,
+        }
+      return {
+        state: { ...unasked, shelf: { kind: "unreadable" } },
+        effects: answered,
+      }
     }
 
     case "primerPicked": {
