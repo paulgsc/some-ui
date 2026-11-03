@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Panel: The Song Playing Now - YouTube</title>
+  </head>
+  <body>
+    <!--
+    BOYO fixture: a watch page in a Mix (#2215). A spec opens it with the
+    address a Mix's page has (`?v=vid_mix_now&list=RDvid_mix_seed`).
+
+    The page itself is yt-watch-page.html's, playing an old video. Beside
+    it are the Mix's playlist panel and Up next. The panel's rows are
+    shaped as yt-watch.html's row (#1848) and as www.youtube.com served a
+    Mix's panel on 2026-11-03: each row's links carry `list=RD…`, `index=`
+    and `pp=`, and no row shows a date.
+    Titles, channels and ids are placeholders.
+
+    The rows, in page order:
+      1. vid_mix_seed: the video the Mix started from, already played.
+      2. vid_mix_now: the page's own video.
+      3. vid_mix_next: also in Up next, dated 3 hours ago.
+      4. vid_mix_ahead: in the Mix only.
+      5. vid_mix_last: also in Up next, dated 9 years ago, by a link with
+         no `list=` (the sidebar copy).
+
+    Up next also holds an old video outside the Mix (vid_side_old) and an
+    undated one (vid_side_undated).
+  -->
+    <ytd-app>
+      <ytd-page-manager>
+        <ytd-browse hidden page-subtype="home"></ytd-browse>
+        <ytd-watch-flexy video-id="vid_mix_now">
+          <div id="columns">
+            <div id="primary">
+              <div id="primary-inner">
+                <div id="player">
+                  <div id="movie_player" class="html5-video-player">
+                    <video
+                      class="html5-main-video"
+                      width="320"
+                      height="180"
+                    ></video>
+                  </div>
+                </div>
+                <div id="below">
+                  <ytd-watch-metadata video-id="vid_mix_now">
+                    <div id="title">
+                      <h1>
+                        <yt-formatted-string
+                          >Panel: The Song Playing Now</yt-formatted-string
+                        >
+                      </h1>
+                    </div>
+                    <ytd-watch-info-text>
+                      <yt-formatted-string id="info"
+                        ><span dir="auto">12M views</span
+                        ><span dir="auto"> </span
+                        ><span dir="auto">9y ago</span></yt-formatted-string
+                      >
+                      <tp-yt-paper-tooltip
+                        ><div id="tooltip">
+                          12,345,678 views • Mar 3, 2017
+                        </div></tp-yt-paper-tooltip
+                      >
+                    </ytd-watch-info-text>
+                    <div id="description">
+                      <div id="description-inner">A description.</div>
+                    </div>
+                  </ytd-watch-metadata>
+                </div>
+              </div>
+            </div>
+
+            <div id="secondary">
+              <ytd-playlist-panel-renderer id="playlist">
+                <div id="items" class="playlist-items">
+                  <ytd-playlist-panel-video-renderer
+                    id="playlist-items"
+                    lockup="true"
+                  >
+                    <a
+                      id="wc-endpoint"
+                      class="yt-simple-endpoint"
+                      href="/watch?v=vid_mix_seed&amp;list=RDvid_mix_seed&amp;index=1&amp;pp=8AUB"
+                    >
+                      <div id="container">
+                        <div id="thumbnail-container">
+                          <ytd-thumbnail>
+                            <a
+                              aria-hidden="true"
+                              id="thumbnail"
+                              href="/watch?v=vid_mix_seed&amp;list=RDvid_mix_seed&amp;index=1&amp;pp=8AUB"
+                              tabindex="-1"
+                              ><div class="thumbnail"></div
+                            ></a>
+                          </ytd-thumbnail>
+                        </div>
+                        <div id="meta">
+                          <h4>
+                            <span id="video-title" title="Panel: The Seed"
+                              >Panel: The Seed</span
+                            >
+                          </h4>
+                          <div id="byline-container">
+                            <span id="byline" title="Seed Channel"
+                              >Seed Channel</span
+                            >
+                          </div>
+                        </div>
+                      </div>
+                    </a>
+                  </ytd-playlist-panel-video-renderer>
+
+                  <ytd-playlist-panel-video-renderer
+                    id="playlist-items"
+                    lockup="true"
+                  >
+                    <a
+                      id="wc-endpoint"
+                      class="yt-simple-endpoint"
+                      href="/watch?v=vid_mix_now&amp;list=RDvid_mix_seed&amp;index=2&amp;pp=8AUB"
+                    >
+                      <div id="container">
+                        <div id="thumbnail-container">
+                          <ytd-thumbnail>
+                            <a
+                              aria-hidden="true"
+                              id="thumbnail"
+                              href="/watch?v=vid_mix_now&amp;list=RDvid_mix_seed&amp;index=2&amp;pp=8AUB"
+                              tabindex="-1"
+                              ><div class="thumbnail"></div
+                            ></a>
+                          </ytd-thumbnail>
+                        </div>
+                        <div id="meta">
+                          <h4>
+                            <span
+                              id="video-title"
+                              title="Panel: The Song Playing Now"
+                              >Panel: The Song Playing Now</span
+                            >
+                          </h4>
+                          <div id="byline-container">
+                            <span id="byline" title="Now Channel"
+                              >Now Channel</span
+                            >
+                          </div>
+                        </div>
+                      </div>
+                    </a>
+                  </ytd-playlist-panel-video-renderer>
+
+                  <ytd-playlist-panel-video-renderer
+                    id="playlist-items"
+                    lockup="true"
+                  >
+                    <a
+                      id="wc-endpoint"
+                      class="yt-simple-endpoint"
+                      href="/watch?v=vid_mix_next&amp;list=RDvid_mix_seed&amp;index=3&amp;pp=8AUB"
+                    >
+                      <div id="container">
+                        <div id="thumbnail-container">
+                          <ytd-thumbnail>
+                            <a
+                              aria-hidden="true"
+                              id="thumbnail"
+                              href="/watch?v=vid_mix_next&amp;list=RDvid_mix_seed&amp;index=3&amp;pp=8AUB"
+                              tabindex="-1"
+                              ><div class="thumbnail"></div
+                            ></a>
+                          </ytd-thumbnail>
+                        </div>
+                        <div id="meta">
+                          <h4>
+                            <span id="video-title" title="Panel: A Recent Song"
+                              >Panel: A Recent Song</span
+                            >
+                          </h4>
+                          <div id="byline-container">
+                            <span id="byline" title="Next Channel"
+                              >Next Channel</span
+                            >
+                          </div>
+                        </div>
+                      </div>
+                    </a>
+                  </ytd-playlist-panel-video-renderer>
+
+                  <ytd-playlist-panel-video-renderer
+                    id="playlist-items"
+                    lockup="true"
+                  >
+                    <a
+                      id="wc-endpoint"
+                      class="yt-simple-endpoint"
+                      href="/watch?v=vid_mix_ahead&amp;list=RDvid_mix_seed&amp;index=4&amp;pp=8AUB"
+                    >
+                      <div id="container">
+                        <div id="thumbnail-container">
+                          <ytd-thumbnail>
+                            <a
+                              aria-hidden="true"
+                              id="thumbnail"
+                              href="/watch?v=vid_mix_ahead&amp;list=RDvid_mix_seed&amp;index=4&amp;pp=8AUB"
+                              tabindex="-1"
+                              ><div class="thumbnail"></div
+                            ></a>
+                          </ytd-thumbnail>
+                        </div>
+                        <div id="meta">
+                          <h4>
+                            <span
+                              id="video-title"
+                              title="Panel: A Song in the Mix"
+                              >Panel: A Song in the Mix</span
+                            >
+                          </h4>
+                          <div id="byline-container">
+                            <span id="byline" title="Ahead Channel"
+                              >Ahead Channel</span
+                            >
+                          </div>
+                        </div>
+                      </div>
+                    </a>
+                  </ytd-playlist-panel-video-renderer>
+
+                  <ytd-playlist-panel-video-renderer
+                    id="playlist-items"
+                    lockup="true"
+                  >
+                    <a
+                      id="wc-endpoint"
+                      class="yt-simple-endpoint"
+                      href="/watch?v=vid_mix_last&amp;list=RDvid_mix_seed&amp;index=5&amp;pp=8AUB"
+                    >
+                      <div id="container">
+                        <div id="thumbnail-container">
+                          <ytd-thumbnail>
+                            <a
+                              aria-hidden="true"
+                              id="thumbnail"
+                              href="/watch?v=vid_mix_last&amp;list=RDvid_mix_seed&amp;index=5&amp;pp=8AUB"
+                              tabindex="-1"
+                              ><div class="thumbnail"></div
+                            ></a>
+                          </ytd-thumbnail>
+                        </div>
+                        <div id="meta">
+                          <h4>
+                            <span id="video-title" title="Panel: The Last Song"
+                              >Panel: The Last Song</span
+                            >
+                          </h4>
+                          <div id="byline-container">
+                            <span id="byline" title="Last Channel"
+                              >Last Channel</span
+                            >
+                          </div>
+                        </div>
+                      </div>
+                    </a>
+                  </ytd-playlist-panel-video-renderer>
+                </div>
+              </ytd-playlist-panel-renderer>
+
+              <div id="related">
+                <ytd-watch-next-secondary-results-renderer>
+                  <ytd-compact-video-renderer>
+                    <a id="video-title" href="/watch?v=vid_mix_next"
+                      >Up next: A Recent Song</a
+                    >
+                    <ytd-channel-name>
+                      <yt-formatted-string>Next Channel</yt-formatted-string>
+                    </ytd-channel-name>
+                    <a href="/@NextChannel">Next Channel</a>
+                    <div id="metadata-line">
+                      <span>1M views</span><span>3 hours ago</span>
+                    </div>
+                  </ytd-compact-video-renderer>
+                  <ytd-compact-video-renderer>
+                    <a id="video-title" href="/watch?v=vid_side_old"
+                      >Up next: An Old Video</a
+                    >
+                    <ytd-channel-name>
+                      <yt-formatted-string>Side Channel</yt-formatted-string>
+                    </ytd-channel-name>
+                    <a href="/@SideChannel">Side Channel</a>
+                    <div id="metadata-line">
+                      <span>1M views</span><span>9 years ago</span>
+                    </div>
+                  </ytd-compact-video-renderer>
+                  <ytd-compact-video-renderer>
+                    <a id="video-title" href="/watch?v=vid_mix_last"
+                      >Up next: The Last Song</a
+                    >
+                    <ytd-channel-name>
+                      <yt-formatted-string>Last Channel</yt-formatted-string>
+                    </ytd-channel-name>
+                    <a href="/@LastChannel">Last Channel</a>
+                    <div id="metadata-line">
+                      <span>1M views</span><span>9 years ago</span>
+                    </div>
+                  </ytd-compact-video-renderer>
+                  <ytd-compact-video-renderer>
+                    <a id="video-title" href="/watch?v=vid_side_undated"
+                      >Up next: An Undated Video</a
+                    >
+                    <ytd-channel-name>
+                      <yt-formatted-string>Side Channel</yt-formatted-string>
+                    </ytd-channel-name>
+                    <a href="/@SideChannel">Side Channel</a>
+                  </ytd-compact-video-renderer>
+                </ytd-watch-next-secondary-results-renderer>
+              </div>
+            </div>
+          </div>
+        </ytd-watch-flexy>
+      </ytd-page-manager>
+    </ytd-app>
+  </body>
+</html>

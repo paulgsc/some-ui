@@ -27,14 +27,28 @@
  *       page admits instead; under Stop nothing opens (#1966).
  * W14 — Under Skip, when autoplay went on into a video whose own page turns
  *       out held, it moves on to the next video the page admits that has not
- *       played, rather than stopping at "Not here." (SK1). * W15 — Likewise when that page's Up next has nothing admitted yet and its
+ *       played, rather than stopping at "Not here." (SK1).
+ * W15 — Likewise when that page's Up next has nothing admitted yet and its
  *       cards arrive after the page is held (SK1).
+ *
+ * A watch page in a Mix (`yt-mix`, opened at a `list=RD…` address, #2215):
+ *
+ * W16 — Under Music mix, the Mix's rows with no date are plated, while a
+ *       row dated recent stays absent, and so does an undated card outside
+ *       the Mix. Under Standard the undated rows are absent (R11).
+ * W17 — Under Music mix and Skip, a held autoplay into the next row opens
+ *       the Mix's next admitted row, two rows on, an undated one, by that
+ *       row's own link, which keeps the Mix's `list=`, ahead of an admitted
+ *       Up next card; the course marks that row next (SK1, R11, R12).
+ * W18 — When a row's video is admitted only by its copy in Up next, Skip
+ *       opens the row, three rows on, not the copy, so the Mix plays on
+ *       (SK1).
  */
 
 import { SWITCHED_OFF_ATTRIBUTE } from "@censor/lib/content/selectors"
 import { expect, test } from "@censor/playwright/fixture"
 import { vividPixels } from "@censor/playwright/rendered"
-import type { Page } from "@playwright/test"
+import type { Locator, Page } from "@playwright/test"
 
 test("W1: no comments render, unless off", async ({ fixture }) => {
   const page = await fixture.goto("yt-comments")
@@ -464,4 +478,116 @@ test("W15: under Skip, a held page moves on once its Up next arrives", async ({
   expect(await opened(), "nothing to go to yet").toEqual([])
   await upNext(page, [["older_next", "10 years ago", "Chan"]])
   await expect.poll(opened).toEqual(["/watch?v=older_next"])
+})
+
+// ── A watch page in a Mix (#2215) ────────────────────────────────────────────
+
+/** The address a Mix's watch page has: its video, and the Mix it plays in. */
+const MIX_ADDRESS = "?v=vid_mix_now&list=RDvid_mix_seed&index=2"
+const MIX = "list=RDvid_mix_seed"
+
+/** A row of the Mix's playlist panel, apart from its copy in Up next. */
+function row(page: Page, videoId: string): Locator {
+  return page.locator(`#playlist [data-boyo-vid="${videoId}"]`)
+}
+
+/** A card in Up next, apart from the row of the same video. */
+function card(page: Page, videoId: string): Locator {
+  return page.locator(`#related [data-boyo-vid="${videoId}"]`)
+}
+
+async function mixPage(fixture: {
+  goto(name: string, search: string): Promise<Page>
+}): Promise<Page> {
+  const page = await fixture.goto("yt-mix", MIX_ADDRESS)
+  expect(page.url(), "a Mix's address").toContain(MIX)
+  await watchView(page, "plated")
+  return page
+}
+
+test("W16: under Music mix, a Mix's undated rows are plated, and nothing else undated", async ({
+  fixture,
+}) => {
+  await fixture.settings({ mode: "mix" })
+  const page = await mixPage(fixture)
+  for (const id of ["vid_mix_seed", "vid_mix_now", "vid_mix_ahead"]) {
+    await expect(row(page, id), `row ${id}`).toHaveAttribute(
+      "data-boyo",
+      "plated"
+    )
+  }
+  // A row whose date can be read, here from its copy in Up next, is decided
+  // by that date; an undated card outside the Mix is held as ever.
+  await expect(row(page, "vid_mix_next")).toHaveAttribute("data-boyo", "absent")
+  await expect(row(page, "vid_mix_last")).toHaveAttribute("data-boyo", "plated")
+  await expect(card(page, "vid_side_undated")).toHaveAttribute(
+    "data-boyo",
+    "absent"
+  )
+
+  await fixture.settings({ mode: "standard" })
+  for (const id of ["vid_mix_seed", "vid_mix_ahead"]) {
+    await expect(row(page, id), `row ${id} under Standard`).toHaveAttribute(
+      "data-boyo",
+      "absent"
+    )
+  }
+  await expect(row(page, "vid_mix_last")).toHaveAttribute("data-boyo", "plated")
+})
+
+test("W17: under Music mix and Skip, a held autoplay opens the Mix's next admitted row", async ({
+  fixture,
+}) => {
+  await fixture.settings({ mode: "mix", autoplay: "skip" })
+  const page = await mixPage(fixture)
+  await expect(row(page, "vid_mix_next")).toHaveAttribute("data-boyo", "absent")
+  await expect(row(page, "vid_mix_ahead")).toHaveAttribute(
+    "data-boyo",
+    "plated"
+  )
+  await expect(card(page, "vid_side_old")).toHaveAttribute(
+    "data-boyo",
+    "plated"
+  )
+  // The course foresees it: the row playing, and Skip's row as next.
+  await expect(row(page, "vid_mix_now")).toHaveAttribute(
+    "data-boyo-course",
+    "now"
+  )
+  await expect(row(page, "vid_mix_ahead")).toHaveAttribute(
+    "data-boyo-course",
+    "next"
+  )
+  const opened = await recordOpened(page)
+
+  // YouTube's autoplay goes to the next row, which is held.
+  expect(await reaches(page, "vid_mix_next", "1")).toBe(false)
+  await expect
+    .poll(opened)
+    .toEqual([`/watch?v=vid_mix_ahead&${MIX}&index=4&pp=8AUB`])
+})
+
+test("W18: Skip opens a Mix's row, not its copy in Up next", async ({
+  fixture,
+}) => {
+  // Under Standard the rows have no date of their own, so vid_mix_ahead is
+  // held, and vid_mix_last is admitted only by its copy's date. That copy's
+  // link leaves the Mix.
+  await fixture.settings({ autoplay: "skip" })
+  const page = await mixPage(fixture)
+  await expect(row(page, "vid_mix_ahead")).toHaveAttribute(
+    "data-boyo",
+    "absent"
+  )
+  await expect(row(page, "vid_mix_last")).toHaveAttribute("data-boyo", "plated")
+  await expect(card(page, "vid_mix_last")).toHaveAttribute(
+    "data-boyo",
+    "plated"
+  )
+  const opened = await recordOpened(page)
+
+  expect(await reaches(page, "vid_mix_next", "1")).toBe(false)
+  await expect
+    .poll(opened)
+    .toEqual([`/watch?v=vid_mix_last&${MIX}&index=5&pp=8AUB`])
 })
