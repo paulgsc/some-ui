@@ -381,7 +381,7 @@ job held.
 
 == Counts
 
-*51 workspace packages, 5 browser extensions* --- counted 2026-10-31 by
+*52 workspace packages, 5 browser extensions* --- counted 2026-11-03 by
 `scripts/check-claims.mjs`, which walks the globs in `pnpm-workspace.yaml`
 (`packages/ui/*`, `apps/*`, `docs/canon`, `extensions/**`, `packages/*`,
 `crates/*`) for a `package.json`, the same method `pnpm -r list --depth -1`
@@ -393,7 +393,11 @@ catches build scripts): `some-censor`, `some-drama`, `some-filter`,
 `filter-classifier`, `docs`, and `scripts` are excluded — shared code and a
 test corpus, not shipped extensions.
 
-The package count is 50 -> 51 on 2026-10-31: `packages/ui/rust-rounds`
+The package count is 51 -> 52 on 2026-11-03: `packages/engagement`
+(`@some-ui/engagement`, the one vocabulary every pipeline uses to say whether
+it gets used, with the registry of each pipeline's affordances on each
+surface and the check on what an event may carry) landed. Before that it was
+50 -> 51 on 2026-10-31: `packages/ui/rust-rounds`
 (`@some-ui/rust-rounds`, the round, log and tutor-notes formats every Rust
 Rounds tutor writes to and the phone reads, with the intake for a tutor's reply
 and the tutor's instructions) landed. Before that it was 49 -> 50 on 2026-10-30: `packages/video-render`
