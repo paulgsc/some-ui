@@ -35,7 +35,7 @@
 import { CutListSchema } from "@some-ui/video-render"
 
 import { projectFile, readProjectFile } from "./file"
-import { sameJson } from "./lookup"
+import { sameJson, shotIds } from "./lookup"
 import type { CutListShape, Note, Project, Revision } from "./model"
 import { isAppendOnly, latest, reaches } from "./model"
 
@@ -221,9 +221,6 @@ function replay(
   return parsed.success ? { cutList: parsed.data, clashes } : null
 }
 
-const idsOf = (shape: CutListShape): Array<string> =>
-  shape.shots.map((each) => each.id)
-
 /**
  * Which scenes the result has, in order: the side that changed them, and
  * every scene either side has, so a removal is checked scene by scene.
@@ -234,9 +231,9 @@ function orderOf(
   ours: CutListShape,
   theirs: CutListShape
 ): ReadonlyArray<string> | null {
-  const was = idsOf(before)
-  const o = idsOf(ours)
-  const t = idsOf(theirs)
+  const was = shotIds(before)
+  const o = shotIds(ours)
+  const t = shotIds(theirs)
   if (sameJson(o, t)) return o
   if (sameJson(o, was)) return [...t, ...o.filter((id) => !t.includes(id))]
   if (sameJson(t, was)) return [...o, ...t.filter((id) => !o.includes(id))]

@@ -37,7 +37,7 @@ import type { CutList, EpisodePin, ShotTime } from "@some-ui/video-render"
 import type { Primer } from "@soundbites/lib/journal/primer"
 
 import { finishOf, isReleased, youtubeLink } from "./finish"
-import { latestShot, sameJson, shotIn } from "./lookup"
+import { latestShot, sameJson, shotIds, shotIn } from "./lookup"
 import type { OriginMark } from "./origin"
 import { originRefusal } from "./origin"
 
@@ -251,10 +251,8 @@ export function newProject(
 export function formatKept(project: Project, cutList: CutListShape): boolean {
   const first = project.revisions[0]
   if (project.episode === undefined || first === undefined) return true
-  const scenes = (shape: CutListShape): ReadonlyArray<string> =>
-    shape.shots.map((shot) => shot.id)
   return (
-    sameJson(scenes(cutList), scenes(first.cutList)) &&
+    sameJson(shotIds(cutList), shotIds(first.cutList)) &&
     sameJson(cutList.series, first.cutList.series) &&
     cutList.look === first.cutList.look &&
     cutList.voice === first.cutList.voice
