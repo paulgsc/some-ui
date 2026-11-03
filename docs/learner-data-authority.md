@@ -426,7 +426,10 @@ declared (checked by reading every call site and by the tests named).
   status, is copied home (`copyHome`) and read back (`readHeld`) in one run
   of the link, and the phone lets go of its own copy only if `confirmHeld`
   reports it held and it is unchanged since it was read
-  (`letGoUnchanged`); otherwise it stays. Home's copy keeps its plan,
+  (`letGoUnchanged`); otherwise it stays. Whichever way a session leaves
+  the phone (either let-go, or a delete), what the phone kept about it goes
+  with it: its autosave-failure note and its copy receipt's entries
+  (`forgetCopies`; SL1, #2268, the owner's "clear both"). Home's copy keeps its plan,
   status and times, and its `createdAt`, which the copy sends (on create,
   and in the patch that brings a copy up to date) and `sameRecord`
   compares (paulgsc/server#630). A finished session drained while home
