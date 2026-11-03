@@ -26,8 +26,9 @@
  * - **The owner's word on whose idea a scene is stays** (ST5, `./origin`).
  * - **An episode keeps its format** (SHOW SH3). A project opened from an
  *   episode file is pinned to it (`episode`), and a version that changes
- *   its scenes, their order, its series, its look or its voice is refused
- *   (`formatKept`): those are the show's, and only the voice is the owner's.
+ *   its scenes, their order, its series, its look or the voice plan (the
+ *   video's, or any scene's own) is refused (`formatKept`): those are the
+ *   show's, and only the takes are the owner's.
  * - **A note follows its shot.** It is pinned to (revision, shot, offset),
  *   and `anchorAt` finds that shot in any later revision by id, or says the
  *   shot is gone; its time is read from the renderer's shot times.
@@ -251,11 +252,14 @@ export function newProject(
 export function formatKept(project: Project, cutList: CutListShape): boolean {
   const first = project.revisions[0]
   if (project.episode === undefined || first === undefined) return true
+  // Each scene's voice as it reads: its own, else the video's.
+  const voices = (shape: CutListShape): ReadonlyArray<string> =>
+    shape.shots.map((shot) => shot.voice ?? shape.voice)
   return (
     sameJson(shotIds(cutList), shotIds(first.cutList)) &&
     sameJson(cutList.series, first.cutList.series) &&
     cutList.look === first.cutList.look &&
-    cutList.voice === first.cutList.voice
+    sameJson(voices(cutList), voices(first.cutList))
   )
 }
 

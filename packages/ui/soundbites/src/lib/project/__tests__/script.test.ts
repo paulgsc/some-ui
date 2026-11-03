@@ -194,6 +194,12 @@ describe("an episode (SHOW SH3)", () => {
       { ...cutList, shots: [...cutList.shots].reverse() },
       { ...cutList, look: "lively" as const },
       { ...cutList, voice: "read" as const },
+      {
+        ...cutList,
+        shots: cutList.shots.map((shot, i) =>
+          i === 0 ? { ...shot, voice: "read" as const } : shot
+        ),
+      },
       { ...cutList, series: { id: "build-journal-short", version: 1 } },
     ]
     for (const shape of leaving)
