@@ -20,7 +20,6 @@ import { assertNever } from "@some-ui/core-utils"
 import { z } from "zod"
 
 export const ROUND_SCHEMA = "some-ui.rust-round/2"
-/** The round as it was until TALK5: read and variant cards carried choices. */
 const ROUND_SCHEMA_V1 = "some-ui.rust-round/1"
 export const LOG_SCHEMA = "some-ui.rust-round-log/1"
 export const NOTES_SCHEMA = "some-ui.rust-tutor-notes/1"
@@ -81,10 +80,6 @@ const ExpectSchema = z.discriminatedUnion("outcome", [
 ])
 export type Expect = z.infer<typeof ExpectSchema>
 
-/**
- * A `/1` card's options, each the sentence picking it asked the owner to say.
- * Read so a `/1` round still parses, then dropped: nothing is picked.
- */
 const ChoicesV1Schema = z
   .array(z.strictObject({ pick: TextSchema, say: z.string() }))
   .min(2, "a card offers 2 to 4 choices")
@@ -157,14 +152,12 @@ const CardSchema = z.discriminatedUnion("kind", [
 ])
 export type Card = z.infer<typeof CardSchema>
 
-/** A `/1` card: a read or variant card with its choices. */
 const CardV1Schema = z.discriminatedUnion("kind", [
   ReadCardSchema.extend({ choices: ChoicesV1Schema }),
   VariantCardSchema.extend({ choices: ChoicesV1Schema }),
   RefineCardSchema,
 ])
 
-/** A `/1` card as `/2` has it: without its choices. */
 function withoutChoices(card: z.infer<typeof CardV1Schema>): Card {
   if (card.kind === "refine") return card
   const { choices: _dropped, ...rest } = card
@@ -174,7 +167,7 @@ export type ReadCard = z.infer<typeof ReadCardSchema>
 export type VariantCard = z.infer<typeof VariantCardSchema>
 export type RefineCard = z.infer<typeof RefineCardSchema>
 
-/** Each name at most once, so a `variant`'s `of`, the log and a pick name one thing. */
+/** Each name at most once, so a `variant`'s `of` and the log name one thing. */
 function uniqueIds(
   items: ReadonlyArray<string>,
   ctx: z.RefinementCtx,
@@ -347,11 +340,7 @@ export const CardEventSchema = z.strictObject({
   round: SlugSchema,
   card: SlugSchema,
   at: WhenSchema,
-  /**
-   * The `pick` of the choice taken, as shown; null when none was. Always
-   * null since round `/2`, which has no choices (TALK5): kept so a card
-   * played before it reads as it was.
-   */
+  /** The `pick` of the choice taken on a `/1` round's card; null when none was. */
   picked: z.string().nullable(),
   /** The voice note said on this card; null when nothing was said. */
   note: NoteIdSchema.nullable(),
@@ -360,11 +349,7 @@ export const CardEventSchema = z.strictObject({
    * links both takes; null on any other card.
    */
   refines: NoteIdSchema.nullable(),
-  /**
-   * Moved on before rustc's result was shown. Always false since round
-   * `/2`: a card shows rustc's result from the start (TALK5). Whether
-   * anything was said is `note`.
-   */
+  /** Moved on before rustc's result was shown, on a `/1` round's card. */
   skipped: z.boolean(),
   /** The recorded run held for the card (shown unless `skipped`); null when none was held. */
   rustc: RustcRunSchema.nullable(),

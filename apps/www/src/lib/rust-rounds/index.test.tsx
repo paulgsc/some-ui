@@ -47,7 +47,7 @@ describe("Rust Rounds on the simulated microphone", () => {
     fireEvent.click(take())
   }
 
-  /** The session on a desk of its own, at the speak step of the first card. */
+  /** The session on a desk of its own, on the first card. */
   function onACard(owner: MicOwner = microphoneOwner()): {
     mic: SimulatedMicrophone
     desk: TestDesk

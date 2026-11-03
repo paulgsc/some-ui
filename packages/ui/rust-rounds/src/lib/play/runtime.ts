@@ -58,7 +58,7 @@ export type RustRoundsPorts = {
   readonly store: RoundsStore
   /**
    * The microphone; null in a build that has none (the viewer's sample on
-   * Pages, #2241). There the speak step says what it would do in place of
+   * Pages, #2241). There a card says what it would do in place of
    * the take button, so no take ever starts, and the session reads the
    * pattern at rest (`NO_MICROPHONE`).
    */

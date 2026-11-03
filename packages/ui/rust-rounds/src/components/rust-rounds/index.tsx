@@ -1,7 +1,7 @@
 /**
  * Rust Rounds on the phone: open it, stay as long as you like, leave
- * whenever (#2235). The menu, a card (read and choose, speak, see rustc's
- * result; a refine card's earlier note and nudge), the step that pastes an
+ * whenever (#2235). The menu, a card (its program beside rustc's result and
+ * a voice note; a refine card's earlier note and nudge), the step that pastes an
  * error from the desk, from any card (RR4c), and the tutor's page.
  * There is no end screen, nothing counts the time, and nothing is scored.
  *

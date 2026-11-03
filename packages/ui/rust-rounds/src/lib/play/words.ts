@@ -51,7 +51,7 @@ export const WORDS = {
   /** A card left before its note was kept, and the note was lost. */
   noteLost: (concept: string, number: number): string =>
     `The note on ${concept}, card ${number} couldn't be kept.`,
-  /** The phone's room for voice notes is used up; on the menu and the speak step. */
+  /** The phone's room for voice notes is used up; on the menu and a card. */
   noRoom:
     "This phone has no room left for new voice notes until home holds the ones on it. Every card still plays.",
   earlierNote: "Your earlier note",

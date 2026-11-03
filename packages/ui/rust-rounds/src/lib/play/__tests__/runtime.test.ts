@@ -57,11 +57,6 @@ const settle = async (ms = 0): Promise<void> => {
   await vi.advanceTimersByTimeAsync(ms)
 }
 
-/** The first card, where a note can be said at once. */
-function speaking(runtime: RustRoundsRuntime): void {
-  runtime.dispatch({ type: "continue" })
-}
-
 /** Taps the card's note on, lets the microphone open, and talks two seconds. */
 async function talking(runtime: RustRoundsRuntime): Promise<void> {
   runtime.dispatch({ type: "tapNote" })
@@ -157,7 +152,7 @@ describe("the worked example", () => {
   it("sets the card's note aside, kept, and logs the card with none (D3)", async () => {
     const ports = testPorts()
     const runtime = opened(ports)
-    speaking(runtime)
+    runtime.dispatch({ type: "continue" })
     await noted(runtime)
     const note = runtime.getSnapshot().place?.visit.note
     runtime.dispatch({ type: "letGoNote", place: "phone" })
@@ -176,7 +171,7 @@ describe("the worked example", () => {
   it("plays the card's note, and stops it on Next", async () => {
     const ports = testPorts()
     const runtime = opened(ports)
-    speaking(runtime)
+    runtime.dispatch({ type: "continue" })
     await noted(runtime)
     runtime.dispatch({ type: "playNote" })
     await settle()
@@ -237,7 +232,7 @@ describe("the worked example", () => {
       finish: { kind: "after", ms: 1_000 },
     })
     const runtime = opened(ports)
-    speaking(runtime)
+    runtime.dispatch({ type: "continue" })
     await talking(runtime)
     runtime.dispatch({ type: "next" })
     // Moved on at once; the card waits for its note.
@@ -254,7 +249,7 @@ describe("the worked example", () => {
   it("logs a card left mid-take as it stands when the take keeps nothing", async () => {
     const ports = testPorts()
     const runtime = opened(ports)
-    speaking(runtime)
+    runtime.dispatch({ type: "continue" })
     runtime.dispatch({ type: "tapNote" })
     await settle(300)
     runtime.dispatch({ type: "next" })
@@ -270,7 +265,7 @@ describe("the worked example", () => {
     const ports = testPorts()
     ports.notes.keeping("failed")
     const runtime = opened(ports)
-    speaking(runtime)
+    runtime.dispatch({ type: "continue" })
     await talking(runtime)
     runtime.dispatch({ type: "next" })
     await settle()
@@ -288,7 +283,7 @@ describe("the worked example", () => {
     async (how) => {
       const ports = testPorts()
       const runtime = opened(ports)
-      speaking(runtime)
+      runtime.dispatch({ type: "continue" })
       await noted(runtime)
       const first = runtime.getSnapshot().place?.visit.note
       ports.notes.mic.script({
@@ -498,7 +493,7 @@ describe("leaving and coming back", () => {
     notes.mic.script({ ...SPEAKING, finish: { kind: "after", ms: 1_000 } })
     const runtime = createRustRounds(testPorts(storage, notes))
     const detach = runtime.attach()
-    speaking(runtime)
+    runtime.dispatch({ type: "continue" })
     await talking(runtime)
     runtime.dispatch({ type: "next" })
     detach()
@@ -522,7 +517,7 @@ describe("leaving and coming back", () => {
     notes.mic.script({ ...SPEAKING, finish: { kind: "after", ms: 1_000 } })
     const first = createRustRounds(testPorts(storage, notes))
     const detach = first.attach()
-    speaking(first)
+    first.dispatch({ type: "continue" })
     await talking(first)
     first.dispatch({ type: "tapNote" })
     first.dispatch({ type: "next" })
@@ -542,7 +537,7 @@ describe("leaving and coming back", () => {
     const notes = testNotes()
     notes.mic.script({ ...SPEAKING, finish: { kind: "after", ms: 1_000 } })
     const first = opened(testPorts(storage, notes))
-    speaking(first)
+    first.dispatch({ type: "continue" })
     await talking(first)
     first.dispatch({ type: "next" })
     // Never detached: both hear the same microphone, both hold the card.
@@ -562,7 +557,7 @@ describe("leaving and coming back", () => {
     const notes = testNotes()
     const first = createRustRounds(testPorts(storage, notes))
     const detach = first.attach()
-    speaking(first)
+    first.dispatch({ type: "continue" })
     await talking(first)
     detach()
     await settle()
@@ -585,7 +580,7 @@ describe("leaving and coming back", () => {
     notes.mic.script({ ...SPEAKING, finish: { kind: "after", ms: 1_000 } })
     const first = createRustRounds(testPorts(storage, notes))
     const detach = first.attach()
-    speaking(first)
+    first.dispatch({ type: "continue" })
     await talking(first)
     detach()
 
@@ -608,7 +603,7 @@ describe("leaving and coming back", () => {
   it("settles a card an ended app left waiting, once reopened, from the note the phone holds", async () => {
     const storage = inMemoryStorage()
     const first = opened(testPorts(storage))
-    speaking(first)
+    first.dispatch({ type: "continue" })
     await talking(first)
     first.dispatch({ type: "next" })
     // The app is ended before the note's end is heard; the phone kept it.
@@ -628,7 +623,7 @@ describe("leaving and coming back", () => {
   ])("settles a card an ended app left mid-Redo with %s", async (_, landed) => {
     const storage = inMemoryStorage()
     const first = opened(testPorts(storage))
-    speaking(first)
+    first.dispatch({ type: "continue" })
     await noted(first)
     const note = first.getSnapshot().place?.visit.note
     await talking(first)
@@ -648,7 +643,7 @@ describe("leaving and coming back", () => {
   it("logs a card an ended app left waiting as it stood when the phone holds no note", async () => {
     const storage = inMemoryStorage()
     const first = opened(testPorts(storage))
-    speaking(first)
+    first.dispatch({ type: "continue" })
     await talking(first)
     first.dispatch({ type: "next" })
     opened(testPorts(storage))
@@ -706,7 +701,7 @@ describe("leaving and coming back", () => {
     const { storage, full } = fullLog()
     const notes = testNotes()
     const first = opened(testPorts(storage, notes))
-    speaking(first)
+    first.dispatch({ type: "continue" })
     await talking(first)
     first.dispatch({ type: "next" })
     await settle()
@@ -741,7 +736,7 @@ describe("leaving and coming back", () => {
     const { storage, full } = fullLog()
     const notes = testNotes()
     const first = opened(testPorts(storage, notes))
-    speaking(first)
+    first.dispatch({ type: "continue" })
     await talking(first)
     first.dispatch({ type: "next" })
     const { pending } = keptRounds(storage).open()
@@ -809,7 +804,7 @@ describe("the tutor's page", () => {
     const ports = testPorts()
     ports.notes.mic.script({ ...SPEAKING, finish: { kind: "never" } })
     const runtime = opened(ports)
-    speaking(runtime)
+    runtime.dispatch({ type: "continue" })
     await talking(runtime)
     runtime.dispatch({ type: "next" })
     runtime.dispatch({ type: "tutor" })
@@ -925,7 +920,7 @@ describe("the microphone", () => {
     const ports = testPorts()
     ports.notes.mic.script({ ...SPEAKING, open: { kind: "cue" } })
     const runtime = opened(ports)
-    speaking(runtime)
+    runtime.dispatch({ type: "continue" })
     runtime.dispatch({ type: "tapNote" })
     expect(ports.notes.pattern.getSnapshot().take.kind).toBe("opening")
     runtime.dispatch({ type: "tapNote" })
@@ -944,7 +939,7 @@ describe("the microphone", () => {
   it("says a take an earlier opening left on the card on screen, when the phone holds no note from it", async () => {
     const storage = inMemoryStorage()
     const first = opened(testPorts(storage))
-    speaking(first)
+    first.dispatch({ type: "continue" })
     await talking(first)
     // The app is ended mid-take, on this card; the phone kept no note.
     const again = opened(testPorts(storage))
@@ -962,7 +957,7 @@ describe("the microphone", () => {
       open: { kind: "refuse", reason: "denied", ms: 0 },
     })
     const runtime = opened(ports)
-    speaking(runtime)
+    runtime.dispatch({ type: "continue" })
     runtime.dispatch({ type: "tapNote" })
     await settle()
     expect(runtime.getSnapshot()).toMatchObject({
@@ -978,7 +973,7 @@ describe("the microphone", () => {
     const ports = testPorts()
     ports.notes.keeping("full")
     const runtime = opened(ports)
-    speaking(runtime)
+    runtime.dispatch({ type: "continue" })
     await noted(runtime)
     expect(runtime.getSnapshot()).toMatchObject({ noRoom: true, taking: null })
     runtime.dispatch({ type: "next" })
@@ -999,7 +994,7 @@ describe("the microphone", () => {
     const ports = testPorts()
     ports.notes.mic.script({ ...SPEAKING, level: 0.03 })
     const runtime = opened(ports)
-    speaking(runtime)
+    runtime.dispatch({ type: "continue" })
     await noted(runtime)
     expect(runtime.getSnapshot()).toMatchObject({
       said: { kind: "ended", ended: { ending: "kept", unheard: true } },

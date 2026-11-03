@@ -22,7 +22,7 @@ import {
 import type { Finding } from "@rust-rounds/lib/lint"
 import { lintRound } from "@rust-rounds/lib/lint"
 import { isRecord, jsonValues } from "@some-ui/core-utils"
-import { z } from "zod"
+import type { z } from "zod"
 
 export type ReplyIntake =
   | {
@@ -80,18 +80,13 @@ function pathOf(path: ReadonlyArray<PropertyKey>, value: unknown): string {
   return text
 }
 
-const UnionOptions = z.object({ options: z.array(z.unknown()).min(1) })
-
 /**
- * The tags a refused `schema` must be: a format's one tag, or for a round
- * only its current one, though a `/1` round is still read (TALK5).
+ * The tags a refused `schema` must be. A round's `schema` is a union's
+ * discriminator, and only its current tag is asked for, though `/1` is read.
  */
 function tagsOf(issue: Issue): ReadonlyArray<unknown> | null {
   if (issue.code === "invalid_value") return issue.values
-  if (issue.code !== "invalid_union") return null
-  // A discriminator's issue names its options, which zod's type leaves out.
-  const union = UnionOptions.safeParse(issue)
-  return union.success ? union.data.options.slice(0, 1) : null
+  return issue.code === "invalid_union" ? [ROUND_SCHEMA] : null
 }
 
 function describeIssue(issue: Issue, value: unknown, label: string): string {

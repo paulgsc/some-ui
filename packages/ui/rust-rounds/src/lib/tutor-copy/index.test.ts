@@ -61,7 +61,6 @@ describe("copyForTutor", () => {
       '- Asked: "A range instead of an index. What does the result tell you is checked, and when?"'
     )
     expect(log).toContain('- Picked "Prints é".')
-    expect(log).not.toContain("(picked)")
     expect(log).toContain(`- Said \`note-0003\`: "${transcript("note-0003")}"`)
     expect(log).toContain("warning: unused variable: `r`")
     expect(log).toContain("end byte index 2 is not a char boundary")

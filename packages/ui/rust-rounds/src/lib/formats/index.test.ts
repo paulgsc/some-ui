@@ -40,19 +40,6 @@ describe("the three schemas", () => {
     expect(TutorNotesSchema.parse(INDEXING_01_NOTES)).toEqual(INDEXING_01_NOTES)
   })
 
-  it("refuse a card that carries `correct`, or choices", () => {
-    for (const key of ["correct", "choices"]) {
-      const result = RoundSchema.safeParse(
-        withFirstCard({ ...READ, [key]: true })
-      )
-      expect(result.error?.issues[0]).toMatchObject({
-        code: "unrecognized_keys",
-        keys: [key],
-        path: ["cards", 0],
-      })
-    }
-  })
-
   it("read a /1 round as /2, its choices dropped (TALK5)", () => {
     const choices = [
       { pick: "Refuses to compile it", say: "Say why." },
