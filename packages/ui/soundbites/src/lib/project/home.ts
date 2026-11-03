@@ -90,16 +90,45 @@ export async function letGoHeldTakes(
  * answered with home's receipt: MY-DATA MD3, www `lib/my-data`) leave the
  * phone, whatever the owner's let-go choice: home's receipt says the take
  * is gone from home on the owner's own "Delete for good", so this phone's
- * copy goes too. The take's record stays in its shot, marked kept by home
- * as it was before home deleted it, and off the phone. Project by project,
+ * copy goes too. The take's record stays in its shot, off the phone, marked
+ * with when this phone heard home deleted it (`deletedAt`, MD4), so its rows
+ * say so. Project by project,
  * each in its own write; how many projects changed.
  */
 export async function letGoDeletedTakes(
   store: ProjectStore,
-  deleted: ReadonlySet<string>
+  deleted: ReadonlySet<string>,
+  at: string = new Date().toISOString()
 ): Promise<number> {
   if (deleted.size === 0) return 0
-  return writeEach(store, (project) => heldByHome(project, deleted, () => true))
+  return writeEach(store, (project) => {
+    const gone = heldByHome(project, deleted, () => true) ?? project
+    const marked = markedDeleted(gone, deleted, at)
+    return marked === project ? null : marked
+  })
+}
+
+/**
+ * `project` with each take of `deleted` not marked yet marked deleted at
+ * `at` (MD4), so its rows say so; `project` itself when none changes.
+ */
+function markedDeleted(
+  project: Project,
+  deleted: ReadonlySet<string>,
+  at: string
+): Project {
+  const marks = project.takes.some(
+    (take) => deleted.has(take.id) && take.deletedAt === undefined
+  )
+  if (!marks) return project
+  return {
+    ...project,
+    takes: project.takes.map((take) =>
+      deleted.has(take.id) && take.deletedAt === undefined
+        ? { ...take, deletedAt: at }
+        : take
+    ),
+  }
 }
 
 /**

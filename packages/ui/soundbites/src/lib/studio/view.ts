@@ -502,6 +502,7 @@ export function recordTake(
           : take.onPhone
             ? { place: "going" }
             : null,
+        ...(take.deletedAt === undefined ? {} : { deleted: take.deletedAt }),
       },
       playing: activity.kind === "playing" && activity.take === take.id,
       canPlay: settled && take.onPhone,
@@ -509,6 +510,9 @@ export function recordTake(
       canRedo: false,
       canLetGo: false,
       unsent: false,
+      // Delete… is the record list's (`./records`), which knows what home
+      // marks deletable.
+      canDelete: false,
     },
   }
 }

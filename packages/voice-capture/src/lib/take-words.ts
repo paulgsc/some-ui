@@ -54,6 +54,8 @@ export type TakeWords = {
     readonly homeSince: (when: string) => string
     /** On this phone, waiting for the screen to send its item (`on-confirm`). */
     readonly unsent: string
+    /** Deleted for good from My data, when this phone heard so (MD3). */
+    readonly deleted: (when: string) => string
   }
   /** A moment, as `place.homeSince` says it: its day and time. */
   readonly when: (iso: string) => string
@@ -67,6 +69,8 @@ export type TakeWords = {
    */
   readonly discard: string
   readonly discarded: string
+  /** A record's Delete… (MD4), which opens My data on it. */
+  readonly deleteRecord: string
   /** For a screen reader: which take a row's control acts on. */
   readonly rowLabel: (action: string, lengthMs: number) => string
   /** The superseded takes, collapsed (D2). */
@@ -113,6 +117,7 @@ export const TAKE_WORDS: TakeWords = {
     home: "On home",
     homeSince: (when) => `On home since ${when}`,
     unsent: "On this phone. Nothing has been sent",
+    deleted: (when) => `Deleted for good on ${when}`,
   },
   when: (iso) =>
     new Date(iso).toLocaleString(undefined, {
@@ -127,6 +132,7 @@ export const TAKE_WORDS: TakeWords = {
   letGo: "Let it go",
   discard: "Delete",
   discarded: "Deleted. Nothing was sent.",
+  deleteRecord: "Delete…",
   rowLabel: (action, lengthMs) =>
     `${action} the take of ${formatTimecode(lengthMs)}`,
   earlier: (count) => `Earlier take${count === 1 ? "" : "s"} (${count})`,

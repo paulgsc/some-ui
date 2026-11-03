@@ -76,6 +76,7 @@ const ProjectSchema = z.object({
       mimeType: z.string().min(1),
       keptBy: z.array(z.enum(["home", "drive"])),
       onPhone: z.boolean(),
+      deletedAt: at.optional(),
     })
   ),
   chosen: z.record(id, id),

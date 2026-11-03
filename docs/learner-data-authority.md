@@ -409,9 +409,12 @@ declared (checked by reading every call site and by the tests named).
   `GET /voice-notes/kept`, with `?of=` on a kind's page, and on the
   overview one `GET /subjects/me/kept` of how much home keeps for good of the
   record in the same run (#2519, MD2b), each time a My
-  data page opens or is dragged down, and once after a delete home answered
-  with a receipt while a My data page shows (`refreshShown`, MD3), sending
-  nothing of the phone's but the kind; while the link is busy with another run, which sends nothing, it
+  data page opens or is dragged down, once after a delete home answered
+  with a receipt while a My data page shows (`refreshShown`, MD3), and one
+  `?of=studio` each time Studio's "What Studio keeps" opens or its projects
+  change while it shows, for the takes it offers Delete… on
+  (`deletableStudioTakes`, MD4 #2478), sending nothing of the phone's but
+  the kind; while the link is busy with another run, which sends nothing, it
   asks again a second later, at most ten times in all; #2476, whose page
   shows home's counts), and its Deleted page asking home what it deleted
   for good (through `lib/home-link/deleted-read`'s `keep`: one
@@ -501,9 +504,11 @@ declared (checked by reading every call site and by the tests named).
   `kept-read.ts` send anything but one `GET` of `keptPath(of)` per ask and,
   when `of` is null, one `GET /subjects/me/kept`, lets
   anything but `lib/my-data` read it, or has `lib/my-data` ask it but when a
-  My data page opens or is dragged down, or after a delete's receipt but
-  through `refreshShown` (`lib/my-data/runtime.ts`), or has `refreshShown`
-  ask while no page reads the snapshot, or ask again but while the link is
+  My data page opens or is dragged down or Studio's records open
+  (`@some-ui/soundbites`' `createStudioRecords`' `attach`, and its store's
+  writes), or after a delete's receipt but through `refreshShown`
+  (`lib/my-data/runtime.ts`), or has `refreshShown` ask while no page reads
+  the snapshot, or ask again but while the link is
   busy, more than ten times in all; the same of `deleted-read.ts` with
   `DELETED_PATH` and My data's Deleted page; one that has `delete-note.ts`
   send anything but one `DELETE` of `deletePath(id)` per note it was given,

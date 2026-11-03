@@ -217,6 +217,29 @@ describe("revisions", () => {
 })
 
 describe("takes", () => {
+  it("note once when home deleted one (MD4): set, it stays as it was", () => {
+    const { project } = run(
+      started(),
+      { type: "takeStarted", shot: "a" },
+      take("t1", "a")
+    )
+    const at = "2026-11-03T09:00:00.000Z"
+    const marked = {
+      ...project,
+      takes: project.takes.map((each) => ({ ...each, deletedAt: at })),
+    }
+    expect(isAppendOnly(project, marked)).toBe(true)
+    expect(isAppendOnly(marked, project)).toBe(false)
+    const moved = {
+      ...project,
+      takes: project.takes.map((each) => ({
+        ...each,
+        deletedAt: "2026-11-04T09:00:00.000Z",
+      })),
+    }
+    expect(isAppendOnly(marked, moved)).toBe(false)
+  })
+
   it("are all kept, the newest chosen, and an older one can be chosen again", () => {
     const state = run(
       started(),

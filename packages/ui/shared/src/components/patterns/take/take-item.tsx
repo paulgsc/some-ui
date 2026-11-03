@@ -24,6 +24,12 @@ export type TakeItemProps = {
   onRedo: (id: string) => void
   /** Sets a current take aside (D3); `place` is where it is kept. */
   onLetGo: (id: string, place: TakePlace) => void
+  /**
+   * Opens My data on a take that is a record home marks deletable (MD4,
+   * the pattern's `records: "delete-in-my-data"`); absent, no row offers
+   * Delete….
+   */
+  onDelete?: ((id: string) => void) | undefined
   /** What the item is, for a screen reader. */
   label?: string
   /** The screen's words about one take, under its length. */
@@ -64,6 +70,7 @@ export const TakeItem = ({
   onPlay,
   onRedo,
   onLetGo,
+  onDelete,
   label,
   describe,
   words = TAKE_WORDS,
@@ -101,6 +108,7 @@ export const TakeItem = ({
         onPlay={onPlay}
         onRedo={full === undefined ? onRedo : undefined}
         onLetGo={onLetGo}
+        onDelete={onDelete}
         describe={describe}
         extra={extra}
       />
@@ -110,7 +118,7 @@ export const TakeItem = ({
 
 export type TakeRowsProps = Pick<
   TakeItemProps,
-  "view" | "onPlay" | "onLetGo" | "describe" | "extra"
+  "view" | "onPlay" | "onLetGo" | "onDelete" | "describe" | "extra"
 > & {
   /** Records a current take again (D2); absent while no new take is kept. */
   onRedo?: TakeItemProps["onRedo"] | undefined
@@ -127,9 +135,12 @@ export const TakeRows = ({
   onPlay,
   onRedo,
   onLetGo,
+  onDelete,
   describe,
   extra,
 }: TakeRowsProps): JSX.Element => {
+  const deleting = (id: string): (() => void) | undefined =>
+    onDelete === undefined ? undefined : (): void => onDelete(id)
   const words = TAKE_WORDS
   return (
     <>
@@ -153,6 +164,7 @@ export const TakeRows = ({
                   : (): void =>
                       onLetGo(row.take.id, row.take.kept?.place ?? "phone")
               }
+              onDelete={deleting(row.take.id)}
               extra={extra?.(row)}
             >
               {describe?.(row.take)}
@@ -171,6 +183,7 @@ export const TakeRows = ({
                 key={row.take.id}
                 row={row}
                 onPlay={() => onPlay(row.take.id)}
+                onDelete={deleting(row.take.id)}
               >
                 {describe?.(row.take)}
               </TakeRow>

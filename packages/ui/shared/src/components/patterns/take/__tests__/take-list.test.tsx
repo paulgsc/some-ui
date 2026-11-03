@@ -270,12 +270,65 @@ describe("the take button, row and list", () => {
             canRedo: false,
             canLetGo: false,
             unsent: false,
+            canDelete: false,
           }}
           onPlay={() => undefined}
         />
       </ul>
     )
     expect(screen.getByRole("listitem")).toHaveTextContent(/^0:04$/)
+  })
+
+  it("offers Delete… on a record home marks deletable, which opens My data, and says when one was deleted (MD4)", () => {
+    const opened = vi.fn()
+    const row = {
+      take: {
+        id: "t1",
+        answers: "card-1",
+        durationMs: 4_000,
+        recordedAt: "2026-11-01T09:00:00.000Z",
+        standing: "current" as const,
+        kept: { place: "home" as const, since: null },
+        deletable: true as const,
+      },
+      playing: false,
+      canPlay: false,
+      canRedo: false,
+      canLetGo: false,
+      unsent: false,
+      canDelete: true,
+    }
+    const { rerender } = render(
+      <ul>
+        <TakeRow row={row} onPlay={() => undefined} onDelete={opened} />
+      </ul>
+    )
+    fireEvent.click(
+      screen.getByRole("button", { name: new RegExp(TAKE_WORDS.deleteRecord) })
+    )
+    expect(opened).toHaveBeenCalledTimes(1)
+    const deleted = "2026-11-03T09:00:00.000Z"
+    rerender(
+      <ul>
+        <TakeRow
+          row={{
+            ...row,
+            canDelete: false,
+            take: { ...row.take, deleted },
+          }}
+          onPlay={() => undefined}
+          onDelete={opened}
+        />
+      </ul>
+    )
+    expect(screen.getByRole("listitem")).toHaveTextContent(
+      TAKE_WORDS.place.deleted(TAKE_WORDS.when(deleted))
+    )
+    expect(
+      screen.queryByRole("button", {
+        name: new RegExp(TAKE_WORDS.deleteRecord),
+      })
+    ).toBeNull()
   })
 
   it("says a take that never left the phone is unsent, and offers Delete in Let go's place (ST26)", () => {
@@ -297,6 +350,7 @@ describe("the take button, row and list", () => {
             canRedo: true,
             canLetGo: true,
             unsent: true,
+            canDelete: false,
           }}
           onPlay={() => undefined}
           onLetGo={letGo}

@@ -24,9 +24,10 @@ import {
   recordingsOnPhone,
   voiceKept,
 } from "@/lib/home-link/voice-copy"
+import { studioKeeping } from "@/lib/studio-keeping"
 
 import type { DeletableKind, ReceiptsReading } from "./deleting"
-import { readReceipts } from "./deleting"
+import { isDeletableKind, readReceipts } from "./deleting"
 import type { Deleting } from "./deleting-runtime"
 import { createDeleting } from "./deleting-runtime"
 import type { HomeReading, Of, PhoneNote, PhoneRead } from "./model"
@@ -139,6 +140,25 @@ async function audioOf(id: string): Promise<Blob | null> {
   const { notes } = await recordingsOnPhone()
   const found = notes.find((note) => note.id === id)
   return found === undefined ? null : found.audio()
+}
+
+/**
+ * The Studio takes My data would offer to delete (MD4): those of home's
+ * newest Studio recordings home marks deletable, once Studio's store is
+ * handed in, as `offersDelete` decides it, from one read of what home
+ * keeps of Studio's (`askHome`). Empty when home can't say; never rejects.
+ * Studio's own list of what it keeps (`StudioRecords`) offers Delete… on
+ * these, which opens My data on the take.
+ */
+export async function deletableStudioTakes(): Promise<ReadonlySet<string>> {
+  const home = await askHome("studio")
+  // This phone lets its own copy go only through Studio's store.
+  if (home.kind !== "read" || studioKeeping() === null) return new Set()
+  return new Set(
+    (home.kept.notes ?? [])
+      .filter((note) => note.deletable && isDeletableKind("studio"))
+      .map((note) => note.id)
+  )
 }
 
 let myData: MyData | null = null
