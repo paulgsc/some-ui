@@ -14,6 +14,7 @@ import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { describe, expect, it, vi } from "vitest"
 
 import { ideasWaiting, phoneIdeas, sendIdeas } from "@/lib/home-link/ideas"
+import { readSent, rememberSent } from "@/lib/home-link/sent"
 import { ideasMoved, keepIdeas } from "@/lib/idea-keeping"
 
 vi.mock("@some-ui/intent-kit", async (actual) => ({
@@ -87,16 +88,33 @@ describe("Studio's ideas on home (ST26 b)", () => {
       ["PUT", "/ideas/i%2F2", JSON.stringify(bundle("i/2"))],
     ])
     expect(moved).toHaveBeenCalledTimes(2)
-    expect(ideasWaiting(storage, "p1")).toEqual({ waiting: 0, held: 2 })
+    expect(ideasWaiting(storage, "p1")).toEqual({
+      waiting: 0,
+      held: 2,
+      refused: 0,
+    })
 
     const again: Array<[string, string, unknown]> = []
     await sendIdeas(phoneIdeas(storage, "p1"), home({}, again))
     expect(again).toEqual([])
     // Changed on the phone, it goes again; under another pairing, all go.
     handed = [bundle("i1", "A new title"), bundle("i/2")]
-    expect(ideasWaiting(storage, "p1")).toEqual({ waiting: 1, held: 1 })
-    expect(ideasWaiting(storage, "p2")).toEqual({ waiting: 2, held: 0 })
-    expect(ideasWaiting(storage, null)).toEqual({ waiting: 2, held: 0 })
+    expect(ideasWaiting(storage, "p1")).toMatchObject({ waiting: 1, held: 1 })
+    expect(ideasWaiting(storage, "p2")).toMatchObject({ waiting: 2, held: 0 })
+    expect(ideasWaiting(storage, null)).toMatchObject({ waiting: 2, held: 0 })
+  })
+
+  it("remembers home's answer onto what the drain wrote while the idea was on its way", async () => {
+    const storage = memoryStorage()
+    handed = [bundle("i1")]
+    const drained = { s1: "held" }
+    const meanwhile: HomeCall = (method, path, body) => {
+      rememberSent(storage, readSent(storage, "p1"), { sessions: drained })
+      return home({}, [])(method, path, body)
+    }
+    await sendIdeas(phoneIdeas(storage, "p1"), meanwhile)
+    expect(readSent(storage, "p1").sessions).toEqual(drained)
+    expect(ideasWaiting(storage, "p1")).toMatchObject({ held: 1 })
   })
 
   it("counts held only an idea home carries back as sent", async () => {
@@ -107,7 +125,7 @@ describe("Studio's ideas on home (ST26 b)", () => {
       phoneIdeas(storage, "p1"),
       home({ i1: { status: 200, body: other } }, [])
     )
-    expect(ideasWaiting(storage, "p1")).toEqual({ waiting: 1, held: 0 })
+    expect(ideasWaiting(storage, "p1")).toMatchObject({ waiting: 1, held: 0 })
   })
 
   it("leaves an idea whose notes home lacks waiting, and goes on to the next", async () => {
@@ -121,7 +139,7 @@ describe("Studio's ideas on home (ST26 b)", () => {
       )
     ).toEqual({ kind: "synced" })
     expect(sent).toHaveLength(2)
-    expect(ideasWaiting(storage, "p1")).toEqual({ waiting: 1, held: 1 })
+    expect(ideasWaiting(storage, "p1")).toMatchObject({ waiting: 1, held: 1 })
   })
 
   it("keeps a refused idea on the phone, offers it again only once it changes, and says so", async () => {
@@ -133,7 +151,11 @@ describe("Studio's ideas on home (ST26 b)", () => {
       home({ i1: { status: 422 }, i2: { status: 409 } }, [])
     )
     expect(vi.mocked(reportFailure)).toHaveBeenCalledTimes(2)
-    expect(ideasWaiting(storage, "p1")).toEqual({ waiting: 0, held: 0 })
+    expect(ideasWaiting(storage, "p1")).toEqual({
+      waiting: 0,
+      held: 0,
+      refused: 2,
+    })
     const again: Array<[string, string, unknown]> = []
     handed = [bundle("i1", "Fixed"), bundle("i2")]
     await sendIdeas(phoneIdeas(storage, "p1"), home({}, again))

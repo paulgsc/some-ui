@@ -50,13 +50,14 @@ export function ideasToSend(
   )
 }
 
-/** How many of `ideas` home holds as they are now. */
-export function ideasHeld(
+/** How many of `ideas` home answered `answered` for as they are now. */
+function countAnswered(
   ideas: ReadonlyArray<IdeaForHome>,
-  sent: Sent
+  sent: Sent,
+  answered: Answered
 ): number {
   return ideas.filter(
-    (bundle) => sent.ideas[bundle.id] === entryOf("held", bundle)
+    (bundle) => sent.ideas[bundle.id] === entryOf(answered, bundle)
   ).length
 }
 
@@ -147,17 +148,19 @@ export async function sendIdeas(
 /**
  * The ideas handed in (`lib/idea-keeping`) as a run under `pairing` sends
  * them, remembering home's answers in `storage`; none until a route has
- * handed them in.
+ * handed them in. Each answer is remembered onto the record as it stands
+ * then, not as the run began: the drain writes the same record, and a
+ * copy held across this run's requests would write its entries away.
  */
 export function phoneIdeas(
   storage: KeyedStorage | null,
   pairing: string
 ): IdeasPort {
-  let sent = readSent(storage, pairing)
   return {
-    going: () => ideasToSend(ideaKeeping()?.forHome() ?? [], sent),
+    going: () =>
+      ideasToSend(ideaKeeping()?.forHome() ?? [], readSent(storage, pairing)),
     answered: (answered, bundle): void => {
-      sent = rememberSent(storage, sent, {
+      rememberSent(storage, readSent(storage, pairing), {
         ideas: { [bundle.id]: entryOf(answered, bundle) },
       })
       ideaMoved()
@@ -165,16 +168,24 @@ export function phoneIdeas(
   }
 }
 
-/** The ideas home doesn't hold yet under `pairing`, for the lane's count. */
+/**
+ * The ideas home doesn't hold yet under `pairing`, holds, and refused as
+ * they are now, for the lane's count.
+ */
 export function ideasWaiting(
   storage: KeyedStorage | null,
   pairing: string | null
-): { readonly waiting: number; readonly held: number } {
+): {
+  readonly waiting: number
+  readonly held: number
+  readonly refused: number
+} {
   const ideas = ideaKeeping()?.forHome() ?? []
-  if (pairing === null) return { waiting: ideas.length, held: 0 }
+  if (pairing === null) return { waiting: ideas.length, held: 0, refused: 0 }
   const sent = readSent(storage, pairing)
   return {
     waiting: ideasToSend(ideas, sent).length,
-    held: ideasHeld(ideas, sent),
+    held: countAnswered(ideas, sent, "held"),
+    refused: countAnswered(ideas, sent, "refused"),
   }
 }

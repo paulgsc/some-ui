@@ -94,7 +94,7 @@ export const voiceLane: Lane = {
     const sent = ideasNow()
     return {
       held: { voice: state.held.length, ideas: sent.held },
-      refused: { voice: state.refused.length },
+      refused: { voice: state.refused.length, ideas: sent.refused },
       // A note not copied yet is no safer than one copied and not sent.
       waiting: state.waiting.length + onPhone.length + sent.waiting,
       hidden: 0,

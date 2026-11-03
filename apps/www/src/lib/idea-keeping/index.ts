@@ -55,6 +55,10 @@ export function ideaMoved(): void {
   for (const listener of listeners) listener()
 }
 
+// Handed in is a move too: until then the lane counts no idea, so an idea
+// sent on an earlier launch would otherwise wait for some other change.
+ideas.onKept(ideaMoved)
+
 /**
  * `store`, telling the voice lane each time it keeps a change: the new
  * idea's Send is the one change its screen makes.
