@@ -10,8 +10,8 @@
  *   The let-go follows every receipt, even one whose answer the sheet no
  *   longer waits for: home has deleted the note, so this phone's copy goes
  *   too. Nothing home did not answer with a receipt is let go.
- * - **Then My data reads again** (`reread`), so the list no longer shows
- *   what went.
+ * - **Then My data reads again** (`reread`) while a page of it shows, so
+ *   the list no longer shows what went.
  */
 import type { DeleteAsked } from "@/lib/home-link/delete-note"
 
@@ -34,7 +34,7 @@ export type DeletingPorts = {
     of: DeletableKind,
     ids: ReadonlyArray<string>
   ) => Promise<boolean>
-  /** Reads My data again, so what went leaves the page. */
+  /** Reads My data again while a page of it shows, so what went leaves it. */
   readonly reread: () => void
 }
 

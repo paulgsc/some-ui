@@ -169,8 +169,7 @@ export function phoneDeleting(): Deleting {
     deleteNotes,
     letGo: (of, ids) => LETS_GO[of](ids),
     reread: () => {
-      const data = phoneMyData()
-      data.open(data.getSnapshot().of)
+      phoneMyData().refreshShown()
     },
   })
   return deleting
