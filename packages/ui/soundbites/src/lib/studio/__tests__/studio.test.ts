@@ -421,7 +421,7 @@ describe("a pull down to check again (SH6)", () => {
     expect(
       projectsOfState(runtime.getSnapshot()).map((each) => each.id)
     ).toContain("other")
-    expect(runtime.getSnapshot().checking).toBe(false)
+    expect(runtime.getSnapshot().checking).toBeNull()
   })
 
   it("says it could not read when the phone's videos could not be read", async () => {
@@ -437,30 +437,72 @@ describe("a pull down to check again (SH6)", () => {
     await runtime.checkAgain()
   })
 
-  it("waits for its own writes, and the read after them answers", async () => {
-    const memory = memoryProjectStore()
-    const runtime = await opened(memory)
-    runtime.dispatch({ type: "recordChosen" })
-    let release: () => void = () => undefined
-    memory.gate.hold = (): Promise<void> =>
-      new Promise<void>((resolve) => {
-        release = resolve
-      })
-    runtime.dispatch({ type: "recordPressed" })
-    await until(runtime, (state) => state.activity.kind === "recording")
-    runtime.dispatch({ type: "recordPressed" })
-    await until(runtime, (state) => state.inFlight !== null)
-    let answered = false
-    const pull = runtime.checkAgain().then(() => {
-      answered = true
+  // A pull while Studio's own write is in flight is answered by the read
+  // after that write, never by one already out (SH6): each interleaving of
+  // the earlier read, the write and the read after it.
+  const INTERLEAVINGS = [
+    "read before write",
+    "write before read",
+    "read after write fails",
+  ] as const
+  for (const order of INTERLEAVINGS) {
+    it(`waits for its own write, and the read after it answers: ${order}`, async () => {
+      const memory = memoryProjectStore()
+      const runtime = await opened(memory)
+      runtime.dispatch({ type: "recordChosen" })
+      const list = vi.spyOn(memory.store, "list")
+      // A read of another screen's write, still out when ours starts.
+      let landEarlier: () => void = () => undefined
+      if (order === "read before write") {
+        list.mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              landEarlier = (): void => resolve([...memory.projects.values()])
+            })
+        )
+        const id = projectIn(runtime).id
+        await memory.store.update(id, (held) =>
+          held === null ? null : { ...held }
+        )
+        await until(runtime, (state) => state.readSeq > 1)
+      }
+      let release: () => void = () => undefined
+      memory.gate.hold = (): Promise<void> =>
+        new Promise<void>((resolve) => {
+          release = resolve
+        })
+      runtime.dispatch({ type: "recordPressed" })
+      await until(runtime, (state) => state.activity.kind === "recording")
+      runtime.dispatch({ type: "recordPressed" })
+      await until(runtime, (state) => state.inFlight !== null)
+      let answer: "read" | "unread" | null = null
+      const pull = runtime.checkAgain().then(
+        () => {
+          answer = "read"
+        },
+        () => {
+          answer = "unread"
+        }
+      )
+      // The read already out lands mid-write: it answers nothing.
+      landEarlier()
+      await vi.waitFor(() => expect(list).toHaveBeenCalled())
+      // Every continuation of that read has run by the next task.
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(answer).toBeNull()
+      expect(runtime.getSnapshot().checking).not.toBeNull()
+      if (order === "read after write fails")
+        list.mockRejectedValueOnce(new Error("unreadable"))
+      memory.gate.hold = null
+      release()
+      await pull
+      expect(answer).toBe(
+        order === "read after write fails" ? "unread" : "read"
+      )
+      expect(runtime.getSnapshot().inFlight).toBeNull()
+      expect(runtime.getSnapshot().checking).toBeNull()
     })
-    await Promise.resolve()
-    expect(answered).toBe(false)
-    memory.gate.hold = null
-    release()
-    await pull
-    expect(runtime.getSnapshot().inFlight).toBeNull()
-  })
+  }
 })
 
 describe("a swipe on Record (GES5)", () => {

@@ -391,11 +391,13 @@ export type StudioState = {
   /** Each Done for now's close not yet settled, or whose answer waits. */
   readonly filings: ReadonlyArray<Filing>
   /**
-   * A pull waits on the next read of the phone's videos to land (SH6):
-   * whichever read is the newest when it lands answers it, so a read a
-   * newer one replaced never does.
+   * A pull waiting on a read of the phone's videos (SH6), or null. `from` is
+   * the first read that may answer it: one asked once Studio's own writes
+   * had all landed, so a read already out when the pull came, while a write
+   * was still in flight, never does. Null until that read is asked. Whichever
+   * read from `from` on is the newest when it lands answers it.
    */
-  readonly checking: boolean
+  readonly checking: { readonly from: number | null } | null
   readonly readSeq: number
   readonly pickSeq: number
   readonly playSeq: number
@@ -631,7 +633,7 @@ export function initialStudioState(
     held: [],
     closed: null,
     filings: [],
-    checking: false,
+    checking: null,
     readSeq: 0,
     pickSeq: 0,
     playSeq: 0,
@@ -676,9 +678,34 @@ export function projectOf(state: StudioState): Project | null {
   return projectsOf(state).find((each) => each.id === state.current) ?? null
 }
 
+/** Whether Studio's own writes have all landed, and may be read back. */
+function writesSettled(state: StudioState): boolean {
+  return (
+    state.inFlight === null &&
+    state.queue.length === 0 &&
+    state.held.length === 0 &&
+    state.ready
+  )
+}
+
 function read(state: StudioState): Step {
   const seq = state.readSeq + 1
-  return { state: { ...state, readSeq: seq }, effects: [{ type: "read", seq }] }
+  // The first read once our writes landed is the one a waiting pull counts;
+  // one asked before then leaves the pull waiting on another after them.
+  const waiting = state.checking?.from === null
+  const settled = writesSettled(state)
+  const checking = waiting && settled ? { from: seq } : state.checking
+  const stale = waiting && !settled ? true : state.stale
+  return {
+    state: { ...state, readSeq: seq, checking, stale },
+    effects: [{ type: "read", seq }],
+  }
+}
+
+/** Whether the read that landed as `seq` answers a waiting pull. */
+function answers(state: StudioState, seq: number): boolean {
+  const from = state.checking?.from ?? null
+  return from !== null && seq >= from
 }
 
 /** Every take recorded since the open sitting began, as scene numbers. */
@@ -1870,21 +1897,18 @@ export function step(state: StudioState, event: StudioEvent): Step {
     }
 
     case "checkAgain": {
-      const asked = { ...state, checking: true }
-      // A read is out already (the first, or one asked again): it answers.
-      if (state.shelf.kind === "reading") return stay(asked)
-      if (state.shelf.kind === "unreadable")
-        return read({ ...asked, shelf: { kind: "reading" } })
+      const waiting = { ...state, checking: { from: null } }
       // Ours first, as for a write from elsewhere: the read after them
-      // answers the pull.
-      if (
-        state.inFlight !== null ||
-        state.queue.length > 0 ||
-        state.held.length > 0 ||
-        !state.ready
+      // answers the pull, and one already out does not.
+      if (!writesSettled(state)) return stay({ ...waiting, stale: true })
+      // A read is out already, with nothing of ours before it: it answers.
+      if (state.shelf.kind === "reading")
+        return stay({ ...state, checking: { from: state.readSeq } })
+      return read(
+        state.shelf.kind === "unreadable"
+          ? { ...waiting, shelf: { kind: "reading" } }
+          : waiting
       )
-        return stay({ ...asked, stale: true })
-      return read(asked)
     }
 
     case "retryRead": {
@@ -1915,16 +1939,14 @@ export function step(state: StudioState, event: StudioEvent): Step {
         event.projects,
         kept ? state.current : (currentOf(event.projects)?.id ?? null)
       )
-      const answered: ReadonlyArray<StudioEffect> = state.checking
-        ? [{ type: "checked", ok: true }]
-        : []
+      const answered = answers(state, event.seq)
       // Shown, so the store may let them go.
       return then(
         {
-          state: { ...shown, checking: false },
+          state: answered ? { ...shown, checking: null } : shown,
           effects: [
             ...(keys.length === 0 ? [] : [{ type: "forget" as const, keys }]),
-            ...answered,
+            ...(answered ? [{ type: "checked" as const, ok: true }] : []),
           ],
         },
         pump
@@ -1933,10 +1955,10 @@ export function step(state: StudioState, event: StudioEvent): Step {
 
     case "listFailed": {
       if (event.seq !== state.readSeq) return stay(state)
-      const answered: Step["effects"] = state.checking
+      const answered: Step["effects"] = answers(state, event.seq)
         ? [{ type: "checked", ok: false }]
         : []
-      const unasked = { ...state, checking: false }
+      const unasked = answered.length > 0 ? { ...state, checking: null } : state
       // Once the store is on screen, a failed read leaves it there: Record
       // and its Stop stay, and the writes queued go on regardless.
       if (state.shelf.kind === "read")
