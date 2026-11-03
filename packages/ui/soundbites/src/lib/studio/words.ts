@@ -929,7 +929,6 @@ export const STUDIO_WORDS = {
   onHome: {
     heading: "Ideas on home",
     open: "Ideas on home",
-    openLine: "Every idea you sent, as home keeps it, by what it is.",
     reading: "Asking home…",
     unpaired:
       "This phone isn't paired with home, so it can't show what home keeps. Pair it in Settings.",
@@ -967,7 +966,6 @@ export const STUDIO_WORDS = {
     furnishingMark: "Still furnishing",
     furnish: "Mark still furnishing",
     furnishing: "Still furnishing · only you see this",
-    notSaid: "Not said",
     typed: "Typed, because voice didn't work",
     hearing: "Home hasn't heard this one yet.",
     silent: "Home heard nothing in this one.",
