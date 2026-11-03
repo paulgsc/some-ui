@@ -4,6 +4,7 @@
  * on the Android app's page routes, never a bounded one (D2): it listens on
  * the element it sits in, the page scroller, through `lib/pull-refresh`'s
  * runtime, and shows the state that runtime keeps. It decides nothing.
+ * Each check's end is a line in the phone's own log (`PULL_CHECKED`).
  */
 import type { JSX } from "react"
 import { useCallback, useState, useSyncExternalStore } from "react"
@@ -12,6 +13,7 @@ import { onlineManager, useQueryClient } from "@tanstack/react-query"
 import { useRouter } from "@tanstack/react-router"
 import { ArrowDown, Check, CircleAlert, RefreshCw } from "lucide-react"
 
+import { writeNativeLog } from "@/lib/native-log"
 import type { Phase } from "@/lib/pull-refresh"
 import {
   ARM_PX,
@@ -111,8 +113,13 @@ export const PullToCheck = (): JSX.Element => {
   const router = useRouter()
   const queryClient = useQueryClient()
   // Made once per mount: the router and the cache are the app's singletons.
+  // Each check's end goes to the phone's own log, where the launch test
+  // sees a real drag in the real WebView land (PULL5).
   const [runtime] = useState(() =>
-    createPullRuntime(readsOnScreen(queryClient, router, onlineManager))
+    createPullRuntime({
+      ...readsOnScreen(queryClient, router, onlineManager),
+      note: (line) => writeNativeLog(line),
+    })
   )
   const { phase } = useSyncExternalStore(
     runtime.subscribe,
