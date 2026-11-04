@@ -145,6 +145,7 @@ const CACHE_STEP =
 const BUILD_PUSH_STEP = /^(\s*)(-\s+)?uses:\s*["']?docker\/build-push-action@/
 const CREATE_PR_STEP =
   /^(\s*)(-\s+)?uses:\s*["']?peter-evans\/create-pull-request@/
+const CREATE_PR_ANYWHERE = /uses:\s*["']?peter-evans\/create-pull-request@/
 const WITH_KEY = /^\s*with:(.*)$/
 const ENV_KEY = /^\s*env:(.*)$/
 const RETENTION_TAG = /^#+\s*Retention:\s*\S/
@@ -538,12 +539,26 @@ export function findPrCommitHookViolations(
   text: string
 ): Array<WorkflowViolation> {
   const lines = text.split(/\r?\n/)
-  return stepsUsing(lines, CREATE_PR_STEP)
-    .filter(({ body, keyColumn }) => {
-      const found = withValue(body, keyColumn, "HUSKY", "env")
-      return found.shape !== "value" || found.value !== "0"
-    })
-    .map(({ start }) => ({ kind: "prCommitHooks", file, line: start + 1 }))
+  const unreadable = lines.flatMap((line, index) =>
+    !CREATE_PR_STEP.test(line) &&
+    !line.trim().startsWith("#") &&
+    CREATE_PR_ANYWHERE.test(line)
+      ? [{ kind: "prCommitHooks" as const, file, line: index + 1 }]
+      : []
+  )
+  return [
+    ...stepsUsing(lines, CREATE_PR_STEP)
+      .filter(({ body, keyColumn }) => {
+        const found = withValue(body, keyColumn, "HUSKY", "env")
+        return found.shape !== "value" || found.value !== "0"
+      })
+      .map(({ start }) => ({
+        kind: "prCommitHooks" as const,
+        file,
+        line: start + 1,
+      })),
+    ...unreadable,
+  ]
 }
 
 // retention.yml runs after every workflow that uploads a family it keeps

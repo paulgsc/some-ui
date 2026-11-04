@@ -518,8 +518,12 @@ describe("findPrCommitHookViolations", () => {
       "        env:",
       '          HUSKY: "1"'
     )
+    // A flow-style step can't be read, so it fails rather than passing.
+    const flow = steps(
+      '      - { uses: peter-evans/create-pull-request@v8, env: { HUSKY: "0" } }'
+    )
     expect(findPrCommitHookViolations(F, off)).toEqual([])
-    for (const text of [on, misplaced, notOff]) {
+    for (const text of [on, misplaced, notOff, flow]) {
       expect(findPrCommitHookViolations(F, text)).toEqual([
         { kind: "prCommitHooks", file: F, line: 4 },
       ])
