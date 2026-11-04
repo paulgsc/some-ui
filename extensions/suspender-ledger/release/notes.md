@@ -1,25 +1,27 @@
 <!-- amo-release
-version: 0.3.0
-content: sha256:5e960b366f6a8986ab00868cc0178ba038b986d661aa35cb96f2c2ca4c17e36c
-rationale: Minor. Adds two things users can see and use (the Diagnostics page, and the badge and popup banner for tabs the browser keeps awake) alongside fixes that make automatic suspension work again. Nothing is removed and no setting changes meaning.
+version: 0.3.1
+content: sha256:870e02acd1a52748fc5b46a066ab45c60295e5c08002eb813348de9e8767c5df
+rationale: Patch. Restores the toolbar popup on a browser profile where one of its reads fails (it opened as an empty strip) and records why; nothing new to use, and no permission, storage area or data handling changes.
 -->
 
 ## Version notes
 
-- Fixed: automatic suspension could stop working. The periodic check is no longer postponed every time the extension wakes up, a page that never answers the pre-suspend check is skipped after 5 seconds instead of stalling every tab behind it, and a suspension the browser reports but does not carry out is now detected and undone.
-- New: when the browser declines to suspend a tab (for example because it is playing audio or holds unsaved input), the toolbar badge counts those tabs and the popup says why.
-- New: a local Diagnostics page (popup → Diagnostics) shows the extension's health, counters and recent suspend decisions, with an "Export JSON" button for bug reports. Nothing is sent anywhere.
+- Fixed: the toolbar popup could open as an empty dark strip when the browser couldn't answer one of its reads (this tab, your settings, your shortcuts, or which tabs it kept awake). It now always shows its controls, and says in one line what it couldn't read.
+- Fixed: after such a failed read, adding or removing a whitelist rule no longer overwrites the rules you had saved.
+- The Diagnostics page now also records when the popup couldn't read something, and when a tab was left alone because its address could not be read.
 
 ## Notes for reviewers
 
 Suspender Ledger suspends background tabs with the browser's native tabs.discard(). There is no suspend page and it never closes a tab. Why it needs *://*/* and each permission, what both content scripts do, and how data is handled are in extensions/suspender-ledger/amo-notes.md in the source archive.
 
-What changed since 0.2.1:
+What changed since 0.3.0:
 
-1. Reliability (src/worker/modes/number.ts, src/worker/core/discard.ts). The sweep alarm is installed once instead of being re-armed on every worker wake-up, which had postponed it indefinitely. Each pre-suspend page check (scripting.executeScript) has a 5-second deadline; a tab that misses it is skipped, not suspended. A discard the browser reports as done but did not perform is detected with tabs.get and rolled back.
+1. Popup (src/popup/index.ts, src/popup/hydrate.ts, src/popup/words.ts, src/popup/popup.css). The popup used to wait for four reads (tabs.query, storage.local.get, commands.getAll, storage.session.get) in one Promise.all and rendered nothing if any one failed. Each read and each section now stands alone; a failed read keeps its default and is named in a notice line. A whitelist add or remove now re-reads the stored list from storage.local before writing, and writes nothing if that read fails.
 
-2. Kept-awake feedback (src/worker/core/discard-state.ts, src/popup/). Tabs the browser declined to discard are counted on the toolbar badge and listed by reason in the popup. This state lives in storage.session only.
+2. Diagnostics (src/types/messages.ts, src/worker/worker.ts, src/worker/core/observability.ts). When the popup could not read or show something, it sends one runtime.sendMessage to its own worker naming only which reads and sections failed (fixed names such as "settings"), and the worker records it as a "popup.trouble" event in the existing local event log (storage.local key sl.observability.v1). No URL, title or page content is in it.
 
-3. Local diagnostics (debug.html, src/debug/, src/worker/core/observability.ts). A bounded event log in storage.local (500 events, 256 KB) records the extension's own decisions, with tabs identified by origin only, and is shown on an extension page linked from the popup. It leaves the machine only through that page's "Export JSON" button, which downloads a file. No network code was added.
+3. Scheduler (src/worker/modes/number.ts). A tab whose URL fails to parse was already left unsuspended; it is now also recorded in the same event log as a skipped tab, by origin only, like every other skip.
 
-The permission, content script and file comparison below is computed from the 0.2.1 and 0.3.0 builds.
+4. No behaviour change: a word-wrap rule in debug.css, two helpers moved within extensions/common/src, and comments in src/content/watch.ts and title-marker.ts. These account for the rest of the changed bytes.
+
+The permission, content script and file comparison below is computed from the 0.3.0 build and this one.
