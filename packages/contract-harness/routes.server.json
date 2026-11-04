@@ -39,6 +39,20 @@
       "module": "aph"
     },
     {
+      "method": "PUT",
+      "path": "/app-events/:id",
+      "full_path": "/api/v1/app-events/:id",
+      "versioned": true,
+      "module": "app_events"
+    },
+    {
+      "method": "GET",
+      "path": "/app-events/summary",
+      "full_path": "/api/v1/app-events/summary",
+      "versioned": true,
+      "module": "app_events"
+    },
+    {
       "method": "DELETE",
       "path": "/auth/account",
       "full_path": "/api/v1/auth/account",
@@ -798,6 +812,13 @@
       "method": "PUT",
       "path": "/voice-notes/:id/set-aside",
       "full_path": "/api/v1/voice-notes/:id/set-aside",
+      "versioned": true,
+      "module": "voice"
+    },
+    {
+      "method": "GET",
+      "path": "/voice-notes/deleted",
+      "full_path": "/api/v1/voice-notes/deleted",
       "versioned": true,
       "module": "voice"
     },
