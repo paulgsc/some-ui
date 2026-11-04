@@ -106,12 +106,6 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    # Job-wide, as in extension-release.yml: once `changeset version` versions
-    # www, the git hooks are installed by the time create-pull-request commits,
-    # and their pnpm is only on PATH inside `nix develop` ("pnpm: not found",
-    # #2601). With HUSKY=0 husky neither installs nor runs them.
-    env:
-      HUSKY: "0"
     steps:
       - uses: actions/checkout@v7
         with:
@@ -140,6 +134,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Open release PR
         uses: peter-evans/create-pull-request@v8
+        # WR1: the commit runs with the git hooks off (check:workflows).
+        env:
+          HUSKY: "0"
         with:
           branch: ${{ env.RELEASE_BRANCH }}
           base: main

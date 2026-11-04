@@ -34,6 +34,9 @@ jobs:
         run: scripts/sync-toolchain.sh
       - name: Open PR
         uses: peter-evans/create-pull-request@v8
+        # WR1: the commit runs with the git hooks off (check:workflows).
+        env:
+          HUSKY: "0"
         with:
           token: ${{ secrets.FLAKE_UPDATE_TOKEN || github.token }}
           branch: bot/flake-update
