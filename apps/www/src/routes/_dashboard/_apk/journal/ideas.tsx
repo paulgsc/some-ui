@@ -76,15 +76,18 @@ function validateIdeasSearch(search: Record<string, unknown>): IdeasSearch {
 }
 
 /**
- * Ideas on home and its lists (ST26 (c)): home through the link, in the
- * Android app alone, and a said answer played from this phone's desk while
- * its take is still there.
+ * Ideas on home and its lists (ST26 (c)): home through the link, and a said
+ * answer played from this phone's desk while its take is still there, in
+ * the Android app alone, so no other build carries the link
+ * (`build.paths.ts`).
  */
+const onHome = device ? { home: ideasHome, takes: ideaBundleTakes } : null
+
 const OnHome = ({ lists }: { lists: boolean }): JSX.Element | null => {
   // The desk's runtime is the phone's one; built when the page first shows.
-  const [takes] = useState(() => (device ? ideaBundleTakes() : null))
-  if (takes === null) return null
-  return <IdeasOnHome home={ideasHome} takes={takes} initialLists={lists} />
+  const [takes] = useState(() => onHome?.takes() ?? null)
+  if (onHome === null || takes === null) return null
+  return <IdeasOnHome home={onHome.home} takes={takes} initialLists={lists} />
 }
 
 /**
