@@ -14,7 +14,8 @@
  *   pasted here is sent home (`lib/home`), and the rounds home holds come
  *   back with the runs home recorded of their programs: a round the phone
  *   lacks is appended, and a card's run is filled in once and never
- *   replaced. Every write is merged (`mergeHeld`).
+ *   replaced. Every write is merged (`mergeHeld`); an open session takes
+ *   the store's writes through `heldOverSession` (RH1).
  */
 import type {
   Card,
@@ -94,6 +95,9 @@ export const NOTHING_HELD: Held = {
 /** A card's name across rounds: `indexing-01/a`. */
 export const cardKey = (ref: CardRef): string => `${ref.round}/${ref.card}`
 
+/** The round a `cardKey` names: ids are slugs, so the key has one `/`. */
+const roundOfKey = (key: string): string => key.slice(0, key.indexOf("/"))
+
 /** `ids`, then each of `more` not among them. */
 function joined(
   ids: ReadonlyArray<string>,
@@ -142,6 +146,41 @@ export function mergeHeld(stored: Held, next: Held): Held {
       ended: joined(stored.home.ended, next.home.ended),
     },
   }
+}
+
+/**
+ * What the store holds now (`stored`) written over what an open session holds
+ * (`session`), keeping the session's version of every round it holds (RH1):
+ * a round the phone did not keep plays on, and home's copy of the same id,
+ * taken in the meantime, replaces neither the round nor any card of it. The
+ * stored runs and ended programs of a replaced version's cards go with it, so
+ * nothing home knows of one version shows under the other's program. The
+ * store keeps home's version, which the next opening plays.
+ */
+export function heldOverSession(stored: Held, session: Held): Held {
+  const ours = new Map(session.rounds.map((round) => [round.id, round]))
+  const replaced = new Set(
+    stored.rounds
+      .filter((round) => {
+        const mine = ours.get(round.id)
+        return (
+          mine !== undefined && canonicalJson(mine) !== canonicalJson(round)
+        )
+      })
+      .map((round) => round.id)
+  )
+  const kept = (key: string): boolean => !replaced.has(roundOfKey(key))
+  return mergeHeld(
+    {
+      ...stored,
+      rounds: stored.rounds.map((round) => ours.get(round.id) ?? round),
+      runs: Object.fromEntries(
+        Object.entries(stored.runs).filter(([key]) => kept(key))
+      ),
+      home: { ...stored.home, ended: stored.home.ended.filter(kept) },
+    },
+    session
+  )
 }
 
 /** Every round the phone can play: the worked example, then those taken. */

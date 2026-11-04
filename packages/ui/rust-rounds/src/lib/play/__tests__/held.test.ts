@@ -2,8 +2,10 @@
  * What plays next, and what the log keeps: Next always has a card, and the
  * log only grows.
  */
-import type { CardEvent, Round } from "@rust-rounds/lib/formats"
+import type { CardEvent, Round, RustcRun } from "@rust-rounds/lib/formats"
+import type { Held } from "@rust-rounds/lib/play/held"
 import {
+  heldOverSession,
   newRounds,
   nextCard,
   NOTHING_HELD,
@@ -132,5 +134,54 @@ describe("appendToLog", () => {
       fromMyDesk: [],
       tutorGuessedWrong: [{ round: INDEXING_01.id, card: "a" }],
     })
+  })
+})
+
+// RH1: an open session keeps its own version of every round it holds.
+// Family: for a round id both hold, the stored version the same as the
+// session's or different, with or without home's runs and ended programs of
+// its cards. `runtime.test.ts`, "RH1", holds it through the `held` step.
+describe("RH1: heldOverSession keeps the session's version of its rounds", () => {
+  const ROUND_A = BORROW
+  const ROUND_B: Round = { ...BORROW, concept: "borrowing-b" }
+  const OTHER: Round = { ...BORROW, id: "traits-01", concept: "traits" }
+  /** A run told apart from another by its toolchain. */
+  const run = (patch: number): RustcRun => ({
+    outcome: "compile-error",
+    toolchain: `1.97.${patch}`,
+    code: "E0277",
+    stderr: "",
+    span: null,
+  })
+  const session: Held = { ...NOTHING_HELD, rounds: [ROUND_A] }
+
+  it("keeps the session's round when home's copy of the id differs, with nothing home knows of that copy", () => {
+    const stored: Held = {
+      ...NOTHING_HELD,
+      rounds: [ROUND_B, OTHER],
+      runs: { "borrowing-01/a": run(1), "traits-01/a": run(2) },
+      home: { ...NOTHING_HELD.home, ended: ["borrowing-01/a", "traits-01/a"] },
+    }
+
+    const held = heldOverSession(stored, session)
+
+    expect(held.rounds).toEqual([ROUND_A, OTHER])
+    expect(held.runs).toEqual({ "traits-01/a": run(2) })
+    expect(held.home.ended).toEqual(["traits-01/a"])
+  })
+
+  it("takes home's runs and ended programs when the stored round is the session's", () => {
+    const stored: Held = {
+      ...NOTHING_HELD,
+      rounds: [{ ...ROUND_A }, OTHER],
+      runs: { "borrowing-01/a": run(1) },
+      home: { ...NOTHING_HELD.home, ended: ["borrowing-01/a"] },
+    }
+
+    const held = heldOverSession(stored, session)
+
+    expect(held.rounds).toEqual([ROUND_A, OTHER])
+    expect(held.runs).toEqual({ "borrowing-01/a": run(1) })
+    expect(held.home.ended).toEqual(["borrowing-01/a"])
   })
 })

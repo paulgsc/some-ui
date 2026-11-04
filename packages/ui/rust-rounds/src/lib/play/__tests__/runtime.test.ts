@@ -7,7 +7,7 @@
  */
 import type { CardEvent } from "@rust-rounds/lib/formats"
 import { RoundLogSchema } from "@rust-rounds/lib/formats"
-import { NOTHING_ON_HOME } from "@rust-rounds/lib/play/held"
+import { NOTHING_ON_HOME, runOf, whyNoRun } from "@rust-rounds/lib/play/held"
 import type { PlayState } from "@rust-rounds/lib/play/machine"
 import { lineOf } from "@rust-rounds/lib/play/machine"
 import type { RustRoundsRuntime } from "@rust-rounds/lib/play/runtime"
@@ -423,6 +423,43 @@ describe("the worked example", () => {
     const { held } = runtime.getSnapshot()
     expect(held.rounds.map(({ id }) => id)).toEqual([round.id])
     expect(held.runs["indexing-01/a"]).toEqual(INDEXING_01_RUNS.a)
+  })
+
+  // RH1 (`lib/play/held`, `heldOverSession`): the round on screen stays the
+  // session's when home's write brings another version of its id.
+  it("keeps its own version of a round it took when home's write brings another (RH1)", () => {
+    const storage = inMemoryStorage()
+    const setItem = storage.setItem.bind(storage)
+    let full = true
+    storage.setItem = (key, value): void => {
+      if (full && key === HELD_KEY) throw new Error("QuotaExceededError")
+      setItem(key, value)
+    }
+    const runtime = opened(testPorts(storage))
+    const round = { ...INDEXING_01, id: "indexing-02" }
+    runtime.dispatch({ type: "tutor" })
+    runtime.dispatch({
+      type: "reply",
+      text: `\`\`\`json\n${JSON.stringify(round)}\n\`\`\``,
+    })
+    runtime.dispatch({ type: "takeReply" })
+    expect(runtime.getSnapshot().notKept.held).toBe(true)
+
+    full = false
+    const home = keptRounds(storage)
+    const theirs = { ...round, concept: "indexing-b" }
+    expect(
+      home.hold({
+        ...home.held(),
+        rounds: [theirs],
+        runs: { "indexing-02/a": INDEXING_01_RUNS.a! },
+        home: { ...NOTHING_ON_HOME, ended: ["indexing-02/b"] },
+      })
+    ).toBe(true)
+    const { held } = runtime.getSnapshot()
+    expect(held.rounds).toEqual([round])
+    expect(runOf(held, { round: round.id, card: "a" })).toBeNull()
+    expect(whyNoRun(held, { round: round.id, card: "b" }, true)).toBe("waits")
   })
 
   it("plays what home sends while it is on screen", () => {
