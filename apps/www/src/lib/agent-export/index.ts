@@ -135,9 +135,8 @@ function summary(
 
 /**
  * `2026-10-10_morning-drama_e7b06a1f`: findable in a folder of them. The id
- * part is the session id's last 8, its random part (RB1 in
- * `packages/ui/topik/ROUTINE.md`): every id starts `session-`, so its first 8
- * would tell no two sessions apart. AE1 (`index.test.ts`) holds it.
+ * part is the session id's last 8 letters, digits or `-`, its random part
+ * (`newSessionId`); AE1 (`index.test.ts`) holds it.
  */
 function reflectionsBase(
   sessionId: string,
@@ -154,7 +153,8 @@ function reflectionsBase(
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
     .slice(0, 40)
-  return `${date}_${name || "session"}_${sessionId.slice(-8)}`
+  const id = sessionId.replace(/[^A-Za-z0-9-]/g, "").slice(-8)
+  return `${date}_${name || "session"}_${id}`
 }
 
 /** A voice note's file, named for where in the session it was said. */

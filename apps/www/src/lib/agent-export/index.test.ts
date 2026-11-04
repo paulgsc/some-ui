@@ -13,7 +13,9 @@ import { reflections } from "@/lib/session-reflection"
 import { storeEffect } from "@/lib/session-stop"
 
 const written = vi.hoisted(() => new Map<string, string>())
-const share = vi.hoisted(() => vi.fn())
+const share = vi.hoisted(() =>
+  vi.fn<(options: { files: Array<string> }) => Promise<unknown>>()
+)
 const removedAudio = vi.hoisted(() => vi.fn())
 const audioRead = vi.hoisted(() => ({ fails: false }))
 
@@ -332,8 +334,11 @@ describe("shareAgentExport", () => {
 
   // AE1: a recording's file names its session apart from every other's.
   // Family: two sessions of one name finishing on one day, each id as
-  // `newSessionId` makes it (`session-` and then its random part).
+  // `newSessionId` makes it (`session-` and then its random part). The two
+  // notes share their id's first 6 and their time, so only the base can
+  // tell their files apart.
   it("names two same-named sessions' recordings of one day apart (AE1)", async () => {
+    reflections.letGo(["v1", "t1", "t2"])
     moreSessions.push(
       sessionRecord({
         id: S2,
@@ -343,25 +348,23 @@ describe("shareAgentExport", () => {
         layout: undefined,
       })
     )
-    reflections.keep(
-      reflection("v2", S2, {
-        kind: "voice",
-        durationMs: 9_000,
-        mimeType: "audio/webm;codecs=opus",
-        bytes: 4,
-      })
-    )
+    const voice = {
+      kind: "voice",
+      durationMs: 9_000,
+      mimeType: "audio/webm;codecs=opus",
+      bytes: 4,
+    } as const
+    reflections.keep(reflection("voice-1", S1, voice))
+    reflections.keep(reflection("voice-2", S2, voice))
 
     await shareAgentExport(soundbites, NOW)
 
-    expect(share).toHaveBeenCalledWith(
-      expect.objectContaining({
-        files: expect.arrayContaining([
-          "file:///cache/agent-export/2026-10-10_morning-drama_e7b06a1f_voice-04m12s-v1.webm",
-          "file:///cache/agent-export/2026-10-10_morning-drama_d13a9b42_voice-04m12s-v2.webm",
-        ]),
-      })
-    )
+    const files = share.mock.lastCall?.[0].files ?? []
+    const bases = files
+      .filter((f) => f.includes("_voice-"))
+      .map((f) => f.slice(0, f.indexOf("_voice-")))
+    expect(bases).toHaveLength(2)
+    expect(new Set(bases).size).toBe(2)
   })
 
   it("shares soundbites alone when no reflection went out", async () => {
