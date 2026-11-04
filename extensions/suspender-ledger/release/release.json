@@ -1,42 +1,42 @@
 {
-  "version": "0.3.0",
-  "commit": "79bcf86ec1176f44c1a7f8ad51b6e1234c302e77",
-  "content": "sha256:5e960b366f6a8986ab00868cc0178ba038b986d661aa35cb96f2c2ca4c17e36c",
+  "version": "0.3.1",
+  "commit": "52ef3e40315cb806b0d23cc2732b6c4ec64cf7f5",
+  "content": "sha256:870e02acd1a52748fc5b46a066ab45c60295e5c08002eb813348de9e8767c5df",
   "baseline": {
-    "version": "0.2.1",
-    "commit": "3984826ee18b3f8bbb03763f58ba9c7f7a4df226"
+    "version": "0.3.0",
+    "commit": "79bcf86ec1176f44c1a7f8ad51b6e1234c302e77"
   },
   "files": {
     "assets/icon-128.png": "12d1fab18e136d96c333a13bc711435c936667a0323aba66507af8b03329a77f",
     "assets/icon-16.png": "ebd24b716f6af4787d578b11b52181bdff19578c900bf214400908d772df08e4",
     "assets/icon-48.png": "16649e61ef4a2c6197834c1934745234df37636be2a32d372ffd906dad9321a0",
     "debug.html": "16cd579e293a5f6988138a7825b63e625163bb92daaa58909583b1b61b893a33",
-    "debug.js": "f087b94e1a7c704335a639955f814ad2491df400112abb0b720b342b33b785d5",
-    "manifest.firefox.json": "1b641b43d2e5919ca5b1aab328eada0f4e00cba751ec4794994e96ac4a183b94",
-    "manifest.json": "1b641b43d2e5919ca5b1aab328eada0f4e00cba751ec4794994e96ac4a183b94",
+    "debug.js": "281c253fc5cfe654dbe7ad2971885ebc396cbee229732aae28591a0d1b01d01d",
+    "manifest.firefox.json": "b95994a98f826f55a855841b8e54c6f45a40d8a87359c261b377c63fe08b6fde",
+    "manifest.json": "b95994a98f826f55a855841b8e54c6f45a40d8a87359c261b377c63fe08b6fde",
     "popup.html": "9e35605c4f681cbb1c44e64febfbc13c71522599681b77225d422a792aaea238",
-    "popup.js": "ea165f4bd53b5846cc1a7bd33724bafdb113d8d8b57152b4833d2da7d78f4819",
+    "popup.js": "203b6269bc3f4c0e1d3e750562722b1af1ad445139bc7e12be4b1c333aacf877",
     "resume-veil.js": "d177c295aba174a744d633de73f1c953fe70539716e36868d237a49f11cbaa9c",
-    "styles/debug.css": "bb50a46d41264d89a7c76a0576123a4c4705322d2725207a12684eaaa89bfc3d",
-    "styles/popup.css": "5e10167d070b8909e66a87554ac1c54dea2074a68520f004ecc9f1a7a7dc3d7e",
+    "styles/debug.css": "01857475db08eb052093b605a71f42766e3cdf6a2d337fc73b41ceab844737e5",
+    "styles/popup.css": "0839ff0bc85392f82771687d748916b86dc55889b6de2bd1d7eba1d6c8788151",
     "watch.js": "76c7f62add1cd261969ea67b8531b69ef2a29f192ad92e66172aee599eee1091",
-    "worker.js": "b49aaa9b05adbea8995611eff4a16940b5dbd52dddeea40af0312a551cfde527"
+    "worker.js": "4cf3da99ba6aa19c4b7ed8520f3417bd0010819b79d7cf08530ed952445865e3"
   },
   "normalized": {
     "assets/icon-128.png": "12d1fab18e136d96c333a13bc711435c936667a0323aba66507af8b03329a77f",
     "assets/icon-16.png": "ebd24b716f6af4787d578b11b52181bdff19578c900bf214400908d772df08e4",
     "assets/icon-48.png": "16649e61ef4a2c6197834c1934745234df37636be2a32d372ffd906dad9321a0",
     "debug.html": "16cd579e293a5f6988138a7825b63e625163bb92daaa58909583b1b61b893a33",
-    "debug.js": "f087b94e1a7c704335a639955f814ad2491df400112abb0b720b342b33b785d5",
+    "debug.js": "281c253fc5cfe654dbe7ad2971885ebc396cbee229732aae28591a0d1b01d01d",
     "manifest.firefox.json": "dc0d9c0d7147b0e799801d0482a3c6b74d247e35b0c9feb04181f70bc445857e",
     "manifest.json": "dc0d9c0d7147b0e799801d0482a3c6b74d247e35b0c9feb04181f70bc445857e",
     "popup.html": "9e35605c4f681cbb1c44e64febfbc13c71522599681b77225d422a792aaea238",
-    "popup.js": "ea165f4bd53b5846cc1a7bd33724bafdb113d8d8b57152b4833d2da7d78f4819",
+    "popup.js": "203b6269bc3f4c0e1d3e750562722b1af1ad445139bc7e12be4b1c333aacf877",
     "resume-veil.js": "d177c295aba174a744d633de73f1c953fe70539716e36868d237a49f11cbaa9c",
-    "styles/debug.css": "bb50a46d41264d89a7c76a0576123a4c4705322d2725207a12684eaaa89bfc3d",
-    "styles/popup.css": "5e10167d070b8909e66a87554ac1c54dea2074a68520f004ecc9f1a7a7dc3d7e",
+    "styles/debug.css": "01857475db08eb052093b605a71f42766e3cdf6a2d337fc73b41ceab844737e5",
+    "styles/popup.css": "0839ff0bc85392f82771687d748916b86dc55889b6de2bd1d7eba1d6c8788151",
     "watch.js": "76c7f62add1cd261969ea67b8531b69ef2a29f192ad92e66172aee599eee1091",
-    "worker.js": "b49aaa9b05adbea8995611eff4a16940b5dbd52dddeea40af0312a551cfde527"
+    "worker.js": "4cf3da99ba6aa19c4b7ed8520f3417bd0010819b79d7cf08530ed952445865e3"
   },
   "manifest": {
     "manifest_version": 3,
@@ -123,7 +123,7 @@
     }
   },
   "amo": {
-    "release_notes": "- Fixed: automatic suspension could stop working. The periodic check is no longer postponed every time the extension wakes up, a page that never answers the pre-suspend check is skipped after 5 seconds instead of stalling every tab behind it, and a suspension the browser reports but does not carry out is now detected and undone.\n- New: when the browser declines to suspend a tab (for example because it is playing audio or holds unsaved input), the toolbar badge counts those tabs and the popup says why.\n- New: a local Diagnostics page (popup → Diagnostics) shows the extension's health, counters and recent suspend decisions, with an \"Export JSON\" button for bug reports. Nothing is sent anywhere.",
-    "approval_notes": "Suspender Ledger suspends background tabs with the browser's native tabs.discard(). There is no suspend page and it never closes a tab. Why it needs *://*/* and each permission, what both content scripts do, and how data is handled are in extensions/suspender-ledger/amo-notes.md in the source archive.\n\nWhat changed since 0.2.1:\n\n1. Reliability (src/worker/modes/number.ts, src/worker/core/discard.ts). The sweep alarm is installed once instead of being re-armed on every worker wake-up, which had postponed it indefinitely. Each pre-suspend page check (scripting.executeScript) has a 5-second deadline; a tab that misses it is skipped, not suspended. A discard the browser reports as done but did not perform is detected with tabs.get and rolled back.\n\n2. Kept-awake feedback (src/worker/core/discard-state.ts, src/popup/). Tabs the browser declined to discard are counted on the toolbar badge and listed by reason in the popup. This state lives in storage.session only.\n\n3. Local diagnostics (debug.html, src/debug/, src/worker/core/observability.ts). A bounded event log in storage.local (500 events, 256 KB) records the extension's own decisions, with tabs identified by origin only, and is shown on an extension page linked from the popup. It leaves the machine only through that page's \"Export JSON\" button, which downloads a file. No network code was added.\n\nThe permission, content script and file comparison below is computed from the 0.2.1 and 0.3.0 builds.\n\n--- Generated from the build, not written by hand ---\nThe uploaded source archive is `git archive` of the release commit (its id is the zip comment), with package.json and pnpm-lock.yaml pruned to what this extension builds from.\nBuild steps: extensions/suspender-ledger/README.build.md. Expected SHA-256 of every dist/ file: extensions/suspender-ledger/release/release.json.\nCompared with 0.2.1 (source at commit 3984826ee18b):\n- Permissions: unchanged (idle, storage, contextMenus, notifications, alarms, scripting, tabs)\n- Optional permissions: unchanged (none)\n- Host permissions: unchanged (*://*/*)\n- Content scripts: unchanged (resume-veil.js at document_start on *://*/*; watch.js at document_idle on *://*/*)\n- Content security policy: unchanged (extension_pages: script-src 'self'; object-src 'self')\n- Web-accessible resources: unchanged (none)\n- Data collection: unchanged ({\"required\":[\"none\"]})\n- Externally connectable: unchanged (not declared)\n- Background: unchanged ({\"scripts\":[\"worker.js\"]})\n- Add-on ID: unchanged (suspender-ledger@paulgsc.com)\n- Built files: added debug.html, debug.js, styles/debug.css; changed popup.html, popup.js, resume-veil.js, styles/popup.css, worker.js; removed none"
+    "release_notes": "- Fixed: the toolbar popup could open as an empty dark strip when the browser couldn't answer one of its reads (this tab, your settings, your shortcuts, or which tabs it kept awake). It now always shows its controls, and says in one line what it couldn't read.\n- Fixed: after such a failed read, adding or removing a whitelist rule no longer overwrites the rules you had saved.\n- The Diagnostics page now also records when the popup couldn't read something, and when a tab was left alone because its address could not be read.",
+    "approval_notes": "Suspender Ledger suspends background tabs with the browser's native tabs.discard(). There is no suspend page and it never closes a tab. Why it needs *://*/* and each permission, what both content scripts do, and how data is handled are in extensions/suspender-ledger/amo-notes.md in the source archive.\n\nWhat changed since 0.3.0:\n\n1. Popup (src/popup/index.ts, src/popup/hydrate.ts, src/popup/words.ts, src/popup/popup.css). The popup used to wait for four reads (tabs.query, storage.local.get, commands.getAll, storage.session.get) in one Promise.all and rendered nothing if any one failed. Each read and each section now stands alone; a failed read keeps its default and is named in a notice line. A whitelist add or remove now re-reads the stored list from storage.local before writing, and writes nothing if that read fails.\n\n2. Diagnostics (src/types/messages.ts, src/worker/worker.ts, src/worker/core/observability.ts). When the popup could not read or show something, it sends one runtime.sendMessage to its own worker naming only which reads and sections failed (fixed names such as \"settings\"), and the worker records it as a \"popup.trouble\" event in the existing local event log (storage.local key sl.observability.v1). No URL, title or page content is in it.\n\n3. Scheduler (src/worker/modes/number.ts). A tab whose URL fails to parse was already left unsuspended; it is now also recorded in the same event log as a skipped tab, by origin only, like every other skip.\n\n4. No behaviour change: a word-wrap rule in debug.css, two helpers moved within extensions/common/src, and comments in src/content/watch.ts and title-marker.ts. These account for the rest of the changed bytes.\n\nThe permission, content script and file comparison below is computed from the 0.3.0 build and this one.\n\n--- Generated from the build, not written by hand ---\nThe uploaded source archive is `git archive` of the release commit (its id is the zip comment), with package.json and pnpm-lock.yaml pruned to what this extension builds from.\nBuild steps: extensions/suspender-ledger/README.build.md. Expected SHA-256 of every dist/ file: extensions/suspender-ledger/release/release.json.\nCompared with 0.3.0 (source at commit 79bcf86ec117):\n- Permissions: unchanged (idle, storage, contextMenus, notifications, alarms, scripting, tabs)\n- Optional permissions: unchanged (none)\n- Host permissions: unchanged (*://*/*)\n- Content scripts: unchanged (resume-veil.js at document_start on *://*/*; watch.js at document_idle on *://*/*)\n- Content security policy: unchanged (extension_pages: script-src 'self'; object-src 'self')\n- Web-accessible resources: unchanged (none)\n- Data collection: unchanged ({\"required\":[\"none\"]})\n- Externally connectable: unchanged (not declared)\n- Background: unchanged ({\"scripts\":[\"worker.js\"]})\n- Add-on ID: unchanged (suspender-ledger@paulgsc.com)\n- Built files: added none; changed debug.js, popup.js, styles/debug.css, styles/popup.css, worker.js; removed none"
   }
 }

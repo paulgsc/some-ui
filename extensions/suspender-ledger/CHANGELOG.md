@@ -1,5 +1,11 @@
 # @some-extension/suspender-ledger
 
+## 0.3.1
+
+- Fixed: the toolbar popup could open as an empty dark strip when the browser couldn't answer one of its reads (this tab, your settings, your shortcuts, or which tabs it kept awake). It now always shows its controls, and says in one line what it couldn't read.
+- Fixed: after such a failed read, adding or removing a whitelist rule no longer overwrites the rules you had saved.
+- The Diagnostics page now also records when the popup couldn't read something, and when a tab was left alone because its address could not be read.
+
 ## 0.3.0
 
 - Fixed: automatic suspension could stop working. The periodic check is no longer postponed every time the extension wakes up, a page that never answers the pre-suspend check is skipped after 5 seconds instead of stalling every tab behind it, and a suspension the browser reports but does not carry out is now detected and undone.
