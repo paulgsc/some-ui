@@ -620,9 +620,6 @@ export const STUDIO_WORDS = {
     goTake: (n: number): string => `Record scene ${n}`,
     idea: ideasToConfirm,
     goIdea: (n: number): string => `Watch from scene ${n}`,
-    /** An episode's take with no fact check yet (SH5). */
-    unchecked: (n: number): string =>
-      `Scene ${n}'s take hasn't been checked against its facts yet. Share the takes with Claude, and Finish says once each one is.`,
     /** An episode's take whose check didn't pass, before its third round. */
     facts: (n: number): string =>
       `Scene ${n}'s take leaves out a fact it must keep, or says one wrong. Record it again, with the facts on screen.`,
@@ -658,7 +655,6 @@ export const STUDIO_WORDS = {
       note: "A note is open",
       take: (n: number): string => `Scene ${n} needs a take`,
       idea: ideasToConfirm,
-      unchecked: (n: number): string => `Scene ${n} waits on its check`,
       facts: (n: number): string => `Scene ${n} needs its facts`,
       unmarked: "Ready to mark",
       ready: "Ready for YouTube",

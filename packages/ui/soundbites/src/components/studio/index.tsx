@@ -1594,9 +1594,6 @@ const Finish = ({
           </Button>
         </>
       )}
-      {finish.kind === "unchecked" && (
-        <p className="text-sm">{words.unchecked(finish.n)}</p>
-      )}
       {finish.kind === "facts" && (
         <>
           <p className="text-sm">

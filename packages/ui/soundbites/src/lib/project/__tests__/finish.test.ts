@@ -186,14 +186,13 @@ const check = (take: string, passed: boolean): FactCheck => ({
 const retaken = (state: ProjectState, id: string, n: number): ProjectState =>
   run(state, { type: "takeStarted", shot: id }, take(`t-${id}-${n}`, id))
 
-describe("Finish on an episode (SH5): every take says its facts", () => {
-  it("waits on a take's check, naming the first scene without one", () => {
+describe("Finish on an episode (SH5): no take says a fact wrong", () => {
+  it("lets a take with no check yet through, until a round writes checks (ST8)", () => {
     const state = episode(taken(started()), [check("t-a", true)])
-    expect(finishOf(state.project)).toEqual({
-      kind: "unchecked",
+    expect(finishOf(state.project)).toEqual({ kind: "unmarked", rev: 1 })
+    expect(finishOf(episode(taken(started())).project)).toEqual({
+      kind: "unmarked",
       rev: 1,
-      shot: "b",
-      n: 2,
     })
   })
 
@@ -253,11 +252,20 @@ describe("Finish on an episode (SH5): every take says its facts", () => {
     ])
     expect(isAppendOnly(checked.project, kept.state.project)).toBe(true)
     expect(finishOf(kept.state.project)).toEqual({ kind: "unmarked", rev: 1 })
-    // Only what was kept: another take chosen there is checked again.
+    // Only what was kept: another take chosen there that fails is named again.
     const again = retaken(kept.state, "b", 4)
-    expect(finishOf(again.project)).toMatchObject({
-      kind: "unchecked",
+    expect(finishOf(again.project)).toEqual({ kind: "unmarked", rev: 1 })
+    const failed: ProjectState = {
+      ...again,
+      project: {
+        ...again.project,
+        checks: [...(again.project.checks ?? []), check("t-b-4", false)],
+      },
+    }
+    expect(finishOf(failed.project)).toMatchObject({
+      kind: "facts",
       shot: "b",
+      rounds: BEST_OF + 1,
     })
   })
 

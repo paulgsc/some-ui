@@ -9,12 +9,13 @@
  *   owner's mark on that revision. Missing ones are named in that order,
  *   one at a time, since each has its own place to go. A revision marked
  *   before Finish waited on the owner's word stays ready (owner, #2253).
- * - **An episode's takes say their facts** (SHOW SH5). On an episode, each
- *   scene's kept take also has a fact check that passed (ST21, as a round
- *   brought it: `checks`), or the owner kept it after three rounds of it
- *   (`accepted`, PDM15). Named after the takes, scene by scene: one not
- *   checked yet, or one whose check didn't pass, with how many of the
- *   scene's takes didn't.
+ * - **An episode's takes say their facts** (SHOW SH5). On an episode, a
+ *   scene whose kept take's latest fact check (ST21, as a round brought it:
+ *   `checks`) didn't pass is named after the takes, with how many of the
+ *   scene's takes didn't, until it is taken again or the owner keeps it
+ *   after three rounds (`accepted`, PDM15). A take with no check yet is let
+ *   through (owner, 2026-11-04): nothing writes checks until ST8's loop
+ *   does (#2256).
  * - **Released** is the YouTube link the owner pastes after uploading by
  *   hand (owner, 2026-10-29: nothing here uploads).
  */
@@ -28,13 +29,6 @@ export type Finish =
   /** A scene with no kept take: the first, from 1. */
   | {
       readonly kind: "take"
-      readonly rev: number
-      readonly shot: string
-      readonly n: number
-    }
-  /** An episode's scene whose kept take has no fact check yet: the first, from 1. */
-  | {
-      readonly kind: "unchecked"
       readonly rev: number
       readonly shot: string
       readonly n: number
@@ -101,7 +95,10 @@ function checkOf(project: Project, take: string): FactCheck | undefined {
   return (project.checks ?? []).filter((each) => each.take === take).at(-1)
 }
 
-/** The first scene whose kept take doesn't yet say its facts, or null. */
+/**
+ * The first scene whose kept take's check didn't pass and isn't kept by the
+ * owner's word, or null. A take not checked yet counts as through.
+ */
 function factsOf(
   project: Project,
   rev: number,
@@ -111,13 +108,11 @@ function factsOf(
     const take = project.chosen[shot.id]
     if (take === undefined) continue
     const check = checkOf(project, take)
-    if (check?.passed === true) continue
+    if (check === undefined || check.passed) continue
     const kept = (project.accepted ?? []).some(
       (each) => each.shot === shot.id && each.take === take
     )
     if (kept) continue
-    if (check === undefined)
-      return { kind: "unchecked", rev, shot: shot.id, n: index + 1 }
     const rounds = project.takes.filter(
       (each) =>
         each.shot === shot.id && checkOf(project, each.id)?.passed === false
