@@ -13,7 +13,9 @@ import { reflections } from "@/lib/session-reflection"
 import { storeEffect } from "@/lib/session-stop"
 
 const written = vi.hoisted(() => new Map<string, string>())
-const share = vi.hoisted(() => vi.fn())
+const share = vi.hoisted(() =>
+  vi.fn<(options: { files: Array<string> }) => Promise<unknown>>()
+)
 const removedAudio = vi.hoisted(() => vi.fn())
 const audioRead = vi.hoisted(() => ({ fails: false }))
 
@@ -109,17 +111,23 @@ vi.mock("@/lib/leetype-takes", () => ({
       ],
     }),
 }))
+/** Ids as `newSessionId` makes them: `session-`, then the random part. */
+const S1 = vi.hoisted(() => "session-3f1c9a2e-8b7d-4e6f-a5c4-91d2e7b06a1f")
+const S2 = vi.hoisted(() => "session-3f1c9a2e-8b7d-4e6f-a5c4-0c55d13a9b42")
+/** Sessions listed after S1's, for a test that needs a second one. */
+const moreSessions = vi.hoisted((): Array<unknown> => [])
 vi.mock("@/lib/tenant/queries", () => ({
   sessionsRepository: {
     list: (): Promise<Array<unknown>> =>
       Promise.resolve([
         sessionRecord({
-          id: "s1-0000000000",
+          id: S1,
           name: "Morning Drama",
           status: "completed",
           completedAt: "2026-10-10T09:00:00.000Z",
           layout: undefined,
         }),
+        ...moreSessions,
       ]),
   },
 }))
@@ -130,7 +138,7 @@ vi.mock("@/lib/reflection-voice", async () => {
       get: (id: string): Promise<Blob | null> =>
         audioRead.fails
           ? Promise.reject(new Error("IndexedDB unavailable"))
-          : Promise.resolve(id === "v1" ? new Blob(["opus"]) : null),
+          : Promise.resolve(id.startsWith("v") ? new Blob(["opus"]) : null),
     }),
     letGoReflections: (ids: ReadonlyArray<string>): boolean => {
       if (!store.letGo(ids)) return false
@@ -176,13 +184,14 @@ beforeEach(() => {
   // A failure is reported (`reportFailure`); the console line is not under test.
   vi.spyOn(globalThis.console, "error").mockImplementation(() => undefined)
   localStorage.clear()
+  moreSessions.length = 0
   reflections.letGo(reflections.getSnapshot().kept.map((r) => r.id))
   written.clear()
   removedAudio.mockReset()
   audioRead.fails = false
   share.mockReset().mockResolvedValue({})
   reflections.keep(
-    reflection("v1", "s1-0000000000", {
+    reflection("v1", S1, {
       kind: "voice",
       durationMs: 18_000,
       mimeType: "audio/webm;codecs=opus",
@@ -192,7 +201,7 @@ beforeEach(() => {
   reflections.keep(
     reflection(
       "t1",
-      "s1-0000000000",
+      S1,
       { kind: "text", text: "particles" },
       null,
       "2026-10-10T09:30:00.000Z"
@@ -206,7 +215,7 @@ beforeEach(() => {
 describe("shareAgentExport", () => {
   it("shares context.json with each session's reflections nested, and every recording, keeping them once handed off (LG1)", async () => {
     seedStop(stopRecord(0, { reason: "focus", outcome: "done" }))
-    storeEffect({ kind: "count", sessionId: "s1-0000000000", path: "opens" })
+    storeEffect({ kind: "count", sessionId: S1, path: "opens" })
     storeEffect({ kind: "count", sessionId: "gone-session", path: "glances" })
     const { createSessionLogStore } = await import("@some-ui/leetype")
     const log = createSessionLogStore()
@@ -242,7 +251,7 @@ describe("shareAgentExport", () => {
           "file:///cache/agent-export/lens-take-school-bus-take-one.webm",
           `file:///cache/agent-export/lens-take-${"x".repeat(48)}-take-fou.webm`,
           "file:///cache/agent-export/leetype-take-t1-01-s15-lt-take-.webm",
-          "file:///cache/agent-export/2026-10-10_morning-drama_s1-00000_voice-04m12s-v1.webm",
+          "file:///cache/agent-export/2026-10-10_morning-drama_e7b06a1f_voice-04m12s-v1.webm",
         ],
       })
     )
@@ -253,7 +262,7 @@ describe("shareAgentExport", () => {
       exportedAt: "2026-10-11T00:00:00.000Z",
       sessions: [
         {
-          id: "s1-0000000000",
+          id: S1,
           reflections: [{ id: "v1" }, { id: "t1", text: "particles" }],
           paths: { opens: 1 },
         },
@@ -319,8 +328,43 @@ describe("shareAgentExport", () => {
       "v1",
     ])
     expect(reflections.getSnapshot().shared.map((m) => m.sessionId)).toContain(
-      "s1-0000000000"
+      S1
     )
+  })
+
+  // AE1: a recording's file names its session apart from every other's.
+  // Family: two sessions of one name finishing on one day, each id as
+  // `newSessionId` makes it (`session-` and then its random part). The two
+  // notes share their id's first 6 and their time, so only the base can
+  // tell their files apart.
+  it("names two same-named sessions' recordings of one day apart (AE1)", async () => {
+    reflections.letGo(["v1", "t1", "t2"])
+    moreSessions.push(
+      sessionRecord({
+        id: S2,
+        name: "Morning Drama",
+        status: "completed",
+        completedAt: "2026-10-10T18:00:00.000Z",
+        layout: undefined,
+      })
+    )
+    const voice = {
+      kind: "voice",
+      durationMs: 9_000,
+      mimeType: "audio/webm;codecs=opus",
+      bytes: 4,
+    } as const
+    reflections.keep(reflection("voice-1", S1, voice))
+    reflections.keep(reflection("voice-2", S2, voice))
+
+    await shareAgentExport(soundbites, NOW)
+
+    const files = share.mock.lastCall?.[0].files ?? []
+    const bases = files
+      .filter((f) => f.includes("_voice-"))
+      .map((f) => f.slice(0, f.indexOf("_voice-")))
+    expect(bases).toHaveLength(2)
+    expect(new Set(bases).size).toBe(2)
   })
 
   it("shares soundbites alone when no reflection went out", async () => {
