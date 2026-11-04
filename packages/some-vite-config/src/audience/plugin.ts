@@ -253,10 +253,8 @@ export function audiencePlugin<P extends Record<string, BuildProfile>>(
   }
   const gated = workspaces.filter((w) => w.audience !== "public")
   const excluded = workspaces.filter((w) => !audiences.includes(w.audience))
-  const stubs = new Map<
-    string,
-    { source: string; real: string; w: AudienceWorkspace }
-  >()
+  type Stub = { source: string; real: string; w: AudienceWorkspace }
+  const stubs = new Map<string, Stub>()
   let root = process.cwd()
 
   function gatesOf(audience: Audience): ReadonlyArray<string> {
@@ -276,8 +274,23 @@ export function audiencePlugin<P extends Record<string, BuildProfile>>(
     )
   }
 
+  /** The gated workspace `source` imports, and whether it is a contract. */
+  function gatedTarget(
+    source: string
+  ): { w: AudienceWorkspace; contract: boolean } | undefined {
+    const w = gated.find(
+      (each) => source === each.name || source.startsWith(`${each.name}/`)
+    )
+    return (
+      w && { w, contract: source.slice(w.name.length) === CONTRACT_SUBPATH }
+    )
+  }
+
   return {
-    name: "some-ui:build-audience",
+    // The profile is in the name because vitest keys its module cache by
+    // plugin names, not options: a run under another profile must not be
+    // served importers transformed for this one (AU1).
+    name: `some-ui:build-audience:${profileName}`,
     enforce: "pre",
 
     configResolved(config: ResolvedConfig): void {
@@ -287,11 +300,9 @@ export function audiencePlugin<P extends Record<string, BuildProfile>>(
     async resolveId(source, importer, resolveOptions): Promise<string | null> {
       if (source === BUILD_PROFILE_MODULE) return RESOLVED_BUILD_PROFILE
 
-      const target = gated.find(
-        (w) => source === w.name || source.startsWith(`${w.name}/`)
-      )
-      if (!target) return null
-      if (source.slice(target.name.length) === CONTRACT_SUBPATH) return null
+      const found = gatedTarget(source)
+      if (!found || found.contract) return null
+      const target = found.w
 
       if (checkGates && importer && !mayImport(importer, target)) {
         this.error(
@@ -323,7 +334,27 @@ export function audiencePlugin<P extends Record<string, BuildProfile>>(
         ].join("\n")
       }
 
-      const stub = stubs.get(id)
+      // A module cache (vitest's) can serve the importer already transformed,
+      // so `resolveId` never ran for this stub in this process: make again
+      // what it would have kept, from the id alone (AU1). Its gate was checked
+      // when the id was first made, under this profile. Only app modules
+      // import a stub (an excluded workspace's own code never loads), and a
+      // package name resolves alike from any of them.
+      let stub = stubs.get(id)
+      if (!stub && id.startsWith(STUB_PREFIX)) {
+        const source = id.slice(STUB_PREFIX.length)
+        const found = gatedTarget(source)
+        const resolved =
+          found && !found.contract && !audiences.includes(found.w.audience)
+            ? await this.resolve(source, resolve(root, "index.html"), {
+                skipSelf: true,
+              })
+            : null
+        if (found && resolved) {
+          stub = { source, real: idPath(resolved.id), w: found.w }
+          stubs.set(id, stub)
+        }
+      }
       if (stub) {
         // Stylesheets and other assets: nothing to mirror.
         if (!SCRIPT_EXTENSION.test(extname(stub.real))) return "export {}"
