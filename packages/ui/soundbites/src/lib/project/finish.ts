@@ -107,10 +107,7 @@ function checkOf(project: Project, take: string): FactCheck | undefined {
   return latest
 }
 
-/**
- * The first scene whose kept take's check didn't pass and isn't kept by the
- * owner's word, or null. A take not checked yet counts as through.
- */
+/** The first scene whose kept take's check didn't pass and isn't kept by the owner's word, or null. */
 function factsOf(
   project: Project,
   rev: number,

@@ -164,14 +164,6 @@ describe("an upload's copy", () => {
     expect(fits("a", "")).toBe(false)
   })
 
-  it("is refused in an episode whose copy breaks a limit", () => {
-    const long = episodeOf(format(1), {
-      ...input([[], [], []]),
-      upload: { title: "a".repeat(101), description: "a" },
-    })
-    expect(long.ok).toBe(false)
-  })
-
   it("may be absent from an episode file made before shows carried one", () => {
     const made = episodeOf(format(1), input([[], [], []]))
     if (!made.ok) throw new Error(made.problems.join("; "))

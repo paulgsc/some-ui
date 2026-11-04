@@ -301,8 +301,8 @@ function studioOn(projects: ReadonlyArray<Project>): () => JSX.Element {
 }
 
 /**
- * Week 8's episode with every scene taken, each take's facts checked and
- * passed, and marked ready: Finish shows the show's upload copy (SH5).
+ * Week 8's episode with every scene taken and marked ready: Finish shows
+ * the show's upload copy (SH5).
  */
 function readyEpisode(): Project {
   const project = episodeFor(8, "2026-11-03T09:00:00.000Z")
@@ -322,11 +322,6 @@ function readyEpisode(): Project {
     chosen: Object.fromEntries(
       shots.map((each) => [each.id, `fit-take-${each.id}`])
     ),
-    checks: shots.map((each) => ({
-      take: `fit-take-${each.id}`,
-      at,
-      passed: true,
-    })),
     ready: [{ rev: 1, at }],
   }
 }

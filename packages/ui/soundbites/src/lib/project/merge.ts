@@ -98,7 +98,6 @@ export function mergeIn(kept: Project, file: Project): Merged {
   const added = file.notes
     .filter((note) => !kept.notes.some((each) => each.id === note.id))
     .map((note): Note => ({ ...note, rev: renumber(note.rev) }))
-  // A verdict on a take this phone holds, not here already (SH5).
   const checks = (file.checks ?? []).filter(
     (check) =>
       kept.takes.some((each) => each.id === check.take) &&

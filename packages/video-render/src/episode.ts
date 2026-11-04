@@ -16,9 +16,8 @@
  *
  * Its pins also carry the upload's copy (SHOW SH5): the title and the
  * description its show fills from the period's data, which Finish shows once
- * the episode is ready, for the owner to copy and upload by hand. The copy
- * fits YouTube's limits (`UploadCopySchema`); an episode file from before
- * SH5 carries none.
+ * the episode is ready, for the owner to copy and upload by hand, within
+ * YouTube's limits (`UploadCopySchema`).
  */
 
 import { isRecord } from "@some-ui/core-utils"

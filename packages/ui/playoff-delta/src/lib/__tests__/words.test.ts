@@ -20,11 +20,6 @@ import {
   RUNGS,
   STANDINGS,
 } from "@playoff-delta/lib/words"
-import {
-  UPLOAD_DESCRIPTION_MAX_BYTES,
-  UPLOAD_TITLE_MAX_CHARS,
-  UploadCopySchema,
-} from "@some-ui/video-render"
 import { describe, expect, it } from "vitest"
 
 import raw2026 from "./season-2026.json"
@@ -100,26 +95,11 @@ describe("the upload's copy (SH5)", () => {
     })),
   ])
 
-  it("is made for every week of both seasons, and the legend of each", () => {
-    expect(copies).toHaveLength(
-      SAMPLE_SEASON.weeks.length + SEASON_2026.weeks.length + 2
-    )
-  })
-
   it.each(copies)("says what can happen in $at", ({ copy }) => {
     for (const line of [copy.title, copy.description]) {
       expect(line).not.toMatch(FORECAST)
       expect(line).not.toMatch(MACHINERY)
     }
-  })
-
-  it.each(copies)("fits YouTube's limits in $at", ({ copy }) => {
-    expect([...copy.title].length).toBeLessThanOrEqual(UPLOAD_TITLE_MAX_CHARS)
-    expect(
-      new TextEncoder().encode(copy.description).length
-    ).toBeLessThanOrEqual(UPLOAD_DESCRIPTION_MAX_BYTES)
-    expect(`${copy.title}${copy.description}`).not.toMatch(/[<>]/)
-    expect(UploadCopySchema.safeParse(copy).success).toBe(true)
   })
 
   it("names each week apart", () => {

@@ -173,8 +173,10 @@ function shapeProblems(project: Project): Array<string> {
       project.sittings.map((each) => each.id)
     )
   )
+  const takenFor = (shot: string, take: string): boolean =>
+    project.takes.some((each) => each.id === take && each.shot === shot)
   for (const [shot, take] of Object.entries(project.chosen)) {
-    if (!project.takes.some((each) => each.id === take && each.shot === shot))
+    if (!takenFor(shot, take))
       problems.push(`chosen.${shot}: no take ${take} for that shot`)
   }
   for (const [index, check] of (project.checks ?? []).entries()) {
@@ -182,11 +184,7 @@ function shapeProblems(project: Project): Array<string> {
       problems.push(`checks.${index}: no take ${check.take}`)
   }
   for (const [index, mark] of (project.accepted ?? []).entries()) {
-    if (
-      !project.takes.some(
-        (each) => each.id === mark.take && each.shot === mark.shot
-      )
-    )
+    if (!takenFor(mark.shot, mark.take))
       problems.push(`accepted.${index}: no take ${mark.take} for that shot`)
   }
   if (project.sittings.slice(0, -1).some((each) => each.closedAt === null))

@@ -138,7 +138,7 @@ describe("Studio", () => {
     )
     const at = "2026-10-30T09:00:00.000Z"
     const shots = project.revisions[0]?.cutList.shots ?? []
-    // Every scene taken, each take's facts checked and passed, and marked.
+    // Every scene taken, and marked ready.
     const ready: Project = {
       ...project,
       takes: shots.map((each) => ({
@@ -153,7 +153,6 @@ describe("Studio", () => {
       chosen: Object.fromEntries(
         shots.map((each) => [each.id, `t-${each.id}`])
       ),
-      checks: shots.map((each) => ({ take: `t-${each.id}`, at, passed: true })),
       ready: [{ rev: 1, at }],
     }
     const copied: Array<string> = []
