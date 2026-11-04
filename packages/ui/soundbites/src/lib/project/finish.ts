@@ -90,9 +90,21 @@ export function finishOf(project: Project): Finish {
 /** Rounds of a scene's take check after which the owner may keep the best (PDM15). */
 export const BEST_OF = 3
 
-/** A take's latest fact check, or undefined before its first. */
+/**
+ * A take's latest fact check by when it ran, or undefined before its first.
+ * Not the last in `checks`: a merge of an older file appends its checks after
+ * newer ones.
+ */
 function checkOf(project: Project, take: string): FactCheck | undefined {
-  return (project.checks ?? []).filter((each) => each.take === take).at(-1)
+  let latest: FactCheck | undefined
+  for (const each of project.checks ?? []) {
+    if (
+      each.take === take &&
+      (latest === undefined || Date.parse(each.at) >= Date.parse(latest.at))
+    )
+      latest = each
+  }
+  return latest
 }
 
 /**

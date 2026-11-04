@@ -159,7 +159,7 @@ export type Project = {
    * period and data. Absent on a video of your own.
    */
   readonly episode?: EpisodePin
-  /** Each take's fact check, as rounds brought them, in order (SH5). */
+  /** Each take's fact check, as merges brought them; the latest by `at` counts (SH5). */
   readonly checks?: ReadonlyArray<FactCheck>
   /** The owner's word on each take kept after three rounds (SH5). */
   readonly accepted?: ReadonlyArray<Accepted>

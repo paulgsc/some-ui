@@ -176,9 +176,9 @@ function episode(
   }
 }
 
-const check = (take: string, passed: boolean): FactCheck => ({
+const check = (take: string, passed: boolean, at = AT): FactCheck => ({
   take,
-  at: AT,
+  at,
   passed,
 })
 
@@ -220,6 +220,28 @@ describe("Finish on an episode (SH5): no take says a fact wrong", () => {
     ])
     expect(finishOf(state.project)).toEqual({ kind: "unmarked", rev: 1 })
     expect(finishOf(marked(state).project)).toEqual({ kind: "ready", rev: 1 })
+  })
+
+  it("reads a take's latest check by when it ran, whatever order a merge brought it in", () => {
+    // Later in time, though it reads as earlier text: 00.5 seconds past.
+    const later = "2026-10-30T09:00:00.500Z"
+    const earlier = "2026-10-30T09:00:00Z"
+    const passed = [check("t-a", true), check("t-c", true)]
+    const failedLast = episode(taken(started()), [
+      ...passed,
+      check("t-b", false, later),
+      check("t-b", true, earlier),
+    ])
+    expect(finishOf(failedLast.project)).toMatchObject({
+      kind: "facts",
+      shot: "b",
+    })
+    const passedLast = episode(taken(started()), [
+      ...passed,
+      check("t-b", true, later),
+      check("t-b", false, earlier),
+    ])
+    expect(finishOf(passedLast.project)).toEqual({ kind: "unmarked", rev: 1 })
   })
 
   it("lets the owner keep the chosen take after three rounds, and not before", () => {
