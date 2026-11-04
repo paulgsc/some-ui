@@ -97,7 +97,8 @@ export type ServerRoute =
   | "/api/v1/voice-notes/:id/set-aside"
   | "/api/v1/voice-notes/deleted"
   | "/api/v1/voice-notes/kept"
-  | "/api/v1/voice-notes/on-drive";
+  | "/api/v1/voice-notes/on-drive"
+  | "/api/v1/voice-notes/takes";
 
 /** Routes NOT nested under API_BASE_PATH. */
 export type UnversionedRoute =
