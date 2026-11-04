@@ -30,9 +30,10 @@
  * and the phone reads each by its status alone (a `404` stays owed and is
  * asked again on the next run).
  *
- * A Rust Rounds note's audio back from home (`GET /voice-notes/:id/audio`,
- * RR6 some-ui#2237, the owner's D4): the phone asks for it when it plays a
- * note whose audio is not on it (`apps/www/src/lib/home-link/voice-audio.ts`).
+ * A note's audio back from home (`GET /voice-notes/:id/audio`): the phone
+ * asks for it when it plays a Rust Rounds note whose audio is not on it (RR6
+ * some-ui#2237, the owner's D4), or a Studio take on Takes on home (ST32
+ * some-ui#2590) (`apps/www/src/lib/home-link/voice-audio.ts`).
  * It is a paired phone's route (`subject::Paired`), as `/rust-rounds` is, so
  * no session is a `401`, a browser's cookie session a `403`, and a paired
  * contract runs only with `--phone-token`. A note the caller doesn't hold,
@@ -49,6 +50,16 @@
  * empty answer, which the harness probes for its shape; an `of` naming no
  * kind is a `422`. Each note says whether My data may delete it
  * (`deletable`, MD3 some-ui#2477).
+ *
+ * The takes home keeps (`GET /voice-notes/takes`, STUDIO ST32 some-ui#2590,
+ * the owner's decision 8 on #2248): Studio's Takes on home asks for the
+ * newest each time it opens, and with `q` for those whose heard words hold
+ * every word of a search (`apps/www/src/lib/home-link/takes-read.ts`, read by
+ * `lib/take-library`). A paired phone's route, as the audio read is: no
+ * session is a `401`, a browser's a `403`. The contract run's paired phone
+ * holds no takes, so its `200` is the empty answer, which the harness probes
+ * for its shape, with and without a search; a blank `q`, or one over 200
+ * characters, is a `422`.
  */
 
 import { z } from "zod"
@@ -109,6 +120,36 @@ const KeptSchema = z.object({
       })
     )
     .nullable(),
+})
+
+/**
+ * The phone's read of the takes home keeps (`lib/take-library/model.ts`'s
+ * `TakesSchema`): each Studio take with what home heard in it (null until
+ * heard), how many home keeps, how many a search matched, and how the list
+ * was picked (`meaning` is reserved for home's index of meaning).
+ */
+const TakesSchema = z.object({
+  takes: z.array(
+    z.object({
+      id: z.string(),
+      ref: z.string(),
+      recordedAt: z.string(),
+      storedAt: z.string(),
+      size: z.number().int(),
+      setAsideAt: z.string().nullable(),
+      heard: z
+        .object({
+          text: z.string(),
+          language: z.string().nullable(),
+          model: z.string(),
+          heardAt: z.string(),
+        })
+        .nullable(),
+    })
+  ),
+  total: z.number().int(),
+  matched: z.number().int().nullable(),
+  by: z.enum(["newest", "words", "meaning"]),
 })
 
 /** Home's refusal of a mark's time: `details.at` names why (`put_set_aside`). */
@@ -226,7 +267,7 @@ export const contracts = [
     method: "GET",
     path: "/voice-notes/:id/audio",
     summary:
-      "a Rust Rounds note's audio as home holds it, with its container and SHA-256, the SHA-256 its ETag",
+      "a Rust Rounds note's or a Studio take's audio as home holds it, with its container and SHA-256, the SHA-256 its ETag",
     request: { path: { id: "a-rust-round-note-home-holds" } },
     expect: { status: 200, schema: NoteAudioSchema },
     skip: "needs a Rust Rounds note home holds, which no probe may keep and the contract run doesn't seed",
@@ -271,6 +312,69 @@ export const contracts = [
     path: "/voice-notes/kept",
     summary: "an of that names no kind of note is a 422, and nothing is read",
     request: { query: { of: "diary" } },
+    expect: { status: 422 },
+  }),
+  defineContract({
+    id: "voice.takes_signed_out",
+    module: "voice",
+    method: "GET",
+    path: "/voice-notes/takes",
+    summary:
+      "the takes home keeps are a paired phone's: without a session it is a 401",
+    request: {},
+    expect: { status: 401 },
+  }),
+  defineContract({
+    id: "voice.takes_browser",
+    module: "voice",
+    session: true,
+    method: "GET",
+    path: "/voice-notes/takes",
+    summary:
+      "the takes home keeps are a paired phone's: a browser's cookie session is a 403",
+    request: {},
+    expect: { status: 403 },
+  }),
+  defineContract({
+    id: "voice.takes",
+    module: "voice",
+    paired: true,
+    method: "GET",
+    path: "/voice-notes/takes",
+    summary:
+      "the newest takes home keeps of the caller, each with what home heard in it, and how many it keeps",
+    request: {},
+    expect: { status: 200, schema: TakesSchema },
+  }),
+  defineContract({
+    id: "voice.takes_search",
+    module: "voice",
+    paired: true,
+    method: "GET",
+    path: "/voice-notes/takes",
+    summary:
+      "the takes whose heard words hold every word of q, newest first, with how many matched",
+    request: { query: { q: "brand intro" } },
+    expect: { status: 200, schema: TakesSchema },
+  }),
+  defineContract({
+    id: "voice.takes_blank_search",
+    module: "voice",
+    paired: true,
+    method: "GET",
+    path: "/voice-notes/takes",
+    summary: "a blank q is a 422, and nothing is read",
+    request: { query: { q: "   " } },
+    expect: { status: 422 },
+  }),
+  defineContract({
+    id: "voice.takes_long_search",
+    module: "voice",
+    paired: true,
+    method: "GET",
+    path: "/voice-notes/takes",
+    summary: "a q over 200 characters is a 422, and nothing is read",
+    request: { query: { q: "a".repeat(201) } },
     expect: { status: 422 },
   }),
 ]
