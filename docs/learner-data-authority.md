@@ -1465,9 +1465,12 @@ What is enforced by test, in
   `lib/home-link/delete-note.ts` sends a `DELETE`, one of `deletePath(id)`
   per note.
 - A request whose method isn't written where it is sent comes from one of
-  four pinned callers, none of which can send a `DELETE` to a record: the
+  five pinned callers, none of which can send a `DELETE` to a record: the
   Jobs notice's `/jobs/notice`, `noticingBusy`'s pass-through, the
-  sessions transport (`GET`, `POST`, `PATCH`) and the shelf (`GET`, `PUT`).
+  sessions transport (`GET`, `POST`, `PATCH`), the shelf (`GET`, `PUT`)
+  and Ideas on home's list entry (`PUT` or `DELETE` of
+  `/idea-lists/{topics,keywords}/:name`, which puts an entry on a list
+  home keeps or takes it off, a mark, never a record; ST26 (c), #2453).
 - No other source names a `DELETE` beside a `/voice-notes/` path.
 - Only `lib/my-data/index.ts` imports `delete-note`, and it hands
   `deleteNotes` to `createDeleting` as its one port. Only the delete runtime

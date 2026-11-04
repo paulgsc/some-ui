@@ -208,6 +208,11 @@ const VARIABLE_METHOD_SENDS = [
   "lib/home-link/sessions.ts",
   // The shelf's `answerOrEnd`, whose method is typed `"GET" | "PUT"`.
   "lib/home-link/shelf.ts",
+  // Ideas on home's list entry (ST26 c), `PUT` or `DELETE` of
+  // `/idea-lists/{topics,keywords}/:name` alone: it puts an entry on a list
+  // home keeps or takes it off, a mark home keeps (paulgsc/server invariant
+  // 32), never a record.
+  "lib/home-link/idea-reads.ts",
 ]
 
 /** LA19 (MD5): the one module that hands My data's delete runtime its port. */
@@ -882,7 +887,7 @@ describe("LA19 (MD5): only My data deletes a record on home", () => {
     ])
   })
 
-  it("sends a method not written where it is sent only from the four callers that can't be a DELETE", () => {
+  it("sends a method not written where it is sent only from the five callers that can't be a DELETE of a record", () => {
     expect(
       sources.filter((f) => deleteRisks(f, read(f)).variable.length > 0).sort()
     ).toEqual([...VARIABLE_METHOD_SENDS].sort())
@@ -899,6 +904,12 @@ describe("LA19 (MD5): only My data deletes a record on home", () => {
       'if (method !== "GET" && method !== "POST" && method !== "PATCH")'
     )
     expect(read("lib/home-link/shelf.ts")).toContain('method: "GET" | "PUT"')
+    expect(deleteRisks(IDEA_READS, read(IDEA_READS)).variable).toEqual([
+      ['ask.listed ? "PUT" : "DELETE"', "path"],
+    ])
+    expect(read(IDEA_READS)).toContain(
+      "return `/idea-lists/${ask.list}/${encodeURIComponent(ask.name)}`"
+    )
   })
 
   it("names a DELETE beside a voice-notes path nowhere but delete-note", () => {
