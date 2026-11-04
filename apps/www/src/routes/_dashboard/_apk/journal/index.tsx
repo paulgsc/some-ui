@@ -9,21 +9,14 @@ import type {
 } from "@some-ui/soundbites"
 import {
   keptIdeasForHome,
-  keptLetGo,
-  keptTimeLog,
-  letGoDeletedTakes,
-  letGoHeldTakes,
-  letGoOnDrive,
   LIBRARY_WORDS,
-  notesForHome,
   phoneProjectStore,
-  sittingKey,
+  phoneStudioKeeping,
   STUDIO_WORDS,
   studioFiles,
   StudioHome,
   StudioRecords,
   TakeLibrary,
-  waitingIds,
 } from "@some-ui/soundbites"
 import { audioPlayer } from "@some-ui/voice-capture"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
@@ -197,22 +190,7 @@ const StudioRoute = (): JSX.Element => {
   const { project, records, takes } = Route.useSearch()
   useEffect(() => {
     if (import.meta.env.VITE_DEVICE_BACKEND !== "true") return
-    const store = phoneProjectStore()
-    keepStudio({
-      store,
-      timeLog: () => keptTimeLog().read(),
-      notesForHome,
-      // As the owner chose, read at each let-go (HF11, LG1): none before.
-      letGoHeldTakes: (held) => letGoHeldTakes(store, held, keptLetGo().read()),
-      // Home's receipt for a take My data deleted (MD3): whatever the choice.
-      letGoDeletedTakes: (deleted) => letGoDeletedTakes(store, deleted),
-      letGo: () => keptLetGo().read(),
-      waitingIds,
-      // Home's word that Drive has a take too (HF11), as the owner chose.
-      letGoOnDrive: (onDrive) =>
-        letGoOnDrive(store, onDrive, keptLetGo().read()),
-      sittingKey,
-    })
+    keepStudio(phoneStudioKeeping())
     // The ideas sent whole go home once a route has handed them in (ST26).
     keepIdeas({ forHome: keptIdeasForHome() })
   }, [])

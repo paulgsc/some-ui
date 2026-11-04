@@ -671,7 +671,7 @@
           "evidence": [
             {
               "class": "structural",
-              "says": "voice_note_audio is deleted only by its account's deletion trigger, and a trigger refuses UPDATE: audio is kept for good.",
+              "says": "voice_note_audio is never updated (a trigger refuses UPDATE) and is deleted by its account's deletion trigger, or by My data's delete below.",
               "ref": "server:migrations/20261025000100_create_voice_note.up.sql"
             },
             {
@@ -2542,7 +2542,7 @@
     {
       "store": "server:voice_note_deletion",
       "class": "record",
-      "growth": "Per voice note the owner deletes for good from My data (MD3, #2477; paulgsc/server invariant 23): one small receipt row (the note's id and kind, three times, its size, what went and what stayed in fixed words), append-only and never deleted but with the account, at most one per voice note. No kind is switched on yet, so it holds nothing.",
+      "growth": "Per voice note the owner deletes for good from My data (MD3, #2477; paulgsc/server invariant 23): one small receipt row (the note's id and kind, three times, its size, what went and what stayed in fixed words), append-only and never deleted but with the account, at most one per voice note. Only Studio's recordings (takes and idea answers) are switched on (owner, 2026-11-04), so it grows with what the owner deletes of them.",
       "family": "voice-heard"
     },
     {

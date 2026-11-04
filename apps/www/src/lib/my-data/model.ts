@@ -52,6 +52,9 @@ const Kept = z.object({
       week: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
       notes: z.number().int().nonnegative(),
       bytes: z.number().int().nonnegative(),
+      /** What the owner deleted that week (MD3); an older home says none. */
+      leftNotes: z.number().int().nonnegative().default(0),
+      leftBytes: z.number().int().nonnegative().default(0),
     })
   ),
   notes: z
@@ -202,9 +205,11 @@ const weekAfter = (week: string): string =>
     .slice(0, 10)
 
 /**
- * Home's room at the end of each week, from what reached it each week, up
- * to the week of `now`: at most `GROWTH_WEEKS`, the room before them
- * carried in, and a week nothing arrived drawn level.
+ * Home's room at the end of each week, from what reached it each week less
+ * what was deleted from it that week, up to the week of `now`: at most
+ * `GROWTH_WEEKS`, the room before them carried in, and a week nothing
+ * arrived or left drawn level. A delete lowers the week it happened in and
+ * never an earlier one (the owner, #2477).
  */
 export function growthOf(
   weeks: HomeKept["weeks"],
@@ -212,7 +217,7 @@ export function growthOf(
 ): ReadonlyArray<GrowthWeek> {
   const first = weeks.at(0)
   if (first === undefined) return []
-  const arrived = new Map(weeks.map((w) => [w.week, w.bytes]))
+  const arrived = new Map(weeks.map((w) => [w.week, w.bytes - w.leftBytes]))
   const last = mondayOf(now)
   const all: Array<GrowthWeek> = []
   let total = 0

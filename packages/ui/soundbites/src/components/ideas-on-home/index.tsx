@@ -273,20 +273,25 @@ function askOf(question: string): string {
   return known === undefined ? question : ASK[known].ask
 }
 
-/** A said answer's recording: Play while it is on this phone, and Delete…. */
+/**
+ * A said answer's recording: Play while it is on this phone, and Delete…,
+ * set aside or not (My data deletes either).
+ */
 const AnswerRecording = ({
   note,
   ask,
+  setAside,
   takes,
   openInMyData,
 }: {
   note: string
   ask: string
+  setAside: boolean
   takes: BundleTakes | undefined
   openInMyData: ((note: string) => void) | undefined
 }): JSX.Element => (
   <div className="flex flex-wrap items-center gap-2">
-    {takes !== undefined ? (
+    {setAside ? null : takes !== undefined ? (
       <AnswerPlay pattern={takes.pattern} take={note} />
     ) : (
       <p className="text-muted-foreground text-xs">{WORDS.onlyOnHome}</p>
@@ -367,20 +372,19 @@ const OneIdea = ({
               )}
               {wordsOf(answer)}
             </p>
-            {answer.note !== null &&
-              !answer.setAside &&
-              typeof answer.deletedAt !== "string" && (
-                <AnswerRecording
-                  note={answer.note}
-                  ask={askOf(answer.question)}
-                  takes={
-                    takes !== undefined && playable.has(answer.note)
-                      ? takes
-                      : undefined
-                  }
-                  openInMyData={openInMyData}
-                />
-              )}
+            {answer.note !== null && typeof answer.deletedAt !== "string" && (
+              <AnswerRecording
+                note={answer.note}
+                ask={askOf(answer.question)}
+                setAside={answer.setAside}
+                takes={
+                  takes !== undefined && playable.has(answer.note)
+                    ? takes
+                    : undefined
+                }
+                openInMyData={openInMyData}
+              />
+            )}
           </li>
         ))}
       </ul>

@@ -39,6 +39,8 @@ const HOME: HomeReading = {
       week: new Date(Date.UTC(2026, 5, 22 + i * 7)).toISOString().slice(0, 10),
       notes: 40,
       bytes: 90 * MB,
+      leftNotes: 0,
+      leftBytes: 0,
     })),
     notes: Array.from({ length: 50 }, (_, i) => ({
       id: `home-${i}`,

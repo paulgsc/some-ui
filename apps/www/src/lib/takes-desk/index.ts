@@ -110,9 +110,10 @@ type DeskShelf = {
    * on any desk: home deleted those notes for good from My data (#2579), so
    * nothing is to be heard of them again. The take stays listed and is
    * marked `onHome` first (LG1). A take still waiting for its item is a
-   * draft and is never named by a receipt.
+   * draft and is never named by a receipt. Resolves false when the phone
+   * could not store the mark, so the audio stayed.
    */
-  readonly letGoDeleted: (deleted: ReadonlySet<string>) => Promise<void>
+  readonly letGoDeleted: (deleted: ReadonlySet<string>) => Promise<boolean>
   /** Where a take whose audio is not on this phone is heard from: home's. */
   readonly audioFrom: (back: (id: string) => Promise<Blob | null>) => void
 }
@@ -274,14 +275,15 @@ function desk<R extends Runtime>(
   /**
    * Lets the audio of each sent take `holds` names go, keeping the take
    * listed and marked `onHome` first (LG1): `letGo`'s, once home holds them,
-   * and `letGoDeleted`'s, once home deleted them.
+   * and `letGoDeleted`'s, once home deleted them. False when the phone
+   * could not store the mark, so nothing went.
    */
-  const release = async (holds: ReadonlySet<string>): Promise<void> => {
+  const release = async (holds: ReadonlySet<string>): Promise<boolean> => {
     const named = takes
       .read()
       .filter((take) => take.waits !== true && holds.has(take.id))
     // Nothing named: the shelf isn't opened.
-    if (named.length === 0) return
+    if (named.length === 0) return true
     const audio = shelf.shelf()
     const stored = await audio.ids()
     // Marked earlier too, while its audio is still here: a removal that
@@ -289,14 +291,15 @@ function desk<R extends Runtime>(
     const going = named.filter(
       (take) => take.onHome !== true || stored.includes(take.id)
     )
-    if (going.length === 0) return
+    if (going.length === 0) return true
     // LG1: the mark first, so audio is never gone from a take that still
     // reads as this phone's alone; a mark not stored lets nothing go.
     const unmarked = going.filter(({ onHome }) => onHome !== true)
     if (unmarked.length > 0 && !takes.markOnHome(unmarked.map(({ id }) => id)))
-      return
+      return false
     const left = going.map(({ id }) => id).filter((id) => stored.includes(id))
     if (left.length > 0) await audio.remove(left)
+    return true
   }
 
   return {
@@ -351,6 +354,7 @@ function desk<R extends Runtime>(
     },
     letGo: async (holds): Promise<void> => {
       if (options.audioLeaves !== true || back === null) return
+      // A mark not stored is tried again on the next pass.
       await release(holds)
     },
     letGoDeleted: release,

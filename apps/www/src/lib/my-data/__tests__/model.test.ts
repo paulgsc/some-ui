@@ -31,8 +31,8 @@ const KEPT: HomeKept = {
     },
   ],
   weeks: [
-    { week: "2026-10-19", notes: 3, bytes: 6_000 },
-    { week: "2026-11-02", notes: 2, bytes: 5_000 },
+    { week: "2026-10-19", notes: 3, bytes: 6_000, leftNotes: 0, leftBytes: 0 },
+    { week: "2026-11-02", notes: 2, bytes: 5_000, leftNotes: 0, leftBytes: 0 },
   ],
   notes: null,
 }
@@ -188,13 +188,41 @@ describe("how it grows on home", () => {
 
   it("shows the last quarter, the room before it carried in", () => {
     const weeks = [
-      { week: "2026-01-05", notes: 1, bytes: 1_000 },
-      { week: "2026-11-02", notes: 1, bytes: 10 },
+      {
+        week: "2026-01-05",
+        notes: 1,
+        bytes: 1_000,
+        leftNotes: 0,
+        leftBytes: 0,
+      },
+      { week: "2026-11-02", notes: 1, bytes: 10, leftNotes: 0, leftBytes: 0 },
     ]
     const growth = growthOf(weeks, NOW)
     expect(growth).toHaveLength(GROWTH_WEEKS)
     expect(growth[0]).toEqual({ week: "2026-08-10", bytes: 1_000 })
     expect(growth.at(-1)).toEqual({ week: "2026-11-02", bytes: 1_010 })
+  })
+
+  it("lowers the week a recording was deleted in, never the week it arrived (#2477)", () => {
+    const weeks = [
+      {
+        week: "2026-10-19",
+        notes: 2,
+        bytes: 5_000,
+        leftNotes: 0,
+        leftBytes: 0,
+      },
+      {
+        week: "2026-11-02",
+        notes: 0,
+        bytes: 0,
+        leftNotes: 1,
+        leftBytes: 2_000,
+      },
+    ]
+    expect(growthOf(weeks, NOW).map(({ bytes }) => bytes)).toEqual([
+      5_000, 5_000, 3_000,
+    ])
   })
 })
 

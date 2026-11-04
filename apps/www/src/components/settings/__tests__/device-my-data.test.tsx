@@ -104,7 +104,15 @@ const HOME: HomeReading = {
         since: "2026-09-12T10:00:00.000Z",
       },
     ],
-    weeks: [{ week: "2026-10-26", notes: 3, bytes: 3 * 1024 * 1024 }],
+    weeks: [
+      {
+        week: "2026-10-26",
+        notes: 3,
+        bytes: 3 * 1024 * 1024,
+        leftNotes: 0,
+        leftBytes: 0,
+      },
+    ],
     notes: [
       {
         id: "t1",
@@ -434,7 +442,7 @@ describe("on the phone", () => {
       playing: null,
     }
     const { unmount } = render(<DeviceMyData />)
-    expect(runtime.open).toHaveBeenCalledWith(null)
+    expect(runtime.open).toHaveBeenCalledWith(null, null)
     // Studio's recordings on this phone aren't counted until it opens.
     expect(screen.getByText(/Studio hasn't been opened/)).toBeTruthy()
     await expect(screenRefreshers.checkAll()).resolves.toEqual([])

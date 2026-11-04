@@ -103,10 +103,18 @@ describe("Ideas on home (ST26 c)", () => {
         IDEA.answers[1]!,
       ],
     }
+    const aside: HomeIdea = {
+      ...IDEA,
+      id: "i3",
+      title: "A set-aside answer",
+      answers: [
+        { ...IDEA.answers[0]!, note: "t3", heard: null, setAside: true },
+      ],
+    }
     const ideas: IdeasHome["ideas"] = () =>
       Promise.resolve({
         kind: "read",
-        value: { ideas: [IDEA, deleted], more: false },
+        value: { ideas: [IDEA, deleted, aside], more: false },
       })
     render(<IdeasOnHome home={home({ ideas })} openInMyData={openInMyData} />)
     await settle()
@@ -128,6 +136,14 @@ describe("Ideas on home (ST26 c)", () => {
     expect(
       screen.queryByRole("button", { name: /^Delete the recording/ })
     ).toBeNull()
+
+    fireEvent.click(screen.getByRole("button", { name: W.back }))
+    await settle()
+    fireEvent.click(screen.getByRole("button", { name: /A set-aside answer/ }))
+    fireEvent.click(
+      screen.getByRole("button", { name: /^Delete the recording/ })
+    )
+    expect(openInMyData).toHaveBeenLastCalledWith("t3")
   })
 
   it("stops what it played once the idea is left", async () => {

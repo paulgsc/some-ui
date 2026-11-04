@@ -6,6 +6,7 @@ import {
   IdeaShelf,
   IdeasOnHome,
   keptIdeasForHome,
+  phoneStudioKeeping,
   STUDIO_WORDS,
 } from "@some-ui/soundbites"
 import type { TurnListener } from "@some-ui/voice-capture"
@@ -18,6 +19,7 @@ import { ideaBundleTakes } from "@/lib/idea-takes"
 import { useAsyncIntent } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import { shareIdea } from "@/lib/journal-share"
+import { keepStudio } from "@/lib/studio-keeping"
 
 const WORDS = STUDIO_WORDS.shelf
 
@@ -85,6 +87,11 @@ const onHome = device ? { home: ideasHome, takes: ideaBundleTakes } : null
 
 const OnHome = ({ lists }: { lists: boolean }): JSX.Element | null => {
   const navigate = useNavigate()
+  // An answer's Delete… lets this phone's copy go through Studio's store, so
+  // it is handed in here too, not only once Studio has opened (#2579).
+  useEffect(() => {
+    if (onHome !== null) keepStudio(phoneStudioKeeping())
+  }, [])
   // The desk's runtime is the phone's one; built when the page first shows.
   const [takes] = useState(() => onHome?.takes() ?? null)
   if (onHome === null || takes === null) return null

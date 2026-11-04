@@ -18,11 +18,17 @@ import type { VoiceOut } from "@/lib/voice-home/model"
 
 import { homeLink, paired } from "./index"
 
-/** The read of what home keeps, with `of`'s newest when one is asked. */
-export function keptPath(of: VoiceOut["of"] | null): string {
-  return of === null
-    ? "/voice-notes/kept"
-    : `/voice-notes/kept?of=${encodeURIComponent(of)}`
+/**
+ * The read of what home keeps, with `of`'s newest when one is asked, and
+ * the recording `note` names among them when it is older.
+ */
+export function keptPath(
+  of: VoiceOut["of"] | null,
+  note: string | null = null
+): string {
+  if (of === null) return "/voice-notes/kept"
+  const kind = `/voice-notes/kept?of=${encodeURIComponent(of)}`
+  return note === null ? kind : `${kind}&note=${encodeURIComponent(note)}`
 }
 
 /** Home's answer, or why there is none. */
@@ -44,11 +50,14 @@ export type KeptAsked =
   | { readonly kind: "unreachable" }
 
 /** Asks home once what it keeps, in one run of the link; never rejects. */
-export async function askKept(of: VoiceOut["of"] | null): Promise<KeptAsked> {
+export async function askKept(
+  of: VoiceOut["of"] | null,
+  note: string | null = null
+): Promise<KeptAsked> {
   if (!paired()) return { kind: "unpaired" }
   try {
     const outcome = await homeLink().keep(async (send) => ({
-      answer: await send("GET", keptPath(of)),
+      answer: await send("GET", keptPath(of, note)),
       record: of === null ? await askRecord(send) : null,
     }))
     return outcome?.kind === "done"

@@ -970,9 +970,9 @@ export function voiceKept(id: string): TakeKept {
  * that it held the note, so a copy still waiting for an answer this phone
  * never heard goes as a held one does; and any set-aside mark still owed
  * for one is dropped, since home holds no note to mark now. Resolves
- * false when Studio's store isn't handed in or the write failed (said to
- * the native log); never rejects. The one caller is `lib/my-data`'s delete,
- * on home's receipt.
+ * false when Studio's store isn't handed in, a desk couldn't store its
+ * mark, or the write failed (that said to the native log); never rejects.
+ * The one caller is `lib/my-data`'s delete, on home's receipt.
  */
 export async function letGoDeleted(
   ids: ReadonlyArray<string>
@@ -981,16 +981,14 @@ export async function letGoDeleted(
   for (const id of ids) home.keeping.answered({ kind: "held", id })
   home.drop(ids)
   const studio = studioKeeping()
-  if (studio === null) return false
   const deleted = new Set(ids)
   try {
-    // An idea's answer is kept on its desks, not in Studio's store (#2579).
-    await Promise.all([
-      studio.letGoDeletedTakes(deleted),
+    const [, kit, bundle] = await Promise.all([
+      studio?.letGoDeletedTakes(deleted),
       ideaTakesDesk.letGoDeleted(deleted),
       ideaBundleDesk.letGoDeleted(deleted),
     ])
-    return true
+    return studio !== null && kit && bundle
   } catch (error) {
     reportFailure({
       port: "my data: this phone's copy of what home deleted",

@@ -194,11 +194,19 @@ describe("a take whose audio is not on this phone plays from home (RR6)", () => 
 describe("a note home deleted for good from My data (#2579)", () => {
   it("lets its audio go on any desk, keeping the take listed and marked first", async () => {
     const { desk, shelf } = await deskOf(["a", "b"], false)
-    await desk.letGoDeleted(new Set(["a", "gone"]))
+    expect(await desk.letGoDeleted(new Set(["a", "gone"]))).toBe(true)
     expect(await shelf.ids()).toEqual(["b"])
     expect(desk.kept().map(({ id, onHome }) => [id, onHome ?? false])).toEqual([
       ["b", false],
       ["a", true],
     ])
+  })
+  it("says it let nothing go when the phone could not store the mark", async () => {
+    const { desk, shelf } = await deskOf(["a"], false)
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new Error("full")
+    })
+    expect(await desk.letGoDeleted(new Set(["a"]))).toBe(false)
+    expect(await shelf.ids()).toEqual(["a"])
   })
 })
