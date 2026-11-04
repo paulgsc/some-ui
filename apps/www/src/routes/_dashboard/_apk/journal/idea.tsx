@@ -1,10 +1,15 @@
 import type { JSX } from "react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import type { WingLink } from "@some-ui/soundbites"
-import { NewIdeaPage } from "@some-ui/soundbites"
+import {
+  keptIdeasForHome,
+  keptIdeaStore,
+  NewIdeaPage,
+} from "@some-ui/soundbites"
 import { createFileRoute, Link } from "@tanstack/react-router"
 
 import { ideaHome } from "@/lib/idea-hearing"
+import { keepIdeas, sendingStore } from "@/lib/idea-keeping"
 import { ideaBundleTakes } from "@/lib/idea-takes"
 
 const StudioLink: WingLink = ({ className, children }) => (
@@ -14,13 +19,18 @@ const StudioLink: WingLink = ({ className, children }) => (
 )
 
 /**
- * The phone's desk of a new idea's takes, and home as its screen says where
- * the idea goes: in the Android app only, so no other build carries the desk
- * or the home link (`build.paths.ts`).
+ * The phone's desk of a new idea's takes, home as its screen says where the
+ * idea goes, and the ideas kept, each Send told to the home link so the idea
+ * goes home whole (ST26): in the Android app only, so no other build carries
+ * the desk or the home link (`build.paths.ts`).
  */
 const phone =
   import.meta.env.VITE_DEVICE_BACKEND === "true"
-    ? { takes: ideaBundleTakes, home: ideaHome }
+    ? {
+        takes: ideaBundleTakes,
+        home: ideaHome,
+        ideas: sendingStore(keptIdeaStore()),
+      }
     : null
 
 /**
@@ -31,11 +41,14 @@ const phone =
 const IdeaRoute = (): JSX.Element | null => {
   // The desk's runtime is the phone's one; built when the page first shows.
   const [takes] = useState(() => phone?.takes() ?? null)
+  useEffect(() => {
+    if (phone !== null) keepIdeas({ forHome: keptIdeasForHome(phone.ideas) })
+  }, [])
   if (phone === null || takes === null) return null
   return (
     <NewIdeaPage
       takes={takes}
-      ports={{ home: phone.home }}
+      ports={{ home: phone.home, ideas: phone.ideas }}
       backLink={StudioLink}
     />
   )

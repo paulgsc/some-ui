@@ -45,6 +45,7 @@ export type LaneKind =
   | "aph"
   | "jobs"
   | "voice"
+  | "ideas"
   | "rounds"
   | "endings"
 
@@ -151,13 +152,19 @@ export function pulledLane(lane: Lane): Promise<KeptRun | null> {
 }
 
 /**
- * How draining `lane` to home is going, read without a watch of its own:
- * for a screen that shows a lane the app shell drains (a wing's mark,
- * Settings).
+ * How draining `lane` to home is going, read outside React and without a
+ * watch of its own: for a screen's runtime that says where what it keeps
+ * goes (a new idea's, ST26).
  */
-function useLaneRun(lane: Lane): KeptState {
+export function laneRun(lane: Lane): Pick<Kept, "getSnapshot" | "subscribe"> {
   const { sending } = wire(lane)
-  return useSyncExternalStore(sending.subscribe, sending.getSnapshot)
+  return { getSnapshot: sending.getSnapshot, subscribe: sending.subscribe }
+}
+
+/** `laneRun` in React: for a screen that shows a lane the app shell drains (a wing's mark, Settings). */
+function useLaneRun(lane: Lane): KeptState {
+  const run = laneRun(lane)
+  return useSyncExternalStore(run.subscribe, run.getSnapshot)
 }
 
 /**

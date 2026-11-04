@@ -113,6 +113,7 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/handed-in/**",
   "apps/www/src/lib/home-link/**",
   "apps/www/src/lib/idea-hearing/**",
+  "apps/www/src/lib/idea-keeping/**",
   "apps/www/src/lib/idea-takes/**",
   "apps/www/src/lib/jobs/**",
   "apps/www/src/lib/journal-share/**",

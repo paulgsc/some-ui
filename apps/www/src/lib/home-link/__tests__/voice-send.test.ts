@@ -30,6 +30,7 @@ import {
   voiceKept,
   watchVoiceNotes,
 } from "@/lib/home-link/voice-copy"
+import { keepIdeas } from "@/lib/idea-keeping"
 import type { JobEvent, JobsState } from "@/lib/jobs/model"
 import { EMPTY } from "@/lib/jobs/model"
 import { keepSoundbites } from "@/lib/soundbite-keeping"
@@ -128,6 +129,9 @@ vi.mock("@some-ui/topik", () => ({
 
 /** The pairing home's record is kept under, in this test's storage. */
 const PAIRING = "pairing-1"
+
+/** The pairing a run goes under. */
+const AT_PAIRING = { pairing: PAIRING }
 vi.mock("@some-ui/intent-kit", async (actual) => ({
   ...(await actual<object>()),
   reportFailure: vi.fn(),
@@ -237,20 +241,26 @@ const waiting = (): number =>
 describe("the voice lane's run, after its copy pass (LA14)", () => {
   it("fails for no room, counts no note whose audio is gone, and sends the rest once there is room", async () => {
     setUp(1, { v1: new Blob(["a"]), gone: null, v3: new Blob(["c"]) })
-    expect(await sendVoice(send)).toEqual({ kind: "failed", why: "room" })
+    expect(await sendVoice(send, AT_PAIRING)).toEqual({
+      kind: "failed",
+      why: "room",
+    })
     expect(fakes.home?.getSnapshot().held).toEqual(["v1"])
     // v3 had no room and waits; the note with no audio does not.
     expect(waiting()).toBe(1)
 
     await Promise.resolve()
-    expect(await sendVoice(send)).toEqual({ kind: "synced" })
+    expect(await sendVoice(send, AT_PAIRING)).toEqual({ kind: "synced" })
     expect(fakes.home?.getSnapshot().held).toEqual(["v1", "v3"])
     expect(waiting()).toBe(0)
   })
 
   it("fails as the phone's fault when a note's audio can't be read, and goes on to the next", async () => {
     setUp(5, { broken: new Error("read failed"), v2: new Blob(["b"]) })
-    expect(await sendVoice(send)).toEqual({ kind: "failed", why: "fault" })
+    expect(await sendVoice(send, AT_PAIRING)).toEqual({
+      kind: "failed",
+      why: "fault",
+    })
     expect(fakes.home?.getSnapshot().held).toEqual(["v2"])
     expect(waiting()).toBe(1)
   })
@@ -263,7 +273,10 @@ describe("the voice lane's run, after its copy pass (LA14)", () => {
       },
     }
     setUp(5, { v1: new Blob(["a"]) }, { storage })
-    expect(await sendVoice(send)).toEqual({ kind: "failed", why: "fault" })
+    expect(await sendVoice(send, AT_PAIRING)).toEqual({
+      kind: "failed",
+      why: "fault",
+    })
     expect(waiting()).toBe(1)
   })
 
@@ -274,7 +287,7 @@ describe("the voice lane's run, after its copy pass (LA14)", () => {
     expect(said("v1")).toBe(TAKE_WORDS.place.phone)
 
     const busy: HomeCall = () => Promise.resolve({ status: 503, body: "" })
-    expect((await sendVoice(busy)).kind).toBe("failed")
+    expect((await sendVoice(busy, AT_PAIRING)).kind).toBe("failed")
     expect(said("v1")).toBe(TAKE_WORDS.place.going)
     // Unpaired, its copy goes nowhere: kept here until paired again.
     fakes.paired = false
@@ -282,7 +295,7 @@ describe("the voice lane's run, after its copy pass (LA14)", () => {
     fakes.paired = true
     expect(said("v1")).toBe(TAKE_WORDS.place.going)
 
-    expect(await sendVoice(send)).toEqual({ kind: "synced" })
+    expect(await sendVoice(send, AT_PAIRING)).toEqual({ kind: "synced" })
     expect(voiceKept("v1")).toEqual({ place: "home", since: heard })
     expect(said("v1")).toBe(TAKE_WORDS.place.homeSince(TAKE_WORDS.when(heard)))
     // Rust Rounds' notes go home in no lane yet (RR6, #2237).
@@ -291,7 +304,7 @@ describe("the voice lane's run, after its copy pass (LA14)", () => {
 
   it("offers a Jobs note whose share arrived like any other, and names it gone when its audio is (LG1)", async () => {
     setUp(5, { r1: null, r2: null }, { arrived: true })
-    expect(await sendVoice(send)).toEqual({ kind: "synced" })
+    expect(await sendVoice(send, AT_PAIRING)).toEqual({ kind: "synced" })
     expect(waiting()).toBe(0)
     expect(renderHook(() => useUnsendable()).result.current).toEqual({
       gone: 2,
@@ -348,7 +361,7 @@ describe("Studio's takes, once its route hands them in (ST12)", () => {
       sent.push(path)
       return send(method, path, init)
     }
-    expect(await sendVoice(recording)).toEqual({ kind: "synced" })
+    expect(await sendVoice(recording, AT_PAIRING)).toEqual({ kind: "synced" })
     expect(fakes.home?.getSnapshot().held).toEqual(["t1"])
     expect(sent.some((path) => path.includes("of=studio"))).toBe(true)
     expect(waiting()).toBe(0)
@@ -361,7 +374,7 @@ describe("Studio's takes, once its route hands them in (ST12)", () => {
     handStudioIn()
     const unanswered: HomeCall = () => Promise.reject(new Error("no answer"))
     // Home stored the upload, and its answer never came back.
-    await expect(sendVoice(unanswered)).rejects.toThrow()
+    await expect(sendVoice(unanswered, AT_PAIRING)).rejects.toThrow()
     expect(fakes.home?.getSnapshot().waiting.map((note) => note.id)).toEqual([
       "t1",
     ])
@@ -403,7 +416,9 @@ describe("Studio's takes, once its route hands them in (ST12)", () => {
             })
           return send(method, path, init)
         }
-        expect(await sendVoice(answering)).toEqual({ kind: "synced" })
+        expect(await sendVoice(answering, AT_PAIRING)).toEqual({
+          kind: "synced",
+        })
         expect(sent.includes("/voice-notes/on-drive?ids=t1,t%3A9")).toBe(asked)
         expect(fakes.onDrive).toEqual(asked ? [["t1"]] : [])
       }
@@ -418,7 +433,7 @@ describe("Studio's takes, once its route hands them in (ST12)", () => {
         path.startsWith("/voice-notes/on-drive")
           ? Promise.resolve({ status: 404, body: "{}" })
           : send(method, path, init)
-      expect(await sendVoice(old)).toEqual({ kind: "synced" })
+      expect(await sendVoice(old, AT_PAIRING)).toEqual({ kind: "synced" })
       expect(fakes.onDrive).toEqual([])
       fakes.letGo = null
     })
@@ -441,7 +456,7 @@ describe("the drama's scene notes (HF2)", () => {
       sent.push(path)
       return send(method, path, init)
     }
-    expect(await sendVoice(recording)).toEqual({ kind: "synced" })
+    expect(await sendVoice(recording, AT_PAIRING)).toEqual({ kind: "synced" })
     // `toContain`, not `toEqual`: Studio's take, once its test has handed it
     // in, stays handed in for the module (`keepStudio` has no undo), so it
     // goes too.
@@ -495,7 +510,7 @@ describe("the soundbites, once their page hands them in (HF5)", () => {
       sent.push(path)
       return send(method, path, init)
     }
-    expect(await sendVoice(recording)).toEqual({ kind: "synced" })
+    expect(await sendVoice(recording, AT_PAIRING)).toEqual({ kind: "synced" })
     stop()
     expect(heard).toHaveBeenCalled()
     expect(fakes.home?.getSnapshot().held).toContain("b1")
@@ -515,7 +530,10 @@ describe("the soundbites, once their page hands them in (HF5)", () => {
     listed = (): Promise<Array<Soundbite>> =>
       Promise.reject(new Error("metadata unreadable"))
     vi.mocked(reportFailure).mockClear()
-    expect(await sendVoice(send)).toEqual({ kind: "failed", why: "fault" })
+    expect(await sendVoice(send, AT_PAIRING)).toEqual({
+      kind: "failed",
+      why: "fault",
+    })
     // The Jobs note and the scene note after it went all the same.
     expect(fakes.home?.getSnapshot().held).toEqual(
       expect.arrayContaining(["v1", "s1"])
@@ -536,7 +554,7 @@ describe("the soundbites, once their page hands them in (HF5)", () => {
     const before = told.length
     expect(before).toBeGreaterThan(0)
 
-    expect(await sendVoice(send)).toEqual({ kind: "synced" })
+    expect(await sendVoice(send, AT_PAIRING)).toEqual({ kind: "synced" })
     expect(fakes.home?.getSnapshot().held).toContain("b1")
     stop()
     // Every reading handed before home held the audio said not held; the
@@ -544,5 +562,50 @@ describe("the soundbites, once their page hands them in (HF5)", () => {
     expect(told.length).toBeGreaterThan(before)
     expect(told.slice(0, -1).every((held) => !held)).toBe(true)
     expect(told.at(-1)).toBe(true)
+  })
+})
+
+describe("Studio's ideas, sent whole (ST26 b)", () => {
+  it("go home after the run's notes, are counted waiting until home holds them, and go once", async () => {
+    setUp(5, { v1: new Blob(["a"]) })
+    const idea = {
+      id: "i1",
+      createdAt: "2026-11-01T09:00:00.000Z",
+      sentAt: "2026-11-01T09:10:00.000Z",
+      title: "Why the mic clips",
+      topic: "Studio",
+      format: "short" as const,
+      keywords: [],
+      questions: 1,
+      answers: [{ question: "what" as const, note: "v1" }],
+    }
+    const held = (): number | undefined =>
+      renderHook(() => voiceLane.useCounts()).result.current.held.ideas
+    const before = waiting()
+    keepIdeas({ forHome: () => [idea] })
+    expect(waiting()).toBe(before + 1)
+    expect(held()).toBe(0)
+    const sent: Array<string> = []
+    const recording: HomeCall = (method, path, init) => {
+      sent.push(`${method} ${path}`)
+      return path.startsWith("/ideas/")
+        ? Promise.resolve({
+            status: 200,
+            body: JSON.stringify({ change: "added", idea }),
+          })
+        : send(method, path, init)
+    }
+    expect(await sendVoice(recording, AT_PAIRING)).toEqual({ kind: "synced" })
+    const put = sent.indexOf("PUT /ideas/i1")
+    expect(put).toBeGreaterThan(-1)
+    expect(
+      sent.slice(0, put).some((line) => line.includes("/voice-notes/v1"))
+    ).toBe(true)
+    expect(waiting()).toBe(0)
+    expect(held()).toBe(1)
+
+    sent.length = 0
+    await sendVoice(recording, AT_PAIRING)
+    expect(sent.filter((line) => line.startsWith("PUT /ideas/"))).toEqual([])
   })
 })

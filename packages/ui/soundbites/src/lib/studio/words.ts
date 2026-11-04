@@ -802,7 +802,7 @@ export const STUDIO_WORDS = {
     },
     sent: {
       title: "Sent, as one idea",
-      near: "Kept on this phone as one idea, dated. What you said goes home now, and its title and the rest follow once home keeps ideas.",
+      near: "Kept on this phone as one idea, dated. It goes home now, whole: what you said, its title and the rest.",
       /** Home is out of reach, or this phone isn't paired with it. */
       kept: "Kept, goes home when you're back in reach",
       away: "Kept on this phone as one idea, dated. It goes home when you're back in reach.",

@@ -123,7 +123,7 @@
  *   brought back: there is no home, so no one's word but theirs (PF1).
  */
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
-import { assertNever } from "@some-ui/core-utils"
+import { assertNever, localStorageOrNull } from "@some-ui/core-utils"
 import type { KeptBite } from "@some-ui/game-week"
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import type { Soundbite } from "@some-ui/soundbites"
@@ -172,6 +172,7 @@ import {
 } from "@/lib/voice-home/model"
 import { wireVoiceMarks } from "@/lib/voice-marks"
 
+import { phoneIdeas, sendIdeas } from "./ideas"
 import { homeLink, paired } from "./index"
 import { lensEntriesHeld } from "./lens-record"
 import { notesHeld } from "./notes"
@@ -891,12 +892,17 @@ async function letGoOnHomesWord(send: HomeCall): Promise<void> {
  * The voice lane's exchange: a copy pass first, so a note the watch could
  * not copy yet (no room, storage that would not keep its record) is tried
  * again, then each copy waiting sent (`exchangeVoice`), then, once that
- * synced, home's word on which Studio takes Drive has (`letGoOnHomesWord`)
- * and the set-aside marks due (`markSetAside`, MIC2), which end the run in
- * its exchange's place. A run that sent all it had still fails, saying why,
- * if that pass left a note it could copy uncopied (`runEnd`, LA14).
+ * synced, home's word on which Studio takes Drive has (`letGoOnHomesWord`),
+ * each Studio idea sent whole that home doesn't hold (`sendIdeas`, ST26),
+ * whose said answers name notes that have just gone, and the set-aside
+ * marks due (`markSetAside`, MIC2), which end the run in its exchange's
+ * place. A run that sent all it had still fails, saying why, if that pass
+ * left a note it could copy uncopied (`runEnd`, LA14).
  */
-export async function sendVoice(send: HomeCall): Promise<HomeExchanged> {
+export async function sendVoice(
+  send: HomeCall,
+  at: { readonly pairing: string }
+): Promise<HomeExchanged> {
   copySoon()
   const running = copying
   if (running !== null) await running
@@ -905,6 +911,11 @@ export async function sendVoice(send: HomeCall): Promise<HomeExchanged> {
   const exchanged = await exchangeVoice(home.keeping, send)
   if (exchanged.kind !== "synced") return runEnd(pass, exchanged)
   await letGoOnHomesWord(send)
+  const ideas = await sendIdeas(
+    phoneIdeas(localStorageOrNull(), at.pairing),
+    send
+  )
+  if (ideas.kind !== "synced") return runEnd(pass, ideas)
   const sendable = marksSendable(candidates())
   const marks: AsidePort = {
     due: () => home.marks.due().filter(sendable),

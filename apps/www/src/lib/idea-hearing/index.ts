@@ -12,20 +12,24 @@
  * without one, instead of each being recorded for a home that can't hear
  * it (IH1).
  *
- * A new idea (ST26) asks home nothing here: `ideaHome` says only whether the
- * phone is paired, for its screen to say where the idea goes.
+ * A new idea (ST26) asks home nothing here: `ideaHome` says only where
+ * home is as far as the phone can tell, for its screen to say where the idea
+ * goes.
  *
  * `@some-ui/soundbites` is the phone's alone, so its `homeHearing` is handed
  * in by the idea screens' routes (`routes/_dashboard/_apk/journal`), which
  * may import it. Phone-only (`build.paths.ts`).
  */
-import type { HearingPorts, IdeaHome } from "@some-ui/soundbites"
+import type { HearingPorts, HomeReach, IdeaHome } from "@some-ui/soundbites"
 import type { Listening, TurnListener } from "@some-ui/voice-capture"
 import { onPageVisibility } from "@some-ui/voice-capture"
 
 import { deviceListener } from "@/lib/device-listen"
 import { homeLink, pairingOf } from "@/lib/home-link"
 import { askHeard } from "@/lib/home-link/heard"
+import type { KeptRun } from "@/lib/home-link/kept-model"
+import { laneRun } from "@/lib/home-link/lanes"
+import { voiceLane } from "@/lib/home-link/voice"
 import { ideaTakes } from "@/lib/idea-takes"
 
 /**
@@ -116,12 +120,30 @@ export function phoneIdeaListener(
   })
 }
 
+/** Where home is, from the pairing held and the voice lane's last run. */
+export function reachOf(
+  pairing: string | null,
+  last: KeptRun | null
+): HomeReach {
+  if (pairing === null) return "unpaired"
+  return last?.kind === "unreachable" ? "away" : "near"
+}
+
 /**
- * Home, as a new idea's screen says where its idea goes (ST26): this phone
- * paired with it or not, read from the pairing it holds. Whether home
- * answers is the drain's to learn once ideas go home whole.
+ * Home, as a new idea's screen says where its idea goes (ST26): unpaired,
+ * read from the pairing this phone holds; away, while the voice lane's last
+ * run, which carries ideas home (`lib/home-link/ideas`), found home out of
+ * reach; near otherwise.
  */
 export const ideaHome: IdeaHome = {
-  reach: () => (pairingOf() === null ? "unpaired" : "near"),
-  subscribe: (listener) => homeLink().subscribe(listener),
+  reach: () => reachOf(pairingOf(), laneRun(voiceLane).getSnapshot().last),
+  subscribe: (listener) => {
+    const stops = [
+      homeLink().subscribe(listener),
+      laneRun(voiceLane).subscribe(listener),
+    ]
+    return (): void => {
+      for (const stop of stops) stop()
+    }
+  },
 }

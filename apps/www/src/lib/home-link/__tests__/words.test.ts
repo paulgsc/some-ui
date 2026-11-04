@@ -211,15 +211,15 @@ describe("each lane's sharing words", () => {
       where: "kept",
       how: "no-room",
       word: "No room",
-      line: "This phone has no room left for copies home doesn't have yet. 2 voice notes wait on this phone and go next time.",
+      line: "This phone has no room left for copies home doesn't have yet. 2 voice notes and ideas wait on this phone and go next time.",
     })
     expect(laneView(WORDS.voice, ran("fault", 1)).line).toBe(
-      "Something on this phone went wrong. 1 voice note waits on this phone and goes next time."
+      "Something on this phone went wrong. 1 voice note or idea waits on this phone and goes next time."
     )
     expect(
       laneView(WORDS.voice, facts({ paired: true, waiting: 1 })).line
     ).toBe(
-      "1 voice note waits on this phone. It goes to home while the app is open."
+      "1 voice note or idea waits on this phone. It goes to home while the app is open."
     )
   })
 

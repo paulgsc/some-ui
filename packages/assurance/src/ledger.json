@@ -1856,7 +1856,7 @@
     {
       "store": "phone:home-sent",
       "class": "cache",
-      "growth": "Per finished session, kept shelf item, LeetType session, Studio sitting, written reflection and ask for the next scene home holds or refused (one digest, fingerprint or updatedAt each), for one pairing; no cap (`some-ui.home.sent.v1`).",
+      "growth": "Per finished session, kept shelf item, LeetType session, Studio sitting, written reflection, ask for the next scene and Studio idea sent whole (ST26) home holds or refused (one digest, fingerprint or updatedAt each), for one pairing; no cap (`some-ui.home.sent.v1`).",
       "horizon": "a new pairing starts it over (the next write replaces the old pairing's record); a refused digest leaves when home later holds the item, and refused digests of items no longer kept are dropped (home-link/standing.ts)",
       "family": "what-is-kept"
     },
