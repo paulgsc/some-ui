@@ -9,6 +9,8 @@
 // `src/content/watch.ts`); these typed messages are an additive, push-based
 // activity channel layered on top of it.
 
+import { isRecord } from "@some-extension/common/utils/guards"
+
 /**
  * Messages emitted by the content script (`watch.ts`) toward the service
  * worker. A tab announces when it becomes foregrounded (`TAB_ACTIVE`, carrying
@@ -76,6 +78,57 @@ export type PopupToWorkerMessage =
       local?: Record<string, unknown>
       session?: Record<string, unknown>
     }
+  | PopupTroubleMessage
+
+/** The popup's reads, by what they read in the person's terms. */
+export const POPUP_READS = [
+  "tab",
+  "settings",
+  "shortcuts",
+  "kept-awake",
+] as const
+export type PopupRead = (typeof POPUP_READS)[number]
+
+/** The popup's sections, in the order it shows them. */
+export const POPUP_SECTIONS = [
+  "kept-awake-banner",
+  "tab-status",
+  "actions",
+  "settings",
+  "diagnostics",
+] as const
+export type PopupSection = (typeof POPUP_SECTIONS)[number]
+
+/**
+ * What the popup couldn't read or show when it opened, for the worker to keep
+ * in the Diagnostics log, so Export JSON carries it.
+ */
+export type PopupTroubleMessage = {
+  method: "popup-trouble"
+  reads: Array<PopupRead>
+  sections: Array<PopupSection>
+}
+
+const isListOf =
+  <T extends string>(names: ReadonlyArray<T>) =>
+  (value: unknown): value is Array<T> =>
+    Array.isArray(value) &&
+    value.every((each) => names.some((name) => name === each))
+
+const areReads = isListOf(POPUP_READS)
+const areSections = isListOf(POPUP_SECTIONS)
+
+/** Narrowing guard for the popup's trouble report. */
+export function isPopupTroubleMessage(
+  value: unknown
+): value is PopupTroubleMessage {
+  return (
+    isRecord(value) &&
+    value.method === "popup-trouble" &&
+    areReads(value.reads) &&
+    areSections(value.sections)
+  )
+}
 
 /**
  * What the diagnostics page (`debug.html`) can ask the worker for.
@@ -115,5 +168,9 @@ export function isPopupToWorkerMessage(
   if (value === null || typeof value !== "object" || !("method" in value)) {
     return false
   }
-  return value.method === "popup" || value.method === "storage"
+  return (
+    value.method === "popup" ||
+    value.method === "storage" ||
+    isPopupTroubleMessage(value)
+  )
 }

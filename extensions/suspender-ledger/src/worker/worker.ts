@@ -5,7 +5,10 @@
 // Ported from auto-tab-discard v3/worker/core.mjs (MPL-2.0)
 // Copyright (C) auto-tab-discard contributors
 
-import { isDebugToWorkerMessage } from "@suspender/types/messages"
+import {
+  isDebugToWorkerMessage,
+  isPopupTroubleMessage,
+} from "@suspender/types/messages"
 
 import { discard } from "./core/discard"
 import { hydrateDiscardState } from "./core/discard-state"
@@ -14,6 +17,7 @@ import {
   count,
   exportDiagnostics,
   hydrateObservability,
+  notePopupTrouble,
   obs,
   record,
 } from "./core/observability"
@@ -80,6 +84,10 @@ chrome.runtime.onMessage.addListener((request, sender, response) => {
         })
     )
     return true
+  }
+  if (isPopupTroubleMessage(request)) {
+    notePopupTrouble(request)
+    return undefined
   }
   if (method === "discard.on.load") {
     // for links discarded after the initial load
