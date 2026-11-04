@@ -83,7 +83,7 @@ import {
   SOUNDBITE_MIN_MS,
 } from "@soundbites/lib/policy"
 import { isProjectFile, readProjectFile } from "@soundbites/lib/project/file"
-import { finishOf, youtubeLink } from "@soundbites/lib/project/finish"
+import { BEST_OF, finishOf, youtubeLink } from "@soundbites/lib/project/finish"
 import type { LetGo, LetGoChoice } from "@soundbites/lib/project/let-go"
 import {
   driveHasItIn,
@@ -260,6 +260,8 @@ type Pending = { readonly project: string } & (
       readonly at: string
     }
   | { readonly kind: "ready"; readonly rev: number; readonly at: string }
+  /** The owner keeps scene `shot`'s take after three rounds (SH5). */
+  | { readonly kind: "best"; readonly shot: string; readonly at: string }
   | {
       readonly kind: "note"
       readonly note: Omit<Note, "status" | "reason">
@@ -423,6 +425,8 @@ export type StudioIntent =
   /** Finish's button to the one thing missing: the note's or take's scene. */
   | { readonly type: "finishGo" }
   | { readonly type: "readyMarked" }
+  /** Finish: keep the scene's take after three rounds of its fact check (SH5). */
+  | { readonly type: "bestKept" }
   | { readonly type: "linkPasted"; readonly text: string }
   | { readonly type: "watchChosen" }
   | { readonly type: "historyChosen" }
@@ -851,6 +855,14 @@ function applied(project: Project | null, pending: Pending): Project | null {
       return model(project, {
         type: "markedReady",
         rev: pending.rev,
+        at: pending.at,
+      })
+    }
+    case "best": {
+      if (project === null) return null
+      return model(project, {
+        type: "bestKept",
+        shot: pending.shot,
         at: pending.at,
       })
     }
@@ -1382,6 +1394,9 @@ function landedNotice(
     case "ready": {
       return WORDS.finish.marked
     }
+    case "best": {
+      return WORDS.finish.bestKept
+    }
     case "release": {
       return WORDS.finish.released
     }
@@ -1451,6 +1466,7 @@ function unchangedNotice(
     }
     case "shape":
     case "ready":
+    case "best":
     case "release":
     case "note":
     case "good": {
@@ -2494,8 +2510,13 @@ export function step(state: StudioState, event: StudioEvent): Step {
       const finish = finishOf(project)
       if (finish.kind === "idea")
         return watchOpened(state, project, finish.shot, event.at)
-      if (finish.kind !== "note" && finish.kind !== "take") return stay(state)
-      const wanted = finish.kind === "take" ? finish.shot : finish.note.shot
+      if (
+        finish.kind !== "note" &&
+        finish.kind !== "take" &&
+        finish.kind !== "facts"
+      )
+        return stay(state)
+      const wanted = finish.kind === "note" ? finish.note.shot : finish.shot
       // A note on a scene a later revision dropped opens where work resumes.
       const there = latest(project).cutList.shots.some(
         (each) => each.id === wanted
@@ -2520,6 +2541,16 @@ export function step(state: StudioState, event: StudioEvent): Step {
       return enqueue(
         { ...state, notice: "" },
         { kind: "ready", project: project.id, rev: finish.rev, at: event.at }
+      )
+    }
+
+    case "bestKept": {
+      if (screen.kind !== "finish" || project === null) return stay(state)
+      const finish = finishOf(project)
+      if (finish.kind !== "facts" || finish.rounds < BEST_OF) return stay(state)
+      return enqueue(
+        { ...state, notice: "" },
+        { kind: "best", project: project.id, shot: finish.shot, at: event.at }
       )
     }
 

@@ -1,7 +1,12 @@
 import type { ComponentProps, JSX } from "react"
 import { useEffect, useState } from "react"
 import { useConfirmSheet } from "@some-ui/shared"
-import type { Project, StudioShare, WingLink } from "@some-ui/soundbites"
+import type {
+  Project,
+  StudioCopy,
+  StudioShare,
+  WingLink,
+} from "@some-ui/soundbites"
 import {
   keptIdeasForHome,
   keptLetGo,
@@ -29,6 +34,7 @@ import { shareStudio } from "@/lib/journal-share"
 import { deletableStudioTakes } from "@/lib/my-data"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 import { keepStudio } from "@/lib/studio-keeping"
+import { CopyButton } from "@/components/copy-button"
 
 const WORDS = STUDIO_WORDS
 
@@ -141,6 +147,15 @@ const Records = (): JSX.Element => {
 }
 
 /**
+ * An episode's upload copy onto the clipboard (SH5), as Jobs' paste kit
+ * copies: in the Android app only, as sharing is.
+ */
+const studioCopy: StudioCopy | undefined =
+  import.meta.env.VITE_DEVICE_BACKEND === "true"
+    ? ({ text, what }): JSX.Element => <CopyButton text={text} what={what} />
+    : undefined
+
+/**
  * The Studio wing's Home (lib/wings): a video made in sittings (STUDIO
  * ST4), with the ways in to New idea (ST18) and Your ideas (ST19)
  * (`StudioHome`).
@@ -178,6 +193,7 @@ const StudioRoute = (): JSX.Element => {
     <>
       <StudioHome
         share={studioShare}
+        copy={studioCopy}
         ports={studioPorts}
         ideaLink={IdeaLink}
         ideasLink={IdeasLink}

@@ -314,6 +314,7 @@ describe("an episode of a show (SHOW SH2)", () => {
       title: "Weekly, week 3",
       period: "week 3",
       data: { source: "weekly/3.json", sha256: "0".repeat(64) },
+      upload: { title: "Weekly · week 3", description: "Week 3." },
       keep: [["3 wins"], []],
       inMs: () => 0,
     })

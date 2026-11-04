@@ -51,6 +51,25 @@ describe("a version back from Claude", () => {
     ])
   })
 
+  it("brings each fact check the round ran on a take this phone holds, once (SH5)", () => {
+    const kept = run(
+      started(),
+      { type: "takeStarted", shot: "a" },
+      take("t-a", "a")
+    ).project
+    const checks = [
+      { take: "t-a", at: AT, passed: false },
+      { take: "t-gone", at: AT, passed: true },
+    ]
+    const merged = mergeIn(kept, { ...kept, checks })
+    expect(merged.kind).toBe("merged")
+    if (merged.kind !== "merged") return
+    expect(merged.project.checks).toEqual([checks[0]])
+    expect(mergeIn(merged.project, { ...kept, checks })).toEqual({
+      kind: "same",
+    })
+  })
+
   it("leaves a change proposed to the show open, whatever the file says (SH4)", () => {
     const kept = run(started(), {
       type: "noted",

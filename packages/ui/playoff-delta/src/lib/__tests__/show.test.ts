@@ -13,6 +13,7 @@ import {
   FORMAT_VERSION,
   formatId,
   formatOf,
+  uploadOf,
   type FormatKind,
 } from "@playoff-delta/lib/show"
 import {
@@ -80,6 +81,10 @@ describe("an episode", () => {
         source: `playoff-delta/${season.label}/${season.team}.json`,
         sha256: SUM,
       })
+      // The copy Finish shows is the week's own, pinned with the episode.
+      expect(e.episode.upload).toEqual(
+        uploadOf(season, season.weeks.find((w) => w.week === week) ?? null)
+      )
       if (week === LEGEND_WEEK) return
       const after = season.weeks.find((w) => w.week === week)?.poles.after
       const division = e.cuts.find((c) => c.id === "division")

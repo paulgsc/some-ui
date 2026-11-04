@@ -620,10 +620,25 @@ export const STUDIO_WORDS = {
     goTake: (n: number): string => `Record scene ${n}`,
     idea: ideasToConfirm,
     goIdea: (n: number): string => `Watch from scene ${n}`,
+    /** An episode's take whose check didn't pass, before its third round. */
+    facts: (n: number): string =>
+      `Scene ${n}'s take leaves out a fact it must keep, or says one wrong. Record it again, with the facts on screen.`,
+    /** The same, after three rounds (PDM15): the owner decides. */
+    factsBest: (n: number): string =>
+      `Scene ${n} has had three takes, and none says every fact it must keep. Keep the one you chose anyway, or record it again.`,
+    keepBest: "Keep this take",
+    bestKept: "Kept your take as it is.",
     unmarked:
       "Every scene has its take and its idea said, and no note is open. Say it's ready when you have watched it through.",
     mark: "It's ready",
     ready: "Ready for YouTube.",
+    /** An episode's copy, from its show (SH5): copied, then uploaded by hand. */
+    upload: {
+      heading: "For the upload, from the show",
+      title: "Title",
+      description: "Description",
+      line: "Copy each into YouTube as you upload it yourself. Studio never uploads.",
+    },
     uploadCopy:
       "Next, ask Claude for the upload copy: the full video, its title, its description with the music credit, and its captions, on the shorts page. You upload it to YouTube yourself.",
     linkLabel: "Its YouTube link, once it is up",
@@ -640,6 +655,7 @@ export const STUDIO_WORDS = {
       note: "A note is open",
       take: (n: number): string => `Scene ${n} needs a take`,
       idea: ideasToConfirm,
+      facts: (n: number): string => `Scene ${n} needs its facts`,
       unmarked: "Ready to mark",
       ready: "Ready for YouTube",
       released: "Released",

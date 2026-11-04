@@ -247,6 +247,9 @@ function finishStatus(finish: Finish): string {
     case "idea": {
       return words.idea(finish.count)
     }
+    case "facts": {
+      return words.facts(finish.n)
+    }
     case "unmarked":
     case "ready":
     case "released": {

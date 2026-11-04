@@ -105,6 +105,15 @@ function episodeFor(week: number, at: string, proposed?: string): Project {
     title: `Playoff Delta, 2026 week ${week}`,
     period: `2026 week ${week}, every game played`,
     data: { source: `fit/2026/week-${week}.json`, sha256: "a".repeat(64) },
+    // As long as the show's copy runs (SH5), so Finish is measured at it.
+    upload: {
+      title: `Playoff Delta · 2026 week ${week} · Keep driving`,
+      description: [
+        `2026 week ${week}, read from the Niners' side. We lost to the Falcons.`,
+        "The week: 0 steps our way, 1 step against us. The division: in our hands. The #1 seed: in our hands. As good as the #1 seed, as bad as out. Keep driving.",
+        "Over every way the rest of the season can go. Standings only: a tie goes to us.",
+      ].join("\n\n"),
+    },
     keep: FIT_CUTS.map((cut) => ("keep" in cut ? [...cut.keep] : [])),
     inMs: (index) => 1_200 + index,
   })
@@ -291,6 +300,32 @@ function studioOn(projects: ReadonlyArray<Project>): () => JSX.Element {
   return StudioFixture
 }
 
+/**
+ * Week 8's episode with every scene taken and marked ready: Finish shows
+ * the show's upload copy (SH5).
+ */
+function readyEpisode(): Project {
+  const project = episodeFor(8, "2026-11-03T09:00:00.000Z")
+  const at = "2026-11-03T10:00:00.000Z"
+  const shots = project.revisions[0]?.cutList.shots ?? []
+  return {
+    ...project,
+    takes: shots.map((each) => ({
+      id: `fit-take-${each.id}`,
+      shot: each.id,
+      recordedAt: at,
+      durationMs: 4_000,
+      mimeType: "audio/webm",
+      keptBy: [],
+      onPhone: true,
+    })),
+    chosen: Object.fromEntries(
+      shots.map((each) => [each.id, `fit-take-${each.id}`])
+    ),
+    ready: [{ rev: 1, at }],
+  }
+}
+
 /** Studio's fixtures, which `../studio-fit.spec.ts` walks, every one. */
 const STUDIO_FIXTURES = {
   /** Start with no video: the primer pick alone. */
@@ -309,6 +344,8 @@ const STUDIO_FIXTURES = {
     ),
     episodeFor(8, "2026-11-03T09:00:00.000Z"),
   ]),
+  /** An episode ready for YouTube, its upload copy from the show (SH5). */
+  "studio-episode-ready": studioOn([readyEpisode()]),
 
   /** New idea (`/journal/idea`). */
   idea: newIdea(false),

@@ -13,6 +13,11 @@
  * and a cut list whose pictures are the recorded clips, ready for the
  * renderer once the takes are in. An episode follows its format strictly: a
  * scene is left out only where the format says it may be.
+ *
+ * Its pins also carry the upload's copy (SHOW SH5): the title and the
+ * description its show fills from the period's data, which Finish shows once
+ * the episode is ready, for the owner to copy and upload by hand, within
+ * YouTube's limits (`UploadCopySchema`).
  */
 
 import { isRecord } from "@some-ui/core-utils"
@@ -45,6 +50,38 @@ const EpisodeCutSchema = z.object({
     .max(PRIMER_V2_BUDGET_MS / 1_000),
 })
 
+/** YouTube's limits on an upload's title: in characters, as YouTube counts them. */
+export const UPLOAD_TITLE_MAX_CHARS = 100
+
+/** YouTube's limit on an upload's description, in bytes of UTF-8. */
+export const UPLOAD_DESCRIPTION_MAX_BYTES = 5_000
+
+/** YouTube refuses either character in a title or a description. */
+const NO_ANGLES = /^[^<>]*$/
+
+/**
+ * What an upload says on YouTube, as its show fills it: a title and a
+ * description within YouTube's limits, with no `<` or `>`.
+ */
+export const UploadCopySchema = z.object({
+  title: words
+    .regex(NO_ANGLES, "YouTube refuses < and > in a title")
+    .refine((title) => [...title].length <= UPLOAD_TITLE_MAX_CHARS, {
+      message: `a title has at most ${UPLOAD_TITLE_MAX_CHARS} characters`,
+    }),
+  description: words
+    .regex(NO_ANGLES, "YouTube refuses < and > in a description")
+    .refine(
+      (text) =>
+        new TextEncoder().encode(text).length <= UPLOAD_DESCRIPTION_MAX_BYTES,
+      {
+        message: `a description has at most ${UPLOAD_DESCRIPTION_MAX_BYTES} bytes`,
+      }
+    ),
+})
+
+export type UploadCopy = z.infer<typeof UploadCopySchema>
+
 /** What pins an episode: its show, its format version, its period and its data. */
 export const EpisodePinSchema = z.object({
   schema: z.literal(EPISODE_SCHEMA),
@@ -58,6 +95,8 @@ export const EpisodePinSchema = z.object({
     source: words,
     sha256: z.string().regex(/^[0-9a-f]{64}$/),
   }),
+  /** The upload's copy, filled from the period's data; absent before SH5. */
+  upload: UploadCopySchema.optional(),
 })
 
 export type EpisodePin = z.infer<typeof EpisodePinSchema>
@@ -79,6 +118,8 @@ export type EpisodeInput = {
   readonly title: string
   readonly period: string
   readonly data: { readonly source: string; readonly sha256: string }
+  /** The upload's copy, as the show fills it from the period's data. */
+  readonly upload: UploadCopy
   /**
    * Per scene of the format, in order: the facts a take over it keeps, or
    * `null` to leave it out, which only a scene with a `skip` may be.
@@ -137,6 +178,7 @@ export function episodeOf(
       format: { id: format.id, version: format.version },
       period: input.period,
       data: input.data,
+      upload: input.upload,
     },
     cutList: {
       schema: CUT_LIST_SCHEMA,

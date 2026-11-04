@@ -1749,6 +1749,42 @@ describe("Finish", () => {
     expect(ideaAsking(projectIn(runtime), screen, [])).toBe("b")
   })
 
+  it("on an episode, sends a take whose facts didn't pass to Record, and keeps it after three rounds (SH5)", async () => {
+    const state = ["a", "b", "c", "b", "b"].reduce(
+      (at, id, i) =>
+        run(at, { type: "takeStarted", shot: id }, take(`t-${id}-${i}`, id)),
+      started()
+    )
+    const checks = state.project.takes.map((each) => ({
+      take: each.id,
+      at: AT,
+      passed: each.shot !== "b",
+    }))
+    const runtime = studio(
+      memoryProjectStore([
+        {
+          ...state.project,
+          checks,
+          episode: JSON.parse(episodeText()).episode,
+        },
+      ])
+    )
+    await until(runtime, (each) => projectOf(each) !== null)
+    runtime.dispatch({ type: "finishChosen" })
+    expect(finishOf(projectIn(runtime))).toMatchObject({
+      kind: "facts",
+      shot: "b",
+      rounds: 3,
+    })
+    runtime.dispatch({ type: "bestKept" })
+    await until(runtime, (each) => settledWrites(each))
+    expect(projectIn(runtime).accepted).toEqual([
+      { shot: "b", take: "t-b-4", at: expect.any(String) },
+    ])
+    expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.finish.bestKept)
+    expect(finishOf(projectIn(runtime)).kind).not.toBe("facts")
+  })
+
   it("keeps the owner's mark, then the YouTube link, on the latest version", async () => {
     const runtime = await taken()
     runtime.dispatch({
