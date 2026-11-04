@@ -25,6 +25,8 @@ import {
 } from "@some-extension/common/observability"
 import {
   clampCheckPeriodSeconds,
+  notePopupTrouble,
+  obs,
   safeOrigin,
   suspenderInvariants,
   type InvariantContext,
@@ -473,5 +475,23 @@ describe("clampCheckPeriodSeconds", () => {
   it("clamps to the 1–20 minute band the browser will honour", () => {
     expect(clampCheckPeriodSeconds(30)).toBe(60)
     expect(clampCheckPeriodSeconds(24 * 60 * 60)).toBe(1200)
+  })
+})
+
+describe("notePopupTrouble (SLP1)", () => {
+  it("keeps what the popup couldn't read or show in the Diagnostics log", () => {
+    notePopupTrouble({
+      method: "popup-trouble",
+      reads: ["settings"],
+      sections: ["actions"],
+    })
+
+    expect(obs.events()).toContainEqual(
+      expect.objectContaining({
+        kind: "popup.trouble",
+        severity: "warn",
+        detail: { reads: ["settings"], sections: ["actions"] },
+      })
+    )
   })
 })

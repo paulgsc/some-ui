@@ -446,6 +446,20 @@ body {
   font-size: 11px;
 }
 
+.popup__trouble {
+  background: color-mix(in srgb, var(--sl-suspended) 12%, var(--sl-bg-1));
+  border: 1px solid color-mix(in srgb, var(--sl-suspended) 35%, transparent);
+  border-radius: var(--sl-radius);
+  color: var(--sl-fg);
+  font-size: 12px;
+  margin: 10px 12px 0;
+  padding: 6px 10px;
+}
+
+.popup__trouble p {
+  margin: 0;
+}
+
 .popup__footer {
   display: flex;
   justify-content: flex-end;

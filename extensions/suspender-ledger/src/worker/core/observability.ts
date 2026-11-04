@@ -33,6 +33,7 @@ import {
   type InvariantOutcome,
   type JsonValue,
 } from "@some-extension/common/observability"
+import type { PopupTroubleMessage } from "@suspender/types/messages"
 
 import { prefs } from "./prefs"
 
@@ -50,6 +51,8 @@ const STORAGE_KEY = "sl.observability.v1"
 export type SuspenderEventKind =
   // worker lifecycle
   | "worker.start"
+  // the toolbar popup couldn't read or show something when it opened (SLP1)
+  | "popup.trouble"
   // the scheduler
   | "alarm.installed"
   | "alarm.kept"
@@ -352,6 +355,17 @@ export function record(
   severity?: "debug" | "info" | "warn" | "error"
 ): void {
   obs.record({ kind, subject, detail, severity })
+}
+
+/**
+ * Keeps what the toolbar popup couldn't read or show when it opened,
+ * so the Diagnostics timeline and Export JSON carry it.
+ */
+export function notePopupTrouble({
+  reads,
+  sections,
+}: PopupTroubleMessage): void {
+  record("popup.trouble", undefined, { reads, sections }, "warn")
 }
 
 export function count(name: SuspenderCounter, by = 1): void {

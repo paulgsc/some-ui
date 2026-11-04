@@ -4,7 +4,11 @@
 
 import { describe, expect, it } from "vitest"
 
-import { isContentToWorkerMessage, isPopupToWorkerMessage } from "./messages"
+import {
+  isContentToWorkerMessage,
+  isPopupToWorkerMessage,
+  isPopupTroubleMessage,
+} from "./messages"
 
 describe("isPopupToWorkerMessage", () => {
   it("accepts a popup command", () => {
@@ -28,5 +32,26 @@ describe("isPopupToWorkerMessage", () => {
     const content = { type: "TAB_ACTIVE", timestamp: 1 }
     expect(isContentToWorkerMessage(content)).toBe(true)
     expect(isPopupToWorkerMessage(content)).toBe(false)
+  })
+})
+
+describe("isPopupTroubleMessage", () => {
+  it("accepts what the popup couldn't read or show", () => {
+    expect(
+      isPopupTroubleMessage({
+        method: "popup-trouble",
+        reads: ["settings"],
+        sections: ["actions"],
+      })
+    ).toBe(true)
+  })
+
+  it.each([
+    { method: "popup-trouble", sections: [] },
+    { method: "popup-trouble", reads: ["settings"], sections: [3] },
+    { method: "popup-trouble", reads: ["the disk"], sections: [] },
+    { method: "popup", reads: [], sections: [] },
+  ])("refuses %j", (message) => {
+    expect(isPopupTroubleMessage(message)).toBe(false)
   })
 })
