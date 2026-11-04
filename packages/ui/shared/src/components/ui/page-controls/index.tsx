@@ -16,7 +16,8 @@ type PageControlsProps = {
 }
 
 /**
- * The footer for a paged list: previous/next plus "2 / 5".
+ * The footer for a paged list: previous/next plus "2 / 5". Each button is
+ * 44px tall, a thumb's target, around the `sm` button's icon and label.
  *
  * Renders nothing for a single page, so a list that happens to fit shows no
  * chrome at all — paging is what a bounded box does when it has to, not a
@@ -45,7 +46,7 @@ export const PageControls: FC<PageControlsProps> = ({
         onClick={onPrevious}
         disabled={page === 0}
         aria-label={`Previous page of ${label}`}
-        className="gap-1"
+        className="h-11 gap-1"
       >
         <ChevronLeft className="h-4 w-4" />
         Prev
@@ -64,7 +65,7 @@ export const PageControls: FC<PageControlsProps> = ({
         onClick={onNext}
         disabled={page >= pageCount - 1}
         aria-label={`Next page of ${label}`}
-        className="gap-1"
+        className="h-11 gap-1"
       >
         Next
         <ChevronRight className="h-4 w-4" />
