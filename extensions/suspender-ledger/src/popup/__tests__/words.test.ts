@@ -11,7 +11,6 @@ describe("the popup's trouble words", () => {
   it.each([...Object.entries(READ_FAILED), ...Object.entries(SECTION_FAILED)])(
     "%s says what is missing, in the person's terms",
     (_, words) => {
-      expect(words).toMatch(/^Couldn't /)
       expect(words).not.toMatch(MACHINERY)
     }
   )

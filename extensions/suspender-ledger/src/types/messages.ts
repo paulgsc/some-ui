@@ -9,8 +9,7 @@
 // `src/content/watch.ts`); these typed messages are an additive, push-based
 // activity channel layered on top of it.
 
-import type { PopupRead } from "@suspender/popup/hydrate"
-import type { PopupSection } from "@suspender/popup/words"
+import { isRecord } from "@some-extension/common/utils/guards"
 
 /**
  * Messages emitted by the content script (`watch.ts`) toward the service
@@ -81,9 +80,28 @@ export type PopupToWorkerMessage =
     }
   | PopupTroubleMessage
 
+/** The popup's reads, by what they read in the person's terms. */
+export const POPUP_READS = [
+  "tab",
+  "settings",
+  "shortcuts",
+  "kept-awake",
+] as const
+export type PopupRead = (typeof POPUP_READS)[number]
+
+/** The popup's sections, in the order it shows them. */
+export const POPUP_SECTIONS = [
+  "kept-awake-banner",
+  "tab-status",
+  "actions",
+  "settings",
+  "diagnostics",
+] as const
+export type PopupSection = (typeof POPUP_SECTIONS)[number]
+
 /**
- * What the popup couldn't read or show when it opened (SLP1), for the worker
- * to keep in the Diagnostics log, so Export JSON carries it.
+ * What the popup couldn't read or show when it opened, for the worker to keep
+ * in the Diagnostics log, so Export JSON carries it.
  */
 export type PopupTroubleMessage = {
   method: "popup-trouble"
@@ -91,17 +109,24 @@ export type PopupTroubleMessage = {
   sections: Array<PopupSection>
 }
 
+const isListOf =
+  <T extends string>(names: ReadonlyArray<T>) =>
+  (value: unknown): value is Array<T> =>
+    Array.isArray(value) &&
+    value.every((each) => names.some((name) => name === each))
+
+const areReads = isListOf(POPUP_READS)
+const areSections = isListOf(POPUP_SECTIONS)
+
 /** Narrowing guard for the popup's trouble report. */
 export function isPopupTroubleMessage(
   value: unknown
 ): value is PopupTroubleMessage {
-  if (value === null || typeof value !== "object" || !("method" in value)) {
-    return false
-  }
   return (
+    isRecord(value) &&
     value.method === "popup-trouble" &&
-    Array.isArray(Reflect.get(value, "reads")) &&
-    Array.isArray(Reflect.get(value, "sections"))
+    areReads(value.reads) &&
+    areSections(value.sections)
   )
 }
 
@@ -146,6 +171,6 @@ export function isPopupToWorkerMessage(
   return (
     value.method === "popup" ||
     value.method === "storage" ||
-    value.method === "popup-trouble"
+    isPopupTroubleMessage(value)
   )
 }

@@ -358,7 +358,7 @@ export function record(
 }
 
 /**
- * Keeps what the toolbar popup couldn't read or show when it opened (SLP1),
+ * Keeps what the toolbar popup couldn't read or show when it opened,
  * so the Diagnostics timeline and Export JSON carry it.
  */
 export function notePopupTrouble({
