@@ -413,7 +413,7 @@ describe("the Deleted page (MD3)", () => {
         }}
       />
     )
-    expect(screen.getByText(/^Studio take, recorded/)).toBeTruthy()
+    expect(screen.getByText(/^Studio recording, recorded/)).toBeTruthy()
     expect(
       screen.getByText("Went: The recording and home's words for it")
     ).toBeTruthy()

@@ -988,6 +988,12 @@ export const STUDIO_WORDS = {
     silent: "Home heard nothing in this one.",
     answerAside: "Set aside on home: nothing reads it.",
     onlyOnHome: "Its recording is on home.",
+    /** One said answer's "Delete…", which opens My data on its recording (#2579). */
+    deleteAnswer: "Delete…",
+    deleteAnswerName: (ask: string): string =>
+      `Delete the recording of your answer to "${ask}"…`,
+    answerDeleted: (day: string): string =>
+      `You deleted this recording for good on ${day}. The answer keeps its place.`,
     setAside: "Set it aside",
     setAsideLine:
       "Home keeps it, every version, out of this list. Nothing reads it.",

@@ -962,10 +962,11 @@ export function voiceKept(id: string): TakeKept {
 /**
  * Lets go of this phone's own copies of the notes home deleted for good
  * from My data (MY-DATA MD3, #2477), each named by home's receipt, and of
- * nothing else. Studio takes are the one kind My data can delete: a take's
- * audio leaves the phone whatever the owner's let-go choice, its record
- * staying in its shot
- * (`@some-ui/soundbites`' `letGoDeletedTakes`). A receipt is home's word
+ * nothing else. Studio's recordings are the one kind My data can delete: a
+ * take's audio leaves the phone whatever the owner's let-go choice, its
+ * record staying in its shot (`@some-ui/soundbites`' `letGoDeletedTakes`),
+ * and an idea answer's leaves its desks, the take staying listed
+ * (`letGoDeleted` on `lib/idea-takes`' two desks, #2579). A receipt is home's word
  * that it held the note, so a copy still waiting for an answer this phone
  * never heard goes as a held one does; and any set-aside mark still owed
  * for one is dropped, since home holds no note to mark now. Resolves
@@ -981,8 +982,14 @@ export async function letGoDeleted(
   home.drop(ids)
   const studio = studioKeeping()
   if (studio === null) return false
+  const deleted = new Set(ids)
   try {
-    await studio.letGoDeletedTakes(new Set(ids))
+    // An idea's answer is kept on its desks, not in Studio's store (#2579).
+    await Promise.all([
+      studio.letGoDeletedTakes(deleted),
+      ideaTakesDesk.letGoDeleted(deleted),
+      ideaBundleDesk.letGoDeleted(deleted),
+    ])
     return true
   } catch (error) {
     reportFailure({

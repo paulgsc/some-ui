@@ -69,6 +69,11 @@ What follows from them:
   so an append-only claim would
   be false on landing. Declaring it, with a tag at each discard site, waits on the owner's
   call about those sites, which `docs/discard-sites.md` lists with each ruling so far (#2265).
+  Deleting a record for good, as distinct from a cap or a prune, is the owner's own act and
+  happens in one place: My data in the phone's Settings (#2473). The tool can go, never the
+  work, and every delete leaves a receipt that is never deleted. Each kind has its own
+  switch on home, and only Studio's recordings (takes and idea answers) are on (owner,
+  2026-11-04). "Let go" still sets a recording aside and keeps it.
 
 `/mission` (`apps/www/src/routes/mission.tsx`) says the same to the viewer.
 

@@ -9,7 +9,7 @@ import {
   STUDIO_WORDS,
 } from "@some-ui/soundbites"
 import type { TurnListener } from "@some-ui/voice-capture"
-import { createFileRoute, Link } from "@tanstack/react-router"
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 
 import { phoneIdeaListener } from "@/lib/idea-hearing"
 import { ideasHome } from "@/lib/idea-home"
@@ -84,10 +84,25 @@ function validateIdeasSearch(search: Record<string, unknown>): IdeasSearch {
 const onHome = device ? { home: ideasHome, takes: ideaBundleTakes } : null
 
 const OnHome = ({ lists }: { lists: boolean }): JSX.Element | null => {
+  const navigate = useNavigate()
   // The desk's runtime is the phone's one; built when the page first shows.
   const [takes] = useState(() => onHome?.takes() ?? null)
   if (onHome === null || takes === null) return null
-  return <IdeasOnHome home={onHome.home} takes={takes} initialLists={lists} />
+  return (
+    <IdeasOnHome
+      home={onHome.home}
+      takes={takes}
+      initialLists={lists}
+      // An answer's Delete… opens My data on its recording (#2579, MD4).
+      openInMyData={(note) =>
+        void navigate({
+          to: "/settings/data/$kind",
+          params: { kind: "studio" },
+          search: { note },
+        })
+      }
+    />
+  )
 }
 
 /**
