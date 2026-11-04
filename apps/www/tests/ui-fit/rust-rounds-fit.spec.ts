@@ -82,15 +82,12 @@ test.describe("Rust Rounds fits the phone, screen by screen", () => {
         await expect(
           page.getByRole("figure", { name: "The program" })
         ).toBeVisible()
-        await expectFits(page, `card ${card}, choosing`)
-        await page.getByRole("button", { name: "Skip, show me rustc" }).click()
         await expect(page.locator("pre").first()).toBeVisible()
-        await expectFits(page, `card ${card}, rustc's result`)
+        await expectFits(page, `card ${card}, with rustc's result`)
         await page.getByRole("button", { name: "Next", exact: true }).click()
       }
 
-      // A choice's spoken prompt, with the microphone at rest.
-      await page.getByRole("button", { name: "Not sure" }).click()
+      // The card's take, with the microphone at rest.
       await expect(
         page.getByRole("button", { name: "Start talking" })
       ).toBeVisible()

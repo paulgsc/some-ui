@@ -1,7 +1,7 @@
 /**
  * Rust Rounds on the phone: open it, stay as long as you like, leave
- * whenever (#2235). The menu, a card (read and choose, speak, see rustc's
- * result; a refine card's earlier note and nudge), the step that pastes an
+ * whenever (#2235). The menu, a card (its program beside rustc's result and
+ * a voice note; a refine card's earlier note and nudge), the step that pastes an
  * error from the desk, from any card (RR4c), and the tutor's page.
  * There is no end screen, nothing counts the time, and nothing is scored.
  *
@@ -216,21 +216,19 @@ const EarlierNote = ({
   )
 }
 
-/** The program a read or variant card shows, with rustc's span once seen. */
+/** The program a read or variant card shows, with rustc's span. */
 const Program = ({
   round,
   card,
   run,
-  seen,
 }: {
   round: Round
   card: Exclude<Card, { kind: "refine" }>
   run: RustcRun | null
-  seen: boolean
 }): JSX.Element => {
   const code = resolvePrograms(round).get(card.id) ?? ""
   const span =
-    seen && run?.outcome === "compile-error" && run.span !== null
+    run?.outcome === "compile-error" && run.span !== null
       ? [run.span]
       : undefined
   const changed =
@@ -348,69 +346,23 @@ const CardScreen = ({
         </>
       ) : (
         <>
-          <Program
-            round={round}
-            card={card}
+          <Program round={round} card={card} run={run} />
+          <RunView
             run={run}
-            seen={visit.stage === "see"}
-          />
-          {visit.stage === "choose" && (
-            <>
-              <p className="font-semibold">{card.ask}</p>
-              <div className="flex flex-col gap-2">
-                {card.choices.map((choice) => (
-                  <Button
-                    key={choice.pick}
-                    variant="outline"
-                    className="h-auto justify-start py-3 text-left whitespace-normal"
-                    onClick={() =>
-                      dispatch({ type: "pick", pick: choice.pick })
-                    }
-                  >
-                    {choice.pick}
-                  </Button>
-                ))}
-              </div>
-            </>
-          )}
-          {visit.stage === "speak" && (
-            <>
-              <section className="flex flex-col gap-1">
-                <h3 className="text-muted-foreground text-xs font-semibold">
-                  {WORDS.sayThis}
-                </h3>
-                <p className="text-lg font-semibold">
-                  {card.choices.find((choice) => choice.pick === visit.picked)
-                    ?.say ?? card.ask}
-                </p>
-              </section>
-              <VoiceNote
-                state={state}
-                visit={visit}
-                notes={notes}
-                dispatch={dispatch}
-              />
-            </>
-          )}
-          {visit.stage === "see" && (
-            <RunView
-              run={run}
-              none={whyNoRun(
-                state.held,
-                { round: visit.round, card: visit.card },
-                home
-              )}
-            />
-          )}
-          <Actions>
-            {visit.stage !== "see" && (
-              <Button
-                variant="ghost"
-                onClick={() => dispatch({ type: "showRustc" })}
-              >
-                {run === null ? WORDS.skip : WORDS.skipToRustc}
-              </Button>
+            none={whyNoRun(
+              state.held,
+              { round: visit.round, card: visit.card },
+              home
             )}
+          />
+          <p className="text-lg font-semibold">{card.ask}</p>
+          <VoiceNote
+            state={state}
+            visit={visit}
+            notes={notes}
+            dispatch={dispatch}
+          />
+          <Actions>
             <NextButton dispatch={dispatch} />
           </Actions>
         </>

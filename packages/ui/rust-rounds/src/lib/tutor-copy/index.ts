@@ -131,11 +131,10 @@ function runLines(run: RustcRun | null): Array<string> {
 /** A round on this phone, with each card's program built once. */
 type Known = { round: Round; programs: ReadonlyMap<string, string> }
 
-/** What the card showed: its program, question and choices, the picked one marked. */
+/** What the card showed: its program and question. */
 function cardLines(
   card: Card,
   known: Known,
-  event: CardEvent,
   transcripts: ReadonlyMap<string, string>
 ): Array<string> {
   if (card.kind === "refine") {
@@ -152,10 +151,6 @@ function cardLines(
       : []
   const program = known.programs.get(card.id) ?? ""
   lines.push("", fenced(program, "rust"), "", `- Asked: "${card.ask}"`)
-  for (const choice of card.choices) {
-    const mark = choice.pick === event.picked ? " (picked)" : ""
-    lines.push(`  - "${choice.pick}"${mark}: asks "${choice.say}"`)
-  }
   return lines
 }
 
@@ -174,13 +169,15 @@ function eventLines(
           `${title} (${card.kind})`,
           "",
           `- At ${event.at}.`,
-          ...cardLines(card, known, event, transcripts),
+          ...cardLines(card, known, transcripts),
         ]
   if (event.refines !== null && card?.kind !== "refine") {
     lines.push(`- Brought back ${said(event.refines, transcripts)}`)
   }
+  // A card played before TALK5 may carry what was picked, or a move on
+  // before rustc's result was shown: the log keeps both as they were.
+  if (event.picked !== null) lines.push(`- Picked "${event.picked}".`)
   lines.push(
-    event.picked === null ? "- Picked nothing." : `- Picked "${event.picked}".`,
     event.note === null
       ? "- Said nothing."
       : `- Said ${said(event.note, transcripts)}`

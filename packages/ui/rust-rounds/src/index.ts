@@ -2,7 +2,6 @@ export type {
   Card,
   CardEvent,
   CardRef,
-  Choice,
   Edge,
   Expect,
   Hunk,

@@ -18,8 +18,6 @@ const [READ, VARIANT, ...REST] = INDEXING_01.cards
 if (READ?.kind !== "read" || VARIANT?.kind !== "variant") {
   throw new Error("the worked example changed shape")
 }
-const [CHOICE] = READ.choices
-if (CHOICE === undefined) throw new Error("the worked example changed shape")
 
 /** The worked example with its first card replaced; the result may be malformed. */
 const withFirstCard = (card: object): unknown => ({
@@ -42,32 +40,32 @@ describe("the three schemas", () => {
     expect(TutorNotesSchema.parse(INDEXING_01_NOTES)).toEqual(INDEXING_01_NOTES)
   })
 
-  it("refuse a choice that carries `correct`", () => {
-    const graded = withFirstCard({
-      ...READ,
-      choices: [{ ...CHOICE, correct: true }, ...READ.choices.slice(1)],
-    })
-    const result = RoundSchema.safeParse(graded)
-    expect(result.error?.issues[0]).toMatchObject({
-      code: "unrecognized_keys",
-      keys: ["correct"],
-      path: ["cards", 0, "choices", 0],
-    })
+  it("read a /1 round as /2, its choices dropped (TALK5)", () => {
+    const choices = [
+      { pick: "Refuses to compile it", say: "Say why." },
+      { pick: "Not sure", say: "Say what you would check first." },
+    ]
+    const v1 = {
+      ...INDEXING_01,
+      schema: "some-ui.rust-round/1",
+      cards: INDEXING_01.cards.map((card) =>
+        card.kind === "refine" ? card : { ...card, choices }
+      ),
+    }
+    expect(RoundSchema.parse(v1)).toEqual(INDEXING_01)
+    // A /1 card still needs its choices, as /1 had them.
+    expect(refusedAt({ ...v1, cards: [READ, ...v1.cards.slice(1)] })).toEqual([
+      "cards",
+      0,
+      "choices",
+    ])
   })
 
-  it("refuse two cards with one id, and two choices with one pick", () => {
+  it("refuse two cards with one id", () => {
     expect(refusedAt(withCards(READ, VARIANT, READ))).toEqual([
       "cards",
       2,
       "id",
-    ])
-    const twice = { ...READ, choices: [CHOICE, CHOICE] }
-    expect(refusedAt(withFirstCard(twice))).toEqual([
-      "cards",
-      0,
-      "choices",
-      1,
-      "pick",
     ])
   })
 

@@ -10,9 +10,10 @@
  * - **No finished state.** The screens are the menu, a card and the tutor's
  *   page, and none of them is an end. Next always has a card (`nextCard`),
  *   and nothing here measures how long anything took.
- * - **Nothing blocks.** Every card offers Next, a read or variant card also
- *   offers rustc's result at once, and no step waits on a choice, a voice
- *   note or the network.
+ * - **Nothing blocks.** Every card offers Next, a read or variant card shows
+ *   rustc's result from the start, and no step waits on a voice note or the
+ *   network. There is nothing to pick (TALK5, #2550): a card asks the owner
+ *   to talk about what rustc did, at any moment on it.
  * - **Leaving a card logs it.** Next, or a new pick from the menu, appends
  *   the card's event; the card on screen is kept as the place, so leaving
  *   the app at any card and coming back lands on it with nothing lost.
@@ -46,7 +47,7 @@
  *   card logs it (`fromMyDesk`) when anything was pasted, once its note has
  *   landed if a take on it was under way (`deskPending`, kept with the place
  *   as `pending` is). Nothing on the step waits: Back is always there.
- * - **rustc's result is never compared with the pick on screen.** The
+ * - **rustc's result is never compared with anything the owner said.** The
  *   tutor's guess is checked only to log `tutorGuessedWrong`.
  * - **A card's kept note is the card's note**, on the take pattern
  *   (`@some-ui/voice-capture`). A Redo's note, once kept, is the card's
@@ -190,7 +191,6 @@ export type PlayState = {
 export type PlayIntent =
   | { readonly type: "continue" }
   | { readonly type: "play"; readonly concept: string | null }
-  | { readonly type: "pick"; readonly pick: string }
   /** D1: starts a take of the card's note, Redo included, or stops it. */
   | { readonly type: "tapNote" }
   /** Plays the card's note, or stops it while it plays. */
@@ -202,7 +202,6 @@ export type PlayIntent =
   | { readonly type: "playEarlier" }
   /** D3: sets the card's note aside; `place` is where it is kept. */
   | { readonly type: "letGoNote"; readonly place: TakePlace }
-  | { readonly type: "showRustc" }
   | { readonly type: "next" }
   | { readonly type: "pin" }
   | { readonly type: "menu" }
@@ -400,10 +399,11 @@ function leaving(
     event: {
       ...ref,
       at,
-      picked: visit.picked,
+      // Nothing is picked, and rustc's result shows from the start (TALK5).
+      picked: null,
       note: visit.note,
       refines: card.kind === "refine" ? card.note : null,
-      skipped: card.kind !== "refine" && !visit.shown,
+      skipped: false,
       rustc: run,
     },
     guessedWrong:
@@ -578,10 +578,7 @@ function enter(
     place: {
       visit: {
         ...ref,
-        stage: located.card.kind === "refine" ? "speak" : "choose",
-        picked: null,
         note: null,
-        shown: false,
         pinned: false,
         again,
       },
@@ -912,23 +909,9 @@ function onIntent(state: PlayState, event: PlayIntent & { at: string }): Step {
     case "play": {
       return moveOn(state, event.at, event.concept)
     }
-    case "pick": {
-      const shown = onScreen(state)
-      if (shown === null || shown.card.kind === "refine") return stay(state)
-      const { visit } = shown.place
-      if (visit.stage !== "choose") return stay(state)
-      if (!shown.card.choices.some((choice) => choice.pick === event.pick)) {
-        return stay(state)
-      }
-      return withVisit(state, shown.place, {
-        ...visit,
-        stage: "speak",
-        picked: event.pick,
-      })
-    }
     case "tapNote": {
       const shown = onScreen(state)
-      if (shown?.place.visit.stage !== "speak") return stay(state)
+      if (shown === null) return stay(state)
       const { visit } = shown.place
       return tapNoteOn(state, lineOf(visit), visit.note, event.at)
     }
@@ -948,21 +931,6 @@ function onIntent(state: PlayState, event: PlayIntent & { at: string }): Step {
       return letGoOf(state, visit.note, event.place, (cleared) =>
         withVisit(cleared, shown.place, { ...visit, note: null })
       )
-    }
-    case "showRustc": {
-      const shown = onScreen(state)
-      if (shown === null || shown.card.kind === "refine") return stay(state)
-      const { visit } = shown.place
-      if (visit.stage === "see") return stay(state)
-      const step = withVisit(state, shown.place, {
-        ...visit,
-        stage: "see",
-        shown: true,
-      })
-      // The take is ended last, once the card as it now stands is kept.
-      return state.taking?.line === lineOf(visit)
-        ? { ...step, effects: [...step.effects, { type: "stopNote" }] }
-        : step
     }
     case "next": {
       if (state.screen.kind !== "card") return stay(state)

@@ -52,25 +52,7 @@ export const BORROWING_01: Round = {
       kind: "read",
       id: "a",
       program: PROGRAM,
-      ask: "What does rustc do with line 4?",
-      choices: [
-        {
-          pick: "Refuses to compile it",
-          say: "Say which two borrows of `v` overlap, and where each one ends.",
-        },
-        {
-          pick: "Prints 1",
-          say: "Say what `first` points at once `push` may have moved the vector's buffer.",
-        },
-        {
-          pick: "Panics",
-          say: "Say what would go wrong while it runs, and whether rustc can see it first.",
-        },
-        {
-          pick: "Not sure",
-          say: "Say what `&v[0]` holds on to.",
-        },
-      ],
+      ask: "What is rustc telling you about line 4, and why does Rust do it this way?",
       expect: { outcome: "compile-error", code: "E0502" },
     },
     {
@@ -78,21 +60,7 @@ export const BORROWING_01: Round = {
       id: "b",
       of: "a",
       hunk: { line: 3, replace: "    let first = v[0];" },
-      ask: "Line 3 now copies the number out. What happens?",
-      choices: [
-        {
-          pick: "Prints 1",
-          say: "Say why `v[0]` without `&` leaves nothing borrowed.",
-        },
-        {
-          pick: "Refuses to compile it",
-          say: "Say which borrow you think is still alive at line 4.",
-        },
-        {
-          pick: "Not sure",
-          say: "Say what type `first` is now.",
-        },
-      ],
+      ask: "Line 3 now copies the number out. What changed in what rustc did, and why?",
       expect: { outcome: "prints", stdout: "1" },
     },
     {
@@ -100,21 +68,7 @@ export const BORROWING_01: Round = {
       id: "c",
       of: "a",
       hunk: { line: 5, replace: '    println!("{}", v.len());' },
-      ask: "Line 5 no longer reads `first`. What happens?",
-      choices: [
-        {
-          pick: "Refuses to compile it",
-          say: "Say where the borrow in `first` ends, and why that is before or after line 4.",
-        },
-        {
-          pick: "Prints 4",
-          say: "Say why `first` borrowing `v` no longer stops the `push`.",
-        },
-        {
-          pick: "Not sure",
-          say: "Say when you think a borrow ends: at its last use, or at the end of the block.",
-        },
-      ],
+      ask: "Line 5 no longer reads `first`. What does the result tell you about when a borrow ends?",
       expect: { outcome: "prints", stdout: "4" },
     },
   ],

@@ -64,7 +64,7 @@ function child(value: unknown, key: PropertyKey): unknown {
   return isRecord(value) && typeof key === "string" ? value[key] : undefined
 }
 
-/** `cards[1] ("b").choices[0].say`: the path, with each card's id. */
+/** `cards[1] ("b").hunk.line`: the path, with each card's id. */
 function pathOf(path: ReadonlyArray<PropertyKey>, value: unknown): string {
   let text = ""
   let at = value
@@ -80,6 +80,15 @@ function pathOf(path: ReadonlyArray<PropertyKey>, value: unknown): string {
   return text
 }
 
+/**
+ * The tags a refused `schema` must be. A round's `schema` is a union's
+ * discriminator, and only its current tag is asked for, though `/1` is read.
+ */
+function tagsOf(issue: Issue): ReadonlyArray<unknown> | null {
+  if (issue.code === "invalid_value") return issue.values
+  return issue.code === "invalid_union" ? [ROUND_SCHEMA] : null
+}
+
 function describeIssue(issue: Issue, value: unknown, label: string): string {
   const where = pathOf(issue.path, value)
   const at = where === "" ? label : `${label} ${where}`
@@ -87,16 +96,15 @@ function describeIssue(issue: Issue, value: unknown, label: string): string {
     return issue.keys
       .map((key) =>
         GRADING_KEYS.has(key)
-          ? `${at}: remove \`${key}\`. Rust Rounds never grades: no choice is right or wrong, and no card carries a rubric or a score.`
+          ? `${at}: remove \`${key}\`. Rust Rounds never grades: nothing said is right or wrong, and no card carries a rubric or a score.`
           : `${at}: \`${key}\` is not part of the format; remove it.`
       )
       .join("\n")
   }
-  if (issue.code === "invalid_value" && where === "schema") {
+  const tags = where === "schema" ? tagsOf(issue) : null
+  if (tags !== null) {
     const tag = child(value, "schema")
-    const expected = issue.values
-      .map((each) => JSON.stringify(each))
-      .join(" or ")
+    const expected = tags.map((each) => JSON.stringify(each)).join(" or ")
     return tag === undefined
       ? `${at}: missing; it must be ${expected}.`
       : `${at}: ${JSON.stringify(tag)} is not this format's tag; it must be ${expected}.`

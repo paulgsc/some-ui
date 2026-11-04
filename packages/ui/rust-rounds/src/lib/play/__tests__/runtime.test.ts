@@ -45,9 +45,7 @@ function opened(ports: TestPorts): RustRoundsRuntime {
 }
 
 const visitOf = (state: PlayState): string =>
-  state.place === null
-    ? "none"
-    : `${state.place.visit.card}:${state.place.visit.stage}`
+  state.place === null ? "none" : state.place.visit.card
 
 const storedLog = (storage: Storage): Array<CardEvent> =>
   keptRounds(storage)
@@ -57,12 +55,6 @@ const storedLog = (storage: Storage): Array<CardEvent> =>
 /** The microphone's timers run `ms` on. */
 const settle = async (ms = 0): Promise<void> => {
   await vi.advanceTimersByTimeAsync(ms)
-}
-
-/** The first card at its speak step: Start, then a pick. */
-function speaking(runtime: RustRoundsRuntime): void {
-  runtime.dispatch({ type: "continue" })
-  runtime.dispatch({ type: "pick", pick: "Prints z" })
 }
 
 /** Taps the card's note on, lets the microphone open, and talks two seconds. */
@@ -82,7 +74,7 @@ const NOTE = expect.stringMatching(/^take-/)
 const LINE_A = lineOf({ round: INDEXING_01.id, card: "a" })
 
 describe("the worked example", () => {
-  it("plays every card with Skip and Next alone, and never ends", () => {
+  it("plays every card with Next alone, rustc's result on each from the start, and never ends", () => {
     const ports = testPorts()
     const runtime = opened(ports)
     expect(runtime.getSnapshot().screen.kind).toBe("menu")
@@ -91,14 +83,12 @@ describe("the worked example", () => {
     const seen: Array<string> = []
     for (let n = 0; n < INDEXING_01.cards.length; n += 1) {
       seen.push(visitOf(runtime.getSnapshot()))
-      runtime.dispatch({ type: "showRustc" })
-      expect(runtime.getSnapshot().place?.visit.stage).toBe("see")
       runtime.dispatch({ type: "next" })
     }
-    expect(seen).toEqual(["a:choose", "b:choose", "c:choose", "d:choose"])
+    expect(seen).toEqual(["a", "b", "c", "d"])
     // There is no last card: Next comes back round to the first.
     expect(runtime.getSnapshot().screen.kind).toBe("card")
-    expect(visitOf(runtime.getSnapshot())).toBe("a:choose")
+    expect(visitOf(runtime.getSnapshot())).toBe("a")
 
     const events = storedLog(ports.storage)
     expect(events.map((event) => event.card)).toEqual(["a", "b", "c", "d"])
@@ -112,7 +102,7 @@ describe("the worked example", () => {
     ).toBe(true)
   })
 
-  it("logs a card left with Next before rustc's result as skipped", () => {
+  it("logs a card left with Next, saying nothing, with nothing picked and its run shown", () => {
     const ports = testPorts()
     const runtime = opened(ports)
     runtime.dispatch({ type: "continue" })
@@ -122,23 +112,15 @@ describe("the worked example", () => {
       card: "a",
       picked: null,
       note: null,
-      skipped: true,
+      skipped: false,
       rustc: INDEXING_01_RUNS.a,
     })
   })
 
-  it("asks the picked choice's sentence, and keeps the note said to it, Redo's in place of the first (D2)", async () => {
+  it("keeps the note said on a card, Redo's in place of the first (D2)", async () => {
     const ports = testPorts()
     const runtime = opened(ports)
     runtime.dispatch({ type: "continue" })
-    const [first] = INDEXING_01.cards
-    if (first?.kind !== "read") throw new Error("the example opens on a read")
-    const choice = first.choices[1]!
-    runtime.dispatch({ type: "pick", pick: choice.pick })
-    expect(runtime.getSnapshot().place?.visit).toMatchObject({
-      stage: "speak",
-      picked: choice.pick,
-    })
 
     await noted(runtime)
     expect(ports.notes.mic.asked()).toBe(1)
@@ -158,11 +140,10 @@ describe("the worked example", () => {
       expect.objectContaining({ id: redone, standing: "current" }),
     ])
 
-    runtime.dispatch({ type: "showRustc" })
     runtime.dispatch({ type: "next" })
     expect(storedLog(ports.storage)[0]).toMatchObject({
       card: "a",
-      picked: choice.pick,
+      picked: null,
       note: redone,
       skipped: false,
     })
@@ -171,7 +152,7 @@ describe("the worked example", () => {
   it("sets the card's note aside, kept, and logs the card with none (D3)", async () => {
     const ports = testPorts()
     const runtime = opened(ports)
-    speaking(runtime)
+    runtime.dispatch({ type: "continue" })
     await noted(runtime)
     const note = runtime.getSnapshot().place?.visit.note
     runtime.dispatch({ type: "letGoNote", place: "phone" })
@@ -190,7 +171,7 @@ describe("the worked example", () => {
   it("plays the card's note, and stops it on Next", async () => {
     const ports = testPorts()
     const runtime = opened(ports)
-    speaking(runtime)
+    runtime.dispatch({ type: "continue" })
     await noted(runtime)
     runtime.dispatch({ type: "playNote" })
     await settle()
@@ -251,15 +232,15 @@ describe("the worked example", () => {
       finish: { kind: "after", ms: 1_000 },
     })
     const runtime = opened(ports)
-    speaking(runtime)
+    runtime.dispatch({ type: "continue" })
     await talking(runtime)
     runtime.dispatch({ type: "next" })
     // Moved on at once; the card waits for its note.
-    expect(visitOf(runtime.getSnapshot())).toBe("b:choose")
+    expect(visitOf(runtime.getSnapshot())).toBe("b")
     expect(storedLog(ports.storage)).toEqual([])
     await settle(1_000)
     expect(storedLog(ports.storage)).toEqual([
-      expect.objectContaining({ card: "a", note: NOTE, skipped: true }),
+      expect.objectContaining({ card: "a", note: NOTE, skipped: false }),
     ])
     // The note is the card it was said on's, not the one now on screen.
     expect(runtime.getSnapshot().place?.visit.note).toBeNull()
@@ -268,7 +249,7 @@ describe("the worked example", () => {
   it("logs a card left mid-take as it stands when the take keeps nothing", async () => {
     const ports = testPorts()
     const runtime = opened(ports)
-    speaking(runtime)
+    runtime.dispatch({ type: "continue" })
     runtime.dispatch({ type: "tapNote" })
     await settle(300)
     runtime.dispatch({ type: "next" })
@@ -284,7 +265,7 @@ describe("the worked example", () => {
     const ports = testPorts()
     ports.notes.keeping("failed")
     const runtime = opened(ports)
-    speaking(runtime)
+    runtime.dispatch({ type: "continue" })
     await talking(runtime)
     runtime.dispatch({ type: "next" })
     await settle()
@@ -302,7 +283,7 @@ describe("the worked example", () => {
     async (how) => {
       const ports = testPorts()
       const runtime = opened(ports)
-      speaking(runtime)
+      runtime.dispatch({ type: "continue" })
       await noted(runtime)
       const first = runtime.getSnapshot().place?.visit.note
       ports.notes.mic.script({
@@ -330,7 +311,6 @@ describe("the worked example", () => {
     ports.notes.mic.script({ ...SPEAKING, finish: { kind: "never" } })
     const runtime = opened(ports)
     runtime.dispatch({ type: "play", concept: "indexing" })
-    runtime.dispatch({ type: "pick", pick: "Prints z" })
     await talking(runtime)
     for (let n = 0; n < 4; n += 1) runtime.dispatch({ type: "next" })
     // a waits on its note: b, c, d were new, then a again only as played.
@@ -385,7 +365,6 @@ describe("the worked example", () => {
     runtime.dispatch({ type: "continue" })
     for (let n = 0; n < 4; n += 1) runtime.dispatch({ type: "next" })
     expect(runtime.getSnapshot().place?.visit.round).toBe("indexing-02")
-    runtime.dispatch({ type: "showRustc" })
     runtime.dispatch({ type: "next" })
     const [session] = keptRounds(storage).open().log.sessions
     expect(session?.tutorGuessedWrong).toEqual([
@@ -410,7 +389,6 @@ describe("the worked example", () => {
     runtime.dispatch({ type: "continue" })
     for (let n = 0; n < 4; n += 1) runtime.dispatch({ type: "next" })
     expect(runtime.getSnapshot().place?.visit.round).toBe("indexing-02")
-    runtime.dispatch({ type: "showRustc" })
     runtime.dispatch({ type: "next" })
     const pasted = storedLog(ports.storage).find(
       (event) => event.round === "indexing-02"
@@ -459,7 +437,6 @@ describe("the worked example", () => {
     runtime.dispatch({ type: "takeReply" })
     runtime.dispatch({ type: "continue" })
     for (let n = 0; n < 4; n += 1) runtime.dispatch({ type: "next" })
-    runtime.dispatch({ type: "showRustc" })
 
     // The exchange with home keeps its own store over the same storage.
     const home = keptRounds(ports.storage)
@@ -475,7 +452,7 @@ describe("the worked example", () => {
     expect(held.rounds.map(({ id }) => id)).toEqual([round.id, fromHome.id])
   })
 
-  it("pins a card once, from any stage", () => {
+  it("pins a card once", () => {
     const ports = testPorts()
     const runtime = opened(ports)
     runtime.dispatch({ type: "continue" })
@@ -489,21 +466,21 @@ describe("the worked example", () => {
 })
 
 describe("leaving and coming back", () => {
-  it("reopens on the card left, as far into it as it was, with its note", () => {
+  it("reopens on the card left, with its note", () => {
     const storage = inMemoryStorage()
     const first = opened(testPorts(storage))
     first.dispatch({ type: "continue" })
     first.dispatch({ type: "next" })
-    first.dispatch({ type: "pick", pick: "Prints 122" })
+    first.dispatch({ type: "pin" })
     const ports = first.getSnapshot()
-    expect(visitOf(ports)).toBe("b:speak")
+    expect(visitOf(ports)).toBe("b")
 
     // The app is gone; a new opening over the same phone.
     const again = opened(testPorts(storage))
     const state = again.getSnapshot()
     expect(state.screen.kind).toBe("card")
-    expect(visitOf(state)).toBe("b:speak")
-    expect(state.place?.visit.picked).toBe("Prints 122")
+    expect(visitOf(state)).toBe("b")
+    expect(state.place?.visit.pinned).toBe(true)
     // A new session in the log; the old one kept whole.
     again.dispatch({ type: "next" })
     const log = keptRounds(storage).open().log
@@ -516,7 +493,7 @@ describe("leaving and coming back", () => {
     notes.mic.script({ ...SPEAKING, finish: { kind: "after", ms: 1_000 } })
     const runtime = createRustRounds(testPorts(storage, notes))
     const detach = runtime.attach()
-    speaking(runtime)
+    runtime.dispatch({ type: "continue" })
     await talking(runtime)
     runtime.dispatch({ type: "next" })
     detach()
@@ -540,7 +517,7 @@ describe("leaving and coming back", () => {
     notes.mic.script({ ...SPEAKING, finish: { kind: "after", ms: 1_000 } })
     const first = createRustRounds(testPorts(storage, notes))
     const detach = first.attach()
-    speaking(first)
+    first.dispatch({ type: "continue" })
     await talking(first)
     first.dispatch({ type: "tapNote" })
     first.dispatch({ type: "next" })
@@ -560,7 +537,7 @@ describe("leaving and coming back", () => {
     const notes = testNotes()
     notes.mic.script({ ...SPEAKING, finish: { kind: "after", ms: 1_000 } })
     const first = opened(testPorts(storage, notes))
-    speaking(first)
+    first.dispatch({ type: "continue" })
     await talking(first)
     first.dispatch({ type: "next" })
     // Never detached: both hear the same microphone, both hold the card.
@@ -580,7 +557,7 @@ describe("leaving and coming back", () => {
     const notes = testNotes()
     const first = createRustRounds(testPorts(storage, notes))
     const detach = first.attach()
-    speaking(first)
+    first.dispatch({ type: "continue" })
     await talking(first)
     detach()
     await settle()
@@ -603,7 +580,7 @@ describe("leaving and coming back", () => {
     notes.mic.script({ ...SPEAKING, finish: { kind: "after", ms: 1_000 } })
     const first = createRustRounds(testPorts(storage, notes))
     const detach = first.attach()
-    speaking(first)
+    first.dispatch({ type: "continue" })
     await talking(first)
     detach()
 
@@ -626,7 +603,7 @@ describe("leaving and coming back", () => {
   it("settles a card an ended app left waiting, once reopened, from the note the phone holds", async () => {
     const storage = inMemoryStorage()
     const first = opened(testPorts(storage))
-    speaking(first)
+    first.dispatch({ type: "continue" })
     await talking(first)
     first.dispatch({ type: "next" })
     // The app is ended before the note's end is heard; the phone kept it.
@@ -646,7 +623,7 @@ describe("leaving and coming back", () => {
   ])("settles a card an ended app left mid-Redo with %s", async (_, landed) => {
     const storage = inMemoryStorage()
     const first = opened(testPorts(storage))
-    speaking(first)
+    first.dispatch({ type: "continue" })
     await noted(first)
     const note = first.getSnapshot().place?.visit.note
     await talking(first)
@@ -666,7 +643,7 @@ describe("leaving and coming back", () => {
   it("logs a card an ended app left waiting as it stood when the phone holds no note", async () => {
     const storage = inMemoryStorage()
     const first = opened(testPorts(storage))
-    speaking(first)
+    first.dispatch({ type: "continue" })
     await talking(first)
     first.dispatch({ type: "next" })
     opened(testPorts(storage))
@@ -690,7 +667,7 @@ describe("leaving and coming back", () => {
       held: false,
       place: false,
     })
-    runtime.dispatch({ type: "pick", pick: "Prints 122" })
+    runtime.dispatch({ type: "pin" })
     expect(runtime.getSnapshot().notKept.log).toBe(true)
   })
 
@@ -703,7 +680,7 @@ describe("leaving and coming back", () => {
     expect(runtime.getSnapshot().notKept.log).toBe(true)
     // Another refused card, and a place kept, leave the warning on.
     runtime.dispatch({ type: "next" })
-    runtime.dispatch({ type: "pick", pick: "Prints 122" })
+    runtime.dispatch({ type: "pin" })
     expect(runtime.getSnapshot().notKept).toMatchObject({
       log: true,
       place: false,
@@ -724,7 +701,7 @@ describe("leaving and coming back", () => {
     const { storage, full } = fullLog()
     const notes = testNotes()
     const first = opened(testPorts(storage, notes))
-    speaking(first)
+    first.dispatch({ type: "continue" })
     await talking(first)
     first.dispatch({ type: "next" })
     await settle()
@@ -759,7 +736,7 @@ describe("leaving and coming back", () => {
     const { storage, full } = fullLog()
     const notes = testNotes()
     const first = opened(testPorts(storage, notes))
-    speaking(first)
+    first.dispatch({ type: "continue" })
     await talking(first)
     first.dispatch({ type: "next" })
     const { pending } = keptRounds(storage).open()
@@ -784,14 +761,24 @@ describe("leaving and coming back", () => {
     })
   })
 
-  it("reads a place kept before a take under way was kept with it", () => {
+  it("reads a place kept before a take under way was kept with it, and before TALK5 with its card's stage and pick", () => {
     const storage = inMemoryStorage()
     const first = opened(testPorts(storage))
     first.dispatch({ type: "continue" })
     const { place, pending } = keptRounds(storage).open()
-    storage.setItem(PLACE_KEY, JSON.stringify({ v: 1, place, pending }))
+    if (place === null) throw new Error("a card is open")
+    const before = {
+      ...place,
+      visit: {
+        ...place.visit,
+        stage: "speak",
+        picked: "Not sure",
+        shown: false,
+      },
+    }
+    storage.setItem(PLACE_KEY, JSON.stringify({ v: 1, place: before, pending }))
     const again = opened(testPorts(storage))
-    expect(visitOf(again.getSnapshot())).toBe("a:choose")
+    expect(again.getSnapshot().place?.visit).toEqual(place.visit)
     const copies = Array.from({ length: storage.length }, (_, index) =>
       storage.key(index)
     ).filter((key) => key?.startsWith(`${PLACE_KEY}:unreadable:`))
@@ -817,7 +804,7 @@ describe("the tutor's page", () => {
     const ports = testPorts()
     ports.notes.mic.script({ ...SPEAKING, finish: { kind: "never" } })
     const runtime = opened(ports)
-    speaking(runtime)
+    runtime.dispatch({ type: "continue" })
     await talking(runtime)
     runtime.dispatch({ type: "next" })
     runtime.dispatch({ type: "tutor" })
@@ -830,7 +817,6 @@ describe("the tutor's page", () => {
     const ports = testPorts()
     const runtime = opened(ports)
     runtime.dispatch({ type: "continue" })
-    runtime.dispatch({ type: "showRustc" })
     runtime.dispatch({ type: "next" })
     runtime.dispatch({ type: "tutor" })
     runtime.dispatch({ type: "copyLog" })
@@ -934,7 +920,7 @@ describe("the microphone", () => {
     const ports = testPorts()
     ports.notes.mic.script({ ...SPEAKING, open: { kind: "cue" } })
     const runtime = opened(ports)
-    speaking(runtime)
+    runtime.dispatch({ type: "continue" })
     runtime.dispatch({ type: "tapNote" })
     expect(ports.notes.pattern.getSnapshot().take.kind).toBe("opening")
     runtime.dispatch({ type: "tapNote" })
@@ -953,7 +939,7 @@ describe("the microphone", () => {
   it("says a take an earlier opening left on the card on screen, when the phone holds no note from it", async () => {
     const storage = inMemoryStorage()
     const first = opened(testPorts(storage))
-    speaking(first)
+    first.dispatch({ type: "continue" })
     await talking(first)
     // The app is ended mid-take, on this card; the phone kept no note.
     const again = opened(testPorts(storage))
@@ -971,7 +957,7 @@ describe("the microphone", () => {
       open: { kind: "refuse", reason: "denied", ms: 0 },
     })
     const runtime = opened(ports)
-    speaking(runtime)
+    runtime.dispatch({ type: "continue" })
     runtime.dispatch({ type: "tapNote" })
     await settle()
     expect(runtime.getSnapshot()).toMatchObject({
@@ -979,7 +965,7 @@ describe("the microphone", () => {
       said: { kind: "ended", ended: { ending: "blocked", reason: "denied" } },
     })
     runtime.dispatch({ type: "next" })
-    expect(visitOf(runtime.getSnapshot())).toBe("b:choose")
+    expect(visitOf(runtime.getSnapshot())).toBe("b")
     expect(storedLog(ports.storage)).toHaveLength(1)
   })
 
@@ -987,7 +973,7 @@ describe("the microphone", () => {
     const ports = testPorts()
     ports.notes.keeping("full")
     const runtime = opened(ports)
-    speaking(runtime)
+    runtime.dispatch({ type: "continue" })
     await noted(runtime)
     expect(runtime.getSnapshot()).toMatchObject({ noRoom: true, taking: null })
     runtime.dispatch({ type: "next" })
@@ -996,7 +982,6 @@ describe("the microphone", () => {
 
     // Room was made: the next card's take is kept.
     ports.notes.keeping("kept")
-    runtime.dispatch({ type: "pick", pick: "Prints 122" })
     await noted(runtime)
     expect(ports.notes.mic.asked()).toBe(2)
     expect(runtime.getSnapshot()).toMatchObject({
@@ -1009,7 +994,7 @@ describe("the microphone", () => {
     const ports = testPorts()
     ports.notes.mic.script({ ...SPEAKING, level: 0.03 })
     const runtime = opened(ports)
-    speaking(runtime)
+    runtime.dispatch({ type: "continue" })
     await noted(runtime)
     expect(runtime.getSnapshot()).toMatchObject({
       said: { kind: "ended", ended: { ending: "kept", unheard: true } },

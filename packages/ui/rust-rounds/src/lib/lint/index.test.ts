@@ -90,15 +90,6 @@ describe("lintRound", () => {
     ])
   })
 
-  it("reports a choice whose `say` is blank", () => {
-    const choices = READ.choices.map((choice, index) =>
-      index === 1 ? { ...choice, say: "  " } : choice
-    )
-    expect(lintRound(roundOf({ ...READ, choices }), NO_LOG)).toEqual([
-      { kind: "choice-without-say", card: "a", choice: 2 },
-    ])
-  })
-
   it("reports a refine card naming a note the log never saw", () => {
     expect(lintRound(roundOf(READ, refine("note-0001")), WORKED_LOG)).toEqual(
       []
@@ -142,7 +133,6 @@ describe("describeFinding", () => {
       { kind: "tab", card: "a", line: 3 },
       { kind: "program-too-long", card: "a", lines: 30 },
       { kind: "hunk-changes-nothing", card: "b" },
-      { kind: "choice-without-say", card: "a", choice: 2 },
       { kind: "unknown-note", card: "e", note: "note-9" },
     ]
     for (const finding of findings) {
