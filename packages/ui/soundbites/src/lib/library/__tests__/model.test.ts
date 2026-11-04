@@ -180,6 +180,36 @@ describe("Takes on home (ST32)", () => {
     expect(late.effects).toEqual([])
   })
 
+  it("stops what plays, or is on its way, when a search replaces the list its Stop is on", () => {
+    const playing = run([
+      { type: "entered" },
+      { type: "takesRead", seq: 1, read: { kind: "read", page: PAGE } },
+      { type: "play", id: "t1" },
+      { type: "audioRead", play: 1, audio: AUDIO },
+      { type: "typed", text: "intro" },
+    ])
+    const searched = stepLibrary(playing.state, { type: "search" })
+    expect(searched.effects).toEqual([
+      { type: "stopPlayback" },
+      { type: "readTakes", seq: 2, q: "intro" },
+    ])
+    expect(searched.state.playback).toEqual({ kind: "quiet" })
+    const loading = run(
+      [{ type: "play", id: "t1" }, { type: "newest" }],
+      searched.state
+    )
+    expect(loading.effects).toEqual([
+      { type: "stopPlayback" },
+      { type: "readTakes", seq: 3, q: null },
+    ])
+    const late = stepLibrary(loading.state, {
+      type: "audioRead",
+      play: 3,
+      audio: AUDIO,
+    })
+    expect(late.effects).toEqual([])
+  })
+
   it("says a take home couldn't give back, and stops playing as the screen is left", () => {
     const none = run([
       { type: "entered" },

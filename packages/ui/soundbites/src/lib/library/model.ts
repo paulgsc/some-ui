@@ -14,8 +14,8 @@
  *   answer to an earlier one (a slow search overtaken by a newer one)
  *   changes nothing.
  * - **One take plays at a time.** Plays are numbered too: a press on another
- *   take stops the one playing, and audio that lands for a play since
- *   overtaken is never played.
+ *   take stops the one playing, so does a new list (a take's Stop is on its
+ *   row), and audio that lands for a play since overtaken is never played.
  * - **The screen says which search ran.** Home answers `by`; the words of a
  *   search by words never claim meaning (`./words`).
  * - **A search home would refuse is never asked.** Blank words show the
@@ -166,12 +166,22 @@ export const INITIAL_LIBRARY: LibraryState = {
 
 const same = (state: LibraryState): LibraryStep => ({ state, effects: [] })
 
-/** Reads the takes for `asked` under a new number. */
+/**
+ * Reads the takes for `asked` under a new number. What plays stops first:
+ * its Stop is on its row, which the new list replaces.
+ */
 function readFor(state: LibraryState, asked: string | null): LibraryStep {
-  const seq = state.seq + 1
+  const stop = stopped(state)
+  const seq = stop.state.seq + 1
   return {
-    state: { ...state, asked, seq, read: { kind: "reading" }, tooLong: false },
-    effects: [{ type: "readTakes", seq, q: asked }],
+    state: {
+      ...stop.state,
+      asked,
+      seq,
+      read: { kind: "reading" },
+      tooLong: false,
+    },
+    effects: [...stop.effects, { type: "readTakes", seq, q: asked }],
   }
 }
 
