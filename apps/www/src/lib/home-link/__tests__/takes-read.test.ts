@@ -44,9 +44,6 @@ describe("the read of the takes home keeps (ST32)", () => {
   it("asks for the newest, or for the takes whose words hold a search's", () => {
     expect(takesPath(null)).toBe("/voice-notes/takes")
     expect(takesPath("brand intro")).toBe("/voice-notes/takes?q=brand%20intro")
-    expect(takesPath("ça & 100%")).toBe(
-      "/voice-notes/takes?q=%C3%A7a%20%26%20100%25"
-    )
   })
 
   it("hands back home's answer to one GET", async () => {

@@ -12,7 +12,6 @@
  * Deleting a record home keeps (MD3, #2477) is `./deleting` and
  * `./deleting-runtime`; the Deleted page's receipts are `./receipts`.
  */
-import { assertNever } from "@some-ui/core-utils"
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import { audioPlayer } from "@some-ui/voice-capture"
 
@@ -24,6 +23,7 @@ import {
   recordingsOnPhone,
   voiceKept,
 } from "@/lib/home-link/voice-copy"
+import { askWhileBusy } from "@/lib/home-link/while-busy"
 import { studioKeeping } from "@/lib/studio-keeping"
 
 import type { DeletableKind, ReceiptsReading } from "./deleting"
@@ -46,58 +46,17 @@ export type { Receipts, ReceiptsState } from "./receipts"
 export type { MyData } from "./runtime"
 export type { MyDataState } from "./state"
 
-/** How often a read waits for the link to be free: it takes one run at a time, and a drag down drains every lane in turn (PULL3). */
-const TRIES = 10
-const WAIT_MS = 1_000
-
-const wait = (ms: number): Promise<void> =>
-  new Promise((resolve) => setTimeout(resolve, ms))
-
-/** What a read of home says when it has no answer to read. */
-type NotAnswered =
-  | { readonly kind: "unpaired" }
-  | { readonly kind: "busy" }
-  | { readonly kind: "unreachable" }
-
-/** Asks home with `ask`, again while the link is busy, and reads its answer. */
-async function askWhileBusy<A extends { readonly kind: "answered" }, R>(
-  ask: () => Promise<A | NotAnswered>,
-  read: (answered: A) => R
-): Promise<
-  R | { readonly kind: "unpaired" } | { readonly kind: "unreachable" }
-> {
-  for (let tried = 0; tried < TRIES; tried += 1) {
-    const asked = await ask()
-    switch (asked.kind) {
-      case "answered": {
-        return read(asked)
-      }
-      case "unpaired": {
-        return { kind: "unpaired" }
-      }
-      case "unreachable": {
-        return { kind: "unreachable" }
-      }
-      case "busy": {
-        await wait(WAIT_MS)
-        break
-      }
-      default: {
-        return assertNever(asked)
-      }
-    }
-  }
-  return { kind: "unreachable" }
+async function askHome(of: Of | null): Promise<HomeReading> {
+  const asked = await askWhileBusy(() => askKept(of))
+  return asked.kind === "answered"
+    ? readKept(asked.answer, asked.record)
+    : asked
 }
 
-const askHome = (of: Of | null): Promise<HomeReading> =>
-  askWhileBusy(
-    () => askKept(of),
-    ({ answer, record }) => readKept(answer, record)
-  )
-
-const askReceipts = (): Promise<ReceiptsReading> =>
-  askWhileBusy(askDeleted, ({ answer }) => readReceipts(answer))
+async function askReceipts(): Promise<ReceiptsReading> {
+  const asked = await askWhileBusy(askDeleted)
+  return asked.kind === "answered" ? readReceipts(asked.answer) : asked
+}
 
 async function readPhone(): Promise<PhoneRead> {
   const { notes, unread } = await recordingsOnPhone().catch(

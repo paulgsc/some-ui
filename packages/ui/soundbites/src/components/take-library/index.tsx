@@ -1,8 +1,8 @@
 /**
- * Takes on home (STUDIO ST32, #2590): every take home keeps, newest first,
- * each with the words home heard in it, a search over those words, and Play
- * for each, its audio fetched from home. Renders `lib/library/model.ts`'s
- * state and forwards taps; its words are `lib/library/words.ts`'s.
+ * Takes on home (ST32): every take home keeps, newest first, each with the
+ * words home heard in it, a search over those words, and Play for each, its
+ * audio fetched from home. Renders `lib/library/model.ts`'s state and
+ * forwards taps; its words are `lib/library/words.ts`'s.
  */
 import type { JSX } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
@@ -14,7 +14,7 @@ import type {
   LibraryState,
   LibraryTake,
 } from "@soundbites/lib/library/model"
-import { SEARCH_MAX, takeFor } from "@soundbites/lib/library/model"
+import { takeFor } from "@soundbites/lib/library/model"
 import type { LibraryPorts } from "@soundbites/lib/library/runtime"
 import { createTakeLibrary } from "@soundbites/lib/library/runtime"
 import { LIBRARY_WORDS } from "@soundbites/lib/library/words"
@@ -205,7 +205,6 @@ export const TakeLibrary = ({ ports }: TakeLibraryProps): JSX.Element => {
               type="search"
               aria-label={WORDS.searchLabel}
               placeholder={WORDS.searchHint}
-              maxLength={SEARCH_MAX}
               value={state.draft}
               onChange={(event) =>
                 dispatch({ type: "typed", text: event.target.value })

@@ -1,8 +1,8 @@
 /**
  * The takes home keeps of this phone's owner, for Studio's Takes on home
- * (STUDIO ST32, #2590; paulgsc/server `GET /voice-notes/takes`): one `GET`
- * each time the screen opens, is asked again or searches, through the
- * link's `keep` (LA8). It sends nothing of the phone's but the search's
+ * (ST32; paulgsc/server `GET /voice-notes/takes`): one `GET` each time the
+ * screen opens and on Try again, a search (a blank one reads the newest) or
+ * Show the newest, through the link's `keep` (LA8). It sends nothing of the phone's but the search's
  * words, when there is a search (`?q=`). Home answers each take's id, what
  * it is for, when it was recorded and reached home, its size, its set-aside
  * mark and the words home heard in it: never its audio, which Play asks for

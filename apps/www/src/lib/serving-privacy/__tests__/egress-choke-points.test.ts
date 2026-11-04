@@ -37,9 +37,10 @@
  *   `GET /voice-notes/deleted` per open or drag down of its Deleted page).
  *   Studio's Takes on home (`lib/take-library`, ST32) asks home for the
  *   takes it keeps (`lib/home-link/takes-read`, whose read sends one
- *   `GET /voice-notes/takes` per open, Try again or search, `?q=` holding
- *   the search's words) and, per Play, for one take's audio, through the
- *   same read Rust Rounds' notes use (`lib/home-link/voice-audio`).
+ *   `GET /voice-notes/takes` per open, Try again, search or Show the
+ *   newest, a blank search showing the newest, `?q=` holding the search's
+ *   words) and, per Play, for one take's audio, through the same read Rust
+ *   Rounds' notes use (`lib/home-link/voice-audio`).
  *
  * - **LA19 (MY-DATA MD5): only My data deletes a record on home.** Only
  *   `lib/home-link/delete-note` sends home a `DELETE`, only `lib/my-data`
@@ -118,8 +119,8 @@ const HOME_LINK_CALLERS = new Set([
   // list's entry on a tap.
   "lib/idea-home/index.ts",
   // LA8 (ST32): Studio's Takes on home, which asks home for the takes it
-  // keeps as the screen opens, is asked again or searches, and for one
-  // take's audio on each Play.
+  // keeps as the screen opens and on Try again, a search (a blank one reads
+  // the newest) or Show the newest, and for one take's audio on each Play.
   "lib/take-library/index.ts",
 ])
 

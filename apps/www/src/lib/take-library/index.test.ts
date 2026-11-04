@@ -3,7 +3,7 @@
  *
  * Home, as Takes on home reads it (ST32): each answer of
  * `GET /voice-notes/takes` said in the screen's terms, a busy link asked
- * again only while the read is still wanted, and Play's audio from home.
+ * again only while the read is still wanted.
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -16,8 +16,7 @@ const asked = vi.hoisted(
   (): {
     answers: Array<TakesAsked>
     asks: Array<string | null>
-    audio: Array<string>
-  } => ({ answers: [], asks: [], audio: [] })
+  } => ({ answers: [], asks: [] })
 )
 
 vi.mock("@/lib/home-link/takes-read", () => ({
@@ -28,10 +27,7 @@ vi.mock("@/lib/home-link/takes-read", () => ({
 }))
 
 vi.mock("@/lib/home-link/voice-audio", () => ({
-  askAudio: (id: string): Promise<Blob | null> => {
-    asked.audio.push(id)
-    return Promise.resolve(id === "t1" ? new Blob(["take"]) : null)
-  },
+  askAudio: (): Promise<Blob | null> => Promise.resolve(null),
 }))
 
 const reply = (status: number, body: unknown = ""): HomeAnswer => ({
@@ -80,7 +76,6 @@ const always = (): boolean => true
 beforeEach(() => {
   asked.answers = []
   asked.asks = []
-  asked.audio = []
 })
 
 afterEach(() => {
@@ -149,11 +144,5 @@ describe("Takes on home's reads of home (ST32)", () => {
     await vi.advanceTimersByTimeAsync(10_000)
     expect(await stale).toEqual({ kind: "away" })
     expect(asked.asks).toEqual(["brand", "brand"])
-  })
-
-  it("plays a take's audio from home, one ask per play", async () => {
-    expect(await takesHome.audio("t1")).toBeInstanceOf(Blob)
-    expect(await takesHome.audio("gone")).toBeNull()
-    expect(asked.audio).toEqual(["t1", "gone"])
   })
 })

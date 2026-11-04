@@ -150,19 +150,22 @@ const Records = (): JSX.Element => {
 }
 
 /**
- * Takes on home (ST32): every take home keeps, with its words, a search
- * over them and Play from home, in the Android app alone, so no other
- * build carries the link (`build.paths.ts`).
+ * Takes on home (ST32), in the Android app alone, so no other build
+ * carries the link (`build.paths.ts`).
  */
-const Takes = (): JSX.Element => {
-  // Home's port and a player, once.
-  const [ports] = useState(() => ({ home: takesHome, player: audioPlayer }))
+const TAKE_PORTS =
+  import.meta.env.VITE_DEVICE_BACKEND === "true"
+    ? { home: takesHome, player: audioPlayer }
+    : null
+
+const Takes = (): JSX.Element | null => {
+  if (TAKE_PORTS === null) return null
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-4">
       <h1 className="text-muted-foreground text-sm font-bold tracking-wider uppercase">
         {LIBRARY_WORDS.heading}
       </h1>
-      <TakeLibrary ports={ports} />
+      <TakeLibrary ports={TAKE_PORTS} />
       <Link
         to="/journal"
         className="text-muted-foreground self-start text-sm underline underline-offset-4"
@@ -216,9 +219,7 @@ const StudioRoute = (): JSX.Element => {
   if (records === true && import.meta.env.VITE_DEVICE_BACKEND === "true") {
     return <Records />
   }
-  if (takes === true && import.meta.env.VITE_DEVICE_BACKEND === "true") {
-    return <Takes />
-  }
+  if (takes === true && TAKE_PORTS !== null) return <Takes />
   return (
     <>
       <StudioHome
@@ -253,8 +254,7 @@ const StudioRoute = (): JSX.Element => {
 
 /**
  * `?project`: the video to open on, as Your ideas links one an idea became;
- * `?records`: what Studio keeps (MD4); `?takes`: the takes home keeps
- * (ST32).
+ * `?records`: what Studio keeps (MD4); `?takes`: Takes on home (ST32).
  */
 type StudioSearch = { project?: string; records?: true; takes?: true }
 

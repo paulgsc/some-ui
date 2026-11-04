@@ -435,13 +435,14 @@ declared (checked by reading every call site and by the tests named).
   list's entry; while the link is busy with another run it asks again a
   second later, at most ten times; ST26 (c), #2453), and Studio's Takes on
   home (`lib/take-library`, through `lib/home-link/takes-read`'s `keep`: one
-  `GET /voice-notes/takes` each time the screen opens or is asked again,
-  and one `GET /voice-notes/takes?q=` per search, sending nothing of the
-  phone's but the search's words; while the link is busy with another run
+  `GET /voice-notes/takes` each time the screen opens, Try again is
+  pressed, a search is asked or Show the newest is pressed (a search left
+  blank shows the newest too), with `?q=` holding the search's words while
+  a search is shown, sending nothing of the phone's but those words; while the link is busy with another run
   it asks again a second later, at most ten times, and not once a newer
   read or leaving the screen has made that one stale; and, per Play, one
   `GET /voice-notes/:id/audio` through `lib/home-link/voice-audio`'s `keep`,
-  sending nothing but the take's id; ST32, #2590), which are the other callers of
+  sending nothing but the take's id; ST32), which are the other callers of
   `lib/home-link`, is started by a tap in the Home server block of Settings
   (`components/settings/device-section.tsx`): the sync (published lessons
   and dramas, read with no credential), pairing (the code only), unpairing,
@@ -528,7 +529,8 @@ declared (checked by reading every call site and by the tests named).
   lets anything but `lib/take-library` call it, lets anything but the voice
   run (`voice-copy.ts`) and `lib/take-library` read
   `lib/home-link/voice-audio.ts`, or has `@some-ui/soundbites`' `stepLibrary`
-  read but on the screen opening, Try again or a search, or ask for audio
+  read but on the screen opening, Try again, a search (a blank one reads the
+  newest) or Show the newest, or ask for audio
   but on a Play, or `lib/take-library` ask again but while the link is busy
   and the read is still wanted, more than ten times in all; one that has `idea-reads.ts` send anything
   but the one request `ideasPath` names per ask, lets anything but

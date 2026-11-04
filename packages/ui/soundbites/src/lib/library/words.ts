@@ -4,16 +4,14 @@
  * machinery. "Take" is the one word for a recording here (ST34).
  * `__tests__/words.test.ts` holds both.
  */
-import { dayOf, formatDay } from "@some-ui/core-utils"
+import { counted, dayOf, formatDay } from "@some-ui/core-utils"
 
 import type { LibraryBy, TakeFor } from "./model"
 import { SEARCH_MAX } from "./model"
 
-function takes(n: number): string {
-  return `${n} ${n === 1 ? "take" : "takes"}`
-}
+const takes = (n: number): string => counted(n, "take")
 
-/** "Nov 4", for an ISO time, on this phone's calendar. */
+/** The day, on this phone's calendar. */
 const dayAt = (iso: string): string => formatDay(dayOf(new Date(iso)))
 
 export const LIBRARY_WORDS = {
@@ -64,14 +62,13 @@ export const LIBRARY_WORDS = {
   notHeard: "Home hasn't heard this take yet.",
   silent: "Home heard no words in this take.",
   setAside: (at: string): string =>
-    `Set aside ${dayAt(at)}: home keeps it, and nothing reads it.`,
+    `Set aside ${dayAt(at)}. Home still keeps it.`,
   /** A take's line: what it is for, and when it was recorded. */
   line: (what: TakeFor, recordedAt: string): string =>
     `${LIBRARY_WORDS.what[what]} · ${dayAt(recordedAt)}`,
   what: {
     scene: "For a video's scene",
     idea: "For an idea",
-    library: "On its own",
     other: "A take",
   } satisfies Record<TakeFor, string>,
   play: "Play this take",

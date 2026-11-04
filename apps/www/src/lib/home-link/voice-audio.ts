@@ -8,9 +8,8 @@
  *   lane's desk (`./voice-copy`) when a note plays whose audio is not on this
  *   phone, because it left once home held it or because a refine card
  *   brings back a note this phone never held;
- * - a Studio take (STUDIO ST32 #2590, the owner's decision 8 on #2248:
- *   takes are a library on home, played from home), asked for by Takes on
- *   home (`lib/take-library`) on each Play.
+ * - a Studio take (ST32), asked for by Takes on home (`lib/take-library`)
+ *   on each Play.
  *
  * What home answers:
  *

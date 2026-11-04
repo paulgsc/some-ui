@@ -15,7 +15,7 @@ const MACHINERY =
 const OTHER_WORDS = /\b(recordings?|answers?|bites?|notes?|clips?)\b/i
 
 const BY: ReadonlyArray<LibraryBy> = ["newest", "words", "meaning"]
-const FOR: ReadonlyArray<TakeFor> = ["scene", "idea", "library", "other"]
+const FOR: ReadonlyArray<TakeFor> = ["scene", "idea", "other"]
 const AT = "2026-11-03T09:00:00.000Z"
 
 /** Every word the table says: each fixed one, and each a maker makes. */

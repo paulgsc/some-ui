@@ -7,7 +7,7 @@ import { readAs } from "@some-ui/core-utils"
 import type { LibraryPage, LibraryRead } from "@some-ui/soundbites"
 import { z } from "zod"
 
-/** `voice_repo`'s take, as the route serves it; other fields read through. */
+/** One take, as the route serves it; fields home adds are dropped. */
 const TakeSchema = z.object({
   id: z.string().min(1),
   ref: z.string(),
@@ -35,7 +35,7 @@ const TakesSchema: z.ZodType<LibraryPage> = z.object({
 
 /** What home's answer says, for the screen. */
 export function readTakes(answer: HomeAnswer): LibraryRead {
-  // A home before the route (paulgsc/server, ST32) serves no such path.
+  // A home before the route serves no such path.
   if (answer.status === 404) return { kind: "older" }
   if (answer.status !== 200) return { kind: "unreadable" }
   const page = readAs(TakesSchema, answer.body)

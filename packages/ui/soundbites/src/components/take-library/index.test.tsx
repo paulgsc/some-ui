@@ -88,6 +88,21 @@ describe("Takes on home (ST32)", () => {
     expect(screen.getByText(W.notHeard)).toBeTruthy()
   })
 
+  it("says a search is too long, and asks home nothing for it", async () => {
+    const takes = vi.fn(home().takes)
+    render(
+      <TakeLibrary ports={{ home: home({ takes }), player: quietPlayer }} />
+    )
+    await settle()
+    fireEvent.change(screen.getByLabelText(W.searchLabel), {
+      target: { value: "é".repeat(201) },
+    })
+    fireEvent.click(screen.getByRole("button", { name: W.search }))
+    await settle()
+    expect(screen.getByText(W.tooLong)).toBeTruthy()
+    expect(takes).toHaveBeenCalledTimes(1)
+  })
+
   it("plays a take from home, and says when home couldn't give it back", async () => {
     const play = vi.fn(quietPlayer.play)
     const audio = vi

@@ -233,7 +233,6 @@ describe("Takes on home (ST32)", () => {
   it("names what a take is for by the ref it went home with", () => {
     expect(takeFor("week-8:intro:1")).toBe("scene")
     expect(takeFor("idea:i1:what")).toBe("idea")
-    expect(takeFor("library:l1")).toBe("library")
     expect(takeFor("something else")).toBe("other")
   })
 })

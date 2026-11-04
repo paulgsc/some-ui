@@ -32,8 +32,8 @@
  *
  * A note's audio back from home (`GET /voice-notes/:id/audio`): the phone
  * asks for it when it plays a Rust Rounds note whose audio is not on it (RR6
- * some-ui#2237, the owner's D4), or a Studio take on Takes on home (ST32
- * some-ui#2590) (`apps/www/src/lib/home-link/voice-audio.ts`).
+ * some-ui#2237, the owner's D4), or a Studio take on Takes on home (ST32)
+ * (`apps/www/src/lib/home-link/voice-audio.ts`).
  * It is a paired phone's route (`subject::Paired`), as `/rust-rounds` is, so
  * no session is a `401`, a browser's cookie session a `403`, and a paired
  * contract runs only with `--phone-token`. A note the caller doesn't hold,
@@ -51,10 +51,10 @@
  * kind is a `422`. Each note says whether My data may delete it
  * (`deletable`, MD3 some-ui#2477).
  *
- * The takes home keeps (`GET /voice-notes/takes`, STUDIO ST32 some-ui#2590,
- * the owner's decision 8 on #2248): Studio's Takes on home asks for the
- * newest each time it opens, and with `q` for those whose heard words hold
- * every word of a search (`apps/www/src/lib/home-link/takes-read.ts`, read by
+ * The takes home keeps (`GET /voice-notes/takes`, ST32): Studio's Takes on
+ * home asks for the newest as it opens and on Show the newest or a blank
+ * search, and with `q` for those whose heard words hold every word of a
+ * search, Try again repeating either (`apps/www/src/lib/home-link/takes-read.ts`, read by
  * `lib/take-library`). A paired phone's route, as the audio read is: no
  * session is a `401`, a browser's a `403`. The contract run's paired phone
  * holds no takes, so its `200` is the empty answer, which the harness probes

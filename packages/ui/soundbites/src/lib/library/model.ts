@@ -74,11 +74,10 @@ export type LibraryRead =
 export const SEARCH_MAX = 200
 
 /** What a take is for, by the ref the phone sent it home with. */
-export type TakeFor = "scene" | "idea" | "library" | "other"
+export type TakeFor = "scene" | "idea" | "other"
 
 export function takeFor(ref: string): TakeFor {
   if (ref.startsWith("idea:")) return "idea"
-  if (ref.startsWith("library:")) return "library"
   // A video's scene: `<project>:<shot>:<take>`.
   return ref.split(":").length === 3 ? "scene" : "other"
 }
@@ -137,15 +136,12 @@ export type LibraryEffect =
       readonly seq: number
       readonly q: string | null
     }
-  /** Ask home for take `id`'s audio. */
   | { readonly type: "readAudio"; readonly play: number; readonly id: string }
-  /** Play the audio home gave back. */
   | {
       readonly type: "startPlayback"
       readonly play: number
       readonly audio: Blob
     }
-  /** Stop what plays, if anything does. */
   | { readonly type: "stopPlayback" }
 
 export type LibraryStep = {
@@ -194,7 +190,6 @@ function stopped(state: LibraryState): LibraryStep {
   }
 }
 
-/** The take `playback` names, if any. */
 const playbackId = (playback: LibraryPlayback): string | null =>
   playback.kind === "quiet" ? null : playback.id
 
