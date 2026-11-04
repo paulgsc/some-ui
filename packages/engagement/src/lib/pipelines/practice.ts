@@ -405,7 +405,9 @@ const rustRounds: Pipeline = {
       emits: ["offered", "taken", "passed-over"],
       touches: true,
     },
-    // A card: read and choose, say it, see what rustc did.
+    // A card: the program and what rustc did, from the start, and saying
+    // what you make of it (TALK5). `rustc`, once the step after choosing,
+    // is no longer a place of its own: it is part of reading the card.
     {
       id: "card",
       surface: "apk",
@@ -415,9 +417,8 @@ const rustRounds: Pipeline = {
       emits: ["taken", "left"],
       touches: true,
       places: [
-        { id: "read", name: "Reading the program" },
+        { id: "read", name: "Reading the program and what rustc did" },
         { id: "say-it", name: "Saying it" },
-        { id: "rustc", name: "What rustc did" },
       ],
     },
     // Paste an error from the desk, from any card (RR4c).
