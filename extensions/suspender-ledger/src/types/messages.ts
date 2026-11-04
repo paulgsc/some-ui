@@ -9,6 +9,9 @@
 // `src/content/watch.ts`); these typed messages are an additive, push-based
 // activity channel layered on top of it.
 
+import type { PopupRead } from "@suspender/popup/hydrate"
+import type { PopupSection } from "@suspender/popup/words"
+
 /**
  * Messages emitted by the content script (`watch.ts`) toward the service
  * worker. A tab announces when it becomes foregrounded (`TAB_ACTIVE`, carrying
@@ -76,6 +79,31 @@ export type PopupToWorkerMessage =
       local?: Record<string, unknown>
       session?: Record<string, unknown>
     }
+  | PopupTroubleMessage
+
+/**
+ * What the popup couldn't read or show when it opened (SLP1), for the worker
+ * to keep in the Diagnostics log, so Export JSON carries it.
+ */
+export type PopupTroubleMessage = {
+  method: "popup-trouble"
+  reads: Array<PopupRead>
+  sections: Array<PopupSection>
+}
+
+/** Narrowing guard for the popup's trouble report. */
+export function isPopupTroubleMessage(
+  value: unknown
+): value is PopupTroubleMessage {
+  if (value === null || typeof value !== "object" || !("method" in value)) {
+    return false
+  }
+  return (
+    value.method === "popup-trouble" &&
+    Array.isArray(Reflect.get(value, "reads")) &&
+    Array.isArray(Reflect.get(value, "sections"))
+  )
+}
 
 /**
  * What the diagnostics page (`debug.html`) can ask the worker for.
@@ -115,5 +143,9 @@ export function isPopupToWorkerMessage(
   if (value === null || typeof value !== "object" || !("method" in value)) {
     return false
   }
-  return value.method === "popup" || value.method === "storage"
+  return (
+    value.method === "popup" ||
+    value.method === "storage" ||
+    value.method === "popup-trouble"
+  )
 }

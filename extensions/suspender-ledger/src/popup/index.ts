@@ -20,6 +20,12 @@ import {
   TabStatus,
   type TabState,
 } from "@suspender/popup/components/tab-status"
+import { settleEach, type PopupRead } from "@suspender/popup/hydrate"
+import {
+  READ_FAILED,
+  SECTION_FAILED,
+  type PopupSection,
+} from "@suspender/popup/words"
 import type {
   PopupCommand,
   PopupToWorkerMessage,
@@ -150,17 +156,54 @@ type PopupState = {
   shortcuts: Array<ShortcutHint>
   /** Deduplicated, plain-language reasons some background tab(s) could not be suspended — see `readDiscardReasons`. */
   discardReasons: Array<string>
+  /** The reads that failed on the last hydration, named in the popup (SLP1). */
+  failedReads: ReadonlyArray<PopupRead>
+}
+
+const NO_TAB: ActiveTab = {
+  title: "",
+  discarded: false,
+  autoSuspendable: true,
 }
 
 let state: PopupState = {
-  tab: {
-    title: "",
-    discarded: false,
-    autoSuspendable: true,
-  },
+  tab: NO_TAB,
   prefs: { ...PREF_DEFAULTS },
   shortcuts: [],
   discardReasons: [],
+  failedReads: [],
+}
+
+/** What this open of the popup already told the worker about (SLP1). */
+const reported = new Set<string>()
+
+/** Tells the worker, once per open, what couldn't be read or shown. */
+function reportTrouble(
+  reads: ReadonlyArray<PopupRead>,
+  sections: ReadonlyArray<PopupSection>
+): void {
+  // A read and a section can share a name ("kept-awake"), so each is kept
+  // by its kind too.
+  const fresh = <T extends string>(
+    kind: string,
+    names: ReadonlyArray<T>
+  ): Array<T> => {
+    const unseen = names.filter((name) => !reported.has(`${kind}:${name}`))
+    for (const name of unseen) reported.add(`${kind}:${name}`)
+    return unseen
+  }
+  const newReads = fresh("read", reads)
+  const newSections = fresh("section", sections)
+  if (newReads.length === 0 && newSections.length === 0) return
+  const report: PopupToWorkerMessage = {
+    method: "popup-trouble",
+    reads: newReads,
+    sections: newSections,
+  }
+  browser.runtime.sendMessage(report).catch(() => {
+    // Ignored: the popup has already said what it couldn't read; a worker
+    // that missed the note keeps the rest of its Diagnostics log.
+  })
 }
 
 function setState(patch: Partial<PopupState>): void {
@@ -276,45 +319,81 @@ function onWhitelistRemove(rule: string): void {
 
 // ── Render ────────────────────────────────────────────────────────────────────
 
+/** Each section, built on its own so one that throws costs only itself. */
+const SECTIONS: ReadonlyArray<readonly [PopupSection, () => HTMLElement]> = [
+  [
+    "kept-awake",
+    (): HTMLElement => DiscardBanner({ reasons: state.discardReasons }),
+  ],
+  [
+    "tab-status",
+    (): HTMLElement =>
+      TabStatus({
+        title: state.tab.title,
+        favIconUrl: state.tab.favIconUrl,
+        state: (state.tab.discarded
+          ? "suspended"
+          : "active") satisfies TabState,
+        whitelisted: isWhitelisted(),
+      }),
+  ],
+  [
+    "actions",
+    (): HTMLElement =>
+      ActionMenu({
+        whitelisted: isWhitelisted(),
+        autoSuspendable: state.tab.autoSuspendable,
+        onCommand,
+      }),
+  ],
+  [
+    "settings",
+    (): HTMLElement =>
+      SettingsForm({
+        values: settingsValues(),
+        shortcuts: state.shortcuts,
+        onChange: onSettingsChange,
+        onWhitelistAdd,
+        onWhitelistRemove,
+      }),
+  ],
+  ["diagnostics", diagnosticsLink],
+]
+
 function render(): void {
   const root = document.getElementById("app")
   if (!root) return
   root.replaceChildren()
 
-  const state2: TabState = state.tab.discarded ? "suspended" : "active"
-
-  if (state.discardReasons.length > 0) {
-    root.appendChild(DiscardBanner({ reasons: state.discardReasons }))
+  const built: Array<HTMLElement> = []
+  const failedSections: Array<PopupSection> = []
+  for (const [name, build] of SECTIONS) {
+    try {
+      built.push(build())
+    } catch {
+      failedSections.push(name)
+    }
   }
+  const lines = [
+    ...state.failedReads.map((read) => READ_FAILED[read]),
+    ...failedSections.map((name) => SECTION_FAILED[name]),
+  ]
+  if (lines.length > 0) root.appendChild(troubleNotice(lines))
+  root.append(...built)
+  reportTrouble(state.failedReads, failedSections)
+}
 
-  root.appendChild(
-    TabStatus({
-      title: state.tab.title,
-      favIconUrl: state.tab.favIconUrl,
-      state: state2,
-      whitelisted: isWhitelisted(),
-    })
-  )
-
-  root.appendChild(
-    ActionMenu({
-      whitelisted: isWhitelisted(),
-      autoSuspendable: state.tab.autoSuspendable,
-      onCommand,
-    })
-  )
-
-  root.appendChild(
-    SettingsForm({
-      values: settingsValues(),
-      shortcuts: state.shortcuts,
-      onChange: onSettingsChange,
-      onWhitelistAdd,
-      onWhitelistRemove,
-    })
-  )
-
-  root.appendChild(diagnosticsLink())
+/** What couldn't be read or shown, one line each, above the rest (SLP1). */
+function troubleNotice(lines: ReadonlyArray<string>): HTMLElement {
+  const notice = document.createElement("div")
+  notice.className = "popup__trouble"
+  notice.setAttribute("role", "status")
+  for (const line of lines) {
+    const p = document.createElement("p")
+    p.textContent = line
+    notice.appendChild(p)
+  }
+  return notice
 }
 
 /**
@@ -348,7 +427,7 @@ async function readActiveTab(): Promise<ActiveTab> {
     currentWindow: true,
   })
   if (!tab) {
-    return { title: "", discarded: false, autoSuspendable: true }
+    return NO_TAB
   }
   return {
     id: tab.id,
@@ -370,21 +449,32 @@ async function readShortcuts(): Promise<Array<ShortcutHint>> {
     }))
 }
 
+/**
+ * Reads everything the popup shows, each read on its own (SLP1): one that
+ * fails keeps the value already shown, or its default on open, and is named.
+ */
 async function refresh(): Promise<void> {
-  const [tab, prefs] = await Promise.all([readActiveTab(), readPrefs()])
-  setState({ tab, prefs })
+  const { values, failed } = await settleEach(
+    {
+      tab: readActiveTab,
+      settings: readPrefs,
+      shortcuts: readShortcuts,
+      "kept-awake": readDiscardReasons,
+    },
+    {
+      tab: state.tab,
+      settings: state.prefs,
+      shortcuts: state.shortcuts,
+      "kept-awake": state.discardReasons,
+    }
+  )
+  setState({
+    tab: values.tab,
+    prefs: values.settings,
+    shortcuts: values.shortcuts,
+    discardReasons: values["kept-awake"],
+    failedReads: failed,
+  })
 }
 
-void (async () => {
-  try {
-    const [tab, prefs, shortcuts, discardReasons] = await Promise.all([
-      readActiveTab(),
-      readPrefs(),
-      readShortcuts(),
-      readDiscardReasons(),
-    ])
-    setState({ tab, prefs, shortcuts, discardReasons })
-  } catch {
-    // Ignored: popup hydration is best-effort; a failure leaves the default shell.
-  }
-})()
+void refresh()

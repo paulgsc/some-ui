@@ -15,6 +15,13 @@ describe("isPopupToWorkerMessage", () => {
 
   it("accepts a storage read", () => {
     expect(isPopupToWorkerMessage({ method: "storage", local: {} })).toBe(true)
+    expect(
+      isPopupToWorkerMessage({
+        method: "popup-trouble",
+        reads: ["settings"],
+        sections: [],
+      })
+    ).toBe(true)
   })
 
   it("rejects unrelated shapes", () => {
