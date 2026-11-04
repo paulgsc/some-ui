@@ -838,6 +838,13 @@
     },
     {
       "method": "GET",
+      "path": "/voice-notes/takes",
+      "full_path": "/api/v1/voice-notes/takes",
+      "versioned": true,
+      "module": "voice"
+    },
+    {
+      "method": "GET",
       "path": "/ws",
       "full_path": "/ws",
       "versioned": false,
