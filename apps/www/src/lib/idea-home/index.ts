@@ -21,12 +21,7 @@ import { z } from "zod"
 
 import type { IdeasAsk } from "@/lib/home-link/idea-reads"
 import { askIdeas } from "@/lib/home-link/idea-reads"
-
-const TRIES = 10
-const WAIT_MS = 1_000
-
-const wait = (ms: number): Promise<void> =>
-  new Promise((resolve) => setTimeout(resolve, ms))
+import { askWhileBusy } from "@/lib/home-link/while-busy"
 
 /** `idea_repo::Idea`, as `GET /ideas` and `GET /ideas/:id` serve it. */
 const IdeaSchema: z.ZodType<HomeIdea> = z.object({
@@ -73,13 +68,8 @@ type Answered =
   | { readonly kind: "away" }
 
 async function ask(what: IdeasAsk): Promise<Answered> {
-  for (let tried = 0; tried < TRIES; tried += 1) {
-    const asked = await askIdeas(what)
-    if (asked.kind === "unreachable") return { kind: "away" }
-    if (asked.kind !== "busy") return asked
-    await wait(WAIT_MS)
-  }
-  return { kind: "away" }
+  const asked = await askWhileBusy(() => askIdeas(what))
+  return asked.kind === "unreachable" ? { kind: "away" } : asked
 }
 
 /** `body` as `schema` reads it, or null. */

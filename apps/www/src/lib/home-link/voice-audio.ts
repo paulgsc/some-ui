@@ -1,19 +1,25 @@
 /**
- * A Rust Rounds note's audio back from home (RR6 #2237, the owner's D4:
- * home gives a note's audio back to the phone, for refine cards and replay;
- * paulgsc/server `GET /voice-notes/:id/audio`): asked for when a note plays
- * whose audio is not on this phone, because it left once home held it or
- * because a refine card brings back a note this phone never held. One `GET`
- * per play, through the link's `keep` (LA8); it sends nothing of the
- * phone's but the note's id, and keeps nothing it gets.
+ * A note's audio back from home (paulgsc/server `GET /voice-notes/:id/audio`),
+ * one `GET` per play, through the link's `keep` (LA8); it sends nothing of
+ * the phone's but the note's id, and keeps nothing it gets. Two callers:
+ *
+ * - a Rust Rounds note (RR6 #2237, the owner's D4: home gives a note's audio
+ *   back to the phone, for refine cards and replay), asked for by the voice
+ *   lane's desk (`./voice-copy`) when a note plays whose audio is not on this
+ *   phone, because it left once home held it or because a refine card
+ *   brings back a note this phone never held;
+ * - a Studio take (ST32), asked for by Takes on home (`lib/take-library`)
+ *   on each Play.
+ *
+ * What home answers:
  *
  * - `200` `{ "id", "contentType", "sha256", "audio" }`: the note's bytes as
  *   base64, played only when their SHA-256 is the one home names, so bytes
  *   that changed on the way never play as the note;
- * - anything else (`404` for a note home doesn't hold, or holds of another
- *   kind; a body that doesn't read; bytes whose hash differs), a link busy
- *   with another run, an unpaired phone or no answer: none, and the note
- *   can't play now, which the take pattern says.
+ * - anything else (`404` for a note home doesn't hold, or holds of a kind it
+ *   gives no audio back for; a body that doesn't read; bytes whose hash
+ *   differs), a link busy with another run, an unpaired phone or no answer:
+ *   none, and the note can't play now, which the screen says.
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { readAs, sha256Hex } from "@some-ui/core-utils"

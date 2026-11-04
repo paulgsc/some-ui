@@ -433,7 +433,16 @@ declared (checked by reading every call site and by the tests named).
   `PUT /ideas/:id/furnishing` of the mark, one bodiless
   `PUT /ideas/:id/set-aside` after a confirm, or one `PUT` or `DELETE` of a
   list's entry; while the link is busy with another run it asks again a
-  second later, at most ten times; ST26 (c), #2453), which are the other callers of
+  second later, at most ten times; ST26 (c), #2453), and Studio's Takes on
+  home (`lib/take-library`, through `lib/home-link/takes-read`'s `keep`: one
+  `GET /voice-notes/takes` each time the screen opens, Try again is
+  pressed, a search is asked or Show the newest is pressed (a search left
+  blank shows the newest too), with `?q=` holding the search's words while
+  a search is shown, sending nothing of the phone's but those words; while the link is busy with another run
+  it asks again a second later, at most ten times, and not once a newer
+  read or leaving the screen has made that one stale; and, per Play, one
+  `GET /voice-notes/:id/audio` through `lib/home-link/voice-audio`'s `keep`,
+  sending nothing but the take's id; ST32), which are the other callers of
   `lib/home-link`, is started by a tap in the Home server block of Settings
   (`components/settings/device-section.tsx`): the sync (published lessons
   and dramas, read with no credential), pairing (the code only), unpairing,
@@ -477,7 +486,8 @@ declared (checked by reading every call site and by the tests named).
   it promises (`LET_GO.room.question`). Nothing on home is deleted but by
   My data's "Delete for good".
   Nothing but the drain, Korean's look, the idea screen's ask for a
-  take's words, My data's reads and Ideas on home's reads is sent when the app or Settings
+  take's words, My data's reads, Ideas on home's reads and Takes on home's
+  reads is sent when the app or Settings
   opens, on resume, on a timer or on a network change: making the runtime
   and `load` read only the phone's own record. There is no retry; a sync, a
   clear, a let-go or a drain's run ends at Stop,
@@ -513,8 +523,16 @@ declared (checked by reading every call site and by the tests named).
   anywhere but those two, or widens the egress test's `LET_GO_CALLERS`; one that calls its `keep` from anywhere but
   `lib/home-link/lanes.ts` (LA15), `lib/home-link/routine.ts`,
   `lib/home-link/heard.ts`, `lib/home-link/voice-audio.ts` (RR6),
-  `lib/home-link/kept-read.ts`, `lib/home-link/deleted-read.ts` and
-  `lib/home-link/idea-reads.ts`; one that has `idea-reads.ts` send anything
+  `lib/home-link/kept-read.ts`, `lib/home-link/deleted-read.ts`,
+  `lib/home-link/idea-reads.ts` and `lib/home-link/takes-read.ts`; one that
+  has `takes-read.ts` send anything but one `GET` of `takesPath(q)` per ask,
+  lets anything but `lib/take-library` call it, lets anything but the voice
+  run (`voice-copy.ts`) and `lib/take-library` read
+  `lib/home-link/voice-audio.ts`, or has `@some-ui/soundbites`' `stepLibrary`
+  read but on the screen opening, Try again, a search (a blank one reads the
+  newest) or Show the newest, or ask for audio
+  but on a Play, or `lib/take-library` ask again but while the link is busy
+  and the read is still wanted, more than ten times in all; one that has `idea-reads.ts` send anything
   but the one request `ideasPath` names per ask, lets anything but
   `lib/idea-home` call it, or has `@some-ui/soundbites`' `stepOnHome` read
   but on the screen opening or Try again, or write but on a tap (setting an
@@ -550,7 +568,7 @@ declared (checked by reading every call site and by the tests named).
   the voice run call it; one that
   sends from `createHomeLink` or `load`, or, outside LA15's watch,
   Korean's look, the idea screen's ask for a take's words, My data's
-  reads and Ideas on home's reads, from a
+  reads, Ideas on home's reads and Takes on home's reads, from a
   `useEffect`, a timer, a `visibilitychange` or
   `online` listener; one that retries a failed home request, or queues one
   for later, outside LA15; one that lets the clear start without its
@@ -606,7 +624,8 @@ declared (checked by reading every call site and by the tests named).
 - _Scope:_ `apps/www/src` (the phone build), `apps/mobile/android`, and
   `packages/ui/soundbites/src/lib/idea/hearing.ts` (when the idea screen asks)
   and `packages/ui/soundbites/src/lib/idea/on-home.ts` (when Ideas on home
-  reads and writes).
+  reads and writes), and `packages/ui/soundbites/src/lib/library/model.ts`
+  (when Takes on home reads and plays).
 - _Why not enforced:_ who may reach home is, by test (`egress-choke-points`:
   `CapacitorHttp` named only in `native-http`, whose index only
   `lib/home-link/index.ts` imports as a value (its `no-answer` sibling holds
@@ -618,7 +637,12 @@ declared (checked by reading every call site and by the tests named).
   requests are the four `idea-reads.ts` sends, and only it calls that
   module; `lib/idea/__tests__/on-home.test.ts` holds that a read answers
   only the one asked last, one write goes at a time and setting an idea
-  aside asks first); the routine's read sends one
+  aside asks first), and Takes on home (`lib/take-library`, whose one
+  request per read is the `GET` `takes-read.ts` sends, and only it calls
+  that module, and it and the voice run alone read `voice-audio.ts`;
+  `lib/library/__tests__/model.test.ts` holds that a read answers only the
+  one asked last, a search home would refuse is never asked, and audio is
+  asked only on a Play, one at a time); the routine's read sends one
   `GET /routine/files` and one `PUT /routine/opened` and nothing else, and
   the read of a take's words one `GET /voice-notes/:id/heard` and nothing
   else; and `confirmHeld` is called only in `lib/home-link/sessions.ts`).

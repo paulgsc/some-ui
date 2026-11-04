@@ -14,6 +14,7 @@ import {
   letGoDeletedTakes,
   letGoHeldTakes,
   letGoOnDrive,
+  LIBRARY_WORDS,
   notesForHome,
   phoneProjectStore,
   sittingKey,
@@ -21,6 +22,7 @@ import {
   studioFiles,
   StudioHome,
   StudioRecords,
+  TakeLibrary,
   waitingIds,
 } from "@some-ui/soundbites"
 import { audioPlayer } from "@some-ui/voice-capture"
@@ -34,6 +36,7 @@ import { shareStudio } from "@/lib/journal-share"
 import { deletableStudioTakes } from "@/lib/my-data"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 import { keepStudio } from "@/lib/studio-keeping"
+import { takesHome } from "@/lib/take-library"
 import { CopyButton } from "@/components/copy-button"
 
 const WORDS = STUDIO_WORDS
@@ -147,6 +150,33 @@ const Records = (): JSX.Element => {
 }
 
 /**
+ * Takes on home (ST32), in the Android app alone, so no other build
+ * carries the link (`build.paths.ts`).
+ */
+const TAKE_PORTS =
+  import.meta.env.VITE_DEVICE_BACKEND === "true"
+    ? { home: takesHome, player: audioPlayer }
+    : null
+
+const Takes = (): JSX.Element | null => {
+  if (TAKE_PORTS === null) return null
+  return (
+    <div className="mx-auto flex w-full max-w-md flex-col gap-4">
+      <h1 className="text-muted-foreground text-sm font-bold tracking-wider uppercase">
+        {LIBRARY_WORDS.heading}
+      </h1>
+      <TakeLibrary ports={TAKE_PORTS} />
+      <Link
+        to="/journal"
+        className="text-muted-foreground self-start text-sm underline underline-offset-4"
+      >
+        {LIBRARY_WORDS.back}
+      </Link>
+    </div>
+  )
+}
+
+/**
  * An episode's upload copy onto the clipboard (SH5), as Jobs' paste kit
  * copies: in the Android app only, as sharing is.
  */
@@ -164,7 +194,7 @@ const studioCopy: StudioCopy | undefined =
  * Opened from Your ideas on a video an idea became, it opens that one.
  */
 const StudioRoute = (): JSX.Element => {
-  const { project, records } = Route.useSearch()
+  const { project, records, takes } = Route.useSearch()
   useEffect(() => {
     if (import.meta.env.VITE_DEVICE_BACKEND !== "true") return
     const store = phoneProjectStore()
@@ -189,6 +219,7 @@ const StudioRoute = (): JSX.Element => {
   if (records === true && import.meta.env.VITE_DEVICE_BACKEND === "true") {
     return <Records />
   }
+  if (takes === true && TAKE_PORTS !== null) return <Takes />
   return (
     <>
       <StudioHome
@@ -200,13 +231,22 @@ const StudioRoute = (): JSX.Element => {
         initialProject={project}
       />
       {import.meta.env.VITE_DEVICE_BACKEND === "true" && (
-        <Link
-          to="/journal"
-          search={{ records: true }}
-          className="text-muted-foreground mx-auto mt-4 block w-full max-w-md text-sm underline underline-offset-4"
-        >
-          {WORDS.records.open}
-        </Link>
+        <div className="mx-auto mt-4 flex w-full max-w-md flex-col gap-2">
+          <Link
+            to="/journal"
+            search={{ takes: true }}
+            className="text-muted-foreground self-start text-sm underline underline-offset-4"
+          >
+            {LIBRARY_WORDS.open}
+          </Link>
+          <Link
+            to="/journal"
+            search={{ records: true }}
+            className="text-muted-foreground self-start text-sm underline underline-offset-4"
+          >
+            {WORDS.records.open}
+          </Link>
+        </div>
       )}
     </>
   )
@@ -214,15 +254,16 @@ const StudioRoute = (): JSX.Element => {
 
 /**
  * `?project`: the video to open on, as Your ideas links one an idea became;
- * `?records`: what Studio keeps (MD4).
+ * `?records`: what Studio keeps (MD4); `?takes`: Takes on home (ST32).
  */
-type StudioSearch = { project?: string; records?: true }
+type StudioSearch = { project?: string; records?: true; takes?: true }
 
 function validateStudioSearch(search: Record<string, unknown>): StudioSearch {
-  const { project, records } = search
+  const { project, records, takes } = search
   return {
     ...(typeof project === "string" && project !== "" ? { project } : {}),
     ...(records === true || records === "true" ? { records: true } : {}),
+    ...(takes === true || takes === "true" ? { takes: true } : {}),
   }
 }
 

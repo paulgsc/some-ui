@@ -35,6 +35,12 @@
  *   of the record kept for good, MD2b), and what home deleted for good
  *   (`lib/home-link/deleted-read`, MD3, whose read sends one
  *   `GET /voice-notes/deleted` per open or drag down of its Deleted page).
+ *   Studio's Takes on home (`lib/take-library`, ST32) asks home for the
+ *   takes it keeps (`lib/home-link/takes-read`, whose read sends one
+ *   `GET /voice-notes/takes` per open, Try again, search or Show the
+ *   newest, a blank search showing the newest, `?q=` holding the search's
+ *   words) and, per Play, for one take's audio, through the same read Rust
+ *   Rounds' notes use (`lib/home-link/voice-audio`).
  *
  * - **LA19 (MY-DATA MD5): only My data deletes a record on home.** Only
  *   `lib/home-link/delete-note` sends home a `DELETE`, only `lib/my-data`
@@ -112,6 +118,10 @@ const HOME_LINK_CALLERS = new Set([
   // their lists as the screen opens or is asked again, and writes a mark or a
   // list's entry on a tap.
   "lib/idea-home/index.ts",
+  // LA8 (ST32): Studio's Takes on home, which asks home for the takes it
+  // keeps as the screen opens and on Try again, a search (a blank one reads
+  // the newest) or Show the newest, and for one take's audio on each Play.
+  "lib/take-library/index.ts",
 ])
 
 /**
@@ -138,6 +148,7 @@ const KEEPERS = new Set([
   "lib/home-link/kept-read.ts",
   "lib/home-link/deleted-read.ts",
   "lib/home-link/idea-reads.ts",
+  "lib/home-link/takes-read.ts",
 ])
 
 /** The routine's read, and the two requests it may send. */
@@ -158,7 +169,10 @@ const ON_DRIVE_SENDS = [['"GET"', "onDrivePath(chunk)"]]
 const HEARD_READ = "lib/home-link/heard.ts"
 const HEARD_SENDS = [['"GET"', "heardPath(id)"]]
 
-/** LA8, RR6: the read of one Rust Rounds note's audio, and the one request it may send. */
+/**
+ * LA8, RR6, ST32: the read of one note's audio (a Rust Rounds note, or a
+ * Studio take on Takes on home), and the one request it may send.
+ */
 const AUDIO_READ = "lib/home-link/voice-audio.ts"
 const AUDIO_SENDS = [['"GET"', "audioPath(id)"]]
 
@@ -168,6 +182,10 @@ const KEPT_SENDS = [
   ['"GET"', "keptPath(of)"],
   ['"GET"', '"/subjects/me/kept"'],
 ]
+
+/** LA8, ST32: the read of the takes home keeps, and the one request it may send. */
+const TAKES_READ = "lib/home-link/takes-read.ts"
+const TAKES_SENDS = [['"GET"', "takesPath(q)"]]
 
 /** LA8, MD3: the read of what home deleted, and the one request it may send. */
 const DELETED_READ = "lib/home-link/deleted-read.ts"
@@ -659,6 +677,7 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(read(AUDIO_READ)).toContain("homeLink().keep(")
     expect(read(KEPT_READ)).toContain("homeLink().keep(")
     expect(read(DELETED_READ)).toContain("homeLink().keep(")
+    expect(read(TAKES_READ)).toContain("homeLink().keep(")
   })
 
   it("sends nothing from the read of what home deleted but one GET of /voice-notes/deleted, and only My data reads it (MD3)", () => {
@@ -685,6 +704,19 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(readers).toEqual(["lib/my-data/index.ts"])
   })
 
+  it("sends nothing from the read of the takes home keeps but one GET of /voice-notes/takes, and only Takes on home reads it (ST32)", () => {
+    expect(sendCalls(TAKES_READ, read(TAKES_READ))).toEqual(TAKES_SENDS)
+    expect(read(TAKES_READ)).toContain('"/voice-notes/takes"')
+    const readers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /from "\.\/takes-read"|from "@\/lib\/home-link\/takes-read"/.test(
+          read(f)
+        )
+      )
+    expect(readers).toEqual(["lib/take-library/index.ts"])
+  })
+
   it("sends nothing from Ideas on home but its four requests, and only it asks them (ST26 c)", () => {
     expect(sendCalls(IDEA_READS, read(IDEA_READS))).toEqual(IDEA_SENDS)
     expect(read(IDEA_READS)).toContain("homeLink().keep(")
@@ -698,7 +730,7 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(callers).toEqual(["lib/idea-home/index.ts"])
   })
 
-  it("sends nothing from the read of a note's audio but one GET of /voice-notes/:id/audio, and only the voice lane reads it (RR6)", () => {
+  it("sends nothing from the read of a note's audio but one GET of /voice-notes/:id/audio, and only the voice lane and Takes on home read it (RR6, ST32)", () => {
     expect(sendCalls(AUDIO_READ, read(AUDIO_READ))).toEqual(AUDIO_SENDS)
     const readers = sourceFiles()
       .filter((f) => !isTestFile(f))
@@ -707,7 +739,10 @@ describe("LA8: the phone reaches home through one module", () => {
           read(f)
         )
       )
-    expect(readers).toEqual(["lib/home-link/voice-copy.ts"])
+    expect(readers).toEqual([
+      "lib/home-link/voice-copy.ts",
+      "lib/take-library/index.ts",
+    ])
   })
 
   it("sends nothing from the read of a take's words but one GET of /voice-notes/:id/heard, and only Studio's idea answers read it (IH1)", () => {
