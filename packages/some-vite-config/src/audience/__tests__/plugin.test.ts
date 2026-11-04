@@ -4,7 +4,7 @@ import { dirname, join } from "path"
 import { audiencePlugin } from "@/audience/plugin.js"
 import { defineProfiles } from "@/audience/schema.js"
 import type { Rolldown } from "vite"
-import { build } from "vite"
+import { build, createServer } from "vite"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
 // Markers the assertions look for in the bundle. Each lives in exactly one
@@ -22,6 +22,19 @@ const profiles = defineProfiles({
 })
 
 let root: string
+
+/** The fixture's plugin options under `profile`. */
+const optionsFor = (
+  profile: string | undefined,
+  extra: { checkGates?: boolean } = {}
+): Parameters<typeof audiencePlugin>[0] => ({
+  profiles,
+  profile,
+  defaultProfile: "lan",
+  workspaceRoots: [join(root, "packages/ui")],
+  gates: { lan: ["src/routes/_lan"], apk: [], web: [] },
+  ...extra,
+})
 
 function write(path: string, content: string): void {
   const file = join(root, path)
@@ -143,14 +156,7 @@ async function buildApp(
     logLevel: "silent",
     configFile: false,
     plugins: [
-      audiencePlugin({
-        profiles,
-        profile,
-        defaultProfile: "lan",
-        workspaceRoots: [join(root, "packages/ui")],
-        gates: { lan: ["src/routes/_lan"], apk: [], web: [] },
-        ...extra,
-      }),
+      audiencePlugin(optionsFor(profile, extra)),
       // The bundle re-generates code (renames bindings, re-escapes strings),
       // so what the plugin itself spliced together is only visible here.
       {
@@ -242,26 +248,55 @@ describe("audiencePlugin", { timeout: 30_000 }, () => {
   it("rejects a workspace manifest without a valid someUi field", () => {
     workspace("unmarked", "@fx/unmarked", undefined, {})
 
-    expect(() =>
-      audiencePlugin({
-        profiles,
-        profile: "lan",
-        defaultProfile: "lan",
-        workspaceRoots: [join(root, "packages/ui")],
-        gates: { lan: ["src/routes/_lan"], apk: [], web: [] },
-      })
-    ).toThrow(/unmarked\/package\.json: "someUi" is missing or invalid/)
+    expect(() => audiencePlugin(optionsFor("lan"))).toThrow(
+      /unmarked\/package\.json: "someUi" is missing or invalid/
+    )
   })
 
   it("rejects an unknown profile name", () => {
-    expect(() =>
-      audiencePlugin({
-        profiles,
-        profile: "vps",
-        defaultProfile: "lan",
-        workspaceRoots: [join(root, "packages/ui")],
-        gates: { lan: ["src/routes/_lan"], apk: [], web: [] },
-      })
-    ).toThrow(/unknown build profile "vps". Known profiles: pages, lan/)
+    expect(() => audiencePlugin(optionsFor("vps"))).toThrow(
+      /unknown build profile "vps". Known profiles: pages, lan/
+    )
   })
 })
+
+// AU1: a stub loads whether or not `resolveId` ran for it in this process.
+// Family: the stub's id loaded by the plugin that resolved it (the builds
+// above), or by a fresh one, as when vitest's module cache serves the
+// importer already transformed (#2502); under the profile that cached it, or
+// another, which the cache must not serve it to.
+describe(
+  "AU1: a stub loads without the resolveId that made it",
+  { timeout: 30_000 },
+  () => {
+    async function loadFresh(profile: string, id: string): Promise<unknown> {
+      const server = await createServer({
+        root: join(root, "app"),
+        logLevel: "silent",
+        configFile: false,
+        server: { middlewareMode: true, ws: false },
+        plugins: [audiencePlugin(optionsFor(profile))],
+      })
+      try {
+        const loaded = await server.environments.client.pluginContainer.load(id)
+        return typeof loaded === "object" && loaded !== null
+          ? loaded.code
+          : loaded
+      } finally {
+        await server.close()
+      }
+    }
+
+    it("rebuilds the stub of a workspace the profile leaves out, as resolveId made it", async () => {
+      const rebuilt = await loadFresh("pages", "\0audience-stub:@fx/lan-panel")
+
+      expect(rebuilt).toBe((await buildApp("pages")).stubs[0])
+    })
+
+    it("keeps each profile's transforms apart in vitest's cache, which is keyed by plugin name", () => {
+      expect(audiencePlugin(optionsFor("pages")).name).not.toBe(
+        audiencePlugin(optionsFor("lan")).name
+      )
+    })
+  }
+)
