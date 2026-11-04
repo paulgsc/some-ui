@@ -9,6 +9,15 @@ export { keptIdeaStore } from "./lib/idea/store"
 export type { IdeaStore } from "./lib/idea/store"
 export { keptIdeasForHome } from "./lib/idea/home"
 export type { IdeaForHome } from "./lib/idea/home"
+export { IdeasOnHome } from "./components/ideas-on-home"
+export type { IdeasOnHomeProps } from "./components/ideas-on-home"
+export type {
+  HomeIdea,
+  HomeLists,
+  HomeRead,
+  HomeWrite,
+} from "./lib/idea/on-home"
+export type { IdeasHome } from "./lib/idea/on-home-runtime"
 export { IdeaShelf } from "./components/idea-shelf"
 export type { IdeaShare, IdeaShelfProps } from "./components/idea-shelf"
 export type {

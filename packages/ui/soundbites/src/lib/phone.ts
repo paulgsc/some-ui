@@ -13,7 +13,7 @@ import {
 
 import type { BundlePorts } from "./idea/bundle-runtime"
 import { NO_HOME } from "./idea/bundle-runtime"
-import { IDEA_LISTS_SEED, keptDraftStore } from "./idea/draft"
+import { keptDraftStore, keptIdeaLists } from "./idea/draft"
 import type { IdeaPorts } from "./idea/runtime"
 import type { ShelfPorts } from "./idea/shelf-runtime"
 import { keptIdeaStore } from "./idea/store"
@@ -85,7 +85,7 @@ export function phoneBundlePorts(): Omit<BundlePorts, "takes"> {
   return {
     drafts: keptDraftStore(),
     ideas: keptIdeaStore(),
-    lists: () => IDEA_LISTS_SEED,
+    lists: () => keptIdeaLists().read(),
     home: NO_HOME,
     now: () => Date.now(),
     newId: () => crypto.randomUUID(),

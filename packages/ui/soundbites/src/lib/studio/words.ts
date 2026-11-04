@@ -4,7 +4,12 @@
  * table, in the person's terms: what is kept where, and what to do next,
  * never the machinery (`__tests__/words.test.ts` holds that).
  */
-import { formatSize, formatTimecode, listed } from "@some-ui/core-utils"
+import {
+  formatDay,
+  formatSize,
+  formatTimecode,
+  listed,
+} from "@some-ui/core-utils"
 import type { Idea, Look, Voice } from "@some-ui/video-render"
 import type { RecordingFailure } from "@some-ui/voice-capture"
 import {
@@ -17,6 +22,11 @@ import type {
   IdeaStage,
   QuestionId,
 } from "@soundbites/lib/idea/model"
+import type {
+  GroupBy,
+  OnHomeNotice,
+  SortBy,
+} from "@soundbites/lib/idea/on-home"
 import type { ShelfNotice } from "@soundbites/lib/idea/shelf"
 import type { LetGo, LetGoChoice } from "@soundbites/lib/project/let-go"
 
@@ -930,6 +940,88 @@ export const STUDIO_WORDS = {
     deleteLine:
       "Delete… opens My data on a take, where deleting it is asked once and leaves a receipt. It shows only on takes home lets you delete.",
     back: "Back to Studio",
+  },
+
+  /**
+   * Ideas on home (ST26 (c)): every idea sent whole, as home keeps it,
+   * grouped and sorted by what it is, one at a time with home's words for
+   * each answer; and the lists every new idea picks from.
+   */
+  onHome: {
+    heading: "Ideas on home",
+    open: "Ideas on home",
+    reading: "Asking home…",
+    unpaired:
+      "This phone isn't paired with home, so it can't show what home keeps. Pair it in Settings.",
+    away: "Home can't be reached right now. Try again once you're back in reach.",
+    older:
+      "Home doesn't keep ideas yet. Once it runs a newer version, the ideas you send show here.",
+    unreadable: "Home's answer couldn't be read. Try again in a moment.",
+    readAgain: "Try again",
+    none: "Home has no ideas yet. Send one from New idea.",
+    more: "Home holds more ideas than it lists at once; these are the newest.",
+    groupBy: "Group by",
+    groups: {
+      topic: "Subject",
+      format: "Made for",
+      date: "Date",
+      keyword: "Keyword",
+    } satisfies Record<GroupBy, string>,
+    sortBy: "Sort",
+    sorts: {
+      newest: "Newest",
+      oldest: "Oldest",
+      title: "Title",
+    } satisfies Record<SortBy, string>,
+    formats: {
+      short: "Short · vertical",
+      video: "Video · wide",
+    } satisfies Record<IdeaFormat, string>,
+    noKeyword: "No keyword",
+    day: formatDay,
+    answers: (n: number): string => plural(n, "answer", "answers"),
+    furnishingMark: "Still furnishing",
+    furnish: "Mark still furnishing",
+    furnishing: "Still furnishing · only you see this",
+    typed: "Typed, because voice didn't work",
+    hearing: "Home hasn't heard this one yet.",
+    silent: "Home heard nothing in this one.",
+    answerAside: "Set aside on home: nothing reads it.",
+    onlyOnHome: "Its recording is on home.",
+    setAside: "Set it aside",
+    setAsideLine:
+      "Home keeps it, every version, out of this list. Nothing reads it.",
+    confirm: {
+      title: "Set the whole idea aside?",
+      line: "Home keeps it set aside: nothing reads it, and it leaves this list. There's no bringing it back here.",
+      yes: "Set it aside",
+      keep: "Keep it",
+    },
+    lists: "Edit the subjects and keywords",
+    back: "Back to the ideas on home",
+    notice: {
+      furnishing: "Marked still furnishing. Only you see this mark.",
+      ready: "Marked ready. Only you see this mark.",
+      setAside: "Set aside. Home keeps it.",
+      added: "Added. New ideas can pick it.",
+      removed: "Taken off. Ideas that use it keep it.",
+      notWritten: "Home didn't take that, so nothing changed.",
+      away: "Home can't be reached right now, so nothing changed.",
+    } satisfies Record<OnHomeNotice, string>,
+  },
+
+  /** The lists every new idea picks from, kept on home (ST26 (c)). */
+  lists: {
+    heading: "Subjects and keywords",
+    line: "Kept on home. Every new idea picks from these. Taking one off leaves the ideas that already use it as they are.",
+    topics: "Subjects",
+    keywords: "Keywords",
+    newTopic: "A new subject",
+    newKeyword: "A new keyword",
+    add: "Add",
+    remove: (name: string): string => `Take ${name} off`,
+    tooLong: "At most 40 characters, with no / in it.",
+    done: "Done",
   },
 
   /** Where things stand, from the last sitting's log. */
