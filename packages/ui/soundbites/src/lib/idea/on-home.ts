@@ -43,6 +43,12 @@ export type HomeAnswer = {
   readonly heard: HomeHeard | null
   /** The owner let the note go after the idea was sent. */
   readonly setAside: boolean
+  /**
+   * When the owner deleted the note's recording for good from My data
+   * (#2579); null or absent while it is kept, and from a home older than
+   * paulgsc/server's delete of an idea's answer.
+   */
+  readonly deletedAt?: string | null | undefined
 }
 
 /** An idea as home holds it: its latest send and its marks. */

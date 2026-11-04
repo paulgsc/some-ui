@@ -482,11 +482,11 @@ export const MyDataKind = ({
 }
 
 /** The runtime's snapshot for the page at `of`, read again on mount and on a drag down. */
-function useMyData(of: Of | null): MyDataState {
+function useMyData(of: Of | null, note?: string): MyDataState {
   const data = phoneMyData()
   const state = useSyncExternalStore(data.subscribe, data.getSnapshot)
   useEffect(() => {
-    data.open(of)
+    data.open(of, note ?? null)
     const drop = screenRefreshers.register({
       what: MY_DATA.pullWhat,
       checkAgain: data.checkAgain,
@@ -495,7 +495,7 @@ function useMyData(of: Of | null): MyDataState {
       drop()
       data.stop()
     }
-  }, [data, of])
+  }, [data, of, note])
   return state
 }
 
@@ -548,7 +548,7 @@ const KindList = ({
   of: Of
   note: string | undefined
 }): JSX.Element => {
-  const state = useMyData(of)
+  const state = useMyData(of, note)
   const data = phoneMyData()
   const { sheet, deleting } = useDeleting()
   const view = kindOf(

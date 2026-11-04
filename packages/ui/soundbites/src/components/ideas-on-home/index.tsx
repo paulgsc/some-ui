@@ -52,6 +52,12 @@ export type IdeasOnHomeProps = {
   takes?: BundleTakes | undefined
   /** Opens on the lists rather than the ideas. Read once. */
   initialLists?: boolean
+  /**
+   * Opens My data on a said answer's recording, where deleting it for good
+   * is asked (#2579, MD4's rule: Delete… never deletes in place). Without
+   * it, no answer offers Delete….
+   */
+  openInMyData?: ((note: string) => void) | undefined
 }
 
 const Tab = ({
@@ -251,6 +257,9 @@ const AnswerPlay = ({
 
 /** What one answer says: home's words, typed words, or why there are none. */
 function wordsOf(answer: HomeAnswer): string {
+  if (typeof answer.deletedAt === "string") {
+    return WORDS.answerDeleted(WORDS.day(answer.deletedAt))
+  }
   if (answer.setAside) return WORDS.answerAside
   if (answer.typed !== null) return answer.typed
   if (answer.heard === null) return WORDS.hearing
@@ -264,16 +273,56 @@ function askOf(question: string): string {
   return known === undefined ? question : ASK[known].ask
 }
 
+/**
+ * A said answer's recording: Play while it is on this phone, and Delete…,
+ * set aside or not (My data deletes either).
+ */
+const AnswerRecording = ({
+  note,
+  ask,
+  setAside,
+  takes,
+  openInMyData,
+}: {
+  note: string
+  ask: string
+  setAside: boolean
+  takes: BundleTakes | undefined
+  openInMyData: ((note: string) => void) | undefined
+}): JSX.Element => (
+  <div className="flex flex-wrap items-center gap-2">
+    {setAside ? null : takes !== undefined ? (
+      <AnswerPlay pattern={takes.pattern} take={note} />
+    ) : (
+      <p className="text-muted-foreground text-xs">{WORDS.onlyOnHome}</p>
+    )}
+    {openInMyData !== undefined && (
+      <Button
+        type="button"
+        size="sm"
+        variant="ghost"
+        className="text-muted-foreground"
+        aria-label={WORDS.deleteAnswerName(ask)}
+        onClick={() => openInMyData(note)}
+      >
+        {WORDS.deleteAnswer}
+      </Button>
+    )}
+  </div>
+)
+
 const OneIdea = ({
   idea,
   state,
   takes,
   dispatch,
+  openInMyData,
 }: {
   idea: HomeIdea
   state: OnHomeState
   takes: BundleTakes | undefined
   dispatch: Dispatch
+  openInMyData: ((note: string) => void) | undefined
 }): JSX.Element => {
   const onPhone = useSyncExternalStore(
     takes?.takes.subscribe ?? noSubscribe,
@@ -323,15 +372,19 @@ const OneIdea = ({
               )}
               {wordsOf(answer)}
             </p>
-            {answer.note !== null &&
-              !answer.setAside &&
-              (takes !== undefined && playable.has(answer.note) ? (
-                <AnswerPlay pattern={takes.pattern} take={answer.note} />
-              ) : (
-                <p className="text-muted-foreground text-xs">
-                  {WORDS.onlyOnHome}
-                </p>
-              ))}
+            {answer.note !== null && typeof answer.deletedAt !== "string" && (
+              <AnswerRecording
+                note={answer.note}
+                ask={askOf(answer.question)}
+                setAside={answer.setAside}
+                takes={
+                  takes !== undefined && playable.has(answer.note)
+                    ? takes
+                    : undefined
+                }
+                openInMyData={openInMyData}
+              />
+            )}
           </li>
         ))}
       </ul>
@@ -465,10 +518,12 @@ const Screen = ({
   state,
   takes,
   dispatch,
+  openInMyData,
 }: {
   state: OnHomeState
   takes: BundleTakes | undefined
   dispatch: Dispatch
+  openInMyData: ((note: string) => void) | undefined
 }): JSX.Element => {
   const { screen, ideas } = state
   switch (screen.kind) {
@@ -480,7 +535,13 @@ const Screen = ({
       return idea === null ? (
         <Unread read={{ kind: "reading" }} dispatch={dispatch} />
       ) : (
-        <OneIdea idea={idea} state={state} takes={takes} dispatch={dispatch} />
+        <OneIdea
+          idea={idea}
+          state={state}
+          takes={takes}
+          dispatch={dispatch}
+          openInMyData={openInMyData}
+        />
       )
     }
     case "list": {
@@ -515,6 +576,7 @@ export const IdeasOnHome = ({
   home,
   takes,
   initialLists = false,
+  openInMyData,
 }: IdeasOnHomeProps): JSX.Element => {
   /* eslint-disable owner-guard/no-mount-snapshot -- the runtime, and what it runs on, are taken once per mount, as the idea screens' are */
   const [runtime] = useState(() =>
@@ -540,7 +602,12 @@ export const IdeasOnHome = ({
           {state.screen.kind === "lists" ? LISTS.done : WORDS.back}
         </Button>
       )}
-      <Screen state={state} takes={takes} dispatch={dispatch} />
+      <Screen
+        state={state}
+        takes={takes}
+        dispatch={dispatch}
+        openInMyData={openInMyData}
+      />
       <Notice text={state.notice === null ? "" : WORDS.notice[state.notice]} />
       <ConfirmSheet
         request={

@@ -7,10 +7,9 @@
  *
  * - **Only from My data, only what home marks deletable.** A recording is
  *   offered for deleting only when home's list marks it `deletable` (its
- *   kind switched on, and not the work) and this phone knows how to let go
- *   of its own copy of that kind (`PHONE_LETS_GO`: Studio takes, once
- *   Studio's store is handed in). Every kind is switched off on home today,
- *   so nothing is offered.
+ *   kind switched on: Studio takes and idea answers) and this phone knows
+ *   how to let go of its own copy of that kind (`PHONE_LETS_GO`: Studio's
+ *   recordings, once Studio's store is handed in).
  * - **It asks once,** "Keep it" first: `asked` opens the sheet, `confirmed`
  *   deletes. While it deletes, the sheet can't be closed or asked again.
  * - **Home's answer is final but for silence.** A receipt (`200`) is gone

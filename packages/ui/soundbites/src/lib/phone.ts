@@ -18,6 +18,16 @@ import type { IdeaPorts } from "./idea/runtime"
 import type { ShelfPorts } from "./idea/shelf-runtime"
 import { keptIdeaStore } from "./idea/store"
 import { SOUNDBITE_BITS_PER_SECOND } from "./policy"
+import type { StudioNote } from "./project/home"
+import {
+  letGoDeletedTakes,
+  letGoHeldTakes,
+  letGoOnDrive,
+  notesForHome,
+  waitingIds,
+} from "./project/home"
+import type { LetGoChoice } from "./project/let-go"
+import type { Project, Sitting } from "./project/model"
 import type { ProjectStore } from "./project/store"
 import { indexedDbProjectStore } from "./project/store"
 import type { SoundbitesPorts } from "./runtime"
@@ -25,6 +35,8 @@ import type { SoundbiteStore } from "./store"
 import { indexedDbSoundbiteStore } from "./store"
 import { keptLetGo } from "./studio/let-go-store"
 import type { StudioPorts } from "./studio/runtime"
+import { sittingKey } from "./studio/time-log"
+import type { TimeEvent } from "./studio/time-log"
 import { keptTimeLog } from "./studio/time-store"
 
 /** One store per page load, so the database opens once. */
@@ -100,5 +112,64 @@ export function phoneShelfPorts(): ShelfPorts {
     projects: phoneProjectStore(),
     now: () => Date.now(),
     readText: (file) => file.text(),
+  }
+}
+
+/** What the home link's lanes need of Studio, handed in by a Studio screen. */
+export type StudioKeeping = {
+  /** What the lanes read of Studio's projects. */
+  readonly store: Pick<
+    ProjectStore,
+    "list" | "audio" | "friction" | "subscribe"
+  >
+  /** The time log as kept on the phone. */
+  readonly timeLog: () => ReadonlyArray<TimeEvent>
+  readonly notesForHome: (
+    projects: ReadonlyArray<Project>
+  ) => ReadonlyArray<StudioNote>
+  /**
+   * Marks each take home holds (`held`) as kept there, and lets the audio of
+   * each the owner's choice allows leave the phone (HF11, LG1).
+   */
+  readonly letGoHeldTakes: (held: ReadonlySet<string>) => Promise<number>
+  /**
+   * Lets the audio of each take home deleted for good leave the phone, on
+   * home's receipt alone (MY-DATA MD3).
+   */
+  readonly letGoDeletedTakes: (deleted: ReadonlySet<string>) => Promise<number>
+  /** The owner's choice of when a take home holds leaves the phone, as kept. */
+  readonly letGo: () => LetGoChoice
+  /** The ids of the takes home holds that are still on the phone. */
+  readonly waitingIds: (
+    projects: ReadonlyArray<Project>
+  ) => ReadonlyArray<string>
+  /**
+   * Lets go each take home holds and says Drive has too (`onDrive`), as the
+   * owner's choice allows (HF11, LG1).
+   */
+  readonly letGoOnDrive: (onDrive: ReadonlySet<string>) => Promise<number>
+  readonly sittingKey: (sitting: Sitting) => string
+}
+
+/**
+ * Studio's pieces as the phone keeps them, for a Studio screen to hand to
+ * the home link: Studio itself, and Ideas on home, whose Delete… needs
+ * Studio's store handed in for My data to let the phone's copy go.
+ */
+export function phoneStudioKeeping(): StudioKeeping {
+  const store = phoneProjectStore()
+  return {
+    store,
+    timeLog: () => keptTimeLog().read(),
+    notesForHome,
+    // As the owner chose, read at each let-go (HF11, LG1): none before.
+    letGoHeldTakes: (held) => letGoHeldTakes(store, held, keptLetGo().read()),
+    // Home's receipt for a take My data deleted (MD3): whatever the choice.
+    letGoDeletedTakes: (deleted) => letGoDeletedTakes(store, deleted),
+    letGo: () => keptLetGo().read(),
+    waitingIds,
+    // Home's word that Drive has a take too (HF11), as the owner chose.
+    letGoOnDrive: (onDrive) => letGoOnDrive(store, onDrive, keptLetGo().read()),
+    sittingKey,
   }
 }

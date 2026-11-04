@@ -11,8 +11,11 @@ import type { MyDataEvent, MyDataState } from "./state"
 import { INITIAL_MY_DATA, stepMyData } from "./state"
 
 export type MyDataPorts = {
-  /** What home keeps, with `of`'s newest when asked; never rejects. */
-  readonly askHome: (of: Of | null) => Promise<HomeReading>
+  /**
+   * What home keeps, with `of`'s newest when asked, and the recording
+   * `note` names among them; never rejects.
+   */
+  readonly askHome: (of: Of | null, note: string | null) => Promise<HomeReading>
   /** This phone's recordings; never rejects (one it can't read is left out). */
   readonly readPhone: () => Promise<PhoneRead>
   /** Recording `id`'s audio on this phone, or null. */
@@ -23,8 +26,11 @@ export type MyDataPorts = {
 export type MyData = {
   readonly subscribe: (listener: () => void) => () => void
   readonly getSnapshot: () => MyDataState
-  /** Reads what the page at `of` (null: the overview) shows. */
-  readonly open: (of: Of | null) => void
+  /**
+   * Reads what the page at `of` (null: the overview) shows, with the
+   * recording `note` names listed when another screen opened it on one.
+   */
+  readonly open: (of: Of | null, note?: string | null) => void
   /**
    * Reads the shown page again, for a pull: resolves once both answered,
    * rejects when home was asked and didn't answer.
@@ -47,6 +53,8 @@ export function createMyData(ports: MyDataPorts): MyData {
   let playback: { readonly id: string; readonly stop: () => void } | null = null
   /** The latest ask to play: an earlier one whose audio lands late plays nothing. */
   let asked: object | null = null
+  /** The recording the shown page was opened on, asked for on each read. */
+  let named: string | null = null
 
   const dispatch = (event: MyDataEvent): void => {
     const next = stepMyData(state, event)
@@ -59,7 +67,7 @@ export function createMyData(ports: MyDataPorts): MyData {
     dispatch({ type: "asked", of })
     const { seq } = state
     const [home, phone] = await Promise.all([
-      ports.askHome(of),
+      ports.askHome(of, named),
       ports.readPhone(),
     ])
     dispatch({ type: "phoneRead", seq, phone })
@@ -104,7 +112,8 @@ export function createMyData(ports: MyDataPorts): MyData {
       }
     },
     getSnapshot: () => state,
-    open(of): void {
+    open(of, note = null): void {
+      named = of === null ? null : note
       void read(of)
     },
     async checkAgain(): Promise<void> {

@@ -47,7 +47,12 @@ export { keptLetGo } from "./lib/studio/let-go-store"
 export { Soundbites } from "./components/soundbites"
 export type { SoundbitesProps } from "./components/soundbites"
 export type { SoundbiteSituation } from "./lib/machine"
-export { phoneProjectStore, phoneSoundbiteStore } from "./lib/phone"
+export {
+  phoneProjectStore,
+  phoneSoundbiteStore,
+  phoneStudioKeeping,
+} from "./lib/phone"
+export type { StudioKeeping } from "./lib/phone"
 export { projectFile, readProjectFile } from "./lib/project/file"
 export type {
   Project,

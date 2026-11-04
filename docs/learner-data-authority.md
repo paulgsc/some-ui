@@ -411,7 +411,8 @@ declared (checked by reading every call site and by the tests named).
   that take, nor for any for 5 minutes on that pairing; the owner's
   direction on #2428, 2026-11-01, and IH1), and My data asking home what it
   keeps (`lib/my-data`, through `lib/home-link/kept-read`'s `keep`: one
-  `GET /voice-notes/kept`, with `?of=` on a kind's page, and on the
+  `GET /voice-notes/kept`, with `?of=` on a kind's page (and `&note=` for
+  the recording another screen's "Delete…" opened it on), and on the
   overview one `GET /subjects/me/kept` of how much home keeps for good of the
   record in the same run (#2519, MD2b), each time a My
   data page opens or is dragged down, once after a delete home answered
@@ -538,7 +539,7 @@ declared (checked by reading every call site and by the tests named).
   but on the screen opening or Try again, or write but on a tap (setting an
   idea aside only after its confirm), or `lib/idea-home` ask again but while
   the link is busy, more than ten times in all; one that has
-  `kept-read.ts` send anything but one `GET` of `keptPath(of)` per ask and,
+  `kept-read.ts` send anything but one `GET` of `keptPath(of, note)` per ask and,
   when `of` is null, one `GET /subjects/me/kept`, lets
   anything but `lib/my-data` read it, or has `lib/my-data` ask it but when a
   My data page opens or is dragged down or Studio's records open

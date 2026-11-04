@@ -244,7 +244,7 @@ export function homeLine(home: HomeReading["kind"]): string | null {
 export const DELETABLE_NAMES: Readonly<
   Record<DeletableKind, { readonly one: string; readonly many: string }>
 > = {
-  studio: { one: "Studio take", many: "Studio takes" },
+  studio: { one: "Studio recording", many: "Studio recordings" },
 }
 
 /** What went or stayed with a deleted recording, as home's receipt names it. */
@@ -254,6 +254,7 @@ const RECEIPT_PARTS: Readonly<Record<string, string>> = {
   "set-aside mark": "its Let go mark",
   "mailbox copy": "a copy of its words in the Jobs mailbox",
   "drive copy": "its copy in Drive",
+  idea: "the idea it answered",
 }
 
 /** A receipt's list of what went or stayed, as a sentence: `the recording and home's words for it`. */
@@ -298,13 +299,13 @@ export const DELETING = {
   stays: (n: number): ReadonlyArray<string> =>
     n === 1
       ? [
-          "Its place in its shot, in Studio",
+          "Its place in Studio: the shot it was taken for, or the idea it answered, which says it was deleted",
           "Any copy of its words already in the Jobs mailbox",
           "Its copy in your Drive, if it has one. This app can't reach Drive: delete it there if you want it gone.",
           "A receipt: what kind it was, when it was recorded, how big it was, and when it was deleted. Never what you said.",
         ]
       : [
-          "Each one's place in its shot, in Studio",
+          "Each one's place in Studio: the shot it was taken for, or the idea it answered, which says it was deleted",
           "Any copy of their words already in the Jobs mailbox",
           "Their copies in your Drive, if they have any. This app can't reach Drive: delete them there if you want them gone.",
           "A receipt for each: what kind it was, when it was recorded, how big it was, and when it was deleted. Never what you said.",

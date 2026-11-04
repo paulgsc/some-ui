@@ -179,7 +179,7 @@ const AUDIO_SENDS = [['"GET"', "audioPath(id)"]]
 /** LA8, MD2: the read of what home keeps, and the one request it may send. */
 const KEPT_READ = "lib/home-link/kept-read.ts"
 const KEPT_SENDS = [
-  ['"GET"', "keptPath(of)"],
+  ['"GET"', "keptPath(of, note)"],
   ['"GET"', '"/subjects/me/kept"'],
 ]
 

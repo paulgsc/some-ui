@@ -43,6 +43,7 @@ const IdeaSchema: z.ZodType<HomeIdea> = z.object({
         .object({ text: z.string(), heardAt: z.string().min(1) })
         .nullable(),
       setAside: z.boolean(),
+      deletedAt: z.string().min(1).nullish(),
     })
   ),
   furnishing: z.boolean(),

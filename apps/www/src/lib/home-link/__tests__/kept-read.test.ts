@@ -54,6 +54,9 @@ describe("the read of what home keeps (MD2)", () => {
   it("asks for the overview, or a kind's newest", () => {
     expect(keptPath(null)).toBe("/voice-notes/kept")
     expect(keptPath("rust-round")).toBe("/voice-notes/kept?of=rust-round")
+    expect(keptPath("studio", "a b")).toBe(
+      "/voice-notes/kept?of=studio&note=a%20b"
+    )
   })
 
   it("hands back home's answer to one GET on a kind's page", async () => {

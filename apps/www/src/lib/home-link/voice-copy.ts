@@ -962,16 +962,17 @@ export function voiceKept(id: string): TakeKept {
 /**
  * Lets go of this phone's own copies of the notes home deleted for good
  * from My data (MY-DATA MD3, #2477), each named by home's receipt, and of
- * nothing else. Studio takes are the one kind My data can delete: a take's
- * audio leaves the phone whatever the owner's let-go choice, its record
- * staying in its shot
- * (`@some-ui/soundbites`' `letGoDeletedTakes`). A receipt is home's word
+ * nothing else. Studio's recordings are the one kind My data can delete: a
+ * take's audio leaves the phone whatever the owner's let-go choice, its
+ * record staying in its shot (`@some-ui/soundbites`' `letGoDeletedTakes`),
+ * and an idea answer's leaves its desks, the take staying listed
+ * (`letGoDeleted` on `lib/idea-takes`' two desks, #2579). A receipt is home's word
  * that it held the note, so a copy still waiting for an answer this phone
  * never heard goes as a held one does; and any set-aside mark still owed
  * for one is dropped, since home holds no note to mark now. Resolves
- * false when Studio's store isn't handed in or the write failed (said to
- * the native log); never rejects. The one caller is `lib/my-data`'s delete,
- * on home's receipt.
+ * false when Studio's store isn't handed in, a desk couldn't store its
+ * mark, or the write failed (that said to the native log); never rejects.
+ * The one caller is `lib/my-data`'s delete, on home's receipt.
  */
 export async function letGoDeleted(
   ids: ReadonlyArray<string>
@@ -980,10 +981,14 @@ export async function letGoDeleted(
   for (const id of ids) home.keeping.answered({ kind: "held", id })
   home.drop(ids)
   const studio = studioKeeping()
-  if (studio === null) return false
+  const deleted = new Set(ids)
   try {
-    await studio.letGoDeletedTakes(new Set(ids))
-    return true
+    const [, kit, bundle] = await Promise.all([
+      studio?.letGoDeletedTakes(deleted),
+      ideaTakesDesk.letGoDeleted(deleted),
+      ideaBundleDesk.letGoDeleted(deleted),
+    ])
+    return studio !== null && kit && bundle
   } catch (error) {
     reportFailure({
       port: "my data: this phone's copy of what home deleted",

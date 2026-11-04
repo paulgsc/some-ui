@@ -664,15 +664,20 @@
           "id": "VH3",
           "kind": "RE9",
           "property": "work",
-          "claim": "Voice notes on home grow by a stated model, and their audio is kept for good.",
-          "requirement": "Home keeps each voice note's audio and transcript for good (owner, 2026-10-25); its growth per note and per day is stated from measurement, and the phone keeps its copy only until home holds it.",
+          "claim": "Voice notes on home grow by a stated model, and their audio is kept for good unless the owner deletes a Studio recording from My data.",
+          "requirement": "Home keeps each voice note's audio and transcript for good (owner, 2026-10-25), except a Studio take or an idea's spoken answer the owner deletes from My data, which leaves a receipt kept for good (owner, 2026-11-04); its growth per note and per day is stated from measurement, and the phone keeps its copy only until home holds it.",
           "verdict": "unproven",
-          "conclusion": "Each note's audio is kept on home for good and the phone lets its copy go once home holds it; how fast the audio grows, and when it should move off the box (about 20 GB was the plan), is not measured yet.",
+          "conclusion": "Each note's audio is kept on home for good, but for a Studio recording the owner deletes from My data, and the phone lets its copy go once home holds it; how fast the audio grows, and when it should move off the box (about 20 GB was the plan), is not measured yet.",
           "evidence": [
             {
               "class": "structural",
-              "says": "voice_note_audio is deleted only by its account's deletion trigger, and a trigger refuses UPDATE: audio is kept for good.",
+              "says": "voice_note_audio is never updated (a trigger refuses UPDATE) and is deleted by its account's deletion trigger, or by My data's delete below.",
               "ref": "server:migrations/20261025000100_create_voice_note.up.sql"
+            },
+            {
+              "class": "structural",
+              "says": "My data's delete is the one other way audio leaves home: only a kind the owner switched on (Studio takes and idea answers), each delete writing an append-only receipt.",
+              "ref": "server:crates/db/voice/src/delete.rs"
             },
             {
               "class": "structural",
@@ -690,7 +695,14 @@
             "by": "dashboard",
             "ref": "server:infra/grafana/dashboards/storage.jsonnet"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-11-04",
+              "change": "Audio is kept for good except a Studio take or an idea's spoken answer the owner deletes from My data, each delete leaving a receipt kept for good.",
+              "why": "The owner switched on deleting Studio's recordings, the first kind (#2473; MD3's machinery shipped off), and ruled an idea's spoken answer deletable too (#2579); every other kind is still kept for good.",
+              "decision": "https://github.com/paulgsc/some-ui/issues/2473#issuecomment-6640040017"
+            }
+          ]
         }
       ]
     },
@@ -2530,7 +2542,7 @@
     {
       "store": "server:voice_note_deletion",
       "class": "record",
-      "growth": "Per voice note the owner deletes for good from My data (MD3, #2477; paulgsc/server invariant 23): one small receipt row (the note's id and kind, three times, its size, what went and what stayed in fixed words), append-only and never deleted but with the account, at most one per voice note. No kind is switched on yet, so it holds nothing.",
+      "growth": "Per voice note the owner deletes for good from My data (MD3, #2477; paulgsc/server invariant 23): one small receipt row (the note's id and kind, three times, its size, what went and what stayed in fixed words), append-only and never deleted but with the account, at most one per voice note. Only Studio's recordings (takes and idea answers) are switched on (owner, 2026-11-04), so it grows with what the owner deletes of them.",
       "family": "voice-heard"
     },
     {

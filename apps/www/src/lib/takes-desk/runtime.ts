@@ -92,10 +92,12 @@ export type Take = {
    */
   waits?: true
   /**
-   * On a desk whose audio leaves once home holds it (`audioLeaves`, Rust
-   * Rounds, RR6): true once it has, so the take is heard from home and no
-   * sweep reads it as lost. Written before the audio goes and never after;
-   * absent on every other desk's take.
+   * True once the take's audio may leave this phone, so no sweep reads it as
+   * lost: on a desk whose audio leaves once home holds it (`audioLeaves`,
+   * Rust Rounds, RR6), once home holds it, the take then heard from home;
+   * on any desk, once home deleted it for good from My data (`letGoDeleted`,
+   * #2579), the take then heard from nowhere. Written before the audio goes
+   * and never after; absent otherwise.
    */
   onHome?: true
 }

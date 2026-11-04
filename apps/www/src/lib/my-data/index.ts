@@ -46,8 +46,11 @@ export type { Receipts, ReceiptsState } from "./receipts"
 export type { MyData } from "./runtime"
 export type { MyDataState } from "./state"
 
-async function askHome(of: Of | null): Promise<HomeReading> {
-  const asked = await askWhileBusy(() => askKept(of))
+async function askHome(
+  of: Of | null,
+  note: string | null = null
+): Promise<HomeReading> {
+  const asked = await askWhileBusy(() => askKept(of, note))
   return asked.kind === "answered"
     ? readKept(asked.answer, asked.record)
     : asked

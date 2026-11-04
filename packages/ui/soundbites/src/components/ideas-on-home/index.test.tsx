@@ -92,6 +92,60 @@ describe("Ideas on home (ST26 c)", () => {
     expect(screen.getByText(W.notice.furnishing)).toBeTruthy()
   })
 
+  it("offers Delete… on a said answer, which opens My data on its recording, and says when one was deleted (#2579)", async () => {
+    const openInMyData = vi.fn()
+    const deleted: HomeIdea = {
+      ...IDEA,
+      id: "i2",
+      title: "A deleted answer",
+      answers: [
+        { ...IDEA.answers[0]!, deletedAt: "2026-11-04T10:00:00.000Z" },
+        IDEA.answers[1]!,
+      ],
+    }
+    const aside: HomeIdea = {
+      ...IDEA,
+      id: "i3",
+      title: "A set-aside answer",
+      answers: [
+        { ...IDEA.answers[0]!, note: "t3", heard: null, setAside: true },
+      ],
+    }
+    const ideas: IdeasHome["ideas"] = () =>
+      Promise.resolve({
+        kind: "read",
+        value: { ideas: [IDEA, deleted, aside], more: false },
+      })
+    render(<IdeasOnHome home={home({ ideas })} openInMyData={openInMyData} />)
+    await settle()
+    fireEvent.click(screen.getByRole("button", { name: /Why the mic clips/ }))
+    const remove = screen.getAllByRole("button", {
+      name: /^Delete the recording of your answer/,
+    })
+    expect(remove).toHaveLength(1)
+    fireEvent.click(remove[0]!)
+    expect(openInMyData).toHaveBeenCalledWith("t1")
+
+    fireEvent.click(screen.getByRole("button", { name: W.back }))
+    await settle()
+    fireEvent.click(screen.getByRole("button", { name: /A deleted answer/ }))
+    expect(
+      screen.getByText(/You deleted this recording for good on/)
+    ).toBeTruthy()
+    expect(screen.queryByText("The mic clips when I shout")).toBeNull()
+    expect(
+      screen.queryByRole("button", { name: /^Delete the recording/ })
+    ).toBeNull()
+
+    fireEvent.click(screen.getByRole("button", { name: W.back }))
+    await settle()
+    fireEvent.click(screen.getByRole("button", { name: /A set-aside answer/ }))
+    fireEvent.click(
+      screen.getByRole("button", { name: /^Delete the recording/ })
+    )
+    expect(openInMyData).toHaveBeenLastCalledWith("t3")
+  })
+
   it("stops what it played once the idea is left", async () => {
     const { pattern } = simulatedPattern()
     const stopPlaying = vi.spyOn(pattern, "stopPlaying")
