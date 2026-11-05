@@ -3,8 +3,9 @@
  * defines it, made from the project alone: the revision queued as its shape,
  * the takes the queued mark names (`Queued`), and, for an episode, its pins
  * and each scene's point and facts from the primer in force. Pure, and the
- * same bytes for the same mark every time, since nothing it reads is ever
- * rewritten (`./model`'s `isAppendOnly`). Only an episode has a template yet;
+ * same bytes for the same mark every time: what it reads at a queued
+ * revision is never rewritten (`./model`'s `isAppendOnly`), and the notes,
+ * which can change, are left out. Only an episode has a template yet;
  * a video of your own waits on ST29's.
  */
 import { canonicalJson } from "@some-ui/core-utils"
@@ -24,8 +25,12 @@ export function dnaOf(project: Project, queued: Queued): Parsed<VideoDna> {
   const { episode } = project
   if (episode === undefined)
     return { ok: false, problems: ["a video of your own has no template yet"] }
-  const shape = cutListAt(project, queued.rev)
-  if (shape === null) return { ok: false, problems: [`no rev ${queued.rev}`] }
+  const cutList = cutListAt(project, queued.rev)
+  if (cutList === null) return { ok: false, problems: [`no rev ${queued.rev}`] }
+  // Notes are remarks about a version, not the video, and one can be added
+  // or settled after it is queued: the DNA leaves them out, so it stays the
+  // same bytes.
+  const shape = { ...cutList, notes: [] }
   const cuts = primerAt(project, queued.rev)?.cuts ?? []
   const scenes = shape.shots.flatMap((shot) => {
     const cut = cuts.find((each) => each.id === (shot.cut ?? shot.id))

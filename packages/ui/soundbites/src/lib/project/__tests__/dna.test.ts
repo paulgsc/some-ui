@@ -130,14 +130,26 @@ describe("dnaOf (ST33)", () => {
     expect(parseVideoDna(JSON.parse(dnaBody(dna.value)))).toEqual(dna)
   })
 
-  it("is the same bytes each time, whatever is chosen after the mark", () => {
+  it("is the same bytes each time, whatever is chosen or noted after the mark", () => {
     const state = queued()
     const first = dnaOf(state.project, markOf(state))
     const later = run(
       state,
       { type: "takeStarted", shot: "open" },
-      take("t-open-2", "open")
+      take("t-open-2", "open"),
+      {
+        type: "noted",
+        note: {
+          id: "n-after",
+          rev: markOf(state).rev,
+          shot: "open",
+          offsetMs: 0,
+          author: "owner",
+          text: "Say it slower.",
+        },
+      }
     )
+    expect(later.project.notes.map(({ id }) => id)).toContain("n-after")
     const again = dnaOf(later.project, markOf(later))
     if (!first.ok || !again.ok) throw new Error("no DNA")
     expect(dnaBody(again.value)).toBe(dnaBody(first.value))
