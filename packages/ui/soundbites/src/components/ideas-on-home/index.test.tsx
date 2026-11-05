@@ -120,7 +120,7 @@ describe("Ideas on home (ST26 c)", () => {
     await settle()
     fireEvent.click(screen.getByRole("button", { name: /Why the mic clips/ }))
     const remove = screen.getAllByRole("button", {
-      name: /^Delete the recording of your answer/,
+      name: /^Delete your take for/,
     })
     expect(remove).toHaveLength(1)
     fireEvent.click(remove[0]!)
@@ -129,19 +129,17 @@ describe("Ideas on home (ST26 c)", () => {
     fireEvent.click(screen.getByRole("button", { name: W.back }))
     await settle()
     fireEvent.click(screen.getByRole("button", { name: /A deleted answer/ }))
-    expect(
-      screen.getByText(/You deleted this recording for good on/)
-    ).toBeTruthy()
+    expect(screen.getByText(/You deleted this take for good on/)).toBeTruthy()
     expect(screen.queryByText("The mic clips when I shout")).toBeNull()
     expect(
-      screen.queryByRole("button", { name: /^Delete the recording/ })
+      screen.queryByRole("button", { name: /^Delete your take for/ })
     ).toBeNull()
 
     fireEvent.click(screen.getByRole("button", { name: W.back }))
     await settle()
     fireEvent.click(screen.getByRole("button", { name: /A set-aside answer/ }))
     fireEvent.click(
-      screen.getByRole("button", { name: /^Delete the recording/ })
+      screen.getByRole("button", { name: /^Delete your take for/ })
     )
     expect(openInMyData).toHaveBeenLastCalledWith("t3")
   })

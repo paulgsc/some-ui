@@ -6,6 +6,7 @@
  * The swipe is driven with synthetic touches through the shared pager, which
  * prove what it moves, not a phone's touch (CK7, #2386).
  */
+import type { ReactNode } from "react"
 import { inMemoryStorage } from "@some-ui/core-utils"
 import { ONE_TAKE, TAKE_WORDS } from "@some-ui/voice-capture"
 import { simulatedPattern, SPEAKING } from "@some-ui/voice-capture/testing"
@@ -35,7 +36,8 @@ const pass = (ms = 0): Promise<void> =>
   })
 
 function mount(
-  reach: HomeReach = "unpaired"
+  reach: HomeReach = "unpaired",
+  pair?: ReactNode
 ): ReturnType<typeof simulatedPattern> {
   const storage = inMemoryStorage()
   const simulated = simulatedPattern({
@@ -50,6 +52,7 @@ function mount(
         newId: () => "idea-1",
         home: { reach: () => reach, subscribe: () => (): void => undefined },
       }}
+      pair={pair}
     />
   )
   return simulated
@@ -218,6 +221,29 @@ describe("New idea, one bundle (ST26)", () => {
     ).toBeInTheDocument()
   })
 
+  it("keeps a take with no voice heard in it, says so, and offers typing beside it, marked (ST34)", async () => {
+    const { mic } = mount()
+    await pass()
+    toQuestions()
+    mic.script({ ...SPEAKING, level: 0 })
+    await say()
+    expect(card()).toHaveTextContent(TAKE_WORDS.ended.unheard)
+    fireEvent.click(button(new RegExp(WORDS.unheard.type)))
+    expect(card().querySelector("[data-typing='fallback']")).toHaveTextContent(
+      WORDS.typing.mark
+    )
+    fireEvent.change(screen.getByLabelText(WORDS.typing.hint), {
+      target: { value: "Two hearings disagreed" },
+    })
+    fireEvent.click(button(WORDS.typing.keep))
+    expect(card().querySelector("[data-typing='kept']")).toHaveTextContent(
+      WORDS.typed.mark
+    )
+    expect(
+      screen.getByRole("button", { name: WORDS.dot.typed(1) })
+    ).toBeInTheDocument()
+  })
+
   it("says a full phone is a full phone, not voice failing, and offers typing and later, not again", async () => {
     const { keeping } = mount()
     await pass()
@@ -265,7 +291,9 @@ describe("New idea, one bundle (ST26)", () => {
     toQuestions()
     await say()
     fireEvent.click(button(WORDS.toReview))
-    expect(screen.queryByText(WORDS.review.away)).not.toBeInTheDocument()
+    expect(
+      screen.queryByText(WORDS.review.notNear.away)
+    ).not.toBeInTheDocument()
     fireEvent.click(button(WORDS.review.send(1)))
     expect(
       screen.getByRole("heading", { name: WORDS.sent.title })
@@ -274,20 +302,55 @@ describe("New idea, one bundle (ST26)", () => {
     expect(screen.getByText("Two hearings, one word")).toBeInTheDocument()
   })
 
-  it("away from home, or unpaired, keeps the idea and says it goes home when back in reach", async () => {
-    mount("unpaired")
+  it("away from home, keeps the idea and says it goes home when back in reach, with no way to pairing", async () => {
+    mount("away")
     await pass()
     toQuestions()
     await say()
     fireEvent.click(button(WORDS.toReview))
-    expect(screen.getByText(WORDS.review.away)).toBeInTheDocument()
+    expect(screen.getByText(WORDS.review.notNear.away)).toBeInTheDocument()
     expect(
       screen.queryByRole("button", { name: WORDS.review.send(1) })
     ).not.toBeInTheDocument()
     fireEvent.click(button(WORDS.review.keep(1)))
     expect(
-      screen.getByRole("heading", { name: WORDS.sent.kept })
+      screen.getByRole("heading", { name: WORDS.sent.notNear.away.title })
     ).toBeInTheDocument()
-    expect(screen.getByText(WORDS.sent.away)).toBeInTheDocument()
+    expect(screen.getByText(WORDS.sent.notNear.away.line)).toBeInTheDocument()
+    expect(screen.queryByText(STUDIO_WORDS.pair.where)).not.toBeInTheDocument()
+  })
+
+  it("on a phone never paired, says so rather than out of reach, and offers the app's way to pairing (ST34)", async () => {
+    mount("unpaired", <a href="#pair">{STUDIO_WORDS.pair.pair}</a>)
+    await pass()
+    toQuestions()
+    await say()
+    fireEvent.click(button(WORDS.toReview))
+    expect(screen.getByText(WORDS.review.notNear.unpaired)).toBeInTheDocument()
+    expect(
+      screen.queryByText(WORDS.review.notNear.away)
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole("link", { name: STUDIO_WORDS.pair.pair })
+    ).toBeInTheDocument()
+    fireEvent.click(button(WORDS.review.keep(1)))
+    expect(
+      screen.getByRole("heading", { name: WORDS.sent.notNear.unpaired.title })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(WORDS.sent.notNear.unpaired.line)
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole("link", { name: STUDIO_WORDS.pair.pair })
+    ).toBeInTheDocument()
+  })
+
+  it("on a phone never paired, with no way handed in, says where pairing is (ST34)", async () => {
+    mount("unpaired")
+    await pass()
+    toQuestions()
+    await say()
+    fireEvent.click(button(WORDS.toReview))
+    expect(screen.getByText(STUDIO_WORDS.pair.where)).toBeInTheDocument()
   })
 })

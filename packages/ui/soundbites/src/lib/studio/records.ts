@@ -18,6 +18,8 @@ import type {
   TakeRowView,
 } from "@some-ui/voice-capture"
 import { deletesInMyData } from "@some-ui/voice-capture"
+import type { IdeaHome } from "@soundbites/lib/idea/bundle-runtime"
+import { NO_HOME } from "@soundbites/lib/idea/bundle-runtime"
 import type { Project, ProjectTake } from "@soundbites/lib/project/model"
 import { latest } from "@soundbites/lib/project/model"
 import type { ProjectStore } from "@soundbites/lib/project/store"
@@ -43,14 +45,17 @@ type RecordsState = {
   readonly deletable: ReadonlySet<string>
   /** The take being read or playing, if one is. */
   readonly playing: string | null
+  /** Whether this phone is paired with home, as the home port last said (ST34). */
+  readonly paired: boolean
 }
 
 function patternTake(
   take: ProjectTake,
-  deletable: ReadonlySet<string>
+  deletable: ReadonlySet<string>,
+  paired: boolean
 ): PatternTake {
   return {
-    ...patternTakeOf(take),
+    ...patternTakeOf(take, paired),
     ...(deletable.has(take.id) ? { deletable: true } : {}),
   }
 }
@@ -59,14 +64,15 @@ function patternTake(
 export function recordsView(
   projects: ReadonlyArray<Project>,
   deletable: ReadonlySet<string>,
-  playing: string | null
+  playing: string | null,
+  paired: boolean
 ): ReadonlyArray<ProjectRecords> {
   return projects.flatMap((project) => {
     if (project.takes.length === 0) return []
     const rows = [...project.takes]
       .sort((a, b) => b.recordedAt.localeCompare(a.recordedAt))
       .map((take): TakeRowView => {
-        const row = patternTake(take, deletable)
+        const row = patternTake(take, deletable, paired)
         return {
           take: row,
           playing: playing === take.id,
@@ -86,6 +92,8 @@ export type RecordsPorts = {
   /** The takes home marks deletable; never rejects (none, when it can't say). */
   readonly deletable: () => Promise<ReadonlySet<string>>
   readonly player: Player
+  /** Home, for whether this phone is paired (ST34); never paired without one. */
+  readonly home?: IdeaHome
 }
 
 export type StudioRecords = {
@@ -101,6 +109,7 @@ const INITIAL: RecordsState = {
   projects: null,
   deletable: new Set(),
   playing: null,
+  paired: false,
 }
 
 export function createStudioRecords(ports: RecordsPorts): StudioRecords {
@@ -198,8 +207,16 @@ export function createStudioRecords(ports: RecordsPorts): StudioRecords {
     attach(): () => void {
       read()
       const unsubscribe = ports.store.subscribe(read)
+      const home = ports.home ?? NO_HOME
+      const tellPaired = (): void => {
+        const paired = home.reach() !== "unpaired"
+        if (paired !== state.paired) set({ ...state, paired })
+      }
+      const unwatchHome = home.subscribe(tellPaired)
+      tellPaired()
       return (): void => {
         unsubscribe()
+        unwatchHome()
         stop()
         reads += 1
         attachments += 1

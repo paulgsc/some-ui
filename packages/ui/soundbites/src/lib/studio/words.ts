@@ -17,6 +17,7 @@ import {
   TAKE_ENDING_WORDS,
   TAKE_WORDS,
 } from "@some-ui/voice-capture"
+import type { HomeReach } from "@soundbites/lib/idea/bundle"
 import type {
   IdeaFormat,
   IdeaStage,
@@ -206,8 +207,31 @@ function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`
 }
 
+/**
+ * Pairing with home, as every Studio screen that needs home says it (ST34):
+ * the way there, which the app draws as a link to Settings' Home page, and
+ * where that is, said where a screen has no link to draw.
+ */
+export const PAIR_WORDS = {
+  pair: "Pair this phone with home",
+  where: "Pair it in Settings, under Home.",
+} as const
+
+/** Where home is, as far as this phone can tell, short of near (`HomeReach`). */
+type NotNear = Exclude<HomeReach, "near">
+
+/**
+ * What Studio checks and what it doesn't (decision 10, #2248): said where a
+ * person would expect a review of the video, Finish and Shape.
+ */
+const JUDGES =
+  "Studio checks the mechanics: every scene has a take, and an episode's takes keep the facts their scenes must. It doesn't judge whether a scene is good. To change how one comes out, change the video's shape, or the template it's made from."
+
 export const STUDIO_WORDS = {
+  /** The place, in the foyer, the tab bar and the page alike (ST34). */
   heading: "Studio",
+  pair: PAIR_WORDS,
+  judges: JUDGES,
   reading: "Opening your video…",
   unreadable: "Couldn't open the video kept on this phone.",
   readAgain: "Try again",
@@ -223,7 +247,8 @@ export const STUDIO_WORDS = {
    * (SW1, #2325): `__tests__/words.test.ts` refuses those anywhere in it.
    */
   start: {
-    eyebrow: "Your video",
+    /** Over the video open now; the place itself is `heading` (ST34). */
+    eyebrow: "Now making",
     empty: "No video yet",
     emptyLine:
       "A video starts as an idea you say out loud. Here is the way through.",
@@ -322,28 +347,30 @@ export const STUDIO_WORDS = {
     notPlayable: "That take couldn't be played.",
     behind:
       "The phone's videos couldn't be read just now, so this screen may be behind. What you record is still kept.",
+    // The video this phone held before Studio had its name (ST34: one
+    // name for the place, so the old one is never said).
     carryFailed:
-      "Your Journal episode couldn't be moved into Studio yet. It's still on the phone, and moves next time.",
+      "Your earlier video couldn't be moved into Studio yet. It's still on the phone, and moves next time.",
     carried: (title: string, cleared: number, gone: number): string =>
       [
         cleared === 0 && gone === 0
-          ? `Your Journal episode “${title}” is in Studio now, every take with it.`
-          : `Your Journal episode “${title}” is in Studio now.`,
+          ? `Your earlier video “${title}” is in Studio now, every take with it.`
+          : `Your earlier video “${title}” is in Studio now.`,
         cleared === 0
           ? ""
           : `${plural(cleared, "piece", "pieces")} of it Studio couldn't use ${cleared === 1 ? "was" : "were"} let go.`,
         gone === 0
           ? ""
-          : `${plural(gone, "take's recording", "takes' recordings")} had already left the phone before it moved.`,
+          : `${plural(gone, "take", "takes")} had already left the phone before it moved.`,
       ]
         .filter((line) => line !== "")
         .join(" "),
     carryStays: (bytes: number): string =>
-      `Your Journal episode on this phone couldn't be moved into Studio. It stays on the phone as it was${bytes === 0 ? "." : `, and takes ${formatSize(bytes)} of the room for takes.`}`,
+      `Your earlier video on this phone couldn't be moved into Studio. It stays on the phone as it was${bytes === 0 ? "." : `, and takes ${formatSize(bytes)} of the room for takes.`}`,
     carryUnread:
-      "Your Journal episode on this phone couldn't be read, so it was let go.",
+      "Your earlier video on this phone couldn't be read, so it was let go.",
     cleared: (n: number): string =>
-      `${plural(n, "piece", "pieces")} of the old Journal tab that Studio couldn't use ${n === 1 ? "was" : "were"} let go.`,
+      `${plural(n, "piece", "pieces")} of your earlier video that Studio couldn't use ${n === 1 ? "was" : "were"} let go.`,
     arrived: (n: number): string =>
       `${plural(n, "take", "takes")} in Drive too. ${n === 1 ? "It stays" : "They stay"} on the phone until home holds ${n === 1 ? "it" : "them"}, then ${n === 1 ? "leaves" : "leave"} as you choose.`,
   },
@@ -765,9 +792,15 @@ export const STUDIO_WORDS = {
     },
     /** No room for another take until home has the ones on this phone. */
     full: {
-      title:
-        "This phone holds as many recordings as it can until home has them.",
-      line: "Nothing was kept. Type this one, or come back to it once home is in reach.",
+      title: "This phone holds as many takes as it can until home has them.",
+      line: "Nothing was kept. Type this one, or come back to it once home has the takes on this phone.",
+    },
+    /**
+     * A take kept that held no voice (the take kit's `unheard`): the take
+     * stays, and typing is offered beside it, marked as the fallback (ST34).
+     */
+    unheard: {
+      type: "Type it, since I didn't hear you",
     },
     typing: {
       mark: "Typing instead · voice didn't work",
@@ -800,7 +833,12 @@ export const STUDIO_WORDS = {
       delete: "Delete",
       needsTitle: "Give it a title to send it.",
       needsFirst: "Say what the video is to send it.",
-      away: "Home is out of reach. The idea is kept here, whole, and goes home when you're back in reach.",
+      /** Why the idea is kept rather than sent: home away, or never paired (ST34). */
+      notNear: {
+        away: "Home is out of reach. The idea is kept here, whole, and goes home when you're back in reach.",
+        unpaired:
+          "This phone isn't paired with home yet. The idea is kept here, whole, and goes home once it is.",
+      } satisfies Record<NotNear, string>,
       send: (n: number): string =>
         `Send the idea home · ${plural(n, "answer", "answers")}`,
       /** Home is out of reach, or this phone isn't paired with it. */
@@ -829,9 +867,17 @@ export const STUDIO_WORDS = {
     sent: {
       title: "Sent, as one idea",
       near: "Kept on this phone as one idea, dated. It goes home now, whole: what you said, its title and the rest.",
-      /** Home is out of reach, or this phone isn't paired with it. */
-      kept: "Kept, goes home when you're back in reach",
-      away: "Kept on this phone as one idea, dated. It goes home when you're back in reach.",
+      /** Home is out of reach, or this phone isn't paired with it (ST34). */
+      notNear: {
+        away: {
+          title: "Kept, goes home when you're back in reach",
+          line: "Kept on this phone as one idea, dated. It goes home when you're back in reach.",
+        },
+        unpaired: {
+          title: "Kept, goes home once this phone is paired",
+          line: "Kept on this phone as one idea, dated. It goes home once this phone is paired with home.",
+        },
+      } satisfies Record<NotNear, { title: string; line: string }>,
       another: "Another idea",
     },
   },
@@ -952,7 +998,7 @@ export const STUDIO_WORDS = {
     open: "Ideas on home",
     reading: "Asking home…",
     unpaired:
-      "This phone isn't paired with home, so it can't show what home keeps. Pair it in Settings.",
+      "This phone isn't paired with home, so it can't show what home keeps.",
     away: "Home can't be reached right now. Try again once you're back in reach.",
     older:
       "Home doesn't keep ideas yet. Once it runs a newer version, the ideas you send show here.",
@@ -987,13 +1033,12 @@ export const STUDIO_WORDS = {
     hearing: "Home hasn't heard this one yet.",
     silent: "Home heard nothing in this one.",
     answerAside: "Set aside on home: nothing reads it.",
-    onlyOnHome: "Its recording is on home.",
-    /** One said answer's "Delete…", which opens My data on its recording (#2579). */
+    onlyOnHome: "Its take is on home.",
+    /** One said answer's "Delete…", which opens My data on its take (#2579). */
     deleteAnswer: "Delete…",
-    deleteAnswerName: (ask: string): string =>
-      `Delete the recording of your answer to "${ask}"…`,
+    deleteAnswerName: (ask: string): string => `Delete your take for “${ask}”…`,
     answerDeleted: (day: string): string =>
-      `You deleted this recording for good on ${day}. The answer keeps its place.`,
+      `You deleted this take for good on ${day}. The answer keeps its place.`,
     setAside: "Set it aside",
     setAsideLine:
       "Home keeps it, every version, out of this list. Nothing reads it.",

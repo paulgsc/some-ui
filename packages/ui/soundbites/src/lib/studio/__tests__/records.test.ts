@@ -27,7 +27,7 @@ describe("what Studio keeps (MD4)", () => {
     await letGoHeldTakes(memory.store, new Set(["t1", "t2"]), null)
     const [held] = await memory.store.list()
     if (held === undefined) throw new Error("no project")
-    const [project] = recordsView([held], new Set(["t1"]), null)
+    const [project] = recordsView([held], new Set(["t1"]), null, true)
     // Both were recorded at the fixture's one time, so they keep their order.
     expect(project?.rows.map((row) => [row.take.id, row.canDelete])).toEqual([
       ["t1", true],
@@ -39,9 +39,43 @@ describe("what Studio keeps (MD4)", () => {
     await letGoDeletedTakes(memory.store, new Set(["t1"]), deleted)
     const [after] = await memory.store.list()
     if (after === undefined) throw new Error("no project")
-    const row = recordsView([after], new Set(["t1"]), null)[0]?.rows[0]
+    const row = recordsView([after], new Set(["t1"]), null, true)[0]?.rows[0]
     expect(row).toMatchObject({ canDelete: false, canPlay: false })
     expect(row?.take.deleted).toBe(deleted)
+  })
+
+  it("says a take not on home yet is going home only on a phone paired with it (ST34)", () => {
+    const project = twoTakes()
+    const place = (paired: boolean): unknown =>
+      recordsView([project], new Set(), null, paired)[0]?.rows[0]?.take.kept
+    expect(place(true)).toEqual({ place: "going" })
+    expect(place(false)).toEqual({ place: "phone" })
+  })
+
+  it("hears whether this phone is paired from the home port, and again when it changes (ST34)", () => {
+    let reach: "near" | "away" | "unpaired" = "unpaired"
+    const listeners = new Set<() => void>()
+    const records = createStudioRecords({
+      store: memoryProjectStore([twoTakes()]).store,
+      deletable: () => Promise.resolve(new Set()),
+      player: { play: vi.fn() },
+      home: {
+        reach: () => reach,
+        subscribe: (listener) => {
+          listeners.add(listener)
+          return (): void => {
+            listeners.delete(listener)
+          }
+        },
+      },
+    })
+    const detach = records.attach()
+    expect(records.getSnapshot().paired).toBe(false)
+    reach = "away"
+    for (const listener of listeners) listener()
+    expect(records.getSnapshot().paired).toBe(true)
+    detach()
+    expect(listeners.size).toBe(0)
   })
 
   it("asks home what it marks deletable one ask at a time, and once more for the writes meanwhile", async () => {

@@ -11,6 +11,7 @@ import { createFileRoute, Link } from "@tanstack/react-router"
 import { ideaHome } from "@/lib/idea-hearing"
 import { keepIdeas, sendingStore } from "@/lib/idea-keeping"
 import { ideaBundleTakes } from "@/lib/idea-takes"
+import { PairHomeLink } from "@/components/pair-home-link"
 
 const StudioLink: WingLink = ({ className, children }) => (
   <Link to="/journal" className={className}>
@@ -50,6 +51,7 @@ const IdeaRoute = (): JSX.Element | null => {
       takes={takes}
       ports={{ home: phone.home, ideas: phone.ideas }}
       backLink={StudioLink}
+      pair={<PairHomeLink />}
     />
   )
 }

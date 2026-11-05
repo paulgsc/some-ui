@@ -30,8 +30,11 @@
  *   take answers a draft this phone doesn't hold.
  * - **Typing is the fallback, never the default.** A card offers typing only
  *   once voice didn't come through for it (a take the microphone refused,
- *   or that failed) or the phone had no room for one, and a typed answer
- *   offers "Say it instead": a take kept for it takes the typed words' place.
+ *   or that failed, or one kept with no voice heard in it) or the phone had
+ *   no room for one, and a typed answer offers "Say it instead": a take kept
+ *   for it takes the typed words' place. Words typed for a take kept unheard
+ *   stand beside that take (`beside`, ST34): it is never let go for them,
+ *   and both go with the idea, whose words home reads (`./home`).
  * - **Nothing moves while a take is under way**: a swipe, a dot, Look it
  *   over and Back wait until it ends, and leaving the screen, or the page
  *   hiding (the app sent to the background), finishes and keeps it.
@@ -68,8 +71,17 @@ type CardMode =
    * phone holds as many takes as it can until home has them.
    */
   | { readonly kind: "failed"; readonly full: boolean }
-  /** Typing instead, because voice didn't work. */
-  | { readonly kind: "typing"; readonly text: string }
+  /** Its take was kept with no voice heard in it: typing is offered beside it (ST34). */
+  | { readonly kind: "unheard" }
+  /**
+   * Typing instead, because voice didn't work; `beside`, the take kept
+   * unheard that the words will stand beside, if they were begun for one.
+   */
+  | {
+      readonly kind: "typing"
+      readonly text: string
+      readonly beside: string | null
+    }
 
 /** A permanent step, asked first. */
 type BundleConfirm =
@@ -330,13 +342,15 @@ function namedBy(kept: ReadonlyArray<Idea>): ReadonlySet<string> {
  * screen, so this is read from the takes, not their ending.
  */
 function answeredBy(state: Pick<BundleState, "draft" | "takes">): IdeaDraft {
-  return IDEA_QUESTIONS.reduce(
-    (draft, question) =>
-      currentTake(state, question) === null
-        ? draft
-        : withoutTyped(withoutLater(draft, question), question),
-    state.draft
-  )
+  return IDEA_QUESTIONS.reduce((draft, question) => {
+    const current = currentTake(state, question)
+    if (current === null) return draft
+    const later = withoutLater(draft, question)
+    // Words typed beside this very take stay beside it (ST34).
+    return draft.beside?.[question] === current.id
+      ? later
+      : withoutTyped(later, question)
+  }, state.draft)
 }
 
 /**
@@ -369,8 +383,26 @@ export function answered(
   state: Pick<BundleState, "draft" | "takes">,
   question: QuestionId
 ): Answered {
+  if (typedBeside(state, question) !== null) return "typed"
   if (currentTake(state, question) !== null) return "said"
   return state.draft.typed[question] === undefined ? null : "typed"
+}
+
+/**
+ * The words typed beside `question`'s take, when they stand beside the take
+ * that answers it now (one kept unheard, ST34); null otherwise.
+ */
+function typedBeside(
+  state: Pick<BundleState, "draft" | "takes">,
+  question: QuestionId
+): string | null {
+  const take = state.draft.beside?.[question]
+  const typed = state.draft.typed[question]
+  return take !== undefined &&
+    typed !== undefined &&
+    currentTake(state, question)?.id === take
+    ? typed
+    : null
 }
 
 /** What Send still needs: a title, then the first answer. */
@@ -403,7 +435,11 @@ export function bundleIdea(
     const current = currentTake(state, question)
     if (current !== null) {
       const said: AnswerTake = { at: current.recordedAt, take: current.id }
-      return [{ question, versions: [], takes: [said] }]
+      // Words typed beside a take kept unheard go with it (ST34).
+      const beside = typedBeside(state, question)
+      const versions =
+        beside === null ? [] : [{ at, how: "typed" as const, words: beside }]
+      return [{ question, versions, takes: [said] }]
     }
     const typed = draft.typed[question]
     return typed === undefined
@@ -443,10 +479,29 @@ function withoutLater(draft: IdeaDraft, question: QuestionId): IdeaDraft {
 
 function withoutTyped(draft: IdeaDraft, question: QuestionId): IdeaDraft {
   if (draft.typed[question] === undefined) return draft
-  const typed = Object.fromEntries(
-    Object.entries(draft.typed).filter(([key]) => key !== question)
+  const { beside, ...rest } = draft
+  return {
+    ...rest,
+    ...withBeside(beside === undefined ? undefined : without(beside, question)),
+    typed: without(draft.typed, question),
+  }
+}
+
+/** `record` without `question`'s entry. */
+function without<T>(
+  record: Partial<Readonly<Record<QuestionId, T>>>,
+  question: QuestionId
+): Partial<Readonly<Record<QuestionId, T>>> {
+  return Object.fromEntries(
+    Object.entries(record).filter(([key]) => key !== question)
   )
-  return { ...draft, typed }
+}
+
+/** `beside` as a draft spreads it: absent when it names no take. */
+function withBeside(beside: IdeaDraft["beside"]): Pick<IdeaDraft, "beside"> {
+  return beside === undefined || Object.keys(beside).length === 0
+    ? {}
+    : { beside }
 }
 
 function withMode(
@@ -537,7 +592,13 @@ function takeEnded(state: BundleState, ended: TakeEnded): BundleStep {
   switch (ended.ending) {
     case "kept": {
       const draft = withoutTyped(withoutLater(state.draft, question), question)
-      const next = withMode(state, question, null)
+      // Kept with no voice heard in it: the take stays, and typing is
+      // offered beside it (ST34).
+      const next = withMode(
+        state,
+        question,
+        ended.unheard ? { kind: "unheard" } : null
+      )
       return draft === state.draft ? same(next) : withDraft(next, draft)
     }
     case "blocked":
@@ -695,15 +756,18 @@ function onIntent(
       const { question } = confirm
       const closed = { ...state, confirm: null }
       if (currentTake(state, question) !== null) {
-        return {
-          state: closed,
-          effects: [
-            {
-              type: "deleteTakes",
-              takes: takesOf(state, question).map((take) => take.id),
-            },
-          ],
-        }
+        const deleteTakes = {
+          type: "deleteTakes",
+          takes: takesOf(state, question).map((take) => take.id),
+        } as const
+        // Words typed beside its take go with the answer (ST34).
+        const typed = withoutTyped(draft, question)
+        return typed === draft
+          ? { state: closed, effects: [deleteTakes] }
+          : {
+              state: { ...closed, draft: typed },
+              effects: [{ type: "keepDraft", draft: typed }, deleteTakes],
+            }
       }
       const typed = withoutTyped(draft, question)
       return typed === draft
@@ -714,15 +778,22 @@ function onIntent(
           }
     }
     case "typeInstead": {
-      return state.modes[event.question]?.kind === "failed"
-        ? same(withMode(state, event.question, { kind: "typing", text: "" }))
-        : same(state)
+      const mode = state.modes[event.question]?.kind
+      if (mode !== "failed" && mode !== "unheard") return same(state)
+      const beside =
+        mode === "unheard"
+          ? (currentTake(state, event.question)?.id ?? null)
+          : null
+      return same(
+        withMode(state, event.question, { kind: "typing", text: "", beside })
+      )
     }
     case "typed": {
-      return state.modes[event.question]?.kind === "typing"
+      const mode = state.modes[event.question]
+      return mode?.kind === "typing"
         ? same(
             withMode(state, event.question, {
-              kind: "typing",
+              ...mode,
               text: event.text.slice(0, TYPED_MAX),
             })
           )
@@ -733,9 +804,19 @@ function onIntent(
       if (mode?.kind !== "typing") return same(state)
       const text = mode.text.trim()
       if (text === "") return same(state)
-      const kept = withoutLater(draft, event.question)
+      const kept = withoutTyped(
+        withoutLater(draft, event.question),
+        event.question
+      )
+      // Beside the take kept unheard only while it still answers the card.
+      const beside =
+        mode.beside !== null &&
+        currentTake(state, event.question)?.id === mode.beside
+          ? { ...kept.beside, [event.question]: mode.beside }
+          : kept.beside
       return withDraft(withMode(state, event.question, null), {
         ...kept,
+        ...withBeside(beside),
         typed: { ...kept.typed, [event.question]: text },
       })
     }
@@ -963,7 +1044,13 @@ export function stepBundle(state: BundleState, event: BundleEvent): BundleStep {
 /** Where a card is: its take under way, a block of its own, or its take. */
 export type CardView =
   | { readonly kind: "failed"; readonly full: boolean }
-  | { readonly kind: "typing"; readonly text: string }
+  /** Its take, kept with no voice heard, and typing offered beside it (ST34). */
+  | { readonly kind: "unheard" }
+  | {
+      readonly kind: "typing"
+      readonly text: string
+      readonly beside: string | null
+    }
   | { readonly kind: "typed"; readonly words: string }
   | { readonly kind: "later" }
   /** The take pattern's item: its button and its take, if it has one. */
@@ -981,6 +1068,8 @@ export function cardView(
   if (recording) return { kind: "take" }
   const mode = state.modes[question]
   if (mode !== undefined) return mode
+  const beside = typedBeside(state, question)
+  if (beside !== null) return { kind: "typed", words: beside }
   if (currentTake(state, question) !== null) return { kind: "take" }
   const typed = state.draft.typed[question]
   if (typed !== undefined) return { kind: "typed", words: typed }

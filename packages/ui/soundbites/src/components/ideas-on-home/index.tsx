@@ -13,6 +13,7 @@ import { Button, ConfirmSheet, Input, useTakePattern } from "@some-ui/shared"
 import type { TakePattern } from "@some-ui/voice-capture"
 import { TAKE_WORDS } from "@some-ui/voice-capture"
 import { Notice } from "@soundbites/components/notice"
+import { Unpaired } from "@soundbites/components/unpaired"
 import type { BundleTakes } from "@soundbites/lib/idea/bundle-runtime"
 import { keptIdeaLists } from "@soundbites/lib/idea/draft"
 import type { QuestionId } from "@soundbites/lib/idea/model"
@@ -58,6 +59,8 @@ export type IdeasOnHomeProps = {
    * it, no answer offers Delete….
    */
   openInMyData?: ((note: string) => void) | undefined
+  /** The app's way to pairing, shown while this phone isn't paired (ST34). */
+  pair?: ReactNode
 }
 
 const Tab = ({
@@ -85,26 +88,29 @@ const Tab = ({
 const Unread = ({
   read,
   dispatch,
+  pair,
 }: {
   read: Exclude<HomeRead<unknown>, { kind: "read" }> | { kind: "reading" }
   dispatch: Dispatch
+  pair?: ReactNode
 }): JSX.Element => {
   if (read.kind === "reading") {
     return <p className="text-muted-foreground text-sm">{WORDS.reading}</p>
   }
+  if (read.kind === "unpaired") {
+    return <Unpaired line={WORDS.unpaired} pair={pair} />
+  }
   return (
     <div className="flex flex-col gap-2">
       <p className="text-sm">{WORDS[read.kind]}</p>
-      {read.kind !== "unpaired" && (
-        <Button
-          type="button"
-          variant="outline"
-          className="self-start"
-          onClick={() => dispatch({ type: "readAgain" })}
-        >
-          {WORDS.readAgain}
-        </Button>
-      )}
+      <Button
+        type="button"
+        variant="outline"
+        className="self-start"
+        onClick={() => dispatch({ type: "readAgain" })}
+      >
+        {WORDS.readAgain}
+      </Button>
     </div>
   )
 }
@@ -483,9 +489,11 @@ const ListEditor = ({
 const Lists = ({
   state,
   dispatch,
+  pair,
 }: {
   state: OnHomeState
   dispatch: Dispatch
+  pair: ReactNode
 }): JSX.Element => {
   const { lists } = state
   return (
@@ -508,7 +516,7 @@ const Lists = ({
           />
         </>
       ) : (
-        <Unread read={lists} dispatch={dispatch} />
+        <Unread read={lists} dispatch={dispatch} pair={pair} />
       )}
     </div>
   )
@@ -519,16 +527,18 @@ const Screen = ({
   takes,
   dispatch,
   openInMyData,
+  pair,
 }: {
   state: OnHomeState
   takes: BundleTakes | undefined
   dispatch: Dispatch
   openInMyData: ((note: string) => void) | undefined
+  pair: ReactNode
 }): JSX.Element => {
   const { screen, ideas } = state
   switch (screen.kind) {
     case "lists": {
-      return <Lists state={state} dispatch={dispatch} />
+      return <Lists state={state} dispatch={dispatch} pair={pair} />
     }
     case "idea": {
       const idea = openIdea(state)
@@ -563,7 +573,7 @@ const Screen = ({
           </Button>
         </>
       ) : (
-        <Unread read={ideas} dispatch={dispatch} />
+        <Unread read={ideas} dispatch={dispatch} pair={pair} />
       )
     }
     default: {
@@ -577,6 +587,7 @@ export const IdeasOnHome = ({
   takes,
   initialLists = false,
   openInMyData,
+  pair,
 }: IdeasOnHomeProps): JSX.Element => {
   /* eslint-disable owner-guard/no-mount-snapshot -- the runtime, and what it runs on, are taken once per mount, as the idea screens' are */
   const [runtime] = useState(() =>
@@ -607,6 +618,7 @@ export const IdeasOnHome = ({
         takes={takes}
         dispatch={dispatch}
         openInMyData={openInMyData}
+        pair={pair}
       />
       <Notice text={state.notice === null ? "" : WORDS.notice[state.notice]} />
       <ConfirmSheet

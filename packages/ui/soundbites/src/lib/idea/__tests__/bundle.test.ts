@@ -408,6 +408,7 @@ describe("a new idea as one bundle (ST26)", () => {
       expect(cardView(typed.state, "what", false)).toEqual({
         kind: "typing",
         text: "y".repeat(1_000),
+        beside: null,
       })
       const kept = run(
         [
@@ -439,6 +440,98 @@ describe("a new idea as one bundle (ST26)", () => {
         draft: said.state.draft,
       })
       expect(cardView(said.state, "what", false)).toEqual({ kind: "take" })
+    })
+
+    it("offers typing beside a take kept with no voice heard, keeps both, and sends both (ST34)", () => {
+      const unheard: BundleEvent = {
+        type: "ended",
+        ended: {
+          seq: 1,
+          answers: "idea:idea-1:what",
+          ending: "kept",
+          id: "t1",
+          reason: null,
+          unheard: true,
+        },
+      }
+      const heard = run([unheard], onQuestions({}, [take("t1", "what")]))
+      expect(cardView(heard.state, "what", false)).toEqual({ kind: "unheard" })
+      const typed = run(
+        [
+          tap({ type: "typeInstead", question: "what" }),
+          tap({ type: "typed", question: "what", text: "Two hearings" }),
+          tap({ type: "keepTyped", question: "what" }),
+        ],
+        heard.state
+      )
+      expect(typed.state.draft.typed).toEqual({ what: "Two hearings" })
+      expect(typed.state.draft.beside).toEqual({ what: "t1" })
+      expect(cardView(typed.state, "what", false)).toEqual({
+        kind: "typed",
+        words: "Two hearings",
+      })
+      // The take is never let go for the words: a listing keeps both.
+      const listed = run(
+        [{ type: "takes", takes: [take("t1", "what")] }],
+        typed.state
+      )
+      expect(listed.state.draft.typed).toEqual({ what: "Two hearings" })
+      expect(
+        listed.effects.filter((effect) =>
+          ["deleteTakes", "drop", "deleteAll"].includes(effect.type)
+        )
+      ).toEqual([])
+      expect(bundleIdea(listed.state, LATER).answers).toEqual([
+        {
+          question: "what",
+          versions: [{ at: LATER, how: "typed", words: "Two hearings" }],
+          takes: [{ at: take("t1", "what").recordedAt, take: "t1" }],
+        },
+      ])
+      // Said again and heard, the new take takes the typed words' place.
+      const said = run(
+        [
+          tap({ type: "tap", question: "what" }),
+          { type: "takes", takes: [take("t1", "what"), take("t22", "what")] },
+          ended("kept"),
+        ],
+        listed.state
+      )
+      expect(said.state.draft.typed).toEqual({})
+      expect(said.state.draft.beside).toBeUndefined()
+      expect(cardView(said.state, "what", false)).toEqual({ kind: "take" })
+    })
+
+    it("types beside a take kept unheard only while that take still answers the card (ST34)", () => {
+      const unheard: BundleEvent = {
+        type: "ended",
+        ended: {
+          seq: 1,
+          answers: "idea:idea-1:what",
+          ending: "kept",
+          id: "t1",
+          reason: null,
+          unheard: true,
+        },
+      }
+      const typing = run(
+        [unheard, tap({ type: "typeInstead", question: "what" })],
+        onQuestions({}, [take("t1", "what")])
+      )
+      // The take went (deleted elsewhere) while typing: the words stand alone.
+      const kept = run(
+        [
+          { type: "takes", takes: [] },
+          tap({ type: "typed", question: "what", text: "Two hearings" }),
+          tap({ type: "keepTyped", question: "what" }),
+        ],
+        typing.state
+      )
+      expect(kept.state.draft.beside).toBeUndefined()
+      expect(cardView(kept.state, "what", false)).toEqual({
+        kind: "typed",
+        words: "Two hearings",
+      })
     })
 
     it("comes back later: marked, and on to the next card", () => {

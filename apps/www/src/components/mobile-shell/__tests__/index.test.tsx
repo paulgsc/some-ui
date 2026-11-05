@@ -61,7 +61,7 @@ describe("MobileNav", () => {
   it("holds Studio's two rooms: the video in sittings and game day", () => {
     render(<MobileNav pathname="/game-week" />)
 
-    expect(targetOf("Journal")).toBe("/journal")
+    expect(targetOf("Studio")).toBe("/journal")
     expect(targetOf("Game day")).toBe("/game-week")
     expect(screen.queryByText("Bites")).toBeNull()
   })

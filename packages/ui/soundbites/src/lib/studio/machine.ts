@@ -384,6 +384,12 @@ export type StudioState = {
    */
   readonly letGo: LetGoChoice
   /**
+   * Whether this phone is paired with home, as the home port last said
+   * (ST34): a take not on home yet is going home only on a paired phone, and
+   * kept on this phone otherwise. False until the port says.
+   */
+  readonly paired: boolean
+  /**
    * A Done for now's close waiting on the take under way, and every write asked
    * for after it, in order, so none runs ahead of that close.
    */
@@ -496,6 +502,8 @@ type StudioSignal =
   | { readonly type: "shown" }
   | { readonly type: "carried"; readonly carried: Carried }
   | { readonly type: "carryFailed" }
+  /** The home port says whether this phone is paired (ST34). */
+  | { readonly type: "paired"; readonly paired: boolean }
   | { readonly type: "storeChanged" }
   | { readonly type: "ticked"; readonly now: number; readonly level: number }
   | { readonly type: "micOpened"; readonly at: number }
@@ -634,6 +642,7 @@ export function initialStudioState(
     said: [],
     roomBytes: null,
     letGo,
+    paired: false,
     held: [],
     closed: null,
     filings: [],
@@ -2215,6 +2224,11 @@ export function step(state: StudioState, event: StudioEvent): Step {
       }
     }
 
+    case "paired": {
+      return state.paired === event.paired
+        ? stay(state)
+        : stay({ ...state, paired: event.paired })
+    }
     case "voiceChecked":
     case "speakPressed":
     case "speakStopped":

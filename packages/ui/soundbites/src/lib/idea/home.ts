@@ -52,9 +52,17 @@ export function ideaForHome(idea: Idea): IdeaForHome | null {
     (answer): ReadonlyArray<AnswerForHome> => {
       const { question } = answer
       if (isFollowUp(question)) return []
+      // Words typed beside a take kept unheard (ST34) are what home reads
+      // of the answer: home takes a note or typed words, not both. The
+      // take still goes home with the idea, as one of its takes.
+      const typed = [...answer.versions]
+        .reverse()
+        .find((version) => version.how === "typed")?.words
       const take = answer.takes?.at(-1)
-      if (take !== undefined) return [{ question, note: take.take }]
-      const words = answer.versions.at(-1)?.words
+      if (take !== undefined && typed === undefined) {
+        return [{ question, note: take.take }]
+      }
+      const words = typed ?? answer.versions.at(-1)?.words
       return words === undefined || words.trim() === ""
         ? []
         : [{ question, typed: words }]

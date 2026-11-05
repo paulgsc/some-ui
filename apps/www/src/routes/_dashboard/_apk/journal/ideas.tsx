@@ -20,6 +20,7 @@ import { useAsyncIntent } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import { shareIdea } from "@/lib/journal-share"
 import { keepStudio } from "@/lib/studio-keeping"
+import { PairHomeLink } from "@/components/pair-home-link"
 
 const WORDS = STUDIO_WORDS.shelf
 
@@ -100,6 +101,7 @@ const OnHome = ({ lists }: { lists: boolean }): JSX.Element | null => {
       home={onHome.home}
       takes={takes}
       initialLists={lists}
+      pair={<PairHomeLink />}
       // An answer's Delete… opens My data on its recording (#2579, MD4).
       openInMyData={(note) =>
         void navigate({

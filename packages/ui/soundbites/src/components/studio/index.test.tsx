@@ -179,6 +179,9 @@ describe("Studio", () => {
     expect(
       await screen.findByRole("region", { name: W.finish.upload.heading })
     ).toBeInTheDocument()
+    // Where a review is looked for, Finish says what Studio checks and
+    // what it doesn't judge (ST34, decision 10).
+    expect(screen.getByText(W.judges)).toBeInTheDocument()
     expect(screen.getByText(upload.title)).toBeInTheDocument()
     expect(screen.getByText(upload.description)).toBeInTheDocument()
     expect(screen.queryByText(W.finish.uploadCopy)).toBeNull()

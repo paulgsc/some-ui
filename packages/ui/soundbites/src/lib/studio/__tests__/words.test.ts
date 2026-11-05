@@ -230,6 +230,59 @@ describe("Studio's words", () => {
     expect(chosen.home).toBe(says.home)
   })
 
+  it("ST34: call the place Studio, never its old names", () => {
+    expect(all.filter((text) => /\bjournal\b/i.test(text))).toEqual([])
+    // "Your video" read as the place's name over Start; it names no place.
+    expect(all.filter((text) => /^\s*your video\s*$/i.test(text))).toEqual([])
+    expect(STUDIO_WORDS.heading).toBe("Studio")
+  })
+
+  it("ST34: call a recording a take, never a recording or a bite", () => {
+    expect(
+      all.filter((text) => /\b(recordings?|bites?)\b/i.test(text))
+    ).toEqual([])
+    expect(STUDIO_WORDS.onHome.deleteAnswerName("What's the video?")).toMatch(
+      /\btake\b/
+    )
+    expect(STUDIO_WORDS.onHome.onlyOnHome).toMatch(/\btake\b/)
+  })
+
+  it("ST34: say a phone never paired apart from home out of reach, and name the way to pairing", () => {
+    const { review, sent } = STUDIO_WORDS.bundle
+    expect(review.notNear.unpaired).toMatch(/isn't paired/)
+    expect(review.notNear.unpaired).not.toMatch(/reach/)
+    expect(review.notNear.away).toMatch(/out of reach/)
+    expect(review.notNear.away).not.toMatch(/paired/)
+    expect(sent.notNear.unpaired.title).not.toBe(sent.notNear.away.title)
+    expect(sent.notNear.unpaired.line).toMatch(/paired/)
+    expect(sent.notNear.unpaired.line).not.toMatch(/reach/)
+    expect(sent.notNear.away.line).not.toMatch(/paired/)
+    // A full phone is said in what frees room, true paired or not.
+    expect(STUDIO_WORDS.bundle.full.line).not.toMatch(/reach|paired/)
+    // The way there names Settings' page, and the screens that can't show
+    // home's say only what they can't do, beside it.
+    expect(STUDIO_WORDS.pair.where).toBe("Pair it in Settings, under Home.")
+    expect(STUDIO_WORDS.pair.pair).toMatch(/^Pair/)
+    expect(STUDIO_WORDS.onHome.unpaired).not.toMatch(/Settings/)
+  })
+
+  it("ST34: say what Studio checks, that it doesn't judge whether a scene is good, and the remedy", () => {
+    const { judges } = STUDIO_WORDS
+    expect(judges).toMatch(/checks the mechanics/)
+    expect(judges).toMatch(/every scene has a take/)
+    expect(judges).toMatch(/doesn't judge whether a scene is good/)
+    expect(judges).toMatch(/shape/)
+    expect(judges).toMatch(/template/)
+  })
+
+  it("ST34: offer typing for a take kept unheard, marked as the fallback", () => {
+    const { unheard, typing, typed } = STUDIO_WORDS.bundle
+    expect(unheard.type).toMatch(/^Type it/)
+    expect(unheard.type).toMatch(/didn't hear you/)
+    expect(typing.mark).toMatch(/voice didn't work/)
+    expect(typed.mark).toMatch(/voice didn't work/)
+  })
+
   it("never say takes were kept where a sitting wasn't saved", () => {
     expect(STUDIO_WORDS.done.notSaved).not.toMatch(/takes are kept/)
   })

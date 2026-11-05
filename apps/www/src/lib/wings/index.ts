@@ -167,7 +167,9 @@ export const ROOMS: ReadonlyArray<Room> = [
   },
   { id: "profile", wing: "practice", roots: ["/profile"], nav: "Profile" },
   { id: "aph", wing: "self", roots: ["/aph"] },
-  { id: "journal", wing: "studio", roots: ["/journal"], tab: "Journal" },
+  // The tab says the place's one name, as the foyer and the page do (ST34);
+  // the path keeps its old name, since a path is never said.
+  { id: "journal", wing: "studio", roots: ["/journal"], tab: "Studio" },
   { id: "game-week", wing: "studio", roots: ["/game-week"], tab: "Game day" },
   { id: "playoff-delta", wing: "studio", roots: ["/playoff-delta"] },
   { id: "burn-ins", wing: "studio", roots: ["/burn-ins", "/captions"] },

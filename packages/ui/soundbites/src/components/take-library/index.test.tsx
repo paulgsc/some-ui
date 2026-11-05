@@ -5,6 +5,7 @@ import { TakeLibrary } from "@soundbites/components/take-library"
 import type { LibraryRead, LibraryTake } from "@soundbites/lib/library/model"
 import type { LibraryPhone, TakesHome } from "@soundbites/lib/library/runtime"
 import { LIBRARY_WORDS } from "@soundbites/lib/library/words"
+import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
 import { act, fireEvent, render, screen } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 
@@ -144,10 +145,15 @@ describe("Takes on home (ST32)", () => {
           }),
           player: quietPlayer,
         }}
+        pair={<a href="#pair">{STUDIO_WORDS.pair.pair}</a>}
       />
     )
     await settle()
     expect(screen.getByText(W.unpaired)).toBeTruthy()
+    // The way to pairing is the app's link (ST34), never only "in Settings".
+    expect(
+      screen.getByRole("link", { name: STUDIO_WORDS.pair.pair })
+    ).toBeTruthy()
     expect(screen.queryByRole("button", { name: W.readAgain })).toBeNull()
     expect(screen.queryByLabelText(W.searchLabel)).toBeNull()
   })

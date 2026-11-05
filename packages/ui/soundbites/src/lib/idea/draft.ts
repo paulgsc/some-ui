@@ -35,6 +35,12 @@ export type IdeaDraft = {
   readonly about: IdeaAbout
   /** Answers typed because voice didn't work, at most `TYPED_MAX` long. */
   readonly typed: Partial<Readonly<Record<QuestionId, string>>>
+  /**
+   * Typed words that stand beside a take kept with no voice heard in it
+   * (ST34): that take's id, by the question both answer. The take stays,
+   * and both go with the idea. Absent in a draft kept before.
+   */
+  readonly beside?: Partial<Readonly<Record<QuestionId, string>>>
   /** Questions left to come back to, in the order they were left. */
   readonly later: ReadonlyArray<QuestionId>
 }
@@ -136,6 +142,7 @@ const DraftSchema: z.ZodType<IdeaDraft> = z.object({
     format: z.enum(IDEA_FORMATS),
   }),
   typed: z.partialRecord(z.enum(IDEA_QUESTIONS), z.string().max(TYPED_MAX)),
+  beside: z.partialRecord(z.enum(IDEA_QUESTIONS), z.string()).optional(),
   later: z.array(z.enum(IDEA_QUESTIONS)),
 })
 

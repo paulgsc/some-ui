@@ -410,6 +410,39 @@ describe("recording a scene", () => {
   })
 })
 
+describe("whether this phone is paired with home (ST34)", () => {
+  it("is heard from the home port on attach and on each change, never paired without one", () => {
+    expect(studio(memoryProjectStore()).getSnapshot().paired).toBe(false)
+    let reach: "near" | "away" | "unpaired" = "unpaired"
+    const listeners = new Set<() => void>()
+    const runtime = studio(
+      memoryProjectStore(),
+      speaking(),
+      "t",
+      undefined,
+      undefined,
+      {
+        home: {
+          reach: () => reach,
+          subscribe: (listener) => {
+            listeners.add(listener)
+            return (): void => {
+              listeners.delete(listener)
+            }
+          },
+        },
+      }
+    )
+    expect(runtime.getSnapshot().paired).toBe(false)
+    // Out of reach is still paired: a take is still going home.
+    reach = "away"
+    for (const listener of listeners) listener()
+    expect(runtime.getSnapshot().paired).toBe(true)
+    runtime.detach()
+    expect(listeners.size).toBe(0)
+  })
+})
+
 describe("a pull down to check again (SH6)", () => {
   it("reads the phone's videos again, and answers once that read lands", async () => {
     const memory = memoryProjectStore()

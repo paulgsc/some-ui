@@ -47,7 +47,7 @@ import {
   TYPED_MAX,
 } from "@soundbites/lib/idea/model"
 import { phoneBundlePorts } from "@soundbites/lib/phone"
-import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
+import { PAIR_WORDS, STUDIO_WORDS } from "@soundbites/lib/studio/words"
 import { ChevronLeft, Keyboard, MicOff } from "lucide-react"
 
 const WORDS = STUDIO_WORDS.bundle
@@ -60,6 +60,8 @@ export type IdeaBundleProps = {
   ports?: Partial<Omit<BundlePorts, "takes">>
   /** The way back to Studio, from the first screen. */
   back?: ReactNode
+  /** The app's way to pairing, shown while this phone isn't paired (ST34). */
+  pair?: ReactNode
 }
 
 type Dispatch = (intent: BundleIntent) => void
@@ -409,7 +411,7 @@ const Card = ({
           </Button>
         </div>
       )}
-      {card.kind === "take" && (
+      {(card.kind === "take" || card.kind === "unheard") && (
         <>
           <TakeItem
             view={view}
@@ -425,6 +427,16 @@ const Card = ({
             </p>
           )}
         </>
+      )}
+      {card.kind === "unheard" && (
+        <Button
+          variant="outline"
+          className="border-dashed"
+          onClick={() => dispatch({ type: "typeInstead", question })}
+        >
+          <Keyboard className="size-4" aria-hidden="true" />
+          {WORDS.unheard.type}
+        </Button>
       )}
       <p className="text-muted-foreground flex justify-between text-xs">
         <span>{n > 1 ? WORDS.prev(n - 1) : ""}</span>
@@ -530,11 +542,13 @@ const Review = ({
   takes,
   snapshot,
   dispatch,
+  pair,
 }: {
   state: BundleState
   takes: BundleTakes
   snapshot: TakePatternSnapshot
   dispatch: Dispatch
+  pair: ReactNode
 }): JSX.Element => {
   const { about } = state.draft
   const needs = missing(state)
@@ -655,11 +669,12 @@ const Review = ({
             : WORDS.review.needsFirst}
         </p>
       )}
-      {!near && (
+      {state.reach !== "near" && (
         <p className="text-muted-foreground text-center text-sm">
-          {WORDS.review.away}
+          {WORDS.review.notNear[state.reach]}
         </p>
       )}
+      {state.reach === "unpaired" && <PairWay pair={pair} />}
       <Button
         size="lg"
         disabled={needs !== null}
@@ -671,25 +686,36 @@ const Review = ({
   )
 }
 
+/** The way to pairing on a phone never paired: the app's link, or where it is. */
+const PairWay = ({ pair }: { pair: ReactNode }): JSX.Element => (
+  <div className="self-center text-center text-sm">
+    {pair ?? <p className="text-muted-foreground">{PAIR_WORDS.where}</p>}
+  </div>
+)
+
 const Sent = ({
   state,
   dispatch,
   back,
+  pair,
 }: {
   state: BundleState
   dispatch: Dispatch
   back: ReactNode
+  pair: ReactNode
 }): JSX.Element => {
   const about = state.sent?.about
-  const near = state.reach === "near"
+  const said =
+    state.reach === "near"
+      ? { title: WORDS.sent.title, line: WORDS.sent.near }
+      : WORDS.sent.notNear[state.reach]
   return (
     <div className="flex flex-col gap-3">
       <h2 aria-live="polite" className="text-3xl font-extrabold">
-        {near ? WORDS.sent.title : WORDS.sent.kept}
+        {said.title}
       </h2>
-      <p className="text-muted-foreground">
-        {near ? WORDS.sent.near : WORDS.sent.away}
-      </p>
+      <p className="text-muted-foreground">{said.line}</p>
+      {state.reach === "unpaired" && <PairWay pair={pair} />}
       {about !== undefined && (
         <div className="bg-card rounded-2xl p-4">
           <p className="font-semibold">{about.title}</p>
@@ -738,12 +764,14 @@ const Screen = ({
   snapshot,
   dispatch,
   back,
+  pair,
 }: {
   state: BundleState
   takes: BundleTakes
   snapshot: TakePatternSnapshot
   dispatch: Dispatch
   back: ReactNode
+  pair: ReactNode
 }): JSX.Element => {
   switch (state.screen) {
     case "loading": {
@@ -790,11 +818,12 @@ const Screen = ({
           takes={takes}
           snapshot={snapshot}
           dispatch={dispatch}
+          pair={pair}
         />
       )
     }
     case "sent": {
-      return <Sent state={state} dispatch={dispatch} back={back} />
+      return <Sent state={state} dispatch={dispatch} back={back} pair={pair} />
     }
     default: {
       return assertNever(state.screen)
@@ -806,6 +835,7 @@ export const IdeaBundle = ({
   takes,
   ports,
   back,
+  pair,
 }: IdeaBundleProps): JSX.Element => {
   /* eslint-disable owner-guard/no-mount-snapshot -- the runtime, and the takes it runs on, are taken once per mount, as the idea capture's are */
   const [{ runtime, desk }] = useState(() => ({
@@ -838,6 +868,7 @@ export const IdeaBundle = ({
         snapshot={snapshot}
         dispatch={dispatch}
         back={back}
+        pair={pair}
       />
       <ConfirmSheet
         request={confirmOf(state, dispatch)}

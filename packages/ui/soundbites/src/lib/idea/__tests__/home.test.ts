@@ -60,6 +60,22 @@ describe("a sent idea as home keeps it (ST26 b)", () => {
     })
   })
 
+  it("sends words typed beside a take kept unheard as the answer's words (ST34)", () => {
+    const beside: Idea = {
+      ...SENT,
+      answers: [
+        {
+          question: "what",
+          versions: [{ at: LATER, how: "typed", words: "Two hearings" }],
+          takes: [{ at: AT, take: "t1" }],
+        },
+      ],
+    }
+    expect(ideaForHome(beside)?.answers).toEqual([
+      { question: "what", typed: "Two hearings" },
+    ])
+  })
+
   it("goes for an idea sent whole only, with a topic", () => {
     expect(ideaForHome(caught())).toBeNull()
     const noTopic: Idea = {
