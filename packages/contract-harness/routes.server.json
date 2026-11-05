@@ -669,6 +669,20 @@
       "module": "studio_log"
     },
     {
+      "method": "GET",
+      "path": "/studio/videos",
+      "full_path": "/api/v1/studio/videos",
+      "versioned": true,
+      "module": "studio_videos"
+    },
+    {
+      "method": "PUT",
+      "path": "/studio/videos/:video/queued/:rev",
+      "full_path": "/api/v1/studio/videos/:video/queued/:rev",
+      "versioned": true,
+      "module": "studio_videos"
+    },
+    {
       "method": "PUT",
       "path": "/study-notes/:kind/:id",
       "full_path": "/api/v1/study-notes/:kind/:id",

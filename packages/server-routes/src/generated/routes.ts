@@ -79,6 +79,8 @@ export type ServerRoute =
   | "/api/v1/studio/sittings"
   | "/api/v1/studio/sittings/:sitting/events"
   | "/api/v1/studio/sittings/:sitting/events/:id"
+  | "/api/v1/studio/videos"
+  | "/api/v1/studio/videos/:video/queued/:rev"
   | "/api/v1/study-notes/:kind/:id"
   | "/api/v1/subjects/me/kept"
   | "/api/v1/subjects/me/stats"
