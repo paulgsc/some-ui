@@ -41,6 +41,13 @@ export type IdeaDraft = {
    * and both go with the idea. Absent in a draft kept before.
    */
   readonly beside?: Partial<Readonly<Record<QuestionId, string>>>
+  /**
+   * By question, its last take kept, when that take held no voice heard
+   * (ST34): its card offers typing beside it until a take heard replaces
+   * it, however often the screen came and went or a try failed in between.
+   * Absent when none is.
+   */
+  readonly unheard?: Partial<Readonly<Record<QuestionId, string>>>
   /** Questions left to come back to, in the order they were left. */
   readonly later: ReadonlyArray<QuestionId>
 }
@@ -143,6 +150,7 @@ const DraftSchema: z.ZodType<IdeaDraft> = z.object({
   }),
   typed: z.partialRecord(z.enum(IDEA_QUESTIONS), z.string().max(TYPED_MAX)),
   beside: z.partialRecord(z.enum(IDEA_QUESTIONS), z.string()).optional(),
+  unheard: z.partialRecord(z.enum(IDEA_QUESTIONS), z.string()).optional(),
   later: z.array(z.enum(IDEA_QUESTIONS)),
 })
 

@@ -52,12 +52,13 @@ export function ideaForHome(idea: Idea): IdeaForHome | null {
     (answer): ReadonlyArray<AnswerForHome> => {
       const { question } = answer
       if (isFollowUp(question)) return []
-      // Words typed beside a take kept unheard (ST34) are what home reads
-      // of the answer: home takes a note or typed words, not both. The
-      // take still goes home with the idea, as one of its takes.
-      const typed = [...answer.versions]
-        .reverse()
-        .find((version) => version.how === "typed")?.words
+      // Words typed beside a take kept unheard (ST34) are home's answer:
+      // home takes a note or typed words, never both, so its answer holds
+      // the typed words. The take still goes home, let go with the idea
+      // (`./bundle`'s `send`), as a voice note no answer on home names.
+      const typed = answer.versions
+        .filter((version) => version.how === "typed")
+        .at(-1)?.words
       const take = answer.takes?.at(-1)
       if (take !== undefined && typed === undefined) {
         return [{ question, note: take.take }]

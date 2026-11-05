@@ -37,7 +37,7 @@ export type TakeLibraryProps = {
   /** Home, as the build reaches it, and a player. Read once. */
   ports: LibraryPorts
   /** The app's way to pairing, shown while this phone isn't paired (ST34). */
-  pair?: ReactNode
+  pair: ReactNode
 }
 
 /** What home heard in `take`, or why there is nothing to show. */

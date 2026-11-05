@@ -84,7 +84,7 @@ const ShareStudio = ({
  * In the Android app: the phone's recognizer for a note said in Watch (ST5),
  * the shell's refresh port, so a pull down on Start or a show reads the
  * phone's videos again (SHOW SH6), and home, so a take says it is going home
- * only on a paired phone (ST34). The first two are native-only
+ * only on a paired phone (ST34). All three are native-only
  * (`build.paths.ts`), so a web build, where the flag is false, leaves them
  * out of its bundle.
  */

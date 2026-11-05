@@ -18,6 +18,7 @@ import type {
   TakeRowView,
 } from "@some-ui/voice-capture"
 import { deletesInMyData } from "@some-ui/voice-capture"
+import { isPaired } from "@soundbites/lib/idea/bundle"
 import type { IdeaHome } from "@soundbites/lib/idea/bundle-runtime"
 import { NO_HOME } from "@soundbites/lib/idea/bundle-runtime"
 import type { Project, ProjectTake } from "@soundbites/lib/project/model"
@@ -209,7 +210,7 @@ export function createStudioRecords(ports: RecordsPorts): StudioRecords {
       const unsubscribe = ports.store.subscribe(read)
       const home = ports.home ?? NO_HOME
       const tellPaired = (): void => {
-        const paired = home.reach() !== "unpaired"
+        const paired = isPaired(home.reach())
         if (paired !== state.paired) set({ ...state, paired })
       }
       const unwatchHome = home.subscribe(tellPaired)

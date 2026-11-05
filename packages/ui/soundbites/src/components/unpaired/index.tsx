@@ -1,12 +1,20 @@
 /**
  * This phone isn't paired with home (ST34): what the screen can't do for
- * it, then the way to pairing. The app draws that way as a link to
- * Settings' Home page (`pair`); where it hands in none, the screen says
- * where pairing is instead, so the words never name a way the person can't
- * take.
+ * it, then the way to pairing, which the app draws as a link to Settings'
+ * Home page (`pair`) and hands in to every screen that says it.
  */
 import type { JSX, ReactNode } from "react"
-import { PAIR_WORDS } from "@soundbites/lib/studio/words"
+import { cn } from "@some-ui/core-utils"
+
+/** The way to pairing on a phone never paired: the app's link. */
+export const PairWay = ({
+  pair,
+  className,
+}: {
+  /** The app's link to pairing, labelled `PAIR_WORDS.pair`. */
+  pair: ReactNode
+  className?: string
+}): JSX.Element => <div className={cn("text-sm", className)}>{pair}</div>
 
 export const Unpaired = ({
   line,
@@ -14,13 +22,10 @@ export const Unpaired = ({
 }: {
   /** What the screen can't do while the phone isn't paired. */
   line: string
-  /** The app's link to pairing, labelled `PAIR_WORDS.pair`. */
-  pair?: ReactNode
+  pair: ReactNode
 }): JSX.Element => (
   <div className="flex flex-col gap-2">
     <p className="text-sm">{line}</p>
-    {pair ?? (
-      <p className="text-muted-foreground text-sm">{PAIR_WORDS.where}</p>
-    )}
+    <PairWay pair={pair} />
   </div>
 )

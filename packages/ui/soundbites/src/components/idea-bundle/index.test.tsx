@@ -6,7 +6,6 @@
  * The swipe is driven with synthetic touches through the shared pager, which
  * prove what it moves, not a phone's touch (CK7, #2386).
  */
-import type { ReactNode } from "react"
 import { inMemoryStorage } from "@some-ui/core-utils"
 import { ONE_TAKE, TAKE_WORDS } from "@some-ui/voice-capture"
 import { simulatedPattern, SPEAKING } from "@some-ui/voice-capture/testing"
@@ -35,9 +34,11 @@ const pass = (ms = 0): Promise<void> =>
     await vi.advanceTimersByTimeAsync(ms)
   })
 
+/** The app's way to pairing, as the route hands it in. */
+const PAIR = <a href="#pair">{STUDIO_WORDS.pair.pair}</a>
+
 function mount(
-  reach: HomeReach = "unpaired",
-  pair?: ReactNode
+  reach: HomeReach = "unpaired"
 ): ReturnType<typeof simulatedPattern> {
   const storage = inMemoryStorage()
   const simulated = simulatedPattern({
@@ -52,7 +53,7 @@ function mount(
         newId: () => "idea-1",
         home: { reach: () => reach, subscribe: () => (): void => undefined },
       }}
-      pair={pair}
+      pair={PAIR}
     />
   )
   return simulated
@@ -242,6 +243,18 @@ describe("New idea, one bundle (ST26)", () => {
     expect(
       screen.getByRole("button", { name: WORDS.dot.typed(1) })
     ).toBeInTheDocument()
+    // Looked over, the take shows beside the typed words, playable, and
+    // deleting the answer says the take goes too.
+    fireEvent.click(button(WORDS.toReview))
+    expect(screen.getByText("Two hearings disagreed")).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: /^Play the take of/ })
+    ).toBeEnabled()
+    expect(button(WORDS.review.playAll)).toBeEnabled()
+    fireEvent.click(screen.getByRole("button", { name: /^Delete the take/ }))
+    expect(
+      screen.getByRole("dialog", { name: WORDS.confirm.answerTitle })
+    ).toHaveTextContent(WORDS.confirm.besideLine(ASK.what.ask))
   })
 
   it("says a full phone is a full phone, not voice failing, and offers typing and later, not again", async () => {
@@ -317,11 +330,13 @@ describe("New idea, one bundle (ST26)", () => {
       screen.getByRole("heading", { name: WORDS.sent.notNear.away.title })
     ).toBeInTheDocument()
     expect(screen.getByText(WORDS.sent.notNear.away.line)).toBeInTheDocument()
-    expect(screen.queryByText(STUDIO_WORDS.pair.where)).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole("link", { name: STUDIO_WORDS.pair.pair })
+    ).not.toBeInTheDocument()
   })
 
   it("on a phone never paired, says so rather than out of reach, and offers the app's way to pairing (ST34)", async () => {
-    mount("unpaired", <a href="#pair">{STUDIO_WORDS.pair.pair}</a>)
+    mount("unpaired")
     await pass()
     toQuestions()
     await say()
@@ -343,14 +358,5 @@ describe("New idea, one bundle (ST26)", () => {
     expect(
       screen.getByRole("link", { name: STUDIO_WORDS.pair.pair })
     ).toBeInTheDocument()
-  })
-
-  it("on a phone never paired, with no way handed in, says where pairing is (ST34)", async () => {
-    mount("unpaired")
-    await pass()
-    toQuestions()
-    await say()
-    fireEvent.click(button(WORDS.toReview))
-    expect(screen.getByText(STUDIO_WORDS.pair.where)).toBeInTheDocument()
   })
 })

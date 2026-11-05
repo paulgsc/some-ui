@@ -25,6 +25,7 @@ import type { Listening, TurnListener } from "@some-ui/voice-capture"
 import { onPageVisibility } from "@some-ui/voice-capture"
 
 import { deviceListener } from "@/lib/device-listen"
+import type { HomeLinkState } from "@/lib/home-link"
 import { homeLink, pairingOf } from "@/lib/home-link"
 import { askHeard } from "@/lib/home-link/heard"
 import type { KeptRun } from "@/lib/home-link/kept-model"
@@ -120,23 +121,33 @@ export function phoneIdeaListener(
   })
 }
 
-/** Where home is, from the pairing held and the voice lane's last run. */
+/**
+ * Where home is, from the phone's link to home and the voice lane's last
+ * run: unknown while the phone's own record of its pairing is still being
+ * read, so a paired phone never says it isn't for that moment (ST34).
+ */
 export function reachOf(
-  pairing: string | null,
+  link: HomeLinkState["link"],
   last: KeptRun | null
 ): HomeReach {
-  if (pairing === null) return "unpaired"
+  if (link.kind === "reading") return "unknown"
+  if (link.kind !== "paired") return "unpaired"
   return last?.kind === "unreachable" ? "away" : "near"
 }
 
 /**
- * Home, as a new idea's screen says where its idea goes (ST26): unpaired,
+ * Home, as a new idea's screen and Studio's takes say where things go
+ * (ST26, ST34): unknown until the phone has read its pairing; unpaired,
  * read from the pairing this phone holds; away, while the voice lane's last
  * run, which carries ideas home (`lib/home-link/ideas`), found home out of
  * reach; near otherwise.
  */
 export const ideaHome: IdeaHome = {
-  reach: () => reachOf(pairingOf(), laneRun(voiceLane).getSnapshot().last),
+  reach: () =>
+    reachOf(
+      homeLink().getSnapshot().link,
+      laneRun(voiceLane).getSnapshot().last
+    ),
   subscribe: (listener) => {
     const stops = [
       homeLink().subscribe(listener),

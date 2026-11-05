@@ -16,6 +16,7 @@ import type {
 } from "@some-ui/voice-capture"
 // eslint-disable-next-line one-owner/no-local-microphone -- Studio runs its own take until its machine embeds the take kit (#2442)
 import { NO_LISTENER, takeRunner } from "@some-ui/voice-capture"
+import { isPaired } from "@soundbites/lib/idea/bundle"
 import type { IdeaHome } from "@soundbites/lib/idea/bundle-runtime"
 import { NO_HOME } from "@soundbites/lib/idea/bundle-runtime"
 import { TAKE_TICK_MS } from "@soundbites/lib/policy"
@@ -68,7 +69,8 @@ export type StudioPorts = {
   refresh?: StudioRefresh
   /**
    * Home, as far as this phone can tell (ST34): whether it is paired, so a
-   * take not on home yet says it is going home only when it can. Without
+   * take not on home yet says it is going home only once the phone is known
+   * to be paired, and kept on this phone while it can't yet tell. Without
    * one, the phone counts as never paired.
    */
   home?: IdeaHome
@@ -350,7 +352,7 @@ export function createStudio(
       )
       const home = ports.home ?? NO_HOME
       const tellPaired = (): void =>
-        send({ type: "paired", paired: home.reach() !== "unpaired" })
+        send({ type: "paired", paired: isPaired(home.reach()) })
       const unwatchHome = home.subscribe(tellPaired)
       tellPaired()
       // Detached, the runtime still finishes a take under way and keeps it:

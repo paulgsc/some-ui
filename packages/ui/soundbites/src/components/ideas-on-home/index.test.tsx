@@ -77,7 +77,7 @@ const NO_TAKES: ReturnType<BundleTakes["takes"]["getSnapshot"]> = []
 describe("Ideas on home (ST26 c)", () => {
   it("lists home's ideas by subject, opens one with home's words, and marks it still furnishing", async () => {
     const furnish = vi.fn(home().furnish)
-    render(<IdeasOnHome home={home({ furnish })} />)
+    render(<IdeasOnHome home={home({ furnish })} pair={null} />)
     await settle()
     expect(screen.getByRole("heading", { name: /Studio/ })).toBeTruthy()
     fireEvent.click(screen.getByRole("button", { name: /Why the mic clips/ }))
@@ -116,7 +116,13 @@ describe("Ideas on home (ST26 c)", () => {
         kind: "read",
         value: { ideas: [IDEA, deleted, aside], more: false },
       })
-    render(<IdeasOnHome home={home({ ideas })} openInMyData={openInMyData} />)
+    render(
+      <IdeasOnHome
+        home={home({ ideas })}
+        openInMyData={openInMyData}
+        pair={null}
+      />
+    )
     await settle()
     fireEvent.click(screen.getByRole("button", { name: /Why the mic clips/ }))
     const remove = screen.getAllByRole("button", {
@@ -153,7 +159,7 @@ describe("Ideas on home (ST26 c)", () => {
       discard: () => true,
       release: () => true,
     }
-    render(<IdeasOnHome home={home()} takes={takes} />)
+    render(<IdeasOnHome home={home()} takes={takes} pair={null} />)
     await settle()
     fireEvent.click(screen.getByRole("button", { name: /Why the mic clips/ }))
     expect(stopPlaying).not.toHaveBeenCalled()
@@ -162,7 +168,7 @@ describe("Ideas on home (ST26 c)", () => {
   })
 
   it("groups by keyword and sorts by title when asked", async () => {
-    render(<IdeasOnHome home={home()} />)
+    render(<IdeasOnHome home={home()} pair={null} />)
     await settle()
     fireEvent.click(screen.getByRole("button", { name: W.groups.keyword }))
     expect(screen.getByRole("heading", { name: /voice/ })).toBeTruthy()
@@ -176,7 +182,7 @@ describe("Ideas on home (ST26 c)", () => {
 
   it("says why there is nothing when home can't be reached, and asks again on Try again", async () => {
     const ideas = vi.fn(() => Promise.resolve({ kind: "away" as const }))
-    render(<IdeasOnHome home={home({ ideas })} />)
+    render(<IdeasOnHome home={home({ ideas })} pair={null} />)
     await settle()
     expect(screen.getByText(W.away)).toBeTruthy()
     fireEvent.click(screen.getByRole("button", { name: W.readAgain }))
@@ -186,7 +192,7 @@ describe("Ideas on home (ST26 c)", () => {
 
   it("edits the lists: adds an entry home takes, and takes one off", async () => {
     const entry = vi.fn(home().entry)
-    render(<IdeasOnHome home={home({ entry })} initialLists />)
+    render(<IdeasOnHome home={home({ entry })} initialLists pair={null} />)
     await settle()
     fireEvent.change(screen.getByLabelText(L.newKeyword), {
       target: { value: "phone" },

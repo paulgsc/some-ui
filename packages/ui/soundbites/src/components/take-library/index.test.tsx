@@ -63,7 +63,9 @@ const settle = (): Promise<void> => act(() => Promise.resolve())
 
 describe("Takes on home (ST32)", () => {
   it("lists the takes home keeps with the words it heard, and says one it hasn't heard yet", async () => {
-    render(<TakeLibrary ports={{ home: home(), player: quietPlayer }} />)
+    render(
+      <TakeLibrary ports={{ home: home(), player: quietPlayer }} pair={null} />
+    )
     await settle()
     expect(screen.getByText(TAKE.heard!.text)).toBeTruthy()
     expect(screen.getByText(W.notHeard)).toBeTruthy()
@@ -74,7 +76,10 @@ describe("Takes on home (ST32)", () => {
   it("searches the words, says the search ran on words, and goes back to the newest", async () => {
     const takes = vi.fn(home().takes)
     render(
-      <TakeLibrary ports={{ home: home({ takes }), player: quietPlayer }} />
+      <TakeLibrary
+        ports={{ home: home({ takes }), player: quietPlayer }}
+        pair={null}
+      />
     )
     await settle()
     fireEvent.change(screen.getByLabelText(W.searchLabel), {
@@ -94,7 +99,10 @@ describe("Takes on home (ST32)", () => {
   it("says a search is too long, and asks home nothing for it", async () => {
     const takes = vi.fn(home().takes)
     render(
-      <TakeLibrary ports={{ home: home({ takes }), player: quietPlayer }} />
+      <TakeLibrary
+        ports={{ home: home({ takes }), player: quietPlayer }}
+        pair={null}
+      />
     )
     await settle()
     fireEvent.change(screen.getByLabelText(W.searchLabel), {
@@ -112,7 +120,12 @@ describe("Takes on home (ST32)", () => {
       .fn<TakesHome["audio"]>()
       .mockResolvedValueOnce(new Blob(["take"]))
       .mockResolvedValueOnce(null)
-    render(<TakeLibrary ports={{ home: home({ audio }), player: { play } }} />)
+    render(
+      <TakeLibrary
+        ports={{ home: home({ audio }), player: { play } }}
+        pair={null}
+      />
+    )
     await settle()
     const [first, second] = screen.getAllByRole("button", { name: W.play })
     fireEvent.click(first!)
@@ -129,7 +142,10 @@ describe("Takes on home (ST32)", () => {
   it("says why there is nothing, offering Try again only where it can help", async () => {
     const takes = vi.fn(() => Promise.resolve({ kind: "away" as const }))
     const { unmount } = render(
-      <TakeLibrary ports={{ home: home({ takes }), player: quietPlayer }} />
+      <TakeLibrary
+        ports={{ home: home({ takes }), player: quietPlayer }}
+        pair={null}
+      />
     )
     await settle()
     expect(screen.getByText(W.away)).toBeTruthy()
@@ -190,6 +206,7 @@ describe("Takes on home (ST32)", () => {
     const { unmount } = render(
       <TakeLibrary
         ports={{ home: home(), player: quietPlayer, phone: phone(false) }}
+        pair={null}
       />
     )
     await settle()
@@ -212,6 +229,7 @@ describe("Takes on home (ST32)", () => {
     render(
       <TakeLibrary
         ports={{ home: home(), player: quietPlayer, phone: phone(true) }}
+        pair={null}
       />
     )
     await settle()

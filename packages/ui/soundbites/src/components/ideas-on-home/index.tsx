@@ -60,7 +60,7 @@ export type IdeasOnHomeProps = {
    */
   openInMyData?: ((note: string) => void) | undefined
   /** The app's way to pairing, shown while this phone isn't paired (ST34). */
-  pair?: ReactNode
+  pair: ReactNode
 }
 
 const Tab = ({
@@ -92,7 +92,7 @@ const Unread = ({
 }: {
   read: Exclude<HomeRead<unknown>, { kind: "read" }> | { kind: "reading" }
   dispatch: Dispatch
-  pair?: ReactNode
+  pair: ReactNode
 }): JSX.Element => {
   if (read.kind === "reading") {
     return <p className="text-muted-foreground text-sm">{WORDS.reading}</p>
@@ -543,7 +543,7 @@ const Screen = ({
     case "idea": {
       const idea = openIdea(state)
       return idea === null ? (
-        <Unread read={{ kind: "reading" }} dispatch={dispatch} />
+        <Unread read={{ kind: "reading" }} dispatch={dispatch} pair={pair} />
       ) : (
         <OneIdea
           idea={idea}

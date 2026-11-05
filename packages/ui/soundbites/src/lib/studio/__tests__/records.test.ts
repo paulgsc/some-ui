@@ -1,5 +1,6 @@
 /** @vitest-environment node */
 import type { Player } from "@some-ui/voice-capture"
+import type { HomeReach } from "@soundbites/lib/idea/bundle"
 import { run, started, take } from "@soundbites/lib/project/__tests__/fixture"
 import { letGoDeletedTakes, letGoHeldTakes } from "@soundbites/lib/project/home"
 import { memoryProjectStore } from "@soundbites/lib/project/memory-store"
@@ -44,16 +45,10 @@ describe("what Studio keeps (MD4)", () => {
     expect(row?.take.deleted).toBe(deleted)
   })
 
-  it("says a take not on home yet is going home only on a phone paired with it (ST34)", () => {
-    const project = twoTakes()
-    const place = (paired: boolean): unknown =>
-      recordsView([project], new Set(), null, paired)[0]?.rows[0]?.take.kept
-    expect(place(true)).toEqual({ place: "going" })
-    expect(place(false)).toEqual({ place: "phone" })
-  })
-
   it("hears whether this phone is paired from the home port, and again when it changes (ST34)", () => {
-    let reach: "near" | "away" | "unpaired" = "unpaired"
+    // Before the phone has read whether it is paired (C5), it isn't known
+    // to be: a take says it is kept here, not going home.
+    let reach: HomeReach = "unknown"
     const listeners = new Set<() => void>()
     const records = createStudioRecords({
       store: memoryProjectStore([twoTakes()]).store,
@@ -74,6 +69,9 @@ describe("what Studio keeps (MD4)", () => {
     reach = "away"
     for (const listener of listeners) listener()
     expect(records.getSnapshot().paired).toBe(true)
+    reach = "unpaired"
+    for (const listener of listeners) listener()
+    expect(records.getSnapshot().paired).toBe(false)
     detach()
     expect(listeners.size).toBe(0)
   })

@@ -257,11 +257,17 @@ describe("Studio's words", () => {
     expect(sent.notNear.unpaired.line).toMatch(/paired/)
     expect(sent.notNear.unpaired.line).not.toMatch(/reach/)
     expect(sent.notNear.away.line).not.toMatch(/paired/)
+    // Before the phone has read whether it is paired, nothing is said of
+    // pairing or reach (C5): no line on Review, and a Sent that says only
+    // what is true either way.
+    expect(review.notNear.unknown).toBeNull()
+    expect(
+      `${sent.notNear.unknown.title} ${sent.notNear.unknown.line}`
+    ).not.toMatch(/paired|reach|home/)
     // A full phone is said in what frees room, true paired or not.
     expect(STUDIO_WORDS.bundle.full.line).not.toMatch(/reach|paired/)
-    // The way there names Settings' page, and the screens that can't show
-    // home's say only what they can't do, beside it.
-    expect(STUDIO_WORDS.pair.where).toBe("Pair it in Settings, under Home.")
+    // The screens that can't show home's say only what they can't do,
+    // beside the app's way to pairing.
     expect(STUDIO_WORDS.pair.pair).toMatch(/^Pair/)
     expect(STUDIO_WORDS.onHome.unpaired).not.toMatch(/Settings/)
   })

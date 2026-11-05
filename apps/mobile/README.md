@@ -42,7 +42,7 @@ The wings:
   bar: aph's own strip (Log, History, Trend, Settings) is its navigation.
 - **Studio** (`/journal`): the Build Journal's voice takes, and **Game
   day** (`/game-week`): a bite said while a game is on, kept on the phone
-  until home holds it. Its bar holds **Journal** and **Game day**.
+  until home holds it. Its bar holds **Studio** and **Game day**.
 - **Jobs** (`/jobs`): the morning run's picks from Drive, worked through
   step by step (review, decide, résumé, apply, debrief), my own finds, and
   the record of each application. One room, so no bar: its strip (Today,

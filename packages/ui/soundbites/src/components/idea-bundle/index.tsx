@@ -21,6 +21,7 @@ import {
 } from "@some-ui/shared"
 import type { TakePatternSnapshot } from "@some-ui/voice-capture"
 import { takeItemView } from "@some-ui/voice-capture"
+import { PairWay } from "@soundbites/components/unpaired"
 import type {
   BundleIntent,
   BundleNotice,
@@ -29,8 +30,10 @@ import type {
 import {
   answered,
   answeredCount,
+  canPlayAll,
   cardView,
   missing,
+  standsBeside,
 } from "@soundbites/lib/idea/bundle"
 import type {
   BundlePorts,
@@ -47,7 +50,7 @@ import {
   TYPED_MAX,
 } from "@soundbites/lib/idea/model"
 import { phoneBundlePorts } from "@soundbites/lib/phone"
-import { PAIR_WORDS, STUDIO_WORDS } from "@soundbites/lib/studio/words"
+import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
 import { ChevronLeft, Keyboard, MicOff } from "lucide-react"
 
 const WORDS = STUDIO_WORDS.bundle
@@ -61,7 +64,7 @@ export type IdeaBundleProps = {
   /** The way back to Studio, from the first screen. */
   back?: ReactNode
   /** The app's way to pairing, shown while this phone isn't paired (ST34). */
-  pair?: ReactNode
+  pair: ReactNode
 }
 
 type Dispatch = (intent: BundleIntent) => void
@@ -554,6 +557,7 @@ const Review = ({
   const needs = missing(state)
   const n = answeredCount(state)
   const near = state.reach === "near"
+  const notNear = near ? null : WORDS.review.notNear[state.reach]
   return (
     <div className="flex flex-col gap-4">
       <header className="space-y-2">
@@ -585,7 +589,7 @@ const Review = ({
       <div className="grid grid-cols-2 gap-2">
         <Button
           variant="secondary"
-          disabled={!IDEA_QUESTIONS.some((q) => answered(state, q) === "said")}
+          disabled={!canPlayAll(state)}
           onClick={() => dispatch({ type: "playAll" })}
         >
           {state.playAll === null ? WORDS.review.playAll : WORDS.review.stopAll}
@@ -602,10 +606,12 @@ const Review = ({
         {IDEA_QUESTIONS.map((question) => {
           const how = answered(state, question)
           const typed = state.draft.typed[question]
+          // Words typed beside a take kept unheard show with that take (ST34).
+          const take = how === "said" || standsBeside(state, question)
           return (
             <li key={question} className="flex flex-col gap-2">
               <p className="text-sm font-semibold">{ASK[question].ask}</p>
-              {how === "said" && (
+              {take && (
                 <TakeRows
                   view={takeItemView(
                     snapshot,
@@ -669,12 +675,12 @@ const Review = ({
             : WORDS.review.needsFirst}
         </p>
       )}
-      {state.reach !== "near" && (
-        <p className="text-muted-foreground text-center text-sm">
-          {WORDS.review.notNear[state.reach]}
-        </p>
+      {notNear !== null && (
+        <p className="text-muted-foreground text-center text-sm">{notNear}</p>
       )}
-      {state.reach === "unpaired" && <PairWay pair={pair} />}
+      {state.reach === "unpaired" && (
+        <PairWay pair={pair} className="self-center text-center" />
+      )}
       <Button
         size="lg"
         disabled={needs !== null}
@@ -685,13 +691,6 @@ const Review = ({
     </div>
   )
 }
-
-/** The way to pairing on a phone never paired: the app's link, or where it is. */
-const PairWay = ({ pair }: { pair: ReactNode }): JSX.Element => (
-  <div className="self-center text-center text-sm">
-    {pair ?? <p className="text-muted-foreground">{PAIR_WORDS.where}</p>}
-  </div>
-)
 
 const Sent = ({
   state,
@@ -715,7 +714,9 @@ const Sent = ({
         {said.title}
       </h2>
       <p className="text-muted-foreground">{said.line}</p>
-      {state.reach === "unpaired" && <PairWay pair={pair} />}
+      {state.reach === "unpaired" && (
+        <PairWay pair={pair} className="self-center text-center" />
+      )}
       {about !== undefined && (
         <div className="bg-card rounded-2xl p-4">
           <p className="font-semibold">{about.title}</p>
@@ -751,7 +752,9 @@ function confirmOf(
       }
     : {
         title: WORDS.confirm.answerTitle,
-        description: WORDS.confirm.answerLine(ASK[confirm.question].ask),
+        description: (standsBeside(state, confirm.question)
+          ? WORDS.confirm.besideLine
+          : WORDS.confirm.answerLine)(ASK[confirm.question].ask),
         confirm: WORDS.confirm.yes,
         keep: WORDS.confirm.keep,
         onConfirm,

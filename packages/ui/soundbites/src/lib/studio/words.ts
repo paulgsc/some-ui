@@ -209,15 +209,17 @@ function plural(n: number, one: string, many: string): string {
 
 /**
  * Pairing with home, as every Studio screen that needs home says it (ST34):
- * the way there, which the app draws as a link to Settings' Home page, and
- * where that is, said where a screen has no link to draw.
+ * the way there, which the app draws as a link to Settings' Home page.
  */
 export const PAIR_WORDS = {
   pair: "Pair this phone with home",
-  where: "Pair it in Settings, under Home.",
 } as const
 
-/** Where home is, as far as this phone can tell, short of near (`HomeReach`). */
+/**
+ * Where home is, as far as this phone can tell, short of near (`HomeReach`):
+ * `unknown` while the phone hasn't read whether it is paired, which says
+ * nothing about pairing or reach.
+ */
 type NotNear = Exclude<HomeReach, "near">
 
 /**
@@ -361,7 +363,7 @@ export const STUDIO_WORDS = {
           : `${plural(cleared, "piece", "pieces")} of it Studio couldn't use ${cleared === 1 ? "was" : "were"} let go.`,
         gone === 0
           ? ""
-          : `${plural(gone, "take", "takes")} had already left the phone before it moved.`,
+          : `${plural(gone, "take's audio", "takes' audio")} had already left the phone before it moved.`,
       ]
         .filter((line) => line !== "")
         .join(" "),
@@ -833,15 +835,19 @@ export const STUDIO_WORDS = {
       delete: "Delete",
       needsTitle: "Give it a title to send it.",
       needsFirst: "Say what the video is to send it.",
-      /** Why the idea is kept rather than sent: home away, or never paired (ST34). */
+      /**
+       * Why the idea is kept rather than sent: home away, or never paired
+       * (ST34); nothing while the phone hasn't read whether it is paired.
+       */
       notNear: {
         away: "Home is out of reach. The idea is kept here, whole, and goes home when you're back in reach.",
         unpaired:
           "This phone isn't paired with home yet. The idea is kept here, whole, and goes home once it is.",
-      } satisfies Record<NotNear, string>,
+        unknown: null,
+      } satisfies Record<NotNear, string | null>,
       send: (n: number): string =>
         `Send the idea home · ${plural(n, "answer", "answers")}`,
-      /** Home is out of reach, or this phone isn't paired with it. */
+      /** Home is out of reach, or this phone isn't known to be paired with it. */
       keep: (n: number): string =>
         `Keep the idea · ${plural(n, "answer", "answers")}`,
     },
@@ -849,6 +855,9 @@ export const STUDIO_WORDS = {
       answerTitle: "Delete this answer?",
       answerLine: (ask: string): string =>
         `“${ask}” hasn't left this phone, so deleting it removes it for good. You can say it again.`,
+      /** An answer typed beside a take kept unheard (ST34): both go. */
+      besideLine: (ask: string): string =>
+        `“${ask}” hasn't left this phone, so deleting it removes your typed words and the take beside them for good. You can say it again.`,
       allTitle: "Delete the whole idea?",
       allLine:
         "None of it has left this phone, so its title and every answer are removed for good.",
@@ -867,7 +876,7 @@ export const STUDIO_WORDS = {
     sent: {
       title: "Sent, as one idea",
       near: "Kept on this phone as one idea, dated. It goes home now, whole: what you said, its title and the rest.",
-      /** Home is out of reach, or this phone isn't paired with it (ST34). */
+      /** Home is out of reach, or this phone isn't known to be paired with it (ST34). */
       notNear: {
         away: {
           title: "Kept, goes home when you're back in reach",
@@ -876,6 +885,10 @@ export const STUDIO_WORDS = {
         unpaired: {
           title: "Kept, goes home once this phone is paired",
           line: "Kept on this phone as one idea, dated. It goes home once this phone is paired with home.",
+        },
+        unknown: {
+          title: "Kept, as one idea",
+          line: "Kept on this phone as one idea, dated.",
         },
       } satisfies Record<NotNear, { title: string; line: string }>,
       another: "Another idea",

@@ -24,9 +24,12 @@ function take(over: Partial<ProjectTake> = {}): ProjectTake {
 }
 
 describe("recordTake", () => {
-  it("says where the chosen take is kept: home, going home, or no place", () => {
-    const kept = (over: Partial<ProjectTake>): TakeKept | null | undefined =>
-      recordTake(IDLE, { take: take(over) }).row?.take.kept
+  it("says where the chosen take is kept: home, going home on a paired phone, kept on an unpaired one, or no place", () => {
+    const kept = (
+      over: Partial<ProjectTake>,
+      paired = true
+    ): TakeKept | null | undefined =>
+      recordTake({ ...IDLE, paired }, { take: take(over) }).row?.take.kept
     expect(kept({ keptBy: ["home"], onPhone: true })).toEqual({
       place: "home",
       since: null,
@@ -36,20 +39,17 @@ describe("recordTake", () => {
       since: null,
     })
     expect(kept({ keptBy: [], onPhone: true })).toEqual({ place: "going" })
-    // Carried in without its audio, and home doesn't hold it.
-    expect(kept({ keptBy: [], onPhone: false })).toBeNull()
-  })
-
-  it("says a take not on home yet is going home only on a phone paired with it (ST34)", () => {
-    const unpaired = { ...IDLE, paired: false }
-    const kept = (over: Partial<ProjectTake>): TakeKept | null | undefined =>
-      recordTake(unpaired, { take: take(over) }).row?.take.kept
-    expect(kept({ keptBy: [], onPhone: true })).toEqual({ place: "phone" })
-    // What home already holds stays on home, paired now or not.
-    expect(kept({ keptBy: ["home"], onPhone: true })).toEqual({
+    // Not known to be paired (ST34), it is kept here; what home already
+    // holds stays on home.
+    expect(kept({ keptBy: [], onPhone: true }, false)).toEqual({
+      place: "phone",
+    })
+    expect(kept({ keptBy: ["home"], onPhone: true }, false)).toEqual({
       place: "home",
       since: null,
     })
+    // Carried in without its audio, and home doesn't hold it.
+    expect(kept({ keptBy: [], onPhone: false })).toBeNull()
   })
 
   it("plays only a take whose audio is on this phone, and only while settled", () => {

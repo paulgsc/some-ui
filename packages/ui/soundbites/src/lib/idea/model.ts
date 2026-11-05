@@ -20,9 +20,11 @@
  *   nothing about an idea is let go.
  * - **A new idea is one bundle** (ST26): what it is (`about`: its title,
  *   topic, keywords and format) and its answers, each said as a take
- *   (`takes`) or, only when voice didn't work, typed. It is kept here only
- *   once it is sent (`sent`), whole; until then it is a draft
- *   (`./draft`), which nothing reads but its screen.
+ *   (`takes`) or, only when voice didn't work, typed. An answer can hold
+ *   both: words typed beside a take kept with no voice heard in it (ST34),
+ *   where the take stays and the words are what the answer says. It is
+ *   kept here only once it is sent (`sent`), whole; until then it is a
+ *   draft (`./draft`), which nothing reads but its screen.
  */
 import { canonicalJson } from "@some-ui/core-utils"
 import type { Primer } from "@soundbites/lib/journal/primer"
