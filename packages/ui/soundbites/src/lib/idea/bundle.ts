@@ -39,7 +39,10 @@
  *   outlives a try that fails and the screen coming back. Only a take's end
  *   decides what becomes of typed words: kept heard, it takes their place;
  *   kept unheard, they stand beside it. The take list, which can arrive
- *   before or after that end, never does.
+ *   before or after that end, never does. A take whose end the screen
+ *   never saw (kept after it went) sets the words it answers in place of
+ *   aside when the screen opens (`overtaken`): kept, never shown or sent,
+ *   so no later take kept unheard brings them back.
  * - **Nothing moves while a take is under way**: a swipe, a dot, Look it
  *   over and Back wait until it ends, and leaving the screen, or the page
  *   hiding (the app sent to the background), finishes and keeps it.
@@ -352,9 +355,8 @@ function namedBy(kept: ReadonlyArray<Idea>): ReadonlySet<string> {
  * question a take answers now. A take kept after the screen went (Say it
  * instead, then leaving) is told no screen, so this is read from the takes,
  * not their ending. Typed words stay: whether a take takes their place is
- * its ending's to say (`takeEnded`), and one told no screen leaves them,
- * which then neither show nor go while a take answers their question
- * (`cardView`, `bundleIdea`).
+ * its ending's to say (`takeEnded`); one told no screen is found when the
+ * screen opens (`setAside`).
  */
 function answeredBy(state: Pick<BundleState, "draft" | "takes">): IdeaDraft {
   return IDEA_QUESTIONS.reduce(
@@ -368,15 +370,18 @@ function answeredBy(state: Pick<BundleState, "draft" | "takes">): IdeaDraft {
 
 /**
  * The takes listed: what they answer taken off the draft, and kept, and
- * those nothing will send dropped.
+ * those nothing will send dropped; `opening`, typed words a take kept
+ * while the screen was gone answers set aside too (`setAside`).
  */
 function withTakes(
   state: BundleState,
   takes: ReadonlyArray<PatternTake>,
-  kept: ReadonlyArray<Idea> | null
+  kept: ReadonlyArray<Idea> | null,
+  opening = false
 ): BundleStep {
   const listed = { ...state, takes }
-  const draft = answeredBy(listed)
+  const answers = answeredBy(listed)
+  const draft = opening ? setAside({ ...listed, draft: answers }) : answers
   const next = draft === listed.draft ? listed : { ...listed, draft }
   const keep: ReadonlyArray<BundleEffect> =
     draft === listed.draft ? [] : [{ type: "keepDraft", draft }]
@@ -541,6 +546,31 @@ function without<T>(
   return Object.fromEntries(
     Object.entries(record).filter(([key]) => key !== question)
   )
+}
+
+/**
+ * The draft with the typed words a take kept while the screen was gone
+ * answers in place of set aside (`overtaken`): a take answers their question that
+ * they don't stand beside. The screen saw every other take end, so only
+ * one kept after it went can be such a take.
+ */
+function setAside(state: Pick<BundleState, "draft" | "takes">): IdeaDraft {
+  return IDEA_QUESTIONS.reduce((draft, question) => {
+    const typed = draft.typed[question]
+    const current = currentTake(state, question)
+    if (
+      typed === undefined ||
+      current === null ||
+      draft.beside?.[question] === current.id
+    ) {
+      return draft
+    }
+    const earlier = draft.overtaken?.[question] ?? []
+    return {
+      ...withoutTyped(draft, question),
+      overtaken: { ...draft.overtaken, [question]: [...earlier, typed] },
+    }
+  }, state.draft)
 }
 
 /** The draft with `question`'s typed words, if any, beside `take`. */
@@ -999,7 +1029,7 @@ export function stepBundle(state: BundleState, event: BundleEvent): BundleStep {
             ? "questions"
             : "about",
       }
-      return then(withTakes(opened, event.takes, kept), (listed) => ({
+      return then(withTakes(opened, event.takes, kept, true), (listed) => ({
         state: listed,
         effects: [
           ...settle,

@@ -11,7 +11,7 @@ export const PairWay = ({
   pair,
   className,
 }: {
-  /** The app's link to pairing, labelled `PAIR_WORDS.pair`. */
+  /** The app's link to pairing, labelled `STUDIO_WORDS.pair.pair`. */
   pair: ReactNode
   className?: string
 }): JSX.Element => <div className={cn("text-sm", className)}>{pair}</div>

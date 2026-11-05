@@ -214,7 +214,7 @@ describe("a new idea as one bundle (ST26)", () => {
       expect(effects).toEqual([{ type: "open" }])
     })
 
-    it("takes off the draft a mark for later a take kept since answers; typed words it was said instead of stay, unshown and unsent, as only its end says what becomes of them", () => {
+    it("takes off the draft what a take kept since answers: a mark for later, and typed words it was said instead of, set aside, kept but neither shown nor sent", () => {
       const { state, effects } = run([
         { type: "entered", at: AT },
         opened(
@@ -226,10 +226,8 @@ describe("a new idea as one bundle (ST26)", () => {
           [take("t1", "what"), take("t22", "spark")]
         ),
       ])
-      expect(state.draft.typed).toEqual({
-        what: "typed first",
-        takeaway: "still typed",
-      })
+      expect(state.draft.typed).toEqual({ takeaway: "still typed" })
+      expect(state.draft.overtaken).toEqual({ what: ["typed first"] })
       expect(cardView(state, "what", false)).toEqual({ kind: "take" })
       expect(
         bundleIdea(state, LATER).answers.find(
@@ -592,6 +590,47 @@ describe("a new idea as one bundle (ST26)", () => {
       expect(said.state.draft.beside).toBeUndefined()
       expect(said.state.draft.unheard).toBeUndefined()
       expect(cardView(said.state, "what", false)).toEqual({ kind: "take" })
+      // Said again and kept heard after the screen went, its end unseen:
+      // the screen opening sets the words aside, so a take kept unheard
+      // after it never brings them back as the answer.
+      const t333 = take("t333", "what")
+      const reopened = run([
+        { type: "entered", at: AT },
+        opened(besideT1.draft, [
+          t1,
+          take("t22", "what", { standing: "earlier" }),
+          t333,
+        ]),
+      ])
+      expect(reopened.state.draft.typed).toEqual({})
+      expect(reopened.state.draft.overtaken).toEqual({
+        what: ["Two hearings"],
+      })
+      const t4444 = take("t4444", "what")
+      const unheardAfter = run(
+        [
+          again,
+          unheardEnd("t4444"),
+          {
+            type: "takes",
+            takes: [take("t333", "what", { standing: "earlier" }), t4444],
+          },
+        ],
+        reopened.state
+      )
+      expect(cardView(unheardAfter.state, "what", false)).toEqual({
+        kind: "unheard",
+      })
+      expect(bundleIdea(unheardAfter.state, LATER).answers).toEqual([
+        {
+          question: "what",
+          versions: [],
+          takes: [{ at: t4444.recordedAt, take: "t4444" }],
+        },
+      ])
+      expect(unheardAfter.state.draft.overtaken).toEqual({
+        what: ["Two hearings"],
+      })
     })
 
     it("comes back later: marked, and on to the next card", () => {

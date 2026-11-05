@@ -48,6 +48,15 @@ export type IdeaDraft = {
    * Absent when none is.
    */
   readonly unheard?: Partial<Readonly<Record<QuestionId, string>>>
+  /**
+   * Typed words a take has since answered in place of, with no end of it
+   * seen (kept while the screen was gone), by question, oldest first
+   * (ST34). Kept, never shown or sent, so a later take kept unheard never
+   * brings them back as the answer. Absent when there are none.
+   */
+  readonly overtaken?: Partial<
+    Readonly<Record<QuestionId, ReadonlyArray<string>>>
+  >
   /** Questions left to come back to, in the order they were left. */
   readonly later: ReadonlyArray<QuestionId>
 }
@@ -151,6 +160,9 @@ const DraftSchema: z.ZodType<IdeaDraft> = z.object({
   typed: z.partialRecord(z.enum(IDEA_QUESTIONS), z.string().max(TYPED_MAX)),
   beside: z.partialRecord(z.enum(IDEA_QUESTIONS), z.string()).optional(),
   unheard: z.partialRecord(z.enum(IDEA_QUESTIONS), z.string()).optional(),
+  overtaken: z
+    .partialRecord(z.enum(IDEA_QUESTIONS), z.array(z.string().max(TYPED_MAX)))
+    .optional(),
   later: z.array(z.enum(IDEA_QUESTIONS)),
 })
 

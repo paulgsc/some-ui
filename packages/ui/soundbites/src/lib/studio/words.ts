@@ -211,7 +211,7 @@ function plural(n: number, one: string, many: string): string {
  * Pairing with home, as every Studio screen that needs home says it (ST34):
  * the way there, which the app draws as a link to Settings' Home page.
  */
-export const PAIR_WORDS = {
+const PAIR_WORDS = {
   pair: "Pair this phone with home",
 } as const
 
