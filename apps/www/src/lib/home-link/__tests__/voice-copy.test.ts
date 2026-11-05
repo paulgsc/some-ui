@@ -15,6 +15,7 @@ import {
   jobsNotes,
   leetypeNote,
   lensNote,
+  libraryNote,
   reflectionNote,
   refOf,
   rustRoundNote,
@@ -73,6 +74,16 @@ describe("what each voice note is told home as", () => {
       id: "t1",
       of: "studio",
       ref: "idea:3f2a-9c:takeaway",
+      at: "2026-11-01T09:12:00.000Z",
+      contentType: "audio/webm",
+    })
+    // ST32: a take with no scene goes as a Studio note named by its own id,
+    // as home's rule for a name takes it.
+    const free = { ...take, id: "0b6f6c2e-6d1a-4a51-9f3e-1d2c3b4a5e6f" }
+    expect(libraryNote({ ...free, line: "library" })).toEqual({
+      id: free.id,
+      of: "studio",
+      ref: `take:${free.id}`,
       at: "2026-11-01T09:12:00.000Z",
       contentType: "audio/webm",
     })

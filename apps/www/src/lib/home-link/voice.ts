@@ -20,6 +20,7 @@ import { ideaBundleDesk, ideaTakesDesk } from "@/lib/idea-takes"
 import { phoneJobs } from "@/lib/jobs"
 import { leetypeTakesDesk } from "@/lib/leetype-takes"
 import { lensTakesDesk } from "@/lib/lens-takes"
+import { libraryTakesDesk } from "@/lib/library-takes"
 import { reflections } from "@/lib/session-reflection"
 import { phoneVoiceHome } from "@/lib/voice-home"
 import type { Unsendable, VoiceHomeState } from "@/lib/voice-home/model"
@@ -66,8 +67,8 @@ export const voiceLane: Lane = {
     // An idea sent, or home coming to hold one (ST26).
     useSyncExternalStore(ideasMoved.subscribe, ideasMoved.getSnapshot)
     // Read so a reflection, Jobs note, game bite, Studio take, soundbite,
-    // lens take, LeetType take or idea take added, or a new idea's sent,
-    // renders the offer again.
+    // lens take, LeetType take, idea take or take with no scene added, or a
+    // new idea's sent, renders the offer again.
     useSyncExternalStore(reflections.subscribe, reflections.getSnapshot)
     const jobs = phoneJobs()
     useSyncExternalStore(jobs.subscribe, jobs.getSnapshot)
@@ -83,6 +84,9 @@ export const voiceLane: Lane = {
     // A new idea's takes, released by its Send (ST26).
     const bundle = ideaBundleDesk.phone().takes
     useSyncExternalStore(bundle.subscribe, bundle.getSnapshot)
+    // A take with no scene, recorded on Takes on home (ST32).
+    const library = libraryTakesDesk.phone().takes
+    useSyncExternalStore(library.subscribe, library.getSnapshot)
     const { gone } = useSyncExternalStore(
       copyPasses.subscribe,
       copyPasses.getSnapshot
