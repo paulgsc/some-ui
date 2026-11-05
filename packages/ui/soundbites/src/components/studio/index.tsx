@@ -30,6 +30,7 @@ import { LET_GO_CHOICES, waitingCount } from "@soundbites/lib/project/let-go"
 import type { Project } from "@soundbites/lib/project/model"
 import { latest } from "@soundbites/lib/project/model"
 import { lengthFor } from "@soundbites/lib/project/script"
+import { finishHome } from "@soundbites/lib/studio/home-videos"
 import type { StudioIntent, StudioState } from "@soundbites/lib/studio/machine"
 import {
   ideasAnswering,
@@ -1549,9 +1550,51 @@ const UploadCopy = ({
 }
 
 /**
+ * An episode made on home (ST33): once it is ready, the offer to have home
+ * make it; once kept for home, where it stands. Drive isn't read yet (ST31),
+ * and the part says so rather than claim the show's brand and music are there.
+ */
+const MadeOnHome = ({
+  state,
+  project,
+  dispatch,
+}: {
+  state: StudioState
+  project: Project
+  dispatch: Dispatch
+}): JSX.Element | null => {
+  const home = finishHome(project, state.videos)
+  if (home === null) return null
+  const words = WORDS.finish.toHome
+  return (
+    <section aria-label={words.heading} className="flex flex-col gap-2">
+      <h3 className="text-muted-foreground text-sm font-semibold">
+        {words.heading}
+      </h3>
+      {home.kind === "offer" ? (
+        <>
+          <p className="text-sm">{words.offer}</p>
+          <Button
+            size="lg"
+            variant="outline"
+            onClick={() => dispatch({ type: "homeAsked" })}
+          >
+            {words.button}
+          </Button>
+        </>
+      ) : (
+        <p className="text-sm">{home.line}</p>
+      )}
+      <p className="text-muted-foreground text-sm">{words.drive}</p>
+    </section>
+  )
+}
+
+/**
  * Finish (STUDIO ST7): ready for YouTube, or the one thing missing with a
- * button straight to it; once ready, the upload copy and the link it went
- * up at.
+ * button straight to it; once ready, the upload copy, the link it went up
+ * at, and home making it (ST33). What Finish checks is the mechanics, and
+ * it says so (decision 10).
  */
 const Finish = ({
   state,
@@ -1670,6 +1713,7 @@ const Finish = ({
           </a>
         </>
       )}
+      <MadeOnHome state={state} project={project} dispatch={dispatch} />
       <Button variant="ghost" onClick={() => dispatch({ type: "finishBack" })}>
         {words.back}
       </Button>

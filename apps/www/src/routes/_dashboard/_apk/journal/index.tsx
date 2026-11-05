@@ -22,6 +22,7 @@ import { audioPlayer } from "@some-ui/voice-capture"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 
 import { deviceListener } from "@/lib/device-listen"
+import { studioVideos } from "@/lib/home-link/studio-videos"
 import { ideaHome } from "@/lib/idea-hearing"
 import { keepIdeas } from "@/lib/idea-keeping"
 import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
@@ -83,10 +84,10 @@ const ShareStudio = ({
 /**
  * In the Android app: the phone's recognizer for a note said in Watch (ST5),
  * the shell's refresh port, so a pull down on Start or a show reads the
- * phone's videos again (SHOW SH6), and home, so a take says it is going home
- * only on a paired phone (ST34). All three are native-only
- * (`build.paths.ts`), so a web build, where the flag is false, leaves them
- * out of its bundle.
+ * phone's videos again (SHOW SH6), home, so a take says it is going home
+ * only on a paired phone (ST34), and home's videos, which Finish hands an
+ * episode to make (ST33). All four are native-only (`build.paths.ts`), so a
+ * web build, where the flag is false, leaves them out of its bundle.
  */
 const studioPorts: ComponentProps<typeof StudioHome>["ports"] =
   import.meta.env.VITE_DEVICE_BACKEND === "true"
@@ -94,6 +95,7 @@ const studioPorts: ComponentProps<typeof StudioHome>["ports"] =
         listener: deviceListener,
         refresh: screenRefreshers.register,
         home: ideaHome,
+        videos: studioVideos,
       }
     : undefined
 

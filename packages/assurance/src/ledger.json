@@ -1706,20 +1706,36 @@
           "property": "outcome",
           "claim": "Home keeps each queued video once, as sent, and a resend stores nothing new.",
           "requirement": "A PUT of a revision home lacks stores the DNA byte for byte; the same bytes again answer unchanged; other bytes under that revision are refused with a conflict and nothing is replaced; a take home does not hold is refused, naming each note.",
-          "verdict": "unproven",
-          "conclusion": "Home's side is in paulgsc/server#681 with its tests; until it merges home serves no route for queued videos.",
+          "verdict": "holds",
+          "conclusion": "Home keeps a revision's DNA once, byte for byte with its SHA-256, in the transaction that checks its takes; the same bytes again are unchanged, other bytes under that revision a conflict that writes nothing, and a take home doesn't hold a conflict naming each note. Shown on home's own SQLite in the store's tests and through the route in the handler's, with paulgsc/server#681 merged.",
           "evidence": [
             {
-              "class": "unknown",
-              "says": "Home serves no route for queued videos until paulgsc/server#681 merges.",
-              "ref": "server:docs/identity.md"
+              "class": "measured",
+              "says": "A revision is stored byte for byte; the same bytes again answer unchanged; other bytes, even the same DNA spaced otherwise, are refused and nothing is written; no row can be updated.",
+              "ref": "server:crates/db/studio_video/src/tests.rs"
+            },
+            {
+              "class": "measured",
+              "says": "Through PUT /studio/videos/:video/queued/:rev, a take home doesn't hold is a 409 naming each note once, other bytes under a queued revision a 409 naming none, and a malformed DNA a 422 naming its fields.",
+              "ref": "server:apps/servers/file_host/src/handlers/studio_videos.rs"
+            },
+            {
+              "class": "structural",
+              "says": "The phone sends each revision as the DNA its Finish mark keeps, made once, so a resend is the same bytes.",
+              "ref": "some-ui:packages/ui/soundbites/src/lib/project/dna.ts"
             }
+          ],
+          "proof": [
+            "server:crates/db/studio_video/src/tests.rs#a_revision_is_queued_once_as_sent",
+            "server:crates/db/studio_video/src/tests.rs#no_row_is_ever_updated",
+            "server:crates/db/studio_video/src/tests.rs#a_take_home_lacks_is_named_once_and_nothing_is_written",
+            "server:apps/servers/file_host/src/handlers/studio_videos.rs#a_paired_phone_queues_a_video_and_reads_where_it_stands",
+            "server:apps/servers/file_host/src/handlers/studio_videos.rs#refusals_name_their_fields_and_records_stay_apart"
           ],
           "watch": {
             "by": "none"
           },
-          "amendments": [],
-          "tracked": "some-ui#2591"
+          "amendments": []
         },
         {
           "id": "VM3",
@@ -1944,7 +1960,7 @@
     {
       "store": "phone:home-sent",
       "class": "cache",
-      "growth": "Per finished session, kept shelf item, LeetType session, Studio sitting, written reflection, ask for the next scene and Studio idea sent whole (ST26) home holds or refused (one digest, fingerprint or updatedAt each), for one pairing; no cap (`some-ui.home.sent.v1`).",
+      "growth": "Per finished session, kept shelf item, LeetType session, Studio sitting, written reflection, ask for the next scene, Studio idea sent whole (ST26) and Studio video kept for home to make (ST33) home holds or refused (one digest, fingerprint or updatedAt each; for a video whose takes home lacks, also those takes' ids), for one pairing; no cap (`some-ui.home.sent.v1`).",
       "horizon": "a new pairing starts it over (the next write replaces the old pairing's record); a refused digest leaves when home later holds the item, and refused digests of items no longer kept are dropped (home-link/standing.ts)",
       "family": "what-is-kept"
     },
@@ -2020,7 +2036,7 @@
     {
       "store": "phone:journal",
       "class": "record",
-      "growth": "Studio's projects (every revision, note, take and sitting, append-only), and one row per sitting saying how it went (`friction`); the Journal tab's one episode, if a build before Studio kept one, is moved into a project the first time Studio opens, and every row of the Journal tab's stores it doesn't move is let go, unless the episode reads but can't become a project, when it all stays (owner, 2026-10-30, #2251). JOURNAL_TAKES_MAX_BYTES = 2 x 360 s x 4,000 B/s = 2,880,000 B covers the projects' takes' audio and what the Journal tab's stores still hold, together; a few notices a closed screen couldn't say wait in `notices` until the next Start says them.",
+      "growth": "Studio's projects (every revision, note, take and sitting, append-only, and each revision queued for home to make with its DNA as sent, at most 256 KiB each, ST33), and one row per sitting saying how it went (`friction`); the Journal tab's one episode, if a build before Studio kept one, is moved into a project the first time Studio opens, and every row of the Journal tab's stores it doesn't move is let go, unless the episode reads but can't become a project, when it all stays (owner, 2026-10-30, #2251). JOURNAL_TAKES_MAX_BYTES = 2 x 360 s x 4,000 B/s = 2,880,000 B covers the projects' takes' audio and what the Journal tab's stores still hold, together; a few notices a closed screen couldn't say wait in `notices` until the next Start says them.",
       "horizon": "a project is never let go, and a take's audio leaves the phone only once home holds a copy and the owner's choice allows it: never before they choose, and under keep-until-Drive only on their Drive has it or home's word that a Build Journal session found it in Drive (LG1, HF11 #2401); Drive's is a copy, and at the cap Record names the choice instead of evicting",
       "family": "what-is-kept"
     },
@@ -3321,7 +3337,11 @@
           "name": "Finish keeps the queued revision on the phone with its takes. Ours.",
           "owner": "ours",
           "on": "phone",
-          "paths": ["some-ui:packages/ui/soundbites/src/lib/project/finish.ts"]
+          "paths": [
+            "some-ui:packages/ui/soundbites/src/lib/project/finish.ts",
+            "some-ui:packages/ui/soundbites/src/lib/project/dna.ts",
+            "some-ui:apps/www/src/lib/home-link/videos.ts"
+          ]
         },
         {
           "id": "home-network",
@@ -3341,8 +3361,8 @@
       "signals": [
         {
           "says": "Finish reads back each queued video's stage from home.",
-          "status": "planned",
-          "tracked": "some-ui#2591"
+          "status": "live",
+          "ref": "some-ui:apps/www/src/lib/home-link/videos.ts#videosListed"
         }
       ],
       "checks": []

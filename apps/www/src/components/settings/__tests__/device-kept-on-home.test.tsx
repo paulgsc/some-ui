@@ -176,7 +176,7 @@ describe("what this phone keeps on home", () => {
     home.voiceWaiting = 2
     await mount()
     expect(
-      screen.getByText(/2 voice notes and ideas wait on this phone/)
+      screen.getByText(/2 voice notes, ideas and videos wait on this phone/)
     ).toBeTruthy()
     expect(home.runs).toBe(0)
     fireEvent.click(screen.getByRole("button", { name: "Send now" }))

@@ -44,7 +44,8 @@ export const sceneId = z.string().regex(PRIMER_CUT_ID)
 /** Words someone reads: what the phone counts as text, never only spaces. */
 export const words = z.string().trim().min(1)
 
-const showId = z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/)
+/** A show's id, and its format's: a name the code gives it. */
+export const showId = z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/)
 
 const FormatSceneSchema = z.object({
   id: sceneId,

@@ -348,6 +348,7 @@ function handStudioIn(): void {
       return Promise.resolve(1)
     },
     sittingKey: () => "s",
+    videosForHome: () => [],
   })
 }
 

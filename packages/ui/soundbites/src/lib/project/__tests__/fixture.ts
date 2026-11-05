@@ -1,5 +1,7 @@
 import type { Shot } from "@some-ui/video-render"
 import { CUT_LIST_SCHEMA } from "@some-ui/video-render"
+import { run } from "@soundbites/fixtures"
+import { queueMark } from "@soundbites/lib/project/dna"
 import type {
   CutListShape,
   ProjectEvent,
@@ -7,7 +9,7 @@ import type {
 } from "@soundbites/lib/project/model"
 import { newProject } from "@soundbites/lib/project/model"
 
-export { run } from "@soundbites/fixtures"
+export { run }
 
 export const AT = "2026-10-30T09:00:00.000Z"
 
@@ -64,4 +66,11 @@ export function take(id: string, shotId: string): ProjectEvent {
       mimeType: "audio/webm",
     },
   }
+}
+
+/** `state` queued for home to make at `at`, its mark as Finish keeps it (`queueMark`). */
+export function queue(state: ProjectState, at: string): ProjectState {
+  const made = queueMark(state.project, at)
+  if ("refused" in made) throw new Error(`not queued: ${made.refused}`)
+  return run(state, { type: "queued", ...made.mark })
 }

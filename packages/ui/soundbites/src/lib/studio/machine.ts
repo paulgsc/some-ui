@@ -55,6 +55,10 @@
  *   them" lets go every take home holds (`leave`); "until Drive has it too"
  *   drops any such let-go not yet begun, and only the owner's "Drive has it"
  *   on a take (`driveHasIt`) then lets that one go.
+ * - **A video handed to home is kept first** (ST33). Finish's offer
+ *   writes the mark (`Pending` `queue`), its DNA made once in that write
+ *   (`queueMark`), and only once that write lands is the DNA the mark keeps
+ *   handed to the home link (`handHome`): a mark not kept hands nothing over.
  * - **Nothing records while the page is off screen.** A take recording when
  *   the page is hidden or left is finished and kept; a microphone that opens
  *   then, or once the Record screen is gone, is let go.
@@ -82,8 +86,15 @@ import {
   SOUNDBITE_BITS_PER_SECOND,
   SOUNDBITE_MIN_MS,
 } from "@soundbites/lib/policy"
+import type { VideoForHome } from "@soundbites/lib/project/dna"
+import { queueMark, videoForHome } from "@soundbites/lib/project/dna"
 import { isProjectFile, readProjectFile } from "@soundbites/lib/project/file"
-import { BEST_OF, finishOf, youtubeLink } from "@soundbites/lib/project/finish"
+import {
+  BEST_OF,
+  finishOf,
+  queuedOf,
+  youtubeLink,
+} from "@soundbites/lib/project/finish"
 import type { LetGo, LetGoChoice } from "@soundbites/lib/project/let-go"
 import {
   driveHasItIn,
@@ -115,6 +126,8 @@ import type {
   Written,
 } from "@soundbites/lib/project/store"
 
+import type { HomeVideos } from "./home-videos"
+import { finishHome, NO_HOME_VIDEOS } from "./home-videos"
 import type { TimeEvent } from "./time-log"
 import { originView, sceneBeside, whoseOf } from "./view"
 import { askedAt, changesIn, ideaAsking, isReviewOf, shotAt } from "./watch"
@@ -286,6 +299,8 @@ type Pending = { readonly project: string } & (
       readonly url: string
       readonly at: string
     }
+  /** Home makes revision `rev` (ST33): the mark, and the takes it names. */
+  | { readonly kind: "queue"; readonly rev: number; readonly at: string }
 )
 
 /**
@@ -406,6 +421,8 @@ export type StudioState = {
    * read from `from` on is the newest when it lands answers it.
    */
   readonly checking: { readonly from: number | null } | null
+  /** What the home link knows of the videos handed to home (ST33). */
+  readonly videos: HomeVideos
   readonly readSeq: number
   readonly pickSeq: number
   readonly playSeq: number
@@ -434,6 +451,8 @@ export type StudioIntent =
   /** Finish: keep the scene's take after three rounds of its fact check (SH5). */
   | { readonly type: "bestKept" }
   | { readonly type: "linkPasted"; readonly text: string }
+  /** Finish: have home make the episode, ready (ST33). */
+  | { readonly type: "homeAsked" }
   | { readonly type: "watchChosen" }
   | { readonly type: "historyChosen" }
   /** A show on Start (SHOW SH3), by its name. */
@@ -539,6 +558,8 @@ type StudioSignal =
     }
   | { readonly type: "reviewUnreadable"; readonly seq: number }
   | { readonly type: "timeLogRead"; readonly log: ReadonlyArray<TimeEvent> }
+  /** What the home link knows of the videos handed to it, now (ST33). */
+  | { readonly type: "videosHeard"; readonly videos: HomeVideos }
   | { readonly type: "written"; readonly written: Written }
   | { readonly type: "writeFailed"; readonly reason: "full" | "failed" }
   | { readonly type: "reported" }
@@ -610,6 +631,8 @@ export type StudioEffect =
   | { readonly type: "cancelListening" }
   /** A pull's read landed (`ok`) or could not be read. */
   | { readonly type: "checked"; readonly ok: boolean }
+  /** Hand a video kept for home to make to the home link (ST33). */
+  | { readonly type: "handHome"; readonly video: VideoForHome }
 
 export type Step = {
   readonly state: StudioState
@@ -647,6 +670,7 @@ export function initialStudioState(
     closed: null,
     filings: [],
     checking: null,
+    videos: NO_HOME_VIDEOS,
     readSeq: 0,
     pickSeq: 0,
     playSeq: 0,
@@ -948,6 +972,15 @@ function applied(project: Project | null, pending: Pending): Project | null {
         url: pending.url,
         at: pending.at,
       })
+    }
+    case "queue": {
+      if (project === null) return null
+      // The DNA is made once, here, of the project as this write reads it,
+      // and kept in the mark; one no DNA can be made of is never kept.
+      const made = queueMark(project, pending.at)
+      return "refused" in made || made.mark.rev !== pending.rev
+        ? null
+        : model(project, { type: "queued", ...made.mark })
     }
     default: {
       return assertNever(pending)
@@ -1409,6 +1442,9 @@ function landedNotice(
     case "release": {
       return WORDS.finish.released
     }
+    case "queue": {
+      return WORDS.finish.toHome.handed
+    }
     case "merge": {
       const merged =
         written.before === null ? null : mergeIn(written.before, pending.file)
@@ -1477,6 +1513,7 @@ function unchangedNotice(
     case "ready":
     case "best":
     case "release":
+    case "queue":
     case "note":
     case "good": {
       return WORDS.notice.notSaved
@@ -1591,6 +1628,28 @@ function closedSitting(pending: Pending, written: Written): string | null {
       (each) => each.closedAt === pending.at && each.shot === pending.shot
     )?.id ?? null
   )
+}
+
+/**
+ * A kept mark's DNA handed to the home link, once its write has landed
+ * (ST33); nothing for any other write, or one that kept nothing.
+ */
+function handHome(
+  state: StudioState,
+  pending: Pending,
+  written: Written
+): Step {
+  if (pending.kind !== "queue" || !written.changed || written.project === null)
+    return stay(state)
+  const mark = queuedOf(written.project, pending.rev)
+  return mark === null
+    ? stay(state)
+    : {
+        state,
+        effects: [
+          { type: "handHome", video: videoForHome(written.project, mark) },
+        ],
+      }
 }
 
 /** `first`, then `then` from its state, effects in order. */
@@ -2184,6 +2243,12 @@ export function step(state: StudioState, event: StudioEvent): Step {
         : stay(state)
     }
 
+    case "videosHeard": {
+      return state.videos === event.videos
+        ? stay(state)
+        : stay({ ...state, videos: event.videos })
+    }
+
     case "showChosen": {
       if (
         screen.kind !== "start" ||
@@ -2586,6 +2651,28 @@ export function step(state: StudioState, event: StudioEvent): Step {
       )
     }
 
+    case "homeAsked": {
+      // Only the offer Finish shows asks (`finishHome`).
+      if (
+        screen.kind !== "finish" ||
+        project === null ||
+        finishHome(project, state.videos)?.kind !== "offer"
+      )
+        return stay(state)
+      const made = queueMark(project, event.at)
+      if ("refused" in made)
+        return stay({ ...state, notice: WORDS.finish.toHome[made.refused] })
+      const asked = stepProject(
+        { project, taking: null, closing: null },
+        { type: "queued", ...made.mark }
+      )
+      if (asked.refused !== null) return stay(state)
+      return enqueue(
+        { ...state, notice: "" },
+        { kind: "queue", project: project.id, rev: made.mark.rev, at: event.at }
+      )
+    }
+
     case "recordPressed": {
       if (activity.kind === "recording") return finishRecording(state)
       // The take button stays tappable while the microphone opens (D1): a
@@ -2761,12 +2848,15 @@ export function step(state: StudioState, event: StudioEvent): Step {
         : unchangedNotice(state, pending, written)
       return then(
         then(
-          told(
-            written.changed ? landed : ideaUnkept(landed, pending),
-            notice,
-            written.changed ? null : lostBy(pending, notice)
+          then(
+            told(
+              written.changed ? landed : ideaUnkept(landed, pending),
+              notice,
+              written.changed ? null : lostBy(pending, notice)
+            ),
+            (now) => closeSettled(now, pending, closedSitting(pending, written))
           ),
-          (now) => closeSettled(now, pending, closedSitting(pending, written))
+          (now) => handHome(now, pending, written)
         ),
         pump
       )

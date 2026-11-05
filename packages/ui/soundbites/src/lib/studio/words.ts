@@ -227,7 +227,7 @@ type NotNear = Exclude<HomeReach, "near">
  * person would expect a review of the video, Finish and Shape.
  */
 const JUDGES =
-  "Studio checks the mechanics: every scene has a take, and an episode's takes keep the facts their scenes must. It doesn't judge whether a scene is good. To change how one comes out, change the video's shape, or the template it's made from."
+  "Studio checks the mechanics: every scene has a take, an episode's takes keep the facts their scenes must, and no note is left open. It doesn't judge whether a scene is good. To change how one comes out, change the video's shape, or the template it's made from."
 
 export const STUDIO_WORDS = {
   /** The place, in the foyer, the tab bar and the page alike (ST34). */
@@ -688,6 +688,64 @@ export const STUDIO_WORDS = {
     releasedLine:
       "Released. A change from here makes a new version; this one stays as it went up.",
     watchIt: "Watch it on YouTube",
+    /**
+     * Home making the episode (ST33): the offer once it is ready, then where
+     * it stands, from this phone until home has it.
+     */
+    toHome: {
+      heading: "Made on home",
+      offer:
+        "Home can make this episode on its own time, from the show, your takes and the week's data. Studio doesn't wait on it.",
+      button: "Have home make it",
+      handed: "Kept on this phone for home to make.",
+      /** Nothing can be made of this version as it is (a fault, not a choice). */
+      unmade: "This version can't be made as it is, so home wasn't asked.",
+      tooLarge:
+        "This version is too large for home to keep, so home wasn't asked.",
+      going: (since: string): string =>
+        `Kept on this phone since ${since}, on its way to home.`,
+      /**
+       * Why it waits on this phone, short of home near (ST34): nothing about
+       * pairing while the phone hasn't read whether it is paired.
+       */
+      notNear: {
+        away: (since: string): string =>
+          `Kept on this phone since ${since}. It goes to home the next time this phone is on the home network.`,
+        unpaired: (since: string): string =>
+          `Kept on this phone since ${since}. It goes to home once this phone is paired with home in Settings.`,
+        unknown: (since: string): string =>
+          `Kept on this phone since ${since}.`,
+      } satisfies Record<NotNear, (since: string) => string>,
+      held: "On home, to be made. Home makes it on its own time.",
+      onHome: (since: string): string =>
+        `On home since ${since}, to be made. Home makes it on its own time.`,
+      onHomeOther: (since: string): string =>
+        `On home since ${since}. This version of the app can't say yet how far home has got with it.`,
+      /**
+       * Home doesn't hold a take the video names: not yet, or, set aside or
+       * deleted for good, not again, which this phone can't always tell.
+       */
+      missing: (scenes: ReadonlyArray<string>): string =>
+        `Home doesn't have your take for ${scenes.length === 0 ? "a scene" : listed(scenes)}, so it hasn't taken this video. It goes again once home has that take. If that take was set aside or deleted for good, make a new version with another take.`,
+      /** Home deleted a take the video names for good, as this phone heard. */
+      deleted: (scenes: ReadonlyArray<string>): string =>
+        `Your take for ${scenes.length === 0 ? "a scene" : listed(scenes)} was deleted for good, so home can't make this version. Make a new version with another take.`,
+      refused:
+        "Home didn't take this video as it is. It stays on this phone, and nothing on home changed.",
+      /** ST31's open question: how the phone reads Drive. */
+      drive:
+        "Whether the show's brand and music are in Drive isn't checked yet.",
+      /** A scene with no name of its own, by its place. */
+      scene: (n: number): string => `scene ${String(n)}`,
+      /** A moment, as the lines above say it: its day and time. */
+      when: (iso: string): string =>
+        new Date(iso).toLocaleString(undefined, {
+          month: "short",
+          day: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+        }),
+    },
     marked: "Marked ready for YouTube.",
     back: "Back",
     status: {

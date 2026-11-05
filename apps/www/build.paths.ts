@@ -119,6 +119,7 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/jobs/**",
   "apps/www/src/lib/journal-share/**",
   "apps/www/src/lib/lens-takes/**",
+  "apps/www/src/lib/moves/**",
   "apps/www/src/lib/my-data/**",
   "apps/www/src/lib/leetype-files/**",
   "apps/www/src/lib/leetype-takes/**",
@@ -221,6 +222,7 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
     {
       modules: [
         "packages/video-render/src/cut-list.ts",
+        "packages/video-render/src/dna.ts",
         "packages/video-render/src/episode.ts",
         "packages/video-render/src/format.ts",
         "packages/video-render/src/plans.ts",
@@ -229,7 +231,7 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
         "packages/video-render/src/vocabulary.ts",
       ],
       profiles: [MOBILE_PROFILE],
-      why: "the cut list's schemas, which the phone's Studio project reads and checks, its timing, which fits a scene to its take as Record keeps it, a show format's primer limits, which Journal checks a primer against, an episode file, which Studio opens as an episode, and a review render's review.json, which Watch reads (@some-ui/soundbites, lib/project and lib/studio): the web builds render no video and keep no project",
+      why: "the cut list's schemas, which the phone's Studio project reads and checks, its timing, which fits a scene to its take as Record keeps it, a show format's primer limits, which Journal checks a primer against, an episode file, which Studio opens as an episode, and a review render's review.json, which Watch reads, and a video's DNA, which Finish keeps for home to make (@some-ui/soundbites, lib/project and lib/studio): the web builds render no video and keep no project",
     },
     {
       modules: ["packages/some-styles/src/theme/boundary.ts"],

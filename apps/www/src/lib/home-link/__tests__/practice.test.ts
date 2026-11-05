@@ -546,6 +546,7 @@ describe("Practice's lane, for HF5's records", () => {
         waitingIds: () => [],
         letGoOnDrive: () => Promise.resolve(0),
         sittingKey: (sitting) => sitting.id,
+        videosForHome: () => [],
       })
       await new Promise((resolve) => setTimeout(resolve, 0))
     })
