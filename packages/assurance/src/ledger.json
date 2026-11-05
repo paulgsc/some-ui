@@ -2565,6 +2565,12 @@
       "family": "voice-heard"
     },
     {
+      "store": "server:voice_note_meaning",
+      "class": "derived",
+      "growth": "Per Studio take home heard words in, per embedding model: one row (the take's id, the model's name, a 1,024-byte vector of 256 f32s; no ref, no text, no time), at most one per take and model, so bounded by voice_note's studio rows times the models in use (one: potion-multilingual-128M). Replaced in place, never appended, when a better transcript changes the take's words; derived from voice_transcript and can be remade from it; written only by the transcriber's pass, off unless MEANING_ENABLED; leaves with the take (My data's delete) and with the account.",
+      "family": "voice-heard"
+    },
+    {
       "store": "phone:app-events",
       "class": "telemetry",
       "growth": "bounded: APP_EVENTS_WAITING = 500 notes of how a take ended (about 300 B each, 150 KB), each waiting until home holds it; past 500 a new one is not kept (`some-ui:app-events`).",
