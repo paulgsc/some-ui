@@ -12,6 +12,7 @@ import { ONE_TAKE } from "@some-ui/voice-capture"
 import type { SimulatedPattern } from "@some-ui/voice-capture/testing"
 import { simulatedPattern, SPEAKING } from "@some-ui/voice-capture/testing"
 import { bundleTakesOf } from "@soundbites/fixtures"
+import { bundleIdea, cardView } from "@soundbites/lib/idea/bundle"
 import type { BundleRuntime } from "@soundbites/lib/idea/bundle-runtime"
 import { createIdeaBundle } from "@soundbites/lib/idea/bundle-runtime"
 import type { DraftStore } from "@soundbites/lib/idea/draft"
@@ -297,7 +298,7 @@ describe("a new idea, end to end on the simulated microphone (ST26)", () => {
     expect(again.release).not.toHaveBeenCalled()
   })
 
-  it("says it instead, then leaves mid-take: the take kept after the screen went replaces the typed words", async () => {
+  it("says it instead, then leaves mid-take: the take kept after the screen went answers in place of the typed words", async () => {
     const storage = inMemoryStorage()
     const simulated = simulatedPattern({
       options: { ...ONE_TAKE, send: "on-confirm" },
@@ -320,7 +321,15 @@ describe("a new idea, end to end on the simulated microphone (ST26)", () => {
     await pass(100)
     expect(simulated.store.getSnapshot()).toHaveLength(1)
     const again = phone(storage, simulated)
-    expect(again.drafts.read()?.typed).toEqual({})
+    // Its end told no screen, the typed words stay on the draft, neither
+    // shown nor sent while the take answers.
+    expect(cardView(again.bundle.getSnapshot(), "what", false)).toEqual({
+      kind: "take",
+    })
+    expect(
+      bundleIdea(again.bundle.getSnapshot(), "2026-11-01T10:00:00.000Z")
+        .answers[0]?.versions
+    ).toEqual([])
     again.bundle.dispatch({ type: "askDelete", question: "what" })
     again.bundle.dispatch({ type: "confirmed" })
     expect(simulated.store.getSnapshot()).toEqual([])

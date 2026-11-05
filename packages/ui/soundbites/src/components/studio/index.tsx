@@ -863,6 +863,7 @@ const Shape = ({
               />
             ))}
       </div>
+      <p className="text-muted-foreground text-sm">{WORDS.judges}</p>
       <Button
         size="lg"
         onClick={() => dispatch({ type: lookStep ? "shapeNext" : "shapeKept" })}
@@ -1570,6 +1571,7 @@ const Finish = ({
   return (
     <div className="flex flex-col gap-3">
       <h2 className="text-2xl font-extrabold">{words.heading}</h2>
+      <p className="text-muted-foreground text-sm">{WORDS.judges}</p>
       {finish.kind === "note" && (
         <>
           <p className="text-sm">{words.note(finish.note.text)}</p>

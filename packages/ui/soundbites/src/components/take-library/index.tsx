@@ -9,10 +9,11 @@
  * (`TakeList`), and listed apart, with where each is kept, until home holds
  * it (`notYetHome`).
  */
-import type { JSX } from "react"
+import type { JSX, ReactNode } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { assertNever } from "@some-ui/core-utils"
 import { Button, Input, TakeList } from "@some-ui/shared"
+import { Unpaired } from "@soundbites/components/unpaired"
 import type {
   LibraryIntent,
   LibraryPage,
@@ -35,6 +36,8 @@ type Dispatch = (intent: LibraryIntent) => void
 export type TakeLibraryProps = {
   /** Home, as the build reaches it, and a player. Read once. */
   ports: LibraryPorts
+  /** The app's way to pairing, shown while this phone isn't paired (ST34). */
+  pair: ReactNode
 }
 
 /** What home heard in `take`, or why there is nothing to show. */
@@ -153,9 +156,11 @@ const Listed = ({
 const Read = ({
   state,
   dispatch,
+  pair,
 }: {
   state: LibraryState
   dispatch: Dispatch
+  pair: ReactNode
 }): JSX.Element => {
   const { read } = state
   switch (read.kind) {
@@ -166,7 +171,7 @@ const Read = ({
       return <Listed page={read.page} state={state} dispatch={dispatch} />
     }
     case "unpaired": {
-      return <p className="text-sm">{WORDS.unpaired}</p>
+      return <Unpaired line={WORDS.unpaired} pair={pair} />
     }
     case "away":
     case "older":
@@ -223,7 +228,7 @@ const PhoneTakes = ({ phone }: { phone: LibraryPhone }): JSX.Element => {
   )
 }
 
-export const TakeLibrary = ({ ports }: TakeLibraryProps): JSX.Element => {
+export const TakeLibrary = ({ ports, pair }: TakeLibraryProps): JSX.Element => {
   /* eslint-disable-next-line owner-guard/no-mount-snapshot -- the runtime is made once per mount, as Studio's screens' are */
   const [library] = useState(() => createTakeLibrary(ports))
   useEffect(() => library.attach(), [library])
@@ -272,7 +277,7 @@ export const TakeLibrary = ({ ports }: TakeLibraryProps): JSX.Element => {
           )}
         </form>
       )}
-      <Read state={state} dispatch={dispatch} />
+      <Read state={state} dispatch={dispatch} pair={pair} />
     </div>
   )
 }

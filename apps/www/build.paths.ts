@@ -142,6 +142,7 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/study-nudge/schedule.ts",
   "apps/www/src/components/copy-button.tsx",
   "apps/www/src/components/device-home-glyph.tsx",
+  "apps/www/src/components/pair-home-link.tsx",
   "apps/www/src/components/player/device-*.ts",
   "apps/www/src/components/aph/device-*.tsx",
   "apps/www/src/components/jobs/**",

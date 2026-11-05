@@ -22,6 +22,7 @@ import { audioPlayer } from "@some-ui/voice-capture"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 
 import { deviceListener } from "@/lib/device-listen"
+import { ideaHome } from "@/lib/idea-hearing"
 import { keepIdeas } from "@/lib/idea-keeping"
 import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
@@ -32,6 +33,7 @@ import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 import { keepStudio } from "@/lib/studio-keeping"
 import { takesHome } from "@/lib/take-library"
 import { CopyButton } from "@/components/copy-button"
+import { PairHomeLink } from "@/components/pair-home-link"
 
 const WORDS = STUDIO_WORDS
 
@@ -80,13 +82,19 @@ const ShareStudio = ({
 
 /**
  * In the Android app: the phone's recognizer for a note said in Watch (ST5),
- * and the shell's refresh port, so a pull down on Start or a show reads the
- * phone's videos again (SHOW SH6). Both are native-only (`build.paths.ts`),
- * so a web build, where the flag is false, leaves them out of its bundle.
+ * the shell's refresh port, so a pull down on Start or a show reads the
+ * phone's videos again (SHOW SH6), and home, so a take says it is going home
+ * only on a paired phone (ST34). All three are native-only
+ * (`build.paths.ts`), so a web build, where the flag is false, leaves them
+ * out of its bundle.
  */
 const studioPorts: ComponentProps<typeof StudioHome>["ports"] =
   import.meta.env.VITE_DEVICE_BACKEND === "true"
-    ? { listener: deviceListener, refresh: screenRefreshers.register }
+    ? {
+        listener: deviceListener,
+        refresh: screenRefreshers.register,
+        home: ideaHome,
+      }
     : undefined
 
 const IdeaLink: WingLink = ({ className, children }) => (
@@ -117,6 +125,7 @@ const Records = (): JSX.Element => {
     store: phoneProjectStore(),
     deletable: deletableStudioTakes,
     player: audioPlayer,
+    home: ideaHome,
   }))
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-4">
@@ -160,7 +169,10 @@ const Takes = (): JSX.Element | null => {
       <h1 className="text-muted-foreground text-sm font-bold tracking-wider uppercase">
         {LIBRARY_WORDS.heading}
       </h1>
-      <TakeLibrary ports={TAKE_PORTS} />
+      <TakeLibrary
+        ports={TAKE_PORTS}
+        pair={<PairHomeLink>{WORDS.pair.pair}</PairHomeLink>}
+      />
       <Link
         to="/journal"
         className="text-muted-foreground self-start text-sm underline underline-offset-4"

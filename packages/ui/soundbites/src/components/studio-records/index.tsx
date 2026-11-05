@@ -39,7 +39,12 @@ export const StudioRecords = ({
   if (state.projects === "unreadable") {
     return <p className="text-sm">{WORDS.unreadable}</p>
   }
-  const projects = recordsView(state.projects, state.deletable, state.playing)
+  const projects = recordsView(
+    state.projects,
+    state.deletable,
+    state.playing,
+    state.paired
+  )
   if (projects.length === 0) {
     return <p className="text-muted-foreground text-sm">{WORDS.none}</p>
   }

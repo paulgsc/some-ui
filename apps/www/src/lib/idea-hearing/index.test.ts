@@ -164,11 +164,23 @@ describe("IH1: where an idea answer's words come from", () => {
 })
 
 describe("where a new idea goes (ST26 b)", () => {
-  it("is away while the voice lane's last run found home out of reach, near otherwise, and unpaired with no pairing", () => {
-    expect(reachOf(null, { kind: "unreachable", at: 1 })).toBe("unpaired")
-    expect(reachOf("p1", { kind: "unreachable", at: 1 })).toBe("away")
-    expect(reachOf("p1", { kind: "synced", at: 2 })).toBe("near")
-    expect(reachOf("p1", { kind: "failed", why: "room" })).toBe("near")
-    expect(reachOf("p1", null)).toBe("near")
+  it("is away while the voice lane's last run found home out of reach, near otherwise, unpaired with no pairing, and unknown while the pairing is being read", () => {
+    const paired = {
+      kind: "paired",
+      base: "https://home.lan",
+      id: "p1",
+      notForgotten: false,
+    } as const
+    const unpaired = { kind: "unpaired", note: null } as const
+    expect(reachOf(unpaired, { kind: "unreachable", at: 1 })).toBe("unpaired")
+    expect(reachOf(paired, { kind: "unreachable", at: 1 })).toBe("away")
+    expect(reachOf(paired, { kind: "synced", at: 2 })).toBe("near")
+    expect(reachOf(paired, { kind: "failed", why: "room" })).toBe("near")
+    expect(reachOf(paired, null)).toBe("near")
+    // A paired phone never says it isn't while its record is read (ST34).
+    expect(reachOf({ kind: "reading" }, null)).toBe("unknown")
+    expect(reachOf({ kind: "reading" }, { kind: "unreachable", at: 1 })).toBe(
+      "unknown"
+    )
   })
 })

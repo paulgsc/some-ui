@@ -18,8 +18,9 @@ export const LIBRARY_WORDS = {
   heading: "Takes on home",
   open: "Takes on home",
   reading: "Asking home…",
+  /** Said with Studio's way to pairing (`STUDIO_WORDS.pair`) beside it (ST34). */
   unpaired:
-    "This phone isn't paired with home, so it can't show the takes home keeps. Pair it in Settings.",
+    "This phone isn't paired with home, so it can't show the takes home keeps.",
   away: "Home can't be reached right now. Try again once you're back in reach.",
   older:
     "Home doesn't list its takes yet. Once it runs a newer version, every take it keeps shows here.",

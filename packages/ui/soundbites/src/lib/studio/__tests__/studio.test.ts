@@ -13,6 +13,7 @@ import type {
 } from "@some-ui/voice-capture"
 import { simulatedMicrophone, SPEAKING } from "@some-ui/voice-capture/testing"
 import { episodeProjectOf } from "@soundbites/fixtures"
+import type { HomeReach } from "@soundbites/lib/idea/bundle"
 import {
   run,
   shot,
@@ -407,6 +408,44 @@ describe("recording a scene", () => {
     expect(memory.projects.get(before.id)).toEqual(before)
     expect(memory.audio.size).toBe(0)
     expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.notice.full(null, 0))
+  })
+})
+
+describe("whether this phone is paired with home (ST34)", () => {
+  it("is heard from the home port on attach and on each change, never paired without one", () => {
+    expect(studio(memoryProjectStore()).getSnapshot().paired).toBe(false)
+    // Before the phone has read whether it is paired (C5), it isn't known
+    // to be: a take says it is kept here, not going home.
+    let reach: HomeReach = "unknown"
+    const listeners = new Set<() => void>()
+    const runtime = studio(
+      memoryProjectStore(),
+      speaking(),
+      "t",
+      undefined,
+      undefined,
+      {
+        home: {
+          reach: () => reach,
+          subscribe: (listener) => {
+            listeners.add(listener)
+            return (): void => {
+              listeners.delete(listener)
+            }
+          },
+        },
+      }
+    )
+    expect(runtime.getSnapshot().paired).toBe(false)
+    // Out of reach is still paired: a take is still going home.
+    reach = "away"
+    for (const listener of listeners) listener()
+    expect(runtime.getSnapshot().paired).toBe(true)
+    reach = "unpaired"
+    for (const listener of listeners) listener()
+    expect(runtime.getSnapshot().paired).toBe(false)
+    runtime.detach()
+    expect(listeners.size).toBe(0)
   })
 })
 

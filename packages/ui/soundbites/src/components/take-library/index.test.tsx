@@ -5,6 +5,7 @@ import { TakeLibrary } from "@soundbites/components/take-library"
 import type { LibraryRead, LibraryTake } from "@soundbites/lib/library/model"
 import type { LibraryPhone, TakesHome } from "@soundbites/lib/library/runtime"
 import { LIBRARY_WORDS } from "@soundbites/lib/library/words"
+import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
 import { act, fireEvent, render, screen } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 
@@ -62,7 +63,9 @@ const settle = (): Promise<void> => act(() => Promise.resolve())
 
 describe("Takes on home (ST32)", () => {
   it("lists the takes home keeps with the words it heard, and says one it hasn't heard yet", async () => {
-    render(<TakeLibrary ports={{ home: home(), player: quietPlayer }} />)
+    render(
+      <TakeLibrary ports={{ home: home(), player: quietPlayer }} pair={null} />
+    )
     await settle()
     expect(screen.getByText(TAKE.heard!.text)).toBeTruthy()
     expect(screen.getByText(W.notHeard)).toBeTruthy()
@@ -73,7 +76,10 @@ describe("Takes on home (ST32)", () => {
   it("searches the words, says the search ran on words, and goes back to the newest", async () => {
     const takes = vi.fn(home().takes)
     render(
-      <TakeLibrary ports={{ home: home({ takes }), player: quietPlayer }} />
+      <TakeLibrary
+        ports={{ home: home({ takes }), player: quietPlayer }}
+        pair={null}
+      />
     )
     await settle()
     fireEvent.change(screen.getByLabelText(W.searchLabel), {
@@ -93,7 +99,10 @@ describe("Takes on home (ST32)", () => {
   it("says a search is too long, and asks home nothing for it", async () => {
     const takes = vi.fn(home().takes)
     render(
-      <TakeLibrary ports={{ home: home({ takes }), player: quietPlayer }} />
+      <TakeLibrary
+        ports={{ home: home({ takes }), player: quietPlayer }}
+        pair={null}
+      />
     )
     await settle()
     fireEvent.change(screen.getByLabelText(W.searchLabel), {
@@ -111,7 +120,12 @@ describe("Takes on home (ST32)", () => {
       .fn<TakesHome["audio"]>()
       .mockResolvedValueOnce(new Blob(["take"]))
       .mockResolvedValueOnce(null)
-    render(<TakeLibrary ports={{ home: home({ audio }), player: { play } }} />)
+    render(
+      <TakeLibrary
+        ports={{ home: home({ audio }), player: { play } }}
+        pair={null}
+      />
+    )
     await settle()
     const [first, second] = screen.getAllByRole("button", { name: W.play })
     fireEvent.click(first!)
@@ -128,7 +142,10 @@ describe("Takes on home (ST32)", () => {
   it("says why there is nothing, offering Try again only where it can help", async () => {
     const takes = vi.fn(() => Promise.resolve({ kind: "away" as const }))
     const { unmount } = render(
-      <TakeLibrary ports={{ home: home({ takes }), player: quietPlayer }} />
+      <TakeLibrary
+        ports={{ home: home({ takes }), player: quietPlayer }}
+        pair={null}
+      />
     )
     await settle()
     expect(screen.getByText(W.away)).toBeTruthy()
@@ -144,10 +161,15 @@ describe("Takes on home (ST32)", () => {
           }),
           player: quietPlayer,
         }}
+        pair={<a href="#pair">{STUDIO_WORDS.pair.pair}</a>}
       />
     )
     await settle()
     expect(screen.getByText(W.unpaired)).toBeTruthy()
+    // The way to pairing is the app's link (ST34), never only "in Settings".
+    expect(
+      screen.getByRole("link", { name: STUDIO_WORDS.pair.pair })
+    ).toBeTruthy()
     expect(screen.queryByRole("button", { name: W.readAgain })).toBeNull()
     expect(screen.queryByLabelText(W.searchLabel)).toBeNull()
   })
@@ -184,6 +206,7 @@ describe("Takes on home (ST32)", () => {
     const { unmount } = render(
       <TakeLibrary
         ports={{ home: home(), player: quietPlayer, phone: phone(false) }}
+        pair={null}
       />
     )
     await settle()
@@ -206,6 +229,7 @@ describe("Takes on home (ST32)", () => {
     render(
       <TakeLibrary
         ports={{ home: home(), player: quietPlayer, phone: phone(true) }}
+        pair={null}
       />
     )
     await settle()

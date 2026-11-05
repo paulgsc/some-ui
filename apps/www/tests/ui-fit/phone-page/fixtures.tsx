@@ -29,6 +29,7 @@ import {
   keptLetGo,
   keptTimeLog,
   NewIdeaPage,
+  STUDIO_WORDS,
   StudioHome,
 } from "@some-ui/soundbites"
 import {
@@ -264,7 +265,20 @@ function newIdea(refuse: boolean): () => JSX.Element {
     ideas: keptIdeaStore(storage),
   }
   const IdeaFixture = (): JSX.Element => (
-    <NewIdeaPage takes={takes} ports={ports} backLink={STUDIO_LINK} />
+    <NewIdeaPage
+      takes={takes}
+      ports={ports}
+      backLink={STUDIO_LINK}
+      // The route's way to pairing (`PairHomeLink`), as an anchor here.
+      pair={
+        <a
+          href="#pair"
+          className="text-brand self-start text-sm font-semibold underline underline-offset-4"
+        >
+          {STUDIO_WORDS.pair.pair}
+        </a>
+      }
+    />
   )
   return IdeaFixture
 }
