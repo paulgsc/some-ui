@@ -375,6 +375,8 @@ function aphStore(onPhone = false, entries = 0): AphStore & { moved: number } {
     save: () => null,
     review: () => false,
     editEntry: () => false,
+    rewriteMine: () => false,
+    remove: () => false,
     editSettings: () => false,
   }
   return store
