@@ -4,9 +4,9 @@
  * paired (`./voice-copy`, which says which notes and how each is told), and
  * sent through the one wiring (`./lanes`) by `exchangeVoice`
  * (`lib/voice-home/home`), then each Studio idea sent whole (`./ideas`,
- * ST26), whose said answers name those notes, then each Studio video kept
- * for home to make (`./videos`, ST33), whose takes do too, then the set-aside marks
- * owed for notes the owner let go (`./set-aside`, MIC2). The lane has no wing mark of its
+ * ST26), whose said answers name those notes, then the set-aside marks
+ * owed for notes the owner let go (`./set-aside`, MIC2), then each Studio
+ * video kept for home to make (`./videos`, ST33), whose takes name notes too. The lane has no wing mark of its
  * own: the app shell mounts `useVoiceHome` on every screen, so notes go
  * from any wing.
  */

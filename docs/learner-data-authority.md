@@ -576,7 +576,12 @@ declared (checked by reading every call site and by the tests named).
   anything but the voice run (`voice-copy.ts`'s `sendVoice`) read it; one
   that has `lib/home-link/set-aside.ts` send anything but one `PUT` of
   `setAsidePath(mark)` per mark `due`, with no body, or lets anything but
-  the voice run call it; one that
+  the voice run call it; one that has `routes/_dashboard/_apk/journal/index.tsx`
+  or `lib/home-link/studio-videos.ts` call anything in `lib/home-link` but
+  what Finish reads (`studioVideos`, and, in `studio-videos.ts`,
+  `pairingOf` and `./videos`' `videoAnswers`, `videoHanded`,
+  `videosListed` and `videosMoved`), or has `studioVideos` call a
+  `homeLink()` method that sends, `sendVideos` or `phoneVideos`; one that
   sends from `createHomeLink` or `load`, or, outside LA15's watch,
   Korean's look, the idea screen's ask for a take's words, My data's
   reads, Ideas on home's reads and Takes on home's reads, from a
@@ -807,8 +812,10 @@ only from the lane's hook and the scene notes read for home only there
   only once that exchange is `synced`, one `letGoOnHomesWord(send)`, home's
   word on which Studio takes Drive has, HF11, which does not change the
   run's end, then one `markSetAside(home.marks, send)`, home's set-aside
-  mark for each note let go on the phone that home holds, MIC2, whose end
-  is then the run's, read with the pass's by `runEnd`), and a copy goes
+  mark for each note let go on the phone that home holds, MIC2, whose end,
+  unless `synced`, is then the run's, read with the pass's by `runEnd`, and
+  only once it is `synced`, one `sendVideos`, Studio's videos kept for home
+  to make, ST33, whose end is then the run's, read the same way), and a copy goes
   only once home holds its note. Letting a note
   go where it was recorded never removes its copy, and the drama's draft
   lets a scene note go on home's word only once home holds the ask that
@@ -875,7 +882,8 @@ only from the lane's hook and the scene notes read for home only there
   `sendVoice`, or makes `sendVoice` anything but a copy pass, then
   `exchangeVoice` over `phoneVoiceHome().keeping`, then, only after a
   `synced` exchange, one `letGoOnHomesWord(send)` and one `markSetAside`
-  over the same store's `marks`, whose end only `runEnd` may change (so
+  over the same store's `marks`, and only after a `synced` `markSetAside`
+  one `sendVideos`, whose ends only `runEnd` may change (so
   also one that lets `letGoOnHomesWord` throw, or its outcome reach what
   `sendVoice` returns); one that drops `oweMarks` from `copyAll`, or moves
   it in `letGoHeld` after a store's `letGo`, or has a candidate's `aside`
@@ -1015,8 +1023,11 @@ was silent, so the run ended as if all had gone.
 Everything the phone keeps for home (aph, the Jobs record, Practice's
 record with its written reflections, asks for the next scene, the
 soundbites' records, LeetType's answer notes and the grammar-lens record,
-voice notes and Studio's ideas sent whole (ST26, which the voice lane carries
-after the notes their answers name), and the rounds pasted in Rust Rounds, whose run also brings
+voice notes, Studio's ideas sent whole (ST26, which the voice lane carries
+after the notes their answers name) and Studio's videos kept for home to
+make (ST33, each as the DNA its Finish mark keeps, which the voice lane
+carries after its set-aside marks, the notes their takes name gone before),
+and the rounds pasted in Rust Rounds, whose run also brings
 home's rounds and the runs home recorded back to the phone, RR4b, and the
 notes of how each take ended, CK2, `app-events.ts`) goes
 through one wiring (`lib/home-link/lanes.ts`):
@@ -1046,7 +1057,12 @@ too", HF11, and lets go only what home names, and that a Studio idea sent
 whole goes after the run's notes, once, counted waiting until home holds it;
 `ideas.test.ts`, which holds that an idea counts held only on a `200` that
 carries it back, waits while home lacks its notes or keeps no ideas, and is
-not offered again while home holds or refused it as it is), that Practice's lane asks for a run on a
+not offered again while home holds or refused it as it is; `videos.test.ts`,
+which holds that a video is sent as the body its mark keeps, counts held
+only on a `200` that names it kept, waits while home lacks its takes or
+keeps no videos, is not offered again while home holds or refused it or
+once every take home lacks is one home deleted for good, and that what home
+answered on an earlier launch is read back once Studio is handed in), that Practice's lane asks for a run on a
 new soundbite, LeetType answer note or lens entry, or on a LeetType session
 finishing, and counts each, with Studio's sittings and answers, waiting
 until home holds it (#2425), and that once its run has sent them LeetType's answer
@@ -1207,7 +1223,23 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   `sendingStore` keep anything its store would not, or keep a change
   without `ideaMoved`, or a hunk to `routes/_dashboard/_apk/journal/idea.tsx`
   that hands the new idea's screen an ideas store other than
-  `sendingStore`'s; a hunk to `lib/home-link/voice-copy.ts` that
+  `sendingStore`'s; a hunk to `lib/home-link/keyed-send.ts` that has
+  `sendKeyed` send anything but one `PUT` of each item's `path` and `body`,
+  in order, call `answered` with `held` on any answer but a `200` its
+  `kept` accepts, or go on past a `401`; a hunk to `lib/home-link/videos.ts`
+  that sends anything but one `PUT /studio/videos/:video/queued/:rev` of
+  each video `videosToSend` names, with the body its mark keeps
+  (`VideoForHome`'s `body`), then, while any is known and the run goes on,
+  one `GET /studio/videos`, counts a video held on any answer but a `200`
+  that `kept` accepts, remembers an answer anywhere but `sent.videos` under
+  the run's pairing, reads Studio's projects other than on their hand-in
+  (`onStudioKept`), a write to them (their store's `subscribe`) and a run's
+  `going`, or lets anything on the phone go; a hunk to
+  `lib/home-link/voice-copy.ts` that has `sendVoice` send the videos before
+  `markSetAside` synced, or drops them from its run; a hunk to
+  `lib/home-link/voice.ts` that drops the videos waiting (`videosNow`) from
+  the lane's `revision` or its waiting count, or `videosMoved` from its
+  `subscribe`; a hunk to `lib/home-link/voice-copy.ts` that
   makes `holdNotes` do anything but hand LeetType's answer notes
   (`leetypeNotesHeldByHome`) and the soundbites (their `heldByHome`) how to
   read what home holds of them; a hunk to `lib/home-link/leetype-log.ts` that
@@ -1282,6 +1314,10 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   `apps/www/src/lib/leetype-takes/index.ts`,
   `apps/www/src/lib/home-link/studio-log.ts`, `apps/www/src/lib/studio-keeping/index.ts`,
   `apps/www/src/lib/home-link/ideas.ts`, `apps/www/src/lib/idea-keeping/index.ts`,
+  `apps/www/src/lib/home-link/keyed-send.ts`,
+  `apps/www/src/lib/home-link/videos.ts`,
+  `apps/www/src/lib/home-link/studio-videos.ts`,
+  `apps/www/src/lib/home-link/__tests__/videos.test.ts`,
   `apps/www/src/routes/_dashboard/_apk/journal/idea.tsx`,
   `packages/ui/leetype/src/lib/leetype/session-log/index.ts`,
   `packages/ui/leetype/src/lib/leetype/session-log/home.ts`,
@@ -1318,7 +1354,14 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   `PUT` per idea `ideasToSend` names, only inside `sendVoice` after its
   notes' exchange synced, and the lane's revision and count reading
   `ideasWaiting`, which `ideasMoved` (a Send kept, or home's answer
-  remembered) tells.
+  remembered) tells. Amended for ST33 (#2591) by reading the videos' part:
+  one `PUT` per video `videosToSend` names, its body the mark's DNA, then
+  one `GET /studio/videos` while any is known, only inside `sendVoice` after
+  `markSetAside` synced, through `sendKeyed`, which the ideas' part shares;
+  Studio's projects read only on their hand-in, their store's `subscribe`
+  and a run's `going`; and the lane's revision and count reading
+  `videosWaiting`, which `videosMoved` (a video handed over or read, or
+  home's answer remembered or list read) tells.
 - _Tolerance:_ Studio's time log tells no one of a write, so a screen
   entered or left in Studio asks for no run, and Practice's waiting count
   shows it from the count's next redraw (#2425). Rust Rounds: a round home

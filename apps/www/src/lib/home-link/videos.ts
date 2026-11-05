@@ -1,27 +1,32 @@
 /**
  * Studio's videos kept for home to make (ST33, #2591; paulgsc/server's
- * studio videos): each revision Finish kept for home goes as its DNA, by one
- * `PUT /studio/videos/:video/queued/:rev` of what `@some-ui/soundbites`'
- * `videosForHome` makes of the phone's projects (handed in by Studio's
- * route, `lib/studio-keeping`), over the voice lane's `send`
- * (`./voice-copy`'s `sendVoice`), after the lane's notes have gone: a DNA
- * names its takes' voice notes by id, which home must hold first. Then, while
- * any is kept, one `GET /studio/videos` reads where each stands. This module
- * lets nothing on the phone go: the project keeps its mark either way.
+ * studio videos): each revision Finish kept for home goes as the DNA its
+ * mark keeps, by one `PUT /studio/videos/:video/queued/:rev` of what
+ * `@some-ui/soundbites`' `videosForHome` makes of the phone's projects
+ * (handed in by Studio's route, `lib/studio-keeping`), over the voice lane's
+ * `send` (`./voice-copy`'s `sendVoice`), after the lane's notes have gone: a
+ * DNA names its takes' voice notes by id, which home must hold first. Then,
+ * while any is kept, one `GET /studio/videos` reads where each stands. This
+ * module lets nothing on the phone go: the project keeps its mark either way.
  *
  * What home answered is remembered per pairing in `./sent` (`videos`), with
- * the body's fingerprint, so a run sends only a video home doesn't hold or
- * refused as it is now. Home's list, as last read, is kept for this run of
- * the app only (`videosKnown`): a launch reads it again. Home's answers:
+ * the body's fingerprint, so a run sends only a video home doesn't hold and
+ * hasn't refused. Which videos are kept is read from Studio's projects when
+ * its route hands them in, on each write to them and at each run, so what
+ * home answered on an earlier launch is said before the lane next runs.
+ * Home's list, as last read, is kept for this run of the app only
+ * (`videosListed`): a launch reads it again. Home's answers, read as
+ * `./keyed-send` reads them:
  *
  * - `200` with `change` `added` or `unchanged`: held;
- * - `409` naming notes (`./ideas`' `notesNotHeld`, the refusal `PUT
- *   /ideas/:id` gives too): takes home doesn't hold yet, remembered so
- *   Finish names their scenes, and sent again on a later run;
+ * - `409` naming notes (the refusal `PUT /ideas/:id` gives too): takes home
+ *   doesn't hold, remembered so Finish names their scenes, and sent again
+ *   on a later run, unless every one is a take this phone heard home
+ *   deleted for good (`VideoForHome`'s `gone`), which home will never hold;
  * - `409` with no notes: a different DNA under a revision home holds, which
- *   this phone never makes (a mark is never rewritten), so a fault: refused,
- *   kept on the phone, said to the native log;
- * - `422`: a body home can't read as a DNA, which this phone never makes
+ *   this phone never sends (each send is the body the mark keeps), so a
+ *   fault: refused, kept on the phone, said to the native log;
+ * - `422`: a body home can't read as a DNA, which Finish never keeps
  *   either, so refused as that `409` is;
  * - `404`: a home that doesn't keep videos yet, so every one waits, said to
  *   the native log once a launch;
@@ -30,13 +35,19 @@
  */
 import type { HomeCall, HomeExchanged, KeyedStorage } from "@some-ui/core-utils"
 import { isRecord, jsonOf, unexpectedAnswer } from "@some-ui/core-utils"
-import { reportFailure, toIntentError } from "@some-ui/intent-kit"
-import type { HomeVideo, VideoAnswer, VideoForHome } from "@some-ui/soundbites"
+import type {
+  HomeVideo,
+  StudioKeeping,
+  VideoAnswer,
+  VideoForHome,
+} from "@some-ui/soundbites"
 import { z } from "zod"
 
-import { studioKeeping } from "@/lib/studio-keeping"
+import { movesSignal } from "@/lib/moves"
+import { onStudioKept, studioKeeping } from "@/lib/studio-keeping"
 
-import { notesNotHeld } from "./ideas"
+import type { KeyedSend } from "./keyed-send"
+import { sendKeyed, untakenTold } from "./keyed-send"
 import type { Sent } from "./sent"
 import { fingerprintOf, readSent, rememberSent } from "./sent"
 
@@ -59,14 +70,25 @@ function answerOf(
   return kind === "missing" ? { kind, notes } : null
 }
 
-/** The videos home doesn't hold as they are now, and hasn't refused as they are. */
+/**
+ * The videos home doesn't hold and hasn't refused, but for one whose takes
+ * home lacks are each one home deleted for good: it would only be refused
+ * again.
+ */
 function videosToSend(
   videos: ReadonlyArray<VideoForHome>,
   sent: Sent
 ): ReadonlyArray<VideoForHome> {
   return videos.filter((video) => {
     const answer = answerOf(sent.videos[video.key], video)
-    return answer === null || answer.kind === "missing"
+    if (answer === null) return true
+    return (
+      answer.kind === "missing" &&
+      !(
+        answer.notes.length > 0 &&
+        answer.notes.every((note) => video.gone.includes(note))
+      )
+    )
   })
 }
 
@@ -99,42 +121,35 @@ const ListSchema = z.object({
   ),
 })
 
-/** Home's list, by `<video>/<rev>`, or null when it can't be read. */
-function listOf(body: string): Readonly<Record<string, HomeVideo>> | null {
+/**
+ * Home's list, of the videos `videos` names, by each one's key (soundbites'
+ * `videoKey`, made there alone), or null when it can't be read.
+ */
+function listOf(
+  body: string,
+  videos: ReadonlyArray<VideoForHome>
+): Readonly<Record<string, HomeVideo>> | null {
   const read = ListSchema.safeParse(jsonOf(body))
   if (!read.success) return null
   return Object.fromEntries(
-    read.data.videos.map((each) => [
-      `${each.video}/${String(each.rev)}`,
-      {
-        storedAt: each.storedAt,
-        stage: each.stage === "queued" ? "queued" : "other",
-      },
-    ])
+    videos.flatMap((video) => {
+      const each = read.data.videos.find(
+        (listed) => listed.video === video.video && listed.rev === video.rev
+      )
+      if (each === undefined) return []
+      const stage = each.stage === "queued" ? "queued" : "other"
+      return [[video.key, { storedAt: each.storedAt, stage }]]
+    })
   )
 }
 
-/** Whether this launch has told the native log home keeps no videos. */
-let unkeptSaid = false
-
-function untaken(video: VideoForHome, status: number): void {
-  if (status === 404) {
-    if (unkeptSaid) return
-    unkeptSaid = true
-  }
-  reportFailure({
-    port: "Studio videos (send to home)",
-    error: {
-      ...toIntentError(
-        new Error(`${video.key}: home answered ${String(status)}`)
-      ),
-      summary:
-        status === 404
-          ? "Home doesn't make Studio's videos yet, so they wait on this phone until it runs a newer version."
-          : "Home didn't take a Studio video, so it stays on this phone. This phone never sends one twice differently, so this is a fault to look into.",
-    },
-  })
-}
+/** Home not taking a video, said to the native log. */
+const untaken = untakenTold("Studio videos (send to home)", {
+  unkept:
+    "Home doesn't make Studio's videos yet, so they wait on this phone until it runs a newer version.",
+  refused:
+    "Home didn't take a Studio video, so it stays on this phone. This phone sends each video as Finish kept it, so this is a fault to look into.",
+})
 
 /** What a run needs: the videos to send, and where to remember home's word. */
 export type VideosPort = {
@@ -152,36 +167,26 @@ export async function sendVideos(
   port: VideosPort,
   send: HomeCall
 ): Promise<HomeExchanged> {
-  const going = await port.going()
-  for (const video of going) {
-    const answer = await send("PUT", videoPath(video), video.body)
-    if (answer.status === 200 && kept(answer.body)) {
-      port.answered(video, { kind: "held" })
-      continue
-    }
-    if (answer.status === 401) return { kind: "forgotten" }
-    const notes = answer.status === 409 ? notesNotHeld(answer.body) : null
-    if (notes !== null) {
-      port.answered(video, { kind: "missing", notes })
-      continue
-    }
-    if (answer.status === 409 || answer.status === 422) {
-      port.answered(video, { kind: "refused" })
-      untaken(video, answer.status)
-      continue
-    }
-    if (answer.status === 404) {
-      untaken(video, answer.status)
-      return { kind: "synced" }
-    }
-    return unexpectedAnswer("a Studio video", answer.status)
+  const home = { keepsNone: false }
+  const how: KeyedSend<VideoForHome> = {
+    what: "a Studio video",
+    path: videoPath,
+    body: (video) => video.body,
+    kept,
+    answered: port.answered,
+    untaken: (video, status): void => {
+      if (status === 404) home.keepsNone = true
+      untaken(video.key, status)
+    },
   }
+  const sent = await sendKeyed(await port.going(), how, send)
+  // A home that keeps no videos yet has no list either.
+  if (sent.kind !== "synced" || home.keepsNone) return sent
   if (known.videos.length === 0) return { kind: "synced" }
   const list = await send("GET", VIDEOS_PATH)
   if (list.status === 401) return { kind: "forgotten" }
-  // A home that keeps no videos yet has no list: nothing to say of one.
   if (list.status === 404) return { kind: "synced" }
-  const listed = list.status === 200 ? listOf(list.body) : null
+  const listed = list.status === 200 ? listOf(list.body, known.videos) : null
   if (listed === null)
     return unexpectedAnswer("Studio's videos on home", list.status)
   port.listed(listed)
@@ -202,24 +207,10 @@ const known: {
   } | null
 } = { videos: [], listed: null }
 
-let moves = 0
-const listeners = new Set<() => void>()
-
-function moved(): void {
-  moves += 1
-  for (const listener of listeners) listener()
-}
+const videoMoves = movesSignal()
 
 /** What moves when a video is kept for home, or home answers or lists one. */
-export const videosMoved = {
-  getSnapshot: (): number => moves,
-  subscribe(listener: () => void): () => void {
-    listeners.add(listener)
-    return (): void => {
-      listeners.delete(listener)
-    }
-  },
-}
+export const videosMoved = videoMoves.moves
 
 /** Home's list as this run of the app last read it under `pairing`; empty for another. */
 export function videosListed(
@@ -234,7 +225,7 @@ export function videosListed(
 export function videoHanded(video: VideoForHome): void {
   if (known.videos.some((each) => each.key === video.key)) return
   known.videos = [...known.videos, video]
-  moved()
+  videoMoves.moved()
 }
 
 /** The projects' videos kept for home, as just read: what the lane knows of them. */
@@ -244,12 +235,52 @@ function videosRead(videos: ReadonlyArray<VideoForHome>): void {
     videos.every(
       (video, i) =>
         video.key === known.videos[i]?.key &&
-        video.body === known.videos[i]?.body
+        video.body === known.videos[i]?.body &&
+        video.gone.join(" ") === known.videos[i]?.gone.join(" ")
     )
   if (same) return
   known.videos = videos
-  moved()
+  videoMoves.moved()
 }
+
+/** Reads asked of Studio's projects; only the newest one asked is kept. */
+let reads = 0
+
+/** The videos kept on `studio`'s projects, read now; kept as known while no newer read was asked. */
+async function readVideos(
+  studio: StudioKeeping
+): Promise<ReadonlyArray<VideoForHome>> {
+  reads += 1
+  const asked = reads
+  const videos = studio.videosForHome(await studio.store.list())
+  if (asked === reads) videosRead(videos)
+  return videos
+}
+
+/** Reads Studio's videos for what is said of them, failing quietly. */
+function readQuietly(): void {
+  const studio = studioKeeping()
+  if (studio === null) return
+  readVideos(studio).catch(() => {
+    // Ignored: the lane's own read (`going`) meets the same store, and a
+    // store it can't list ends that run, said there.
+  })
+}
+
+// Studio's projects, read once its route hands them in and on each write to
+// them: a video kept on an earlier launch counts, and says what home
+// answered, without waiting for the lane's next run.
+let watching = false
+function watchStudio(): void {
+  const studio = studioKeeping()
+  if (studio === null || watching) return
+  watching = true
+  // Never undone: what is handed in is kept for the app's life.
+  studio.store.subscribe(readQuietly)
+  readQuietly()
+}
+onStudioKept(watchStudio)
+watchStudio()
 
 /**
  * The videos kept on this phone's projects as a run under `pairing` sends
@@ -265,18 +296,17 @@ export function phoneVideos(
     going: async (): Promise<ReadonlyArray<VideoForHome>> => {
       const studio = studioKeeping()
       if (studio === null) return []
-      videosRead(studio.videosForHome(await studio.store.list()))
-      return videosToSend(known.videos, readSent(storage, pairing))
+      return videosToSend(await readVideos(studio), readSent(storage, pairing))
     },
     answered: (video, answer): void => {
       rememberSent(storage, readSent(storage, pairing), {
         videos: { [video.key]: entryOf(answer, video) },
       })
-      moved()
+      videoMoves.moved()
     },
     listed: (videos): void => {
       known.listed = { pairing, videos }
-      moved()
+      videoMoves.moved()
     },
   }
 }

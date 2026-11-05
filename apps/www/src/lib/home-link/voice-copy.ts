@@ -923,11 +923,12 @@ async function letGoOnHomesWord(send: HomeCall): Promise<void> {
  * again, then each copy waiting sent (`exchangeVoice`), then, once that
  * synced, home's word on which Studio takes Drive has (`letGoOnHomesWord`),
  * each Studio idea sent whole that home doesn't hold (`sendIdeas`, ST26),
- * whose said answers name notes that have just gone, each Studio video kept
- * for home to make (`sendVideos`, ST33), whose takes name them too, and the set-aside
- * marks due (`markSetAside`, MIC2), which end the run in its exchange's
- * place. A run that sent all it had still fails, saying why, if that pass
- * left a note it could copy uncopied (`runEnd`, LA14).
+ * whose said answers name notes that have just gone, the set-aside marks due
+ * (`markSetAside`, MIC2), and, once those synced, each Studio video kept for
+ * home to make (`sendVideos`, ST33), whose takes name notes too, which ends
+ * the run in its exchange's place. A run that sent all it had still fails,
+ * saying why, if that pass left a note it could copy uncopied (`runEnd`,
+ * LA14).
  */
 export async function sendVoice(
   send: HomeCall,
@@ -946,17 +947,18 @@ export async function sendVoice(
     send
   )
   if (ideas.kind !== "synced") return runEnd(pass, ideas)
-  const videos = await sendVideos(
-    phoneVideos(localStorageOrNull(), at.pairing),
-    send
-  )
-  if (videos.kind !== "synced") return runEnd(pass, videos)
   const sendable = marksSendable(candidates())
   const marks: AsidePort = {
     due: () => home.marks.due().filter(sendable),
     answered: home.marks.answered,
   }
-  return runEnd(pass, await markSetAside(marks, send))
+  const marked = await markSetAside(marks, send)
+  if (marked.kind !== "synced") return runEnd(pass, marked)
+  // After the marks, so a video home won't take never holds them up.
+  return runEnd(
+    pass,
+    await sendVideos(phoneVideos(localStorageOrNull(), at.pairing), send)
+  )
 }
 
 /** Home's held notes as a set, made again only when the list changes. */

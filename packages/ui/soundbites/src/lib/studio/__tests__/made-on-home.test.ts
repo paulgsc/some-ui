@@ -7,7 +7,7 @@
  */
 import type { Playback } from "@some-ui/voice-capture"
 import { episodeProjectOf } from "@soundbites/fixtures"
-import { run, take } from "@soundbites/lib/project/__tests__/fixture"
+import { queue, run, take } from "@soundbites/lib/project/__tests__/fixture"
 import type { VideoForHome } from "@soundbites/lib/project/dna"
 import { videoKey } from "@soundbites/lib/project/dna"
 import { latestShot } from "@soundbites/lib/project/lookup"
@@ -45,8 +45,7 @@ function taken(): ProjectState {
 const ready = (): ProjectState =>
   run(taken(), { type: "markedReady", rev: 1, at: AT })
 
-const queued = (): Project =>
-  run(ready(), { type: "queued", rev: 1, at: QUEUED_AT }).project
+const queued = (): Project => queue(ready(), QUEUED_AT).project
 
 const KEY = videoKey("w3", 1)
 
@@ -119,7 +118,29 @@ describe("Finish's part about home making it (ST33)", () => {
         })
       )
     ).toEqual({ kind: "standing", line: WORDS.missing(["The close"]) })
+    // It may come, or, set aside or deleted for good, never: both said.
     expect(WORDS.missing(["The close"])).toContain("your take for The close")
+    expect(WORDS.missing(["The close"])).toMatch(
+      /deleted for good.*another take/
+    )
+    // A take this phone heard home deleted for good: it won't come.
+    const project = queued()
+    const deleted = {
+      ...project,
+      takes: project.takes.map((each) =>
+        each.id === "t-close" ? { ...each, deletedAt: STORED_AT } : each
+      ),
+    }
+    expect(
+      finishHome(
+        deleted,
+        heard({
+          reach: "near",
+          answers: { [KEY]: { kind: "missing", notes: ["t-close"] } },
+        })
+      )
+    ).toEqual({ kind: "standing", line: WORDS.deleted(["The close"]) })
+    expect(WORDS.deleted(["The close"])).not.toMatch(/goes again/)
   })
 
   it("says home didn't take it, and that it stays on this phone", () => {
@@ -203,6 +224,7 @@ describe("Finish handing an episode to home (ST33)", () => {
     runtime.dispatch({ type: "homeAsked" })
     await until(runtime, (state) => settled(state) && home.given.length > 0)
     const project = projectOf(runtime.getSnapshot())
+    const mark = project?.queued?.[0]
     expect(project?.queued).toEqual([
       {
         rev: 1,
@@ -211,9 +233,12 @@ describe("Finish handing an episode to home (ST33)", () => {
           { scene: "open", note: "t-open" },
           { scene: "close", note: "t-close" },
         ],
+        dna: mark?.dna,
       },
     ])
     expect(home.given.map((video) => video.key)).toEqual(["w3/1"])
+    // What is handed over is the DNA the mark keeps.
+    expect(home.given[0]?.body).toBe(mark?.dna)
     expect(JSON.parse(home.given[0]?.body ?? "")).toMatchObject({
       video: "w3",
       rev: 1,

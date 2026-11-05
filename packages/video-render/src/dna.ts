@@ -5,8 +5,9 @@
  * says, and the data that fills it. The rendered file is never what is kept.
  *
  * The phone's Finish queues one per revision on home, which stores it as
- * sent and checks only what this schema says (paulgsc/server, `PUT
- * /studio/videos/:video/queued/:rev`, at most `VIDEO_DNA_MAX_BYTES`). Home's
+ * sent (paulgsc/server, `PUT /studio/videos/:video/queued/:rev`, at most
+ * `VIDEO_DNA_MAX_BYTES`). `parseVideoDna` holds every rule home holds a DNA
+ * to, and reads the shape and data, which home keeps unread, besides. Home's
  * routine then fills it and renders it (ST33's slices 2 and 3).
  *
  * Version 1 has one kind of template, a show's format: an episode's
@@ -20,7 +21,7 @@ import { z } from "zod"
 import { CutListSchema, once, parseCutList, problemsOf } from "./cut-list"
 import type { CutList, Parsed } from "./cut-list"
 import { EpisodePinSchema } from "./episode"
-import { words } from "./format"
+import { showId, words } from "./format"
 
 export const VIDEO_DNA_SCHEMA = "some-ui.video-dna/1"
 
@@ -30,17 +31,46 @@ export const VIDEO_DNA_MAX_BYTES = 256 * 1024
 /** The most characters a DNA's title has, as JavaScript counts code points. */
 export const VIDEO_DNA_TITLE_MAX_CHARS = 200
 
+/** The most takes a DNA names, as home holds it to. */
+export const VIDEO_DNA_MAX_TAKES = 200
+
 const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/)
 
+/**
+ * A name the code gives a template or a scene, as home holds both to
+ * (`is_name`): lowercase letters, digits and `-`, at most 64 characters.
+ * A show's id is one.
+ */
+const name = showId
+
+/**
+ * The names under home's `/voice-notes/` that are routes of their own, so
+ * never a note's id (paulgsc/server `voice_repo`'s `ROUTE_NAMES`).
+ */
+const NOTE_ROUTES: ReadonlySet<string> = new Set([
+  "on-drive",
+  "kept",
+  "deleted",
+  "takes",
+])
+
+/** A voice note's id, as home reads one in a take. */
+const noteId = id.refine((note) => !NOTE_ROUTES.has(note), {
+  message: "a voice note's id is never one of home's routes",
+})
+
+/** A control character (Unicode's `Cc`), which home refuses in a title. */
+const CONTROL = /\p{Cc}/u
+
 /** The template a video goes through: for now, a show's format and its version. */
-const TemplateSchema = z.object({
+const TemplateSchema = z.strictObject({
   kind: z.literal("show-format"),
-  id: words,
-  version: z.number().int(),
+  id: name,
+  version: z.number().int().positive(),
 })
 
 /** Scene `scene` says the take home holds as voice note `note`. */
-const TakeSchema = z.object({ scene: id, note: id })
+const TakeSchema = z.strictObject({ scene: name, note: noteId })
 
 /** What fills an episode: its pins, and each scene's point and facts. */
 const EpisodeDataSchema = z.object({
@@ -56,20 +86,28 @@ const EpisodeDataSchema = z.object({
   ),
 })
 
-export const VideoDnaSchema = z.object({
+/**
+ * A DNA as home reads one (paulgsc/server `studio_video_repo`'s `model.rs`):
+ * no field it doesn't name, a title of 1 to 200 characters once trimmed on
+ * one line, and at most `VIDEO_DNA_MAX_TAKES` takes.
+ */
+export const VideoDnaSchema = z.strictObject({
   schema: z.literal(VIDEO_DNA_SCHEMA),
   /** The phone's project id: the path's `:video`. */
   video: id,
   /** The revision queued: the path's `:rev`. */
   rev: z.number().int().positive(),
-  title: words.refine(
-    (title) => [...title].length <= VIDEO_DNA_TITLE_MAX_CHARS,
-    { message: `a title has at most ${VIDEO_DNA_TITLE_MAX_CHARS} characters` }
-  ),
+  title: words
+    .refine((title) => [...title].length <= VIDEO_DNA_TITLE_MAX_CHARS, {
+      message: `a title has at most ${VIDEO_DNA_TITLE_MAX_CHARS} characters`,
+    })
+    .refine((title) => !CONTROL.test(title), {
+      message: "a title is one line, with no control characters",
+    }),
   /** When the owner finished it, ISO 8601. */
   queuedAt: z.iso.datetime(),
   template: TemplateSchema,
-  takes: z.array(TakeSchema),
+  takes: z.array(TakeSchema).max(VIDEO_DNA_MAX_TAKES),
   /** The revision's cut list: its scenes in order, their pictures and holds. */
   shape: CutListSchema,
   data: EpisodeDataSchema,
@@ -78,10 +116,6 @@ export const VideoDnaSchema = z.object({
 export type VideoDna = z.infer<typeof VideoDnaSchema> & {
   readonly shape: CutList
 }
-
-/** The bytes `dna` takes as sent: its JSON, in UTF-8. */
-export const videoDnaBytes = (dna: VideoDna): number =>
-  new TextEncoder().encode(JSON.stringify(dna)).length
 
 /** The DNA, or every reason home would not keep it as written. */
 export function parseVideoDna(raw: unknown): Parsed<VideoDna> {

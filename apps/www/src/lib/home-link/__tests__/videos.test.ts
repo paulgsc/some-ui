@@ -32,7 +32,8 @@ vi.mock("@some-ui/intent-kit", async (actual) => ({
 function video(
   name: string,
   rev = 1,
-  body = `{"video":"${name}"}`
+  body = `{"video":"${name}"}`,
+  gone: ReadonlyArray<string> = []
 ): VideoForHome {
   return {
     key: `${name}/${String(rev)}`,
@@ -40,6 +41,7 @@ function video(
     rev,
     queuedAt: "2026-11-05T17:02:11.123Z",
     body,
+    gone,
   }
 }
 
@@ -79,7 +81,7 @@ const LIST: Answer = {
         stage: "queued",
       },
       {
-        video: "w4",
+        video: "w/4",
         rev: 2,
         title: "Weekly",
         queuedAt: "2026-11-05T17:02:11.123Z",
@@ -138,7 +140,7 @@ describe("Studio's videos made on home (ST33)", () => {
     // A stage this version can't name is shown, as one it can't name yet.
     expect(videosListed("p1")).toEqual({
       "w3/1": { storedAt: "2026-11-05T17:05:00.000Z", stage: "queued" },
-      "w4/2": { storedAt: "2026-11-06T08:00:00.000Z", stage: "other" },
+      "w/4/2": { storedAt: "2026-11-06T08:00:00.000Z", stage: "other" },
     })
     expect(videosListed("p2")).toEqual({})
 
@@ -166,6 +168,29 @@ describe("Studio's videos made on home (ST33)", () => {
     await sendVideos(phoneVideos(storage, "p1"), home({}, again))
     expect(again.map(([method]) => method)).toEqual(["PUT", "GET"])
     expect(videoAnswers(storage, "p1")).toEqual({ "w3/1": { kind: "held" } })
+  })
+
+  it("stops sending a video whose missing takes home deleted for good, and counts it waiting no more", async () => {
+    const storage = memoryStorage()
+    kept = [video("w6", 1, '{"video":"w6"}', ["t-close"])]
+    await sendVideos(
+      phoneVideos(storage, "p1"),
+      home({ "/studio/videos/w6/queued/1": missing(["t-close"]) }, [])
+    )
+    expect(videoAnswers(storage, "p1")).toEqual({
+      "w6/1": { kind: "missing", notes: ["t-close"] },
+    })
+    expect(videosWaiting(storage, "p1")).toBe(0)
+    const again: Array<[string, string, unknown]> = []
+    await sendVideos(phoneVideos(storage, "p1"), home({}, again))
+    expect(again.map(([method]) => method)).toEqual(["GET"])
+    // A take still to come, beside the one deleted: it goes again.
+    kept = [video("w7", 1, '{"video":"w7"}', ["t-close"])]
+    await sendVideos(
+      phoneVideos(storage, "p1"),
+      home({ "/studio/videos/w7/queued/1": missing(["t-close", "t-open"]) }, [])
+    )
+    expect(videosWaiting(storage, "p1")).toBe(1)
   })
 
   it("keeps a refused video on the phone, says so as a fault, and offers it again only once its body changes", async () => {
@@ -274,5 +299,26 @@ describe("Studio's videos made on home (ST33)", () => {
     stop()
     expect(moved).toHaveBeenCalledTimes(1)
     expect(videosWaiting(storage, "p7")).toBe(before + 1)
+  })
+
+  it("says what home answered for a video kept on an earlier launch once Studio is handed in, before any run", async () => {
+    // An earlier launch: home held w3, and nothing has run since.
+    const storage = memoryStorage()
+    kept = [video("w3")]
+    await sendVideos(phoneVideos(storage, "p1"), home({}, []))
+    vi.resetModules()
+    const fresh = await import("@/lib/home-link/videos")
+    const keeping = await import("@/lib/studio-keeping")
+    expect(fresh.videoAnswers(storage, "p1")).toEqual({})
+    const moved = vi.fn()
+    fresh.videosMoved.subscribe(moved)
+    keeping.keepStudio(studio)
+    await vi.waitFor(() => {
+      expect(fresh.videoAnswers(storage, "p1")).toEqual({
+        "w3/1": { kind: "held" },
+      })
+    })
+    expect(moved).toHaveBeenCalled()
+    expect(fresh.videosWaiting(storage, "p1")).toBe(0)
   })
 })

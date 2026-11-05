@@ -13,8 +13,8 @@
  */
 import type { HomeReach } from "@soundbites/lib/idea/bundle"
 import type { VideoForHome } from "@soundbites/lib/project/dna"
-import { videoKey } from "@soundbites/lib/project/dna"
-import { finishOf } from "@soundbites/lib/project/finish"
+import { goneTakes, videoKey } from "@soundbites/lib/project/dna"
+import { finishOf, queuedOf } from "@soundbites/lib/project/finish"
 import { primerAt } from "@soundbites/lib/project/lookup"
 import type { Project, Queued } from "@soundbites/lib/project/model"
 import { latest } from "@soundbites/lib/project/model"
@@ -25,7 +25,10 @@ import { STUDIO_WORDS } from "./words"
 export type VideoAnswer =
   /** Home keeps it. */
   | { readonly kind: "held" }
-  /** Home doesn't hold these takes yet (by voice note id); it goes again. */
+  /**
+   * Home doesn't hold these takes (by voice note id): not yet, and it goes
+   * again, or not again, if a take was set aside or deleted for good.
+   */
   | { readonly kind: "missing"; readonly notes: ReadonlyArray<string> }
   /** Home didn't take it, and won't as it is. */
   | { readonly kind: "refused" }
@@ -67,11 +70,6 @@ export type FinishHome =
   /** Handed to home: where it stands, in a line. */
   | { readonly kind: "standing"; readonly line: string }
 
-/** The mark of `rev` handed to home, if it was. */
-function queuedOf(project: Project, rev: number): Queued | null {
-  return project.queued?.find((each) => each.rev === rev) ?? null
-}
-
 /** The names of the scenes whose takes are `notes`, as the person knows them. */
 function scenesOf(
   project: Project,
@@ -107,8 +105,16 @@ function standingLine(
   const answer = videos.answers[key]
   if (answer?.kind === "held") return words.held
   if (answer?.kind === "refused") return words.refused
-  if (answer?.kind === "missing")
-    return words.missing(scenesOf(project, queued, answer.notes))
+  if (answer?.kind === "missing") {
+    const scenes = scenesOf(project, queued, answer.notes)
+    // Deleted for good, home will never hold it again: the lane stops
+    // sending it too (www's `lib/home-link/videos`).
+    const gone = goneTakes(project, queued)
+    return answer.notes.length > 0 &&
+      answer.notes.every((note) => gone.includes(note))
+      ? words.deleted(scenes)
+      : words.missing(scenes)
+  }
   const since = words.when(queued.at)
   return videos.reach === "near"
     ? words.going(since)

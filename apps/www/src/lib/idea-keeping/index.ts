@@ -14,6 +14,7 @@
 import type { IdeaForHome, IdeaStore } from "@some-ui/soundbites"
 
 import { handedIn } from "@/lib/handed-in"
+import { movesSignal } from "@/lib/moves"
 
 /** What the voice lane needs of the ideas, handed in by an idea route. */
 type IdeaKeeping = {
@@ -29,28 +30,16 @@ export const keepIdeas = ideas.keep
 /** The ideas' reading, once a route has handed it in; null until then. */
 export const ideaKeeping = ideas.kept
 
-let moves = 0
-const listeners = new Set<() => void>()
+const ideaMoves = movesSignal()
 
 /**
  * What moves when an idea is sent on this phone, or home comes to hold one
  * (`lib/home-link/ideas`): the voice lane's record listens to it.
  */
-export const ideasMoved = {
-  getSnapshot: (): number => moves,
-  subscribe(listener: () => void): () => void {
-    listeners.add(listener)
-    return (): void => {
-      listeners.delete(listener)
-    }
-  },
-}
+export const ideasMoved = ideaMoves.moves
 
 /** Tells the voice lane the ideas moved. */
-export function ideaMoved(): void {
-  moves += 1
-  for (const listener of listeners) listener()
-}
+export const ideaMoved = ideaMoves.moved
 
 // Handed in is a move too: until then the lane counts no idea, so an idea
 // sent on an earlier launch would otherwise wait for some other change.

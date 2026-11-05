@@ -106,6 +106,7 @@ const ProjectSchema = z.object({
         rev: z.number().int().positive(),
         at,
         takes: z.array(z.object({ scene: id, note: id })),
+        dna: words,
       })
     )
     .optional(),
@@ -203,6 +204,11 @@ function shapeProblems(project: Project): Array<string> {
       if (!takenFor(take.scene, take.note))
         problems.push(`queued.${index}: no take ${take.note} for that shot`)
     }
+    // Only whose DNA it is: what home is sent stays as it was made, read by
+    // no rule a later version of the app adds.
+    const dna = jsonOf(mark.dna)
+    if (!isRecord(dna) || dna.video !== project.id || dna.rev !== mark.rev)
+      problems.push(`queued.${index}: its DNA isn't this version's`)
   }
   if (project.sittings.slice(0, -1).some((each) => each.closedAt === null))
     problems.push("sittings: only the last can be open")

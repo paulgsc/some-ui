@@ -9,7 +9,7 @@
  *
  * What home holds is remembered per pairing in `./sent` (`ideas`), as each
  * bundle's fingerprint, so a run sends only an idea home doesn't hold as it
- * is now. Home's answers:
+ * is now. Home's answers, as `./keyed-send` reads them for videos too:
  *
  * - `200` carrying the idea back, the same one: held;
  * - `409` naming notes: a take home doesn't hold yet, so the idea waits on
@@ -23,12 +23,13 @@
  * - anything else ends the run, each idea still waiting.
  */
 import type { HomeCall, HomeExchanged, KeyedStorage } from "@some-ui/core-utils"
-import { isRecord, jsonOf, unexpectedAnswer } from "@some-ui/core-utils"
-import { reportFailure, toIntentError } from "@some-ui/intent-kit"
+import { isRecord, jsonOf } from "@some-ui/core-utils"
 import type { IdeaForHome } from "@some-ui/soundbites"
 
 import { ideaKeeping, ideaMoved } from "@/lib/idea-keeping"
 
+import type { KeyedSend } from "./keyed-send"
+import { sendKeyed, untakenTold } from "./keyed-send"
 import type { Sent } from "./sent"
 import { fingerprintOf, readSent, rememberSent } from "./sent"
 
@@ -78,42 +79,29 @@ function carriesBack(body: string, bundle: IdeaForHome): boolean {
   )
 }
 
-/**
- * The voice notes a `409`'s body names as not held on home
- * (`FileHostError::ConflictNaming`, `details.notes`), or null when it names
- * none: home's one refusal of a send whose takes haven't reached it yet, as
- * `PUT /ideas/:id` and `./videos`' `PUT /studio/videos/…` both answer it.
- */
-export function notesNotHeld(body: string): ReadonlyArray<string> | null {
-  const answer = jsonOf(body)
-  if (!isRecord(answer) || !isRecord(answer.error)) return null
-  const { details } = answer.error
-  if (!isRecord(details) || !Array.isArray(details.notes)) return null
-  return details.notes.filter(
-    (note): note is string => typeof note === "string"
-  )
-}
+/** Home not taking an idea, said to the native log. */
+const untaken = untakenTold("Studio ideas (send to home)", {
+  unkept:
+    "Home doesn't keep ideas yet, so they wait on this phone until it runs a newer version.",
+  refused:
+    "Home didn't take a Studio idea, so it stays on this phone and goes again once it changes.",
+})
 
-/** Whether this launch has told the native log home keeps no ideas. */
-let unkeptSaid = false
-
-function untaken(bundle: IdeaForHome, status: number): void {
-  if (status === 404) {
-    if (unkeptSaid) return
-    unkeptSaid = true
-  }
-  reportFailure({
-    port: "Studio ideas (send to home)",
-    error: {
-      ...toIntentError(
-        new Error(`${bundle.id}: home answered ${String(status)}`)
-      ),
-      summary:
-        status === 404
-          ? "Home doesn't keep ideas yet, so they wait on this phone until it runs a newer version."
-          : "Home didn't take a Studio idea, so it stays on this phone and goes again once it changes.",
+/** How an idea goes home, and where home's answer is kept (`./keyed-send`). */
+function ideasSent(port: IdeasPort): KeyedSend<IdeaForHome> {
+  return {
+    what: "a Studio idea",
+    path: (bundle) => ideaPath(bundle.id),
+    body: (bundle) => JSON.stringify(bundle),
+    kept: carriesBack,
+    answered: (bundle, answer): void => {
+      // Takes home lacks: the idea waits, and goes once its notes have.
+      if (answer.kind !== "missing") port.answered(answer.kind, bundle)
     },
-  })
+    untaken: (bundle, status): void => {
+      untaken(bundle.id, status)
+    },
+  }
 }
 
 /** What a run needs: the ideas to send, and where to remember home's answers. */
@@ -123,35 +111,10 @@ export type IdeasPort = {
 }
 
 /** Sends each idea `port` names, oldest first, and says how the run ended. */
-export async function sendIdeas(
+export const sendIdeas = (
   port: IdeasPort,
   send: HomeCall
-): Promise<HomeExchanged> {
-  for (const bundle of port.going()) {
-    const answer = await send(
-      "PUT",
-      ideaPath(bundle.id),
-      JSON.stringify(bundle)
-    )
-    if (answer.status === 200 && carriesBack(answer.body, bundle)) {
-      port.answered("held", bundle)
-      continue
-    }
-    if (answer.status === 401) return { kind: "forgotten" }
-    if (answer.status === 409 && notesNotHeld(answer.body) !== null) continue
-    if (answer.status === 409 || answer.status === 422) {
-      port.answered("refused", bundle)
-      untaken(bundle, answer.status)
-      continue
-    }
-    if (answer.status === 404) {
-      untaken(bundle, answer.status)
-      return { kind: "synced" }
-    }
-    return unexpectedAnswer("a Studio idea", answer.status)
-  }
-  return { kind: "synced" }
-}
+): Promise<HomeExchanged> => sendKeyed(port.going(), ideasSent(port), send)
 
 /**
  * The ideas handed in (`lib/idea-keeping`) as a run under `pairing` sends

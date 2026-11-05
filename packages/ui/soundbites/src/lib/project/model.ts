@@ -25,8 +25,9 @@
  *   the next revision.
  * - **A queued revision stays queued as it was** (ST33). An episode's
  *   revision marked ready is queued for home to make once, with the take
- *   each scene says then (`queued`); the mark is never rewritten, so its
- *   DNA (`./dna`) is the same bytes each time it goes.
+ *   each scene says then and the DNA made of them (`queued`, made by
+ *   `./dna`'s `queueMark`); the mark is never rewritten, so each send of it
+ *   is the body it holds.
  * - **The owner's word on whose idea a scene is stays** (ST5, `./origin`).
  * - **A take's fact check is the session's, and the owner's word is theirs**
  *   (SHOW SH5). `checks` holds each verdict a round brought (`./merge`),
@@ -136,14 +137,16 @@ type Accepted = {
 
 /**
  * The owner's word that home makes revision `rev` (ST33): when they finished
- * it, and the take each scene says, as voice notes home holds by the take's
- * id. A video's DNA is made from this and the revision (`./dna`).
+ * it, the take each scene says, as voice notes home holds by the take's id,
+ * and the video's DNA made of them then (`./dna`'s `queueMark`).
  */
 export type Queued = Mark & {
   readonly takes: ReadonlyArray<{
     readonly scene: string
     readonly note: string
   }>
+  /** The DNA as home is sent it, made once: every send is these bytes. */
+  readonly dna: string
 }
 
 /** Where revision `rev` went up, as the owner pasted it once uploaded. */
@@ -239,8 +242,8 @@ export type ProjectEvent =
   /** The owner keeps scene `shot`'s chosen take after three rounds (SH5). */
   | { readonly type: "bestKept"; readonly shot: string; readonly at: string }
   | ({ readonly type: "released" } & Release)
-  /** Queue the latest revision, ready, for home to make (ST33). */
-  | ({ readonly type: "queued" } & Mark)
+  /** Queue the latest revision, ready, for home to make (ST33), as `./dna`'s `queueMark` made its mark. */
+  | ({ readonly type: "queued" } & Queued)
 
 export type ProjectEffect =
   | { readonly type: "save"; readonly project: Project }
@@ -789,16 +792,10 @@ export function step(state: ProjectState, event: ProjectEvent): ProjectStep {
       if (isQueued(project, event.rev)) return refuse(state, "duplicate")
       const finish = finishOf(project)
       if (finish.kind !== "ready") return refuse(state, "notReady")
-      const takes = latest(project).cutList.shots.flatMap((shot) => {
-        const note = project.chosen[shot.id]
-        return note === undefined ? [] : [{ scene: shot.id, note }]
-      })
+      const { rev, at, takes, dna } = event
       return changed(state, {
         ...project,
-        queued: [
-          ...(project.queued ?? []),
-          { rev: event.rev, at: event.at, takes },
-        ],
+        queued: [...(project.queued ?? []), { rev, at, takes, dna }],
       })
     }
 

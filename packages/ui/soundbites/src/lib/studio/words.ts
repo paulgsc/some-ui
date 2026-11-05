@@ -721,8 +721,15 @@ export const STUDIO_WORDS = {
         `On home since ${since}, to be made. Home makes it on its own time.`,
       onHomeOther: (since: string): string =>
         `On home since ${since}. This version of the app can't say yet how far home has got with it.`,
+      /**
+       * Home doesn't hold a take the video names: not yet, or, set aside or
+       * deleted for good, not again, which this phone can't always tell.
+       */
       missing: (scenes: ReadonlyArray<string>): string =>
-        `Home doesn't hold your take for ${scenes.length === 0 ? "a scene" : listed(scenes)} yet, so it hasn't taken this video. It goes again once that take reaches home.`,
+        `Home doesn't have your take for ${scenes.length === 0 ? "a scene" : listed(scenes)}, so it hasn't taken this video. It goes again once home has that take. If that take was set aside or deleted for good, make a new version with another take.`,
+      /** Home deleted a take the video names for good, as this phone heard. */
+      deleted: (scenes: ReadonlyArray<string>): string =>
+        `Your take for ${scenes.length === 0 ? "a scene" : listed(scenes)} was deleted for good, so home can't make this version. Make a new version with another take.`,
       refused:
         "Home didn't take this video as it is. It stays on this phone, and nothing on home changed.",
       /** ST31's open question: how the phone reads Drive. */

@@ -56,9 +56,9 @@
  *   drops any such let-go not yet begun, and only the owner's "Drive has it"
  *   on a take (`driveHasIt`) then lets that one go.
  * - **A video handed to home is kept first** (ST33). Finish's offer
- *   writes the mark (`Pending` `queue`), and only once that write lands is
- *   its DNA handed to the home link (`handHome`), which carries what the
- *   project keeps: a mark not kept hands nothing over.
+ *   writes the mark (`Pending` `queue`), its DNA made once in that write
+ *   (`queueMark`), and only once that write lands is the DNA the mark keeps
+ *   handed to the home link (`handHome`): a mark not kept hands nothing over.
  * - **Nothing records while the page is off screen.** A take recording when
  *   the page is hidden or left is finished and kept; a microphone that opens
  *   then, or once the Record screen is gone, is let go.
@@ -87,9 +87,14 @@ import {
   SOUNDBITE_MIN_MS,
 } from "@soundbites/lib/policy"
 import type { VideoForHome } from "@soundbites/lib/project/dna"
-import { dnaOf, queueRefusal, videoForHome } from "@soundbites/lib/project/dna"
+import { queueMark, videoForHome } from "@soundbites/lib/project/dna"
 import { isProjectFile, readProjectFile } from "@soundbites/lib/project/file"
-import { BEST_OF, finishOf, youtubeLink } from "@soundbites/lib/project/finish"
+import {
+  BEST_OF,
+  finishOf,
+  queuedOf,
+  youtubeLink,
+} from "@soundbites/lib/project/finish"
 import type { LetGo, LetGoChoice } from "@soundbites/lib/project/let-go"
 import {
   driveHasItIn,
@@ -122,7 +127,7 @@ import type {
 } from "@soundbites/lib/project/store"
 
 import type { HomeVideos } from "./home-videos"
-import { NO_HOME_VIDEOS } from "./home-videos"
+import { finishHome, NO_HOME_VIDEOS } from "./home-videos"
 import type { TimeEvent } from "./time-log"
 import { originView, sceneBeside, whoseOf } from "./view"
 import { askedAt, changesIn, ideaAsking, isReviewOf, shotAt } from "./watch"
@@ -970,18 +975,12 @@ function applied(project: Project | null, pending: Pending): Project | null {
     }
     case "queue": {
       if (project === null) return null
-      const next = model(project, {
-        type: "queued",
-        rev: pending.rev,
-        at: pending.at,
-      })
-      const mark = next?.queued?.at(-1)
-      // A mark no DNA can be made of is never kept: home couldn't take it.
-      return next === null ||
-        mark === undefined ||
-        queueRefusal(next, mark) !== null
+      // The DNA is made once, here, of the project as this write reads it,
+      // and kept in the mark; one no DNA can be made of is never kept.
+      const made = queueMark(project, pending.at)
+      return "refused" in made || made.mark.rev !== pending.rev
         ? null
-        : next
+        : model(project, { type: "queued", ...made.mark })
     }
     default: {
       return assertNever(pending)
@@ -1642,11 +1641,15 @@ function handHome(
 ): Step {
   if (pending.kind !== "queue" || !written.changed || written.project === null)
     return stay(state)
-  const mark = written.project.queued?.find((each) => each.rev === pending.rev)
-  const dna = mark === undefined ? null : dnaOf(written.project, mark)
-  return dna?.ok === true
-    ? { state, effects: [{ type: "handHome", video: videoForHome(dna.value) }] }
-    : stay(state)
+  const mark = queuedOf(written.project, pending.rev)
+  return mark === null
+    ? stay(state)
+    : {
+        state,
+        effects: [
+          { type: "handHome", video: videoForHome(written.project, mark) },
+        ],
+      }
 }
 
 /** `first`, then `then` from its state, effects in order. */
@@ -2649,19 +2652,24 @@ export function step(state: StudioState, event: StudioEvent): Step {
     }
 
     case "homeAsked": {
-      if (screen.kind !== "finish" || project === null) return stay(state)
+      // Only the offer Finish shows asks (`finishHome`).
+      if (
+        screen.kind !== "finish" ||
+        project === null ||
+        finishHome(project, state.videos)?.kind !== "offer"
+      )
+        return stay(state)
+      const made = queueMark(project, event.at)
+      if ("refused" in made)
+        return stay({ ...state, notice: WORDS.finish.toHome[made.refused] })
       const asked = stepProject(
         { project, taking: null, closing: null },
-        { type: "queued", rev: latest(project).rev, at: event.at }
+        { type: "queued", ...made.mark }
       )
-      const mark = asked.state.project.queued?.at(-1)
-      if (asked.refused !== null || mark === undefined) return stay(state)
-      const refused = queueRefusal(asked.state.project, mark)
-      if (refused !== null)
-        return stay({ ...state, notice: WORDS.finish.toHome[refused] })
+      if (asked.refused !== null) return stay(state)
       return enqueue(
         { ...state, notice: "" },
-        { kind: "queue", project: project.id, rev: mark.rev, at: event.at }
+        { kind: "queue", project: project.id, rev: made.mark.rev, at: event.at }
       )
     }
 

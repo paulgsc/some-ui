@@ -19,7 +19,7 @@
  * - **Released** is the YouTube link the owner pastes after uploading by
  *   hand (owner, 2026-10-29: nothing here uploads).
  */
-import type { FactCheck, Note, Project } from "./model"
+import type { FactCheck, Note, Project, Queued } from "./model"
 import { originsWaiting } from "./origin"
 
 /** Where the latest revision stands, for Finish. */
@@ -136,10 +136,14 @@ function isMarked(project: Project, rev: number): boolean {
   return project.ready?.some((each) => each.rev === rev) === true
 }
 
-/** Whether revision `rev` is queued for home to make (ST33). */
-export function isQueued(project: Project, rev: number): boolean {
-  return project.queued?.some((each) => each.rev === rev) === true
+/** The mark that queued revision `rev` for home to make (ST33), if it was. */
+export function queuedOf(project: Project, rev: number): Queued | null {
+  return project.queued?.find((each) => each.rev === rev) ?? null
 }
+
+/** Whether revision `rev` is queued for home to make (ST33). */
+export const isQueued = (project: Project, rev: number): boolean =>
+  queuedOf(project, rev) !== null
 
 /** A revision `rev` has been released, so it takes no new note. */
 export function isReleased(project: Project, rev: number): boolean {

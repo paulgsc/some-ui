@@ -1,10 +1,11 @@
 /** @vitest-environment node */
+import { canonicalJson } from "@some-ui/core-utils"
+import type { VideoDna } from "@some-ui/video-render"
 import { parseVideoDna, VIDEO_DNA_SCHEMA } from "@some-ui/video-render"
 import { episodeProjectOf } from "@soundbites/fixtures"
 import {
-  dnaBody,
-  dnaOf,
-  queueRefusal,
+  goneTakes,
+  queueMark,
   videosForHome,
 } from "@soundbites/lib/project/dna"
 import { projectFile, readProjectFile } from "@soundbites/lib/project/file"
@@ -14,7 +15,7 @@ import { isAppendOnly, latest, step } from "@soundbites/lib/project/model"
 import { episodeText } from "@soundbites/lib/studio/__tests__/fixture"
 import { describe, expect, it } from "vitest"
 
-import { AT, run, started, take } from "./fixture"
+import { AT, queue, run, started, take } from "./fixture"
 
 const QUEUED_AT = "2026-11-05T17:02:11.123Z"
 
@@ -40,7 +41,7 @@ const ready = (): ProjectState =>
   })
 
 const queued = (state: ProjectState = ready()): ProjectState =>
-  run(state, { type: "queued", rev: 1, at: QUEUED_AT })
+  queue(state, QUEUED_AT)
 
 function markOf(state: ProjectState): Queued {
   const mark = state.project.queued?.at(-1)
@@ -48,9 +49,17 @@ function markOf(state: ProjectState): Queued {
   return mark
 }
 
+/** The DNA a mark keeps, as home reads it. */
+function dnaIn(mark: Queued): VideoDna {
+  const dna = parseVideoDna(JSON.parse(mark.dna))
+  if (!dna.ok) throw new Error(dna.problems.join("; "))
+  return dna.value
+}
+
 describe("the queued mark (ST33)", () => {
-  it("keeps the take each scene says, once, on a ready episode's latest version", () => {
+  it("keeps the take each scene says and the DNA made of them, once, on a ready episode's latest version", () => {
     const state = queued()
+    const mark = markOf(state)
     expect(state.project.queued).toEqual([
       {
         rev: 1,
@@ -59,51 +68,65 @@ describe("the queued mark (ST33)", () => {
           { scene: "open", note: "t-open" },
           { scene: "close", note: "t-close" },
         ],
+        dna: mark.dna,
       },
     ])
-    expect(step(state, { type: "queued", rev: 1, at: QUEUED_AT }).refused).toBe(
-      "duplicate"
-    )
+    expect(dnaIn(mark).takes).toEqual(mark.takes)
+    expect(step(state, { type: "queued", ...mark }).refused).toBe("duplicate")
   })
 
-  it("is refused before the episode is ready, and on a video of your own", () => {
+  it("is refused before the episode is ready, on a video of your own, and on a version not the latest", () => {
     const unmarked = taken(episodeProjectOf("w3", episodeText(), AT))
-    expect(
-      step(unmarked, { type: "queued", rev: 1, at: QUEUED_AT }).refused
-    ).toBe("notReady")
+    const made = queueMark(unmarked.project, QUEUED_AT)
+    if ("refused" in made) throw new Error(made.refused)
+    expect(step(unmarked, { type: "queued", ...made.mark }).refused).toBe(
+      "notReady"
+    )
     const own = run(taken(started()), {
       type: "markedReady",
       rev: 1,
       at: AT,
     })
-    expect(step(own, { type: "queued", rev: 1, at: QUEUED_AT }).refused).toBe(
+    expect(queueMark(own.project, QUEUED_AT)).toEqual({ refused: "unmade" })
+    expect(step(own, { type: "queued", ...made.mark, rev: 1 }).refused).toBe(
       "noTemplate"
     )
     expect(
-      step(ready(), { type: "queued", rev: 2, at: QUEUED_AT }).refused
+      step(ready(), { type: "queued", ...made.mark, rev: 2 }).refused
     ).toBe("notLatest")
   })
 
   it("is never dropped or rewritten by a save, and goes with the project's file", () => {
     const before = queued().project
+    const mark = markOf(queued())
     expect(isAppendOnly(before, { ...before, queued: [] })).toBe(false)
+    expect(
+      isAppendOnly(before, { ...before, queued: [{ ...mark, takes: [] }] })
+    ).toBe(false)
     expect(
       isAppendOnly(before, {
         ...before,
-        queued: [{ ...markOf(queued()), takes: [] }],
+        queued: [{ ...mark, dna: mark.dna.replace("Weekly", "Daily") }],
       })
     ).toBe(false)
     const read = readProjectFile(projectFile(before))
     expect(read.ok && read.value.queued).toEqual(before.queued)
+    // A mark whose DNA is another video's, or another version's, is no mark.
+    const other = {
+      ...before,
+      queued: [
+        { ...mark, dna: mark.dna.replace('"video":"w3"', '"video":"w4"') },
+      ],
+    }
+    expect(readProjectFile(projectFile(other)).ok).toBe(false)
   })
 })
 
-describe("dnaOf (ST33)", () => {
-  it("makes an episode's DNA from its version, its pins and the mark's takes", () => {
+describe("queueMark (ST33)", () => {
+  it("makes an episode's DNA from its version, its pins and the take each scene says", () => {
     const state = queued()
-    const dna = dnaOf(state.project, markOf(state))
-    if (!dna.ok) throw new Error(dna.problems.join("; "))
-    expect(dna.value).toMatchObject({
+    const dna = dnaIn(markOf(state))
+    expect(dna).toMatchObject({
       schema: VIDEO_DNA_SCHEMA,
       video: "w3",
       rev: 1,
@@ -122,17 +145,70 @@ describe("dnaOf (ST33)", () => {
         ],
       },
     })
-    expect(dna.value.shape.shots.map((shot) => shot.id)).toEqual([
-      "open",
-      "close",
-    ])
-    // What home is sent reads back as the same DNA.
-    expect(parseVideoDna(JSON.parse(dnaBody(dna.value)))).toEqual(dna)
+    expect(dna.shape.shots.map((shot) => shot.id)).toEqual(["open", "close"])
+    // Its canonical JSON: the same DNA is the same bytes.
+    expect(markOf(state).dna).toBe(canonicalJson(dna))
   })
 
-  it("is the same bytes each time, whatever is chosen or noted after the mark", () => {
+  it("keeps a scene's note its owner's idea cites, so the version is made as it reads", () => {
+    const state = ready()
+    const { project } = state
+    const cited = {
+      ...project,
+      notes: [
+        ...project.notes,
+        {
+          id: "n-mine",
+          rev: 1,
+          shot: "open",
+          offsetMs: 0,
+          author: "owner" as const,
+          text: "Open on the wins.",
+          status: "applied" as const,
+        },
+      ],
+      revisions: project.revisions.map((revision) => ({
+        ...revision,
+        cutList: {
+          ...revision.cutList,
+          shots: revision.cutList.shots.map((shot) =>
+            shot.id === "open"
+              ? {
+                  ...shot,
+                  idea: {
+                    origin: "you" as const,
+                    from: { kind: "note" as const, id: "n-mine" },
+                  },
+                }
+              : shot
+          ),
+        },
+      })),
+    }
+    const made = queueMark(cited, QUEUED_AT)
+    if ("refused" in made) throw new Error(made.refused)
+    expect(dnaIn(made.mark).shape.notes.map(({ id }) => id)).toContain("n-mine")
+  })
+
+  it("is refused past home's 256 KiB, before anything is kept", () => {
+    const { project } = ready()
+    const huge = "x".repeat(300 * 1024)
+    const big = {
+      ...project,
+      revisions: project.revisions.map((revision) => ({
+        ...revision,
+        message: huge,
+      })),
+    }
+    expect(queueMark(big, QUEUED_AT)).toEqual({ refused: "tooLarge" })
+    expect("mark" in queueMark(project, QUEUED_AT)).toBe(true)
+  })
+})
+
+describe("videosForHome (ST33)", () => {
+  it("sends the DNA the mark keeps, whatever is chosen, noted or made of the project since", () => {
     const state = queued()
-    const first = dnaOf(state.project, markOf(state))
+    const mark = markOf(state)
     const later = run(
       state,
       { type: "takeStarted", shot: "open" },
@@ -141,7 +217,7 @@ describe("dnaOf (ST33)", () => {
         type: "noted",
         note: {
           id: "n-after",
-          rev: markOf(state).rev,
+          rev: mark.rev,
           shot: "open",
           offsetMs: 0,
           author: "owner",
@@ -150,59 +226,42 @@ describe("dnaOf (ST33)", () => {
       }
     )
     expect(later.project.notes.map(({ id }) => id)).toContain("n-after")
-    const again = dnaOf(later.project, markOf(later))
-    if (!first.ok || !again.ok) throw new Error("no DNA")
-    expect(dnaBody(again.value)).toBe(dnaBody(first.value))
-  })
-
-  it("makes none for a video of your own, which has no template yet", () => {
-    const own = taken(started())
-    const mark: Queued = { rev: 1, at: QUEUED_AT, takes: [] }
-    expect(dnaOf(own.project, mark)).toEqual({
-      ok: false,
-      problems: ["a video of your own has no template yet"],
-    })
-    expect(queueRefusal(own.project, mark)).toBe("unmade")
-  })
-
-  it("is refused past home's 256 KiB, before anything is kept", () => {
-    const state = queued()
-    const huge = "x".repeat(300 * 1024)
-    const big = {
-      ...state.project,
-      revisions: state.project.revisions.map((revision) => ({
+    // A newer app reading the same project another way (a default, a
+    // changed shape) still sends the bytes the mark keeps.
+    const reshaped = {
+      ...later.project,
+      revisions: later.project.revisions.map((revision) => ({
         ...revision,
-        cutList: { ...revision.cutList, title: "Weekly" },
-        message: huge,
+        cutList: { ...revision.cutList, title: "Weekly, reshaped" },
       })),
     }
-    expect(queueRefusal(big, markOf(state))).toBe("tooLarge")
-    expect(queueRefusal(state.project, markOf(state))).toBeNull()
-    expect(videosForHome([big])).toEqual([])
+    for (const project of [later.project, reshaped])
+      expect(videosForHome([project]).map(({ body }) => body)).toEqual([
+        mark.dna,
+      ])
   })
 
-  it("lists every mark kept for home, oldest first", () => {
+  it("lists every mark kept for home, oldest first, naming the takes home deleted for good", () => {
     const one = queued()
-    const two = queued(
+    const two = queue(
       run(taken(episodeProjectOf("w4", episodeText("week 4"), AT)), {
         type: "markedReady",
         rev: 1,
         at: AT,
-      })
+      }),
+      "2026-11-06T08:00:00.000Z"
     )
-    const later = {
-      ...two.project,
-      queued: two.project.queued?.map((mark) => ({
-        ...mark,
-        at: "2026-11-06T08:00:00.000Z",
-      })),
-    }
     expect(
-      videosForHome([later, one.project]).map((video) => video.key)
+      videosForHome([two.project, one.project]).map((video) => video.key)
     ).toEqual(["w3/1", "w4/1"])
-    const [first] = videosForHome([one.project])
-    const dna = dnaOf(one.project, markOf(one))
-    if (!dna.ok) throw new Error("no DNA")
-    expect(first?.body).toBe(dnaBody(dna.value))
+    expect(videosForHome([one.project])[0]?.gone).toEqual([])
+    const deleted = {
+      ...one.project,
+      takes: one.project.takes.map((each) =>
+        each.id === "t-close" ? { ...each, deletedAt: AT } : each
+      ),
+    }
+    expect(goneTakes(deleted, markOf(one))).toEqual(["t-close"])
+    expect(videosForHome([deleted])[0]?.gone).toEqual(["t-close"])
   })
 })
