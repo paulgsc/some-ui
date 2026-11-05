@@ -1,6 +1,8 @@
 import type { Entry } from "@aph/lib/model"
 import {
   awaitingTheirs,
+  breaches,
+  draftWaiting,
   dueCheckpoint,
   entriesOn,
   formatDelta,
@@ -225,5 +227,59 @@ describe("formatting", () => {
     expect(formatDelta(360)).toBe("+360")
     expect(formatDelta(-330)).toBe("−330")
     expect(formatDelta(0)).toBe("±0")
+  })
+})
+
+describe("a time of day holds one entry", () => {
+  it("refuses a second entry at a time already logged", () => {
+    const logged = SEED_ENTRIES.find(
+      (e) => e.checkpoint === "7" && e.labels.length === 0
+    )
+    if (logged === undefined) throw new Error("a plain morning figure")
+    const beside: Entry = { ...logged, id: "beside", labels: ["no-bs"] }
+    expect(breaches(SEED_ENTRIES, [...SEED_ENTRIES, beside])).toEqual([
+      `beside: a second entry at ${logged.day} 7`,
+    ])
+    const freed = SEED_ENTRIES.map((e) =>
+      e.id === logged.id ? { ...e, removed: true } : e
+    )
+    expect(breaches(freed, [...freed, beside])).toEqual([])
+  })
+})
+
+describe("drafts", () => {
+  const first = SEED_ENTRIES[0]
+  if (first === undefined) throw new Error("a paper note")
+  const base: Entry = { ...first, id: "d", day: "2026-10-03" }
+
+  it("may leave the record only as a draft", () => {
+    const draft: Entry = { ...base, draft: true }
+    expect(breaches([draft], [])).toEqual([])
+    expect(breaches([base], [])).toEqual(["d: gone from the record"])
+  })
+
+  it("are deleted, never removed", () => {
+    const draft: Entry = { ...base, draft: true }
+    expect(breaches([draft], [{ ...draft, removed: true }])).toEqual([
+      "d: a draft removed rather than deleted",
+    ])
+  })
+
+  it("never become drafts again once submitted", () => {
+    expect(breaches([base], [{ ...base, draft: true }])).toEqual([
+      "d: a draft again after it was submitted",
+    ])
+  })
+
+  it("on another day hold back a new entry until submitted or deleted", () => {
+    const waiting: Entry = { ...base, draft: true }
+    const next: Entry = { ...base, id: "n", day: "2026-10-04" }
+    expect(draftWaiting([waiting], "2026-10-04")).toBe("2026-10-03")
+    expect(draftWaiting([waiting], "2026-10-03")).toBeNull()
+    expect(breaches([waiting], [waiting, next])).toEqual([
+      "n: drafts on 2026-10-03 wait",
+    ])
+    const submitted: Entry = { ...base }
+    expect(breaches([submitted], [submitted, next])).toEqual([])
   })
 })

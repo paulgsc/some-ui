@@ -40,7 +40,7 @@ describe("logging mine", () => {
     const { type, onSaved } = setup()
     type("4600")
     fireEvent.click(screen.getByRole("button", { name: "no-bs" }))
-    fireEvent.click(screen.getByRole("button", { name: /Save mine · 12:00/ }))
+    fireEvent.click(screen.getByRole("button", { name: /Save draft · 12:00/ }))
     expect(onSaved).toHaveBeenCalledWith(
       expect.objectContaining({
         day: "2026-10-02",
@@ -53,12 +53,14 @@ describe("logging mine", () => {
     )
   })
 
-  it("corrects an already-logged figure and still reports the save", () => {
-    // 7:00 on Oct 2 is logged (~4,300); logging it again corrects it.
+  it("replaces an already-logged figure and still reports the save", () => {
+    // 7:00 on Oct 2 is logged (~4,300); logging it again replaces it.
     const { type, onSaved, store } = setup()
     fireEvent.click(screen.getByRole("radio", { name: /7:00/ }))
     type("4400")
-    fireEvent.click(screen.getByRole("button", { name: /Correct mine · 7:00/ }))
+    fireEvent.click(
+      screen.getByRole("button", { name: /Replace ~4,300 · 7:00/ })
+    )
     expect(onSaved).toHaveBeenCalledWith(
       expect.objectContaining({
         id: expect.stringMatching(/^paper-/),
@@ -115,7 +117,7 @@ describe("a logger left open", () => {
         onSaved={onSaved}
       />
     )
-    fireEvent.click(screen.getByRole("button", { name: /Save mine/ }))
+    fireEvent.click(screen.getByRole("button", { name: /Save draft/ }))
     expect(onSaved).toHaveBeenCalledWith(
       expect.objectContaining({ day: "2026-10-03", time: "0:04" }),
       "mine"
@@ -135,7 +137,7 @@ describe("logging a day I missed", () => {
     )
     type("4900")
     fireEvent.click(
-      screen.getByRole("button", { name: /Save mine · Oct 2 12:00/ })
+      screen.getByRole("button", { name: /Save draft · Oct 2 12:00/ })
     )
     expect(onSaved).toHaveBeenCalledWith(
       expect.objectContaining({ day: "2026-10-02", checkpoint: "12" }),
@@ -167,7 +169,7 @@ describe("logging a day I missed", () => {
     })
     expect(screen.getByText("Too far back to log")).toBeInTheDocument()
     type("4400")
-    expect(screen.getByRole("button", { name: /Save mine/ })).toBeDisabled()
+    expect(screen.getByRole("button", { name: /Save draft/ })).toBeDisabled()
   })
 })
 
@@ -225,5 +227,24 @@ describe("logging theirs", () => {
     const { type } = setup({ initialSide: "theirs" })
     type("4350")
     expect(screen.getByText("Reconciled")).toBeInTheDocument()
+  })
+})
+
+describe("drafts waiting on another day", () => {
+  it("hold back a figure for a new day, with where to go", () => {
+    const store = createAphStore({
+      settings: SEED_SETTINGS,
+      entries: [
+        { ...SEED_ENTRIES[0]!, id: "waiting", day: "2026-10-01", draft: true },
+      ],
+    })
+    render(<AphLog now={new Date(2026, 9, 2, 12, 4)} store={store} />)
+    for (const digit of "4600") {
+      fireEvent.click(screen.getByRole("button", { name: digit }))
+    }
+    expect(screen.getByRole("status")).toHaveTextContent(
+      /Drafts from Thu Oct 1/
+    )
+    expect(screen.getByRole("button", { name: /Save draft/ })).toBeDisabled()
   })
 })

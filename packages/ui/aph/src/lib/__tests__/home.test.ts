@@ -7,8 +7,8 @@
 import { newDraft, stepDraft } from "@aph/lib/draft"
 import type { Draft } from "@aph/lib/draft"
 import type { HomeRecord } from "@aph/lib/home"
-import { sameEntry } from "@aph/lib/home"
 import type { Entry } from "@aph/lib/model"
+import { sameEntry } from "@aph/lib/model"
 import { SEED_ENTRIES, SEED_SETTINGS } from "@aph/lib/seed"
 import type { AphState } from "@aph/lib/store"
 import { createAphStore } from "@aph/lib/store"
@@ -123,8 +123,15 @@ describe("keeping aph on home", () => {
   it("opens a restart on the settings and the outbox alone, then shows home's record", () => {
     const { store: first, storage } = synced()
     expect(kept(storage).pending).toEqual([])
-    const saved = first.save(figure("4900"), commit)
-    if (saved === null) throw new Error("saved")
+    const draft = first.save(figure("4900"), commit)
+    if (draft === null) throw new Error("saved")
+    // A draft stays on the phone; submitted, it waits to go home.
+    expect(first.where()).toMatchObject({ unsent: 0 })
+    expect(first.outbox()?.entries).toEqual([])
+    first.submit([draft.id])
+    const saved = first.get().entries.find((e) => e.id === draft.id)
+    if (saved === undefined) throw new Error("submitted")
+    expect(saved).not.toHaveProperty("draft")
 
     const store = createAphStore(seed, storage)
     expect(store.get()).toEqual({ settings: SEED_SETTINGS, entries: [saved] })
@@ -151,6 +158,7 @@ describe("keeping aph on home", () => {
     // Logged before home was read: a second plain noon figure that day.
     const clash: Entry = { ...plain, id: "clash" }
     fresh.save(figure("4400"), { ...commit, today: plain.day, id: "clash" })
+    fresh.submit(["clash"])
     expect(
       fresh.pulled({ settings: SEED_SETTINGS, entries: SEED_ENTRIES })
     ).toBe(true)
@@ -211,5 +219,26 @@ describe("keeping aph on home", () => {
     }
     expect(sameEntry(first, reordered)).toBe(true)
     expect(sameEntry(first, { ...first, note: "x" })).toBe(false)
+  })
+})
+
+describe("drafts kept on home", () => {
+  it("keeps a draft off home, sends it once submitted, and lets go of one deleted", () => {
+    const { store, storage } = synced()
+    const kept1 = store.save(figure("4900"), commit)
+    if (kept1 === null) throw new Error("saved")
+    expect(kept(storage).pending.map((e) => e.id)).toEqual([kept1.id])
+    expect(store.outbox()?.entries).toEqual([])
+    expect(store.deleteDraft(kept1.id)).toBe(true)
+    expect(kept(storage).pending).toEqual([])
+
+    const again = store.save(figure("4800"), { ...commit, id: "again" })
+    if (again === null) throw new Error("saved")
+    expect(store.submit([again.id])).toBe(true)
+    const sent = store.outbox()?.entries ?? []
+    expect(sent.map((e) => e.id)).toEqual(["again"])
+    expect(sent[0]).not.toHaveProperty("draft")
+    store.deleteDraft(again.id)
+    expect(store.get().entries.map((e) => e.id)).toContain(again.id)
   })
 })

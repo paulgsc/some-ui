@@ -11,14 +11,16 @@
  * - the settings, as last read from home or as changed here, because logging
  *   needs the checkpoints and goals even when home cannot be reached;
  * - every entry changed on this phone that home has not confirmed, each as it
- *   was last changed (`pending`);
+ *   was last changed (`pending`), drafts among them: those stay here, out of
+ *   the outbox, until submitted, and leave it if deleted;
  * - the ones home refused, with why, so they are not sent again unchanged.
  *
  * An entry leaves `pending` only once home answers with the same entry
- * (`sameEntry`), so the phone never lets go of something home does not hold.
+ * (`sameEntry`), so the phone never lets go of something home does not hold,
+ * or once deleted as a draft, which home never held.
  */
 import type { AphSettings, Entry } from "./model"
-import { violations } from "./model"
+import { isDraft, sameEntry, violations } from "./model"
 
 export type Refusal = { readonly id: string; readonly why: string }
 
@@ -55,22 +57,6 @@ export type Receipt = {
   }>
 }
 
-/** Every field in the server's order, so two copies compare as text. */
-function canonicalEntry(e: Entry): string {
-  return JSON.stringify([
-    e.id,
-    e.day,
-    e.checkpoint,
-    e.time,
-    e.mine === null ? null : [e.mine.value, e.mine.approx],
-    e.theirs === null ? null : e.theirs.value,
-    e.goal,
-    e.labels,
-    e.note,
-    e.review,
-  ])
-}
-
 function canonicalSettings(s: AphSettings): string {
   return JSON.stringify([
     s.checkpoints.map((c) => [c.id, c.label, c.minutes, c.goal]),
@@ -81,11 +67,6 @@ function canonicalSettings(s: AphSettings): string {
     s.tolerance,
     s.since,
   ])
-}
-
-/** The same entry, field for field. */
-export function sameEntry(a: Entry, b: Entry): boolean {
-  return canonicalEntry(a) === canonicalEntry(b)
 }
 
 export function sameSettings(a: AphSettings, b: AphSettings): boolean {
@@ -100,17 +81,21 @@ export function startHome(
   return { settings, settingsPending: true, pending: entries, refused: [] }
 }
 
+/** What waits to go home: drafts stay on this phone until submitted. */
 export function outboxOf(record: HomeRecord): Outbox {
   const refused = new Set(record.refused.map((r) => r.id))
   return {
     settings: record.settingsPending ? record.settings : null,
-    entries: record.pending.filter((e) => !refused.has(e.id)),
+    entries: record.pending.filter((e) => !refused.has(e.id) && !isDraft(e)),
   }
 }
 
-/** How many changes wait on this phone, refused ones included. */
+/** How many changes wait to go home, refused ones included; drafts are not. */
 export function unsentCount(record: HomeRecord): number {
-  return record.pending.length + (record.settingsPending ? 1 : 0)
+  return (
+    record.pending.filter((e) => !isDraft(e)).length +
+    (record.settingsPending ? 1 : 0)
+  )
 }
 
 /**
@@ -129,8 +114,13 @@ export function recordChange(
     return old === undefined || !sameEntry(old, e)
   })
   const settingsChanged = !sameSettings(before.settings, after.settings)
-  if (changed.length === 0 && !settingsChanged) return record
-  const ids = new Set(changed.map((e) => e.id))
+  // A draft deleted outright leaves the phone, and so the outbox.
+  const kept = new Set(after.entries.map((e) => e.id))
+  const deleted = before.entries.filter((e) => !kept.has(e.id))
+  if (changed.length === 0 && deleted.length === 0 && !settingsChanged) {
+    return record
+  }
+  const ids = new Set([...changed, ...deleted].map((e) => e.id))
   return {
     settings: after.settings,
     settingsPending: record.settingsPending || settingsChanged,

@@ -75,6 +75,8 @@ export const EntrySchema: z.ZodType<Entry> = z.object({
   labels: z.array(z.string()),
   note: z.string().nullable(),
   review: z.enum(["agreed", "flagged"]).nullable(),
+  removed: z.boolean().optional(),
+  draft: z.boolean().optional(),
 })
 
 const StoredSchema = z.object({

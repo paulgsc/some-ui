@@ -2,14 +2,22 @@
  * One entry, opened: the three figures, where they reconcile, and the call
  * to make when they do not. Also where an entry's labels and note are
  * changed after the fact, since that is usually when the reason for a
- * mismatch comes to mind.
+ * mismatch comes to mind, where my figure is fixed when I mistyped it, where
+ * a draft is submitted or deleted, and where a submitted entry logged at the
+ * wrong time, or twice, is removed.
  */
 import type { JSX } from "react"
 import { useState } from "react"
 import { GoalMeter, STATUS, StatusBadge, whenOf } from "@aph/components/status"
-import { keepsOnePlain } from "@aph/lib/draft"
+import { keepsOnePlain, MAX_DIGITS } from "@aph/lib/draft"
 import type { Entry } from "@aph/lib/model"
-import { formatDelta, formatValue, labelsFor, reconcile } from "@aph/lib/model"
+import {
+  formatDelta,
+  formatValue,
+  isDraft,
+  labelsFor,
+  reconcile,
+} from "@aph/lib/model"
 import type { AphStore } from "@aph/lib/store"
 import { useAph } from "@aph/lib/use-aph"
 import { cn, formatDay, formatWeekday } from "@some-ui/core-utils"
@@ -21,8 +29,9 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
+  useConfirmSheet,
 } from "@some-ui/shared"
-import { CheckCheck, Flag, Undo2 } from "lucide-react"
+import { Check, CheckCheck, Flag, Send, Trash2, Undo2 } from "lucide-react"
 
 export type EntrySheetProps = {
   entryId: string | null
@@ -200,6 +209,8 @@ const EntryDetail = ({
         </div>
       )}
 
+      <MineEditor key={mineKey(entry)} entry={entry} store={store} />
+
       <div className="flex flex-col gap-2">
         <label
           htmlFor={`aph-note-${entry.id}`}
@@ -223,6 +234,144 @@ const EntryDetail = ({
           }}
         />
       </div>
+
+      <LeaveControls entry={entry} store={store} />
+    </div>
+  )
+}
+
+function mineKey(entry: Entry): string {
+  return `${entry.id}:${entry.mine?.value ?? ""}:${String(entry.mine?.approx)}`
+}
+
+/**
+ * My figure, typed again and saved: the fix for a mistyped one. Keyed by the
+ * figure it edits, so a save (or a change from elsewhere) starts it afresh.
+ */
+const MineEditor = ({
+  entry,
+  store,
+}: {
+  entry: Entry
+  store: AphStore
+}): JSX.Element => {
+  // eslint-disable-next-line owner-guard/no-mount-snapshot -- edit buffer, keyed by the figure it edits (mineKey)
+  const [digits, setDigits] = useState(String(entry.mine?.value ?? ""))
+  // eslint-disable-next-line owner-guard/no-mount-snapshot -- edit buffer, keyed by the figure it edits (mineKey)
+  const [approx, setApprox] = useState(entry.mine?.approx ?? true)
+  const [refused, setRefused] = useState(false)
+  const valid = digits !== ""
+  const unchanged =
+    entry.mine !== null &&
+    Number(digits) === entry.mine.value &&
+    approx === entry.mine.approx
+
+  return (
+    <div className="flex flex-col gap-2">
+      <label
+        htmlFor={`aph-mine-${entry.id}`}
+        className="text-muted-foreground text-xs font-semibold uppercase tracking-wide"
+      >
+        {entry.mine === null ? "Add mine" : "Change mine"}
+      </label>
+      <div className="flex gap-2">
+        <Input
+          id={`aph-mine-${entry.id}`}
+          inputMode="numeric"
+          value={digits}
+          placeholder="My figure"
+          onChange={(e) => {
+            setRefused(false)
+            setDigits(e.target.value.replace(/\D/g, "").slice(0, MAX_DIGITS))
+          }}
+          className="font-mono"
+        />
+        <Button
+          variant={approx ? "default" : "outline"}
+          aria-pressed={approx}
+          onClick={() => setApprox(!approx)}
+          className="rounded-full"
+        >
+          ~ approx
+        </Button>
+        <Button
+          variant="outline"
+          disabled={!valid || unchanged}
+          onClick={() =>
+            setRefused(
+              !store.rewriteMine(entry.id, { value: Number(digits), approx })
+            )
+          }
+        >
+          <Check aria-hidden className="mr-1 size-4" />
+          Save
+        </Button>
+      </div>
+      {refused && (
+        <p role="alert" className="text-destructive text-xs">
+          Not saved: the phone did not keep it.
+        </p>
+      )}
+    </div>
+  )
+}
+
+/**
+ * What leaves the log, asked first. A draft, never submitted, is deleted
+ * outright or submitted from here; a submitted entry is removed, and the
+ * record keeps it. Either way it leaves the screens, and this sheet with it.
+ */
+const LeaveControls = ({
+  entry,
+  store,
+}: {
+  entry: Entry
+  store: AphStore
+}): JSX.Element => {
+  const { ask, sheet } = useConfirmSheet()
+  const [refused, setRefused] = useState(false)
+  const draft = isDraft(entry)
+
+  return (
+    <div className="flex flex-col gap-2">
+      {draft && (
+        <Button onClick={() => setRefused(!store.submit([entry.id]))}>
+          <Send aria-hidden className="mr-2 size-4" />
+          Submit
+        </Button>
+      )}
+      <Button
+        variant="ghost"
+        className="text-destructive"
+        onClick={() =>
+          ask(
+            draft
+              ? {
+                  title: "Delete this draft?",
+                  description:
+                    "It was never submitted, so nothing else holds it: it goes for good.",
+                  confirm: "Delete draft",
+                  onConfirm: () => setRefused(!store.deleteDraft(entry.id)),
+                }
+              : {
+                  title: "Remove this entry?",
+                  description:
+                    "It stops counting in History and the trend, and the record keeps it as it was.",
+                  confirm: "Remove",
+                  onConfirm: () => setRefused(!store.remove(entry.id)),
+                }
+          )
+        }
+      >
+        <Trash2 aria-hidden className="mr-2 size-4" />
+        {draft ? "Delete draft" : "Remove from the log"}
+      </Button>
+      {refused && (
+        <p role="alert" className="text-destructive text-center text-xs">
+          Not changed: the phone did not keep it.
+        </p>
+      )}
+      {sheet}
     </div>
   )
 }
