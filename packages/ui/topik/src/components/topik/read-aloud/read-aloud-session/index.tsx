@@ -23,6 +23,7 @@ import { StepLayout } from "@topik/components/topik/handheld/step-layout"
 import { PoolNote } from "@topik/components/topik/read-aloud/pool-note"
 import { HeldNote, RepCard } from "@topik/components/topik/read-aloud/rep-card"
 import { SentenceFacts } from "@topik/components/topik/read-aloud/sentence-facts"
+import type { LevelReason } from "@topik/components/topik/read-aloud/session-header"
 import { SessionHeader } from "@topik/components/topik/read-aloud/session-header"
 import type { SetCardProps } from "@topik/components/topik/read-aloud/set-card"
 import { SetCard } from "@topik/components/topik/read-aloud/set-card"
@@ -64,6 +65,7 @@ export type ReadAloudSessionProps = UseReadAloudOptions & {
     kept: boolean
     onClear: () => boolean
   }
+  levelReason?: LevelReason
   onExit: () => void
 }
 
@@ -73,6 +75,7 @@ export const ReadAloudSession = ({
   lens,
   feedback,
   tally,
+  levelReason,
   onExit,
   ...options
 }: ReadAloudSessionProps): JSX.Element => {
@@ -109,6 +112,7 @@ export const ReadAloudSession = ({
     <SessionHeader
       title="Read aloud"
       level={options.level}
+      levelReason={levelReason}
       short={short}
       exit={{
         label: "Stop reading aloud",

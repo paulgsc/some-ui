@@ -2036,6 +2036,12 @@
       "family": "what-is-kept"
     },
     {
+      "store": "phone:read-aloud-level",
+      "class": "record",
+      "growth": "bounded: one TOPIK level (1-6) the learner holds on the material list, replaced by the next one picked (`topik:read-aloud-level`).",
+      "family": "what-is-kept"
+    },
+    {
       "store": "phone:read-aloud-pace-book",
       "class": "record",
       "growth": "Per word with a pace; pruned to words the vocabulary still names.",

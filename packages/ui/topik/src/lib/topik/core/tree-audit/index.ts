@@ -44,7 +44,7 @@ import {
   GLOSS_RELATION,
   ProbeSchema,
 } from "@topik/lib/topik/entity/topik-types"
-import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
+import { asTopikLevel } from "@topik/lib/topik/generation"
 
 export type TreeFinding = {
   /** Shape (makjang's story audit) or items (this one). */
@@ -279,7 +279,7 @@ export function auditTeaching(lesson: Lesson<unknown>): TeachingAudit {
     rejected: false,
     probeIds: new Set(),
   }
-  if (!TOPIK_LEVELS.some((level) => level === lesson.level)) {
+  if (asTopikLevel(lesson.level) === null) {
     rejectTree(context, "level", `${lesson.level} is not a TOPIK level (1-6)`)
   }
   lesson.cast.forEach(({ figure }, index) => {

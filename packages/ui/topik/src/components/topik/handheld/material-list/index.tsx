@@ -19,6 +19,8 @@ import {
   setSize,
 } from "@topik/lib/topik/core/lesson-feed"
 import { PORTION_WORDS } from "@topik/lib/topik/core/portion"
+import type { TopikLevel } from "@topik/lib/topik/generation"
+import { asTopikLevel } from "@topik/lib/topik/generation"
 import type { ReadAloudDeck } from "@topik/lib/topik/read-aloud/content"
 import {
   readAloudLevelFor,
@@ -38,9 +40,9 @@ import {
 
 type MaterialListProps = {
   /** The level the learner holds: read-aloud's, and the prompt's default. */
-  level: number
+  level: TopikLevel
   /** Picking a level to show also holds it. */
-  onLevel: (level: number) => void
+  onLevel: (level: TopikLevel) => void
   /** The scene tree pasted this session, with how to play and forget it. */
   pastedTree?: {
     lesson: DramaLesson
@@ -614,7 +616,8 @@ export const MaterialList = ({
           only={showing}
           onOnly={(next) => {
             setOnly(next)
-            if (next !== null) onLevel(next)
+            const at = asTopikLevel(next)
+            if (at !== null) onLevel(at)
           }}
         />
       )}
