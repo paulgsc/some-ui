@@ -134,6 +134,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Open release PR
         uses: peter-evans/create-pull-request@v8
+        # WR1: the commit runs with the git hooks off (check:workflows).
+        env:
+          HUSKY: "0"
         with:
           branch: ${{ env.RELEASE_BRANCH }}
           base: main

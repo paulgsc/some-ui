@@ -14,6 +14,7 @@ import {
   findBuildRecordViolations,
   findCacheViolations,
   findInlineInstallViolations,
+  findPrCommitHookViolations,
   findRetentionViolations,
   findRs2Violations,
   isGuardedWorkflowPath,
@@ -492,6 +493,44 @@ describe("findBuildRecordViolations", () => {
   })
 })
 
+// WR1 (#2601): a PR commit outside `nix develop` runs with the hooks off.
+describe("findPrCommitHookViolations", () => {
+  it("requires a create-pull-request step to turn the git hooks off", () => {
+    const off = steps(
+      "      - uses: peter-evans/create-pull-request@v8",
+      "        env:",
+      '          HUSKY: "0"',
+      "        with:",
+      "          branch: b"
+    )
+    const on = steps(
+      "      - uses: peter-evans/create-pull-request@v8",
+      "        with:",
+      "          branch: b"
+    )
+    const misplaced = steps(
+      "      - uses: peter-evans/create-pull-request@v8",
+      "        with:",
+      '          HUSKY: "0"'
+    )
+    const notOff = steps(
+      "      - uses: peter-evans/create-pull-request@v8",
+      "        env:",
+      '          HUSKY: "1"'
+    )
+    // A flow-style step can't be read, so it fails rather than passing.
+    const flow = steps(
+      '      - { uses: peter-evans/create-pull-request@v8, env: { HUSKY: "0" } }'
+    )
+    expect(findPrCommitHookViolations(F, off)).toEqual([])
+    for (const text of [on, misplaced, notOff, flow]) {
+      expect(findPrCommitHookViolations(F, text)).toEqual([
+        { kind: "prCommitHooks", file: F, line: 4 },
+      ])
+    }
+  })
+})
+
 describe("checkRetentionTriggers", () => {
   const names = new Set([
     "Mobile APK",
@@ -584,6 +623,7 @@ describe("describeWorkflowViolation", () => {
         "workflow_run",
       ],
       [{ kind: "buildRecord", file: F, line: 2 }, "DOCKER_BUILD_RECORD_UPLOAD"],
+      [{ kind: "prCommitHooks", file: F, line: 2 }, 'HUSKY: "0"'],
       [{ kind: "inlineInstall", file: F, line: 2 }, "Why not node-ci-setup:"],
       [
         {

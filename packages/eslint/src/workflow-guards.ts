@@ -128,6 +128,11 @@ export type WorkflowViolation =
       readonly file: string
       readonly line: number
     }
+  | {
+      readonly kind: "prCommitHooks"
+      readonly file: string
+      readonly line: number
+    }
 
 const UPLOAD_STEP =
   /^(\s*)(-\s+)?uses:\s*["']?actions\/upload-(?:pages-)?artifact@/
@@ -138,6 +143,9 @@ const SEQUENCE_ITEM = /^(\s*)-(\s+)\S/
 const CACHE_STEP =
   /^(\s*)(-\s+)?uses:\s*["']?actions\/cache(?:\/restore|\/save)?@/
 const BUILD_PUSH_STEP = /^(\s*)(-\s+)?uses:\s*["']?docker\/build-push-action@/
+const CREATE_PR_STEP =
+  /^(\s*)(-\s+)?uses:\s*["']?peter-evans\/create-pull-request@/
+const CREATE_PR_ANYWHERE = /uses:\s*["']?peter-evans\/create-pull-request@/
 const WITH_KEY = /^\s*with:(.*)$/
 const ENV_KEY = /^\s*env:(.*)$/
 const RETENTION_TAG = /^#+\s*Retention:\s*\S/
@@ -523,6 +531,36 @@ export function findBuildRecordViolations(
     .map(({ start }) => ({ kind: "buildRecord", file, line: start + 1 }))
 }
 
+// WR1 (#2601): create-pull-request commits with git, which runs the husky
+// hooks once a pnpm call in the job has installed them, and their pnpm is
+// only on PATH inside `nix develop`. So its step turns them off.
+export function findPrCommitHookViolations(
+  file: string,
+  text: string
+): Array<WorkflowViolation> {
+  const lines = text.split(/\r?\n/)
+  const unreadable = lines.flatMap((line, index) =>
+    !CREATE_PR_STEP.test(line) &&
+    !line.trim().startsWith("#") &&
+    CREATE_PR_ANYWHERE.test(line)
+      ? [{ kind: "prCommitHooks" as const, file, line: index + 1 }]
+      : []
+  )
+  return [
+    ...stepsUsing(lines, CREATE_PR_STEP)
+      .filter(({ body, keyColumn }) => {
+        const found = withValue(body, keyColumn, "HUSKY", "env")
+        return found.shape !== "value" || found.value !== "0"
+      })
+      .map(({ start }) => ({
+        kind: "prCommitHooks" as const,
+        file,
+        line: start + 1,
+      })),
+    ...unreadable,
+  ]
+}
+
 // retention.yml runs after every workflow that uploads a family it keeps
 // copies of (`keep` ≥ 1), so a new generation prunes the old at once; a
 // family consumed in its run waits for the hourly sweep, within its TTL.
@@ -649,6 +687,9 @@ export function describeWorkflowViolation(v: WorkflowViolation): string {
     }
     case "buildRecord": {
       return `${v.file}:${v.line}: docker/build-push-action uploads a build-record artifact (90-day default) unless its step sets \`env: DOCKER_BUILD_RECORD_UPLOAD: false\`.`
+    }
+    case "prCommitHooks": {
+      return `${v.file}:${v.line}: create-pull-request commits with the husky hooks on, which fail outside \`nix develop\` ("pnpm: not found") once a pnpm call has installed them. Set \`env: HUSKY: "0"\` on the step (WR1).`
     }
     default: {
       return assertNever(v)
