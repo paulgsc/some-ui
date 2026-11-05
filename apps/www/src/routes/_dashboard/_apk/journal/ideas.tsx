@@ -101,7 +101,7 @@ const OnHome = ({ lists }: { lists: boolean }): JSX.Element | null => {
       home={onHome.home}
       takes={takes}
       initialLists={lists}
-      pair={<PairHomeLink />}
+      pair={<PairHomeLink>{STUDIO_WORDS.pair.pair}</PairHomeLink>}
       // An answer's Delete… opens My data on its recording (#2579, MD4).
       openInMyData={(note) =>
         void navigate({

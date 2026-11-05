@@ -169,7 +169,10 @@ const Takes = (): JSX.Element | null => {
       <h1 className="text-muted-foreground text-sm font-bold tracking-wider uppercase">
         {LIBRARY_WORDS.heading}
       </h1>
-      <TakeLibrary ports={TAKE_PORTS} pair={<PairHomeLink />} />
+      <TakeLibrary
+        ports={TAKE_PORTS}
+        pair={<PairHomeLink>{WORDS.pair.pair}</PairHomeLink>}
+      />
       <Link
         to="/journal"
         className="text-muted-foreground self-start text-sm underline underline-offset-4"

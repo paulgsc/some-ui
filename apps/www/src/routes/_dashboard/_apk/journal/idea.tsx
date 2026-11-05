@@ -5,6 +5,7 @@ import {
   keptIdeasForHome,
   keptIdeaStore,
   NewIdeaPage,
+  STUDIO_WORDS,
 } from "@some-ui/soundbites"
 import { createFileRoute, Link } from "@tanstack/react-router"
 
@@ -51,7 +52,7 @@ const IdeaRoute = (): JSX.Element | null => {
       takes={takes}
       ports={{ home: phone.home, ideas: phone.ideas }}
       backLink={StudioLink}
-      pair={<PairHomeLink />}
+      pair={<PairHomeLink>{STUDIO_WORDS.pair.pair}</PairHomeLink>}
     />
   )
 }
