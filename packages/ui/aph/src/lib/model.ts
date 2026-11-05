@@ -83,7 +83,7 @@ export type Entry = {
 }
 
 /** Whether an entry stands in the log: not removed. */
-export function isLive(entry: Entry): boolean {
+function isLive(entry: Entry): boolean {
   return entry.removed !== true
 }
 
@@ -353,9 +353,8 @@ function mean(xs: ReadonlyArray<number>): number | null {
 
 /**
  * The entry that stands for a checkpoint on a day: the first one there with
- * no label, else the first one at all. A checkpoint holds one entry a day
- * now (`breaches`); a second under a label, from when one could be added as
- * a comparison, is not the day's figure.
+ * no label, else the first one at all. A second under a label (a comparison
+ * logged beside it in the paper notes) is not the day's figure.
  */
 export function primary(
   entries: ReadonlyArray<Entry>,

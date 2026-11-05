@@ -75,8 +75,6 @@ export const EntrySchema: z.ZodType<Entry> = z.object({
   labels: z.array(z.string()),
   note: z.string().nullable(),
   review: z.enum(["agreed", "flagged"]).nullable(),
-  // Absent on every entry from before removing existed, and on home's
-  // answers while false.
   removed: z.boolean().optional(),
 })
 

@@ -94,21 +94,6 @@ describe("the store's rules, under random edits", () => {
     })
   })
 
-  it("refuses a second entry at a time already logged", () => {
-    const logged = SEED_ENTRIES.find(
-      (e) => e.checkpoint === "7" && e.labels.length === 0
-    )
-    if (logged === undefined) throw new Error("a plain morning figure")
-    const beside: Entry = { ...logged, id: "beside", labels: ["no-bs"] }
-    expect(breaches(SEED_ENTRIES, [...SEED_ENTRIES, beside])).toEqual([
-      `beside: a second entry at ${logged.day} 7`,
-    ])
-    const freed = SEED_ENTRIES.map((e) =>
-      e.id === logged.id ? { ...e, removed: true } : e
-    )
-    expect(breaches(freed, [...freed, beside])).toEqual([])
-  })
-
   for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
     it(`holds after every one of 400 random edits (seed ${seed})`, () => {
       const next = random(seed)

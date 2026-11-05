@@ -1,6 +1,7 @@
 import type { Entry } from "@aph/lib/model"
 import {
   awaitingTheirs,
+  breaches,
   dueCheckpoint,
   entriesOn,
   formatDelta,
@@ -225,5 +226,22 @@ describe("formatting", () => {
     expect(formatDelta(360)).toBe("+360")
     expect(formatDelta(-330)).toBe("−330")
     expect(formatDelta(0)).toBe("±0")
+  })
+})
+
+describe("a time of day holds one entry", () => {
+  it("refuses a second entry at a time already logged", () => {
+    const logged = SEED_ENTRIES.find(
+      (e) => e.checkpoint === "7" && e.labels.length === 0
+    )
+    if (logged === undefined) throw new Error("a plain morning figure")
+    const beside: Entry = { ...logged, id: "beside", labels: ["no-bs"] }
+    expect(breaches(SEED_ENTRIES, [...SEED_ENTRIES, beside])).toEqual([
+      `beside: a second entry at ${logged.day} 7`,
+    ])
+    const freed = SEED_ENTRIES.map((e) =>
+      e.id === logged.id ? { ...e, removed: true } : e
+    )
+    expect(breaches(freed, [...freed, beside])).toEqual([])
   })
 })

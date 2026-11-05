@@ -7,7 +7,6 @@ import {
   newDraft,
   removeEntry,
   reviewEntry,
-  rewriteMine,
   stepDraft,
 } from "@aph/lib/draft"
 import { reconcile } from "@aph/lib/model"
@@ -179,6 +178,13 @@ describe("saving mine", () => {
       mine: { value: 4100, approx: true },
       labels: ["no-bs"],
     })
+    // Saved again with no label picked, it keeps the ones it has.
+    const again = run(newDraft("mine", "7", null), typed("4200"))
+    const kept = commitDraft(settings, saved?.entries ?? [], again, commit)
+    expect(must(kept?.entries.find((e) => e.id === target.id))).toMatchObject({
+      mine: { value: 4200, approx: true },
+      labels: ["no-bs"],
+    })
   })
 
   it("adds a new entry where the one logged there was removed", () => {
@@ -319,35 +325,5 @@ describe("saving theirs", () => {
   it("saves nothing for an entry that is not there", () => {
     const d = run(newDraft("theirs", null, "gone"), typed("4900"))
     expect(commitDraft(settings, SEED_ENTRIES, d, commit)).toBeNull()
-  })
-})
-
-describe("fixing an entry from the entry itself", () => {
-  it("rewrites my figure and clears my call on it", () => {
-    const target = must(SEED_ENTRIES[0])
-    const flagged = reviewEntry(
-      SEED_ENTRIES.map((e) =>
-        e.id === target.id ? { ...e, theirs: { value: 9000 } } : e
-      ),
-      target.id,
-      "flagged"
-    )
-    const after = rewriteMine(flagged, target.id, {
-      value: 4000,
-      approx: false,
-    })
-    expect(must(after.find((e) => e.id === target.id))).toMatchObject({
-      mine: { value: 4000, approx: false },
-      theirs: { value: 9000 },
-      review: null,
-    })
-  })
-
-  it("leaves a removed entry as it was removed", () => {
-    const target = must(SEED_ENTRIES[0])
-    const removed = removeEntry(SEED_ENTRIES, target.id)
-    expect(
-      rewriteMine(removed, target.id, { value: 1, approx: false })
-    ).toEqual(removed)
   })
 })

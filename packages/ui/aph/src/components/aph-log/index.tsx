@@ -126,7 +126,6 @@ export const AphLog = ({
 
   const value = draftValue(draft)
   const checkpoint = checkpointById(settings, draft.checkpoint)
-  // A checkpoint holds one entry a day: saving there rewrites what is logged.
   const replaced = rewriting(entries, draft, day)?.mine ?? null
   // Only a waiting entry can be the target: one filled since the link was
   // made (Back after saving) shows as unselected, and Save stays off.

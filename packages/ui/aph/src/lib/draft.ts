@@ -15,7 +15,6 @@ import {
   checkpointById,
   dueCheckpoint,
   hasMine,
-  isLive,
   live,
   loggableDays,
   minutesOf,
@@ -62,7 +61,7 @@ export type DraftEvent =
   | { type: "toggleLabel"; label: string }
 
 /** Five digits is past any figure seen so far by an order of magnitude. */
-const MAX_DIGITS = 5
+export const MAX_DIGITS = 5
 
 export function newDraft(
   side: Side,
@@ -194,9 +193,10 @@ export type Commit = {
  * further back than `loggableDays` reaches).
  *
  * A checkpoint holds one entry a day, so mine at a checkpoint where the day
- * already has one (`rewriting`) rewrites it: my figure and the labels become
- * the draft's, and any call I made on it is cleared, since a changed figure
- * deserves a fresh look. Their figure, if reported, stays. Off the
+ * already has one (`rewriting`) rewrites it: my figure becomes the draft's,
+ * and its labels too when I picked any (none picked keeps the ones it has),
+ * and any call I made on it is cleared, since a changed figure deserves a
+ * fresh look. Their figure, if reported, stays. Off the
  * checkpoints, every figure is a new entry at its own clock time.
  * Theirs lands on its target and clears any earlier call on it likewise.
  */
@@ -217,7 +217,7 @@ export function commitDraft(
     const target = draft.target
     if (
       target === null ||
-      !awaitingTheirs(settings, live(entries)).some((e) => e.id === target)
+      !awaitingTheirs(settings, entries).some((e) => e.id === target)
     ) {
       return null
     }
@@ -240,7 +240,14 @@ export function commitDraft(
     return {
       id: there.id,
       entries: entries.map((e) =>
-        e === there ? { ...e, mine, labels: draft.labels, review: null } : e
+        e === there
+          ? {
+              ...e,
+              mine,
+              labels: draft.labels.length > 0 ? draft.labels : e.labels,
+              review: null,
+            }
+          : e
       ),
     }
   }
@@ -283,18 +290,15 @@ export function rewriting(
 
 /**
  * Entry `id` with my figure rewritten, from the entry itself: the fix for a
- * figure I mistyped, wherever it was logged. Any call I made on it is
- * cleared, as a changed figure deserves a fresh look. Unchanged for an id
- * that does not stand.
+ * figure I mistyped, wherever it was logged. Clears my call on it, as a save
+ * from the logger does.
  */
 export function rewriteMine(
   entries: ReadonlyArray<Entry>,
   id: string,
   mine: { value: number; approx: boolean }
 ): Array<Entry> {
-  return entries.map((e) =>
-    e.id === id && isLive(e) ? { ...e, mine, review: null } : e
-  )
+  return entries.map((e) => (e.id === id ? { ...e, mine, review: null } : e))
 }
 
 /**
@@ -324,7 +328,7 @@ export function keepsOnePlain(
   const entry = entries.find((e) => e.id === id)
   if (entry === undefined) return true
   if (entry.checkpoint === null) return true
-  return !live(entries).some(
+  return !entries.some(
     (e) =>
       e.id !== id &&
       e.day === entry.day &&

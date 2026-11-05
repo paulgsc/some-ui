@@ -8,7 +8,7 @@
 import type { JSX } from "react"
 import { useState } from "react"
 import { GoalMeter, STATUS, StatusBadge, whenOf } from "@aph/components/status"
-import { keepsOnePlain } from "@aph/lib/draft"
+import { keepsOnePlain, MAX_DIGITS } from "@aph/lib/draft"
 import type { Entry } from "@aph/lib/model"
 import { formatDelta, formatValue, labelsFor, reconcile } from "@aph/lib/model"
 import type { AphStore } from "@aph/lib/store"
@@ -232,9 +232,6 @@ const EntryDetail = ({
   )
 }
 
-/** Five digits, as the logger's keypad allows. */
-const FIGURE = /^\d{1,5}$/
-
 function mineKey(entry: Entry): string {
   return `${entry.id}:${entry.mine?.value ?? ""}:${String(entry.mine?.approx)}`
 }
@@ -250,13 +247,12 @@ const MineEditor = ({
   entry: Entry
   store: AphStore
 }): JSX.Element => {
-  // An edit buffer seeded from the figure it edits; keyed by it (mineKey).
-  // eslint-disable-next-line owner-guard/no-mount-snapshot -- edit buffer, keyed by the figure it edits (see above)
+  // eslint-disable-next-line owner-guard/no-mount-snapshot -- edit buffer, keyed by the figure it edits (mineKey)
   const [digits, setDigits] = useState(String(entry.mine?.value ?? ""))
-  // eslint-disable-next-line owner-guard/no-mount-snapshot -- edit buffer, keyed by the figure it edits (see above)
+  // eslint-disable-next-line owner-guard/no-mount-snapshot -- edit buffer, keyed by the figure it edits (mineKey)
   const [approx, setApprox] = useState(entry.mine?.approx ?? true)
   const [refused, setRefused] = useState(false)
-  const valid = FIGURE.test(digits)
+  const valid = digits !== ""
   const unchanged =
     entry.mine !== null &&
     Number(digits) === entry.mine.value &&
@@ -278,7 +274,7 @@ const MineEditor = ({
           placeholder="My figure"
           onChange={(e) => {
             setRefused(false)
-            setDigits(e.target.value.replace(/\D/g, "").slice(0, 5))
+            setDigits(e.target.value.replace(/\D/g, "").slice(0, MAX_DIGITS))
           }}
           className="font-mono"
         />
