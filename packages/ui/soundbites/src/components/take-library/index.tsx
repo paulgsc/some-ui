@@ -3,19 +3,27 @@
  * words home heard in it, a search over those words, and Play for each, its
  * audio fetched from home. Renders `lib/library/model.ts`'s state and
  * forwards taps; its words are `lib/library/words.ts`'s.
+ *
+ * Where the build hands in the phone's own takes (`ports.phone`), a take
+ * with no scene yet is recorded here, on the take kit's pattern
+ * (`TakeList`), and listed apart, with where each is kept, until home holds
+ * it (`notYetHome`).
  */
 import type { JSX } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { assertNever } from "@some-ui/core-utils"
-import { Button, Input } from "@some-ui/shared"
+import { Button, Input, TakeList } from "@some-ui/shared"
 import type {
   LibraryIntent,
   LibraryPage,
   LibraryState,
   LibraryTake,
 } from "@soundbites/lib/library/model"
-import { takeFor } from "@soundbites/lib/library/model"
-import type { LibraryPorts } from "@soundbites/lib/library/runtime"
+import { notYetHome, takeFor } from "@soundbites/lib/library/model"
+import type {
+  LibraryPhone,
+  LibraryPorts,
+} from "@soundbites/lib/library/runtime"
 import { createTakeLibrary } from "@soundbites/lib/library/runtime"
 import { LIBRARY_WORDS } from "@soundbites/lib/library/words"
 import { LoaderCircle, Pause, Play } from "lucide-react"
@@ -58,6 +66,7 @@ const TakeItem = ({
           size="icon"
           className="bg-brand text-brand-foreground hover:bg-brand/85 size-11 shrink-0 rounded-full"
           onClick={() => dispatch({ type: "play", id: take.id })}
+          disabled={state.phone === "recording"}
           aria-label={here ? WORDS.stop : WORDS.play}
         >
           {!here ? (
@@ -182,6 +191,38 @@ const Read = ({
   }
 }
 
+/** The phone's own takes with no scene: record one, and those home lacks. */
+const PhoneTakes = ({ phone }: { phone: LibraryPhone }): JSX.Element => {
+  const { takes, full } = useSyncExternalStore(
+    phone.subscribe,
+    phone.getSnapshot
+  )
+  const { playback } = useSyncExternalStore(
+    phone.pattern.subscribe,
+    phone.pattern.getSnapshot
+  )
+  const here = notYetHome(takes, playback.kind === "quiet" ? null : playback.id)
+  return (
+    <section className="flex flex-col gap-2">
+      <h2 className="text-sm font-semibold">{WORDS.record}</h2>
+      <p className="text-muted-foreground text-sm">{WORDS.recordLine}</p>
+      <TakeList
+        pattern={phone.pattern}
+        answers={phone.line}
+        takes={here}
+        label={WORDS.recordLabel}
+        full={
+          full ? (
+            <p className="text-sm" role="status">
+              {WORDS.phoneFull(here.length)}
+            </p>
+          ) : undefined
+        }
+      />
+    </section>
+  )
+}
+
 export const TakeLibrary = ({ ports }: TakeLibraryProps): JSX.Element => {
   /* eslint-disable-next-line owner-guard/no-mount-snapshot -- the runtime is made once per mount, as Studio's screens' are */
   const [library] = useState(() => createTakeLibrary(ports))
@@ -191,6 +232,7 @@ export const TakeLibrary = ({ ports }: TakeLibraryProps): JSX.Element => {
   const searchable = state.read.kind !== "unpaired"
   return (
     <div className="flex flex-col gap-4">
+      {ports.phone !== undefined && <PhoneTakes phone={ports.phone} />}
       {searchable && (
         <form
           role="search"

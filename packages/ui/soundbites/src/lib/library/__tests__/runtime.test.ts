@@ -1,7 +1,13 @@
 /** @vitest-environment node */
-import type { Playback, Player } from "@some-ui/voice-capture"
-import type { LibraryPage, LibraryRead } from "@soundbites/lib/library/model"
-import type { TakesHome } from "@soundbites/lib/library/runtime"
+import type { PatternTake, Playback, Player } from "@some-ui/voice-capture"
+import { ONE_TAKE } from "@some-ui/voice-capture"
+import { simulatedPattern } from "@some-ui/voice-capture/testing"
+import type {
+  LibraryPage,
+  LibraryPhoneSnapshot,
+  LibraryRead,
+} from "@soundbites/lib/library/model"
+import type { LibraryPhone, TakesHome } from "@soundbites/lib/library/runtime"
 import { createTakeLibrary } from "@soundbites/lib/library/runtime"
 import { describe, expect, it, vi } from "vitest"
 
@@ -128,5 +134,107 @@ describe("Takes on home's runtime (ST32)", () => {
     await settle()
     expect(library.getSnapshot().playback).toEqual({ kind: "quiet" })
     expect(played.stops).toEqual([])
+  })
+
+  describe("with the phone's own takes with no scene", () => {
+    const OWN: PatternTake = {
+      id: "own-1",
+      answers: "library",
+      durationMs: 4000,
+      recordedAt: "2026-11-05T09:00:00.000Z",
+      standing: "current",
+      kept: { place: "going" },
+    }
+
+    /** The phone's takes over the real pattern, their places as the test sets them. */
+    function phoneTakes(): {
+      phone: LibraryPhone
+      sim: ReturnType<typeof simulatedPattern>
+      move: (takes: ReadonlyArray<PatternTake>) => void
+    } {
+      const sim = simulatedPattern({
+        options: {
+          ...ONE_TAKE,
+          takes: { per: "many", max: 40, full: "make-room" },
+        },
+        seed: [OWN],
+      })
+      let snapshot: LibraryPhoneSnapshot = { takes: [OWN], full: false }
+      const listeners = new Set<() => void>()
+      return {
+        sim,
+        phone: {
+          pattern: sim.pattern,
+          line: "library",
+          getSnapshot: () => snapshot,
+          subscribe(listener): () => void {
+            listeners.add(listener)
+            return (): void => {
+              listeners.delete(listener)
+            }
+          },
+        },
+        move(takes): void {
+          snapshot = { takes, full: false }
+          for (const listener of listeners) listener()
+        },
+      }
+    }
+
+    it("reads the newest again once a take recorded here reaches home, and not for one already there", async () => {
+      const takes = vi.fn<TakesHome["takes"]>(() =>
+        Promise.resolve(page("newest", "t1"))
+      )
+      const { phone, move } = phoneTakes()
+      const library = createTakeLibrary({
+        home: { takes, audio: () => Promise.resolve(null) },
+        player: player().player,
+        phone,
+      })
+      library.attach()
+      await settle()
+      expect(takes).toHaveBeenCalledTimes(1)
+      move([{ ...OWN, kept: { place: "home", since: null } }])
+      await settle()
+      expect(takes).toHaveBeenCalledTimes(2)
+      expect(takes).toHaveBeenLastCalledWith(null, expect.any(Function))
+      move([{ ...OWN, kept: { place: "home", since: "2026-11-05T09:01:00Z" } }])
+      await settle()
+      expect(takes).toHaveBeenCalledTimes(2)
+    })
+
+    it("plays one sound at a time, either way, and keeps a take under way when the screen goes", async () => {
+      const { phone, sim } = phoneTakes()
+      const stopPlaying = vi.spyOn(sim.pattern, "stopPlaying")
+      const leave = vi.spyOn(sim.pattern, "leave")
+      const played = player()
+      const library = createTakeLibrary({
+        home: {
+          takes: () => Promise.resolve(page("newest", "t1")),
+          audio: () => Promise.resolve(new Blob(["take"])),
+        },
+        player: played.player,
+        phone,
+      })
+      const detach = library.attach()
+      await settle()
+      library.dispatch({ type: "play", id: "t1" })
+      await settle()
+      expect(library.getSnapshot().playback.kind).toBe("playing")
+      // The phone plays one of its own: home's stops.
+      sim.pattern.play(OWN.id)
+      await settle()
+      expect(played.stops).toEqual([0])
+      expect(library.getSnapshot().playback).toEqual({ kind: "quiet" })
+      expect(library.getSnapshot().phone).toBe("playing")
+      // Home's Play stops the phone's, then plays home's.
+      library.dispatch({ type: "play", id: "t1" })
+      expect(stopPlaying).toHaveBeenCalled()
+      await settle()
+      expect(library.getSnapshot().phone).toBe("quiet")
+      expect(library.getSnapshot().playback.kind).toBe("playing")
+      detach()
+      expect(leave).toHaveBeenCalledTimes(1)
+    })
   })
 })

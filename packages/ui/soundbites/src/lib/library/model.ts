@@ -20,8 +20,18 @@
  *   search by words never claim meaning (`./words`).
  * - **A search home would refuse is never asked.** Blank words show the
  *   newest; more than `SEARCH_MAX` characters say so and send nothing.
+ * - **A take recorded here shows on home once home has it.** The phone's
+ *   own takes with no scene (`LibraryPhone`) are listed apart while home
+ *   doesn't hold them (`notYetHome`); once one reaches home (`reachedHome`),
+ *   the newest are read again, as soon as nothing plays, so it shows in
+ *   home's list. A search shown is left as it is.
+ * - **One sound at a time.** When the phone starts recording or playing one
+ *   of its own takes (`phone`), what plays from home stops. Home's Play
+ *   waits only while the phone records; while it plays, Play stops it
+ *   (`readAudio`) and plays home's.
  */
 import { assertNever } from "@some-ui/core-utils"
+import type { PatternTake } from "@some-ui/voice-capture"
 
 /** What home heard in a take: empty `text` when it heard no words. */
 type LibraryHeard = {
@@ -82,6 +92,40 @@ export function takeFor(ref: string): TakeFor {
   return ref.split(":").length === 3 ? "scene" : "other"
 }
 
+/** The phone's own takes with no scene, and whether it has room for another. */
+export type LibraryPhoneSnapshot = {
+  readonly takes: ReadonlyArray<PatternTake>
+  /** No new take can be kept until home holds some of those kept. */
+  readonly full: boolean
+}
+
+const onHome = (take: PatternTake): boolean => take.kept?.place === "home"
+
+/**
+ * The phone's takes listed apart from home's: those home doesn't hold yet,
+ * and the one `playing` until it stops, so its Stop stays on screen.
+ */
+export function notYetHome(
+  takes: ReadonlyArray<PatternTake>,
+  playing: string | null
+): ReadonlyArray<PatternTake> {
+  return takes.filter((take) => !onHome(take) || take.id === playing)
+}
+
+/**
+ * The ids of the phone's takes home holds now, and whether any of them
+ * wasn't among `before`: a take that reached home since.
+ */
+export function reachedHome(
+  before: ReadonlySet<string>,
+  takes: ReadonlyArray<PatternTake>
+): { readonly held: ReadonlySet<string>; readonly arrived: boolean } {
+  const held = new Set(takes.filter(onHome).map(({ id }) => id))
+  return { held, arrived: [...held].some((id) => !before.has(id)) }
+}
+
+type PhoneSound = "quiet" | "playing" | "recording"
+
 /** What plays: nothing, a take whose audio is on its way, or a take playing. */
 type LibraryPlayback =
   | { readonly kind: "quiet" }
@@ -103,6 +147,10 @@ export type LibraryState = {
   readonly unplayable: string | null
   /** The search typed was longer than home takes, so nothing was asked. */
   readonly tooLong: boolean
+  /** A take recorded here reached home since the newest were read. */
+  readonly behind: boolean
+  /** What the phone's own takes do: nothing, play one, or record one. */
+  readonly phone: PhoneSound
 }
 
 export type LibraryIntent =
@@ -128,6 +176,10 @@ export type LibraryEvent =
       readonly audio: Blob | null
     }
   | { readonly type: "playEnded"; readonly play: number }
+  /** A take recorded on this phone reached home. */
+  | { readonly type: "arrived" }
+  /** The phone started or stopped recording or playing one of its own. */
+  | { readonly type: "phone"; readonly sound: PhoneSound }
 
 export type LibraryEffect =
   /** Ask home for the takes: the newest when `q` is null. */
@@ -158,6 +210,8 @@ export const INITIAL_LIBRARY: LibraryState = {
   plays: 0,
   unplayable: null,
   tooLong: false,
+  behind: false,
+  phone: "quiet",
 }
 
 const same = (state: LibraryState): LibraryStep => ({ state, effects: [] })
@@ -176,6 +230,7 @@ function readFor(state: LibraryState, asked: string | null): LibraryStep {
       seq,
       read: { kind: "reading" },
       tooLong: false,
+      behind: false,
     },
     effects: [...stop.effects, { type: "readTakes", seq, q: asked }],
   }
@@ -193,10 +248,27 @@ function stopped(state: LibraryState): LibraryStep {
 const playbackId = (playback: LibraryPlayback): string | null =>
   playback.kind === "quiet" ? null : playback.id
 
+/**
+ * The next state and effects for `event`; then, once nothing plays and the
+ * newest show, a take that reached home meanwhile is read in.
+ */
 export function stepLibrary(
   state: LibraryState,
   event: LibraryEvent
 ): LibraryStep {
+  const next = step(state, event)
+  const { state: after } = next
+  const due =
+    after.behind &&
+    after.asked === null &&
+    after.playback.kind === "quiet" &&
+    event.type !== "left"
+  if (!due) return next
+  const read = readFor(after, null)
+  return { state: read.state, effects: [...next.effects, ...read.effects] }
+}
+
+function step(state: LibraryState, event: LibraryEvent): LibraryStep {
   switch (event.type) {
     case "entered": {
       return readFor(state, state.asked)
@@ -226,7 +298,7 @@ export function stepLibrary(
     case "play": {
       const again = playbackId(state.playback) === event.id
       const stop = stopped(state)
-      if (again) return stop
+      if (again || state.phone === "recording") return stop
       const play = stop.state.plays + 1
       return {
         state: {
@@ -260,6 +332,17 @@ export function stepLibrary(
     case "playEnded": {
       if (event.play !== state.plays) return same(state)
       return same({ ...state, playback: { kind: "quiet" } })
+    }
+    case "arrived": {
+      // A search shown stays; going back to the newest reads them anyway.
+      if (state.asked !== null || state.behind) return same(state)
+      return same({ ...state, behind: true })
+    }
+    case "phone": {
+      if (event.sound === state.phone) return same(state)
+      const stop = state.phone === "quiet" ? stopped(state) : same(state)
+      const next = event.sound === "quiet" ? same(state) : stop
+      return { ...next, state: { ...next.state, phone: event.sound } }
     }
     default: {
       return assertNever(event)

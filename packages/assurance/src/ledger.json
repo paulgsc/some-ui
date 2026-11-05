@@ -1901,6 +1901,13 @@
       "family": "what-is-kept"
     },
     {
+      "store": "phone:library-takes",
+      "class": "record",
+      "growth": "bounded: the takes recorded with no scene on Takes on home (ST32 #2590, `some-ui:library-takes`), an offline set of 40 takes of <= 180 s: 40 x 180 x 4,000 = 28,800,000 B; past 40, a new one makes room with the oldest home holds, and is refused while home holds none.",
+      "horizon": "a take leaves the phone only to make room at 40, and only once home holds it (HF5 #2180, LG1), or once My data deleted it for good on home; a take whose audio never landed is swept",
+      "family": "what-is-kept"
+    },
+    {
       "store": "phone:studio-time-log",
       "class": "record",
       "growth": "Per Studio sitting on the phone: a sitting opened and closed, each screen entered and left, the page hidden and shown (ST9), a few hundred bytes each, append-only; no cap (`some-ui:studio:time-log`).",

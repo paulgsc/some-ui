@@ -26,6 +26,7 @@ import { keepIdeas } from "@/lib/idea-keeping"
 import { useAsyncIntent, useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import { shareStudio } from "@/lib/journal-share"
+import { libraryTakes } from "@/lib/library-takes"
 import { deletableStudioTakes } from "@/lib/my-data"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 import { keepStudio } from "@/lib/studio-keeping"
@@ -143,12 +144,13 @@ const Records = (): JSX.Element => {
 }
 
 /**
- * Takes on home (ST32), in the Android app alone, so no other build
- * carries the link (`build.paths.ts`).
+ * Takes on home (ST32), with the phone's own takes with no scene to record
+ * there, in the Android app alone, so no other build carries the link
+ * (`build.paths.ts`).
  */
 const TAKE_PORTS =
   import.meta.env.VITE_DEVICE_BACKEND === "true"
-    ? { home: takesHome, player: audioPlayer }
+    ? { home: takesHome, player: audioPlayer, phone: libraryTakes() }
     : null
 
 const Takes = (): JSX.Element | null => {

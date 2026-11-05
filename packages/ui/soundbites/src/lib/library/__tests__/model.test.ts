@@ -1,4 +1,5 @@
 /** @vitest-environment node */
+import type { PatternTake, TakeKept } from "@some-ui/voice-capture"
 import type {
   LibraryEvent,
   LibraryPage,
@@ -7,6 +8,8 @@ import type {
 } from "@soundbites/lib/library/model"
 import {
   INITIAL_LIBRARY,
+  notYetHome,
+  reachedHome,
   SEARCH_MAX,
   stepLibrary,
   takeFor,
@@ -234,5 +237,112 @@ describe("Takes on home (ST32)", () => {
     expect(takeFor("week-8:intro:1")).toBe("scene")
     expect(takeFor("idea:i1:what")).toBe("idea")
     expect(takeFor("something else")).toBe("other")
+  })
+
+  describe("the phone's own takes with no scene", () => {
+    const take = (id: string, kept: TakeKept | null): PatternTake => ({
+      id,
+      answers: "library",
+      durationMs: 4000,
+      recordedAt: "2026-11-05T09:00:00.000Z",
+      standing: "current",
+      kept,
+    })
+    const ON_HOME: TakeKept = { place: "home", since: null }
+
+    it("lists apart only those home doesn't hold yet, and notices one reaching home", () => {
+      const takes = [
+        take("a", { place: "phone" }),
+        take("b", { place: "going" }),
+        take("c", ON_HOME),
+        take("d", null),
+      ]
+      expect(notYetHome(takes, null).map(({ id }) => id)).toEqual([
+        "a",
+        "b",
+        "d",
+      ])
+      // One playing as it reaches home stays, with its Stop, until it stops.
+      expect(notYetHome(takes, "c").map(({ id }) => id)).toEqual([
+        "a",
+        "b",
+        "c",
+        "d",
+      ])
+      const first = reachedHome(new Set(), takes)
+      expect([...first.held]).toEqual(["c"])
+      expect(first.arrived).toBe(true)
+      expect(reachedHome(first.held, takes).arrived).toBe(false)
+      const later = reachedHome(first.held, [take("b", ON_HOME), ...takes])
+      expect(later.arrived).toBe(true)
+      // One home no longer lists as held (deleted, say) is no arrival.
+      expect(
+        reachedHome(first.held, [take("a", { place: "phone" })]).arrived
+      ).toBe(false)
+    })
+
+    it("reads the newest again once a take reaches home, waiting for what plays to end", () => {
+      const read = run([
+        { type: "entered" },
+        { type: "takesRead", seq: 1, read: { kind: "read", page: PAGE } },
+      ])
+      const now = stepLibrary(read.state, { type: "arrived" })
+      expect(now.effects).toEqual([{ type: "readTakes", seq: 2, q: null }])
+      expect(now.state.behind).toBe(false)
+
+      const playing = run(
+        [
+          { type: "play", id: "t1" },
+          { type: "audioRead", play: 1, audio: AUDIO },
+          { type: "arrived" },
+        ],
+        read.state
+      )
+      expect(playing.effects).toEqual([])
+      expect(playing.state.behind).toBe(true)
+      const ended = stepLibrary(playing.state, { type: "playEnded", play: 1 })
+      expect(ended.effects).toEqual([{ type: "readTakes", seq: 2, q: null }])
+      expect(ended.state.behind).toBe(false)
+    })
+
+    it("leaves a search shown as it is when a take reaches home", () => {
+      const searched = run([
+        { type: "entered" },
+        { type: "typed", text: "brand" },
+        { type: "search" },
+        { type: "arrived" },
+      ])
+      expect(searched.effects).toEqual([])
+      expect(searched.state.asked).toBe("brand")
+      expect(searched.state.behind).toBe(false)
+    })
+
+    it("plays one sound at a time: the phone's sound stops home's, and Play waits only while it records", () => {
+      const playing = run([
+        { type: "entered" },
+        { type: "takesRead", seq: 1, read: { kind: "read", page: PAGE } },
+        { type: "play", id: "t1" },
+        { type: "audioRead", play: 1, audio: AUDIO },
+      ])
+      const recording = stepLibrary(playing.state, {
+        type: "phone",
+        sound: "recording",
+      })
+      expect(recording.effects).toEqual([{ type: "stopPlayback" }])
+      expect(recording.state.playback).toEqual({ kind: "quiet" })
+      const refused = stepLibrary(recording.state, { type: "play", id: "t1" })
+      expect(refused.effects).toEqual([])
+      expect(refused.state.playback).toEqual({ kind: "quiet" })
+      // While the phone only plays, home's Play is taken: the runtime stops
+      // the phone's playback as it reads home's audio.
+      const phonePlays = stepLibrary(refused.state, {
+        type: "phone",
+        sound: "playing",
+      })
+      const again = stepLibrary(phonePlays.state, { type: "play", id: "t1" })
+      expect(again.effects).toEqual([
+        { type: "readAudio", play: again.state.plays, id: "t1" },
+      ])
+    })
   })
 })

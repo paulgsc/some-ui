@@ -122,6 +122,7 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/my-data/**",
   "apps/www/src/lib/leetype-files/**",
   "apps/www/src/lib/leetype-takes/**",
+  "apps/www/src/lib/library-takes/**",
   "apps/www/src/lib/reflection-voice/**",
   "apps/www/src/lib/rust-rounds/**",
   "apps/www/src/lib/scene-ask/**",

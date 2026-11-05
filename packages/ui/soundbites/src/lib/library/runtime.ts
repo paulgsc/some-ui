@@ -4,18 +4,25 @@
  * playback under way and turns each effect into a call and each answer into
  * an event; which answer still counts is `stepLibrary`'s, by the read's and
  * the play's numbers. Once the screen is left, no answer reaches it.
+ *
+ * With the phone's own takes (`LibraryPhone`, www's `lib/library-takes`),
+ * it tells the machine when one reaches home and when the phone records or
+ * plays one, stops the phone's playback when one from home starts, and
+ * leaves the phone's take pattern when the screen goes, so a take under way
+ * is kept.
  */
 import { assertNever } from "@some-ui/core-utils"
-import type { Playback, Player } from "@some-ui/voice-capture"
+import type { Playback, Player, TakePattern } from "@some-ui/voice-capture"
 
 import type {
   LibraryEffect,
   LibraryEvent,
   LibraryIntent,
+  LibraryPhoneSnapshot,
   LibraryRead,
   LibraryState,
 } from "./model"
-import { INITIAL_LIBRARY, stepLibrary } from "./model"
+import { INITIAL_LIBRARY, reachedHome, stepLibrary } from "./model"
 
 /** Home, as Takes on home reads it. Every call resolves. */
 export type TakesHome = {
@@ -32,9 +39,24 @@ export type TakesHome = {
   readonly audio: (id: string) => Promise<Blob | null>
 }
 
+/**
+ * The phone's takes with no scene (ST32), as the build hands them in: the
+ * take pattern they are recorded on, what each answers, and the takes.
+ */
+export type LibraryPhone = {
+  readonly pattern: TakePattern
+  /** What every take here answers, for the pattern's `tap`. */
+  readonly line: string
+  /** The same object while nothing changed. */
+  readonly getSnapshot: () => LibraryPhoneSnapshot
+  readonly subscribe: (listener: () => void) => () => void
+}
+
 export type LibraryPorts = {
   readonly home: TakesHome
   readonly player: Player
+  /** Absent in a build that records none here. */
+  readonly phone?: LibraryPhone | undefined
 }
 
 export type LibraryRuntime = {
@@ -70,6 +92,34 @@ export function createTakeLibrary(ports: LibraryPorts): LibraryRuntime {
     })
   }
 
+  /** Tells the machine what the phone's own takes do, while attached. */
+  function watchPhone(): ReadonlyArray<() => void> {
+    const { phone } = ports
+    if (phone === undefined) return []
+    let held = reachedHome(new Set(), phone.getSnapshot().takes).held
+    const busy = (): void => {
+      const { take, playback } = phone.pattern.getSnapshot()
+      send({
+        type: "phone",
+        sound:
+          take.kind !== "idle"
+            ? "recording"
+            : playback.kind === "quiet"
+              ? "quiet"
+              : "playing",
+      })
+    }
+    busy()
+    return [
+      phone.subscribe(() => {
+        const reached = reachedHome(held, phone.getSnapshot().takes)
+        held = reached.held
+        if (reached.arrived) send({ type: "arrived" })
+      }),
+      phone.pattern.subscribe(busy),
+    ]
+  }
+
   function run(effect: LibraryEffect): void {
     switch (effect.type) {
       case "readTakes": {
@@ -84,6 +134,8 @@ export function createTakeLibrary(ports: LibraryPorts): LibraryRuntime {
       }
       case "readAudio": {
         const { play } = effect
+        // One sound at a time: the phone's own take stops for home's.
+        ports.phone?.pattern.stopPlaying()
         later(ports.home.audio(effect.id), (audio) => ({
           type: "audioRead",
           play,
@@ -123,8 +175,11 @@ export function createTakeLibrary(ports: LibraryPorts): LibraryRuntime {
     dispatch: (intent) => send(intent),
     attach(): () => void {
       attached = true
+      const stops = watchPhone()
       send({ type: "entered" })
       return (): void => {
+        for (const stop of stops) stop()
+        ports.phone?.pattern.leave()
         send({ type: "left" })
         attached = false
       }

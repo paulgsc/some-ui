@@ -30,7 +30,7 @@ export type {
 export { homeHearing } from "./lib/idea/hearing"
 export { TakeLibrary } from "./components/take-library"
 export type { LibraryPage, LibraryRead } from "./lib/library/model"
-export type { TakesHome } from "./lib/library/runtime"
+export type { LibraryPhone, TakesHome } from "./lib/library/runtime"
 export { LIBRARY_WORDS } from "./lib/library/words"
 export { Studio } from "./components/studio"
 export { StudioRecords } from "./components/studio-records"

@@ -438,7 +438,9 @@ declared (checked by reading every call site and by the tests named).
   home (`lib/take-library`, through `lib/home-link/takes-read`'s `keep`: one
   `GET /voice-notes/takes` each time the screen opens, Try again is
   pressed, a search is asked or Show the newest is pressed (a search left
-  blank shows the newest too), with `?q=` holding the search's words while
+  blank shows the newest too), and once for the newest after a take recorded
+  on this phone with no scene reaches home, while no search is shown and
+  once nothing plays from home, with `?q=` holding the search's words while
   a search is shown, sending nothing of the phone's but those words; while the link is busy with another run
   it asks again a second later, at most ten times, and not once a newer
   read or leaving the screen has made that one stale; and, per Play, one
@@ -531,7 +533,8 @@ declared (checked by reading every call site and by the tests named).
   run (`voice-copy.ts`) and `lib/take-library` read
   `lib/home-link/voice-audio.ts`, or has `@some-ui/soundbites`' `stepLibrary`
   read but on the screen opening, Try again, a search (a blank one reads the
-  newest) or Show the newest, or ask for audio
+  newest), Show the newest, or once for the newest after one of the phone's
+  takes reaches home (`arrived`) while no search is shown, or ask for audio
   but on a Play, or `lib/take-library` ask again but while the link is busy
   and the read is still wanted, more than ten times in all; one that has `idea-reads.ts` send anything
   but the one request `ideasPath` names per ask, lets anything but
@@ -771,7 +774,8 @@ taken (MIC10, #2428), its words then read back by the idea screen (LA8); a
 new idea's take (ST26, #2453) the same way, but only once the whole idea is
 sent (`lib/takes-desk/__tests__/pattern.test.ts`, "ST26": a take waits on
 the phone, `sent` lists none before its release, and only a waiting take is
-deleted). That a note's audio is copied
+deleted); and a take with no scene (`lib/library-takes`, ST32, #2590) as a
+Studio note named by its own id (`take:<id>`), by when it was taken. That a note's audio is copied
 once, before the record names it, that the copy goes once home holds the
 note and stays when home refused it, and that a copy nothing names is swept
 (`lib/voice-home/__tests__/runtime.test.ts`); that a note counts as home's
@@ -884,7 +888,7 @@ only from the lane's hook and the scene notes read for home only there
   past `ASIDE_OWED_MAX` one whose note is listed or whose copy waits, or
   any but the oldest; one that
   gives a takes desk whose takes go home (`lib/lens-takes`,
-  `lib/leetype-takes`) a `from` of null, or a store the wrong `from`; one to
+  `lib/leetype-takes`, `lib/library-takes`) a `from` of null, or a store the wrong `from`; one to
   `lib/voice-home/runtime.ts` that has `owe` say yes of a mark storage did
   not keep, or keep one it refused in memory; one to
   `lib/home-link/set-aside.ts` that gives up a mark on a `404`; a hunk to
@@ -910,7 +914,8 @@ only from the lane's hook and the scene notes read for home only there
   `apps/www/src/lib/jobs/runtime.ts`, `apps/www/src/lib/reflection-voice/index.ts`,
   `packages/ui/soundbites/src/lib/runtime.ts` and `aside-marks.ts`,
   `apps/www/src/lib/scene-voice/index.ts`, `runtime.ts`,
-  `apps/www/src/lib/soundbite-keeping/index.ts`.
+  `apps/www/src/lib/soundbite-keeping/index.ts`,
+  `apps/www/src/lib/library-takes/index.ts`.
 - _Tolerance:_ a note let go before the watch copies it (the app closed in
   between, or a long pass had not reached it) is not copied; one the copies'
   shelf has no room for (`VOICE_HOME_MAX_BYTES`, a hundred minutes), or whose
