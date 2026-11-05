@@ -14,10 +14,13 @@
  *
  * **Nothing here keeps anything.** A queued video is append-only and goes
  * only with the account, so no probe may queue one: the write is pinned by
- * a refusal home makes before it writes (a DNA whose video is not the
- * path's). The `200` of a real queue, `unchanged` on a repeat, a `409`
- * naming the notes home doesn't hold and a `409` for other bytes under a
- * queued revision are held by the server's own handler tests.
+ * the refusals home makes before it writes, each in the error envelope the
+ * phone reads (`lib/home-link/keyed-send.ts`): a DNA whose video is not the
+ * path's, a `422` naming the field, and a DNA naming a take home doesn't
+ * hold, a `409` `conflict` naming each note under `details.notes`. The
+ * `200` of a real queue, `unchanged` on a repeat, and a `409` naming no
+ * note for other bytes under a queued revision are held by the server's
+ * own handler tests.
  */
 
 import { z } from "zod"
@@ -68,6 +71,37 @@ const MISPLACED_DNA = {
   data: {},
 }
 
+/** A voice note id in the phone's own form that no phone makes. */
+const ABSENT_TAKE = "contract-harness-absent-take"
+
+/** A DNA for `ABSENT_VIDEO` whose one take is `ABSENT_TAKE`. */
+const UNHELD_DNA = {
+  ...MISPLACED_DNA,
+  video: ABSENT_VIDEO,
+  takes: [{ scene: "open", note: ABSENT_TAKE }],
+}
+
+/** Home's `422`: each refused field under `details`, the video among them. */
+const RefusedSchema = z.object({
+  error: z.object({
+    code: z.literal("unprocessable_entity"),
+    message: z.string(),
+    details: z.object({ video: z.array(z.string()).min(1) }),
+  }),
+})
+
+/**
+ * Home's `409` for takes it doesn't hold (`FileHostError::ConflictNaming`):
+ * each note by id, which the phone reads as takes still to come.
+ */
+const TakesNotHeldSchema = z.object({
+  error: z.object({
+    code: z.literal("conflict"),
+    message: z.string().min(1),
+    details: z.object({ notes: z.tuple([z.literal(ABSENT_TAKE)]) }),
+  }),
+})
+
 const QUEUED_PATH = "/studio/videos/:video/queued/:rev"
 
 const MISPLACED = {
@@ -105,7 +139,20 @@ export const contracts = [
       "a DNA whose video is not the path's is a 422 naming the video, and nothing is kept",
     mutates: true,
     request: MISPLACED,
-    expect: { status: 422 },
+    expect: { status: 422, schema: RefusedSchema },
+  }),
+
+  defineContract({
+    id: "studio_videos.queued_takes_not_held",
+    module: "studio_videos",
+    session: true,
+    method: "PUT",
+    path: QUEUED_PATH,
+    summary:
+      "a DNA naming a take home doesn't hold is a 409 conflict naming that note, and nothing is kept",
+    mutates: true,
+    request: { path: { video: ABSENT_VIDEO, rev: "1" }, body: UNHELD_DNA },
+    expect: { status: 409, schema: TakesNotHeldSchema },
   }),
 
   defineContract({
