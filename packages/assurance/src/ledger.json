@@ -1668,6 +1668,82 @@
           "amendments": []
         }
       ]
+    },
+    {
+      "id": "video-made",
+      "name": "A video I finish gets made",
+      "why": "Finishing a video files a promise, not a session (the owner's decision 9 on #2248): its DNA is queued on home, and a routine fills it and home renders it on their own schedule, so a queued video that is never made must reach me.",
+      "paths": [
+        "some-ui:packages/video-render",
+        "server:crates/db/studio_video"
+      ],
+      "modules": ["studio_videos"],
+      "objectives": [
+        {
+          "id": "VM1",
+          "kind": "OA2",
+          "property": "outcome",
+          "claim": "Every video I finish and queue is made, or I'm told why.",
+          "requirement": "Each DNA home accepts (PUT /studio/videos/:video/queued/:rev answering added or unchanged) reaches an ending by a stated deadline: filled by the routine and rendered to Drive, or a problem the owner is told; none waits silently.",
+          "verdict": "unproven",
+          "conclusion": "Home only keeps the queued DNA so far; nothing fills or renders it until ST33's later slices, so every queued video stays queued and nothing yet says how long it has waited.",
+          "evidence": [
+            {
+              "class": "unknown",
+              "says": "No routine reads studio_video_queued yet (paulgsc/server invariant 36).",
+              "ref": "server:docs/identity.md"
+            }
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": [],
+          "tracked": "some-ui#2591"
+        },
+        {
+          "id": "VM2",
+          "kind": "OA3",
+          "property": "outcome",
+          "claim": "Home keeps each queued video once, as sent, and a resend stores nothing new.",
+          "requirement": "A PUT of a revision home lacks stores the DNA byte for byte; the same bytes again answer unchanged; other bytes under that revision are refused with a conflict and nothing is replaced; a take home does not hold is refused, naming each note.",
+          "verdict": "unproven",
+          "conclusion": "Home's side is in paulgsc/server#681 with its tests; until it merges home serves no route for queued videos.",
+          "evidence": [
+            {
+              "class": "unknown",
+              "says": "Home serves no route for queued videos until paulgsc/server#681 merges.",
+              "ref": "server:docs/identity.md"
+            }
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": [],
+          "tracked": "some-ui#2591"
+        },
+        {
+          "id": "VM3",
+          "kind": "RE9",
+          "property": "work",
+          "claim": "What queued videos keep grows by one row per revision I finish, and home keeps each for good.",
+          "requirement": "studio_video_queued gains one row per revision queued, at most 256 KiB of DNA each, never updated and gone only with the account; the bytes this adds per video are stated from measurement.",
+          "verdict": "unproven",
+          "conclusion": "Each video I finish adds one row per revision queued, its DNA at most 256 KiB, kept for good; how many bytes a video adds has not been measured yet.",
+          "evidence": [
+            {
+              "class": "unknown",
+              "says": "Home samples every table's bytes once a day (storage_sample, server#551), but no samples of this table exist yet.",
+              "ref": "server:docs/storage.md"
+            }
+          ],
+          "tracked": "some-ui#2591",
+          "watch": {
+            "by": "dashboard",
+            "ref": "server:infra/grafana/dashboards/storage.jsonnet"
+          },
+          "amendments": []
+        }
+      ]
     }
   ],
   "synchronous": [
@@ -2571,6 +2647,12 @@
       "family": "voice-heard"
     },
     {
+      "store": "server:studio_video_queued",
+      "class": "record",
+      "growth": "Per revision of a finished video the owner queues on home (ST33): the DNA as sent (some-ui.video-dna/1, at most 256 KiB) and its SHA-256, a title of at most 200 characters, the template's kind, id and version, and its times; at most 200 takes named by voice note id only; the same DNA again writes nothing; append-only; leaves with the account.",
+      "family": "video-made"
+    },
+    {
       "store": "phone:app-events",
       "class": "telemetry",
       "growth": "bounded: APP_EVENTS_WAITING = 500 notes of how a take ended (about 300 B each, 150 KB), each waiting until home holds it; past 500 a new one is not kept (`some-ui:app-events`).",
@@ -3223,6 +3305,44 @@
           "says": "Each waker pass stamps when it started, and Slack is told if the waker stops (NW2).",
           "status": "live",
           "ref": "server:infra/prometheus/rules/home.yml"
+        }
+      ],
+      "checks": []
+    },
+    {
+      "id": "studio-video-queue",
+      "name": "Queuing a finished video to be made",
+      "why": "Finish keeps the video's DNA on the phone, the phone sends it home when home is in reach, and home keeps it until a routine fills it and home renders it (ST33's later slices).",
+      "serves": ["video-made"],
+      "witnesses": ["VM1", "VM2"],
+      "segments": [
+        {
+          "id": "finish",
+          "name": "Finish keeps the queued revision on the phone with its takes. Ours.",
+          "owner": "ours",
+          "on": "phone",
+          "paths": ["some-ui:packages/ui/soundbites/src/lib/project/finish.ts"]
+        },
+        {
+          "id": "home-network",
+          "name": "The phone reaches home over the home network, as the paired phone.",
+          "owner": "network",
+          "on": "between",
+          "paths": []
+        },
+        {
+          "id": "queued-on-home",
+          "name": "Home keeps the DNA as sent. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": ["server:crates/db/studio_video"]
+        }
+      ],
+      "signals": [
+        {
+          "says": "Finish reads back each queued video's stage from home.",
+          "status": "planned",
+          "tracked": "some-ui#2591"
         }
       ],
       "checks": []
