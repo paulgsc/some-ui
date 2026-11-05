@@ -2,15 +2,22 @@
  * One entry, opened: the three figures, where they reconcile, and the call
  * to make when they do not. Also where an entry's labels and note are
  * changed after the fact, since that is usually when the reason for a
- * mismatch comes to mind, where my figure is fixed when I mistyped it, and
- * where an entry logged at the wrong time, or twice, is removed.
+ * mismatch comes to mind, where my figure is fixed when I mistyped it, where
+ * a draft is submitted or deleted, and where a submitted entry logged at the
+ * wrong time, or twice, is removed.
  */
 import type { JSX } from "react"
 import { useState } from "react"
 import { GoalMeter, STATUS, StatusBadge, whenOf } from "@aph/components/status"
 import { keepsOnePlain, MAX_DIGITS } from "@aph/lib/draft"
 import type { Entry } from "@aph/lib/model"
-import { formatDelta, formatValue, labelsFor, reconcile } from "@aph/lib/model"
+import {
+  formatDelta,
+  formatValue,
+  isDraft,
+  labelsFor,
+  reconcile,
+} from "@aph/lib/model"
 import type { AphStore } from "@aph/lib/store"
 import { useAph } from "@aph/lib/use-aph"
 import { cn, formatDay, formatWeekday } from "@some-ui/core-utils"
@@ -22,8 +29,9 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
+  useConfirmSheet,
 } from "@some-ui/shared"
-import { Check, CheckCheck, Flag, Trash2, Undo2 } from "lucide-react"
+import { Check, CheckCheck, Flag, Send, Trash2, Undo2 } from "lucide-react"
 
 export type EntrySheetProps = {
   entryId: string | null
@@ -227,7 +235,7 @@ const EntryDetail = ({
         />
       </div>
 
-      <RemoveControl entry={entry} store={store} />
+      <LeaveControls entry={entry} store={store} />
     </div>
   )
 }
@@ -309,57 +317,61 @@ const MineEditor = ({
 }
 
 /**
- * Removing an entry, asked twice: once to open the question, once to say
- * yes. Once removed it leaves the screens, and this sheet with it.
+ * What leaves the log, asked first. A draft, never submitted, is deleted
+ * outright or submitted from here; a submitted entry is removed, and the
+ * record keeps it. Either way it leaves the screens, and this sheet with it.
  */
-const RemoveControl = ({
+const LeaveControls = ({
   entry,
   store,
 }: {
   entry: Entry
   store: AphStore
 }): JSX.Element => {
-  const [asking, setAsking] = useState(false)
+  const { ask, sheet } = useConfirmSheet()
   const [refused, setRefused] = useState(false)
+  const draft = isDraft(entry)
 
-  if (!asking) {
-    return (
+  return (
+    <div className="flex flex-col gap-2">
+      {draft && (
+        <Button onClick={() => setRefused(!store.submit([entry.id]))}>
+          <Send aria-hidden className="mr-2 size-4" />
+          Submit
+        </Button>
+      )}
       <Button
         variant="ghost"
         className="text-destructive"
-        onClick={() => setAsking(true)}
+        onClick={() =>
+          ask(
+            draft
+              ? {
+                  title: "Delete this draft?",
+                  description:
+                    "It was never submitted, so nothing else holds it: it goes for good.",
+                  confirm: "Delete draft",
+                  onConfirm: () => setRefused(!store.deleteDraft(entry.id)),
+                }
+              : {
+                  title: "Remove this entry?",
+                  description:
+                    "It stops counting in History and the trend, and the record keeps it as it was.",
+                  confirm: "Remove",
+                  onConfirm: () => setRefused(!store.remove(entry.id)),
+                }
+          )
+        }
       >
         <Trash2 aria-hidden className="mr-2 size-4" />
-        Remove from the log
+        {draft ? "Delete draft" : "Remove from the log"}
       </Button>
-    )
-  }
-  return (
-    <div
-      role="group"
-      aria-label="Remove this entry"
-      className="border-destructive/40 bg-destructive/5 flex flex-col gap-2 rounded-lg border p-3"
-    >
-      <p className="text-sm">
-        Remove this entry? It stops counting in History and the trend, and the
-        record keeps it as it was.
-      </p>
-      <div className="grid grid-cols-2 gap-2">
-        <Button variant="outline" onClick={() => setAsking(false)}>
-          Keep it
-        </Button>
-        <Button
-          variant="destructive"
-          onClick={() => setRefused(!store.remove(entry.id))}
-        >
-          Remove
-        </Button>
-      </div>
       {refused && (
-        <p role="alert" className="text-destructive text-xs">
-          Not removed: the phone did not keep the change.
+        <p role="alert" className="text-destructive text-center text-xs">
+          Not changed: the phone did not keep it.
         </p>
       )}
+      {sheet}
     </div>
   )
 }

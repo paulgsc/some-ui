@@ -13,6 +13,7 @@ import type { AphSettings, Entry, Review } from "./model"
 import {
   awaitingTheirs,
   checkpointById,
+  draftWaiting,
   dueCheckpoint,
   hasMine,
   live,
@@ -192,6 +193,10 @@ export type Commit = {
  * nothing to save (no figure, theirs with no entry chosen, or mine for a day
  * further back than `loggableDays` reaches).
  *
+ * A new entry is a draft, on this phone alone until I submit it, and none is
+ * logged while another day holds drafts (`draftWaiting`): those are
+ * submitted or deleted first.
+ *
  * A checkpoint holds one entry a day, so mine at a checkpoint where the day
  * already has one (`rewriting`) rewrites it: my figure becomes the draft's,
  * and its labels too when I picked any (none picked keeps the ones it has),
@@ -251,6 +256,8 @@ export function commitDraft(
       ),
     }
   }
+  // A new entry waits while another day holds drafts (`draftWaiting`).
+  if (draftWaiting(entries, day) !== null) return null
   const checkpoint = checkpointById(settings, draft.checkpoint)
   return {
     id: commit.id,
@@ -268,6 +275,7 @@ export function commitDraft(
         labels: draft.labels,
         note: null,
         review: null,
+        draft: true,
       },
     ],
   }
@@ -302,15 +310,46 @@ export function rewriteMine(
 }
 
 /**
+ * The drafts among `ids` submitted: each goes home from now on, and is never
+ * a draft again. Their key goes, rather than turning false, so a submitted
+ * entry has the shape home reads.
+ */
+export function submitEntries(
+  entries: ReadonlyArray<Entry>,
+  ids: ReadonlyArray<string>
+): Array<Entry> {
+  return entries.map((e) => {
+    if (!ids.includes(e.id) || e.draft !== true) return e
+    const { draft: _draft, ...submitted } = e
+    return submitted
+  })
+}
+
+/**
+ * Draft `id` deleted outright: it was never submitted, so nothing else holds
+ * it. Unchanged for an entry that is not a draft, which is removed instead
+ * (`removeEntry`).
+ */
+export function deleteDraft(
+  entries: ReadonlyArray<Entry>,
+  id: string
+): Array<Entry> {
+  return entries.filter((e) => e.id !== id || e.draft !== true)
+}
+
+/**
  * Entry `id` removed from the log: a figure at the wrong time, or a second
  * one at a time already logged. It stops counting, and the record keeps it
- * as it was (`removed` in model.ts).
+ * as it was (`removed` in model.ts). A draft is deleted instead
+ * (`deleteDraft`), so this leaves one as it is.
  */
 export function removeEntry(
   entries: ReadonlyArray<Entry>,
   id: string
 ): Array<Entry> {
-  return entries.map((e) => (e.id === id ? { ...e, removed: true } : e))
+  return entries.map((e) =>
+    e.id === id && e.draft !== true ? { ...e, removed: true } : e
+  )
 }
 
 /**

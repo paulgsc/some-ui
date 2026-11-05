@@ -27,7 +27,14 @@
  * `useSyncExternalStore`.
  */
 import type { Commit, Draft } from "./draft"
-import { commitDraft, removeEntry, reviewEntry, rewriteMine } from "./draft"
+import {
+  commitDraft,
+  deleteDraft,
+  removeEntry,
+  reviewEntry,
+  rewriteMine,
+  submitEntries,
+} from "./draft"
 import type { HomeHeld, HomeRecord, Outbox, Receipt, Refusal } from "./home"
 import {
   afterSend,
@@ -101,6 +108,10 @@ export type AphStore = {
   rewriteMine: (id: string, mine: { value: number; approx: boolean }) => boolean
   /** Entry `id` out of the log, kept in the record (`removeEntry`). */
   remove: (id: string) => boolean
+  /** The drafts among `ids`, submitted (`submitEntries`). */
+  submit: (ids: ReadonlyArray<string>) => boolean
+  /** Draft `id`, deleted outright (`deleteDraft`). */
+  deleteDraft: (id: string) => boolean
   editSettings: (patch: Partial<AphSettings>) => boolean
 }
 
@@ -245,6 +256,10 @@ export function createAphStore(
     rewriteMine: (id, mine) =>
       set({ ...state, entries: rewriteMine(state.entries, id, mine) }),
     remove: (id) => set({ ...state, entries: removeEntry(state.entries, id) }),
+    submit: (ids) =>
+      set({ ...state, entries: submitEntries(state.entries, ids) }),
+    deleteDraft: (id) =>
+      set({ ...state, entries: deleteDraft(state.entries, id) }),
     editSettings: (patch) =>
       set({ ...state, settings: { ...state.settings, ...patch } }),
   }

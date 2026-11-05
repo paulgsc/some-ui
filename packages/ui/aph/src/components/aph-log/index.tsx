@@ -2,7 +2,8 @@
  * Log a figure: mine for a checkpoint today (or a day I missed, up to two
  * weeks back), or theirs for an entry that is waiting on one. A checkpoint
  * holds one entry a day, so mine where one is logged replaces it, and the
- * Save button says so before the tap. Built for one thumb and a few seconds: the checkpoint is
+ * Save button says so before the tap. A new figure is a draft until I submit
+ * it in History, and none is logged while another day's drafts wait. Built for one thumb and a few seconds: the checkpoint is
  * picked from the clock, the keypad is always there, and before saving the
  * screen already says what the figure means (how far from the goal, or
  * whether it reconciles with mine).
@@ -31,6 +32,7 @@ import type { AphSettings, Entry } from "@aph/lib/model"
 import {
   awaitingTheirs,
   checkpointById,
+  draftWaiting,
   formatDelta,
   formatValue,
   isUsual,
@@ -126,7 +128,13 @@ export const AphLog = ({
 
   const value = draftValue(draft)
   const checkpoint = checkpointById(settings, draft.checkpoint)
-  const replaced = rewriting(entries, draft, day)?.mine ?? null
+  const there = rewriting(entries, draft, day)
+  const replaced = there?.mine ?? null
+  // A new entry of mine waits while another day holds drafts.
+  const waits =
+    draft.side === "mine" && there === undefined
+      ? draftWaiting(entries, day)
+      : null
   // Only a waiting entry can be the target: one filled since the link was
   // made (Back after saving) shows as unselected, and Save stays off.
   const targetEntry = waiting.find((e) => e.id === draft.target) ?? null
@@ -152,7 +160,9 @@ export const AphLog = ({
   const shownWaiting = showOlder ? waiting : waiting.slice(0, RECENT_WAITING)
   const canSave =
     value !== null &&
-    (draft.side === "mine" ? dayIndex !== -1 : targetEntry !== null)
+    (draft.side === "mine"
+      ? dayIndex !== -1 && waits === null
+      : targetEntry !== null)
   const pickDay = (index: number): void => {
     const next = days[index]
     if (next !== undefined) {
@@ -415,6 +425,16 @@ export const AphLog = ({
         </button>
       </div>
 
+      {waits !== null && (
+        <p
+          role="status"
+          className="bg-warning/10 text-warning rounded-md px-3 py-1.5 text-center text-sm"
+        >
+          Drafts from {formatWeekday(waits)} {formatDay(waits)} are waiting:
+          submit or delete them in History before logging another day.
+        </p>
+      )}
+
       {refused && (
         <p
           role="alert"
@@ -432,7 +452,7 @@ export const AphLog = ({
       >
         <Check aria-hidden className="mr-2 size-5" />
         {draft.side === "mine"
-          ? `${replaced === null ? "Save mine" : `Replace ${formatValue(replaced.value, replaced.approx)}`} · ${day === today ? "" : `${formatDay(day)} `}${checkpoint?.label ?? (day === today ? "now" : "other")}`
+          ? `${there === undefined ? "Save draft" : replaced === null ? "Save mine" : `Replace ${formatValue(replaced.value, replaced.approx)}`} · ${day === today ? "" : `${formatDay(day)} `}${checkpoint?.label ?? (day === today ? "now" : "other")}`
           : targetEntry === null
             ? "Save theirs"
             : `Save theirs · ${formatDay(targetEntry.day)} ${whenOf(settings, targetEntry)}`}

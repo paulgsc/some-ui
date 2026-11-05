@@ -80,6 +80,34 @@ export type Entry = {
    * removing existed; once set, the entry never changes again.
    */
   removed?: boolean
+  /**
+   * Logged and not yet submitted: kept on this phone alone, never sent home,
+   * and deletable outright, as nothing else holds it. Submitting clears it
+   * (`submitEntries`), and an entry once submitted is never a draft again.
+   * Absent on every entry submitted, and on every one from before drafts.
+   */
+  draft?: boolean
+}
+
+/** Whether an entry is a draft: on this phone alone, not yet submitted. */
+export function isDraft(entry: Entry): boolean {
+  return entry.draft === true
+}
+
+/**
+ * The first day, other than `day`, that still holds a draft. A new entry
+ * waits on it: drafts are submitted or deleted a day at a time, never left
+ * to pile up across days.
+ */
+export function draftWaiting(
+  entries: ReadonlyArray<Entry>,
+  day: string
+): string | null {
+  const days = live(entries)
+    .filter((e) => isDraft(e) && e.day !== day)
+    .map((e) => e.day)
+    .sort()
+  return days[0] ?? null
 }
 
 /** Whether an entry stands in the log: not removed. */
@@ -106,6 +134,7 @@ function canonicalEntry(e: Entry): string {
     e.note,
     e.review,
     e.removed === true,
+    e.draft === true,
   ])
 }
 
@@ -556,7 +585,12 @@ export function violations(
  *   that day, labelled or not: a time of day holds one entry, which a new
  *   figure for it rewrites (`commitDraft`). A step rule rather than a state
  *   one, because times logged twice before this rule still stand, both,
- *   until I remove one.
+ *   until I remove one;
+ * - an entry leaves the record only as a draft, deleted before it was ever
+ *   submitted; a submitted one is removed (`removed`) instead, and kept;
+ * - an entry once submitted never becomes a draft again, and a draft is
+ *   deleted, never removed;
+ * - no new entry is logged while another day holds drafts (`draftWaiting`).
  *
  * Returns what is wrong, in words, like `violations`.
  */
@@ -573,7 +607,10 @@ export function breaches(
     )
   )
   for (const is of after) {
-    if (ids.has(is.id) || !isLive(is) || is.checkpoint === null) continue
+    if (ids.has(is.id)) continue
+    const waits = draftWaiting(before, is.day)
+    if (waits !== null) wrong.push(`${is.id}: drafts on ${waits} wait`)
+    if (!isLive(is) || is.checkpoint === null) continue
     const slot = `${is.day} ${is.checkpoint}`
     if (taken.has(slot)) wrong.push(`${is.id}: a second entry at ${slot}`)
     taken.add(slot)
@@ -581,8 +618,14 @@ export function breaches(
   for (const was of before) {
     const is = now.get(was.id)
     if (is === undefined) {
-      wrong.push(`${was.id}: gone from the record`)
+      if (!isDraft(was)) wrong.push(`${was.id}: gone from the record`)
       continue
+    }
+    if (!isDraft(was) && isDraft(is)) {
+      wrong.push(`${was.id}: a draft again after it was submitted`)
+    }
+    if (isDraft(is) && !isLive(is)) {
+      wrong.push(`${was.id}: a draft removed rather than deleted`)
     }
     if (!isLive(was) && !sameEntry(was, is)) {
       wrong.push(`${was.id}: changed after it was removed`)

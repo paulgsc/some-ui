@@ -2,12 +2,14 @@ import type { Draft, DraftEvent } from "@aph/lib/draft"
 import {
   atTime,
   commitDraft,
+  deleteDraft,
   draftValue,
   keepsOnePlain,
   newDraft,
   removeEntry,
   reviewEntry,
   stepDraft,
+  submitEntries,
 } from "@aph/lib/draft"
 import { reconcile } from "@aph/lib/model"
 import { SEED_ENTRIES, SEED_SETTINGS } from "@aph/lib/seed"
@@ -325,5 +327,32 @@ describe("saving theirs", () => {
   it("saves nothing for an entry that is not there", () => {
     const d = run(newDraft("theirs", null, "gone"), typed("4900"))
     expect(commitDraft(settings, SEED_ENTRIES, d, commit)).toBeNull()
+  })
+})
+
+describe("drafts", () => {
+  it("saves a new figure as a draft, and none while another day's drafts wait", () => {
+    const d = run(newDraft("mine", "7", null, "2026-10-01"), typed("4100"))
+    const first = commitDraft(settings, [], d, commit)
+    expect(must(first?.entries[0]).draft).toBe(true)
+    const today = run(newDraft("mine", "12", null), typed("5000"))
+    expect(
+      commitDraft(settings, first?.entries ?? [], today, {
+        ...commit,
+        id: "later",
+      })
+    ).toBeNull()
+    const submitted = submitEntries(first?.entries ?? [], ["new"])
+    expect(must(submitted[0])).not.toHaveProperty("draft")
+    expect(
+      commitDraft(settings, submitted, today, { ...commit, id: "later" })
+    ).not.toBeNull()
+  })
+
+  it("deletes a draft outright, and only a draft", () => {
+    const draft = { ...must(SEED_ENTRIES[0]), id: "d", draft: true }
+    expect(deleteDraft([draft, ...SEED_ENTRIES], "d")).toEqual(SEED_ENTRIES)
+    const target = must(SEED_ENTRIES[0])
+    expect(deleteDraft(SEED_ENTRIES, target.id)).toEqual(SEED_ENTRIES)
   })
 })

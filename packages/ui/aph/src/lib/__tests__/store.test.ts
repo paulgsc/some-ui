@@ -102,7 +102,7 @@ describe("the store's rules, under random edits", () => {
       for (let step = 0; step < 400; step += 1) {
         const { entries } = store.get()
         const before = entries
-        const kind = Math.floor(next() * 7)
+        const kind = Math.floor(next() * 9)
         if (kind === 0 || kind === 1) {
           // Mine: at a checkpoint or not, with or without labels.
           const checkpoint =
@@ -134,6 +134,16 @@ describe("the store's rules, under random edits", () => {
           if (target !== undefined) {
             store.editEntry(target.id, { labels: someLabels(next) })
           }
+        } else if (kind === 7) {
+          // Some of the drafts, submitted together.
+          store.submit(
+            entries
+              .filter((e) => e.draft === true && next() < 0.7)
+              .map((e) => e.id)
+          )
+        } else if (kind === 8) {
+          const target = pick(next, entries)
+          if (target !== undefined) store.deleteDraft(target.id)
         } else if (kind === 4) {
           const target = pick(next, entries)
           if (target !== undefined && next() < 0.3) store.remove(target.id)
@@ -161,6 +171,14 @@ describe("the store's rules, under random edits", () => {
         expect(breaches(before, store.get().entries), `step ${step}`).toEqual(
           []
         )
+        // Drafts are only ever on one day at a time.
+        const draftDays = new Set(
+          store
+            .get()
+            .entries.filter((e) => e.draft === true)
+            .map((e) => e.day)
+        )
+        expect(draftDays.size, `step ${step}`).toBeLessThanOrEqual(1)
         // A time of day holds one entry: none gains a second, and one the
         // paper notes logged twice never gains a third.
         const was = perTime(SEED_ENTRIES)

@@ -203,3 +203,38 @@ describe("History", () => {
     expect(note).toHaveValue("")
   })
 })
+
+describe("History's drafts", () => {
+  it("lists drafts, and submits the ones picked together", () => {
+    const draft = (
+      id: string,
+      checkpoint: string
+    ): (typeof SEED_ENTRIES)[number] => ({
+      ...SEED_ENTRIES.find(
+        (e) => e.checkpoint === checkpoint && e.labels.length === 0
+      )!,
+      id,
+      day: "2026-10-02",
+      draft: true,
+    })
+    const store = createAphStore({
+      settings: SEED_SETTINGS,
+      entries: [
+        ...SEED_ENTRIES.filter((e) => e.day !== "2026-10-02"),
+        draft("d7", "7"),
+        draft("d12", "12"),
+      ],
+    })
+    render(<AphHistory now={noon} store={store} />)
+    const drafts = screen.getByRole("region", { name: "Drafts" })
+    expect(
+      within(drafts).getByText(/2 drafts not yet submitted/)
+    ).toBeInTheDocument()
+    fireEvent.click(within(drafts).getByRole("button", { name: "Pick all" }))
+    fireEvent.click(
+      within(drafts).getByRole("button", { name: /Submit 2 drafts/ })
+    )
+    expect(store.get().entries.filter((e) => e.draft === true)).toEqual([])
+    expect(screen.queryByRole("region", { name: "Drafts" })).toBeNull()
+  })
+})

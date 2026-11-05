@@ -2,6 +2,7 @@ import type { Entry } from "@aph/lib/model"
 import {
   awaitingTheirs,
   breaches,
+  draftWaiting,
   dueCheckpoint,
   entriesOn,
   formatDelta,
@@ -243,5 +244,42 @@ describe("a time of day holds one entry", () => {
       e.id === logged.id ? { ...e, removed: true } : e
     )
     expect(breaches(freed, [...freed, beside])).toEqual([])
+  })
+})
+
+describe("drafts", () => {
+  const first = SEED_ENTRIES[0]
+  if (first === undefined) throw new Error("a paper note")
+  const base: Entry = { ...first, id: "d", day: "2026-10-03" }
+
+  it("may leave the record only as a draft", () => {
+    const draft: Entry = { ...base, draft: true }
+    expect(breaches([draft], [])).toEqual([])
+    expect(breaches([base], [])).toEqual(["d: gone from the record"])
+  })
+
+  it("are deleted, never removed", () => {
+    const draft: Entry = { ...base, draft: true }
+    expect(breaches([draft], [{ ...draft, removed: true }])).toEqual([
+      "d: a draft removed rather than deleted",
+    ])
+  })
+
+  it("never become drafts again once submitted", () => {
+    expect(breaches([base], [{ ...base, draft: true }])).toEqual([
+      "d: a draft again after it was submitted",
+    ])
+  })
+
+  it("on another day hold back a new entry until submitted or deleted", () => {
+    const waiting: Entry = { ...base, draft: true }
+    const next: Entry = { ...base, id: "n", day: "2026-10-04" }
+    expect(draftWaiting([waiting], "2026-10-04")).toBe("2026-10-03")
+    expect(draftWaiting([waiting], "2026-10-03")).toBeNull()
+    expect(breaches([waiting], [waiting, next])).toEqual([
+      "n: drafts on 2026-10-03 wait",
+    ])
+    const submitted: Entry = { ...base }
+    expect(breaches([submitted], [submitted, next])).toEqual([])
   })
 })
