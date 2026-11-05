@@ -89,7 +89,7 @@ function renderLesson({
   pastedStore = createPastedLessonStore(memoryStorage()),
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } }),
   speaker = null,
-  readAloudStore,
+  readAloudStore = createReadAloudStore(memoryStorage()),
   soundControl,
   tones,
   treeFeed,
@@ -259,7 +259,7 @@ describe("HandheldLesson", () => {
     fireEvent.click(card)
     expect(
       document.querySelector('[data-slot="read-aloud-level"]')?.textContent
-    ).toBe("TOPIK 3")
+    ).toBe("TOPIK 3 (highest)")
     expect(screen.getByRole("button", { name: /^Read aloud$/ })).toBeTruthy()
     expect(screen.getByLabelText("Your reading aloud")).toBeTruthy()
     click("Back")
@@ -317,7 +317,7 @@ describe("HandheldLesson", () => {
     fireEvent.click(ready)
     expect(
       document.querySelector('[data-slot="read-aloud-level"]')?.textContent
-    ).toBe("TOPIK 2")
+    ).toBe("TOPIK 2 (this set's)")
     expect(store.sets()[0]?.openedAt).toBe("2026-10-14T06:00:00.000Z")
     // Picked, so reading starts with no start screen.
     expect(screen.getByRole("button", { name: "Pause" })).toBeTruthy()
@@ -924,7 +924,7 @@ describe("HandheldLesson", () => {
     )
   })
 
-  it("offers only the levels the list holds, shows one alone, and holds it", async () => {
+  it("offers only the levels the list holds, shows one alone, and keeps it held", async () => {
     const scene = (n: number, level: number): RoutineFile => ({
       kind: "scene",
       name: `scene-${n}.json`,
@@ -934,16 +934,25 @@ describe("HandheldLesson", () => {
         routineDeck(`set-${n}-lens`, `Set ${n}, lens`),
       ],
     })
-    renderLesson({
-      speaker: voice(() => Promise.resolve({ kind: "heard" })),
-      readAloudStore: createReadAloudStore(memoryStorage()),
-      // The last drama was at TOPIK 4, and nothing listed is.
-      lastDrama: holding(),
-      routineFeed: {
-        list: () =>
-          Promise.resolve([scene(1, 2), scene(2, 1), scene(3, 2), scene(4, 2)]),
-      },
-    })
+    const readAloudStore = createReadAloudStore(memoryStorage())
+    const lesson = (): void => {
+      renderLesson({
+        speaker: voice(() => Promise.resolve({ kind: "heard" })),
+        readAloudStore,
+        // The last drama was at TOPIK 4, and nothing listed is.
+        lastDrama: holding(),
+        routineFeed: {
+          list: () =>
+            Promise.resolve([
+              scene(1, 2),
+              scene(2, 1),
+              scene(3, 2),
+              scene(4, 2),
+            ]),
+        },
+      })
+    }
+    lesson()
     const waiting = await screen.findByRole("region", {
       name: "From the routine",
     })
@@ -972,6 +981,17 @@ describe("HandheldLesson", () => {
         .map((card) => card.textContent)
     ).toEqual([expect.stringContaining("Scene 2")])
     // The prompt is asked at the level picked.
+    await writeYourOwn()
+    openLevelAndGenre()
+    expect(
+      screen
+        .getByRole("radio", { name: "TOPIK 1" })
+        .getAttribute("aria-checked")
+    ).toBe("true")
+
+    // The level held is kept on the phone: a later visit is asked at it.
+    cleanup()
+    lesson()
     await writeYourOwn()
     openLevelAndGenre()
     expect(
@@ -1313,6 +1333,10 @@ describe("HandheldLesson", () => {
 
       expect(await screen.findByText("숨 막히는 긴장감")).toBeTruthy()
       expect(pasted.getTree()?.id).toBe("first-tea")
+      // The drama's own level, in sight while it plays.
+      expect(
+        document.querySelector('[data-slot="drama-level"]')?.textContent
+      ).toBe("TOPIK 2")
 
       click("Back to materials")
       const held = await screen.findByRole("region", {

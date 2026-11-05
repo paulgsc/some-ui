@@ -197,6 +197,7 @@ describe("the read-aloud store", () => {
     storage.map.set(READ_ALOUD_STORAGE_KEYS.record, '{"version":9}')
     storage.map.set(READ_ALOUD_STORAGE_KEYS.feedback, '{"version":1}')
     storage.map.set(READ_ALOUD_STORAGE_KEYS.tally, '{"version":1,"rows":[]}')
+    storage.map.set(READ_ALOUD_STORAGE_KEYS.level, "7")
     storage.map.set(
       READ_ALOUD_STORAGE_KEYS.progress,
       JSON.stringify({
@@ -211,6 +212,7 @@ describe("the read-aloud store", () => {
     expect(store.feedback()).toBeNull()
     expect(store.tally()).toEqual({})
     expect(store.progress(2, ":all")).toBeNull()
+    expect(store.level()).toBeNull()
   })
 
   it("runs without storage, and survives storage that throws", () => {

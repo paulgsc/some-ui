@@ -160,6 +160,20 @@ const stores: ReadonlyArray<KeptStore> = [
     },
   },
   {
+    name: "the level held",
+    key: READ_ALOUD_STORAGE_KEYS.level,
+    older: '"topik-3"',
+    open: (storage): KeptHandle => {
+      const store = createReadAloudStore(storage)
+      return {
+        write: (): void => {
+          store.saveLevel(3)
+        },
+        read: (): unknown => store.level(),
+      }
+    },
+  },
+  {
     name: "the grammar lens record",
     key: LENS_RECORD_KEY,
     older: '{"version":2,"entries":[]}',

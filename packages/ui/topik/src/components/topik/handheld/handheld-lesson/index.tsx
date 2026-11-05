@@ -50,6 +50,7 @@ import {
   useHeldRuns,
 } from "@topik/components/topik/handheld/routine-status"
 import { ReadAloudScreen } from "@topik/components/topik/read-aloud/read-aloud-screen"
+import { LevelChip } from "@topik/components/topik/read-aloud/session-header"
 import { useSessionConfig } from "@topik/lib/topik/adapter/context/session-config-context"
 import { useLessonPrompt } from "@topik/lib/topik/adapter/hooks/use-lesson-prompt"
 import { usePastedTree } from "@topik/lib/topik/adapter/hooks/use-pasted-tree"
@@ -109,7 +110,6 @@ import {
   portionDeck,
 } from "@topik/lib/topik/core/portion"
 import { routineView } from "@topik/lib/topik/core/routine-status"
-import { TOPIK_LEVELS } from "@topik/lib/topik/generation"
 import { intakeTree } from "@topik/lib/topik/generation/tree-intake"
 import {
   ADDED_SET_LIMIT,
@@ -177,7 +177,8 @@ export const HandheldLesson = ({
   const [held] = useState(() => pastedStore ?? createPastedLessonStore())
   const drama = usePastedTree(held)
   const [last] = useState(() => lastDrama ?? createLastDramaStore())
-  const lessonPrompt = useLessonPrompt(last)
+  const [readAloud] = useState(() => readAloudStore ?? createReadAloudStore())
+  const lessonPrompt = useLessonPrompt(last, readAloud)
   // Writing one's own drama: from a card's seed, from nothing, or from a
   // picked file that did not play.
   const [generating, setGenerating] = useState<{
@@ -226,8 +227,6 @@ export const HandheldLesson = ({
     control.state,
     control.state
   )
-  const heldLevel =
-    TOPIK_LEVELS.find((level) => level === lessonPrompt.level) ?? 1
   const startTree = (tree: Tree): void => {
     setGenerating(null)
     drama.start(tree)
@@ -242,7 +241,6 @@ export const HandheldLesson = ({
     }
   }
   const leaveServed = (): void => setServedKey(null)
-  const [readAloud] = useState(() => readAloudStore ?? createReadAloudStore())
   // Made once; whether it is kept is the host's call, at each render.
   const [lensRecord] = useState(createLensRecordStore)
   const [added, setAdded] = useState(() => readAloud.sets())
@@ -466,6 +464,7 @@ export const HandheldLesson = ({
         <ReadAloudScreen
           key={deck.id}
           topikLevel={own ? setLevel(own) : lessonPrompt.level}
+          ownSet={own !== undefined}
           speech={speaker}
           store={readAloud}
           lensRecord={recordsLens ? lensRecord : undefined}
@@ -530,14 +529,18 @@ export const HandheldLesson = ({
           </h1>
         </div>
         {playing && (
-          <Button
-            variant="ghost"
-            className="h-11 shrink-0 gap-1 px-2"
-            onClick={() => setCastOpen(true)}
-          >
-            <Users className="size-5" />
-            <span lang="ko">등장인물</span>
-          </Button>
+          <>
+            {/* The drama's own level, not the one held. */}
+            <LevelChip slot="drama-level" level={playing.level} />
+            <Button
+              variant="ghost"
+              className="h-11 shrink-0 gap-1 px-2"
+              onClick={() => setCastOpen(true)}
+            >
+              <Users className="size-5" />
+              <span lang="ko">등장인물</span>
+            </Button>
+          </>
         )}
         {playing && sound && soundState !== "withdrawn" && (
           <Button
@@ -585,7 +588,9 @@ export const HandheldLesson = ({
                 asks={sceneAsk}
                 label="다음 화 쓰기"
                 labelLang="ko"
-                prompt={() => lessonPrompt.prompt({ level: heldLevel })}
+                prompt={() =>
+                  lessonPrompt.prompt({ level: lessonPrompt.level })
+                }
                 onAsked={lessonPrompt.handedOff}
               />
             )
@@ -648,7 +653,7 @@ export const HandheldLesson = ({
         <GenerateLesson
           initialSeed={generating.seed}
           initialReply={generating.reply}
-          defaultLevel={heldLevel}
+          defaultLevel={lessonPrompt.level}
           buildPrompt={lessonPrompt.prompt}
           onPromptHandedOff={lessonPrompt.handedOff}
           onStartTree={startTree}

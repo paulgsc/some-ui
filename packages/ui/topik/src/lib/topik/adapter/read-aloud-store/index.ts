@@ -1,8 +1,9 @@
 /**
  * What the read-aloud drill keeps on the device between sittings: each
  * word's pace, the practice record, the set left unfinished, the word
- * sets added from storage, the learner's two answers at a sitting's end and
- * the tally of each sentence shown
+ * sets added from storage, the learner's two answers at a sitting's end,
+ * the tally of each sentence shown, and the level the learner chose on the
+ * material list
  * (adaptive-learning canon Cor. 4.6 (iii), Def. 6.6, Rem. 4.10, Rem. 7.5).
  *
  * The added sets are content, kept so the learner need not pick them again;
@@ -10,7 +11,8 @@
  * envelope. The pace book is pacing and nothing more; the record is a count
  * shown to the learner; the unfinished set is a place in content, like the
  * handheld lesson's resume point; the tally is a row per sentence, which the
- * mark on a sentence reads. Losing
+ * mark on a sentence reads; the level is a setting, which falls back to the
+ * last drama's. Losing
  * any of them costs exactly that and nothing else (Thm. 7.2), which is why
  * every failure below is silent: eviction, a full quota, a private window.
  * Only the answers and the tally say whether the phone kept them, since the
@@ -26,8 +28,11 @@ import {
   jsonOf,
   localStorageOrNull,
   openKept,
+  readJson,
   writeKept,
 } from "@some-ui/core-utils"
+import type { TopikLevel } from "@topik/lib/topik/generation"
+import { asTopikLevel } from "@topik/lib/topik/generation"
 import type { AddedSet } from "@topik/lib/topik/read-aloud/added-sets"
 import {
   readAddedSets,
@@ -68,6 +73,7 @@ export const READ_ALOUD_STORAGE_KEYS = {
   sets: "topik:read-aloud-sets",
   feedback: "topik:read-aloud-feedback",
   tally: "topik:read-aloud-tally",
+  level: "topik:read-aloud-level",
 } as const
 
 /** A counted rep or a finished set, as the drill reports it. */
@@ -102,6 +108,9 @@ export type ReadAloudStore = {
   tally: () => Tally
   /** Whether the phone kept it; the drill runs on either way. An empty tally clears it. */
   saveTally: (tally: Tally) => boolean
+  /** The TOPIK level the learner chose, or null before they chose one. */
+  level: () => TopikLevel | null
+  saveLevel: (level: TopikLevel) => void
 }
 
 const Id = z.string().min(1)
@@ -175,6 +184,7 @@ const READERS = {
   sets: onJson(readAddedSets),
   feedback: onJson(readFeedback),
   tally: onJson(readTally),
+  level: readJson(asTopikLevel),
 }
 
 export function createReadAloudStore(
@@ -256,6 +266,11 @@ export function createReadAloudStore(
       read(READ_ALOUD_STORAGE_KEYS.tally, READERS.tally, emptyTally()),
     saveTally: (tally): boolean =>
       write(READ_ALOUD_STORAGE_KEYS.tally, READERS.tally, storedTally(tally)),
+    level: (): TopikLevel | null =>
+      read(READ_ALOUD_STORAGE_KEYS.level, READERS.level, null),
+    saveLevel: (level): void => {
+      write(READ_ALOUD_STORAGE_KEYS.level, READERS.level, level)
+    },
   }
 }
 
