@@ -612,11 +612,18 @@ describe("findChangesetsPairingViolations", () => {
     expect(findChangesetsPairingViolations(F, comment, 3)).toEqual([])
   })
 
-  it("refuses v1's input names on a v2 step", () => {
+  it("refuses v1's input names on a v2 step, and a with map it can't read", () => {
     const text = step("v2.1.2", "commit", "pr-title", "publish")
     expect(findChangesetsPairingViolations(F, text, 3)).toEqual([
       { kind: "changesetsInput", file: F, line: 4, input: "commit" },
       { kind: "changesetsInput", file: F, line: 4, input: "publish" },
+    ])
+    const flowWith = steps(
+      "      - uses: changesets/action@v2.1.2",
+      "        with: { publish: x }"
+    )
+    expect(findChangesetsPairingViolations(F, flowWith, 3)).toEqual([
+      { kind: "changesetsInput", file: F, line: 4, input: null },
     ])
   })
 })
@@ -737,6 +744,10 @@ describe("describeWorkflowViolation", () => {
       [
         { kind: "changesetsInput", file: F, line: 2, input: "publish" },
         "publish-script",
+      ],
+      [
+        { kind: "changesetsInput", file: F, line: 2, input: null },
+        "block mapping",
       ],
       [{ kind: "inlineInstall", file: F, line: 2 }, "Why not node-ci-setup:"],
       [

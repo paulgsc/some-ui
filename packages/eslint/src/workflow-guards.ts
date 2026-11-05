@@ -144,7 +144,8 @@ export type WorkflowViolation =
       readonly kind: "changesetsInput"
       readonly file: string
       readonly line: number
-      readonly input: string
+      // null: a flow-style `with: {...}`, whose input names can't be read.
+      readonly input: string | null
     }
 
 const UPLOAD_STEP =
@@ -636,8 +637,20 @@ export function findChangesetsPairingViolations(
     const usesLine = body.find((l) => CHANGESETS_STEP.test(l)) ?? ""
     const ref = CHANGESETS_STEP.exec(usesLine)?.[3] ?? ""
     if (!/^v2(?:\.|$)/.test(ref)) continue
-    for (const input of CHANGESETS_V1_INPUTS) {
-      if (withValue(body, keyColumn, input).shape === "value") {
+    const shapes = CHANGESETS_V1_INPUTS.map(
+      (input) => [input, withValue(body, keyColumn, input).shape] as const
+    )
+    if (shapes.some(([, shape]) => shape === "flow")) {
+      violations.push({
+        kind: "changesetsInput",
+        file,
+        line: start + 1,
+        input: null,
+      })
+      continue
+    }
+    for (const [input, shape] of shapes) {
+      if (shape === "value") {
         violations.push({
           kind: "changesetsInput",
           file,
@@ -786,7 +799,9 @@ export function describeWorkflowViolation(v: WorkflowViolation): string {
         : `${v.file}:${v.line}: uses changesets/action@${v.ref}, but the repo is on Changesets CLI v${v.cliMajor}, which pairs with changesets/action v${v.cliMajor - 1}. Pin a \`v${v.cliMajor - 1}.x.y\` tag in a block-style step, or move the CLI and the action together (CS1).`
     }
     case "changesetsInput": {
-      return `${v.file}:${v.line}: changesets/action v2 renamed \`${v.input}\` and refuses the old name at start-up. Use its v2 name (\`commit-message\`, \`pr-title\`, \`version-script\`, \`publish-script\`) (CS1).`
+      return v.input === null
+        ? `${v.file}:${v.line}: changesets/action v2 step has a flow-style \`with: {...}\`, so this check can't read its input names. Write \`with:\` as a block mapping (CS1).`
+        : `${v.file}:${v.line}: changesets/action v2 renamed \`${v.input}\` and refuses the old name at start-up. Use its v2 name (\`commit-message\`, \`pr-title\`, \`version-script\`, \`publish-script\`) (CS1).`
     }
     default: {
       return assertNever(v)
