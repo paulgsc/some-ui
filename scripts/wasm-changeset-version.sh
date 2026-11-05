@@ -2,7 +2,7 @@
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
-# `version:` command for changesets/action in wasm-release.yml, standing in
+# `version-script:` for changesets/action in wasm-release.yml, standing in
 # for its default `changeset version`.
 #
 # changesets treats any dependency whose *name* matches a workspace member

@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Guardrail over .github/: artifact retention and the retention families
 // (CLAUDE.md, "Workflow storage"), inline installs (node-ci-setup), PR
-// commits with the git hooks off (WR1), and the RS1 fingerprint and RS2
+// commits with the git hooks off (WR1), changesets/action paired with the
+// Changesets CLI's major (CS1), and the RS1 fingerprint and RS2
 // branch-name checks (CLAUDE.md, "Cross-repo coupling"). The rules live in
 // packages/eslint/src/workflow-guards.ts.
 //
@@ -17,12 +18,14 @@ import { join } from "node:path"
 import { repoRoot, worktreeFiles } from "../packages/eslint/src/git-tree.ts"
 // eslint-disable-next-line no-restricted-imports
 import {
+  changesetsCliMajor,
   checkRetentionTriggers,
   checkRs1,
   describeWorkflowViolation,
   findArtifactFamilyViolations,
   findBuildRecordViolations,
   findCacheViolations,
+  findChangesetsPairingViolations,
   findInlineInstallViolations,
   findPrCommitHookViolations,
   findRetentionViolations,
@@ -41,6 +44,9 @@ const texts = new Map(
   files.map((file) => [file, readFileSync(join(root, file), "utf8")])
 )
 const producers = producerNames(texts)
+const cliMajor = changesetsCliMajor(
+  readFileSync(join(root, "package.json"), "utf8")
+)
 const violations: Array<WorkflowViolation> = []
 for (const [file, text] of texts) {
   violations.push(...findRetentionViolations(file, text))
@@ -51,6 +57,7 @@ for (const [file, text] of texts) {
   violations.push(...findCacheViolations(file, text))
   violations.push(...findBuildRecordViolations(file, text))
   violations.push(...findPrCommitHookViolations(file, text))
+  violations.push(...findChangesetsPairingViolations(file, text, cliMajor))
   violations.push(...findInlineInstallViolations(file, text))
 }
 const retentionPath = join(root, RETENTION_FILE)
