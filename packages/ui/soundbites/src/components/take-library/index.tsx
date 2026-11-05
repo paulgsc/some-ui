@@ -196,7 +196,11 @@ const PhoneTakes = ({ phone }: { phone: LibraryPhone }): JSX.Element => {
     phone.subscribe,
     phone.getSnapshot
   )
-  const here = notYetHome(takes)
+  const { playback } = useSyncExternalStore(
+    phone.pattern.subscribe,
+    phone.pattern.getSnapshot
+  )
+  const here = notYetHome(takes, playback.kind === "quiet" ? null : playback.id)
   return (
     <section className="flex flex-col gap-2">
       <h2 className="text-sm font-semibold">{WORDS.record}</h2>

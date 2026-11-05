@@ -257,7 +257,18 @@ describe("Takes on home (ST32)", () => {
         take("c", ON_HOME),
         take("d", null),
       ]
-      expect(notYetHome(takes).map(({ id }) => id)).toEqual(["a", "b", "d"])
+      expect(notYetHome(takes, null).map(({ id }) => id)).toEqual([
+        "a",
+        "b",
+        "d",
+      ])
+      // One playing as it reaches home stays, with its Stop, until it stops.
+      expect(notYetHome(takes, "c").map(({ id }) => id)).toEqual([
+        "a",
+        "b",
+        "c",
+        "d",
+      ])
       const first = reachedHome(new Set(), takes)
       expect([...first.held]).toEqual(["c"])
       expect(first.arrived).toBe(true)

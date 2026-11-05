@@ -99,11 +99,15 @@ export type LibraryPhoneSnapshot = {
 
 const onHome = (take: PatternTake): boolean => take.kept?.place === "home"
 
-/** The phone's takes home doesn't hold yet: those listed apart from home's. */
+/**
+ * The phone's takes listed apart from home's: those home doesn't hold yet,
+ * and the one `playing` until it stops, so its Stop stays on screen.
+ */
 export function notYetHome(
-  takes: ReadonlyArray<PatternTake>
+  takes: ReadonlyArray<PatternTake>,
+  playing: string | null
 ): ReadonlyArray<PatternTake> {
-  return takes.filter((take) => !onHome(take))
+  return takes.filter((take) => !onHome(take) || take.id === playing)
 }
 
 /**
