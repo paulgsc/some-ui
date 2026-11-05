@@ -554,77 +554,64 @@ describe("changesetsCliMajor", () => {
 })
 
 describe("findChangesetsPairingViolations", () => {
-  const step = (ref: string, ...inputs: Array<string>): string =>
+  const step = (ref: string, action = "changesets/action"): string =>
     steps(
       "      - name: Create Release PR or Publish",
-      `        uses: changesets/action@${ref}`,
+      `        uses: ${action}@${ref}`,
       "        with:",
-      ...inputs.map((input) => `          ${input}: x`)
+      "          publish-script: x"
     )
+  const violation = (
+    ref: string,
+    cliMajor: number | null,
+    expected: number | null,
+    line = 5
+  ): WorkflowViolation => ({
+    kind: "changesetsPairing",
+    file: F,
+    line,
+    ref,
+    cliMajor,
+    expected,
+  })
 
-  it("pairs the action's major with the CLI's minus one", () => {
-    expect(
-      findChangesetsPairingViolations(F, step("v2.1.2", "publish-script"), 3)
-    ).toEqual([])
-    expect(
-      findChangesetsPairingViolations(F, step("v1.9.0", "publish"), 2)
-    ).toEqual([])
-    expect(
-      findChangesetsPairingViolations(F, step("v1.9.0", "publish"), 3)
-    ).toEqual([
-      {
-        kind: "changesetsPairing",
-        file: F,
-        line: 5,
-        ref: "v1.9.0",
-        cliMajor: 3,
-      },
+  it("pins the action major the table pairs with the CLI's", () => {
+    expect(findChangesetsPairingViolations(F, step("v2.1.2"), 3)).toEqual([])
+    expect(findChangesetsPairingViolations(F, step("v1.9.0"), 2)).toEqual([])
+    expect(findChangesetsPairingViolations(F, step("v1.9.0"), 3)).toEqual([
+      violation("v1.9.0", 3, 2),
     ])
-    expect(findChangesetsPairingViolations(F, step("v2"), 2)).toHaveLength(1)
+    expect(findChangesetsPairingViolations(F, step("v2"), 2)).toEqual([
+      violation("v2", 2, 1),
+    ])
+    // A sub-action pairs the same way.
+    const sub = step("v1.9.0", "changesets/action/publish")
+    expect(findChangesetsPairingViolations(F, sub, 3)).toEqual([
+      violation("v1.9.0", 3, 2),
+    ])
+  })
+
+  it("fails a CLI major with no known pair", () => {
+    expect(findChangesetsPairingViolations(F, step("v3.0.0"), 4)).toEqual([
+      violation("v3.0.0", 4, null),
+    ])
   })
 
   it("fails a ref, a CLI range or a step shape it cannot read", () => {
     for (const ref of ["main", "e4f2a1b9c0d3e5f6a7b8c9d0e1f2a3b4c5d6e7f8"]) {
       expect(findChangesetsPairingViolations(F, step(ref), 3)).toEqual([
-        { kind: "changesetsPairing", file: F, line: 5, ref, cliMajor: 3 },
+        violation(ref, 3, 2),
       ])
     }
     expect(findChangesetsPairingViolations(F, step("v2.1.2"), null)).toEqual([
-      {
-        kind: "changesetsPairing",
-        file: F,
-        line: 5,
-        ref: "v2.1.2",
-        cliMajor: null,
-      },
+      violation("v2.1.2", null, null),
     ])
     const flow = steps("      - { uses: changesets/action@v2.1.2 }")
     expect(findChangesetsPairingViolations(F, flow, 3)).toEqual([
-      {
-        kind: "changesetsPairing",
-        file: F,
-        line: 4,
-        ref: "v2.1.2",
-        cliMajor: 3,
-      },
+      violation("v2.1.2", 3, 2, 4),
     ])
     const comment = steps("      # uses: changesets/action@v1.9.0")
     expect(findChangesetsPairingViolations(F, comment, 3)).toEqual([])
-  })
-
-  it("refuses v1's input names on a v2 step, and a with map it can't read", () => {
-    const text = step("v2.1.2", "commit", "pr-title", "publish")
-    expect(findChangesetsPairingViolations(F, text, 3)).toEqual([
-      { kind: "changesetsInput", file: F, line: 4, input: "commit" },
-      { kind: "changesetsInput", file: F, line: 4, input: "publish" },
-    ])
-    const flowWith = steps(
-      "      - uses: changesets/action@v2.1.2",
-      "        with: { publish: x }"
-    )
-    expect(findChangesetsPairingViolations(F, flowWith, 3)).toEqual([
-      { kind: "changesetsInput", file: F, line: 4, input: null },
-    ])
   })
 })
 
@@ -728,6 +715,7 @@ describe("describeWorkflowViolation", () => {
           line: 2,
           ref: "v1.9.0",
           cliMajor: 3,
+          expected: 2,
         },
         "pairs with changesets/action v2",
       ],
@@ -736,18 +724,22 @@ describe("describeWorkflowViolation", () => {
           kind: "changesetsPairing",
           file: F,
           line: 2,
+          ref: "v3.0.0",
+          cliMajor: 4,
+          expected: null,
+        },
+        "CHANGESETS_ACTION_MAJOR",
+      ],
+      [
+        {
+          kind: "changesetsPairing",
+          file: F,
+          line: 2,
           ref: "v2.1.2",
           cliMajor: null,
+          expected: null,
         },
         "can't be checked",
-      ],
-      [
-        { kind: "changesetsInput", file: F, line: 2, input: "publish" },
-        "publish-script",
-      ],
-      [
-        { kind: "changesetsInput", file: F, line: 2, input: null },
-        "block mapping",
       ],
       [{ kind: "inlineInstall", file: F, line: 2 }, "Why not node-ci-setup:"],
       [

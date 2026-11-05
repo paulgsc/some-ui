@@ -139,13 +139,8 @@ export type WorkflowViolation =
       readonly line: number
       readonly ref: string
       readonly cliMajor: number | null
-    }
-  | {
-      readonly kind: "changesetsInput"
-      readonly file: string
-      readonly line: number
-      // null: a flow-style `with: {...}`, whose input names can't be read.
-      readonly input: string | null
+      // The action major paired with `cliMajor`, or null if none is known.
+      readonly expected: number | null
     }
 
 const UPLOAD_STEP =
@@ -160,9 +155,12 @@ const BUILD_PUSH_STEP = /^(\s*)(-\s+)?uses:\s*["']?docker\/build-push-action@/
 const CREATE_PR_STEP =
   /^(\s*)(-\s+)?uses:\s*["']?peter-evans\/create-pull-request@/
 const CREATE_PR_ANYWHERE = /uses:\s*["']?peter-evans\/create-pull-request@/
-const CHANGESETS_STEP =
-  /^(\s*)(-\s+)?uses:\s*["']?changesets\/action@([^\s"']*)/
-const CHANGESETS_ANYWHERE = /uses:\s*["']?changesets\/action@([^\s"'},]*)/
+// changesets/action and its sub-actions (`changesets/action/publish@…`).
+const CHANGESETS_ANYWHERE =
+  /uses:\s*["']?changesets\/action(?:\/[\w-]+)?@([^\s"'},]*)/
+const CHANGESETS_STEP = new RegExp(
+  `^\\s*(?:-\\s+)?${CHANGESETS_ANYWHERE.source}`
+)
 const WITH_KEY = /^\s*with:(.*)$/
 const ENV_KEY = /^\s*env:(.*)$/
 const RETENTION_TAG = /^#+\s*Retention:\s*\S/
@@ -578,14 +576,17 @@ export function findPrCommitHookViolations(
   ]
 }
 
-// CS1 (#2602): changesets/action reads what the Changesets CLI did, and each
-// action major is built for one CLI major: v1 for CLI v2 (it finds what was
-// published from "New tag:" lines, which CLI v3 no longer prints, so under
-// v3 it pushes no tag and makes no GitHub release), v2 for CLI v3. So the
-// action's major is the CLI's minus one, read from the root package.json's
-// `@changesets/cli` range, and a v2 step passes none of v1's input names,
-// which v2 refuses at start-up.
-const CHANGESETS_V1_INPUTS = ["commit", "title", "version", "publish"] as const
+// CS1 (#2602): changesets/action reads what the Changesets CLI did, and its
+// majors pair with the CLI's: v1 with CLI v2 (it finds what was published
+// from "New tag:" lines, which CLI v3 no longer prints, so under v3 it pushes
+// no tag and makes no GitHub release, silently), v2 with CLI v3 (it refuses
+// CLI v2 at start-up). So a step pins the major this table pairs with the
+// root package.json's `@changesets/cli`, and a CLI major the table doesn't
+// know fails until someone checks the new pair and adds it.
+const CHANGESETS_ACTION_MAJOR: Readonly<Record<number, number>> = {
+  2: 1,
+  3: 2,
+}
 
 export function changesetsCliMajor(rootPackageJson: string): number | null {
   try {
@@ -610,57 +611,31 @@ export function findChangesetsPairingViolations(
   text: string,
   cliMajor: number | null
 ): Array<WorkflowViolation> {
-  const lines = text.split(/\r?\n/)
-  const violations: Array<WorkflowViolation> = []
-  lines.forEach((line, index) => {
-    if (line.trim().startsWith("#")) return
+  const expected =
+    cliMajor === null ? undefined : CHANGESETS_ACTION_MAJOR[cliMajor]
+  return text.split(/\r?\n/).flatMap((line, index) => {
     const anywhere = CHANGESETS_ANYWHERE.exec(line)
-    if (!anywhere) return
+    if (!anywhere || line.trim().startsWith("#")) return []
     const ref = anywhere[1] ?? ""
     const major = /^v(\d+)(?:\.\d+){0,2}$/.exec(ref)
-    if (
-      !CHANGESETS_STEP.test(line) ||
-      cliMajor === null ||
-      !major ||
-      Number(major[1]) !== cliMajor - 1
-    ) {
-      violations.push({
-        kind: "changesetsPairing",
-        file,
-        line: index + 1,
-        ref,
-        cliMajor,
-      })
-    }
+    const paired =
+      CHANGESETS_STEP.test(line) &&
+      expected !== undefined &&
+      major !== null &&
+      Number(major[1]) === expected
+    return paired
+      ? []
+      : [
+          {
+            kind: "changesetsPairing" as const,
+            file,
+            line: index + 1,
+            ref,
+            cliMajor,
+            expected: expected ?? null,
+          },
+        ]
   })
-  for (const { start, keyColumn, body } of stepsUsing(lines, CHANGESETS_STEP)) {
-    const usesLine = body.find((l) => CHANGESETS_STEP.test(l)) ?? ""
-    const ref = CHANGESETS_STEP.exec(usesLine)?.[3] ?? ""
-    if (!/^v2(?:\.|$)/.test(ref)) continue
-    const shapes = CHANGESETS_V1_INPUTS.map(
-      (input) => [input, withValue(body, keyColumn, input).shape] as const
-    )
-    if (shapes.some(([, shape]) => shape === "flow")) {
-      violations.push({
-        kind: "changesetsInput",
-        file,
-        line: start + 1,
-        input: null,
-      })
-      continue
-    }
-    for (const [input, shape] of shapes) {
-      if (shape === "value") {
-        violations.push({
-          kind: "changesetsInput",
-          file,
-          line: start + 1,
-          input,
-        })
-      }
-    }
-  }
-  return violations
 }
 
 // retention.yml runs after every workflow that uploads a family it keeps
@@ -794,14 +769,13 @@ export function describeWorkflowViolation(v: WorkflowViolation): string {
       return `${v.file}:${v.line}: create-pull-request commits with the husky hooks on, which fail outside \`nix develop\` ("pnpm: not found") once a pnpm call has installed them. Set \`env: HUSKY: "0"\` on the step (WR1).`
     }
     case "changesetsPairing": {
-      return v.cliMajor === null
-        ? `${v.file}:${v.line}: uses changesets/action@${v.ref}, but the root package.json's \`@changesets/cli\` is not a plain version range this check can read, so the pairing can't be checked (CS1).`
-        : `${v.file}:${v.line}: uses changesets/action@${v.ref}, but the repo is on Changesets CLI v${v.cliMajor}, which pairs with changesets/action v${v.cliMajor - 1}. Pin a \`v${v.cliMajor - 1}.x.y\` tag in a block-style step, or move the CLI and the action together (CS1).`
-    }
-    case "changesetsInput": {
-      return v.input === null
-        ? `${v.file}:${v.line}: changesets/action v2 step has a flow-style \`with: {...}\`, so this check can't read its input names. Write \`with:\` as a block mapping (CS1).`
-        : `${v.file}:${v.line}: changesets/action v2 renamed \`${v.input}\` and refuses the old name at start-up. Use its v2 name (\`commit-message\`, \`pr-title\`, \`version-script\`, \`publish-script\`) (CS1).`
+      if (v.cliMajor === null) {
+        return `${v.file}:${v.line}: uses changesets/action@${v.ref}, but the root package.json's \`@changesets/cli\` is not a plain version range this check can read, so the pairing can't be checked (CS1).`
+      }
+      if (v.expected === null) {
+        return `${v.file}:${v.line}: uses changesets/action@${v.ref}, but no changesets/action major is known to pair with Changesets CLI v${v.cliMajor}. Check the action's release notes, then add the pair to CHANGESETS_ACTION_MAJOR in packages/eslint/src/workflow-guards.ts (CS1).`
+      }
+      return `${v.file}:${v.line}: uses changesets/action@${v.ref}, but the repo is on Changesets CLI v${v.cliMajor}, which pairs with changesets/action v${v.expected}. Pin a \`v${v.expected}.x.y\` tag in a block-style step, or move the CLI and the action together (CS1).`
     }
     default: {
       return assertNever(v)

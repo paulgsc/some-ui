@@ -294,15 +294,14 @@ jobs:
             --prefer-offline
         env:
           HUSKY: 0
-      # changesets/action's major pairs with the Changesets CLI's (CS1, held
-      # by check:workflows): v2 with the CLI v3 this repo is on. v1 found what
-      # was published from "New tag:" lines in `changeset publish`'s output,
-      # which CLI v3 no longer prints, so under v3 it pushed no tag and made
-      # no GitHub release. v2 reads the CLI's own record instead, through the
-      # CHANGESETS_OUTPUT file it names in the publish command's environment;
-      # `nix develop --command` keeps that environment. v2 also renamed the
-      # v1 inputs (`commit`, `title`, `version`, `publish`) and refuses the
-      # old names at start-up.
+      # changesets/action v2 leaves npm auth to the workflow; v1 wrote this
+      # file from NPM_TOKEN. `nix develop` keeps HOME, so the CLI reads it.
+      - name: Authenticate to npm
+        run: printf '//registry.npmjs.org/:_authToken=%s\n' "$NPM_TOKEN" >> ~/.npmrc
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
+      # CS1: the action's major pairs with the Changesets CLI's; see
+      # packages/eslint/src/workflow-guards.ts.
       - name: Create Release PR or Publish
         uses: changesets/action@v2.1.2
         with:
@@ -311,6 +310,4 @@ jobs:
           version-script: nix develop .#ci --command scripts/wasm-changeset-version.sh
           publish-script: nix develop .#ci --command npx changeset publish
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
           NODE_ENV: production
