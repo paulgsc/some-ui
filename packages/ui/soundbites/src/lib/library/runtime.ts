@@ -100,8 +100,13 @@ export function createTakeLibrary(ports: LibraryPorts): LibraryRuntime {
     const busy = (): void => {
       const { take, playback } = phone.pattern.getSnapshot()
       send({
-        type: "phoneBusy",
-        busy: take.kind !== "idle" || playback.kind !== "quiet",
+        type: "phone",
+        sound:
+          take.kind !== "idle"
+            ? "recording"
+            : playback.kind === "quiet"
+              ? "quiet"
+              : "playing",
       })
     }
     busy()

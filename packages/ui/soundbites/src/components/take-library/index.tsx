@@ -66,6 +66,7 @@ const TakeItem = ({
           size="icon"
           className="bg-brand text-brand-foreground hover:bg-brand/85 size-11 shrink-0 rounded-full"
           onClick={() => dispatch({ type: "play", id: take.id })}
+          disabled={state.phone === "recording"}
           aria-label={here ? WORDS.stop : WORDS.play}
         >
           {!here ? (

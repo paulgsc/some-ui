@@ -203,7 +203,7 @@ describe("Takes on home's runtime (ST32)", () => {
       expect(takes).toHaveBeenCalledTimes(2)
     })
 
-    it("plays one sound at a time, and keeps a take under way when the screen goes", async () => {
+    it("plays one sound at a time, either way, and keeps a take under way when the screen goes", async () => {
       const { phone, sim } = phoneTakes()
       const stopPlaying = vi.spyOn(sim.pattern, "stopPlaying")
       const leave = vi.spyOn(sim.pattern, "leave")
@@ -219,19 +219,20 @@ describe("Takes on home's runtime (ST32)", () => {
       const detach = library.attach()
       await settle()
       library.dispatch({ type: "play", id: "t1" })
-      expect(stopPlaying).toHaveBeenCalledTimes(1)
       await settle()
       expect(library.getSnapshot().playback.kind).toBe("playing")
-      // The phone plays one of its own: home's stops, and Play waits.
+      // The phone plays one of its own: home's stops.
       sim.pattern.play(OWN.id)
       await settle()
       expect(played.stops).toEqual([0])
       expect(library.getSnapshot().playback).toEqual({ kind: "quiet" })
+      expect(library.getSnapshot().phone).toBe("playing")
+      // Home's Play stops the phone's, then plays home's.
       library.dispatch({ type: "play", id: "t1" })
-      expect(library.getSnapshot().playback).toEqual({ kind: "quiet" })
-      sim.player.finish()
+      expect(stopPlaying).toHaveBeenCalled()
       await settle()
-      expect(library.getSnapshot().phoneBusy).toBe(false)
+      expect(library.getSnapshot().phone).toBe("quiet")
+      expect(library.getSnapshot().playback.kind).toBe("playing")
       detach()
       expect(leave).toHaveBeenCalledTimes(1)
     })

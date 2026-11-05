@@ -84,7 +84,6 @@ export const voiceLane: Lane = {
     // A new idea's takes, released by its Send (ST26).
     const bundle = ideaBundleDesk.phone().takes
     useSyncExternalStore(bundle.subscribe, bundle.getSnapshot)
-    // A take with no scene, recorded on Takes on home (ST32).
     const library = libraryTakesDesk.phone().takes
     useSyncExternalStore(library.subscribe, library.getSnapshot)
     const { gone } = useSyncExternalStore(

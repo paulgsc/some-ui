@@ -18,7 +18,12 @@
  */
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import { SOUNDBITE_BITS_PER_SECOND } from "@some-ui/soundbites/contract"
-import type { Player, TakeKept } from "@some-ui/voice-capture"
+import type {
+  PatternTake,
+  Player,
+  TakeKept,
+  TakePattern,
+} from "@some-ui/voice-capture"
 import {
   audioPlayer,
   micRecorder,
@@ -374,4 +379,34 @@ export function patternDesk(options: PatternDeskOptions): PatternDesk {
   return desk(options, (ports) =>
     createPatternTakes(ports, options.limits, options.shape)
   )
+}
+
+/** A pattern desk's takes and whether it is full: a screen's snapshot. */
+export type PatternPortSnapshot = {
+  readonly takes: ReadonlyArray<PatternTake>
+  readonly full: boolean
+}
+
+/**
+ * A pattern desk as a screen's port: its pattern, and a snapshot of its
+ * takes and room that is the same object while neither changed.
+ */
+export function patternPort(desk: PatternDesk): {
+  readonly pattern: TakePattern
+  readonly getSnapshot: () => PatternPortSnapshot
+  readonly subscribe: (listener: () => void) => () => void
+} {
+  let made: PatternPortSnapshot | null = null
+  return {
+    pattern: desk.phone().pattern,
+    getSnapshot: (): PatternPortSnapshot => {
+      const phone = desk.phone()
+      const takes = phone.takes.getSnapshot()
+      const full = phone.full()
+      if (made?.takes !== takes || made.full !== full) made = { takes, full }
+      return made
+    },
+    subscribe: (listener): (() => void) =>
+      desk.phone().takes.subscribe(listener),
+  }
 }

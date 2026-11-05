@@ -25,8 +25,10 @@
  *   doesn't hold them (`notYetHome`); once one reaches home (`reachedHome`),
  *   the newest are read again, as soon as nothing plays, so it shows in
  *   home's list. A search shown is left as it is.
- * - **One sound at a time.** While the phone records or plays one of its own
- *   takes (`phoneBusy`), what plays from home stops and Play waits.
+ * - **One sound at a time.** When the phone starts recording or playing one
+ *   of its own takes (`phone`), what plays from home stops. Home's Play
+ *   waits only while the phone records; while it plays, Play stops it
+ *   (`readAudio`) and plays home's.
  */
 import { assertNever } from "@some-ui/core-utils"
 import type { PatternTake } from "@some-ui/voice-capture"
@@ -122,6 +124,8 @@ export function reachedHome(
   return { held, arrived: [...held].some((id) => !before.has(id)) }
 }
 
+type PhoneSound = "quiet" | "playing" | "recording"
+
 /** What plays: nothing, a take whose audio is on its way, or a take playing. */
 type LibraryPlayback =
   | { readonly kind: "quiet" }
@@ -145,8 +149,8 @@ export type LibraryState = {
   readonly tooLong: boolean
   /** A take recorded here reached home since the newest were read. */
   readonly behind: boolean
-  /** The phone is recording or playing one of its own takes. */
-  readonly phoneBusy: boolean
+  /** What the phone's own takes do: nothing, play one, or record one. */
+  readonly phone: PhoneSound
 }
 
 export type LibraryIntent =
@@ -175,7 +179,7 @@ export type LibraryEvent =
   /** A take recorded on this phone reached home. */
   | { readonly type: "arrived" }
   /** The phone started or stopped recording or playing one of its own. */
-  | { readonly type: "phoneBusy"; readonly busy: boolean }
+  | { readonly type: "phone"; readonly sound: PhoneSound }
 
 export type LibraryEffect =
   /** Ask home for the takes: the newest when `q` is null. */
@@ -207,7 +211,7 @@ export const INITIAL_LIBRARY: LibraryState = {
   unplayable: null,
   tooLong: false,
   behind: false,
-  phoneBusy: false,
+  phone: "quiet",
 }
 
 const same = (state: LibraryState): LibraryStep => ({ state, effects: [] })
@@ -294,7 +298,7 @@ function step(state: LibraryState, event: LibraryEvent): LibraryStep {
     case "play": {
       const again = playbackId(state.playback) === event.id
       const stop = stopped(state)
-      if (again || state.phoneBusy) return stop
+      if (again || state.phone === "recording") return stop
       const play = stop.state.plays + 1
       return {
         state: {
@@ -334,10 +338,11 @@ function step(state: LibraryState, event: LibraryEvent): LibraryStep {
       if (state.asked !== null || state.behind) return same(state)
       return same({ ...state, behind: true })
     }
-    case "phoneBusy": {
-      if (event.busy === state.phoneBusy) return same(state)
-      const stop = event.busy ? stopped(state) : same(state)
-      return { ...stop, state: { ...stop.state, phoneBusy: event.busy } }
+    case "phone": {
+      if (event.sound === state.phone) return same(state)
+      const stop = state.phone === "quiet" ? stopped(state) : same(state)
+      const next = event.sound === "quiet" ? same(state) : stop
+      return { ...next, state: { ...next.state, phone: event.sound } }
     }
     default: {
       return assertNever(event)

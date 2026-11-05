@@ -317,24 +317,29 @@ describe("Takes on home (ST32)", () => {
       expect(searched.state.behind).toBe(false)
     })
 
-    it("plays one sound at a time: the phone recording or playing stops home's, and Play waits", () => {
+    it("plays one sound at a time: the phone's sound stops home's, and Play waits only while it records", () => {
       const playing = run([
         { type: "entered" },
         { type: "takesRead", seq: 1, read: { kind: "read", page: PAGE } },
         { type: "play", id: "t1" },
         { type: "audioRead", play: 1, audio: AUDIO },
       ])
-      const busy = stepLibrary(playing.state, { type: "phoneBusy", busy: true })
-      expect(busy.effects).toEqual([{ type: "stopPlayback" }])
-      expect(busy.state.playback).toEqual({ kind: "quiet" })
-      const refused = stepLibrary(busy.state, { type: "play", id: "t1" })
+      const recording = stepLibrary(playing.state, {
+        type: "phone",
+        sound: "recording",
+      })
+      expect(recording.effects).toEqual([{ type: "stopPlayback" }])
+      expect(recording.state.playback).toEqual({ kind: "quiet" })
+      const refused = stepLibrary(recording.state, { type: "play", id: "t1" })
       expect(refused.effects).toEqual([])
       expect(refused.state.playback).toEqual({ kind: "quiet" })
-      const free = stepLibrary(refused.state, {
-        type: "phoneBusy",
-        busy: false,
+      // While the phone only plays, home's Play is taken: the runtime stops
+      // the phone's playback as it reads home's audio.
+      const phonePlays = stepLibrary(refused.state, {
+        type: "phone",
+        sound: "playing",
       })
-      const again = stepLibrary(free.state, { type: "play", id: "t1" })
+      const again = stepLibrary(phonePlays.state, { type: "play", id: "t1" })
       expect(again.effects).toEqual([
         { type: "readAudio", play: again.state.plays, id: "t1" },
       ])

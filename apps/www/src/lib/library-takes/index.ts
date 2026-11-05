@@ -8,21 +8,15 @@
  * home lists it with every other take it keeps. Attaching one to a scene by
  * that id is ST30's.
  *
- * - **Bounded, and nothing let go before home holds it** (HF5, #2180; LG1
- *   and RM1). At most forty takes, each at most three minutes. At forty a
- *   new take makes room by letting go the oldest home holds, and is refused
- *   while home holds none; nothing else leaves but a take whose audio never
- *   landed (the sweep), and the phone's copy of one My data deleted for good
- *   on home (`letGoDeleted`).
- * - **Redo keeps the earlier take, and Let go sets one aside** (D2, D3):
- *   both stay listed and go home, and Let go owes home its set-aside mark
- *   (`from: "studio"`, MIC2).
+ * At most forty takes of at most three minutes; Let go owes home its
+ * set-aside mark (`from: "studio"`). The pattern desk's own rules (HF5, LG1,
+ * D2, D3) hold as for every desk.
  *
  * Phone-only (`build.paths.ts`).
  */
-import type { LibraryPhone, LibraryPhoneSnapshot } from "@some-ui/soundbites"
+import type { LibraryPhone } from "@some-ui/soundbites"
 
-import { patternDesk } from "@/lib/takes-desk"
+import { patternDesk, patternPort } from "@/lib/takes-desk"
 
 export type { Take as LibraryTake } from "@/lib/takes-desk"
 
@@ -48,8 +42,6 @@ const desk = patternDesk({
   from: "studio",
   dbName: "some-ui.library-takes",
   limits: { max: MAX, maxMs: MAX_MS },
-  // Many beside each other; the desk makes room at its cap (HF5), so the
-  // button stays ready and the screen says when the phone is full.
   shape: {
     takes: { per: "many", max: MAX, full: "make-room" },
     play: "each",
@@ -62,30 +54,10 @@ export const sweepLibraryTakes = desk.sweep
 /** The desk, for the copy home (`lib/home-link/voice-copy`). */
 export const libraryTakesDesk = desk
 
-/** The port's snapshot, made again only when the takes or the room change. */
-function adapted(): () => LibraryPhoneSnapshot {
-  let made: LibraryPhoneSnapshot | null = null
-  return () => {
-    const phone = desk.phone()
-    const takes = phone.takes.getSnapshot()
-    const full = phone.full()
-    if (made?.takes !== takes || made.full !== full) {
-      made = { takes, full }
-    }
-    return made
-  }
-}
-
 let port: LibraryPhone | null = null
 
 /** The phone's takes with no scene, as Takes on home records and lists them. */
 export function libraryTakes(): LibraryPhone {
-  port ??= {
-    pattern: desk.phone().pattern,
-    line: LIBRARY_LINE,
-    getSnapshot: adapted(),
-    subscribe: (listener): (() => void) =>
-      desk.phone().takes.subscribe(listener),
-  }
+  port ??= { ...patternPort(desk), line: LIBRARY_LINE }
   return port
 }

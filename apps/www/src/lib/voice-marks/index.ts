@@ -25,7 +25,7 @@ export type MarkFrom =
   | "lens"
   | "leetype"
   | "rust-round"
-  /** Takes on home's takes with no scene (`lib/library-takes`, ST32). */
+  /** Studio notes (today, Takes on home's takes with no scene). */
   | "studio"
 
 /** What owes home a note's set-aside mark, and takes one back. */

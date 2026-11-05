@@ -83,6 +83,6 @@ export const LIBRARY_WORDS = {
     "An idea, a line or an aside, before there's a scene for it. It goes home, and shows in the list below once home has it.",
   recordLabel: "A take with no scene yet",
   /** The phone holds `max` takes home doesn't have yet. */
-  phoneFull: (max: number): string =>
-    `This phone holds ${takes(max)} home doesn't have yet. Once home has some, there's room for another.`,
+  phoneFull: (count: number): string =>
+    `This phone holds ${takes(count)} home doesn't have yet. Once home has some, there's room for another.`,
 } as const
