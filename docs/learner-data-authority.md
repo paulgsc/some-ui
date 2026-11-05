@@ -438,7 +438,9 @@ declared (checked by reading every call site and by the tests named).
   home (`lib/take-library`, through `lib/home-link/takes-read`'s `keep`: one
   `GET /voice-notes/takes` each time the screen opens, Try again is
   pressed, a search is asked or Show the newest is pressed (a search left
-  blank shows the newest too), with `?q=` holding the search's words while
+  blank shows the newest too), and once for the newest after a take recorded
+  on this phone with no scene reaches home, while no search is shown and
+  once nothing plays from home, with `?q=` holding the search's words while
   a search is shown, sending nothing of the phone's but those words; while the link is busy with another run
   it asks again a second later, at most ten times, and not once a newer
   read or leaving the screen has made that one stale; and, per Play, one
@@ -531,7 +533,8 @@ declared (checked by reading every call site and by the tests named).
   run (`voice-copy.ts`) and `lib/take-library` read
   `lib/home-link/voice-audio.ts`, or has `@some-ui/soundbites`' `stepLibrary`
   read but on the screen opening, Try again, a search (a blank one reads the
-  newest) or Show the newest, or ask for audio
+  newest), Show the newest, or once for the newest after one of the phone's
+  takes reaches home (`arrived`) while no search is shown, or ask for audio
   but on a Play, or `lib/take-library` ask again but while the link is busy
   and the read is still wanted, more than ten times in all; one that has `idea-reads.ts` send anything
   but the one request `ideasPath` names per ask, lets anything but
