@@ -133,6 +133,19 @@ export type WorkflowViolation =
       readonly file: string
       readonly line: number
     }
+  | {
+      readonly kind: "changesetsPairing"
+      readonly file: string
+      readonly line: number
+      readonly ref: string
+      readonly cliMajor: number | null
+    }
+  | {
+      readonly kind: "changesetsInput"
+      readonly file: string
+      readonly line: number
+      readonly input: string
+    }
 
 const UPLOAD_STEP =
   /^(\s*)(-\s+)?uses:\s*["']?actions\/upload-(?:pages-)?artifact@/
@@ -146,6 +159,9 @@ const BUILD_PUSH_STEP = /^(\s*)(-\s+)?uses:\s*["']?docker\/build-push-action@/
 const CREATE_PR_STEP =
   /^(\s*)(-\s+)?uses:\s*["']?peter-evans\/create-pull-request@/
 const CREATE_PR_ANYWHERE = /uses:\s*["']?peter-evans\/create-pull-request@/
+const CHANGESETS_STEP =
+  /^(\s*)(-\s+)?uses:\s*["']?changesets\/action@([^\s"']*)/
+const CHANGESETS_ANYWHERE = /uses:\s*["']?changesets\/action@([^\s"'},]*)/
 const WITH_KEY = /^\s*with:(.*)$/
 const ENV_KEY = /^\s*env:(.*)$/
 const RETENTION_TAG = /^#+\s*Retention:\s*\S/
@@ -561,6 +577,79 @@ export function findPrCommitHookViolations(
   ]
 }
 
+// CS1 (#2602): changesets/action reads what the Changesets CLI did, and each
+// action major is built for one CLI major: v1 for CLI v2 (it finds what was
+// published from "New tag:" lines, which CLI v3 no longer prints, so under
+// v3 it pushes no tag and makes no GitHub release), v2 for CLI v3. So the
+// action's major is the CLI's minus one, read from the root package.json's
+// `@changesets/cli` range, and a v2 step passes none of v1's input names,
+// which v2 refuses at start-up.
+const CHANGESETS_V1_INPUTS = ["commit", "title", "version", "publish"] as const
+
+export function changesetsCliMajor(rootPackageJson: string): number | null {
+  try {
+    const parsed: unknown = JSON.parse(rootPackageJson)
+    if (typeof parsed !== "object" || parsed === null) return null
+    for (const field of ["devDependencies", "dependencies"]) {
+      const deps: unknown = Reflect.get(parsed, field)
+      if (typeof deps !== "object" || deps === null) continue
+      const range: unknown = Reflect.get(deps, "@changesets/cli")
+      if (typeof range !== "string") continue
+      const major = /^(?:workspace:)?[\^~]?(\d+)\.\d+\.\d+$/.exec(range.trim())
+      return major ? Number(major[1]) : null
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
+export function findChangesetsPairingViolations(
+  file: string,
+  text: string,
+  cliMajor: number | null
+): Array<WorkflowViolation> {
+  const lines = text.split(/\r?\n/)
+  const violations: Array<WorkflowViolation> = []
+  lines.forEach((line, index) => {
+    if (line.trim().startsWith("#")) return
+    const anywhere = CHANGESETS_ANYWHERE.exec(line)
+    if (!anywhere) return
+    const ref = anywhere[1] ?? ""
+    const major = /^v(\d+)(?:\.\d+){0,2}$/.exec(ref)
+    if (
+      !CHANGESETS_STEP.test(line) ||
+      cliMajor === null ||
+      !major ||
+      Number(major[1]) !== cliMajor - 1
+    ) {
+      violations.push({
+        kind: "changesetsPairing",
+        file,
+        line: index + 1,
+        ref,
+        cliMajor,
+      })
+    }
+  })
+  for (const { start, keyColumn, body } of stepsUsing(lines, CHANGESETS_STEP)) {
+    const usesLine = body.find((l) => CHANGESETS_STEP.test(l)) ?? ""
+    const ref = CHANGESETS_STEP.exec(usesLine)?.[3] ?? ""
+    if (!/^v2(?:\.|$)/.test(ref)) continue
+    for (const input of CHANGESETS_V1_INPUTS) {
+      if (withValue(body, keyColumn, input).shape === "value") {
+        violations.push({
+          kind: "changesetsInput",
+          file,
+          line: start + 1,
+          input,
+        })
+      }
+    }
+  }
+  return violations
+}
+
 // retention.yml runs after every workflow that uploads a family it keeps
 // copies of (`keep` ≥ 1), so a new generation prunes the old at once; a
 // family consumed in its run waits for the hourly sweep, within its TTL.
@@ -690,6 +779,14 @@ export function describeWorkflowViolation(v: WorkflowViolation): string {
     }
     case "prCommitHooks": {
       return `${v.file}:${v.line}: create-pull-request commits with the husky hooks on, which fail outside \`nix develop\` ("pnpm: not found") once a pnpm call has installed them. Set \`env: HUSKY: "0"\` on the step (WR1).`
+    }
+    case "changesetsPairing": {
+      return v.cliMajor === null
+        ? `${v.file}:${v.line}: uses changesets/action@${v.ref}, but the root package.json's \`@changesets/cli\` is not a plain version range this check can read, so the pairing can't be checked (CS1).`
+        : `${v.file}:${v.line}: uses changesets/action@${v.ref}, but the repo is on Changesets CLI v${v.cliMajor}, which pairs with changesets/action v${v.cliMajor - 1}. Pin a \`v${v.cliMajor - 1}.x.y\` tag in a block-style step, or move the CLI and the action together (CS1).`
+    }
+    case "changesetsInput": {
+      return `${v.file}:${v.line}: changesets/action v2 renamed \`${v.input}\` and refuses the old name at start-up. Use its v2 name (\`commit-message\`, \`pr-title\`, \`version-script\`, \`publish-script\`) (CS1).`
     }
     default: {
       return assertNever(v)

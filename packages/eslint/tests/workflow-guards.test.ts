@@ -7,12 +7,14 @@
 
 import { readFileSync } from "node:fs"
 import {
+  changesetsCliMajor,
   checkRetentionTriggers,
   checkRs1,
   describeWorkflowViolation,
   findArtifactFamilyViolations,
   findBuildRecordViolations,
   findCacheViolations,
+  findChangesetsPairingViolations,
   findInlineInstallViolations,
   findPrCommitHookViolations,
   findRetentionViolations,
@@ -531,6 +533,94 @@ describe("findPrCommitHookViolations", () => {
   })
 })
 
+describe("changesetsCliMajor", () => {
+  it("reads the major of a plain @changesets/cli range, and nothing else", () => {
+    const root = (range: unknown, field = "devDependencies"): string =>
+      JSON.stringify({ [field]: { "@changesets/cli": range } })
+    expect(changesetsCliMajor(root("^3.0.3"))).toBe(3)
+    expect(changesetsCliMajor(root("2.31.1"))).toBe(2)
+    expect(changesetsCliMajor(root("~3.1.0", "dependencies"))).toBe(3)
+    expect(changesetsCliMajor(root("workspace:^3.0.0"))).toBe(3)
+    for (const unreadable of [
+      root(">=2 <4"),
+      root("latest"),
+      root(3),
+      JSON.stringify({ devDependencies: {} }),
+      "not json",
+    ]) {
+      expect(changesetsCliMajor(unreadable)).toBeNull()
+    }
+  })
+})
+
+describe("findChangesetsPairingViolations", () => {
+  const step = (ref: string, ...inputs: Array<string>): string =>
+    steps(
+      "      - name: Create Release PR or Publish",
+      `        uses: changesets/action@${ref}`,
+      "        with:",
+      ...inputs.map((input) => `          ${input}: x`)
+    )
+
+  it("pairs the action's major with the CLI's minus one", () => {
+    expect(
+      findChangesetsPairingViolations(F, step("v2.1.2", "publish-script"), 3)
+    ).toEqual([])
+    expect(
+      findChangesetsPairingViolations(F, step("v1.9.0", "publish"), 2)
+    ).toEqual([])
+    expect(
+      findChangesetsPairingViolations(F, step("v1.9.0", "publish"), 3)
+    ).toEqual([
+      {
+        kind: "changesetsPairing",
+        file: F,
+        line: 5,
+        ref: "v1.9.0",
+        cliMajor: 3,
+      },
+    ])
+    expect(findChangesetsPairingViolations(F, step("v2"), 2)).toHaveLength(1)
+  })
+
+  it("fails a ref, a CLI range or a step shape it cannot read", () => {
+    for (const ref of ["main", "e4f2a1b9c0d3e5f6a7b8c9d0e1f2a3b4c5d6e7f8"]) {
+      expect(findChangesetsPairingViolations(F, step(ref), 3)).toEqual([
+        { kind: "changesetsPairing", file: F, line: 5, ref, cliMajor: 3 },
+      ])
+    }
+    expect(findChangesetsPairingViolations(F, step("v2.1.2"), null)).toEqual([
+      {
+        kind: "changesetsPairing",
+        file: F,
+        line: 5,
+        ref: "v2.1.2",
+        cliMajor: null,
+      },
+    ])
+    const flow = steps("      - { uses: changesets/action@v2.1.2 }")
+    expect(findChangesetsPairingViolations(F, flow, 3)).toEqual([
+      {
+        kind: "changesetsPairing",
+        file: F,
+        line: 4,
+        ref: "v2.1.2",
+        cliMajor: 3,
+      },
+    ])
+    const comment = steps("      # uses: changesets/action@v1.9.0")
+    expect(findChangesetsPairingViolations(F, comment, 3)).toEqual([])
+  })
+
+  it("refuses v1's input names on a v2 step", () => {
+    const text = step("v2.1.2", "commit", "pr-title", "publish")
+    expect(findChangesetsPairingViolations(F, text, 3)).toEqual([
+      { kind: "changesetsInput", file: F, line: 4, input: "commit" },
+      { kind: "changesetsInput", file: F, line: 4, input: "publish" },
+    ])
+  })
+})
+
 describe("checkRetentionTriggers", () => {
   const names = new Set([
     "Mobile APK",
@@ -624,6 +714,30 @@ describe("describeWorkflowViolation", () => {
       ],
       [{ kind: "buildRecord", file: F, line: 2 }, "DOCKER_BUILD_RECORD_UPLOAD"],
       [{ kind: "prCommitHooks", file: F, line: 2 }, 'HUSKY: "0"'],
+      [
+        {
+          kind: "changesetsPairing",
+          file: F,
+          line: 2,
+          ref: "v1.9.0",
+          cliMajor: 3,
+        },
+        "pairs with changesets/action v2",
+      ],
+      [
+        {
+          kind: "changesetsPairing",
+          file: F,
+          line: 2,
+          ref: "v2.1.2",
+          cliMajor: null,
+        },
+        "can't be checked",
+      ],
+      [
+        { kind: "changesetsInput", file: F, line: 2, input: "publish" },
+        "publish-script",
+      ],
       [{ kind: "inlineInstall", file: F, line: 2 }, "Why not node-ci-setup:"],
       [
         {

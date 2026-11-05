@@ -294,21 +294,22 @@ jobs:
             --prefer-offline
         env:
           HUSKY: 0
-      # Pinned to v1 on purpose. changesets/action v2 only runs with
-      # Changesets CLI v3 and exits at start-up against the CLI v2 this repo
-      # uses ("designed to work with Changesets CLI v3 ... use Changesets
-      # action v1 instead"), so no run that built a crate got past this step
-      # while it was on v2. v2 also renamed the `commit`, `title`, `version`
-      # and `publish` inputs below and only warns about the old names. Moving
-      # to v2 means upgrading the CLI to v3 and renaming those inputs in the
-      # same change; .github/dependabot.yml ignores its majors for that reason.
+      # changesets/action's major pairs with the Changesets CLI's (CS1, held
+      # by check:workflows): v2 with the CLI v3 this repo is on. v1 found what
+      # was published from "New tag:" lines in `changeset publish`'s output,
+      # which CLI v3 no longer prints, so under v3 it pushed no tag and made
+      # no GitHub release. v2 reads the CLI's own record instead, through the
+      # CHANGESETS_OUTPUT file it names in the publish command's environment;
+      # `nix develop --command` keeps that environment. v2 also renamed the
+      # v1 inputs (`commit`, `title`, `version`, `publish`) and refuses the
+      # old names at start-up.
       - name: Create Release PR or Publish
-        uses: changesets/action@v1.9.0
+        uses: changesets/action@v2.1.2
         with:
-          commit: ${{ env.RELEASE_COMMIT_MESSAGE }}
-          title: ${{ env.RELEASE_COMMIT_MESSAGE }}
-          version: nix develop .#ci --command scripts/wasm-changeset-version.sh
-          publish: nix develop .#ci --command npx changeset publish
+          commit-message: ${{ env.RELEASE_COMMIT_MESSAGE }}
+          pr-title: ${{ env.RELEASE_COMMIT_MESSAGE }}
+          version-script: nix develop .#ci --command scripts/wasm-changeset-version.sh
+          publish-script: nix develop .#ci --command npx changeset publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
