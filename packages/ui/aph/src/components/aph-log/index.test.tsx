@@ -53,12 +53,14 @@ describe("logging mine", () => {
     )
   })
 
-  it("corrects an already-logged figure and still reports the save", () => {
-    // 7:00 on Oct 2 is logged (~4,300); logging it again corrects it.
+  it("replaces an already-logged figure and still reports the save", () => {
+    // 7:00 on Oct 2 is logged (~4,300); logging it again replaces it.
     const { type, onSaved, store } = setup()
     fireEvent.click(screen.getByRole("radio", { name: /7:00/ }))
     type("4400")
-    fireEvent.click(screen.getByRole("button", { name: /Correct mine · 7:00/ }))
+    fireEvent.click(
+      screen.getByRole("button", { name: /Replace ~4,300 · 7:00/ })
+    )
     expect(onSaved).toHaveBeenCalledWith(
       expect.objectContaining({
         id: expect.stringMatching(/^paper-/),

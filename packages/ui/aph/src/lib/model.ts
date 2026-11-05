@@ -73,6 +73,45 @@ export type Entry = {
   /** Anything a label does not say. Short; the labels carry the common cases. */
   note: string | null
   review: Review | null
+  /**
+   * Removed from the log by me (a figure at the wrong time, a second one at
+   * a time already logged): it stops counting anywhere, and the record keeps
+   * it as it was. Absent while it stands, as on every entry from before
+   * removing existed; once set, the entry never changes again.
+   */
+  removed?: boolean
+}
+
+/** Whether an entry stands in the log: not removed. */
+export function isLive(entry: Entry): boolean {
+  return entry.removed !== true
+}
+
+/** The entries that stand in the log: every screen reads these alone. */
+export function live(entries: ReadonlyArray<Entry>): Array<Entry> {
+  return entries.filter(isLive)
+}
+
+/** The same entry, field for field, in one fixed order. */
+function canonicalEntry(e: Entry): string {
+  return JSON.stringify([
+    e.id,
+    e.day,
+    e.checkpoint,
+    e.time,
+    e.mine === null ? null : [e.mine.value, e.mine.approx],
+    e.theirs === null ? null : e.theirs.value,
+    e.goal,
+    e.labels,
+    e.note,
+    e.review,
+    e.removed === true,
+  ])
+}
+
+/** The same entry, field for field, whatever order its keys were written in. */
+export function sameEntry(a: Entry, b: Entry): boolean {
+  return canonicalEntry(a) === canonicalEntry(b)
 }
 
 /**
@@ -314,8 +353,9 @@ function mean(xs: ReadonlyArray<number>): number | null {
 
 /**
  * The entry that stands for a checkpoint on a day: the first one there with
- * no label, else the first one at all. A second entry under a label is a
- * comparison, not the day's figure.
+ * no label, else the first one at all. A checkpoint holds one entry a day
+ * now (`breaches`); a second under a label, from when one could be added as
+ * a comparison, is not the day's figure.
  */
 export function primary(
   entries: ReadonlyArray<Entry>,
@@ -457,8 +497,9 @@ const NO_ENTRY: Entry = {
  *
  * - every id is unique;
  * - an entry's checkpoint, if it has one, is one of the settings';
- * - at most one plain (unlabelled) entry per checkpoint a day: the one
- *   `primary` reads, so a second would count in History and nowhere else;
+ * - at most one plain (unlabelled) entry standing per checkpoint a day: the
+ *   one `primary` reads, so a second would count in History and nowhere
+ *   else (a removed one stands nowhere);
  * - an entry at a checkpoint carries the goal it was made under, and one off
  *   the checkpoints carries none, so a delta never borrows today's goal;
  * - the clock time is written only off the checkpoints;
@@ -488,7 +529,7 @@ export function violations(
     }
     if (e.goal === null) wrong.push(`${e.id}: no goal at a checkpoint`)
     if (e.time !== null) wrong.push(`${e.id}: a clock time at a checkpoint`)
-    if (e.labels.length === 0) {
+    if (e.labels.length === 0 && isLive(e)) {
       const slot = `${e.day} ${e.checkpoint}`
       if (plain.has(slot))
         wrong.push(`${e.id}: a second plain figure at ${slot}`)
@@ -510,7 +551,13 @@ export function violations(
  * - an entry stays where and when it was logged: its day, checkpoint, clock
  *   time and goal never change;
  * - their figure, once reported, is never replaced or removed. There is no
- *   flow for correcting it, so a change to it can only be a stale write.
+ *   flow for correcting it, so a change to it can only be a stale write;
+ * - a removed entry stays as it was removed: removing is the last change;
+ * - a new entry is never logged at a checkpoint where one already stands
+ *   that day, labelled or not: a time of day holds one entry, which a new
+ *   figure for it rewrites (`commitDraft`). A step rule rather than a state
+ *   one, because times logged twice before this rule still stand, both,
+ *   until I remove one.
  *
  * Returns what is wrong, in words, like `violations`.
  */
@@ -520,11 +567,26 @@ export function breaches(
 ): Array<string> {
   const wrong: Array<string> = []
   const now = new Map(after.map((e) => [e.id, e]))
+  const ids = new Set(before.map((e) => e.id))
+  const taken = new Set(
+    live(before).flatMap((e) =>
+      e.checkpoint === null ? [] : [`${e.day} ${e.checkpoint}`]
+    )
+  )
+  for (const is of after) {
+    if (ids.has(is.id) || !isLive(is) || is.checkpoint === null) continue
+    const slot = `${is.day} ${is.checkpoint}`
+    if (taken.has(slot)) wrong.push(`${is.id}: a second entry at ${slot}`)
+    taken.add(slot)
+  }
   for (const was of before) {
     const is = now.get(was.id)
     if (is === undefined) {
-      wrong.push(`${was.id}: removed`)
+      wrong.push(`${was.id}: gone from the record`)
       continue
+    }
+    if (!isLive(was) && !sameEntry(was, is)) {
+      wrong.push(`${was.id}: changed after it was removed`)
     }
     for (const field of ["day", "checkpoint", "time", "goal"] as const) {
       if (is[field] !== was[field]) wrong.push(`${was.id}: ${field} rewritten`)

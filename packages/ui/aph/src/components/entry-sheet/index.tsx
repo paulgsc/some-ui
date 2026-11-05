@@ -2,7 +2,8 @@
  * One entry, opened: the three figures, where they reconcile, and the call
  * to make when they do not. Also where an entry's labels and note are
  * changed after the fact, since that is usually when the reason for a
- * mismatch comes to mind.
+ * mismatch comes to mind, where my figure is fixed when I mistyped it, and
+ * where an entry logged at the wrong time, or twice, is removed.
  */
 import type { JSX } from "react"
 import { useState } from "react"
@@ -22,7 +23,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@some-ui/shared"
-import { CheckCheck, Flag, Undo2 } from "lucide-react"
+import { Check, CheckCheck, Flag, Trash2, Undo2 } from "lucide-react"
 
 export type EntrySheetProps = {
   entryId: string | null
@@ -200,6 +201,8 @@ const EntryDetail = ({
         </div>
       )}
 
+      <MineEditor key={mineKey(entry)} entry={entry} store={store} />
+
       <div className="flex flex-col gap-2">
         <label
           htmlFor={`aph-note-${entry.id}`}
@@ -223,6 +226,144 @@ const EntryDetail = ({
           }}
         />
       </div>
+
+      <RemoveControl entry={entry} store={store} />
+    </div>
+  )
+}
+
+/** Five digits, as the logger's keypad allows. */
+const FIGURE = /^\d{1,5}$/
+
+function mineKey(entry: Entry): string {
+  return `${entry.id}:${entry.mine?.value ?? ""}:${String(entry.mine?.approx)}`
+}
+
+/**
+ * My figure, typed again and saved: the fix for a mistyped one. Keyed by the
+ * figure it edits, so a save (or a change from elsewhere) starts it afresh.
+ */
+const MineEditor = ({
+  entry,
+  store,
+}: {
+  entry: Entry
+  store: AphStore
+}): JSX.Element => {
+  // An edit buffer seeded from the figure it edits; keyed by it (mineKey).
+  // eslint-disable-next-line owner-guard/no-mount-snapshot -- edit buffer, keyed by the figure it edits (see above)
+  const [digits, setDigits] = useState(String(entry.mine?.value ?? ""))
+  // eslint-disable-next-line owner-guard/no-mount-snapshot -- edit buffer, keyed by the figure it edits (see above)
+  const [approx, setApprox] = useState(entry.mine?.approx ?? true)
+  const [refused, setRefused] = useState(false)
+  const valid = FIGURE.test(digits)
+  const unchanged =
+    entry.mine !== null &&
+    Number(digits) === entry.mine.value &&
+    approx === entry.mine.approx
+
+  return (
+    <div className="flex flex-col gap-2">
+      <label
+        htmlFor={`aph-mine-${entry.id}`}
+        className="text-muted-foreground text-xs font-semibold uppercase tracking-wide"
+      >
+        {entry.mine === null ? "Add mine" : "Change mine"}
+      </label>
+      <div className="flex gap-2">
+        <Input
+          id={`aph-mine-${entry.id}`}
+          inputMode="numeric"
+          value={digits}
+          placeholder="My figure"
+          onChange={(e) => {
+            setRefused(false)
+            setDigits(e.target.value.replace(/\D/g, "").slice(0, 5))
+          }}
+          className="font-mono"
+        />
+        <Button
+          variant={approx ? "default" : "outline"}
+          aria-pressed={approx}
+          onClick={() => setApprox(!approx)}
+          className="rounded-full"
+        >
+          ~ approx
+        </Button>
+        <Button
+          variant="outline"
+          disabled={!valid || unchanged}
+          onClick={() =>
+            setRefused(
+              !store.rewriteMine(entry.id, { value: Number(digits), approx })
+            )
+          }
+        >
+          <Check aria-hidden className="mr-1 size-4" />
+          Save
+        </Button>
+      </div>
+      {refused && (
+        <p role="alert" className="text-destructive text-xs">
+          Not saved: the phone did not keep it.
+        </p>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Removing an entry, asked twice: once to open the question, once to say
+ * yes. Once removed it leaves the screens, and this sheet with it.
+ */
+const RemoveControl = ({
+  entry,
+  store,
+}: {
+  entry: Entry
+  store: AphStore
+}): JSX.Element => {
+  const [asking, setAsking] = useState(false)
+  const [refused, setRefused] = useState(false)
+
+  if (!asking) {
+    return (
+      <Button
+        variant="ghost"
+        className="text-destructive"
+        onClick={() => setAsking(true)}
+      >
+        <Trash2 aria-hidden className="mr-2 size-4" />
+        Remove from the log
+      </Button>
+    )
+  }
+  return (
+    <div
+      role="group"
+      aria-label="Remove this entry"
+      className="border-destructive/40 bg-destructive/5 flex flex-col gap-2 rounded-lg border p-3"
+    >
+      <p className="text-sm">
+        Remove this entry? It stops counting in History and the trend, and the
+        record keeps it as it was.
+      </p>
+      <div className="grid grid-cols-2 gap-2">
+        <Button variant="outline" onClick={() => setAsking(false)}>
+          Keep it
+        </Button>
+        <Button
+          variant="destructive"
+          onClick={() => setRefused(!store.remove(entry.id))}
+        >
+          Remove
+        </Button>
+      </div>
+      {refused && (
+        <p role="alert" className="text-destructive text-xs">
+          Not removed: the phone did not keep the change.
+        </p>
+      )}
     </div>
   )
 }

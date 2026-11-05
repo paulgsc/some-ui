@@ -18,7 +18,7 @@
  * (`sameEntry`), so the phone never lets go of something home does not hold.
  */
 import type { AphSettings, Entry } from "./model"
-import { violations } from "./model"
+import { sameEntry, violations } from "./model"
 
 export type Refusal = { readonly id: string; readonly why: string }
 
@@ -55,22 +55,6 @@ export type Receipt = {
   }>
 }
 
-/** Every field in the server's order, so two copies compare as text. */
-function canonicalEntry(e: Entry): string {
-  return JSON.stringify([
-    e.id,
-    e.day,
-    e.checkpoint,
-    e.time,
-    e.mine === null ? null : [e.mine.value, e.mine.approx],
-    e.theirs === null ? null : e.theirs.value,
-    e.goal,
-    e.labels,
-    e.note,
-    e.review,
-  ])
-}
-
 function canonicalSettings(s: AphSettings): string {
   return JSON.stringify([
     s.checkpoints.map((c) => [c.id, c.label, c.minutes, c.goal]),
@@ -81,11 +65,6 @@ function canonicalSettings(s: AphSettings): string {
     s.tolerance,
     s.since,
   ])
-}
-
-/** The same entry, field for field. */
-export function sameEntry(a: Entry, b: Entry): boolean {
-  return canonicalEntry(a) === canonicalEntry(b)
 }
 
 export function sameSettings(a: AphSettings, b: AphSettings): boolean {

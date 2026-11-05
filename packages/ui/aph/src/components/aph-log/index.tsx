@@ -1,6 +1,8 @@
 /**
  * Log a figure: mine for a checkpoint today (or a day I missed, up to two
- * weeks back), or theirs for an entry that is waiting on one. Built for one thumb and a few seconds: the checkpoint is
+ * weeks back), or theirs for an entry that is waiting on one. A checkpoint
+ * holds one entry a day, so mine where one is logged replaces it, and the
+ * Save button says so before the tap. Built for one thumb and a few seconds: the checkpoint is
  * picked from the clock, the keypad is always there, and before saving the
  * screen already says what the figure means (how far from the goal, or
  * whether it reconciles with mine).
@@ -19,10 +21,10 @@ import {
 import type { Draft, Side } from "@aph/lib/draft"
 import {
   atTime,
-  correcting,
   draftDay,
   draftValue,
   newDraft,
+  rewriting,
   stepDraft,
 } from "@aph/lib/draft"
 import type { AphSettings, Entry } from "@aph/lib/model"
@@ -124,6 +126,8 @@ export const AphLog = ({
 
   const value = draftValue(draft)
   const checkpoint = checkpointById(settings, draft.checkpoint)
+  // A checkpoint holds one entry a day: saving there rewrites what is logged.
+  const replaced = rewriting(entries, draft, day)?.mine ?? null
   // Only a waiting entry can be the target: one filled since the link was
   // made (Back after saving) shows as unselected, and Save stays off.
   const targetEntry = waiting.find((e) => e.id === draft.target) ?? null
@@ -429,7 +433,7 @@ export const AphLog = ({
       >
         <Check aria-hidden className="mr-2 size-5" />
         {draft.side === "mine"
-          ? `${correcting(entries, draft, day) === undefined ? "Save" : "Correct"} mine · ${day === today ? "" : `${formatDay(day)} `}${checkpoint?.label ?? (day === today ? "now" : "other")}`
+          ? `${replaced === null ? "Save mine" : `Replace ${formatValue(replaced.value, replaced.approx)}`} · ${day === today ? "" : `${formatDay(day)} `}${checkpoint?.label ?? (day === today ? "now" : "other")}`
           : targetEntry === null
             ? "Save theirs"
             : `Save theirs · ${formatDay(targetEntry.day)} ${whenOf(settings, targetEntry)}`}

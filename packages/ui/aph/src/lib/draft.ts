@@ -15,8 +15,11 @@ import {
   checkpointById,
   dueCheckpoint,
   hasMine,
+  isLive,
+  live,
   loggableDays,
   minutesOf,
+  primary,
 } from "./model"
 
 export type Side = "mine" | "theirs"
@@ -186,17 +189,16 @@ export type Commit = {
 
 /**
  * The entries after saving `draft`, with the id of the entry the figure
- * landed on (an existing one when it filled in or corrected), or null when
- * there is nothing to save
- * (no figure, theirs with no entry chosen, or mine for a day further back
- * than `loggableDays` reaches).
+ * landed on (an existing one when it rewrote one), or null when there is
+ * nothing to save (no figure, theirs with no entry chosen, or mine for a day
+ * further back than `loggableDays` reaches).
  *
- * Mine at a checkpoint where the day already holds a reported figure but none
- * of mine fills that entry in, so the two meet; an unlabelled figure where
- * one is already logged corrects it (`correcting`); otherwise it is a new
- * entry.
- * Theirs lands on its target and clears any earlier call on it: a new
- * figure deserves a fresh look.
+ * A checkpoint holds one entry a day, so mine at a checkpoint where the day
+ * already has one (`rewriting`) rewrites it: my figure and the labels become
+ * the draft's, and any call I made on it is cleared, since a changed figure
+ * deserves a fresh look. Their figure, if reported, stays. Off the
+ * checkpoints, every figure is a new entry at its own clock time.
+ * Theirs lands on its target and clears any earlier call on it likewise.
  */
 export function commitDraft(
   settings: AphSettings,
@@ -215,7 +217,7 @@ export function commitDraft(
     const target = draft.target
     if (
       target === null ||
-      !awaitingTheirs(settings, entries).some((e) => e.id === target)
+      !awaitingTheirs(settings, live(entries)).some((e) => e.id === target)
     ) {
       return null
     }
@@ -233,30 +235,12 @@ export function commitDraft(
   if (!loggableDays(settings, commit.today).includes(day)) return null
 
   const mine = { value, approx: draft.approx }
-  const reportedOnly = entries.find(
-    (e) =>
-      draft.checkpoint !== null &&
-      e.day === day &&
-      e.checkpoint === draft.checkpoint &&
-      e.mine === null
-  )
-  if (reportedOnly !== undefined) {
+  const there = rewriting(entries, draft, day)
+  if (there !== undefined) {
     return {
-      id: reportedOnly.id,
+      id: there.id,
       entries: entries.map((e) =>
-        e === reportedOnly ? { ...e, mine, labels: draft.labels } : e
-      ),
-    }
-  }
-  // An unlabelled figure where one is already logged corrects it: the day
-  // has one plain figure per checkpoint, the one `primary` reads. A changed
-  // figure deserves a fresh look, so any earlier call on it is cleared.
-  const corrected = correcting(entries, draft, day)
-  if (corrected !== undefined) {
-    return {
-      id: corrected.id,
-      entries: entries.map((e) =>
-        e === corrected ? { ...e, mine, review: null } : e
+        e === there ? { ...e, mine, labels: draft.labels, review: null } : e
       ),
     }
   }
@@ -283,24 +267,46 @@ export function commitDraft(
 }
 
 /**
- * The entry saving `draft` on `day` would correct rather than add to: mine
- * at a checkpoint, unlabelled, where an unlabelled figure of mine is already
- * logged. A labelled figure there is a comparison and is added beside it.
+ * The entry saving `draft` on `day` would rewrite rather than add beside:
+ * mine at a checkpoint where the day already has an entry standing. Where
+ * two stand from before one entry a time was the rule, the one `primary`
+ * reads.
  */
-export function correcting(
+export function rewriting(
   entries: ReadonlyArray<Entry>,
   draft: Draft,
   day: string
 ): Entry | undefined {
   if (draft.side !== "mine" || draft.checkpoint === null) return undefined
-  if (draft.labels.length > 0) return undefined
-  return entries.find(
-    (e) =>
-      e.day === day &&
-      e.checkpoint === draft.checkpoint &&
-      e.mine !== null &&
-      e.labels.length === 0
+  return primary(live(entries), day, draft.checkpoint)
+}
+
+/**
+ * Entry `id` with my figure rewritten, from the entry itself: the fix for a
+ * figure I mistyped, wherever it was logged. Any call I made on it is
+ * cleared, as a changed figure deserves a fresh look. Unchanged for an id
+ * that does not stand.
+ */
+export function rewriteMine(
+  entries: ReadonlyArray<Entry>,
+  id: string,
+  mine: { value: number; approx: boolean }
+): Array<Entry> {
+  return entries.map((e) =>
+    e.id === id && isLive(e) ? { ...e, mine, review: null } : e
   )
+}
+
+/**
+ * Entry `id` removed from the log: a figure at the wrong time, or a second
+ * one at a time already logged. It stops counting, and the record keeps it
+ * as it was (`removed` in model.ts).
+ */
+export function removeEntry(
+  entries: ReadonlyArray<Entry>,
+  id: string
+): Array<Entry> {
+  return entries.map((e) => (e.id === id ? { ...e, removed: true } : e))
 }
 
 /**
@@ -318,7 +324,7 @@ export function keepsOnePlain(
   const entry = entries.find((e) => e.id === id)
   if (entry === undefined) return true
   if (entry.checkpoint === null) return true
-  return !entries.some(
+  return !live(entries).some(
     (e) =>
       e.id !== id &&
       e.day === entry.day &&

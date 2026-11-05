@@ -5,7 +5,9 @@ import {
   draftValue,
   keepsOnePlain,
   newDraft,
+  removeEntry,
   reviewEntry,
+  rewriteMine,
   stepDraft,
 } from "@aph/lib/draft"
 import { reconcile } from "@aph/lib/model"
@@ -160,13 +162,38 @@ describe("saving mine", () => {
     expect(reconcile(settings, fixed).status).toBe("matched")
   })
 
-  it("adds a labelled figure beside the plain one, as a comparison", () => {
+  it("rewrites the one entry at a time already logged, labelled or not", () => {
+    // Oct 2 at 7:00 is logged (~4,300): a labelled figure there replaces it
+    // and carries the draft's labels, rather than standing beside it.
+    const target = must(
+      SEED_ENTRIES.find((e) => e.day === "2026-10-02" && e.checkpoint === "7")
+    )
     const d = run(newDraft("mine", "7", null), [
       ...typed("4100"),
       { type: "toggleLabel", label: "no-bs" },
     ])
-    const after = commitDraft(settings, SEED_ENTRIES, d, commit)?.entries ?? []
-    expect(after).toHaveLength(SEED_ENTRIES.length + 1)
+    const saved = commitDraft(settings, SEED_ENTRIES, d, commit)
+    expect(saved?.id).toBe(target.id)
+    expect(saved?.entries).toHaveLength(SEED_ENTRIES.length)
+    expect(must(saved?.entries.find((e) => e.id === target.id))).toMatchObject({
+      mine: { value: 4100, approx: true },
+      labels: ["no-bs"],
+    })
+  })
+
+  it("adds a new entry where the one logged there was removed", () => {
+    const target = must(
+      SEED_ENTRIES.find((e) => e.day === "2026-10-02" && e.checkpoint === "7")
+    )
+    const before = removeEntry(SEED_ENTRIES, target.id)
+    const d = run(newDraft("mine", "7", null), typed("4100"))
+    const saved = commitDraft(settings, before, d, commit)
+    expect(saved?.id).toBe("new")
+    expect(saved?.entries).toHaveLength(SEED_ENTRIES.length + 1)
+    expect(must(saved?.entries.find((e) => e.id === target.id))).toEqual({
+      ...target,
+      removed: true,
+    })
   })
 
   it("saves nothing without a figure", () => {
@@ -292,5 +319,35 @@ describe("saving theirs", () => {
   it("saves nothing for an entry that is not there", () => {
     const d = run(newDraft("theirs", null, "gone"), typed("4900"))
     expect(commitDraft(settings, SEED_ENTRIES, d, commit)).toBeNull()
+  })
+})
+
+describe("fixing an entry from the entry itself", () => {
+  it("rewrites my figure and clears my call on it", () => {
+    const target = must(SEED_ENTRIES[0])
+    const flagged = reviewEntry(
+      SEED_ENTRIES.map((e) =>
+        e.id === target.id ? { ...e, theirs: { value: 9000 } } : e
+      ),
+      target.id,
+      "flagged"
+    )
+    const after = rewriteMine(flagged, target.id, {
+      value: 4000,
+      approx: false,
+    })
+    expect(must(after.find((e) => e.id === target.id))).toMatchObject({
+      mine: { value: 4000, approx: false },
+      theirs: { value: 9000 },
+      review: null,
+    })
+  })
+
+  it("leaves a removed entry as it was removed", () => {
+    const target = must(SEED_ENTRIES[0])
+    const removed = removeEntry(SEED_ENTRIES, target.id)
+    expect(
+      rewriteMine(removed, target.id, { value: 1, approx: false })
+    ).toEqual(removed)
   })
 })
