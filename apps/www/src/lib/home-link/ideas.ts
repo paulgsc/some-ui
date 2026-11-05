@@ -78,12 +78,20 @@ function carriesBack(body: string, bundle: IdeaForHome): boolean {
   )
 }
 
-/** Whether a `409`'s body names notes home doesn't hold. */
-function namesNotes(body: string): boolean {
+/**
+ * The voice notes a `409`'s body names as not held on home
+ * (`FileHostError::ConflictNaming`, `details.notes`), or null when it names
+ * none: home's one refusal of a send whose takes haven't reached it yet, as
+ * `PUT /ideas/:id` and `./videos`' `PUT /studio/videos/…` both answer it.
+ */
+export function notesNotHeld(body: string): ReadonlyArray<string> | null {
   const answer = jsonOf(body)
-  if (!isRecord(answer) || !isRecord(answer.error)) return false
+  if (!isRecord(answer) || !isRecord(answer.error)) return null
   const { details } = answer.error
-  return isRecord(details) && Array.isArray(details.notes)
+  if (!isRecord(details) || !Array.isArray(details.notes)) return null
+  return details.notes.filter(
+    (note): note is string => typeof note === "string"
+  )
 }
 
 /** Whether this launch has told the native log home keeps no ideas. */
@@ -130,7 +138,7 @@ export async function sendIdeas(
       continue
     }
     if (answer.status === 401) return { kind: "forgotten" }
-    if (answer.status === 409 && namesNotes(answer.body)) continue
+    if (answer.status === 409 && notesNotHeld(answer.body) !== null) continue
     if (answer.status === 409 || answer.status === 422) {
       port.answered("refused", bundle)
       untaken(bundle, answer.status)

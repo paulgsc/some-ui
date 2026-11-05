@@ -400,7 +400,11 @@ declared (checked by reading every call site and by the tests named).
   `lib/home-link/set-aside.ts`, home's set-aside mark for each note let go
   on the phone that home holds, MIC2, and by one `PUT /ideas/:id` per
   Studio idea sent whole that home doesn't hold as it is, in
-  `lib/home-link/ideas.ts`, ST26) and Korean's look at the
+  `lib/home-link/ideas.ts`, ST26, and by one
+  `PUT /studio/videos/:video/queued/:rev` per Studio video kept for home to
+  make that home doesn't hold or hasn't refused as it is, then one
+  `GET /studio/videos` while any is kept, in `lib/home-link/videos.ts`,
+  ST33) and Korean's look at the
   routine's files (`lib/home-link/routine`, one `GET /routine/files` per
   look and one `PUT /routine/opened` of names per open, started by the
   lesson's own query and the open), and Studio's idea answers asking home
@@ -445,8 +449,11 @@ declared (checked by reading every call site and by the tests named).
   it asks again a second later, at most ten times, and not once a newer
   read or leaving the screen has made that one stale; and, per Play, one
   `GET /voice-notes/:id/audio` through `lib/home-link/voice-audio`'s `keep`,
-  sending nothing but the take's id; ST32), which are the other callers of
-  `lib/home-link`, is started by a tap in the Home server block of Settings
+  sending nothing but the take's id; ST32), and Studio's Finish
+  (`routes/_dashboard/_apk/journal/index.tsx`, ST33), which hands the voice
+  lane a video kept for home to make and hears what home answered and lists
+  of it through `lib/home-link/studio-videos`, sending nothing of its own,
+  which are the other callers of `lib/home-link`, is started by a tap in the Home server block of Settings
   (`components/settings/device-section.tsx`): the sync (published lessons
   and dramas, read with no credential), pairing (the code only), unpairing,
   and the clear of finished sessions home holds (`lib/home-link/clear`,

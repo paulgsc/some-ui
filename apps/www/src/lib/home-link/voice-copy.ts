@@ -185,6 +185,7 @@ import { lensEntriesHeld } from "./lens-record"
 import { notesHeld } from "./notes"
 import { askOnDrive } from "./on-drive"
 import { markSetAside } from "./set-aside"
+import { phoneVideos, sendVideos } from "./videos"
 import { askAudio } from "./voice-audio"
 
 /**
@@ -922,7 +923,8 @@ async function letGoOnHomesWord(send: HomeCall): Promise<void> {
  * again, then each copy waiting sent (`exchangeVoice`), then, once that
  * synced, home's word on which Studio takes Drive has (`letGoOnHomesWord`),
  * each Studio idea sent whole that home doesn't hold (`sendIdeas`, ST26),
- * whose said answers name notes that have just gone, and the set-aside
+ * whose said answers name notes that have just gone, each Studio video kept
+ * for home to make (`sendVideos`, ST33), whose takes name them too, and the set-aside
  * marks due (`markSetAside`, MIC2), which end the run in its exchange's
  * place. A run that sent all it had still fails, saying why, if that pass
  * left a note it could copy uncopied (`runEnd`, LA14).
@@ -944,6 +946,11 @@ export async function sendVoice(
     send
   )
   if (ideas.kind !== "synced") return runEnd(pass, ideas)
+  const videos = await sendVideos(
+    phoneVideos(localStorageOrNull(), at.pairing),
+    send
+  )
+  if (videos.kind !== "synced") return runEnd(pass, videos)
   const sendable = marksSendable(candidates())
   const marks: AsidePort = {
     due: () => home.marks.due().filter(sendable),

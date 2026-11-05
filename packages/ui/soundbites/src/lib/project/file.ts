@@ -100,6 +100,15 @@ const ProjectSchema = z.object({
       })
     )
     .optional(),
+  queued: z
+    .array(
+      z.object({
+        rev: z.number().int().positive(),
+        at,
+        takes: z.array(z.object({ scene: id, note: id })),
+      })
+    )
+    .optional(),
   origins: z
     .array(
       z.object({
@@ -186,6 +195,14 @@ function shapeProblems(project: Project): Array<string> {
   for (const [index, mark] of (project.accepted ?? []).entries()) {
     if (!takenFor(mark.shot, mark.take))
       problems.push(`accepted.${index}: no take ${mark.take} for that shot`)
+  }
+  for (const [index, mark] of (project.queued ?? []).entries()) {
+    if (!project.revisions.some((each) => each.rev === mark.rev))
+      problems.push(`queued.${index}: no rev ${mark.rev}`)
+    for (const take of mark.takes) {
+      if (!takenFor(take.scene, take.note))
+        problems.push(`queued.${index}: no take ${take.note} for that shot`)
+    }
   }
   if (project.sittings.slice(0, -1).some((each) => each.closedAt === null))
     problems.push("sittings: only the last can be open")

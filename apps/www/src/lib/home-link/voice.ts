@@ -4,7 +4,8 @@
  * paired (`./voice-copy`, which says which notes and how each is told), and
  * sent through the one wiring (`./lanes`) by `exchangeVoice`
  * (`lib/voice-home/home`), then each Studio idea sent whole (`./ideas`,
- * ST26), whose said answers name those notes, then the set-aside marks
+ * ST26), whose said answers name those notes, then each Studio video kept
+ * for home to make (`./videos`, ST33), whose takes do too, then the set-aside marks
  * owed for notes the owner let go (`./set-aside`, MIC2). The lane has no wing mark of its
  * own: the app shell mounts `useVoiceHome` on every screen, so notes go
  * from any wing.
@@ -30,6 +31,7 @@ import { homeLink, paired, pairingOf } from "./index"
 import type { KeptState } from "./kept-model"
 import type { Lane, LaneCounts } from "./lanes"
 import { useLaneHome } from "./lanes"
+import { videosMoved, videosWaiting } from "./videos"
 import {
   candidates,
   copyPasses,
@@ -39,6 +41,9 @@ import {
   watchVoiceNotes,
 } from "./voice-copy"
 
+/** The Studio videos kept for home that home doesn't hold yet, under the pairing now. */
+const videosNow = (): number => videosWaiting(localStorageOrNull(), pairingOf())
+
 /** The Studio ideas home doesn't hold yet, and holds, under the pairing now. */
 const ideasNow = (): ReturnType<typeof ideasWaiting> =>
   ideasWaiting(localStorageOrNull(), pairingOf())
@@ -46,16 +51,17 @@ const ideasNow = (): ReturnType<typeof ideasWaiting> =>
 export const voiceLane: Lane = {
   id: "voice",
   exchange: sendVoice,
-  // A mark owed for a note set aside (MIC2), and a Studio idea sent whole
-  // (ST26), are something to send too.
+  // A mark owed for a note set aside (MIC2), a Studio idea sent whole
+  // (ST26) and a video kept for home to make (ST33) are something to send too.
   revision: () => {
     const { waiting, aside } = phoneVoiceHome().getSnapshot()
-    return waiting.length + aside.owed.length + ideasNow().waiting
+    return waiting.length + aside.owed.length + ideasNow().waiting + videosNow()
   },
   subscribe: (listener) => {
     const stops = [
       phoneVoiceHome().subscribe(listener),
       ideasMoved.subscribe(listener),
+      videosMoved.subscribe(listener),
     ]
     return (): void => {
       for (const stop of stops) stop()
@@ -64,8 +70,10 @@ export const voiceLane: Lane = {
   useCounts: (): LaneCounts => {
     const home = phoneVoiceHome()
     const state = useSyncExternalStore(home.subscribe, home.getSnapshot)
-    // An idea sent, or home coming to hold one (ST26).
+    // An idea sent, or home coming to hold one (ST26); a video kept for
+    // home, or home answering for one (ST33).
     useSyncExternalStore(ideasMoved.subscribe, ideasMoved.getSnapshot)
+    useSyncExternalStore(videosMoved.subscribe, videosMoved.getSnapshot)
     // Read so a reflection, Jobs note, game bite, Studio take, soundbite,
     // lens take, LeetType take, idea take or take with no scene added, or a
     // new idea's sent, renders the offer again.
@@ -99,7 +107,8 @@ export const voiceLane: Lane = {
       held: { voice: state.held.length, ideas: sent.held },
       refused: { voice: state.refused.length, ideas: sent.refused },
       // A note not copied yet is no safer than one copied and not sent.
-      waiting: state.waiting.length + onPhone.length + sent.waiting,
+      waiting:
+        state.waiting.length + onPhone.length + sent.waiting + videosNow(),
       hidden: 0,
       pulled: true,
     }

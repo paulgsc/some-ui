@@ -189,6 +189,18 @@ describe("Studio", () => {
     fireEvent.click(screen.getByRole("button", { name: "Copy description" }))
     expect(copied).toEqual([upload.title, upload.description])
     expect(screen.getByLabelText(W.finish.linkLabel)).toBeInTheDocument()
+    // Home making it (ST33).
+    const home = screen.getByRole("region", { name: W.finish.toHome.heading })
+    expect(home).toHaveTextContent(W.finish.toHome.offer)
+    expect(home).toHaveTextContent(W.finish.toHome.drive)
+    fireEvent.click(
+      screen.getByRole("button", { name: W.finish.toHome.button })
+    )
+    expect(await screen.findByText(W.finish.toHome.handed)).toBeInTheDocument()
+    expect(
+      screen.queryByRole("button", { name: W.finish.toHome.button })
+    ).toBeNull()
+    expect(home).toHaveTextContent(/Kept on this phone since .*paired/)
   })
 
   it("shows the loop as steps with no video, then Record as the place to start once Claude's scenes are opened", async () => {

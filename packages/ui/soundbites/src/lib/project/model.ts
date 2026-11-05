@@ -23,6 +23,10 @@
  * - **A released revision is never edited** (ST7, `./finish`). Its mark
  *   and its link stay as written, it takes no new note, and a change makes
  *   the next revision.
+ * - **A queued revision stays queued as it was** (ST33). An episode's
+ *   revision marked ready is queued for home to make once, with the take
+ *   each scene says then (`queued`); the mark is never rewritten, so its
+ *   DNA (`./dna`) is the same bytes each time it goes.
  * - **The owner's word on whose idea a scene is stays** (ST5, `./origin`).
  * - **A take's fact check is the session's, and the owner's word is theirs**
  *   (SHOW SH5). `checks` holds each verdict a round brought (`./merge`),
@@ -41,7 +45,7 @@ import { assertNever } from "@some-ui/core-utils"
 import type { CutList, EpisodePin, ShotTime } from "@some-ui/video-render"
 import type { Primer } from "@soundbites/lib/journal/primer"
 
-import { BEST_OF, finishOf, isReleased, youtubeLink } from "./finish"
+import { BEST_OF, finishOf, isQueued, isReleased, youtubeLink } from "./finish"
 import { latestShot, sameJson, shotIds, shotIn } from "./lookup"
 import type { OriginMark } from "./origin"
 import { originRefusal } from "./origin"
@@ -130,6 +134,18 @@ type Accepted = {
   readonly at: string
 }
 
+/**
+ * The owner's word that home makes revision `rev` (ST33): when they finished
+ * it, and the take each scene says, as voice notes home holds by the take's
+ * id. A video's DNA is made from this and the revision (`./dna`).
+ */
+export type Queued = Mark & {
+  readonly takes: ReadonlyArray<{
+    readonly scene: string
+    readonly note: string
+  }>
+}
+
 /** Where revision `rev` went up, as the owner pasted it once uploaded. */
 type Release = Mark & {
   /** `https://youtu.be/<id>` (`youtubeLink`). */
@@ -149,6 +165,8 @@ export type Project = {
   readonly ready?: ReadonlyArray<Mark>
   /** Each revision released, in order; absent as `ready` is. */
   readonly released?: ReadonlyArray<Release>
+  /** Each revision queued for home to make (ST33), in order; absent before. */
+  readonly queued?: ReadonlyArray<Queued>
   /**
    * The owner's word on each scene's idea (ST5), in order; absent on a
    * project from before Watch asked it.
@@ -221,6 +239,8 @@ export type ProjectEvent =
   /** The owner keeps scene `shot`'s chosen take after three rounds (SH5). */
   | { readonly type: "bestKept"; readonly shot: string; readonly at: string }
   | ({ readonly type: "released" } & Release)
+  /** Queue the latest revision, ready, for home to make (ST33). */
+  | ({ readonly type: "queued" } & Mark)
 
 export type ProjectEffect =
   | { readonly type: "save"; readonly project: Project }
@@ -253,6 +273,7 @@ export type Refusal =
   | "otherIdea"
   | "notYours"
   | "notInFormat"
+  | "noTemplate"
 
 export type ProjectStep = {
   readonly state: ProjectState
@@ -467,7 +488,7 @@ export function isAppendOnly(before: Project, after: Project): boolean {
     )
   })
   const marks = (
-    ["ready", "released", "origins", "checks", "accepted"] as const
+    ["ready", "released", "origins", "checks", "accepted", "queued"] as const
   ).every((key) =>
     (before[key] ?? []).every((mark, index) =>
       sameJson(mark, after[key]?.[index])
@@ -757,6 +778,26 @@ export function step(state: ProjectState, event: ProjectEvent): ProjectStep {
         released: [
           ...(project.released ?? []),
           { rev: event.rev, at: event.at, url },
+        ],
+      })
+    }
+
+    case "queued": {
+      // A video of your own waits on its template (ST29).
+      if (project.episode === undefined) return refuse(state, "noTemplate")
+      if (event.rev !== latest(project).rev) return refuse(state, "notLatest")
+      if (isQueued(project, event.rev)) return refuse(state, "duplicate")
+      const finish = finishOf(project)
+      if (finish.kind !== "ready") return refuse(state, "notReady")
+      const takes = latest(project).cutList.shots.flatMap((shot) => {
+        const note = project.chosen[shot.id]
+        return note === undefined ? [] : [{ scene: shot.id, note }]
+      })
+      return changed(state, {
+        ...project,
+        queued: [
+          ...(project.queued ?? []),
+          { rev: event.rev, at: event.at, takes },
         ],
       })
     }

@@ -136,6 +136,11 @@ function isMarked(project: Project, rev: number): boolean {
   return project.ready?.some((each) => each.rev === rev) === true
 }
 
+/** Whether revision `rev` is queued for home to make (ST33). */
+export function isQueued(project: Project, rev: number): boolean {
+  return project.queued?.some((each) => each.rev === rev) === true
+}
+
 /** A revision `rev` has been released, so it takes no new note. */
 export function isReleased(project: Project, rev: number): boolean {
   return project.released?.some((each) => each.rev === rev) === true

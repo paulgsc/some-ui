@@ -74,6 +74,13 @@ export {
   waitingIds,
 } from "./lib/project/home"
 export type { StudioNote } from "./lib/project/home"
+export type { VideoForHome } from "./lib/project/dna"
+export type {
+  HomeVideo,
+  HomeVideos,
+  VideoAnswer,
+  VideosHome,
+} from "./lib/studio/home-videos"
 export { ProjectFullError, ProjectRewriteError } from "./lib/project/store"
 export type { Friction, ProjectStore } from "./lib/project/store"
 export type { LetGoChoice } from "./lib/project/let-go"

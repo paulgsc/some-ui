@@ -8,7 +8,8 @@
  * scene's as home answered it (`./prompts`), each study note's SHA-256 as
  * home answered for it (`./notes`), each grammar-lens entry's digest as home
  * read it back (`./lens-record`), each Studio idea's as home answered it
- * (`./ideas`, held or refused), and the digests home
+ * (`./ideas`, held or refused), each Studio video kept for home to make as
+ * home answered it (`./videos`), and the digests home
  * refused, so the drain does not offer an unchanged refused item again
  * (it goes once its bytes change). Kept for one pairing (`pairing`, the
  * link's id for it): another pairing starts from nothing. Bookkeeping, not
@@ -44,6 +45,7 @@ export type Sent = {
   readonly notes: Readonly<Record<string, string>>
   readonly lens: Readonly<Record<string, string>>
   readonly ideas: Readonly<Record<string, string>>
+  readonly videos: Readonly<Record<string, string>>
 }
 
 type Store = KeyedStorage | null
@@ -60,6 +62,7 @@ const emptyFor = (pairing: string): Sent => ({
   notes: {},
   lens: {},
   ideas: {},
+  videos: {},
 })
 
 /** The string entries of `value`, and whether every entry was one. */
@@ -94,6 +97,7 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
   const notes = stringsOf(parsed.notes)
   const lens = stringsOf(parsed.lens)
   const ideas = stringsOf(parsed.ideas)
+  const videos = stringsOf(parsed.videos)
   return {
     value: {
       pairing: parsed.pairing,
@@ -107,6 +111,7 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
       notes: notes.value,
       lens: lens.value,
       ideas: ideas.value,
+      videos: videos.value,
     },
     whole: [
       sessions,
@@ -119,6 +124,7 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
       notes,
       lens,
       ideas,
+      videos,
     ].every((kind) => kind.whole),
   }
 }
@@ -192,6 +198,7 @@ export function rememberSent(
     notes: keptOnly({ ...sent.notes, ...more.notes }, stays.notes),
     lens: keptOnly({ ...sent.lens, ...more.lens }, stays.lens),
     ideas: { ...sent.ideas, ...more.ideas },
+    videos: { ...sent.videos, ...more.videos },
   }
   // Unwritten (full): the next send carries these again, and home says
   // unchanged.

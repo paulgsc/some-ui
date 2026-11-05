@@ -122,6 +122,10 @@ const HOME_LINK_CALLERS = new Set([
   // keeps as the screen opens and on Try again, a search (a blank one reads
   // the newest) or Show the newest, and for one take's audio on each Play.
   "lib/take-library/index.ts",
+  // LA8 (ST33): Studio's Finish, which hands the voice lane a video kept for
+  // home to make and hears what home answered and lists of it
+  // (`studioVideos`), sending nothing of its own.
+  "routes/_dashboard/_apk/journal/index.tsx",
 ])
 
 /**

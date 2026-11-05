@@ -142,7 +142,7 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
       },
       { kind: "ideas", label: "Studio ideas, each sent whole", one: "idea" },
     ],
-    waits: waits("voice note or idea", "voice notes and ideas"),
+    waits: waits("voice note, idea or video", "voice notes, ideas and videos"),
     phoneOnly: `Voice notes are only on this phone, and in Drive when you share them. ${PAIR}`,
     partly:
       "Some voice notes are on home. New ones stay on this phone until it is paired again.",
