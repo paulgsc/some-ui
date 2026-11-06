@@ -1760,6 +1760,129 @@
           "amendments": []
         }
       ]
+    },
+    {
+      "id": "call-kept",
+      "name": "Home keeps every week of the call",
+      "why": "The weekly call's weeks live in paulgsc/testing, which keeps only the last few, so home keeps every one (the owner's decision on #2635, 2026-11-06): a timer on home reads the repository's index and stores each week it lacks, and the routine lets a week leave the repository only once home's call index in the mailbox lists it, byte for byte.",
+      "paths": [
+        "server:apps/servers/file_host/src/call_weeks",
+        "server:crates/db/call_week",
+        "server:apps/servers/file_host/src/mailbox/index/call.rs",
+        "some-ui:packages/video-render/CALL-ROUTINE.md"
+      ],
+      "modules": [],
+      "objectives": [
+        {
+          "id": "CW1",
+          "kind": "OA4",
+          "property": "outcome",
+          "claim": "Every week of the call the repository lists is kept on home once, as first served, and a week that fails is named by why and taken on a later pass.",
+          "requirement": "Each week call/index.json lists that home holds no week of is fetched, checked (some-ui.call-week/1, for exactly the days the index names, at most 1 MiB) and stored byte for byte with its SHA-256 in call_week, never updated or deleted; a week that fails is counted by kind (timeout, connect, transport, refused, too_big, unreadable), the other weeks are still taken, and it is asked again on the next pass.",
+          "verdict": "holds",
+          "conclusion": "Shown on home's own SQLite in the store's and the pass's tests: each week is kept once as served, an edit in the repository is not taken, a failing week is named by kind while the others are kept, and it is taken once it reads. A storage failure ends the pass and is logged as one; nothing tells the owner of a failure yet (CW2).",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "A week is stored byte for byte with its SHA-256, a second put of other bytes for the same week adds nothing, and UPDATE and DELETE are refused.",
+              "ref": "server:crates/db/call_week/src/lib.rs"
+            },
+            {
+              "class": "measured",
+              "says": "A pass fetches only the weeks home lacks, oldest first; a refusal, a timeout, an unreadable or oversized body are each counted by kind, the good weeks are still kept, and the failed ones are asked again.",
+              "ref": "server:apps/servers/file_host/src/call_weeks/pass.rs"
+            }
+          ],
+          "proof": [
+            "server:crates/db/call_week/src/lib.rs#a_week_is_kept_once_as_served",
+            "server:crates/db/call_week/src/lib.rs#no_kept_week_is_rewritten_or_deleted",
+            "server:apps/servers/file_host/src/call_weeks/pass.rs#each_listed_week_home_lacks_is_fetched_once_and_kept_as_served",
+            "server:apps/servers/file_host/src/call_weeks/pass.rs#what_does_not_check_out_is_counted_by_kind_and_left_for_the_next_pass",
+            "server:apps/servers/file_host/src/mailbox/pass.rs#the_call_index_is_put_once_a_week_is_held_and_again_for_each_new_week"
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        },
+        {
+          "id": "CW2",
+          "kind": "OA6",
+          "property": "outcome",
+          "claim": "A call weeks worker that has stopped, or keeps failing, reads as such rather than as a quiet week.",
+          "requirement": "The worker says when it last tried and whether it is on, and the owner is told when it has not tried within two intervals, or when a week the repository lists has not reached home within a day.",
+          "verdict": "unproven",
+          "conclusion": "Only a log line says a pass failed, and no metric or alert exists yet. The weekly routine names in its pull request every week past keep that home's call index doesn't list, so a stopped worker shows there once the repository holds more than keep weeks, `keep` weeks after it stopped at the latest.",
+          "tracked": "server#684",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "The routine keeps a week past keep that home's call index doesn't list, byte for byte, and says so in its pull request.",
+              "ref": "some-ui:packages/video-render/CALL-ROUTINE.md"
+            },
+            {
+              "class": "unknown",
+              "says": "No metric or alert covers the worker yet.",
+              "ref": "server#684"
+            }
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        },
+        {
+          "id": "CW3",
+          "kind": "RE3",
+          "property": "work",
+          "claim": "Home reads the repository once an hour, and fetches a week only while it lacks it.",
+          "requirement": "A pass is one request for the index plus one per listed week home holds no week of; a week home holds is never fetched again; a pass that failed is tried again after 10 minutes, doubled per failure in a row, to at most the hourly interval; each answer is at most 1 MiB.",
+          "verdict": "unproven",
+          "conclusion": "The pass tests show the requests a pass makes and the retry spacing, from 10 minutes to the hour. Not bounded: an answer over 1 MiB is refused only once it has been read whole, as the game feed's are (GA3).",
+          "tracked": "server#684",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "A second pass over the same index asks for the index alone, and a failing source is asked again after 600, 1200 and 2400 s, then hourly.",
+              "ref": "server:apps/servers/file_host/src/call_weeks/pass.rs"
+            }
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        },
+        {
+          "id": "CW4",
+          "kind": "RE9",
+          "property": "work",
+          "claim": "What home keeps of the call grows by one week a week, and is kept for good.",
+          "requirement": "call_week gains one row per week of the call, its file as served (about 80 KB for the first week), never updated or deleted; nothing else is kept.",
+          "verdict": "holds",
+          "conclusion": "One row per week, keyed by its first day, append-only by trigger: about 4 MB a year at the first week's size. Shown in the store's tests.",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "call_week's key is the week's first day, and its triggers refuse UPDATE and DELETE.",
+              "ref": "server:migrations/20261106000100_create_call_week.up.sql"
+            },
+            {
+              "class": "measured",
+              "says": "The first week, 2026-10-30, is 81,299 bytes.",
+              "ref": "https://github.com/paulgsc/testing/blob/main/call/2026-10-30.json"
+            }
+          ],
+          "proof": [
+            "server:crates/db/call_week/src/lib.rs#a_week_is_kept_once_as_served",
+            "server:crates/db/call_week/src/lib.rs#no_kept_week_is_rewritten_or_deleted"
+          ],
+          "watch": {
+            "by": "dashboard",
+            "ref": "server:infra/grafana/dashboards/storage.jsonnet"
+          },
+          "amendments": []
+        }
+      ]
     }
   ],
   "synchronous": [
@@ -1858,7 +1981,7 @@
     {
       "store": "mailbox:item",
       "class": "cache",
-      "growth": "Per file the routine or home puts (folders brief, decisions, scout, scene, drama, run, opened, leetype, leetype-log, transcript, index, reflection, prompt), body <= MAX_BODY_BYTES = 1,048,576; a few KB a day per README (a written reflection is its typed line, its session and when, paulgsc/some-ui#2178; a drama prompt about 40 KB per ask, its text at most 256 KiB, paulgsc/some-ui#2179; a list of the takes Drive holds about 78 B a take, at most 10,000 takes, one per build-journal session that lists Drive's takes folder, in brief, paulgsc/some-ui#2401); bytes leave once archived. Home's index (index) is one per routine (jobs, reflections), the latest only: putting a new one drops the one before of its routine in the same write, and it is never archived (owner, paulgsc/server#509). The reflections index grows by about 1 KB a day (the bases answered and the distinct word ids its decks use); the rest of it is bounded by what still waits.",
+      "growth": "Per file the routine or home puts (folders brief, decisions, scout, scene, drama, run, opened, leetype, leetype-log, transcript, index, reflection, prompt), body <= MAX_BODY_BYTES = 1,048,576; a few KB a day per README (a written reflection is its typed line, its session and when, paulgsc/some-ui#2178; a drama prompt about 40 KB per ask, its text at most 256 KiB, paulgsc/some-ui#2179; a list of the takes Drive holds about 78 B a take, at most 10,000 takes, one per build-journal session that lists Drive's takes folder, in brief, paulgsc/some-ui#2401); bytes leave once archived. Home's index (index) is one per routine (jobs, reflections, call), the latest only: putting a new one drops the one before of its routine in the same write, and it is never archived (owner, paulgsc/server#509). The reflections index grows by about 1 KB a day (the bases answered and the distinct word ids its decks use); the rest of it is bounded by what still waits. The call index grows by about 100 B a week (one week's days and hash).",
       "horizon": "a file's bytes are deleted once it has been live >= 30 days (ARCHIVE_MIN_AGE_DAYS) and home has archived them (home waits MAILBOX_ARCHIVE_DAYS, >= 30); metadata moves to `archived`. An index's row and bytes go when home puts a newer one of its routine, with no `archived` row",
       "family": "routine-to-home"
     },
@@ -2329,6 +2452,12 @@
       "growth": "bounded: at most MAX_SESSIONS_PER_SUBJECT = 32 per account (a new one past it ends the one closest to expiring); 30-day sliding expiry.",
       "horizon": "expires_at (30 days, slid on GET /auth/session); expired rows are deleted when someone next signs in (create_session), not on a timer",
       "family": "what-is-kept"
+    },
+    {
+      "store": "server:call_week",
+      "class": "record",
+      "growth": "One row per week of the weekly call home takes from paulgsc/testing: the week's file as served (about 80 KB) with its SHA-256; append-only, triggers abort UPDATE and DELETE. The repository keeps the last few weeks; this keeps every one.",
+      "family": "call-kept"
     },
     {
       "store": "server:curriculum",
@@ -3363,6 +3492,64 @@
           "says": "Finish reads back each queued video's stage from home.",
           "status": "live",
           "ref": "some-ui:apps/www/src/lib/home-link/videos.ts#videosListed"
+        }
+      ],
+      "checks": []
+    },
+    {
+      "id": "call-weeks",
+      "name": "Keeping every week of the call on home",
+      "why": "The routine writes each week to paulgsc/testing, home reads its index hourly and keeps each week it lacks, and home's call index in the mailbox tells the routine which weeks may leave the repository.",
+      "serves": ["call-kept"],
+      "witnesses": ["CW1"],
+      "segments": [
+        {
+          "id": "routine",
+          "name": "The weekly call's routine, at Anthropic, writes the week and the index to paulgsc/testing, and prunes only what home's call index lists. Someone else's.",
+          "owner": "foreign",
+          "on": "outside",
+          "paths": ["some-ui:packages/video-render/CALL-ROUTINE.md"]
+        },
+        {
+          "id": "github",
+          "name": "GitHub serves paulgsc/testing's call folder. Someone else's.",
+          "owner": "foreign",
+          "on": "outside",
+          "paths": []
+        },
+        {
+          "id": "internet",
+          "name": "Home reaches GitHub over the internet.",
+          "owner": "network",
+          "on": "between",
+          "paths": []
+        },
+        {
+          "id": "keeper",
+          "name": "The call weeks worker reads the index and keeps each week home lacks. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": [
+            "server:apps/servers/file_host/src/call_weeks",
+            "server:crates/db/call_week"
+          ]
+        },
+        {
+          "id": "index",
+          "name": "Home's call index in the mailbox lists every week it holds. Ours, on Cloudflare.",
+          "owner": "ours",
+          "on": "mailbox",
+          "paths": [
+            "server:apps/servers/file_host/src/mailbox/index/call.rs",
+            "some-ui:apps/mailbox"
+          ]
+        }
+      ],
+      "signals": [
+        {
+          "says": "The routine's pull request names each week past keep that home's call index doesn't list; it misses a stopped worker until the repository holds more than keep weeks.",
+          "status": "live",
+          "ref": "some-ui:packages/video-render/CALL-ROUTINE.md"
         }
       ],
       "checks": []

@@ -228,7 +228,7 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
   copy. Home puts a new one only when something it counts arrives or a moment the index
   carries passes (for the Jobs index, an open pick lapsing): a new day alone moves nothing
   else, so a day with neither puts none. Its `routine` names the routine, as the file's
-  name does: `jobs` or `reflections`. The Worker holds every index to its routine's keys and
+  name does: `jobs`, `reflections` or `call`. The Worker holds every index to its routine's keys and
   no other, a name that carries the body's `routine`, and no audio or Drive link, by the same
   tests as a transcript, each refusal with its reason (`an index carries no audio` or
   `an index names no Drive file`). The Jobs index is
@@ -276,6 +276,17 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
   and `prompts` lists. It carries no reflection's, prompt's or transcript's words:
   reflections and prompts are named by their names here and ids, notes by their ids, and
   transcripts by their name here.
+  The weekly call's index is
+  `{"schema":"some-ui.routine-index/1","routine":"call","asOf","held":[{"from","to","sha256"}]}`
+  (paulgsc/server `mailbox::index::call`, paulgsc/some-ui#2635): `asOf`, when home last took a
+  week of the call from `paulgsc/testing`, and `held`, every week home holds, newest first, by its
+  first and last day and the SHA-256 of the bytes home keeps. Home puts it only when it takes a
+  new week, and none before it holds one. The call's routine reads it to let a week leave
+  `paulgsc/testing` only once home holds that week, byte for byte
+  (`packages/video-render/CALL-ROUTINE.md`, step 6), so the Worker holds it to more than its
+  keys: an `asOf` that is an instant, and a `held` list whose every week has exactly `from`,
+  `to` and `sha256`, two calendar days with `to` no earlier than `from`, a SHA-256 in lower-case
+  hex, and a `from` no other week in the list has. It carries no week's words.
 - **A written reflection** is `{"schema":"some-ui.reflection/1","reflection","session","at","text"}`:
   the phone's id for it (which the name carries), the session it is about (the phone's id for
   it, as a reflection transcript's `ref` names it), when it was written, and the typed line.
@@ -323,7 +334,8 @@ names no Drive file or link` when it names Drive or a file id), a take with any 
   and pick), so a few hundred bytes a day; only the latest is kept, and home puts none over
   the cap. A reflections index grows with the bases answered (tens of bytes each) and the
   distinct word ids the decks use (about 35 bytes each, a few new ones per scene), so about
-  1 KB a day; the rest of it is bounded by what still waits.
+  1 KB a day; the rest of it is bounded by what still waits. The call index grows by about
+  100 bytes a week.
 
 ## Limits
 
