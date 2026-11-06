@@ -417,21 +417,15 @@ The spec walks a screen tap by tap (`holdStill`,
 box in its scrolled content before and after each tap, once animations have
 ended, and fails on any that moved. A tap whose point is a new layout declares
 it with `reflows` and says why (aph's Mine/Theirs is another form; "N older"
-shows more of a list); a message, a preview or a refusal never is one. The
-`planted-shift` fixture is its self-test: a line mounted above a button,
-which the measure must report.
+shows more of a list); a message, a preview or a refusal never is one.
 
 A CLS budget would not have caught any of this. The Layout Instability API
 leaves out every shift within 500ms of an input (`hadRecentInput`), which is
 every shift a tap causes, so a screen that moves under each tap scores zero.
 
-What it walks today is aph: the logger, mine and theirs, digit by digit to a
-figure past its last digit, approx, each checkpoint, a label, an earlier and a
-later day, a save kept and a save refused; History's drafts, submitted and
-refused; and an entry's sheet, my figure retyped, approx, labels, a save
-refused. A phone screen it does not walk is outside HS1's family until a
-walk is added here: the fixture goes on the phone page
-(`./phone-page/fixtures.tsx`), the walk in the spec.
+The walks, and HS1's Family, are in the spec. A phone screen it does not
+walk is outside HS1 until one is added there, with its fixture on the phone
+page (`./phone-page/fixtures.tsx`).
 
 ### 3. CI
 

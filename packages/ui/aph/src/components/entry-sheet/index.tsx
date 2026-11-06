@@ -311,8 +311,6 @@ const MineEditor = ({
           Save
         </Button>
       </div>
-      {/* This sheet grows upward: a line that came would move every
-          control above it (HS1). */}
       <Reserved role="alert" className="text-destructive text-xs">
         {refused && "Not saved: the phone did not keep it."}
       </Reserved>

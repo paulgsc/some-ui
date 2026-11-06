@@ -403,9 +403,11 @@ export type Stop = {
   readonly go: (page: Page) => Promise<void>
 }
 
-/** Taps the first button named `name`. */
-export const tap = (page: Page, name: string | RegExp): Promise<void> =>
-  page.getByRole("button", { name }).first().click()
+/** Taps the first button named `name` on the page, or in an open sheet. */
+export const tap = (
+  within: Pick<Page, "getByRole">,
+  name: string | RegExp
+): Promise<void> => within.getByRole("button", { name }).first().click()
 
 /**
  * Takes `stops` in order from where the page is, measuring each screen once

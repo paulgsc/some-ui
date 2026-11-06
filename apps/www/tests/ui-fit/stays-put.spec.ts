@@ -15,9 +15,7 @@
  * - Proof: this spec, which takes every tap and compares every target's box
  *   before and after (`../layout-invariants/stays-put.ts`), and fails on the
  *   planted shift if the measure goes blind.
- * - Tolerance: a screen this spec does not walk. `Reserved`
- *   (@some-ui/shared) is the room a new one keeps; a walk here is how it is
- *   held.
+ * - Tolerance: a screen this spec does not walk.
  *
  * Run against a built phone page:
  *
@@ -28,7 +26,7 @@
 import { expect, test, type Page } from "@playwright/test"
 import { holdStill, type Tap } from "@tests/layout-invariants/stays-put"
 
-import { PHONE_VIEWPORTS, servePhonePage } from "./harness"
+import { PHONE_VIEWPORTS, servePhonePage, tap } from "./harness"
 
 const PAGE = servePhonePage()
 
@@ -49,7 +47,7 @@ const button = (
   scope: Scope = onPage
 ): Tap => ({
   does,
-  act: (page) => scope(page).getByRole("button", { name }).first().click(),
+  act: (page) => tap(scope(page), name),
 })
 
 const radio = (name: string | RegExp, does: string): Tap => ({
@@ -68,12 +66,14 @@ const refuseWrites: Tap = {
     }),
 }
 
-/** The logger, mine: 5,100 typed digit by digit, past its last digit, and saved. */
+/** The logger, mine: 51,000 typed digit by digit, one past the last digit, and saved. */
 const LOG_MINE: ReadonlyArray<Tap> = [
   key("5"),
   key("1"),
   key("0"),
   key("0"),
+  key("0"),
+  // A sixth digit, past MAX_DIGITS (lib/draft.ts): refused, and still nothing moves.
   key("0"),
   key("Delete digit"),
   button("~ approx", "turns approx off"),
@@ -100,6 +100,7 @@ const LOG_THEIRS: ReadonlyArray<Tap> = [
   },
   key("5"),
   key("1"),
+  key("0"),
   key("0"),
   key("0"),
   key("0"),

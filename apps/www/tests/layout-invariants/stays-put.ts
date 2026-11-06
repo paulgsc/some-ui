@@ -1,17 +1,7 @@
 /**
- * HS1's measure: between two taps on one screen, a tap target still on the
- * screen keeps its box. A thumb and an eye aim where a control was a moment
- * ago, so a control that moved under them takes the next tap meant for
- * another (aph's keypad dropped 48px at the first digit typed).
- *
- * The geometry, as `./geometry.ts` asks: not the CSS that fixed one screen,
- * but the property every fix keeps. Block and flex layout is cumulative, so
- * anything a tap mounts, unmounts or resizes in flow moves whatever follows
- * it, and in a sheet anchored to the bottom, which grows upward, whatever
- * precedes it. The Layout Instability API does not see this: it leaves out
- * every shift within 500ms of an input (`hadRecentInput`), which is every
- * shift a tap causes, so a CLS budget passes a screen that moves under each
- * tap. This compares boxes instead.
+ * HS1's measure (`docs/ui-fit/README.md` 2i): between two taps on one
+ * screen, a tap target still on the screen keeps its box. The property every
+ * fix keeps, as `./geometry.ts` asks, not the CSS that fixed one screen.
  *
  * A box is measured where it sits in its scrolled content (its viewport box
  * plus every ancestor's scroll offset), so the scroll Playwright makes to
@@ -37,7 +27,7 @@ const TARGETS = [
 /** Sub-pixel rounding at fractional zoom is not a move. */
 const SLACK_PX = 0.5
 
-type Box = { x: number; y: number; width: number; height: number }
+export type Box = { x: number; y: number; width: number; height: number }
 
 type Target = { name: string; box: Box }
 
@@ -84,7 +74,8 @@ async function targetsOn(page: Page): Promise<Record<string, Target>> {
   }, TARGETS)
 }
 
-const moved = (a: Box, b: Box): boolean =>
+/** Whether `b` is not where `a` was, past sub-pixel rounding. */
+export const moved = (a: Box, b: Box): boolean =>
   Math.abs(a.x - b.x) > SLACK_PX ||
   Math.abs(a.y - b.y) > SLACK_PX ||
   Math.abs(a.width - b.width) > SLACK_PX ||
@@ -151,7 +142,7 @@ export async function holdStill(
  * Waits for what a tap started (a sheet sliding in, a transition) to end: a
  * box read mid-slide is not where it rests.
  */
-export async function settled(page: Page): Promise<void> {
+async function settled(page: Page): Promise<void> {
   await page.waitForFunction(() =>
     document.getAnimations().every(
       (animation) =>

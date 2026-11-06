@@ -544,7 +544,9 @@ const Readout = ({
         {unusual && (
           <span className="flex items-center justify-center gap-1.5">
             <TriangleAlert aria-hidden className="size-4 shrink-0" />
-            Outside your usual {formatValue(settings.usualLow)}–
+            {/* Short enough for one line at 360px in any font the phone
+                or CI draws it in: a second line would move the keypad. */}
+            Usual is {formatValue(settings.usualLow)}–
             {formatValue(settings.usualHigh)}. Typo?
           </span>
         )}
