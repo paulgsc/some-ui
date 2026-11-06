@@ -1892,7 +1892,7 @@
           "kind": "OA2",
           "property": "outcome",
           "claim": "Every week of the call home holds becomes a video, and a week that hasn't is tried again.",
-          "requirement": "Each week in call_week is written to data/call-weeks; within the next hourly pass the render worker records it from the pinned stage with each scene said by home's Kokoro speaker, renders it, and moves the finished folder into data/renders/call/<from>/ whole; a week that fails is left without a folder and tried again each hour; no finished video is deleted.",
+          "requirement": "Each week in call_week is written to the call_weeks volume; within the next hourly pass the render worker records it from the pinned stage with each scene said by home's Kokoro speaker, renders it, and moves the finished folder into data/renders/call/<from>/ whole; a week that fails is left without a folder and tried again each hour; no finished video is deleted.",
           "verdict": "unproven",
           "conclusion": "Rehearsed with the containers set up as on home: the worker rendered the real week of Oct 30, twice, to the same files. A week that keeps failing is only logged; nothing tells you a week has waited for its video.",
           "tracked": "some-ui#2635",
@@ -1904,7 +1904,7 @@
             },
             {
               "class": "structural",
-              "says": "Each week in data/call-weeks with no call.mp4 under data/renders/call/<from>/ is rendered, oldest first, finished folders are moved into place whole, and nothing deletes one.",
+              "says": "Each week in the call_weeks volume with no call.mp4 under data/renders/call/<from>/ is rendered, oldest first, finished folders are moved into place whole, and nothing deletes one.",
               "ref": "server:infra/render/render-calls.sh"
             },
             {
