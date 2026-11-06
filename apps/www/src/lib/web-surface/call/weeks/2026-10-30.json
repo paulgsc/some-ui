@@ -782,7 +782,8 @@
           "repo": "server",
           "kind": "pr",
           "number": 676,
-          "title": "feat(voice): home's take library, its search, and a take played from home (ST32)"
+          "title": "feat(voice): home's take library, its search, and a take played from home (ST32)",
+          "change": "story"
         },
         {
           "repo": "server",
@@ -1043,8 +1044,7 @@
           "repo": "server",
           "kind": "pr",
           "number": 598,
-          "title": "feat(sharing): retire the sharing choice: a paired phone's writes are taken, /sharing is gone (HF8)",
-          "change": "story"
+          "title": "feat(sharing): retire the sharing choice: a paired phone's writes are taken, /sharing is gone (HF8)"
         },
         {
           "repo": "server",
@@ -1106,14 +1106,14 @@
           "kind": "pr",
           "number": 2429,
           "title": "feat(voice-capture): the take kit, one take per phone, and the shared simulated microphone (MIC1)",
-          "change": "story"
+          "change": "defect"
         },
         {
           "repo": "some-ui",
           "kind": "pr",
           "number": 2430,
           "title": "feat(shared): the take pattern, one take button, row and list with a closed options type (MIC2)",
-          "change": "story"
+          "change": "defect"
         },
         {
           "repo": "some-ui",
@@ -1155,7 +1155,7 @@
           "kind": "pr",
           "number": 2439,
           "title": "feat(topik): grammar-lens takes and scene voice on the take pattern (MIC5, part 1)",
-          "change": "story"
+          "change": "defect"
         },
         {
           "repo": "some-ui",
@@ -2174,15 +2174,13 @@
           "repo": "server",
           "kind": "pr",
           "number": 582,
-          "title": "feat(transcribe): keep how sure Whisper was of each heard word, and file it (ST22)",
-          "change": "story"
+          "title": "feat(transcribe): keep how sure Whisper was of each heard word, and file it (ST22)"
         },
         {
           "repo": "server",
           "kind": "pr",
           "number": 594,
-          "title": "feat(transcribe): hear each piece of speech in its own language, and keep each word's (ST23)",
-          "change": "story"
+          "title": "feat(transcribe): hear each piece of speech in its own language, and keep each word's (ST23)"
         },
         {
           "repo": "server",
