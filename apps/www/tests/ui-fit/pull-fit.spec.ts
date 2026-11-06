@@ -7,9 +7,11 @@
  * them), in each phase it shows something (`./phone-page/pull.tsx`). Each
  * must leave the page as it was (the measure the panel sweep uses), keep its
  * words on one line (two for a failure that names what), and sit inside the
- * phone across; at rest (armed, checking, done, failed, offline) it shows
- * whole inside the page body, below the header. Pulling, it is still coming
- * down from under the header, and the body clips what has not come down yet.
+ * phone across. Armed, the pill rests whole inside the page body, below the
+ * header; pulling, it is still coming down from under the header, and the
+ * body clips what has not come down yet. Once let go (checking, done,
+ * failed, offline), how it went is a notice on the plane over the screen,
+ * where the shell puts it (HS1).
  *
  * Run against a built phone page:
  *
@@ -29,22 +31,25 @@ import type { PullId } from "./phone-page/pull"
 
 const PAGE = servePhonePage()
 
-/** Each phase, and whether the indicator is at rest in it. */
+/**
+ * Each phase, and where it is said: on the pill still coming down, on the
+ * pill at rest, or in a notice.
+ */
 const PHASES = {
-  "pull-pulling": false,
-  "pull-armed": true,
-  "pull-checking": true,
-  "pull-done": true,
-  "pull-failed": true,
-  "pull-failed-named": true,
-  "pull-offline": true,
-} as const satisfies Record<PullId, boolean>
+  "pull-pulling": "coming",
+  "pull-armed": "rest",
+  "pull-checking": "notice",
+  "pull-done": "notice",
+  "pull-failed": "notice",
+  "pull-failed-named": "notice",
+  "pull-offline": "notice",
+} as const satisfies Record<PullId, "coming" | "rest" | "notice">
 
 test.describe("the drag-down indicator fits the phone", () => {
   PAGE.skipUnbuilt()
 
   for (const phone of PHONE_VIEWPORTS) {
-    for (const [fixture, atRest] of Object.entries(PHASES)) {
+    for (const [fixture, where] of Object.entries(PHASES)) {
       test(`${fixture} at ${phone.name} (${phone.width}x${phone.height})`, async ({
         page,
       }) => {
@@ -54,8 +59,13 @@ test.describe("the drag-down indicator fits the phone", () => {
         page.on("pageerror", (error) => errors.push(error.message))
         await page.goto(PAGE.url(fixture), { waitUntil: "load" })
 
-        const pill = page.getByRole("status").locator("p")
-        await expect(pill).toHaveText(/\S/)
+        const said = page.locator("[data-pull-words]")
+        await expect(said).toHaveText(/\S/)
+        if (where === "notice") {
+          await expect(
+            page.locator("[data-notice-plane] [role=status] [data-pull-words]")
+          ).toHaveCount(1)
+        }
         expect(errors, errors.join("\n")).toEqual([])
 
         const { mounted, violations } = await findViolations(page)
@@ -65,8 +75,8 @@ test.describe("the drag-down indicator fits the phone", () => {
         ).toEqual([])
 
         const fit = await page.evaluate(() => {
-          const p = document.querySelector<HTMLElement>("[role=status] p")!
-          const words = p.querySelector("span")!
+          const p = document.querySelector<HTMLElement>("[data-pull-words]")!
+          const words = p.querySelector("span:last-child")!
           const body = document.querySelector<HTMLElement>(
             "[data-scroll-intent=page]"
           )!
@@ -98,7 +108,7 @@ test.describe("the drag-down indicator fits the phone", () => {
         expect(fit.left).toBeGreaterThanOrEqual(0)
         expect(fit.right).toBeLessThanOrEqual(fit.width)
         expect(fit.pageWidth).toBeLessThanOrEqual(fit.width)
-        if (atRest) {
+        if (where === "rest") {
           expect(fit.top).toBeGreaterThanOrEqual(fit.roomTop)
           expect(fit.bottom).toBeLessThanOrEqual(fit.roomBottom)
         }

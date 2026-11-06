@@ -44,12 +44,12 @@ afterEach(() => {
 
 describe("AccountUnavailableBanner", () => {
   it("is silent while learning on the device and while signed in", () => {
-    const { container, rerender } = render(<AccountUnavailableBanner />)
-    expect(container.textContent).toBe("")
+    const { rerender } = render(<AccountUnavailableBanner />)
+    expect(screen.queryByRole("status")).toBeNull()
 
     authority.dispatch({ type: "session-started", adopt: true })
     rerender(<AccountUnavailableBanner />)
-    expect(container.textContent).toBe("")
+    expect(screen.queryByRole("status")).toBeNull()
   })
 
   it("says the session ended, that learning goes on here, and links to sign in from where the person is", () => {
@@ -70,9 +70,10 @@ describe("AccountUnavailableBanner", () => {
   it("goes away once the person has chosen the device", () => {
     authority.dispatch({ type: "session-started", adopt: true })
     authority.dispatch({ type: "session-ended", forget: false })
-    const { container, rerender } = render(<AccountUnavailableBanner />)
+    const { rerender } = render(<AccountUnavailableBanner />)
+    expect(screen.getByRole("status")).not.toBeNull()
     authority.chooseLocal()
     rerender(<AccountUnavailableBanner />)
-    expect(container.textContent).toBe("")
+    expect(screen.queryByRole("status")).toBeNull()
   })
 })

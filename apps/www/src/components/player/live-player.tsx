@@ -139,12 +139,10 @@ export const LivePlayer = ({
           !isMobile && "gap-4"
         )}
       >
-        {/* Layer 2 of audio disclosure: shown the first time a person enters
-          an activity that uses audio, then never again for that activity. */}
-        <SessionAudioNotice
-          session={session}
-          className={isMobile ? "shrink-0" : undefined}
-        />
+        {/* Layer 2 of audio disclosure: said over the screen the first time
+          a person enters an activity that uses audio, then never again for
+          that activity. */}
+        <SessionAudioNotice session={session} />
         {/* Above the viewport, not over it (see `SessionChrome`). Remounted
             as a stop opens and closes, so its controls sheet starts shut. */}
         {isMobile && (

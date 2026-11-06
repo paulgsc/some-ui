@@ -1,13 +1,12 @@
 import type { JSX } from "react"
-import { useEffect, useMemo, useSyncExternalStore } from "react"
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react"
 import { Bookmark, Check, Loader2, Play, Trash2 } from "lucide-react"
 
 import type { ShelfPort } from "../../../lib/shelf"
 import type { ShelfRuntime } from "../../../lib/shelf/runtime"
 import { createShelfKeeper, createShelfList } from "../../../lib/shelf/runtime"
-import { cn } from "../../../lib/utils"
 import { Button } from "../button"
-import { AlertOrStatus, Held } from "../reserved"
+import { Notice } from "../notice"
 
 /*
  * The learner shelf on screen (canon Rem. 7.3; `lib/shelf` holds the rules
@@ -76,6 +75,8 @@ export const KeptShelf = <Kept,>({
 }: KeptShelfProps<Kept>): JSX.Element => {
   const [list, state] = useRuntime(shelf, createShelfList)
   const { listing, busy, unreadable, rowError } = state
+  // The refusal read and closed; another one is said again.
+  const [dismissed, setDismissed] = useState<typeof rowError>(null)
 
   const play = (
     key: string,
@@ -188,11 +189,15 @@ export const KeptShelf = <Kept,>({
         </ul>
       )}
 
-      {rowError && (
-        <p role="alert" className="text-destructive text-sm">
+      {rowError && rowError !== dismissed && (
+        <Notice
+          role="alert"
+          tone="danger"
+          onDismiss={() => setDismissed(rowError)}
+        >
           {rowError.key} could not be{" "}
           {rowError.action === "read" ? "read" : "removed"}. Try again.
-        </p>
+        </Notice>
       )}
     </section>
   )
@@ -211,9 +216,9 @@ type KeepOnShelfProps = Omit<KeptShelfProps<never>, "replay"> & {
  * unless the learner removes it. Key it on the item, so a new item is a new
  * question.
  *
- * The button keeps its place in every state, and what a keep answered
- * keeps its room below it (HS1); the full shelf's list is the one thing
- * that opens below.
+ * The button keeps its place in every state, disabled where nothing a tap
+ * could do now; what a keep answered is said over the screen (`Notice`),
+ * and the full shelf's list is the one thing that opens below (HS1).
  */
 export const KeepOnShelf = ({
   shelf,
@@ -227,53 +232,63 @@ export const KeepOnShelf = ({
   const replay = `Replay it from ${words.replayFrom}.`
   // Nothing a tap could do now.
   const gone = failure === "signed-out" || failure === "invalid"
+  // What a keep answered, read and closed: said again on the next answer.
+  const [dismissed, setDismissed] = useState<typeof keeping | null>(null)
+  const refusal =
+    failure === "full"
+      ? `Your shelf is full. Remove a ${words.noun} you kept, then keep this one.`
+      : failure === "signed-out"
+        ? "Sign in to keep this."
+        : failure === "invalid"
+          ? `This ${words.noun} can't be kept: the shelf refused it, most likely because it is too large.`
+          : failure === "failed"
+            ? "It could not be kept. Try again."
+            : null
+  const said =
+    kept === null
+      ? null
+      : kept.unchanged
+        ? "Already on this account."
+        : kept.key === shelfKey
+          ? `Kept on this account. ${replay}`
+          : `Kept on this account as ${kept.key}, beside the one already named ${shelfKey}. ${replay}`
+  const dismiss = (): void => setDismissed(keeping)
 
   return (
     <div className="flex min-w-0 flex-col gap-2">
-      <Held shown={!gone} className="grid">
-        <Button
-          variant="outline"
-          className="min-h-11 gap-2 rounded-xl"
-          disabled={keeping.status === "keeping" || kept !== null}
-          onClick={() => keeper.keep(shelfKey, body)}
-        >
-          {keeping.status === "keeping" ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-          ) : kept === null ? (
-            <Bookmark className="size-4" aria-hidden="true" />
-          ) : (
-            <Check className="text-success size-4" aria-hidden="true" />
-          )}
-          {kept === null ? "Keep on this account" : "Kept"}
-        </Button>
-      </Held>
-      <AlertOrStatus
-        lines={2}
-        className="text-sm"
-        alertClassName={cn(
-          failure !== "full" && failure !== "signed-out" && "text-destructive"
+      <Button
+        variant="outline"
+        className="min-h-11 gap-2 rounded-xl"
+        disabled={keeping.status === "keeping" || kept !== null || gone}
+        onClick={() => keeper.keep(shelfKey, body)}
+      >
+        {keeping.status === "keeping" ? (
+          <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+        ) : kept === null ? (
+          <Bookmark className="size-4" aria-hidden="true" />
+        ) : (
+          <Check className="text-success size-4" aria-hidden="true" />
         )}
-        alert={
-          failure === "full"
-            ? `Your shelf is full. Remove a ${words.noun} you kept, then keep this one.`
-            : failure === "signed-out"
-              ? "Sign in to keep this."
-              : failure === "invalid"
-                ? `This ${words.noun} can't be kept: the shelf refused it, most likely because it is too large.`
-                : failure === "failed"
-                  ? "It could not be kept. Try again."
-                  : null
-        }
-        status={
-          kept === null
-            ? null
-            : kept.unchanged
-              ? "Already on this account."
-              : kept.key === shelfKey
-                ? `Kept on this account. ${replay}`
-                : `Kept on this account as ${kept.key}, beside the one already named ${shelfKey}. ${replay}`
-        }
-      />
+        {kept === null ? "Keep on this account" : "Kept"}
+      </Button>
+      {keeping !== dismissed && refusal !== null && (
+        <Notice
+          role="alert"
+          tone={
+            failure === "full" || failure === "signed-out"
+              ? "warning"
+              : "danger"
+          }
+          onDismiss={dismiss}
+        >
+          {refusal}
+        </Notice>
+      )}
+      {keeping !== dismissed && said !== null && (
+        <Notice role="status" onDismiss={dismiss}>
+          {said}
+        </Notice>
+      )}
       {failure === "full" && <KeptShelf shelf={shelf} words={words} />}
     </div>
   )

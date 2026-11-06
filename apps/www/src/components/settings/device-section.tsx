@@ -12,7 +12,7 @@
 import type { JSX } from "react"
 import { useState } from "react"
 import { assertNever } from "@some-ui/core-utils"
-import { Button, Input, Label, Reserved } from "@some-ui/shared"
+import { Button, Input, Label, Notice } from "@some-ui/shared"
 import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 
@@ -102,6 +102,9 @@ const PairForm = ({
   const target = typeof read === "string" ? null : read
   const typed = typedCode(code)
   const pairing = state.activity.kind === "pairing"
+  const { pairFailure } = state
+  // Why pairing failed, read and closed: said again on the next failure.
+  const [dismissed, setDismissed] = useState<typeof pairFailure>(null)
   const pair = useAsyncIntent(
     (variables: { target: NonNullable<typeof target>; code: string }) =>
       homeLink().pair(variables.target, variables.code),
@@ -120,9 +123,11 @@ const PairForm = ({
         value={address}
         onChange={(event) => setAddress(event.target.value)}
       />
-      <Reserved role="status" className="text-destructive text-xs">
-        {read === "not-https" ? "Pairing needs an https:// address." : null}
-      </Reserved>
+      {read === "not-https" && (
+        <Notice role="status" tone="warning">
+          Pairing needs an https:// address.
+        </Notice>
+      )}
       <Label htmlFor="pair-code">Code from your computer</Label>
       <Input
         id="pair-code"
@@ -150,22 +155,22 @@ const PairForm = ({
             </span>
           }
           workingLabel="Pairing..."
-          failureOwnLine
+          bare
         />
         <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
           Cancel
         </Button>
       </div>
       <p className="text-muted-foreground text-xs">Sends only this code.</p>
-      {/* After the form's last control. */}
-      <Reserved role="status" lines={2} className="text-destructive text-xs">
-        {state.pairFailure
-          ? failureLine(
-              state.pairFailure.failure,
-              hostOf(state.pairFailure.base)
-            )
-          : null}
-      </Reserved>
+      {pairFailure !== null && pairFailure !== dismissed && (
+        <Notice
+          role="alert"
+          tone="danger"
+          onDismiss={() => setDismissed(pairFailure)}
+        >
+          {failureLine(pairFailure.failure, hostOf(pairFailure.base))}
+        </Notice>
+      )}
     </div>
   )
 }
@@ -200,12 +205,16 @@ const ClearHeld = ({
   base,
   refresh,
   state,
+  blocked,
 }: {
   base: string
   refresh: () => unknown
   state: HomeLinkState
+  /** Another question is open (Unpair's): its buttons wait, disabled. */
+  blocked: boolean
 }): JSX.Element => {
   const { activity } = state
+  const idle = activity.kind === "idle" && !blocked
   const host = hostOf(base)
   const count = useAsyncIntent((_: undefined) => finishedOnPhone(), {
     presentation: "interactive",
@@ -219,36 +228,46 @@ const ClearHeld = ({
     else toast.error(line)
   })
   const asking = count.state.status === "succeeded" ? count.state.value : null
+  const working = run.state.status === "working" && activity.kind === "sending"
 
+  // The button stays in its place while it asks and once nothing is to be
+  // cleared, disabled where it can't be pressed; what it says of either is
+  // said over the screen (HS1).
   return (
     <div className="space-y-2">
-      {run.state.status === "working" && activity.kind === "sending" ? (
-        <div className="flex flex-wrap items-center gap-2" role="status">
-          <p className="text-sm">Asking {host}...</p>
-          <StopButton stopping={activity.stopping} />
-        </div>
-      ) : asking === null ? (
+      {working && (
+        <Notice role="status">
+          <span className="flex flex-wrap items-center gap-2">
+            <span>Asking {host}...</span>
+            <StopButton stopping={activity.stopping} />
+          </span>
+        </Notice>
+      )}
+      {asking === 0 && (
+        <Notice role="status">
+          <span className="flex flex-wrap items-center gap-2">
+            <span>{CLEAR.nothing}</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => count.reset()}
+            >
+              OK
+            </Button>
+          </span>
+        </Notice>
+      )}
+      {asking === null || asking === 0 || working ? (
         <IntentButton
           state={count.state}
           onPress={() => count.start(undefined)}
-          disabled={activity.kind !== "idle"}
+          disabled={!idle}
           variant="outline"
           size="sm"
           idleLabel={CLEAR.button}
           workingLabel="Counting..."
         />
-      ) : asking === 0 ? (
-        <div className="flex flex-wrap items-center gap-2" role="status">
-          <p className="text-sm">{CLEAR.nothing}</p>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => count.reset()}
-          >
-            OK
-          </Button>
-        </div>
       ) : (
         <div className="space-y-2">
           <p className="text-sm break-words">{CLEAR.question(asking, host)}</p>
@@ -259,7 +278,7 @@ const ClearHeld = ({
                 count.reset()
                 run.start(undefined)
               }}
-              disabled={activity.kind !== "idle"}
+              disabled={!idle}
               variant="destructive"
               size="sm"
               idleLabel={CLEAR.yes}
@@ -286,9 +305,15 @@ export const DeviceSection = (): JSX.Element => {
   const [address, setAddress] = useState(() => remembered(HOME_KEY))
   const [pairOpen, setPairOpen] = useState(false)
   const [confirmingUnpair, setConfirmingUnpair] = useState(false)
+  // A notice read and closed; said again when it is said anew.
+  const [forgetDismissed, setForgetDismissed] = useState(false)
+  const [noteDismissed, setNoteDismissed] = useState<UnpairedNote | null>(null)
 
   const { link, activity } = state
   const paired = link.kind === "paired" ? link : null
+  const note = link.kind === "unpaired" ? link.note : null
+  if (!paired?.notForgotten && forgetDismissed) setForgetDismissed(false)
+  if (note === null && noteDismissed !== null) setNoteDismissed(null)
   const typed = address.trim()
   const base = paired ? paired.base : typed === "" ? null : homeApiBase(typed)
   const host = paired ? hostOf(paired.base) : typedHost(typed)
@@ -315,17 +340,16 @@ export const DeviceSection = (): JSX.Element => {
           <>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm break-all">Paired · {host}</p>
-              {confirmingUnpair ? null : (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={activity.kind !== "idle"}
-                  onClick={() => setConfirmingUnpair(true)}
-                >
-                  Unpair
-                </Button>
-              )}
+              {/* Stays while its question is open below, disabled (HS1). */}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={activity.kind !== "idle" || confirmingUnpair}
+                onClick={() => setConfirmingUnpair(true)}
+              >
+                Unpair
+              </Button>
             </div>
             {confirmingUnpair ? (
               <div className="space-y-2">
@@ -357,22 +381,25 @@ export const DeviceSection = (): JSX.Element => {
                 </div>
               </div>
             ) : null}
-            {paired.notForgotten ? (
-              <p className="text-destructive text-xs" role="status">
+            {paired.notForgotten && !forgetDismissed ? (
+              <Notice
+                role="alert"
+                tone="danger"
+                onDismiss={() => setForgetDismissed(true)}
+              >
                 This phone couldn&apos;t forget its key, so it is still paired.
                 Try Unpair again.
-              </p>
+              </Notice>
             ) : null}
             <p className="text-muted-foreground text-xs">{HOME_BLOCK.lead}</p>
             <KeptOnHome />
             <DeviceRoutineReads />
-            {confirmingUnpair ? null : (
-              <ClearHeld
-                base={paired.base}
-                refresh={() => queryClient.invalidateQueries()}
-                state={state}
-              />
-            )}
+            <ClearHeld
+              base={paired.base}
+              refresh={() => queryClient.invalidateQueries()}
+              state={state}
+              blocked={confirmingUnpair}
+            />
           </>
         ) : (
           <>
@@ -385,15 +412,17 @@ export const DeviceSection = (): JSX.Element => {
               value={address}
               onChange={(event) => setAddress(event.target.value)}
             />
-            <Reserved className="text-muted-foreground text-xs">
-              {host === null ? null : (
-                <span className="block truncate">Reads from {host}</span>
-              )}
-            </Reserved>
-            {link.kind === "unpaired" && link.note !== null ? (
-              <p className="text-muted-foreground text-xs" role="status">
-                {NOTES[link.note]}
-              </p>
+            {/* Always one line: what is typed changes its words, not the
+                form's layout (HS1). */}
+            <p className="text-muted-foreground truncate text-xs">
+              {host === null
+                ? "Reads from home once you type its address."
+                : `Reads from ${host}`}
+            </p>
+            {note !== null && note !== noteDismissed ? (
+              <Notice role="status" onDismiss={() => setNoteDismissed(note)}>
+                {NOTES[note]}
+              </Notice>
             ) : null}
           </>
         )}
@@ -420,23 +449,24 @@ export const DeviceSection = (): JSX.Element => {
               workingLabel="Syncing..."
             />
           )}
-          {paired || pairOpen ? null : (
+          {/* Stays while its form is open below, disabled (HS1). */}
+          {paired ? null : (
             <Button
               type="button"
               variant="outline"
               size="sm"
-              disabled={link.kind !== "unpaired" || activity.kind !== "idle"}
+              disabled={
+                link.kind !== "unpaired" || activity.kind !== "idle" || pairOpen
+              }
               onClick={() => setPairOpen(true)}
             >
               Pair...
             </Button>
           )}
         </div>
-        <Reserved className="text-muted-foreground text-xs">
-          {synced === "" ? null : (
-            <span className="block truncate">Last sync: {synced}</span>
-          )}
-        </Reserved>
+        <p className="text-muted-foreground truncate text-xs">
+          {synced === "" ? "Not synced yet." : `Last sync: ${synced}`}
+        </p>
         {pairOpen && !paired ? (
           <PairForm state={state} onCancel={() => setPairOpen(false)} />
         ) : null}

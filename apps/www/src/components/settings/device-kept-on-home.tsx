@@ -14,7 +14,7 @@
  * modules on its allowlist read the lanes, and this is one.
  */
 import type { JSX, ReactNode } from "react"
-import { Button, Label, Reserved, Switch } from "@some-ui/shared"
+import { Button, Label, Notice, Switch } from "@some-ui/shared"
 
 import { useHomeLink } from "@/lib/home-link"
 import { appEventsLane } from "@/lib/home-link/app-events"
@@ -136,11 +136,14 @@ const Row = ({
         </p>
       ))}
       {children}
-      {lane !== null && reading.sendNow ? (
+      {/* Stays while nothing waits or a send is under way, disabled, so the
+          rows below it hold still (HS1). */}
+      {lane !== null ? (
         <Button
           type="button"
           variant="outline"
           size="sm"
+          disabled={!reading.sendNow}
           onClick={() => askLane(lane)}
         >
           {SHEET.sendNow}
@@ -158,23 +161,22 @@ const AphRow = (): JSX.Element => (
   <Row id="aph" reading={useAphReading()} lane={null} />
 )
 
-/** Every line the switch may say under it (`noticeSaid`). */
-const NOTICE_SAID: ReadonlyArray<string> = [
-  NOTICE_WORDS.off,
-  NOTICE_WORDS.asking,
-  NOTICE_WORDS.onFiled,
-  NOTICE_WORDS.onWaiting,
-  NOTICE_WORDS.notAllowed,
-  NOTICE_WORDS.failed,
-]
+/** Nothing being asked: what the switch stands for, from the record alone. */
+const STANDING = { asking: false, why: null } as const
 
 /**
  * Whether home tells this phone when the morning run is in (RUN5), where
- * this build can be told; nothing where it can't.
+ * this build can be told; nothing where it can't. Under the switch, what it
+ * stands for; an ask under way, or why it came to nothing, is said over the
+ * screen (HS1).
  */
 const JobsNotice = (): JSX.Element | null => {
   const { state, notice } = useJobs()
   if (!notice.offered) return null
+  const asked =
+    notice.asking || notice.why !== null
+      ? noticeSaid(state.home.notice, notice)
+      : null
   return (
     <div className="flex items-start gap-3 rounded-md border p-3">
       <Switch
@@ -187,14 +189,21 @@ const JobsNotice = (): JSX.Element | null => {
         <Label htmlFor="jobs-notice" className="text-sm">
           {NOTICE_WORDS.label}
         </Label>
-        <Reserved
-          role="status"
-          fits={NOTICE_SAID}
-          className="text-muted-foreground text-xs"
-        >
-          {noticeSaid(state.home.notice, notice)}
-        </Reserved>
+        <p className="text-muted-foreground text-xs">
+          {noticeSaid(state.home.notice, STANDING)}
+        </p>
       </div>
+      {asked === null ? null : notice.why === null ? (
+        <Notice role="status">{asked}</Notice>
+      ) : (
+        <Notice
+          role="alert"
+          tone="warning"
+          onDismiss={() => phoneJobs().dismiss("notice")}
+        >
+          {asked}
+        </Notice>
+      )}
     </div>
   )
 }

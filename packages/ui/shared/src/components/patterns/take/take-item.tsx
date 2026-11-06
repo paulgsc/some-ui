@@ -1,22 +1,19 @@
 import type { JSX, ReactNode } from "react"
+import { useState } from "react"
 import type {
   PatternTake,
-  RecordingFailure,
   TakeItemView,
   TakePlace,
   TakeRowView,
+  TakeSaid,
   TakeWords,
 } from "@some-ui/voice-capture"
-import {
-  RECORDING_FAILURE_COPY,
-  TAKE_WORDS,
-  takeSaid,
-} from "@some-ui/voice-capture"
+import { TAKE_WORDS, takeSaid } from "@some-ui/voice-capture"
 
 import { cn } from "../../../lib/utils"
-import { Held, Reserved } from "../../ui/reserved"
+import { Notice } from "../../ui/notice"
 import type { TakeButtonProps } from "./take-button"
-import { TakeButton, takeButtonVariants } from "./take-button"
+import { TakeButton } from "./take-button"
 import { TakeRow } from "./take-row"
 
 export type TakeItemProps = {
@@ -41,7 +38,7 @@ export type TakeItemProps = {
   /** The screen's words about one take, under its length. */
   describe?: (take: PatternTake) => ReactNode
   /**
-   * The line beside the button, where a screen's store says more than the
+   * What is said of the last take, where a screen's store says more than the
    * pattern's table can (its way to make room when full): `TAKE_WORDS`,
    * spread, unless given.
    */
@@ -53,38 +50,30 @@ export type TakeItemProps = {
   extra?: (row: TakeRowView) => ReactNode
   /**
    * Set while the screen's store keeps no new take (a phone full until home
-   * has some): the button and its line give way to these words, saying what
-   * makes room, and no row offers Redo, which records one. Every take still
-   * plays, and a current one can still be let go.
+   * has some): these words say what makes room, and the button and each
+   * row's Redo, which record one, stay where they are, disabled. Every take
+   * still plays, and a current one can still be let go.
    */
   full?: ReactNode
   className?: string
 } & Pick<TakeButtonProps, "size">
 
-/** Everything the line beside the button may say in `words` (`takeSaid`). */
-function saidLines(words: TakeWords): ReadonlyArray<string> {
-  const { blocked, ...ended } = words.ended
-  const reasons = Object.keys(RECORDING_FAILURE_COPY).filter(
-    (key): key is RecordingFailure => Object.hasOwn(RECORDING_FAILURE_COPY, key)
-  )
-  return [
-    ...new Set([
-      ...Object.values(ended),
-      ...reasons.map((reason) => blocked(reason)),
-      ...Object.values(words.setAside),
-      words.unplayable,
-    ]),
-  ]
+/** Which saying `said` is, so a dismissed one stays dismissed until another. */
+function sayingOf(said: TakeSaid, line: string): string {
+  return said.kind === "ended"
+    ? `ended ${said.ended.seq}`
+    : `${said.kind} ${line}`
 }
 
 /**
- * One item's takes, from its view: the take button with its one line beside
- * it (how the last take ended, a take set aside, a take that couldn't play),
- * then the item's current takes, then the earlier ones a Redo superseded,
- * collapsed (D2). It renders `view` and forwards what is tapped, so a screen
- * whose own machine stands between a tap and the pattern (Rust Rounds' card,
- * LeetType's answer) uses the same parts as `TakeList`, which wires them to
- * the pattern directly.
+ * One item's takes, from its view: the take button, then the item's current
+ * takes, then the earlier ones a Redo superseded, collapsed (D2). What is
+ * said of the last take (how it ended, a take set aside, a take that
+ * couldn't play) and that the phone is full are said over the screen
+ * (`Notice`), so nothing here moves when they come and go (HS1). It renders
+ * `view` and forwards what is tapped, so a screen whose own machine stands
+ * between a tap and the pattern (Rust Rounds' card, LeetType's answer) uses
+ * the same parts as `TakeList`, which wires them to the pattern directly.
  */
 export const TakeItem = ({
   view,
@@ -102,51 +91,49 @@ export const TakeItem = ({
   className,
 }: TakeItemProps): JSX.Element => {
   const { said } = view
+  const line = said === null ? null : takeSaid(words, said)
+  const saying = said === null || line === null ? null : sayingOf(said, line)
+  const [dismissed, setDismissed] = useState<string | null>(null)
+  const [fullDismissed, setFullDismissed] = useState(false)
+  // Gone, so the next one is said again.
+  if (saying === null && dismissed !== null) setDismissed(null)
+  if (full === undefined && fullDismissed) setFullDismissed(false)
   return (
     <section
       aria-label={label}
       className={cn("flex flex-col gap-3", className)}
     >
-      {/* The button with its line, and the words while the phone is full,
-          share one place as tall as the taller (HS1). */}
-      <div className="grid">
-        <Held
-          as="div"
-          shown={full === undefined}
-          className="col-start-1 row-start-1 flex flex-col items-center gap-2"
-        >
-          {full === undefined ? (
-            <TakeButton view={view.button} size={size} onTap={onTap} />
-          ) : (
-            <div className={takeButtonVariants({ size })} />
-          )}
-          <Reserved
-            role="status"
-            fits={saidLines(words)}
-            className="text-muted-foreground text-center text-sm"
-          >
-            {full !== undefined || said === null ? null : (
-              <span
-                data-take-ended={
-                  said.kind === "ended" ? said.ended.seq : undefined
-                }
-              >
-                {takeSaid(words, said)}
-              </span>
-            )}
-          </Reserved>
-        </Held>
-        <p
+      <div className="flex flex-col items-center">
+        <TakeButton
+          view={view.button}
+          size={size}
+          onTap={onTap}
+          canStart={full === undefined}
+        />
+      </div>
+      {full !== undefined && !fullDismissed && (
+        <Notice
           role="status"
-          className="text-muted-foreground col-start-1 row-start-1 text-sm"
+          tone="warning"
+          onDismiss={() => setFullDismissed(true)}
         >
           {full}
-        </p>
-      </div>
+        </Notice>
+      )}
+      {full === undefined && said !== null && saying !== dismissed && (
+        <Notice role="status" onDismiss={() => setDismissed(saying)}>
+          <span
+            data-take-ended={said.kind === "ended" ? said.ended.seq : undefined}
+          >
+            {line}
+          </span>
+        </Notice>
+      )}
       <TakeRows
         view={view}
         onPlay={onPlay}
-        onRedo={full === undefined ? onRedo : undefined}
+        onRedo={onRedo}
+        canRedo={full === undefined}
         onLetGo={onLetGo}
         onDelete={onDelete}
         describe={describe}
@@ -160,8 +147,13 @@ export type TakeRowsProps = Pick<
   TakeItemProps,
   "view" | "onPlay" | "onLetGo" | "onDelete" | "describe" | "extra"
 > & {
-  /** Records a current take again (D2); absent while no new take is kept. */
+  /** Records a current take again (D2). */
   onRedo?: TakeItemProps["onRedo"] | undefined
+  /**
+   * False while no new take is kept (a phone full): Redo, which records
+   * one, stays in each row, disabled.
+   */
+  canRedo?: boolean
 }
 
 /**
@@ -174,6 +166,7 @@ export const TakeRows = ({
   view,
   onPlay,
   onRedo,
+  canRedo = true,
   onLetGo,
   onDelete,
   describe,
@@ -189,20 +182,21 @@ export const TakeRows = ({
           {view.current.map((row) => (
             <TakeRow
               key={row.take.id}
-              row={row}
+              row={{
+                ...row,
+                canRedo: canRedo && row.canRedo,
+                // A take on neither this phone nor home has nowhere to set
+                // it aside.
+                canLetGo: row.canLetGo && row.take.kept !== null,
+              }}
               onPlay={() => onPlay(row.take.id)}
               onRedo={
                 onRedo === undefined
                   ? undefined
                   : (): void => onRedo(row.take.id)
               }
-              // A take on neither this phone nor home has nowhere to set
-              // it aside.
-              onLetGo={
-                row.take.kept === null
-                  ? undefined
-                  : (): void =>
-                      onLetGo(row.take.id, row.take.kept?.place ?? "phone")
+              onLetGo={(): void =>
+                onLetGo(row.take.id, row.take.kept?.place ?? "phone")
               }
               onDelete={deleting(row.take.id)}
               extra={extra?.(row)}

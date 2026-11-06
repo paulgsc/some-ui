@@ -9,9 +9,10 @@ import {
   createContext,
   useContext,
   useEffect,
+  useState,
   useSyncExternalStore,
 } from "react"
-import { Button, Reserved, TakeList, useTakePattern } from "@some-ui/shared"
+import { Button, Notice, TakeList, useTakePattern } from "@some-ui/shared"
 import { FolderOpen } from "lucide-react"
 
 import type { JobsSnapshot } from "@/lib/jobs"
@@ -19,7 +20,6 @@ import { phoneJobs } from "@/lib/jobs"
 import type { JourneyContext } from "@/lib/jobs/journey"
 import type { ShareKind } from "@/lib/jobs/model"
 import { formTakes } from "@/lib/jobs/model"
-import { JOBS_PROBLEMS } from "@/lib/jobs/runtime"
 import { openFromDrive, voiceGoesHome } from "@/lib/jobs/words"
 import type { Journey, Noun } from "@/lib/journey"
 import { lookIn } from "@/lib/share-files"
@@ -169,9 +169,13 @@ export const OpenDigest = (): JSX.Element => {
       </Button>
       {where && <span className="text-muted-foreground text-xs">{where}</span>}
       {importing.kind === "rejected" && (
-        <p role="alert" className="text-destructive text-sm">
+        <Notice
+          role="alert"
+          tone="danger"
+          onDismiss={() => phoneJobs().dismiss("opened")}
+        >
           {importing.problem}
-        </p>
+        </Notice>
       )}
     </div>
   )
@@ -220,7 +224,8 @@ export const JourneyCard = ({
 
 /**
  * Why `kind`'s file can't be filed, when the record holds something the
- * morning run couldn't read; nothing otherwise.
+ * morning run couldn't read, said over the screen; nothing otherwise.
+ * Closed, it stays closed until the problem changes.
  */
 export const FileProblem = ({
   kind,
@@ -229,22 +234,28 @@ export const FileProblem = ({
 }): JSX.Element | null => {
   // Read again whenever the record changes.
   useJobs()
+  const [dismissed, setDismissed] = useState<string | null>(null)
   const outgoing = phoneJobs().keeping.outgoing(kind)
-  if (outgoing === null || !("problem" in outgoing)) return null
+  const problem =
+    outgoing !== null && "problem" in outgoing ? outgoing.problem : null
+  if (problem === null || problem === dismissed) return null
   return (
-    <p role="alert" className="text-destructive px-3.5 pb-3.5 text-sm">
-      {outgoing.problem}
-    </p>
+    <Notice role="alert" tone="danger" onDismiss={() => setDismissed(problem)}>
+      {problem}
+    </Notice>
   )
 }
 
-/** What the record refused to keep, said once. */
-export const Problem = (): JSX.Element => (
-  <Reserved
-    role="alert"
-    fits={JOBS_PROBLEMS}
-    className="text-destructive text-sm"
-  >
-    {useJobs().problem}
-  </Reserved>
-)
+/** What the record refused to keep, said once, over the screen. */
+export const Problem = (): JSX.Element | null => {
+  const { problem } = useJobs()
+  return problem === null ? null : (
+    <Notice
+      role="alert"
+      tone="danger"
+      onDismiss={() => phoneJobs().dismiss("problem")}
+    >
+      {problem}
+    </Notice>
+  )
+}

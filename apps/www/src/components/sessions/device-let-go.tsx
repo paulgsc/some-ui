@@ -17,9 +17,10 @@
  * "true"`.
  */
 import type { JSX, ReactNode } from "react"
+import { useState } from "react"
 import type { Intent } from "@some-ui/intent-kit"
 import { matchIntent } from "@some-ui/intent-kit"
-import { useConfirmSheet } from "@some-ui/shared"
+import { Notice, useConfirmSheet } from "@some-ui/shared"
 import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 
@@ -40,7 +41,10 @@ import { sessionsKey } from "@/lib/tenant"
 export type LetGoControl = {
   /** Opens the confirm. */
   readonly ask: () => void
-  /** The row's lines: working, why it stayed, or a failure to retry. */
+  /**
+   * What the row says, over the screen (`Notice`): working, why it stayed,
+   * or a failure to retry.
+   */
   readonly lines: ReactNode
   /** The confirm sheet, rendered once in the row. */
   readonly sheet: ReactNode
@@ -94,20 +98,20 @@ export function useHomeLetGo(session: SessionRecord): LetGoControl {
   const { ask, sheet } = useConfirmSheet()
   const letGo = useSessionLetGo()
   const { host, promise } = letGo
+  // Why it stayed, read and closed: said again on the next run.
+  const [dismissed, setDismissed] = useState<LetGoRun | null>(null)
 
   const lines = matchIntent(letGo.state, {
     idle: (): JSX.Element | null => null,
     working: (): JSX.Element | null =>
       promise === "home" ? (
-        <p className="text-muted-foreground text-sm" role="status">
-          {LET_GO.working(host)}
-        </p>
+        <Notice role="status">{LET_GO.working(host)}</Notice>
       ) : null,
     succeeded: (run): JSX.Element | null =>
-      leftPhone(run.end) ? null : (
-        <p className="text-destructive text-sm break-words" role="alert">
-          {LET_GO.ended(run.end, run.host)}
-        </p>
+      leftPhone(run.end) || run === dismissed ? null : (
+        <Notice role="alert" tone="warning" onDismiss={() => setDismissed(run)}>
+          <span className="break-words">{LET_GO.ended(run.end, run.host)}</span>
+        </Notice>
       ),
     failed: (error, retry): JSX.Element => (
       <IntentFailure error={error} onRetry={retry} />

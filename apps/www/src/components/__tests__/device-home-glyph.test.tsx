@@ -174,6 +174,10 @@ async function mount(
 }
 
 /** The mark, behind its sheet or not. */
+/** How the mark says the last send went (its `how` mark), or null. */
+const howOf = (element: HTMLElement): string | null =>
+  element.querySelector("[data-how]")?.getAttribute("data-how") ?? null
+
 const mark = (name = /Where Practice is kept/): HTMLElement =>
   screen.getByRole("button", { name, hidden: true })
 
@@ -206,7 +210,7 @@ describe("Practice's sharing mark", () => {
   it("says phone only, and sends nothing, while the phone isn't paired", async () => {
     home.credential = null
     await mount()
-    expect(mark().textContent).toContain("Phone only")
+    expect(mark().getAttribute("aria-label")).toContain("only on this phone")
     act(() => {
       document.dispatchEvent(new Event("visibilitychange"))
       window.dispatchEvent(new Event("online"))
@@ -238,20 +242,24 @@ describe("Practice's sharing mark", () => {
     await act(() => Promise.resolve())
     expect(home.sent).toEqual([])
     // One finished session, which home does not hold yet.
-    expect(mark().textContent).toContain("1 waiting")
+    expect(howOf(mark())).toBe("waiting")
     cleanup()
     vi.resetModules()
 
     await mount()
     await waitFor(() => expect(home.sent.length).toBeGreaterThan(0))
-    await waitFor(() => expect(mark().textContent).toContain("No answer"))
+    await waitFor(() => expect(howOf(mark())).toBe("no-answer"))
     // Sessions go first, as the drain orders them.
     expect(new URL(home.sent[0]?.url ?? "").pathname).toBe("/api/v1/sessions")
   })
 
   it("asks for a run again from Send now", async () => {
     await mount()
-    await waitFor(() => expect(mark().textContent).toContain("No answer"))
+    await waitFor(() => expect(howOf(mark())).toBe("no-answer"))
+    // A send that didn't go is said over the screen, the mark a fixed icon.
+    expect(screen.getByRole("status").textContent).toContain(
+      "Home didn't answer."
+    )
     const before = home.sent.length
     fireEvent.click(mark())
     fireEvent.click(screen.getByRole("button", { name: "Send now" }))
@@ -269,9 +277,7 @@ describe("the Jobs record's mark", () => {
       ).toBe(true)
     )
     await waitFor(() =>
-      expect(mark(/Where the Jobs record is kept/).textContent).toContain(
-        "No answer"
-      )
+      expect(howOf(mark(/Where the Jobs record is kept/))).toBe("no-answer")
     )
     fireEvent.click(mark(/Where the Jobs record is kept/))
     expect(screen.getByText(/2 events wait on this phone/)).toBeTruthy()
@@ -423,7 +429,7 @@ describe("aph's mark", () => {
     const store = aphStore()
     await mountAph(store)
     await waitFor(() =>
-      expect(mark(/Where aph is kept/).textContent).toContain("No answer")
+      expect(howOf(mark(/Where aph is kept/))).toBe("no-answer")
     )
     expect(mark(/Where aph is kept/).getAttribute("aria-label")).toContain(
       "2 changes wait on this phone and go next time"
@@ -511,7 +517,7 @@ describe("a pull (PULL3)", () => {
 
   it("asks every lane the shell drains for one run, and the mark says how it went", async () => {
     await mount()
-    await waitFor(() => expect(mark().textContent).toContain("No answer"))
+    await waitFor(() => expect(howOf(mark())).toBe("no-answer"))
     // The watch's first runs, each one request home doesn't answer, are over.
     await waitFor(() => expect(new Set(sentSince(0)).size).toBe(3))
     await act(() => new Promise((resolve) => setTimeout(resolve, 0)))
@@ -522,7 +528,7 @@ describe("a pull (PULL3)", () => {
     expect(sentSince(before).sort()).toEqual(
       ["/api/v1/jobs", "/api/v1/rust-rounds", "/api/v1/sessions"].sort()
     )
-    expect(mark().textContent).toContain("No answer")
+    expect(howOf(mark())).toBe("no-answer")
   })
 
   it("asks nothing, and says nothing of home, while the phone isn't paired", async () => {

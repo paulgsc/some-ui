@@ -40,6 +40,12 @@ export type TakeButtonProps = {
   view: TakeButtonView
   /** D1: a tap starts a take, or stops the one under way. */
   onTap: () => void
+  /**
+   * False while the screen's store keeps no new take (a phone full until
+   * home has some): a button at rest stays where it is, disabled, and one
+   * under way can still be stopped.
+   */
+  canStart?: boolean
   className?: string
 } & Pick<VariantProps<typeof takeButtonVariants>, "size">
 
@@ -75,6 +81,7 @@ function toneOf(view: TakeButtonView): "rest" | "live" | "quiet" {
 export const TakeButton = ({
   view,
   onTap,
+  canStart = true,
   size,
   className,
 }: TakeButtonProps): JSX.Element => {
@@ -84,7 +91,7 @@ export const TakeButton = ({
     ? Math.min(1, recording.elapsedMs / Math.max(1, recording.capMs))
     : 0
   const tappable =
-    view.kind === "ready" ||
+    (view.kind === "ready" && canStart) ||
     view.kind === "opening" ||
     view.kind === "recording"
   const large = size === "large"
@@ -97,7 +104,10 @@ export const TakeButton = ({
       aria-pressed={view.kind === "opening" || view.kind === "recording"}
       data-take={view.kind}
       className={cn(
-        takeButtonVariants({ size, tone: toneOf(view) }),
+        takeButtonVariants({
+          size,
+          tone: view.kind === "ready" && !canStart ? "quiet" : toneOf(view),
+        }),
         className
       )}
       // The input level breathes a ring around the button while it

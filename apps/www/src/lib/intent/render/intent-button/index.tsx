@@ -6,13 +6,13 @@
  * here: the race is a render-cycle gap only a synchronous guard at dispatch
  * closes. Disabling while `working` is a visible echo of it.
  *
- * The outer action stack is stable across every state, so a toolbar does not
- * jump as the intent settles; a retryable failure replaces the action with
- * its retry rather than adding a second control. Word labels share the
- * widest one's width (HS1). The button sits where it sat before the
- * failure, at the stack's start, with the failure below it.
- * `failureOwnLine` puts the failure on its own line
- * (`tests/ui-fit/intent-failure-fit`).
+ * The button is the one control in every state, so a toolbar does not jump
+ * as the intent settles: a retryable failure relabels it as its retry rather
+ * than adding a second control, word labels share the widest one's width
+ * (`SameWidth`), and the failure is said over the screen (`IntentFailure`, a
+ * `Notice`), never beside the button (HS1, `tests/ui-fit/intent-failure-fit`).
+ * `bare` drops the box around it, for a host that lays it out itself (a
+ * wrapping row of actions, a grid cell).
  *
  * A non-retryable failure disables the button only when
  * `error.blocksResubmission` says the previous outcome is unknown (a
@@ -48,29 +48,22 @@ export type IntentButtonProps<TStep extends string = never> = {
   /** Composed with the intent's own working-state disable, e.g. a
    * caller's `!isDirty` or a validation failure. */
   disabled?: boolean
-  failureClassName?: string
   /**
-   * For a host that lays several actions in one `flex flex-wrap` row: the
-   * button is the row's own item, and a failure takes a whole line at the
-   * row's end, so it moves neither this button nor its neighbours.
+   * For a host that lays the button out itself (several actions in one
+   * `flex flex-wrap` row, a grid cell): the button is the host's own item,
+   * with no box around it.
    */
-  failureOwnLine?: boolean
+  bare?: boolean
   /** Passed to every rendered `<Button>`; needed for an icon-only button
    * (`sessions/index.tsx`'s row actions). */
   title?: string
 }
 
 const ActionStack = ({
-  ownLine,
+  bare,
   children,
-}: PropsWithChildren<{ ownLine: boolean }>): JSX.Element => (
-  <div
-    className={
-      ownLine ? "contents" : "inline-flex flex-col items-start gap-1.5"
-    }
-  >
-    {children}
-  </div>
+}: PropsWithChildren<{ bare: boolean }>): JSX.Element => (
+  <div className={bare ? "contents" : "inline-flex"}>{children}</div>
 )
 
 /** What a retryable failure relabels the button. */
@@ -102,8 +95,7 @@ export const IntentButton = <TStep extends string = never>({
   size,
   className,
   disabled = false,
-  failureClassName,
-  failureOwnLine = false,
+  bare = false,
   title,
 }: IntentButtonProps<TStep>): JSX.Element => {
   const every = wordsOf(idleLabel, workingLabel, succeededLabel)
@@ -117,7 +109,7 @@ export const IntentButton = <TStep extends string = never>({
     )
   return matchIntent<unknown, JSX.Element, TStep>(state, {
     idle: () => (
-      <ActionStack ownLine={failureOwnLine}>
+      <ActionStack bare={bare}>
         <Button
           variant={variant}
           size={size}
@@ -131,7 +123,7 @@ export const IntentButton = <TStep extends string = never>({
       </ActionStack>
     ),
     working: (step) => (
-      <ActionStack ownLine={failureOwnLine}>
+      <ActionStack bare={bare}>
         <Button
           variant={variant}
           size={size}
@@ -144,7 +136,7 @@ export const IntentButton = <TStep extends string = never>({
       </ActionStack>
     ),
     succeeded: () => (
-      <ActionStack ownLine={failureOwnLine}>
+      <ActionStack bare={bare}>
         <Button
           variant={variant}
           size={size}
@@ -160,7 +152,7 @@ export const IntentButton = <TStep extends string = never>({
     failed: (error, retry) => {
       const blocked = !error.retryable && error.blocksResubmission === true
       return (
-        <ActionStack ownLine={failureOwnLine}>
+        <ActionStack bare={bare}>
           <Button
             variant={variant}
             size={size}
@@ -177,13 +169,7 @@ export const IntentButton = <TStep extends string = never>({
           >
             {say(error.retryable ? RETRY : idleLabel)}
           </Button>
-          <IntentFailure
-            error={error}
-            className={cn(
-              failureOwnLine ? "order-last basis-full" : "w-full",
-              failureClassName
-            )}
-          />
+          <IntentFailure error={error} />
         </ActionStack>
       )
     },

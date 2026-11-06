@@ -3,8 +3,9 @@
  * (`./panel-page/intent-failure.tsx`) at the phone's sizes.
  *
  * Promise IB1.
- * - Claim: in a wrapping row of `IntentButton`s that sets `failureOwnLine`,
- *   a failure moves no button, and shows below them all, inside the row.
+ * - Claim: in a wrapping row of `IntentButton`s (`bare`), a failure moves no
+ *   button, and is said on the notice plane over the screen, never in the
+ *   row (HS1).
  * - Family: which of the row's buttons failed (none, either, both), at each
  *   phone size, the phone held sideways among them.
  * - Proof: this spec, which enumerates both.
@@ -62,9 +63,6 @@ test.describe("a refused press moves no button", () => {
 
       const failures: Array<string> = []
       for (const row of ROWS) {
-        const frame = page.locator(`[data-row="${row}"]`)
-        const rowBox = await boxOf(frame)
-        let lowest = 0
         for (const button of BUTTONS) {
           const idle = await placed(page, "idle", button)
           const now = await placed(page, row, button)
@@ -73,21 +71,17 @@ test.describe("a refused press moves no button", () => {
               `${row}: "${button}" moved from ${JSON.stringify(idle)} to ${JSON.stringify(now)}`
             )
           }
-          lowest = Math.max(lowest, rowBox.y + now.y + now.height)
         }
-        for (const alert of await frame.getByRole("alert").all()) {
-          const box = await boxOf(alert)
-          if (box.y < lowest - 0.5) {
-            failures.push(`${row}: a failure sits beside a button, not below`)
-          }
-          if (
-            box.x < rowBox.x - 0.5 ||
-            box.x + box.width > rowBox.x + rowBox.width + 0.5
-          ) {
-            failures.push(`${row}: a failure leaves its row`)
-          }
+        if (
+          (await page.locator(`[data-row="${row}"] [role=alert]`).count()) > 0
+        ) {
+          failures.push(`${row}: a failure is said in the row`)
         }
       }
+      // One per refused button: menu, next, and both of the last row.
+      await expect(
+        page.locator("[data-notice-plane] [role=alert]")
+      ).toHaveCount(4)
 
       await testInfo.attach(`intent-failure-${phone.name}`, {
         body: await page.screenshot({ fullPage: true }),

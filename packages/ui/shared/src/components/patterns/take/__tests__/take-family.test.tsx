@@ -3,7 +3,8 @@
  * take pattern: each screen is a `TakeList` on its own pattern,
  * all on one simulated microphone and one owner. A tap is a click on the
  * rendered take button, whether a take is under way is read from the button,
- * and each ending is read from the line the screen shows beside it. VC2 and
+ * and each ending is read from the notice the screen says it in, on a plane
+ * of its own (`NoticeLayer`) so each screen's is told apart. VC2 and
  * VC3 (`@some-ui/voice-capture`, `lib/properties.ts`) must hold on every
  * trace, so no ending is silent on screen and the microphone is never left
  * open by the parts.
@@ -27,6 +28,7 @@ import {
 import { act, cleanup, fireEvent, render } from "@testing-library/react"
 import { afterEach, beforeEach, describe, it, vi } from "vitest"
 
+import { NoticeLayer } from "../../../ui/notice"
 import { TakeList } from "../take-list"
 
 const Screen = ({
@@ -130,7 +132,9 @@ function renderedScreens(
         options
       )
       const { container } = render(
-        <Screen pattern={pattern} store={store} answers={`screen-${at}`} />
+        <NoticeLayer>
+          <Screen pattern={pattern} store={store} answers={`screen-${at}`} />
+        </NoticeLayer>
       )
       return renderedScreen(container, pattern)
     })

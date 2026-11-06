@@ -1,18 +1,19 @@
 /**
- * Layer 2 of audio disclosure: an inline callout the first time a person
- * enters an activity that uses audio, offering the choice there, never shown
- * for that activity again.
+ * Layer 2 of audio disclosure: a notice the first time a person enters an
+ * activity that uses audio, offering the choice there, never shown for that
+ * activity again. Said over the screen (`Notice`), so the activity under it
+ * holds still when it comes and goes (HS1); it stays until answered, so it
+ * is not missed as a passing toast would be.
  *
- * Not a toast (one that teaches a feature gets missed) and not a modal (audio
- * is expected in a learning app), except for a `required` activity, which
- * cannot work without sound.
+ * Not a modal (audio is expected in a learning app), except for a `required`
+ * activity, which cannot work without sound.
  */
 
 import type { JSX } from "react"
 import { useSyncExternalStore } from "react"
 import type { ActivityDefinition } from "@some-ui/activity-catalog"
 import { cn } from "@some-ui/core-utils"
-import { Alert, AlertDescription, AlertTitle, Button } from "@some-ui/shared"
+import { Button, Notice } from "@some-ui/shared"
 
 import { audioNotice } from "@/lib/audio-notice"
 import {
@@ -24,6 +25,9 @@ import { useAudioPreferences } from "@/lib/audio-preferences/use-audio-preferenc
 
 export type AudioActivityNoticeProps = {
   activity: ActivityDefinition
+}
+
+export type AudioActivityHintProps = AudioActivityNoticeProps & {
   className?: string
 }
 
@@ -33,7 +37,6 @@ export type AudioActivityNoticeProps = {
  */
 export const AudioActivityNotice = ({
   activity,
-  className,
 }: AudioActivityNoticeProps): JSX.Element | null => {
   const { preferences, update, isReady } = useAudioPreferences()
   const acknowledged = useSyncExternalStore(audioNotice.subscribe, () =>
@@ -66,18 +69,18 @@ export const AudioActivityNotice = ({
   }
 
   return (
-    <Alert className={cn("flex flex-col gap-3", className)}>
-      <AlertTitle className={cn("flex items-center gap-2")}>
-        <span aria-hidden="true">{summarizeAudio(preferences).icon}</span>
-        {activity.name} {audio.blurb.toLowerCase()}
-      </AlertTitle>
-      <AlertDescription className={cn("space-y-3")}>
-        <p>
+    <Notice role="status">
+      <div className="flex flex-col gap-3">
+        <p className="flex items-center gap-2 font-medium">
+          <span aria-hidden="true">{summarizeAudio(preferences).icon}</span>
+          {activity.name} {audio.blurb.toLowerCase()}
+        </p>
+        <p className="text-muted-foreground">
           {alreadyOn
             ? "Sound is on for this activity. You can change it anytime from the speaker icon in the header."
             : "Sound is currently off. You can turn it on here, or anytime from the speaker icon in the header."}
         </p>
-        <div className={cn("flex flex-wrap items-center gap-2")}>
+        <div className="flex flex-wrap items-center gap-2">
           {alreadyOn ? (
             <>
               <Button size="sm" onClick={() => setAcknowledged()}>
@@ -102,8 +105,8 @@ export const AudioActivityNotice = ({
             </>
           )}
         </div>
-      </AlertDescription>
-    </Alert>
+      </div>
+    </Notice>
   )
 }
 
@@ -114,7 +117,7 @@ export const AudioActivityNotice = ({
 export const AudioActivityHint = ({
   activity,
   className,
-}: AudioActivityNoticeProps): JSX.Element | null => {
+}: AudioActivityHintProps): JSX.Element | null => {
   if (!activity.audio) return null
 
   return (

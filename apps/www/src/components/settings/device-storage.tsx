@@ -15,7 +15,7 @@ import { useEffect, useSyncExternalStore } from "react"
 import { formatSize } from "@some-ui/core-utils"
 import type { Intent } from "@some-ui/intent-kit"
 import { matchIntent } from "@some-ui/intent-kit"
-import { Alert, AlertDescription, AlertTitle, Button } from "@some-ui/shared"
+import { Button, Notice } from "@some-ui/shared"
 import { HardDrive } from "lucide-react"
 
 import type { RemovableSession } from "@/lib/device-backend/handlers/sessions"
@@ -121,9 +121,9 @@ export const RemoveOffer = ({
           host
         )}
       </p>
-      {/* A failure takes its own line at the row's end, and why it stayed
-          comes after the row: below every control, in a prompt that grows
-          down, so neither moves one (HS1). */}
+      {/* A failure is said over the screen, and why it stayed comes after
+          the row: below every control, in a prompt that grows down, so
+          neither moves one (HS1). */}
       <div className="flex flex-wrap gap-2">
         <IntentButton
           state={letGo.state}
@@ -134,13 +134,13 @@ export const RemoveOffer = ({
           variant="destructive"
           idleLabel={LET_GO.room.confirm}
           workingLabel={LET_GO.room.working}
-          failureOwnLine
+          bare
         />
         <Button size="sm" variant="outline" onClick={onSettle}>
           Not now
         </Button>
       </div>
-      {/* Inside the prompt's own alert, which announces it. */}
+      {/* Inside the prompt's own notice, which announces it. */}
       {stayed === null ? null : (
         <p className="text-destructive break-words">{stayed}</p>
       )}
@@ -184,24 +184,17 @@ export const StoragePrompt = ({
 }): JSX.Element | null => {
   if (view === null) return null
   const { full, notice } = view
-  if (full === null && notice === null) return null
-  // Over the page, not in its flow: below the header, above the bar along
-  // the bottom, so bringing it up or dismissing it moves nothing on the
-  // screen under it (HS1).
+  // Over the page, on the notice plane: below the header, so bringing it up
+  // or dismissing it moves nothing on the screen under it (HS1).
   return (
-    <div
-      data-scroll-intent="long-form"
-      className={
-        // scroll-intent: long-form — held sideways, the offer can outgrow
-        // the room between the header and the bar, so the prompt scrolls.
-        "pointer-events-none fixed inset-x-0 top-14 z-40 max-h-[calc(100dvh-8.75rem)] space-y-2 overflow-y-auto px-4 pt-3 *:pointer-events-auto *:shadow-lg"
-      }
-    >
+    <>
       {full === null ? null : (
-        <Alert>
-          <HardDrive className="size-4" />
-          <AlertTitle>Phone full. Not saved.</AlertTitle>
-          <AlertDescription className="space-y-2">
+        <Notice role="alert" tone="warning">
+          <div className="space-y-2">
+            <p className="flex items-center gap-2 font-medium">
+              <HardDrive aria-hidden className="size-4 shrink-0" />
+              Phone full. Not saved.
+            </p>
             {full.removable === null ? (
               <>
                 <p>Delete a session you don&apos;t need, then try again.</p>
@@ -212,13 +205,13 @@ export const StoragePrompt = ({
             ) : (
               renderOffer(full.removable)
             )}
-          </AlertDescription>
-        </Alert>
+          </div>
+        </Notice>
       )}
       {notice === null ? null : (
-        <Alert>
-          <HardDrive className="size-4" />
-          <AlertDescription className="flex items-center gap-2">
+        <Notice role="status">
+          <span className="flex items-center gap-2">
+            <HardDrive aria-hidden className="size-4 shrink-0" />
             <span className="min-w-0 flex-1">
               Removed {notice.rounds} Leetype round
               {notice.rounds === 1 ? "" : "s"} this version of the app no longer
@@ -227,10 +220,10 @@ export const StoragePrompt = ({
             <Button size="sm" variant="ghost" onClick={() => onDismiss(notice)}>
               Got it
             </Button>
-          </AlertDescription>
-        </Alert>
+          </span>
+        </Notice>
       )}
-    </div>
+    </>
   )
 }
 

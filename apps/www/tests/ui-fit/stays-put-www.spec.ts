@@ -9,10 +9,12 @@
  *   rounds let go dismissed by Got it; a take item recorded and stopped (its
  *   clock running, its ending said), whose take reaches home, and whose
  *   phone fills up and frees again; "Keep on this account" refused (failed,
- *   invalid) and kept; Settings → Home's address and pairing form typed
- *   into, paired with no answer, and closed; Jobs → Scout's form typed, a
- *   scout added, and one refused. A tap that declares `reflows` is outside
- *   it, and says why.
+ *   invalid, a full shelf, whose list opens below it) and kept; Settings →
+ *   Home's address and pairing form typed into, paired with no answer, and
+ *   closed; Jobs → Scout's form typed, a scout added, one refused, and the
+ *   refusal closed. What each says is on the notice plane, never in the
+ *   screen. A tap that declares `reflows` is outside it, and says why; one
+ *   that `grows` holds what is at and above it.
  * - Proof: this spec, over `../layout-invariants/stays-put.ts`.
  * - Tolerance: a screen this spec does not walk.
  */
@@ -46,6 +48,7 @@ const STORAGE: ReadonlyArray<Tap> = [
 /** The take button, tapped, and what it is once the tap has landed. */
 const takes = (does: string, then: string): Tap => ({
   does,
+  target: (page) => page.locator("[data-take]"),
   act: async (page): Promise<void> => {
     await page.locator("[data-take]").click()
     await page.locator(`[data-take="${then}"]`).waitFor()
@@ -58,8 +61,8 @@ const TAKE_FULL: ReadonlyArray<Tap> = [
   takes("starts a take", "recording"),
   {
     ...takes("stops it, and it is kept", "ready"),
-    reflows:
-      "disclosure: the list grows by the take just made, the one it redoes folded under Earlier takes",
+    grows:
+      "the list below the button, by the take just made, the one it redoes folded under Earlier takes",
   },
   takes("starts another", "recording"),
   takes("stops it, and it is kept too", "ready"),
@@ -76,10 +79,19 @@ const KEEP: ReadonlyArray<Tap> = [
   button("Keep on this account", "keeps, kept"),
 ]
 
-/** A keep the shelf refuses, and the button it leaves unseen. */
+/** A keep the shelf refuses, and the button it leaves disabled. */
 const KEEP_INVALID: ReadonlyArray<Tap> = [
   happens("answer", "the shelf will refuse it, invalid", "invalid"),
   button("Keep on this account", "keeps, refused invalid"),
+]
+
+/** A full shelf: the refusal, and the shelf to make room from below. */
+const KEEP_FULL: ReadonlyArray<Tap> = [
+  happens("answer", "the shelf will say it is full", "full"),
+  {
+    ...button("Keep on this account", "keeps, the shelf full"),
+    grows: "the kept shelf, below the button, to make room from",
+  },
 ]
 
 /** Keys typed into the field `#id`, one at a time. */
@@ -103,7 +115,7 @@ const HOME: ReadonlyArray<Tap> = [
   types("home-server", "ome-server.example.com:3000"),
   {
     ...button("Pair...", "opens the pairing form"),
-    reflows: "disclosure: the pairing form opens below the buttons",
+    grows: "the pairing form, below the buttons",
   },
   types("pair-address", "http://home"),
   {
@@ -114,10 +126,7 @@ const HOME: ReadonlyArray<Tap> = [
   types("pair-code", "K7QF 2M9X"),
   pairs("pairs, and home doesn't answer"),
   pairs("pairs again"),
-  {
-    ...button("Cancel", "cancels"),
-    reflows: "disclosure: the pairing form closes",
-  },
+  button("Cancel", "cancels: the form below the buttons closes"),
 ]
 
 /**
@@ -142,6 +151,7 @@ const SCOUT: ReadonlyArray<Tap> = [
   refuseWrites,
   ...SCOUT_TYPED,
   button("Add to my scouts", "adds it, refused"),
+  button("Dismiss", "closes the refusal"),
 ]
 
 walkEachPhone("a tap moves nothing it leaves on www's phone screens (HS1)", [
@@ -155,6 +165,7 @@ walkEachPhone("a tap moves nothing it leaves on www's phone screens (HS1)", [
   { panel: "www-take-full", taps: TAKE_FULL, label: "take item, phone full" },
   { panel: "www-keep", taps: KEEP, label: "keep on this account" },
   { panel: "www-keep", taps: KEEP_INVALID, label: "keep, invalid" },
+  { panel: "www-keep", taps: KEEP_FULL, label: "keep, shelf full" },
   { panel: "www-home", taps: HOME, label: "settings, home" },
   { panel: "www-scout", taps: SCOUT, label: "jobs, scout" },
 ])

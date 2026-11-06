@@ -22,7 +22,7 @@
 import type { JSX } from "react"
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { formatSize } from "@some-ui/core-utils"
-import { Button } from "@some-ui/shared"
+import { Button, Notice } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
 import {
   Check,
@@ -90,12 +90,20 @@ import {
 } from "./device-my-data-charts"
 import { DeleteSheetView } from "./device-my-data-delete"
 
-const Status = ({ line }: { line: string | null }): JSX.Element | null =>
-  line === null ? null : (
-    <p className="text-muted-foreground text-sm" role="status">
+/**
+ * What the page says of how its reading went (home asked, home silent, a
+ * store not opened yet), over the screen (HS1). Closed, it stays closed
+ * until it says something else.
+ */
+const Status = ({ line }: { line: string | null }): JSX.Element | null => {
+  const [dismissed, setDismissed] = useState<string | null>(null)
+  if (line === null || line === dismissed) return null
+  return (
+    <Notice role="status" onDismiss={() => setDismissed(line)}>
       {line}
-    </p>
+    </Notice>
   )
+}
 
 const Tile = ({
   value,

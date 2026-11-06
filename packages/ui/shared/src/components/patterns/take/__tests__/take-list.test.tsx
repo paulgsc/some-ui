@@ -325,11 +325,12 @@ describe("the take button, row and list", () => {
     expect(screen.getByRole("listitem")).toHaveTextContent(
       TAKE_WORDS.place.deleted(TAKE_WORDS.when(deleted))
     )
+    // Deleted, it stays in its place, disabled (HS1).
     expect(
-      screen.queryByRole("button", {
+      screen.getByRole("button", {
         name: new RegExp(TAKE_WORDS.deleteRecord),
       })
-    ).toBeNull()
+    ).toBeDisabled()
   })
 
   it("says a take that never left the phone is unsent, and offers Delete in Let go's place (ST26)", () => {
@@ -372,7 +373,7 @@ describe("the take button, row and list", () => {
     expect(letGo).toHaveBeenCalledOnce()
   })
 
-  it("says the screen's full words in the button's place, offers no Redo, and still plays and lets go every take", async () => {
+  it("says the screen's full words over the screen, keeps the button and Redo disabled, and still plays and lets go every take", async () => {
     const take = (
       id: string,
       standing: PatternTake["standing"]
@@ -401,10 +402,11 @@ describe("the take button, row and list", () => {
     expect(screen.getByRole("status")).toHaveTextContent(
       "Full until home has some."
     )
-    expect(screen.queryByRole("button", { name: /talk|record/i })).toBeNull()
+    // The take button and Redo stay where they are, disabled (HS1).
+    expect(screen.getByRole("button", { name: /talk|record/i })).toBeDisabled()
     expect(
-      screen.queryByRole("button", { name: new RegExp(`^${W.redo}`) })
-    ).toBeNull()
+      screen.getByRole("button", { name: new RegExp(`^${W.redo}`) })
+    ).toBeDisabled()
     expect(
       screen.getAllByRole("button", { name: new RegExp(`^${W.letGo}`) })
     ).toHaveLength(1)

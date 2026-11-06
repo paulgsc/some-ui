@@ -149,6 +149,13 @@ export type JobsRuntime = {
    * token; the next exchange with home files it (`./home`).
    */
   wantNotice: (on: boolean) => void
+  /**
+   * The person read what was said and closed it: the change the record
+   * refused (`problem`), the file that wasn't a digest (`opened`), or why
+   * the last ask for the notice came to nothing (`notice`). The next one is
+   * said again.
+   */
+  dismiss: (said: "problem" | "opened" | "notice") => void
   /** The record one exchange with home reads and answers (`./home`). */
   keeping: JobsRecordPort
 }
@@ -173,13 +180,6 @@ const DRAFT_NOT_KEPT =
 const READ_ONLY =
   "This phone can't read its jobs record, so it isn't changing it."
 const NOT_KEPT = "This phone couldn't keep that. Free some space and try again."
-
-/** Every problem the record says (`JobsSnapshot.problem`): its line keeps room for the tallest. */
-export const JOBS_PROBLEMS: ReadonlyArray<string> = [
-  DRAFT_NOT_KEPT,
-  READ_ONLY,
-  NOT_KEPT,
-]
 
 export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
   const opened = openStored(ports.storage)
@@ -447,6 +447,13 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
         return
       }
       if (ports.notice !== undefined) void askForToken(ports.notice, false)
+    },
+    dismiss(said): void {
+      if (said === "problem") problem = null
+      else if (said === "opened") {
+        if (importing.kind === "rejected") importing = IDLE
+      } else notice = { ...notice, why: null }
+      publish()
     },
     getSnapshot: () => snapshot,
     subscribe(listener): () => void {

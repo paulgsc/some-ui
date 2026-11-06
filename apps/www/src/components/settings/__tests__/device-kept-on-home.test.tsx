@@ -153,6 +153,12 @@ async function mount(): Promise<void> {
   await act(() => Promise.resolve())
 }
 
+/** The Send now buttons that can be pressed now; every row keeps one. */
+const sendable = (): Array<HTMLButtonElement> =>
+  screen
+    .getAllByRole<HTMLButtonElement>("button", { name: "Send now" })
+    .filter((button) => !button.disabled)
+
 describe("what this phone keeps on home", () => {
   it("says each record is kept on home once paired, and sends nothing", async () => {
     await mount()
@@ -168,7 +174,8 @@ describe("what this phone keeps on home", () => {
     home.record = null
     await mount()
     expect(screen.getAllByText(/: Only on this phone$/)).toHaveLength(10)
-    expect(screen.queryByRole("button", { name: "Send now" })).toBeNull()
+    // Each row keeps its Send now, disabled: nothing can go (HS1).
+    expect(sendable()).toEqual([])
     expect(home.sent).toEqual([])
   })
 
@@ -179,7 +186,9 @@ describe("what this phone keeps on home", () => {
       screen.getByText(/2 voice notes, ideas and videos wait on this phone/)
     ).toBeTruthy()
     expect(home.runs).toBe(0)
-    fireEvent.click(screen.getByRole("button", { name: "Send now" }))
+    expect(sendable()).toHaveLength(1)
+    const [send] = sendable()
+    fireEvent.click(send)
     await waitFor(() => expect(home.runs).toBe(1))
   })
 
@@ -192,7 +201,7 @@ describe("what this phone keeps on home", () => {
       )
     ).toBeTruthy()
     expect(screen.queryByText(/wait/)).toBeNull()
-    expect(screen.queryByRole("button", { name: "Send now" })).toBeNull()
+    expect(sendable()).toEqual([])
   })
 
   it("offers the arrival notice under the Jobs record, where this build can be told", async () => {
