@@ -17,20 +17,10 @@
 
 import { join, resolve } from "node:path"
 import { parseArgs } from "node:util"
-import { chromium } from "@playwright/test"
 import { serve } from "@tests/ui-fit/harness"
 
 import { openRecorder, RECORDING_SIZE, renderWithBurnIns } from "./burn-ins"
-
-const here = (p: string): string =>
-  resolve(process.env["INIT_CWD"] ?? process.cwd(), p)
-
-/** Stops the command, saying why; the last lines print it and set the exit code. */
-class Refused extends Error {}
-
-function fail(lines: ReadonlyArray<string>): never {
-  throw new Refused(lines.join("\n"))
-}
+import { fail, here, launchChromium, runCommand } from "./command"
 
 async function main(): Promise<void> {
   const { values, positionals } = parseArgs({
@@ -47,11 +37,7 @@ async function main(): Promise<void> {
   const root = here(folder)
 
   const site = await serve(resolve(values.dist), { fallback: "index.html" })
-  const browser = await chromium.launch(
-    process.env["PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"]
-      ? { executablePath: process.env["PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"] }
-      : {}
-  )
+  const browser = await launchChromium()
   try {
     const page = await browser.newPage({
       viewport: RECORDING_SIZE,
@@ -72,10 +58,4 @@ async function main(): Promise<void> {
   }
 }
 
-try {
-  await main()
-} catch (e) {
-  if (!(e instanceof Refused)) throw e
-  process.stderr.write(`${e.message}\n`)
-  process.exitCode = 1
-}
+await runCommand(main)

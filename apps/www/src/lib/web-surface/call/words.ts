@@ -28,6 +28,9 @@ export const CALL_WORDS = {
   unblocks: "Unblocks",
   later: "Also waiting on you",
   more: (n: number): string => (n === 1 ? "and 1 more" : `and ${n} more`),
+  unread: "This week's call couldn't be read, so this is the sample instead.",
+  missing: (from: string): string =>
+    `There's no call for the week of ${from}: this is the newest instead.`,
   overflows:
     "This scene doesn't fit the frame: part of it would be cut off in the video.",
   promise: "Promise",

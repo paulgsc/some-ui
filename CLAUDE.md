@@ -790,6 +790,10 @@ handoff document (owner, 2026-10-25). It lives in two places, for two readers:
   Read and write it with `ArtifactData`; add notes to its `log` collection rather than
   rewriting history. The detail never goes in the ledger.
 
+- **What waits on the owner is an ask.** Each decision only the owner can make is its own
+  issue labelled `ask`, with a ` ```json ask ` block the weekly call reads into its
+  "waiting on you" section (`docs/asks.md`). The epic's "Where we are" and the ledger's
+  `first_step` link the ask rather than restate it, and answering it closes it.
 - **Starting from a vague ask** ("the jobs thing", "where were we on voice notes"): list the
   ledger's items and match their `keywords`, then search issues by the same words, then read
   the epic's "Where we are" and re-check it against the live code and PRs before trusting it.

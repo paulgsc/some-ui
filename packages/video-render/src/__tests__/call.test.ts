@@ -10,15 +10,21 @@ import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import {
   CALL_ID,
+  CALL_INDEX_SCHEMA,
   CALL_STAGE_WIDTH,
   CALL_VERSION,
+  callCutList,
+  callFolderProblems,
   callFormat,
   callScenes,
+  parseCallIndex,
   parseCallWeek,
+  readingMs,
   refUrl,
   sampleCallWeek,
 } from "@video-render/call"
 import type { CallWeek } from "@video-render/call"
+import { parseCutList } from "@video-render/cut-list"
 import { parseFormat } from "@video-render/format"
 import { readSeries } from "@video-render/node"
 import { versionOfFile } from "@video-render/series"
@@ -144,4 +150,78 @@ it("links a reference to where it is on GitHub", () => {
   expect(refUrl({ repo: "some-ui", kind: "issue", number: 2248 })).toBe(
     "https://github.com/paulgsc/some-ui/issues/2248"
   )
+})
+
+describe("the call as a cut list", () => {
+  it("is one the renderer draws: a still per scene, its take where said, else its words' reading time", () => {
+    const w = week()
+    const scenes = callScenes(w)
+    const takes = scenes.map((_, i) => (i === 1 ? null : 4_000 + i))
+    const cut = parseCutList(callCutList(w, takes))
+    if (!cut.ok) throw new Error(cut.problems.join("; "))
+    const [open, board] = cut.value.shots
+    expect(open).toMatchObject({
+      id: "open",
+      picture: { kind: "still", source: "01-open.png" },
+      take: { file: "01-open.mp3", inMs: 0, outMs: 4_000 },
+      durationMs: 300 + 4_000 + 700,
+    })
+    expect(board?.take).toBeUndefined()
+    expect(board?.durationMs).toBe(readingMs(w.board.said))
+    expect(cut.value.shots).toHaveLength(scenes.length)
+  })
+})
+
+describe("the index of weeks kept", () => {
+  const index = (
+    weeks: Array<{ from: string; to: string }>,
+    keep = 8
+  ): ReturnType<typeof parseCallIndex> =>
+    parseCallIndex({ schema: CALL_INDEX_SCHEMA, keep, weeks })
+
+  it("lists its weeks newest first, each once, past `keep` while home holds them not yet", () => {
+    const later = { from: "2026-11-06", to: "2026-11-12" }
+    const first = { from: "2026-10-30", to: "2026-11-05" }
+    expect(index([later, first]).ok).toBe(true)
+    expect(index([first, later]).ok).toBe(false)
+    expect(index([first, first]).ok).toBe(false)
+    expect(index([later, first], 1).ok).toBe(true)
+  })
+})
+
+describe("a call folder", () => {
+  const w = (): CallWeek => week()
+  const folder = (
+    weeks: Array<{ from: string; to: string }>,
+    files: Record<string, unknown>
+  ): Map<string, unknown> =>
+    new Map<string, unknown>([
+      ["index.json", { schema: CALL_INDEX_SCHEMA, keep: 8, weeks }],
+      ...Object.entries(files),
+    ])
+
+  it("is ready when its index lists every week it holds, each named for its days", () => {
+    expect(
+      callFolderProblems(folder([w().week], { "2026-10-30.json": w() }))
+    ).toEqual([])
+  })
+
+  it("is refused for a week missing, misnamed, unread or forgotten", () => {
+    expect(
+      callFolderProblems(
+        folder([w().week, { from: "2026-10-23", to: "2026-10-29" }], {
+          "2026-10-30.json": {
+            ...w(),
+            week: { from: "2026-10-31", to: "2026-11-05" },
+          },
+          "2026-10-16.json": w(),
+        })
+      )
+    ).toEqual([
+      "2026-10-30.json: it holds 2026-10-31 to 2026-11-05, and the index says 2026-10-30 to 2026-11-05",
+      "2026-10-23.json: the index lists it, and there is no such file",
+      "2026-10-16.json: the index doesn't list it",
+    ])
+    expect(callFolderProblems(new Map())[0]).toMatch(/^index\.json: /)
+  })
 })
