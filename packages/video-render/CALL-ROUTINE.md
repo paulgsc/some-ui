@@ -41,8 +41,8 @@ up to 14 days.
    - **mine:** up to 8 calls from the week's "Calls I made" sections worth
      the owner hearing: the options, the one taken, why, how to undo it.
      Leave out what a check or a convention decided.
-   - **asks:** every open ask that parses, newest first, up to 12: each one
-     filed this week, then the rest by what they unblock. An ask that
+   - **asks:** up to 12 open asks that parse: first those filed this week,
+     newest first, then the rest by how much each unblocks. An ask that
      doesn't parse is named in the PR body, never guessed. The others go in
      **later**, with up to 20 more owner items from the ledger's
      `first_step` "Yours:" lines that have no ask yet.
@@ -56,13 +56,16 @@ up to 14 days.
    `pnpm --filter www record:call --week <from> --voices edge` if the
    `edge-tts` command is installed, else `--voices none`. A scene the frame
    can't hold is refused: shorten its words or its list, and record again.
-   The video and its stills stay in the session (`apps/www/out/call/`).
+   The video and its stills stay in the session, in `out/call/<from>/`
+   under where the command was typed (the repository's root, under
+   `pnpm --filter`).
 7. **Open a pull request** with the week's file alone, titled
    `feat(www): the weekly call for <from> to <to>`, `Change-Kind: story`.
    Its body says what the week's facts held (counts), any ask that didn't
    parse, and whether a video was made. Drive it to green and merge it
    (`.claude/skills/steward/SKILL.md`): it adds one data file, which
-   `call-check` and the stage's own tests hold.
+   `call-check` and the stage's test of every committed week
+   (`apps/www/src/lib/web-surface/call/view.test.ts`) hold.
 8. **Say where it is:** the call plays at `/call?week=<from>` on the Pages
    site once the merge deploys. Note the run in the ledger's `log`.
 

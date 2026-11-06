@@ -19,14 +19,14 @@
  * }
  * ```
  *
- * The weekly call reads every open ask (`callAskOf`) into its "waiting on
- * you" section; the words it says over one are the run's own.
+ * The weekly run's facts (`render call-facts`) carry every open ask, read
+ * or refused with why, under its id in the call (`askId`); the agent that
+ * writes the week says each one in its "waiting on you" section.
  */
 
 import { z } from "zod"
 
 import { OptionSchema, RefSchema } from "./call"
-import type { CallWeek } from "./call"
 import { problemsOf } from "./cut-list"
 import type { Parsed } from "./cut-list"
 import { words } from "./format"
@@ -64,7 +64,9 @@ export const AskFileSchema = z
 
 export type AskFile = z.infer<typeof AskFileSchema>
 
-const FENCE = /^```json ask[ \t]*\r?\n([\s\S]*?)\r?\n```[ \t]*$/gm
+/** The block, indented or not (under a list item, say), empty or not. */
+const FENCE =
+  /^[ \t]*```json ask[ \t]*\r?\n(?:([\s\S]*?)\r?\n)?[ \t]*```[ \t]*$/gm
 
 /** The ask an issue's body carries, or every reason it carries none. */
 export function parseAskBody(body: string): Parsed<AskFile> {
@@ -78,6 +80,8 @@ export function parseAskBody(body: string): Parsed<AskFile> {
           : "it has more than one ```json ask block",
       ],
     }
+  if ((blocks[0] ?? "").trim() === "")
+    return { ok: false, problems: ["its ask block is empty"] }
   let raw: unknown
   try {
     raw = JSON.parse(blocks[0] ?? "")
@@ -93,53 +97,8 @@ export function parseAskBody(body: string): Parsed<AskFile> {
     : { ok: false, problems: problemsOf(parsed.error, "ask") }
 }
 
-/** An ask issue as the search API gives it. */
-export type AskIssue = {
+/** The id an ask's item takes in a call: its repository and number. */
+export const askId = (issue: {
   readonly repo: "some-ui" | "server"
   readonly number: number
-  readonly body: string
-}
-
-/** The id an ask's item takes in a call: its repository and number. */
-export const askId = (issue: Pick<AskIssue, "repo" | "number">): string =>
-  `${issue.repo}-${issue.number}`
-
-type CallAsk = CallWeek["asks"][number]
-
-/**
- * An ask issue as the call's item, with the words to say over it, or every
- * reason its body can't be read. The issue itself is always among its refs.
- */
-export function callAskOf(issue: AskIssue, said: string): Parsed<CallAsk> {
-  const ask = parseAskBody(issue.body)
-  if (!ask.ok)
-    return {
-      ok: false,
-      problems: ask.problems.map((p) => `${issue.repo}#${issue.number}: ${p}`),
-    }
-  const self = {
-    repo: issue.repo,
-    kind: "issue" as const,
-    number: issue.number,
-  }
-  const refs = [
-    self,
-    ...ask.value.refs.filter(
-      (r) => !(r.repo === self.repo && r.number === self.number)
-    ),
-  ]
-  return {
-    ok: true,
-    value: {
-      id: askId(issue),
-      question: ask.value.question,
-      said,
-      whyYours: ask.value.whyYours,
-      options: ask.value.options,
-      ...(ask.value.recommended === undefined
-        ? {}
-        : { recommended: ask.value.recommended }),
-      refs,
-    },
-  }
-}
+}): string => `${issue.repo}-${issue.number}`

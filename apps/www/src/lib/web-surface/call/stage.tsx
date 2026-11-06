@@ -79,8 +79,12 @@ function useOverflows(key: string): {
     measure()
     const observer = new ResizeObserver(measure)
     observer.observe(box)
+    // The frame keeps its size while a web font loads, so the observer
+    // alone never sees text that grew with it.
+    document.fonts.addEventListener("loadingdone", measure)
     return (): void => {
       observer.disconnect()
+      document.fonts.removeEventListener("loadingdone", measure)
     }
   }, [key])
   return { ref, overflows }
@@ -380,6 +384,14 @@ export const CallStagePage = ({
           </footer>
         </section>
       </div>
+      {!record && shown.missing && from !== undefined && (
+        <p
+          role="status"
+          className="text-muted-foreground mx-auto max-w-[1920px] text-sm"
+        >
+          {W.missing(from)}
+        </p>
+      )}
       {!record && overflows && (
         <p
           role="status"

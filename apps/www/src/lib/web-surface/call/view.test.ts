@@ -63,12 +63,25 @@ describe("the call's weeks", () => {
       "2026-10-30"
     )
     expect(weekAt(weeks, sample, undefined)?.week.week.from).toBe("2026-11-06")
-    expect(weekAt(weeks, sample, "1999-01-01")?.week.week.from).toBe(
-      "2026-11-06"
-    )
+    expect(weekAt(weeks, sample, "1999-01-01")).toMatchObject({
+      week: { week: { from: "2026-11-06" } },
+      missing: true,
+    })
+    expect(weekAt(weeks, sample, undefined)?.missing).toBe(false)
     expect(weekAt(weeks, sample, "sample")?.sample).toBe(true)
     expect(weekAt({ weeks: [], problems: [] }, sample, undefined)?.sample).toBe(
       true
     )
+  })
+
+  it("holds every week the weekly run committed", () => {
+    const committed = weeksOf(
+      import.meta.glob<unknown>("./weeks/*.json", {
+        eager: true,
+        import: "default",
+      })
+    )
+    expect(committed.problems).toEqual([])
+    expect(committed.weeks.length).toBeGreaterThan(0)
   })
 })

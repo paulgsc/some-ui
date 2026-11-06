@@ -424,7 +424,7 @@ export function callCutList(
   return {
     schema: CUT_LIST_SCHEMA,
     title: `The weekly call, ${week.week.from} to ${week.week.to}`,
-    series: { id: CALL_ID, version: 1 },
+    series: callFormat().series,
     look: "calm",
     voice: "read",
     // The call's series names no music bed yet.

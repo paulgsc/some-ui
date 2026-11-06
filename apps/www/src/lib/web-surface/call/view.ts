@@ -111,12 +111,19 @@ export function weekAt(
   weeks: CallWeeks,
   sample: Parsed<CallWeek>,
   from: string | undefined
-): { readonly week: CallWeek; readonly sample: boolean } | null {
-  const named =
-    from === "sample"
-      ? undefined
-      : weeks.weeks.find((w) => w.week.from === from)
-  const real = named ?? (from === "sample" ? undefined : weeks.weeks[0])
-  if (real !== undefined) return { week: real, sample: false }
-  return sample.ok ? { week: sample.value, sample: true } : null
+): {
+  readonly week: CallWeek
+  readonly sample: boolean
+  /** The week was named and there is none: another is shown instead. */
+  readonly missing: boolean
+} | null {
+  const asSample = sample.ok
+    ? { week: sample.value, sample: true, missing: false }
+    : null
+  if (from === "sample") return asSample
+  const named = weeks.weeks.find((w) => w.week.from === from)
+  const real = named ?? weeks.weeks.at(0)
+  const missing = from !== undefined && named === undefined
+  if (real !== undefined) return { week: real, sample: false, missing }
+  return asSample === null ? null : { ...asSample, missing }
 }

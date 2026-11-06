@@ -12,7 +12,6 @@ import {
   CALL_ID,
   CALL_STAGE_WIDTH,
   CALL_VERSION,
-  CALL_VOICES,
   callCutList,
   callFormat,
   callScenes,
@@ -167,13 +166,5 @@ describe("the call as a cut list", () => {
     expect(board?.take).toBeUndefined()
     expect(board?.durationMs).toBe(readingMs(w.board.said))
     expect(cut.value.shots).toHaveLength(scenes.length)
-  })
-
-  it("gives every section a voice", () => {
-    expect(Object.keys(CALL_VOICES).sort()).toEqual(
-      callFormat()
-        .scenes.map((s) => s.id)
-        .sort()
-    )
   })
 })

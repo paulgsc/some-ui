@@ -23,7 +23,6 @@ import { execFile } from "node:child_process"
 import { mkdir, writeFile } from "node:fs/promises"
 import { join, resolve } from "node:path"
 import { parseArgs, promisify } from "node:util"
-import { chromium } from "@playwright/test"
 import {
   CALL_VOICES,
   callCutList,
@@ -35,10 +34,9 @@ import type { CallWeek } from "@some-ui/video-render"
 import { nodePorts, renderFolder } from "@some-ui/video-render/node"
 import { serve } from "@tests/ui-fit/harness"
 
-const run = promisify(execFile)
+import { fail, here, launchChromium, runCommand } from "./command"
 
-const here = (p: string): string =>
-  resolve(process.env["INIT_CWD"] ?? process.cwd(), p)
+const run = promisify(execFile)
 
 /** The frame the stage is recorded at: the call's series. */
 const FRAME = { width: 1920, height: 1080 } as const
@@ -48,13 +46,6 @@ const SERIES = resolve(
   import.meta.dirname,
   "../../../../packages/video-render/src/sample/series/conference-call"
 )
-
-/** Stops the command, saying why; the last lines print it and set the exit code. */
-class Refused extends Error {}
-
-function fail(lines: ReadonlyArray<string>): never {
-  throw new Refused(lines.join("\n"))
-}
 
 async function main(): Promise<void> {
   const { values } = parseArgs({
@@ -68,11 +59,7 @@ async function main(): Promise<void> {
   if (values.voices !== "edge" && values.voices !== "none")
     fail(["--voices is edge or none"])
   const site = await serve(resolve(values.dist), { fallback: "index.html" })
-  const browser = await chromium.launch(
-    process.env["PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"]
-      ? { executablePath: process.env["PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"] }
-      : {}
-  )
+  const browser = await launchChromium()
   try {
     const page = await browser.newPage({
       viewport: FRAME,
@@ -114,8 +101,9 @@ async function main(): Promise<void> {
       await page.goto(url(scene.id))
       const shown = page.locator(`[data-scene="${scene.id}"]`)
       await shown.waitFor()
-      // The frame measures itself after layout; give it that frame.
-      await page.waitForTimeout(200)
+      await page.evaluate(async () => {
+        await document.fonts.ready
+      })
       if ((await shown.getAttribute("data-overflow")) === "true")
         overflowing.push(scene.id)
       await page.screenshot({ path: join(root, `${file}.png`) })
@@ -164,10 +152,4 @@ async function main(): Promise<void> {
   }
 }
 
-try {
-  await main()
-} catch (e) {
-  if (!(e instanceof Refused)) throw e
-  process.stderr.write(`${e.message}\n`)
-  process.exitCode = 1
-}
+await runCommand(main)

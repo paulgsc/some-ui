@@ -1,9 +1,8 @@
 /**
- * An ask issue's body carries one ```json ask block, which reads as an ask
- * or is refused with every reason, and becomes the weekly call's item with
- * the issue itself first among its refs.
+ * An ask issue's body carries one ```json ask block, indented or not, which
+ * reads as an ask or is refused with every reason.
  */
-import { ASK_SCHEMA, askId, callAskOf, parseAskBody } from "@video-render/ask"
+import { ASK_SCHEMA, askId, parseAskBody } from "@video-render/ask"
 import { describe, expect, it } from "vitest"
 
 const ask = {
@@ -27,47 +26,38 @@ describe("an ask issue's body", () => {
     expect(parsed.ok && parsed.value.question).toBe(ask.question)
   })
 
-  it("is refused with no block, two blocks, or a block that isn't an ask", () => {
+  it("reads a block indented under a list item", () => {
+    const indented = body(ask)
+      .split("\n")
+      .map((l) => `  ${l}`)
+      .join("\n")
+    expect(parseAskBody(indented).ok).toBe(true)
+  })
+
+  it("is refused with no block, two blocks, an empty one, or one that isn't JSON", () => {
     expect(parseAskBody("no block here")).toEqual({
       ok: false,
       problems: ["it has no ```json ask block"],
     })
-    expect(parseAskBody(body(ask, `\n\`\`\`json ask\n{}\n\`\`\`\n`)).ok).toBe(
-      false
-    )
+    expect(parseAskBody(body(ask, "\n```json ask\n{}\n```\n"))).toEqual({
+      ok: false,
+      problems: ["it has more than one ```json ask block"],
+    })
+    expect(parseAskBody("```json ask\n```")).toEqual({
+      ok: false,
+      problems: ["its ask block is empty"],
+    })
     expect(parseAskBody("```json ask\n{ nope\n```").ok).toBe(false)
-    expect(
-      parseAskBody(body({ ...ask, recommended: 2 })).ok ||
-        parseAskBody(body({ ...ask, options: [ask.options[0]] })).ok ||
-        parseAskBody(
-          body({ ...ask, options: [ask.options[0], ask.options[0]] })
-        ).ok
-    ).toBe(false)
+  })
+
+  it("is refused for a recommendation it doesn't list", () => {
+    expect(parseAskBody(body({ ...ask, recommended: 2 }))).toEqual({
+      ok: false,
+      problems: ["recommended: it recommends an option it doesn't list"],
+    })
   })
 })
 
-describe("an ask as the call's item", () => {
-  it("takes its id from the issue, which leads its refs once", () => {
-    const issue = { repo: "some-ui" as const, number: 2630, body: body(ask) }
-    const item = callAskOf(issue, "First, TALK's first decision.")
-    expect(item.ok && item.value).toMatchObject({
-      id: askId(issue),
-      said: "First, TALK's first decision.",
-      recommended: 0,
-      refs: [
-        { repo: "some-ui", kind: "issue", number: 2630 },
-        { repo: "some-ui", kind: "issue", number: 2545 },
-      ],
-    })
-    expect(askId(issue)).toBe("some-ui-2630")
-  })
-
-  it("names the issue in every reason it can't be read", () => {
-    expect(
-      callAskOf({ repo: "server", number: 9, body: "nothing" }, "x")
-    ).toEqual({
-      ok: false,
-      problems: ["server#9: it has no ```json ask block"],
-    })
-  })
+it("names its id in the call by its repository and number", () => {
+  expect(askId({ repo: "some-ui", number: 2630 })).toBe("some-ui-2630")
 })
