@@ -17,7 +17,7 @@ import { z } from "zod"
 import { factsOf, formatOf, kindOf, type FormatKind } from "./show"
 import { LEGEND_SLIDES, LEGEND_WEEK, legendFacts } from "./slides"
 import type { StorySeason } from "./story"
-import { nameOf } from "./story"
+import { nameOf, seasonData, seasonTo } from "./story"
 import { FORECAST, FORECAST_WORDS } from "./words"
 
 export const NARRATION_SCHEMA = "some-ui.pd-narration/1"
@@ -38,7 +38,7 @@ const NarrationSchema = z.strictObject({
     id: z.string().min(1),
     version: z.number().int().positive(),
   }),
-  /** The season's sum (`seasonData`), the same the episode pins. */
+  /** The sum of the season up to this week (`seasonTo`), as `sumOf` gives it. */
   sha256: Sha256Schema,
   /** One per scene of the format, in its order. */
   scenes: z
@@ -106,7 +106,10 @@ function scenesOf(
   }
 }
 
-function pinsOf(season: StorySeason, week: number, sha256: string): Pins {
+/** A SHA-256 of some bytes, in lowercase hex: the caller's, so this module needs no crypto. */
+export type SumOf = (data: string) => string
+
+function pinsOf(season: StorySeason, week: number, sumOf: SumOf): Pins {
   const format = formatOf(kindOf(week))
   return {
     schema: NARRATION_SCHEMA,
@@ -114,7 +117,7 @@ function pinsOf(season: StorySeason, week: number, sha256: string): Pins {
     team: season.team,
     week,
     format: { id: format.id, version: format.version },
-    sha256,
+    sha256: sumOf(seasonData(seasonTo(season, week))),
   }
 }
 
@@ -122,7 +125,7 @@ function pinsOf(season: StorySeason, week: number, sha256: string): Pins {
 export function packetOf(
   season: StorySeason,
   week: number,
-  sha256: string
+  sumOf: SumOf
 ): Parsed<Packet> {
   const scenes = scenesOf(season, week)
   if (!scenes.ok) return scenes
@@ -131,7 +134,7 @@ export function packetOf(
     value: {
       schema: PACKET_SCHEMA,
       guidance: guidanceOf(season, kindOf(week)),
-      pins: pinsOf(season, week, sha256),
+      pins: pinsOf(season, week, sumOf),
       scenes: scenes.value,
       words:
         week === LEGEND_WEEK
@@ -220,7 +223,7 @@ const pinProblems = (fill: Pins, want: Pins): ReadonlyArray<string> => [
 export function checkNarration(
   season: StorySeason,
   week: number,
-  sha256: string,
+  sumOf: SumOf,
   data: unknown
 ): Parsed<Narration> {
   const scenes = scenesOf(season, week)
@@ -230,7 +233,7 @@ export function checkNarration(
     return { ok: false, problems: problemsOf(parsed.error, "the fill") }
   }
   const fill = parsed.data
-  const problems = [...pinProblems(fill, pinsOf(season, week, sha256))]
+  const problems = [...pinProblems(fill, pinsOf(season, week, sumOf))]
   const want = scenes.value.map((s) => s.id)
   const got = fill.scenes.map((s) => s.id)
   if (want.join() !== got.join()) {
@@ -264,4 +267,32 @@ export function checkNarration(
   return problems.length > 0
     ? { ok: false, problems }
     : { ok: true, value: fill }
+}
+
+/** Where week `week`'s fill lives in a season's narration folder: week 0 is the legend. */
+export const fillFile = (team: string, week: number): string =>
+  `${team}-week-${String(week).padStart(2, "0")}.json`
+
+/**
+ * The weeks whose narration is due, given the weeks already filled: the
+ * legend once, then every played week after the newest filled one. A first
+ * run fills the legend and the newest week only, never the weeks before it.
+ */
+export function dueWeeks(
+  season: StorySeason,
+  filled: ReadonlySet<number>
+): ReadonlyArray<number> {
+  const played = season.weeks.map((w) => w.week)
+  const newestFilled = Math.max(
+    LEGEND_WEEK,
+    ...[...filled].filter((w) => w !== LEGEND_WEEK)
+  )
+  const newest = played.at(-1)
+  const weeks =
+    newestFilled === LEGEND_WEEK
+      ? newest === undefined
+        ? []
+        : [newest]
+      : played.filter((w) => w > newestFilled)
+  return [...(filled.has(LEGEND_WEEK) ? [] : [LEGEND_WEEK]), ...weeks]
 }

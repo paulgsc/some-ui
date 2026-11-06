@@ -97,14 +97,21 @@ schema it fills (`some-ui.pd-narration/1`), what it reads, and the check
 (`src/lib/narration.ts`, FEED1 #2644).
 
 ```sh
+pnpm --filter @some-ui/playoff-delta narration due --season <file|sample> --folder <narration folder>
 pnpm --filter @some-ui/playoff-delta narration packet --season <file|sample> --week 9
 pnpm --filter @some-ui/playoff-delta narration check <fill.json> --season <file|sample> --week 9
 ```
 
+Each Tuesday in season a scheduled session fills the weeks due into
+`paulgsc/testing`'s `playoff-delta/<season>/narration/<team>-week-NN.json`
+(week 00 is the legend), as `NARRATION-ROUTINE.md` says (FEED2 #2645).
+
 - **The packet** is everything a filler reads, and nothing else:
   - the guidance (who the words are for, and what they're for);
-  - the episode's pins, which the fill copies (season, team, week, format,
-    and the season's sum, the same one the episode pins);
+  - the episode's pins, which the fill copies: season, team, week, format,
+    and the sum of the season up to that week (`seasonTo`), so a fill still
+    checks once later weeks land, and stops checking if a week it reads
+    changes;
   - each scene's point and facts;
   - what the legend taught;
   - the schema as JSON Schema.
@@ -117,6 +124,10 @@ pnpm --filter @some-ui/playoff-delta narration check <fill.json> --season <file|
   - says a number its scene's facts don't give, or a week not yet played.
 
   It judges nothing else about the words.
+
+- **The weeks due** are the legend once, then every played week after the
+  newest one filled; a first run fills the legend and the newest week, not
+  the weeks before it.
 
 ## Recording
 

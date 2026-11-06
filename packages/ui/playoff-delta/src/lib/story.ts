@@ -133,6 +133,18 @@ export const parseStorySeason = (data: unknown): StorySeason =>
 export const seasonData = (season: StorySeason): string =>
   JSON.stringify(season)
 
+/**
+ * The season as week `week` reads it: its weeks up to that one, and the
+ * first week always, which the legend (week 0) reads. A week's facts read no
+ * later week, so this is what a narration of it pins (`./narration`): the
+ * season growing leaves the pin as it was, and an earlier week changing
+ * moves it.
+ */
+export const seasonTo = (season: StorySeason, week: number): StorySeason => ({
+  ...season,
+  weeks: season.weeks.filter((w, i) => i === 0 || w.week <= week),
+})
+
 export const nameOf = (season: StorySeason, code: string): string =>
   season.names[code] ?? code
 

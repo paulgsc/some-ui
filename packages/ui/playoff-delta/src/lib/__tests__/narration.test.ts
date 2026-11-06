@@ -1,5 +1,7 @@
+import { createHash } from "node:crypto"
 import {
   checkNarration,
+  dueWeeks,
   NARRATION_SCHEMA,
   packetOf,
   SAID_MAX,
@@ -13,16 +15,22 @@ import {
   LEGEND_WEEK,
   WEEK_SLIDES,
 } from "@playoff-delta/lib/slides"
-import { parseStorySeason, type StorySeason } from "@playoff-delta/lib/story"
+import {
+  parseStorySeason,
+  seasonData,
+  seasonTo,
+  type StorySeason,
+} from "@playoff-delta/lib/story"
 import { describe, expect, it } from "vitest"
 
 import raw2026 from "./season-2026.json"
 
 const SEASON_2026 = parseStorySeason(raw2026)
-const SHA = "a".repeat(64)
+const sumOf = (data: string): string =>
+  createHash("sha256").update(data).digest("hex")
 
 function packet(season: StorySeason, week: number): Packet {
-  const made = packetOf(season, week, SHA)
+  const made = packetOf(season, week, sumOf)
   if (!made.ok) throw new Error(made.problems.join("; "))
   return made.value
 }
@@ -47,7 +55,7 @@ const refusalsOf = (
   week: number,
   data: unknown
 ): ReadonlyArray<string> => {
-  const checked = checkNarration(season, week, SHA, data)
+  const checked = checkNarration(season, week, sumOf, data)
   return checked.ok ? [] : checked.problems
 }
 
@@ -65,7 +73,7 @@ describe("the packet", () => {
       team: SAMPLE_SEASON.team,
       week: 9,
       format: { id: formatOf("week").id, version: formatOf("week").version },
-      sha256: SHA,
+      sha256: sumOf(seasonData(seasonTo(SAMPLE_SEASON, 9))),
     })
     expect(p.scenes.map((s) => s.id)).toEqual(WEEK_SLIDES)
   })
@@ -78,7 +86,7 @@ describe("the packet", () => {
   })
 
   it("has no week the season hasn't played", () => {
-    expect(packetOf(SAMPLE_SEASON, 99, SHA)).toEqual({
+    expect(packetOf(SAMPLE_SEASON, 99, sumOf)).toEqual({
       ok: false,
       problems: ["the season has no week 99"],
     })
@@ -111,7 +119,7 @@ describe("the check", () => {
 
   it("refuses another episode's pins", () => {
     expect(refuses({ ...fill, sha256: "b".repeat(64) })).toEqual([
-      `sha256 is ${"b".repeat(64)}, not this episode's ${SHA}`,
+      `sha256 is ${"b".repeat(64)}, not this episode's ${fill.sha256}`,
     ])
     expect(refuses({ ...fill, week: 8 })).toEqual([
       "week is 8, not this episode's 9",
@@ -214,5 +222,45 @@ describe("the check", () => {
         saying(legend, "calls", "By week 3, you'll see.")
       )
     ).toEqual(["calls says week 3, and the legend names none"])
+  })
+})
+
+describe("a fill's pin", () => {
+  it("still holds once later weeks land, in every week of the season", () => {
+    for (const week of episodes(SEASON_2026)) {
+      const written = factsSaid(packet(seasonTo(SEASON_2026, week), week))
+      expect([week, refusalsOf(SEASON_2026, week, written)]).toEqual([week, []])
+    }
+  })
+
+  it("moves when a week it reads changes", () => {
+    const [first, ...rest] = SEASON_2026.weeks
+    if (!first) throw new Error("the season has no weeks")
+    const changed: StorySeason = {
+      ...SEASON_2026,
+      weeks: [{ ...first, pending: { ...first.pending, after: -1 } }, ...rest],
+    }
+    for (const week of episodes(SEASON_2026)) {
+      const written = factsSaid(packet(SEASON_2026, week))
+      expect(refusalsOf(changed, week, written)).toEqual([
+        `sha256 is ${written.sha256}, not this episode's ${sumOf(seasonData(seasonTo(changed, week)))}`,
+      ])
+    }
+  })
+})
+
+describe("the weeks due", () => {
+  const newest = SEASON_2026.weeks.at(-1)?.week ?? 0
+  const due = (filled: ReadonlyArray<number>): ReadonlyArray<number> =>
+    dueWeeks(SEASON_2026, new Set(filled))
+
+  it("are the legend and the newest week on a first run, not the weeks before", () => {
+    expect(due([])).toEqual([LEGEND_WEEK, newest])
+  })
+
+  it("are every week after the newest filled, and the legend until it is", () => {
+    expect(due([LEGEND_WEEK, newest - 2])).toEqual([newest - 1, newest])
+    expect(due([newest - 1])).toEqual([LEGEND_WEEK, newest])
+    expect(due([LEGEND_WEEK, newest])).toEqual([])
   })
 })
