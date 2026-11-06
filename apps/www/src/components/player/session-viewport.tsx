@@ -247,12 +247,7 @@ export const SessionViewport = ({
 
       {/* The layout autosave's failure notice, hidden on a phone along with
           the editor: nothing there can change a layout. */}
-      {editable && (
-        <AmbientIntentStatus
-          state={autosaveStatus}
-          className="absolute bottom-2 left-2 z-50 rounded-md border bg-background/90 px-2 py-1 shadow-sm"
-        />
-      )}
+      {editable && <AmbientIntentStatus state={autosaveStatus} />}
     </div>
   )
 }

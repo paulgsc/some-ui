@@ -107,7 +107,7 @@ export function isPaired(reach: HomeReach): boolean {
 }
 
 /** What the screen says once, after something happened. */
-export type BundleNotice =
+type BundleNotice =
   /** One answer deleted before Send. */
   | "deleted"
   /** The whole idea deleted before Send. */
@@ -177,6 +177,8 @@ export type BundleIntent =
   | { readonly type: "send" }
   | { readonly type: "another" }
   | { readonly type: "readAgain" }
+  /** The person closed what the screen said. */
+  | { readonly type: "noticeDismissed" }
 
 export type BundleEvent =
   | (Exclude<BundleIntent, { type: "another" }> & Stamp)
@@ -978,6 +980,9 @@ function onIntent(
           }
         : same(state)
     }
+    case "noticeDismissed": {
+      return same({ ...state, notice: null })
+    }
     default: {
       return assertNever(event)
     }
@@ -1129,7 +1134,8 @@ export function stepBundle(state: BundleState, event: BundleEvent): BundleStep {
     case "change":
     case "back":
     case "send":
-    case "readAgain": {
+    case "readAgain":
+    case "noticeDismissed": {
       return onIntent(state, event)
     }
     default: {

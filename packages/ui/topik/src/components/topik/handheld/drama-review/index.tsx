@@ -7,18 +7,20 @@
  * can answer all of it.
  *
  * In the session theme: it names each scene's feeling, but wears none (MK6).
- * Questions are Hangul, with their English one tap away; answers show their
- * English small beneath, since they are not items.
+ * Questions are Hangul, with their English one tap away: the tap is first in
+ * the review, so the English it shows grows the review below it (HS1).
+ * Answers show their English small beneath, since they are not items.
  */
 
 import type { JSX } from "react"
-import { useState } from "react"
+import { useId, useState } from "react"
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
   Input,
+  SameWidth,
 } from "@some-ui/shared"
 import { isFeelingKey } from "@some-ui/styles/theme"
 import {
@@ -55,6 +57,20 @@ type Answer<Key extends string> = {
   picked: boolean
 }
 
+/** A question's English, once asked for. */
+const English = ({
+  shown,
+  children,
+}: {
+  shown: boolean
+  children: string
+}): JSX.Element | null =>
+  shown ? (
+    <span lang="en" className="text-muted-foreground block font-normal">
+      {children}
+    </span>
+  ) : null
+
 const Question = <Key extends string>({
   ko,
   en,
@@ -71,11 +87,7 @@ const Question = <Key extends string>({
   <fieldset className="flex flex-col gap-2">
     <legend lang="ko" className="mb-2 text-sm font-semibold break-keep">
       {ko}
-      {english && (
-        <span lang="en" className="text-muted-foreground block font-normal">
-          {en}
-        </span>
-      )}
+      <English shown={english}>{en}</English>
     </legend>
     <div className="flex flex-wrap gap-2">
       {answers.map((answer) => (
@@ -104,6 +116,7 @@ export const DramaReview = ({
   nameOf: (sceneId: string) => string | undefined
 }): JSX.Element => {
   const [english, setEnglish] = useState(false)
+  const wish = useId()
   const review = record.review ?? {}
   const more = review.more ?? []
   return (
@@ -124,6 +137,16 @@ export const DramaReview = ({
         </AccordionTrigger>
         {/* Its padding keeps the text field's focus ring inside the clip. */}
         <AccordionContent className="flex flex-col gap-4 px-1 pb-4">
+          <button
+            type="button"
+            aria-pressed={english}
+            onClick={() => setEnglish(!english)}
+            className="text-muted-foreground min-h-11 self-start text-left text-sm underline"
+          >
+            <SameWidth every={["Show English", "Hide English"]}>
+              {english ? "Hide English" : "Show English"}
+            </SameWidth>
+          </button>
           <Question
             ko="재미있었어요?"
             en="Did you enjoy it?"
@@ -169,33 +192,25 @@ export const DramaReview = ({
             }))}
             onPick={(id) => onReview({ more: toggled(more, id) })}
           />
-          <label className="flex flex-col gap-2">
-            <span lang="ko" className="text-sm font-semibold break-keep">
+          <div className="flex flex-col gap-2">
+            <label
+              htmlFor={wish}
+              lang="ko"
+              className="text-sm font-semibold break-keep"
+            >
               다음엔 어떤 드라마?
-              {english && (
-                <span
-                  lang="en"
-                  className="text-muted-foreground block font-normal"
-                >
-                  What next? A genre, a trope, a character
-                </span>
-              )}
-            </span>
+              <English shown={english}>
+                What next? A genre, a trope, a character
+              </English>
+            </label>
             <Input
+              id={wish}
               maxLength={NEXT_MAX}
               value={review.next ?? ""}
               onChange={(event) => onReview({ next: event.target.value })}
               className="h-12 rounded-2xl text-base md:text-base"
             />
-          </label>
-          <button
-            type="button"
-            aria-pressed={english}
-            onClick={() => setEnglish(!english)}
-            className="text-muted-foreground min-h-11 self-start text-sm underline"
-          >
-            {english ? "Hide English" : "Show English"}
-          </button>
+          </div>
         </AccordionContent>
       </AccordionItem>
     </Accordion>

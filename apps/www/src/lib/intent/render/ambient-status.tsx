@@ -1,48 +1,39 @@
 /**
- * The ambient renderer: a persistent, low-prominence `role="status"` (a
- * polite live region), not a toast (`presentation.ts`). Working and succeeded
- * render nothing; only `failed` renders, since quiet is not invisible.
+ * The ambient renderer: a low-prominence status in a `Notice` (role
+ * `status`, a polite live region). Working and succeeded render nothing;
+ * only `failed` renders, since quiet is not invisible.
  */
 
 import type { JSX } from "react"
-import { cn } from "@some-ui/core-utils"
 import type { Intent } from "@some-ui/intent-kit"
 import { matchIntent } from "@some-ui/intent-kit"
+import { Notice } from "@some-ui/shared"
 
 export type AmbientIntentStatusProps<T, TStep extends string = never> = {
   state: Intent<T, TStep>
-  className?: string
 }
 
 export const AmbientIntentStatus = <T, TStep extends string = never>({
   state,
-  className,
 }: AmbientIntentStatusProps<T, TStep>): JSX.Element | null =>
   matchIntent<T, JSX.Element | null, TStep>(state, {
     idle: () => null,
     working: () => null,
     succeeded: () => null,
     failed: (error, retry) => (
-      <div
-        role="status"
-        className={cn(
-          "text-muted-foreground flex items-center gap-1.5 text-xs",
-          className
-        )}
+      <Notice
+        key={error.summary}
+        dismissible
+        action={
+          error.retryable ? { label: "Retry", onClick: retry } : undefined
+        }
       >
-        <span aria-hidden="true" className="text-destructive">
-          ●
+        <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
+          <span aria-hidden="true" className="text-destructive">
+            ●
+          </span>
+          <span>{error.summary}</span>
         </span>
-        <span>{error.summary}</span>
-        {error.retryable ? (
-          <button
-            type="button"
-            onClick={retry}
-            className="text-foreground underline underline-offset-2"
-          >
-            Retry
-          </button>
-        ) : null}
-      </div>
+      </Notice>
     ),
   })

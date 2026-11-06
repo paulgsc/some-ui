@@ -316,10 +316,12 @@ export const STUDIO_WORDS = {
     previous: "Previous scene",
     throwAway: "Throw it away",
     doneForNow: "Done for now",
-    runs: (ms: number): string => `This scene runs ${seconds(ms)}`,
+    // Each short enough for one line on the narrowest phone: the line
+    // never wraps, so it moves nothing (HS1).
+    runs: (ms: number, capMs: number): string =>
+      `Runs ${seconds(ms)} · a take up to ${seconds(capMs)}`,
     runsWith: (ms: number): string =>
-      `This scene runs ${seconds(ms)}: your take and a breath`,
-    upTo: (ms: number): string => `Up to ${seconds(ms)} for this take.`,
+      `Runs ${seconds(ms)}: your take and a breath`,
     elapsed: (ms: number, capMs: number): string =>
       `${seconds(ms)} · up to ${seconds(capMs)}`,
     blocked: (reason: RecordingFailure): string =>
@@ -383,6 +385,7 @@ export const STUDIO_WORDS = {
    */
   letGo: {
     heading: "When takes leave the phone",
+    intro: "Once home has a take, it can leave the phone. You choose when.",
     ask: (n: number): string =>
       `Home has ${plural(n, "take", "takes")} from this phone. Nothing leaves the phone until you choose when.`,
     choices: LET_GO_CHOICE_WORDS,

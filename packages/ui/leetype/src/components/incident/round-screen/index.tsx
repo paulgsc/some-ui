@@ -27,7 +27,7 @@ type RoundScreenProps = {
  * longer there to hold it. Before the pick nothing names the rule
  * (Rem. 9.4); a struggle's reveal says what the picked option breaks and
  * never which one is right, with the worked confirmation one tap away
- * (Prop. 9.4 (d)).
+ * (Prop. 9.4 (d)), opening below the button that asked for it.
  */
 export const RoundScreen: FC<RoundScreenProps> = ({
   screen,
@@ -92,24 +92,27 @@ export const RoundScreen: FC<RoundScreenProps> = ({
           aria-label="What your pick shows"
           className="flex flex-col gap-3 rounded-lg border-l-2 border-l-border bg-card/50 px-3 py-3 text-sm outline-none"
         >
-          {reveal.confirmation ? (
-            <WorkedAnswer screen={screen} />
-          ) : (
+          {reveal.struggled && (
             <>
               {picked?.feedback !== undefined && picked.correct !== true && (
                 <p className="text-pretty text-muted-foreground">
                   {picked.feedback}
                 </p>
               )}
+              {/* Stays where it was tapped, the answer opening below it
+                  (HS1). */}
               <Button
                 variant="outline"
                 className="min-h-11 self-start"
+                aria-expanded={reveal.confirmation}
+                disabled={reveal.confirmation}
                 onClick={onShowConfirmation}
               >
                 Show the worked answer
               </Button>
             </>
           )}
+          {reveal.confirmation && <WorkedAnswer screen={screen} />}
           <Button className="min-h-11 self-start" onClick={onContinue}>
             Continue
           </Button>

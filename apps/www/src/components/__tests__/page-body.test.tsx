@@ -63,6 +63,10 @@ async function mount(bounded: boolean): Promise<HTMLElement> {
   return page
 }
 
+/** The pull's indicator, where the body mounts it; null where it doesn't. */
+const indicator = (): Element | null =>
+  document.querySelector("[data-pull-indicator]")
+
 const touch = (y: number): { touches: Array<Partial<Touch>> } => ({
   touches: [{ clientX: 100, clientY: y, identifier: 0 }],
 })
@@ -70,19 +74,19 @@ const touch = (y: number): { touches: Array<Partial<Touch>> } => ({
 describe("the phone's page body", () => {
   it("lets a page route be dragged down, listening on the page scroller", async () => {
     const page = await mount(false)
-    expect(screen.getByRole("status").textContent).toBe("")
+    expect(indicator()?.textContent).toBe("")
 
     // A drag on the route's own content reaches the pull: it listens on the
     // body that holds the route, not only on the indicator.
     fireEvent.touchStart(page, touch(50))
     fireEvent.touchMove(page, touch(70))
     fireEvent.touchMove(page, touch(50 + ARM_PX * 3))
-    expect(screen.getByRole("status").textContent).toBe(PULL_WORDS.armed)
+    expect(indicator()?.textContent).toBe(PULL_WORDS.armed)
   })
 
   it("keeps a bounded route's drags for itself", async () => {
     const page = await mount(true)
-    expect(screen.queryByRole("status")).toBeNull()
+    expect(indicator()).toBeNull()
     fireEvent.touchStart(page, touch(50))
     fireEvent.touchMove(page, touch(50 + ARM_PX * 3))
     expect(screen.queryByText(PULL_WORDS.armed)).toBeNull()
@@ -91,12 +95,12 @@ describe("the phone's page body", () => {
   it("is not in the web builds, which have the browser's reload", async () => {
     profile.mobile = false
     await mount(false)
-    expect(screen.queryByRole("status")).toBeNull()
+    expect(indicator()).toBeNull()
   })
 
   it("is not without the device build, which folds it away", async () => {
     vi.stubEnv("VITE_DEVICE_BACKEND", "")
     await mount(false)
-    expect(screen.queryByRole("status")).toBeNull()
+    expect(indicator()).toBeNull()
   })
 })

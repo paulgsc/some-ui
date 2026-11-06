@@ -7,7 +7,7 @@ import type {
 } from "@leetype/lib/leetype/session-file-pick"
 import { SessionFilePickRuntime } from "@leetype/lib/leetype/session-file-pick"
 import { assertNever, cn } from "@some-ui/core-utils"
-import { Button } from "@some-ui/shared"
+import { Button, Notice } from "@some-ui/shared"
 import { FolderOpen } from "lucide-react"
 
 type SessionFilePickerProps = {
@@ -84,6 +84,8 @@ export const SessionFilePicker: FC<SessionFilePickerProps> = ({
     if (file) runtime.pick(file)
   }
   const status = statusOf(pick)
+  // A refusal or a file kept stays until put away; progress goes by itself.
+  const settled = pick.kind === "refused" || pick.kind === "kept"
   const card =
     // scroll-intent: reading-page: the held list and a file's findings can
     // outgrow a phone held sideways; the card scrolls inside the box it is
@@ -120,36 +122,6 @@ export const SessionFilePicker: FC<SessionFilePickerProps> = ({
           )}
         </>
       )}
-      {status !== null && (
-        <p
-          role={pick.kind === "refused" ? "alert" : "status"}
-          className={cn(
-            "text-pretty text-sm",
-            pick.kind === "refused" && "text-destructive"
-          )}
-        >
-          {status}
-        </p>
-      )}
-      {pick.kind === "kept" && pick.findings.length > 0 && (
-        <details className="text-sm">
-          <summary className="cursor-pointer text-muted-foreground">
-            The content lint found something; the session still plays
-          </summary>
-          <ul className="mt-1 list-disc space-y-0.5 pl-5 text-muted-foreground">
-            {pick.findings.map((finding) => (
-              <li key={`${finding.code} ${finding.screen} ${finding.message}`}>
-                {finding.screen}: {finding.message}
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
-      {held.kind === "failed" && (
-        <p role="alert" className="text-sm text-destructive">
-          {held.summary}
-        </p>
-      )}
       {held.kind === "ready" && held.files.length > 0 && (
         <ul
           aria-label={samples ? "Sample sessions" : "On this phone"}
@@ -172,6 +144,36 @@ export const SessionFilePicker: FC<SessionFilePickerProps> = ({
             </li>
           ))}
         </ul>
+      )}
+      {status !== null && (
+        <Notice
+          key={status}
+          tone={pick.kind === "refused" ? "danger" : "neutral"}
+          dismissible={settled}
+        >
+          <p className="text-pretty">{status}</p>
+          {pick.kind === "kept" && pick.findings.length > 0 && (
+            <details className="mt-1">
+              <summary className="cursor-pointer text-muted-foreground">
+                The content lint found something; the session still plays
+              </summary>
+              <ul className="mt-1 list-disc space-y-0.5 pl-5 text-muted-foreground">
+                {pick.findings.map((finding) => (
+                  <li
+                    key={`${finding.code} ${finding.screen} ${finding.message}`}
+                  >
+                    {finding.screen}: {finding.message}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </Notice>
+      )}
+      {held.kind === "failed" && (
+        <Notice tone="danger" dismissible>
+          {held.summary}
+        </Notice>
       )}
     </section>
   )

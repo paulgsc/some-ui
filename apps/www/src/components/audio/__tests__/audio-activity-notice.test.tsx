@@ -48,14 +48,14 @@ describe("AudioActivityNotice", () => {
 
   it("never shows again once acknowledged", async () => {
     const view = renderNotice("topik")
-    await waitFor(() => expect(screen.getByRole("alert")).toBeDefined())
+    await waitFor(() => expect(screen.getByRole("status")).toBeDefined())
 
     await act(async () => {
       screen.getByRole("button", { name: /got it|enable audio/i }).click()
       await Promise.resolve()
     })
 
-    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull())
+    await waitFor(() => expect(screen.queryByRole("status")).toBeNull())
 
     // A fresh mount is the case that matters - "dismissed" has to outlive
     // the component, not just hide it.
@@ -64,7 +64,7 @@ describe("AudioActivityNotice", () => {
     await act(async () => {
       await Promise.resolve()
     })
-    expect(screen.queryByRole("alert")).toBeNull()
+    expect(screen.queryByRole("status")).toBeNull()
   })
 
   it("is acknowledged per activity, not once for the whole app", async () => {
@@ -85,7 +85,7 @@ describe("AudioActivityNotice", () => {
   it("renders nothing for an activity with no audio at all", () => {
     renderNotice("leetype")
 
-    expect(screen.queryByRole("alert")).toBeNull()
+    expect(screen.queryByRole("status")).toBeNull()
   })
 })
 

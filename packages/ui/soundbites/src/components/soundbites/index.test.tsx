@@ -13,13 +13,14 @@ import {
 } from "@some-ui/voice-capture/testing"
 import type { SoundbitesProps } from "@soundbites/components/soundbites"
 import { Soundbites } from "@soundbites/components/soundbites"
-import { bite, memoryStore } from "@soundbites/lib/__tests__/fixture"
 import { soundbitesOweMarks } from "@soundbites/lib/aside-marks"
 import { formatWhen } from "@soundbites/lib/format"
 import { soundbitesHeldByHome } from "@soundbites/lib/home-held"
 import type { SoundbiteSituation } from "@soundbites/lib/machine"
+import { bite, memoryStore } from "@soundbites/lib/memory-store"
 import type { SoundbitesPorts } from "@soundbites/lib/runtime"
 import type { SoundbiteContext } from "@soundbites/lib/types"
+import { SOUNDBITE_WORDS as SB } from "@soundbites/lib/words"
 import {
   act,
   fireEvent,
@@ -235,7 +236,7 @@ describe("Soundbites", () => {
     const { kept } = setup({ kept: FULL })
 
     expect(
-      await screen.findByText(/Full\. Your next one replaces/)
+      await screen.findByText(SB.fullReplaces, { exact: false })
     ).toHaveTextContent(", the oldest home has")
     await record()
 
@@ -257,9 +258,11 @@ describe("Soundbites", () => {
     if (first === undefined) throw new Error("nothing offered to replace")
     expect(screen.getByText("Replaced by your next one")).toBeInTheDocument()
     await settle(() => fireEvent.click(first))
+    // The pick moves the mark on the rows, never the words above them.
+    expect(screen.getAllByText("Replaced by your next one")).toHaveLength(1)
     expect(
-      screen.getByText(/Full\. Your next one replaces/)
-    ).not.toHaveTextContent(", the oldest home has")
+      screen.getByText(SB.fullReplaces, { exact: false })
+    ).toHaveTextContent(", the oldest home has")
 
     await record()
     await screen.findByText(W.ended.kept)
@@ -357,9 +360,9 @@ describe("Soundbites", () => {
     expect(kept.size).toBe(1)
     // ... and the list it could not re-read goes unknown, not stale: no
     // "Nothing kept yet" and no 0/6 beside a take that was just kept.
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "Couldn't read what's on this phone"
-    )
+    expect(
+      screen.getByText(/Couldn't read what's on this phone/)
+    ).toBeInTheDocument()
     expect(screen.queryByText("Nothing kept yet.")).toBeNull()
     expect(screen.queryByText(/of 6 kept/)).toBeNull()
   })
@@ -406,16 +409,18 @@ describe("Soundbites", () => {
       />
     )
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Couldn't read what's on this phone"
-    )
+    expect(
+      await screen.findByText(/Couldn't read what's on this phone/)
+    ).toBeInTheDocument()
     expect(screen.queryByText("Nothing kept yet.")).not.toBeInTheDocument()
     // No count either: an unread phone has none, and 0 would say empty.
     expect(screen.queryByText(/of 6 kept/)).toBeNull()
 
     await tap("Read them again")
     expect(await screen.findByText("1 of 6 kept")).toBeInTheDocument()
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument()
+    expect(
+      screen.queryByText(/Couldn't read what's on this phone/)
+    ).not.toBeInTheDocument()
   })
 
   it("plays nothing while the microphone opens", async () => {
@@ -628,8 +633,10 @@ describe("Soundbites", () => {
     // The next one replaces the one set aside, and says so.
     const set = FULL[0]
     if (set === undefined) throw new Error("six kept")
-    expect(screen.getByText(/Full\. Your next one replaces/)).toHaveTextContent(
-      `Full. Your next one replaces ${formatWhen(set.recordedAt, new Date())}, one you set aside. Pick another below to replace that one instead.`
+    expect(
+      screen.getByText(SB.fullReplaces, { exact: false })
+    ).toHaveTextContent(
+      `${SB.fullReplaces} ${formatWhen(set.recordedAt, new Date())}, one you set aside.`
     )
 
     await record()

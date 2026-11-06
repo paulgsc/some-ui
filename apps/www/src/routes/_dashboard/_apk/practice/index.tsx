@@ -5,6 +5,7 @@ import { RUST_ROUNDS_TITLE, rustRoundsEntry } from "@some-ui/rust-rounds/entry"
 import {
   BrandMark,
   Button,
+  Notice,
   Skeleton,
   StudyGlyph,
   TalkGlyph,
@@ -94,6 +95,7 @@ const StudyCard = ({ now }: { now: Date }): JSX.Element => {
 
   const done =
     status.kind === "ready" && status.open === null && status.today.length > 0
+  const refreshRetry = status.kind === "ready" ? status.refreshRetry : null
 
   // An open session stopped past its window closes here, as it stood, and
   // a close whose write failed is retried each minute this Home is open.
@@ -210,18 +212,14 @@ const StudyCard = ({ now }: { now: Date }): JSX.Element => {
           )}
         </div>
       )}
-      {status.kind === "ready" && status.refreshRetry !== null && (
-        <p
-          role="status"
-          className="text-destructive flex items-center gap-2 text-sm"
+      {refreshRetry !== null && (
+        <Notice
+          tone="warning"
+          dismissible
+          action={{ label: "Retry", onClick: refreshRetry }}
         >
-          <span className="min-w-0 flex-1">
-            Couldn’t refresh; this may be out of date.
-          </span>
-          <Button size="sm" variant="ghost" onClick={status.refreshRetry}>
-            Retry
-          </Button>
-        </p>
+          Couldn’t refresh; this may be out of date.
+        </Notice>
       )}
       {!done && (
         <Link

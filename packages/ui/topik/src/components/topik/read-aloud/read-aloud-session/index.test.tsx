@@ -210,7 +210,7 @@ describe("ReadAloudSession", () => {
     expect(stepOf()).toBe("glyphs")
   })
 
-  it("offers no Resume while the host's session holds it", async () => {
+  it("offers no usable Resume while the host's session holds it", async () => {
     const session = (paused: boolean): JSX.Element => (
       <ReadAloudSession
         deck={STARTER_SET}
@@ -228,7 +228,12 @@ describe("ReadAloudSession", () => {
     rerender(session(true))
     expect(stepOf()).toBe("paused")
     // Its Resume would do nothing: the session's own Resume ends the hold.
-    expect(screen.queryByRole("button", { name: /resume|pause/i })).toBeNull()
+    // It stays in its place, disabled, and the notice says why.
+    expect(
+      screen
+        .getAllByRole("button", { name: /resume|pause/i })
+        .map((button) => button.hasAttribute("disabled"))
+    ).toEqual([true])
     expect(screen.getByText("Resumes with the session")).toBeDefined()
 
     rerender(session(false))
@@ -480,9 +485,9 @@ describe("ReadAloudSession's New or Seen before (Rem. 7.5)", () => {
       )
       fireEvent.click(screen.getByRole("button", { name: "Clear it" }))
       expect(onClear).toHaveBeenCalledOnce()
-      expect(slotText("read-aloud-tally")).toContain(
-        "Cleared. Every sentence starts as New again."
-      )
+      expect(
+        screen.getByText("Cleared. Every sentence starts as New again.")
+      ).toBeTruthy()
     })
 
     it("offers nothing to clear while nothing is kept", () => {

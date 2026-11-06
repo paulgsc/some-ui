@@ -6,7 +6,7 @@
 
 import type { JSX } from "react"
 import { useState } from "react"
-import { Button, useConfirmSheet } from "@some-ui/shared"
+import { Button, Notice, useConfirmSheet } from "@some-ui/shared"
 import { TALLY_WORDS } from "@topik/lib/topik/read-aloud/tally-words"
 
 type TallyClearProps = {
@@ -57,9 +57,15 @@ export const TallyClear = ({
           </Button>
         </>
       )}
-      <p aria-live="polite" className="text-foreground min-h-5 text-sm">
-        {outcome === null ? null : clear[outcome]}
-      </p>
+      {outcome !== null && (
+        <Notice
+          role={outcome === "cleared" ? "status" : "alert"}
+          tone={outcome === "cleared" ? "neutral" : "warning"}
+          onDismiss={() => setOutcome(null)}
+        >
+          {clear[outcome]}
+        </Notice>
+      )}
       {sheet}
     </div>
   )

@@ -40,6 +40,12 @@ export type TakeButtonProps = {
   view: TakeButtonView
   /** D1: a tap starts a take, or stops the one under way. */
   onTap: () => void
+  /**
+   * False while the screen's store keeps no new take (a phone full until
+   * home has some): a button at rest stays where it is, disabled, and one
+   * under way can still be stopped.
+   */
+  canStart?: boolean
   className?: string
 } & Pick<VariantProps<typeof takeButtonVariants>, "size">
 
@@ -75,6 +81,7 @@ function toneOf(view: TakeButtonView): "rest" | "live" | "quiet" {
 export const TakeButton = ({
   view,
   onTap,
+  canStart = true,
   size,
   className,
 }: TakeButtonProps): JSX.Element => {
@@ -84,7 +91,7 @@ export const TakeButton = ({
     ? Math.min(1, recording.elapsedMs / Math.max(1, recording.capMs))
     : 0
   const tappable =
-    view.kind === "ready" ||
+    (view.kind === "ready" && canStart) ||
     view.kind === "opening" ||
     view.kind === "recording"
   const large = size === "large"
@@ -97,13 +104,21 @@ export const TakeButton = ({
       aria-pressed={view.kind === "opening" || view.kind === "recording"}
       data-take={view.kind}
       className={cn(
-        takeButtonVariants({ size, tone: toneOf(view) }),
+        takeButtonVariants({
+          size,
+          tone: view.kind === "ready" && !canStart ? "quiet" : toneOf(view),
+        }),
         className
       )}
-      // The input level breathes the button while it listens: proof the
-      // microphone hears, without a word on screen.
+      // The input level breathes a ring around the button while it
+      // listens: proof the microphone hears, without a word on screen. A
+      // ring, not a scale, so the button's own box holds still (HS1).
       style={
-        recording ? { transform: `scale(${1 + recording.level * 0.08})` } : {}
+        recording
+          ? {
+              boxShadow: `0 0 0 ${(recording.level * 8).toFixed(1)}px color-mix(in oklab, var(--destructive) 35%, transparent)`,
+            }
+          : {}
       }
     >
       {recording && (
@@ -170,5 +185,3 @@ export const TakeButton = ({
     </button>
   )
 }
-
-export { takeButtonVariants }

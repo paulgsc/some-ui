@@ -389,9 +389,12 @@ export type PatternPortSnapshot = {
 
 /**
  * A pattern desk as a screen's port: its pattern, and a snapshot of its
- * takes and room that is the same object while neither changed.
+ * takes and room that is the same object while neither changed. It reads
+ * only the desk's phone, so the phone page draws it on a simulated one.
  */
-export function patternPort(desk: PatternDesk): {
+export function patternPort(desk: {
+  readonly phone: () => Pick<PatternPhone, "pattern" | "takes" | "full">
+}): {
   readonly pattern: TakePattern
   readonly getSnapshot: () => PatternPortSnapshot
   readonly subscribe: (listener: () => void) => () => void

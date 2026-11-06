@@ -12,7 +12,7 @@
 import type { JSX } from "react"
 import { useState } from "react"
 import { assertNever } from "@some-ui/core-utils"
-import { Button, Input, Label } from "@some-ui/shared"
+import { Button, Input, Label, Notice } from "@some-ui/shared"
 import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 
@@ -102,6 +102,11 @@ const PairForm = ({
   const target = typeof read === "string" ? null : read
   const typed = typedCode(code)
   const pairing = state.activity.kind === "pairing"
+  const { pairFailure } = state
+  const failed =
+    pairFailure === null
+      ? null
+      : failureLine(pairFailure.failure, hostOf(pairFailure.base))
   const pair = useAsyncIntent(
     (variables: { target: NonNullable<typeof target>; code: string }) =>
       homeLink().pair(variables.target, variables.code),
@@ -120,11 +125,9 @@ const PairForm = ({
         value={address}
         onChange={(event) => setAddress(event.target.value)}
       />
-      {read === "not-https" ? (
-        <p className="text-destructive text-xs">
-          Pairing needs an https:// address.
-        </p>
-      ) : null}
+      {read === "not-https" && (
+        <Notice tone="warning">Pairing needs an https:// address.</Notice>
+      )}
       <Label htmlFor="pair-code">Code from your computer</Label>
       <Input
         id="pair-code"
@@ -135,15 +138,9 @@ const PairForm = ({
         value={code}
         onChange={(event) => setCode(event.target.value)}
       />
-      {state.pairFailure ? (
-        <p className="text-destructive text-xs" role="status">
-          {failureLine(
-            state.pairFailure.failure,
-            hostOf(state.pairFailure.base)
-          )}
-        </p>
-      ) : null}
-      <div className="flex flex-wrap gap-2">
+      {/* Pair takes the row's room whatever host it names, so a keystroke
+          moves neither it nor Cancel (HS1). */}
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
         <IntentButton
           state={pair.state}
           onPress={() => {
@@ -151,7 +148,12 @@ const PairForm = ({
           }}
           disabled={!target || !typed || pairing}
           size="sm"
-          idleLabel={target ? `Pair with ${target.host}` : "Pair"}
+          className="w-full"
+          idleLabel={
+            <span className="min-w-0 truncate">
+              {target ? `Pair with ${target.host}` : "Pair"}
+            </span>
+          }
           workingLabel="Pairing..."
         />
         <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
@@ -159,6 +161,11 @@ const PairForm = ({
         </Button>
       </div>
       <p className="text-muted-foreground text-xs">Sends only this code.</p>
+      {failed !== null && (
+        <Notice key={failed} tone="danger" dismissible>
+          {failed}
+        </Notice>
+      )}
     </div>
   )
 }
@@ -193,12 +200,16 @@ const ClearHeld = ({
   base,
   refresh,
   state,
+  blocked,
 }: {
   base: string
   refresh: () => unknown
   state: HomeLinkState
+  /** Another question is open (Unpair's): its buttons wait, disabled. */
+  blocked: boolean
 }): JSX.Element => {
   const { activity } = state
+  const idle = activity.kind === "idle" && !blocked
   const host = hostOf(base)
   const count = useAsyncIntent((_: undefined) => finishedOnPhone(), {
     presentation: "interactive",
@@ -212,36 +223,33 @@ const ClearHeld = ({
     else toast.error(line)
   })
   const asking = count.state.status === "succeeded" ? count.state.value : null
+  const working = run.state.status === "working" && activity.kind === "sending"
 
   return (
     <div className="space-y-2">
-      {run.state.status === "working" && activity.kind === "sending" ? (
-        <div className="flex flex-wrap items-center gap-2" role="status">
-          <p className="text-sm">Asking {host}...</p>
-          <StopButton stopping={activity.stopping} />
-        </div>
-      ) : asking === null ? (
+      {working && (
+        <Notice>
+          <span className="flex flex-wrap items-center gap-2">
+            <span>Asking {host}...</span>
+            <StopButton stopping={activity.stopping} />
+          </span>
+        </Notice>
+      )}
+      {asking === 0 && (
+        <Notice action={{ label: "OK", onClick: () => count.reset() }}>
+          {CLEAR.nothing}
+        </Notice>
+      )}
+      {asking === null || asking === 0 || working ? (
         <IntentButton
           state={count.state}
           onPress={() => count.start(undefined)}
-          disabled={activity.kind !== "idle"}
+          disabled={!idle}
           variant="outline"
           size="sm"
           idleLabel={CLEAR.button}
           workingLabel="Counting..."
         />
-      ) : asking === 0 ? (
-        <div className="flex flex-wrap items-center gap-2" role="status">
-          <p className="text-sm">{CLEAR.nothing}</p>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => count.reset()}
-          >
-            OK
-          </Button>
-        </div>
       ) : (
         <div className="space-y-2">
           <p className="text-sm break-words">{CLEAR.question(asking, host)}</p>
@@ -252,7 +260,7 @@ const ClearHeld = ({
                 count.reset()
                 run.start(undefined)
               }}
-              disabled={activity.kind !== "idle"}
+              disabled={!idle}
               variant="destructive"
               size="sm"
               idleLabel={CLEAR.yes}
@@ -282,6 +290,7 @@ export const DeviceSection = (): JSX.Element => {
 
   const { link, activity } = state
   const paired = link.kind === "paired" ? link : null
+  const note = link.kind === "unpaired" ? link.note : null
   const typed = address.trim()
   const base = paired ? paired.base : typed === "" ? null : homeApiBase(typed)
   const host = paired ? hostOf(paired.base) : typedHost(typed)
@@ -308,17 +317,15 @@ export const DeviceSection = (): JSX.Element => {
           <>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm break-all">Paired · {host}</p>
-              {confirmingUnpair ? null : (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={activity.kind !== "idle"}
-                  onClick={() => setConfirmingUnpair(true)}
-                >
-                  Unpair
-                </Button>
-              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={activity.kind !== "idle" || confirmingUnpair}
+                onClick={() => setConfirmingUnpair(true)}
+              >
+                Unpair
+              </Button>
             </div>
             {confirmingUnpair ? (
               <div className="space-y-2">
@@ -351,21 +358,20 @@ export const DeviceSection = (): JSX.Element => {
               </div>
             ) : null}
             {paired.notForgotten ? (
-              <p className="text-destructive text-xs" role="status">
+              <Notice tone="danger" dismissible>
                 This phone couldn&apos;t forget its key, so it is still paired.
                 Try Unpair again.
-              </p>
+              </Notice>
             ) : null}
             <p className="text-muted-foreground text-xs">{HOME_BLOCK.lead}</p>
             <KeptOnHome />
             <DeviceRoutineReads />
-            {confirmingUnpair ? null : (
-              <ClearHeld
-                base={paired.base}
-                refresh={() => queryClient.invalidateQueries()}
-                state={state}
-              />
-            )}
+            <ClearHeld
+              base={paired.base}
+              refresh={() => queryClient.invalidateQueries()}
+              state={state}
+              blocked={confirmingUnpair}
+            />
           </>
         ) : (
           <>
@@ -378,15 +384,17 @@ export const DeviceSection = (): JSX.Element => {
               value={address}
               onChange={(event) => setAddress(event.target.value)}
             />
-            {host === null ? null : (
-              <p className="text-muted-foreground text-xs break-all">
-                Reads from {host}
-              </p>
-            )}
-            {link.kind === "unpaired" && link.note !== null ? (
-              <p className="text-muted-foreground text-xs" role="status">
-                {NOTES[link.note]}
-              </p>
+            {/* Always one line: what is typed changes its words, not the
+                form's layout (HS1). */}
+            <p className="text-muted-foreground truncate text-xs">
+              {host === null
+                ? "Reads from home once you type its address."
+                : `Reads from ${host}`}
+            </p>
+            {note !== null ? (
+              <Notice key={note} dismissible>
+                {NOTES[note]}
+              </Notice>
             ) : null}
           </>
         )}
@@ -413,23 +421,23 @@ export const DeviceSection = (): JSX.Element => {
               workingLabel="Syncing..."
             />
           )}
-          {paired || pairOpen ? null : (
+          {paired ? null : (
             <Button
               type="button"
               variant="outline"
               size="sm"
-              disabled={link.kind !== "unpaired" || activity.kind !== "idle"}
+              disabled={
+                link.kind !== "unpaired" || activity.kind !== "idle" || pairOpen
+              }
               onClick={() => setPairOpen(true)}
             >
               Pair...
             </Button>
           )}
         </div>
-        {synced === "" ? null : (
-          <p className="text-muted-foreground text-xs break-all">
-            Last sync: {synced}
-          </p>
-        )}
+        <p className="text-muted-foreground truncate text-xs">
+          {synced === "" ? "Not synced yet." : `Last sync: ${synced}`}
+        </p>
         {pairOpen && !paired ? (
           <PairForm state={state} onCancel={() => setPairOpen(false)} />
         ) : null}

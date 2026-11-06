@@ -1,7 +1,11 @@
 export type { TakeButtonProps } from "./take-button"
-export { TakeButton, takeButtonVariants } from "./take-button"
-export type { TakeItemProps, TakeRowsProps } from "./take-item"
-export { TakeItem, TakeRows } from "./take-item"
+export { TakeButton } from "./take-button"
+export type {
+  TakeItemProps,
+  TakeNoticesProps,
+  TakeRowsProps,
+} from "./take-item"
+export { TakeItem, TakeNotices, TakeRows } from "./take-item"
 export type { TakeListProps } from "./take-list"
 export { TakeList } from "./take-list"
 export type { TakeRowProps } from "./take-row"

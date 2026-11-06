@@ -39,7 +39,7 @@ import type { AphStore } from "@aph/lib/store"
 import { aphStore } from "@aph/lib/store"
 import { useAph } from "@aph/lib/use-aph"
 import { cn, dayOf, formatDay, formatWeekday } from "@some-ui/core-utils"
-import { Button, Reserved } from "@some-ui/shared"
+import { Button, Notice } from "@some-ui/shared"
 import { Send } from "lucide-react"
 
 export type AphHistoryProps = {
@@ -313,10 +313,11 @@ const Drafts = ({
         Submit {chosen.length === 0 ? "" : `${chosen.length} `}
         {chosen.length === 1 ? "draft" : "drafts"}
       </Button>
-      {/* History goes on below: a line that came would move it (HS1). */}
-      <Reserved role="alert" className="text-destructive text-center text-xs">
-        {refused && "Not submitted: the phone did not keep the change."}
-      </Reserved>
+      {refused && (
+        <Notice tone="danger" onDismiss={() => setRefused(false)}>
+          Not submitted: the phone did not keep the change.
+        </Notice>
+      )}
     </section>
   )
 }

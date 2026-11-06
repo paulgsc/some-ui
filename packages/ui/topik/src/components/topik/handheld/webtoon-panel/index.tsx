@@ -101,7 +101,12 @@ const Replay = ({
   </button>
 )
 
-/** A beat's text on its rung: heard only, its Hangul, then its gloss too. */
+/**
+ * A beat's text on its rung, behind the tap that climbs it: heard only, its
+ * Hangul, then its gloss too (canon Cor. 4.4). Each tap answers where it was
+ * tapped: the Hangul takes the place of "Listen first", and the gloss grows
+ * the panel below the Hangul, so nothing above the tap moves (HS1).
+ */
 const Ladder = ({
   rung,
   text,
@@ -110,6 +115,8 @@ const Ladder = ({
   speaking,
   final = false,
   muted,
+  align,
+  onReveal,
 }: {
   rung: Rung
   text: string
@@ -121,31 +128,46 @@ const Ladder = ({
   final?: boolean
   /** Muted text's colour: the feeling's in a feeling panel (MK5). */
   muted: string
-}): JSX.Element =>
-  rung === 0 ? (
-    <span className={cn(muted, "flex items-center gap-2 text-sm")}>
-      <Ear className={cn("size-5 shrink-0", speaking && "animate-pulse")} />
-      Listen first. Tap when you want to see it.
-    </span>
-  ) : (
-    <span className="flex flex-col gap-1">
-      <span
-        lang="ko"
-        className={cn(
-          "leading-snug font-semibold break-keep",
-          final ? "text-xl" : "text-lg"
-        )}
+  align: "text-left" | "text-right"
+  onReveal: () => void
+}): JSX.Element => (
+  <>
+    {rung === 0 ? (
+      <button
+        key="heard"
+        type="button"
+        onClick={onReveal}
+        className={cn(muted, align, "flex w-full items-center gap-2 text-sm")}
       >
-        {text}
-      </span>
-      {rung === 2 && (
-        <span className={cn(muted, "text-sm leading-relaxed")}>
-          {gloss}
-          {note && <span className="block italic">({note})</span>}
+        <Ear className={cn("size-5 shrink-0", speaking && "animate-pulse")} />
+        Listen first. Tap when you want to see it.
+      </button>
+    ) : (
+      <button
+        key="seen"
+        type="button"
+        onClick={onReveal}
+        className={cn(align, "w-full")}
+      >
+        <span
+          lang="ko"
+          className={cn(
+            "leading-snug font-semibold break-keep",
+            final ? "text-xl" : "text-lg"
+          )}
+        >
+          {text}
         </span>
-      )}
-    </span>
-  )
+      </button>
+    )}
+    {rung === 2 && (
+      <span className={cn(muted, align, "text-sm leading-relaxed")}>
+        {gloss}
+        {note && <span className="block italic">({note})</span>}
+      </span>
+    )}
+  </>
+)
 
 const mutedIn = (feeling: FeelingKey | null): string =>
   feeling === null ? "text-muted-foreground" : "feeling-muted"
@@ -284,23 +306,23 @@ export const WebtoonPanel = ({
             feeling={panel.feeling}
             className="feeling-accent size-12"
           />
+          {/* Its English grows the cover below the caption (HS1). */}
           <button
             type="button"
             onClick={() => onReveal(panel.scene.id)}
             aria-label={
               rung === 2 ? undefined : `${words.caption}: show English`
             }
-            className="flex flex-col items-center gap-1"
           >
             <span lang="ko" className="feeling-caption text-2xl font-black">
               {words.caption}
             </span>
-            {rung === 2 && (
-              <span className="feeling-muted text-sm">
-                {words.captionGloss}
-              </span>
-            )}
           </button>
+          {rung === 2 && (
+            <span className="feeling-muted -mt-1 text-sm">
+              {words.captionGloss}
+            </span>
+          )}
           <span
             lang="ko"
             className="feeling-accent text-3xl font-black tracking-widest italic"
@@ -348,14 +370,7 @@ export const WebtoonPanel = ({
           <span
             className={cn("flex items-start gap-2", pov && "flex-row-reverse")}
           >
-            <button
-              type="button"
-              onClick={() => onReveal(line.id)}
-              className={cn(
-                "min-w-0 flex-1 rounded-2xl border-2 border-current px-3 py-2",
-                pov ? "text-right" : "text-left"
-              )}
-            >
+            <span className="flex min-w-0 flex-1 flex-col gap-1 rounded-2xl border-2 border-current px-3 py-2">
               <Ladder
                 rung={rung}
                 text={line.text}
@@ -364,8 +379,10 @@ export const WebtoonPanel = ({
                 speaking={speaking === line.id}
                 final={panel.final}
                 muted={mutedIn(feeling)}
+                align={pov ? "text-right" : "text-left"}
+                onReveal={() => onReveal(line.id)}
               />
-            </button>
+            </span>
             {audio && (
               <Replay
                 label={`Play ${name}'s line`}
@@ -386,11 +403,7 @@ export const WebtoonPanel = ({
           slot="drama-narration"
           className="flex items-start gap-2 p-3"
         >
-          <button
-            type="button"
-            onClick={() => onReveal(narration.id)}
-            className="min-w-0 flex-1 text-left"
-          >
+          <span className="flex min-w-0 flex-1 flex-col gap-1">
             <Ladder
               rung={rung}
               text={narration.text}
@@ -398,8 +411,10 @@ export const WebtoonPanel = ({
               speaking={speaking === narration.id}
               final={panel.final}
               muted={mutedIn(feeling)}
+              align="text-left"
+              onReveal={() => onReveal(narration.id)}
             />
-          </button>
+          </span>
           {audio && (
             <Replay
               label="Play the narration"
@@ -458,20 +473,21 @@ export const WebtoonPanel = ({
             name={nameOf(lesson.pov)}
             tag="속마음"
           />
+          {/* Its English grows the bubble below the prompt (HS1). */}
           <button
             type="button"
             onClick={() => onReveal(choice.id)}
-            className="flex flex-col gap-1 text-right"
+            className="text-right"
           >
             <span lang="ko" className="text-lg break-keep italic">
               {choice.prompt}
             </span>
-            {rung === 2 && (
-              <span className="text-muted-foreground text-sm">
-                {choice.check.prompt}
-              </span>
-            )}
           </button>
+          {rung === 2 && (
+            <span className="text-muted-foreground -mt-1 text-right text-sm">
+              {choice.check.prompt}
+            </span>
+          )}
         </section>
       )
     }
@@ -495,21 +511,24 @@ export const WebtoonPanel = ({
             {panel.scene.place}
           </span>
           {hook && (
-            <button
-              type="button"
-              onClick={() => onReveal(hookId)}
-              className="mt-2 flex w-full flex-col gap-1 rounded-xl border-2 border-current px-3 py-2 text-left"
-            >
-              <span lang="ko" className="text-xs font-black">
-                다음 화 예고
-              </span>
-              <span lang="ko" className="text-lg font-semibold break-keep">
-                {hook.text}
-              </span>
+            // Its English grows the box below the line (HS1).
+            <span className="mt-2 flex w-full flex-col gap-1 rounded-xl border-2 border-current px-3 py-2 text-left">
+              <button
+                type="button"
+                onClick={() => onReveal(hookId)}
+                className="flex flex-col gap-1 text-left"
+              >
+                <span lang="ko" className="text-xs font-black">
+                  다음 화 예고
+                </span>
+                <span lang="ko" className="text-lg font-semibold break-keep">
+                  {hook.text}
+                </span>
+              </button>
               {rungOf(hookId) === 2 && (
                 <span className="feeling-muted text-sm">{hook.gloss}</span>
               )}
-            </button>
+            </span>
           )}
         </Themed>
       )

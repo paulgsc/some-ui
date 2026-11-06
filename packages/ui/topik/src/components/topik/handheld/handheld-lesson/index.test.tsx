@@ -439,7 +439,7 @@ describe("HandheldLesson", () => {
     ])
   })
 
-  it("adds neither set of a pair one of which can't be read, says so under the routine's files, and leaves it not opened", async () => {
+  it("adds neither set of a pair one of which can't be read, says so over the screen, and leaves it not opened", async () => {
     const store = createReadAloudStore(memoryStorage())
     const opened = createOpenedStore(memoryStorage())
     renderLesson({
@@ -461,7 +461,7 @@ describe("HandheldLesson", () => {
     })
     fireEvent.click(within(waiting).getByRole("button"))
     expect(
-      waiting.querySelector('[data-slot="routine-note"]')?.textContent
+      document.querySelector('[data-slot="routine-note"]')?.textContent
     ).toBe("That file isn't a word set.")
     expect(store.sets()).toEqual([])
     expect(opened.opened().size).toBe(0)
@@ -635,7 +635,7 @@ describe("HandheldLesson", () => {
       within(waiting).getByRole("button", { name: "Grammar lens: 약속" })
     )
     expect(
-      waiting.querySelector('[data-slot="routine-note"]')?.textContent
+      document.querySelector('[data-slot="routine-note"]')?.textContent
     ).toBe(
       "This phone keeps 50 word sets and has 49, so these 2 weren't added."
     )

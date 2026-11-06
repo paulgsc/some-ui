@@ -20,10 +20,9 @@ import {
   useSyncExternalStore,
 } from "react"
 import { cn } from "@some-ui/core-utils"
-import { Button, TakeButton, TakeRow, usePager } from "@some-ui/shared"
+import { Button, Notice, TakeButton, TakeRow, usePager } from "@some-ui/shared"
 import { LOOKS, VOICES } from "@some-ui/video-render"
 import { FilePick } from "@soundbites/components/file-pick"
-import { Notice } from "@soundbites/components/notice"
 import { phoneStudioPorts } from "@soundbites/lib/phone"
 import { BEST_OF, finishOf } from "@soundbites/lib/project/finish"
 import { LET_GO_CHOICES, waitingCount } from "@soundbites/lib/project/let-go"
@@ -205,11 +204,9 @@ const LetGoCard = ({
       <h3 className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
         {WORDS.letGo.heading}
       </h3>
-      <p>
-        {state.letGo === null
-          ? WORDS.letGo.ask(waiting)
-          : WORDS.letGo.says[state.letGo]}
-      </p>
+      {/* The same whatever is chosen, so a choice moves none of them; what
+          the choice does is said below them (HS1). */}
+      <p>{WORDS.letGo.intro}</p>
       <div className="flex flex-col gap-2">
         {LET_GO_CHOICES.map((letGo) => (
           <Button
@@ -224,6 +221,11 @@ const LetGoCard = ({
           </Button>
         ))}
       </div>
+      <p>
+        {state.letGo === null
+          ? WORDS.letGo.ask(waiting)
+          : WORDS.letGo.says[state.letGo]}
+      </p>
       {state.letGo !== null && (
         <p className="text-muted-foreground text-xs">{WORDS.letGo.change}</p>
       )}
@@ -483,10 +485,12 @@ const Start = ({
         problem={state.primerProblem}
         disabled={!isSettled(state.activity)}
         onPick={(file) => dispatch({ type: "primerPicked", file })}
+        onDismiss={() => dispatch({ type: "noticeDismissed", what: "problem" })}
       />
       {state.choosing !== null && project !== null && (
         <div
-          role="alert"
+          role="group"
+          aria-label={WORDS.start.which(startView(project).title)}
           className="border-border/60 space-y-2.5 rounded-2xl border p-3 text-sm"
         >
           <p>{WORDS.start.which(startView(project).title)}</p>
@@ -514,19 +518,31 @@ const Start = ({
           </div>
         </div>
       )}
-      <Notice text={state.notice} />
+      {state.notice !== "" && (
+        <Notice
+          key={state.notice}
+          onDismiss={() =>
+            dispatch({ type: "noticeDismissed", what: "notice" })
+          }
+        >
+          {state.notice}
+        </Notice>
+      )}
     </div>
   )
 }
 
-/** The scene's length as it stands: the take and a breath once there is one. */
+/**
+ * The scene's length as it stands, and a take's: the count while recording,
+ * the take and a breath once there is one, how long a take may run before.
+ */
 function lengthLine(view: RecordView, state: StudioState): string {
   const { activity } = state
   if (activity.kind === "recording")
     return WORDS.record.elapsed(activity.elapsed, activity.capMs)
   if (view.take !== null)
     return WORDS.record.runsWith(lengthFor(view.shot, view.take.durationMs))
-  return WORDS.record.runs(view.shot.durationMs)
+  return WORDS.record.runs(view.shot.durationMs, view.capMs)
 }
 
 const Record = ({
@@ -626,46 +642,34 @@ const Record = ({
           />
         </ul>
       )}
-      {taken && (
+      {view.take !== null && (
         // Wraps: on the narrowest phone the last scene's label is long.
         // `whitespace-normal`, not `text-wrap`: the button's own
         // `whitespace-nowrap` is a shorthand that resets text-wrap, and
-        // wins in the cascade.
+        // wins in the cascade. Held while a take is under way (HS1).
         <Button
           className="h-auto min-h-10 whitespace-normal"
+          disabled={!taken}
           onClick={() => dispatch({ type: "keepNextPressed" })}
         >
           {view.last ? WORDS.record.keepLast : WORDS.record.keepNext}
         </Button>
       )}
-      <p className="text-center font-mono text-sm tabular-nums">
+      {/* The figure, one line on every phone: each thing it says is short
+          enough, and it never wraps, so a take started or kept moves
+          nothing below it (HS1). */}
+      <p className="truncate text-center font-mono text-sm tabular-nums">
         {lengthLine(view, state)}
       </p>
-      <div className="flex flex-wrap items-center justify-center gap-x-4">
-        {recording && (
-          <Button
-            variant="link"
-            size="sm"
-            onClick={() => dispatch({ type: "discardPressed" })}
-          >
-            {WORDS.record.throwAway}
-          </Button>
-        )}
-      </div>
-      <Notice
-        text={
-          state.notice !== ""
-            ? state.notice
-            : settled && view.take === null
-              ? WORDS.record.upTo(view.capMs)
-              : ""
-        }
-      />
-      {state.blocked !== null && activity.kind === "idle" && (
-        <p role="alert" className="text-destructive text-center text-sm">
-          {WORDS.record.blocked(state.blocked)}
-        </p>
-      )}
+      <Button
+        variant="link"
+        size="sm"
+        className="self-center"
+        disabled={!recording}
+        onClick={() => dispatch({ type: "discardPressed" })}
+      >
+        {WORDS.record.throwAway}
+      </Button>
       <Button
         variant="ghost"
         className="self-center"
@@ -673,6 +677,27 @@ const Record = ({
       >
         {WORDS.record.doneForNow}
       </Button>
+      {state.notice !== "" && (
+        <Notice
+          key={state.notice}
+          onDismiss={() =>
+            dispatch({ type: "noticeDismissed", what: "notice" })
+          }
+        >
+          {state.notice}
+        </Notice>
+      )}
+      {state.blocked !== null && activity.kind === "idle" && (
+        <Notice
+          key={state.blocked}
+          tone="danger"
+          onDismiss={() =>
+            dispatch({ type: "noticeDismissed", what: "blocked" })
+          }
+        >
+          {WORDS.record.blocked(state.blocked)}
+        </Notice>
+      )}
     </section>
   )
 }
@@ -711,7 +736,16 @@ const Done = ({
             </Button>
           ))}
         </div>
-        <Notice text={state.notice} />
+        {state.notice !== "" && (
+          <Notice
+            key={state.notice}
+            onDismiss={() =>
+              dispatch({ type: "noticeDismissed", what: "notice" })
+            }
+          >
+            {state.notice}
+          </Notice>
+        )}
       </section>
     )
   if (screen.step === "what")
@@ -781,14 +815,27 @@ const Done = ({
       >
         {WORDS.done.notYet}
       </Button>
-      <Notice text={state.notice} />
+      {state.notice !== "" && (
+        <Notice
+          key={state.notice}
+          onDismiss={() =>
+            dispatch({ type: "noticeDismissed", what: "notice" })
+          }
+        >
+          {state.notice}
+        </Notice>
+      )}
     </section>
   )
 }
 
 type ShapeScreen = Extract<StudioState["screen"], { kind: "shape" }>
 
-/** One plan as a card: its name, and what it sets once chosen. */
+/**
+ * One plan as a card: its name, and what it sets. Every card says what it
+ * sets, chosen or not, and draws the same border, so a pick changes only
+ * colours and no card moves under the thumb (HS1).
+ */
 const PlanCard = ({
   name,
   sets,
@@ -807,8 +854,8 @@ const PlanCard = ({
     aria-pressed={chosen}
     onClick={onPick}
     className={cn(
-      "focus-visible:ring-ring flex w-full flex-col gap-1 rounded-2xl border px-4 py-3 text-left focus-visible:ring-2 focus-visible:outline-none",
-      chosen ? "bg-card border-brand border-2" : "border-border/60"
+      "focus-visible:ring-ring flex w-full flex-col gap-1 rounded-2xl border-2 px-4 py-3 text-left focus-visible:ring-2 focus-visible:outline-none",
+      chosen ? "bg-card border-brand" : "border-border/60"
     )}
   >
     <span className="flex items-center gap-2">
@@ -819,13 +866,13 @@ const PlanCard = ({
         </span>
       )}
     </span>
-    {chosen && <span className="text-muted-foreground text-sm">{sets}</span>}
+    <span className="text-muted-foreground text-sm">{sets}</span>
   </button>
 )
 
 /**
  * Shape (STUDIO ST6): two steps, one question each, a few plans per
- * question, and only the chosen plan says what it sets.
+ * question, each saying what it sets.
  */
 const Shape = ({
   screen,
@@ -1095,6 +1142,8 @@ const Watch = ({
       : askedAt(changesIn(project, review), screen.atMs, screen.answered)
   const here = review === null ? null : shotAt(review, screen.atMs)
   const idea = ideaAsking(project, screen, ideasAnswering(state, project.id))
+  // A note kept, waiting for what it is about (SH4).
+  const answering = screen.asking !== null
   const scene =
     screen.origin !== null
       ? originView(project, screen.origin.shot)
@@ -1126,30 +1175,35 @@ const Watch = ({
             dispatch={dispatch}
           />
           {asked !== null && (
-            <div className="border-brand space-y-2 rounded-2xl border-2 p-3">
-              <p className="text-sm">{words.changed(asked.note.text)}</p>
-              <div className="flex gap-2">
-                <Button
-                  onClick={() =>
-                    dispatch({ type: "changeGood", note: asked.note.id })
-                  }
-                >
-                  {words.good}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() =>
-                    dispatch({ type: "changeNotYet", note: asked.note.id })
-                  }
-                >
-                  {words.notYet}
-                </Button>
+            <Notice>
+              <div className="space-y-2">
+                <p>{words.changed(asked.note.text)}</p>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() =>
+                      dispatch({ type: "changeGood", note: asked.note.id })
+                    }
+                  >
+                    {words.good}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      dispatch({ type: "changeNotYet", note: asked.note.id })
+                    }
+                  >
+                    {words.notYet}
+                  </Button>
+                </div>
               </div>
-            </div>
+            </Notice>
           )}
-          {screen.asking !== null ? (
+          {screen.asking !== null && (
             <NoteAbout text={screen.asking.text} dispatch={dispatch} />
-          ) : screen.origin !== null && scene !== null ? (
+          )}
+          {screen.origin !== null && scene !== null ? (
             <IdeaFix
               fix={screen.origin}
               initialText={screen.origin.draft ?? ""}
@@ -1161,7 +1215,7 @@ const Watch = ({
             />
           ) : (
             <>
-              {scene !== null && asked === null && (
+              {scene !== null && asked === null && !answering && (
                 <IdeaAsk
                   scene={scene}
                   asking={idea === scene.shot}
@@ -1172,7 +1226,8 @@ const Watch = ({
                 text={text}
                 setText={setText}
                 noteId={noteId}
-                canNote={here !== null}
+                canNote={here !== null && !answering}
+                held={answering}
                 atMs={screen.atMs}
                 dispatch={dispatch}
               />
@@ -1180,7 +1235,7 @@ const Watch = ({
                 <SpokenNote
                   speaking={screen.speaking}
                   atMs={screen.atMs}
-                  canStart={here !== null}
+                  canStart={here !== null && !answering}
                   dispatch={dispatch}
                 />
               )}
@@ -1188,12 +1243,25 @@ const Watch = ({
           )}
         </>
       )}
-      {screen.asking === null && (
-        <Button variant="ghost" onClick={() => dispatch({ type: "watchBack" })}>
-          {words.back}
-        </Button>
+      {/* In its place while a note waits for what it is about, which is
+          answered first, never dropped (SH4). */}
+      <Button
+        variant="ghost"
+        disabled={answering}
+        onClick={() => dispatch({ type: "watchBack" })}
+      >
+        {words.back}
+      </Button>
+      {state.notice !== "" && (
+        <Notice
+          key={state.notice}
+          onDismiss={() =>
+            dispatch({ type: "noticeDismissed", what: "notice" })
+          }
+        >
+          {state.notice}
+        </Notice>
       )}
-      <Notice text={state.notice} />
     </div>
   )
 }
@@ -1208,31 +1276,29 @@ const NoteAbout = ({
 }): JSX.Element => {
   const words = WORDS.watch.about
   return (
-    <section
-      role="group"
-      aria-label={words.question}
-      className="border-border/60 space-y-2 rounded-2xl border p-3"
-    >
-      <p className="text-sm font-bold">{words.question}</p>
-      <blockquote className="text-muted-foreground border-l-2 pl-2 text-sm">
-        {text}
-      </blockquote>
-      {(["take", "show"] as const).map((about) => (
-        <button
-          key={about}
-          type="button"
-          onClick={() => dispatch({ type: "aboutChosen", about })}
-          className={LIST_ROW}
-        >
-          <span className="min-w-0 flex-1">
-            <span className="block text-sm font-bold">{words[about]}</span>
-            <span className="text-muted-foreground block text-xs">
-              {about === "take" ? words.takeLine : words.showLine}
+    <Notice>
+      <section role="group" aria-label={words.question} className="space-y-2">
+        <p className="font-bold">{words.question}</p>
+        <blockquote className="text-muted-foreground border-l-2 pl-2">
+          {text}
+        </blockquote>
+        {(["take", "show"] as const).map((about) => (
+          <button
+            key={about}
+            type="button"
+            onClick={() => dispatch({ type: "aboutChosen", about })}
+            className={LIST_ROW}
+          >
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-bold">{words[about]}</span>
+              <span className="text-muted-foreground block text-xs">
+                {about === "take" ? words.takeLine : words.showLine}
+              </span>
             </span>
-          </span>
-        </button>
-      ))}
-    </section>
+          </button>
+        ))}
+      </section>
+    </Notice>
   )
 }
 
@@ -1242,6 +1308,7 @@ const NoteHere = ({
   setText,
   noteId,
   canNote,
+  held,
   atMs,
   dispatch,
 }: {
@@ -1249,6 +1316,8 @@ const NoteHere = ({
   setText: (text: string) => void
   noteId: string
   canNote: boolean
+  /** A note kept waits for its answer: nothing more is typed until then. */
+  held: boolean
   atMs: number
   dispatch: Dispatch
 }): JSX.Element => {
@@ -1268,8 +1337,9 @@ const NoteHere = ({
       <input
         id={noteId}
         value={text}
+        disabled={held}
         onChange={(event) => setText(event.currentTarget.value)}
-        className="border-input bg-background focus-visible:ring-ring rounded-xl border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none"
+        className="border-input bg-background focus-visible:ring-ring rounded-xl border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none disabled:opacity-50"
       />
       <Button type="submit" size="lg" disabled={text.trim() === "" || !canNote}>
         {words.noteHere(atMs)}
@@ -1295,28 +1365,30 @@ const IdeaAsk = ({
   const words = WORDS.origin
   if (!asking)
     return scene.confirmed ? (
-      <p className="text-muted-foreground text-sm">
-        {words.said(scene.n, scene.whose)}
-      </p>
+      <Notice>{words.said(scene.n, scene.whose)}</Notice>
     ) : null
   return (
-    <div className="border-brand space-y-2 rounded-2xl border-2 p-3">
-      <p className="font-semibold">{words.question(scene.n)}</p>
-      <p className="text-sm">{words.proposed(scene.whose)}</p>
-      <div className="flex gap-2">
-        <Button
-          onClick={() => dispatch({ type: "ideaRight", shot: scene.shot })}
-        >
-          {words.right}
-        </Button>
-        <Button
-          variant="outline"
-          onClick={() => dispatch({ type: "ideaNotQuite", shot: scene.shot })}
-        >
-          {words.notQuite}
-        </Button>
+    <Notice>
+      <div className="space-y-2">
+        <p className="font-semibold">{words.question(scene.n)}</p>
+        <p>{words.proposed(scene.whose)}</p>
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            onClick={() => dispatch({ type: "ideaRight", shot: scene.shot })}
+          >
+            {words.right}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => dispatch({ type: "ideaNotQuite", shot: scene.shot })}
+          >
+            {words.notQuite}
+          </Button>
+        </div>
       </div>
-    </div>
+    </Notice>
   )
 }
 
@@ -1378,37 +1450,40 @@ const IdeaFix = ({
     <div className="border-brand flex flex-col gap-2 rounded-2xl border-2 p-3">
       <p className="font-semibold">{words.where}</p>
       <p className="text-muted-foreground text-sm">{words.whereHint}</p>
-      {take !== null && speaking === null && (
-        <Button size="lg" onClick={() => dispatch({ type: "ideaInTake" })}>
+      {take !== null && (
+        <Button
+          size="lg"
+          disabled={speaking !== null}
+          onClick={() => dispatch({ type: "ideaInTake" })}
+        >
           {words.inTake}
         </Button>
       )}
-      {speaking === null && (
-        <form
-          className="flex flex-col gap-2"
-          onSubmit={(event) => {
-            event.preventDefault()
-            dispatch({ type: "ideaInWords", text })
-          }}
+      <form
+        className="flex flex-col gap-2"
+        onSubmit={(event) => {
+          event.preventDefault()
+          dispatch({ type: "ideaInWords", text })
+        }}
+      >
+        <label htmlFor={wordsId} className="text-sm font-semibold">
+          {words.wordsLabel}
+        </label>
+        <input
+          id={wordsId}
+          value={text}
+          disabled={speaking !== null}
+          onChange={(event) => setText(event.currentTarget.value)}
+          className="border-input bg-background focus-visible:ring-ring rounded-xl border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none disabled:opacity-50"
+        />
+        <Button
+          type="submit"
+          variant={take === null ? "default" : "outline"}
+          disabled={text.trim() === "" || speaking !== null}
         >
-          <label htmlFor={wordsId} className="text-sm font-semibold">
-            {words.wordsLabel}
-          </label>
-          <input
-            id={wordsId}
-            value={text}
-            onChange={(event) => setText(event.currentTarget.value)}
-            className="border-input bg-background focus-visible:ring-ring rounded-xl border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none"
-          />
-          <Button
-            type="submit"
-            variant={take === null ? "default" : "outline"}
-            disabled={text.trim() === ""}
-          >
-            {words.keepWords}
-          </Button>
-        </form>
-      )}
+          {words.keepWords}
+        </Button>
+      </form>
       {listen && (
         <SpokenNote
           speaking={speaking}
@@ -1445,66 +1520,74 @@ const SpokenNote = ({
   keep?: string
 }): JSX.Element => {
   const words = WORDS.watch
-  if (speaking === null)
-    return (
-      <Button
-        variant="outline"
-        size="lg"
-        disabled={!canStart}
-        onClick={() => dispatch({ type: "speakPressed" })}
-      >
-        <Mic aria-hidden />
-        {start ?? words.say(atMs)}
-      </Button>
-    )
-  if (speaking.phase === "listening" || speaking.phase === "finishing") {
-    const where =
-      speaking.phase === "finishing"
-        ? words.finishing
-        : speaking.ready
-          ? words.listening
-          : words.gettingReady
-    return (
-      <div className="flex flex-col gap-2" aria-live="polite">
-        <p className="text-sm">
-          {speaking.words === "" ? (
-            <span className="text-muted-foreground">{where}</span>
-          ) : (
-            speaking.words
-          )}
-        </p>
-        {speaking.phase === "listening" ? (
-          <Button size="lg" onClick={() => dispatch({ type: "speakStopped" })}>
-            <Square aria-hidden />
-            {words.stop}
-          </Button>
-        ) : (
-          <p className="text-muted-foreground text-sm">{words.finishing}</p>
-        )}
-      </div>
-    )
-  }
+  const listening = speaking?.phase === "listening"
+  // One button in one place: Say, then Done talking while listening, held
+  // while the words are finished and looked over.
   return (
-    <div className="border-brand flex flex-col gap-2 rounded-2xl border-2 p-3">
-      <p className="text-sm">{speaking.words}</p>
-      <Button size="lg" onClick={() => dispatch({ type: "spokenKept" })}>
-        {keep ?? words.keepSaid(speaking.atMs)}
-      </Button>
-      <div className="flex gap-2">
+    <>
+      {listening ? (
+        <Button size="lg" onClick={() => dispatch({ type: "speakStopped" })}>
+          <Square aria-hidden />
+          {words.stop}
+        </Button>
+      ) : (
         <Button
           variant="outline"
-          onClick={() => dispatch({ type: "spokenAgain" })}
+          size="lg"
+          disabled={!canStart || speaking !== null}
+          onClick={() => dispatch({ type: "speakPressed" })}
         >
-          {words.again}
+          <Mic aria-hidden />
+          {start ?? words.say(atMs)}
         </Button>
-        <Button
-          variant="ghost"
-          onClick={() => dispatch({ type: "spokenDropped" })}
-        >
-          {words.drop}
-        </Button>
-      </div>
-    </div>
+      )}
+      {speaking !== null && speaking.phase !== "heard" && (
+        <Notice>
+          {speaking.words === "" ? (
+            <span className="text-muted-foreground">
+              {speaking.phase === "finishing"
+                ? words.finishing
+                : speaking.ready
+                  ? words.listening
+                  : words.gettingReady}
+            </span>
+          ) : (
+            <>
+              <p>{speaking.words}</p>
+              {speaking.phase === "finishing" && (
+                <p className="text-muted-foreground">{words.finishing}</p>
+              )}
+            </>
+          )}
+        </Notice>
+      )}
+      {speaking?.phase === "heard" && (
+        <Notice>
+          <div className="flex flex-col gap-2">
+            <p>{speaking.words}</p>
+            <Button onClick={() => dispatch({ type: "spokenKept" })}>
+              {keep ?? words.keepSaid(speaking.atMs)}
+            </Button>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => dispatch({ type: "spokenAgain" })}
+              >
+                {words.again}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => dispatch({ type: "spokenDropped" })}
+              >
+                {words.drop}
+              </Button>
+            </div>
+          </div>
+        </Notice>
+      )}
+    </>
   )
 }
 
@@ -1571,21 +1654,17 @@ const MadeOnHome = ({
       <h3 className="text-muted-foreground text-sm font-semibold">
         {words.heading}
       </h3>
-      {home.kind === "offer" ? (
-        <>
-          <p className="text-sm">{words.offer}</p>
-          <Button
-            size="lg"
-            variant="outline"
-            onClick={() => dispatch({ type: "homeAsked" })}
-          >
-            {words.button}
-          </Button>
-        </>
-      ) : (
-        <p className="text-sm">{home.line}</p>
-      )}
+      <p className="text-sm">{words.offer}</p>
+      <Button
+        size="lg"
+        variant="outline"
+        disabled={home.kind !== "offer"}
+        onClick={() => dispatch({ type: "homeAsked" })}
+      >
+        {words.button}
+      </Button>
       <p className="text-muted-foreground text-sm">{words.drive}</p>
+      {home.kind === "standing" && <Notice>{home.line}</Notice>}
     </section>
   )
 }
@@ -1717,7 +1796,16 @@ const Finish = ({
       <Button variant="ghost" onClick={() => dispatch({ type: "finishBack" })}>
         {words.back}
       </Button>
-      <Notice text={state.notice} />
+      {state.notice !== "" && (
+        <Notice
+          key={state.notice}
+          onDismiss={() =>
+            dispatch({ type: "noticeDismissed", what: "notice" })
+          }
+        >
+          {state.notice}
+        </Notice>
+      )}
     </div>
   )
 }
@@ -1744,16 +1832,15 @@ export const Studio = ({
     return <p className="text-muted-foreground text-sm">{WORDS.reading}</p>
   if (shelf.kind === "unreadable")
     return (
-      <div role="alert" className="space-y-2 text-sm">
-        <p className="text-muted-foreground">{WORDS.unreadable}</p>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => dispatch({ type: "retryRead" })}
-        >
-          {WORDS.readAgain}
-        </Button>
-      </div>
+      <Notice
+        tone="danger"
+        action={{
+          label: WORDS.readAgain,
+          onClick: () => dispatch({ type: "retryRead" }),
+        }}
+      >
+        {WORDS.unreadable}
+      </Notice>
     )
   const project = projectOf(state)
   if (screen.kind === "record" && project !== null) {

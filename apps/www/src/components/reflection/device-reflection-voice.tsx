@@ -7,7 +7,7 @@
  */
 import type { JSX } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
-import { TakeItem, useTakePattern } from "@some-ui/shared"
+import { Notice, TakeItem, useTakePattern } from "@some-ui/shared"
 import { takeItemView } from "@some-ui/voice-capture"
 
 import type { ReflectionTakes } from "@/lib/reflection-voice"
@@ -33,7 +33,7 @@ export const ReflectionTakeList = ({
   useEffect(() => (): void => pattern.leave(), [pattern])
   const view = takeItemView(taken, takes, sessionId, pattern.options)
   return (
-    <div className="flex flex-col gap-1.5">
+    <>
       <TakeItem
         // A Redo the phone half-stored replaces the pattern's line, which
         // would say it was kept; a refused Let go the pattern unsays itself.
@@ -46,11 +46,11 @@ export const ReflectionTakeList = ({
         onLetGo={pattern.letGo}
       />
       {refused !== null && (
-        <p role="alert" className="text-destructive text-sm">
+        <Notice key={refused} tone="danger" dismissible>
           {refused}
-        </p>
+        </Notice>
       )}
-    </div>
+    </>
   )
 }
 

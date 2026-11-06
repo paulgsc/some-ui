@@ -13,6 +13,9 @@ import { createServer, type Server } from "node:http"
 import { dirname, extname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { expect, test, type Page } from "@playwright/test"
+import { holdStill, type Tap } from "@tests/layout-invariants/stays-put"
+
+import type { FitActions } from "./phone-page/fit-actions"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -408,6 +411,114 @@ export const tap = (
   within: Pick<Page, "getByRole">,
   name: string | RegExp
 ): Promise<void> => within.getByRole("button", { name }).first().click()
+
+/** How long a stays-put spec's test may take: every walk, at one phone. */
+const WALKS_MS = 3 * 60 * 1000
+
+/** How long a screen may take to come up, or a fake to answer. */
+const SHOWS_MS = 10_000
+
+/** One walk of a stays-put spec: a fixture, opened afresh, and its taps. */
+export type Walk = {
+  readonly panel: string
+  readonly taps: ReadonlyArray<Tap>
+  readonly label: string
+  /**
+   * The button that says the screen is up, any in the fixture's slot if not
+   * given; `null` for a screen with none until a fake answers, which is up
+   * once the fixture hands over its actions.
+   */
+  readonly ready?: string | RegExp | null
+  /** Opens on an empty phone: what an earlier walk kept is gone. */
+  readonly freshStorage?: boolean
+}
+
+/**
+ * Opens `url` and waits for its screen. Returns the page's errors, which
+ * keep coming in as the walk goes on.
+ */
+export async function open(
+  page: Page,
+  url: string,
+  { ready, freshStorage = false }: Pick<Walk, "ready" | "freshStorage"> = {}
+): Promise<Array<string>> {
+  const errors: Array<string> = []
+  page.on("pageerror", (error) => errors.push(error.message))
+  await page.goto(url, { waitUntil: "load" })
+  if (freshStorage) {
+    await page.evaluate(() => localStorage.clear())
+    await page.reload({ waitUntil: "load" })
+  }
+  if (ready === null) {
+    await page.waitForFunction(() => window.fitActions !== undefined, null, {
+      timeout: SHOWS_MS,
+    })
+    return errors
+  }
+  const shown =
+    ready === undefined
+      ? page.locator("[data-fit-slot] button")
+      : page.getByRole("button", { name: ready })
+  await expect(shown.first()).toBeVisible({ timeout: SHOWS_MS })
+  return errors
+}
+
+/**
+ * What happens on the page without a tap: the fixture's action `action`
+ * (`./phone-page/fit-actions.ts`), given `arg`.
+ */
+export const happens = (action: string, does: string, arg?: unknown): Tap => ({
+  does,
+  act: async (page): Promise<void> => {
+    await page.waitForFunction(
+      (name) => window.fitActions?.[name] !== undefined,
+      action,
+      { timeout: SHOWS_MS }
+    )
+    await page.evaluate(
+      ([name, given]) => {
+        const actions: FitActions | undefined = window.fitActions
+        const run = actions?.[name]
+        if (run === undefined) throw new Error(`No fit action ${name}.`)
+        Reflect.apply(run, undefined, given === undefined ? [] : [given])
+      },
+      [action, arg] as const
+    )
+  },
+})
+
+/**
+ * HS1's walks over the phone page, one test per phone of `PHONE_VIEWPORTS`:
+ * each walk on its fixture, opened afresh, every tap measured
+ * (`holdStill`). `also` adds tests on the same page.
+ */
+export function walkEachPhone(
+  title: string,
+  walks: ReadonlyArray<Walk>,
+  also?: (page: FitPage) => void
+): void {
+  test.describe(title, () => {
+    test.describe.configure({ timeout: WALKS_MS })
+    const PAGE = servePhonePage()
+    PAGE.skipUnbuilt()
+    also?.(PAGE)
+    for (const phone of PHONE_VIEWPORTS) {
+      test(`at ${phone.name} (${phone.width}x${phone.height})`, async ({
+        page,
+      }) => {
+        PAGE.expectBuilt()
+        await page.setViewportSize({ width: phone.width, height: phone.height })
+        const failures: Array<string> = []
+        for (const walk of walks) {
+          const errors = await open(page, PAGE.url(walk.panel), walk)
+          failures.push(...(await holdStill(page, walk.taps, walk.label)))
+          expect(errors, `${walk.label}: ${errors.join("\n")}`).toEqual([])
+        }
+        expect(failures, failures.join("\n")).toEqual([])
+      })
+    }
+  })
+}
 
 /**
  * Takes `stops` in order from where the page is, measuring each screen once

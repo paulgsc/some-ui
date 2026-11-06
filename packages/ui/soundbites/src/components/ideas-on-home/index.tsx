@@ -9,10 +9,16 @@
 import type { JSX, ReactNode } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { assertNever } from "@some-ui/core-utils"
-import { Button, ConfirmSheet, Input, useTakePattern } from "@some-ui/shared"
+import {
+  Button,
+  ConfirmSheet,
+  Input,
+  Notice,
+  SameWidth,
+  useTakePattern,
+} from "@some-ui/shared"
 import type { TakePattern } from "@some-ui/voice-capture"
 import { TAKE_WORDS } from "@some-ui/voice-capture"
-import { Notice } from "@soundbites/components/notice"
 import { Unpaired } from "@soundbites/components/unpaired"
 import type { BundleTakes } from "@soundbites/lib/idea/bundle-runtime"
 import { keptIdeaLists } from "@soundbites/lib/idea/draft"
@@ -256,7 +262,9 @@ const AnswerPlay = ({
       ) : (
         <Play className="size-4" aria-hidden="true" />
       )}
-      {playing ? TAKE_WORDS.stop : TAKE_WORDS.play}
+      <SameWidth every={[TAKE_WORDS.play, TAKE_WORDS.stop]}>
+        {playing ? TAKE_WORDS.stop : TAKE_WORDS.play}
+      </SameWidth>
     </Button>
   )
 }
@@ -480,7 +488,9 @@ const ListEditor = ({
         </Button>
       </form>
       {trimmed !== "" && !isEntry(trimmed) && (
-        <p className="text-muted-foreground text-xs">{LISTS.tooLong}</p>
+        <Notice role="alert" tone="warning">
+          {LISTS.tooLong}
+        </Notice>
       )}
     </section>
   )
@@ -620,7 +630,14 @@ export const IdeasOnHome = ({
         openInMyData={openInMyData}
         pair={pair}
       />
-      <Notice text={state.notice === null ? "" : WORDS.notice[state.notice]} />
+      {state.notice !== null && (
+        <Notice
+          key={state.notice}
+          onDismiss={() => dispatch({ type: "noticeDismissed" })}
+        >
+          {WORDS.notice[state.notice]}
+        </Notice>
+      )}
       <ConfirmSheet
         request={
           state.confirm === null || idea === null

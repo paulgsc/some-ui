@@ -1,7 +1,7 @@
 import type { JSX } from "react"
 import { useId, useState } from "react"
 import { cn } from "@some-ui/core-utils"
-import { Button, Input } from "@some-ui/shared"
+import { Button, Input, Notice } from "@some-ui/shared"
 import { FeedThumb, FeedTile } from "@topik/components/topik/handheld/feed-tile"
 import { PortionMark } from "@topik/components/topik/handheld/portion-menu"
 import type { TopikMetadata } from "@topik/lib/topik"
@@ -180,7 +180,9 @@ const Card = ({
 /**
  * "Open … from storage": the system picker, then the file's text. Its read
  * is this card's, so leaving the list lets it go. What the text holds is the
- * caller's to judge, and `note` says what came of it.
+ * caller's to judge, and `note` says what came of it. The card says what it
+ * offers; the notices say what came of a pick ("Opening...", a refusal,
+ * what was added).
  */
 const OpenFromStorage = ({
   title,
@@ -190,7 +192,7 @@ const OpenFromStorage = ({
   note = null,
 }: {
   title: string
-  /** What the card offers, while nothing is reading and nothing to note. */
+  /** What the card offers. */
   offer: string
   onText: (text: string) => void
   hint?: string
@@ -200,11 +202,11 @@ const OpenFromStorage = ({
   const name = useId()
   const about = useId()
   const where = useId()
-  const problem =
+  const told: StorageNote | null =
     state.kind === "failed"
-      ? state.summary
-      : state.kind === "idle" && note?.tone === "problem"
-        ? note.text
+      ? { tone: "problem", text: state.summary }
+      : state.kind === "idle"
+        ? note
         : null
   return (
     <label className="bg-card border-border focus-within:ring-ring relative flex min-h-16 shrink-0 cursor-pointer items-center gap-3 rounded-2xl border p-4 text-left focus-within:ring-2">
@@ -213,20 +215,8 @@ const OpenFromStorage = ({
         <span id={name} className="block font-semibold">
           {title}
         </span>
-        <span
-          id={about}
-          aria-live="polite"
-          className={cn(
-            "block text-sm",
-            problem ? "text-destructive" : "text-muted-foreground"
-          )}
-        >
-          {problem ??
-            (state.kind === "reading"
-              ? "Opening..."
-              : note?.tone === "done"
-                ? note.text
-                : offer)}
+        <span id={about} className="text-muted-foreground block text-sm">
+          {offer}
         </span>
         {hint && (
           <span id={where} className="text-muted-foreground block text-xs">
@@ -234,9 +224,25 @@ const OpenFromStorage = ({
           </span>
         )}
       </span>
+      {state.kind === "reading" && (
+        <Notice>
+          <span className="flex items-center gap-2">
+            <Loader2 className="size-4 animate-spin" /> Opening...
+          </span>
+        </Notice>
+      )}
+      {told !== null && (
+        <Notice
+          key={told.text}
+          tone={told.tone === "problem" ? "danger" : "neutral"}
+          dismissible
+        >
+          {told.text}
+        </Notice>
+      )}
       <input
         type="file"
-        // Named by the title alone; the hint or the read's state describes it.
+        // Named by the title alone; the hint describes where to look.
         aria-labelledby={name}
         aria-describedby={hint ? `${about} ${where}` : about}
         className="sr-only"
@@ -383,19 +389,15 @@ const FromRoutine = ({
       >
         {status}
       </p>
-      {/* Always mounted, so a note that arrives is announced. */}
-      <p
-        aria-live="polite"
-        data-slot="routine-note"
-        className={cn(
-          "text-sm empty:hidden",
-          note?.tone === "problem"
-            ? "text-destructive"
-            : "text-muted-foreground"
-        )}
-      >
-        {note?.text}
-      </p>
+      {note !== null && (
+        <Notice
+          key={note.text}
+          tone={note.tone === "problem" ? "danger" : "neutral"}
+          dismissible
+        >
+          <span data-slot="routine-note">{note.text}</span>
+        </Notice>
+      )}
     </section>
   )
 }
@@ -777,23 +779,23 @@ export const MaterialList = ({
       )}
 
       {loading && (
-        <p className="text-muted-foreground flex items-center justify-center gap-2 py-8 text-sm">
-          <Loader2 className="size-4 animate-spin" /> Loading this week&apos;s
-          dramas...
-        </p>
+        <Notice>
+          <span className="flex items-center gap-2">
+            <Loader2 className="size-4 animate-spin" /> Loading this week&apos;s
+            dramas...
+          </span>
+        </Notice>
       )}
 
       {error && (
-        <div className="flex flex-col items-center gap-3 py-8 text-center">
-          <p className="text-destructive text-sm">{error}</p>
-          <Button
-            variant="outline"
-            className="h-11 rounded-xl"
-            onClick={onReload}
-          >
-            Try again
-          </Button>
-        </div>
+        <Notice
+          key={error}
+          tone="danger"
+          dismissible
+          action={{ label: "Try again", onClick: onReload }}
+        >
+          {error}
+        </Notice>
       )}
 
       {!loading && !error && dramas.length === 0 && (

@@ -1,34 +1,28 @@
-// HS2 (docs/ui-fit/README.md, "2j"): on a phone surface, every error or
-// status line mounted on a condition is listed in `scripts/stays-put.allowlist`
-// at its file's exact count, under a comment that says why it moves nothing
-// (`Placement:`) or that it predates the rule (`Grandfathered:`). A count, as
-// R1 and F1 are (site-count.ts), for the reason 2j gives.
+// HS3 (docs/ui-fit/README.md, "2j"): what a phone screen says about what was
+// just done is said on the notice plane (`<Notice>`, @some-ui/shared), never
+// in the screen's layout. Every phone source that draws an error or status
+// line in its layout is listed in `scripts/notices.allowlist` at its exact
+// count, under `Content:` (the line is the screen's own content, not news of
+// a tap) or `Grandfathered:` (it predates the rule, and only shrinks). A
+// count, as R1 and F1 are (site-count.ts), for the reason 2j gives.
 //
-// What is a site, in a `.tsx`/`.jsx` phone source (`./phone-sources.ts`):
-// - `cond && <X …/>`, where X is a message;
-// - `cond ? <X …/> : null` (or `undefined`, `false`), either way round;
-// - a `return <X …/>` in a function that also returns nothing (`null`,
-//   `undefined`, `false`, or a bare `return`): a component that is its own
-//   condition, such as `Problem` returning null until there is one.
-// A message is a JSX element with `role="alert"` or `role="status"` (a string,
-// or a string in braces), or the shared `<Alert>`, whose role is alert.
+// A site, in a `.tsx`/`.jsx` phone source (`./phone-sources.ts`), is a JSX
+// element with `role="alert"` or `role="status"` (a string, or a string in
+// braces), or the shared `<Alert>`, whose role is alert; never a `<Notice>`,
+// which takes `role` to say it on the plane.
 //
-// Known blind spots, each the reviewer's and the walk's:
-// - a message with no role (a hint, a warning in plain text): give it one,
-//   since a line that comes on a tap is news a screen reader should hear;
-// - one element swapped for another of a different size (`a ? <A/> : <B/>`);
-// - a wrapper mounted conditionally around a message
-//   (`cond && <div><p role="alert"/></div>`);
-// - text that changes length inside a mounted element.
+// Known blind spots, each the reviewer's and the walk's: a line with no role
+// (give it one, or say it with `Notice`); a role set by a spread or a
+// variable; text that changes length inside an element that stays.
 import ts from "typescript"
 
 import { phoneSources } from "./phone-sources.ts"
 import type { CountedCheck, CountViolation } from "./site-count.ts"
 import { findCountViolations, parseSource, unwrap } from "./site-count.ts"
 
-const ALLOWLIST_FILE = "scripts/stays-put.allowlist"
+const ALLOWLIST_FILE = "scripts/notices.allowlist"
 
-const REASON = /^#\s*(?:Placement|Grandfathered):\s*\S/
+const REASON = /^#\s*(?:Content|Grandfathered):\s*\S/
 
 const JSX_SOURCE = /\.[jt]sx$/
 const MESSAGE_ROLES: ReadonlySet<string> = new Set(["alert", "status"])
@@ -53,73 +47,28 @@ function roleOf(attributes: ts.JsxAttributes): string | null {
   return null
 }
 
-/** A JSX element that is an error or status line. */
-function isMessage(node: ts.Expression): boolean {
-  const at = unwrap(node)
-  const opening = ts.isJsxElement(at)
-    ? at.openingElement
-    : ts.isJsxSelfClosingElement(at)
-      ? at
-      : null
-  if (opening === null) return false
-  if (ts.isIdentifier(opening.tagName) && opening.tagName.text === "Alert")
-    return true
+/** An opening tag that draws an error or status line in the layout. */
+function isLineInLayout(
+  opening: ts.JsxOpeningElement | ts.JsxSelfClosingElement
+): boolean {
+  if (!ts.isIdentifier(opening.tagName)) return false
+  const tag = opening.tagName.text
+  if (tag === "Notice") return false
+  if (tag === "Alert") return true
   const role = roleOf(opening.attributes)
   return role !== null && MESSAGE_ROLES.has(role)
 }
 
-/** `null`, `undefined` or `false`: what renders nothing. */
-function isNothing(node: ts.Expression | undefined): boolean {
-  if (node === undefined) return true
-  const at = unwrap(node)
-  return (
-    at.kind === ts.SyntaxKind.NullKeyword ||
-    at.kind === ts.SyntaxKind.FalseKeyword ||
-    (ts.isIdentifier(at) && at.text === "undefined")
-  )
-}
-
-/** The `return`s that belong to `body` itself, not to a function inside it. */
-function ownReturns(body: ts.Node): Array<ts.ReturnStatement> {
-  const found: Array<ts.ReturnStatement> = []
-  const visit = (node: ts.Node): void => {
-    if (ts.isReturnStatement(node)) found.push(node)
-    if (ts.isFunctionLike(node)) return
-    ts.forEachChild(node, visit)
-  }
-  ts.forEachChild(body, visit)
-  return found
-}
-
-/** How many messages `source` mounts on a condition; null if not JSX. */
+/** How many error or status lines `source` draws in its layout; null if not JSX. */
 export function staysPutSites(path: string, source: string): number | null {
   if (!JSX_SOURCE.test(path)) return null
   let sites = 0
   const visit = (node: ts.Node): void => {
     if (
-      ts.isBinaryExpression(node) &&
-      node.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken &&
-      isMessage(node.right)
+      (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) &&
+      isLineInLayout(node)
     )
       sites += 1
-    if (
-      ts.isConditionalExpression(node) &&
-      ((isMessage(node.whenTrue) && isNothing(node.whenFalse)) ||
-        (isMessage(node.whenFalse) && isNothing(node.whenTrue)))
-    )
-      sites += 1
-    if (
-      ts.isFunctionLike(node) &&
-      "body" in node &&
-      node.body !== undefined &&
-      ts.isBlock(node.body)
-    ) {
-      const returns = ownReturns(node.body)
-      if (returns.some((r) => isNothing(r.expression)))
-        sites += returns.filter(
-          (r) => r.expression !== undefined && isMessage(r.expression)
-        ).length
-    }
     ts.forEachChild(node, visit)
   }
   visit(parseSource(path, source))
@@ -134,22 +83,22 @@ export function findStaysPutViolations(
   return findCountViolations(actual, allowlist, REASON)
 }
 
-/** HS2 as `runCountedCheck` runs it (`scripts/check-stays-put.ts`). */
+/** HS3 as `runCountedCheck` runs it (`scripts/check-stays-put.ts`). */
 export const STAYS_PUT_CHECK: CountedCheck = {
   tag: "stays-put",
-  id: "HS2",
+  id: "HS3",
   doc: "docs/ui-fit/README.md",
   allowlistFile: ALLOWLIST_FILE,
   reason: REASON,
-  reasonLine: '"# Placement: <why it moves nothing>"',
+  reasonLine: '"# Content: <what the line is part of>"',
   reasonHint:
-    "Say why mounting this line moves no control: it comes after the last one on a page that grows down, or it replaces the whole screen.",
+    "Say what screen content the line is (a figure, a count), and why it is not news of a tap.",
   count: staysPutSites,
   scope: phoneSources,
-  sites: "conditionally mounted error/status lines",
+  sites: "error/status lines in the layout",
   unlisted: (sites) =>
-    `a phone surface that mounts ${sites} error/status line(s) on a condition, not in ${ALLOWLIST_FILE}. A line that comes on a tap moves the controls after it: keep its room with <Reserved role=…> (@some-ui/shared, HS1)`,
-  raised: "More lines mounted on a condition: if each moves nothing,",
+    `a phone surface that draws ${sites} error/status line(s) in its layout, not in ${ALLOWLIST_FILE}. What a screen says about what was just done goes on the notice plane, over the screen: say it with <Notice role=…> (@some-ui/shared, HS1)`,
+  raised: "More lines in the layout: if each is screen content,",
   staleAlso: "(or is gone, or is no longer a phone surface)",
-  counted: "phone surfaces mount error/status lines",
+  counted: "phone surfaces draw error/status lines in their layout",
 }

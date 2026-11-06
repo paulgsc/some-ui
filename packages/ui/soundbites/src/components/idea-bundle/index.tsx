@@ -14,6 +14,7 @@ import { assertNever, cn } from "@some-ui/core-utils"
 import {
   Button,
   ConfirmSheet,
+  Notice,
   TakeItem,
   TakeRows,
   usePager,
@@ -22,11 +23,7 @@ import {
 import type { TakePatternSnapshot } from "@some-ui/voice-capture"
 import { takeItemView } from "@some-ui/voice-capture"
 import { PairWay } from "@soundbites/components/unpaired"
-import type {
-  BundleIntent,
-  BundleNotice,
-  BundleState,
-} from "@soundbites/lib/idea/bundle"
+import type { BundleIntent, BundleState } from "@soundbites/lib/idea/bundle"
 import {
   answered,
   answeredCount,
@@ -68,16 +65,6 @@ export type IdeaBundleProps = {
 }
 
 type Dispatch = (intent: BundleIntent) => void
-
-function noticeSaid(notice: BundleNotice | null): string | null {
-  return notice === null ? null : WORDS.notice[notice]
-}
-
-const Notice = ({ notice }: { notice: BundleNotice | null }): JSX.Element => (
-  <p aria-live="polite" className="text-muted-foreground min-h-5 text-sm">
-    {noticeSaid(notice)}
-  </p>
-)
 
 const Chip = ({
   on,
@@ -218,27 +205,31 @@ function dotLabel(state: BundleState, question: QuestionId, n: number): string {
 const Failed = ({
   question,
   full,
+  active,
   dispatch,
 }: {
   question: QuestionId
   full: boolean
+  /** Its card is the one on screen: only that one says why. */
+  active: boolean
   dispatch: Dispatch
 }): JSX.Element => (
   <div className="flex flex-col gap-3">
-    <div
-      role="status"
-      className="border-destructive/40 bg-destructive/10 flex gap-3 rounded-2xl border p-4"
-    >
-      <MicOff className="mt-1 size-5 shrink-0" aria-hidden="true" />
-      <div className="space-y-1">
-        <p className="font-bold">
-          {full ? WORDS.full.title : WORDS.failed.title}
-        </p>
-        <p className="text-muted-foreground text-sm">
-          {full ? WORDS.full.line : WORDS.failed.line}
-        </p>
-      </div>
-    </div>
+    {active && (
+      <Notice tone="danger">
+        <span className="flex gap-2">
+          <MicOff className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          <span className="space-y-1">
+            <span className="block font-bold">
+              {full ? WORDS.full.title : WORDS.failed.title}
+            </span>
+            <span className="text-muted-foreground block">
+              {full ? WORDS.full.line : WORDS.failed.line}
+            </span>
+          </span>
+        </span>
+      </Notice>
+    )}
     {!full && (
       <Button size="lg" onClick={() => dispatch({ type: "tap", question })}>
         {WORDS.failed.again}
@@ -398,7 +389,12 @@ const Card = ({
       </h2>
       <p className="text-muted-foreground">{ASK[question].hint}</p>
       {card.kind === "failed" && (
-        <Failed question={question} full={card.full} dispatch={dispatch} />
+        <Failed
+          question={question}
+          full={card.full}
+          active={active}
+          dispatch={dispatch}
+        />
       )}
       {card.kind === "typing" && (
         <Typing question={question} text={card.text} dispatch={dispatch} />
@@ -524,7 +520,6 @@ const Questions = ({
           ))}
         </div>
       </div>
-      <Notice notice={state.notice} />
       <p className="text-muted-foreground text-center text-xs">
         {WORDS.saidCount(answeredCount(state), IDEA_QUESTIONS.length)}
       </p>
@@ -536,6 +531,14 @@ const Questions = ({
       >
         {WORDS.toReview}
       </Button>
+      {state.notice !== null && (
+        <Notice
+          key={state.notice}
+          onDismiss={() => dispatch({ type: "noticeDismissed" })}
+        >
+          {WORDS.notice[state.notice]}
+        </Notice>
+      )}
     </div>
   )
 }
@@ -667,14 +670,6 @@ const Review = ({
           )
         })}
       </ol>
-      <Notice notice={state.notice} />
-      {needs !== null && (
-        <p role="status" className="text-center text-sm font-semibold">
-          {needs === "title"
-            ? WORDS.review.needsTitle
-            : WORDS.review.needsFirst}
-        </p>
-      )}
       {notNear !== null && (
         <p className="text-muted-foreground text-center text-sm">{notNear}</p>
       )}
@@ -688,6 +683,21 @@ const Review = ({
       >
         {near ? WORDS.review.send(n) : WORDS.review.keep(n)}
       </Button>
+      {needs !== null && (
+        <Notice>
+          {needs === "title"
+            ? WORDS.review.needsTitle
+            : WORDS.review.needsFirst}
+        </Notice>
+      )}
+      {state.notice !== null && (
+        <Notice
+          key={state.notice}
+          onDismiss={() => dispatch({ type: "noticeDismissed" })}
+        >
+          {WORDS.notice[state.notice]}
+        </Notice>
+      )}
     </div>
   )
 }
@@ -782,25 +792,33 @@ const Screen = ({
     }
     case "unreadable": {
       return (
-        <div role="alert" className="space-y-2 text-sm">
-          <p>{WORDS.unreadable}</p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => dispatch({ type: "readAgain" })}
+        <>
+          <Notice
+            tone="danger"
+            action={{
+              label: WORDS.readAgain,
+              onClick: () => dispatch({ type: "readAgain" }),
+            }}
           >
-            {WORDS.readAgain}
-          </Button>
+            {WORDS.unreadable}
+          </Notice>
           {back}
-        </div>
+        </>
       )
     }
     case "about": {
       return (
         <>
           <About state={state} dispatch={dispatch} />
-          <Notice notice={state.notice} />
           {back}
+          {state.notice !== null && (
+            <Notice
+              key={state.notice}
+              onDismiss={() => dispatch({ type: "noticeDismissed" })}
+            >
+              {WORDS.notice[state.notice]}
+            </Notice>
+          )}
         </>
       )
     }
@@ -850,15 +868,16 @@ export const IdeaBundle = ({
   const state = useSyncExternalStore(runtime.subscribe, runtime.getSnapshot)
   const snapshot = useTakePattern(desk.pattern)
   const { dispatch } = runtime
-  const backable =
-    !state.busy && (state.screen === "questions" || state.screen === "review")
+  const backable = state.screen === "questions" || state.screen === "review"
   return (
     <div className="flex flex-col gap-4">
       {backable && (
+        // Held while a take is under way (HS1).
         <Button
           variant="ghost"
           size="sm"
           className="self-start"
+          disabled={state.busy}
           onClick={() => dispatch({ type: "back" })}
         >
           <ChevronLeft className="size-4" aria-hidden="true" />

@@ -16,7 +16,7 @@ import {
   MAX_URL,
   TRACKS,
 } from "@some-ui/job-desk"
-import { Badge, Button, Input, Label, Textarea } from "@some-ui/shared"
+import { Badge, Button, Input, Label, Notice, Textarea } from "@some-ui/shared"
 import { ExternalLink } from "lucide-react"
 
 import { phoneJobs } from "@/lib/jobs"
@@ -158,9 +158,9 @@ export const JobsScout = (): JSX.Element => {
           onChange={(e) => setUrl(e.target.value)}
         />
         {needsText && (
-          <p id="scout-url-hint" className="text-muted-foreground text-sm">
-            {cantOpenLink}
-          </p>
+          <Notice>
+            <span id="scout-url-hint">{cantOpenLink}</span>
+          </Notice>
         )}
         <Label htmlFor="scout-title" className={sectionHeading}>
           Title and company

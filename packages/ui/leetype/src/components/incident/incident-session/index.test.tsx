@@ -59,11 +59,16 @@ describe("IncidentSession", () => {
     if (WRONG?.feedback) expect(screen.getByText(WRONG.feedback)).toBeTruthy()
     if (RIGHT?.feedback) expect(screen.queryByText(RIGHT.feedback)).toBeNull()
     expect(screen.queryByText(/^Holds:/)).toBeNull()
+    // Through the round the way out stays where it is, out of reach.
+    expect(
+      screen.getByRole("button", { name: "End here" }).hasAttribute("disabled")
+    ).toBe(true)
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Show the worked answer" })
-    )
+    const show = screen.getByRole("button", { name: "Show the worked answer" })
+    fireEvent.click(show)
     expect(screen.getByText(/^Holds:/)).toBeTruthy()
+    // The answer opens below the button, which stays, done.
+    expect(show.isConnected && show.hasAttribute("disabled")).toBe(true)
 
     fireEvent.click(screen.getByRole("button", { name: "Continue" }))
     expect(screen.getByText("A reading")).toBeTruthy()

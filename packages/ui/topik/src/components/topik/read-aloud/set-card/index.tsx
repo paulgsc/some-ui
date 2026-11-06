@@ -1,7 +1,7 @@
 import type { ComponentProps, JSX, ReactNode } from "react"
 import { useEffect, useState } from "react"
 import { cn } from "@some-ui/core-utils"
-import { Button } from "@some-ui/shared"
+import { Button, Notice } from "@some-ui/shared"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
 import { PracticeRecordView } from "@topik/components/topik/read-aloud/practice-record"
 import { TallyClear } from "@topik/components/topik/read-aloud/tally-clear"
@@ -147,7 +147,6 @@ const Summary = ({
  */
 export const SetCard = (props: SetCardProps): JSX.Element => {
   const { short, onStop } = props
-
   if (props.kind === "summary") {
     return (
       <Summary
@@ -184,14 +183,15 @@ export const SetCard = (props: SetCardProps): JSX.Element => {
               {props.note ??
                 "Your set is kept. It picks up at its next item whenever you come back, now included."}
             </p>
-            {feedback && (
-              <p
-                data-slot="read-aloud-feedback-saved"
-                aria-live="polite"
-                className="text-foreground min-h-5 text-sm leading-relaxed"
+            {saved && (
+              <Notice
+                key={saved}
+                role={feedback.kept ? "status" : "alert"}
+                tone={feedback.kept ? "neutral" : "warning"}
+                dismissible
               >
-                {saved}
-              </p>
+                <span data-slot="read-aloud-feedback-saved">{saved}</span>
+              </Notice>
             )}
           </div>
         }

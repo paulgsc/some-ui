@@ -24,7 +24,7 @@ import { cn, formatDay, formatWeekday } from "@some-ui/core-utils"
 import {
   Button,
   Input,
-  Reserved,
+  Notice,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -200,16 +200,13 @@ const EntryDetail = ({
               )
             })}
           </div>
-          {/* Room kept while a plain figure is logged beside this one: a
-              label tapped off brings the line up, and this sheet grows
-              upward, so a line that came and went would move every control
-              above it (HS1). */}
-          {!keepsOnePlain(entries, entry.id, []) && (
-            <Reserved lines={2} className="text-muted-foreground text-xs">
-              {entry.labels.length === 1 &&
-                "A plain figure is already logged here, so this comparison keeps at least one label."}
-            </Reserved>
-          )}
+          {!keepsOnePlain(entries, entry.id, []) &&
+            entry.labels.length === 1 && (
+              <Notice>
+                A plain figure is already logged here, so this comparison keeps
+                at least one label.
+              </Notice>
+            )}
         </div>
       )}
 
@@ -311,9 +308,11 @@ const MineEditor = ({
           Save
         </Button>
       </div>
-      <Reserved role="alert" className="text-destructive text-xs">
-        {refused && "Not saved: the phone did not keep it."}
-      </Reserved>
+      {refused && (
+        <Notice tone="danger" onDismiss={() => setRefused(false)}>
+          Not saved: the phone did not keep it.
+        </Notice>
+      )}
     </div>
   )
 }
@@ -368,9 +367,11 @@ const LeaveControls = ({
         <Trash2 aria-hidden className="mr-2 size-4" />
         {draft ? "Delete draft" : "Remove from the log"}
       </Button>
-      <Reserved role="alert" className="text-destructive text-center text-xs">
-        {refused && "Not changed: the phone did not keep it."}
-      </Reserved>
+      {refused && (
+        <Notice tone="danger" onDismiss={() => setRefused(false)}>
+          Not changed: the phone did not keep it.
+        </Notice>
+      )}
       {sheet}
     </div>
   )

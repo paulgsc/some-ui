@@ -231,11 +231,13 @@ const PivotChart = ({
           })}
         </ul>
       )}
-      <p className="text-muted-foreground min-h-4 text-xs" aria-live="polite">
-        {shownGroup && !table
-          ? pivotSays(shownGroup.name, shownGroup.counts)
-          : null}
-      </p>
+      {/* What the bar tapped holds, asked for: it opens below the bars, so
+          the bar under the thumb stays put (HS1). */}
+      {shownGroup && !table ? (
+        <p className="text-muted-foreground line-clamp-2 text-xs">
+          {pivotSays(shownGroup.name, shownGroup.counts)}
+        </p>
+      ) : null}
     </div>
   )
 }

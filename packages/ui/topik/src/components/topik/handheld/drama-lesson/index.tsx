@@ -177,12 +177,15 @@ export const DramaLesson = ({
       <ChevronLeft className="size-5" />
     </Button>
   )
+  // At a choice, Back where a beat's dock has it, and nothing where its Next
+  // was: a thumb still tapping Next lands on no control, not on Back.
+  const backAlone = <div className="flex gap-2">{back}</div>
 
   const dock = ((): JSX.Element => {
     if (at.kind === "choice") {
       // The engine opens a choice only on a scene that has one.
       const check = scene.choice?.check
-      if (check === undefined) return back
+      if (check === undefined) return backAlone
       const swallow = bitesBack(check)
       return (
         <>
@@ -223,7 +226,7 @@ export const DramaLesson = ({
               </Button>
             ))}
           </div>
-          {back}
+          {backAlone}
         </>
       )
     }

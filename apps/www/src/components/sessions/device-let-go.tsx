@@ -19,7 +19,7 @@
 import type { JSX, ReactNode } from "react"
 import type { Intent } from "@some-ui/intent-kit"
 import { matchIntent } from "@some-ui/intent-kit"
-import { useConfirmSheet } from "@some-ui/shared"
+import { Notice, useConfirmSheet } from "@some-ui/shared"
 import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 
@@ -40,7 +40,10 @@ import { sessionsKey } from "@/lib/tenant"
 export type LetGoControl = {
   /** Opens the confirm. */
   readonly ask: () => void
-  /** The row's lines: working, why it stayed, or a failure to retry. */
+  /**
+   * What the row says, over the screen (`Notice`): working, why it stayed,
+   * or a failure to retry.
+   */
   readonly lines: ReactNode
   /** The confirm sheet, rendered once in the row. */
   readonly sheet: ReactNode
@@ -98,16 +101,12 @@ export function useHomeLetGo(session: SessionRecord): LetGoControl {
   const lines = matchIntent(letGo.state, {
     idle: (): JSX.Element | null => null,
     working: (): JSX.Element | null =>
-      promise === "home" ? (
-        <p className="text-muted-foreground text-sm" role="status">
-          {LET_GO.working(host)}
-        </p>
-      ) : null,
+      promise === "home" ? <Notice>{LET_GO.working(host)}</Notice> : null,
     succeeded: (run): JSX.Element | null =>
       leftPhone(run.end) ? null : (
-        <p className="text-destructive text-sm break-words" role="alert">
-          {LET_GO.ended(run.end, run.host)}
-        </p>
+        <Notice role="alert" tone="warning" dismissible>
+          <span className="break-words">{LET_GO.ended(run.end, run.host)}</span>
+        </Notice>
       ),
     failed: (error, retry): JSX.Element => (
       <IntentFailure error={error} onRetry={retry} />

@@ -33,7 +33,14 @@ import type { NotesPort, RustRoundsPorts } from "@rust-rounds/lib/play/runtime"
 import { createRustRounds, NO_MICROPHONE } from "@rust-rounds/lib/play/runtime"
 import type { Visit } from "@rust-rounds/lib/play/store"
 import { runHeading, WORDS } from "@rust-rounds/lib/play/words"
-import { Button, CodeCard, TakeItem, Textarea } from "@some-ui/shared"
+import {
+  Button,
+  CodeCard,
+  Notice,
+  SameWidth,
+  TakeItem,
+  Textarea,
+} from "@some-ui/shared"
 import type { PatternTake } from "@some-ui/voice-capture"
 import { Pin } from "lucide-react"
 
@@ -43,6 +50,8 @@ export type RustRoundsProps = {
 }
 
 type Dispatch = (intent: PlayIntent) => void
+
+/** What the tutor's page made of a reply. */
 
 /** Text exactly as printed: kept whole, never wrapped, scrolled sideways. */
 const Printed = ({
@@ -126,26 +135,31 @@ type Notes = {
 /**
  * The card's voice note, on the take pattern's parts: tap to talk and tap
  * to stop, then where it's kept, Play, Redo and Let it go. Once a take found
- * the phone had no room, a card with no note says so in place of the button:
- * the next card tries again.
+ * the phone had no room, a card with no note says so by its button (`full`):
+ * the next card tries again. The card's own actions (`children`) follow the
+ * note.
  */
 const VoiceNote = ({
   state,
   visit,
   notes,
   dispatch,
+  children,
 }: {
   state: PlayState
   visit: Visit
   notes: Notes
   dispatch: Dispatch
+  children: ReactNode
 }): JSX.Element => {
   const { port } = notes
   if (port === null) {
-    return <p className="text-muted-foreground text-sm">{WORDS.noMicrophone}</p>
-  }
-  if (state.noRoom && visit.note === null) {
-    return <p className="text-muted-foreground text-sm">{WORDS.noRoom}</p>
+    return (
+      <>
+        <p className="text-muted-foreground text-sm">{WORDS.noMicrophone}</p>
+        {children}
+      </>
+    )
   }
   const { item, aside } = cardNote(
     state,
@@ -154,7 +168,7 @@ const VoiceNote = ({
     port.pattern.options
   )
   return (
-    <div className="flex flex-col gap-2">
+    <>
       <TakeItem
         view={item}
         label={WORDS.voiceNote}
@@ -162,13 +176,15 @@ const VoiceNote = ({
         onPlay={() => dispatch({ type: "playNote" })}
         onRedo={() => dispatch({ type: "tapNote" })}
         onLetGo={(_, place) => dispatch({ type: "letGoNote", place })}
+        full={state.noRoom && visit.note === null ? WORDS.noRoom : undefined}
       />
+      {children}
       {aside !== null && (
-        <p role="status" className="text-muted-foreground text-sm">
+        <Notice key={aside} tone="warning" dismissible>
           {aside}
-        </p>
+        </Notice>
       )}
-    </div>
+    </>
   )
 }
 
@@ -187,12 +203,7 @@ const EarlierNote = ({
 }): JSX.Element => {
   const { playback, unplayable } = state.notes
   const playing = playback.kind !== "quiet" && playback.id === note
-  const said =
-    playback.kind === "loading" && playback.id === note
-      ? WORDS.earlierNoteReading
-      : unplayable === note
-        ? WORDS.earlierNoteUnplayable
-        : null
+  const reading = playback.kind === "loading" && playback.id === note
   return (
     <section className="bg-muted/40 flex flex-col items-start gap-2 rounded-xl p-3">
       <h3 className="text-muted-foreground text-xs font-semibold">
@@ -207,10 +218,14 @@ const EarlierNote = ({
       >
         {playing ? WORDS.stopEarlier : WORDS.playEarlier}
       </Button>
-      {said !== null && (
-        <p role="status" className="text-sm">
-          {said}
-        </p>
+      {reading ? (
+        <Notice key="reading">{WORDS.earlierNoteReading}</Notice>
+      ) : (
+        unplayable === note && (
+          <Notice key="unplayable" tone="warning" dismissible>
+            {WORDS.earlierNoteUnplayable}
+          </Notice>
+        )
       )}
     </section>
   )
@@ -298,7 +313,9 @@ const CardScreen = ({
           onClick={() => dispatch({ type: "pin" })}
         >
           <Pin aria-hidden className="size-4" />
-          {visit.pinned ? WORDS.pinned : WORDS.pin}
+          <SameWidth every={[WORDS.pin, WORDS.pinned]}>
+            {visit.pinned ? WORDS.pinned : WORDS.pin}
+          </SameWidth>
         </Button>
         <Button
           size="sm"
@@ -339,10 +356,11 @@ const CardScreen = ({
             visit={visit}
             notes={notes}
             dispatch={dispatch}
-          />
-          <Actions>
-            <NextButton dispatch={dispatch} />
-          </Actions>
+          >
+            <Actions>
+              <NextButton dispatch={dispatch} />
+            </Actions>
+          </VoiceNote>
         </>
       ) : (
         <>
@@ -361,10 +379,11 @@ const CardScreen = ({
             visit={visit}
             notes={notes}
             dispatch={dispatch}
-          />
-          <Actions>
-            <NextButton dispatch={dispatch} />
-          </Actions>
+          >
+            <Actions>
+              <NextButton dispatch={dispatch} />
+            </Actions>
+          </VoiceNote>
         </>
       )}
     </div>
@@ -395,7 +414,9 @@ const MenuScreen = ({
           : WORDS.continueAt(place.title.concept, place.title.number)}
       </Button>
       {state.noRoom && (
-        <p className="text-muted-foreground text-sm">{WORDS.noRoom}</p>
+        <Notice tone="warning" dismissible>
+          {WORDS.noRoom}
+        </Notice>
       )}
       {(fresh.length > 0 || refines > 0) && (
         <ul className="flex flex-col gap-1 text-sm">
@@ -471,8 +492,6 @@ const DeskScreen = ({
       <p className="text-sm">{WORDS.deskSay}</p>
       {notes.port === null ? (
         <p className="text-muted-foreground text-sm">{WORDS.noMicrophone}</p>
-      ) : state.noRoom && desk.note === null ? (
-        <p className="text-muted-foreground text-sm">{WORDS.noRoom}</p>
       ) : (
         <TakeItem
           view={deskNote(state, desk, notes.takes, notes.port.pattern.options)}
@@ -481,6 +500,7 @@ const DeskScreen = ({
           onPlay={() => dispatch({ type: "deskPlayNote" })}
           onRedo={() => dispatch({ type: "deskTapNote" })}
           onLetGo={(_, place) => dispatch({ type: "deskLetGoNote", place })}
+          full={state.noRoom && desk.note === null ? WORDS.noRoom : undefined}
         />
       )}
       <Actions>
@@ -500,6 +520,10 @@ const TutorScreen = ({
   dispatch: Dispatch
 }): JSX.Element | null => {
   const { screen, copy } = state
+  // The copy put away, by its attempt. Not a key: the notice stays mounted
+  // across attempts, so a new one doesn't land below the reply's notice and
+  // move its Copy what to fix.
+  const [closedCopy, setClosedCopy] = useState<number | null>(null)
   if (screen.kind !== "tutor") return null
   const { answer } = screen
   const copyLine =
@@ -512,6 +536,16 @@ const TutorScreen = ({
         : copy.kind === "failed"
           ? WORDS.copyFailed
           : null
+  const answerLine =
+    answer === null
+      ? null
+      : answer.kind === "empty"
+        ? WORDS.replyEmpty
+        : answer.kind === "taken"
+          ? WORDS.replyTaken(answer.concept, answer.cards)
+          : answer.kind === "already-here"
+            ? WORDS.replyAlreadyHere
+            : WORDS.replyRefused
   return (
     <div className="flex min-w-0 flex-col gap-4">
       <Button
@@ -520,11 +554,61 @@ const TutorScreen = ({
       >
         {WORDS.copyForTutor}
       </Button>
-      {copyLine !== null && (
-        <p role="status" className="text-muted-foreground text-sm">
+      {copyLine !== null && copy.seq !== closedCopy && (
+        <Notice
+          tone={copy.kind === "failed" ? "danger" : "neutral"}
+          {...(copy.kind === "copying"
+            ? {}
+            : { onDismiss: () => setClosedCopy(copy.seq) })}
+        >
           {copyLine}
-        </p>
+        </Notice>
       )}
+      <label className="flex flex-col gap-1 text-sm font-semibold">
+        {WORDS.replyLabel}
+        <Textarea
+          value={screen.reply}
+          rows={5}
+          className="font-mono text-xs"
+          onChange={(event) =>
+            dispatch({ type: "reply", text: event.target.value })
+          }
+        />
+      </label>
+      {answer !== null && answerLine !== null && (
+        <Notice
+          key={answerLine}
+          role={answer.kind === "empty" ? "alert" : undefined}
+          tone={
+            answer.kind === "refused"
+              ? "danger"
+              : answer.kind === "empty"
+                ? "warning"
+                : "neutral"
+          }
+          dismissible
+          action={
+            answer.kind === "refused"
+              ? {
+                  label: WORDS.copyFix,
+                  onClick: () => dispatch({ type: "copyFix" }),
+                }
+              : undefined
+          }
+        >
+          {answerLine}
+        </Notice>
+      )}
+      <Actions>
+        <Button onClick={() => dispatch({ type: "takeReply" })}>
+          {WORDS.takeReply}
+        </Button>
+      </Actions>
+      <Actions>
+        <Button variant="ghost" onClick={() => dispatch({ type: "continue" })}>
+          {WORDS.backToCards}
+        </Button>
+      </Actions>
       {copy.kind === "failed" && (
         <details>
           <summary className="text-sm">{WORDS.showText}</summary>
@@ -540,46 +624,6 @@ const TutorScreen = ({
           </pre>
         </details>
       )}
-      <label className="flex flex-col gap-1 text-sm font-semibold">
-        {WORDS.replyLabel}
-        <Textarea
-          value={screen.reply}
-          rows={5}
-          className="font-mono text-xs"
-          onChange={(event) =>
-            dispatch({ type: "reply", text: event.target.value })
-          }
-        />
-      </label>
-      {answer !== null && (
-        <p role="status" className="text-sm">
-          {answer.kind === "empty"
-            ? WORDS.replyEmpty
-            : answer.kind === "taken"
-              ? WORDS.replyTaken(answer.concept, answer.cards)
-              : answer.kind === "already-here"
-                ? WORDS.replyAlreadyHere
-                : WORDS.replyRefused}
-        </p>
-      )}
-      <Actions>
-        {answer?.kind === "refused" && (
-          <Button
-            variant="outline"
-            onClick={() => dispatch({ type: "copyFix" })}
-          >
-            {WORDS.copyFix}
-          </Button>
-        )}
-        <Button onClick={() => dispatch({ type: "takeReply" })}>
-          {WORDS.takeReply}
-        </Button>
-      </Actions>
-      <Actions>
-        <Button variant="ghost" onClick={() => dispatch({ type: "continue" })}>
-          {WORDS.backToCards}
-        </Button>
-      </Actions>
     </div>
   )
 }
@@ -600,20 +644,16 @@ export const RustRounds = ({ ports }: RustRoundsProps): JSX.Element => {
   const notes = port?.takes ?? NO_MICROPHONE.takes
   const takes = useSyncExternalStore(notes.subscribe, notes.getSnapshot)
   const { dispatch } = runtime
+  // Which records this phone couldn't save, so another is said again.
+  const notKept = Object.entries(state.notKept)
+    .filter(([, failed]) => failed)
+    .map(([record]) => record)
+    .join(" ")
+  const { lost } = state
 
   return (
     <div className="mx-auto flex w-full max-w-md min-w-0 flex-col gap-4">
       <h1 className="text-2xl font-bold tracking-tight">{WORDS.title}</h1>
-      {Object.values(state.notKept).some(Boolean) && (
-        <p role="alert" className="text-destructive text-sm">
-          {WORDS.notKept}
-        </p>
-      )}
-      {state.lost !== null && (
-        <p role="alert" className="text-destructive text-sm">
-          {WORDS.noteLost(state.lost.concept, state.lost.number)}
-        </p>
-      )}
       {state.screen.kind === "menu" && (
         <MenuScreen state={state} dispatch={dispatch} />
       )}
@@ -630,6 +670,20 @@ export const RustRounds = ({ ports }: RustRoundsProps): JSX.Element => {
       )}
       {state.screen.kind === "tutor" && (
         <TutorScreen state={state} dispatch={dispatch} />
+      )}
+      {notKept !== "" && (
+        <Notice key={notKept} tone="danger" dismissible>
+          {WORDS.notKept}
+        </Notice>
+      )}
+      {lost !== null && (
+        <Notice
+          key={`${lost.concept} ${lost.number}`}
+          tone="danger"
+          dismissible
+        >
+          {WORDS.noteLost(lost.concept, lost.number)}
+        </Notice>
       )}
     </div>
   )

@@ -1,0 +1,54 @@
+# HS3 (docs/ui-fit/README.md, "2j"). Every phone surface that draws an error or
+# status line in its layout, with exactly how many. `pnpm check:stays-put`
+# fails on any file missing here, and on any count that no longer matches, in
+# either direction.
+#
+# One entry per line: `<sites> <path>`. A blank line ends a group, and each
+# group's `#` lines must include one starting `Content:` (the line is the
+# screen's own content, not news of a tap) or `Grandfathered:`. A new entry,
+# or a raised count, goes in its own group under `Content:`; it never joins or
+# raises the grandfathered group. The way out is `<Notice>` (@some-ui/shared),
+# which says it on the plane over the screen and is not a site.
+#
+# This file is where HS3 is reviewed. The check counts; it does not judge.
+
+# Grandfathered: these drew lines in their layout before HS3 landed. Debt,
+# not a judgment that each is fine: a count here may only fall (lower it in
+# the same change), and an entry leaves when its file says it with Notice.
+1 apps/www/src/components/composer/scene-editor/scene-selector-tab.tsx
+1 apps/www/src/components/settings/account-section.tsx
+1 packages/speech/src/components/speech-status/index.tsx
+1 packages/ui/auth/src/components/auth-error/index.tsx
+1 packages/ui/auth/src/templates/auth-page/index.tsx
+2 packages/ui/leetype/src/components/typing-game/exercise-card/index.tsx
+1 packages/ui/leetype/src/components/typing-game/typing-error-alert/index.tsx
+1 packages/ui/shared/src/components/ui/alert.tsx
+
+# Content: the route's loading screen, a skeleton that is the whole screen
+# until the route resolves and is replaced by it; it holds no room in a
+# screen being used, since there is no other screen under it yet.
+1 apps/www/src/components/housekeeping/route-pending.tsx
+
+# Content: Jobs' count of the picks done today, read from the record as the
+# screen opens; it changes only when a pick is finished on its own screen.
+1 apps/www/src/components/jobs/today.tsx
+
+# Content: each record's line on Settings' readout of what is kept where
+# (one per row), the row's own content: the readout says the lane's state
+# as it stands, on load as after a send.
+1 apps/www/src/components/settings/device-kept-on-home.tsx
+
+# Content: the delete sheet's ended step, a step of its own reached as
+# another layout: its description is that step's content (what was deleted
+# and what stays), with the receipts and buttons under it.
+1 apps/www/src/components/settings/device-my-data-delete.tsx
+
+# Content: when the routine last read home's list, the figure this readout
+# on Settings → Home exists to show.
+1 apps/www/src/components/settings/device-routine-reads.tsx
+
+# Content: what "What are you hungry for?" served, in the dish's place on the
+# served screen, a screen of its own reached by Serve: that nothing on the
+# phone fits the order is the whole of that screen's answer, and no tap on it
+# changes it (Another like it only comes after a dish).
+1 packages/ui/topik/src/components/topik/handheld/portion-menu/index.tsx

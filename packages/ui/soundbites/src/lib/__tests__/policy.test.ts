@@ -1,3 +1,4 @@
+import { bite } from "@soundbites/lib/memory-store"
 import {
   byNewest,
   displacedBy,
@@ -7,8 +8,6 @@ import {
   SOUNDBITES_MAX_BYTES,
 } from "@soundbites/lib/policy"
 import { describe, expect, it } from "vitest"
-
-import { bite } from "./fixture"
 
 /** `n` soundbites, `b0` the newest. */
 function kept(n: number): Array<ReturnType<typeof bite>> {

@@ -12,7 +12,7 @@
 import type { JSX, ReactNode } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { assertNever } from "@some-ui/core-utils"
-import { Button, Input, TakeList } from "@some-ui/shared"
+import { Button, Input, Notice, TakeList } from "@some-ui/shared"
 import { Unpaired } from "@soundbites/components/unpaired"
 import type {
   LibraryIntent,
@@ -98,18 +98,17 @@ const TakeItem = ({
               {WORDS.setAside(take.setAsideAt)}
             </p>
           )}
-          {here && playback.kind === "loading" && (
-            <p className="text-muted-foreground text-xs" role="status">
-              {WORDS.loading}
-            </p>
-          )}
-          {state.unplayable === take.id && (
-            <p className="text-xs" role="status">
-              {WORDS.unplayable}
-            </p>
-          )}
         </div>
       </div>
+      {here && playback.kind === "loading" && <Notice>{WORDS.loading}</Notice>}
+      {state.unplayable === take.id && (
+        <Notice
+          tone="danger"
+          onDismiss={() => dispatch({ type: "noticeDismissed" })}
+        >
+          {WORDS.unplayable}
+        </Notice>
+      )}
     </li>
   )
 }
@@ -128,7 +127,8 @@ const Listed = ({
   }
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-muted-foreground text-sm" role="status">
+      {/* What the list below holds: the screen's own content. */}
+      <p className="text-muted-foreground text-sm" aria-live="polite">
         {WORDS.shown(
           page.by,
           state.asked,
@@ -218,9 +218,7 @@ const PhoneTakes = ({ phone }: { phone: LibraryPhone }): JSX.Element => {
         label={WORDS.recordLabel}
         full={
           full ? (
-            <p className="text-sm" role="status">
-              {WORDS.phoneFull(here.length)}
-            </p>
+            <p className="text-sm">{WORDS.phoneFull(here.length)}</p>
           ) : undefined
         }
       />
@@ -262,7 +260,9 @@ export const TakeLibrary = ({ ports, pair }: TakeLibraryProps): JSX.Element => {
             </Button>
           </div>
           {state.tooLong && (
-            <p className="text-muted-foreground text-xs">{WORDS.tooLong}</p>
+            <Notice role="alert" tone="warning">
+              {WORDS.tooLong}
+            </Notice>
           )}
           {state.asked !== null && (
             <Button

@@ -1,3 +1,7 @@
+/**
+ * Soundbites in memory, for this workspace's tests and for pages outside it
+ * (www's ui-fit phone page, through `../fixtures`): not the phone's code.
+ */
 import { homeHoldsNow } from "@soundbites/lib/home-held"
 import { byNewest, displacedBy } from "@soundbites/lib/policy"
 import type { SoundbiteStore } from "@soundbites/lib/store"
