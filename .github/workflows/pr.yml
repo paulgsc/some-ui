@@ -303,7 +303,12 @@ jobs:
       # drag-down indicator) are built with www's own Vite config and
       # stylesheets, so a Tailwind, Vite or React bump changes what they
       # measure.
-      - name: E2E — content fits its box (panels, launcher, exercise shell, incident session, Jobs cards, Studio's phone screens, code card, drag-down indicator, My data)
+      #
+      # stays-put (HS1) walks the phone's screens tap by tap and fails when a
+      # tap moves a control still on the screen. intent-failure (IB1, the
+      # same family for one row), rust-rounds and take-pattern were written
+      # for this step and never listed in it, so nothing held them.
+      - name: E2E — content fits its box, and stays put (panels, launcher, exercise shell, incident session, Jobs cards, Studio's phone screens, code card, drag-down indicator, My data, Rust Rounds, take pattern, aph)
         run: |
           files=$(git diff --name-only --diff-filter=ACMR HEAD^1 -- \
             'packages/ui/**' \
@@ -340,7 +345,11 @@ jobs:
                 tests/ui-fit/studio-fit.spec.ts \
                 tests/ui-fit/pull-fit.spec.ts \
                 tests/ui-fit/settings-bar-fit.spec.ts \
-                tests/ui-fit/my-data-fit.spec.ts
+                tests/ui-fit/my-data-fit.spec.ts \
+                tests/ui-fit/intent-failure-fit.spec.ts \
+                tests/ui-fit/rust-rounds-fit.spec.ts \
+                tests/ui-fit/take-pattern-fit.spec.ts \
+                tests/ui-fit/stays-put.spec.ts
           else
             echo "No UI files changed."
           fi

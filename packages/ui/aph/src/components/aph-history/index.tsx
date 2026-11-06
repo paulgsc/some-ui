@@ -39,7 +39,7 @@ import type { AphStore } from "@aph/lib/store"
 import { aphStore } from "@aph/lib/store"
 import { useAph } from "@aph/lib/use-aph"
 import { cn, dayOf, formatDay, formatWeekday } from "@some-ui/core-utils"
-import { Button } from "@some-ui/shared"
+import { Button, Reserved } from "@some-ui/shared"
 import { Send } from "lucide-react"
 
 export type AphHistoryProps = {
@@ -267,7 +267,9 @@ const Drafts = ({
         <button
           type="button"
           onClick={() => setPicked(all ? [] : drafts.map((e) => e.id))}
-          className="text-muted-foreground h-9 px-2 text-sm underline-offset-4 hover:underline"
+          // One width for either word: it sits at the row's end, so a word
+          // that changed its width would move it under the thumb (HS1).
+          className="text-muted-foreground h-9 w-24 px-2 text-right text-sm underline-offset-4 hover:underline"
         >
           {all ? "Pick none" : "Pick all"}
         </button>
@@ -311,11 +313,10 @@ const Drafts = ({
         Submit {chosen.length === 0 ? "" : `${chosen.length} `}
         {chosen.length === 1 ? "draft" : "drafts"}
       </Button>
-      {refused && (
-        <p role="alert" className="text-destructive text-center text-xs">
-          Not submitted: the phone did not keep the change.
-        </p>
-      )}
+      {/* History goes on below: a line that came would move it (HS1). */}
+      <Reserved role="alert" className="text-destructive text-center text-xs">
+        {refused && "Not submitted: the phone did not keep the change."}
+      </Reserved>
     </section>
   )
 }

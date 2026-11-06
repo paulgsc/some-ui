@@ -242,8 +242,10 @@ describe("drafts waiting on another day", () => {
     for (const digit of "4600") {
       fireEvent.click(screen.getByRole("button", { name: digit }))
     }
-    expect(screen.getByRole("status")).toHaveTextContent(
-      /Drafts from Thu Oct 1/
+    // Beside the readout's own live line, kept mounted for the typo warning.
+    expect(screen.getByText(/Drafts from Thu Oct 1/)).toHaveAttribute(
+      "role",
+      "status"
     )
     expect(screen.getByRole("button", { name: /Save draft/ })).toBeDisabled()
   })
