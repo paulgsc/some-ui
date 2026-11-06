@@ -12,7 +12,7 @@
 import type { JSX, ReactNode } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { assertNever } from "@some-ui/core-utils"
-import { Button, Input, TakeList } from "@some-ui/shared"
+import { Button, Input, Reserved, TakeList } from "@some-ui/shared"
 import { Unpaired } from "@soundbites/components/unpaired"
 import type {
   LibraryIntent,
@@ -98,16 +98,15 @@ const TakeItem = ({
               {WORDS.setAside(take.setAsideAt)}
             </p>
           )}
-          {here && playback.kind === "loading" && (
-            <p className="text-muted-foreground text-xs" role="status">
-              {WORDS.loading}
-            </p>
-          )}
-          {state.unplayable === take.id && (
-            <p className="text-xs" role="status">
-              {WORDS.unplayable}
-            </p>
-          )}
+          {/* Where its sound stands, in room each take keeps, so a Play
+              moves no take below it (HS1). Two lines: home's refusal wraps. */}
+          <Reserved lines={2} role="status" className="text-xs">
+            {here && playback.kind === "loading" ? (
+              <span className="text-muted-foreground">{WORDS.loading}</span>
+            ) : state.unplayable === take.id ? (
+              WORDS.unplayable
+            ) : null}
+          </Reserved>
         </div>
       </div>
     </li>
@@ -261,9 +260,10 @@ export const TakeLibrary = ({ ports, pair }: TakeLibraryProps): JSX.Element => {
               {WORDS.search}
             </Button>
           </div>
-          {state.tooLong && (
-            <p className="text-muted-foreground text-xs">{WORDS.tooLong}</p>
-          )}
+          {/* Kept whether it shows, so a key moves nothing below (HS1). */}
+          <Reserved className="text-muted-foreground text-xs">
+            {state.tooLong && WORDS.tooLong}
+          </Reserved>
           {state.asked !== null && (
             <Button
               type="button"

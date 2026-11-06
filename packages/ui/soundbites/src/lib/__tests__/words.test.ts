@@ -1,5 +1,5 @@
 // @vitest-environment node
-import { bite } from "@soundbites/lib/__tests__/fixture"
+import { bite } from "@soundbites/lib/memory-store"
 import { replacedBy, SOUNDBITE_WORDS } from "@soundbites/lib/words"
 import { describe, expect, it } from "vitest"
 

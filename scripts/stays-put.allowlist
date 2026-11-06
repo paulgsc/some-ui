@@ -28,6 +28,11 @@
 1 packages/ui/leetype/src/components/session-file-picker/index.tsx
 3 packages/ui/rust-rounds/src/components/rust-rounds/index.tsx
 
+# Placement: New idea's look-over says what Send waits on below Send, the
+# last control on a page that grows down; its screen is walked by
+# stays-put-soundbites.spec.ts (HS1).
+1 packages/ui/soundbites/src/components/idea-bundle/index.tsx
+
 # Grandfathered: these mounted lines on a condition before HS2 landed. Debt,
 # not a judgment that each is fine: a count here may only fall (lower it in
 # the same change), and an entry leaves when its file keeps its lines' room.
@@ -48,9 +53,7 @@
 2 packages/ui/leetype/src/components/typing-game/exercise-card/index.tsx
 1 packages/ui/leetype/src/components/typing-game/typing-error-alert/index.tsx
 1 packages/ui/shared/src/components/ui/shelf/index.tsx
-1 packages/ui/soundbites/src/components/idea-bundle/index.tsx
 1 packages/ui/soundbites/src/components/idea-shelf/index.tsx
-1 packages/ui/soundbites/src/components/soundbites/index.tsx
 2 packages/ui/soundbites/src/components/studio/index.tsx
-3 packages/ui/soundbites/src/components/take-library/index.tsx
+1 packages/ui/soundbites/src/components/take-library/index.tsx
 1 packages/ui/topik/src/components/topik/change-material/change-material-dialog/index.tsx

@@ -18,6 +18,8 @@ import { projectFromEpisode } from "./lib/project/script"
 
 export { memoryProjectStore } from "./lib/project/memory-store"
 
+export { bite, memoryStore as memorySoundbiteStore } from "./lib/memory-store"
+
 export { cutListOf, projectFromPrimer } from "./lib/project/script"
 
 /** The primer `text` reads as; throws if it does not read. */

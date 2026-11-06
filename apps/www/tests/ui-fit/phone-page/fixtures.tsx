@@ -57,6 +57,7 @@ import { MY_DATA_FIXTURES } from "./my-data"
 import { PULL_FIXTURES } from "./pull"
 import { ROUNDS_FIXTURES } from "./rounds"
 import { SettingsBar } from "./settings-bar"
+import { SOUNDBITES_FIXTURES } from "./soundbites"
 import { FIT_CUTS, FIT_PRIMER_TEXT } from "./studio-seed"
 import { TOPIK_FIXTURES } from "./topik"
 import { WWW_FIXTURES } from "./www"
@@ -406,6 +407,8 @@ export const PHONE_FIXTURES = {
   ...TOPIK_FIXTURES,
   /** www's screens and shared parts (`./www`, `../stays-put-www.spec.ts`). */
   ...WWW_FIXTURES,
+  /** Studio's wing, for `../stays-put-soundbites.spec.ts` (`./soundbites`). */
+  ...SOUNDBITES_FIXTURES,
 } satisfies Record<string, () => JSX.Element>
 
 export type PhoneId = keyof typeof PHONE_FIXTURES

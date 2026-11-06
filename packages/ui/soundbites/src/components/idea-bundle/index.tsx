@@ -524,7 +524,6 @@ const Questions = ({
           ))}
         </div>
       </div>
-      <Notice notice={state.notice} />
       <p className="text-muted-foreground text-center text-xs">
         {WORDS.saidCount(answeredCount(state), IDEA_QUESTIONS.length)}
       </p>
@@ -536,6 +535,7 @@ const Questions = ({
       >
         {WORDS.toReview}
       </Button>
+      <Notice notice={state.notice} />
     </div>
   )
 }
@@ -667,14 +667,6 @@ const Review = ({
           )
         })}
       </ol>
-      <Notice notice={state.notice} />
-      {needs !== null && (
-        <p role="status" className="text-center text-sm font-semibold">
-          {needs === "title"
-            ? WORDS.review.needsTitle
-            : WORDS.review.needsFirst}
-        </p>
-      )}
       {notNear !== null && (
         <p className="text-muted-foreground text-center text-sm">{notNear}</p>
       )}
@@ -688,6 +680,16 @@ const Review = ({
       >
         {near ? WORDS.review.send(n) : WORDS.review.keep(n)}
       </Button>
+      {/* What a tap came to, and what Send waits on, after the last
+          control: they come and go and move nothing (HS1). */}
+      {needs !== null && (
+        <p role="status" className="text-center text-sm font-semibold">
+          {needs === "title"
+            ? WORDS.review.needsTitle
+            : WORDS.review.needsFirst}
+        </p>
+      )}
+      <Notice notice={state.notice} />
     </div>
   )
 }
@@ -799,8 +801,8 @@ const Screen = ({
       return (
         <>
           <About state={state} dispatch={dispatch} />
-          <Notice notice={state.notice} />
           {back}
+          <Notice notice={state.notice} />
         </>
       )
     }
@@ -850,15 +852,17 @@ export const IdeaBundle = ({
   const state = useSyncExternalStore(runtime.subscribe, runtime.getSnapshot)
   const snapshot = useTakePattern(desk.pattern)
   const { dispatch } = runtime
-  const backable =
-    !state.busy && (state.screen === "questions" || state.screen === "review")
+  const backable = state.screen === "questions" || state.screen === "review"
   return (
     <div className="flex flex-col gap-4">
       {backable && (
+        // Held, not taken away, while a take is under way: the screen under
+        // it stays where it is (HS1).
         <Button
           variant="ghost"
           size="sm"
           className="self-start"
+          disabled={state.busy}
           onClick={() => dispatch({ type: "back" })}
         >
           <ChevronLeft className="size-4" aria-hidden="true" />

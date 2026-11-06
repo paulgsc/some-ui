@@ -9,7 +9,13 @@
 import type { JSX, ReactNode } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { assertNever } from "@some-ui/core-utils"
-import { Button, ConfirmSheet, Input, useTakePattern } from "@some-ui/shared"
+import {
+  Button,
+  ConfirmSheet,
+  Input,
+  Reserved,
+  useTakePattern,
+} from "@some-ui/shared"
 import type { TakePattern } from "@some-ui/voice-capture"
 import { TAKE_WORDS } from "@some-ui/voice-capture"
 import { Notice } from "@soundbites/components/notice"
@@ -245,10 +251,12 @@ const AnswerPlay = ({
   const playing =
     snapshot.playback.kind !== "quiet" && snapshot.playback.id === take
   return (
+    // One width for Play and Stop, so the label's swap moves nothing (HS1).
     <Button
       type="button"
       size="sm"
       variant="outline"
+      className="min-w-20"
       onClick={() => pattern.play(take)}
     >
       {playing ? (
@@ -479,9 +487,10 @@ const ListEditor = ({
           {LISTS.add}
         </Button>
       </form>
-      {trimmed !== "" && !isEntry(trimmed) && (
-        <p className="text-muted-foreground text-xs">{LISTS.tooLong}</p>
-      )}
+      {/* Kept whether it shows, so a key moves nothing below (HS1). */}
+      <Reserved className="text-muted-foreground text-xs">
+        {trimmed !== "" && !isEntry(trimmed) && LISTS.tooLong}
+      </Reserved>
     </section>
   )
 }

@@ -5,13 +5,13 @@
  * what the page keeps beside them is pinned here as transitions.
  */
 import type { Take } from "@some-ui/voice-capture"
-import { bite } from "@soundbites/lib/__tests__/fixture"
 import type {
   SoundbitesEvent,
   SoundbitesState,
   Step,
 } from "@soundbites/lib/machine"
 import { initialState, keptBite, NOTICES, step } from "@soundbites/lib/machine"
+import { bite } from "@soundbites/lib/memory-store"
 import { describe, expect, it } from "vitest"
 
 function run(

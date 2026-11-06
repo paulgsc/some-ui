@@ -13,11 +13,11 @@ import {
 } from "@some-ui/voice-capture/testing"
 import type { SoundbitesProps } from "@soundbites/components/soundbites"
 import { Soundbites } from "@soundbites/components/soundbites"
-import { bite, memoryStore } from "@soundbites/lib/__tests__/fixture"
 import { soundbitesOweMarks } from "@soundbites/lib/aside-marks"
 import { formatWhen } from "@soundbites/lib/format"
 import { soundbitesHeldByHome } from "@soundbites/lib/home-held"
 import type { SoundbiteSituation } from "@soundbites/lib/machine"
+import { bite, memoryStore } from "@soundbites/lib/memory-store"
 import type { SoundbitesPorts } from "@soundbites/lib/runtime"
 import type { SoundbiteContext } from "@soundbites/lib/types"
 import {
@@ -357,9 +357,9 @@ describe("Soundbites", () => {
     expect(kept.size).toBe(1)
     // ... and the list it could not re-read goes unknown, not stale: no
     // "Nothing kept yet" and no 0/6 beside a take that was just kept.
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "Couldn't read what's on this phone"
-    )
+    expect(
+      screen.getByText(/Couldn't read what's on this phone/)
+    ).toBeInTheDocument()
     expect(screen.queryByText("Nothing kept yet.")).toBeNull()
     expect(screen.queryByText(/of 6 kept/)).toBeNull()
   })
@@ -406,16 +406,18 @@ describe("Soundbites", () => {
       />
     )
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Couldn't read what's on this phone"
-    )
+    expect(
+      await screen.findByText(/Couldn't read what's on this phone/)
+    ).toBeInTheDocument()
     expect(screen.queryByText("Nothing kept yet.")).not.toBeInTheDocument()
     // No count either: an unread phone has none, and 0 would say empty.
     expect(screen.queryByText(/of 6 kept/)).toBeNull()
 
     await tap("Read them again")
     expect(await screen.findByText("1 of 6 kept")).toBeInTheDocument()
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument()
+    expect(
+      screen.queryByText(/Couldn't read what's on this phone/)
+    ).not.toBeInTheDocument()
   })
 
   it("plays nothing while the microphone opens", async () => {

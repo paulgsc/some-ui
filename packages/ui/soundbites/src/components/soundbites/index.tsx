@@ -33,6 +33,7 @@ import { useEffect, useState, useSyncExternalStore } from "react"
 import {
   BrandMark,
   Button,
+  Reserved,
   TakeButton,
   TakeRows,
   useTakePattern,
@@ -171,9 +172,11 @@ export const Soundbites = ({
   const replaceNext = (row: TakeRowView): ReactNode => {
     const { id } = row.take
     if (!full || !held(id)) return undefined
+    // The mark and the button take the same room, a line of the row's own,
+    // so a pick moves no row (HS1).
     if (replaced?.id === id)
       return (
-        <span className="text-warning px-2 text-xs font-medium">
+        <span className="text-warning flex h-9 basis-full items-center justify-end px-3 text-xs font-medium">
           Replaced by your next one
         </span>
       )
@@ -182,7 +185,7 @@ export const Soundbites = ({
         type="button"
         size="sm"
         variant="ghost"
-        className="text-muted-foreground"
+        className="text-muted-foreground basis-full justify-end"
         onClick={() => dispatch({ type: "replacePicked", id })}
       >
         Replace this one next instead
@@ -201,7 +204,9 @@ export const Soundbites = ({
           <p className="text-muted-foreground text-sm">{ask.lede}</p>
         </header>
 
-        <div className="flex flex-col items-center gap-3">
+        {/* One width on a phone held sideways: what is said under the
+            button wraps in it rather than widening it (HS1). */}
+        <div className="flex flex-col items-center gap-3 [@media(max-height:479px)]:w-80 [@media(max-height:479px)]:shrink-0">
           <TakeButton
             view={view.button}
             size="large"
@@ -216,11 +221,13 @@ export const Soundbites = ({
           >
             {said}
           </p>
-          {notice !== "" && (
-            <p role="alert" className="text-destructive text-center text-sm">
-              {notice}
-            </p>
-          )}
+          {/* Room kept for a refusal, so it moves no take below (HS1). */}
+          <Reserved
+            role="alert"
+            className="text-destructive w-full text-center text-sm"
+          >
+            {notice}
+          </Reserved>
         </div>
       </div>
 
@@ -257,15 +264,17 @@ export const Soundbites = ({
           )}
         </div>
 
+        {/* Three lines, the longest this says on the narrowest phone, so a
+            pick that rewords it moves no take below (HS1). */}
         {full && replaced !== null && (
-          <p className="text-muted-foreground text-xs">
+          <Reserved lines={3} className="text-muted-foreground text-xs">
             {WORDS.fullReplaces}{" "}
             <span className="text-foreground font-medium">
               {formatWhen(replaced.recordedAt, now)}
             </span>
             {WORDS.whichGoes[replacedBy(replaced, choice)]}
             {WORDS.pickAnother}
-          </p>
+          </Reserved>
         )}
 
         {full && replaced === null && (

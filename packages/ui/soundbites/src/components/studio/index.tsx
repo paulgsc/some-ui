@@ -626,22 +626,27 @@ const Record = ({
           />
         </ul>
       )}
-      {taken && (
+      {view.take !== null && (
         // Wraps: on the narrowest phone the last scene's label is long.
         // `whitespace-normal`, not `text-wrap`: the button's own
         // `whitespace-nowrap` is a shorthand that resets text-wrap, and
-        // wins in the cascade.
+        // wins in the cascade. Held while a take is under way, not taken
+        // away, so what follows stays put (HS1).
         <Button
           className="h-auto min-h-10 whitespace-normal"
+          disabled={!taken}
           onClick={() => dispatch({ type: "keepNextPressed" })}
         >
           {view.last ? WORDS.record.keepLast : WORDS.record.keepNext}
         </Button>
       )}
-      <p className="text-center font-mono text-sm tabular-nums">
+      {/* Two lines: the longest says the take and a breath, and wraps on
+          the narrowest phone; the count while recording is one (HS1). */}
+      <p className="min-h-[2lh] text-center font-mono text-sm tabular-nums">
         {lengthLine(view, state)}
       </p>
-      <div className="flex flex-wrap items-center justify-center gap-x-4">
+      {/* Throw it away's room, kept while there is none to throw (HS1). */}
+      <div className="flex min-h-9 flex-wrap items-center justify-center gap-x-4">
         {recording && (
           <Button
             variant="link"
@@ -652,6 +657,15 @@ const Record = ({
           </Button>
         )}
       </div>
+      <Button
+        variant="ghost"
+        className="self-center"
+        onClick={() => dispatch({ type: "doneForNowPressed" })}
+      >
+        {WORDS.record.doneForNow}
+      </Button>
+      {/* What a take came to, after the screen's last control: however long
+          it runs, it moves nothing (HS1). */}
       <Notice
         text={
           state.notice !== ""
@@ -666,13 +680,6 @@ const Record = ({
           {WORDS.record.blocked(state.blocked)}
         </p>
       )}
-      <Button
-        variant="ghost"
-        className="self-center"
-        onClick={() => dispatch({ type: "doneForNowPressed" })}
-      >
-        {WORDS.record.doneForNow}
-      </Button>
     </section>
   )
 }
@@ -788,7 +795,11 @@ const Done = ({
 
 type ShapeScreen = Extract<StudioState["screen"], { kind: "shape" }>
 
-/** One plan as a card: its name, and what it sets once chosen. */
+/**
+ * One plan as a card: its name, and what it sets. Every card says what it
+ * sets, chosen or not, and draws the same border, so a pick changes only
+ * colours and no card moves under the thumb (HS1).
+ */
 const PlanCard = ({
   name,
   sets,
@@ -807,8 +818,8 @@ const PlanCard = ({
     aria-pressed={chosen}
     onClick={onPick}
     className={cn(
-      "focus-visible:ring-ring flex w-full flex-col gap-1 rounded-2xl border px-4 py-3 text-left focus-visible:ring-2 focus-visible:outline-none",
-      chosen ? "bg-card border-brand border-2" : "border-border/60"
+      "focus-visible:ring-ring flex w-full flex-col gap-1 rounded-2xl border-2 px-4 py-3 text-left focus-visible:ring-2 focus-visible:outline-none",
+      chosen ? "bg-card border-brand" : "border-border/60"
     )}
   >
     <span className="flex items-center gap-2">
@@ -819,13 +830,13 @@ const PlanCard = ({
         </span>
       )}
     </span>
-    {chosen && <span className="text-muted-foreground text-sm">{sets}</span>}
+    <span className="text-muted-foreground text-sm">{sets}</span>
   </button>
 )
 
 /**
  * Shape (STUDIO ST6): two steps, one question each, a few plans per
- * question, and only the chosen plan says what it sets.
+ * question, each saying what it sets.
  */
 const Shape = ({
   screen,
