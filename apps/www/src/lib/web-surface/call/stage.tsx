@@ -1,5 +1,5 @@
-import type { JSX, ReactNode, RefObject } from "react"
-import { useLayoutEffect, useRef, useState } from "react"
+import type { JSX, ReactNode } from "react"
+import { useLayoutEffect, useState } from "react"
 import { assertNever } from "@some-ui/core-utils"
 import {
   callFormat,
@@ -63,15 +63,18 @@ const labelOf = (
   return `${name} ${n + 1}`
 }
 
-/** Whether the element's content runs past its box, as laid out now. */
+/**
+ * Whether the element's content runs past its box, as laid out now: measured
+ * when the element mounts (the frame mounts late, once its week is read),
+ * when `key` changes, when it resizes and when a web font lands.
+ */
 function useOverflows(key: string): {
-  ref: RefObject<HTMLElement | null>
+  ref: (element: HTMLElement | null) => void
   overflows: boolean
 } {
-  const ref = useRef<HTMLElement | null>(null)
+  const [box, setBox] = useState<HTMLElement | null>(null)
   const [overflows, setOverflows] = useState(false)
   useLayoutEffect(() => {
-    const box = ref.current
     if (box === null) return undefined
     const measure = (): void => {
       setOverflows(
@@ -89,8 +92,8 @@ function useOverflows(key: string): {
       observer.disconnect()
       document.fonts.removeEventListener("loadingdone", measure)
     }
-  }, [key])
-  return { ref, overflows }
+  }, [box, key])
+  return { ref: setBox, overflows }
 }
 
 const Ref = ({ of: r }: { of: CallRef }): JSX.Element => (
