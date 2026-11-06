@@ -2,7 +2,7 @@ import { CALL_INDEX_SCHEMA, sampleCallWeek } from "@some-ui/video-render"
 import type { CallIndex, CallWeek } from "@some-ui/video-render"
 import { describe, expect, it } from "vitest"
 
-import { callAt, weekFrom } from "./view"
+import { callAt, stageOf, weekFrom } from "./view"
 
 const week = (): CallWeek => {
   const parsed = sampleCallWeek()
@@ -66,5 +66,82 @@ describe("the week the stage asks for", () => {
       from: null,
       missing: false,
     })
+  })
+})
+
+describe("what the stage draws", () => {
+  const sample = sampleCallWeek()
+  const index: CallIndex = {
+    schema: CALL_INDEX_SCHEMA,
+    keep: 8,
+    weeks: [{ from: "2026-10-30", to: "2026-11-05" }],
+  }
+  const read = <T>(
+    data: T | undefined,
+    pending = false
+  ): { data: T | undefined; pending: boolean } => ({ data, pending })
+  const base = {
+    reads: true,
+    record: false,
+    from: undefined,
+    index: read(index),
+    week: read(week()),
+    sample,
+  }
+
+  it("waits for the live week, and draws it once read", () => {
+    expect(
+      stageOf({ ...base, index: read<CallIndex>(undefined, true) }).kind
+    ).toBe("waiting")
+    expect(
+      stageOf({ ...base, week: read<CallWeek>(undefined, true) }).kind
+    ).toBe("waiting")
+    expect(stageOf(base)).toMatchObject({
+      kind: "show",
+      sample: false,
+      unread: false,
+    })
+  })
+
+  it("says so when the live week couldn't be read, and never records the sample in its place", () => {
+    const failed = { ...base, week: read<CallWeek>(undefined) }
+    expect(stageOf(failed)).toMatchObject({
+      kind: "show",
+      sample: true,
+      unread: true,
+    })
+    expect(stageOf({ ...failed, record: true }).kind).toBe("blank")
+    const broken = {
+      ...base,
+      week: read({ ...week(), week: { from: "2026-11-05", to: "2026-10-30" } }),
+    }
+    expect(stageOf(broken)).toMatchObject({
+      kind: "show",
+      sample: true,
+      unread: true,
+      problems: ["week: it ends before it starts"],
+    })
+  })
+
+  it("draws the sample, unread or not, where nothing live is asked for", () => {
+    expect(
+      stageOf({ ...base, reads: false, week: read<CallWeek>(undefined) })
+    ).toMatchObject({
+      kind: "show",
+      sample: true,
+      unread: false,
+    })
+    expect(stageOf({ ...base, from: "sample", record: true })).toMatchObject({
+      kind: "show",
+      sample: true,
+      unread: false,
+    })
+    expect(
+      stageOf({
+        ...base,
+        index: read({ ...index, weeks: [] }),
+        week: read<CallWeek>(undefined),
+      })
+    ).toMatchObject({ kind: "show", sample: true, unread: false })
   })
 })

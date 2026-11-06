@@ -278,23 +278,17 @@ export type CallWeek = z.infer<typeof CallWeekSchema>
 
 export const CALL_INDEX_SCHEMA = "some-ui.call-index/1"
 
-/** How many weeks the repository keeps, newest first, unless its index says. */
-export const CALL_KEEP = 8
-
 /**
- * The weeks `paulgsc/testing` keeps under `call/`, newest first: at most
- * `keep`, each `<from>.json` beside it. Older weeks are home's alone
- * (ST36): one leaves the repository only once home holds it.
+ * The weeks `paulgsc/testing` keeps under `call/`, newest first, each
+ * `<from>.json` beside it. `keep` is how many it aims to keep: older weeks
+ * are home's alone (ST36), and one leaves the repository only once home holds
+ * it, so the list runs past `keep` until home does.
  */
 export const CallIndexSchema = z
   .strictObject({
     schema: z.literal(CALL_INDEX_SCHEMA),
     keep: z.number().int().min(1).max(52),
     weeks: z.array(z.strictObject({ from: day, to: day })),
-  })
-  .refine((index) => index.weeks.length <= index.keep, {
-    message: "it lists more weeks than it keeps",
-    path: ["weeks"],
   })
   .refine(
     (index) =>
@@ -311,6 +305,42 @@ export function parseCallIndex(raw: unknown): Parsed<CallIndex> {
   return parsed.success
     ? { ok: true, value: parsed.data }
     : { ok: false, problems: problemsOf(parsed.error, "call index") }
+}
+
+/**
+ * Every reason a `call/` folder can't be published: its index unread, a week
+ * it lists missing or unable to make a call, a week whose file names another
+ * week or days, and a week file the index forgets. `files` is the folder's
+ * JSON files by name, `index.json` among them.
+ */
+export function callFolderProblems(
+  files: ReadonlyMap<string, unknown>
+): Array<string> {
+  const index = parseCallIndex(files.get("index.json"))
+  if (!index.ok) return index.problems.map((p) => `index.json: ${p}`)
+  const problems: Array<string> = []
+  const listed = new Set<string>()
+  for (const { from, to } of index.value.weeks) {
+    const name = `${from}.json`
+    listed.add(name)
+    if (!files.has(name)) {
+      problems.push(`${name}: the index lists it, and there is no such file`)
+      continue
+    }
+    const week = parseCallWeek(files.get(name))
+    if (!week.ok) {
+      problems.push(...week.problems.map((p) => `${name}: ${p}`))
+      continue
+    }
+    if (week.value.week.from !== from || week.value.week.to !== to)
+      problems.push(
+        `${name}: it holds ${week.value.week.from} to ${week.value.week.to}, and the index says ${from} to ${to}`
+      )
+  }
+  for (const name of files.keys())
+    if (name !== "index.json" && !listed.has(name))
+      problems.push(`${name}: the index doesn't list it`)
+  return problems
 }
 
 /** Every reason the week's parsed data contradicts itself. */

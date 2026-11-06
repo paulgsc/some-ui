@@ -5,7 +5,6 @@ import {
   callFormat,
   CallIndexSchema,
   CallWeekSchema,
-  parseCallWeek,
   refUrl,
   sampleCallWeek,
 } from "@some-ui/video-render"
@@ -15,7 +14,7 @@ import { FETCHES_CONTENT } from "@/lib/data-mode"
 
 import { indexSource, weekSource } from "./feed"
 import type { SceneView } from "./view"
-import { callAt, weekFrom } from "./view"
+import { callAt, stageOf, weekFrom } from "./view"
 import { CALL_WORDS as W } from "./words"
 
 /**
@@ -337,49 +336,41 @@ export const CallStagePage = ({
   record = false,
   onScene,
 }: CallStageProps): JSX.Element | null => {
+  const live = FETCHES_CONTENT && from !== "sample"
   const index = indexSource.useResource(
     ["call", "index"],
     undefined,
     CallIndexSchema,
-    {
-      enabled: FETCHES_CONTENT,
-      retry: 1,
-    }
+    { enabled: live, retry: 1 }
   )
   const pick = weekFrom(index.data, from)
   const fetched = weekSource.useResource(
     ["call", "week", pick.from],
     pick.from ?? "",
     CallWeekSchema,
-    { enabled: FETCHES_CONTENT && pick.from !== null, retry: 1 }
+    { enabled: live && pick.from !== null, retry: 1 }
   )
-  const real = fetched.data === undefined ? null : parseCallWeek(fetched.data)
-  const shown =
-    real?.ok === true
-      ? { week: real.value, sample: false, missing: pick.missing }
-      : SAMPLE.ok
-        ? { week: SAMPLE.value, sample: true, missing: pick.missing }
-        : null
-  // Until the week is read, nothing: a recording never opens on the sample,
-  // and a recording whose week can't be read stays blank, so the recorder
-  // fails instead of recording the sample.
-  const waiting =
-    FETCHES_CONTENT &&
-    (index.isPending || (pick.from !== null && fetched.isPending))
-  const unread =
-    FETCHES_CONTENT && record && from !== "sample" && real?.ok !== true
+  const state = stageOf({
+    reads: FETCHES_CONTENT,
+    record,
+    from,
+    index: { data: index.data, pending: live && index.isPending },
+    week: {
+      data: fetched.data,
+      pending: live && pick.from !== null && fetched.isPending,
+    },
+    sample: SAMPLE,
+  })
+  const shown = state.kind === "show" ? state : null
   const at = shown === null ? null : callAt(shown.week, scene)
   const { ref, overflows } = useOverflows(
     `${shown?.week.week.from ?? ""}/${at?.scene.id ?? ""}`
   )
-  if (waiting || unread) return null
+  if (state.kind === "waiting" || state.kind === "blank") return null
   if (shown === null || at === null)
     return (
       <ul className="p-6 font-mono text-sm">
-        {[
-          ...(real?.ok === false ? real.problems : []),
-          ...(SAMPLE.ok ? [] : SAMPLE.problems),
-        ].map((problem, i) => (
+        {(state.kind === "none" ? state.problems : []).map((problem, i) => (
           // eslint-disable-next-line react/no-array-index-key
           <li key={i}>{problem}</li>
         ))}
@@ -420,6 +411,22 @@ export const CallStagePage = ({
           </footer>
         </section>
       </div>
+      {!record && shown.unread && (
+        <div
+          role="status"
+          className="text-muted-foreground mx-auto max-w-[1920px] text-sm"
+        >
+          <p>{W.unread}</p>
+          {shown.problems.length > 0 && (
+            <ul className="font-mono text-xs">
+              {shown.problems.map((problem, i) => (
+                // eslint-disable-next-line react/no-array-index-key
+                <li key={i}>{problem}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
       {!record && shown.missing && from !== undefined && (
         <p
           role="status"

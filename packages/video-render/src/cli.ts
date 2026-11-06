@@ -18,10 +18,11 @@
  * prints the weekly call's facts for those days (`call-facts.ts`) as JSON,
  * read from GitHub's search API through the `gh` command.
  *
- *   pnpm --filter @some-ui/video-render render call-check <week.json>
+ *   pnpm --filter @some-ui/video-render render call-check <call folder>
  *
- * checks a week's data against the call's schema (`call.ts`) and prints
- * every reason it can't make a call.
+ * checks a `call/` folder before it is published (`callFolderProblems`):
+ * its index, every week it lists against the call's schema, and no week
+ * file it forgets; it prints every reason it can't be published.
  *
  *   pnpm --filter @some-ui/video-render render compare-hearings <home transcript> <session words>
  *
@@ -33,13 +34,13 @@
  */
 
 import { execFile } from "node:child_process"
-import { access, writeFile } from "node:fs/promises"
+import { access, readdir, writeFile } from "node:fs/promises"
 import { dirname, join, relative, resolve as resolvePath } from "node:path"
 import { parseArgs, promisify } from "node:util"
 import { z } from "zod"
 
 import { ASK_LABEL, askId, parseAskBody } from "./ask"
-import { callScenes, parseCallWeek } from "./call"
+import { callFolderProblems } from "./call"
 import { callsOf, changeOf, trailersOf, whereWeAreOf } from "./call-facts"
 import type { CallFacts } from "./call-facts"
 import { problemsOf } from "./cut-list"
@@ -88,11 +89,18 @@ async function main(): Promise<void> {
     return
   }
   if (first === "call-check") {
-    if (!second) fail(["usage: render call-check <week.json>"])
-    const week = parseCallWeek(await readJson(here(second)))
-    if (!week.ok) fail([`${second} can't make a call:`, ...week.problems])
+    if (!second) fail(["usage: render call-check <call folder>"])
+    const dir = here(second)
+    const names = (await readdir(dir)).filter((n) => n.endsWith(".json"))
+    const files = new Map<string, unknown>()
+    for (const name of names) files.set(name, await readJson(join(dir, name)))
+    const problems = callFolderProblems(files)
+    if (problems.length > 0)
+      fail([`${second} can't be published:`, ...problems])
+    const weeks = names.length - 1
     process.stdout.write(
-      `${second}: ${callScenes(week.value).length} scenes, ready\n`
+      `${second}: ${weeks} ${weeks === 1 ? "week" : "weeks"}, ready
+`
     )
     return
   }

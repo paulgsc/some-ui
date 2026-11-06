@@ -50,9 +50,10 @@ up to 14 days.
    - Each `said` is plain, spoken English, a few sentences, in the owner's
      terms: what changed for them and what it unblocks. No file names,
      routes or internal terms. The close says how many asks are open.
-5. **Check it:**
-   `pnpm --filter @some-ui/video-render render call-check <the file>` until
-   it says ready. A scene's words and lists must fit its frame: keep `said`
+5. **Check the folder** once step 6 has updated the index:
+   `pnpm --filter @some-ui/video-render render call-check <paulgsc/testing>/call`
+   until it says ready. It checks the index, every week it lists against the
+   schema, each named for its own days, and no week file the index forgets. A scene's words and lists must fit its frame: keep `said`
    to a few sentences, as the schema's sample does.
 6. **Update `call/index.json`:** the new week first. Keep at most `keep`
    weeks. A week past `keep` leaves the repository only if home holds it:
@@ -63,8 +64,8 @@ up to 14 days.
 7. **Open a pull request** in `paulgsc/testing` with the week, the index and
    any week leaving, titled `data(call): the weekly call for <from> to <to>`.
    Its body says what the week's facts held (counts), any ask that didn't
-   parse, and any week kept past `keep`. Merge it once `call-check` says
-   ready: the repository has no CI, so that check is its gate.
+   parse, and any week kept past `keep`. Merge it once `call-check` says the
+   folder is ready: the repository has no CI, so that check is its gate.
 8. **Say where it is:** the owner's home-network build plays it at
    `/call?week=<from>`, and home voices and renders it. Note the run in the
    ledger's `log`.

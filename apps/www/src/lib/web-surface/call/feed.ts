@@ -1,31 +1,18 @@
-import { createDataSource } from "@some-ui/fetch-kit"
 import type { CallIndex, CallWeek } from "@some-ui/video-render"
 
-import { DATA_MODE } from "@/lib/data-mode"
-import { PUBLIC_READ } from "@/lib/file-host-config"
+import { TESTING_DATA, testingSource } from "@/lib/testing-data"
 
 /**
- * Where the call's weeks live (ST36): `paulgsc/testing`, beside Playoff
- * Delta's data, served with `Access-Control-Allow-Origin: *`. The index
- * lists the weeks the repository keeps; older weeks are home's alone.
+ * Where the call's weeks live (ST36): `paulgsc/testing`'s `call/`, beside
+ * Playoff Delta's data. The index lists the weeks the repository keeps;
+ * older weeks are home's alone.
  */
-const CALL_DATA = "https://raw.githubusercontent.com/paulgsc/testing/main/call"
+const CALL_DATA = `${TESTING_DATA}/call`
 
-const locateIndex = (): URL => new URL(`${CALL_DATA}/index.json`)
-
-const locateWeek = (from: string): URL => new URL(`${CALL_DATA}/${from}.json`)
-
-const read = {
-  mode: DATA_MODE,
-  fetchOptions: { ...PUBLIC_READ, responseAs: "json" },
-} as const
-
-export const indexSource = createDataSource<undefined, CallIndex>(
-  { static: locateIndex, server: locateIndex },
-  read
+export const indexSource = testingSource<undefined, CallIndex>(
+  () => new URL(`${CALL_DATA}/index.json`)
 )
 
-export const weekSource = createDataSource<string, CallWeek>(
-  { static: locateWeek, server: locateWeek },
-  read
+export const weekSource = testingSource<string, CallWeek>(
+  (from) => new URL(`${CALL_DATA}/${from}.json`)
 )

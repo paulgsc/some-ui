@@ -11,10 +11,10 @@ import { join } from "node:path"
 import {
   CALL_ID,
   CALL_INDEX_SCHEMA,
-  CALL_KEEP,
   CALL_STAGE_WIDTH,
   CALL_VERSION,
   callCutList,
+  callFolderProblems,
   callFormat,
   callScenes,
   parseCallIndex,
@@ -175,19 +175,53 @@ describe("the call as a cut list", () => {
 describe("the index of weeks kept", () => {
   const index = (
     weeks: Array<{ from: string; to: string }>,
-    keep = CALL_KEEP
+    keep = 8
   ): ReturnType<typeof parseCallIndex> =>
     parseCallIndex({ schema: CALL_INDEX_SCHEMA, keep, weeks })
 
-  it("lists at most K weeks, newest first, each once", () => {
+  it("lists its weeks newest first, each once, past `keep` while home holds them not yet", () => {
     const later = { from: "2026-11-06", to: "2026-11-12" }
     const first = { from: "2026-10-30", to: "2026-11-05" }
     expect(index([later, first]).ok).toBe(true)
     expect(index([first, later]).ok).toBe(false)
     expect(index([first, first]).ok).toBe(false)
-    expect(index([later, first], 1)).toEqual({
-      ok: false,
-      problems: ["weeks: it lists more weeks than it keeps"],
-    })
+    expect(index([later, first], 1).ok).toBe(true)
+  })
+})
+
+describe("a call folder", () => {
+  const w = (): CallWeek => week()
+  const folder = (
+    weeks: Array<{ from: string; to: string }>,
+    files: Record<string, unknown>
+  ): Map<string, unknown> =>
+    new Map<string, unknown>([
+      ["index.json", { schema: CALL_INDEX_SCHEMA, keep: 8, weeks }],
+      ...Object.entries(files),
+    ])
+
+  it("is ready when its index lists every week it holds, each named for its days", () => {
+    expect(
+      callFolderProblems(folder([w().week], { "2026-10-30.json": w() }))
+    ).toEqual([])
+  })
+
+  it("is refused for a week missing, misnamed, unread or forgotten", () => {
+    expect(
+      callFolderProblems(
+        folder([w().week, { from: "2026-10-23", to: "2026-10-29" }], {
+          "2026-10-30.json": {
+            ...w(),
+            week: { from: "2026-10-31", to: "2026-11-05" },
+          },
+          "2026-10-16.json": w(),
+        })
+      )
+    ).toEqual([
+      "2026-10-30.json: it holds 2026-10-31 to 2026-11-05, and the index says 2026-10-30 to 2026-11-05",
+      "2026-10-23.json: the index lists it, and there is no such file",
+      "2026-10-16.json: the index doesn't list it",
+    ])
+    expect(callFolderProblems(new Map())[0]).toMatch(/^index\.json: /)
   })
 })

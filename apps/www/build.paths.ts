@@ -269,6 +269,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       why: "what every video carries, its preview, its recorder page and their font, desktop pages for tuning and recording what the renderer lays over a video: only the web door (src/lib/web-surface) binds it, and not in the Android app's build",
     },
     {
+      modules: ["apps/www/src/lib/testing-data/**"],
+      profiles: ["lan", "pages"],
+      why: "reading what paulgsc/testing publishes for the desktop stages, Playoff Delta's season and the weekly call's weeks: only those stages read it, through the web door (src/lib/web-surface), and not in the Android app's build",
+    },
+    {
       modules: ["apps/www/src/lib/web-surface/call/**"],
       profiles: ["lan", "pages"],
       why: "the weekly call's stage, a desktop recording stage for its video: only the web door (src/lib/web-surface) binds it, and not in the Android app's build",
