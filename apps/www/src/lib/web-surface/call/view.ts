@@ -1,6 +1,11 @@
 import { assertNever } from "@some-ui/core-utils"
 import { callScenes, parseCallWeek } from "@some-ui/video-render"
-import type { CallScene, CallWeek, Parsed } from "@some-ui/video-render"
+import type {
+  CallIndex,
+  CallScene,
+  CallWeek,
+  Parsed,
+} from "@some-ui/video-render"
 
 /**
  * Which scene of a call the stage shows, and the item it draws: a pure read
@@ -75,55 +80,97 @@ export function callAt(week: CallWeek, id: string | undefined): CallAt {
   return { scenes, index, scene, view: viewOf(week, scene) }
 }
 
-/** The weeks the call has, newest first, and why any file isn't one. */
-export type CallWeeks = {
-  readonly weeks: ReadonlyArray<CallWeek>
-  readonly problems: ReadonlyArray<string>
+/**
+ * Which week of the index the stage asks for: the one named, else the
+ * newest; none for "sample", or before the index is read. `missing` says a
+ * week was named that the index doesn't keep.
+ */
+export function weekFrom(
+  index: CallIndex | undefined,
+  from: string | undefined
+): { readonly from: string | null; readonly missing: boolean } {
+  if (from === "sample" || index === undefined)
+    return { from: null, missing: false }
+  if (from !== undefined && index.weeks.some((w) => w.from === from))
+    return { from, missing: false }
+  return {
+    from: index.weeks.at(0)?.from ?? null,
+    missing: from !== undefined,
+  }
 }
+
+/** A read the stage waits on: its data once there, and whether it's under way. */
+export type Read<T> = {
+  readonly data: T | undefined
+  readonly pending: boolean
+}
+
+/** What the stage draws. */
+export type StageState =
+  /** Nothing yet: the live week is being read. */
+  | { readonly kind: "waiting" }
+  /** Nothing, on record: the live week couldn't be read, and the sample must not be recorded. */
+  | { readonly kind: "blank" }
+  | {
+      readonly kind: "show"
+      readonly week: CallWeek
+      readonly sample: boolean
+      /** A week was named that the index doesn't keep. */
+      readonly missing: boolean
+      /** The live week was wanted and couldn't be read, so the sample shows. */
+      readonly unread: boolean
+      /** Why the live week couldn't make a call, when it was read. */
+      readonly problems: ReadonlyArray<string>
+    }
+  /** Nothing to show at all: the sample itself can't make a call. */
+  | { readonly kind: "none"; readonly problems: ReadonlyArray<string> }
 
 /**
- * The weeks under `weeks/`, by file: each `<from>.json` a week whose data
- * starts on that day. A file that can't make a call, or is named for
- * another day, is left out and said.
+ * What the stage draws from its reads: the live week where the build reads
+ * content, else the sample, saying why. On record, never the sample in place
+ * of a live week.
  */
-export function weeksOf(files: Readonly<Record<string, unknown>>): CallWeeks {
-  const weeks: Array<CallWeek> = []
-  const problems: Array<string> = []
-  for (const [path, raw] of Object.entries(files)) {
-    const name = path.split("/").pop() ?? path
-    const week = parseCallWeek(raw)
-    if (!week.ok) {
-      problems.push(...week.problems.map((p) => `${name}: ${p}`))
-      continue
+export function stageOf(input: {
+  readonly reads: boolean
+  readonly record: boolean
+  readonly from: string | undefined
+  readonly index: Read<CallIndex>
+  readonly week: Read<CallWeek>
+  readonly sample: Parsed<CallWeek>
+}): StageState {
+  const live = input.reads && input.from !== "sample"
+  const pick = weekFrom(input.index.data, input.from)
+  if (
+    live &&
+    (input.index.pending || (pick.from !== null && input.week.pending))
+  )
+    return { kind: "waiting" }
+  const real =
+    !live || input.week.data === undefined
+      ? null
+      : parseCallWeek(input.week.data)
+  if (real?.ok === true)
+    return {
+      kind: "show",
+      week: real.value,
+      sample: false,
+      missing: pick.missing,
+      unread: false,
+      problems: [],
     }
-    if (name !== `${week.value.week.from}.json`) {
-      problems.push(`${name}: it holds the week of ${week.value.week.from}`)
-      continue
-    }
-    weeks.push(week.value)
+  // An index that keeps no week yet is nothing to read, not a failed read.
+  const empty = input.index.data?.weeks.length === 0
+  const unread = live && !empty
+  if (input.record && unread) return { kind: "blank" }
+  const problems = real?.ok === false ? real.problems : []
+  if (!input.sample.ok)
+    return { kind: "none", problems: [...problems, ...input.sample.problems] }
+  return {
+    kind: "show",
+    week: input.sample.value,
+    sample: true,
+    missing: pick.missing,
+    unread,
+    problems,
   }
-  weeks.sort((a, b) => b.week.from.localeCompare(a.week.from))
-  return { weeks, problems }
-}
-
-/** The week the stage shows: the one named, else the newest, else the sample. */
-export function weekAt(
-  weeks: CallWeeks,
-  sample: Parsed<CallWeek>,
-  from: string | undefined
-): {
-  readonly week: CallWeek
-  readonly sample: boolean
-  /** The week was named and there is none: another is shown instead. */
-  readonly missing: boolean
-} | null {
-  const asSample = sample.ok
-    ? { week: sample.value, sample: true, missing: false }
-    : null
-  if (from === "sample") return asSample
-  const named = weeks.weeks.find((w) => w.week.from === from)
-  const real = named ?? weeks.weeks.at(0)
-  const missing = from !== undefined && named === undefined
-  if (real !== undefined) return { week: real, sample: false, missing }
-  return asSample === null ? null : { ...asSample, missing }
 }

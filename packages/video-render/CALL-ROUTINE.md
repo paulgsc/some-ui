@@ -2,9 +2,10 @@
 
 A scheduled cloud session runs this every Friday. It writes the week's call
 (`src/call.ts`): the week's data, which `/call` plays and which, with the
-template, is the call's DNA. When a speech engine is installed, it also
-renders the call as a video. Everything it writes is public, as the
-repositories are.
+template, is the call's DNA. The week lives in `paulgsc/testing`, beside
+Playoff Delta's data, so neither `paulgsc/some-ui` nor `paulgsc/server`
+holds data (ST36, #2635). The owner's home voices and renders it: the
+session's part ends at the written week. Everything it writes is public.
 
 ## The week
 
@@ -15,7 +16,8 @@ up to 14 days.
 
 ## Steps
 
-1. **Start from `main`** on the session's branch, and install:
+1. **Start from `main`** of `paulgsc/some-ui` (for the tools) and of
+   `paulgsc/testing` (for the weeks), and install some-ui:
    `pnpm install --frozen-lockfile`.
 2. **Read the facts:**
    `pnpm --filter @some-ui/video-render render call-facts --from <from> --to <to> > facts.json`
@@ -25,8 +27,7 @@ up to 14 days.
 3. **Read the ledger:** the Residual Ledger's `items`
    (https://claude.ai/artifact/Ktc1i8JtBGQVdXEraobxgA) with `ArtifactData`,
    every item whose `status` isn't `done`.
-4. **Write the week** as
-   `apps/www/src/lib/web-surface/call/weeks/<from>.json`, schema
+4. **Write the week** as `call/<from>.json` in `paulgsc/testing`, schema
    `some-ui.call-week/1`, `read` set to both repositories' `main` commits:
    - **board:** a row per ledger item not done, its title shortened to fit
      a card, its `status`, and its `tally.waits_on_you`.
@@ -49,25 +50,25 @@ up to 14 days.
    - Each `said` is plain, spoken English, a few sentences, in the owner's
      terms: what changed for them and what it unblocks. No file names,
      routes or internal terms. The close says how many asks are open.
-5. **Check it:**
-   `pnpm --filter @some-ui/video-render render call-check <the file>` until
-   it says ready.
-6. **Record it:** `pnpm --filter www build`, then
-   `pnpm --filter www record:call --week <from> --voices edge` if the
-   `edge-tts` command is installed, else `--voices none`. A scene the frame
-   can't hold is refused: shorten its words or its list, and record again.
-   The video and its stills stay in the session, in `out/call/<from>/`
-   under where the command was typed (the repository's root, under
-   `pnpm --filter`).
-7. **Open a pull request** with the week's file alone, titled
-   `feat(www): the weekly call for <from> to <to>`, `Change-Kind: story`.
+5. **Check the folder** once step 6 has updated the index:
+   `pnpm --filter @some-ui/video-render render call-check <paulgsc/testing>/call`
+   until it says ready. It checks the index, every week it lists against the
+   schema, each named for its own days, and no week file the index forgets. A scene's words and lists must fit its frame: keep `said`
+   to a few sentences, as the schema's sample does.
+6. **Update `call/index.json`:** the new week first. Keep at most `keep`
+   weeks. A week past `keep` leaves the repository only if home holds it:
+   home's `call` index in the mailbox lists the weeks it keeps (ST36's
+   second slice). Until that index exists, or for a week it doesn't list,
+   keep the week and let the index run past `keep`, saying so in the PR body.
+   Never delete a week home doesn't hold.
+7. **Open a pull request** in `paulgsc/testing` with the week, the index and
+   any week leaving, titled `data(call): the weekly call for <from> to <to>`.
    Its body says what the week's facts held (counts), any ask that didn't
-   parse, and whether a video was made. Drive it to green and merge it
-   (`.claude/skills/steward/SKILL.md`): it adds one data file, which
-   `call-check` and the stage's test of every committed week
-   (`apps/www/src/lib/web-surface/call/view.test.ts`) hold.
-8. **Say where it is:** the call plays at `/call?week=<from>` on the Pages
-   site once the merge deploys. Note the run in the ledger's `log`.
+   parse, and any week kept past `keep`. Merge it once `call-check` says the
+   folder is ready: the repository has no CI, so that check is its gate.
+8. **Say where it is:** the owner's home-network build plays it at
+   `/call?week=<from>`, and home voices and renders it. Note the run in the
+   ledger's `log`.
 
 ## What it never does
 

@@ -7,11 +7,12 @@
  *   pnpm --filter www build
  *   pnpm --filter www record:call [--week 2026-10-30] [--voices edge|none] [--out out/call]
  *
- * `--week` names the week by its first day (the newest under
- * `src/lib/web-surface/call/weeks/` by default, `sample` for the
- * template's). `--voices edge` says each scene through the `edge-tts`
- * command, in `CALL_VOICES`; `none` leaves the call silent, each scene held
- * for its words' reading time, which the frame shows anyway.
+ * `--week` names the week by its first day (the newest `paulgsc/testing`
+ * keeps by default, `sample` for the template's); the build must be one that
+ * reads content, as the home network's does. `--voices edge` says each scene
+ * through the `edge-tts` command, in `CALL_VOICES`, until home's own Kokoro
+ * voice replaces it (ST36, #2635); `none` leaves the call silent, each scene
+ * held for its words' reading time, which the frame shows anyway.
  *
  * It refuses a scene the frame can't hold (`data-overflow`), since the
  * video would cut it off. It serves the built app (never `vite dev`: the dev

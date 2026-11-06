@@ -1,11 +1,20 @@
-import type { JSX, ReactNode, RefObject } from "react"
-import { useLayoutEffect, useRef, useState } from "react"
+import type { JSX, ReactNode } from "react"
+import { useLayoutEffect, useState } from "react"
 import { assertNever } from "@some-ui/core-utils"
-import { callFormat, refUrl, sampleCallWeek } from "@some-ui/video-render"
+import {
+  callFormat,
+  CallIndexSchema,
+  CallWeekSchema,
+  refUrl,
+  sampleCallWeek,
+} from "@some-ui/video-render"
 import type { CallRef, CallScene, CallWeek } from "@some-ui/video-render"
 
+import { FETCHES_CONTENT } from "@/lib/data-mode"
+
+import { indexSource, weekSource } from "./feed"
 import type { SceneView } from "./view"
-import { callAt, weekAt, weeksOf } from "./view"
+import { callAt, stageOf, weekFrom } from "./view"
 import { CALL_WORDS as W } from "./words"
 
 /**
@@ -13,8 +22,9 @@ import { CALL_WORDS as W } from "./words"
  * a week at a time, in a 16:9 frame that scales with the window, the words
  * said under it. The recorder draws it at 1920 CSS px wide with `record`,
  * which leaves out everything that isn't the frame. It plays the week
- * `week` names (its first day), else the newest the weekly run wrote under
- * `weeks/`, else the template's sample week; `week=sample` asks for it.
+ * `week` names (its first day), else the newest `paulgsc/testing` keeps
+ * (`./feed`), read where the build reads content; elsewhere, or with
+ * `week=sample`, the template's sample week.
  *
  * The frame is fixed, so text that doesn't fit would be cut off unseen: the
  * frame says so instead (`data-overflow`, and a line under it off record),
@@ -36,13 +46,6 @@ const NAMES: Readonly<Record<string, string>> = Object.fromEntries(
 
 const SAMPLE = sampleCallWeek()
 
-const WEEKS = weeksOf(
-  import.meta.glob<unknown>("./weeks/*.json", {
-    eager: true,
-    import: "default",
-  })
-)
-
 /** The most asks the close lists by name; the rest it counts. */
 const LATER_SHOWN = 6
 
@@ -60,15 +63,18 @@ const labelOf = (
   return `${name} ${n + 1}`
 }
 
-/** Whether the element's content runs past its box, as laid out now. */
+/**
+ * Whether the element's content runs past its box, as laid out now: measured
+ * when the element mounts (the frame mounts late, once its week is read),
+ * when `key` changes, when it resizes and when a web font lands.
+ */
 function useOverflows(key: string): {
-  ref: RefObject<HTMLElement | null>
+  ref: (element: HTMLElement | null) => void
   overflows: boolean
 } {
-  const ref = useRef<HTMLElement | null>(null)
+  const [box, setBox] = useState<HTMLElement | null>(null)
   const [overflows, setOverflows] = useState(false)
   useLayoutEffect(() => {
-    const box = ref.current
     if (box === null) return undefined
     const measure = (): void => {
       setOverflows(
@@ -86,8 +92,8 @@ function useOverflows(key: string): {
       observer.disconnect()
       document.fonts.removeEventListener("loadingdone", measure)
     }
-  }, [key])
-  return { ref, overflows }
+  }, [box, key])
+  return { ref: setBox, overflows }
 }
 
 const Ref = ({ of: r }: { of: CallRef }): JSX.Element => (
@@ -332,21 +338,45 @@ export const CallStagePage = ({
   scene,
   record = false,
   onScene,
-}: CallStageProps): JSX.Element => {
-  const shown = weekAt(WEEKS, SAMPLE, from)
+}: CallStageProps): JSX.Element | null => {
+  const live = FETCHES_CONTENT && from !== "sample"
+  const index = indexSource.useResource(
+    ["call", "index"],
+    undefined,
+    CallIndexSchema,
+    { enabled: live, retry: 1 }
+  )
+  const pick = weekFrom(index.data, from)
+  const fetched = weekSource.useResource(
+    ["call", "week", pick.from],
+    pick.from ?? "",
+    CallWeekSchema,
+    { enabled: live && pick.from !== null, retry: 1 }
+  )
+  const state = stageOf({
+    reads: FETCHES_CONTENT,
+    record,
+    from,
+    index: { data: index.data, pending: live && index.isPending },
+    week: {
+      data: fetched.data,
+      pending: live && pick.from !== null && fetched.isPending,
+    },
+    sample: SAMPLE,
+  })
+  const shown = state.kind === "show" ? state : null
   const at = shown === null ? null : callAt(shown.week, scene)
   const { ref, overflows } = useOverflows(
     `${shown?.week.week.from ?? ""}/${at?.scene.id ?? ""}`
   )
+  if (state.kind === "waiting" || state.kind === "blank") return null
   if (shown === null || at === null)
     return (
       <ul className="p-6 font-mono text-sm">
-        {[...WEEKS.problems, ...(SAMPLE.ok ? [] : SAMPLE.problems)].map(
-          (problem, i) => (
-            // eslint-disable-next-line react/no-array-index-key
-            <li key={i}>{problem}</li>
-          )
-        )}
+        {(state.kind === "none" ? state.problems : []).map((problem, i) => (
+          // eslint-disable-next-line react/no-array-index-key
+          <li key={i}>{problem}</li>
+        ))}
       </ul>
     )
   const week = shown.week
@@ -384,6 +414,22 @@ export const CallStagePage = ({
           </footer>
         </section>
       </div>
+      {!record && shown.unread && (
+        <div
+          role="status"
+          className="text-muted-foreground mx-auto max-w-[1920px] text-sm"
+        >
+          <p>{W.unread}</p>
+          {shown.problems.length > 0 && (
+            <ul className="font-mono text-xs">
+              {shown.problems.map((problem, i) => (
+                // eslint-disable-next-line react/no-array-index-key
+                <li key={i}>{problem}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
       {!record && shown.missing && from !== undefined && (
         <p
           role="status"

@@ -4,8 +4,9 @@
  * so the stage reads it directly.
  */
 
-const PLAYOFF_DELTA_DATA =
-  "https://raw.githubusercontent.com/paulgsc/testing/main/playoff-delta"
+import { TESTING_DATA } from "@/lib/testing-data"
+
+const PLAYOFF_DELTA_DATA = `${TESTING_DATA}/playoff-delta`
 
 /** The team the vlog follows. */
 export const STORY_TEAM = "SF"
