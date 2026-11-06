@@ -11,11 +11,13 @@ something existing code already does, name that code and say why both must exist
 
 ## Calls I made
 
+<!--
 Each call this change made that the owner didn't ask for and would want to hear about, one
 per line: the call, the options it chose between, why this one, and how to undo it. Leave
 out what a check or a convention decided, and mechanical choices. "None" if there were none.
 The weekly call reads this section to say what was decided without the owner
-(`packages/video-render/src/call.ts`, `mine`).
+(`packages/video-render/src/call.ts`, `mine`), and skips this comment.
+-->
 
 ## Change kind
 

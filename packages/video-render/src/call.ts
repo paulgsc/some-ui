@@ -30,8 +30,8 @@
 
 import { z } from "zod"
 
-import { once, problemsOf } from "./cut-list"
-import type { Parsed } from "./cut-list"
+import { CUT_LIST_SCHEMA, once, problemsOf } from "./cut-list"
+import type { CutList, Parsed } from "./cut-list"
 import { FORMAT_SCHEMA, repeatedId, showId, words } from "./format"
 import type { Format } from "./format"
 import sample from "./templates/conference-call/sample-week.json"
@@ -138,7 +138,7 @@ export function callFormat(): Format {
 }
 
 /** A pull request or an issue in one of the two repositories. */
-const RefSchema = z.strictObject({
+export const RefSchema = z.strictObject({
   repo: z.enum(["some-ui", "server"]),
   kind: z.enum(["pr", "issue"]),
   number: z.number().int().positive(),
@@ -186,8 +186,8 @@ const MovedSchema = z.strictObject({
 
 const PullSchema = PrSchema.extend({
   title: words,
-  /** Its commits' `Change-Kind:`. */
-  change: z.enum(["story", "defect"]),
+  /** Its commits' `Change-Kind:`, where its repository writes one. */
+  change: z.enum(["story", "defect"]).optional(),
 })
 
 const BatchSchema = z.strictObject({
@@ -223,7 +223,7 @@ const MineSchema = z.strictObject({
   refs,
 })
 
-const OptionSchema = z.strictObject({
+export const OptionSchema = z.strictObject({
   says: words,
   /** What choosing it lets go ahead. */
   unblocks: words,
@@ -379,4 +379,77 @@ export function callScenes(week: CallWeek): ReadonlyArray<CallScene> {
     ...items("asks", week.asks),
     { section: "close", id: "close", said: week.close.said },
   ]
+}
+
+/**
+ * The voice each section is said in, by the hosted voices' names (Microsoft
+ * Edge's neural voices, which the home server's speech service also serves):
+ * a host who opens, reads the board and closes, and one voice per kind of
+ * report, so a listener hears who is speaking change with the section.
+ */
+export const CALL_VOICES: Readonly<Record<Section, string>> = {
+  open: "en-US-AndrewNeural",
+  board: "en-US-AndrewNeural",
+  moved: "en-US-AvaNeural",
+  done: "en-US-BrianNeural",
+  gray: "en-US-EmmaNeural",
+  mine: "en-GB-RyanNeural",
+  asks: "en-US-JennyNeural",
+  close: "en-US-AndrewNeural",
+}
+
+/** Scene `index`'s files in the video's folder, without their extension. */
+export const callFile = (index: number, scene: string): string =>
+  `${String(index + 1).padStart(2, "0")}-${scene}`
+
+/** When a scene's take starts, and the beat after it ends, in ms. */
+const VOICE_IN_MS = 300
+const TAIL_MS = 700
+
+/** How long a scene with no take holds: its words read at a calm pace. */
+export const readingMs = (said: string): number =>
+  Math.max(3_000, said.trim().split(/\s+/).length * 400 + 1_200)
+
+/**
+ * The call as a cut list the renderer draws: one still per scene
+ * (`<file>.png`, the stage recorded), and its take (`<file>.mp3`) where one
+ * was said, `takesMs[i]` long; a scene with none holds for its words'
+ * reading time instead.
+ */
+export function callCutList(
+  week: CallWeek,
+  takesMs: ReadonlyArray<number | null>
+): CutList {
+  const scenes = callScenes(week)
+  return {
+    schema: CUT_LIST_SCHEMA,
+    title: `The weekly call, ${week.week.from} to ${week.week.to}`,
+    series: callFormat().series,
+    look: "calm",
+    voice: "read",
+    // The call's series names no music bed yet.
+    music: "off",
+    shots: scenes.map((scene, i) => {
+      const file = callFile(i, scene.id)
+      const takeMs = takesMs[i] ?? null
+      return {
+        id: scene.id,
+        picture: { kind: "still", source: `${file}.png` },
+        durationMs:
+          takeMs === null
+            ? readingMs(scene.said)
+            : VOICE_IN_MS + takeMs + TAIL_MS,
+        ...(takeMs === null
+          ? {}
+          : { take: { file: `${file}.mp3`, inMs: 0, outMs: takeMs } }),
+        voiceInMs: VOICE_IN_MS,
+        overrides: {},
+        burnIns: [],
+        idea: { origin: "agent" },
+      }
+    }),
+    burnIns: [],
+    revisions: [],
+    notes: [],
+  }
 }

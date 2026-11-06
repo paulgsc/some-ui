@@ -12,13 +12,16 @@ import {
   CALL_ID,
   CALL_STAGE_WIDTH,
   CALL_VERSION,
+  callCutList,
   callFormat,
   callScenes,
   parseCallWeek,
+  readingMs,
   refUrl,
   sampleCallWeek,
 } from "@video-render/call"
 import type { CallWeek } from "@video-render/call"
+import { parseCutList } from "@video-render/cut-list"
 import { parseFormat } from "@video-render/format"
 import { readSeries } from "@video-render/node"
 import { versionOfFile } from "@video-render/series"
@@ -144,4 +147,24 @@ it("links a reference to where it is on GitHub", () => {
   expect(refUrl({ repo: "some-ui", kind: "issue", number: 2248 })).toBe(
     "https://github.com/paulgsc/some-ui/issues/2248"
   )
+})
+
+describe("the call as a cut list", () => {
+  it("is one the renderer draws: a still per scene, its take where said, else its words' reading time", () => {
+    const w = week()
+    const scenes = callScenes(w)
+    const takes = scenes.map((_, i) => (i === 1 ? null : 4_000 + i))
+    const cut = parseCutList(callCutList(w, takes))
+    if (!cut.ok) throw new Error(cut.problems.join("; "))
+    const [open, board] = cut.value.shots
+    expect(open).toMatchObject({
+      id: "open",
+      picture: { kind: "still", source: "01-open.png" },
+      take: { file: "01-open.mp3", inMs: 0, outMs: 4_000 },
+      durationMs: 300 + 4_000 + 700,
+    })
+    expect(board?.take).toBeUndefined()
+    expect(board?.durationMs).toBe(readingMs(w.board.said))
+    expect(cut.value.shots).toHaveLength(scenes.length)
+  })
 })

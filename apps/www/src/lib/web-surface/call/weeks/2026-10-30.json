@@ -1,0 +1,2588 @@
+{
+  "schema": "some-ui.call-week/1",
+  "template": {
+    "id": "conference-call",
+    "version": 1
+  },
+  "week": {
+    "from": "2026-10-30",
+    "to": "2026-11-05"
+  },
+  "read": {
+    "some-ui": "b9db4a0868faf7dff1c95924f9747fb03733994a",
+    "server": "cb7f30fe1bd1735e4bf7e177ae7fa1595ee0709e"
+  },
+  "open": {
+    "said": "This is the weekly call for October thirtieth to November fifth: two hundred and forty-nine pull requests merged by hand across both repositories, read as they stood on Friday. It's the first call, so a few sections are thin."
+  },
+  "board": {
+    "said": "Thirty-eight items are open on your ledger. Twenty-two of them have something waiting on you, about fifty asks in all. Most are small. The five that came up this week are filed as asks, and you'll hear them at the end.",
+    "rows": [
+      {
+        "ledger": "studio",
+        "title": "Studio: a video made in sittings",
+        "status": "decide",
+        "waitsOnYou": 3
+      },
+      {
+        "ledger": "talk",
+        "title": "A session is a conversation",
+        "status": "decide",
+        "waitsOnYou": 5
+      },
+      {
+        "ledger": "from-reflection-issues",
+        "title": "What your study reflections asked for",
+        "status": "decide",
+        "waitsOnYou": 7
+      },
+      {
+        "ledger": "home-first",
+        "title": "Home is mine",
+        "status": "decide",
+        "waitsOnYou": 5
+      },
+      {
+        "ledger": "branch-queue-2026-10-31",
+        "title": "Branch queue: drifted and waiting branches",
+        "status": "decide",
+        "waitsOnYou": 3
+      },
+      {
+        "ledger": "drift-some-ui",
+        "title": "some-ui: one owner and a guard per concern",
+        "status": "decide",
+        "waitsOnYou": 3
+      },
+      {
+        "ledger": "drift-server",
+        "title": "Server: one owner and a guard per concern",
+        "status": "decide",
+        "waitsOnYou": 3
+      },
+      {
+        "ledger": "nfl-fan-reaction",
+        "title": "Game Week Bites",
+        "status": "decide",
+        "waitsOnYou": 3
+      },
+      {
+        "ledger": "server-config-declared-once",
+        "title": "Server config, declared once",
+        "status": "decide",
+        "waitsOnYou": 3
+      },
+      {
+        "ledger": "censor-music-mix",
+        "title": "YouTube radio under some-censor",
+        "status": "decide",
+        "waitsOnYou": 2
+      },
+      {
+        "ledger": "jobs-friction",
+        "title": "Jobs in five minutes, on the move",
+        "status": "decide",
+        "waitsOnYou": 2
+      },
+      {
+        "ledger": "rust-rounds",
+        "title": "Rust Rounds",
+        "status": "decide",
+        "waitsOnYou": 2
+      },
+      {
+        "ledger": "assurance",
+        "title": "Every promise, with its evidence",
+        "status": "decide",
+        "waitsOnYou": 1
+      },
+      {
+        "ledger": "cards-palette",
+        "title": "Rendered cards as a palette",
+        "status": "decide",
+        "waitsOnYou": 1
+      },
+      {
+        "ledger": "jobs-run-never-silent",
+        "title": "Jobs says what the morning run did",
+        "status": "decide",
+        "waitsOnYou": 1
+      },
+      {
+        "ledger": "settings-no-silent-caps",
+        "title": "Settings: no silent caps",
+        "status": "decide",
+        "waitsOnYou": 1
+      },
+      {
+        "ledger": "sl-popup-blank",
+        "title": "Suspender Ledger's popup",
+        "status": "decide",
+        "waitsOnYou": 1
+      },
+      {
+        "ledger": "transcribe-on-home",
+        "title": "Voice notes transcribed on home",
+        "status": "decide",
+        "waitsOnYou": 1
+      },
+      {
+        "ledger": "my-data",
+        "title": "My data: see and delete what you keep",
+        "status": "decide",
+        "waitsOnYou": 0
+      },
+      {
+        "ledger": "leetype-mailbox",
+        "title": "LeetType through the mailbox",
+        "status": "decide",
+        "waitsOnYou": 0
+      },
+      {
+        "ledger": "storage-trajectory",
+        "title": "How fast home's storage grows",
+        "status": "decide",
+        "waitsOnYou": 0
+      },
+      {
+        "ledger": "studio-shows",
+        "title": "Shows in Studio",
+        "status": "decide",
+        "waitsOnYou": 0
+      },
+      {
+        "ledger": "env-secrets-set-once",
+        "title": "Env as encrypted constants",
+        "status": "doing",
+        "waitsOnYou": 2
+      },
+      {
+        "ledger": "mailbox-catch-up",
+        "title": "Drive-to-mailbox catch-up out of the model",
+        "status": "open",
+        "waitsOnYou": 1
+      },
+      {
+        "ledger": "administration",
+        "title": "Administration from the web app",
+        "status": "doing",
+        "waitsOnYou": 0
+      },
+      {
+        "ledger": "engagement",
+        "title": "Every pipeline says whether you use it",
+        "status": "doing",
+        "waitsOnYou": 0
+      },
+      {
+        "ledger": "gesture-pager",
+        "title": "Paged cards swipe the same way",
+        "status": "doing",
+        "waitsOnYou": 0
+      },
+      {
+        "ledger": "korean-on-home",
+        "title": "Korean on home",
+        "status": "doing",
+        "waitsOnYou": 0
+      },
+      {
+        "ledger": "runtime-checks",
+        "title": "Know it works while it runs",
+        "status": "doing",
+        "waitsOnYou": 0
+      },
+      {
+        "ledger": "voice-kit",
+        "title": "One way to record your voice",
+        "status": "doing",
+        "waitsOnYou": 0
+      },
+      {
+        "ledger": "jobs-scout-readable",
+        "title": "A scout the morning run can read",
+        "status": "open",
+        "waitsOnYou": 0
+      },
+      {
+        "ledger": "jobs-script",
+        "title": "Jobs search and odds as a script",
+        "status": "open",
+        "waitsOnYou": 0
+      },
+      {
+        "ledger": "mailbox-push",
+        "title": "The mailbox rings home",
+        "status": "open",
+        "waitsOnYou": 0
+      },
+      {
+        "ledger": "playoff-delta-maths",
+        "title": "Playoff Delta shows its maths",
+        "status": "open",
+        "waitsOnYou": 0
+      },
+      {
+        "ledger": "prepare-finish",
+        "title": "Routines split into prepare, write, finish",
+        "status": "open",
+        "waitsOnYou": 0
+      },
+      {
+        "ledger": "routine-levers",
+        "title": "The model fills a schema, never judges",
+        "status": "open",
+        "waitsOnYou": 0
+      },
+      {
+        "ledger": "server-hook-claim",
+        "title": "The priority sweep as a hook",
+        "status": "open",
+        "waitsOnYou": 0
+      },
+      {
+        "ledger": "session-desk-code",
+        "title": "Session Desk's bookkeeping in code",
+        "status": "open",
+        "waitsOnYou": 0
+      }
+    ]
+  },
+  "moved": [
+    {
+      "id": "studio-where",
+      "tag": "STUDIO",
+      "epic": {
+        "repo": "some-ui",
+        "kind": "issue",
+        "number": 2248
+      },
+      "said": "Studio: the new model is half built. Takes are a library on home, and a finished episode queues there to be made. Nothing makes it yet: that routine is next, and the render needs home's render worker.",
+      "landed": [
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2593
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2614
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2621
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 681
+        }
+      ],
+      "next": [
+        "The weekly call, the first template",
+        "The routine that fills a queued video"
+      ]
+    },
+    {
+      "id": "show-where",
+      "tag": "SHOW",
+      "epic": {
+        "repo": "some-ui",
+        "kind": "issue",
+        "number": 2525
+      },
+      "said": "Shows: every story has landed. Week 8 is waiting for your voice.",
+      "landed": [
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2558
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2562
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2564
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2573
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2576
+        }
+      ],
+      "next": ["Voice week 8", "Game Week Bites as the second show"]
+    },
+    {
+      "id": "home-first-where",
+      "tag": "HOME-FIRST",
+      "epic": {
+        "repo": "some-ui",
+        "kind": "issue",
+        "number": 2174
+      },
+      "said": "Home first: all of its code is in. None of the newer parts work until home runs the latest server, so that is the one thing left, and it's yours.",
+      "landed": [
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2394
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2398
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2400
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2417
+        }
+      ],
+      "next": ["Your redeploy of home, then the new APK"]
+    },
+    {
+      "id": "mic-where",
+      "tag": "MIC",
+      "epic": {
+        "repo": "some-ui",
+        "kind": "issue",
+        "number": 2368
+      },
+      "said": "One way to record: all nine screens are on the take pattern. Three small exemptions to the guard are left, all ours.",
+      "landed": [
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2429
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2430
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2441
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2451
+        }
+      ],
+      "next": ["The microphone guard's last three exemptions"]
+    },
+    {
+      "id": "talk-where",
+      "tag": "TALK",
+      "epic": {
+        "repo": "some-ui",
+        "kind": "issue",
+        "number": 2545
+      },
+      "said": "A session is a conversation: the turn is one pattern, and Rust Rounds shows rustc's result from the start. Four decisions wait on you; the first is in the asks.",
+      "landed": [
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2566
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2571
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2580
+        }
+      ],
+      "next": ["Home's words under your take", "Hearing a take in its context"]
+    },
+    {
+      "id": "my-data-where",
+      "tag": "MY-DATA",
+      "epic": {
+        "repo": "some-ui",
+        "kind": "issue",
+        "number": 2473
+      },
+      "said": "My data is built and switched on for Studio's recordings. You'll see it once home runs the new image.",
+      "landed": [
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2518
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2574
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2585
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2596
+        }
+      ],
+      "next": ["A take in a published video becomes deletable"]
+    },
+    {
+      "id": "assure-where",
+      "tag": "ASSURE",
+      "epic": {
+        "repo": "some-ui",
+        "kind": "issue",
+        "number": 2199
+      },
+      "said": "Assurance: home's alerts reach you and four watch promises hold. Grafana, which sends every alert, isn't watched yet.",
+      "landed": [
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2489
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 654
+        }
+      ],
+      "next": ["Watch Grafana itself", "Rework the branches that drifted"]
+    },
+    {
+      "id": "lty-where",
+      "tag": "LTY-MAILBOX",
+      "epic": {
+        "repo": "some-ui",
+        "kind": "issue",
+        "number": 2025
+      },
+      "said": "LeetType: the mailbox loop runs both ways, and the weekly review reads it every Sunday.",
+      "landed": [
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2341
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2353
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 583
+        }
+      ],
+      "next": ["The phone lists home's session files and plays them offline"]
+    },
+    {
+      "id": "checks-where",
+      "tag": "CHECKS",
+      "epic": {
+        "repo": "some-ui",
+        "kind": "issue",
+        "number": 2369
+      },
+      "said": "Checks: every moving part is named with its checks, and every take says how it ended. The page you'll check them on is next.",
+      "landed": [
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2569
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2581
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 673
+        }
+      ],
+      "next": ["The Is it working? page", "Home's probes"]
+    },
+    {
+      "id": "env-where",
+      "tag": "ENV",
+      "epic": {
+        "repo": "server",
+        "kind": "issue",
+        "number": 613
+      },
+      "said": "On the server, every setting is a secret set once. The switches are next.",
+      "landed": [
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 622
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 642
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 651
+        }
+      ],
+      "next": ["The switch changes"]
+    }
+  ],
+  "done": [
+    {
+      "id": "studio-render",
+      "title": "Studio's renderer, and what it draws",
+      "said": "Studio's video side became code this week. One renderer turns a cut list into a video, the same bytes every time. Code draws the captions, cards and the authorship mark, and a series pins its look by version.",
+      "pulls": [
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2278,
+          "title": "feat(video-render): the one renderer for Studio and Game Week Bites (ST1)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2280,
+          "title": "feat(burn-ins): one class for what code draws into every video (ST15)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2284,
+          "title": "feat(video-render): one checked table of who owns each step (ST10)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2286,
+          "title": "feat(soundbites): primer v2: up to six minutes, a voice plan, facts to keep (ST2)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2293,
+          "title": "feat(studio): the authorship mark, whose idea and whose hands (ST16)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2297,
+          "title": "feat(burn-ins): a CI run of the recorder, and captions on glyph widths (ST15)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2298,
+          "title": "feat(burn-ins): the end card links to a page that draws each scene's record (ST16)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2299,
+          "title": "feat(video-render): a series is a folder of versions, and names its burn-ins' designs (ST11)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2359,
+          "title": "feat(video-render): check a take against its cut, the line for Read and the facts for Ad-lib (ST21)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2365,
+          "title": "feat(studio): two hearings of each take, proven the same bytes, their differences flagged (ST25)",
+          "change": "story"
+        }
+      ]
+    },
+    {
+      "id": "studio-phone",
+      "title": "Studio on the phone, then the new model",
+      "said": "On the phone, Studio grew from a project you record in sittings to the new model you chose on Wednesday. Takes became a library on home, searchable by meaning, and a finished episode now goes home as its DNA.",
+      "pulls": [
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2296,
+          "title": "feat(studio): the project on the phone, kept and never let go silently (ST3)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2303,
+          "title": "feat(studio): start, record and done for now on the project store (ST3, ST4)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2309,
+          "title": "feat(studio): clear out what the old Journal tab left behind",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2311,
+          "title": "feat(studio): catch a video idea by voice, kept as text (ST18)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2315,
+          "title": "feat(studio): watch, shape, finish, the round trip, and Studio's record going home (ST4–ST9, ST12, ST15, ST16)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2319,
+          "title": "feat(studio): a series' intro and outro, Claude's version after a take, and spoken notes (ST11, #2317, ST5)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2363,
+          "title": "feat(studio): an idea shelf, where an idea goes to Claude and comes back a video (ST19)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2390,
+          "title": "feat(soundbites): ask in Watch whose idea each scene is, and keep the owner's word (ST5)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2412,
+          "title": "feat(studio): a take leaves the phone only by your choice once home holds it (HF11)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2415,
+          "title": "feat(studio): a take leaves on home's word that Drive holds it too (HF11)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2463,
+          "title": "feat(studio): a new idea is one bundle, said, heard back and sent home together (ST26)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2572,
+          "title": "feat(www,soundbites): a sent idea goes home as one bundle (ST26 b)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2578,
+          "title": "feat(www,soundbites): ideas on home, and the lists they pick from (ST26 c)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2593,
+          "title": "feat(studio): the takes home keeps, with their words, a search and Play (ST32)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2614,
+          "title": "feat(www,soundbites): record a take with no scene on Takes on home (ST32)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2615,
+          "title": "feat(soundbites): one name for Studio and for a take, and home said truly (ST34)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2621,
+          "title": "feat(soundbites,www,video-render): a ready episode goes home to be made, as its DNA (ST33)",
+          "change": "story"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 567,
+          "title": "feat(studio): home keeps Studio's sitting log and friction reports"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 625,
+          "title": "feat(voice): home records which Studio takes Drive holds and lets the phone read it (HF11)"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 650,
+          "title": "feat(ideas): home keeps each idea as one bundle, with the lists it picks from"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 676,
+          "title": "feat(voice): home's take library, its search, and a take played from home (ST32)",
+          "change": "story"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 680,
+          "title": "feat(voice): search takes by meaning on home (ST32)"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 681,
+          "title": "feat(studio): queue a finished video's DNA on home (ST33)"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 562,
+          "title": "feat(voice): Studio takes are voice notes of their own kind (#552)"
+        }
+      ]
+    },
+    {
+      "id": "shows",
+      "title": "Shows: an episode is its format plus the week's data",
+      "said": "Playoff Delta became Studio's first show. Its format is fixed in code, each week fills it with the season's data, and Finish hands you the upload's title and description.",
+      "pulls": [
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2557,
+          "title": "feat(playoff-delta): the weekly report in discrete events: the poles, the cohorts, the ladder (v6)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2558,
+          "title": "feat(video-render,playoff-delta): a show's format and episodes; recorder writes episode.json",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2562,
+          "title": "feat(soundbites,video-render): two doors in Studio: shows and your own videos (SH3)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2564,
+          "title": "feat(soundbites,video-render): a note on an episode is about my take or the show (SH4)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2573,
+          "title": "feat(soundbites,www): a pull down checks Studio's Start and a show again (SH6)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2576,
+          "title": "feat(soundbites,playoff-delta,video-render): an episode finishes with its show's upload copy (SH5)",
+          "change": "story"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 664,
+          "title": "feat(playoff_delta): the poles, contract v6: how few and how many wins our rivals can finish with"
+        }
+      ]
+    },
+    {
+      "id": "home-first",
+      "title": "Home is where your records are kept",
+      "said": "Everything you record now goes to home first. Voice notes, written reflections, drama prompts, soundbites and LeetType's notes are kept there, and nothing leaves the phone on a third party's word.",
+      "pulls": [
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2360,
+          "title": "feat(home-link): nothing is let go on a third party's word (HF1, LG1)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2364,
+          "title": "feat(home-link): one owner, no consent ceremony: home is where it's kept (HF8)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2366,
+          "title": "feat(auth): say the server has its owner already, and retire the claim link (HF9)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2367,
+          "title": "chore(assurance): home no longer keeps a sharing choice, so the ledger lists no store for it",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2387,
+          "title": "feat(mailbox): an index folder home fills with each routine's bookkeeping (HF7)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2394,
+          "title": "feat(home-link): every voice note goes home when kept, and a Jobs file whatever it names (HF2)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2395,
+          "title": "chore(assurance): the ledger places no `sharing` route module, which home no longer serves",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2396,
+          "title": "feat(mailbox): a reflection folder home fills with each written reflection (HF3)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2397,
+          "title": "chore(assurance): the ledger lists home's written reflections store (HF3)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2398,
+          "title": "feat(home-link): written reflections drain to home, and the phone keeps an offline set (HF3)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2399,
+          "title": "feat(assurance): place home's study notes and their route module in the ledger (HF5)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2400,
+          "title": "feat(home-link): soundbites, takes, the lens record and LeetType's notes kept on home (HF5)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2402,
+          "title": "feat(mailbox): a prompt folder home fills with each drama prompt (HF4)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2403,
+          "title": "chore(assurance): the ledger lists home's drama prompt store (HF4)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2404,
+          "title": "feat(topik): ask for the next scene, and the ask goes home (HF4)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2405,
+          "title": "feat(mailbox): the index folder takes the reflections routine's index too (HF7)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2406,
+          "title": "feat(topik): the reflections routine reads home's index when it stands (HF7)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2413,
+          "title": "feat(mailbox): brief takes the build-journal session's list of takes Drive holds (HF11)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2414,
+          "title": "chore(assurance): the ledger lists home's record of takes Drive holds (HF11)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2417,
+          "title": "feat(routines): both runs treat home's mailbox as the record, and Drive only as a copy (HF6)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2419,
+          "title": "feat(mailbox): the Jobs backfill takes a file only Drive holds through 2026-11-03 (#2393)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2421,
+          "title": "feat(sessions): the study list's \"Let it go\" keeps a home copy first (HF5)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2455,
+          "title": "feat(sessions): a session copied home keeps the phone's created time",
+          "change": "story"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 595,
+          "title": "feat(auth): home knows its owner: the only account is operator and mailbox subject (HF9)",
+          "change": "story"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 596,
+          "title": "feat(jobs): take a decisions or scouts file that names a voice note (HF2)",
+          "change": "story"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 598,
+          "title": "feat(sharing): retire the sharing choice: a paired phone's writes are taken, /sharing is gone (HF8)"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 599,
+          "title": "feat(mailbox): home files the Jobs routine's bookkeeping as an index after each pass (HF7)"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 609,
+          "title": "feat(reflections): home keeps the owner's written reflections and files each for the mailbox (HF3)"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 611,
+          "title": "feat(voice): home keeps soundbites, lens takes, LeetType's spoken answers and their notes (HF5)"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 620,
+          "title": "feat(prompts): home keeps the owner's drama prompts and files each for the mailbox (HF4)"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 621,
+          "title": "feat(mailbox): home computes the reflections routine's bookkeeping into the mailbox index (HF7)"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 627,
+          "title": "docs(mailbox): the Jobs backfill takes files only Drive held, dated before 2026-11-04"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 648,
+          "title": "feat(sessions): a session copied home keeps the phone's created time"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 649,
+          "title": "feat(voice): match a studio take that reaches home after its drive list (paulgsc/some-ui#2416)"
+        }
+      ]
+    },
+    {
+      "id": "one-way-to-record",
+      "title": "One way to record your voice",
+      "said": "All nine recording screens now use one take pattern: tap to start and stop, see where a take is kept, play it, redo it, let it go. A lint guard stops any screen from opening the microphone on its own.",
+      "pulls": [
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2429,
+          "title": "feat(voice-capture): the take kit, one take per phone, and the shared simulated microphone (MIC1)",
+          "change": "defect"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2430,
+          "title": "feat(shared): the take pattern, one take button, row and list with a closed options type (MIC2)",
+          "change": "defect"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2431,
+          "title": "feat(voice-capture): a take of silence is kept and said: \"I didn't hear you\" (MIC8)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2434,
+          "title": "feat: Rust Rounds and LeetType record by tap on the take pattern; HoldButton goes (MIC4)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2435,
+          "title": "feat(voice-capture): every take says where it is kept, and since when (MIC3)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2436,
+          "title": "test(voice-capture): the real recorder runs the take cases in Chromium (MIC9)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2438,
+          "title": "feat(soundbites): the Soundbites page records on the take pattern (MIC6, 1 of 3)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2439,
+          "title": "feat(topik): grammar-lens takes and scene voice on the take pattern (MIC5, part 1)",
+          "change": "defect"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2440,
+          "title": "feat(game-week): a bite is a take of the take pattern, quiet stop and Undo kept (MIC6, 2 of 3)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2441,
+          "title": "feat(soundbites): the Studio Record screen draws the take pattern's button and row (MIC6, 3 of 3)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2444,
+          "title": "feat: reflection voice and Jobs notes on the take pattern (MIC5, part 2)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2445,
+          "title": "feat(assurance): place home's voice_note_set_aside store (MIC, #2372)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2449,
+          "title": "feat(eslint): only the take kit opens the microphone, and only its simulated one stands in (MIC7)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2451,
+          "title": "feat(home-link): home marks a voice note set aside once the phone lets it go (MIC2)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2581,
+          "title": "feat(app-events): every take says how it ended, and the note goes home (CK2)",
+          "change": "story"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 636,
+          "title": "feat(voice): home gives a voice note's words back to the phone (MIC10, some-ui#2428)"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 638,
+          "title": "feat(voice): home sets a let-go voice note aside and keeps it (MIC2, some-ui#2372)"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 673,
+          "title": "feat(app-events): home keeps what the app saw happen as it ran (CK2)"
+        }
+      ]
+    },
+    {
+      "id": "rust-rounds-talk",
+      "title": "Rust Rounds, and a session as a conversation",
+      "said": "Rust Rounds plays on the phone with rustc's real results, kept on home, with your voice notes transcribed there. Then the story moved: a session becomes a conversation, and the turn is now one pattern.",
+      "pulls": [
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2335,
+          "title": "feat(rust-rounds): the round, log and tutor-notes formats, the intake and the tutor's routine",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2337,
+          "title": "feat(shared): a phone code card, on the rust highlighting moved out of leetype (RR2)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2346,
+          "title": "feat(rust-rounds): the phone session, open, stay, leave, from a Practice Home card (RR4)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2352,
+          "title": "feat(assurance): place Rust Rounds' recording on home, its four stores, and what an account takes",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2486,
+          "title": "feat(contract-harness): contracts for the rust_rounds routes, and paired-phone contracts (RR5)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2491,
+          "title": "feat(rust-rounds): a viewer sample on Pages with recorded rustc results (RR10)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2492,
+          "title": "feat(mailbox): the transcript folder takes a Rust Rounds note's transcript (RR6)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2493,
+          "title": "feat(rust-rounds): the phone sends pasted rounds home and fetches rounds and runs (RR4b)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2497,
+          "title": "feat(rust-rounds): paste an error from your desk on any card, and \"your error\" on the menu (RR4c)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2498,
+          "title": "feat(rust-rounds): each voice note goes home, naming its card and what it refines (RR6)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2510,
+          "title": "feat(rust-rounds): a note's audio leaves once home holds it, and plays from home after (RR6)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2566,
+          "title": "docs(canon): a spoken turn, heard at home and confirmed by the learner (TALK7)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2571,
+          "title": "feat(voice-capture,soundbites,www): the turn, one pattern for every conversation (TALK1)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2580,
+          "title": "feat(rust-rounds,www): rustc's result on the card from the start, nothing to pick (TALK5)",
+          "change": "story"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 585,
+          "title": "feat(rust-runner): sandboxed rustc runner for Rust Rounds; EX1 amended"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 589,
+          "title": "feat(rust-rounds): rounds kept on home, each program recorded by the runner in a background pass"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 635,
+          "title": "fix(rust_rounds_wire): a refused peer's answer is read even when its write hits a closed socket (#623)"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 657,
+          "title": "feat(voice): Rust Rounds notes go home, and a paired phone reads one back (RR6)"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 674,
+          "title": "feat(rust-rounds): home keeps a round /2, and still a round /1"
+        }
+      ]
+    },
+    {
+      "id": "leetype",
+      "title": "LeetType through the mailbox",
+      "said": "LeetType's session files now come down from home to the phone, and each finished session's log goes back up for the weekly review. The old round CRM is retired.",
+      "pulls": [
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2330,
+          "title": "feat(leetype): a return names the response it follows, and the lint checks prop. 9.1",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2338,
+          "title": "feat(assurance): place the server's leetype_files route module in routine-to-home",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2339,
+          "title": "feat(assurance): list home's mailbox_leetype_log store, and say LeetType's mailbox files go",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2341,
+          "title": "refactor(leetype,lesson-crm,www): retire the round CRM and the phone's copy of home's rounds (#2032)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2349,
+          "title": "docs(leetype): the weekly review routine's instructions, in REVIEW-ROUTINE.md (#1927)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2353,
+          "title": "test(contract-harness): contracts for home's LeetType session files (LTY-MAILBOX 1)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2355,
+          "title": "chore(assurance): drop the leetype and leetype_operator route modules home no longer serves",
+          "change": "story"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 583,
+          "title": "feat(mailbox): leetype session files down to the phone, finished sessions' logs up to the mailbox"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 584,
+          "title": "refactor(file_host): retire the leetype round routes; their tables and rows stay"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 587,
+          "title": "feat(leetype): home keeps the phone's rubric-shown session-log event"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 653,
+          "title": "ci(routes): seed a LeetType session file and a paired phone's session for some-ui's contract run"
+        }
+      ]
+    },
+    {
+      "id": "my-data-pull",
+      "title": "My data, and pull down to check again",
+      "said": "Settings has a page for what you keep: how much is on home, how it grows, and a delete that keeps a receipt. Studio's recordings are the first kind switched on. And every phone page now checks again when you pull down from its top.",
+      "pulls": [
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2494,
+          "title": "feat(www): drag down from the top of a phone page to check again (PULL0)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2500,
+          "title": "feat(www): the refresh port a phone screen's runtime registers its reads on (PULL1)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2501,
+          "title": "feat(www): the phone's Settings gets a bar of its pages, with My data (MD1)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2511,
+          "title": "feat(jobs): a pull on Jobs names the morning run when it couldn't check it (PULL2)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2512,
+          "title": "feat(home-link): a pull resyncs with home, and the marks show how it went (PULL3)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2516,
+          "title": "feat(settings): a pull reads the phone's room again (PULL4)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2518,
+          "title": "feat(www): the phone's My data shows what you keep, where, and how it grows (MD2)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2559,
+          "title": "feat(mobile): the launch test drags down on each wing and waits for the check (PULL5)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2570,
+          "title": "feat(www): the phone's My data counts what home keeps for good (MD2b)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2574,
+          "title": "feat(www,soundbites): delete a record from My data, white-gloved (MD3)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2577,
+          "title": "test(www): hold that only My data deletes a record on home (MD5, LA19)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2585,
+          "title": "feat(www,soundbites,voice-capture): what Studio keeps, with Delete… that opens My data (MD4)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2596,
+          "title": "feat(www,soundbites): studio recordings switched on, and an idea answer's Delete… opens My data",
+          "change": "story"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 659,
+          "title": "feat(voice): a paired phone reads what home keeps of its voice notes (MD2)"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 665,
+          "title": "feat(voice): My data's delete, switched off for every kind, with a receipt kept for good (MD3)"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 669,
+          "title": "feat(subjects): home counts what it keeps for good of the caller's record (MD2b)"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 670,
+          "title": "feat(voice): list My data's receipts of what was deleted (GET /voice-notes/deleted)"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 678,
+          "title": "feat(voice): switch on deleting Studio takes and idea answers from My data (MD3)"
+        }
+      ]
+    },
+    {
+      "id": "assurance",
+      "title": "Promises about home, with their proof",
+      "said": "The assurance ledger gained an uptime promise, alerts that reach you, a check that home's database isn't behind its build, and every moving part named with its checks.",
+      "pulls": [
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2282,
+          "title": "feat(assurance): home is up 99.9% of every month (AV1, a new kind OA9)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2287,
+          "title": "feat(assurance): record home's alert delivery test (MI3, NW2, GA4, RR2, ER1, ER2)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2288,
+          "title": "feat(assurance): home's watch alerts reach the owner, so MI3, NW2, GA4 and RR2 hold",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2290,
+          "title": "feat(assurance): the server's main requires PR gate; GC5's gaps are named",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2292,
+          "title": "feat(assurance): place server's studio_log module and its two stores",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2306,
+          "title": "feat(assurance): place home's word timings store before the server adds it",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2307,
+          "title": "revert(assurance): unplace word timings until the server adds the table",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2310,
+          "title": "feat(assurance): place home's word timings store, with its server PR ready",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2464,
+          "title": "feat(assurance): home's idea record goes in the ledger before the server serves it (ST26)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2489,
+          "title": "feat(assurance): a database behind its build is told within 7 minutes (AV2, AS19)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2561,
+          "title": "docs(assurance): NW3 states home's sweeps as they run; list home's voice-note deletion receipts (MD3)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2567,
+          "title": "feat(engagement): one vocabulary for use, and a registry of every pipeline's affordances (ENG1)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2569,
+          "title": "feat(assurance): name every async process family with its segments, signals and checks (CK1)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2617,
+          "title": "feat(assurance): name home's meaning index among the stores (ST32)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2619,
+          "title": "feat(assurance): a video I finish gets made, its queue on home among the stores (ST33)",
+          "change": "story"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 560,
+          "title": "fix(file_host): a degraded file_host stays healthy, and its watchers never wait on its health"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 643,
+          "title": "feat(prometheus): alert when every mailbox pass fails for 45 minutes (#641)"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 654,
+          "title": "feat(alerts): a database behind its build reaches the owner as an alert (AS19)"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 668,
+          "title": "impr(prometheus): alert when every nudge, transcriber or game feed pass fails (#644)"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 679,
+          "title": "impr(prometheus): FileHostDown names AV2 among the objectives it serves (#656)"
+        }
+      ]
+    },
+    {
+      "id": "server-config",
+      "title": "The server's settings, set once and encrypted",
+      "said": "On the server, every setting is now declared once, encrypted with sops and checked before anything starts. Thirty engineering values moved into the code.",
+      "pulls": [
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 579,
+          "title": "feat(config): declare shared config once, generate example.env from it, preflight .env"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 592,
+          "title": "fix(config): export traces only when asked, and refuse a NUDGE_TIMEZONE that is no zone"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 600,
+          "title": "feat(config): hold what clap cannot see at start, and give the preflight the same rules"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 601,
+          "title": "feat(nix): file-host and orchestrator as NixOS modules, their options generated from the schema"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 602,
+          "title": "feat(config): no default that is right on only one host: ALLOWED_ORIGINS and APP_BASE_URL required"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 622,
+          "title": "feat(envctl): every deployment value encrypted with sops, delivered to tmpfs (ENV1, ENV2)"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 626,
+          "title": "feat(envctl): conformance in CI by name only: deploy files, services, schemas, plain env files (ENV3)"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 629,
+          "title": "feat(envctl): make prune, a grouped, paged checklist to prune a role's variables (ENV2b)"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 631,
+          "title": "refactor(rust-runner): settings are flags in the image's CMD, not variables (#616, option B)"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 632,
+          "title": "chore(deploy): home's MAILBOX_URL after the workers.dev rotation (#612)"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 633,
+          "title": "fix(nix): the rust shell's sops is 3.13, not nixos-24.05's 3.8.1"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 639,
+          "title": "feat(envctl): commands run by hand get the role's tools file (ENV2c, #634)"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 640,
+          "title": "refactor(compose): drop the dead variables; tuning defaults become constants (ENV4a, #617)"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 642,
+          "title": "refactor(file_host): 27 engineering values become source constants (ENV4b, #617)"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 646,
+          "title": "chore(deploy): home's tools file for commands run by hand (#634)"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 647,
+          "title": "impr(envctl): a value wrapped in quotes is named when its file is decrypted"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 651,
+          "title": "refactor(config): no host's NATS or Redis is assumed, dev's pair are flags (ENV4c, #617)"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 652,
+          "title": "refactor(config): each app's RUST_LOG is its own, not compose's (#617)"
+        }
+      ]
+    },
+    {
+      "id": "promises-kept",
+      "title": "Fixes, each with the promise it keeps",
+      "said": "Thirty-one fixes landed, each a defect with a promise named. Most were about timing: a tap answered late, a request sent twice, a session that lost its place when you came back.",
+      "pulls": [
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2285,
+          "title": "fix(speech): a line asked for again while it is on its way is fetched once (SP1, AS13)",
+          "change": "defect"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2312,
+          "title": "fix(studio): a microphone that never answers no longer holds Studio's writes (VC1)",
+          "change": "defect"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2326,
+          "title": "fix(studio): a tap to talk or stop talking is answered on screen in seconds (LS1)",
+          "change": "defect"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2327,
+          "title": "fix(www): \"Next lesson\" names its session in the shape every store takes (SI1)",
+          "change": "defect"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2328,
+          "title": "fix(www): a refused press moves no button on Practice Home (IB1)",
+          "change": "defect"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2329,
+          "title": "fix(studio): Start says the loop as steps in your terms, never a file or folder (SW1)",
+          "change": "defect"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2331,
+          "title": "fix(www): every failure an intent shows reaches the log, with why (IR1)",
+          "change": "defect"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2333,
+          "title": "test(www): the Record cards test reads the day it pins, not the real clock (RC1)",
+          "change": "defect"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2345,
+          "title": "fix(leetype): a return after anything that showed its round's answer is assisted",
+          "change": "defect"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2409,
+          "title": "fix(topik): a reflection group's base takes the session's last 8, so two sessions never share one",
+          "change": "defect"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2423,
+          "title": "fix(settings): the phone-full \"Remove it\" keeps a home copy first (#2422)",
+          "change": "defect"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2424,
+          "title": "fix(topik): an earlier-base scene answers no index group when home's index stands (RB1)",
+          "change": "defect"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2426,
+          "title": "fix(home-link): the full line clears once Practice sends what was waiting (#2408)",
+          "change": "defect"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2427,
+          "title": "fix(voice-capture): a take ended before the microphone opens says so, on every voice-note screen (MIC0)",
+          "change": "defect"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2432,
+          "title": "fix(soundbites): say an idea as a take home hears, on every phone that records (MIC10)",
+          "change": "defect"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2450,
+          "title": "fix(serving-privacy): give the egress scans a timeout that fits a repo scan",
+          "change": "defect"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2452,
+          "title": "fix(topik): seed the lens record at its bound instead of a thousand adds",
+          "change": "defect"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2454,
+          "title": "fix(home-link): a finished LeetType session wakes Practice, which counts it and Studio's record",
+          "change": "defect"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2485,
+          "title": "fix(www): a retry or re-selection of a read on its way joins it (QO1, AS14)",
+          "change": "defect"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2487,
+          "title": "fix(leetype): a slow wrong pick follows its option, not the hesitate path",
+          "change": "defect"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2488,
+          "title": "fix(player): stop and resume a session honestly on the desktop web too",
+          "change": "defect"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2490,
+          "title": "fix(player): the session waits while the reflection drawer is open",
+          "change": "defect"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2523,
+          "title": "fix(speech,www): give two CI-slow tests a timeout that fits a loaded runner",
+          "change": "defect"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2560,
+          "title": "fix(www): a session that leaves the phone takes its failure note and copy receipt with it (SL1)",
+          "change": "defect"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2568,
+          "title": "fix(shared,soundbites,www): a paged card turns by swipe through one shared pager (GES5)",
+          "change": "defect"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2597,
+          "title": "fix(www): a reflection export names its session by the id's random last 8",
+          "change": "defect"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2598,
+          "title": "fix(suspender-ledger): the popup shows its controls when a read fails, and says which one",
+          "change": "defect"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2603,
+          "title": "fix(ci): www's release versions it again, and fails if it would publish nothing",
+          "change": "defect"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2604,
+          "title": "fix(vite-config): an audience stub loads when vitest's cache skipped its resolveId",
+          "change": "defect"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2605,
+          "title": "fix(ci): a PR commit runs with the git hooks off, and check:workflows holds it (WR1)",
+          "change": "defect"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2608,
+          "title": "fix(ci): changesets/action v2 for CLI v3, with npm auth, and check:workflows pairs them (CS1)",
+          "change": "defect"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 573,
+          "title": "test(nudge): let the deadline cut the last considered subject before it connects"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 576,
+          "title": "fix(nudge): reach a subject whole or not at all, and test the deadline exactly (#575)"
+        }
+      ]
+    },
+    {
+      "id": "elsewhere",
+      "title": "Jobs, the extensions, aph and the rest",
+      "said": "Smaller moves elsewhere. Jobs lets you take back an outcome said by mistake. Under some-censor's Music mix, any YouTube Mix counts as music. aph keeps one entry per time a day, and Suspender Ledger's popup shows its controls when a read fails.",
+      "pulls": [
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2305,
+          "title": "feat(game-bites): a bite leaves the phone once home holds it (GWB6)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2314,
+          "title": "feat(jobs): Record's cards wear where each application stands, and the list sorts, filters and pivots",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2316,
+          "title": "feat(jobs): take back an outcome said by mistake or no longer standing",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2318,
+          "title": "feat(censor): mark a Mix's rows, and badge the toolbar when autoplay stops unforeseen",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2336,
+          "title": "feat(www): what went wrong lately, kept and readable on the phone",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2361,
+          "title": "test(ui-fit): sweep studio's phone screens at the phone viewports (ST4)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2392,
+          "title": "fix(www): drop the import two merges left unused in the Settings test",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2484,
+          "title": "feat(censor): under Music mix, any Mix counts as music (#2214)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2575,
+          "title": "feat(www): the home network's build is administration-first (ADM1)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2582,
+          "title": "test(censor): a Mix's watch page in e2e, with Music mix and Skip (#2215)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2600,
+          "title": "docs(suspender-ledger): the release notes for 0.3.1, ahead of the release PR",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2606,
+          "title": "feat(shared): the pager's Prev and Next take a 44px thumb target (GES3)",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2618,
+          "title": "feat(aph): one entry per time a day, drafts then submit, fixed or removed from the entry",
+          "change": "story"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 569,
+          "title": "feat(scenario_engine): the pure scenario engine, offering what fits the moment (GWB3)"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 574,
+          "title": "feat(jobs): hold an outcome the phone takes back"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 582,
+          "title": "feat(transcribe): keep how sure Whisper was of each heard word, and file it (ST22)"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 594,
+          "title": "feat(transcribe): hear each piece of speech in its own language, and keep each word's (ST23)"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 682,
+          "title": "feat(aph): remove an entry as a revision"
+        }
+      ]
+    }
+  ],
+  "gray": [
+    {
+      "id": "av1",
+      "title": "Home is up 99.9% of every month",
+      "said": "A new promise, AV1: home is up ninety-nine point nine percent of every month, measured by a heartbeat to the mailbox. It starts as broken, with five stories to make it hold.",
+      "promise": "AV1",
+      "refs": [
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2282
+        }
+      ]
+    },
+    {
+      "id": "qo1",
+      "title": "A request asked again joins the one on its way",
+      "said": "Two defects, one shape. Tapping speak again, or Try again, used to throw away the request already on its way and send a new one. Now it joins the first, held by SP1 and QO1.",
+      "promise": "QO1",
+      "refs": [
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2285
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2485
+        }
+      ]
+    },
+    {
+      "id": "ges5",
+      "title": "Every paged card turns by one pager",
+      "said": "GES5: every card you page through turns by swipe through one shared pager, and a check fails any screen that writes its own swipe code.",
+      "promise": "GES5",
+      "refs": [
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2568
+        }
+      ]
+    },
+    {
+      "id": "ss1",
+      "title": "Stop and come back keeps your place",
+      "said": "SS1: stopping a session and coming back keeps its time and place, on the phone and the desktop web.",
+      "promise": "SS1",
+      "refs": [
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2488
+        }
+      ]
+    },
+    {
+      "id": "cs1",
+      "title": "Release workflows can't silently stop",
+      "said": "Two release workflows had quietly stopped publishing after a tooling upgrade. WR1 and CS1 now hold that a release commits with the hooks off, and that each action moves with its command line.",
+      "promise": "CS1",
+      "refs": [
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2605
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2608
+        }
+      ]
+    },
+    {
+      "id": "vc1",
+      "title": "The microphone answers on screen",
+      "said": "VC1 and LS1: a microphone that never answers no longer holds Studio up, and a tap to talk is answered on screen within seconds.",
+      "promise": "VC1",
+      "refs": [
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2312
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2326
+        }
+      ]
+    }
+  ],
+  "mine": [],
+  "asks": [
+    {
+      "id": "some-ui-2626",
+      "question": "Who answers between turns of a conversation?",
+      "said": "First, TALK's first decision. Between your turns in a conversation, who answers: a live model in seconds, the routine in hours, or branches written ahead? Live unblocks TALK3, 6 and 9, and it's the one I'd take.",
+      "whyYours": "It decides what a session is: a conversation in seconds, a correspondence in hours, or a script with branches. That is a product call, not a code one.",
+      "options": [
+        {
+          "says": "Live: home asks a model each turn, from the words only, so the reply comes in seconds",
+          "unblocks": "TALK3, TALK6 and TALK9"
+        },
+        {
+          "says": "Async: the routine answers on its next pass, in hours",
+          "unblocks": "TALK3 as a correspondence; TALK9's live scene stays out"
+        },
+        {
+          "says": "Pre-written branches: the routine writes follow-ups ahead, and a live step picks one",
+          "unblocks": "TALK3 and TALK6 with set replies; TALK9 plays branches"
+        }
+      ],
+      "recommended": 0,
+      "refs": [
+        {
+          "repo": "some-ui",
+          "kind": "issue",
+          "number": 2626
+        },
+        {
+          "repo": "some-ui",
+          "kind": "issue",
+          "number": 2545
+        },
+        {
+          "repo": "some-ui",
+          "kind": "issue",
+          "number": 2548
+        }
+      ]
+    },
+    {
+      "id": "some-ui-2627",
+      "question": "When TOPIK keeps your level across reloads, how should the Show level filter treat it?",
+      "said": "Second, TOPIK's kept level. One tap on the Show level filter would hold that level for good. Should the filter remember it, with All letting go? That's the recommended one, and it lands the draft.",
+      "whyYours": "Only the Show level filter sets the level today, so one tap to look would hold that level for good. Whether a look counts as a choice is your call.",
+      "options": [
+        {
+          "says": "The filter remembers it, and All lets go of it",
+          "unblocks": "#2612 lands with a small addition"
+        },
+        {
+          "says": "Only an explicit level choice is kept",
+          "unblocks": "#2612 lands after a level control of its own is added"
+        },
+        {
+          "says": "Keep it as it is, and say so in the store's words",
+          "unblocks": "#2612 lands as it is"
+        }
+      ],
+      "recommended": 0,
+      "refs": [
+        {
+          "repo": "some-ui",
+          "kind": "issue",
+          "number": 2627
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 1879
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2612
+        }
+      ]
+    },
+    {
+      "id": "some-ui-2628",
+      "question": "Redeploy home with the server's latest image?",
+      "said": "Third, home's server. Several things that merged this week only work once home runs the new image. Redeploying unblocks My data, the take library and queued videos.",
+      "whyYours": "Only you can reach the box.",
+      "options": [
+        {
+          "says": "Redeploy now",
+          "unblocks": "My data's counts and receipts, the take library, queued videos and Rust Rounds' new rounds on home"
+        },
+        {
+          "says": "Wait for the next batch of server changes",
+          "unblocks": "Nothing yet: the phone keeps its copies until home takes them"
+        }
+      ],
+      "recommended": 0,
+      "refs": [
+        {
+          "repo": "some-ui",
+          "kind": "issue",
+          "number": 2628
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 677
+        },
+        {
+          "repo": "some-ui",
+          "kind": "issue",
+          "number": 2473
+        },
+        {
+          "repo": "some-ui",
+          "kind": "issue",
+          "number": 2248
+        }
+      ]
+    },
+    {
+      "id": "some-ui-2629",
+      "question": "Should pulling down refresh a show's screen while you're recording?",
+      "said": "Fourth, a small one: should pulling down refresh a show's screen while you're recording? Either answer is one line.",
+      "whyYours": "It is about how recording feels in your hand: whether a stray pull mid-take matters to you.",
+      "options": [
+        {
+          "says": "Keep the pull on Record",
+          "unblocks": "Nothing to change"
+        },
+        {
+          "says": "No pull mid-take: refuse it while recording",
+          "unblocks": "A one-line change to Record"
+        }
+      ],
+      "refs": [
+        {
+          "repo": "some-ui",
+          "kind": "issue",
+          "number": 2629
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2573
+        },
+        {
+          "repo": "some-ui",
+          "kind": "issue",
+          "number": 2525
+        }
+      ]
+    },
+    {
+      "id": "some-ui-2630",
+      "question": "Should every GitHub Action the workflows use be pinned to a commit, rather than a version tag?",
+      "said": "Last, workflow security. Should every GitHub Action be pinned to a commit, or keep its version tag with the reason written down? Either way, U8 opens.",
+      "whyYours": "It trades a supply-chain risk against how much upkeep the workflows take, and the repos are yours to keep.",
+      "options": [
+        {
+          "says": "Pin every action to a commit; Dependabot moves the pins",
+          "unblocks": "U8 opens with every unpinned finding cleared"
+        },
+        {
+          "says": "Keep version tags, and record why in zizmor's config",
+          "unblocks": "U8 opens with the finding set aside, and a reason"
+        }
+      ],
+      "refs": [
+        {
+          "repo": "some-ui",
+          "kind": "issue",
+          "number": 2630
+        },
+        {
+          "repo": "some-ui",
+          "kind": "issue",
+          "number": 2116
+        },
+        {
+          "repo": "some-ui",
+          "kind": "issue",
+          "number": 2108
+        }
+      ]
+    }
+  ],
+  "later": [
+    {
+      "id": "talk-d2-d4",
+      "question": "TALK's other decisions: where the Dreyfus and Bloom reading lives, the scripted drama, saying it in English",
+      "refs": [
+        {
+          "repo": "some-ui",
+          "kind": "issue",
+          "number": 2545
+        }
+      ]
+    },
+    {
+      "id": "gc5-exceptions",
+      "question": "Which server checks may PR gate still let through?",
+      "refs": [
+        {
+          "repo": "some-ui",
+          "kind": "issue",
+          "number": 2291
+        }
+      ]
+    },
+    {
+      "id": "gauge-sweep",
+      "question": "Where does the server's 10-second gauge sweep belong?",
+      "refs": [
+        {
+          "repo": "some-ui",
+          "kind": "issue",
+          "number": 2272
+        }
+      ]
+    },
+    {
+      "id": "cards-decisions",
+      "question": "Cards: burn-in kinds or a class of their own, and their names",
+      "refs": [
+        {
+          "repo": "some-ui",
+          "kind": "issue",
+          "number": 2465
+        }
+      ]
+    },
+    {
+      "id": "music-mix-listen",
+      "question": "A live listen past a Mix's first songs on youtube.com",
+      "refs": [
+        {
+          "repo": "some-ui",
+          "kind": "issue",
+          "number": 2215
+        }
+      ]
+    },
+    {
+      "id": "game-bites-cap",
+      "question": "Game bites: a cap, or let them leave the phone once home holds them",
+      "refs": [
+        {
+          "repo": "some-ui",
+          "kind": "issue",
+          "number": 2264
+        }
+      ]
+    },
+    {
+      "id": "discard-rulings",
+      "question": "A ruling on each place that still drops old records",
+      "refs": [
+        {
+          "repo": "some-ui",
+          "kind": "issue",
+          "number": 2265
+        }
+      ]
+    },
+    {
+      "id": "firebase-setup",
+      "question": "Set up Firebase so the morning run can tell you it's in",
+      "refs": [
+        {
+          "repo": "some-ui",
+          "kind": "issue",
+          "number": 2051
+        }
+      ]
+    },
+    {
+      "id": "drive-template-share",
+      "question": "Share Drive's Build Journal template folder by link, once",
+      "refs": [
+        {
+          "repo": "some-ui",
+          "kind": "issue",
+          "number": 2589
+        }
+      ]
+    },
+    {
+      "id": "u11-calls",
+      "question": "The architecture review's calls on some-ui",
+      "refs": [
+        {
+          "repo": "some-ui",
+          "kind": "issue",
+          "number": 2119
+        }
+      ]
+    }
+  ],
+  "close": {
+    "said": "That's the week. Calls made without you start with next week's call, now that every pull request records them. Five asks are open, and answering any of them unblocks work an agent can start right away."
+  }
+}

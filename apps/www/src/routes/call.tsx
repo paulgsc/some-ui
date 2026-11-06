@@ -8,16 +8,20 @@ import { ViewerStrip } from "@/components/provenance-strip"
 /**
  * The weekly call's stage (STUDIO ST29): one scene of the week at a time.
  * Standalone (the `mission.tsx` archetype), so no shell sits in the frame;
- * `?scene` names the scene and `?record` leaves out everything but the frame.
+ * `?week` names the week by its first day ("sample" for the template's),
+ * `?scene` the scene, and `?record` leaves out everything but the frame.
  * A viewer of the Pages build gets the viewer strip above it. Web only: the
  * stage comes through the web surface's door.
  */
 
-type CallSearch = { scene?: string; record?: boolean }
+type CallSearch = { week?: string; scene?: string; record?: boolean }
 
 function validateSearch(search: Record<string, unknown>): CallSearch {
   const record = search.record === true || search.record === "true"
   return {
+    ...(typeof search.week === "string" && search.week !== ""
+      ? { week: search.week }
+      : {}),
     ...(typeof search.scene === "string" && search.scene !== ""
       ? { scene: search.scene }
       : {}),
@@ -26,16 +30,17 @@ function validateSearch(search: Record<string, unknown>): CallSearch {
 }
 
 const Call = (): JSX.Element => {
-  const { scene, record } = Route.useSearch()
+  const { week, scene, record } = Route.useSearch()
   const navigate = useNavigate({ from: "/call" })
   return (
     <>
       {VIEWER_BUILD && !record && <ViewerStrip />}
       <CallStage
+        week={week}
         scene={scene}
         record={record}
         onScene={(next) => {
-          void navigate({ search: { scene: next } })
+          void navigate({ search: { ...(week ? { week } : {}), scene: next } })
         }}
       />
     </>
