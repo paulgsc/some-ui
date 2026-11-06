@@ -380,13 +380,62 @@ kind and the widest numbers it says, and the spec sweeps each at
 `PHONE_VIEWPORTS` with `findViolations` and a check that nothing is wider
 than the phone, once more with the tables shown.
 
+### 2i. `apps/www/tests/ui-fit/stays-put.spec.ts` (Playwright, a tap moves nothing)
+
+The other specs ask whether a screen fits. This one asks whether it holds
+still while it is used: **between two taps on one screen of the phone, a tap
+target still on the screen keeps its box** (promise HS1). A thumb and an eye
+aim where a control was a moment ago, so a control that moved under them
+takes the next tap meant for another. aph's logger did that on every number:
+the first digit typed was outside the usual range, a "Typo?" banner mounted
+above the keypad, and the keypad dropped 48px, about one row of keys; the
+digit that brought the figure back in range took the banner away, and the
+keypad jumped back up.
+
+It is the same fault wherever it shows, because block and flex layout is
+cumulative: every box sits where the boxes before it end. So anything a tap
+mounts, unmounts or resizes in the flow (a refusal, a warning, a preview, a
+hint, a label that changes length, a button that swaps to a variant with a
+border) moves everything after it, and in a sheet anchored to the bottom of
+the screen, which grows upward, everything before it. Two ways out, in
+order:
+
+1. **After the last control.** On a page that grows down, a message below the
+   last thing you can tap moves nothing. aph's logger puts its refusals and
+   its "drafts are waiting" line below Save.
+2. **Keep its room.** Anywhere else, and always in a bottom sheet, the place
+   keeps its size whether it says something or not: `Reserved`
+   (`@some-ui/shared`) holds `lines` lines of its own text and keeps its live
+   region mounted, so a screen reader still hears what lands in it. A line
+   whose words change keeps one height (`min-h-*`); a word that swaps keeps
+   one width (`w-*`); every `Button` variant draws a border, transparent
+   unless it shows, so a toggle between `outline` and `default` keeps its
+   width.
+
+The spec walks a screen tap by tap (`holdStill`,
+`apps/www/tests/layout-invariants/stays-put.ts`), reads every visible target's
+box in its scrolled content before and after each tap, once animations have
+ended, and fails on any that moved. A tap whose point is a new layout declares
+it with `reflows` and says why (aph's Mine/Theirs is another form; "N older"
+shows more of a list); a message, a preview or a refusal never is one.
+
+A CLS budget would not have caught any of this. The Layout Instability API
+leaves out every shift within 500ms of an input (`hadRecentInput`), which is
+every shift a tap causes, so a screen that moves under each tap scores zero.
+
+The walks, and HS1's Family, are in the spec. A phone screen it does not
+walk is outside HS1 until one is added there, with its fixture on the phone
+page (`./phone-page/fixtures.tsx`).
+
 ### 3. CI
 
 The ui-fit specs ran nowhere until #899. `pnpm test:ui-fit` existed, this
 document called them "the actual gate", and no workflow invoked them — which
 is its own lesson about where guardrails actually live. `pr.yml` now builds
 the panel page and the phone page and runs `panel-fit`, `incident-fit`,
-`studio-fit`, `settings-bar-fit`, `my-data-fit`, `launcher-fit` and `exercise-shell-fit` whenever a PR touches `packages/ui/**`, `packages/some-content-registry/**`,
+`studio-fit`, `settings-bar-fit`, `my-data-fit`, `launcher-fit`,
+`exercise-shell-fit`, `intent-failure-fit`, `rust-rounds-fit`,
+`take-pattern-fit` and `stays-put` whenever a PR touches `packages/ui/**`, `packages/some-content-registry/**`,
 `packages/some-styles/**`, `apps/www/src/**`, `apps/www/tests/ui-fit/**`,
 www's build config (the list is in `pr.yml`), the root `package.json` or
 `pnpm-lock.yaml`.

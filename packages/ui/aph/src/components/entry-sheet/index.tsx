@@ -24,6 +24,7 @@ import { cn, formatDay, formatWeekday } from "@some-ui/core-utils"
 import {
   Button,
   Input,
+  Reserved,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -199,13 +200,16 @@ const EntryDetail = ({
               )
             })}
           </div>
-          {!keepsOnePlain(entries, entry.id, []) &&
-            entry.labels.length === 1 && (
-              <p className="text-muted-foreground text-xs">
-                A plain figure is already logged here, so this comparison keeps
-                at least one label.
-              </p>
-            )}
+          {/* Room kept while a plain figure is logged beside this one: a
+              label tapped off brings the line up, and this sheet grows
+              upward, so a line that came and went would move every control
+              above it (HS1). */}
+          {!keepsOnePlain(entries, entry.id, []) && (
+            <Reserved lines={2} className="text-muted-foreground text-xs">
+              {entry.labels.length === 1 &&
+                "A plain figure is already logged here, so this comparison keeps at least one label."}
+            </Reserved>
+          )}
         </div>
       )}
 
@@ -307,11 +311,9 @@ const MineEditor = ({
           Save
         </Button>
       </div>
-      {refused && (
-        <p role="alert" className="text-destructive text-xs">
-          Not saved: the phone did not keep it.
-        </p>
-      )}
+      <Reserved role="alert" className="text-destructive text-xs">
+        {refused && "Not saved: the phone did not keep it."}
+      </Reserved>
     </div>
   )
 }
@@ -366,11 +368,9 @@ const LeaveControls = ({
         <Trash2 aria-hidden className="mr-2 size-4" />
         {draft ? "Delete draft" : "Remove from the log"}
       </Button>
-      {refused && (
-        <p role="alert" className="text-destructive text-center text-xs">
-          Not changed: the phone did not keep it.
-        </p>
-      )}
+      <Reserved role="alert" className="text-destructive text-center text-xs">
+        {refused && "Not changed: the phone did not keep it."}
+      </Reserved>
       {sheet}
     </div>
   )

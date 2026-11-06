@@ -44,7 +44,7 @@ import type { AphStore } from "@aph/lib/store"
 import { aphStore } from "@aph/lib/store"
 import { useAph } from "@aph/lib/use-aph"
 import { cn, dayOf, formatDay, formatWeekday } from "@some-ui/core-utils"
-import { Button } from "@some-ui/shared"
+import { Button, Reserved } from "@some-ui/shared"
 import {
   Check,
   ChevronLeft,
@@ -339,14 +339,6 @@ export const AphLog = ({
         targetEntry={targetEntry}
       />
 
-      {value !== null && !isUsual(settings, value) && (
-        <p className="bg-warning/10 text-warning flex items-center justify-center gap-2 rounded-md px-3 py-1.5 text-sm">
-          <TriangleAlert aria-hidden className="size-4" />
-          Outside your usual {formatValue(settings.usualLow)}–
-          {formatValue(settings.usualHigh)}. Typo?
-        </p>
-      )}
-
       <div className="flex justify-center gap-2">
         <Button
           variant="outline"
@@ -425,6 +417,22 @@ export const AphLog = ({
         </button>
       </div>
 
+      <Button
+        size="lg"
+        disabled={!canSave}
+        onClick={save}
+        className="h-14 text-base"
+      >
+        <Check aria-hidden className="mr-2 size-5" />
+        {draft.side === "mine"
+          ? `${there === undefined ? "Save draft" : replaced === null ? "Save mine" : `Replace ${formatValue(replaced.value, replaced.approx)}`} · ${day === today ? "" : `${formatDay(day)} `}${checkpoint?.label ?? (day === today ? "now" : "other")}`
+          : targetEntry === null
+            ? "Save theirs"
+            : `Save theirs · ${formatDay(targetEntry.day)} ${whenOf(settings, targetEntry)}`}
+      </Button>
+
+      {/* Below Save, the last control: what a tap brings up here moves
+          nothing on this page, which grows down (HS1). */}
       {waits !== null && (
         <p
           role="status"
@@ -443,20 +451,6 @@ export const AphLog = ({
           Not saved: the phone did not keep it.
         </p>
       )}
-
-      <Button
-        size="lg"
-        disabled={!canSave}
-        onClick={save}
-        className="h-14 text-base"
-      >
-        <Check aria-hidden className="mr-2 size-5" />
-        {draft.side === "mine"
-          ? `${there === undefined ? "Save draft" : replaced === null ? "Save mine" : `Replace ${formatValue(replaced.value, replaced.approx)}`} · ${day === today ? "" : `${formatDay(day)} `}${checkpoint?.label ?? (day === today ? "now" : "other")}`
-          : targetEntry === null
-            ? "Save theirs"
-            : `Save theirs · ${formatDay(targetEntry.day)} ${whenOf(settings, targetEntry)}`}
-      </Button>
     </div>
   )
 }
@@ -480,6 +474,8 @@ const Readout = ({
   targetEntry: Entry | null
 }): JSX.Element => {
   const checkpoint = checkpointById(settings, draft.checkpoint)
+  const approx = draft.side === "mine" && draft.approx
+  const unusual = value !== null && !isUsual(settings, value)
   const preview =
     draft.side === "theirs" && targetEntry !== null && value !== null
       ? reconcile(settings, { ...targetEntry, theirs: { value }, review: null })
@@ -499,12 +495,21 @@ const Readout = ({
           value === null && "text-muted-foreground/50"
         )}
       >
-        {draft.side === "mine" && draft.approx && (
-          <span className="text-muted-foreground mr-1 text-3xl">~</span>
-        )}
+        {/* Always there, seen only for an approximate figure of mine, so
+            "~ approx" does not slide the figure sideways. */}
+        <span
+          aria-hidden={!approx}
+          className={cn(
+            "text-muted-foreground mr-1 text-3xl",
+            !approx && "invisible"
+          )}
+        >
+          ~
+        </span>
         {formatValue(value ?? base)}
       </div>
-      <div className="text-muted-foreground text-center text-sm">
+      {/* One height whether it holds words or a status badge. */}
+      <div className="text-muted-foreground flex min-h-6 items-center justify-center text-center text-sm">
         {draft.side === "mine" ? (
           checkpoint === null ? (
             "No goal off the checkpoints"
@@ -535,6 +540,17 @@ const Readout = ({
           </span>
         )}
       </div>
+      <Reserved role="status" className="text-warning text-center text-sm">
+        {unusual && (
+          <span className="flex items-center justify-center gap-1.5">
+            <TriangleAlert aria-hidden className="size-4 shrink-0" />
+            {/* Short enough for one line at 360px in any font the phone
+                or CI draws it in: a second line would move the keypad. */}
+            Usual is {formatValue(settings.usualLow)}–
+            {formatValue(settings.usualHigh)}. Typo?
+          </span>
+        )}
+      </Reserved>
     </div>
   )
 }
