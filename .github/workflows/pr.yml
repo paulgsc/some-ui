@@ -303,7 +303,7 @@ jobs:
       # drag-down indicator) are built with www's own Vite config and
       # stylesheets, so a Tailwind, Vite or React bump changes what they
       # measure.
-      - name: E2E — content fits its box, and stays put (panels, launcher, exercise shell, incident session, Jobs cards, Studio's phone screens, code card, drag-down indicator, My data, Rust Rounds, take pattern, aph)
+      - name: E2E — content fits its box, and stays put (panels, launcher, exercise shell, incident session, Jobs cards, Studio's phone screens, code card, drag-down indicator, My data, Rust Rounds, take pattern, and every walked phone screen)
         run: |
           files=$(git diff --name-only --diff-filter=ACMR HEAD^1 -- \
             'packages/ui/**' \
@@ -344,7 +344,11 @@ jobs:
                 tests/ui-fit/intent-failure-fit.spec.ts \
                 tests/ui-fit/rust-rounds-fit.spec.ts \
                 tests/ui-fit/take-pattern-fit.spec.ts \
-                tests/ui-fit/stays-put.spec.ts
+                tests/ui-fit/stays-put.spec.ts \
+                tests/ui-fit/stays-put-rounds.spec.ts \
+                tests/ui-fit/stays-put-soundbites.spec.ts \
+                tests/ui-fit/stays-put-topik.spec.ts \
+                tests/ui-fit/stays-put-www.spec.ts
           else
             echo "No UI files changed."
           fi

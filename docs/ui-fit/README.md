@@ -423,9 +423,11 @@ A CLS budget would not have caught any of this. The Layout Instability API
 leaves out every shift within 500ms of an input (`hadRecentInput`), which is
 every shift a tap causes, so a screen that moves under each tap scores zero.
 
-The walks, and HS1's Family, are in the spec. A phone screen it does not
-walk is outside HS1 until one is added there, with its fixture on the phone
-page (`./phone-page/fixtures.tsx`).
+The walks, and HS1's Family, are in `stays-put.spec.ts` (aph) and one spec
+per wing beside it (`stays-put-rounds`, `-soundbites`, `-topik`, `-www`),
+each listed in `pr.yml`. A phone screen none of them walks is outside HS1
+until one does, with its fixture on the phone page
+(`./phone-page/fixtures.tsx`).
 
 ### 2j. `pnpm check:stays-put` (a count, HS2)
 
