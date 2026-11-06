@@ -449,20 +449,21 @@ export function callScenes(week: CallWeek): ReadonlyArray<CallScene> {
 }
 
 /**
- * The voice each section is said in, by the hosted voices' names (Microsoft
- * Edge's neural voices, which the home server's speech service also serves):
- * a host who opens, reads the board and closes, and one voice per kind of
- * report, so a listener hears who is speaking change with the section.
+ * The voice each section is said in, by Kokoro's voice names (home's speaker,
+ * paulgsc/server `infra/kokoro/say.py`, ST36): a host who opens, reads the
+ * board and closes, and one voice per kind of report, so a listener hears who
+ * is speaking change with the section. The `a` and `b` voices are American
+ * and British English.
  */
 export const CALL_VOICES: Readonly<Record<Section, string>> = {
-  open: "en-US-AndrewNeural",
-  board: "en-US-AndrewNeural",
-  moved: "en-US-AvaNeural",
-  done: "en-US-BrianNeural",
-  gray: "en-US-EmmaNeural",
-  mine: "en-GB-RyanNeural",
-  asks: "en-US-JennyNeural",
-  close: "en-US-AndrewNeural",
+  open: "am_michael",
+  board: "am_michael",
+  moved: "af_heart",
+  done: "am_fenrir",
+  gray: "af_bella",
+  mine: "bm_george",
+  asks: "af_nicole",
+  close: "am_michael",
 }
 
 /** Scene `index`'s files in the video's folder, without their extension. */
@@ -479,8 +480,8 @@ export const readingMs = (said: string): number =>
 
 /**
  * The call as a cut list the renderer draws: one still per scene
- * (`<file>.png`, the stage recorded), and its take (`<file>.mp3`) where one
- * was said, `takesMs[i]` long; a scene with none holds for its words'
+ * (`<file>.png`, the stage recorded), and its take (`<file>.wav`, home's
+ * speaker's) where one was said, `takesMs[i]` long; a scene with none holds for its words'
  * reading time instead.
  */
 export function callCutList(
@@ -508,7 +509,7 @@ export function callCutList(
             : VOICE_IN_MS + takeMs + TAIL_MS,
         ...(takeMs === null
           ? {}
-          : { take: { file: `${file}.mp3`, inMs: 0, outMs: takeMs } }),
+          : { take: { file: `${file}.wav`, inMs: 0, outMs: takeMs } }),
         voiceInMs: VOICE_IN_MS,
         overrides: {},
         burnIns: [],
