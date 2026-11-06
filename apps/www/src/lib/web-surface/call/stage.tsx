@@ -46,6 +46,9 @@ const WEEKS = weeksOf(
 /** The most asks the close lists by name; the rest it counts. */
 const LATER_SHOWN = 6
 
+/** The most pull requests a batch lists by name; the rest it counts. */
+const PULLS_SHOWN = 10
+
 /** What a scene is called: its section's name, and its place among its items. */
 const labelOf = (
   scene: CallScene,
@@ -177,7 +180,13 @@ const Screen = ({
     }
     case "board": {
       return (
-        <ul className="grid grid-cols-3 gap-[0.4em] text-[0.7em]">
+        <ul
+          className={
+            week.board.rows.length > 24
+              ? "grid grid-cols-4 gap-[0.3em] text-[0.55em]"
+              : "grid grid-cols-3 gap-[0.4em] text-[0.7em]"
+          }
+        >
           {week.board.rows.map((row) => (
             <li
               key={row.ledger}
@@ -224,15 +233,22 @@ const Screen = ({
         <div className="space-y-[0.6em]">
           <p className="text-[1.6em] font-bold">{view.item.title}</p>
           <ul className="space-y-[0.3em] text-[0.85em]">
-            {view.item.pulls.map((pull) => (
+            {view.item.pulls.slice(0, PULLS_SHOWN).map((pull) => (
               <li key={`${pull.repo}-${pull.number}`}>
-                <Ref of={pull} /> {pull.title}{" "}
-                <span className="text-muted-foreground text-[0.8em] uppercase">
-                  {W.change[pull.change]}
-                </span>
+                <Ref of={pull} /> {pull.title}
+                {pull.change !== undefined && (
+                  <span className="text-muted-foreground ml-[0.5em] text-[0.8em] uppercase">
+                    {W.change[pull.change]}
+                  </span>
+                )}
               </li>
             ))}
           </ul>
+          {view.item.pulls.length > PULLS_SHOWN && (
+            <p className="text-muted-foreground text-[0.85em]">
+              {W.more(view.item.pulls.length - PULLS_SHOWN)}
+            </p>
+          )}
         </div>
       )
     }

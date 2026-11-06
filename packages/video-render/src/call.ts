@@ -186,8 +186,8 @@ const MovedSchema = z.strictObject({
 
 const PullSchema = PrSchema.extend({
   title: words,
-  /** Its commits' `Change-Kind:`. */
-  change: z.enum(["story", "defect"]),
+  /** Its commits' `Change-Kind:`, where its repository writes one. */
+  change: z.enum(["story", "defect"]).optional(),
 })
 
 const BatchSchema = z.strictObject({
@@ -427,6 +427,8 @@ export function callCutList(
     series: { id: CALL_ID, version: 1 },
     look: "calm",
     voice: "read",
+    // The call's series names no music bed yet.
+    music: "off",
     shots: scenes.map((scene, i) => {
       const file = callFile(i, scene.id)
       const takeMs = takesMs[i] ?? null
