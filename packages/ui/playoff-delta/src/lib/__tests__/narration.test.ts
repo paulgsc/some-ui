@@ -154,6 +154,9 @@ describe("the check", () => {
     expect(division("Seven and a half.")).toEqual([
       "division says 7.5, which its facts don't give",
     ])
+    expect(division("Seven, and 7 and a half.")).toEqual([
+      "division says 7.5, which its facts don't give",
+    ])
     expect(division("From 15½ down.")).toEqual([
       "division says 15.5, which its facts don't give",
     ])
@@ -172,7 +175,7 @@ describe("the check", () => {
         saying(
           named,
           "ladder",
-          "First, the 49ers in 2025: the #2 seed, or seeds 5 to 7, one of them."
+          "First, the 49ers in 2025: the #2 seed, seeds 5 to 7 or seeds five to seven, one of them."
         )
       )
     ).toEqual([])

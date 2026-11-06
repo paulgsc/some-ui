@@ -285,6 +285,16 @@ function spokenNumber(
   const negative = NEGATIVE.has(words[at] ?? "")
   if (negative) at += 1
   const leading = words[at] ?? ""
+  if (
+    NUMERAL.test(leading) &&
+    words[at + 1] === "and" &&
+    words[at + 2] === "a" &&
+    words[at + 3] === "half"
+  ) {
+    // `7 and a half`, said as `7½` is written.
+    const value = String(Number(leading) + 0.5)
+    return { value: negative ? `-${value}` : value, length: at - from + 4 }
+  }
   // A numeral a scale follows (`2 million`) is that scale's group.
   if (NUMERAL.test(leading) && SCALE[words[at + 1] ?? ""] !== undefined) {
     group = Number(leading)

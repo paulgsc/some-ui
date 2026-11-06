@@ -194,6 +194,7 @@ describe("checkTake", () => {
       ["2 million users", "two million users"],
       ["2.5 million users", "two point five million users"],
       ["6½ wins", "six and a half wins"],
+      ["6½ wins", "6 and a half wins"],
       ["½ win", "0.5 win"],
     ]
     for (const [fact, take] of spoken) {
