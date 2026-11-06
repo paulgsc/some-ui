@@ -170,6 +170,16 @@ const IDLE: Importing = { kind: "idle" }
 
 const DRAFT_NOT_KEPT =
   "This phone couldn’t keep what you typed, so it lasts only while Jobs stays open. Free some space."
+const READ_ONLY =
+  "This phone can't read its jobs record, so it isn't changing it."
+const NOT_KEPT = "This phone couldn't keep that. Free some space and try again."
+
+/** Every problem the record says (`JobsSnapshot.problem`): its line keeps room for the tallest. */
+export const JOBS_PROBLEMS: ReadonlyArray<string> = [
+  DRAFT_NOT_KEPT,
+  READ_ONLY,
+  NOT_KEPT,
+]
 
 export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
   const opened = openStored(ports.storage)
@@ -260,9 +270,7 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
     if (next === state) return false
     if (readOnly || !writeStored(ports.storage, next)) {
       if (quiet) return false
-      problem = readOnly
-        ? "This phone can't read its jobs record, so it isn't changing it."
-        : "This phone couldn't keep that. Free some space and try again."
+      problem = readOnly ? READ_ONLY : NOT_KEPT
       publish()
       return false
     }

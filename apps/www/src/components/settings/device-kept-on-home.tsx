@@ -14,7 +14,7 @@
  * modules on its allowlist read the lanes, and this is one.
  */
 import type { JSX, ReactNode } from "react"
-import { Button, Label, Switch } from "@some-ui/shared"
+import { Button, Label, Reserved, Switch } from "@some-ui/shared"
 
 import { useHomeLink } from "@/lib/home-link"
 import { appEventsLane } from "@/lib/home-link/app-events"
@@ -158,6 +158,16 @@ const AphRow = (): JSX.Element => (
   <Row id="aph" reading={useAphReading()} lane={null} />
 )
 
+/** Every line the switch may say under it (`noticeSaid`). */
+const NOTICE_SAID: ReadonlyArray<string> = [
+  NOTICE_WORDS.off,
+  NOTICE_WORDS.asking,
+  NOTICE_WORDS.onFiled,
+  NOTICE_WORDS.onWaiting,
+  NOTICE_WORDS.notAllowed,
+  NOTICE_WORDS.failed,
+]
+
 /**
  * Whether home tells this phone when the morning run is in (RUN5), where
  * this build can be told; nothing where it can't.
@@ -177,9 +187,14 @@ const JobsNotice = (): JSX.Element | null => {
         <Label htmlFor="jobs-notice" className="text-sm">
           {NOTICE_WORDS.label}
         </Label>
-        <p className="text-muted-foreground text-xs" role="status">
+        {/* As tall as the tallest it may say: a toggle moves nothing (HS1). */}
+        <Reserved
+          role="status"
+          fits={NOTICE_SAID}
+          className="text-muted-foreground text-xs"
+        >
           {noticeSaid(state.home.notice, notice)}
-        </p>
+        </Reserved>
       </div>
     </div>
   )

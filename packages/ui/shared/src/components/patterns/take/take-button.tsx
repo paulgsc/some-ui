@@ -100,10 +100,15 @@ export const TakeButton = ({
         takeButtonVariants({ size, tone: toneOf(view) }),
         className
       )}
-      // The input level breathes the button while it listens: proof the
-      // microphone hears, without a word on screen.
+      // The input level breathes a ring around the button while it
+      // listens: proof the microphone hears, without a word on screen. A
+      // ring, not a scale, so the button's own box holds still (HS1).
       style={
-        recording ? { transform: `scale(${1 + recording.level * 0.08})` } : {}
+        recording
+          ? {
+              boxShadow: `0 0 0 ${(recording.level * 8).toFixed(1)}px color-mix(in oklab, var(--destructive) 35%, transparent)`,
+            }
+          : {}
       }
     >
       {recording && (

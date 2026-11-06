@@ -549,7 +549,7 @@ const FitNote = ({
       >
         Keep it for the next run
       </Button>
-      <p role="status" className="text-muted-foreground text-xs">
+      <p role="status" className="text-muted-foreground min-h-4 text-xs">
         {kept === 0
           ? ""
           : `${kept === 1 ? "One fit note" : `${kept} fit notes`} kept for this pick.`}
@@ -636,11 +636,10 @@ const Ending = ({
               value={shownMinutes}
               onChange={(e) => keep({ minutes: e.target.value })}
             />
-            {said && !minutesFit && (
-              <span className="text-muted-foreground text-xs">
-                {minutesRange(MAX_DEBRIEF_MINUTES)}
-              </span>
-            )}
+            {/* One line, kept, so a keystroke moves nothing below (HS1). */}
+            <span className="text-muted-foreground min-h-4 text-xs">
+              {said && !minutesFit ? minutesRange(MAX_DEBRIEF_MINUTES) : null}
+            </span>
           </section>
           <section className="flex flex-col gap-2">
             <h3 className={sectionHeading}>{frictionHeading}</h3>

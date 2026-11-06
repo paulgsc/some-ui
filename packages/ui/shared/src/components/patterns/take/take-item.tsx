@@ -1,16 +1,21 @@
 import type { JSX, ReactNode } from "react"
 import type {
   PatternTake,
+  RecordingFailure,
   TakeItemView,
   TakePlace,
   TakeRowView,
   TakeWords,
 } from "@some-ui/voice-capture"
-import { TAKE_WORDS, takeSaid } from "@some-ui/voice-capture"
+import {
+  RECORDING_FAILURE_COPY,
+  TAKE_WORDS,
+  takeSaid,
+} from "@some-ui/voice-capture"
 
 import { cn } from "../../../lib/utils"
 import type { TakeButtonProps } from "./take-button"
-import { TakeButton } from "./take-button"
+import { TakeButton, takeButtonVariants } from "./take-button"
 import { TakeRow } from "./take-row"
 
 export type TakeItemProps = {
@@ -55,6 +60,22 @@ export type TakeItemProps = {
   className?: string
 } & Pick<TakeButtonProps, "size">
 
+/** Everything the line beside the button may say in `words` (`takeSaid`). */
+function saidLines(words: TakeWords): ReadonlyArray<string> {
+  const { blocked, ...ended } = words.ended
+  const reasons = Object.keys(RECORDING_FAILURE_COPY).filter(
+    (key): key is RecordingFailure => Object.hasOwn(RECORDING_FAILURE_COPY, key)
+  )
+  return [
+    ...new Set([
+      ...Object.values(ended),
+      ...reasons.map((reason) => blocked(reason)),
+      ...Object.values(words.setAside),
+      words.unplayable,
+    ]),
+  ]
+}
+
 /**
  * One item's takes, from its view: the take button with its one line beside
  * it (how the last take ended, a take set aside, a take that couldn't play),
@@ -85,24 +106,60 @@ export const TakeItem = ({
       aria-label={label}
       className={cn("flex flex-col gap-3", className)}
     >
-      {full === undefined ? (
-        <div className="flex flex-col items-center gap-2">
-          <TakeButton view={view.button} size={size} onTap={onTap} />
+      {/* The button with its line, and the words while the phone is full,
+          share one place as tall as the taller: the phone filling up or
+          freeing moves no row below (HS1). While full, the button gives way
+          to an empty box of its size. */}
+      <div className="grid">
+        <div
+          aria-hidden={full === undefined ? undefined : true}
+          className="col-start-1 row-start-1 flex flex-col items-center gap-2"
+        >
+          {full === undefined ? (
+            <TakeButton view={view.button} size={size} onTap={onTap} />
+          ) : (
+            <div className={cn(takeButtonVariants({ size }), "invisible")} />
+          )}
+          {/* As tall as the tallest thing it may say, at this width: a take
+              that ends moves no row below (HS1). Those are drawn hidden, by
+              CSS, so they are neither read aloud nor found as its text. */}
           <p
             aria-live="polite"
             data-take-ended={
-              said?.kind === "ended" ? said.ended.seq : undefined
+              full === undefined && said?.kind === "ended"
+                ? said.ended.seq
+                : undefined
             }
-            className="text-muted-foreground min-h-5 text-center text-sm"
+            className={cn(
+              "text-muted-foreground grid min-h-5 text-center text-sm",
+              full !== undefined && "invisible"
+            )}
           >
-            {said === null ? null : takeSaid(words, said)}
+            {saidLines(words).map((line) => (
+              <span
+                key={line}
+                aria-hidden="true"
+                data-fits={line}
+                className="invisible col-start-1 row-start-1 after:content-[attr(data-fits)]"
+              />
+            ))}
+            <span className="col-start-1 row-start-1">
+              {full !== undefined || said === null
+                ? null
+                : takeSaid(words, said)}
+            </span>
           </p>
         </div>
-      ) : (
-        <p role="status" className="text-muted-foreground text-sm">
+        <p
+          role="status"
+          className={cn(
+            "text-muted-foreground col-start-1 row-start-1 text-sm",
+            full === undefined && "invisible"
+          )}
+        >
           {full}
         </p>
-      )}
+      </div>
       <TakeRows
         view={view}
         onPlay={onPlay}

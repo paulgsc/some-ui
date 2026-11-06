@@ -51,7 +51,7 @@ export const IntentFailureFixture = (): JSX.Element => (
           state={row.next}
           onPress={() => undefined}
           idleLabel="Next lesson"
-          workingLabel="Getting it ready..."
+          workingLabel="Starting..."
           size="sm"
           className="h-12 rounded-2xl px-6 text-base"
           failureOwnLine
@@ -60,7 +60,7 @@ export const IntentFailureFixture = (): JSX.Element => (
           state={row.menu}
           onPress={() => undefined}
           idleLabel="Pick a portion"
-          workingLabel="Getting it ready..."
+          workingLabel="Starting..."
           size="sm"
           variant="outline"
           className="h-12 rounded-2xl px-6 text-base"

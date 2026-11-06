@@ -11,7 +11,7 @@ import {
   useEffect,
   useSyncExternalStore,
 } from "react"
-import { Button, TakeList, useTakePattern } from "@some-ui/shared"
+import { Button, Reserved, TakeList, useTakePattern } from "@some-ui/shared"
 import { FolderOpen } from "lucide-react"
 
 import type { JobsSnapshot } from "@/lib/jobs"
@@ -19,6 +19,7 @@ import { phoneJobs } from "@/lib/jobs"
 import type { JourneyContext } from "@/lib/jobs/journey"
 import type { ShareKind } from "@/lib/jobs/model"
 import { formTakes } from "@/lib/jobs/model"
+import { JOBS_PROBLEMS } from "@/lib/jobs/runtime"
 import { openFromDrive, voiceGoesHome } from "@/lib/jobs/words"
 import type { Journey, Noun } from "@/lib/journey"
 import { lookIn } from "@/lib/share-files"
@@ -237,12 +238,16 @@ export const FileProblem = ({
   )
 }
 
-/** What the record refused to keep, said once. */
-export const Problem = (): JSX.Element | null => {
-  const { problem } = useJobs()
-  return problem ? (
-    <p role="alert" className="text-destructive text-sm">
-      {problem}
-    </p>
-  ) : null
-}
+/**
+ * What the record refused to keep, said once, in room kept for the tallest
+ * thing it says: a refusal moves no control after it (HS1).
+ */
+export const Problem = (): JSX.Element => (
+  <Reserved
+    role="alert"
+    fits={JOBS_PROBLEMS}
+    className="text-destructive text-sm"
+  >
+    {useJobs().problem}
+  </Reserved>
+)

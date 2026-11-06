@@ -8,7 +8,11 @@
  *
  * The outer action stack is stable across every state, so a toolbar does not
  * jump as the intent settles; a retryable failure replaces the action with
- * its retry rather than adding a second control. The button sits where it
+ * its retry rather than adding a second control. A button whose labels are
+ * words is as wide as the widest of them ("Copy", "Copying…", "Copied", "Try
+ * again") in every state, so a label that changes moves nothing beside it
+ * (HS1, `tests/ui-fit/stays-put-www.spec.ts`); a step's own label
+ * (`workingStepLabel`) is not known ahead, and is not counted. The button sits where it
  * sat before the failure, at the stack's start, with the failure below it.
  * `failureOwnLine` puts the failure on its own line
  * (`tests/ui-fit/intent-failure-fit`).
@@ -26,7 +30,7 @@ import { cn } from "@some-ui/core-utils"
 import type { Intent } from "@some-ui/intent-kit"
 import { matchIntent } from "@some-ui/intent-kit"
 import type { ButtonProps } from "@some-ui/shared"
-import { Button } from "@some-ui/shared"
+import { Button, SameWidth } from "@some-ui/shared"
 
 import { IntentFailure } from "@/lib/intent/render/intent-failure"
 
@@ -72,6 +76,24 @@ const ActionStack = ({
   </div>
 )
 
+/** What a retryable failure relabels the button. */
+const RETRY = "Try again"
+
+/** Every word a button may say, when its labels are words; none otherwise. */
+function wordsOf(
+  idle: ReactNode,
+  ...others: ReadonlyArray<ReactNode>
+): ReadonlyArray<string> {
+  if (typeof idle !== "string") return []
+  return [
+    ...new Set([
+      idle,
+      RETRY,
+      ...others.filter((label) => typeof label === "string"),
+    ]),
+  ]
+}
+
 export const IntentButton = <TStep extends string = never>({
   state,
   onPress,
@@ -86,8 +108,17 @@ export const IntentButton = <TStep extends string = never>({
   failureClassName,
   failureOwnLine = false,
   title,
-}: IntentButtonProps<TStep>): JSX.Element =>
-  matchIntent<unknown, JSX.Element, TStep>(state, {
+}: IntentButtonProps<TStep>): JSX.Element => {
+  const every = wordsOf(idleLabel, workingLabel, succeededLabel)
+  const say = (shown: ReactNode): ReactNode =>
+    every.length === 0 ? (
+      shown
+    ) : (
+      <SameWidth every={every} className="justify-items-center">
+        {shown}
+      </SameWidth>
+    )
+  return matchIntent<unknown, JSX.Element, TStep>(state, {
     idle: () => (
       <ActionStack ownLine={failureOwnLine}>
         <Button
@@ -98,7 +129,7 @@ export const IntentButton = <TStep extends string = never>({
           onClick={onPress}
           title={title}
         >
-          {idleLabel}
+          {say(idleLabel)}
         </Button>
       </ActionStack>
     ),
@@ -111,7 +142,7 @@ export const IntentButton = <TStep extends string = never>({
           disabled
           title={title}
         >
-          {workingStepLabel?.(step) ?? workingLabel}
+          {say(workingStepLabel?.(step) ?? workingLabel)}
         </Button>
       </ActionStack>
     ),
@@ -125,7 +156,7 @@ export const IntentButton = <TStep extends string = never>({
           onClick={onPress}
           title={title}
         >
-          {succeededLabel ?? idleLabel}
+          {say(succeededLabel ?? idleLabel)}
         </Button>
       </ActionStack>
     ),
@@ -147,7 +178,7 @@ export const IntentButton = <TStep extends string = never>({
             onClick={error.retryable ? retry : blocked ? undefined : onPress}
             title={title}
           >
-            {error.retryable ? "Try again" : idleLabel}
+            {say(error.retryable ? RETRY : idleLabel)}
           </Button>
           <IntentFailure
             error={error}
@@ -160,3 +191,4 @@ export const IntentButton = <TStep extends string = never>({
       )
     },
   })
+}

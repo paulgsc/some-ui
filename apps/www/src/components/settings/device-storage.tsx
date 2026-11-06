@@ -10,7 +10,7 @@
  * offer (PF1, `__tests__/device-storage.test.tsx`). On a phone known to be
  * unpaired it is deleted, after an offer that says it can't be brought back.
  */
-import type { JSX } from "react"
+import type { JSX, ReactNode } from "react"
 import { useEffect, useSyncExternalStore } from "react"
 import { formatSize } from "@some-ui/core-utils"
 import type { Intent } from "@some-ui/intent-kit"
@@ -19,6 +19,7 @@ import { Alert, AlertDescription, AlertTitle, Button } from "@some-ui/shared"
 import { HardDrive } from "lucide-react"
 
 import type { RemovableSession } from "@/lib/device-backend/handlers/sessions"
+import type { PruneNotice } from "@/lib/device-backend/storage"
 import type { DeviceStorageView } from "@/lib/device-backend/storage-view"
 import { deviceStorage } from "@/lib/device-backend/storage-view"
 import type { LetGoEnd, LetGoRun } from "@/lib/home-link/study-let-go"
@@ -28,6 +29,7 @@ import { useIntentEffect } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 import { PULL_WORDS } from "@/lib/pull-refresh/words"
+import type { SessionLetGo } from "@/components/sessions/device-let-go"
 import { useSessionLetGo } from "@/components/sessions/device-let-go"
 
 /**
@@ -94,18 +96,20 @@ function stayedLine(state: Intent<LetGoRun>): string | null {
 /**
  * One offer per refusal: keyed by the session it names. It closes once the
  * session is off this phone; while it stays, the offer says why and asks
- * again. "Try again" after a failure re-runs the same promise.
+ * again. "Try again" after a failure re-runs the same promise. Drawn from
+ * `letGo`, so the phone page can draw it on a fake
+ * (`tests/ui-fit/phone-page/www.tsx`).
  */
-const RemoveOffer = ({
+export const RemoveOffer = ({
   session,
+  letGo,
+  onSettle,
 }: {
   session: RemovableSession
+  letGo: Pick<SessionLetGo, "host" | "promise" | "state" | "start">
+  onSettle: () => void
 }): JSX.Element => {
-  const letGo = useSessionLetGo()
   const { host, promise } = letGo
-  useIntentEffect(letGo, ({ end }) => {
-    if (closes(end)) void deviceStorage.settle()
-  })
   const stayed = stayedLine(letGo.state)
   return (
     <>
@@ -117,11 +121,10 @@ const RemoveOffer = ({
           host
         )}
       </p>
-      {/* Inside the prompt's own alert, which announces it. */}
-      {stayed === null ? null : (
-        <p className="text-destructive break-words">{stayed}</p>
-      )}
-      <div className="flex gap-2">
+      {/* A failure takes its own line at the row's end, and why it stayed
+          comes after the row: below every control, in a prompt that grows
+          down, so neither moves one (HS1). */}
+      <div className="flex flex-wrap gap-2">
         <IntentButton
           state={letGo.state}
           // What this offer says is what runs: the promise and the host it
@@ -131,26 +134,69 @@ const RemoveOffer = ({
           variant="destructive"
           idleLabel={LET_GO.room.confirm}
           workingLabel={LET_GO.room.working}
+          failureOwnLine
         />
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => void deviceStorage.settle()}
-        >
+        <Button size="sm" variant="outline" onClick={onSettle}>
           Not now
         </Button>
       </div>
+      {/* Inside the prompt's own alert, which announces it. */}
+      {stayed === null ? null : (
+        <p className="text-destructive break-words">{stayed}</p>
+      )}
     </>
   )
 }
 
-export const DeviceStoragePrompt = (): JSX.Element | null => {
-  const view = useDeviceStorage()
+/** The offer on this phone's own let-go, which settles the prompt once it closes. */
+const LiveRemoveOffer = ({
+  session,
+}: {
+  session: RemovableSession
+}): JSX.Element => {
+  const letGo = useSessionLetGo()
+  useIntentEffect(letGo, ({ end }) => {
+    if (closes(end)) void deviceStorage.settle()
+  })
+  return (
+    <RemoveOffer
+      session={session}
+      letGo={letGo}
+      onSettle={() => void deviceStorage.settle()}
+    />
+  )
+}
+
+/**
+ * The prompt as drawn from `view`: what was refused, the offer that makes
+ * room (`renderOffer`), and a notice of what was let go.
+ */
+export const StoragePrompt = ({
+  view,
+  renderOffer,
+  onSettle,
+  onDismiss,
+}: {
+  view: DeviceStorageView | null
+  renderOffer: (session: RemovableSession) => ReactNode
+  onSettle: () => void
+  onDismiss: (notice: PruneNotice) => void
+}): JSX.Element | null => {
   if (view === null) return null
   const { full, notice } = view
   if (full === null && notice === null) return null
+  // Over the page, not in its flow: below the header, above the bar along
+  // the bottom, so bringing it up or dismissing it moves nothing on the
+  // screen under it (HS1).
   return (
-    <div className="space-y-2 px-4 pt-3">
+    <div
+      data-scroll-intent="long-form"
+      className={
+        // scroll-intent: long-form — held sideways, the offer can outgrow
+        // the room between the header and the bar, so the prompt scrolls.
+        "pointer-events-none fixed inset-x-0 top-14 z-40 max-h-[calc(100dvh-8.75rem)] space-y-2 overflow-y-auto px-4 pt-3 *:pointer-events-auto *:shadow-lg"
+      }
+    >
       {full === null ? null : (
         <Alert>
           <HardDrive className="size-4" />
@@ -159,16 +205,12 @@ export const DeviceStoragePrompt = (): JSX.Element | null => {
             {full.removable === null ? (
               <>
                 <p>Delete a session you don&apos;t need, then try again.</p>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => void deviceStorage.settle()}
-                >
+                <Button size="sm" variant="outline" onClick={onSettle}>
                   OK
                 </Button>
               </>
             ) : (
-              <RemoveOffer key={full.removable.id} session={full.removable} />
+              renderOffer(full.removable)
             )}
           </AlertDescription>
         </Alert>
@@ -182,11 +224,7 @@ export const DeviceStoragePrompt = (): JSX.Element | null => {
               {notice.rounds === 1 ? "" : "s"} this version of the app no longer
               ships.
             </span>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => void deviceStorage.dismiss(notice)}
-            >
+            <Button size="sm" variant="ghost" onClick={() => onDismiss(notice)}>
               Got it
             </Button>
           </AlertDescription>
@@ -195,3 +233,14 @@ export const DeviceStoragePrompt = (): JSX.Element | null => {
     </div>
   )
 }
+
+export const DeviceStoragePrompt = (): JSX.Element | null => (
+  <StoragePrompt
+    view={useDeviceStorage()}
+    renderOffer={(session) => (
+      <LiveRemoveOffer key={session.id} session={session} />
+    )}
+    onSettle={() => void deviceStorage.settle()}
+    onDismiss={(notice) => void deviceStorage.dismiss(notice)}
+  />
+)

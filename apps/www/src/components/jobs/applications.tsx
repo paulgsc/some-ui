@@ -231,7 +231,11 @@ const PivotChart = ({
           })}
         </ul>
       )}
-      <p className="text-muted-foreground min-h-4 text-xs" aria-live="polite">
+      {/* Two lines, kept, so tapping a bar moves nothing below (HS1). */}
+      <p
+        className="text-muted-foreground line-clamp-2 min-h-8 text-xs"
+        aria-live="polite"
+      >
         {shownGroup && !table
           ? pivotSays(shownGroup.name, shownGroup.counts)
           : null}

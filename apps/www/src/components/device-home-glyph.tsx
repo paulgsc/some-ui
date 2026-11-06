@@ -115,8 +115,16 @@ const LaneMark = ({ lane }: { lane: Lane }): JSX.Element => {
                 {note}
               </p>
             ))}
-            {sendNow ? (
-              <Button size="lg" className={BIG} onClick={() => askLane(lane)}>
+            {/* Kept while paired, off when there is nothing to send or a
+                send is under way: the sheet grows up from the bottom, so a
+                button that went would move everything above it (HS1). */}
+            {paired ? (
+              <Button
+                size="lg"
+                className={BIG}
+                disabled={!sendNow}
+                onClick={() => askLane(lane)}
+              >
                 {SHEET.sendNow}
               </Button>
             ) : null}

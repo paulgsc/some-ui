@@ -136,7 +136,7 @@ describe("Practice's study card", () => {
     const open = { ...finished("Korean", 0), status: "active" as const }
     refresh({ data: [open], isError: false })
     expect(screen.getByText("Resume")).toBeTruthy()
-    expect(screen.queryByText(/Next lesson|Getting it ready/)).not.toBeNull()
+    expect(screen.queryByText(/Next lesson|Starting/)).not.toBeNull()
   })
 
   it("offers Pick up for a session stopped within the window", () => {

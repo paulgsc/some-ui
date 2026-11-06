@@ -90,7 +90,9 @@ export const NextLesson = ({
       })}
       onPress={press}
       idleLabel={LABELS[open]}
-      workingLabel="Getting it ready..."
+      // No wider than either idle label: the button is as wide as its
+      // widest label in every state (IntentButton), and the two share a row.
+      workingLabel="Starting..."
       size="sm"
       variant={variant}
       className={className}

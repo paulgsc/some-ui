@@ -12,7 +12,7 @@
 import type { JSX } from "react"
 import { useState } from "react"
 import { assertNever } from "@some-ui/core-utils"
-import { Button, Input, Label } from "@some-ui/shared"
+import { Button, Input, Label, Reserved } from "@some-ui/shared"
 import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 
@@ -120,11 +120,10 @@ const PairForm = ({
         value={address}
         onChange={(event) => setAddress(event.target.value)}
       />
-      {read === "not-https" ? (
-        <p className="text-destructive text-xs">
-          Pairing needs an https:// address.
-        </p>
-      ) : null}
+      {/* Room kept for it, so a keystroke moves nothing below (HS1). */}
+      <Reserved role="status" className="text-destructive text-xs">
+        {read === "not-https" ? "Pairing needs an https:// address." : null}
+      </Reserved>
       <Label htmlFor="pair-code">Code from your computer</Label>
       <Input
         id="pair-code"
@@ -135,15 +134,9 @@ const PairForm = ({
         value={code}
         onChange={(event) => setCode(event.target.value)}
       />
-      {state.pairFailure ? (
-        <p className="text-destructive text-xs" role="status">
-          {failureLine(
-            state.pairFailure.failure,
-            hostOf(state.pairFailure.base)
-          )}
-        </p>
-      ) : null}
-      <div className="flex flex-wrap gap-2">
+      {/* Pair takes the row's room whatever host it names, so a keystroke
+          moves neither it nor Cancel (HS1). */}
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
         <IntentButton
           state={pair.state}
           onPress={() => {
@@ -151,14 +144,29 @@ const PairForm = ({
           }}
           disabled={!target || !typed || pairing}
           size="sm"
-          idleLabel={target ? `Pair with ${target.host}` : "Pair"}
+          className="w-full"
+          idleLabel={
+            <span className="min-w-0 truncate">
+              {target ? `Pair with ${target.host}` : "Pair"}
+            </span>
+          }
           workingLabel="Pairing..."
+          failureOwnLine
         />
         <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
           Cancel
         </Button>
       </div>
       <p className="text-muted-foreground text-xs">Sends only this code.</p>
+      {/* After the form's last control, in room kept for it. */}
+      <Reserved role="status" lines={2} className="text-destructive text-xs">
+        {state.pairFailure
+          ? failureLine(
+              state.pairFailure.failure,
+              hostOf(state.pairFailure.base)
+            )
+          : null}
+      </Reserved>
     </div>
   )
 }
@@ -378,11 +386,10 @@ export const DeviceSection = (): JSX.Element => {
               value={address}
               onChange={(event) => setAddress(event.target.value)}
             />
-            {host === null ? null : (
-              <p className="text-muted-foreground text-xs break-all">
-                Reads from {host}
-              </p>
-            )}
+            {/* One line, kept, so typing an address moves nothing (HS1). */}
+            <p className="text-muted-foreground min-h-4 truncate text-xs">
+              {host === null ? null : `Reads from ${host}`}
+            </p>
             {link.kind === "unpaired" && link.note !== null ? (
               <p className="text-muted-foreground text-xs" role="status">
                 {NOTES[link.note]}
@@ -425,11 +432,10 @@ export const DeviceSection = (): JSX.Element => {
             </Button>
           )}
         </div>
-        {synced === "" ? null : (
-          <p className="text-muted-foreground text-xs break-all">
-            Last sync: {synced}
-          </p>
-        )}
+        {/* One line, kept, so the first sync moves nothing below (HS1). */}
+        <p className="text-muted-foreground min-h-4 truncate text-xs">
+          {synced === "" ? null : `Last sync: ${synced}`}
+        </p>
         {pairOpen && !paired ? (
           <PairForm state={state} onCancel={() => setPairOpen(false)} />
         ) : null}

@@ -59,6 +59,7 @@ import { ROUNDS_FIXTURES } from "./rounds"
 import { SettingsBar } from "./settings-bar"
 import { FIT_CUTS, FIT_PRIMER_TEXT } from "./studio-seed"
 import { TOPIK_FIXTURES } from "./topik"
+import { WWW_FIXTURES } from "./www"
 
 const AT = "2026-10-30T09:00:00.000Z"
 
@@ -403,6 +404,8 @@ export const PHONE_FIXTURES = {
   ...ROUNDS_FIXTURES,
   /** The handheld lesson (`./topik`, `../stays-put-topik.spec.ts`). */
   ...TOPIK_FIXTURES,
+  /** www's screens and shared parts (`./www`, `../stays-put-www.spec.ts`). */
+  ...WWW_FIXTURES,
 } satisfies Record<string, () => JSX.Element>
 
 export type PhoneId = keyof typeof PHONE_FIXTURES

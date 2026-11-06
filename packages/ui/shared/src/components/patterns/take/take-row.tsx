@@ -81,7 +81,9 @@ export const TakeRow = ({
           )}
         </Button>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium">
+          {/* One line, cut short rather than wrapped: where it is kept
+              changes as it goes home, and the row keeps its height (HS1). */}
+          <p className="truncate text-sm font-medium">
             <span className="tabular-nums">
               {words.length(take.durationMs)}
             </span>
