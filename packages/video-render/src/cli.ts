@@ -13,6 +13,16 @@
  * capture, and `voice/takes.json` when the timeline names it) and writes
  * `<short folder>/cut-list.json`.
  *
+ *   pnpm --filter @some-ui/video-render render call-facts --from <YYYY-MM-DD> --to <YYYY-MM-DD>
+ *
+ * prints the weekly call's facts for those days (`call-facts.ts`) as JSON,
+ * read from GitHub's search API through the `gh` command.
+ *
+ *   pnpm --filter @some-ui/video-render render call-check <week.json>
+ *
+ * checks a week's data against the call's schema (`call.ts`) and prints
+ * every reason it can't make a call.
+ *
  *   pnpm --filter @some-ui/video-render render compare-hearings <home transcript> <session words>
  *
  * lines up two hearings of one take (ST25, `hearings.ts`) and prints the
@@ -22,11 +32,16 @@
  * `pnpm --filter` runs this from the package; INIT_CWD is where it was typed.
  */
 
+import { execFile } from "node:child_process"
 import { access, writeFile } from "node:fs/promises"
 import { dirname, join, relative, resolve as resolvePath } from "node:path"
-import { parseArgs } from "node:util"
+import { parseArgs, promisify } from "node:util"
 import { z } from "zod"
 
+import { ASK_LABEL, parseAskBody } from "./ask"
+import { callScenes, parseCallWeek } from "./call"
+import { callsOf, changeKindOf, trailersOf, whereWeAreOf } from "./call-facts"
+import type { CallFacts } from "./call-facts"
 import { problemsOf } from "./cut-list"
 import { compareHearings } from "./hearings"
 import { nodePorts, readJson, readSeries, renderFolder } from "./node"
@@ -49,6 +64,8 @@ async function main(): Promise<void> {
       series: { type: "string" },
       out: { type: "string", default: "outputs/video.mp4" },
       "without-burn-ins": { type: "boolean", default: false },
+      from: { type: "string" },
+      to: { type: "string" },
     },
   })
   const [first, second, third] = positionals
@@ -60,6 +77,22 @@ async function main(): Promise<void> {
     const session = await readAs(HeardSchema, here(third))
     process.stdout.write(
       `${JSON.stringify(compareHearings(home, session), null, 1)}\n`
+    )
+    return
+  }
+  if (first === "call-facts") {
+    if (!values.from || !values.to)
+      fail(["usage: render call-facts --from <YYYY-MM-DD> --to <YYYY-MM-DD>"])
+    const facts = await callFacts(values.from, values.to)
+    process.stdout.write(`${JSON.stringify(facts, null, 1)}\n`)
+    return
+  }
+  if (first === "call-check") {
+    if (!second) fail(["usage: render call-check <week.json>"])
+    const week = parseCallWeek(await readJson(here(second)))
+    if (!week.ok) fail([`${second} can't make a call:`, ...week.problems])
+    process.stdout.write(
+      `${second}: ${callScenes(week.value).length} scenes, ready\n`
     )
     return
   }
@@ -178,6 +211,137 @@ async function convert(
   const out = join(root, "cut-list.json")
   await writeFile(out, `${JSON.stringify(cutList.value, null, 1)}\n`)
   process.stdout.write(`wrote ${out}\n`)
+}
+
+const run = promisify(execFile)
+
+const REPOS = ["some-ui", "server"] as const
+
+/** Every result of a GitHub search, one JSON value per `jq` line. */
+async function search(
+  endpoint: "search/issues" | "search/commits",
+  q: string,
+  jq: string
+): Promise<Array<unknown>> {
+  const { stdout } = await run(
+    "gh",
+    [
+      "api",
+      "-X",
+      "GET",
+      endpoint,
+      "-f",
+      `q=${q}`,
+      "-f",
+      "per_page=100",
+      "--paginate",
+      "--jq",
+      jq,
+    ],
+    { maxBuffer: 64 * 1024 * 1024 }
+  )
+  return stdout
+    .split("\n")
+    .filter((line) => line.trim() !== "")
+    .map((line): unknown => JSON.parse(line))
+}
+
+const PullHit = z.object({
+  number: z.number(),
+  title: z.string(),
+  author: z.string(),
+  mergedAt: z.string(),
+  body: z.string(),
+})
+const CommitHit = z.object({ sha: z.string(), message: z.string() })
+const IssueHit = z.object({
+  number: z.number(),
+  title: z.string(),
+  createdAt: z.string(),
+  body: z.string(),
+})
+
+const hits = <T>(schema: z.ZodType<T>, values: Array<unknown>): Array<T> =>
+  values.map((v) => schema.parse(v))
+
+/** The weekly call's facts for `from`..`to`, both days included. */
+async function callFacts(from: string, to: string): Promise<CallFacts> {
+  const facts: CallFacts = {
+    week: { from, to },
+    pulls: [],
+    promises: [],
+    asks: [],
+    epics: [],
+  }
+  for (const repo of REPOS) {
+    const pulls = hits(
+      PullHit,
+      await search(
+        "search/issues",
+        `repo:paulgsc/${repo} is:pr is:merged merged:${from}..${to}`,
+        '.items[] | {number, title, author: .user.login, mergedAt: .pull_request.merged_at, body: (.body // "")}'
+      )
+    )
+    for (const p of pulls)
+      facts.pulls.push({
+        repo,
+        number: p.number,
+        title: p.title,
+        author: p.author,
+        mergedAt: p.mergedAt,
+        change: changeKindOf(p.body),
+        calls: callsOf(p.body),
+      })
+    const commits = hits(
+      CommitHit,
+      await search(
+        "search/commits",
+        `repo:paulgsc/${repo} committer-date:${from}..${to} "Promise:"`,
+        ".items[] | {sha, message: .commit.message}"
+      )
+    )
+    for (const c of commits) {
+      const trailers = trailersOf(c.message)
+      if (trailers.length > 0)
+        facts.promises.push({ repo, sha: c.sha, trailers })
+    }
+    const asks = hits(
+      IssueHit,
+      await search(
+        "search/issues",
+        `repo:paulgsc/${repo} is:issue is:open label:${ASK_LABEL}`,
+        '.items[] | {number, title, createdAt: .created_at, body: (.body // "")}'
+      )
+    )
+    for (const a of asks) {
+      const read = parseAskBody(a.body)
+      facts.asks.push({
+        repo,
+        number: a.number,
+        title: a.title,
+        createdAt: a.createdAt,
+        body: a.body,
+        problems: read.ok ? [] : [...read.problems],
+      })
+    }
+    const epics = hits(
+      IssueHit,
+      await search(
+        "search/issues",
+        `repo:paulgsc/${repo} is:issue label:epic updated:${from}..${to}`,
+        '.items[] | {number, title, createdAt: .created_at, body: (.body // "")}'
+      )
+    )
+    for (const e of epics)
+      facts.epics.push({
+        repo,
+        number: e.number,
+        title: e.title,
+        whereWeAre: whereWeAreOf(e.body),
+      })
+  }
+  facts.pulls.sort((a, b) => a.mergedAt.localeCompare(b.mergedAt))
+  return facts
 }
 
 try {

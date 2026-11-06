@@ -14,8 +14,11 @@ const read = (search: Record<string, unknown>): unknown => {
 }
 
 describe("/call's search", () => {
-  it("takes a scene and the record flag", () => {
-    expect(read({ scene: "asks-2", record: "true" })).toEqual({
+  it("takes a week, a scene and the record flag", () => {
+    expect(
+      read({ week: "2026-10-30", scene: "asks-2", record: "true" })
+    ).toEqual({
+      week: "2026-10-30",
       scene: "asks-2",
       record: true,
     })
@@ -23,7 +26,7 @@ describe("/call's search", () => {
 
   it("drops what is not a scene's id or the flag", () => {
     expect(read({ scene: 3, record: "yes" })).toEqual({})
-    expect(read({ scene: "" })).toEqual({})
+    expect(read({ scene: "", week: "" })).toEqual({})
     expect(read({})).toEqual({})
   })
 })

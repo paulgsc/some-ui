@@ -5,15 +5,16 @@ import { callFormat, refUrl, sampleCallWeek } from "@some-ui/video-render"
 import type { CallRef, CallScene, CallWeek } from "@some-ui/video-render"
 
 import type { SceneView } from "./view"
-import { callAt } from "./view"
+import { callAt, weekAt, weeksOf } from "./view"
 import { CALL_WORDS as W } from "./words"
 
 /**
  * The weekly call's stage (`@some-ui/video-render`'s `call.ts`): one scene of
  * a week at a time, in a 16:9 frame that scales with the window, the words
  * said under it. The recorder draws it at 1920 CSS px wide with `record`,
- * which leaves out everything that isn't the frame. It plays the template's
- * sample week until the weekly run writes real ones.
+ * which leaves out everything that isn't the frame. It plays the week
+ * `week` names (its first day), else the newest the weekly run wrote under
+ * `weeks/`, else the template's sample week; `week=sample` asks for it.
  *
  * The frame is fixed, so text that doesn't fit would be cut off unseen: the
  * frame says so instead (`data-overflow`, and a line under it off record),
@@ -21,6 +22,8 @@ import { CALL_WORDS as W } from "./words"
  */
 
 export type CallStageProps = {
+  /** The week shown, by its first day, or "sample". */
+  week?: string
   /** The scene shown, by its id; the first when absent or unknown. */
   scene?: string
   record?: boolean
@@ -32,6 +35,13 @@ const NAMES: Readonly<Record<string, string>> = Object.fromEntries(
 )
 
 const SAMPLE = sampleCallWeek()
+
+const WEEKS = weeksOf(
+  import.meta.glob<unknown>("./weeks/*.json", {
+    eager: true,
+    import: "default",
+  })
+)
 
 /** The most asks the close lists by name; the rest it counts. */
 const LATER_SHOWN = 6
@@ -298,24 +308,28 @@ const Screen = ({
 }
 
 export const CallStagePage = ({
+  week: from,
   scene,
   record = false,
   onScene,
 }: CallStageProps): JSX.Element => {
-  const at = SAMPLE.ok ? callAt(SAMPLE.value, scene) : null
-  const { ref, overflows } = useOverflows(at?.scene.id ?? "")
-  if (!SAMPLE.ok || at === null)
+  const shown = weekAt(WEEKS, SAMPLE, from)
+  const at = shown === null ? null : callAt(shown.week, scene)
+  const { ref, overflows } = useOverflows(
+    `${shown?.week.week.from ?? ""}/${at?.scene.id ?? ""}`
+  )
+  if (shown === null || at === null)
     return (
       <ul className="p-6 font-mono text-sm">
-        {SAMPLE.ok
-          ? null
-          : SAMPLE.problems.map((problem, i) => (
-              // eslint-disable-next-line react/no-array-index-key
-              <li key={i}>{problem}</li>
-            ))}
+        {[...WEEKS.problems, ...(SAMPLE.ok ? [] : SAMPLE.problems)].map(
+          (problem, i) => (
+            // eslint-disable-next-line react/no-array-index-key
+            <li key={i}>{problem}</li>
+          )
+        )}
       </ul>
     )
-  const week = SAMPLE.value
+  const week = shown.week
   const step = (by: number): string | undefined => at.scenes[at.index + by]?.id
   const previous = step(-1)
   const next = step(1)
@@ -332,13 +346,14 @@ export const CallStagePage = ({
           ref={ref}
           data-scene={at.scene.id}
           data-overflow={overflows ? "true" : undefined}
+          data-week={record ? JSON.stringify(week) : undefined}
           className="bg-surface border-border flex aspect-video w-full flex-col overflow-hidden border text-[1.5cqw] [overflow-wrap:anywhere]"
         >
           <header className="border-border flex items-center justify-between border-b px-[1.2em] py-[0.6em] text-[0.8em]">
             <span className="font-semibold">{W.title}</span>
             <span className="text-muted-foreground">
-              {NAMES[at.scene.section]} · {at.index + 1}/{at.scenes.length} ·{" "}
-              {W.sample}
+              {NAMES[at.scene.section]} · {at.index + 1}/{at.scenes.length}
+              {shown.sample && ` · ${W.sample}`}
             </span>
           </header>
           <div className="min-h-0 flex-1 px-[1.6em] py-[1.2em]">
