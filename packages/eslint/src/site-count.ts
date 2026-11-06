@@ -247,6 +247,8 @@ export type CountedCheck = {
   /** The log prefix and the invariant: "react-coordination", "R1". */
   readonly tag: string
   readonly id: string
+  /** Where the invariant is declared, when not docs/monorepo-boundaries.md. */
+  readonly doc?: string
   readonly allowlistFile: string
   /** The `#` line a group's entries are reasoned by. */
   readonly reason: RegExp
@@ -378,7 +380,7 @@ export function runCountedCheck(
   }
   if (violations.length > 0) {
     err(
-      `[${check.tag}] ${violations.length} violation(s). See docs/monorepo-boundaries.md, ${check.id}.`
+      `[${check.tag}] ${violations.length} violation(s). See ${check.doc ?? "docs/monorepo-boundaries.md"}, ${check.id}.`
     )
     process.exitCode = 1
   } else {

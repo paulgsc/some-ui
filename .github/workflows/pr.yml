@@ -578,6 +578,12 @@ jobs:
         env:
           BASE_REF: ${{ github.base_ref }}
         run: nix develop .#ci --command node scripts/check-foreign-boundary.ts --base "origin/$BASE_REF"
+      # HS2 (docs/ui-fit/README.md, "2j"): the same kind of count, over error
+      # and status lines a phone surface mounts on a condition.
+      - name: Check that a tap moves nothing
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: nix develop .#ci --command node scripts/check-stays-put.ts --base "origin/$BASE_REF"
 
   # ── Workflow guards (repo-wide) ────────────────────────────────────────
   # Artifact retention (CLAUDE.md "Workflow storage") and the RS1 fingerprint
