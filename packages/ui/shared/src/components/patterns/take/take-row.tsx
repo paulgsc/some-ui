@@ -5,7 +5,7 @@ import { Pause, Play } from "lucide-react"
 
 import { cn } from "../../../lib/utils"
 import { Button } from "../../ui/button"
-import { SameWidth } from "../../ui/reserved"
+import { SameWidth } from "../../ui/same-width"
 
 export type TakeRowProps = {
   /** One take as the pattern shows it: `takeItemView(...).current[i]`. */

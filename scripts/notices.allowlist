@@ -23,7 +23,6 @@
 2 packages/ui/leetype/src/components/typing-game/exercise-card/index.tsx
 1 packages/ui/leetype/src/components/typing-game/typing-error-alert/index.tsx
 1 packages/ui/shared/src/components/ui/alert.tsx
-2 packages/ui/shared/src/components/ui/reserved/index.tsx
 
 # Content: the route's loading screen, a skeleton that is the whole screen
 # until the route resolves and is replaced by it; it holds no room in a
