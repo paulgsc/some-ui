@@ -273,11 +273,28 @@ export const UPLOAD = {
 /**
  * What a forecast says, which no word of the show does: the show says what
  * can still happen, never odds, and never the statistics the grammar retired
- * (CLAUDE.md, "Say what it is"). The vocabulary's test and a narration's
- * check (`./narration`) both refuse it.
+ * (CLAUDE.md, "Say what it is").
  */
-export const FORECAST =
-  /\b(chance|odds|likely|probability|percent|share|spread|average|sample)/i
+export const FORECAST_WORDS = [
+  "chance",
+  "odds",
+  "likely",
+  "likelihood",
+  "probability",
+  "probabilities",
+  "percent",
+  "percentage",
+  "share",
+  "spread",
+  "average",
+  "sample",
+] as const
+
+/** Any forecast word, alone or plural: "share" and "shares", not "shared". */
+export const FORECAST = new RegExp(
+  `\\b(?:${FORECAST_WORDS.join("|")})s?\\b`,
+  "i"
+)
 
 /** "one" to "ten" in words, digits past that. */
 export function numberWord(n: number): string {

@@ -33,6 +33,7 @@ import {
   words,
 } from "./format"
 import type { Format } from "./format"
+import { Sha256Schema } from "./vocabulary"
 
 export const EPISODE_SCHEMA = "some-ui.show-episode/1"
 
@@ -93,7 +94,7 @@ export const EpisodePinSchema = z.object({
   /** The data it read: where it came from, and a sum its `source` names. */
   data: z.object({
     source: words,
-    sha256: z.string().regex(/^[0-9a-f]{64}$/),
+    sha256: Sha256Schema,
   }),
   /** The upload's copy, filled from the period's data; absent before SH5. */
   upload: UploadCopySchema.optional(),

@@ -10,6 +10,7 @@ import {
   WEEK_SLIDES,
   type SlideId,
 } from "@playoff-delta/lib/slides"
+import { seasonData } from "@playoff-delta/lib/story"
 import type { StorySeason, StoryWeek } from "@playoff-delta/lib/story"
 
 import "./index.css"
@@ -187,7 +188,7 @@ const WeekStory = ({
         at={at}
         running={false}
         fill
-        data={JSON.stringify(season)}
+        data={seasonData(season)}
       />
     )
 

@@ -126,6 +126,13 @@ export type StoryCohort = z.infer<typeof Cohort>
 export const parseStorySeason = (data: unknown): StorySeason =>
   StorySeasonSchema.parse(data)
 
+/**
+ * The season as the stage publishes it for the recorder: the bytes an
+ * episode's sum, and a narration's, are of.
+ */
+export const seasonData = (season: StorySeason): string =>
+  JSON.stringify(season)
+
 export const nameOf = (season: StorySeason, code: string): string =>
   season.names[code] ?? code
 

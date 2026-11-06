@@ -193,6 +193,8 @@ describe("checkTake", () => {
       ["-5 degrees", "minus five degrees"],
       ["2 million users", "two million users"],
       ["2.5 million users", "two point five million users"],
+      ["6½ wins", "six and a half wins"],
+      ["½ win", "0.5 win"],
     ]
     for (const [fact, take] of spoken) {
       expect(checkTake({ voice: "ad-lib", keep: [fact] }, heard(take))).toEqual(

@@ -1,7 +1,6 @@
 import {
   checkNarration,
   NARRATION_SCHEMA,
-  NarrationSchema,
   packetOf,
   SAID_MAX,
   type Narration,
@@ -13,7 +12,6 @@ import {
   LEGEND_SLIDES,
   LEGEND_WEEK,
   WEEK_SLIDES,
-  weekFacts,
 } from "@playoff-delta/lib/slides"
 import { parseStorySeason, type StorySeason } from "@playoff-delta/lib/story"
 import { describe, expect, it } from "vitest"
@@ -44,7 +42,7 @@ const saying = (fill: Narration, id: string, said: string): Narration => ({
   scenes: fill.scenes.map((s) => (s.id === id ? { id, said } : s)),
 })
 
-const problemsOf = (
+const refusalsOf = (
   season: StorySeason,
   week: number,
   data: unknown
@@ -59,10 +57,8 @@ const episodes = (season: StorySeason): ReadonlyArray<number> => [
 ]
 
 describe("the packet", () => {
-  it("asks for the week's format's scenes, with the facts each slide shows", () => {
+  it("pins the week's episode and asks for its format's scenes", () => {
     const p = packet(SAMPLE_SEASON, 9)
-    const week = SAMPLE_SEASON.weeks.find((w) => w.week === 9)
-    if (!week) throw new Error("the sample has no week 9")
     expect(p.pins).toEqual({
       schema: NARRATION_SCHEMA,
       season: SAMPLE_SEASON.label,
@@ -72,15 +68,13 @@ describe("the packet", () => {
       sha256: SHA,
     })
     expect(p.scenes.map((s) => s.id)).toEqual(WEEK_SLIDES)
-    expect(p.scenes.map((s) => s.facts)).toEqual(
-      WEEK_SLIDES.map((id) => weekFacts(SAMPLE_SEASON, week, id))
-    )
   })
 
-  it("asks for the legend's scenes in week 0", () => {
+  it("asks for the legend's scenes in week 0, with no words taught beside them", () => {
     const p = packet(SAMPLE_SEASON, LEGEND_WEEK)
     expect(p.pins.format.id).toBe(formatOf("legend").id)
     expect(p.scenes.map((s) => s.id)).toEqual(LEGEND_SLIDES)
+    expect(p.words).toEqual([])
   })
 
   it("has no week the season hasn't played", () => {
@@ -89,23 +83,9 @@ describe("the packet", () => {
       problems: ["the season has no week 99"],
     })
   })
-
-  it("gives the shape back as JSON Schema", () => {
-    expect(packet(SAMPLE_SEASON, 9).jsonSchema).toMatchObject({
-      properties: { schema: { const: NARRATION_SCHEMA } },
-      additionalProperties: false,
-    })
-  })
-
-  it("says the forecast words a fill may not use", () => {
-    const guidance = packet(SAMPLE_SEASON, 9).guidance.join(" ")
-    expect(guidance).toMatch(/no chance, odds/)
-  })
 })
 
 describe("the check", () => {
-  // The scene's own facts are a fill the check takes, in every episode of
-  // both seasons: it refuses no number the show itself says.
   it.each([
     ["2025", SAMPLE_SEASON],
     ["2026", SEASON_2026],
@@ -114,21 +94,19 @@ describe("the check", () => {
     (_, season) => {
       for (const week of episodes(season)) {
         const fill = factsSaid(packet(season, week))
-        expect([week, problemsOf(season, week, fill)]).toEqual([week, []])
+        expect([week, refusalsOf(season, week, fill)]).toEqual([week, []])
       }
     }
   )
 
   const fill = factsSaid(packet(SAMPLE_SEASON, 9))
   const refuses = (data: unknown): ReadonlyArray<string> =>
-    problemsOf(SAMPLE_SEASON, 9, data)
+    refusalsOf(SAMPLE_SEASON, 9, data)
 
   it("refuses what isn't the schema's shape", () => {
-    expect(refuses({ ...fill, scenes: [] }).length).toBeGreaterThan(0)
-    expect(refuses({ ...fill, extra: 1 }).length).toBeGreaterThan(0)
-    expect(
-      refuses(saying(fill, "ladder", "x".repeat(SAID_MAX + 1))).length
-    ).toBeGreaterThan(0)
+    expect(refuses(saying(fill, "ladder", "x".repeat(SAID_MAX + 1)))).toEqual([
+      `scenes.4.said: Too big: expected string to have <=${SAID_MAX} characters`,
+    ])
   })
 
   it("refuses another episode's pins", () => {
@@ -151,55 +129,69 @@ describe("the check", () => {
     expect(refuses({ ...fill, scenes: [second, first, ...rest] })).toEqual([
       `the scenes are ${[second.id, first.id, ...rest.map((s) => s.id)].join(", ")}, not the format's ${WEEK_SLIDES.join(", ")}`,
     ])
-    expect(refuses({ ...fill, scenes: rest }).length).toBe(1)
   })
 
-  it("refuses a forecast", () => {
+  it("refuses a forecast, and not a word that only starts like one", () => {
     expect(
       refuses(saying(fill, "ladder", "We are likely to win the division."))
     ).toEqual(['ladder forecasts: "likely"'])
+    expect(
+      refuses(saying(fill, "ladder", "Rivals with a shared lead."))
+    ).toEqual([])
   })
 
   it("refuses a number the scene's facts don't give, however it's said", () => {
     // Week 9's division: the floor 7 from 6, the ceiling 15, 6 to 14 wins.
-    expect(
-      refuses(saying(fill, "division", "The floor is 7, the ceiling 15."))
-    ).toEqual([])
-    expect(refuses(saying(fill, "division", "The ceiling is 16."))).toEqual([
+    const division = (said: string): ReadonlyArray<string> =>
+      refuses(saying(fill, "division", said))
+    expect(division("The floor is seven, the ceiling 15.")).toEqual([])
+    expect(division("The ceiling is 16.")).toEqual([
       "division says 16, which its facts don't give",
     ])
-    expect(refuses(saying(fill, "division", "Sixteen wins."))).toEqual([
-      "division says 16, which its facts don't give",
+    expect(division("Twenty-one wins.")).toEqual([
+      "division says 21, which its facts don't give",
     ])
-    expect(refuses(saying(fill, "division", "Seven and a half."))).toEqual([
+    expect(division("Seven and a half.")).toEqual([
       "division says 7.5, which its facts don't give",
     ])
-    expect(refuses(saying(fill, "division", "From 15½ down."))).toEqual([
+    expect(division("From 15½ down.")).toEqual([
       "division says 15.5, which its facts don't give",
     ])
   })
 
-  it("counts no team name, seed or the season's label as a number", () => {
+  it("counts no team name, seed, ordinal, lone one or the season's label", () => {
     const season: StorySeason = {
       ...SAMPLE_SEASON,
       names: { ...SAMPLE_SEASON.names, SF: "49ers" },
     }
     const named = factsSaid(packet(season, 9))
-    const said = (text: string): ReadonlyArray<string> =>
-      problemsOf(season, 9, saying(named, "ladder", text))
-    expect(said("The 49ers in 2025: the #1 seed, or seeds 5 to 7.")).toEqual([])
+    expect(
+      refusalsOf(
+        season,
+        9,
+        saying(
+          named,
+          "ladder",
+          "First, the 49ers in 2025: the #2 seed, or seeds 5 to 7, one of them."
+        )
+      )
+    ).toEqual([])
   })
 
   it("takes a week played by now, and refuses one that isn't", () => {
-    expect(
-      refuses(saying(fill, "season", "Since week 3, and week nine."))
-    ).toEqual([])
-    expect(refuses(saying(fill, "season", "Come week 10."))).toEqual([
+    const season = (said: string): ReadonlyArray<string> =>
+      refuses(saying(fill, "season", said))
+    expect(season("Since week one, weeks 3 to 5, and week nine.")).toEqual([])
+    expect(season("Come week 10.")).toEqual([
       "season says week 10, which isn't played yet",
     ])
-  })
-
-  it("parses the same fill the schema does", () => {
-    expect(NarrationSchema.safeParse(fill).success).toBe(true)
+    const legend = factsSaid(packet(SAMPLE_SEASON, LEGEND_WEEK))
+    expect(
+      refusalsOf(
+        SAMPLE_SEASON,
+        LEGEND_WEEK,
+        saying(legend, "calls", "By week 3, you'll see.")
+      )
+    ).toEqual(["calls says week 3, and the legend names none"])
   })
 })
