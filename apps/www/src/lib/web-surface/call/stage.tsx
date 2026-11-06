@@ -1,11 +1,21 @@
 import type { JSX, ReactNode, RefObject } from "react"
 import { useLayoutEffect, useRef, useState } from "react"
 import { assertNever } from "@some-ui/core-utils"
-import { callFormat, refUrl, sampleCallWeek } from "@some-ui/video-render"
+import {
+  callFormat,
+  CallIndexSchema,
+  CallWeekSchema,
+  parseCallWeek,
+  refUrl,
+  sampleCallWeek,
+} from "@some-ui/video-render"
 import type { CallRef, CallScene, CallWeek } from "@some-ui/video-render"
 
+import { FETCHES_CONTENT } from "@/lib/data-mode"
+
+import { indexSource, weekSource } from "./feed"
 import type { SceneView } from "./view"
-import { callAt, weekAt, weeksOf } from "./view"
+import { callAt, weekFrom } from "./view"
 import { CALL_WORDS as W } from "./words"
 
 /**
@@ -13,8 +23,9 @@ import { CALL_WORDS as W } from "./words"
  * a week at a time, in a 16:9 frame that scales with the window, the words
  * said under it. The recorder draws it at 1920 CSS px wide with `record`,
  * which leaves out everything that isn't the frame. It plays the week
- * `week` names (its first day), else the newest the weekly run wrote under
- * `weeks/`, else the template's sample week; `week=sample` asks for it.
+ * `week` names (its first day), else the newest `paulgsc/testing` keeps
+ * (`./feed`), read where the build reads content; elsewhere, or with
+ * `week=sample`, the template's sample week.
  *
  * The frame is fixed, so text that doesn't fit would be cut off unseen: the
  * frame says so instead (`data-overflow`, and a line under it off record),
@@ -35,13 +46,6 @@ const NAMES: Readonly<Record<string, string>> = Object.fromEntries(
 )
 
 const SAMPLE = sampleCallWeek()
-
-const WEEKS = weeksOf(
-  import.meta.glob<unknown>("./weeks/*.json", {
-    eager: true,
-    import: "default",
-  })
-)
 
 /** The most asks the close lists by name; the rest it counts. */
 const LATER_SHOWN = 6
@@ -332,21 +336,53 @@ export const CallStagePage = ({
   scene,
   record = false,
   onScene,
-}: CallStageProps): JSX.Element => {
-  const shown = weekAt(WEEKS, SAMPLE, from)
+}: CallStageProps): JSX.Element | null => {
+  const index = indexSource.useResource(
+    ["call", "index"],
+    undefined,
+    CallIndexSchema,
+    {
+      enabled: FETCHES_CONTENT,
+      retry: 1,
+    }
+  )
+  const pick = weekFrom(index.data, from)
+  const fetched = weekSource.useResource(
+    ["call", "week", pick.from],
+    pick.from ?? "",
+    CallWeekSchema,
+    { enabled: FETCHES_CONTENT && pick.from !== null, retry: 1 }
+  )
+  const real = fetched.data === undefined ? null : parseCallWeek(fetched.data)
+  const shown =
+    real?.ok === true
+      ? { week: real.value, sample: false, missing: pick.missing }
+      : SAMPLE.ok
+        ? { week: SAMPLE.value, sample: true, missing: pick.missing }
+        : null
+  // Until the week is read, nothing: a recording never opens on the sample,
+  // and a recording whose week can't be read stays blank, so the recorder
+  // fails instead of recording the sample.
+  const waiting =
+    FETCHES_CONTENT &&
+    (index.isPending || (pick.from !== null && fetched.isPending))
+  const unread =
+    FETCHES_CONTENT && record && from !== "sample" && real?.ok !== true
   const at = shown === null ? null : callAt(shown.week, scene)
   const { ref, overflows } = useOverflows(
     `${shown?.week.week.from ?? ""}/${at?.scene.id ?? ""}`
   )
+  if (waiting || unread) return null
   if (shown === null || at === null)
     return (
       <ul className="p-6 font-mono text-sm">
-        {[...WEEKS.problems, ...(SAMPLE.ok ? [] : SAMPLE.problems)].map(
-          (problem, i) => (
-            // eslint-disable-next-line react/no-array-index-key
-            <li key={i}>{problem}</li>
-          )
-        )}
+        {[
+          ...(real?.ok === false ? real.problems : []),
+          ...(SAMPLE.ok ? [] : SAMPLE.problems),
+        ].map((problem, i) => (
+          // eslint-disable-next-line react/no-array-index-key
+          <li key={i}>{problem}</li>
+        ))}
       </ul>
     )
   const week = shown.week

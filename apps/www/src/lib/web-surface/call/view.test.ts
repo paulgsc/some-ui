@@ -1,8 +1,8 @@
-import { sampleCallWeek } from "@some-ui/video-render"
-import type { CallWeek } from "@some-ui/video-render"
+import { CALL_INDEX_SCHEMA, sampleCallWeek } from "@some-ui/video-render"
+import type { CallIndex, CallWeek } from "@some-ui/video-render"
 import { describe, expect, it } from "vitest"
 
-import { callAt, weekAt, weeksOf } from "./view"
+import { callAt, weekFrom } from "./view"
 
 const week = (): CallWeek => {
   const parsed = sampleCallWeek()
@@ -31,57 +31,40 @@ describe("the call's stage", () => {
   })
 })
 
-describe("the call's weeks", () => {
-  const sample = sampleCallWeek()
-  const later = { ...week(), week: { from: "2026-11-06", to: "2026-11-12" } }
+describe("the week the stage asks for", () => {
+  const index: CallIndex = {
+    schema: CALL_INDEX_SCHEMA,
+    keep: 8,
+    weeks: [
+      { from: "2026-11-06", to: "2026-11-12" },
+      { from: "2026-10-30", to: "2026-11-05" },
+    ],
+  }
 
-  it("keeps each file named for its week, newest first, and says why any other isn't", () => {
-    const got = weeksOf({
-      "./weeks/2026-10-30.json": week(),
-      "./weeks/2026-11-06.json": later,
-      "./weeks/2026-11-13.json": week(),
-      "./weeks/broken.json": { nope: true },
+  it("is the one named, else the newest, and says when the one named isn't kept", () => {
+    expect(weekFrom(index, "2026-10-30")).toEqual({
+      from: "2026-10-30",
+      missing: false,
     })
-    expect(got.weeks.map((w) => w.week.from)).toEqual([
-      "2026-11-06",
-      "2026-10-30",
-    ])
-    expect(got.problems[0]).toBe(
-      "2026-11-13.json: it holds the week of 2026-10-30"
-    )
-    expect(
-      got.problems.slice(1).every((p) => p.startsWith("broken.json: "))
-    ).toBe(true)
-  })
-
-  it("shows the week named, else the newest, and the sample only when asked or when there is none", () => {
-    const weeks = weeksOf({
-      "./weeks/2026-10-30.json": week(),
-      "./weeks/2026-11-06.json": later,
+    expect(weekFrom(index, undefined)).toEqual({
+      from: "2026-11-06",
+      missing: false,
     })
-    expect(weekAt(weeks, sample, "2026-10-30")?.week.week.from).toBe(
-      "2026-10-30"
-    )
-    expect(weekAt(weeks, sample, undefined)?.week.week.from).toBe("2026-11-06")
-    expect(weekAt(weeks, sample, "1999-01-01")).toMatchObject({
-      week: { week: { from: "2026-11-06" } },
+    expect(weekFrom(index, "1999-01-01")).toEqual({
+      from: "2026-11-06",
       missing: true,
     })
-    expect(weekAt(weeks, sample, undefined)?.missing).toBe(false)
-    expect(weekAt(weeks, sample, "sample")?.sample).toBe(true)
-    expect(weekAt({ weeks: [], problems: [] }, sample, undefined)?.sample).toBe(
-      true
-    )
   })
 
-  it("holds every week the weekly run committed", () => {
-    const committed = weeksOf(
-      import.meta.glob<unknown>("./weeks/*.json", {
-        eager: true,
-        import: "default",
-      })
-    )
-    expect(committed.problems).toEqual([])
-    expect(committed.weeks.length).toBeGreaterThan(0)
+  it("is none for the sample, before the index is read, or when it keeps none", () => {
+    expect(weekFrom(index, "sample")).toEqual({ from: null, missing: false })
+    expect(weekFrom(undefined, "2026-10-30")).toEqual({
+      from: null,
+      missing: false,
+    })
+    expect(weekFrom({ ...index, weeks: [] }, undefined)).toEqual({
+      from: null,
+      missing: false,
+    })
   })
 })

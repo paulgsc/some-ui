@@ -10,11 +10,14 @@ import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import {
   CALL_ID,
+  CALL_INDEX_SCHEMA,
+  CALL_KEEP,
   CALL_STAGE_WIDTH,
   CALL_VERSION,
   callCutList,
   callFormat,
   callScenes,
+  parseCallIndex,
   parseCallWeek,
   readingMs,
   refUrl,
@@ -166,5 +169,25 @@ describe("the call as a cut list", () => {
     expect(board?.take).toBeUndefined()
     expect(board?.durationMs).toBe(readingMs(w.board.said))
     expect(cut.value.shots).toHaveLength(scenes.length)
+  })
+})
+
+describe("the index of weeks kept", () => {
+  const index = (
+    weeks: Array<{ from: string; to: string }>,
+    keep = CALL_KEEP
+  ): ReturnType<typeof parseCallIndex> =>
+    parseCallIndex({ schema: CALL_INDEX_SCHEMA, keep, weeks })
+
+  it("lists at most K weeks, newest first, each once", () => {
+    const later = { from: "2026-11-06", to: "2026-11-12" }
+    const first = { from: "2026-10-30", to: "2026-11-05" }
+    expect(index([later, first]).ok).toBe(true)
+    expect(index([first, later]).ok).toBe(false)
+    expect(index([first, first]).ok).toBe(false)
+    expect(index([later, first], 1)).toEqual({
+      ok: false,
+      problems: ["weeks: it lists more weeks than it keeps"],
+    })
   })
 })

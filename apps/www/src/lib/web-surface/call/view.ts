@@ -1,6 +1,6 @@
 import { assertNever } from "@some-ui/core-utils"
-import { callScenes, parseCallWeek } from "@some-ui/video-render"
-import type { CallScene, CallWeek, Parsed } from "@some-ui/video-render"
+import { callScenes } from "@some-ui/video-render"
+import type { CallIndex, CallScene, CallWeek } from "@some-ui/video-render"
 
 /**
  * Which scene of a call the stage shows, and the item it draws: a pure read
@@ -75,55 +75,21 @@ export function callAt(week: CallWeek, id: string | undefined): CallAt {
   return { scenes, index, scene, view: viewOf(week, scene) }
 }
 
-/** The weeks the call has, newest first, and why any file isn't one. */
-export type CallWeeks = {
-  readonly weeks: ReadonlyArray<CallWeek>
-  readonly problems: ReadonlyArray<string>
-}
-
 /**
- * The weeks under `weeks/`, by file: each `<from>.json` a week whose data
- * starts on that day. A file that can't make a call, or is named for
- * another day, is left out and said.
+ * Which week of the index the stage asks for: the one named, else the
+ * newest; none for "sample", or before the index is read. `missing` says a
+ * week was named that the index doesn't keep.
  */
-export function weeksOf(files: Readonly<Record<string, unknown>>): CallWeeks {
-  const weeks: Array<CallWeek> = []
-  const problems: Array<string> = []
-  for (const [path, raw] of Object.entries(files)) {
-    const name = path.split("/").pop() ?? path
-    const week = parseCallWeek(raw)
-    if (!week.ok) {
-      problems.push(...week.problems.map((p) => `${name}: ${p}`))
-      continue
-    }
-    if (name !== `${week.value.week.from}.json`) {
-      problems.push(`${name}: it holds the week of ${week.value.week.from}`)
-      continue
-    }
-    weeks.push(week.value)
-  }
-  weeks.sort((a, b) => b.week.from.localeCompare(a.week.from))
-  return { weeks, problems }
-}
-
-/** The week the stage shows: the one named, else the newest, else the sample. */
-export function weekAt(
-  weeks: CallWeeks,
-  sample: Parsed<CallWeek>,
+export function weekFrom(
+  index: CallIndex | undefined,
   from: string | undefined
-): {
-  readonly week: CallWeek
-  readonly sample: boolean
-  /** The week was named and there is none: another is shown instead. */
-  readonly missing: boolean
-} | null {
-  const asSample = sample.ok
-    ? { week: sample.value, sample: true, missing: false }
-    : null
-  if (from === "sample") return asSample
-  const named = weeks.weeks.find((w) => w.week.from === from)
-  const real = named ?? weeks.weeks.at(0)
-  const missing = from !== undefined && named === undefined
-  if (real !== undefined) return { week: real, sample: false, missing }
-  return asSample === null ? null : { ...asSample, missing }
+): { readonly from: string | null; readonly missing: boolean } {
+  if (from === "sample" || index === undefined)
+    return { from: null, missing: false }
+  if (index.weeks.some((w) => w.from === from))
+    return { from: from ?? null, missing: false }
+  return {
+    from: index.weeks.at(0)?.from ?? null,
+    missing: from !== undefined,
+  }
 }

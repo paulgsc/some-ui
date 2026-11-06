@@ -276,6 +276,43 @@ export const CallWeekSchema = z.strictObject({
 
 export type CallWeek = z.infer<typeof CallWeekSchema>
 
+export const CALL_INDEX_SCHEMA = "some-ui.call-index/1"
+
+/** How many weeks the repository keeps, newest first, unless its index says. */
+export const CALL_KEEP = 8
+
+/**
+ * The weeks `paulgsc/testing` keeps under `call/`, newest first: at most
+ * `keep`, each `<from>.json` beside it. Older weeks are home's alone
+ * (ST36): one leaves the repository only once home holds it.
+ */
+export const CallIndexSchema = z
+  .strictObject({
+    schema: z.literal(CALL_INDEX_SCHEMA),
+    keep: z.number().int().min(1).max(52),
+    weeks: z.array(z.strictObject({ from: day, to: day })),
+  })
+  .refine((index) => index.weeks.length <= index.keep, {
+    message: "it lists more weeks than it keeps",
+    path: ["weeks"],
+  })
+  .refine(
+    (index) =>
+      index.weeks.every(
+        (week, i) => i === 0 || week.from < (index.weeks[i - 1]?.from ?? "")
+      ),
+    { message: "its weeks aren't newest first, each once", path: ["weeks"] }
+  )
+
+export type CallIndex = z.infer<typeof CallIndexSchema>
+
+export function parseCallIndex(raw: unknown): Parsed<CallIndex> {
+  const parsed = CallIndexSchema.safeParse(raw)
+  return parsed.success
+    ? { ok: true, value: parsed.data }
+    : { ok: false, problems: problemsOf(parsed.error, "call index") }
+}
+
 /** Every reason the week's parsed data contradicts itself. */
 function weekProblems(week: CallWeek): Array<string> {
   const problems: Array<string> = []
