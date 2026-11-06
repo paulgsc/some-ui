@@ -101,7 +101,33 @@ const Replay = ({
   </button>
 )
 
-/** A beat's text on its rung: heard only, its Hangul, then its gloss too. */
+/**
+ * Drawn whether it shows or not, and hidden from eye and ear until it does:
+ * a rung climbed fills room the panel already had, so it moves nothing below
+ * it, the tapped panel's own size included (HS1).
+ */
+const Held = ({
+  shown,
+  className,
+  children,
+}: {
+  shown: boolean
+  className?: string
+  children: ReactNode
+}): JSX.Element => (
+  <span
+    aria-hidden={!shown || undefined}
+    className={cn(className, !shown && "invisible")}
+  >
+    {children}
+  </span>
+)
+
+/**
+ * A beat's text on its rung: heard only, its Hangul, then its gloss too.
+ * Every rung is drawn in one cell, so the bubble is its top rung's size from
+ * the first.
+ */
 const Ladder = ({
   rung,
   text,
@@ -121,14 +147,22 @@ const Ladder = ({
   final?: boolean
   /** Muted text's colour: the feeling's in a feeling panel (MK5). */
   muted: string
-}): JSX.Element =>
-  rung === 0 ? (
-    <span className={cn(muted, "flex items-center gap-2 text-sm")}>
+}): JSX.Element => (
+  <span className="grid">
+    <Held
+      shown={rung === 0}
+      className={cn(
+        muted,
+        "col-start-1 row-start-1 flex items-center gap-2 text-sm"
+      )}
+    >
       <Ear className={cn("size-5 shrink-0", speaking && "animate-pulse")} />
       Listen first. Tap when you want to see it.
-    </span>
-  ) : (
-    <span className="flex flex-col gap-1">
+    </Held>
+    <Held
+      shown={rung > 0}
+      className="col-start-1 row-start-1 flex flex-col gap-1"
+    >
       <span
         lang="ko"
         className={cn(
@@ -138,14 +172,13 @@ const Ladder = ({
       >
         {text}
       </span>
-      {rung === 2 && (
-        <span className={cn(muted, "text-sm leading-relaxed")}>
-          {gloss}
-          {note && <span className="block italic">({note})</span>}
-        </span>
-      )}
-    </span>
-  )
+      <Held shown={rung === 2} className={cn(muted, "text-sm leading-relaxed")}>
+        {gloss}
+        {note && <span className="block italic">({note})</span>}
+      </Held>
+    </Held>
+  </span>
+)
 
 const mutedIn = (feeling: FeelingKey | null): string =>
   feeling === null ? "text-muted-foreground" : "feeling-muted"
@@ -295,11 +328,9 @@ export const WebtoonPanel = ({
             <span lang="ko" className="feeling-caption text-2xl font-black">
               {words.caption}
             </span>
-            {rung === 2 && (
-              <span className="feeling-muted text-sm">
-                {words.captionGloss}
-              </span>
-            )}
+            <Held shown={rung === 2} className="feeling-muted text-sm">
+              {words.captionGloss}
+            </Held>
           </button>
           <span
             lang="ko"
@@ -466,11 +497,9 @@ export const WebtoonPanel = ({
             <span lang="ko" className="text-lg break-keep italic">
               {choice.prompt}
             </span>
-            {rung === 2 && (
-              <span className="text-muted-foreground text-sm">
-                {choice.check.prompt}
-              </span>
-            )}
+            <Held shown={rung === 2} className="text-muted-foreground text-sm">
+              {choice.check.prompt}
+            </Held>
           </button>
         </section>
       )
@@ -506,9 +535,12 @@ export const WebtoonPanel = ({
               <span lang="ko" className="text-lg font-semibold break-keep">
                 {hook.text}
               </span>
-              {rungOf(hookId) === 2 && (
-                <span className="feeling-muted text-sm">{hook.gloss}</span>
-              )}
+              <Held
+                shown={rungOf(hookId) === 2}
+                className="feeling-muted text-sm"
+              >
+                {hook.gloss}
+              </Held>
             </button>
           )}
         </Themed>

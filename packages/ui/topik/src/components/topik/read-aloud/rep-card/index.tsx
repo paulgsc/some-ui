@@ -55,7 +55,7 @@ type RepCardProps = {
 
 /** In place of Resume, while the host's session holds the drill. */
 export const HeldNote = (): JSX.Element => (
-  <p className="text-muted-foreground py-3 text-center text-sm">
+  <p className="text-muted-foreground flex min-h-14 items-center justify-center text-center text-sm">
     Resumes with the session
   </p>
 )
@@ -327,7 +327,9 @@ export const RepCard = ({
   const controls =
     step === "paused" ? (
       onResume ? (
-        <Button className="h-12 gap-2 rounded-2xl" onClick={onResume}>
+        // As tall as the row it stands in for, so pausing keeps the dock's
+        // height, and the centred stage above it where it was (HS1).
+        <Button className="h-14 gap-2 rounded-2xl" onClick={onResume}>
           <Play className="size-5" /> Resume
         </Button>
       ) : (

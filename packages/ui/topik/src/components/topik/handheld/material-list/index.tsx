@@ -217,7 +217,9 @@ const OpenFromStorage = ({
           id={about}
           aria-live="polite"
           className={cn(
-            "block text-sm",
+            // Two lines kept, the offer's at the narrowest phone, so a read
+            // or what came of it moves no card below this one (HS1).
+            "block min-h-[2lh] text-sm",
             problem ? "text-destructive" : "text-muted-foreground"
           )}
         >

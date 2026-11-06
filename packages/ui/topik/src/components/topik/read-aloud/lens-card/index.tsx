@@ -13,7 +13,7 @@
 
 import type { JSX, ReactNode } from "react"
 import { assertNever, cn } from "@some-ui/core-utils"
-import { Button, TakeItem } from "@some-ui/shared"
+import { Button, Reserved, TakeItem } from "@some-ui/shared"
 import type { TakeItemView, TakePlace } from "@some-ui/voice-capture"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
 import type { Tense } from "@topik/lib/topik/read-aloud/content"
@@ -574,7 +574,16 @@ export const LensCard = ({
     dock = (
       <>
         {item.situations && situation && (
-          <div data-slot="lens-situation" className="flex flex-col gap-1.5">
+          <div
+            data-slot="lens-situation"
+            data-scroll-intent="long-form"
+            className={
+              // scroll-intent: long-form — a situation is as long as its
+              // author wrote it, and held sideways the dock is 390px tall:
+              // every option must stay reachable above the dock's buttons.
+              "flex min-h-0 flex-col gap-1.5 overflow-y-auto overscroll-contain"
+            }
+          >
             <span className="text-muted-foreground text-xs">
               Optional · When would someone say B?
             </span>
@@ -589,9 +598,10 @@ export const LensCard = ({
                 {option}
               </Button>
             ))}
-            {situation.chosen !== null && (
-              <span className="text-muted-foreground text-xs">Noted.</span>
-            )}
+            {/* Its room kept, in a dock that grows up into the options (HS1). */}
+            <Reserved role="status" className="text-muted-foreground text-xs">
+              {situation.chosen !== null && "Noted."}
+            </Reserved>
           </div>
         )}
         {audio && (

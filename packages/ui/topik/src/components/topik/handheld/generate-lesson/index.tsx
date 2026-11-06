@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { cn } from "@some-ui/core-utils"
 import {
   Accordion,
@@ -8,6 +8,11 @@ import {
   AccordionTrigger,
   Button,
   Input,
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
   Textarea,
 } from "@some-ui/shared"
 import { AskScene } from "@topik/components/topik/handheld/ask-scene"
@@ -283,6 +288,14 @@ export const GenerateLesson = ({
   const [verdict, setVerdict] = useState<Verdict | null>(() =>
     initialReply === undefined ? null : verdictOf(initialReply, onStartTree)
   )
+  // A verdict comes after the shelf, so it is brought into view.
+  const verdictView = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const node = verdictView.current
+    if (node && typeof node.scrollIntoView === "function") {
+      node.scrollIntoView({ block: "nearest" })
+    }
+  }, [verdict])
 
   const hand = async (
     text: string,
@@ -388,27 +401,6 @@ export const GenerateLesson = ({
             onAsked={(text) => onPromptHandedOff?.(text)}
           />
         )}
-        {manual !== null && (
-          <>
-            <Textarea
-              aria-label="Prompt to copy"
-              readOnly
-              value={manual.text}
-              rows={4}
-              onFocus={(event) => event.currentTarget.select()}
-              className="rounded-xl font-mono text-xs"
-            />
-            {manual.kind === "prompt" && (
-              <Button
-                variant="outline"
-                className="h-11 gap-2 rounded-xl"
-                onClick={confirmManualCopy}
-              >
-                <Check className="size-4" /> I&apos;ve copied it
-              </Button>
-            )}
-          </>
-        )}
       </section>
 
       <section className="flex flex-col gap-3">
@@ -424,81 +416,182 @@ export const GenerateLesson = ({
             setReply(event.target.value)
             setVerdict(null)
           }}
-          className="rounded-xl font-mono text-xs"
+          // Its rows, however long the reply: a paste grows no field and
+          // moves nothing below it (HS1).
+          className="field-sizing-fixed rounded-xl font-mono text-xs"
         />
-        {verdict && <VerdictView verdict={verdict} success="Ready to play." />}
       </section>
       {kept}
+      {/*
+       * Last, after every control, so a verdict that comes and goes moves
+       * none of them (HS1); brought into view when it comes.
+       */}
+      {verdict && (
+        <div ref={verdictView} className="scroll-mb-4">
+          <VerdictView verdict={verdict} success="Ready to play." />
+        </div>
+      )}
     </div>
   )
 
-  const copyAgain = (prominent: boolean): JSX.Element => (
+  const copyAgain = (
     <Button
-      variant={prominent ? "outline" : "ghost"}
-      className={cn(
-        "w-full gap-2 rounded-2xl",
-        prominent ? "h-12" : "h-10 text-sm"
-      )}
+      variant="ghost"
+      className="h-10 w-full gap-2 rounded-2xl text-sm"
       onClick={copyPrompt}
     >
-      <ClipboardCopy className={prominent ? "size-5" : "size-4"} /> Copy the
-      prompt again
+      <ClipboardCopy className="size-4" /> Copy the prompt again
     </Button>
   )
 
-  const dock = ((): JSX.Element => {
+  // The dock's one main action, last, under the thumb, and always the same
+  // button, its words changing with the step; a smaller one comes and goes
+  // above it, where the dock grows up into the stage, so neither moves the
+  // other (HS1).
+  const actions = ((): {
+    above: JSX.Element | null
+    main: {
+      onClick: () => void
+      variant?: "outline"
+      content: JSX.Element
+    }
+  } => {
     if (reply.trim() === "") {
-      return (
-        <Button className="h-12 w-full gap-2 rounded-2xl" onClick={copyPrompt}>
-          {copied === "prompt" ? (
-            <>
-              <Check className="size-5" /> Copied: paste it into your model
-            </>
-          ) : (
-            <>
-              <ClipboardCopy className="size-5" /> Copy the prompt
-            </>
-          )}
-        </Button>
-      )
+      return {
+        above: null,
+        main: {
+          onClick: copyPrompt,
+          content:
+            copied === "prompt" ? (
+              <>
+                <Check className="size-5" /> Copied: paste it into your model
+              </>
+            ) : (
+              <>
+                <ClipboardCopy className="size-5" /> Copy the prompt
+              </>
+            ),
+        },
+      }
     }
     if (verdict === null) {
-      return (
-        <>
-          <Button
-            className="h-12 w-full rounded-2xl"
-            onClick={() => setVerdict(verdictOf(reply, onStartTree))}
-          >
-            Read the reply
-          </Button>
-          {copyAgain(false)}
-        </>
-      )
+      return {
+        above: copyAgain,
+        main: {
+          onClick: () => setVerdict(verdictOf(reply, onStartTree)),
+          content: <>Read the reply</>,
+        },
+      }
     }
-    if (verdict.kind === "absent") return copyAgain(true)
+    if (verdict.kind === "absent") {
+      return {
+        above: null,
+        main: {
+          onClick: copyPrompt,
+          variant: "outline",
+          content: (
+            <>
+              <ClipboardCopy className="size-5" /> Copy the prompt again
+            </>
+          ),
+        },
+      }
+    }
     const { start, fixes, findings } = verdict
-    return (
-      <>
-        {start && (
-          <Button className="h-12 w-full gap-2 rounded-2xl" onClick={start}>
-            <Play className="size-5" /> Start
-          </Button>
-        )}
-        {findings.length > 0 && (
+    const copyFixes = (): void => void hand(fixes, "fixes")
+    const fixesWords =
+      copied === "fixes"
+        ? "Fixes copied: paste them to your model"
+        : "Copy the fixes for your model"
+    if (start === null) {
+      return {
+        above: copyAgain,
+        main: {
+          onClick: copyFixes,
+          variant: "outline",
+          content: <>{fixesWords}</>,
+        },
+      }
+    }
+    return {
+      above:
+        findings.length > 0 ? (
           <Button
-            variant={start ? "ghost" : "outline"}
+            variant="ghost"
             className="h-10 w-full rounded-2xl text-sm"
-            onClick={() => void hand(fixes, "fixes")}
+            onClick={copyFixes}
           >
-            {copied === "fixes"
-              ? "Fixes copied: paste them to your model"
-              : "Copy the fixes for your model"}
+            {fixesWords}
           </Button>
-        )}
-        {!start && copyAgain(false)}
-      </>
-    )
+        ) : null,
+      main: {
+        onClick: start,
+        content: (
+          <>
+            <Play className="size-5" /> Start
+          </>
+        ),
+      },
+    }
   })()
 
-  return <StepLayout short={short} stage={stage} dock={dock} longForm />
+  const dock = (
+    <>
+      {actions.above}
+      <Button
+        variant={actions.main.variant}
+        className="h-12 w-full gap-2 rounded-2xl"
+        onClick={actions.main.onClick}
+      >
+        {actions.main.content}
+      </Button>
+    </>
+  )
+
+  return (
+    <>
+      <StepLayout short={short} stage={stage} dock={dock} longForm />
+      {/*
+       * What the clipboard would not take, to copy by hand: over the page,
+       * so it moves nothing on it (HS1).
+       */}
+      <Sheet
+        open={manual !== null}
+        onOpenChange={(open) => {
+          if (!open) setManual(null)
+        }}
+      >
+        <SheetContent
+          side="bottom"
+          data-slot="topik-copy-by-hand"
+          className="flex max-h-[85dvh] flex-col gap-3 rounded-t-3xl"
+        >
+          <SheetHeader className="px-0 text-left">
+            <SheetTitle>Copy it by hand</SheetTitle>
+            <SheetDescription>
+              This phone wouldn&apos;t copy it for you. Select it all, copy it,
+              and paste it into your model.
+            </SheetDescription>
+          </SheetHeader>
+          <Textarea
+            aria-label="Prompt to copy"
+            readOnly
+            value={manual?.text ?? ""}
+            rows={short ? 3 : 6}
+            onFocus={(event) => event.currentTarget.select()}
+            className="field-sizing-fixed min-h-0 rounded-xl font-mono text-xs"
+          />
+          {manual?.kind === "prompt" && (
+            <Button
+              variant="outline"
+              className="h-11 gap-2 rounded-xl"
+              onClick={confirmManualCopy}
+            >
+              <Check className="size-4" /> I&apos;ve copied it
+            </Button>
+          )}
+        </SheetContent>
+      </Sheet>
+    </>
+  )
 }

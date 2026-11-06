@@ -172,9 +172,12 @@ describe("DramaLesson", () => {
     renderDrama()
     next()
     next()
-    expect(screen.queryByText(/Which reply fits/)).toBeNull()
+    // Drawn from the first, hidden until its rung, so it moves nothing (HS1).
+    const task = (): Element | null =>
+      screen.getByText(/Which reply fits/).closest("[aria-hidden=true]")
+    expect(task()).not.toBeNull()
     fireEvent.click(screen.getByText("뭐라고 대답하지?"))
-    expect(screen.getByText(/Which reply fits/)).toBeTruthy()
+    expect(task()).toBeNull()
     expect(screen.queryByText(/Polite -요/)).toBeNull()
   })
 })

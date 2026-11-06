@@ -11,8 +11,9 @@
  * English small beneath, since they are not items.
  */
 
-import type { JSX } from "react"
-import { useState } from "react"
+import type { JSX, ReactNode } from "react"
+import { useId, useState } from "react"
+import { cn } from "@some-ui/core-utils"
 import {
   Accordion,
   AccordionContent,
@@ -55,6 +56,29 @@ type Answer<Key extends string> = {
   picked: boolean
 }
 
+/**
+ * A question's English, drawn whether it shows or not and hidden until it
+ * does, so showing it moves no answer below it, nor the toggle (HS1).
+ */
+const English = ({
+  shown,
+  children,
+}: {
+  shown: boolean
+  children: ReactNode
+}): JSX.Element => (
+  <span
+    lang="en"
+    aria-hidden={!shown || undefined}
+    className={cn(
+      "text-muted-foreground block font-normal",
+      !shown && "invisible"
+    )}
+  >
+    {children}
+  </span>
+)
+
 const Question = <Key extends string>({
   ko,
   en,
@@ -71,11 +95,7 @@ const Question = <Key extends string>({
   <fieldset className="flex flex-col gap-2">
     <legend lang="ko" className="mb-2 text-sm font-semibold break-keep">
       {ko}
-      {english && (
-        <span lang="en" className="text-muted-foreground block font-normal">
-          {en}
-        </span>
-      )}
+      <English shown={english}>{en}</English>
     </legend>
     <div className="flex flex-wrap gap-2">
       {answers.map((answer) => (
@@ -104,6 +124,7 @@ export const DramaReview = ({
   nameOf: (sceneId: string) => string | undefined
 }): JSX.Element => {
   const [english, setEnglish] = useState(false)
+  const wish = useId()
   const review = record.review ?? {}
   const more = review.more ?? []
   return (
@@ -169,30 +190,31 @@ export const DramaReview = ({
             }))}
             onPick={(id) => onReview({ more: toggled(more, id) })}
           />
-          <label className="flex flex-col gap-2">
-            <span lang="ko" className="text-sm font-semibold break-keep">
+          <div className="flex flex-col gap-2">
+            <label
+              htmlFor={wish}
+              lang="ko"
+              className="text-sm font-semibold break-keep"
+            >
               다음엔 어떤 드라마?
-              {english && (
-                <span
-                  lang="en"
-                  className="text-muted-foreground block font-normal"
-                >
-                  What next? A genre, a trope, a character
-                </span>
-              )}
-            </span>
+              <English shown={english}>
+                What next? A genre, a trope, a character
+              </English>
+            </label>
             <Input
+              id={wish}
               maxLength={NEXT_MAX}
               value={review.next ?? ""}
               onChange={(event) => onReview({ next: event.target.value })}
               className="h-12 rounded-2xl text-base md:text-base"
             />
-          </label>
+          </div>
           <button
             type="button"
             aria-pressed={english}
             onClick={() => setEnglish(!english)}
-            className="text-muted-foreground min-h-11 self-start text-sm underline"
+            // One width for either word, so the toggle keeps its box.
+            className="text-muted-foreground min-h-11 w-28 self-start text-left text-sm underline"
           >
             {english ? "Hide English" : "Show English"}
           </button>
