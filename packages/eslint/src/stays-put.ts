@@ -1,17 +1,10 @@
 // HS2 (docs/ui-fit/README.md, "2j"): on a phone surface, every error or
 // status line mounted on a condition is listed in `scripts/stays-put.allowlist`
 // at its file's exact count, under a comment that says why it moves nothing
-// (`Placement:`) or that it predates the rule (`Grandfathered:`). The way out
-// is not to mount it: `Reserved` (@some-ui/shared) keeps the line's room and
-// its live region whether it says something or not (HS1).
+// (`Placement:`) or that it predates the rule (`Grandfathered:`). A count, as
+// R1 and F1 are (site-count.ts), for the reason 2j gives.
 //
-// A count, as R1 and F1 are (site-count.ts), because whether a line moves a
-// control is layout: a line after the last control of a page that grows down
-// moves nothing, and the same line above a keypad moves every key. No AST can
-// tell those apart, so the allowlist hunk is where a reviewer reads the
-// `Placement:` claim, and stays-put.spec.ts is where a walk measures it.
-//
-// What is a site, in a `.tsx`/`.jsx` file:
+// What is a site, in a `.tsx`/`.jsx` phone source (`./phone-sources.ts`):
 // - `cond && <X …/>`, where X is a message;
 // - `cond ? <X …/> : null` (or `undefined`, `false`), either way round;
 // - a `return <X …/>` in a function that also returns nothing (`null`,
@@ -27,45 +20,18 @@
 // - a wrapper mounted conditionally around a message
 //   (`cond && <div><p role="alert"/></div>`);
 // - text that changes length inside a mounted element.
-//
-// Scope: phone surfaces, which is every `packages/ui/*` workspace whose
-// `someUi.audience` reaches the phone, and `apps/www/src`. A `web` or `lan`
-// workspace is not shown on the phone (packages/some-vite-config/AUDIENCES.md);
-// stays-put.test.ts holds this list to the manifests.
 import ts from "typescript"
 
+import { phoneSources } from "./phone-sources.ts"
 import type { CountedCheck, CountViolation } from "./site-count.ts"
-import { findCountViolations, parseSource } from "./site-count.ts"
+import { findCountViolations, parseSource, unwrap } from "./site-count.ts"
 
 const ALLOWLIST_FILE = "scripts/stays-put.allowlist"
 
 const REASON = /^#\s*(?:Placement|Grandfathered):\s*\S/
 
-/** `packages/ui` workspaces the phone never shows: audience `web` or `lan`. */
-export const NOT_ON_THE_PHONE: ReadonlySet<string> = new Set([
-  "burn-ins",
-  "honeycomb",
-  "lesson-crm",
-  "playoff-delta",
-])
-
 const JSX_SOURCE = /\.[jt]sx$/
-const UI_WORKSPACE = /^packages\/ui\/(?<name>[^/]+)\/src\//
 const MESSAGE_ROLES: ReadonlySet<string> = new Set(["alert", "status"])
-
-/** Whether `path` is source a phone surface is drawn from. */
-export function onThePhone(path: string): boolean {
-  if (!JSX_SOURCE.test(path)) return false
-  if (path.startsWith("apps/www/src/")) return true
-  const name = UI_WORKSPACE.exec(path)?.groups?.["name"]
-  return name !== undefined && !NOT_ON_THE_PHONE.has(name)
-}
-
-function unwrap(node: ts.Expression): ts.Expression {
-  let at = node
-  while (ts.isParenthesizedExpression(at)) at = at.expression
-  return at
-}
 
 function roleOf(attributes: ts.JsxAttributes): string | null {
   for (const property of attributes.properties) {
@@ -125,9 +91,9 @@ function ownReturns(body: ts.Node): Array<ts.ReturnStatement> {
   return found
 }
 
-/** How many messages `source` mounts on a condition; null off the phone. */
+/** How many messages `source` mounts on a condition; null if not JSX. */
 export function staysPutSites(path: string, source: string): number | null {
-  if (!onThePhone(path)) return null
+  if (!JSX_SOURCE.test(path)) return null
   let sites = 0
   const visit = (node: ts.Node): void => {
     if (
@@ -179,6 +145,7 @@ export const STAYS_PUT_CHECK: CountedCheck = {
   reasonHint:
     "Say why mounting this line moves no control: it comes after the last one on a page that grows down, or it replaces the whole screen.",
   count: staysPutSites,
+  scope: phoneSources,
   sites: "conditionally mounted error/status lines",
   unlisted: (sites) =>
     `a phone surface that mounts ${sites} error/status line(s) on a condition, not in ${ALLOWLIST_FILE}. A line that comes on a tap moves the controls after it: keep its room with <Reserved role=…> (@some-ui/shared, HS1)`,

@@ -15,45 +15,18 @@
 //   and Next turns by a swipe too (MOB-GESTURE: a gesture supplements a
 //   visible control).
 //
-// The phone's sources: `apps/www/src` and every workspace under `packages/`,
-// except a workspace whose `someUi.audience` is `web` or `lan` (neither is in
-// the Android app's build), www's `lan` gate and `web` door, this kit, tests,
-// and the desktop-only files in DESKTOP_ONLY. Comment lines are skipped, so a
-// module can say what it does. Not seen: a paged surface built with neither
+// Over the phone's sources (`./phone-sources.ts`), less the two gesture
+// runtimes. Comment lines are skipped, so a module can say what it does. Not seen: a paged surface built with neither
 // `PageControls` nor the pager (buttons that step an index), which review
 // holds (REVIEW.md, "Second implementations and code left behind").
 
-import { workspaceRootOf } from "./vestiges.ts"
+import { phoneSources } from "./phone-sources.ts"
 
 /** Where the phone's two gestures live. */
 const GESTURE_MODULES: ReadonlySet<string> = new Set([
   "packages/ui/shared/src/lib/pager/runtime/index.ts",
   "apps/www/src/lib/pull-refresh/runtime.ts",
 ])
-
-/**
- * Files the phone build carries in a shared workspace but never shows on a
- * phone, each with why (CLAUDE.md, "The phone and the desktop web are
- * separate surfaces": a sweep says where it skips a desktop-only file).
- */
-const DESKTOP_ONLY: ReadonlyMap<string, string> = new Map([
-  [
-    "packages/ui/leetype/src/components/typing-game/prompt-panel/index.tsx",
-    "the typing game's prompt, shown only above 768px (`useIsMobile` in Leetype): a physical keyboard's",
-  ],
-])
-
-/** www's directories no phone build routes to (`apps/www/build.profiles.ts`). */
-const WWW_GATES: ReadonlyArray<string> = [
-  "apps/www/src/routes/_dashboard/_lan/",
-  "apps/www/src/lib/web-surface/",
-]
-
-const PHONE_AUDIENCES: ReadonlySet<string> = new Set(["public", "apk"])
-
-const CODE = /\.[cm]?[jt]sx?$/
-const TEST =
-  /(?:^|\/)(?:__tests__|tests|e2e|testing)\/|\.(?:test|spec)\.[cm]?[jt]sx?$/
 
 type Token = { readonly name: string; readonly pattern: RegExp }
 
@@ -90,20 +63,6 @@ export type GestureViolation =
 /** A line that is only a comment: `//`, or inside a block's `*` lines. */
 const COMMENT = /^\s*(?:\/\/|\/\*|\*)/
 
-/** A manifest's `someUi.audience`, if it says one. */
-function audienceOf(text: string): string | null {
-  try {
-    const manifest: unknown = JSON.parse(text)
-    if (typeof manifest !== "object" || manifest === null) return null
-    const someUi: unknown = Reflect.get(manifest, "someUi")
-    if (typeof someUi !== "object" || someUi === null) return null
-    const audience: unknown = Reflect.get(someUi, "audience")
-    return typeof audience === "string" ? audience : null
-  } catch {
-    return null
-  }
-}
-
 /**
  * The violations among `tracked` (repo-relative paths), in path order. `read`
  * gives a file's text; it is called only for files the scan covers and their
@@ -113,27 +72,9 @@ export function findGestureViolations(
   tracked: ReadonlyArray<string>,
   read: (path: string) => string
 ): Array<GestureViolation> {
-  const all = new Set(tracked)
-  const audiences = new Map<string, string | null>()
-  const phone = (file: string): boolean => {
-    if (!CODE.test(file) || TEST.test(file)) return false
-    if (GESTURE_MODULES.has(file) || DESKTOP_ONLY.has(file)) return false
-    if (file.startsWith("apps/www/src/")) {
-      return !WWW_GATES.some((gate) => file.startsWith(gate))
-    }
-    if (!file.startsWith("packages/") || file.startsWith("packages/eslint/")) {
-      return false
-    }
-    const workspace = workspaceRootOf(file)
-    if (workspace === undefined) return true
-    const manifest = `${workspace}/package.json`
-    if (!all.has(manifest)) return true
-    if (!audiences.has(manifest)) {
-      audiences.set(manifest, audienceOf(read(manifest)))
-    }
-    const audience = audiences.get(manifest) ?? null
-    return audience === null || PHONE_AUDIENCES.has(audience)
-  }
+  const onThePhone = phoneSources(tracked, read)
+  const phone = (file: string): boolean =>
+    !GESTURE_MODULES.has(file) && onThePhone(file)
 
   const violations: Array<GestureViolation> = []
   for (const file of [...tracked].sort()) {

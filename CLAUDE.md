@@ -284,15 +284,11 @@ stepping an index) is review's.
 
 Held by: `pnpm check:gestures`
 
-**A tap moves no control it leaves on the screen** (HS1, HS2). Anything a tap brings up in the
-flow (a refusal, a "Typo?", a hint) moves every control after it, and in a bottom sheet every
-control before it, so a thumb already on its way lands on the wrong one. Keep the line's room with
-`Reserved` (`@some-ui/shared`), or put it after the last control of a page that grows down.
-`apps/www/tests/ui-fit/stays-put.spec.ts` walks screens tap by tap and fails on any move; a phone
+**A tap moves no control it leaves on the screen** (HS1, HS2; `docs/ui-fit/README.md` 2i says
+why and how). `apps/www/tests/ui-fit/stays-put.spec.ts` walks screens tap by tap and fails on any move; a phone
 screen you change gets a walk there. `pnpm check:stays-put` (`scripts/check-stays-put.ts`, rule
 in `packages/eslint/src/stays-put.ts`; also in root `pnpm lint`) fails an error or status line
-mounted on a condition that `scripts/stays-put.allowlist` does not list (`docs/ui-fit/README.md`,
-2i and 2j).
+mounted on a condition that `scripts/stays-put.allowlist` does not list (2j).
 
 Held by: `pnpm check:stays-put`
 

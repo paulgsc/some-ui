@@ -1,5 +1,6 @@
 // The machinery the counted repo checks share: R1 (`react-coordination.ts`)
-// and F1 (`foreign-boundary.ts`), both in docs/monorepo-boundaries.md. Each
+// and F1 (`foreign-boundary.ts`), in docs/monorepo-boundaries.md, and HS2
+// (`stays-put.ts`), in docs/ui-fit/README.md. Each
 // counts sites of one syntactic shape per source file and compares the
 // counts, exactly and in both directions, with an allowlist whose entries are
 // reasoned by a comment line. What a site is, and which reasons an entry may
@@ -61,6 +62,19 @@ export function parseSource(path: string, source: string): ts.SourceFile {
     true,
     scriptKind(path)
   )
+}
+
+/** `node` without the parentheses and type-only wrappers around it. */
+export function unwrap(node: ts.Expression): ts.Expression {
+  let current = node
+  while (
+    ts.isParenthesizedExpression(current) ||
+    ts.isAsExpression(current) ||
+    ts.isNonNullExpression(current) ||
+    ts.isSatisfiesExpression(current)
+  )
+    current = current.expression
+  return current
 }
 
 export type AllowlistEntry = {
@@ -258,6 +272,14 @@ export type CountedCheck = {
   readonly reasonHint: string
   /** A file's sites, or null when the check does not cover it. */
   readonly count: (path: string, source: string) => number | null
+  /**
+   * Narrows the files counted, over the tree: `tracked` paths and `read` for
+   * any of them (a workspace's manifest, say). Every in-scope file without it.
+   */
+  readonly scope?: (
+    tracked: ReadonlyArray<string>,
+    read: (path: string) => string
+  ) => (path: string) => boolean
   /** The kind of site, plural: "await/promise-chain sites". */
   readonly sites: string
   /** What an unlisted file is and the first way out, before "or add …". */
@@ -348,8 +370,12 @@ export function runCountedCheck(
 ): void {
   const root = repoRoot()
   const actual = new Map<string, number>()
-  for (const path of worktreeFiles(root)) {
-    if (!isInScope(path)) continue
+  const files = worktreeFiles(root)
+  const covered = check.scope?.(files, (path) =>
+    readFileSync(join(root, path), "utf8")
+  )
+  for (const path of files) {
+    if (!isInScope(path) || covered?.(path) === false) continue
     const sites = check.count(path, readFileSync(join(root, path), "utf8"))
     if (sites !== null && sites > 0) actual.set(path, sites)
   }

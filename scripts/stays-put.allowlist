@@ -1,7 +1,6 @@
 # HS2 (docs/ui-fit/README.md, "2j"). Every phone surface that mounts an
-# error or status line on a condition (`cond && <p role="alert">`, a ternary
-# with null, a component that returns null until it has something to say),
-# with exactly how many such lines it has. `pnpm check:stays-put` fails on
+# error or status line on a condition, with exactly how many such lines it
+# has. `pnpm check:stays-put` fails on
 # any file missing here, and on any count that no longer matches, in either
 # direction.
 #
@@ -33,7 +32,6 @@
 3 apps/www/src/components/settings/device-section.tsx
 2 apps/www/src/components/settings/device-storage.tsx
 1 apps/www/src/routes/_dashboard/_apk/practice/index.tsx
-1 apps/www/src/routes/_dashboard/_lan/resume-build.tsx
 1 packages/ui/auth/src/components/auth-error/index.tsx
 1 packages/ui/auth/src/templates/auth-page/index.tsx
 1 packages/ui/game-week/src/components/game-week/index.tsx

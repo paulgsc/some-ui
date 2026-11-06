@@ -1,18 +1,12 @@
 /**
  * HS2's count (docs/ui-fit/README.md), as pure functions.
  * `scripts/check-stays-put.ts` feeds them the tree and
- * `scripts/stays-put.allowlist`; these cases pin what a site is and which
- * files are phone surfaces. The allowlist machinery is R1's (`site-count.ts`),
- * pinned in react-coordination.test.ts.
+ * `scripts/stays-put.allowlist`; these cases pin what a site is. Which files
+ * are phone sources is `phone-sources.ts`, pinned through gestures.test.ts;
+ * the allowlist machinery is R1's (`site-count.ts`), pinned in
+ * react-coordination.test.ts.
  */
-import { readdirSync, readFileSync } from "node:fs"
-import { join } from "node:path"
-import {
-  findStaysPutViolations,
-  NOT_ON_THE_PHONE,
-  onThePhone,
-  staysPutSites,
-} from "@eslint/stays-put.js"
+import { findStaysPutViolations, staysPutSites } from "@eslint/stays-put.js"
 import { describe, expect, it } from "vitest"
 
 const PATH = "packages/ui/aph/src/components/a/index.tsx"
@@ -74,32 +68,9 @@ describe("staysPutSites", () => {
       `)
     ).toBe(0)
   })
-})
 
-describe("onThePhone", () => {
-  it("covers www's source and the phone's workspaces, as TSX/JSX only", () => {
-    expect(onThePhone("apps/www/src/routes/a.tsx")).toBe(true)
-    expect(onThePhone("packages/ui/soundbites/src/a.tsx")).toBe(true)
-    expect(onThePhone("packages/ui/soundbites/src/a.ts")).toBe(false)
-    expect(onThePhone("packages/ui/honeycomb/src/a.tsx")).toBe(false)
-    expect(onThePhone("apps/mailbox/src/a.tsx")).toBe(false)
-    expect(staysPutSites("packages/ui/honeycomb/src/a.tsx", "")).toBeNull()
-  })
-
-  it("leaves out exactly the packages/ui workspaces whose audience is web or lan", () => {
-    const root = join(import.meta.dirname, "../../ui")
-    const offPhone = readdirSync(root, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
-      .filter((entry) => {
-        const manifest: { someUi?: { audience?: string } } = JSON.parse(
-          readFileSync(join(root, entry.name, "package.json"), "utf8")
-        )
-        const audience = manifest.someUi?.audience
-        return audience === "web" || audience === "lan"
-      })
-      .map((entry) => entry.name)
-      .sort()
-    expect([...NOT_ON_THE_PHONE].sort()).toEqual(offPhone)
+  it("counts JSX sources only", () => {
+    expect(staysPutSites("apps/www/src/a.ts", "export const a = 1")).toBeNull()
   })
 })
 

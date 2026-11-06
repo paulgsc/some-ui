@@ -45,6 +45,7 @@ import {
   findCountViolations,
   parseSource,
   PROMISE_CHAIN,
+  unwrap,
 } from "./site-count.ts"
 
 const ALLOWLIST_FILE = "scripts/foreign-boundary.allowlist"
@@ -66,18 +67,6 @@ function isForeignImport(node: ts.Node): boolean {
     ts.isStringLiteralLike(node.arguments[0]!) &&
     FOREIGN_MODULE.test(node.arguments[0].text)
   )
-}
-
-function unwrap(node: ts.Expression): ts.Expression {
-  let current = node
-  while (
-    ts.isParenthesizedExpression(current) ||
-    ts.isAsExpression(current) ||
-    ts.isNonNullExpression(current) ||
-    ts.isSatisfiesExpression(current)
-  )
-    current = current.expression
-  return current
 }
 
 const COMBINATORS = new Set(["all", "allSettled", "any", "race"])

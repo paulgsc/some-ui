@@ -436,8 +436,8 @@ fault's commonest shape: an error or status line mounted on a condition.
 > **HS2: a line a phone surface mounts on a condition is listed, with why it
 > moves nothing.**
 >
-> - _Claim:_ every phone source file (`packages/ui/*` workspaces whose audience
->   reaches the phone, and `apps/www/src`) that mounts an element with
+> - _Claim:_ every phone source file (`packages/eslint/src/phone-sources.ts`,
+>   the scope GES5 holds too) that mounts an element with
 >   `role="alert"`, `role="status"` or `<Alert>` on a condition (`cond && …`,
 >   a ternary with nothing, a component that returns its line or nothing) is
 >   listed in `scripts/stays-put.allowlist` at its exact count, in a group
@@ -450,10 +450,10 @@ fault's commonest shape: an error or status line mounted on a condition.
 >   a sheet anchored to the bottom. Or a hunk that rewords a `Placement:` line
 >   so it no longer says why the line moves nothing, or that moves a listed
 >   line above a control without moving its entry. Or a hunk that narrows
->   `staysPutSites`, `onThePhone` or `NOT_ON_THE_PHONE` in
->   `packages/eslint/src/stays-put.ts` beyond what the manifests say.
+>   `staysPutSites` in `packages/eslint/src/stays-put.ts` or `phoneSources` in
+>   `packages/eslint/src/phone-sources.ts`.
 > - _Scope:_ `scripts/stays-put.allowlist` and the files it names;
->   `packages/eslint/src/stays-put.ts`.
+>   `packages/eslint/src/stays-put.ts` and `phone-sources.ts`.
 > - _Why not enforced:_ that each line is listed at its count is enforced
 >   (`pnpm check:stays-put`, in root `pnpm lint` and pr.yml). Whether a
 >   listed line moves a control is layout, which no AST can see: the same
@@ -461,11 +461,10 @@ fault's commonest shape: an error or status line mounted on a condition.
 >   keypad above it. A walk in `stays-put.spec.ts` measures it for the
 >   screens it walks.
 >
-> True when declared: 51 lines in 30 files; aph's logger's two, below Save
-> and walked, under `Placement:`, and the other 49 grandfathered.
+> True when declared: 50 lines in 29 files; aph's logger's two, below Save
+> and walked, under `Placement:`, and the other 48 grandfathered.
 
-`Reserved` is never a site, so keeping a line's room takes its entry off the
-list. What the count cannot see (a line with no role, a wrapper mounted
+What the count cannot see (a line with no role, a wrapper mounted
 around one, one element swapped for another of a different size) is in the
 module's header, and stays with review and the walks.
 
