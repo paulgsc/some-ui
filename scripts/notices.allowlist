@@ -20,13 +20,8 @@
 1 packages/speech/src/components/speech-status/index.tsx
 1 packages/ui/auth/src/components/auth-error/index.tsx
 1 packages/ui/auth/src/templates/auth-page/index.tsx
-1 packages/ui/game-week/src/components/game-week/index.tsx
-2 packages/ui/leetype/src/components/incident/incident-session/index.tsx
-1 packages/ui/leetype/src/components/incident/record-screen/index.tsx
-1 packages/ui/leetype/src/components/session-file-picker/index.tsx
 2 packages/ui/leetype/src/components/typing-game/exercise-card/index.tsx
 1 packages/ui/leetype/src/components/typing-game/typing-error-alert/index.tsx
-6 packages/ui/rust-rounds/src/components/rust-rounds/index.tsx
 1 packages/ui/shared/src/components/ui/alert.tsx
 2 packages/ui/shared/src/components/ui/reserved/index.tsx
 2 packages/ui/topik/src/components/topik/change-material/change-material-dialog/index.tsx

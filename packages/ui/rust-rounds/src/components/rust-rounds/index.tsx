@@ -36,7 +36,7 @@ import { runHeading, WORDS } from "@rust-rounds/lib/play/words"
 import {
   Button,
   CodeCard,
-  Reserved,
+  Notice,
   SameWidth,
   TakeItem,
   Textarea,
@@ -50,6 +50,9 @@ export type RustRoundsProps = {
 }
 
 type Dispatch = (intent: PlayIntent) => void
+
+/** What the tutor's page made of a reply. */
+type ReplyAnswer = Extract<PlayState["screen"], { kind: "tutor" }>["answer"]
 
 /** Text exactly as printed: kept whole, never wrapped, scrolled sideways. */
 const Printed = ({
@@ -69,12 +72,6 @@ const Printed = ({
     </pre>
   </section>
 )
-
-/**
- * The most lines what the earlier note says takes at the narrowest phone
- * (`WORDS.earlierNoteUnplayable`); `stays-put-rounds.spec.ts` holds it.
- */
-const EARLIER_LINES = 3
 
 const NO_RUN_WORDS: Readonly<Record<NoRun, string>> = {
   waits: WORDS.noRun,
@@ -139,10 +136,9 @@ type Notes = {
 /**
  * The card's voice note, on the take pattern's parts: tap to talk and tap
  * to stop, then where it's kept, Play, Redo and Let it go. Once a take found
- * the phone had no room, a card with no note says so in place of the button:
+ * the phone had no room, a card with no note says so by its button (`full`):
  * the next card tries again. The card's own actions (`children`) follow the
- * note, and what the note says aside comes after them, so its going with the
- * next tap moves none of them (HS1).
+ * note, and what the note says aside is said over the screen (HS1).
  */
 const VoiceNote = ({
   state,
@@ -158,18 +154,12 @@ const VoiceNote = ({
   children: ReactNode
 }): JSX.Element => {
   const { port } = notes
+  // What the note said aside, put away until it says something else.
+  const [dismissed, setDismissed] = useState<PlayState["said"]>(null)
   if (port === null) {
     return (
       <>
         <p className="text-muted-foreground text-sm">{WORDS.noMicrophone}</p>
-        {children}
-      </>
-    )
-  }
-  if (state.noRoom && visit.note === null) {
-    return (
-      <>
-        <p className="text-muted-foreground text-sm">{WORDS.noRoom}</p>
         {children}
       </>
     )
@@ -189,12 +179,17 @@ const VoiceNote = ({
         onPlay={() => dispatch({ type: "playNote" })}
         onRedo={() => dispatch({ type: "tapNote" })}
         onLetGo={(_, place) => dispatch({ type: "letGoNote", place })}
+        full={state.noRoom && visit.note === null ? WORDS.noRoom : undefined}
       />
       {children}
-      {aside !== null && (
-        <p role="status" className="text-muted-foreground text-sm">
+      {aside !== null && state.said !== dismissed && (
+        <Notice
+          role="status"
+          tone="warning"
+          onDismiss={() => setDismissed(state.said)}
+        >
           {aside}
-        </p>
+        </Notice>
       )}
     </>
   )
@@ -214,13 +209,11 @@ const EarlierNote = ({
   dispatch: Dispatch
 }): JSX.Element => {
   const { playback, unplayable } = state.notes
+  // That it would not play, put away until the next try says so again.
+  const [dismissed, setDismissed] = useState<string | null>(null)
+  if (unplayable === null && dismissed !== null) setDismissed(null)
   const playing = playback.kind !== "quiet" && playback.id === note
-  const said =
-    playback.kind === "loading" && playback.id === note
-      ? WORDS.earlierNoteReading
-      : unplayable === note
-        ? WORDS.earlierNoteUnplayable
-        : null
+  const reading = playback.kind === "loading" && playback.id === note
   return (
     <section className="bg-muted/40 flex flex-col items-start gap-2 rounded-xl p-3">
       <h3 className="text-muted-foreground text-xs font-semibold">
@@ -235,9 +228,20 @@ const EarlierNote = ({
       >
         {playing ? WORDS.stopEarlier : WORDS.playEarlier}
       </Button>
-      <Reserved role="status" lines={EARLIER_LINES} className="text-sm">
-        {said}
-      </Reserved>
+      {reading ? (
+        <Notice>{WORDS.earlierNoteReading}</Notice>
+      ) : (
+        unplayable === note &&
+        dismissed !== note && (
+          <Notice
+            role="status"
+            tone="warning"
+            onDismiss={() => setDismissed(note)}
+          >
+            {WORDS.earlierNoteUnplayable}
+          </Notice>
+        )
+      )}
     </section>
   )
 }
@@ -414,6 +418,8 @@ const MenuScreen = ({
   const refines = refinesWaiting(rounds, state.log)
   const yours = deskConcepts(rounds)
   const { place } = state
+  // Put away for this visit to the menu.
+  const [roomHeard, setRoomHeard] = useState(false)
   return (
     <div className="flex min-w-0 flex-col gap-4">
       <Button
@@ -424,8 +430,14 @@ const MenuScreen = ({
           ? WORDS.start
           : WORDS.continueAt(place.title.concept, place.title.number)}
       </Button>
-      {state.noRoom && (
-        <p className="text-muted-foreground text-sm">{WORDS.noRoom}</p>
+      {state.noRoom && !roomHeard && (
+        <Notice
+          role="status"
+          tone="warning"
+          onDismiss={() => setRoomHeard(true)}
+        >
+          {WORDS.noRoom}
+        </Notice>
       )}
       {(fresh.length > 0 || refines > 0) && (
         <ul className="flex flex-col gap-1 text-sm">
@@ -501,8 +513,6 @@ const DeskScreen = ({
       <p className="text-sm">{WORDS.deskSay}</p>
       {notes.port === null ? (
         <p className="text-muted-foreground text-sm">{WORDS.noMicrophone}</p>
-      ) : state.noRoom && desk.note === null ? (
-        <p className="text-muted-foreground text-sm">{WORDS.noRoom}</p>
       ) : (
         <TakeItem
           view={deskNote(state, desk, notes.takes, notes.port.pattern.options)}
@@ -511,6 +521,7 @@ const DeskScreen = ({
           onPlay={() => dispatch({ type: "deskPlayNote" })}
           onRedo={() => dispatch({ type: "deskTapNote" })}
           onLetGo={(_, place) => dispatch({ type: "deskLetGoNote", place })}
+          full={state.noRoom && desk.note === null ? WORDS.noRoom : undefined}
         />
       )}
       <Actions>
@@ -530,18 +541,33 @@ const TutorScreen = ({
   dispatch: Dispatch
 }): JSX.Element | null => {
   const { screen, copy } = state
+  // What a copy or a reply came to, each put away until the next one.
+  const [copyHeard, setCopyHeard] = useState<PlayState["copy"] | null>(null)
+  const [answerHeard, setAnswerHeard] = useState<ReplyAnswer>(null)
   if (screen.kind !== "tutor") return null
   const { answer } = screen
   const copyLine =
-    copy.kind === "copying"
-      ? WORDS.copying
-      : copy.kind === "copied"
-        ? copy.what === "fix"
-          ? WORDS.fixCopied
-          : WORDS.copied
-        : copy.kind === "failed"
-          ? WORDS.copyFailed
-          : null
+    copy === copyHeard
+      ? null
+      : copy.kind === "copying"
+        ? WORDS.copying
+        : copy.kind === "copied"
+          ? copy.what === "fix"
+            ? WORDS.fixCopied
+            : WORDS.copied
+          : copy.kind === "failed"
+            ? WORDS.copyFailed
+            : null
+  const answerLine =
+    answer === null || answer === answerHeard
+      ? null
+      : answer.kind === "empty"
+        ? WORDS.replyEmpty
+        : answer.kind === "taken"
+          ? WORDS.replyTaken(answer.concept, answer.cards)
+          : answer.kind === "already-here"
+            ? WORDS.replyAlreadyHere
+            : WORDS.replyRefused
   return (
     <div className="flex min-w-0 flex-col gap-4">
       <Button
@@ -550,15 +576,17 @@ const TutorScreen = ({
       >
         {WORDS.copyForTutor}
       </Button>
-      {/* Each line keeps its room, so what it says moves no control
-          (HS1); the copy refused comes last, after every control. */}
-      <Reserved
-        role="status"
-        lines={2}
-        className="text-muted-foreground text-sm"
-      >
-        {copyLine}
-      </Reserved>
+      {copyLine !== null && (
+        <Notice
+          role={copy.kind === "failed" ? "alert" : "status"}
+          tone={copy.kind === "failed" ? "danger" : "neutral"}
+          {...(copy.kind === "copying"
+            ? {}
+            : { onDismiss: () => setCopyHeard(copy) })}
+        >
+          {copyLine}
+        </Notice>
+      )}
       <label className="flex flex-col gap-1 text-sm font-semibold">
         {WORDS.replyLabel}
         <Textarea
@@ -570,26 +598,36 @@ const TutorScreen = ({
           }
         />
       </label>
-      <Reserved role="status" lines={2} className="text-sm">
-        {answer === null
-          ? null
-          : answer.kind === "empty"
-            ? WORDS.replyEmpty
-            : answer.kind === "taken"
-              ? WORDS.replyTaken(answer.concept, answer.cards)
-              : answer.kind === "already-here"
-                ? WORDS.replyAlreadyHere
-                : WORDS.replyRefused}
-      </Reserved>
+      {answer !== null && answerLine !== null && (
+        <Notice
+          role={
+            answer.kind === "refused" || answer.kind === "empty"
+              ? "alert"
+              : "status"
+          }
+          tone={
+            answer.kind === "refused"
+              ? "danger"
+              : answer.kind === "empty"
+                ? "warning"
+                : "neutral"
+          }
+          onDismiss={() => setAnswerHeard(answer)}
+        >
+          <p>{answerLine}</p>
+          {answer.kind === "refused" && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="mt-2"
+              onClick={() => dispatch({ type: "copyFix" })}
+            >
+              {WORDS.copyFix}
+            </Button>
+          )}
+        </Notice>
+      )}
       <Actions>
-        {answer?.kind === "refused" && (
-          <Button
-            variant="outline"
-            onClick={() => dispatch({ type: "copyFix" })}
-          >
-            {WORDS.copyFix}
-          </Button>
-        )}
         <Button onClick={() => dispatch({ type: "takeReply" })}>
           {WORDS.takeReply}
         </Button>
@@ -634,6 +672,14 @@ export const RustRounds = ({ ports }: RustRoundsProps): JSX.Element => {
   const notes = port?.takes ?? NO_MICROPHONE.takes
   const takes = useSyncExternalStore(notes.subscribe, notes.getSnapshot)
   const { dispatch } = runtime
+  // A refusal put away stays away until the session says another.
+  const [keptHeard, setKeptHeard] = useState<PlayState["notKept"] | null>(null)
+  const [lostHeard, setLostHeard] = useState<PlayState["lost"]>(null)
+  const notKept =
+    state.notKept !== keptHeard && Object.values(state.notKept).some(Boolean)
+      ? state.notKept
+      : null
+  const lost = state.lost === lostHeard ? null : state.lost
 
   return (
     <div className="mx-auto flex w-full max-w-md min-w-0 flex-col gap-4">
@@ -655,17 +701,19 @@ export const RustRounds = ({ ports }: RustRoundsProps): JSX.Element => {
       {state.screen.kind === "tutor" && (
         <TutorScreen state={state} dispatch={dispatch} />
       )}
-      {/* After the screen, whose last control ends the page: a refusal that
-          lands moves nothing (HS1). */}
-      {Object.values(state.notKept).some(Boolean) && (
-        <p role="alert" className="text-destructive text-sm">
+      {notKept !== null && (
+        <Notice
+          role="alert"
+          tone="danger"
+          onDismiss={() => setKeptHeard(notKept)}
+        >
           {WORDS.notKept}
-        </p>
+        </Notice>
       )}
-      {state.lost !== null && (
-        <p role="alert" className="text-destructive text-sm">
-          {WORDS.noteLost(state.lost.concept, state.lost.number)}
-        </p>
+      {lost !== null && (
+        <Notice role="alert" tone="danger" onDismiss={() => setLostHeard(lost)}>
+          {WORDS.noteLost(lost.concept, lost.number)}
+        </Notice>
       )}
     </div>
   )

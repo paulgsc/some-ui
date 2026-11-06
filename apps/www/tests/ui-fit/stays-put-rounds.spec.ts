@@ -3,15 +3,19 @@
  * session files, Rust Rounds, and Game Week (`./stays-put.spec.ts` holds
  * the claim).
  * - Family: every tap each walk below takes, at each of `PHONE_VIEWPORTS`;
- *   for the incident session, a pick (the round's boundary controls leave
- *   the header), a pick the log refuses with the rounds waiting open, and a
- *   record screen whose phone fills up; for its session files, a file
- *   picked; for Rust Rounds, Pin, a Pin the phone refuses, a note lost after
- *   moving on, a note an earlier opening left, an earlier note that will not
- *   play, and the tutor's page copied, refused the copy, and given a reply
- *   it cannot take; for Game Week, a microphone refused and an Undo too
- *   late. A tap that declares `reflows` (another screen, a step of the bite,
- *   a disclosure) is outside it, and says why.
+ *   for the incident session, a pick (the round's boundary controls stay in
+ *   the header, out of reach), the worked answer and the rounds waiting
+ *   opened below what asked for them, a pick the log refuses with the rounds
+ *   waiting open, and a record screen whose phone fills up; for its session
+ *   files, a file picked and one refused; for Rust Rounds, Pin, a Pin the
+ *   phone refuses, a note lost after moving on, a note the phone has no room
+ *   for (on a card, then the menu, and on the desk step), a note an earlier opening
+ *   left, an earlier note that will not play, and the tutor's page copied,
+ *   refused the copy, and given a reply it cannot take; for Game Week, a
+ *   microphone refused and an Undo too late; and a notice put away. A tap
+ *   that declares `reflows` (another screen, a step of the bite, a mode) is
+ *   outside it, and says why; one that declares `grows` holds what is at
+ *   and above it.
  * - Proof: this spec, over `../layout-invariants/stays-put.ts`.
  * - Tolerance: a screen this spec does not walk.
  */
@@ -56,24 +60,25 @@ const INCIDENT: ReadonlyArray<Tap> = [
   button(/^Three machines is too small/, "picks an option"),
   {
     ...button("Show the worked answer", "shows the worked answer"),
-    reflows: "disclosure: the worked answer opens where its button was",
+    grows: "the worked answer, below its button",
   },
   toScreen("Continue", "goes on to the reading"),
   {
     ...button("Rounds waiting", "opens the rounds waiting"),
-    reflows: "disclosure: the rounds waiting open below the header",
+    grows: "the rounds waiting, below the header",
   },
   {
     ...button("Rounds waiting", "closes the rounds waiting"),
-    reflows: "disclosure: the rounds waiting close",
+    grows: "the rounds waiting go from below the header",
   },
   toScreen("Save it; this round waits", "saves the round for later"),
   {
     ...button("Rounds waiting", "opens the rounds waiting on a round"),
-    reflows: "disclosure: the rounds waiting open below the header",
+    grows: "the rounds waiting, below the header",
   },
   refuseWrites,
   button(/^Hear back from a majority/, "picks an option, refused"),
+  button("Dismiss", "puts the refusal away"),
   toScreen("Continue", "goes on to the reading"),
   toScreen("Skip", "skips the take's choice"),
   toScreen(/^Incident 1: the writes/, "goes to the record screen"),
@@ -84,19 +89,39 @@ const INCIDENT: ReadonlyArray<Tap> = [
   },
 ]
 
-/** LeetType's session files: one picked from storage. */
-const SESSION_FILES: ReadonlyArray<Tap> = [
-  {
-    does: "picks a session file from storage",
-    act: async (page): Promise<void> => {
-      await page.locator("input[type=file]").setInputFiles({
-        name: "t1-99-fit-stress.json",
-        mimeType: "application/json",
-        buffer: Buffer.from(JSON.stringify(STRESS_SESSION)),
-      })
-      await page.getByText(/already on this phone/).waitFor()
-    },
+/** Picks `body` from storage as `name`, and waits for what the pick says. */
+const picks = (
+  name: string,
+  body: string,
+  says: RegExp,
+  does: string
+): Tap => ({
+  does,
+  act: async (page): Promise<void> => {
+    await page.locator("input[type=file]").setInputFiles({
+      name,
+      mimeType: "application/json",
+      buffer: Buffer.from(body),
+    })
+    await page.getByText(says).waitFor()
   },
+})
+
+/** LeetType's session files: one picked from storage, and one refused. */
+const SESSION_FILES: ReadonlyArray<Tap> = [
+  picks(
+    "t1-99-fit-stress.json",
+    JSON.stringify(STRESS_SESSION),
+    /already on this phone/,
+    "picks a session file from storage"
+  ),
+  button("Dismiss", "puts what the pick said away"),
+  picks(
+    "t1-98-not-a-session.json",
+    "{}",
+    /isn't a session file/,
+    "picks a file that is not a session"
+  ),
 ]
 
 /** A card pinned, then one pinned with the phone refusing the write. */
@@ -123,6 +148,34 @@ const RUST_LOST: ReadonlyArray<Tap> = [
     reflows: "screen: the next card",
   },
   lands(/couldn't be kept/, "the note is lost"),
+]
+
+/** Talks for a moment, then stops the note: one long enough to keep. */
+const stopsAfterAMoment: Tap = {
+  ...button("Stop, and keep it", "talks, then stops the note"),
+  act: async (page): Promise<void> => {
+    await page.waitForTimeout(1_200)
+    await tap(page, "Stop, and keep it")
+  },
+}
+
+/** A note the phone has no room for: on its card, then said on the menu. */
+const RUST_FULL: ReadonlyArray<Tap> = [
+  happens("keeping", "the phone will have no room for the next note", "full"),
+  toScreen("Start", "starts the rounds"),
+  button("Start talking", "starts a note"),
+  stopsAfterAMoment,
+  toScreen("Menu", "goes to the menu"),
+  button("Dismiss", "puts the phone's room away"),
+]
+
+/** A paste's note the phone has no room for, on the desk step. */
+const RUST_DESK_FULL: ReadonlyArray<Tap> = [
+  happens("keeping", "the phone will have no room for the next note", "full"),
+  toScreen("Start", "starts the rounds"),
+  toScreen("Paste an error", "opens the desk step"),
+  button("Start talking", "starts a note"),
+  stopsAfterAMoment,
 ]
 
 /** A refine card whose earlier note neither the phone nor home has. */
@@ -191,6 +244,8 @@ walkEachPhone("a tap moves nothing it leaves on the screen (HS1, rounds)", [
   walk("rounds-incident", /^Play /, SESSION_FILES, "session files"),
   walk("rounds-rust", /^Start$/, RUST_PIN, "rust rounds, pin"),
   walk("rounds-rust", /^Start$/, RUST_LOST, "rust rounds, a lost note"),
+  walk("rounds-rust", /^Start$/, RUST_FULL, "rust rounds, no room"),
+  walk("rounds-rust", /^Start$/, RUST_DESK_FULL, "rust rounds, desk, no room"),
   walk("rounds-rust", /^Tutor$/, RUST_TUTOR, "rust rounds, tutor"),
   walk("rounds-rust-refine", /^borrowing/, RUST_REFINE, "rust rounds, refine"),
   walk("rounds-game-week", /^Say it first$/, GAME_WEEK, "game week"),

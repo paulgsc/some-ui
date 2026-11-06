@@ -33,7 +33,7 @@ import {
 } from "@leetype/lib/leetype/session-log"
 import type { SessionFile } from "@leetype/types/session-file"
 import { assertNever, cn } from "@some-ui/core-utils"
-import { Button, Held } from "@some-ui/shared"
+import { Button, Notice } from "@some-ui/shared"
 
 type IncidentSessionProps = {
   /** The file's name, as the session log names it. */
@@ -89,6 +89,11 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
   useEffect(() => runtime.attach(), [runtime])
   // Whether the rounds waiting on a reading are open during play.
   const [waiting, setWaiting] = useState(false)
+  // A refusal put away stays away until the log says something else.
+  const [dismissed, setDismissed] = useState<string | null>(null)
+  if (problem === null && dismissed !== null) setDismissed(null)
+  // The time set is said once a session; put away, it is not said again.
+  const [timeHeard, setTimeHeard] = useState(false)
   const ended = play?.ended ?? null
   const page =
     // scroll-intent: reading-page: a round is one scrolling screen
@@ -247,26 +252,31 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
         <p className="min-w-0 truncate text-xs text-muted-foreground">
           {play.file.title}
         </p>
-        {/* Held through a round, so a pick moves nothing below (HS1). */}
-        <Held shown={boundary} className="flex shrink-0 gap-1">
-          {parked.length > 0 && (
+        {/* Out of reach through a round, and still where they were (HS1);
+            the end screen has its own way out. */}
+        {ended === null && (
+          <div className="flex shrink-0 gap-1">
+            {parked.length > 0 && (
+              <Button
+                variant="ghost"
+                className="min-h-11"
+                aria-expanded={waiting}
+                disabled={!boundary}
+                onClick={(): void => setWaiting((now) => !now)}
+              >
+                Rounds waiting
+              </Button>
+            )}
             <Button
               variant="ghost"
               className="min-h-11"
-              aria-expanded={waiting}
-              onClick={(): void => setWaiting((now) => !now)}
+              disabled={!boundary}
+              onClick={(): void => dispatch({ type: "leave" })}
             >
-              Rounds waiting
+              End here
             </Button>
-          )}
-          <Button
-            variant="ghost"
-            className="min-h-11"
-            onClick={(): void => dispatch({ type: "leave" })}
-          >
-            End here
-          </Button>
-        </Held>
+          </div>
+        )}
       </header>
       {waiting && (
         // Open through a round, its rounds out of reach until its end.
@@ -289,20 +299,19 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
         </div>
       )}
       {body}
-      {/* After the body, whose last control ends the page: a line that
-          comes moves nothing (HS1). */}
-      {timeUp && ended === null && (
-        <p
-          role="status"
-          className="pt-4 text-pretty text-sm text-muted-foreground"
-        >
+      {timeUp && ended === null && !timeHeard && (
+        <Notice role="status" onDismiss={(): void => setTimeHeard(true)}>
           That is the time you set. End here to see where you are, or go on.
-        </p>
+        </Notice>
       )}
-      {problem !== null && (
-        <p role="alert" className="pt-4 text-sm text-destructive">
+      {problem !== null && problem !== dismissed && (
+        <Notice
+          role="alert"
+          tone="danger"
+          onDismiss={(): void => setDismissed(problem)}
+        >
           {problem}
-        </p>
+        </Notice>
       )}
     </div>
   )

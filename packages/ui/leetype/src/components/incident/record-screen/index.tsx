@@ -11,7 +11,7 @@ import type { SpokenTakeView } from "@leetype/lib/leetype/spoken-take"
 import type { SessionScreen } from "@leetype/types/session-file"
 import { rubricText } from "@leetype/types/session-file"
 import { assertNever } from "@some-ui/core-utils"
-import { Button, Label, TakeItem, Textarea } from "@some-ui/shared"
+import { Button, Label, Notice, TakeItem, Textarea } from "@some-ui/shared"
 import type { TakePlace } from "@some-ui/voice-capture"
 
 type RecordScreen = Extract<SessionScreen, { type: "record" }>
@@ -132,6 +132,8 @@ export const RecordScreenView: FC<RecordScreenProps> = ({
   // Edit buffers for this screen's answer; the screen is keyed by its id.
   const [typing, setTyping] = useState(take === null)
   const [text, setText] = useState("")
+  // The phone filling up, put away: said once a screen.
+  const [fullHeard, setFullHeard] = useState(false)
   // A take needs room for audio and a note; a typed answer, a note only.
   const full = take?.full === true
   const noRoom = take?.notesFull === true
@@ -146,16 +148,15 @@ export const RecordScreenView: FC<RecordScreenProps> = ({
     </>
   )
 
-  // Why no take can be kept now: in the take's own room while it would
-  // show, and after Pass while typing.
+  // Why no take can be kept now: by the take while it shows, and over the
+  // screen while typing.
   const fullWords = !full
     ? null
     : noRoom
       ? "This phone has kept as many answers as it can until a home it's paired with has the ones on it."
       : "This phone has kept as many recorded answers as it can until a home it's paired with has the ones on it. You can still type one."
 
-  // While the take is still to come, the phone filling up says so where
-  // its button was.
+  // While the take is still to come, it says the phone filling up.
   const takeItem = (fullSaid?: string): JSX.Element | null =>
     take === null ? null : (
       <TakeItem
@@ -246,10 +247,14 @@ export const RecordScreenView: FC<RecordScreenProps> = ({
       >
         Pass
       </Button>
-      {typing && fullWords !== null && (
-        <p role="status" className="text-pretty text-sm text-muted-foreground">
+      {typing && fullWords !== null && !fullHeard && (
+        <Notice
+          role="status"
+          tone="warning"
+          onDismiss={(): void => setFullHeard(true)}
+        >
           {fullWords}
-        </p>
+        </Notice>
       )}
     </article>
   )

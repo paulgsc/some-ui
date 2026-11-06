@@ -7,7 +7,7 @@ import type {
 } from "@leetype/lib/leetype/session-file-pick"
 import { SessionFilePickRuntime } from "@leetype/lib/leetype/session-file-pick"
 import { assertNever, cn } from "@some-ui/core-utils"
-import { Button } from "@some-ui/shared"
+import { Button, Notice } from "@some-ui/shared"
 import { FolderOpen } from "lucide-react"
 
 type SessionFilePickerProps = {
@@ -83,7 +83,13 @@ export const SessionFilePicker: FC<SessionFilePickerProps> = ({
     event.target.value = ""
     if (file) runtime.pick(file)
   }
-  const status = statusOf(pick)
+  // A pick's word put away, until the next pick says another; the list's
+  // failure, once.
+  const [dismissed, setDismissed] = useState<PickState | null>(null)
+  const [heldHeard, setHeldHeard] = useState(false)
+  const status = pick === dismissed ? null : statusOf(pick)
+  // A refusal or a file kept stays until put away; progress goes by itself.
+  const settled = pick.kind === "refused" || pick.kind === "kept"
   const card =
     // scroll-intent: reading-page: the held list and a file's findings can
     // outgrow a phone held sideways; the card scrolls inside the box it is
@@ -143,37 +149,39 @@ export const SessionFilePicker: FC<SessionFilePickerProps> = ({
           ))}
         </ul>
       )}
-      {/* After the held files, the last controls: what a pick says moves
-          no Play row (HS1). */}
       {status !== null && (
-        <p
+        <Notice
           role={pick.kind === "refused" ? "alert" : "status"}
-          className={cn(
-            "text-pretty text-sm",
-            pick.kind === "refused" && "text-destructive"
-          )}
+          tone={pick.kind === "refused" ? "danger" : "neutral"}
+          {...(settled ? { onDismiss: (): void => setDismissed(pick) } : {})}
         >
-          {status}
-        </p>
+          <p className="text-pretty">{status}</p>
+          {pick.kind === "kept" && pick.findings.length > 0 && (
+            <details className="mt-1">
+              <summary className="cursor-pointer text-muted-foreground">
+                The content lint found something; the session still plays
+              </summary>
+              <ul className="mt-1 list-disc space-y-0.5 pl-5 text-muted-foreground">
+                {pick.findings.map((finding) => (
+                  <li
+                    key={`${finding.code} ${finding.screen} ${finding.message}`}
+                  >
+                    {finding.screen}: {finding.message}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </Notice>
       )}
-      {pick.kind === "kept" && pick.findings.length > 0 && (
-        <details className="text-sm">
-          <summary className="cursor-pointer text-muted-foreground">
-            The content lint found something; the session still plays
-          </summary>
-          <ul className="mt-1 list-disc space-y-0.5 pl-5 text-muted-foreground">
-            {pick.findings.map((finding) => (
-              <li key={`${finding.code} ${finding.screen} ${finding.message}`}>
-                {finding.screen}: {finding.message}
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
-      {held.kind === "failed" && (
-        <p role="alert" className="text-sm text-destructive">
+      {held.kind === "failed" && !heldHeard && (
+        <Notice
+          role="alert"
+          tone="danger"
+          onDismiss={(): void => setHeldHeard(true)}
+        >
           {held.summary}
-        </p>
+        </Notice>
       )}
     </section>
   )
