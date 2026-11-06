@@ -3,6 +3,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { XIcon } from "lucide-react"
 
 import { cn } from "../../lib/utils"
+import { NoticeLayer } from "./notice"
 
 const Dialog = ({
   ...props
@@ -84,7 +85,9 @@ const DialogContent: FC<DialogContentProps> = ({
         )}
         {...props}
       >
-        {children}
+        {/* Its own plane: under a modal, the page's plane is hidden and out
+          of reach, so what the sheet says lands at the sheet's top. */}
+        <NoticeLayer className="top-3">{children}</NoticeLayer>
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"

@@ -2,6 +2,7 @@ import type { ComponentType, JSX } from "react"
 import { cn } from "@some-ui/core-utils"
 import { useIsMobile } from "@some-ui/react-hooks"
 import {
+  NoticeLayer,
   Sidebar,
   SidebarContent,
   SidebarFooter,
@@ -236,47 +237,51 @@ const DashboardLayout = (): JSX.Element => {
           !isBoundedRoute && barOf(pathname) !== null && "rail:pl-[6rem]"
         )}
       >
-        {!bareViewport && (
-          <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
-            {!MOBILE_APP && <SidebarTrigger />}
-            {/* The phone's way out: back to the wing's Home where the bar
+        {/* What a screen says about what was just done floats here, under the
+            header, over the screen: never in its layout (HS1). */}
+        <NoticeLayer className={bareViewport ? "top-3" : "top-16"}>
+          {!bareViewport && (
+            <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
+              {!MOBILE_APP && <SidebarTrigger />}
+              {/* The phone's way out: back to the wing's Home where the bar
                 steps aside, so the composer can be left without finishing
                 it; otherwise to the foyer, to choose another wing. */}
-            {MOBILE_APP && (
-              <MobileWayOut pathname={pathname} bounded={isBoundedRoute} />
-            )}
-            {/* On the phone the theme is the front desk's (Settings). */}
-            {!MOBILE_APP && <ThemeSwitcher />}
-            {/* Layer 1 of audio disclosure: a standing indicator of what this
+              {MOBILE_APP && (
+                <MobileWayOut pathname={pathname} bounded={isBoundedRoute} />
+              )}
+              {/* On the phone the theme is the front desk's (Settings). */}
+              {!MOBILE_APP && <ThemeSwitcher />}
+              {/* Layer 1 of audio disclosure: a standing indicator of what this
                 app may play, and where first-use notices point back to. On
                 the phone only Practice plays anything. */}
-            {(!MOBILE_APP || wing?.id === "practice") && <AudioIndicator />}
-            {/* Lines written lately (`lib/loc-report`); nothing in a build
+              {(!MOBILE_APP || wing?.id === "practice") && <AudioIndicator />}
+              {/* Lines written lately (`lib/loc-report`); nothing in a build
                 without a snapshot. On the phone it is Studio's: what gets
                 made about the build. Before the Settings link `ml-auto`
                 pins. */}
-            {(!MOBILE_APP || wing?.id === "studio") && <LocIndicator />}
-            <SiteLauncher />
-            {MOBILE_APP && <MobileSettingsLink pathname={pathname} />}
-            {/* The wing's sharing mark: where its record is kept, and what waits (LA15). */}
-            {import.meta.env.VITE_DEVICE_BACKEND === "true" && wing && (
-              <DeviceHomeGlyph wing={wing.id} />
-            )}
-          </header>
-        )}
-        {!bareViewport && <AccountUnavailableBanner />}
-        {!MOBILE_APP && wing?.exposure && (
-          <ProvenanceStrip exposure={wing.exposure} />
-        )}
-        {import.meta.env.VITE_DEVICE_BACKEND === "true" ? (
-          <DeviceStoragePrompt />
-        ) : null}
-        <PageBody bounded={isBoundedRoute} bare={bareViewport}>
-          <Outlet />
-        </PageBody>
-        {/* A persistent bar may not paint over a bounded surface
+              {(!MOBILE_APP || wing?.id === "studio") && <LocIndicator />}
+              <SiteLauncher />
+              {MOBILE_APP && <MobileSettingsLink pathname={pathname} />}
+              {/* The wing's sharing mark: where its record is kept, and what waits (LA15). */}
+              {import.meta.env.VITE_DEVICE_BACKEND === "true" && wing && (
+                <DeviceHomeGlyph wing={wing.id} />
+              )}
+            </header>
+          )}
+          {!bareViewport && <AccountUnavailableBanner />}
+          {!MOBILE_APP && wing?.exposure && (
+            <ProvenanceStrip exposure={wing.exposure} />
+          )}
+          {import.meta.env.VITE_DEVICE_BACKEND === "true" ? (
+            <DeviceStoragePrompt />
+          ) : null}
+          <PageBody bounded={isBoundedRoute} bare={bareViewport}>
+            <Outlet />
+          </PageBody>
+          {/* A persistent bar may not paint over a bounded surface
             (docs/session-viewport/05-the-mobile-shell.md §4). */}
-        {MOBILE_APP && !isBoundedRoute && <MobileNav pathname={pathname} />}
+          {MOBILE_APP && !isBoundedRoute && <MobileNav pathname={pathname} />}
+        </NoticeLayer>
       </SidebarInset>
     </SidebarProvider>
   )

@@ -44,7 +44,7 @@ import type { AphStore } from "@aph/lib/store"
 import { aphStore } from "@aph/lib/store"
 import { useAph } from "@aph/lib/use-aph"
 import { cn, dayOf, formatDay, formatWeekday } from "@some-ui/core-utils"
-import { Button, Reserved } from "@some-ui/shared"
+import { Button, Notice } from "@some-ui/shared"
 import {
   Check,
   ChevronLeft,
@@ -157,7 +157,6 @@ export const AphLog = ({
     if (landed !== null) onSaved?.(landed, raw.side)
   }
 
-  const shownWaiting = showOlder ? waiting : waiting.slice(0, RECENT_WAITING)
   const canSave =
     value !== null &&
     (draft.side === "mine"
@@ -168,6 +167,30 @@ export const AphLog = ({
     if (next !== undefined) {
       dispatch({ type: "pickDay", day: next === today ? null : next })
     }
+  }
+
+  const waitingRow = (e: Entry): JSX.Element => {
+    const picked = draft.target === e.id
+    return (
+      <button
+        key={e.id}
+        type="button"
+        role="radio"
+        aria-checked={picked}
+        onClick={() => dispatch({ type: "pickTarget", target: e.id })}
+        className={cn(
+          "flex h-11 items-center gap-2 rounded-lg border px-3 text-left text-sm",
+          picked ? "border-foreground border-2 bg-card" : "border-border"
+        )}
+      >
+        <CheckpointMark settings={settings} checkpoint={e.checkpoint} />
+        <span className="font-medium">{formatDay(e.day)}</span>
+        <span className="text-muted-foreground">{whenOf(settings, e)}</span>
+        <span className="ml-auto">
+          <Figures entry={e} className="text-sm" />
+        </span>
+      </button>
+    )
   }
 
   return (
@@ -292,33 +315,7 @@ export const AphLog = ({
           aria-label="Which entry"
           className="flex flex-col gap-1.5"
         >
-          {shownWaiting.map((e) => {
-            const picked = draft.target === e.id
-            return (
-              <button
-                key={e.id}
-                type="button"
-                role="radio"
-                aria-checked={picked}
-                onClick={() => dispatch({ type: "pickTarget", target: e.id })}
-                className={cn(
-                  "flex h-11 items-center gap-2 rounded-lg border px-3 text-left text-sm",
-                  picked
-                    ? "border-foreground border-2 bg-card"
-                    : "border-border"
-                )}
-              >
-                <CheckpointMark settings={settings} checkpoint={e.checkpoint} />
-                <span className="font-medium">{formatDay(e.day)}</span>
-                <span className="text-muted-foreground">
-                  {whenOf(settings, e)}
-                </span>
-                <span className="ml-auto">
-                  <Figures entry={e} className="text-sm" />
-                </span>
-              </button>
-            )
-          })}
+          {waiting.slice(0, RECENT_WAITING).map(waitingRow)}
           {waiting.length > RECENT_WAITING && (
             <button
               type="button"
@@ -328,6 +325,9 @@ export const AphLog = ({
               {showOlder ? "Fewer" : `${waiting.length - RECENT_WAITING} older`}
             </button>
           )}
+          {/* Below their toggle, so it stays under the thumb that opened
+              them (HS1). */}
+          {showOlder && waiting.slice(RECENT_WAITING).map(waitingRow)}
         </div>
       )}
 
@@ -431,25 +431,16 @@ export const AphLog = ({
             : `Save theirs · ${formatDay(targetEntry.day)} ${whenOf(settings, targetEntry)}`}
       </Button>
 
-      {/* Below Save, the last control: what a tap brings up here moves
-          nothing on this page, which grows down (HS1). */}
       {waits !== null && (
-        <p
-          role="status"
-          className="bg-warning/10 text-warning rounded-md px-3 py-1.5 text-center text-sm"
-        >
+        <Notice role="status" tone="warning">
           Drafts from {formatWeekday(waits)} {formatDay(waits)} are waiting:
           submit or delete them in History before logging another day.
-        </p>
+        </Notice>
       )}
-
       {refused && (
-        <p
-          role="alert"
-          className="bg-destructive/10 text-destructive rounded-md px-3 py-1.5 text-center text-sm"
-        >
+        <Notice role="alert" tone="danger" onDismiss={() => setRefused(false)}>
           Not saved: the phone did not keep it.
-        </p>
+        </Notice>
       )}
     </div>
   )
@@ -540,17 +531,15 @@ const Readout = ({
           </span>
         )}
       </div>
-      <Reserved role="status" className="text-warning text-center text-sm">
-        {unusual && (
-          <span className="flex items-center justify-center gap-1.5">
+      {unusual && (
+        <Notice role="status" tone="warning">
+          <span className="flex items-center gap-1.5">
             <TriangleAlert aria-hidden className="size-4 shrink-0" />
-            {/* Short enough for one line at 360px in any font the phone
-                or CI draws it in: a second line would move the keypad. */}
-            Usual is {formatValue(settings.usualLow)}–
+            Outside your usual {formatValue(settings.usualLow)}–
             {formatValue(settings.usualHigh)}. Typo?
           </span>
-        )}
-      </Reserved>
+        </Notice>
+      )}
     </div>
   )
 }

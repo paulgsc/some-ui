@@ -284,11 +284,15 @@ stepping an index) is review's.
 
 Held by: `pnpm check:gestures`
 
-**A tap moves no control it leaves on the screen** (HS1, HS2; `docs/ui-fit/README.md` 2i says
-why and how). `apps/www/tests/ui-fit/stays-put.spec.ts` walks screens tap by tap and fails on any move; a phone
-screen you change gets a walk there. `pnpm check:stays-put` (`scripts/check-stays-put.ts`, rule
-in `packages/eslint/src/stays-put.ts`; also in root `pnpm lint`) fails an error or status line
-mounted on a condition that `scripts/stays-put.allowlist` does not list (2j).
+**A screen holds still while it is used** (HS1, HS3; `docs/ui-fit/README.md` 2i says why
+and how). What the app says about what was just done (a warning, a refusal, "saved") is said with
+`Notice` (`@some-ui/shared`), over the screen, never as a line in its layout and never in room
+kept blank for one; the layout changes only for content the person asked for.
+`apps/www/tests/ui-fit/stays-put.spec.ts` and its per-wing siblings walk screens tap by tap and
+fail on any move or any line in the layout; a phone screen you change gets a walk there.
+`pnpm check:stays-put` (`scripts/check-stays-put.ts`, rule in
+`packages/eslint/src/stays-put.ts`; also in root `pnpm lint`) fails an error or status line in a
+phone screen's layout that `scripts/notices.allowlist` does not list (2j).
 
 Held by: `pnpm check:stays-put`
 

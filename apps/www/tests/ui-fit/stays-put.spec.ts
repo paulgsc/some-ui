@@ -1,20 +1,23 @@
 /**
  * Promise HS1.
  * - Claim: on a phone screen, a tap or key that leaves you on that screen
- *   moves no tap target still on it: what a tap brings up (a refusal, a
- *   "Typo?", a preview, a hint) keeps its room whether it shows or not, or
- *   comes after the last control.
+ *   moves no tap target still on it, and what the app says about it (a
+ *   refusal, a "Typo?", a hint, progress) is said on the notice plane over
+ *   the screen, never as a line in its layout or a blank kept for one; the
+ *   layout changes only for content asked for, below what was tapped.
  * - Family: every tap each walk below takes, at each of `PHONE_VIEWPORTS`
  *   (the phone held sideways among them); for aph's logger, mine and theirs,
  *   every digit from an empty figure to one past the longest, approx on and
  *   off, each checkpoint, a label, an earlier and a later day, a save kept
  *   and a save refused; for History's entry sheet, my figure retyped, approx,
  *   a save refused, a label tapped off down to the last one; for History's
- *   drafts, a submit refused. A tap that declares `reflows` (Mine/Theirs, "N
- *   older") is outside it, and says why.
- * - Proof: this spec, which takes every tap and compares every target's box
- *   before and after (`../layout-invariants/stays-put.ts`), and fails on the
- *   planted shift if the measure goes blind.
+ *   drafts, a submit refused. A tap that declares `reflows` (Mine/Theirs) is
+ *   outside it, and says why; one that declares `grows` ("N older") is in it
+ *   for what is at and above it.
+ * - Proof: this spec, which takes every tap, compares every target's box
+ *   before and after and finds every message in the layout
+ *   (`../layout-invariants/stays-put.ts`), and fails on the planted line if
+ *   the measure goes blind to either.
  * - Tolerance: a screen this spec does not walk.
  */
 
@@ -79,7 +82,7 @@ const LOG_THEIRS: ReadonlyArray<Tap> = [
   key("Delete digit"),
   {
     ...button(/older$/, "shows the older entries"),
-    reflows: "disclosure: the list grows by what was asked for",
+    grows: "the older entries, below the ones shown",
   },
   refuseWrites,
   button(/^Save theirs/, "saves theirs, refused"),
@@ -128,7 +131,9 @@ walkEachPhone(
     { panel: "aph-history", taps: ENTRY_SHEET, label: "aph entry sheet" },
   ],
   (PAGE) => {
-    test("the measure sees a planted shift", async ({ page }) => {
+    test("the measure sees a planted shift, and the line that made it", async ({
+      page,
+    }) => {
       PAGE.expectBuilt()
       await open(page, PAGE.url("planted-shift"))
       const failures = await holdStill(
@@ -140,6 +145,13 @@ walkEachPhone(
         failures.some((f) => f.includes("Planted target")),
         `A line mounted above "Planted target" moves it. If this is not ` +
           `reported, every walk below measures nothing: ${failures.join("\n")}`
+      ).toBe(true)
+      expect(
+        failures.some((f) => f.includes("takes room in the screen")),
+        `The planted line is an alert in the screen's flow. If this is not ` +
+          `reported, no walk sees a message said in the layout: ${failures.join(
+            "\n"
+          )}`
       ).toBe(true)
     })
   }
