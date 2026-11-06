@@ -11,7 +11,7 @@ export const here = (p: string): string =>
   resolve(process.env["INIT_CWD"] ?? process.cwd(), p)
 
 /** Stops the command, saying why; `runCommand` prints it and sets the exit code. */
-export class Refused extends Error {}
+class Refused extends Error {}
 
 export function fail(lines: ReadonlyArray<string>): never {
   throw new Refused(lines.join("\n"))
