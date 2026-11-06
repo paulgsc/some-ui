@@ -89,6 +89,35 @@ same words rules as the slides and held to YouTube's limits; the phone's
 Finish shows them once the episode is ready, and the owner uploads by hand.
 The schemas are `@some-ui/video-render`'s (`format.ts`, `episode.ts`).
 
+## What is said
+
+I watch the show; I don't voice it (FEED, #2643). What is said over each
+scene is the one part an AI fills, and this package owns the rest: the
+schema it fills (`some-ui.pd-narration/1`), what it reads, and the check
+(`src/lib/narration.ts`, FEED1 #2644).
+
+```sh
+pnpm --filter @some-ui/playoff-delta narration packet --season <file|sample> --week 9
+pnpm --filter @some-ui/playoff-delta narration check <fill.json> --season <file|sample> --week 9
+```
+
+- **The packet** is everything a filler reads, and nothing else:
+  - the guidance (who the words are for, and what they're for);
+  - the episode's pins, which the fill copies (season, team, week, format,
+    and the season's sum, the same one the episode pins);
+  - each scene's point and facts;
+  - what the legend taught;
+  - the schema as JSON Schema.
+- **The check** refuses a fill that:
+
+  - isn't in the schema's shape;
+  - carries another episode's pins;
+  - has scenes other than the format's, in its order;
+  - forecasts (`FORECAST` in `src/lib/words.ts`);
+  - says a number its scene's facts don't give, or a week not yet played.
+
+  It judges nothing else about the words.
+
 ## Recording
 
 ```sh

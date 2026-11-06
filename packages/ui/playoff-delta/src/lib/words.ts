@@ -270,6 +270,15 @@ export const UPLOAD = {
     `The words every week of Playoff Delta uses, and what each one means, read on the ${team}' ${label} season.`,
 } as const
 
+/**
+ * What a forecast says, which no word of the show does: the show says what
+ * can still happen, never odds, and never the statistics the grammar retired
+ * (CLAUDE.md, "Say what it is"). The vocabulary's test and a narration's
+ * check (`./narration`) both refuse it.
+ */
+export const FORECAST =
+  /\b(chance|odds|likely|probability|percent|share|spread|average|sample)/i
+
 /** "one" to "ten" in words, digits past that. */
 export function numberWord(n: number): string {
   const words = [
