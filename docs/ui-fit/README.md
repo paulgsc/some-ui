@@ -427,6 +427,47 @@ The walks, and HS1's Family, are in the spec. A phone screen it does not
 walk is outside HS1 until one is added there, with its fixture on the phone
 page (`./phone-page/fixtures.tsx`).
 
+### 2j. `pnpm check:stays-put` (a count, HS2)
+
+The walks in 2i hold the screens they walk. What keeps a new screen from
+bringing the fault back before anyone writes a walk for it is a count of the
+fault's commonest shape: an error or status line mounted on a condition.
+
+> **HS2: a line a phone surface mounts on a condition is listed, with why it
+> moves nothing.**
+>
+> - _Claim:_ every phone source file (`packages/eslint/src/phone-sources.ts`,
+>   the scope GES5 holds too) that mounts an element with
+>   `role="alert"`, `role="status"` or `<Alert>` on a condition (`cond && …`,
+>   a ternary with nothing, a component that returns its line or nothing) is
+>   listed in `scripts/stays-put.allowlist` at its exact count, in a group
+>   whose `Placement:` line is true (it comes after the last control on a page
+>   that grows down, or replaces the whole screen), or in the
+>   `Grandfathered:` group, which only shrinks.
+> - _Falsified by_ an allowlist hunk that adds or raises an entry under a
+>   `Placement:` line that the file it names, as it stands after the diff,
+>   contradicts: a control follows the line in the flow, or the line sits in
+>   a sheet anchored to the bottom. Or a hunk that rewords a `Placement:` line
+>   so it no longer says why the line moves nothing, or that moves a listed
+>   line above a control without moving its entry. Or a hunk that narrows
+>   `staysPutSites` in `packages/eslint/src/stays-put.ts` or `phoneSources` in
+>   `packages/eslint/src/phone-sources.ts`.
+> - _Scope:_ `scripts/stays-put.allowlist` and the files it names;
+>   `packages/eslint/src/stays-put.ts` and `phone-sources.ts`.
+> - _Why not enforced:_ that each line is listed at its count is enforced
+>   (`pnpm check:stays-put`, in root `pnpm lint` and pr.yml). Whether a
+>   listed line moves a control is layout, which no AST can see: the same
+>   `{refused && <p role="alert">}` moves nothing below Save and moves the
+>   keypad above it. A walk in `stays-put.spec.ts` measures it for the
+>   screens it walks.
+>
+> True when declared: 50 lines in 29 files; aph's logger's two, below Save
+> and walked, under `Placement:`, and the other 48 grandfathered.
+
+What the count cannot see (a line with no role, a wrapper mounted
+around one, one element swapped for another of a different size) is in the
+module's header, and stays with review and the walks.
+
 ### 3. CI
 
 The ui-fit specs ran nowhere until #899. `pnpm test:ui-fit` existed, this

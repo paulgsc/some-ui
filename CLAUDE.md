@@ -284,6 +284,14 @@ stepping an index) is review's.
 
 Held by: `pnpm check:gestures`
 
+**A tap moves no control it leaves on the screen** (HS1, HS2; `docs/ui-fit/README.md` 2i says
+why and how). `apps/www/tests/ui-fit/stays-put.spec.ts` walks screens tap by tap and fails on any move; a phone
+screen you change gets a walk there. `pnpm check:stays-put` (`scripts/check-stays-put.ts`, rule
+in `packages/eslint/src/stays-put.ts`; also in root `pnpm lint`) fails an error or status line
+mounted on a condition that `scripts/stays-put.allowlist` does not list (2j).
+
+Held by: `pnpm check:stays-put`
+
 ## Vestiges
 
 A workspace earns its place only while something live points to it: an app, a shipped
