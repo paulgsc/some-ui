@@ -1,9 +1,6 @@
 /**
- * Promise HS1, for Studio's wing (`@some-ui/soundbites`).
- * - Claim: on a phone screen of the Studio wing, a tap or key that leaves you
- *   on that screen moves no tap target still on it: what a tap brings up (a
- *   refusal, a notice, a hint, a label that changes length) keeps its room
- *   whether it shows or not, or comes after the last control.
+ * Promise HS1, for Studio's wing, `@some-ui/soundbites` (`./stays-put.spec.ts`
+ * holds the claim).
  * - Family: every tap each walk below takes, at each of `PHONE_VIEWPORTS`
  *   (the phone held sideways among them); for New idea, a format, a title
  *   typed, a subject and a keyword picked and unpicked, a take started, kept
@@ -16,44 +13,24 @@
  *   too long and retyped; for home's lists, a subject typed past the longest
  *   and back. A tap that declares `reflows` (another screen, a take kept as
  *   its scene's or answer's first row) is outside it, and says why.
- * - Proof: this spec, which takes every tap and compares every target's box
- *   before and after (`../layout-invariants/stays-put.ts`); the measure's own
- *   self-test is `./stays-put.spec.ts`'s planted shift.
+ * - Proof: this spec, over `../layout-invariants/stays-put.ts`.
  * - Tolerance: a screen this spec does not walk, among them Watch, Start's
  *   "when takes leave the phone", Finish's "made on home", answering
- *   Claude's questions and the idea shelf; and the take button's breath
- *   while it records (`./phone-page/soundbites.tsx` says why).
- *
- * Run against a built phone page:
- *
- *   pnpm --filter www build:fit-phone
- *   pnpm --filter www test:ui-fit tests/ui-fit/stays-put-soundbites.spec.ts
+ *   Claude's questions and the idea shelf.
  */
 
-import { expect, test, type Page } from "@playwright/test"
-import { holdStill, type Tap } from "@tests/layout-invariants/stays-put"
+import {
+  button,
+  toScreen,
+  waitsFor,
+  type Tap,
+} from "@tests/layout-invariants/stays-put"
 
-import { PHONE_VIEWPORTS, servePhonePage, tap } from "./harness"
-
-const PAGE = servePhonePage()
-
-const button = (name: string | RegExp, does: string): Tap => ({
-  does,
-  act: (page) => tap(page, name),
-})
-
-/** A new screen: what was tapped is gone, and a new layout begins. */
-const toScreen = (name: string | RegExp, screen: string): Tap => ({
-  ...button(name, `opens ${screen}`),
-  reflows: `screen: ${screen}`,
-})
+import { walkEachPhone } from "./harness"
 
 /** Waits for `name` to be offered, so the next tap starts from a still screen. */
-const until = (name: string | RegExp, does: string): Tap => ({
-  does,
-  act: (page) =>
-    page.getByRole("button", { name }).first().waitFor({ timeout: 10_000 }),
-})
+const until = (name: string | RegExp, does: string): Tap =>
+  waitsFor((page) => page.getByRole("button", { name }), does)
 
 /**
  * Stops the take under way and waits for it to be kept. A take on a short
@@ -64,7 +41,7 @@ const keep = (does: string, kept = "Record it again"): Tap => ({
   act: async (page): Promise<void> => {
     const stop = page.getByRole("button", { name: "Stop, and keep it" })
     if (await stop.isVisible()) await stop.click({ timeout: 2_000 })
-    await page.getByRole("button", { name: kept }).waitFor({ timeout: 10_000 })
+    await page.getByRole("button", { name: kept }).waitFor()
   },
 })
 
@@ -110,7 +87,7 @@ const IDEA: ReadonlyArray<Tap> = [
         .first()
         .click(),
   },
-  toScreen("Start the questions", "the first question"),
+  toScreen("Start the questions", "opens the first question"),
   button("Start talking", "starts a take"),
   {
     ...keep("keeps the answer's first take"),
@@ -118,7 +95,7 @@ const IDEA: ReadonlyArray<Tap> = [
   },
   button("Record it again", "says it again"),
   keep("keeps the second take"),
-  toScreen("Look it over before sending", "the idea looked over"),
+  toScreen("Look it over before sending", "opens the idea looked over"),
   button(/^Play the take/, "plays the answer"),
   button(/^Stop the take/, "stops it"),
 ]
@@ -130,19 +107,19 @@ const IDEA_REFUSED: ReadonlyArray<Tap> = [
     act: (page) =>
       page.getByRole("textbox", { name: "Title" }).fill("Two hearings"),
   },
-  toScreen("Start the questions", "the first question"),
+  toScreen("Start the questions", "opens the first question"),
   button("Start talking", "starts a take the microphone refuses"),
   until("Type it this once", "waits for the refusal"),
 ]
 
 /** Studio's Shape: every plan, below the one open and above it. */
 const SHAPE: ReadonlyArray<Tap> = [
-  toScreen(/^Shape /, "Shape"),
+  toScreen(/^Shape /, "opens Shape"),
   button(/^Plain/, "picks Plain"),
   button(/^Lively/, "picks Lively, below the one open"),
   button(/^Calm/, "picks Calm, above the one open"),
   button(/^Plain/, "picks Plain, above the one open"),
-  toScreen("Next", "the voice"),
+  toScreen("Next", "opens the voice"),
   button(/^Ad-lib/, "picks Ad-lib"),
   button(/^Mixed/, "picks Mixed, below the one open"),
   button(/^Read/, "picks Read, above the one open"),
@@ -150,7 +127,7 @@ const SHAPE: ReadonlyArray<Tap> = [
 
 /** Studio's Record, scene 1 before any take. */
 const RECORD: ReadonlyArray<Tap> = [
-  toScreen(/^Record /, "Record"),
+  toScreen(/^Record /, "opens Record"),
   button("Start talking", "starts a take"),
   {
     ...keep("keeps the scene's first take"),
@@ -213,46 +190,13 @@ const LISTS: ReadonlyArray<Tap> = [
   },
 ]
 
-async function open(page: Page, fixture: string): Promise<Array<string>> {
-  const errors: Array<string> = []
-  page.on("pageerror", (error) => errors.push(error.message))
-  await page.goto(PAGE.url(fixture), { waitUntil: "load" })
-  await expect(page.locator("[data-fit-slot] button").first()).toBeVisible({
-    timeout: 10_000,
-  })
-  return errors
-}
-
-test.describe.configure({ timeout: 3 * 60 * 1000 })
-
-test.describe("a tap moves nothing it leaves on Studio's screens (HS1)", () => {
-  PAGE.skipUnbuilt()
-
-  for (const phone of PHONE_VIEWPORTS) {
-    test(`soundbites at ${phone.name} (${phone.width}x${phone.height})`, async ({
-      page,
-    }) => {
-      PAGE.expectBuilt()
-      await page.setViewportSize({ width: phone.width, height: phone.height })
-      const failures: Array<string> = []
-
-      // Each walk on a fresh page, so each starts from its fixture's state.
-      const walks = [
-        ["hs-idea", IDEA, "new idea"],
-        ["hs-idea-refused", IDEA_REFUSED, "new idea, refused"],
-        ["hs-studio-fresh", SHAPE, "shape"],
-        ["hs-studio-fresh", RECORD, "record"],
-        ["hs-soundbites-full", SOUNDBITES, "not today, full"],
-        ["hs-take-library", LIBRARY, "takes on home"],
-        ["hs-ideas-lists", LISTS, "home's lists"],
-      ] as const
-      for (const [fixture, taps, label] of walks) {
-        const errors = await open(page, fixture)
-        failures.push(...(await holdStill(page, taps, label)))
-        expect(errors, `${label}: ${errors.join("\n")}`).toEqual([])
-      }
-
-      expect(failures, failures.join("\n")).toEqual([])
-    })
-  }
-})
+// Each walk on a fresh page, so each starts from its fixture's state.
+walkEachPhone("a tap moves nothing it leaves on Studio's screens (HS1)", [
+  { panel: "idea", taps: IDEA, label: "new idea" },
+  { panel: "idea-voice-lost", taps: IDEA_REFUSED, label: "new idea, refused" },
+  { panel: "studio-fresh-still", taps: SHAPE, label: "shape" },
+  { panel: "studio-fresh-still", taps: RECORD, label: "record" },
+  { panel: "hs-soundbites-full", taps: SOUNDBITES, label: "not today, full" },
+  { panel: "hs-take-library", taps: LIBRARY, label: "takes on home" },
+  { panel: "hs-ideas-lists", taps: LISTS, label: "home's lists" },
+])

@@ -14,6 +14,7 @@ import {
   ConfirmSheet,
   Input,
   Reserved,
+  SameWidth,
   useTakePattern,
 } from "@some-ui/shared"
 import type { TakePattern } from "@some-ui/voice-capture"
@@ -251,12 +252,10 @@ const AnswerPlay = ({
   const playing =
     snapshot.playback.kind !== "quiet" && snapshot.playback.id === take
   return (
-    // One width for Play and Stop, so the label's swap moves nothing (HS1).
     <Button
       type="button"
       size="sm"
       variant="outline"
-      className="min-w-20"
       onClick={() => pattern.play(take)}
     >
       {playing ? (
@@ -264,7 +263,9 @@ const AnswerPlay = ({
       ) : (
         <Play className="size-4" aria-hidden="true" />
       )}
-      {playing ? TAKE_WORDS.stop : TAKE_WORDS.play}
+      <SameWidth every={[TAKE_WORDS.play, TAKE_WORDS.stop]}>
+        {playing ? TAKE_WORDS.stop : TAKE_WORDS.play}
+      </SameWidth>
     </Button>
   )
 }
@@ -487,7 +488,6 @@ const ListEditor = ({
           {LISTS.add}
         </Button>
       </form>
-      {/* Kept whether it shows, so a key moves nothing below (HS1). */}
       <Reserved className="text-muted-foreground text-xs">
         {trimmed !== "" && !isEntry(trimmed) && LISTS.tooLong}
       </Reserved>

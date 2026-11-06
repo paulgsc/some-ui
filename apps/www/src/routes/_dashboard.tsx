@@ -268,7 +268,6 @@ const DashboardLayout = (): JSX.Element => {
         {!MOBILE_APP && wing?.exposure && (
           <ProvenanceStrip exposure={wing.exposure} />
         )}
-        {/* Over the page, below the header: it moves nothing on the page (HS1). */}
         {import.meta.env.VITE_DEVICE_BACKEND === "true" ? (
           <DeviceStoragePrompt />
         ) : null}

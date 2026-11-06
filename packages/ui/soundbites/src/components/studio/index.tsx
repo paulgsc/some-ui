@@ -20,7 +20,13 @@ import {
   useSyncExternalStore,
 } from "react"
 import { cn } from "@some-ui/core-utils"
-import { Button, TakeButton, TakeRow, usePager } from "@some-ui/shared"
+import {
+  Button,
+  Reserved,
+  TakeButton,
+  TakeRow,
+  usePager,
+} from "@some-ui/shared"
 import { LOOKS, VOICES } from "@some-ui/video-render"
 import { FilePick } from "@soundbites/components/file-pick"
 import { Notice } from "@soundbites/components/notice"
@@ -630,8 +636,7 @@ const Record = ({
         // Wraps: on the narrowest phone the last scene's label is long.
         // `whitespace-normal`, not `text-wrap`: the button's own
         // `whitespace-nowrap` is a shorthand that resets text-wrap, and
-        // wins in the cascade. Held while a take is under way, not taken
-        // away, so what follows stays put (HS1).
+        // wins in the cascade. Held while a take is under way (HS1).
         <Button
           className="h-auto min-h-10 whitespace-normal"
           disabled={!taken}
@@ -641,10 +646,13 @@ const Record = ({
         </Button>
       )}
       {/* Two lines: the longest says the take and a breath, and wraps on
-          the narrowest phone; the count while recording is one (HS1). */}
-      <p className="min-h-[2lh] text-center font-mono text-sm tabular-nums">
+          the narrowest phone; the count while recording is one. */}
+      <Reserved
+        lines={2}
+        className="text-center font-mono text-sm tabular-nums"
+      >
         {lengthLine(view, state)}
-      </p>
+      </Reserved>
       {/* Throw it away's room, kept while there is none to throw (HS1). */}
       <div className="flex min-h-9 flex-wrap items-center justify-center gap-x-4">
         {recording && (

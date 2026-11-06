@@ -13,13 +13,14 @@
 
 import type { JSX, ReactNode } from "react"
 import { useId, useState } from "react"
-import { cn } from "@some-ui/core-utils"
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
+  Held,
   Input,
+  SameWidth,
 } from "@some-ui/shared"
 import { isFeelingKey } from "@some-ui/styles/theme"
 import {
@@ -56,10 +57,7 @@ type Answer<Key extends string> = {
   picked: boolean
 }
 
-/**
- * A question's English, drawn whether it shows or not and hidden until it
- * does, so showing it moves no answer below it, nor the toggle (HS1).
- */
+/** A question's English, held until it shows (HS1). */
 const English = ({
   shown,
   children,
@@ -67,16 +65,13 @@ const English = ({
   shown: boolean
   children: ReactNode
 }): JSX.Element => (
-  <span
+  <Held
+    shown={shown}
     lang="en"
-    aria-hidden={!shown || undefined}
-    className={cn(
-      "text-muted-foreground block font-normal",
-      !shown && "invisible"
-    )}
+    className="text-muted-foreground block font-normal"
   >
     {children}
-  </span>
+  </Held>
 )
 
 const Question = <Key extends string>({
@@ -213,10 +208,11 @@ export const DramaReview = ({
             type="button"
             aria-pressed={english}
             onClick={() => setEnglish(!english)}
-            // One width for either word, so the toggle keeps its box.
-            className="text-muted-foreground min-h-11 w-28 self-start text-left text-sm underline"
+            className="text-muted-foreground min-h-11 self-start text-left text-sm underline"
           >
-            {english ? "Hide English" : "Show English"}
+            <SameWidth every={["Show English", "Hide English"]}>
+              {english ? "Hide English" : "Show English"}
+            </SameWidth>
           </button>
         </AccordionContent>
       </AccordionItem>

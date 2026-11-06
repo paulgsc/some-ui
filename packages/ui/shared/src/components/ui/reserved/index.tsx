@@ -10,7 +10,7 @@
  * keeps room for the tallest of them at whatever width it gets, so no claim
  * about lines is needed.
  */
-import type { JSX, ReactNode } from "react"
+import type { HTMLAttributes, JSX, ReactNode } from "react"
 
 import { cn } from "../../../lib/utils"
 
@@ -90,4 +90,75 @@ export const SameWidth = ({
     ))}
     <span className="col-start-1 row-start-1">{children}</span>
   </span>
+)
+
+export type AlertOrStatusProps = {
+  /** A refusal, when there is one: said in the alert region. */
+  alert?: ReactNode
+  /** Advice, said in the status region while there is no refusal. */
+  status?: ReactNode
+  /** How many lines to keep for the longer of the two. */
+  lines?: number
+  /** Text size, for both. */
+  className?: string
+  alertClassName?: string
+  statusClassName?: string
+}
+
+/**
+ * A refusal or advice in one room, both live regions mounted always: what a
+ * tap answers moves nothing, whichever of the two it is (HS1).
+ */
+export const AlertOrStatus = ({
+  alert,
+  status,
+  lines,
+  className,
+  alertClassName,
+  statusClassName,
+}: AlertOrStatusProps): JSX.Element => {
+  const refused = alert !== null && alert !== undefined && alert !== false
+  return (
+    <div className={cn("grid", className)}>
+      <Reserved
+        role="status"
+        lines={lines}
+        className={cn("col-start-1 row-start-1", statusClassName)}
+      >
+        {refused ? null : status}
+      </Reserved>
+      <Reserved
+        role="alert"
+        lines={lines}
+        className={cn("col-start-1 row-start-1", alertClassName)}
+      >
+        {alert}
+      </Reserved>
+    </div>
+  )
+}
+
+export type HeldProps = HTMLAttributes<HTMLElement> & {
+  /** Whether it shows; drawn either way. */
+  shown: boolean
+  /** `div` where it holds blocks; `span` by default, as in a button. */
+  as?: "span" | "div"
+}
+
+/**
+ * Drawn whether it shows or not, and until it does unseen, unheard and out
+ * of reach: showing it fills room already kept, so it moves nothing (HS1).
+ */
+export const Held = ({
+  shown,
+  as: Tag = "span",
+  className,
+  ...rest
+}: HeldProps): JSX.Element => (
+  <Tag
+    {...rest}
+    aria-hidden={shown ? undefined : true}
+    inert={!shown}
+    className={cn(className, !shown && "invisible")}
+  />
 )

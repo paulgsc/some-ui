@@ -18,7 +18,14 @@ import {
   pacificDay,
   PASS_REASONS,
 } from "@some-ui/job-desk"
-import { Badge, Button, Input, Label, Textarea } from "@some-ui/shared"
+import {
+  Badge,
+  Button,
+  Input,
+  Label,
+  Reserved,
+  Textarea,
+} from "@some-ui/shared"
 import { ExternalLink } from "lucide-react"
 
 import { useMinuteClock } from "@/lib/clock"
@@ -549,11 +556,11 @@ const FitNote = ({
       >
         Keep it for the next run
       </Button>
-      <p role="status" className="text-muted-foreground min-h-4 text-xs">
+      <Reserved role="status" className="text-muted-foreground text-xs">
         {kept === 0
-          ? ""
+          ? null
           : `${kept === 1 ? "One fit note" : `${kept} fit notes`} kept for this pick.`}
-      </p>
+      </Reserved>
     </section>
   )
 }
@@ -636,10 +643,9 @@ const Ending = ({
               value={shownMinutes}
               onChange={(e) => keep({ minutes: e.target.value })}
             />
-            {/* One line, kept, so a keystroke moves nothing below (HS1). */}
-            <span className="text-muted-foreground min-h-4 text-xs">
+            <Reserved className="text-muted-foreground text-xs">
               {said && !minutesFit ? minutesRange(MAX_DEBRIEF_MINUTES) : null}
-            </span>
+            </Reserved>
           </section>
           <section className="flex flex-col gap-2">
             <h3 className={sectionHeading}>{frictionHeading}</h3>

@@ -221,7 +221,6 @@ export const Soundbites = ({
           >
             {said}
           </p>
-          {/* Room kept for a refusal, so it moves no take below (HS1). */}
           <Reserved
             role="alert"
             className="text-destructive w-full text-center text-sm"
@@ -264,8 +263,7 @@ export const Soundbites = ({
           )}
         </div>
 
-        {/* Three lines, the longest this says on the narrowest phone, so a
-            pick that rewords it moves no take below (HS1). */}
+        {/* Three lines: the longest this says, on the narrowest phone. */}
         {full && replaced !== null && (
           <Reserved lines={3} className="text-muted-foreground text-xs">
             {WORDS.fullReplaces}{" "}

@@ -114,7 +114,6 @@ describe("WebtoonPanel's script", () => {
     draw(ending)
     expect(screen.getByText("다음 화 예고")).toBeTruthy()
     expect(screen.getByText(leaf.hook.text)).toBeTruthy()
-    // Drawn from the first, hidden until its rung, so it moves nothing (HS1).
     const { gloss: said } = leaf.hook
     const gloss = (): Element | null =>
       screen.getByText(said).closest("[aria-hidden=true]")

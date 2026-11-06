@@ -223,9 +223,13 @@ const listener: TurnListener = {
   }),
 }
 
-/** Studio on `projects`, in memory: a microphone that always hears, and a time log of this page load. */
+/**
+ * Studio on `projects`, in memory: a microphone that always hears, and a
+ * time log of this page load; `now`, the clock, when it is not the page's.
+ */
 function studioPorts(
-  projects: ReadonlyArray<Project>
+  projects: ReadonlyArray<Project>,
+  now?: () => number
 ): NonNullable<StudioProps["ports"]> {
   return {
     store: memoryProjectStore(projects).store,
@@ -238,6 +242,7 @@ function studioPorts(
     // Kept as long as the page is: a choice made on Start stays made.
     letGo: keptLetGo(once(inMemoryStorage())),
     listener,
+    ...(now === undefined ? {} : { now }),
   }
 }
 
@@ -307,11 +312,14 @@ const IDEA_LINK = anchorTo("#idea")
 const IDEAS_LINK = anchorTo("#ideas")
 const STUDIO_LINK = anchorTo("#studio")
 
-/** The Studio wing's Home on `projects`. */
-function studioOn(projects: ReadonlyArray<Project>): () => JSX.Element {
+/** The Studio wing's Home on `projects`, on the clock `now` if given. */
+function studioOn(
+  projects: ReadonlyArray<Project>,
+  now?: () => number
+): () => JSX.Element {
   const StudioFixture = (): JSX.Element => (
     <StudioHome
-      ports={studioPorts(projects)}
+      ports={studioPorts(projects, now)}
       ideaLink={IDEA_LINK}
       ideasLink={IDEAS_LINK}
     />
@@ -409,6 +417,12 @@ export const PHONE_FIXTURES = {
   ...WWW_FIXTURES,
   /** Studio's wing, for `../stays-put-soundbites.spec.ts` (`./soundbites`). */
   ...SOUNDBITES_FIXTURES,
+  /**
+   * Nothing recorded yet, on a clock that holds still, so a take under way
+   * neither fills the take button (an animation each tick, which no measure
+   * can wait out) nor reaches its cap and stops itself between two taps.
+   */
+  "studio-fresh-still": studioOn([FRESH], () => Date.parse(AT)),
 } satisfies Record<string, () => JSX.Element>
 
 export type PhoneId = keyof typeof PHONE_FIXTURES

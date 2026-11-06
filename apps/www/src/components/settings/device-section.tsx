@@ -120,7 +120,6 @@ const PairForm = ({
         value={address}
         onChange={(event) => setAddress(event.target.value)}
       />
-      {/* Room kept for it, so a keystroke moves nothing below (HS1). */}
       <Reserved role="status" className="text-destructive text-xs">
         {read === "not-https" ? "Pairing needs an https:// address." : null}
       </Reserved>
@@ -158,7 +157,7 @@ const PairForm = ({
         </Button>
       </div>
       <p className="text-muted-foreground text-xs">Sends only this code.</p>
-      {/* After the form's last control, in room kept for it. */}
+      {/* After the form's last control. */}
       <Reserved role="status" lines={2} className="text-destructive text-xs">
         {state.pairFailure
           ? failureLine(
@@ -386,10 +385,11 @@ export const DeviceSection = (): JSX.Element => {
               value={address}
               onChange={(event) => setAddress(event.target.value)}
             />
-            {/* One line, kept, so typing an address moves nothing (HS1). */}
-            <p className="text-muted-foreground min-h-4 truncate text-xs">
-              {host === null ? null : `Reads from ${host}`}
-            </p>
+            <Reserved className="text-muted-foreground text-xs">
+              {host === null ? null : (
+                <span className="block truncate">Reads from {host}</span>
+              )}
+            </Reserved>
             {link.kind === "unpaired" && link.note !== null ? (
               <p className="text-muted-foreground text-xs" role="status">
                 {NOTES[link.note]}
@@ -432,10 +432,11 @@ export const DeviceSection = (): JSX.Element => {
             </Button>
           )}
         </div>
-        {/* One line, kept, so the first sync moves nothing below (HS1). */}
-        <p className="text-muted-foreground min-h-4 truncate text-xs">
-          {synced === "" ? null : `Last sync: ${synced}`}
-        </p>
+        <Reserved className="text-muted-foreground text-xs">
+          {synced === "" ? null : (
+            <span className="block truncate">Last sync: {synced}</span>
+          )}
+        </Reserved>
         {pairOpen && !paired ? (
           <PairForm state={state} onCancel={() => setPairOpen(false)} />
         ) : null}

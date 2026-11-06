@@ -238,10 +238,7 @@ export const FileProblem = ({
   )
 }
 
-/**
- * What the record refused to keep, said once, in room kept for the tallest
- * thing it says: a refusal moves no control after it (HS1).
- */
+/** What the record refused to keep, said once. */
 export const Problem = (): JSX.Element => (
   <Reserved
     role="alert"

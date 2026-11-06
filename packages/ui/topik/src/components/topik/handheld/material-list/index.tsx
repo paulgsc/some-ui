@@ -1,7 +1,7 @@
 import type { JSX } from "react"
 import { useId, useState } from "react"
 import { cn } from "@some-ui/core-utils"
-import { Button, Input } from "@some-ui/shared"
+import { Button, Input, Reserved } from "@some-ui/shared"
 import { FeedThumb, FeedTile } from "@topik/components/topik/handheld/feed-tile"
 import { PortionMark } from "@topik/components/topik/handheld/portion-menu"
 import type { TopikMetadata } from "@topik/lib/topik"
@@ -213,23 +213,24 @@ const OpenFromStorage = ({
         <span id={name} className="block font-semibold">
           {title}
         </span>
-        <span
-          id={about}
-          aria-live="polite"
+        {/* Two lines: the offer's, at the narrowest phone. */}
+        <Reserved
+          role="status"
+          lines={2}
           className={cn(
-            // Two lines kept, the offer's at the narrowest phone, so a read
-            // or what came of it moves no card below this one (HS1).
-            "block min-h-[2lh] text-sm",
+            "text-sm",
             problem ? "text-destructive" : "text-muted-foreground"
           )}
         >
-          {problem ??
-            (state.kind === "reading"
-              ? "Opening..."
-              : note?.tone === "done"
-                ? note.text
-                : offer)}
-        </span>
+          <span id={about}>
+            {problem ??
+              (state.kind === "reading"
+                ? "Opening..."
+                : note?.tone === "done"
+                  ? note.text
+                  : offer)}
+          </span>
+        </Reserved>
         {hint && (
           <span id={where} className="text-muted-foreground block text-xs">
             {hint}

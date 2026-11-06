@@ -8,12 +8,9 @@
  *
  * The outer action stack is stable across every state, so a toolbar does not
  * jump as the intent settles; a retryable failure replaces the action with
- * its retry rather than adding a second control. A button whose labels are
- * words is as wide as the widest of them ("Copy", "Copying…", "Copied", "Try
- * again") in every state, so a label that changes moves nothing beside it
- * (HS1, `tests/ui-fit/stays-put-www.spec.ts`); a step's own label
- * (`workingStepLabel`) is not known ahead, and is not counted. The button sits where it
- * sat before the failure, at the stack's start, with the failure below it.
+ * its retry rather than adding a second control. Word labels share the
+ * widest one's width (HS1). The button sits where it sat before the
+ * failure, at the stack's start, with the failure below it.
  * `failureOwnLine` puts the failure on its own line
  * (`tests/ui-fit/intent-failure-fit`).
  *

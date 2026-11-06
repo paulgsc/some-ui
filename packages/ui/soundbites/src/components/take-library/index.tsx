@@ -98,8 +98,7 @@ const TakeItem = ({
               {WORDS.setAside(take.setAsideAt)}
             </p>
           )}
-          {/* Where its sound stands, in room each take keeps, so a Play
-              moves no take below it (HS1). Two lines: home's refusal wraps. */}
+          {/* Two lines: home's refusal wraps. */}
           <Reserved lines={2} role="status" className="text-xs">
             {here && playback.kind === "loading" ? (
               <span className="text-muted-foreground">{WORDS.loading}</span>
@@ -260,7 +259,6 @@ export const TakeLibrary = ({ ports, pair }: TakeLibraryProps): JSX.Element => {
               {WORDS.search}
             </Button>
           </div>
-          {/* Kept whether it shows, so a key moves nothing below (HS1). */}
           <Reserved className="text-muted-foreground text-xs">
             {state.tooLong && WORDS.tooLong}
           </Reserved>

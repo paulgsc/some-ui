@@ -10,7 +10,6 @@
  * pasting one, and a word set by picking its file.
  */
 import type { JSX } from "react"
-import type { ShelfItem, ShelfPort } from "@some-ui/shared"
 import type { SpeechAdapter, SpeechAdapterFactory } from "@some-ui/speech"
 import { SpeechProvider } from "@some-ui/speech"
 // This page is its own build (`build:fit-phone`) and in no shipped bundle,
@@ -19,6 +18,8 @@ import { SpeechProvider } from "@some-ui/speech"
 import { KoreanStudyPage } from "@some-ui/topik"
 
 import { createSceneAsks } from "@/lib/scene-ask"
+
+import { memoryShelf } from "./shelf"
 
 /** How long the fake voice takes over a line. */
 const LINE_MS = 120
@@ -74,47 +75,14 @@ const quickVoice: SpeechAdapterFactory = (): SpeechAdapter => {
 }
 
 /** A drama kept on the shelf before the walk began, as its own keep wrote it. */
-const KEPT: ReadonlyArray<[string, string]> = [
+const KEPT: ReadonlyArray<readonly [string, string]> = [
   [
     "fit-kept",
     JSON.stringify({ kind: "fit", note: "a kept drama the walk never plays" }),
   ],
 ]
 
-/** The account's shelf, in this page load's memory. */
-function memoryShelf(): ShelfPort {
-  const bodies = new Map<string, string>(KEPT)
-  const item = (key: string): ShelfItem => ({
-    key,
-    contentHash: "0".repeat(64),
-    savedAt: "2026-11-01T09:00:00.000Z",
-  })
-  return {
-    list: (): ReturnType<ShelfPort["list"]> =>
-      Promise.resolve({ items: [...bodies.keys()].map(item), cap: 20 }),
-    read: (key): Promise<unknown> => {
-      const body = bodies.get(key)
-      if (body === undefined) return Promise.reject(new Error("not kept"))
-      const parsed: unknown = JSON.parse(body)
-      return Promise.resolve(parsed)
-    },
-    keep: (key, body): ReturnType<ShelfPort["keep"]> => {
-      const had = bodies.get(key)
-      bodies.set(key, body)
-      return Promise.resolve({
-        change:
-          had === undefined ? "kept" : had === body ? "unchanged" : "replaced",
-        item: item(key),
-      })
-    },
-    remove: (key): Promise<void> => {
-      bodies.delete(key)
-      return Promise.resolve()
-    },
-  }
-}
-
-const shelf = memoryShelf()
+const shelf = memoryShelf({ seed: KEPT })
 const sceneAsk = createSceneAsks({ storage: () => localStorage })
 const noManifest = (): Promise<unknown> =>
   Promise.resolve({ version: "1", topiks: [] })

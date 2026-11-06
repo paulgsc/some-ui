@@ -1,31 +1,22 @@
 /**
  * www's phone screens and the shared parts they draw, on fakes, for
  * `../stays-put-www.spec.ts` (HS1): the phone-full prompt the shell mounts
- * above every page (`StoragePrompt`, its offer `RemoveOffer`), a take item
+ * over every page (`StoragePrompt`, its offer `RemoveOffer`), a take item
  * whose phone fills up (`TakeList` with `full`), and "Keep on this account"
- * (`KeepOnShelf`) on a shelf that answers as the walk says. Each is followed
- * by the controls its screen has after it, so a move is seen.
- *
- * What the page does without a tap (a save refused, home answering, the
- * phone filling up) is driven from the spec through `window.wwwFit`, as aph's
- * walk refuses writes: a control for it would be one more target.
+ * (`KeepOnShelf`) on a shelf that answers as the walk says. Each part in the
+ * flow is followed by the controls its screen has after it, so a move is
+ * seen; what happens without a tap is the spec's (`./fit-actions.ts`).
  * Inline styles for any frame: this directory is outside www's Tailwind
  * sources (style.context.ts).
  */
 import type { JSX, ReactNode } from "react"
-import { useEffect, useState, useSyncExternalStore } from "react"
+import { useState, useSyncExternalStore } from "react"
 import type { Intent } from "@some-ui/intent-kit"
 import { failed, idle, succeeded, working } from "@some-ui/intent-kit"
-import type { ShelfItem, ShelfPort } from "@some-ui/shared"
+import type { ShelfPort } from "@some-ui/shared"
 import { Button, KeepOnShelf, TakeList } from "@some-ui/shared"
-import type { PatternTake, TakePattern } from "@some-ui/voice-capture"
-import { microphoneOwner, ONE_TAKE, takePattern } from "@some-ui/voice-capture"
-import type { MemoryTakes } from "@some-ui/voice-capture/testing"
-import {
-  memoryTakes,
-  simulatedMicrophone,
-  simulatedPlayer,
-} from "@some-ui/voice-capture/testing"
+import type { PatternTake } from "@some-ui/voice-capture"
+import { simulatedPattern } from "@some-ui/voice-capture/testing"
 
 import type { RemovableSession } from "@/lib/device-backend/handlers/sessions"
 import type { DeviceStorageView } from "@/lib/device-backend/storage-view"
@@ -37,25 +28,10 @@ import {
   StoragePrompt,
 } from "@/components/settings/device-storage"
 
-/** What the spec can do that no tap on the screen does. */
-type WwwFit = Record<string, () => void>
-
-declare global {
-  // eslint-disable-next-line @typescript-eslint/consistent-type-definitions -- only an interface merges into Window
-  interface Window {
-    wwwFit?: WwwFit
-  }
-}
-
-/** Hands the spec `actions` while the fixture is mounted. */
-function useFitActions(actions: WwwFit): void {
-  useEffect(() => {
-    window.wwwFit = actions
-    return (): void => {
-      delete window.wwwFit
-    }
-  })
-}
+import type { FitActions } from "./fit-actions"
+import { useFitActions } from "./fit-actions"
+import type { ShelfAnswer } from "./shelf"
+import { memoryShelf } from "./shelf"
 
 const column = {
   display: "flex",
@@ -91,7 +67,7 @@ const RETRYABLE = {
 } as const
 
 /**
- * The phone-full prompt where the shell mounts it, above a page's body
+ * The phone-full prompt where the shell mounts it, over a page's body
  * (src/routes/_dashboard.tsx), on a view and a let-go the spec moves.
  */
 const StorageFixture = (): JSX.Element => {
@@ -133,16 +109,12 @@ const StorageFixture = (): JSX.Element => {
     />
   )
   return (
-    <div style={column}>
-      <StoragePrompt
-        view={view}
-        renderOffer={offer}
-        onSettle={settle}
-        onDismiss={() => setView((now) => now && { ...now, notice: null })}
-      />
-      <p>Study</p>
-      <After names={["Start", "Next lesson", "Pick a portion"]} />
-    </div>
+    <StoragePrompt
+      view={view}
+      renderOffer={offer}
+      onSettle={settle}
+      onDismiss={() => setView((now) => now && { ...now, notice: null })}
+    />
   )
 }
 
@@ -156,30 +128,15 @@ const TAKE: PatternTake = {
   kept: { place: "going" },
 }
 
-/** A screen's take pattern over its store in memory, on the simulated microphone. */
-function takeScreen(): { pattern: TakePattern; store: MemoryTakes } {
-  const store = memoryTakes({ now: Date.now, seed: [TAKE] })
-  const pattern = takePattern(
-    {
-      screen: "ui-fit",
-      startRecording: simulatedMicrophone({ now: Date.now }).startRecording,
-      now: Date.now,
-      owner: microphoneOwner(),
-      player: simulatedPlayer(),
-      ...store.ports,
-    },
-    ONE_TAKE
-  )
-  return { pattern, store }
-}
-
 /**
  * One item's takes on the simulated microphone, as Rust Rounds' card draws
  * them; the spec fills the phone up and frees it.
  */
 const TakeFullFixture = (): JSX.Element => {
   // One screen per mount, as a screen makes its pattern.
-  const [{ pattern, store }] = useState(takeScreen)
+  const [{ pattern, store }] = useState(() =>
+    simulatedPattern({ seed: [TAKE] })
+  )
   const kept = useSyncExternalStore(store.subscribe, store.getSnapshot)
   const [full, setFull] = useState(false)
   // Home's word on each take, as the screen's store reads it back.
@@ -223,43 +180,23 @@ const LESSON_WORDS = {
   replayFrom: "Make your own",
 }
 
-/** Why a keep is refused, as the shelf client says it (`reason`). */
-type Answer = "kept" | "full" | "signed-out" | "invalid" | "failed"
-
-/** A shelf that answers each keep as the spec last said. */
-function fitShelf(answer: () => Answer): ShelfPort {
-  const items: Array<ShelfItem> = []
+/** A shelf that answers each keep as the spec last said (`answer`). */
+function keepShelf(): { shelf: ShelfPort; actions: FitActions } {
+  let now: ShelfAnswer = "failed"
   return {
-    list: () => Promise.resolve({ items: [...items], cap: 5 }),
-    read: () => Promise.resolve(null),
-    keep: (key): ReturnType<ShelfPort["keep"]> => {
-      const now = answer()
-      if (now !== "kept") {
-        return Promise.reject(Object.assign(new Error(now), { reason: now }))
-      }
-      const item = {
-        key,
-        contentHash: "a".repeat(64),
-        savedAt: "2026-11-06T09:00:00.000Z",
-      }
-      items.push(item)
-      return Promise.resolve({ change: "kept", item })
+    shelf: memoryShelf({ answer: () => now }),
+    actions: {
+      answer: (next: ShelfAnswer): void => {
+        now = next
+      },
     },
-    remove: () => Promise.resolve(),
   }
 }
 
 /** "Keep on this account" as topik's lesson list draws it, controls after. */
 const KeepFixture = (): JSX.Element => {
-  const [answer] = useState((): { now: Answer } => ({ now: "failed" }))
-  const [shelf] = useState(() => fitShelf(() => answer.now))
-  useFitActions(
-    Object.fromEntries(
-      (["kept", "full", "signed-out", "invalid", "failed"] as const).map(
-        (each) => [each, (): void => void (answer.now = each)]
-      )
-    )
-  )
+  const [{ shelf, actions }] = useState(keepShelf)
+  useFitActions(actions)
   return (
     <div style={column}>
       <Button variant="outline">Play the pasted drama</Button>

@@ -187,7 +187,6 @@ const JobsNotice = (): JSX.Element | null => {
         <Label htmlFor="jobs-notice" className="text-sm">
           {NOTICE_WORDS.label}
         </Label>
-        {/* As tall as the tallest it may say: a toggle moves nothing (HS1). */}
         <Reserved
           role="status"
           fits={NOTICE_SAID}

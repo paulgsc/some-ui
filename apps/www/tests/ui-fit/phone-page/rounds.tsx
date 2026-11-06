@@ -1,7 +1,7 @@
 /**
  * The rounds wing's phone screens, for `../stays-put-rounds.spec.ts`:
  * LeetType's incident session played from a session file, Rust Rounds, and
- * Game Week, each on fakes the spec moves through `window.__rounds` (a
+ * Game Week, each on fakes the spec moves through `./fit-actions.ts` (a
  * microphone's script, a take kept or not, the phone filling up, the
  * clipboard refusing). What a screen keeps goes to this page's
  * `localStorage`, so the spec refuses a write the way a full phone does, by
@@ -11,11 +11,7 @@ import type { JSX } from "react"
 import { useState } from "react"
 import type { GameWeekPorts, OutboxPort } from "@some-ui/game-week"
 import { fixtureFeed, GameWeek, storedPrefs } from "@some-ui/game-week"
-import type {
-  SessionFileStore,
-  SpokenTakes,
-  SpokenTakeSnapshot,
-} from "@some-ui/leetype"
+import type { SpokenTakes, SpokenTakeSnapshot } from "@some-ui/leetype"
 import type { RefineCard, RustRoundsPorts } from "@some-ui/rust-rounds"
 import { INDEXING_01, keptRounds, RustRounds } from "@some-ui/rust-rounds"
 import type { KeepResult } from "@some-ui/voice-capture"
@@ -27,94 +23,52 @@ import {
   simulatedPlayer,
   SPEAKING,
 } from "@some-ui/voice-capture/testing"
-import { STRESS_SESSION } from "@tests/ui-fit/panel-page/incident-session"
+import { STRESS_FILES } from "@tests/ui-fit/panel-page/incident"
 
 import { PANELS } from "@/lib/playable"
 
-/** What the spec moves from outside, once a fixture has mounted. */
-export type RoundsLevers = {
-  /** The next openings of the microphone answer as these say. */
-  readonly script: (...scripts: ReadonlyArray<MicScript>) => void
-  /** How the next take is kept (Rust Rounds' notes). */
-  readonly keeping: (how: KeepResult["outcome"]) => void
-  /** The phone has no room for another take (LeetType's answers). */
-  readonly fill: () => void
-  /** The clipboard refuses from here on (Rust Rounds' tutor page). */
-  readonly refuseCopy: () => void
-  /** The bite store refuses an Undo from here on (Game Week). */
-  readonly refuseUndo: () => void
-}
-
-declare global {
-  // eslint-disable-next-line @typescript-eslint/consistent-type-definitions -- TS global augmentation requires `interface`, not `type`
-  interface Window {
-    /** Set once a rounds fixture mounts, for the spec to move. */
-    __rounds?: RoundsLevers
-  }
-}
-
-/** Sets the levers this fixture answers; the rest do nothing. */
-function levers(these: Partial<RoundsLevers>): void {
-  const none = (): void => undefined
-  const all: RoundsLevers = {
-    script: none,
-    keeping: none,
-    fill: none,
-    refuseCopy: none,
-    refuseUndo: none,
-    ...these,
-  }
-  window.__rounds = all
-}
+import type { FitActions } from "./fit-actions"
+import { useFitActions } from "./fit-actions"
 
 const LEETYPE = PANELS.leetype.Component
-
-const FILE = "t1-99-fit-stress"
-
-const files: SessionFileStore = {
-  list: () =>
-    Promise.resolve([
-      {
-        name: FILE,
-        title: STRESS_SESSION.title,
-        oneLine: STRESS_SESSION.oneLine,
-        pickedAt: "2026-10-19T00:00:00.000Z",
-      },
-    ]),
-  keep: () => Promise.resolve("already-held"),
-  read: () => Promise.resolve(JSON.stringify(STRESS_SESSION)),
-}
 
 /**
  * The record screen's microphone, idle, over a store whose room the spec
  * fills (`fill`), as a take that found the phone full leaves it.
  */
-function answerTakes(): SpokenTakes {
+function answerTakes(): { takes: SpokenTakes; actions: FitActions } {
   const { pattern } = simulatedPattern()
   let room: SpokenTakeSnapshot = { takes: [], full: false, notesFull: false }
   const listeners = new Set<() => void>()
-  levers({
-    fill: () => {
-      room = { ...room, full: true }
-      for (const listener of listeners) listener()
-    },
-  })
   return {
-    pattern,
-    getSnapshot: () => room,
-    subscribe: (listener) => {
-      listeners.add(listener)
-      return (): void => void listeners.delete(listener)
+    takes: {
+      pattern,
+      getSnapshot: () => room,
+      subscribe: (listener) => {
+        listeners.add(listener)
+        return (): void => void listeners.delete(listener)
+      },
+      note: () => true,
     },
-    note: () => true,
+    actions: {
+      fill: (): void => {
+        room = { ...room, full: true }
+        for (const listener of listeners) listener()
+      },
+    },
   }
 }
 
 /** LeetType on the phone holding one session file, its log on this page. */
 const Incident = (): JSX.Element => {
-  const [takes] = useState(answerTakes)
+  const [{ takes, actions }] = useState(answerTakes)
+  useFitActions(actions)
   return (
-    <LEETYPE surface="rounds" sessionFiles={{ store: files }} takes={takes} />
+    <LEETYPE
+      surface="rounds"
+      sessionFiles={{ store: STRESS_FILES }}
+      takes={takes}
+    />
   )
 }
 
@@ -133,7 +87,10 @@ const REFINE: RefineCard = {
  * again; the microphone is the simulated one, its keeping and script moved
  * by the spec, and the clipboard takes the copy until `refuseCopy`.
  */
-function rustPorts(refine: boolean): RustRoundsPorts {
+function rustPorts(refine: boolean): {
+  ports: RustRoundsPorts
+  actions: FitActions
+} {
   const store = keptRounds(localStorage)
   if (refine) {
     store.hold({
@@ -153,14 +110,7 @@ function rustPorts(refine: boolean): RustRoundsPorts {
   }
   const { pattern, store: takes, mic, keeping } = simulatedPattern()
   let copies = true
-  levers({
-    script: mic.script,
-    keeping,
-    refuseCopy: () => {
-      copies = false
-    },
-  })
-  return {
+  const ports: RustRoundsPorts = {
     store,
     notes: {
       pattern,
@@ -174,12 +124,23 @@ function rustPorts(refine: boolean): RustRoundsPorts {
     onVisibility: () => () => undefined,
     home: true,
   }
+  return {
+    ports,
+    actions: {
+      script: (script: MicScript): void => mic.script(script),
+      keeping: (how: KeepResult["outcome"]): void => keeping(how),
+      refuseCopy: (): void => {
+        copies = false
+      },
+    },
+  }
 }
 
 /** Rust Rounds over its ports, made once for the page's life. */
 const RustFixture = ({ refine }: { refine: boolean }): JSX.Element => {
   // eslint-disable-next-line owner-guard/no-mount-snapshot -- the runtime is made once per mount, as the app's is
-  const [ports] = useState(() => rustPorts(refine))
+  const [{ ports, actions }] = useState(() => rustPorts(refine))
+  useFitActions(actions)
   return <RustRounds ports={ports} />
 }
 
@@ -197,20 +158,14 @@ const OUTBOX: OutboxPort = {
 }
 
 /** Game Week over the fixture feed, a store that keeps, and the simulated microphone. */
-function gameWeekPorts(): GameWeekPorts {
+function gameWeekPorts(): { ports: GameWeekPorts; actions: FitActions } {
   const now = (): number => Date.UTC(2026, 10, 1, 21)
   const mic = simulatedMicrophone({
     now: Date.now,
     fallback: { ...SPEAKING, level: 0.4, durationMs: 3_000 },
   })
   let undoes = true
-  levers({
-    script: mic.script,
-    refuseUndo: () => {
-      undoes = false
-    },
-  })
-  return {
+  const ports: GameWeekPorts = {
     startRecording: mic.startRecording,
     owner: microphoneOwner(),
     player: simulatedPlayer(),
@@ -231,10 +186,20 @@ function gameWeekPorts(): GameWeekPorts {
     newId: () => crypto.randomUUID(),
     onVisibility: () => () => undefined,
   }
+  return {
+    ports,
+    actions: {
+      script: (script: MicScript): void => mic.script(script),
+      refuseUndo: (): void => {
+        undoes = false
+      },
+    },
+  }
 }
 
 const Game = (): JSX.Element => {
-  const [ports] = useState(gameWeekPorts)
+  const [{ ports, actions }] = useState(gameWeekPorts)
+  useFitActions(actions)
   return <GameWeek ports={ports} outbox={OUTBOX} />
 }
 

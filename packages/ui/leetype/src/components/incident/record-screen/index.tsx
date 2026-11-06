@@ -1,4 +1,4 @@
-import type { FC } from "react"
+import type { FC, JSX } from "react"
 import { useState } from "react"
 import { Glosses } from "@leetype/components/incident/glosses"
 import { RubricPoints } from "@leetype/components/incident/rubric-points"
@@ -10,8 +10,8 @@ import type { SpokenAnswer } from "@leetype/lib/leetype/incident-play"
 import type { SpokenTakeView } from "@leetype/lib/leetype/spoken-take"
 import type { SessionScreen } from "@leetype/types/session-file"
 import { rubricText } from "@leetype/types/session-file"
-import { assertNever, cn } from "@some-ui/core-utils"
-import { Button, Label, Reserved, TakeItem, Textarea } from "@some-ui/shared"
+import { assertNever } from "@some-ui/core-utils"
+import { Button, Label, TakeItem, Textarea } from "@some-ui/shared"
 import type { TakePlace } from "@some-ui/voice-capture"
 
 type RecordScreen = Extract<SessionScreen, { type: "record" }>
@@ -146,7 +146,17 @@ export const RecordScreenView: FC<RecordScreenProps> = ({
     </>
   )
 
-  const takeItem =
+  // Why no take can be kept now: in the take's own room while it would
+  // show, and after Pass while typing.
+  const fullWords = !full
+    ? null
+    : noRoom
+      ? "This phone has kept as many answers as it can until a home it's paired with has the ones on it."
+      : "This phone has kept as many recorded answers as it can until a home it's paired with has the ones on it. You can still type one."
+
+  // While the take is still to come, the phone filling up says so where
+  // its button was.
+  const takeItem = (fullSaid?: string): JSX.Element | null =>
     take === null ? null : (
       <TakeItem
         view={take.item}
@@ -154,6 +164,7 @@ export const RecordScreenView: FC<RecordScreenProps> = ({
         onPlay={onPlay}
         onRedo={onTap}
         onLetGo={onLetGo}
+        full={fullSaid}
       />
     )
 
@@ -161,8 +172,8 @@ export const RecordScreenView: FC<RecordScreenProps> = ({
     return (
       <article className={SCREEN_ARTICLE}>
         {heading}
-        {spoken.as === "recorded" && takeItem !== null ? (
-          takeItem
+        {spoken.as === "recorded" && take !== null ? (
+          takeItem()
         ) : (
           <p className="text-pretty text-sm text-muted-foreground">
             {answered(spoken)}
@@ -190,35 +201,12 @@ export const RecordScreenView: FC<RecordScreenProps> = ({
     )
   }
 
-  // Why no take can be kept now: in the take's own room while it would
-  // show, and after Pass while typing, so the phone filling up moves no
-  // control (HS1).
-  const fullWords = !full
-    ? null
-    : noRoom
-      ? "This phone has kept as many answers as it can until a home it's paired with has the ones on it."
-      : "This phone has kept as many recorded answers as it can until a home it's paired with has the ones on it. You can still type one."
-
   return (
     <article className={SCREEN_ARTICLE}>
       {heading}
       {take !== null && !typing && (
         <div className="flex flex-col gap-2">
-          <div className="grid">
-            <div
-              className={cn("col-start-1 row-start-1", full && "invisible")}
-              aria-hidden={full}
-              inert={full}
-            >
-              {takeItem}
-            </div>
-            <Reserved
-              role="status"
-              className="col-start-1 row-start-1 text-pretty text-sm text-muted-foreground"
-            >
-              {fullWords}
-            </Reserved>
-          </div>
+          {takeItem(fullWords ?? undefined)}
           <Button
             variant="outline"
             className="min-h-11 self-start"

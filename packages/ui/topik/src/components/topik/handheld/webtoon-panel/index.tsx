@@ -8,6 +8,7 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
+  Held,
 } from "@some-ui/shared"
 import type { FeelingKey } from "@some-ui/styles/theme"
 import {
@@ -102,31 +103,8 @@ const Replay = ({
 )
 
 /**
- * Drawn whether it shows or not, and hidden from eye and ear until it does:
- * a rung climbed fills room the panel already had, so it moves nothing below
- * it, the tapped panel's own size included (HS1).
- */
-const Held = ({
-  shown,
-  className,
-  children,
-}: {
-  shown: boolean
-  className?: string
-  children: ReactNode
-}): JSX.Element => (
-  <span
-    aria-hidden={!shown || undefined}
-    className={cn(className, !shown && "invisible")}
-  >
-    {children}
-  </span>
-)
-
-/**
- * A beat's text on its rung: heard only, its Hangul, then its gloss too.
- * Every rung is drawn in one cell, so the bubble is its top rung's size from
- * the first.
+ * A beat's text on its rung: heard only, its Hangul, then its gloss too,
+ * every rung in one cell (HS1).
  */
 const Ladder = ({
   rung,

@@ -6,7 +6,7 @@
 
 import type { JSX } from "react"
 import { useState, useSyncExternalStore } from "react"
-import { Button, Reserved } from "@some-ui/shared"
+import { AlertOrStatus, Button } from "@some-ui/shared"
 import type { SceneAsk } from "@topik/lib/topik/adapter/next-scene-ask"
 import type { SceneNote } from "@topik/lib/topik/adapter/scene-voice"
 import {
@@ -92,27 +92,14 @@ export const AskScene = ({
         )}
         <span lang={labelLang}>{label}</span>
       </Button>
-      {/*
-       * What the host says of the asks, or the refusal, in one room kept
-       * for the longest of them, so neither moves the button above it nor,
-       * in a drama's ending dock, the controls the dock grows up into (HS1).
-       */}
-      <div className="grid text-xs">
-        <Reserved
-          role="status"
-          lines={ASK_LINES}
-          className="text-muted-foreground col-start-1 row-start-1"
-        >
-          {refused ? null : snapshot.said}
-        </Reserved>
-        <Reserved
-          role="alert"
-          lines={ASK_LINES}
-          className="text-destructive col-start-1 row-start-1"
-        >
-          {refused ? ASK_NOT_KEPT : null}
-        </Reserved>
-      </div>
+      <AlertOrStatus
+        lines={ASK_LINES}
+        className="text-xs"
+        alertClassName="text-destructive"
+        statusClassName="text-muted-foreground"
+        alert={refused ? ASK_NOT_KEPT : null}
+        status={snapshot.said}
+      />
     </div>
   )
 }

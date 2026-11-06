@@ -7,7 +7,7 @@ import type { ShelfRuntime } from "../../../lib/shelf/runtime"
 import { createShelfKeeper, createShelfList } from "../../../lib/shelf/runtime"
 import { cn } from "../../../lib/utils"
 import { Button } from "../button"
-import { Reserved } from "../reserved"
+import { AlertOrStatus, Held } from "../reserved"
 
 /*
  * The learner shelf on screen (canon Rem. 7.3; `lib/shelf` holds the rules
@@ -211,12 +211,9 @@ type KeepOnShelfProps = Omit<KeptShelfProps<never>, "replay"> & {
  * unless the learner removes it. Key it on the item, so a new item is a new
  * question.
  *
- * The button keeps its place in every state (unseen once a keep can't
- * help: signed out, or an item the shelf refuses), and what a keep answered
- * is said below it, in room kept
- * whether it says something or not: a keep moves nothing after it (HS1,
- * `apps/www/tests/ui-fit/stays-put-www.spec.ts`). The full shelf's list is
- * the one thing that opens below.
+ * The button keeps its place in every state, and what a keep answered
+ * keeps its room below it (HS1); the full shelf's list is the one thing
+ * that opens below.
  */
 export const KeepOnShelf = ({
   shelf,
@@ -228,38 +225,36 @@ export const KeepOnShelf = ({
   const kept = keeping.status === "kept" ? keeping : null
   const failure = keeping.status === "failed" ? keeping.failure : null
   const replay = `Replay it from ${words.replayFrom}.`
-  // Nothing a tap could do now: its place is kept, unseen.
+  // Nothing a tap could do now.
   const gone = failure === "signed-out" || failure === "invalid"
 
   return (
     <div className="flex min-w-0 flex-col gap-2">
-      <Button
-        variant="outline"
-        className={cn("min-h-11 gap-2 rounded-xl", gone && "invisible")}
-        aria-hidden={gone ? true : undefined}
-        disabled={keeping.status === "keeping" || kept !== null || gone}
-        onClick={() => keeper.keep(shelfKey, body)}
-      >
-        {keeping.status === "keeping" ? (
-          <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-        ) : kept === null ? (
-          <Bookmark className="size-4" aria-hidden="true" />
-        ) : (
-          <Check className="text-success size-4" aria-hidden="true" />
-        )}
-        {kept === null ? "Keep on this account" : "Kept"}
-      </Button>
-      {/* One place for both lines, as tall as two lines of either. */}
-      <div className="grid text-sm">
-        <Reserved
-          role="alert"
-          lines={2}
-          className={cn(
-            "col-start-1 row-start-1",
-            failure !== "full" && failure !== "signed-out" && "text-destructive"
-          )}
+      <Held shown={!gone} className="grid">
+        <Button
+          variant="outline"
+          className="min-h-11 gap-2 rounded-xl"
+          disabled={keeping.status === "keeping" || kept !== null}
+          onClick={() => keeper.keep(shelfKey, body)}
         >
-          {failure === "full"
+          {keeping.status === "keeping" ? (
+            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+          ) : kept === null ? (
+            <Bookmark className="size-4" aria-hidden="true" />
+          ) : (
+            <Check className="text-success size-4" aria-hidden="true" />
+          )}
+          {kept === null ? "Keep on this account" : "Kept"}
+        </Button>
+      </Held>
+      <AlertOrStatus
+        lines={2}
+        className="text-sm"
+        alertClassName={cn(
+          failure !== "full" && failure !== "signed-out" && "text-destructive"
+        )}
+        alert={
+          failure === "full"
             ? `Your shelf is full. Remove a ${words.noun} you kept, then keep this one.`
             : failure === "signed-out"
               ? "Sign in to keep this."
@@ -267,18 +262,18 @@ export const KeepOnShelf = ({
                 ? `This ${words.noun} can't be kept: the shelf refused it, most likely because it is too large.`
                 : failure === "failed"
                   ? "It could not be kept. Try again."
-                  : null}
-        </Reserved>
-        <Reserved role="status" lines={2} className="col-start-1 row-start-1">
-          {kept === null
+                  : null
+        }
+        status={
+          kept === null
             ? null
             : kept.unchanged
               ? "Already on this account."
               : kept.key === shelfKey
                 ? `Kept on this account. ${replay}`
-                : `Kept on this account as ${kept.key}, beside the one already named ${shelfKey}. ${replay}`}
-        </Reserved>
-      </div>
+                : `Kept on this account as ${kept.key}, beside the one already named ${shelfKey}. ${replay}`
+        }
+      />
       {failure === "full" && <KeptShelf shelf={shelf} words={words} />}
     </div>
   )

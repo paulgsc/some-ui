@@ -299,10 +299,10 @@ jobs:
       # is in the trigger set on purpose - binding a new key delegates size
       # authority to a component the panel sweep has never measured. So are
       # www's build config and the manifests and lockfile: the fixture pages
-      # (tests/ui-fit/panel-page, and phone-page for the phone's Studio and
-      # drag-down indicator) are built with www's own Vite config and
-      # stylesheets, so a Tailwind, Vite or React bump changes what they
-      # measure.
+      # (tests/ui-fit/panel-page, and phone-page for every phone screen the
+      # sweeps and the stays-put walks open) are built with www's own Vite
+      # config and stylesheets, so a Tailwind, Vite or React bump changes
+      # what they measure.
       - name: E2E — content fits its box, and stays put (panels, launcher, exercise shell, incident session, Jobs cards, Studio's phone screens, code card, drag-down indicator, My data, Rust Rounds, take pattern, and every walked phone screen)
         run: |
           files=$(git diff --name-only --diff-filter=ACMR HEAD^1 -- \

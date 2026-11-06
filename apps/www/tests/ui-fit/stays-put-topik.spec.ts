@@ -1,10 +1,7 @@
 /**
- * Promise HS1, for topik's handheld lesson (the phone's TOPIK: what
- * `chooseSurface` mounts under 768px wide or 480px tall).
- * - Claim: on the handheld lesson, a tap or key that leaves you on that
- *   screen moves no tap target still on it: what a tap brings up (a status
- *   line, a refusal, a verdict, a line's next rung, "Noted.") keeps its room
- *   whether it shows or not, or comes after the last control.
+ * Promise HS1, for topik's handheld lesson: the phone's TOPIK, what
+ * `chooseSurface` mounts under 768px wide or 480px tall (`./stays-put.spec.ts`
+ * holds the claim).
  * - Family: every tap each walk below takes, at each of `PHONE_VIEWPORTS`
  *   (the phone held sideways among them); for Write your own drama, an ask
  *   for the next scene kept and refused, a copy the clipboard refused and
@@ -17,25 +14,21 @@
  *   revealed item's situations picked, changed and taken back. A tap that
  *   declares `reflows` (another screen, a step, a disclosure below the tap)
  *   is outside it, and says why.
- * - Proof: this spec, which takes every tap and compares every target's box
- *   before and after (`../layout-invariants/stays-put.ts`); the measure's
- *   self-test is `./stays-put.spec.ts`'s planted shift.
+ * - Proof: this spec, over `../layout-invariants/stays-put.ts`.
  * - Tolerance: a screen this spec does not walk, read-aloud's rep card
  *   among them: its steps run on a clock, between any two taps.
- *
- * Run against a built phone page:
- *
- *   pnpm --filter www build:fit-phone
- *   pnpm --filter www test:ui-fit tests/ui-fit/stays-put-topik.spec.ts
  */
 
 import { fileURLToPath } from "node:url"
-import { expect, test, type Page } from "@playwright/test"
-import { holdStill, type Tap } from "@tests/layout-invariants/stays-put"
+import { expect, type Page } from "@playwright/test"
+import {
+  button,
+  keepWrites,
+  refuseWrites,
+  type Tap,
+} from "@tests/layout-invariants/stays-put"
 
-import { PHONE_VIEWPORTS, servePhonePage } from "./harness"
-
-const PAGE = servePhonePage()
+import { walkEachPhone } from "./harness"
 
 /** The grammar lens's level-one set, as the learner picks it from storage. */
 const LENS_SET = fileURLToPath(
@@ -126,40 +119,8 @@ const TREE = {
   },
 }
 
-/** A button by its name: a string is the whole name, a pattern a part. */
-const button = (name: string | RegExp, does: string): Tap => ({
-  does,
-  act: (page) =>
-    page
-      .getByRole("button", { name, exact: typeof name === "string" })
-      .first()
-      .click(),
-})
-
-/** From here on, the phone keeps nothing: every write is refused. */
-const refuseWrites: Tap = {
-  does: "the phone stops keeping writes",
-  act: (page): Promise<void> =>
-    page.evaluate(() => {
-      const kept = Storage.prototype.setItem
-      Reflect.set(window, "__keptSetItem", kept)
-      Storage.prototype.setItem = (): never => {
-        throw new DOMException("full", "QuotaExceededError")
-      }
-    }),
-}
-
-/** The phone keeps writes again. */
-const keepWrites: Tap = {
-  does: "the phone keeps writes again",
-  act: (page): Promise<void> =>
-    page.evaluate(() => {
-      const kept: unknown = Reflect.get(window, "__keptSetItem")
-      if (typeof kept === "function") {
-        Reflect.set(Storage.prototype, "setItem", kept)
-      }
-    }),
-}
+/** A string names a button whole here: "Listen" is not "Listen first". */
+const EXACT = { exact: true } as const
 
 /** From here on, the clipboard refuses what is copied to it. */
 const refuseClipboard: Tap = {
@@ -180,9 +141,9 @@ const GENERATE: ReadonlyArray<Tap> = [
     ...button(/^Write your own drama/, "opens Write your own drama"),
     reflows: "screen: Write your own drama",
   },
-  button("Ask for the next scene", "asks home for the next scene"),
+  button("Ask for the next scene", "asks home for the next scene", EXACT),
   refuseWrites,
-  button("Ask for the next scene", "asks again, refused"),
+  button("Ask for the next scene", "asks again, refused", EXACT),
   keepWrites,
   refuseClipboard,
   button(/^Copy the prompt/, "copies the prompt, refused by the clipboard"),
@@ -191,7 +152,7 @@ const GENERATE: ReadonlyArray<Tap> = [
     does: "pastes the reply",
     act: (page) => reply(page).fill(JSON.stringify(TREE)),
   },
-  button("Read the reply", "reads the reply"),
+  button("Read the reply", "reads the reply", EXACT),
   {
     does: "types a key into the reply",
     act: async (page): Promise<void> => {
@@ -199,15 +160,15 @@ const GENERATE: ReadonlyArray<Tap> = [
       await reply(page).press("Space")
     },
   },
-  button("Read the reply", "reads it again"),
+  button("Read the reply", "reads it again", EXACT),
 ]
 
 /** The drama the reply holds, from its first beat to its ending. */
 const DRAMA: ReadonlyArray<Tap> = [
   { ...button(/Start/, "starts the drama"), reflows: "screen: the drama" },
-  button("Listen", "listens to the narration"),
-  button("Show Korean", "shows the narration's Korean"),
-  button("Show English", "shows the narration's English"),
+  button("Listen", "listens to the narration", EXACT),
+  button("Show Korean", "shows the narration's Korean", EXACT),
+  button("Show English", "shows the narration's English", EXACT),
   button(/show English$/, "shows the cover's English"),
   button(/^Next/, "goes on to the chairman's line"),
   {
@@ -257,16 +218,16 @@ const DRAMA: ReadonlyArray<Tap> = [
     ...button(/^Next/, "goes on to the ending"),
     reflows: "step: the ending, with its own dock",
   },
-  button("다음 화 쓰기", "asks for the next episode"),
+  button("다음 화 쓰기", "asks for the next episode", EXACT),
   refuseWrites,
-  button("다음 화 쓰기", "asks again, refused"),
+  button("다음 화 쓰기", "asks again, refused", EXACT),
   keepWrites,
   {
-    ...button("작가의 말", "opens the author's notes"),
+    ...button("작가의 말", "opens the author's notes", EXACT),
     reflows: "disclosure: the notes, below their heading",
   },
   {
-    ...button("Why?", "asks why"),
+    ...button("Why?", "asks why", EXACT),
     reflows: "disclosure: the answer, in place of Why? and below it",
   },
   {
@@ -275,8 +236,8 @@ const DRAMA: ReadonlyArray<Tap> = [
   },
   button(/^재미있었어요/, "says it was fun"),
   button(/^딱 좋아요/, "says the Korean was about right"),
-  button("Show English", "shows the review's English"),
-  button("Hide English", "hides it again"),
+  button("Show English", "shows the review's English", EXACT),
+  button("Hide English", "hides it again", EXACT),
   {
     does: "types what to watch next",
     act: (page) =>
@@ -343,38 +304,12 @@ const LENS: ReadonlyArray<Tap> = [
   situation(-1, "takes it back"),
 ]
 
-async function open(page: Page): Promise<Array<string>> {
-  const errors: Array<string> = []
-  page.on("pageerror", (error) => errors.push(error.message))
-  await page.goto(PAGE.url("topik-handheld"), { waitUntil: "load" })
-  await expect(page.locator("[data-fit-slot] button").first()).toBeVisible()
-  return errors
-}
-
-test.describe("a tap moves nothing it leaves on topik's handheld (HS1)", () => {
-  PAGE.skipUnbuilt()
-
-  for (const phone of PHONE_VIEWPORTS) {
-    test(`topik at ${phone.name} (${phone.width}x${phone.height})`, async ({
-      page,
-    }) => {
-      test.setTimeout(90_000)
-      PAGE.expectBuilt()
-      await page.setViewportSize({ width: phone.width, height: phone.height })
-      const failures: Array<string> = []
-
-      // Each walk on a fresh page, so its storage starts empty.
-      const walks = [
-        [[...GENERATE, ...DRAMA], "topik, write your own and play it"],
-        [LENS, "topik, the grammar lens"],
-      ] as const
-      for (const [taps, label] of walks) {
-        const errors = await open(page)
-        failures.push(...(await holdStill(page, taps, label)))
-        expect(errors, `${label}: ${errors.join("\n")}`).toEqual([])
-      }
-
-      expect(failures, failures.join("\n")).toEqual([])
-    })
-  }
-})
+// Each walk on a fresh page.
+walkEachPhone("a tap moves nothing it leaves on topik's handheld (HS1)", [
+  {
+    panel: "topik-handheld",
+    taps: [...GENERATE, ...DRAMA],
+    label: "topik, write your own and play it",
+  },
+  { panel: "topik-handheld", taps: LENS, label: "topik, the grammar lens" },
+])

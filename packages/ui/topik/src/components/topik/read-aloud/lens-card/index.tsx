@@ -598,7 +598,6 @@ export const LensCard = ({
                 {option}
               </Button>
             ))}
-            {/* Its room kept, in a dock that grows up into the options (HS1). */}
             <Reserved role="status" className="text-muted-foreground text-xs">
               {situation.chosen !== null && "Noted."}
             </Reserved>

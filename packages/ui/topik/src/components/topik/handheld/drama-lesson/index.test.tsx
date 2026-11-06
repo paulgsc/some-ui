@@ -172,7 +172,6 @@ describe("DramaLesson", () => {
     renderDrama()
     next()
     next()
-    // Drawn from the first, hidden until its rung, so it moves nothing (HS1).
     const task = (): Element | null =>
       screen.getByText(/Which reply fits/).closest("[aria-hidden=true]")
     expect(task()).not.toBeNull()

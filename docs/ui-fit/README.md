@@ -404,13 +404,21 @@ order:
    last thing you can tap moves nothing. aph's logger puts its refusals and
    its "drafts are waiting" line below Save.
 2. **Keep its room.** Anywhere else, and always in a bottom sheet, the place
-   keeps its size whether it says something or not: `Reserved`
-   (`@some-ui/shared`) holds `lines` lines of its own text and keeps its live
-   region mounted, so a screen reader still hears what lands in it. A line
-   whose words change keeps one height (`min-h-*`); a word that swaps keeps
-   one width (`w-*`); every `Button` variant draws a border, transparent
-   unless it shows, so a toggle between `outline` and `default` keeps its
-   width.
+   keeps its size whether it says something or not, with the shared parts
+   in `@some-ui/shared` (`components/ui/reserved`) rather than a fixed
+   `min-h-*` or `w-*`:
+
+   - `Reserved` holds `lines` lines of its own text, or with `fits` the
+     tallest of everything it may say, and keeps its live region mounted, so
+     a screen reader still hears what lands in it; `AlertOrStatus` is two of
+     them in one room, a refusal or advice.
+   - `SameWidth` keeps a word that swaps ("Copy", "Copied"; "Play", "Stop")
+     as wide as the widest it may say.
+   - `Held` draws what may show (a control, a gloss, a rung) whether it
+     shows or not, unseen, unheard and out of reach until it does.
+
+   Every `Button` variant draws a border, transparent unless it shows, so a
+   toggle between `outline` and `default` keeps its width.
 
 The spec walks a screen tap by tap (`holdStill`,
 `apps/www/tests/layout-invariants/stays-put.ts`), reads every visible target's
@@ -423,11 +431,22 @@ A CLS budget would not have caught any of this. The Layout Instability API
 leaves out every shift within 500ms of an input (`hadRecentInput`), which is
 every shift a tap causes, so a screen that moves under each tap scores zero.
 
-The walks, and HS1's Family, are in `stays-put.spec.ts` (aph) and one spec
-per wing beside it (`stays-put-rounds`, `-soundbites`, `-topik`, `-www`),
-each listed in `pr.yml`. A phone screen none of them walks is outside HS1
-until one does, with its fixture on the phone page
-(`./phone-page/fixtures.tsx`).
+The walks, and HS1's Family, are in `stays-put.spec.ts` (aph, and the
+measure's planted-shift self-test) and one spec per wing beside it
+(`stays-put-rounds`, `-soundbites`, `-topik`, `-www`), each listed in
+`pr.yml`. A phone screen none of them walks is outside HS1 until one does,
+with its fixture on the phone page (`./phone-page/fixtures.tsx`). A spec is
+its walks: taps built from the measure's own (`button`, `toScreen`,
+`waitsFor`, `refuseWrites`), handed to `walkEachPhone` (`harness.ts`), which
+opens each walk's fixture at every phone size. What happens on a screen
+without a tap (a save refused, home answering, the phone filling up) is a
+fixture's action (`./phone-page/fit-actions.ts`), which a walk calls with
+`happens`. Run them against a built phone page:
+
+```sh
+pnpm --filter www build:fit-phone
+pnpm --filter www test:ui-fit tests/ui-fit/stays-put.spec.ts
+```
 
 ### 2j. `pnpm check:stays-put` (a count, HS2)
 

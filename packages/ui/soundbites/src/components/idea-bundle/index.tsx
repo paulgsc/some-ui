@@ -856,8 +856,7 @@ export const IdeaBundle = ({
   return (
     <div className="flex flex-col gap-4">
       {backable && (
-        // Held, not taken away, while a take is under way: the screen under
-        // it stays where it is (HS1).
+        // Held while a take is under way (HS1).
         <Button
           variant="ghost"
           size="sm"

@@ -1,6 +1,6 @@
 import type { JSX } from "react"
 import { cn } from "@some-ui/core-utils"
-import { Button } from "@some-ui/shared"
+import { Button, Held } from "@some-ui/shared"
 import {
   ChevronLeft,
   ChevronRight,
@@ -54,32 +54,25 @@ export const LadderDock = ({
           {rung === 0 ? "Listen" : "Again"}
         </Button>
       )}
-      {/*
-       * Kept at the top rung, hidden and out of reach, so Listen keeps its
-       * width and, with no voice, the row its height: nothing in the dock
-       * moves when the last rung shows (HS1).
-       */}
-      <Button
-        variant="outline"
-        className={cn(
-          "h-12 min-w-0 flex-1 gap-2 rounded-2xl",
-          !canReveal && "invisible"
-        )}
-        onClick={onReveal}
-        disabled={!canReveal}
-        aria-hidden={!canReveal || undefined}
-        tabIndex={canReveal ? undefined : -1}
-      >
-        {rung === 0 ? (
-          <>
-            <Eye className="size-4" /> Show Korean
-          </>
-        ) : (
-          <>
-            <Languages className="size-4" /> Show English
-          </>
-        )}
-      </Button>
+      {/* Kept at the top rung, so Listen keeps its width and, with no
+          voice, the row its height (HS1). */}
+      <Held shown={canReveal} className="flex min-w-0 flex-1">
+        <Button
+          variant="outline"
+          className="h-12 min-w-0 flex-1 gap-2 rounded-2xl"
+          onClick={onReveal}
+        >
+          {rung === 0 ? (
+            <>
+              <Eye className="size-4" /> Show Korean
+            </>
+          ) : (
+            <>
+              <Languages className="size-4" /> Show English
+            </>
+          )}
+        </Button>
+      </Held>
     </div>
     <div className="flex gap-2">
       <Button

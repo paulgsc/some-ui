@@ -14,6 +14,7 @@ import {
 } from "@some-ui/voice-capture"
 
 import { cn } from "../../../lib/utils"
+import { Held, Reserved } from "../../ui/reserved"
 import type { TakeButtonProps } from "./take-button"
 import { TakeButton, takeButtonVariants } from "./take-button"
 import { TakeRow } from "./take-row"
@@ -107,55 +108,37 @@ export const TakeItem = ({
       className={cn("flex flex-col gap-3", className)}
     >
       {/* The button with its line, and the words while the phone is full,
-          share one place as tall as the taller: the phone filling up or
-          freeing moves no row below (HS1). While full, the button gives way
-          to an empty box of its size. */}
+          share one place as tall as the taller (HS1). */}
       <div className="grid">
-        <div
-          aria-hidden={full === undefined ? undefined : true}
+        <Held
+          as="div"
+          shown={full === undefined}
           className="col-start-1 row-start-1 flex flex-col items-center gap-2"
         >
           {full === undefined ? (
             <TakeButton view={view.button} size={size} onTap={onTap} />
           ) : (
-            <div className={cn(takeButtonVariants({ size }), "invisible")} />
+            <div className={takeButtonVariants({ size })} />
           )}
-          {/* As tall as the tallest thing it may say, at this width: a take
-              that ends moves no row below (HS1). Those are drawn hidden, by
-              CSS, so they are neither read aloud nor found as its text. */}
-          <p
-            aria-live="polite"
-            data-take-ended={
-              full === undefined && said?.kind === "ended"
-                ? said.ended.seq
-                : undefined
-            }
-            className={cn(
-              "text-muted-foreground grid min-h-5 text-center text-sm",
-              full !== undefined && "invisible"
-            )}
+          <Reserved
+            role="status"
+            fits={saidLines(words)}
+            className="text-muted-foreground text-center text-sm"
           >
-            {saidLines(words).map((line) => (
+            {full !== undefined || said === null ? null : (
               <span
-                key={line}
-                aria-hidden="true"
-                data-fits={line}
-                className="invisible col-start-1 row-start-1 after:content-[attr(data-fits)]"
-              />
-            ))}
-            <span className="col-start-1 row-start-1">
-              {full !== undefined || said === null
-                ? null
-                : takeSaid(words, said)}
-            </span>
-          </p>
-        </div>
+                data-take-ended={
+                  said.kind === "ended" ? said.ended.seq : undefined
+                }
+              >
+                {takeSaid(words, said)}
+              </span>
+            )}
+          </Reserved>
+        </Held>
         <p
           role="status"
-          className={cn(
-            "text-muted-foreground col-start-1 row-start-1 text-sm",
-            full === undefined && "invisible"
-          )}
+          className="text-muted-foreground col-start-1 row-start-1 text-sm"
         >
           {full}
         </p>

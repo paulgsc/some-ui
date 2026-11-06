@@ -10,7 +10,8 @@ const Leetype = PANELS.leetype.Component
 
 const NAME = "t1-99-fit-stress"
 
-const files: SessionFileStore = {
+/** The phone's session files: the stress session alone, already held. */
+export const STRESS_FILES: SessionFileStore = {
   list: () =>
     Promise.resolve([
       {
@@ -46,5 +47,9 @@ const takes: SpokenTakes = {
  * open through the turn.
  */
 export const IncidentFixture = (): JSX.Element => (
-  <Leetype surface="rounds" sessionFiles={{ store: files }} takes={takes} />
+  <Leetype
+    surface="rounds"
+    sessionFiles={{ store: STRESS_FILES }}
+    takes={takes}
+  />
 )

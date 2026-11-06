@@ -8,7 +8,7 @@
  * reach a control is not a move.
  */
 
-import type { Page } from "@playwright/test"
+import type { Locator, Page } from "@playwright/test"
 
 /** What a thumb can hit. */
 const TARGETS = [
@@ -96,6 +96,69 @@ export type Tap = {
    * one.
    */
   readonly reflows?: string
+}
+
+/** Where a tap looks for its control: the page, or a part of it (a sheet). */
+export type Scope = (page: Page) => Pick<Page, "getByRole">
+
+const onPage: Scope = (page) => page
+
+/**
+ * A tap on the first button named `name`: a string is any part of its name
+ * unless `exact`, a pattern a match.
+ */
+export const button = (
+  name: string | RegExp,
+  does: string,
+  { scope = onPage, exact }: { scope?: Scope; exact?: boolean } = {}
+): Tap => ({
+  does,
+  act: (page) =>
+    scope(page).getByRole("button", { name, exact }).first().click(),
+})
+
+/** A tap onto another screen: a new layout, so nothing is held. */
+export const toScreen = (name: string | RegExp, does: string): Tap => ({
+  ...button(name, does),
+  reflows: `screen: ${does}`,
+})
+
+/**
+ * Waits for what `found` finds to show, so the next tap starts from a still
+ * screen: what landed while nothing was tapped is measured too.
+ */
+export const waitsFor = (
+  found: (page: Page) => Locator,
+  does: string
+): Tap => ({
+  does,
+  act: (page) => found(page).first().waitFor(),
+})
+
+/** From here on, the phone keeps nothing: every write is refused. */
+export const refuseWrites: Tap = {
+  does: "the phone stops keeping writes",
+  act: (page): Promise<void> =>
+    page.evaluate(() => {
+      if (!Reflect.has(window, "__keptSetItem")) {
+        Reflect.set(window, "__keptSetItem", Storage.prototype.setItem)
+      }
+      Storage.prototype.setItem = (): never => {
+        throw new DOMException("full", "QuotaExceededError")
+      }
+    }),
+}
+
+/** The phone keeps writes again, after `refuseWrites`. */
+export const keepWrites: Tap = {
+  does: "the phone keeps writes again",
+  act: (page): Promise<void> =>
+    page.evaluate(() => {
+      const kept: unknown = Reflect.get(window, "__keptSetItem")
+      if (typeof kept === "function") {
+        Reflect.set(Storage.prototype, "setItem", kept)
+      }
+    }),
 }
 
 /**

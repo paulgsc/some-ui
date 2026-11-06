@@ -12,7 +12,13 @@
 import type { JSX } from "react"
 import { useState } from "react"
 import { cn } from "@some-ui/core-utils"
-import { Badge, Button, Input, useConfirmSheet } from "@some-ui/shared"
+import {
+  Badge,
+  Button,
+  Input,
+  Reserved,
+  useConfirmSheet,
+} from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
 import { X } from "lucide-react"
 
@@ -231,15 +237,17 @@ const PivotChart = ({
           })}
         </ul>
       )}
-      {/* Two lines, kept, so tapping a bar moves nothing below (HS1). */}
-      <p
-        className="text-muted-foreground line-clamp-2 min-h-8 text-xs"
-        aria-live="polite"
+      <Reserved
+        role="status"
+        lines={2}
+        className="text-muted-foreground text-xs"
       >
-        {shownGroup && !table
-          ? pivotSays(shownGroup.name, shownGroup.counts)
-          : null}
-      </p>
+        {shownGroup && !table ? (
+          <span className="line-clamp-2">
+            {pivotSays(shownGroup.name, shownGroup.counts)}
+          </span>
+        ) : null}
+      </Reserved>
     </div>
   )
 }

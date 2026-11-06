@@ -33,7 +33,7 @@ import {
 } from "@leetype/lib/leetype/session-log"
 import type { SessionFile } from "@leetype/types/session-file"
 import { assertNever, cn } from "@some-ui/core-utils"
-import { Button } from "@some-ui/shared"
+import { Button, Held } from "@some-ui/shared"
 
 type IncidentSessionProps = {
   /** The file's name, as the session log names it. */
@@ -247,13 +247,8 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
         <p className="min-w-0 truncate text-xs text-muted-foreground">
           {play.file.title}
         </p>
-        {/* Kept through a round, out of sight and out of reach, so a pick
-            moves nothing below the header (HS1). */}
-        <div
-          className={cn("flex shrink-0 gap-1", !boundary && "invisible")}
-          aria-hidden={!boundary}
-          inert={!boundary}
-        >
+        {/* Held through a round, so a pick moves nothing below (HS1). */}
+        <Held shown={boundary} className="flex shrink-0 gap-1">
           {parked.length > 0 && (
             <Button
               variant="ghost"
@@ -271,7 +266,7 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
           >
             End here
           </Button>
-        </div>
+        </Held>
       </header>
       {waiting && (
         // Open through a round, its rounds out of reach until its end.

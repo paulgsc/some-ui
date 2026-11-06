@@ -164,7 +164,6 @@ export const JobsScout = (): JSX.Element => {
           aria-describedby={needsText ? "scout-url-hint" : undefined}
           onChange={(e) => setUrl(e.target.value)}
         />
-        {/* Room kept for it, so a keystroke moves nothing below (HS1). */}
         <Reserved
           fits={[cantOpenLink]}
           className="text-muted-foreground text-sm"

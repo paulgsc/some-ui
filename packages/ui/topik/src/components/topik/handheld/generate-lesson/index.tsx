@@ -288,7 +288,6 @@ export const GenerateLesson = ({
   const [verdict, setVerdict] = useState<Verdict | null>(() =>
     initialReply === undefined ? null : verdictOf(initialReply, onStartTree)
   )
-  // A verdict comes after the shelf, so it is brought into view.
   const verdictView = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const node = verdictView.current

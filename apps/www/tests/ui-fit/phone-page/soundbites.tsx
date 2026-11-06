@@ -1,146 +1,29 @@
 /**
  * Studio's wing on the phone page, for `../stays-put-soundbites.spec.ts`
- * (HS1): Studio and New idea as `./fixtures.tsx` mounts them, on a
- * microphone that hears four seconds and does not meter its level.
- *
- * Unmetered because the take button breathes with a metered level
- * (`transform: scale`, `@some-ui/shared`'s take button): a transform about
- * the button's own centre, which moves no other box and keeps the thumb's
- * point inside it, but which the measure reads as a box that changed. These
- * walks measure the flow; the breath is the shared button's to settle.
+ * (HS1), beside the Studio and New idea fixtures `./fixtures.tsx` mounts:
+ * "Not today?" on a full phone, takes on home, and home's lists.
  */
 import type { JSX, ReactNode } from "react"
 import { useState } from "react"
-import { inMemoryStorage } from "@some-ui/core-utils"
 import type {
   IdeasHome,
   LibraryPage,
-  Project,
   SoundbitesProps,
-  StudioProps,
   TakesHome,
-  WingLink,
 } from "@some-ui/soundbites"
 import {
   IdeasOnHome,
-  keptDraftStore,
-  keptIdeaStore,
-  keptLetGo,
-  keptTimeLog,
-  NewIdeaPage,
   Soundbites,
   soundbitesHeldByHome,
-  STUDIO_WORDS,
-  StudioHome,
   TakeLibrary,
 } from "@some-ui/soundbites"
-import {
-  bite,
-  bundleTakesOf,
-  memoryProjectStore,
-  memorySoundbiteStore,
-  primerOf,
-  projectFromPrimer,
-} from "@some-ui/soundbites/fixtures"
-import type { TurnListener } from "@some-ui/voice-capture"
-import { microphoneOwner, ONE_TAKE } from "@some-ui/voice-capture"
-import type { MicScript } from "@some-ui/voice-capture/testing"
+import { bite, memorySoundbiteStore } from "@some-ui/soundbites/fixtures"
+import { microphoneOwner } from "@some-ui/voice-capture"
 import {
   simulatedMicrophone,
-  simulatedPattern,
   simulatedPlayer,
   SPEAKING,
 } from "@some-ui/voice-capture/testing"
-
-import { FIT_PRIMER_TEXT } from "./studio-seed"
-
-const AT = "2026-10-30T09:00:00.000Z"
-
-/** Hears four seconds, its level unmetered: the take button holds its size. */
-const HEARS: MicScript = {
-  ...SPEAKING,
-  level: 0,
-  metered: false,
-  durationMs: 4_000,
-}
-
-const noop = (): void => undefined
-
-/** A recognizer that is there and never finishes, so each screen offers to listen. */
-const listener: TurnListener = {
-  available: () => Promise.resolve(true),
-  listen: () => ({
-    done: new Promise(() => undefined),
-    stop: noop,
-    cancel: noop,
-  }),
-}
-
-/** `storage`, the same one on every look. */
-const once =
-  (storage: Storage): (() => Storage) =>
-  () =>
-    storage
-
-const anchorTo = (href: string): WingLink => {
-  const Anchor: WingLink = ({ className, children }) => (
-    <a href={href} className={className}>
-      {children}
-    </a>
-  )
-  return Anchor
-}
-
-/** The wing's Home on `projects`, in memory. */
-function studioOn(projects: ReadonlyArray<Project>): () => JSX.Element {
-  const ports: NonNullable<StudioProps["ports"]> = {
-    store: memoryProjectStore(projects).store,
-    startRecording: simulatedMicrophone({ now: Date.now, fallback: HEARS })
-      .startRecording,
-    timeLog: keptTimeLog(inMemoryStorage),
-    letGo: keptLetGo(once(inMemoryStorage())),
-    listener,
-    // A clock that holds still, so a take under way neither fills the take
-    // button (an animation each tick, which no measure can wait out) nor
-    // reaches its cap and stops itself between two taps.
-    now: () => Date.parse(AT),
-  }
-  const StudioFixture = (): JSX.Element => (
-    <StudioHome
-      ports={ports}
-      ideaLink={anchorTo("#idea")}
-      ideasLink={anchorTo("#ideas")}
-    />
-  )
-  return StudioFixture
-}
-
-/** New idea; `refuse`: the microphone refuses the first take. */
-function newIdea(refuse: boolean): () => JSX.Element {
-  const simulated = simulatedPattern({
-    options: { ...ONE_TAKE, send: "on-confirm" },
-  })
-  const refused: MicScript = {
-    ...HEARS,
-    open: { kind: "refuse", reason: "denied", ms: 0 },
-  }
-  simulated.mic.script(...(refuse ? [refused] : []), HEARS, HEARS, HEARS)
-  const storage = once(inMemoryStorage())
-  const takes = bundleTakesOf(simulated)
-  const ports = {
-    drafts: keptDraftStore(storage),
-    ideas: keptIdeaStore(storage),
-  }
-  const IdeaFixture = (): JSX.Element => (
-    <NewIdeaPage
-      takes={takes}
-      ports={ports}
-      backLink={anchorTo("#studio")}
-      pair={<a href="#pair">{STUDIO_WORDS.pair.pair}</a>}
-    />
-  )
-  return IdeaFixture
-}
 
 /**
  * The route's column (`mx-auto w-full max-w-md`), inline: this directory is
@@ -151,12 +34,6 @@ const Column = ({ children }: { children: ReactNode }): JSX.Element => (
     {children}
   </div>
 )
-
-const FRESH = projectFromPrimer(
-  "hs-fresh",
-  primerOf(FIT_PRIMER_TEXT),
-  AT
-).project
 
 /**
  * "Not today?" with the phone full: six kept, every one held by home, so
@@ -175,8 +52,10 @@ function fullPhone(): NonNullable<SoundbitesProps["ports"]> {
       setAside: (): Promise<void> =>
         Promise.reject(new DOMException("full", "QuotaExceededError")),
     },
-    startRecording: simulatedMicrophone({ now: Date.now, fallback: HEARS })
-      .startRecording,
+    startRecording: simulatedMicrophone({
+      now: Date.now,
+      fallback: { ...SPEAKING, durationMs: 4_000 },
+    }).startRecording,
     player: simulatedPlayer(),
     owner: microphoneOwner(),
   }
@@ -266,9 +145,6 @@ const IDEAS_HOME: IdeasHome = {
 }
 
 export const SOUNDBITES_FIXTURES = {
-  "hs-studio-fresh": studioOn([FRESH]),
-  "hs-idea": newIdea(false),
-  "hs-idea-refused": newIdea(true),
   "hs-soundbites-full": SoundbitesFull,
   "hs-take-library": Library,
   "hs-ideas-lists": (): JSX.Element => (

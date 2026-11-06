@@ -235,7 +235,6 @@ const EarlierNote = ({
       >
         {playing ? WORDS.stopEarlier : WORDS.playEarlier}
       </Button>
-      {/* Its room kept, so what it says moves nothing below (HS1). */}
       <Reserved role="status" lines={EARLIER_LINES} className="text-sm">
         {said}
       </Reserved>
