@@ -488,19 +488,14 @@ export const GameWeek = ({ ports, outbox }: GameWeekProps): JSX.Element => {
     dispatch(asking ? { type: "answer", said } : { type: "say", said })
   }
   const outboxWords = outboxLine(waiting)
-  // A line or a refusal put away stays away until the screen says another.
+  // A line put away stays away until the screen says another; Undo stays.
   const [heard, setHeard] = useState("")
   if (state.notice === "" && heard !== "") setHeard("")
-  const [blockHeard, setBlockHeard] = useState<GameWeekState["blocked"]>(null)
-  if (state.blocked === null && blockHeard !== null) setBlockHeard(null)
   const said = state.notice === heard ? "" : state.notice
   // Whichever bite Undo is open on: a keep can answer after the next bite
   // is taken.
   const undoOffered = state.undo !== null && !asking
-  const blocked =
-    state.blocked !== blockHeard && activity.kind === "idle"
-      ? state.blocked
-      : null
+  const blocked = activity.kind === "idle" ? state.blocked : null
   // The bite as the take pattern's parts show it: its button while it
   // records, and the newest bite kept as a row.
   const bite = biteView(state)
@@ -620,11 +615,7 @@ export const GameWeek = ({ ports, outbox }: GameWeekProps): JSX.Element => {
       )}
 
       {blocked !== null && (
-        <Notice
-          role="alert"
-          tone="danger"
-          onDismiss={() => setBlockHeard(blocked)}
-        >
+        <Notice key={blocked} tone="danger" dismissible>
           {RECORDING_FAILURE_COPY[blocked]}
         </Notice>
       )}

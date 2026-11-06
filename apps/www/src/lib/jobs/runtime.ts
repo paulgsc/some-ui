@@ -150,12 +150,10 @@ export type JobsRuntime = {
    */
   wantNotice: (on: boolean) => void
   /**
-   * The person read what was said and closed it: the change the record
-   * refused (`problem`), the file that wasn't a digest (`opened`), or why
-   * the last ask for the notice came to nothing (`notice`). The next one is
-   * said again.
+   * The person read the change the record refused and closed it, so the
+   * next refusal, though it says the same, is said again.
    */
-  dismiss: (said: "problem" | "opened" | "notice") => void
+  dismissProblem: () => void
   /** The record one exchange with home reads and answers (`./home`). */
   keeping: JobsRecordPort
 }
@@ -448,11 +446,8 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
       }
       if (ports.notice !== undefined) void askForToken(ports.notice, false)
     },
-    dismiss(said): void {
-      if (said === "problem") problem = null
-      else if (said === "opened") {
-        if (importing.kind === "rejected") importing = IDLE
-      } else notice = { ...notice, why: null }
+    dismissProblem(): void {
+      problem = null
       publish()
     },
     getSnapshot: () => snapshot,

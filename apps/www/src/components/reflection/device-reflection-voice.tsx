@@ -46,7 +46,7 @@ export const ReflectionTakeList = ({
         onLetGo={pattern.letGo}
       />
       {refused !== null && (
-        <Notice role="alert" tone="danger" onDismiss={voice.dismiss}>
+        <Notice key={refused} tone="danger" dismissible>
           {refused}
         </Notice>
       )}

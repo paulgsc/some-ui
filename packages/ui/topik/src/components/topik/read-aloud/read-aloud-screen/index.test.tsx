@@ -506,7 +506,6 @@ describe("ReadAloudScreen's tally (Rem. 7.5)", () => {
     expect(store.tally()).toEqual({})
     expect(createReadAloudStore(storage).tally()).toEqual({})
     expect(store.record().totals.reps).toBe(1)
-    // Said over the screen (HS1).
     expect(screen.getByRole("status").textContent).toContain("Cleared.")
   })
 

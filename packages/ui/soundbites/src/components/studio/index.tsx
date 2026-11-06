@@ -104,25 +104,6 @@ export type StudioProps = {
 
 type Dispatch = (intent: StudioIntent) => void
 
-/**
- * What Studio says about what was just done, over the screen (HS1): it stays
- * until the next tap answers it, or the person closes it.
- */
-const Said = ({
-  state,
-  dispatch,
-}: {
-  state: StudioState
-  dispatch: Dispatch
-}): JSX.Element | null =>
-  state.notice === "" ? null : (
-    <Notice
-      onDismiss={() => dispatch({ type: "noticeDismissed", what: "notice" })}
-    >
-      {state.notice}
-    </Notice>
-  )
-
 /** What tapping each open sitting on Start asks for. */
 const CHOSEN = {
   record: "recordChosen",
@@ -502,11 +483,9 @@ const Start = ({
             : WORDS.start.openNewerHint
         }
         problem={state.primerProblem}
-        onDismiss={() => dispatch({ type: "noticeDismissed", what: "problem" })}
         disabled={!isSettled(state.activity)}
         onPick={(file) => dispatch({ type: "primerPicked", file })}
       />
-      {/* The pick's next step, below the pick that asked for it (HS1). */}
       {state.choosing !== null && project !== null && (
         <div
           role="group"
@@ -538,7 +517,11 @@ const Start = ({
           </div>
         </div>
       )}
-      <Said state={state} dispatch={dispatch} />
+      {state.notice !== "" && (
+        <Notice key={state.notice} dismissible>
+          {state.notice}
+        </Notice>
+      )}
     </div>
   )
 }
@@ -672,7 +655,6 @@ const Record = ({
       <p className="truncate text-center font-mono text-sm tabular-nums">
         {lengthLine(view, state)}
       </p>
-      {/* In its place while there is nothing to throw away (HS1). */}
       <Button
         variant="link"
         size="sm"
@@ -689,15 +671,13 @@ const Record = ({
       >
         {WORDS.record.doneForNow}
       </Button>
-      <Said state={state} dispatch={dispatch} />
+      {state.notice !== "" && (
+        <Notice key={state.notice} dismissible>
+          {state.notice}
+        </Notice>
+      )}
       {state.blocked !== null && activity.kind === "idle" && (
-        <Notice
-          role="alert"
-          tone="danger"
-          onDismiss={() =>
-            dispatch({ type: "noticeDismissed", what: "blocked" })
-          }
-        >
+        <Notice key={state.blocked} tone="danger" dismissible>
           {WORDS.record.blocked(state.blocked)}
         </Notice>
       )}
@@ -739,7 +719,11 @@ const Done = ({
             </Button>
           ))}
         </div>
-        <Said state={state} dispatch={dispatch} />
+        {state.notice !== "" && (
+          <Notice key={state.notice} dismissible>
+            {state.notice}
+          </Notice>
+        )}
       </section>
     )
   if (screen.step === "what")
@@ -809,7 +793,11 @@ const Done = ({
       >
         {WORDS.done.notYet}
       </Button>
-      <Said state={state} dispatch={dispatch} />
+      {state.notice !== "" && (
+        <Notice key={state.notice} dismissible>
+          {state.notice}
+        </Notice>
+      )}
     </section>
   )
 }
@@ -1159,8 +1147,6 @@ const Watch = ({
             startMs={screen.atMs}
             dispatch={dispatch}
           />
-          {/* Asked as the playhead reaches it, over the screen: what the
-              thumb is on stays where it is (HS1). */}
           {asked !== null && (
             <Notice>
               <div className="space-y-2">
@@ -1239,7 +1225,11 @@ const Watch = ({
       >
         {words.back}
       </Button>
-      <Said state={state} dispatch={dispatch} />
+      {state.notice !== "" && (
+        <Notice key={state.notice} dismissible>
+          {state.notice}
+        </Notice>
+      )}
     </div>
   )
 }
@@ -1253,7 +1243,6 @@ const NoteAbout = ({
   dispatch: Dispatch
 }): JSX.Element => {
   const words = WORDS.watch.about
-  // Asked of the note just kept, over the screen (HS1).
   return (
     <Notice>
       <section role="group" aria-label={words.question} className="space-y-2">
@@ -1342,8 +1331,6 @@ const IdeaAsk = ({
   dispatch: Dispatch
 }): JSX.Element | null => {
   const words = WORDS.origin
-  // Said and asked over the screen as the scene plays, so the note's
-  // controls stay where the thumb is (HS1).
   if (!asking)
     return scene.confirmed ? (
       <Notice>{words.said(scene.n, scene.whose)}</Notice>
@@ -1431,7 +1418,6 @@ const IdeaFix = ({
     <div className="border-brand flex flex-col gap-2 rounded-2xl border-2 p-3">
       <p className="font-semibold">{words.where}</p>
       <p className="text-muted-foreground text-sm">{words.whereHint}</p>
-      {/* In their places while a note is said (HS1). */}
       {take !== null && (
         <Button
           size="lg"
@@ -1504,8 +1490,7 @@ const SpokenNote = ({
   const words = WORDS.watch
   const listening = speaking?.phase === "listening"
   // One button in one place: Say, then Done talking while listening, held
-  // while the words are finished and looked over. What is heard is said
-  // over the screen, with what to do with it (HS1).
+  // while the words are finished and looked over.
   return (
     <>
       {listening ? (
@@ -1638,8 +1623,6 @@ const MadeOnHome = ({
         {words.heading}
       </h3>
       <p className="text-sm">{words.offer}</p>
-      {/* In its place once home is asked; where that stands is said over
-          the screen, so nothing under the thumb moves (HS1). */}
       <Button
         size="lg"
         variant="outline"
@@ -1781,7 +1764,11 @@ const Finish = ({
       <Button variant="ghost" onClick={() => dispatch({ type: "finishBack" })}>
         {words.back}
       </Button>
-      <Said state={state} dispatch={dispatch} />
+      {state.notice !== "" && (
+        <Notice key={state.notice} dismissible>
+          {state.notice}
+        </Notice>
+      )}
     </div>
   )
 }
@@ -1808,17 +1795,14 @@ export const Studio = ({
     return <p className="text-muted-foreground text-sm">{WORDS.reading}</p>
   if (shelf.kind === "unreadable")
     return (
-      <Notice role="alert" tone="danger">
-        <div className="space-y-2">
-          <p>{WORDS.unreadable}</p>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => dispatch({ type: "retryRead" })}
-          >
-            {WORDS.readAgain}
-          </Button>
-        </div>
+      <Notice
+        tone="danger"
+        action={{
+          label: WORDS.readAgain,
+          onClick: () => dispatch({ type: "retryRead" }),
+        }}
+      >
+        {WORDS.unreadable}
       </Notice>
     )
   const project = projectOf(state)

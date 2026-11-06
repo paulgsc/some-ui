@@ -96,9 +96,6 @@ const StudyCard = ({ now }: { now: Date }): JSX.Element => {
   const done =
     status.kind === "ready" && status.open === null && status.today.length > 0
   const refreshRetry = status.kind === "ready" ? status.refreshRetry : null
-  // "Couldn't refresh", read and closed: said again on the next failure.
-  const [refreshDismissed, setRefreshDismissed] = useState(false)
-  if (refreshRetry === null && refreshDismissed) setRefreshDismissed(false)
 
   // An open session stopped past its window closes here, as it stood, and
   // a close whose write failed is retried each minute this Home is open.
@@ -215,20 +212,13 @@ const StudyCard = ({ now }: { now: Date }): JSX.Element => {
           )}
         </div>
       )}
-      {refreshRetry !== null && !refreshDismissed && (
+      {refreshRetry !== null && (
         <Notice
-          role="status"
           tone="warning"
-          onDismiss={() => setRefreshDismissed(true)}
+          dismissible
+          action={{ label: "Retry", onClick: refreshRetry }}
         >
-          <span className="flex items-center gap-2">
-            <span className="min-w-0 flex-1">
-              Couldn’t refresh; this may be out of date.
-            </span>
-            <Button size="sm" variant="ghost" onClick={refreshRetry}>
-              Retry
-            </Button>
-          </span>
+          Couldn’t refresh; this may be out of date.
         </Notice>
       )}
       {!done && (

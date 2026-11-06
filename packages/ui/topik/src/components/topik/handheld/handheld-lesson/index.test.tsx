@@ -461,7 +461,6 @@ describe("HandheldLesson", () => {
     })
     fireEvent.click(within(waiting).getByRole("button"))
     expect(
-      // Said over the screen, not under the routine's files (HS1).
       document.querySelector('[data-slot="routine-note"]')?.textContent
     ).toBe("That file isn't a word set.")
     expect(store.sets()).toEqual([])
@@ -636,7 +635,6 @@ describe("HandheldLesson", () => {
       within(waiting).getByRole("button", { name: "Grammar lens: 약속" })
     )
     expect(
-      // Said over the screen, not under the routine's files (HS1).
       document.querySelector('[data-slot="routine-note"]')?.textContent
     ).toBe(
       "This phone keeps 50 word sets and has 49, so these 2 weren't added."

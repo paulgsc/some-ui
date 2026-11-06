@@ -136,8 +136,6 @@ const Row = ({
         </p>
       ))}
       {children}
-      {/* Stays while nothing waits or a send is under way, disabled, so the
-          rows below it hold still (HS1). */}
       {lane !== null ? (
         <Button
           type="button"
@@ -167,8 +165,7 @@ const STANDING = { asking: false, why: null } as const
 /**
  * Whether home tells this phone when the morning run is in (RUN5), where
  * this build can be told; nothing where it can't. Under the switch, what it
- * stands for; an ask under way, or why it came to nothing, is said over the
- * screen (HS1).
+ * stands for, and an ask under way, or why it came to nothing.
  */
 const JobsNotice = (): JSX.Element | null => {
   const { state, notice } = useJobs()
@@ -194,13 +191,9 @@ const JobsNotice = (): JSX.Element | null => {
         </p>
       </div>
       {asked === null ? null : notice.why === null ? (
-        <Notice role="status">{asked}</Notice>
+        <Notice>{asked}</Notice>
       ) : (
-        <Notice
-          role="alert"
-          tone="warning"
-          onDismiss={() => phoneJobs().dismiss("notice")}
-        >
+        <Notice key={asked} role="alert" tone="warning" dismissible>
           {asked}
         </Notice>
       )}

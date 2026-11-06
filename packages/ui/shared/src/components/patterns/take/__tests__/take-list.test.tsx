@@ -325,7 +325,6 @@ describe("the take button, row and list", () => {
     expect(screen.getByRole("listitem")).toHaveTextContent(
       TAKE_WORDS.place.deleted(TAKE_WORDS.when(deleted))
     )
-    // Deleted, it stays in its place, disabled (HS1).
     expect(
       screen.getByRole("button", {
         name: new RegExp(TAKE_WORDS.deleteRecord),
@@ -402,7 +401,6 @@ describe("the take button, row and list", () => {
     expect(screen.getByRole("status")).toHaveTextContent(
       "Full until home has some."
     )
-    // The take button and Redo stay where they are, disabled (HS1).
     expect(screen.getByRole("button", { name: /talk|record/i })).toBeDisabled()
     expect(
       screen.getByRole("button", { name: new RegExp(`^${W.redo}`) })

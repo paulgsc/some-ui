@@ -432,7 +432,7 @@ measure's planted self-test) and one spec per wing beside it
 `pr.yml`. A phone screen none of them walks is outside HS1 until one does,
 with its fixture on the phone page (`./phone-page/fixtures.tsx`). A spec is
 its walks: taps built from the measure's own (`button`, `toScreen`,
-`waitsFor`, `refuseWrites`), handed to `walkEachPhone` (`harness.ts`), which
+`waitsFor`, `putAway`, `picksFile`, `refuseWrites`), handed to `walkEachPhone` (`harness.ts`), which
 opens each walk's fixture at every phone size. What happens on a screen
 without a tap (a save refused, home answering, the phone filling up) is a
 fixture's action (`./phone-page/fit-actions.ts`), which a walk calls with
@@ -485,11 +485,7 @@ layout instead of said with `Notice`.
 >   contradicted.
 > - _Scope:_ `scripts/stays-put.allowlist`, `packages/eslint/src/stays-put.ts`.
 > - _Why not enforced:_ whether a listed line moved a control was layout.
-> - _Retired:_ by HS3 (the owner, 2026-11-06). A line kept in the layout,
->   even after the last control or in room held for it, shows the screen's
->   machinery as a blank or a jump; what a screen says about a tap goes on
->   the notice plane, so the count now covers every such line in the layout,
->   not only those mounted on a condition.
+> - _Retired:_ by HS3 (the owner, 2026-11-06); 2i says why.
 
 What the count cannot see (a line with no role, a role set by a spread, text
 that changes length in an element that stays) is in the module's header, and

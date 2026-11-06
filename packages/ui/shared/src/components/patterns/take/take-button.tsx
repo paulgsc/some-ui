@@ -185,5 +185,3 @@ export const TakeButton = ({
     </button>
   )
 }
-
-export { takeButtonVariants }

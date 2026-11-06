@@ -1,9 +1,8 @@
 /**
  * Layer 2 of audio disclosure: a notice the first time a person enters an
  * activity that uses audio, offering the choice there, never shown for that
- * activity again. Said over the screen (`Notice`), so the activity under it
- * holds still when it comes and goes (HS1); it stays until answered, so it
- * is not missed as a passing toast would be.
+ * activity again. A `Notice` that stays until answered, so it is not missed
+ * as a passing toast would be.
  *
  * Not a modal (audio is expected in a learning app), except for a `required`
  * activity, which cannot work without sound.
@@ -69,7 +68,7 @@ export const AudioActivityNotice = ({
   }
 
   return (
-    <Notice role="status">
+    <Notice>
       <div className="flex flex-col gap-3">
         <p className="flex items-center gap-2 font-medium">
           <span aria-hidden="true">{summarizeAudio(preferences).icon}</span>

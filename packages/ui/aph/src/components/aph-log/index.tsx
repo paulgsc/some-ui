@@ -432,13 +432,13 @@ export const AphLog = ({
       </Button>
 
       {waits !== null && (
-        <Notice role="status" tone="warning">
+        <Notice tone="warning">
           Drafts from {formatWeekday(waits)} {formatDay(waits)} are waiting:
           submit or delete them in History before logging another day.
         </Notice>
       )}
       {refused && (
-        <Notice role="alert" tone="danger" onDismiss={() => setRefused(false)}>
+        <Notice tone="danger" onDismiss={() => setRefused(false)}>
           Not saved: the phone did not keep it.
         </Notice>
       )}
@@ -532,7 +532,7 @@ const Readout = ({
         )}
       </div>
       {unusual && (
-        <Notice role="status" tone="warning">
+        <Notice tone="warning">
           <span className="flex items-center gap-1.5">
             <TriangleAlert aria-hidden className="size-4 shrink-0" />
             Outside your usual {formatValue(settings.usualLow)}–

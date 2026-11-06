@@ -9,7 +9,6 @@ import {
   createContext,
   useContext,
   useEffect,
-  useState,
   useSyncExternalStore,
 } from "react"
 import { Button, Notice, TakeList, useTakePattern } from "@some-ui/shared"
@@ -169,11 +168,7 @@ export const OpenDigest = (): JSX.Element => {
       </Button>
       {where && <span className="text-muted-foreground text-xs">{where}</span>}
       {importing.kind === "rejected" && (
-        <Notice
-          role="alert"
-          tone="danger"
-          onDismiss={() => phoneJobs().dismiss("opened")}
-        >
+        <Notice key={importing.problem} tone="danger" dismissible>
           {importing.problem}
         </Notice>
       )}
@@ -224,8 +219,7 @@ export const JourneyCard = ({
 
 /**
  * Why `kind`'s file can't be filed, when the record holds something the
- * morning run couldn't read, said over the screen; nothing otherwise.
- * Closed, it stays closed until the problem changes.
+ * morning run couldn't read; nothing otherwise.
  */
 export const FileProblem = ({
   kind,
@@ -234,27 +228,22 @@ export const FileProblem = ({
 }): JSX.Element | null => {
   // Read again whenever the record changes.
   useJobs()
-  const [dismissed, setDismissed] = useState<string | null>(null)
   const outgoing = phoneJobs().keeping.outgoing(kind)
   const problem =
     outgoing !== null && "problem" in outgoing ? outgoing.problem : null
-  if (problem === null || problem === dismissed) return null
+  if (problem === null) return null
   return (
-    <Notice role="alert" tone="danger" onDismiss={() => setDismissed(problem)}>
+    <Notice key={problem} tone="danger" dismissible>
       {problem}
     </Notice>
   )
 }
 
-/** What the record refused to keep, said once, over the screen. */
+/** What the record refused to keep, said once. */
 export const Problem = (): JSX.Element | null => {
   const { problem } = useJobs()
   return problem === null ? null : (
-    <Notice
-      role="alert"
-      tone="danger"
-      onDismiss={() => phoneJobs().dismiss("problem")}
-    >
+    <Notice tone="danger" onDismiss={() => phoneJobs().dismissProblem()}>
       {problem}
     </Notice>
   )

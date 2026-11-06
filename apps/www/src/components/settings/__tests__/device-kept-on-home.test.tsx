@@ -174,7 +174,6 @@ describe("what this phone keeps on home", () => {
     home.record = null
     await mount()
     expect(screen.getAllByText(/: Only on this phone$/)).toHaveLength(10)
-    // Each row keeps its Send now, disabled: nothing can go (HS1).
     expect(sendable()).toEqual([])
     expect(home.sent).toEqual([])
   })

@@ -42,8 +42,6 @@ export type TakeRowProps = {
  * record home marks deletable offers Delete… instead (`row.canDelete`,
  * the pattern's `records: "delete-in-my-data"`), which opens My data on it
  * (MD4); one home deleted says when.
- * A control the row can't offer now (a take under way, a phone full, a
- * take not on home yet) stays in place, disabled, so nothing jumps (HS1).
  */
 export const TakeRow = ({
   row,

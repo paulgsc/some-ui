@@ -9,8 +9,8 @@
  * glance, and opens a sheet with what is on home, what waits and Send now;
  * it sends nothing of its own. The mark is a fixed-size icon, so the gear
  * beside it never moves as the lane's state changes (HS1); a send that
- * didn't go is said over the screen (`Notice`), and the rest shows on the
- * mark's tone and in its sheet. Its words are `lib/home-link/words`'s alone.
+ * didn't go is said in a `Notice`, and the rest shows on the mark's tone
+ * and in its sheet. Its words are `lib/home-link/words`'s alone.
  * It draws `laneView`'s `where` and `how` marks (`./sharing-marks`), and
  * the sheet's legend draws each (`__tests__/device-home-glyph.test.tsx`).
  */
@@ -44,7 +44,7 @@ import { practiceLane } from "@/lib/home-link/practice"
 import { rustRoundsLane } from "@/lib/home-link/rust-rounds"
 import { useVoiceHome } from "@/lib/home-link/voice"
 import { SHEET, WORDS } from "@/lib/home-link/words"
-import type { How } from "@/lib/sharing-marks"
+import { HOW_TROUBLE } from "@/lib/sharing-marks"
 import type { WingId } from "@/lib/wings"
 import {
   HowMark,
@@ -56,27 +56,12 @@ import {
 
 const BIG = "h-12 rounded-2xl text-base"
 
-/** How a last send went that the person should hear of: it didn't all go. */
-const TROUBLE: ReadonlySet<How> = new Set<How>([
-  "no-answer",
-  "busy",
-  "forgotten",
-  "unpaired",
-  "full",
-  "no-room",
-  "refused",
-  "fault",
-  "failed",
-])
-
 const LaneMark = ({ lane }: { lane: Lane }): JSX.Element => {
   const { run, paired, view, sendNow } = useLaneView(lane)
   const [open, setOpen] = useState(false)
   const words = WORDS[lane.id]
-  const trouble = view.how !== null && TROUBLE.has(view.how) ? view.line : null
-  // Read and closed: said again when it says something else.
-  const [dismissed, setDismissed] = useState<string | null>(null)
-  if (trouble === null && dismissed !== null) setDismissed(null)
+  const trouble =
+    view.how !== null && HOW_TROUBLE.has(view.how) ? view.line : null
 
   return (
     <>
@@ -104,12 +89,13 @@ const LaneMark = ({ lane }: { lane: Lane }): JSX.Element => {
           />
         ) : null}
       </button>
-      {/* Not while the sheet is open, which says it first. */}
-      {trouble !== null && trouble !== dismissed && !open && (
+      {/* Hidden while the sheet is open, which says it first. */}
+      {trouble !== null && (
         <Notice
-          role="status"
+          key={trouble}
           tone="warning"
-          onDismiss={() => setDismissed(trouble)}
+          dismissible
+          className={open ? "hidden" : undefined}
         >
           {trouble}
         </Notice>

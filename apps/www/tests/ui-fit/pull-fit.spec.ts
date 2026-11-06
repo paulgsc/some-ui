@@ -10,8 +10,7 @@
  * phone across. Armed, the pill rests whole inside the page body, below the
  * header; pulling, it is still coming down from under the header, and the
  * body clips what has not come down yet. Once let go (checking, done,
- * failed, offline), how it went is a notice on the plane over the screen,
- * where the shell puts it (HS1).
+ * failed, offline), how it went is a notice.
  *
  * Run against a built phone page:
  *
@@ -61,11 +60,6 @@ test.describe("the drag-down indicator fits the phone", () => {
 
         const said = page.locator("[data-pull-words]")
         await expect(said).toHaveText(/\S/)
-        if (where === "notice") {
-          await expect(
-            page.locator("[data-notice-plane] [role=status] [data-pull-words]")
-          ).toHaveCount(1)
-        }
         expect(errors, errors.join("\n")).toEqual([])
 
         const { mounted, violations } = await findViolations(page)

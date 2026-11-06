@@ -100,14 +100,9 @@ const TakeItem = ({
           )}
         </div>
       </div>
-      {/* Said over the screen, so the takes below this one stay put (HS1). */}
       {here && playback.kind === "loading" && <Notice>{WORDS.loading}</Notice>}
       {state.unplayable === take.id && (
-        <Notice
-          role="alert"
-          tone="danger"
-          onDismiss={() => dispatch({ type: "noticeDismissed" })}
-        >
+        <Notice tone="danger" dismissible>
           {WORDS.unplayable}
         </Notice>
       )}

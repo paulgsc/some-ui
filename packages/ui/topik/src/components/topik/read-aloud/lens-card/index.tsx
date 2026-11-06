@@ -15,11 +15,15 @@
  */
 
 import type { JSX, ReactNode } from "react"
-import { useState } from "react"
 import { assertNever, cn } from "@some-ui/core-utils"
-import { Button, Notice, TakeButton, TakeRows } from "@some-ui/shared"
+import {
+  Button,
+  Notice,
+  TakeButton,
+  TakeNotices,
+  TakeRows,
+} from "@some-ui/shared"
 import type { TakeItemView, TakePlace } from "@some-ui/voice-capture"
-import { TAKE_WORDS, takeSaid } from "@some-ui/voice-capture"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
 import type { Tense } from "@topik/lib/topik/read-aloud/content"
 import { TENSES } from "@topik/lib/topik/read-aloud/content"
@@ -225,54 +229,14 @@ type LineTake = NonNullable<LensCardProps["take"]>
 /**
  * Record yourself reading the line as authored (Rem. 4.16): the take
  * pattern's button, in the dock. While the phone has kept as many as it
- * can, the button stays, disabled, and the notice says what makes room. How
- * the last take ended is said over the screen too, so the dock's controls
- * hold still (HS1).
+ * can, the button stays, disabled, and the notice says what makes room.
  */
 const LineTakeButton = ({ take }: { take: LineTake }): JSX.Element => {
-  const { view } = take
   const full = take.full && !take.taking
-  // What the person dismissed: the line's word on a take, by what it says,
-  // and the phone's fullness.
-  const [dismissed, setDismissed] = useState<string | null>(null)
-  const said = view.said === null ? null : takeSaid(TAKE_WORDS, view.said)
-  const saidKey =
-    view.said === null
-      ? null
-      : view.said.kind === "ended"
-        ? `ended:${view.said.ended.seq}`
-        : JSON.stringify(view.said)
-  const [fullDismissed, setFullDismissed] = useState(false)
-  // Room again, so a later fullness is said again.
-  if (!full && fullDismissed) setFullDismissed(false)
   return (
     <div data-slot="lens-take" className="flex justify-center">
-      <TakeButton
-        view={view.button}
-        canStart={!full}
-        onTap={() => {
-          setDismissed(null)
-          take.onTap()
-        }}
-      />
-      {full && !fullDismissed && (
-        <Notice
-          role="status"
-          tone="warning"
-          onDismiss={() => setFullDismissed(true)}
-        >
-          {TAKES_FULL}
-        </Notice>
-      )}
-      {!full && said !== null && saidKey !== dismissed && (
-        <Notice
-          role={view.said?.kind === "unplayable" ? "alert" : "status"}
-          tone={view.said?.kind === "unplayable" ? "warning" : "neutral"}
-          onDismiss={() => setDismissed(saidKey)}
-        >
-          {said}
-        </Notice>
-      )}
+      <TakeButton view={take.view.button} canStart={!full} onTap={take.onTap} />
+      <TakeNotices view={take.view} full={full ? TAKES_FULL : undefined} />
     </div>
   )
 }
@@ -319,8 +283,6 @@ export const LensCard = ({
 }: LensCardProps): JSX.Element => {
   const answering = phase.name === "item"
   const revealed = phase.name === "reveal"
-  // "Noted." for a situation picked, until dismissed or the next pick.
-  const [notedDismissed, setNotedDismissed] = useState(false)
   const { shape } = item
   const answer = outcome?.answer ?? null
   const modality = item.cue && (audio && !cueRead ? item.cue.modality : "glyph")
@@ -563,16 +525,13 @@ export const LensCard = ({
               variant={situation.chosen === index ? "secondary" : "outline"}
               aria-pressed={situation.chosen === index}
               className="h-auto justify-start rounded-xl py-2 text-left text-sm whitespace-normal"
-              onClick={() => {
-                setNotedDismissed(false)
-                onSituation(index)
-              }}
+              onClick={() => onSituation(index)}
             >
               {option}
             </Button>
           ))}
-          {situation.chosen !== null && !notedDismissed && (
-            <Notice role="status" onDismiss={() => setNotedDismissed(true)}>
+          {situation.chosen !== null && (
+            <Notice key={situation.chosen} dismissible>
               Noted.
             </Notice>
           )}

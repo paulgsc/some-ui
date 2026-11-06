@@ -1,8 +1,7 @@
 /**
  * The quiet file pick that opens what a session sent (Studio's scenes or
  * version, an idea's reply): a label, a hint, and the picked file handed on.
- * The same file picked again is a new pick. What is wrong with a pick is
- * said over the screen, so the pick holds its size (HS1).
+ * The same file picked again is a new pick.
  */
 import type { JSX } from "react"
 import { useId } from "react"
@@ -13,7 +12,6 @@ export const FilePick = ({
   label,
   hint: told,
   problem = null,
-  onDismiss,
   disabled = false,
   onPick,
 }: {
@@ -21,8 +19,6 @@ export const FilePick = ({
   hint: string
   /** What is wrong with the last pick; null when nothing is. */
   problem?: string | null
-  /** Closes the problem said, where nothing else takes it away. */
-  onDismiss?: () => void
   disabled?: boolean
   onPick: (file: File) => void
 }): JSX.Element => {
@@ -54,7 +50,7 @@ export const FilePick = ({
         />
       </label>
       {problem !== null && (
-        <Notice role="alert" tone="danger" onDismiss={onDismiss}>
+        <Notice key={problem} tone="danger" dismissible>
           {problem}
         </Notice>
       )}

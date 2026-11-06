@@ -21,6 +21,7 @@
 
 import {
   button,
+  putAway,
   refuseWrites,
   type Tap,
 } from "@tests/layout-invariants/stays-put"
@@ -151,7 +152,7 @@ const SCOUT: ReadonlyArray<Tap> = [
   refuseWrites,
   ...SCOUT_TYPED,
   button("Add to my scouts", "adds it, refused"),
-  button("Dismiss", "closes the refusal"),
+  putAway("closes the refusal"),
 ]
 
 walkEachPhone("a tap moves nothing it leaves on www's phone screens (HS1)", [

@@ -261,8 +261,6 @@ export type OnHomeIntent =
   | { readonly type: "askSetAside" }
   | { readonly type: "confirmed" }
   | { readonly type: "keepIt" }
-  /** The person closed what the screen said. */
-  | { readonly type: "noticeDismissed" }
   | {
       readonly type: "entry"
       readonly list: ListName
@@ -390,9 +388,6 @@ export function stepOnHome(state: OnHomeState, event: OnHomeEvent): OnHomeStep {
     }
     case "readAgain": {
       return readAll({ ...state, notice: null })
-    }
-    case "noticeDismissed": {
-      return same({ ...state, notice: null })
     }
     case "ideasRead": {
       if (event.seq !== state.seq) return same(state)

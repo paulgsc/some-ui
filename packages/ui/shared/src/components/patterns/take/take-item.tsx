@@ -1,5 +1,4 @@
 import type { JSX, ReactNode } from "react"
-import { useState } from "react"
 import type {
   PatternTake,
   TakeItemView,
@@ -58,19 +57,64 @@ export type TakeItemProps = {
   className?: string
 } & Pick<TakeButtonProps, "size">
 
-/** Which saying `said` is, so a dismissed one stays dismissed until another. */
+/** Which saying `said` is, so a closed one stays closed until another. */
 function sayingOf(said: TakeSaid, line: string): string {
   return said.kind === "ended"
     ? `ended ${said.ended.seq}`
     : `${said.kind} ${line}`
 }
 
+export type TakeNoticesProps = {
+  /** The item's view: what is said of its last take. */
+  view: Pick<TakeItemView, "said">
+  /** What is said of the last take: `TAKE_WORDS` unless given. */
+  words?: TakeWords | undefined
+  /**
+   * Set while the screen's store keeps no new take: these words say what
+   * makes room, said instead of the last take's.
+   */
+  full?: ReactNode
+}
+
+/**
+ * What the take pattern says over the screen: that the phone is full, or
+ * what the last take came to (how it ended, a take set aside, a take that
+ * couldn't play). Each can be closed, and says itself again once it is new.
+ */
+export const TakeNotices = ({
+  view,
+  words = TAKE_WORDS,
+  full,
+}: TakeNoticesProps): JSX.Element | null => {
+  if (full !== undefined)
+    return (
+      <Notice tone="warning" dismissible>
+        {full}
+      </Notice>
+    )
+  const { said } = view
+  if (said === null) return null
+  const line = takeSaid(words, said)
+  return (
+    <Notice
+      key={sayingOf(said, line)}
+      role={said.kind === "unplayable" ? "alert" : undefined}
+      tone={said.kind === "unplayable" ? "warning" : "neutral"}
+      dismissible
+    >
+      <span
+        data-take-ended={said.kind === "ended" ? said.ended.seq : undefined}
+      >
+        {line}
+      </span>
+    </Notice>
+  )
+}
+
 /**
  * One item's takes, from its view: the take button, then the item's current
- * takes, then the earlier ones a Redo superseded, collapsed (D2). What is
- * said of the last take (how it ended, a take set aside, a take that
- * couldn't play) and that the phone is full are said over the screen
- * (`Notice`), so nothing here moves when they come and go (HS1). It renders
+ * takes, then the earlier ones a Redo superseded, collapsed (D2), with
+ * `TakeNotices` saying what the last take came to. It renders
  * `view` and forwards what is tapped, so a screen whose own machine stands
  * between a tap and the pattern (Rust Rounds' card, LeetType's answer) uses
  * the same parts as `TakeList`, which wires them to the pattern directly.
@@ -90,14 +134,6 @@ export const TakeItem = ({
   size,
   className,
 }: TakeItemProps): JSX.Element => {
-  const { said } = view
-  const line = said === null ? null : takeSaid(words, said)
-  const saying = said === null || line === null ? null : sayingOf(said, line)
-  const [dismissed, setDismissed] = useState<string | null>(null)
-  const [fullDismissed, setFullDismissed] = useState(false)
-  // Gone, so the next one is said again.
-  if (saying === null && dismissed !== null) setDismissed(null)
-  if (full === undefined && fullDismissed) setFullDismissed(false)
   return (
     <section
       aria-label={label}
@@ -111,24 +147,7 @@ export const TakeItem = ({
           canStart={full === undefined}
         />
       </div>
-      {full !== undefined && !fullDismissed && (
-        <Notice
-          role="status"
-          tone="warning"
-          onDismiss={() => setFullDismissed(true)}
-        >
-          {full}
-        </Notice>
-      )}
-      {full === undefined && said !== null && saying !== dismissed && (
-        <Notice role="status" onDismiss={() => setDismissed(saying)}>
-          <span
-            data-take-ended={said.kind === "ended" ? said.ended.seq : undefined}
-          >
-            {line}
-          </span>
-        </Notice>
-      )}
+      <TakeNotices view={view} words={words} full={full} />
       <TakeRows
         view={view}
         onPlay={onPlay}

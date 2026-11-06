@@ -110,8 +110,6 @@ export type ShelfIntent =
   | { readonly type: "readAgain" }
   /** Read the phone's videos again, after they couldn't be. */
   | { readonly type: "videosAgain" }
-  /** The person closed what the shelf said. */
-  | { readonly type: "noticeDismissed" }
 
 type Stamp = { readonly at: string }
 
@@ -343,8 +341,7 @@ function onIdea(
     case "opened":
     case "asideShown":
     case "readAgain":
-    case "videosAgain":
-    case "noticeDismissed": {
+    case "videosAgain": {
       return same(state)
     }
     default: {
@@ -383,9 +380,6 @@ export function step(state: ShelfState, event: ShelfEvent): ShelfStep {
         videos: event.videos,
         videosUnread: event.videos === null,
       })
-    }
-    case "noticeDismissed": {
-      return same({ ...state, notice: null })
     }
     case "videosAgain": {
       return {

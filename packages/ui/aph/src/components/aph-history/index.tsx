@@ -314,7 +314,7 @@ const Drafts = ({
         {chosen.length === 1 ? "draft" : "drafts"}
       </Button>
       {refused && (
-        <Notice role="alert" tone="danger" onDismiss={() => setRefused(false)}>
+        <Notice tone="danger" onDismiss={() => setRefused(false)}>
           Not submitted: the phone did not keep the change.
         </Notice>
       )}

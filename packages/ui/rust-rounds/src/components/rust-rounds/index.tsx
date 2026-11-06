@@ -52,7 +52,6 @@ export type RustRoundsProps = {
 type Dispatch = (intent: PlayIntent) => void
 
 /** What the tutor's page made of a reply. */
-type ReplyAnswer = Extract<PlayState["screen"], { kind: "tutor" }>["answer"]
 
 /** Text exactly as printed: kept whole, never wrapped, scrolled sideways. */
 const Printed = ({
@@ -138,7 +137,7 @@ type Notes = {
  * to stop, then where it's kept, Play, Redo and Let it go. Once a take found
  * the phone had no room, a card with no note says so by its button (`full`):
  * the next card tries again. The card's own actions (`children`) follow the
- * note, and what the note says aside is said over the screen (HS1).
+ * note.
  */
 const VoiceNote = ({
   state,
@@ -154,8 +153,6 @@ const VoiceNote = ({
   children: ReactNode
 }): JSX.Element => {
   const { port } = notes
-  // What the note said aside, put away until it says something else.
-  const [dismissed, setDismissed] = useState<PlayState["said"]>(null)
   if (port === null) {
     return (
       <>
@@ -182,12 +179,8 @@ const VoiceNote = ({
         full={state.noRoom && visit.note === null ? WORDS.noRoom : undefined}
       />
       {children}
-      {aside !== null && state.said !== dismissed && (
-        <Notice
-          role="status"
-          tone="warning"
-          onDismiss={() => setDismissed(state.said)}
-        >
+      {aside !== null && (
+        <Notice key={aside} tone="warning" dismissible>
           {aside}
         </Notice>
       )}
@@ -209,9 +202,6 @@ const EarlierNote = ({
   dispatch: Dispatch
 }): JSX.Element => {
   const { playback, unplayable } = state.notes
-  // That it would not play, put away until the next try says so again.
-  const [dismissed, setDismissed] = useState<string | null>(null)
-  if (unplayable === null && dismissed !== null) setDismissed(null)
   const playing = playback.kind !== "quiet" && playback.id === note
   const reading = playback.kind === "loading" && playback.id === note
   return (
@@ -229,15 +219,10 @@ const EarlierNote = ({
         {playing ? WORDS.stopEarlier : WORDS.playEarlier}
       </Button>
       {reading ? (
-        <Notice>{WORDS.earlierNoteReading}</Notice>
+        <Notice key="reading">{WORDS.earlierNoteReading}</Notice>
       ) : (
-        unplayable === note &&
-        dismissed !== note && (
-          <Notice
-            role="status"
-            tone="warning"
-            onDismiss={() => setDismissed(note)}
-          >
+        unplayable === note && (
+          <Notice key="unplayable" tone="warning" dismissible>
             {WORDS.earlierNoteUnplayable}
           </Notice>
         )
@@ -418,8 +403,6 @@ const MenuScreen = ({
   const refines = refinesWaiting(rounds, state.log)
   const yours = deskConcepts(rounds)
   const { place } = state
-  // Put away for this visit to the menu.
-  const [roomHeard, setRoomHeard] = useState(false)
   return (
     <div className="flex min-w-0 flex-col gap-4">
       <Button
@@ -430,12 +413,8 @@ const MenuScreen = ({
           ? WORDS.start
           : WORDS.continueAt(place.title.concept, place.title.number)}
       </Button>
-      {state.noRoom && !roomHeard && (
-        <Notice
-          role="status"
-          tone="warning"
-          onDismiss={() => setRoomHeard(true)}
-        >
+      {state.noRoom && (
+        <Notice tone="warning" dismissible>
           {WORDS.noRoom}
         </Notice>
       )}
@@ -541,25 +520,24 @@ const TutorScreen = ({
   dispatch: Dispatch
 }): JSX.Element | null => {
   const { screen, copy } = state
-  // What a copy or a reply came to, each put away until the next one.
-  const [copyHeard, setCopyHeard] = useState<PlayState["copy"] | null>(null)
-  const [answerHeard, setAnswerHeard] = useState<ReplyAnswer>(null)
+  // The copy put away, by its attempt. Not a key: the notice stays mounted
+  // across attempts, so a new one doesn't land below the reply's notice and
+  // move its Copy what to fix.
+  const [closedCopy, setClosedCopy] = useState<number | null>(null)
   if (screen.kind !== "tutor") return null
   const { answer } = screen
   const copyLine =
-    copy === copyHeard
-      ? null
-      : copy.kind === "copying"
-        ? WORDS.copying
-        : copy.kind === "copied"
-          ? copy.what === "fix"
-            ? WORDS.fixCopied
-            : WORDS.copied
-          : copy.kind === "failed"
-            ? WORDS.copyFailed
-            : null
+    copy.kind === "copying"
+      ? WORDS.copying
+      : copy.kind === "copied"
+        ? copy.what === "fix"
+          ? WORDS.fixCopied
+          : WORDS.copied
+        : copy.kind === "failed"
+          ? WORDS.copyFailed
+          : null
   const answerLine =
-    answer === null || answer === answerHeard
+    answer === null
       ? null
       : answer.kind === "empty"
         ? WORDS.replyEmpty
@@ -576,13 +554,12 @@ const TutorScreen = ({
       >
         {WORDS.copyForTutor}
       </Button>
-      {copyLine !== null && (
+      {copyLine !== null && copy.seq !== closedCopy && (
         <Notice
-          role={copy.kind === "failed" ? "alert" : "status"}
           tone={copy.kind === "failed" ? "danger" : "neutral"}
           {...(copy.kind === "copying"
             ? {}
-            : { onDismiss: () => setCopyHeard(copy) })}
+            : { onDismiss: () => setClosedCopy(copy.seq) })}
         >
           {copyLine}
         </Notice>
@@ -600,11 +577,8 @@ const TutorScreen = ({
       </label>
       {answer !== null && answerLine !== null && (
         <Notice
-          role={
-            answer.kind === "refused" || answer.kind === "empty"
-              ? "alert"
-              : "status"
-          }
+          key={answerLine}
+          role={answer.kind === "empty" ? "alert" : undefined}
           tone={
             answer.kind === "refused"
               ? "danger"
@@ -612,19 +586,17 @@ const TutorScreen = ({
                 ? "warning"
                 : "neutral"
           }
-          onDismiss={() => setAnswerHeard(answer)}
+          dismissible
+          action={
+            answer.kind === "refused"
+              ? {
+                  label: WORDS.copyFix,
+                  onClick: () => dispatch({ type: "copyFix" }),
+                }
+              : undefined
+          }
         >
-          <p>{answerLine}</p>
-          {answer.kind === "refused" && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="mt-2"
-              onClick={() => dispatch({ type: "copyFix" })}
-            >
-              {WORDS.copyFix}
-            </Button>
-          )}
+          {answerLine}
         </Notice>
       )}
       <Actions>
@@ -672,14 +644,12 @@ export const RustRounds = ({ ports }: RustRoundsProps): JSX.Element => {
   const notes = port?.takes ?? NO_MICROPHONE.takes
   const takes = useSyncExternalStore(notes.subscribe, notes.getSnapshot)
   const { dispatch } = runtime
-  // A refusal put away stays away until the session says another.
-  const [keptHeard, setKeptHeard] = useState<PlayState["notKept"] | null>(null)
-  const [lostHeard, setLostHeard] = useState<PlayState["lost"]>(null)
-  const notKept =
-    state.notKept !== keptHeard && Object.values(state.notKept).some(Boolean)
-      ? state.notKept
-      : null
-  const lost = state.lost === lostHeard ? null : state.lost
+  // Which records this phone couldn't save, so another is said again.
+  const notKept = Object.entries(state.notKept)
+    .filter(([, failed]) => failed)
+    .map(([record]) => record)
+    .join(" ")
+  const { lost } = state
 
   return (
     <div className="mx-auto flex w-full max-w-md min-w-0 flex-col gap-4">
@@ -701,17 +671,17 @@ export const RustRounds = ({ ports }: RustRoundsProps): JSX.Element => {
       {state.screen.kind === "tutor" && (
         <TutorScreen state={state} dispatch={dispatch} />
       )}
-      {notKept !== null && (
-        <Notice
-          role="alert"
-          tone="danger"
-          onDismiss={() => setKeptHeard(notKept)}
-        >
+      {notKept !== "" && (
+        <Notice key={notKept} tone="danger" dismissible>
           {WORDS.notKept}
         </Notice>
       )}
       {lost !== null && (
-        <Notice role="alert" tone="danger" onDismiss={() => setLostHeard(lost)}>
+        <Notice
+          key={`${lost.concept} ${lost.number}`}
+          tone="danger"
+          dismissible
+        >
           {WORDS.noteLost(lost.concept, lost.number)}
         </Notice>
       )}

@@ -147,10 +147,6 @@ const Summary = ({
  */
 export const SetCard = (props: SetCardProps): JSX.Element => {
   const { short, onStop } = props
-  // The sitting's end: what the last feedback tap kept, until dismissed or
-  // the next tap.
-  const [savedDismissed, setSavedDismissed] = useState(false)
-
   if (props.kind === "summary") {
     return (
       <Summary
@@ -187,12 +183,12 @@ export const SetCard = (props: SetCardProps): JSX.Element => {
               {props.note ??
                 "Your set is kept. It picks up at its next item whenever you come back, now included."}
             </p>
-            {/* What a tap kept, said over the screen (HS1). */}
-            {saved && !savedDismissed && (
+            {saved && (
               <Notice
+                key={saved}
                 role={feedback.kept ? "status" : "alert"}
                 tone={feedback.kept ? "neutral" : "warning"}
-                onDismiss={() => setSavedDismissed(true)}
+                dismissible
               >
                 <span data-slot="read-aloud-feedback-saved">{saved}</span>
               </Notice>
@@ -221,10 +217,7 @@ export const SetCard = (props: SetCardProps): JSX.Element => {
                         pressed && "ring-primary ring-2"
                       )}
                       aria-pressed={pressed}
-                      onClick={() => {
-                        setSavedDismissed(false)
-                        feedback.onToggle(key)
-                      }}
+                      onClick={() => feedback.onToggle(key)}
                     >
                       {FEEDBACK_WORDS.label(key)}
                     </Button>

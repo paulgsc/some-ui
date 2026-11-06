@@ -228,7 +228,6 @@ describe("New idea, one bundle (ST26)", () => {
     toQuestions()
     mic.script({ ...SPEAKING, level: 0 })
     await say()
-    // Said over the screen, not in the card (HS1).
     expect(screen.getByText(TAKE_WORDS.ended.unheard)).toBeInTheDocument()
     fireEvent.click(button(new RegExp(WORDS.unheard.type)))
     expect(card().querySelector("[data-typing='fallback']")).toHaveTextContent(

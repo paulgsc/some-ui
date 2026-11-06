@@ -59,23 +59,6 @@ export type IdeaShelfProps = {
 
 type Dispatch = (intent: ShelfIntent) => void
 
-/**
- * What the shelf says about what was just done, over the screen (HS1): it
- * stays until the next tap answers it, or the person closes it.
- */
-const ShelfLine = ({
-  state,
-  dispatch,
-}: {
-  state: ShelfState
-  dispatch: Dispatch
-}): JSX.Element | null =>
-  state.notice === null ? null : (
-    <Notice onDismiss={() => dispatch({ type: "noticeDismissed" })}>
-      {WORDS.notice[state.notice]}
-    </Notice>
-  )
-
 /** Where an idea is, and whether Claude's questions wait on it. */
 function stageLine(idea: Idea, stage: IdeaStage): string {
   const asks = waiting(idea)
@@ -142,7 +125,11 @@ const List = ({
           {WORDS.showAll}
         </Button>
       )}
-      <ShelfLine state={state} dispatch={dispatch} />
+      {state.notice !== null && (
+        <Notice key={state.notice} dismissible>
+          {WORDS.notice[state.notice]}
+        </Notice>
+      )}
     </div>
   )
 }
@@ -301,20 +288,15 @@ const OneIdea = ({
           {STUDIO_WORDS.idea.answerSkipped(skipped)}
         </Button>
       )}
-      {/* Make holds its place while the phone's videos can't be read;
-          why, and Read again, are said over the screen (HS1). */}
       {stage === "fleshed" && asks === 0 && state.videosUnread && (
-        <Notice role="alert" tone="danger">
-          <span className="block space-y-2">
-            <span className="block">{WORDS.videosUnread}</span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => dispatch({ type: "videosAgain" })}
-            >
-              {STUDIO_WORDS.readAgain}
-            </Button>
-          </span>
+        <Notice
+          tone="danger"
+          action={{
+            label: STUDIO_WORDS.readAgain,
+            onClick: () => dispatch({ type: "videosAgain" }),
+          }}
+        >
+          {WORDS.videosUnread}
         </Notice>
       )}
       {stage === "fleshed" && asks === 0 && (
@@ -337,7 +319,11 @@ const OneIdea = ({
           onPick={(file) => dispatch({ type: "replyPicked", file })}
         />
       )}
-      <ShelfLine state={state} dispatch={dispatch} />
+      {state.notice !== null && (
+        <Notice key={state.notice} dismissible>
+          {WORDS.notice[state.notice]}
+        </Notice>
+      )}
 
       <Scenes idea={idea} />
       <Answers idea={idea} />
@@ -390,17 +376,14 @@ export const IdeaShelf = ({
     }
     case "unreadable": {
       return (
-        <Notice role="alert" tone="danger">
-          <span className="block space-y-2">
-            <span className="block">{WORDS.unreadable}</span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => dispatch({ type: "readAgain" })}
-            >
-              {STUDIO_WORDS.readAgain}
-            </Button>
-          </span>
+        <Notice
+          tone="danger"
+          action={{
+            label: STUDIO_WORDS.readAgain,
+            onClick: () => dispatch({ type: "readAgain" }),
+          }}
+        >
+          {WORDS.unreadable}
         </Notice>
       )
     }

@@ -82,8 +82,6 @@ export type ReflectionTakes = {
    * Let go is the pattern's (`setAside`'s `done`).
    */
   readonly refused: () => string | null
-  /** The person read the refusal and closed it. */
-  readonly dismiss: () => void
   readonly subscribe: (listener: () => void) => () => void
 }
 
@@ -200,7 +198,6 @@ export function createVoiceNote(
     },
     getSnapshot: read,
     refused: () => refused,
-    dismiss: (): void => say(null),
     subscribe: (listener) => {
       refusedListeners.add(listener)
       const stop = ports.subscribe(() => {

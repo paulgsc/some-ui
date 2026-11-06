@@ -51,8 +51,8 @@ import { useLaneRows } from "@/components/settings/device-kept-on-home"
 import { useLookRow } from "@/components/settings/device-routine-reads"
 import { FailureLog } from "@/components/settings/failure-log"
 import {
-  HOW_TONE,
   HowMark,
+  howTone,
   LaneMarks,
   SharingLegend,
   toneOf,
@@ -79,7 +79,7 @@ const LOOK_HOW: Readonly<Record<Exclude<Look, "not-yet">, How>> = {
 }
 
 const lookTone = (look: Look): string =>
-  look === "not-yet" ? "text-muted-foreground" : HOW_TONE[LOOK_HOW[look]]
+  look === "not-yet" ? "text-muted-foreground" : howTone(LOOK_HOW[look])
 
 /** Korean's look: not yet (a ring, as "checking"), or how it went. */
 const LookMark = ({

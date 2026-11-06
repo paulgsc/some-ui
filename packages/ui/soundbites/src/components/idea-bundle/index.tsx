@@ -23,11 +23,7 @@ import {
 import type { TakePatternSnapshot } from "@some-ui/voice-capture"
 import { takeItemView } from "@some-ui/voice-capture"
 import { PairWay } from "@soundbites/components/unpaired"
-import type {
-  BundleIntent,
-  BundleNotice,
-  BundleState,
-} from "@soundbites/lib/idea/bundle"
+import type { BundleIntent, BundleState } from "@soundbites/lib/idea/bundle"
 import {
   answered,
   answeredCount,
@@ -69,23 +65,6 @@ export type IdeaBundleProps = {
 }
 
 type Dispatch = (intent: BundleIntent) => void
-
-/**
- * What the screen says about what was just done, over the screen (HS1): it
- * stays until the next tap answers it, or the person closes it.
- */
-const Said = ({
-  notice,
-  dispatch,
-}: {
-  notice: BundleNotice | null
-  dispatch: Dispatch
-}): JSX.Element | null =>
-  notice === null ? null : (
-    <Notice onDismiss={() => dispatch({ type: "noticeDismissed" })}>
-      {WORDS.notice[notice]}
-    </Notice>
-  )
 
 const Chip = ({
   on,
@@ -236,9 +215,8 @@ const Failed = ({
   dispatch: Dispatch
 }): JSX.Element => (
   <div className="flex flex-col gap-3">
-    {/* Why nothing was kept, over the screen (HS1). */}
     {active && (
-      <Notice role="alert" tone="danger">
+      <Notice tone="danger">
         <span className="flex gap-2">
           <MicOff className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
           <span className="space-y-1">
@@ -553,7 +531,11 @@ const Questions = ({
       >
         {WORDS.toReview}
       </Button>
-      <Said notice={state.notice} dispatch={dispatch} />
+      {state.notice !== null && (
+        <Notice key={state.notice} dismissible>
+          {WORDS.notice[state.notice]}
+        </Notice>
+      )}
     </div>
   )
 }
@@ -698,8 +680,6 @@ const Review = ({
       >
         {near ? WORDS.review.send(n) : WORDS.review.keep(n)}
       </Button>
-      {/* What Send waits on, and what a tap came to, over the screen
-          (HS1). */}
       {needs !== null && (
         <Notice>
           {needs === "title"
@@ -707,7 +687,11 @@ const Review = ({
             : WORDS.review.needsFirst}
         </Notice>
       )}
-      <Said notice={state.notice} dispatch={dispatch} />
+      {state.notice !== null && (
+        <Notice key={state.notice} dismissible>
+          {WORDS.notice[state.notice]}
+        </Notice>
+      )}
     </div>
   )
 }
@@ -803,17 +787,14 @@ const Screen = ({
     case "unreadable": {
       return (
         <>
-          <Notice role="alert" tone="danger">
-            <span className="block space-y-2">
-              <span className="block">{WORDS.unreadable}</span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => dispatch({ type: "readAgain" })}
-              >
-                {WORDS.readAgain}
-              </Button>
-            </span>
+          <Notice
+            tone="danger"
+            action={{
+              label: WORDS.readAgain,
+              onClick: () => dispatch({ type: "readAgain" }),
+            }}
+          >
+            {WORDS.unreadable}
           </Notice>
           {back}
         </>
@@ -824,7 +805,11 @@ const Screen = ({
         <>
           <About state={state} dispatch={dispatch} />
           {back}
-          <Said notice={state.notice} dispatch={dispatch} />
+          {state.notice !== null && (
+            <Notice key={state.notice} dismissible>
+              {WORDS.notice[state.notice]}
+            </Notice>
+          )}
         </>
       )
     }

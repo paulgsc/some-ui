@@ -23,6 +23,8 @@
 import type { MicScript } from "@some-ui/voice-capture/testing"
 import {
   button,
+  picksFile,
+  putAway,
   refuseWrites,
   toScreen,
   waitsFor,
@@ -78,7 +80,7 @@ const INCIDENT: ReadonlyArray<Tap> = [
   },
   refuseWrites,
   button(/^Hear back from a majority/, "picks an option, refused"),
-  button("Dismiss", "puts the refusal away"),
+  putAway("puts the refusal away"),
   toScreen("Continue", "goes on to the reading"),
   toScreen("Skip", "skips the take's choice"),
   toScreen(/^Incident 1: the writes/, "goes to the record screen"),
@@ -90,22 +92,10 @@ const INCIDENT: ReadonlyArray<Tap> = [
 ]
 
 /** Picks `body` from storage as `name`, and waits for what the pick says. */
-const picks = (
-  name: string,
-  body: string,
-  says: RegExp,
-  does: string
-): Tap => ({
-  does,
-  act: async (page): Promise<void> => {
-    await page.locator("input[type=file]").setInputFiles({
-      name,
-      mimeType: "application/json",
-      buffer: Buffer.from(body),
-    })
-    await page.getByText(says).waitFor()
-  },
-})
+const picks = (name: string, body: string, says: RegExp, does: string): Tap =>
+  picksFile({ name, mimeType: "application/json", body }, does, {
+    says: (page) => page.getByText(says),
+  })
 
 /** LeetType's session files: one picked from storage, and one refused. */
 const SESSION_FILES: ReadonlyArray<Tap> = [
@@ -115,7 +105,7 @@ const SESSION_FILES: ReadonlyArray<Tap> = [
     /already on this phone/,
     "picks a session file from storage"
   ),
-  button("Dismiss", "puts what the pick said away"),
+  putAway("puts what the pick said away"),
   picks(
     "t1-98-not-a-session.json",
     "{}",
@@ -166,7 +156,7 @@ const RUST_FULL: ReadonlyArray<Tap> = [
   button("Start talking", "starts a note"),
   stopsAfterAMoment,
   toScreen("Menu", "goes to the menu"),
-  button("Dismiss", "puts the phone's room away"),
+  putAway("puts the phone's room away"),
 ]
 
 /** A paste's note the phone has no room for, on the desk step. */

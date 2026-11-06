@@ -103,8 +103,10 @@ const PairForm = ({
   const typed = typedCode(code)
   const pairing = state.activity.kind === "pairing"
   const { pairFailure } = state
-  // Why pairing failed, read and closed: said again on the next failure.
-  const [dismissed, setDismissed] = useState<typeof pairFailure>(null)
+  const failed =
+    pairFailure === null
+      ? null
+      : failureLine(pairFailure.failure, hostOf(pairFailure.base))
   const pair = useAsyncIntent(
     (variables: { target: NonNullable<typeof target>; code: string }) =>
       homeLink().pair(variables.target, variables.code),
@@ -124,9 +126,7 @@ const PairForm = ({
         onChange={(event) => setAddress(event.target.value)}
       />
       {read === "not-https" && (
-        <Notice role="status" tone="warning">
-          Pairing needs an https:// address.
-        </Notice>
+        <Notice tone="warning">Pairing needs an https:// address.</Notice>
       )}
       <Label htmlFor="pair-code">Code from your computer</Label>
       <Input
@@ -155,20 +155,15 @@ const PairForm = ({
             </span>
           }
           workingLabel="Pairing..."
-          bare
         />
         <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
           Cancel
         </Button>
       </div>
       <p className="text-muted-foreground text-xs">Sends only this code.</p>
-      {pairFailure !== null && pairFailure !== dismissed && (
-        <Notice
-          role="alert"
-          tone="danger"
-          onDismiss={() => setDismissed(pairFailure)}
-        >
-          {failureLine(pairFailure.failure, hostOf(pairFailure.base))}
+      {failed !== null && (
+        <Notice key={failed} tone="danger" dismissible>
+          {failed}
         </Notice>
       )}
     </div>
@@ -230,13 +225,10 @@ const ClearHeld = ({
   const asking = count.state.status === "succeeded" ? count.state.value : null
   const working = run.state.status === "working" && activity.kind === "sending"
 
-  // The button stays in its place while it asks and once nothing is to be
-  // cleared, disabled where it can't be pressed; what it says of either is
-  // said over the screen (HS1).
   return (
     <div className="space-y-2">
       {working && (
-        <Notice role="status">
+        <Notice>
           <span className="flex flex-wrap items-center gap-2">
             <span>Asking {host}...</span>
             <StopButton stopping={activity.stopping} />
@@ -244,18 +236,8 @@ const ClearHeld = ({
         </Notice>
       )}
       {asking === 0 && (
-        <Notice role="status">
-          <span className="flex flex-wrap items-center gap-2">
-            <span>{CLEAR.nothing}</span>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => count.reset()}
-            >
-              OK
-            </Button>
-          </span>
+        <Notice action={{ label: "OK", onClick: () => count.reset() }}>
+          {CLEAR.nothing}
         </Notice>
       )}
       {asking === null || asking === 0 || working ? (
@@ -305,15 +287,10 @@ export const DeviceSection = (): JSX.Element => {
   const [address, setAddress] = useState(() => remembered(HOME_KEY))
   const [pairOpen, setPairOpen] = useState(false)
   const [confirmingUnpair, setConfirmingUnpair] = useState(false)
-  // A notice read and closed; said again when it is said anew.
-  const [forgetDismissed, setForgetDismissed] = useState(false)
-  const [noteDismissed, setNoteDismissed] = useState<UnpairedNote | null>(null)
 
   const { link, activity } = state
   const paired = link.kind === "paired" ? link : null
   const note = link.kind === "unpaired" ? link.note : null
-  if (!paired?.notForgotten && forgetDismissed) setForgetDismissed(false)
-  if (note === null && noteDismissed !== null) setNoteDismissed(null)
   const typed = address.trim()
   const base = paired ? paired.base : typed === "" ? null : homeApiBase(typed)
   const host = paired ? hostOf(paired.base) : typedHost(typed)
@@ -340,7 +317,6 @@ export const DeviceSection = (): JSX.Element => {
           <>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm break-all">Paired · {host}</p>
-              {/* Stays while its question is open below, disabled (HS1). */}
               <Button
                 type="button"
                 variant="outline"
@@ -381,12 +357,8 @@ export const DeviceSection = (): JSX.Element => {
                 </div>
               </div>
             ) : null}
-            {paired.notForgotten && !forgetDismissed ? (
-              <Notice
-                role="alert"
-                tone="danger"
-                onDismiss={() => setForgetDismissed(true)}
-              >
+            {paired.notForgotten ? (
+              <Notice tone="danger" dismissible>
                 This phone couldn&apos;t forget its key, so it is still paired.
                 Try Unpair again.
               </Notice>
@@ -419,8 +391,8 @@ export const DeviceSection = (): JSX.Element => {
                 ? "Reads from home once you type its address."
                 : `Reads from ${host}`}
             </p>
-            {note !== null && note !== noteDismissed ? (
-              <Notice role="status" onDismiss={() => setNoteDismissed(note)}>
+            {note !== null ? (
+              <Notice key={note} dismissible>
                 {NOTES[note]}
               </Notice>
             ) : null}
@@ -449,7 +421,6 @@ export const DeviceSection = (): JSX.Element => {
               workingLabel="Syncing..."
             />
           )}
-          {/* Stays while its form is open below, disabled (HS1). */}
           {paired ? null : (
             <Button
               type="button"

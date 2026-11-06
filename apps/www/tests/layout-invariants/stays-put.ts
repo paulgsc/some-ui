@@ -136,6 +136,58 @@ export const toScreen = (name: string | RegExp, does: string): Tap => ({
   reflows: `screen: ${does}`,
 })
 
+/** Closes the first notice on a notice plane that can be closed. */
+export const putAway = (does: string): Tap =>
+  button("Dismiss", does, {
+    scope: (page) => page.locator("[data-notice-plane]"),
+    exact: true,
+  })
+
+/** A file a walk picks from storage: its name and what it holds. */
+export type Picked = {
+  readonly name: string
+  readonly mimeType: string
+  readonly body: string
+}
+
+/**
+ * Picks `files` (a path on disk, or files by name) from storage, in the
+ * input labelled `into` or else the screen's one, then waits for what `says`
+ * finds, when given, to show.
+ */
+export const picksFile = (
+  files: string | Picked | ReadonlyArray<Picked>,
+  does: string,
+  {
+    into,
+    says,
+    reflows,
+  }: {
+    into?: string
+    says?: (page: Page) => Locator
+    reflows?: string
+  } = {}
+): Tap => ({
+  does,
+  ...(reflows === undefined ? {} : { reflows }),
+  act: async (page): Promise<void> => {
+    const input =
+      into === undefined
+        ? page.locator("input[type=file]")
+        : page.getByLabel(into)
+    await input.setInputFiles(
+      typeof files === "string"
+        ? files
+        : [files].flat().map(({ name, mimeType, body }) => ({
+            name,
+            mimeType,
+            buffer: Buffer.from(body),
+          }))
+    )
+    if (says !== undefined) await says(page).first().waitFor()
+  },
+})
+
 /**
  * Waits for what `found` finds to show, so the next tap starts from a still
  * screen: what landed while nothing was tapped is measured too.

@@ -120,10 +120,7 @@ const Ask = ({
         <p className="text-muted-foreground text-sm">{hint}</p>
       </header>
 
-      {/* The controls hold their places through the turn, each disabled
-          while it can't be used; what is heard and what to do with it grow
-          below them, and where the listening is is said over the screen
-          (HS1). */}
+      {/* What is heard and what to do with it grow below the controls. */}
       <div className="flex flex-col gap-2">
         {phase.kind === "listening" ||
         phase.kind === "finishing" ||
@@ -271,17 +268,14 @@ export const IdeaCapture = ({
     case "unreadable": {
       return (
         <>
-          <Notice role="alert" tone="danger">
-            <span className="block space-y-2">
-              <span className="block">{WORDS.unreadable}</span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => dispatch({ type: "readAgain" })}
-              >
-                {STUDIO_WORDS.readAgain}
-              </Button>
-            </span>
+          <Notice
+            tone="danger"
+            action={{
+              label: STUDIO_WORDS.readAgain,
+              onClick: () => dispatch({ type: "readAgain" }),
+            }}
+          >
+            {WORDS.unreadable}
           </Notice>
           {back}
         </>

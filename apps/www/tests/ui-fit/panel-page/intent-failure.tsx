@@ -54,7 +54,6 @@ export const IntentFailureFixture = (): JSX.Element => (
           workingLabel="Starting..."
           size="sm"
           className="h-12 rounded-2xl px-6 text-base"
-          bare
         />
         <IntentButton
           state={row.menu}
@@ -64,7 +63,6 @@ export const IntentFailureFixture = (): JSX.Element => (
           size="sm"
           variant="outline"
           className="h-12 rounded-2xl px-6 text-base"
-          bare
         />
       </div>
     ))}

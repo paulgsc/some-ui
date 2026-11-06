@@ -30,6 +30,19 @@ export const HOW_ORDER = [
 
 export type How = (typeof HOW_ORDER)[number]
 
+/** How a last send went that the person should hear of: it didn't all go. */
+export const HOW_TROUBLE: ReadonlySet<How> = new Set<How>([
+  "no-answer",
+  "busy",
+  "forgotten",
+  "unpaired",
+  "full",
+  "no-room",
+  "refused",
+  "fault",
+  "failed",
+])
+
 /** What each mark means, as the sheet's legend says it. */
 export const MARK_WORDS = {
   title: "What the marks mean",

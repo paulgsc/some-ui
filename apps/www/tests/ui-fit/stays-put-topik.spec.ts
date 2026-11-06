@@ -26,6 +26,7 @@ import { expect, type Page } from "@playwright/test"
 import {
   button,
   keepWrites,
+  picksFile,
   refuseWrites,
   type Tap,
 } from "@tests/layout-invariants/stays-put"
@@ -33,6 +34,9 @@ import {
 import { walkEachPhone } from "./harness"
 
 /** The grammar lens's level-one set, as the learner picks it from storage. */
+/** The input a word set is picked into. */
+const STORAGE = "Open new words from storage"
+
 const LENS_SET = fileURLToPath(
   new URL(
     "../../../../packages/some-content/prompts/read-aloud-generator/sets/level-one.lens.json",
@@ -257,21 +261,15 @@ const situation = (at: number, does: string): Tap => ({
 
 /** The grammar lens, from a word set picked from storage. */
 const LENS: ReadonlyArray<Tap> = [
-  {
-    does: "picks a file that is no word set",
-    act: (page) =>
-      page.getByLabel("Open new words from storage").setInputFiles({
-        name: "notes.txt",
-        mimeType: "text/plain",
-        buffer: Buffer.from("not a word set"),
-      }),
-  },
-  {
-    does: "picks the grammar lens's set",
-    act: (page) =>
-      page.getByLabel("Open new words from storage").setInputFiles(LENS_SET),
+  picksFile(
+    { name: "notes.txt", mimeType: "text/plain", body: "not a word set" },
+    "picks a file that is no word set",
+    { into: STORAGE }
+  ),
+  picksFile(LENS_SET, "picks the grammar lens's set", {
+    into: STORAGE,
     reflows: "screen: the system's picker, and the list back with the set",
-  },
+  }),
   {
     does: "opens the set",
     act: (page) =>
@@ -322,14 +320,10 @@ const READ_ALOUD_SET = fileURLToPath(
 
 /** Read aloud's rep card, its steps on a clock between the taps. */
 const READ_ALOUD: ReadonlyArray<Tap> = [
-  {
-    does: "picks the read-aloud set",
-    act: (page) =>
-      page
-        .getByLabel("Open new words from storage")
-        .setInputFiles(READ_ALOUD_SET),
+  picksFile(READ_ALOUD_SET, "picks the read-aloud set", {
+    into: STORAGE,
     reflows: "screen: the system's picker, and the list back with the set",
-  },
+  }),
   {
     does: "opens the set",
     act: (page) =>

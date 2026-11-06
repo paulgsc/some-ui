@@ -121,9 +121,6 @@ export const RemoveOffer = ({
           host
         )}
       </p>
-      {/* A failure is said over the screen, and why it stayed comes after
-          the row: below every control, in a prompt that grows down, so
-          neither moves one (HS1). */}
       <div className="flex flex-wrap gap-2">
         <IntentButton
           state={letGo.state}
@@ -134,7 +131,6 @@ export const RemoveOffer = ({
           variant="destructive"
           idleLabel={LET_GO.room.confirm}
           workingLabel={LET_GO.room.working}
-          bare
         />
         <Button size="sm" variant="outline" onClick={onSettle}>
           Not now
@@ -184,24 +180,25 @@ export const StoragePrompt = ({
 }): JSX.Element | null => {
   if (view === null) return null
   const { full, notice } = view
-  // Over the page, on the notice plane: below the header, so bringing it up
-  // or dismissing it moves nothing on the screen under it (HS1).
   return (
     <>
       {full === null ? null : (
-        <Notice role="alert" tone="warning">
+        <Notice
+          role="alert"
+          tone="warning"
+          action={
+            full.removable === null
+              ? { label: "OK", onClick: onSettle }
+              : undefined
+          }
+        >
           <div className="space-y-2">
             <p className="flex items-center gap-2 font-medium">
               <HardDrive aria-hidden className="size-4 shrink-0" />
               Phone full. Not saved.
             </p>
             {full.removable === null ? (
-              <>
-                <p>Delete a session you don&apos;t need, then try again.</p>
-                <Button size="sm" variant="outline" onClick={onSettle}>
-                  OK
-                </Button>
-              </>
+              <p>Delete a session you don&apos;t need, then try again.</p>
             ) : (
               renderOffer(full.removable)
             )}
@@ -209,7 +206,7 @@ export const StoragePrompt = ({
         </Notice>
       )}
       {notice === null ? null : (
-        <Notice role="status">
+        <Notice action={{ label: "Got it", onClick: () => onDismiss(notice) }}>
           <span className="flex items-center gap-2">
             <HardDrive aria-hidden className="size-4 shrink-0" />
             <span className="min-w-0 flex-1">
@@ -217,9 +214,6 @@ export const StoragePrompt = ({
               {notice.rounds === 1 ? "" : "s"} this version of the app no longer
               ships.
             </span>
-            <Button size="sm" variant="ghost" onClick={() => onDismiss(notice)}>
-              Got it
-            </Button>
           </span>
         </Notice>
       )}

@@ -82,8 +82,7 @@ const Said = ({
  * The indicator for `phase`. While the finger pulls, a pill comes down from
  * under the header with it: a zero-height box, so the page below never
  * moves, and the scroller clips the pill until it has come down. Once let
- * go, how the check goes (checking, done, failed) is said over the screen
- * (`Notice`), as everything a screen says about what was just done is (HS1).
+ * go, how the check goes (checking, done, failed) is a `Notice`.
  */
 export const PullIndicator = ({
   phase,
@@ -114,7 +113,7 @@ export const PullIndicator = ({
         </div>
       </div>
       {!pulling && words !== null && (
-        <Notice role="status">
+        <Notice>
           <Said phase={phase} words={words} />
         </Notice>
       )}

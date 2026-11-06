@@ -181,8 +181,8 @@ const Card = ({
  * "Open … from storage": the system picker, then the file's text. Its read
  * is this card's, so leaving the list lets it go. What the text holds is the
  * caller's to judge, and `note` says what came of it. The card says what it
- * offers; what came of a pick ("Opening...", a refusal, what was added) is
- * said over the screen, so the cards below it hold still (HS1).
+ * offers; the notices say what came of a pick ("Opening...", a refusal,
+ * what was added).
  */
 const OpenFromStorage = ({
   title,
@@ -202,14 +202,11 @@ const OpenFromStorage = ({
   const name = useId()
   const about = useId()
   const where = useId()
-  // The outcome the person dismissed: the read's or the caller's note, the
-  // same object until the next pick.
-  const [dismissed, setDismissed] = useState<object | null>(null)
-  const told: { tone: "done" | "problem"; text: string; of: object } | null =
+  const told: StorageNote | null =
     state.kind === "failed"
-      ? { tone: "problem", text: state.summary, of: state }
-      : state.kind === "idle" && note !== null
-        ? { ...note, of: note }
+      ? { tone: "problem", text: state.summary }
+      : state.kind === "idle"
+        ? note
         : null
   return (
     <label className="bg-card border-border focus-within:ring-ring relative flex min-h-16 shrink-0 cursor-pointer items-center gap-3 rounded-2xl border p-4 text-left focus-within:ring-2">
@@ -228,17 +225,17 @@ const OpenFromStorage = ({
         )}
       </span>
       {state.kind === "reading" && (
-        <Notice role="status">
+        <Notice>
           <span className="flex items-center gap-2">
             <Loader2 className="size-4 animate-spin" /> Opening...
           </span>
         </Notice>
       )}
-      {told !== null && told.of !== dismissed && (
+      {told !== null && (
         <Notice
-          role={told.tone === "problem" ? "alert" : "status"}
+          key={told.text}
           tone={told.tone === "problem" ? "danger" : "neutral"}
-          onDismiss={() => setDismissed(told.of)}
+          dismissible
         >
           {told.text}
         </Notice>
@@ -350,8 +347,6 @@ const FromRoutine = ({
   onOpen: (key: string, setId?: string) => void
 }): JSX.Element => {
   const [query, setQuery] = useState("")
-  // The note the person dismissed, the same object until the next opening.
-  const [dismissed, setDismissed] = useState<StorageNote | null>(null)
   const shown = searchLessons(items, query)
   const searching = query.trim() !== ""
   const status = searching
@@ -394,11 +389,11 @@ const FromRoutine = ({
       >
         {status}
       </p>
-      {note !== null && note !== dismissed && (
+      {note !== null && (
         <Notice
-          role={note.tone === "problem" ? "alert" : "status"}
+          key={note.text}
           tone={note.tone === "problem" ? "danger" : "neutral"}
-          onDismiss={() => setDismissed(note)}
+          dismissible
         >
           <span data-slot="routine-note">{note.text}</span>
         </Notice>
@@ -588,8 +583,6 @@ export const MaterialList = ({
 }: MaterialListProps): JSX.Element => {
   // The level shown alone; null shows every level.
   const [only, setOnly] = useState<number | null>(null)
-  // The load failure the person dismissed, until another one.
-  const [dismissedError, setDismissedError] = useState<string | null>(null)
   const dramaCards = dramas.map((item) => cardOf(item))
   // Only what is shown is counted, so no level offered shows nothing.
   const held = levelsHeld([
@@ -786,7 +779,7 @@ export const MaterialList = ({
       )}
 
       {loading && (
-        <Notice role="status">
+        <Notice>
           <span className="flex items-center gap-2">
             <Loader2 className="size-4 animate-spin" /> Loading this week&apos;s
             dramas...
@@ -794,22 +787,14 @@ export const MaterialList = ({
         </Notice>
       )}
 
-      {error && error !== dismissedError && (
+      {error && (
         <Notice
-          role="alert"
+          key={error}
           tone="danger"
-          onDismiss={() => setDismissedError(error)}
+          dismissible
+          action={{ label: "Try again", onClick: onReload }}
         >
-          <span className="flex flex-col items-start gap-2">
-            {error}
-            <Button
-              variant="outline"
-              className="h-11 rounded-xl"
-              onClick={onReload}
-            >
-              Try again
-            </Button>
-          </span>
+          {error}
         </Notice>
       )}
 

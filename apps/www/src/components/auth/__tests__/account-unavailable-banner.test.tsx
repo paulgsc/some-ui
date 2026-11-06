@@ -71,7 +71,7 @@ describe("AccountUnavailableBanner", () => {
     authority.dispatch({ type: "session-started", adopt: true })
     authority.dispatch({ type: "session-ended", forget: false })
     const { rerender } = render(<AccountUnavailableBanner />)
-    expect(screen.getByRole("status")).not.toBeNull()
+    screen.getByRole("status")
     authority.chooseLocal()
     rerender(<AccountUnavailableBanner />)
     expect(screen.queryByRole("status")).toBeNull()

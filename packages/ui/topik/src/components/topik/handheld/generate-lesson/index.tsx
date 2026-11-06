@@ -187,73 +187,54 @@ function verdictOf(
   }
 }
 
-/**
- * What the intake made of the reply, said over the screen (HS1): the reply
- * was read at a tap, and the dock's one action already says what comes next.
- */
-const VerdictNotice = ({
+/** What the intake made of the reply, read at a tap. */
+const VerdictSaid = ({
   verdict,
   success,
-  onDismiss,
 }: {
   verdict: Verdict
   /** Said when a lesson that plays has no findings. */
   success: string
-  onDismiss: () => void
 }): JSX.Element => {
-  if (verdict.kind === "absent") {
-    return (
-      <Notice role="alert" tone="danger" onDismiss={onDismiss}>
-        {verdict.error}
-      </Notice>
-    )
-  }
+  if (verdict.kind === "absent") return <>{verdict.error}</>
   const rejected = verdict.kind === "rejected"
   return (
-    <Notice
-      role={rejected ? "alert" : "status"}
-      tone={rejected ? "danger" : "neutral"}
-      onDismiss={onDismiss}
-    >
-      <div className="flex flex-col gap-2">
-        {verdict.title && (
-          <p className="text-foreground font-semibold">{verdict.title}</p>
-        )}
-        {verdict.summary === null ? (
-          <p className="text-success flex items-center gap-2">
-            <Check className="size-4" /> {success}
-          </p>
-        ) : (
-          <p
-            className={rejected ? "text-destructive" : "text-muted-foreground"}
-          >
-            {verdict.summary}
-          </p>
-        )}
-        {verdict.findings.length > 0 && (
-          <ul className="flex flex-col gap-1">
-            {verdict.findings.slice(0, SHOWN_FINDINGS).map((finding) => (
-              <li
-                key={finding.key}
-                className={cn(
-                  "rounded-lg px-2 py-1 text-xs",
-                  finding.error
-                    ? "bg-destructive/10 text-destructive"
-                    : "bg-muted text-muted-foreground"
-                )}
-              >
-                {finding.text}
-              </li>
-            ))}
-          </ul>
-        )}
-        {verdict.findings.length > SHOWN_FINDINGS && (
-          <p className="text-muted-foreground text-xs">
-            and {verdict.findings.length - SHOWN_FINDINGS} more
-          </p>
-        )}
-      </div>
-    </Notice>
+    <div className="flex flex-col gap-2">
+      {verdict.title && (
+        <p className="text-foreground font-semibold">{verdict.title}</p>
+      )}
+      {verdict.summary === null ? (
+        <p className="text-success flex items-center gap-2">
+          <Check className="size-4" /> {success}
+        </p>
+      ) : (
+        <p className={rejected ? "text-destructive" : "text-muted-foreground"}>
+          {verdict.summary}
+        </p>
+      )}
+      {verdict.findings.length > 0 && (
+        <ul className="flex flex-col gap-1">
+          {verdict.findings.slice(0, SHOWN_FINDINGS).map((finding) => (
+            <li
+              key={finding.key}
+              className={cn(
+                "rounded-lg px-2 py-1 text-xs",
+                finding.error
+                  ? "bg-destructive/10 text-destructive"
+                  : "bg-muted text-muted-foreground"
+              )}
+            >
+              {finding.text}
+            </li>
+          ))}
+        </ul>
+      )}
+      {verdict.findings.length > SHOWN_FINDINGS && (
+        <p className="text-muted-foreground text-xs">
+          and {verdict.findings.length - SHOWN_FINDINGS} more
+        </p>
+      )}
+    </div>
   )
 }
 
@@ -301,12 +282,8 @@ export const GenerateLesson = ({
   const [verdict, setVerdict] = useState<Verdict | null>(() =>
     initialReply === undefined ? null : verdictOf(initialReply, onStartTree)
   )
-  // The verdict's notice, until the person dismisses it; the verdict itself
-  // stays, since the dock's action is the verdict's.
-  const [told, setTold] = useState(true)
   const read = (text: string): void => {
     setVerdict(verdictOf(text, onStartTree))
-    setTold(true)
   }
 
   const hand = async (
@@ -554,12 +531,13 @@ export const GenerateLesson = ({
   return (
     <>
       <StepLayout short={short} stage={stage} dock={dock} longForm />
-      {verdict && told && (
-        <VerdictNotice
-          verdict={verdict}
-          success="Ready to play."
-          onDismiss={() => setTold(false)}
-        />
+      {verdict && (
+        <Notice
+          tone={verdict.kind === "checked" ? "neutral" : "danger"}
+          dismissible
+        >
+          <VerdictSaid verdict={verdict} success="Ready to play." />
+        </Notice>
       )}
       {/*
        * What the clipboard would not take, to copy by hand: over the page,

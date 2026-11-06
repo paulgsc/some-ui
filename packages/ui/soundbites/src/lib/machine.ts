@@ -64,8 +64,6 @@ export type SoundbitesState = {
 export type SoundbitesIntent =
   | { readonly type: "replacePicked"; readonly id: string }
   | { readonly type: "retryRead" }
-  /** The person closed what the page said. */
-  | { readonly type: "noticeDismissed" }
 
 /** What the page and the ports report. */
 type SoundbitesSignal =
@@ -240,10 +238,6 @@ export function step(state: SoundbitesState, event: SoundbitesEvent): Step {
 
     case "replacePicked": {
       return stay({ ...state, choice: event.id })
-    }
-
-    case "noticeDismissed": {
-      return stay({ ...state, notice: "" })
     }
 
     default: {

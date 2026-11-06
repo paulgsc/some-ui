@@ -19,6 +19,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react"
 import {
   afterEach,
@@ -173,11 +174,11 @@ async function mount(
   await act(() => Promise.resolve())
 }
 
-/** The mark, behind its sheet or not. */
 /** How the mark says the last send went (its `how` mark), or null. */
 const howOf = (element: HTMLElement): string | null =>
   element.querySelector("[data-how]")?.getAttribute("data-how") ?? null
 
+/** The mark, behind its sheet or not. */
 const mark = (name = /Where Practice is kept/): HTMLElement =>
   screen.getByRole("button", { name, hidden: true })
 
@@ -280,7 +281,11 @@ describe("the Jobs record's mark", () => {
       expect(howOf(mark(/Where the Jobs record is kept/))).toBe("no-answer")
     )
     fireEvent.click(mark(/Where the Jobs record is kept/))
-    expect(screen.getByText(/2 events wait on this phone/)).toBeTruthy()
+    expect(
+      within(screen.getByRole("dialog")).getByText(
+        /2 events wait on this phone/
+      )
+    ).toBeTruthy()
   })
 
   it("sends a round pasted in Rust Rounds home from the shell, and brings home's rounds back (RR4b)", async () => {

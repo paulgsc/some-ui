@@ -1,8 +1,7 @@
 /**
  * "Ask for the next scene" (docs/makjang/README.md, "Asking home for the next
  * scene"): the prompt, with the scene's voice notes named by id, kept by the
- * host to go home, and what the host says of it since: once asked, said over
- * the screen (`Notice`), so a word that comes and goes moves nothing (HS1).
+ * host to go home, and what the host says of it since, once asked.
  */
 
 import type { JSX } from "react"
@@ -88,14 +87,12 @@ export const AskScene = ({
         <span lang={labelLang}>{label}</span>
       </Button>
       {told === "refused" && (
-        <Notice role="alert" tone="danger" onDismiss={() => setTold(null)}>
+        <Notice tone="danger" onDismiss={() => setTold(null)}>
           {ASK_NOT_KEPT}
         </Notice>
       )}
       {told === "kept" && (
-        <Notice role="status" onDismiss={() => setTold(null)}>
-          {snapshot.said}
-        </Notice>
+        <Notice onDismiss={() => setTold(null)}>{snapshot.said}</Notice>
       )}
     </div>
   )

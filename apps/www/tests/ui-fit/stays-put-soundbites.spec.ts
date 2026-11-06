@@ -8,8 +8,8 @@
  *   refused; for Studio's Shape, every plan tapped, each look and voice, below
  *   and above the one open; for Record, a take started, kept, recorded again
  *   and thrown away; for Watch, Claude's change asked and answered, whose
- *   idea a scene is asked, a note typed, noted and said, a scene's idea put
- *   right in words said, and on an episode, what a note is about; for Start,
+ *   idea a scene is asked, a note typed, noted, said and heard back, a
+ *   scene's idea put right in words said and heard back, and on an episode, what a note is about; for Start,
  *   when takes leave the phone, chosen and changed; for Finish, home asked to
  *   make an episode; for "Not today?" on a full phone, the one replaced next
  *   picked twice, Play and Stop, and a set-aside refused; for takes on home,
@@ -21,12 +21,12 @@
  *   and says why; one that declares `grows` holds what is at and above it.
  * - Proof: this spec, over `../layout-invariants/stays-put.ts`.
  * - Tolerance: a screen this spec does not walk, among them Start's version
- *   question after a pick, Done for now, a note said and heard back (the
- *   page's recognizer never finishes), and the idea shelf's list.
+ *   question after a pick, Done for now, and the idea shelf's list.
  */
 
 import {
   button,
+  picksFile,
   toScreen,
   waitsFor,
   type Tap,
@@ -59,21 +59,22 @@ const keep = (does: string, grows?: string): Tap => ({
 })
 
 /** Watch's render and the notes beside it, picked together as it asks. */
-const pickReview = (rev: number, title?: string): Tap => ({
-  does: "picks the render and its notes",
-  act: async (page): Promise<void> => {
-    await page.locator('input[type="file"]').setInputFiles([
-      { name: "review.mp4", mimeType: "video/mp4", buffer: Buffer.from("v") },
+const pickReview = (rev: number, title?: string): Tap =>
+  picksFile(
+    [
+      { name: "review.mp4", mimeType: "video/mp4", body: "v" },
       {
         name: "review.json",
         mimeType: "application/json",
-        buffer: Buffer.from(fitReviewText(rev, title)),
+        body: fitReviewText(rev, title),
       },
-    ])
-    await page.getByRole("button", { name: /^Note here/ }).waitFor()
-  },
-  reflows: "screen: the render, in place of the pick that opens it",
-})
+    ],
+    "picks the render and its notes",
+    {
+      says: (page) => page.getByRole("button", { name: /^Note here/ }),
+      reflows: "screen: the render, in place of the pick that opens it",
+    }
+  )
 
 /** Types `text` as Watch's note. */
 const note = (text: string): Tap => ({
@@ -183,6 +184,8 @@ const WATCH: ReadonlyArray<Tap> = [
   button(/^Note here/, "notes it here"),
   button(/^Say a note/, "starts saying a note"),
   button("Done talking", "stops talking"),
+  until(/^Note this at/, "waits for the note heard back"),
+  button(/^Note this at/, "notes what was said"),
 ]
 
 /** Watch, putting a scene's idea right: its words said, not typed. */
@@ -199,6 +202,8 @@ const WATCH_IDEA: ReadonlyArray<Tap> = [
   until("In my take for this scene", "waits for where the words are"),
   button("Say where it came from", "starts saying where it came from"),
   button("Done talking", "stops talking"),
+  until("Keep it as mine", "waits for the words heard back"),
+  button("Say it again", "says it again"),
 ]
 
 /** Watch on an episode: what a note is about, asked before it is kept. */
@@ -245,18 +250,14 @@ const OPEN_WITH_REPLY = (
 ): ReadonlyArray<Tap> => [
   until(/week 8/, "waits for the shelf"),
   toScreen(/week 8/, "opens the idea"),
-  {
-    does: "picks Claude's reply",
-    act: async (page): Promise<void> => {
-      await page.locator('input[type="file"]').setInputFiles({
-        name: "reply.json",
-        mimeType: "application/json",
-        buffer: Buffer.from(reply(fields)),
-      })
-      await page.getByText("Claude's", { exact: false }).first().waitFor()
-    },
-    reflows: "step: the idea, moved on by Claude's reply",
-  },
+  picksFile(
+    { name: "reply.json", mimeType: "application/json", body: reply(fields) },
+    "picks Claude's reply",
+    {
+      says: (page) => page.getByText("Claude's", { exact: false }),
+      reflows: "step: the idea, moved on by Claude's reply",
+    }
+  ),
 ]
 
 /** The shelf: Claude's question, said, fixed in words, and kept. */

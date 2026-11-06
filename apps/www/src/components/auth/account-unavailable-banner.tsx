@@ -1,5 +1,4 @@
 import type { JSX } from "react"
-import { useState } from "react"
 import { Notice } from "@some-ui/shared"
 import { Link, useRouterState } from "@tanstack/react-router"
 
@@ -8,8 +7,7 @@ import { useAuthoritySnapshot } from "@/lib/authority"
 /**
  * What a person sees when their account stops being usable (a session expired,
  * another device signed out everywhere) while they are in the middle of
- * something: a notice over the screen (HS1), and nothing else. Closed, it
- * stays closed until the account is back and goes again.
+ * something: a notice, and nothing else.
  *
  * They are not sent anywhere. The page stays up and keeps working on this
  * device, nothing is wiped or uploaded, and the account's data is simply not
@@ -21,12 +19,10 @@ import { useAuthoritySnapshot } from "@/lib/authority"
 export const AccountUnavailableBanner = (): JSX.Element | null => {
   const { accountUnavailable } = useAuthoritySnapshot()
   const href = useRouterState({ select: (state) => state.location.href })
-  const [dismissed, setDismissed] = useState(false)
-  if (!accountUnavailable && dismissed) setDismissed(false)
-  if (!accountUnavailable || dismissed) return null
+  if (!accountUnavailable) return null
 
   return (
-    <Notice role="status" onDismiss={() => setDismissed(true)}>
+    <Notice dismissible>
       Your account session ended, so its sessions are hidden and nothing is
       being sent to it. You can keep learning on this device.{" "}
       <Link

@@ -13,16 +13,16 @@
 import type { JSX } from "react"
 import type { SpeechAdapter, SpeechAdapterFactory } from "@some-ui/speech"
 import { SpeechProvider } from "@some-ui/speech"
-import type { LensTakes, LensTakeSnapshot } from "@some-ui/topik"
+import type { LensTakes } from "@some-ui/topik"
 // This page is its own build (`build:fit-phone`) and in no shipped bundle,
 // so the eager edge the rule guards against costs nothing here.
 // eslint-disable-next-line lazy-registry/no-eager-registry-import
 import { KoreanStudyPage } from "@some-ui/topik"
-import type { PatternTake } from "@some-ui/voice-capture"
 import { ONE_TAKE } from "@some-ui/voice-capture"
 import { simulatedPattern, SPEAKING } from "@some-ui/voice-capture/testing"
 
 import { createSceneAsks } from "@/lib/scene-ask"
+import { patternPort } from "@/lib/takes-desk"
 
 import { memoryShelf } from "./shelf"
 
@@ -89,7 +89,8 @@ const KEPT: ReadonlyArray<readonly [string, string]> = [
 
 /**
  * The grammar lens's takes as the phone's desk shapes them (www's
- * `lib/lens-takes`): many a line, the newest played, never full here.
+ * `lib/lens-takes`), through its port: many a line, the newest played,
+ * never full here.
  */
 function lensTakes(): LensTakes {
   const simulated = simulatedPattern({
@@ -101,21 +102,12 @@ function lensTakes(): LensTakes {
   })
   const speaking = { ...SPEAKING, durationMs: 4_000 }
   simulated.mic.script(speaking, speaking, speaking)
-  const { store } = simulated
-  let seen: ReadonlyArray<PatternTake> | null = null
-  let snapshot: LensTakeSnapshot = { takes: [], full: false }
-  return {
+  const phone = {
     pattern: simulated.pattern,
-    subscribe: store.subscribe,
-    getSnapshot: (): LensTakeSnapshot => {
-      const takes = store.getSnapshot()
-      if (takes !== seen) {
-        seen = takes
-        snapshot = { takes, full: false }
-      }
-      return snapshot
-    },
+    takes: simulated.store,
+    full: (): boolean => false,
   }
+  return patternPort({ phone: () => phone })
 }
 
 const shelf = memoryShelf({ seed: KEPT })

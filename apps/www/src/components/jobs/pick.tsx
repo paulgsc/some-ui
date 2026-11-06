@@ -430,7 +430,9 @@ const Draft = ({
         {note !== undefined && (
           <p className="text-muted-foreground text-xs">{note}</p>
         )}
-        <CopyButton text={draft} what={label} />
+        <div>
+          <CopyButton text={draft} what={label} />
+        </div>
       </>
     )}
   </div>
@@ -639,7 +641,7 @@ const Ending = ({
               onChange={(e) => keep({ minutes: e.target.value })}
             />
             {said && !minutesFit && (
-              <Notice role="status" tone="warning">
+              <Notice tone="warning">
                 {minutesRange(MAX_DEBRIEF_MINUTES)}
               </Notice>
             )}

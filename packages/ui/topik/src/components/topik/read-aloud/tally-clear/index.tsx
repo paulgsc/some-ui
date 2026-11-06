@@ -57,7 +57,6 @@ export const TallyClear = ({
           </Button>
         </>
       )}
-      {/* What came of the clear, said over the screen (HS1). */}
       {outcome !== null && (
         <Notice
           role={outcome === "cleared" ? "status" : "alert"}

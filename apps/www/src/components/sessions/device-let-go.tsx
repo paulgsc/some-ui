@@ -17,7 +17,6 @@
  * "true"`.
  */
 import type { JSX, ReactNode } from "react"
-import { useState } from "react"
 import type { Intent } from "@some-ui/intent-kit"
 import { matchIntent } from "@some-ui/intent-kit"
 import { Notice, useConfirmSheet } from "@some-ui/shared"
@@ -98,18 +97,14 @@ export function useHomeLetGo(session: SessionRecord): LetGoControl {
   const { ask, sheet } = useConfirmSheet()
   const letGo = useSessionLetGo()
   const { host, promise } = letGo
-  // Why it stayed, read and closed: said again on the next run.
-  const [dismissed, setDismissed] = useState<LetGoRun | null>(null)
 
   const lines = matchIntent(letGo.state, {
     idle: (): JSX.Element | null => null,
     working: (): JSX.Element | null =>
-      promise === "home" ? (
-        <Notice role="status">{LET_GO.working(host)}</Notice>
-      ) : null,
+      promise === "home" ? <Notice>{LET_GO.working(host)}</Notice> : null,
     succeeded: (run): JSX.Element | null =>
-      leftPhone(run.end) || run === dismissed ? null : (
-        <Notice role="alert" tone="warning" onDismiss={() => setDismissed(run)}>
+      leftPhone(run.end) ? null : (
+        <Notice role="alert" tone="warning" dismissible>
           <span className="break-words">{LET_GO.ended(run.end, run.host)}</span>
         </Notice>
       ),

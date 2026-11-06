@@ -237,8 +237,7 @@ const DashboardLayout = (): JSX.Element => {
           !isBoundedRoute && barOf(pathname) !== null && "rail:pl-[6rem]"
         )}
       >
-        {/* What a screen says about what was just done floats here, under the
-            header, over the screen: never in its layout (HS1). */}
+        {/* Notices float here, under the header (HS1). */}
         <NoticeLayer className={bareViewport ? "top-3" : "top-16"}>
           {!bareViewport && (
             <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">

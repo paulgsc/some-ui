@@ -159,8 +159,6 @@ export type LibraryIntent =
   | { readonly type: "newest" }
   | { readonly type: "readAgain" }
   | { readonly type: "play"; readonly id: string }
-  /** The person closed "home can't give that take back". */
-  | { readonly type: "noticeDismissed" }
 
 export type LibraryEvent =
   | LibraryIntent
@@ -330,9 +328,6 @@ function step(state: LibraryState, event: LibraryEvent): LibraryStep {
           { type: "startPlayback", play: event.play, audio: event.audio },
         ],
       }
-    }
-    case "noticeDismissed": {
-      return same({ ...state, unplayable: null })
     }
     case "playEnded": {
       if (event.play !== state.plays) return same(state)

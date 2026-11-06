@@ -631,7 +631,7 @@ export const IdeasOnHome = ({
         pair={pair}
       />
       {state.notice !== null && (
-        <Notice onDismiss={() => dispatch({ type: "noticeDismissed" })}>
+        <Notice key={state.notice} dismissible>
           {WORDS.notice[state.notice]}
         </Notice>
       )}

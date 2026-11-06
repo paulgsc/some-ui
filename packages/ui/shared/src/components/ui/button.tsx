@@ -6,7 +6,7 @@ import { cn } from "../../lib/utils"
 
 // Every variant draws a border, transparent unless it shows one, so a button
 // that swaps variant on a tap (a toggle: outline off, default on) keeps its
-// width, and its neighbours their places (HS1, `./reserved`).
+// width, and its neighbours their places (HS1).
 const buttonVariants = cva(
   "inline-flex items-center border border-transparent justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
   {

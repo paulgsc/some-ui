@@ -157,8 +157,11 @@ const IDEAS_HOME: IdeasHome = {
 
 const AT = "2026-10-30T10:00:00.000Z"
 
-/** A recognizer that listens at once and, once stopped, hears one line. */
-const hearsOnStop: TurnListener = {
+/**
+ * A recognizer that listens at once and, once stopped, hears one line: the
+ * idea shelf's and Studio's (`./fixtures.tsx`).
+ */
+export const hearsOnStop: TurnListener = {
   available: () => Promise.resolve(true),
   listen: (_onWords, onReady) => {
     let settle: (listened: Listened) => void = () => undefined

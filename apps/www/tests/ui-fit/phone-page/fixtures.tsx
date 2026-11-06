@@ -43,7 +43,6 @@ import {
 } from "@some-ui/soundbites/fixtures"
 import type { Format } from "@some-ui/video-render"
 import { episodeOf, FORMAT_SCHEMA } from "@some-ui/video-render"
-import type { TurnListener } from "@some-ui/voice-capture"
 import { ONE_TAKE } from "@some-ui/voice-capture"
 import type { MicScript } from "@some-ui/voice-capture/testing"
 import {
@@ -57,7 +56,7 @@ import { MY_DATA_FIXTURES } from "./my-data"
 import { PULL_FIXTURES } from "./pull"
 import { ROUNDS_FIXTURES } from "./rounds"
 import { SettingsBar } from "./settings-bar"
-import { SOUNDBITES_FIXTURES } from "./soundbites"
+import { hearsOnStop, SOUNDBITES_FIXTURES } from "./soundbites"
 import { FIT_CUTS, FIT_PRIMER_TEXT } from "./studio-seed"
 import { TOPIK_FIXTURES } from "./topik"
 import { WWW_FIXTURES } from "./www"
@@ -211,18 +210,6 @@ const HELD: Project = ((): Project => {
   }
 })()
 
-const noop = (): void => undefined
-
-/** A recognizer that is there and never finishes, so each screen offers to listen. */
-const listener: TurnListener = {
-  available: () => Promise.resolve(true),
-  listen: () => ({
-    done: new Promise(() => undefined),
-    stop: noop,
-    cancel: noop,
-  }),
-}
-
 /**
  * Studio on `projects`, in memory: a microphone that always hears, and a
  * time log of this page load; `now`, the clock, when it is not the page's.
@@ -241,7 +228,7 @@ function studioPorts(
     timeLog: keptTimeLog(inMemoryStorage),
     // Kept as long as the page is: a choice made on Start stays made.
     letGo: keptLetGo(once(inMemoryStorage())),
-    listener,
+    listener: hearsOnStop,
     ...(now === undefined ? {} : { now }),
   }
 }

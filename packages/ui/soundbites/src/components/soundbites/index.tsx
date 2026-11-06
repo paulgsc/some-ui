@@ -35,11 +35,12 @@ import {
   Button,
   Notice,
   TakeButton,
+  TakeNotices,
   TakeRows,
   useTakePattern,
 } from "@some-ui/shared"
 import type { TakeRowView } from "@some-ui/voice-capture"
-import { TAKE_WORDS, takeItemView, takeSaid } from "@some-ui/voice-capture"
+import { takeItemView } from "@some-ui/voice-capture"
 import { describeContext, formatWhen } from "@soundbites/lib/format"
 import { homeHeld, homeHoldsNow } from "@soundbites/lib/home-held"
 import type { SoundbiteSituation } from "@soundbites/lib/machine"
@@ -160,7 +161,6 @@ export const Soundbites = ({
     SOUNDBITE_ITEM,
     pattern.options
   )
-  const said = view.said === null ? null : takeSaid(TAKE_WORDS, view.said)
 
   /** What the app noted, under a row's length. */
   const describe = ({ id }: { id: string }): ReactNode => {
@@ -213,25 +213,9 @@ export const Soundbites = ({
             size="large"
             onTap={() => pattern.tap(SOUNDBITE_ITEM, view.supersedes)}
           />
-          {/* What a take came to, and what went wrong, over the screen: the
-              button and the list stay where they are (HS1). */}
-          {said !== null && (
-            <Notice>
-              <span
-                data-take-ended={
-                  view.said?.kind === "ended" ? view.said.ended.seq : undefined
-                }
-              >
-                {said}
-              </span>
-            </Notice>
-          )}
+          <TakeNotices view={view} />
           {notice !== "" && (
-            <Notice
-              role="alert"
-              tone="danger"
-              onDismiss={() => dispatch({ type: "noticeDismissed" })}
-            >
+            <Notice key={notice} tone="danger" dismissible>
               {notice}
             </Notice>
           )}
@@ -272,15 +256,14 @@ export const Soundbites = ({
         </div>
 
         {/* The one replaced unless another is picked: a pick moves the
-            mark on the rows, never these words, so no row moves (HS1). */}
+            mark on the rows, never these words. */}
         {full && unpicked !== null && (
           <p className="text-muted-foreground text-xs">
             {WORDS.fullReplaces}{" "}
             <span className="text-foreground font-medium">
               {formatWhen(unpicked.recordedAt, now)}
             </span>
-            {WORDS.whichGoes[replacedBy(unpicked, null)]}
-            {WORDS.pickAnother}
+            {WORDS.whichGoes[replacedBy(unpicked)]}.
           </p>
         )}
 
@@ -289,17 +272,14 @@ export const Soundbites = ({
         )}
 
         {library.kind === "unreadable" ? (
-          <Notice role="alert" tone="danger">
-            <span className="block space-y-2">
-              <span className="block">{WORDS.unreadable}</span>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => dispatch({ type: "retryRead" })}
-              >
-                Read them again
-              </Button>
-            </span>
+          <Notice
+            tone="danger"
+            action={{
+              label: "Read them again",
+              onClick: () => dispatch({ type: "retryRead" }),
+            }}
+          >
+            {WORDS.unreadable}
           </Notice>
         ) : kept === null ? null : kept.length === 0 ? (
           <p className="bg-card border-border/50 text-muted-foreground flex items-center gap-3 rounded-2xl border p-4 text-sm font-medium">

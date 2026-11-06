@@ -38,48 +38,6 @@ type ChangeMaterialDialogProps = {
   onReload?: () => void
 }
 
-/**
- * A load that failed, said on the dialog's notice plane over its content
- * (HS1), with Retry where the host can load again.
- */
-const LoadFailed = ({
-  title,
-  error,
-  tone,
-  reloading,
-  onReload,
-  onDismiss,
-}: {
-  title: string
-  error: string
-  tone: "danger" | "warning"
-  reloading: boolean
-  onReload?: () => void
-  onDismiss?: () => void
-}): JSX.Element => (
-  <Notice role="alert" tone={tone} onDismiss={onDismiss}>
-    <div className="flex flex-col items-start gap-2">
-      <p className="font-semibold">{title}</p>
-      <p>{error}</p>
-      {onReload && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onReload}
-          disabled={reloading}
-        >
-          <RefreshCw
-            className={`size-4 mr-2 ${reloading ? "animate-spin" : ""}`}
-          />
-          <SameWidth every={["Retry", "Retrying..."]}>
-            {reloading ? "Retrying..." : "Retry"}
-          </SameWidth>
-        </Button>
-      )}
-    </div>
-  </Notice>
-)
-
 // Component
 
 export const ChangeMaterialDialog = ({
@@ -100,8 +58,6 @@ export const ChangeMaterialDialog = ({
   const [highlightedKey, setHighlightedKey] = useState<string | undefined>()
   const [page, setPage] = useState(1)
   const [isReloading, setIsReloading] = useState(false)
-  // The partial-load warning the person dismissed, until another one.
-  const [dismissedError, setDismissedError] = useState<string | null>(null)
 
   const items = useMemo(() => topikItems, [topikItems])
 
@@ -176,6 +132,22 @@ export const ChangeMaterialDialog = ({
     }
   }, [onReload])
 
+  // Retry, in a failed load's notice, where the host can load again.
+  const retry = onReload && {
+    label: (
+      <>
+        <RefreshCw
+          className={`size-4 mr-2 ${isReloading ? "animate-spin" : ""}`}
+        />
+        <SameWidth every={["Retry", "Retrying..."]}>
+          {isReloading ? "Retrying..." : "Retry"}
+        </SameWidth>
+      </>
+    ),
+    onClick: handleReload,
+    disabled: isReloading,
+  }
+
   const handleHighlight = useCallback((key: string | undefined) => {
     setHighlightedKey(key)
   }, [])
@@ -195,7 +167,7 @@ export const ChangeMaterialDialog = ({
 
         {/* ─── Loading state ───────────────────────────────── */}
         {loading && (
-          <Notice role="status">
+          <Notice>
             <span className="flex items-center gap-2">
               <span className="inline-block size-4 animate-spin rounded-full border-2 border-solid border-primary border-r-transparent" />
               Loading materials...
@@ -205,28 +177,27 @@ export const ChangeMaterialDialog = ({
 
         {/* ─── Fatal error (no items available) ────────────── */}
         {!loading && hasFatalError && (
-          <LoadFailed
-            title="Failed to Load Materials"
-            error={error}
-            tone="danger"
-            reloading={isReloading}
-            onReload={onReload && handleReload}
-          />
+          <Notice tone="danger" action={retry}>
+            <p className="font-semibold">Failed to Load Materials</p>
+            <p>{error}</p>
+          </Notice>
         )}
 
         {/* ─── Main content ────────────────────────────────── */}
         {!loading && !hasFatalError && (
           <div className="flex flex-col gap-5 mt-2">
             {/* Non-fatal error */}
-            {error && items.length > 0 && error !== dismissedError && (
-              <LoadFailed
-                title="Partial Load"
-                error={error}
+            {error && items.length > 0 && (
+              <Notice
+                key={error}
+                role="alert"
                 tone="warning"
-                reloading={isReloading}
-                onReload={onReload && handleReload}
-                onDismiss={() => setDismissedError(error)}
-              />
+                dismissible
+                action={retry}
+              >
+                <p className="font-semibold">Partial Load</p>
+                <p>{error}</p>
+              </Notice>
             )}
 
             {/* Search */}

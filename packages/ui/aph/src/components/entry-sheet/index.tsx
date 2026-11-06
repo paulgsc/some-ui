@@ -309,7 +309,7 @@ const MineEditor = ({
         </Button>
       </div>
       {refused && (
-        <Notice role="alert" tone="danger" onDismiss={() => setRefused(false)}>
+        <Notice tone="danger" onDismiss={() => setRefused(false)}>
           Not saved: the phone did not keep it.
         </Notice>
       )}
@@ -368,7 +368,7 @@ const LeaveControls = ({
         {draft ? "Delete draft" : "Remove from the log"}
       </Button>
       {refused && (
-        <Notice role="alert" tone="danger" onDismiss={() => setRefused(false)}>
+        <Notice tone="danger" onDismiss={() => setRefused(false)}>
           Not changed: the phone did not keep it.
         </Notice>
       )}

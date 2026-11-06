@@ -54,9 +54,8 @@ type RepCardProps = {
 }
 
 /**
- * Resume, while the host's session holds the drill: in its place, disabled,
- * with why said over the screen (HS1). `className` is the Resume it stands
- * for, so the dock keeps its height.
+ * Resume, while the host's session holds the drill, and why. `className` is
+ * the Resume it stands for, so the dock keeps its height.
  */
 export const HeldResume = ({
   className = "h-14",
@@ -67,7 +66,7 @@ export const HeldResume = ({
     <Button disabled className={cn("gap-2 rounded-2xl", className)}>
       <Play className="size-5" /> Resume
     </Button>
-    <Notice role="status">Resumes with the session</Notice>
+    <Notice>Resumes with the session</Notice>
   </>
 )
 

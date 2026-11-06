@@ -132,8 +132,6 @@ export const RecordScreenView: FC<RecordScreenProps> = ({
   // Edit buffers for this screen's answer; the screen is keyed by its id.
   const [typing, setTyping] = useState(take === null)
   const [text, setText] = useState("")
-  // The phone filling up, put away: said once a screen.
-  const [fullHeard, setFullHeard] = useState(false)
   // A take needs room for audio and a note; a typed answer, a note only.
   const full = take?.full === true
   const noRoom = take?.notesFull === true
@@ -247,12 +245,8 @@ export const RecordScreenView: FC<RecordScreenProps> = ({
       >
         Pass
       </Button>
-      {typing && fullWords !== null && !fullHeard && (
-        <Notice
-          role="status"
-          tone="warning"
-          onDismiss={(): void => setFullHeard(true)}
-        >
+      {typing && fullWords !== null && (
+        <Notice tone="warning" dismissible>
           {fullWords}
         </Notice>
       )}

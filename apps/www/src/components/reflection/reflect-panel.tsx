@@ -180,7 +180,7 @@ export const ReflectPanel = ({
       </div>
 
       {refused !== null && (
-        <Notice role="alert" tone="danger" onDismiss={() => setRefused(null)}>
+        <Notice tone="danger" onDismiss={() => setRefused(null)}>
           {refused}
         </Notice>
       )}

@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react"
+import { useEffect, useMemo, useSyncExternalStore } from "react"
 import { Bookmark, Check, Loader2, Play, Trash2 } from "lucide-react"
 
 import type { ShelfPort } from "../../../lib/shelf"
@@ -75,8 +75,6 @@ export const KeptShelf = <Kept,>({
 }: KeptShelfProps<Kept>): JSX.Element => {
   const [list, state] = useRuntime(shelf, createShelfList)
   const { listing, busy, unreadable, rowError } = state
-  // The refusal read and closed; another one is said again.
-  const [dismissed, setDismissed] = useState<typeof rowError>(null)
 
   const play = (
     key: string,
@@ -189,11 +187,11 @@ export const KeptShelf = <Kept,>({
         </ul>
       )}
 
-      {rowError && rowError !== dismissed && (
+      {rowError && (
         <Notice
-          role="alert"
+          key={`${rowError.action} ${rowError.key}`}
           tone="danger"
-          onDismiss={() => setDismissed(rowError)}
+          dismissible
         >
           {rowError.key} could not be{" "}
           {rowError.action === "read" ? "read" : "removed"}. Try again.
@@ -217,8 +215,7 @@ type KeepOnShelfProps = Omit<KeptShelfProps<never>, "replay"> & {
  * question.
  *
  * The button keeps its place in every state, disabled where nothing a tap
- * could do now; what a keep answered is said over the screen (`Notice`),
- * and the full shelf's list is the one thing that opens below (HS1).
+ * could do now; the full shelf's list is the one thing that opens below.
  */
 export const KeepOnShelf = ({
   shelf,
@@ -232,8 +229,6 @@ export const KeepOnShelf = ({
   const replay = `Replay it from ${words.replayFrom}.`
   // Nothing a tap could do now.
   const gone = failure === "signed-out" || failure === "invalid"
-  // What a keep answered, read and closed: said again on the next answer.
-  const [dismissed, setDismissed] = useState<typeof keeping | null>(null)
   const refusal =
     failure === "full"
       ? `Your shelf is full. Remove a ${words.noun} you kept, then keep this one.`
@@ -252,7 +247,6 @@ export const KeepOnShelf = ({
         : kept.key === shelfKey
           ? `Kept on this account. ${replay}`
           : `Kept on this account as ${kept.key}, beside the one already named ${shelfKey}. ${replay}`
-  const dismiss = (): void => setDismissed(keeping)
 
   return (
     <div className="flex min-w-0 flex-col gap-2">
@@ -271,21 +265,22 @@ export const KeepOnShelf = ({
         )}
         {kept === null ? "Keep on this account" : "Kept"}
       </Button>
-      {keeping !== dismissed && refusal !== null && (
+      {refusal !== null && (
         <Notice
+          key={refusal}
           role="alert"
           tone={
             failure === "full" || failure === "signed-out"
               ? "warning"
               : "danger"
           }
-          onDismiss={dismiss}
+          dismissible
         >
           {refusal}
         </Notice>
       )}
-      {keeping !== dismissed && said !== null && (
-        <Notice role="status" onDismiss={dismiss}>
+      {said !== null && (
+        <Notice key={said} dismissible>
           {said}
         </Notice>
       )}

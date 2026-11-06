@@ -92,18 +92,14 @@ import { DeleteSheetView } from "./device-my-data-delete"
 
 /**
  * What the page says of how its reading went (home asked, home silent, a
- * store not opened yet), over the screen (HS1). Closed, it stays closed
- * until it says something else.
+ * store not opened yet).
  */
-const Status = ({ line }: { line: string | null }): JSX.Element | null => {
-  const [dismissed, setDismissed] = useState<string | null>(null)
-  if (line === null || line === dismissed) return null
-  return (
-    <Notice role="status" onDismiss={() => setDismissed(line)}>
+const Status = ({ line }: { line: string | null }): JSX.Element | null =>
+  line === null ? null : (
+    <Notice key={line} dismissible>
       {line}
     </Notice>
   )
-}
 
 const Tile = ({
   value,

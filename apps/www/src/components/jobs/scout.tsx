@@ -158,7 +158,7 @@ export const JobsScout = (): JSX.Element => {
           onChange={(e) => setUrl(e.target.value)}
         />
         {needsText && (
-          <Notice role="status">
+          <Notice>
             <span id="scout-url-hint">{cantOpenLink}</span>
           </Notice>
         )}

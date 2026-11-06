@@ -83,11 +83,7 @@ export const SessionFilePicker: FC<SessionFilePickerProps> = ({
     event.target.value = ""
     if (file) runtime.pick(file)
   }
-  // A pick's word put away, until the next pick says another; the list's
-  // failure, once.
-  const [dismissed, setDismissed] = useState<PickState | null>(null)
-  const [heldHeard, setHeldHeard] = useState(false)
-  const status = pick === dismissed ? null : statusOf(pick)
+  const status = statusOf(pick)
   // A refusal or a file kept stays until put away; progress goes by itself.
   const settled = pick.kind === "refused" || pick.kind === "kept"
   const card =
@@ -151,9 +147,9 @@ export const SessionFilePicker: FC<SessionFilePickerProps> = ({
       )}
       {status !== null && (
         <Notice
-          role={pick.kind === "refused" ? "alert" : "status"}
+          key={status}
           tone={pick.kind === "refused" ? "danger" : "neutral"}
-          {...(settled ? { onDismiss: (): void => setDismissed(pick) } : {})}
+          dismissible={settled}
         >
           <p className="text-pretty">{status}</p>
           {pick.kind === "kept" && pick.findings.length > 0 && (
@@ -174,12 +170,8 @@ export const SessionFilePicker: FC<SessionFilePickerProps> = ({
           )}
         </Notice>
       )}
-      {held.kind === "failed" && !heldHeard && (
-        <Notice
-          role="alert"
-          tone="danger"
-          onDismiss={(): void => setHeldHeard(true)}
-        >
+      {held.kind === "failed" && (
+        <Notice tone="danger" dismissible>
           {held.summary}
         </Notice>
       )}

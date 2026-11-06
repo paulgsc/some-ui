@@ -89,11 +89,6 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
   useEffect(() => runtime.attach(), [runtime])
   // Whether the rounds waiting on a reading are open during play.
   const [waiting, setWaiting] = useState(false)
-  // A refusal put away stays away until the log says something else.
-  const [dismissed, setDismissed] = useState<string | null>(null)
-  if (problem === null && dismissed !== null) setDismissed(null)
-  // The time set is said once a session; put away, it is not said again.
-  const [timeHeard, setTimeHeard] = useState(false)
   const ended = play?.ended ?? null
   const page =
     // scroll-intent: reading-page: a round is one scrolling screen
@@ -252,8 +247,8 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
         <p className="min-w-0 truncate text-xs text-muted-foreground">
           {play.file.title}
         </p>
-        {/* Out of reach through a round, and still where they were (HS1);
-            the end screen has its own way out. */}
+        {/* Out of reach through a round; the end screen has its own way
+            out. */}
         {ended === null && (
           <div className="flex shrink-0 gap-1">
             {parked.length > 0 && (
@@ -299,17 +294,13 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
         </div>
       )}
       {body}
-      {timeUp && ended === null && !timeHeard && (
-        <Notice role="status" onDismiss={(): void => setTimeHeard(true)}>
+      {timeUp && ended === null && (
+        <Notice dismissible>
           That is the time you set. End here to see where you are, or go on.
         </Notice>
       )}
-      {problem !== null && problem !== dismissed && (
-        <Notice
-          role="alert"
-          tone="danger"
-          onDismiss={(): void => setDismissed(problem)}
-        >
+      {problem !== null && (
+        <Notice key={problem} tone="danger" dismissible>
           {problem}
         </Notice>
       )}
