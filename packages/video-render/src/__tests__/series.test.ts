@@ -169,7 +169,6 @@ describe("the sample series", () => {
       "build-journal-short",
       "playoff-delta-week",
       "long-episode",
-      "conference-call",
     ]) {
       const s = await readSeries(join(__dirname, "../sample/series", id), 1)
       expect(s.ok ? s.value.id : s.problems).toBe(id)

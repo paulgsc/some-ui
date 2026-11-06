@@ -16,11 +16,10 @@
  * reads (soundbites' `journal/primer.ts`): the `PRIMER_*` limits below are
  * the ones it holds a primer to, kept here so both read one copy.
  *
- * A scene may repeat (STUDIO ST29): one scene per item of the period's data,
- * none up to `repeat.max`, each named `<id>-<n>` (`repeatedId`). A repeated
- * scene is never skipped, since no items already leaves it out. An episode
- * voices each scene once, so `episodeOf` refuses a format with one; the
- * weekly call (`call.ts`) is the template that repeats.
+ * A scene may repeat: one scene per item of the period's data, none up to
+ * `repeat.max`, each named `<id>-<n>` (`repeatedId`). A format that repeats
+ * is not a primer (`episodeOf` refuses it); its ids still fit a cut's, so a
+ * take or a reply can name its scene. The weekly call (`call.ts`) repeats.
  */
 
 import { z } from "zod"
@@ -54,7 +53,7 @@ export const words = z.string().trim().min(1)
 export const showId = z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/)
 
 /** The longest a repeated scene's id is, so `<id>-<n>` is still a cut's id. */
-export const REPEATED_ID_MAX = 36
+export const REPEATED_ID_MAX = 40 - 1 - String(PRIMER_V2_CUTS).length
 
 /** The id of item `n` (from 1) of a repeated scene: "done-3". */
 export const repeatedId = (scene: string, n: number): string => `${scene}-${n}`
@@ -120,6 +119,17 @@ export const FormatSchema = z
       message: `a repeated scene has no skip and an id of at most ${REPEATED_ID_MAX} characters`,
       path: ["scenes"],
     }
+  )
+  .refine(
+    (f) =>
+      !f.scenes.some((scene) =>
+        f.scenes.some(
+          (other) =>
+            other.repeat !== undefined &&
+            new RegExp(`^${other.id}-[0-9]+$`).test(scene.id)
+        )
+      ),
+    { message: "a scene takes a repeated scene's id", path: ["scenes"] }
   )
 
 export type Format = z.infer<typeof FormatSchema>

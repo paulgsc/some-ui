@@ -89,8 +89,10 @@ describe("a format", () => {
     expect(ok.ok).toBe(true)
     const extra = { ...repeating.scenes[1]!, repeat: { max: 4 } }
     expect(parseFormat({ ...repeating, scenes: [extra] }).ok).toBe(false)
-    const long = { ...close, id: "a".repeat(37) }
+    const long = { ...close, id: "a".repeat(38) }
     expect(parseFormat({ ...repeating, scenes: [long] }).ok).toBe(false)
+    const taken = { ...repeating.scenes[0]!, id: "close-1" }
+    expect(parseFormat({ ...repeating, scenes: [close, taken] }).ok).toBe(false)
   })
 
   describe("as a folder of versions", () => {

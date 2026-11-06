@@ -268,6 +268,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       why: "what every video carries, its preview, its recorder page and their font, desktop pages for tuning and recording what the renderer lays over a video: only the web door (src/lib/web-surface) binds it, and not in the Android app's build",
     },
     {
+      modules: ["apps/www/src/lib/web-surface/call/**"],
+      profiles: ["lan", "pages"],
+      why: "the weekly call's stage, a desktop recording stage for its video: only the web door (src/lib/web-surface) binds it, and not in the Android app's build",
+    },
+    {
       modules: ["apps/www/src/lib/web-surface/hangul/**"],
       profiles: ["lan", "pages"],
       why: "Hangul Honeycomb's panel, a desktop keyboard game the phone has no counterpart for: only the web door (src/lib/web-surface) binds it, and not in the Android app's build",
@@ -362,6 +367,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
     },
     {
       profile: "lan",
+      modules: ["apps/www/src/lib/web-surface/call/stage.tsx"],
+      why: "the weekly call's stage renders through this; without it /call renders nothing. Also what keeps its `exclusive` rule from passing by matching nothing",
+    },
+    {
+      profile: "lan",
       modules: ["apps/www/src/lib/web-surface/hangul/panel.tsx"],
       why: "the web builds play Hangul Honeycomb through this; without it the activity is offered and renders nothing. Also what keeps its `exclusive` rule from passing by matching nothing",
     },
@@ -415,6 +425,7 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       "extensions.tsx*",
       "playoff-delta.tsx*",
       "burn-ins.tsx*",
+      "call.tsx*",
       "captions.tsx*",
       "authorship.tsx*",
       "_dashboard/app.tsx*",

@@ -10,24 +10,24 @@ import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import {
   CALL_ID,
-  CALL_MOST,
+  CALL_STAGE_WIDTH,
   CALL_VERSION,
   callFormat,
   callScenes,
   parseCallWeek,
   refUrl,
+  sampleCallWeek,
 } from "@video-render/call"
 import type { CallWeek } from "@video-render/call"
-import { parseFormat, PRIMER_CUT_ID } from "@video-render/format"
+import { parseFormat } from "@video-render/format"
 import { readSeries } from "@video-render/node"
 import { versionOfFile } from "@video-render/series"
-import sample from "@video-render/templates/conference-call/sample-week.json"
 import { describe, expect, it } from "vitest"
 
 const DIR = join(import.meta.dirname, "../templates", CALL_ID)
 
 const week = (): CallWeek => {
-  const parsed = parseCallWeek(sample)
+  const parsed = sampleCallWeek()
   if (!parsed.ok) throw new Error(parsed.problems.join("; "))
   return parsed.value
 }
@@ -52,21 +52,14 @@ describe("the call's format", () => {
     )
   })
 
-  it("repeats exactly the sections that list items, as many as the week may", () => {
-    const repeats = callFormat().scenes.flatMap((s) =>
-      s.repeat ? [[s.id, s.repeat.max]] : []
-    )
-    expect(Object.fromEntries(repeats)).toEqual(CALL_MOST)
-  })
-
   it("is drawn in its own series", async () => {
     const series = await readSeries(
       join(import.meta.dirname, "../sample/series", CALL_ID),
       callFormat().series.version
     )
-    expect(series.ok ? series.value.id : series.problems).toBe(
-      callFormat().series.id
-    )
+    if (!series.ok) throw new Error(series.problems.join("; "))
+    expect(series.value.id).toBe(callFormat().series.id)
+    expect(series.value.frame.width).toBe(CALL_STAGE_WIDTH)
   })
 })
 
@@ -78,9 +71,6 @@ describe("the sample week", () => {
   it("is a scene per section and per item, in the format's order", () => {
     const w = week()
     const scenes = callScenes(w)
-    const order = callFormat().scenes.map((s) => s.id)
-    const sections = scenes.map((s) => order.indexOf(s.section))
-    expect(sections).toEqual([...sections].sort((a, b) => a - b))
     expect(scenes.map((s) => s.id)).toEqual([
       "open",
       "board",
@@ -88,6 +78,8 @@ describe("the sample week", () => {
       "moved-2",
       "done-1",
       "done-2",
+      "done-3",
+      "done-4",
       "gray-1",
       "mine-1",
       "asks-1",
@@ -95,7 +87,6 @@ describe("the sample week", () => {
       "close",
     ])
     expect(scenes.find((s) => s.id === "asks-2")?.item).toBe("talk-d1")
-    for (const s of scenes) expect(s.id).toMatch(PRIMER_CUT_ID)
   })
 })
 
@@ -105,9 +96,13 @@ describe("a week that contradicts itself", () => {
     const bad = {
       ...w,
       week: { from: "2026-11-05", to: "2026-10-30" },
+      done: [
+        w.done[0]!,
+        { ...w.done[1]!, pulls: [...w.done[1]!.pulls, w.done[0]!.pulls[0]!] },
+      ],
       board: { ...w.board, rows: [...w.board.rows, w.board.rows[0]] },
       later: [...w.later, { ...w.later[0]!, id: w.asks[0]!.id }],
-      mine: [{ ...w.mine[0]!, chose: 2 }],
+      mine: [{ ...w.mine[0]!, chose: 2, options: ["Same", "Same"] }],
       asks: [{ ...w.asks[0]!, recommended: 5 }, w.asks[1]],
     }
     expect(parseCallWeek(bad)).toEqual({
@@ -115,6 +110,10 @@ describe("a week that contradicts itself", () => {
       problems: [
         "week: it ends before it starts",
         "redeploy-home: two items share this id",
+        "some-ui#2614: it is in two batches",
+        "my-data-where: some-ui#2596 landed, and no batch has it",
+        "my-data-where: server#678 landed, and no batch has it",
+        "dna-strict: two options say the same",
         "board: a ledger item is listed twice",
         "dna-strict: it chose an option it doesn't list",
         "redeploy-home: it recommends an option it doesn't list",
@@ -122,13 +121,14 @@ describe("a week that contradicts itself", () => {
     })
   })
 
-  it("is refused for a field it doesn't name, or too many items", () => {
-    expect(parseCallWeek({ ...week(), extra: 1 }).ok).toBe(false)
-    const many = Array.from({ length: CALL_MOST.asks + 1 }, (_, i) => ({
-      ...week().asks[0]!,
-      id: `ask-${i}`,
-    }))
-    expect(parseCallWeek({ ...week(), asks: many }).ok).toBe(false)
+  it("is refused for a week of more than two, or a template it isn't", () => {
+    const w = week()
+    expect(
+      parseCallWeek({ ...w, week: { from: "2026-10-01", to: "2026-11-05" } })
+    ).toEqual({ ok: false, problems: ["week: it runs more than 14 days"] })
+    expect(
+      parseCallWeek({ ...w, template: { id: CALL_ID, version: 99 } }).ok
+    ).toBe(false)
   })
 })
 

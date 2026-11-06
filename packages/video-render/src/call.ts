@@ -1,6 +1,5 @@
 /**
- * The weekly call (STUDIO ST29's first template, the owner's call of
- * 2026-11-06): once a week, the agents that worked both repositories report
+ * The weekly call, the first template: once a week, the agents that worked both repositories report
  * to the owner the way a stand-up does, so the owner learns where things
  * stand by watching one video instead of reading archived sessions. It is
  * public, as everything the owner makes is.
@@ -35,6 +34,7 @@ import { once, problemsOf } from "./cut-list"
 import type { Parsed } from "./cut-list"
 import { FORMAT_SCHEMA, repeatedId, showId, words } from "./format"
 import type { Format } from "./format"
+import sample from "./templates/conference-call/sample-week.json"
 
 export const CALL_WEEK_SCHEMA = "some-ui.call-week/1"
 
@@ -44,7 +44,6 @@ export const CALL_ID = "conference-call"
 /** The version `callFormat` gives, pinned as `v<n>.json` under `templates/`. */
 export const CALL_VERSION = 1
 
-/** The most items a repeated section shows in one call. */
 export const CALL_MOST = {
   moved: 12,
   done: 12,
@@ -53,18 +52,20 @@ export const CALL_MOST = {
   asks: 12,
 } as const
 
-/** The most rows the board lists, and the most asks listed but not voiced. */
 export const CALL_BOARD_MOST = 60
 export const CALL_LATER_MOST = 200
 
-/** The size the stage draws the call at, in CSS px: a 16:9 frame. */
-const STAGE_WIDTH = 1920
+/** The longest a week runs, in days: two, when a week's call was missed. */
+export const CALL_DAYS_MOST = 14
+
+/** The width the stage draws at, in CSS px: the series' frame. */
+export const CALL_STAGE_WIDTH = 1920
 
 type Repeated = keyof typeof CALL_MOST
 type Section = Repeated | "open" | "board" | "close"
 
 const isRepeated = (section: Section): section is Repeated =>
-  section !== "open" && section !== "board" && section !== "close"
+  section in CALL_MOST
 
 const scene = (
   id: Section,
@@ -78,7 +79,7 @@ const scene = (
   picture: {
     kind: "capture",
     from: `the call's ${id} view`,
-    cssWidth: STAGE_WIDTH,
+    cssWidth: CALL_STAGE_WIDTH,
   },
   holdMs,
   ...(isRepeated(id) ? { repeat: { max: CALL_MOST[id] } } : {}),
@@ -145,12 +146,15 @@ const RefSchema = z.strictObject({
 
 export type CallRef = z.infer<typeof RefSchema>
 
+const IssueSchema = RefSchema.extend({ kind: z.literal("issue") })
+const PrSchema = RefSchema.extend({ kind: z.literal("pr") })
+
+/** A ref's one name: "server#681". */
+const refKey = (ref: CallRef): string => `${ref.repo}#${ref.number}`
+
 /** Where `ref` is on GitHub. */
 export const refUrl = (ref: CallRef): string =>
   `https://github.com/paulgsc/${ref.repo}/${ref.kind === "pr" ? "pull" : "issues"}/${ref.number}`
-
-/** An item's id: what a reply names, so stable across the week's data. */
-const itemId = showId
 
 /** A day, as `YYYY-MM-DD`. */
 const day = z.iso.date()
@@ -158,49 +162,46 @@ const day = z.iso.date()
 /** A commit, by its full sum. */
 const commit = z.string().regex(/^[0-9a-f]{40}$/)
 
-/** What a scene says: an agent's words, read aloud. */
-const said = words
-
 const refs = z.array(RefSchema).min(1)
 
 const BoardRowSchema = z.strictObject({
   /** The Residual Ledger item's id. */
-  ledger: z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/),
+  ledger: showId,
   title: words,
   status: z.enum(["decide", "open", "doing", "done"]),
-  /** How many of its stories wait on the owner. */
+  /** How many of its stories wait on the owner, as the ledger's tally says. */
   waitsOnYou: z.number().int().nonnegative(),
 })
 
 const MovedSchema = z.strictObject({
-  id: itemId,
+  id: showId,
   /** The epic's tag, as its title carries it: "STUDIO". */
   tag: z.string().regex(/^[A-Z][A-Z0-9-]{0,23}$/),
-  epic: RefSchema,
-  said,
-  landed: z.array(RefSchema),
+  epic: IssueSchema,
+  said: words,
+  /** What landed for it this week: each is in a batch of `done`. */
+  landed: z.array(PrSchema),
   next: z.array(words),
 })
 
-const PullSchema = RefSchema.extend({
-  kind: z.literal("pr"),
+const PullSchema = PrSchema.extend({
   title: words,
   /** Its commits' `Change-Kind:`. */
   change: z.enum(["story", "defect"]),
 })
 
 const BatchSchema = z.strictObject({
-  id: itemId,
+  id: showId,
   /** What ties the batch together, as the agent grouped it. */
   title: words,
-  said,
+  said: words,
   pulls: z.array(PullSchema).min(1),
 })
 
 const GraySchema = z.strictObject({
-  id: itemId,
+  id: showId,
   title: words,
-  said,
+  said: words,
   /** The promise or invariant it declares, amends or retires: "SS2". */
   promise: z
     .string()
@@ -210,9 +211,9 @@ const GraySchema = z.strictObject({
 })
 
 const MineSchema = z.strictObject({
-  id: itemId,
+  id: showId,
   title: words,
-  said,
+  said: words,
   options: z.array(words).min(2).max(4),
   /** The option it took, by its place in `options`. */
   chose: z.number().int().nonnegative(),
@@ -229,9 +230,9 @@ const OptionSchema = z.strictObject({
 })
 
 const AskSchema = z.strictObject({
-  id: itemId,
+  id: showId,
   question: words,
-  said,
+  said: words,
   /** Why it is the owner's, not an agent's. */
   whyYours: words,
   options: z.array(OptionSchema).min(2).max(4),
@@ -241,18 +242,18 @@ const AskSchema = z.strictObject({
 })
 
 const LaterSchema = z.strictObject({
-  id: itemId,
+  id: showId,
   question: words,
   refs,
 })
 
-const SaidSchema = z.strictObject({ said })
+const SaidSchema = z.strictObject({ said: words })
 
 export const CallWeekSchema = z.strictObject({
   schema: z.literal(CALL_WEEK_SCHEMA),
   template: z.strictObject({
     id: z.literal(CALL_ID),
-    version: z.number().int().positive(),
+    version: z.literal(CALL_VERSION),
   }),
   /** The days it covers, both included. */
   week: z.strictObject({ from: day, to: day }),
@@ -260,7 +261,7 @@ export const CallWeekSchema = z.strictObject({
   read: z.strictObject({ "some-ui": commit, server: commit }),
   open: SaidSchema,
   board: z.strictObject({
-    said,
+    said: words,
     rows: z.array(BoardRowSchema).min(1).max(CALL_BOARD_MOST),
   }),
   moved: z.array(MovedSchema).max(CALL_MOST.moved),
@@ -278,8 +279,11 @@ export type CallWeek = z.infer<typeof CallWeekSchema>
 /** Every reason the week's parsed data contradicts itself. */
 function weekProblems(week: CallWeek): Array<string> {
   const problems: Array<string> = []
-  if (week.week.from > week.week.to)
-    problems.push("week: it ends before it starts")
+  const days =
+    (Date.parse(week.week.to) - Date.parse(week.week.from)) / 86_400_000 + 1
+  if (days < 1) problems.push("week: it ends before it starts")
+  if (days > CALL_DAYS_MOST)
+    problems.push(`week: it runs more than ${CALL_DAYS_MOST} days`)
   const ids = [
     ...week.moved,
     ...week.done,
@@ -292,6 +296,21 @@ function weekProblems(week: CallWeek): Array<string> {
   for (const id of ids) {
     if (seen.has(id)) problems.push(`${id}: two items share this id`)
     seen.add(id)
+  }
+  const pulls = week.done.flatMap((batch) => batch.pulls.map(refKey))
+  const merged = new Set<string>()
+  for (const pull of pulls) {
+    if (merged.has(pull)) problems.push(`${pull}: it is in two batches`)
+    merged.add(pull)
+  }
+  for (const epic of week.moved)
+    for (const pull of epic.landed.map(refKey))
+      if (!merged.has(pull))
+        problems.push(`${epic.id}: ${pull} landed, and no batch has it`)
+  for (const item of [...week.mine, ...week.asks]) {
+    const says = item.options.map((o) => (typeof o === "string" ? o : o.says))
+    if (new Set(says).size !== says.length)
+      problems.push(`${item.id}: two options say the same`)
   }
   const ledger = week.board.rows.map((row) => row.ledger)
   if (new Set(ledger).size !== ledger.length)
@@ -317,6 +336,9 @@ export function parseCallWeek(raw: unknown): Parsed<CallWeek> {
     ? { ok: false, problems }
     : { ok: true, value: parsed.data }
 }
+
+/** The template's sample week: what a call looks like with nothing real in it. */
+export const sampleCallWeek = (): Parsed<CallWeek> => parseCallWeek(sample)
 
 /** One scene of a call: its section, its id in the video, and what it says. */
 export type CallScene = {

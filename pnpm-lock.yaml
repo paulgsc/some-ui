@@ -524,6 +524,9 @@ importers:
       '@some-ui/types':
         specifier: workspace:*
         version: link:../../packages/types
+      '@some-ui/video-render':
+        specifier: workspace:*
+        version: link:../../packages/video-render
       '@some-ui/vite-config':
         specifier: workspace:*
         version: link:../../packages/some-vite-config
@@ -582,9 +585,6 @@ importers:
       '@some-ui/engagement':
         specifier: workspace:*
         version: link:../../packages/engagement
-      '@some-ui/video-render':
-        specifier: workspace:*
-        version: link:../../packages/video-render
       '@vitejs/plugin-react':
         specifier: ^6.1.2
         version: 6.1.2(vite@8.3.5(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.1))
