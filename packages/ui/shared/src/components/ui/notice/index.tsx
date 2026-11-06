@@ -114,8 +114,13 @@ export const Notice = ({
     <div
       role={role ?? (tone === "danger" ? "alert" : "status")}
       data-notice=""
+      data-scroll-intent="long-form"
       className={cn(
         "bg-background pointer-events-auto flex items-start gap-2 rounded-lg border px-3 py-2 text-sm shadow-lg",
+        // scroll-intent: long-form — a notice as long as what it says (a
+        // spoken note heard back) scrolls in itself, so the buttons it holds
+        // stay in reach on a phone held sideways.
+        "max-h-[60dvh] overflow-y-auto",
         TONES[tone],
         className
       )}
