@@ -1797,7 +1797,8 @@
             "server:crates/db/call_week/src/lib.rs#a_week_is_kept_once_as_served",
             "server:crates/db/call_week/src/lib.rs#no_kept_week_is_rewritten_or_deleted",
             "server:apps/servers/file_host/src/call_weeks/pass.rs#each_listed_week_home_lacks_is_fetched_once_and_kept_as_served",
-            "server:apps/servers/file_host/src/call_weeks/pass.rs#what_does_not_check_out_is_counted_by_kind_and_left_for_the_next_pass"
+            "server:apps/servers/file_host/src/call_weeks/pass.rs#what_does_not_check_out_is_counted_by_kind_and_left_for_the_next_pass",
+            "server:apps/servers/file_host/src/mailbox/pass.rs#the_call_index_is_put_once_a_week_is_held_and_again_for_each_new_week"
           ],
           "watch": {
             "by": "none"
@@ -1811,7 +1812,7 @@
           "claim": "A call weeks worker that has stopped, or keeps failing, reads as such rather than as a quiet week.",
           "requirement": "The worker says when it last tried and whether it is on, and the owner is told when it has not tried within two intervals, or when a week the repository lists has not reached home within a day.",
           "verdict": "unproven",
-          "conclusion": "Only a log line says a pass failed, and no metric or alert exists yet. The weekly routine names in its pull request every week past keep that home's call index doesn't list, so a stopped worker shows there once the repository holds more than keep weeks, eight weeks after it stopped at the latest.",
+          "conclusion": "Only a log line says a pass failed, and no metric or alert exists yet. The weekly routine names in its pull request every week past keep that home's call index doesn't list, so a stopped worker shows there once the repository holds more than keep weeks, `keep` weeks after it stopped at the latest.",
           "tracked": "server#684",
           "evidence": [
             {
@@ -1835,14 +1836,14 @@
           "kind": "RE3",
           "property": "work",
           "claim": "Home reads the repository once an hour, and fetches a week only while it lacks it.",
-          "requirement": "A pass is one request for the index plus one per listed week home holds no week of; a week home holds is never fetched again; a pass that failed is tried again after 5 minutes, doubled per failure in a row, to at most the hourly interval; each answer is at most 1 MiB.",
+          "requirement": "A pass is one request for the index plus one per listed week home holds no week of; a week home holds is never fetched again; a pass that failed is tried again after 10 minutes, doubled per failure in a row, to at most the hourly interval; each answer is at most 1 MiB.",
           "verdict": "unproven",
-          "conclusion": "The pass tests show the requests a pass makes and the retry spacing, from 5 minutes to the hour. Not bounded: an answer over 1 MiB is refused only once it has been read whole, as the game feed's are (GA3).",
+          "conclusion": "The pass tests show the requests a pass makes and the retry spacing, from 10 minutes to the hour. Not bounded: an answer over 1 MiB is refused only once it has been read whole, as the game feed's are (GA3).",
           "tracked": "server#684",
           "evidence": [
             {
               "class": "measured",
-              "says": "A second pass over the same index asks for the index alone, and a failing source is asked again after 300, 600, 1200 and 2400 s, then hourly.",
+              "says": "A second pass over the same index asks for the index alone, and a failing source is asked again after 600, 1200 and 2400 s, then hourly.",
               "ref": "server:apps/servers/file_host/src/call_weeks/pass.rs"
             }
           ],

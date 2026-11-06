@@ -431,8 +431,8 @@ const CALL_INDEX_KEYS: ReadonlySet<string> = new Set([
   "asOf",
   "held",
 ])
-/** The keys of each week the call index lists. */
-const HELD_WEEK_KEYS: ReadonlyArray<string> = ["from", "to", "sha256"]
+/** The keys of each week the call index lists; any other is refused. */
+const HELD_WEEK_KEYS: ReadonlySet<string> = new Set(["from", "to", "sha256"])
 const NO_AUDIO_INDEX = "an index carries no audio: home keeps the audio"
 const NO_DRIVE_INDEX = "an index names no Drive file"
 
@@ -503,14 +503,15 @@ const reflectionsShape: IndexShape = (body) => {
  */
 const callShape: IndexShape = (body) => {
   if (!isInstant(body.asOf)) return "asOf must be when home last took a week"
+  const list = shapeOf([], ["held"], body)
+  if (list !== null) return list
   const held: unknown = body.held
-  if (!Array.isArray(held)) return "held must be a list"
   const seen = new Set<string>()
-  for (const week of held.values()) {
+  for (const week of Array.isArray(held) ? held.values() : []) {
     if (
       !isRecord(week) ||
-      Object.keys(week).length !== HELD_WEEK_KEYS.length ||
-      !HELD_WEEK_KEYS.every((key) => key in week)
+      Object.keys(week).some((key) => !HELD_WEEK_KEYS.has(key)) ||
+      [...HELD_WEEK_KEYS].some((key) => !(key in week))
     ) {
       return "each held week is its from, to and sha256"
     }
@@ -540,12 +541,6 @@ const INDEX_ROUTINES: ReadonlyMap<
   ["call", { keys: CALL_INDEX_KEYS, shape: callShape }],
 ])
 
-/** The routines an index may be for, said as a list: "jobs, reflections or call". */
-const INDEX_ROUTINE_NAMES = ((names: ReadonlyArray<string>) =>
-  `${names.slice(0, -1).join(", ")} or ${names.at(-1) ?? ""}`)(
-  [...INDEX_ROUTINES.keys()].map(String)
-)
-
 /**
  * README, "What a put must satisfy": an index is home's bookkeeping for one
  * routine, that routine's own keys only, and text.
@@ -557,7 +552,7 @@ function indexRefusal(
 ): string | null {
   const routine = INDEX_ROUTINES.get(body.routine)
   if (routine === undefined) {
-    return `routine must be ${INDEX_ROUTINE_NAMES}`
+    return `routine must be ${[...INDEX_ROUTINES.keys()].join(" or ")}`
   }
   const what = `${String(body.routine)} index`
   const shape = shapeRefusal(
