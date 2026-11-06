@@ -165,9 +165,15 @@ describe("step", () => {
     expect(read.choice).toBeNull()
   })
 
-  it("says a Let go that wasn't stored, until a later write lands", () => {
+  it("says a Let go that wasn't stored, until a later write lands or it is closed", () => {
     const failed = step(here(), { type: "setAsideFailed" }).state
     expect(failed.notice).toBe(NOTICES.notSetAside)
     expect(step(failed, { type: "storeChanged" }).state.notice).toBe("")
+    // Closed, it leaves the state, so the same refusal next time is said again.
+    const closed = step(failed, { type: "noticeDismissed" }).state
+    expect(closed.notice).toBe("")
+    expect(step(closed, { type: "setAsideFailed" }).state.notice).toBe(
+      NOTICES.notSetAside
+    )
   })
 })

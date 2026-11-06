@@ -14,6 +14,7 @@ export const FilePick = ({
   problem = null,
   disabled = false,
   onPick,
+  onDismiss,
 }: {
   label: string
   hint: string
@@ -21,6 +22,11 @@ export const FilePick = ({
   problem?: string | null
   disabled?: boolean
   onPick: (file: File) => void
+  /**
+   * Closes the problem in the state that holds it, so the same problem from
+   * the next pick is said again.
+   */
+  onDismiss?: () => void
 }): JSX.Element => {
   const hint = useId()
   return (
@@ -50,7 +56,12 @@ export const FilePick = ({
         />
       </label>
       {problem !== null && (
-        <Notice key={problem} tone="danger" dismissible>
+        <Notice
+          key={problem}
+          tone="danger"
+          dismissible={onDismiss === undefined}
+          onDismiss={onDismiss}
+        >
           {problem}
         </Notice>
       )}

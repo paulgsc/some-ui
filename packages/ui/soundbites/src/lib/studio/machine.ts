@@ -502,6 +502,14 @@ export type StudioIntent =
     }
   | { readonly type: "projectOpened"; readonly project: string }
   | { readonly type: "retryRead" }
+  /**
+   * The person closed what Studio said: its notice, a pick's problem, or why
+   * the microphone didn't open.
+   */
+  | {
+      readonly type: "noticeDismissed"
+      readonly what: "notice" | "problem" | "blocked"
+    }
   /** When a take home holds leaves the phone (HF11). */
   | { readonly type: "letGoChosen"; readonly letGo: LetGo }
   /** Drive has `take` too, on the owner's word: it may leave. */
@@ -1997,6 +2005,23 @@ export function step(state: StudioState, event: StudioEvent): Step {
 
     case "retryRead": {
       return read({ ...state, shelf: { kind: "reading" } })
+    }
+
+    case "noticeDismissed": {
+      switch (event.what) {
+        case "notice": {
+          return stay({ ...state, notice: "" })
+        }
+        case "problem": {
+          return stay({ ...state, primerProblem: null })
+        }
+        case "blocked": {
+          return stay({ ...state, blocked: null })
+        }
+        default: {
+          return assertNever(event.what)
+        }
+      }
     }
 
     case "listed": {

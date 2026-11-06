@@ -126,7 +126,10 @@ const List = ({
         </Button>
       )}
       {state.notice !== null && (
-        <Notice key={state.notice} dismissible>
+        <Notice
+          key={state.notice}
+          onDismiss={() => dispatch({ type: "noticeDismissed" })}
+        >
           {WORDS.notice[state.notice]}
         </Notice>
       )}
@@ -320,7 +323,10 @@ const OneIdea = ({
         />
       )}
       {state.notice !== null && (
-        <Notice key={state.notice} dismissible>
+        <Notice
+          key={state.notice}
+          onDismiss={() => dispatch({ type: "noticeDismissed" })}
+        >
           {WORDS.notice[state.notice]}
         </Notice>
       )}

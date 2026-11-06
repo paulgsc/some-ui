@@ -485,6 +485,7 @@ const Start = ({
         problem={state.primerProblem}
         disabled={!isSettled(state.activity)}
         onPick={(file) => dispatch({ type: "primerPicked", file })}
+        onDismiss={() => dispatch({ type: "noticeDismissed", what: "problem" })}
       />
       {state.choosing !== null && project !== null && (
         <div
@@ -518,7 +519,12 @@ const Start = ({
         </div>
       )}
       {state.notice !== "" && (
-        <Notice key={state.notice} dismissible>
+        <Notice
+          key={state.notice}
+          onDismiss={() =>
+            dispatch({ type: "noticeDismissed", what: "notice" })
+          }
+        >
           {state.notice}
         </Notice>
       )}
@@ -672,12 +678,23 @@ const Record = ({
         {WORDS.record.doneForNow}
       </Button>
       {state.notice !== "" && (
-        <Notice key={state.notice} dismissible>
+        <Notice
+          key={state.notice}
+          onDismiss={() =>
+            dispatch({ type: "noticeDismissed", what: "notice" })
+          }
+        >
           {state.notice}
         </Notice>
       )}
       {state.blocked !== null && activity.kind === "idle" && (
-        <Notice key={state.blocked} tone="danger" dismissible>
+        <Notice
+          key={state.blocked}
+          tone="danger"
+          onDismiss={() =>
+            dispatch({ type: "noticeDismissed", what: "blocked" })
+          }
+        >
           {WORDS.record.blocked(state.blocked)}
         </Notice>
       )}
@@ -720,7 +737,12 @@ const Done = ({
           ))}
         </div>
         {state.notice !== "" && (
-          <Notice key={state.notice} dismissible>
+          <Notice
+            key={state.notice}
+            onDismiss={() =>
+              dispatch({ type: "noticeDismissed", what: "notice" })
+            }
+          >
             {state.notice}
           </Notice>
         )}
@@ -794,7 +816,12 @@ const Done = ({
         {WORDS.done.notYet}
       </Button>
       {state.notice !== "" && (
-        <Notice key={state.notice} dismissible>
+        <Notice
+          key={state.notice}
+          onDismiss={() =>
+            dispatch({ type: "noticeDismissed", what: "notice" })
+          }
+        >
           {state.notice}
         </Notice>
       )}
@@ -1226,7 +1253,12 @@ const Watch = ({
         {words.back}
       </Button>
       {state.notice !== "" && (
-        <Notice key={state.notice} dismissible>
+        <Notice
+          key={state.notice}
+          onDismiss={() =>
+            dispatch({ type: "noticeDismissed", what: "notice" })
+          }
+        >
           {state.notice}
         </Notice>
       )}
@@ -1765,7 +1797,12 @@ const Finish = ({
         {words.back}
       </Button>
       {state.notice !== "" && (
-        <Notice key={state.notice} dismissible>
+        <Notice
+          key={state.notice}
+          onDismiss={() =>
+            dispatch({ type: "noticeDismissed", what: "notice" })
+          }
+        >
           {state.notice}
         </Notice>
       )}

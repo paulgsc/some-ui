@@ -532,7 +532,10 @@ const Questions = ({
         {WORDS.toReview}
       </Button>
       {state.notice !== null && (
-        <Notice key={state.notice} dismissible>
+        <Notice
+          key={state.notice}
+          onDismiss={() => dispatch({ type: "noticeDismissed" })}
+        >
           {WORDS.notice[state.notice]}
         </Notice>
       )}
@@ -688,7 +691,10 @@ const Review = ({
         </Notice>
       )}
       {state.notice !== null && (
-        <Notice key={state.notice} dismissible>
+        <Notice
+          key={state.notice}
+          onDismiss={() => dispatch({ type: "noticeDismissed" })}
+        >
           {WORDS.notice[state.notice]}
         </Notice>
       )}
@@ -806,7 +812,10 @@ const Screen = ({
           <About state={state} dispatch={dispatch} />
           {back}
           {state.notice !== null && (
-            <Notice key={state.notice} dismissible>
+            <Notice
+              key={state.notice}
+              onDismiss={() => dispatch({ type: "noticeDismissed" })}
+            >
               {WORDS.notice[state.notice]}
             </Notice>
           )}

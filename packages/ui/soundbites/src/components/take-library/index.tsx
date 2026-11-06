@@ -102,7 +102,10 @@ const TakeItem = ({
       </div>
       {here && playback.kind === "loading" && <Notice>{WORDS.loading}</Notice>}
       {state.unplayable === take.id && (
-        <Notice tone="danger" dismissible>
+        <Notice
+          tone="danger"
+          onDismiss={() => dispatch({ type: "noticeDismissed" })}
+        >
           {WORDS.unplayable}
         </Notice>
       )}

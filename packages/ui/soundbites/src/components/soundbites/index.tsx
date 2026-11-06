@@ -215,7 +215,11 @@ export const Soundbites = ({
           />
           <TakeNotices view={view} />
           {notice !== "" && (
-            <Notice key={notice} tone="danger" dismissible>
+            <Notice
+              key={notice}
+              tone="danger"
+              onDismiss={() => dispatch({ type: "noticeDismissed" })}
+            >
               {notice}
             </Notice>
           )}
