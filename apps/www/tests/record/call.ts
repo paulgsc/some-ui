@@ -6,6 +6,7 @@
  *
  *   pnpm --filter www build
  *   pnpm --filter www record:call [--week 2026-10-30] [--voices kokoro|none] [--speaker http://127.0.0.1:8880] [--out out/call]
+ *   pnpm --filter www record:call --app http://call-stage --week-file week.json [--voices kokoro] [--out out/call]
  *
  * `--week` names the week by its first day (the newest `paulgsc/testing`
  * keeps by default, `sample` for the template's); the build must be one that
@@ -16,16 +17,23 @@
  * silent, each scene held for its words' reading time, which the frame shows
  * anyway.
  *
+ * `--week-file` records a week from a file, as home keeps it (ST36): the
+ * stage's reads of `paulgsc/testing`'s `call/` are answered from that file
+ * alone, so a week the repository has let go still records the same.
+ *
  * It refuses a scene the frame can't hold (`data-overflow`), since the
  * video would cut it off. It serves the built app (never `vite dev`: the dev
- * tools would be in the frame), from `--dist`, relative to apps/www. Needs
- * `ffmpeg` and `ffprobe` on `PATH`.
+ * tools would be in the frame), from `--dist`, relative to apps/www, or
+ * records the one already served at `--app` (home's render worker records
+ * the published image, #2639). Needs `ffmpeg` and `ffprobe` on `PATH`.
  */
 
-import { mkdir, writeFile } from "node:fs/promises"
+import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { join, resolve } from "node:path"
 import { parseArgs } from "node:util"
+import type { Route } from "@playwright/test"
 import {
+  CALL_INDEX_SCHEMA,
   CALL_VOICES,
   callCutList,
   callFile,
@@ -68,6 +76,49 @@ async function said(
   return Buffer.from(await response.arrayBuffer())
 }
 
+/** The stage's reads of `paulgsc/testing`'s `call/` folder. */
+const TESTING_CALL = /\/paulgsc\/testing\/main\/call\/[^/?#]+$/
+
+/** A week as home keeps it: its file's bytes, and its days. */
+type Kept = {
+  readonly bytes: Buffer
+  readonly from: string
+  readonly to: string
+}
+
+async function keptWeek(path: string): Promise<Kept> {
+  const bytes = await readFile(path)
+  const parsed = parseCallWeek(JSON.parse(bytes.toString("utf8")))
+  if (!parsed.ok)
+    fail([`${path} isn't a week of the call:`, ...parsed.problems])
+  return { bytes, ...parsed.value.week }
+}
+
+/**
+ * Answers a read of `paulgsc/testing`'s `call/` from the kept week alone: an
+ * index that lists only it, its own file, and nothing else.
+ */
+async function answer(route: Route, kept: Kept): Promise<void> {
+  const name = new URL(route.request().url()).pathname.split("/").at(-1)
+  const json = (body: string | Buffer): Promise<void> =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      headers: { "Access-Control-Allow-Origin": "*" },
+      body,
+    })
+  if (name === "index.json")
+    return json(
+      JSON.stringify({
+        schema: CALL_INDEX_SCHEMA,
+        keep: 1,
+        weeks: [{ from: kept.from, to: kept.to }],
+      })
+    )
+  if (name === `${kept.from}.json`) return json(kept.bytes)
+  return route.fulfill({ status: 404, body: "" })
+}
+
 async function main(): Promise<void> {
   const { values } = parseArgs({
     options: {
@@ -76,20 +127,30 @@ async function main(): Promise<void> {
       speaker: { type: "string", default: "http://127.0.0.1:8880" },
       out: { type: "string", default: "out/call" },
       dist: { type: "string", default: "dist" },
+      app: { type: "string" },
+      "week-file": { type: "string" },
     },
   })
   if (values.voices !== "kokoro" && values.voices !== "none")
     fail(["--voices is kokoro or none"])
-  const site = await serve(resolve(values.dist), { fallback: "index.html" })
+  const kept = values["week-file"] ? await keptWeek(values["week-file"]) : null
+  const weekAsked = kept?.from ?? values.week
+  const site = values.app
+    ? {
+        origin: new URL(values.app).origin,
+        close: async (): Promise<void> => {},
+      }
+    : await serve(resolve(values.dist), { fallback: "index.html" })
   const browser = await launchChromium()
   try {
     const page = await browser.newPage({
       viewport: FRAME,
       deviceScaleFactor: 1,
     })
+    if (kept) await page.route(TESTING_CALL, (route) => answer(route, kept))
     const url = (scene: string): string =>
       `${site.origin}/call?${new URLSearchParams({
-        ...(values.week ? { week: values.week } : {}),
+        ...(weekAsked ? { week: weekAsked } : {}),
         scene,
         record: "true",
       }).toString()}`
@@ -104,12 +165,8 @@ async function main(): Promise<void> {
     if (!parsed.ok)
       fail(["The stage's week can't make a call:", ...parsed.problems])
     const week: CallWeek = parsed.value
-    if (
-      values.week &&
-      values.week !== "sample" &&
-      week.week.from !== values.week
-    )
-      fail([`there is no week of ${values.week}`])
+    if (weekAsked && weekAsked !== "sample" && week.week.from !== weekAsked)
+      fail([`there is no week of ${weekAsked}`])
 
     const root = here(join(values.out, week.week.from))
     await mkdir(root, { recursive: true })
