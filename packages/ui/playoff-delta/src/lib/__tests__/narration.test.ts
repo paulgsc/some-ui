@@ -181,7 +181,7 @@ describe("the check", () => {
         saying(
           named,
           "ladder",
-          "First, the 49ers in 2025: the #2 seed, seeds 5 to 7 or seeds five to seven, one of them, a one-way, the twenty-first."
+          "First, the 49ers in 2025: the #2 seed, seeds 5 to 7 or seeds five to seven, one of them, a one-way, the twenty-first, the twenty first, eleventh."
         )
       )
     ).toEqual([])
@@ -196,6 +196,9 @@ describe("the check", () => {
     ])
     expect(
       refuses(saying(fill, "division", "In weeks eight and fifteen, it held."))
+    ).toEqual(["division says week 15, which isn't played yet"])
+    expect(
+      refuses(saying(fill, "division", "In the fifteenth week, it held."))
     ).toEqual(["division says week 15, which isn't played yet"])
     expect(
       refuses(saying(fill, "outro", "One point five steps our way."))

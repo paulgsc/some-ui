@@ -6,6 +6,7 @@
  */
 
 import {
+  isOrdinal,
   problemsOf,
   Sha256Schema,
   tokenized,
@@ -141,10 +142,6 @@ export function packetOf(
   }
 }
 
-/** "first", "twenty-first", "3rd": an order, not a count. */
-const ORDINAL =
-  /(?:^|-)(?:first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth)$|^\d+(?:st|nd|rd|th)$/
-
 /** Words that join a list of numbers: "weeks 3 to 5", "seeds five or six". */
 const JOINS: ReadonlySet<string> = new Set(["and", "to", "or", "through"])
 
@@ -160,7 +157,8 @@ const escape = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
  * (`tokenized`, so "one point five" and "7 and a half" are one number
  * each). Left out: team names ("49ers") and the season's label; a seed's
  * number ("#2 seed", "seeds five to seven"); a week's ("weeks eight and
- * fifteen"), which go to `weeks`; an ordinal ("first, the division"); and a
+ * fifteen", "the fifteenth week"), which go to `weeks`; any other ordinal
+ * ("first, the division", "eleventh"); and a
  * lone "one", said as often for "one of them" or "one-way" as for a count.
  */
 function numbersIn(
@@ -189,12 +187,14 @@ function numbersIn(
       continue
     }
     const said = raw.slice(token.first, token.last + 1).map(bare)
-    const one = said.length === 1 ? said[0] : undefined
-    const seed = list === "seed" || tokens[i + 1]?.word === "seed"
-    const notCount =
-      one !== undefined && (ORDINAL.test(one) || /^one(?:-|$)/.test(one))
-    if (list === "week") weeks.push(token.word)
-    else if (!seed && !notCount) counts.push(token.word)
+    const last = said.at(-1) ?? ""
+    // "twenty-first" is one raw word; its order is in its last piece.
+    const ordinal = isOrdinal(last.split("-").at(-1) ?? "")
+    const next = tokens[i + 1]?.word
+    const seed = list === "seed" || next === "seed"
+    const lone = said.length === 1 && /^one(?:-|$)/.test(last)
+    if (list === "week" || (ordinal && next === "week")) weeks.push(token.word)
+    else if (!seed && !ordinal && !lone) counts.push(token.word)
     if (ends) list = null
   }
   return counts

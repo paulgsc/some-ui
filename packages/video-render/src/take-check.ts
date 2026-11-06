@@ -268,6 +268,13 @@ function cardinalOf(word: string): string | null {
 }
 
 /**
+ * Whether `word` (lowercase, unpunctuated) names an order as the reader
+ * reads one: `third`, `eleventh`, `twentieth`, `21st`.
+ */
+export const isOrdinal = (word: string): boolean =>
+  cardinalOf(word) !== null || /^\d+(?:st|nd|rd|th)$/.test(word)
+
+/**
  * The number spoken by the words from `from` on (`two hundred`, `twenty
  * one`, `three point five`, `third`, `six and a half`), and how many words
  * it took; null when
