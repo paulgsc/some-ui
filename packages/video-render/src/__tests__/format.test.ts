@@ -79,6 +79,20 @@ describe("a format", () => {
     expect(bad.ok).toBe(false)
   })
 
+  it("may repeat a scene, never one it may also skip", () => {
+    const repeating = format(1)
+    const close = { ...repeating.scenes[2]!, repeat: { max: 4 } }
+    const ok = parseFormat({
+      ...repeating,
+      scenes: [repeating.scenes[0], close],
+    })
+    expect(ok.ok).toBe(true)
+    const extra = { ...repeating.scenes[1]!, repeat: { max: 4 } }
+    expect(parseFormat({ ...repeating, scenes: [extra] }).ok).toBe(false)
+    const long = { ...close, id: "a".repeat(37) }
+    expect(parseFormat({ ...repeating, scenes: [long] }).ok).toBe(false)
+  })
+
   describe("as a folder of versions", () => {
     let dir = ""
     beforeAll(async () => {
@@ -137,6 +151,22 @@ describe("an episode", () => {
       problems: ["open: the format never leaves this scene out"],
     })
     expect(episodeOf(format(1), input([[], [], []])).ok).toBe(true)
+  })
+
+  it("is refused for a format that repeats a scene", () => {
+    const f = format(1)
+    const repeating = {
+      ...f,
+      scenes: f.scenes.map((scene) =>
+        scene.id === "close" ? { ...scene, repeat: { max: 3 } } : scene
+      ),
+    }
+    expect(episodeOf(repeating, input([[], [], []]))).toEqual({
+      ok: false,
+      problems: [
+        "close: an episode voices each scene once, and this one repeats",
+      ],
+    })
   })
 
   it("says what is wrong instead of guessing", () => {

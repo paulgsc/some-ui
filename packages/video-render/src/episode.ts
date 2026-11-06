@@ -146,6 +146,16 @@ export function episodeOf(
       ],
     }
   }
+  const repeated = format.scenes.filter((scene) => scene.repeat !== undefined)
+  if (repeated.length > 0) {
+    return {
+      ok: false,
+      problems: repeated.map(
+        (scene) =>
+          `${scene.id}: an episode voices each scene once, and this one repeats`
+      ),
+    }
+  }
   const refused = format.scenes.filter(
     (scene, i) => input.keep[i] === null && scene.skip === undefined
   )

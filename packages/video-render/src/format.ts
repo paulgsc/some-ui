@@ -15,6 +15,12 @@
  * Each scene becomes a cut of a primer, version 2, which the phone's Studio
  * reads (soundbites' `journal/primer.ts`): the `PRIMER_*` limits below are
  * the ones it holds a primer to, kept here so both read one copy.
+ *
+ * A scene may repeat (STUDIO ST29): one scene per item of the period's data,
+ * none up to `repeat.max`, each named `<id>-<n>` (`repeatedId`). A repeated
+ * scene is never skipped, since no items already leaves it out. An episode
+ * voices each scene once, so `episodeOf` refuses a format with one; the
+ * weekly call (`call.ts`) is the template that repeats.
  */
 
 import { z } from "zod"
@@ -47,6 +53,12 @@ export const words = z.string().trim().min(1)
 /** A show's id, and its format's: a name the code gives it. */
 export const showId = z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/)
 
+/** The longest a repeated scene's id is, so `<id>-<n>` is still a cut's id. */
+export const REPEATED_ID_MAX = 36
+
+/** The id of item `n` (from 1) of a repeated scene: "done-3". */
+export const repeatedId = (scene: string, n: number): string => `${scene}-${n}`
+
 const FormatSceneSchema = z.object({
   id: sceneId,
   /** What the person calls it: "Our division". */
@@ -72,6 +84,13 @@ const FormatSceneSchema = z.object({
    * (`episodeOf` refuses to).
    */
   skip: words.optional(),
+  /**
+   * One scene per item of the period's data, none up to `max`; absent, the
+   * scene shows once.
+   */
+  repeat: z
+    .object({ max: z.number().int().min(1).max(PRIMER_V2_CUTS) })
+    .optional(),
 })
 
 export const FormatSchema = z
@@ -90,6 +109,18 @@ export const FormatSchema = z
     message: "two scenes share an id",
     path: ["scenes"],
   })
+  .refine(
+    (f) =>
+      f.scenes.every(
+        (s) =>
+          s.repeat === undefined ||
+          (s.skip === undefined && s.id.length <= REPEATED_ID_MAX)
+      ),
+    {
+      message: `a repeated scene has no skip and an id of at most ${REPEATED_ID_MAX} characters`,
+      path: ["scenes"],
+    }
+  )
 
 export type Format = z.infer<typeof FormatSchema>
 export type FormatScene = z.infer<typeof FormatSceneSchema>

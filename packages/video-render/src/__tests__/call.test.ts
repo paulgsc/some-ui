@@ -1,0 +1,142 @@
+/**
+ * The weekly call (ST29's first template): every pinned version of its
+ * format parses and the newest is the code's, so a change to the sections
+ * fails here until a new version is pinned; the sample week, the template's
+ * sample data, parses against its own schema and makes one scene per
+ * section and per item; and a week that contradicts itself is refused with
+ * every reason.
+ */
+import { readdirSync, readFileSync } from "node:fs"
+import { join } from "node:path"
+import {
+  CALL_ID,
+  CALL_MOST,
+  CALL_VERSION,
+  callFormat,
+  callScenes,
+  parseCallWeek,
+  refUrl,
+} from "@video-render/call"
+import type { CallWeek } from "@video-render/call"
+import { parseFormat, PRIMER_CUT_ID } from "@video-render/format"
+import { readSeries } from "@video-render/node"
+import { versionOfFile } from "@video-render/series"
+import sample from "@video-render/templates/conference-call/sample-week.json"
+import { describe, expect, it } from "vitest"
+
+const DIR = join(import.meta.dirname, "../templates", CALL_ID)
+
+const week = (): CallWeek => {
+  const parsed = parseCallWeek(sample)
+  if (!parsed.ok) throw new Error(parsed.problems.join("; "))
+  return parsed.value
+}
+
+describe("the call's format", () => {
+  it("every pinned version parses, and the newest is the code's", () => {
+    const pinned = readdirSync(DIR)
+      .map((file) => ({ file, version: versionOfFile(file) }))
+      .filter((f): f is { file: string; version: number } => f.version !== null)
+      .sort((a, b) => a.version - b.version)
+    expect(pinned.length).toBeGreaterThan(0)
+    for (const { file, version } of pinned) {
+      const parsed = parseFormat(
+        JSON.parse(readFileSync(join(DIR, file), "utf8"))
+      )
+      expect(parsed.ok && parsed.value.version).toBe(version)
+    }
+    const newest = pinned.at(-1)!
+    expect(newest.version).toBe(CALL_VERSION)
+    expect(JSON.parse(readFileSync(join(DIR, newest.file), "utf8"))).toEqual(
+      callFormat()
+    )
+  })
+
+  it("repeats exactly the sections that list items, as many as the week may", () => {
+    const repeats = callFormat().scenes.flatMap((s) =>
+      s.repeat ? [[s.id, s.repeat.max]] : []
+    )
+    expect(Object.fromEntries(repeats)).toEqual(CALL_MOST)
+  })
+
+  it("is drawn in its own series", async () => {
+    const series = await readSeries(
+      join(import.meta.dirname, "../sample/series", CALL_ID),
+      callFormat().series.version
+    )
+    expect(series.ok ? series.value.id : series.problems).toBe(
+      callFormat().series.id
+    )
+  })
+})
+
+describe("the sample week", () => {
+  it("parses against its own schema, for the version the code makes", () => {
+    expect(week().template).toEqual({ id: CALL_ID, version: CALL_VERSION })
+  })
+
+  it("is a scene per section and per item, in the format's order", () => {
+    const w = week()
+    const scenes = callScenes(w)
+    const order = callFormat().scenes.map((s) => s.id)
+    const sections = scenes.map((s) => order.indexOf(s.section))
+    expect(sections).toEqual([...sections].sort((a, b) => a - b))
+    expect(scenes.map((s) => s.id)).toEqual([
+      "open",
+      "board",
+      "moved-1",
+      "moved-2",
+      "done-1",
+      "done-2",
+      "gray-1",
+      "mine-1",
+      "asks-1",
+      "asks-2",
+      "close",
+    ])
+    expect(scenes.find((s) => s.id === "asks-2")?.item).toBe("talk-d1")
+    for (const s of scenes) expect(s.id).toMatch(PRIMER_CUT_ID)
+  })
+})
+
+describe("a week that contradicts itself", () => {
+  it("is refused, with every reason", () => {
+    const w = week()
+    const bad = {
+      ...w,
+      week: { from: "2026-11-05", to: "2026-10-30" },
+      board: { ...w.board, rows: [...w.board.rows, w.board.rows[0]] },
+      later: [...w.later, { ...w.later[0]!, id: w.asks[0]!.id }],
+      mine: [{ ...w.mine[0]!, chose: 2 }],
+      asks: [{ ...w.asks[0]!, recommended: 5 }, w.asks[1]],
+    }
+    expect(parseCallWeek(bad)).toEqual({
+      ok: false,
+      problems: [
+        "week: it ends before it starts",
+        "redeploy-home: two items share this id",
+        "board: a ledger item is listed twice",
+        "dna-strict: it chose an option it doesn't list",
+        "redeploy-home: it recommends an option it doesn't list",
+      ],
+    })
+  })
+
+  it("is refused for a field it doesn't name, or too many items", () => {
+    expect(parseCallWeek({ ...week(), extra: 1 }).ok).toBe(false)
+    const many = Array.from({ length: CALL_MOST.asks + 1 }, (_, i) => ({
+      ...week().asks[0]!,
+      id: `ask-${i}`,
+    }))
+    expect(parseCallWeek({ ...week(), asks: many }).ok).toBe(false)
+  })
+})
+
+it("links a reference to where it is on GitHub", () => {
+  expect(refUrl({ repo: "server", kind: "pr", number: 681 })).toBe(
+    "https://github.com/paulgsc/server/pull/681"
+  )
+  expect(refUrl({ repo: "some-ui", kind: "issue", number: 2248 })).toBe(
+    "https://github.com/paulgsc/some-ui/issues/2248"
+  )
+})
