@@ -58,7 +58,10 @@ function useOverflows(key: string): {
     const box = ref.current
     if (box === null) return undefined
     const measure = (): void => {
-      setOverflows(box.scrollHeight > box.clientHeight + 1)
+      setOverflows(
+        box.scrollHeight > box.clientHeight + 1 ||
+          box.scrollWidth > box.clientWidth + 1
+      )
     }
     measure()
     const observer = new ResizeObserver(measure)
@@ -329,7 +332,7 @@ export const CallStagePage = ({
           ref={ref}
           data-scene={at.scene.id}
           data-overflow={overflows ? "true" : undefined}
-          className="bg-surface border-border flex aspect-video w-full flex-col overflow-hidden border text-[1.5cqw]"
+          className="bg-surface border-border flex aspect-video w-full flex-col overflow-hidden border text-[1.5cqw] [overflow-wrap:anywhere]"
         >
           <header className="border-border flex items-center justify-between border-b px-[1.2em] py-[0.6em] text-[0.8em]">
             <span className="font-semibold">{W.title}</span>
