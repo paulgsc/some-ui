@@ -5,6 +5,7 @@
  * the check. The README's "What is said" says what each holds and refuses.
  */
 
+import { sha256Hex } from "@some-ui/core-utils"
 import {
   isOrdinal,
   problemsOf,
@@ -38,7 +39,7 @@ const NarrationSchema = z.strictObject({
     id: z.string().min(1),
     version: z.number().int().positive(),
   }),
-  /** The sum of the season up to this week (`seasonTo`), as `sumOf` gives it. */
+  /** The SHA-256 of the season up to this week (`seasonTo`). */
   sha256: Sha256Schema,
   /** One per scene of the format, in its order. */
   scenes: z
@@ -106,10 +107,7 @@ function scenesOf(
   }
 }
 
-/** A SHA-256 of some bytes, in lowercase hex: the caller's, so this module needs no crypto. */
-export type SumOf = (data: string) => string
-
-function pinsOf(season: StorySeason, week: number, sumOf: SumOf): Pins {
+async function pinsOf(season: StorySeason, week: number): Promise<Pins> {
   const format = formatOf(kindOf(week))
   return {
     schema: NARRATION_SCHEMA,
@@ -117,16 +115,15 @@ function pinsOf(season: StorySeason, week: number, sumOf: SumOf): Pins {
     team: season.team,
     week,
     format: { id: format.id, version: format.version },
-    sha256: sumOf(seasonData(seasonTo(season, week))),
+    sha256: await sha256Hex(seasonData(seasonTo(season, week))),
   }
 }
 
 /** Everything a filler reads for one episode, or why there is no such episode. */
-export function packetOf(
+export async function packetOf(
   season: StorySeason,
-  week: number,
-  sumOf: SumOf
-): Parsed<Packet> {
+  week: number
+): Promise<Parsed<Packet>> {
   const scenes = scenesOf(season, week)
   if (!scenes.ok) return scenes
   return {
@@ -134,7 +131,7 @@ export function packetOf(
     value: {
       schema: PACKET_SCHEMA,
       guidance: guidanceOf(season, kindOf(week)),
-      pins: pinsOf(season, week, sumOf),
+      pins: await pinsOf(season, week),
       scenes: scenes.value,
       words:
         week === LEGEND_WEEK
@@ -220,12 +217,11 @@ const pinProblems = (fill: Pins, want: Pins): ReadonlyArray<string> => [
 ]
 
 /** `data` as a fill of one episode's narration, or every reason it isn't. */
-export function checkNarration(
+export async function checkNarration(
   season: StorySeason,
   week: number,
-  sumOf: SumOf,
   data: unknown
-): Parsed<Narration> {
+): Promise<Parsed<Narration>> {
   const scenes = scenesOf(season, week)
   if (!scenes.ok) return scenes
   const parsed = NarrationSchema.safeParse(data)
@@ -233,7 +229,7 @@ export function checkNarration(
     return { ok: false, problems: problemsOf(parsed.error, "the fill") }
   }
   const fill = parsed.data
-  const problems = [...pinProblems(fill, pinsOf(season, week, sumOf))]
+  const problems = [...pinProblems(fill, await pinsOf(season, week))]
   const want = scenes.value.map((s) => s.id)
   const got = fill.scenes.map((s) => s.id)
   if (want.join() !== got.join()) {
@@ -274,25 +270,21 @@ export const fillFile = (team: string, week: number): string =>
   `${team}-week-${String(week).padStart(2, "0")}.json`
 
 /**
- * The weeks whose narration is due, given the weeks already filled: the
- * legend once, then every played week after the newest filled one. A first
- * run fills the legend and the newest week only, never the weeks before it.
+ * The weeks whose narration is due, given the file names in the season's
+ * narration folder: the legend once, then every played week after the
+ * newest one filled. A first run fills the legend and the newest week only,
+ * never the weeks before it.
  */
 export function dueWeeks(
   season: StorySeason,
-  filled: ReadonlySet<number>
+  names: ReadonlyArray<string>
 ): ReadonlyArray<number> {
   const played = season.weeks.map((w) => w.week)
-  const newestFilled = Math.max(
-    LEGEND_WEEK,
-    ...[...filled].filter((w) => w !== LEGEND_WEEK)
-  )
-  const newest = played.at(-1)
+  const filled = played.filter((w) => names.includes(fillFile(season.team, w)))
   const weeks =
-    newestFilled === LEGEND_WEEK
-      ? newest === undefined
-        ? []
-        : [newest]
-      : played.filter((w) => w > newestFilled)
-  return [...(filled.has(LEGEND_WEEK) ? [] : [LEGEND_WEEK]), ...weeks]
+    filled.length === 0
+      ? [Math.max(...played)]
+      : played.filter((w) => w > Math.max(...filled))
+  const legend = names.includes(fillFile(season.team, LEGEND_WEEK))
+  return [...(legend ? [] : [LEGEND_WEEK]), ...weeks]
 }

@@ -28,10 +28,8 @@ those goes on the FEED epic for the owner.
      --folder <testing>/playoff-delta/<season>/narration
    ```
 
-   It prints one line per week due, the week and its file name: the legend
-   (week 0) once, then every week after the newest one filled. On a first
-   run that is the legend and the newest week, never the weeks before. If
-   it prints nothing, stop: open no PR.
+   It prints each week due and its file name. If it prints nothing, stop:
+   open no PR.
 
 4. **For each week due, read its packet:**
 
@@ -40,15 +38,11 @@ those goes on the FEED epic for the owner.
      --season <testing>/playoff-delta/<season>/<team>.json --week <n>
    ```
 
-   The packet is the whole brief: who the words are for, each scene's point
-   and its facts, the words the legend taught, and the shape to return.
-   Read nothing else to write the words. The facts are true; the words are
-   yours to choose.
+   The packet is the whole brief; read nothing else to write the words.
 
 5. **Write the fill** as the packet's `jsonSchema` says, to
    `playoff-delta/<season>/narration/<the file name step 3 printed>`. Copy
-   `pins` as they are, then one `said` per scene, in order. Write each to be
-   said aloud by a voice: plain spoken sentences, no symbols or lists.
+   `pins` as they are, then one `said` per scene, in order.
 6. **Check it** until it says ready:
 
    ```sh
@@ -56,10 +50,8 @@ those goes on the FEED epic for the owner.
      --season <testing>/playoff-delta/<season>/<team>.json --week <n>
    ```
 
-   A refusal names the scene and why: a number the scene's facts don't
-   give, a week not played yet, a forecast word, or the shape. Rewrite that
-   scene and check again. Never change a fact, the packet or the check to
-   get past it.
+   A refusal names the scene and why. Rewrite that scene and check again.
+   Never change a fact, the packet or the check to get past it.
 
 7. **Open a pull request** in `paulgsc/testing` with the week's fills,
    titled `data(playoff-delta): narration for <season> week <n>` (or weeks

@@ -136,9 +136,8 @@ export const seasonData = (season: StorySeason): string =>
 /**
  * The season as week `week` reads it: its weeks up to that one, and the
  * first week always, which the legend (week 0) reads. A week's facts read no
- * later week, so this is what a narration of it pins (`./narration`): the
- * season growing leaves the pin as it was, and an earlier week changing
- * moves it.
+ * later week (`__tests__/narration.test.ts` holds it), so a narration pins
+ * this (`./narration`).
  */
 export const seasonTo = (season: StorySeason, week: number): StorySeason => ({
   ...season,

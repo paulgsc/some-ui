@@ -103,8 +103,7 @@ pnpm --filter @some-ui/playoff-delta narration check <fill.json> --season <file|
 ```
 
 Each Tuesday in season a scheduled session fills the weeks due into
-`paulgsc/testing`'s `playoff-delta/<season>/narration/<team>-week-NN.json`
-(week 00 is the legend), as `NARRATION-ROUTINE.md` says (FEED2 #2645).
+`paulgsc/testing`'s `playoff-delta/<season>/narration/<team>-week-NN.json`, as `NARRATION-ROUTINE.md` says (FEED2 #2645).
 
 - **The packet** is everything a filler reads, and nothing else:
   - the guidance (who the words are for, and what they're for);
