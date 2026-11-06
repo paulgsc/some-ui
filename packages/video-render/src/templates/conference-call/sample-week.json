@@ -1,0 +1,307 @@
+{
+  "schema": "some-ui.call-week/1",
+  "template": {
+    "id": "conference-call",
+    "version": 1
+  },
+  "week": {
+    "from": "2026-10-30",
+    "to": "2026-11-05"
+  },
+  "read": {
+    "some-ui": "c9386c71b0edb28f59a25d86ffef76c1c8c497e0",
+    "server": "cb7f30fe1bd1735e4bf7e177ae7fa1595ee0709e"
+  },
+  "open": {
+    "said": "This is the call for the week of October 30 to November 5. It read both repositories as they stood on Thursday night, and these are sample words: the real call is written each week from that week's record."
+  },
+  "board": {
+    "said": "Twenty-two items are open on the ledger, and every one of them has something waiting on you. Most of those are small calls. Three of them hold up work an agent could start today.",
+    "rows": [
+      {
+        "ledger": "studio",
+        "title": "My Studio: a video I make in sittings, on the phone",
+        "status": "decide",
+        "waitsOnYou": 3
+      },
+      {
+        "ledger": "studio-shows",
+        "title": "Shows in Studio: an episode is its format plus the week's data",
+        "status": "decide",
+        "waitsOnYou": 0
+      },
+      {
+        "ledger": "my-data",
+        "title": "My data: see what I keep, and delete what I choose",
+        "status": "decide",
+        "waitsOnYou": 0
+      },
+      {
+        "ledger": "talk",
+        "title": "A session is a conversation",
+        "status": "decide",
+        "waitsOnYou": 5
+      },
+      {
+        "ledger": "assurance",
+        "title": "Every promise about outcomes and work, on one page",
+        "status": "decide",
+        "waitsOnYou": 1
+      },
+      {
+        "ledger": "drift-some-ui",
+        "title": "some-ui: each shared concern has one owner and a guard",
+        "status": "decide",
+        "waitsOnYou": 3
+      }
+    ]
+  },
+  "moved": [
+    {
+      "id": "studio-where",
+      "tag": "STUDIO",
+      "epic": {
+        "repo": "some-ui",
+        "kind": "issue",
+        "number": 2248
+      },
+      "said": "Studio moved to the new model this week. Takes are a library on home, searchable by meaning, and a finished episode goes home as its DNA. Nothing renders it yet.",
+      "landed": [
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2614
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2621
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 681
+        }
+      ],
+      "next": [
+        "The routine that fills a queued video",
+        "The weekly call as the first template"
+      ]
+    },
+    {
+      "id": "my-data-where",
+      "tag": "MY-DATA",
+      "epic": {
+        "repo": "some-ui",
+        "kind": "issue",
+        "number": 2473
+      },
+      "said": "My data is switched on for Studio's recordings. You can delete a take for good, and each delete leaves a receipt. It shows once home runs the new image.",
+      "landed": [
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2596
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 678
+        }
+      ],
+      "next": ["A take in a published video becomes deletable"]
+    }
+  ],
+  "done": [
+    {
+      "id": "take-library",
+      "title": "The take library on home",
+      "said": "Three pull requests made takes a library: recording one with no scene, searching them by meaning, and the words Studio uses for them.",
+      "pulls": [
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2614,
+          "title": "Record a take with no scene on Takes on home",
+          "change": "story"
+        },
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 680,
+          "title": "Search takes by meaning",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2615,
+          "title": "One name for Studio and for a take",
+          "change": "story"
+        }
+      ]
+    },
+    {
+      "id": "videos-queued",
+      "title": "A finished episode goes home as its DNA",
+      "said": "Two pull requests let a finished episode go home to be made: home keeps the queued video, and Finish offers to send it.",
+      "pulls": [
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 681,
+          "title": "Home keeps a queued video",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2621,
+          "title": "A ready episode goes home to be made, as its DNA",
+          "change": "story"
+        }
+      ]
+    },
+    {
+      "id": "recordings-deletable",
+      "title": "Studio's recordings can be deleted for good",
+      "said": "Studio's takes and idea answers can now be deleted for good from My data, on home and on the phone, each with a receipt.",
+      "pulls": [
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 678,
+          "title": "Switch on deleting Studio takes and idea answers",
+          "change": "story"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2596,
+          "title": "Studio recordings switched on, and an idea answer's Delete… opens My data",
+          "change": "story"
+        }
+      ]
+    },
+    {
+      "id": "ci-repairs",
+      "title": "Releases publish again",
+      "said": "Two fixes got the release workflows publishing again, after a tooling upgrade had quietly stopped them.",
+      "pulls": [
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2605,
+          "title": "A PR commit runs with the git hooks off",
+          "change": "defect"
+        },
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2608,
+          "title": "changesets/action v2 for CLI v3, with npm auth",
+          "change": "defect"
+        }
+      ]
+    }
+  ],
+  "gray": [
+    {
+      "id": "cs1",
+      "title": "Release actions are paired with their CLI",
+      "said": "A new promise, CS1: the changesets action and its command line move together, and the workflow check holds them as a pair.",
+      "promise": "CS1",
+      "refs": [
+        {
+          "repo": "some-ui",
+          "kind": "pr",
+          "number": 2608
+        }
+      ]
+    }
+  ],
+  "mine": [
+    {
+      "id": "dna-strict",
+      "title": "Home refuses a DNA with any field it doesn't name",
+      "said": "Without asking you, home was made to refuse a video's DNA that has a field it doesn't know, rather than keep it and ignore the field.",
+      "options": ["Refuse an unknown field", "Keep it and ignore the field"],
+      "chose": 0,
+      "why": "A field home ignores would be lost when the video is made again, and the DNA has to be enough on its own.",
+      "undo": "Loosen the schema on both sides in one change; nothing kept depends on the refusal.",
+      "refs": [
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 681
+        }
+      ]
+    }
+  ],
+  "asks": [
+    {
+      "id": "redeploy-home",
+      "question": "Redeploy home with the server's latest image?",
+      "said": "First, home runs an older server build. Until it's redeployed, My data, the take library and queued videos don't work against it.",
+      "whyYours": "Only you can reach the box.",
+      "options": [
+        {
+          "says": "Redeploy now",
+          "unblocks": "My data, the take library and queued videos on home"
+        },
+        {
+          "says": "Wait for the next batch",
+          "unblocks": "Nothing yet; the phone keeps copies until then"
+        }
+      ],
+      "recommended": 0,
+      "refs": [
+        {
+          "repo": "server",
+          "kind": "pr",
+          "number": 677
+        }
+      ]
+    },
+    {
+      "id": "talk-d1",
+      "question": "Who answers between turns of a conversation?",
+      "said": "Second, TALK's first decision: between your turns, does a live model answer, or a scripted one?",
+      "whyYours": "It decides what the conversation is: a product call, not a code one.",
+      "options": [
+        {
+          "says": "A live model",
+          "unblocks": "TALK3, TALK6 and TALK9"
+        },
+        {
+          "says": "A scripted reply",
+          "unblocks": "TALK3 only"
+        }
+      ],
+      "recommended": 0,
+      "refs": [
+        {
+          "repo": "some-ui",
+          "kind": "issue",
+          "number": 2545
+        }
+      ]
+    }
+  ],
+  "later": [
+    {
+      "id": "gc5-exceptions",
+      "question": "Which server checks may PR gate still let through?",
+      "refs": [
+        {
+          "repo": "some-ui",
+          "kind": "issue",
+          "number": 2291
+        }
+      ]
+    }
+  ],
+  "close": {
+    "said": "That's the week. Two asks were voiced and one is on the list. Your answers start the next sessions."
+  }
+}

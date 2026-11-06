@@ -40,6 +40,15 @@ Each module's header says why it is the way it is.
   Studio does to open it as an episode (SH3), and refuses one whose cut
   list's scenes are not its cuts. Playoff Delta's formats and episodes come
   from its own workspace (`packages/ui/playoff-delta/src/lib/show.ts`).
+- `src/call.ts`: the weekly call (ST29's first template): the agents'
+  stand-up for the owner, the same sections every week (the week, the
+  ledger's board, where each epic is, what landed in batches, gray-area
+  calls, calls made without the owner, what waits on the owner, the close),
+  filled from one week's data (`CallWeekSchema`). Its format repeats a
+  scene once per item, which a format now may (`repeat`), and is pinned
+  under `src/templates/conference-call/`, beside its sample week; its
+  series is sampled in `src/sample/series/conference-call/`. `callScenes`
+  gives the scenes in order, each ask with the id a reply names.
 - `src/resolve.ts`, `src/timing.ts`: each lever from the layer that sets
   it; each scene placed in whole frames.
 - `src/plan.ts`: the ffmpeg calls, as data. `src/render.ts` runs them over

@@ -1,0 +1,25 @@
+{
+  "schema": "some-ui.video-series/1",
+  "id": "conference-call",
+  "version": 1,
+  "title": "The weekly call",
+  "frame": {
+    "width": 1920,
+    "height": 1080,
+    "fps": 30
+  },
+  "ground": "#111821",
+  "window": {
+    "x": 0,
+    "y": 0,
+    "width": 1920,
+    "height": 1080
+  },
+  "defaultLook": "calm",
+  "sounds": {},
+  "soundGainDb": -8,
+  "designs": {
+    "captions": "broadcast",
+    "authorship": "cells-v1"
+  }
+}

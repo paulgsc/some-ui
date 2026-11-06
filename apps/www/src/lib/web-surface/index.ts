@@ -5,6 +5,7 @@ import type { ComponentRegistry } from "@some-ui/types"
 import { hasAudience } from "@/lib/build-profile"
 
 import type { BurnInsPreviewProps } from "./burn-ins/preview"
+import type { CallStageProps } from "./call/stage"
 import type { LiveStageProps } from "./playoff-delta/stage"
 
 /**
@@ -94,4 +95,13 @@ export const BurnInRecord: ComponentType =
   import.meta.env.VITE_DEVICE_BACKEND !== "true" && hasAudience("web")
     ? lazyWithPreload(() => import("./burn-ins/record"), "BurnInRecordPage")
         .Component
+    : Nothing
+
+/**
+ * The weekly call's stage (a desktop recording stage for the call's video);
+ * nothing where the build has no web surface.
+ */
+export const CallStage: ComponentType<CallStageProps> =
+  import.meta.env.VITE_DEVICE_BACKEND !== "true" && hasAudience("web")
+    ? lazyWithPreload(() => import("./call/stage"), "CallStagePage").Component
     : Nothing

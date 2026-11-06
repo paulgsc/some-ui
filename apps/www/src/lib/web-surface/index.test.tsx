@@ -2,8 +2,8 @@
  * @vitest-environment jsdom
  *
  * The door (A4, packages/some-vite-config/AUDIENCES.md): the web builds get
- * Hangul Honeycomb's panel, the extensions comb, the Playoff Delta stage and
- * the burn-ins' preview and recorder page, and a build without a web
+ * Hangul Honeycomb's panel, the extensions comb, the Playoff Delta stage,
+ * the burn-ins' preview and recorder page and the weekly call's stage, and a build without a web
  * surface gets something inert in their place. Vitest builds the `lan`
  * profile; the Android app's build is stood in for by its flag, and a
  * profile without "web" by mocking `@/lib/build-profile`.
@@ -40,10 +40,11 @@ const isLazy = (component: unknown): boolean =>
   Reflect.get(component, "$$typeof") === Symbol.for("react.lazy")
 
 describe("a web build", () => {
-  it("binds Hangul Honeycomb's panel, the extensions comb, the Playoff Delta stage and the burn-ins' pages", async () => {
+  it("binds Hangul Honeycomb's panel, the extensions comb, the Playoff Delta stage, the burn-ins' pages and the call's stage", async () => {
     const {
       BurnInRecord,
       BurnInsPreview,
+      CallStage,
       ExtensionsComb,
       PlayoffDeltaStage,
       WEB_PANELS,
@@ -54,6 +55,7 @@ describe("a web build", () => {
     expect(isLazy(PlayoffDeltaStage)).toBe(true)
     expect(isLazy(BurnInsPreview)).toBe(true)
     expect(isLazy(BurnInRecord)).toBe(true)
+    expect(isLazy(CallStage)).toBe(true)
   })
 })
 
@@ -66,6 +68,7 @@ describe("a build with no web surface", () => {
     const {
       BurnInRecord,
       BurnInsPreview,
+      CallStage,
       ExtensionsComb,
       PlayoffDeltaStage,
       WEB_PANELS,
@@ -78,6 +81,7 @@ describe("a build with no web surface", () => {
         <PlayoffDeltaStage />
         <BurnInsPreview />
         <BurnInRecord />
+        <CallStage />
       </>
     )
     expect(container.innerHTML).toBe("")
