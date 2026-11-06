@@ -10,8 +10,8 @@ import type { SpokenAnswer } from "@leetype/lib/leetype/incident-play"
 import type { SpokenTakeView } from "@leetype/lib/leetype/spoken-take"
 import type { SessionScreen } from "@leetype/types/session-file"
 import { rubricText } from "@leetype/types/session-file"
-import { assertNever } from "@some-ui/core-utils"
-import { Button, Label, TakeItem, Textarea } from "@some-ui/shared"
+import { assertNever, cn } from "@some-ui/core-utils"
+import { Button, Label, Reserved, TakeItem, Textarea } from "@some-ui/shared"
 import type { TakePlace } from "@some-ui/voice-capture"
 
 type RecordScreen = Extract<SessionScreen, { type: "record" }>
@@ -190,19 +190,35 @@ export const RecordScreenView: FC<RecordScreenProps> = ({
     )
   }
 
+  // Why no take can be kept now: in the take's own room while it would
+  // show, and after Pass while typing, so the phone filling up moves no
+  // control (HS1).
+  const fullWords = !full
+    ? null
+    : noRoom
+      ? "This phone has kept as many answers as it can until a home it's paired with has the ones on it."
+      : "This phone has kept as many recorded answers as it can until a home it's paired with has the ones on it. You can still type one."
+
   return (
     <article className={SCREEN_ARTICLE}>
       {heading}
-      {full && (
-        <p role="status" className="text-pretty text-sm text-muted-foreground">
-          {noRoom
-            ? "This phone has kept as many answers as it can until a home it's paired with has the ones on it."
-            : "This phone has kept as many recorded answers as it can until a home it's paired with has the ones on it. You can still type one."}
-        </p>
-      )}
       {take !== null && !typing && (
         <div className="flex flex-col gap-2">
-          {!full && takeItem}
+          <div className="grid">
+            <div
+              className={cn("col-start-1 row-start-1", full && "invisible")}
+              aria-hidden={full}
+              inert={full}
+            >
+              {takeItem}
+            </div>
+            <Reserved
+              role="status"
+              className="col-start-1 row-start-1 text-pretty text-sm text-muted-foreground"
+            >
+              {fullWords}
+            </Reserved>
+          </div>
           <Button
             variant="outline"
             className="min-h-11 self-start"
@@ -242,6 +258,11 @@ export const RecordScreenView: FC<RecordScreenProps> = ({
       >
         Pass
       </Button>
+      {typing && fullWords !== null && (
+        <p role="status" className="text-pretty text-sm text-muted-foreground">
+          {fullWords}
+        </p>
+      )}
     </article>
   )
 }

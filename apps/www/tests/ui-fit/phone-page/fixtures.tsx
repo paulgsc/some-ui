@@ -55,6 +55,7 @@ import {
 import { APH_FIXTURES } from "./aph"
 import { MY_DATA_FIXTURES } from "./my-data"
 import { PULL_FIXTURES } from "./pull"
+import { ROUNDS_FIXTURES } from "./rounds"
 import { SettingsBar } from "./settings-bar"
 import { FIT_CUTS, FIT_PRIMER_TEXT } from "./studio-seed"
 
@@ -397,6 +398,8 @@ export const PHONE_FIXTURES = {
   ...MY_DATA_FIXTURES,
   /** aph's logger and History (`./aph`, `../stays-put.spec.ts`). */
   ...APH_FIXTURES,
+  /** The rounds wing's screens (`./rounds`, `../stays-put-rounds.spec.ts`). */
+  ...ROUNDS_FIXTURES,
 } satisfies Record<string, () => JSX.Element>
 
 export type PhoneId = keyof typeof PHONE_FIXTURES

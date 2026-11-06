@@ -577,15 +577,6 @@ export const GameWeek = ({ ports, outbox }: GameWeekProps): JSX.Element => {
         </>
       )}
 
-      {state.blocked !== null && activity.kind === "idle" && (
-        <p
-          role="alert"
-          className="border-destructive/40 bg-destructive/5 rounded-lg border p-3 text-sm"
-        >
-          {RECORDING_FAILURE_COPY[state.blocked]}
-        </p>
-      )}
-
       <div aria-live="polite" className="flex min-h-9 items-center gap-3">
         <p className="text-muted-foreground min-w-0 flex-1 text-sm">
           {state.notice}
@@ -612,6 +603,17 @@ export const GameWeek = ({ ports, outbox }: GameWeekProps): JSX.Element => {
             {bite.unplayable ? TAKE_WORDS.unplayable : undefined}
           </TakeRow>
         </ul>
+      )}
+
+      {/* After the bite's row, the last control on the page: a microphone
+          refused moves nothing (HS1). */}
+      {state.blocked !== null && activity.kind === "idle" && (
+        <p
+          role="alert"
+          className="border-destructive/40 bg-destructive/5 rounded-lg border p-3 text-sm"
+        >
+          {RECORDING_FAILURE_COPY[state.blocked]}
+        </p>
       )}
 
       {outboxWords !== "" && (

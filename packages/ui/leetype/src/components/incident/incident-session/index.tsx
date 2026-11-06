@@ -247,30 +247,39 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
         <p className="min-w-0 truncate text-xs text-muted-foreground">
           {play.file.title}
         </p>
-        {boundary && (
-          <div className="flex shrink-0 gap-1">
-            {parked.length > 0 && (
-              <Button
-                variant="ghost"
-                className="min-h-11"
-                aria-expanded={waiting}
-                onClick={(): void => setWaiting((now) => !now)}
-              >
-                Rounds waiting
-              </Button>
-            )}
+        {/* Kept through a round, out of sight and out of reach, so a pick
+            moves nothing below the header (HS1). */}
+        <div
+          className={cn("flex shrink-0 gap-1", !boundary && "invisible")}
+          aria-hidden={!boundary}
+          inert={!boundary}
+        >
+          {parked.length > 0 && (
             <Button
               variant="ghost"
               className="min-h-11"
-              onClick={(): void => dispatch({ type: "leave" })}
+              aria-expanded={waiting}
+              onClick={(): void => setWaiting((now) => !now)}
             >
-              End here
+              Rounds waiting
             </Button>
-          </div>
-        )}
+          )}
+          <Button
+            variant="ghost"
+            className="min-h-11"
+            onClick={(): void => dispatch({ type: "leave" })}
+          >
+            End here
+          </Button>
+        </div>
       </header>
-      {boundary && waiting && (
-        <div className="pb-4">
+      {waiting && (
+        // Open through a round, its rounds out of reach until its end.
+        <div
+          className={cn("pb-4", !boundary && "opacity-50")}
+          aria-hidden={!boundary}
+          inert={!boundary}
+        >
           <ParkedRounds
             parked={parked}
             inView={play.screen}
@@ -284,20 +293,22 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
           />
         </div>
       )}
+      {body}
+      {/* After the body, whose last control ends the page: a line that
+          comes moves nothing (HS1). */}
       {timeUp && ended === null && (
         <p
           role="status"
-          className="pb-2 text-pretty text-sm text-muted-foreground"
+          className="pt-4 text-pretty text-sm text-muted-foreground"
         >
           That is the time you set. End here to see where you are, or go on.
         </p>
       )}
       {problem !== null && (
-        <p role="alert" className="pb-2 text-sm text-destructive">
+        <p role="alert" className="pt-4 text-sm text-destructive">
           {problem}
         </p>
       )}
-      {body}
     </div>
   )
 }

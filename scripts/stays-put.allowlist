@@ -17,6 +17,17 @@
 # by stays-put.spec.ts (HS1).
 2 packages/ui/aph/src/components/aph-log/index.tsx
 
+# Placement: after the last control of a page that grows down: the incident
+# session's lines after its screen, the record screen's after Pass, the
+# session files' after the files held, Rust Rounds' after the screen (a
+# card's aside after Next), Game Week's refusal after the bite's row;
+# walked by stays-put-rounds.spec.ts (HS1).
+1 packages/ui/game-week/src/components/game-week/index.tsx
+2 packages/ui/leetype/src/components/incident/incident-session/index.tsx
+1 packages/ui/leetype/src/components/incident/record-screen/index.tsx
+1 packages/ui/leetype/src/components/session-file-picker/index.tsx
+3 packages/ui/rust-rounds/src/components/rust-rounds/index.tsx
+
 # Grandfathered: these mounted lines on a condition before HS2 landed. Debt,
 # not a judgment that each is fine: a count here may only fall (lower it in
 # the same change), and an entry leaves when its file keeps its lines' room.
@@ -34,13 +45,8 @@
 1 apps/www/src/routes/_dashboard/_apk/practice/index.tsx
 1 packages/ui/auth/src/components/auth-error/index.tsx
 1 packages/ui/auth/src/templates/auth-page/index.tsx
-1 packages/ui/game-week/src/components/game-week/index.tsx
-2 packages/ui/leetype/src/components/incident/incident-session/index.tsx
-1 packages/ui/leetype/src/components/incident/record-screen/index.tsx
-1 packages/ui/leetype/src/components/session-file-picker/index.tsx
 2 packages/ui/leetype/src/components/typing-game/exercise-card/index.tsx
 1 packages/ui/leetype/src/components/typing-game/typing-error-alert/index.tsx
-6 packages/ui/rust-rounds/src/components/rust-rounds/index.tsx
 5 packages/ui/shared/src/components/ui/shelf/index.tsx
 1 packages/ui/soundbites/src/components/idea-bundle/index.tsx
 1 packages/ui/soundbites/src/components/idea-shelf/index.tsx

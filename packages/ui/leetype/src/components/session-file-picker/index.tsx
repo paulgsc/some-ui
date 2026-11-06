@@ -120,6 +120,31 @@ export const SessionFilePicker: FC<SessionFilePickerProps> = ({
           )}
         </>
       )}
+      {held.kind === "ready" && held.files.length > 0 && (
+        <ul
+          aria-label={samples ? "Sample sessions" : "On this phone"}
+          className="flex flex-col gap-1"
+        >
+          {held.files.map((file) => (
+            <li key={file.name}>
+              <Button
+                variant="ghost"
+                className="h-auto w-full flex-col items-start whitespace-normal py-2 text-left"
+                onClick={(): void => runtime.open(file.name, onPlay)}
+              >
+                <span className="text-pretty text-sm font-medium">
+                  Play {file.title}
+                </span>
+                <span className="text-pretty text-xs font-normal text-muted-foreground">
+                  {file.oneLine}
+                </span>
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {/* After the held files, the last controls: what a pick says moves
+          no Play row (HS1). */}
       {status !== null && (
         <p
           role={pick.kind === "refused" ? "alert" : "status"}
@@ -149,29 +174,6 @@ export const SessionFilePicker: FC<SessionFilePickerProps> = ({
         <p role="alert" className="text-sm text-destructive">
           {held.summary}
         </p>
-      )}
-      {held.kind === "ready" && held.files.length > 0 && (
-        <ul
-          aria-label={samples ? "Sample sessions" : "On this phone"}
-          className="flex flex-col gap-1"
-        >
-          {held.files.map((file) => (
-            <li key={file.name}>
-              <Button
-                variant="ghost"
-                className="h-auto w-full flex-col items-start whitespace-normal py-2 text-left"
-                onClick={(): void => runtime.open(file.name, onPlay)}
-              >
-                <span className="text-pretty text-sm font-medium">
-                  Play {file.title}
-                </span>
-                <span className="text-pretty text-xs font-normal text-muted-foreground">
-                  {file.oneLine}
-                </span>
-              </Button>
-            </li>
-          ))}
-        </ul>
       )}
     </section>
   )

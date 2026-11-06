@@ -33,7 +33,7 @@ import type { NotesPort, RustRoundsPorts } from "@rust-rounds/lib/play/runtime"
 import { createRustRounds, NO_MICROPHONE } from "@rust-rounds/lib/play/runtime"
 import type { Visit } from "@rust-rounds/lib/play/store"
 import { runHeading, WORDS } from "@rust-rounds/lib/play/words"
-import { Button, CodeCard, TakeItem, Textarea } from "@some-ui/shared"
+import { Button, CodeCard, Reserved, TakeItem, Textarea } from "@some-ui/shared"
 import type { PatternTake } from "@some-ui/voice-capture"
 import { Pin } from "lucide-react"
 
@@ -62,6 +62,33 @@ const Printed = ({
     </pre>
   </section>
 )
+
+/**
+ * A label that swaps between two words at the width of the wider, so the
+ * control it names keeps one size (HS1): the other word holds the room,
+ * unseen and unread.
+ */
+const OneWidth = ({
+  shown,
+  children,
+}: {
+  shown: string
+  /** The word it swaps with. */
+  children: string
+}): JSX.Element => (
+  <span className="grid">
+    <span className="col-start-1 row-start-1">{shown}</span>
+    <span aria-hidden className="invisible col-start-1 row-start-1">
+      {children}
+    </span>
+  </span>
+)
+
+/**
+ * The most lines what the earlier note says takes at the narrowest phone
+ * (`WORDS.earlierNoteUnplayable`); `stays-put-rounds.spec.ts` holds it.
+ */
+const EARLIER_LINES = 3
 
 const NO_RUN_WORDS: Readonly<Record<NoRun, string>> = {
   waits: WORDS.noRun,
@@ -127,25 +154,39 @@ type Notes = {
  * The card's voice note, on the take pattern's parts: tap to talk and tap
  * to stop, then where it's kept, Play, Redo and Let it go. Once a take found
  * the phone had no room, a card with no note says so in place of the button:
- * the next card tries again.
+ * the next card tries again. The card's own actions (`children`) follow the
+ * note, and what the note says aside comes after them, so its going with the
+ * next tap moves none of them (HS1).
  */
 const VoiceNote = ({
   state,
   visit,
   notes,
   dispatch,
+  children,
 }: {
   state: PlayState
   visit: Visit
   notes: Notes
   dispatch: Dispatch
+  children: ReactNode
 }): JSX.Element => {
   const { port } = notes
   if (port === null) {
-    return <p className="text-muted-foreground text-sm">{WORDS.noMicrophone}</p>
+    return (
+      <>
+        <p className="text-muted-foreground text-sm">{WORDS.noMicrophone}</p>
+        {children}
+      </>
+    )
   }
   if (state.noRoom && visit.note === null) {
-    return <p className="text-muted-foreground text-sm">{WORDS.noRoom}</p>
+    return (
+      <>
+        <p className="text-muted-foreground text-sm">{WORDS.noRoom}</p>
+        {children}
+      </>
+    )
   }
   const { item, aside } = cardNote(
     state,
@@ -154,7 +195,7 @@ const VoiceNote = ({
     port.pattern.options
   )
   return (
-    <div className="flex flex-col gap-2">
+    <>
       <TakeItem
         view={item}
         label={WORDS.voiceNote}
@@ -163,12 +204,13 @@ const VoiceNote = ({
         onRedo={() => dispatch({ type: "tapNote" })}
         onLetGo={(_, place) => dispatch({ type: "letGoNote", place })}
       />
+      {children}
       {aside !== null && (
         <p role="status" className="text-muted-foreground text-sm">
           {aside}
         </p>
       )}
-    </div>
+    </>
   )
 }
 
@@ -207,11 +249,10 @@ const EarlierNote = ({
       >
         {playing ? WORDS.stopEarlier : WORDS.playEarlier}
       </Button>
-      {said !== null && (
-        <p role="status" className="text-sm">
-          {said}
-        </p>
-      )}
+      {/* Its room kept, so what it says moves nothing below (HS1). */}
+      <Reserved role="status" lines={EARLIER_LINES} className="text-sm">
+        {said}
+      </Reserved>
     </section>
   )
 }
@@ -298,7 +339,9 @@ const CardScreen = ({
           onClick={() => dispatch({ type: "pin" })}
         >
           <Pin aria-hidden className="size-4" />
-          {visit.pinned ? WORDS.pinned : WORDS.pin}
+          <OneWidth shown={visit.pinned ? WORDS.pinned : WORDS.pin}>
+            {visit.pinned ? WORDS.pin : WORDS.pinned}
+          </OneWidth>
         </Button>
         <Button
           size="sm"
@@ -339,10 +382,11 @@ const CardScreen = ({
             visit={visit}
             notes={notes}
             dispatch={dispatch}
-          />
-          <Actions>
-            <NextButton dispatch={dispatch} />
-          </Actions>
+          >
+            <Actions>
+              <NextButton dispatch={dispatch} />
+            </Actions>
+          </VoiceNote>
         </>
       ) : (
         <>
@@ -361,10 +405,11 @@ const CardScreen = ({
             visit={visit}
             notes={notes}
             dispatch={dispatch}
-          />
-          <Actions>
-            <NextButton dispatch={dispatch} />
-          </Actions>
+          >
+            <Actions>
+              <NextButton dispatch={dispatch} />
+            </Actions>
+          </VoiceNote>
         </>
       )}
     </div>
@@ -520,26 +565,15 @@ const TutorScreen = ({
       >
         {WORDS.copyForTutor}
       </Button>
-      {copyLine !== null && (
-        <p role="status" className="text-muted-foreground text-sm">
-          {copyLine}
-        </p>
-      )}
-      {copy.kind === "failed" && (
-        <details>
-          <summary className="text-sm">{WORDS.showText}</summary>
-          <pre
-            data-scroll-intent="long-form"
-            className={
-              // scroll-intent: long-form — the whole copy, shown only when
-              // the clipboard refused it, for the thumb to select.
-              "bg-muted/40 m-0 max-h-64 min-w-0 overflow-auto rounded-md p-3 font-mono text-xs whitespace-pre select-all"
-            }
-          >
-            {copy.text}
-          </pre>
-        </details>
-      )}
+      {/* Each line keeps its room, so what it says moves no control
+          (HS1); the copy refused comes last, after every control. */}
+      <Reserved
+        role="status"
+        lines={2}
+        className="text-muted-foreground text-sm"
+      >
+        {copyLine}
+      </Reserved>
       <label className="flex flex-col gap-1 text-sm font-semibold">
         {WORDS.replyLabel}
         <Textarea
@@ -551,17 +585,17 @@ const TutorScreen = ({
           }
         />
       </label>
-      {answer !== null && (
-        <p role="status" className="text-sm">
-          {answer.kind === "empty"
+      <Reserved role="status" lines={2} className="text-sm">
+        {answer === null
+          ? null
+          : answer.kind === "empty"
             ? WORDS.replyEmpty
             : answer.kind === "taken"
               ? WORDS.replyTaken(answer.concept, answer.cards)
               : answer.kind === "already-here"
                 ? WORDS.replyAlreadyHere
                 : WORDS.replyRefused}
-        </p>
-      )}
+      </Reserved>
       <Actions>
         {answer?.kind === "refused" && (
           <Button
@@ -580,6 +614,21 @@ const TutorScreen = ({
           {WORDS.backToCards}
         </Button>
       </Actions>
+      {copy.kind === "failed" && (
+        <details>
+          <summary className="text-sm">{WORDS.showText}</summary>
+          <pre
+            data-scroll-intent="long-form"
+            className={
+              // scroll-intent: long-form — the whole copy, shown only when
+              // the clipboard refused it, for the thumb to select.
+              "bg-muted/40 m-0 max-h-64 min-w-0 overflow-auto rounded-md p-3 font-mono text-xs whitespace-pre select-all"
+            }
+          >
+            {copy.text}
+          </pre>
+        </details>
+      )}
     </div>
   )
 }
@@ -604,16 +653,6 @@ export const RustRounds = ({ ports }: RustRoundsProps): JSX.Element => {
   return (
     <div className="mx-auto flex w-full max-w-md min-w-0 flex-col gap-4">
       <h1 className="text-2xl font-bold tracking-tight">{WORDS.title}</h1>
-      {Object.values(state.notKept).some(Boolean) && (
-        <p role="alert" className="text-destructive text-sm">
-          {WORDS.notKept}
-        </p>
-      )}
-      {state.lost !== null && (
-        <p role="alert" className="text-destructive text-sm">
-          {WORDS.noteLost(state.lost.concept, state.lost.number)}
-        </p>
-      )}
       {state.screen.kind === "menu" && (
         <MenuScreen state={state} dispatch={dispatch} />
       )}
@@ -630,6 +669,18 @@ export const RustRounds = ({ ports }: RustRoundsProps): JSX.Element => {
       )}
       {state.screen.kind === "tutor" && (
         <TutorScreen state={state} dispatch={dispatch} />
+      )}
+      {/* After the screen, whose last control ends the page: a refusal that
+          lands moves nothing (HS1). */}
+      {Object.values(state.notKept).some(Boolean) && (
+        <p role="alert" className="text-destructive text-sm">
+          {WORDS.notKept}
+        </p>
+      )}
+      {state.lost !== null && (
+        <p role="alert" className="text-destructive text-sm">
+          {WORDS.noteLost(state.lost.concept, state.lost.number)}
+        </p>
       )}
     </div>
   )
