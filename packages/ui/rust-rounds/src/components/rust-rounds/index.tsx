@@ -33,7 +33,14 @@ import type { NotesPort, RustRoundsPorts } from "@rust-rounds/lib/play/runtime"
 import { createRustRounds, NO_MICROPHONE } from "@rust-rounds/lib/play/runtime"
 import type { Visit } from "@rust-rounds/lib/play/store"
 import { runHeading, WORDS } from "@rust-rounds/lib/play/words"
-import { Button, CodeCard, Reserved, TakeItem, Textarea } from "@some-ui/shared"
+import {
+  Button,
+  CodeCard,
+  Reserved,
+  SameWidth,
+  TakeItem,
+  Textarea,
+} from "@some-ui/shared"
 import type { PatternTake } from "@some-ui/voice-capture"
 import { Pin } from "lucide-react"
 
@@ -61,27 +68,6 @@ const Printed = ({
       {text}
     </pre>
   </section>
-)
-
-/**
- * A label that swaps between two words at the width of the wider, so the
- * control it names keeps one size (HS1): the other word holds the room,
- * unseen and unread.
- */
-const OneWidth = ({
-  shown,
-  children,
-}: {
-  shown: string
-  /** The word it swaps with. */
-  children: string
-}): JSX.Element => (
-  <span className="grid">
-    <span className="col-start-1 row-start-1">{shown}</span>
-    <span aria-hidden className="invisible col-start-1 row-start-1">
-      {children}
-    </span>
-  </span>
 )
 
 /**
@@ -339,9 +325,9 @@ const CardScreen = ({
           onClick={() => dispatch({ type: "pin" })}
         >
           <Pin aria-hidden className="size-4" />
-          <OneWidth shown={visit.pinned ? WORDS.pinned : WORDS.pin}>
-            {visit.pinned ? WORDS.pin : WORDS.pinned}
-          </OneWidth>
+          <SameWidth every={[WORDS.pin, WORDS.pinned]}>
+            {visit.pinned ? WORDS.pinned : WORDS.pin}
+          </SameWidth>
         </Button>
         <Button
           size="sm"
