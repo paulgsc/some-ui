@@ -157,6 +157,12 @@ describe("the check", () => {
     expect(division("Seven, and 7 and a half.")).toEqual([
       "division says 7.5, which its facts don't give",
     ])
+    expect(division("Seeds 5, 16 wins.")).toEqual([
+      "division says 16, which its facts don't give",
+    ])
+    expect(division("The floor is one and a half.")).toEqual([
+      "division says 1.5, which its facts don't give",
+    ])
     expect(division("From 15½ down.")).toEqual([
       "division says 15.5, which its facts don't give",
     ])
@@ -175,7 +181,7 @@ describe("the check", () => {
         saying(
           named,
           "ladder",
-          "First, the 49ers in 2025: the #2 seed, seeds 5 to 7 or seeds five to seven, one of them."
+          "First, the 49ers in 2025: the #2 seed, seeds 5 to 7 or seeds five to seven, one of them, a one-way, the twenty-first."
         )
       )
     ).toEqual([])
@@ -188,6 +194,12 @@ describe("the check", () => {
     expect(season("Come week 10.")).toEqual([
       "season says week 10, which isn't played yet",
     ])
+    expect(
+      refuses(saying(fill, "division", "In weeks eight and fifteen, it held."))
+    ).toEqual(["division says week 15, which isn't played yet"])
+    expect(
+      refuses(saying(fill, "outro", "One point five steps our way."))
+    ).toEqual([])
     const legend = factsSaid(packet(SAMPLE_SEASON, LEGEND_WEEK))
     expect(
       refusalsOf(

@@ -6,9 +6,9 @@
  */
 
 import {
-  factTerms,
   problemsOf,
   Sha256Schema,
+  tokenized,
   type Parsed,
 } from "@some-ui/video-render"
 import { z } from "zod"
@@ -141,42 +141,63 @@ export function packetOf(
   }
 }
 
-const TENS = "twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety"
-
+/** "first", "twenty-first", "3rd": an order, not a count. */
 const ORDINAL =
-  /\b(?:first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|\d+(?:st|nd|rd|th))\b/gi
+  /(?:^|-)(?:first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth)$|^\d+(?:st|nd|rd|th)$/
+
+/** Words that join a list of numbers: "weeks 3 to 5", "seeds five or six". */
+const JOINS: ReadonlySet<string> = new Set(["and", "to", "or", "through"])
+
+const isNumber = (word: string): boolean => /^-?\d/.test(word)
+
+const bare = (word: string): string =>
+  word.toLowerCase().replace(/[^\p{L}\p{N}-]+/gu, "")
 
 const escape = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 
 /**
- * The numbers `text` says, as the take check reads them (`factTerms`), once
- * what isn't a count is taken out: team names ("49ers"), the season's
- * label, a seed ("#1 seed", "seeds 5 to 7"), a week ("weeks 3 to 5"), whose
- * numbers go to `weeks`, an ordinal ("first, the division"), and "one" on
- * its own, said as often for "one of them" as for a count.
+ * The counts `text` says, read word by word as the take check reads them
+ * (`tokenized`, so "one point five" and "7 and a half" are one number
+ * each). Left out: team names ("49ers") and the season's label; a seed's
+ * number ("#2 seed", "seeds five to seven"); a week's ("weeks eight and
+ * fifteen"), which go to `weeks`; an ordinal ("first, the division"); and a
+ * lone "one", said as often for "one of them" or "one-way" as for a count.
  */
 function numbersIn(
   text: string,
   season: StorySeason,
   weeks: Array<string> = []
 ): ReadonlyArray<string> {
+  let rest = text
   const names = [...Object.values(season.names), season.label]
     .filter((n) => n.length > 0)
     .sort((a, b) => b.length - a.length)
-  let rest = text
   for (const name of names) {
     rest = rest.replace(new RegExp(escape(name), "g"), " ")
   }
-  rest = rest
-    .replace(/#\s?\d+ seed/gi, " ")
-    .replace(/\bseeds? \S+(?: to \S+)?/gi, " ")
-    .replace(/\bweeks? (\S+(?: to \S+)?)/gi, (_, n: string) => {
-      weeks.push(...factTerms(n.replace(/\bone\b/gi, "1")).numbers)
-      return " "
-    })
-    .replace(new RegExp(`(?<!\\b(?:${TENS})[\\s-])\\bone\\b`, "gi"), " ")
-    .replace(ORDINAL, " ")
-  return factTerms(rest).numbers
+  const raw = rest.split(/\s+/).filter((w) => w !== "")
+  const tokens = tokenized(raw)
+  const counts: Array<string> = []
+  let list: "week" | "seed" | null = null
+  for (const [i, token] of tokens.entries()) {
+    // A list runs to the end of its clause: "every week, two numbers".
+    const ends = /[,.;:!?]$/.test(raw[token.last] ?? "")
+    if (!isNumber(token.word)) {
+      if (token.word === "week" || token.word === "seed") list = token.word
+      else if (!JOINS.has(token.word)) list = null
+      if (ends) list = null
+      continue
+    }
+    const said = raw.slice(token.first, token.last + 1).map(bare)
+    const one = said.length === 1 ? said[0] : undefined
+    const seed = list === "seed" || tokens[i + 1]?.word === "seed"
+    const notCount =
+      one !== undefined && (ORDINAL.test(one) || /^one(?:-|$)/.test(one))
+    if (list === "week") weeks.push(token.word)
+    else if (!seed && !notCount) counts.push(token.word)
+    if (ends) list = null
+  }
+  return counts
 }
 
 /** How `fill`'s pins differ from the episode's. */
