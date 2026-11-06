@@ -5,14 +5,16 @@
  * together.
  *
  *   pnpm --filter www build
- *   pnpm --filter www record:call [--week 2026-10-30] [--voices edge|none] [--out out/call]
+ *   pnpm --filter www record:call [--week 2026-10-30] [--voices kokoro|none] [--speaker http://127.0.0.1:8880] [--out out/call]
  *
  * `--week` names the week by its first day (the newest `paulgsc/testing`
  * keeps by default, `sample` for the template's); the build must be one that
- * reads content, as the home network's does. `--voices edge` says each scene
- * through the `edge-tts` command, in `CALL_VOICES`, until home's own Kokoro
- * voice replaces it (ST36, #2635); `none` leaves the call silent, each scene
- * held for its words' reading time, which the frame shows anyway.
+ * reads content, as the home network's does. `--voices kokoro` says each
+ * scene in its section's voice (`CALL_VOICES`) through home's Kokoro speaker
+ * at `--speaker` (paulgsc/server `infra/compose/kokoro.yml`), which gives the
+ * same audio for the same words (ST36, #2635); `none` leaves the call
+ * silent, each scene held for its words' reading time, which the frame shows
+ * anyway.
  *
  * It refuses a scene the frame can't hold (`data-overflow`), since the
  * video would cut it off. It serves the built app (never `vite dev`: the dev
@@ -20,10 +22,9 @@
  * `ffmpeg` and `ffprobe` on `PATH`.
  */
 
-import { execFile } from "node:child_process"
 import { mkdir, writeFile } from "node:fs/promises"
 import { join, resolve } from "node:path"
-import { parseArgs, promisify } from "node:util"
+import { parseArgs } from "node:util"
 import {
   CALL_VOICES,
   callCutList,
@@ -37,8 +38,6 @@ import { serve } from "@tests/ui-fit/harness"
 
 import { fail, here, launchChromium, runCommand } from "./command"
 
-const run = promisify(execFile)
-
 /** The frame the stage is recorded at: the call's series. */
 const FRAME = { width: 1920, height: 1080 } as const
 
@@ -48,17 +47,39 @@ const SERIES = resolve(
   "../../../../packages/video-render/src/sample/series/conference-call"
 )
 
+/**
+ * `text` said in `voice` by home's Kokoro speaker at `speaker`, as a WAV: the
+ * same bytes for the same words and voice.
+ */
+async function said(
+  speaker: string,
+  text: string,
+  voice: string
+): Promise<Buffer> {
+  const response = await fetch(new URL("/say", speaker), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text, voice }),
+  })
+  if (!response.ok)
+    fail([
+      `The speaker at ${speaker} answered ${String(response.status)}: ${await response.text()}`,
+    ])
+  return Buffer.from(await response.arrayBuffer())
+}
+
 async function main(): Promise<void> {
   const { values } = parseArgs({
     options: {
       week: { type: "string" },
       voices: { type: "string", default: "none" },
+      speaker: { type: "string", default: "http://127.0.0.1:8880" },
       out: { type: "string", default: "out/call" },
       dist: { type: "string", default: "dist" },
     },
   })
-  if (values.voices !== "edge" && values.voices !== "none")
-    fail(["--voices is edge or none"])
+  if (values.voices !== "kokoro" && values.voices !== "none")
+    fail(["--voices is kokoro or none"])
   const site = await serve(resolve(values.dist), { fallback: "index.html" })
   const browser = await launchChromium()
   try {
@@ -108,17 +129,13 @@ async function main(): Promise<void> {
       if ((await shown.getAttribute("data-overflow")) === "true")
         overflowing.push(scene.id)
       await page.screenshot({ path: join(root, `${file}.png`) })
-      if (values.voices === "edge") {
-        await run("edge-tts", [
-          "--voice",
-          CALL_VOICES[scene.section],
-          "--text",
-          scene.said,
-          "--write-media",
-          join(root, `${file}.mp3`),
-        ])
-        const facts = await ports.probe(`${file}.mp3`)
-        if (!facts) fail([`${file}.mp3 can't be read`])
+      if (values.voices === "kokoro") {
+        await writeFile(
+          join(root, `${file}.wav`),
+          await said(values.speaker, scene.said, CALL_VOICES[scene.section])
+        )
+        const facts = await ports.probe(`${file}.wav`)
+        if (!facts) fail([`${file}.wav can't be read`])
         takesMs.push(Math.round(facts.durationMs))
       } else {
         takesMs.push(null)

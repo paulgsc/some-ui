@@ -163,7 +163,7 @@ describe("the call as a cut list", () => {
     expect(open).toMatchObject({
       id: "open",
       picture: { kind: "still", source: "01-open.png" },
-      take: { file: "01-open.mp3", inMs: 0, outMs: 4_000 },
+      take: { file: "01-open.wav", inMs: 0, outMs: 4_000 },
       durationMs: 300 + 4_000 + 700,
     })
     expect(board?.take).toBeUndefined()
