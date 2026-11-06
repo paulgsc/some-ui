@@ -12,7 +12,7 @@
 import type { JSX, ReactNode } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { assertNever } from "@some-ui/core-utils"
-import { Button, Input, Reserved, TakeList } from "@some-ui/shared"
+import { Button, Input, Notice, TakeList } from "@some-ui/shared"
 import { Unpaired } from "@soundbites/components/unpaired"
 import type {
   LibraryIntent,
@@ -98,16 +98,19 @@ const TakeItem = ({
               {WORDS.setAside(take.setAsideAt)}
             </p>
           )}
-          {/* Two lines: home's refusal wraps. */}
-          <Reserved lines={2} role="status" className="text-xs">
-            {here && playback.kind === "loading" ? (
-              <span className="text-muted-foreground">{WORDS.loading}</span>
-            ) : state.unplayable === take.id ? (
-              WORDS.unplayable
-            ) : null}
-          </Reserved>
         </div>
       </div>
+      {/* Said over the screen, so the takes below this one stay put (HS1). */}
+      {here && playback.kind === "loading" && <Notice>{WORDS.loading}</Notice>}
+      {state.unplayable === take.id && (
+        <Notice
+          role="alert"
+          tone="danger"
+          onDismiss={() => dispatch({ type: "noticeDismissed" })}
+        >
+          {WORDS.unplayable}
+        </Notice>
+      )}
     </li>
   )
 }
@@ -126,7 +129,8 @@ const Listed = ({
   }
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-muted-foreground text-sm" role="status">
+      {/* What the list below holds: the screen's own content. */}
+      <p className="text-muted-foreground text-sm" aria-live="polite">
         {WORDS.shown(
           page.by,
           state.asked,
@@ -216,9 +220,7 @@ const PhoneTakes = ({ phone }: { phone: LibraryPhone }): JSX.Element => {
         label={WORDS.recordLabel}
         full={
           full ? (
-            <p className="text-sm" role="status">
-              {WORDS.phoneFull(here.length)}
-            </p>
+            <p className="text-sm">{WORDS.phoneFull(here.length)}</p>
           ) : undefined
         }
       />
@@ -259,9 +261,11 @@ export const TakeLibrary = ({ ports, pair }: TakeLibraryProps): JSX.Element => {
               {WORDS.search}
             </Button>
           </div>
-          <Reserved className="text-muted-foreground text-xs">
-            {state.tooLong && WORDS.tooLong}
-          </Reserved>
+          {state.tooLong && (
+            <Notice role="alert" tone="warning">
+              {WORDS.tooLong}
+            </Notice>
+          )}
           {state.asked !== null && (
             <Button
               type="button"

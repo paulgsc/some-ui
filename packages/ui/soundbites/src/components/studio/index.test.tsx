@@ -197,10 +197,13 @@ describe("Studio", () => {
       screen.getByRole("button", { name: W.finish.toHome.button })
     )
     expect(await screen.findByText(W.finish.toHome.handed)).toBeInTheDocument()
+    // Held in its place once asked; where it stands is said over the screen.
     expect(
-      screen.queryByRole("button", { name: W.finish.toHome.button })
-    ).toBeNull()
-    expect(home).toHaveTextContent(/Kept on this phone since .*paired/)
+      screen.getByRole("button", { name: W.finish.toHome.button })
+    ).toBeDisabled()
+    expect(
+      screen.getByText(/Kept on this phone since .*paired/)
+    ).toBeInTheDocument()
   })
 
   it("shows the loop as steps with no video, then Record as the place to start once Claude's scenes are opened", async () => {
@@ -228,7 +231,12 @@ describe("Studio", () => {
     ).toBeInTheDocument()
     expect(screen.getByText(W.record.adLib)).toBeInTheDocument()
     expect(screen.getByText(W.record.mustStayTrue(2))).toBeInTheDocument()
-    expect(screen.getByText(W.record.runs(20_000))).toBeInTheDocument()
+    // How long the scene runs, and how long a take may: what is left of the
+    // video's time.
+    const runs = W.record.runs(20_000, 0).split(" · ")[0] ?? ""
+    expect(
+      screen.getByText((text) => text.startsWith(`${runs} · `))
+    ).toBeInTheDocument()
     await takeOne()
     // The scene's length follows the take at once.
     expect(screen.getByText(W.record.runsWith(4_700))).toBeInTheDocument()

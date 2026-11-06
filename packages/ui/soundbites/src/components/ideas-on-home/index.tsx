@@ -13,13 +13,12 @@ import {
   Button,
   ConfirmSheet,
   Input,
-  Reserved,
+  Notice,
   SameWidth,
   useTakePattern,
 } from "@some-ui/shared"
 import type { TakePattern } from "@some-ui/voice-capture"
 import { TAKE_WORDS } from "@some-ui/voice-capture"
-import { Notice } from "@soundbites/components/notice"
 import { Unpaired } from "@soundbites/components/unpaired"
 import type { BundleTakes } from "@soundbites/lib/idea/bundle-runtime"
 import { keptIdeaLists } from "@soundbites/lib/idea/draft"
@@ -488,9 +487,11 @@ const ListEditor = ({
           {LISTS.add}
         </Button>
       </form>
-      <Reserved className="text-muted-foreground text-xs">
-        {trimmed !== "" && !isEntry(trimmed) && LISTS.tooLong}
-      </Reserved>
+      {trimmed !== "" && !isEntry(trimmed) && (
+        <Notice role="alert" tone="warning">
+          {LISTS.tooLong}
+        </Notice>
+      )}
     </section>
   )
 }
@@ -629,7 +630,11 @@ export const IdeasOnHome = ({
         openInMyData={openInMyData}
         pair={pair}
       />
-      <Notice text={state.notice === null ? "" : WORDS.notice[state.notice]} />
+      {state.notice !== null && (
+        <Notice onDismiss={() => dispatch({ type: "noticeDismissed" })}>
+          {WORDS.notice[state.notice]}
+        </Notice>
+      )}
       <ConfirmSheet
         request={
           state.confirm === null || idea === null

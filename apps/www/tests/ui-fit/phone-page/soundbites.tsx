@@ -1,23 +1,34 @@
 /**
  * Studio's wing on the phone page, for `../stays-put-soundbites.spec.ts`
  * (HS1), beside the Studio and New idea fixtures `./fixtures.tsx` mounts:
- * "Not today?" on a full phone, takes on home, and home's lists.
+ * "Not today?" on a full phone, takes on home, home's lists, and the idea
+ * shelf with Claude's questions answered from it.
  */
 import type { JSX, ReactNode } from "react"
 import { useState } from "react"
+import { inMemoryStorage } from "@some-ui/core-utils"
 import type {
+  IdeaShelfProps,
   IdeasHome,
   LibraryPage,
   SoundbitesProps,
   TakesHome,
 } from "@some-ui/soundbites"
 import {
+  IdeaShelf,
   IdeasOnHome,
+  keptIdeaStore,
   Soundbites,
   soundbitesHeldByHome,
   TakeLibrary,
 } from "@some-ui/soundbites"
-import { bite, memorySoundbiteStore } from "@some-ui/soundbites/fixtures"
+import {
+  bite,
+  caughtIdea,
+  memoryProjectStore,
+  memorySoundbiteStore,
+} from "@some-ui/soundbites/fixtures"
+import type { Listened, TurnListener } from "@some-ui/voice-capture"
 import { microphoneOwner } from "@some-ui/voice-capture"
 import {
   simulatedMicrophone,
@@ -144,9 +155,72 @@ const IDEAS_HOME: IdeasHome = {
     }),
 }
 
+const AT = "2026-10-30T10:00:00.000Z"
+
+/** A recognizer that listens at once and, once stopped, hears one line. */
+const hearsOnStop: TurnListener = {
+  available: () => Promise.resolve(true),
+  listen: (_onWords, onReady) => {
+    let settle: (listened: Listened) => void = () => undefined
+    const done = new Promise<Listened>((resolve) => {
+      settle = resolve
+    })
+    queueMicrotask(onReady)
+    return {
+      done,
+      stop: () => settle({ kind: "heard", words: "Week 8, as it happened." }),
+      cancel: () => settle({ kind: "heard", words: "" }),
+    }
+  },
+}
+
+/**
+ * The idea shelf holding one idea caught on the phone; `unread`: the phone's
+ * videos can't be read the first time, so Make waits on reading them again.
+ */
+function shelfOn(unread: boolean): () => JSX.Element {
+  const ShelfFixture = (): JSX.Element => {
+    // Made once, as the route's are.
+    const [ports] = useState((): NonNullable<IdeaShelfProps["ports"]> => {
+      const storage = inMemoryStorage()
+      const ideas = keptIdeaStore(() => storage)
+      ideas.keep(() => [caughtIdea("fit-idea", AT)])
+      const { store } = memoryProjectStore()
+      let reads = 0
+      return {
+        ideas,
+        projects: {
+          update: (id, change) => store.update(id, change),
+          list: () =>
+            unread && reads++ === 0
+              ? Promise.reject(new Error("unread"))
+              : store.list(),
+        },
+        now: () => Date.parse(AT),
+        readText: (file) => file.text(),
+      }
+    })
+    return (
+      <Column>
+        <IdeaShelf
+          ports={ports}
+          capture={{
+            listener: hearsOnStop,
+            now: () => Date.parse(AT),
+            onVisibility: () => (): void => undefined,
+          }}
+        />
+      </Column>
+    )
+  }
+  return ShelfFixture
+}
+
 export const SOUNDBITES_FIXTURES = {
   "hs-soundbites-full": SoundbitesFull,
   "hs-take-library": Library,
+  "hs-idea-shelf": shelfOn(false),
+  "hs-idea-shelf-unread": shelfOn(true),
   "hs-ideas-lists": (): JSX.Element => (
     <Column>
       <IdeasOnHome

@@ -170,7 +170,7 @@ describe("Studio's words", () => {
   it("write a length as a number of seconds", () => {
     expect(seconds(4_700)).toBe("4.7 s")
     expect(STUDIO_WORDS.record.runsWith(5_200)).toBe(
-      "This scene runs 5.2 s: your take and a breath"
+      "Runs 5.2 s: your take and a breath"
     )
   })
 

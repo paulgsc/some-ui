@@ -9,10 +9,9 @@
 import type { JSX, ReactNode } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { assertNever, cn } from "@some-ui/core-utils"
-import { Button } from "@some-ui/shared"
+import { Button, Notice } from "@some-ui/shared"
 import { FilePick } from "@soundbites/components/file-pick"
 import { IdeaCapture } from "@soundbites/components/idea"
-import { Notice } from "@soundbites/components/notice"
 import type { Idea, IdeaStage } from "@soundbites/lib/idea/model"
 import {
   ideaName,
@@ -60,9 +59,22 @@ export type IdeaShelfProps = {
 
 type Dispatch = (intent: ShelfIntent) => void
 
-const ShelfLine = ({ state }: { state: ShelfState }): JSX.Element => (
-  <Notice text={state.notice === null ? "" : WORDS.notice[state.notice]} />
-)
+/**
+ * What the shelf says about what was just done, over the screen (HS1): it
+ * stays until the next tap answers it, or the person closes it.
+ */
+const ShelfLine = ({
+  state,
+  dispatch,
+}: {
+  state: ShelfState
+  dispatch: Dispatch
+}): JSX.Element | null =>
+  state.notice === null ? null : (
+    <Notice onDismiss={() => dispatch({ type: "noticeDismissed" })}>
+      {WORDS.notice[state.notice]}
+    </Notice>
+  )
 
 /** Where an idea is, and whether Claude's questions wait on it. */
 function stageLine(idea: Idea, stage: IdeaStage): string {
@@ -130,7 +142,7 @@ const List = ({
           {WORDS.showAll}
         </Button>
       )}
-      <ShelfLine state={state} />
+      <ShelfLine state={state} dispatch={dispatch} />
     </div>
   )
 }
@@ -289,24 +301,27 @@ const OneIdea = ({
           {STUDIO_WORDS.idea.answerSkipped(skipped)}
         </Button>
       )}
+      {/* Make holds its place while the phone's videos can't be read;
+          why, and Read again, are said over the screen (HS1). */}
       {stage === "fleshed" && asks === 0 && state.videosUnread && (
-        <div role="alert" className="flex flex-col gap-2">
-          <p className="text-sm">{WORDS.videosUnread}</p>
-          <Button
-            variant="outline"
-            size="sm"
-            className="self-start"
-            onClick={() => dispatch({ type: "videosAgain" })}
-          >
-            {STUDIO_WORDS.readAgain}
-          </Button>
-        </div>
+        <Notice role="alert" tone="danger">
+          <span className="block space-y-2">
+            <span className="block">{WORDS.videosUnread}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => dispatch({ type: "videosAgain" })}
+            >
+              {STUDIO_WORDS.readAgain}
+            </Button>
+          </span>
+        </Notice>
       )}
-      {stage === "fleshed" && asks === 0 && !state.videosUnread && (
+      {stage === "fleshed" && asks === 0 && (
         <div className="flex flex-col gap-2">
           <Button
             size="lg"
-            disabled={state.making !== null}
+            disabled={state.making !== null || state.videosUnread}
             onClick={() => dispatch({ type: "makeChosen" })}
           >
             {state.making === null ? WORDS.make : WORDS.making}
@@ -322,7 +337,7 @@ const OneIdea = ({
           onPick={(file) => dispatch({ type: "replyPicked", file })}
         />
       )}
-      <ShelfLine state={state} />
+      <ShelfLine state={state} dispatch={dispatch} />
 
       <Scenes idea={idea} />
       <Answers idea={idea} />
@@ -375,16 +390,18 @@ export const IdeaShelf = ({
     }
     case "unreadable": {
       return (
-        <div role="alert" className="space-y-2 text-sm">
-          <p>{WORDS.unreadable}</p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => dispatch({ type: "readAgain" })}
-          >
-            {STUDIO_WORDS.readAgain}
-          </Button>
-        </div>
+        <Notice role="alert" tone="danger">
+          <span className="block space-y-2">
+            <span className="block">{WORDS.unreadable}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => dispatch({ type: "readAgain" })}
+            >
+              {STUDIO_WORDS.readAgain}
+            </Button>
+          </span>
+        </Notice>
       )
     }
     case "list": {

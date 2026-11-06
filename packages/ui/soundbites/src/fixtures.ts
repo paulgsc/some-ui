@@ -10,6 +10,8 @@ import type { TakePattern } from "@some-ui/voice-capture"
 import type { MemoryTakes } from "@some-ui/voice-capture/testing"
 
 import type { BundleTakes } from "./lib/idea/bundle-runtime"
+import type { Idea } from "./lib/idea/model"
+import { newIdea, withWords } from "./lib/idea/model"
 import type { Primer } from "./lib/journal/primer"
 import { readPrimer } from "./lib/journal/primer"
 import type { ProjectEvent, ProjectState } from "./lib/project/model"
@@ -72,4 +74,18 @@ export function bundleTakesOf(simulated: {
     discard: store.discard,
     release: store.release,
   }
+}
+
+/**
+ * An idea caught on the phone at `at`, with two answers (what the video is,
+ * and what set it off): one the idea shelf opens, for Claude's reply.
+ */
+export function caughtIdea(id: string, at: string): Idea {
+  return withWords(
+    newIdea(id, at, "what", [
+      { at, how: "heard", words: "A short about the week 8 picks" },
+    ]),
+    "spark",
+    [{ at, how: "typed", words: "The model called Detroit" }]
+  )
 }

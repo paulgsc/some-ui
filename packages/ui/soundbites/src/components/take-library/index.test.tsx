@@ -234,8 +234,9 @@ describe("Takes on home (ST32)", () => {
     )
     await settle()
     expect(screen.getByText(W.phoneFull(1))).toBeTruthy()
+    // Held in its place while the phone keeps no new take (HS1).
     expect(
-      screen.queryByRole("button", { name: TAKE_WORDS.buttonLabel.ready })
-    ).toBeNull()
+      screen.getByRole("button", { name: TAKE_WORDS.buttonLabel.ready })
+    ).toBeDisabled()
   })
 })

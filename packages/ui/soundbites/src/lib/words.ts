@@ -13,8 +13,11 @@ export type ReplacedBy =
   | "current"
 
 export const SOUNDBITE_WORDS = {
-  /** Before the time of the one the next replaces. */
-  fullReplaces: "Full. Your next one replaces",
+  /**
+   * Before the time of the one the next replaces unless another is picked:
+   * a pick moves the mark on the rows, never these words (HS1).
+   */
+  fullReplaces: "Full. Unless you pick another below, your next one replaces",
   /** After that time: why that one, in the order room is made (`./policy`). */
   whichGoes: {
     picked: "",
@@ -22,7 +25,7 @@ export const SOUNDBITE_WORDS = {
     earlier: ", an earlier take",
     current: ", the oldest home has",
   } satisfies Readonly<Record<ReplacedBy, string>>,
-  pickAnother: ". Pick another below to replace that one instead.",
+  pickAnother: ".",
   fullNoneHeld:
     "Full. These stay on this phone until a home it's paired with has them, and then your next one replaces one home has: one you set aside first, then an earlier take, then the oldest.",
   unreadable:

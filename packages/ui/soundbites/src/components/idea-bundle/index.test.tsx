@@ -203,7 +203,7 @@ describe("New idea, one bundle (ST26)", () => {
     })
     fireEvent.click(button(TAKE_WORDS.buttonLabel.ready))
     await pass(50)
-    expect(screen.getByRole("status")).toHaveTextContent(WORDS.failed.title)
+    expect(screen.getByRole("alert")).toHaveTextContent(WORDS.failed.title)
     expect(button(WORDS.failed.again)).toBeInTheDocument()
     expect(button(WORDS.failed.later)).toBeInTheDocument()
     fireEvent.click(button(WORDS.failed.type))
@@ -228,7 +228,8 @@ describe("New idea, one bundle (ST26)", () => {
     toQuestions()
     mic.script({ ...SPEAKING, level: 0 })
     await say()
-    expect(card()).toHaveTextContent(TAKE_WORDS.ended.unheard)
+    // Said over the screen, not in the card (HS1).
+    expect(screen.getByText(TAKE_WORDS.ended.unheard)).toBeInTheDocument()
     fireEvent.click(button(new RegExp(WORDS.unheard.type)))
     expect(card().querySelector("[data-typing='fallback']")).toHaveTextContent(
       WORDS.typing.mark
@@ -263,8 +264,8 @@ describe("New idea, one bundle (ST26)", () => {
     toQuestions()
     keeping("full")
     await say()
-    expect(screen.getByRole("status")).toHaveTextContent(WORDS.full.title)
-    expect(screen.getByRole("status")).not.toHaveTextContent(WORDS.failed.title)
+    expect(screen.getByRole("alert")).toHaveTextContent(WORDS.full.title)
+    expect(screen.getByRole("alert")).not.toHaveTextContent(WORDS.failed.title)
     expect(
       screen.queryByRole("button", { name: WORDS.failed.again })
     ).not.toBeInTheDocument()

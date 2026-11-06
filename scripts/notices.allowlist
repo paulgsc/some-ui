@@ -29,12 +29,6 @@
 6 packages/ui/rust-rounds/src/components/rust-rounds/index.tsx
 1 packages/ui/shared/src/components/ui/alert.tsx
 2 packages/ui/shared/src/components/ui/reserved/index.tsx
-3 packages/ui/soundbites/src/components/idea-bundle/index.tsx
-2 packages/ui/soundbites/src/components/idea-shelf/index.tsx
-2 packages/ui/soundbites/src/components/idea/index.tsx
-2 packages/ui/soundbites/src/components/soundbites/index.tsx
-3 packages/ui/soundbites/src/components/studio/index.tsx
-3 packages/ui/soundbites/src/components/take-library/index.tsx
 2 packages/ui/topik/src/components/topik/change-material/change-material-dialog/index.tsx
 1 packages/ui/topik/src/components/topik/handheld/generate-lesson/index.tsx
 1 packages/ui/topik/src/components/topik/handheld/material-list/index.tsx

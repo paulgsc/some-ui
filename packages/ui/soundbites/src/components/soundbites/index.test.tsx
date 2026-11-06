@@ -20,6 +20,7 @@ import type { SoundbiteSituation } from "@soundbites/lib/machine"
 import { bite, memoryStore } from "@soundbites/lib/memory-store"
 import type { SoundbitesPorts } from "@soundbites/lib/runtime"
 import type { SoundbiteContext } from "@soundbites/lib/types"
+import { SOUNDBITE_WORDS as SB } from "@soundbites/lib/words"
 import {
   act,
   fireEvent,
@@ -235,7 +236,7 @@ describe("Soundbites", () => {
     const { kept } = setup({ kept: FULL })
 
     expect(
-      await screen.findByText(/Full\. Your next one replaces/)
+      await screen.findByText(SB.fullReplaces, { exact: false })
     ).toHaveTextContent(", the oldest home has")
     await record()
 
@@ -257,9 +258,11 @@ describe("Soundbites", () => {
     if (first === undefined) throw new Error("nothing offered to replace")
     expect(screen.getByText("Replaced by your next one")).toBeInTheDocument()
     await settle(() => fireEvent.click(first))
+    // The pick moves the mark on the rows, never the words above them.
+    expect(screen.getAllByText("Replaced by your next one")).toHaveLength(1)
     expect(
-      screen.getByText(/Full\. Your next one replaces/)
-    ).not.toHaveTextContent(", the oldest home has")
+      screen.getByText(SB.fullReplaces, { exact: false })
+    ).toHaveTextContent(", the oldest home has")
 
     await record()
     await screen.findByText(W.ended.kept)
@@ -630,8 +633,10 @@ describe("Soundbites", () => {
     // The next one replaces the one set aside, and says so.
     const set = FULL[0]
     if (set === undefined) throw new Error("six kept")
-    expect(screen.getByText(/Full\. Your next one replaces/)).toHaveTextContent(
-      `Full. Your next one replaces ${formatWhen(set.recordedAt, new Date())}, one you set aside. Pick another below to replace that one instead.`
+    expect(
+      screen.getByText(SB.fullReplaces, { exact: false })
+    ).toHaveTextContent(
+      `${SB.fullReplaces} ${formatWhen(set.recordedAt, new Date())}, one you set aside.`
     )
 
     await record()

@@ -33,7 +33,7 @@ import { useEffect, useState, useSyncExternalStore } from "react"
 import {
   BrandMark,
   Button,
-  Reserved,
+  Notice,
   TakeButton,
   TakeRows,
   useTakePattern,
@@ -152,6 +152,7 @@ export const Soundbites = ({
   // One reading of what home holds for this render, not one per soundbite.
   const held = homeHoldsNow()
   const replaced = kept === null ? null : nextReplaced(kept, choice, held)
+  const unpicked = kept === null ? null : nextReplaced(kept, null, held)
   const bites = new Map((kept ?? []).map((bite) => [bite.id, bite]))
   const view = takeItemView(
     take,
@@ -212,21 +213,28 @@ export const Soundbites = ({
             size="large"
             onTap={() => pattern.tap(SOUNDBITE_ITEM, view.supersedes)}
           />
-          <p
-            aria-live="polite"
-            data-take-ended={
-              view.said?.kind === "ended" ? view.said.ended.seq : undefined
-            }
-            className="text-muted-foreground min-h-5 text-center text-sm"
-          >
-            {said}
-          </p>
-          <Reserved
-            role="alert"
-            className="text-destructive w-full text-center text-sm"
-          >
-            {notice}
-          </Reserved>
+          {/* What a take came to, and what went wrong, over the screen: the
+              button and the list stay where they are (HS1). */}
+          {said !== null && (
+            <Notice>
+              <span
+                data-take-ended={
+                  view.said?.kind === "ended" ? view.said.ended.seq : undefined
+                }
+              >
+                {said}
+              </span>
+            </Notice>
+          )}
+          {notice !== "" && (
+            <Notice
+              role="alert"
+              tone="danger"
+              onDismiss={() => dispatch({ type: "noticeDismissed" })}
+            >
+              {notice}
+            </Notice>
+          )}
         </div>
       </div>
 
@@ -263,36 +271,36 @@ export const Soundbites = ({
           )}
         </div>
 
-        {/* Three lines: the longest this says, on the narrowest phone. */}
-        {full && replaced !== null && (
-          <Reserved lines={3} className="text-muted-foreground text-xs">
+        {/* The one replaced unless another is picked: a pick moves the
+            mark on the rows, never these words, so no row moves (HS1). */}
+        {full && unpicked !== null && (
+          <p className="text-muted-foreground text-xs">
             {WORDS.fullReplaces}{" "}
             <span className="text-foreground font-medium">
-              {formatWhen(replaced.recordedAt, now)}
+              {formatWhen(unpicked.recordedAt, now)}
             </span>
-            {WORDS.whichGoes[replacedBy(replaced, choice)]}
+            {WORDS.whichGoes[replacedBy(unpicked, null)]}
             {WORDS.pickAnother}
-          </Reserved>
+          </p>
         )}
 
-        {full && replaced === null && (
+        {full && unpicked === null && (
           <p className="text-muted-foreground text-xs">{WORDS.fullNoneHeld}</p>
         )}
 
         {library.kind === "unreadable" ? (
-          <div
-            role="alert"
-            className="bg-muted/40 space-y-3 rounded-2xl p-4 text-center text-sm"
-          >
-            <p className="text-muted-foreground">{WORDS.unreadable}</p>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => dispatch({ type: "retryRead" })}
-            >
-              Read them again
-            </Button>
-          </div>
+          <Notice role="alert" tone="danger">
+            <span className="block space-y-2">
+              <span className="block">{WORDS.unreadable}</span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => dispatch({ type: "retryRead" })}
+              >
+                Read them again
+              </Button>
+            </span>
+          </Notice>
         ) : kept === null ? null : kept.length === 0 ? (
           <p className="bg-card border-border/50 text-muted-foreground flex items-center gap-3 rounded-2xl border p-4 text-sm font-medium">
             <BrandMark tone="brand" className="size-9 shrink-0" />

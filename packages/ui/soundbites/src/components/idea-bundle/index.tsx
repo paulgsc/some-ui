@@ -14,6 +14,7 @@ import { assertNever, cn } from "@some-ui/core-utils"
 import {
   Button,
   ConfirmSheet,
+  Notice,
   TakeItem,
   TakeRows,
   usePager,
@@ -69,15 +70,22 @@ export type IdeaBundleProps = {
 
 type Dispatch = (intent: BundleIntent) => void
 
-function noticeSaid(notice: BundleNotice | null): string | null {
-  return notice === null ? null : WORDS.notice[notice]
-}
-
-const Notice = ({ notice }: { notice: BundleNotice | null }): JSX.Element => (
-  <p aria-live="polite" className="text-muted-foreground min-h-5 text-sm">
-    {noticeSaid(notice)}
-  </p>
-)
+/**
+ * What the screen says about what was just done, over the screen (HS1): it
+ * stays until the next tap answers it, or the person closes it.
+ */
+const Said = ({
+  notice,
+  dispatch,
+}: {
+  notice: BundleNotice | null
+  dispatch: Dispatch
+}): JSX.Element | null =>
+  notice === null ? null : (
+    <Notice onDismiss={() => dispatch({ type: "noticeDismissed" })}>
+      {WORDS.notice[notice]}
+    </Notice>
+  )
 
 const Chip = ({
   on,
@@ -218,27 +226,32 @@ function dotLabel(state: BundleState, question: QuestionId, n: number): string {
 const Failed = ({
   question,
   full,
+  active,
   dispatch,
 }: {
   question: QuestionId
   full: boolean
+  /** Its card is the one on screen: only that one says why. */
+  active: boolean
   dispatch: Dispatch
 }): JSX.Element => (
   <div className="flex flex-col gap-3">
-    <div
-      role="status"
-      className="border-destructive/40 bg-destructive/10 flex gap-3 rounded-2xl border p-4"
-    >
-      <MicOff className="mt-1 size-5 shrink-0" aria-hidden="true" />
-      <div className="space-y-1">
-        <p className="font-bold">
-          {full ? WORDS.full.title : WORDS.failed.title}
-        </p>
-        <p className="text-muted-foreground text-sm">
-          {full ? WORDS.full.line : WORDS.failed.line}
-        </p>
-      </div>
-    </div>
+    {/* Why nothing was kept, over the screen (HS1). */}
+    {active && (
+      <Notice role="alert" tone="danger">
+        <span className="flex gap-2">
+          <MicOff className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          <span className="space-y-1">
+            <span className="block font-bold">
+              {full ? WORDS.full.title : WORDS.failed.title}
+            </span>
+            <span className="text-muted-foreground block">
+              {full ? WORDS.full.line : WORDS.failed.line}
+            </span>
+          </span>
+        </span>
+      </Notice>
+    )}
     {!full && (
       <Button size="lg" onClick={() => dispatch({ type: "tap", question })}>
         {WORDS.failed.again}
@@ -398,7 +411,12 @@ const Card = ({
       </h2>
       <p className="text-muted-foreground">{ASK[question].hint}</p>
       {card.kind === "failed" && (
-        <Failed question={question} full={card.full} dispatch={dispatch} />
+        <Failed
+          question={question}
+          full={card.full}
+          active={active}
+          dispatch={dispatch}
+        />
       )}
       {card.kind === "typing" && (
         <Typing question={question} text={card.text} dispatch={dispatch} />
@@ -535,7 +553,7 @@ const Questions = ({
       >
         {WORDS.toReview}
       </Button>
-      <Notice notice={state.notice} />
+      <Said notice={state.notice} dispatch={dispatch} />
     </div>
   )
 }
@@ -680,16 +698,16 @@ const Review = ({
       >
         {near ? WORDS.review.send(n) : WORDS.review.keep(n)}
       </Button>
-      {/* What a tap came to, and what Send waits on, after the last
-          control: they come and go and move nothing (HS1). */}
+      {/* What Send waits on, and what a tap came to, over the screen
+          (HS1). */}
       {needs !== null && (
-        <p role="status" className="text-center text-sm font-semibold">
+        <Notice>
           {needs === "title"
             ? WORDS.review.needsTitle
             : WORDS.review.needsFirst}
-        </p>
+        </Notice>
       )}
-      <Notice notice={state.notice} />
+      <Said notice={state.notice} dispatch={dispatch} />
     </div>
   )
 }
@@ -784,17 +802,21 @@ const Screen = ({
     }
     case "unreadable": {
       return (
-        <div role="alert" className="space-y-2 text-sm">
-          <p>{WORDS.unreadable}</p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => dispatch({ type: "readAgain" })}
-          >
-            {WORDS.readAgain}
-          </Button>
+        <>
+          <Notice role="alert" tone="danger">
+            <span className="block space-y-2">
+              <span className="block">{WORDS.unreadable}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => dispatch({ type: "readAgain" })}
+              >
+                {WORDS.readAgain}
+              </Button>
+            </span>
+          </Notice>
           {back}
-        </div>
+        </>
       )
     }
     case "about": {
@@ -802,7 +824,7 @@ const Screen = ({
         <>
           <About state={state} dispatch={dispatch} />
           {back}
-          <Notice notice={state.notice} />
+          <Said notice={state.notice} dispatch={dispatch} />
         </>
       )
     }

@@ -8,10 +8,9 @@
 import type { JSX, ReactNode } from "react"
 import { useEffect, useId, useState, useSyncExternalStore } from "react"
 import { assertNever } from "@some-ui/core-utils"
-import { Button } from "@some-ui/shared"
+import { Button, Notice } from "@some-ui/shared"
 import type { TurnPhase } from "@some-ui/voice-capture"
 import { TURN_WORDS, turnNoticeSaid } from "@some-ui/voice-capture"
-import { Notice } from "@soundbites/components/notice"
 import type { IdeaIntent, IdeaState } from "@soundbites/lib/idea/machine"
 import { questionNumber } from "@soundbites/lib/idea/machine"
 import type { AnswerTo, Idea } from "@soundbites/lib/idea/model"
@@ -121,99 +120,100 @@ const Ask = ({
         <p className="text-muted-foreground text-sm">{hint}</p>
       </header>
 
-      {(phase.kind === "listening" ||
+      {/* The controls hold their places through the turn, each disabled
+          while it can't be used; what is heard and what to do with it grow
+          below them, and where the listening is is said over the screen
+          (HS1). */}
+      <div className="flex flex-col gap-2">
+        {phase.kind === "listening" ||
         phase.kind === "finishing" ||
-        phase.kind === "heard") && (
-        <p
-          aria-live="polite"
-          className="bg-card border-border/60 min-h-24 rounded-2xl border p-3 text-lg"
-        >
-          {phase.kind !== "heard" && phase.words === "" ? (
-            <span className="text-muted-foreground">{hearingWhere(phase)}</span>
-          ) : (
-            phase.words
+        phase.kind === "hearing" ? (
+          <Button
+            size="lg"
+            disabled={phase.kind !== "listening"}
+            onClick={() => dispatch({ type: "stopTalking" })}
+          >
+            <Square className="size-5" aria-hidden="true" />
+            {TURN_WORDS.stop}
+          </Button>
+        ) : (
+          <Button
+            size="lg"
+            disabled={
+              !canTalk || (phase.kind !== "idle" && phase.kind !== "heard")
+            }
+            onClick={() => dispatch({ type: "talk" })}
+          >
+            <Mic className="size-5" aria-hidden="true" />
+            {phase.kind === "heard" ? TURN_WORDS.again : TURN_WORDS.talk}
+          </Button>
+        )}
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={
+              phase.kind === "heard" ||
+              phase.kind === "fixing" ||
+              phase.kind === "typing"
+            }
+            onClick={() => dispatch({ type: "type" })}
+          >
+            {TURN_WORDS.type}
+          </Button>
+          {state.idea !== null && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => dispatch({ type: "skip" })}
+            >
+              {WORDS.skip}
+            </Button>
           )}
-        </p>
-      )}
-      {phase.kind === "finishing" && phase.words !== "" && (
-        <p aria-live="polite" className="text-muted-foreground text-sm">
-          {TURN_WORDS.finishing}
-        </p>
-      )}
-      {phase.kind === "hearing" && (
-        <div
-          aria-live="polite"
-          className="bg-card border-border/60 min-h-24 space-y-1 rounded-2xl border p-3"
-        >
-          <p className="text-lg">{TURN_WORDS.hearing}</p>
-          <p className="text-muted-foreground text-sm">
-            {TURN_WORDS.hearingLine}
-          </p>
         </div>
-      )}
+      </div>
 
-      {phase.kind === "idle" && canTalk && (
-        <Button size="lg" onClick={() => dispatch({ type: "talk" })}>
-          <Mic className="size-5" aria-hidden="true" />
-          {TURN_WORDS.talk}
-        </Button>
-      )}
-      {phase.kind === "listening" && (
-        <Button size="lg" onClick={() => dispatch({ type: "stopTalking" })}>
-          <Square className="size-5" aria-hidden="true" />
-          {TURN_WORDS.stop}
-        </Button>
-      )}
+      {(phase.kind === "listening" || phase.kind === "finishing") &&
+        phase.words !== "" && (
+          <p
+            aria-live="polite"
+            className="bg-card border-border/60 rounded-2xl border p-3 text-lg"
+          >
+            {phase.words}
+          </p>
+        )}
       {phase.kind === "heard" && (
         <div className="flex flex-col gap-2">
+          <p className="bg-card border-border/60 rounded-2xl border p-3 text-lg">
+            {phase.words}
+          </p>
           <Button size="lg" onClick={() => dispatch({ type: "meant" })}>
             {TURN_WORDS.meant}
           </Button>
           <Button variant="outline" onClick={() => dispatch({ type: "fix" })}>
             {TURN_WORDS.fix}
           </Button>
-          {canTalk && (
-            <Button
-              variant="outline"
-              onClick={() => dispatch({ type: "talk" })}
-            >
-              {TURN_WORDS.again}
-            </Button>
-          )}
         </div>
       )}
       {(phase.kind === "fixing" || phase.kind === "typing") && (
         <Words phase={phase} dispatch={dispatch} label={ask} />
       )}
 
-      <Notice text={turnNoticeSaid(notice)} />
-      {voice === "unavailable" && phase.kind === "typing" && (
-        <p className="text-muted-foreground text-xs">{WORDS.noVoice}</p>
+      {(phase.kind === "listening" || phase.kind === "finishing") && (
+        <Notice>{hearingWhere(phase)}</Notice>
       )}
-
-      <div className="flex flex-wrap gap-2">
-        {(phase.kind === "idle" ||
-          phase.kind === "listening" ||
-          phase.kind === "finishing" ||
-          phase.kind === "hearing") && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => dispatch({ type: "type" })}
-          >
-            {TURN_WORDS.type}
-          </Button>
-        )}
-        {state.idea !== null && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => dispatch({ type: "skip" })}
-          >
-            {WORDS.skip}
-          </Button>
-        )}
-      </div>
+      {phase.kind === "hearing" && (
+        <Notice>
+          <span className="block">{TURN_WORDS.hearing}</span>
+          <span className="text-muted-foreground block">
+            {TURN_WORDS.hearingLine}
+          </span>
+        </Notice>
+      )}
+      {notice !== null && <Notice>{turnNoticeSaid(notice)}</Notice>}
+      {voice === "unavailable" && phase.kind === "typing" && (
+        <Notice>{WORDS.noVoice}</Notice>
+      )}
     </div>
   )
 }
@@ -230,9 +230,7 @@ const Kept = ({
   const asks = state.idea === null ? 0 : skippedAsks(state.idea).length
   return (
     <div className="flex flex-col gap-3">
-      <h2 role="status" className="text-2xl font-extrabold">
-        {WORDS.kept}
-      </h2>
+      <h2 className="text-2xl font-extrabold">{WORDS.kept}</h2>
       <p className="text-muted-foreground text-sm">
         {asks === 0
           ? STUDIO_WORDS.shelf.answered
@@ -272,17 +270,21 @@ export const IdeaCapture = ({
     }
     case "unreadable": {
       return (
-        <div role="alert" className="space-y-2 text-sm">
-          <p>{WORDS.unreadable}</p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => dispatch({ type: "readAgain" })}
-          >
-            {STUDIO_WORDS.readAgain}
-          </Button>
+        <>
+          <Notice role="alert" tone="danger">
+            <span className="block space-y-2">
+              <span className="block">{WORDS.unreadable}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => dispatch({ type: "readAgain" })}
+              >
+                {STUDIO_WORDS.readAgain}
+              </Button>
+            </span>
+          </Notice>
           {back}
-        </div>
+        </>
       )
     }
     case "ask": {
