@@ -63,9 +63,23 @@ export function sectionOf(body: string, heading: string): string | null {
   return text === "" ? null : text
 }
 
-/** `text` without HTML comments, where the PR template keeps its guidance. */
-const withoutComments = (text: string): string =>
-  text.replace(/<!--[\s\S]*?-->/g, "").trim()
+/**
+ * `text` without HTML comments, where the PR template keeps its guidance:
+ * each `<!-- … -->` goes, and an unclosed one takes the rest, as a browser
+ * reads it.
+ */
+function withoutComments(text: string): string {
+  let kept = ""
+  let rest = text
+  for (;;) {
+    const open = rest.indexOf("<!--")
+    if (open === -1) return (kept + rest).trim()
+    kept += rest.slice(0, open)
+    const close = rest.indexOf("-->", open + 4)
+    if (close === -1) return kept.trim()
+    rest = rest.slice(close + 3)
+  }
+}
 
 /** What a "Calls I made" section says, unless it says there were none. */
 export function callsOf(body: string): string | null {

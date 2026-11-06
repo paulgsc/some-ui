@@ -54,6 +54,9 @@ describe("a pull request's body", () => {
     ])
       expect(callsOf(`## Calls I made\n\n${none}`)).toBeNull()
     expect(callsOf("## Description\n\nx")).toBeNull()
+    expect(
+      callsOf("## Calls I made\n\n- Kept it.\n<!-- unclosed guidance")
+    ).toBe("- Kept it.")
   })
 })
 
