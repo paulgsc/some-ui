@@ -1195,7 +1195,7 @@ describe("home's indexes", () => {
       return json(response)
     }
     expect(await refused({ ...JOBS, routine: "topik" })).toEqual({
-      error: "routine must be jobs or reflections",
+      error: "routine must be jobs, reflections or call",
     })
     expect(await refused(JOBS, "index-topik-20261031T144502118Z.json")).toEqual(
       { error: "the name must carry the body's routine" }
@@ -1401,6 +1401,85 @@ describe("home's reflections index", () => {
       (await asHome(d, NAME, { ...REFLECTIONS, asOf: null, validUntil: null }))
         .status
     ).toBe(201)
+  })
+})
+
+describe("home's call index", () => {
+  const HASH = "a".repeat(64)
+  const CALL = {
+    schema: "some-ui.routine-index/1",
+    routine: "call",
+    asOf: "2026-11-06T09:00:00.000Z",
+    held: [
+      { from: "2026-11-06", to: "2026-11-12", sha256: "b".repeat(64) },
+      { from: "2026-10-30", to: "2026-11-05", sha256: HASH },
+    ],
+  }
+  const NAME = "index-call-20261106T090000000Z.json"
+  const asHome = (d: Deps, body: unknown = CALL): Promise<Response> =>
+    put(d, "index", NAME, { token: HOME, body: JSON.stringify(body) })
+
+  it("home puts it and the routine reads it, as home put it", async () => {
+    const d = deps()
+    expect((await asHome(d)).status).toBe(201)
+    expect(await json(await send(d, "GET", `/v1/index/items/${NAME}`))).toEqual(
+      CALL
+    )
+    expect(
+      (await put(d, "index", NAME, { body: JSON.stringify(CALL) })).status
+    ).toBe(403)
+  })
+
+  it("takes only a call index's own shape, and says why not", async () => {
+    const d = deps()
+    const refused = async (body: Record<string, unknown>): Promise<unknown> => {
+      const response = await asHome(d, body)
+      expect(response.status).toBe(422)
+      return json(response)
+    }
+    const week = { from: "2026-10-30", to: "2026-11-05", sha256: HASH }
+    expect(await refused({ ...CALL, keep: 8 })).toEqual({
+      error: "keep is not part of a call index",
+    })
+    const { held: _, ...short } = CALL
+    expect(await refused(short)).toEqual({
+      error: "the call index carries held",
+    })
+    for (const asOf of [null, "this morning", "2026-11-06"]) {
+      expect(await refused({ ...CALL, asOf })).toEqual({
+        error: "asOf must be when home last took a week",
+      })
+    }
+    expect(await refused({ ...CALL, held: {} })).toEqual({
+      error: "held must be a list",
+    })
+    for (const held of [
+      ["2026-10-30"],
+      [{ from: "2026-10-30", to: "2026-11-05" }],
+      [{ ...week, words: "Hello." }],
+    ]) {
+      expect(await refused({ ...CALL, held })).toEqual({
+        error: "each held week is its from, to and sha256",
+      })
+    }
+    for (const days of [
+      { from: "2026-11-05", to: "2026-10-30" },
+      { from: "2026-02-30", to: "2026-03-05" },
+      { from: "../2026-10-30", to: "2026-11-05" },
+    ]) {
+      expect(await refused({ ...CALL, held: [{ ...week, ...days }] })).toEqual({
+        error: "each held week runs from a day to a day no earlier",
+      })
+    }
+    for (const sha256 of ["A".repeat(64), "a".repeat(63), 7]) {
+      expect(await refused({ ...CALL, held: [{ ...week, sha256 }] })).toEqual({
+        error: "each held week's sha256 is 64 lower-case hex characters",
+      })
+    }
+    expect(await refused({ ...CALL, held: [week, week] })).toEqual({
+      error: "each held week is named once",
+    })
+    expect((await asHome(d, { ...CALL, held: [] })).status).toBe(201)
   })
 })
 

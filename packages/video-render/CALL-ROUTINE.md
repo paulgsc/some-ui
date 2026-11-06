@@ -56,11 +56,33 @@ up to 14 days.
    schema, each named for its own days, and no week file the index forgets. A scene's words and lists must fit its frame: keep `said`
    to a few sentences, as the schema's sample does.
 6. **Update `call/index.json`:** the new week first. Keep at most `keep`
-   weeks. A week past `keep` leaves the repository only if home holds it:
-   home's `call` index in the mailbox lists the weeks it keeps (ST36's
-   second slice). Until that index exists, or for a week it doesn't list,
-   keep the week and let the index run past `keep`, saying so in the PR body.
-   Never delete a week home doesn't hold.
+   weeks. A week past `keep` leaves the repository only if home holds it.
+   Home reads the index hourly and keeps every week it lists, and its `call`
+   index in the mailbox lists every week it holds, with the SHA-256 of the
+   bytes it keeps. If `JOBS_MAILBOX_URL` and `JOBS_MAILBOX_TOKEN` are set,
+   list the mailbox's `index` folder:
+
+   ```sh
+   curl -sS --max-time 30 -H "Authorization: Bearer $JOBS_MAILBOX_TOKEN" \
+     "$JOBS_MAILBOX_URL/v1/index/items?after=0&limit=50"
+   ```
+
+   Then fetch the item whose name starts `index-call-` from
+   `index/items/<name>` (the mailbox keeps only the newest, and a `404`
+   means home put a newer one since the listing, so list again, once).
+   A week past `keep` leaves, file and index entry both, only when that
+   index's `held` lists its `from` and `to` with the SHA-256 of the file in
+   the repository (`sha256sum call/<from>.json`). Keep the week, let the
+   index run past `keep` and say why in the PR body when:
+
+   - there is no mailbox or no `call` index;
+   - the index doesn't list the week;
+   - its SHA-256 differs. Home keeps a week as it first read it, so an edit
+     made since never reaches home.
+
+   Never delete a week home doesn't hold byte for byte, and never edit a
+   week home already holds.
+
 7. **Open a pull request** in `paulgsc/testing` with the week, the index and
    any week leaving, titled `data(call): the weekly call for <from> to <to>`.
    Its body says what the week's facts held (counts), any ask that didn't

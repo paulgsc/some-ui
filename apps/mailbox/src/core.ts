@@ -424,6 +424,15 @@ const REFLECTIONS_INDEX_KEYS: ReadonlySet<string> = new Set([
   "reflections",
   "prompts",
 ])
+/** The keys of a `some-ui.routine-index/1` body for the weekly call's routine; any other is refused. */
+const CALL_INDEX_KEYS: ReadonlySet<string> = new Set([
+  "schema",
+  "routine",
+  "asOf",
+  "held",
+])
+/** The keys of each week the call index lists. */
+const HELD_WEEK_KEYS: ReadonlyArray<string> = ["from", "to", "sha256"]
 const NO_AUDIO_INDEX = "an index carries no audio: home keeps the audio"
 const NO_DRIVE_INDEX = "an index names no Drive file"
 
@@ -486,6 +495,41 @@ const reflectionsShape: IndexShape = (body) => {
   )
 }
 
+/**
+ * The weekly call's index (paulgsc/some-ui#2635, ST36): when home last took a
+ * week, and every week it holds, each named once by its days and the SHA-256
+ * of the bytes home keeps. The routine lets a week leave `paulgsc/testing`
+ * only once this lists it, so the Worker holds each week to its shape.
+ */
+const callShape: IndexShape = (body) => {
+  if (!isInstant(body.asOf)) return "asOf must be when home last took a week"
+  const held: unknown = body.held
+  if (!Array.isArray(held)) return "held must be a list"
+  const seen = new Set<string>()
+  for (const week of held.values()) {
+    if (
+      !isRecord(week) ||
+      Object.keys(week).length !== HELD_WEEK_KEYS.length ||
+      !HELD_WEEK_KEYS.every((key) => key in week)
+    ) {
+      return "each held week is its from, to and sha256"
+    }
+    if (
+      !isCalendarDay(week.from) ||
+      !isCalendarDay(week.to) ||
+      week.to < week.from
+    ) {
+      return "each held week runs from a day to a day no earlier"
+    }
+    if (typeof week.sha256 !== "string" || !SHA256_HEX.test(week.sha256)) {
+      return "each held week's sha256 is 64 lower-case hex characters"
+    }
+    if (seen.has(week.from)) return "each held week is named once"
+    seen.add(week.from)
+  }
+  return null
+}
+
 /** The routines home computes an index for (README, "What a put must satisfy"), each with its keys and shape. */
 const INDEX_ROUTINES: ReadonlyMap<
   unknown,
@@ -493,7 +537,14 @@ const INDEX_ROUTINES: ReadonlyMap<
 > = new Map([
   ["jobs", { keys: JOBS_INDEX_KEYS, shape: jobsShape }],
   ["reflections", { keys: REFLECTIONS_INDEX_KEYS, shape: reflectionsShape }],
+  ["call", { keys: CALL_INDEX_KEYS, shape: callShape }],
 ])
+
+/** The routines an index may be for, said as a list: "jobs, reflections or call". */
+const INDEX_ROUTINE_NAMES = ((names: ReadonlyArray<string>) =>
+  `${names.slice(0, -1).join(", ")} or ${names.at(-1) ?? ""}`)(
+  [...INDEX_ROUTINES.keys()].map(String)
+)
 
 /**
  * README, "What a put must satisfy": an index is home's bookkeeping for one
@@ -506,7 +557,7 @@ function indexRefusal(
 ): string | null {
   const routine = INDEX_ROUTINES.get(body.routine)
   if (routine === undefined) {
-    return `routine must be ${[...INDEX_ROUTINES.keys()].join(" or ")}`
+    return `routine must be ${INDEX_ROUTINE_NAMES}`
   }
   const what = `${String(body.routine)} index`
   const shape = shapeRefusal(
