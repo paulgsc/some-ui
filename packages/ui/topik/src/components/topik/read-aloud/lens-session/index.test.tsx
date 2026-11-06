@@ -244,11 +244,12 @@ describe("LensSession", () => {
     }
     await record(2_500)
     await record(2_500)
-    // Many a line, beside each other: only the newest plays.
+    // Many a line, beside each other, oldest first so a new one comes in
+    // below: only the newest plays.
     const plays = screen.getAllByRole("button", { name: /^Play the take/ })
     expect(plays.map((play) => play.hasAttribute("disabled"))).toEqual([
-      false,
       true,
+      false,
     ])
     const line = takes.store.getSnapshot()[0]?.answers
     answerCard()
@@ -282,7 +283,10 @@ describe("LensSession", () => {
     ) {
       answerCard()
     }
-    expect(document.querySelector("[data-take]")).toBeNull()
+    // The button stays in its place, disabled.
+    expect(
+      document.querySelector<HTMLButtonElement>("[data-take]")?.disabled
+    ).toBe(true)
     expect(screen.getByRole("status").textContent).toMatch(
       /kept as many takes as it can until a home it's paired with has/i
     )

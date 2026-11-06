@@ -7,18 +7,18 @@
  * can answer all of it.
  *
  * In the session theme: it names each scene's feeling, but wears none (MK6).
- * Questions are Hangul, with their English one tap away; answers show their
- * English small beneath, since they are not items.
+ * Questions are Hangul, with their English one tap away: the tap is first in
+ * the review, so the English it shows grows the review below it (HS1).
+ * Answers show their English small beneath, since they are not items.
  */
 
-import type { JSX, ReactNode } from "react"
+import type { JSX } from "react"
 import { useId, useState } from "react"
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-  Held,
   Input,
   SameWidth,
 } from "@some-ui/shared"
@@ -57,22 +57,19 @@ type Answer<Key extends string> = {
   picked: boolean
 }
 
-/** A question's English, held until it shows (HS1). */
+/** A question's English, once asked for. */
 const English = ({
   shown,
   children,
 }: {
   shown: boolean
-  children: ReactNode
-}): JSX.Element => (
-  <Held
-    shown={shown}
-    lang="en"
-    className="text-muted-foreground block font-normal"
-  >
-    {children}
-  </Held>
-)
+  children: string
+}): JSX.Element | null =>
+  shown ? (
+    <span lang="en" className="text-muted-foreground block font-normal">
+      {children}
+    </span>
+  ) : null
 
 const Question = <Key extends string>({
   ko,
@@ -140,6 +137,16 @@ export const DramaReview = ({
         </AccordionTrigger>
         {/* Its padding keeps the text field's focus ring inside the clip. */}
         <AccordionContent className="flex flex-col gap-4 px-1 pb-4">
+          <button
+            type="button"
+            aria-pressed={english}
+            onClick={() => setEnglish(!english)}
+            className="text-muted-foreground min-h-11 self-start text-left text-sm underline"
+          >
+            <SameWidth every={["Show English", "Hide English"]}>
+              {english ? "Hide English" : "Show English"}
+            </SameWidth>
+          </button>
           <Question
             ko="재미있었어요?"
             en="Did you enjoy it?"
@@ -204,16 +211,6 @@ export const DramaReview = ({
               className="h-12 rounded-2xl text-base md:text-base"
             />
           </div>
-          <button
-            type="button"
-            aria-pressed={english}
-            onClick={() => setEnglish(!english)}
-            className="text-muted-foreground min-h-11 self-start text-left text-sm underline"
-          >
-            <SameWidth every={["Show English", "Hide English"]}>
-              {english ? "Hide English" : "Show English"}
-            </SameWidth>
-          </button>
         </AccordionContent>
       </AccordionItem>
     </Accordion>

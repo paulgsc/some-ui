@@ -10,7 +10,7 @@ import type { TakePatternSnapshot } from "@some-ui/voice-capture"
 import { takeItemView } from "@some-ui/voice-capture"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
 import { LensCard } from "@topik/components/topik/read-aloud/lens-card"
-import { HeldNote } from "@topik/components/topik/read-aloud/rep-card"
+import { HeldResume } from "@topik/components/topik/read-aloud/rep-card"
 import { SessionHeader } from "@topik/components/topik/read-aloud/session-header"
 import { SetCard } from "@topik/components/topik/read-aloud/set-card"
 import type { UseLensSessionOptions } from "@topik/lib/topik/adapter/hooks/use-lens-session"
@@ -125,7 +125,7 @@ export const LensSession = ({
         <StepLayout
           short={short}
           stage={<p className="text-muted-foreground text-sm">Paused</p>}
-          dock={<HeldNote />}
+          dock={<HeldResume />}
         />
       )
     }

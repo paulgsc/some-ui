@@ -1,9 +1,6 @@
 import type { JSX } from "react"
 import { useCallback, useMemo, useState } from "react"
 import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
   Badge,
   Button,
   Dialog,
@@ -11,6 +8,8 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  Notice,
+  SameWidth,
 } from "@some-ui/shared"
 import { BookshelfGrid } from "@topik/components/topik/change-material/bookshelf-grid"
 import { OmniSearchInput } from "@topik/components/topik/change-material/omni-search-input"
@@ -18,14 +17,12 @@ import { TopikBookCard } from "@topik/components/topik/change-material/topik-boo
 import type { TopikMetadata } from "@topik/lib/topik"
 import { getRecommendedItems } from "@topik/lib/topik/utils"
 import {
-  AlertCircle,
   BookOpen,
   Clock,
   Layers,
   RefreshCw,
   Sparkles,
   Target,
-  XCircle,
 } from "lucide-react"
 
 // Props
@@ -40,6 +37,48 @@ type ChangeMaterialDialogProps = {
   onConfirm: (key: string) => void
   onReload?: () => void
 }
+
+/**
+ * A load that failed, said on the dialog's notice plane over its content
+ * (HS1), with Retry where the host can load again.
+ */
+const LoadFailed = ({
+  title,
+  error,
+  tone,
+  reloading,
+  onReload,
+  onDismiss,
+}: {
+  title: string
+  error: string
+  tone: "danger" | "warning"
+  reloading: boolean
+  onReload?: () => void
+  onDismiss?: () => void
+}): JSX.Element => (
+  <Notice role="alert" tone={tone} onDismiss={onDismiss}>
+    <div className="flex flex-col items-start gap-2">
+      <p className="font-semibold">{title}</p>
+      <p>{error}</p>
+      {onReload && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onReload}
+          disabled={reloading}
+        >
+          <RefreshCw
+            className={`size-4 mr-2 ${reloading ? "animate-spin" : ""}`}
+          />
+          <SameWidth every={["Retry", "Retrying..."]}>
+            {reloading ? "Retrying..." : "Retry"}
+          </SameWidth>
+        </Button>
+      )}
+    </div>
+  </Notice>
+)
 
 // Component
 
@@ -61,6 +100,8 @@ export const ChangeMaterialDialog = ({
   const [highlightedKey, setHighlightedKey] = useState<string | undefined>()
   const [page, setPage] = useState(1)
   const [isReloading, setIsReloading] = useState(false)
+  // The partial-load warning the person dismissed, until another one.
+  const [dismissedError, setDismissedError] = useState<string | null>(null)
 
   const items = useMemo(() => topikItems, [topikItems])
 
@@ -154,69 +195,38 @@ export const ChangeMaterialDialog = ({
 
         {/* ─── Loading state ───────────────────────────────── */}
         {loading && (
-          <div className="flex items-center justify-center py-16">
-            <div className="text-center">
-              <div className="inline-block size-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent" />
-              <p className="mt-3 text-sm text-muted-foreground">
-                Loading materials...
-              </p>
-            </div>
-          </div>
+          <Notice role="status">
+            <span className="flex items-center gap-2">
+              <span className="inline-block size-4 animate-spin rounded-full border-2 border-solid border-primary border-r-transparent" />
+              Loading materials...
+            </span>
+          </Notice>
         )}
 
         {/* ─── Fatal error (no items available) ────────────── */}
         {!loading && hasFatalError && (
-          <div className="py-8">
-            <Alert variant="destructive">
-              <XCircle className="size-4" />
-              <AlertTitle>Failed to Load Materials</AlertTitle>
-              <AlertDescription className="mt-2 space-y-3">
-                <p>{error}</p>
-                {onReload && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleReload}
-                    disabled={isReloading}
-                  >
-                    <RefreshCw
-                      className={`size-4 mr-2 ${isReloading ? "animate-spin" : ""}`}
-                    />
-                    {isReloading ? "Retrying..." : "Retry"}
-                  </Button>
-                )}
-              </AlertDescription>
-            </Alert>
-          </div>
+          <LoadFailed
+            title="Failed to Load Materials"
+            error={error}
+            tone="danger"
+            reloading={isReloading}
+            onReload={onReload && handleReload}
+          />
         )}
 
         {/* ─── Main content ────────────────────────────────── */}
         {!loading && !hasFatalError && (
           <div className="flex flex-col gap-5 mt-2">
-            {/* Non-fatal error banner */}
-            {error && items.length > 0 && (
-              <Alert className="border-[hsl(40,50%,65%)] bg-[hsl(40,30%,93%)] dark:bg-[hsl(40,12%,14%)]">
-                <AlertCircle className="size-4 text-[hsl(40,60%,40%)]" />
-                <AlertTitle className="text-[hsl(40,35%,25%)] dark:text-[hsl(40,30%,75%)]">
-                  Partial Load
-                </AlertTitle>
-                <AlertDescription className="mt-2 space-y-3 text-[hsl(40,25%,35%)] dark:text-[hsl(40,20%,65%)]">
-                  <p>{error}</p>
-                  {onReload && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleReload}
-                      disabled={isReloading}
-                    >
-                      <RefreshCw
-                        className={`size-4 mr-2 ${isReloading ? "animate-spin" : ""}`}
-                      />
-                      {isReloading ? "Retrying..." : "Retry"}
-                    </Button>
-                  )}
-                </AlertDescription>
-              </Alert>
+            {/* Non-fatal error */}
+            {error && items.length > 0 && error !== dismissedError && (
+              <LoadFailed
+                title="Partial Load"
+                error={error}
+                tone="warning"
+                reloading={isReloading}
+                onReload={onReload && handleReload}
+                onDismiss={() => setDismissedError(error)}
+              />
             )}
 
             {/* Search */}

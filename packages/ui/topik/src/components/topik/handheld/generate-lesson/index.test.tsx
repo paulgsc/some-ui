@@ -202,7 +202,8 @@ describe("GenerateLesson's spoken scene", () => {
         ask,
       },
     })
-    expect(screen.getByText("Nothing asked yet.")).toBeTruthy()
+    // Before any ask, nothing is said of one.
+    expect(screen.queryByText("Nothing asked yet.")).toBeNull()
     expect(screen.getByText(/go with your ask/)).toBeTruthy()
     click(/Ask for the next scene/)
     const asked = ask.mock.calls[0]?.[0]
@@ -253,13 +254,18 @@ describe("GenerateLesson's spoken scene", () => {
     expect(screen.getByRole("status").textContent).toMatch(
       /kept as many voice notes as it can\. One you let go makes room once a home it's paired with has it/
     )
-    expect(document.querySelector("[data-take]")).toBeNull()
+    // The button and each Redo stay in their places, disabled.
+    expect(
+      document.querySelector<HTMLButtonElement>("[data-take]")?.disabled
+    ).toBe(true)
     expect(
       screen.getAllByRole("button", { name: /^Let it go the take/ })
     ).toHaveLength(2)
-    expect(
-      screen.queryAllByRole("button", { name: /^Redo the take/ })
-    ).toHaveLength(0)
+    const redos = screen.getAllByRole("button", { name: /^Redo the take/ })
+    expect(redos.map((redo) => redo.hasAttribute("disabled"))).toEqual([
+      true,
+      true,
+    ])
     // The earlier one a Redo superseded stays, collapsed, and plays.
     expect(screen.getByText("Earlier take (1)")).toBeTruthy()
     const plays = screen.getAllByRole("button", { name: /^Play the take/ })

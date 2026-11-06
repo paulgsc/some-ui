@@ -8,13 +8,18 @@
  * and shows the line as it was answered; its questions are marked neither
  * right nor wrong. The reveal shows the line as authored, the rule, and the
  * words that decided it, and never what the line means: no English gloss
- * appears here (Cor. 4.8 (i)).
+ * appears here (Cor. 4.8 (i)). Below them in the stage, which grows and
+ * scrolls, are its optional situations and the learner's takes of the line;
+ * the dock keeps only what the thumb does next (hear, record, move on), so
+ * nothing kept or picked moves it (HS1).
  */
 
 import type { JSX, ReactNode } from "react"
+import { useState } from "react"
 import { assertNever, cn } from "@some-ui/core-utils"
-import { Button, Reserved, TakeItem } from "@some-ui/shared"
+import { Button, Notice, TakeButton, TakeRows } from "@some-ui/shared"
 import type { TakeItemView, TakePlace } from "@some-ui/voice-capture"
+import { TAKE_WORDS, takeSaid } from "@some-ui/voice-capture"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
 import type { Tense } from "@topik/lib/topik/read-aloud/content"
 import { TENSES } from "@topik/lib/topik/read-aloud/content"
@@ -211,36 +216,88 @@ const ModeIcon = ({ modality }: { modality: CueModality }): JSX.Element => (
   </span>
 )
 
+/** What the phone says while it keeps no new take. */
+const TAKES_FULL =
+  "This phone has kept as many takes as it can until a home it's paired with has the ones on it."
+
+type LineTake = NonNullable<LensCardProps["take"]>
+
 /**
- * Record yourself reading the line as authored, then play it back (Rem.
- * 4.16): the take pattern's parts. While the phone has kept as many as it
- * can, nothing records, the line says what makes room, and the takes still
- * play.
+ * Record yourself reading the line as authored (Rem. 4.16): the take
+ * pattern's button, in the dock. While the phone has kept as many as it
+ * can, the button stays, disabled, and the notice says what makes room. How
+ * the last take ended is said over the screen too, so the dock's controls
+ * hold still (HS1).
  */
-const LineTakes = ({
-  take,
-}: {
-  take: NonNullable<LensCardProps["take"]>
-}): JSX.Element => {
+const LineTakeButton = ({ take }: { take: LineTake }): JSX.Element => {
   const { view } = take
+  const full = take.full && !take.taking
+  // What the person dismissed: the line's word on a take, by what it says,
+  // and the phone's fullness.
+  const [dismissed, setDismissed] = useState<string | null>(null)
+  const said = view.said === null ? null : takeSaid(TAKE_WORDS, view.said)
+  const saidKey =
+    view.said === null
+      ? null
+      : view.said.kind === "ended"
+        ? `ended:${view.said.ended.seq}`
+        : JSON.stringify(view.said)
+  const [fullDismissed, setFullDismissed] = useState(false)
+  // Room again, so a later fullness is said again.
+  if (!full && fullDismissed) setFullDismissed(false)
   return (
-    <div data-slot="lens-take">
-      <TakeItem
-        view={view}
-        label="Your takes of B"
-        onTap={take.onTap}
-        onPlay={take.onPlay}
-        onRedo={take.onRedo}
-        onLetGo={take.onLetGo}
-        full={
-          take.full && !take.taking
-            ? "This phone has kept as many takes as it can until a home it's paired with has the ones on it."
-            : undefined
-        }
+    <div data-slot="lens-take" className="flex justify-center">
+      <TakeButton
+        view={view.button}
+        canStart={!full}
+        onTap={() => {
+          setDismissed(null)
+          take.onTap()
+        }}
       />
+      {full && !fullDismissed && (
+        <Notice
+          role="status"
+          tone="warning"
+          onDismiss={() => setFullDismissed(true)}
+        >
+          {TAKES_FULL}
+        </Notice>
+      )}
+      {!full && said !== null && saidKey !== dismissed && (
+        <Notice
+          role={view.said?.kind === "unplayable" ? "alert" : "status"}
+          tone={view.said?.kind === "unplayable" ? "warning" : "neutral"}
+          onDismiss={() => setDismissed(saidKey)}
+        >
+          {said}
+        </Notice>
+      )}
     </div>
   )
 }
+
+/**
+ * The line's takes, in the stage under the reveal, oldest first: a take kept
+ * grows the stage below everything on it, and the dock above the thumb
+ * holds still. While the phone is full, each row's Redo, which records
+ * one, stays, disabled.
+ */
+const LineTakeRows = ({ take }: { take: LineTake }): JSX.Element => (
+  <section
+    aria-label="Your takes of B"
+    data-slot="lens-take-rows"
+    className="flex w-full flex-col gap-3"
+  >
+    <TakeRows
+      view={{ ...take.view, current: [...take.view.current].reverse() }}
+      onPlay={take.onPlay}
+      onRedo={take.onRedo}
+      canRedo={!take.full || take.taking}
+      onLetGo={take.onLetGo}
+    />
+  </section>
+)
 
 export const LensCard = ({
   item,
@@ -262,6 +319,8 @@ export const LensCard = ({
 }: LensCardProps): JSX.Element => {
   const answering = phase.name === "item"
   const revealed = phase.name === "reveal"
+  // "Noted." for a situation picked, until dismissed or the next pick.
+  const [notedDismissed, setNotedDismissed] = useState(false)
   const { shape } = item
   const answer = outcome?.answer ?? null
   const modality = item.cue && (audio && !cueRead ? item.cue.modality : "glyph")
@@ -422,6 +481,7 @@ export const LensCard = ({
   const probe = step === null ? undefined : item.probes[step]
   const asked = probe && probeQuestion(item, probe)
   const verdict = revealed && outcome ? verdictOf(item, outcome) : null
+  const situation = outcome?.situation
   const entries = shownMistakes(item)
 
   const stage = (
@@ -489,6 +549,36 @@ export const LensCard = ({
           ))}
         </div>
       )}
+      {revealed && item.situations && situation && (
+        <div
+          data-slot="lens-situation"
+          className="flex w-full flex-col gap-1.5 text-left"
+        >
+          <span className="text-muted-foreground text-xs">
+            Optional · When would someone say B?
+          </span>
+          {item.situations.options.map((option, index) => (
+            <Button
+              key={option}
+              variant={situation.chosen === index ? "secondary" : "outline"}
+              aria-pressed={situation.chosen === index}
+              className="h-auto justify-start rounded-xl py-2 text-left text-sm whitespace-normal"
+              onClick={() => {
+                setNotedDismissed(false)
+                onSituation(index)
+              }}
+            >
+              {option}
+            </Button>
+          ))}
+          {situation.chosen !== null && !notedDismissed && (
+            <Notice role="status" onDismiss={() => setNotedDismissed(true)}>
+              Noted.
+            </Notice>
+          )}
+        </div>
+      )}
+      {revealed && take && <LineTakeRows take={take} />}
     </div>
   )
 
@@ -570,39 +660,8 @@ export const LensCard = ({
       </>
     )
   } else {
-    const situation = outcome?.situation
     dock = (
       <>
-        {item.situations && situation && (
-          <div
-            data-slot="lens-situation"
-            data-scroll-intent="long-form"
-            className={
-              // scroll-intent: long-form — a situation is as long as its
-              // author wrote it, and held sideways the dock is 390px tall:
-              // every option must stay reachable above the dock's buttons.
-              "flex min-h-0 flex-col gap-1.5 overflow-y-auto overscroll-contain"
-            }
-          >
-            <span className="text-muted-foreground text-xs">
-              Optional · When would someone say B?
-            </span>
-            {item.situations.options.map((option, index) => (
-              <Button
-                key={option}
-                variant={situation.chosen === index ? "secondary" : "outline"}
-                aria-pressed={situation.chosen === index}
-                className="h-auto justify-start rounded-xl py-2 text-left text-sm whitespace-normal"
-                onClick={() => onSituation(index)}
-              >
-                {option}
-              </Button>
-            ))}
-            <Reserved role="status" className="text-muted-foreground text-xs">
-              {situation.chosen !== null && "Noted."}
-            </Reserved>
-          </div>
-        )}
         {audio && (
           <div className="flex gap-2">
             {item.cue && !cueRead && cueButton("Hear A")}
@@ -619,7 +678,7 @@ export const LensCard = ({
             </Button>
           </div>
         )}
-        {take && <LineTakes take={take} />}
+        {take && <LineTakeButton take={take} />}
         <Button
           className="h-12 rounded-2xl"
           disabled={recording}
@@ -632,16 +691,6 @@ export const LensCard = ({
   }
 
   return (
-    <StepLayout
-      short={short}
-      stage={stage}
-      dock={dock}
-      longForm={revealed}
-      // The situation's options and the line's takes can outgrow the dock.
-      dockScrolls={
-        revealed &&
-        (outcome?.situation != null || (take?.view.current.length ?? 0) > 0)
-      }
-    />
+    <StepLayout short={short} stage={stage} dock={dock} longForm={revealed} />
   )
 }

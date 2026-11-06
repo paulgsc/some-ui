@@ -115,11 +115,10 @@ describe("WebtoonPanel's script", () => {
     expect(screen.getByText("다음 화 예고")).toBeTruthy()
     expect(screen.getByText(leaf.hook.text)).toBeTruthy()
     const { gloss: said } = leaf.hook
-    const gloss = (): Element | null =>
-      screen.getByText(said).closest("[aria-hidden=true]")
-    expect(gloss()).not.toBeNull()
+    const gloss = (): Element | null => screen.queryByText(said)
+    expect(gloss()).toBeNull()
     cleanup()
     draw(ending, 2)
-    expect(gloss()).toBeNull()
+    expect(gloss()).not.toBeNull()
   })
 })

@@ -24,11 +24,6 @@
 1 packages/ui/leetype/src/components/typing-game/typing-error-alert/index.tsx
 1 packages/ui/shared/src/components/ui/alert.tsx
 2 packages/ui/shared/src/components/ui/reserved/index.tsx
-2 packages/ui/topik/src/components/topik/change-material/change-material-dialog/index.tsx
-1 packages/ui/topik/src/components/topik/handheld/generate-lesson/index.tsx
-1 packages/ui/topik/src/components/topik/handheld/material-list/index.tsx
-1 packages/ui/topik/src/components/topik/handheld/portion-menu/index.tsx
-1 packages/ui/topik/src/components/topik/read-aloud/lens-card/index.tsx
 
 # Content: the route's loading screen, a skeleton that is the whole screen
 # until the route resolves and is replaced by it; it holds no room in a
@@ -52,3 +47,9 @@
 # Content: when the routine last read home's list, the figure this readout
 # on Settings → Home exists to show.
 1 apps/www/src/components/settings/device-routine-reads.tsx
+
+# Content: what "What are you hungry for?" served, in the dish's place on the
+# served screen, a screen of its own reached by Serve: that nothing on the
+# phone fits the order is the whole of that screen's answer, and no tap on it
+# changes it (Another like it only comes after a dish).
+1 packages/ui/topik/src/components/topik/handheld/portion-menu/index.tsx

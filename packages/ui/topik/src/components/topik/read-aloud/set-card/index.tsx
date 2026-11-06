@@ -1,7 +1,7 @@
 import type { ComponentProps, JSX, ReactNode } from "react"
 import { useEffect, useState } from "react"
 import { cn } from "@some-ui/core-utils"
-import { Button } from "@some-ui/shared"
+import { Button, Notice } from "@some-ui/shared"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
 import { PracticeRecordView } from "@topik/components/topik/read-aloud/practice-record"
 import { TallyClear } from "@topik/components/topik/read-aloud/tally-clear"
@@ -147,6 +147,9 @@ const Summary = ({
  */
 export const SetCard = (props: SetCardProps): JSX.Element => {
   const { short, onStop } = props
+  // The sitting's end: what the last feedback tap kept, until dismissed or
+  // the next tap.
+  const [savedDismissed, setSavedDismissed] = useState(false)
 
   if (props.kind === "summary") {
     return (
@@ -184,14 +187,15 @@ export const SetCard = (props: SetCardProps): JSX.Element => {
               {props.note ??
                 "Your set is kept. It picks up at its next item whenever you come back, now included."}
             </p>
-            {feedback && (
-              <p
-                data-slot="read-aloud-feedback-saved"
-                aria-live="polite"
-                className="text-foreground min-h-5 text-sm leading-relaxed"
+            {/* What a tap kept, said over the screen (HS1). */}
+            {saved && !savedDismissed && (
+              <Notice
+                role={feedback.kept ? "status" : "alert"}
+                tone={feedback.kept ? "neutral" : "warning"}
+                onDismiss={() => setSavedDismissed(true)}
               >
-                {saved}
-              </p>
+                <span data-slot="read-aloud-feedback-saved">{saved}</span>
+              </Notice>
             )}
           </div>
         }
@@ -217,7 +221,10 @@ export const SetCard = (props: SetCardProps): JSX.Element => {
                         pressed && "ring-primary ring-2"
                       )}
                       aria-pressed={pressed}
-                      onClick={() => feedback.onToggle(key)}
+                      onClick={() => {
+                        setSavedDismissed(false)
+                        feedback.onToggle(key)
+                      }}
                     >
                       {FEEDBACK_WORDS.label(key)}
                     </Button>

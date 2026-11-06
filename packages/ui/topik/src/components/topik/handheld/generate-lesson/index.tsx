@@ -1,5 +1,5 @@
 import type { JSX } from "react"
-import { useEffect, useRef, useState } from "react"
+import { useState } from "react"
 import { cn } from "@some-ui/core-utils"
 import {
   Accordion,
@@ -8,6 +8,7 @@ import {
   AccordionTrigger,
   Button,
   Input,
+  Notice,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -186,61 +187,73 @@ function verdictOf(
   }
 }
 
-/** What the intake made of the reply. */
-const VerdictView = ({
+/**
+ * What the intake made of the reply, said over the screen (HS1): the reply
+ * was read at a tap, and the dock's one action already says what comes next.
+ */
+const VerdictNotice = ({
   verdict,
   success,
+  onDismiss,
 }: {
   verdict: Verdict
   /** Said when a lesson that plays has no findings. */
   success: string
+  onDismiss: () => void
 }): JSX.Element => {
   if (verdict.kind === "absent") {
     return (
-      <p role="alert" className="text-destructive text-sm">
+      <Notice role="alert" tone="danger" onDismiss={onDismiss}>
         {verdict.error}
-      </p>
+      </Notice>
     )
   }
   const rejected = verdict.kind === "rejected"
   return (
-    <div
+    <Notice
       role={rejected ? "alert" : "status"}
-      className="flex flex-col gap-2 text-sm"
+      tone={rejected ? "danger" : "neutral"}
+      onDismiss={onDismiss}
     >
-      {verdict.title && <p className="font-semibold">{verdict.title}</p>}
-      {verdict.summary === null ? (
-        <p className="text-success flex items-center gap-2">
-          <Check className="size-4" /> {success}
-        </p>
-      ) : (
-        <p className={rejected ? "text-destructive" : "text-muted-foreground"}>
-          {verdict.summary}
-        </p>
-      )}
-      {verdict.findings.length > 0 && (
-        <ul className="flex flex-col gap-1">
-          {verdict.findings.slice(0, SHOWN_FINDINGS).map((finding) => (
-            <li
-              key={finding.key}
-              className={cn(
-                "rounded-lg px-2 py-1 text-xs",
-                finding.error
-                  ? "bg-destructive/10 text-destructive"
-                  : "bg-muted text-muted-foreground"
-              )}
-            >
-              {finding.text}
-            </li>
-          ))}
-        </ul>
-      )}
-      {verdict.findings.length > SHOWN_FINDINGS && (
-        <p className="text-muted-foreground text-xs">
-          and {verdict.findings.length - SHOWN_FINDINGS} more
-        </p>
-      )}
-    </div>
+      <div className="flex flex-col gap-2">
+        {verdict.title && (
+          <p className="text-foreground font-semibold">{verdict.title}</p>
+        )}
+        {verdict.summary === null ? (
+          <p className="text-success flex items-center gap-2">
+            <Check className="size-4" /> {success}
+          </p>
+        ) : (
+          <p
+            className={rejected ? "text-destructive" : "text-muted-foreground"}
+          >
+            {verdict.summary}
+          </p>
+        )}
+        {verdict.findings.length > 0 && (
+          <ul className="flex flex-col gap-1">
+            {verdict.findings.slice(0, SHOWN_FINDINGS).map((finding) => (
+              <li
+                key={finding.key}
+                className={cn(
+                  "rounded-lg px-2 py-1 text-xs",
+                  finding.error
+                    ? "bg-destructive/10 text-destructive"
+                    : "bg-muted text-muted-foreground"
+                )}
+              >
+                {finding.text}
+              </li>
+            ))}
+          </ul>
+        )}
+        {verdict.findings.length > SHOWN_FINDINGS && (
+          <p className="text-muted-foreground text-xs">
+            and {verdict.findings.length - SHOWN_FINDINGS} more
+          </p>
+        )}
+      </div>
+    </Notice>
   )
 }
 
@@ -288,13 +301,13 @@ export const GenerateLesson = ({
   const [verdict, setVerdict] = useState<Verdict | null>(() =>
     initialReply === undefined ? null : verdictOf(initialReply, onStartTree)
   )
-  const verdictView = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    const node = verdictView.current
-    if (node && typeof node.scrollIntoView === "function") {
-      node.scrollIntoView({ block: "nearest" })
-    }
-  }, [verdict])
+  // The verdict's notice, until the person dismisses it; the verdict itself
+  // stays, since the dock's action is the verdict's.
+  const [told, setTold] = useState(true)
+  const read = (text: string): void => {
+    setVerdict(verdictOf(text, onStartTree))
+    setTold(true)
+  }
 
   const hand = async (
     text: string,
@@ -421,15 +434,6 @@ export const GenerateLesson = ({
         />
       </section>
       {kept}
-      {/*
-       * Last, after every control, so a verdict that comes and goes moves
-       * none of them (HS1); brought into view when it comes.
-       */}
-      {verdict && (
-        <div ref={verdictView} className="scroll-mb-4">
-          <VerdictView verdict={verdict} success="Ready to play." />
-        </div>
-      )}
     </div>
   )
 
@@ -477,7 +481,7 @@ export const GenerateLesson = ({
       return {
         above: copyAgain,
         main: {
-          onClick: () => setVerdict(verdictOf(reply, onStartTree)),
+          onClick: () => read(reply),
           content: <>Read the reply</>,
         },
       }
@@ -550,6 +554,13 @@ export const GenerateLesson = ({
   return (
     <>
       <StepLayout short={short} stage={stage} dock={dock} longForm />
+      {verdict && told && (
+        <VerdictNotice
+          verdict={verdict}
+          success="Ready to play."
+          onDismiss={() => setTold(false)}
+        />
+      )}
       {/*
        * What the clipboard would not take, to copy by hand: over the page,
        * so it moves nothing on it (HS1).

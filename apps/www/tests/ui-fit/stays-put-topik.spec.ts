@@ -9,14 +9,16 @@
  *   the drama, every rung of a line from the dock and from its bubble, the
  *   cover's English, Listen, Next between beats, Next's place as a choice
  *   opens (where the thumb that tapped it still is), and at its ending an
- *   ask kept and refused, review answers, its English shown and hidden, and
- *   a typed wish; for the grammar lens, a file that is no word set, and a
- *   revealed item's situations picked, changed and taken back. A tap that
- *   declares `reflows` (another screen, a step, a disclosure below the tap)
- *   is outside it, and says why.
+ *   ask kept and refused, the author's notes and a why opened, review
+ *   answers, its English shown and hidden, and a typed wish; for the grammar
+ *   lens, a file that is no word set, a revealed item's situations picked,
+ *   changed and taken back, and two takes of its line kept and one played;
+ *   for read aloud, Stuck, Pause, Resume and Skip on its rep card, whose
+ *   steps run on a clock between the taps. A tap that declares `reflows`
+ *   (another screen or a step) is outside it, and says why; one that
+ *   declares `grows` (what was asked for, below the tap) holds what is at
+ *   and above the tap.
  * - Proof: this spec, over `../layout-invariants/stays-put.ts`.
- * - Tolerance: a screen this spec does not walk, read-aloud's rep card
- *   among them: its steps run on a clock, between any two taps.
  */
 
 import { fileURLToPath } from "node:url"
@@ -169,23 +171,18 @@ const DRAMA: ReadonlyArray<Tap> = [
   button("Listen", "listens to the narration", EXACT),
   button("Show Korean", "shows the narration's Korean", EXACT),
   button("Show English", "shows the narration's English", EXACT),
-  button(/show English$/, "shows the cover's English"),
+  {
+    ...button(/show English$/, "shows the cover's English"),
+    grows: "the cover's English, below its caption",
+  },
   button(/^Next/, "goes on to the chairman's line"),
   {
-    does: "taps the line for its Korean",
-    act: (page) =>
-      page
-        .getByRole("button", { name: /^Listen first/ })
-        .first()
-        .click(),
+    ...button(/^Listen first/, "taps the line for its Korean"),
+    grows: "the line's Korean, in place of Listen first and below it",
   },
   {
-    does: "taps the line again for its English",
-    act: (page) =>
-      page
-        .getByRole("button", { name: /^우리 집안에/ })
-        .first()
-        .click(),
+    ...button(/^우리 집안에/, "taps the line again for its English"),
+    grows: "the line's English, below its Korean",
   },
   {
     // The dock is the choice's now, so no box is compared; what is checked is
@@ -224,20 +221,26 @@ const DRAMA: ReadonlyArray<Tap> = [
   keepWrites,
   {
     ...button("작가의 말", "opens the author's notes", EXACT),
-    reflows: "disclosure: the notes, below their heading",
+    grows: "the notes, below their heading",
   },
   {
     ...button("Why?", "asks why", EXACT),
-    reflows: "disclosure: the answer, in place of Why? and below it",
+    grows: "the answer, in place of Why? and below it",
   },
   {
     ...button(/어땠어요/, "opens the review"),
-    reflows: "disclosure: the review, below its heading",
+    grows: "the review, below its heading",
   },
   button(/^재미있었어요/, "says it was fun"),
   button(/^딱 좋아요/, "says the Korean was about right"),
-  button("Show English", "shows the review's English", EXACT),
-  button("Hide English", "hides it again", EXACT),
+  {
+    ...button("Show English", "shows the review's English", EXACT),
+    grows: "each question's English, below the toggle",
+  },
+  {
+    ...button("Hide English", "hides it again", EXACT),
+    grows: "the review, without its English, below the toggle",
+  },
   {
     does: "types what to watch next",
     act: (page) =>
@@ -302,6 +305,48 @@ const LENS: ReadonlyArray<Tap> = [
   situation(0, "picks a situation"),
   situation(-1, "picks another"),
   situation(-1, "takes it back"),
+  button("Start talking", "records a take of B", EXACT),
+  button("Stop, and keep it", "stops, and keeps it", EXACT),
+  button(/^Play the take/, "plays the take"),
+  button("Start talking", "records another", EXACT),
+  button("Stop, and keep it", "stops, and keeps that too", EXACT),
+]
+
+/** The word set read aloud, as the learner picks it from storage. */
+const READ_ALOUD_SET = fileURLToPath(
+  new URL(
+    "../../../../packages/some-content/prompts/read-aloud-generator/sets/level-one.read-aloud.json",
+    import.meta.url
+  )
+)
+
+/** Read aloud's rep card, its steps on a clock between the taps. */
+const READ_ALOUD: ReadonlyArray<Tap> = [
+  {
+    does: "picks the read-aloud set",
+    act: (page) =>
+      page
+        .getByLabel("Open new words from storage")
+        .setInputFiles(READ_ALOUD_SET),
+    reflows: "screen: the system's picker, and the list back with the set",
+  },
+  {
+    does: "opens the set",
+    act: (page) =>
+      page
+        .getByRole("region", { name: "Ready for you" })
+        .getByRole("button")
+        .first()
+        .click(),
+    reflows: "screen: the drill, which starts on opening",
+  },
+  button("Stuck", "says it is stuck", EXACT),
+  button("Pause", "pauses", EXACT),
+  button("Resume", "resumes", EXACT),
+  button("Skip", "skips to the next", EXACT),
+  button("Stuck", "says the next is stuck", EXACT),
+  button("Pause", "pauses again", EXACT),
+  button("Resume", "resumes again", EXACT),
 ]
 
 // Each walk on a fresh page.
@@ -312,4 +357,9 @@ walkEachPhone("a tap moves nothing it leaves on topik's handheld (HS1)", [
     label: "topik, write your own and play it",
   },
   { panel: "topik-handheld", taps: LENS, label: "topik, the grammar lens" },
+  {
+    panel: "topik-handheld",
+    taps: READ_ALOUD,
+    label: "topik, read aloud",
+  },
 ])

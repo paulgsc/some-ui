@@ -6,16 +6,21 @@
  * this page's memory holding one kept drama, so "Your kept lessons" shows
  * its rows; and the phone's own asks for the next scene (`@/lib/scene-ask`)
  * over this page's `localStorage`, so a refused write is the phone's own
- * refusal. No served dramas and no routine: the walk reaches a drama by
- * pasting one, and a word set by picking its file.
+ * refusal; and the grammar lens's takes on the simulated microphone, each
+ * take four seconds long. No served dramas and no routine: the walk reaches
+ * a drama by pasting one, and a word set by picking its file.
  */
 import type { JSX } from "react"
 import type { SpeechAdapter, SpeechAdapterFactory } from "@some-ui/speech"
 import { SpeechProvider } from "@some-ui/speech"
+import type { LensTakes, LensTakeSnapshot } from "@some-ui/topik"
 // This page is its own build (`build:fit-phone`) and in no shipped bundle,
 // so the eager edge the rule guards against costs nothing here.
 // eslint-disable-next-line lazy-registry/no-eager-registry-import
 import { KoreanStudyPage } from "@some-ui/topik"
+import type { PatternTake } from "@some-ui/voice-capture"
+import { ONE_TAKE } from "@some-ui/voice-capture"
+import { simulatedPattern, SPEAKING } from "@some-ui/voice-capture/testing"
 
 import { createSceneAsks } from "@/lib/scene-ask"
 
@@ -82,8 +87,40 @@ const KEPT: ReadonlyArray<readonly [string, string]> = [
   ],
 ]
 
+/**
+ * The grammar lens's takes as the phone's desk shapes them (www's
+ * `lib/lens-takes`): many a line, the newest played, never full here.
+ */
+function lensTakes(): LensTakes {
+  const simulated = simulatedPattern({
+    options: {
+      ...ONE_TAKE,
+      takes: { per: "many", max: 5, full: "refuse" },
+      play: "latest",
+    },
+  })
+  const speaking = { ...SPEAKING, durationMs: 4_000 }
+  simulated.mic.script(speaking, speaking, speaking)
+  const { store } = simulated
+  let seen: ReadonlyArray<PatternTake> | null = null
+  let snapshot: LensTakeSnapshot = { takes: [], full: false }
+  return {
+    pattern: simulated.pattern,
+    subscribe: store.subscribe,
+    getSnapshot: (): LensTakeSnapshot => {
+      const takes = store.getSnapshot()
+      if (takes !== seen) {
+        seen = takes
+        snapshot = { takes, full: false }
+      }
+      return snapshot
+    },
+  }
+}
+
 const shelf = memoryShelf({ seed: KEPT })
 const sceneAsk = createSceneAsks({ storage: () => localStorage })
+const takes = lensTakes()
 const noManifest = (): Promise<unknown> =>
   Promise.resolve({ version: "1", topiks: [] })
 
@@ -102,6 +139,7 @@ const TopikHandheld = (): JSX.Element => (
         loadManifest={noManifest}
         shelf={shelf}
         sceneAsk={sceneAsk}
+        lensTakes={takes}
         sceneFileHint="Look in Downloads/Dramas."
         wordSetHint="Look in Downloads/Word sets."
       />
