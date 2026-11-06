@@ -1892,7 +1892,7 @@
           "kind": "OA2",
           "property": "outcome",
           "claim": "Every week of the call home holds becomes a video, and a week that hasn't is tried again.",
-          "requirement": "Each week in call_week is written to the call_weeks volume; within the next hourly pass the render worker records it from the pinned stage with each scene said by home's Kokoro speaker, renders it, and moves the finished folder into data/renders/call/<from>/ whole; a week that fails is left without a folder and tried again each hour; no finished video is deleted.",
+          "requirement": "Each week in call_week is written to call-weeks beside home's database, on its drive (STORAGE); within the next hourly pass the render worker records it from the pinned stage with each scene said by home's Kokoro speaker, renders it, and moves the finished folder into renders/call/<from>/ on the same drive, whole; a week that fails is left without a folder and tried again each hour; no finished video is deleted.",
           "verdict": "unproven",
           "conclusion": "Rehearsed with the containers set up as on home: the worker rendered the real week of Oct 30, twice, to the same files. A week that keeps failing is only logged; nothing tells you a week has waited for its video.",
           "tracked": "some-ui#2635",
@@ -1904,7 +1904,7 @@
             },
             {
               "class": "structural",
-              "says": "Each week in the call_weeks volume with no call.mp4 under data/renders/call/<from>/ is rendered, oldest first, finished folders are moved into place whole, and nothing deletes one.",
+              "says": "Each week in STORAGE/call-weeks with no call.mp4 under STORAGE/renders/call/<from>/ is rendered, oldest first, finished folders are moved into place whole, and nothing deletes one.",
               "ref": "server:infra/render/render-calls.sh"
             },
             {
@@ -1916,14 +1916,21 @@
           "watch": {
             "by": "none"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-11-06",
+              "change": "The weeks are written to call-weeks beside home's database, and the videos kept in renders/call, both on the database's drive (STORAGE), not in a Docker volume and the server checkout's data folder.",
+              "why": "Everything home keeps lives on the external drive with the database, so a week or a video is never on the system disk.",
+              "decision": "https://github.com/paulgsc/some-ui/issues/2635#issuecomment-6697792376"
+            }
+          ]
         },
         {
           "id": "CW6",
           "kind": "RE9",
           "property": "work",
           "claim": "The call's videos grow by one folder a week, kept for good.",
-          "requirement": "data/renders/call gains one folder per week of the call (the video, its takes, stills, cut list and week), never deleted, and the renderer's intermediates are removed once it finishes.",
+          "requirement": "renders/call on home's database drive (STORAGE) gains one folder per week of the call (the video, its takes, stills, cut list and week), never deleted, and the renderer's intermediates are removed once it finishes.",
           "verdict": "unproven",
           "conclusion": "The first week's folder is 112 MB (the video is 95 MB), so about 6 GB a year, kept for good as you chose (#2640). Home's storage sampler measures tables, not this folder.",
           "tracked": "some-ui#2635",
@@ -1937,7 +1944,14 @@
           "watch": {
             "by": "none"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-11-06",
+              "change": "The folder that grows is renders/call on the database's drive (STORAGE), not data/renders/call in the server checkout.",
+              "why": "Everything home keeps lives on the external drive with the database.",
+              "decision": "https://github.com/paulgsc/some-ui/issues/2635#issuecomment-6697792376"
+            }
+          ]
         }
       ]
     }
