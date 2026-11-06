@@ -192,7 +192,8 @@ function numbersIn(
     const ordinal = isOrdinal(last.split("-").at(-1) ?? "")
     const next = tokens[i + 1]?.word
     const seed = list === "seed" || next === "seed"
-    const lone = said.length === 1 && /^one(?:-|$)/.test(last)
+    const lone =
+      token.word === "1" && said.length === 1 && /^one(?:-|$)/.test(last)
     if (list === "week" || (ordinal && next === "week")) weeks.push(token.word)
     else if (!seed && !ordinal && !lone) counts.push(token.word)
     if (ends) list = null

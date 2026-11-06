@@ -160,6 +160,9 @@ describe("the check", () => {
     expect(division("Seeds 5, 16 wins.")).toEqual([
       "division says 16, which its facts don't give",
     ])
+    expect(division("A one-and-a-half win floor.")).toEqual([
+      "division says 1.5, which its facts don't give",
+    ])
     expect(division("The floor is one and a half.")).toEqual([
       "division says 1.5, which its facts don't give",
     ])
