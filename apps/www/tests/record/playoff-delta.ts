@@ -31,6 +31,7 @@ import { chromium, type BrowserContext, type Page } from "@playwright/test"
 import {
   episodeFor,
   formatOf,
+  kindOf,
   parseStorySeason,
   RECORDING,
 } from "@some-ui/playoff-delta"
@@ -99,7 +100,7 @@ try {
   if (data === null) throw new Error("the stage published no season")
   const season = parseStorySeason(JSON.parse(data))
   const sha256 = createHash("sha256").update(data).digest("hex")
-  const scenes = formatOf(week === 0 ? "legend" : "week").scenes
+  const scenes = formatOf(kindOf(week)).scenes
   if (week !== 0 && !season.weeks.some((w) => w.week === week))
     throw new Error(`the season has no week ${week}`)
   /** Where each clip's slide appears, after the app's boot frames. */

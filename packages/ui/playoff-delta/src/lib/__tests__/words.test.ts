@@ -13,6 +13,7 @@ import {
   CLEAN_RUN,
   COHORTS,
   COUNTDOWNS,
+  FORECAST,
   numberWord,
   OBJECTIVES,
   PIECES,
@@ -26,10 +27,6 @@ import raw2026 from "./season-2026.json"
 
 const SEASON_2026 = parseStorySeason(raw2026)
 
-// Say what can happen (CLAUDE.md, "Say what it is"): never odds, and never
-// the statistics the grammar retired.
-const FORECAST =
-  /\b(chance|odds|likely|probability|percent|share|spread|average|sample)/i
 // State in the person's terms: no machinery reaches the screen.
 const MACHINERY = /\b(flow|cut|null|undefined|NaN|PD\d|max|min)\b/
 

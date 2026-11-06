@@ -1,5 +1,10 @@
 import type { HeardWord } from "@video-render/take-check"
-import { checkTake, factTerms, normalized } from "@video-render/take-check"
+import {
+  checkTake,
+  factTerms,
+  isOrdinal,
+  normalized,
+} from "@video-render/take-check"
 import { describe, expect, it } from "vitest"
 
 /** `text` heard word by word, half a second each, from `fromMs`. */
@@ -193,6 +198,9 @@ describe("checkTake", () => {
       ["-5 degrees", "minus five degrees"],
       ["2 million users", "two million users"],
       ["2.5 million users", "two point five million users"],
+      ["6½ wins", "six and a half wins"],
+      ["6½ wins", "6 and a half wins"],
+      ["½ win", "0.5 win"],
     ]
     for (const [fact, take] of spoken) {
       expect(checkTake({ voice: "ad-lib", keep: [fact] }, heard(take))).toEqual(
@@ -203,6 +211,10 @@ describe("checkTake", () => {
         `${take} read as ${fact}`
       ).toEqual({ kind: "ok" })
     }
+    for (const word of ["first", "third", "eleventh", "twentieth", "21st"])
+      expect(isOrdinal(word), word).toBe(true)
+    for (const word of ["second", "eleven", "21", "fifth-wheel"])
+      expect(isOrdinal(word), word).toBe(false)
     expect(
       factTerms("twenty twenty and one two then thirty seconds").numbers
     ).toEqual(["20", "20", "1", "2", "30"])

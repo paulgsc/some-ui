@@ -1472,6 +1472,12 @@ importers:
       '@some-ui/vite-config':
         specifier: workspace:*
         version: link:../../some-vite-config
+      '@types/node':
+        specifier: ^26.0.1
+        version: 26.6.3
+      tsx:
+        specifier: ^4.22.4
+        version: 4.22.4
 
   packages/ui/resume:
     dependencies:

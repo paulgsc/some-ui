@@ -34,6 +34,10 @@ import { CALLS, UPLOAD } from "./words"
 
 export type FormatKind = "week" | "legend"
 
+/** Which format week `week` is an episode of: week 0 is the legend. */
+export const kindOf = (week: number): FormatKind =>
+  week === LEGEND_WEEK ? "legend" : "week"
+
 /** The version `formatOf` gives of each, pinned as `v<n>.json` in its folder. */
 export const FORMAT_VERSION: Readonly<Record<FormatKind, number>> = {
   week: 1,
@@ -120,10 +124,32 @@ export function uploadOf(
 }
 
 /**
+ * The facts each scene of week `week`'s episode keeps, in its format's
+ * order (`LEGEND_WEEK`, 0, for the legend), or why there is no such week.
+ */
+export function factsOf(
+  season: StorySeason,
+  week: number
+): Parsed<ReadonlyArray<ReadonlyArray<string>>> {
+  if (week === LEGEND_WEEK) {
+    return {
+      ok: true,
+      value: LEGEND_SLIDES.map((id) => legendFacts(season, id)),
+    }
+  }
+  const shown = season.weeks.find((w) => w.week === week)
+  if (!shown) return { ok: false, problems: [`the season has no week ${week}`] }
+  return {
+    ok: true,
+    value: WEEK_SLIDES.map((id) => weekFacts(season, shown, id)),
+  }
+}
+
+/**
  * One week's episode (`LEGEND_WEEK`, 0, for the legend), or every reason
  * there isn't one. `sha256` is the sum of the season as the stage read it
- * (its contract JSON), and `inMs` says where scene `index`'s slide starts in
- * its recorded clip.
+ * (`seasonData`), and `inMs` says where scene `index`'s slide starts in its
+ * recorded clip.
  */
 export function episodeFor(
   season: StorySeason,
@@ -131,27 +157,25 @@ export function episodeFor(
   sha256: string,
   inMs: (index: number) => number
 ): Parsed<Episode> {
+  const keep = factsOf(season, week)
+  if (!keep.ok) return keep
   const data = { source: sourceOf(season), sha256 }
-  if (week === LEGEND_WEEK) {
+  // factsOf has refused a week the season doesn't have.
+  const shown =
+    week === LEGEND_WEEK ? undefined : season.weeks.find((w) => w.week === week)
+  const common = { show: SHOW, data, keep: keep.value, inMs }
+  if (shown === undefined) {
     return episodeOf(formatOf("legend"), {
-      show: SHOW,
+      ...common,
       title: "Playoff Delta, the legend",
       period: `${season.label}, the legend`,
-      data,
       upload: uploadOf(season, null),
-      keep: LEGEND_SLIDES.map((id) => legendFacts(season, id)),
-      inMs,
     })
   }
-  const shown = season.weeks.find((w) => w.week === week)
-  if (!shown) return { ok: false, problems: [`the season has no week ${week}`] }
   return episodeOf(formatOf("week"), {
-    show: SHOW,
+    ...common,
     title: `Playoff Delta, ${season.label} week ${week}`,
     period: `${season.label} week ${week}`,
-    data,
     upload: uploadOf(season, shown),
-    keep: WEEK_SLIDES.map((id) => weekFacts(season, shown, id)),
-    inMs,
   })
 }

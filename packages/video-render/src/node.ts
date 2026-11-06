@@ -283,3 +283,25 @@ export async function renderFolder(
     rest
   )
 }
+
+/** A path from where the command was typed (`pnpm --filter` sets INIT_CWD). */
+export const here = (p: string): string =>
+  resolvePath(process.env["INIT_CWD"] ?? process.cwd(), p)
+
+/** Stops a command, saying why; `runCommand` prints it and sets the exit code. */
+export class Refused extends Error {}
+
+export function fail(lines: ReadonlyArray<string>): never {
+  throw new Refused(lines.join("\n"))
+}
+
+/** Runs `main`, printing a refusal's reasons rather than a stack. */
+export async function runCommand(main: () => Promise<void>): Promise<void> {
+  try {
+    await main()
+  } catch (e) {
+    if (!(e instanceof Refused)) throw e
+    process.stderr.write(`${e.message}\n`)
+    process.exitCode = 1
+  }
+}

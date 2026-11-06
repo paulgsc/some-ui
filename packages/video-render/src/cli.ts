@@ -35,7 +35,7 @@
 
 import { execFile } from "node:child_process"
 import { access, readdir, writeFile } from "node:fs/promises"
-import { dirname, join, relative, resolve as resolvePath } from "node:path"
+import { dirname, join, relative } from "node:path"
 import { parseArgs, promisify } from "node:util"
 import { z } from "zod"
 
@@ -45,18 +45,17 @@ import { callsOf, changeOf, trailersOf, whereWeAreOf } from "./call-facts"
 import type { CallFacts } from "./call-facts"
 import { problemsOf } from "./cut-list"
 import { compareHearings } from "./hearings"
-import { nodePorts, readJson, readSeries, renderFolder } from "./node"
+import {
+  fail,
+  here,
+  nodePorts,
+  readJson,
+  readSeries,
+  Refused,
+  renderFolder,
+  runCommand,
+} from "./node"
 import { fromTimelineV1 } from "./timeline-v1"
-
-const here = (p: string): string =>
-  resolvePath(process.env["INIT_CWD"] ?? process.cwd(), p)
-
-/** Stops the command, saying why; `main` prints it and sets the exit code. */
-class Refused extends Error {}
-
-function fail(lines: ReadonlyArray<string>): never {
-  throw new Refused(lines.join("\n"))
-}
 
 async function main(): Promise<void> {
   const { values, positionals } = parseArgs({
@@ -370,10 +369,4 @@ async function callFacts(from: string, to: string): Promise<CallFacts> {
   return facts
 }
 
-try {
-  await main()
-} catch (e) {
-  if (!(e instanceof Refused)) throw e
-  process.stderr.write(`${e.message}\n`)
-  process.exitCode = 1
-}
+await runCommand(main)

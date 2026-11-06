@@ -233,6 +233,9 @@ const STOP = new Set([
 export function normalized(word: string): string {
   const bare = word
     .toLowerCase()
+    // A half is a decimal: `6½` as `6.5`, `½` as `0.5`.
+    .replace(/(\d)½/g, "$1.5")
+    .replace(/½/g, "0.5")
     .replace(/[\u2018\u2019\u02bc]/g, "'")
     .replace(/(\d),(?=\d{3}\b)/g, "$1")
     .replace(/[^\p{L}\p{N}.']+/gu, "")
@@ -265,8 +268,16 @@ function cardinalOf(word: string): string | null {
 }
 
 /**
+ * Whether `word` (lowercase, unpunctuated) names an order as the reader
+ * reads one: `third`, `eleventh`, `twentieth`, `21st`.
+ */
+export const isOrdinal = (word: string): boolean =>
+  cardinalOf(word) !== null || /^\d+(?:st|nd|rd|th)$/.test(word)
+
+/**
  * The number spoken by the words from `from` on (`two hundred`, `twenty
- * one`, `three point five`, `third`), and how many words it took; null when
+ * one`, `three point five`, `third`, `six and a half`), and how many words
+ * it took; null when
  * `words[from]` is not a number word.
  */
 function spokenNumber(
@@ -281,6 +292,16 @@ function spokenNumber(
   const negative = NEGATIVE.has(words[at] ?? "")
   if (negative) at += 1
   const leading = words[at] ?? ""
+  if (
+    NUMERAL.test(leading) &&
+    words[at + 1] === "and" &&
+    words[at + 2] === "a" &&
+    words[at + 3] === "half"
+  ) {
+    // `7 and a half`, said as `7½` is written.
+    const value = String(Number(leading) + 0.5)
+    return { value: negative ? `-${value}` : value, length: at - from + 4 }
+  }
   // A numeral a scale follows (`2 million`) is that scale's group.
   if (NUMERAL.test(leading) && SCALE[words[at + 1] ?? ""] !== undefined) {
     group = Number(leading)
@@ -350,6 +371,15 @@ function spokenNumber(
       value: `${sign}${String(scaled)}`,
       length: at - from + 2 + digits.length,
     }
+  }
+  if (
+    digits.length === 0 &&
+    words[at] === "and" &&
+    words[at + 1] === "a" &&
+    words[at + 2] === "half"
+  ) {
+    // `six and a half`, said as `6½` is written.
+    return { value: `${sign}${String(whole)}.5`, length: at - from + 3 }
   }
   return digits.length === 0
     ? { value: `${sign}${String(whole)}`, length: at - from }
