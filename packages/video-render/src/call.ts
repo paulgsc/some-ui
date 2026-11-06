@@ -1,8 +1,8 @@
 /**
- * The weekly call, the first template: once a week, the agents that worked both repositories report
- * to the owner the way a stand-up does, so the owner learns where things
- * stand by watching one video instead of reading archived sessions. It is
- * public, as everything the owner makes is.
+ * The weekly call, the first template: once a week, the agents that worked
+ * both repositories report to the owner the way a stand-up does, so the
+ * owner learns where things stand by watching one video instead of reading
+ * archived sessions. It is public, as everything the owner makes is.
  *
  * Every call has the same sections in the same order (`callFormat`); only the
  * week's data (`CallWeekSchema`) changes. The sections, in order:
@@ -297,11 +297,15 @@ function weekProblems(week: CallWeek): Array<string> {
     if (seen.has(id)) problems.push(`${id}: two items share this id`)
     seen.add(id)
   }
-  const pulls = week.done.flatMap((batch) => batch.pulls.map(refKey))
   const merged = new Set<string>()
-  for (const pull of pulls) {
-    if (merged.has(pull)) problems.push(`${pull}: it is in two batches`)
-    merged.add(pull)
+  for (const batch of week.done) {
+    const pulls = batch.pulls.map(refKey)
+    for (const pull of new Set(pulls)) {
+      if (merged.has(pull)) problems.push(`${pull}: it is in two batches`)
+      merged.add(pull)
+    }
+    if (new Set(pulls).size !== pulls.length)
+      problems.push(`${batch.id}: it lists a pull request twice`)
   }
   for (const epic of week.moved)
     for (const pull of epic.landed.map(refKey))

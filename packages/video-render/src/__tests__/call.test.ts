@@ -121,14 +121,19 @@ describe("a week that contradicts itself", () => {
     })
   })
 
-  it("is refused for a week of more than two, or a template it isn't", () => {
+  it("is refused for a week of more than two, or a batch that lists a pull twice", () => {
     const w = week()
     expect(
       parseCallWeek({ ...w, week: { from: "2026-10-01", to: "2026-11-05" } })
     ).toEqual({ ok: false, problems: ["week: it runs more than 14 days"] })
-    expect(
-      parseCallWeek({ ...w, template: { id: CALL_ID, version: 99 } }).ok
-    ).toBe(false)
+    const twice = {
+      ...w.done[0]!,
+      pulls: [...w.done[0]!.pulls, w.done[0]!.pulls[0]!],
+    }
+    expect(parseCallWeek({ ...w, done: [twice, ...w.done.slice(1)] })).toEqual({
+      ok: false,
+      problems: ["take-library: it lists a pull request twice"],
+    })
   })
 })
 

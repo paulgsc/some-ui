@@ -1,7 +1,8 @@
-import type { JSX, ReactNode } from "react"
+import type { JSX, ReactNode, RefObject } from "react"
+import { useLayoutEffect, useRef, useState } from "react"
 import { assertNever } from "@some-ui/core-utils"
 import { callFormat, refUrl, sampleCallWeek } from "@some-ui/video-render"
-import type { CallRef, CallWeek } from "@some-ui/video-render"
+import type { CallRef, CallScene, CallWeek } from "@some-ui/video-render"
 
 import type { SceneView } from "./view"
 import { callAt } from "./view"
@@ -13,6 +14,10 @@ import { CALL_WORDS as W } from "./words"
  * said under it. The recorder draws it at 1920 CSS px wide with `record`,
  * which leaves out everything that isn't the frame. It plays the template's
  * sample week until the weekly run writes real ones.
+ *
+ * The frame is fixed, so text that doesn't fit would be cut off unseen: the
+ * frame says so instead (`data-overflow`, and a line under it off record),
+ * for the recorder to refuse.
  */
 
 export type CallStageProps = {
@@ -26,6 +31,45 @@ const NAMES: Readonly<Record<string, string>> = Object.fromEntries(
   callFormat().scenes.map((scene) => [scene.id, scene.name])
 )
 
+const SAMPLE = sampleCallWeek()
+
+/** The most asks the close lists by name; the rest it counts. */
+const LATER_SHOWN = 6
+
+/** What a scene is called: its section's name, and its place among its items. */
+const labelOf = (
+  scene: CallScene,
+  scenes: ReadonlyArray<CallScene>
+): string => {
+  const name = NAMES[scene.section] ?? scene.section
+  if (scene.item === undefined) return name
+  const n = scenes.filter((s) => s.section === scene.section).indexOf(scene)
+  return `${name} ${n + 1}`
+}
+
+/** Whether the element's content runs past its box, as laid out now. */
+function useOverflows(key: string): {
+  ref: RefObject<HTMLElement | null>
+  overflows: boolean
+} {
+  const ref = useRef<HTMLElement | null>(null)
+  const [overflows, setOverflows] = useState(false)
+  useLayoutEffect(() => {
+    const box = ref.current
+    if (box === null) return undefined
+    const measure = (): void => {
+      setOverflows(box.scrollHeight > box.clientHeight + 1)
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(box)
+    return (): void => {
+      observer.disconnect()
+    }
+  }, [key])
+  return { ref, overflows }
+}
+
 const Ref = ({ of: r }: { of: CallRef }): JSX.Element => (
   <a
     href={refUrl(r)}
@@ -37,8 +81,10 @@ const Ref = ({ of: r }: { of: CallRef }): JSX.Element => (
 
 const Refs = ({ refs }: { refs: ReadonlyArray<CallRef> }): JSX.Element => (
   <p className="flex flex-wrap gap-x-[1em] text-[0.8em]">
-    {refs.map((r) => (
-      <Ref key={`${r.repo}-${r.number}`} of={r} />
+    {refs.map((r, i) => (
+      // A ref may repeat; its place is its key.
+      // eslint-disable-next-line react/no-array-index-key
+      <Ref key={i} of={r} />
     ))}
   </p>
 )
@@ -118,7 +164,7 @@ const Screen = ({
     }
     case "board": {
       return (
-        <ul className="grid grid-cols-2 gap-[0.5em] text-[0.8em]">
+        <ul className="grid grid-cols-3 gap-[0.4em] text-[0.7em]">
           {week.board.rows.map((row) => (
             <li
               key={row.ledger}
@@ -149,8 +195,10 @@ const Screen = ({
           {view.item.next.length > 0 && (
             <Field label={W.nextUp}>
               <ul className="list-disc pl-[1.2em]">
-                {view.item.next.map((step) => (
-                  <li key={step}>{step}</li>
+                {view.item.next.map((step, i) => (
+                  // A step may repeat; its place is its key.
+                  // eslint-disable-next-line react/no-array-index-key
+                  <li key={i}>{step}</li>
                 ))}
               </ul>
             </Field>
@@ -224,12 +272,17 @@ const Screen = ({
           {week.later.length > 0 && (
             <Field label={W.later}>
               <ul className="space-y-[0.3em] text-[0.85em]">
-                {week.later.map((ask) => (
+                {week.later.slice(0, LATER_SHOWN).map((ask) => (
                   <li key={ask.id}>
                     {ask.question} <Refs refs={ask.refs} />
                   </li>
                 ))}
               </ul>
+              {week.later.length > LATER_SHOWN && (
+                <p className="text-muted-foreground text-[0.85em]">
+                  {W.more(week.later.length - LATER_SHOWN)}
+                </p>
+              )}
             </Field>
           )}
         </div>
@@ -246,17 +299,20 @@ export const CallStagePage = ({
   record = false,
   onScene,
 }: CallStageProps): JSX.Element => {
-  const parsed = sampleCallWeek()
-  if (!parsed.ok)
+  const at = SAMPLE.ok ? callAt(SAMPLE.value, scene) : null
+  const { ref, overflows } = useOverflows(at?.scene.id ?? "")
+  if (!SAMPLE.ok || at === null)
     return (
       <ul className="p-6 font-mono text-sm">
-        {parsed.problems.map((problem) => (
-          <li key={problem}>{problem}</li>
-        ))}
+        {SAMPLE.ok
+          ? null
+          : SAMPLE.problems.map((problem, i) => (
+              // eslint-disable-next-line react/no-array-index-key
+              <li key={i}>{problem}</li>
+            ))}
       </ul>
     )
-  const week = parsed.value
-  const at = callAt(week, scene)
+  const week = SAMPLE.value
   const step = (by: number): string | undefined => at.scenes[at.index + by]?.id
   const previous = step(-1)
   const next = step(1)
@@ -270,7 +326,9 @@ export const CallStagePage = ({
     >
       <div className="mx-auto w-full max-w-[1920px] [container-type:inline-size]">
         <section
+          ref={ref}
           data-scene={at.scene.id}
+          data-overflow={overflows ? "true" : undefined}
           className="bg-surface border-border flex aspect-video w-full flex-col overflow-hidden border text-[1.5cqw]"
         >
           <header className="border-border flex items-center justify-between border-b px-[1.2em] py-[0.6em] text-[0.8em]">
@@ -280,7 +338,7 @@ export const CallStagePage = ({
               {W.sample}
             </span>
           </header>
-          <div className="flex-1 overflow-hidden px-[1.6em] py-[1.2em]">
+          <div className="min-h-0 flex-1 px-[1.6em] py-[1.2em]">
             <Screen week={week} view={at.view} />
           </div>
           <footer className="bg-background/80 border-border border-t px-[1.6em] py-[0.8em] text-[1.05em] leading-snug">
@@ -288,6 +346,14 @@ export const CallStagePage = ({
           </footer>
         </section>
       </div>
+      {!record && overflows && (
+        <p
+          role="status"
+          className="text-destructive mx-auto max-w-[1920px] text-sm"
+        >
+          {W.overflows}
+        </p>
+      )}
       {!record && onScene !== undefined && (
         <nav
           aria-label={W.scenes}
@@ -296,7 +362,9 @@ export const CallStagePage = ({
           <button
             type="button"
             disabled={previous === undefined}
-            onClick={() => previous !== undefined && onScene(previous)}
+            onClick={() => {
+              if (previous !== undefined) onScene(previous)
+            }}
             className="border-border rounded border px-3 py-1 disabled:opacity-40"
           >
             {W.previous}
@@ -304,7 +372,9 @@ export const CallStagePage = ({
           <button
             type="button"
             disabled={next === undefined}
-            onClick={() => next !== undefined && onScene(next)}
+            onClick={() => {
+              if (next !== undefined) onScene(next)
+            }}
             className="border-border rounded border px-3 py-1 disabled:opacity-40"
           >
             {W.next}
@@ -317,11 +387,11 @@ export const CallStagePage = ({
               onClick={() => onScene(s.id)}
               className={
                 s.id === at.scene.id
-                  ? "bg-primary text-primary-foreground rounded px-2 py-1 font-mono text-xs"
-                  : "text-muted-foreground hover:text-foreground rounded px-2 py-1 font-mono text-xs"
+                  ? "bg-primary text-primary-foreground rounded px-2 py-1 text-xs"
+                  : "text-muted-foreground hover:text-foreground rounded px-2 py-1 text-xs"
               }
             >
-              {s.id}
+              {labelOf(s, at.scenes)}
             </button>
           ))}
         </nav>

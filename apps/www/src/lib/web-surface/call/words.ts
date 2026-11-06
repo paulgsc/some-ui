@@ -27,5 +27,8 @@ export const CALL_WORDS = {
   recommended: "Recommended",
   unblocks: "Unblocks",
   later: "Also waiting on you",
+  more: (n: number): string => (n === 1 ? "and 1 more" : `and ${n} more`),
+  overflows:
+    "This scene doesn't fit the frame: part of it would be cut off in the video.",
   promise: "Promise",
 } as const
