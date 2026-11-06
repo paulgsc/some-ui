@@ -1764,12 +1764,17 @@
     {
       "id": "call-kept",
       "name": "Home keeps every week of the call",
-      "why": "The weekly call's weeks live in paulgsc/testing, which keeps only the last few, so home keeps every one (the owner's decision on #2635, 2026-11-06): a timer on home reads the repository's index and stores each week it lacks, and the routine lets a week leave the repository only once home's call index in the mailbox lists it, byte for byte.",
+      "why": "The weekly call's weeks live in paulgsc/testing, which keeps only the last few, so home keeps every one (the owner's decision on #2635, 2026-11-06): a timer on home reads the repository's index and stores each week it lacks, and the routine lets a week leave the repository only once home's call index in the mailbox lists it, byte for byte. Then home makes each week's video: its own Kokoro speaker says each scene, its render worker records the pinned stage and renders it, and every video is kept for good (#2639, #2640).",
       "paths": [
         "server:apps/servers/file_host/src/call_weeks",
         "server:crates/db/call_week",
         "server:apps/servers/file_host/src/mailbox/index/call.rs",
-        "some-ui:packages/video-render/CALL-ROUTINE.md"
+        "some-ui:packages/video-render/CALL-ROUTINE.md",
+        "server:infra/render",
+        "server:infra/compose/call-render.yml",
+        "server:infra/docker/Dockerfile.render",
+        "server:infra/kokoro",
+        "some-ui:apps/www/tests/record/call.ts"
       ],
       "modules": [],
       "objectives": [
@@ -1879,6 +1884,58 @@
           "watch": {
             "by": "dashboard",
             "ref": "server:infra/grafana/dashboards/storage.jsonnet"
+          },
+          "amendments": []
+        },
+        {
+          "id": "CW5",
+          "kind": "OA2",
+          "property": "outcome",
+          "claim": "Every week of the call home holds becomes a video, and a week that hasn't is tried again.",
+          "requirement": "Each week in call_week is written to the call_weeks volume; within the next hourly pass the render worker records it from the pinned stage with each scene said by home's Kokoro speaker, renders it, and moves the finished folder into data/renders/call/<from>/ whole; a week that fails is left without a folder and tried again each hour; no finished video is deleted.",
+          "verdict": "unproven",
+          "conclusion": "Rehearsed with the containers set up as on home: the worker rendered the real week of Oct 30, twice, to the same files. A week that keeps failing is only logged; nothing tells you a week has waited for its video.",
+          "tracked": "some-ui#2635",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "In the rehearsal (internal network, read-only root, no capabilities), the worker rendered 2026-10-30 twice; the video, 36 takes and 36 stills were identical across both runs (call.mp4 e5a364935def…).",
+              "ref": "some-ui#2635"
+            },
+            {
+              "class": "structural",
+              "says": "Each week in the call_weeks volume with no call.mp4 under data/renders/call/<from>/ is rendered, oldest first, finished folders are moved into place whole, and nothing deletes one.",
+              "ref": "server:infra/render/render-calls.sh"
+            },
+            {
+              "class": "structural",
+              "says": "The speaker, the stage image and the worker's Chromium, Node, ffmpeg and some-ui commit are each pinned, so the same week gives the same video.",
+              "ref": "server:infra/compose/call-render.yml"
+            }
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        },
+        {
+          "id": "CW6",
+          "kind": "RE9",
+          "property": "work",
+          "claim": "The call's videos grow by one folder a week, kept for good.",
+          "requirement": "data/renders/call gains one folder per week of the call (the video, its takes, stills, cut list and week), never deleted, and the renderer's intermediates are removed once it finishes.",
+          "verdict": "unproven",
+          "conclusion": "The first week's folder is 112 MB (the video is 95 MB), so about 6 GB a year, kept for good as you chose (#2640). Home's storage sampler measures tables, not this folder.",
+          "tracked": "some-ui#2635",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "The rehearsal's folder for 2026-10-30, with the renderer's cache removed, is 112 MB.",
+              "ref": "some-ui#2635"
+            }
+          ],
+          "watch": {
+            "by": "none"
           },
           "amendments": []
         }
@@ -3498,7 +3555,7 @@
     },
     {
       "id": "call-weeks",
-      "name": "Keeping every week of the call on home",
+      "name": "Keeping every week of the call on home, and making its video",
       "why": "The routine writes each week to paulgsc/testing, home reads its index hourly and keeps each week it lacks, and home's call index in the mailbox tells the routine which weeks may leave the repository.",
       "serves": ["call-kept"],
       "witnesses": ["CW1"],
@@ -3542,6 +3599,31 @@
           "paths": [
             "server:apps/servers/file_host/src/mailbox/index/call.rs",
             "some-ui:apps/mailbox"
+          ]
+        },
+        {
+          "id": "speaker",
+          "name": "Home's Kokoro speaker says each scene, the same audio for the same words. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": ["server:infra/kokoro"]
+        },
+        {
+          "id": "stage",
+          "name": "The published home-network app, pinned by digest, serves the call's stage to the worker. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": ["server:infra/compose/call-render.yml"]
+        },
+        {
+          "id": "render",
+          "name": "The render worker records the stage, renders each week without a video, and keeps it. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": [
+            "server:infra/render",
+            "server:infra/docker/Dockerfile.render",
+            "some-ui:apps/www/tests/record/call.ts"
           ]
         }
       ],
