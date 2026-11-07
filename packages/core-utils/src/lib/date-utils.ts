@@ -67,6 +67,37 @@ export function weekOf(day: string): string {
   return addDays(day, -((dateOf(day).getDay() + 6) % 7))
 }
 
+/**
+ * The owner's time zone: every routine and deadline that says "the owner's
+ * day" or "the owner's clock" reads it here.
+ */
+export const PACIFIC_TIME_ZONE = "America/Los_Angeles"
+
+const PACIFIC_DAY = new Intl.DateTimeFormat("en-CA", {
+  timeZone: PACIFIC_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+})
+
+const PACIFIC_CLOCK = new Intl.DateTimeFormat("en-GB", {
+  timeZone: PACIFIC_TIME_ZONE,
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+})
+
+/** The Pacific calendar day of `at`, `YYYY-MM-DD`. */
+export function pacificDay(at: Date): string {
+  return PACIFIC_DAY.format(at)
+}
+
+/** Minutes since midnight at `at`, Pacific. */
+export function pacificMinutes(at: Date): number {
+  const [hour = 0, minute = 0] = PACIFIC_CLOCK.format(at).split(":").map(Number)
+  return hour * 60 + minute
+}
+
 /** "Oct 2026", for a `YYYY-MM` month. */
 export function formatMonth(month: string): string {
   return dateOf(`${month}-01`).toLocaleDateString("en-US", {

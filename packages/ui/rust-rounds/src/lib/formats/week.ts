@@ -32,9 +32,9 @@
  * `expect` on a ticket judges the tutor's draft against home's recording,
  * never the owner, and nothing on the phone shows it.
  *
- * The schema holds the shape and its counts; `lib/week-check` holds what
- * relates one field to another (dates, ids, line widths), and `readWeek`
- * there is the one door a week comes in by.
+ * The schema holds the shape and its counts; `readWeek` (`lib/week-check`)
+ * adds what relates one field to another (dates, ids, line widths), and is
+ * the one door a week comes in by.
  */
 import {
   ExpectSchema,
@@ -75,10 +75,12 @@ export const REFERENCES: Record<Reference, string> = {
     "The Ownership Inventory (Crichton, Gray & Krishnamurthi, OOPSLA 2023)",
 }
 
-/** The rubric every week is judged by, decided by the owner on 2026-11-07. */
-export const RUBRIC = {
+const RubricSchema = z.enum(["solo"])
+
+/** The rubric every week is judged by, as the essay cites it. */
+export const RUBRIC: Record<z.infer<typeof RubricSchema>, string> = {
   solo: "SOLO (Biggs & Collis, 1982), as applied to explaining code by Lister et al., ITiCSE 2006",
-} as const
+}
 
 const SPEAK_TO_MIN = 2
 const SPEAK_TO_MAX = 3
@@ -113,7 +115,7 @@ const TicketSchema = z.strictObject({
     .min(SPEAK_TO_MIN, speakToCount)
     .max(SPEAK_TO_MAX, speakToCount),
   program: ProgramSchema,
-  /** The tutor's guess at what rustc does with `program`; never shown on the phone. */
+  /** The tutor's guess at what rustc does with `program`. */
   expect: ExpectSchema,
   concepts: z
     .array(ConceptSchema)
@@ -156,6 +158,6 @@ export const WeekSchema = z.strictObject({
   references: z
     .array(ReferenceSchema)
     .min(1, "name at least one reference the week draws on"),
-  rubric: z.literal("solo"),
+  rubric: RubricSchema,
 })
 export type Week = z.infer<typeof WeekSchema>

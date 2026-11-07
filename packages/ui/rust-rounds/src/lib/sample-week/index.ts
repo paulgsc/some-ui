@@ -19,7 +19,6 @@
 import type { Week } from "@rust-rounds/lib/formats/week"
 import { WEEK_SCHEMA } from "@rust-rounds/lib/formats/week"
 
-/** A program from its lines, each ending in `\n`. */
 const program = (...lines: Array<string>): string => `${lines.join("\n")}\n`
 
 export const QUILLMOSS_WEEK: Week = {

@@ -6,6 +6,8 @@ import {
   formatMonth,
   formatRelativeTime,
   formatWeekday,
+  pacificDay,
+  pacificMinutes,
   weekOf,
 } from "@core-utils/lib/date-utils"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -179,4 +181,22 @@ describe("calendar days across a daylight-saving change", () => {
       expect(addDays(day, n)).toBe(expected)
     }
   )
+})
+
+describe("pacificDay", () => {
+  it("reads the Pacific day across both offsets", () => {
+    expect(pacificDay(new Date("2026-10-22T06:59:00Z"))).toBe("2026-10-21")
+    expect(pacificDay(new Date("2026-10-22T07:00:00Z"))).toBe("2026-10-22")
+    expect(pacificDay(new Date("2026-12-01T07:59:00Z"))).toBe("2026-11-30")
+    expect(pacificDay(new Date("2026-12-01T08:00:00Z"))).toBe("2026-12-01")
+  })
+})
+
+describe("pacificMinutes", () => {
+  it("reads the Pacific clock across both offsets, midnight as 0", () => {
+    expect(pacificMinutes(new Date("2026-10-22T14:52:00Z"))).toBe(7 * 60 + 52)
+    expect(pacificMinutes(new Date("2026-12-01T15:52:00Z"))).toBe(7 * 60 + 52)
+    expect(pacificMinutes(new Date("2026-10-22T07:00:00Z"))).toBe(0)
+    expect(pacificMinutes(new Date("2026-10-22T06:59:00Z"))).toBe(23 * 60 + 59)
+  })
 })
