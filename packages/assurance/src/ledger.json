@@ -1764,7 +1764,7 @@
     {
       "id": "call-kept",
       "name": "Home keeps every week of the call",
-      "why": "The weekly call's weeks live in paulgsc/testing, which keeps only the last few, so home keeps every one (the owner's decision on #2635, 2026-11-06): a timer on home reads the repository's index and stores each week it lacks, and the routine lets a week leave the repository only once home's call index in the mailbox lists it, byte for byte. Then home makes each week's video: its own Kokoro speaker says each scene, its render worker records the pinned stage and renders it, and every video is kept for good (#2639, #2640).",
+      "why": "The weekly call's weeks live in paulgsc/testing, which keeps only the last few, so home keeps every one (the owner's decision on #2635, 2026-11-06): a timer on home reads the repository's index and stores each week it lacks, and the routine lets a week leave the repository only once home's call index in the mailbox lists it, byte for byte. Then home makes each week's video: its own Kokoro speaker says each scene, its render worker records the pinned stage and renders it, and each video is kept until the owner has put it on YouTube, recorded its link on the phone and let it go from My data (#2639, #2640, #2661).",
       "paths": [
         "server:apps/servers/file_host/src/call_weeks",
         "server:crates/db/call_week",
@@ -1776,7 +1776,7 @@
         "server:infra/kokoro",
         "some-ui:apps/www/tests/record/call.ts"
       ],
-      "modules": [],
+      "modules": ["call_videos"],
       "objectives": [
         {
           "id": "CW1",
@@ -1965,8 +1965,8 @@
           "id": "CW6",
           "kind": "RE9",
           "property": "work",
-          "claim": "The call's videos grow by one folder a week, kept for good.",
-          "requirement": "renders/call on home's database drive (STORAGE) gains one folder per week of the call (the video, its takes, stills, cut list and week), never deleted; a waiting week's work and step cache stay in renders/call-work between attempts, within the render policy's caps for one week and for all of them, and leave once the week renders; a step or a week's work past a cap is said, never silently dropped.",
+          "claim": "The call's videos grow by one folder a week, kept until I let a week go from My data once its YouTube link is recorded.",
+          "requirement": "renders/call on home's database drive (STORAGE) gains one folder per week of the call (the video, its takes, stills, cut list and week), deleted only by the owner from My data once the week's YouTube link is recorded (CW7); a waiting week's work and step cache stay in renders/call-work between attempts, within the render policy's caps for one week and for all of them, and leave once the week renders; a step or a week's work past a cap is said, never silently dropped.",
           "verdict": "unproven",
           "conclusion": "The first week's folder is 112 MB (the video is 95 MB), so about 6 GB a year, kept for good as you chose (#2640). file_host reads the bytes of the videos and of the waiting work, and the drive's free space, each minute (the CALL dashboard); Slack says when a cache cap was passed in the last day and when the drive has under a tenth free.",
           "tracked": "some-ui#2659",
@@ -1998,8 +1998,56 @@
               "change": "A waiting week's intermediates are kept between attempts, within the render policy's caps (one week's cache, and all waiting weeks' work), and removed once it renders, where they were removed after every attempt; passing a cap is said in renders/call-worker/*.cache.log and on Slack.",
               "why": "Keeping a failed render's finished steps lets a retry redo only what failed, and the caps keep that from taking the drive.",
               "decision": "https://github.com/paulgsc/some-ui/issues/2635#issuecomment-6701774052"
+            },
+            {
+              "on": "2026-11-07",
+              "change": "A week's folder is kept until the owner lets it go from My data, once its YouTube link is recorded, where every folder was kept for good.",
+              "why": "The owner publishes each week on YouTube from the phone; once its link is recorded, home's copy can go, and the week's words stay in call_week so it can be rendered again.",
+              "decision": "https://github.com/paulgsc/some-ui/issues/2661"
             }
           ]
+        },
+        {
+          "id": "CW7",
+          "kind": "OA3",
+          "property": "outcome",
+          "claim": "A week's video leaves home only once I've recorded its YouTube link, the video first and then the rest, and each delete leaves a receipt.",
+          "requirement": "A paired phone's My data deletes a rendered week in two steps: its call.mp4, only once a YouTube video link is recorded for the week, and then the rest of its folder (takes, stills, cut list), only once the video has gone; each step writes an append-only receipt (the week, the step, the bytes that went, the link recorded, when) kept for good, and a repeated step answers with the same receipt and deletes nothing more; a link is a YouTube video's id, kept append-only, the newest standing; the week's words stay in call_week.",
+          "verdict": "unproven",
+          "conclusion": "Decided, not built: the owner chose to publish each week from the phone and let home's copy go in two steps (#2661).",
+          "tracked": "some-ui#2661",
+          "evidence": [
+            {
+              "class": "unknown",
+              "says": "Nothing is built yet; the routes, tables and screens are #2661's slices.",
+              "ref": "some-ui#2661"
+            }
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        },
+        {
+          "id": "CW8",
+          "kind": "OA6",
+          "property": "outcome",
+          "claim": "A week I've let go reads as let go, never as waiting for its video, and isn't rendered again.",
+          "requirement": "Once a week's video is deleted from My data, file_host no longer writes it to call-weeks, removing its file there, the render worker skips a week whose file is gone, and the CALL dashboard and the CallRender* alerts count it as let go, apart from the weeks still waiting.",
+          "verdict": "unproven",
+          "conclusion": "Decided, not built (#2661).",
+          "tracked": "some-ui#2661",
+          "evidence": [
+            {
+              "class": "unknown",
+              "says": "Nothing is built yet; #2661's home slice does it.",
+              "ref": "some-ui#2661"
+            }
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
         }
       ]
     }
