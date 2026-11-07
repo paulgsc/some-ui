@@ -39,6 +39,8 @@ export type VideoFiles = {
   put: (from: string, base64: string, first: boolean) => Promise<boolean>
   /** Where a kept video is: `uri` for sharing, `src` for the player. */
   where: (from: string) => Promise<{ uri: string; src: string } | null>
+  /** Removes a week's video from the phone, if it is there. */
+  remove: (from: string) => Promise<void>
 }
 
 export type CallsPorts = {
@@ -69,6 +71,11 @@ export type CallVideos = {
   watch: (from: string) => Promise<void>
   share: (from: string) => Promise<void>
   saveLink: (from: string, pasted: string) => Promise<void>
+  /**
+   * Lets go of the phone's copy of a week's video, once My data let home's
+   * go (`lib/my-data`), and forgets it was ready.
+   */
+  forget: (from: string) => Promise<void>
   /** The screen said what it had to say. */
   seen: () => void
 }
@@ -202,6 +209,11 @@ export function createCallVideos(ports: CallsPorts): CallVideos {
       dispatch({ type: "linkEnded", from, saved })
       // Read again, so the week shows the link as home kept it.
       if (saved.kind === "saved") await open()
+    },
+
+    async forget(from): Promise<void> {
+      await ports.files.remove(from)
+      dispatch({ type: "fetchForgotten", from })
     },
 
     seen(): void {

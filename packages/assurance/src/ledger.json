@@ -2016,7 +2016,7 @@
           "claim": "A week's video leaves home only once I've recorded its YouTube link, the video first and then the rest, and each delete leaves a receipt.",
           "requirement": "A paired phone's My data deletes a rendered week in two steps: its call.mp4, only once a YouTube video link is recorded for the week, and then the rest of its folder (takes, stills, cut list), only once the video has gone; each step writes an append-only receipt (the week, the step, the bytes that went, the link recorded, when) kept for good, and a repeated step answers with the same receipt and deletes nothing more; a link is a YouTube video's id, kept append-only, the newest standing; the week's words stay in call_week.",
           "verdict": "unproven",
-          "conclusion": "Built on home, not yet on the phone: a paired phone records a week's link and lets its video, then the rest, go, each with a receipt kept for good, tested; My data's screens are #2661's next slice.",
+          "conclusion": "Built on home and on the phone, not yet run on it: My data's call videos page offers a week's video once its link is saved, and the rest once the video went, each asked once in a sheet that says what goes and what stays, and home answers each with a receipt kept for good, tested.",
           "tracked": "some-ui#2661",
           "evidence": [
             {
@@ -2030,8 +2030,13 @@
               "ref": "server:crates/db/call_week/src/video.rs"
             },
             {
+              "class": "structural",
+              "says": "My data asks home to let a step go only after the sheet's Delete for good or Try again, once a confirm; home's refusals are final, only no answer offers Try again, and the phone's own copy of the video goes only on the video's receipt; tested.",
+              "ref": "some-ui:apps/www/src/lib/my-data/call-deleting-runtime.ts"
+            },
+            {
               "class": "unknown",
-              "says": "My data's call videos screens on the phone are not built yet.",
+              "says": "Nobody has let a week go from a phone yet.",
               "ref": "some-ui#2661"
             }
           ],
@@ -3786,13 +3791,16 @@
         },
         {
           "id": "calls",
-          "name": "Studio's Calls brings a week's video to the phone a part at a time, plays it, hands it to the share sheet and sends its YouTube link. Ours, on the phone.",
+          "name": "Studio's Calls brings a week's video to the phone a part at a time, plays it, hands it to the share sheet and sends its YouTube link, and My data lets home's copy go. Ours, on the phone.",
           "owner": "ours",
           "on": "phone",
           "paths": [
             "some-ui:apps/www/src/lib/call-videos",
             "some-ui:apps/www/src/lib/home-link/call-videos.ts",
-            "some-ui:apps/www/src/components/call-videos.tsx"
+            "some-ui:apps/www/src/components/call-videos.tsx",
+            "some-ui:apps/www/src/lib/my-data/call-deleting.ts",
+            "some-ui:apps/www/src/lib/my-data/call-deleting-runtime.ts",
+            "some-ui:apps/www/src/components/settings/device-my-data-calls.tsx"
           ]
         },
         {

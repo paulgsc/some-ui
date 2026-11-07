@@ -1562,8 +1562,9 @@ What is enforced by test, in
 ("LA19 (MD5)"):
 
 - Of every request the phone sends home (`send(method, path, …)`), only
-  `lib/home-link/delete-note.ts` sends a `DELETE`, one of `deletePath(id)`
-  per note.
+  `lib/home-link/delete-note.ts` sends a `DELETE`: one of `deletePath(id)`
+  per note, and one of `callStepPath(from, step)` per confirm of a call
+  week's step (ST38, #2661: the week's video, then the rest of its folder).
 - A request whose method isn't written where it is sent comes from one of
   five pinned callers, none of which can send a `DELETE` to a record: the
   Jobs notice's `/jobs/notice`, `noticingBusy`'s pass-through, the
@@ -1571,10 +1572,11 @@ What is enforced by test, in
   and Ideas on home's list entry (`PUT` or `DELETE` of
   `/idea-lists/{topics,keywords}/:name`, which puts an entry on a list
   home keeps or takes it off, a mark, never a record; ST26 (c), #2453).
-- No other source names a `DELETE` beside a `/voice-notes/` path.
-- Only `lib/my-data/index.ts` imports `delete-note`, and it hands
-  `deleteNotes` to `createDeleting` as its one port. Only the delete runtime
-  calls that port, once.
+- No other source names a `DELETE` beside a `/voice-notes/` or
+  `/call/videos/` path.
+- Only `lib/my-data/index.ts` imports `delete-note`. It hands `deleteNotes`
+  to `createDeleting`, and `deleteCallStep` to `createCallDeleting`, each as
+  its one port. Only that delete runtime calls each port, once.
 - LA8's checks hold who reaches the link at all: only `lib/home-link` and
   its listed callers.
 
@@ -1593,7 +1595,14 @@ reaches:
   `offersDelete` passes. Every other delete of a recording on the phone (a
   draft's) neither imports the link or My data nor calls `deleteNotes`, and
   none sits in a module that reaches the link; what it reaches past its own
-  file is LA20's.
+  file is LA20's. Likewise a call week's step: `deleteCallStep` is called
+  only by `createCallDeleting`'s `run` (`lib/my-data/call-deleting-runtime.ts`),
+  which starts only when `stepCallSheet` (`lib/my-data/call-deleting.ts`)
+  has accepted a `confirmed`, from an `asking` sheet or an `ended` sheet
+  whose end is `away`. Its `confirm` is called only from that sheet's
+  "Delete for good" and Try again (`CallSheetView`'s `onConfirm`,
+  `components/settings/device-my-data-calls.tsx`), which shows what goes and
+  `CALL_DELETING.stays`, "Keep it" first.
 - _Falsified by:_
   - a hunk to `deleting-runtime.ts` that calls `ports.deleteNotes` other
     than in `run`, starts `run` but after a `confirmed` the step accepted,
@@ -1610,6 +1619,15 @@ reaches:
   - a hunk to `device-my-data-delete.tsx` that drops `DELETING.goes` or
     `DELETING.stays` from the sheet that asks, or puts the confirm before
     "Keep it";
+  - a hunk to `call-deleting-runtime.ts` that calls `ports.deleteCallStep`
+    other than in `run`, starts `run` but after a `confirmed` the step
+    accepted, or retries on its own; a hunk to `call-deleting.ts` that lets
+    `stepCallSheet` reach `deleting` from any sheet but `asking`, or an
+    `ended` sheet whose end is not `away`, or reads a final answer (`409`,
+    `404`, `401`) as `away`; a hunk that calls a `CallDeleting`'s `confirm`
+    from anything but `CallSheetView`'s `onConfirm`; or a hunk to
+    `device-my-data-calls.tsx` that drops what goes or `CALL_DELETING.stays`
+    from the sheet that asks, or puts the confirm before "Keep it";
   - a hunk, to any line, in a file that holds a draft's delete (a store's
     delete, remove or discard of a recording that never reached home,
     anywhere in `apps/www` or `packages`) and that, as it stands after the
@@ -1620,12 +1638,13 @@ reaches:
   - a hunk that reaches the link's `send` under a name other than `send`,
     which the checks above read by name;
   - a hunk that narrows or deletes the "LA19 (MD5)" checks, or widens
-    their allowlists (`DELETE_SEND`, `VARIABLE_METHOD_SENDS`,
-    `DELETE_WIRING`).
+    their allowlists (`DELETE_SEND`, `DELETE_SENDS`,
+    `VARIABLE_METHOD_SENDS`, `DELETE_WIRING`).
 - _Scope:_ `apps/www/src/lib/my-data/deleting.ts`, `deleting-runtime.ts`,
-  `index.ts`, `apps/www/src/lib/home-link/delete-note.ts`,
-  `apps/www/src/components/settings/device-my-data.tsx` and
-  `device-my-data-delete.tsx`. For a draft's delete: every module in
+  `call-deleting.ts`, `call-deleting-runtime.ts`, `index.ts`,
+  `apps/www/src/lib/home-link/delete-note.ts`,
+  `apps/www/src/components/settings/device-my-data.tsx`,
+  `device-my-data-delete.tsx` and `device-my-data-calls.tsx`. For a draft's delete: every module in
   `apps/www` and `packages` that deletes a recording on the phone.
 - _Why not enforced:_
   - **Lint** can't hold that the port runs only after the person's confirm
@@ -1644,6 +1663,13 @@ reaches:
       `KindList`.
     - `ask` is called only by `MyDataKind`, through `offersDelete`'s ids,
       and by `KindList`'s `?note=` effect, guarded by `offersDelete`.
+    - Amended for a call week's step (ST38, #2661), read the same way:
+      `ports.deleteCallStep` is called only in `run`, after `confirm`'s
+      dispatch reached `deleting`; `confirm` is passed only to
+      `CallSheetView`'s `onConfirm`; `ask` only by `WeekRow`, with what
+      `offer` finds home's list lets go. The phone's own copy of a week's
+      video, which `forgetCopy` removes on the video's receipt, is a copy
+      of what home kept, not a draft.
     - The phone's draft deletes (Studio's retake and take removal, an idea
       answer's Delete, the soundbites', lens and LeetType desks' and Rust
       Rounds' deletes, the reflection and scene voice budgets) live in
@@ -1659,8 +1685,8 @@ flag nor clear a diff on it. LA19's falsifier holds the part a hunk shows
 (the draft's own file). What is mechanical is held by test: LA8's checks
 (only `lib/home-link` and the egress test's `HOME_LINK_CALLERS` import the
 link) and LA19's (only `lib/home-link/delete-note.ts` sends a `DELETE`, only
-My data's delete runtime calls it, and no other source names a `DELETE`
-beside a `/voice-notes/` path), so no chain can delete a record on home. It
+My data's two delete runtimes call it, and no other source names a `DELETE`
+beside a `/voice-notes/` or `/call/videos/` path), so no chain can delete a record on home. It
 was true when declared (MD5, #2479), by the reading listed under LA19's
 "Held when declared". Tracked: #2473, the MY-DATA epic.
 

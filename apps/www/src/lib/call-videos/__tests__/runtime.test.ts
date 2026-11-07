@@ -33,6 +33,7 @@ type Fakes = {
       size: Mock<VideoFiles["size"]>
       put: Mock<VideoFiles["put"]>
       where: Mock<VideoFiles["where"]>
+      remove: Mock<VideoFiles["remove"]>
     }
     share: Mock<CallsPorts["share"]>
     saveLink: Mock<CallsPorts["saveLink"]>
@@ -70,6 +71,10 @@ function fakes(list: ListState = { kind: "read", weeks: [week()] }): Fakes {
             : null
         )
       ),
+      remove: vi.fn<VideoFiles["remove"]>((from) => {
+        kept.delete(from)
+        return Promise.resolve()
+      }),
     },
     share: vi.fn<CallsPorts["share"]>(() => Promise.resolve("shared")),
     saveLink: vi.fn<CallsPorts["saveLink"]>(() =>
@@ -151,6 +156,16 @@ describe("createCallVideos", () => {
     await calls.watch("2026-10-30")
     expect(ports.part).toHaveBeenCalledTimes(6)
     expect(calls.getSnapshot().fetches["2026-10-30"]?.kind).toBe("ready")
+  })
+
+  it("lets go of the phone's copy once home's went, and forgets it was ready", async () => {
+    const { ports, kept } = fakes()
+    const calls = createCallVideos(ports)
+    await calls.open()
+    await calls.watch("2026-10-30")
+    await calls.forget("2026-10-30")
+    expect(kept.has("2026-10-30")).toBe(false)
+    expect(calls.getSnapshot().fetches["2026-10-30"]).toBeUndefined()
   })
 
   it("says why a fetch failed: home gone quiet, the video gone, or the phone full", async () => {

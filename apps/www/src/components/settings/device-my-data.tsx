@@ -61,6 +61,7 @@ import type {
 import type { RecordReading } from "@/lib/my-data/record"
 import { RECORD_KINDS } from "@/lib/my-data/record"
 import {
+  CALL_DELETING,
   DELETING,
   homeLine,
   itemLine,
@@ -268,6 +269,25 @@ export const MyDataOverview = ({
         )}
       </Section>
       <KeptForGood record={record} />
+      {hasAudience("apk") ? (
+        <Link
+          to="/settings/data/calls"
+          className={`hover:bg-accent bg-card rounded-xl border ${ROW}`}
+        >
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-medium">
+              {CALL_DELETING.row}
+            </span>
+            <span className="text-muted-foreground block text-xs">
+              {CALL_DELETING.rowLine}
+            </span>
+          </span>
+          <ChevronRight
+            className="text-muted-foreground size-4 shrink-0"
+            aria-hidden
+          />
+        </Link>
+      ) : null}
       {hasAudience("apk") ? (
         <Link
           to="/settings/data/deleted"

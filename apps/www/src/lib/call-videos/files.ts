@@ -133,4 +133,23 @@ export const videoFiles: VideoFiles = {
     }).outcome
     return valueOr(outcome, null)
   },
+
+  async remove(from) {
+    await callForeign({
+      port: PORT,
+      deadlineMs: DEADLINE_MS,
+      start: async (): Promise<void> => {
+        const { Directory, Filesystem } = await import("@capacitor/filesystem")
+        try {
+          await Filesystem.deleteFile({
+            path: pathOf(from),
+            directory: Directory.Cache,
+          })
+        } catch {
+          // Ignored: no copy on the phone is the usual case, a week never
+          // watched here.
+        }
+      },
+    }).outcome
+  },
 }

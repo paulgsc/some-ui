@@ -395,3 +395,43 @@ export function receiptsLine(home: ReceiptsReading["kind"]): string | null {
     }
   }
 }
+
+/**
+ * My data's page for the weekly call's videos (ST38, #2661): a week's video
+ * and then the rest of its folder are let go of home once the week's
+ * YouTube link is saved, each asked once, "Keep it" first.
+ */
+export const CALL_DELETING = {
+  /** The overview's way in. */
+  row: "The weekly call's videos",
+  rowLine: "Let home's copy go once a week is on YouTube",
+  title: "The weekly call's videos",
+  back: "My data",
+  lead: "Home keeps each week's video until it's on YouTube. Once its link is saved in Studio, let home's copy go: the video first, then the rest.",
+  week: (from: string, to: string): string => `${from} to ${to}`,
+  noLink: "Save its YouTube link in Studio first.",
+  waiting: "Home is still making this week's video.",
+  allGone: "Home's copy went. It lives on YouTube.",
+  video: (size: string): string => `Delete the video (${size})…`,
+  rest: (size: string): string => `Delete the rest (${size})…`,
+  asks: {
+    video: "Delete this week's video?",
+    rest: "Delete the rest of this week?",
+  },
+  goes: {
+    video: (size: string): string =>
+      `The video home keeps of the week, ${size}.`,
+    rest: (size: string): string => `Its takes, stills and cut list, ${size}.`,
+  },
+  stays: "The week's words, its YouTube link, and a receipt of this delete.",
+  keep: "Keep it",
+  confirm: "Delete for good",
+  deleting: "Deleting…",
+  done: "Done",
+  gone: (at: string): string => `Deleted ${at}. A receipt stays with the week.`,
+  kept: "Home kept it. A week's video goes only once its link is saved, and the rest only after the video.",
+  notHeld: "Home doesn't hold this week.",
+  forgotten: "This phone isn't paired with home now, so nothing was deleted.",
+  away: "Home didn't answer, so nothing was deleted.",
+  tryAgain: "Try again",
+} as const
