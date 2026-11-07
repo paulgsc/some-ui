@@ -558,14 +558,14 @@
           "id": "TE4",
           "kind": "RE9",
           "property": "work",
-          "claim": "What the notes of how takes ended keep grows by a take, and stays small.",
-          "requirement": "On the phone, at most 500 notes of about 300 B wait, each leaving once home holds it. On home, one row per note, a few hundred bytes, append-only; the rate is stated from measurement.",
+          "claim": "What the phone's app events keep (how takes ended, and whether the owner used what a pipeline offered) grows by a take or a use, and stays small.",
+          "requirement": "On the phone, at most 500 events of a few hundred bytes wait, both families sharing that allowance, each leaving once home holds it, and at most 200 engagement events wait in memory for the app to set the sink. On home, one row per event, a few hundred bytes, append-only; the rate is stated from measurement.",
           "verdict": "unproven",
-          "conclusion": "The phone's store is bounded at 500 notes; home's grows by a row per take, unmeasured until home's table exists and is sampled.",
+          "conclusion": "The phone's store is bounded at 500 events of both families; home's grows by a row per take or use, unmeasured until home's table is sampled.",
           "evidence": [
             {
               "class": "structural",
-              "says": "The phone keeps at most APP_EVENTS_WAITING notes and lets each go once home holds it.",
+              "says": "The phone keeps at most APP_EVENTS_WAITING events, outcomes and engagement alike, and lets each go once home holds it; the engagement sink holds at most EARLY_WAITING before the app sets it.",
               "ref": "some-ui:apps/www/src/lib/app-events/index.ts"
             },
             {
@@ -578,7 +578,14 @@
           "watch": {
             "by": "none"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-11-07",
+              "change": "The store and home's table hold a second family, engagement events (ENGAGE ENG2), beside the notes of how takes ended; both share the 500 the phone keeps, and growth is by a take or a use.",
+              "why": "The owner decided on 2026-11-03 that ENGAGE's events ride CK2's pipe (its phone store, outbox, home route and table) rather than a second store, so the bound on this store now covers both families.",
+              "decision": "https://github.com/paulgsc/some-ui/issues/2533"
+            }
+          ]
         }
       ]
     },
@@ -3017,14 +3024,14 @@
     {
       "store": "phone:app-events",
       "class": "telemetry",
-      "growth": "bounded: APP_EVENTS_WAITING = 500 notes of how a take ended (about 300 B each, 150 KB), each waiting until home holds it; past 500 a new one is not kept (`some-ui:app-events`).",
+      "growth": "bounded: APP_EVENTS_WAITING = 500 events, notes of how a take ended and engagement events alike (a few hundred bytes each, about 150 KB), each waiting until home holds it; past 500 a new one is not kept (`some-ui:app-events`).",
       "horizon": "a note leaves once home answers with it as sent",
       "family": "take-endings"
     },
     {
       "store": "server:app_event",
       "class": "telemetry",
-      "growth": "Per obligation the phone ran to an ending (a take today, about one row a take, a few hundred bytes each), append-only; no horizon (CK2, server app_event_repo).",
+      "growth": "Per obligation the phone ran to an ending (a take, about one row a take) and per engagement event (an offer, a take, a pass, a leave or an answer), a few hundred bytes each, append-only; no horizon (CK2 and ENG2, server app_event_repo).",
       "family": "take-endings"
     }
   ],
