@@ -1,4 +1,6 @@
 import type { JSX } from "react"
+import type { EngagementEvent } from "@some-ui/engagement"
+import { setEngagementSink } from "@some-ui/engagement"
 import type { Speaker } from "@some-ui/speech"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
@@ -101,7 +103,10 @@ function renderLesson({
   routineOpened = createOpenedStore(memoryStorage()),
   portionOrder = createPortionOrderStore(memoryStorage()),
   initialOpen,
-}: RenderOptions = {}): { feedWith: (next: RoutineFeed) => void } {
+}: RenderOptions = {}): {
+  feedWith: (next: RoutineFeed) => void
+  unmount: () => void
+} {
   const tree = (feed = routineFeed): JSX.Element => (
     <QueryClientProvider client={client}>
       <SessionConfigProvider
@@ -131,8 +136,8 @@ function renderLesson({
       </SessionConfigProvider>
     </QueryClientProvider>
   )
-  const { rerender } = render(tree())
-  return { feedWith: (next) => rerender(tree(next)) }
+  const { rerender, unmount } = render(tree())
+  return { feedWith: (next) => rerender(tree(next)), unmount }
 }
 
 const voice = (say: Speaker["say"]): Speaker => ({
@@ -365,7 +370,11 @@ describe("HandheldLesson", () => {
       ]),
     ]
     const told: Array<ReadonlyArray<string>> = []
-    renderLesson({
+    const used: Array<EngagementEvent> = []
+    // What earlier tests offered with no sink set waits for one: drop it.
+    setEngagementSink(() => undefined)
+    setEngagementSink((event) => used.push(event))
+    const { unmount } = renderLesson({
       speaker: voice(() => Promise.resolve({ kind: "heard" })),
       readAloudStore: store,
       routineFeed: {
@@ -436,6 +445,18 @@ describe("HandheldLesson", () => {
         "drama/drama-20261013T145200123Z.json",
         "scene/scene-2026-10-13_morning_session-.json",
       ],
+    ])
+    // ENG3: each set and the drama offered once, the two taken, and the
+    // lens set passed over when the lesson closes.
+    unmount()
+    setEngagementSink(null)
+    expect(used.map((event) => `${event.kind} ${event.affordance}`)).toEqual([
+      "offered routine-drama",
+      "offered routine-read-aloud",
+      "offered routine-lens",
+      "taken routine-read-aloud",
+      "taken routine-drama",
+      "passed-over routine-lens",
     ])
   })
 
