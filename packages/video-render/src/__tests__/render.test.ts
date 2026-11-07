@@ -12,6 +12,7 @@ import { promisify } from "node:util"
 import { authorshipOf } from "@video-render/authorship"
 import type { CutList, Shot } from "@video-render/cut-list"
 import { nodePorts } from "@video-render/node"
+import { JOIN_BATCH } from "@video-render/plan"
 import type { Ports } from "@video-render/render"
 import { render } from "@video-render/render"
 import type { Series } from "@video-render/series"
@@ -265,6 +266,122 @@ describe("render", () => {
     },
     60_000
   )
+
+  /** `n` scenes of footage, each in by `transition` (the first by a cut). */
+  const long = (n: number, transition: "crossfade" | "cut"): CutList =>
+    fixtures.cutList(
+      Array.from({ length: n }, (_, i) =>
+        fixtures.shot(`L${i + 1}`, {
+          picture: fixtures.capture((i % 8) * 600),
+          durationMs: 1000,
+          overrides: i === 0 ? {} : { transitionIn: transition },
+        })
+      )
+    )
+
+  it("joins a video longer than a batch in parts: every frame, the same bytes (VR1)", async () => {
+    const n = JOIN_BATCH * 2 + 3
+    const cut = long(n, "crossfade")
+    const mixed: CutList = {
+      ...cut,
+      shots: cut.shots.map((s, i) => {
+        const joined =
+          i % 4 === 3
+            ? {
+                ...s,
+                overrides: { ...s.overrides, transitionIn: "cut" as const },
+              }
+            : s
+        // A scene named like a part, in the second batch: its segment must
+        // stay its own, never be overwritten by the first batch's join.
+        return i === JOIN_BATCH + 2 ? { ...joined, id: "part-1" } : joined
+      }),
+    }
+    const runs = []
+    for (const k of [1, 2]) {
+      const done = await render(mixed, series(), ports, {
+        workDir: `work-long-${k}`,
+        out: `out-long-${k}/video.mp4`,
+      })
+      if (!done.ok) throw new Error(done.problems.join("\n"))
+      runs.push(done.value)
+    }
+    const parts = (await readdir(join(root, "work-long-1/parts"))).filter((f) =>
+      /^\d+\.mkv$/.test(f)
+    )
+    expect(parts.length).toBe(Math.ceil(n / JOIN_BATCH))
+    // Its segment holds its own scene's frames, not a batch's.
+    const own = runs[0]?.shotTimes.find((t) => t.id === "part-1")
+    if (!own) throw new Error("no part-1 scene")
+    expect(await frames("work-long-1/part-1.mkv")).toBe(
+      Math.round((own.durationMs * 30) / 1000)
+    )
+    const last = runs[0]?.shotTimes.at(-1)
+    if (!last) throw new Error("no shot times")
+    expect(await frames("out-long-1/video.mp4")).toBe(
+      Math.round(((last.startMs + last.durationMs) * 30) / 1000)
+    )
+    expect(await sha("out-long-1/video.mp4")).toBe(
+      await sha("out-long-2/video.mp4")
+    )
+  }, 120_000)
+
+  // VR1 (promise): no ffmpeg call the renderer makes opens more than
+  // JOIN_BATCH scene segments, and every call that draws picture decodes each
+  // input on one thread and encodes on two, whatever the video's length.
+  // Family: scene counts 1 to 60 (a call has at most 57), each joined by
+  // crossfades or by cuts. Proof: every member, rendered with ffmpeg faked.
+  it("holds at most a batch of segments in any ffmpeg call, for 1 to 60 scenes (VR1)", async () => {
+    const calls: Array<ReadonlyArray<string>> = []
+    const faked: Ports = {
+      ...ports,
+      probe: () =>
+        Promise.resolve({ width: 206, height: 458, durationMs: 8000 }),
+      ffmpeg: (call) => {
+        calls.push(call.args)
+        return Promise.resolve({ ok: true, stderr: "" })
+      },
+    }
+    for (const transition of ["crossfade", "cut"] as const) {
+      for (let n = 1; n <= 60; n += 1) {
+        calls.length = 0
+        const done = await render(long(n, transition), series(), faked, {
+          workDir: `work-vr1-${transition}-${n}`,
+          out: `out-vr1-${transition}-${n}/video.mp4`,
+        })
+        expect(done.ok ? [] : done.problems).toEqual([])
+        for (const args of calls) {
+          const inputs = args.flatMap((a, i) =>
+            a === "-i" ? [args[i + 1] ?? ""] : []
+          )
+          const segments = inputs.filter((f) => f.endsWith(".mkv"))
+          expect(
+            segments.length,
+            `${transition} ${n}: ${args.join(" ")}`
+          ).toBeLessThanOrEqual(JOIN_BATCH)
+          if (!args.includes("-filter_complex") || args.includes("-vn"))
+            continue
+          if (!args.some((a) => a === "[v]")) continue
+          expect(args).toEqual(
+            expect.arrayContaining(["-filter_complex_threads"])
+          )
+          args.forEach((a, i) => {
+            if (a === "-i") {
+              const before = args.slice(0, i)
+              const opened = before.lastIndexOf("-threads")
+              expect(
+                opened,
+                `${transition} ${n}: ${inputs.join(" ")}`
+              ).toBeGreaterThanOrEqual(0)
+              expect(args[opened + 1]).toBe("1")
+            }
+          })
+          const out = args.lastIndexOf("-threads")
+          expect(args[out + 1]).toBe("2")
+        }
+      }
+    }
+  }, 120_000)
 
   it("needs footage only up to a freeze", async () => {
     const short: Ports = {

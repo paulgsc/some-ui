@@ -10,10 +10,14 @@ import { authorshipParams } from "./authorship"
 import { isAuthorship } from "./cut-list"
 import type { BurnIn, CutList, Parsed } from "./cut-list"
 import {
+  batches,
+  JOIN_BATCH,
+  partScene,
   placeCues,
   placeTakes,
   planAssembly,
   planBed,
+  planJoin,
   planLevel,
   planMeasure,
   planMix,
@@ -219,9 +223,39 @@ export async function render(
   )
   if (!mixed.ok) return refused([`the sound: ${tail(mixed.stderr)}`])
 
+  // VR1: past JOIN_BATCH scenes, the segments are joined a batch at a time
+  // into parts, and the parts are what the last step joins, so no ffmpeg
+  // call holds every scene of a long video at once.
+  let joined: {
+    scenes: ReadonlyArray<Scene>
+    segments: ReadonlyArray<string>
+  } = { scenes, segments }
+  if (scenes.length > JOIN_BATCH) {
+    const sceneParts = batches(scenes)
+    const segmentParts = batches(segments)
+    // Their own folder: a shot's id never holds a slash, so no scene's
+    // segment (`${work}/<id>.mkv`) can be a part, however a shot is named.
+    const partsDir = `${work}/parts`
+    await ports.mkdir(partsDir)
+    const parts: Array<string> = []
+    const partScenes: Array<Scene> = []
+    for (const [k, part] of sceneParts.entries()) {
+      const file = `${partsDir}/${k + 1}.mkv`
+      const ran = await ports.ffmpeg(
+        planJoin(part, segmentParts[k] ?? [], series, file)
+      )
+      if (!ran.ok) {
+        return refused([`part ${k + 1} of the video: ${tail(ran.stderr)}`])
+      }
+      parts.push(file)
+      partScenes.push(partScene(part, k + 1))
+    }
+    joined = { scenes: partScenes, segments: parts }
+  }
+
   const assembled = await ports.ffmpeg(
     planAssembly(
-      { scenes, segments, totalFrames, layers, mix: mixFile },
+      { ...joined, totalFrames, layers, mix: mixFile },
       series,
       options.out
     )
