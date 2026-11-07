@@ -47,9 +47,7 @@ export const CALL_ID = "conference-call"
  * `templates/`. A week names the version it was written for, and is drawn in
  * that version's shape; the routine writes this one (`CALL-ROUTINE.md`).
  *
- * 2 (SFEED2, #2670): the shape. The locked intro, the owner's brand intro
- * and outro, a chapter slide said aloud before each section but the open
- * and the close, and subtitles with each word lit.
+ * 2 (SFEED2, #2670): the shape (`CALL_SHAPE`).
  */
 export const CALL_VERSION = 2
 
@@ -445,17 +443,23 @@ export function parseCallWeek(raw: unknown): Parsed<CallWeek> {
 export const sampleCallWeek = (): Parsed<CallWeek> => parseCallWeek(sample)
 
 /** One scene of a call: its section, its id in the video, and what it says. */
-export type CallScene = {
-  readonly section: Section | Framing
-  /** The scene's id: its section's, or `<section>-<n>` for an item. */
-  readonly id: string
-  /** The item it shows, by the week's id; absent for a section's own scene. */
-  readonly item?: string
-  /** The section a chapter slide opens. */
-  readonly of?: Section
-  /** What is said over it; empty for a brand slide, which says nothing. */
-  readonly said: string
-}
+export type CallScene =
+  | {
+      readonly section: Exclude<Section | Framing, "chapter">
+      /** The scene's id: its section's, or `<section>-<n>` for an item. */
+      readonly id: string
+      /** The item it shows, by the week's id; absent for a section's own scene. */
+      readonly item?: string
+      /** What is said over it; empty for a brand slide, which says nothing. */
+      readonly said: string
+    }
+  | {
+      readonly section: "chapter"
+      readonly id: string
+      /** The section the chapter slide opens. */
+      readonly of: Section
+      readonly said: string
+    }
 
 /** How long a brand slide holds, with nothing said over it. */
 export const BRAND_MS = 3_000
@@ -472,26 +476,13 @@ export const CALL_CHAPTERS: Readonly<Record<Section, string>> = {
   close: "Close",
 }
 
-const MONTHS = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-] as const
-
 /** A day as it is said: "October 30". */
-const sayDay = (day: string): string => {
-  const [, month, date] = day.split("-")
-  return `${MONTHS[Number(month) - 1] ?? String(month)} ${Number(date)}`
-}
+const sayDay = (day: string): string =>
+  new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${day}T00:00:00Z`))
 
 const count = (n: number, one: string, many: string): string =>
   `${n} ${n === 1 ? one : many}`
@@ -510,7 +501,6 @@ export function callIntro(week: CallWeek): {
   }>
   readonly said: string
 } {
-  // What has none this week is left out, never said as nought.
   const counted: ReadonlyArray<readonly [number, string, string]> = [
     [week.asks.length, "question waits on you", "questions wait on you"],
     [

@@ -107,7 +107,8 @@ describe("the sample week", () => {
       "close",
       "brand-out",
     ])
-    expect(scenes.find((s) => s.id === "asks-2")?.item).toBe("talk-d1")
+    const ask = scenes.find((s) => s.id === "asks-2")
+    expect(ask && "item" in ask && ask.item).toBe("talk-d1")
     expect(scenes.find((s) => s.id === "chapter-done")).toMatchObject({
       of: "done",
       said: "What landed.",

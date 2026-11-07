@@ -56,6 +56,7 @@ import {
   MB,
   overLength,
   parseCallWeek,
+  TimedWordSchema,
 } from "@some-ui/video-render"
 import type {
   CallTake,
@@ -84,16 +85,10 @@ const SERIES = resolve(
   "../../../../packages/video-render/src/sample/series/conference-call"
 )
 
-/** Each word the speaker said, and when (its `/timed`). */
+/** A take and each word said in it, as the speaker's `/timed` gives them. */
 const TimedSchema = z.object({
   audio: z.string().min(1),
-  words: z.array(
-    z.object({
-      text: z.string().min(1),
-      startMs: z.number().int().nonnegative(),
-      endMs: z.number().int().nonnegative(),
-    })
-  ),
+  words: z.array(TimedWordSchema),
 })
 
 /**
@@ -334,9 +329,9 @@ async function main(): Promise<void> {
         const facts = await ports.probe(`${file}.wav`)
         if (!facts) fail([`${file}.wav can't be read`])
         const words = timed
-          ? z
-              .array(TimedSchema.shape.words.element)
-              .parse(JSON.parse(await readFile(kept, "utf8")))
+          ? TimedSchema.shape.words.parse(
+              JSON.parse(await readFile(kept, "utf8"))
+            )
           : undefined
         takes.push({
           ms: Math.round(facts.durationMs),

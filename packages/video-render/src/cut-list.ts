@@ -11,6 +11,7 @@
 import { z } from "zod"
 
 import { LOOKS, VOICES } from "./plans"
+import { TimedWordSchema } from "./subtitles"
 import {
   BackgroundSchema,
   CueSchema,
@@ -119,9 +120,7 @@ export const ShotSchema = z.object({
       file: path,
       inMs: ms,
       outMs: ms,
-      words: z
-        .array(z.object({ text: z.string().min(1), startMs: ms, endMs: ms }))
-        .optional(),
+      words: z.array(TimedWordSchema).optional(),
     })
     .optional(),
   /** This scene's voice under a Mixed plan: the point said, or the line read. */

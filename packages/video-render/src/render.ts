@@ -113,12 +113,13 @@ function wordsSaid(
     const take = shot.shot.take
     if (!take?.words) return []
     const atMs = toMs(placed.startFrame, fps) + shot.shot.voiceInMs
+    // A word the trim cuts into keeps the part of it that is heard.
     return take.words
-      .filter((w) => w.startMs >= take.inMs && w.endMs <= take.outMs)
+      .filter((w) => w.endMs > take.inMs && w.startMs < take.outMs)
       .map((w) => ({
         text: w.text,
-        startMs: atMs + w.startMs - take.inMs,
-        endMs: atMs + w.endMs - take.inMs,
+        startMs: atMs + Math.max(w.startMs, take.inMs) - take.inMs,
+        endMs: atMs + Math.min(w.endMs, take.outMs) - take.inMs,
       }))
   })
 }

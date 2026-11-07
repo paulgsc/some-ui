@@ -5,21 +5,21 @@
  * own timings (home's speaker's `/timed`), so the same takes give the same
  * script.
  *
- * Under `word`, each word is lit as it is said (ASS karaoke: a word is
- * `SecondaryColour` until it is reached, then `PrimaryColour`); under `line`,
- * a line is drawn whole for as long as it is said.
- *
  * A line is drawn in the band at the frame's foot (`subtitleBand`), never
  * above it, so a template that leaves that band empty has nothing drawn over
  * its picture.
  */
 
-/** A word said, and when, in ms. */
-export type TimedWord = {
-  readonly text: string
-  readonly startMs: number
-  readonly endMs: number
-}
+import { z } from "zod"
+
+/** A word said, and when, in ms: what home's speaker gives (`/timed`). */
+export const TimedWordSchema = z.object({
+  text: z.string().min(1),
+  startMs: z.number().int().nonnegative(),
+  endMs: z.number().int().nonnegative(),
+})
+
+export type TimedWord = Readonly<z.infer<typeof TimedWordSchema>>
 
 export type SubtitleStyle = "line" | "word"
 
@@ -91,13 +91,15 @@ export function subtitleLines(
  */
 export function subtitleBand(height: number): {
   readonly bandPx: number
+  /** The band's height as a share of the frame's. */
+  readonly share: number
   readonly fontPx: number
   readonly marginPx: number
 } {
   const fontPx = Math.round(height * 0.04)
   const marginPx = Math.round(height * 0.03)
-  // One row of text, its box's padding, and the margin under it.
-  return { bandPx: Math.ceil(fontPx * 1.6 + marginPx * 2), fontPx, marginPx }
+  const bandPx = Math.ceil(fontPx * 1.6 + marginPx * 2)
+  return { bandPx, share: bandPx / height, fontPx, marginPx }
 }
 
 /** `ms` as ASS writes a time: H:MM:SS.cc. */

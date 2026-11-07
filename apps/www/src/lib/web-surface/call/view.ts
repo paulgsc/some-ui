@@ -72,11 +72,10 @@ function viewOf(
       return { section: "intro", rows: callIntro(week).rows }
     }
     case "chapter": {
-      const of = scene.of ?? "open"
       const items = scenes.filter(
-        (s) => s.section === of && s.item !== undefined
+        (s) => s.section === scene.of && "item" in s && s.item !== undefined
       ).length
-      return { section: "chapter", title: CALL_CHAPTERS[of], items }
+      return { section: "chapter", title: CALL_CHAPTERS[scene.of], items }
     }
     case "moved": {
       return { section: "moved", item: find(week.moved, scene.item) }
@@ -94,7 +93,7 @@ function viewOf(
       return { section: "asks", item: find(week.asks, scene.item) }
     }
     default: {
-      return assertNever(scene.section)
+      return assertNever(scene)
     }
   }
 }

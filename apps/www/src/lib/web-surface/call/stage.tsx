@@ -3,6 +3,7 @@ import { useLayoutEffect, useState } from "react"
 import { assertNever } from "@some-ui/core-utils"
 import { BrandMark } from "@some-ui/shared"
 import {
+  CALL_CHAPTERS,
   callFormat,
   CallIndexSchema,
   CallWeekSchema,
@@ -69,10 +70,10 @@ const sectionName = (at: { scene: CallScene; view: SceneView }): string => {
     case "mine":
     case "asks":
     case "close": {
-      return NAMES[at.scene.section] ?? at.scene.section
+      return NAMES[at.scene.section] ?? ""
     }
     default: {
-      return assertNever(at.scene.section)
+      return assertNever(at.scene)
     }
   }
 }
@@ -88,10 +89,36 @@ const labelOf = (
   scene: CallScene,
   scenes: ReadonlyArray<CallScene>
 ): string => {
-  const name = NAMES[scene.section] ?? scene.section
-  if (scene.item === undefined) return name
-  const n = scenes.filter((s) => s.section === scene.section).indexOf(scene)
-  return `${name} ${n + 1}`
+  switch (scene.section) {
+    case "intro": {
+      return W.whoMadeThis
+    }
+    case "brand-in": {
+      return W.brandIn
+    }
+    case "brand-out": {
+      return W.brandOut
+    }
+    case "chapter": {
+      return W.chapter(CALL_CHAPTERS[scene.of])
+    }
+    case "open":
+    case "board":
+    case "moved":
+    case "done":
+    case "gray":
+    case "mine":
+    case "asks":
+    case "close": {
+      const name = NAMES[scene.section] ?? ""
+      if (scene.item === undefined) return name
+      const n = scenes.filter((s) => s.section === scene.section).indexOf(scene)
+      return `${name} ${n + 1}`
+    }
+    default: {
+      return assertNever(scene)
+    }
+  }
 }
 
 /**
@@ -491,11 +518,8 @@ export const CallStagePage = ({
             <footer
               data-subtitle-band=""
               className="border-border shrink-0 border-t"
-              style={{
-                // The band's share of the frame's height, which is 9/16 of
-                // its width, in the container's width units.
-                height: `${(56.25 * subtitleBand(1080).bandPx) / 1080}cqw`,
-              }}
+              // The frame's height is 9/16 of its width, the container's unit.
+              style={{ height: `${56.25 * subtitleBand(1080).share}cqw` }}
             />
           ) : (
             <footer className="bg-background/80 border-border border-t px-[1.6em] py-[0.8em] text-[1.05em] leading-snug">

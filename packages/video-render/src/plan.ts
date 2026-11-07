@@ -793,6 +793,13 @@ export function partScene(scenes: ReadonlyArray<Scene>, index: number): Scene {
   }
 }
 
+/**
+ * A path as a filter's option value: quoted, with what a filtergraph reads
+ * inside quotes (a quote, a backslash, a colon) escaped.
+ */
+const filterPath = (path: string): string =>
+  `'${path.replace(/[\\':]/g, (c) => `\\${c}`)}'`
+
 /** Joins the segments, lays the burn-ins on, adds the mixed sound, to `out`. */
 export function planAssembly(
   a: Assembly,
@@ -813,7 +820,7 @@ export function planAssembly(
     acc = `[l${i}]`
   })
   if (a.subtitles !== undefined) {
-    filters.push(`${acc}subtitles=filename=${a.subtitles}[sub]`)
+    filters.push(`${acc}subtitles=filename=${filterPath(a.subtitles)}[sub]`)
     acc = "[sub]"
   }
   filters.push(`${acc}format=yuv420p[v]`)
