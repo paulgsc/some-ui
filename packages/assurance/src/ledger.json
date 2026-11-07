@@ -2015,9 +2015,8 @@
           "property": "outcome",
           "claim": "A week's video leaves home only once I've recorded its YouTube link, the video first and then the rest, and each delete leaves a receipt.",
           "requirement": "A paired phone's My data deletes a rendered week in two steps: its call.mp4, only once a YouTube video link is recorded for the week, and then the rest of its folder (takes, stills, cut list), only once the video has gone; each step writes an append-only receipt (the week, the step, the bytes that went, the link recorded, when) kept for good, and a repeated step answers with the same receipt and deletes nothing more; a link is a YouTube video's id, kept append-only, the newest standing; the week's words stay in call_week.",
-          "verdict": "unproven",
-          "conclusion": "Built on home and on the phone, not yet run on it: My data's call videos page offers a week's video once its link is saved, and the rest once the video went, each asked once in a sheet that says what goes and what stays, and home answers each with a receipt kept for good, tested.",
-          "tracked": "some-ui#2661",
+          "verdict": "holds",
+          "conclusion": "Shown in home's tests on its own SQLite and drive, and in the phone's: a step goes only once a link is recorded, the video first and then the rest, each with a receipt kept for good, a repeated step answering with the same receipt; the phone asks once per confirm in My data's sheet. The owner's run on Nov 7 let the first week go, both steps, from the phone; nothing tells the owner if a step stops working later.",
           "evidence": [
             {
               "class": "structural",
@@ -2035,15 +2034,23 @@
               "ref": "some-ui:apps/www/src/lib/my-data/call-deleting-runtime.ts"
             },
             {
-              "class": "unknown",
-              "says": "Nobody has let a week go from a phone yet.",
+              "class": "measured",
+              "says": "The owner's run on 2026-11-07: the week of 2026-10-30 was watched on the phone, shared to YouTube and its link saved; My data let its video go, then the rest, each ending on home's receipt; renders/call was left empty, and call_render_weeks_let_go read 1 from about 11:00.",
               "ref": "some-ui#2661"
             }
           ],
           "watch": {
             "by": "none"
           },
-          "amendments": []
+          "amendments": [],
+          "proof": [
+            "server:crates/db/call_week/src/video.rs#a_link_is_recorded_once_and_the_newest_stands",
+            "server:crates/db/call_week/src/video.rs#a_week_goes_video_first_then_the_rest_each_once_with_a_receipt_kept_for_good",
+            "server:apps/servers/file_host/src/call_weeks/videos.rs#a_week_goes_video_first_then_the_rest_once_its_link_is_recorded",
+            "server:apps/servers/file_host/src/call_weeks/videos.rs#a_step_the_drive_refuses_keeps_its_receipt_and_is_finished_when_asked_again",
+            "some-ui:apps/www/src/lib/my-data/__tests__/call-deleting.test.ts#stepCallSheet",
+            "some-ui:apps/www/src/lib/my-data/__tests__/call-deleting.test.ts#createCallDeleting"
+          ]
         },
         {
           "id": "CW8",
@@ -2051,9 +2058,8 @@
           "property": "outcome",
           "claim": "A week I've let go reads as let go, never as waiting for its video, and isn't rendered again.",
           "requirement": "Once a week's video is deleted from My data, file_host no longer writes it to call-weeks, removing its file there, the render worker skips a week whose file is gone, and the CALL dashboard and the CallRender* alerts count it as let go, apart from the weeks still waiting.",
-          "verdict": "unproven",
-          "conclusion": "Built on home: a week whose video is let go is never written to call-weeks again, its file there removed, and it counts as let go on the CALL dashboard (call_render_weeks_let_go), never as waiting, each tested.",
-          "tracked": "some-ui#2661",
+          "verdict": "holds",
+          "conclusion": "Shown in home's tests: a week whose video was let go is never written to call-weeks again, a file left of it is removed, and it counts as let go, never as waiting. On the owner's run on Nov 7 the CALL dashboard read it so (let go 1, waiting 0); it is a dashboard, which tells no one unless they look.",
           "evidence": [
             {
               "class": "structural",
@@ -2064,13 +2070,22 @@
               "class": "structural",
               "says": "The render observation counts a let-go week apart, so CallRenderOverdue and the waiting count never see it, tested.",
               "ref": "server:apps/servers/file_host/src/call_weeks/render.rs"
+            },
+            {
+              "class": "measured",
+              "says": "After the owner let the week of 2026-10-30 go on 2026-11-07, the CALL dashboard read held 1, waiting 0, failed 0, and call_render_weeks_let_go 1.",
+              "ref": "some-ui#2661"
             }
           ],
           "watch": {
             "by": "dashboard",
             "ref": "server:infra/grafana/dashboards/call.jsonnet"
           },
-          "amendments": []
+          "amendments": [],
+          "proof": [
+            "server:apps/servers/file_host/src/call_weeks/pass.rs#every_week_held_is_written_for_the_render_worker_once",
+            "server:apps/servers/file_host/src/call_weeks/render.rs#each_week_held_reads_as_rendered_waiting_or_failed"
+          ]
         }
       ]
     }
