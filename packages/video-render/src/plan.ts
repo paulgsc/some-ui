@@ -51,6 +51,23 @@ const BITEXACT = [
   "-1",
 ]
 
+/**
+ * VR1: what one ffmpeg call may hold. Each input is decoded on one thread
+ * and the encoder runs on two, whatever the machine has, so the same video
+ * gives the same bytes on any machine and a decoder holds a few frames, not
+ * one per core. Measured on a week of the call (38 crossfaded 1080p scenes),
+ * joining them in one call peaked at 4.17 GB with ffmpeg's own threads,
+ * 2.10 GB pinned, and grew by about 46 MB a scene, so scenes are also joined
+ * at most JOIN_BATCH at a time (`planJoin`): a call's memory is bounded by
+ * the batch, never by the length of the video.
+ */
+const DECODE = ["-threads", "1"] as const
+const ENCODE = ["-threads", "2"] as const
+const FILTER_THREADS = ["-filter_complex_threads", "1"] as const
+
+/** How many scene segments one ffmpeg call joins at most (VR1). */
+export const JOIN_BATCH = 10
+
 /** Seconds, exact to the microsecond, as ffmpeg reads them. */
 const sec = (ms: number): string => (ms / 1000).toFixed(6)
 
@@ -265,10 +282,18 @@ export function planSegment(
   // The picture, when there is one, is input 0; the background follows it.
   let pic: string | null = null
   if (p.kind === "capture") {
-    inputs.push("-ss", sec(p.inMs), "-i", p.source)
+    inputs.push(...DECODE, "-ss", sec(p.inMs), "-i", p.source)
     pic = "0:v"
   } else if (p.kind === "still") {
-    inputs.push("-loop", "1", "-framerate", String(fps), "-i", p.source)
+    inputs.push(
+      ...DECODE,
+      "-loop",
+      "1",
+      "-framerate",
+      String(fps),
+      "-i",
+      p.source
+    )
     pic = "0:v"
   }
   const bgIn = pic ? 1 : 0
@@ -276,6 +301,7 @@ export function planSegment(
   switch (bg.kind) {
     case "as-captured": {
       inputs.push(
+        ...DECODE,
         "-f",
         "lavfi",
         "-i",
@@ -285,7 +311,15 @@ export function planSegment(
       break
     }
     case "image": {
-      inputs.push("-loop", "1", "-framerate", String(fps), "-i", bg.image.file)
+      inputs.push(
+        ...DECODE,
+        "-loop",
+        "1",
+        "-framerate",
+        String(fps),
+        "-i",
+        bg.image.file
+      )
       filters.push(`[${bgIn}:v]fps=${fps},${cover(frame)}[bg]`)
       break
     }
@@ -318,6 +352,7 @@ export function planSegment(
   return {
     args: [
       ...QUIET,
+      ...FILTER_THREADS,
       ...inputs,
       "-filter_complex",
       filters.join(";"),
@@ -334,6 +369,7 @@ export function planSegment(
       "veryfast",
       "-crf",
       "8",
+      ...ENCODE,
       ...BITEXACT,
       out,
     ],
@@ -643,6 +679,118 @@ export function planMix(a: Mix, series: Series, out: string): FfmpegCall {
   }
 }
 
+/**
+ * Each segment's input, then the chain that joins them, as the timeline from
+ * `originFrame` on: each scene's transition at its own frame, less the
+ * origin. Returns the label of the joined picture.
+ */
+function joinChain(
+  scenes: ReadonlyArray<Scene>,
+  segments: ReadonlyArray<string>,
+  originFrame: number,
+  fps: number,
+  inputs: Array<string>,
+  filters: Array<string>
+): string {
+  const first = inputs.filter((a) => a === "-i").length
+  segments.forEach((file, i) => {
+    inputs.push(...DECODE, "-i", file)
+    filters.push(`[${first + i}:v]settb=AVTB,setpts=PTS-STARTPTS[s${i}]`)
+  })
+  let acc = "[s0]"
+  scenes.forEach(({ shot: s, placed: p }, i) => {
+    if (i === 0) return
+    const label = `[j${i}]`
+    if (s.transitionIn === "cut") {
+      filters.push(`${acc}[s${i}]concat=n=2:v=1:a=0${label}`)
+    } else {
+      filters.push(
+        `${acc}[s${i}]xfade=transition=${XFADE[s.transitionIn]}:` +
+          `duration=${at(p.overlapFrames, fps)}:offset=${at(p.startFrame - originFrame, fps)}${label}`
+      )
+    }
+    acc = label
+  })
+  return acc
+}
+
+/**
+ * VR1: joins at most JOIN_BATCH segments, picture only, to `out`, a part as
+ * near-lossless as a segment. Its first scene starts it, so a part is placed
+ * where its first scene is and joins the part before it by that scene's
+ * transition, as the scenes themselves would have.
+ */
+export function planJoin(
+  scenes: ReadonlyArray<Scene>,
+  segments: ReadonlyArray<string>,
+  series: Series,
+  out: string
+): FfmpegCall {
+  const fps = series.frame.fps
+  const first = scenes[0]
+  const last = scenes.at(-1)
+  if (!first || !last) throw new Error("a part joins at least one scene")
+  const originFrame = first.placed.startFrame
+  const inputs: Array<string> = []
+  const filters: Array<string> = []
+  const acc = joinChain(scenes, segments, originFrame, fps, inputs, filters)
+  filters.push(`${acc}format=yuv420p[v]`)
+  return {
+    args: [
+      ...QUIET,
+      ...FILTER_THREADS,
+      ...inputs,
+      "-filter_complex",
+      filters.join(";"),
+      "-map",
+      "[v]",
+      "-frames:v",
+      String(last.placed.startFrame + last.placed.frames - originFrame),
+      "-r",
+      String(fps),
+      "-an",
+      "-c:v",
+      "libx264",
+      "-preset",
+      "veryfast",
+      "-crf",
+      "8",
+      ...ENCODE,
+      ...BITEXACT,
+      out,
+    ],
+  }
+}
+
+/**
+ * The scenes `planAssembly` joins when they were joined JOIN_BATCH at a
+ * time: each part stands where its first scene does, for as long as its
+ * scenes run, and comes in by that scene's transition.
+ */
+export function batches<T>(
+  items: ReadonlyArray<T>
+): ReadonlyArray<ReadonlyArray<T>> {
+  const out: Array<ReadonlyArray<T>> = []
+  for (let i = 0; i < items.length; i += JOIN_BATCH)
+    out.push(items.slice(i, i + JOIN_BATCH))
+  return out
+}
+
+export function partScene(scenes: ReadonlyArray<Scene>, index: number): Scene {
+  const first = scenes[0]
+  const last = scenes.at(-1)
+  if (!first || !last) throw new Error("a part joins at least one scene")
+  return {
+    shot: first.shot,
+    placed: {
+      ...first.placed,
+      id: `part-${index}`,
+      frames:
+        last.placed.startFrame + last.placed.frames - first.placed.startFrame,
+    },
+  }
+}
+
 /** Joins the segments, lays the burn-ins on, adds the mixed sound, to `out`. */
 export function planAssembly(
   a: Assembly,
@@ -652,30 +800,10 @@ export function planAssembly(
   const fps = series.frame.fps
   const inputs: Array<string> = []
   const filters: Array<string> = []
-  let next = 0
-  const segIn = a.segments.map((file) => {
-    inputs.push("-i", file)
-    return next++
-  })
-  segIn.forEach((n, i) =>
-    filters.push(`[${n}:v]settb=AVTB,setpts=PTS-STARTPTS[s${i}]`)
-  )
-  let acc = "[s0]"
-  a.scenes.forEach(({ shot: s, placed: p }, i) => {
-    if (i === 0) return
-    const label = `[j${i}]`
-    if (s.transitionIn === "cut") {
-      filters.push(`${acc}[s${i}]concat=n=2:v=1:a=0${label}`)
-    } else {
-      filters.push(
-        `${acc}[s${i}]xfade=transition=${XFADE[s.transitionIn]}:` +
-          `duration=${at(p.overlapFrames, fps)}:offset=${at(p.startFrame, fps)}${label}`
-      )
-    }
-    acc = label
-  })
+  let acc = joinChain(a.scenes, a.segments, 0, fps, inputs, filters)
+  let next = a.segments.length
   a.layers.forEach((layer, i) => {
-    inputs.push("-i", layer.file)
+    inputs.push(...DECODE, "-i", layer.file)
     filters.push(
       `[${next++}:v]setpts=PTS-STARTPTS+${at(layer.startFrame, fps)}/TB[b${i}]`,
       `${acc}[b${i}]overlay=0:0:eof_action=pass[l${i}]`
@@ -683,10 +811,11 @@ export function planAssembly(
     acc = `[l${i}]`
   })
   filters.push(`${acc}format=yuv420p[v]`)
-  inputs.push("-i", a.mix)
+  inputs.push(...DECODE, "-i", a.mix)
   return {
     args: [
       ...QUIET,
+      ...FILTER_THREADS,
       ...inputs,
       "-filter_complex",
       filters.join(";"),
@@ -712,6 +841,7 @@ export function planAssembly(
       "160k",
       "-movflags",
       "+faststart",
+      ...ENCODE,
       ...BITEXACT,
       out,
     ],
