@@ -31,10 +31,8 @@ let root = ""
 let ports: Ports
 const sums = new Map<string, string>()
 
-async function make(args: ReadonlyArray<string>): Promise<void> {
-  const ran = await ports.ffmpeg({ args: ["-v", "error", "-y", ...args] })
-  if (!ran.ok) throw new Error(ran.stderr)
-}
+const make = (args: ReadonlyArray<string>): Promise<void> =>
+  fixtures.make(ports, args)
 
 const sha = async (file: string): Promise<string> =>
   createHash("sha256")

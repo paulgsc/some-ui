@@ -67,9 +67,7 @@ const labelOf = (
  * Whether the element's content, or any of its regions' (the frame's header,
  * body and footer), runs past its box, as laid out now: measured when the
  * element mounts (the frame mounts late, once its week is read), when `key`
- * changes, when it resizes and when a web font lands. A region is measured
- * on its own because the body's text can run on under the footer while the
- * frame as a whole still fits (#2671).
+ * changes, when it resizes and when a web font lands.
  */
 function useOverflows(key: string): {
   ref: (element: HTMLElement | null) => void
