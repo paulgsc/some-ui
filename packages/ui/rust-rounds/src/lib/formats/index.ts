@@ -34,7 +34,7 @@ export const SLUG = "[a-z0-9]+(?:-[a-z0-9]+)*"
  */
 const MAX_ID_CHARS = 64
 
-const SlugSchema = z
+export const SlugSchema = z
   .string()
   .max(MAX_ID_CHARS, `an id is at most ${MAX_ID_CHARS} characters`)
   .regex(
@@ -51,11 +51,11 @@ const NoteIdSchema = z
   )
 
 /** Text with something in it. Kept as written: a program's whitespace is part of it. */
-const TextSchema = z
+export const TextSchema = z
   .string()
   .refine((text) => text.trim() !== "", "must not be empty")
 
-const WhenSchema = z.iso.datetime({ offset: true })
+export const WhenSchema = z.iso.datetime({ offset: true })
 
 /** rustc's error code, like `E0277`; null for an error rustc gives no code. */
 const ErrorCodeSchema = z
@@ -70,7 +70,7 @@ const ErrorCodeSchema = z
  * shown as a verdict; a guess that differs from the recorded run is logged
  * (`tutorGuessedWrong`) so the tutor can learn from it.
  */
-const ExpectSchema = z.discriminatedUnion("outcome", [
+export const ExpectSchema = z.discriminatedUnion("outcome", [
   z.strictObject({
     outcome: z.literal("compile-error"),
     code: ErrorCodeSchema,
@@ -86,7 +86,7 @@ const ChoicesV1Schema = z
   .max(4, "a card offers 2 to 4 choices")
 
 /** A whole program. Its lines end in `\n` alone, so a hunk's line numbers mean one thing. */
-const ProgramSchema = TextSchema.refine(
+export const ProgramSchema = TextSchema.refine(
   (text) => !text.includes("\r"),
   "a program's lines end in \\n alone: remove every carriage return (\\r)"
 )

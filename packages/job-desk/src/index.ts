@@ -41,12 +41,12 @@ export {
 } from "./policy"
 export type { OpenPick, Queue } from "./queue"
 export { freeSlots, hasLapsed, lapsesOn, queueOf } from "./queue"
+// The Pacific clock lives in core-utils; www's Jobs wing reads it from here.
+export { pacificDay, pacificMinutes } from "@some-ui/core-utils"
 export type { JobsRun } from "./run"
 export {
   JobsRunSchema,
   MAX_PROBLEM,
-  pacificDay,
-  pacificMinutes,
   parseJobsRun,
   runFileName,
   runFindings,

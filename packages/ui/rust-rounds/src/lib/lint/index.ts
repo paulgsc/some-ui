@@ -20,10 +20,14 @@ export const PROGRAM_LINE_CAP = 25
 /** A tab's columns, as the card is expected to draw one; programs use spaces. */
 const TAB_COLUMNS = 4
 
+/** What makes a program hard to read on a phone, by itself. */
+export type ProgramFinding =
+  | { kind: "line-too-wide"; line: number; width: number }
+  | { kind: "tab"; line: number }
+  | { kind: "program-too-long"; lines: number }
+
 export type Finding =
-  | { kind: "line-too-wide"; card: string; line: number; width: number }
-  | { kind: "tab"; card: string; line: number }
-  | { kind: "program-too-long"; card: string; lines: number }
+  | (ProgramFinding & { card: string })
   | { kind: "hunk-changes-nothing"; card: string }
   | { kind: "unknown-note"; card: string; note: string }
   | { kind: "unknown-desk-paste"; at: string }
@@ -91,6 +95,51 @@ function notesSeen(log: RoundLog): Set<string> {
   return seen
 }
 
+/** Each line's tab and width, the first numbered `first`. */
+function measureLines(
+  lines: ReadonlyArray<string>,
+  first: number
+): Array<ProgramFinding> {
+  const found: Array<ProgramFinding> = []
+  lines.forEach((text, index) => {
+    const line = first + index
+    if (text.includes("\t")) found.push({ kind: "tab", line })
+    const width = columns(text)
+    if (width > LINE_WIDTH_CAP)
+      found.push({ kind: "line-too-wide", line, width })
+  })
+  return found
+}
+
+/** Every finding in a whole program, given as its lines: a round's card or a week's ticket. */
+export function measureProgram(
+  lines: ReadonlyArray<string>
+): Array<ProgramFinding> {
+  const found = measureLines(lines, 1)
+  if (lines.length > PROGRAM_LINE_CAP) {
+    found.push({ kind: "program-too-long", lines: lines.length })
+  }
+  return found
+}
+
+/** A program finding as the tutor reads it, after the program's name. */
+export function describeProgramFinding(finding: ProgramFinding): string {
+  switch (finding.kind) {
+    case "line-too-wide": {
+      return `line ${finding.line}: ${finding.width} columns wide; keep every line to ${LINE_WIDTH_CAP}, since code on the phone never wraps.`
+    }
+    case "tab": {
+      return `line ${finding.line}: indent with spaces, not a tab.`
+    }
+    case "program-too-long": {
+      return `the program is ${finding.lines} lines; keep it to ${PROGRAM_LINE_CAP} or fewer.`
+    }
+    default: {
+      return assertNever(finding)
+    }
+  }
+}
+
 /**
  * Every finding in `round`, in card order. `log` is everything the tutor was
  * given; pass a log with no sessions when there is none yet.
@@ -106,15 +155,8 @@ export function lintRound(round: Round, log: RoundLog): Array<Finding> {
     if (!pasted.has(at)) findings.push({ kind: "unknown-desk-paste", at })
   }
 
-  const measure = (card: string, lines: Array<string>, first: number): void => {
-    lines.forEach((text, index) => {
-      const line = first + index
-      if (text.includes("\t")) findings.push({ kind: "tab", card, line })
-      const width = columns(text)
-      if (width > LINE_WIDTH_CAP) {
-        findings.push({ kind: "line-too-wide", card, line, width })
-      }
-    })
+  const measure = (card: string, found: Array<ProgramFinding>): void => {
+    for (const finding of found) findings.push({ ...finding, card })
   }
 
   for (const card of round.cards) {
@@ -126,19 +168,11 @@ export function lintRound(round: Round, log: RoundLog): Array<Finding> {
     }
 
     if (card.kind === "read") {
-      const lines = programLines(card.program)
-      measure(card.id, lines, 1)
-      if (lines.length > PROGRAM_LINE_CAP) {
-        findings.push({
-          kind: "program-too-long",
-          card: card.id,
-          lines: lines.length,
-        })
-      }
+      measure(card.id, measureProgram(programLines(card.program)))
     } else {
       // A variant changes one line; the rest were measured on the card it
       // changes.
-      measure(card.id, [card.hunk.replace], card.hunk.line)
+      measure(card.id, measureLines([card.hunk.replace], card.hunk.line))
       const base = programLines(programs.get(card.of) ?? "")
       if (base[card.hunk.line - 1] === card.hunk.replace) {
         findings.push({ kind: "hunk-changes-nothing", card: card.id })
@@ -158,14 +192,12 @@ export function describeFinding(finding: Finding): string {
   }
   const card = `card "${finding.card}"`
   switch (finding.kind) {
-    case "line-too-wide": {
-      return `${card}, line ${finding.line}: ${finding.width} columns wide; keep every line to ${LINE_WIDTH_CAP}, since code on the phone never wraps.`
-    }
+    case "line-too-wide":
     case "tab": {
-      return `${card}, line ${finding.line}: indent with spaces, not a tab.`
+      return `${card}, ${describeProgramFinding(finding)}`
     }
     case "program-too-long": {
-      return `${card}: the program is ${finding.lines} lines; keep it to ${PROGRAM_LINE_CAP} or fewer.`
+      return `${card}: ${describeProgramFinding(finding)}`
     }
     case "hunk-changes-nothing": {
       return `${card}: \`hunk.replace\` is the line already there; the variant changes nothing.`

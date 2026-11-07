@@ -27,6 +27,18 @@ export {
   RustcRunSchema,
   TutorNotesSchema,
 } from "./lib/formats"
+export type { Concept, Reference, Ticket, Week } from "./lib/formats/week"
+export {
+  REFERENCES,
+  RUBRIC,
+  TICKET_KEY,
+  WEEK_ID,
+  WEEK_SCHEMA,
+  WeekSchema,
+} from "./lib/formats/week"
+export { QUILLMOSS_WEEK } from "./lib/sample-week"
+export type { WeekProblem, WeekReading } from "./lib/week-check"
+export { describeWeekProblem, readWeek } from "./lib/week-check"
 export type { ReplyIntake } from "./lib/intake"
 export { intakeReply } from "./lib/intake"
 export type { Finding } from "./lib/lint"
