@@ -34,6 +34,39 @@ describe("homeRequest", () => {
     expect(missing).not.toBeInstanceOf(HomeNoAnswerError)
   })
 
+  it("asks for a range of bytes as a blob, credentialed over https only", async () => {
+    plugin.request.mockResolvedValue({
+      status: 206,
+      data: "AAEC",
+      headers: { "Content-Range": "bytes 0-2/10" },
+    })
+    const range = { start: 0, end: 2 }
+    const answer = await homeRequest({
+      method: "GET",
+      url: "https://home.local/api/v1/call/videos/2026-10-30/video",
+      token: "t",
+      range,
+    })
+    expect(answer).toEqual({ status: 206, body: "AAEC" })
+    expect(plugin.request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        headers: { Authorization: "Bearer t", Range: "bytes=0-2" },
+        responseType: "blob",
+        disableRedirects: true,
+      })
+    )
+    plugin.request.mockClear()
+    await expect(
+      homeRequest({
+        method: "GET",
+        url: "http://home.local/x",
+        token: "t",
+        range,
+      })
+    ).rejects.toThrow("https only")
+    expect(plugin.request).not.toHaveBeenCalled()
+  })
+
   it("sends If-None-Match, and reads a bodiless 304 with its ETag", async () => {
     plugin.request.mockResolvedValue({
       status: 304,

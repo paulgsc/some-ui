@@ -270,7 +270,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     work(pressed, async () => {
       const pairing = await readPairing()
       if (pairing === null) throw new Error("this phone's pairing is gone")
-      const send: HomeCall = (method, path, body) => {
+      const send: HomeCall = (method, path, body, range) => {
         if (stopped()) return Promise.reject(new SyncStoppedError())
         if (!path.startsWith("/")) {
           return Promise.reject(new Error(`not a path: ${path}`))
@@ -281,6 +281,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
             url: `${pairing.base}${path}`,
             token: pairing.token,
             ...(body === undefined ? {} : { body }),
+            ...(range === undefined ? {} : { range }),
           })
         )
       }

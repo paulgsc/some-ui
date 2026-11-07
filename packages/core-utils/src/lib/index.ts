@@ -8,10 +8,12 @@ export { isRecord } from "./is-record"
 export type { LcsStep } from "./lcs"
 export { lcsAlignment, lcsTable } from "./lcs"
 export { sha256Hex } from "./sha256"
+export { youtubeLink } from "./youtube"
 export { fencedBodies, jsonValues } from "./pasted-json"
 export type {
   HomeAnswer,
   HomeBytes,
+  HomeRange,
   HomeCall,
   HomeExchanged,
 } from "./home-exchange"

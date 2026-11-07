@@ -63,7 +63,7 @@
  *   the page is hidden or left is finished and kept; a microphone that opens
  *   then, or once the Record screen is gone, is let go.
  */
-import { assertNever, isRecord, jsonOf } from "@some-ui/core-utils"
+import { assertNever, isRecord, jsonOf, youtubeLink } from "@some-ui/core-utils"
 import type { Episode, Idea, Look, Review, Voice } from "@some-ui/video-render"
 import { EPISODE_SCHEMA, parseEpisode, readReview } from "@some-ui/video-render"
 import type {
@@ -89,12 +89,7 @@ import {
 import type { VideoForHome } from "@soundbites/lib/project/dna"
 import { queueMark, videoForHome } from "@soundbites/lib/project/dna"
 import { isProjectFile, readProjectFile } from "@soundbites/lib/project/file"
-import {
-  BEST_OF,
-  finishOf,
-  queuedOf,
-  youtubeLink,
-} from "@soundbites/lib/project/finish"
+import { BEST_OF, finishOf, queuedOf } from "@soundbites/lib/project/finish"
 import type { LetGo, LetGoChoice } from "@soundbites/lib/project/let-go"
 import {
   driveHasItIn,

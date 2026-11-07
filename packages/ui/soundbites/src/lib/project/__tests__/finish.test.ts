@@ -1,5 +1,5 @@
 /** @vitest-environment node */
-import { BEST_OF, finishOf, youtubeLink } from "@soundbites/lib/project/finish"
+import { BEST_OF, finishOf } from "@soundbites/lib/project/finish"
 import { latestShot } from "@soundbites/lib/project/lookup"
 import type { FactCheck, ProjectState } from "@soundbites/lib/project/model"
 import { isAppendOnly, latest, step } from "@soundbites/lib/project/model"
@@ -390,20 +390,5 @@ describe("a release", () => {
         at: AT,
       }).refused
     ).toBe("noLink")
-  })
-})
-
-describe("youtubeLink", () => {
-  it.each([
-    ["https://youtu.be/dQw4w9WgXcQ", LINK],
-    ["https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=3", LINK],
-    [" https://youtube.com/shorts/dQw4w9WgXcQ ", LINK],
-    ["https://m.youtube.com/watch?v=dQw4w9WgXcQ", LINK],
-    ["http://youtu.be/dQw4w9WgXcQ", null],
-    ["https://youtu.be/short", null],
-    ["https://youtube.com/channel/UC123", null],
-    ["not a link", null],
-  ])("reads %j as %j", (text, link) => {
-    expect(youtubeLink(text)).toBe(link)
   })
 })

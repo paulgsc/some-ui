@@ -449,7 +449,15 @@ declared (checked by reading every call site and by the tests named).
   it asks again a second later, at most ten times, and not once a newer
   read or leaving the screen has made that one stale; and, per Play, one
   `GET /voice-notes/:id/audio` through `lib/home-link/voice-audio`'s `keep`,
-  sending nothing but the take's id; ST32), and Studio's Finish
+  sending nothing but the take's id; ST32), Studio's Calls
+  (`lib/call-videos`, through `lib/home-link/call-videos`' `keep`: one
+  `GET /call/videos` each time the screen opens, on a drag down, on Try
+  again and once after a Save home kept; on Watch, one `GET /call/videos/:from/video` per part of the week's
+  video, each a range of at most `PART_BYTES`, into the phone's cache; and,
+  on Save, one `PUT /call/videos/:from/link` of the link the owner pasted,
+  only once it reads as a `YouTube` video; sending nothing of the phone's but
+  that link; while the link is busy with another run it asks again a second
+  later, at most ten times; ST38, #2661), and Studio's Finish
   (`routes/_dashboard/_apk/journal/index.tsx`, ST33), which hands the voice
   lane a video kept for home to make and hears what home answered and lists
   of it through `lib/home-link/studio-videos`, sending nothing of its own,
@@ -496,8 +504,8 @@ declared (checked by reading every call site and by the tests named).
   it promises (`LET_GO.room.question`). Nothing on home is deleted but by
   My data's "Delete for good".
   Nothing but the drain, Korean's look, the idea screen's ask for a
-  take's words, My data's reads, Ideas on home's reads and Takes on home's
-  reads is sent when the app or Settings
+  take's words, My data's reads, Ideas on home's reads, Takes on home's
+  reads and Studio's Calls' list is sent when the app or Settings
   opens, on resume, on a timer or on a network change: making the runtime
   and `load` read only the phone's own record. There is no retry; a sync, a
   clear, a let-go or a drain's run ends at Stop,
@@ -534,7 +542,15 @@ declared (checked by reading every call site and by the tests named).
   `lib/home-link/lanes.ts` (LA15), `lib/home-link/routine.ts`,
   `lib/home-link/heard.ts`, `lib/home-link/voice-audio.ts` (RR6),
   `lib/home-link/kept-read.ts`, `lib/home-link/deleted-read.ts`,
-  `lib/home-link/idea-reads.ts` and `lib/home-link/takes-read.ts`; one that
+  `lib/home-link/idea-reads.ts`, `lib/home-link/takes-read.ts` and
+  `lib/home-link/call-videos.ts`; one that has `call-videos.ts` send anything
+  but one `GET` of `CALL_VIDEOS_PATH` per list, one ranged `GET` of
+  `videoPath(from)` per part and one `PUT` of `linkPath(from)` per Save, lets
+  anything but `lib/call-videos` call it, or has `lib/call-videos` read the
+  list but on the screen opening, a drag down, Try again or once after a
+  Save home kept, fetch a video but
+  on Watch, or send a link but on Save and once it reads as a `YouTube`
+  video (`youtubeLink` (`@some-ui/core-utils`)); one that
   has `takes-read.ts` send anything but one `GET` of `takesPath(q)` per ask,
   lets anything but `lib/take-library` call it, lets anything but the voice
   run (`voice-copy.ts`) and `lib/take-library` read
@@ -584,8 +600,8 @@ declared (checked by reading every call site and by the tests named).
   `homeLink()` method that sends, `sendVideos` or `phoneVideos`; one that
   sends from `createHomeLink` or `load`, or, outside LA15's watch,
   Korean's look, the idea screen's ask for a take's words, My data's
-  reads, Ideas on home's reads and Takes on home's reads, from a
-  `useEffect`, a timer, a `visibilitychange` or
+  reads, Ideas on home's reads, Takes on home's reads and Studio's Calls'
+  list, from a `useEffect`, a timer, a `visibilitychange` or
   `online` listener; one that retries a failed home request, or queues one
   for later, outside LA15; one that lets the clear start without its
   confirm, or drops the count or the host from that confirm; one that has
@@ -658,7 +674,11 @@ declared (checked by reading every call site and by the tests named).
   that module, and it and the voice run alone read `voice-audio.ts`;
   `lib/library/__tests__/model.test.ts` holds that a read answers only the
   one asked last, a search home would refuse is never asked, and audio is
-  asked only on a Play, one at a time); the routine's read sends one
+  asked only on a Play, one at a time), and Studio's Calls (`lib/call-videos`,
+  whose requests are the three `call-videos.ts` sends, and only it calls
+  that module; `lib/call-videos/__tests__` holds that a video is fetched a
+  part at a time only on Watch, a link home would refuse is never sent, and
+  each answer reads as the screen shows it); the routine's read sends one
   `GET /routine/files` and one `PUT /routine/opened` and nothing else, and
   the read of a take's words one `GET /voice-notes/:id/heard` and nothing
   else; and `confirmHeld` is called only in `lib/home-link/sessions.ts`).
