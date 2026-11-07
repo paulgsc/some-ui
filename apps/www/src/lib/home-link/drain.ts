@@ -9,8 +9,9 @@
  * reflection (`./reflections`, LA16), then each ask for the next scene
  * (`./prompts`, LA18), then each soundbite's record and LeetType answer's
  * note home lacks (`./notes`), whose stores then hear what home holds of
- * them (`holdNotes`, OS1), and the grammar-lens entries home lacks as they
- * are (`./lens-record`). Nothing of home's is taken in, and nothing on the
+ * them (`holdNotes`, OS1), the grammar-lens entries home lacks as they
+ * are (`./lens-record`), and the rest of Korean's record likewise
+ * (`./korean-record`, KH3). Nothing of home's is taken in, and nothing on the
  * phone is let go but written reflections (`letGoHeld`, LA16) and the asks
  * home holds, with the scene notes they named (`letGoHeldPrompts`, LA18): a
  * session leaves on home's word only by a tap, the clear in
@@ -25,6 +26,7 @@
 import type { HomeCall, HomeExchanged, KeyedStorage } from "@some-ui/core-utils"
 import { unexpectedAnswer } from "@some-ui/core-utils"
 import type { HomeSession } from "@some-ui/leetype"
+import type { KoreanEntry } from "@some-ui/topik"
 
 import type { Kept } from "@/lib/device-backend/handlers/shelf"
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
@@ -37,6 +39,7 @@ import type { CopyResult } from "@/lib/tenant/sessions-copy"
 import { SessionNotFoundError } from "@/lib/tenant/sessions-repository"
 import type { SessionRecord } from "@/lib/tenant/types"
 
+import { sendKorean } from "./korean-record"
 import type { LogReport } from "./leetype-log"
 import { emptyLogReport, sendLog } from "./leetype-log"
 import type { LensEntry } from "./lens-record"
@@ -97,6 +100,8 @@ export type DrainPorts = {
   holdNotes: () => void
   /** The grammar-lens entries home lacks as they are, and those on the phone (`./going`). */
   lensGoing: () => Promise<KeyedGoing<LensEntry>>
+  /** The rest of Korean's record home lacks as it is, and what is on the phone (`./going`). */
+  koreanGoing: () => Promise<KeyedGoing<KoreanEntry>>
   /** The pairing this run goes under (the link's id for it). */
   pairing: string
   storage: KeyedStorage | null
@@ -127,7 +132,8 @@ function answeredCopy(error: unknown): HomeExchanged | null {
 
 /**
  * One log's sender (`./leetype-log`'s `sendLog`, `./studio-log`'s
- * `sendStudio`, `./notes`' `sendNotes`, `./lens-record`'s `sendLens`).
+ * `sendStudio`, `./notes`' `sendNotes`, `./lens-record`'s `sendLens`,
+ * `./korean-record`'s `sendKorean`).
  */
 type LogSender<T> = (
   going: T,
@@ -207,7 +213,14 @@ export async function drainHome(
   const part = async <T>(
     going: T,
     sender: LogSender<T>,
-    field: "leetype" | "studio" | "reflections" | "prompts" | "notes" | "lens",
+    field:
+      | "leetype"
+      | "studio"
+      | "reflections"
+      | "prompts"
+      | "notes"
+      | "lens"
+      | "korean",
     stays: Staying = {}
   ): Promise<HomeExchanged | null> => {
     const log = emptyLogReport()
@@ -266,6 +279,11 @@ export async function drainHome(
     lens: lens.onPhone,
   })
   if (lensEnded !== null) return lensEnded
+  const korean = await ports.koreanGoing()
+  const koreanEnded = await part(korean.going, sendKorean, "korean", {
+    korean: korean.onPhone,
+  })
+  if (koreanEnded !== null) return koreanEnded
 
   return short === null ? { kind: "synced" } : failed(short)
 }

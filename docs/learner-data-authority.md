@@ -142,6 +142,7 @@ Which authority a build starts in depends on what it can reach (`Backend`):
 | Asks for the next scene (the phone's)                                                  | on the phone, never sent                     | on a paired phone, each ask sent to home by the drain and kept there, which hands its prompt to the Jobs mailbox for the routine; the scene notes it names go as voice notes; the phone keeps each until home holds it, and the newest after (LA18)                                                                                                                                                                                                                                                                                                                                                                                                     | the same                                   |
 | Voice notes (the phone's)                                                              | on the phone, never sent                     | on a paired phone, each spoken reflection, Jobs voice note an event names, game bite, Studio take, Studio idea answer's take (a new idea's once it is sent, ST26), scene note, soundbite, grammar-lens take and LeetType take copied and sent to the paired home while the app is open, the copy kept until home holds it (LA13, LA15); one let go on the phone marked set aside on home once home holds it (MIC2); home's words for an idea answer's take read back while the idea screen shows it (LA8); one home marks deletable deleted for good only by My data's "Delete for good", the phone letting go of its copy on home's receipt (MD3, LA8) | the same                                   |
 | Soundbites' records, LeetType's answer notes and the grammar-lens record (the phone's) | on the phone, never sent                     | on a paired phone, each sent to the paired home by the drain and counted as held only when home names or carries back its bytes; the phone keeps six soundbites, forty notes and a thousand lens entries, making room only with what home holds (LA15)                                                                                                                                                                                                                                                                                                                                                                                                  | the same                                   |
+| Read aloud's word sets, paces, sentence tally and practice documents (the phone's)     | on the phone, never sent                     | on a paired phone, each sent to the paired home by the drain as an entry of its Korean record, counted as held only when home carries back its bytes; nothing let go, the phone reading them from itself until it reads them from home (KH3, KH4; LA15)                                                                                                                                                                                                                                                                                                                                                                                                 | the same                                   |
 | Shelf                                                                                  | never                                        | the account's, on the person's own taps                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | the same                                   |
 | aph (the phone's)                                                                      | on the phone, never sent                     | on a paired phone, on the paired home from the first run, synced while aph is open; the phone keeps only what home has not confirmed (LA15)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | the same                                   |
 | Jobs record (the phone's)                                                              | on the phone, never sent                     | on a paired phone, a copy on the paired home, synced while the app is open; its decisions and scouts files, each naming its voice notes by id, filed with home, which hands them to the Jobs mailbox on Cloudflare; the phone keeps its whole log (LA15)                                                                                                                                                                                                                                                                                                                                                                                                | the same                                   |
@@ -1042,9 +1043,10 @@ was silent, so the run ended as if all had gone.
 
 Everything the phone keeps for home (aph, the Jobs record, Practice's
 record with its written reflections, asks for the next scene, the
-soundbites' records, LeetType's answer notes and the grammar-lens record,
-voice notes, Studio's ideas sent whole (ST26, which the voice lane carries
-after the notes their answers name) and Studio's videos kept for home to
+soundbites' records, LeetType's answer notes, the grammar-lens record and
+the rest of read aloud's Korean record (KH3), voice notes, Studio's ideas
+sent whole (ST26, which the voice lane carries after the notes their
+answers name) and Studio's videos kept for home to
 make (ST33, each as the DNA its Finish mark keeps, which the voice lane
 carries after its set-aside marks, the notes their takes name gone before),
 and the rounds pasted in Rust Rounds, whose run also brings
@@ -1202,7 +1204,8 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   `subscribe` follow anything but the sessions cache, `onKept`, the
   reflections store (HF3), the asks store (`lib/scene-ask`, HF4),
   LeetType's answer notes (`leetypeNotesMoved`, HF5) and the soundbites,
-  lens record, LeetType's finished sessions and Studio's writes as
+  lens record, LeetType's finished sessions, Studio's writes and read
+  aloud's kept writes (`koreanWrites`, KH3) as
   `lib/home-link/practice-reads.ts` last read them (HF5, #2425), or that
   drops one of those from it, drops from its waiting count any of the
   sessions, written reflections, asks, notes, lens entries, finished
@@ -1215,7 +1218,8 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   store other than on its watch starting, the soundbites' hand-in or
   change (their store's `subscribe`), Studio's hand-in or a write to its
   projects (their store's `subscribe`), or, once the phone is paired, a write
-  to the lens record (topik's `onLensRecordWritten`) or an event LeetType's
+  to the lens record (topik's `onLensRecordWritten`) or to read aloud's
+  stores (topik's `onReadAloudWritten`), or an event LeetType's
   log keeps (`onSessionLogged`) that starts or ends a session or belongs to
   one already finished, or that keeps a list of the soundbites or of
   Studio's answers that started before a newer one; a hunk to
@@ -1225,13 +1229,16 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   session, or one already finished take in no later event, without
   `practice-reads.ts`'s `finishes` following it; a hunk to topik's
   `adapter/lens-record-store` that keeps an entry without telling
-  `onLensRecordWritten`'s listeners, or to `lib/leetype-takes` that keeps
+  `onLensRecordWritten`'s listeners, or to its `adapter/read-aloud-store`
+  that keeps a write without telling `onReadAloudWritten`'s listeners; a
+  hunk to `lib/home-link/practice.ts` that drops `koreanWrites` from the
+  lane's `revision`; or to `lib/leetype-takes` that keeps
   or lets go of a note without moving `leetypeNotesMoved`; a hunk to `lib/home-link/drain.ts` that takes home's copy in,
   lets a phone session go, lets anything else go but through `letGoHeld`
   (LA16) and `letGoHeldPrompts` (LA18), or confirms what home holds
   (`confirmHeld`), or sends other than through `copyHome`, `sendKept`,
   `sendLog`, `sendStudio`, `sendReflections` (LA16), `sendPrompts` (LA18),
-  `sendNotes` and `sendLens`; a hunk to `lib/home-link/ideas.ts` that sends
+  `sendNotes`, `sendLens` and `sendKorean`; a hunk to `lib/home-link/ideas.ts` that sends
   anything but one `PUT /ideas/:id` of each bundle `ideasToSend` names,
   counts an idea held on any answer but a `200` that `carriesBack` accepts,
   remembers an answer anywhere but `sent.ideas` under the run's pairing, or

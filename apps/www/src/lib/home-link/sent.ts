@@ -7,7 +7,8 @@
  * reflection's as home answered it (`./reflections`), each ask for the next
  * scene's as home answered it (`./prompts`), each study note's SHA-256 as
  * home answered for it (`./notes`), each grammar-lens entry's digest as home
- * read it back (`./lens-record`), each Studio idea's as home answered it
+ * read it back (`./lens-record`), each other Korean entry's (`./korean-record`,
+ * as `<kind>/<key>`), each Studio idea's as home answered it
  * (`./ideas`, held or refused), each Studio video kept for home to make as
  * home answered it (`./videos`), and the digests home
  * refused, so the drain does not offer an unchanged refused item again
@@ -44,6 +45,7 @@ export type Sent = {
   readonly prompts: Readonly<Record<string, string>>
   readonly notes: Readonly<Record<string, string>>
   readonly lens: Readonly<Record<string, string>>
+  readonly korean: Readonly<Record<string, string>>
   readonly ideas: Readonly<Record<string, string>>
   readonly videos: Readonly<Record<string, string>>
 }
@@ -61,6 +63,7 @@ const emptyFor = (pairing: string): Sent => ({
   prompts: {},
   notes: {},
   lens: {},
+  korean: {},
   ideas: {},
   videos: {},
 })
@@ -96,6 +99,7 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
   const prompts = stringsOf(parsed.prompts)
   const notes = stringsOf(parsed.notes)
   const lens = stringsOf(parsed.lens)
+  const korean = stringsOf(parsed.korean)
   const ideas = stringsOf(parsed.ideas)
   const videos = stringsOf(parsed.videos)
   return {
@@ -110,6 +114,7 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
       prompts: prompts.value,
       notes: notes.value,
       lens: lens.value,
+      korean: korean.value,
       ideas: ideas.value,
       videos: videos.value,
     },
@@ -123,6 +128,7 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
       prompts,
       notes,
       lens,
+      korean,
       ideas,
       videos,
     ].every((kind) => kind.whole),
@@ -150,6 +156,7 @@ export type KeyedGoing<T> = {
 export type Staying = {
   readonly notes?: (key: string) => boolean
   readonly lens?: (key: string) => boolean
+  readonly korean?: (key: string) => boolean
 }
 
 /** `record` with only the keys `stays` keeps; all of them without it. */
@@ -176,7 +183,7 @@ function without(
 /**
  * `sent` with what home now holds added; unwritten, the next send repeats
  * it. A kept item is held or refused, never both: home's latest answer for
- * it replaces the other. The study notes and the grammar-lens record keep
+ * it replaces the other. The study notes and the Korean record keep
  * only the keys `stays` says are still on the phone: those stores let items
  * go at their caps, and one value in `localStorage` must not outgrow them.
  */
@@ -197,6 +204,7 @@ export function rememberSent(
     prompts: { ...sent.prompts, ...more.prompts },
     notes: keptOnly({ ...sent.notes, ...more.notes }, stays.notes),
     lens: keptOnly({ ...sent.lens, ...more.lens }, stays.lens),
+    korean: keptOnly({ ...sent.korean, ...more.korean }, stays.korean),
     ideas: { ...sent.ideas, ...more.ideas },
     videos: { ...sent.videos, ...more.videos },
   }
