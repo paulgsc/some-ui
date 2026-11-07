@@ -2,7 +2,9 @@ import type { KeyedStorage } from "@some-ui/core-utils"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import {
   createReadAloudStore,
+  plainKey,
   READ_ALOUD_STORAGE_KEYS,
+  readAloudForHome,
 } from "@topik/lib/topik/adapter/read-aloud-store"
 import { storedSet } from "@topik/lib/topik/read-aloud/added-sets"
 import { emptyRecord } from "@topik/lib/topik/read-aloud/records"
@@ -225,5 +227,33 @@ describe("the read-aloud store", () => {
       expect(store.tally()).toEqual({})
       expect(store.count({ type: "set" }, "2026-09-28").totals.sets).toBe(1)
     }
+  })
+
+  it("reads every Korean record it keeps as home's entries (KH3), and nothing it doesn't", () => {
+    const storage = memoryStorage()
+    expect(readAloudForHome(storage)).toEqual([])
+    const store = createReadAloudStore(storage)
+    store.savePace("juda", { factor: 1.2, seen: 3 })
+    store.count({ type: "set" }, "2026-10-20")
+    store.saveProgress(2, "everyday-2", PROGRESS)
+    store.saveFeedback({ tooEasy: null, tooManyRepeats: null })
+    store.saveTally(noteShown({}, "cafe-order:1x2", "2026-10-20T09:00:00.000Z"))
+    const entries = readAloudForHome(storage)
+    expect(entries.map(({ kind, key }) => `${kind} ${key}`)).toEqual([
+      "pace juda",
+      "tally cafe-order-1x2",
+      "record phone",
+      "progress phone",
+    ])
+    expect(entries[0]?.body).toEqual({ wordId: "juda", factor: 1.2, seen: 3 })
+    expect(entries[1]?.body).toMatchObject({ sentence: "cafe-order:1x2" })
+  })
+
+  it("makes any id a key home takes", () => {
+    expect(plainKey("everyday-2")).toBe("everyday-2")
+    expect(plainKey("w:주다")).toBe("w---")
+    expect(plainKey(".hidden")).toBe("k-.hidden")
+    expect(plainKey("https-deck")).toBe("k-https-deck")
+    expect(plainKey("deck.json")).toBe("deck.json-")
   })
 })

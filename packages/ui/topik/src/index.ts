@@ -69,8 +69,13 @@ export type {
   ReadAloudWord,
   WordOccurrence,
 } from "./lib/topik/read-aloud/content"
+export type {
+  KoreanEntry,
+  KoreanKind,
+} from "./lib/topik/adapter/read-aloud-store"
 export {
   readAloudFeedbackForExport,
+  readAloudForHome,
   readAloudPracticeRecord,
 } from "./lib/topik/adapter/read-aloud-store"
 export type { ReadAloudFeedback } from "./lib/topik/read-aloud/feedback"

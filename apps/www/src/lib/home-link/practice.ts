@@ -36,6 +36,7 @@ import type { SessionRecord } from "@/lib/tenant/types"
 
 import { drainHome } from "./drain"
 import {
+  koreanGoing,
   lensGoing,
   letGoHeldPrompts,
   letGoHeldReflections,
@@ -89,6 +90,7 @@ export const practiceLane: Lane = {
       notesGoing: () => notesGoing(pairing, storage),
       holdNotes,
       lensGoing: () => lensGoing(pairing, storage),
+      koreanGoing: () => koreanGoing(pairing, storage),
       pairing,
       storage,
     })

@@ -8,6 +8,7 @@ import { createHash } from "node:crypto"
 import { noAnswer } from "@/test-support/no-answer"
 import { sessionRecord } from "@/test-support/session-record"
 import type { HomeAnswer, HomeCall } from "@some-ui/core-utils"
+import type { KoreanEntry } from "@some-ui/topik"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { describe, expect, it } from "vitest"
 
@@ -16,6 +17,7 @@ import { FileHostUnreachableError } from "@/lib/file-host-config"
 import { FileHostResponseError } from "@/lib/file-host-config/client"
 import type { DrainPorts } from "@/lib/home-link/drain"
 import { drainHome } from "@/lib/home-link/drain"
+import { koreanToSend } from "@/lib/home-link/korean-record"
 import type { LensEntry } from "@/lib/home-link/lens-record"
 import { lensDigest, lensKey, lensToSend } from "@/lib/home-link/lens-record"
 import { notesOnPhone } from "@/lib/home-link/notes"
@@ -93,6 +95,7 @@ function setup(
     notes?: DrainPorts["notesGoing"]
     holdNotes?: DrainPorts["holdNotes"]
     lens?: DrainPorts["lensGoing"]
+    korean?: DrainPorts["koreanGoing"]
   } = {}
 ): {
   ports: DrainPorts
@@ -128,6 +131,7 @@ function setup(
     notesGoing: over.notes ?? nothingGoing,
     holdNotes: over.holdNotes ?? ((): void => undefined),
     lensGoing: over.lens ?? nothingGoing,
+    koreanGoing: over.korean ?? nothingGoing,
     pairing: PAIRING,
     storage: memoryStorage(),
     copy:
@@ -564,6 +568,47 @@ describe("the drain's LeetType and Studio parts", () => {
     expect(held.lens).toEqual({ [lensKey(sent[0])]: lensDigest(sent[0]) })
     expect(lensToSend(sent, held)).toEqual([sent[1]])
     expect(lensToSend([{ ...sent[0], right: false }], held)).toHaveLength(1)
+  })
+
+  it("puts each other Korean entry home lacks under its kind, and remembers those home read back (KH3)", async () => {
+    const puts: Array<string> = []
+    const send: HomeCall = (_method, path, body) => {
+      puts.push(path)
+      const text = typeof body === "string" ? body : ""
+      return Promise.resolve({
+        status: 200,
+        body: `{"change":"kept","entry":{"key":"k","revision":1,"body":${text},"writtenAt":"t"}}`,
+      })
+    }
+    const going: Array<KoreanEntry> = [
+      { kind: "set", key: "everyday-2", body: { deck: { id: "everyday-2" } } },
+      {
+        kind: "pace",
+        key: "juda",
+        body: { wordId: "juda", factor: 1, seen: 2 },
+      },
+      { kind: "record", key: "phone", body: { version: 1, days: [] } },
+    ]
+    const { ports } = setup({
+      local: [],
+      kept: [],
+      korean: () => Promise.resolve({ going, onPhone: () => true }),
+    })
+    await expect(drainHome(send, ports)).resolves.toEqual({ kind: "synced" })
+    expect(puts).toEqual([
+      "/korean/set/everyday-2",
+      "/korean/pace/juda",
+      "/korean/record/phone",
+    ])
+    const held = readSent(ports.storage, PAIRING)
+    expect(Object.keys(held.korean)).toEqual([
+      "set/everyday-2",
+      "pace/juda",
+      "record/phone",
+    ])
+    expect(koreanToSend(going, held)).toEqual([])
+    const paced = { ...going[1], body: { wordId: "juda", factor: 1, seen: 3 } }
+    expect(koreanToSend([paced], held)).toEqual([paced])
   })
 
   it("forgets the notes and grammar-lens entries no longer on the phone, keeping those still there (HF5)", async () => {

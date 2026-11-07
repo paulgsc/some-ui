@@ -77,6 +77,8 @@ vi.mock("@/lib/home-link/going", () => ({
     Promise.resolve({ going: [], onPhone: () => true }),
   lensGoing: (): Promise<unknown> =>
     Promise.resolve({ going: [], onPhone: () => true }),
+  koreanGoing: (): Promise<unknown> =>
+    Promise.resolve({ going: [], onPhone: () => true }),
 }))
 vi.mock("@/lib/jobs", async () => {
   const { EMPTY } = await import("@/lib/jobs/model")

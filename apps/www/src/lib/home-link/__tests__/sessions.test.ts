@@ -283,6 +283,7 @@ describe("letting the phone's copies go once home holds them", () => {
       notesGoing: () => Promise.resolve({ going: [], onPhone: () => true }),
       holdNotes: () => undefined,
       lensGoing: () => Promise.resolve({ going: [], onPhone: () => true }),
+      koreanGoing: () => Promise.resolve({ going: [], onPhone: () => true }),
       pairing: PAIRING,
       storage,
     })
@@ -380,6 +381,7 @@ describe("letting the phone's copies go once home holds them", () => {
       notesGoing: () => Promise.resolve({ going: [], onPhone: () => true }),
       holdNotes: () => undefined,
       lensGoing: () => Promise.resolve({ going: [], onPhone: () => true }),
+      koreanGoing: () => Promise.resolve({ going: [], onPhone: () => true }),
       pairing: PAIRING,
       storage,
     })

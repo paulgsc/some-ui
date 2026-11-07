@@ -11,6 +11,7 @@
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
 import type { HomeSession } from "@some-ui/leetype"
+import type { KoreanEntry } from "@some-ui/topik"
 
 import { deviceBackend } from "@/lib/device-backend/boot"
 import type { Kept } from "@/lib/device-backend/handlers/shelf"
@@ -24,6 +25,7 @@ import { studioKeeping } from "@/lib/studio-keeping"
 import { sessionsRepository } from "@/lib/tenant/queries"
 import type { SessionRecord } from "@/lib/tenant/types"
 
+import { koreanKey, koreanToSend } from "./korean-record"
 import { finishedOnPhone } from "./leetype-log"
 import type { LensEntry } from "./lens-record"
 import { lensKey, lensToSend } from "./lens-record"
@@ -169,6 +171,30 @@ export async function lensGoing(
     const keys = new Set(entries.map(lensKey))
     return {
       going: lensToSend(entries, readSent(storage, pairing)),
+      onPhone: (key) => keys.has(key),
+    }
+  } catch {
+    // Unread: any entry `sent` remembers may still be on the phone.
+    return { going: [], onPhone: () => true }
+  }
+}
+
+/**
+ * What a run under `pairing` carries of the rest of Korean's record (KH3):
+ * the word sets, paces, tally rows and single documents home doesn't hold
+ * as they are now, and which entries are still on the phone. Reads only
+ * this phone; none when it can't load.
+ */
+export async function koreanGoing(
+  pairing: string,
+  storage: KeyedStorage | null
+): Promise<KeyedGoing<KoreanEntry>> {
+  try {
+    const { readAloudForHome } = await import("@some-ui/topik")
+    const entries = readAloudForHome()
+    const keys = new Set(entries.map(koreanKey))
+    return {
+      going: koreanToSend(entries, readSent(storage, pairing)),
       onPhone: (key) => keys.has(key),
     }
   } catch {

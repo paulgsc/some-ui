@@ -13,16 +13,11 @@
  * `./voice-copy` hands `lensEntriesHeld`); nothing here lets anything go.
  */
 import type { HomeCall } from "@some-ui/core-utils"
-import {
-  canonicalJson,
-  fnv1a,
-  isRecord,
-  jsonOf,
-  localStorageOrNull,
-} from "@some-ui/core-utils"
+import { localStorageOrNull } from "@some-ui/core-utils"
 import type { LensRecordExport } from "@some-ui/topik"
 
 import { pairingOf } from "./index"
+import { bodyDigest, homeHolds } from "./korean-record"
 import type { EachSent, LogReport } from "./leetype-log"
 import { sendEach } from "./leetype-log"
 import type { Sent } from "./sent"
@@ -42,10 +37,7 @@ export function lensKey(entry: LensEntry): string {
 }
 
 /** `sent.lens`' digest of an entry as it is now. */
-export function lensDigest(entry: LensEntry): string {
-  const text = canonicalJson(entry)
-  return `${String(text.length)}:${String(fnv1a(text))}`
-}
+export const lensDigest = (entry: LensEntry): string => bodyDigest(entry)
 
 /** The entries home does not hold as they are now. */
 export function lensToSend(
@@ -57,23 +49,13 @@ export function lensToSend(
   )
 }
 
-/** Whether home's answer carries `text` as the entry it now holds. */
-function holds(body: string, text: string): boolean {
-  const answer = jsonOf(body)
-  return (
-    isRecord(answer) &&
-    isRecord(answer.entry) &&
-    canonicalJson(answer.entry.body) === text
-  )
-}
-
 /** How `sendEach` sends an entry: counted held only once home carries it back. */
 const LENS_SENT: EachSent<LensEntry> = {
   path: (entry) => `/korean/lens/${lensKey(entry)}`,
   body: (entry) => entry,
   heldAs: (entry, text, body) =>
     Promise.resolve(
-      holds(body, text) ? [lensKey(entry), lensDigest(entry)] : null
+      homeHolds(body, text) ? [lensKey(entry), lensDigest(entry)] : null
     ),
 }
 

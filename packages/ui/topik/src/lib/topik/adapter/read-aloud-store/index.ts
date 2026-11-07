@@ -269,3 +269,86 @@ export const readAloudPracticeRecord = (): PracticeRecord =>
 /** What the learner last said at the end of a sitting, for the export. */
 export const readAloudFeedbackForExport = (): ReadAloudFeedback | null =>
   createReadAloudStore().feedback()
+
+/** Which of home's Korean kinds a read-aloud entry is (paulgsc/server `korean_repo::Kind`). */
+export type KoreanKind =
+  | "set"
+  | "pace"
+  | "tally"
+  | "record"
+  | "progress"
+  | "feedback"
+
+/** One entry of home's Korean record: its kind, its key there, and its body as kept here. */
+export type KoreanEntry = {
+  readonly kind: KoreanKind
+  readonly key: string
+  readonly body: unknown
+}
+
+/** The key of the read-aloud store's single documents (record, progress, feedback). */
+export const SINGLE_DOCUMENT = "phone"
+
+/**
+ * `id` as a key home takes (letters, digits, `.`, `_`, `~`, `-`; not
+ * starting `.` or `http`, not ending `.json`). The body keeps the id as it is.
+ */
+export function plainKey(id: string): string {
+  const plain = id.replace(/[^\w.~-]/g, "-")
+  const lead = plain.startsWith(".") || plain.startsWith("http") ? "k-" : ""
+  const tail = /\.json$/i.test(plain) ? "-" : ""
+  return `${lead}${plain}${tail}` || "-"
+}
+
+/**
+ * Everything the read-aloud store keeps, as entries of home's Korean record
+ * (KO-HOME KH3, #2103): each word set by its deck, each word's pace, each
+ * sentence's tally row, and the practice record, the set left unfinished and
+ * the last answers as single documents. Each body is what this phone keeps,
+ * in the form it keeps it. Read only.
+ */
+export function readAloudForHome(
+  storage: KeyedStorage | null = localStorageOrNull()
+): Array<KoreanEntry> {
+  const store = createReadAloudStore(storage)
+  const progress = openKept(
+    storage,
+    READ_ALOUD_STORAGE_KEYS.progress,
+    READERS.progress,
+    null
+  ).value
+  const feedback = storedFeedback(store.feedback())
+  const record = store.record()
+  return [
+    ...store.sets().map(
+      (set): KoreanEntry => ({
+        kind: "set",
+        key: plainKey(set.deck.id),
+        body: storedSet(set),
+      })
+    ),
+    ...Object.entries(store.paces()).map(
+      ([wordId, pace]): KoreanEntry => ({
+        kind: "pace",
+        key: plainKey(wordId),
+        body: { wordId, ...pace },
+      })
+    ),
+    ...Object.entries(store.tally()).map(
+      ([sentence, row]): KoreanEntry => ({
+        kind: "tally",
+        key: plainKey(sentence),
+        body: { sentence, ...row },
+      })
+    ),
+    ...(Object.keys(record.days).length > 0
+      ? [{ kind: "record", key: SINGLE_DOCUMENT, body: record } as const]
+      : []),
+    ...(progress === null
+      ? []
+      : [{ kind: "progress", key: SINGLE_DOCUMENT, body: progress } as const]),
+    ...(feedback === null
+      ? []
+      : [{ kind: "feedback", key: SINGLE_DOCUMENT, body: feedback } as const]),
+  ]
+}
