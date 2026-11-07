@@ -311,10 +311,14 @@ const SINGLE_DOCUMENT = "phone"
  */
 const CLEARED = { version: 1, cleared: true } as const
 
-/** Whether this phone ever kept `key`: a cleared document is kept as `null`. */
-function keptOnce(storage: KeyedStorage | null, key: string): boolean {
+/**
+ * Whether this phone cleared `key`: a cleared document is kept as the text
+ * `null`. One never kept has no text, and one this build cannot read keeps
+ * its own bytes, so neither reads as cleared and home's copy stands.
+ */
+function clearedHere(storage: KeyedStorage | null, key: string): boolean {
   try {
-    return storage?.getItem(key) != null
+    return storage?.getItem(key)?.trim() === "null"
   } catch {
     return false
   }
@@ -396,12 +400,12 @@ export function readAloudForHome(
     ...singleDocument(
       "progress",
       progress,
-      keptOnce(storage, READ_ALOUD_STORAGE_KEYS.progress)
+      clearedHere(storage, READ_ALOUD_STORAGE_KEYS.progress)
     ),
     ...singleDocument(
       "feedback",
       feedback,
-      keptOnce(storage, READ_ALOUD_STORAGE_KEYS.feedback)
+      clearedHere(storage, READ_ALOUD_STORAGE_KEYS.feedback)
     ),
   ]
 }

@@ -278,6 +278,16 @@ describe("the read-aloud store", () => {
       { kind: "progress", key: "phone", body: { version: 1, cleared: true } },
       { kind: "feedback", key: "phone", body: { version: 1, cleared: true } },
     ])
+
+    // A document this build can't read is never sent as cleared: home's
+    // copy stands.
+    storage.map.set(READ_ALOUD_STORAGE_KEYS.progress, '{"version":9}')
+    storage.map.set(READ_ALOUD_STORAGE_KEYS.feedback, "{not json")
+    expect(
+      readAloudForHome(storage).filter(
+        ({ kind }) => kind === "progress" || kind === "feedback"
+      )
+    ).toEqual([])
   })
 
   it("makes any id a key home takes, and no two ids one key", () => {
