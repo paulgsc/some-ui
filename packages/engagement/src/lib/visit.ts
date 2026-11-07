@@ -125,10 +125,11 @@ export type Visit = {
 
 export function createVisit(
   clock: () => Date = () => new Date(),
-  send: (event: EngagementEvent) => void = engage
+  send: (event: EngagementEvent) => void = engage,
+  startsAway = false
 ): Visit {
   let state = NEW_VISIT
-  let away = false
+  let away = startsAway
   const showing = new Map<string, ReadonlyArray<Offer>>()
   const run = (step: VisitStep): void => {
     const next = stepVisit(state, step)
@@ -169,6 +170,14 @@ export type VisitPage = Pick<
 >
 
 /**
+ * A visit for a screen on `page`: away from the start when the page is
+ * hidden, so nothing shown before `watchVisit` runs (a child's effect runs
+ * before its parent's) is offered unseen.
+ */
+export const pageVisit = (page: VisitPage): Visit =>
+  createVisit(undefined, undefined, page.visibilityState === "hidden")
+
+/**
  * Ends `visit` as the app goes to the back and begins one as it comes to the
  * front; the returned stop ends it as the screen closes.
  */
@@ -177,7 +186,6 @@ export function watchVisit(visit: Visit, page: VisitPage): () => void {
     if (page.visibilityState === "hidden") visit.leave()
     else visit.appear()
   }
-  if (page.visibilityState === "hidden") visit.leave()
   page.addEventListener("visibilitychange", seen)
   return (): void => {
     page.removeEventListener("visibilitychange", seen)

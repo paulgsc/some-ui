@@ -37,7 +37,7 @@ import {
   useSyncExternalStore,
 } from "react"
 import { assertNever, cn, dayOf } from "@some-ui/core-utils"
-import { createVisit, watchVisit } from "@some-ui/engagement"
+import { pageVisit, watchVisit } from "@some-ui/engagement"
 import { Button, KeepOnShelf, KeptShelf } from "@some-ui/shared"
 import { AskScene } from "@topik/components/topik/handheld/ask-scene"
 import { CastSheet } from "@topik/components/topik/handheld/cast-sheet"
@@ -350,7 +350,7 @@ export const HandheldLesson = ({
   )
   // What the list offers, and which the owner takes (ENG3, `createVisit`),
   // stamped by the device's clock as each happens.
-  const [visit] = useState(() => createVisit())
+  const [visit] = useState(() => pageVisit(document))
   // A pair's sets the phone already holds are left as they are, record and
   // all; the rest are added, and the pair opens on `session`, else its first.
   const openRoutineScene = (

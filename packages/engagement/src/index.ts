@@ -22,7 +22,7 @@ export type {
 } from "./lib/registry"
 export { findAffordance, findRegistryProblems } from "./lib/registry"
 export type { Offer, Visit, VisitPage } from "./lib/visit"
-export { createVisit, watchVisit } from "./lib/visit"
+export { createVisit, pageVisit, watchVisit } from "./lib/visit"
 export { EARLY_WAITING, engage, setEngagementSink } from "./lib/sink"
 export type { EventCheck } from "./lib/check-event"
 export { checkEvent, isEventShape } from "./lib/check-event"

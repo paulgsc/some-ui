@@ -1,6 +1,7 @@
 import type { EngagementEvent } from "@engagement/lib/events"
+import { setEngagementSink } from "@engagement/lib/sink"
 import type { Offer, VisitPage } from "@engagement/lib/visit"
-import { createVisit, watchVisit } from "@engagement/lib/visit"
+import { createVisit, pageVisit, watchVisit } from "@engagement/lib/visit"
 import { describe, expect, it } from "vitest"
 
 const offer = (affordance: string, item: string): Offer => ({
@@ -122,6 +123,23 @@ describe("a visit (ENG3)", () => {
     v.show("list", [drama])
     expect(sent).toEqual([])
     v.appear()
+    expect(kinds(sent)).toEqual(["offered routine-drama"])
+  })
+
+  it("starts away on a hidden page, so a shelf shown before the watch offers nothing", () => {
+    const sent: Array<EngagementEvent> = []
+    const target = new EventTarget()
+    const hidden: VisitPage = {
+      visibilityState: "hidden",
+      addEventListener: target.addEventListener.bind(target),
+      removeEventListener: target.removeEventListener.bind(target),
+    }
+    setEngagementSink((event) => sent.push(event))
+    const v = pageVisit(hidden)
+    v.show("list", [drama])
+    expect(sent).toEqual([])
+    v.appear()
+    setEngagementSink(null)
     expect(kinds(sent)).toEqual(["offered routine-drama"])
   })
 })
