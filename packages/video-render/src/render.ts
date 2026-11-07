@@ -233,10 +233,14 @@ export async function render(
   if (scenes.length > JOIN_BATCH) {
     const sceneParts = batches(scenes)
     const segmentParts = batches(segments)
+    // Their own folder: a shot's id never holds a slash, so no scene's
+    // segment (`${work}/<id>.mkv`) can be a part, however a shot is named.
+    const partsDir = `${work}/parts`
+    await ports.mkdir(partsDir)
     const parts: Array<string> = []
     const partScenes: Array<Scene> = []
     for (const [k, part] of sceneParts.entries()) {
-      const file = `${work}/part-${k + 1}.mkv`
+      const file = `${partsDir}/${k + 1}.mkv`
       const ran = await ports.ffmpeg(
         planJoin(part, segmentParts[k] ?? [], series, file)
       )

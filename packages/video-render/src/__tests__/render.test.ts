@@ -284,11 +284,18 @@ describe("render", () => {
     const cut = long(n, "crossfade")
     const mixed: CutList = {
       ...cut,
-      shots: cut.shots.map((s, i) =>
-        i % 4 === 3
-          ? { ...s, overrides: { ...s.overrides, transitionIn: "cut" } }
-          : s
-      ),
+      shots: cut.shots.map((s, i) => {
+        const joined =
+          i % 4 === 3
+            ? {
+                ...s,
+                overrides: { ...s.overrides, transitionIn: "cut" as const },
+              }
+            : s
+        // A scene named like a part, in the second batch: its segment must
+        // stay its own, never be overwritten by the first batch's join.
+        return i === JOIN_BATCH + 2 ? { ...joined, id: "part-1" } : joined
+      }),
     }
     const runs = []
     for (const k of [1, 2]) {
@@ -299,10 +306,16 @@ describe("render", () => {
       if (!done.ok) throw new Error(done.problems.join("\n"))
       runs.push(done.value)
     }
-    const parts = (await readdir(join(root, "work-long-1"))).filter((f) =>
-      /^part-\d+\.mkv$/.test(f)
+    const parts = (await readdir(join(root, "work-long-1/parts"))).filter((f) =>
+      /^\d+\.mkv$/.test(f)
     )
     expect(parts.length).toBe(Math.ceil(n / JOIN_BATCH))
+    // Its segment holds its own scene's frames, not a batch's.
+    const own = runs[0]?.shotTimes.find((t) => t.id === "part-1")
+    if (!own) throw new Error("no part-1 scene")
+    expect(await frames("work-long-1/part-1.mkv")).toBe(
+      Math.round((own.durationMs * 30) / 1000)
+    )
     const last = runs[0]?.shotTimes.at(-1)
     if (!last) throw new Error("no shot times")
     expect(await frames("out-long-1/video.mp4")).toBe(
