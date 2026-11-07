@@ -109,8 +109,21 @@ export const ShotSchema = z.object({
   cut: id.optional(),
   picture: PictureSchema,
   durationMs: ms.min(100),
-  /** One cut's take, trimmed to `inMs`..`outMs`. */
-  take: z.object({ file: path, inMs: ms, outMs: ms }).optional(),
+  /**
+   * One cut's take, trimmed to `inMs`..`outMs`, with each word said in it
+   * and when, in ms into the file, where the speaker gave them (`/timed`):
+   * what the video's subtitles draw.
+   */
+  take: z
+    .object({
+      file: path,
+      inMs: ms,
+      outMs: ms,
+      words: z
+        .array(z.object({ text: z.string().min(1), startMs: ms, endMs: ms }))
+        .optional(),
+    })
+    .optional(),
   /** This scene's voice under a Mixed plan: the point said, or the line read. */
   voice: z.enum(["ad-lib", "read"]).optional(),
   /** When the take starts, after the scene does. */
@@ -141,6 +154,8 @@ export const CutListSchema = z.object({
   voice: z.enum(VOICES),
   /** The music bed, if this video sets one over its look's. */
   music: z.enum(MUSIC_MODES).optional(),
+  /** Subtitles, from its takes' words (`subtitles.ts`); none when absent. */
+  subtitles: z.enum(["line", "word"]).optional(),
   shots: z.array(ShotSchema).min(1),
   /** Burn-ins over the whole video, such as captions. */
   burnIns: z.array(BurnInSchema).default([]),

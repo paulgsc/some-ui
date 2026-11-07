@@ -33,7 +33,8 @@ import { z } from "zod"
 import { CUT_LIST_SCHEMA, once, problemsOf } from "./cut-list"
 import type { CutList, Parsed } from "./cut-list"
 import { FORMAT_SCHEMA, repeatedId, showId, words } from "./format"
-import type { Format } from "./format"
+import type { Format, Shape } from "./format"
+import type { TimedWord } from "./subtitles"
 import sample from "./templates/conference-call/sample-week.json"
 
 export const CALL_WEEK_SCHEMA = "some-ui.call-week/1"
@@ -41,8 +42,23 @@ export const CALL_WEEK_SCHEMA = "some-ui.call-week/1"
 /** The call's template: its format's id, and its series'. */
 export const CALL_ID = "conference-call"
 
-/** The version `callFormat` gives, pinned as `v<n>.json` under `templates/`. */
-export const CALL_VERSION = 1
+/**
+ * The newest version `callFormat` gives, pinned as `v<n>.json` under
+ * `templates/`. A week names the version it was written for, and is drawn in
+ * that version's shape; the routine writes this one (`CALL-ROUTINE.md`).
+ *
+ * 2 (SFEED2, #2670): the shape. The locked intro, the owner's brand intro
+ * and outro, a chapter slide said aloud before each section but the open
+ * and the close, and subtitles with each word lit.
+ */
+export const CALL_VERSION = 2
+
+/** The call's shape, from version 2. */
+const CALL_SHAPE: Shape = {
+  brand: { intro: true, outro: true },
+  chapters: ["board", "moved", "done", "gray", "mine", "asks"],
+  subtitles: "word",
+}
 
 export const CALL_MOST = {
   moved: 12,
@@ -63,6 +79,12 @@ export const CALL_STAGE_WIDTH = 1920
 
 type Repeated = keyof typeof CALL_MOST
 type Section = Repeated | "open" | "board" | "close"
+
+/**
+ * The scenes a shape adds around the sections (`Shape`): the locked intro,
+ * the brand intro and outro, and a chapter slide before a section.
+ */
+type Framing = "intro" | "brand-in" | "chapter" | "brand-out"
 
 const isRepeated = (section: Section): section is Repeated =>
   section in CALL_MOST
@@ -85,12 +107,15 @@ const scene = (
   ...(isRepeated(id) ? { repeat: { max: CALL_MOST[id] } } : {}),
 })
 
-/** The call's format: its sections, in the order every call says them. */
-export function callFormat(): Format {
+/**
+ * The call's format at `version`: its sections, in the order every call says
+ * them, and from version 2 its shape.
+ */
+export function callFormat(version: number = CALL_VERSION): Format {
   return {
     schema: FORMAT_SCHEMA,
     id: CALL_ID,
-    version: CALL_VERSION,
+    version,
     title: "The weekly call",
     series: { id: CALL_ID, version: 1 },
     look: "calm",
@@ -134,6 +159,7 @@ export function callFormat(): Format {
       ),
       scene("close", "Close", "What the week comes to", 10_000),
     ],
+    ...(version >= 2 ? { shape: CALL_SHAPE } : {}),
   }
 }
 
@@ -253,7 +279,8 @@ export const CallWeekSchema = z.strictObject({
   schema: z.literal(CALL_WEEK_SCHEMA),
   template: z.strictObject({
     id: z.literal(CALL_ID),
-    version: z.literal(CALL_VERSION),
+    /** The format version it was written for, and so is drawn in. */
+    version: z.number().int().min(1).max(CALL_VERSION),
   }),
   /** The days it covers, both included. */
   week: z.strictObject({ from: day, to: day }),
@@ -320,7 +347,7 @@ export function callFolderProblems(
   if (!index.ok) return index.problems.map((p) => `index.json: ${p}`)
   const problems: Array<string> = []
   const listed = new Set<string>()
-  for (const { from, to } of index.value.weeks) {
+  for (const [i, { from, to }] of index.value.weeks.entries()) {
     const name = `${from}.json`
     listed.add(name)
     if (!files.has(name)) {
@@ -332,6 +359,12 @@ export function callFolderProblems(
       problems.push(...week.problems.map((p) => `${name}: ${p}`))
       continue
     }
+    // The newest week is written for the newest template; older ones keep
+    // the version they were drawn in.
+    if (i === 0 && week.value.template.version !== CALL_VERSION)
+      problems.push(
+        `${name}: it's written for version ${week.value.template.version} of the template, and the newest week is written for version ${CALL_VERSION}`
+      )
     if (week.value.week.from !== from || week.value.week.to !== to)
       problems.push(
         `${name}: it holds ${week.value.week.from} to ${week.value.week.to}, and the index says ${from} to ${to}`
@@ -413,30 +446,134 @@ export const sampleCallWeek = (): Parsed<CallWeek> => parseCallWeek(sample)
 
 /** One scene of a call: its section, its id in the video, and what it says. */
 export type CallScene = {
-  readonly section: Section
+  readonly section: Section | Framing
   /** The scene's id: its section's, or `<section>-<n>` for an item. */
   readonly id: string
   /** The item it shows, by the week's id; absent for a section's own scene. */
   readonly item?: string
+  /** The section a chapter slide opens. */
+  readonly of?: Section
+  /** What is said over it; empty for a brand slide, which says nothing. */
   readonly said: string
+}
+
+/** How long a brand slide holds, with nothing said over it. */
+export const BRAND_MS = 3_000
+
+/** What each chapter slide shows and says: the section it opens. */
+export const CALL_CHAPTERS: Readonly<Record<Section, string>> = {
+  open: "The week",
+  board: "The board",
+  moved: "Where things stand",
+  done: "What landed",
+  gray: "Calls in a gray area",
+  mine: "Calls made without you",
+  asks: "Waiting on you",
+  close: "Close",
+}
+
+const MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+] as const
+
+/** A day as it is said: "October 30". */
+const sayDay = (day: string): string => {
+  const [, month, date] = day.split("-")
+  return `${MONTHS[Number(month) - 1] ?? String(month)} ${Number(date)}`
+}
+
+const count = (n: number, one: string, many: string): string =>
+  `${n} ${n === 1 ? one : many}`
+
+/**
+ * The locked intro (SFEED2): who wrote the call, what drew it, that its
+ * voices are synthetic, and whose calls are inside, each a row on the frame,
+ * and all of it said. Filled here, by code, from the week and the template,
+ * never by the routine that writes the week, so the fill can't change who
+ * it says made the video.
+ */
+export function callIntro(week: CallWeek): {
+  readonly rows: ReadonlyArray<{
+    readonly label: string
+    readonly says: string
+  }>
+  readonly said: string
+} {
+  // What has none this week is left out, never said as nought.
+  const counted: ReadonlyArray<readonly [number, string, string]> = [
+    [week.asks.length, "question waits on you", "questions wait on you"],
+    [
+      week.mine.length,
+      "call Claude made without you",
+      "calls Claude made without you",
+    ],
+    [
+      week.gray.length,
+      "technical call in a gray area",
+      "technical calls in a gray area",
+    ],
+  ]
+  const calls = counted
+    .filter(([n]) => n > 0)
+    .map(([n, one, many]) => count(n, one, many))
+  const days = `${sayDay(week.week.from)} to ${sayDay(week.week.to)}`
+  return {
+    rows: [
+      {
+        label: "Written by",
+        says: "Claude, from the two repositories and the Residual Ledger",
+      },
+      {
+        label: "Drawn by",
+        says: `Code: the weekly call's template, version ${week.template.version}, in paulgsc/some-ui`,
+      },
+      {
+        label: "Voices",
+        says: "Kokoro, a synthetic speaker. No voice here is a person's",
+      },
+      { label: "Calls inside", says: calls.join(" · ") || "None this week" },
+    ],
+    said: [
+      `This is the weekly call for ${days}.`,
+      "Claude wrote the words, from the two repositories and the ledger.",
+      "Code drew every frame, and every voice you hear is synthetic.",
+      calls.length === 0
+        ? "There are no calls inside this week."
+        : `Inside: ${calls.join(", ")}.`,
+    ].join(" "),
+  }
 }
 
 /**
  * The call's scenes in the order said: one per section that shows once, and
- * one per item of a repeated section, none where it has no items.
+ * one per item of a repeated section, none where it has no items. In a week
+ * written for a version with a shape, the locked intro opens it, then the
+ * brand intro; a chapter slide comes before the first scene of each section
+ * the shape marks; and the brand outro closes it.
  */
 export function callScenes(week: CallWeek): ReadonlyArray<CallScene> {
   const items = (
     section: Repeated,
     list: ReadonlyArray<{ readonly id: string; readonly said: string }>
-  ): Array<CallScene> =>
+  ): Array<CallScene & { readonly section: Section }> =>
     list.map((item, i) => ({
       section,
       id: repeatedId(section, i + 1),
       item: item.id,
       said: item.said,
     }))
-  return [
+  const body: ReadonlyArray<CallScene & { readonly section: Section }> = [
     { section: "open", id: "open", said: week.open.said },
     { section: "board", id: "board", said: week.board.said },
     ...items("moved", week.moved),
@@ -446,16 +583,41 @@ export function callScenes(week: CallWeek): ReadonlyArray<CallScene> {
     ...items("asks", week.asks),
     { section: "close", id: "close", said: week.close.said },
   ]
+  const shape = callFormat(week.template.version).shape
+  if (shape === undefined) return body
+  const scenes: Array<CallScene> = [
+    { section: "intro", id: "intro", said: callIntro(week).said },
+  ]
+  if (shape.brand.intro)
+    scenes.push({ section: "brand-in", id: "brand-in", said: "" })
+  for (const [i, scene] of body.entries()) {
+    const first = body[i - 1]?.section !== scene.section
+    if (first && shape.chapters.includes(scene.section))
+      scenes.push({
+        section: "chapter",
+        id: `chapter-${scene.section}`,
+        of: scene.section,
+        said: `${CALL_CHAPTERS[scene.section]}.`,
+      })
+    scenes.push(scene)
+  }
+  if (shape.brand.outro)
+    scenes.push({ section: "brand-out", id: "brand-out", said: "" })
+  return scenes
 }
 
 /**
  * The voice each section is said in, by Kokoro's voice names (home's speaker,
  * paulgsc/server `infra/kokoro/say.py`, ST36): a host who opens, reads the
- * board and closes, and one voice per kind of report, so a listener hears who
- * is speaking change with the section. The `a` and `b` voices are American
- * and British English.
+ * board, the intro and the chapters, and closes, and one voice per kind of
+ * report, so a listener hears who is speaking change with the section. The
+ * `a` and `b` voices are American and British English.
  */
-export const CALL_VOICES: Readonly<Record<Section, string>> = {
+export const CALL_VOICES: Readonly<Record<Section | Framing, string>> = {
+  intro: "am_michael",
+  "brand-in": "am_michael",
+  chapter: "am_michael",
+  "brand-out": "am_michael",
   open: "am_michael",
   board: "am_michael",
   moved: "af_heart",
@@ -474,7 +636,6 @@ export const callFile = (index: number, scene: string): string =>
 const VOICE_IN_MS = 300
 const TAIL_MS = 700
 
-/** How long a scene with no take holds: its words read at a calm pace. */
 /**
  * About how long a week's call runs, from its words alone, before any is
  * said: each scene for its reading time. The recorder refuses a week past
@@ -482,46 +643,74 @@ const TAIL_MS = 700
  * renderer checks the placed length exactly.
  */
 export const estimatedCallMs = (week: CallWeek): number =>
-  callScenes(week).reduce((total, scene) => total + readingMs(scene.said), 0)
+  callScenes(week).reduce(
+    (total, scene) =>
+      total + (scene.said === "" ? BRAND_MS : readingMs(scene.said)),
+    0
+  )
 
+/** How long a scene with no take holds: its words read at a calm pace. */
 export const readingMs = (said: string): number =>
   Math.max(3_000, said.trim().split(/\s+/).length * 400 + 1_200)
 
+/** A scene's take: how long it runs, and each word in it, when the speaker gave them. */
+export type CallTake = {
+  readonly ms: number
+  readonly words?: ReadonlyArray<TimedWord>
+}
+
 /**
  * CV1 (promise, #2671): every scene shows the whole still the stage
- * recorded, held still (`__tests__/call-video.test.ts`).
+ * recorded, held still (`__tests__/call-video.test.ts`). Subtitles change
+ * only the band at the frame's foot, which the stage leaves empty for them
+ * (`subtitleBand`; the same test file).
  *
  * The call as a cut list the renderer draws: one still per scene
  * (`<file>.png`, the stage recorded), and its take (`<file>.wav`, home's
- * speaker's) where one was said, `takesMs[i]` long; a scene with none holds for its words'
- * reading time instead.
+ * speaker's) where one was said, `takes[i]`; a scene with none holds for its
+ * words' reading time instead, and a brand slide, which says nothing, for
+ * `BRAND_MS`. Subtitles are drawn from the takes' words as the week's shape
+ * says, and the music bed plays under the voice once the series names one
+ * (`bed`).
  */
 export function callCutList(
   week: CallWeek,
-  takesMs: ReadonlyArray<number | null>
+  takes: ReadonlyArray<CallTake | null>,
+  { bed = false }: { readonly bed?: boolean } = {}
 ): CutList {
   const scenes = callScenes(week)
+  const subtitles = callFormat(week.template.version).shape?.subtitles ?? "off"
   return {
     schema: CUT_LIST_SCHEMA,
     title: `The weekly call, ${week.week.from} to ${week.week.to}`,
     series: callFormat().series,
     look: "calm",
     voice: "read",
-    // The call's series names no music bed yet.
-    music: "off",
+    // The look's mode (calm: under the voice) once the series has a bed.
+    ...(bed ? {} : { music: "off" as const }),
+    ...(subtitles === "off" ? {} : { subtitles }),
     shots: scenes.map((scene, i) => {
       const file = callFile(i, scene.id)
-      const takeMs = takesMs[i] ?? null
+      const take = takes[i] ?? null
       return {
         id: scene.id,
         picture: { kind: "still", source: `${file}.png` },
         durationMs:
-          takeMs === null
-            ? readingMs(scene.said)
-            : VOICE_IN_MS + takeMs + TAIL_MS,
-        ...(takeMs === null
+          take !== null
+            ? VOICE_IN_MS + take.ms + TAIL_MS
+            : scene.said === ""
+              ? BRAND_MS
+              : readingMs(scene.said),
+        ...(take === null
           ? {}
-          : { take: { file: `${file}.wav`, inMs: 0, outMs: takeMs } }),
+          : {
+              take: {
+                file: `${file}.wav`,
+                inMs: 0,
+                outMs: take.ms,
+                ...(take.words ? { words: [...take.words] } : {}),
+              },
+            }),
         voiceInMs: VOICE_IN_MS,
         // CV1: the still's text runs to the frame's edges, which any zoom
         // would crop; the look's crossfade and music still apply.

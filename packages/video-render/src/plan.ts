@@ -518,6 +518,8 @@ export type Assembly = {
   readonly totalFrames: number
   readonly layers: ReadonlyArray<Layer>
   readonly mix: string
+  /** An ASS script drawn over everything (`subtitles.ts`), by its path. */
+  readonly subtitles?: string
 }
 
 /** Where each scene's cues land, and which kit file sounds them. */
@@ -810,6 +812,10 @@ export function planAssembly(
     )
     acc = `[l${i}]`
   })
+  if (a.subtitles !== undefined) {
+    filters.push(`${acc}subtitles=filename=${a.subtitles}[sub]`)
+    acc = "[sub]"
+  }
   filters.push(`${acc}format=yuv420p[v]`)
   inputs.push(...DECODE, "-i", a.mix)
   return {

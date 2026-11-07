@@ -34,4 +34,8 @@ export const CALL_WORDS = {
   overflows:
     "This scene doesn't fit the frame: part of it would be cut off in the video.",
   promise: "Promise",
+  mark: "The owner's mark",
+  whoMadeThis: "Who made this",
+  source: "The code: github.com/paulgsc/some-ui",
+  items: (n: number): string => (n === 1 ? "1 of them" : `${n} of them`),
 } as const

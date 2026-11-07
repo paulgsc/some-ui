@@ -6,6 +6,8 @@
  * with its last lines.
  */
 
+import { sha256Hex } from "@some-ui/core-utils"
+
 import { authorshipParams } from "./authorship"
 import { isAuthorship } from "./cut-list"
 import type { BurnIn, CutList, Parsed } from "./cut-list"
@@ -33,6 +35,8 @@ import type { ResolvedShot } from "./resolve"
 import { reviewOf } from "./review"
 import { withSeries } from "./series"
 import type { Series } from "./series"
+import { subtitleLines, subtitlesAss } from "./subtitles"
+import type { TimedWord } from "./subtitles"
 import { place, shotTimes, toMs } from "./timing"
 import type { Placement, ShotTime } from "./timing"
 import type { CheckedFile, MusicMode } from "./vocabulary"
@@ -96,6 +100,28 @@ export type Rendered = Parsed<{
     Pick<BurnInRequest, "kind" | "design" | "params">
   >
 }>
+
+/**
+ * Every word said in the video, when it is said: each take's words, those
+ * inside its trim, moved to where the take is placed.
+ */
+function wordsSaid(
+  scenes: ReadonlyArray<Scene>,
+  fps: number
+): ReadonlyArray<TimedWord> {
+  return scenes.flatMap(({ shot, placed }) => {
+    const take = shot.shot.take
+    if (!take?.words) return []
+    const atMs = toMs(placed.startFrame, fps) + shot.shot.voiceInMs
+    return take.words
+      .filter((w) => w.startMs >= take.inMs && w.endMs <= take.outMs)
+      .map((w) => ({
+        text: w.text,
+        startMs: atMs + w.startMs - take.inMs,
+        endMs: atMs + w.endMs - take.inMs,
+      }))
+  })
+}
 
 const refused = (problems: ReadonlyArray<string>): Rendered => ({
   ok: false,
@@ -265,9 +291,29 @@ export async function render(
     joined = { scenes: partScenes, segments: parts }
   }
 
+  // Subtitles, from each take's words where its cut list asks for them. The
+  // script is named by its sum, so a cached last step never draws old words.
+  let subtitles: string | undefined
+  const said = wordsSaid(scenes, fps)
+  if (cutList.subtitles && said.length > 0) {
+    const script = subtitlesAss(
+      subtitleLines(said),
+      series.frame,
+      cutList.subtitles
+    )
+    subtitles = `${work}/subtitles-${(await sha256Hex(script)).slice(0, 16)}.ass`
+    await ports.writeFile(subtitles, script)
+  }
+
   const assembled = await ports.ffmpeg(
     planAssembly(
-      { ...joined, totalFrames, layers, mix: mixFile },
+      {
+        ...joined,
+        totalFrames,
+        layers,
+        mix: mixFile,
+        ...(subtitles === undefined ? {} : { subtitles }),
+      },
       series,
       options.out
     )

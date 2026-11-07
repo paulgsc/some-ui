@@ -1,5 +1,10 @@
 import { assertNever } from "@some-ui/core-utils"
-import { callScenes, parseCallWeek } from "@some-ui/video-render"
+import {
+  CALL_CHAPTERS,
+  callIntro,
+  callScenes,
+  parseCallWeek,
+} from "@some-ui/video-render"
 import type {
   CallIndex,
   CallScene,
@@ -17,7 +22,17 @@ type Item<K extends "moved" | "done" | "gray" | "mine" | "asks"> =
   CallWeek[K][number]
 
 export type SceneView =
-  | { readonly section: "open" | "board" | "close" }
+  | { readonly section: "open" | "board" | "close" | "brand-in" | "brand-out" }
+  | {
+      readonly section: "intro"
+      readonly rows: ReturnType<typeof callIntro>["rows"]
+    }
+  | {
+      readonly section: "chapter"
+      readonly title: string
+      /** How many scenes the section has: its items, or none for one scene. */
+      readonly items: number
+    }
   | { readonly section: "moved"; readonly item: Item<"moved"> }
   | { readonly section: "done"; readonly item: Item<"done"> }
   | { readonly section: "gray"; readonly item: Item<"gray"> }
@@ -40,12 +55,28 @@ const find = <T extends { readonly id: string }>(
   return found
 }
 
-function viewOf(week: CallWeek, scene: CallScene): SceneView {
+function viewOf(
+  week: CallWeek,
+  scene: CallScene,
+  scenes: ReadonlyArray<CallScene>
+): SceneView {
   switch (scene.section) {
     case "open":
     case "board":
-    case "close": {
+    case "close":
+    case "brand-in":
+    case "brand-out": {
       return { section: scene.section }
+    }
+    case "intro": {
+      return { section: "intro", rows: callIntro(week).rows }
+    }
+    case "chapter": {
+      const of = scene.of ?? "open"
+      const items = scenes.filter(
+        (s) => s.section === of && s.item !== undefined
+      ).length
+      return { section: "chapter", title: CALL_CHAPTERS[of], items }
     }
     case "moved": {
       return { section: "moved", item: find(week.moved, scene.item) }
@@ -77,7 +108,7 @@ export function callAt(week: CallWeek, id: string | undefined): CallAt {
   )
   // `callScenes` always gives the open, the board and the close.
   const scene = scenes[index]
-  return { scenes, index, scene, view: viewOf(week, scene) }
+  return { scenes, index, scene, view: viewOf(week, scene, scenes) }
 }
 
 /**
