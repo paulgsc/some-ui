@@ -97,15 +97,20 @@ export function stepCache(
         warn(overBudget(what, bytes, held, policy))
         return false
       }
-      await mkdir(dir, { recursive: true })
       const path = kept(key, ext)
       const partial = `${path}${TEMPORARY}`
       try {
+        // The folder too: a disk that is full or a folder that cannot be
+        // written is a step not kept, never a render that fails.
+        await mkdir(dir, { recursive: true })
         await copyFile(from, partial)
         await rename(partial, path)
         return true
       } catch (error) {
-        await rm(partial, { force: true })
+        await rm(partial, { force: true }).catch(() => {
+          // Ignored: a partial that cannot be removed is never read as kept,
+          // since only the renamed name is.
+        })
         warn(`not cached: ${what}: it could not be kept (${String(error)})`)
         return false
       }

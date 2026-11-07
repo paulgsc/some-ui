@@ -89,6 +89,23 @@ describe("the step cache", () => {
     expect(await readdir(join(root, "steps")).catch(() => [])).toEqual([])
   })
 
+  it("warns, never fails, when its folder cannot be made", async () => {
+    const warned: Array<string> = []
+    // A file where the cache's folder would be: mkdir under it fails.
+    await writeFile(join(root, "blocked"), "a file, not a folder")
+    const cache = stepCache(
+      join(root, "blocked", "steps"),
+      policy(1_000_000),
+      (l) => warned.push(l)
+    )
+    await writeFile(join(root, "a.wav"), "take")
+    expect(await cache.put("k", ".wav", join(root, "a.wav"), "a.wav")).toBe(
+      false
+    )
+    expect(warned).toHaveLength(1)
+    expect(warned[0]).toContain("not cached: a.wav: it could not be kept")
+  })
+
   it("keys by what goes in, not by names", () => {
     expect(keyOf({ a: 1 })).toBe(keyOf({ a: 1 }))
     expect(keyOf({ a: 1 })).not.toBe(keyOf({ a: 2 }))
