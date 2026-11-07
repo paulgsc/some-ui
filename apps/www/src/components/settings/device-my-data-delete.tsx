@@ -10,7 +10,7 @@
  * LA19 (docs/learner-data-authority.md): `onConfirm` is the only way a
  * delete starts, from a sheet that has said what goes and what stays.
  */
-import type { JSX } from "react"
+import type { JSX, ReactNode } from "react"
 import { assertNever, formatSize } from "@some-ui/core-utils"
 import {
   Button,
@@ -141,6 +141,39 @@ function endedLines(sheet: Extract<DeleteSheet, { kind: "ended" }>): {
   }
 }
 
+/**
+ * My data's bottom sheet, which every delete asks in: open while its sheet
+ * isn't closed, and dismissed through `onClose`, which the sheet's own step
+ * refuses while it deletes.
+ */
+export const MyDataSheet = ({
+  open,
+  onClose,
+  children,
+}: {
+  open: boolean
+  onClose: () => void
+  children: ReactNode
+}): JSX.Element => (
+  <Sheet
+    open={open}
+    onOpenChange={(next) => {
+      if (!next) onClose()
+    }}
+  >
+    <SheetContent
+      side="bottom"
+      data-scroll-intent
+      className={
+        // scroll-intent: one ask read top to bottom, what goes then what stays then the two answers; on a phone held sideways its lists pass the sheet's height
+        "max-h-[92dvh] space-y-4 overflow-y-auto rounded-t-3xl px-5 pt-6 pb-8"
+      }
+    >
+      {children}
+    </SheetContent>
+  </Sheet>
+)
+
 export const DeleteSheetView = ({
   sheet,
   onConfirm,
@@ -149,33 +182,16 @@ export const DeleteSheetView = ({
   sheet: DeleteSheet
   onConfirm: () => void
   onClose: () => void
-}): JSX.Element => {
-  const open = sheet.kind !== "closed"
-  return (
-    <Sheet
-      open={open}
-      onOpenChange={(next) => {
-        if (!next) onClose()
-      }}
-    >
-      <SheetContent
-        side="bottom"
-        data-scroll-intent
-        className={
-          // scroll-intent: one ask read top to bottom, what goes then what stays then the two answers; on a phone held sideways its lists pass the sheet's height
-          "max-h-[92dvh] space-y-4 overflow-y-auto rounded-t-3xl px-5 pt-6 pb-8"
-        }
-      >
-        {sheet.kind === "asking" || sheet.kind === "deleting" ? (
-          <Asking sheet={sheet} onConfirm={onConfirm} onClose={onClose} />
-        ) : null}
-        {sheet.kind === "ended" ? (
-          <Ended sheet={sheet} onConfirm={onConfirm} onClose={onClose} />
-        ) : null}
-      </SheetContent>
-    </Sheet>
-  )
-}
+}): JSX.Element => (
+  <MyDataSheet open={sheet.kind !== "closed"} onClose={onClose}>
+    {sheet.kind === "asking" || sheet.kind === "deleting" ? (
+      <Asking sheet={sheet} onConfirm={onConfirm} onClose={onClose} />
+    ) : null}
+    {sheet.kind === "ended" ? (
+      <Ended sheet={sheet} onConfirm={onConfirm} onClose={onClose} />
+    ) : null}
+  </MyDataSheet>
+)
 
 const Asking = ({
   sheet,

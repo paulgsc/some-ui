@@ -6,14 +6,14 @@
  * watched. Reads `lib/call-videos`' snapshot and says what was pressed; every
  * word is its `CALLS_WORDS`. Phone build only.
  */
-import type { JSX } from "react"
+import type { JSX, ReactNode } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
-import { formatSize } from "@some-ui/core-utils"
+import { assertNever, formatSize } from "@some-ui/core-utils"
 import { Button, Input, Notice } from "@some-ui/shared"
 
 import type { CallVideos } from "@/lib/call-videos"
 import { CALLS_WORDS, callsRefresher, callVideos } from "@/lib/call-videos"
-import type { Fetch, LinkSave, Week } from "@/lib/call-videos/model"
+import type { Fetch, LinkSave, ListState, Week } from "@/lib/call-videos/model"
 import { standing } from "@/lib/call-videos/model"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 
@@ -149,6 +149,61 @@ const WeekRow = ({
   )
 }
 
+/**
+ * Home's list of weeks as it stands: what it says while reading, unpaired,
+ * unanswered or empty, and its children once there are weeks. Studio's Calls and
+ * My data's call videos both draw it.
+ */
+export const CallWeeksList = ({
+  list,
+  pair,
+  onTryAgain,
+  children,
+}: {
+  list: ListState
+  /** The way to pairing, for a phone that isn't paired. */
+  pair: JSX.Element
+  onTryAgain: () => void
+  /** The weeks, drawn by the caller from `list`. */
+  children: ReactNode
+}): JSX.Element | null => {
+  switch (list.kind) {
+    case "reading": {
+      return <p className="text-muted-foreground text-sm">{WORDS.reading}</p>
+    }
+    case "unpaired": {
+      return (
+        <>
+          <p className="text-sm">{WORDS.unpaired}</p>
+          {pair}
+        </>
+      )
+    }
+    case "away":
+    case "older":
+    case "unreadable": {
+      return (
+        <div className="flex flex-col gap-2">
+          <p className="text-sm">{WORDS[list.kind]}</p>
+          <Button size="sm" variant="outline" onClick={onTryAgain}>
+            {WORDS.tryAgain}
+          </Button>
+        </div>
+      )
+    }
+    case "read": {
+      return list.weeks.length === 0 ? (
+        <p className="text-muted-foreground text-sm">{WORDS.none}</p>
+      ) : (
+        <>{children}</>
+      )
+    }
+    default: {
+      return assertNever(list)
+    }
+  }
+}
+
 export const CallVideosScreen = ({
   pair,
 }: {
@@ -173,41 +228,25 @@ export const CallVideosScreen = ({
           {said.kind === "linkSaved" ? WORDS.linkSaved : WORDS.shareFailed}
         </Notice>
       )}
-      {list.kind === "reading" && (
-        <p className="text-muted-foreground text-sm">{WORDS.reading}</p>
-      )}
-      {list.kind === "unpaired" && (
-        <>
-          <p className="text-sm">{WORDS.unpaired}</p>
-          {pair}
-        </>
-      )}
-      {(list.kind === "away" ||
-        list.kind === "older" ||
-        list.kind === "unreadable") && (
-        <div className="flex flex-col gap-2">
-          <p className="text-sm">{WORDS[list.kind]}</p>
-          <Button size="sm" variant="outline" onClick={() => void calls.open()}>
-            {WORDS.tryAgain}
-          </Button>
-        </div>
-      )}
-      {list.kind === "read" && list.weeks.length === 0 && (
-        <p className="text-muted-foreground text-sm">{WORDS.none}</p>
-      )}
-      {list.kind === "read" && list.weeks.length > 0 && (
-        <ul className="flex flex-col gap-3">
-          {list.weeks.map((week) => (
-            <WeekRow
-              key={week.from}
-              week={week}
-              fetch={state.fetches[week.from]}
-              save={state.links[week.from]}
-              calls={calls}
-            />
-          ))}
-        </ul>
-      )}
+      <CallWeeksList
+        list={list}
+        pair={pair}
+        onTryAgain={() => void calls.open()}
+      >
+        {list.kind === "read" && (
+          <ul className="flex flex-col gap-3">
+            {list.weeks.map((week) => (
+              <WeekRow
+                key={week.from}
+                week={week}
+                fetch={state.fetches[week.from]}
+                save={state.links[week.from]}
+                calls={calls}
+              />
+            ))}
+          </ul>
+        )}
+      </CallWeeksList>
     </div>
   )
 }

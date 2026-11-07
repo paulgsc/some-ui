@@ -73,7 +73,7 @@ function fakes(list: ListState = { kind: "read", weeks: [week()] }): Fakes {
       ),
       remove: vi.fn<VideoFiles["remove"]>((from) => {
         kept.delete(from)
-        return Promise.resolve()
+        return Promise.resolve(true)
       }),
     },
     share: vi.fn<CallsPorts["share"]>(() => Promise.resolve("shared")),
@@ -166,6 +166,17 @@ describe("createCallVideos", () => {
     await calls.forget("2026-10-30")
     expect(kept.has("2026-10-30")).toBe(false)
     expect(calls.getSnapshot().fetches["2026-10-30"]).toBeUndefined()
+  })
+
+  it("keeps a copy that wouldn't go ready to watch", async () => {
+    const { ports } = fakes()
+    ports.files.remove.mockResolvedValueOnce(false)
+    const calls = createCallVideos(ports)
+    await calls.open()
+    await calls.watch("2026-10-30")
+    const ready = calls.getSnapshot().fetches["2026-10-30"]
+    await calls.forget("2026-10-30")
+    expect(calls.getSnapshot().fetches["2026-10-30"]).toEqual(ready)
   })
 
   it("says why a fetch failed: home gone quiet, the video gone, or the phone full", async () => {

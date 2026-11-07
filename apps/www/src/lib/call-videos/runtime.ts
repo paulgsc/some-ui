@@ -39,8 +39,11 @@ export type VideoFiles = {
   put: (from: string, base64: string, first: boolean) => Promise<boolean>
   /** Where a kept video is: `uri` for sharing, `src` for the player. */
   where: (from: string) => Promise<{ uri: string; src: string } | null>
-  /** Removes a week's video from the phone, if it is there. */
-  remove: (from: string) => Promise<void>
+  /**
+   * Removes a week's video from the phone, if it is there; whether no copy
+   * is left. Never rejects.
+   */
+  remove: (from: string) => Promise<boolean>
 }
 
 export type CallsPorts = {
@@ -212,8 +215,10 @@ export function createCallVideos(ports: CallsPorts): CallVideos {
     },
 
     async forget(from): Promise<void> {
-      await ports.files.remove(from)
-      dispatch({ type: "fetchForgotten", from })
+      // A copy that wouldn't go stays ready to watch, as it is.
+      if (await ports.files.remove(from)) {
+        dispatch({ type: "fetchForgotten", from })
+      }
     },
 
     seen(): void {

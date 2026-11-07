@@ -409,6 +409,7 @@ export const CALL_DELETING = {
   back: "My data",
   lead: "Home keeps each week's video until it's on YouTube. Once its link is saved in Studio, let home's copy go: the video first, then the rest.",
   week: (from: string, to: string): string => `${from} to ${to}`,
+  pair: "Pair this phone with home",
   noLink: "Save its YouTube link in Studio first.",
   waiting: "Home is still making this week's video.",
   allGone: "Home's copy went. It lives on YouTube.",
