@@ -271,7 +271,7 @@ export const readAloudFeedbackForExport = (): ReadAloudFeedback | null =>
   createReadAloudStore().feedback()
 
 /** Which of home's Korean kinds a read-aloud entry is (paulgsc/server `korean_repo::Kind`). */
-export type KoreanKind =
+type KoreanKind =
   | "set"
   | "pace"
   | "tally"
@@ -287,17 +287,24 @@ export type KoreanEntry = {
 }
 
 /** The key of the read-aloud store's single documents (record, progress, feedback). */
-export const SINGLE_DOCUMENT = "phone"
+const SINGLE_DOCUMENT = "phone"
 
 /**
- * `id` as a key home takes (letters, digits, `.`, `_`, `~`, `-`; not
- * starting `.` or `http`, not ending `.json`). The body keeps the id as it is.
+ * `id` as a key home takes (letters, digits, `.`, `_`, `-` and `~`; not
+ * starting `.` or `http`, not ending `.json`), one to one: any other
+ * character, and `~` itself, is written `~<hex>~`, and a key that would
+ * start or end as home refuses is marked `~p~` before or `~s~` after. An id
+ * of letters, digits, `.`, `_` and `-` alone is its own key.
  */
 export function plainKey(id: string): string {
-  const plain = id.replace(/[^\w.~-]/g, "-")
-  const lead = plain.startsWith(".") || plain.startsWith("http") ? "k-" : ""
-  const tail = /\.json$/i.test(plain) ? "-" : ""
-  return `${lead}${plain}${tail}` || "-"
+  const escaped = Array.from(id, (char) =>
+    /^[\w.-]$/.test(char)
+      ? char
+      : `~${(char.codePointAt(0) ?? 0).toString(16)}~`
+  ).join("")
+  const lead = /^(\.|http)/.test(escaped) || escaped === "" ? "~p~" : ""
+  const tail = /\.json$/i.test(escaped) ? "~s~" : ""
+  return `${lead}${escaped}${tail}`
 }
 
 /**
@@ -341,7 +348,7 @@ export function readAloudForHome(
         body: { sentence, ...row },
       })
     ),
-    ...(Object.keys(record.days).length > 0
+    ...(record.days.length > 0
       ? [{ kind: "record", key: SINGLE_DOCUMENT, body: record } as const]
       : []),
     ...(progress === null

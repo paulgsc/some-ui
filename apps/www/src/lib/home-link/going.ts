@@ -157,20 +157,22 @@ export async function notesGoing(
 }
 
 /**
- * What a run under `pairing` carries of the grammar-lens record: what home
- * doesn't hold as it is now, and which entries are still on the phone.
- * Reads only this phone; none when it can't load.
+ * What a run under `pairing` carries of a record `sent` remembers by key:
+ * what home doesn't hold as it is now (`toSend`), and which keys are still
+ * on the phone. Reads only this phone; none when it can't load.
  */
-export async function lensGoing(
+async function keyedGoing<T>(
   pairing: string,
-  storage: KeyedStorage | null
-): Promise<KeyedGoing<LensEntry>> {
+  storage: KeyedStorage | null,
+  read: () => Promise<ReadonlyArray<T>>,
+  keyOf: (item: T) => string,
+  toSend: (items: ReadonlyArray<T>, sent: Sent) => Array<T>
+): Promise<KeyedGoing<T>> {
   try {
-    const { lensRecordForExport } = await import("@some-ui/topik")
-    const { entries } = lensRecordForExport()
-    const keys = new Set(entries.map(lensKey))
+    const items = await read()
+    const keys = new Set(items.map(keyOf))
     return {
-      going: lensToSend(entries, readSent(storage, pairing)),
+      going: toSend(items, readSent(storage, pairing)),
       onPhone: (key) => keys.has(key),
     }
   } catch {
@@ -179,26 +181,31 @@ export async function lensGoing(
   }
 }
 
-/**
- * What a run under `pairing` carries of the rest of Korean's record (KH3):
- * the word sets, paces, tally rows and single documents home doesn't hold
- * as they are now, and which entries are still on the phone. Reads only
- * this phone; none when it can't load.
- */
-export async function koreanGoing(
+/** What a run carries of the grammar-lens record (`./lens-record`). */
+export const lensGoing = (
   pairing: string,
   storage: KeyedStorage | null
-): Promise<KeyedGoing<KoreanEntry>> {
-  try {
-    const { readAloudForHome } = await import("@some-ui/topik")
-    const entries = readAloudForHome()
-    const keys = new Set(entries.map(koreanKey))
-    return {
-      going: koreanToSend(entries, readSent(storage, pairing)),
-      onPhone: (key) => keys.has(key),
-    }
-  } catch {
-    // Unread: any entry `sent` remembers may still be on the phone.
-    return { going: [], onPhone: () => true }
-  }
-}
+): Promise<KeyedGoing<LensEntry>> =>
+  keyedGoing(
+    pairing,
+    storage,
+    async () => (await import("@some-ui/topik")).lensRecordForExport().entries,
+    lensKey,
+    lensToSend
+  )
+
+/**
+ * What a run carries of the rest of Korean's record (`./korean-record`,
+ * KH3): the word sets, paces, tally rows and single documents.
+ */
+export const koreanGoing = (
+  pairing: string,
+  storage: KeyedStorage | null
+): Promise<KeyedGoing<KoreanEntry>> =>
+  keyedGoing(
+    pairing,
+    storage,
+    async () => (await import("@some-ui/topik")).readAloudForHome(),
+    koreanKey,
+    koreanToSend
+  )

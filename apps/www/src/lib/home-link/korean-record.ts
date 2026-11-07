@@ -13,24 +13,18 @@
  * Korean from its own stores until it reads from home (KH4, #2104).
  */
 import type { HomeCall } from "@some-ui/core-utils"
-import { canonicalJson, fnv1a, isRecord, jsonOf } from "@some-ui/core-utils"
 import type { KoreanEntry } from "@some-ui/topik"
 
 import type { EachSent, LogReport } from "./leetype-log"
-import { sendEach } from "./leetype-log"
+import { entryCarries, sendEach } from "./leetype-log"
 import type { Sent } from "./sent"
+import { fingerprintOf } from "./sent"
 
 /** An entry's key in `sent.korean`: its kind and its key on home. */
 export const koreanKey = ({ kind, key }: KoreanEntry): string =>
   `${kind}/${key}`
 
-/** A Korean entry's digest as `sent` keeps it: its canonical JSON's length and hash. */
-export function bodyDigest(body: unknown): string {
-  const text = canonicalJson(body)
-  return `${String(text.length)}:${String(fnv1a(text))}`
-}
-
-const koreanDigest = ({ body }: KoreanEntry): string => bodyDigest(body)
+const koreanDigest = ({ body }: KoreanEntry): string => fingerprintOf(body)
 
 /** The entries home does not hold as they are now. */
 export function koreanToSend(
@@ -42,22 +36,12 @@ export function koreanToSend(
   )
 }
 
-/** Whether home's answer to a Korean PUT carries `text` as the entry it now holds. */
-export function homeHolds(body: string, text: string): boolean {
-  const answer = jsonOf(body)
-  return (
-    isRecord(answer) &&
-    isRecord(answer.entry) &&
-    canonicalJson(answer.entry.body) === text
-  )
-}
-
 const KOREAN_SENT: EachSent<KoreanEntry> = {
   path: ({ kind, key }) => `/korean/${kind}/${key}`,
   body: ({ body }) => body,
   heldAs: (entry, text, body) =>
     Promise.resolve(
-      homeHolds(body, text) ? [koreanKey(entry), koreanDigest(entry)] : null
+      entryCarries(body, text) ? [koreanKey(entry), koreanDigest(entry)] : null
     ),
 }
 

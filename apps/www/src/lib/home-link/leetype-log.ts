@@ -123,6 +123,19 @@ export type EachSent<T> = {
 }
 
 /**
+ * Whether home's answer to a PUT of one entry of its Korean record
+ * (`{change, entry: {body, …}}`) carries `text` as the entry it now holds.
+ */
+export function entryCarries(body: string, text: string): boolean {
+  const answer = jsonOf(body)
+  return (
+    isRecord(answer) &&
+    isRecord(answer.entry) &&
+    canonicalJson(answer.entry.body) === text
+  )
+}
+
+/**
  * Sends each item through `send` as one PUT of its body, into `report`, by
  * `bucketOf` its status; a 200 home answers for other bytes differs. `held`
  * hears each item home holds as sent, by its key and digest.

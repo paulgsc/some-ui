@@ -611,7 +611,7 @@ describe("the drain's LeetType and Studio parts", () => {
     expect(koreanToSend([paced], held)).toEqual([paced])
   })
 
-  it("forgets the notes and grammar-lens entries no longer on the phone, keeping those still there (HF5)", async () => {
+  it("forgets the notes, grammar-lens and Korean entries no longer on the phone, keeping those still there (HF5, KH3)", async () => {
     const { ports, send } = setup({ local: [], kept: [] })
     ports.storage?.setItem(
       SENT_KEY,
@@ -619,16 +619,20 @@ describe("the drain's LeetType and Studio parts", () => {
         pairing: PAIRING,
         notes: { "soundbite:gone": "a", "leetype:kept": "b" },
         lens: { "let-go": "1:2", here: "3:4" },
+        korean: { "pace/gone": "5:6", "set/here": "7:8" },
       })
     )
     ports.notesGoing = (): Promise<KeyedGoing<never>> =>
       Promise.resolve({ going: [], onPhone: (key) => key === "leetype:kept" })
     ports.lensGoing = (): Promise<KeyedGoing<never>> =>
       Promise.resolve({ going: [], onPhone: (key) => key === "here" })
+    ports.koreanGoing = (): Promise<KeyedGoing<never>> =>
+      Promise.resolve({ going: [], onPhone: (key) => key === "set/here" })
     await expect(drainHome(send, ports)).resolves.toEqual({ kind: "synced" })
     const held = readSent(ports.storage, PAIRING)
     expect(held.notes).toEqual({ "leetype:kept": "b" })
     expect(held.lens).toEqual({ here: "3:4" })
+    expect(held.korean).toEqual({ "set/here": "7:8" })
   })
 
   it("counts every soundbite's note as still on the phone while their store is unread (HF5)", () => {

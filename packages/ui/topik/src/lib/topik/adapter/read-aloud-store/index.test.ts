@@ -54,6 +54,26 @@ const PROGRESS: SetProgress = {
   reported: true,
 }
 
+const SET = {
+  deck: {
+    id: "everyday-2",
+    title: "Everyday",
+    from: 'your note on Oct 13: "level two"',
+    words: [{ id: "juda", lemma: "주다", gloss: "give" }],
+    lines: [
+      {
+        id: "give",
+        level: 2 as const,
+        korean: "주세요.",
+        english: "Please give it to me.",
+        words: [{ wordId: "juda", surface: "주세요", stemEnd: 1 }],
+      },
+    ],
+  },
+  addedAt: "2026-10-14T06:00:00.000Z",
+  openedAt: null,
+}
+
 describe("the read-aloud store", () => {
   it("keeps each word's pace across stores on the same storage", () => {
     const storage = memoryStorage()
@@ -104,25 +124,7 @@ describe("the read-aloud store", () => {
   it("keeps the added word sets, and leaves out one that no longer parses", () => {
     const storage = memoryStorage()
     const store = createReadAloudStore(storage)
-    const set = {
-      deck: {
-        id: "everyday-2",
-        title: "Everyday",
-        from: 'your note on Oct 13: "level two"',
-        words: [{ id: "juda", lemma: "주다", gloss: "give" }],
-        lines: [
-          {
-            id: "give",
-            level: 2 as const,
-            korean: "주세요.",
-            english: "Please give it to me.",
-            words: [{ wordId: "juda", surface: "주세요", stemEnd: 1 }],
-          },
-        ],
-      },
-      addedAt: "2026-10-14T06:00:00.000Z",
-      openedAt: null,
-    }
+    const set = SET
     store.saveSets([set])
     expect(createReadAloudStore(storage).sets()).toEqual([set])
 
@@ -236,24 +238,45 @@ describe("the read-aloud store", () => {
     store.savePace("juda", { factor: 1.2, seen: 3 })
     store.count({ type: "set" }, "2026-10-20")
     store.saveProgress(2, "everyday-2", PROGRESS)
-    store.saveFeedback({ tooEasy: null, tooManyRepeats: null })
+    store.saveFeedback({
+      tooEasy: { at: "2026-10-21T08:00:00.000Z" },
+      tooManyRepeats: null,
+    })
     store.saveTally(noteShown({}, "cafe-order:1x2", "2026-10-20T09:00:00.000Z"))
+    store.saveSets([SET])
     const entries = readAloudForHome(storage)
     expect(entries.map(({ kind, key }) => `${kind} ${key}`)).toEqual([
+      "set everyday-2",
       "pace juda",
-      "tally cafe-order-1x2",
+      "tally cafe-order~3a~1x2",
       "record phone",
       "progress phone",
+      "feedback phone",
     ])
-    expect(entries[0]?.body).toEqual({ wordId: "juda", factor: 1.2, seen: 3 })
-    expect(entries[1]?.body).toMatchObject({ sentence: "cafe-order:1x2" })
+    expect(entries[0]?.body).toEqual(storedSet(SET))
+    expect(entries[1]?.body).toEqual({ wordId: "juda", factor: 1.2, seen: 3 })
+    expect(entries[2]?.body).toMatchObject({ sentence: "cafe-order:1x2" })
   })
 
-  it("makes any id a key home takes", () => {
+  it("makes any id a key home takes, and no two ids one key", () => {
     expect(plainKey("everyday-2")).toBe("everyday-2")
-    expect(plainKey("w:주다")).toBe("w---")
-    expect(plainKey(".hidden")).toBe("k-.hidden")
-    expect(plainKey("https-deck")).toBe("k-https-deck")
-    expect(plainKey("deck.json")).toBe("deck.json-")
+    const ids = [
+      "w:주다",
+      "w:가다",
+      ".hidden",
+      "https-deck",
+      "~p~https-deck",
+      "deck.json",
+      "deck.json~s~",
+      "a~b",
+      "",
+    ]
+    const keys = ids.map(plainKey)
+    expect(new Set(keys).size).toBe(ids.length)
+    for (const key of keys) {
+      expect(key).toMatch(/^[\w.~-]+$/)
+      expect(key.startsWith(".") || key.startsWith("http")).toBe(false)
+      expect(/\.json$/i.test(key)).toBe(false)
+    }
   })
 })
