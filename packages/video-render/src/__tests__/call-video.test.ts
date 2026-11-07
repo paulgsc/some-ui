@@ -4,10 +4,13 @@
  *
  * Family: every week (how many scenes, how long each is said), every frame
  * of a scene's hold, and the transitions into and out of it. Proof: the
- * call's own cut list, for the sample week and the week of 2026-10-30,
- * rendered by the real ffmpeg in the call's pinned series at a small frame,
- * each still a dark field in a white border at the frame's edges. Tolerance:
- * the encoder's own noise (`NOISE`).
+ * call's own cut list, for the sample week and the week of 2026-10-30, each
+ * scene said for a different length (`TAKES_MS`), rendered by the real
+ * ffmpeg in the call's pinned series at a small frame, each still a dark
+ * field in a white border at the frame's edges. Every frame of the video,
+ * transitions included, has the border exactly where it was drawn, so no
+ * frame is zoomed, panned or cropped; and every frame of a scene's hold is
+ * its first. Tolerance: the encoder's own noise (`NOISE`).
  *
  * The week of 2026-10-30 is read from `paulgsc/testing` at the commit that
  * added it, since data lives there and not here. Without a network it is
@@ -44,8 +47,9 @@ const BORDER = 4
  * border by a whole pixel, a change of about 200.
  */
 const NOISE = 8
-/** Each scene's take, so a scene is short and holds past its fades. */
-const TAKE_MS = 600
+/** Each scene's take, by its place in the week: short, long and between. */
+const TAKES_MS = [300, 2_100, 900, 600] as const
+const takeMs = (i: number): number => TAKES_MS[i % TAKES_MS.length] ?? 600
 
 const OCT_30 =
   "https://raw.githubusercontent.com/paulgsc/testing/aecb9131591e1ee443f34caff32ae564af569844/call/2026-10-30.json"
@@ -92,15 +96,17 @@ async function renderWeek(
   const dir = join(root, name)
   await mkdir(dir)
   const ports = nodePorts(dir)
-  await make(ports, [
-    "-f",
-    "lavfi",
-    "-i",
-    `sine=f=330:d=${TAKE_MS / 1000}:r=48000`,
-    "-c:a",
-    "pcm_s16le",
-    "take.wav",
-  ])
+  for (const ms of TAKES_MS) {
+    await make(ports, [
+      "-f",
+      "lavfi",
+      "-i",
+      `sine=f=330:d=${ms / 1000}:r=48000`,
+      "-c:a",
+      "pcm_s16le",
+      `take-${ms}.wav`,
+    ])
+  }
   const scenes = callScenes(week)
   for (const [i, scene] of scenes.entries()) {
     const file = callFile(i, scene.id)
@@ -118,11 +124,17 @@ async function renderWeek(
       "1",
       `${file}.png`,
     ])
-    await make(ports, ["-i", "take.wav", "-c", "copy", `${file}.wav`])
+    await make(ports, [
+      "-i",
+      `take-${takeMs(i)}.wav`,
+      "-c",
+      "copy",
+      `${file}.wav`,
+    ])
   }
   const cut = callCutList(
     week,
-    scenes.map(() => TAKE_MS)
+    scenes.map((_, i) => takeMs(i))
   )
   const done = await render(cut, series, ports, {
     workDir: "work",
@@ -150,6 +162,37 @@ async function renderWeek(
     }
   })
   return { frames: await readFile(join(dir, "frames.gray")), holds }
+}
+
+/**
+ * Where a frame's border isn't where the still drew it: on each side, the
+ * border's innermost pixel is white and the next one in is dark, so a move
+ * of a pixel either way, or a crop, is seen.
+ */
+function moved(frame: Buffer): Array<string> {
+  const at = (x: number, y: number): number => frame[y * W + x] ?? -1
+  const sides = [
+    ["left", (d: number): number => at(d, H / 2)],
+    ["right", (d: number): number => at(W - 1 - d, H / 2)],
+    ["top", (d: number): number => at(W / 2, d)],
+    ["bottom", (d: number): number => at(W / 2, H - 1 - d)],
+  ] as const
+  return sides
+    .filter(([, px]) => px(BORDER - 1) < 200 || px(BORDER) > 120)
+    .map(([side]) => side)
+}
+
+/** Every frame whose border moved, by the scene showing it: none when none. */
+function everyFrame(frames: Buffer, holds: ReadonlyArray<Hold>): Array<string> {
+  const size = W * H
+  const problems: Array<string> = []
+  for (let n = 0; n * size < frames.length; n++) {
+    const sides = moved(frames.subarray(n * size, (n + 1) * size))
+    if (sides.length === 0) continue
+    const near = holds.filter((h) => h.from <= n).at(-1)?.id ?? "the start"
+    problems.push(`frame ${n} (around ${near}): its ${sides.join(", ")} moved`)
+  }
+  return problems
 }
 
 /** Why a scene's hold isn't its whole still, held: none when it is. */
@@ -191,6 +234,7 @@ describe("a call's video (CV1)", () => {
     const { frames, holds } = await renderWeek(sample.value, "sample")
     expect(holds).toHaveLength(callScenes(sample.value).length)
     expect(holds.flatMap((h) => problemsOf(frames, h))).toEqual([])
+    expect(everyFrame(frames, holds)).toEqual([])
   }, 240_000)
 
   it("shows each scene's whole still and holds it, for the week of 2026-10-30", async (context) => {
@@ -201,5 +245,6 @@ describe("a call's video (CV1)", () => {
     const { frames, holds } = await renderWeek(oct30, "oct-30")
     expect(holds).toHaveLength(callScenes(oct30).length)
     expect(holds.flatMap((h) => problemsOf(frames, h))).toEqual([])
+    expect(everyFrame(frames, holds)).toEqual([])
   }, 240_000)
 })
