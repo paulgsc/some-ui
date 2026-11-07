@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "@some-ui/core-utils": "workspace:*",
+    "@some-ui/engagement": "workspace:*",
     "@some-ui/intent-kit": "workspace:*",
     "@some-ui/makjang": "workspace:*",
     "@some-ui/react-hooks": "workspace:*",

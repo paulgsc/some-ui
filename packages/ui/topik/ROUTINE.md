@@ -10,7 +10,7 @@ For each study reflection: a scene of word sets, one to read aloud and one for
 the grammar lens (part A), and a GitHub issue for anything it says about the
 app (part C). For each drama prompt: a drama (part B). Each scene and drama
 goes home through the mailbox, and home keeps it for the phone's "From the
-routine" list. When fewer than three of the routine's lessons wait unopened on
+routine" list. When fewer than three of the routine's scenes wait unopened on
 the phone, it also writes stock scenes that answer no reflection (part D), and
 every run leaves a record of itself in the mailbox (step 12), which the phone
 shows as when the routine last ran and what it brought.
@@ -574,7 +574,7 @@ local file's byte count. A copy that fails goes in the summary. Never edit,
 rename or move a prompt, a voice note or a drama: home keeps which prompts are
 answered.
 
-## Part D: keep three lessons ready
+## Part D: keep three scenes ready
 
 D1. List the mailbox's `opened` folder as 2a says (live items only), then read
 the newest file (the highest `seq`) with `GET "$JOBS_MAILBOX_URL/v1/opened/items/<name>"`:
@@ -594,8 +594,10 @@ the last 7 days while there is none), `lessons` naming each as
 (steps 6 and 10), which it doesn't count yet, and list none of the
 `opened`, `scene` and `drama` folders for it.
 
-D3. If fewer than 3 are unopened, write 3 minus that many stock scenes, at most
-3 this run. A stock scene is a word set pair written, checked, put and copied
+D3. Count only the unopened scenes (`scene/<name>`): a drama left unplayed
+doesn't hold back the scenes the owner does read (ENG3, #2536). If fewer than
+3 scenes are unopened, write 3 minus that many stock scenes, at most 3 this
+run. Name the unopened dramas in this run's summary (step 13). A stock scene is a word set pair written, checked, put and copied
 exactly as in steps 4 to 6a, with these differences:
 
 - it answers no reflection: there is no voice note and no part C; its
@@ -691,8 +693,9 @@ and is not retried.
     existing ones you matched, any feedback you did not file and why; which
     drama prompts you answered, each drama's title, level and what it
     continues; each mailbox put (name and status code), and if the mailbox was
-    skipped, why; part D's count of unopened lessons and each stock scene
-    written (title, genre, premise, level); the run record's put and its
+    skipped, why; part D's count of unopened scenes, the unopened dramas,
+    and each stock scene written (title, genre, premise, level); the run
+    record's put and its
     status code; for each voice note, its transcript's name and `text`, or that
     home hasn't heard it; Drive (whether this session had it, each copy made
     or failed, each reflection, prompt or scene read from it because only

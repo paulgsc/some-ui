@@ -197,11 +197,6 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       why: "the notes of how each take on the phone ended, kept until home holds them (CK2): only the Android app records takes and sends them home",
     },
     {
-      modules: ["packages/engagement/dist/@some-ui/engagement.es.js"],
-      profiles: [MOBILE_PROFILE],
-      why: "whether each pipeline gets used (ENGAGE): only the Android app keeps those events for home (src/lib/app-events), until a pipeline the web builds play emits them",
-    },
-    {
       modules: [
         "apps/www/src/lib/tenant/sessions-transfer/**",
         "apps/www/src/lib/tenant/transfer-lock/**",
