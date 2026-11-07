@@ -1204,7 +1204,8 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   `subscribe` follow anything but the sessions cache, `onKept`, the
   reflections store (HF3), the asks store (`lib/scene-ask`, HF4),
   LeetType's answer notes (`leetypeNotesMoved`, HF5) and the soundbites,
-  lens record, LeetType's finished sessions and Studio's writes as
+  lens record, LeetType's finished sessions, Studio's writes and read
+  aloud's kept writes (`koreanWrites`, KH3) as
   `lib/home-link/practice-reads.ts` last read them (HF5, #2425), or that
   drops one of those from it, drops from its waiting count any of the
   sessions, written reflections, asks, notes, lens entries, finished
