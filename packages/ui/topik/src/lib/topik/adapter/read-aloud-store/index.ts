@@ -271,13 +271,7 @@ export const readAloudFeedbackForExport = (): ReadAloudFeedback | null =>
   createReadAloudStore().feedback()
 
 /** Which of home's Korean kinds a read-aloud entry is (paulgsc/server `korean_repo::Kind`). */
-type KoreanKind =
-  | "set"
-  | "pace"
-  | "tally"
-  | "record"
-  | "progress"
-  | "feedback"
+type KoreanKind = "set" | "pace" | "tally" | "record" | "progress" | "feedback"
 
 /** One entry of home's Korean record: its kind, its key there, and its body as kept here. */
 export type KoreanEntry = {
