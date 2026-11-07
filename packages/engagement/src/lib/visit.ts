@@ -7,6 +7,8 @@
  * - **An offer is counted once a visit.** A list that re-renders, or names
  *   the same card again, offers nothing new; a new visit (after the app
  *   comes back to the front) offers again what is still listed.
+ * - **Nothing is taken unoffered.** A take of something not offered this
+ *   visit (a card found by a search) is its offer and its take at once.
  * - **How an untaken offer ended** is `endingOf` over what was true: the
  *   visit's own ending, and `took-another` when something else was taken.
  * - **Pure.** `stepVisit` returns the events and the next state; this module's
@@ -43,12 +45,10 @@ export type VisitStep =
   | { readonly type: "end"; readonly ending: VisitEnding; readonly at: string }
 
 const stamp = (
-  { pipeline, affordance, surface }: Offer,
+  { key: _key, ...offer }: Offer,
   at: string
-): { pipeline: string; affordance: string; surface: Surface; at: string } => ({
-  pipeline,
-  affordance,
-  surface,
+): Omit<Offer, "key"> & { at: string } => ({
+  ...offer,
   at,
 })
 
@@ -67,11 +67,15 @@ export function stepVisit(
       }
     }
     case "take": {
-      const taken = new Set(state.taken)
+      const offered = stepVisit(state, { ...step, type: "offer" })
+      const taken = new Set(offered.state.taken)
       taken.add(step.offer.key)
       return {
-        state: { ...state, taken },
-        events: [{ ...stamp(step.offer, step.at), kind: "taken" }],
+        state: { ...offered.state, taken },
+        events: [
+          ...offered.events,
+          { ...stamp(step.offer, step.at), kind: "taken" },
+        ],
       }
     }
     case "end": {
@@ -104,8 +108,6 @@ export type Visit = {
   readonly take: (offer: Offer) => void
   /** Ends the visit: each untaken offer is passed over. */
   readonly end: (ending: VisitEnding) => void
-  /** A new visit, offering again what the screen last listed. */
-  readonly resume: () => void
 }
 
 export function createVisit(
@@ -113,21 +115,17 @@ export function createVisit(
   send: (event: EngagementEvent) => void = engage
 ): Visit {
   let state = NEW_VISIT
-  let listed: ReadonlyArray<Offer> = []
   const run = (step: VisitStep): void => {
     const next = stepVisit(state, step)
     state = next.state
     for (const event of next.events) send(event)
   }
   const at = (): string => clock().toISOString()
-  const list = (offers: ReadonlyArray<Offer>): void => {
-    listed = offers
-    for (const offer of offers) run({ type: "offer", offer, at: at() })
-  }
   return {
-    list,
+    list: (offers): void => {
+      for (const offer of offers) run({ type: "offer", offer, at: at() })
+    },
     take: (offer) => run({ type: "take", offer, at: at() }),
     end: (ending) => run({ type: "end", ending, at: at() }),
-    resume: () => list(listed),
   }
 }

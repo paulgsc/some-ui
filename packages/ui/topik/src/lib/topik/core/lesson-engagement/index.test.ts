@@ -1,11 +1,13 @@
-import { checkEvent, createVisit, PIPELINES } from "@some-ui/engagement"
-import type { EngagementEvent } from "@some-ui/engagement"
+import { checkEvent, PIPELINES } from "@some-ui/engagement"
 import {
   listOffers,
+  offerOfSet,
   routineOffer,
 } from "@topik/lib/topik/core/lesson-engagement"
 import type { LessonItem } from "@topik/lib/topik/core/lesson-feed"
 import { describe, expect, it } from "vitest"
+
+const AT = "2026-11-07T09:00:00.000Z"
 
 const scene = (key: string): LessonItem => ({
   key,
@@ -45,26 +47,15 @@ describe("what the lesson list offers (ENG3)", () => {
     ])
   })
 
-  it("takes the set pressed, and passes the scene's other set over", () => {
-    const sent: Array<EngagementEvent> = []
-    const visit = createVisit(
-      () => new Date(Date.UTC(2026, 10, 7, 9)),
-      (event) => sent.push(event)
-    )
+  it("takes a set as the list offers it, its card's once a card holds it", () => {
     const a = scene("scene/a")
-    visit.list(listOffers([a, drama("drama/b")], []))
-    visit.take(routineOffer(a, "lens"))
-    visit.end("moved-on")
-    expect(
-      sent
-        .filter((event) => event.kind !== "offered")
-        .map((event) => `${event.kind} ${event.affordance}`)
-    ).toEqual([
-      "taken routine-lens",
-      "passed-over routine-read-aloud",
-      "passed-over routine-drama",
-    ])
-    for (const event of sent)
-      expect(checkEvent(event, PIPELINES)).toMatchObject({ ok: true })
+    const listed = listOffers([a], ["set-9"])
+    expect(routineOffer(a, "lens")).toEqual(listed[1])
+    expect(offerOfSet([a], "scene/a-l")).toEqual(listed[1])
+    expect(offerOfSet([a], "set-9")).toEqual(listed[2])
+    for (const { key: _key, ...stamp } of listed)
+      expect(
+        checkEvent({ ...stamp, kind: "offered", at: AT }, PIPELINES)
+      ).toMatchObject({ ok: true })
   })
 })

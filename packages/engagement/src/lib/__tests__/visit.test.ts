@@ -1,6 +1,4 @@
-import { checkEvent } from "@engagement/lib/check-event"
 import type { EngagementEvent } from "@engagement/lib/events"
-import { PIPELINES } from "@engagement/lib/pipelines"
 import type { Offer } from "@engagement/lib/visit"
 import { createVisit } from "@engagement/lib/visit"
 import { describe, expect, it } from "vitest"
@@ -57,11 +55,11 @@ describe("a visit (ENG3)", () => {
     })
   })
 
-  it("ends as the visit did when nothing was taken, and offers again on resume", () => {
+  it("ends as the visit did when nothing was taken, and offers again in the next", () => {
     const { visit: v, sent } = visit()
     v.list([drama])
     v.end("left-the-app")
-    v.resume()
+    v.list([drama])
     v.end("moved-on")
     expect(sent.map((event) => event.kind)).toEqual([
       "offered",
@@ -72,12 +70,14 @@ describe("a visit (ENG3)", () => {
     expect(sent[1]).toMatchObject({ ending: "left-the-app" })
   })
 
-  it("writes only events the payload limit passes", () => {
+  it("offers what is taken without an offer, then takes it", () => {
     const { visit: v, sent } = visit()
-    v.list([readAloud, lens, drama])
     v.take(lens)
-    v.end("left-the-app")
-    for (const event of sent)
-      expect(checkEvent(event, PIPELINES)).toMatchObject({ ok: true })
+    v.take(lens)
+    expect(kinds(sent)).toEqual([
+      "offered routine-lens",
+      "taken routine-lens",
+      "taken routine-lens",
+    ])
   })
 })

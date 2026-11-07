@@ -198,7 +198,12 @@ const openLevelAndGenre = (): void => {
   fireEvent.click(screen.getByRole("button", { name: /Level and genre/ }))
 }
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  // What a test's lesson offered waits for a sink (`engage`): drop it.
+  setEngagementSink(() => undefined)
+  setEngagementSink(null)
+})
 
 describe("HandheldLesson", () => {
   it("lists dramas only: no conversation, no score, nothing up next", async () => {
@@ -371,8 +376,6 @@ describe("HandheldLesson", () => {
     ]
     const told: Array<ReadonlyArray<string>> = []
     const used: Array<EngagementEvent> = []
-    // What earlier tests offered with no sink set waits for one: drop it.
-    setEngagementSink(() => undefined)
     setEngagementSink((event) => used.push(event))
     const { unmount } = renderLesson({
       speaker: voice(() => Promise.resolve({ kind: "heard" })),
@@ -449,7 +452,6 @@ describe("HandheldLesson", () => {
     // ENG3: each set and the drama offered once, the two taken, and the
     // lens set passed over when the lesson closes.
     unmount()
-    setEngagementSink(null)
     expect(used.map((event) => `${event.kind} ${event.affordance}`)).toEqual([
       "offered routine-drama",
       "offered routine-read-aloud",

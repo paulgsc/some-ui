@@ -102,7 +102,7 @@ import type { DramaPointStore } from "@topik/lib/topik/core/drama-runtime"
 import type { Seed } from "@topik/lib/topik/core/feed-card"
 import {
   listOffers,
-  readySetOffer,
+  offerOfSet,
   routineOffer,
 } from "@topik/lib/topik/core/lesson-engagement"
 import type { LessonSession } from "@topik/lib/topik/core/lesson-feed"
@@ -349,32 +349,9 @@ export const HandheldLesson = ({
       ),
     [added, routineItems]
   )
-  // What the list offers, and which the owner takes (ENG3, `createVisit`):
-  // a visit ends when the lesson closes or the app goes to the back, and
-  // begins again when it comes to the front.
-  const [visit] = useState(() => createVisit(now))
-  const offers = useMemo(
-    () =>
-      listOffers(
-        routineItems,
-        readyOnList.map(({ deck }) => deck.id)
-      ),
-    [routineItems, readyOnList]
-  )
-  useEffect(() => {
-    visit.list(offers)
-  }, [visit, offers])
-  useEffect(() => {
-    const seen = (): void => {
-      if (document.visibilityState === "hidden") visit.end("left-the-app")
-      else visit.resume()
-    }
-    document.addEventListener("visibilitychange", seen)
-    return (): void => {
-      document.removeEventListener("visibilitychange", seen)
-      visit.end("moved-on")
-    }
-  }, [visit])
+  // What the list offers, and which the owner takes (ENG3, `createVisit`),
+  // stamped by the device's clock as each happens.
+  const [visit] = useState(() => createVisit())
   // A pair's sets the phone already holds are left as they are, record and
   // all; the rest are added, and the pair opens on `session`, else its first.
   const openRoutineScene = (
@@ -405,8 +382,12 @@ export const HandheldLesson = ({
     })
     return true
   }
-  /** Opens a scene on the set `setId`, else its read-aloud set; a drama plays. */
-  const openRoutine = (key: string, setId?: string): void => {
+  /**
+   * Opens a scene on the set `setId`, else its read-aloud set; a drama plays.
+   * Taken as its card on the list, unless `fromList` is false (the menu's
+   * portion, which is the menu's to say).
+   */
+  const openRoutine = (key: string, setId?: string, fromList = true): void => {
     const file = routine.data?.find((candidate) => openedKey(candidate) === key)
     if (file === undefined) return
     setRoutineNote(null)
@@ -417,10 +398,12 @@ export const HandheldLesson = ({
         sessions.find((one) => one.id === setId) ??
         sessions.find((one) => one.practice === "read-aloud")
       if (!openRoutineScene(file.decks, session)) return
-      visit.take(routineOffer({ key, kind: file.kind }, session?.practice))
+      if (fromList)
+        visit.take(routineOffer({ key, kind: file.kind }, session?.practice))
     } else {
       startTree(file.tree)
-      visit.take(routineOffer({ key, kind: file.kind }, undefined))
+      if (fromList)
+        visit.take(routineOffer({ key, kind: file.kind }, undefined))
     }
     opened.markOpened(key)
     const nowOpened = opened.opened()
@@ -431,6 +414,15 @@ export const HandheldLesson = ({
     )
   }
   const canRead = speaker?.available === true
+  /**
+   * Reads an added set from its start; taken as what the list offers it as
+   * (`offerOfSet`), unless `fromList` is false.
+   */
+  const openAddedSet = (id: string, fromList = true): void => {
+    if (fromList) visit.take(offerOfSet(routineItems, id))
+    keepSets(openSet(added, id, now().toISOString()))
+    setReading({ set: id, begin: true })
+  }
   /** Opens the next lesson; false when there is none to open. */
   const openNext = (): boolean => {
     const fromRoutine = routineItems.find(
@@ -442,9 +434,7 @@ export const HandheldLesson = ({
     }
     const ready = readySets(added).at(0)
     if (ready === undefined || !canRead) return false
-    visit.take(readySetOffer(ready.deck.id))
-    keepSets(openSet(added, ready.deck.id, now().toISOString()))
-    setReading({ set: ready.deck.id, begin: true })
+    openAddedSet(ready.deck.id)
     return true
   }
   // The press the host already made, answered once, a double mount
@@ -481,15 +471,15 @@ export const HandheldLesson = ({
       }
       case "meal": {
         if (dish.start.from === "routine") {
-          openRoutine(dish.start.key)
+          openRoutine(dish.start.key, undefined, false)
         } else {
-          keepSets(openSet(added, dish.start.id, now().toISOString()))
-          setReading({ set: dish.start.id, begin: true })
+          openAddedSet(dish.start.id, false)
         }
         return
       }
       case "dessert": {
-        if (dish.start.from === "routine") openRoutine(dish.start.key)
+        if (dish.start.from === "routine")
+          openRoutine(dish.start.key, undefined, false)
         else drama.play()
         return
       }
@@ -498,6 +488,43 @@ export const HandheldLesson = ({
       }
     }
   }
+
+  // The list is offered only while it is what the screen shows. A visit
+  // ends when the lesson closes or the app goes to the back, and the list
+  // is offered again when it comes back to the front. In development's
+  // StrictMode the double mount ends one visit at once: every card is passed
+  // over, then offered again.
+  const listOnScreen =
+    reading === null &&
+    !drama.playing &&
+    servedKey === null &&
+    menu === null &&
+    generating === null
+  const offers = useMemo(
+    () =>
+      listOffers(
+        routineItems,
+        canRead ? readyOnList.map(({ deck }) => deck.id) : []
+      ),
+    [routineItems, readyOnList, canRead]
+  )
+  useEffect(() => {
+    if (listOnScreen) visit.list(offers)
+  }, [visit, offers, listOnScreen])
+  const backInFront = useEffectEvent((): void => {
+    if (listOnScreen) visit.list(offers)
+  })
+  useEffect(() => {
+    const seen = (): void => {
+      if (document.visibilityState === "hidden") visit.end("left-the-app")
+      else backInFront()
+    }
+    document.addEventListener("visibilitychange", seen)
+    return (): void => {
+      document.removeEventListener("visibilitychange", seen)
+      visit.end("moved-on")
+    }
+  }, [visit])
 
   if (reading) {
     const set =
@@ -778,9 +805,7 @@ export const HandheldLesson = ({
             : []
         })}
         onOpenSet={(id) => {
-          visit.take(readySetOffer(id))
-          keepSets(openSet(added, id, now().toISOString()))
-          setReading({ set: id, begin: true })
+          openAddedSet(id)
         }}
         onSetText={openSetText}
         setFileHint={wordSetHint}

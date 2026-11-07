@@ -37,7 +37,23 @@ export function routineOffer(
 }
 
 /** A word set "Ready for you", by its id. */
-export const readySetOffer = (id: string): Offer => offer("ready-set", id)
+const readySetOffer = (id: string): Offer => offer("ready-set", id)
+
+/**
+ * What an added set `id` is offered as: its routine card's set when a card
+ * holds it (a scene's other set, once one was opened), else a set "Ready
+ * for you".
+ */
+export function offerOfSet(
+  items: ReadonlyArray<LessonItem>,
+  id: string
+): Offer {
+  for (const item of items) {
+    const session = item.sessions.find((one) => one.id === id)
+    if (session !== undefined) return routineOffer(item, session.practice)
+  }
+  return readySetOffer(id)
+}
 
 /** Everything the list offers as it first shows: the cards, then the ready sets. */
 export function listOffers(

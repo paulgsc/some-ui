@@ -597,8 +597,7 @@ the last 7 days while there is none), `lessons` naming each as
 D3. Count only the unopened scenes (`scene/<name>`): a drama left unplayed
 doesn't hold back the scenes the owner does read (ENG3, #2536). If fewer than
 3 scenes are unopened, write 3 minus that many stock scenes, at most 3 this
-run. Name the unopened dramas in the run record's notes, so the reading of
-what gets used (ENG11) can count them. A stock scene is a word set pair written, checked, put and copied
+run. Name the unopened dramas in this run's summary (step 13). A stock scene is a word set pair written, checked, put and copied
 exactly as in steps 4 to 6a, with these differences:
 
 - it answers no reflection: there is no voice note and no part C; its
@@ -694,8 +693,9 @@ and is not retried.
     existing ones you matched, any feedback you did not file and why; which
     drama prompts you answered, each drama's title, level and what it
     continues; each mailbox put (name and status code), and if the mailbox was
-    skipped, why; part D's count of unopened scenes, the unopened dramas, and each stock scene
-    written (title, genre, premise, level); the run record's put and its
+    skipped, why; part D's count of unopened scenes, the unopened dramas,
+    and each stock scene written (title, genre, premise, level); the run
+    record's put and its
     status code; for each voice note, its transcript's name and `text`, or that
     home hasn't heard it; Drive (whether this session had it, each copy made
     or failed, each reflection, prompt or scene read from it because only
