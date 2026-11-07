@@ -149,28 +149,3 @@ export const isQueued = (project: Project, rev: number): boolean =>
 export function isReleased(project: Project, rev: number): boolean {
   return project.released?.some((each) => each.rev === rev) === true
 }
-
-const YOUTUBE_ID = /^[\w-]{11}$/
-
-/**
- * The video a pasted YouTube link names, as one link
- * (`https://youtu.be/<id>`); null for anything else.
- */
-export function youtubeLink(text: string): string | null {
-  let url: URL
-  try {
-    url = new URL(text.trim())
-  } catch {
-    return null
-  }
-  if (url.protocol !== "https:") return null
-  const host = url.hostname.replace(/^(www|m)\./, "")
-  const path = url.pathname.split("/").filter((part) => part !== "")
-  let id: string | null = null
-  if (host === "youtu.be" && path.length === 1) id = path[0] ?? null
-  else if (host === "youtube.com") {
-    if (path[0] === "watch" && path.length === 1) id = url.searchParams.get("v")
-    else if (path[0] === "shorts" && path.length === 2) id = path[1] ?? null
-  }
-  return id !== null && YOUTUBE_ID.test(id) ? `https://youtu.be/${id}` : null
-}

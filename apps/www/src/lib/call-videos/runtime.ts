@@ -14,10 +14,12 @@
  *   again; one that failed is fetched again from the start.
  * - **Share** hands the fetched file to Android's share sheet (the `YouTube`
  *   app takes it from there).
- * - **Save** sends the pasted link only when it reads as a `YouTube` video,
- *   as home would read it, and once home kept it reads the list again, so
+ * - **Save** sends the pasted link only when it reads as a `YouTube` video
+ *   (`youtubeLink`, as Studio's Finish reads one), as its one form, and once home kept it reads the list again, so
  *   the week shows the link as home holds it.
  */
+import { youtubeLink } from "@some-ui/core-utils"
+
 import type {
   CallsEvent,
   CallsState,
@@ -27,7 +29,7 @@ import type {
   PartRead,
   Week,
 } from "./model"
-import { INITIAL, step, youtubeId } from "./model"
+import { INITIAL, step } from "./model"
 
 /** The phone's copies of the videos, in its cache. Every call resolves. */
 export type VideoFiles = {
@@ -189,12 +191,14 @@ export function createCallVideos(ports: CallsPorts): CallVideos {
 
     async saveLink(from, pasted): Promise<void> {
       if (state.links[from]?.kind === "saving") return
-      if (youtubeId(pasted) === null) {
+      // The one reading of a YouTube link (`youtubeLink`, as Finish's).
+      const link = youtubeLink(pasted)
+      if (link === null) {
         dispatch({ type: "linkEnded", from, saved: { kind: "notAVideo" } })
         return
       }
       dispatch({ type: "linkSaving", from })
-      const saved = await ports.saveLink(from, pasted.trim())
+      const saved = await ports.saveLink(from, link)
       dispatch({ type: "linkEnded", from, saved })
       // Read again, so the week shows the link as home kept it.
       if (saved.kind === "saved") await open()

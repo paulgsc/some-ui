@@ -42,11 +42,11 @@
  *   and `anchorAt` finds that shot in any later revision by id, or says the
  *   shot is gone; its time is read from the renderer's shot times.
  */
-import { assertNever } from "@some-ui/core-utils"
+import { assertNever, youtubeLink } from "@some-ui/core-utils"
 import type { CutList, EpisodePin, ShotTime } from "@some-ui/video-render"
 import type { Primer } from "@soundbites/lib/journal/primer"
 
-import { BEST_OF, finishOf, isQueued, isReleased, youtubeLink } from "./finish"
+import { BEST_OF, finishOf, isQueued, isReleased } from "./finish"
 import { latestShot, sameJson, shotIds, shotIn } from "./lookup"
 import type { OriginMark } from "./origin"
 import { originRefusal } from "./origin"

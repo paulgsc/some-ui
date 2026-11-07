@@ -14,7 +14,6 @@ import {
   readWeeks,
   standing,
   step,
-  youtubeId,
 } from "@/lib/call-videos/model"
 
 const week = (over: Partial<Week> = {}): Week => ({
@@ -68,34 +67,6 @@ describe("readLinkSaved", () => {
     expect(readLinkSaved({ status: 409, body: "" })).toEqual({
       kind: "unreadable",
     })
-  })
-})
-
-describe("youtubeId", () => {
-  it("reads a YouTube video's id as home does, and nothing else", () => {
-    const id = "dQw4w9WgXcQ"
-    for (const link of [
-      "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-      "https://youtube.com/watch?feature=share&v=dQw4w9WgXcQ&t=42",
-      "https://m.youtube.com/watch?v=dQw4w9WgXcQ#comments",
-      "youtube.com/watch?v=dQw4w9WgXcQ",
-      "https://youtu.be/dQw4w9WgXcQ",
-      " https://youtu.be/dQw4w9WgXcQ?si=abc ",
-      "https://www.youtube.com/shorts/dQw4w9WgXcQ",
-    ]) {
-      expect(youtubeId(link), link).toBe(id)
-    }
-    for (const link of [
-      "",
-      "https://www.youtube.com/@paulgsc",
-      "https://www.youtube.com/playlist?list=PL1234567890",
-      "https://youtu.be/short",
-      "https://youtu.be/dQw4w9WgXcQ1",
-      "https://example.com/watch?v=dQw4w9WgXcQ",
-      "https://youtube.com.evil.example/watch?v=dQw4w9WgXcQ",
-    ]) {
-      expect(youtubeId(link), link).toBeNull()
-    }
   })
 })
 

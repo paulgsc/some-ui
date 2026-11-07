@@ -550,7 +550,7 @@ declared (checked by reading every call site and by the tests named).
   list but on the screen opening, a drag down, Try again or once after a
   Save home kept, fetch a video but
   on Watch, or send a link but on Save and once it reads as a `YouTube`
-  video (`youtubeId`); one that
+  video (`youtubeLink` (`@some-ui/core-utils`)); one that
   has `takes-read.ts` send anything but one `GET` of `takesPath(q)` per ask,
   lets anything but `lib/take-library` call it, lets anything but the voice
   run (`voice-copy.ts`) and `lib/take-library` read

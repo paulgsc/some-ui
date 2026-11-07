@@ -86,36 +86,6 @@ export function readLinkSaved(answer: HomeAnswer): LinkSaved {
     : { kind: "saved", url: kept.url }
 }
 
-/**
- * The `YouTube` video a pasted link names, read as home reads it
- * (`call_week_repo::video::youtube_id`), so a link home would refuse is
- * refused before anything is sent. `null` for anything else.
- */
-export function youtubeId(pasted: string): string | null {
-  const link = pasted.trim()
-  const rest = link.replace(/^https?:\/\//, "")
-  const slash = rest.indexOf("/")
-  if (slash < 0) return null
-  const host = rest.slice(0, slash).replace(/^(www|m)\./, "")
-  const path = rest.slice(slash + 1)
-  let candidate: string | undefined
-  if (host === "youtu.be") {
-    candidate = path
-  } else if (host === "youtube.com") {
-    if (path.startsWith("shorts/")) {
-      candidate = path.slice("shorts/".length)
-    } else if (path.startsWith("watch?")) {
-      candidate = path
-        .slice("watch?".length)
-        .split("&")
-        .find((pair) => pair.startsWith("v="))
-        ?.slice(2)
-    }
-  }
-  const id = candidate?.split(/[?&#/]/)[0]
-  return id !== undefined && /^[A-Za-z0-9_-]{11}$/.test(id) ? id : null
-}
-
 /** Where a week stands on home. */
 export type Standing =
   /** Home has the week's words but no video yet. */
