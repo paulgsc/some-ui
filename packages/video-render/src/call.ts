@@ -488,6 +488,9 @@ export const readingMs = (said: string): number =>
   Math.max(3_000, said.trim().split(/\s+/).length * 400 + 1_200)
 
 /**
+ * CV1 (promise, #2671): every scene shows the whole still the stage
+ * recorded, held still (`__tests__/call-video.test.ts`).
+ *
  * The call as a cut list the renderer draws: one still per scene
  * (`<file>.png`, the stage recorded), and its take (`<file>.wav`, home's
  * speaker's) where one was said, `takesMs[i]` long; a scene with none holds for its words'
@@ -520,7 +523,9 @@ export function callCutList(
           ? {}
           : { take: { file: `${file}.wav`, inMs: 0, outMs: takeMs } }),
         voiceInMs: VOICE_IN_MS,
-        overrides: {},
+        // CV1: the still's text runs to the frame's edges, which any zoom
+        // would crop; the look's crossfade and music still apply.
+        overrides: { motion: { kind: "still" } },
         burnIns: [],
         idea: { origin: "agent" },
       }
