@@ -15,7 +15,8 @@
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import { audioPlayer } from "@some-ui/voice-capture"
 
-import { deleteNotes } from "@/lib/home-link/delete-note"
+import { callVideos } from "@/lib/call-videos"
+import { deleteCallStep, deleteNotes } from "@/lib/home-link/delete-note"
 import { askDeleted } from "@/lib/home-link/deleted-read"
 import { askKept } from "@/lib/home-link/kept-read"
 import {
@@ -26,6 +27,8 @@ import {
 import { askWhileBusy } from "@/lib/home-link/while-busy"
 import { studioKeeping } from "@/lib/studio-keeping"
 
+import type { CallDeleting } from "./call-deleting-runtime"
+import { createCallDeleting } from "./call-deleting-runtime"
 import type { DeletableKind, ReceiptsReading } from "./deleting"
 import { isDeletableKind, readReceipts } from "./deleting"
 import type { Deleting } from "./deleting-runtime"
@@ -169,4 +172,22 @@ let receipts: Receipts | null = null
 export function phoneReceipts(): Receipts {
   receipts ??= createReceipts({ askHome: askReceipts })
   return receipts
+}
+
+let callDeleting: CallDeleting | null = null
+
+/**
+ * My data's let-go of a week of the call (ST38), one per page load: home's
+ * delete of the step (LA19), the phone's copy of the video once it went, and
+ * the weeks read again.
+ */
+export function phoneCallDeleting(): CallDeleting {
+  callDeleting ??= createCallDeleting({
+    deleteCallStep,
+    forgetCopy: (from) => callVideos().forget(from),
+    reread: () => {
+      void callVideos().open()
+    },
+  })
+  return callDeleting
 }

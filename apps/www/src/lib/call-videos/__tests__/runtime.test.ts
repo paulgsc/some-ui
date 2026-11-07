@@ -33,6 +33,7 @@ type Fakes = {
       size: Mock<VideoFiles["size"]>
       put: Mock<VideoFiles["put"]>
       where: Mock<VideoFiles["where"]>
+      remove: Mock<VideoFiles["remove"]>
     }
     share: Mock<CallsPorts["share"]>
     saveLink: Mock<CallsPorts["saveLink"]>
@@ -70,6 +71,10 @@ function fakes(list: ListState = { kind: "read", weeks: [week()] }): Fakes {
             : null
         )
       ),
+      remove: vi.fn<VideoFiles["remove"]>((from) => {
+        kept.delete(from)
+        return Promise.resolve(true)
+      }),
     },
     share: vi.fn<CallsPorts["share"]>(() => Promise.resolve("shared")),
     saveLink: vi.fn<CallsPorts["saveLink"]>(() =>
@@ -151,6 +156,51 @@ describe("createCallVideos", () => {
     await calls.watch("2026-10-30")
     expect(ports.part).toHaveBeenCalledTimes(6)
     expect(calls.getSnapshot().fetches["2026-10-30"]?.kind).toBe("ready")
+  })
+
+  it("lets go of the phone's copy once home's went, and forgets it was ready", async () => {
+    const { ports, kept } = fakes()
+    const calls = createCallVideos(ports)
+    await calls.open()
+    await calls.watch("2026-10-30")
+    await calls.forget("2026-10-30")
+    expect(kept.has("2026-10-30")).toBe(false)
+    expect(calls.getSnapshot().fetches["2026-10-30"]).toBeUndefined()
+  })
+
+  it("stops a fetch it lets go of, and removes the copy after the write it was in", async () => {
+    const { ports, kept } = fakes()
+    let finishPut = (): void => undefined
+    ports.files.put.mockImplementationOnce((from, base64) => {
+      const got = Buffer.from(base64, "base64").length
+      return new Promise((resolve) => {
+        finishPut = (): void => {
+          kept.set(from, got)
+          resolve(true)
+        }
+      })
+    })
+    const calls = createCallVideos(ports)
+    await calls.open()
+    const watching = calls.watch("2026-10-30")
+    await vi.waitFor(() => expect(ports.files.put).toHaveBeenCalled())
+    const forgetting = calls.forget("2026-10-30")
+    finishPut()
+    await Promise.all([watching, forgetting])
+    expect(kept.has("2026-10-30")).toBe(false)
+    expect(ports.part).toHaveBeenCalledTimes(1)
+    expect(calls.getSnapshot().fetches["2026-10-30"]).toBeUndefined()
+  })
+
+  it("keeps a copy that wouldn't go ready to watch", async () => {
+    const { ports } = fakes()
+    ports.files.remove.mockResolvedValueOnce(false)
+    const calls = createCallVideos(ports)
+    await calls.open()
+    await calls.watch("2026-10-30")
+    const ready = calls.getSnapshot().fetches["2026-10-30"]
+    await calls.forget("2026-10-30")
+    expect(calls.getSnapshot().fetches["2026-10-30"]).toEqual(ready)
   })
 
   it("says why a fetch failed: home gone quiet, the video gone, or the phone full", async () => {

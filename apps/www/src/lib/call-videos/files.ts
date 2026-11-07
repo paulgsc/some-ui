@@ -133,4 +133,26 @@ export const videoFiles: VideoFiles = {
     }).outcome
     return valueOr(outcome, null)
   },
+
+  async remove(from) {
+    const outcome = await callForeign({
+      port: PORT,
+      deadlineMs: DEADLINE_MS,
+      start: async (): Promise<boolean> => {
+        const { Directory, Filesystem } = await import("@capacitor/filesystem")
+        const file = { path: pathOf(from), directory: Directory.Cache }
+        try {
+          await Filesystem.stat(file)
+        } catch {
+          // Ignored: no copy on the phone is the usual case, a week never
+          // watched here, and there is nothing to remove.
+          return true
+        }
+        // A copy that won't go fails the call, which the port reports.
+        await Filesystem.deleteFile(file)
+        return true
+      },
+    }).outcome
+    return valueOr(outcome, false)
+  },
 }
