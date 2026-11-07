@@ -13,6 +13,7 @@ import { authorshipOf } from "@video-render/authorship"
 import type { CutList, Shot } from "@video-render/cut-list"
 import { nodePorts } from "@video-render/node"
 import { JOIN_BATCH } from "@video-render/plan"
+import { DEFAULT_POLICY, MB } from "@video-render/policy"
 import type { Ports } from "@video-render/render"
 import { render } from "@video-render/render"
 import type { Series } from "@video-render/series"
@@ -382,6 +383,51 @@ describe("render", () => {
       }
     }
   }, 120_000)
+
+  it("refuses a video past the policy's length before drawing anything", async () => {
+    const calls: Array<ReadonlyArray<string>> = []
+    const faked: Ports = {
+      ...ports,
+      probe: () =>
+        Promise.resolve({ width: 206, height: 458, durationMs: 8000 }),
+      ffmpeg: (call) => {
+        calls.push(call.args)
+        return Promise.resolve({ ok: true, stderr: "" })
+      },
+    }
+    const done = await render(long(3, "cut"), series(), faked, {
+      workDir: "work-too-long",
+      out: "out-too-long/video.mp4",
+      policy: { ...DEFAULT_POLICY, maxVideoMs: 2_000 },
+    })
+    expect(done.ok ? [] : done.problems).toEqual([
+      "the video would run 0.1 min, past the policy's 0.0 min",
+    ])
+    expect(calls).toEqual([])
+  })
+
+  it("removes and refuses a finished video past the policy's size", async () => {
+    const removed: Array<string> = []
+    const faked: Ports = {
+      ...ports,
+      probe: () =>
+        Promise.resolve({ width: 206, height: 458, durationMs: 8000 }),
+      ffmpeg: () => Promise.resolve({ ok: true, stderr: "" }),
+      fileBytes: () => Promise.resolve(600 * MB),
+      remove: (file) => {
+        removed.push(file)
+        return Promise.resolve()
+      },
+    }
+    const done = await render(long(2, "cut"), series(), faked, {
+      workDir: "work-too-big",
+      out: "out-too-big/video.mp4",
+    })
+    expect(done.ok ? [] : done.problems).toEqual([
+      "the video is 600 MB, past the policy's 500 MB",
+    ])
+    expect(removed).toEqual(["out-too-big/video.mp4"])
+  })
 
   it("needs footage only up to a freeze", async () => {
     const short: Ports = {

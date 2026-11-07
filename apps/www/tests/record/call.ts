@@ -26,6 +26,13 @@
  * tools would be in the frame), from `--dist`, relative to apps/www, or
  * records the one already served at `--app` (home's render worker records
  * the published image, #2639). Needs `ffmpeg` and `ffprobe` on `PATH`.
+ *
+ * Policy (`RenderPolicy`, #2635): `--max-video-minutes` and `--max-video-mb`
+ * cap the video, which is refused past either, by its words before anything
+ * is said and exactly before anything is drawn; `--cache-mb` caps what one
+ * week keeps in `<out>/<week>/cache/steps`, its takes and every ffmpeg step,
+ * so a retry runs only what changed. A step past that budget runs uncached,
+ * with a `cache warning:` line on stderr, which home's render worker reports.
  */
 
 import { mkdir, readFile, writeFile } from "node:fs/promises"
@@ -38,10 +45,19 @@ import {
   callCutList,
   callFile,
   callScenes,
+  DEFAULT_POLICY,
+  estimatedCallMs,
+  MB,
+  overLength,
   parseCallWeek,
 } from "@some-ui/video-render"
-import type { CallWeek } from "@some-ui/video-render"
-import { nodePorts, renderFolder } from "@some-ui/video-render/node"
+import type { CallWeek, RenderPolicy } from "@some-ui/video-render"
+import {
+  keyOf,
+  nodePorts,
+  renderFolder,
+  stepCache,
+} from "@some-ui/video-render/node"
 import { serve } from "@tests/ui-fit/harness"
 
 import { fail, here, launchChromium, runCommand } from "./command"
@@ -74,6 +90,39 @@ async function said(
       `The speaker at ${speaker} answered ${String(response.status)}: ${await response.text()}`,
     ])
   return Buffer.from(await response.arrayBuffer())
+}
+
+/** The speaker's model, by its SHA-256: part of every take's key. */
+async function speakerModel(speaker: string): Promise<string> {
+  const response = await fetch(new URL("/health", speaker))
+  if (!response.ok)
+    fail([`The speaker at ${speaker} answered ${String(response.status)}`])
+  const health: unknown = await response.json()
+  if (
+    typeof health !== "object" ||
+    health === null ||
+    !("model" in health) ||
+    typeof health.model !== "string"
+  )
+    fail([`The speaker at ${speaker} named no model`])
+  return health.model
+}
+
+/** A cache warning, on its own line so the render worker can find it. */
+const warn = (line: string): void => {
+  process.stderr.write(`cache warning: ${line}\n`)
+}
+
+/** A whole number from a flag, or `fallback` when the flag is unset. */
+function wholeFlag(
+  value: string | undefined,
+  flag: string,
+  fallback: number
+): number {
+  if (value === undefined) return fallback
+  const n = Number(value)
+  if (!Number.isInteger(n) || n <= 0) fail([`--${flag} is a whole number`])
+  return n
 }
 
 /** The stage's reads of `paulgsc/testing`'s `call/` folder. */
@@ -129,8 +178,33 @@ async function main(): Promise<void> {
       dist: { type: "string", default: "dist" },
       app: { type: "string" },
       "week-file": { type: "string" },
+      // Policy (`RenderPolicy`): the longest and largest video, and what one
+      // week's step cache may hold.
+      "max-video-minutes": { type: "string" },
+      "max-video-mb": { type: "string" },
+      "cache-mb": { type: "string" },
     },
   })
+  const policy: RenderPolicy = {
+    maxVideoMs:
+      wholeFlag(
+        values["max-video-minutes"],
+        "max-video-minutes",
+        DEFAULT_POLICY.maxVideoMs / 60_000
+      ) * 60_000,
+    maxVideoBytes:
+      wholeFlag(
+        values["max-video-mb"],
+        "max-video-mb",
+        DEFAULT_POLICY.maxVideoBytes / MB
+      ) * MB,
+    cacheBytes:
+      wholeFlag(
+        values["cache-mb"],
+        "cache-mb",
+        DEFAULT_POLICY.cacheBytes / MB
+      ) * MB,
+  }
   if (values.voices !== "kokoro" && values.voices !== "none")
     fail(["--voices is kokoro or none"])
   const kept = values["week-file"] ? await keptWeek(values["week-file"]) : null
@@ -168,10 +242,22 @@ async function main(): Promise<void> {
     if (weekAsked && weekAsked !== "sample" && week.week.from !== weekAsked)
       fail([`there is no week of ${weekAsked}`])
 
+    // Policy, before an hour on the speaker: a week whose words alone run
+    // past the longest video is refused here.
+    const tooLong = overLength(estimatedCallMs(week), policy)
+    if (tooLong) fail([`${tooLong}, by its words; nothing was recorded`])
+
     const root = here(join(values.out, week.week.from))
     await mkdir(root, { recursive: true })
     const ports = nodePorts(root)
     const scenes = callScenes(week)
+    // Takes and every ffmpeg step are kept here between attempts, so a retry
+    // runs only what changed; the render worker removes it once the week is
+    // rendered (paulgsc/server `infra/render/render-calls.sh`).
+    const STEPS = "cache/steps"
+    const cache = stepCache(join(root, STEPS), policy, warn)
+    const model =
+      values.voices === "kokoro" ? await speakerModel(values.speaker) : null
     const takesMs: Array<number | null> = []
     const overflowing: Array<string> = []
 
@@ -187,10 +273,13 @@ async function main(): Promise<void> {
         overflowing.push(scene.id)
       await page.screenshot({ path: join(root, `${file}.png`) })
       if (values.voices === "kokoro") {
-        await writeFile(
-          join(root, `${file}.wav`),
-          await said(values.speaker, scene.said, CALL_VOICES[scene.section])
-        )
+        const voice = CALL_VOICES[scene.section]
+        const wav = join(root, `${file}.wav`)
+        const key = keyOf({ take: 1, model, voice, text: scene.said })
+        if (!(await cache.get(key, ".wav", wav))) {
+          await writeFile(wav, await said(values.speaker, scene.said, voice))
+          await cache.put(key, ".wav", wav, `${file}.wav`)
+        }
         const facts = await ports.probe(`${file}.wav`)
         if (!facts) fail([`${file}.wav can't be read`])
         takesMs.push(Math.round(facts.durationMs))
@@ -218,6 +307,9 @@ async function main(): Promise<void> {
       workDir: "cache",
       out: "call.mp4",
       withoutBurnIns: true,
+      policy,
+      stepCacheDir: STEPS,
+      warn,
     })
     if (!done.ok) fail(["Nothing was rendered:", ...done.problems])
     console.log(`wrote ${join(root, done.value.video)}`)

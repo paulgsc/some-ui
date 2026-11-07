@@ -1,0 +1,178 @@
+/**
+ * The step cache: a step is answered from what it kept when nothing that
+ * decides its bytes changed, runs again when anything did, and keeps nothing
+ * past its policy's budget, saying so.
+ */
+
+import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import { nodePorts } from "@video-render/node"
+import type { FfmpegCall } from "@video-render/plan"
+import { DEFAULT_POLICY } from "@video-render/policy"
+import type { RenderPolicy } from "@video-render/policy"
+import type { Ports } from "@video-render/render"
+import { keyOf, stepCache, withCachedFfmpeg } from "@video-render/step-cache"
+import { afterEach, beforeEach, describe, expect, it } from "vitest"
+
+let root = ""
+beforeEach(async () => {
+  root = await mkdtemp(join(tmpdir(), "step-cache-"))
+})
+afterEach(async () => {
+  await rm(root, { recursive: true, force: true })
+})
+
+const policy = (cacheBytes: number): RenderPolicy => ({
+  ...DEFAULT_POLICY,
+  cacheBytes,
+})
+
+/**
+ * Real file ports with an ffmpeg that writes its output from its inputs'
+ * bytes, counting each run.
+ */
+function ports(runs: Array<ReadonlyArray<string>>): Ports {
+  const own = nodePorts(root)
+  return {
+    ...own,
+    ffmpeg: async (
+      call: FfmpegCall
+    ): Promise<{ readonly ok: boolean; readonly stderr: string }> => {
+      runs.push(call.args)
+      const out = call.args.at(-1) ?? ""
+      if (out === "-") return { ok: true, stderr: "measured" }
+      const inputs = call.args.flatMap((a, i) =>
+        call.args[i - 1] === "-i" ? [a] : []
+      )
+      const bodies = await Promise.all(
+        inputs.map((f) => readFile(join(root, f), "utf8"))
+      )
+      await writeFile(join(root, out), `made from ${bodies.join("+")}`)
+      return { ok: true, stderr: "" }
+    },
+  }
+}
+
+const call = (input: string, out: string): FfmpegCall => ({
+  args: ["-i", input, "-c:v", "libx264", out],
+})
+
+describe("the step cache", () => {
+  it("keeps a file under its key and gives it back, and nothing else", async () => {
+    const warned: Array<string> = []
+    const cache = stepCache(join(root, "steps"), policy(1_000), (l) =>
+      warned.push(l)
+    )
+    await writeFile(join(root, "a.wav"), "take")
+    expect(await cache.put("k1", ".wav", join(root, "a.wav"), "a.wav")).toBe(
+      true
+    )
+    expect(await cache.get("k1", ".wav", join(root, "b.wav"))).toBe(true)
+    expect(await readFile(join(root, "b.wav"), "utf8")).toBe("take")
+    expect(await cache.get("k2", ".wav", join(root, "c.wav"))).toBe(false)
+    expect(warned).toEqual([])
+  })
+
+  it("keeps nothing past its budget, says so, and leaves no partial file", async () => {
+    const warned: Array<string> = []
+    const cache = stepCache(join(root, "steps"), policy(10), (l) =>
+      warned.push(l)
+    )
+    await writeFile(join(root, "big.mkv"), "x".repeat(11))
+    expect(await cache.put("k", ".mkv", join(root, "big.mkv"), "big.mkv")).toBe(
+      false
+    )
+    expect(warned).toHaveLength(1)
+    expect(warned[0]).toContain("not cached: big.mkv")
+    expect(warned[0]).toContain("policy")
+    expect(await readdir(join(root, "steps")).catch(() => [])).toEqual([])
+  })
+
+  it("warns, never fails, when its folder cannot be made", async () => {
+    const warned: Array<string> = []
+    // A file where the cache's folder would be: mkdir under it fails.
+    await writeFile(join(root, "blocked"), "a file, not a folder")
+    const cache = stepCache(
+      join(root, "blocked", "steps"),
+      policy(1_000_000),
+      (l) => warned.push(l)
+    )
+    await writeFile(join(root, "a.wav"), "take")
+    expect(await cache.put("k", ".wav", join(root, "a.wav"), "a.wav")).toBe(
+      false
+    )
+    expect(warned).toHaveLength(1)
+    expect(warned[0]).toContain("not cached: a.wav: it could not be kept")
+  })
+
+  it("keys by what goes in, not by names", () => {
+    expect(keyOf({ a: 1 })).toBe(keyOf({ a: 1 }))
+    expect(keyOf({ a: 1 })).not.toBe(keyOf({ a: 2 }))
+  })
+})
+
+describe("ffmpeg through the step cache", () => {
+  const version = (): Promise<string> => Promise.resolve("ffmpeg version 6.1.1")
+
+  it("runs a step once for the same inputs, again when an input's bytes change", async () => {
+    const runs: Array<ReadonlyArray<string>> = []
+    const warned: Array<string> = []
+    const cached = withCachedFfmpeg(
+      ports(runs),
+      root,
+      stepCache(join(root, "steps"), policy(1_000_000), (l) => warned.push(l)),
+      version
+    )
+    await writeFile(join(root, "in.png"), "still")
+    await cached.ffmpeg(call("in.png", "s1.mkv"))
+    await rm(join(root, "s1.mkv"))
+    await cached.ffmpeg(call("in.png", "s1.mkv"))
+    expect(runs).toHaveLength(1)
+    expect(await readFile(join(root, "s1.mkv"), "utf8")).toBe("made from still")
+    // A scene renamed: same inputs and arguments, another output name.
+    await cached.ffmpeg(call("in.png", "renamed.mkv"))
+    expect(runs).toHaveLength(1)
+    // An input's bytes changed: the step runs again.
+    await writeFile(join(root, "in.png"), "edited")
+    await cached.ffmpeg(call("in.png", "s1.mkv"))
+    expect(runs).toHaveLength(2)
+    expect(await readFile(join(root, "s1.mkv"), "utf8")).toBe(
+      "made from edited"
+    )
+    expect(warned).toEqual([])
+  })
+
+  it("always runs a step that writes nothing, since what it says is on stderr", async () => {
+    const runs: Array<ReadonlyArray<string>> = []
+    const cached = withCachedFfmpeg(
+      ports(runs),
+      root,
+      stepCache(join(root, "steps"), policy(1_000_000), () => undefined),
+      version
+    )
+    await writeFile(join(root, "voice.wav"), "voice")
+    const measure: FfmpegCall = {
+      args: ["-i", "voice.wav", "-af", "loudnorm", "-f", "null", "-"],
+    }
+    expect((await cached.ffmpeg(measure)).stderr).toBe("measured")
+    expect((await cached.ffmpeg(measure)).stderr).toBe("measured")
+    expect(runs).toHaveLength(2)
+  })
+
+  it("over its budget, runs every step uncached and warns each time", async () => {
+    const runs: Array<ReadonlyArray<string>> = []
+    const warned: Array<string> = []
+    const cached = withCachedFfmpeg(
+      ports(runs),
+      root,
+      stepCache(join(root, "steps"), policy(5), (l) => warned.push(l)),
+      version
+    )
+    await writeFile(join(root, "in.png"), "still")
+    await cached.ffmpeg(call("in.png", "s1.mkv"))
+    await cached.ffmpeg(call("in.png", "s1.mkv"))
+    expect(runs).toHaveLength(2)
+    expect(warned).toHaveLength(2)
+  })
+})

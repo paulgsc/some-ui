@@ -1900,8 +1900,8 @@
           "id": "CW5",
           "kind": "OA2",
           "property": "outcome",
-          "claim": "Every week of the call home holds becomes a video, and a week that hasn't is tried again.",
-          "requirement": "Each week in call_week is written to call-weeks beside home's database, on its drive (STORAGE); within the next hourly pass the render worker records it from the pinned stage with each scene said by home's Kokoro speaker, renders it, and moves the finished folder into renders/call/<from>/ on the same drive, whole; a week that fails is left without a folder and tried again each hour; no finished video is deleted.",
+          "claim": "Every week of the call home holds becomes a video within the render policy's caps, and a week that hasn't is tried again.",
+          "requirement": "Each week in call_week is written to call-weeks beside home's database, on its drive (STORAGE); within the next hourly pass the render worker records it from the pinned stage with each scene said by home's Kokoro speaker, renders it, and moves the finished folder into renders/call/<from>/ on the same drive, whole; a week that fails is left without a folder and tried again each hour, keeping its finished steps; a week whose video would pass the render policy's length or size (set in the render worker) is refused before it is drawn or once it is made, which fails its attempt with the cap named; no finished video is deleted.",
           "verdict": "unproven",
           "conclusion": "Rehearsed with the containers set up as on home: the worker rendered the real week of Oct 30, twice, to the same files. Its first run on home failed. Slack now says when a week's attempt fails, naming the file that holds its whole output, when a week has waited 3 hours with no attempt, and when the worker has not passed for 4 hours; the CALL dashboard shows each.",
           "tracked": "some-ui#2635",
@@ -1930,6 +1930,11 @@
               "class": "structural",
               "says": "Grafana reads what Prometheus has firing from ALERTS and sends each alert to the Slack contact point, one message per alert.",
               "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
+            },
+            {
+              "class": "structural",
+              "says": "The renderer refuses a video past RenderPolicy.maxVideoMs before any ffmpeg call and removes one past maxVideoBytes once made; the recorder refuses a week past the length by its words before anything is said; each tested.",
+              "ref": "some-ui:packages/video-render/src/policy.ts"
             }
           ],
           "watch": {
@@ -1942,6 +1947,12 @@
               "change": "The weeks are written to call-weeks beside home's database, and the videos kept in renders/call, both on the database's drive (STORAGE), not in a Docker volume and the server checkout's data folder.",
               "why": "Everything home keeps lives on the external drive with the database, so a week or a video is never on the system disk.",
               "decision": "https://github.com/paulgsc/some-ui/issues/2635#issuecomment-6697792376"
+            },
+            {
+              "on": "2026-11-07",
+              "change": "A week whose video would pass the render policy's length or size is refused, not rendered, and its failed attempt names the cap (reaching Slack as CallRenderFailed); a retry keeps the steps that already finished.",
+              "why": "A week's length had no cap of its own (a scene runs as long as its words, which have no maximum), so a week that drifted long would render for hours and fill the drive; and a retry redid an hour of finished work to redo one failed step.",
+              "decision": "https://github.com/paulgsc/some-ui/issues/2635#issuecomment-6701774052"
             }
           ]
         },
@@ -1950,19 +1961,25 @@
           "kind": "RE9",
           "property": "work",
           "claim": "The call's videos grow by one folder a week, kept for good.",
-          "requirement": "renders/call on home's database drive (STORAGE) gains one folder per week of the call (the video, its takes, stills, cut list and week), never deleted, and the renderer's intermediates are removed once it finishes.",
+          "requirement": "renders/call on home's database drive (STORAGE) gains one folder per week of the call (the video, its takes, stills, cut list and week), never deleted; a waiting week's work and step cache stay in renders/call-work between attempts, within the render policy's caps for one week and for all of them, and leave once the week renders; a step or a week's work past a cap is said, never silently dropped.",
           "verdict": "unproven",
-          "conclusion": "The first week's folder is 112 MB (the video is 95 MB), so about 6 GB a year, kept for good as you chose (#2640). Home's storage sampler measures tables, not this folder.",
+          "conclusion": "The first week's folder is 112 MB (the video is 95 MB), so about 6 GB a year, kept for good as you chose (#2640). file_host reads the bytes of the videos and of the waiting work, and the drive's free space, each minute (the CALL dashboard); Slack says when a cache cap was passed in the last day and when the drive has under a tenth free.",
           "tracked": "some-ui#2635",
           "evidence": [
             {
               "class": "measured",
               "says": "The rehearsal's folder for 2026-10-30, with the renderer's cache removed, is 112 MB.",
               "ref": "some-ui#2635"
+            },
+            {
+              "class": "structural",
+              "says": "Each minute file_host sums the bytes under renders/call and renders/call-work, reads the newest cache warning and the drive's free space (statvfs); CallRenderCacheFull and HomeDriveLow fire on them, each tested by promtool.",
+              "ref": "server:apps/servers/file_host/src/call_weeks/render.rs"
             }
           ],
           "watch": {
-            "by": "none"
+            "by": "alert",
+            "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
           },
           "amendments": [
             {
@@ -1970,6 +1987,12 @@
               "change": "The folder that grows is renders/call on the database's drive (STORAGE), not data/renders/call in the server checkout.",
               "why": "Everything home keeps lives on the external drive with the database.",
               "decision": "https://github.com/paulgsc/some-ui/issues/2635#issuecomment-6697792376"
+            },
+            {
+              "on": "2026-11-07",
+              "change": "A waiting week's intermediates are kept between attempts, within the render policy's caps (one week's cache, and all waiting weeks' work), and removed once it renders, where they were removed after every attempt; passing a cap is said in renders/call-worker/*.cache.log and on Slack.",
+              "why": "Keeping a failed render's finished steps lets a retry redo only what failed, and the caps keep that from taking the drive.",
+              "decision": "https://github.com/paulgsc/some-ui/issues/2635#issuecomment-6701774052"
             }
           ]
         }

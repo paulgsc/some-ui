@@ -6,7 +6,7 @@
 import { execFile } from "node:child_process"
 import { createHash } from "node:crypto"
 import { createReadStream } from "node:fs"
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises"
+import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises"
 import { join, resolve as resolvePath } from "node:path"
 import { z } from "zod"
 
@@ -15,10 +15,12 @@ import type { Parsed } from "./cut-list"
 import { parseFormat } from "./format"
 import type { Format } from "./format"
 import type { SourceFacts } from "./plan"
+import { DEFAULT_POLICY } from "./policy"
 import { render } from "./render"
 import type { Ports, Rendered, RenderOptions } from "./render"
 import { parseSeries, versionFile, versionOfFile } from "./series"
 import type { Series } from "./series"
+import { stepCache, withCachedFfmpeg } from "./step-cache"
 
 type Ran = {
   readonly ok: boolean
@@ -180,7 +182,26 @@ export function nodePorts(root: string): Ports {
       await mkdir(at(dir), { recursive: true })
     },
     writeFile: (file, text) => writeFile(at(file), text),
+    fileBytes: async (file): Promise<number | null> => {
+      try {
+        return (await stat(at(file))).size
+      } catch {
+        return null
+      }
+    },
+    remove: async (file): Promise<void> => {
+      await rm(at(file), { force: true })
+    },
   }
+}
+
+export { keyOf, stepCache } from "./step-cache"
+export type { StepCache } from "./step-cache"
+
+/** ffmpeg's version line, the part of a step's key that names the tool. */
+export async function ffmpegVersion(cwd: string): Promise<string> {
+  const ran = await run("ffmpeg", ["-version"], cwd)
+  return ran.stdout.toString("utf8").split("\n")[0] ?? ""
 }
 
 export const readJson = async (file: string): Promise<unknown> =>
@@ -257,7 +278,16 @@ export const readFormat = (
 export async function renderFolder(
   root: string,
   seriesDir: string,
-  options: RenderOptions & Partial<Pick<Ports, "recordBurnIn" | "checkBurnIns">>
+  options: RenderOptions &
+    Partial<Pick<Ports, "recordBurnIn" | "checkBurnIns">> & {
+      /**
+       * Keep each ffmpeg step under this folder, relative to `root`, so a
+       * retry runs only what changed; held to `policy.cacheBytes`.
+       */
+      readonly stepCacheDir?: string
+      /** Where a step not kept, over the cache's budget, is said. */
+      readonly warn?: (line: string) => void
+    }
 ): Promise<Rendered> {
   const cutList = parseCutList(await readJson(join(root, "cut-list.json")))
   if (!cutList.ok) {
@@ -271,17 +301,29 @@ export async function renderFolder(
   }
   const series = await readSeries(seriesDir, cutList.value.series.version)
   if (!series.ok) return series
-  const { recordBurnIn, checkBurnIns, ...rest } = options
-  return render(
-    cutList.value,
-    series.value,
-    {
-      ...nodePorts(root),
-      ...(recordBurnIn ? { recordBurnIn } : {}),
-      ...(checkBurnIns ? { checkBurnIns } : {}),
-    },
-    rest
-  )
+  const { recordBurnIn, checkBurnIns, stepCacheDir, warn, ...rest } = options
+  const own: Ports = {
+    ...nodePorts(root),
+    ...(recordBurnIn ? { recordBurnIn } : {}),
+    ...(checkBurnIns ? { checkBurnIns } : {}),
+  }
+  let version: Promise<string> | null = null
+  const ports = stepCacheDir
+    ? withCachedFfmpeg(
+        own,
+        root,
+        stepCache(
+          resolvePath(root, stepCacheDir),
+          rest.policy ?? DEFAULT_POLICY,
+          warn ??
+            ((line): void => {
+              process.stderr.write(`${line}\n`)
+            })
+        ),
+        (): Promise<string> => (version ??= ffmpegVersion(root))
+      )
+    : own
+  return render(cutList.value, series.value, ports, rest)
 }
 
 /** A path from where the command was typed (`pnpm --filter` sets INIT_CWD). */
