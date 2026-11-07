@@ -138,6 +138,41 @@
     },
     {
       "method": "GET",
+      "path": "/call/videos",
+      "full_path": "/api/v1/call/videos",
+      "versioned": true,
+      "module": "call_videos"
+    },
+    {
+      "method": "PUT",
+      "path": "/call/videos/:from/link",
+      "full_path": "/api/v1/call/videos/:from/link",
+      "versioned": true,
+      "module": "call_videos"
+    },
+    {
+      "method": "DELETE",
+      "path": "/call/videos/:from/rest",
+      "full_path": "/api/v1/call/videos/:from/rest",
+      "versioned": true,
+      "module": "call_videos"
+    },
+    {
+      "method": "DELETE",
+      "path": "/call/videos/:from/video",
+      "full_path": "/api/v1/call/videos/:from/video",
+      "versioned": true,
+      "module": "call_videos"
+    },
+    {
+      "method": "GET",
+      "path": "/call/videos/:from/video",
+      "full_path": "/api/v1/call/videos/:from/video",
+      "versioned": true,
+      "module": "call_videos"
+    },
+    {
+      "method": "GET",
       "path": "/curriculum/:key",
       "full_path": "/api/v1/curriculum/:key",
       "versioned": true,
@@ -539,6 +574,20 @@
       "method": "PUT",
       "path": "/rust-rounds/:id",
       "full_path": "/api/v1/rust-rounds/:id",
+      "versioned": true,
+      "module": "rust_rounds"
+    },
+    {
+      "method": "GET",
+      "path": "/rust-weeks",
+      "full_path": "/api/v1/rust-weeks",
+      "versioned": true,
+      "module": "rust_rounds"
+    },
+    {
+      "method": "GET",
+      "path": "/rust-weeks/:id",
+      "full_path": "/api/v1/rust-weeks/:id",
       "versioned": true,
       "module": "rust_rounds"
     },
