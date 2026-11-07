@@ -133,24 +133,20 @@ const RoundWithRunsSchema = z.object({
   ),
 })
 
-/** `handlers::rust_rounds::WeekList`: the weeks home holds, newest first. */
-const WeekListSchema = z.object({
-  weeks: z
-    .array(
-      z.object({
-        id: z.string().regex(/^\d{4}-w\d{2}$/),
-        sha256: HashSchema,
-        receivedAt: z.iso.datetime({ offset: true }),
-      })
-    )
-    .max(ROUNDS_LISTED),
-})
-
-/** `handlers::rust_rounds::WeekWithRuns`. */
-const WeekWithRunsSchema = z.object({
+/** `handlers::rust_rounds::WeekEntry`: a week by its ISO week. */
+const WeekEntrySchema = z.object({
   id: z.string().regex(/^\d{4}-w\d{2}$/),
   sha256: HashSchema,
   receivedAt: z.iso.datetime({ offset: true }),
+})
+
+/** `handlers::rust_rounds::WeekList`: the weeks home holds, newest first. */
+const WeekListSchema = z.object({
+  weeks: z.array(WeekEntrySchema).max(ROUNDS_LISTED),
+})
+
+/** `handlers::rust_rounds::WeekWithRuns`. */
+const WeekWithRunsSchema = WeekEntrySchema.extend({
   week: z.record(z.string(), z.unknown()),
   tickets: z.array(
     z.object({

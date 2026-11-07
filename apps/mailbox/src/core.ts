@@ -573,10 +573,9 @@ function indexRefusal(
 }
 
 /**
- * README, "What a put must satisfy": a week of Rust Rounds
- * (`some-ui.rust-week/1`, paulgsc/some-ui#2687) is named for its id, so home
- * finds it by the week it opens. The routine holds it to the whole format
- * (`readWeek`) before it puts one; home reads only what it records.
+ * README, "What a put must satisfy". The routine holds a week to the whole
+ * format (`readWeek`, paulgsc/some-ui#2687) before it puts one; home reads
+ * only what it records.
  */
 function rustWeekRefusal(
   body: Readonly<Record<string, unknown>>,
@@ -591,6 +590,7 @@ function rustWeekRefusal(
     : "the name must carry the week's id"
 }
 
+/** `WEEK_ID` in `packages/ui/rust-rounds/src/lib/formats/week.ts`, which this Worker cannot import. */
 const WEEK_ID = /^\d{4}-w(?:0[1-9]|[1-4]\d|5[0-3])$/
 
 /**
@@ -704,9 +704,7 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
         refuses: driveTakesRefusal,
       },
       // A week of Rust Rounds the Monday routine writes, for home to keep
-      // and record its programs (RR12, paulgsc/some-ui#2687). It rides
-      // `brief`, which home lists anyway, so it adds no request to an idle
-      // pass (MI6).
+      // and record its programs (RR12, paulgsc/some-ui#2687).
       {
         folder: "brief",
         name: /^rust-week-\d{4}-w\d{2}\.json$/,

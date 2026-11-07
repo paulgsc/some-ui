@@ -584,13 +584,12 @@ how each was checked when this workspace landed.
   schema and `driveTakesRefusal`; `core.test.ts` pins that the routine puts one, home reads it
   and may not put it, and that a body naming audio, bytes, a Drive file, id or link, a take's
   name, or any key but `schema`, `at` and `takes` (`sha256` per take) is refused. _Checked at
-  the Rust Rounds week amendment (the owner's RR12, paulgsc/some-ui#2687, 2026-11-07: "the
-  routine puts a week, and home reads it"; a kind in `brief`'s `also` rather than a folder of
-  its own, so home's idle pass stays at MI6's bound):_ `ROLES` is unchanged; `brief`'s `also`
+  the Rust Rounds week amendment (the owner's RR12, paulgsc/some-ui#2687, 2026-11-07):_ `ROLES` is unchanged; `brief`'s `also`
   holds two kinds, the second the `rust-week` week, taken only as `rust-week-YYYY-wNN.json` and
   held to `some-ui.rust-week/1` and `rustWeekRefusal` (an ISO week `id`, the name's);
-  `core.test.ts` pins that the routine puts one, home reads it in the `brief` listing and may
-  not put it, and that a misnamed week, a non-week `id` and another schema are refused.
+  `core.test.ts` pins that the routine puts one and home reads it in the `brief` listing (home
+  may put nothing in `brief`, pinned for the folder), and that a misnamed week, a non-week `id`
+  and another schema are refused.
 
 **MB3: No token reaches the repo or a log.**
 
