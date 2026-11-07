@@ -70,16 +70,13 @@ function checkDates(week: Week, problems: Array<WeekProblem>): void {
       why: `a week is due Sunday 23:59 in ${PACIFIC_TIME_ZONE}; this is ${onTheClock(due)} there`,
     })
   }
-  const span = due.getTime() - opens.getTime()
-  if (span <= 0) {
+  // Calendar days, not elapsed time: the week daylight saving ends runs an
+  // hour past seven days.
+  const sunday = addDays(weekOf(opensDay), 6)
+  if (dueDay !== sunday) {
     problems.push({
       at: "due",
-      why: "the deadline must come after the week opens",
-    })
-  } else if (span > 7 * DAY_MS) {
-    problems.push({
-      at: "due",
-      why: "the deadline must fall in the week that opens: the Sunday after `opens`",
+      why: `the deadline must be the Sunday of the week that opens, ${sunday}`,
     })
   }
   const id = isoWeekId(opensDay)

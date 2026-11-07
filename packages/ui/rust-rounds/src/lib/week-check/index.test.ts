@@ -83,22 +83,24 @@ describe("readWeek", () => {
     ])
   })
 
-  it("refuses a deadline before the week opens", () => {
-    expect(
-      refused(
-        weekWith({
-          opens: "2026-11-16T00:00:00-08:00",
-          due: "2026-11-15T23:59:00-08:00",
-          id: "2026-w47",
-        })
-      )
-    ).toEqual(["due: the deadline must come after the week opens"])
+  it("refuses a deadline that isn't the Sunday of the week that opens", () => {
+    for (const due of [
+      "2026-11-08T23:59:00-08:00",
+      "2026-11-22T23:59:00-08:00",
+    ]) {
+      expect(refused(weekWith({ due }))).toEqual([
+        "due: the deadline must be the Sunday of the week that opens, 2026-11-15",
+      ])
+    }
   })
 
-  it("refuses a deadline past the week's Sunday", () => {
-    expect(refused(weekWith({ due: "2026-11-22T23:59:00-08:00" }))).toEqual([
-      "due: the deadline must fall in the week that opens: the Sunday after `opens`",
-    ])
+  it("reads the week daylight saving ends, an hour past seven days", () => {
+    const week = weekWith({
+      id: "2026-w44",
+      opens: "2026-10-26T00:00:00-07:00",
+      due: "2026-11-01T23:59:00-08:00",
+    })
+    expect(refused(week)).toEqual([])
   })
 
   it("refuses a deadline that isn't Sunday 23:59 in the owner's time", () => {
