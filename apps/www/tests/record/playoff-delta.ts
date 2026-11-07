@@ -1,18 +1,17 @@
 /**
  * Records and renders one week of Playoff Delta, said by home's Kokoro
- * speaker (FEED3 #2646): a still of each scene of the week's format version,
- * shape included (the locked intro, the brand slides, a chapter before each
- * marked slide), each scene's words said in Playoff Delta's voice
- * (`PD_VOICE`), and the renderer laying them together.
+ * speaker (FEED3 #2646): a still of each scene of the fill's format version,
+ * its shape included (`lib/voiced` in `@some-ui/playoff-delta`), said in
+ * `PD_VOICE`, and the renderer laying them together (`./voiced`).
  *
  *   pnpm --filter www build
  *   pnpm --filter www record:playoff-delta --week 8 --narration SF-week-08.json [--voices kokoro|none] [--speaker http://127.0.0.1:8880] [--out out/playoff-delta]
  *   pnpm --filter www record:playoff-delta --app http://call-stage --season-file SF.json --week 8 --narration SF-week-08.json --voices kokoro [--brand /brand]
  *
  * `--narration` is the week's fill (`paulgsc/testing`'s
- * `playoff-delta/<season>/narration/`), written for version 2 of the format
- * or later: it is checked against the season the stage plays before
- * anything is said, and drawn in the version it names. `--week 0` is the
+ * `playoff-delta/<season>/narration/`): it is checked against the season the
+ * stage plays before anything is said, and drawn in the version it names,
+ * which must be voiced (2 on). `--week 0` is the
  * legend. `--voices none` leaves it silent, each scene held for its words'
  * reading time.
  *
@@ -21,9 +20,8 @@
  * home's render worker needs no network. Otherwise the build must be one that
  * reads content, as the home network's does.
  *
- * It refuses a scene the frame can't hold (`data-overflow`), since the video
- * would cut it off. Each still is taken with every animation at rest, so the
- * same week gives the same bytes. It serves the built app (never `vite dev`)
+ * It refuses a scene the frame can't hold, and takes each still with every
+ * animation at rest, so the same week gives the same bytes. It serves the built app (never `vite dev`)
  * from `--dist`, relative to apps/www, or records the one served at `--app`.
  * Needs `ffmpeg` and `ffprobe` on `PATH`. Policy flags as `record:call`'s.
  *
@@ -42,6 +40,7 @@ import { parseArgs } from "node:util"
 import type { Browser, BrowserContext, Page } from "@playwright/test"
 import {
   checkNarration,
+  CLIPS_VERSION,
   episodeFor,
   formatOf,
   kindOf,
@@ -55,30 +54,19 @@ import {
   type StorySeason,
 } from "@some-ui/playoff-delta/recording"
 import { THEME_STORAGE_KEY } from "@some-ui/styles/theme"
-import {
-  clipFile,
-  overLength,
-  stillFile,
-  unsaidMs,
-} from "@some-ui/video-render"
-import type { StillTake } from "@some-ui/video-render"
-import {
-  nodePorts,
-  readJson,
-  renderFolder,
-  stepCache,
-} from "@some-ui/video-render/node"
-import { serve } from "@tests/ui-fit/harness"
+import { clipFile, hasSubtitles } from "@some-ui/video-render"
+import { readJson } from "@some-ui/video-render/node"
 
 import { fail, here, launchChromium, runCommand } from "./command"
 import {
   placeBed,
   POLICY_OPTIONS,
   policyOf,
-  speakerModel,
-  takeOf,
-  warn,
-} from "./speaker"
+  recordStills,
+  refuseLong,
+  renderStills,
+  siteOf,
+} from "./voiced"
 
 /** Playoff Delta's series, sampled in the renderer's workspace. */
 const SERIES = resolve(
@@ -206,98 +194,40 @@ async function voiced(browser: Browser, origin: string): Promise<void> {
   const { season } = await seasonOn(browser, origin)
   const fill = await fillOf(season)
   const version = fill.format.version
+  const format = formatOf(kindOf(week), version)
   const scenes = voicedScenes(season, week, version, fill)
-
-  // Policy, before the speaker: an episode whose words alone run past the
-  // longest video is refused here.
-  const tooLong = overLength(
-    scenes.reduce((ms, scene) => ms + unsaidMs(scene.said), 0),
-    policy
-  )
-  if (tooLong) fail([`${tooLong}, by its words; nothing was recorded`])
-
+  refuseLong(scenes, policy)
   const root = here(
     join(values.out, `${season.label}-week-${String(week).padStart(2, "0")}`)
   )
-  await mkdir(root, { recursive: true })
-  const ports = nodePorts(root)
-  // Takes and every ffmpeg step are kept here between attempts, so a retry
-  // runs only what changed; home's render worker removes it once rendered.
-  const STEPS = "cache/steps"
-  const cache = stepCache(join(root, STEPS), policy, warn)
-  const model =
-    values.voices === "kokoro" ? await speakerModel(values.speaker) : null
-  const timed =
-    (formatOf(kindOf(week), version).shape?.subtitles ?? "off") !== "off"
-  const takes: Array<StillTake | null> = []
-  const overflowing: Array<string> = []
   const { context, page } = await open(browser)
   // Every reveal at rest: the still is the slide as it settles.
   await page.emulateMedia({ reducedMotion: "reduce" })
-  try {
-    for (const [i, scene] of scenes.entries()) {
-      const file = stillFile(i, scene.id)
-      await page.goto(urlOf(origin, { scene: scene.id, v: String(version) }))
-      const shown = page.locator(`[data-slide="${scene.id}"]`)
-      await shown.waitFor()
-      await page.evaluate(async () => {
-        await document.fonts.ready
-      })
-      if ((await shown.getAttribute("data-overflow")) === "true")
-        overflowing.push(scene.id)
-      await page.screenshot({
-        path: join(root, `${file}.png`),
-        animations: "disabled",
-        caret: "hide",
-      })
-      // A brand slide says nothing.
-      takes.push(
-        model !== null && scene.said !== ""
-          ? await takeOf({
-              speaker: values.speaker,
-              model,
-              voice: PD_VOICE,
-              text: scene.said,
-              timed,
-              root,
-              file,
-              cache,
-              ports,
-            })
-          : null
-      )
-      console.log(`recorded ${file}`)
-    }
-  } finally {
-    await context.close()
-  }
-  if (overflowing.length > 0)
-    fail([
-      "These scenes don't fit the frame, so the video would cut them off:",
-      ...overflowing,
-    ])
-
-  const format = formatOf(kindOf(week), version)
+  const takes = await recordStills({
+    page,
+    root,
+    shots: scenes.map((scene) => ({
+      id: scene.id,
+      url: urlOf(origin, { scene: scene.id, v: String(version) }),
+      said: scene.said,
+      voice: PD_VOICE,
+    })),
+    frame: (id) => `[data-slide="${id}"]`,
+    speaker: values.voices === "kokoro" ? values.speaker : null,
+    timed: hasSubtitles(format),
+    policy,
+  }).finally(() => context.close())
   const bed = await placeBed(SERIES, format.series.version, values.brand, root)
-  const cutList = voicedCutList(season, week, fill, takes, { bed })
-  await writeFile(
-    join(root, "cut-list.json"),
-    `${JSON.stringify(cutList, null, 1)}\n`
-  )
   await writeFile(
     join(root, "narration.json"),
     `${JSON.stringify(fill, null, 1)}\n`
   )
-  const done = await renderFolder(root, SERIES, {
-    workDir: "cache",
-    out: "episode.mp4",
-    withoutBurnIns: true,
-    policy,
-    stepCacheDir: STEPS,
-    warn,
-  })
-  if (!done.ok) fail(["Nothing was rendered:", ...done.problems])
-  console.log(`wrote ${join(root, done.value.video)}`)
+  await renderStills(
+    root,
+    SERIES,
+    voicedCutList(season, week, fill, takes, { bed }),
+    { out: "episode.mp4", policy }
+  )
 }
 
 /** The episode for my own voice: SH2's clips and `episode.json`, until FEED6. */
@@ -305,7 +235,7 @@ async function clips(browser: Browser, origin: string): Promise<void> {
   const outDir = here(join(values.out, `week-${String(week).padStart(2, "0")}`))
   await mkdir(outDir, { recursive: true })
   const { season, sha256 } = await seasonOn(browser, origin)
-  const scenes = formatOf(kindOf(week), VOICED_VERSION - 1).scenes
+  const scenes = formatOf(kindOf(week), CLIPS_VERSION).scenes
   /** Where each clip's slide appears, after the app's boot frames. */
   const starts: Array<number> = []
   for (const [i, scene] of scenes.entries()) {
@@ -337,12 +267,7 @@ async function clips(browser: Browser, origin: string): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  const site = values.app
-    ? {
-        origin: new URL(values.app).origin,
-        close: async (): Promise<void> => {},
-      }
-    : await serve(resolve(values.dist), { fallback: "index.html" })
+  const site = await siteOf(values)
   const browser = await launchChromium()
   try {
     await (values.clips ? clips : voiced)(browser, site.origin)

@@ -85,6 +85,10 @@ export const isLegendSlide = (id: SlideId): id is LegendSlide =>
 /** The legend's place among the weeks: before the first. */
 export const LEGEND_WEEK = 0
 
+/** A week's slides, or the legend's, in order. */
+export const slidesOf = (kind: "week" | "legend"): ReadonlyArray<SlideId> =>
+  kind === "legend" ? LEGEND_SLIDES : WEEK_SLIDES
+
 /** Milliseconds a slide holds when playing unattended: its reveal, then a beat. */
 export const HOLD_MS: Readonly<Record<SlideId, number>> = {
   division: 9000,

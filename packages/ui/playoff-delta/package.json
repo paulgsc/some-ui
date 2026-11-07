@@ -25,6 +25,7 @@
   "dependencies": {
     "@some-ui/core-utils": "workspace:*",
     "@some-ui/intent-kit": "workspace:*",
+    "@some-ui/react-hooks": "workspace:*",
     "@some-ui/shared": "workspace:*",
     "@some-ui/video-render": "workspace:*",
     "zod": "catalog:"

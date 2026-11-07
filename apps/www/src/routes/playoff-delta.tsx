@@ -20,21 +20,16 @@ type PlayoffDeltaSearch = {
   week?: number
   slide?: number
   record?: boolean
-  /** Record mode, version 2 on: the scene of the shape, by its id. */
   scene?: string
-  /** Record mode: the format version whose shape is drawn. */
   v?: number
 }
-
-/** A scene's id, as the shape names one (`intro`, `chapter-results`). */
-const SCENE_ID = /^[a-z][a-z0-9-]{0,39}$/
 
 function validateSearch(search: Record<string, unknown>): PlayoffDeltaSearch {
   const week = wholeNumber(search.week)
   const slide = wholeNumber(search.slide)
   const record = search.record === true || search.record === "true"
   const scene =
-    typeof search.scene === "string" && SCENE_ID.test(search.scene)
+    typeof search.scene === "string" && search.scene !== ""
       ? search.scene
       : undefined
   const v = wholeNumber(search.v)

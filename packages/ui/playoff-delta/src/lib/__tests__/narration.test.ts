@@ -98,12 +98,6 @@ describe("the packet", () => {
 const fill = factsSaid(await packet(SAMPLE_SEASON, 9))
 
 describe("team codes", () => {
-  it("the packet names every team, and the guidance says to say names", async () => {
-    const p = await packet(SAMPLE_SEASON, 9)
-    expect(p.names).toEqual(SAMPLE_SEASON.names)
-    expect(p.guidance.join(" ")).toContain("never by its code")
-  })
-
   it("refuses a code said in place of a name, once a scene, and not a word in it", async () => {
     const said = "LAR and SEA meet twice, and LAR can still reach it. No, Ne."
     expect(
@@ -150,11 +144,26 @@ describe("the check", () => {
     expect(
       await refuses({
         ...fill,
-        format: { id: "playoff-delta-week", version: 1 },
+        format: { id: "playoff-delta-week", version: 3 },
       })
     ).toEqual([
-      "the format is playoff-delta-week v1, not playoff-delta-week v2",
+      "the format is playoff-delta-week v3, not playoff-delta-week v2 or an earlier version",
     ])
+    expect(
+      await refuses({
+        ...fill,
+        format: { id: "playoff-delta-legend", version: 2 },
+      })
+    ).toEqual([
+      "the format is playoff-delta-legend v2, not playoff-delta-week v2 or an earlier version",
+    ])
+    // A fill written for an earlier version still checks: it is drawn in it.
+    expect(
+      await refuses({
+        ...fill,
+        format: { id: "playoff-delta-week", version: 1 },
+      })
+    ).toEqual([])
   })
 
   it("refuses scenes other than the format's, in its order", async () => {

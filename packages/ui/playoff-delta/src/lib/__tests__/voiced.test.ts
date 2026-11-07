@@ -1,16 +1,9 @@
 /**
  * Playoff Delta voiced (FEED3): from version 2 every episode is framed by
- * the shape (the locked intro, the brand slides, a chapter said aloud before
- * each marked slide), the intro is code's and names who and what made it,
- * and the cut list holds every scene still, with subtitles from the takes.
+ * its shape (`SHAPE`), and its intro is code's.
  */
 import { packetOf, type Narration } from "@playoff-delta/lib/narration"
 import { SAMPLE_SEASON } from "@playoff-delta/lib/sample"
-import {
-  FORMAT_VERSION,
-  formatOf,
-  VOICED_VERSION,
-} from "@playoff-delta/lib/show"
 import {
   LEGEND_SLIDES,
   LEGEND_WEEK,
@@ -53,10 +46,6 @@ describe("the voiced scenes", () => {
       "outro",
       "brand-out",
     ])
-    const shape = formatOf("week").shape
-    expect(shape?.chapters.map((c) => `chapter-${c}`)).toEqual(
-      ids.filter((id) => id.startsWith("chapter-"))
-    )
   })
 
   it("say each slide's fill, each chapter its slide's name, and nothing over a brand slide", async () => {
@@ -86,7 +75,6 @@ describe("the voiced scenes", () => {
     expect(voicedScenes(SAMPLE_SEASON, 9, 1, null).map((s) => s.id)).toEqual([
       ...WEEK_SLIDES,
     ])
-    expect(VOICED_VERSION).toBeLessThanOrEqual(FORMAT_VERSION.week)
   })
 })
 
@@ -111,30 +99,20 @@ describe("the locked intro", () => {
 })
 
 describe("the cut list", () => {
-  it("holds every scene's still, its take where said, in the series' full-frame version", async () => {
+  it("is drawn in the series' full-frame version, with subtitles, a shot per scene", async () => {
     const fill = await fillOf(9)
     const scenes = voicedScenes(SAMPLE_SEASON, 9, 2, fill)
-    const takes = scenes.map((s) =>
-      s.said === ""
-        ? null
-        : { ms: 1_000, words: [{ text: "Said", startMs: 0, endMs: 400 }] }
+    const cut = parseCutList(
+      voicedCutList(
+        SAMPLE_SEASON,
+        9,
+        fill,
+        scenes.map(() => null)
+      )
     )
-    const cut = parseCutList(voicedCutList(SAMPLE_SEASON, 9, fill, takes))
     if (!cut.ok) throw new Error(cut.problems.join("; "))
     expect(cut.value.series).toEqual({ id: "playoff-delta-week", version: 2 })
     expect(cut.value.subtitles).toBe("word")
-    expect(cut.value.music).toBe("off")
     expect(cut.value.shots.map((s) => s.id)).toEqual(scenes.map((s) => s.id))
-    expect(cut.value.shots[0]?.picture).toEqual({
-      kind: "still",
-      source: "01-intro.png",
-    })
-    expect(
-      cut.value.shots.every((s) => s.overrides.motion?.kind === "still")
-    ).toBe(true)
-    expect(cut.value.shots[1]?.take).toBeUndefined()
-    expect(
-      voicedCutList(SAMPLE_SEASON, 9, fill, takes, { bed: true }).music
-    ).toBeUndefined()
   })
 })

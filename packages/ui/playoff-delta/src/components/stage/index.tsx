@@ -1,21 +1,13 @@
-import {
-  useEffect,
-  useLayoutEffect,
-  useReducer,
-  useState,
-  type CSSProperties,
-  type JSX,
-} from "react"
+import { useEffect, useReducer, type CSSProperties, type JSX } from "react"
 import { LEGEND, SLIDES } from "@playoff-delta/components/slides"
 import { clampSlide, initialPlayer, step } from "@playoff-delta/lib/player"
 import { SAMPLE_SEASON } from "@playoff-delta/lib/sample"
-import { formatOf, kindOf } from "@playoff-delta/lib/show"
+import { formatOf, kindOf, RECORDING } from "@playoff-delta/lib/show"
 import {
   HOLD_MS,
   isLegendSlide,
-  LEGEND_SLIDES,
   LEGEND_WEEK,
-  WEEK_SLIDES,
+  slidesOf,
   type SlideId,
 } from "@playoff-delta/lib/slides"
 import { seasonData } from "@playoff-delta/lib/story"
@@ -27,8 +19,9 @@ import {
 } from "@playoff-delta/lib/voiced"
 import { INTRO } from "@playoff-delta/lib/words"
 import { assertNever } from "@some-ui/intent-kit"
+import { useOverflows } from "@some-ui/react-hooks"
 import { BrandMark } from "@some-ui/shared"
-import { subtitleBand } from "@some-ui/video-render"
+import { hasSubtitles, subtitleBand } from "@some-ui/video-render"
 
 import "./index.css"
 
@@ -143,37 +136,6 @@ const FramingSlide = ({
   }
 }
 
-/**
- * Whether the slide's content runs past its box, as laid out now: measured
- * when it mounts, when `key` changes, when it resizes and when a web font
- * lands, so the recorder can refuse a scene the video would cut off.
- */
-function useOverflows(key: string): {
-  ref: (element: HTMLElement | null) => void
-  overflows: boolean
-} {
-  const [box, setBox] = useState<HTMLElement | null>(null)
-  const [overflows, setOverflows] = useState(false)
-  useLayoutEffect(() => {
-    if (box === null) return undefined
-    const measure = (): void => {
-      setOverflows(
-        box.scrollHeight > box.clientHeight + 1 ||
-          box.scrollWidth > box.clientWidth + 1
-      )
-    }
-    measure()
-    const observer = new ResizeObserver(measure)
-    observer.observe(box)
-    document.fonts.addEventListener("loadingdone", measure)
-    return (): void => {
-      observer.disconnect()
-      document.fonts.removeEventListener("loadingdone", measure)
-    }
-  }, [box, key])
-  return { ref: setBox, overflows }
-}
-
 const Frame = ({
   season,
   week,
@@ -200,7 +162,6 @@ const Frame = ({
    * the episode from it (`lib/show`) and sums its bytes.
    */
   data?: string
-  /** Record mode, from version 2: the intro, a brand slide or a chapter, in the slide's place. */
   framing?: Framing
   /** The format version recorded, for the intro to name. */
   version?: number
@@ -217,7 +178,7 @@ const Frame = ({
   // The band's height is a share of the frame's: the container's height unit.
   const style: CSSProperties | undefined = band
     ? {
-        paddingBottom: `calc(6cqw + ${100 * subtitleBand(1920, 1080).share}cqh)`,
+        paddingBottom: `calc(6cqw + ${100 * subtitleBand(RECORDING.height, RECORDING.width).share}cqh)`,
       }
     : undefined
   const brand = framing?.kind === "brand-in" || framing?.kind === "brand-out"
@@ -286,8 +247,7 @@ const WeekStory = ({
   version?: number
   onWeekChange?: (week: number) => void
 }): JSX.Element => {
-  const ids: ReadonlyArray<SlideId> =
-    week === null ? LEGEND_SLIDES : WEEK_SLIDES
+  const ids = slidesOf(week === null ? "legend" : "week")
   const count = ids.length
   const [player, dispatch] = useReducer(
     step,
@@ -330,15 +290,12 @@ const WeekStory = ({
   }, [record, count])
 
   if (record) {
-    // From version 2 the recorder names each scene of the shape; a slide by
-    // its id, the rest by theirs (`lib/voiced`).
     const n = week?.week ?? LEGEND_WEEK
     const named =
       version !== undefined && scene !== undefined
         ? voicedSceneOf(season, n, version, scene)
         : undefined
-    const shape =
-      version === undefined ? undefined : formatOf(kindOf(n), version).shape
+
     return (
       <Frame
         season={season}
@@ -350,7 +307,9 @@ const WeekStory = ({
         data={seasonData(season)}
         framing={named?.kind === "slide" ? undefined : named}
         version={version}
-        band={(shape?.subtitles ?? "off") !== "off"}
+        band={
+          version !== undefined && hasSubtitles(formatOf(kindOf(n), version))
+        }
       />
     )
   }

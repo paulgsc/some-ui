@@ -1453,6 +1453,9 @@ importers:
       '@some-ui/intent-kit':
         specifier: workspace:*
         version: link:../../intent-kit
+      '@some-ui/react-hooks':
+        specifier: workspace:*
+        version: link:../../react-hooks
       '@some-ui/shared':
         specifier: workspace:*
         version: link:../shared

@@ -25,7 +25,6 @@ import { join } from "node:path"
 import {
   CALL_ID,
   callCutList,
-  callFile,
   callFormat,
   callScenes,
   parseCallWeek,
@@ -35,6 +34,7 @@ import type { CallWeek } from "@video-render/call"
 import { nodePorts, readSeries } from "@video-render/node"
 import { render } from "@video-render/render"
 import type { Series } from "@video-render/series"
+import { stillFile } from "@video-render/stills"
 import { subtitleBand } from "@video-render/subtitles"
 import { make } from "@video-render/testing"
 import { TRANSITION_MS } from "@video-render/vocabulary"
@@ -93,14 +93,29 @@ type Hold = { readonly id: string; readonly from: number; readonly to: number }
  * `week`'s call rendered in its own folder, each scene a framed still, in a
  * frame of `shape`: the series' own, its picture filling the frame.
  */
-async function renderWeek(
+type Rendered = { frames: Buffer; holds: ReadonlyArray<Hold> }
+
+/** Each render by its folder's name, so two tests of one render share it. */
+const rendered = new Map<string, Promise<Rendered>>()
+
+function renderWeek(
+  week: CallWeek,
+  name: string,
+  options: { readonly subtitles?: boolean; readonly shape?: Shape } = {}
+): Promise<Rendered> {
+  const kept = rendered.get(name) ?? renderNew(week, name, options)
+  rendered.set(name, kept)
+  return kept
+}
+
+async function renderNew(
   week: CallWeek,
   name: string,
   {
     subtitles = false,
     shape = WIDE,
-  }: { readonly subtitles?: boolean; readonly shape?: Shape } = {}
-): Promise<{ frames: Buffer; holds: ReadonlyArray<Hold> }> {
+  }: { readonly subtitles?: boolean; readonly shape?: Shape }
+): Promise<Rendered> {
   const { W, H } = shape
   const series: Series = {
     ...pinned,
@@ -123,7 +138,7 @@ async function renderWeek(
   }
   const scenes = callScenes(week)
   for (const [i, scene] of scenes.entries()) {
-    const file = callFile(i, scene.id)
+    const file = stillFile(i, scene.id)
     // A different dark field per scene, so the next scene's frame can't pass
     // for this one's.
     const hex = (16 + ((i * 7) % 64)).toString(16).padStart(2, "0")
@@ -311,7 +326,8 @@ describe("a call's video (CV1)", () => {
   it("shows each scene's whole still and holds it in a 9:16 frame, a short's", async () => {
     const sample = sampleCallWeek()
     if (!sample.ok) throw new Error(sample.problems.join("; "))
-    const { frames, holds } = await renderWeek(sample.value, "tall", {
+    // The same render the 9:16 subtitles case compares against.
+    const { frames, holds } = await renderWeek(sample.value, "plain-9x16", {
       shape: TALL,
     })
     expect(holds.flatMap((h) => problemsOf(frames, h, TALL))).toEqual([])

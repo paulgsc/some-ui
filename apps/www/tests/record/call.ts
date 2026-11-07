@@ -40,7 +40,7 @@
  * with a `cache warning:` line on stderr, which home's render worker reports.
  */
 
-import { mkdir, readFile, writeFile } from "node:fs/promises"
+import { readFile, writeFile } from "node:fs/promises"
 import { join, resolve } from "node:path"
 import { parseArgs } from "node:util"
 import type { Route } from "@playwright/test"
@@ -48,26 +48,23 @@ import {
   CALL_INDEX_SCHEMA,
   CALL_VOICES,
   callCutList,
-  callFile,
   callFormat,
   callScenes,
-  estimatedCallMs,
-  overLength,
+  hasSubtitles,
   parseCallWeek,
 } from "@some-ui/video-render"
-import type { CallTake, CallWeek } from "@some-ui/video-render"
-import { nodePorts, renderFolder, stepCache } from "@some-ui/video-render/node"
-import { serve } from "@tests/ui-fit/harness"
+import type { CallWeek } from "@some-ui/video-render"
 
 import { fail, here, launchChromium, runCommand } from "./command"
 import {
   placeBed,
   POLICY_OPTIONS,
   policyOf,
-  speakerModel,
-  takeOf,
-  warn,
-} from "./speaker"
+  recordStills,
+  refuseLong,
+  renderStills,
+  siteOf,
+} from "./voiced"
 
 /** The frame the stage is recorded at: the call's series. */
 const FRAME = { width: 1920, height: 1080 } as const
@@ -141,12 +138,7 @@ async function main(): Promise<void> {
     fail(["--voices is kokoro or none"])
   const kept = values["week-file"] ? await keptWeek(values["week-file"]) : null
   const weekAsked = kept?.from ?? values.week
-  const site = values.app
-    ? {
-        origin: new URL(values.app).origin,
-        close: async (): Promise<void> => {},
-      }
-    : await serve(resolve(values.dist), { fallback: "index.html" })
+  const site = await siteOf(values)
   const browser = await launchChromium()
   try {
     const page = await browser.newPage({
@@ -174,65 +166,23 @@ async function main(): Promise<void> {
     if (weekAsked && weekAsked !== "sample" && week.week.from !== weekAsked)
       fail([`there is no week of ${weekAsked}`])
 
-    // Policy, before an hour on the speaker: a week whose words alone run
-    // past the longest video is refused here.
-    const tooLong = overLength(estimatedCallMs(week), policy)
-    if (tooLong) fail([`${tooLong}, by its words; nothing was recorded`])
-
-    const root = here(join(values.out, week.week.from))
-    await mkdir(root, { recursive: true })
-    const ports = nodePorts(root)
     const scenes = callScenes(week)
-    // Takes and every ffmpeg step are kept here between attempts, so a retry
-    // runs only what changed; the render worker removes it once the week is
-    // rendered (paulgsc/server `infra/render/render-calls.sh`).
-    const STEPS = "cache/steps"
-    const cache = stepCache(join(root, STEPS), policy, warn)
-    const model =
-      values.voices === "kokoro" ? await speakerModel(values.speaker) : null
-    const takes: Array<CallTake | null> = []
-    // Subtitles, as the week's shape says, need each word's place in its take.
-    const timed =
-      (callFormat(week.template.version).shape?.subtitles ?? "off") !== "off"
-    const overflowing: Array<string> = []
-
-    for (const [i, scene] of scenes.entries()) {
-      const file = callFile(i, scene.id)
-      await page.goto(url(scene.id))
-      const shown = page.locator(`[data-scene="${scene.id}"]`)
-      await shown.waitFor()
-      await page.evaluate(async () => {
-        await document.fonts.ready
-      })
-      if ((await shown.getAttribute("data-overflow")) === "true")
-        overflowing.push(scene.id)
-      await page.screenshot({ path: join(root, `${file}.png`) })
-      // A brand slide says nothing.
-      if (model !== null && scene.said !== "") {
-        takes.push(
-          await takeOf({
-            speaker: values.speaker,
-            model,
-            voice: CALL_VOICES[scene.section],
-            text: scene.said,
-            timed,
-            root,
-            file,
-            cache,
-            ports,
-          })
-        )
-      } else {
-        takes.push(null)
-      }
-      console.log(`recorded ${file}`)
-    }
-    if (overflowing.length > 0)
-      fail([
-        "These scenes don't fit the frame, so the video would cut them off:",
-        ...overflowing,
-      ])
-
+    refuseLong(scenes, policy)
+    const root = here(join(values.out, week.week.from))
+    const takes = await recordStills({
+      page,
+      root,
+      shots: scenes.map((scene) => ({
+        id: scene.id,
+        url: url(scene.id),
+        said: scene.said,
+        voice: CALL_VOICES[scene.section],
+      })),
+      frame: (id) => `[data-scene="${id}"]`,
+      speaker: values.voices === "kokoro" ? values.speaker : null,
+      timed: hasSubtitles(callFormat(week.template.version)),
+      policy,
+    })
     // The music bed plays once the call's series names one (#2673).
     const bed = await placeBed(
       SERIES,
@@ -240,25 +190,14 @@ async function main(): Promise<void> {
       values.brand,
       root
     )
-    const cutList = callCutList(week, takes, { bed })
-    await writeFile(
-      join(root, "cut-list.json"),
-      `${JSON.stringify(cutList, null, 1)}\n`
-    )
     await writeFile(
       join(root, "week.json"),
       `${JSON.stringify(week, null, 1)}\n`
     )
-    const done = await renderFolder(root, SERIES, {
-      workDir: "cache",
+    await renderStills(root, SERIES, callCutList(week, takes, { bed }), {
       out: "call.mp4",
-      withoutBurnIns: true,
       policy,
-      stepCacheDir: STEPS,
-      warn,
     })
-    if (!done.ok) fail(["Nothing was rendered:", ...done.problems])
-    console.log(`wrote ${join(root, done.value.video)}`)
   } finally {
     await browser.close()
     await site.close()

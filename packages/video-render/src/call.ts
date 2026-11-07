@@ -34,7 +34,7 @@ import { once, problemsOf } from "./cut-list"
 import type { CutList, Parsed } from "./cut-list"
 import { FORMAT_SCHEMA, repeatedId, showId, words } from "./format"
 import type { Format, Shape } from "./format"
-import { stillFile, stillsCutList, unsaidMs } from "./stills"
+import { estimatedMs, stillFile, stillsCutList } from "./stills"
 import type { StillTake } from "./stills"
 import sample from "./templates/conference-call/sample-week.json"
 
@@ -616,8 +616,6 @@ export const CALL_VOICES: Readonly<Record<Section | Framing, string>> = {
   close: "am_michael",
 }
 
-/** Scene `index`'s files in the video's folder, without their extension. */
-export const callFile = stillFile
 
 /**
  * About how long a week's call runs, from its words alone, before any is
@@ -626,10 +624,8 @@ export const callFile = stillFile
  * renderer checks the placed length exactly.
  */
 export const estimatedCallMs = (week: CallWeek): number =>
-  callScenes(week).reduce((total, scene) => total + unsaidMs(scene.said), 0)
+  estimatedMs(callScenes(week))
 
-/** A scene's take: how long it runs, and each word in it, when the speaker gave them. */
-export type CallTake = StillTake
 
 /**
  * The call as a cut list the renderer draws (`stillsCutList`, which holds
@@ -640,7 +636,7 @@ export type CallTake = StillTake
  */
 export function callCutList(
   week: CallWeek,
-  takes: ReadonlyArray<CallTake | null>,
+  takes: ReadonlyArray<StillTake | null>,
   { bed = false }: { readonly bed?: boolean } = {}
 ): CutList {
   return stillsCutList(
@@ -653,7 +649,7 @@ export function callCutList(
     },
     callScenes(week).map((scene, i) => ({
       id: scene.id,
-      file: callFile(i, scene.id),
+      file: stillFile(i, scene.id),
       said: scene.said,
     })),
     takes

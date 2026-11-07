@@ -1,25 +1,42 @@
 /**
- * What every voiced feed's recorder shares (FEED3 #2646): home's Kokoro
- * speaker, a scene's take kept between attempts, and the policy flags. The
- * weekly call's recorder (`call.ts`) and Playoff Delta's (`playoff-delta.ts`)
- * both say their scenes through it.
+ * What every voiced feed's recorder shares (FEED3 #2646): the stage served
+ * or reached, a still of each scene, each scene said by home's Kokoro
+ * speaker, the policy flags, and the render.
  *
  * A take is keyed by the speaker's model, the voice and the words, so a
  * retry asks the speaker only for what changed; with `timed`, each word's
- * place in it (`/timed`, for subtitles) is kept beside it.
+ * place in it (`/timed`, for subtitles) is kept beside it. Takes and every
+ * ffmpeg step are kept in `<root>/cache/steps` between attempts; home's
+ * render worker removes the cache once a video is made.
  */
 
 import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises"
-import { basename, dirname, join } from "node:path"
-import { DEFAULT_POLICY, MB, TimedWordSchema } from "@some-ui/video-render"
+import { basename, dirname, join, resolve } from "node:path"
+import type { Page } from "@playwright/test"
+import {
+  DEFAULT_POLICY,
+  estimatedMs,
+  MB,
+  overLength,
+  stillFile,
+  TimedWordSchema,
+} from "@some-ui/video-render"
 import type {
+  CutList,
   Ports,
   RenderPolicy,
   StillTake,
   TimedWord,
 } from "@some-ui/video-render"
-import { keyOf, readSeries } from "@some-ui/video-render/node"
+import {
+  keyOf,
+  nodePorts,
+  readSeries,
+  renderFolder,
+  stepCache,
+} from "@some-ui/video-render/node"
 import type { StepCache } from "@some-ui/video-render/node"
+import { serve } from "@tests/ui-fit/harness"
 import { z } from "zod"
 
 import { fail, here } from "./command"
@@ -62,7 +79,7 @@ async function said(
 }
 
 /** The speaker's model, by its SHA-256: part of every take's key. */
-export async function speakerModel(speaker: string): Promise<string> {
+async function speakerModel(speaker: string): Promise<string> {
   const response = await fetch(new URL("/health", speaker))
   if (!response.ok)
     fail([`The speaker at ${speaker} answered ${String(response.status)}`])
@@ -78,7 +95,7 @@ export async function speakerModel(speaker: string): Promise<string> {
 }
 
 /** A cache warning, on its own line so the render worker can find it. */
-export const warn = (line: string): void => {
+const warn = (line: string): void => {
   process.stderr.write(`cache warning: ${line}\n`)
 }
 
@@ -87,7 +104,7 @@ export const warn = (line: string): void => {
  * `<file>.words.json`, asked of the speaker unless `cache` holds them for
  * these words, this voice and this model.
  */
-export async function takeOf({
+async function takeOf({
   speaker,
   model,
   voice,
@@ -205,4 +222,131 @@ export async function placeBed(
   await mkdir(dirname(join(root, bed.file)), { recursive: true })
   await copyFile(join(here(brand), basename(bed.file)), join(root, bed.file))
   return true
+}
+
+/** The built app served from `dist`, or the one already served at `app`. */
+export function siteOf(values: {
+  readonly app?: string
+  readonly dist: string
+}): Promise<{ readonly origin: string; close: () => Promise<void> }> {
+  if (values.app)
+    return Promise.resolve({
+      origin: new URL(values.app).origin,
+      close: (): Promise<void> => Promise.resolve(),
+    })
+  return serve(resolve(values.dist), { fallback: "index.html" })
+}
+
+/** Refuses, before the speaker, scenes whose words alone run past the policy. */
+export function refuseLong(
+  scenes: ReadonlyArray<{ readonly said: string }>,
+  policy: RenderPolicy
+): void {
+  const tooLong = overLength(estimatedMs(scenes), policy)
+  if (tooLong) fail([`${tooLong}, by its words; nothing was recorded`])
+}
+
+/** Where the cache of takes and ffmpeg steps is kept in a video's folder. */
+const STEPS = "cache/steps"
+
+/** A scene to record: its stage address, and what is said over it, in which voice. */
+export type Shot = {
+  readonly id: string
+  readonly url: string
+  readonly said: string
+  readonly voice: string
+}
+
+/**
+ * A still of each scene into `root` (`stillFile(i, id)`.png), from the
+ * element `frame(id)` selects once the page's fonts are in, and its take
+ * where something is said and `speaker` is given. Refuses, once all are
+ * recorded, the scenes whose frame says they overflow (`data-overflow`).
+ * Every animation is at rest in the still.
+ */
+export async function recordStills({
+  page,
+  root,
+  shots,
+  frame,
+  speaker,
+  timed,
+  policy,
+}: {
+  readonly page: Page
+  readonly root: string
+  readonly shots: ReadonlyArray<Shot>
+  readonly frame: (id: string) => string
+  /** Home's speaker, or null for a silent video. */
+  readonly speaker: string | null
+  readonly timed: boolean
+  readonly policy: RenderPolicy
+}): Promise<ReadonlyArray<StillTake | null>> {
+  await mkdir(root, { recursive: true })
+  const ports = nodePorts(root)
+  const cache = stepCache(join(root, STEPS), policy, warn)
+  const model = speaker === null ? null : await speakerModel(speaker)
+  const takes: Array<StillTake | null> = []
+  const overflowing: Array<string> = []
+  for (const [i, shot] of shots.entries()) {
+    const file = stillFile(i, shot.id)
+    await page.goto(shot.url)
+    const shown = page.locator(frame(shot.id))
+    await shown.waitFor()
+    await page.evaluate(async () => {
+      await document.fonts.ready
+    })
+    if ((await shown.getAttribute("data-overflow")) === "true")
+      overflowing.push(shot.id)
+    await page.screenshot({
+      path: join(root, `${file}.png`),
+      animations: "disabled",
+      caret: "hide",
+    })
+    takes.push(
+      speaker !== null && model !== null && shot.said !== ""
+        ? await takeOf({
+            speaker,
+            model,
+            voice: shot.voice,
+            text: shot.said,
+            timed,
+            root,
+            file,
+            cache,
+            ports,
+          })
+        : null
+    )
+    console.log(`recorded ${file}`)
+  }
+  if (overflowing.length > 0)
+    fail([
+      "These scenes don't fit the frame, so the video would cut them off:",
+      ...overflowing,
+    ])
+  return takes
+}
+
+/** `cutList` kept as `cut-list.json` in `root` and rendered to `out` in `series`. */
+export async function renderStills(
+  root: string,
+  series: string,
+  cutList: CutList,
+  { out, policy }: { readonly out: string; readonly policy: RenderPolicy }
+): Promise<void> {
+  await writeFile(
+    join(root, "cut-list.json"),
+    `${JSON.stringify(cutList, null, 1)}\n`
+  )
+  const done = await renderFolder(root, series, {
+    workDir: "cache",
+    out,
+    withoutBurnIns: true,
+    policy,
+    stepCacheDir: STEPS,
+    warn,
+  })
+  if (!done.ok) fail(["Nothing was rendered:", ...done.problems])
+  console.log(`wrote ${join(root, done.value.video)}`)
 }

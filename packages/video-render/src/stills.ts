@@ -12,6 +12,7 @@
 
 import { CUT_LIST_SCHEMA } from "./cut-list"
 import type { CutList } from "./cut-list"
+import type { Format } from "./format"
 import type { Look } from "./plans"
 import type { SubtitleStyle, TimedWord } from "./subtitles"
 
@@ -29,6 +30,15 @@ export const readingMs = (said: string): number =>
 /** How long a scene holds before anything is said: a brand slide's, or its words' reading time. */
 export const unsaidMs = (said: string): number =>
   said === "" ? BRAND_MS : readingMs(said)
+
+/** About how long `scenes` run before anything is said: each for `unsaidMs`. */
+export const estimatedMs = (
+  scenes: ReadonlyArray<{ readonly said: string }>
+): number => scenes.reduce((total, scene) => total + unsaidMs(scene.said), 0)
+
+/** Whether a format version's shape draws subtitles, which need each word's time. */
+export const hasSubtitles = (format: Format): boolean =>
+  (format.shape?.subtitles ?? "off") !== "off"
 
 /** Scene `index`'s files in the video's folder, without their extension: "03-board". */
 export const stillFile = (index: number, scene: string): string =>

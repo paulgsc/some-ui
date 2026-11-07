@@ -5,6 +5,7 @@
  */
 export { checkNarration, type Narration } from "./lib/narration"
 export {
+  CLIPS_VERSION,
   episodeFor,
   formatOf,
   kindOf,

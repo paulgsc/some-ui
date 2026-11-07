@@ -26,6 +26,7 @@ import {
   legendFacts,
   MODEL,
   SCENES,
+  slidesOf,
   WEEK_SLIDES,
   weekFacts,
 } from "./slides"
@@ -43,21 +44,24 @@ export const kindOf = (week: number): FormatKind =>
  * The newest version `formatOf` gives of each, pinned as `v<n>.json` in its
  * folder. A fill names the version it was written for, and is drawn in it.
  *
- * 2 (FEED3 #2646, SFEED2 #2680): the shape (`SHAPE`), recorded as stills
- * the full frame, in the series' version 2, and said by Kokoro.
+ * 2 (FEED3 #2646): voiced, in the shape (`SHAPE`).
  */
 export const FORMAT_VERSION: Readonly<Record<FormatKind, number>> = {
   week: 2,
   legend: 2,
 }
 
-/** The first version voiced and drawn in a shape: older ones were for my voice. */
+/** The first version voiced and drawn in a shape. */
 export const VOICED_VERSION = 2
 
+/** The version Studio's episode for my own voice stays on, until FEED6 (#2649). */
+export const CLIPS_VERSION = 1
+
 /**
- * Each format's shape from version 2: the locked intro, the brand intro and
- * outro, a chapter slide said aloud before each marked scene, and
- * subtitles with each word lit. The chapters mark where an episode turns.
+ * Each format's shape from version 2 (SFEED2 #2680): the locked intro
+ * (`INTRO`, filled by code), the brand intro and outro, a chapter slide said
+ * aloud before each marked scene, and subtitles with each word lit. The
+ * chapters mark where an episode turns.
  */
 const SHAPE: Readonly<Record<FormatKind, Shape>> = {
   week: {
@@ -96,7 +100,7 @@ export function formatOf(
   kind: FormatKind,
   version: number = FORMAT_VERSION[kind]
 ): Format {
-  const slides = kind === "week" ? WEEK_SLIDES : LEGEND_SLIDES
+  const slides = slidesOf(kind)
   return {
     schema: FORMAT_SCHEMA,
     id: formatId(kind),
@@ -118,6 +122,12 @@ export function formatOf(
     ...(version >= VOICED_VERSION ? { shape: SHAPE[kind] } : {}),
   }
 }
+
+/** What an episode is called: "Playoff Delta, 2026 week 8". */
+export const episodeTitle = (season: StorySeason, week: number): string =>
+  week === LEGEND_WEEK
+    ? "Playoff Delta, the legend"
+    : `Playoff Delta, ${season.label} week ${week}`
 
 /** Where the season's data is published, by its label and team. */
 const sourceOf = (season: StorySeason): string =>
@@ -209,16 +219,16 @@ export function episodeFor(
     week === LEGEND_WEEK ? undefined : season.weeks.find((w) => w.week === week)
   const common = { show: SHOW, data, keep: keep.value, inMs }
   if (shown === undefined) {
-    return episodeOf(formatOf("legend", VOICED_VERSION - 1), {
+    return episodeOf(formatOf("legend", CLIPS_VERSION), {
       ...common,
-      title: "Playoff Delta, the legend",
+      title: episodeTitle(season, LEGEND_WEEK),
       period: `${season.label}, the legend`,
       upload: uploadOf(season, null),
     })
   }
-  return episodeOf(formatOf("week", VOICED_VERSION - 1), {
+  return episodeOf(formatOf("week", CLIPS_VERSION), {
     ...common,
-    title: `Playoff Delta, ${season.label} week ${week}`,
+    title: episodeTitle(season, week),
     period: `${season.label} week ${week}`,
     upload: uploadOf(season, shown),
   })

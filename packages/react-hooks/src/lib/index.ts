@@ -6,6 +6,7 @@ export {
   useIsMobile,
 } from "./use-mobile"
 export { useMediaQuery } from "./use-media-query"
+export { useOverflows } from "./use-overflows"
 export { useFittedPage } from "./use-fitted-page"
 export type { FittedPage } from "./use-fitted-page"
 export { useResizeObserver } from "./use-resize-observer"

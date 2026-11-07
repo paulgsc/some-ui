@@ -229,10 +229,11 @@ const pinProblems = (fill: Pins, want: Pins): ReadonlyArray<string> => [
     .map(
       (k) => `${k} is ${String(fill[k])}, not this episode's ${String(want[k])}`
     ),
+  // A fill is drawn in the version it was written for, any of the format's.
   ...(fill.format.id !== want.format.id ||
-  fill.format.version !== want.format.version
+  fill.format.version > want.format.version
     ? [
-        `the format is ${fill.format.id} v${fill.format.version}, not ${want.format.id} v${want.format.version}`,
+        `the format is ${fill.format.id} v${fill.format.version}, not ${want.format.id} v${want.format.version} or an earlier version`,
       ]
     : []),
 ]

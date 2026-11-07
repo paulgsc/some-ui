@@ -1,33 +1,22 @@
 /**
  * Playoff Delta voiced (FEED3, #2646): an episode as the scenes Kokoro says
- * and the stage draws in the format's shape (`formatOf`, version 2 on), and
- * the cut list the renderer lays them in. A fill (`./narration`) gives what
- * is said over each slide; code fills the rest: the locked intro, the brand
- * slides, which say nothing, and the chapters, which say their scene's name.
- *
- * Each scene is one still the stage records (`/playoff-delta?record`), held
- * for its take: the same fill and season give the same video.
+ * and the stage draws in its format version's shape (`SHAPE` in `./show`),
+ * and the cut list the renderer lays them in. The fill (`./narration`) says
+ * each slide; code says the rest.
  */
 
 import {
   stillFile,
   stillsCutList,
   type CutList,
-  type Format,
   type StillTake,
 } from "@some-ui/video-render"
 
 import type { Narration } from "./narration"
-import { formatOf, kindOf } from "./show"
-import {
-  LEGEND_SLIDES,
-  LEGEND_WEEK,
-  SCENES,
-  WEEK_SLIDES,
-  type SlideId,
-} from "./slides"
+import { episodeTitle, formatOf, kindOf } from "./show"
+import { LEGEND_WEEK, SCENES, slidesOf, type SlideId } from "./slides"
 import { nameOf, type StorySeason } from "./story"
-import { INTRO, UPLOAD } from "./words"
+import { INTRO } from "./words"
 
 /**
  * The voice every scene is said in, by Kokoro's name (home's speaker,
@@ -50,13 +39,15 @@ export type VoicedScene =
       readonly of: SlideId
       readonly said: string
     }
-  | {
-      readonly kind: "slide"
-      readonly id: SlideId
-      /** Its place among the format's slides: the stage's `slide`. */
-      readonly slide: number
-      readonly said: string
-    }
+  | SlideScene
+
+/** A slide of the format, in its place: the stage's `slide`. */
+type SlideScene = {
+  readonly kind: "slide"
+  readonly id: SlideId
+  readonly slide: number
+  readonly said: string
+}
 
 /** The intro's rows, and what it says aloud, for one episode. */
 export function introOf(
@@ -87,10 +78,6 @@ export function introOf(
   }
 }
 
-/** The format an episode of week `week` is drawn in, at `version`. */
-const voicedFormat = (week: number, version: number): Format =>
-  formatOf(kindOf(week), version)
-
 /**
  * The scenes of week `week`'s episode (`LEGEND_WEEK` for the legend), in the
  * order said: in a version with a shape, the locked intro, the brand intro,
@@ -104,17 +91,14 @@ export function voicedScenes(
   version: number,
   fill: Narration | null
 ): ReadonlyArray<VoicedScene> {
-  const format = voicedFormat(week, version)
-  // The format's scenes are these slides, in this order (`formatOf`).
-  const ids: ReadonlyArray<SlideId> =
-    week === LEGEND_WEEK ? LEGEND_SLIDES : WEEK_SLIDES
-  const slides: ReadonlyArray<VoicedScene> = ids.map((id, i) => ({
+  const kind = kindOf(week)
+  const slides: ReadonlyArray<SlideScene> = slidesOf(kind).map((id, i) => ({
     kind: "slide",
     id,
     slide: i,
     said: fill?.scenes.find((s) => s.id === id)?.said ?? SCENES[id].point,
   }))
-  const shape = format.shape
+  const shape = formatOf(kind, version).shape
   if (shape === undefined) return slides
   const scenes: Array<VoicedScene> = [
     { kind: "intro", id: "intro", said: introOf(season, week, version).said },
@@ -122,7 +106,7 @@ export function voicedScenes(
   if (shape.brand.intro)
     scenes.push({ kind: "brand-in", id: "brand-in", said: "" })
   for (const scene of slides) {
-    if (scene.kind === "slide" && shape.chapters.includes(scene.id))
+    if (shape.chapters.includes(scene.id))
       scenes.push({
         kind: "chapter",
         id: `chapter-${scene.id}`,
@@ -145,12 +129,6 @@ export const voicedSceneOf = (
 ): VoicedScene | undefined =>
   voicedScenes(season, week, version, null).find((s) => s.id === id)
 
-/** What the upload and the cut list call week `week`'s episode. */
-const titleOf = (season: StorySeason, week: number): string =>
-  week === LEGEND_WEEK
-    ? UPLOAD.legendTitle(season.label)
-    : `Playoff Delta · ${season.label} week ${week}`
-
 /**
  * The episode as a cut list (`stillsCutList`, which holds CV1): scene `i`'s
  * still is `stillFile(i, id)`.png and its take, `takes[i]`, the WAV beside
@@ -164,10 +142,10 @@ export function voicedCutList(
   takes: ReadonlyArray<StillTake | null>,
   { bed = false }: { readonly bed?: boolean } = {}
 ): CutList {
-  const format = voicedFormat(week, fill.format.version)
+  const format = formatOf(kindOf(week), fill.format.version)
   return stillsCutList(
     {
-      title: titleOf(season, week),
+      title: episodeTitle(season, week),
       series: format.series,
       look: format.look,
       subtitles: format.shape?.subtitles ?? "off",
