@@ -1,4 +1,4 @@
-import { checkEvent } from "@engagement/lib/check-event"
+import { checkEvent, isEventShape } from "@engagement/lib/check-event"
 import type { VisitEnding } from "@engagement/lib/events"
 import { endingOf, VISIT_ENDINGS } from "@engagement/lib/events"
 import { PIPELINES } from "@engagement/lib/pipelines"
@@ -121,5 +121,23 @@ describe("checkEvent: what an event may carry", () => {
   it("refuses what is not an event at all", () => {
     expect(checkEvent(null, PIPELINES).ok).toBe(false)
     expect(checkEvent(["taken"], PIPELINES).ok).toBe(false)
+  })
+})
+
+describe("isEventShape: an event read back, with no registry", () => {
+  const taken = { kind: "taken", ...base } as const
+  it("takes an event of any affordance id, and nothing beyond its kind's shape", () => {
+    expect(isEventShape({ ...taken, affordance: "since-retired" })).toBe(true)
+    expect(isEventShape({ ...taken, words: "said aloud" })).toBe(false)
+    expect(isEventShape({ ...taken, affordance: "The lens" })).toBe(false)
+    expect(isEventShape({ ...taken, surface: "ios" })).toBe(false)
+  })
+
+  it("takes only instants that name a real time, as home does", () => {
+    for (const at of ["2026-11-03T24:00:00Z", "2026-02-30T00:00:00Z"]) {
+      expect(isEventShape({ ...taken, at })).toBe(false)
+      expect(checkEvent({ ...taken, at }, PIPELINES).ok).toBe(false)
+    }
+    expect(isEventShape({ ...taken, at: EARLIER })).toBe(true)
   })
 })
