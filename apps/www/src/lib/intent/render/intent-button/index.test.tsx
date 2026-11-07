@@ -82,8 +82,9 @@ describe("IntentButton", () => {
     expect(onPress).toHaveBeenCalledTimes(1)
   })
 
-  it("failed and retryable: replaces the original action with one Try again control", () => {
+  it("failed and retryable: replaces the original action with one Try again control, and tells onRetry", () => {
     const retry = vi.fn()
+    const onRetry = vi.fn()
     render(
       <IntentButton
         state={failed(
@@ -96,6 +97,7 @@ describe("IntentButton", () => {
           retry
         )}
         onPress={vi.fn()}
+        onRetry={onRetry}
         idleLabel="Save"
         workingLabel="Saving..."
       />
@@ -107,6 +109,7 @@ describe("IntentButton", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Try again" }))
     expect(retry).toHaveBeenCalledTimes(1)
+    expect(onRetry).toHaveBeenCalledTimes(1)
   })
 
   it("failed, not retryable, resubmission not blocked: no retry control, but the original action still works", () => {

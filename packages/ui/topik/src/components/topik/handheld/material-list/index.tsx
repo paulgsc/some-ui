@@ -1,7 +1,8 @@
 import type { JSX } from "react"
-import { useEffect, useId, useMemo, useState } from "react"
+import { useId, useMemo, useState } from "react"
 import { cn } from "@some-ui/core-utils"
-import type { Offer, Visit } from "@some-ui/engagement"
+import type { Visit } from "@some-ui/engagement"
+import { useShelf } from "@some-ui/react-hooks"
 import { Button, Input, Notice } from "@some-ui/shared"
 import { FeedThumb, FeedTile } from "@topik/components/topik/handheld/feed-tile"
 import { PortionMark } from "@topik/components/topik/handheld/portion-menu"
@@ -344,29 +345,6 @@ const RoutineTile = ({
   )
 }
 
-const readyOffers = (cards: ReadonlyArray<ReadyCard>): Array<Offer> =>
-  cards.map((card) => readySetOffer(card.id))
-
-/**
- * Shows `items` on `visit` as `shelf` while this part of the list is on
- * screen, and takes them off as it goes.
- */
-function useShown<T>(
-  visit: Visit | undefined,
-  shelf: string,
-  items: ReadonlyArray<T>,
-  offersOf: (items: ReadonlyArray<T>) => Array<Offer>
-): void {
-  const offers = useMemo(() => offersOf(items), [items, offersOf])
-  useEffect(() => {
-    if (visit === undefined) return
-    visit.show(shelf, offers)
-    return (): void => {
-      visit.show(shelf, null)
-    }
-  }, [visit, shelf, offers])
-}
-
 /**
  * "From the routine": the first few, and a search over all of them once
  * there are more than that.
@@ -384,7 +362,11 @@ const FromRoutine = ({
 }): JSX.Element => {
   const [query, setQuery] = useState("")
   const shown = searchLessons(items, query)
-  useShown(visit, "routine", shown, routineOffers)
+  useShelf(
+    visit,
+    "routine",
+    useMemo(() => routineOffers(shown), [shown])
+  )
   const searching = query.trim() !== ""
   const status = searching
     ? shown.length === 0
@@ -638,8 +620,14 @@ export const MaterialList = ({
   const routineShown = fromRoutine.filter((item) => atLevel(item.level))
   const readyShown = readySets.filter((card) => atLevel(card.level))
   const dramasShown = dramaCards.filter((card) => atLevel(card.level))
-  const readyOffered = onReadAloud && onOpenSet ? readyShown : []
-  useShown(visit, "ready", readyOffered, readyOffers)
+  const readyOffers = useMemo(
+    () =>
+      onReadAloud && onOpenSet
+        ? readyShown.map((card) => readySetOffer(card.id))
+        : null,
+    [onReadAloud, onOpenSet, readyShown]
+  )
+  useShelf(visit, "ready", readyOffers)
   return (
     <div
       data-slot="topik-material-list"

@@ -32,6 +32,9 @@ import { IntentFailure } from "@/lib/intent/render/intent-failure"
 export type IntentButtonProps<TStep extends string = never> = {
   state: Intent<unknown, TStep>
   onPress: () => void
+  /** Also called when a press retries a retryable failure, which runs the
+   * intent's own retry rather than `onPress`. */
+  onRetry?: () => void
   idleLabel: ReactNode
   workingLabel: ReactNode
   /** For a composite intent's `working` step (e.g. "Saving...",
@@ -80,6 +83,7 @@ function wordsOf(
 export const IntentButton = <TStep extends string = never>({
   state,
   onPress,
+  onRetry,
   idleLabel,
   workingLabel,
   workingStepLabel,
@@ -118,7 +122,14 @@ export const IntentButton = <TStep extends string = never>({
       const blocked = !error.retryable && error.blocksResubmission === true
       return {
         label: error.retryable ? RETRY : idleLabel,
-        onClick: error.retryable ? retry : blocked ? undefined : onPress,
+        onClick: error.retryable
+          ? (): void => {
+              onRetry?.()
+              retry()
+            }
+          : blocked
+            ? undefined
+            : onPress,
         disabled: disabled || blocked,
         error,
       }
