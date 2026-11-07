@@ -49,6 +49,7 @@
     "@some-ui/burn-ins": "workspace:*",
     "@some-ui/content-registry": "workspace:*",
     "@some-ui/core-utils": "workspace:*",
+    "@some-ui/engagement": "workspace:*",
     "@some-ui/fetch-kit": "workspace:*",
     "@some-ui/game-week": "workspace:*",
     "@some-ui/honeycomb": "workspace:*",
@@ -87,7 +88,6 @@
   "devDependencies": {
     "@playwright/test": "1.62.1",
     "@some-ui/contract-harness": "workspace:*",
-    "@some-ui/engagement": "workspace:*",
     "@vitejs/plugin-react": "^6.1.2",
     "vite": "^8.3.5"
   }

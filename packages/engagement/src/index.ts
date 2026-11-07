@@ -21,6 +21,8 @@ export type {
   WingId,
 } from "./lib/registry"
 export { findAffordance, findRegistryProblems } from "./lib/registry"
+export type { EngagementSink } from "./lib/sink"
+export { engage, setEngagementSink } from "./lib/sink"
 export type { EventCheck } from "./lib/check-event"
 export { checkEvent } from "./lib/check-event"
 export { PIPELINES, UNMEASURED } from "./lib/pipelines"

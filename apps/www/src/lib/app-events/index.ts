@@ -5,14 +5,18 @@
  * (`lib/home-link/app-events`, through the outbox every record takes). Every
  * real use is then evidence, not only the paths someone thought to try.
  *
- * Takes today: every take of every screen on the take kit
- * (`@some-ui/voice-capture`'s `setTakeOutcomes`). A listening, a spoken line
- * and a note sent home go by the same event later, and ENGAGE's engagement
- * events (ENG2, #2535) as a second `family` beside `outcome`: one store, one
- * lane, one home route (`PUT /app-events/:id`) and one home table.
+ * Two families ride it: `outcome`, whether the machinery worked (every take
+ * of every screen on the take kit, `@some-ui/voice-capture`'s
+ * `setTakeOutcomes`; a listening, a spoken line and a note sent home later),
+ * and `engagement`, whether the owner used what a pipeline offered (ENGAGE
+ * ENG2, #2535: `recordEngagement`, in `@some-ui/engagement`'s vocabulary).
+ * One store, one lane, one home route (`PUT /app-events/:id`) and one home
+ * table.
  *
  * What an event carries is the owner's C3 (#2369): the ending, timings and
- * the screen, by the code's own names. No audio, no words, no item content;
+ * the screen, or the pipeline, affordance and surface, by the code's own
+ * names. No audio, no words, no item content (`checkEvent` holds it for an
+ * engagement event before it is kept, and again when it is read back);
  * home refuses any field outside its family's own (paulgsc/server
  * `app_event_repo`, docs/identity.md invariant 33).
  *
@@ -23,6 +27,8 @@
  * it.
  */
 import { isRecord } from "@some-ui/core-utils"
+import type { EngagementEvent } from "@some-ui/engagement"
+import { checkEvent, PIPELINES, setEngagementSink } from "@some-ui/engagement"
 import type { TakeOutcome } from "@some-ui/voice-capture"
 import { setTakeOutcomes } from "@some-ui/voice-capture"
 
@@ -37,7 +43,7 @@ export const APP_EVENTS_WAITING = 500
 export type Went = "worked" | "failed" | "stopped"
 
 /** One obligation run to an ending, in the form home keeps it. */
-export type AppEvent = {
+export type OutcomeEvent = {
   readonly family: "outcome"
   /** This phone's id for it, so a retried send stores nothing new. */
   readonly id: string
@@ -54,6 +60,15 @@ export type AppEvent = {
   readonly durationMs: number | null
   readonly peak: number | null
 }
+
+/** Whether the owner used what was offered (ENG1's union), as home keeps it. */
+export type EngagementAppEvent = EngagementEvent & {
+  readonly family: "engagement"
+  readonly id: string
+  readonly build: string | null
+}
+
+export type AppEvent = OutcomeEvent | EngagementAppEvent
 
 /**
  * Every take ending as the event names it, and how it reads. A take kept
@@ -95,7 +110,7 @@ export function takeEventOf(
   id: string,
   build: string | null,
   now: number
-): AppEvent {
+): OutcomeEvent {
   const ending = takeEndingId(outcome)
   return {
     family: "outcome",
@@ -112,7 +127,27 @@ export function takeEventOf(
   }
 }
 
+/** The engagement event `value` carries, checked; undefined when off shape. */
+function engagementOf(
+  value: Readonly<Record<string, unknown>>
+): EngagementEvent | undefined {
+  const { family: _family, id: _id, build: _build, ...event } = value
+  const checked = checkEvent(event, PIPELINES)
+  return checked.ok ? checked.event : undefined
+}
+
+function isEngagementAppEvent(value: unknown): value is EngagementAppEvent {
+  return (
+    isRecord(value) &&
+    value.family === "engagement" &&
+    typeof value.id === "string" &&
+    (value.build === null || typeof value.build === "string") &&
+    engagementOf(value) !== undefined
+  )
+}
+
 function isAppEvent(value: unknown): value is AppEvent {
+  if (isEngagementAppEvent(value)) return true
   return (
     isRecord(value) &&
     value.family === "outcome" &&
@@ -168,11 +203,31 @@ export function letGoHeldAppEvents(ids: ReadonlySet<string>): void {
   if (waiting.remove((event) => ids.has(event.id))) changed()
 }
 
+/**
+ * Keeps one engagement event to wait for home, under a new id and the
+ * running build: what a pipeline's runtime calls when the owner is offered,
+ * takes, passes over or leaves an affordance, or says how it went. False
+ * when the event is off shape (an affordance the registry doesn't list, a
+ * field outside its kind's, a place or answer not the affordance's), or
+ * when the store is full or refuses; a pipeline needs no other answer, and
+ * nothing it does waits on this.
+ */
+export function recordEngagement(
+  event: EngagementEvent,
+  build: string | null = import.meta.env.VITE_BUILD_COMMIT || null,
+  id: string = crypto.randomUUID()
+): boolean {
+  const checked = checkEvent(event, PIPELINES)
+  if (!checked.ok) return false
+  return keepAppEvent({ ...checked.event, family: "engagement", id, build })
+}
+
 let installed = false
 
 /**
- * Keeps every take's outcome from now on, under the build `build` names.
- * Once per page.
+ * Keeps every take's outcome, and every engagement event a pipeline hands
+ * `@some-ui/engagement`'s `engage`, from now on, under the build `build`
+ * names. Once per page.
  */
 export function installAppEvents(
   build: string | null = import.meta.env.VITE_BUILD_COMMIT || null
@@ -181,5 +236,8 @@ export function installAppEvents(
   installed = true
   setTakeOutcomes((outcome) => {
     keepAppEvent(takeEventOf(outcome, crypto.randomUUID(), build, Date.now()))
+  })
+  setEngagementSink((event) => {
+    recordEngagement(event, build)
   })
 }

@@ -15,6 +15,7 @@ import {
   appEventsWaiting,
   keepAppEvent,
   letGoHeldAppEvents,
+  recordEngagement,
   TAKE_WENT,
   takeEventOf,
 } from "@/lib/app-events"
@@ -127,5 +128,51 @@ describe("the events waiting for home (TE2)", () => {
     const waiting = appEventsWaiting()
     expect(waiting).toHaveLength(APP_EVENTS_WAITING)
     expect(waiting.at(-1)?.id).toBe("e0")
+  })
+})
+
+describe("an engagement event (ENG2)", () => {
+  const taken = {
+    kind: "taken",
+    pipeline: "topik",
+    affordance: "routine-lens",
+    surface: "apk",
+    at: "2026-11-03T09:00:00.000Z",
+  } as const
+
+  it("waits beside the outcomes as exactly its kind's fields, under an id and the build", () => {
+    expect(recordEngagement(taken, "42a72b958", "g1")).toBe(true)
+    keepAppEvent(event("e1"))
+    expect(appEventsWaiting().map((e) => e.family)).toEqual([
+      "outcome",
+      "engagement",
+    ])
+    expect(appEventsWaiting()[1]).toEqual({
+      ...taken,
+      family: "engagement",
+      id: "g1",
+      build: "42a72b958",
+    })
+  })
+
+  it("is refused when the registry doesn't list it or it carries more than its kind", () => {
+    expect(
+      recordEngagement({ ...taken, affordance: "no-such-thing" }, null, "g1")
+    ).toBe(false)
+    const said = { ...taken, place: "the words I said" }
+    expect(recordEngagement(said, null, "g2")).toBe(false)
+    expect(
+      recordEngagement(
+        {
+          ...taken,
+          kind: "left",
+          startedAt: "2026-11-03T08:00:00.000Z",
+          place: "nowhere-listed",
+        },
+        null,
+        "g3"
+      )
+    ).toBe(false)
+    expect(appEventsWaiting()).toEqual([])
   })
 })

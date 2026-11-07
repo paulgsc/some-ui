@@ -89,7 +89,7 @@ describe("sending the app events home (TE2)", () => {
       sent.id === "refused"
         ? { status: 422, body: "{}" }
         : sent.id === "differs"
-          ? holds({ ...sent, went: "failed" })
+          ? holds({ ...sent, at: "2026-11-03T08:00:00.000Z" })
           : holds(sent)
     )
     await expect(exchangeAppEvents(first.send)).resolves.toEqual({
