@@ -1,6 +1,8 @@
 import type { JSX } from "react"
 import { useEffect, useState } from "react"
 import { cn, formatTimecode } from "@some-ui/core-utils"
+import type { Visit } from "@some-ui/engagement"
+import { pageVisit, watchVisit } from "@some-ui/engagement"
 import { RUST_ROUNDS_TITLE, rustRoundsEntry } from "@some-ui/rust-rounds/entry"
 import {
   BrandMark,
@@ -15,6 +17,7 @@ import { Check, SquareTerminal } from "lucide-react"
 
 import { useMinuteClock } from "@/lib/clock"
 import { isOfferedActivityId } from "@/lib/playable"
+import { HOME_OFFERS, studyCardOffers } from "@/lib/practice-home"
 import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
 import {
   closedPatch,
@@ -77,7 +80,13 @@ function studiedLine(today: ReadonlyArray<SessionRecord>): string {
  * only unreadable); and known, which says so when what it shows is a cached
  * list whose refresh just failed.
  */
-const StudyCard = ({ now }: { now: Date }): JSX.Element => {
+const StudyCard = ({
+  now,
+  visit,
+}: {
+  now: Date
+  visit: Visit
+}): JSX.Element => {
   const [launching, setLaunching] = useState(false)
   const outcome = queryOutcome(useSessions())
   const status = matchQueryOutcome(outcome, {
@@ -117,6 +126,22 @@ const StudyCard = ({ now }: { now: Date }): JSX.Element => {
       )
     : null
   const cut = lastFinished && cutShortStop(lastFinished.id)
+
+  const open = status.kind === "ready" && status.open !== null
+  const lessons =
+    status.kind === "ready" &&
+    (status.open === null || launching) &&
+    isOfferedActivityId("topik")
+  useEffect(() => {
+    // The page's visit is a runtime, not the page's render state: showing
+    // what this card lists tells it what can be taken, so a take on another
+    // card reads as taking another (ENGAGE's visit, `createVisit`).
+    // eslint-disable-next-line react-you-might-not-need-an-effect/no-pass-data-to-parent
+    visit.show(
+      "study",
+      status.kind === "ready" ? studyCardOffers({ open, lessons, done }) : null
+    )
+  }, [visit, status.kind, open, lessons, done])
 
   return (
     <div
@@ -171,11 +196,17 @@ const StudyCard = ({ now }: { now: Date }): JSX.Element => {
             variant={status.open === null ? "outline" : "default"}
           >
             {status.open === null ? (
-              <Link to="/sessions/new">{done ? "Another round" : "Start"}</Link>
+              <Link
+                to="/sessions/new"
+                onClick={() => visit.take(HOME_OFFERS.start)}
+              >
+                {done ? "Another round" : "Start"}
+              </Link>
             ) : (
               <Link
                 to="/sessions/$sessionId"
                 params={{ sessionId: status.open.id }}
+                onClick={() => visit.take(HOME_OFFERS.resume)}
               >
                 {stopped ? "Pick up" : "Resume"}
               </Link>
@@ -183,22 +214,26 @@ const StudyCard = ({ now }: { now: Date }): JSX.Element => {
           </Button>
         )}
       </div>
-      {status.kind === "ready" &&
-        (status.open === null || launching) &&
-        isOfferedActivityId("topik") && (
-          <div className="flex flex-wrap gap-2">
-            <NextLesson
-              className="h-12 rounded-2xl px-6 text-base"
-              onLaunch={() => setLaunching(true)}
-            />
-            <NextLesson
-              open="menu"
-              variant="outline"
-              className="h-12 rounded-2xl px-6 text-base"
-              onLaunch={() => setLaunching(true)}
-            />
-          </div>
-        )}
+      {lessons && (
+        <div className="flex flex-wrap gap-2">
+          <NextLesson
+            className="h-12 rounded-2xl px-6 text-base"
+            onLaunch={() => {
+              visit.take(HOME_OFFERS.nextLesson)
+              setLaunching(true)
+            }}
+          />
+          <NextLesson
+            open="menu"
+            variant="outline"
+            className="h-12 rounded-2xl px-6 text-base"
+            onLaunch={() => {
+              visit.take(HOME_OFFERS.hungry)
+              setLaunching(true)
+            }}
+          />
+        </div>
+      )}
       {cut && (
         <div className="flex flex-col gap-2">
           <p className="text-muted-foreground text-sm">
@@ -225,6 +260,7 @@ const StudyCard = ({ now }: { now: Date }): JSX.Element => {
         <Link
           to="/soundbites"
           search={{ say: "sessions" }}
+          onClick={() => visit.take(HOME_OFFERS.sayWhy)}
           className="bg-muted/40 text-muted-foreground hover:text-foreground flex items-center gap-2 self-start rounded-full py-1.5 pr-3.5 pl-2.5 text-sm font-medium"
         >
           <TalkGlyph aria-hidden className="size-4" />
@@ -240,13 +276,19 @@ const StudyCard = ({ now }: { now: Date }): JSX.Element => {
  * left last, or one tap from the first. It says where you left off, and
  * nothing about how long or how much.
  */
-const RustRoundsCard = (): JSX.Element => {
+const RustRoundsCard = ({ visit }: { visit: Visit }): JSX.Element => {
   // Read once as Home opens, never on each render; it changes only in Rust
   // Rounds itself, which is left to come back here.
   const [line] = useState(() => rustRoundsEntry(browserLocalStorage))
+  useEffect(() => {
+    // As the study card's: the page's visit is a runtime, not render state.
+    // eslint-disable-next-line react-you-might-not-need-an-effect/no-pass-data-to-parent
+    visit.show("rust-rounds", [HOME_OFFERS.rustRounds])
+  }, [visit])
   return (
     <Link
       to="/rust-rounds"
+      onClick={() => visit.take(HOME_OFFERS.rustRounds)}
       className="bg-card border-border/50 flex items-center gap-3 rounded-2xl border p-4 shadow-sm"
     >
       <span className="bg-brand/30 text-brand-foreground dark:text-brand flex size-12 shrink-0 items-center justify-center rounded-2xl">
@@ -300,6 +342,10 @@ const PracticeHome = (): JSX.Element => {
   // Moves while the page stays open, so a stop's pick-up window closes and
   // the date turns over without leaving it.
   const now = useMinuteClock()
+  // What Home offers and which the owner takes (ENGAGE, `createVisit`): a
+  // visit ends when Home closes or the app goes to the back.
+  const [visit] = useState(() => pageVisit(document))
+  useEffect(() => watchVisit(visit, document), [visit])
 
   return (
     <div className="relative z-[1] mx-auto flex w-full max-w-md flex-col gap-6">
@@ -318,8 +364,8 @@ const PracticeHome = (): JSX.Element => {
         </span>
       </header>
 
-      <StudyCard now={now} />
-      <RustRoundsCard />
+      <StudyCard now={now} visit={visit} />
+      <RustRoundsCard visit={visit} />
     </div>
   )
 }
