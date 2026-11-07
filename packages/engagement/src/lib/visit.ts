@@ -31,15 +31,15 @@ export type Offer = {
   readonly key: string
 }
 
-export type VisitState = {
+type VisitState = {
   /** Offered this visit, by key, with when. */
   readonly offered: ReadonlyMap<string, { offer: Offer; at: string }>
   readonly taken: ReadonlySet<string>
 }
 
-export const NEW_VISIT: VisitState = { offered: new Map(), taken: new Set() }
+const NEW_VISIT: VisitState = { offered: new Map(), taken: new Set() }
 
-export type VisitStep =
+type VisitStep =
   | { readonly type: "offer"; readonly offer: Offer; readonly at: string }
   | { readonly type: "take"; readonly offer: Offer; readonly at: string }
   | { readonly type: "end"; readonly ending: VisitEnding; readonly at: string }
@@ -52,7 +52,7 @@ const stamp = (
   at,
 })
 
-export function stepVisit(
+function stepVisit(
   state: VisitState,
   step: VisitStep
 ): { state: VisitState; events: ReadonlyArray<EngagementEvent> } {
