@@ -12,6 +12,7 @@ export { fencedBodies, jsonValues } from "./pasted-json"
 export type {
   HomeAnswer,
   HomeBytes,
+  HomeRange,
   HomeCall,
   HomeExchanged,
 } from "./home-exchange"

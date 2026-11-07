@@ -40,7 +40,12 @@
  *   `GET /voice-notes/takes` per open, Try again, search or Show the
  *   newest, a blank search showing the newest, `?q=` holding the search's
  *   words) and, per Play, for one take's audio, through the same read Rust
- *   Rounds' notes use (`lib/home-link/voice-audio`).
+ *   Rounds' notes use (`lib/home-link/voice-audio`). Studio's Calls
+ *   (`lib/call-videos`, ST38) asks home for the weeks of the call it holds
+ *   (`lib/home-link/call-videos`, one `GET /call/videos` per open, drag down
+ *   or Try again), for a week's video on Watch, a part at a time (one
+ *   `GET /call/videos/:from/video` per part), and sends a week's link on
+ *   Save (one `PUT /call/videos/:from/link`).
  *
  * - **LA19 (MY-DATA MD5): only My data deletes a record on home.** Only
  *   `lib/home-link/delete-note` sends home a `DELETE`, only `lib/my-data`
@@ -122,6 +127,10 @@ const HOME_LINK_CALLERS = new Set([
   // keeps as the screen opens and on Try again, a search (a blank one reads
   // the newest) or Show the newest, and for one take's audio on each Play.
   "lib/take-library/index.ts",
+  // LA8 (ST38): Studio's Calls, which asks home for the weeks of the call it
+  // holds as the screen opens, on a drag down and on Try again, for a week's
+  // video a part at a time on Watch, and sends a week's link on Save.
+  "lib/call-videos/index.ts",
   // LA8 (ST33): Studio's Finish, which hands the voice lane a video kept for
   // home to make and hears what home answered and lists of it
   // (`studioVideos`), sending nothing of its own.
@@ -153,6 +162,7 @@ const KEEPERS = new Set([
   "lib/home-link/deleted-read.ts",
   "lib/home-link/idea-reads.ts",
   "lib/home-link/takes-read.ts",
+  "lib/home-link/call-videos.ts",
 ])
 
 /** The routine's read, and the two requests it may send. */
@@ -190,6 +200,17 @@ const KEPT_SENDS = [
 /** LA8, ST32: the read of the takes home keeps, and the one request it may send. */
 const TAKES_READ = "lib/home-link/takes-read.ts"
 const TAKES_SENDS = [['"GET"', "takesPath(q)"]]
+
+/**
+ * LA8, ST38: Studio's Calls' reads of the weeks and of a week's video, a
+ * part at a time, and its one send of a week's link.
+ */
+const CALLS_READ = "lib/home-link/call-videos.ts"
+const CALLS_SENDS = [
+  ['"GET"', "CALL_VIDEOS_PATH"],
+  ['"GET"', "videoPath(from)", "undefined", "{ start, end }"],
+  ['"PUT"', "linkPath(from)", "JSON.stringify({ link })"],
+]
 
 /** LA8, MD3: the read of what home deleted, and the one request it may send. */
 const DELETED_READ = "lib/home-link/deleted-read.ts"
@@ -682,6 +703,7 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(read(KEPT_READ)).toContain("homeLink().keep(")
     expect(read(DELETED_READ)).toContain("homeLink().keep(")
     expect(read(TAKES_READ)).toContain("homeLink().keep(")
+    expect(read(CALLS_READ)).toContain("homeLink().keep(")
   })
 
   it("sends nothing from the read of what home deleted but one GET of /voice-notes/deleted, and only My data reads it (MD3)", () => {
@@ -719,6 +741,19 @@ describe("LA8: the phone reaches home through one module", () => {
         )
       )
     expect(readers).toEqual(["lib/take-library/index.ts"])
+  })
+
+  it("sends nothing from Studio's Calls but its list, its video's parts and a week's link, and only Calls asks them (ST38)", () => {
+    expect(sendCalls(CALLS_READ, read(CALLS_READ))).toEqual(CALLS_SENDS)
+    expect(read(CALLS_READ)).toContain('"/call/videos"')
+    const readers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /from "\.\/call-videos"|from "@\/lib\/home-link\/call-videos"/.test(
+          read(f)
+        )
+      )
+    expect(readers).toEqual(["lib/call-videos/index.ts"])
   })
 
   it("sends nothing from Ideas on home but its four requests, and only it asks them (ST26 c)", () => {

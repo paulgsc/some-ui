@@ -21,6 +21,7 @@ import {
 import { audioPlayer } from "@some-ui/voice-capture"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 
+import { CALLS_WORDS } from "@/lib/call-videos/words"
 import { deviceListener } from "@/lib/device-listen"
 import { studioVideos } from "@/lib/home-link/studio-videos"
 import { ideaHome } from "@/lib/idea-hearing"
@@ -33,6 +34,7 @@ import { deletableStudioTakes } from "@/lib/my-data"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 import { keepStudio } from "@/lib/studio-keeping"
 import { takesHome } from "@/lib/take-library"
+import { CallVideosScreen } from "@/components/call-videos"
 import { CopyButton } from "@/components/copy-button"
 import { PairHomeLink } from "@/components/pair-home-link"
 
@@ -186,6 +188,25 @@ const Takes = (): JSX.Element | null => {
 }
 
 /**
+ * The weekly call's videos (ST38): watch, share to YouTube and save the link,
+ * in the Android app alone, as Takes on home is.
+ */
+const Calls = (): JSX.Element => (
+  <div className="mx-auto flex w-full max-w-md flex-col gap-4">
+    <h1 className="text-muted-foreground text-sm font-bold tracking-wider uppercase">
+      {CALLS_WORDS.heading}
+    </h1>
+    <CallVideosScreen pair={<PairHomeLink>{WORDS.pair.pair}</PairHomeLink>} />
+    <Link
+      to="/journal"
+      className="text-muted-foreground self-start text-sm underline underline-offset-4"
+    >
+      {CALLS_WORDS.back}
+    </Link>
+  </div>
+)
+
+/**
  * An episode's upload copy onto the clipboard (SH5), as Jobs' paste kit
  * copies: in the Android app only, as sharing is.
  */
@@ -203,7 +224,7 @@ const studioCopy: StudioCopy | undefined =
  * Opened from Your ideas on a video an idea became, it opens that one.
  */
 const StudioRoute = (): JSX.Element => {
-  const { project, records, takes } = Route.useSearch()
+  const { project, records, takes, calls } = Route.useSearch()
   useEffect(() => {
     if (import.meta.env.VITE_DEVICE_BACKEND !== "true") return
     keepStudio(phoneStudioKeeping())
@@ -214,6 +235,9 @@ const StudioRoute = (): JSX.Element => {
     return <Records />
   }
   if (takes === true && TAKE_PORTS !== null) return <Takes />
+  if (calls === true && import.meta.env.VITE_DEVICE_BACKEND === "true") {
+    return <Calls />
+  }
   return (
     <>
       <StudioHome
@@ -235,6 +259,13 @@ const StudioRoute = (): JSX.Element => {
           </Link>
           <Link
             to="/journal"
+            search={{ calls: true }}
+            className="text-muted-foreground self-start text-sm underline underline-offset-4"
+          >
+            {CALLS_WORDS.open}
+          </Link>
+          <Link
+            to="/journal"
             search={{ records: true }}
             className="text-muted-foreground self-start text-sm underline underline-offset-4"
           >
@@ -248,16 +279,23 @@ const StudioRoute = (): JSX.Element => {
 
 /**
  * `?project`: the video to open on, as Your ideas links one an idea became;
- * `?records`: what Studio keeps (MD4); `?takes`: Takes on home (ST32).
+ * `?records`: what Studio keeps (MD4); `?takes`: Takes on home (ST32);
+ * `?calls`: the weekly call's videos (ST38).
  */
-type StudioSearch = { project?: string; records?: true; takes?: true }
+type StudioSearch = {
+  project?: string
+  records?: true
+  takes?: true
+  calls?: true
+}
 
 function validateStudioSearch(search: Record<string, unknown>): StudioSearch {
-  const { project, records, takes } = search
+  const { project, records, takes, calls } = search
   return {
     ...(typeof project === "string" && project !== "" ? { project } : {}),
     ...(records === true || records === "true" ? { records: true } : {}),
     ...(takes === true || takes === "true" ? { takes: true } : {}),
+    ...(calls === true || calls === "true" ? { calls: true } : {}),
   }
 }
 
