@@ -2021,7 +2021,7 @@
           "evidence": [
             {
               "class": "structural",
-              "says": "Each step's receipt is written in the transaction it deletes under, which commits only once the files have gone; a step already done answers with its receipt; the video needs a recorded link and the rest the video's receipt, which the table's trigger and foreign key hold too; each tested, a file the drive won't remove writing no receipt.",
+              "says": "Each step commits its receipt before it touches the drive and answers only once its files are gone; a step that has a receipt removes what is left of it when asked again, so one the drive refused or the process stopped in is finished, never lost; a step already done answers with its receipt; the video needs a recorded link and the rest the video's receipt, which the table's trigger and foreign key hold too; each tested.",
               "ref": "server:apps/servers/file_host/src/call_weeks/videos.rs"
             },
             {
@@ -2052,7 +2052,7 @@
           "evidence": [
             {
               "class": "structural",
-              "says": "The export pass skips a week whose video was let go and removes any file left of it, tested.",
+              "says": "The export pass skips a week whose video was let go and removes any file left of it, and holds one lock with a let go, so a week let go during a pass is never written back; tested.",
               "ref": "server:apps/servers/file_host/src/call_weeks/pass.rs"
             },
             {
