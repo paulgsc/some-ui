@@ -402,6 +402,55 @@ describe("the routine's backfill of files only Drive holds (MB2)", () => {
   })
 })
 
+describe("a week of Rust Rounds rides brief (MB2, RR12)", () => {
+  const WEEK = JSON.stringify({
+    schema: "some-ui.rust-week/1",
+    id: "2026-w46",
+    tickets: [{ id: "QM-311", program: "fn main() {}\n" }],
+  })
+  const NAME = "rust-week-2026-w46.json"
+
+  it("the routine puts one in brief, once, and home reads it with the digests", async () => {
+    const d = deps()
+    expect((await put(d, "brief", NAME, { body: WEEK })).status).toBe(201)
+    expect((await put(d, "brief", NAME, { body: WEEK })).status).toBe(200)
+    const read = await send(d, "GET", `/v1/brief/items/${NAME}`, {
+      token: HOME,
+    })
+    expect(await read.text()).toBe(WEEK)
+    const listed = await send(d, "GET", "/v1/brief/items", { token: HOME })
+    expect(await json(listed)).toMatchObject({
+      items: [expect.objectContaining({ name: NAME })],
+    })
+    expect(
+      (await put(d, "brief", NAME, { token: HOME, body: WEEK })).status
+    ).toBe(403)
+  })
+
+  it("refuses a week whose name is not its id's, or another schema", async () => {
+    const d = deps()
+    const misnamed = await put(d, "brief", "rust-week-2026-w47.json", {
+      body: WEEK,
+    })
+    expect(await json(misnamed)).toEqual({
+      error: "the name must carry the week's id",
+    })
+    const noId = await put(d, "brief", NAME, {
+      body: JSON.stringify({ schema: "some-ui.rust-week/1", id: "week-46" }),
+    })
+    expect(await json(noId)).toEqual({
+      error: "id must be the week's, like 2026-w46",
+    })
+    const wrong = await put(d, "brief", NAME, { body: DIGEST })
+    expect(await json(wrong)).toEqual({
+      error: "the body's schema must be some-ui.rust-week/1",
+    })
+    expect(
+      (await put(d, "brief", "rust-week-2026-46.json", { body: WEEK })).status
+    ).toBe(422)
+  })
+})
+
 describe("the build-journal session's list of the takes Drive holds (MB2, HF11)", () => {
   const SHA_A = "a".repeat(64)
   const SHA_B = `${"0123456789abcdef".repeat(4)}`
