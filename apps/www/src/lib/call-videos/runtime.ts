@@ -116,6 +116,10 @@ export function createCallVideos(ports: CallsPorts): CallVideos {
     return true
   }
 
+  /** Each week's fetch while it runs, and the weeks `forget` is stopping. */
+  const fetching = new Map<string, Promise<void>>()
+  const stopping = new Set<string>()
+
   const failed = (from: string, why: FetchFailure): void => {
     dispatch({ type: "fetchMoved", from, fetch: { kind: "failed", why } })
   }
@@ -135,6 +139,44 @@ export function createCallVideos(ports: CallsPorts): CallVideos {
         dispatch({ type: "fetchForgotten", from: week.from })
       }
     }
+  }
+
+  /**
+   * Brings `week`'s video to the phone a part at a time. It stops, writing
+   * nothing more, once `forget` is stopping the week.
+   */
+  const fetchVideo = async (week: Week, total: number): Promise<void> => {
+    const { from } = week
+    if (stopping.has(from) || (await kept(week))) return
+    for (let start = 0; start < total; ) {
+      const end = Math.min(start + ports.partBytes, total) - 1
+      const part = await ports.part(from, start, end)
+      if (stopping.has(from)) return
+      if (part.kind !== "bytes") {
+        failed(from, part.kind === "gone" ? "gone" : "away")
+        return
+      }
+      // Android's base64 may be wrapped in lines.
+      const base64 = part.base64.replace(/\s/g, "")
+      const got = decodedBytes(base64)
+      if (got <= 0 || got > end - start + 1) {
+        failed(from, "away")
+        return
+      }
+      const put = await ports.files.put(from, base64, start === 0)
+      if (stopping.has(from)) return
+      if (!put) {
+        failed(from, "phone")
+        return
+      }
+      start += got
+      dispatch({
+        type: "fetchMoved",
+        from,
+        fetch: { kind: "fetching", done: start, total },
+      })
+    }
+    if (!(await kept(week))) failed(from, "phone")
   }
 
   return {
@@ -163,33 +205,13 @@ export function createCallVideos(ports: CallsPorts): CallVideos {
         from,
         fetch: { kind: "fetching", done: 0, total },
       })
-      if (await kept(week)) return
-      for (let start = 0; start < total; ) {
-        const end = Math.min(start + ports.partBytes, total) - 1
-        const part = await ports.part(from, start, end)
-        if (part.kind !== "bytes") {
-          failed(from, part.kind === "gone" ? "gone" : "away")
-          return
-        }
-        // Android's base64 may be wrapped in lines.
-        const base64 = part.base64.replace(/\s/g, "")
-        const got = decodedBytes(base64)
-        if (got <= 0 || got > end - start + 1) {
-          failed(from, "away")
-          return
-        }
-        if (!(await ports.files.put(from, base64, start === 0))) {
-          failed(from, "phone")
-          return
-        }
-        start += got
-        dispatch({
-          type: "fetchMoved",
-          from,
-          fetch: { kind: "fetching", done: start, total },
-        })
+      const run = fetchVideo(week, total)
+      fetching.set(from, run)
+      try {
+        await run
+      } finally {
+        fetching.delete(from)
       }
-      if (!(await kept(week))) failed(from, "phone")
     },
 
     async share(from): Promise<void> {
@@ -215,8 +237,19 @@ export function createCallVideos(ports: CallsPorts): CallVideos {
     },
 
     async forget(from): Promise<void> {
-      if (await ports.files.remove(from)) {
-        dispatch({ type: "fetchForgotten", from })
+      // A fetch still running would write its part after the file went:
+      // stop it, and wait for the write it is in.
+      stopping.add(from)
+      try {
+        await fetching.get(from)
+        if (await ports.files.remove(from)) {
+          dispatch({ type: "fetchForgotten", from })
+        } else if (state.fetches[from]?.kind === "fetching") {
+          // The fetch it stopped left a part that wouldn't go.
+          failed(from, "phone")
+        }
+      } finally {
+        stopping.delete(from)
       }
     },
 

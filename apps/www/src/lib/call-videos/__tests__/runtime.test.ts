@@ -168,6 +168,30 @@ describe("createCallVideos", () => {
     expect(calls.getSnapshot().fetches["2026-10-30"]).toBeUndefined()
   })
 
+  it("stops a fetch it lets go of, and removes the copy after the write it was in", async () => {
+    const { ports, kept } = fakes()
+    let finishPut = (): void => undefined
+    ports.files.put.mockImplementationOnce((from, base64) => {
+      const got = Buffer.from(base64, "base64").length
+      return new Promise((resolve) => {
+        finishPut = (): void => {
+          kept.set(from, got)
+          resolve(true)
+        }
+      })
+    })
+    const calls = createCallVideos(ports)
+    await calls.open()
+    const watching = calls.watch("2026-10-30")
+    await vi.waitFor(() => expect(ports.files.put).toHaveBeenCalled())
+    const forgetting = calls.forget("2026-10-30")
+    finishPut()
+    await Promise.all([watching, forgetting])
+    expect(kept.has("2026-10-30")).toBe(false)
+    expect(ports.part).toHaveBeenCalledTimes(1)
+    expect(calls.getSnapshot().fetches["2026-10-30"]).toBeUndefined()
+  })
+
   it("keeps a copy that wouldn't go ready to watch", async () => {
     const { ports } = fakes()
     ports.files.remove.mockResolvedValueOnce(false)
