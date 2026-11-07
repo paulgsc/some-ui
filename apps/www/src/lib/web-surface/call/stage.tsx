@@ -64,9 +64,12 @@ const labelOf = (
 }
 
 /**
- * Whether the element's content runs past its box, as laid out now: measured
- * when the element mounts (the frame mounts late, once its week is read),
- * when `key` changes, when it resizes and when a web font lands.
+ * Whether the element's content, or any of its regions' (the frame's header,
+ * body and footer), runs past its box, as laid out now: measured when the
+ * element mounts (the frame mounts late, once its week is read), when `key`
+ * changes, when it resizes and when a web font lands. A region is measured
+ * on its own because the body's text can run on under the footer while the
+ * frame as a whole still fits (#2671).
  */
 function useOverflows(key: string): {
   ref: (element: HTMLElement | null) => void
@@ -76,11 +79,10 @@ function useOverflows(key: string): {
   const [overflows, setOverflows] = useState(false)
   useLayoutEffect(() => {
     if (box === null) return undefined
+    const runsPast = (e: Element): boolean =>
+      e.scrollHeight > e.clientHeight + 1 || e.scrollWidth > e.clientWidth + 1
     const measure = (): void => {
-      setOverflows(
-        box.scrollHeight > box.clientHeight + 1 ||
-          box.scrollWidth > box.clientWidth + 1
-      )
+      setOverflows(runsPast(box) || [...box.children].some(runsPast))
     }
     measure()
     const observer = new ResizeObserver(measure)
@@ -406,7 +408,7 @@ export const CallStagePage = ({
               {shown.sample && ` · ${W.sample}`}
             </span>
           </header>
-          <div className="min-h-0 flex-1 px-[1.6em] py-[1.2em]">
+          <div className="min-h-0 flex-1 overflow-hidden px-[1.6em] py-[1.2em]">
             <Screen week={week} view={at.view} />
           </div>
           <footer className="bg-background/80 border-border border-t px-[1.6em] py-[0.8em] text-[1.05em] leading-snug">
