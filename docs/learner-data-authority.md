@@ -451,8 +451,8 @@ declared (checked by reading every call site and by the tests named).
   `GET /voice-notes/:id/audio` through `lib/home-link/voice-audio`'s `keep`,
   sending nothing but the take's id; ST32), Studio's Calls
   (`lib/call-videos`, through `lib/home-link/call-videos`' `keep`: one
-  `GET /call/videos` each time the screen opens, on a drag down and on Try
-  again; on Watch, one `GET /call/videos/:from/video` per part of the week's
+  `GET /call/videos` each time the screen opens, on a drag down, on Try
+  again and once after a Save home kept; on Watch, one `GET /call/videos/:from/video` per part of the week's
   video, each a range of at most `PART_BYTES`, into the phone's cache; and,
   on Save, one `PUT /call/videos/:from/link` of the link the owner pasted,
   only once it reads as a `YouTube` video; sending nothing of the phone's but
@@ -547,7 +547,8 @@ declared (checked by reading every call site and by the tests named).
   but one `GET` of `CALL_VIDEOS_PATH` per list, one ranged `GET` of
   `videoPath(from)` per part and one `PUT` of `linkPath(from)` per Save, lets
   anything but `lib/call-videos` call it, or has `lib/call-videos` read the
-  list but on the screen opening, a drag down or Try again, fetch a video but
+  list but on the screen opening, a drag down, Try again or once after a
+  Save home kept, fetch a video but
   on Watch, or send a link but on Save and once it reads as a `YouTube`
   video (`youtubeId`); one that
   has `takes-read.ts` send anything but one `GET` of `takesPath(q)` per ask,

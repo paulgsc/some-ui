@@ -13,7 +13,8 @@
  * - **Share** hands the fetched file to Android's share sheet (the `YouTube`
  *   app takes it from there).
  * - **Save** sends the pasted link only when it reads as a `YouTube` video,
- *   as home would read it.
+ *   as home would read it, and once home kept it reads the list again, so
+ *   the week shows the link as home holds it.
  */
 import type {
   CallsEvent,
@@ -135,12 +136,13 @@ export function createCallVideos(ports: CallsPorts): CallVideos {
         failed(from, "gone")
         return
       }
-      if (await kept(week)) return
+      // In flight before the first wait, so a second Watch finds it fetching.
       dispatch({
         type: "fetchMoved",
         from,
         fetch: { kind: "fetching", done: 0, total },
       })
+      if (await kept(week)) return
       for (let start = 0; start < total; ) {
         const end = Math.min(start + ports.partBytes, total) - 1
         const part = await ports.part(from, start, end)

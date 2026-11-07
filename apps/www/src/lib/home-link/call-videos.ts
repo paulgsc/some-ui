@@ -3,7 +3,8 @@
  * `routes::call_videos`), through the link (LA8):
  *
  * - the list of weeks home holds, one `GET /call/videos` each time the
- *   screen opens, on a drag down and on Try again;
+ *   screen opens, on a drag down, on Try again, and once after a Save home
+ *   kept;
  * - a week's video, one `GET /call/videos/:from/video` per part of it the
  *   phone fetches, each a range of at most `PART_BYTES`, while Watch fetches
  *   it into the phone's cache;

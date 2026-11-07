@@ -42,8 +42,8 @@
  *   words) and, per Play, for one take's audio, through the same read Rust
  *   Rounds' notes use (`lib/home-link/voice-audio`). Studio's Calls
  *   (`lib/call-videos`, ST38) asks home for the weeks of the call it holds
- *   (`lib/home-link/call-videos`, one `GET /call/videos` per open, drag down
- *   or Try again), for a week's video on Watch, a part at a time (one
+ *   (`lib/home-link/call-videos`, one `GET /call/videos` per open, drag down,
+ *   Try again or Save home kept), for a week's video on Watch, a part at a time (one
  *   `GET /call/videos/:from/video` per part), and sends a week's link on
  *   Save (one `PUT /call/videos/:from/link`).
  *
@@ -128,7 +128,7 @@ const HOME_LINK_CALLERS = new Set([
   // the newest) or Show the newest, and for one take's audio on each Play.
   "lib/take-library/index.ts",
   // LA8 (ST38): Studio's Calls, which asks home for the weeks of the call it
-  // holds as the screen opens, on a drag down and on Try again, for a week's
+  // holds as the screen opens, on a drag down, on Try again and after a Save, for a week's
   // video a part at a time on Watch, and sends a week's link on Save.
   "lib/call-videos/index.ts",
   // LA8 (ST33): Studio's Finish, which hands the voice lane a video kept for

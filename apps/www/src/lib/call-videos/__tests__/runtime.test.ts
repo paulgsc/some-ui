@@ -120,6 +120,16 @@ describe("createCallVideos", () => {
     expect(ports.part).toHaveBeenCalledTimes(3)
   })
 
+  it("fetches a week once when Watch is pressed twice at once", async () => {
+    const { ports, kept } = fakes()
+    const calls = createCallVideos(ports)
+    await calls.open()
+    await Promise.all([calls.watch("2026-10-30"), calls.watch("2026-10-30")])
+    expect(ports.part).toHaveBeenCalledTimes(3)
+    expect(kept.get("2026-10-30")).toBe(10)
+    expect(calls.getSnapshot().fetches["2026-10-30"]?.kind).toBe("ready")
+  })
+
   it("reads a week the phone already keeps whole as ready, without asking home for it", async () => {
     const { ports, kept } = fakes()
     kept.set("2026-10-30", 10)
