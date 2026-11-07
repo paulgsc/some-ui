@@ -28,7 +28,11 @@ up to 14 days.
    (https://claude.ai/artifact/Ktc1i8JtBGQVdXEraobxgA) with `ArtifactData`,
    every item whose `status` isn't `done`.
 4. **Write the week** as `call/<from>.json` in `paulgsc/testing`, schema
-   `some-ui.call-week/1`, `read` set to both repositories' `main` commits:
+   `some-ui.call-week/1`, `template` set to `{"id": "conference-call",
+"version": <CALL_VERSION>}` (the newest, `src/call.ts`; `call-check`
+   refuses an older one on the newest week), and `read` set to both
+   repositories' `main` commits. The intro, the chapters and the brand
+   slides are the template's, filled by code: write none of them.
    - **board:** a row per ledger item not done, its title shortened to fit
      a card, its `status`, and its `tally.waits_on_you`.
    - **moved:** up to 12 epics that moved, each said from its "Where we

@@ -58,6 +58,29 @@ export const REPEATED_ID_MAX = 40 - 1 - String(PRIMER_V2_CUTS).length
 /** The id of item `n` (from 1) of a repeated scene: "done-3". */
 export const repeatedId = (scene: string, n: number): string => `${scene}-${n}`
 
+/**
+ * A template's shape (SFEED2 #2670, FEED7 #2664): what every episode opens,
+ * marks and closes with, set in the template and never by the fill.
+ *
+ * - Every episode of a template with a shape opens on its locked intro: who
+ *   wrote it, what drew it, that the voices are synthetic, whose calls are
+ *   inside. Code fills it from the episode's data, never the AI, and there
+ *   is no setting to leave it out.
+ * - `brand`: the owner's brand intro, after the locked intro, and outro,
+ *   last: their mark.
+ * - `chapters`: the scenes that open with a chapter slide, which says the
+ *   section's name aloud, so an episode can be listened to.
+ * - `subtitles`: the words said, drawn at the foot of the frame a line at a
+ *   time, with each word lit as it is said under `word`.
+ */
+export const ShapeSchema = z.strictObject({
+  brand: z.strictObject({ intro: z.boolean(), outro: z.boolean() }),
+  chapters: z.array(sceneId),
+  subtitles: z.enum(["off", "line", "word"]),
+})
+
+export type Shape = z.infer<typeof ShapeSchema>
+
 const FormatSceneSchema = z.object({
   id: sceneId,
   /** What the person calls it: "Our division". */
@@ -103,6 +126,8 @@ export const FormatSchema = z
     /** The look every episode is drawn in: the show's, never the episode's. */
     look: z.enum(LOOKS),
     scenes: z.array(FormatSceneSchema).min(1).max(PRIMER_V2_CUTS),
+    /** Absent in a version from before shapes: no intro, chapters or subtitles. */
+    shape: ShapeSchema.optional(),
   })
   .refine((f) => new Set(f.scenes.map((s) => s.id)).size === f.scenes.length, {
     message: "two scenes share an id",
@@ -130,6 +155,13 @@ export const FormatSchema = z
         )
       ),
     { message: "a scene takes a repeated scene's id", path: ["scenes"] }
+  )
+  .refine(
+    (f) =>
+      (f.shape?.chapters ?? []).every((id) =>
+        f.scenes.some((scene) => scene.id === id)
+      ),
+    { message: "a chapter names no scene of the format", path: ["shape"] }
   )
 
 export type Format = z.infer<typeof FormatSchema>

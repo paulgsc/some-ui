@@ -1,12 +1,15 @@
 import type { JSX, ReactNode } from "react"
 import { useLayoutEffect, useState } from "react"
 import { assertNever } from "@some-ui/core-utils"
+import { BrandMark } from "@some-ui/shared"
 import {
+  CALL_CHAPTERS,
   callFormat,
   CallIndexSchema,
   CallWeekSchema,
   refUrl,
   sampleCallWeek,
+  subtitleBand,
 } from "@some-ui/video-render"
 import type { CallRef, CallScene, CallWeek } from "@some-ui/video-render"
 
@@ -46,6 +49,35 @@ const NAMES: Readonly<Record<string, string>> = Object.fromEntries(
 
 const SAMPLE = sampleCallWeek()
 
+/** What the frame's header calls the scene: its section, or what frames it. */
+const sectionName = (at: { scene: CallScene; view: SceneView }): string => {
+  switch (at.scene.section) {
+    case "intro": {
+      return W.whoMadeThis
+    }
+    case "brand-in":
+    case "brand-out": {
+      return ""
+    }
+    case "chapter": {
+      return at.view.section === "chapter" ? at.view.title : ""
+    }
+    case "open":
+    case "board":
+    case "moved":
+    case "done":
+    case "gray":
+    case "mine":
+    case "asks":
+    case "close": {
+      return NAMES[at.scene.section] ?? ""
+    }
+    default: {
+      return assertNever(at.scene)
+    }
+  }
+}
+
 /** The most asks the close lists by name; the rest it counts. */
 const LATER_SHOWN = 6
 
@@ -57,10 +89,36 @@ const labelOf = (
   scene: CallScene,
   scenes: ReadonlyArray<CallScene>
 ): string => {
-  const name = NAMES[scene.section] ?? scene.section
-  if (scene.item === undefined) return name
-  const n = scenes.filter((s) => s.section === scene.section).indexOf(scene)
-  return `${name} ${n + 1}`
+  switch (scene.section) {
+    case "intro": {
+      return W.whoMadeThis
+    }
+    case "brand-in": {
+      return W.brandIn
+    }
+    case "brand-out": {
+      return W.brandOut
+    }
+    case "chapter": {
+      return W.chapter(CALL_CHAPTERS[scene.of])
+    }
+    case "open":
+    case "board":
+    case "moved":
+    case "done":
+    case "gray":
+    case "mine":
+    case "asks":
+    case "close": {
+      const name = NAMES[scene.section] ?? ""
+      if (scene.item === undefined) return name
+      const n = scenes.filter((s) => s.section === scene.section).indexOf(scene)
+      return `${name} ${n + 1}`
+    }
+    default: {
+      return assertNever(scene)
+    }
+  }
 }
 
 /**
@@ -175,6 +233,46 @@ const Screen = ({
   view: SceneView
 }): JSX.Element => {
   switch (view.section) {
+    case "intro": {
+      return (
+        <div className="flex h-full flex-col justify-center space-y-[1em]">
+          <p className="text-primary text-[0.8em] tracking-wide uppercase">
+            {W.title} · {week.week.from} – {week.week.to}
+          </p>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-[1.2em] gap-y-[0.6em] text-[1.2em]">
+            {view.rows.map((row) => (
+              <div key={row.label} className="contents">
+                <dt className="text-primary font-semibold">{row.label}</dt>
+                <dd>{row.says}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      )
+    }
+    case "brand-in":
+    case "brand-out": {
+      return (
+        <div className="flex h-full flex-col items-center justify-center gap-[0.8em]">
+          <BrandMark tone="brand" className="size-[12em]" title={W.mark} />
+          <p className="text-[1.6em] font-bold">
+            {view.section === "brand-in" ? W.title : W.source}
+          </p>
+        </div>
+      )
+    }
+    case "chapter": {
+      return (
+        <div className="flex h-full flex-col justify-center space-y-[0.4em]">
+          <p className="text-[3.2em] font-bold">{view.title}</p>
+          {view.items > 0 && (
+            <p className="text-muted-foreground text-[1.2em]">
+              {W.items(view.items)}
+            </p>
+          )}
+        </div>
+      )
+    }
     case "open": {
       return (
         <div className="space-y-[0.6em]">
@@ -380,6 +478,11 @@ export const CallStagePage = ({
       </ul>
     )
   const week = shown.week
+  // On record with subtitles, the footer is the band they're drawn in, left
+  // empty: the renderer draws the words said there, a line at a time.
+  const subtitled =
+    record &&
+    (callFormat(week.template.version).shape?.subtitles ?? "off") !== "off"
   const step = (by: number): string | undefined => at.scenes[at.index + by]?.id
   const previous = step(-1)
   const next = step(1)
@@ -402,16 +505,27 @@ export const CallStagePage = ({
           <header className="border-border flex items-center justify-between border-b px-[1.2em] py-[0.6em] text-[0.8em]">
             <span className="font-semibold">{W.title}</span>
             <span className="text-muted-foreground">
-              {NAMES[at.scene.section]} · {at.index + 1}/{at.scenes.length}
+              {[sectionName(at), `${at.index + 1}/${at.scenes.length}`]
+                .filter(Boolean)
+                .join(" · ")}
               {shown.sample && ` · ${W.sample}`}
             </span>
           </header>
           <div className="min-h-0 flex-1 overflow-hidden px-[1.6em] py-[1.2em]">
             <Screen week={week} view={at.view} />
           </div>
-          <footer className="bg-background/80 border-border border-t px-[1.6em] py-[0.8em] text-[1.05em] leading-snug">
-            {at.scene.said}
-          </footer>
+          {subtitled ? (
+            <footer
+              data-subtitle-band=""
+              className="border-border shrink-0 border-t"
+              // The frame's height is 9/16 of its width, the container's unit.
+              style={{ height: `${56.25 * subtitleBand(1080).share}cqw` }}
+            />
+          ) : (
+            <footer className="bg-background/80 border-border border-t px-[1.6em] py-[0.8em] text-[1.05em] leading-snug">
+              {at.scene.said}
+            </footer>
+          )}
         </section>
       </div>
       {!record && shown.unread && (

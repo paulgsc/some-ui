@@ -33,6 +33,7 @@ import type { CallWeek } from "@video-render/call"
 import { nodePorts, readSeries } from "@video-render/node"
 import { render } from "@video-render/render"
 import type { Series } from "@video-render/series"
+import { subtitleBand } from "@video-render/subtitles"
 import { make } from "@video-render/testing"
 import { TRANSITION_MS } from "@video-render/vocabulary"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
@@ -91,7 +92,8 @@ type Hold = { readonly id: string; readonly from: number; readonly to: number }
 /** `week`'s call rendered in its own folder, each scene a framed still. */
 async function renderWeek(
   week: CallWeek,
-  name: string
+  name: string,
+  { subtitles = false }: { readonly subtitles?: boolean } = {}
 ): Promise<{ frames: Buffer; holds: ReadonlyArray<Hold> }> {
   const dir = join(root, name)
   await mkdir(dir)
@@ -132,10 +134,23 @@ async function renderWeek(
       `${file}.wav`,
     ])
   }
-  const cut = callCutList(
-    week,
-    scenes.map((_, i) => takeMs(i))
-  )
+  // Each take's words, spread over it, when the subtitles are drawn.
+  const takes = scenes.map((s, i) => {
+    if (s.said === "") return null
+    const ms = takeMs(i)
+    const said = s.said.split(/\s+/).slice(0, 12)
+    const each = Math.floor(ms / said.length)
+    return {
+      ms,
+      words: said.map((text, k) => ({
+        text,
+        startMs: k * each,
+        endMs: (k + 1) * each - 1,
+      })),
+    }
+  })
+  const { subtitles: style, ...rest } = callCutList(week, takes)
+  const cut = subtitles ? { ...rest, subtitles: style } : rest
   const done = await render(cut, series, ports, {
     workDir: "work",
     out: "call.mp4",
@@ -226,6 +241,30 @@ function problemsOf(frames: Buffer, hold: Hold): Array<string> {
   }
   return problems
 }
+
+describe("a call's subtitles", () => {
+  it("are drawn in the band at the frame's foot, and nowhere over the picture", async () => {
+    const sample = sampleCallWeek()
+    if (!sample.ok) throw new Error(sample.problems.join("; "))
+    const plain = await renderWeek(sample.value, "plain")
+    const said = await renderWeek(sample.value, "said", { subtitles: true })
+    expect(said.frames.length).toBe(plain.frames.length)
+    const size = W * H
+    const above = (H - subtitleBand(H).bandPx) * W
+    let drawn = 0
+    for (let n = 0; n * size < said.frames.length; n++) {
+      const a = said.frames.subarray(n * size, (n + 1) * size)
+      const b = plain.frames.subarray(n * size, (n + 1) * size)
+      for (let k = 0; k < size; k++) {
+        const differs = Math.abs((a[k] ?? 0) - (b[k] ?? 0)) > NOISE
+        if (differs && k < above)
+          throw new Error(`frame ${n}: a subtitle drew over the picture`)
+        if (differs) drawn++
+      }
+    }
+    expect(drawn).toBeGreaterThan(0)
+  }, 240_000)
+})
 
 describe("a call's video (CV1)", () => {
   it("shows each scene's whole still and holds it, for the sample week", async () => {

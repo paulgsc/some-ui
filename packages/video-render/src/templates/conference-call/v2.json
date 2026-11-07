@@ -1,0 +1,124 @@
+{
+  "schema": "some-ui.show-format/1",
+  "id": "conference-call",
+  "version": 2,
+  "title": "The weekly call",
+  "series": {
+    "id": "conference-call",
+    "version": 1
+  },
+  "look": "calm",
+  "scenes": [
+    {
+      "id": "open",
+      "name": "The week",
+      "point": "Which week this is, and what it read",
+      "picture": {
+        "kind": "capture",
+        "from": "the call's open view",
+        "cssWidth": 1920
+      },
+      "holdMs": 8000
+    },
+    {
+      "id": "board",
+      "name": "The board",
+      "point": "Everything still open, and how much of it waits on you",
+      "picture": {
+        "kind": "capture",
+        "from": "the call's board view",
+        "cssWidth": 1920
+      },
+      "holdMs": 30000
+    },
+    {
+      "id": "moved",
+      "name": "Where we are",
+      "point": "Where this epic stands now, and what is next",
+      "picture": {
+        "kind": "capture",
+        "from": "the call's moved view",
+        "cssWidth": 1920
+      },
+      "holdMs": 25000,
+      "repeat": {
+        "max": 12
+      }
+    },
+    {
+      "id": "done",
+      "name": "What landed",
+      "point": "What these pull requests changed, together",
+      "picture": {
+        "kind": "capture",
+        "from": "the call's done view",
+        "cssWidth": 1920
+      },
+      "holdMs": 30000,
+      "repeat": {
+        "max": 12
+      }
+    },
+    {
+      "id": "gray",
+      "name": "A call in a gray area",
+      "point": "A technical call no check could make, and what it holds",
+      "picture": {
+        "kind": "capture",
+        "from": "the call's gray view",
+        "cssWidth": 1920
+      },
+      "holdMs": 30000,
+      "repeat": {
+        "max": 8
+      }
+    },
+    {
+      "id": "mine",
+      "name": "A call made without you",
+      "point": "What an agent chose without your word, why, and how to undo it",
+      "picture": {
+        "kind": "capture",
+        "from": "the call's mine view",
+        "cssWidth": 1920
+      },
+      "holdMs": 40000,
+      "repeat": {
+        "max": 8
+      }
+    },
+    {
+      "id": "asks",
+      "name": "Waiting on you",
+      "point": "What is yours to decide, why, the options and what each unblocks",
+      "picture": {
+        "kind": "capture",
+        "from": "the call's asks view",
+        "cssWidth": 1920
+      },
+      "holdMs": 45000,
+      "repeat": {
+        "max": 12
+      }
+    },
+    {
+      "id": "close",
+      "name": "Close",
+      "point": "What the week comes to",
+      "picture": {
+        "kind": "capture",
+        "from": "the call's close view",
+        "cssWidth": 1920
+      },
+      "holdMs": 10000
+    }
+  ],
+  "shape": {
+    "brand": {
+      "intro": true,
+      "outro": true
+    },
+    "chapters": ["board", "moved", "done", "gray", "mine", "asks"],
+    "subtitles": "word"
+  }
+}

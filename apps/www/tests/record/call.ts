@@ -6,7 +6,7 @@
  *
  *   pnpm --filter www build
  *   pnpm --filter www record:call [--week 2026-10-30] [--voices kokoro|none] [--speaker http://127.0.0.1:8880] [--out out/call]
- *   pnpm --filter www record:call --app http://call-stage --week-file week.json [--voices kokoro] [--out out/call]
+ *   pnpm --filter www record:call --app http://call-stage --week-file week.json [--voices kokoro] [--brand /brand] [--out out/call]
  *
  * `--week` names the week by its first day (the newest `paulgsc/testing`
  * keeps by default, `sample` for the template's); the build must be one that
@@ -27,6 +27,11 @@
  * records the one already served at `--app` (home's render worker records
  * the published image, #2639). Needs `ffmpeg` and `ffprobe` on `PATH`.
  *
+ * With a shape that has subtitles (version 2 on), it asks the speaker for
+ * each take's words too (`/timed`) and keeps them beside it. A series that
+ * names a music bed takes its file from `--brand`, home's folder of the
+ * owner's files, never a repository.
+ *
  * Policy (`RenderPolicy`, #2635): `--max-video-minutes` and `--max-video-mb`
  * cap the video, which is refused past either, by its words before anything
  * is said and exactly before anything is drawn; `--cache-mb` caps what one
@@ -35,8 +40,8 @@
  * with a `cache warning:` line on stderr, which home's render worker reports.
  */
 
-import { mkdir, readFile, writeFile } from "node:fs/promises"
-import { join, resolve } from "node:path"
+import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises"
+import { basename, dirname, join, resolve } from "node:path"
 import { parseArgs } from "node:util"
 import type { Route } from "@playwright/test"
 import {
@@ -44,21 +49,30 @@ import {
   CALL_VOICES,
   callCutList,
   callFile,
+  callFormat,
   callScenes,
   DEFAULT_POLICY,
   estimatedCallMs,
   MB,
   overLength,
   parseCallWeek,
+  TimedWordSchema,
 } from "@some-ui/video-render"
-import type { CallWeek, RenderPolicy } from "@some-ui/video-render"
+import type {
+  CallTake,
+  CallWeek,
+  RenderPolicy,
+  TimedWord,
+} from "@some-ui/video-render"
 import {
   keyOf,
   nodePorts,
+  readSeries,
   renderFolder,
   stepCache,
 } from "@some-ui/video-render/node"
 import { serve } from "@tests/ui-fit/harness"
+import { z } from "zod"
 
 import { fail, here, launchChromium, runCommand } from "./command"
 
@@ -71,16 +85,24 @@ const SERIES = resolve(
   "../../../../packages/video-render/src/sample/series/conference-call"
 )
 
+/** A take and each word said in it, as the speaker's `/timed` gives them. */
+const TimedSchema = z.object({
+  audio: z.string().min(1),
+  words: z.array(TimedWordSchema),
+})
+
 /**
  * `text` said in `voice` by home's Kokoro speaker at `speaker`, as a WAV: the
- * same bytes for the same words and voice.
+ * same bytes for the same words and voice. With `timed`, each word's place
+ * in it too (`/timed`), for the subtitles.
  */
 async function said(
   speaker: string,
   text: string,
-  voice: string
-): Promise<Buffer> {
-  const response = await fetch(new URL("/say", speaker), {
+  voice: string,
+  timed: boolean
+): Promise<{ wav: Buffer; words: ReadonlyArray<TimedWord> | null }> {
+  const response = await fetch(new URL(timed ? "/timed" : "/say", speaker), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ text, voice }),
@@ -89,7 +111,15 @@ async function said(
     fail([
       `The speaker at ${speaker} answered ${String(response.status)}: ${await response.text()}`,
     ])
-  return Buffer.from(await response.arrayBuffer())
+  if (!timed)
+    return { wav: Buffer.from(await response.arrayBuffer()), words: null }
+  const parsed = TimedSchema.safeParse(await response.json())
+  if (!parsed.success)
+    fail([`The speaker at ${speaker} gave no words with its take`])
+  return {
+    wav: Buffer.from(parsed.data.audio, "base64"),
+    words: parsed.data.words,
+  }
 }
 
 /** The speaker's model, by its SHA-256: part of every take's key. */
@@ -178,6 +208,8 @@ async function main(): Promise<void> {
       dist: { type: "string", default: "dist" },
       app: { type: "string" },
       "week-file": { type: "string" },
+      // Home's brand folder: the owner's files the series names (#2673).
+      brand: { type: "string" },
       // Policy (`RenderPolicy`): the longest and largest video, and what one
       // week's step cache may hold.
       "max-video-minutes": { type: "string" },
@@ -258,7 +290,10 @@ async function main(): Promise<void> {
     const cache = stepCache(join(root, STEPS), policy, warn)
     const model =
       values.voices === "kokoro" ? await speakerModel(values.speaker) : null
-    const takesMs: Array<number | null> = []
+    const takes: Array<CallTake | null> = []
+    // Subtitles, as the week's shape says, need each word's place in its take.
+    const timed =
+      (callFormat(week.template.version).shape?.subtitles ?? "off") !== "off"
     const overflowing: Array<string> = []
 
     for (const [i, scene] of scenes.entries()) {
@@ -272,19 +307,38 @@ async function main(): Promise<void> {
       if ((await shown.getAttribute("data-overflow")) === "true")
         overflowing.push(scene.id)
       await page.screenshot({ path: join(root, `${file}.png`) })
-      if (values.voices === "kokoro") {
+      // A brand slide says nothing.
+      if (values.voices === "kokoro" && scene.said !== "") {
         const voice = CALL_VOICES[scene.section]
         const wav = join(root, `${file}.wav`)
+        const kept = join(root, `${file}.words.json`)
         const key = keyOf({ take: 1, model, voice, text: scene.said })
-        if (!(await cache.get(key, ".wav", wav))) {
-          await writeFile(wav, await said(values.speaker, scene.said, voice))
+        const wordsKey = keyOf({ words: 1, model, voice, text: scene.said })
+        const cached =
+          (await cache.get(key, ".wav", wav)) &&
+          (!timed || (await cache.get(wordsKey, ".json", kept)))
+        if (!cached) {
+          const take = await said(values.speaker, scene.said, voice, timed)
+          await writeFile(wav, take.wav)
           await cache.put(key, ".wav", wav, `${file}.wav`)
+          if (take.words) {
+            await writeFile(kept, `${JSON.stringify(take.words)}\n`)
+            await cache.put(wordsKey, ".json", kept, `${file}.words.json`)
+          }
         }
         const facts = await ports.probe(`${file}.wav`)
         if (!facts) fail([`${file}.wav can't be read`])
-        takesMs.push(Math.round(facts.durationMs))
+        const words = timed
+          ? TimedSchema.shape.words.parse(
+              JSON.parse(await readFile(kept, "utf8"))
+            )
+          : undefined
+        takes.push({
+          ms: Math.round(facts.durationMs),
+          ...(words ? { words } : {}),
+        })
       } else {
-        takesMs.push(null)
+        takes.push(null)
       }
       console.log(`recorded ${file}`)
     }
@@ -294,7 +348,25 @@ async function main(): Promise<void> {
         ...overflowing,
       ])
 
-    const cutList = callCutList(week, takesMs)
+    // The music bed plays once the call's series names one (#2673).
+    const series = await readSeries(SERIES, callFormat().series.version)
+    if (!series.ok)
+      fail(["The call's series can't be read:", ...series.problems])
+    // Its file comes from home's brand folder (`--brand`), never a
+    // repository; the renderer checks it against the series' sum.
+    const bed = series.value.music?.bed
+    if (bed) {
+      if (!values.brand)
+        fail([
+          `The series names the music ${bed.file}, and --brand names no folder holding it`,
+        ])
+      await mkdir(dirname(join(root, bed.file)), { recursive: true })
+      await copyFile(
+        join(here(values.brand), basename(bed.file)),
+        join(root, bed.file)
+      )
+    }
+    const cutList = callCutList(week, takes, { bed: bed !== undefined })
     await writeFile(
       join(root, "cut-list.json"),
       `${JSON.stringify(cutList, null, 1)}\n`

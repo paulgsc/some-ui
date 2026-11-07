@@ -16,16 +16,30 @@ describe("the call's stage", () => {
     expect(at.scene.id).toBe("asks-2")
     expect(at.view.section).toBe("asks")
     expect("item" in at.view && at.view.item.id).toBe("talk-d1")
-    expect(at.index).toBe(at.scenes.length - 2)
+    // The close and the brand outro follow it.
+    expect(at.index).toBe(at.scenes.length - 3)
+  })
+
+  it("draws the locked intro and a chapter from the week, in its shape", () => {
+    const intro = callAt(week(), "intro").view
+    expect(intro.section === "intro" && intro.rows.map((r) => r.label)).toEqual(
+      ["Written by", "Drawn by", "Voices", "Calls inside"]
+    )
+    expect(callAt(week(), "chapter-done").view).toEqual({
+      section: "chapter",
+      title: "What landed",
+      items: week().done.length,
+    })
+    expect(callAt(week(), "brand-out").view).toEqual({ section: "brand-out" })
   })
 
   it("opens on the first scene when the id names none", () => {
     for (const id of [undefined, "", "asks-9"]) {
       const at = callAt(week(), id)
-      expect([at.index, at.scene.id, at.view]).toEqual([
+      expect([at.index, at.scene.id, at.view.section]).toEqual([
         0,
-        "open",
-        { section: "open" },
+        "intro",
+        "intro",
       ])
     }
   })

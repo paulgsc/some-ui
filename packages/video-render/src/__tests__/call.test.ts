@@ -9,6 +9,7 @@
 import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import {
+  BRAND_MS,
   CALL_ID,
   CALL_INDEX_SCHEMA,
   CALL_STAGE_WIDTH,
@@ -16,6 +17,7 @@ import {
   callCutList,
   callFolderProblems,
   callFormat,
+  callIntro,
   callScenes,
   estimatedCallMs,
   parseCallIndex,
@@ -51,6 +53,9 @@ describe("the call's format", () => {
         JSON.parse(readFileSync(join(DIR, file), "utf8"))
       )
       expect(parsed.ok && parsed.value.version).toBe(version)
+      expect(JSON.parse(readFileSync(join(DIR, file), "utf8"))).toEqual(
+        callFormat(version)
+      )
     }
     const newest = pinned.at(-1)!
     expect(newest.version).toBe(CALL_VERSION)
@@ -75,25 +80,76 @@ describe("the sample week", () => {
     expect(week().template).toEqual({ id: CALL_ID, version: CALL_VERSION })
   })
 
-  it("is a scene per section and per item, in the format's order", () => {
+  it("is a scene per section and per item, in the format's order, in its shape", () => {
     const w = week()
     const scenes = callScenes(w)
     expect(scenes.map((s) => s.id)).toEqual([
+      "intro",
+      "brand-in",
       "open",
+      "chapter-board",
       "board",
+      "chapter-moved",
       "moved-1",
       "moved-2",
+      "chapter-done",
       "done-1",
       "done-2",
       "done-3",
       "done-4",
+      "chapter-gray",
       "gray-1",
+      "chapter-mine",
       "mine-1",
+      "chapter-asks",
       "asks-1",
       "asks-2",
       "close",
+      "brand-out",
     ])
-    expect(scenes.find((s) => s.id === "asks-2")?.item).toBe("talk-d1")
+    const ask = scenes.find((s) => s.id === "asks-2")
+    expect(ask && "item" in ask && ask.item).toBe("talk-d1")
+    expect(scenes.find((s) => s.id === "chapter-done")).toMatchObject({
+      of: "done",
+      said: "What landed.",
+    })
+    expect(scenes.filter((s) => s.said === "").map((s) => s.id)).toEqual([
+      "brand-in",
+      "brand-out",
+    ])
+  })
+
+  it("in a week written for version 1, has no intro, chapters or brand", () => {
+    const w = week()
+    const ids = callScenes({ ...w, template: { ...w.template, version: 1 } })
+    expect(ids.map((s) => s.id)).toEqual(
+      callScenes(w)
+        .filter(
+          (s) =>
+            !["intro", "brand-in", "chapter", "brand-out"].includes(s.section)
+        )
+        .map((s) => s.id)
+    )
+  })
+
+  it("opens on the locked intro, filled by code from the week alone", () => {
+    const w = week()
+    const intro = callIntro(w)
+    expect(intro.rows.map((r) => r.label)).toEqual([
+      "Written by",
+      "Drawn by",
+      "Voices",
+      "Calls inside",
+    ])
+    expect(intro.rows[3]?.says).toBe(
+      `${w.asks.length} questions wait on you · ${w.mine.length} call Claude made without you · ${w.gray.length} technical call in a gray area`
+    )
+    expect(intro.said).toContain("every voice you hear is synthetic")
+    expect(callScenes(w)[0]).toEqual({
+      section: "intro",
+      id: "intro",
+      said: intro.said,
+    })
   })
 })
 
@@ -157,19 +213,28 @@ describe("the call as a cut list", () => {
   it("is one the renderer draws: a still per scene, its take where said, else its words' reading time", () => {
     const w = week()
     const scenes = callScenes(w)
-    const takes = scenes.map((_, i) => (i === 1 ? null : 4_000 + i))
+    const words = [{ text: "This", startMs: 100, endMs: 300 }]
+    const takes = scenes.map((s, i) =>
+      s.id === "board" || s.said === ""
+        ? null
+        : { ms: 4_000 + i, ...(i === 0 ? { words } : {}) }
+    )
     const cut = parseCutList(callCutList(w, takes))
     if (!cut.ok) throw new Error(cut.problems.join("; "))
-    const [open, board] = cut.value.shots
-    expect(open).toMatchObject({
-      id: "open",
-      picture: { kind: "still", source: "01-open.png" },
-      take: { file: "01-open.wav", inMs: 0, outMs: 4_000 },
+    const shot = (id: string): (typeof cut.value.shots)[number] | undefined =>
+      cut.value.shots.find((s) => s.id === id)
+    expect(shot("intro")).toMatchObject({
+      picture: { kind: "still", source: "01-intro.png" },
+      take: { file: "01-intro.wav", inMs: 0, outMs: 4_000, words },
       durationMs: 300 + 4_000 + 700,
     })
-    expect(board?.take).toBeUndefined()
-    expect(board?.durationMs).toBe(readingMs(w.board.said))
+    expect(shot("board")?.take).toBeUndefined()
+    expect(shot("board")?.durationMs).toBe(readingMs(w.board.said))
+    expect(shot("brand-in")?.durationMs).toBe(BRAND_MS)
     expect(cut.value.shots).toHaveLength(scenes.length)
+    expect(cut.value.subtitles).toBe("word")
+    expect(cut.value.music).toBe("off")
+    expect(callCutList(w, takes, { bed: true }).music).toBeUndefined()
   })
 })
 
@@ -177,7 +242,10 @@ describe("a week's length, before it is said", () => {
   it("is each scene's reading time, so the policy can refuse a long week before the speaker", () => {
     const w = week()
     expect(estimatedCallMs(w)).toBe(
-      callScenes(w).reduce((t, s) => t + readingMs(s.said), 0)
+      callScenes(w).reduce(
+        (t, s) => t + (s.said === "" ? BRAND_MS : readingMs(s.said)),
+        0
+      )
     )
     const long: CallWeek = {
       ...w,
@@ -240,5 +308,31 @@ describe("a call folder", () => {
       "2026-10-16.json: the index doesn't list it",
     ])
     expect(callFolderProblems(new Map())[0]).toMatch(/^index\.json: /)
+  })
+
+  it("is refused when its newest week is written for an older template; an older week keeps its own", () => {
+    const old = (from: string, to: string): CallWeek => ({
+      ...w(),
+      template: { ...w().template, version: 1 },
+      week: { from, to },
+    })
+    const older = { from: "2026-10-23", to: "2026-10-29" }
+    expect(
+      callFolderProblems(
+        folder([w().week, older], {
+          "2026-10-30.json": w(),
+          "2026-10-23.json": old(older.from, older.to),
+        })
+      )
+    ).toEqual([])
+    expect(
+      callFolderProblems(
+        folder([w().week], {
+          "2026-10-30.json": old(w().week.from, w().week.to),
+        })
+      )
+    ).toEqual([
+      `2026-10-30.json: it's written for version 1 of the template, and the newest week is written for version ${CALL_VERSION}`,
+    ])
   })
 })
