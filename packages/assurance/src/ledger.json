@@ -3696,7 +3696,7 @@
     {
       "id": "call-weeks",
       "name": "Keeping every week of the call on home, and making its video",
-      "why": "The routine writes each week to paulgsc/testing, home reads its index hourly and keeps each week it lacks, and home's call index in the mailbox tells the routine which weeks may leave the repository.",
+      "why": "The routine writes each week to paulgsc/testing, home reads its index hourly and keeps each week it lacks, and home's call index in the mailbox tells the routine which weeks may leave the repository; and the owner watches each week's video on the phone, shares it to the YouTube app and records its link, and lets home's copy go from My data (#2661).",
       "serves": ["call-kept"],
       "witnesses": ["CW1", "CW2", "CW5"],
       "segments": [
@@ -3765,6 +3765,42 @@
             "server:infra/docker/Dockerfile.render",
             "some-ui:apps/www/tests/record/call.ts"
           ]
+        },
+        {
+          "id": "videos",
+          "name": "Home lists the weeks it holds, serves each week's video in parts, keeps its YouTube link and lets it go from My data. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": [
+            "server:apps/servers/file_host/src/routes/call_videos.rs",
+            "server:apps/servers/file_host/src/handlers/call_videos.rs",
+            "server:apps/servers/file_host/src/call_weeks/videos.rs"
+          ]
+        },
+        {
+          "id": "home-network",
+          "name": "The phone reaches home over the home network, as the paired phone.",
+          "owner": "network",
+          "on": "between",
+          "paths": []
+        },
+        {
+          "id": "calls",
+          "name": "Studio's Calls brings a week's video to the phone a part at a time, plays it, hands it to the share sheet and sends its YouTube link. Ours, on the phone.",
+          "owner": "ours",
+          "on": "phone",
+          "paths": [
+            "some-ui:apps/www/src/lib/call-videos",
+            "some-ui:apps/www/src/lib/home-link/call-videos.ts",
+            "some-ui:apps/www/src/components/call-videos.tsx"
+          ]
+        },
+        {
+          "id": "publish",
+          "name": "Android's share sheet hands the video to the YouTube app, which uploads and publishes it. Someone else's.",
+          "owner": "foreign",
+          "on": "outside",
+          "paths": []
         }
       ],
       "signals": [

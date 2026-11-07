@@ -5,7 +5,9 @@
  * answer means is `./model`'s.
  *
  * - **The list** is read once per open, drag down or Try again. A week whose
- *   whole video the phone already keeps reads as ready at once.
+ *   whole video the phone already keeps reads as ready at once, and a ready
+ *   week whose file has gone (Android cleared the cache) is forgotten, so
+ *   Watch fetches it again.
  * - **Watch** fetches a week's video into the phone's cache a part at a time
  *   (at most `partBytes` a request, so it is never held whole), then hands
  *   the screen its address. A week already fetching or ready isn't fetched
@@ -112,7 +114,14 @@ export function createCallVideos(ports: CallsPorts): CallVideos {
     dispatch({ type: "listEnded", list })
     if (list.kind !== "read") return
     for (const week of list.weeks) {
-      if (state.fetches[week.from] === undefined) await kept(week)
+      const now = state.fetches[week.from]
+      if (now === undefined) {
+        await kept(week)
+      } else if (now.kind === "ready" && !(await kept(week))) {
+        // Android may clear the cache while the app stays open: Watch
+        // fetches it again.
+        dispatch({ type: "fetchForgotten", from: week.from })
+      }
     }
   }
 

@@ -193,6 +193,8 @@ export type CallsEvent =
       readonly from: string
       readonly saved: LinkSaved | { readonly kind: "away" }
     }
+  /** The phone no longer holds a week it had (its cache was cleared). */
+  | { readonly type: "fetchForgotten"; readonly from: string }
   | { readonly type: "shareFailed"; readonly from: string }
   | { readonly type: "saidSeen" }
 
@@ -221,6 +223,9 @@ export function step(state: CallsState, event: CallsEvent): CallsState {
         ...state,
         fetches: { ...state.fetches, [event.from]: event.fetch },
       }
+    }
+    case "fetchForgotten": {
+      return { ...state, fetches: without(state.fetches, event.from) }
     }
     case "linkSaving": {
       return {

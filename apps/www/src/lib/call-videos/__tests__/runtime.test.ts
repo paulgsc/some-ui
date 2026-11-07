@@ -139,6 +139,20 @@ describe("createCallVideos", () => {
     expect(ports.part).not.toHaveBeenCalled()
   })
 
+  it("forgets a ready week whose file the phone no longer has, so Watch fetches it again", async () => {
+    const { ports, kept } = fakes()
+    const calls = createCallVideos(ports)
+    await calls.open()
+    await calls.watch("2026-10-30")
+    expect(calls.getSnapshot().fetches["2026-10-30"]?.kind).toBe("ready")
+    kept.delete("2026-10-30")
+    await calls.open()
+    expect(calls.getSnapshot().fetches["2026-10-30"]).toBeUndefined()
+    await calls.watch("2026-10-30")
+    expect(ports.part).toHaveBeenCalledTimes(6)
+    expect(calls.getSnapshot().fetches["2026-10-30"]?.kind).toBe("ready")
+  })
+
   it("says why a fetch failed: home gone quiet, the video gone, or the phone full", async () => {
     const away = fakes()
     away.ports.part.mockResolvedValueOnce({ kind: "away" })
