@@ -1903,12 +1903,17 @@
           "claim": "Every week of the call home holds becomes a video within the render policy's caps, and a week that hasn't is tried again.",
           "requirement": "Each week in call_week is written to call-weeks beside home's database, on its drive (STORAGE); within the next hourly pass the render worker records it from the pinned stage with each scene said by home's Kokoro speaker, renders it, and moves the finished folder into renders/call/<from>/ on the same drive, whole; a week that fails is left without a folder and tried again each hour, keeping its finished steps; a week whose video would pass the render policy's length or size (set in the render worker) is refused before it is drawn or once it is made, which fails its attempt with the cap named; no finished video is deleted.",
           "verdict": "unproven",
-          "conclusion": "Rehearsed with the containers set up as on home: the worker rendered the real week of Oct 30, twice, to the same files. Its first run on home failed. Slack now says when a week's attempt fails, naming the file that holds its whole output, when a week has waited 3 hours with no attempt, and when the worker has not passed for 4 hours; the CALL dashboard shows each.",
-          "tracked": "some-ui#2635",
+          "conclusion": "Home rendered the real week of Oct 30 on Nov 7: all 36 scenes recorded, the video written and its folder moved into renders/call. Slack says when a week's attempt fails, naming the file that holds its whole output, when a week has waited 3 hours with no attempt, and when the worker has not passed for 4 hours, each tested by promtool; the CALL dashboard shows each. The worker's own guarantees (each hour's retry, the steps it keeps, the whole move, no video deleted) are rehearsed, not tested.",
+          "tracked": "some-ui#2659",
           "evidence": [
             {
               "class": "measured",
               "says": "In the rehearsal (internal network, read-only root, no capabilities), the worker rendered 2026-10-30 twice; the video, 36 takes and 36 stills were identical across both runs (call.mp4 e5a364935def…).",
+              "ref": "some-ui#2635"
+            },
+            {
+              "class": "measured",
+              "says": "On home on 2026-11-07, the worker recorded all 36 scenes of 2026-10-30, wrote call.mp4 and moved the finished folder into renders/call (\"rendered the call of 2026-10-30\").",
               "ref": "some-ui#2635"
             },
             {
@@ -1964,7 +1969,7 @@
           "requirement": "renders/call on home's database drive (STORAGE) gains one folder per week of the call (the video, its takes, stills, cut list and week), never deleted; a waiting week's work and step cache stay in renders/call-work between attempts, within the render policy's caps for one week and for all of them, and leave once the week renders; a step or a week's work past a cap is said, never silently dropped.",
           "verdict": "unproven",
           "conclusion": "The first week's folder is 112 MB (the video is 95 MB), so about 6 GB a year, kept for good as you chose (#2640). file_host reads the bytes of the videos and of the waiting work, and the drive's free space, each minute (the CALL dashboard); Slack says when a cache cap was passed in the last day and when the drive has under a tenth free.",
-          "tracked": "some-ui#2635",
+          "tracked": "some-ui#2659",
           "evidence": [
             {
               "class": "measured",
