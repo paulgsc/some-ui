@@ -289,4 +289,29 @@ describe("what Practice Home offers and what was taken (ENGAGE)", () => {
       "passed-over say-why took-another",
     ])
   })
+
+  it("offers nothing new while a lesson launches, and takes it once", () => {
+    setEngagementSink(() => undefined)
+    const used: Array<EngagementEvent> = []
+    setEngagementSink((event) => used.push(event))
+    const { refresh } = renderWith({ data: [], isError: false })
+    const next = screen.getByRole("button", { name: "Next lesson" })
+    fireEvent.click(next)
+    fireEvent.click(next)
+    const open = { ...finished("Korean", 0), status: "active" as const }
+    refresh({ data: [open], isError: false })
+    cleanup()
+    expect(used.map((event) => `${event.kind} ${event.affordance}`)).toEqual([
+      "offered start",
+      "offered next-lesson",
+      "offered hungry",
+      "offered say-why",
+      "offered home-card",
+      "taken next-lesson",
+      "passed-over start",
+      "passed-over hungry",
+      "passed-over say-why",
+      "passed-over home-card",
+    ])
+  })
 })

@@ -1,8 +1,9 @@
 import type { JSX } from "react"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { cn, formatTimecode } from "@some-ui/core-utils"
-import type { Visit } from "@some-ui/engagement"
+import type { Offer, Visit } from "@some-ui/engagement"
 import { pageVisit, watchVisit } from "@some-ui/engagement"
+import { useShelf } from "@some-ui/react-hooks"
 import { RUST_ROUNDS_TITLE, rustRoundsEntry } from "@some-ui/rust-rounds/entry"
 import {
   BrandMark,
@@ -37,6 +38,9 @@ import {
 import { browserLocalStorage } from "@/lib/tenant/storage"
 import { StopReasons } from "@/components/player/session-stop"
 import { NextLesson } from "@/components/practice/next-lesson"
+
+const SAY_WHY = [HOME_OFFERS.sayWhy]
+const RUST_ROUNDS = [HOME_OFFERS.rustRounds]
 
 /**
  * Practice's Home: where studying picks up. What is open, what was finished
@@ -127,21 +131,24 @@ const StudyCard = ({
     : null
   const cut = lastFinished && cutShortStop(lastFinished.id)
 
-  const open = status.kind === "ready" && status.open !== null
   const lessons =
     status.kind === "ready" &&
     (status.open === null || launching) &&
     isOfferedActivityId("topik")
-  useEffect(() => {
-    // The page's visit is a runtime, not the page's render state: showing
-    // what this card lists tells it what can be taken, so a take on another
-    // card reads as taking another (ENGAGE's visit, `createVisit`).
-    // eslint-disable-next-line react-you-might-not-need-an-effect/no-pass-data-to-parent
-    visit.show(
-      "study",
-      status.kind === "ready" ? studyCardOffers({ open, lessons, done }) : null
-    )
-  }, [visit, status.kind, open, lessons, done])
+  // While a lesson launches, its new session can show as open before Home
+  // leaves: what was offered at the press stands, so nothing new is offered.
+  const open = openId !== null && !launching
+  const read = status.kind === "ready"
+  const studyOffers = useMemo(
+    () => (read ? studyCardOffers({ open, lessons }) : null),
+    [read, open, lessons]
+  )
+  useShelf(visit, "study", studyOffers)
+  useShelf(visit, "bites", done || launching ? null : SAY_WHY)
+  const launch = (offer: Offer): void => {
+    if (!launching) visit.take(offer)
+    setLaunching(true)
+  }
 
   return (
     <div
@@ -218,19 +225,13 @@ const StudyCard = ({
         <div className="flex flex-wrap gap-2">
           <NextLesson
             className="h-12 rounded-2xl px-6 text-base"
-            onLaunch={() => {
-              visit.take(HOME_OFFERS.nextLesson)
-              setLaunching(true)
-            }}
+            onLaunch={() => launch(HOME_OFFERS.nextLesson)}
           />
           <NextLesson
             open="menu"
             variant="outline"
             className="h-12 rounded-2xl px-6 text-base"
-            onLaunch={() => {
-              visit.take(HOME_OFFERS.hungry)
-              setLaunching(true)
-            }}
+            onLaunch={() => launch(HOME_OFFERS.hungry)}
           />
         </div>
       )}
@@ -280,11 +281,7 @@ const RustRoundsCard = ({ visit }: { visit: Visit }): JSX.Element => {
   // Read once as Home opens, never on each render; it changes only in Rust
   // Rounds itself, which is left to come back here.
   const [line] = useState(() => rustRoundsEntry(browserLocalStorage))
-  useEffect(() => {
-    // As the study card's: the page's visit is a runtime, not render state.
-    // eslint-disable-next-line react-you-might-not-need-an-effect/no-pass-data-to-parent
-    visit.show("rust-rounds", [HOME_OFFERS.rustRounds])
-  }, [visit])
+  useShelf(visit, "rust-rounds", RUST_ROUNDS)
   return (
     <Link
       to="/rust-rounds"
@@ -342,8 +339,9 @@ const PracticeHome = (): JSX.Element => {
   // Moves while the page stays open, so a stop's pick-up window closes and
   // the date turns over without leaving it.
   const now = useMinuteClock()
-  // What Home offers and which the owner takes (ENGAGE, `createVisit`): a
-  // visit ends when Home closes or the app goes to the back.
+  // What Home offers and which the owner takes (ENGAGE, `pageVisit`): a
+  // visit ends when Home closes or the app goes to the back. In
+  // development's StrictMode the double mount ends one visit at once.
   const [visit] = useState(() => pageVisit(document))
   useEffect(() => watchVisit(visit, document), [visit])
 

@@ -1,9 +1,7 @@
 /**
  * What Practice Home offers, in the vocabulary of use (ENGAGE, #2533;
- * `@some-ui/engagement`'s registry): the study card's Start or Resume,
- * TOPIK's Next lesson and "What are you hungry for?" beside it, "Not today?
- * Say why", and Rust Rounds' card. Pure: the page's visit (`createVisit`)
- * shows these and takes the one pressed.
+ * `@some-ui/engagement`'s registry). Pure: the page's visit shows these and
+ * takes the one pressed.
  */
 import type { Offer } from "@some-ui/engagement"
 
@@ -29,12 +27,9 @@ export function studyCardOffers(card: {
   readonly open: boolean
   /** TOPIK's two buttons are on the card. */
   readonly lessons: boolean
-  /** Studied today: "Not today? Say why" is gone. */
-  readonly done: boolean
 }): Array<Offer> {
   return [
     card.open ? HOME_OFFERS.resume : HOME_OFFERS.start,
     ...(card.lessons ? [HOME_OFFERS.nextLesson, HOME_OFFERS.hungry] : []),
-    ...(card.done ? [] : [HOME_OFFERS.sayWhy]),
   ]
 }
