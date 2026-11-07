@@ -104,6 +104,9 @@
     "packages/job-desk": {
       "entry": ["src/index.ts", "src/sample.ts"]
     },
+    "packages/ui/playoff-delta": {
+      "entry": ["src/index.ts", "src/recording.ts"]
+    },
     "packages/ui/resume": {
       "ignoreDependencies": ["@some-ui/contract-harness"]
     },

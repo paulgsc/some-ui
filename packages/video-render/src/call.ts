@@ -30,11 +30,12 @@
 
 import { z } from "zod"
 
-import { CUT_LIST_SCHEMA, once, problemsOf } from "./cut-list"
+import { once, problemsOf } from "./cut-list"
 import type { CutList, Parsed } from "./cut-list"
 import { FORMAT_SCHEMA, repeatedId, showId, words } from "./format"
 import type { Format, Shape } from "./format"
-import type { TimedWord } from "./subtitles"
+import { stillFile, stillsCutList, unsaidMs } from "./stills"
+import type { StillTake } from "./stills"
 import sample from "./templates/conference-call/sample-week.json"
 
 export const CALL_WEEK_SCHEMA = "some-ui.call-week/1"
@@ -461,9 +462,6 @@ export type CallScene =
       readonly said: string
     }
 
-/** How long a brand slide holds, with nothing said over it. */
-export const BRAND_MS = 3_000
-
 /** What each chapter slide shows and says: the section it opens. */
 export const CALL_CHAPTERS: Readonly<Record<Section, string>> = {
   open: "The week",
@@ -619,12 +617,7 @@ export const CALL_VOICES: Readonly<Record<Section | Framing, string>> = {
 }
 
 /** Scene `index`'s files in the video's folder, without their extension. */
-export const callFile = (index: number, scene: string): string =>
-  `${String(index + 1).padStart(2, "0")}-${scene}`
-
-/** When a scene's take starts, and the beat after it ends, in ms. */
-const VOICE_IN_MS = 300
-const TAIL_MS = 700
+export const callFile = stillFile
 
 /**
  * About how long a week's call runs, from its words alone, before any is
@@ -633,84 +626,36 @@ const TAIL_MS = 700
  * renderer checks the placed length exactly.
  */
 export const estimatedCallMs = (week: CallWeek): number =>
-  callScenes(week).reduce(
-    (total, scene) =>
-      total + (scene.said === "" ? BRAND_MS : readingMs(scene.said)),
-    0
-  )
-
-/** How long a scene with no take holds: its words read at a calm pace. */
-export const readingMs = (said: string): number =>
-  Math.max(3_000, said.trim().split(/\s+/).length * 400 + 1_200)
+  callScenes(week).reduce((total, scene) => total + unsaidMs(scene.said), 0)
 
 /** A scene's take: how long it runs, and each word in it, when the speaker gave them. */
-export type CallTake = {
-  readonly ms: number
-  readonly words?: ReadonlyArray<TimedWord>
-}
+export type CallTake = StillTake
 
 /**
- * CV1 (promise, #2671): every scene shows the whole still the stage
- * recorded, held still (`__tests__/call-video.test.ts`). Subtitles change
- * only the band at the frame's foot, which the stage leaves empty for them
- * (`subtitleBand`; the same test file).
- *
- * The call as a cut list the renderer draws: one still per scene
- * (`<file>.png`, the stage recorded), and its take (`<file>.wav`, home's
- * speaker's) where one was said, `takes[i]`; a scene with none holds for its
- * words' reading time instead, and a brand slide, which says nothing, for
- * `BRAND_MS`. Subtitles are drawn from the takes' words as the week's shape
- * says, and the music bed plays under the voice once the series names one
- * (`bed`).
+ * The call as a cut list the renderer draws (`stillsCutList`, which holds
+ * CV1): one still per scene (`<file>.png`, the stage recorded), and its take
+ * (`<file>.wav`, home's speaker's) where one was said, `takes[i]`.
+ * Subtitles are drawn as the week's shape says, and the music bed plays
+ * under the voice once the series names one (`bed`).
  */
 export function callCutList(
   week: CallWeek,
   takes: ReadonlyArray<CallTake | null>,
   { bed = false }: { readonly bed?: boolean } = {}
 ): CutList {
-  const scenes = callScenes(week)
-  const subtitles = callFormat(week.template.version).shape?.subtitles ?? "off"
-  return {
-    schema: CUT_LIST_SCHEMA,
-    title: `The weekly call, ${week.week.from} to ${week.week.to}`,
-    series: callFormat().series,
-    look: "calm",
-    voice: "read",
-    // The look's mode (calm: under the voice) once the series has a bed.
-    ...(bed ? {} : { music: "off" as const }),
-    ...(subtitles === "off" ? {} : { subtitles }),
-    shots: scenes.map((scene, i) => {
-      const file = callFile(i, scene.id)
-      const take = takes[i] ?? null
-      return {
-        id: scene.id,
-        picture: { kind: "still", source: `${file}.png` },
-        durationMs:
-          take !== null
-            ? VOICE_IN_MS + take.ms + TAIL_MS
-            : scene.said === ""
-              ? BRAND_MS
-              : readingMs(scene.said),
-        ...(take === null
-          ? {}
-          : {
-              take: {
-                file: `${file}.wav`,
-                inMs: 0,
-                outMs: take.ms,
-                ...(take.words ? { words: [...take.words] } : {}),
-              },
-            }),
-        voiceInMs: VOICE_IN_MS,
-        // CV1: the still's text runs to the frame's edges, which any zoom
-        // would crop; the look's crossfade and music still apply.
-        overrides: { motion: { kind: "still" } },
-        burnIns: [],
-        idea: { origin: "agent" },
-      }
-    }),
-    burnIns: [],
-    revisions: [],
-    notes: [],
-  }
+  return stillsCutList(
+    {
+      title: `The weekly call, ${week.week.from} to ${week.week.to}`,
+      series: callFormat().series,
+      look: "calm",
+      subtitles: callFormat(week.template.version).shape?.subtitles ?? "off",
+      bed,
+    },
+    callScenes(week).map((scene, i) => ({
+      id: scene.id,
+      file: callFile(i, scene.id),
+      said: scene.said,
+    })),
+    takes
+  )
 }

@@ -120,6 +120,8 @@ Each Tuesday in season a scheduled session fills the weeks due into
   - carries another episode's pins;
   - has scenes other than the format's, in its order;
   - forecasts (`FORECAST` in `src/lib/words.ts`);
+  - says a team's code ("LAR") in place of its name: the facts write codes,
+    which a voice can only spell, so the packet carries every team's name;
   - says a number its scene's facts don't give, or a week not yet played.
 
   It judges nothing else about the words.
@@ -132,13 +134,31 @@ Each Tuesday in season a scheduled session fills the weeks due into
 
 ```sh
 pnpm --filter www build
-pnpm --filter www record:playoff-delta --week 9
-pnpm --filter www record:playoff-delta --week 0   # the legend
+pnpm --filter www record:playoff-delta --week 8 --narration SF-week-08.json --season-file SF.json
+pnpm --filter www record:playoff-delta --clips --week 9   # my own voice, until FEED6
 ```
 
-`apps/www/tests/record/playoff-delta.ts` writes one clip and still per
-scene and `episode.json`, made from the season the stage played; its header
-has the options.
+From format version 2 an episode is voiced (FEED3, #2646):
+`apps/www/tests/record/playoff-delta.ts` checks the week's fill against the
+season the stage plays, records a still of each scene with every animation
+at rest, has home's Kokoro speaker say each in `PD_VOICE`, and renders one
+9:16 MP4 in the series' version 2. `src/lib/voiced.ts` makes the scenes:
+
+- the **locked intro**: who wrote the words (Claude, from the season's
+  numbers), what computed the numbers and drew the frames (code), that the
+  voice is synthetic, and whose side it is read from, filled by code and
+  never by the fill (`INTRO` in `src/lib/words.ts`);
+- the **brand intro and outro**, the owner's mark;
+- a **chapter slide** said aloud before each slide the format marks
+  (`SHAPE` in `src/lib/show.ts`);
+- the slides, each said as the fill says it, with **subtitles** lit word by
+  word in the band the stage leaves empty at the frame's foot.
+
+The same fill and season give the same bytes. The recorder refuses a scene
+the frame can't hold (`data-overflow`). A fill written for version 1 was for
+my voice and isn't voiced. `--clips` records the version 1 episode Studio
+opens for my voice: one clip and still per slide and `episode.json`. The
+recorder's header has every option.
 
 ## Next
 

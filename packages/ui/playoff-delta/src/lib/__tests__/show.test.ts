@@ -58,6 +58,8 @@ describe("the formats", () => {
       }
       expect(versions.at(-1)?.version).toBe(FORMAT_VERSION[kind])
       expect(versions.at(-1)?.raw).toEqual(formatOf(kind))
+      // A pinned version is never edited: the code still makes each one.
+      for (const v of versions) expect(v.raw).toEqual(formatOf(kind, v.version))
     }
   )
 })

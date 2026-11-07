@@ -3,10 +3,12 @@
  * the stage recorded and holds it still, from its first frame to its last.
  *
  * Family: every week (how many scenes, how long each is said), every frame
- * of a scene's hold, and the transitions into and out of it. Proof: the
+ * of a scene's hold, the transitions into and out of it, and the frame's
+ * shape: the call's 16:9 and a short's 9:16, which Playoff Delta's voiced
+ * episodes are (FEED3, `stillsCutList` makes both cut lists). Proof: the
  * call's own cut list, for the sample week and the week of 2026-10-30, each
  * scene said for a different length (`TAKES_MS`), rendered by the real
- * ffmpeg in the call's pinned series at a small frame, each still a dark
+ * ffmpeg in the call's pinned series at a small frame of each shape, each still a dark
  * field in a white border at the frame's edges. Every frame of the video,
  * transitions included, has the border exactly where it was drawn, so no
  * frame is zoomed, panned or cropped; and every frame of a scene's hold is
@@ -38,8 +40,10 @@ import { make } from "@video-render/testing"
 import { TRANSITION_MS } from "@video-render/vocabulary"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 
-const W = 128
-const H = 72
+/** The frames rendered: the call's 16:9, and a short's 9:16 (Playoff Delta's). */
+type Shape = { readonly W: number; readonly H: number }
+const WIDE: Shape = { W: 128, H: 72 }
+const TALL: Shape = { W: 72, H: 128 }
 const FPS = 30
 const BORDER = 4
 /**
@@ -56,21 +60,17 @@ const OCT_30 =
   "https://raw.githubusercontent.com/paulgsc/testing/aecb9131591e1ee443f34caff32ae564af569844/call/2026-10-30.json"
 
 let root = ""
-let series: Series
+let pinned: Series
 let oct30: CallWeek | null = null
 
 beforeAll(async () => {
   root = await mkdtemp(join(tmpdir(), "call-video-"))
-  const pinned = await readSeries(
+  const read = await readSeries(
     join(import.meta.dirname, "../sample/series", CALL_ID),
     callFormat().series.version
   )
-  if (!pinned.ok) throw new Error(pinned.problems.join("; "))
-  series = {
-    ...pinned.value,
-    frame: { width: W, height: H, fps: FPS },
-    window: { x: 0, y: 0, width: W, height: H },
-  }
+  if (!read.ok) throw new Error(read.problems.join("; "))
+  pinned = read.value
   try {
     const response = await fetch(OCT_30)
     if (!response.ok) throw new Error(`${OCT_30}: ${String(response.status)}`)
@@ -89,12 +89,24 @@ afterAll(async () => {
 
 type Hold = { readonly id: string; readonly from: number; readonly to: number }
 
-/** `week`'s call rendered in its own folder, each scene a framed still. */
+/**
+ * `week`'s call rendered in its own folder, each scene a framed still, in a
+ * frame of `shape`: the series' own, its picture filling the frame.
+ */
 async function renderWeek(
   week: CallWeek,
   name: string,
-  { subtitles = false }: { readonly subtitles?: boolean } = {}
+  {
+    subtitles = false,
+    shape = WIDE,
+  }: { readonly subtitles?: boolean; readonly shape?: Shape } = {}
 ): Promise<{ frames: Buffer; holds: ReadonlyArray<Hold> }> {
+  const { W, H } = shape
+  const series: Series = {
+    ...pinned,
+    frame: { width: W, height: H, fps: FPS },
+    window: { x: 0, y: 0, width: W, height: H },
+  }
   const dir = join(root, name)
   await mkdir(dir)
   const ports = nodePorts(dir)
@@ -184,7 +196,7 @@ async function renderWeek(
  * border's innermost pixel is white and the next one in is dark, so a move
  * of a pixel either way, or a crop, is seen.
  */
-function moved(frame: Buffer): Array<string> {
+function moved(frame: Buffer, { W, H }: Shape): Array<string> {
   const at = (x: number, y: number): number => frame[y * W + x] ?? -1
   const sides = [
     ["left", (d: number): number => at(d, H / 2)],
@@ -198,11 +210,15 @@ function moved(frame: Buffer): Array<string> {
 }
 
 /** Every frame whose border moved, by the scene showing it: none when none. */
-function everyFrame(frames: Buffer, holds: ReadonlyArray<Hold>): Array<string> {
-  const size = W * H
+function everyFrame(
+  frames: Buffer,
+  holds: ReadonlyArray<Hold>,
+  shape: Shape = WIDE
+): Array<string> {
+  const size = shape.W * shape.H
   const problems: Array<string> = []
   for (let n = 0; n * size < frames.length; n++) {
-    const sides = moved(frames.subarray(n * size, (n + 1) * size))
+    const sides = moved(frames.subarray(n * size, (n + 1) * size), shape)
     if (sides.length === 0) continue
     const near = holds.filter((h) => h.from <= n).at(-1)?.id ?? "the start"
     problems.push(`frame ${n} (around ${near}): its ${sides.join(", ")} moved`)
@@ -211,7 +227,11 @@ function everyFrame(frames: Buffer, holds: ReadonlyArray<Hold>): Array<string> {
 }
 
 /** Why a scene's hold isn't its whole still, held: none when it is. */
-function problemsOf(frames: Buffer, hold: Hold): Array<string> {
+function problemsOf(
+  frames: Buffer,
+  hold: Hold,
+  { W, H }: Shape = WIDE
+): Array<string> {
   const size = W * H
   const frame = (n: number): Buffer => frames.subarray(n * size, (n + 1) * size)
   const first = frame(hold.from)
@@ -243,27 +263,39 @@ function problemsOf(frames: Buffer, hold: Hold): Array<string> {
 }
 
 describe("a call's subtitles", () => {
-  it("are drawn in the band at the frame's foot, and nowhere over the picture", async () => {
-    const sample = sampleCallWeek()
-    if (!sample.ok) throw new Error(sample.problems.join("; "))
-    const plain = await renderWeek(sample.value, "plain")
-    const said = await renderWeek(sample.value, "said", { subtitles: true })
-    expect(said.frames.length).toBe(plain.frames.length)
-    const size = W * H
-    const above = (H - subtitleBand(H).bandPx) * W
-    let drawn = 0
-    for (let n = 0; n * size < said.frames.length; n++) {
-      const a = said.frames.subarray(n * size, (n + 1) * size)
-      const b = plain.frames.subarray(n * size, (n + 1) * size)
-      for (let k = 0; k < size; k++) {
-        const differs = Math.abs((a[k] ?? 0) - (b[k] ?? 0)) > NOISE
-        if (differs && k < above)
-          throw new Error(`frame ${n}: a subtitle drew over the picture`)
-        if (differs) drawn++
+  it.each([
+    ["16:9", WIDE],
+    ["9:16", TALL],
+  ] as const)(
+    "are drawn in the band at a %s frame's foot, and nowhere over the picture",
+    async (name, shape) => {
+      const sample = sampleCallWeek()
+      if (!sample.ok) throw new Error(sample.problems.join("; "))
+      const tag = name.replace(":", "x")
+      const plain = await renderWeek(sample.value, `plain-${tag}`, { shape })
+      const said = await renderWeek(sample.value, `said-${tag}`, {
+        subtitles: true,
+        shape,
+      })
+      expect(said.frames.length).toBe(plain.frames.length)
+      const { W, H } = shape
+      const size = W * H
+      const above = (H - subtitleBand(H, W).bandPx) * W
+      let drawn = 0
+      for (let n = 0; n * size < said.frames.length; n++) {
+        const a = said.frames.subarray(n * size, (n + 1) * size)
+        const b = plain.frames.subarray(n * size, (n + 1) * size)
+        for (let k = 0; k < size; k++) {
+          const differs = Math.abs((a[k] ?? 0) - (b[k] ?? 0)) > NOISE
+          if (differs && k < above)
+            throw new Error(`frame ${n}: a subtitle drew over the picture`)
+          if (differs) drawn++
+        }
       }
-    }
-    expect(drawn).toBeGreaterThan(0)
-  }, 240_000)
+      expect(drawn).toBeGreaterThan(0)
+    },
+    240_000
+  )
 })
 
 describe("a call's video (CV1)", () => {
@@ -274,6 +306,16 @@ describe("a call's video (CV1)", () => {
     expect(holds).toHaveLength(callScenes(sample.value).length)
     expect(holds.flatMap((h) => problemsOf(frames, h))).toEqual([])
     expect(everyFrame(frames, holds)).toEqual([])
+  }, 240_000)
+
+  it("shows each scene's whole still and holds it in a 9:16 frame, a short's", async () => {
+    const sample = sampleCallWeek()
+    if (!sample.ok) throw new Error(sample.problems.join("; "))
+    const { frames, holds } = await renderWeek(sample.value, "tall", {
+      shape: TALL,
+    })
+    expect(holds.flatMap((h) => problemsOf(frames, h, TALL))).toEqual([])
+    expect(everyFrame(frames, holds, TALL)).toEqual([])
   }, 240_000)
 
   it("shows each scene's whole still and holds it, for the week of 2026-10-30", async (context) => {

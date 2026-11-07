@@ -9,8 +9,10 @@ import { ViewerStrip } from "@/components/provenance-strip"
 /**
  * Playoff Delta's recording stage. Standalone (the `mission.tsx` archetype),
  * so no shell sits in the frame; `?week` (0: the legend episode), `?slide`
- * and `?record` reach the stage as they are. A viewer of the Pages build, who reaches it from the
- * foyer, gets the viewer strip above it; the owner records elsewhere. Web only: the stage comes through the web surface's
+ * and `?record` reach the stage as they are, and `?scene` and `?v` name a
+ * scene of a format version's shape for the voiced recorder (FEED3). A
+ * viewer of the Pages build, who reaches it from the foyer, gets the viewer
+ * strip above it; the owner records elsewhere. Web only: the stage comes through the web surface's
  * door, and the Android app's surface guard keeps the phone off this path.
  */
 
@@ -18,21 +20,35 @@ type PlayoffDeltaSearch = {
   week?: number
   slide?: number
   record?: boolean
+  /** Record mode, version 2 on: the scene of the shape, by its id. */
+  scene?: string
+  /** Record mode: the format version whose shape is drawn. */
+  v?: number
 }
+
+/** A scene's id, as the shape names one (`intro`, `chapter-results`). */
+const SCENE_ID = /^[a-z][a-z0-9-]{0,39}$/
 
 function validateSearch(search: Record<string, unknown>): PlayoffDeltaSearch {
   const week = wholeNumber(search.week)
   const slide = wholeNumber(search.slide)
   const record = search.record === true || search.record === "true"
+  const scene =
+    typeof search.scene === "string" && SCENE_ID.test(search.scene)
+      ? search.scene
+      : undefined
+  const v = wholeNumber(search.v)
   return {
     ...(week === undefined ? {} : { week }),
     ...(slide === undefined ? {} : { slide }),
     ...(record ? { record } : {}),
+    ...(scene === undefined ? {} : { scene }),
+    ...(v === undefined || v === 0 ? {} : { v }),
   }
 }
 
 const PlayoffDelta = (): JSX.Element => {
-  const { week, slide, record } = Route.useSearch()
+  const { week, slide, record, scene, v } = Route.useSearch()
   const navigate = useNavigate({ from: "/playoff-delta" })
   return (
     <>
@@ -41,6 +57,8 @@ const PlayoffDelta = (): JSX.Element => {
         week={week}
         initialSlide={slide}
         record={record}
+        scene={scene}
+        version={v}
         onWeekChange={(next) => {
           void navigate({ search: { week: next } })
         }}

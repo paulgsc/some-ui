@@ -40,8 +40,8 @@
  * with a `cache warning:` line on stderr, which home's render worker reports.
  */
 
-import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises"
-import { basename, dirname, join, resolve } from "node:path"
+import { mkdir, readFile, writeFile } from "node:fs/promises"
+import { join, resolve } from "node:path"
 import { parseArgs } from "node:util"
 import type { Route } from "@playwright/test"
 import {
@@ -51,30 +51,23 @@ import {
   callFile,
   callFormat,
   callScenes,
-  DEFAULT_POLICY,
   estimatedCallMs,
-  MB,
   overLength,
   parseCallWeek,
-  TimedWordSchema,
 } from "@some-ui/video-render"
-import type {
-  CallTake,
-  CallWeek,
-  RenderPolicy,
-  TimedWord,
-} from "@some-ui/video-render"
-import {
-  keyOf,
-  nodePorts,
-  readSeries,
-  renderFolder,
-  stepCache,
-} from "@some-ui/video-render/node"
+import type { CallTake, CallWeek } from "@some-ui/video-render"
+import { nodePorts, renderFolder, stepCache } from "@some-ui/video-render/node"
 import { serve } from "@tests/ui-fit/harness"
-import { z } from "zod"
 
 import { fail, here, launchChromium, runCommand } from "./command"
+import {
+  placeBed,
+  POLICY_OPTIONS,
+  policyOf,
+  speakerModel,
+  takeOf,
+  warn,
+} from "./speaker"
 
 /** The frame the stage is recorded at: the call's series. */
 const FRAME = { width: 1920, height: 1080 } as const
@@ -84,76 +77,6 @@ const SERIES = resolve(
   import.meta.dirname,
   "../../../../packages/video-render/src/sample/series/conference-call"
 )
-
-/** A take and each word said in it, as the speaker's `/timed` gives them. */
-const TimedSchema = z.object({
-  audio: z.string().min(1),
-  words: z.array(TimedWordSchema),
-})
-
-/**
- * `text` said in `voice` by home's Kokoro speaker at `speaker`, as a WAV: the
- * same bytes for the same words and voice. With `timed`, each word's place
- * in it too (`/timed`), for the subtitles.
- */
-async function said(
-  speaker: string,
-  text: string,
-  voice: string,
-  timed: boolean
-): Promise<{ wav: Buffer; words: ReadonlyArray<TimedWord> | null }> {
-  const response = await fetch(new URL(timed ? "/timed" : "/say", speaker), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text, voice }),
-  })
-  if (!response.ok)
-    fail([
-      `The speaker at ${speaker} answered ${String(response.status)}: ${await response.text()}`,
-    ])
-  if (!timed)
-    return { wav: Buffer.from(await response.arrayBuffer()), words: null }
-  const parsed = TimedSchema.safeParse(await response.json())
-  if (!parsed.success)
-    fail([`The speaker at ${speaker} gave no words with its take`])
-  return {
-    wav: Buffer.from(parsed.data.audio, "base64"),
-    words: parsed.data.words,
-  }
-}
-
-/** The speaker's model, by its SHA-256: part of every take's key. */
-async function speakerModel(speaker: string): Promise<string> {
-  const response = await fetch(new URL("/health", speaker))
-  if (!response.ok)
-    fail([`The speaker at ${speaker} answered ${String(response.status)}`])
-  const health: unknown = await response.json()
-  if (
-    typeof health !== "object" ||
-    health === null ||
-    !("model" in health) ||
-    typeof health.model !== "string"
-  )
-    fail([`The speaker at ${speaker} named no model`])
-  return health.model
-}
-
-/** A cache warning, on its own line so the render worker can find it. */
-const warn = (line: string): void => {
-  process.stderr.write(`cache warning: ${line}\n`)
-}
-
-/** A whole number from a flag, or `fallback` when the flag is unset. */
-function wholeFlag(
-  value: string | undefined,
-  flag: string,
-  fallback: number
-): number {
-  if (value === undefined) return fallback
-  const n = Number(value)
-  if (!Number.isInteger(n) || n <= 0) fail([`--${flag} is a whole number`])
-  return n
-}
 
 /** The stage's reads of `paulgsc/testing`'s `call/` folder. */
 const TESTING_CALL = /\/paulgsc\/testing\/main\/call\/[^/?#]+$/
@@ -210,33 +133,10 @@ async function main(): Promise<void> {
       "week-file": { type: "string" },
       // Home's brand folder: the owner's files the series names (#2673).
       brand: { type: "string" },
-      // Policy (`RenderPolicy`): the longest and largest video, and what one
-      // week's step cache may hold.
-      "max-video-minutes": { type: "string" },
-      "max-video-mb": { type: "string" },
-      "cache-mb": { type: "string" },
+      ...POLICY_OPTIONS,
     },
   })
-  const policy: RenderPolicy = {
-    maxVideoMs:
-      wholeFlag(
-        values["max-video-minutes"],
-        "max-video-minutes",
-        DEFAULT_POLICY.maxVideoMs / 60_000
-      ) * 60_000,
-    maxVideoBytes:
-      wholeFlag(
-        values["max-video-mb"],
-        "max-video-mb",
-        DEFAULT_POLICY.maxVideoBytes / MB
-      ) * MB,
-    cacheBytes:
-      wholeFlag(
-        values["cache-mb"],
-        "cache-mb",
-        DEFAULT_POLICY.cacheBytes / MB
-      ) * MB,
-  }
+  const policy = policyOf(values)
   if (values.voices !== "kokoro" && values.voices !== "none")
     fail(["--voices is kokoro or none"])
   const kept = values["week-file"] ? await keptWeek(values["week-file"]) : null
@@ -308,35 +208,20 @@ async function main(): Promise<void> {
         overflowing.push(scene.id)
       await page.screenshot({ path: join(root, `${file}.png`) })
       // A brand slide says nothing.
-      if (values.voices === "kokoro" && scene.said !== "") {
-        const voice = CALL_VOICES[scene.section]
-        const wav = join(root, `${file}.wav`)
-        const kept = join(root, `${file}.words.json`)
-        const key = keyOf({ take: 1, model, voice, text: scene.said })
-        const wordsKey = keyOf({ words: 1, model, voice, text: scene.said })
-        const cached =
-          (await cache.get(key, ".wav", wav)) &&
-          (!timed || (await cache.get(wordsKey, ".json", kept)))
-        if (!cached) {
-          const take = await said(values.speaker, scene.said, voice, timed)
-          await writeFile(wav, take.wav)
-          await cache.put(key, ".wav", wav, `${file}.wav`)
-          if (take.words) {
-            await writeFile(kept, `${JSON.stringify(take.words)}\n`)
-            await cache.put(wordsKey, ".json", kept, `${file}.words.json`)
-          }
-        }
-        const facts = await ports.probe(`${file}.wav`)
-        if (!facts) fail([`${file}.wav can't be read`])
-        const words = timed
-          ? TimedSchema.shape.words.parse(
-              JSON.parse(await readFile(kept, "utf8"))
-            )
-          : undefined
-        takes.push({
-          ms: Math.round(facts.durationMs),
-          ...(words ? { words } : {}),
-        })
+      if (model !== null && scene.said !== "") {
+        takes.push(
+          await takeOf({
+            speaker: values.speaker,
+            model,
+            voice: CALL_VOICES[scene.section],
+            text: scene.said,
+            timed,
+            root,
+            file,
+            cache,
+            ports,
+          })
+        )
       } else {
         takes.push(null)
       }
@@ -349,24 +234,13 @@ async function main(): Promise<void> {
       ])
 
     // The music bed plays once the call's series names one (#2673).
-    const series = await readSeries(SERIES, callFormat().series.version)
-    if (!series.ok)
-      fail(["The call's series can't be read:", ...series.problems])
-    // Its file comes from home's brand folder (`--brand`), never a
-    // repository; the renderer checks it against the series' sum.
-    const bed = series.value.music?.bed
-    if (bed) {
-      if (!values.brand)
-        fail([
-          `The series names the music ${bed.file}, and --brand names no folder holding it`,
-        ])
-      await mkdir(dirname(join(root, bed.file)), { recursive: true })
-      await copyFile(
-        join(here(values.brand), basename(bed.file)),
-        join(root, bed.file)
-      )
-    }
-    const cutList = callCutList(week, takes, { bed: bed !== undefined })
+    const bed = await placeBed(
+      SERIES,
+      callFormat().series.version,
+      values.brand,
+      root
+    )
+    const cutList = callCutList(week, takes, { bed })
     await writeFile(
       join(root, "cut-list.json"),
       `${JSON.stringify(cutList, null, 1)}\n`

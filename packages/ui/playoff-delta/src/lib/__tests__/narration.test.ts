@@ -33,12 +33,16 @@ async function packet(season: StorySeason, week: number): Promise<Packet> {
   return made.value
 }
 
-/** A fill that says each scene's point and facts as they are written. */
+/** `text` with each team's code said as its name, as the guidance asks. */
+const named = (p: Packet, text: string): string =>
+  text.replace(/\b[A-Z]{2,3}\b/g, (code) => p.names[code] ?? code)
+
+/** A fill that says each scene's point and facts, each team by its name. */
 const factsSaid = (p: Packet): Narration => ({
   ...p.pins,
   scenes: p.scenes.map((s) => ({
     id: s.id,
-    said: [s.point, ...s.facts].join(" "),
+    said: named(p, [s.point, ...s.facts].join(" ")),
   })),
 })
 
@@ -93,6 +97,24 @@ describe("the packet", () => {
 
 const fill = factsSaid(await packet(SAMPLE_SEASON, 9))
 
+describe("team codes", () => {
+  it("the packet names every team, and the guidance says to say names", async () => {
+    const p = await packet(SAMPLE_SEASON, 9)
+    expect(p.names).toEqual(SAMPLE_SEASON.names)
+    expect(p.guidance.join(" ")).toContain("never by its code")
+  })
+
+  it("refuses a code said in place of a name, once a scene, and not a word in it", async () => {
+    const said = "LAR and SEA meet twice, and LAR can still reach it. No, Ne."
+    expect(
+      await refusalsOf(SAMPLE_SEASON, 9, saying(fill, "ladder", said))
+    ).toEqual([
+      `ladder says LAR, a team's code: say ${SAMPLE_SEASON.names["LAR"] ?? ""}`,
+      `ladder says SEA, a team's code: say ${SAMPLE_SEASON.names["SEA"] ?? ""}`,
+    ])
+  })
+})
+
 describe("the check", () => {
   it.each([
     ["2025", SAMPLE_SEASON],
@@ -128,10 +150,10 @@ describe("the check", () => {
     expect(
       await refuses({
         ...fill,
-        format: { id: "playoff-delta-week", version: 2 },
+        format: { id: "playoff-delta-week", version: 1 },
       })
     ).toEqual([
-      "the format is playoff-delta-week v2, not playoff-delta-week v1",
+      "the format is playoff-delta-week v1, not playoff-delta-week v2",
     ])
   })
 

@@ -25,6 +25,7 @@
   "dependencies": {
     "@some-ui/core-utils": "workspace:*",
     "@some-ui/intent-kit": "workspace:*",
+    "@some-ui/shared": "workspace:*",
     "@some-ui/video-render": "workspace:*",
     "zod": "catalog:"
   },
@@ -57,7 +58,12 @@
       "import": "./dist/some-ui-playoff-delta.es.js",
       "default": "./dist/some-ui-playoff-delta.es.js"
     },
-    "./style.css": "./dist/playoff-delta.css"
+    "./style.css": "./dist/playoff-delta.css",
+    "./recording": {
+      "types": "./dist/some-ui-playoff-delta/recording.d.ts",
+      "import": "./dist/some-ui-playoff-delta/recording.es.js",
+      "default": "./dist/some-ui-playoff-delta/recording.es.js"
+    }
   },
   "style": "./dist/playoff-delta.css"
 }

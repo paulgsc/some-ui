@@ -271,6 +271,43 @@ export const UPLOAD = {
 } as const
 
 /**
+ * The locked intro (SFEED2, #2670): who wrote an episode, what drew it, that
+ * its voice is synthetic, and whose side it is read from. Code fills it,
+ * never the fill, so no fill can change who it says made the video.
+ */
+export const INTRO = {
+  title: "Who made this",
+  rows: {
+    written: "Written by",
+    numbers: "Numbers by",
+    drawn: "Drawn by",
+    voices: "Voices",
+    side: "Read from",
+  },
+  written: "Claude, from the season's numbers",
+  numbers:
+    "Code: Playoff Delta's model in paulgsc/server, over every way the rest of the season can go",
+  drawn: (version: number): string =>
+    `Code: Playoff Delta's template, version ${version}, in paulgsc/some-ui`,
+  voices: "Kokoro, a synthetic speaker. No voice here is a person's",
+  side: (team: string): string => `The ${team}' side`,
+  /** What the intro says aloud. */
+  said: (episode: string, team: string): string =>
+    [
+      `This is Playoff Delta for ${episode}, read from the ${team}' side.`,
+      "Claude wrote the words, from numbers code works out over every way the rest of the season can go.",
+      "Code drew every frame, and every voice you hear is synthetic.",
+    ].join(" "),
+  /** An episode as the intro says it: "2026, week 8", "2026, the legend". */
+  week: (label: string, week: number): string => `${label}, week ${week}`,
+  legend: (label: string): string => `${label}, the legend`,
+  /** The brand slides' line under the mark, and the outro's source under it. */
+  show: "Playoff Delta",
+  source: "The code: github.com/paulgsc/some-ui",
+  mark: "The owner's mark",
+} as const
+
+/**
  * What a forecast says, which no word of the show does: the show says what
  * can still happen, never odds, and never the statistics the grammar retired
  * (CLAUDE.md, "Say what it is").

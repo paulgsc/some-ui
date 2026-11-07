@@ -14,6 +14,7 @@ import {
   type Episode,
   type Format,
   type Parsed,
+  type Shape,
   type UploadCopy,
 } from "@some-ui/video-render"
 
@@ -38,30 +39,70 @@ export type FormatKind = "week" | "legend"
 export const kindOf = (week: number): FormatKind =>
   week === LEGEND_WEEK ? "legend" : "week"
 
-/** The version `formatOf` gives of each, pinned as `v<n>.json` in its folder. */
+/**
+ * The newest version `formatOf` gives of each, pinned as `v<n>.json` in its
+ * folder. A fill names the version it was written for, and is drawn in it.
+ *
+ * 2 (FEED3 #2646, SFEED2 #2680): the shape (`SHAPE`), recorded as stills
+ * the full frame, in the series' version 2, and said by Kokoro.
+ */
 export const FORMAT_VERSION: Readonly<Record<FormatKind, number>> = {
-  week: 1,
-  legend: 1,
+  week: 2,
+  legend: 2,
+}
+
+/** The first version voiced and drawn in a shape: older ones were for my voice. */
+export const VOICED_VERSION = 2
+
+/**
+ * Each format's shape from version 2: the locked intro, the brand intro and
+ * outro, a chapter slide said aloud before each marked scene, and
+ * subtitles with each word lit. The chapters mark where an episode turns.
+ */
+const SHAPE: Readonly<Record<FormatKind, Shape>> = {
+  week: {
+    brand: { intro: true, outro: true },
+    chapters: ["division", "results", "standings"],
+    subtitles: "word",
+  },
+  legend: {
+    brand: { intro: true, outro: true },
+    chapters: ["pieces", "poles", "objectives"],
+    subtitles: "word",
+  },
 }
 
 /** The size the recorder records the stage at, in CSS px: a 9:16 frame. */
 export const RECORDING = { width: 1080, height: 1920 } as const
 
-/** Both formats are drawn in the week's series (`@some-ui/video-render`'s sample). */
-const SERIES = { id: "playoff-delta-week", version: 1 } as const
+/**
+ * Both formats are drawn in the week's series (`@some-ui/video-render`'s
+ * sample): version 1 places a recorded clip in a window, version 2 a still
+ * the size of the frame.
+ */
+const seriesOf = (version: number): Format["series"] => ({
+  id: "playoff-delta-week",
+  version: version >= VOICED_VERSION ? 2 : 1,
+})
 
 /** A format's id: its folder's name. */
 export const formatId = (kind: FormatKind): string => `playoff-delta-${kind}`
 
-/** The show's format: every scene a week (or the legend) has, in order. */
-export function formatOf(kind: FormatKind): Format {
+/**
+ * The show's format at `version` (the newest by default): every scene a week
+ * (or the legend) has, in order, and from version 2 its shape.
+ */
+export function formatOf(
+  kind: FormatKind,
+  version: number = FORMAT_VERSION[kind]
+): Format {
   const slides = kind === "week" ? WEEK_SLIDES : LEGEND_SLIDES
   return {
     schema: FORMAT_SCHEMA,
     id: formatId(kind),
-    version: FORMAT_VERSION[kind],
+    version,
     title: kind === "week" ? "Playoff Delta week" : "Playoff Delta, the legend",
-    series: SERIES,
+    series: seriesOf(version),
     look: "calm",
     scenes: slides.map((id) => ({
       id,
@@ -74,6 +115,7 @@ export function formatOf(kind: FormatKind): Format {
       },
       holdMs: HOLD_MS[id],
     })),
+    ...(version >= VOICED_VERSION ? { shape: SHAPE[kind] } : {}),
   }
 }
 
@@ -146,8 +188,10 @@ export function factsOf(
 }
 
 /**
- * One week's episode (`LEGEND_WEEK`, 0, for the legend), or every reason
- * there isn't one. `sha256` is the sum of the season as the stage read it
+ * One week's episode for my own voice (`LEGEND_WEEK`, 0, for the legend), or
+ * every reason there isn't one. It stays on the last version before the
+ * voiced shape, whose clips Studio's takes are cut over, until FEED6 (#2649)
+ * retires my voice from episodes. `sha256` is the sum of the season as the stage read it
  * (`seasonData`), and `inMs` says where scene `index`'s slide starts in its
  * recorded clip.
  */
@@ -165,14 +209,14 @@ export function episodeFor(
     week === LEGEND_WEEK ? undefined : season.weeks.find((w) => w.week === week)
   const common = { show: SHOW, data, keep: keep.value, inMs }
   if (shown === undefined) {
-    return episodeOf(formatOf("legend"), {
+    return episodeOf(formatOf("legend", VOICED_VERSION - 1), {
       ...common,
       title: "Playoff Delta, the legend",
       period: `${season.label}, the legend`,
       upload: uploadOf(season, null),
     })
   }
-  return episodeOf(formatOf("week"), {
+  return episodeOf(formatOf("week", VOICED_VERSION - 1), {
     ...common,
     title: `Playoff Delta, ${season.label} week ${week}`,
     period: `${season.label} week ${week}`,
