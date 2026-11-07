@@ -305,6 +305,32 @@ export type KoreanEntry = {
 const SINGLE_DOCUMENT = "phone"
 
 /**
+ * A single document this phone kept and has since cleared (a set finished,
+ * the last answer taken back), as home keeps it: home takes an object, and
+ * an entry left out would leave home holding the document as it was.
+ */
+const CLEARED = { version: 1, cleared: true } as const
+
+/** Whether this phone ever kept `key`: a cleared document is kept as `null`. */
+function keptOnce(storage: KeyedStorage | null, key: string): boolean {
+  try {
+    return storage?.getItem(key) != null
+  } catch {
+    return false
+  }
+}
+
+/** The single document `body` under `kind`, `CLEARED` once it was kept and cleared, or none. */
+function singleDocument(
+  kind: "progress" | "feedback",
+  body: unknown,
+  cleared: boolean
+): Array<KoreanEntry> {
+  if (body !== null) return [{ kind, key: SINGLE_DOCUMENT, body }]
+  return cleared ? [{ kind, key: SINGLE_DOCUMENT, body: CLEARED }] : []
+}
+
+/**
  * `id` as a key home takes (letters, digits, `.`, `_`, `-` and `~`; not
  * starting `.` or `http`, not ending `.json`), one to one: any other
  * character, and `~` itself, is written `~<hex>~`, and a key that would
@@ -327,7 +353,8 @@ export function plainKey(id: string): string {
  * (KO-HOME KH3, #2103): each word set by its deck, each word's pace, each
  * sentence's tally row, and the practice record, the set left unfinished and
  * the last answers as single documents. Each body is what this phone keeps,
- * in the form it keeps it. Read only.
+ * in the form it keeps it; a single document kept and since cleared is
+ * `CLEARED`. Read only.
  */
 export function readAloudForHome(
   storage: KeyedStorage | null = localStorageOrNull()
@@ -366,11 +393,15 @@ export function readAloudForHome(
     ...(record.days.length > 0
       ? [{ kind: "record", key: SINGLE_DOCUMENT, body: record } as const]
       : []),
-    ...(progress === null
-      ? []
-      : [{ kind: "progress", key: SINGLE_DOCUMENT, body: progress } as const]),
-    ...(feedback === null
-      ? []
-      : [{ kind: "feedback", key: SINGLE_DOCUMENT, body: feedback } as const]),
+    ...singleDocument(
+      "progress",
+      progress,
+      keptOnce(storage, READ_ALOUD_STORAGE_KEYS.progress)
+    ),
+    ...singleDocument(
+      "feedback",
+      feedback,
+      keptOnce(storage, READ_ALOUD_STORAGE_KEYS.feedback)
+    ),
   ]
 }

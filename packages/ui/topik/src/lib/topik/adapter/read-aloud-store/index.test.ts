@@ -266,6 +266,18 @@ describe("the read-aloud store", () => {
     expect(entries[0]?.body).toEqual(storedSet(SET))
     expect(entries[1]?.body).toEqual({ wordId: "juda", factor: 1.2, seen: 3 })
     expect(entries[2]?.body).toMatchObject({ sentence: "cafe-order:1x2" })
+
+    // A set finished and the answers taken back go home as cleared, so
+    // home doesn't keep holding them as they were.
+    store.saveProgress(2, "everyday-2", null)
+    store.saveFeedback(null)
+    const cleared = readAloudForHome(storage).filter(
+      ({ kind }) => kind === "progress" || kind === "feedback"
+    )
+    expect(cleared).toEqual([
+      { kind: "progress", key: "phone", body: { version: 1, cleared: true } },
+      { kind: "feedback", key: "phone", body: { version: 1, cleared: true } },
+    ])
   })
 
   it("makes any id a key home takes, and no two ids one key", () => {
