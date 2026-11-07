@@ -5,12 +5,13 @@
  * LeetType sessions, Studio's sittings and answers, its written
  * reflections (LA16), its asks for the next scene (LA18), the soundbites'
  * records and LeetType's answer notes (`./notes`), and the grammar-lens
- * record (`./lens-record`). Its record moves with the sessions the app has
+ * record (`./lens-record`) and read aloud's (`./korean-record`). Its record moves with the sessions the app has
  * read (React Query's `sessionsKey`), each shelf keep (`onKept`), each write
  * to Studio's projects, each change to the reflections and the asks, each
- * soundbite, lens entry and finished LeetType session as last read
+ * soundbite, lens entry, write read aloud keeps and finished LeetType
+ * session as last read
  * (`./practice-reads`) and each change to LeetType's answer notes, so a finished session, a newly kept item, a kept take,
- * a typed reflection, an ask, a soundbite, an answer's note, a lens answer
+ * a typed reflection, an ask, a soundbite, an answer's note, a lens answer, a read-aloud rep
  * or a LeetType session finishing asks for a run. Its waiting count is the
  * sessions, written reflections, asks, notes, lens entries, finished
  * LeetType sessions and Studio's sittings and answers home lacks:
@@ -109,6 +110,7 @@ export const practiceLane: Lane = {
         ...practiceRead.getSnapshot().bites.map((b) => `bite:${b.id}`),
         ...leetypeNotes().map((n) => `note:${n.id}`),
         practiceRead.getSnapshot().lensAsIs,
+        practiceRead.getSnapshot().koreanWrites,
         practiceRead.getSnapshot().leetypeAsIs,
       ].join("|")
     ),

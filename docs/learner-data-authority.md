@@ -1217,7 +1217,8 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   store other than on its watch starting, the soundbites' hand-in or
   change (their store's `subscribe`), Studio's hand-in or a write to its
   projects (their store's `subscribe`), or, once the phone is paired, a write
-  to the lens record (topik's `onLensRecordWritten`) or an event LeetType's
+  to the lens record (topik's `onLensRecordWritten`) or to read aloud's
+  stores (topik's `onReadAloudWritten`), or an event LeetType's
   log keeps (`onSessionLogged`) that starts or ends a session or belongs to
   one already finished, or that keeps a list of the soundbites or of
   Studio's answers that started before a newer one; a hunk to
@@ -1227,13 +1228,16 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   session, or one already finished take in no later event, without
   `practice-reads.ts`'s `finishes` following it; a hunk to topik's
   `adapter/lens-record-store` that keeps an entry without telling
-  `onLensRecordWritten`'s listeners, or to `lib/leetype-takes` that keeps
+  `onLensRecordWritten`'s listeners, or to its `adapter/read-aloud-store`
+  that keeps a write without telling `onReadAloudWritten`'s listeners; a
+  hunk to `lib/home-link/practice.ts` that drops `koreanWrites` from the
+  lane's `revision`; or to `lib/leetype-takes` that keeps
   or lets go of a note without moving `leetypeNotesMoved`; a hunk to `lib/home-link/drain.ts` that takes home's copy in,
   lets a phone session go, lets anything else go but through `letGoHeld`
   (LA16) and `letGoHeldPrompts` (LA18), or confirms what home holds
   (`confirmHeld`), or sends other than through `copyHome`, `sendKept`,
   `sendLog`, `sendStudio`, `sendReflections` (LA16), `sendPrompts` (LA18),
-  `sendNotes` and `sendLens`; a hunk to `lib/home-link/ideas.ts` that sends
+  `sendNotes`, `sendLens` and `sendKorean`; a hunk to `lib/home-link/ideas.ts` that sends
   anything but one `PUT /ideas/:id` of each bundle `ideasToSend` names,
   counts an idea held on any answer but a `200` that `carriesBack` accepts,
   remembers an answer anywhere but `sent.ideas` under the run's pairing, or

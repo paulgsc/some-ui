@@ -2,6 +2,7 @@ import type { KeyedStorage } from "@some-ui/core-utils"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import {
   createReadAloudStore,
+  onReadAloudWritten,
   plainKey,
   READ_ALOUD_STORAGE_KEYS,
   readAloudForHome,
@@ -158,8 +159,12 @@ describe("the read-aloud store", () => {
     expect(createReadAloudStore(storage).progress(1, ":all")).toEqual(PROGRESS)
   })
 
-  it("keeps the sitting's answers across stores, and says when it could not", () => {
+  it("keeps the sitting's answers across stores, says when it could not, and tells of each write it kept", () => {
     const storage = memoryStorage()
+    let told = 0
+    const stop = onReadAloudWritten(() => {
+      told += 1
+    })
     const answers = {
       tooEasy: { at: "2026-10-21T08:00:00.000Z" },
       tooManyRepeats: null,
@@ -168,9 +173,14 @@ describe("the read-aloud store", () => {
     expect(createReadAloudStore(storage).feedback()).toEqual(answers)
     createReadAloudStore(storage).saveFeedback(null)
     expect(createReadAloudStore(storage).feedback()).toBeNull()
+    expect(told).toBe(2)
     for (const gone of [null, refusing]) {
       expect(createReadAloudStore(gone).saveFeedback(answers)).toBe(false)
     }
+    expect(told).toBe(2)
+    stop()
+    createReadAloudStore(storage).saveFeedback(answers)
+    expect(told).toBe(2)
   })
 
   it("keeps the sentence tally across stores, empties it on a clear, and says when it could not", () => {

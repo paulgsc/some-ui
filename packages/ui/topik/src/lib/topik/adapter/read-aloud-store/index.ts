@@ -177,6 +177,20 @@ const READERS = {
   tally: onJson(readTally),
 }
 
+/** Those told of each write read aloud keeps (www's drain, to send it). */
+const written = new Set<() => void>()
+
+/**
+ * Calls `listener` after each write read aloud's stores keep, in any store
+ * on this page. Returns an unsubscribe.
+ */
+export function onReadAloudWritten(listener: () => void): () => void {
+  written.add(listener)
+  return (): void => {
+    written.delete(listener)
+  }
+}
+
 export function createReadAloudStore(
   storage: KeyedStorage | null = localStorageOrNull()
 ): ReadAloudStore {
@@ -188,8 +202,15 @@ export function createReadAloudStore(
    * read and copied aside. Quota, privacy mode: what was lost is a pace, a
    * count or an answer the learner is told of.
    */
-  const write = <T>(key: string, reader: Reader<T>, value: unknown): boolean =>
-    writeKept(storage, key, value, reader)
+  const write = <T>(
+    key: string,
+    reader: Reader<T>,
+    value: unknown
+  ): boolean => {
+    const kept = writeKept(storage, key, value, reader)
+    if (kept) for (const listener of written) listener()
+    return kept
+  }
 
   const paces = (): PaceBook =>
     read(READ_ALOUD_STORAGE_KEYS.paces, READERS.paces, {})

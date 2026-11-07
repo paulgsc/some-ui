@@ -71,6 +71,7 @@ export type {
 } from "./lib/topik/read-aloud/content"
 export type { KoreanEntry } from "./lib/topik/adapter/read-aloud-store"
 export {
+  onReadAloudWritten,
   readAloudFeedbackForExport,
   readAloudForHome,
   readAloudPracticeRecord,

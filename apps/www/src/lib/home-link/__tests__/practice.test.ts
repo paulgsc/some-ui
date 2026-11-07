@@ -51,6 +51,7 @@ const fakes = vi.hoisted(
     bitesHeard: Set<() => void>
     lens: Array<unknown>
     lensHeard: Set<() => void>
+    readAloudHeard: Set<() => void>
     /** Each reading of what home holds the soundbites' page was handed. */
     bitesHeld: Array<() => (id: string) => boolean>
     /** The voice notes home holds, as the voice lane last heard. */
@@ -65,6 +66,7 @@ const fakes = vi.hoisted(
     bitesHeard: new Set(),
     lens: [],
     lensHeard: new Set(),
+    readAloudHeard: new Set(),
     bitesHeld: [],
     voiceHeld: [],
     finished: [],
@@ -140,6 +142,12 @@ vi.mock("@some-ui/topik", () => ({
     fakes.lensHeard.add(listener)
     return (): void => {
       fakes.lensHeard.delete(listener)
+    }
+  },
+  onReadAloudWritten: (listener: () => void): (() => void) => {
+    fakes.readAloudHeard.add(listener)
+    return (): void => {
+      fakes.readAloudHeard.delete(listener)
     }
   },
 }))
@@ -323,6 +331,11 @@ describe("Practice's lane, for HF5's records", () => {
     await changed(fakes.bitesHeard)
     expect(want).toHaveBeenCalledTimes(4)
 
+    // Each write read aloud keeps (a rep, a pace) asks for a run (KH3).
+    expect(fakes.readAloudHeard.size).toBe(1)
+    await changed(fakes.readAloudHeard)
+    expect(want).toHaveBeenCalledTimes(5)
+
     const noteId = leetypeNotes()[0]?.id ?? ""
     expect(noteId).not.toBe("")
     homeHolds({
@@ -336,6 +349,7 @@ describe("Practice's lane, for HF5's records", () => {
     stop()
     expect(fakes.bitesHeard.size).toBe(0)
     expect(fakes.lensHeard.size).toBe(0)
+    expect(fakes.readAloudHeard.size).toBe(0)
   })
 
   it("OS1: a store full while home held none says so no longer once a run has sent what waited, with no other redraw", async () => {
