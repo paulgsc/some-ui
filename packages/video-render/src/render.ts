@@ -26,6 +26,8 @@ import {
   readLoudness,
 } from "./plan"
 import type { FfmpegCall, Layer, Scene, SourceFacts } from "./plan"
+import { DEFAULT_POLICY, overLength, overSize } from "./policy"
+import type { RenderPolicy } from "./policy"
 import { designOf, resolve } from "./resolve"
 import type { ResolvedShot } from "./resolve"
 import { reviewOf } from "./review"
@@ -56,6 +58,10 @@ export type Ports = {
   readonly sha256: (file: string) => Promise<string | null>
   readonly mkdir: (dir: string) => Promise<void>
   readonly writeFile: (file: string, text: string) => Promise<void>
+  /** A file's size in bytes, or null when it is missing. */
+  readonly fileBytes?: (file: string) => Promise<number | null>
+  /** Removes a file, when it is there. */
+  readonly remove?: (file: string) => Promise<void>
   /** Records one burn-in with transparency (ST15's stage), when one can. */
   readonly recordBurnIn?: (request: BurnInRequest) => Promise<boolean>
   /** The burn-ins that would clash, said before any is recorded; empty when none would. */
@@ -77,6 +83,8 @@ export type RenderOptions = {
    * instead of refusing. With a recorder, every burn-in is drawn.
    */
   readonly withoutBurnIns?: boolean
+  /** What the video may take (`RenderPolicy`); the defaults when unset. */
+  readonly policy?: RenderPolicy
 }
 
 export type Rendered = Parsed<{
@@ -133,6 +141,10 @@ export async function render(
   )
   if (!placement.ok) return refused(placement.problems)
   const { totalFrames } = placement.value
+  // Policy, before anything is drawn: a video past its length is refused.
+  const policy = options.policy ?? DEFAULT_POLICY
+  const tooLong = overLength(toMs(totalFrames, fps), policy)
+  if (tooLong) return refused([tooLong])
   const scenes: ReadonlyArray<Scene> = shots.map((shot, i) => {
     const placed = placement.value.shots[i]
     if (!placed) throw new Error(`${shot.shot.id} was not placed`)
@@ -261,6 +273,13 @@ export async function render(
     )
   )
   if (!assembled.ok) return refused([`the video: ${tail(assembled.stderr)}`])
+  // Policy, once it is made: a video past its size is removed and refused.
+  const bytes = ports.fileBytes ? await ports.fileBytes(options.out) : null
+  const tooBig = bytes === null ? null : overSize(bytes, policy)
+  if (tooBig) {
+    await ports.remove?.(options.out)
+    return refused([tooBig])
+  }
 
   const times = shotTimes(placement.value.shots, fps)
   const shotTimesFile = `${dirOf(options.out)}/shot-times.json`

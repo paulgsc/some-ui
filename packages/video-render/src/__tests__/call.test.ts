@@ -17,6 +17,7 @@ import {
   callFolderProblems,
   callFormat,
   callScenes,
+  estimatedCallMs,
   parseCallIndex,
   parseCallWeek,
   readingMs,
@@ -169,6 +170,22 @@ describe("the call as a cut list", () => {
     expect(board?.take).toBeUndefined()
     expect(board?.durationMs).toBe(readingMs(w.board.said))
     expect(cut.value.shots).toHaveLength(scenes.length)
+  })
+})
+
+describe("a week's length, before it is said", () => {
+  it("is each scene's reading time, so the policy can refuse a long week before the speaker", () => {
+    const w = week()
+    expect(estimatedCallMs(w)).toBe(
+      callScenes(w).reduce((t, s) => t + readingMs(s.said), 0)
+    )
+    const long: CallWeek = {
+      ...w,
+      open: { ...w.open, said: "word ".repeat(5_000) },
+    }
+    expect(estimatedCallMs(long) - estimatedCallMs(w)).toBeGreaterThan(
+      30 * 60_000
+    )
   })
 })
 

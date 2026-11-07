@@ -475,6 +475,15 @@ const VOICE_IN_MS = 300
 const TAIL_MS = 700
 
 /** How long a scene with no take holds: its words read at a calm pace. */
+/**
+ * About how long a week's call runs, from its words alone, before any is
+ * said: each scene for its reading time. The recorder refuses a week past
+ * the policy's length on this, before it spends an hour on the speaker; the
+ * renderer checks the placed length exactly.
+ */
+export const estimatedCallMs = (week: CallWeek): number =>
+  callScenes(week).reduce((total, scene) => total + readingMs(scene.said), 0)
+
 export const readingMs = (said: string): number =>
   Math.max(3_000, said.trim().split(/\s+/).length * 400 + 1_200)
 
