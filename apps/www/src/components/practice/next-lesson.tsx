@@ -89,6 +89,7 @@ export const NextLesson = ({
         second: "start",
       })}
       onPress={press}
+      onRetry={onLaunch}
       idleLabel={LABELS[open]}
       // No wider than either idle label: the button is as wide as its
       // widest label in every state (IntentButton), and the two share a row.

@@ -91,10 +91,7 @@ const StudyCard = ({
   now: Date
   visit: Visit
 }): JSX.Element => {
-  // Each lesson button pressed, by its offer: a second press of one takes
-  // nothing twice, and a press of the other is its own take.
-  const [launched, setLaunched] = useState<ReadonlySet<string>>(new Set())
-  const launching = launched.size > 0
+  const [launching, setLaunching] = useState(false)
   const outcome = queryOutcome(useSessions())
   const status = matchQueryOutcome(outcome, {
     pending: (): StudyStatus => ({ kind: "pending" }),
@@ -148,10 +145,11 @@ const StudyCard = ({
   )
   useShelf(visit, "study", studyOffers)
   useShelf(visit, "bites", done ? null : SAY_WHY)
+  // A visit takes each offer once, so a second press (or a retry after the
+  // app came back) of the same button takes nothing twice.
   const launch = (offer: Offer): void => {
-    if (launched.has(offer.key)) return
     visit.take(offer)
-    setLaunched((was) => new Set(was).add(offer.key))
+    setLaunching(true)
   }
 
   return (

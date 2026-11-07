@@ -10,6 +10,8 @@
  * - **Nothing is offered unseen.** While the app is at the back (`leave`),
  *   what a screen shows, a list that arrives late included, is held, and
  *   offered once the app comes to the front (`appear`).
+ * - **An offer is taken once a visit.** A second press of what was already
+ *   taken (a retry, a double tap) takes nothing new.
  * - **Nothing is taken unoffered.** A take of something not offered this
  *   visit (a card found by a search) is its offer and its take at once.
  * - **How an untaken offer ended** is `endingOf` over what was true: the
@@ -70,6 +72,7 @@ function stepVisit(
       }
     }
     case "take": {
+      if (state.taken.has(step.offer.key)) return { state, events: [] }
       const offered = stepVisit(state, { ...step, type: "offer" })
       const taken = new Set(offered.state.taken)
       taken.add(step.offer.key)

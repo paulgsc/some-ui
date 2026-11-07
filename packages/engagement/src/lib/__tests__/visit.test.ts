@@ -73,13 +73,17 @@ describe("a visit (ENG3)", () => {
     expect(sent[1]).toMatchObject({ ending: "left-the-app" })
   })
 
-  it("offers what is taken without an offer, then takes it", () => {
+  it("offers what is taken without an offer, then takes it once a visit", () => {
     const { visit: v, sent } = visit()
     v.take(lens)
+    v.take(lens)
+    v.end("left-the-app")
+    v.appear()
     v.take(lens)
     expect(kinds(sent)).toEqual([
       "offered routine-lens",
       "taken routine-lens",
+      "offered routine-lens",
       "taken routine-lens",
     ])
   })
