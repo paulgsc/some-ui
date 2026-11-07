@@ -177,6 +177,36 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+      # WI1: the image serves the app when run bare, before anything is
+      # pushed. #2652 shipped an empty conf.d/default.conf that every request
+      # was refused by, unseen because compose renders its own template over it.
+      # Built once here and loaded; the push below reuses this builder's cache.
+      # No build-record artifact: nothing reads it, and it kept 90 days.
+      - uses: docker/build-push-action@v7
+        env:
+          DOCKER_BUILD_RECORD_UPLOAD: false
+        with:
+          context: .
+          file: apps/www/Dockerfile
+          load: true
+          push: false
+          cache-from: type=gha
+          tags: www:serve-check
+      - name: Serve the image bare (WI1)
+        run: |
+          docker run -d --name www-serve-check -p 8080:80 www:serve-check
+          served=no
+          for _ in $(seq 1 20); do
+            if curl -fsS -o index.html http://127.0.0.1:8080/a/deep/link; then
+              served=yes
+              break
+            fi
+            sleep 1
+          done
+          docker logs www-serve-check
+          docker rm -f www-serve-check
+          [ "$served" = yes ] || { echo "The image refused a request on :80."; exit 1; }
+          grep -q '<div id="app"' index.html || { echo "The image served something other than the app's index.html."; exit 1; }
       # No build-record artifact: nothing reads it, and it kept 90 days.
       - uses: docker/build-push-action@v7
         env:
