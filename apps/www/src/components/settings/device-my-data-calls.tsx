@@ -22,6 +22,7 @@ import {
 import { Link } from "@tanstack/react-router"
 import { ChevronLeft } from "lucide-react"
 
+import { hasAudience } from "@/lib/build-profile"
 import { callsRefresher, callVideos } from "@/lib/call-videos"
 import type { Week } from "@/lib/call-videos/model"
 import { standing } from "@/lib/call-videos/model"
@@ -208,13 +209,15 @@ export const DeviceMyDataCalls = (): JSX.Element => {
   return (
     <>
       <div className="space-y-1">
-        <Link
-          to="/settings/data"
-          className="text-muted-foreground hover:text-foreground -ml-1 inline-flex items-center gap-1 text-sm"
-        >
-          <ChevronLeft className="size-4" aria-hidden />
-          {WORDS.back}
-        </Link>
+        {hasAudience("apk") ? (
+          <Link
+            to="/settings/data"
+            className="text-muted-foreground hover:text-foreground -ml-1 inline-flex items-center gap-1 text-sm"
+          >
+            <ChevronLeft className="size-4" aria-hidden />
+            {WORDS.back}
+          </Link>
+        ) : null}
         <h1 className="text-2xl font-semibold tracking-tight">{WORDS.title}</h1>
       </div>
       <p className="text-muted-foreground text-sm">{WORDS.lead}</p>
