@@ -2,10 +2,12 @@
  * What the web tier does not log, forward or leak (privacy stage A), pinned as
  * plain text: no browser, no nginx binary, no Docker. A lost `access_log off;`
  * or a forwarded `$remote_addr` fails nothing at runtime, so this reads the
- * four files that decide it and fails with the line to fix:
+ * files that decide it and fails with the line to fix:
  *
- * - `apps/www/Dockerfile`: the server block the image writes to
- *   conf.d/default.conf (the one `docker run` and the published image serve).
+ * - `apps/www/nginx.default.conf`: the server block the image serves (the
+ *   one `docker run` and the published image serve), which
+ *   `apps/www/Dockerfile` copies to conf.d/default.conf and nothing else
+ *   writes there (WI1: the file the image ships is the file read here).
  * - `apps/www/nginx.https.conf`: the compose stack's template, which replaces
  *   that file (one server block, :80).
  * - `apps/www/nginx.security-headers.conf`: the `Referrer-Policy` both include.
@@ -34,6 +36,7 @@ const REPO_ROOT = resolve(
 )
 
 const DOCKERFILE = "apps/www/Dockerfile"
+const DEFAULT_CONF = "apps/www/nginx.default.conf"
 const HTTPS_CONF = "apps/www/nginx.https.conf"
 const HEADERS_CONF = "apps/www/nginx.security-headers.conf"
 const ROOT_CONF = "nginx.conf"
@@ -293,20 +296,31 @@ function read(path: string): string {
   return text
 }
 
-/** The nginx config the Dockerfile's runtime stage writes to conf.d. */
-function dockerfileServerConf(dockerfile: string): string {
-  const match =
-    /RUN <<'?EOF'?\s*>\s*\/etc\/nginx\/conf\.d\/default\.conf\r?\n([\s\S]*?)\r?\nEOF\b/.exec(
-      dockerfile
-    )
-  if (!match) {
-    throw new Error(
-      `${DOCKERFILE} no longer writes /etc/nginx/conf.d/default.conf from a ` +
-        "`RUN <<'EOF' > ...` heredoc. Point this test at wherever the image's " +
-        "nginx config comes from now; do not delete the check."
-    )
-  }
-  return match[1]
+/**
+ * WI1: the image's conf.d is `nginx.default.conf` as the repo keeps it. The
+ * Dockerfile copies that file to conf.d/default.conf on one line, and no other
+ * line names conf.d, so no heredoc, `RUN` or second `COPY` can write over it
+ * (#2652: a `RUN <<'EOF' > default.conf` shipped an empty file).
+ */
+function defaultConfProblems(file: string, dockerfile: string): Array<string> {
+  const copy = `COPY ${DEFAULT_CONF} /etc/nginx/conf.d/default.conf`
+  const lines = dockerfile.split(/\r?\n/)
+  const copies = lines.filter((line) => line.trim() === copy).length
+  const others = lines.filter(
+    (line) =>
+      line.includes("/etc/nginx/conf.d") &&
+      line.trim() !== copy &&
+      !line.trimStart().startsWith("#")
+  )
+  return [
+    ...(copies === 1
+      ? []
+      : [`${file}: \`${copy}\` appears ${String(copies)} times, not once.`]),
+    ...others.map(
+      (line) =>
+        `${file}: \`${line.trim()}\` also writes conf.d, over ${DEFAULT_CONF}.`
+    ),
+  ]
 }
 
 function serversOf(root: Block): Array<Block> {
@@ -335,7 +349,7 @@ function viteProxyProblems(file: string, text: string): Array<string> {
 }
 
 const dockerfile = read(DOCKERFILE)
-const dockerConf = parseNginx(dockerfileServerConf(dockerfile), DOCKERFILE)
+const dockerConf = parseNginx(read(DEFAULT_CONF), DEFAULT_CONF)
 const dockerServers = serversOf(dockerConf)
 
 const httpsConf = parseNginx(read(HTTPS_CONF), HTTPS_CONF)
@@ -348,13 +362,17 @@ const rootHttp = rootConf.children.filter((block) => block.head === "http")
 
 describe("the configs are read, not assumed", () => {
   it("finds the server blocks the other checks run over", () => {
-    expect(dockerServers, `${DOCKERFILE}: server blocks`).toHaveLength(1)
+    expect(dockerServers, `${DEFAULT_CONF}: server blocks`).toHaveLength(1)
     expect(httpsServers, `${HTTPS_CONF}: server blocks`).toHaveLength(1)
     expect(rootHttp, `${ROOT_CONF}: top-level http blocks`).toHaveLength(1)
     expect(
       headersConf.directives.length,
       `${HEADERS_CONF}: directives`
     ).toBeGreaterThan(0)
+  })
+
+  it("copies its server block, and nothing else, into the image's conf.d (WI1)", () => {
+    expect(defaultConfProblems(DOCKERFILE, dockerfile)).toEqual([])
   })
 
   it("copies the security headers into the image the Dockerfile serves", () => {
@@ -365,8 +383,10 @@ describe("the configs are read, not assumed", () => {
 })
 
 describe("access logs stay off", () => {
-  it("in the Dockerfile's server block", () => {
-    expect(accessLogProblems(DOCKERFILE, dockerConf, dockerServers)).toEqual([])
+  it("in the image's server block", () => {
+    expect(accessLogProblems(DEFAULT_CONF, dockerConf, dockerServers)).toEqual(
+      []
+    )
   })
 
   it("in every server block of nginx.https.conf", () => {
@@ -406,7 +426,7 @@ describe("Referrer-Policy", () => {
   it("is no-referrer, and every server block includes it", () => {
     expect(
       referrerProblems(headersConf, [
-        ...dockerServers.map((block) => ({ file: DOCKERFILE, block })),
+        ...dockerServers.map((block) => ({ file: DEFAULT_CONF, block })),
         ...httpsServers.map((block) => ({ file: HTTPS_CONF, block })),
       ])
     ).toEqual([])
@@ -446,6 +466,26 @@ describe("the checks can fail", () => {
     const problems = accessLogProblems("f", root, serversOf(root))
     expect(problems).toHaveLength(1)
     expect(problems[0]).toContain("turns an access log back on")
+  })
+
+  it("flags a conf.d written any way but the one COPY, as #2652's heredoc was", () => {
+    const copy = `COPY ${DEFAULT_CONF} /etc/nginx/conf.d/default.conf`
+    expect(defaultConfProblems("f", `FROM nginx\n${copy}\n`)).toEqual([])
+    expect(
+      defaultConfProblems(
+        "f",
+        "FROM nginx\nRUN <<'EOF' > /etc/nginx/conf.d/default.conf\nserver {}\nEOF\n"
+      )
+    ).toHaveLength(2)
+    expect(
+      defaultConfProblems(
+        "f",
+        `FROM nginx\n${copy}\nRUN echo "" > /etc/nginx/conf.d/default.conf\n`
+      )
+    ).toHaveLength(1)
+    expect(
+      defaultConfProblems("f", `FROM nginx\n${copy}\n${copy}\n`)
+    ).toHaveLength(1)
   })
 
   it("flags a Vite proxy entry with no bypass, or with none that asks the predicate", () => {
