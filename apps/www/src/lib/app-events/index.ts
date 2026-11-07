@@ -16,7 +16,8 @@
  * What an event carries is the owner's C3 (#2369): the ending, timings and
  * the screen, or the pipeline, affordance and surface, by the code's own
  * names. No audio, no words, no item content (`checkEvent` holds it for an
- * engagement event before it is kept, and again when it is read back);
+ * engagement event before it is kept; read back, one is held to its shape
+ * alone, `isEventShape`, so a later build's registry strands none);
  * home refuses any field outside its family's own (paulgsc/server
  * `app_event_repo`, docs/identity.md invariant 33).
  *
@@ -28,7 +29,12 @@
  */
 import { isRecord } from "@some-ui/core-utils"
 import type { EngagementEvent } from "@some-ui/engagement"
-import { checkEvent, PIPELINES, setEngagementSink } from "@some-ui/engagement"
+import {
+  checkEvent,
+  isEventShape,
+  PIPELINES,
+  setEngagementSink,
+} from "@some-ui/engagement"
 import type { TakeOutcome } from "@some-ui/voice-capture"
 import { setTakeOutcomes } from "@some-ui/voice-capture"
 
@@ -127,22 +133,13 @@ export function takeEventOf(
   }
 }
 
-/** The engagement event `value` carries, checked; undefined when off shape. */
-function engagementOf(
-  value: Readonly<Record<string, unknown>>
-): EngagementEvent | undefined {
-  const { family: _family, id: _id, build: _build, ...event } = value
-  const checked = checkEvent(event, PIPELINES)
-  return checked.ok ? checked.event : undefined
-}
-
 function isEngagementAppEvent(value: unknown): value is EngagementAppEvent {
+  if (!isRecord(value) || value.family !== "engagement") return false
+  const { family: _family, id, build, ...event } = value
   return (
-    isRecord(value) &&
-    value.family === "engagement" &&
-    typeof value.id === "string" &&
-    (value.build === null || typeof value.build === "string") &&
-    engagementOf(value) !== undefined
+    typeof id === "string" &&
+    (build === null || typeof build === "string") &&
+    isEventShape(event)
   )
 }
 
@@ -204,17 +201,15 @@ export function letGoHeldAppEvents(ids: ReadonlySet<string>): void {
 }
 
 /**
- * Keeps one engagement event to wait for home, under a new id and the
- * running build: what a pipeline's runtime calls when the owner is offered,
- * takes, passes over or leaves an affordance, or says how it went. False
- * when the event is off shape (an affordance the registry doesn't list, a
- * field outside its kind's, a place or answer not the affordance's), or
- * when the store is full or refuses; a pipeline needs no other answer, and
- * nothing it does waits on this.
+ * Keeps one engagement event to wait for home, under a new id and `build`:
+ * what `installAppEvents` makes the page's engagement sink. False when the
+ * registry doesn't pass it (`checkEvent`: an affordance it doesn't list, a
+ * field outside its kind's, a place or answer not the affordance's), or when
+ * the store is full or refuses.
  */
 export function recordEngagement(
   event: EngagementEvent,
-  build: string | null = import.meta.env.VITE_BUILD_COMMIT || null,
+  build: string | null,
   id: string = crypto.randomUUID()
 ): boolean {
   const checked = checkEvent(event, PIPELINES)

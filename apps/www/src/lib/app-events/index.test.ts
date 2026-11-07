@@ -155,24 +155,36 @@ describe("an engagement event (ENG2)", () => {
     })
   })
 
-  it("is refused when the registry doesn't list it or it carries more than its kind", () => {
+  it("is refused when the registry doesn't list it", () => {
     expect(
       recordEngagement({ ...taken, affordance: "no-such-thing" }, null, "g1")
     ).toBe(false)
-    const said = { ...taken, place: "the words I said" }
-    expect(recordEngagement(said, null, "g2")).toBe(false)
-    expect(
-      recordEngagement(
-        {
-          ...taken,
-          kind: "left",
-          startedAt: "2026-11-03T08:00:00.000Z",
-          place: "nowhere-listed",
-        },
-        null,
-        "g3"
-      )
-    ).toBe(false)
     expect(appEventsWaiting()).toEqual([])
+  })
+
+  it("reads back by its shape alone, so one kept under an earlier registry still goes", () => {
+    const kept = {
+      ...taken,
+      affordance: "since-retired",
+      family: "engagement",
+      id: "g1",
+      build: null,
+    }
+    localStorage.setItem("some-ui:app-events", JSON.stringify([kept]))
+    keepAppEvent(event("e1"))
+    expect(appEventsWaiting().map((e) => e.id)).toEqual(["e1", "g1"])
+  })
+
+  it("is not read back with a field outside its kind's", () => {
+    const said = {
+      ...taken,
+      family: "engagement",
+      id: "g1",
+      build: null,
+      words: "what I said",
+    }
+    localStorage.setItem("some-ui:app-events", JSON.stringify([said]))
+    keepAppEvent(event("e1"))
+    expect(appEventsWaiting().map((e) => e.id)).toEqual(["e1"])
   })
 })

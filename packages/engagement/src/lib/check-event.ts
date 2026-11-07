@@ -28,11 +28,13 @@ export type EventCheck =
 
 const STAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/
 
+/** An ISO 8601 instant in UTC that names a real time: no 24:00, no 30 February. */
 function isStamp(value: unknown): value is string {
+  if (typeof value !== "string" || !STAMP.test(value)) return false
+  const time = Date.parse(value)
   return (
-    typeof value === "string" &&
-    STAMP.test(value) &&
-    !Number.isNaN(Date.parse(value))
+    !Number.isNaN(time) &&
+    new Date(time).toISOString().slice(0, 19) === value.slice(0, 19)
   )
 }
 
@@ -155,4 +157,35 @@ function rebuilt(
       throw new Error(`no such kind of event: ${String(none)}`)
     }
   }
+}
+
+/** A name from the app's code, as home holds every id (lowercase, digits, `-`, `.`). */
+const NAME = /^[a-z0-9.-]{1,64}$/
+
+/**
+ * Whether `value` has an engagement event's shape: a kind, exactly that
+ * kind's fields, a surface, real instants and name-shaped ids. No registry:
+ * what reads back an event kept under an earlier build, whose registry may
+ * have listed an affordance differently, and what home itself holds.
+ */
+export function isEventShape(value: unknown): value is EngagementEvent {
+  if (typeof value !== "object" || value === null || Array.isArray(value))
+    return false
+  const record: Readonly<Record<string, unknown>> = Object.fromEntries(
+    Object.entries(value)
+  )
+  const kind = record["kind"]
+  if (!isKind(kind)) return false
+  const fields: ReadonlyArray<string> = EVENT_FIELDS[kind]
+  const keys = Object.keys(record)
+  if (keys.length !== fields.length || !keys.every((k) => fields.includes(k)))
+    return false
+  return keys.every((key) => {
+    const field = record[key]
+    if (key === "kind") return true
+    if (key === "surface") return SURFACES.some((s) => s === field)
+    if (key === "at" || key === "offeredAt" || key === "startedAt")
+      return isStamp(field)
+    return typeof field === "string" && NAME.test(field)
+  })
 }
