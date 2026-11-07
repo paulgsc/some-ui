@@ -7,6 +7,9 @@
  * - **An offer is counted once a visit.** A list that re-renders, or names
  *   the same card again, offers nothing new; a new visit (after the app
  *   comes back to the front) offers again what is still listed.
+ * - **Nothing is offered unseen.** While the app is at the back (`leave`),
+ *   what a screen shows, a list that arrives late included, is held, and
+ *   offered once the app comes to the front (`appear`).
  * - **Nothing is taken unoffered.** A take of something not offered this
  *   visit (a card found by a search) is its offer and its take at once.
  * - **How an untaken offer ended** is `endingOf` over what was true: the
@@ -103,11 +106,21 @@ function stepVisit(
 
 /** The runtime a screen holds for one visit after another. */
 export type Visit = {
-  /** What the screen lists now: each not yet offered this visit is offered. */
-  readonly list: (offers: ReadonlyArray<Offer>) => void
+  /**
+   * What one part of the screen (`shelf`) lists now, or null while that part
+   * is not shown: each offer not yet offered this visit is offered.
+   */
+  readonly show: (shelf: string, offers: ReadonlyArray<Offer> | null) => void
   readonly take: (offer: Offer) => void
   /** Ends the visit: each untaken offer is passed over. */
   readonly end: (ending: VisitEnding) => void
+  /**
+   * The app went to the back: the visit ends, and nothing shown is offered
+   * until it comes to the front again (`appear`).
+   */
+  readonly leave: () => void
+  /** A new visit begins with what the screen shows: each shelf's offers again. */
+  readonly appear: () => void
 }
 
 export function createVisit(
@@ -115,17 +128,59 @@ export function createVisit(
   send: (event: EngagementEvent) => void = engage
 ): Visit {
   let state = NEW_VISIT
+  let away = false
+  const showing = new Map<string, ReadonlyArray<Offer>>()
   const run = (step: VisitStep): void => {
     const next = stepVisit(state, step)
     state = next.state
     for (const event of next.events) send(event)
   }
   const at = (): string => clock().toISOString()
+  const offerAll = (offers: ReadonlyArray<Offer>): void => {
+    if (away) return
+    for (const offer of offers) run({ type: "offer", offer, at: at() })
+  }
   return {
-    list: (offers): void => {
-      for (const offer of offers) run({ type: "offer", offer, at: at() })
+    show: (shelf, offers): void => {
+      if (offers === null) {
+        showing.delete(shelf)
+        return
+      }
+      showing.set(shelf, offers)
+      offerAll(offers)
     },
     take: (offer) => run({ type: "take", offer, at: at() }),
     end: (ending) => run({ type: "end", ending, at: at() }),
+    leave: (): void => {
+      run({ type: "end", ending: "left-the-app", at: at() })
+      away = true
+    },
+    appear: (): void => {
+      away = false
+      for (const offers of showing.values()) offerAll(offers)
+    },
+  }
+}
+
+/** The part of a page's document a visit watches. */
+export type VisitPage = Pick<
+  Document,
+  "visibilityState" | "addEventListener" | "removeEventListener"
+>
+
+/**
+ * Ends `visit` as the app goes to the back and begins one as it comes to the
+ * front; the returned stop ends it as the screen closes.
+ */
+export function watchVisit(visit: Visit, page: VisitPage): () => void {
+  const seen = (): void => {
+    if (page.visibilityState === "hidden") visit.leave()
+    else visit.appear()
+  }
+  if (page.visibilityState === "hidden") visit.leave()
+  page.addEventListener("visibilitychange", seen)
+  return (): void => {
+    page.removeEventListener("visibilitychange", seen)
+    visit.end("moved-on")
   }
 }

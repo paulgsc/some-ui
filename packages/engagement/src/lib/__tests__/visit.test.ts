@@ -1,6 +1,6 @@
 import type { EngagementEvent } from "@engagement/lib/events"
-import type { Offer } from "@engagement/lib/visit"
-import { createVisit } from "@engagement/lib/visit"
+import type { Offer, VisitPage } from "@engagement/lib/visit"
+import { createVisit, watchVisit } from "@engagement/lib/visit"
 import { describe, expect, it } from "vitest"
 
 const offer = (affordance: string, item: string): Offer => ({
@@ -30,8 +30,8 @@ const kinds = (sent: ReadonlyArray<EngagementEvent>): Array<string> =>
 describe("a visit (ENG3)", () => {
   it("offers each listed card once a visit, however often the list is drawn", () => {
     const { visit: v, sent } = visit()
-    v.list([readAloud, lens])
-    v.list([readAloud, lens, drama])
+    v.show("list", [readAloud, lens])
+    v.show("list", [readAloud, lens, drama])
     expect(kinds(sent)).toEqual([
       "offered routine-read-aloud",
       "offered routine-lens",
@@ -41,7 +41,7 @@ describe("a visit (ENG3)", () => {
 
   it("passes over what wasn't taken when it ends, as took-another when one was", () => {
     const { visit: v, sent } = visit()
-    v.list([readAloud, lens, drama])
+    v.show("list", [readAloud, lens, drama])
     v.take(readAloud)
     v.end("moved-on")
     const passed = sent.filter((event) => event.kind === "passed-over")
@@ -55,12 +55,14 @@ describe("a visit (ENG3)", () => {
     })
   })
 
-  it("ends as the visit did when nothing was taken, and offers again in the next", () => {
+  it("ends as the visit did when nothing was taken, and offers again only what is shown", () => {
     const { visit: v, sent } = visit()
-    v.list([drama])
+    v.show("list", [drama])
     v.end("left-the-app")
-    v.list([drama])
+    v.appear()
+    v.show("list", null)
     v.end("moved-on")
+    v.appear()
     expect(sent.map((event) => event.kind)).toEqual([
       "offered",
       "passed-over",
@@ -79,5 +81,47 @@ describe("a visit (ENG3)", () => {
       "taken routine-lens",
       "taken routine-lens",
     ])
+  })
+
+  it("watches the page: the back ends a visit, the front begins one, closing ends it", () => {
+    const { visit: v, sent } = visit()
+    const target = new EventTarget()
+    let shown: DocumentVisibilityState = "visible"
+    const page: VisitPage = {
+      get visibilityState() {
+        return shown
+      },
+      addEventListener: target.addEventListener.bind(target),
+      removeEventListener: target.removeEventListener.bind(target),
+    }
+    const stop = watchVisit(v, page)
+    v.show("list", [drama])
+    shown = "hidden"
+    target.dispatchEvent(new Event("visibilitychange"))
+    shown = "visible"
+    target.dispatchEvent(new Event("visibilitychange"))
+    stop()
+    target.dispatchEvent(new Event("visibilitychange"))
+    expect(
+      sent.map((event) =>
+        event.kind === "passed-over"
+          ? `${event.kind} ${event.ending}`
+          : event.kind
+      )
+    ).toEqual([
+      "offered",
+      "passed-over left-the-app",
+      "offered",
+      "passed-over moved-on",
+    ])
+  })
+
+  it("holds what is shown while the app is at the back, and offers it on return", () => {
+    const { visit: v, sent } = visit()
+    v.leave()
+    v.show("list", [drama])
+    expect(sent).toEqual([])
+    v.appear()
+    expect(kinds(sent)).toEqual(["offered routine-drama"])
   })
 })

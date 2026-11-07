@@ -1,17 +1,17 @@
 /**
  * What the phone's lesson list offers, in the vocabulary of use (ENGAGE
  * ENG3, #2536; `@some-ui/engagement`'s registry, pipeline `topik`): each
- * "From the routine" card on the list as it first shows (`FEED_FIRST`), as
- * its read-aloud set, its grammar-lens set or its drama, and each word set
- * "Ready for you". Pure: the handheld lesson's visit (`createVisit`) lists
- * these and takes the one pressed.
+ * "From the routine" card the list shows (its first few, or what a search
+ * or a level finds), as its read-aloud set, its grammar-lens set or its
+ * drama, and each word set "Ready for you" it shows. Pure: the list shows
+ * these on the lesson's visit (`createVisit`), and the lesson takes the one
+ * pressed.
  *
  * A scene's two sets are two offers, so home can tell read-aloud from the
  * lens: opening one is taking it, and the other is passed over.
  */
 import type { Offer } from "@some-ui/engagement"
 import type { LessonItem } from "@topik/lib/topik/core/lesson-feed"
-import { FEED_FIRST } from "@topik/lib/topik/core/lesson-feed"
 import type { SetPractice } from "@topik/lib/topik/read-aloud/content"
 
 const AFFORDANCE_OF: Record<SetPractice, string> = {
@@ -37,7 +37,7 @@ export function routineOffer(
 }
 
 /** A word set "Ready for you", by its id. */
-const readySetOffer = (id: string): Offer => offer("ready-set", id)
+export const readySetOffer = (id: string): Offer => offer("ready-set", id)
 
 /**
  * What an added set `id` is offered as: its routine card's set when a card
@@ -55,17 +55,11 @@ export function offerOfSet(
   return readySetOffer(id)
 }
 
-/** Everything the list offers as it first shows: the cards, then the ready sets. */
-export function listOffers(
-  items: ReadonlyArray<LessonItem>,
-  readyIds: ReadonlyArray<string>
-): Array<Offer> {
-  const cards = items
-    .slice(0, FEED_FIRST)
-    .flatMap((item) =>
-      item.kind === "drama"
-        ? [routineOffer(item, undefined)]
-        : item.sessions.map((session) => routineOffer(item, session.practice))
-    )
-  return [...cards, ...readyIds.map(readySetOffer)]
+/** What the "From the routine" cards shown offer. */
+export function routineOffers(items: ReadonlyArray<LessonItem>): Array<Offer> {
+  return items.flatMap((item) =>
+    item.kind === "drama"
+      ? [routineOffer(item, undefined)]
+      : item.sessions.map((session) => routineOffer(item, session.practice))
+  )
 }

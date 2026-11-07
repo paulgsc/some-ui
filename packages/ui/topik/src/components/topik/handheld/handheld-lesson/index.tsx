@@ -37,7 +37,7 @@ import {
   useSyncExternalStore,
 } from "react"
 import { assertNever, cn, dayOf } from "@some-ui/core-utils"
-import { createVisit } from "@some-ui/engagement"
+import { createVisit, watchVisit } from "@some-ui/engagement"
 import { Button, KeepOnShelf, KeptShelf } from "@some-ui/shared"
 import { AskScene } from "@topik/components/topik/handheld/ask-scene"
 import { CastSheet } from "@topik/components/topik/handheld/cast-sheet"
@@ -101,7 +101,6 @@ import { titleOf } from "@topik/lib/topik/core/drama"
 import type { DramaPointStore } from "@topik/lib/topik/core/drama-runtime"
 import type { Seed } from "@topik/lib/topik/core/feed-card"
 import {
-  listOffers,
   offerOfSet,
   routineOffer,
 } from "@topik/lib/topik/core/lesson-engagement"
@@ -489,42 +488,11 @@ export const HandheldLesson = ({
     }
   }
 
-  // The list is offered only while it is what the screen shows. A visit
-  // ends when the lesson closes or the app goes to the back, and the list
-  // is offered again when it comes back to the front. In development's
-  // StrictMode the double mount ends one visit at once: every card is passed
-  // over, then offered again.
-  const listOnScreen =
-    reading === null &&
-    !drama.playing &&
-    servedKey === null &&
-    menu === null &&
-    generating === null
-  const offers = useMemo(
-    () =>
-      listOffers(
-        routineItems,
-        canRead ? readyOnList.map(({ deck }) => deck.id) : []
-      ),
-    [routineItems, readyOnList, canRead]
-  )
-  useEffect(() => {
-    if (listOnScreen) visit.list(offers)
-  }, [visit, offers, listOnScreen])
-  const backInFront = useEffectEvent((): void => {
-    if (listOnScreen) visit.list(offers)
-  })
-  useEffect(() => {
-    const seen = (): void => {
-      if (document.visibilityState === "hidden") visit.end("left-the-app")
-      else backInFront()
-    }
-    document.addEventListener("visibilitychange", seen)
-    return (): void => {
-      document.removeEventListener("visibilitychange", seen)
-      visit.end("moved-on")
-    }
-  }, [visit])
+  // A visit ends when the lesson closes or the app goes to the back
+  // (`watchVisit`); the list shows on it what it shows (`MaterialList`). In
+  // development's StrictMode the double mount ends one visit at once: every
+  // card is passed over, then offered again.
+  useEffect(() => watchVisit(visit, document), [visit])
 
   if (reading) {
     const set =
@@ -814,6 +782,7 @@ export const HandheldLesson = ({
         fromRoutine={routineItems}
         routineNote={routineNote}
         onOpenRoutine={openRoutine}
+        visit={visit}
         {...(heldRuns === null
           ? {}
           : {

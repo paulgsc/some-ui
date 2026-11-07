@@ -1,6 +1,7 @@
 import type { JSX } from "react"
-import { useId, useState } from "react"
+import { useEffect, useId, useMemo, useState } from "react"
 import { cn } from "@some-ui/core-utils"
+import type { Offer, Visit } from "@some-ui/engagement"
 import { Button, Input, Notice } from "@some-ui/shared"
 import { FeedThumb, FeedTile } from "@topik/components/topik/handheld/feed-tile"
 import { PortionMark } from "@topik/components/topik/handheld/portion-menu"
@@ -10,6 +11,10 @@ import type { DramaLesson } from "@topik/lib/topik/core/drama"
 import { titleOf } from "@topik/lib/topik/core/drama"
 import type { FeedCard, Seed } from "@topik/lib/topik/core/feed-card"
 import { cardOf, koreanGenre, seedOf } from "@topik/lib/topik/core/feed-card"
+import {
+  readySetOffer,
+  routineOffers,
+} from "@topik/lib/topik/core/lesson-engagement"
 import type { LessonItem } from "@topik/lib/topik/core/lesson-feed"
 import {
   FEED_FIRST,
@@ -94,6 +99,12 @@ type MaterialListProps = {
   routineNote?: StorageNote | null
   /** A scene opens on the set `setId`; a drama plays. */
   onOpenRoutine?: (key: string, setId?: string) => void
+  /**
+   * The lesson's visit (ENG3): the list shows on it what it shows, the cards
+   * "From the routine" and the sets "Ready for you", so what is offered is
+   * what is on screen, a level or a search included.
+   */
+  visit?: Visit
   /** The routine's mark (`RoutineStatus`), shown with or without its files. */
   routineStatus?: JSX.Element
   /** Opens "What are you hungry for?"; absent where it isn't offered. */
@@ -333,6 +344,29 @@ const RoutineTile = ({
   )
 }
 
+const readyOffers = (cards: ReadonlyArray<ReadyCard>): Array<Offer> =>
+  cards.map((card) => readySetOffer(card.id))
+
+/**
+ * Shows `items` on `visit` as `shelf` while this part of the list is on
+ * screen, and takes them off as it goes.
+ */
+function useShown<T>(
+  visit: Visit | undefined,
+  shelf: string,
+  items: ReadonlyArray<T>,
+  offersOf: (items: ReadonlyArray<T>) => Array<Offer>
+): void {
+  const offers = useMemo(() => offersOf(items), [items, offersOf])
+  useEffect(() => {
+    if (visit === undefined) return
+    visit.show(shelf, offers)
+    return (): void => {
+      visit.show(shelf, null)
+    }
+  }, [visit, shelf, offers])
+}
+
 /**
  * "From the routine": the first few, and a search over all of them once
  * there are more than that.
@@ -341,13 +375,16 @@ const FromRoutine = ({
   items,
   note,
   onOpen,
+  visit,
 }: {
   items: ReadonlyArray<LessonItem>
   note: StorageNote | null
   onOpen: (key: string, setId?: string) => void
+  visit: Visit | undefined
 }): JSX.Element => {
   const [query, setQuery] = useState("")
   const shown = searchLessons(items, query)
+  useShown(visit, "routine", shown, routineOffers)
   const searching = query.trim() !== ""
   const status = searching
     ? shown.length === 0
@@ -580,6 +617,7 @@ export const MaterialList = ({
   onOpenRoutine,
   routineStatus,
   onOrder,
+  visit,
 }: MaterialListProps): JSX.Element => {
   // The level shown alone; null shows every level.
   const [only, setOnly] = useState<number | null>(null)
@@ -600,6 +638,8 @@ export const MaterialList = ({
   const routineShown = fromRoutine.filter((item) => atLevel(item.level))
   const readyShown = readySets.filter((card) => atLevel(card.level))
   const dramasShown = dramaCards.filter((card) => atLevel(card.level))
+  const readyOffered = onReadAloud && onOpenSet ? readyShown : []
+  useShown(visit, "ready", readyOffered, readyOffers)
   return (
     <div
       data-slot="topik-material-list"
@@ -649,6 +689,7 @@ export const MaterialList = ({
           items={routineShown}
           note={routineNote}
           onOpen={onOpenRoutine}
+          visit={visit}
         />
       )}
 
