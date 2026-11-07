@@ -1774,7 +1774,9 @@
         "server:infra/compose/call-render.yml",
         "server:infra/docker/Dockerfile.render",
         "server:infra/kokoro",
-        "some-ui:apps/www/tests/record/call.ts"
+        "some-ui:apps/www/tests/record/call.ts",
+        "server:apps/servers/file_host/src/handlers/call_videos.rs",
+        "server:apps/servers/file_host/src/routes/call_videos.rs"
       ],
       "modules": ["call_videos"],
       "objectives": [
@@ -2014,12 +2016,22 @@
           "claim": "A week's video leaves home only once I've recorded its YouTube link, the video first and then the rest, and each delete leaves a receipt.",
           "requirement": "A paired phone's My data deletes a rendered week in two steps: its call.mp4, only once a YouTube video link is recorded for the week, and then the rest of its folder (takes, stills, cut list), only once the video has gone; each step writes an append-only receipt (the week, the step, the bytes that went, the link recorded, when) kept for good, and a repeated step answers with the same receipt and deletes nothing more; a link is a YouTube video's id, kept append-only, the newest standing; the week's words stay in call_week.",
           "verdict": "unproven",
-          "conclusion": "Decided, not built: the owner chose to publish each week from the phone and let home's copy go in two steps (#2661).",
+          "conclusion": "Built on home, not yet on the phone: a paired phone records a week's link and lets its video, then the rest, go, each with a receipt kept for good, tested; My data's screens are #2661's next slice.",
           "tracked": "some-ui#2661",
           "evidence": [
             {
+              "class": "structural",
+              "says": "Each step's receipt is written in the transaction it deletes under, which commits only once the files have gone; a step already done answers with its receipt; the video needs a recorded link and the rest the video's receipt, which the table's trigger and foreign key hold too; each tested, a file the drive won't remove writing no receipt.",
+              "ref": "server:apps/servers/file_host/src/call_weeks/videos.rs"
+            },
+            {
+              "class": "structural",
+              "says": "A link is a YouTube video's id read from what was pasted (a channel, a playlist or a look-alike host names none), kept append-only, the newest standing.",
+              "ref": "server:crates/db/call_week/src/video.rs"
+            },
+            {
               "class": "unknown",
-              "says": "Nothing is built yet; the routes, tables and screens are #2661's slices.",
+              "says": "My data's call videos screens on the phone are not built yet.",
               "ref": "some-ui#2661"
             }
           ],
@@ -2035,17 +2047,23 @@
           "claim": "A week I've let go reads as let go, never as waiting for its video, and isn't rendered again.",
           "requirement": "Once a week's video is deleted from My data, file_host no longer writes it to call-weeks, removing its file there, the render worker skips a week whose file is gone, and the CALL dashboard and the CallRender* alerts count it as let go, apart from the weeks still waiting.",
           "verdict": "unproven",
-          "conclusion": "Decided, not built (#2661).",
+          "conclusion": "Built on home: a week whose video is let go is never written to call-weeks again, its file there removed, and it counts as let go on the CALL dashboard (call_render_weeks_let_go), never as waiting, each tested.",
           "tracked": "some-ui#2661",
           "evidence": [
             {
-              "class": "unknown",
-              "says": "Nothing is built yet; #2661's home slice does it.",
-              "ref": "some-ui#2661"
+              "class": "structural",
+              "says": "The export pass skips a week whose video was let go and removes any file left of it, tested.",
+              "ref": "server:apps/servers/file_host/src/call_weeks/pass.rs"
+            },
+            {
+              "class": "structural",
+              "says": "The render observation counts a let-go week apart, so CallRenderOverdue and the waiting count never see it, tested.",
+              "ref": "server:apps/servers/file_host/src/call_weeks/render.rs"
             }
           ],
           "watch": {
-            "by": "none"
+            "by": "dashboard",
+            "ref": "server:infra/grafana/dashboards/call.jsonnet"
           },
           "amendments": []
         }
@@ -2624,6 +2642,18 @@
       "store": "server:call_week",
       "class": "record",
       "growth": "One row per week of the weekly call home takes from paulgsc/testing: the week's file as served (about 80 KB) with its SHA-256; append-only, triggers abort UPDATE and DELETE. The repository keeps the last few weeks; this keeps every one.",
+      "family": "call-kept"
+    },
+    {
+      "store": "server:call_video_deletion",
+      "class": "record",
+      "growth": "Per step of a week of the call the owner lets go from My data (video, then the rest): one small receipt row (the week, the step, its YouTube video's id, the bytes that went, when), at most two per week, so bounded by call_week's rows; append-only, triggers abort UPDATE and DELETE, kept for good.",
+      "family": "call-kept"
+    },
+    {
+      "store": "server:call_video_link",
+      "class": "record",
+      "growth": "Per YouTube video the owner records for a week of the call: one tiny row (the week, the video's id, when), the newest standing; about one per week; append-only, triggers abort UPDATE and DELETE.",
       "family": "call-kept"
     },
     {
