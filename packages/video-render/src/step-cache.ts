@@ -13,14 +13,18 @@
  *
  * What it may hold is policy (`RenderPolicy.cacheBytes`): a step that would
  * take the cache past it runs and is not kept, with a warning, never a
- * failure. Entries are written to a temporary name and renamed into place,
+ * failure. Its size is counted before each keep, and a size it cannot count
+ * is never room (VC1): only a folder or an entry that is not there counts as
+ * nothing held; any other error reading them keeps the step uncached, with a
+ * warning, and the render goes on. Entries are written to a temporary name
+ * and renamed into place,
  * so a step killed half way leaves nothing that reads as kept. A kept file is
  * copied out, never linked: ffmpeg's `-y` rewrites a file in place, which
  * would change a linked entry.
  */
 
 import { createHash } from "node:crypto"
-import { copyFile, mkdir, readdir, rename, rm, stat } from "node:fs/promises"
+import * as nodeFs from "node:fs/promises"
 import { extname, isAbsolute, join, resolve } from "node:path"
 
 import type { RenderPolicy } from "./policy"
@@ -48,36 +52,69 @@ export const keyOf = (parts: unknown): string =>
 
 const TEMPORARY = ".partial"
 
-async function heldBytes(dir: string): Promise<number> {
-  let names: Array<string>
+/** The file operations the cache uses; tests inject their failures. */
+export type CacheFs = {
+  readonly readdir: (path: string) => Promise<ReadonlyArray<string>>
+  readonly stat: (path: string) => Promise<{ readonly size: number }>
+  readonly copyFile: (from: string, to: string) => Promise<void>
+  readonly mkdir: (path: string) => Promise<unknown>
+  readonly rename: (from: string, to: string) => Promise<void>
+  readonly rm: (path: string) => Promise<void>
+}
+
+/** The cache's file operations on the real disk. */
+export const nodeCacheFs: CacheFs = {
+  readdir: (path) => nodeFs.readdir(path),
+  stat: (path) => nodeFs.stat(path),
+  copyFile: (from, to) => nodeFs.copyFile(from, to),
+  mkdir: (path) => nodeFs.mkdir(path, { recursive: true }),
+  rename: (from, to) => nodeFs.rename(from, to),
+  rm: (path) => nodeFs.rm(path, { force: true }),
+}
+
+/** What the cache holds: its bytes, or why they could not be counted. */
+type Held = { readonly bytes: number } | { readonly unknown: string }
+
+const absent = (error: unknown): boolean =>
+  typeof error === "object" &&
+  error !== null &&
+  "code" in error &&
+  error.code === "ENOENT"
+
+async function heldBytes(dir: string, fs: CacheFs): Promise<Held> {
+  let names: ReadonlyArray<string>
   try {
-    names = await readdir(dir)
-  } catch {
-    // Ignored: no folder yet means nothing is kept, which is zero bytes.
-    return 0
+    names = await fs.readdir(dir)
+  } catch (error) {
+    // No folder yet is nothing kept; any other failure is a size unknown.
+    if (absent(error)) return { bytes: 0 }
+    return { unknown: `its folder could not be listed (${String(error)})` }
   }
   let total = 0
   for (const name of names) {
     try {
-      total += (await stat(join(dir, name))).size
-    } catch {
-      // Ignored: gone since it was listed, so it holds nothing now.
+      total += (await fs.stat(join(dir, name))).size
+    } catch (error) {
+      // Gone since it was listed: it holds nothing now.
+      if (absent(error)) continue
+      return { unknown: `${name} could not be measured (${String(error)})` }
     }
   }
-  return total
+  return { bytes: total }
 }
 
 /** A step cache in `dir`, held to `policy.cacheBytes`. */
 export function stepCache(
   dir: string,
   policy: RenderPolicy,
-  warn: (line: string) => void
+  warn: (line: string) => void,
+  fs: CacheFs = nodeCacheFs
 ): StepCache {
   const kept = (key: string, ext: string): string => join(dir, `${key}${ext}`)
   return {
     get: async (key, ext, to): Promise<boolean> => {
       try {
-        await copyFile(kept(key, ext), to)
+        await fs.copyFile(kept(key, ext), to)
         return true
       } catch {
         // Ignored: nothing kept under this key, so the step runs.
@@ -87,14 +124,20 @@ export function stepCache(
     put: async (key, ext, from, what): Promise<boolean> => {
       let bytes: number
       try {
-        bytes = (await stat(from)).size
+        bytes = (await fs.stat(from)).size
       } catch (error) {
         warn(`not cached: ${what}: it could not be read (${String(error)})`)
         return false
       }
-      const held = await heldBytes(dir)
-      if (held + bytes > policy.cacheBytes) {
-        warn(overBudget(what, bytes, held, policy))
+      const held = await heldBytes(dir, fs)
+      if ("unknown" in held) {
+        warn(
+          `not cached: ${what}: the cache's size is unknown, ${held.unknown}`
+        )
+        return false
+      }
+      if (held.bytes + bytes > policy.cacheBytes) {
+        warn(overBudget(what, bytes, held.bytes, policy))
         return false
       }
       const path = kept(key, ext)
@@ -102,12 +145,12 @@ export function stepCache(
       try {
         // The folder too: a disk that is full or a folder that cannot be
         // written is a step not kept, never a render that fails.
-        await mkdir(dir, { recursive: true })
-        await copyFile(from, partial)
-        await rename(partial, path)
+        await fs.mkdir(dir)
+        await fs.copyFile(from, partial)
+        await fs.rename(partial, path)
         return true
       } catch (error) {
-        await rm(partial, { force: true }).catch(() => {
+        await fs.rm(partial).catch(() => {
           // Ignored: a partial that cannot be removed is never read as kept,
           // since only the renamed name is.
         })
