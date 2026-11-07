@@ -215,7 +215,6 @@ export function createCallVideos(ports: CallsPorts): CallVideos {
     },
 
     async forget(from): Promise<void> {
-      // A copy that wouldn't go stays ready to watch, as it is.
       if (await ports.files.remove(from)) {
         dispatch({ type: "fetchForgotten", from })
       }

@@ -17,12 +17,15 @@
  *   being busy, offers Try again, a tap. Nothing retries on its own.
  *
  * LA19 (docs/learner-data-authority.md): `deleting` is reached only from
- * `asking`, or an `ended` sheet whose end is `away`.
+ * `asking`, or an `ended` sheet whose end is `unanswered`.
  */
-import { assertNever, readAs } from "@some-ui/core-utils"
+import { assertNever } from "@some-ui/core-utils"
 import { z } from "zod"
 
 import type { CallStep, CallStepAsked } from "@/lib/home-link/delete-note"
+
+import type { HomeDeleteEnd } from "./deleting"
+import { readHomeDelete } from "./deleting"
 
 const ReceiptSchema = z.object({
   receipt: z.object({
@@ -37,39 +40,23 @@ const ReceiptSchema = z.object({
 /** A step's receipt, as home answers it. */
 type CallReceipt = z.infer<typeof ReceiptSchema>["receipt"]
 
-/** How a step's ask ended. */
-export type CallStepEnd =
-  | { readonly kind: "gone"; readonly receipt: CallReceipt }
-  /** Home keeps it: no link yet, the video first, or no video. */
-  | { readonly kind: "kept" }
-  /** Home holds no such week. */
-  | { readonly kind: "notHeld" }
-  /** Home no longer knows this phone, or it isn't paired. */
-  | { readonly kind: "forgotten" }
-  /** No answer, or the link was busy: nothing was deleted. Try again. */
-  | { readonly kind: "away" }
+/**
+ * How a step's ask ended: `kept` is home keeping it (no link yet, the video
+ * first, or no video); `forgotten` also covers a phone not paired.
+ */
+export type CallStepEnd = HomeDeleteEnd<CallReceipt>
 
 export function readCallStep(asked: CallStepAsked): CallStepEnd {
   switch (asked.kind) {
     case "answered": {
-      const { status, body } = asked.answer
-      if (status === 200) {
-        const read = readAs(ReceiptSchema, body)
-        return read === null
-          ? { kind: "away" }
-          : { kind: "gone", receipt: read.receipt }
-      }
-      if (status === 409) return { kind: "kept" }
-      if (status === 404) return { kind: "notHeld" }
-      if (status === 401) return { kind: "forgotten" }
-      return { kind: "away" }
+      return readHomeDelete(ReceiptSchema, asked.answer)
     }
     case "unpaired": {
       return { kind: "forgotten" }
     }
     case "busy":
     case "unreachable": {
-      return { kind: "away" }
+      return { kind: "unanswered" }
     }
     default: {
       return assertNever(asked)
@@ -112,7 +99,7 @@ export function stepCallSheet(
     }
     case "confirmed": {
       if (sheet.kind === "asking") return { kind: "deleting", ask: sheet.ask }
-      return sheet.kind === "ended" && sheet.end.kind === "away"
+      return sheet.kind === "ended" && sheet.end.kind === "unanswered"
         ? { kind: "deleting", ask: sheet.ask }
         : sheet
     }

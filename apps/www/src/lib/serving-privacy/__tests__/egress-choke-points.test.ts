@@ -965,7 +965,6 @@ describe("LA19 (MD5): only My data deletes a record on home", () => {
       (f) => deleteRisks(f, read(f)).deletes.length > 0
     )
     expect(deleting).toEqual([DELETE_SEND])
-    // Each run is handed to the link's `send`, then sends its one DELETE.
     expect(sendCalls(DELETE_SEND, read(DELETE_SEND))).toEqual(DELETE_SENDS)
   })
 

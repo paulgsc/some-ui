@@ -19,10 +19,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@some-ui/shared"
-import { Link } from "@tanstack/react-router"
-import { ChevronLeft } from "lucide-react"
 
-import { hasAudience } from "@/lib/build-profile"
 import { callsRefresher, callVideos } from "@/lib/call-videos"
 import type { Week } from "@/lib/call-videos/model"
 import { standing } from "@/lib/call-videos/model"
@@ -33,17 +30,20 @@ import { CALL_DELETING, DELETING, itemName } from "@/lib/my-data/words"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 import { CallWeeksList } from "@/components/call-videos"
 import { PairHomeLink } from "@/components/pair-home-link"
-import { MyDataSheet } from "@/components/settings/device-my-data-delete"
+import { MyDataHeading } from "@/components/settings/device-my-data"
+import { BIG, MyDataSheet } from "@/components/settings/device-my-data-delete"
 
 const WORDS = CALL_DELETING
-const BIG = "h-12 rounded-2xl text-base"
+
+/** Whether the week's rest went too: nothing of it is left on home. */
+const allGone = (week: Week): boolean =>
+  week.receipts.some((receipt) => receipt.step === "rest")
 
 /** What of a week can be let go now, if anything. */
 function offer(week: Week): CallAsk | null {
-  const went = (step: "video" | "rest"): boolean =>
-    week.receipts.some((receipt) => receipt.step === step)
   if (week.link === null) return null
-  if (!went("video") && week.videoBytes !== null) {
+  const videoWent = standing(week) === "letGo"
+  if (!videoWent && week.videoBytes !== null) {
     return {
       from: week.from,
       to: week.to,
@@ -51,7 +51,7 @@ function offer(week: Week): CallAsk | null {
       bytes: week.videoBytes,
     }
   }
-  if (went("video") && !went("rest") && week.restBytes !== null) {
+  if (videoWent && !allGone(week) && week.restBytes !== null) {
     return { from: week.from, to: week.to, step: "rest", bytes: week.restBytes }
   }
   return null
@@ -66,19 +66,18 @@ const WeekRow = ({
 }): JSX.Element => {
   const ask = offer(week)
   const stands = standing(week)
-  const allGone = week.receipts.some((receipt) => receipt.step === "rest")
   return (
     <li className="bg-card flex flex-col gap-2 rounded-xl border p-3">
       <span className="text-sm font-medium">
         {WORDS.week(week.from, week.to)}
       </span>
-      {stands === "waiting" && !allGone && (
+      {stands === "waiting" && (
         <span className="text-muted-foreground text-xs">{WORDS.waiting}</span>
       )}
       {stands === "kept" && week.link === null && (
         <span className="text-muted-foreground text-xs">{WORDS.noLink}</span>
       )}
-      {allGone && (
+      {allGone(week) && (
         <span className="text-muted-foreground text-xs">{WORDS.allGone}</span>
       )}
       {ask !== null && (
@@ -125,7 +124,7 @@ const Asking = ({
       </div>
       <div className="flex flex-col gap-2.5">
         <Button size="lg" className={BIG} onClick={onClose} disabled={deleting}>
-          {WORDS.keep}
+          {DELETING.keep(1)}
         </Button>
         <Button
           variant="destructive"
@@ -134,7 +133,7 @@ const Asking = ({
           onClick={onConfirm}
           disabled={deleting}
         >
-          {deleting ? WORDS.deleting : WORDS.confirm}
+          {deleting ? DELETING.deleting : DELETING.confirm(1)}
         </Button>
       </div>
     </>
@@ -164,13 +163,13 @@ const Ended = ({
         <SheetDescription>{line}</SheetDescription>
       </SheetHeader>
       <div className="flex flex-col gap-2.5">
-        {end.kind === "away" && (
+        {end.kind === "unanswered" && (
           <Button size="lg" className={BIG} onClick={onConfirm}>
-            {WORDS.tryAgain}
+            {DELETING.tryAgain}
           </Button>
         )}
         <Button variant="outline" size="lg" className={BIG} onClick={onClose}>
-          {WORDS.done}
+          {DELETING.done}
         </Button>
       </div>
     </>
@@ -208,18 +207,7 @@ export const DeviceMyDataCalls = (): JSX.Element => {
   }, [calls])
   return (
     <>
-      <div className="space-y-1">
-        {hasAudience("apk") ? (
-          <Link
-            to="/settings/data"
-            className="text-muted-foreground hover:text-foreground -ml-1 inline-flex items-center gap-1 text-sm"
-          >
-            <ChevronLeft className="size-4" aria-hidden />
-            {WORDS.back}
-          </Link>
-        ) : null}
-        <h1 className="text-2xl font-semibold tracking-tight">{WORDS.title}</h1>
-      </div>
+      <MyDataHeading title={WORDS.title} />
       <p className="text-muted-foreground text-sm">{WORDS.lead}</p>
       <CallWeeksList
         list={list}

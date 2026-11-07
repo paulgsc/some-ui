@@ -89,15 +89,10 @@ function callStepPath(from: string, step: CallStep): string {
   return `/call/videos/${encodeURIComponent(from)}/${step}`
 }
 
-/** Home's answer to a week's step, or why there is none. */
+/** Home's answer to a week's step, or why there is none (as a note's). */
 export type CallStepAsked =
   | { readonly kind: "answered"; readonly answer: HomeAnswer }
-  /** Not paired: nothing was sent. */
-  | { readonly kind: "unpaired" }
-  /** The link was busy with another run, or stopped: nothing was answered. */
-  | { readonly kind: "busy" }
-  /** No answer at all. */
-  | { readonly kind: "unreachable" }
+  | Exclude<DeleteAsked, { readonly kind: "answered" }>
 
 /** Asks home once to let `step` of the week starting `from` go; never rejects. */
 export async function deleteCallStep(

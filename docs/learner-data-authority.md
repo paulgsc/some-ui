@@ -1599,7 +1599,7 @@ reaches:
   only by `createCallDeleting`'s `run` (`lib/my-data/call-deleting-runtime.ts`),
   which starts only when `stepCallSheet` (`lib/my-data/call-deleting.ts`)
   has accepted a `confirmed`, from an `asking` sheet or an `ended` sheet
-  whose end is `away`. Its `confirm` is called only from that sheet's
+  whose end is `unanswered`. Its `confirm` is called only from that sheet's
   "Delete for good" and Try again (`CallSheetView`'s `onConfirm`,
   `components/settings/device-my-data-calls.tsx`), which shows what goes and
   `CALL_DELETING.stays`, "Keep it" first.
@@ -1623,8 +1623,8 @@ reaches:
     other than in `run`, starts `run` but after a `confirmed` the step
     accepted, or retries on its own; a hunk to `call-deleting.ts` that lets
     `stepCallSheet` reach `deleting` from any sheet but `asking`, or an
-    `ended` sheet whose end is not `away`, or reads a final answer (`409`,
-    `404`, `401`) as `away`; a hunk that calls a `CallDeleting`'s `confirm`
+    `ended` sheet whose end is not `unanswered`, or reads a final answer
+    (`409`, `404`, `401`) as `unanswered`; a hunk that calls a `CallDeleting`'s `confirm`
     from anything but `CallSheetView`'s `onConfirm`; or a hunk to
     `device-my-data-calls.tsx` that drops what goes or `CALL_DELETING.stays`
     from the sheet that asks, or puts the confirm before "Keep it";

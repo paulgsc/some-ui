@@ -151,8 +151,7 @@ const WeekRow = ({
 
 /**
  * Home's list of weeks as it stands: what it says while reading, unpaired,
- * unanswered or empty, and its children once there are weeks. Studio's Calls and
- * My data's call videos both draw it.
+ * unanswered or empty, and its children once there are weeks.
  */
 export const CallWeeksList = ({
   list,

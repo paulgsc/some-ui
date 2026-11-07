@@ -58,7 +58,7 @@ export function createCallDeleting(ports: CallDeletingPorts): CallDeleting {
     if (end.kind === "gone" && ask.step === "video") {
       await ports.forgetCopy(ask.from)
     }
-    if (end.kind !== "away") ports.reread()
+    if (end.kind !== "unanswered") ports.reread()
   }
 
   return {

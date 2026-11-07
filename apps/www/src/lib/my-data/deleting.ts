@@ -70,29 +70,40 @@ export type Receipt = z.infer<typeof ReceiptSchema>
 
 const Deleted = z.object({ receipt: ReceiptSchema })
 
-/** What home answered one note's delete with. */
-export type NoteEnd =
-  | { readonly kind: "gone"; readonly receipt: Receipt }
-  /** `409`: home keeps it (switched off, or kept for good). */
+/** What home answered a delete of one of its records with. */
+export type HomeDeleteEnd<R> =
+  | { readonly kind: "gone"; readonly receipt: R }
+  /** `409`: home keeps it. */
   | { readonly kind: "kept" }
-  /** `404`: home holds no such note, so there was nothing there to delete. */
+  /** `404`: home holds no such record, so there was nothing there to delete. */
   | { readonly kind: "notHeld" }
   /** `401`: home no longer knows this phone. */
   | { readonly kind: "forgotten" }
   /** No answer, home busy, or an answer the phone can't read. */
   | { readonly kind: "unanswered" }
 
-/** What one note's answer from home says. */
-export function readDeletion(answer: HomeAnswer | null): NoteEnd {
+/** What home's answer to a delete says, `schema` reading its receipt. */
+export function readHomeDelete<R>(
+  schema: z.ZodType<{ receipt: R }>,
+  answer: HomeAnswer | null
+): HomeDeleteEnd<R> {
   if (answer === null) return { kind: "unanswered" }
   if (answer.status === 409) return { kind: "kept" }
   if (answer.status === 404) return { kind: "notHeld" }
   if (answer.status === 401) return { kind: "forgotten" }
   if (answer.status !== 200) return { kind: "unanswered" }
-  const read = readAs(Deleted, answer.body)
+  const read = readAs(schema, answer.body)
   return read === null
     ? { kind: "unanswered" }
     : { kind: "gone", receipt: read.receipt }
+}
+
+/** What home answered one note's delete with (`409`: switched off, or kept for good). */
+export type NoteEnd = HomeDeleteEnd<Receipt>
+
+/** What one note's answer from home says. */
+export function readDeletion(answer: HomeAnswer | null): NoteEnd {
+  return readHomeDelete(Deleted, answer)
 }
 
 /** How this phone's let-go of its own copies went, once there are receipts. */

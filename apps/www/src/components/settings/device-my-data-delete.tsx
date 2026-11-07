@@ -33,7 +33,8 @@ import {
   receiptParts,
 } from "@/lib/my-data/words"
 
-const BIG = "h-12 rounded-2xl text-base"
+/** A sheet's big answer button. */
+export const BIG = "h-12 rounded-2xl text-base"
 
 /** One receipt's facts: what, when, what went and what stayed. */
 const ReceiptFacts = ({ receipt }: { receipt: Receipt }): JSX.Element => {

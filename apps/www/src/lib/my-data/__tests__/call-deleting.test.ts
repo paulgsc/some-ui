@@ -53,7 +53,7 @@ describe("readCallStep", () => {
       { kind: "busy" } as const,
       { kind: "unreachable" } as const,
     ]) {
-      expect(readCallStep(silent)).toEqual({ kind: "away" })
+      expect(readCallStep(silent)).toEqual({ kind: "unanswered" })
     }
   })
 })
@@ -76,7 +76,7 @@ describe("stepCallSheet", () => {
     const deleting: CallSheet = { kind: "deleting", ask: ASK }
     const away = stepCallSheet(deleting, {
       type: "answered",
-      end: { kind: "away" },
+      end: { kind: "unanswered" },
     })
     expect(stepCallSheet(away, { type: "confirmed" })).toEqual(deleting)
     for (const end of [
