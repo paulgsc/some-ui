@@ -290,14 +290,16 @@ describe("what Practice Home offers and what was taken (ENGAGE)", () => {
     ])
   })
 
-  it("offers nothing new while a lesson launches, and takes it once", () => {
+  it("offers nothing new while a lesson launches, and takes each button once", () => {
     setEngagementSink(() => undefined)
     const used: Array<EngagementEvent> = []
     setEngagementSink((event) => used.push(event))
     const { refresh } = renderWith({ data: [], isError: false })
     const next = screen.getByRole("button", { name: "Next lesson" })
+    const menu = screen.getByRole("button", { name: "Pick a portion" })
     fireEvent.click(next)
     fireEvent.click(next)
+    fireEvent.click(menu)
     const open = { ...finished("Korean", 0), status: "active" as const }
     refresh({ data: [open], isError: false })
     cleanup()
@@ -308,8 +310,8 @@ describe("what Practice Home offers and what was taken (ENGAGE)", () => {
       "offered say-why",
       "offered home-card",
       "taken next-lesson",
+      "taken hungry",
       "passed-over start",
-      "passed-over hungry",
       "passed-over say-why",
       "passed-over home-card",
     ])
