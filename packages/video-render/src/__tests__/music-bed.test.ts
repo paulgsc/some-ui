@@ -39,12 +39,13 @@ describe("the music bed", () => {
     expect(quietest).toBeGreaterThan(32767 * 0.01)
   })
 
-  it("loops with no seam: the last sample leads into the first as its neighbours do", () => {
+  it("loops with no seam: the last sample leads into the first as the steps before it do", () => {
     const step = (i: number): number =>
       Math.abs((samples.at(i) ?? 0) - (samples.at(i - 1) ?? 0))
     const seam = step(0)
     const near = Math.max(
-      ...[-8, -7, -6, -5, -4, -3, -2, 1, 2, 3, 4, 5, 6, 7, 8].map(step)
+      // Only before it: the low-pass still carries a jump into the steps after.
+      ...[-8, -7, -6, -5, -4, -3, -2, -1].map(step)
     )
     expect(seam).toBeLessThanOrEqual(1.5 * near)
   })

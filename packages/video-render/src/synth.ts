@@ -112,14 +112,15 @@ export function dice(seed: number): () => number {
 
 /**
  * `x` as 16-bit samples, scaled so its peak is `peak` of full scale, in
- * (0, 1]. Refuses a sample that isn't a number, which would make it silent.
+ * (0, 1]. Refuses a sample that isn't a finite number, which would make it silent.
  */
 export function pcm16(x: Float64Array, peak: number): Int16Array {
   if (!(peak > 0 && peak <= 1))
     throw new RangeError(`a peak of ${String(peak)} is outside (0, 1]`)
   let top = 0
   for (const v of x) {
-    if (Number.isNaN(v)) throw new RangeError("a sample isn't a number")
+    if (!Number.isFinite(v))
+      throw new RangeError("a sample isn't a finite number")
     top = Math.max(top, v < 0 ? -v : v)
   }
   const scale = top > 0 ? peak / top : 0
