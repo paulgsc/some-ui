@@ -84,16 +84,16 @@ export const PLACES = ["home", "phone", "testing", "drive"] as const
 
 type Place = (typeof PLACES)[number]
 
-type Kept = {
-  /** What the feed leaves there. */
-  readonly what: string
-  /** Whether any of it can be let go, and where. */
-  readonly letGo: string
-}
+type Kept = { readonly what: string; readonly letGo: string }
 
-const NOTES_KEPT: Kept = {
-  what: "Your notes on its episodes, under Feedback.",
-  letGo: "Kept. Nothing lets one go.",
+/** My data's two steps for an episode (`lib/my-data/words`' videos). */
+const HOME_LETS_GO =
+  "Once an episode's YouTube link is saved, Settings › My data lets its video go, then what it was made from, and home keeps a note of each. Its words stay."
+
+const ON_THE_PHONE: Kept = {
+  what: "Your notes on its episodes, under Feedback, and a copy of each episode you watched.",
+  letGo:
+    "Your notes are kept. A watched copy is the phone's to clear, and home still has the episode.",
 }
 
 const NOTHING_IN_DRIVE: Kept = {
@@ -102,19 +102,18 @@ const NOTHING_IN_DRIVE: Kept = {
 }
 
 /**
- * What each feed leaves behind, and where (SFEED8, #2748). Which of it can be
- * let go is the owner's ruling (ask #2749: nothing beyond an episode's video).
+ * What each feed leaves behind, and where (SFEED8, #2748). Nothing more can be
+ * let go than My data already offers (the owner's ruling on ask #2749).
  */
 export const FEED_KEPT = {
   call: {
     home: {
       what: "Every week Claude wrote for the call, as home first read it, and each episode's video and what it was made from.",
-      letGo:
-        "An episode's video can be let go in Settings › My data, and home keeps a note that it was. The rest stays.",
+      letGo: HOME_LETS_GO,
     },
-    phone: NOTES_KEPT,
+    phone: ON_THE_PHONE,
     testing: {
-      what: "Each week's words, in the public paulgsc/testing, under call. Only the newest weeks stay there: an older one leaves once home holds it.",
+      what: "Each week's words, in the public paulgsc/testing. Only the newest weeks stay there: an older one leaves once home holds it.",
       letGo: "Never by hand. Home keeps every week.",
     },
     drive: NOTHING_IN_DRIVE,
@@ -122,12 +121,11 @@ export const FEED_KEPT = {
   "playoff-delta": {
     home: {
       what: "Every week's words Claude wrote, with the season as it stood that week, and each episode's video and what it was made from.",
-      letGo:
-        "An episode's video can be let go in Settings › My data, and home keeps a note that it was. The rest stays.",
+      letGo: HOME_LETS_GO,
     },
-    phone: NOTES_KEPT,
+    phone: ON_THE_PHONE,
     testing: {
-      what: "The season's numbers and every week's words, in the public paulgsc/testing, under playoff-delta.",
+      what: "The season's numbers and every week's words, in the public paulgsc/testing.",
       letGo: "Never. A week's words are kept as they were written.",
     },
     drive: NOTHING_IN_DRIVE,

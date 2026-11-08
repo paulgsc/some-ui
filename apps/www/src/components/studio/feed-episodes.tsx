@@ -10,11 +10,9 @@ import type { Feed } from "@/lib/feeds"
 import { FeedEpisodeLinks, FeedHomeSize } from "@/components/call-videos"
 import { PairHomeLink } from "@/components/pair-home-link"
 
-const Links =
-  import.meta.env.VITE_DEVICE_BACKEND === "true" ? FeedEpisodeLinks : null
-
-const Size =
-  import.meta.env.VITE_DEVICE_BACKEND === "true" ? FeedHomeSize : null
+const onPhone = import.meta.env.VITE_DEVICE_BACKEND === "true"
+const Links = onPhone ? FeedEpisodeLinks : null
+const Size = onPhone ? FeedHomeSize : null
 
 export const FeedEpisodes = ({
   feed,
@@ -28,7 +26,6 @@ export const FeedEpisodes = ({
     <Links feed={feed} pair={<PairHomeLink>{pairWords}</PairHomeLink>} />
   )
 
-/** What home holds of a feed's episodes, by size, in the Android app alone. */
 export const FeedSizeOnHome = ({
   feed,
   label,

@@ -57,9 +57,7 @@ const FeedPage = (): JSX.Element => {
               <dt className="text-sm font-medium">{WORDS.places[place]}</dt>
               <dd className="text-sm">{FEED_KEPT[feed][place].what}</dd>
               {place === "home" && (
-                <dd>
-                  <FeedSizeOnHome feed={feed} label={WORDS.homeHolds} />
-                </dd>
+                <FeedSizeOnHome feed={feed} label={WORDS.homeHolds} />
               )}
               <dd className="text-muted-foreground text-sm">
                 {FEED_KEPT[feed][place].letGo}

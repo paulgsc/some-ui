@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest"
 
 import type { Episode } from "@/lib/call-videos/model"
 import {
+  homeBytes,
   INITIAL,
   isFeed,
   readEpisodes,
@@ -82,6 +83,21 @@ describe("readLinkSaved", () => {
     expect(readLinkSaved({ status: 409, body: "" })).toEqual({
       kind: "unreadable",
     })
+  })
+})
+
+describe("homeBytes", () => {
+  it("sums each video and its rest that home holds, and is null for none", () => {
+    expect(
+      homeBytes([
+        episode(),
+        episode({ key: "2026-11-06", videoBytes: null, restBytes: 7 }),
+      ])
+    ).toBe(22)
+    expect(homeBytes([])).toBeNull()
+    expect(homeBytes([episode({ videoBytes: null, restBytes: null })])).toBe(
+      null
+    )
   })
 })
 
