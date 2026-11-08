@@ -44,6 +44,7 @@ export const UnnamedIdeaTakes = ({
       drafts.read(),
       ideas.list()
     ).map(({ id }) => id)
+    if (ids.length === 0) return
     const kept = takes.release(ids)
     setSaid((last) => ({ kept, n: (last?.n ?? 0) + 1 }))
   }
