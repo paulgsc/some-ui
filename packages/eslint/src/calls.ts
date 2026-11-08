@@ -25,7 +25,7 @@ export const CALLS_SCHEMA = "some-ui.calls/1"
 export const CALLS_FILE = "docs/calls.json"
 
 /** Whose authority a call rests on. */
-export type CallBy = "claude" | "owner"
+type CallBy = "claude" | "owner"
 
 export type Call = {
   readonly id: string
