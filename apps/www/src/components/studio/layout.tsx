@@ -14,7 +14,7 @@ import { Link } from "@tanstack/react-router"
 import { hasAudience } from "@/lib/build-profile"
 import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
 import type { StudioKind } from "@/lib/studio-index"
-import { KIND_WORDS, kindPath, STUDIO_INDEX_WORDS } from "@/lib/studio-index"
+import { kindPath, STUDIO_INDEX_WORDS } from "@/lib/studio-index"
 
 /** A tile's link: a card the size of its neighbours. */
 export const TILE =
@@ -92,7 +92,6 @@ export const Part = ({
     {children}
   </section>
 )
-
 
 /** What a list read from elsewhere says while it reads, can't, or can't again. */
 type ReadWords = {

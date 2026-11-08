@@ -44,6 +44,7 @@ export const UNMEASURED: ReadonlyArray<Unmeasured> = [
     "/journal/asks",
     "/journal/asks/$ask",
     "/journal/clips",
+    "/journal/clips/$clip",
     "/journal/episodes",
     "/journal/episodes/$feed/$key",
     "/journal/feedback",
