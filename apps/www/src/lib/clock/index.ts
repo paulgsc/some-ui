@@ -45,3 +45,9 @@ export function useMinuteClock(): Date {
   const minute = useSyncExternalStore(subscribe, minuteNow, minuteNow)
   return new Date(minute * MINUTE_MS)
 }
+
+/** Runs `run` once, `ms` from now, on the page's timers; returns the cancel. */
+export function after(ms: number, run: () => void): () => void {
+  const timer = setTimeout(run, ms)
+  return (): void => clearTimeout(timer)
+}

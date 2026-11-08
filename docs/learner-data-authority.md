@@ -1131,9 +1131,13 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   of the Android app; aph's lane for as long as its screens hand it in), on
   the watch starting, a move of the lane's revision (its record changed on
   this phone), the app coming back to the foreground, the network coming
-  back, the phone being paired, or the link freeing up after turning a run
-  away; from `askLane`, which a mark's sheet and Settings' readout call
-  only from their Send now button; or, for a pull (a drag down from the top
+  back, the phone being paired, the link freeing up after another run
+  turned the lane's away, or home's busy ending after home turned it away
+  (AD3: the link sends nothing while home's `Retry-After` lasts, answering
+  each request busy itself, so the moments that come meanwhile run the
+  lane, say busy and send nothing, and its end asks once); from `askLane`,
+  which a mark's sheet and Settings' readout call only from their Send now
+  button; or, for a pull (a drag down from the top
   of a page, PULL3, the owner's D1 on #2456, 2026-11-02), from `pullKept`,
   which only `homeRefresher` (`lib/home-link/pull.ts`) calls, for each lane
   `useLaneHome` watches when its turn comes, one lane at a time, and once
@@ -1145,10 +1149,17 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   (`lib/jobs/pull.ts`, PULL2, registered while the Jobs screens or the
   status page show), and it joins the pull under way, or starts the one
   the refresher's own ask in that pull joins, so each lane is still asked
-  once, in turn. Nothing asks on a timer. A run goes
-  under the pairing the phone holds when it starts (`laneExchange`), and
+  once, in turn. Nothing asks on a timer: home's busy ends on one (the
+  link's, `runtime.ts`), which only opens the link again to the lanes home
+  turned away. A run goes
+  under the pairing the phone holds when it starts (`laneExchange`), each
+  of its requests waiting its turn on the drain's one pace (`createPace`,
+  `kept-runtime.ts`; its rate is AD3's), and
   the link's `send` refuses a request once the phone stops or goes to the
-  background. For aph, the first run on a paired phone moves its record to
+  background. A run that ends part way (home busy, a stop, the background,
+  no answer) keeps what home took: a LeetType session or Studio sitting
+  resumes at the first event home has not taken (`sent.events`,
+  `lib/home-link/leetype-log.ts`'s `TakenEvents`), not from its first. For aph, the first run on a paired phone moves its record to
   home (`keepOnHome`, in the lane's `exchange`), and from then on the phone
   holds the settings and what home has not confirmed. Korean's look
   (`routineReads().list()`) is called only through the port
@@ -1166,7 +1177,9 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   ask, has `pullKept` ask other than through `mayAsk` and the lane's `pull`,
   adds a timer, changes when a listener asks (the record subscription's
   check that the revision moved, the link subscription's test for a new
-  pairing or for the link freeing up after a run it turned away), removes or
+  pairing, for the link freeing up after a run it turned away, or for home's
+  busy ending after a run home turned away, each read from the lane's runs
+  as they end and asked once), removes or
   changes anything the cleanup `watchKept` returns undoes, or removes
   `mayAsk`'s check that the phone is paired or that the document is
   visible; a hunk that calls `pullKept` from anywhere but `homeRefresher`,
@@ -1199,7 +1212,14 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   `lib/home-link/kept-runtime.ts` that lets `laneExchange` run a lane's
   exchange unpaired or under a pairing other than the one read when the run
   starts, or makes a run say anything but busy once home answered one of
-  its requests `429` (unless it was forgotten or stopped); a hunk to
+  its requests `429` (unless it was forgotten or stopped), sends a lane's
+  request other than after its turn on the pace it is handed, or refuses
+  one for the pace; a hunk to `lib/home-link/lanes.ts` that hands
+  `laneExchange` a pace other than `DRAIN_PACE`, or skips its turn other
+  than for a request the link answers busy itself; a hunk to
+  `lib/home-link/leetype-log.ts`'s `sendLogs` that sends an event `taken`
+  says home took, or forgets a log's events other than once it is read
+  back; a hunk to
   `components/device-home-glyph.tsx` that calls `askLane` other than from a
   button's `onClick`, mounts a watch (`useLaneHome`, `useVoiceHome`)
   anywhere but `HomeLanes`, drops a lane from `HomeLanes`, or shows a lane

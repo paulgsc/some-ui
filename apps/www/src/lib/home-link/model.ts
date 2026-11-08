@@ -71,6 +71,8 @@ export type HomeLinkState = {
     readonly failure: PairFailure
     readonly base: string
   } | null
+  /** When home's busy ends (AD3, `./runtime`); null while it is not busy. */
+  readonly homeBusyUntil: number | null
 }
 
 export type HomeLinkEvent =
@@ -94,11 +96,16 @@ export type HomeLinkEvent =
   | { readonly type: "stopPressed" }
   /** The sync or send in flight ended, finished or stopped. */
   | { readonly type: "workEnded" }
+  /** Home answered `429`, asking to be left alone until `until`. */
+  | { readonly type: "homeBusy"; readonly until: number }
+  /** The time home asked for has passed. */
+  | { readonly type: "cooled" }
 
 export const INITIAL: HomeLinkState = {
   link: { kind: "reading" },
   activity: { kind: "idle" },
   pairFailure: null,
+  homeBusyUntil: null,
 }
 
 const idle = { kind: "idle" } as const
@@ -112,6 +119,19 @@ export function working(
     activity.kind === "sending" ||
     activity.kind === "keeping"
   )
+}
+
+/**
+ * Whether home is still to be left alone at `now` (AD3): a wait whose time
+ * has passed is over, even before the link hears its timer.
+ */
+export function homeBusy(state: HomeLinkState, now: number): boolean {
+  return state.homeBusyUntil !== null && now < state.homeBusyUntil
+}
+
+/** Whether the link would take a run at `now`: it is idle, and home is not busy. */
+export function linkOpen(state: HomeLinkState, now: number): boolean {
+  return state.activity.kind === "idle" && !homeBusy(state, now)
 }
 
 export function step(
@@ -208,6 +228,15 @@ export function step(
     case "workEnded": {
       if (!working(activity)) return state
       return { ...state, activity: idle }
+    }
+    case "homeBusy": {
+      const until = Math.max(state.homeBusyUntil ?? event.until, event.until)
+      if (until === state.homeBusyUntil) return state
+      return { ...state, homeBusyUntil: until }
+    }
+    case "cooled": {
+      if (state.homeBusyUntil === null) return state
+      return { ...state, homeBusyUntil: null }
     }
     default: {
       return assertNever(event)

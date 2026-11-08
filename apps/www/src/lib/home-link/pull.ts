@@ -8,7 +8,9 @@
  * The lanes share the link, which runs one of them at a time and turns the
  * rest away, so they are asked one after another; a lane turned away all
  * the same (its watch, or a tap in Settings, had the link) is asked once
- * more when the link frees up, the moment its watch asks it again too.
+ * more when the link frees up, the moment its watch asks it again too. Once
+ * home is busy (AD3, `./runtime`), every lane after that one says so: the
+ * pull stops reaching home there.
  *
  * Each run ends in its lane's runtime (`./kept-runtime`), so the marks that
  * read it (the header's, Settings') show how the pull went, lane by lane;

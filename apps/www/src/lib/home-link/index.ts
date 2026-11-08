@@ -11,11 +11,12 @@
  */
 import { useSyncExternalStore } from "react"
 
+import { after } from "@/lib/clock"
 import { homeRequest } from "@/lib/device-backend/native-http"
 
 import { nativeCredential } from "./credential"
 import type { HomeLinkState } from "./model"
-import type { HomeLink } from "./runtime"
+import type { HomeLink, HomeLinkPorts } from "./runtime"
 import { createHomeLink } from "./runtime"
 import { onHidden } from "./visibility"
 
@@ -24,6 +25,12 @@ export type { HomeLinkState, PairFailure, UnpairedNote } from "./model"
 export type { HomeLink } from "./runtime"
 
 let link: HomeLink | null = null
+
+/** The page's clock, which the link keeps home's busy on and the drain paces by. */
+export const LINK_CLOCK: Pick<HomeLinkPorts, "now" | "after"> = {
+  now: () => Date.now(),
+  after,
+}
 
 /**
  * One runtime per page load, made by the first block that shows the link,
@@ -35,6 +42,7 @@ export function homeLink(): HomeLink {
       credential: nativeCredential,
       request: homeRequest,
       onHidden,
+      ...LINK_CLOCK,
     })
     void link.load()
   }

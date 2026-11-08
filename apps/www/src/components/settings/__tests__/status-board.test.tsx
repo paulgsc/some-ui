@@ -55,7 +55,8 @@ vi.mock("@/lib/build-profile", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   hasAudience: (audience: string): boolean => audience === "apk",
 }))
-vi.mock("@/lib/clock", () => ({
+vi.mock("@/lib/clock", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   useMinuteClock: (): Date => new Date("2026-10-26T18:00:00Z"),
 }))
 vi.mock(
