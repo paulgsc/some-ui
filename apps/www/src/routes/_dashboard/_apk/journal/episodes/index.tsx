@@ -8,7 +8,6 @@ import {
   KIND_WORDS,
   STUDIO_INDEX_WORDS,
 } from "@/lib/studio-index"
-import { PairHomeLink } from "@/components/pair-home-link"
 import { FeedEpisodes } from "@/components/studio/feed-episodes"
 import { Part, StudioPage, TILE, TileBody } from "@/components/studio/layout"
 
@@ -27,10 +26,7 @@ const Episodes = (): JSX.Element => (
   >
     {FEEDS_A_TO_Z.map((feed) => (
       <Part key={feed} label={FEED_FACTS[feed].name}>
-        <FeedEpisodes
-          feed={feed}
-          pair={<PairHomeLink>{STUDIO_WORDS.pair.pair}</PairHomeLink>}
-        />
+        <FeedEpisodes feed={feed} pairWords={STUDIO_WORDS.pair.pair} />
       </Part>
     ))}
     <Link to="/journal/episodes/making" className={TILE}>

@@ -6,7 +6,6 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router"
 import type { Feed } from "@/lib/feeds"
 import { FEED_TEMPLATES, isFeed } from "@/lib/feeds"
 import { FEED_FACTS, STUDIO_INDEX_WORDS } from "@/lib/studio-index"
-import { PairHomeLink } from "@/components/pair-home-link"
 import { FeedEpisodes } from "@/components/studio/feed-episodes"
 import { Part, StudioPage, TILE, TileBody } from "@/components/studio/layout"
 
@@ -44,10 +43,7 @@ const FeedPage = (): JSX.Element => {
         </ul>
       </Part>
       <Part label={WORDS.episodes}>
-        <FeedEpisodes
-          feed={feed}
-          pair={<PairHomeLink>{STUDIO_WORDS.pair.pair}</PairHomeLink>}
-        />
+        <FeedEpisodes feed={feed} pairWords={STUDIO_WORDS.pair.pair} />
       </Part>
     </StudioPage>
   )

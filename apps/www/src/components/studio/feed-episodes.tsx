@@ -7,16 +7,19 @@ import type { JSX } from "react"
 
 import type { Feed } from "@/lib/feeds"
 import { FeedEpisodeLinks } from "@/components/call-videos"
+import { PairHomeLink } from "@/components/pair-home-link"
 
 const Links =
   import.meta.env.VITE_DEVICE_BACKEND === "true" ? FeedEpisodeLinks : null
 
 export const FeedEpisodes = ({
   feed,
-  pair,
+  pairWords,
 }: {
   feed: Feed
-  /** The way to pairing, for a phone that isn't paired. */
-  pair: JSX.Element
+  /** What the way to pairing says, for a phone that isn't paired. */
+  pairWords: string
 }): JSX.Element | null =>
-  Links === null ? null : <Links feed={feed} pair={pair} />
+  Links === null ? null : (
+    <Links feed={feed} pair={<PairHomeLink>{pairWords}</PairHomeLink>} />
+  )
