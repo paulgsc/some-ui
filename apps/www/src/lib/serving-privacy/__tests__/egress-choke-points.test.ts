@@ -45,8 +45,10 @@
  *   (the weekly call or Playoff Delta) it holds (`lib/home-link/call-videos`,
  *   one `GET /feeds/:feed/videos` per open, drag down, Try again or Save home
  *   kept), for an episode's video on Watch, a part at a time (one
- *   `GET /feeds/:feed/videos/:key/video` per part), and sends an episode's
- *   link on Save (one `PUT /feeds/:feed/videos/:key/link`).
+ *   `GET /feeds/:feed/videos/:key/video` per part) and for its chapters when
+ *   its page opens (one `GET /feeds/:feed/videos/:key/description`, SFEED4),
+ *   and sends an episode's link on Save (one `PUT
+ *   /feeds/:feed/videos/:key/link`).
  *
  * - **LA19 (MY-DATA MD5): only My data deletes a record on home.** Only
  *   `lib/home-link/delete-note` sends home a `DELETE` (a recording's notes,
@@ -209,20 +211,23 @@ const TAKES_READ = "lib/home-link/takes-read.ts"
 const TAKES_SENDS = [['"GET"', "takesPath(q)"]]
 
 /**
- * LA8, ST38, FEED4: Studio's feed videos' reads of a feed's episodes and of an
- * episode's video, a part at a time, and its one send of an episode's link.
+ * LA8, ST38, FEED4: Studio's feed videos' reads of a feed's episodes, of an
+ * episode's video, a part at a time, and of its chapters (SFEED4), and its
+ * one send of an episode's link.
  */
 const CALLS_READ = "lib/home-link/call-videos.ts"
 const CALLS_SENDS = [
   ['"GET"', "episodesPath(feed)"],
   ['"GET"', "videoPath(feed, key)", "undefined", "{ start, end }"],
   ['"PUT"', "linkPath(feed, key)", "JSON.stringify({ link })"],
+  ['"GET"', "descriptionPath(feed, key)"],
 ]
-/** The three paths those requests reach, as the read writes them. */
+/** The four paths those requests reach, as the read writes them. */
 const CALLS_PATHS = [
   "return `/feeds/${feed}/videos`",
   "return `/feeds/${feed}/videos/${encodeURIComponent(key)}/video`",
   "return `/feeds/${feed}/videos/${encodeURIComponent(key)}/link`",
+  "return `/feeds/${feed}/videos/${encodeURIComponent(key)}/description`",
 ]
 
 /** LA8, MD3: the read of what home deleted, and the one request it may send. */

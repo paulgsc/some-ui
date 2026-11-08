@@ -466,7 +466,9 @@ declared (checked by reading every call site and by the tests named).
   time a feed's screen opens, on a drag down, on Try again and once after a
   Save home kept; on Watch, one `GET /feeds/:feed/videos/:key/video` per part
   of the episode's video, each a range of at most `PART_BYTES`, into the
-  phone's cache; and, on Save, one `PUT /feeds/:feed/videos/:key/link` of the
+  phone's cache; when an episode's page opens, one
+  `GET /feeds/:feed/videos/:key/description` of its chapters (SFEED4, #2763);
+  and, on Save, one `PUT /feeds/:feed/videos/:key/link` of the
   link the owner pasted, only once it reads as a `YouTube` video; sending
   nothing of the phone's but that link; while the link is busy with another
   run it asks again a second later, at most ten times; ST38, #2661; FEED4,

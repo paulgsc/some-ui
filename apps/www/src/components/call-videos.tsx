@@ -12,11 +12,13 @@ import type { JSX, ReactNode } from "react"
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { assertNever, formatSize } from "@some-ui/core-utils"
 import { Button, Input, Notice } from "@some-ui/shared"
+import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 
 import { hasAudience } from "@/lib/build-profile"
 import type { Feed, FeedVideos } from "@/lib/call-videos"
 import {
+  episodeChapters,
   FEED_WORDS,
   feedVideos,
   VIDEOS_WORDS,
@@ -31,6 +33,7 @@ import type {
 } from "@/lib/call-videos/model"
 import { homeBytes, standing } from "@/lib/call-videos/model"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
+import { CopyButton } from "@/components/copy-button"
 import { EpisodeNote } from "@/components/studio/episode-feedback"
 import { TILE, TileBody } from "@/components/studio/layout"
 
@@ -178,6 +181,34 @@ const EpisodeRow = ({
         <LinkField episode={episode} save={save} videos={videos} />
       )}
     </li>
+  )
+}
+
+/** An episode's chapters with the way to copy them, once home has some. */
+const Chapters = ({
+  feed,
+  episodeKey,
+}: {
+  feed: Feed
+  episodeKey: string
+}): JSX.Element | null => {
+  // Read when the page opens, and kept for a minute.
+  const { data } = useQuery({
+    queryKey: ["feeds", feed, "chapters", episodeKey],
+    queryFn: () => episodeChapters(feed, episodeKey),
+    staleTime: 60_000,
+    retry: false,
+  })
+  if (data?.kind !== "lines") return null
+  return (
+    <section className="flex flex-col gap-2 rounded-lg border p-3">
+      <h2 className="text-sm font-medium">{WORDS.chapters}</h2>
+      <p className="text-muted-foreground text-xs">{WORDS.chaptersLine}</p>
+      <pre className="bg-muted overflow-x-auto rounded-md p-2 text-xs whitespace-pre-wrap">
+        {data.text}
+      </pre>
+      <CopyButton text={data.text} what={WORDS.chaptersWhat} />
+    </section>
   )
 }
 
@@ -344,15 +375,18 @@ export const EpisodeScreen = ({
         {episode === undefined ? (
           <p className="text-muted-foreground text-sm">{gone}</p>
         ) : (
-          <ul className="flex flex-col gap-3">
-            <EpisodeRow
-              feed={feed}
-              episode={episode}
-              fetch={state.fetches[episode.key]}
-              save={state.links[episode.key]}
-              videos={videos}
-            />
-          </ul>
+          <>
+            <ul className="flex flex-col gap-3">
+              <EpisodeRow
+                feed={feed}
+                episode={episode}
+                fetch={state.fetches[episode.key]}
+                save={state.links[episode.key]}
+                videos={videos}
+              />
+            </ul>
+            <Chapters feed={feed} episodeKey={episode.key} />
+          </>
         )}
       </EpisodesList>
     </div>
