@@ -28,7 +28,7 @@ import { suspenderLedger } from "./walk/suspender-ledger"
 const USAGE = [
   "usage: motion render <composition> --out <clip.mkv> [--variables <file>]",
   "       motion prove <composition> [--variables <file>] [--runs 2]",
-  "       motion video <video folder> [--series <folder>] [--prove]",
+  "       motion video <video folder> [--series <folder>] [--brand <folder>] [--prove]",
   "       motion walk <app> --sample <file> --out <folder>",
   "       motion promo <release folder> --out <folder> [--prove]",
 ].join("\n")
@@ -58,6 +58,7 @@ const { positionals, values } = parseArgs({
     chrome: { type: "string" },
     prove: { type: "boolean", default: false },
     runs: { type: "string", default: "2" },
+    brand: { type: "string" },
   },
 })
 
@@ -303,6 +304,7 @@ async function renderVideo(
         out: "video.mp4",
         compositions: compositionPort(folder, browser(), join(base, "draw")),
         ...(prove ? {} : { stepCacheDir: "cache" }),
+        ...(values.brand === undefined ? {} : { brand: here(values.brand) }),
       })
       await rm(join(folder, workDir), { recursive: true, force: true })
       if (!made.ok) throw new Refused(made.problems.join("\n"))
