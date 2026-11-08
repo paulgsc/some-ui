@@ -48,13 +48,17 @@ const start = (page: Page): Promise<void> =>
   })
 
 /**
- * An episode's Start: home voices every episode, so it offers Watch and
- * Finish and never Record (FEED6 #2649).
+ * An episode's Start, with the same first-stop wait as `start`: home voices
+ * every episode, so it offers Watch and Finish and never Record (FEED6 #2649).
  */
-const startEpisode = (page: Page): Promise<void> =>
-  page.getByRole("button", { name: sitting("Watch") }).waitFor({
+const startEpisode = async (page: Page): Promise<void> => {
+  await page.getByRole("button", { name: sitting("Watch") }).waitFor({
     timeout: 10_000,
   })
+  await expect(
+    page.getByRole("button", { name: sitting("Record") })
+  ).toHaveCount(0)
+}
 
 /** The planted fixtures, each by what the sweep must report it as. */
 const PLANTED = {
