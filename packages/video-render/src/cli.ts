@@ -35,6 +35,14 @@
  * comparison as JSON: home's transcript as the Jobs mailbox holds it
  * (`transcript-<note>-<n>.json`), and the session's words (`WordsSchema`).
  *
+ *   pnpm --filter @some-ui/video-render render pending <transcripts.json> <filed.json>
+ *
+ * prints the Studio takes left to file as pending issues (SFEED5, `pending.ts`)
+ * as JSON: from the mailbox's transcripts (a list of their bodies) and the
+ * issues already filed with `PENDING_LABELS` (a list of their bodies, or of
+ * issues as GitHub lists them, each with its `body`). The reflections
+ * routine runs it (`packages/ui/topik/ROUTINE.md`, Part E).
+ *
  * `pnpm --filter` runs this from the package; INIT_CWD is where it was typed.
  */
 
@@ -62,6 +70,7 @@ import {
   renderFolder,
   runCommand,
 } from "./node"
+import { toFile } from "./pending"
 import { REPOS } from "./refs"
 import { fromTimelineV1 } from "./timeline-v1"
 
@@ -85,6 +94,16 @@ async function main(): Promise<void> {
     const session = await readAs(HeardSchema, here(third))
     process.stdout.write(
       `${JSON.stringify(compareHearings(home, session), null, 1)}\n`
+    )
+    return
+  }
+  if (first === "pending") {
+    if (!second || !third)
+      fail(["usage: render pending <transcripts.json> <filed.json>"])
+    const transcripts = await readAs(z.array(z.unknown()), here(second))
+    const filed = await readAs(FiledSchema, here(third))
+    process.stdout.write(
+      `${JSON.stringify(toFile(transcripts, filed), null, 1)}\n`
     )
     return
   }
@@ -187,6 +206,16 @@ const HeardSchema = z.union([
   WordsSchema,
   z.object({ words: WordsSchema }).transform(({ words }) => words),
 ])
+
+/** The bodies of the issues already filed: as text, or as GitHub lists them. */
+const FiledSchema = z.array(
+  z.union([
+    z.string(),
+    z
+      .object({ body: z.string().nullable() })
+      .transform(({ body }) => body ?? ""),
+  ])
+)
 
 async function readAs<T>(schema: z.ZodType<T>, file: string): Promise<T> {
   const parsed = schema.safeParse(await readJson(file))
