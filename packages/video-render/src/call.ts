@@ -46,7 +46,13 @@ import {
   RefSchema,
 } from "./refs"
 import type { CallRef } from "./refs"
-import { estimatedMs, hasCaptions, stillFile, stillsCutList } from "./stills"
+import {
+  BRAND_MOTION,
+  estimatedMs,
+  hasCaptions,
+  stillFile,
+  stillsCutList,
+} from "./stills"
 import type { StillTake } from "./stills"
 import { storyboardOf } from "./storyboard"
 import type { BoardScene, Storyboard } from "./storyboard"
@@ -66,11 +72,16 @@ export const CALL_ID = "conference-call"
  * 3 (SFEED10 #2675, SFEED14 #2766): drawn in Mochi Night, the palette made
  *   for video, the mark too, in the series' version 2, which is Mochi
  *   Night's ground and plays our music bed (#2673).
+ * 4 (HYPER5, #2728): the brand intro and outro are `brand-v1`, the code's
+ *   mark moving in the mark's theme, rather than the stage's slides.
  */
-export const CALL_VERSION = 3
+export const CALL_VERSION = 4
 
 /** The first version drawn in Mochi Night, with the music bed. */
 const NIGHT_VERSION = 3
+
+/** The first version whose brand intro and outro move (HYPER5). */
+const MOTION_VERSION = 4
 
 /** The call's shape from version 2. */
 const CALL_SHAPE: Shape = {
@@ -79,8 +90,13 @@ const CALL_SHAPE: Shape = {
   subtitles: "word",
 }
 
-const shapeOf = (version: number): Shape =>
-  version >= NIGHT_VERSION ? inTheme(CALL_SHAPE, "mochi-night") : CALL_SHAPE
+function shapeOf(version: number): Shape {
+  if (version < NIGHT_VERSION) return CALL_SHAPE
+  const night = inTheme(CALL_SHAPE, "mochi-night")
+  return version >= MOTION_VERSION
+    ? { ...night, brand: { ...night.brand, motion: BRAND_MOTION } }
+    : night
+}
 
 export const CALL_MOST = {
   moved: 12,
@@ -642,13 +658,15 @@ export function callCutList(
   takes: ReadonlyArray<StillTake | null>,
   { bed = false }: { readonly bed?: boolean } = {}
 ): CutList {
+  const format = callFormat(week.template.version)
   return stillsCutList(
     {
       title: `The weekly call, ${week.week.from} to ${week.week.to}`,
-      series: callFormat(week.template.version).series,
+      series: format.series,
       look: "calm",
-      captions: hasCaptions(callFormat(week.template.version)),
+      captions: hasCaptions(format),
       bed,
+      ...(format.shape ? { shape: format.shape } : {}),
     },
     callScenes(week).map((scene, i) => ({
       id: scene.id,

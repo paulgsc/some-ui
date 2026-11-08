@@ -10,7 +10,7 @@ import {
   type Packet,
 } from "@playoff-delta/lib/narration"
 import { SAMPLE_SEASON } from "@playoff-delta/lib/sample"
-import { factsOf, formatOf } from "@playoff-delta/lib/show"
+import { factsOf, formatOf, FORMAT_VERSION } from "@playoff-delta/lib/show"
 import {
   LEGEND_SLIDES,
   LEGEND_WEEK,
@@ -145,10 +145,13 @@ describe("the check", () => {
     expect(
       await refuses({
         ...fill,
-        format: { id: "playoff-delta-week", version: 4 },
+        format: {
+          id: "playoff-delta-week",
+          version: FORMAT_VERSION.week + 1,
+        },
       })
     ).toEqual([
-      "the format is playoff-delta-week v4, not playoff-delta-week v3 or an earlier version",
+      `the format is playoff-delta-week v${String(FORMAT_VERSION.week + 1)}, not playoff-delta-week v${String(FORMAT_VERSION.week)} or an earlier version`,
     ])
     expect(
       await refuses({
@@ -156,7 +159,7 @@ describe("the check", () => {
         format: { id: "playoff-delta-legend", version: 2 },
       })
     ).toEqual([
-      "the format is playoff-delta-legend v2, not playoff-delta-week v3 or an earlier version",
+      `the format is playoff-delta-legend v2, not playoff-delta-week v${String(FORMAT_VERSION.week)} or an earlier version`,
     ])
     // A fill written for an earlier version still checks: it is drawn in it.
     expect(

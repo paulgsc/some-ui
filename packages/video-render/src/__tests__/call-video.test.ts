@@ -33,7 +33,7 @@ import {
 import type { CallWeek } from "@video-render/call"
 import { nodePorts, readSeries } from "@video-render/node"
 import { render } from "@video-render/render"
-import type { BurnInRequest, Ports } from "@video-render/render"
+import type { BurnInRequest, Compositions, Ports } from "@video-render/render"
 import type { Series } from "@video-render/series"
 import { stillFile } from "@video-render/stills"
 import { make } from "@video-render/testing"
@@ -176,10 +176,37 @@ async function renderNew(
     }
   })
   const cut = callCutList(week, takes)
+  // The brand intro and outro are a composition from version 4 (HYPER5),
+  // which home draws with HyperFrames; here, each is drawn as its own still,
+  // so CV1's checks read every scene alike.
+  const stills = new Map(scenes.map((s, i) => [s.id, stillFile(i, s.id)]))
+  const compositions: Compositions = {
+    pin: () => Promise.resolve("test"),
+    record: async (request) => {
+      await make(ports, [
+        "-loop",
+        "1",
+        "-i",
+        `${stills.get(request.scene) ?? request.scene}.png`,
+        "-frames:v",
+        String(request.frames),
+        "-r",
+        String(FPS),
+        "-c:v",
+        "ffv1",
+        request.out,
+      ])
+      return { ok: true }
+    },
+  }
   const done = await render(
     captions ? cut : { ...cut, burnIns: [] },
     series,
-    captions ? { ...ports, recordBurnIn: band(ports) } : ports,
+    {
+      ...ports,
+      compositions,
+      ...(captions ? { recordBurnIn: band(ports) } : {}),
+    },
     { workDir: "work", out: "call.mp4" }
   )
   if (!done.ok) throw new Error(done.problems.join("\n"))

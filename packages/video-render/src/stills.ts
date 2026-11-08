@@ -11,8 +11,9 @@
  */
 
 import { CUT_LIST_SCHEMA } from "./cut-list"
-import type { CutList, TimedWord } from "./cut-list"
-import type { Format } from "./format"
+import type { Composition, CutList, TimedWord } from "./cut-list"
+import { markThemeOf } from "./format"
+import type { Format, Shape } from "./format"
 import type { Look } from "./plans"
 
 /** How long a brand slide holds, with nothing said over it. */
@@ -60,12 +61,41 @@ export type StillScene = {
   readonly said: string
 }
 
+/** The composition that draws the brand intro and outro, from HYPER5 (#2728). */
+export const BRAND_MOTION = "brand-v1"
+
+/**
+ * Brand scene `id` ("brand-in" or "brand-out") as the composition `shape`
+ * names draws it (HYPER5, #2728): its open or close, the mark in the shape's
+ * mark theme. Null for any other scene, and where the shape names none, so
+ * the stage's slide is the picture.
+ */
+export function brandPicture(
+  shape: Shape | undefined,
+  id: string
+): Composition | null {
+  const ref = shape?.brand.motion
+  if (ref === undefined || (id !== "brand-in" && id !== "brand-out"))
+    return null
+  const theme = markThemeOf(shape)
+  return {
+    kind: "composition",
+    ref,
+    variables: {
+      part: id === "brand-in" ? "open" : "close",
+      ...(theme === undefined ? {} : { theme }),
+    },
+    files: [],
+  }
+}
+
 /**
  * The feed as a cut list: each scene's still (`<file>.png`), and its take
  * (`<file>.wav`) where one was said, `takes[i]`; a scene with none holds for
  * `unsaidMs`. With `captions`, each scene's are drawn from its take's words,
  * and the music bed plays under the voice once the series names one
- * (`bed`).
+ * (`bed`). The brand intro and outro are the composition `shape` names,
+ * where it names one (`brandPicture`), and their stills go unused.
  */
 export function stillsCutList(
   feed: {
@@ -74,6 +104,8 @@ export function stillsCutList(
     readonly look: Look
     readonly captions: boolean
     readonly bed: boolean
+    /** The format version's shape, which may draw the brand scenes. */
+    readonly shape?: Shape
   },
   scenes: ReadonlyArray<StillScene>,
   takes: ReadonlyArray<StillTake | null>
@@ -88,9 +120,10 @@ export function stillsCutList(
     ...(feed.bed ? {} : { music: "off" as const }),
     shots: scenes.map((scene, i) => {
       const take = takes[i] ?? null
+      const motion = brandPicture(feed.shape, scene.id)
       return {
         id: scene.id,
-        picture: { kind: "still", source: `${scene.file}.png` },
+        picture: motion ?? { kind: "still", source: `${scene.file}.png` },
         durationMs:
           take !== null
             ? VOICE_IN_MS + take.ms + TAIL_MS
@@ -108,8 +141,9 @@ export function stillsCutList(
             }),
         voiceInMs: VOICE_IN_MS,
         // CV1: the still's text runs to the frame's edges, which any zoom
-        // would crop; the look's crossfade and music still apply.
-        overrides: { motion: { kind: "still" } },
+        // would crop; the look's crossfade and music still apply. A
+        // composition draws its own picture.
+        overrides: motion ? {} : { motion: { kind: "still" as const } },
         burnIns: [],
         idea: { origin: "agent" },
       }
