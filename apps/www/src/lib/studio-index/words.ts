@@ -79,6 +79,61 @@ export const FEED_FACTS = {
   },
 } as const satisfies Record<Feed, FeedFacts>
 
+/** The places a feed leaves something, in the order a feed's page lists them. */
+export const PLACES = ["home", "phone", "testing", "drive"] as const
+
+type Place = (typeof PLACES)[number]
+
+type Kept = {
+  /** What the feed leaves there. */
+  readonly what: string
+  /** Whether any of it can be let go, and where. */
+  readonly letGo: string
+}
+
+const NOTES_KEPT: Kept = {
+  what: "Your notes on its episodes, under Feedback.",
+  letGo: "Kept. Nothing lets one go.",
+}
+
+const NOTHING_IN_DRIVE: Kept = {
+  what: "Nothing. This feed keeps nothing in Drive.",
+  letGo: "Nothing to let go.",
+}
+
+/**
+ * What each feed leaves behind, and where (SFEED8, #2748). Which of it can be
+ * let go is the owner's ruling (ask #2749: nothing beyond an episode's video).
+ */
+export const FEED_KEPT = {
+  call: {
+    home: {
+      what: "Every week Claude wrote for the call, as home first read it, and each episode's video and what it was made from.",
+      letGo:
+        "An episode's video can be let go in Settings › My data, and home keeps a note that it was. The rest stays.",
+    },
+    phone: NOTES_KEPT,
+    testing: {
+      what: "Each week's words, in the public paulgsc/testing, under call. Only the newest weeks stay there: an older one leaves once home holds it.",
+      letGo: "Never by hand. Home keeps every week.",
+    },
+    drive: NOTHING_IN_DRIVE,
+  },
+  "playoff-delta": {
+    home: {
+      what: "Every week's words Claude wrote, with the season as it stood that week, and each episode's video and what it was made from.",
+      letGo:
+        "An episode's video can be let go in Settings › My data, and home keeps a note that it was. The rest stays.",
+    },
+    phone: NOTES_KEPT,
+    testing: {
+      what: "The season's numbers and every week's words, in the public paulgsc/testing, under playoff-delta.",
+      letGo: "Never. A week's words are kept as they were written.",
+    },
+    drive: NOTHING_IN_DRIVE,
+  },
+} as const satisfies Record<Feed, Record<Place, Kept>>
+
 export const STUDIO_INDEX_WORDS = {
   heading: "Studio",
   aToZ: "Listed A to Z. None comes first.",
@@ -137,6 +192,15 @@ export const STUDIO_INDEX_WORDS = {
     cadence: "When it runs",
     templates: "Made with",
     episodes: "Its episodes",
+    kept: "Where it's kept",
+    places: {
+      home: "On home",
+      phone: "On this phone",
+      testing: "In the public record",
+      drive: "In Drive",
+    } satisfies Record<Place, string>,
+    /** Before the size of what home holds of a feed's episodes. */
+    homeHolds: "Its episodes take up on home:",
   },
 
   intuitions: {
