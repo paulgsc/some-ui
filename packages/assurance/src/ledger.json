@@ -2522,6 +2522,66 @@
           "amendments": []
         }
       ]
+    },
+    {
+      "id": "template-preview",
+      "name": "A preview of a template, made by home and gone by itself",
+      "why": "The call and Playoff Delta render once a week, so a change to a template (its look, captions, music bed, mark) was first seen in a real episode. A preview lets the owner see it the same day: Preview on the template's page asks home, home makes a 15-30 s video of the template from its sample through the same steps as an episode, and the phone brings it over to play. It is a derived throwaway from sample data, never an episode, so home deletes it on its own (the owner, #2757).",
+      "paths": [
+        "some-ui:packages/video-render/src/preview.ts",
+        "some-ui:apps/www/tests/record/preview.ts",
+        "some-ui:apps/www/tests/record/call-recording.ts"
+      ],
+      "modules": ["previews"],
+      "objectives": [
+        {
+          "id": "PV1",
+          "kind": "OA2",
+          "property": "outcome",
+          "claim": "A preview the owner asks for is made, or ends with its reason on the phone; it never waits unseen.",
+          "requirement": "Each request home accepts reaches ready, or failed with a reason class (no-sample, too-long, too-large, render, or overdue once it is not ready a day after it was asked), and reads on the phone, from the newest request per template, as waiting, being made, paused, set aside, ready or failed; it waits only behind the lane's other work, and a second request while one is not yet ready answers with that one.",
+          "verdict": "unproven",
+          "conclusion": "The cut is tested and the recorder is written in some-ui; home's job and routes are not built yet, so nothing makes or reports a preview.",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "The preview's cut is chosen by code, 15-30 s, the same cut list giving the same preview.",
+              "ref": "some-ui:packages/video-render/src/preview.ts"
+            },
+            {
+              "class": "structural",
+              "says": "The recorder renders a template's preview from its sample, and refuses a template with no sample fill, with its reason.",
+              "ref": "some-ui:apps/www/tests/record/preview.ts"
+            }
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": [],
+          "tracked": "some-ui#2757"
+        },
+        {
+          "id": "PV2",
+          "kind": "RE9",
+          "property": "work",
+          "claim": "Home keeps at most one preview per template, and none past a day.",
+          "requirement": "Per template, home keeps at most one request not yet ready, one ready preview of at most the render policy's largest video (MAX_VIDEO_MB), and the failed requests of the last day: a preview is deleted 24 h after it is made, the newest included, and an older one as soon as a newer one is ready; a failed request goes 24 h after it failed; a preview's work (stills, takes, step cache) goes with it, or when its request fails; the job in progress is never deleted. No switch and no receipt: a preview is derived from sample data, not the owner's record.",
+          "verdict": "unproven",
+          "conclusion": "Asked for by the owner on #2757 and agreed for home's prune; the prune is not built yet.",
+          "evidence": [
+            {
+              "class": "unknown",
+              "says": "The owner's ask: the default is 24 hours after it is made, newest per template only.",
+              "ref": "some-ui#2757"
+            }
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": [],
+          "tracked": "some-ui#2757"
+        }
+      ]
     }
   ],
   "synchronous": [
@@ -4479,6 +4539,55 @@
           "says": "Slack is told when a voiced fill's render fails or waits 3 hours unattempted (PK5), and when the render worker stops passing (CW5); it does not say why a render failed, which the worker's log file on the drive does.",
           "status": "live",
           "ref": "server:apps/servers/file_host/src/pd_fills/render.rs"
+        }
+      ],
+      "checks": []
+    },
+    {
+      "id": "template-preview",
+      "name": "Previewing a template",
+      "why": "Preview on a template's page asks home for a short video of the template from its sample; home's render worker makes it under the lane like any render, and the phone brings it over and plays it until home lets it go (#2757).",
+      "serves": ["template-preview"],
+      "witnesses": ["PV1", "PV2"],
+      "segments": [
+        {
+          "id": "phone",
+          "name": "The template's page asks home for a preview, reads how far home has got, and brings the ready one over a part at a time to play. Ours, on the phone.",
+          "owner": "ours",
+          "on": "phone",
+          "paths": []
+        },
+        {
+          "id": "home-network",
+          "name": "The phone reaches home over the home network, as the paired phone.",
+          "owner": "network",
+          "on": "between",
+          "paths": []
+        },
+        {
+          "id": "previews",
+          "name": "Home takes the request, says where each preview stands, serves its video in parts, and deletes it on its own. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": []
+        },
+        {
+          "id": "render",
+          "name": "The render worker records the template's sample, cuts it to the preview and renders it, under the lane. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": [
+            "some-ui:apps/www/tests/record/preview.ts",
+            "some-ui:apps/www/tests/record/call-recording.ts",
+            "some-ui:packages/video-render/src/preview.ts"
+          ]
+        }
+      ],
+      "signals": [
+        {
+          "says": "Each preview's state, from the lane's job state, on Studio's Renders page and the template's page.",
+          "status": "planned",
+          "tracked": "some-ui#2757"
         }
       ],
       "checks": []
