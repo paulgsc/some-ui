@@ -632,10 +632,10 @@ note, take only its newest transcript, `transcript-<note>-<n>.json` with the
 highest `<n>`, compared as a number. Fetch each one no reflection or drama
 prompt claims by id, once per run, as "Each transcript you use" says, and save
 their bodies as one JSON list in a scratch file outside the checkout. Then
-list the issues already filed with both labels `pending` and `from-studio`,
-open and closed, in `paulgsc/some-ui` and `paulgsc/server` (`list_issues`,
-every page), and save them, with their bodies, as one JSON list in a second
-scratch file. If a repository's list is refused, file nothing in that
+list the issues already filed with the label `from-studio`, open and closed,
+whether or not they still carry `pending`, in `paulgsc/some-ui` and
+`paulgsc/server` (`list_issues`, every page), and save them, with their
+bodies, as one JSON list in a second scratch file. If a repository's list is refused, file nothing in that
 repository this run and say so in the summary: a take whose issue the list
 didn't show would be filed twice. A take whose transcript home archived before
 any run filed it (the mailbox archives after 30 days) is not asked back and is
@@ -677,8 +677,10 @@ Every issue, of any kind:
   what is unclear, rather than guessing which was meant: the owner's session
   reads the take on home before acting;
 - is labelled with the item's `labels` and `kind:story` (an answer moves a
-  story; the repo's `CLAUDE.md`, "Two kinds of pull request"); if a label is
-  refused, file without it and say so in the summary;
+  story; the repo's `CLAUDE.md`, "Two kinds of pull request"). `from-studio`
+  is how E1 finds it again, so if it is refused, file nothing more in that
+  repository this run and say so in the summary; any other label refused,
+  file without it and say so;
 - ends with a blank line and the item's `line`, exactly.
 
 E4. As C5 and C6, and don't comment on, label, close or edit the ask or any

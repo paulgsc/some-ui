@@ -85,8 +85,9 @@ export type Passed = { readonly place: number; readonly why: string }
 
 /**
  * The takes left to file, oldest said first, from the mailbox's transcripts
- * (one per note, its newest) and the bodies of the issues already filed with
- * `PENDING_LABELS` in either repository, open or closed.
+ * (one per note, its newest) and the bodies of the issues already labelled
+ * `from-studio` in either repository, open or closed: `pending` comes off
+ * once the owner starts on one, and `from-studio` never does.
  */
 export function toFile(
   transcripts: ReadonlyArray<unknown>,
