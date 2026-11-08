@@ -127,7 +127,7 @@ export const STUDIO_INDEX_WORDS = {
   feedback: {
     intro:
       "A note on an episode, at a moment in it: what kind of thing it is, what you said, and where it went.",
-    none: "No feedback yet. Leaving a note on an episode comes to Studio later.",
+    none: "No feedback yet. Leave a note on an episode while it plays, from its page under Episodes.",
   },
 
   feeds: {
