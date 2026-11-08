@@ -18,7 +18,12 @@ import { z } from "zod"
 
 import { askId, parseAskId } from "./ask"
 import type { Category, Destination } from "./feedback"
-import { CATEGORIES, destinationOf, destinationsOf } from "./feedback"
+import {
+  CATEGORIES,
+  destinationOf,
+  DESTINATIONS,
+  destinationsOf,
+} from "./feedback"
 import type { Repo } from "./refs"
 
 export const PENDING_LABELS = ["pending", "from-studio"] as const
@@ -115,8 +120,15 @@ export type FeedbackToFile = {
   readonly categories: ReadonlyArray<Category>
   /** When it was written. */
   readonly at: string
-  /** What home heard in its spoken note, for the routine to paraphrase; never quoted. */
+  /** The spoken note's take on home, if one was said. */
+  readonly take: string | null
+  /**
+   * What home heard in the spoken note, for the routine to paraphrase; never
+   * quoted. `null` with a `take` when home hadn't heard it within `HEARD_WITHIN_MS`.
+   */
   readonly heard: string | null
+  /** The places this note already has an issue for, which this one links. */
+  readonly filed: ReadonlyArray<Destination>
   readonly labels: typeof PENDING_LABELS
   readonly line: string
 }
@@ -129,18 +141,44 @@ export type ToFile = TakeToFile | FeedbackToFile
  * it goes. Like `filedLine`, its wording is how a later run knows it was filed.
  */
 export const noteFiledLine = (note: string, goes: Destination): string =>
-  `Kept on home as the note \`${note}\`, for ${goes}.`
+  `Kept on home as the note \`${note}\`, for ${PLACE_WORDS[goes]}.`
 
-const NOTE_FILED = /^Kept on home as the note `([^`]+)`, for (\w+)\.\r?$/gm
+/** Each place, as an issue's last line says it. */
+const PLACE_WORDS = {
+  nextFill: "the next fill",
+  template: "the template",
+  defect: "a slide to fix",
+} as const satisfies Record<Destination, string>
 
-function filedPlaces(bodies: ReadonlyArray<string>): Set<string> {
-  const places = new Set<string>()
+const PLACE_OF = new Map<string, Destination>(
+  DESTINATIONS.map((goes) => [PLACE_WORDS[goes], goes])
+)
+
+const NOTE_FILED =
+  /^Kept on home as the note `([^`]+)`, for (the next fill|the template|a slide to fix)\.\r?$/gm
+
+/** The places each note already has an issue for, by its id. */
+function filedPlaces(
+  bodies: ReadonlyArray<string>
+): Map<string, Set<Destination>> {
+  const places = new Map<string, Set<Destination>>()
   for (const body of bodies)
-    for (const match of body.matchAll(NOTE_FILED))
-      if (match[1] !== undefined && match[2] !== undefined)
-        places.add(`${match[1]} ${match[2]}`)
+    for (const match of body.matchAll(NOTE_FILED)) {
+      const goes = PLACE_OF.get(match[2] ?? "")
+      if (match[1] === undefined || goes === undefined) continue
+      const of = places.get(match[1]) ?? new Set<Destination>()
+      of.add(goes)
+      places.set(match[1], of)
+    }
   return places
 }
+
+/**
+ * How long a note whose spoken note home hasn't heard yet waits to be filed:
+ * a take is heard within minutes once it reaches home, and one that isn't by
+ * then is filed saying so.
+ */
+export const HEARD_WITHIN_MS = 48 * 60 * 60 * 1000
 
 /** A transcript or note that doesn't read, by its place in its list. */
 export type Passed = {
@@ -159,10 +197,13 @@ export type Passed = {
 export function toFile(
   transcripts: ReadonlyArray<unknown>,
   filed: ReadonlyArray<string>,
-  feedback: ReadonlyArray<unknown> = []
+  feedback: ReadonlyArray<unknown> = [],
+  now: number = Date.now()
 ): {
   readonly items: ReadonlyArray<ToFile>
   readonly passed: ReadonlyArray<Passed>
+  /** Notes waiting for home to hear their spoken note, by id. */
+  readonly waiting: ReadonlyArray<string>
 } {
   const done = filedNotes(filed)
   const passed: Array<Passed> = []
@@ -190,6 +231,7 @@ export function toFile(
   })
   const placesDone = filedPlaces(filed)
   const places: Array<FeedbackToFile> = []
+  const waiting: Array<string> = []
   feedback.forEach((raw, place) => {
     const read = FeedbackSchema.safeParse(raw)
     if (!read.success) {
@@ -201,8 +243,21 @@ export function toFile(
       return
     }
     const note = read.data
-    for (const goes of destinationsOf(note.categories)) {
-      if (placesDone.has(`${note.note} ${goes}`)) continue
+    const heard = note.take === null ? null : (heardIn.get(note.take) ?? null)
+    const already = placesDone.get(note.note) ?? new Set<Destination>()
+    const goesTo = destinationsOf(note.categories).filter(
+      (g) => !already.has(g)
+    )
+    if (
+      goesTo.length > 0 &&
+      note.take !== null &&
+      heard === null &&
+      now - Date.parse(note.writtenAt) < HEARD_WITHIN_MS
+    ) {
+      waiting.push(note.note)
+      return
+    }
+    for (const goes of goesTo) {
       places.push({
         kind: "feedback",
         repo: "some-ui",
@@ -213,7 +268,9 @@ export function toFile(
         atMs: note.atMs,
         categories: note.categories.filter((c) => destinationOf(c) === goes),
         at: note.writtenAt,
-        heard: note.take === null ? null : (heardIn.get(note.take) ?? null),
+        take: note.take,
+        heard,
+        filed: DESTINATIONS.filter((g) => already.has(g)),
         labels: PENDING_LABELS,
         line: noteFiledLine(note.note, goes),
       })
@@ -223,5 +280,5 @@ export function toFile(
     (a, b) =>
       Date.parse(a.at) - Date.parse(b.at) || a.note.localeCompare(b.note)
   )
-  return { items, passed }
+  return { items, passed, waiting }
 }

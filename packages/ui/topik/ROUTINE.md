@@ -633,17 +633,20 @@ stands (2b): the index names only reflections' and prompts' notes. For each
 note, take only its newest transcript, `transcript-<note>-<n>.json` with the
 highest `<n>`, compared as a number. Fetch each one no reflection or drama
 prompt claims by id, once per run, as "Each transcript you use" says, and save
-their bodies as one JSON list in a scratch file outside the checkout. List
-the `feedback` folder's live items the same way, fetch each
-`feedback-<note>.json` once, and save their bodies as one JSON list in a third
-scratch file. Then list the issues already filed with the label `from-studio`, open and closed,
+their bodies as one JSON list in a scratch file outside the checkout (the
+transcripts file). Then list the issues already filed with the label `from-studio`, open and closed,
 whether or not they still carry `pending`, in `paulgsc/some-ui` and
 `paulgsc/server` (`list_issues`, every page), and save them, with their
-bodies, as one JSON list in a second scratch file. If a repository's list is refused, file nothing in that
+bodies, as one JSON list in a second scratch file (the filed file). Last,
+list the `feedback` folder's live items the same way, fetch each
+`feedback-<note>.json` once, and save their bodies as one JSON list in a
+third (the feedback file); if that listing is refused, save `[]` and say in
+the summary that the notes on episodes wait for the next run. If a repository's list is refused, file nothing in that
 repository this run and say so in the summary: a take whose issue the list
-didn't show would be filed twice. A take whose transcript home archived before
-any run filed it (the mailbox archives after 30 days) is not asked back and is
-never filed; a daily run reaches every take well before then.
+didn't show would be filed twice. A take whose transcript, or a note whose
+file, home archived before any run filed it (the mailbox archives after 30
+days) is not asked back and is never filed; a daily run reaches every one
+well before then.
 
 E2. From the repo root, run
 
@@ -651,15 +654,18 @@ E2. From the repo root, run
 pnpm --filter @some-ui/video-render render pending <transcripts file> <filed file> <feedback file>
 ```
 
-It prints `items`, what is left to file, oldest first, and `passed`, each
+It prints `items`, what is left to file, oldest first; `passed`, each
 transcript or note (`in: "feedback"`) that didn't read, by its place in its
-list, and why. Each item names its `kind`, the `repo` it concerns, its `note`
+list, and why; and `waiting`, the notes held back because home hasn't heard
+their spoken note yet (each waits two days at most, then is filed saying so). Each item names its `kind`, the `repo` it concerns, its `note`
 id and when it was said or written (`at`), what home `heard` (`null` for a
 note with nothing said), the `labels` to file it with, and the `line` its
 issue ends with. An `ask` item names the issue it is `about`. A `feedback`
 item is one place a note goes, `goes`: `nextFill`, `template` or `defect`,
-with the note's `feed`, `episode`, its moment `atMs`, and the `categories`
-that send it there; a note that goes to two places is two items. Never file
+with the note's `feed`, `episode`, its moment `atMs`, the `categories`
+that send it there, its spoken note's `take` (or `null`), and `filed`, the
+places this note already has an issue for; a note that goes to two places is
+two items. Never file
 an item the script didn't print, and never change its `line`: that line is
 how the next run knows it was filed.
 
@@ -691,8 +697,12 @@ What the issue says depends on its `kind`:
     promised to draw right.
 
   With a spoken note (`heard` not `null`), say what it adds in your own
-  words. Each item is its own issue: when the same note went to two places,
-  each issue links the other once both are filed.
+  words; with a `take` and no `heard`, say that a spoken note was left that
+  home couldn't hear, so the owner's session listens to that take on home.
+  Each item is its own issue. When the same note goes to another place whose
+  issue is filed already (`filed`, found in E1's list by its line, or filed
+  earlier this run), the new issue links that one; the earlier one is left as
+  it is (C5, E4).
 
 Every issue, of any kind:
 
@@ -714,7 +724,8 @@ Every issue, of any kind:
 E4. As C5 and C6, and don't comment on, label, close or edit the ask or any
 other issue: the pending issue waits for the owner, and the ask stays open
 until a session acts on it. If a call is refused, put each item left in the
-summary by its repo, `about` and `note`, in your own words.
+summary in your own words: an `ask` by its repo, `about` and `note`, a
+`feedback` item by its `note` and `goes`.
 
 ## The run record
 
@@ -798,9 +809,10 @@ and is not retried.
     skipped, why; part D's count of unopened scenes, the unopened dramas,
     and each stock scene written (title, genre, premise, level); the run
     record's put and its
-    status code; part E's pending issues filed (repo, number, title, the take's
-    `note`), the items left for the next run, and each `passed` transcript, never
-    what home heard in a Studio take; for each other voice note, its
+    status code; part E's pending issues filed (repo, number, title, the item's
+    `note`, and a `feedback` item's `goes`), the items left for the next run,
+    the notes `waiting` for their spoken note to be heard, and each `passed`
+    transcript or note, never what home heard in a Studio take; for each other voice note, its
     transcript's name and `text`, or that
     home hasn't heard it; Drive (whether this session had it, each copy made
     or failed, each reflection, prompt or scene read from it because only

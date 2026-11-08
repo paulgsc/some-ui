@@ -1,5 +1,10 @@
 import { parseAskId } from "@video-render/ask"
-import { answerRef, pendingOfRef, toFile } from "@video-render/pending"
+import {
+  answerRef,
+  HEARD_WITHIN_MS,
+  pendingOfRef,
+  toFile,
+} from "@video-render/pending"
 import { describe, expect, it } from "vitest"
 
 const heard = (over: Record<string, unknown>): unknown => ({
@@ -113,20 +118,32 @@ describe("toFile, notes on episodes (SFEED6)", () => {
       atMs: 134_000,
       heard: null,
       labels: ["pending", "from-studio"],
-      line: "Kept on home as the note `e1`, for nextFill.",
+      line: "Kept on home as the note `e1`, for the next fill.",
     })
   })
 
   it("files no place an issue already ends with, and only those", () => {
     const { items } = toFile(
       [],
-      ["…\r\n\r\nKept on home as the note `e1`, for template.\r\n"],
+      ["…\r\n\r\nKept on home as the note `e1`, for the template.\r\n"],
       [note()]
     )
-    expect(items.map((i) => (i.kind === "feedback" ? i.goes : null))).toEqual([
-      "nextFill",
-      "defect",
+    expect(
+      items.map((i) => (i.kind === "feedback" ? [i.goes, i.filed] : null))
+    ).toEqual([
+      ["nextFill", ["template"]],
+      ["defect", ["template"]],
     ])
+  })
+
+  it("waits up to two days for home to hear a spoken note, then files it saying so", () => {
+    const spoken = [note({ take: "t1", categories: ["pacing"] })]
+    const written = Date.parse("2026-11-14T03:00:00.000Z")
+    const soon = toFile([], [], spoken, written + 60_000)
+    expect([soon.items, soon.waiting]).toEqual([[], ["e1"]])
+    const late = toFile([], [], spoken, written + HEARD_WITHIN_MS)
+    expect(late.waiting).toEqual([])
+    expect(late.items[0]).toMatchObject({ take: "t1", heard: null })
   })
 
   it("carries what home heard in a spoken note, from its take's transcript", () => {
