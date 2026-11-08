@@ -7,6 +7,10 @@
  * send and aph's keeping are arms of `activity`, and `step` refuses to
  * start one while another runs. A result for an operation that is no longer the current
  * one is dropped.
+ *
+ * Home's busy is part of the state (`homeBusyUntil`, AD3): once home answers
+ * `429`, the runtime sends nothing until the time home asked for has passed,
+ * and the end of that wait is an event every watch hears.
  */
 import { assertNever } from "@some-ui/core-utils"
 
@@ -71,6 +75,11 @@ export type HomeLinkState = {
     readonly failure: PairFailure
     readonly base: string
   } | null
+  /**
+   * Home answered busy (`429`): until when (ms since the epoch) nothing is
+   * sent to it; null while it is not (AD3).
+   */
+  readonly homeBusyUntil: number | null
 }
 
 export type HomeLinkEvent =
@@ -94,11 +103,16 @@ export type HomeLinkEvent =
   | { readonly type: "stopPressed" }
   /** The sync or send in flight ended, finished or stopped. */
   | { readonly type: "workEnded" }
+  /** Home answered `429`, asking to be left alone until `until`. */
+  | { readonly type: "homeBusy"; readonly until: number }
+  /** The time home asked for has passed. */
+  | { readonly type: "cooled" }
 
 export const INITIAL: HomeLinkState = {
   link: { kind: "reading" },
   activity: { kind: "idle" },
   pairFailure: null,
+  homeBusyUntil: null,
 }
 
 const idle = { kind: "idle" } as const
@@ -112,6 +126,14 @@ export function working(
     activity.kind === "sending" ||
     activity.kind === "keeping"
   )
+}
+
+/**
+ * Whether the link would take a run now: it is doing nothing, and home is
+ * not waiting out a busy (AD3).
+ */
+export function linkOpen(state: HomeLinkState): boolean {
+  return state.activity.kind === "idle" && state.homeBusyUntil === null
 }
 
 export function step(
@@ -208,6 +230,16 @@ export function step(
     case "workEnded": {
       if (!working(activity)) return state
       return { ...state, activity: idle }
+    }
+    case "homeBusy": {
+      // A later answer can only lengthen the wait, never cut it short.
+      const until = Math.max(state.homeBusyUntil ?? event.until, event.until)
+      if (until === state.homeBusyUntil) return state
+      return { ...state, homeBusyUntil: until }
+    }
+    case "cooled": {
+      if (state.homeBusyUntil === null) return state
+      return { ...state, homeBusyUntil: null }
     }
     default: {
       return assertNever(event)

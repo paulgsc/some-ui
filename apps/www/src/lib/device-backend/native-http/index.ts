@@ -139,12 +139,16 @@ export async function homeRequest(call: HomeRequest): Promise<HomeAnswer> {
         : new ForeignCallError(error)
   )
   const { data } = answer
-  const etag = Object.entries(answer.headers).find(
-    ([name]) => name.toLowerCase() === "etag"
-  )?.[1]
+  const header = (wanted: string): string | undefined =>
+    Object.entries(answer.headers).find(
+      ([name]) => name.toLowerCase() === wanted
+    )?.[1]
+  const etag = header("etag")
+  const retryAfter = header("retry-after")
   return {
     status: answer.status,
     body: typeof data === "string" ? data : JSON.stringify(data),
     ...(etag === undefined ? {} : { etag }),
+    ...(retryAfter === undefined ? {} : { retryAfter }),
   }
 }

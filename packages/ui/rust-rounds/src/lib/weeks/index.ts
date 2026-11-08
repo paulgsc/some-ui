@@ -16,7 +16,8 @@
  *   home refused or lost the runner on is ended for good and waits no more.
  * - **Bounded.** One list, and at most `WEEK_READS_PER_EXCHANGE` weeks read,
  *   newest first: those the phone lacks, then those with a ticket still
- *   waiting on its run. A week the phone can't read is not read again.
+ *   waiting on its run. A week the phone can't read is not read again,
+ *   and home saying it is busy (`429`) ends the reads there (AD3).
  * - **Each answer is kept as it lands**, read fresh and written back at once.
  *
  * The exchange runs in the phone's Rust Rounds lane (apps/www
@@ -211,6 +212,8 @@ export async function exchangeWeeks(
     const answer = await send("GET", weekPath(id))
     if (answer.status === 401) return FORGOTTEN
     if (answer.status === 404) continue
+    // Home is busy: every read after this one would be turned away too.
+    if (answer.status === 429) return unexpectedAnswer("a week", 429)
     if (answer.status !== 200) {
       failed ??= answer.status
       continue

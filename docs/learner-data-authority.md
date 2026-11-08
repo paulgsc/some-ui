@@ -1126,9 +1126,13 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   of the Android app; aph's lane for as long as its screens hand it in), on
   the watch starting, a move of the lane's revision (its record changed on
   this phone), the app coming back to the foreground, the network coming
-  back, the phone being paired, or the link freeing up after turning a run
-  away; from `askLane`, which a mark's sheet and Settings' readout call
-  only from their Send now button; or, for a pull (a drag down from the top
+  back, the phone being paired, the link freeing up after another run
+  turned the lane's away, or home's busy ending after home turned it away
+  (AD3: the link sends nothing while home's `Retry-After` lasts, answering
+  each request busy itself, so the moments that come meanwhile run the
+  lane, say busy and send nothing, and its end asks once); from `askLane`,
+  which a mark's sheet and Settings' readout call only from their Send now
+  button; or, for a pull (a drag down from the top
   of a page, PULL3, the owner's D1 on #2456, 2026-11-02), from `pullKept`,
   which only `homeRefresher` (`lib/home-link/pull.ts`) calls, for each lane
   `useLaneHome` watches when its turn comes, one lane at a time, and once
@@ -1140,8 +1144,12 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   (`lib/jobs/pull.ts`, PULL2, registered while the Jobs screens or the
   status page show), and it joins the pull under way, or starts the one
   the refresher's own ask in that pull joins, so each lane is still asked
-  once, in turn. Nothing asks on a timer. A run goes
-  under the pairing the phone holds when it starts (`laneExchange`), and
+  once, in turn. Nothing asks on a timer: home's busy ends on one (the
+  link's, `runtime.ts`), which only opens the link again to the lanes home
+  turned away. A run goes
+  under the pairing the phone holds when it starts (`laneExchange`), sends
+  at most its lane's `REQUESTS_PER_RUN` (`lanes.ts`; past that its `send`
+  refuses as a stop does, and what is left goes on the next ask), and
   the link's `send` refuses a request once the phone stops or goes to the
   background. For aph, the first run on a paired phone moves its record to
   home (`keepOnHome`, in the lane's `exchange`), and from then on the phone
@@ -1161,7 +1169,9 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   ask, has `pullKept` ask other than through `mayAsk` and the lane's `pull`,
   adds a timer, changes when a listener asks (the record subscription's
   check that the revision moved, the link subscription's test for a new
-  pairing or for the link freeing up after a run it turned away), removes or
+  pairing, for the link freeing up after a run it turned away, or for home's
+  busy ending after a run home turned away, each read from the lane's runs
+  as they end and asked once), removes or
   changes anything the cleanup `watchKept` returns undoes, or removes
   `mayAsk`'s check that the phone is paired or that the document is
   visible; a hunk that calls `pullKept` from anywhere but `homeRefresher`,

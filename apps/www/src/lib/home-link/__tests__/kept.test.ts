@@ -18,7 +18,7 @@ import { INITIAL_KEPT, stepKept } from "@/lib/home-link/kept-model"
 import type { Kept, KeptPorts } from "@/lib/home-link/kept-runtime"
 import { createKept, laneExchange } from "@/lib/home-link/kept-runtime"
 import type { Lane, LaneCounts } from "@/lib/home-link/lanes"
-import { laneReading } from "@/lib/home-link/lanes"
+import { laneReading, REQUESTS_PER_RUN } from "@/lib/home-link/lanes"
 import { INITIAL, step } from "@/lib/home-link/model"
 import type { HomeLink } from "@/lib/home-link/runtime"
 import { HomeUnansweredError } from "@/lib/home-link/shelf"
@@ -44,6 +44,7 @@ function homeWith(over: Partial<KeptPorts>): Kept {
     exchange: () => Promise.resolve<HomeExchanged>({ kind: "synced" }),
     keep: keep(),
     paired: () => true,
+    homeBusy: () => false,
     now: () => 7,
     ...over,
   })
@@ -131,6 +132,11 @@ describe("a record kept on home", () => {
     expect(await lastOf({ keep: keep(true) })).toEqual({ kind: "busy" })
     expect(await lastOf({ keep: keep(true), paired: () => false })).toEqual({
       kind: "unpaired",
+    })
+    // While home waits out a busy, it was home's to turn away too (AD3).
+    expect(await lastOf({ keep: keep(true), homeBusy: () => true })).toEqual({
+      kind: "failed",
+      why: "busy",
     })
   })
 
@@ -263,11 +269,14 @@ function home(statuses: Array<number> = []): {
 
 const SYNCED: HomeExchanged = { kind: "synced" }
 
+/** More requests than any lane here makes: no run reaches its share. */
+const SHARE = 10
+
 describe("a lane's run", () => {
   it("sends nothing unpaired", async () => {
     const { send, sent } = home()
     await expect(
-      laneExchange(lane(2, SYNCED), () => null)(send)
+      laneExchange(lane(2, SYNCED), () => null, SHARE)(send)
     ).resolves.toEqual(SYNCED)
     expect(sent).toEqual([])
   })
@@ -283,9 +292,9 @@ describe("a lane's run", () => {
         return SYNCED
       },
     }
-    await expect(laneExchange(declared, () => "p")(send)).resolves.toEqual(
-      SYNCED
-    )
+    await expect(
+      laneExchange(declared, () => "p", SHARE)(send)
+    ).resolves.toEqual(SYNCED)
     expect(sent).toEqual(["/jobs/0"])
     expect(under).toEqual(["p"])
   })
@@ -296,7 +305,7 @@ describe("a lane's run", () => {
     for (const ends of [SYNCED, failed]) {
       const { send } = home([429])
       await expect(
-        laneExchange(lane(2, ends), () => "p")(send)
+        laneExchange(lane(2, ends), () => "p", SHARE)(send)
       ).resolves.toEqual(busy)
     }
     const throwing: Lane = {
@@ -307,28 +316,56 @@ describe("a lane's run", () => {
       },
     }
     await expect(
-      laneExchange(throwing, () => "p")(home([429]).send)
+      laneExchange(throwing, () => "p", SHARE)(home([429]).send)
     ).resolves.toEqual(busy)
+  })
+
+  it("sends at most its share of requests, ending as a stop does, with what it heard kept", async () => {
+    const { send, sent } = home()
+    const heard: Array<number> = []
+    const declared: Lane = {
+      ...lane(0, SYNCED),
+      exchange: async (through) => {
+        for (let i = 0; i < 5; i += 1) {
+          heard.push((await through("PUT", `/jobs/${i}`)).status)
+        }
+        return SYNCED
+      },
+    }
+    await expect(
+      laneExchange(declared, () => "p", 3)(send)
+    ).rejects.toBeInstanceOf(SyncStoppedError)
+    expect(sent).toEqual(["/jobs/0", "/jobs/1", "/jobs/2"])
+    expect(heard).toEqual([200, 200, 200])
+    // Home busy before the share ran out is said as busy all the same.
+    await expect(
+      laneExchange(lane(5, SYNCED), () => "p", 3)(home([429]).send)
+    ).resolves.toEqual({ kind: "failed", why: "busy" })
+  })
+
+  it("leaves a whole round of every lane well inside home's 60 requests a minute (AD3)", () => {
+    const round = Object.values(REQUESTS_PER_RUN).reduce((a, b) => a + b, 0)
+    expect(round).toBeLessThanOrEqual(50)
   })
 
   it("says forgotten, a stop, or no answer as they were when home was not busy", async () => {
     const forgotten: HomeExchanged = { kind: "forgotten" }
     await expect(
-      laneExchange(lane(1, forgotten), () => "p")(home([429]).send)
+      laneExchange(lane(1, forgotten), () => "p", SHARE)(home([429]).send)
     ).resolves.toEqual(forgotten)
     const throwing: Lane = {
       ...lane(0, SYNCED),
       exchange: () => Promise.reject(new Error("home did not answer")),
     }
     await expect(
-      laneExchange(throwing, () => "p")(home().send)
+      laneExchange(throwing, () => "p", SHARE)(home().send)
     ).rejects.toThrow("home did not answer")
     const stopping: Lane = {
       ...lane(0, SYNCED),
       exchange: () => Promise.reject(new SyncStoppedError()),
     }
     await expect(
-      laneExchange(stopping, () => "p")(home([429]).send)
+      laneExchange(stopping, () => "p", SHARE)(home([429]).send)
     ).rejects.toBeInstanceOf(SyncStoppedError)
   })
 })

@@ -15,6 +15,12 @@
  *   timer is that last one, bounded by its screen.
  * - **No retry.** A failed request is said once and left; the next tap, or
  *   the drain's next ask (LA15), is the next try.
+ * - **Home's busy is kept** (AD3): the first `429` a sync or send hears
+ *   leaves nothing more to send until home's `Retry-After` has passed
+ *   (`homeBusyFor`); until then the link answers every request of every run
+ *   busy itself, as home last did, so each says so in its own words and
+ *   sends nothing. The end of the wait is an event (`cooled`) the drain's
+ *   watches hear and ask once on (`./kept-watch`).
  * - **Stop, and the background, end a sync, a send or a keep** after the request
  *   in flight: the `get` or `send` it is handed refuses to send once
  *   stopped. A run is over only once every request it started has settled.
@@ -55,7 +61,32 @@ export type HomeLinkPorts = {
    * already is; returns an unsubscribe.
    */
   onHidden: (listener: () => void) => () => void
+  /** Milliseconds since the epoch. */
+  now: () => number
+  /** Runs `run` once, `ms` from now; returns the cancel. */
+  after: (ms: number, run: () => void) => () => void
 }
+
+/** How long home's busy lasts when its `Retry-After` can't be read. */
+const HOME_BUSY_MS = 60_000
+/** The shortest and longest wait a `Retry-After` is held to. */
+const HOME_BUSY_MIN_MS = 1_000
+const HOME_BUSY_MAX_MS = 600_000
+
+/**
+ * How long to leave home alone after its `429`: its `Retry-After` in whole
+ * seconds, held between 1 s and 10 minutes, or a minute when it sent none
+ * this phone can read (a date, say).
+ */
+export function homeBusyFor(retryAfter: string | undefined): number {
+  const text = retryAfter?.trim() ?? ""
+  if (!/^\d+$/.test(text)) return HOME_BUSY_MS
+  const ms = Number(text) * 1_000
+  return Math.min(Math.max(ms, HOME_BUSY_MIN_MS), HOME_BUSY_MAX_MS)
+}
+
+/** What the link answers for home while home's busy lasts: nothing was sent. */
+const HOME_BUSY: HomeAnswer = { status: 429, body: "" }
 
 /** A pairing kept before it had an id is known by its base. */
 type Pairing = { base: string; token: string; id: string }
@@ -187,6 +218,35 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
   const stopped = (): boolean =>
     working(state.activity) && state.activity.stopping
 
+  // Home's busy (AD3): the cancel of the timer that ends it, while it lasts.
+  let cancelCooling: (() => void) | null = null
+  const cool = (): void => {
+    cancelCooling?.()
+    cancelCooling = null
+    dispatch({ type: "cooled" })
+  }
+  /**
+   * Whether home is still to be left alone; a wait already over ends here,
+   * as well as on its timer, which a backgrounded WebView can hold back.
+   */
+  const homeBusyNow = (): boolean => {
+    const until = state.homeBusyUntil
+    if (until === null) return false
+    if (ports.now() < until) return true
+    cool()
+    return false
+  }
+  const heardBusy = (answer: HomeAnswer): void => {
+    dispatch({
+      type: "homeBusy",
+      until: ports.now() + homeBusyFor(answer.retryAfter),
+    })
+    const until = state.homeBusyUntil
+    if (until === null) return
+    cancelCooling?.()
+    cancelCooling = ports.after(Math.max(until - ports.now(), 0), cool)
+  }
+
   // Every request a sync or send started, until it settles: a caller can
   // give up on one (requestJSON's own deadline) that the native call still
   // completes, and the next tap must not race it.
@@ -199,6 +259,18 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     inFlight.add(settled)
     void settled.then(() => inFlight.delete(settled))
     return request
+  }
+
+  /**
+   * `call` sent and tracked, its `429` starting home's busy; or, while that
+   * lasts, answered busy here with nothing sent.
+   */
+  const ask = (call: HomeRequest): Promise<HomeAnswer> => {
+    if (homeBusyNow()) return Promise.resolve(HOME_BUSY)
+    return track(ports.request(call)).then((answer) => {
+      if (answer.status === 429) heardBusy(answer)
+      return answer
+    })
   }
 
   /** Shared by `sync` and `send`; ends once its requests have settled. */
@@ -275,15 +347,13 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
         if (!path.startsWith("/")) {
           return Promise.reject(new Error(`not a path: ${path}`))
         }
-        return track(
-          ports.request({
-            method,
-            url: `${pairing.base}${path}`,
-            token: pairing.token,
-            ...(body === undefined ? {} : { body }),
-            ...(range === undefined ? {} : { range }),
-          })
-        )
+        return ask({
+          method,
+          url: `${pairing.base}${path}`,
+          token: pairing.token,
+          ...(body === undefined ? {} : { body }),
+          ...(range === undefined ? {} : { range }),
+        })
       }
       return run(send)
     })
@@ -363,13 +433,11 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     sync<T>(run: (get: HomeGet) => Promise<T>): Promise<SyncOutcome<T> | null> {
       const get: HomeGet = (url, etag) => {
         if (stopped()) return Promise.reject(new SyncStoppedError())
-        return track(
-          ports.request({
-            method: "GET",
-            url,
-            ...(etag === undefined ? {} : { ifNoneMatch: etag }),
-          })
-        )
+        return ask({
+          method: "GET",
+          url,
+          ...(etag === undefined ? {} : { ifNoneMatch: etag }),
+        })
       }
       return work({ type: "syncPressed" }, () => run(get))
     },

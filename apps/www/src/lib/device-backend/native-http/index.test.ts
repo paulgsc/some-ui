@@ -84,6 +84,20 @@ describe("homeRequest", () => {
     )
   })
 
+  it("reads home's Retry-After on a 429, in any case (AD3)", async () => {
+    plugin.request.mockResolvedValue({
+      status: 429,
+      data: "",
+      headers: { "retry-after": "17" },
+    })
+    const answer = await homeRequest({
+      method: "GET",
+      url: "https://home.example/api/v1/aph",
+      token: "t",
+    })
+    expect(answer).toEqual({ status: 429, body: "", retryAfter: "17" })
+  })
+
   it("reads the tag in any case, and carries none it wasn't given", async () => {
     plugin.request.mockResolvedValue({
       status: 200,

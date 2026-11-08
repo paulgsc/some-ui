@@ -8,8 +8,16 @@
 import { isRecord } from "./is-record"
 import { jsonOf } from "./storage"
 
-/** What home answered: its status, and its body as text. */
-export type HomeAnswer = { status: number; body: string; etag?: string }
+/**
+ * What home answered: its status, and its body as text; with a `429`, how
+ * long home asks to be left alone (its `Retry-After`, as sent).
+ */
+export type HomeAnswer = {
+  status: number
+  body: string
+  etag?: string
+  retryAfter?: string
+}
 
 /**
  * A body that is not JSON: its media type, and its bytes as base64, the way

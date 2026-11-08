@@ -35,6 +35,11 @@ export function homeLink(): HomeLink {
       credential: nativeCredential,
       request: homeRequest,
       onHidden,
+      now: () => Date.now(),
+      after: (ms, run): (() => void) => {
+        const timer = setTimeout(run, ms)
+        return () => clearTimeout(timer)
+      },
     })
     void link.load()
   }
