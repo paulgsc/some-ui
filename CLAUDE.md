@@ -574,7 +574,8 @@ are chasing a promise nobody has stated.
 call in a gray area, it is recorded in `docs/calls.json`: what was chosen, the options, why it
 was gray, how to undo it, the paths it governs, and whose authority it rests on (`by: claude`,
 `by: claude` with the day the owner `agreed`, or `by: owner`). The commit that makes it
-carries `Call: <ID>`, and the PR's "Calls I made" lists the IDs. Recording one never waits on
+carries `Call: <ID>` (`check:commit-trailers` refuses an ID the record lacks at that commit),
+and the PR's "Calls I made" lists the IDs. Recording one never waits on
 the owner, and agents keep making calls. Until the owner writes their own definition, a gray
 area is a choice between options that no check, convention or earlier owner decision settles,
 that the owner would notice on the screen or in how they work.
@@ -586,8 +587,8 @@ that the owner would notice on the screen or in how they work.
   whose call it moves. Agreeing at the time doesn't change that. A defect stays what it is:
   code failing in a state its story covered.
 - **The record only grows.** An entry is never edited or removed, except that a Claude call
-  gains the day the owner agreed to it. The weekly call reads the calls made or agreed to in
-  its week from the record, not from PR bodies.
+  gains the day the owner agreed to it. The weekly call reads the calls that reached the
+  record on `main` in its week, or were agreed to in it, not PR bodies.
 
 Held by: `pnpm check:calls`
 

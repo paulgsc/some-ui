@@ -7,9 +7,9 @@
  *
  * - **Merged pull requests**, each with its change kind (its squash
  *   commit's `Change-Kind:` trailer).
- * - **Calls** made or agreed to in the week, from the calls record
- *   (`docs/calls.json`, ST37 #2637), so the call can say what was decided
- *   without the owner, and on whose authority.
+ * - **Calls** that reached the calls record (`docs/calls.json`, ST37 #2637)
+ *   on `main` in the week, or were agreed to in it, so the call can say what
+ *   was decided without the owner, and on whose authority.
  * - **Promises** declared or amended, from commits' `Promise:` and
  *   `Relates:` trailers: the gray-area calls.
  * - **Open asks** (`ask.ts`), each read or refused with why.
@@ -68,12 +68,16 @@ export function sectionOf(body: string, heading: string): string | null {
   return text === "" ? null : text
 }
 
-/** A call in the calls record (`docs/calls.json`), as the routine reads it. */
+/**
+ * A call in the calls record (`docs/calls.json`), as the routine reads it.
+ * The record's own check is `@some-ui/eslint`'s `calls.ts`, which runs with
+ * no install and so can't be imported here; this reads only what it picks by.
+ */
 const CallSchema = z.looseObject({
   id: z.string(),
-  made: z.string(),
+  made: z.iso.date(),
   by: z.enum(["claude", "owner"]),
-  agreed: z.string().optional(),
+  agreed: z.iso.date().optional(),
 })
 
 export type RecordedCall = z.infer<typeof CallSchema>
@@ -84,19 +88,29 @@ const CallsFileSchema = z.object({
 })
 
 /**
- * The calls `text` (the calls record) holds that were made, or agreed to by
- * the owner, from `from` to `to`, both days included, in the record's order.
- * Every field of each is kept as recorded.
+ * The calls that entered the record over a week, or gained the owner's
+ * `agreed` in it: what `after` (the record on `main` as the week ended)
+ * holds that `before` (as it began, null where there was none) did not.
+ * Read by when it reached `main`, not by `made`, so a call made one week and
+ * merged the next is voiced once, in the week it merged.
  */
-export function callsOfWeek(
-  text: string,
-  from: string,
-  to: string
+export function callsEntered(
+  before: string | null,
+  after: string
 ): Array<RecordedCall> {
-  const record = CallsFileSchema.parse(JSON.parse(text))
-  const within = (day: string | undefined): boolean =>
-    day !== undefined && day >= from && day <= to
-  return record.calls.filter((c) => within(c.made) || within(c.agreed))
+  const was = new Map(
+    (before === null
+      ? []
+      : CallsFileSchema.parse(JSON.parse(before)).calls
+    ).map((c) => [c.id, c])
+  )
+  return CallsFileSchema.parse(JSON.parse(after)).calls.filter((c) => {
+    const earlier = was.get(c.id)
+    return (
+      earlier === undefined ||
+      (earlier.agreed === undefined && c.agreed !== undefined)
+    )
+  })
 }
 
 /** A commit message's `Promise:` and `Relates:` trailers, in order. */
@@ -144,8 +158,8 @@ export type CallFacts = {
     /** From its squash commit's trailers; absent where none names one. */
     readonly change?: "story" | "defect"
   }>
-  /** The calls made or agreed to in the week (`callsOfWeek`). */
-  readonly calls: ReadonlyArray<RecordedCall>
+  /** The calls that entered the record in the week (`callsEntered`). */
+  readonly calls: Array<RecordedCall>
   readonly promises: Array<{
     readonly repo: Repo
     readonly sha: string

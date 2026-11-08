@@ -15,14 +15,17 @@
 import { execFileSync } from "node:child_process"
 import { readFileSync } from "node:fs"
 
+import { CALLS_FILE, readCalls } from "../packages/eslint/src/calls.ts"
 import {
+  callIdsOf,
   checkCommitTrailers,
   cleanCommitMessage,
   describeTrailerFinding,
   isBotIdentity,
 } from "../packages/eslint/src/commit-trailers.ts"
 
-type Commit = { label: string; message: string }
+// `hash` is null for the message being written, whose record is the tree's.
+type Commit = { label: string; message: string; hash: string | null }
 
 function commitsIn(range: string): Array<Commit> {
   // NUL between fields and RS between commits: neither occurs in a message.
@@ -44,7 +47,11 @@ function commitsIn(range: string): Array<Commit> {
     if (hash === "") continue
     if (isBotIdentity(an, ae) || isBotIdentity(cn, ce)) continue
     const subject = body.trim().split("\n", 1)[0] ?? ""
-    commits.push({ label: `${hash.slice(0, 10)} ${subject}`, message: body })
+    commits.push({
+      label: `${hash.slice(0, 10)} ${subject}`,
+      message: body,
+      hash,
+    })
   }
   return commits
 }
@@ -53,21 +60,44 @@ const args = process.argv.slice(2)
 let commits: Array<Commit>
 if (args[0] === "--message-file" && args[1]) {
   const message = cleanCommitMessage(readFileSync(args[1], "utf8"))
-  commits = [{ label: "this commit", message }]
+  commits = [{ label: "this commit", message, hash: null }]
 } else {
   commits = commitsIn(args[0] ?? "origin/main..HEAD")
 }
 
+/** The call ids docs/calls.json holds at `hash`, or in the tree for null. */
+function recordedCalls(hash: string | null): Set<string> {
+  let text: string
+  try {
+    text =
+      hash === null
+        ? readFileSync(CALLS_FILE, "utf8")
+        : execFileSync("git", ["show", `${hash}:${CALLS_FILE}`], {
+            encoding: "utf8",
+            stdio: ["ignore", "pipe", "ignore"],
+          })
+  } catch {
+    return new Set()
+  }
+  return new Set((readCalls(text).calls ?? []).map((call) => call.id))
+}
+
 let failed = 0
 for (const commit of commits) {
-  const findings = checkCommitTrailers(commit.message)
-  if (findings.length === 0) continue
+  const lines = checkCommitTrailers(commit.message).map(describeTrailerFinding)
+  const ids = callIdsOf(commit.message)
+  if (ids.length > 0) {
+    const known = recordedCalls(commit.hash)
+    for (const id of ids.filter((i) => !known.has(i)))
+      lines.push(
+        `Call: ${id} is not in ${CALLS_FILE} at this commit. Record the call there in the same commit.`
+      )
+  }
+  if (lines.length === 0) continue
   failed += 1
-  for (const finding of findings) {
+  for (const line of lines) {
     // eslint-disable-next-line no-console
-    console.error(
-      `[commit-trailers] ${commit.label}: ${describeTrailerFinding(finding)}`
-    )
+    console.error(`[commit-trailers] ${commit.label}: ${line}`)
   }
 }
 

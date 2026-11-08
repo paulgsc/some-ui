@@ -40,15 +40,14 @@
 
 import { execFile } from "node:child_process"
 import { existsSync, readFileSync } from "node:fs"
-import { access, readdir, readFile, writeFile } from "node:fs/promises"
+import { access, readdir, writeFile } from "node:fs/promises"
 import { dirname, join, relative } from "node:path"
-import { fileURLToPath } from "node:url"
 import { parseArgs, promisify } from "node:util"
 import { z } from "zod"
 
 import { ASK_LABEL, readAskIssue } from "./ask"
 import { callFolderProblems } from "./call"
-import { callsOfWeek, changeOf, trailersOf, whereWeAreOf } from "./call-facts"
+import { callsEntered, changeOf, trailersOf, whereWeAreOf } from "./call-facts"
 import type { CallFacts } from "./call-facts"
 import { clipFolderProblems, parseClipIndex } from "./clip"
 import { problemsOf } from "./cut-list"
@@ -319,25 +318,59 @@ const IssueHit = z.object({
   body: z.string(),
 })
 
+/** The calls record's path in some-ui. */
+const CALLS_RECORD = "docs/calls.json"
+
 /**
- * The calls record, read from this checkout: the weekly run starts from
- * some-ui's `main` (`CALL-ROUTINE.md`, step 1).
+ * The calls record on this checkout's history as it stood at `day`'s start
+ * (UTC): null when there was none yet. The weekly run starts from some-ui's
+ * `main` (`CALL-ROUTINE.md`, step 1), with history back to the week's start.
  */
-const CALLS_RECORD = join(
-  dirname(fileURLToPath(import.meta.url)),
-  "../../../docs/calls.json"
-)
+async function recordAt(day: string): Promise<string | null> {
+  const root = (
+    await run("git", ["rev-parse", "--show-toplevel"])
+  ).stdout.trim()
+  const commit = (
+    await run("git", [
+      "-C",
+      root,
+      "rev-list",
+      "-1",
+      `--before=${day}T00:00:00Z`,
+      "HEAD",
+    ])
+  ).stdout.trim()
+  if (commit === "")
+    fail([
+      `no commit before ${day} on this checkout: fetch main's history back to the week's start`,
+    ])
+  try {
+    return (await run("git", ["-C", root, "show", `${commit}:${CALLS_RECORD}`]))
+      .stdout
+  } catch {
+    return null
+  }
+}
+
+/** The day after `day`. */
+const dayAfter = (day: string): string =>
+  new Date(Date.parse(`${day}T00:00:00Z`) + 86_400_000)
+    .toISOString()
+    .slice(0, 10)
 
 /** The weekly call's facts for `from`..`to`, both days included. */
 async function callFacts(from: string, to: string): Promise<CallFacts> {
   const facts: CallFacts = {
     week: { from, to },
     pulls: [],
-    calls: callsOfWeek(await readFile(CALLS_RECORD, "utf8"), from, to),
+    calls: [],
     promises: [],
     asks: [],
     epics: [],
   }
+  const after = await recordAt(dayAfter(to))
+  if (after !== null)
+    facts.calls.push(...callsEntered(await recordAt(from), after))
   for (const repo of REPOS) {
     const changes = new Map<number, "story" | "defect">()
     const commits = await search(

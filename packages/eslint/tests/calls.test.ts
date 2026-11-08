@@ -78,6 +78,15 @@ describe("readCalls", () => {
     ])
   })
 
+  it("lets only the owner's own call leave out the options and why it was gray", () => {
+    const { options: _options, gray: _gray, ...bare } = call
+    expect(why({ ...bare, by: "owner" })).toEqual([])
+    expect(why(bare)).toEqual(["needs `gray`, in words"])
+    expect(why({ ...bare, gray: "Wording." })).toEqual([
+      "needs `options`, at least two",
+    ])
+  })
+
   it("refuses an id used twice, and a move of a call not in the record", () => {
     expect(readCalls(file(call, call)).findings).toEqual([
       { kind: "duplicateId", id: "C1" },
@@ -88,12 +97,15 @@ describe("readCalls", () => {
       {
         kind: "badEntry",
         at: "C2",
-        why: "moves C9, which is not in the record",
+        why: "moves C9, which is not listed before it",
       },
     ])
     expect(
       readCalls(file(call, { ...call, id: "C2", moves: "C1" })).findings
     ).toEqual([])
+    expect(
+      readCalls(file({ ...call, moves: "C1" })).findings.map((f) => f.kind)
+    ).toEqual(["badEntry"])
   })
 })
 

@@ -163,6 +163,19 @@ export function checkCommitTrailers(message: string): Array<TrailerFinding> {
   return findings
 }
 
+/**
+ * The call ids a well-formed message's final paragraph names on `Call:`
+ * lines, in order. Whether each is in docs/calls.json at that commit is the
+ * script's to check: it can read the file.
+ */
+export function callIdsOf(message: string): Array<string> {
+  const paragraphs = message.trim().split(/\n[ \t]*\n/)
+  if (paragraphs.length < 2) return []
+  return recordLines(paragraphs[paragraphs.length - 1] ?? "")
+    .filter(([key, value]) => key === "Call" && CALL_SHAPE.test(value))
+    .flatMap(([, value]) => value.split(",").map((id) => id.trim()))
+}
+
 /** One human-readable line per finding, naming the fix. */
 export function describeTrailerFinding(finding: TrailerFinding): string {
   switch (finding.kind) {

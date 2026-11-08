@@ -8,7 +8,9 @@
 //
 // - **Shape.** Every entry has each field, in its type; ids are `C<n>`,
 //   unique; days are `YYYY-MM-DD`; `by` is `claude` or `owner`; `agreed` is
-//   only on a Claude call, and never before the day it was made.
+//   only on a Claude call, and never before the day it was made; `options`
+//   and `gray` may be left out only of the owner's own call, where they are
+//   the owner's to give; `moves` names a call listed before it.
 // - **Append-only against the base branch.** An entry the base holds is still
 //   here with every field unchanged, except that a Claude call may gain the
 //   day the owner agreed to it. A later change to what a call chose is not an
@@ -35,10 +37,13 @@ export type Call = {
   readonly paths: ReadonlyArray<string>
   /** What was chosen. */
   readonly chose: string
-  /** Every option it chose between, the one taken included. */
-  readonly options: ReadonlyArray<string>
-  /** Why no check, convention or earlier decision settled it. */
-  readonly gray: string
+  /**
+   * Every option it chose between, the one taken included. Only the
+   * owner's call may leave them out.
+   */
+  readonly options?: ReadonlyArray<string>
+  /** Why no check, convention or earlier decision settled it; as `options`. */
+  readonly gray?: string
   readonly undo: string
   /** The issues and pull requests it was made in: `#2623`, `server#731`. */
   readonly refs: ReadonlyArray<string>
@@ -73,7 +78,7 @@ const FIELDS = new Set([
 const isText = (value: unknown): value is string =>
   typeof value === "string" && value.trim() !== ""
 
-const isTexts = (value: unknown, least: number): boolean =>
+const isTexts = (value: unknown, least: number): value is Array<string> =>
   Array.isArray(value) && value.length >= least && value.every(isText)
 
 const isDay = (value: unknown): value is string =>
@@ -85,9 +90,6 @@ const isDay = (value: unknown): value is string =>
 // eslint-disable-next-line one-owner/no-local-primitive -- build tooling sits below core-utils in the build graph (#2112), and check:calls runs with no install
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value)
-
-const isStrings = (value: unknown): value is Array<string> =>
-  Array.isArray(value) && value.every((item) => typeof item === "string")
 
 /** `entry` as a call, or why it is not one. */
 function callOf(entry: unknown): Call | string {
@@ -116,18 +118,15 @@ function callOf(entry: unknown): Call | string {
     if (!isDay(agreed)) return "has an `agreed` that is not a day"
     if (agreed < made) return "was agreed before it was made"
   }
-  if (!isStrings(paths) || !isTexts(paths, 1))
-    return "needs `paths`, at least one"
+  if (!isTexts(paths, 1)) return "needs `paths`, at least one"
   if (!isText(chose)) return "needs `chose`, in words"
-  if (!isText(gray)) return "needs `gray`, in words"
+  const owners = by === "owner"
+  if (!(gray === undefined && owners) && !isText(gray))
+    return "needs `gray`, in words"
   if (!isText(undo)) return "needs `undo`, in words"
-  if (!isStrings(options) || !isTexts(options, 2))
+  if (!(options === undefined && owners) && !isTexts(options, 2))
     return "needs `options`, at least two"
-  if (
-    !isStrings(refs) ||
-    refs.length === 0 ||
-    !refs.every((ref) => REF.test(ref))
-  )
+  if (!isTexts(refs, 1) || !refs.every((ref) => REF.test(ref)))
     return "needs `refs`, each `#<n>` or `server#<n>`"
   if (moves !== undefined && (typeof moves !== "string" || !ID.test(moves)))
     return "has a `moves` that is not a call's id"
@@ -138,8 +137,8 @@ function callOf(entry: unknown): Call | string {
     ...(agreed === undefined ? {} : { agreed }),
     paths,
     chose,
-    options,
-    gray,
+    ...(options === undefined ? {} : { options }),
+    ...(gray === undefined ? {} : { gray }),
     undo,
     refs,
     ...(moves === undefined ? {} : { moves }),
@@ -188,18 +187,16 @@ export function readCalls(
       findings.push({ kind: "badEntry", at, why: call })
       return
     }
-    if (seen.has(call.id)) findings.push({ kind: "duplicateId", id: call.id })
-    seen.add(call.id)
-    calls.push(call)
-  })
-  for (const call of calls) {
     if (call.moves !== undefined && !seen.has(call.moves))
       findings.push({
         kind: "badEntry",
         at: call.id,
-        why: `moves ${call.moves}, which is not in the record`,
+        why: `moves ${call.moves}, which is not listed before it`,
       })
-  }
+    if (seen.has(call.id)) findings.push({ kind: "duplicateId", id: call.id })
+    seen.add(call.id)
+    calls.push(call)
+  })
   if (findings.length > 0) return { calls: null, findings }
   return { calls, findings: [] }
 }

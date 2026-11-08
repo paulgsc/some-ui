@@ -5,10 +5,8 @@
  * week's calls from the calls record (ST37); and a squash commit's change
  * kind and promise trailers.
  */
-import { readFileSync } from "node:fs"
-import { join } from "node:path"
 import {
-  callsOfWeek,
+  callsEntered,
   changeOf,
   sectionOf,
   trailersOf,
@@ -20,34 +18,36 @@ const record = (calls: Array<Record<string, unknown>>): string =>
   JSON.stringify({ schema: "some-ui.calls/1", calls })
 
 describe("the calls record", () => {
-  const calls = [
-    { id: "C1", made: "2026-11-05", by: "claude", chose: "An icon." },
-    { id: "C2", made: "2026-11-06", by: "owner", chose: "Top." },
-    { id: "C3", made: "2026-10-30", by: "claude", agreed: "2026-11-12" },
-    { id: "C4", made: "2026-11-13", by: "claude" },
-  ]
+  const c1 = { id: "C1", made: "2026-11-05", by: "claude", chose: "An icon." }
+  const c2 = { id: "C2", made: "2026-11-06", by: "owner", chose: "Top." }
+  const c3 = { id: "C3", made: "2026-10-30", by: "claude" }
 
-  it("gives the calls made or agreed to in the week, each as recorded", () => {
-    expect(
-      callsOfWeek(record(calls), "2026-11-06", "2026-11-12").map((c) => c.id)
-    ).toEqual(["C2", "C3"])
-    expect(callsOfWeek(record(calls), "2026-11-06", "2026-11-12")[0]).toEqual(
-      calls[1]
-    )
+  it("gives the calls that entered it over the week, each as recorded", () => {
+    expect(callsEntered(record([c1]), record([c1, c2]))).toEqual([c2])
   })
 
-  it("reads the repo's own record", () => {
-    const text = readFileSync(
-      join(import.meta.dirname, "../../../../docs/calls.json"),
-      "utf8"
-    )
-    expect(
-      callsOfWeek(text, "2026-11-06", "2026-11-06").length
-    ).toBeGreaterThan(0)
+  it("goes by when a call reached main, not when it was made", () => {
+    const late = { ...c1, made: "2026-10-29" }
+    expect(callsEntered(record([]), record([late]))).toEqual([late])
+    expect(callsEntered(record([late]), record([late]))).toEqual([])
+  })
+
+  it("gives a call the owner agreed to in the week, and every call of a first record", () => {
+    const agreed = { ...c3, agreed: "2026-11-07" }
+    expect(callsEntered(record([c1, c3]), record([c1, agreed]))).toEqual([
+      agreed,
+    ])
+    expect(callsEntered(null, record([c1, c2])).map((c) => c.id)).toEqual([
+      "C1",
+      "C2",
+    ])
   })
 
   it("refuses what is not the record", () => {
-    expect(() => callsOfWeek("{}", "2026-11-06", "2026-11-12")).toThrow()
+    expect(() => callsEntered(null, "{}")).toThrow()
+    expect(() =>
+      callsEntered(null, record([{ ...c1, made: "Nov 5" }]))
+    ).toThrow()
   })
 })
 

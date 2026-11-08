@@ -10,8 +10,6 @@
         "packages/ui/shared/src/components/ui/notice/index.tsx"
       ],
       "chose": "What an app says about a tap floats over the screen as a Notice, never in the layout; content asked for grows below the tap (HS1, HS3).",
-      "options": ["a Notice over the screen", "a line in the layout"],
-      "gray": "No earlier rule said where a word about a tap goes.",
       "undo": "Retire HS1 and HS3 in docs/ui-fit/README.md 2i.",
       "refs": ["#2637", "#2623", "#2625", "#2634"]
     },
@@ -76,8 +74,11 @@
       "by": "claude",
       "agreed": "2026-11-06",
       "paths": ["packages/ui/soundbites/src/lib/studio/words.ts"],
-      "chose": "Studio's record length line reworded to stay on one line (\"Runs N s · a take up to M s\"), and the soundbites full paragraph reworded (\"Full. Unless you pick another below, your next one replaces…\").",
-      "options": ["the words as they were, wrapping", "shorter words"],
+      "chose": "Studio's record length line reworded to stay on one line (\"Runs N s · a take up to M s\", \"Runs N s: your take and a breath\"), and the soundbites full paragraph reworded (\"Full. Unless you pick another below, your next one replaces…\").",
+      "options": [
+        "the earlier words, wrapping",
+        "words reworded to fit one line"
+      ],
       "gray": "Wording.",
       "undo": "Restore the earlier words in the soundbites WORDS.",
       "refs": ["#2637", "#2623", "#2625", "#2634"]
@@ -123,11 +124,6 @@
       "by": "owner",
       "paths": ["docs/ui-fit/README.md"],
       "chose": "HS2 (conditional lines only) was retired for HS3 (every line in the layout): the owner's idiom, Claude's encoding.",
-      "options": [
-        "HS2, conditional lines only",
-        "HS3, every line in the layout"
-      ],
-      "gray": "How far the rule reaches.",
       "undo": "Restore HS2 and retire HS3 in docs/ui-fit/README.md.",
       "refs": ["#2637", "#2623", "#2625", "#2634"]
     },
@@ -187,13 +183,13 @@
         "packages/video-render/src/call-facts.ts",
         "packages/video-render/CALL-ROUTINE.md"
       ],
-      "chose": "The weekly call voices the calls made or agreed to in its week, read from docs/calls.json.",
+      "chose": "The weekly call voices the calls that reached docs/calls.json on main in its week, or were agreed to in it, read from the record's history.",
       "options": [
         "the week's new calls",
         "every call the owner hasn't agreed to yet"
       ],
       "gray": "#2637 left open whether the call voices only calls the owner hasn't heard; a new call is one they haven't.",
-      "undo": "Change which entries call-facts hands the routine.",
+      "undo": "Change which entries callsEntered hands the routine (call-facts.ts).",
       "refs": ["#2637"]
     },
     {

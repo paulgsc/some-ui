@@ -5,6 +5,7 @@
  */
 
 import {
+  callIdsOf,
   checkCommitTrailers,
   cleanCommitMessage,
   isBotIdentity,
@@ -118,6 +119,12 @@ describe("checkCommitTrailers", () => {
     expect(
       checkCommitTrailers(msg("feat(x): y", "Call: C1", "Change-Kind: story"))
     ).toEqual([{ kind: "notFinal", key: "Call" }])
+    expect(
+      callIdsOf(msg("feat(x): y", "Change-Kind: story\nCall: C13, C14"))
+    ).toEqual(["C13", "C14"])
+    expect(
+      callIdsOf(msg("feat(x): y", "Call: C1", "Change-Kind: story"))
+    ).toEqual([])
   })
 
   it("puts Relates with a defect, and allows Promise on a story", () => {

@@ -22,9 +22,12 @@ up to 14 days.
 2. **Read the facts:**
    `pnpm --filter @some-ui/video-render render call-facts --from <from> --to <to> > facts.json`
    in the scratchpad. It holds the week's merged pull requests (with each
-   one's change kind), the calls made or agreed to in the week (from
-   `docs/calls.json`, each with who made it), promise trailers, open asks,
-   and the epics that moved, with their "Where we are".
+   one's change kind), the calls that reached `docs/calls.json` on `main`
+   in the week or were agreed to in it (each with who made it), promise
+   trailers, open asks, and the epics that moved, with their "Where we
+   are". It reads the record from the checkout's history, so the clone must
+   reach back to the week's start (`git fetch --shallow-since=<from>` on a
+   shallow one).
 3. **Read the ledger:** the Residual Ledger's `items`
    (https://claude.ai/artifact/Ktc1i8JtBGQVdXEraobxgA) with `ArtifactData`,
    every item whose `status` isn't `done`.
