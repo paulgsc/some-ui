@@ -7,9 +7,12 @@
  * layers too: a version names each burn-in kind's design, and a design is
  * frozen once a published video used it (`@some-ui/burn-ins`).
  *
- * Its content (music, the sound kit, brand files) lives in Drive,
- * `Build Journal/template/`; the repo keeps this schema and a sample of
- * each series in `sample/series/`.
+ * Its content (the music bed, the sound kit) lives on home, in
+ * `${STORAGE}/brand` (mounted read-only at `/brand`), the kit under
+ * `sounds/` (HYPER4, #2727); never in a repository. A version pins each
+ * file by its sum, and `placeBrandFiles` (`node.ts`) copies them into a
+ * video's folder, where the renderer refuses one that changed. The repo keeps this schema and a sample of each series
+ * in `src/sample/series/`.
  *
  * A version may carry an intro and an outro: scenes the renderer adds to
  * every video that pins it (`withSeries`). They sit just inside the
