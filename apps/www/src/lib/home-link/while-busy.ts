@@ -3,9 +3,9 @@
  * takes one run at a time, and a drag down drains every lane in turn
  * (PULL3), so a read that finds it busy waits a second and asks again, at
  * most `TRIES` times in all. My data, Ideas on home, Takes on home, Studio's
- * feed videos and Studio › Renders read through it. Asks nothing of its own:
- * `ask` is the caller's one request, and `asked` turns one run of the link's
- * `keep` into what a read says.
+ * feed videos, Studio › Renders and a template's preview read through it.
+ * Asks nothing of its own: `ask` is the caller's one request, and `asked`
+ * turns one run of the link's `keep` into what a read says.
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { assertNever } from "@some-ui/core-utils"

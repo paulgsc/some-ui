@@ -6,8 +6,8 @@
  *   each time its screen opens, on a drag down, on Try again, and once after
  *   a Save home kept;
  * - an episode's video, one `GET /feeds/:feed/videos/:key/video` per part of
- *   it the phone fetches, each a range of at most `PART_BYTES` (`lib/call-videos/parts`), while Watch
- *   fetches it into the phone's cache;
+ *   it the phone fetches, each a range of at most `PART_BYTES`
+ *   (`lib/call-videos/parts`), while Watch fetches it into the phone's cache;
  * - the episode's `YouTube` link, one `PUT /feeds/:feed/videos/:key/link` per
  *   Save, which a tap starts;
  * - the episode's chapters for its `YouTube` description (SFEED4, #2763), one
