@@ -1,6 +1,6 @@
-/** `motion render | prove | video`: the README says what each does. */
+/** `motion render | prove | video | walk | promo`: the README says what each does. */
 
-import { mkdtemp, readFile, rm } from "node:fs/promises"
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -19,13 +19,24 @@ import { browserRoots, findHeadlessShell } from "./browser"
 import { difference, saidOf } from "./difference"
 import { compositionPort } from "./node"
 import { HYPERFRAMES_VERSION } from "./pin"
+import { promoCutList, releaseProblems, ReleaseSchema } from "./promo"
 import { renderComposition } from "./render"
+import { runWalk } from "./walk/run"
+import type { WalkFile } from "./walk/run"
+import { suspenderLedger } from "./walk/suspender-ledger"
 
 const USAGE = [
   "usage: motion render <composition> --out <clip.mkv> [--variables <file>]",
   "       motion prove <composition> [--variables <file>] [--runs 2]",
   "       motion video <video folder> [--series <folder>] [--prove]",
+  "       motion walk <app> --sample <file> --out <folder>",
+  "       motion promo <release folder> --out <folder> [--prove]",
 ].join("\n")
+
+/** The apps a walk can show, each by its sample's schema and its steps. */
+const WALKS: ReadonlyMap<string, typeof suspenderLedger> = new Map([
+  ["suspender-ledger", suspenderLedger],
+])
 
 /** The series of a vertical whose scenes are compositions, the default. */
 const VERTICAL = resolve(
@@ -41,6 +52,7 @@ const { positionals, values } = parseArgs({
     out: { type: "string" },
     variables: { type: "string" },
     series: { type: "string" },
+    sample: { type: "string" },
     fps: { type: "string", default: "30" },
     work: { type: "string" },
     chrome: { type: "string" },
@@ -69,7 +81,7 @@ const say = (line: string): void => {
 }
 
 /** What `--name` was given, from where the command was typed. */
-function given(name: "out" | "variables"): string {
+function given(name: "out" | "sample" | "variables"): string {
   const value = values[name]
   if (value === undefined) throw new Refused(`--${name} is needed\n${USAGE}`)
   return here(value)
@@ -299,6 +311,60 @@ async function renderVideo(
   )
 }
 
+/** The walk of `app` in the sandbox, from `sample`, into `out`. */
+async function walkInto(
+  app: string,
+  sample: unknown,
+  out: string
+): Promise<WalkFile> {
+  const entry = WALKS.get(app)
+  if (!entry) {
+    throw new Refused(
+      `there is no walk of ${app}; there are: ${[...WALKS.keys()].join(", ")}`
+    )
+  }
+  const read = entry.sample.safeParse(sample)
+  if (!read.success) throw new Refused(`the sample: ${read.error.message}`)
+  await mkdir(out, { recursive: true })
+  return runWalk(entry.walk(read.data), browser(), out)
+}
+
+async function walk(app: string): Promise<void> {
+  const out = given("out")
+  const made = await walkInto(app, await readJson(given("sample")), out)
+  say(
+    `${app} ${made.version}: ${String(made.snips.length)} screens, ${String(made.taps.length)} taps, in ${out}`
+  )
+}
+
+/**
+ * A release's promo (HYPER3): the folder's `release.json` and its app's walk
+ * from `sample.json`, into `<out>` as a cut list of three composition scenes,
+ * rendered there as `video.mp4` (with `--prove`, twice from nothing).
+ */
+async function promo(folder: string): Promise<void> {
+  const from = here(folder)
+  const read = ReleaseSchema.safeParse(
+    await readJson(join(from, "release.json"))
+  )
+  if (!read.success) throw new Refused(`the release: ${read.error.message}`)
+  const release = read.data
+  const out = given("out")
+  const walked = await walkInto(
+    release.app,
+    await readJson(join(from, "sample.json")),
+    out
+  )
+  const problems = releaseProblems(release, walked)
+  if (problems.length > 0) throw new Refused(problems.join("\n"))
+  const cut = promoCutList(release, walked)
+  await writeFile(
+    join(out, "cut-list.json"),
+    `${JSON.stringify(cut, null, 1)}\n`
+  )
+  await renderVideo(out, VERTICAL, values.prove)
+}
+
 async function main(): Promise<void> {
   const [command, name] = positionals
   if (!name) throw new Refused(USAGE)
@@ -308,6 +374,12 @@ async function main(): Promise<void> {
     }
     case "prove": {
       return prove(name)
+    }
+    case "walk": {
+      return walk(name)
+    }
+    case "promo": {
+      return promo(name)
     }
     case "video": {
       return renderVideo(

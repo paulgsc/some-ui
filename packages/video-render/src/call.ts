@@ -30,6 +30,8 @@
 
 import { z } from "zod"
 
+import type { ChapterMark } from "./chapters"
+import { chapterSlides } from "./chapters"
 import { once, problemsOf } from "./cut-list"
 import type { CutList, Parsed } from "./cut-list"
 import { FORMAT_SCHEMA, inTheme, repeatedId, showId, words } from "./format"
@@ -533,6 +535,24 @@ export function callIntro(week: CallWeek): {
         : `Inside: ${calls.join(", ")}.`,
     ].join(" "),
   }
+}
+
+/**
+ * Where the call's chapters start (SFEED4): each chapter slide, and each ask
+ * on its own, titled by its question, so it can be heard again before it is
+ * answered.
+ */
+export function callChapterMarks(week: CallWeek): Array<ChapterMark> {
+  const scenes = callScenes(week)
+  const asks = scenes.flatMap((scene) => {
+    if (scene.section !== "asks" || !("item" in scene)) return []
+    const ask = week.asks.find((each) => each.id === scene.item)
+    return ask === undefined ? [] : [{ scene: scene.id, title: ask.question }]
+  })
+  return [
+    ...chapterSlides(scenes.filter((scene) => scene.section === "chapter")),
+    ...asks,
+  ]
 }
 
 /**

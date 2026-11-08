@@ -498,6 +498,7 @@ jobs:
           files=$(git diff --name-only --diff-filter=ACMR HEAD^1 -- \
             'packages/video-motion/**' \
             'packages/video-render/**' \
+            'extensions/suspender-ledger/**' \
             'pnpm-lock.yaml' \
             'flake.nix' \
             'flake.lock' \
@@ -513,6 +514,17 @@ jobs:
             cp -r packages/video-motion/sample/video "$RUNNER_TEMP/video"
             nix develop .#ci-playwright --command \
               pnpm --filter @some-ui/video-motion motion video "$RUNNER_TEMP/video" --prove
+            # HYPER3 (#2726): Suspender Ledger 0.3.1's promo, from its data in
+            # paulgsc/testing at a pinned commit: the popup walked once in its
+            # sandbox, then the promo rendered twice from nothing.
+            data="$RUNNER_TEMP/promo-data"
+            mkdir -p "$data"
+            for file in release sample; do
+              curl -fsSL -o "$data/$file.json" \
+                "https://raw.githubusercontent.com/paulgsc/testing/853627e77d31499e81d16b3f48d9ae77b3237f46/promo/suspender-ledger/0.3.1/$file.json"
+            done
+            nix develop .#ci-playwright --command \
+              pnpm --filter @some-ui/video-motion motion promo "$data" --out "$RUNNER_TEMP/promo" --prove
           else
             echo "No files a composition's render reads changed."
           fi

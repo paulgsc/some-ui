@@ -49,6 +49,7 @@ import type { Route } from "@playwright/test"
 import {
   CALL_INDEX_SCHEMA,
   CALL_VOICES,
+  callChapterMarks,
   callCutList,
   callFormat,
   callScenes,
@@ -201,6 +202,7 @@ async function main(): Promise<void> {
       policy,
       browser,
       origin: site.origin,
+      marks: callChapterMarks(week),
     })
   } finally {
     await browser.close()

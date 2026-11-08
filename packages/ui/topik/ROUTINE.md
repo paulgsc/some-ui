@@ -13,7 +13,9 @@ goes home through the mailbox, and home keeps it for the phone's "From the
 routine" list. When fewer than three of the routine's scenes wait unopened on
 the phone, it also writes stock scenes that answer no reflection (part D), and
 every run leaves a record of itself in the mailbox (step 12), which the phone
-shows as when the routine last ran and what it brought.
+shows as when the routine last ran and what it brought. What the owner said in
+Studio about an ask is filed as a pending issue in the repository it concerns
+(part E).
 
 Home is the record of everything this run reads and writes: the reflections,
 the prompts, the transcripts of their voice notes, and the scenes and dramas
@@ -24,7 +26,7 @@ counting.
 The run works in the mailbox (`curl`), the checkout, GitHub (the GitHub MCP
 tools, `mcp__github__*`; load them with ToolSearch if they are deferred), and
 Google Drive (the Google Drive connector) when it has it. It changes nothing in
-the repo: no commits, no pushes, no PRs; the issues of part C are its only
+the repo: no commits, no pushes, no PRs; the issues of parts C and E are its only
 GitHub writes.
 
 **What still needs Drive, and why.** The run does its whole job without the
@@ -614,6 +616,79 @@ exactly as in steps 4 to 6a, with these differences:
 - `from`: `kept ready on <Mon D>`;
 - in step 6's envelope, `answers` is `<base>`, and the name is `scene-<base>.json`.
 
+## Part E: what the owner said in Studio, filed as pending issues
+
+Home keeps what the owner says in Studio about something to be done (the take
+and its transcript) and never files an issue itself; this run files each one
+as a **pending** issue, which waits until the owner starts a session for it
+(paulgsc/some-ui#2670, decisions 6 and 11; #2746). Today that is an answer to
+an ask, said on the ask's page. Which takes these are, and which were filed
+already, is `@some-ui/video-render`'s `pending.ts`, never this run's reading.
+
+E1. If the mailbox is usable (2a) and the GitHub tools are, list the
+`transcript` folder's live items as 2a says, whether or not home's index
+stands (2b): the index names only reflections' and prompts' notes. For each
+note, take only its newest transcript, `transcript-<note>-<n>.json` with the
+highest `<n>`, compared as a number. Fetch each one no reflection or drama
+prompt claims by id, once per run, as "Each transcript you use" says, and save
+their bodies as one JSON list in a scratch file outside the checkout. Then
+list the issues already filed with the label `from-studio`, open and closed,
+whether or not they still carry `pending`, in `paulgsc/some-ui` and
+`paulgsc/server` (`list_issues`, every page), and save them, with their
+bodies, as one JSON list in a second scratch file. If a repository's list is refused, file nothing in that
+repository this run and say so in the summary: a take whose issue the list
+didn't show would be filed twice. A take whose transcript home archived before
+any run filed it (the mailbox archives after 30 days) is not asked back and is
+never filed; a daily run reaches every take well before then.
+
+E2. From the repo root, run
+
+```sh
+pnpm --filter @some-ui/video-render render pending <transcripts file> <filed file>
+```
+
+It prints `items`, the takes left to file, oldest said first, and `passed`,
+each transcript that didn't read (by its place in the list) and why. Each item
+names its `kind`, the `repo` it concerns, the issue it is `about`, the take's
+`note` id and when it was said (`at`), what home `heard`, the `labels` to file
+it with, and the `line` its issue ends with. Never file a take the script
+didn't print, and never change its `line`: that line is how the next run knows
+it was filed.
+
+E3. File one issue per item in the item's `repo`, at most four this run (a cap
+of its own, beside C4's), the oldest first; the rest wait for the next run,
+and the summary says how many. Each take is an answer of its own: when an
+earlier pending issue (in E1's list, or filed this run) answers the same ask,
+the new one links it and says which answer is newer, and closes neither.
+What the issue says depends on its `kind`:
+
+- **`ask`, an answer to an ask.** Read the ask first (issue `about` in `repo`:
+  its ` ```json ask ` block, as `docs/asks.md` describes it). Title:
+  `Answer to #<about>: <the option chosen, or what was asked for instead, in a few words>`.
+  Body: which option the owner chose, by its `says`, and what that unblocks
+  (its `unblocks`); or that they chose none, and what they want instead. Then
+  `Answers #<about>.`
+
+Every issue, of any kind:
+
+- states the change in your own words, C2's rule (decision 11): never quote
+  the transcript, and name the source only as "said in Studio";
+- says plainly when what home heard is unclear or matches no option, and
+  what is unclear, rather than guessing which was meant: the owner's session
+  reads the take on home before acting;
+- is labelled with the item's `labels` and `kind:story` (an answer moves a
+  story; the repo's `CLAUDE.md`, "Two kinds of pull request"). `from-studio`
+  is how E1 finds it again, so if it is refused, file nothing more in that
+  repository this run, and name the issue just filed in the summary so the
+  owner can label it, or the next run files its take again; any other label refused,
+  file without it and say so;
+- ends with a blank line and the item's `line`, exactly.
+
+E4. As C5 and C6, and don't comment on, label, close or edit the ask or any
+other issue: the pending issue waits for the owner, and the ask stays open
+until a session acts on it. If a call is refused, put each item left in the
+summary by its repo, `about` and `note`, in your own words.
+
 ## The run record
 
 11. With Drive: never edit, move, rename or trash anything in `Study ledger/`,
@@ -696,7 +771,10 @@ and is not retried.
     skipped, why; part D's count of unopened scenes, the unopened dramas,
     and each stock scene written (title, genre, premise, level); the run
     record's put and its
-    status code; for each voice note, its transcript's name and `text`, or that
+    status code; part E's pending issues filed (repo, number, title, the take's
+    `note`), the items left for the next run, and each `passed` transcript, never
+    what home heard in a Studio take; for each other voice note, its
+    transcript's name and `text`, or that
     home hasn't heard it; Drive (whether this session had it, each copy made
     or failed, each reflection, prompt or scene read from it because only
     Drive holds it, or, without it, what that left undone); and anything you
