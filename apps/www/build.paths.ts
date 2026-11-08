@@ -145,6 +145,7 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/study-nudge/native.ts",
   "apps/www/src/lib/study-nudge/schedule.ts",
   "apps/www/src/components/call-videos.tsx",
+  "apps/www/src/components/studio/ask-answer.tsx",
   "apps/www/src/components/studio/episode-feedback.tsx",
   "apps/www/src/components/copy-button.tsx",
   "apps/www/src/components/device-home-glyph.tsx",
@@ -233,6 +234,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       ],
       profiles: [MOBILE_PROFILE],
       why: "a cut list's timing, which fits a scene to its take as Record keeps it, an episode file, which Studio opens as an episode, a review render's review.json, which Watch reads, and a video's DNA, which Finish keeps for home to make (@some-ui/soundbites, lib/project and lib/studio): the web builds render no video and keep no project. The cut list's and a format's schemas are on every path: the phone's Studio checks a project and a primer against them, and the web's call stage draws a call's format",
+    },
+    {
+      modules: ["packages/video-render/src/pending.ts"],
+      profiles: [MOBILE_PROFILE],
+      why: "the ref a spoken answer to an ask is kept under on home (`answerRef`, SFEED5): only the Android app's Studio records one (src/lib/ask-answer). The reflections routine reads the same module from the repo, outside any build",
     },
     {
       modules: [
