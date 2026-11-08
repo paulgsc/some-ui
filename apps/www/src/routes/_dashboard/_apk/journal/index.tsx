@@ -23,7 +23,7 @@ const WORDS = STUDIO_INDEX_WORDS
  *
  * In the Android app, Studio's store, log and rules go to the home link, and
  * the ideas sent whole go home (ST26), once this page has loaded
- * (`lib/studio-keeping`), as Studio's Home handed them in before the index.
+ * (`lib/studio-keeping`).
  */
 const StudioIndex = (): JSX.Element => {
   useEffect(() => {

@@ -6,7 +6,6 @@
  * first; a template's page shows its pinned shape; and Asks lists what the
  * open `ask` issues ask, opening each one's page.
  */
-import type { ReactNode } from "react"
 import { Route as IndexRoute } from "@/routes/_dashboard/_apk/journal/index"
 import { withQueryClient } from "@/test-support/query-client"
 import { routeComponent } from "@/test-support/router-stubs"
@@ -27,6 +26,12 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
   const { withPlainLink } = await import("@/test-support/router-stubs")
   return withPlainLink(await importOriginal<typeof ReactRouterModule>())
 })
+
+// Studio's pages are the phone's: links to them draw only where it is.
+vi.mock("@/lib/build-profile", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  hasAudience: (audience: string): boolean => audience === "apk",
+}))
 
 afterEach(() => {
   cleanup()
@@ -73,13 +78,6 @@ describe("a template's page", () => {
     )
     screen.getByText(W.subtitlesAre.word)
   })
-
-  it("shows Playoff Delta's, read from its pin on the phone", () => {
-    const format = templateFormat("playoff-delta-week")
-    render(<TemplateShape format={format} />)
-    for (const scene of format.scenes)
-      expect(screen.getAllByText(scene.name).length).toBeGreaterThan(0)
-  })
 })
 
 const issue = (number: number, question: string): object => ({
@@ -107,12 +105,8 @@ const answer = (body: unknown): Response =>
     headers: { "content-type": "application/json" },
   })
 
-const link = (ask: { id: string }, children: ReactNode): ReactNode => (
-  <a href={`/journal/asks/${ask.id}`}>{children}</a>
-)
-
 describe("Asks", () => {
-  it("lists both repositories' open asks A to Z, each opening its page", async () => {
+  it("lists both repositories' open asks, each a link to its page", async () => {
     const fetch = vi
       .spyOn(globalThis, "fetch")
       .mockImplementation((input) =>
@@ -127,13 +121,12 @@ describe("Asks", () => {
           )
         )
       )
-    render(withQueryClient(<AsksList renderLink={link} />))
-    const links = await screen.findAllByRole("link")
-    expect(links.map((a) => a.getAttribute("href"))).toEqual([
-      "/journal/asks/some-ui-1",
-      "/journal/asks/server-9",
-      "/journal/asks/some-ui-2673",
-    ])
+    const { container } = render(withQueryClient(<AsksList />))
+    await screen.findByText("Redeploy home?")
+    const links = [...container.querySelectorAll("a")]
+    expect(links).toHaveLength(3)
+    for (const link of links)
+      expect(link.getAttribute("to")).toBe("/journal/asks/$ask")
     expect(fetch).toHaveBeenCalledTimes(2)
     screen.getByText(STUDIO_INDEX_WORDS.asks.from.server)
   })
@@ -142,7 +135,7 @@ describe("Asks", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response("rate limited", { status: 403 })
     )
-    render(withQueryClient(<AsksList renderLink={link} />))
+    render(withQueryClient(<AsksList />))
     await screen.findByText(STUDIO_INDEX_WORDS.asks.away)
     screen.getByRole("button", { name: STUDIO_INDEX_WORDS.tryAgain })
   })

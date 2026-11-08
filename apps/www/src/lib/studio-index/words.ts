@@ -6,6 +6,8 @@
  * words (its name, how an episode is labelled) stay `FEED_WORDS`
  * (`lib/call-videos/words`); these add what it is fed and when it runs.
  */
+import { counted } from "@some-ui/core-utils"
+
 import type { Feed } from "@/lib/feeds"
 
 import type { StudioKind } from "./index"
@@ -130,7 +132,6 @@ export const STUDIO_INDEX_WORDS = {
   feeds: {
     intro:
       "Each feed is an intuition you fed in. Claude fills each episode, and home voices it and makes the video.",
-    facts: FEED_FACTS,
     intuition: "The intuition",
     cadence: "When it runs",
     templates: "Made with",
@@ -149,9 +150,7 @@ export const STUDIO_INDEX_WORDS = {
         ? "Every idea you caught, and what home keeps of them"
         : n === 0
           ? "No ideas on this phone yet"
-          : n === 1
-            ? "One idea on this phone"
-            : `${String(n)} ideas on this phone`,
+          : `${counted(n, "idea")} on this phone`,
     openIdeas: "Your ideas",
   },
 
@@ -183,9 +182,7 @@ export const STUDIO_INDEX_WORDS = {
       off: "None",
     },
     chapters: (n: number): string =>
-      n === 1
-        ? "One chapter slide, said aloud"
-        : `${String(n)} chapter slides, each said aloud`,
+      `${counted(n, "chapter slide")} said aloud`,
     noShape:
       "Made before templates had a shape: no intro, chapters or subtitles.",
   },

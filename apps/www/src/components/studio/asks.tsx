@@ -9,13 +9,15 @@
 import type { JSX, ReactNode } from "react"
 import { Button } from "@some-ui/shared"
 import { useQuery } from "@tanstack/react-query"
+import { Link } from "@tanstack/react-router"
 
+import { hasAudience } from "@/lib/build-profile"
 import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
 import type { StudioAsk } from "@/lib/studio-asks"
 import { questionOf, studioAsksQuery } from "@/lib/studio-asks"
 import { STUDIO_INDEX_WORDS } from "@/lib/studio-index"
 
-import { Part } from "./layout"
+import { Part, TILE } from "./layout"
 
 const WORDS = STUDIO_INDEX_WORDS.asks
 
@@ -40,30 +42,27 @@ const Read = ({
     ready: (asks) => <>{children(asks)}</>,
   })
 
-/** The list: each ask's link, drawn by the route, A to Z. */
-export const AsksList = ({
-  renderLink,
-}: {
-  /** The link to one ask's page, around what it asks. */
-  renderLink: (ask: StudioAsk, children: ReactNode) => ReactNode
-}): JSX.Element => (
+/** The list: each ask a link to its page, A to Z. */
+export const AsksList = (): JSX.Element => (
   <Read>
     {(asks) =>
-      asks.length === 0 ? (
+      // An ask's page is the phone's ("apk"), as this list is (A3).
+      asks.length === 0 || !hasAudience("apk") ? (
         <p className="text-muted-foreground text-sm">{WORDS.none}</p>
       ) : (
         <ul className="flex flex-col gap-2">
           {asks.map((ask) => (
             <li key={ask.id}>
-              {renderLink(
-                ask,
-                <>
-                  <span className="text-base font-bold">{questionOf(ask)}</span>
-                  <span className="text-muted-foreground text-sm">
-                    {WORDS.from[ask.repo]}
-                  </span>
-                </>
-              )}
+              <Link
+                to="/journal/asks/$ask"
+                params={{ ask: ask.id }}
+                className={TILE}
+              >
+                <span className="text-base font-bold">{questionOf(ask)}</span>
+                <span className="text-muted-foreground text-sm">
+                  {WORDS.from[ask.repo]}
+                </span>
+              </Link>
             </li>
           ))}
         </ul>

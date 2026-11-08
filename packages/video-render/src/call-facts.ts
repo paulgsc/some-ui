@@ -15,6 +15,7 @@
  */
 
 import type { AskFile } from "./ask"
+import type { Repo } from "./refs"
 
 /** A fence's opening or closing line: three or more backticks or tildes. */
 const FENCE = /^ {0,3}(`{3,}|~{3,})/
@@ -122,8 +123,6 @@ export function whereWeAreOf(body: string, most = 4000): string | null {
   if (text === null) return null
   return text.length > most ? `${text.slice(0, most)}…` : text
 }
-
-type Repo = "some-ui" | "server"
 
 /** What the weekly run reads, for the agent that writes the week. */
 export type CallFacts = {

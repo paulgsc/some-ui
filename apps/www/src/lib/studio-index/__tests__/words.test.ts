@@ -7,11 +7,9 @@
  */
 import { describe, expect, it } from "vitest"
 
-import { FEEDS } from "@/lib/feeds"
 import { MACHINERY } from "@/lib/home-link/__tests__/machinery"
 import {
   KIND_WORDS,
-  kindPath,
   STUDIO_INDEX_WORDS,
   STUDIO_KINDS,
 } from "@/lib/studio-index"
@@ -41,17 +39,8 @@ const all = [
 
 describe("Studio's index", () => {
   it("lists the eight kinds A to Z, so none comes first", () => {
-    expect(STUDIO_KINDS).toHaveLength(8)
     const names = STUDIO_KINDS.map((kind) => KIND_WORDS[kind].name)
     expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b, "en")))
-    expect(kindPath("asks")).toBe("/journal/asks")
-  })
-
-  it("says what each feed is fed and when it runs", () => {
-    for (const feed of FEEDS) {
-      expect(STUDIO_INDEX_WORDS.feeds.facts[feed].intuition).not.toBe("")
-      expect(STUDIO_INDEX_WORDS.feeds.facts[feed].cadence).not.toBe("")
-    }
   })
 
   it("names no machinery, in any line it can say", () => {

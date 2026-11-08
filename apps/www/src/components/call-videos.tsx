@@ -12,7 +12,9 @@ import type { JSX, ReactNode } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { assertNever, formatSize } from "@some-ui/core-utils"
 import { Button, Input, Notice } from "@some-ui/shared"
+import { Link } from "@tanstack/react-router"
 
+import { hasAudience } from "@/lib/build-profile"
 import type { Feed, FeedVideos } from "@/lib/call-videos"
 import {
   FEED_WORDS,
@@ -29,6 +31,7 @@ import type {
 } from "@/lib/call-videos/model"
 import { standing } from "@/lib/call-videos/model"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
+import { TILE, TileBody } from "@/components/studio/layout"
 
 const WORDS = VIDEOS_WORDS
 
@@ -250,18 +253,15 @@ export const EpisodesList = ({
 /**
  * `feed`'s episodes as links to each one's page (SFEED1's Episodes list),
  * newest first, as home's list has them, or what the list says while it
- * can't show them. The link is the route's, so it stays typed.
+ * can't show them.
  */
 export const FeedEpisodeLinks = ({
   feed,
   pair,
-  renderLink,
 }: {
   feed: Feed
   /** The way to pairing, for a phone that isn't paired. */
   pair: JSX.Element
-  /** The link to one episode's page, around its label. */
-  renderLink: (key: string, label: string) => ReactNode
 }): JSX.Element => {
   const { videos, state } = useFeedVideos(feed)
   const { list } = state
@@ -272,11 +272,18 @@ export const FeedEpisodeLinks = ({
       pair={pair}
       onTryAgain={() => void videos.open()}
     >
-      {list.kind === "read" && (
+      {/* An episode's page is the phone's ("apk"), as this list is (A3). */}
+      {list.kind === "read" && hasAudience("apk") && (
         <ul className="flex flex-col gap-2">
           {list.episodes.map((episode) => (
             <li key={episode.key}>
-              {renderLink(episode.key, FEED_WORDS[feed].label(episode.key))}
+              <Link
+                to="/journal/episodes/$feed/$key"
+                params={{ feed, key: episode.key }}
+                className={TILE}
+              >
+                <TileBody title={FEED_WORDS[feed].label(episode.key)} />
+              </Link>
             </li>
           ))}
         </ul>

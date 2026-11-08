@@ -8,8 +8,7 @@ import { FEED_FACTS } from "./words"
  * kinds of thing Studio keeps, each first-class, each with its own list
  * (`/journal/<kind>`) and, where an item has one, its own page. They are
  * listed A to Z, so their order ranks nothing; the test holds that order.
- * Pure, so a route can read a link's kind. What each is called and says is
- * `./words`.
+ * What each is called and says is `./words`.
  */
 export const STUDIO_KINDS = [
   "asks",
@@ -28,12 +27,9 @@ export type StudioKind = (typeof STUDIO_KINDS)[number]
 export const kindPath = (kind: StudioKind): `/journal/${StudioKind}` =>
   `/journal/${kind}`
 
-/** A feed's one name. */
-export const feedName = (feed: Feed): string => FEED_FACTS[feed].name
-
 /** Every feed, A to Z by its name, as each kind's page lists them. */
 export const FEEDS_A_TO_Z: ReadonlyArray<Feed> = [...FEEDS].sort((a, b) =>
-  feedName(a).localeCompare(feedName(b), "en")
+  FEED_FACTS[a].name.localeCompare(FEED_FACTS[b].name, "en")
 )
 
-export { KIND_WORDS, STUDIO_INDEX_WORDS } from "./words"
+export { FEED_FACTS, KIND_WORDS, STUDIO_INDEX_WORDS } from "./words"

@@ -30,6 +30,7 @@ import { problemsOf } from "./cut-list"
 import type { Parsed } from "./cut-list"
 import { words } from "./format"
 import { OptionSchema, RefSchema } from "./refs"
+import type { Repo } from "./refs"
 
 export const ASK_SCHEMA = "some-ui.ask/1"
 
@@ -99,6 +100,23 @@ export function parseAskBody(body: string): Parsed<AskFile> {
 
 /** The id an ask's item takes in a call: its repository and number. */
 export const askId = (issue: {
-  readonly repo: "some-ui" | "server"
+  readonly repo: Repo
   readonly number: number
 }): string => `${issue.repo}-${issue.number}`
+
+/** An `ask` issue of `repo`, read: its id, and its ask or why it has none. */
+export function readAskIssue(
+  repo: Repo,
+  issue: { readonly number: number; readonly body: string }
+): {
+  readonly id: string
+  readonly ask: AskFile | null
+  readonly problems: ReadonlyArray<string>
+} {
+  const read = parseAskBody(issue.body)
+  return {
+    id: askId({ repo, number: issue.number }),
+    ask: read.ok ? read.value : null,
+    problems: read.ok ? [] : [...read.problems],
+  }
+}

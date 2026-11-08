@@ -30,10 +30,7 @@ import raw2026 from "./season-2026.json"
 
 const SEASON_2026 = parseStorySeason(raw2026)
 
-/**
- * Every pinned version of a format, oldest first, from its folder beside
- * the call's in `@some-ui/video-render` (SFEED1), where the phone reads it.
- */
+/** Every pinned version of a format, oldest first, from its folder. */
 function versionsOf(
   kind: FormatKind
 ): ReadonlyArray<{ readonly version: number; readonly raw: unknown }> {

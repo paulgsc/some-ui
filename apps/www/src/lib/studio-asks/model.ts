@@ -8,14 +8,9 @@
  * An ask whose block `parseAskBody` refuses is still listed, by its title,
  * so the owner sees that it is there and can open its page.
  */
-import type { AskFile } from "@some-ui/video-render"
-import { askId, parseAskBody } from "@some-ui/video-render"
+import type { AskFile, Repo } from "@some-ui/video-render"
+import { readAskIssue } from "@some-ui/video-render"
 import { z } from "zod"
-
-/** The repositories asks are filed in. */
-export const ASK_REPOS = ["server", "some-ui"] as const
-
-export type AskRepo = (typeof ASK_REPOS)[number]
 
 /** One issue as GitHub lists it: a pull request carries `pull_request`. */
 const IssueSchema = z.object({
@@ -34,7 +29,7 @@ export type Issues = z.infer<typeof IssuesSchema>
 export type StudioAsk = {
   /** Its repository and number (`askId`), as its page's address names it. */
   readonly id: string
-  readonly repo: AskRepo
+  readonly repo: Repo
   readonly number: number
   /** Its page on GitHub. */
   readonly url: string
@@ -49,24 +44,27 @@ export const questionOf = (ask: StudioAsk): string =>
   ask.ask?.question ?? ask.title
 
 /** The open asks among `issues` of `repo`; pull requests are never asks. */
-export function asksOf(repo: AskRepo, issues: Issues): Array<StudioAsk> {
+export function asksOf(repo: Repo, issues: Issues): Array<StudioAsk> {
   return issues
     .filter((issue) => issue.pull_request === undefined)
     .map((issue) => {
-      const parsed = parseAskBody(issue.body ?? "")
+      const { id, ask } = readAskIssue(repo, {
+        number: issue.number,
+        body: issue.body ?? "",
+      })
       return {
-        id: askId({ repo, number: issue.number }),
+        id,
         repo,
         number: issue.number,
         url: issue.html_url,
         title: issue.title.replace(/^\s*\[ASK\]\s*/i, ""),
-        ask: parsed.ok ? parsed.value : null,
+        ask,
       }
     })
 }
 
 /** Every repository's asks, A to Z by what each asks, so none comes first. */
-export function listed(
+export function aToZ(
   byRepo: ReadonlyArray<ReadonlyArray<StudioAsk>>
 ): Array<StudioAsk> {
   return byRepo

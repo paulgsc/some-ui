@@ -23,7 +23,8 @@ import { shareStudio } from "@/lib/journal-share"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 import { STUDIO_INDEX_WORDS } from "@/lib/studio-index"
 import { CopyButton } from "@/components/copy-button"
-import { BACK } from "@/components/studio/layout"
+import { BackLink } from "@/components/studio/layout"
+
 
 const WORDS = STUDIO_WORDS
 
@@ -117,9 +118,8 @@ const studioCopy: StudioCopy | undefined =
 /**
  * The videos made in sittings (STUDIO ST4), under Studio's Episodes
  * (SFEED1): the video kept on this phone, opened for a sitting, with the
- * ways in to New idea (ST18) and Your ideas (ST19) (`StudioHome`). It was
- * Studio's Home until the index replaced it; it is unchanged. Opened from
- * Your ideas on a video an idea became, it opens that one.
+ * ways in to New idea (ST18) and Your ideas (ST19) (`StudioHome`). Opened
+ * from Your ideas on a video an idea became, it opens that one.
  */
 const Making = (): JSX.Element => {
   const { project }: MakingSearch = Route.useSearch()
@@ -135,9 +135,7 @@ const Making = (): JSX.Element => {
         initialProject={project}
       />
       <div className="mx-auto mt-4 flex w-full max-w-md flex-col">
-        <Link to="/journal/episodes" className={BACK}>
-          {STUDIO_INDEX_WORDS.backTo("episodes")}
-        </Link>
+        <BackLink to="episodes" />
       </div>
     </>
   )

@@ -3,18 +3,12 @@ import { keptIdeaStore, STUDIO_WORDS } from "@some-ui/soundbites"
 import { createFileRoute, Link } from "@tanstack/react-router"
 
 import {
-  feedName,
+  FEED_FACTS,
   FEEDS_A_TO_Z,
   KIND_WORDS,
   STUDIO_INDEX_WORDS,
 } from "@/lib/studio-index"
-import {
-  BACK,
-  Part,
-  StudioPage,
-  TILE,
-  TileBody,
-} from "@/components/studio/layout"
+import { Part, StudioPage, TILE, TileBody } from "@/components/studio/layout"
 
 const WORDS = STUDIO_INDEX_WORDS.intuitions
 
@@ -29,11 +23,7 @@ const Intuitions = (): JSX.Element => {
     <StudioPage
       heading={KIND_WORDS.intuitions.name}
       intro={WORDS.intro}
-      back={
-        <Link to="/journal" className={BACK}>
-          {STUDIO_INDEX_WORDS.back}
-        </Link>
-      }
+      back="index"
     >
       <Part label={WORDS.feeds}>
         <ul className="flex flex-col gap-2">
@@ -45,8 +35,8 @@ const Intuitions = (): JSX.Element => {
                 className={TILE}
               >
                 <TileBody
-                  title={`“${STUDIO_INDEX_WORDS.feeds.facts[feed].intuition}”`}
-                  line={WORDS.fed(feedName(feed))}
+                  title={`“${FEED_FACTS[feed].intuition}”`}
+                  line={WORDS.fed(FEED_FACTS[feed].name)}
                 />
               </Link>
             </li>
@@ -60,7 +50,10 @@ const Intuitions = (): JSX.Element => {
             line={WORDS.onPhone(ideas === null ? null : ideas.length)}
           />
         </Link>
-        <Link to="/journal/idea" className={BACK}>
+        <Link
+          to="/journal/idea"
+          className="text-muted-foreground self-start text-sm underline underline-offset-4"
+        >
           {STUDIO_WORDS.idea.newIdea}
         </Link>
       </Part>

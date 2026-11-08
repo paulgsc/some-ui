@@ -39,7 +39,7 @@ import { dirname, join, relative } from "node:path"
 import { parseArgs, promisify } from "node:util"
 import { z } from "zod"
 
-import { ASK_LABEL, askId, parseAskBody } from "./ask"
+import { ASK_LABEL, readAskIssue } from "./ask"
 import { callFolderProblems } from "./call"
 import { callsOf, changeOf, trailersOf, whereWeAreOf } from "./call-facts"
 import type { CallFacts } from "./call-facts"
@@ -55,6 +55,7 @@ import {
   renderFolder,
   runCommand,
 } from "./node"
+import { REPOS } from "./refs"
 import { fromTimelineV1 } from "./timeline-v1"
 
 async function main(): Promise<void> {
@@ -222,8 +223,6 @@ async function convert(
 
 const run = promisify(execFile)
 
-const REPOS = ["some-ui", "server"] as const
-
 /** GitHub's search answers at most this many results to one query. */
 const SEARCH_MOST = 1000
 
@@ -340,15 +339,15 @@ async function callFacts(from: string, to: string): Promise<CallFacts> {
       IssueHit
     )
     for (const a of asks) {
-      const read = parseAskBody(a.body)
+      const { id, ask, problems } = readAskIssue(repo, a)
       facts.asks.push({
-        id: askId({ repo, number: a.number }),
+        id,
         repo,
         number: a.number,
         title: a.title,
         createdAt: a.createdAt,
-        ask: read.ok ? read.value : null,
-        problems: read.ok ? [] : [...read.problems],
+        ask,
+        problems,
       })
     }
     const epics = await search(

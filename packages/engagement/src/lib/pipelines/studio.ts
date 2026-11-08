@@ -92,8 +92,7 @@ const studio: Pipeline = {
       emits: ["offered", "taken", "passed-over"],
       touches: true,
     },
-    // Your ideas (ST19): every idea kept, and where each is; reached from the
-    // videos made in sittings and from Studio's Intuitions.
+    // Your ideas (ST19): every idea kept, and where each is.
     {
       id: "your-ideas",
       surface: "apk",

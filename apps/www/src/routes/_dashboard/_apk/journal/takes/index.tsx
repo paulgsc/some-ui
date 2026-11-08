@@ -7,7 +7,7 @@ import { libraryTakes } from "@/lib/library-takes"
 import { KIND_WORDS, STUDIO_INDEX_WORDS } from "@/lib/studio-index"
 import { takesHome } from "@/lib/take-library"
 import { PairHomeLink } from "@/components/pair-home-link"
-import { BACK, StudioPage, TILE, TileBody } from "@/components/studio/layout"
+import { StudioPage, TILE, TileBody } from "@/components/studio/layout"
 
 const WORDS = STUDIO_INDEX_WORDS.takes
 
@@ -27,14 +27,7 @@ const TAKE_PORTS =
  * keeps (MD4), where one can be let go in My data.
  */
 const Takes = (): JSX.Element => (
-  <StudioPage
-    heading={KIND_WORDS.takes.name}
-    back={
-      <Link to="/journal" className={BACK}>
-        {STUDIO_INDEX_WORDS.back}
-      </Link>
-    }
-  >
+  <StudioPage heading={KIND_WORDS.takes.name} back="index">
     {TAKE_PORTS !== null && (
       <TakeLibrary
         ports={TAKE_PORTS}

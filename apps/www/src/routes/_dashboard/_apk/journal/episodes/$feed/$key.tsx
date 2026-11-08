@@ -1,13 +1,13 @@
 import type { JSX } from "react"
 import { STUDIO_WORDS } from "@some-ui/soundbites"
-import { createFileRoute, Link, notFound } from "@tanstack/react-router"
+import { createFileRoute, notFound } from "@tanstack/react-router"
 
 import type { Feed } from "@/lib/feeds"
 import { isFeed } from "@/lib/feeds"
-import { feedName, STUDIO_INDEX_WORDS } from "@/lib/studio-index"
+import { FEED_FACTS, STUDIO_INDEX_WORDS } from "@/lib/studio-index"
 import { EpisodeScreen } from "@/components/call-videos"
 import { PairHomeLink } from "@/components/pair-home-link"
-import { BACK, StudioPage } from "@/components/studio/layout"
+import { StudioPage } from "@/components/studio/layout"
 
 /** The episode as home has it, the phone's alone (`build.paths.ts`). */
 const Episode =
@@ -21,14 +21,7 @@ const Episode =
 const EpisodePage = (): JSX.Element => {
   const { feed, key }: { feed: Feed; key: string } = Route.useParams()
   return (
-    <StudioPage
-      heading={feedName(feed)}
-      back={
-        <Link to="/journal/episodes" className={BACK}>
-          {STUDIO_INDEX_WORDS.backTo("episodes")}
-        </Link>
-      }
-    >
+    <StudioPage heading={FEED_FACTS[feed].name} back="episodes">
       {Episode !== null && (
         <Episode
           feed={feed}

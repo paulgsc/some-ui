@@ -4,8 +4,12 @@ import { isTemplateId, templateFormat } from "@some-ui/video-render"
 import { createFileRoute, Link, notFound } from "@tanstack/react-router"
 
 import { FEED_TEMPLATES } from "@/lib/feeds"
-import { feedName, FEEDS_A_TO_Z, STUDIO_INDEX_WORDS } from "@/lib/studio-index"
-import { BACK, StudioPage } from "@/components/studio/layout"
+import {
+  FEED_FACTS,
+  FEEDS_A_TO_Z,
+  STUDIO_INDEX_WORDS,
+} from "@/lib/studio-index"
+import { StudioPage } from "@/components/studio/layout"
 import { TemplateShape } from "@/components/studio/template"
 
 const WORDS = STUDIO_INDEX_WORDS.templates
@@ -24,11 +28,7 @@ const TemplatePage = (): JSX.Element => {
     <StudioPage
       heading={format.title}
       intro={WORDS.version(format.version)}
-      back={
-        <Link to="/journal/templates" className={BACK}>
-          {STUDIO_INDEX_WORDS.backTo("templates")}
-        </Link>
-      }
+      back="templates"
     >
       {feeds.map((feed) => (
         <Link
@@ -37,7 +37,7 @@ const TemplatePage = (): JSX.Element => {
           params={{ feed }}
           className="text-brand self-start text-sm font-semibold underline underline-offset-4"
         >
-          {WORDS.usedBy(feedName(feed))}
+          {WORDS.usedBy(FEED_FACTS[feed].name)}
         </Link>
       ))}
       <TemplateShape format={format} />

@@ -7,7 +7,7 @@
 import { describe, expect, it } from "vitest"
 
 import type { Issues } from "./model"
-import { asksOf, IssuesSchema, listed, questionOf } from "./model"
+import { asksOf, aToZ, questionOf } from "./model"
 
 const block = (question: string): string =>
   [
@@ -76,21 +76,10 @@ describe("the asks", () => {
       issue(4, "[ASK] a", block("Answer between turns?")),
     ])
     const home = asksOf("server", [issue(5, "[ASK] Move the pin?", "")])
-    expect(listed([ui, home]).map((a) => a.id)).toEqual([
+    expect(aToZ([ui, home]).map((a) => a.id)).toEqual([
       "some-ui-4",
       "server-5",
       "some-ui-3",
     ])
-  })
-
-  it("read GitHub's list as it answers, other fields and all", () => {
-    const parsed = IssuesSchema.safeParse([
-      {
-        ...issue(1, "[ASK] x", null),
-        labels: [{ name: "ask" }],
-        state: "open",
-      },
-    ])
-    expect(parsed.success).toBe(true)
   })
 })

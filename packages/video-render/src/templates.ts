@@ -39,9 +39,6 @@ export const isTemplateId = (value: unknown): value is TemplateId =>
 /** The newest version of template `id`, as it is pinned. */
 export function templateFormat(id: TemplateId): Format {
   const parsed = parseFormat(NEWEST[id])
-  if (!parsed.ok) {
-    // The test of this module parses every pin, so this is never reached.
-    throw new Error(`${id}: ${parsed.problems.join("; ")}`)
-  }
+  if (!parsed.ok) throw new Error(`${id}: ${parsed.problems.join("; ")}`)
   return parsed.value
 }

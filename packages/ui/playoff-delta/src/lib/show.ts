@@ -6,8 +6,7 @@
  * slides' order, names and holds, and each version is pinned under
  * `@some-ui/video-render`'s `src/templates/` (its test holds the newest equal
  * to `formatOf`), so a change to the slides fails until a new version is
- * written. They are pinned there, beside the call's, so Studio's Templates
- * page on the phone can read them (SFEED1).
+ * written.
  */
 
 import {

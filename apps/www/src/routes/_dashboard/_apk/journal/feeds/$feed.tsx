@@ -5,25 +5,12 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router"
 
 import type { Feed } from "@/lib/feeds"
 import { FEED_TEMPLATES, isFeed } from "@/lib/feeds"
-import { feedName, STUDIO_INDEX_WORDS } from "@/lib/studio-index"
-import { FeedEpisodeLinks } from "@/components/call-videos"
+import { FEED_FACTS, STUDIO_INDEX_WORDS } from "@/lib/studio-index"
 import { PairHomeLink } from "@/components/pair-home-link"
-import {
-  BACK,
-  Part,
-  StudioPage,
-  TILE,
-  TileBody,
-} from "@/components/studio/layout"
+import { FeedEpisodes } from "@/components/studio/feed-episodes"
+import { Part, StudioPage, TILE, TileBody } from "@/components/studio/layout"
 
 const WORDS = STUDIO_INDEX_WORDS.feeds
-
-/**
- * Home's list of each feed's episodes, the phone's alone, so no other build
- * carries the link (`build.paths.ts`).
- */
-const EpisodeLinks =
-  import.meta.env.VITE_DEVICE_BACKEND === "true" ? FeedEpisodeLinks : null
 
 /**
  * One feed (SFEED1, #2731): the intuition it was fed, when it runs, the
@@ -32,16 +19,9 @@ const EpisodeLinks =
  */
 const FeedPage = (): JSX.Element => {
   const { feed }: { feed: Feed } = Route.useParams()
-  const facts = WORDS.facts[feed]
+  const facts = FEED_FACTS[feed]
   return (
-    <StudioPage
-      heading={feedName(feed)}
-      back={
-        <Link to="/journal/feeds" className={BACK}>
-          {STUDIO_INDEX_WORDS.backTo("feeds")}
-        </Link>
-      }
-    >
+    <StudioPage heading={FEED_FACTS[feed].name} back="feeds">
       <Part label={WORDS.intuition}>
         <p className="text-sm">“{facts.intuition}”</p>
       </Part>
@@ -64,21 +44,10 @@ const FeedPage = (): JSX.Element => {
         </ul>
       </Part>
       <Part label={WORDS.episodes}>
-        {EpisodeLinks !== null && (
-          <EpisodeLinks
-            feed={feed}
-            pair={<PairHomeLink>{STUDIO_WORDS.pair.pair}</PairHomeLink>}
-            renderLink={(key, label) => (
-              <Link
-                to="/journal/episodes/$feed/$key"
-                params={{ feed, key }}
-                className={TILE}
-              >
-                <TileBody title={label} />
-              </Link>
-            )}
-          />
-        )}
+        <FeedEpisodes
+          feed={feed}
+          pair={<PairHomeLink>{STUDIO_WORDS.pair.pair}</PairHomeLink>}
+        />
       </Part>
     </StudioPage>
   )

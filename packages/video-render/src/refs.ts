@@ -10,9 +10,14 @@ import { z } from "zod"
 
 import { words } from "./format"
 
+/** The two repositories. */
+export const REPOS = ["some-ui", "server"] as const
+
+export type Repo = (typeof REPOS)[number]
+
 /** A pull request or an issue in one of the two repositories. */
 export const RefSchema = z.strictObject({
-  repo: z.enum(["some-ui", "server"]),
+  repo: z.enum(REPOS),
   kind: z.enum(["pr", "issue"]),
   number: z.number().int().positive(),
 })

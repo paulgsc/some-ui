@@ -1,6 +1,6 @@
 /**
- * The videos made in sittings (`/journal/episodes/making`, under Studio's
- * Episodes since SFEED1) open on the video `?project` names, as Your ideas
+ * The videos made in sittings (`/journal/episodes/making`) open on the
+ * video `?project` names, as Your ideas
  * links the one an idea became (ST19); anything else is dropped, and they
  * open on the one touched last.
  */

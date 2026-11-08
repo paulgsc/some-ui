@@ -3,7 +3,7 @@ import { TEMPLATE_IDS, templateFormat } from "@some-ui/video-render"
 import { createFileRoute, Link } from "@tanstack/react-router"
 
 import { KIND_WORDS, STUDIO_INDEX_WORDS } from "@/lib/studio-index"
-import { BACK, StudioPage, TILE, TileBody } from "@/components/studio/layout"
+import { StudioPage, TILE, TileBody } from "@/components/studio/layout"
 
 const WORDS = STUDIO_INDEX_WORDS.templates
 
@@ -21,11 +21,7 @@ const Templates = (): JSX.Element => (
   <StudioPage
     heading={KIND_WORDS.templates.name}
     intro={WORDS.intro}
-    back={
-      <Link to="/journal" className={BACK}>
-        {STUDIO_INDEX_WORDS.back}
-      </Link>
-    }
+    back="index"
   >
     <ul className="flex flex-col gap-2">
       {TEMPLATES.map(({ id, format }) => (

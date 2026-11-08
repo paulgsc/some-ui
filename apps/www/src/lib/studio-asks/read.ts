@@ -6,17 +6,19 @@
  * reads as is `./model`'s; when it is read is the query's (`./index`).
  */
 import { apiClient } from "@some-ui/fetch-kit"
+import type { Repo } from "@some-ui/video-render"
+import { ASK_LABEL, REPOS } from "@some-ui/video-render"
 
-import type { AskRepo, StudioAsk } from "./model"
-import { ASK_REPOS, asksOf, IssuesSchema, listed } from "./model"
+import type { StudioAsk } from "./model"
+import { asksOf, aToZ, IssuesSchema } from "./model"
 
 /** Where `repo`'s open asks are listed: a page holds every one, up to 100. */
-const asksUrl = (repo: AskRepo): URL =>
+const asksUrl = (repo: Repo): URL =>
   new URL(
-    `https://api.github.com/repos/paulgsc/${repo}/issues?labels=ask&state=open&per_page=100`
+    `https://api.github.com/repos/paulgsc/${repo}/issues?labels=${ASK_LABEL}&state=open&per_page=100`
   )
 
-async function readRepo(repo: AskRepo): Promise<Array<StudioAsk>> {
+async function readRepo(repo: Repo): Promise<Array<StudioAsk>> {
   const issues = await apiClient.get(
     asksUrl(repo),
     {
@@ -30,4 +32,4 @@ async function readRepo(repo: AskRepo): Promise<Array<StudioAsk>> {
 
 /** Every open ask, A to Z; rejects when either repository's can't be read. */
 export const readStudioAsks = async (): Promise<Array<StudioAsk>> =>
-  listed(await Promise.all(ASK_REPOS.map(readRepo)))
+  aToZ(await Promise.all(REPOS.map(readRepo)))
