@@ -540,7 +540,10 @@ export function callChapterMarks(week: CallWeek): Array<ChapterMark> {
     const ask = week.asks.find((each) => each.id === scene.item)
     return ask === undefined ? [] : [{ scene: scene.id, title: ask.question }]
   })
-  return [...chapterSlides(scenes), ...asks]
+  return [
+    ...chapterSlides(scenes.filter((scene) => scene.section === "chapter")),
+    ...asks,
+  ]
 }
 
 /**

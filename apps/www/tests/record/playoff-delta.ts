@@ -231,7 +231,7 @@ async function voiced(browser: Browser, origin: string): Promise<void> {
       policy,
       browser,
       origin,
-      marks: chapterSlides(scenes),
+      marks: chapterSlides(scenes.filter((s) => s.kind === "chapter")),
     }
   )
 }

@@ -12,8 +12,15 @@
 
 import type { ShotTime } from "./timing"
 
-/** A scene that opens a chapter, and the chapter's title. */
-export type ChapterMark = { readonly scene: string; readonly title: string }
+/**
+ * A scene that opens a chapter, and the chapter's title. A slide's chapter
+ * (`slide`) is one with what follows it when it is too short to show.
+ */
+export type ChapterMark = {
+  readonly scene: string
+  readonly title: string
+  readonly slide?: boolean
+}
 
 export type Chapter = { readonly startMs: number; readonly title: string }
 
@@ -23,46 +30,59 @@ export const OPENING = "Opening"
 const SHORTEST_MS = 10_000
 const FEWEST = 3
 
-/** Every chapter slide among `scenes` (`chapter-<id>`), titled as it is said. */
+/** Chapter slides as marks, each titled as it is said aloud. */
 export const chapterSlides = (
-  scenes: ReadonlyArray<{ readonly id: string; readonly said: string }>
+  slides: ReadonlyArray<{ readonly id: string; readonly said: string }>
 ): Array<ChapterMark> =>
-  scenes
-    .filter((scene) => scene.id.startsWith("chapter-"))
-    .map((scene) => ({
-      scene: scene.id,
-      title: scene.said.replace(/[.\s]+$/, ""),
-    }))
+  slides.map((slide) => ({
+    scene: slide.id,
+    title: slide.said.replace(/[.\s]+$/, ""),
+    slide: true,
+  }))
+
+/** A title on one line, without the `<` and `>` YouTube refuses. */
+const oneLine = (title: string): string =>
+  title.replace(/[<>]/g, "").replace(/\s+/g, " ").trim()
 
 /**
  * The chapters of a render: an opening at 0:00, then one at the start of
- * each marked scene, in the order placed. A chapter shorter than ten seconds
- * gives its start to the next (a chapter slide and the ask after it are one
- * chapter, from the slide), and a last one that short joins the one before.
- * Fewer than three is none, as YouTube shows none.
+ * each marked scene, in the order placed. One shorter than ten seconds joins
+ * a neighbour: the opening or a slide gives its start to what follows (a
+ * chapter slide and the ask after it are one chapter, from the slide), and
+ * anything else takes in the chapter after it, as a last one that short
+ * joins the one before. Fewer than three is none, as YouTube shows none.
  */
 export function chaptersOf(
   times: ReadonlyArray<ShotTime>,
   marks: ReadonlyArray<ChapterMark>
 ): ReadonlyArray<Chapter> {
-  const titles = new Map(marks.map((mark) => [mark.scene, mark.title]))
+  const byScene = new Map(marks.map((mark) => [mark.scene, mark]))
   const end = Math.max(0, ...times.map((t) => t.startMs + t.durationMs))
-  const starts: Array<Chapter> = [{ startMs: 0, title: OPENING }]
+  const starts: Array<Chapter & { readonly slide: boolean }> = [
+    { startMs: 0, title: OPENING, slide: true },
+  ]
   for (const time of [...times].sort((a, b) => a.startMs - b.startMs)) {
-    const title = titles.get(time.id)
-    if (title !== undefined) starts.push({ startMs: time.startMs, title })
+    const mark = byScene.get(time.id)
+    if (mark !== undefined)
+      starts.push({
+        startMs: time.startMs,
+        title: oneLine(mark.title),
+        slide: mark.slide === true,
+      })
   }
-  const kept: Array<Chapter> = []
+  const kept: Array<Chapter & { readonly slide: boolean }> = []
   for (const chapter of starts) {
     const before = kept.at(-1)
-    if (before !== undefined && chapter.startMs - before.startMs < SHORTEST_MS)
-      kept[kept.length - 1] = { startMs: before.startMs, title: chapter.title }
-    else kept.push(chapter)
+    if (before === undefined || chapter.startMs - before.startMs >= SHORTEST_MS)
+      kept.push(chapter)
+    else if (before.slide)
+      kept[kept.length - 1] = { ...chapter, startMs: before.startMs }
   }
-  const last = kept.at(-1)
-  if (kept.length > 1 && last !== undefined && end - last.startMs < SHORTEST_MS)
+  while (kept.length > 1 && end - (kept.at(-1)?.startMs ?? 0) < SHORTEST_MS)
     kept.pop()
-  return kept.length >= FEWEST && kept[0]?.startMs === 0 ? kept : []
+  return kept.length >= FEWEST
+    ? kept.map(({ startMs, title }) => ({ startMs, title }))
+    : []
 }
 
 /** `ms` as a chapter line's time: `m:ss`, or `h:mm:ss` from an hour on. */

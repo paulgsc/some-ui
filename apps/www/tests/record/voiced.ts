@@ -11,7 +11,7 @@
  * made.
  */
 
-import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises"
+import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises"
 import { basename, dirname, join, resolve } from "node:path"
 import type { Browser, Page } from "@playwright/test"
 import {
@@ -23,6 +23,7 @@ import {
   overLength,
   stillFile,
   TimedWordSchema,
+  UploadCopySchema,
 } from "@some-ui/video-render"
 import type {
   ChapterMark,
@@ -373,10 +374,18 @@ export async function renderStills(
     })
     if (!done.ok) fail(["Nothing was rendered:", ...done.problems])
     console.log(`wrote ${join(root, done.value.video)}`)
-    const chapters = chaptersOf(done.value.shotTimes, marks)
-    if (chapters.length > 0) {
-      await writeFile(join(root, "description.txt"), chapterLines(chapters))
-      console.log(`wrote ${join(root, "description.txt")}`)
+    // A render with no chapters leaves none from an earlier one.
+    const file = join(root, "description.txt")
+    await rm(file, { force: true })
+    const lines = chapterLines(chaptersOf(done.value.shotTimes, marks))
+    const description = UploadCopySchema.shape.description.safeParse(lines)
+    if (lines !== "" && !description.success)
+      warn(
+        `no chapters: ${description.error.issues.map((i) => i.message).join("; ")}`
+      )
+    else if (lines !== "") {
+      await writeFile(file, lines)
+      console.log(`wrote ${file}`)
     }
   } finally {
     await page.close()
