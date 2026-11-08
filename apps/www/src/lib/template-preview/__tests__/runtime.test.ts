@@ -172,6 +172,43 @@ describe("a template's preview", () => {
     })
   })
 
+  it("lets a read that landed after a newer one change nothing", async () => {
+    const { ports, kept } = fakes()
+    kept.set("conference-call-1", 10)
+    kept.set("conference-call-2", 10)
+    let landOld: (home: HomeState) => void = () => undefined
+    ports.read.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          landOld = resolve
+        })
+    )
+    const preview = createTemplatePreview(ports)
+    const older = preview.open()
+    ports.read.mockResolvedValueOnce({
+      kind: "read",
+      preview: ready({ id: "conference-call-2" }),
+    })
+    await preview.open()
+    landOld({ kind: "read", preview: ready() })
+    await older
+    const { home, fetch } = preview.getSnapshot()
+    expect(home).toEqual({
+      kind: "read",
+      preview: ready({ id: "conference-call-2" }),
+    })
+    expect(fetch?.id).toBe("conference-call-2")
+  })
+
+  it("answers whether this read reached home, whatever the page keeps", async () => {
+    const { ports, setHome } = fakes()
+    const preview = createTemplatePreview(ports)
+    expect(await preview.open()).toBe(true)
+    setHome({ kind: "away" })
+    expect(await preview.open()).toBe(false)
+    expect(preview.getSnapshot().home.kind).toBe("read")
+  })
+
   it("keeps a preview being watched on the page when a read again gets no answer", async () => {
     const { ports, kept, setHome } = fakes()
     const preview = createTemplatePreview(ports)

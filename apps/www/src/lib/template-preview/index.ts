@@ -71,11 +71,9 @@ export function previewRefresher(template: TemplateId): Refresher {
   return {
     what: PREVIEW_WORDS.what,
     async checkAgain(): Promise<void> {
-      await preview.open()
-      const { home } = preview.getSnapshot()
-      if (home.kind === "away" || home.kind === "unreadable") {
-        throw new Error("home didn't answer")
-      }
+      // A failed read again keeps the preview last read on the page, so
+      // what this read came to is the answer, not the page.
+      if (!(await preview.open())) throw new Error("home didn't answer")
     },
   }
 }

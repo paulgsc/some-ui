@@ -36,7 +36,8 @@ export type PreviewPorts = {
 export type TemplatePreview = {
   subscribe: (listener: () => void) => () => void
   getSnapshot: () => PreviewState
-  open: () => Promise<void>
+  /** Reads home's preview; false when home didn't answer or couldn't be read. */
+  open: () => Promise<boolean>
   make: () => Promise<void>
   watch: () => Promise<void>
   seen: () => void
@@ -52,10 +53,16 @@ export function createTemplatePreview(ports: PreviewPorts): TemplatePreview {
   /** The Watch running now, by a number no other has; 0 while none. */
   let run = 0
   let runs = 0
+  /** The newest read, so an older one landing after it changes nothing. */
+  let reads = 0
 
-  const open = async (): Promise<void> => {
+  const open = async (): Promise<boolean> => {
+    reads += 1
+    const asOf = reads
     dispatch({ type: "readAsked" })
     const home = await ports.read()
+    const answered = home.kind !== "away" && home.kind !== "unreadable"
+    if (asOf !== reads) return answered
     // The copy held as the read lands, a Watch pressed during it included.
     const had = state.fetch?.id ?? null
     dispatch({ type: "readEnded", home })
@@ -69,10 +76,11 @@ export function createTemplatePreview(ports: PreviewPorts): TemplatePreview {
       }
     }
     const ready = readyPreview(state)
-    if (ready?.bytes === undefined) return
+    if (ready?.bytes === undefined) return answered
     const now = state.fetch?.fetch
-    if (now?.kind === "fetching") return
+    if (now?.kind === "fetching") return answered
     const where = await keptCopy(ports.files, ready.id, ready.bytes)
+    if (asOf !== reads || state.fetch?.fetch !== now) return answered
     if (where !== null) {
       dispatch({
         type: "fetchMoved",
@@ -83,6 +91,7 @@ export function createTemplatePreview(ports: PreviewPorts): TemplatePreview {
       // Android may clear the cache while the app stays open.
       dispatch({ type: "fetchForgotten" })
     }
+    return answered
   }
 
   return {
