@@ -2102,8 +2102,9 @@
           "property": "outcome",
           "claim": "Every week of the call home holds becomes a video within the render policy's caps, and a week that hasn't is tried again.",
           "requirement": "Each week in call_week is written to call-weeks beside home's database, on its drive (STORAGE); within the next hourly pass the render worker records it from the pinned stage with each scene said by home's Kokoro speaker, renders it, and moves the finished folder into renders/call/<from>/ on the same drive, whole; a week that fails is left without a folder and tried again each hour, keeping its finished steps; a week whose video would pass the render policy's length or size (set in the render worker) is refused before it is drawn or once it is made, which fails its attempt with the cap named; no finished video is deleted.",
-          "verdict": "holds",
-          "conclusion": "Home rendered the real week of Oct 30 on Nov 7: all 36 scenes recorded, the video written and its folder moved into renders/call. The worker's own guarantees are tested in CI, one pass at a time with a fake recorder: a failed week is left without a folder, keeps its work and is tried on the next pass, which reuses it; a finished week is moved in whole and its work removed; a pass over a finished week leaves it untouched; no cap removes a video. Slack says when a week's attempt fails, naming the file that holds its whole output, when a week has waited 3 hours with no attempt, and when the worker has not passed for 4 hours, each tested by promtool; the CALL dashboard shows each.",
+          "verdict": "unproven",
+          "conclusion": "Home rendered the real week of Oct 30 on Nov 7: all 36 scenes recorded, the video written and its folder moved into renders/call. The worker's own handling of a week is tested in CI, one pass at a time with a fake recorder: a failed week is left without a folder, keeps its work and is tried on the next pass, which reuses it; a finished week is moved in whole and its work removed; a pass over a finished week leaves it untouched; no cap on waiting work removes a video. Slack says when a week's attempt fails, naming the file that holds its whole output, when a week has waited 3 hours with no attempt, and when the worker has not passed for 4 hours, each tested by promtool; the CALL dashboard shows each. Not yet proven: the hourly retry itself (the test runs each pass by hand), that the worker hands the recorder the render policy's caps, and that each week is said by the pinned speaker from the pinned stage.",
+          "tracked": "some-ui#2659",
           "evidence": [
             {
               "class": "measured",
@@ -2163,14 +2164,6 @@
               "why": "A week's length had no cap of its own (a scene runs as long as its words, which have no maximum), so a week that drifted long would render for hours and fill the drive; and a retry redid an hour of finished work to redo one failed step.",
               "decision": "https://github.com/paulgsc/some-ui/issues/2635#issuecomment-6701774052"
             }
-          ],
-          "proof": [
-            "server:infra/render/render-calls.test.sh#a failed attempt leaves no folder in renders/call",
-            "server:infra/render/render-calls.test.sh#the next attempt reuses the kept work",
-            "server:infra/render/render-calls.test.sh#a finished week is moved into renders/call whole",
-            "server:infra/render/render-calls.test.sh#a pass over a finished week leaves its folder untouched",
-            "server:infra/render/render-calls.test.sh#the cap never removes a video",
-            "server:infra/prometheus/rules/home.test.yml#CallRenderFailed"
           ]
         },
         {
