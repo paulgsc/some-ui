@@ -4,6 +4,7 @@
  * length, with the files the cut list names copied in beside it.
  */
 
+import { execFile } from "node:child_process"
 import { createHash } from "node:crypto"
 import { readdir, readFile } from "node:fs/promises"
 import { join, resolve } from "node:path"
@@ -26,11 +27,16 @@ async function filesUnder(dir: string): Promise<ReadonlyArray<string>> {
 /**
  * What decides a composition's bytes besides its request: every file a
  * render copies in (the composition's own, what they share, the mark, the
- * fonts), the HyperFrames pin and the ffmpeg that encodes the clip.
+ * fonts), the HyperFrames pin, the browser that draws it and the ffmpeg that
+ * encodes the clip.
  */
-async function pinOf(ref: string, ffmpeg: string): Promise<string> {
+async function pinOf(
+  ref: string,
+  browser: string,
+  ffmpeg: string
+): Promise<string> {
   const hash = createHash("sha256")
-  hash.update(`hyperframes ${HYPERFRAMES_VERSION}\n${ffmpeg}\n`)
+  hash.update(`hyperframes ${HYPERFRAMES_VERSION}\n${browser}\n${ffmpeg}\n`)
   const sources: Array<readonly [string, string]> = [
     ["mark", MARK],
     ...fontFiles(),
@@ -47,6 +53,14 @@ async function pinOf(ref: string, ffmpeg: string): Promise<string> {
   return hash.digest("hex")
 }
 
+/** The browser, by its path and the version it says it is. */
+const browserOf = (chrome: string): Promise<string> =>
+  new Promise((done) => {
+    execFile(chrome, ["--version"], (error, stdout) => {
+      done(`${chrome} ${error ? "(no version)" : stdout.trim()}`)
+    })
+  })
+
 /**
  * The port for a video in `root`, drawing with `chrome` in `work`, a folder
  * of its own on a drive with room for a scene's frames.
@@ -57,8 +71,14 @@ export function compositionPort(
   work: string
 ): Compositions {
   let ffmpeg: Promise<string> | null = null
+  let browser: Promise<string> | null = null
   return {
-    pin: async (ref) => pinOf(ref, await (ffmpeg ??= ffmpegVersion(root))),
+    pin: async (ref) =>
+      pinOf(
+        ref,
+        await (browser ??= browserOf(chrome)),
+        await (ffmpeg ??= ffmpegVersion(root))
+      ),
     record: async (r) =>
       renderComposition({
         composition: r.ref,
