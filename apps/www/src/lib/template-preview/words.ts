@@ -38,6 +38,11 @@ export const PREVIEW_WORDS = {
     ready: "The preview is ready.",
     failed: "Home couldn't make the preview. Make another to try again.",
   } satisfies Record<PreviewStanding, string>,
+  /** Why home couldn't make one, where it says a reason the person can act on. */
+  failedWhy: (reason: string | undefined): string | null =>
+    reason === "no-sample"
+      ? "This template has no sample words yet, so it can't be previewed."
+      : null,
   /** When a ready preview was made, and when home lets it go. */
   kept: (madeAt: number, expiresAt: number, timeZone?: string): string =>
     `Made ${moment(madeAt, timeZone)}. Home lets it go ${moment(expiresAt, timeZone)}.`,

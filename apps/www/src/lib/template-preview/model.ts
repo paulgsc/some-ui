@@ -24,7 +24,8 @@ export type PreviewStanding = (typeof PREVIEW_STATES)[number]
 
 const PreviewSchema = z.object({
   id: z.string().min(1),
-  version: z.number().int().positive(),
+  /** The template version it was made from; known once it is ready. */
+  version: z.number().int().positive().optional(),
   state: z.enum(PREVIEW_STATES),
   made_at: z.number().int().nonnegative().optional(),
   expires_at: z.number().int().nonnegative().optional(),

@@ -22,8 +22,15 @@ describe("PREVIEW_WORDS", () => {
       ...strings(PREVIEW_WORDS),
       PREVIEW_WORDS.kept(1_762_588_000, 1_762_674_400, "UTC"),
       PREVIEW_WORDS.bringing(50, 100),
+      PREVIEW_WORDS.failedWhy("no-sample") ?? "",
     ]
     for (const line of said) expect(line).not.toMatch(MACHINERY)
+  })
+
+  it("say why home couldn't make one only where the person can act on it", () => {
+    expect(PREVIEW_WORDS.failedWhy("no-sample")).toMatch(/no sample/)
+    expect(PREVIEW_WORDS.failedWhy("render")).toBeNull()
+    expect(PREVIEW_WORDS.failedWhy(undefined)).toBeNull()
   })
 
   it("say when a preview was made and when home lets it go", () => {

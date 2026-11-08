@@ -117,7 +117,10 @@ const Standing = ({
         return <p className="text-muted-foreground text-sm">{WORDS.none}</p>
       return (
         <div className="flex flex-col gap-2">
-          <p className="text-sm">{WORDS.standing[preview.state]}</p>
+          <p className="text-sm">
+            {(preview.state === "failed" && WORDS.failedWhy(preview.failed)) ||
+              WORDS.standing[preview.state]}
+          </p>
           {preview.state === "ready" &&
             preview.made_at !== undefined &&
             preview.expires_at !== undefined && (
