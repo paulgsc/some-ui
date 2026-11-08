@@ -44,6 +44,7 @@ const all = [
   STUDIO_INDEX_WORDS.intuitions.fed("Playoff Delta"),
   STUDIO_INDEX_WORDS.templates.look.named("broadcast"),
   ...[0, 140].map(STUDIO_INDEX_WORDS.templates.look.popInMs),
+  STUDIO_INDEX_WORDS.templates.mark.named("Mochi Night"),
   ...[null, 0, 1, 7].map(STUDIO_INDEX_WORDS.intuitions.onPhone),
 ]
 

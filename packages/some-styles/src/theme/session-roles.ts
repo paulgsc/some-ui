@@ -29,7 +29,9 @@ function declarations(css: string, selector: string): Map<string, string> {
     withoutComments.matchAll(/([^{}]+)\{([^{}]*)\}/g)
   )) {
     const [, selectors = "", body = ""] = match
-    if (selectors.trim() !== selector) continue
+    // A block counts when `selector` is one of its list (`:root,
+    // .session-theme`), and every such block adds to what it declares.
+    if (!selectors.split(",").some((each) => each.trim() === selector)) continue
     for (const declaration of body.split(";")) {
       const colon = declaration.indexOf(":")
       const name = declaration.slice(0, colon).trim()

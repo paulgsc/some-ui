@@ -97,6 +97,23 @@ pnpm --filter @some-ui/video-render render <video folder> --series <series folde
 Needs `ffmpeg` and `ffprobe` on `PATH`; the repo's nix shells carry them
 (`nix/video`).
 
+## A mark's theme sent from Studio
+
+The phone's Studio shows a template's mark in every theme of the app's on that template's page
+and sends the one chosen as a new GitHub issue holding it in one ` ```json mark-theme ` block
+(SFEED14, #2766; www's `lib/mark-theme`). A template's shape is built in code, and its pinned
+file is held equal to what the code builds, so a session lands it:
+
+1. In the code that builds the template's shape (`shapeOf` in `src/call.ts`, or in
+   `packages/ui/playoff-delta/src/lib/show.ts`), make the next version set `brand.theme` to the
+   theme, keeping the scenes' `theme` as it was (`inTheme` sets both). Leave every earlier
+   version as it builds now: videos already made pin it.
+2. Move the template to that version (`CALL_VERSION`, or `FORMAT_VERSION`), pin it as the code
+   builds it (`src/templates/<id>/v<n+1>.json`; each one's test fails until the two agree), and
+   move `src/templates.ts`'s import to it. The call then refuses a folder whose newest week was
+   written for the old version until a week is written for the new one, as every version did.
+3. Close the issue with the PR.
+
 ## Compositions, a scene's picture
 
 A scene's picture may be a HyperFrames composition (HYPER2, #2725): `{ kind:
