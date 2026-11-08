@@ -72,8 +72,13 @@ const FILTER_THREADS = ["-filter_complex_threads", "1"] as const
  * range (`TO_VIDEO`); a layer laid over the joined video is turned the same
  * way first; and every encode tags its stream so (`BT709`), so no player or
  * later step falls back to BT.601, ffmpeg's default for an untagged stream.
+ * The frames carry the tags too (`setparams`): ffmpeg 7.1 on takes a stream's
+ * primaries and transfer from its frames, not from `BT709`'s options, and
+ * home's ffmpeg (6.1) and CI's (9.0) must both tag it.
  */
-export const TO_VIDEO = "scale=out_color_matrix=bt709:out_range=tv"
+export const TO_VIDEO =
+  "scale=out_color_matrix=bt709:out_range=tv," +
+  "setparams=colorspace=bt709:color_primaries=bt709:color_trc=bt709:range=tv"
 export const BT709 = [
   "-colorspace",
   "bt709",
