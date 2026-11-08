@@ -62,7 +62,6 @@
         font-size: 150px;
         font-weight: 800;
         letter-spacing: -0.02em;
-        animation: rise 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both;
       }
       #chip {
         position: absolute;
@@ -76,17 +75,6 @@
         line-height: 68px;
         font-size: 40px;
         font-weight: 600;
-        animation: rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.8s both;
-      }
-      @keyframes rise {
-        from {
-          transform: translateY(80px);
-          opacity: 0;
-        }
-        to {
-          transform: none;
-          opacity: 1;
-        }
       }
     </style>
   </head>
@@ -111,10 +99,19 @@
       document.getElementById("title").textContent = vars.title
       document.getElementById("chip").textContent = vars.chip
       track(document.getElementById("mark"), [
-        [0.1, { transform: "scale(0.4) rotate(-14deg)", opacity: 0 }],
-        [0.7, { transform: "scale(1.08) rotate(0deg)", opacity: 1 }],
-        [1.0, { transform: "scale(1) rotate(0deg)", opacity: 1 }],
+        [0.1, { opacity: 0, scale: 0.4, rotate: -14 }],
+        [0.7, { opacity: 1, scale: 1.08 }],
+        [1.0, { opacity: 1 }],
       ])
+      for (const [id, at] of [
+        ["title", 0.35],
+        ["chip", 0.8],
+      ]) {
+        track(document.getElementById(id), [
+          [at, { opacity: 0, y: 80 }],
+          [at + 0.8, { opacity: 1 }],
+        ])
+      }
     </script>
   </body>
 </html>

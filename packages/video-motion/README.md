@@ -68,10 +68,11 @@ sandbox's own matched (`ecfbf33c…`).
 - **Name nothing at the top level of a script after a `window` property** (`top`, `name`,
   `status`): the page throws and draws nothing.
 
-- **No GSAP yet.** Most of HyperFrames' catalogue animates with GSAP, whose licence is not
-  open source (ask #2723). Until it is answered, compositions use CSS keyframes and the Web
-  Animations API (each animation `pause()`d, so HyperFrames seeks it) and mark the root
-  `data-no-timeline`.
+- **Motion through `lib/motion.js`'s `track`, nothing else.** Each frame's styles are set
+  from its time when HyperFrames seeks to it, so no animation runs on a timeline of the
+  browser's own: CSS keyframes and the Web Animations API, seeked by HyperFrames, gave two
+  sums on one CI machine (#2737). The root is marked `data-no-timeline`. Not GSAP, whose
+  licence is not open source (ask #2723), though most of the catalogue animates with it.
 - **Android only:** the catalogue's iPhone, macOS and App Store blocks fail
   `pnpm check:android-only`; use `device-frame-stage` and a Google Play badge.
 - **No clock, no unseeded randomness, no fetch.** Every string and colour is a variable
