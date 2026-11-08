@@ -250,6 +250,7 @@ async function prove(composition: string): Promise<void> {
   if (!Number.isInteger(runs) || runs < 2) {
     throw new Refused(`--runs ${String(values.runs)} is not 2 or more`)
   }
+  say(`(hyperframes ${HYPERFRAMES_VERSION}, ${browser()})`)
   await withWork((base) =>
     sameBytes(
       composition,
@@ -263,7 +264,6 @@ async function prove(composition: string): Promise<void> {
       (a, b) => framesDiffering(base, a, b)
     )
   )
-  say(`(hyperframes ${HYPERFRAMES_VERSION}, ${browser()})`)
 }
 
 /**

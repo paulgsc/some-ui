@@ -19,7 +19,13 @@ const set = (
 describe("where two drawings of a frame differ (#2739)", () => {
   it("finds no box in the same pixels", () => {
     const d = difference(flat(4, 3, 9), flat(4, 3, 9), 4)
-    expect(d).toEqual({ pixels: 0, most: 0, box: null })
+    expect(d).toEqual({
+      pixels: 0,
+      most: 0,
+      box: null,
+      lighter: 0,
+      samples: [],
+    })
     expect(saidOf(7, d)).toBe("frame 7: the same pixels")
   })
 
@@ -31,9 +37,25 @@ describe("where two drawings of a frame differ (#2739)", () => {
       pixels: 2,
       most: 46,
       box: { left: 1, top: 1, right: 3, bottom: 2 },
+      lighter: 2,
+      samples: ["1,1 #000000→#000300", "3,2 #000000→#00002e"],
     })
-    expect(saidOf(51, d)).toBe("frame 51: 2 pixels in 1,1–3,2, at most 46")
-    expect(difference(b, a, 5)).toEqual(d)
+    expect(saidOf(51, d)).toBe(
+      "frame 51: 2 pixels in 1,1–3,2, at most 46, 2 lighter in the second (1,1 #000000→#000300; 3,2 #000000→#00002e)"
+    )
+    const back = difference(b, a, 5)
+    expect([back.pixels, back.most, back.box, back.lighter]).toEqual([
+      2,
+      46,
+      d.box,
+      0,
+    ])
+  })
+
+  it("keeps only the first four differing pixels as samples", () => {
+    const d = difference(flat(6, 1), flat(6, 1, 1), 6)
+    expect(d.pixels).toBe(6)
+    expect(d.samples).toHaveLength(4)
   })
 
   it("refuses frames of different sizes, or not whole rows", () => {
