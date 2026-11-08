@@ -10,7 +10,6 @@ import {
   askDescription,
   askEpisodes,
   askVideoPart,
-  PART_BYTES,
   sendLink,
 } from "@/lib/home-link/call-videos"
 import { askWhileBusy } from "@/lib/home-link/while-busy"
@@ -20,6 +19,7 @@ import { shareUris } from "@/lib/share-files"
 import { DIR, videoFiles } from "./files"
 import type { ChaptersRead, Feed, ListState } from "./model"
 import { readChapters, readEpisodes, readLinkSaved, readPart } from "./model"
+import { PART_BYTES } from "./parts"
 import type { FeedVideos } from "./runtime"
 import { createFeedVideos } from "./runtime"
 import { FEED_WORDS } from "./words"
