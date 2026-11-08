@@ -145,7 +145,7 @@ export const STUDIO_INDEX_WORDS = {
 
   asks: {
     intro:
-      "Each is a decision only you can make. Answering by voice comes to Studio later. For now, answer one on its page.",
+      "Each is a decision only you can make. Answer one by voice on its page, or on GitHub.",
     reading: "Reading what waits on you…",
     away: "The asks couldn't be read. Try again in a moment.",
     stale: "The asks couldn't be read again, so this is what was read before.",
@@ -158,7 +158,27 @@ export const STUDIO_INDEX_WORDS = {
     options: "The options",
     recommended: "Recommended",
     unblocks: (what: string): string => `Unblocks ${what}`,
-    open: "Answer it on its page",
+    open: "Answer it on GitHub",
+    answer: {
+      label: "Your answer",
+      line: "Say which option, or what you'd rather. Home keeps what you say, and the morning routine files it as an issue that waits for you to start on it. This ask stays open until then.",
+      noVoice: "This phone can't record here. Answer it on GitHub instead.",
+      again: "Say another answer",
+      heard: "Home heard",
+      keptOnHome:
+        "Home has your answer and hasn't heard it yet. The morning routine files it once it has.",
+      keptOnPhone:
+        "Your answer is kept on this phone and goes home once it can reach home.",
+      filed:
+        "The morning routine files it as an issue. Each answer you say is filed on its own.",
+      notice: {
+        silent: "Didn't hear anything. Try again.",
+        notStarted:
+          "Your answer can't be taken right now. Try again in a moment.",
+        full: "There's no room on this phone for another take until home has the ones before it.",
+        notKept: "Couldn't keep that answer. Try again.",
+      },
+    },
     gone: "This ask isn't waiting any more.",
   },
 

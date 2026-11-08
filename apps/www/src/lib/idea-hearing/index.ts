@@ -97,29 +97,37 @@ export function eitherListener(ports: {
 let home: TurnListener | null = null
 
 /**
- * The idea screens' listener: home hearing each take (`hear`, soundbites'
- * `homeHearing`, made on first use, so a route builds no desk until it
- * listens) while paired, the phone's recognizer otherwise.
+ * Home hearing each take said on the phone's one desk of Studio's answers
+ * (`hear`, soundbites' `homeHearing`, made on first use, so a route builds
+ * no desk until it listens): an idea's (`phoneIdeaListener`) or an ask's
+ * (SFEED5, `lib/ask-answer`), named by what the take answers.
+ */
+export function phoneHomeListener(
+  hear: (ports: HearingPorts) => TurnListener
+): TurnListener {
+  home ??= hear({
+    takes: ideaTakes(),
+    heard: askHeard,
+    now: () => Date.now(),
+    onVisibility: onPageVisibility,
+  })
+  return home
+}
+
+/**
+ * The idea screens' listener: home hearing each take while paired
+ * (`phoneHomeListener`), the phone's recognizer otherwise.
  */
 export function phoneIdeaListener(
   hear: (ports: HearingPorts) => TurnListener
 ): TurnListener {
-  const homeListener = (): TurnListener => {
-    home ??= hear({
-      takes: ideaTakes(),
-      heard: askHeard,
-      now: () => Date.now(),
-      onVisibility: onPageVisibility,
-    })
-    return home
-  }
   return eitherListener({
     loaded: () => homeLink().load(),
     pairing: () => pairingOf(),
     home: {
-      available: () => homeListener().available(),
+      available: () => phoneHomeListener(hear).available(),
       listen: (onWords, onReady, take) =>
-        homeListener().listen(onWords, onReady, take),
+        phoneHomeListener(hear).listen(onWords, onReady, take),
     },
     device: deviceListener,
     now: () => Date.now(),

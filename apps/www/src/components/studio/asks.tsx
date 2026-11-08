@@ -3,7 +3,8 @@
  * from the open `ask` issues of both repositories (`lib/studio-asks`). The
  * list shows each by what it asks, A to Z, and an ask's page shows why it's
  * the owner's, the options with what each unblocks, and the way to its page
- * on GitHub, where it is answered until Studio answers by voice (SFEED5).
+ * on GitHub. Where the phone records, its route hands in the way to answer
+ * it by voice (SFEED5, `./ask-answer`).
  * The read is the query's (`studioAsksQuery`); this only draws its outcome.
  */
 import type { JSX, ReactNode } from "react"
@@ -58,18 +59,31 @@ export const AsksList = (): JSX.Element => (
 )
 
 /** One ask's page, by its id, or that it no longer waits. */
-export const AskScreen = ({ id }: { id: string }): JSX.Element => (
+export const AskScreen = ({
+  id,
+  answer,
+}: {
+  id: string
+  /** The way to answer it by voice, where the phone records. */
+  answer?: ((ask: StudioAsk) => ReactNode) | undefined
+}): JSX.Element => (
   <Read>
     {(asks) => {
       const one = asks.find((ask) => ask.id === id)
       if (one === undefined)
         return <p className="text-muted-foreground text-sm">{WORDS.gone}</p>
-      return <AskParts ask={one} />
+      return <AskParts ask={one} answer={answer?.(one)} />
     }}
   </Read>
 )
 
-const AskParts = ({ ask }: { ask: StudioAsk }): JSX.Element => (
+const AskParts = ({
+  ask,
+  answer,
+}: {
+  ask: StudioAsk
+  answer: ReactNode
+}): JSX.Element => (
   <>
     <h2 className="text-lg leading-snug font-bold">{questionOf(ask)}</h2>
     <p className="text-muted-foreground text-sm">{WORDS.from[ask.repo]}</p>
@@ -101,6 +115,7 @@ const AskParts = ({ ask }: { ask: StudioAsk }): JSX.Element => (
         </Part>
       </>
     )}
+    {answer}
     <OutLink href={ask.url}>{WORDS.open}</OutLink>
   </>
 )

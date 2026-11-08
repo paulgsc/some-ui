@@ -108,6 +108,7 @@ const SPEECH_ENTRY = "packages/speech/dist/@some-ui/speech"
 const DEVICE_MODULES = [
   `${SPEECH_ENTRY}/native.es.js`,
   "apps/www/src/lib/agent-export/**",
+  "apps/www/src/lib/ask-answer/**",
   "apps/www/src/lib/drive-filing/**",
   "apps/www/src/lib/episode-feedback/**",
   "apps/www/src/lib/game-bites/**",
