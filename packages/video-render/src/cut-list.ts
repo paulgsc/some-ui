@@ -221,6 +221,7 @@ export function parseCutList(raw: unknown): Parsed<CutList> {
   const problems = once([
     ...shotProblems(parsed.data.shots),
     ...authorshipProblems(parsed.data),
+    ...captionsProblems(parsed.data),
   ])
   return problems.length
     ? { ok: false, problems }
@@ -280,6 +281,31 @@ const AUTHORSHIP = "authorship"
 
 /** Whether a burn-in is the authorship mark. */
 export const isAuthorship = (b: BurnIn): boolean => b.kind === AUTHORSHIP
+
+/** The captions' kind among the burn-ins (`@some-ui/burn-ins`). */
+const CAPTIONS = "captions"
+
+/** Whether a burn-in is the captions. */
+export const isCaptions = (b: BurnIn): boolean => b.kind === CAPTIONS
+
+/**
+ * Where captions can go (SFEED11): over the whole video, once, with nothing
+ * written for them. The renderer draws each scene's from the words heard in
+ * its take, a scene at a time (`render.ts`).
+ */
+function captionsProblems(cut: CutList): Array<string> {
+  const problems = cut.shots
+    .filter((s) => s.burnIns.some(isCaptions))
+    .map((s) => `${s.id}: captions cover the whole video`)
+  const asked = cut.burnIns.filter(isCaptions)
+  if (asked.length > 1) problems.push("the captions are drawn once")
+  if (asked.some((b) => Object.keys(b.params).length > 0)) {
+    problems.push(
+      "the captions are drawn from each take's words; nothing is written for them"
+    )
+  }
+  return problems
+}
 
 /**
  * Where the authorship mark can go: over the whole video, with nothing

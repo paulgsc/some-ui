@@ -6,7 +6,7 @@
  * runtime only runs what is written here.
  *
  * The steps: each scene to a segment (picture only, a whole number of
- * frames); the voice, its takes placed on one track, measured and brought
+ * frames, with that scene's own captions laid over it, SFEED11); the voice, its takes placed on one track, measured and brought
  * to -16 LUFS, as the build-journal skill's `render.py` did; the music bed,
  * lowered while each take plays; the sound, summing voice, bed and cues;
  * then one assembly that joins the segments with their transitions, lays
@@ -266,12 +266,18 @@ const cover = (b: Box): string =>
 /** A scene and where it sits. */
 export type Scene = { readonly shot: ResolvedShot; readonly placed: Placed }
 
-/** One scene, picture only, to `out`: exactly `placed.frames` frames. */
+/**
+ * One scene, picture only, to `out`: exactly `placed.frames` frames, with
+ * `layer`, a recording with transparency from the scene's first frame (its
+ * captions, SFEED11), laid over it where one is given. The layer is an input
+ * like any other, so the segment's cached step is keyed by its bytes.
+ */
 export function planSegment(
   { shot, placed }: Scene,
   series: Series,
   facts: Facts,
-  out: string
+  out: string,
+  layer?: string
 ): FfmpegCall {
   const { width, height, fps } = series.frame
   const frame = { width, height }
@@ -344,10 +350,21 @@ export function planSegment(
     const y = series.window.y + (series.window.height - box.height) / 2
     filters.push(
       `[src]${spaceChain(shot, series, facts, box, placed.frames)}[pic]`,
-      `[bg][pic]overlay=x=${x}:y=${y},format=yuv420p[v]`
+      `[bg][pic]overlay=x=${x}:y=${y}[framed]`
     )
   } else {
-    filters.push(`[bg]format=yuv420p[v]`)
+    filters.push(`[bg]null[framed]`)
+  }
+  if (layer === undefined) {
+    filters.push(`[framed]format=yuv420p[v]`)
+  } else {
+    // A layer shorter than the scene ends there and lets the picture pass.
+    const n = inputs.filter((a) => a === "-i").length
+    inputs.push(...DECODE, "-i", layer)
+    filters.push(
+      `[${n}:v]setpts=PTS-STARTPTS[layer]`,
+      `[framed][layer]overlay=0:0:eof_action=pass,format=yuv420p[v]`
+    )
   }
   return {
     args: [

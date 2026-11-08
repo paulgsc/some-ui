@@ -60,4 +60,24 @@ describe("parseCutList", () => {
       "S3: a card has no picture to move",
     ])
   })
+
+  it("takes captions over the whole video, once, with nothing written for them (SFEED11)", () => {
+    const captions = { kind: "captions", params: {} }
+    expect(
+      parseCutList(cutList([shot("S1")], { burnIns: [captions] })).ok
+    ).toBe(true)
+    const parsed = parseCutList(
+      cutList([shot("S1", { burnIns: [captions] })], {
+        burnIns: [
+          captions,
+          { kind: "captions", params: { lines: [{ words: [] }] } },
+        ],
+      })
+    )
+    expect(parsed.ok ? [] : parsed.problems).toEqual([
+      "S1: captions cover the whole video",
+      "the captions are drawn once",
+      "the captions are drawn from each take's words; nothing is written for them",
+    ])
+  })
 })
