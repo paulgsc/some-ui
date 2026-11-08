@@ -57,7 +57,8 @@ export type CallAsked =
   /** No answer. */
   | { readonly kind: "unreachable" }
 
-async function asked(
+/** Asks home once through the link's `keep`; never rejects. Shared with `./renders`. */
+export async function asked(
   run: () => Promise<
     { kind: "done"; value: HomeAnswer } | { kind: "stopped" } | null
   >
