@@ -1153,9 +1153,8 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   link's, `runtime.ts`), which only opens the link again to the lanes home
   turned away. A run goes
   under the pairing the phone holds when it starts (`laneExchange`),
-  through the link's `drain`, one lane's run at a time, beside the person's
-  reads and syncs but never a send or an Unpair, which stop it and go first
-  (`lib/home-link/model.ts`), each request at its turn on the pace every
+  through the link's `drain` (what goes beside it is
+  `lib/home-link/model.ts`'s), each request at its turn on the pace every
   request to home takes (`lib/home-link/pace.ts`; its rate is AD3's), and
   the link's `send` refuses a request once the phone stops or goes to the
   background. A run that ends part way (home busy, a stop, the background,

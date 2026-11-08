@@ -7,9 +7,11 @@
  * starts the pace whole again: one right after a burst can meet home's
  * busy, which the link then waits out.
  *
- * A turn the person asked for (`urgent`: a screen's read, a tap, Sync,
- * Unpair) goes ahead of every drain turn waiting, so the drain yields to
- * the person without the rate changing.
+ * The person's turns (`urgent`) go ahead of the drain's. So the drain waits
+ * while the person's requests keep coming faster than one each 2 s (a long
+ * Sync, a video read part by part), for as long as that work lasts; a
+ * screen's timed read comes slower (an idea answer's words, every 5 s while
+ * its screen shows).
  */
 import type { HomeLinkPorts } from "./runtime"
 
@@ -17,10 +19,10 @@ const BURST = 49
 const MS_PER_REQUEST = 2_000
 
 export type Pace = {
-  /** Resolves true at the request's turn, or false once its slot `leave`s. */
-  readonly turn: (urgent: boolean) => Promise<boolean>
-  /** Lets go of every turn of that slot still waiting: each resolves false. */
-  readonly leave: (urgent: boolean) => void
+  /** Resolves true at the request's turn, or false once its side `leave`s. */
+  readonly turn: (isUrgent: boolean) => Promise<boolean>
+  /** Lets go of every turn of that side still waiting: each resolves false. */
+  readonly leave: (isUrgent: boolean) => void
 }
 
 export function createPace(clock: Pick<HomeLinkPorts, "now" | "after">): Pace {
@@ -28,7 +30,7 @@ export function createPace(clock: Pick<HomeLinkPorts, "now" | "after">): Pace {
   let at = clock.now()
   const urgent: Array<(went: boolean) => void> = []
   const queued: Array<(went: boolean) => void> = []
-  let waking: (() => void) | null = null
+  let waking = false
 
   const serve = (): void => {
     const now = clock.now()
@@ -40,21 +42,24 @@ export function createPace(clock: Pick<HomeLinkPorts, "now" | "after">): Pace {
       turns -= 1
       next(true)
     }
-    if (waking !== null || urgent.length + queued.length === 0) return
-    waking = clock.after(Math.ceil((1 - turns) * MS_PER_REQUEST), () => {
-      waking = null
+    if (waking || urgent.length + queued.length === 0) return
+    waking = true
+    clock.after(Math.ceil((1 - turns) * MS_PER_REQUEST), () => {
+      waking = false
       serve()
     })
   }
 
   return {
-    turn: (first) =>
+    turn: (isUrgent) =>
       new Promise((resolve) => {
-        ;(first ? urgent : queued).push(resolve)
+        ;(isUrgent ? urgent : queued).push(resolve)
         serve()
       }),
-    leave: (first): void => {
-      for (const resolve of (first ? urgent : queued).splice(0)) resolve(false)
+    leave: (isUrgent): void => {
+      for (const resolve of (isUrgent ? urgent : queued).splice(0)) {
+        resolve(false)
+      }
     },
   }
 }

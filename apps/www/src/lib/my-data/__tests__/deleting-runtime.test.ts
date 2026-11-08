@@ -60,10 +60,12 @@ function ports(): {
     letGo,
     reread,
     ports: {
-      deleteNotes: (ids): Promise<DeleteAsked> => {
+      deleteNotes: async (ids, settle): Promise<DeleteAsked> => {
         const answer = deferred<DeleteAsked>()
         asked.push({ ids, answer })
-        return answer.promise
+        const said = await answer.promise
+        await settle(said)
+        return said
       },
       letGo: (_of, ids): Promise<boolean> => {
         const done = deferred<boolean>()

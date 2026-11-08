@@ -23,8 +23,8 @@
  *   busy itself, as home last did, so each says so in its own words and
  *   sends nothing. The end of the wait is an event (`cooled`) the drain's
  *   watches hear and ask once on (`./kept-watch`).
- * - **Stop, and the background, end a sync, a send, a keep or a drain run** after the request
- *   in flight: the `get` or `send` it is handed refuses to send once
+ * - **Stop ends a sync, a send or a keep, and the background those and a
+ *   drain run,** after the request in flight: the `get` or `send` it is handed refuses to send once
  *   stopped. A run is over only once every request it started has settled.
  * - **Unpair forgets the credential on the phone** whether or not home was
  *   told, and says which; a phone that could not forget it stays paired and

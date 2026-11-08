@@ -9,7 +9,8 @@
  * - **The phone lets go on home's receipt alone, whatever the sheet shows.**
  *   The let-go follows every receipt, even one whose answer the sheet no
  *   longer waits for: home has deleted the note, so this phone's copy goes
- *   too. Nothing home did not answer with a receipt is let go.
+ *   too, inside the delete's run, before a drain run could send it again.
+ *   Nothing home did not answer with a receipt is let go.
  * - **Then My data reads again** (`reread`) while a page of it shows, so
  *   the list no longer shows what went.
  *
@@ -27,8 +28,14 @@ import type {
 import { endOf, INITIAL_DELETING, stepDeleting } from "./deleting"
 
 export type DeletingPorts = {
-  /** Asks home to delete each note for good, one run; never rejects. */
-  readonly deleteNotes: (ids: ReadonlyArray<string>) => Promise<DeleteAsked>
+  /**
+   * Asks home to delete each note for good, one run, handing what came of it
+   * to `settle` inside that run; never rejects.
+   */
+  readonly deleteNotes: (
+    ids: ReadonlyArray<string>,
+    settle: (asked: DeleteAsked) => Promise<void>
+  ) => Promise<DeleteAsked>
   /**
    * Lets go of this phone's own copies of `ids`, deleted on home; resolves
    * false when it couldn't, and never rejects.
@@ -63,24 +70,30 @@ export function createDeleting(ports: DeletingPorts): Deleting {
     for (const listener of listeners) listener()
   }
 
+  /** Lets go of what home deleted; whether there was anything to. */
   const letGo = async (
     seq: number,
     of: DeletableKind,
     end: DeleteEnd
-  ): Promise<void> => {
-    if (end.kind !== "answered" || end.gone.length === 0) return
+  ): Promise<boolean> => {
+    if (end.kind !== "answered" || end.gone.length === 0) return false
     const ids = end.gone.map((receipt) => receipt.id)
     const done = await ports.letGo(of, ids)
     dispatch({ type: "letGoEnded", seq, let: done })
-    ports.reread()
+    return true
   }
 
   const run = async (): Promise<void> => {
     const { sheet, seq } = state
     if (sheet.kind !== "deleting") return
-    const end = endOf(await ports.deleteNotes(sheet.ids))
-    dispatch({ type: "answered", seq, end })
-    await letGo(seq, sheet.of, end)
+    const went = { any: false }
+    await ports.deleteNotes(sheet.ids, async (asked) => {
+      const end = endOf(asked)
+      dispatch({ type: "answered", seq, end })
+      went.any = await letGo(seq, sheet.of, end)
+    })
+    // Once the delete's run has freed the link, which this read takes.
+    if (went.any) ports.reread()
   }
 
   return {

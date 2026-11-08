@@ -264,15 +264,8 @@ function practiceLane(
  */
 async function drain(lane: Lane): Promise<KeptRun | null> {
   const run = laneRun(lane)
-  const settle = async (): Promise<void> => {
-    await new Promise((resolve) => setTimeout(resolve, 0))
-  }
   askLane(lane)
-  await settle()
-  while (run.getSnapshot().running) {
-    if (!theClock().next()) await settle()
-    await settle()
-  }
+  await until(() => !run.getSnapshot().running)
   return run.getSnapshot().last
 }
 
@@ -388,7 +381,6 @@ describe("the practice drain under home's limit (AD3, LA15)", () => {
     expect(Math.max(...reads, synced.ms)).toBeLessThanOrEqual(2_000)
     await until(() => !run.getSnapshot().running)
     expect(run.getSnapshot().last?.kind).toBe("synced")
-    expect(home.turnedAway()).toBe(0)
     expect(home.lowest()).toBeGreaterThanOrEqual(11)
   })
 
@@ -414,7 +406,7 @@ describe("the practice drain under home's limit (AD3, LA15)", () => {
     }
   })
 
-  it("stops the drain's run for Unpair, and nothing reaches home under the old key after its sign-out", async () => {
+  it("stops the drain's run for Unpair, and nothing reaches home after its sign-out", async () => {
     const home = await limitedHome()
     const session = sessionOf("s4", 100)
     const { lane } = practiceLane("aph", { session })

@@ -17,8 +17,10 @@
  *   go, Delete) work on records a lane sends, and Unpair must not sign out
  *   under a run holding the old key. Either may be pressed while a drain
  *   runs: the runtime stops that run, which keeps what home took, and sends
- *   nothing until its requests have settled (`writing`); no drain starts
- *   while one runs. Pairing happens only unpaired, when nothing drains.
+ *   nothing until that run has ended (`writing`); no drain starts while one
+ *   runs, and a tap's let-go on the phone of what home answered happens
+ *   inside its run (`./delete-note`'s `settle`). Pairing happens only
+ *   unpaired, when nothing drains.
  *
  * A result for an operation that is no longer the current one is dropped.
  */
@@ -152,11 +154,7 @@ export function homeBusy(state: HomeLinkState, now: number): boolean {
 
 /** The person's activities no drain run goes beside. */
 export function writing(activity: Activity): boolean {
-  return (
-    activity.kind === "sending" ||
-    activity.kind === "unpairing" ||
-    activity.kind === "pairing"
-  )
+  return activity.kind === "sending" || activity.kind === "unpairing"
 }
 
 /** Whether the link would start a drain run. */

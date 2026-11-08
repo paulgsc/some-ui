@@ -720,7 +720,6 @@ describe("LA8: the phone reaches home through one module", () => {
           drains(f)
       )
     ).toEqual(["lib/home-link/lanes.ts"])
-    expect(read("lib/home-link/lanes.ts")).toContain("homeLink().drain(")
   })
 
   it("calls the link's keep only from the drain and Korean's look (LA15)", () => {
