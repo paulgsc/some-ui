@@ -51,6 +51,10 @@ can't read is left out of the call, and the weekly run says which one and why.
 
 ## Answering
 
-The owner answers by saying which option, on the issue or, later, by voice
-against the ask's scene in the call. The session that acts on the answer
-writes it on the issue, closes it, and updates the epic and the ledger.
+The owner answers by saying which option, on the issue or by voice on the
+ask's page in Studio (SFEED5, #2746). Home keeps a spoken answer, the take and
+its transcript, and the daily reflections routine files it as a pending issue
+in the ask's repository, labelled `pending` and `from-studio`, in its own words
+(`packages/ui/topik/ROUTINE.md`, part E). The ask stays open until then. The
+session that acts on the answer writes it on the issue, closes it (and the
+pending issue), and updates the epic and the ledger.

@@ -256,6 +256,16 @@ a branch whose predecessor PR already merged) apply here too — see the "Cold-s
 section of `CLAUDE.md`, which isn't PR-lifecycle-specific so it lives there instead of being
 duplicated in this file.
 
+## A user-facing change leaves its clip
+
+The session that lands a change a user can see (an app's or an extension's screen, a
+dashboard) makes its clip before it ends (SFEED7, epic #2670 decision 5), into paulgsc/testing's
+`clips/` as `@some-ui/video-render`'s `clip.ts` says, and `render clip-check <clips folder>`
+must say ready before it is pushed. Walk it with `motion walk` (SFEED7a, #2736) where the
+surface has a walk, before and after the change; otherwise take its screens from sample data
+yourself. Command-line clips wait on the CARDS epic, #2465: say so on the PR. A clip that can't
+be made is said, with why, on the PR and its issue, never merged past as if it were made.
+
 ## Cross-repo PRs: name every one, every time
 
 When a story spans this repo and `paulgsc/server`, never write "landed the PR" — name both,

@@ -9,7 +9,7 @@
  * `VIDEOS_WORDS` and `FEED_WORDS`. Phone build only.
  */
 import type { JSX, ReactNode } from "react"
-import { useEffect, useState, useSyncExternalStore } from "react"
+import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { assertNever, formatSize } from "@some-ui/core-utils"
 import { Button, Input, Notice } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
@@ -29,26 +29,31 @@ import type {
   ListState,
   VideosState,
 } from "@/lib/call-videos/model"
-import { standing } from "@/lib/call-videos/model"
+import { homeBytes, standing } from "@/lib/call-videos/model"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
+import { EpisodeNote } from "@/components/studio/episode-feedback"
 import { TILE, TileBody } from "@/components/studio/layout"
 
 const WORDS = VIDEOS_WORDS
 
 const Watching = ({
+  feed,
   episode,
   fetch,
   videos,
 }: {
+  feed: Feed
   episode: Episode
   fetch: Fetch | undefined
   videos: FeedVideos
 }): JSX.Element => {
+  const video = useRef<HTMLVideoElement>(null)
   if (fetch?.kind === "ready") {
     return (
       <div className="flex flex-col gap-2">
         {/* eslint-disable-next-line jsx-a11y/media-has-caption -- the words are drawn on screen (the call's in every scene, Playoff Delta's where its shape draws captions), and home makes no caption file */}
         <video
+          ref={video}
           src={fetch.src}
           controls
           playsInline
@@ -57,6 +62,7 @@ const Watching = ({
         <Button size="sm" onClick={() => void videos.share(episode.key)}>
           {WORDS.share}
         </Button>
+        <EpisodeNote feed={feed} episode={episode.key} video={video} />
       </div>
     )
   }
@@ -153,7 +159,7 @@ const EpisodeRow = ({
         </p>
       )}
       {stands === "kept" && (
-        <Watching episode={episode} fetch={fetch} videos={videos} />
+        <Watching feed={feed} episode={episode} fetch={fetch} videos={videos} />
       )}
       {stands === "letGo" && (
         <p className="text-muted-foreground text-sm">
@@ -350,5 +356,29 @@ export const EpisodeScreen = ({
         )}
       </EpisodesList>
     </div>
+  )
+}
+
+/**
+ * What home holds of `feed`'s episodes, by size (SFEED8, #2748), as a line
+ * of its feed's "Where it's kept", once its list is read and home holds any.
+ * It reads the list the feed's episodes on the same page open, and asks for
+ * none itself.
+ */
+export const FeedHomeSize = ({
+  feed,
+  label,
+}: {
+  feed: Feed
+  /** What comes before the size. */
+  label: string
+}): JSX.Element | null => {
+  const videos = feedVideos(feed)
+  const { list } = useSyncExternalStore(videos.subscribe, videos.getSnapshot)
+  const bytes = list.kind === "read" ? homeBytes(list.episodes) : null
+  return bytes === null ? null : (
+    <dd className="text-sm">
+      {label} {formatSize(bytes)}
+    </dd>
   )
 }

@@ -88,6 +88,18 @@ export function readLinkSaved(answer: HomeAnswer): LinkSaved {
     : { kind: "saved", url: kept.url }
 }
 
+/**
+ * What home holds of a feed's episodes, in bytes: each video and the rest
+ * it was made from (SFEED8); null when it holds nothing.
+ */
+export function homeBytes(episodes: ReadonlyArray<Episode>): number | null {
+  const sum = episodes.reduce(
+    (total, one) => total + (one.videoBytes ?? 0) + (one.restBytes ?? 0),
+    0
+  )
+  return sum === 0 ? null : sum
+}
+
 /** Where an episode stands on home. */
 export type Standing =
   /** Home has the episode's words but no video yet. */

@@ -138,6 +138,18 @@ export function answersOf(ideaId: string, question: QuestionId): string {
   return `idea:${ideaId}:${question}`
 }
 
+/** The idea a take answers, by `answersOf`'s shape; null for any other. */
+export function ideaAnswered(answers: string): string | null {
+  const [kind, idea, question, ...rest] = answers.split(":")
+  return kind === "idea" &&
+    idea !== undefined &&
+    idea !== "" &&
+    rest.length === 0 &&
+    IDEA_QUESTIONS.some((each) => each === question)
+    ? idea
+    : null
+}
+
 const DraftSchema: z.ZodType<IdeaDraft> = z.object({
   id: z.string().regex(/^[\w-]+$/),
   at: z.string(),
