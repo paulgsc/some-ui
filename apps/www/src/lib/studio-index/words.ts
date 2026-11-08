@@ -171,7 +171,8 @@ export const STUDIO_INDEX_WORDS = {
         "Your answer is kept. Its words come back from home in a minute or two, and you can leave this page.",
       kept: {
         late: "Home has your answer and hasn't heard it yet. It's filed once home has.",
-        noWords: "Home has your answer but can't give its words back yet.",
+        noWords:
+          "Home has your answer but can't give its words back. If it never hears them, nothing is filed: answer on GitHub to be sure.",
         awayOnHome:
           "Home can't be reached right now. It already has your answer.",
         awayOnPhone:
