@@ -316,7 +316,10 @@ export const StatusBoard = (): JSX.Element => {
     // The routine's runs reach this phone only while Korean shows its files.
     ...(routineFiles === undefined ? [] : [routineRow(routine)]),
     ...(look === null ? [] : [look]),
-    ...(renders.data?.kind === "read" ? [renderRow(renders.data.board)] : []),
+    // A failed refresh keeps the last board, and the row says it's the last.
+    ...(renders.data?.kind === "read"
+      ? [renderRow(renders.data.board, renders.isError)]
+      : []),
   ]
   const board = boardOf(rows)
   return (

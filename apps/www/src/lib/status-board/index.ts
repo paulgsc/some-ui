@@ -24,7 +24,12 @@ import type { Journey, JourneyTheme, Sign, Stop } from "@/lib/journey"
 import { journeySaid, signOf, stopOf, themeOf } from "@/lib/journey"
 import type { Board as RenderBoard } from "@/lib/renders/model"
 import type { RenderShape } from "@/lib/renders/words"
-import { liveLine, renderShape, SHAPE_WORDS } from "@/lib/renders/words"
+import {
+  liveLine,
+  RENDERS_WORDS,
+  renderShape,
+  SHAPE_WORDS,
+} from "@/lib/renders/words"
 import type { How, Where } from "@/lib/sharing-marks"
 
 import { BOARD_WORDS } from "./words"
@@ -244,9 +249,11 @@ export function routineRow(view: RoutineView): BoardRow {
 
 /**
  * What home is making for the feeds (SFEED13, #2761), as Studio's line says
- * it; it opens Studio › Renders.
+ * it; it opens Studio › Renders. `stale` when home didn't answer the latest
+ * read, so the board is what it said last, and the row says so as the page
+ * does.
  */
-export function renderRow(board: RenderBoard): BoardRow {
+export function renderRow(board: RenderBoard, stale = false): BoardRow {
   const shape = renderShape(board)
   return {
     id: "renders",
@@ -254,7 +261,7 @@ export function renderRow(board: RenderBoard): BoardRow {
     name: SHAPE_WORDS.name,
     word: SHAPE_WORDS.words[shape],
     line: liveLine(board),
-    more: [],
+    more: stale ? [RENDERS_WORDS.stale] : [],
     mark: { kind: "render", shape },
     page: "renders",
   }

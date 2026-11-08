@@ -7,9 +7,16 @@ import { describe, expect, it } from "vitest"
 
 import { MACHINERY } from "@/lib/home-link/__tests__/machinery"
 import type { RenderShape } from "@/lib/renders/words"
+import { RENDERS_WORDS } from "@/lib/renders/words"
 import { HOW_ORDER, WHERE_ORDER } from "@/lib/sharing-marks"
 import type { BoardRow, RowMark } from "@/lib/status-board"
-import { boardOf, glanceOf, lookOf, needOf } from "@/lib/status-board"
+import {
+  boardOf,
+  glanceOf,
+  lookOf,
+  needOf,
+  renderRow,
+} from "@/lib/status-board"
 import { BOARD_WORDS, LOOK_WORDS } from "@/lib/status-board/words"
 
 const row = (
@@ -74,6 +81,13 @@ describe("what each mark asks of its person", () => {
     for (const shape of ["making", "paused", "waiting"] as const)
       expect(need(shape)).toBe("moving")
     expect(need("quiet")).toBe("fine")
+  })
+
+  it("says when home's renders are what it said last (SFEED13)", () => {
+    const board = { now: null, waiting: [], failed: [], done: [], coming: [] }
+    expect(renderRow(board).more).toEqual([])
+    expect(renderRow(board, true).more).toEqual([RENDERS_WORDS.stale])
+    expect(renderRow(board).page).toBe("renders")
   })
 
   it("reads Korean's look as not yet, or how home answered", () => {
