@@ -1,11 +1,11 @@
 /**
- * My data's page for each feed's videos (ST38, #2661; FEED4): for the weekly
- * call and for Playoff Delta, each episode home holds, newest first, and what
- * of it can be let go. An episode's video is offered once its YouTube link is
- * saved (Studio's feed videos), and the rest of its folder once the video went;
- * each step asks once in a sheet that says what goes and what stays, "Keep
- * it" first, and ends on home's receipt. Each feed's episodes are
- * `lib/call-videos`' list of it; the step, for either feed, is
+ * My data's page for each feed's videos (`FEEDS`; ST38, #2661; FEED4): each
+ * episode home holds, newest first, and what of it can be let go. An
+ * episode's video is offered once its YouTube link is saved (Studio's feed
+ * videos), and the rest of its folder once the video went; each step asks
+ * once in a sheet that says what goes and what stays, "Keep it" first, and
+ * ends on home's receipt. Each feed's episodes are
+ * `lib/call-videos`' list of it; the step, for every feed, is
  * `lib/my-data`'s one `phoneCallDeleting`; every word is `CALL_DELETING` and
  * the feed's `FEED_WORDS`. Phone build only.
  *
@@ -13,7 +13,7 @@
  * sheet's "Delete for good" and Try again.
  */
 import type { JSX } from "react"
-import { useEffect, useSyncExternalStore } from "react"
+import { useSyncExternalStore } from "react"
 import { formatSize } from "@some-ui/core-utils"
 import {
   Button,
@@ -23,20 +23,14 @@ import {
 } from "@some-ui/shared"
 
 import type { Feed } from "@/lib/call-videos"
-import {
-  FEED_WORDS,
-  FEEDS,
-  feedVideos,
-  videosRefresher,
-} from "@/lib/call-videos"
+import { FEED_WORDS, FEEDS } from "@/lib/call-videos"
 import type { Episode } from "@/lib/call-videos/model"
 import { standing } from "@/lib/call-videos/model"
 import { phoneCallDeleting } from "@/lib/my-data"
 import type { CallAsk, CallSheet } from "@/lib/my-data/call-deleting"
 import type { CallDeleting } from "@/lib/my-data/call-deleting-runtime"
 import { CALL_DELETING, DELETING, itemName } from "@/lib/my-data/words"
-import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
-import { EpisodesList } from "@/components/call-videos"
+import { EpisodesList, useFeedVideos } from "@/components/call-videos"
 import { PairHomeLink } from "@/components/pair-home-link"
 import { MyDataHeading } from "@/components/settings/device-my-data"
 import { BIG, MyDataSheet } from "@/components/settings/device-my-data-delete"
@@ -211,12 +205,8 @@ const FeedSection = ({
   feed: Feed
   deleting: CallDeleting
 }): JSX.Element => {
-  const videos = feedVideos(feed)
-  const { list } = useSyncExternalStore(videos.subscribe, videos.getSnapshot)
-  useEffect(() => {
-    void videos.open()
-    return screenRefreshers.register(videosRefresher(feed))
-  }, [videos, feed])
+  const { videos, state } = useFeedVideos(feed)
+  const { list } = state
   return (
     <section className="flex flex-col gap-2">
       <h2 className="text-sm font-medium">{FEED_WORDS[feed].heading}</h2>

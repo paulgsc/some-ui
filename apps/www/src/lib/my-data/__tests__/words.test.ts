@@ -125,6 +125,10 @@ describe("My data's words", () => {
       CALL_DELETING.gone(itemName(AT)),
     ]
     expect(said.filter((text) => MACHINERY.test(text))).toEqual([])
+    // A key the feed can't read is named by the feed alone, never the key.
+    expect(CALL_DELETING.episode("playoff-delta", "2026-10-30")).toBe(
+      "Playoff Delta"
+    )
   })
 
   it("say what went and stayed as a sentence", () => {

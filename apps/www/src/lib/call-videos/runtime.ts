@@ -1,8 +1,7 @@
 /**
  * Studio's feed videos (ST38, #2661; FEED4, #2647): the runtime that
- * owns home's requests and the phone's copies of one feed's videos, the
- * weekly call's or Playoff Delta's, so the screen only reads a snapshot and
- * says what was pressed (R1). One runtime per feed, over that feed's ports
+ * owns home's requests and the phone's copies of one feed's videos (`FEEDS`),
+ * so the screen only reads a snapshot and says what was pressed (R1). One runtime per feed, over that feed's ports
  * (`./index`); every port resolves; what each answer means is `./model`'s.
  *
  * - **The list** is read once per open, drag down or Try again. An episode
@@ -12,9 +11,9 @@
  * - **Watch** fetches an episode's video into the phone's cache a part at a
  *   time (at most `partBytes` a request, so it is never held whole), then
  *   hands the screen its address. An episode already fetching or ready isn't
- *   fetched again; one that failed is fetched again key the start.
+ *   fetched again; one that failed is fetched again from the start.
  * - **Share** hands the fetched file to Android's share sheet (the `YouTube`
- *   app takes it key there).
+ *   app takes it from there).
  * - **Save** sends the pasted link only when it reads as a `YouTube` video
  *   (`youtubeLink`, as Studio's Finish reads one), as its one form, and once
  *   home kept it reads the list again, so the episode shows the link as home
@@ -51,7 +50,6 @@ export type VideoFiles = {
   remove: (key: string) => Promise<boolean>
 }
 
-/** One feed's ports: its list, its parts, its links. */
 export type VideosPorts = {
   list: () => Promise<ListState>
   part: (

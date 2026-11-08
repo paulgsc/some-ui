@@ -1,7 +1,6 @@
 /**
- * Each feed's videos on home, the weekly call's and Playoff Delta's, for
- * Studio's feed videos (ST38, FEED4; paulgsc/server `routes::feed_videos`),
- * through the link (LA8):
+ * Each feed's videos on home (`FEEDS`), for Studio's feed videos (ST38,
+ * FEED4; paulgsc/server `routes::feed_videos`), through the link (LA8):
  *
  * - the list of a feed's episodes home holds, one `GET /feeds/:feed/videos`
  *   each time its screen opens, on a drag down, on Try again, and once after

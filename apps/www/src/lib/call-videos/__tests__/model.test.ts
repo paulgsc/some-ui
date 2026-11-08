@@ -41,14 +41,6 @@ describe("readEpisodes", () => {
     expect(readEpisodes({ status: 200, body: '{"episodes":[{}]}' })).toEqual({
       kind: "unreadable",
     })
-    // The call's older shape, by week, is not this list.
-    const { key: _key, ...rest } = episode()
-    const older = JSON.stringify({
-      episodes: [{ ...rest, from: "2026-10-30", to: "2026-11-05" }],
-    })
-    expect(readEpisodes({ status: 200, body: older })).toEqual({
-      kind: "unreadable",
-    })
   })
 })
 

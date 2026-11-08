@@ -7,6 +7,7 @@
  */
 import { describe, expect, it } from "vitest"
 
+import type { Feed } from "@/lib/call-videos/model"
 import { FEEDS } from "@/lib/call-videos/model"
 import { FEED_WORDS, share, VIDEOS_WORDS } from "@/lib/call-videos/words"
 import { MACHINERY } from "@/lib/home-link/__tests__/machinery"
@@ -18,7 +19,23 @@ function strings(value: unknown): Array<string> {
   return []
 }
 
-const KEYS = ["2026-10-30", "2026-SF-08", "2026-SF-00", "2026-SF-17"]
+/** Each feed's keys as home makes them. */
+const KEYS: Record<Feed, ReadonlyArray<string>> = {
+  call: ["2026-10-30", "2026-12-28"],
+  "playoff-delta": ["2026-SF-08", "2026-SF-00", "2026-SF-17"],
+}
+
+/** Keys a feed can't read: another feed's, and none of home's. */
+const UNREAD: Record<Feed, ReadonlyArray<string>> = {
+  call: ["2026-SF-08", "week-44", ""],
+  "playoff-delta": ["2026-10-30", "2026-SF-8", ""],
+}
+
+/** All a feed says of an episode by its key. */
+const named = (feed: Feed, key: string): Array<string> => [
+  FEED_WORDS[feed].label(key),
+  FEED_WORDS[feed].shareTitle(key),
+]
 
 describe("VIDEOS_WORDS and FEED_WORDS", () => {
   it("name no machinery, in any line they can say", () => {
@@ -26,10 +43,7 @@ describe("VIDEOS_WORDS and FEED_WORDS", () => {
       ...strings(VIDEOS_WORDS),
       ...strings(FEED_WORDS),
       ...FEEDS.flatMap((feed) =>
-        KEYS.flatMap((key) => [
-          FEED_WORDS[feed].label(key),
-          FEED_WORDS[feed].shareTitle(key),
-        ])
+        [...KEYS[feed], ...UNREAD[feed]].flatMap((key) => named(feed, key))
       ),
       ...[0, 1, 50, 99, 100].map((done) => VIDEOS_WORDS.bringing(done, 100)),
     ]
@@ -55,8 +69,19 @@ describe("VIDEOS_WORDS and FEED_WORDS", () => {
     expect(FEED_WORDS["playoff-delta"].shareTitle("2026-SF-08")).toBe(
       "Playoff Delta, 2026, week 8"
     )
-    for (const key of ["2026-SF-08", "2026-SF-00"]) {
-      expect(FEED_WORDS["playoff-delta"].label(key)).not.toContain("SF")
+  })
+
+  it("names an episode whose key it can't read by a plain word, never the key", () => {
+    expect(FEED_WORDS.call.label("week-44")).toBe("This week")
+    expect(FEED_WORDS.call.shareTitle("week-44")).toBe("The weekly call")
+    expect(FEED_WORDS["playoff-delta"].label("2026-10-30")).toBe("This episode")
+    expect(FEED_WORDS["playoff-delta"].shareTitle("2026-10-30")).toBe(
+      "Playoff Delta"
+    )
+    for (const feed of FEEDS) {
+      for (const key of UNREAD[feed].filter((key) => key !== "")) {
+        for (const line of named(feed, key)) expect(line).not.toContain(key)
+      }
     }
   })
 

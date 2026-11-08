@@ -1,7 +1,7 @@
 /**
- * Studio's feed videos (ST38, #2661; FEED4, #2647): the episodes of
- * a feed home holds, the weekly call's or Playoff Delta's, as the screen
- * reads them, and what the screen is doing with each. Pure, so every answer
+ * Studio's feed videos (ST38, #2661; FEED4, #2647): the episodes home holds
+ * of each feed (`FEEDS`), as the screen reads them, and what the screen is
+ * doing with each. Pure, so every answer
  * and every turn of the screen is held by a test; the runtime (`./runtime`)
  * owns the requests and the phone's files, one per feed.
  */
@@ -9,7 +9,6 @@ import type { HomeAnswer } from "@some-ui/core-utils"
 import { assertNever, readAs } from "@some-ui/core-utils"
 import { z } from "zod"
 
-/** The feeds whose videos home makes: the weekly call, and Playoff Delta. */
 export const FEEDS = ["call", "playoff-delta"] as const
 
 /** A feed, as home's routes name it (`/feeds/:feed/videos`). */
@@ -42,11 +41,7 @@ const EpisodeSchema = z.object({
 
 const EpisodesSchema = z.object({ episodes: z.array(EpisodeSchema) })
 
-/**
- * An episode of a feed, as home lists it (`GET /feeds/:feed/videos`): a
- * week of the call, keyed by its first day, or a week of Playoff Delta,
- * keyed `<season>-<team>-<NN>`.
- */
+/** An episode of a feed, as home lists it (`GET /feeds/:feed/videos`). */
 export type Episode = z.infer<typeof EpisodeSchema>
 
 /** What home's list says. */

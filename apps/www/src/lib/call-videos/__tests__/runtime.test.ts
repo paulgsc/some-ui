@@ -1,10 +1,10 @@
 /**
  * @vitest-environment node
  *
- * Studio's feed videos' runtime over one feed's fake ports: a video comes to the
- * phone a part at a time only on Watch, an episode already kept is ready
- * without asking home,
- * a link home would refuse is never sent, and what fails says why.
+ * Studio's feed videos' runtime over one feed's fake ports: a video comes to
+ * the phone a part at a time only on Watch, an episode already kept is ready
+ * without asking home, a link home would refuse is never sent, and what fails
+ * says why.
  */
 import type { Mock } from "vitest"
 import { describe, expect, it, vi } from "vitest"

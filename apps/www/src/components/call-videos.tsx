@@ -1,11 +1,11 @@
 /**
- * Studio's feed videos (ST38, #2661; FEED4): the episodes home has made
- * of the weekly call or of Playoff Delta, newest first. For each, Watch
- * brings the video to the phone and plays it, Share to YouTube hands it to
- * the share sheet, and its YouTube link is saved with the episode; once
- * home's copy is let go (My data), the link is how it is watched. Reads
- * `lib/call-videos`' snapshot of the feed and says what was pressed; every
- * word is its `VIDEOS_WORDS` and `FEED_WORDS`. Phone build only.
+ * Studio's feed videos (ST38, #2661; FEED4): the episodes home has made of
+ * each feed (`FEEDS`), newest first. For each, Watch brings the video to the
+ * phone and plays it, Share to YouTube hands it to the share sheet, and its
+ * YouTube link is saved with the episode; once home's copy is let go (My
+ * data), the link is how it is watched. Reads `lib/call-videos`' snapshot of
+ * the feed (`useFeedVideos`) and says what was pressed; every word is its
+ * `VIDEOS_WORDS` and `FEED_WORDS`. Phone build only.
  */
 import type { JSX, ReactNode } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
@@ -24,6 +24,7 @@ import type {
   Fetch,
   LinkSave,
   ListState,
+  VideosState,
 } from "@/lib/call-videos/model"
 import { standing } from "@/lib/call-videos/model"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
@@ -171,6 +172,23 @@ const EpisodeRow = ({
 }
 
 /**
+ * `feed`'s videos and their snapshot: the list is read on mount, and again on
+ * a drag down while the caller is on screen.
+ */
+export function useFeedVideos(feed: Feed): {
+  videos: FeedVideos
+  state: VideosState
+} {
+  const videos = feedVideos(feed)
+  const state = useSyncExternalStore(videos.subscribe, videos.getSnapshot)
+  useEffect(() => {
+    void videos.open()
+    return screenRefreshers.register(videosRefresher(feed))
+  }, [videos, feed])
+  return { videos, state }
+}
+
+/**
  * Home's list of a feed's episodes as it stands: what it says while reading,
  * unpaired, unanswered or empty, and its children once there are episodes.
  */
@@ -236,12 +254,7 @@ export const FeedVideosScreen = ({
   /** The way to pairing, for a phone that isn't paired. */
   pair: JSX.Element
 }): JSX.Element => {
-  const videos = feedVideos(feed)
-  const state = useSyncExternalStore(videos.subscribe, videos.getSnapshot)
-  useEffect(() => {
-    void videos.open()
-    return screenRefreshers.register(videosRefresher(feed))
-  }, [videos, feed])
+  const { videos, state } = useFeedVideos(feed)
   const { list, said } = state
   return (
     <div className="flex flex-col gap-3">

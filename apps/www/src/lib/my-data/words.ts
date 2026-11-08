@@ -412,8 +412,11 @@ export const CALL_DELETING = {
   title: "The videos home makes",
   lead: "Home keeps each video, the weekly call's and Playoff Delta's, until it's on YouTube. Once its link is saved in Studio, let home's copy go: the video first, then the rest.",
   /** An episode, named with its feed, as the sheet says it. */
-  episode: (feed: Feed, key: string): string =>
-    `${FEED_WORDS[feed].heading}, ${FEED_WORDS[feed].label(key)}`,
+  episode: (feed: Feed, key: string): string => {
+    const { heading, week } = FEED_WORDS[feed]
+    const named = week(key)
+    return named === null ? heading : `${heading}, ${named}`
+  },
   pair: "Pair this phone with home",
   noLink: "Save its YouTube link in Studio first.",
   allGone: "Home's copy went. It lives on YouTube.",

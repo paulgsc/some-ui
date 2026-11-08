@@ -28,10 +28,13 @@ export { FEEDS } from "./model"
 export type { FeedVideos } from "./runtime"
 export { FEED_WORDS, VIDEOS_WORDS } from "./words"
 
-const runtimes = new Map<Feed, FeedVideos>()
+/** A feed's runtime and its drag down, made together. */
+type Made = { readonly videos: FeedVideos; readonly refresher: Refresher }
 
-function create(feed: Feed): FeedVideos {
-  return createFeedVideos({
+const made = new Map<Feed, Made>()
+
+function create(feed: Feed): Made {
+  const videos = createFeedVideos({
     async list(): Promise<ListState> {
       const asked = await askWhileBusy(() => askEpisodes(feed))
       if (asked.kind === "unpaired") return asked
@@ -60,36 +63,35 @@ function create(feed: Feed): FeedVideos {
     },
     partBytes: PART_BYTES,
   })
-}
-
-/** `feed`'s videos, made on first use. */
-export function feedVideos(feed: Feed): FeedVideos {
-  const made = runtimes.get(feed)
-  if (made !== undefined) return made
-  const runtime = create(feed)
-  runtimes.set(feed, runtime)
-  return runtime
-}
-
-const refreshers = new Map<Feed, Refresher>()
-
-/**
- * A drag down on a feed's videos reads its list again, and says it couldn't
- * when home didn't answer. One per feed, as its runtime is.
- */
-export function videosRefresher(feed: Feed): Refresher {
-  const made = refreshers.get(feed)
-  if (made !== undefined) return made
+  // A drag down reads the list again, and says it couldn't when home didn't
+  // answer.
   const refresher: Refresher = {
     what: FEED_WORDS[feed].what,
     async checkAgain(): Promise<void> {
-      await feedVideos(feed).open()
-      const { list } = feedVideos(feed).getSnapshot()
+      await videos.open()
+      const { list } = videos.getSnapshot()
       if (list.kind === "away" || list.kind === "unreadable") {
         throw new Error("home didn't answer")
       }
     },
   }
-  refreshers.set(feed, refresher)
-  return refresher
+  return { videos, refresher }
+}
+
+function madeFor(feed: Feed): Made {
+  const known = made.get(feed)
+  if (known !== undefined) return known
+  const fresh = create(feed)
+  made.set(feed, fresh)
+  return fresh
+}
+
+/** `feed`'s videos, made on first use. */
+export function feedVideos(feed: Feed): FeedVideos {
+  return madeFor(feed).videos
+}
+
+/** A drag down on `feed`'s videos, made with its runtime. */
+export function videosRefresher(feed: Feed): Refresher {
+  return madeFor(feed).refresher
 }

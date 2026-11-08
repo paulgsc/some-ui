@@ -55,13 +55,18 @@ const PORT: ForeignPort = {
   report: reportFailure,
 }
 
+/** What each feed's file names start with, so no two feeds' keys meet. */
+const PREFIX: Record<Feed, string> = {
+  call: "",
+  "playoff-delta": "playoff-delta-",
+}
+
 /**
- * Where an episode's video is kept: the call's as it was before Playoff
- * Delta's came (`<key>.mp4`, so a week already on the phone still matches),
- * each other feed's named for it, so no two feeds' keys meet.
+ * Where an episode's video is kept; the call's keep the bare `<key>.mp4` so
+ * copies already on phones still match.
  */
 export function cachePath(feed: Feed, key: string): string {
-  return feed === "call" ? `${DIR}/${key}.mp4` : `${DIR}/${feed}-${key}.mp4`
+  return `${DIR}/${PREFIX[feed]}${key}.mp4`
 }
 
 /** A call's value once it succeeded, `fallback` otherwise. */
@@ -85,8 +90,8 @@ function playable(uri: string, host: object = globalThis): string {
 /** The phone's copies of `feed`'s videos. */
 export function videoFiles(feed: Feed): VideoFiles {
   const pathOf = (key: string): string => cachePath(feed, key)
-  const files: VideoFiles = {
-    async size(key) {
+  return {
+    async size(key): Promise<number | null> {
       const outcome = await callForeign({
         port: PORT,
         deadlineMs: DEADLINE_MS,
@@ -109,7 +114,7 @@ export function videoFiles(feed: Feed): VideoFiles {
       return valueOr(outcome, null)
     },
 
-    async put(key, base64, first) {
+    async put(key, base64, first): Promise<boolean> {
       const outcome = await callForeign({
         port: PORT,
         deadlineMs: DEADLINE_MS,
@@ -133,7 +138,7 @@ export function videoFiles(feed: Feed): VideoFiles {
       return valueOr(outcome, false)
     },
 
-    async where(key) {
+    async where(key): Promise<{ uri: string; src: string } | null> {
       const outcome = await callForeign({
         port: PORT,
         deadlineMs: DEADLINE_MS,
@@ -151,7 +156,7 @@ export function videoFiles(feed: Feed): VideoFiles {
       return valueOr(outcome, null)
     },
 
-    async remove(key) {
+    async remove(key): Promise<boolean> {
       const outcome = await callForeign({
         port: PORT,
         deadlineMs: DEADLINE_MS,
@@ -175,5 +180,4 @@ export function videoFiles(feed: Feed): VideoFiles {
       return valueOr(outcome, false)
     },
   }
-  return files
 }

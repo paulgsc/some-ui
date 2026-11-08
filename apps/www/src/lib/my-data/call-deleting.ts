@@ -1,8 +1,7 @@
 /**
- * My data's let-go of an episode of a feed, a week of the call or of Playoff
- * Delta (ST38, #2661; FEED4), white-gloved as a recording's delete is
- * (`./deleting`): the sheet's states and their pure
- * `step`, and what home's answers mean. `./call-deleting-runtime` owns the
+ * My data's let-go of an episode of a feed (`FEEDS`; ST38, #2661; FEED4),
+ * white-gloved as a recording's delete is (`./deleting`): the sheet's states
+ * and their pure `step`, and what home's answers mean. `./call-deleting-runtime` owns the
  * request and the phone's copy; `./words`' `CALL_DELETING` says each state.
  *
  * - **Two steps, each asked once.** The video goes first, then the rest of

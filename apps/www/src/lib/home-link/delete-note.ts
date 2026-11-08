@@ -11,12 +11,11 @@
  * A request that fails on the way ends the run there: the notes answered
  * before it keep their answers, and those after it were not sent.
  *
- * It also sends My data's let-go of an episode of a feed, a week of the call
- * or of Playoff Delta (ST38, #2661; FEED4; paulgsc/server
- * `DELETE /feeds/:feed/videos/:key/video` and `/rest`): on "Delete for good"
- * in My data's videos sheet, one run of the link's `send` with one `DELETE`
- * of that step. Home answers with the step's receipt, kept for
- * good; a step already done answers with the same receipt.
+ * It also sends My data's let-go of an episode of a feed (`FEEDS`; ST38,
+ * #2661; FEED4; paulgsc/server `DELETE /feeds/:feed/videos/:key/video` and
+ * `/rest`): on "Delete for good" in My data's videos sheet, one run of the
+ * link's `send` with one `DELETE` of that step. Home answers with the step's
+ * receipt, kept for good; a step already done answers with the same receipt.
  *
  * LA19 (docs/learner-data-authority.md): the one sender of a `DELETE` to
  * home, imported by `lib/my-data` alone and called by its delete runtimes
