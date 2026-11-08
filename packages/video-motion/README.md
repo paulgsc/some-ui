@@ -9,7 +9,7 @@ workspace renders one to a lossless clip, the same bytes every time, which
 ```sh
 pnpm --filter @some-ui/video-motion motion prove sample
 pnpm --filter @some-ui/video-motion motion render sample --out sample.mkv --variables v.json
-pnpm --filter @some-ui/video-motion motion video <video folder> [--series <folder>] [--prove]
+pnpm --filter @some-ui/video-motion motion video <video folder> [--series <folder>] [--brand <folder>] [--prove]
 ```
 
 - `prove` renders a composition `--runs` times (two unless given) and fails unless every
@@ -25,6 +25,11 @@ pnpm --filter @some-ui/video-motion motion video <video folder> [--series <folde
   unless the bytes match. The series is `series/vertical` unless named:
   1080x1920 at 30 fps, the frame alone, for videos whose scenes are compositions.
   `sample/video` is a composition scene, then a card.
+
+- `--brand` names home's brand folder (`/brand` in the render service): the series' music bed
+  and sound kit are copied into the video's folder from it first (`placeBrandFiles` in
+  `@some-ui/video-render/node`), and the renderer refuses any file whose sum isn't the
+  series' pin.
 
 - `walk <app> --sample <file> --out <folder>` replays an app's scripted walk (SFEED7a,
   #2736) in a sandbox holding only the sample: the app's own built pages, served from
