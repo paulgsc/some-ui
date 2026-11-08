@@ -1,8 +1,10 @@
 import type { JSX } from "react"
 import { homeHearing } from "@some-ui/soundbites"
 import { answerRef } from "@some-ui/video-render"
+import { onPageVisibility } from "@some-ui/voice-capture"
 import { createFileRoute } from "@tanstack/react-router"
 
+import { homeLink, pairingOf } from "@/lib/home-link"
 import { phoneHomeListener } from "@/lib/idea-hearing"
 import type { StudioAsk } from "@/lib/studio-asks"
 import { STUDIO_INDEX_WORDS } from "@/lib/studio-index"
@@ -20,7 +22,12 @@ const answer = device
   ? (ask: StudioAsk): JSX.Element => (
       <AskAnswer
         key={ask.id}
-        listener={phoneHomeListener(homeHearing)}
+        ports={{
+          listener: phoneHomeListener(homeHearing),
+          loaded: () => homeLink().load(),
+          paired: () => pairingOf() !== null,
+          onVisibility: onPageVisibility,
+        }}
         answers={answerRef(ask)}
       />
     )

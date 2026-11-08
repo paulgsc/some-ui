@@ -19,13 +19,22 @@ export type AskAnswer = {
   dispatch: (
     event: Extract<AnswerEvent, { type: "talk" | "stopTalking" }>
   ) => void
-  /** The screen is showing. Returns the detach, which lets a take go. */
+  /** The screen is showing. Returns the detach; a take under way is kept. */
   attach: () => () => void
 }
 
 /** `answers`: the ref the take is kept under on home. */
+export type AskAnswerPorts = {
+  readonly listener: TurnListener
+  /** Settles once the phone's pairing has been read; never rejects. */
+  readonly loaded: () => Promise<void>
+  readonly paired: () => boolean
+  /** As `onPageVisibility`: now, then on each change. */
+  readonly onVisibility: (listener: (hidden: boolean) => void) => () => void
+}
+
 export function createAskAnswer(
-  listener: TurnListener,
+  ports: AskAnswerPorts,
   answers: string
 ): AskAnswer {
   let state = initialAnswer
@@ -36,10 +45,19 @@ export function createAskAnswer(
       state = next.state
       for (const each of listeners) each()
     }
-    for (const effect of next.effects)
-      run(effect.type === "listen" ? { ...effect, answers } : effect)
+    for (const effect of next.effects) {
+      if (effect.type === "checkVoice") checkVoice()
+      else run(effect.type === "listen" ? { ...effect, answers } : effect)
+    }
   }
-  const run = turnListening(listener, send)
+  const run = turnListening(ports.listener, send)
+  // Only home hears an answer, so the phone's pairing is read first.
+  const checkVoice = (): void => {
+    void ports.loaded().then(() => {
+      if (ports.paired()) run({ type: "checkVoice" })
+      else send({ type: "unpaired" })
+    })
+  }
   return {
     getSnapshot: () => state,
     subscribe: (each) => {
@@ -51,7 +69,11 @@ export function createAskAnswer(
     dispatch: send,
     attach: () => {
       send({ type: "opened" })
+      const stop = ports.onVisibility((hidden) => {
+        if (hidden) send({ type: "hidden" })
+      })
       return (): void => {
+        stop()
         send({ type: "left" })
       }
     },

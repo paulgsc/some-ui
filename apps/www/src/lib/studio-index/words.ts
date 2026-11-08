@@ -161,16 +161,22 @@ export const STUDIO_INDEX_WORDS = {
     open: "Answer it on GitHub",
     answer: {
       label: "Your answer",
-      line: "Say which option, or what you'd rather. Home keeps what you say, and the morning routine files it as an issue that waits for you to start on it. This ask stays open until then.",
+      line: "Say which option, or what you'd rather. Home keeps what you say, and the morning routine files it as an issue that waits for you to start on it. The ask stays open until you do.",
+      unpaired:
+        "Only home hears an answer, and this phone isn't paired with it. Pair it in Settings, or answer on GitHub.",
       noVoice: "This phone can't record here. Answer it on GitHub instead.",
       again: "Say another answer",
       heard: "Home heard",
-      keptOnHome:
-        "Home has your answer and hasn't heard it yet. The morning routine files it once it has.",
-      keptOnPhone:
-        "Your answer is kept on this phone and goes home once it can reach home.",
-      filed:
-        "The morning routine files it as an issue. Each answer you say is filed on its own.",
+      hearingLine:
+        "Your answer is kept. Its words come back from home in a minute or two, and you can leave this page.",
+      kept: {
+        late: "Home has your answer and hasn't heard it yet. It's filed once home has.",
+        noWords: "Home has your answer but can't give its words back yet.",
+        awayOnHome:
+          "Home can't be reached right now. It already has your answer.",
+        awayOnPhone:
+          "Home can't be reached right now. Your answer is kept on this phone and goes home once home is in reach.",
+      },
       notice: {
         silent: "Didn't hear anything. Try again.",
         notStarted:

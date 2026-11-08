@@ -60,6 +60,7 @@ describe("an ask's answer", () => {
     expect(ending({ kind: "kept", on: "phone", why: "away" }).phase).toEqual({
       kind: "kept",
       on: "phone",
+      why: "away",
     })
     expect(ending({ kind: "unavailable" }).voice).toBe("unavailable")
     expect(ending({ kind: "notStarted" }).notice).toBe("notStarted")
@@ -86,10 +87,24 @@ describe("an ask's answer", () => {
     expect(first.phase).toEqual({ kind: "hearing", seq: 2 })
   })
 
-  it("lets the take go when the screen goes mid-take", () => {
+  it("ends a take when the page hides, and keeps it when the screen goes", () => {
+    const hid = step(run([...ready, { type: "talk" }]), { type: "hidden" })
+    expect(hid.state.phase).toEqual({ kind: "finishing", seq: 1 })
+    expect(hid.effects).toEqual([{ type: "stopListening" }])
     const left = step(run([...ready, { type: "talk" }]), { type: "left" })
     expect(left.state.phase).toEqual({ kind: "idle" })
     expect(left.effects).toEqual([{ type: "cancelListening" }])
     expect(step(run(ready), { type: "left" }).effects).toEqual([])
+  })
+
+  it("says another answer while home hears the last, and none unpaired", () => {
+    expect(run([...ready, ...take(1), { type: "talk" }]).phase).toEqual({
+      kind: "recording",
+      seq: 2,
+      ready: false,
+    })
+    const unpaired = run([{ type: "opened" }, { type: "unpaired" }])
+    expect(unpaired.voice).toBe("unpaired")
+    expect(step(unpaired, { type: "talk" }).effects).toEqual([])
   })
 })

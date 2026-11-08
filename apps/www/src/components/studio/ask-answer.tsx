@@ -8,11 +8,14 @@ import type { JSX } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { assertNever } from "@some-ui/core-utils"
 import { Button, Notice } from "@some-ui/shared"
-import type { TurnListener } from "@some-ui/voice-capture"
 import { RECORDING_FAILURE_COPY, TURN_WORDS } from "@some-ui/voice-capture"
 import { Mic, Square } from "lucide-react"
 
-import type { AnswerNotice, AnswerPhase } from "@/lib/ask-answer"
+import type {
+  AnswerNotice,
+  AnswerPhase,
+  AskAnswerPorts,
+} from "@/lib/ask-answer"
 import { createAskAnswer } from "@/lib/ask-answer"
 import { STUDIO_INDEX_WORDS } from "@/lib/studio-index"
 
@@ -33,10 +36,8 @@ const where = (phase: AnswerPhase): string | null => {
     case "finishing": {
       return TURN_WORDS.finishing
     }
-    case "hearing": {
-      return TURN_WORDS.hearing
-    }
     case "idle":
+    case "hearing":
     case "heard":
     case "kept": {
       return null
@@ -47,33 +48,38 @@ const where = (phase: AnswerPhase): string | null => {
   }
 }
 
-/** `answers`: the ref the take is kept under (`answerRef`). Both read once, on mount. */
+const keptSaid = (phase: Extract<AnswerPhase, { kind: "kept" }>): string => {
+  if (phase.why !== "away") return WORDS.kept[phase.why]
+  return phase.on === "home" ? WORDS.kept.awayOnHome : WORDS.kept.awayOnPhone
+}
+
+/** `answers`: the ref the take is kept under (`answerRef`). */
 export const AskAnswer = ({
-  listener,
+  ports,
   answers,
 }: {
-  listener: TurnListener
+  ports: AskAnswerPorts
   answers: string
 }): JSX.Element => {
   /* eslint-disable owner-guard/no-mount-snapshot -- the runtime is created once per mount, keyed by the ask */
-  const [runtime] = useState(() => createAskAnswer(listener, answers))
+  const [runtime] = useState(() => createAskAnswer(ports, answers))
   /* eslint-enable owner-guard/no-mount-snapshot */
   useEffect(() => runtime.attach(), [runtime])
   const { voice, phase, notice } = useSyncExternalStore(
     runtime.subscribe,
     runtime.getSnapshot
   )
-  const under =
-    phase.kind === "recording" ||
-    phase.kind === "finishing" ||
-    phase.kind === "hearing"
-  const said = phase.kind === "heard" || phase.kind === "kept"
+  const under = phase.kind === "recording" || phase.kind === "finishing"
+  const said =
+    phase.kind === "heard" || phase.kind === "kept" || phase.kind === "hearing"
   const status = where(phase)
   return (
     <Part label={WORDS.label}>
       <p className="text-muted-foreground text-sm">{WORDS.line}</p>
-      {voice === "unavailable" ? (
-        <p className="text-sm">{WORDS.noVoice}</p>
+      {voice === "unpaired" || voice === "unavailable" ? (
+        <p className="text-sm">
+          {voice === "unpaired" ? WORDS.unpaired : WORDS.noVoice}
+        </p>
       ) : under ? (
         <Button
           size="lg"
@@ -101,13 +107,16 @@ export const AskAnswer = ({
           <p className="bg-card border-border/60 rounded-2xl border p-3 text-base">
             {phase.words}
           </p>
-          <p className="text-muted-foreground text-sm">{WORDS.filed}</p>
         </div>
       )}
-      {phase.kind === "kept" && (
-        <p className="text-sm">
-          {phase.on === "home" ? WORDS.keptOnHome : WORDS.keptOnPhone}
-        </p>
+      {phase.kind === "kept" && <Notice>{keptSaid(phase)}</Notice>}
+      {phase.kind === "hearing" && (
+        <Notice>
+          <span className="block">{TURN_WORDS.hearing}</span>
+          <span className="text-muted-foreground block">
+            {WORDS.hearingLine}
+          </span>
+        </Notice>
       )}
       {status !== null && <Notice>{status}</Notice>}
       {notice !== null && <Notice>{noticeSaid(notice)}</Notice>}
