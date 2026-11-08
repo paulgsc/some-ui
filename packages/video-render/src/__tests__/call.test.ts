@@ -19,6 +19,7 @@ import {
   callFormat,
   callIntro,
   callScenes,
+  callVersionRefusal,
   estimatedCallMs,
   parseCallIndex,
   parseCallWeek,
@@ -57,6 +58,21 @@ describe("the call's format", () => {
     expect(JSON.parse(readFileSync(join(DIR, newest.file), "utf8"))).toEqual(
       callFormat()
     )
+  })
+
+  it("refuses a version newer than the newest, or none at all (VS1)", () => {
+    for (let v = 1; v <= CALL_VERSION; v++)
+      expect(callVersionRefusal(v)).toBe(null)
+    for (const v of [CALL_VERSION + 1, 0, 1.5])
+      expect(() => callFormat(v)).toThrow(callVersionRefusal(v) ?? "")
+    const newer = sampleWeek()
+    const parsed = parseCallWeek({
+      ...newer,
+      template: { ...newer.template, version: CALL_VERSION + 1 },
+    })
+    expect(parsed.ok ? [] : parsed.problems).toEqual([
+      `template.version: newer than this build knows: it draws up to version ${String(CALL_VERSION)}, so publish a newer stage first`,
+    ])
   })
 
   it("is drawn in its own series", async () => {

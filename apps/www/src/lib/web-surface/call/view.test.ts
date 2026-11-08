@@ -1,4 +1,8 @@
-import { CALL_INDEX_SCHEMA, sampleCallWeek } from "@some-ui/video-render"
+import {
+  CALL_INDEX_SCHEMA,
+  CALL_VERSION,
+  sampleCallWeek,
+} from "@some-ui/video-render"
 import type { CallIndex, CallWeek } from "@some-ui/video-render"
 import { describe, expect, it } from "vitest"
 
@@ -135,6 +139,22 @@ describe("what the stage draws", () => {
       unread: true,
       problems: ["week: it ends before it starts"],
     })
+  })
+
+  it("on record, says why it refuses a week newer than it knows (VS1)", () => {
+    const newer = {
+      ...base,
+      record: true,
+      week: read({
+        ...week(),
+        template: { ...week().template, version: CALL_VERSION + 1 },
+      }),
+    }
+    const state = stageOf(newer)
+    expect(state.kind).toBe("none")
+    expect(state.kind === "none" && state.problems.join("\n")).toContain(
+      `up to version ${String(CALL_VERSION)}`
+    )
   })
 
   it("draws the sample, unread or not, where nothing live is asked for", () => {

@@ -92,13 +92,31 @@ const shapeOf = (kind: FormatKind, version: number): Shape =>
 export const formatId = (kind: FormatKind): string => `playoff-delta-${kind}`
 
 /**
+ * Why `version` of `kind`'s format can't be drawn here, or null when it can
+ * (VS1, #2796): a version newer than this build knows is a fill written for a
+ * later stage, which this one would draw in an older look, silently.
+ */
+export function versionRefusal(
+  kind: FormatKind,
+  version: number
+): string | null {
+  const newest = FORMAT_VERSION[kind]
+  if (Number.isInteger(version) && version >= 1 && version <= newest)
+    return null
+  return `This stage draws ${formatId(kind)} up to version ${newest}, and was asked for version ${version}: publish a newer stage first`
+}
+
+/**
  * The show's format at `version` (the newest by default): every scene a week
- * (or the legend) has, in order, and from version 2 its shape.
+ * (or the legend) has, in order, and from version 2 its shape. Throws for a
+ * version this build doesn't know (`versionRefusal`).
  */
 export function formatOf(
   kind: FormatKind,
   version: number = FORMAT_VERSION[kind]
 ): Format {
+  const refused = versionRefusal(kind, version)
+  if (refused !== null) throw new Error(refused)
   const slides = slidesOf(kind)
   return {
     schema: FORMAT_SCHEMA,

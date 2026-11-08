@@ -13,6 +13,7 @@ import {
   FORMAT_VERSION,
   formatId,
   formatOf,
+  versionRefusal,
   type FormatKind,
 } from "@playoff-delta/lib/show"
 import {
@@ -58,6 +59,17 @@ describe("the formats", () => {
       expect(versions.at(-1)?.version).toBe(FORMAT_VERSION[kind])
       // A pinned version is never edited: the code still makes each one.
       for (const v of versions) expect(v.raw).toEqual(formatOf(kind, v.version))
+    }
+  )
+
+  it.each(["week", "legend"] as const)(
+    "%s: a version newer than the newest, or none at all, is refused (VS1)",
+    (kind) => {
+      const newest = FORMAT_VERSION[kind]
+      for (let v = 1; v <= newest; v++)
+        expect(versionRefusal(kind, v)).toBe(null)
+      for (const v of [newest + 1, 0, 1.5])
+        expect(() => formatOf(kind, v)).toThrow(versionRefusal(kind, v) ?? "")
     }
   )
 

@@ -130,10 +130,24 @@ const scene = (
 })
 
 /**
+ * Why `version` of the call's template can't be drawn here, or null when it
+ * can (VS1, #2796): a version newer than this build knows is a week written
+ * for a later stage, which this one would draw in an older look, silently.
+ */
+export function callVersionRefusal(version: number): string | null {
+  if (Number.isInteger(version) && version >= 1 && version <= CALL_VERSION)
+    return null
+  return `This stage draws the call's template up to version ${CALL_VERSION}, and was asked for version ${version}: publish a newer stage first`
+}
+
+/**
  * The call's format at `version`: its sections, in the order every call says
- * them, and from version 2 its shape.
+ * them, and from version 2 its shape. Throws for a version this build doesn't
+ * know (`callVersionRefusal`).
  */
 export function callFormat(version: number = CALL_VERSION): Format {
+  const refused = callVersionRefusal(version)
+  if (refused !== null) throw new Error(refused)
   return {
     schema: FORMAT_SCHEMA,
     id: CALL_ID,
@@ -268,8 +282,17 @@ export const CallWeekSchema = z.strictObject({
   schema: z.literal(CALL_WEEK_SCHEMA),
   template: z.strictObject({
     id: z.literal(CALL_ID),
-    /** The format version it was written for, and so is drawn in. */
-    version: z.number().int().min(1).max(CALL_VERSION),
+    /**
+     * The format version it was written for, and so is drawn in; one newer
+     * than this build knows is refused (VS1), never drawn in an older look.
+     */
+    version: z
+      .number()
+      .int()
+      .min(1)
+      .max(CALL_VERSION, {
+        message: `newer than this build knows: it draws up to version ${CALL_VERSION}, so publish a newer stage first`,
+      }),
   }),
   /** The days it covers, both included. */
   week: z.strictObject({ from: day, to: day }),
