@@ -441,7 +441,9 @@ function phone(
         value: { topics: ["Studio"], keywords: [] },
       }),
     furnish: vi.fn(),
-    setAside: vi.fn(),
+    setAside: vi.fn(() =>
+      Promise.resolve({ kind: "written" as const, value: null })
+    ),
     entry: vi.fn(),
   }
   const runtime = createIdeasOnHome({
@@ -516,6 +518,25 @@ describe("an answer said again, end to end on the simulated microphone (#2579)",
     expect(on.setAside).toHaveBeenCalledWith(["t0"], expect.any(String))
     expect(takesOf(on)[0]?.waits).toBeUndefined()
     expect(openRedos(on.runtime.getSnapshot())).toEqual([])
+    detach()
+  })
+
+  it("set aside on home, takes its waiting answer with it: set aside there and let go, kept (#2805)", async () => {
+    const on = phone()
+    const detach = on.attach()
+    await pass()
+    await sayAgain(on)
+    const [redo] = takesOf(on)
+    on.runtime.dispatch({ type: "askSetAside" })
+    on.runtime.dispatch({ type: "confirmed" })
+    await pass()
+    expect(on.runtime.getSnapshot().notice).toBe("setAside")
+    expect(on.setAside).toHaveBeenCalledWith([redo!.id], expect.any(String))
+    expect(takesOf(on).map((each) => [each.id, each.waits])).toEqual([
+      [redo!.id, undefined],
+    ])
+    // The idea's own record is as it was: the take was never its answer.
+    expect(on.ideas.list()).toEqual([SENT])
     detach()
   })
 

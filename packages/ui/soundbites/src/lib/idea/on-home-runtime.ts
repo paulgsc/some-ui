@@ -262,6 +262,18 @@ export function createIdeasOnHome(ports: OnHomePorts): OnHomeRuntime {
         ports.redo?.takes.discard(effect.takes)
         return
       }
+      case "setAsideRedos": {
+        const { redo } = ports
+        if (redo === undefined) return
+        // Ignored when not stored: the takes still wait on this phone, kept.
+        setAsideThenRelease(
+          redo,
+          { release: effect.takes, replaced: effect.takes },
+          [],
+          new Date(now()).toISOString()
+        )
+        return
+      }
       case "sendAgain": {
         send({
           type: "sentAgain",
