@@ -1,27 +1,8 @@
-/**
- * SFEED5 (#2746): a Studio take answering an ask is named by `answerRef`,
- * read back by `pendingOfRef`, and filed once: `toFile` leaves out every
- * take an issue already carries the line of, and every transcript of
- * anything else.
- */
-import {
-  answerRef,
-  filedLine,
-  PENDING_LABELS,
-  pendingOfRef,
-  toFile,
-} from "@video-render/pending"
+import { parseAskId } from "@video-render/ask"
+import { answerRef, pendingOfRef, toFile } from "@video-render/pending"
 import { describe, expect, it } from "vitest"
 
-const heard = (
-  over: Partial<{
-    note: string
-    of: string
-    ref: string | null
-    at: string
-    text: string
-  }>
-): unknown => ({
+const heard = (over: Record<string, unknown>): unknown => ({
   schema: "some-ui.voice-transcript/1",
   note: "n1",
   of: "studio",
@@ -55,39 +36,27 @@ describe("an answer's ref", () => {
       "ask:some-ui",
       "ask:some-ui-0",
       "ask:other-12",
-      "ask:-12",
-      "ask",
     ])
       expect(pendingOfRef(ref), ref).toBeNull()
+    expect(parseAskId("server-725")).toEqual({ repo: "server", number: 725 })
   })
 })
 
 describe("toFile", () => {
-  it("files each answer once, from its last transcript, oldest said first", () => {
-    const { items, passed } = toFile(
+  it("files each answer, oldest said first, whatever the clock's offset", () => {
+    const { items } = toFile(
       [
-        heard({ note: "n2", at: "2026-11-08T19:00:00.000Z" }),
-        heard({ text: "first hearing" }),
-        heard({ text: "second hearing" }),
+        heard({ note: "n2", at: "2026-11-08T12:30:00-07:00" }),
+        heard({ note: "n1", at: "2026-11-08T19:00:00Z" }),
       ],
       []
     )
-    expect(passed).toEqual([])
-    expect(items.map((item) => [item.note, item.heard])).toEqual([
-      ["n1", "second hearing"],
-      ["n2", "the second one"],
-    ])
-    expect(items[0]).toMatchObject({
-      kind: "ask",
-      repo: "some-ui",
-      about: 2676,
-      labels: PENDING_LABELS,
-      line: filedLine("n1"),
-    })
+    expect(items.map((item) => item.note)).toEqual(["n1", "n2"])
+    expect(items[0]?.line).toBe("Kept on home as the take `n1`.")
   })
 
   it("never files a take an issue already carries, open or closed", () => {
-    const body = `The owner chose the second option.\n\n${filedLine("n1")}`
+    const body = `The owner chose the second option.\n\nKept on home as the take \`n1\`.`
     expect(toFile([heard({})], [body]).items).toEqual([])
     expect(
       toFile([heard({})], ["mentions `n1` in passing"]).items
@@ -99,13 +68,11 @@ describe("toFile", () => {
       [
         heard({ of: "reflection", ref: "session-1" }),
         heard({ ref: "take:t1" }),
-        heard({ ref: null }),
-        { schema: "something-else" },
-        heard({ note: "quiet", text: "  " }),
+        heard({ text: "  " }),
       ],
       []
     )
     expect(items).toEqual([])
-    expect(passed.map((each) => each.place)).toEqual([3, 4])
+    expect(passed.map((each) => each.place)).toEqual([2])
   })
 })

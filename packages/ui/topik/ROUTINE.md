@@ -623,20 +623,23 @@ and its transcript) and never files an issue itself; this run files each one
 as a **pending** issue, which waits until the owner starts a session for it
 (paulgsc/some-ui#2670, decisions 6 and 11; #2746). Today that is an answer to
 an ask, said on the ask's page. Which takes these are, and which were filed
-already, is `@some-ui/video-render`'s `pending.ts`, never this run's reading:
-a new kind (SFEED6's feedback) is a kind there and a row in E3, not a second
-way of filing.
+already, is `@some-ui/video-render`'s `pending.ts`, never this run's reading.
 
-E1. If the mailbox is usable (2a) and the GitHub tools are, take the live
-transcripts "Voice notes" listed. Fetch each one no reflection or drama prompt
-claims by id, once per run, as "Each transcript you use" says, and save their
-bodies as one JSON list in a scratch file outside the checkout. Then list the
-issues already filed with both labels `pending` and `from-studio`, open and
-closed, in `paulgsc/some-ui` and `paulgsc/server` (`list_issues`, every page),
-and save them, with their bodies, as one JSON list in a second scratch file.
-If a repository's list is refused, file nothing in that repository this run
-and say so in the summary: a take whose issue the list didn't show would be
-filed twice.
+E1. If the mailbox is usable (2a) and the GitHub tools are, list the
+`transcript` folder's live items as 2a says, whether or not home's index
+stands (2b): the index names only reflections' and prompts' notes. For each
+note, take only its newest transcript, `transcript-<note>-<n>.json` with the
+highest `<n>`, compared as a number. Fetch each one no reflection or drama
+prompt claims by id, once per run, as "Each transcript you use" says, and save
+their bodies as one JSON list in a scratch file outside the checkout. Then
+list the issues already filed with both labels `pending` and `from-studio`,
+open and closed, in `paulgsc/some-ui` and `paulgsc/server` (`list_issues`,
+every page), and save them, with their bodies, as one JSON list in a second
+scratch file. If a repository's list is refused, file nothing in that
+repository this run and say so in the summary: a take whose issue the list
+didn't show would be filed twice. A take whose transcript home archived before
+any run filed it (the mailbox archives after 30 days) is not asked back and is
+never filed; a daily run reaches every take well before then.
 
 E2. From the repo root, run
 
@@ -652,8 +655,11 @@ it with, and the `line` its issue ends with. Never file a take the script
 didn't print, and never change its `line`: that line is how the next run knows
 it was filed.
 
-E3. File one issue per item in the item's `repo`, at most four this run, the
-oldest first; the rest wait for the next run, and the summary says how many.
+E3. File one issue per item in the item's `repo`, at most four this run (a cap
+of its own, beside C4's), the oldest first; the rest wait for the next run,
+and the summary says how many. Each take is an answer of its own: when an
+earlier pending issue (in E1's list, or filed this run) answers the same ask,
+the new one links it and says which answer is newer, and closes neither.
 What the issue says depends on its `kind`:
 
 - **`ask`, an answer to an ask.** Read the ask first (issue `about` in `repo`:
@@ -675,11 +681,10 @@ Every issue, of any kind:
   refused, file without it and say so in the summary;
 - ends with a blank line and the item's `line`, exactly.
 
-E4. Start no session, and don't comment on, label, close or edit the ask or
-any other issue: the pending issue waits for the owner, and the ask stays open
-until a session acts on it. If a call is refused, file nothing more, and put
-each item left in the summary by its repo, `about` and `note`, in your own
-words, so the owner can file it.
+E4. As C5 and C6, and don't comment on, label, close or edit the ask or any
+other issue: the pending issue waits for the owner, and the ask stays open
+until a session acts on it. If a call is refused, put each item left in the
+summary by its repo, `about` and `note`, in your own words.
 
 ## The run record
 
@@ -764,8 +769,9 @@ and is not retried.
     and each stock scene written (title, genre, premise, level); the run
     record's put and its
     status code; part E's pending issues filed (repo, number, title, the take's
-    `note`), the items left for the next run, and each `passed` transcript;
-    for each voice note, its transcript's name and `text`, or that
+    `note`), the items left for the next run, and each `passed` transcript, never
+    what home heard in a Studio take; for each other voice note, its
+    transcript's name and `text`, or that
     home hasn't heard it; Drive (whether this session had it, each copy made
     or failed, each reflection, prompt or scene read from it because only
     Drive holds it, or, without it, what that left undone); and anything you

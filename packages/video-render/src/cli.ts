@@ -37,11 +37,9 @@
  *
  *   pnpm --filter @some-ui/video-render render pending <transcripts.json> <filed.json>
  *
- * prints the Studio takes left to file as pending issues (SFEED5, `pending.ts`)
- * as JSON: from the mailbox's transcripts (a list of their bodies) and the
- * issues already filed with `PENDING_LABELS` (a list of their bodies, or of
- * issues as GitHub lists them, each with its `body`). The reflections
- * routine runs it (`packages/ui/topik/ROUTINE.md`, Part E).
+ * prints the Studio takes left to file as pending issues (`pending.ts`):
+ * from the mailbox's transcripts (a list of their bodies) and the issues
+ * already filed (a list of their bodies, or of issues each with its `body`).
  *
  * `pnpm --filter` runs this from the package; INIT_CWD is where it was typed.
  */
