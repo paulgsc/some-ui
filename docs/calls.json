@@ -249,16 +249,10 @@
     {
       "id": "C24",
       "made": "2026-11-08",
-      "by": "claude",
-      "agreed": "2026-11-08",
+      "by": "owner",
       "paths": ["packages/video-render/src/preview.ts"],
-      "chose": "A template's preview scales its said scenes, the locked intro included, down together to fit 30 s, so the intro is trimmed mid-take; an episode keeps its locked intro whole.",
-      "options": [
-        "trim the locked intro with the other said scenes",
-        "keep the intro whole and drop sections"
-      ],
-      "gray": "The sample's intro, brand slides and one section run about 47 s; keeping the intro whole still overruns 30 s.",
-      "undo": "Change `fitted` in preview.ts.",
+      "chose": "A template's preview is a 15–30 s check that the pipeline works, not an episode, so its cut may shorten or drop the locked intro to fit the window; the locked intro still opens every episode, with no switch.",
+      "undo": "Keep the intro whole in `fitted` in preview.ts, and drop sections from the preview.",
       "refs": ["#2757", "#2762"]
     }
   ]
