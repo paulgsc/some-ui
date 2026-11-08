@@ -9,14 +9,7 @@ import type { HomeAnswer } from "@some-ui/core-utils"
 import { assertNever, readAs } from "@some-ui/core-utils"
 import { z } from "zod"
 
-export const FEEDS = ["call", "playoff-delta"] as const
-
-/** A feed, as home's routes name it (`/feeds/:feed/videos`). */
-export type Feed = (typeof FEEDS)[number]
-
-/** Whether `value` names a feed (a link's `?videos`, say). */
-export const isFeed = (value: unknown): value is Feed =>
-  FEEDS.some((feed) => feed === value)
+export { FEEDS, isFeed, type Feed } from "@/lib/feeds"
 
 const LinkSchema = z.object({
   url: z.string().min(1),

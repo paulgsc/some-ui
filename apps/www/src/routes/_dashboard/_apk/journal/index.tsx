@@ -21,10 +21,10 @@ import {
 import { audioPlayer } from "@some-ui/voice-capture"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 
-import type { Feed } from "@/lib/call-videos/model"
-import { FEEDS, isFeed } from "@/lib/call-videos/model"
 import { FEED_WORDS, VIDEOS_WORDS } from "@/lib/call-videos/words"
 import { deviceListener } from "@/lib/device-listen"
+import type { Feed } from "@/lib/feeds"
+import { FEEDS, isFeed } from "@/lib/feeds"
 import { studioVideos } from "@/lib/home-link/studio-videos"
 import { ideaHome } from "@/lib/idea-hearing"
 import { keepIdeas } from "@/lib/idea-keeping"
