@@ -147,6 +147,7 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/study-nudge/native.ts",
   "apps/www/src/lib/study-nudge/schedule.ts",
   "apps/www/src/components/call-videos.tsx",
+  "apps/www/src/components/video-fetch.tsx",
   "apps/www/src/components/studio/ask-answer.tsx",
   "apps/www/src/components/studio/renders.tsx",
   "apps/www/src/components/studio/episode-feedback.tsx",

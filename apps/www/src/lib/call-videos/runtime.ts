@@ -138,10 +138,6 @@ export function createFeedVideos(ports: VideosPorts): FeedVideos {
     }
   }
 
-  /**
-   * Brings `episode`'s video to the phone a part at a time. It stops,
-   * writing nothing more, once `forget` is stopping the episode.
-   */
   const fetchVideo = (episode: Episode, total: number): Promise<void> =>
     bringVideo(
       {

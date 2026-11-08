@@ -21,7 +21,6 @@ describe("PREVIEW_WORDS", () => {
     const said = [
       ...strings(PREVIEW_WORDS),
       PREVIEW_WORDS.kept(1_762_588_000, 1_762_674_400, "UTC"),
-      PREVIEW_WORDS.bringing(50, 100),
       PREVIEW_WORDS.failedWhy("no-sample") ?? "",
     ]
     for (const line of said) expect(line).not.toMatch(MACHINERY)

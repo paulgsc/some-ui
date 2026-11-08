@@ -4,8 +4,8 @@
  *
  * - `POST /previews/:template` asks home to make one, each time Preview is
  *   pressed; home makes none while one is still being made;
- * - `GET /previews/:template` reads the newest, on open, a drag down, Try
- *   again, and once after Preview;
+ * - `GET /previews/:template` reads the newest (when: `lib/template-preview`'s
+ *   runtime);
  * - `GET /previews/:template/:id/video`, a range of at most `PART_BYTES`
  *   (`lib/call-videos/parts`) per part, while Watch brings preview `id` to
  *   the phone; naming it means a newer preview can't be sent in its place.

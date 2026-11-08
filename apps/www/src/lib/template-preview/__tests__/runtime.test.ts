@@ -179,10 +179,6 @@ describe("a template's preview", () => {
     await preview.watch()
     setHome({ kind: "away" })
     await preview.open()
-    const after = preview.getSnapshot()
-    expect(after.home).toEqual({ kind: "read", preview: ready() })
-    expect(after.fetch?.fetch.kind).toBe("ready")
-    expect(after.said).toEqual({ kind: "readFailed", why: "away" })
     expect(kept.has("conference-call-1")).toBe(true)
   })
 

@@ -134,7 +134,6 @@ export function readyPreview(state: PreviewState): Preview | null {
 export function step(state: PreviewState, event: PreviewEvent): PreviewState {
   switch (event.type) {
     case "readAsked": {
-      // What was read stays on the page while it is read again.
       return state.home.kind === "read"
         ? state
         : { ...state, home: { kind: "reading" } }

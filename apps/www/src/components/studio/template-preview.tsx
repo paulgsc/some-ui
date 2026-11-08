@@ -7,21 +7,20 @@
  */
 import type { JSX } from "react"
 import { useEffect, useSyncExternalStore } from "react"
-import { assertNever, formatSize } from "@some-ui/core-utils"
+import { assertNever } from "@some-ui/core-utils"
 import { Button, Notice } from "@some-ui/shared"
 import type { TemplateId } from "@some-ui/video-render"
 
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 import {
-  PREVIEW_WORDS,
   previewRefresher,
   templatePreview,
+  PREVIEW_WORDS as WORDS,
 } from "@/lib/template-preview"
 import type { TemplatePreview as Runtime } from "@/lib/template-preview"
 import type { Preview, PreviewState } from "@/lib/template-preview/model"
 import { Part } from "@/components/studio/layout"
-
-const WORDS = PREVIEW_WORDS
+import { VideoFetch } from "@/components/video-fetch"
 
 const Watching = ({
   preview,
@@ -44,30 +43,13 @@ const Watching = ({
       />
     )
   }
-  if (fetch?.kind === "fetching") {
-    return (
-      <p className="text-muted-foreground text-sm">
-        {WORDS.bringing(fetch.done, fetch.total)}
-      </p>
-    )
-  }
   return (
-    <div className="flex flex-col gap-1">
-      {fetch?.kind === "failed" && (
-        <p className="text-muted-foreground text-sm">
-          {WORDS.fetchFailed[fetch.why]}
-        </p>
-      )}
-      <Button
-        size="sm"
-        variant="outline"
-        className="self-start"
-        onClick={() => void runtime.watch()}
-      >
-        {WORDS.watch}
-        {preview.bytes === undefined ? "" : ` (${formatSize(preview.bytes)})`}
-      </Button>
-    </div>
+    <VideoFetch
+      fetch={fetch}
+      bytes={preview.bytes ?? null}
+      onWatch={() => void runtime.watch()}
+      className="self-start"
+    />
   )
 }
 

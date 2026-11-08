@@ -63,7 +63,4 @@ export const PREVIEW_WORDS = {
   away: VIDEOS_WORDS.away,
   unreadable: VIDEOS_WORDS.unreadable,
   tryAgain: VIDEOS_WORDS.tryAgain,
-  watch: VIDEOS_WORDS.watch,
-  bringing: VIDEOS_WORDS.bringing,
-  fetchFailed: VIDEOS_WORDS.failed,
 } as const

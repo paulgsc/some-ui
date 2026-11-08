@@ -61,9 +61,7 @@ export function createTemplatePreview(ports: PreviewPorts): TemplatePreview {
     dispatch({ type: "readEnded", home })
     if (had !== null && state.fetch === null) {
       // Home holds a newer preview, or none: stop the old one's Watch, and
-      // let the phone's copy of it go.
-      // A Watch still running lets its copy go itself once its last write
-      // ends; with none, it goes now.
+      // let the phone's copy of it go (a running Watch does so itself).
       if (run === 0) {
         await ports.files.remove(had)
       } else {

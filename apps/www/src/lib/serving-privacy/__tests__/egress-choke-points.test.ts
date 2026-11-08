@@ -146,9 +146,8 @@ const HOME_LINK_CALLERS = new Set([
   // half minute while home has something under way. It sends nothing of its
   // own.
   "lib/renders/read.ts",
-  // LA8 (SFEED12): a template's preview, which asks home to make one on
-  // Preview, reads the newest as the page opens, on a drag down, on Try again
-  // and after a press, and asks for its video a part at a time on Watch.
+  // LA8 (SFEED12): a template's preview, which asks home to make one, reads
+  // the newest, and asks for its video a part at a time on Watch.
   "lib/template-preview/index.ts",
   // LA8 (ST33): Studio's Finish, which hands the voice lane a video kept for
   // home to make and hears what home answered and lists of it
