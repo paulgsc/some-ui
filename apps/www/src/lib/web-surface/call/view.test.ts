@@ -1,4 +1,8 @@
-import { CALL_INDEX_SCHEMA, sampleCallWeek } from "@some-ui/video-render"
+import {
+  CALL_INDEX_SCHEMA,
+  CALL_VERSION,
+  sampleCallWeek,
+} from "@some-ui/video-render"
 import type { CallIndex, CallWeek } from "@some-ui/video-render"
 import { describe, expect, it } from "vitest"
 
@@ -134,6 +138,31 @@ describe("what the stage draws", () => {
       sample: true,
       unread: true,
       problems: ["week: it ends before it starts"],
+    })
+  })
+
+  it("refuses a week newer than it knows: on record, saying why; off record, drawing the sample (VS1)", () => {
+    const newer = {
+      ...base,
+      record: true,
+      week: read({
+        ...week(),
+        template: { ...week().template, version: CALL_VERSION + 1 },
+      }),
+    }
+    const state = stageOf(newer)
+    expect(state.kind).toBe("none")
+    expect(state.kind === "none" && state.problems.join("\n")).toContain(
+      `up to version ${String(CALL_VERSION)}`
+    )
+    // Off record, a person looking gets the sample, never the newer week in
+    // an older look, and is told why.
+    expect(stageOf({ ...newer, record: false })).toMatchObject({
+      kind: "show",
+      sample: true,
+      problems: [
+        expect.stringContaining(`up to version ${String(CALL_VERSION)}`),
+      ],
     })
   })
 

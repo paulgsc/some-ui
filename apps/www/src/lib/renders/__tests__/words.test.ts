@@ -22,7 +22,9 @@ import {
   liveLine,
   nowLines,
   RENDERS_WORDS,
+  renderShape,
   roughly,
+  SHAPE_WORDS,
 } from "@/lib/renders/words"
 
 function strings(value: unknown): Array<string> {
@@ -92,6 +94,7 @@ describe("RENDERS_WORDS and what it says of each render", () => {
   it("names no machinery, in any state", () => {
     const said = [
       ...strings(RENDERS_WORDS),
+      ...strings(SHAPE_WORDS),
       RENDERS_WORDS.expected("2026-11-13"),
       RENDERS_WORDS.gaveWay(1),
       RENDERS_WORDS.gaveWay(3),
@@ -161,6 +164,34 @@ describe("RENDERS_WORDS and what it says of each render", () => {
         ],
       })
     ).toBe("A video couldn't be made.")
+  })
+
+  it("comes to one shape at a glance, for Settings › Status (SFEED13)", () => {
+    expect(renderShape(board(now("rendering", null, null)))).toBe("making")
+    expect(renderShape(board(now("finishing", null, null)))).toBe("making")
+    expect(renderShape(board(now("paused", null, null)))).toBe("paused")
+    expect(renderShape(board(now("waiting", null, null)))).toBe("waiting")
+    expect(renderShape(board(null))).toBe("quiet")
+    const failed = {
+      ...board(null),
+      failed: [
+        {
+          feed: "call",
+          key: "2026-10-30",
+          at: 0,
+          by: "home" as const,
+          exit: null,
+        },
+      ],
+    }
+    expect(renderShape(failed)).toBe("failed")
+    // What waits says more than what failed before it.
+    expect(
+      renderShape({
+        ...failed,
+        waiting: [{ feed: "call", key: "2026-11-06", at: 0 }],
+      })
+    ).toBe("waiting")
   })
 
   it("reads a day home expects as a day of the week", () => {
