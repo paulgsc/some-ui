@@ -30,7 +30,10 @@ const Muted = ({ children }: { children: ReactNode }): JSX.Element => (
   <p className="text-muted-foreground text-sm">{children}</p>
 )
 
-/** A bar: home's share when it has one, a pulse when it doesn't. */
+/**
+ * A bar: home's share when it has one, a sweep when it doesn't (a pulse, for
+ * a person who asks for less motion).
+ */
 const Bar = ({ percent }: { percent: number | null }): JSX.Element => (
   <div
     role="progressbar"
@@ -40,7 +43,7 @@ const Bar = ({ percent }: { percent: number | null }): JSX.Element => (
     className="bg-muted h-2 w-full overflow-hidden rounded-full"
   >
     {percent === null ? (
-      <div className="bg-primary h-full w-1/3 animate-pulse rounded-full" />
+      <div className="bg-primary h-full w-1/3 animate-[renders-sweep_1.6s_ease-in-out_infinite] rounded-full motion-reduce:animate-pulse" />
     ) : (
       <div
         className="bg-primary h-full rounded-full transition-[width] duration-700"
