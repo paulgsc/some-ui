@@ -282,6 +282,24 @@
       "gray": "Old renders aren't touched, but every new render's bytes move, which the owner would notice in a re-render.",
       "undo": "Revert TO_VIDEO and BT709 in plan.ts.",
       "refs": ["#2675", "#2774"]
+    },
+    {
+      "id": "C21",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "apps/www/src/lib/mark-theme/index.ts",
+        "apps/www/src/components/studio/mark-theme.tsx"
+      ],
+      "chose": "Studio's mark-theme control offers every one of the app's themes, each tile showing the mark on that theme's ground, and only on templates whose brand slides draw it.",
+      "options": [
+        "every theme, on its ground",
+        "a curated few",
+        "the mark alone, on the card"
+      ],
+      "gray": "Ask #2674 said any of the app's themes and named no way to show them.",
+      "undo": "Filter MARK_THEMES in lib/mark-theme, or drop the tile's background.",
+      "refs": ["#2674", "#2766", "#2789"]
     }
   ]
 }
