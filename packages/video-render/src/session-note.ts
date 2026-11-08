@@ -33,7 +33,7 @@ const sessionId = z.string().regex(/^session_[A-Za-z0-9]{8,64}$/)
 export const SessionNoteSchema = z.strictObject({
   schema: z.literal(SESSION_NOTE_SCHEMA),
   session: sessionId,
-  /** The day it ended, as `YYYY-MM-DD`: the week whose call reads it. */
+  /** The day it ended, in UTC, as `YYYY-MM-DD`: the week whose call reads it. */
   ended: z.iso.date(),
   /** The epics it worked, by the tag their titles carry: "SFEED". */
   epics: z.array(epicTag).max(12),
