@@ -115,12 +115,15 @@ function runNode(
 function runCommand(
   command: string,
   args: ReadonlyArray<string>,
-  env: Record<string, string>
+  env: Record<string, string>,
+  /** Killed after this long, when given. */
+  timeoutMs?: number
 ): Promise<Ran> {
   return new Promise((done) => {
     const child = spawn(command, [...args], {
       env,
       stdio: ["ignore", "pipe", "pipe"],
+      ...(timeoutMs === undefined ? {} : { timeout: timeoutMs }),
     })
     let output = ""
     const keep = (chunk: Buffer): void => {
@@ -215,11 +218,11 @@ export async function renderComposition(
     await writeFile(chrome, chromeWrapper(request.chrome))
     await chmod(chrome, 0o755)
     const env = renderEnv(process.env, chrome, tmp)
-    const runs = await runCommand(chrome, ["--version"], env)
+    const runs = await runCommand(chrome, ["--version"], env, 30_000)
     if (!runs.ok) {
       return {
         ok: false,
-        problem: `the browser can't be started from ${work}, where its wrapper is written (a drive mounted noexec?): ${lastLines(runs.output)}`,
+        problem: `the browser can't be started from ${work}, where its wrapper is written (the browser missing, or the drive mounted noexec): ${lastLines(runs.output)}`,
       }
     }
     const drawn = await runNode(

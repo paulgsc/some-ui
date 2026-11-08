@@ -15,7 +15,8 @@ pnpm --filter @some-ui/video-motion motion video <video folder> [--series <folde
 - `prove` renders a composition `--runs` times (two unless given) and fails unless every
   clip is the same bytes, printing each one's sum and time. When two differ it names the
   frames that do and, for the first four, where: the box of the pixels that differ, how
-  many, and the largest change in a channel (`src/difference.ts`, #2739). A box over one
+  many, the largest change in a channel, how many the second run draws lighter, and the
+  first few pixels in both runs' colours (`src/difference.ts`, #2739). A box over one
   element says something drew it differently; one over the whole frame, the capture.
 - `video` renders a video folder's `cut-list.json` through `@some-ui/video-render` into
   `video.mp4` beside it, its composition scenes drawn here (`src/node.ts`, the renderer's
@@ -52,14 +53,16 @@ The full Chrome is refused (see "The pins, and why").
   Chrome's own switches (`DRAW_FLAGS` in `src/pin.ts`), since it takes none of ours:
 
   - `--disable-partial-raster`: with partial raster, a reused tile is redrawn only inside
-    what changed, and antialiased edge pixels just outside it keep the frame before's.
-    Whether a tile is reused depends on timing, so still frames of the sample differed on
-    CI at the mark's edges, by up to 14 of 255, in one of two fixed ways (#2739).
+    what changed, and antialiased edge pixels just outside it can keep the frame before's
+    (measured here: it changes a few edge pixels of the moving mark). A guard, not the
+    cause of #2739, which was layer demotion ("Writing a composition").
   - `--run-all-compositor-stages-before-draw` and two more, which HyperFrames adds only
     for its BeginFrame capture, not for the screenshots `--low-memory-mode` takes, so a
     screenshot never catches a tile mid-raster.
 
-  The full Chrome never draws a frame with the second, so it is refused. The headless
+  The wrapper is written into the render's work folder and run once with `--version`
+  first, so a drive mounted `noexec` fails with a reason. The full Chrome never draws a
+  frame with the second, so it is refused. The headless
   shell's revision is the environment's (home's image, CI's flake; the newest found),
   which is why bytes match per machine.
 

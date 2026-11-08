@@ -151,7 +151,9 @@ async function sameBytes(
   const [first] = made
   const other = made.find((m) => m.sha !== first?.sha)
   if (first && other) {
-    const where = differ ? `: ${await differ(first.file, other.file)}` : ""
+    const where = differ
+      ? `: ${await differ(first.file, other.file).catch((error: unknown) => `the frames could not be compared (${String(error)})`)}`
+      : ""
     throw new Refused(`${what} is not the same bytes every run${where}`)
   }
   if (times > 1) say(`${what}: the same bytes ${String(times)} times`)
@@ -226,7 +228,11 @@ async function framesDiffering(
     return [`the same ${String(shared)} frames`, ...counts].join("\n  ")
   }
   const where: Array<string> = []
-  if (x.width !== y.width || !(x.width > 0)) {
+  if (!(x.width > 0) || !(y.width > 0)) {
+    where.push(
+      "the frames' size could not be read, so none is compared by pixel"
+    )
+  } else if (x.width !== y.width) {
     where.push("drawn at different sizes, so no frame is compared by pixel")
   } else {
     for (const frame of frames.slice(0, WHERE)) {
