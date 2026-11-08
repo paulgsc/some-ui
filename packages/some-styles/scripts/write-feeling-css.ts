@@ -14,8 +14,6 @@ import { SESSION_THEMES } from "../src/theme/registry"
 import { sessionRoles } from "../src/theme/session-roles"
 import { themeSources } from "../src/theme/sources"
 
-export { themeSources }
-
 const PACKAGE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..")
 
 export const FEELING_CSS_PATH = join(PACKAGE_ROOT, "themes/feeling.css")

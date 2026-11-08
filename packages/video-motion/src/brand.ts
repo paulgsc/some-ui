@@ -32,7 +32,7 @@ export const BRAND_VERSIONS: ReadonlyArray<BrandVersion> = [
   {
     version: 1,
     ref: "brand-v1",
-    says: "today's still mochi, drawn in with a small overshoot and out with a shrink",
+    says: "the still mochi, in the template's theme, drawn in with a small overshoot and out with a shrink",
     files: "c99857592d3a59aa383b314a2ea7e7249a42fc7005286a29750c88d78ad30485",
   },
 ]

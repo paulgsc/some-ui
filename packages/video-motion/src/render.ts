@@ -30,7 +30,7 @@ import { z } from "zod"
 
 import { isHeadlessShell } from "./browser"
 import { fontFiles } from "./fonts"
-import { isMarkTheme, themedMark } from "./mark"
+import { withMark } from "./mark"
 import {
   chromeWrapper,
   encodeArgs,
@@ -221,16 +221,12 @@ export async function renderComposition(
       setOnRoot("data-duration", String(request.seconds))
     }
     await writeFile(index, html)
-    // HYPER5: a composition given one of the app's themes draws the app's
-    // own mark in it, written here from the code, on that theme's ground
-    // unless the cut list sets one (`mark.ts`).
-    let given = request.variables
-    if (isMarkTheme(given.theme)) {
-      const mark = themedMark(given.theme)
-      await writeFile(join(project, "mark.svg"), mark.svg)
-      given = { ground: mark.ground, ...given }
-    }
-    await writeFile(variables, JSON.stringify(given))
+    // HYPER5: a composition that declares a `theme` draws the app's own
+    // mark in it, written here from the code (`withMark`).
+    const marked = withMark(html, request.variables)
+    if (marked.mark !== null)
+      await writeFile(join(project, "mark.svg"), marked.mark)
+    await writeFile(variables, JSON.stringify(marked.variables))
     const chrome = join(work, "chrome")
     await writeFile(chrome, chromeWrapper(request.chrome))
     await chmod(chrome, 0o755)

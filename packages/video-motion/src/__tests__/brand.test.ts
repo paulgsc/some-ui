@@ -4,7 +4,12 @@ import { MOCHI_BODY, MOCHI_FACE } from "@some-ui/styles/brand/mark"
 import { SESSION_THEME_IDS } from "@some-ui/styles/theme/registry"
 import { MOCHI_NIGHT } from "@some-ui/styles/theme/video-palette"
 import { BRAND_VERSIONS, ownDigest } from "@video-motion/brand"
-import { everyMark, isMarkTheme, themedMark } from "@video-motion/mark"
+import {
+  everyMark,
+  isMarkTheme,
+  themedMark,
+  withMark,
+} from "@video-motion/mark"
 import { COMPOSITIONS } from "@video-motion/render"
 import { describe, expect, it } from "vitest"
 
@@ -65,5 +70,32 @@ describe("the mark a composition draws (HYPER5)", () => {
     expect(isMarkTheme("sepia")).toBe(false)
     for (const id of SESSION_THEME_IDS)
       expect(everyMark()).toContain(themedMark(id).svg)
+  })
+
+  it("draws a composition's mark in the theme it is given, else in its declared default", async () => {
+    const html = await readFile(
+      join(COMPOSITIONS, "brand-v1", "index.html"),
+      "utf8"
+    )
+    const night = themedMark("mochi-night")
+    // Nothing given: its declared default, Mochi Night, on its ground.
+    expect(withMark(html, { part: "open" })).toEqual({
+      variables: { ground: night.ground, part: "open" },
+      mark: night.svg,
+    })
+    // A theme given, and a ground the cut list sets, which stays.
+    expect(withMark(html, { theme: "rose-night", ground: "#000000" })).toEqual({
+      variables: { theme: "rose-night", ground: "#000000" },
+      mark: themedMark("rose-night").svg,
+    })
+    // A composition that declares no theme gets no mark.
+    const promo = await readFile(
+      join(COMPOSITIONS, "promo-hook", "index.html"),
+      "utf8"
+    )
+    expect(withMark(promo, { title: "Hi" })).toEqual({
+      variables: { title: "Hi" },
+      mark: null,
+    })
   })
 })
