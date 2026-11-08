@@ -222,40 +222,6 @@
       "refs": ["#2673", "#2765"]
     },
     {
-      "id": "C22",
-      "made": "2026-11-08",
-      "by": "claude",
-      "paths": ["packages/video-render/src/cues.ts"],
-      "chose": "The six cues are synthesised: a whoosh of banded noise, a 90 ms click, a falling pop, a low thud, a brightening riser and a small bell, each at -6 dBFS.",
-      "options": ["these synthesised sounds", "other synthesised sounds"],
-      "gray": "The owner asked for effects we make ourselves (#2727) and described none of them.",
-      "undo": "Change cues.ts; each cue's sum, file name and the series version that pins it move together.",
-      "refs": ["#2727", "#2790"]
-    },
-    {
-      "id": "C23",
-      "made": "2026-11-08",
-      "by": "claude",
-      "paths": ["packages/video-motion/src/promo.ts"],
-      "chose": "The promo's cues sit on the dry run's beats: a whoosh 0.55 s before the hook ends, a pop as the frame opens, a click on each tap, a whoosh 0.5 s before the feature ends, a ding 0.3 s into the close.",
-      "options": [
-        "the dry run's cue sheet",
-        "no cues until the owner places them"
-      ],
-      "gray": "The dry run's sheet was a placeholder the owner never confirmed.",
-      "undo": "Change CUE_AT in promo.ts.",
-      "refs": ["#2726", "#2727", "#2790"]
-    },
-    {
-      "id": "C24",
-      "made": "2026-11-08",
-      "by": "owner",
-      "paths": ["packages/video-render/src/preview.ts"],
-      "chose": "A template's preview is a 15–30 s check that the pipeline works, not an episode, so its cut may shorten or drop the locked intro to fit the window; the locked intro still opens every episode, with no switch.",
-      "undo": "Keep the intro whole in `fitted` in preview.ts, and drop sections from the preview.",
-      "refs": ["#2757", "#2762"]
-    },
-    {
       "id": "C17",
       "made": "2026-11-08",
       "by": "claude",
@@ -336,6 +302,40 @@
       "refs": ["#2674", "#2766", "#2789"]
     },
     {
+      "id": "C22",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": ["packages/video-render/src/cues.ts"],
+      "chose": "The six cues are synthesised: a whoosh of banded noise, a 90 ms click, a falling pop, a low thud, a brightening riser and a small bell, each at -6 dBFS.",
+      "options": ["these synthesised sounds", "other synthesised sounds"],
+      "gray": "The owner asked for effects we make ourselves (#2727) and described none of them.",
+      "undo": "Change cues.ts; each cue's sum, file name and the series version that pins it move together.",
+      "refs": ["#2727", "#2790"]
+    },
+    {
+      "id": "C23",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": ["packages/video-motion/src/promo.ts"],
+      "chose": "The promo's cues sit on the dry run's beats: a whoosh 0.55 s before the hook ends, a pop as the frame opens, a click on each tap, a whoosh 0.5 s before the feature ends, a ding 0.3 s into the close.",
+      "options": [
+        "the dry run's cue sheet",
+        "no cues until the owner places them"
+      ],
+      "gray": "The dry run's sheet was a placeholder the owner never confirmed.",
+      "undo": "Change CUE_AT in promo.ts.",
+      "refs": ["#2726", "#2727", "#2790"]
+    },
+    {
+      "id": "C24",
+      "made": "2026-11-08",
+      "by": "owner",
+      "paths": ["packages/video-render/src/preview.ts"],
+      "chose": "A template's preview is a 15–30 s check that the pipeline works, not an episode, so its cut may shorten or drop the locked intro to fit the window; the locked intro still opens every episode, with no switch.",
+      "undo": "Keep the intro whole in `fitted` in preview.ts, and drop sections from the preview.",
+      "refs": ["#2757", "#2762"]
+    },
+    {
       "id": "C25",
       "made": "2026-11-08",
       "by": "claude",
@@ -400,6 +400,26 @@
       "gray": "#2745 says each note is filed as a pending issue that says where it goes; a note can go to more than one place, and an issue that is both a story and a defect has no one kind.",
       "undo": "Make toFile give one feedback item per note, with every destination, and drop the per-place line in noteFiledLine.",
       "refs": ["#2745", "#2670"]
+    },
+    {
+      "id": "C29",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/ui/soundbites/src/components/ideas-on-home/index.tsx",
+        "packages/ui/soundbites/src/lib/idea/redo.ts",
+        "packages/ui/soundbites/src/lib/studio/words.ts"
+      ],
+      "chose": "On Ideas on home, \"Say it again\" sits under each said answer (not a typed one) and starts a take at once; its take waits under the answer with Play, Redo and Delete; one \"Send it again\" under the answers sends every waiting answer of the idea together; saying an answer again twice before that deletes the first waiting take.",
+      "options": [
+        "Say it again under each said answer, one Send it again for the idea",
+        "Say it again and Send it again per answer",
+        "Say it again on typed answers too",
+        "keep every waiting take said for an answer"
+      ],
+      "gray": "The owner ruled that a redo waits until the idea is sent again (#2453, question 3) and named no wording beyond Say it again, no placement and no rule for a typed answer or a second redo.",
+      "undo": "Move the Send it again button into AnswerRedo, widen redo.ts' sayable to typed answers, or drop dropsOf from on-home.ts' withRedo.",
+      "refs": ["#2579", "#2453"]
     }
   ]
 }
