@@ -62,3 +62,21 @@ Playoff Delta) has them from home's speaker (`/timed`), and the renderer
 a scene at a time. Words from my own takes need home's transcriber
 (whisper.cpp's per-word times), which the owner approved keeping
 (2026-10-26, confirmed 2026-10-29; the shape is on GWB11, #2085).
+
+## A caption look sent from Studio
+
+The phone's Studio sets a template's caption look on its Templates page and sends it as a new
+GitHub issue holding the look in one ` ```json caption-look ` block (SFEED11, #2707; www's
+`lib/caption-look`). The look is code, so a session lands it:
+
+1. Add the block's look to `THEMES` (`src/lib/captions/theme.ts`) under a new id in
+   `THEME_IDS`. Leave the look it changed from as it is: videos already made name it.
+2. Pin a new version of the series that names the old look
+   (`packages/video-render/src/sample/series/<series>/v<n+1>.json`), its `designs.captions`
+   naming the new id, and move `packages/video-render/src/templates.ts`'s import of it to that
+   version (its test fails until both agree). Check that the recorder for that feed writes the
+   new series version into its cut list, so the next render draws it.
+3. Close the issue with the PR.
+
+Studio's preview is one still line drawn from the look's values. The first render on home in a
+new look is the one to watch.

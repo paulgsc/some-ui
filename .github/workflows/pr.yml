@@ -668,6 +668,12 @@ jobs:
         env:
           BASE_REF: ${{ github.base_ref }}
         run: nix develop .#ci --command node scripts/check-policy-docs.ts --base "origin/$BASE_REF"
+      # ST37 (#2637): docs/calls.json's shape, and that it only grew since the
+      # base's (packages/eslint/src/calls.ts). Here for the same base fetch.
+      - name: Check the calls record
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: nix develop .#ci --command node scripts/check-calls.ts --base "origin/$BASE_REF"
 
   # ── Assurance ledger (repo-wide) ──────────────────────────────────────
   # docs/operational-assurance.md: the ledger of promises about outcomes and

@@ -58,7 +58,7 @@ import { z } from "zod"
 
 import { ASK_LABEL, readAskIssue } from "./ask"
 import { callFolderProblems } from "./call"
-import { callsOf, changeOf, trailersOf, whereWeAreOf } from "./call-facts"
+import { callsEntered, changeOf, trailersOf, whereWeAreOf } from "./call-facts"
 import type { CallFacts } from "./call-facts"
 import { clipFolderProblems, parseClipIndex } from "./clip"
 import { problemsOf } from "./cut-list"
@@ -357,7 +357,6 @@ const PullHit = z.object({
   title: z.string(),
   author: z.string(),
   mergedAt: z.string(),
-  body: z.string(),
 })
 const CommitHit = z.object({ sha: z.string(), message: z.string() })
 const IssueHit = z.object({
@@ -367,15 +366,65 @@ const IssueHit = z.object({
   body: z.string(),
 })
 
+/** The calls record's path in some-ui. */
+const CALLS_RECORD = "docs/calls.json"
+
+/**
+ * The calls record on this checkout's history as it stood at `day`'s start
+ * (UTC): null when there was none yet. The weekly run starts from some-ui's
+ * `main` (`CALL-ROUTINE.md`, step 1), with history back to the week's start.
+ */
+async function recordAt(day: string): Promise<string | null> {
+  const root = (
+    await run("git", ["rev-parse", "--show-toplevel"])
+  ).stdout.trim()
+  const commit = (
+    await run("git", [
+      "-C",
+      root,
+      "rev-list",
+      "-1",
+      "--first-parent",
+      `--before=${day}T00:00:00Z`,
+      "HEAD",
+    ])
+  ).stdout.trim()
+  if (commit === "")
+    fail([
+      `no commit before ${day} on this checkout: fetch main's history back to the week's start`,
+    ])
+  const at = `${commit}:${CALLS_RECORD}`
+  try {
+    await run("git", ["-C", root, "cat-file", "-e", at])
+  } catch {
+    return null
+  }
+  try {
+    return (await run("git", ["-C", root, "show", at])).stdout
+  } catch {
+    return fail([`${CALLS_RECORD} at ${commit} could not be read`])
+  }
+}
+
+/** The day after `day`. */
+const dayAfter = (day: string): string =>
+  new Date(Date.parse(`${day}T00:00:00Z`) + 86_400_000)
+    .toISOString()
+    .slice(0, 10)
+
 /** The weekly call's facts for `from`..`to`, both days included. */
 async function callFacts(from: string, to: string): Promise<CallFacts> {
   const facts: CallFacts = {
     week: { from, to },
     pulls: [],
+    calls: [],
     promises: [],
     asks: [],
     epics: [],
   }
+  const after = await recordAt(dayAfter(to))
+  if (after !== null)
+    facts.calls.push(...callsEntered(await recordAt(from), after))
   for (const repo of REPOS) {
     const changes = new Map<number, "story" | "defect">()
     const commits = await search(
@@ -394,7 +443,7 @@ async function callFacts(from: string, to: string): Promise<CallFacts> {
     const pulls = await search(
       "search/issues",
       `repo:paulgsc/${repo} is:pr is:merged merged:${from}..${to}`,
-      '.items[] | {number, title, author: (.user.login // "ghost"), mergedAt: .pull_request.merged_at, body: (.body // "")}',
+      '.items[] | {number, title, author: (.user.login // "ghost"), mergedAt: .pull_request.merged_at}',
       PullHit
     )
     for (const p of pulls) {
@@ -406,7 +455,6 @@ async function callFacts(from: string, to: string): Promise<CallFacts> {
         author: p.author,
         mergedAt: p.mergedAt,
         ...(change === undefined ? {} : { change }),
-        calls: callsOf(p.body),
       })
     }
     const asks = await search(
