@@ -200,6 +200,32 @@ describe("a template's preview", () => {
     expect(fetch?.id).toBe("conference-call-2")
   })
 
+  it("lets a look for a kept copy that lands after a newer read change nothing", async () => {
+    const { ports, kept, setHome } = fakes()
+    kept.set("conference-call-1", 10)
+    kept.set("conference-call-2", 10)
+    const size = ports.files.size
+    let release: () => void = () => undefined
+    ports.files.size = (key): Promise<number | null> =>
+      key === "conference-call-1"
+        ? new Promise((resolve) => {
+            release = (): void => {
+              resolve(10)
+            }
+          })
+        : size(key)
+    const preview = createTemplatePreview(ports)
+    const older = preview.open()
+    await vi.waitFor(() => {
+      expect(preview.getSnapshot().home.kind).toBe("read")
+    })
+    setHome({ kind: "read", preview: ready({ id: "conference-call-2" }) })
+    await preview.open()
+    release()
+    await older
+    expect(preview.getSnapshot().fetch?.id).toBe("conference-call-2")
+  })
+
   it("answers whether this read reached home, whatever the page keeps", async () => {
     const { ports, setHome } = fakes()
     const preview = createTemplatePreview(ports)
@@ -216,6 +242,7 @@ describe("a template's preview", () => {
     await preview.watch()
     setHome({ kind: "away" })
     await preview.open()
+    expect(preview.getSnapshot().fetch?.fetch.kind).toBe("ready")
     expect(kept.has("conference-call-1")).toBe(true)
   })
 

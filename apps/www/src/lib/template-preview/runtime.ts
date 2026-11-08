@@ -7,7 +7,8 @@
  * - **The read** happens on open, a drag down, Try again, and once after
  *   Preview. Nothing reads on a clock: the page says how far home has got
  *   when it is read. A read that finds a newer preview, or none, lets the
- *   phone's copy of the old one go.
+ *   phone's copy of the old one go. A read, or its look for a kept copy,
+ *   that lands after a newer read changes nothing.
  * - **Preview** asks home once; a press while one is asked does nothing.
  * - **Watch** brings the ready preview over as Studio's feed videos bring an
  *   episode (`bringVideo`). Each Watch is its own run, stopped once a read
