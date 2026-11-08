@@ -17,6 +17,7 @@ import {
 import type { Title } from "./lib/play/store"
 import { entryLine, WORDS } from "./lib/play/words"
 import { CARD_WORDS } from "./lib/week-play/card-words"
+import { weekOpenNow } from "./lib/week-play/open-now"
 
 export const RUST_ROUNDS_TITLE = WORDS.title
 
@@ -117,14 +118,8 @@ export function rustWeekEntry(
     const week = cardWeek(each)
     return week === null ? [] : [week]
   })
-  const opened = weeks
-    .filter((week) => Date.parse(week.opens) <= at)
-    .sort((a, b) => Date.parse(b.opens) - Date.parse(a.opens))
-  const first = [...weeks].sort(
-    (a, b) => Date.parse(a.opens) - Date.parse(b.opens)
-  )[0]
-  const week = opened[0] ?? first
-  if (week === undefined) return null
+  const week = weekOpenNow(weeks, ({ opens }) => opens, at)
+  if (week === null) return null
   const readSent = readJson((value) => (Array.isArray(value) ? value : null))
   const sent = openKept<ReadonlyArray<unknown>>(
     storage,

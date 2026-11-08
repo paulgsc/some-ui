@@ -24,6 +24,7 @@ import type {
 } from "@some-ui/voice-capture"
 import { bundleRuntime } from "@some-ui/voice-capture"
 
+import { weekOpenNow } from "./open-now"
 import type { WeekKind } from "./spec"
 import { weekMachine } from "./spec"
 import { heardWords, weekDrafts, weeksSent } from "./store"
@@ -89,15 +90,17 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
     for (const listener of listeners) listener()
   }
 
-  /** Asks home, once, for the words of each take sent that has none yet. */
-  const askSent = (): void => {
+  /**
+   * Asks home, once, for the words of each take sent that has none yet, one
+   * after another: the link runs one request at a time, and answers any
+   * other with busy.
+   */
+  const askSent = async (): Promise<void> => {
     const { sent } = bundle.getSnapshot()
     if (sent === null) return
     for (const { take } of sent.answers) {
       if (snapshot[take]?.kind === "heard") continue
-      void ports.heard(take).then((answer) => {
-        answered(take, answer)
-      })
+      answered(take, await ports.heard(take))
     }
   }
 
@@ -118,26 +121,14 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
       // Opening reads what is kept at once, so a week already sent is on
       // the sent screen here; one sent later in this opening is not asked.
       const detach = bundle.attach()
-      askSent()
+      void askSent()
       return detach
     },
   }
 }
 
-/**
- * The week this phone plays at `at`: the newest it holds that has opened,
- * or, before any has, the one that opens first; null when it holds none. A
- * week can be answered before it opens: it closes at its deadline only.
- */
-export function currentWeek(
+/** The week this phone plays at `at` (`./open-now`); null when it holds none. */
+export const currentWeek = (
   weeks: ReadonlyArray<HeldWeek>,
   at: number
-): HeldWeek | null {
-  const opened = weeks
-    .filter(({ week }) => Date.parse(week.opens) <= at)
-    .sort((a, b) => Date.parse(b.week.opens) - Date.parse(a.week.opens))
-  const first = [...weeks].sort(
-    (a, b) => Date.parse(a.week.opens) - Date.parse(b.week.opens)
-  )[0]
-  return opened[0] ?? first ?? null
-}
+): HeldWeek | null => weekOpenNow(weeks, ({ week }) => week.opens, at)

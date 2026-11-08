@@ -1289,8 +1289,13 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   accepts; a hunk to `lib/home-link/rust-rounds.ts` that makes the lane's
   `revision` anything but `roundsTaken` of what plays (the rounds taken on
   this phone, never one taken from home), its `subscribe` anything but the
-  store's, or its `exchange` anything but `exchangeRounds` over
-  `phoneRounds()`; a hunk to `@some-ui/rust-rounds`'s `lib/home` that sends
+  store's, or its `exchange` anything but `exchangeRustRounds` over
+  `phoneRounds()` and `phoneWeeks()` (the rounds' exchange, then, once it is
+  synced, the weeks'); a hunk to `@some-ui/rust-rounds`'s `lib/weeks` that
+  sends anything but one `GET /rust-weeks` and at most
+  `WEEK_READS_PER_EXCHANGE` `GET`s of a week `weeksToRead` names, writes a
+  week other than through its store's `hold`, or rewrites a week the phone
+  holds; a hunk to `@some-ui/rust-rounds`'s `lib/home` that sends
   anything but one `PUT` of a round `roundsToSend` names, one
   `GET /rust-rounds` and at most `READS_PER_EXCHANGE` `GET`s of a round
   `roundsToRead` names, or that writes what plays other than through its
@@ -1365,6 +1370,7 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   `packages/ui/leetype/src/lib/leetype/session-log/home.ts`,
   `apps/www/src/lib/home-link/rust-rounds.ts`,
   `packages/ui/rust-rounds/src/lib/home/index.ts`,
+  `packages/ui/rust-rounds/src/lib/weeks/index.ts`,
   `packages/ui/rust-rounds/src/lib/play/store.ts`,
   `packages/ui/rust-rounds/src/lib/play/held.ts`.
 - _Why not enforced:_ whether a moment is one where the person is using the

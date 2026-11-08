@@ -159,6 +159,35 @@ describe("a week on the phone (RR13)", () => {
     })
   })
 
+  it("asks for each take's words one after another, as home's link runs them", async () => {
+    const storage = inMemoryStorage()
+    const simulated = onConfirm()
+    const first = phone(storage, simulated)
+    first.week.bundle.dispatch({ type: "go", index: 0 })
+    await say(first, "QM-311")
+    await say(first, "QM-312")
+    first.week.bundle.dispatch({ type: "review" })
+    first.week.bundle.dispatch({ type: "send" })
+    await pass()
+    first.detach()
+    // The link: one request at a time, any other answered busy.
+    let out = false
+    const heard = async (): Promise<HeardAnswer> => {
+      if (out) return { kind: "busy" }
+      out = true
+      await new Promise((done) => {
+        setTimeout(done, 10)
+      })
+      out = false
+      return { kind: "heard", text: "Words." }
+    }
+    const again = phone(storage, simulated, { heard })
+    await pass(100)
+    expect(
+      Object.values(again.week.heard.getSnapshot()).map((each) => each?.kind)
+    ).toEqual(["heard", "heard"])
+  })
+
   it("sends nothing past the deadline, and keeps the takes on the phone", async () => {
     const after = Date.parse(QUILLMOSS_WEEK.due) + 60_000
     const on = phone(inMemoryStorage(), onConfirm(), { now: () => after })
