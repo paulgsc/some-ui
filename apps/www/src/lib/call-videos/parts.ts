@@ -81,8 +81,10 @@ export async function bringVideo(
   key: string,
   total: number
 ): Promise<void> {
+  /** Whether the fetch is over: a whole copy is kept (and said), or it was stopped. */
   const ready = async (): Promise<boolean> => {
     const where = await keptCopy(ports.files, key, total)
+    if (ports.stopped()) return true
     if (where === null) return false
     ports.moved({ kind: "ready", ...where })
     return true

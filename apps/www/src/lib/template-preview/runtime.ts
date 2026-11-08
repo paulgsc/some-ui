@@ -55,8 +55,9 @@ export function createTemplatePreview(ports: PreviewPorts): TemplatePreview {
 
   const open = async (): Promise<void> => {
     dispatch({ type: "readAsked" })
-    const had = state.fetch?.id ?? null
     const home = await ports.read()
+    // The copy held as the read lands, a Watch pressed during it included.
+    const had = state.fetch?.id ?? null
     dispatch({ type: "readEnded", home })
     if (had !== null && state.fetch === null) {
       // Home holds a newer preview, or none: stop the old one's Watch, and
@@ -106,11 +107,11 @@ export function createTemplatePreview(ports: PreviewPorts): TemplatePreview {
     },
 
     async watch(): Promise<void> {
-      const now = state.fetch?.fetch
-      if (now?.kind === "fetching" || now?.kind === "ready") return
       const ready = readyPreview(state)
       const total = ready?.bytes
       if (ready === null || total === undefined) return
+      const now = state.fetch?.id === ready.id ? state.fetch.fetch : undefined
+      if (now?.kind === "fetching" || now?.kind === "ready") return
       const { id } = ready
       runs += 1
       const mine = runs

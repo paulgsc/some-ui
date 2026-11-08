@@ -124,20 +124,52 @@ describe("a template's preview", () => {
     expect(ports.part).not.toHaveBeenCalled()
   })
 
-  it("stops bringing a preview over once a read finds a newer one", async () => {
+  it("stops bringing a preview over once a read finds a newer one, and lets its copy go", async () => {
     const { ports, kept, setHome } = fakes()
     const preview = createTemplatePreview(ports)
     await preview.open()
-    ports.part.mockImplementationOnce(async (_id, start, end) => {
-      setHome({ kind: "read", preview: ready({ id: "conference-call-2" }) })
-      await preview.open()
-      return { kind: "bytes", base64: bytes(end - start + 1) }
+    const first = ports.part.getMockImplementation()
+    let parts = 0
+    ports.part.mockImplementation(async (id, start, end) => {
+      parts += 1
+      // After the first part is written, home holds a newer preview.
+      if (parts === 2) {
+        expect(kept.get("conference-call-1")).toBe(4)
+        setHome({ kind: "read", preview: ready({ id: "conference-call-2" }) })
+        await preview.open()
+      }
+      return first ? first(id, start, end) : { kind: "away" }
     })
     await preview.watch()
-    expect(ports.part).toHaveBeenCalledTimes(1)
+    expect(parts).toBe(2)
     expect(preview.getSnapshot().fetch).toBeNull()
-    // The old preview's part-written copy is let go.
     expect(kept.has("conference-call-1")).toBe(false)
+  })
+
+  it("stops a Watch pressed while a read that finds a newer preview is out", async () => {
+    const { ports, kept, setHome } = fakes()
+    const preview = createTemplatePreview(ports)
+    await preview.open()
+    let land: (home: HomeState) => void = () => undefined
+    ports.read.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          land = resolve
+        })
+    )
+    const reading = preview.open()
+    const watching = preview.watch()
+    land({ kind: "read", preview: ready({ id: "conference-call-2" }) })
+    setHome({ kind: "read", preview: ready({ id: "conference-call-2" }) })
+    await Promise.all([reading, watching])
+    expect(preview.getSnapshot().fetch).toBeNull()
+    expect(kept.has("conference-call-1")).toBe(false)
+    // The newer preview's Watch works.
+    await preview.watch()
+    expect(preview.getSnapshot().fetch).toMatchObject({
+      id: "conference-call-2",
+      fetch: { kind: "ready" },
+    })
   })
 
   it("keeps a preview being watched on the page when a read again gets no answer", async () => {
