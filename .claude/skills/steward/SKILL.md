@@ -259,21 +259,12 @@ duplicated in this file.
 ## A user-facing change leaves its clip
 
 The session that lands a change a user can see (an app's or an extension's screen, a
-dashboard) makes its clip before it ends (SFEED7, epic #2670 decision 5). The clip shows the
-change as the user sees it, not the code. It goes into paulgsc/testing's `clips/`, which is
-Studio's Library on the phone, as `@some-ui/video-render`'s `clip.ts` describes, and
-`render clip-check <clips folder>` must say the folder is ready before it is pushed.
-
-- **Walk it when the surface has a walk.** Run `@some-ui/video-motion`'s `motion walk`
-  (SFEED7a, #2736) on the build from before the change into `clips/<id>/before/`, and on the
-  build after it into `clips/<id>/after/`. Each folder is a HyperFrames scene's input as it
-  stands. For something new, leave `before` as `null`.
-- **Otherwise, record it yourself** from sample data (the Pages build, or a Playwright video of
-  the change's screen), as a `made: "session"` side.
-- **Command-line clips** (a `make` target, an environment-file workflow) wait on the CARDS
-  epic, #2465. Say on the PR that the clip waits for it.
-- If the clip can't be made, say so and why on the PR and its issue. Never merge as if it
-  were made.
+dashboard) makes its clip before it ends (SFEED7, epic #2670 decision 5), into paulgsc/testing's
+`clips/` as `@some-ui/video-render`'s `clip.ts` says, and `render clip-check <clips folder>`
+must say ready before it is pushed. Walk it with `motion walk` (SFEED7a, #2736) where the
+surface has a walk, before and after the change; otherwise take its screens from sample data
+yourself. Command-line clips wait on the CARDS epic, #2465: say so on the PR. A clip that can't
+be made is said, with why, on the PR and its issue, never merged past as if it were made.
 
 ## Cross-repo PRs: name every one, every time
 

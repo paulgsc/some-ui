@@ -121,11 +121,9 @@ export const STUDIO_INDEX_WORDS = {
     landed: (day: string): string => `Landed ${formatDay(day)}`,
     before: "Before",
     after: "After",
-    /** A clip of something new, with no screen before it. */
     nothingBefore: "New with this change: there was nothing to show before.",
     walked: "Code recorded it from sample data.",
-    recorded: "Recorded by the session that made the change.",
-    watch: "Watch the video",
+    recorded: "Taken by the session that made the change, from sample data.",
     open: "See the change",
   },
 

@@ -11,7 +11,7 @@ const clip = (title: string, landed: string): Clip => ({
   change: { repo: "some-ui", kind: "pr", number: 1 },
   landed,
   before: null,
-  after: { made: "session", video: "clip.webm" },
+  after: { made: "session", snips: [{ file: "after/01.png", label: "Opens" }] },
 })
 
 describe("the Library's order", () => {

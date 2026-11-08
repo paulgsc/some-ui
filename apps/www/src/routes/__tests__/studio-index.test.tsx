@@ -160,6 +160,13 @@ describe("Asks", () => {
   })
 })
 
+/** paulgsc/testing's host serves a JSON file as plain text. */
+const asText = (body: unknown): Response =>
+  new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { "content-type": "text/plain; charset=utf-8" },
+  })
+
 const CLIP = {
   id: "never-suspend",
   title: "Never suspend a site, from the popup",
@@ -179,7 +186,7 @@ const CLIP = {
 describe("the Library", () => {
   it("lists every clip kept, each a link to its page", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      answer({ schema: "some-ui.clip-index/1", clips: [CLIP] })
+      asText({ schema: "some-ui.clip-index/1", clips: [CLIP] })
     )
     const { container } = render(withQueryClient(<ClipsList />))
     await screen.findByText(CLIP.title)
@@ -198,7 +205,7 @@ describe("the Library", () => {
 
   it("shows a clip's after step by step, and that nothing came before", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      answer({ schema: "some-ui.clip-index/1", clips: [CLIP] })
+      asText({ schema: "some-ui.clip-index/1", clips: [CLIP] })
     )
     render(withQueryClient(<ClipScreen id={CLIP.id} />))
     await screen.findByText(STUDIO_INDEX_WORDS.clips.nothingBefore)

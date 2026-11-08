@@ -1,20 +1,18 @@
 /**
- * Clips (SFEED7 #2768, epic #2670 decision 5): what a user-facing change built, as
- * a user sees it. Each is kept in paulgsc/testing's `clips/` (decision 9),
- * listed in `clips/index.json`, which Studio's Library on the phone reads to
- * pick from; only some are shown in an episode.
+ * Clips (SFEED7 #2768, epic #2670 decision 5): what a user-facing change
+ * built, as a user sees it, kept in paulgsc/testing's `clips/` (decision 9)
+ * and listed in `clips/index.json`, which Studio's Library reads.
  *
- * A clip has an `after`, and a `before` when there was a screen to change:
+ * A clip has an `after`, and a `before` when there was a screen to change.
+ * Each side is its screens in order, as stills with a label each:
  *
- * - **A walk** (`made: "walk"`): code recorded it, a scripted walk replayed in
- *   a sandbox holding only sample data (`@some-ui/video-motion`'s
- *   `motion walk`), once on the build before the change and once after. Each
- *   side is that command's own folder, `clips/<id>/<side>/`, its `walk.json`
- *   (`some-ui.walk/1`) beside its snips, so a side is a HyperFrames scene's
- *   input as it stands (`promo-feature` draws one).
- * - **A recording** (`made: "session"`): what code can't walk yet, made by
- *   the session that landed the change before it ended (the steward skill's
- *   rule), a video file in `clips/<id>/`.
+ * - `made: "walk"`: code recorded them, `@some-ui/video-motion`'s
+ *   `motion walk` replaying a scripted walk in a sandbox holding only sample
+ *   data. The side is that command's own folder, `clips/<id>/<side>/`: its
+ *   `walk.json` (`some-ui.walk/1`, whose shape `WalkFileSchema` below reads)
+ *   beside its snips, which is a HyperFrames scene's input as it stands.
+ * - `made: "session"`: the session that landed the change took them, from
+ *   sample data, where there is no walk yet.
  *
  * The index repeats each walk's snips and labels, so the phone reads one
  * file; `clipFolderProblems` holds it to every `walk.json` it names.
@@ -37,31 +35,20 @@ const clipFile = z
 
 const SnipSchema = z.strictObject({ file: clipFile, label: words })
 
-const SideSchema = z.discriminatedUnion("made", [
-  z.strictObject({
-    made: z.literal("walk"),
-    /** Each step's screen, in order, as the side's `walk.json` lists it. */
-    snips: z.array(SnipSchema).min(1),
-  }),
-  z.strictObject({
-    made: z.literal("session"),
-    /** The recording, a video in the clip's folder. */
-    video: clipFile.regex(/\.(?:webm|mp4)$/),
-  }),
-])
+const SideSchema = z.strictObject({
+  made: z.enum(["walk", "session"]),
+  snips: z.array(SnipSchema).min(1),
+})
 
 export type ClipSide = z.infer<typeof SideSchema>
 
 const ClipSchema = z.strictObject({
-  /** Its folder under `clips/`. */
   id: showId,
   /** What a user sees it do, in their terms. */
   title: words,
   /** The app or surface it shows: "suspender-ledger", "studio". */
   app: showId,
-  /** The pull request that landed what it shows. */
   change: RefSchema.extend({ kind: z.literal("pr") }),
-  /** The day that pull request merged. */
   landed: z.iso.date(),
   before: SideSchema.nullable(),
   after: SideSchema,
@@ -94,33 +81,33 @@ export const clipPath = (id: string, file: string): string => `${id}/${file}`
 /** What a walk's `walk.json` says that a clip repeats. */
 const WalkFileSchema = z.object({
   schema: z.literal(WALK_SCHEMA),
-  snips: z.array(z.object({ file: z.string(), label: z.string() })),
+  snips: z.array(z.object({ file: z.string(), label: z.string().trim() })),
 })
 
 /**
  * Every reason a `clips/` folder can't be published: its index unread, a
  * walk whose `walk.json` is missing or lists other snips than the index, and
- * a file the index names that isn't there. `json` is each JSON file by its
- * path under `clips/`; `exists` says whether any file is there.
+ * a snip the index names that isn't there. `read` gives a JSON file under
+ * `clips/` (undefined when it's missing or isn't JSON); `exists` says whether
+ * any file is there.
  */
 export function clipFolderProblems(
-  json: ReadonlyMap<string, unknown>,
+  read: (path: string) => unknown,
   exists: (path: string) => boolean
 ): Array<string> {
-  const index = parseClipIndex(json.get("index.json"))
+  const index = parseClipIndex(read("index.json"))
   if (!index.ok) return index.problems.map((p) => `index.json: ${p}`)
   const problems: Array<string> = []
   for (const clip of index.value.clips) {
     for (const side of ["before", "after"] as const) {
       const it = clip[side]
       if (it === null) continue
-      if (it.made === "session") {
-        if (!exists(clipPath(clip.id, it.video)))
-          problems.push(`${clip.id}: its ${side} names ${it.video}, not there`)
-        continue
-      }
+      for (const snip of it.snips)
+        if (!exists(clipPath(clip.id, snip.file)))
+          problems.push(`${clip.id}: ${snip.file} isn't there`)
+      if (it.made === "session") continue
       const walkPath = clipPath(clip.id, `${side}/walk.json`)
-      const walk = WalkFileSchema.safeParse(json.get(walkPath))
+      const walk = WalkFileSchema.safeParse(read(walkPath))
       if (!walk.success) {
         problems.push(`${clip.id}: ${walkPath} isn't a walk`)
         continue
@@ -133,9 +120,6 @@ export function clipFolderProblems(
         problems.push(
           `${clip.id}: its ${side} lists other snips than ${walkPath}`
         )
-      for (const snip of it.snips)
-        if (!exists(clipPath(clip.id, snip.file)))
-          problems.push(`${clip.id}: ${snip.file} isn't there`)
     }
   }
   return once(problems)

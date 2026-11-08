@@ -1,12 +1,18 @@
 /**
  * The pieces every page of Studio's index draws (SFEED1, #2731): a page
  * under its heading in the phone's column with the way back, a tile that
- * links somewhere, and a labelled part of an item's page. Every word is `lib/studio-index/words`'.
+ * links somewhere, a labelled part of an item's page, a list read from
+ * elsewhere, and a way out to where an item lives. Every word is
+ * `lib/studio-index/words`'.
  */
 import type { JSX, ReactNode } from "react"
+import { Button, Notice } from "@some-ui/shared"
+import type { QueryKey, UseQueryOptions } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 
 import { hasAudience } from "@/lib/build-profile"
+import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
 import type { StudioKind } from "@/lib/studio-index"
 import { KIND_WORDS, kindPath, STUDIO_INDEX_WORDS } from "@/lib/studio-index"
 
@@ -85,4 +91,75 @@ export const Part = ({
     </h2>
     {children}
   </section>
+)
+
+
+/** What a list read from elsewhere says while it reads, can't, or can't again. */
+type ReadWords = {
+  readonly reading: string
+  readonly away: string
+  readonly stale: string
+}
+
+/**
+ * A list read from elsewhere (Asks, Clips), once read, or what stands in for
+ * it until then. A refresh that failed keeps what was read before, and says so.
+ */
+export function ReadList<T, K extends QueryKey>({
+  query,
+  words,
+  children,
+}: {
+  query: UseQueryOptions<T, Error, T, K>
+  words: ReadWords
+  children: (value: T) => ReactNode
+}): JSX.Element {
+  return matchQueryOutcome(queryOutcome(useQuery(query)), {
+    pending: () => (
+      <p className="text-muted-foreground text-sm">{words.reading}</p>
+    ),
+    failed: (_error, retry) => (
+      <div className="flex flex-col gap-2">
+        <p className="text-sm">{words.away}</p>
+        <Button size="sm" variant="outline" onClick={retry}>
+          {STUDIO_INDEX_WORDS.tryAgain}
+        </Button>
+      </div>
+    ),
+    ready: (value, refreshError) => (
+      <>
+        {refreshError !== undefined && (
+          <Notice
+            tone="warning"
+            dismissible
+            action={{
+              label: STUDIO_INDEX_WORDS.tryAgain,
+              onClick: refreshError.retry,
+            }}
+          >
+            {words.stale}
+          </Notice>
+        )}
+        {children(value)}
+      </>
+    ),
+  })
+}
+
+/** The way out to where an item lives, on GitHub. */
+export const OutLink = ({
+  href,
+  children,
+}: {
+  href: string
+  children: ReactNode
+}): JSX.Element => (
+  <a
+    href={href}
+    target="_blank"
+    rel="noreferrer"
+    className="text-brand self-start text-sm font-semibold underline underline-offset-4"
+  >
+    {children}
+  </a>
 )

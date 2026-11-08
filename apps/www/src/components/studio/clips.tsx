@@ -6,58 +6,27 @@
  * episode comes with the episode's own page.
  */
 import type { JSX, ReactNode } from "react"
-import { Button, Notice } from "@some-ui/shared"
 import type { Clip, ClipSide } from "@some-ui/video-render"
 import { refUrl } from "@some-ui/video-render"
-import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 
 import { hasAudience } from "@/lib/build-profile"
-import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
 import { clipUrl, studioClipsQuery } from "@/lib/studio-clips"
 import { STUDIO_INDEX_WORDS } from "@/lib/studio-index"
 
-import { Part, TILE } from "./layout"
+import { OutLink, Part, ReadList, TILE } from "./layout"
 
 const WORDS = STUDIO_INDEX_WORDS.clips
 
-/** The clips once read, or what stands in for them until then. */
 const Read = ({
   children,
 }: {
-  children: (clips: ReadonlyArray<Clip>) => ReactNode
-}): JSX.Element =>
-  matchQueryOutcome(queryOutcome(useQuery(studioClipsQuery)), {
-    pending: () => (
-      <p className="text-muted-foreground text-sm">{WORDS.reading}</p>
-    ),
-    failed: (_error, retry) => (
-      <div className="flex flex-col gap-2">
-        <p className="text-sm">{WORDS.away}</p>
-        <Button size="sm" variant="outline" onClick={retry}>
-          {STUDIO_INDEX_WORDS.tryAgain}
-        </Button>
-      </div>
-    ),
-    ready: (clips, refreshError) => (
-      <>
-        {refreshError !== undefined && (
-          <Notice
-            tone="warning"
-            dismissible
-            action={{
-              label: STUDIO_INDEX_WORDS.tryAgain,
-              onClick: refreshError.retry,
-            }}
-          >
-            {WORDS.stale}
-          </Notice>
-        )}
-        {children(clips)}
-      </>
-    ),
-  })
-
+  children: (items: ReadonlyArray<Clip>) => ReactNode
+}): JSX.Element => (
+  <ReadList query={studioClipsQuery} words={WORDS}>
+    {children}
+  </ReadList>
+)
 /** The Library: each clip a link to its page. */
 export const ClipsList = (): JSX.Element => (
   <Read>
@@ -87,38 +56,27 @@ export const ClipsList = (): JSX.Element => (
   </Read>
 )
 
-/** One side of a clip: a walk's screens in order, or the session's recording. */
-const Side = ({ id, side }: { id: string; side: ClipSide }): JSX.Element =>
-  side.made === "session" ? (
-    <>
-      <a
-        href={clipUrl(id, side.video)}
-        target="_blank"
-        rel="noreferrer"
-        className="text-brand self-start text-sm font-semibold underline underline-offset-4"
-      >
-        {WORDS.watch}
-      </a>
-      <p className="text-muted-foreground text-xs">{WORDS.recorded}</p>
-    </>
-  ) : (
-    <>
-      <ol className="flex flex-col gap-3">
-        {side.snips.map((snip) => (
-          <li key={snip.file} className="flex flex-col gap-1">
-            <img
-              src={clipUrl(id, snip.file)}
-              alt={snip.label}
-              loading="lazy"
-              className="border-border/60 w-full rounded-xl border"
-            />
-            <span className="text-sm">{snip.label}</span>
-          </li>
-        ))}
-      </ol>
-      <p className="text-muted-foreground text-xs">{WORDS.walked}</p>
-    </>
-  )
+/** One side of a clip: its screens in order, and who recorded them. */
+const Side = ({ id, side }: { id: string; side: ClipSide }): JSX.Element => (
+  <>
+    <ol className="flex flex-col gap-3">
+      {side.snips.map((snip) => (
+        <li key={snip.file} className="flex flex-col gap-1">
+          <img
+            src={clipUrl(id, snip.file)}
+            alt={snip.label}
+            loading="lazy"
+            className="border-border/60 w-full rounded-xl border"
+          />
+          <span className="text-sm">{snip.label}</span>
+        </li>
+      ))}
+    </ol>
+    <p className="text-muted-foreground text-xs">
+      {side.made === "walk" ? WORDS.walked : WORDS.recorded}
+    </p>
+  </>
+)
 
 /** One clip's page, by its id, or that it's gone from the Library. */
 export const ClipScreen = ({ id }: { id: string }): JSX.Element => (
@@ -145,14 +103,7 @@ export const ClipScreen = ({ id }: { id: string }): JSX.Element => (
           <Part label={WORDS.after}>
             <Side id={clip.id} side={clip.after} />
           </Part>
-          <a
-            href={refUrl(clip.change)}
-            target="_blank"
-            rel="noreferrer"
-            className="text-brand self-start text-sm font-semibold underline underline-offset-4"
-          >
-            {WORDS.open}
-          </a>
+          <OutLink href={refUrl(clip.change)}>{WORDS.open}</OutLink>
         </>
       )
     }}

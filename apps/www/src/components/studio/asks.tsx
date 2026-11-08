@@ -7,58 +7,26 @@
  * The read is the query's (`studioAsksQuery`); this only draws its outcome.
  */
 import type { JSX, ReactNode } from "react"
-import { Button, Notice } from "@some-ui/shared"
-import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 
 import { hasAudience } from "@/lib/build-profile"
-import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
 import type { StudioAsk } from "@/lib/studio-asks"
 import { questionOf, studioAsksQuery } from "@/lib/studio-asks"
 import { STUDIO_INDEX_WORDS } from "@/lib/studio-index"
 
-import { Part, TILE } from "./layout"
+import { OutLink, Part, ReadList, TILE } from "./layout"
 
 const WORDS = STUDIO_INDEX_WORDS.asks
 
-/** The open asks once read, or what stands in for them until then. */
 const Read = ({
   children,
 }: {
-  children: (asks: ReadonlyArray<StudioAsk>) => ReactNode
-}): JSX.Element =>
-  matchQueryOutcome(queryOutcome(useQuery(studioAsksQuery)), {
-    pending: () => (
-      <p className="text-muted-foreground text-sm">{WORDS.reading}</p>
-    ),
-    failed: (_error, retry) => (
-      <div className="flex flex-col gap-2">
-        <p className="text-sm">{WORDS.away}</p>
-        <Button size="sm" variant="outline" onClick={retry}>
-          {STUDIO_INDEX_WORDS.tryAgain}
-        </Button>
-      </div>
-    ),
-    // A refresh that failed keeps what was read before, and says so.
-    ready: (asks, refreshError) => (
-      <>
-        {refreshError !== undefined && (
-          <Notice
-            tone="warning"
-            dismissible
-            action={{
-              label: STUDIO_INDEX_WORDS.tryAgain,
-              onClick: refreshError.retry,
-            }}
-          >
-            {WORDS.stale}
-          </Notice>
-        )}
-        {children(asks)}
-      </>
-    ),
-  })
-
+  children: (items: ReadonlyArray<StudioAsk>) => ReactNode
+}): JSX.Element => (
+  <ReadList query={studioAsksQuery} words={WORDS}>
+    {children}
+  </ReadList>
+)
 /** The list: each ask a link to its page, A to Z. */
 export const AsksList = (): JSX.Element => (
   <Read>
@@ -132,13 +100,6 @@ const AskParts = ({ ask }: { ask: StudioAsk }): JSX.Element => (
         </Part>
       </>
     )}
-    <a
-      href={ask.url}
-      target="_blank"
-      rel="noreferrer"
-      className="text-brand self-start text-sm font-semibold underline underline-offset-4"
-    >
-      {WORDS.open}
-    </a>
+    <OutLink href={ask.url}>{WORDS.open}</OutLink>
   </>
 )

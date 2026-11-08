@@ -43,28 +43,42 @@ const FILES = new Set([
   "never-suspend/before/snips/01.png",
   "never-suspend/after/snips/01.png",
   "never-suspend/after/snips/02.png",
-  "never-suspend/clip.webm",
+  "never-suspend/after/shot.png",
 ])
 const exists = (path: string): boolean => FILES.has(path)
 
-const folder = (raw: object): Map<string, unknown> =>
-  new Map<string, unknown>([
-    ["index.json", raw],
-    ["never-suspend/before/walk.json", walk(["Opens"])],
-    ["never-suspend/after/walk.json", walk(["Opens", "Never suspend"])],
-  ])
+const folder =
+  (raw: object) =>
+  (path: string): unknown =>
+    new Map<string, unknown>([
+      ["index.json", raw],
+      ["never-suspend/before/walk.json", walk(["Opens"])],
+      ["never-suspend/after/walk.json", walk(["Opens", " Never suspend "])],
+    ]).get(path)
 
 describe("a clips folder", () => {
   it("is ready when every walk's snips are its walk.json's, and there", () => {
     expect(clipFolderProblems(folder(index()), exists)).toEqual([])
   })
 
-  it("takes a recording made by the session, with nothing before", () => {
+  it("takes stills the session took, with nothing before", () => {
     const made = index({
       before: null,
-      after: { made: "session", video: "clip.webm" },
+      after: {
+        made: "session",
+        snips: [{ file: "after/shot.png", label: "Opens" }],
+      },
     })
     expect(clipFolderProblems(folder(made), exists)).toEqual([])
+  })
+
+  it("names a walk.json that isn't one", () => {
+    const raw = index()
+    const read = (path: string): unknown =>
+      path.endsWith("after/walk.json") ? undefined : folder(raw)(path)
+    expect(clipFolderProblems(read, exists)).toEqual([
+      "never-suspend: never-suspend/after/walk.json isn't a walk",
+    ])
   })
 
   it("names a walk the index lists differently, and a file that isn't there", () => {
@@ -75,13 +89,18 @@ describe("a clips folder", () => {
       },
     })
     expect(clipFolderProblems(folder(raw), exists)).toEqual([
-      "never-suspend: its after lists other snips than never-suspend/after/walk.json",
       "never-suspend: after/snips/03.png isn't there",
+      "never-suspend: its after lists other snips than never-suspend/after/walk.json",
     ])
   })
 
   it("refuses a file outside the clip's folder", () => {
-    const raw = index({ after: { made: "session", video: "../secret.webm" } })
+    const raw = index({
+      after: {
+        made: "session",
+        snips: [{ file: "../secret.png", label: "x" }],
+      },
+    })
     expect(clipFolderProblems(folder(raw), exists)[0]).toMatch(/^index\.json: /)
   })
 })
