@@ -16,6 +16,7 @@ import {
 import { chromium } from "playwright-core"
 import { z } from "zod"
 
+import { difference, saidOf } from "./difference"
 import { compositionPort } from "./node"
 import { HYPERFRAMES_VERSION } from "./pin"
 import { renderComposition } from "./render"
@@ -146,27 +147,77 @@ async function sameBytes(
   if (times > 1) say(`${what}: the same bytes ${String(times)} times`)
 }
 
-/** Which frames of two clips differ, by each decoded frame's MD5. */
+/** How many differing frames `prove` says where, past which it only counts them. */
+const WHERE = 4
+
+/**
+ * Which frames of two clips differ, by each decoded frame's MD5, and for the
+ * first few, where in the frame (`difference.ts`).
+ */
 async function framesDiffering(
   dir: string,
   a: string,
   b: string
 ): Promise<string> {
-  const sums = async (clip: string): Promise<ReadonlyArray<string>> => {
+  const ports = nodePorts(dir)
+  const sums = async (
+    clip: string
+  ): Promise<{ sums: ReadonlyArray<string>; width: number }> => {
     const out = `${clip}.framemd5`
-    await nodePorts(dir).ffmpeg({
+    await ports.ffmpeg({
       args: ["-v", "error", "-y", "-i", clip, "-f", "framemd5", out],
     })
-    return (await readFile(out, "utf8"))
-      .split("\n")
-      .filter((l) => l && !l.startsWith("#"))
-      .map((l) => l.split(",").at(-1)?.trim() ?? "")
+    const lines = (await readFile(out, "utf8")).split("\n")
+    const width = Number(
+      /^#dimensions 0: (\d+)x\d+/m.exec(lines.join("\n"))?.[1]
+    )
+    return {
+      sums: lines
+        .filter((l) => l && !l.startsWith("#"))
+        .map((l) => l.split(",").at(-1)?.trim() ?? ""),
+      width,
+    }
+  }
+  const rgb = async (clip: string, frame: number): Promise<Uint8Array> => {
+    const out = `${clip}.${String(frame)}.rgb`
+    const made = await ports.ffmpeg({
+      args: [
+        ...[
+          "-v",
+          "error",
+          "-y",
+          "-i",
+          clip,
+          "-vf",
+          `select=eq(n\\,${String(frame)})`,
+        ],
+        ...["-frames:v", "1", "-f", "rawvideo", "-pix_fmt", "rgb24", out],
+      ],
+    })
+    if (!made.ok)
+      throw new Refused(`frame ${String(frame)} of ${clip}: ${made.stderr}`)
+    return readFile(out)
   }
   const [x, y] = [await sums(a), await sums(b)]
-  const frames = x.flatMap((sum, i) => (sum === y[i] ? [] : [i]))
-  return frames.length === 0
-    ? `the same frames, ${String(x.length)} and ${String(y.length)} of them`
-    : `frames ${frames.slice(0, 12).join(", ")}${frames.length > 12 ? "…" : ""} of ${String(x.length)} differ`
+  const frames = x.sums.flatMap((sum, i) => (sum === y.sums[i] ? [] : [i]))
+  if (frames.length === 0) {
+    return `the same frames, ${String(x.sums.length)} and ${String(y.sums.length)} of them`
+  }
+  const where: Array<string> = []
+  if (Number.isInteger(x.width) && x.width > 0) {
+    for (const frame of frames.slice(0, WHERE)) {
+      where.push(
+        saidOf(
+          frame,
+          difference(await rgb(a, frame), await rgb(b, frame), x.width)
+        )
+      )
+    }
+  }
+  return [
+    `frames ${frames.slice(0, 12).join(", ")}${frames.length > 12 ? "…" : ""} of ${String(x.sums.length)} differ`,
+    ...where,
+  ].join("\n  ")
 }
 
 async function prove(composition: string): Promise<void> {

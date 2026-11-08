@@ -12,8 +12,11 @@ pnpm --filter @some-ui/video-motion motion render sample --out sample.mkv --vari
 pnpm --filter @some-ui/video-motion motion video <video folder> [--series <folder>] [--prove]
 ```
 
-- `prove` renders a composition twice and fails unless the two clips are the same bytes,
-  printing each one's sum and time.
+- `prove` renders a composition `--runs` times (two unless given) and fails unless every
+  clip is the same bytes, printing each one's sum and time. When two differ it names the
+  frames that do and, for the first four, where: the box of the pixels that differ, how
+  many, and the largest change in a channel (`src/difference.ts`, #2739). A box over one
+  element says something drew it differently; one over the whole frame, the capture.
 - `video` renders a video folder's `cut-list.json` through `@some-ui/video-render` into
   `video.mp4` beside it, its composition scenes drawn here (`src/node.ts`, the renderer's
   `compositions` port). Each step is kept in the folder's `cache/`, so a retry draws only
