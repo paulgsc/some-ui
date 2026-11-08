@@ -54,7 +54,8 @@ The full Chrome is refused (see "The pins, and why").
   `--low-memory-mode` takes. Without them, a screenshot can catch the page's tiles
   mid-raster: on CI, still frames of the sample differed at the mark's edges, by up to 14
   of 255 (#2739). The full Chrome never draws a frame with those switches, so it is
-  refused.
+  refused. Its revision is the environment's (home's image, CI's flake; the newest one
+  found), which is why bytes match per machine.
 - **Strict:** a lint error, an undeclared variable or unready media fails the render.
 - **No network.** Every font is vendored by the lockfile (`src/fonts.ts`, `@fontsource/*`,
   OFL) and copied in beside the composition. A font HyperFrames reached the network for

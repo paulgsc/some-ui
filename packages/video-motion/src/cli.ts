@@ -212,23 +212,35 @@ async function framesDiffering(
     return readFile(out)
   }
   const [x, y] = [await sums(a), await sums(b)]
-  const frames = x.sums.flatMap((sum, i) => (sum === y.sums[i] ? [] : [i]))
+  const shared = Math.min(x.sums.length, y.sums.length)
+  const frames = x.sums
+    .slice(0, shared)
+    .flatMap((sum, i) => (sum === y.sums[i] ? [] : [i]))
+  const counts =
+    x.sums.length === y.sums.length
+      ? []
+      : [
+          `the runs drew ${String(x.sums.length)} and ${String(y.sums.length)} frames`,
+        ]
   if (frames.length === 0) {
-    return `the same frames, ${String(x.sums.length)} and ${String(y.sums.length)} of them`
+    return [`the same ${String(shared)} frames`, ...counts].join("\n  ")
   }
   const where: Array<string> = []
-  if (Number.isInteger(x.width) && x.width > 0) {
+  if (x.width !== y.width || !(x.width > 0)) {
+    where.push("drawn at different sizes, so no frame is compared by pixel")
+  } else {
     for (const frame of frames.slice(0, WHERE)) {
-      where.push(
-        saidOf(
-          frame,
-          difference(await rgb(a, frame), await rgb(b, frame), x.width)
-        )
-      )
+      try {
+        const [one, two] = [await rgb(a, frame), await rgb(b, frame)]
+        where.push(saidOf(frame, difference(one, two, x.width)))
+      } catch (error) {
+        where.push(`frame ${String(frame)}: not compared (${String(error)})`)
+      }
     }
   }
   return [
-    `frames ${frames.slice(0, 12).join(", ")}${frames.length > 12 ? "…" : ""} of ${String(x.sums.length)} differ`,
+    `frames ${frames.slice(0, 12).join(", ")}${frames.length > 12 ? "…" : ""} of ${String(shared)} differ`,
+    ...counts,
     ...where,
   ].join("\n  ")
 }

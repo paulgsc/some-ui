@@ -109,8 +109,16 @@ function runNode(
   args: ReadonlyArray<string>,
   env: Record<string, string>
 ): Promise<Ran> {
+  return runCommand(process.execPath, args, env)
+}
+
+function runCommand(
+  command: string,
+  args: ReadonlyArray<string>,
+  env: Record<string, string>
+): Promise<Ran> {
   return new Promise((done) => {
-    const child = spawn(process.execPath, [...args], {
+    const child = spawn(command, [...args], {
       env,
       stdio: ["ignore", "pipe", "pipe"],
     })
@@ -206,12 +214,20 @@ export async function renderComposition(
     const chrome = join(work, "chrome")
     await writeFile(chrome, chromeWrapper(request.chrome))
     await chmod(chrome, 0o755)
+    const env = renderEnv(process.env, chrome, tmp)
+    const runs = await runCommand(chrome, ["--version"], env)
+    if (!runs.ok) {
+      return {
+        ok: false,
+        problem: `the browser can't be started from ${work}, where its wrapper is written (a drive mounted noexec?): ${lastLines(runs.output)}`,
+      }
+    }
     const drawn = await runNode(
       [
         await hyperframesBin(),
         ...renderArgs({ project, frames, variables, fps: request.fps }),
       ],
-      renderEnv(process.env, chrome, tmp)
+      env
     )
     if (!drawn.ok) {
       return {
