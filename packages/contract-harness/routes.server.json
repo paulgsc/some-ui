@@ -19,6 +19,27 @@
     },
     {
       "method": "GET",
+      "path": "/admin/settings/:namespace",
+      "full_path": "/api/v1/admin/settings/:namespace",
+      "versioned": true,
+      "module": "admin_settings"
+    },
+    {
+      "method": "PUT",
+      "path": "/admin/settings/:namespace",
+      "full_path": "/api/v1/admin/settings/:namespace",
+      "versioned": true,
+      "module": "admin_settings"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/settings/:namespace/history",
+      "full_path": "/api/v1/admin/settings/:namespace/history",
+      "versioned": true,
+      "module": "admin_settings"
+    },
+    {
+      "method": "GET",
       "path": "/aph",
       "full_path": "/api/v1/aph",
       "versioned": true,

@@ -33,6 +33,7 @@ import { Route as DashboardApkGameWeekRouteImport } from './routes/_dashboard/_a
 import { Route as DashboardApkJobsRouteImport } from './routes/_dashboard/_apk/jobs'
 import { Route as DashboardApkRustRoundsRouteImport } from './routes/_dashboard/_apk/rust-rounds'
 import { Route as DashboardApkSoundbitesRouteImport } from './routes/_dashboard/_apk/soundbites'
+import { Route as DashboardLanHomeSwitchesRouteImport } from './routes/_dashboard/_lan/home-switches'
 import { Route as DashboardLanLessonsRouteImport } from './routes/_dashboard/_lan/lessons'
 import { Route as DashboardLanResumeBuildRouteImport } from './routes/_dashboard/_lan/resume-build'
 import { Route as DashboardPracticeSettingsRouteImport } from './routes/_dashboard/practice/settings'
@@ -180,6 +181,12 @@ const DashboardApkSoundbitesRoute = DashboardApkSoundbitesRouteImport.update({
   path: '/soundbites',
   getParentRoute: () => DashboardApkRoute,
 } as any)
+const DashboardLanHomeSwitchesRoute =
+  DashboardLanHomeSwitchesRouteImport.update({
+    id: '/home-switches',
+    path: '/home-switches',
+    getParentRoute: () => DashboardLanRoute,
+  } as any)
 const DashboardLanLessonsRoute = DashboardLanLessonsRouteImport.update({
   id: '/lessons',
   path: '/lessons',
@@ -358,6 +365,7 @@ export interface FileRoutesByFullPath {
   '/jobs': typeof DashboardApkJobsRouteWithChildren
   '/rust-rounds': typeof DashboardApkRustRoundsRoute
   '/soundbites': typeof DashboardApkSoundbitesRoute
+  '/home-switches': typeof DashboardLanHomeSwitchesRoute
   '/lessons': typeof DashboardLanLessonsRoute
   '/resume-build': typeof DashboardLanResumeBuildRoute
   '/practice/settings': typeof DashboardPracticeSettingsRoute
@@ -407,6 +415,7 @@ export interface FileRoutesByTo {
   '/game-week': typeof DashboardApkGameWeekRoute
   '/rust-rounds': typeof DashboardApkRustRoundsRoute
   '/soundbites': typeof DashboardApkSoundbitesRoute
+  '/home-switches': typeof DashboardLanHomeSwitchesRoute
   '/lessons': typeof DashboardLanLessonsRoute
   '/resume-build': typeof DashboardLanResumeBuildRoute
   '/practice/settings': typeof DashboardPracticeSettingsRoute
@@ -462,6 +471,7 @@ export interface FileRoutesById {
   '/_dashboard/_apk/jobs': typeof DashboardApkJobsRouteWithChildren
   '/_dashboard/_apk/rust-rounds': typeof DashboardApkRustRoundsRoute
   '/_dashboard/_apk/soundbites': typeof DashboardApkSoundbitesRoute
+  '/_dashboard/_lan/home-switches': typeof DashboardLanHomeSwitchesRoute
   '/_dashboard/_lan/lessons': typeof DashboardLanLessonsRoute
   '/_dashboard/_lan/resume-build': typeof DashboardLanResumeBuildRoute
   '/_dashboard/practice/settings': typeof DashboardPracticeSettingsRoute
@@ -515,6 +525,7 @@ export interface FileRouteTypes {
     | '/jobs'
     | '/rust-rounds'
     | '/soundbites'
+    | '/home-switches'
     | '/lessons'
     | '/resume-build'
     | '/practice/settings'
@@ -564,6 +575,7 @@ export interface FileRouteTypes {
     | '/game-week'
     | '/rust-rounds'
     | '/soundbites'
+    | '/home-switches'
     | '/lessons'
     | '/resume-build'
     | '/practice/settings'
@@ -618,6 +630,7 @@ export interface FileRouteTypes {
     | '/_dashboard/_apk/jobs'
     | '/_dashboard/_apk/rust-rounds'
     | '/_dashboard/_apk/soundbites'
+    | '/_dashboard/_lan/home-switches'
     | '/_dashboard/_lan/lessons'
     | '/_dashboard/_lan/resume-build'
     | '/_dashboard/practice/settings'
@@ -831,6 +844,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/soundbites'
       preLoaderRoute: typeof DashboardApkSoundbitesRouteImport
       parentRoute: typeof DashboardApkRoute
+    }
+    '/_dashboard/_lan/home-switches': {
+      id: '/_dashboard/_lan/home-switches'
+      path: '/home-switches'
+      fullPath: '/home-switches'
+      preLoaderRoute: typeof DashboardLanHomeSwitchesRouteImport
+      parentRoute: typeof DashboardLanRoute
     }
     '/_dashboard/_lan/lessons': {
       id: '/_dashboard/_lan/lessons'
@@ -1111,11 +1131,13 @@ const DashboardApkRouteWithChildren = DashboardApkRoute._addFileChildren(
 )
 
 interface DashboardLanRouteChildren {
+  DashboardLanHomeSwitchesRoute: typeof DashboardLanHomeSwitchesRoute
   DashboardLanLessonsRoute: typeof DashboardLanLessonsRoute
   DashboardLanResumeBuildRoute: typeof DashboardLanResumeBuildRoute
 }
 
 const DashboardLanRouteChildren: DashboardLanRouteChildren = {
+  DashboardLanHomeSwitchesRoute: DashboardLanHomeSwitchesRoute,
   DashboardLanLessonsRoute: DashboardLanLessonsRoute,
   DashboardLanResumeBuildRoute: DashboardLanResumeBuildRoute,
 }
