@@ -1961,8 +1961,6 @@
         "server:infra/docker/Dockerfile.render",
         "server:infra/kokoro",
         "some-ui:apps/www/tests/record/call.ts",
-        "server:apps/servers/file_host/src/handlers/call_videos.rs",
-        "server:apps/servers/file_host/src/routes/call_videos.rs",
         "server:apps/servers/file_host/src/feeds",
         "server:apps/servers/file_host/src/handlers/feed_videos.rs",
         "server:apps/servers/file_host/src/routes/feed_videos.rs"
@@ -4270,8 +4268,8 @@
           "owner": "ours",
           "on": "home",
           "paths": [
-            "server:apps/servers/file_host/src/routes/call_videos.rs",
-            "server:apps/servers/file_host/src/handlers/call_videos.rs",
+            "server:apps/servers/file_host/src/routes/feed_videos.rs",
+            "server:apps/servers/file_host/src/handlers/feed_videos.rs",
             "server:apps/servers/file_host/src/feeds/videos.rs"
           ]
         },
