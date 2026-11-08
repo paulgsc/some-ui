@@ -176,15 +176,16 @@ export const STUDIO_INDEX_WORDS = {
     chapter: "A chapter slide, said aloud",
     upTo: (n: number): string => `Up to ${String(n)}, one each`,
     sometimes: "Left out when there's nothing to say",
-    subtitles: "Subtitles",
-    subtitlesAre: {
-      word: "Each word lit as it's said",
-      line: "A line at a time",
-      off: "None",
+    captions: "Captions",
+    /** Whether the words said are captioned, in the template's own look (SFEED11). */
+    captioned: {
+      word: "Each line captioned in the template's look",
+      line: "Each line captioned in the template's look",
+      off: "No captions",
     },
     chapters: (n: number): string =>
       `${counted(n, "chapter slide")} said aloud`,
     noShape:
-      "Made before templates had a shape: no intro, chapters or subtitles.",
+      "Made before templates had a shape: no intro, chapters or captions.",
   },
 } as const

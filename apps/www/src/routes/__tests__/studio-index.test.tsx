@@ -79,7 +79,7 @@ describe("a template's page", () => {
     expect(rows.filter((row) => row.includes(W.chapter))).toHaveLength(
       format.shape?.chapters.length ?? -1
     )
-    screen.getByText(W.subtitlesAre.word)
+    screen.getByText(W.captioned.word)
   })
 })
 

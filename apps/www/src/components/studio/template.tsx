@@ -2,7 +2,7 @@
  * A template's shape, as Studio's Templates page shows it (SFEED1, #2731;
  * ST30's scene rows): the locked intro, the brand intro, each section in
  * order with the chapter slides said aloud before the ones marked, the brand
- * outro, and the subtitles. All of it is read from the template's newest
+ * outro, and its captions. All of it is read from the template's newest
  * pinned format (`@some-ui/video-render`'s `templateFormat`), so what this
  * shows is what home makes. Setting it from here is a later story (SFEED2,
  * SFEED3).
@@ -80,8 +80,8 @@ export const TemplateShape = ({ format }: { format: Format }): JSX.Element => {
           )}
         </ol>
       </Part>
-      <Part label={WORDS.subtitles}>
-        <p className="text-sm">{WORDS.subtitlesAre[shape.subtitles]}</p>
+      <Part label={WORDS.captions}>
+        <p className="text-sm">{WORDS.captioned[shape.subtitles]}</p>
         <p className="text-muted-foreground text-sm">
           {WORDS.chapters(marked.size)}
         </p>
