@@ -49,6 +49,10 @@ Each module's header says why it is the way it is.
   under `src/templates/conference-call/`, beside its sample week; its
   series is sampled in `src/sample/series/conference-call/`. `callScenes`
   gives the scenes in order, each ask with the id a reply names.
+- `src/templates.ts`: every template Studio lists (SFEED1, #2731), each
+  the newest version pinned under `src/templates/<id>/`. Playoff Delta's
+  formats are made in its own workspace and pinned here, beside the call's,
+  because the phone's build doesn't carry that workspace.
 - `src/resolve.ts`, `src/timing.ts`: each lever from the layer that sets
   it; each scene placed in whole frames.
 - `src/plan.ts`: the ffmpeg calls, as data. `src/render.ts` runs them over

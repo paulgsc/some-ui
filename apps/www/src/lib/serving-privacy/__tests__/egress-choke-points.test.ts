@@ -141,7 +141,7 @@ const HOME_LINK_CALLERS = new Set([
   // LA8 (ST33): Studio's Finish, which hands the voice lane a video kept for
   // home to make and hears what home answered and lists of it
   // (`studioVideos`), sending nothing of its own.
-  "routes/_dashboard/_apk/journal/index.tsx",
+  "routes/_dashboard/_apk/journal/episodes/making.tsx",
 ])
 
 /**

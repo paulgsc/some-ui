@@ -1,6 +1,7 @@
 /**
  * Studio's feed videos (ST38, #2661; FEED4): the episodes home has made of
- * each feed (`FEEDS`), newest first. For each, Watch brings the video to the
+ * each feed (`FEEDS`), newest first, each on its own page under Studio's
+ * Episodes (SFEED1, `EpisodeScreen`). On it, Watch brings the video to the
  * phone and plays it, Share to YouTube hands it to the share sheet, and its
  * YouTube link is saved with the episode; once home's copy is let go (My
  * data), the link is how it is watched. Reads `lib/call-videos`' snapshot of
@@ -246,20 +247,72 @@ export const EpisodesList = ({
   }
 }
 
-export const FeedVideosScreen = ({
+/**
+ * `feed`'s episodes as links to each one's page (SFEED1's Episodes list),
+ * newest first, as home's list has them, or what the list says while it
+ * can't show them. The link is the route's, so it stays typed.
+ */
+export const FeedEpisodeLinks = ({
   feed,
   pair,
+  renderLink,
 }: {
   feed: Feed
   /** The way to pairing, for a phone that isn't paired. */
   pair: JSX.Element
+  /** The link to one episode's page, around its label. */
+  renderLink: (key: string, label: string) => ReactNode
+}): JSX.Element => {
+  const { videos, state } = useFeedVideos(feed)
+  const { list } = state
+  return (
+    <EpisodesList
+      feed={feed}
+      list={list}
+      pair={pair}
+      onTryAgain={() => void videos.open()}
+    >
+      {list.kind === "read" && (
+        <ul className="flex flex-col gap-2">
+          {list.episodes.map((episode) => (
+            <li key={episode.key}>
+              {renderLink(episode.key, FEED_WORDS[feed].label(episode.key))}
+            </li>
+          ))}
+        </ul>
+      )}
+    </EpisodesList>
+  )
+}
+
+/**
+ * One episode of `feed` (SFEED1's episode page): its video to watch, share to
+ * YouTube and save the link of, as home's list has it now, or what the list
+ * says while it can't show it.
+ */
+export const EpisodeScreen = ({
+  feed,
+  episodeKey,
+  pair,
+  gone,
+}: {
+  feed: Feed
+  episodeKey: string
+  /** The way to pairing, for a phone that isn't paired. */
+  pair: JSX.Element
+  /** What to say when home's list no longer has the episode. */
+  gone: string
 }): JSX.Element => {
   const { videos, state } = useFeedVideos(feed)
   const { list, said } = state
+  const episode =
+    list.kind === "read"
+      ? list.episodes.find((one) => one.key === episodeKey)
+      : undefined
   return (
     <div className="flex flex-col gap-3">
       <p className="text-muted-foreground text-sm">{FEED_WORDS[feed].intro}</p>
-      {said !== null && (
+      {said !== null && said.key === episodeKey && (
         <Notice
           key={`${said.kind}-${said.key}`}
           onDismiss={() => videos.seen()}
@@ -275,18 +328,17 @@ export const FeedVideosScreen = ({
         pair={pair}
         onTryAgain={() => void videos.open()}
       >
-        {list.kind === "read" && (
+        {episode === undefined ? (
+          <p className="text-muted-foreground text-sm">{gone}</p>
+        ) : (
           <ul className="flex flex-col gap-3">
-            {list.episodes.map((episode) => (
-              <EpisodeRow
-                key={episode.key}
-                feed={feed}
-                episode={episode}
-                fetch={state.fetches[episode.key]}
-                save={state.links[episode.key]}
-                videos={videos}
-              />
-            ))}
+            <EpisodeRow
+              feed={feed}
+              episode={episode}
+              fetch={state.fetches[episode.key]}
+              save={state.links[episode.key]}
+              videos={videos}
+            />
           </ul>
         )}
       </EpisodesList>

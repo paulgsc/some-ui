@@ -4,8 +4,10 @@
  * format applied to one week of the season (`@some-ui/video-render`'s
  * `episodeOf`). The format is a compile-time template: `formatOf` reads the
  * slides' order, names and holds, and each version is pinned under
- * `src/show/formats/` (its test holds the newest equal to `formatOf`), so a
- * change to the slides fails until a new version is written.
+ * `@some-ui/video-render`'s `src/templates/` (its test holds the newest equal
+ * to `formatOf`), so a change to the slides fails until a new version is
+ * written. They are pinned there, beside the call's, so Studio's Templates
+ * page on the phone can read them (SFEED1).
  */
 
 import {

@@ -26,10 +26,10 @@
 
 import { z } from "zod"
 
-import { OptionSchema, RefSchema } from "./call"
 import { problemsOf } from "./cut-list"
 import type { Parsed } from "./cut-list"
 import { words } from "./format"
+import { OptionSchema, RefSchema } from "./refs"
 
 export const ASK_SCHEMA = "some-ui.ask/1"
 

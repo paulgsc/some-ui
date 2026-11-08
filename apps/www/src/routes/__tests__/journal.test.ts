@@ -1,10 +1,11 @@
 /**
- * `/journal` (Studio) opens on the video `?project` names, as Your ideas
- * links the one an idea became (ST19); anything else is dropped, and Studio
- * opens on the one touched last.
+ * The videos made in sittings (`/journal/episodes/making`, under Studio's
+ * Episodes since SFEED1) open on the video `?project` names, as Your ideas
+ * links the one an idea became (ST19); anything else is dropped, and they
+ * open on the one touched last.
  */
 
-import { Route } from "@/routes/_dashboard/_apk/journal/index"
+import { Route } from "@/routes/_dashboard/_apk/journal/episodes/making"
 import { describe, expect, it } from "vitest"
 
 const read = (search: Record<string, unknown>): unknown => {
@@ -13,7 +14,7 @@ const read = (search: Record<string, unknown>): unknown => {
   return validate(search)
 }
 
-describe("/journal's search", () => {
+describe("/journal/episodes/making's search", () => {
   it("takes the video to open on", () => {
     expect(read({ project: "week-8-picks-20261030" })).toEqual({
       project: "week-8-picks-20261030",

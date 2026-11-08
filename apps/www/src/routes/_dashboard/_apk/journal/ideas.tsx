@@ -55,10 +55,13 @@ const share: IdeaShare | undefined = device
   ? (props): JSX.Element => <ShareIdea {...props} />
   : undefined
 
-/** The way to the video an idea became: Studio, opened on that video. */
+/**
+ * The way to the video an idea became: the videos made in sittings, under
+ * Studio's Episodes, opened on that video.
+ */
 const openVideo = (project: string): JSX.Element => (
   <Link
-    to="/journal"
+    to="/journal/episodes/making"
     search={{ project }}
     className="bg-brand text-brand-foreground focus-visible:ring-ring rounded-2xl px-4 py-3 text-center text-base font-extrabold focus-visible:ring-2 focus-visible:outline-none"
   >

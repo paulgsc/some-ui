@@ -16,7 +16,6 @@ const dayAt = (iso: string): string => formatDay(dayOf(new Date(iso)))
 
 export const LIBRARY_WORDS = {
   heading: "Takes on home",
-  open: "Takes on home",
   reading: "Asking home…",
   /** Said with Studio's way to pairing (`STUDIO_WORDS.pair`) beside it (ST34). */
   unpaired:
@@ -77,7 +76,6 @@ export const LIBRARY_WORDS = {
   loading: "Getting it from home…",
   unplayable:
     "Home couldn't give this take back just now. Try again in a moment.",
-  back: "Back to Studio",
   /** Recording a take with no scene yet, on this phone (ST32). */
   record: "Record a take",
   recordLine:
