@@ -2827,8 +2827,8 @@
     {
       "store": "phone:idea-takes",
       "class": "record",
-      "growth": "bounded: two desks of Studio's idea takes (answers to Claude's questions, MIC10 #2428, `some-ui:idea-takes`; a new idea's answers, ST26 #2453, `some-ui:idea-bundle-takes`), each an offline set of 40 takes of <= 60 s: 40 x 60 x 4,000 = 9,600,000 B each; past 40, a new one makes room with the oldest home holds, and is refused while home holds none.",
-      "horizon": "a take leaves the phone only to make room at 40, and only once home holds it (HF5 #2180, LG1); a new idea's take waits on the phone until the idea is sent, and one deleted before Send is gone for good (owner, #2453, decision 4); a take whose audio never landed is swept",
+      "growth": "bounded: three desks of Studio's idea takes (answers to Claude's questions, MIC10 #2428, `some-ui:idea-takes`; a new idea's answers, ST26 #2453, `some-ui:idea-bundle-takes`; answers of an idea on home said again, #2579, `some-ui:idea-redo-takes`), each an offline set of 40 takes of <= 60 s: 40 x 60 x 4,000 = 9,600,000 B each; past 40, a new one makes room with the oldest home holds, and is refused while home holds none.",
+      "horizon": "a take leaves the phone only to make room at 40, and only once home holds it (HF5 #2180, LG1); a new idea's take waits on the phone until the idea is sent, and one deleted before Send is gone for good (owner, #2453, decision 4); an answer said again waits until its idea is sent again, and one deleted or overtaken before then is gone for good (#2579); a take whose audio never landed is swept",
       "family": "what-is-kept"
     },
     {
