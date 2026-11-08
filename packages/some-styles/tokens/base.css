@@ -25,6 +25,16 @@
     "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-mono: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace;
   --font-display: var(--font-sans);
+}
+
+/* The palette. Also on `.session-theme`, which a nested theme boundary
+   carries (`sessionThemeProps`), so a part of the page drawn in another
+   theme starts from these, not the page's: the light theme is these alone,
+   and a theme that leaves a token out (`.dark` and `.mochi` set no
+   `--brand`) gets the default, not whatever theme surrounds it. Fonts and
+   the radius stay the page's. */
+:root,
+.session-theme {
   --background: oklch(100% 0 0deg);
   --foreground: oklch(14.5% 0 0deg);
   --card: oklch(100% 0 0deg);
@@ -158,6 +168,13 @@
   --glow-card: 0 0 12px color-mix(in oklab, var(--secondary) 25%, transparent);
   --glow-destructive: 0 0 20px
     color-mix(in oklab, var(--destructive) 40%, transparent);
+}
+
+/* A nested theme's ground and ink, as each named theme draws its own; the
+   light theme has no class of its own to. */
+.session-theme {
+  background-color: var(--background);
+  color: var(--foreground);
 }
 
 .dark {
