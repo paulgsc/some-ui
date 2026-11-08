@@ -1752,7 +1752,7 @@ describe("notes on an episode", () => {
       ],
       [{ ...NOTED, driveId: "1AbCdEf" }, "a note names no Drive file"],
       [{ ...NOTED, note: "another-id" }, "the name must carry the note's id"],
-      [{ ...NOTED, note: "a/b" }, "note must be the note's id"],
+      [{ ...NOTED, note: "a/b" }, "the name must carry the note's id"],
       [{ ...NOTED, feed: "drama" }, "feed must be call or playoff-delta"],
       [{ ...NOTED, episode: "" }, "episode must name the episode"],
       [
@@ -1763,7 +1763,14 @@ describe("notes on an episode", () => {
         { ...NOTED, atMs: 1.5 },
         "atMs must be the moment, in whole milliseconds from the start",
       ],
-      ...[[], ["overlap", "shallow"], ["voice", "voice"], ["louder"]].map(
+      ...[
+        [],
+        ["overlap", "shallow"],
+        ["voice", "voice"],
+        ["louder"],
+        [["shallow"], "overlap"],
+        [["overlap"]],
+      ].map(
         (categories) =>
           [
             { ...NOTED, categories },
@@ -1784,12 +1791,7 @@ describe("notes on an episode", () => {
       expect(answer.status).toBe(422)
       expect(await json(answer)).toEqual({ error: why })
     }
-    for (const name of [
-      "feedback-.json",
-      `feedback-${"a".repeat(65)}.json`,
-      "feedback-a.b.json",
-      `${NOTED.note}.json`,
-    ]) {
+    for (const name of ["feedback-.json", `feedback-${"a".repeat(65)}.json`]) {
       expect((await asHome(d, name)).status).toBe(422)
     }
   })

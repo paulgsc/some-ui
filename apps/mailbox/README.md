@@ -82,9 +82,9 @@ about it (owner, 2026-10-23):
 Nothing is deleted for good: the bytes are home's before the mailbox lets them go, and the
 `archived` row stays.
 
-A written reflection (`reflection`) and a drama prompt (`prompt`) are archived the same way,
-except that home lists each folder only once a file it put there is old enough, and the routine
-cannot ask for one back (see "Who may do what"). Home's index is not archived (above, "What it keeps"): home can compute
+A written reflection (`reflection`), a drama prompt (`prompt`) and a note on an episode
+(`feedback`) are archived the same way, except that home lists each folder only once a file it
+put there is old enough, and the routine cannot ask for one back (see "Who may do what"). Home's index is not archived (above, "What it keeps"): home can compute
 the same bytes again from what it keeps.
 
 ## API
@@ -321,14 +321,16 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
   `{"schema":"some-ui.episode-note/1","note","feed","episode","atMs","categories","take","writtenAt"}`:
   the phone's id for the note (which the name carries), the feed (`call` or `playoff-delta`),
   the episode's key, the moment in it in whole milliseconds, what it is about (one or more of
-  SFEED decision 7's fixed set, each once, in its order: `shallow`, `technical`,
+  SFEED decision 7's set, final by decision 10, each once, in its order: `shallow`, `technical`,
   `missedIntuition`, `unsupported`, `tooLong`, `tooShort`, `textClipped`, `slideShakes`,
   `overlap`, `hardToRead`, `pacing`, `voice`, `musicLoud`, `subtitlesOff`), the spoken note's
   take id or `null`, and when it was written (paulgsc/some-ui#2745). What the owner said in a
   spoken note is that take's `transcript`, never this file. The Worker holds this shape
   itself, as it holds a reflection's: every key is required, and any other key is `422`. One
   that names audio is refused with `a note carries no audio: a spoken one goes as its take's
-transcript`, and one that names Drive with `a note names no Drive file`.
+transcript`, and one that names Drive with `a note names no Drive file`. A name that does not
+  carry the body's `note` is `422`, and so is a body whose text as sent carries a `data:` URI, a
+  Drive link or a run of 256 or more base64 characters, by the transcript's tests.
 - **A list of the takes Drive holds** is
   `{"schema":"some-ui.drive-takes/1","at","takes":[{"sha256"}]}`: when the build-journal
   session listed Drive's Build Journal takes folder (an instant, which the name carries to the
@@ -514,7 +516,7 @@ how each was checked when this workspace landed.
   it is a view and not a record; `reflection` 2026-10-26, paulgsc/some-ui#2174 decision D2, and
   kept out of `ask` so home lists nothing of it while nothing is due; `prompt` the same day
   and decision, paulgsc/some-ui#2179, kept out of `ask` for the same reason; `feedback`
-  2026-11-08, SFEED decision 6 on paulgsc/some-ui#2670, "home writes down what I say … the
+  2026-11-07, SFEED decision 6 on paulgsc/some-ui#2670, "home writes down what I say … the
   existing daily reflections routine files each as a pending issue", kept out of `ask` for the
   same reason). The routine's `brief` also takes its one-time backfill: a Jobs decisions or
   scouts file under its Drive name, only as the phone names one (`sharedDay`: a real calendar

@@ -248,7 +248,10 @@ const FEEDBACK_KEYS: ReadonlySet<string> = new Set([
   "writtenAt",
 ])
 const FEEDS: ReadonlySet<unknown> = new Set(["call", "playoff-delta"])
-/** The fixed set, in its order (www's `lib/episode-feedback`, SFEED decision 10). */
+/**
+ * SFEED decision 7's set, in its order, final by decision 10 (#2670), as the
+ * phone's `NoteSchema` holds it (some-ui#2747).
+ */
 const CATEGORIES: ReadonlyArray<string> = [
   "shallow",
   "technical",
@@ -265,7 +268,6 @@ const CATEGORIES: ReadonlyArray<string> = [
   "musicLoud",
   "subtitlesOff",
 ]
-const PHONE_ID = /^[A-Za-z0-9_-]{1,64}$/
 const NO_AUDIO_FEEDBACK =
   "a note carries no audio: a spoken one goes as its take's transcript"
 const NO_DRIVE_FEEDBACK = "a note names no Drive file"
@@ -273,10 +275,14 @@ const NO_DRIVE_FEEDBACK = "a note names no Drive file"
 /** Picked from the fixed set, at least one, each once, in its order. */
 function isPicked(value: unknown): boolean {
   if (!Array.isArray(value) || value.length === 0) return false
-  const at = value.map((category) => CATEGORIES.indexOf(String(category)))
-  return at.every(
-    (place, i) => place >= 0 && (i === 0 || place > (at[i - 1] ?? place))
-  )
+  let before = -1
+  return value.every((category) => {
+    const place =
+      typeof category === "string" ? CATEGORIES.indexOf(category) : -1
+    const next = place > before
+    before = place
+    return next
+  })
 }
 
 /**
@@ -298,9 +304,7 @@ function feedbackRefusal(
     "note"
   )
   if (shape !== null) return shape
-  if (typeof body.note !== "string" || !PHONE_ID.test(body.note)) {
-    return "note must be the note's id"
-  }
+  if (typeof body.note !== "string") return "note must be the note's id"
   if (name !== `feedback-${body.note}.json`) {
     return "the name must carry the note's id"
   }
@@ -882,8 +886,7 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
     refuses: promptRefusal,
   },
   {
-    // A note the owner left on an episode, as home keeps it, named for the
-    // phone's id.
+    // A note on an episode, as home keeps it (SFEED6).
     folder: "feedback",
     name: /^feedback-[A-Za-z0-9_-]{1,64}\.json$/,
     schema: "some-ui.episode-note/1",
