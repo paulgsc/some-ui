@@ -2512,6 +2512,10 @@
       "why": "The owner's lesson edits; each answers with what it kept."
     },
     {
+      "module": "episode_notes",
+      "why": "The owner's notes on a feed's episodes (SFEED6, paulgsc/some-ui#2745): each write answers with the note home now holds, and the phone compares it with what it sent; handing each to the mailbox is the mailbox pass's."
+    },
+    {
       "module": "health",
       "why": "Answers whether the process is up; nothing is owed after."
     },
@@ -3358,6 +3362,12 @@
       "store": "server:storage_sample",
       "class": "telemetry",
       "growth": "Per UTC day: one row per table and index plus database, wal and disk_free, about 80 rows a day (\"a few MB a year\", docs/storage.md); append-only, triggers abort UPDATE, DELETE and REPLACE.",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:episode_note",
+      "class": "record",
+      "growth": "Per note the owner leaves on a feed's episode (SFEED6, paulgsc/some-ui#2745): the feed, the episode's key, the moment, one to fourteen categories from the fixed set, the take's voice note id or null and when it was written, a few hundred bytes, one row per note id, append-only; each is filed once for the mailbox's feedback folder as it arrives.",
       "family": "what-is-kept"
     },
     {

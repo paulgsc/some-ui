@@ -62,6 +62,10 @@ export const ACCOUNT_ERASES = {
       text: "Each next scene you asked for and your phone sent home, word for word, with when you asked.",
     },
     {
+      label: "Notes on the feeds' episodes",
+      text: "Each note you left on an episode and your phone sent home: the moment, what it was about, and when you wrote it.",
+    },
+    {
       label: "Voice notes, game bites included",
       text: "Each voice note your phone sent home, its sound included, and what home heard in it; for a game-day bite, also what it was about and what the screen showed as you said it.",
     },
