@@ -259,7 +259,7 @@ export type BundleState<K extends BundleKind> = {
 type Stamp = { readonly at: string }
 
 /** Taps, as a screen sends them, besides the spec's own edits. */
-export type BundleTap<I extends string = string> =
+type BundleTap<I extends string = string> =
   | { readonly type: "start" }
   /** To a card, from the cards or from the screen before them. */
   | { readonly type: "go"; readonly index: number }
@@ -375,7 +375,7 @@ export type BundleEffect<K extends BundleKind> =
    */
   | { readonly type: "leave" }
 
-export type BundleStep<K extends BundleKind> = {
+type BundleStep<K extends BundleKind> = {
   readonly state: BundleState<K>
   readonly effects: ReadonlyArray<BundleEffect<K>>
 }
@@ -1263,7 +1263,7 @@ export type BundleMachine<K extends BundleKind> = {
 }
 
 /** What Send still needs: the spec's own, or a required answer; null for nothing. */
-export type Missing<K extends BundleKind> = K["need"] | "required" | null
+type Missing<K extends BundleKind> = K["need"] | "required" | null
 
 /** How an item stands: said, typed, or neither yet. */
 export type Answered = "said" | "typed" | null
