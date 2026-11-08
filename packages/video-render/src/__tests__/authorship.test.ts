@@ -129,10 +129,10 @@ describe("where the authorship mark can go", () => {
       )
     ).toEqual([
       "A: the authorship mark covers the whole video",
-      "B: its idea cites note n9, which the project doesn't have",
-      "C: its idea cites note n1, which isn't in the owner's words",
       "the authorship mark is drawn once",
       "the authorship mark is drawn from the scenes; nothing is written for it",
+      "B: its idea cites note n9, which the project doesn't have",
+      "C: its idea cites note n1, which isn't in the owner's words",
       "the authorship mark's intro needs a bare card as the first scene",
       "the authorship mark's end card needs a bare card as the last scene",
     ])

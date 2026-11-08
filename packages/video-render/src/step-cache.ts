@@ -159,10 +159,8 @@ export function stepCache(
 /**
  * One step kept in `cache` (VR2): the file kept under `key` copied to `out`
  * when there is one, without running; otherwise `run` writes it, and what it
- * wrote is kept when it succeeds. Every step that writes a file goes
- * through here: each ffmpeg call, each burn-in recorded for a scene, and
- * each scene a composition draws (HYPER2, #2725), so a retry redoes only the
- * steps whose key changed.
+ * wrote is kept when it succeeds: each ffmpeg call and each burn-in
+ * recorded, so a retry redoes only the steps whose key changed.
  */
 export async function keptStep<R extends { readonly ok: boolean }>(
   cache: StepCache,

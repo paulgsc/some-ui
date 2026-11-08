@@ -75,9 +75,9 @@ describe("parseCutList", () => {
       })
     )
     expect(parsed.ok ? [] : parsed.problems).toEqual([
-      "S1: captions cover the whole video",
-      "the captions are drawn once",
-      "the captions are drawn from each take's words; nothing is written for them",
+      "S1: the captions burn-in covers the whole video",
+      "the captions burn-in is drawn once",
+      "the captions burn-in is drawn from each take's words; nothing is written for it",
     ])
   })
 })

@@ -84,9 +84,7 @@ in the step cache under what they draw (the look, the words and their
 times, the frames and the frame: `withCachedBurnIns`), and laid over that
 scene's segment before the join (`planSegment`). No step holds more than
 one scene's frames, so a long video costs more time, never more memory, and
-a retry records only the scenes whose words changed. A scene a HyperFrames
-composition draws (HYPER2, #2725) is meant to go through the same loop and
-the same `keptStep`.
+a retry records only the scenes whose words changed.
 
 ## Not yet
 

@@ -44,7 +44,6 @@ const CUT_LIST = cutList(
     shot("S1", {
       picture: capture(0),
       durationMs: 1500,
-      // Its captions are drawn from these, for this scene alone (SFEED11).
       take: {
         file: "voice/a.wav",
         inMs: 0,

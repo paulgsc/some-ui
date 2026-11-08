@@ -216,7 +216,13 @@ export async function render(
 
   const work = options.workDir
   const layered = burnInRequests(cutList, placement.value, series, work)
-  const captions = captionRequests(cutList, scenes, series, work)
+  const captions = captionRequests(
+    cutList,
+    scenes,
+    placement.value,
+    series,
+    work
+  )
   const requests = [...layered, ...captions.map((c) => c.request)]
   if (requests.length && !ports.recordBurnIn && !options.withoutBurnIns) {
     return refused([
@@ -247,10 +253,7 @@ export async function render(
     }
   }
 
-  // SFEED11: a scene at a time, its captions recorded (and kept in the step
-  // cache, `withCachedBurnIns`) for as long as the scene, then laid over its
-  // segment, so no step holds more than one scene's frames, and a retry
-  // records only the scenes whose words changed.
+  // Each scene's captions, recorded just before its segment (`captionRequests`).
   const captionOf = new Map(captions.map((c) => [c.scene, c.request]))
   const segments: Array<string> = []
   for (const scene of scenes) {
@@ -474,6 +477,27 @@ async function checkInputs(
   return problems.length ? { ok: false, problems } : { ok: true, value: facts }
 }
 
+/** The design a burn-in is drawn in, its own or its series'. */
+function design(b: BurnIn, series: Series): string {
+  const d = designOf(b, series)
+  // `resolve` refuses a burn-in with no design before this runs.
+  if (d === null) throw new Error(`the ${b.kind} burn-in has no design`)
+  return d
+}
+
+/**
+ * How many frames scene `i`'s burn-ins last: until the next scene starts, so
+ * during a transition one scene's and the next one's are never both up.
+ */
+const framesUntilNext = (placement: Placement, i: number): number => {
+  const at = placement.shots[i]
+  if (!at) throw new Error(`scene ${i} was not placed`)
+  return (
+    (placement.shots[i + 1]?.startFrame ?? placement.totalFrames) -
+    at.startFrame
+  )
+}
+
 /** The burn-ins to record: the video's over its length, each scene's over it. */
 function burnInRequests(
   cutList: CutList,
@@ -481,12 +505,6 @@ function burnInRequests(
   series: Series,
   work: string
 ): ReadonlyArray<BurnInRequest> {
-  const design = (b: BurnIn): string => {
-    const d = designOf(b, series)
-    // `resolve` refuses a burn-in with no design before this runs.
-    if (d === null) throw new Error(`the ${b.kind} burn-in has no design`)
-    return d
-  }
   // Captions are recorded a scene at a time (`captionRequests`).
   const whole = cutList.burnIns.flatMap((b, i) =>
     isCaptions(b)
@@ -494,7 +512,7 @@ function burnInRequests(
       : [
           {
             ...b,
-            design: design(b),
+            design: design(b, series),
             // The authorship mark is drawn from the scenes, never from what was
             // written for it (`parseCutList` refuses any).
             params: isAuthorship(b)
@@ -510,14 +528,11 @@ function burnInRequests(
   const perShot = cutList.shots.flatMap((s, i) => {
     const at = placement.shots[i]
     if (!at) throw new Error(`${s.id} was not placed`)
-    // A scene's burn-ins end where the next scene starts, so during a
-    // transition its headline and the next one's are never both up.
-    const until = placement.shots[i + 1]?.startFrame ?? placement.totalFrames
     return s.burnIns.map((b, k) => ({
       ...b,
-      design: design(b),
+      design: design(b, series),
       startFrame: at.startFrame,
-      frames: until - at.startFrame,
+      frames: framesUntilNext(placement, i),
       frame: series.frame,
       out: `${work}/burn-in-${s.id}-${k}-${b.kind}.mov`,
     }))
@@ -526,39 +541,33 @@ function burnInRequests(
 }
 
 /**
- * Each scene's captions, when the video asks for them: the words heard in
- * its take, in its own time, recorded for as long as the scene shows before
- * the next one starts, in the design the video or its series names. A scene
- * with nothing said has none.
+ * Each scene's captions, when the video asks for them (SFEED11): the words
+ * heard in its take, in its own time, recorded on their own and laid over
+ * the scene's segment, so no step holds more than one scene's frames. A
+ * scene with nothing said has none.
  */
 function captionRequests(
   cutList: CutList,
   scenes: ReadonlyArray<Scene>,
+  placement: Placement,
   series: Series,
   work: string
 ): ReadonlyArray<{ readonly scene: string; readonly request: BurnInRequest }> {
   const asked = cutList.burnIns.find(isCaptions)
   if (!asked) return []
-  const design = designOf(asked, series)
-  // `resolve` refuses a burn-in with no design before this runs.
-  if (design === null) throw new Error("the captions burn-in has no design")
   return scenes.flatMap(({ shot, placed }, i) => {
     const words = heardWords(shot)
     if (words.length === 0) return []
     const id = shot.shot.id
-    // Ends where the next scene starts, as a scene's other burn-ins do, so
-    // two scenes' captions are never up together during a transition.
-    const next = scenes[i + 1]?.placed.startFrame
-    const frames = next === undefined ? placed.frames : next - placed.startFrame
     return [
       {
         scene: id,
         request: {
           kind: asked.kind,
-          design,
+          design: design(asked, series),
           params: { lines: spokenLines(words) },
           startFrame: placed.startFrame,
-          frames,
+          frames: framesUntilNext(placement, i),
           frame: series.frame,
           out: `${work}/burn-in-${id}-captions.mov`,
         },

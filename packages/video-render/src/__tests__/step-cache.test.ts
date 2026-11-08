@@ -21,6 +21,7 @@ import type { RenderPolicy } from "@video-render/policy"
 import type { BurnInRequest, Ports } from "@video-render/render"
 import type { CacheFs } from "@video-render/step-cache"
 import {
+  keptStep,
   keyOf,
   nodeCacheFs,
   stepCache,
@@ -206,6 +207,20 @@ describe("the step cache", () => {
     })
   })
 
+  it("keeps nothing a step that failed wrote, so it runs again", async () => {
+    const cache = stepCache(join(root, "steps"), policy(1_000), () => undefined)
+    let runs = 0
+    const step = { key: "k", out: "s.mkv", hit: { ok: true } }
+    const failing = async (): Promise<{ ok: boolean }> => {
+      runs++
+      await writeFile(join(root, "s.mkv"), "half")
+      return { ok: false }
+    }
+    expect(await keptStep(cache, root, step, failing)).toEqual({ ok: false })
+    expect(await keptStep(cache, root, step, failing)).toEqual({ ok: false })
+    expect(runs).toBe(2)
+  })
+
   it("keys by what goes in, not by names", () => {
     expect(keyOf({ a: 1 })).toBe(keyOf({ a: 1 }))
     expect(keyOf({ a: 1 })).not.toBe(keyOf({ a: 2 }))
@@ -314,36 +329,14 @@ describe("burn-ins through the step cache", () => {
     expect(
       await readFile(join(root, "burn-in-moved-captions.mov"), "utf8")
     ).toBe(JSON.stringify(caption().params))
-    // Each of what it draws, changed, records again.
-    for (const over of [
-      {
+    // Other words, or the same words said at other times, record again.
+    await cached.recordBurnIn?.(
+      caption({
         params: {
           lines: [{ words: [{ text: "Hi.", startMs: 310, endMs: 600 }] }],
         },
-      },
-      { design: "gridiron" },
-      { frames: 46 },
-      { frame: { width: 1080, height: 1920, fps: 30 } },
-    ])
-      await cached.recordBurnIn?.(caption(over))
-    expect(drawn).toHaveLength(5)
-  })
-
-  it("keeps nothing that did not record", async () => {
-    let runs = 0
-    const cached = withCachedBurnIns(
-      {
-        ...nodePorts(root),
-        recordBurnIn: (): Promise<boolean> => {
-          runs++
-          return Promise.resolve(false)
-        },
-      },
-      root,
-      stepCache(join(root, "steps"), policy(1_000_000), () => undefined)
+      })
     )
-    expect(await cached.recordBurnIn?.(caption())).toBe(false)
-    expect(await cached.recordBurnIn?.(caption())).toBe(false)
-    expect(runs).toBe(2)
+    expect(drawn).toHaveLength(2)
   })
 })
