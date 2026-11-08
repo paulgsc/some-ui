@@ -1,8 +1,8 @@
 /**
- * Playoff Delta as a show (SHOW SH1, SH2): its two formats, the week's and
- * the legend's, made from this workspace's own slides, and an episode, the
- * format applied to one week of the season (`@some-ui/video-render`'s
- * `episodeOf`). The format is a compile-time template: `formatOf` reads the
+ * Playoff Delta as a show (SHOW SH1): its two formats, the week's and the
+ * legend's, made from this workspace's own slides, the facts each scene
+ * keeps, and an episode's upload copy. An episode is said by home's speaker
+ * from a fill (`./voiced`, FEED3), never by the owner (FEED6 #2649). The format is a compile-time template: `formatOf` reads the
  * slides' order, names and holds, and each version is pinned under
  * `@some-ui/video-render`'s `src/templates/` (its test holds the newest equal
  * to `formatOf`), so a change to the slides fails until a new version is
@@ -10,9 +10,7 @@
  */
 
 import {
-  episodeOf,
   FORMAT_SCHEMA,
-  type Episode,
   type Format,
   type Parsed,
   type Shape,
@@ -54,9 +52,6 @@ export const FORMAT_VERSION: Readonly<Record<FormatKind, number>> = {
 
 /** The first version voiced and drawn in a shape. */
 export const VOICED_VERSION = 2
-
-/** The version Studio's episode for my own voice stays on, until FEED6 (#2649). */
-export const CLIPS_VERSION = 1
 
 /**
  * Each format's shape from version 2 (SFEED2 #2680): the locked intro
@@ -130,13 +125,6 @@ export const episodeTitle = (season: StorySeason, week: number): string =>
     ? "Playoff Delta, the legend"
     : `Playoff Delta, ${season.label} week ${week}`
 
-/** Where the season's data is published, by its label and team. */
-const sourceOf = (season: StorySeason): string =>
-  `playoff-delta/${season.label}/${season.team}.json`
-
-/** The show both formats are episodes of, as Studio names it. */
-const SHOW = "Playoff Delta"
-
 /**
  * The upload's copy for one week (null for the legend), from the same reading
  * the short says: whose side, our own game, the week's sentence (the
@@ -196,41 +184,4 @@ export function factsOf(
     ok: true,
     value: WEEK_SLIDES.map((id) => weekFacts(season, shown, id)),
   }
-}
-
-/**
- * One week's episode for my own voice (`LEGEND_WEEK`, 0, for the legend), or
- * every reason there isn't one. It stays on the last version before the
- * voiced shape, whose clips Studio's takes are cut over, until FEED6 (#2649)
- * retires my voice from episodes. `sha256` is the sum of the season as the stage read it
- * (`seasonData`), and `inMs` says where scene `index`'s slide starts in its
- * recorded clip.
- */
-export function episodeFor(
-  season: StorySeason,
-  week: number,
-  sha256: string,
-  inMs: (index: number) => number
-): Parsed<Episode> {
-  const keep = factsOf(season, week)
-  if (!keep.ok) return keep
-  const data = { source: sourceOf(season), sha256 }
-  // factsOf has refused a week the season doesn't have.
-  const shown =
-    week === LEGEND_WEEK ? undefined : season.weeks.find((w) => w.week === week)
-  const common = { show: SHOW, data, keep: keep.value, inMs }
-  if (shown === undefined) {
-    return episodeOf(formatOf("legend", CLIPS_VERSION), {
-      ...common,
-      title: episodeTitle(season, LEGEND_WEEK),
-      period: `${season.label}, the legend`,
-      upload: uploadOf(season, null),
-    })
-  }
-  return episodeOf(formatOf("week", CLIPS_VERSION), {
-    ...common,
-    title: episodeTitle(season, week),
-    period: `${season.label} week ${week}`,
-    upload: uploadOf(season, shown),
-  })
 }

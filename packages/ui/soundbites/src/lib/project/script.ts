@@ -18,12 +18,11 @@
  * - **The phone doesn't know the footage.** A scene the primer brings is a
  *   card (the series' ground) until a revision of Claude's sets its picture;
  *   a newer primer keeps every scene's picture whose cut kept its id.
- * - **An episode brings its own footage** (SHOW SH3). Its file carries the
- *   cut list a format made over the recorded clips, in its show's series, and
- *   the project opens on that, pinned to the episode (`projectFromEpisode`).
+ * - **No new project is an episode** (FEED6 #2649): home says episodes now.
+ *   One a phone opened before then stays as it was, pinned (`episode`).
  */
 import { extensionOf } from "@some-ui/core-utils"
-import type { Episode, Shot } from "@some-ui/video-render"
+import type { Shot } from "@some-ui/video-render"
 import { CUT_LIST_SCHEMA, fitToTake } from "@some-ui/video-render"
 import type { Cut, Primer } from "@soundbites/lib/journal/primer"
 
@@ -176,31 +175,6 @@ export function projectFromPrimer(
     cutList: cutListOf(primer),
     primer,
   })
-}
-
-/**
- * The project an episode opens as: revision 1, Claude's, its cut list the
- * episode's over the clips, its primer what each scene says, and the
- * episode's pins kept on the project.
- */
-export function projectFromEpisode(
-  id: string,
-  episode: Episode,
-  primer: Primer,
-  at: string
-): ProjectState {
-  const { revisions: _, notes: __, ...cutList } = episode.cutList
-  return newProject(
-    id,
-    {
-      author: "claude",
-      message: `Episode: ${primer.title}`,
-      at,
-      cutList,
-      primer,
-    },
-    episode.episode
-  )
 }
 
 /** The take chosen for scene `shot`, if one is. */

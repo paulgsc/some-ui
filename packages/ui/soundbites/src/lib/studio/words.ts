@@ -200,7 +200,7 @@ function ideasToConfirm(n: number): string {
 }
 
 /** Where an episode stands, on its show's list (SHOW SH3). */
-export type EpisodeStanding = "voice" | "going" | "ready" | "released"
+export type EpisodeStanding = "waiting" | "going" | "ready" | "released"
 
 function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`
@@ -226,7 +226,7 @@ type NotNear = Exclude<HomeReach, "near">
  * person would expect a review of the video, Finish and Shape.
  */
 const JUDGES =
-  "Studio checks the mechanics: every scene has a take, an episode's takes keep the facts their scenes must, and no note is left open. It doesn't judge whether a scene is good. To change how one comes out, change the video's shape, or the template it's made from."
+  "Studio checks the mechanics: every scene has a take, and no note is left open. It doesn't judge whether a scene is good. To change how one comes out, change the video's shape, or the template it's made from."
 
 export const STUDIO_WORDS = {
   /** The place, in the foyer, the tab bar and the page alike (ST34). */
@@ -277,6 +277,9 @@ export const STUDIO_WORDS = {
       "Claude's version of this video, or the scenes for a new one.",
     sentProblem:
       "That isn't something Claude made for Studio, or part of it is missing. Ask Claude for it again.",
+    /** An episode file picked on Start: home says episodes now (FEED6). */
+    episodeSaid:
+      "That's an episode of a show. Home says and makes each one now, so there's nothing to record: watch it in the show's videos.",
     /** Claude's reply about an idea, picked here instead of on the idea (ST19). */
     ideaReply:
       "That's Claude's reply about one of your ideas. Open it from the idea, in Your ideas.",
@@ -472,7 +475,7 @@ export const STUDIO_WORDS = {
   show: {
     shows: "Shows",
     showsLine:
-      "Made every week from that week's data. You voice it, and the show makes everything else.",
+      "Made every week from that week's data, and said by home. These are the episodes this phone opened before home said them.",
     own: "Your own videos",
     ownLine:
       "Something new, starting from your idea. Claude shapes it with you.",
@@ -480,13 +483,13 @@ export const STUDIO_WORDS = {
       `${plural(n, "episode", "episodes")} on the phone · newest: ${newest}`,
     back: "Studio",
     intro:
-      "Each episode is made from that week's data. You voice it, and the show makes everything else.",
+      "Each episode is made from that week's data and said by home. These are the ones this phone opened before home said them.",
     version: (version: number, scenes: number): string =>
       `Version ${version} · ${plural(scenes, "scene", "scenes")}`,
     plans: shapeStatus,
     episodes: "Episodes on this phone",
     standing: {
-      voice: "Ready to voice",
+      waiting: "Not started",
       going: "In progress",
       ready: "Ready to upload",
       released: "Up on YouTube",
@@ -504,12 +507,9 @@ export const STUDIO_WORDS = {
     saysLine: "Points and facts, filled in from the week's data.",
     footer:
       "Every scene is the show's. For something outside it, start a video of your own.",
-    held: "That episode is already on this phone. Here it is.",
     proposed: "Changes you proposed",
     proposedFrom: (period: string, scene: string, ms: number): string =>
       `${period} · ${scene} · ${formatTimecode(ms)}`,
-    notYet:
-      "Studio is still reading this phone. Open the episode again in a moment.",
   },
 
   history: {
@@ -661,14 +661,6 @@ export const STUDIO_WORDS = {
     goTake: (n: number): string => `Record scene ${n}`,
     idea: ideasToConfirm,
     goIdea: (n: number): string => `Watch from scene ${n}`,
-    /** An episode's take whose check didn't pass, before its third round. */
-    facts: (n: number): string =>
-      `Scene ${n}'s take leaves out a fact it must keep, or says one wrong. Record it again, with the facts on screen.`,
-    /** The same, after three rounds (PDM15): the owner decides. */
-    factsBest: (n: number): string =>
-      `Scene ${n} has had three takes, and none says every fact it must keep. Keep the one you chose anyway, or record it again.`,
-    keepBest: "Keep this take",
-    bestKept: "Kept your take as it is.",
     unmarked:
       "Every scene has its take and its idea said, and no note is open. Say it's ready when you have watched it through.",
     mark: "It's ready",
@@ -754,7 +746,6 @@ export const STUDIO_WORDS = {
       note: "A note is open",
       take: (n: number): string => `Scene ${n} needs a take`,
       idea: ideasToConfirm,
-      facts: (n: number): string => `Scene ${n} needs its facts`,
       unmarked: "Ready to mark",
       ready: "Ready for YouTube",
       released: "Released",

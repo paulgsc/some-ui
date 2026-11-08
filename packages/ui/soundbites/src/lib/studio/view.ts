@@ -118,13 +118,13 @@ export function startView(project: Project): StartView {
   }
 }
 
-/** Where an episode stands: released, ready, under way, or waiting for your voice. */
+/** Where an episode stands: released, ready, under way, or not started. */
 function standingOf(project: Project): EpisodeStanding {
   const finish = finishOf(project)
   if (finish.kind === "released" || finish.kind === "ready") {
     return finish.kind
   }
-  return takenCount(project) > 0 ? "going" : "voice"
+  return takenCount(project) > 0 ? "going" : "waiting"
 }
 
 type Episodic = Project & { readonly episode: EpisodePin }
@@ -246,9 +246,6 @@ function finishStatus(finish: Finish): string {
     }
     case "idea": {
       return words.idea(finish.count)
-    }
-    case "facts": {
-      return words.facts(finish.n)
     }
     case "unmarked":
     case "ready":

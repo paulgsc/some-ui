@@ -34,12 +34,14 @@ Each module's header says why it is the way it is.
   a format, the ordered scenes every episode has (name, picture source,
   hold, when left out), versioned as a series is (`readFormat`). An episode
   is a format applied to one period's data by a pure function (`episodeOf`):
-  a primer version 2 the phone's Studio opens, the episode's pins (its
-  show's name, format, period, the data's sum) and a cut list whose pictures
-  are the recorded clips. `parseEpisode` reads an episode file back, as
-  Studio does to open it as an episode (SH3), and refuses one whose cut
-  list's scenes are not its cuts. Playoff Delta's formats and episodes come
-  from its own workspace (`packages/ui/playoff-delta/src/lib/show.ts`).
+  a primer version 2, the episode's pins (its show's name, format, period,
+  the data's sum) and a cut list whose pictures are the recorded clips.
+  `parseEpisode` reads an episode file back and refuses one whose cut list's
+  scenes are not its cuts. Studio opens no new one since home says episodes
+  (FEED6, #2649); it keeps those a phone opened before. Playoff Delta's
+  formats come from its own workspace (`packages/ui/playoff-delta/src/lib/show.ts`),
+  and its voiced episodes from `src/stills.ts`, each scene's take marked with
+  the speech model that said it (`speaker`).
 - `src/call.ts`: the weekly call (ST29's first template): the agents'
   stand-up for the owner, the same sections every week (the week, the
   ledger's board, where each epic is, what landed in batches, gray-area
@@ -65,7 +67,9 @@ Each module's header says why it is the way it is.
 - `src/take-check.ts`, `src/hearings.ts`: does a take say what its cut
   asks (ST21, #2321), and its two hearings lined up (ST25, #2323).
 - `src/authorship.ts`: whose idea and whose hands each scene shows (ST16,
-  #2274), read from each scene's `idea`, its voice and the step table. A
+  #2274), read from each scene's `idea`, its voice, who said its take
+  (`speaker`: a speech model's take is never the owner's) and the step
+  table. A
   video carries the mark as a video-wide `authorship` burn-in with no
   params, between a bare card first and last; the renderer writes its
   params from the scenes.

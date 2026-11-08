@@ -76,6 +76,18 @@ describe("authorship", () => {
     }
   })
 
+  it("never credits the owner for a scene a speech model said (FEED6)", () => {
+    // An episode's scene: the fill's words, said by home's Kokoro, even
+    // under an ad-lib plan.
+    const said = shot("said", { take, voice: "ad-lib", speaker: "kokoro" })
+    expect(handsOf(said)).not.toContain("you")
+    expect(handsOf(said)).toContain("code")
+    expect(wordingOf(said, "ad-lib")).toBe("agent")
+    expect(authorshipOf(cutList([said]))).toEqual([
+      { shot: "said", origin: "agent", wording: "agent", hands: ["code"] },
+    ])
+  })
+
   it("moves a scene's hands when a step moves to another kind", () => {
     const moved = STEPS.map((s) =>
       s.id === "render" ? { ...s, kind: "claude" as const } : s

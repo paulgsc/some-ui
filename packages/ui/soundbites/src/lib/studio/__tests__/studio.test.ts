@@ -193,33 +193,14 @@ describe("a primer opened in Studio", () => {
   })
 })
 
-describe("an episode opened in Studio (SHOW SH3)", () => {
-  /** Picks `text` on Start, and waits until the phone holds `count` videos. */
-  async function pick(
-    runtime: StudioRuntime,
-    text: string,
-    count: number
-  ): Promise<void> {
-    const seq = runtime.getSnapshot().pickSeq
-    runtime.dispatch({
-      type: "primerPicked",
-      file: new Blob([text], { type: "application/json" }),
-    })
-    await until(
-      runtime,
-      (state) =>
-        state.pickSeq > seq &&
-        projectsOfState(state).length === count &&
-        projectOf(state) !== null &&
-        settledWrites(state)
-    )
-  }
+describe("an episode a phone opened before home said episodes (SHOW SH3, FEED6)", () => {
+  /** A stored episode of the show Weekly, as `episodeProjectOf` opened one. */
+  const stored = (id: string, period = "week 3", second = "b"): Project =>
+    episodeProjectOf(id, episodeText(period, second), AT).project
 
-  it("is an episode over its clips, with no Shape, and its takes keep the format", async () => {
-    const memory = memoryProjectStore()
-    const runtime = studio(memory)
-    await until(runtime, (state) => state.shelf.kind === "read")
-    await pick(runtime, episodeText(), 1)
+  it("is still an episode over its clips, with no Shape, and its takes keep the format", async () => {
+    const runtime = studio(memoryProjectStore([stored("w3")]))
+    await until(runtime, (state) => projectOf(state) !== null)
     const project = projectIn(runtime)
     expect(project.episode).toBeDefined()
     const view = startView(project)
@@ -242,30 +223,23 @@ describe("an episode opened in Studio (SHOW SH3)", () => {
     expect(latest(after).cutList.shots[0]?.picture.kind).toBe("capture")
   })
 
-  it("picked again, opens the one the phone holds", async () => {
-    const memory = memoryProjectStore()
-    const runtime = studio(memory)
-    await until(runtime, (state) => state.shelf.kind === "read")
-    await pick(runtime, episodeText(), 1)
-    await pick(runtime, PRIMER_TEXT, 2)
-    const own = projectIn(runtime)
-    expect(own.episode).toBeUndefined()
-    expect(runtime.getSnapshot().choosing).toBeNull()
-    await pick(runtime, episodeText(), 2)
-    await until(runtime, (state) => projectOf(state)?.episode !== undefined)
-    expect(projectsOfState(runtime.getSnapshot())).toHaveLength(2)
-    expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.show.held)
-  })
-
-  it("refuses a file that says it is an episode and isn't one whole", async () => {
+  it("opens no new one from an episode file: home says episodes now", async () => {
     const runtime = studio(memoryProjectStore())
     await until(runtime, (state) => state.shelf.kind === "read")
-    const text = episodeText().replace('"show":"Weekly",', "")
-    runtime.dispatch({ type: "primerPicked", file: new Blob([text]) })
-    await until(runtime, (state) => state.primerProblem !== null)
-    expect(runtime.getSnapshot().primerProblem).toBe(
-      STUDIO_WORDS.start.sentProblem
-    )
+    for (const text of [
+      episodeText(),
+      episodeText().replace('"show":"Weekly",', ""),
+    ]) {
+      const seq = runtime.getSnapshot().pickSeq
+      runtime.dispatch({ type: "primerPicked", file: new Blob([text]) })
+      await until(
+        runtime,
+        (state) => state.pickSeq > seq && state.primerProblem !== null
+      )
+      expect(runtime.getSnapshot().primerProblem).toBe(
+        STUDIO_WORDS.start.episodeSaid
+      )
+    }
     expect(projectsOfState(runtime.getSnapshot())).toEqual([])
   })
 
@@ -295,17 +269,27 @@ describe("an episode opened in Studio (SHOW SH3)", () => {
   })
 
   it("lists each show's episodes, and opens one from its show", async () => {
-    const memory = memoryProjectStore()
-    const runtime = studio(memory)
+    const runtime = studio(
+      memoryProjectStore([
+        episodeProjectOf(
+          "w3",
+          episodeText("week 3"),
+          "2026-10-29T09:00:00.000Z"
+        ).project,
+        episodeProjectOf(
+          "w4",
+          episodeText("week 4", "b"),
+          "2026-11-03T09:00:00.000Z"
+        ).project,
+      ])
+    )
     await until(runtime, (state) => state.shelf.kind === "read")
-    await pick(runtime, episodeText("week 3"), 1)
-    await pick(runtime, episodeText("week 4", "b"), 2)
     const held = projectsOfState(runtime.getSnapshot())
     expect(showsOnPhone(held)).toEqual([
       {
         show: "Weekly",
         line: STUDIO_WORDS.show.episodesHeld(2, "week 4"),
-        standing: STUDIO_WORDS.show.standing.voice,
+        standing: STUDIO_WORDS.show.standing.waiting,
       },
     ])
     runtime.dispatch({ type: "showChosen", show: "Weekly" })
@@ -1788,40 +1772,28 @@ describe("Finish", () => {
     expect(ideaAsking(projectIn(runtime), screen, [])).toBe("b")
   })
 
-  it("on an episode, sends a take whose facts didn't pass to Record, and keeps it after three rounds (SH5)", async () => {
-    const state = ["a", "b", "c", "b", "b"].reduce(
-      (at, id, i) =>
-        run(at, { type: "takeStarted", shot: id }, take(`t-${id}-${i}`, id)),
+  it("on an episode a phone holds, asks for no fact check (FEED6)", async () => {
+    const state = ["a", "b", "c"].reduce(
+      (at, id) =>
+        run(at, { type: "takeStarted", shot: id }, take(`t-${id}`, id)),
       started()
     )
-    const checks = state.project.takes.map((each) => ({
-      take: each.id,
-      at: AT,
-      passed: each.shot !== "b",
-    }))
     const runtime = studio(
       memoryProjectStore([
         {
           ...state.project,
-          checks,
+          checks: state.project.takes.map((each) => ({
+            take: each.id,
+            at: AT,
+            passed: false,
+          })),
           episode: JSON.parse(episodeText()).episode,
         },
       ])
     )
     await until(runtime, (each) => projectOf(each) !== null)
-    runtime.dispatch({ type: "finishChosen" })
-    expect(finishOf(projectIn(runtime))).toMatchObject({
-      kind: "facts",
-      shot: "b",
-      rounds: 3,
-    })
-    runtime.dispatch({ type: "bestKept" })
-    await until(runtime, (each) => settledWrites(each))
-    expect(projectIn(runtime).accepted).toEqual([
-      { shot: "b", take: "t-b-4", at: expect.any(String) },
-    ])
-    expect(runtime.getSnapshot().notice).toBe(STUDIO_WORDS.finish.bestKept)
-    expect(finishOf(projectIn(runtime)).kind).not.toBe("facts")
+    // Every take failed its check, and Finish asks only for whose idea.
+    expect(finishOf(projectIn(runtime)).kind).toBe("idea")
   })
 
   it("keeps the owner's mark, then the YouTube link, on the latest version", async () => {
@@ -1981,12 +1953,9 @@ describe("Watch", () => {
   })
 
   it("on an episode, asks what a note is about before keeping it (SH4)", async () => {
-    const runtime = studio(memoryProjectStore())
-    await until(runtime, (state) => state.shelf.kind === "read")
-    runtime.dispatch({
-      type: "primerPicked",
-      file: new Blob([episodeText()], { type: "application/json" }),
-    })
+    const runtime = studio(
+      memoryProjectStore([episodeProjectOf("w3", episodeText(), AT).project])
+    )
     await until(
       runtime,
       (state) => projectOf(state)?.episode !== undefined && settledWrites(state)

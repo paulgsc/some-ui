@@ -6,12 +6,14 @@
  * - The idea's origin is the scene's `idea`, the one judgement: Claude
  *   proposes it with its citation and the owner confirms it (ST5). A scene
  *   that says nothing is an agent's.
- * - Its wording follows the voice: a take said under Ad-lib is the owner's
- *   words; a take read word for word, or a scene with no take (whose words
- *   on screen a session wrote), is an agent's.
+ * - Its wording follows the voice: a take the owner said under Ad-lib is
+ *   the owner's words; a take read word for word, one a speech model said
+ *   (a feed's fill, FEED6 #2649), or a scene with no take (whose words on
+ *   screen a session wrote), is an agent's.
  * - The hands are the steps in `steps.ts` whose writes made the scene, by
  *   kind: the owner's own, Claude's, or code (the small speech model too),
- *   whoever runs it today.
+ *   whoever runs it today. A take is the owner's step's only when no speech
+ *   model said it (`speaker`).
  *
  * Nothing here ever reports `you` that the data doesn't say: an origin needs
  * a citation, a wording needs the owner's ad-libbed take, a hand needs the
@@ -56,7 +58,9 @@ function carries(shot: Shot, field: string): boolean {
   if (!field.startsWith("shots.")) return false
   const inner = field.slice("shots.".length)
   if (inner === "picture") return shot.picture.kind !== "card"
-  if (inner === "take") return shot.take !== undefined
+  if (inner === "take")
+    return shot.take !== undefined && shot.speaker === undefined
+  if (inner === "speaker") return shot.speaker !== undefined
   if (inner === "overrides") {
     return Object.keys(shot.overrides).length > 0
   }
@@ -80,7 +84,7 @@ export function handsOf(
 }
 
 export function wordingOf(shot: Shot, voice: CutList["voice"]): Wording {
-  if (!shot.take) return "agent"
+  if (!shot.take || shot.speaker !== undefined) return "agent"
   const said = shot.voice ?? (voice === "mixed" ? undefined : voice)
   return said === "ad-lib" ? "you" : "agent"
 }
