@@ -9,7 +9,8 @@
  *   pnpm --filter www record:preview --template conference-call [--voices kokoro|none] [--speaker http://127.0.0.1:8880] [--out out/preview]
  *   pnpm --filter www record:preview --app http://call-stage --template conference-call --voices kokoro --brand /brand --out <dir>
  *
- * It writes `<out>/preview.mp4` and `<out>/cut-list.json`, and keeps its
+ * It writes `<out>/preview.mp4`, `<out>/cut-list.json` and the sample as
+ * recorded, `<out>/week.json`, and keeps its
  * stills, takes and step cache in `<out>` as `record:call` does, under the
  * same policy flags; a step past the cache's budget prints a
  * `cache warning:` line, which the worker keeps.
@@ -35,8 +36,12 @@ const { values } = parseArgs({
 await runCommand(async () => {
   const { template } = values
   if (!isTemplateId(template))
-    fail([`--template names a template Studio lists, not ${String(template)}`])
+    fail([
+      template === undefined
+        ? "--template names the template to preview"
+        : `--template names a template Studio lists, not ${template}`,
+    ])
   if (template !== "conference-call")
     fail([`${template} has no sample fill yet, so it can't be previewed`])
-  await recordCall({ ...values, week: "sample" }, { preview: true })
+  await recordCall(values, { preview: true })
 })

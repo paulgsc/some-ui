@@ -110,8 +110,8 @@ export type CallValues = {
 
 /**
  * Records and renders the call of `values`' week into `<out>/<week>/call.mp4`;
- * with `preview` (SFEED12), the template's sample week cut to its preview
- * (`previewOf`) into `<out>/preview.mp4`.
+ * with `preview` (SFEED12), the template's sample week, whatever week
+ * `values` names, cut to its preview (`previewOf`) into `<out>/preview.mp4`.
  */
 export async function recordCall(
   values: CallValues,
@@ -120,8 +120,10 @@ export async function recordCall(
   const policy = policyOf(values)
   if (values.voices !== "kokoro" && values.voices !== "none")
     fail(["--voices is kokoro or none"])
-  const kept = values["week-file"] ? await keptWeek(values["week-file"]) : null
-  const weekAsked = kept?.from ?? values.week
+  // A preview is always of the template's sample week (SFEED12).
+  const kept =
+    !preview && values["week-file"] ? await keptWeek(values["week-file"]) : null
+  const weekAsked = preview ? "sample" : (kept?.from ?? values.week)
   const site = await siteOf(values)
   const browser = await launchChromium()
   try {
@@ -151,7 +153,9 @@ export async function recordCall(
       fail([`there is no week of ${weekAsked}`])
 
     const scenes = callScenes(week)
-    refuseLong(scenes, policy)
+    // A preview's length is its cut's, which the renderer checks exactly; the
+    // whole sample's words don't bound it.
+    if (!preview) refuseLong(scenes, policy)
     const root = here(preview ? values.out : join(values.out, week.week.from))
     const takes = await recordStills({
       page,
