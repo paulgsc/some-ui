@@ -76,6 +76,14 @@ pnpm --filter @some-ui/video-render render <video folder> --series <series folde
 Needs `ffmpeg` and `ffprobe` on `PATH`; the repo's nix shells carry them
 (`nix/video`).
 
+## Compositions, a scene's picture
+
+A scene's picture may be a HyperFrames composition (HYPER2, #2725): `{ kind:
+"composition", ref, variables, files }`, one of `@some-ui/video-motion`'s by its folder's
+name, its inputs, and the files in the video's folder it reads. The renderer draws it
+through the `compositions` port, just before the scene's segment, and lays the scene's
+captions over it; `@some-ui/video-motion`'s `motion video` fills the port.
+
 ## Captions, a scene at a time
 
 A video asks for captions with one burn-in over the whole video, kind

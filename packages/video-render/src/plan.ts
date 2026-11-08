@@ -37,8 +37,9 @@ export type Facts = ReadonlyMap<string, SourceFacts>
 
 export type FfmpegCall = { readonly args: ReadonlyArray<string> }
 
-const QUIET = ["-hide_banner", "-nostdin", "-v", "error", "-y"]
-const BITEXACT = [
+export const QUIET = ["-hide_banner", "-nostdin", "-v", "error", "-y"]
+/** VR1. */
+export const BITEXACT = [
   "-fflags",
   "+bitexact",
   "-flags:v",
@@ -104,6 +105,9 @@ export function pictureBox(
 ): Box {
   const p = shot.shot.picture
   const win = series.window
+  if (p.kind === "composition") {
+    throw new Error(`${shot.shot.id}: a composition is planned with its clip`)
+  }
   if (p.kind === "card") return win
   if (p.kind === "capture" && p.framing.mode === "crop") return win
   const f = facts.get(p.source)
@@ -381,10 +385,56 @@ export function planSegment(
   } else {
     filters.push(`[bg]null[framed]`)
   }
+  return segmentCall(
+    inputs,
+    filters,
+    "[framed]",
+    layer,
+    placed.frames,
+    fps,
+    out
+  )
+}
+
+/**
+ * A composition scene (HYPER2), picture only, to `out`: `clip`, the
+ * composition drawn over the whole frame for the scene's length
+ * (`Ports.compositions`), with `layer` laid over it as over any scene.
+ */
+export function planCompositionSegment(
+  { placed }: Scene,
+  series: Series,
+  clip: string,
+  out: string,
+  layer?: string
+): FfmpegCall {
+  const inputs = [...DECODE, "-i", clip]
+  const filters = ["[0:v]setpts=PTS-STARTPTS,setsar=1[framed]"]
+  return segmentCall(
+    inputs,
+    filters,
+    "[framed]",
+    layer,
+    placed.frames,
+    series.frame.fps,
+    out
+  )
+}
+
+/** A segment's call: `framed`, `layer` over it, as exactly `frames` frames. */
+function segmentCall(
+  inputs: Array<string>,
+  filters: Array<string>,
+  framed: string,
+  layer: string | undefined,
+  frames: number,
+  fps: number,
+  out: string
+): FfmpegCall {
   const shown =
     layer === undefined
-      ? "[framed]"
-      : overlay(layer, 0, fps, "[framed]", "layered", inputs, filters)
+      ? framed
+      : overlay(layer, 0, fps, framed, "layered", inputs, filters)
   filters.push(`${shown}format=yuv420p[v]`)
   return {
     args: [
@@ -396,7 +446,7 @@ export function planSegment(
       "-map",
       "[v]",
       "-frames:v",
-      String(placed.frames),
+      String(frames),
       "-r",
       String(fps),
       "-an",

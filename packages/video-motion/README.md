@@ -9,12 +9,22 @@ workspace renders one to a lossless clip, the same bytes every time, which
 ```sh
 pnpm --filter @some-ui/video-motion motion prove sample
 pnpm --filter @some-ui/video-motion motion render sample --out sample.mkv --variables v.json
+pnpm --filter @some-ui/video-motion motion video <video folder> [--series <folder>] [--prove]
 ```
 
-`prove` renders a composition twice and fails unless the two clips are the same bytes,
-printing each one's sum and time. CI runs it on every change here (`pr.yml`, "HyperFrames
-renders the same bytes twice"). Needs `ffmpeg` on `PATH` and a Chromium: Playwright's
-pinned one by default, or `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`, or `--chrome`.
+- `prove` renders a composition twice and fails unless the two clips are the same bytes,
+  printing each one's sum and time.
+- `video` renders a video folder's `cut-list.json` through `@some-ui/video-render` into
+  `video.mp4` beside it, its composition scenes drawn here (`src/node.ts`, the renderer's
+  `compositions` port). Each step is kept in the folder's `cache/`, so a retry draws only
+  the scenes whose inputs changed; with `--prove` it is drawn twice from nothing and fails
+  unless the bytes match. The series is `series/vertical` unless named:
+  1080x1920 at 30 fps, the frame alone, for videos whose scenes are compositions.
+  `sample/video` is a composition scene, then a card.
+
+CI runs both on every change here (`pr.yml`, "HyperFrames renders the same bytes twice").
+They need `ffmpeg` on `PATH` and a Chromium: Playwright's pinned one by default, or
+`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`, or `--chrome`.
 
 ## The pins, and why
 
@@ -44,15 +54,26 @@ pinned one by default, or `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`, or `--chrome`.
 
 Measured on home's image and limits (Playwright 1.62.1-noble, Ubuntu noble's ffmpeg,
 `--memory 4g --cpus 2 --network none`, uid 10000, read-only root), 2026-11-08: the sample
-(2 s, 60 frames) took 9.5 s a run, the container peaked at 528 MB, and both runs and the
-sandbox's own matched (`ecfbf33c…`).
+(2 s, 60 frames) took 9.4 s a run, the same bytes three times (`a9c7b986…`), and the
+container peaked at 576 MB. Bytes match per machine, not across machines: another
+Chromium or CPU draws its own.
 
 ## Writing a composition
 
-- **No GSAP yet.** Most of HyperFrames' catalogue animates with GSAP, whose licence is not
-  open source (ask #2723). Until it is answered, compositions use CSS keyframes and the Web
-  Animations API (each animation `pause()`d, so HyperFrames seeks it) and mark the root
-  `data-no-timeline`.
+- **What a render copies in beside it:** `lib/` (`compositions/_lib`, what they share), the brand's
+  mark as `brand/mark.svg` (`packages/some-styles/brand/favicon.svg`), the fonts under
+  `fonts/`, and the files a cut list names under `assets/`. A scene's length is set on the
+  root's `data-duration`, and its size must be the video's frame.
+- **Paint the ground on the root.** HyperFrames captures the page with no background, so
+  anything see-through over `body`'s colour loses its blend.
+- **Name nothing at the top level of a script after a `window` property** (`top`, `name`,
+  `status`): the page throws and draws nothing.
+
+- **Motion through `lib/motion.js`'s `track`, nothing else.** Each frame's styles are set
+  from its time when HyperFrames seeks to it, so no animation runs on a timeline of the
+  browser's own: CSS keyframes and the Web Animations API, seeked by HyperFrames, gave two
+  sums on one CI machine (#2737). The root is marked `data-no-timeline`. Not GSAP, whose
+  licence is not open source (ask #2723), though most of the catalogue animates with it.
 - **Android only:** the catalogue's iPhone, macOS and App Store blocks fail
   `pnpm check:android-only`; use `device-frame-stage` and a Google Play badge.
 - **No clock, no unseeded randomness, no fetch.** Every string and colour is a variable

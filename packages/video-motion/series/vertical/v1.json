@@ -1,0 +1,22 @@
+{
+  "schema": "some-ui.video-series/1",
+  "id": "vertical",
+  "version": 1,
+  "title": "A vertical drawn by compositions",
+  "frame": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 30
+  },
+  "ground": "#111821",
+  "window": {
+    "x": 0,
+    "y": 0,
+    "width": 1080,
+    "height": 1920
+  },
+  "defaultLook": "plain",
+  "sounds": {},
+  "soundGainDb": -8,
+  "designs": {}
+}

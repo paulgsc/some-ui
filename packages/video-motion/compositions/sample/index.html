@@ -34,9 +34,9 @@
         width: 1080px;
         height: 1920px;
         overflow: hidden;
-        background: var(--ground);
       }
       #root {
+        background: var(--ground);
         position: relative;
         width: 1080px;
         height: 1920px;
@@ -62,7 +62,6 @@
         font-size: 150px;
         font-weight: 800;
         letter-spacing: -0.02em;
-        animation: rise 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both;
       }
       #chip {
         position: absolute;
@@ -76,17 +75,6 @@
         line-height: 68px;
         font-size: 40px;
         font-weight: 600;
-        animation: rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.8s both;
-      }
-      @keyframes rise {
-        from {
-          transform: translateY(80px);
-          opacity: 0;
-        }
-        to {
-          transform: none;
-          opacity: 1;
-        }
       }
     </style>
   </head>
@@ -105,26 +93,25 @@
       <h1 id="title"></h1>
       <div id="chip"></div>
     </div>
+    <script src="lib/motion.js"></script>
     <script>
-      const V = window.__hyperframes.getVariables()
-      const style = document.documentElement.style
-      style.setProperty("--ground", V.ground)
-      style.setProperty("--ink", V.ink)
-      style.setProperty("--accent", V.accent)
-      document.getElementById("title").textContent = V.title
-      document.getElementById("chip").textContent = V.chip
-      // WAAPI, paused: HyperFrames seeks it to each frame's time.
-      document
-        .getElementById("mark")
-        .animate(
-          [
-            { transform: "scale(0.4) rotate(-14deg)", opacity: 0 },
-            { transform: "scale(1.08) rotate(0deg)", opacity: 1 },
-            { transform: "scale(1) rotate(0deg)", opacity: 1 },
-          ],
-          { duration: 900, delay: 100, fill: "both", easing: "ease-out" }
-        )
-        .pause()
+      const { track, vars } = window.motion
+      document.getElementById("title").textContent = vars.title
+      document.getElementById("chip").textContent = vars.chip
+      track(document.getElementById("mark"), [
+        [0.1, { opacity: 0, scale: 0.4, rotate: -14 }],
+        [0.7, { scale: 1.08 }],
+        [1.0, {}],
+      ])
+      for (const [id, at, rise] of [
+        ["title", 0.35, 0.9],
+        ["chip", 0.8, 0.7],
+      ]) {
+        track(document.getElementById(id), [
+          [at, { opacity: 0, y: 80 }],
+          [at + rise, {}],
+        ])
+      }
     </script>
   </body>
 </html>

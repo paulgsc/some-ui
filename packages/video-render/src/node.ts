@@ -20,7 +20,12 @@ import { render } from "./render"
 import type { Ports, Rendered, RenderOptions } from "./render"
 import { parseSeries, versionFile, versionOfFile } from "./series"
 import type { Series } from "./series"
-import { stepCache, withCachedBurnIns, withCachedFfmpeg } from "./step-cache"
+import {
+  stepCache,
+  withCachedBurnIns,
+  withCachedCompositions,
+  withCachedFfmpeg,
+} from "./step-cache"
 
 type Ran = {
   readonly ok: boolean
@@ -279,9 +284,10 @@ export async function renderFolder(
   root: string,
   seriesDir: string,
   options: RenderOptions &
-    Partial<Pick<Ports, "recordBurnIn" | "checkBurnIns">> & {
+    Partial<Pick<Ports, "recordBurnIn" | "checkBurnIns" | "compositions">> & {
       /**
-       * Keep each ffmpeg step and each burn-in recorded under this folder,
+       * Keep each ffmpeg step, each burn-in recorded and each composition
+       * drawn under this folder,
        * relative to `root`, so a retry runs only what changed; held to
        * `policy.cacheBytes`.
        */
@@ -302,11 +308,19 @@ export async function renderFolder(
   }
   const series = await readSeries(seriesDir, cutList.value.series.version)
   if (!series.ok) return series
-  const { recordBurnIn, checkBurnIns, stepCacheDir, warn, ...rest } = options
+  const {
+    recordBurnIn,
+    checkBurnIns,
+    compositions,
+    stepCacheDir,
+    warn,
+    ...rest
+  } = options
   const own: Ports = {
     ...nodePorts(root),
     ...(recordBurnIn ? { recordBurnIn } : {}),
     ...(checkBurnIns ? { checkBurnIns } : {}),
+    ...(compositions ? { compositions } : {}),
   }
   let version: Promise<string> | null = null
   const cache = stepCacheDir
@@ -320,12 +334,16 @@ export async function renderFolder(
       )
     : null
   const ports = cache
-    ? withCachedBurnIns(
-        withCachedFfmpeg(
-          own,
+    ? withCachedCompositions(
+        withCachedBurnIns(
+          withCachedFfmpeg(
+            own,
+            root,
+            cache,
+            (): Promise<string> => (version ??= ffmpegVersion(root))
+          ),
           root,
-          cache,
-          (): Promise<string> => (version ??= ffmpegVersion(root))
+          cache
         ),
         root,
         cache

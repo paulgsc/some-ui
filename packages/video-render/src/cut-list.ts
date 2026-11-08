@@ -59,6 +59,19 @@ const PictureSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("still"), source: path }),
   /** The series' ground alone, for a card burn-in to draw on. */
   z.object({ kind: z.literal("card") }),
+  /**
+   * A HyperFrames composition (HYPER2, #2725), drawn over the whole frame for
+   * the scene's length: one of `@some-ui/video-motion`'s, by its folder's
+   * name. It draws its own motion, and its own way in and out.
+   */
+  z.object({
+    kind: z.literal("composition"),
+    ref: z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/),
+    /** Its inputs, over its declared defaults; one it doesn't declare is refused. */
+    variables: z.record(z.string(), z.unknown()).default({}),
+    /** Files in the video's folder it reads, beside it as `assets/<file>`. */
+    files: z.array(path).default([]),
+  }),
 ])
 
 /** A burn-in's kind and design, as names (`@some-ui/burn-ins` knows them). */
@@ -201,6 +214,7 @@ export type CutList = z.infer<typeof CutListSchema>
 export type Shot = z.infer<typeof ShotSchema>
 export type Picture = Shot["picture"]
 export type Capture = Extract<Picture, { kind: "capture" }>
+export type Composition = Extract<Picture, { kind: "composition" }>
 export type BurnIn = z.infer<typeof BurnInSchema>
 export type Idea = z.infer<typeof IdeaSchema>
 
@@ -265,6 +279,13 @@ function shotProblems(shots: ReadonlyArray<Shot>): Array<string> {
     if (p.kind === "card" && o.motion && o.motion.kind !== "still") {
       say("a card has no picture to move")
     }
+    const into = o.transitionIn ?? "cut"
+    if (isComposition(s)) {
+      if (o.motion || o.background) say("a composition draws its own picture")
+      if (into !== "cut") say("a composition draws its own way in")
+    } else if (isComposition(shots[i - 1]) && into !== "cut") {
+      say("the composition before it draws its own way out")
+    }
     const m = o.motion
     const times =
       m?.kind === "punch-in"
@@ -298,6 +319,10 @@ const CAPTIONS = "captions"
 
 /** Whether a burn-in is the captions. */
 export const isCaptions = (b: BurnIn): boolean => b.kind === CAPTIONS
+
+/** Whether a scene's picture is a composition, which draws its own (HYPER2). */
+export const isComposition = (s: Shot | undefined): boolean =>
+  s?.picture.kind === "composition"
 
 /**
  * What a burn-in the renderer draws over the whole video, from the scenes

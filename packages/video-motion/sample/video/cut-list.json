@@ -1,0 +1,25 @@
+{
+  "schema": "some-ui.cut-list/2",
+  "title": "A composition, then a card",
+  "series": { "id": "vertical", "version": 1 },
+  "look": "plain",
+  "voice": "ad-lib",
+  "shots": [
+    {
+      "id": "sample",
+      "picture": {
+        "kind": "composition",
+        "ref": "sample",
+        "variables": { "title": "Same bytes", "chip": "twice" }
+      },
+      "durationMs": 2000,
+      "voiceInMs": 0
+    },
+    {
+      "id": "ground",
+      "picture": { "kind": "card" },
+      "durationMs": 1000,
+      "voiceInMs": 0
+    }
+  ]
+}
