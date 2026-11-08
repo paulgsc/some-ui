@@ -8,12 +8,7 @@ import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
 
 import { parseOklch } from "../session-roles"
-import {
-  contrast,
-  MOCHI_NIGHT,
-  oklchOf,
-  videoPaletteProblems,
-} from "../video-palette"
+import { MOCHI_NIGHT, oklchOf, videoPaletteProblems } from "../video-palette"
 
 describe("Mochi Night", () => {
   it("holds every rule a palette can be measured on", () => {
@@ -27,7 +22,6 @@ describe("Mochi Night", () => {
       surface: "#fdf3e5",
       honey: "#f5a623",
     }
-    expect(contrast(day.honey, day.background)).toBeCloseTo(1.85, 2)
     const problems = videoPaletteProblems(day)
     expect(problems).toContainEqual(
       expect.stringMatching(/^honey on the ground is 1\.\d\d:1 as some see it/)

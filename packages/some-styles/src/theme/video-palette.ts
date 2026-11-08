@@ -18,7 +18,13 @@
  * The thresholds in rules 2 to 4 are settings, not research results.
  */
 
-import type { Oklch } from "./feeling"
+import type { Oklch, Rgb } from "./feeling"
+import {
+  decode,
+  fromLinearSrgb,
+  linearLuminance,
+  luminanceRatio,
+} from "./feeling"
 
 /** The palette's roles, as `#rrggbb`. */
 export const MOCHI_NIGHT = {
@@ -57,32 +63,23 @@ export const VIDEO_RULES = {
   channel: [10, 245],
 } as const
 
-type Rgb = readonly [number, number, number]
-
 /** The colour's 8-bit channels. */
 export function channels(hex: string): Rgb {
   const n = Number.parseInt(hex.slice(1), 16)
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
 }
 
-const decode = (c: number): number => {
-  const x = c / 255
-  return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4
-}
+/** WCAG 2 relative luminance of 8-bit sRGB channels. */
+export const luminance8 = ([r, g, b]: Rgb): number =>
+  linearLuminance([decode(r / 255), decode(g / 255), decode(b / 255)])
+
 const linear = (hex: string): Rgb => {
   const [r, g, b] = channels(hex)
-  return [decode(r), decode(g), decode(b)]
+  return [decode(r / 255), decode(g / 255), decode(b / 255)]
 }
 
-const luminanceOf = ([r, g, b]: Rgb): number =>
-  0.2126 * r + 0.7152 * g + 0.0722 * b
-
-/** WCAG 2.2's contrast between two colours' relative luminances. */
-const ratio = (x: number, y: number): number =>
-  (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
-
 export const contrast = (a: string, b: string): number =>
-  ratio(luminanceOf(linear(a)), luminanceOf(linear(b)))
+  luminanceRatio(luminance8(channels(a)), luminance8(channels(b)))
 
 export type Deficiency = "protan" | "deutan" | "tritan"
 
@@ -120,7 +117,10 @@ export const contrastSeenBy = (
   a: string,
   b: string
 ): number =>
-  ratio(luminanceOf(simulated(a, kind)), luminanceOf(simulated(b, kind)))
+  luminanceRatio(
+    linearLuminance(simulated(a, kind)),
+    linearLuminance(simulated(b, kind))
+  )
 
 /** BT.709 luma (Y') and chroma (the length of Cb, Cr), from 0 to 1. */
 export function bt709(hex: string): { luma: number; chroma: number } {
@@ -131,18 +131,8 @@ export function bt709(hex: string): { luma: number; chroma: number } {
   return { luma, chroma: Math.hypot(cb, cr) }
 }
 
-/** The colour in oklch, as `themes/*.css` writes one: L from 0 to 1, H in degrees. */
-export function oklchOf(hex: string): Oklch {
-  const [r, g, b] = linear(hex)
-  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b)
-  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b)
-  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b)
-  const L = 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s
-  const A = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s
-  const B = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s
-  const h = (Math.atan2(B, A) * 180) / Math.PI
-  return [L, Math.hypot(A, B), h < 0 ? h + 360 : h]
-}
+/** The colour in oklch, as `themes/*.css` writes one. */
+export const oklchOf = (hex: string): Oklch => fromLinearSrgb(linear(hex))
 
 const DEFICIENCIES: ReadonlyArray<Deficiency> = ["protan", "deutan", "tritan"]
 
@@ -168,7 +158,6 @@ export function videoPaletteProblems(p: VideoPalette): Array<string> {
     warning: p.warning,
     success: p.success,
   }
-  // On the ground a video's frame is, as the research measured them.
   for (const [name, accent] of Object.entries(accents)) {
     const least = Math.min(
       contrast(accent, p.background),

@@ -155,8 +155,8 @@ export function mixOklab(from: Oklch, to: Oklch, weight: number): Oklch {
   return toLch([at(l1, l2), at(a1, a2), at(b1, b2)])
 }
 
-/** WCAG 2 relative luminance, through linear sRGB (gamut-clamped). */
-type Rgb = [number, number, number]
+/** Linear sRGB, each channel 0..1. */
+export type Rgb = readonly [number, number, number]
 
 /** Linear sRGB, clamped to the gamut. */
 function toLinearSrgb(color: Oklch): Rgb {
@@ -172,7 +172,7 @@ function toLinearSrgb(color: Oklch): Rgb {
   ]
 }
 
-function fromLinearSrgb([r, g, b]: Rgb): Oklch {
+export function fromLinearSrgb([r, g, b]: Rgb): Oklch {
   const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b)
   const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b)
   const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b)
@@ -185,7 +185,8 @@ function fromLinearSrgb([r, g, b]: Rgb): Oklch {
 
 const encode = (x: number): number =>
   x <= 0.0031308 ? 12.92 * x : 1.055 * x ** (1 / 2.4) - 0.055
-const decode = (x: number): number =>
+/** An sRGB channel, 0..1, to linear light. */
+export const decode = (x: number): number =>
   x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4
 
 /** `top` at `alpha` over `under`, blended as a browser paints it: in sRGB. */
@@ -197,17 +198,20 @@ function composite(top: Oklch, under: Oklch, alpha: number): Oklch {
   return fromLinearSrgb([over(tr, ur), over(tg, ug), over(tb, ub)])
 }
 
-function luminance(color: Oklch): number {
-  const [r, g, b] = toLinearSrgb(color)
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b
-}
+/** WCAG 2 relative luminance of a linear sRGB colour. */
+export const linearLuminance = ([r, g, b]: Rgb): number =>
+  0.2126 * r + 0.7152 * g + 0.0722 * b
+
+/** WCAG 2 contrast ratio, 1 to 21, of two relative luminances. */
+export const luminanceRatio = (x: number, y: number): number =>
+  (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
 
 /** WCAG 2 contrast ratio, 1 to 21. */
-export function contrastRatio(a: Oklch, b: Oklch): number {
-  const x = luminance(a)
-  const y = luminance(b)
-  return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
-}
+export const contrastRatio = (a: Oklch, b: Oklch): number =>
+  luminanceRatio(
+    linearLuminance(toLinearSrgb(a)),
+    linearLuminance(toLinearSrgb(b))
+  )
 
 /** Body ink and muted text, and marks (symbol, lettering, texture). */
 export const CONTRAST_FLOOR = { text: 4.5, mark: 3 } as const
@@ -222,7 +226,8 @@ function clear(
   grounds: ReadonlyArray<Oklch>,
   floor: number
 ): Oklch {
-  const away = luminance(grounds[0] ?? color) > 0.18 ? -0.01 : 0.01
+  const away =
+    linearLuminance(toLinearSrgb(grounds[0] ?? color)) > 0.18 ? -0.01 : 0.01
   const short = (c: Oklch): boolean =>
     grounds.some((ground) => contrastRatio(c, ground) < floor)
   const [start, c, h] = color

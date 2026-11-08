@@ -1,27 +1,10 @@
 /* ============================================================
    MOCHI NIGHT THEME — dark, the mochi's honey on a cocoa night
    ------------------------------------------------------------
-   The palette made for video (SFEED10, paulgsc/some-ui#2675),
-   the templates' theme for the call and Playoff Delta, and one
-   the app offers like any other. Its colours are the hex roles
-   in `src/theme/video-palette.ts`, which holds them to what
-   YouTube's encode does to colour; every value here is that hex
-   in oklch, and `video-palette.test.ts` holds the two equal.
-
-     ground     #241a13  flat cocoa, luma 0.11: no near-peak white
-                         fills the frame, and no gradient to band
-     ink        #f0e4d0  warm cream, 13.6:1, never pure white
-     muted ink  #ab9a82  6.2:1, for large text
-     honey      #f2aa3c  --primary and --brand, 8.6:1
-     sky        #78c2e8  the second accent, 8.7:1; honey and sky
-                         are Okabe-Ito's orange and blue, apart
-                         under every colour blindness
-     warning    #f0705a  5.8:1, destructive and warning, always
-                         with a word or an icon
-     highlight  #5b4214  the fill behind ink, which reads 7.5:1
-   Text carries its contrast in brightness, since 4:2:0 halves
-   colour's resolution: ink and muted ink are nearly grey, and no
-   text colour is strongly saturated (the palette's rule 2).
+   The palette made for video (SFEED10, paulgsc/some-ui#2675).
+   Every colour is a role of `MOCHI_NIGHT` in
+   `src/theme/video-palette.ts`, written in oklch, and its test
+   holds the two equal; that module says why each is what it is.
 
    A video's frame is the ground itself, so `--surface` is the
    ground, and cards sit one step above it.

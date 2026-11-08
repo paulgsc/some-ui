@@ -24,7 +24,8 @@ import { assertNever } from "@some-ui/intent-kit"
 import { useOverflows } from "@some-ui/react-hooks"
 import { BrandMark } from "@some-ui/shared"
 import { sessionThemeProps } from "@some-ui/styles/theme"
-import { hasCaptions } from "@some-ui/video-render"
+import { hasCaptions, markThemeOf } from "@some-ui/video-render"
+import type { Shape } from "@some-ui/video-render"
 
 import "./index.css"
 
@@ -88,11 +89,14 @@ const FramingSlide = ({
   season,
   week,
   version,
+  shape,
   scene,
 }: {
   season: StorySeason
   week: StoryWeek | null
   version: number
+  /** The format version's shape, which names the mark's theme. */
+  shape: Shape | undefined
   scene: Framing
 }): JSX.Element => {
   switch (scene.kind) {
@@ -114,14 +118,13 @@ const FramingSlide = ({
     }
     case "brand-in":
     case "brand-out": {
-      const shape = formatOf(kindOf(week?.week ?? LEGEND_WEEK), version).shape
       return (
         <div className="flex h-full flex-col items-center justify-center gap-[4cqw]">
           <BrandMark
             tone="brand"
             className="size-[40cqw]"
             title={INTRO.mark}
-            theme={shape?.brand.theme ?? shape?.theme}
+            theme={markThemeOf(shape)}
           />
           <p className="pd-q text-center">{INTRO.show}</p>
           {scene.kind === "brand-out" && (
@@ -192,23 +195,20 @@ const Frame = ({
       }
     : undefined
   const brand = framing?.kind === "brand-in" || framing?.kind === "brand-out"
-  // The format version's theme, whatever the app's is (SFEED10).
-  const theme =
+  const shape =
     version === undefined
       ? undefined
-      : formatOf(kindOf(week?.week ?? LEGEND_WEEK), version).shape?.theme
-  const look = theme ? sessionThemeProps(theme) : null
+      : formatOf(kindOf(week?.week ?? LEGEND_WEEK), version).shape
   return (
     <div
-      data-theme={look?.["data-theme"]}
-      style={look?.style}
-      className={cn(
-        look?.className,
-        "pd-frame bg-background text-foreground",
-        fill
-          ? "pd-frame--fill"
-          : "border-border h-full max-w-full rounded-[calc(var(--radius)+0.75rem)] border"
-      )}
+      {...sessionThemeProps(shape?.theme, {
+        className: cn(
+          "pd-frame bg-background text-foreground",
+          fill
+            ? "pd-frame--fill"
+            : "border-border h-full max-w-full rounded-[calc(var(--radius)+0.75rem)] border"
+        ),
+      })}
       data-slide={shown}
       data-pd-season={data}
       data-overflow={overflows ? "true" : undefined}
@@ -238,6 +238,7 @@ const Frame = ({
             season={season}
             week={week}
             version={version ?? 1}
+            shape={shape}
             scene={framing}
           />
         )}

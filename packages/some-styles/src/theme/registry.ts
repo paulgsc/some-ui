@@ -176,8 +176,6 @@ export const SESSION_THEMES = [
     },
   },
   {
-    // The palette made for video (SFEED10, `./video-palette`): the call's and
-    // Playoff Delta's templates draw in it, and the app offers it too.
     id: "mochi-night",
     label: "Mochi Night",
     mode: "dark",

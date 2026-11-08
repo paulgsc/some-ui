@@ -58,18 +58,21 @@ describe("applyAppearance", () => {
 })
 
 describe("sessionThemeProps", () => {
-  it("draws a subtree in the theme its content names, with its scheme", () => {
-    expect(sessionThemeProps("mochi-night")).toEqual({
-      className: "dark mochi-night",
-      "data-theme": "mochi-night",
-      style: { colorScheme: "dark" },
-    })
-  })
-
   it("leaves the ground to what is around it, for a mark in another theme", () => {
     expect(sessionThemeProps("mochi", { ground: false }).style).toEqual({
       colorScheme: "light",
       backgroundColor: "transparent",
+    })
+  })
+
+  it("keeps the caller's class, and with no theme gives only that", () => {
+    expect(
+      sessionThemeProps("mochi-night", { className: "pd-frame" })
+    ).toMatchObject({
+      className: "dark mochi-night pd-frame",
+    })
+    expect(sessionThemeProps(undefined, { className: "pd-frame" })).toEqual({
+      className: "pd-frame",
     })
   })
 })

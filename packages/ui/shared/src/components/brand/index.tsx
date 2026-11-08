@@ -84,7 +84,7 @@ type BrandMarkProps = {
   /**
    * The app's theme the mark's colours come from, where what it stands in
    * names one (a video template's brand slides, SFEED14); absent, the
-   * theme around it. The host passes it: the mark never picks one.
+   * theme around it.
    */
   theme?: SessionThemeId
 }
@@ -94,19 +94,17 @@ export const BrandMark = ({
   tone = "current",
   title,
   theme,
-}: BrandMarkProps): JSX.Element => {
-  const look = theme ? sessionThemeProps(theme, { ground: false }) : null
-  return (
-    <svg
-      viewBox="0 0 64 64"
-      className={cn("size-6", look?.className, className)}
-      data-theme={look?.["data-theme"]}
-      style={look?.style}
-      fill="currentColor"
-      {...(title ? { role: "img" } : { "aria-hidden": true })}
-    >
-      {title && <title>{title}</title>}
-      <MochiShapes tone={tone} />
-    </svg>
-  )
-}
+}: BrandMarkProps): JSX.Element => (
+  <svg
+    viewBox="0 0 64 64"
+    {...sessionThemeProps(theme, {
+      ground: false,
+      className: cn("size-6", className),
+    })}
+    fill="currentColor"
+    {...(title ? { role: "img" } : { "aria-hidden": true })}
+  >
+    {title && <title>{title}</title>}
+    <MochiShapes tone={tone} />
+  </svg>
+)

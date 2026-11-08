@@ -94,21 +94,28 @@ export function applyAppearance(
  * in, and the mark on its brand slides (SFEED14). The host passes the id; a
  * reusable component never picks one. `ground: false` leaves the subtree's
  * ground to what is around it, for a mark drawn in another theme than its
- * frame.
+ * frame. With no theme, it gives only the caller's `className`.
  */
 export function sessionThemeProps(
-  id: SessionThemeId,
-  { ground = true }: { readonly ground?: boolean } = {}
-): BoundaryProps & {
-  "data-theme": string
-  style: { colorScheme: "light" | "dark"; backgroundColor?: "transparent" }
+  id: SessionThemeId | undefined,
+  {
+    ground = true,
+    className,
+  }: { readonly ground?: boolean; readonly className?: string } = {}
+): {
+  className?: string
+  "data-theme"?: string
+  style?: { colorScheme: "light" | "dark"; backgroundColor?: "transparent" }
 } {
-  const theme = getSessionTheme(id)
+  const theme = id === undefined ? undefined : getSessionTheme(id)
+  if (theme === undefined) return className === undefined ? {} : { className }
   return {
-    className: theme?.boundary.classNames.join(" ") ?? "",
-    "data-theme": theme?.boundary.dataTheme ?? id,
+    className: [...theme.boundary.classNames, className]
+      .filter(Boolean)
+      .join(" "),
+    "data-theme": theme.boundary.dataTheme,
     style: {
-      colorScheme: theme?.mode ?? "light",
+      colorScheme: theme.mode,
       ...(ground ? {} : { backgroundColor: "transparent" as const }),
     },
   }

@@ -12,7 +12,11 @@
  * lose about two thirds, so the check can fail.
  */
 import { spawnSync } from "node:child_process"
-import { channels, MOCHI_NIGHT } from "@some-ui/styles/theme/video-palette"
+import {
+  channels,
+  luminance8,
+  MOCHI_NIGHT,
+} from "@some-ui/styles/theme/video-palette"
 import { BT709, TO_VIDEO } from "@video-render/plan"
 import { describe, expect, it } from "vitest"
 
@@ -63,22 +67,14 @@ function roundTrip(raw: Buffer): { pixels: Buffer; tags: string } {
   return { pixels, tags: probed.stdout.toString().trim() }
 }
 
-const linear = (c: number): number => {
-  const x = c / 255
-  return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4
-}
-const luminance = (r: number, g: number, b: number): number =>
-  0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b)
 const pixelLuminance = (pixels: Buffer, x: number, y: number): number => {
   const at = (y * W + x) * 3
-  return luminance(pixels[at] ?? 0, pixels[at + 1] ?? 0, pixels[at + 2] ?? 0)
+  return luminance8([pixels[at] ?? 0, pixels[at + 1] ?? 0, pixels[at + 2] ?? 0])
 }
 
 /** The share of the stroke's contrast with the ground left after the encode, at its worse alignment. */
 function kept(ink: string, ground: string): number {
-  const [ir, ig, ib] = channels(ink)
-  const [gr, gg, gb] = channels(ground)
-  const before = luminance(ir, ig, ib) - luminance(gr, gg, gb)
+  const before = luminance8(channels(ink)) - luminance8(channels(ground))
   return Math.min(
     ...[47, 48].map((x) => {
       const { pixels } = roundTrip(frame(ink, ground, x))

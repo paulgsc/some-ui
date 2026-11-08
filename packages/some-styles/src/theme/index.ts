@@ -81,16 +81,3 @@ export {
   feelingTone,
   isFeelingKey,
 } from "./feeling"
-
-export type { Deficiency, VideoPalette } from "./video-palette"
-
-export {
-  bt709,
-  channels,
-  contrast,
-  contrastSeenBy,
-  MOCHI_NIGHT,
-  oklchOf,
-  VIDEO_RULES,
-  videoPaletteProblems,
-} from "./video-palette"

@@ -32,7 +32,7 @@ import { z } from "zod"
 
 import { once, problemsOf } from "./cut-list"
 import type { CutList, Parsed } from "./cut-list"
-import { FORMAT_SCHEMA, repeatedId, showId, words } from "./format"
+import { FORMAT_SCHEMA, inTheme, repeatedId, showId, words } from "./format"
 import type { Format, Shape } from "./format"
 import { OptionSchema, RefSchema } from "./refs"
 import type { CallRef } from "./refs"
@@ -57,17 +57,18 @@ export const CALL_ID = "conference-call"
  */
 export const CALL_VERSION = 3
 
-/** The call's shape at `version`, from version 2. */
-const shapeOf = (version: number): Shape => ({
-  brand: {
-    intro: true,
-    outro: true,
-    ...(version >= 3 ? { theme: "mochi-night" as const } : {}),
-  },
+/** The first version drawn in Mochi Night, with the music bed. */
+const NIGHT_VERSION = 3
+
+/** The call's shape from version 2. */
+const CALL_SHAPE: Shape = {
+  brand: { intro: true, outro: true },
   chapters: ["board", "moved", "done", "gray", "mine", "asks"],
   subtitles: "word",
-  ...(version >= 3 ? { theme: "mochi-night" as const } : {}),
-})
+}
+
+const shapeOf = (version: number): Shape =>
+  version >= NIGHT_VERSION ? inTheme(CALL_SHAPE, "mochi-night") : CALL_SHAPE
 
 export const CALL_MOST = {
   moved: 12,
@@ -126,7 +127,7 @@ export function callFormat(version: number = CALL_VERSION): Format {
     id: CALL_ID,
     version,
     title: "The weekly call",
-    series: { id: CALL_ID, version: version >= 3 ? 2 : 1 },
+    series: { id: CALL_ID, version: version >= NIGHT_VERSION ? 2 : 1 },
     look: "calm",
     scenes: [
       scene("open", "The week", "Which week this is, and what it read", 8_000),

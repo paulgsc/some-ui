@@ -1,10 +1,13 @@
 import {
+  BT709,
   duckExpr,
   planAssembly,
   planBed,
+  planJoin,
   planMix,
   planSegment,
   readLoudness,
+  TO_VIDEO,
 } from "@video-render/plan"
 import type { Assembly, Facts, Mix, Scene } from "@video-render/plan"
 import { resolve } from "@video-render/resolve"
@@ -153,6 +156,22 @@ describe("planAssembly", () => {
     const args = planAssembly(a, series(), "video.mp4").args
     return args[args.indexOf("-filter_complex") + 1] ?? ""
   }
+
+  it("makes every encode BT.709, from RGB once, tagged so (SFEED10)", () => {
+    const a = assembly({ layers: [{ file: "captions.mov", startFrame: 0 }] })
+    const tagged = (args: ReadonlyArray<string>): boolean =>
+      args.join(" ").includes(BT709.join(" "))
+    const segment = planSegment(a.scenes[0]!, series(), FACTS, "s.mkv").args
+    expect(tagged(segment)).toBe(true)
+    expect(segment.join(" ")).toContain(`${TO_VIDEO},format=yuv420p[v]`)
+    expect(tagged(planJoin(a.scenes, a.segments, series(), "p.mkv").args)).toBe(
+      true
+    )
+    const final = planAssembly(a, series(), "video.mp4").args
+    expect(tagged(final)).toBe(true)
+    // A layer over the joined video is turned to video by the same matrix.
+    expect(filters(a)).toContain(`${TO_VIDEO},format=yuva420p,setpts`)
+  })
 
   it("joins every transition at its frame", () => {
     const a = assembly()

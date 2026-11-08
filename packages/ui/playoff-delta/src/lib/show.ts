@@ -12,6 +12,7 @@
 import {
   episodeOf,
   FORMAT_SCHEMA,
+  inTheme,
   type Episode,
   type Format,
   type Parsed,
@@ -55,7 +56,6 @@ export const FORMAT_VERSION: Readonly<Record<FormatKind, number>> = {
   legend: 3,
 }
 
-/** The first version drawn in Mochi Night, with the music bed. */
 const NIGHT_VERSION = 3
 
 /** The first version voiced and drawn in a shape. */
@@ -96,15 +96,8 @@ const seriesOf = (version: number): Format["series"] => ({
   version: version >= NIGHT_VERSION ? 3 : version >= VOICED_VERSION ? 2 : 1,
 })
 
-/** Each format's shape at `version`: from version 3, in Mochi Night. */
 const shapeOf = (kind: FormatKind, version: number): Shape =>
-  version >= NIGHT_VERSION
-    ? {
-        ...SHAPE[kind],
-        brand: { ...SHAPE[kind].brand, theme: "mochi-night" },
-        theme: "mochi-night",
-      }
-    : SHAPE[kind]
+  version >= NIGHT_VERSION ? inTheme(SHAPE[kind], "mochi-night") : SHAPE[kind]
 
 /** A format's id: its folder's name. */
 export const formatId = (kind: FormatKind): string => `playoff-delta-${kind}`
