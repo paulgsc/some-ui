@@ -123,6 +123,33 @@ describe("an error pasted in a week (RR13)", () => {
     expect(again.week.paste.getSnapshot().draft?.text).toBe("warning: unused")
   })
 
+  it("lets go home, at the next opening, a note a kept paste names that still waits", async () => {
+    const storage = inMemoryStorage()
+    const simulated = onConfirm()
+    const first = phone(storage, simulated)
+    first.week.paste.open(QUILLMOSS_WEEK.id)
+    first.week.paste.dispatch({ type: "text", text: "error[E0599]" })
+    await sayNote(first.week, simulated)
+    // A Keep whose release the phone couldn't store.
+    first.release.mockReturnValueOnce(false)
+    first.week.paste.dispatch({ type: "keep" })
+    const [note] = simulated.store.getSnapshot()
+    expect(note?.waits).toBe(true)
+    const again = phone(storage, simulated)
+    expect(again.release).toHaveBeenCalledWith([note?.id])
+  })
+
+  it("says when a change to the paste couldn't be kept", () => {
+    const storage = inMemoryStorage()
+    const on = phone(storage, onConfirm())
+    on.week.paste.open(QUILLMOSS_WEEK.id)
+    storage.setItem = (): void => {
+      throw new Error("full")
+    }
+    on.week.paste.dispatch({ type: "text", text: "error" })
+    expect(on.week.paste.getSnapshot().notice).toBe("draftNotKept")
+  })
+
   it("is left waiting when the week opens: its note answers no ticket", async () => {
     const storage = inMemoryStorage()
     const simulated = onConfirm()

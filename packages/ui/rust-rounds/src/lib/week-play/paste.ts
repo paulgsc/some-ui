@@ -16,6 +16,9 @@
  *   pastes kept, which only grow.
  * - **One note a paste.** Saying it again replaces it; the one replaced,
  *   which never left the phone, is deleted at Keep.
+ * - **A note a kept paste names goes home.** Each opening lets go home any
+ *   such note still waiting (a Keep whose release the phone couldn't
+ *   store), and the screen says when a change to the paste couldn't be kept.
  */
 import { assertNever } from "@some-ui/core-utils"
 import type {
@@ -38,8 +41,8 @@ type PasteState = {
   readonly showing: boolean
   /** The paste being written, or null while none is. */
   readonly draft: PasteDraft | null
-  /** What the screen says once: the paste kept, or not. */
-  readonly notice: "kept" | "notKept" | null
+  /** What the screen says once: the paste kept, or not, or a change not kept. */
+  readonly notice: "kept" | "notKept" | "draftNotKept" | null
 }
 
 type PasteEvent =
@@ -48,6 +51,8 @@ type PasteEvent =
   | { readonly type: "close" }
   | { readonly type: "keep" }
   | { readonly type: "kept"; readonly kept: boolean }
+  /** A change to the paste being written: false when the phone couldn't keep it. */
+  | { readonly type: "draftKept"; readonly kept: boolean }
   | { readonly type: "noticeDismissed" }
 
 type PasteEffect =
@@ -133,6 +138,11 @@ function stepPaste(
         ? same({ showing: false, draft: null, notice: "kept" })
         : same({ ...state, notice: "notKept" })
     }
+    case "draftKept": {
+      return event.kept
+        ? same(state)
+        : same({ ...state, notice: "draftNotKept" })
+    }
     case "noticeDismissed": {
       return same({ ...state, notice: null })
     }
@@ -146,7 +156,7 @@ export type PasteRuntime = {
   readonly getSnapshot: () => PasteState
   readonly subscribe: (listener: () => void) => () => void
   readonly dispatch: (
-    event: Exclude<PasteEvent, { type: "open" | "kept" }>
+    event: Exclude<PasteEvent, { type: "open" | "kept" | "draftKept" }>
   ) => void
   /** Opens the paste for `week`, begun now if none is. */
   readonly open: (week: string) => void
@@ -171,6 +181,16 @@ export function pasteRuntime(
   }
   const listeners = new Set<() => void>()
 
+  // A note a kept paste names that still waits: its Keep couldn't let it go.
+  const named = new Set(
+    stores.pastes.list().flatMap(({ note }) => (note === null ? [] : [note]))
+  )
+  const stranded = takes.takes
+    .getSnapshot()
+    .filter((take) => take.waits === true && named.has(take.id))
+    .map((take) => take.id)
+  if (stranded.length > 0) takes.release(stranded)
+
   function send(event: PasteEvent): void {
     const next = stepPaste(state, event, takes.takes.getSnapshot())
     if (next.state !== state) {
@@ -182,7 +202,7 @@ export function pasteRuntime(
 
   function run(effect: PasteEffect): void {
     if (effect.type === "keepDraft") {
-      stores.draft.write(effect.draft)
+      send({ type: "draftKept", kept: stores.draft.write(effect.draft) })
       return
     }
     const kept = stores.pastes.add(effect.paste)

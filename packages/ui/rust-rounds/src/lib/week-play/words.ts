@@ -174,6 +174,8 @@ export const WEEK_WORDS = {
     kept: "Kept on this phone. A note on it goes home with your other takes; the error itself stays here until home keeps the week's record.",
     notKept:
       "This phone couldn't keep the paste, so nothing went. It's all still here.",
+    draftNotKept:
+      "This phone couldn't keep that change to the paste, so it would be lost if you left now.",
   },
   /** The cards from before the weeks, until RR20 retires them. */
   rounds: "The rounds from before",
