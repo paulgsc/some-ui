@@ -9,9 +9,11 @@
  *   it the phone fetches, each a range of at most `PART_BYTES`, while Watch
  *   fetches it into the phone's cache;
  * - the episode's `YouTube` link, one `PUT /feeds/:feed/videos/:key/link` per
- *   Save, which a tap starts.
+ *   Save, which a tap starts;
+ * - the episode's chapters for its `YouTube` description (SFEED4, #2763), one
+ *   `GET /feeds/:feed/videos/:key/description` each time its page opens.
  *
- * All three go through the link's `keep`, as Ideas on home's writes do.
+ * All four go through the link's `keep`, as Ideas on home's writes do.
  *
  * Nothing of the phone's is sent but the link the owner pasted. What the
  * screen makes of each answer is `lib/call-videos`'s, its one caller.
@@ -35,6 +37,11 @@ function videoPath(feed: Feed, key: string): string {
 /** An episode's `YouTube` link. */
 function linkPath(feed: Feed, key: string): string {
   return `/feeds/${feed}/videos/${encodeURIComponent(key)}/link`
+}
+
+/** An episode's chapters, as its YouTube description's lines. */
+function descriptionPath(feed: Feed, key: string): string {
+  return `/feeds/${feed}/videos/${encodeURIComponent(key)}/description`
 }
 
 /** The most bytes of a video one request asks for: about 4 MB. */
@@ -98,5 +105,12 @@ export function sendLink(
     homeLink().keep((send) =>
       send("PUT", linkPath(feed, key), JSON.stringify({ link }))
     )
+  )
+}
+
+/** Asks home once for an episode's chapters; never rejects. */
+export function askDescription(feed: Feed, key: string): Promise<CallAsked> {
+  return asked(() =>
+    homeLink().keep((send) => send("GET", descriptionPath(feed, key)))
   )
 }
