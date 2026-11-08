@@ -66,7 +66,7 @@
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.0",
     "@types/chrome": "^0.0.293",
-    "@types/node": "^26.0.1",
+    "@types/node": "^26.6.6",
     "@types/react": "^19.0.4",
     "@types/react-dom": "^19.0.2",
     "es-module-lexer": "3.0.2",
