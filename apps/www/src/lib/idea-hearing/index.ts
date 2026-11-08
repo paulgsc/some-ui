@@ -115,6 +115,23 @@ export function phoneHomeListener(
 }
 
 /**
+ * What an ask's answer listens through (SFEED5, `lib/ask-answer`): home's
+ * hearing alone, since only home hears an answer, and the phone's pairing,
+ * read once it has loaded.
+ */
+export function phoneAskHearing(hear: (ports: HearingPorts) => TurnListener): {
+  readonly listener: TurnListener
+  readonly loaded: () => Promise<void>
+  readonly paired: () => boolean
+} {
+  return {
+    listener: phoneHomeListener(hear),
+    loaded: () => homeLink().load(),
+    paired: () => pairingOf() !== null,
+  }
+}
+
+/**
  * The idea screens' listener: home hearing each take while paired
  * (`phoneHomeListener`), the phone's recognizer otherwise.
  */
