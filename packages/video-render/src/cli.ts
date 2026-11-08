@@ -32,9 +32,7 @@
  *
  *   pnpm --filter @some-ui/video-render render music-bed --out <file>
  *
- * writes the music bed we make ourselves (`music-bed.ts`, #2673) and checks
- * it against the sum a series pins (`MUSIC_BED`), for the owner to lay in
- * `${STORAGE}/brand/` on home.
+ * writes the music bed (`music-bed.ts`), refusing bytes its pin doesn't name.
  *
  * `pnpm --filter` runs this from the package; INIT_CWD is where it was typed.
  */
