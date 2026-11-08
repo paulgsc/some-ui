@@ -438,6 +438,42 @@
       "gray": "#2745's plan says the note records a library take, and never-lose-the-record keeps what was said; it doesn't say which take a note names when more than one is said, or what becomes of a take said for a note that is then not kept.",
       "undo": "Give the note form a pattern desk of its own with send: \"on-confirm\" (as lib/idea-takes' bundle desk), releasing the take on Keep the note and discarding it on Not now, and wire that desk into voice-copy as a library note.",
       "refs": ["#2745", "#2670"]
+    },
+    {
+      "id": "C33",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/ui/soundbites/src/lib/project",
+        "packages/ui/playoff-delta",
+        "apps/www/tests/record/playoff-delta.ts"
+      ],
+      "chose": "An episode a phone already holds in Studio stays, and is watched, never voiced: no Record or Shape sitting, Finish never asks it for a take, and a scene with no take reads Not made; one with every take still finishes and shows its pinned upload copy.",
+      "options": [
+        "keep a stored episode, watch-only for voicing",
+        "delete the whole episode-in-Studio path (ST33's home queue and its server routes)",
+        "keep its Record"
+      ],
+      "gray": "FEED6 retired the owner's voice from episodes (FEED decision 6, #2643), but a stored episode holds takes the owner recorded, and nothing said what becomes of it.",
+      "undo": "Restore record in view.ts' startView and the take kind in finish.ts; or delete the project.episode branches and ST33's home-link code, then the server routes in their own PR.",
+      "refs": ["#2772", "#2649", "#2643"]
+    },
+    {
+      "id": "C34",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/steps.ts",
+        "packages/ui/playoff-delta"
+      ],
+      "chose": "Who said a scene is a shot field, shots.speaker (set to kokoro by stillsCutList), not a field on the take, so the mark credits the speech model that said it and never the owner's hands or words for that scene.",
+      "options": [
+        "shots.speaker, a field of the shot",
+        "a speaker field on the take"
+      ],
+      "gray": "FEED6 made home's Kokoro say every episode, and the mark's authorship needed to say so; the steps' fields admit only top-level or shots.<key> fields, and nothing settled where the speaker is named.",
+      "undo": "Move speaker onto the take, widen steps.test.ts' allowed fields to take its key, and have the mark read it there.",
+      "refs": ["#2772", "#2649"]
     }
   ]
 }
