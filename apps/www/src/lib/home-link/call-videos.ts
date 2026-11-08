@@ -40,7 +40,7 @@ function linkPath(feed: Feed, key: string): string {
 /** The most bytes of a video one request asks for: about 4 MB. */
 export const PART_BYTES = 4 * 1024 * 1024
 
-/** Home's answer, or why there is none. */
+/** Home's answer, or why there is none; `asked` runs one request into it. */
 export type CallAsked =
   | { readonly kind: "answered"; readonly answer: HomeAnswer }
   /** Not paired: nothing was asked. */
@@ -50,7 +50,7 @@ export type CallAsked =
   /** No answer. */
   | { readonly kind: "unreachable" }
 
-async function asked(
+export async function asked(
   run: () => Promise<
     { kind: "done"; value: HomeAnswer } | { kind: "stopped" } | null
   >

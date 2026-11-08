@@ -1,4 +1,5 @@
 import type { JSX } from "react"
+import { STUDIO_WORDS } from "@some-ui/soundbites"
 import type { TemplateId } from "@some-ui/video-render"
 import {
   isTemplateId,
@@ -15,8 +16,10 @@ import {
   STUDIO_INDEX_WORDS,
 } from "@/lib/studio-index"
 import { CaptionLook } from "@/components/studio/caption-look"
+import { PairHomeLink } from "@/components/pair-home-link"
 import { StudioPage } from "@/components/studio/layout"
 import { TemplateShape } from "@/components/studio/template"
+import { TemplatePreview } from "@/components/studio/template-preview"
 
 const WORDS = STUDIO_INDEX_WORDS.templates
 
@@ -43,9 +46,14 @@ const LookOf = ({
   )
 }
 
+/** A template's preview from home (SFEED12), the phone's alone (`build.paths.ts`). */
+const Preview =
+  import.meta.env.VITE_DEVICE_BACKEND === "true" ? TemplatePreview : null
+
 /**
  * One template (SFEED1, #2731): its newest version, the feeds that use it,
- * and its shape, from the locked intro to the brand outro.
+ * its shape, from the locked intro to the brand outro, and its preview
+ * (SFEED12, #2757).
  */
 const TemplatePage = (): JSX.Element => {
   const { template }: { template: TemplateId } = Route.useParams()
@@ -71,6 +79,12 @@ const TemplatePage = (): JSX.Element => {
       ))}
       <TemplateShape format={format} />
       <LookOf template={template} title={format.title} />
+      {Preview !== null && (
+        <Preview
+          template={template}
+          pair={<PairHomeLink>{STUDIO_WORDS.pair.pair}</PairHomeLink>}
+        />
+      )}
     </StudioPage>
   )
 }

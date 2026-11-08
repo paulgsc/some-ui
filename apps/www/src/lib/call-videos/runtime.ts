@@ -31,6 +31,7 @@ import type {
   VideosState,
 } from "./model"
 import { INITIAL, step } from "./model"
+import { fetchParts } from "./parts"
 
 /**
  * The phone's copies of one feed's videos, in its cache, by episode key.
@@ -85,12 +86,6 @@ export type FeedVideos = {
   forget: (key: string) => Promise<void>
   /** The screen said what it had to say. */
   seen: () => void
-}
-
-/** Bytes of base64 text, without decoding it. */
-function decodedBytes(base64: string): number {
-  const padding = base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0
-  return (base64.length / 4) * 3 - padding
 }
 
 export function createFeedVideos(ports: VideosPorts): FeedVideos {
@@ -152,33 +147,26 @@ export function createFeedVideos(ports: VideosPorts): FeedVideos {
   const fetchVideo = async (episode: Episode, total: number): Promise<void> => {
     const { key } = episode
     if (stopping.has(key) || (await kept(episode))) return
-    for (let start = 0; start < total; ) {
-      const end = Math.min(start + ports.partBytes, total) - 1
-      const part = await ports.part(key, start, end)
-      if (stopping.has(key)) return
-      if (part.kind !== "bytes") {
-        failed(key, part.kind === "gone" ? "gone" : "away")
-        return
-      }
-      // Android's base64 may be wrapped in lines.
-      const base64 = part.base64.replace(/\s/g, "")
-      const got = decodedBytes(base64)
-      if (got <= 0 || got > end - start + 1) {
-        failed(key, "away")
-        return
-      }
-      const put = await ports.files.put(key, base64, start === 0)
-      if (stopping.has(key)) return
-      if (!put) {
-        failed(key, "phone")
-        return
-      }
-      start += got
-      dispatch({
-        type: "fetchMoved",
-        key,
-        fetch: { kind: "fetching", done: start, total },
-      })
+    const ended = await fetchParts(
+      {
+        part: (start, end) => ports.part(key, start, end),
+        put: (base64, first) => ports.files.put(key, base64, first),
+        partBytes: ports.partBytes,
+        stopped: () => stopping.has(key),
+        moved: (done) => {
+          dispatch({
+            type: "fetchMoved",
+            key,
+            fetch: { kind: "fetching", done, total },
+          })
+        },
+      },
+      total
+    )
+    if (ended === "stopped") return
+    if (ended !== "done") {
+      failed(key, ended)
+      return
     }
     if (!(await kept(episode))) failed(key, "phone")
   }
