@@ -46,16 +46,23 @@ The full Chrome is refused (see "The pins, and why").
 - **Frames, then our ffmpeg.** HyperFrames' own MP4 is not the same bytes twice (measured on
   0.9.22: the PNG frames matched, the MP4s did not), so it writes PNG frames and the clip
   is encoded here: FFV1, RGB, one thread, bit-exact, as the renderer's VR1 does each step.
-- **Playwright's headless shell, drawing only once raster is done.** Not HyperFrames'
-  `render --docker` image: the browser is Playwright's, as the recorders' is (home's image,
-  CI's nix shell). HyperFrames starts it through a wrapper adding Chrome's own switches
-  for finishing every raster before a frame is drawn (`DRAW_FLAGS` in `src/pin.ts`), which
-  HyperFrames adds only for its BeginFrame capture, not for the screenshots
-  `--low-memory-mode` takes. Without them, a screenshot can catch the page's tiles
-  mid-raster: on CI, still frames of the sample differed at the mark's edges, by up to 14
-  of 255 (#2739). The full Chrome never draws a frame with those switches, so it is
-  refused. Its revision is the environment's (home's image, CI's flake; the newest one
-  found), which is why bytes match per machine.
+- **Playwright's headless shell, every tile rastered whole, drawn only once raster is done.**
+  Not HyperFrames' `render --docker` image: the browser is Playwright's, as the recorders'
+  is (home's image, CI's nix shell). HyperFrames starts it through a wrapper adding
+  Chrome's own switches (`DRAW_FLAGS` in `src/pin.ts`), since it takes none of ours:
+
+  - `--disable-partial-raster`: with partial raster, a reused tile is redrawn only inside
+    what changed, and antialiased edge pixels just outside it keep the frame before's.
+    Whether a tile is reused depends on timing, so still frames of the sample differed on
+    CI at the mark's edges, by up to 14 of 255, in one of two fixed ways (#2739).
+  - `--run-all-compositor-stages-before-draw` and two more, which HyperFrames adds only
+    for its BeginFrame capture, not for the screenshots `--low-memory-mode` takes, so a
+    screenshot never catches a tile mid-raster.
+
+  The full Chrome never draws a frame with the second, so it is refused. The headless
+  shell's revision is the environment's (home's image, CI's flake; the newest found),
+  which is why bytes match per machine.
+
 - **Strict:** a lint error, an undeclared variable or unready media fails the render.
 - **No network.** Every font is vendored by the lockfile (`src/fonts.ts`, `@fontsource/*`,
   OFL) and copied in beside the composition. A font HyperFrames reached the network for

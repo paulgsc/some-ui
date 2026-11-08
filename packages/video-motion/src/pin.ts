@@ -39,13 +39,14 @@ export const renderArgs = (run: Run): ReadonlyArray<string> => [
 ]
 
 /**
- * Chrome's switches for drawing a frame only once every raster is done
- * (README, "The pins, and why"; #2739).
+ * Chrome's switches for rastering every changed tile whole and drawing a
+ * frame only once every raster is done (README, "The pins, and why"; #2739).
  */
 export const DRAW_FLAGS = [
   "--run-all-compositor-stages-before-draw",
   "--disable-new-content-rendering-timeout",
   "--disable-checker-imaging",
+  "--disable-partial-raster",
 ] as const
 
 /**
