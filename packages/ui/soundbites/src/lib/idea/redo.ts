@@ -77,6 +77,8 @@ export function overtaken(
   return takes
     .filter((take) => {
       if (take.waits !== true || answerOf(take.answers) === null) return false
+      // One set aside with its idea (#2805) is never a draft to delete.
+      if (take.standing === "set-aside") return false
       const keeper = kept.get(take.answers)
       return keeper !== undefined && keeper.id !== take.id
     })
@@ -205,3 +207,14 @@ export function cutShort(
   }
   return { release, replaced }
 }
+
+/**
+ * Waiting takes already set aside with their idea (#2805) whose release
+ * wasn't stored: each settle lets them go home, set aside.
+ */
+export const asideWaiting = (
+  takes: ReadonlyArray<PatternTake>
+): ReadonlyArray<string> =>
+  takes
+    .filter((take) => take.waits === true && take.standing === "set-aside")
+    .map((take) => take.id)

@@ -42,6 +42,7 @@ import type {
 } from "@soundbites/lib/idea/on-home-runtime"
 import { createIdeasOnHome } from "@soundbites/lib/idea/on-home-runtime"
 import {
+  asideWaiting,
   cutShort,
   overtaken,
   sayable,
@@ -167,6 +168,21 @@ describe("saying an answer again, as data (#2579)", () => {
     expect(
       sendAgain(SENT, [{ question: "spark", take: "r2", at: LATER }], LATER)
     ).toBeNull()
+  })
+
+  it("never deletes a take set aside with its idea, and lets each still waiting go again (#2805)", () => {
+    const takes = [
+      take("old", LINE, "2026-11-08T09:00:00.000Z"),
+      take("aside", LINE, "2026-11-08T09:05:00.000Z", {
+        standing: "set-aside",
+      }),
+      take("sent", LINE, "2026-11-08T09:06:00.000Z", {
+        standing: "set-aside",
+        waits: undefined,
+      }),
+    ]
+    expect(overtaken(takes)).toEqual([])
+    expect(asideWaiting(takes)).toEqual(["aside"])
   })
 
   it("waits one take per answer: a newer waiting take overtakes the older, and a sent one is never touched", () => {

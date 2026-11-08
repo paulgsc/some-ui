@@ -23,6 +23,7 @@ import type {
 } from "./on-home"
 import { INITIAL_ON_HOME, stepOnHome, withHomeWords } from "./on-home"
 import {
+  asideWaiting,
   cutShort,
   latestTakes,
   namedTakes,
@@ -250,7 +251,11 @@ export function createIdeasOnHome(ports: OnHomePorts): OnHomeRuntime {
         const { redo } = ports
         const kept = ports.ideas.list()
         if (redo === undefined || kept === null) return
-        const cut = cutShort(kept, redo.takes.takes.getSnapshot())
+        const takes = redo.takes.takes.getSnapshot()
+        const aside = asideWaiting(takes)
+        // Ignored when not stored: tried again on the next settle.
+        if (aside.length > 0) redo.takes.release(aside)
+        const cut = cutShort(kept, takes)
         // Ignored when not stored: the takes still wait, named by the idea
         // and so never a draft, and the next read finishes it.
         setAsideThenRelease(
