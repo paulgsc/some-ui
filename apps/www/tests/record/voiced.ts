@@ -12,7 +12,6 @@
  */
 
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
-import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import type { Browser, Page } from "@playwright/test"
 import { installedCompositionPort } from "@some-ui/video-motion/node"
@@ -367,7 +366,9 @@ export async function renderStills(
   // From the templates' version 4 (HYPER5), the brand's open and close are
   // compositions, drawn by video-motion beside the stills.
   const draws = cutList.shots.some((s) => s.picture.kind === "composition")
-  const draw = draws ? await mkdtemp(join(tmpdir(), "draw-")) : null
+  // On the video's own drive: home's /tmp is a small RAM disk HyperFrames
+  // can't draw on (video-motion's `pin.ts`).
+  const draw = draws ? await mkdtemp(join(root, "draw-")) : null
   const compositions =
     draw === null ? null : installedCompositionPort(root, draw)
   if (compositions?.ok === false) fail([compositions.problem])
