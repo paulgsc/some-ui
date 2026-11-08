@@ -67,6 +67,8 @@ export type ServerRoute =
   | "/api/v1/now-playing"
   | "/api/v1/outcomes"
   | "/api/v1/presence/lease"
+  | "/api/v1/previews/:template"
+  | "/api/v1/previews/:template/:id/video"
   | "/api/v1/push/subscriptions"
   | "/api/v1/push/test"
   | "/api/v1/push/vapid-key"

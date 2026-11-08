@@ -536,6 +536,27 @@
       "module": "presence"
     },
     {
+      "method": "GET",
+      "path": "/previews/:template",
+      "full_path": "/api/v1/previews/:template",
+      "versioned": true,
+      "module": "previews"
+    },
+    {
+      "method": "POST",
+      "path": "/previews/:template",
+      "full_path": "/api/v1/previews/:template",
+      "versioned": true,
+      "module": "previews"
+    },
+    {
+      "method": "GET",
+      "path": "/previews/:template/:id/video",
+      "full_path": "/api/v1/previews/:template/:id/video",
+      "versioned": true,
+      "module": "previews"
+    },
+    {
       "method": "DELETE",
       "path": "/push/subscriptions",
       "full_path": "/api/v1/push/subscriptions",
