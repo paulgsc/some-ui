@@ -391,7 +391,7 @@ export async function renderCut(
  * for the upload's YouTube description; with too few to show, it is not
  * written.
  */
-export async function renderStills(
+async function renderStills(
   root: string,
   series: string,
   cutList: CutList,
