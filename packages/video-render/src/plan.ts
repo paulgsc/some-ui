@@ -405,7 +405,8 @@ export function planSegment(
       `[bg][pic]overlay=x=${x}:y=${y}:format=gbrp[framed]`
     )
   } else {
-    filters.push(`[bg]null[framed]`)
+    // RGB, as a scene with a picture is, so `TO_VIDEO` turns both the same.
+    filters.push(`[bg]format=gbrp[framed]`)
   }
   return segmentCall(
     inputs,

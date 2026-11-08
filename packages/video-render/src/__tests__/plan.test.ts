@@ -157,6 +157,12 @@ describe("planAssembly", () => {
     return args[args.indexOf("-filter_complex") + 1] ?? ""
   }
 
+  it("draws a card's ground in RGB too, so it matches a scene with a picture", () => {
+    const g = graph(scene({ picture: { kind: "card" } }))
+    expect(g).toContain("[bg]format=gbrp[framed]")
+    expect(g).toContain(`${TO_VIDEO},format=yuv420p[v]`)
+  })
+
   it("makes every encode BT.709, from RGB once, tagged so (SFEED10)", () => {
     const a = assembly({ layers: [{ file: "captions.mov", startFrame: 0 }] })
     const tagged = (args: ReadonlyArray<string>): boolean =>

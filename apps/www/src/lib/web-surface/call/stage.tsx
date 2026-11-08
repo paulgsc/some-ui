@@ -464,11 +464,11 @@ export const CallStagePage = ({
   const next = step(1)
   return (
     <main
-      {...sessionThemeProps(format.shape?.theme, {
-        className: record
+      className={
+        record
           ? "bg-background text-foreground"
-          : "bg-background text-foreground min-h-svh space-y-4 p-6",
-      })}
+          : "bg-background text-foreground min-h-svh space-y-4 p-6"
+      }
     >
       <div className="mx-auto w-full max-w-[1920px] [container-type:inline-size]">
         <section
@@ -476,7 +476,10 @@ export const CallStagePage = ({
           data-scene={at.scene.id}
           data-overflow={overflows ? "true" : undefined}
           data-week={record ? JSON.stringify(week) : undefined}
-          className="bg-surface border-border flex aspect-video w-full flex-col overflow-hidden border text-[1.5cqw] [overflow-wrap:anywhere]"
+          {...sessionThemeProps(format.shape?.theme, {
+            className:
+              "bg-surface text-foreground border-border flex aspect-video w-full flex-col overflow-hidden border text-[1.5cqw] [overflow-wrap:anywhere]",
+          })}
         >
           <header className="border-border flex items-center justify-between border-b px-[1.2em] py-[0.6em] text-[0.8em]">
             <span className="font-semibold">{W.title}</span>
