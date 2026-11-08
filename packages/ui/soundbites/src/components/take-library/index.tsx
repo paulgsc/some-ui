@@ -206,7 +206,11 @@ const PhoneTakes = ({ phone }: { phone: LibraryPhone }): JSX.Element => {
     phone.pattern.subscribe,
     phone.pattern.getSnapshot
   )
-  const here = notYetHome(takes, playback.kind === "quiet" ? null : playback.id)
+  const here = notYetHome(
+    takes,
+    playback.kind === "quiet" ? null : playback.id,
+    phone.line
+  )
   return (
     <section className="flex flex-col gap-2">
       <h2 className="text-sm font-semibold">{WORDS.record}</h2>

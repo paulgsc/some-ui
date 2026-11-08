@@ -11,7 +11,10 @@
  * note never changes once kept, so its id is enough. Home's answers, as
  * `./keyed-send` reads them:
  *
- * - `200` carrying the note back, the same one: held;
+ * - `200` carrying the note back, the same one, its spoken take included:
+ *   held;
+ * - `409` naming notes: a spoken note's take home doesn't hold yet, so the
+ *   note waits and goes on a later run, once its take has;
  * - `409` (a different note under the same id) or `422`: refused, kept on
  *   the phone, and not offered again, said to the native log;
  * - `404`: a home that doesn't keep notes yet, so every note waits, said to
@@ -58,7 +61,8 @@ function carriesBack(body: string, note: Note): boolean {
     held.atMs === note.atMs &&
     Array.isArray(held.categories) &&
     held.categories.join() === note.categories.join() &&
-    held.writtenAt === note.writtenAt
+    held.writtenAt === note.writtenAt &&
+    (held.take ?? null) === (note.take ?? null)
   )
 }
 
@@ -82,8 +86,7 @@ const notesSent = (port: EpisodeNotesPort): KeyedSend<Note> => ({
   body: (note) => JSON.stringify(note),
   kept: carriesBack,
   answered: (note, answer): void => {
-    // Home names no takes for a note: a take it lacks is a refusal too.
-    port.answered(answer.kind === "held" ? "held" : "refused", note)
+    if (answer.kind !== "missing") port.answered(answer.kind, note)
   },
   untaken: (note, status): void => {
     untaken(note.id, status)

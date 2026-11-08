@@ -4,6 +4,7 @@
  * SFEED6 (#2745): the note being written on an episode's page. Where each
  * category goes is `@some-ui/video-render`'s, tested there.
  */
+import type { PatternTake } from "@some-ui/voice-capture"
 import { describe, expect, it } from "vitest"
 
 import type { Category, Draft } from "@/lib/episode-feedback"
@@ -13,11 +14,14 @@ import {
   momentOf,
   noteOf,
   NoteSchema,
+  spokenLine,
+  spokenTakeOf,
   step,
 } from "@/lib/episode-feedback"
 
 const open = (picked: ReadonlyArray<Category> = []): Draft => ({
   kind: "open",
+  id: "n1",
   atMs: 134_000,
   picked,
   refused: null,
@@ -25,11 +29,11 @@ const open = (picked: ReadonlyArray<Category> = []): Draft => ({
 
 describe("the note being written", () => {
   it("opens at the moment the video stood at, and keeps it", () => {
-    const opened = step(CLOSED, { type: "opened", atMs: 134_000 })
+    const opened = step(CLOSED, { type: "opened", id: "n1", atMs: 134_000 })
     expect(opened).toEqual(open())
-    expect(step(open(["pacing"]), { type: "opened", atMs: 9 })).toEqual(
-      open(["pacing"])
-    )
+    expect(
+      step(open(["pacing"]), { type: "opened", id: "n2", atMs: 9 })
+    ).toEqual(open(["pacing"]))
   })
 
   it("toggles a category on and off, in the set's order", () => {
@@ -60,7 +64,7 @@ describe("the note being written", () => {
 
   it("becomes a note", () => {
     const where = { feed: "call", episode: "2026-11-13" } as const
-    const made = { id: "n1", now: new Date("2026-11-14T03:00:00Z") }
+    const made = { now: new Date("2026-11-14T03:00:00Z"), take: null }
     expect(noteOf(open(), where, made)).toBeNull()
     const note = noteOf(open(["overlap"]), where, made)
     expect(note).toEqual({
@@ -71,6 +75,39 @@ describe("the note being written", () => {
       categories: ["overlap"],
       writtenAt: "2026-11-14T03:00:00.000Z",
     })
+    expect(
+      noteOf(open(["overlap"]), where, { ...made, take: "t2" })?.take
+    ).toBe("t2")
+  })
+
+  it("names the newest take said for it, and none of another note's or set aside", () => {
+    const take = (
+      id: string,
+      answers: string,
+      recordedAt: string,
+      standing: PatternTake["standing"] = "current"
+    ): PatternTake => ({
+      id,
+      answers,
+      recordedAt,
+      standing,
+      durationMs: 2_000,
+      kept: null,
+    })
+    const line = spokenLine("n1")
+    expect(spokenTakeOf([], "n1")).toBeNull()
+    expect(
+      spokenTakeOf(
+        [
+          take("old", line, "2026-11-14T03:00:00.000Z"),
+          take("new", line, "2026-11-14T03:01:00.000Z"),
+          take("aside", line, "2026-11-14T03:02:00.000Z", "set-aside"),
+          take("other", spokenLine("n2"), "2026-11-14T03:03:00.000Z"),
+          take("library", "library", "2026-11-14T03:04:00.000Z"),
+        ],
+        "n1"
+      )
+    ).toBe("new")
   })
 
   it("reads back a stored note only with its picks each once, in order", () => {
