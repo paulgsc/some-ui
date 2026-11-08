@@ -474,6 +474,24 @@
       "gray": "FEED6 made home's Kokoro say every episode, and the mark's authorship needed to say so; the steps' fields admit only top-level or shots.<key> fields, and nothing settled where the speaker is named.",
       "undo": "Move speaker onto the take, widen steps.test.ts' allowed fields to take its key, and have the mark read it there.",
       "refs": ["#2772", "#2649"]
+    },
+    {
+      "id": "C31",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/ui/soundbites/src/lib/idea/on-home.ts",
+        "packages/ui/soundbites/src/lib/idea/on-home-runtime.ts"
+      ],
+      "chose": "When an idea is set aside on home from Ideas on home, each of its answers said again and still waiting on the phone is set aside on home too and then let go there, under its answer's place: kept, out of the idea and out of what routines read, and in My data like every take sent.",
+      "options": [
+        "offer such takes where waiting takes are seen (Your ideas or My data), to send as library takes or let go by the owner's own act",
+        "send them home as library takes when their idea is set aside",
+        "send them home set aside with their idea, under their answer"
+      ],
+      "gray": "#2805 left the owner's story open between offering the stranded takes and sending them home; either keeps the take, and they differ in where it shows and whether the routine reads it.",
+      "undo": "Drop the setAsideRedos effect from on-home.ts's setAsideDone and its case in on-home-runtime.ts; the takes then wait on the redo desk again, and #2805's first option can offer them.",
+      "refs": ["#2805", "#2579"]
     }
   ]
 }

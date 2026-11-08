@@ -4,7 +4,8 @@
  * A take an answer said again replaced, set aside once its idea is sent
  * again (ST26, #2579; the owner's ruling on #2453): on the idea desk that
  * lists it, as a sent take, with its mark owed first (LA13), kept with its
- * audio; one still waiting is never set aside; and one no desk lists any
+ * audio; one still waiting is set aside only when asked for as one
+ * (`setAsideWaiting`, #2805); and one no desk lists any
  * more is owed its mark alone, which goes once home holds the note.
  */
 import { memoryShelf } from "@some-ui/voice-capture/testing"
@@ -99,6 +100,25 @@ describe("a take an answer said again replaced (#2579)", () => {
     expect(desk.setAsideSent("r1", AT)).toBe("absent")
     expect(desk.setAsideSent("nope", AT)).toBe("absent")
     expect(listed()[0]?.standing).toBeUndefined()
+  })
+
+  it("set aside while it still waits, only by asking for a waiting one: then it goes home set aside (#2805)", () => {
+    const marks = owing()
+    unwire = wireVoiceMarks(marks)
+    const { desk, listed } = deskOf([take("r1", true), take("t0")])
+    expect(desk.setAsideWaiting("t0", AT)).toBe("absent")
+    expect(desk.setAsideWaiting("r1", AT)).toBe(true)
+    expect(marks.owed).toEqual([{ id: "r1", at: AT, from: "studio" }])
+    expect(listed().find((each) => each.id === "r1")).toEqual({
+      ...take("r1", true),
+      standing: "set-aside",
+      setAsideAt: Date.parse(AT),
+    })
+    // Released, the copy home lists it, set aside, with its audio's id.
+    expect(desk.phone().release(["r1"])).toBe(true)
+    expect(desk.kept().find((each) => each.id === "r1")?.standing).toBe(
+      "set-aside"
+    )
   })
 
   it("stays as it was when its mark can't be kept", () => {

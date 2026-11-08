@@ -23,6 +23,7 @@ import type {
 } from "./on-home"
 import { INITIAL_ON_HOME, stepOnHome, withHomeWords } from "./on-home"
 import {
+  asideWaiting,
   cutShort,
   latestTakes,
   namedTakes,
@@ -67,6 +68,12 @@ export type RedoPorts = {
    * every one was. `at`: when, ISO 8601.
    */
   readonly setAside: (ids: ReadonlyArray<string>, at: string) => boolean
+  /**
+   * Sets aside on home these takes still waiting, which then go home set
+   * aside once let go: an idea's answers said again, the idea set aside
+   * (#2805). Says whether every one was.
+   */
+  readonly setAsideWaiting: (ids: ReadonlyArray<string>, at: string) => boolean
 }
 
 export type OnHomePorts = {
@@ -244,7 +251,11 @@ export function createIdeasOnHome(ports: OnHomePorts): OnHomeRuntime {
         const { redo } = ports
         const kept = ports.ideas.list()
         if (redo === undefined || kept === null) return
-        const cut = cutShort(kept, redo.takes.takes.getSnapshot())
+        const takes = redo.takes.takes.getSnapshot()
+        const aside = asideWaiting(takes)
+        // Ignored when not stored: tried again on the next settle.
+        if (aside.length > 0) redo.takes.release(aside)
+        const cut = cutShort(kept, takes)
         // Ignored when not stored: the takes still wait, named by the idea
         // and so never a draft, and the next read finishes it.
         setAsideThenRelease(
@@ -260,6 +271,16 @@ export function createIdeasOnHome(ports: OnHomePorts): OnHomeRuntime {
         // Ignored when not stored: they wait, sent by nothing, and are asked
         // for again the next time the screen opens.
         ports.redo?.takes.discard(effect.takes)
+        return
+      }
+      case "setAsideRedos": {
+        const { redo } = ports
+        // Not stored, the takes still wait on this phone, kept.
+        if (
+          redo?.setAsideWaiting(effect.takes, new Date(now()).toISOString())
+        ) {
+          redo.takes.release(effect.takes)
+        }
         return
       }
       case "sendAgain": {

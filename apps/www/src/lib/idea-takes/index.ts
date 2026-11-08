@@ -119,6 +119,9 @@ export function setAsideReplaced(
 export const ideaRedoTakes = (): RedoPorts => ({
   takes: redoDesk.phone(),
   setAside: setAsideReplaced,
+  // Each is tried, so one not stored never keeps the rest waiting.
+  setAsideWaiting: (ids, at) =>
+    ids.map((id) => redoDesk.setAsideWaiting(id, at) === true).every(Boolean),
 })
 
 /** The desk's snapshot as an idea's answers read it. */

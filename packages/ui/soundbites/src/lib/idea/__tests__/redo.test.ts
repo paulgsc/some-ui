@@ -42,6 +42,7 @@ import type {
 } from "@soundbites/lib/idea/on-home-runtime"
 import { createIdeasOnHome } from "@soundbites/lib/idea/on-home-runtime"
 import {
+  asideWaiting,
   cutShort,
   overtaken,
   sayable,
@@ -167,6 +168,21 @@ describe("saying an answer again, as data (#2579)", () => {
     expect(
       sendAgain(SENT, [{ question: "spark", take: "r2", at: LATER }], LATER)
     ).toBeNull()
+  })
+
+  it("never deletes a take set aside with its idea, and lets each still waiting go again (#2805)", () => {
+    const takes = [
+      take("old", LINE, "2026-11-08T09:00:00.000Z"),
+      take("aside", LINE, "2026-11-08T09:05:00.000Z", {
+        standing: "set-aside",
+      }),
+      take("sent", LINE, "2026-11-08T09:06:00.000Z", {
+        standing: "set-aside",
+        waits: undefined,
+      }),
+    ]
+    expect(overtaken(takes)).toEqual([])
+    expect(asideWaiting(takes)).toEqual(["aside"])
   })
 
   it("waits one take per answer: a newer waiting take overtakes the older, and a sent one is never touched", () => {
@@ -406,6 +422,9 @@ type Phone = {
   readonly simulated: SimulatedPattern
   readonly ideas: IdeaStore
   readonly setAside: Mock<(ids: ReadonlyArray<string>, at: string) => boolean>
+  readonly setAsideWaiting: Mock<
+    (ids: ReadonlyArray<string>, at: string) => boolean
+  >
   readonly attach: () => () => void
 }
 
@@ -418,6 +437,8 @@ function phone(
     readonly seed?: ReadonlyArray<PatternTake>
     /** Takes whose release the desk refuses. */
     readonly unreleasable?: ReadonlyArray<string>
+    /** The desk can't set a waiting take aside. */
+    readonly unsettable?: boolean
   } = {}
 ): Phone {
   const storage = inMemoryStorage()
@@ -429,6 +450,9 @@ function phone(
     seed: options.seed,
   })
   const setAside = vi.fn((_ids: ReadonlyArray<string>, _at: string) => true)
+  const setAsideWaiting = vi.fn(
+    (_ids: ReadonlyArray<string>, _at: string) => options.unsettable !== true
+  )
   const home: IdeasHome = {
     ideas: () =>
       Promise.resolve({
@@ -441,7 +465,9 @@ function phone(
         value: { topics: ["Studio"], keywords: [] },
       }),
     furnish: vi.fn(),
-    setAside: vi.fn(),
+    setAside: vi.fn(() =>
+      Promise.resolve({ kind: "written" as const, value: null })
+    ),
     entry: vi.fn(),
   }
   const runtime = createIdeasOnHome({
@@ -457,6 +483,7 @@ function phone(
             : simulated.store.release(ids),
       },
       setAside,
+      setAsideWaiting,
     },
     now: Date.now,
   })
@@ -465,6 +492,7 @@ function phone(
     simulated,
     ideas,
     setAside,
+    setAsideWaiting,
     attach: (): (() => void) => {
       const detach = runtime.attach(false)
       runtime.dispatch({ type: "open", id: "idea-1" })
@@ -517,6 +545,29 @@ describe("an answer said again, end to end on the simulated microphone (#2579)",
     expect(takesOf(on)[0]?.waits).toBeUndefined()
     expect(openRedos(on.runtime.getSnapshot())).toEqual([])
     detach()
+  })
+
+  it("set aside on home, takes its waiting answer with it: set aside, then let go, kept (#2805)", async () => {
+    for (const unsettable of [false, true]) {
+      const on = phone({ unsettable })
+      const detach = on.attach()
+      await pass()
+      await sayAgain(on)
+      const [redo] = takesOf(on)
+      on.runtime.dispatch({ type: "askSetAside" })
+      on.runtime.dispatch({ type: "confirmed" })
+      await pass()
+      expect(on.setAsideWaiting).toHaveBeenCalledWith(
+        [redo!.id],
+        expect.any(String)
+      )
+      // Let go only once set aside; otherwise it waits on the phone, kept.
+      expect(takesOf(on).map((each) => [each.id, each.waits])).toEqual([
+        [redo!.id, unsettable ? true : undefined],
+      ])
+      expect(on.ideas.list()).toEqual([SENT])
+      detach()
+    }
   })
 
   it("keeps one waiting take an answer: said twice, the first is deleted, and only the second goes", async () => {

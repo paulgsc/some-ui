@@ -24,7 +24,9 @@
  *   idea grown (one write, like the others) and lets the new takes go home,
  *   the takes they replace set aside there. A waiting take a newer one
  *   replaced is deleted for good once the desk lists both (`dropping`
- *   asks once), and a send cut short is finished after each read.
+ *   asks once), and a send cut short is finished after each read. Once
+ *   the idea is set aside on home, its answers still waiting go home set
+ *   aside with it, kept (#2805).
  * - **Grouping and sorting are the phone's** (paulgsc/server#645): home
  *   lists newest begun first, and `groupsOf` does the rest.
  */
@@ -436,6 +438,11 @@ export type OnHomeEffect =
   | { readonly type: "settleRedos"; readonly deleted: ReadonlyArray<string> }
   /** Deletes these waiting takes for good: nothing will send them. */
   | { readonly type: "dropRedos"; readonly takes: ReadonlyArray<string> }
+  /**
+   * The answers said again of an idea just set aside on home, which nothing
+   * can send again now (#2805): each set aside, then let go home, kept.
+   */
+  | { readonly type: "setAsideRedos"; readonly takes: ReadonlyArray<string> }
   /** Keeps idea `id` sent again, then sets aside and lets go its takes. */
   | {
       readonly type: "sendAgain"
@@ -671,25 +678,35 @@ export function stepOnHome(state: OnHomeState, event: OnHomeEvent): OnHomeStep {
         return same({ ...state, writing: false, notice: unwritten(write) })
       }
       const { ideas } = state
+      const stranded = waitingRedos(draftRedos(state), event.id).map(
+        (redo) => redo.take
+      )
+      const effects: ReadonlyArray<OnHomeEffect> =
+        stranded.length === 0
+          ? []
+          : [{ type: "setAsideRedos", takes: stranded }]
       // Home's list leaves an idea set aside out, as this one now is.
-      return same({
-        ...state,
-        writing: false,
-        screen: { kind: "list" },
-        notice: "setAside",
-        ideas:
-          ideas.kind === "read"
-            ? {
-                kind: "read",
-                value: {
-                  ...ideas.value,
-                  ideas: ideas.value.ideas.filter(
-                    (idea) => idea.id !== event.id
-                  ),
-                },
-              }
-            : ideas,
-      })
+      return {
+        effects,
+        state: {
+          ...state,
+          writing: false,
+          screen: { kind: "list" },
+          notice: "setAside",
+          ideas:
+            ideas.kind === "read"
+              ? {
+                  kind: "read",
+                  value: {
+                    ...ideas.value,
+                    ideas: ideas.value.ideas.filter(
+                      (idea) => idea.id !== event.id
+                    ),
+                  },
+                }
+              : ideas,
+        },
+      }
     }
     case "redoTakes": {
       const listed = new Set(event.takes.map((take) => take.id))
