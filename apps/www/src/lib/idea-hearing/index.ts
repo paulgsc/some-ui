@@ -102,7 +102,7 @@ let home: TurnListener | null = null
  * no desk until it listens): an idea's (`phoneIdeaListener`) or an ask's
  * (SFEED5, `lib/ask-answer`), named by what the take answers.
  */
-export function phoneHomeListener(
+function phoneHomeListener(
   hear: (ports: HearingPorts) => TurnListener
 ): TurnListener {
   home ??= hear({
