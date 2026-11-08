@@ -264,13 +264,16 @@ describe("a mix's inputs (VR1 over ffmpeg's versions, #2785)", () => {
       series(),
       "mix.wav"
     )
-    for (const [inputs, total] of [
-      [amixInputs(voice?.args ?? []), "2.000000"],
-      [amixInputs(mix.args), "2.000000"],
+    for (const [args, total] of [
+      [voice?.args ?? [], "2.000000"],
+      [mix.args, "2.000000"],
     ] as const) {
+      const graph = args[args.indexOf("-filter_complex") + 1] ?? ""
+      const inputs = amixInputs(args)
       expect(inputs.length).toBeGreaterThan(1)
-      // No input is placed by `adelay`, which ffmpeg 9 can lose.
-      expect(inputs.join(";")).not.toContain("adelay")
+      // Nothing in the graph, upstream chains included, is placed by
+      // `adelay`, which ffmpeg 9 can lose.
+      expect(graph).not.toContain("adelay")
       for (const chain of inputs)
         expect(chain).toMatch(
           new RegExp(
