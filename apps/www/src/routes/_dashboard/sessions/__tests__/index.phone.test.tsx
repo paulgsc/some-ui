@@ -47,6 +47,7 @@ import type { SessionRecord } from "@/lib/tenant"
 const UNPAIRED: HomeLinkState = {
   link: { kind: "unpaired", note: null },
   activity: { kind: "idle" },
+  drain: { kind: "idle" },
   pairFailure: null,
   homeBusyUntil: null,
 }
@@ -59,6 +60,7 @@ const PAIRED: HomeLinkState = {
     notForgotten: false,
   },
   activity: { kind: "idle" },
+  drain: { kind: "idle" },
   pairFailure: null,
   homeBusyUntil: null,
 }

@@ -26,7 +26,7 @@ export type { HomeLink } from "./runtime"
 
 let link: HomeLink | null = null
 
-/** The page's clock, which the link keeps home's busy on and the drain paces by. */
+/** The page's clock, which the link keeps home's busy and its pace on. */
 export const LINK_CLOCK: Pick<HomeLinkPorts, "now" | "after"> = {
   now: () => Date.now(),
   after,

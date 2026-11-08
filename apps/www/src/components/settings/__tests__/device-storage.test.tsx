@@ -49,6 +49,7 @@ import { LET_GO } from "@/lib/home-link/words"
 const UNPAIRED: HomeLinkState = {
   link: { kind: "unpaired", note: null },
   activity: { kind: "idle" },
+  drain: { kind: "idle" },
   pairFailure: null,
   homeBusyUntil: null,
 }
@@ -56,6 +57,7 @@ const UNPAIRED: HomeLinkState = {
 const UNREADABLE: HomeLinkState = {
   link: { kind: "unpaired", note: "unreadable" },
   activity: { kind: "idle" },
+  drain: { kind: "idle" },
   pairFailure: null,
   homeBusyUntil: null,
 }
@@ -68,6 +70,7 @@ const PAIRED: HomeLinkState = {
     notForgotten: false,
   },
   activity: { kind: "idle" },
+  drain: { kind: "idle" },
   pairFailure: null,
   homeBusyUntil: null,
 }

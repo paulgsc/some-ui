@@ -1152,9 +1152,11 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   once, in turn. Nothing asks on a timer: home's busy ends on one (the
   link's, `runtime.ts`), which only opens the link again to the lanes home
   turned away. A run goes
-  under the pairing the phone holds when it starts (`laneExchange`), each
-  of its requests waiting its turn on the drain's one pace (`createPace`,
-  `kept-runtime.ts`; its rate is AD3's), and
+  under the pairing the phone holds when it starts (`laneExchange`),
+  through the link's `drain`, one lane's run at a time, beside the person's
+  reads and syncs but never a send or an Unpair, which stop it and go first
+  (`lib/home-link/model.ts`), each request at its turn on the pace every
+  request to home takes (`lib/home-link/pace.ts`; its rate is AD3's), and
   the link's `send` refuses a request once the phone stops or goes to the
   background. A run that ends part way (home busy, a stop, the background,
   no answer) keeps what home took: a LeetType session or Studio sitting
@@ -1212,11 +1214,13 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   `lib/home-link/kept-runtime.ts` that lets `laneExchange` run a lane's
   exchange unpaired or under a pairing other than the one read when the run
   starts, or makes a run say anything but busy once home answered one of
-  its requests `429` (unless it was forgotten or stopped), sends a lane's
-  request other than after its turn on the pace it is handed, or refuses
-  one for the pace; a hunk to `lib/home-link/lanes.ts` that hands
-  `laneExchange` a pace other than `DRAIN_PACE`, or skips its turn other
-  than for a request the link answers busy itself; a hunk to
+  its requests `429` (unless it was forgotten or stopped); a hunk to
+  `lib/home-link/lanes.ts` that runs a lane other than through the link's
+  `drain`; a hunk to `lib/home-link/runtime.ts` or `model.ts` that sends a
+  request other than at its turn on the link's pace (`ask`, `personal`),
+  takes a turn for one it answers busy itself, starts a drain run beside
+  another or beside a send or an Unpair, or lets a send or an Unpair send
+  before the drain run it stopped has ended; a hunk to
   `lib/home-link/leetype-log.ts`'s `sendLogs` that sends an event `taken`
   says home took, or forgets a log's events other than once it is read
   back; a hunk to

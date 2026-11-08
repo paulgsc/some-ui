@@ -3,9 +3,8 @@
  * record this phone drains there (aph's `exchangeWithHome`, the Jobs
  * record's `exchangeJobs`, Practice's `drainHome`, voice notes'
  * `sendVoice`; LA15, docs/learner-data-authority.md), through the link's
- * `keep`, and how each ended; and a lane's exchange as a run makes it
- * (`laneExchange`), its requests taking turns on the drain's one pace
- * (`createPace`, AD3). The record's screens read its snapshot; they hold no
+ * `drain`, and how each ended; and a lane's exchange as a run makes it
+ * (`laneExchange`). The record's screens read its snapshot; they hold no
  * request of their own.
  */
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
@@ -17,7 +16,7 @@ import { ForeignCallError } from "@/lib/intent/foreign"
 import type { KeptEvent, KeptRun, KeptState } from "./kept-model"
 import { answersPull, INITIAL_KEPT, stepKept } from "./kept-model"
 import type { Lane } from "./lanes"
-import type { HomeLink, HomeLinkPorts } from "./runtime"
+import type { HomeLink } from "./runtime"
 import { noticingBusy, unanswered } from "./runtime"
 import { HomeUnansweredError } from "./shelf"
 
@@ -33,7 +32,7 @@ const BUSY: Extract<HomeExchanged, { kind: "failed" }> = {
 export type KeptPorts = {
   /** One exchange through `send`; throws what `send` throws. */
   exchange: (send: HomeCall) => Promise<HomeExchanged>
-  keep: HomeLink["keep"]
+  keep: HomeLink["drain"]
   /** Whether the phone is paired, read when the link turns a run away. */
   paired: () => boolean
   /** Whether home is busy (AD3): a run the link turns away then was home's. */
@@ -159,61 +158,17 @@ function sayingBusy(exchange: Exchange): Exchange {
 }
 
 /**
- * The drain's pace (AD3): every lane's requests take turns on one, `BURST`
- * at once, then one per `MS_PER_REQUEST`. Home lets this phone 60 requests
- * a minute (paulgsc/server `file_host`'s limiter: a burst of 60, one back
- * each second), and the app shell asks every lane at once (on opening,
- * coming back to the front, a pull): 49 at once leaves 11 for a screen's
- * own reads, and one each 2 s after that, 30 a minute, is half of what
- * home gives back, so within one page load the drain alone never takes
- * home's bucket below 11. A reload starts the pace whole again: one right
- * after a burst can meet home's busy, which the link then waits out.
- */
-const BURST = 49
-const MS_PER_REQUEST = 2_000
-
-/** Resolves when the next request may go. */
-export type Pace = () => Promise<void>
-
-export function createPace(clock: Pick<HomeLinkPorts, "now" | "after">): Pace {
-  let turns = BURST
-  let at = clock.now()
-  let last: Promise<void> = Promise.resolve()
-  const next = async (): Promise<void> => {
-    const now = clock.now()
-    turns = Math.min(BURST, turns + (now - at) / MS_PER_REQUEST)
-    at = now
-    if (turns >= 1) {
-      turns -= 1
-      return
-    }
-    const wait = Math.ceil((1 - turns) * MS_PER_REQUEST)
-    await new Promise<void>((resolve) => clock.after(wait, resolve))
-    await next()
-  }
-  return () => {
-    last = last.then(next)
-    return last
-  }
-}
-
-/**
  * `lane`'s exchange as a run makes it: under the pairing this phone holds
- * when the run starts (nothing, unpaired), each request waiting its turn on
- * `pace`, and home being busy said as such (`sayingBusy`).
+ * when the run starts (nothing, unpaired), and home being busy said as such
+ * (`sayingBusy`).
  */
 export function laneExchange(
   lane: Lane,
-  pairing: () => string | null,
-  pace: Pace
+  pairing: () => string | null
 ): Exchange {
   return (link) => {
     const under = pairing()
     if (under === null) return Promise.resolve({ kind: "synced" })
-    const paced: HomeCall = async (...call) => {
-      await pace()
-      return link(...call)
-    }
-    return sayingBusy((send) => lane.exchange(send, { pairing: under }))(paced)
+    return sayingBusy((send) => lane.exchange(send, { pairing: under }))(link)
   }
 }

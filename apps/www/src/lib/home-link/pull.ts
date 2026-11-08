@@ -26,21 +26,22 @@ import { resynced } from "./kept-model"
 import type { Kept } from "./kept-runtime"
 import type { Front } from "./kept-watch"
 import { pullKept } from "./kept-watch"
+import { drainFree } from "./model"
 import { PULL_HOME } from "./words"
 
 export type HomePullPorts = {
   /** The lanes `useLaneHome` watches now. */
   readonly watched: () => ReadonlySet<Kept>
   readonly doc: Front
-  /** Resolves once the link is doing nothing. */
+  /** Resolves once the link would start a drain run. */
   readonly free?: () => Promise<void>
 }
 
-/** Resolves once the home link is doing nothing. */
+/** Resolves once the home link would start a drain run. */
 function linkFree(): Promise<void> {
   const link = homeLink()
   return new Promise((resolve) => {
-    const idle = (): boolean => link.getSnapshot().activity.kind === "idle"
+    const idle = (): boolean => drainFree(link.getSnapshot())
     if (idle()) {
       resolve()
       return
