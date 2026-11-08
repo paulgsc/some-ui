@@ -1966,7 +1966,7 @@
         "server:apps/servers/file_host/src/handlers/feed_videos.rs",
         "server:apps/servers/file_host/src/routes/feed_videos.rs"
       ],
-      "modules": ["call_videos", "feed_videos", "renders"],
+      "modules": ["feed_videos", "renders"],
       "objectives": [
         {
           "id": "CW1",
