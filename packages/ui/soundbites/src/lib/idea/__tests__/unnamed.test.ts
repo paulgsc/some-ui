@@ -50,7 +50,8 @@ describe("unnamedTakes", () => {
     expect(unnamedTakes(takes, draft, null)).toEqual([])
   })
 
-  it("leaves a take that answers no idea alone", () => {
-    expect(unnamedTakes([take("t5", "library")], draft, kept)).toEqual([])
+  it("reads an idea's answer only by its own shape", () => {
+    const odd = [take("t5", "library"), take("t6", "idea:gone-1:bogus")]
+    expect(unnamedTakes(odd, draft, kept)).toEqual([])
   })
 })

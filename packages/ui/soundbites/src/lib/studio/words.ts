@@ -959,28 +959,23 @@ export const STUDIO_WORDS = {
   },
 
   /**
-   * The idea shelf (ST19): every idea kept, and one at a time moved on a
-   * step, from just the idea to a video, or set aside, never let go.
-   */
-  /**
-   * A new idea's answers no idea on this phone names (ST26, #2483): what
-   * they are, and the owner's two ways to let them go.
+   * A new idea's answers no idea on this phone names (ST26, #2483): how
+   * many wait, and the owner's way to send them home.
    */
   unnamed: {
     heading: "Answers no idea holds",
     line: (n: number): string =>
-      `${n === 1 ? "An answer" : `${n} answers`} you said for a new idea that this phone no longer holds. ${n === 1 ? "It waits" : "They wait"} here and ${n === 1 ? "takes" : "take"} room your next answers need.`,
+      `${n === 1 ? "An answer" : `${n} answers`} you said for a new idea that no idea on this phone holds now. ${n === 1 ? "It waits" : "They wait"} here and ${n === 1 ? "takes" : "take"} room your next answers need.`,
     keep: "Keep them in Takes on home",
     keepLine:
-      "They go home as every take does, and leave this phone once home has them.",
-    delete: "Delete them…",
-    ask: "Delete these answers for good? They never left this phone.",
-    confirm: "Delete for good",
-    cancel: "Keep them for now",
+      "They go home as every take does, and leave this phone once home has them. Once one is on home, My data in Settings is where it can be deleted.",
     kept: "They'll go home with your other takes.",
-    deleted: "Deleted.",
     refused: "This phone couldn't do that. Nothing changed; try again.",
   },
+  /**
+   * The idea shelf (ST19): every idea kept, and one at a time moved on a
+   * step, from just the idea to a video, or set aside, never let go.
+   */
   shelf: {
     heading: "Your ideas",
     open: "Your ideas",

@@ -1,9 +1,8 @@
 /**
- * A new idea's answers no idea on this phone names (ST26, #2483), on Your
- * ideas: how many wait, and the owner's two ways to let them go. Keeping
- * them lets them go home as every take does; deleting them is for good,
- * asked once, since they never left the phone. Nothing here lets one go
- * without the owner's tap. Which takes are unnamed is `unnamedTakes`.
+ * A new idea's answers no idea on this phone names (`unnamedTakes`, ST26,
+ * #2483), on Your ideas: how many wait, and the owner's way to send them
+ * home, where My data deletes a take for good (CLAUDE.md, "Never lose the
+ * record"). Nothing here lets one go without the owner's tap.
  */
 import type { JSX } from "react"
 import { useState, useSyncExternalStore } from "react"
@@ -16,10 +15,8 @@ import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
 
 const WORDS = STUDIO_WORDS.unnamed
 
-type Said = "kept" | "deleted" | "refused"
-
 /** What this reads and does of the desk. */
-export type UnnamedDesk = Pick<BundleTakes, "takes" | "release" | "discard">
+export type UnnamedDesk = Pick<BundleTakes, "takes" | "release">
 
 export const UnnamedIdeaTakes = ({
   takes,
@@ -30,64 +27,47 @@ export const UnnamedIdeaTakes = ({
   takes: UnnamedDesk
   drafts: DraftStore
   ideas: IdeaStore
-}): JSX.Element | null => {
+}): JSX.Element => {
   const all = useSyncExternalStore(
     takes.takes.subscribe,
     takes.takes.getSnapshot
   )
-  const [asking, setAsking] = useState(false)
-  const [said, setSaid] = useState<{ said: Said; n: number } | null>(null)
-  const unnamed = unnamedTakes(all, drafts.read(), ideas.list())
-  const notice =
-    said === null ? null : (
-      <Notice
-        key={said.n}
-        tone={said.said === "refused" ? "danger" : "neutral"}
-        onDismiss={() => setSaid(null)}
-      >
-        {WORDS[said.said]}
-      </Notice>
-    )
-  if (unnamed.length === 0) return notice
-  const ids = unnamed.map(({ id }) => id)
-  const ended = (done: boolean, ok: "kept" | "deleted"): void => {
-    setAsking(false)
-    setSaid((last) => ({ said: done ? ok : "refused", n: (last?.n ?? 0) + 1 }))
+  const [said, setSaid] = useState<{
+    kept: boolean
+    n: number
+  } | null>(null)
+  const count = unnamedTakes(all, drafts.read(), ideas.list()).length
+  const keep = (): void => {
+    // Read again at the tap: only what is unnamed now goes.
+    const ids = unnamedTakes(
+      takes.takes.getSnapshot(),
+      drafts.read(),
+      ideas.list()
+    ).map(({ id }) => id)
+    const kept = takes.release(ids)
+    setSaid((last) => ({ kept, n: (last?.n ?? 0) + 1 }))
   }
   return (
-    <section className="flex flex-col gap-2 rounded-2xl border px-4 py-3">
-      {notice}
-      <h2 className="font-medium">{WORDS.heading}</h2>
-      <p className="text-muted-foreground text-sm">
-        {WORDS.line(unnamed.length)}
-      </p>
-      {asking ? (
-        <>
-          <p className="text-sm">{WORDS.ask}</p>
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={() => ended(takes.discard(ids), "deleted")}
-            >
-              {WORDS.confirm}
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => setAsking(false)}>
-              {WORDS.cancel}
-            </Button>
-          </div>
-        </>
-      ) : (
-        <>
-          <Button size="sm" onClick={() => ended(takes.release(ids), "kept")}>
+    <>
+      {said !== null && (
+        <Notice
+          key={said.n}
+          dismissible
+          tone={said.kept ? "neutral" : "danger"}
+        >
+          {said.kept ? WORDS.kept : WORDS.refused}
+        </Notice>
+      )}
+      {count > 0 && (
+        <section className="flex flex-col gap-2 rounded-2xl border px-4 py-3">
+          <h2 className="font-medium">{WORDS.heading}</h2>
+          <p className="text-muted-foreground text-sm">{WORDS.line(count)}</p>
+          <Button size="sm" onClick={keep}>
             {WORDS.keep}
           </Button>
           <p className="text-muted-foreground text-xs">{WORDS.keepLine}</p>
-          <Button size="sm" variant="outline" onClick={() => setAsking(true)}>
-            {WORDS.delete}
-          </Button>
-        </>
+        </section>
       )}
-    </section>
+    </>
   )
 }

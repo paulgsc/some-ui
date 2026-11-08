@@ -1,7 +1,6 @@
 /**
  * ST26 (#2483): a new idea's answers no idea holds are shown with their
- * count, and go only on the owner's tap: kept, or deleted for good once
- * asked.
+ * count, and go home only on the owner's tap; nothing here deletes one.
  */
 import { inMemoryStorage } from "@some-ui/core-utils"
 import type { PatternTake } from "@some-ui/voice-capture"
@@ -30,7 +29,6 @@ const take = (id: string, idea: string): PatternTake => ({
 function desk(start: ReadonlyArray<PatternTake>): {
   takes: UnnamedDesk
   released: Array<string>
-  discarded: Array<string>
 } {
   let now = start
   const listeners = new Set<() => void>()
@@ -39,10 +37,8 @@ function desk(start: ReadonlyArray<PatternTake>): {
     for (const listener of listeners) listener()
   }
   const released: Array<string> = []
-  const discarded: Array<string> = []
   return {
     released,
-    discarded,
     takes: {
       takes: {
         getSnapshot: () => now,
@@ -55,11 +51,6 @@ function desk(start: ReadonlyArray<PatternTake>): {
       },
       release: (ids): boolean => {
         released.push(...ids)
-        drop(ids)
-        return true
-      },
-      discard: (ids): boolean => {
-        discarded.push(...ids)
         drop(ids)
         return true
       },
@@ -95,16 +86,5 @@ describe("answers no idea holds", () => {
     expect(made.released).toEqual(["t2"])
     expect(screen.queryByText(W.heading)).toBeNull()
     expect(screen.getByText(W.kept)).toBeTruthy()
-  })
-
-  it("deletes them for good only once asked and confirmed", () => {
-    const made = setup([take("t2", "gone"), take("t3", "gone")])
-    act(() => fireEvent.click(screen.getByText(W.delete)))
-    expect(made.discarded).toEqual([])
-    act(() => fireEvent.click(screen.getByText(W.cancel)))
-    act(() => fireEvent.click(screen.getByText(W.delete)))
-    act(() => fireEvent.click(screen.getByText(W.confirm)))
-    expect(made.discarded).toEqual(["t2", "t3"])
-    expect(screen.getByText(W.deleted)).toBeTruthy()
   })
 })
