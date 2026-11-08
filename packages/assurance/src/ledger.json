@@ -716,7 +716,7 @@
     {
       "id": "rust-rounds-recorded",
       "name": "Rust Rounds' programs get run on home",
-      "why": "A Rust Rounds round sent home is kept there; home queues each of its programs and, in the background, hands each to the sandboxed rust-runner and keeps what rustc printed, so a card can show a run made on home. A paired phone sends each round pasted on it home, and brings home's rounds and the runs recorded of them back, through its home-link lane while the app is open (RR4b, some-ui#2347); how that lane's runs went is Settings' readout of what this phone keeps on home.",
+      "why": "A Rust Rounds round sent home is kept there, and so is each week the routine puts in the mailbox (RR12, some-ui#2687); home queues each of their programs and, in the background, hands each to the sandboxed rust-runner and keeps what rustc printed, so a card can show a run made on home. A paired phone sends each round pasted on it home, and brings home's rounds and the runs recorded of them back, through its home-link lane while the app is open (RR4b, some-ui#2347); how that lane's runs went is Settings' readout of what this phone keeps on home.",
       "paths": [
         "server:apps/servers/file_host/src/rust_rounds",
         "server:crates/db/rust_round",
@@ -3532,7 +3532,7 @@
     {
       "id": "rust-rounds-runs",
       "name": "Rust Rounds' programs run on home",
-      "why": "Home queues each program of a round it keeps and hands it to the sandboxed rust-runner in the background, keeping what rustc printed. A paired phone sends each round pasted on it home once, through the home link's Rust Rounds lane, and reads back the runs home recorded (RR4b, some-ui#2347).",
+      "why": "Home queues each program of a round or week it keeps and hands it to the sandboxed rust-runner in the background, keeping what rustc printed. A paired phone sends each round pasted on it home once, through the home link's Rust Rounds lane, and reads back the runs home recorded (RR4b, some-ui#2347).",
       "serves": ["rust-rounds-recorded"],
       "witnesses": ["RC1", "RC2"],
       "segments": [
@@ -3559,6 +3559,16 @@
           "owner": "ours",
           "on": "home",
           "paths": ["server:apps/servers/file_host/src/routes/rust_rounds.rs"]
+        },
+        {
+          "id": "week-intake",
+          "name": "Home keeps each week the routine put in the mailbox's brief folder and queues its programs in the same transaction (RR12). Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": [
+            "server:apps/servers/file_host/src/mailbox/pass.rs",
+            "server:crates/db/rust_round/src/week.rs"
+          ]
         },
         {
           "id": "pass",

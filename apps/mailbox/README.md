@@ -103,8 +103,9 @@ Every request needs `Authorization: Bearer <token>`. Every answer is JSON, or th
 
 The folders are `brief`, `decisions`, `scout`, `scene`, `drama`, `run`, `opened`, `leetype`,
 `leetype-log`, `transcript`, `index`, `reflection` and `prompt`. `brief` also holds the
-build-journal session's lists of the takes Drive holds (`drive-takes-…`), which home finds
-in the listing it makes of `brief` every pass anyway, so they cost no listing of their own.
+build-journal session's lists of the takes Drive holds (`drive-takes-…`) and the Monday
+routine's weeks of Rust Rounds (`rust-week-…`), which home finds in the listing it makes of
+`brief` every pass anyway, so they cost no listing of their own (MI6).
 
 **`seq` only grows, and it has gaps.** SQLite hands out a number for every put that reaches the
 table, including a put of a name already held (`unchanged` or `conflict`), which stores nothing.
@@ -175,12 +176,14 @@ role, and it is the owner's call, so it is not built.
   `drama` folder's `drama-<stamp>.json`. `brief` also takes `drive-takes-YYYYMMDDTHHMMSSZ.json`
   (MB2, the owner's route a on paulgsc/some-ui#2401), named for when the build-journal session
   listed Drive's takes folder, in UTC to the second, so each list goes under a new name.
+  `brief` also takes `rust-week-YYYY-wNN.json` (MB2, RR12 paulgsc/some-ui#2687), a week of Rust
+  Rounds named for the ISO week it opens, which is its `id`.
   Anything else, an audio file's name included, is `422`.
 - **Content type** `application/json` (parameters such as `charset` are ignored), and the body
   must be UTF-8 JSON with no byte-order mark.
 - **Schema**: the top-level `schema` must be `some-ui.job-digest/1`, `some-ui.job-decisions/1`,
   `some-ui.job-scouts/1`, `some-ui.routine-scene/1`, `some-ui.routine-drama/1`, `some-ui.routine-run/1`,
-  `some-ui.routine-opened/1`, `some-ui.leetype-session/1`, `some-ui.leetype-log/1`, `some-ui.voice-transcript/1`, `some-ui.routine-index/1`, `some-ui.reflection/1` or `some-ui.drama-prompt/1` to match the folder (and `some-ui.drive-takes/1` for a list of Drive's takes in `brief`). The Worker checks that and nothing deeper, except for a transcript, an index, a reflection, a prompt and a list of Drive's takes (below); the readers validate the full shape.
+  `some-ui.routine-opened/1`, `some-ui.leetype-session/1`, `some-ui.leetype-log/1`, `some-ui.voice-transcript/1`, `some-ui.routine-index/1`, `some-ui.reflection/1` or `some-ui.drama-prompt/1` to match the folder (and `some-ui.drive-takes/1` for a list of Drive's takes in `brief`, `some-ui.rust-week/1` for a week of Rust Rounds). The Worker checks that and nothing deeper, except for a transcript, an index, a reflection, a prompt, a list of Drive's takes and a week's `id`, which must be the name's (below); the readers validate the full shape.
 - **A scene** is `{"schema":"some-ui.routine-scene/1","answers":"<reflection>","title":"<the
 scene folder's name>","decks":[<read-aloud deck>,<lens deck>]}`, each deck exactly as the
   phone's word set check takes it. **A drama** is `{"schema":"some-ui.routine-drama/1",
@@ -504,7 +507,10 @@ how each was checked when this workspace landed.
   of the takes Drive holds (`FOLDERS`' `also`, `drive-takes-…`, `driveTakesRefusal`; the
   owner's route a, 2026-10-31,
   [paulgsc/some-ui#2401](https://github.com/paulgsc/some-ui/issues/2401#issuecomment-6549482554)),
-  which only the routine role puts and home reads with the digests. Every request passes `authenticate` and then one of `serve`'s
+  which only the routine role puts and home reads with the digests, and, the same way, a week of
+  Rust Rounds (`rust-week-…`, `rustWeekRefusal`; the owner's RR12,
+  [paulgsc/some-ui#2687](https://github.com/paulgsc/some-ui/issues/2687): "the routine puts a
+  week, and home reads it"). Every request passes `authenticate` and then one of `serve`'s
   `may(grant.get | put | ask | move)` checks before anything reaches the store.
 - _Falsified by_ a hunk that adds, removes or renames a role; adds a folder to, or removes one
   from, any role's `get`, `put`, `ask` or `move` list; changes which secret a role reads, or
@@ -516,6 +522,7 @@ how each was checked when this workspace landed.
   `DRIVE_ONLY_ENDED`, or lets `kindOf` take a backfill name `sharedDay` does not read or for a
   day outside them; or adds a kind to any folder's `also`, loosens the `drive-takes` name or
   `driveTakesRefusal` (a key beyond `schema`, `at` and `takes`, or beyond `sha256` per take),
+  loosens the `rust-week` name or `rustWeekRefusal`,
   or removes `kindOf`'s reading of `also`; when the PR description does not name the owner's
   decision to do so.
 - _Scope:_ `apps/mailbox/src/core.ts` and `wrangler.jsonc`.
@@ -576,7 +583,13 @@ how each was checked when this workspace landed.
   `drive-takes` list, which `kindOf` takes only under its own name and holds to its own
   schema and `driveTakesRefusal`; `core.test.ts` pins that the routine puts one, home reads it
   and may not put it, and that a body naming audio, bytes, a Drive file, id or link, a take's
-  name, or any key but `schema`, `at` and `takes` (`sha256` per take) is refused.
+  name, or any key but `schema`, `at` and `takes` (`sha256` per take) is refused. _Checked at
+  the Rust Rounds week amendment (the owner's RR12, paulgsc/some-ui#2687, 2026-11-07):_ `ROLES` is unchanged; `brief`'s `also`
+  holds two kinds, the second the `rust-week` week, taken only as `rust-week-YYYY-wNN.json` and
+  held to `some-ui.rust-week/1` and `rustWeekRefusal` (an ISO week `id`, the name's);
+  `core.test.ts` pins that the routine puts one and home reads it in the `brief` listing (home
+  may put nothing in `brief`, pinned for the folder), and that a misnamed week, a non-week `id`
+  and another schema are refused.
 
 **MB3: No token reaches the repo or a log.**
 

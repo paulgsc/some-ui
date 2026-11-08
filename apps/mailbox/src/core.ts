@@ -573,6 +573,27 @@ function indexRefusal(
 }
 
 /**
+ * README, "What a put must satisfy". The routine holds a week to the whole
+ * format (`readWeek`, paulgsc/some-ui#2687) before it puts one; home reads
+ * only what it records.
+ */
+function rustWeekRefusal(
+  body: Readonly<Record<string, unknown>>,
+  _text: string,
+  name: string
+): string | null {
+  if (typeof body.id !== "string" || !WEEK_ID.test(body.id)) {
+    return "id must be the week's, like 2026-w46"
+  }
+  return name === `rust-week-${body.id}.json`
+    ? null
+    : "the name must carry the week's id"
+}
+
+/** `WEEK_ID` in `packages/ui/rust-rounds/src/lib/formats/week.ts`, which this Worker cannot import. */
+const WEEK_ID = /^\d{4}-w(?:0[1-9]|[1-4]\d|5[0-3])$/
+
+/**
  * MB2's backfill (owner, 2026-10-31, paulgsc/server#509, widened 2026-11-01,
  * paulgsc/some-ui#2393) takes a Jobs file only Drive holds only under a name
  * for a day from `FIRST_SHARED` up to, not including, `DRIVE_ONLY_ENDED`, so
@@ -681,6 +702,14 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
         name: /^drive-takes-\d{8}T\d{6}Z\.json$/,
         schema: "some-ui.drive-takes/1",
         refuses: driveTakesRefusal,
+      },
+      // A week of Rust Rounds the Monday routine writes, for home to keep
+      // and record its programs (RR12, paulgsc/some-ui#2687).
+      {
+        folder: "brief",
+        name: /^rust-week-\d{4}-w\d{2}\.json$/,
+        schema: "some-ui.rust-week/1",
+        refuses: rustWeekRefusal,
       },
     ],
   },
