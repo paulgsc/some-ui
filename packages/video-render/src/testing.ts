@@ -4,6 +4,8 @@
  * field a test doesn't care about set to something drawable.
  */
 
+import { sampleCallWeek } from "./call"
+import type { CallWeek } from "./call"
 import { CUT_LIST_SCHEMA } from "./cut-list"
 import type { CutList, Shot } from "./cut-list"
 import type { Ports } from "./render"
@@ -105,4 +107,11 @@ export async function make(
 ): Promise<void> {
   const ran = await ports.ffmpeg({ args: ["-v", "error", "-y", ...args] })
   if (!ran.ok) throw new Error(ran.stderr)
+}
+
+/** The call template's sample week, or a throw naming why it isn't one. */
+export function sampleWeek(): CallWeek {
+  const parsed = sampleCallWeek()
+  if (!parsed.ok) throw new Error(parsed.problems.join("; "))
+  return parsed.value
 }

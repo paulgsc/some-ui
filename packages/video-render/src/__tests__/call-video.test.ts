@@ -28,7 +28,6 @@ import {
   callFormat,
   callScenes,
   parseCallWeek,
-  sampleCallWeek,
 } from "@video-render/call"
 import type { CallWeek } from "@video-render/call"
 import { nodePorts, readSeries } from "@video-render/node"
@@ -36,7 +35,7 @@ import { render } from "@video-render/render"
 import type { BurnInRequest, Ports } from "@video-render/render"
 import type { Series } from "@video-render/series"
 import { stillFile } from "@video-render/stills"
-import { make } from "@video-render/testing"
+import { make, sampleWeek } from "@video-render/testing"
 import { TRANSITION_MS } from "@video-render/vocabulary"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 
@@ -308,11 +307,10 @@ describe("a call's captions", () => {
   ] as const)(
     "are laid over each scene where they were drawn, at a %s frame's foot",
     async (name, shape) => {
-      const sample = sampleCallWeek()
-      if (!sample.ok) throw new Error(sample.problems.join("; "))
+      const sample = sampleWeek()
       const tag = name.replace(":", "x")
-      const plain = await renderWeek(sample.value, `plain-${tag}`, { shape })
-      const said = await renderWeek(sample.value, `said-${tag}`, {
+      const plain = await renderWeek(sample, `plain-${tag}`, { shape })
+      const said = await renderWeek(sample, `said-${tag}`, {
         captions: true,
         shape,
       })
@@ -339,19 +337,17 @@ describe("a call's captions", () => {
 
 describe("a call's video (CV1)", () => {
   it("shows each scene's whole still and holds it, for the sample week", async () => {
-    const sample = sampleCallWeek()
-    if (!sample.ok) throw new Error(sample.problems.join("; "))
-    const { frames, holds } = await renderWeek(sample.value, "sample")
-    expect(holds).toHaveLength(callScenes(sample.value).length)
+    const sample = sampleWeek()
+    const { frames, holds } = await renderWeek(sample, "sample")
+    expect(holds).toHaveLength(callScenes(sample).length)
     expect(holds.flatMap((h) => problemsOf(frames, h))).toEqual([])
     expect(everyFrame(frames, holds)).toEqual([])
   }, 240_000)
 
   it("shows each scene's whole still and holds it in a 9:16 frame, a short's", async () => {
-    const sample = sampleCallWeek()
-    if (!sample.ok) throw new Error(sample.problems.join("; "))
+    const sample = sampleWeek()
     // The same render the 9:16 captions case compares against.
-    const { frames, holds } = await renderWeek(sample.value, "plain-9x16", {
+    const { frames, holds } = await renderWeek(sample, "plain-9x16", {
       shape: TALL,
     })
     expect(holds.flatMap((h) => problemsOf(frames, h, TALL))).toEqual([])

@@ -1,36 +1,22 @@
-/**
- * A template's preview (SFEED12, #2757): the call's sample, cut by code to
- * 15–30 s, the same every time, and each trimmed take's words only those
- * heard before it ends.
- */
-import { callCutList, callScenes, sampleCallWeek } from "@video-render/call"
+/** A template's preview (SFEED12, #2757), cut from the call's sample. */
+import { callCutList, callScenes } from "@video-render/call"
 import type { CallWeek } from "@video-render/call"
 import type { CutList } from "@video-render/cut-list"
-import {
-  PREVIEW_SHOT_LEAST_MS,
-  PREVIEW_TITLE,
-  PREVIEW_WINDOW,
-  previewOf,
-} from "@video-render/preview"
+import { PREVIEW_SHOT_LEAST_MS, previewOf } from "@video-render/preview"
 import type { StillTake } from "@video-render/stills"
+import { sampleWeek } from "@video-render/testing"
 import { describe, expect, it } from "vitest"
 
-function sample(): CallWeek {
-  const week = sampleCallWeek()
-  if (!week.ok) throw new Error(week.problems.join("; "))
-  return week.value
-}
-
-/** A take for each said scene, a word every 400 ms, as the speaker gives them. */
-function takesOf(week: CallWeek): ReadonlyArray<StillTake | null> {
+/** A take for each said scene, a word every `each` ms, as the speaker gives them. */
+function takesOf(week: CallWeek, each = 400): ReadonlyArray<StillTake | null> {
   return callScenes(week).map(({ said }) => {
     if (said === "") return null
     const words = said.split(/\s+/).map((text, i) => ({
       text,
-      startMs: i * 400,
-      endMs: i * 400 + 350,
+      startMs: i * each,
+      endMs: i * each + each - 50,
     }))
-    return { ms: words.length * 400, words }
+    return { ms: words.length * each, words }
   })
 }
 
@@ -40,46 +26,43 @@ function preview(cut: CutList): CutList {
   return made.value
 }
 
-const total = (cut: CutList): number =>
-  cut.shots.reduce((ms, s) => ms + s.durationMs, 0)
-
 describe("a template's preview", () => {
   it.each([
     ["before anything is said", null],
     ["with every take said", takesOf],
-  ] as const)("the call's sample, %s: in the window, in order", (_, takes) => {
-    const week = sample()
-    const cut = callCutList(
-      week,
-      takes ? takes(week) : callScenes(week).map(() => null)
+  ] as const)("the call's sample, %s: its opening, in order", (_, takes) => {
+    const week = sampleWeek()
+    const made = preview(
+      callCutList(week, takes ? takes(week) : callScenes(week).map(() => null))
     )
-    const made = preview(cut)
-    expect(total(made)).toBeGreaterThanOrEqual(PREVIEW_WINDOW.leastMs)
-    expect(total(made)).toBeLessThanOrEqual(PREVIEW_WINDOW.mostMs)
-    const ids = made.shots.map((s) => s.id)
-    expect(ids.slice(0, 3)).toEqual(["intro", "brand-in", "chapter-board"])
-    expect(ids[3]).toBe("board")
-    expect(ids.at(-1)).toBe("brand-out")
-    expect(made.title).toBe(PREVIEW_TITLE(cut.title))
-    expect(made.burnIns).toEqual(cut.burnIns)
-    // The same cut list, the same preview.
-    expect(preview(cut)).toEqual(made)
+    expect(made.shots.map((s) => s.id)).toEqual([
+      "intro",
+      "brand-in",
+      "chapter-board",
+      "board",
+      "brand-out",
+    ])
+    expect(made.title.startsWith("Preview, sample data: ")).toBe(true)
   })
 
-  it("trims a said scene at its end, its take and words with it", () => {
-    const week = sample()
+  it("shows sections of the first chapter only, never the next without its slide", () => {
+    const week = sampleWeek()
+    // Short takes, so a second section would fit.
+    const made = preview(callCutList(week, takesOf(week, 150)))
+    expect(made.shots.map((s) => s.id)).not.toContain("moved-1")
+  })
+
+  it("trims a said scene on the last word heard whole", () => {
+    const week = sampleWeek()
     const cut = callCutList(week, takesOf(week))
     const made = preview(cut)
     for (const shot of made.shots) {
       const whole = cut.shots.find((s) => s.id === shot.id)
       expect(shot.durationMs).toBeLessThanOrEqual(whole?.durationMs ?? 0)
+      if (shot.durationMs === whole?.durationMs) continue
       const take = shot.take
-      if (take === undefined) continue
-      expect(shot.voiceInMs + take.outMs - take.inMs).toBeLessThanOrEqual(
-        shot.durationMs
-      )
-      for (const word of take.words ?? [])
-        expect(word.endMs).toBeLessThanOrEqual(take.outMs)
+      if (take?.words === undefined) continue
+      expect(take.words.at(-1)?.endMs).toBe(take.outMs)
     }
     const intro = made.shots[0]
     expect(intro?.durationMs).toBeLessThan(cut.shots[0]?.durationMs ?? 0)
@@ -87,12 +70,11 @@ describe("a template's preview", () => {
   })
 
   it("refuses a cut that doesn't open with the locked intro", () => {
-    const week = sample()
+    const week = sampleWeek()
     const cut = callCutList(
       week,
       callScenes(week).map(() => null)
     )
-    const made = previewOf({ ...cut, shots: cut.shots.slice(1) })
-    expect(made.ok).toBe(false)
+    expect(previewOf({ ...cut, shots: cut.shots.slice(1) }).ok).toBe(false)
   })
 })

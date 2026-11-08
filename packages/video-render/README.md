@@ -66,11 +66,8 @@ Each module's header says why it is the way it is.
   since the phone can't carry the code that makes it (the call's
   `callStoryboard`, Playoff Delta's `storyboardFor`), and that code's test
   holds the pin to it.
-- `src/preview.ts`: a template's preview (SFEED12, #2757): the whole cut
-  list its code makes from its sample, cut by code to 15–30 s (the locked
-  intro, the brand intro, the first chapter and its section, a second
-  section where it fits, the brand outro), the said scenes trimmed at their
-  ends, and titled as a preview of sample data, never an episode.
+- `src/preview.ts`: a template's preview, its sample cut to 15–30 s (SFEED12,
+  #2757).
 - `src/resolve.ts`, `src/timing.ts`: each lever from the layer that sets
   it; each scene placed in whole frames.
 - `src/plan.ts`: the ffmpeg calls, as data. `src/render.ts` runs them over
