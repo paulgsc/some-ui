@@ -19,7 +19,7 @@ import { episodeFeedback } from "@/lib/episode-feedback"
 import type { PhoneBite } from "@/lib/game-bites"
 import { phoneGameBites } from "@/lib/game-bites"
 import { ideasMoved } from "@/lib/idea-keeping"
-import { ideaBundleDesk, ideaTakesDesk } from "@/lib/idea-takes"
+import { ideaBundleDesk, ideaRedoDesk, ideaTakesDesk } from "@/lib/idea-takes"
 import { phoneJobs } from "@/lib/jobs"
 import { leetypeTakesDesk } from "@/lib/leetype-takes"
 import { lensTakesDesk } from "@/lib/lens-takes"
@@ -115,6 +115,9 @@ export const voiceLane: Lane = {
     // A new idea's takes, released by its Send (ST26).
     const bundle = ideaBundleDesk.phone().takes
     useSyncExternalStore(bundle.subscribe, bundle.getSnapshot)
+    // An answer said again, released by its idea's send again (#2579).
+    const resaid = ideaRedoDesk.phone().takes
+    useSyncExternalStore(resaid.subscribe, resaid.getSnapshot)
     // A week's takes, released by its Send (RR13).
     const week = rustWeekDesk.phone().takes
     useSyncExternalStore(week.subscribe, week.getSnapshot)

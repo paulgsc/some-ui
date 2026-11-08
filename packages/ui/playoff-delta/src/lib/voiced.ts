@@ -155,6 +155,7 @@ export function voicedCutList(
       look: format.look,
       captions: hasCaptions(format),
       bed,
+      ...(format.shape ? { shape: format.shape } : {}),
     },
     voicedScenes(season, week, fill.format.version, fill).map((scene, i) => ({
       id: scene.id,

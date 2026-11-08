@@ -146,6 +146,9 @@ const HOME_LINK_CALLERS = new Set([
   // half minute while home has something under way. It sends nothing of its
   // own.
   "lib/renders/read.ts",
+  // LA8 (SFEED12): a template's preview, which asks home to make one, reads
+  // the newest, and asks for its video a part at a time on Watch.
+  "lib/template-preview/index.ts",
   // LA8 (SFEED6): Studio's Feedback page, which asks home for the notes it
   // keeps on each feed's episodes. It sends nothing of its own: the notes go
   // home on the voice lane's run (`lib/home-link/episode-notes`).
@@ -183,6 +186,7 @@ const KEEPERS = new Set([
   "lib/home-link/takes-read.ts",
   "lib/home-link/call-videos.ts",
   "lib/home-link/renders.ts",
+  "lib/home-link/previews.ts",
   "lib/home-link/episode-notes-read.ts",
 ])
 
@@ -248,6 +252,19 @@ const CALLS_PATHS = [
   "return `/feeds/${feed}/videos/${encodeURIComponent(key)}/video`",
   "return `/feeds/${feed}/videos/${encodeURIComponent(key)}/link`",
   "return `/feeds/${feed}/videos/${encodeURIComponent(key)}/description`",
+]
+
+/** LA8, SFEED12: a template's preview, and the three requests it may send. */
+const PREVIEWS_READ = "lib/home-link/previews.ts"
+const PREVIEWS_SENDS = [
+  ['"POST"', "previewPath(template)"],
+  ['"GET"', "previewPath(template)"],
+  [
+    '"GET"',
+    "`${previewPath(template)}/${encodeURIComponent(id)}/video`",
+    "undefined",
+    "{ start, end }",
+  ],
 ]
 
 /** LA8, MD3: the read of what home deleted, and the one request it may send. */
@@ -824,6 +841,20 @@ describe("LA8: the phone reaches home through one module", () => {
         /from "\.\/renders"|from "@\/lib\/home-link\/renders"/.test(read(f))
       )
     expect(readers).toEqual(["lib/renders/read.ts"])
+  })
+
+  it("sends nothing from a template's preview but its make, its read and its video's parts, and only the preview asks them (SFEED12)", () => {
+    expect(sendCalls(PREVIEWS_READ, read(PREVIEWS_READ))).toEqual(
+      PREVIEWS_SENDS
+    )
+    expect(read(PREVIEWS_READ)).toContain("`/previews/${template}`")
+    expect(read(PREVIEWS_READ)).toContain("homeLink().keep(")
+    const readers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /from "\.\/previews"|from "@\/lib\/home-link\/previews"/.test(read(f))
+      )
+    expect(readers).toEqual(["lib/template-preview/index.ts"])
   })
 
   it("sends nothing from Ideas on home but its four requests, and only it asks them (ST26 c)", () => {

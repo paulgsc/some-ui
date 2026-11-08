@@ -37,6 +37,7 @@ import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 import { CopyButton } from "@/components/copy-button"
 import { EpisodeNote } from "@/components/studio/episode-feedback"
 import { TILE, TileBody } from "@/components/studio/layout"
+import { VideoFetch } from "@/components/video-fetch"
 
 const WORDS = VIDEOS_WORDS
 
@@ -70,31 +71,12 @@ const Watching = ({
       </div>
     )
   }
-  if (fetch?.kind === "fetching") {
-    return (
-      <p className="text-muted-foreground text-sm">
-        {WORDS.bringing(fetch.done, fetch.total)}
-      </p>
-    )
-  }
   return (
-    <div className="flex flex-col gap-1">
-      {fetch?.kind === "failed" && (
-        <p className="text-muted-foreground text-sm">
-          {WORDS.failed[fetch.why]}
-        </p>
-      )}
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={() => void videos.watch(episode.key)}
-      >
-        {WORDS.watch}
-        {episode.videoBytes === null
-          ? ""
-          : ` (${formatSize(episode.videoBytes)})`}
-      </Button>
-    </div>
+    <VideoFetch
+      fetch={fetch}
+      bytes={episode.videoBytes}
+      onWatch={() => void videos.watch(episode.key)}
+    />
   )
 }
 

@@ -81,7 +81,8 @@ export function itemOfRepeated(scene: string, id: string): number | undefined {
  *   inside. Code fills it from the episode's data, never the AI, and there
  *   is no setting to leave it out.
  * - `brand`: the owner's brand intro, after the locked intro, and outro,
- *   last: their mark.
+ *   last: their mark; from a version naming `brand.motion` (HYPER5), drawn
+ *   by that composition rather than the stage.
  * - `chapters`: the scenes that open with a chapter slide, which says the
  *   section's name aloud, so an episode can be listened to.
  * - `subtitles`: whether the words said are captioned (SFEED11, #2707):
@@ -100,6 +101,15 @@ export const ShapeSchema = z.strictObject({
     intro: z.boolean(),
     outro: z.boolean(),
     theme: ThemeIdSchema.optional(),
+    /**
+     * The composition that draws the brand intro and outro (HYPER5, #2728),
+     * one of `@some-ui/video-motion`'s, by its folder's name: the code's mark
+     * in `markThemeOf`, moving. Absent, they are the stage's slides.
+     */
+    motion: z
+      .string()
+      .regex(/^[a-z0-9][a-z0-9-]{0,63}$/)
+      .optional(),
   }),
   chapters: z.array(sceneId),
   subtitles: z.enum(["off", "line", "word"]),

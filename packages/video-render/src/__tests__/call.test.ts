@@ -26,6 +26,7 @@ import {
 } from "@video-render/call"
 import type { CallWeek } from "@video-render/call"
 import { parseCutList } from "@video-render/cut-list"
+import type { CutList } from "@video-render/cut-list"
 import { parseFormat } from "@video-render/format"
 import { readSeries } from "@video-render/node"
 import { refUrl } from "@video-render/refs"
@@ -253,6 +254,36 @@ describe("the call as a cut list", () => {
     expect(cut.value.burnIns).toEqual([{ kind: "captions", params: {} }])
     expect(cut.value.music).toBe("off")
     expect(callCutList(w, takes, { bed: true }).music).toBeUndefined()
+  })
+
+  it("from version 4, opens and closes with the brand's composition in the mark's theme (HYPER5)", () => {
+    const w = week()
+    const shots = (version: number): CutList["shots"] =>
+      callCutList({ ...w, template: { ...w.template, version } }, []).shots
+    const brand = (version: number): ReadonlyArray<unknown> =>
+      shots(version)
+        .filter((s) => s.id === "brand-in" || s.id === "brand-out")
+        .map((s) => s.picture)
+    expect(brand(4)).toEqual([
+      {
+        kind: "composition",
+        ref: "brand-v1",
+        variables: { part: "open", theme: "mochi-night" },
+        files: [],
+      },
+      {
+        kind: "composition",
+        ref: "brand-v1",
+        variables: { part: "close", theme: "mochi-night" },
+        files: [],
+      },
+    ])
+    expect(parseCutList(callCutList(w, [])).ok).toBe(true)
+    // An older version is drawn as it was: the stage's slides.
+    expect(brand(3)).toEqual([
+      { kind: "still", source: expect.stringMatching(/brand-in\.png$/) },
+      { kind: "still", source: expect.stringMatching(/brand-out\.png$/) },
+    ])
   })
 })
 

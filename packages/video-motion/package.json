@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "exports": {
+    "./node": "./src/node.ts"
+  },
   "description": "HyperFrames compositions, pinned: the motion a video's scene is drawn in, rendered to the same bytes every time.",
   "license": "MIT",
   "homepage": "https://pgdev.maishatu.com/?tab=github",

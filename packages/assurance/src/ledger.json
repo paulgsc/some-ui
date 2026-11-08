@@ -2536,7 +2536,10 @@
         "server:apps/servers/file_host/src/previews.rs",
         "server:infra/render",
         "server:infra/compose/call-render.yml",
-        "server:infra/docker/Dockerfile.render"
+        "server:infra/docker/Dockerfile.render",
+        "some-ui:apps/www/src/lib/home-link/previews.ts",
+        "some-ui:apps/www/src/lib/template-preview",
+        "some-ui:apps/www/src/components/studio/template-preview.tsx"
       ],
       "modules": ["previews"],
       "objectives": [
@@ -2546,8 +2549,8 @@
           "property": "outcome",
           "claim": "A preview the owner asks for is made, or ends with its reason on the phone; it never waits unseen.",
           "requirement": "Each request home accepts reaches ready, or failed with a reason class (no-sample, too-long, too-large, render, or overdue once it is not ready a day after it was asked), and reads on the phone, from the newest request per template, as waiting, being made, paused, set aside, ready or failed; it waits only behind the lane's other work, and a second request while one is not yet ready answers with that one.",
-          "verdict": "unproven",
-          "conclusion": "The cut is tested and the recorder is written in some-ui; home's job, routes and overdue sweep are built and tested in server#743, not yet merged, and the phone's control (some-ui#2778) is not merged, so nothing makes or reports a preview yet.",
+          "verdict": "holds",
+          "conclusion": "Home takes one request per template and answers a second with it, renders it under the lane, and ends each with ready or a failed class, an unready one failing overdue a day after it was asked (server#743); the template's page reads home's newest as one of the six states, or what failed, and never reads a ready preview it can't bring over. Nothing shows a preview's state unless the owner opens the page or Studio › Renders: there is no push.",
           "evidence": [
             {
               "class": "structural",
@@ -2558,13 +2561,39 @@
               "class": "structural",
               "says": "The recorder renders a template's preview from its sample, and refuses a template with no sample fill, with its reason.",
               "ref": "some-ui:apps/www/tests/record/preview.ts"
+            },
+            {
+              "class": "measured",
+              "says": "Home accepts one request per template, answers a second with it, fails one not ready a day after it was asked as overdue, and words every failure as its class.",
+              "ref": "server:apps/servers/file_host/src/previews/tests.rs"
+            },
+            {
+              "class": "measured",
+              "says": "The render worker records a request's preview under the lane into its own folder, never makes a ready one again, and keeps a failed one's reason.",
+              "ref": "server:infra/render/render-calls.test.sh"
+            },
+            {
+              "class": "measured",
+              "says": "The phone reads home's newest preview as one of its states or as what failed, and refuses a ready one with no size.",
+              "ref": "some-ui:apps/www/src/lib/template-preview/__tests__/model.test.ts"
             }
+          ],
+          "proof": [
+            "server:apps/servers/file_host/src/previews/tests.rs#a_request_writes_one_and_another_while_it_is_pending_answers_that_one",
+            "server:apps/servers/file_host/src/previews/tests.rs#a_request_not_ready_a_day_after_it_was_asked_fails_overdue",
+            "server:apps/servers/file_host/src/previews/tests.rs#a_ready_preview_says_when_it_was_made_its_size_version_and_when_it_goes",
+            "server:apps/servers/file_host/src/previews/tests.rs#a_failed_preview_says_why_in_a_class_never_its_log",
+            "server:apps/servers/file_host/src/previews/tests.rs#each_refusal_the_recorder_words_has_its_class",
+            "server:apps/servers/file_host/src/handlers/previews.rs#only_a_paired_phone_reaches_previews_and_an_unknown_template_is_not_found",
+            "server:apps/servers/file_host/src/handlers/previews.rs#only_the_current_ready_preview_has_a_video",
+            "server:infra/render/render-calls.test.sh#a preview is recorded with its template, into its own work folder",
+            "some-ui:apps/www/src/lib/template-preview/__tests__/model.test.ts#reads home's newest preview, or none",
+            "some-ui:apps/www/src/lib/template-preview/__tests__/model.test.ts#refuses a ready preview with no size, which can't be brought over"
           ],
           "watch": {
             "by": "none"
           },
-          "amendments": [],
-          "tracked": "some-ui#2757"
+          "amendments": []
         },
         {
           "id": "PV2",
@@ -2573,19 +2602,29 @@
           "claim": "Home keeps at most one preview per template, and none past a day.",
           "requirement": "Per template, home keeps at most one request not yet ready, one ready preview of at most the render policy's largest video (MAX_VIDEO_MB), and the failed requests of the last day: a preview is deleted 24 h after it is made, the newest included, and an older one as soon as a newer one is ready; a failed request goes 24 h after it failed; a preview's work (stills, takes, step cache) goes with it, or when its request fails; the job in progress is never deleted. No switch and no receipt: a preview is derived from sample data, not the owner's record.",
           "verdict": "unproven",
-          "conclusion": "Asked for by the owner on #2757 and agreed for home's prune; the prune is built and tested in server#743, not yet merged.",
+          "conclusion": "Home's prune is on server main (server#743) and tested: it takes a preview a day after it is made, an older one once a newer one is ready, a failed request a day after it failed, and never the job in progress. No test yet proves the ready video's bound (MAX_VIDEO_MB, 500 MB), so the claim stays unproven until one does (server#752).",
           "evidence": [
             {
               "class": "unknown",
               "says": "The owner's ask: the default is 24 hours after it is made, newest per template only.",
               "ref": "some-ui#2757"
+            },
+            {
+              "class": "measured",
+              "says": "The prune takes a day-old preview and any older than the newest ready one, a failed request a day after, and never the job in progress.",
+              "ref": "server:apps/servers/file_host/src/previews/tests.rs"
+            },
+            {
+              "class": "unknown",
+              "says": "The render worker refuses a video past MAX_VIDEO_MB, but no test holds that bound.",
+              "ref": "server#752"
             }
           ],
           "watch": {
             "by": "none"
           },
           "amendments": [],
-          "tracked": "some-ui#2757"
+          "tracked": "server#752"
         }
       ]
     }
@@ -2827,8 +2866,8 @@
     {
       "store": "phone:idea-takes",
       "class": "record",
-      "growth": "bounded: two desks of Studio's idea takes (answers to Claude's questions, MIC10 #2428, `some-ui:idea-takes`; a new idea's answers, ST26 #2453, `some-ui:idea-bundle-takes`), each an offline set of 40 takes of <= 60 s: 40 x 60 x 4,000 = 9,600,000 B each; past 40, a new one makes room with the oldest home holds, and is refused while home holds none.",
-      "horizon": "a take leaves the phone only to make room at 40, and only once home holds it (HF5 #2180, LG1); a new idea's take waits on the phone until the idea is sent, and one deleted before Send is gone for good (owner, #2453, decision 4); a take whose audio never landed is swept",
+      "growth": "bounded: three desks of Studio's idea takes (answers to Claude's questions, MIC10 #2428, `some-ui:idea-takes`; a new idea's answers, ST26 #2453, `some-ui:idea-bundle-takes`; answers of an idea on home said again, #2579, `some-ui:idea-redo-takes`), each an offline set of 40 takes of <= 60 s: 40 x 60 x 4,000 = 9,600,000 B each; past 40, a new one makes room with the oldest home holds, and is refused while home holds none.",
+      "horizon": "a take leaves the phone only to make room at 40, and only once home holds it (HF5 #2180, LG1); a new idea's take waits on the phone until the idea is sent, and one deleted before Send is gone for good (owner, #2453, decision 4); an answer said again waits until its idea is sent again, and one deleted or overtaken before then is gone for good (#2579); a take whose audio never landed is swept",
       "family": "what-is-kept"
     },
     {
@@ -4561,7 +4600,11 @@
           "name": "The template's page asks home for a preview, reads how far home has got, and brings the ready one over a part at a time to play. Ours, on the phone.",
           "owner": "ours",
           "on": "phone",
-          "paths": []
+          "paths": [
+            "some-ui:apps/www/src/lib/template-preview",
+            "some-ui:apps/www/src/lib/home-link/previews.ts",
+            "some-ui:apps/www/src/components/studio/template-preview.tsx"
+          ]
         },
         {
           "id": "home-network",

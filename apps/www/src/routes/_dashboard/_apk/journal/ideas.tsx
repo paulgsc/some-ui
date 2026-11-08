@@ -18,7 +18,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { phoneIdeaListener } from "@/lib/idea-hearing"
 import { ideasHome } from "@/lib/idea-home"
 import { keepIdeas } from "@/lib/idea-keeping"
-import { ideaBundleTakes } from "@/lib/idea-takes"
+import { ideaBundleTakes, ideaRedoTakes } from "@/lib/idea-takes"
 import { useAsyncIntent } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import { shareIdea } from "@/lib/journal-share"
@@ -107,7 +107,9 @@ function validateIdeasSearch(search: Record<string, unknown>): IdeasSearch {
  * the Android app alone, so no other build carries the link
  * (`build.paths.ts`).
  */
-const onHome = device ? { home: ideasHome, takes: ideaBundleTakes } : null
+const onHome = device
+  ? { home: ideasHome, takes: ideaBundleTakes, redo: ideaRedoTakes }
+  : null
 
 const OnHome = ({ lists }: { lists: boolean }): JSX.Element | null => {
   const navigate = useNavigate()
@@ -118,11 +120,15 @@ const OnHome = ({ lists }: { lists: boolean }): JSX.Element | null => {
   }, [])
   // The desk's runtime is the phone's one; built when the page first shows.
   const [takes] = useState(() => onHome?.takes() ?? null)
-  if (onHome === null || takes === null) return null
+  // An answer said again waits on its own desk until the idea is sent
+  // again (#2579).
+  const [redo] = useState(() => onHome?.redo() ?? null)
+  if (onHome === null || takes === null || redo === null) return null
   return (
     <IdeasOnHome
       home={onHome.home}
       takes={takes}
+      redo={redo}
       initialLists={lists}
       pair={<PairHomeLink>{STUDIO_WORDS.pair.pair}</PairHomeLink>}
       // An answer's Delete… opens My data on its recording (#2579, MD4).

@@ -37,7 +37,10 @@
  *   answer as `idea:<idea>:<question>`, when taken; home gives its words back
  *   to the idea screen (`./heard`). A new idea's take (ST26) goes the same
  *   way, but only once its idea is sent: until then it waits on the phone
- *   (`waits`), and its desk lists it for nobody here;
+ *   (`waits`), and its desk lists it for nobody here; an answer of an idea
+ *   on home said again (#2579) the same way, from a desk of its own, once
+ *   its idea is sent again, when the take it replaces is set aside on home
+ *   (`lib/idea-takes`' `setAsideReplaced`);
  * - a take with no scene yet, recorded on Takes on home (`lib/library-takes`,
  *   ST32): `studio`, named by its own id as `take:<id>`, when taken; home
  *   lists it with every take it keeps, and ST30 attaches it to a scene by
@@ -141,7 +144,7 @@ import { ON_PHONE } from "@some-ui/voice-capture"
 
 import { phoneGameBites } from "@/lib/game-bites"
 import type { IdeaTake } from "@/lib/idea-takes"
-import { ideaBundleDesk, ideaTakesDesk } from "@/lib/idea-takes"
+import { ideaBundleDesk, ideaRedoDesk, ideaTakesDesk } from "@/lib/idea-takes"
 import { jobVoiceAudio, phoneJobs } from "@/lib/jobs"
 import type { JobEvent, JobsState } from "@/lib/jobs/model"
 import type { LeetypeTake } from "@/lib/leetype-takes"
@@ -655,6 +658,12 @@ function listed(
     audio: (): Promise<Blob | null> => ideaBundleDesk.audio(take.id),
     aside: asideAt(take),
   }))
+  // #2579: only the takes of an answer said again whose idea was sent again.
+  const resaid = ideaRedoDesk.kept().map((take) => ({
+    note: ideaNote(take),
+    audio: (): Promise<Blob | null> => ideaRedoDesk.audio(take.id),
+    aside: asideAt(take),
+  }))
   const library = libraryTakesDesk.kept().map((take) => ({
     note: libraryNote(take),
     audio: (): Promise<Blob | null> => libraryTakesDesk.audio(take.id),
@@ -673,6 +682,7 @@ function listed(
     ...week,
     ...ideas,
     ...bundled,
+    ...resaid,
     ...library,
   ]
 }
@@ -1054,14 +1064,15 @@ export async function letGoDeleted(
   const studio = studioKeeping()
   const deleted = new Set(ids)
   try {
-    const [, kit, bundle, library, week] = await Promise.all([
+    const [, kit, bundle, resaid, library, week] = await Promise.all([
       studio?.letGoDeletedTakes(deleted),
       ideaTakesDesk.letGoDeleted(deleted),
       ideaBundleDesk.letGoDeleted(deleted),
+      ideaRedoDesk.letGoDeleted(deleted),
       libraryTakesDesk.letGoDeleted(deleted),
       rustWeekDesk.letGoDeleted(deleted),
     ])
-    return studio !== null && kit && bundle && library && week
+    return studio !== null && kit && bundle && resaid && library && week
   } catch (error) {
     reportFailure({
       port: "my data: this phone's copy of what home deleted",
@@ -1153,6 +1164,7 @@ function holdOffline(): void {
   rustRoundsDesk.audioFrom(askAudio)
   ideaTakesDesk.keptWhere(voiceKept)
   ideaBundleDesk.keptWhere(voiceKept)
+  ideaRedoDesk.keptWhere(voiceKept)
   rustWeekDesk.keptWhere(voiceKept)
   libraryTakesDesk.keptWhere(voiceKept)
   sceneNotesKept(voiceKept)
@@ -1191,6 +1203,8 @@ export function watchVoiceNotes(): () => void {
         ideaTakesDesk.phone().subscribe(copySoon),
         // A new idea's takes go once it is sent (ST26): its Send is a change.
         ideaBundleDesk.phone().takes.subscribe(copySoon),
+        // An answer said again goes once its idea is sent again (#2579).
+        ideaRedoDesk.phone().takes.subscribe(copySoon),
         // A week's takes go once it is sent (RR13): its Send is a change.
         rustWeekDesk.phone().takes.subscribe(copySoon),
         libraryTakesDesk.phone().takes.subscribe(copySoon)
