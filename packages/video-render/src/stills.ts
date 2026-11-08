@@ -23,7 +23,7 @@ export const FEED_SPEAKER = "kokoro"
 
 /** When a scene's take starts, and the beat after it ends, in ms. */
 const VOICE_IN_MS = 300
-const TAIL_MS = 700
+export const TAIL_MS = 700
 
 /** How long a scene with no take holds: its words read at a calm pace. */
 export const readingMs = (said: string): number =>

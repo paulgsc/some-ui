@@ -56,6 +56,7 @@ import { Route as DashboardApkJournalFeedbackRouteImport } from './routes/_dashb
 import { Route as DashboardApkJournalIdeaRouteImport } from './routes/_dashboard/_apk/journal/idea'
 import { Route as DashboardApkJournalIdeasRouteImport } from './routes/_dashboard/_apk/journal/ideas'
 import { Route as DashboardApkJournalIntuitionsRouteImport } from './routes/_dashboard/_apk/journal/intuitions'
+import { Route as DashboardApkJournalRendersRouteImport } from './routes/_dashboard/_apk/journal/renders'
 import { Route as DashboardApkPracticeIndexRouteImport } from './routes/_dashboard/_apk/practice/index'
 import { Route as DashboardApkSettingsHomeRouteImport } from './routes/_dashboard/_apk/settings/home'
 import { Route as DashboardApkSettingsPhoneRouteImport } from './routes/_dashboard/_apk/settings/phone'
@@ -321,6 +322,12 @@ const DashboardApkJournalIntuitionsRoute =
     path: '/intuitions',
     getParentRoute: () => DashboardApkJournalRoute,
   } as any)
+const DashboardApkJournalRendersRoute =
+  DashboardApkJournalRendersRouteImport.update({
+    id: '/renders',
+    path: '/renders',
+    getParentRoute: () => DashboardApkJournalRoute,
+  } as any)
 const DashboardApkPracticeIndexRoute =
   DashboardApkPracticeIndexRouteImport.update({
     id: '/practice/',
@@ -496,6 +503,7 @@ export interface FileRoutesByFullPath {
   '/journal/idea': typeof DashboardApkJournalIdeaRoute
   '/journal/ideas': typeof DashboardApkJournalIdeasRoute
   '/journal/intuitions': typeof DashboardApkJournalIntuitionsRoute
+  '/journal/renders': typeof DashboardApkJournalRendersRoute
   '/settings/home': typeof DashboardApkSettingsHomeRoute
   '/settings/phone': typeof DashboardApkSettingsPhoneRoute
   '/settings/status': typeof DashboardApkSettingsStatusRoute
@@ -561,6 +569,7 @@ export interface FileRoutesByTo {
   '/journal/idea': typeof DashboardApkJournalIdeaRoute
   '/journal/ideas': typeof DashboardApkJournalIdeasRoute
   '/journal/intuitions': typeof DashboardApkJournalIntuitionsRoute
+  '/journal/renders': typeof DashboardApkJournalRendersRoute
   '/settings/home': typeof DashboardApkSettingsHomeRoute
   '/settings/phone': typeof DashboardApkSettingsPhoneRoute
   '/settings/status': typeof DashboardApkSettingsStatusRoute
@@ -633,6 +642,7 @@ export interface FileRoutesById {
   '/_dashboard/_apk/journal/idea': typeof DashboardApkJournalIdeaRoute
   '/_dashboard/_apk/journal/ideas': typeof DashboardApkJournalIdeasRoute
   '/_dashboard/_apk/journal/intuitions': typeof DashboardApkJournalIntuitionsRoute
+  '/_dashboard/_apk/journal/renders': typeof DashboardApkJournalRendersRoute
   '/_dashboard/_apk/settings/home': typeof DashboardApkSettingsHomeRoute
   '/_dashboard/_apk/settings/phone': typeof DashboardApkSettingsPhoneRoute
   '/_dashboard/_apk/settings/status': typeof DashboardApkSettingsStatusRoute
@@ -703,6 +713,7 @@ export interface FileRouteTypes {
     | '/journal/idea'
     | '/journal/ideas'
     | '/journal/intuitions'
+    | '/journal/renders'
     | '/settings/home'
     | '/settings/phone'
     | '/settings/status'
@@ -768,6 +779,7 @@ export interface FileRouteTypes {
     | '/journal/idea'
     | '/journal/ideas'
     | '/journal/intuitions'
+    | '/journal/renders'
     | '/settings/home'
     | '/settings/phone'
     | '/settings/status'
@@ -839,6 +851,7 @@ export interface FileRouteTypes {
     | '/_dashboard/_apk/journal/idea'
     | '/_dashboard/_apk/journal/ideas'
     | '/_dashboard/_apk/journal/intuitions'
+    | '/_dashboard/_apk/journal/renders'
     | '/_dashboard/_apk/settings/home'
     | '/_dashboard/_apk/settings/phone'
     | '/_dashboard/_apk/settings/status'
@@ -1211,6 +1224,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardApkJournalIntuitionsRouteImport
       parentRoute: typeof DashboardApkJournalRoute
     }
+    '/_dashboard/_apk/journal/renders': {
+      id: '/_dashboard/_apk/journal/renders'
+      path: '/renders'
+      fullPath: '/journal/renders'
+      preLoaderRoute: typeof DashboardApkJournalRendersRouteImport
+      parentRoute: typeof DashboardApkJournalRoute
+    }
     '/_dashboard/_apk/practice/': {
       id: '/_dashboard/_apk/practice/'
       path: '/practice'
@@ -1408,6 +1428,7 @@ interface DashboardApkJournalRouteChildren {
   DashboardApkJournalIdeaRoute: typeof DashboardApkJournalIdeaRoute
   DashboardApkJournalIdeasRoute: typeof DashboardApkJournalIdeasRoute
   DashboardApkJournalIntuitionsRoute: typeof DashboardApkJournalIntuitionsRoute
+  DashboardApkJournalRendersRoute: typeof DashboardApkJournalRendersRoute
   DashboardApkJournalIndexRoute: typeof DashboardApkJournalIndexRoute
   DashboardApkJournalAsksAskRoute: typeof DashboardApkJournalAsksAskRoute
   DashboardApkJournalClipsClipRoute: typeof DashboardApkJournalClipsClipRoute
@@ -1429,6 +1450,7 @@ const DashboardApkJournalRouteChildren: DashboardApkJournalRouteChildren = {
   DashboardApkJournalIdeaRoute: DashboardApkJournalIdeaRoute,
   DashboardApkJournalIdeasRoute: DashboardApkJournalIdeasRoute,
   DashboardApkJournalIntuitionsRoute: DashboardApkJournalIntuitionsRoute,
+  DashboardApkJournalRendersRoute: DashboardApkJournalRendersRoute,
   DashboardApkJournalIndexRoute: DashboardApkJournalIndexRoute,
   DashboardApkJournalAsksAskRoute: DashboardApkJournalAsksAskRoute,
   DashboardApkJournalClipsClipRoute: DashboardApkJournalClipsClipRoute,
