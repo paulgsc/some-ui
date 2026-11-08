@@ -14,8 +14,7 @@
  * - `200` carrying the note back, the same one, its spoken take included:
  *   held;
  * - `409` naming notes: a spoken note's take home doesn't hold yet, so the
- *   note waits and goes on a later run, once its take has (today's home
- *   names none for a note, and keeps the take's id as it is sent);
+ *   note waits and goes on a later run, once its take has;
  * - `409` (a different note under the same id) or `422`: refused, kept on
  *   the phone, and not offered again, said to the native log;
  * - `404`: a home that doesn't keep notes yet, so every note waits, said to
@@ -87,7 +86,6 @@ const notesSent = (port: EpisodeNotesPort): KeyedSend<Note> => ({
   body: (note) => JSON.stringify(note),
   kept: carriesBack,
   answered: (note, answer): void => {
-    // A take home lacks: the note waits, and goes once its take has.
     if (answer.kind !== "missing") port.answered(answer.kind, note)
   },
   untaken: (note, status): void => {

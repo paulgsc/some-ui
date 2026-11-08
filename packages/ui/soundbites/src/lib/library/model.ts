@@ -103,13 +103,18 @@ const onHome = (take: PatternTake): boolean => take.kept?.place === "home"
 
 /**
  * The phone's takes listed apart from home's: those home doesn't hold yet,
- * and the one `playing` until it stops, so its Stop stays on screen.
+ * and the one `playing` until it stops, so its Stop stays on screen. Each
+ * is listed as answering `line`, whatever it was said for (a note on an
+ * episode's spoken part, SFEED6), so every take the desk keeps shows here.
  */
 export function notYetHome(
   takes: ReadonlyArray<PatternTake>,
-  playing: string | null
+  playing: string | null,
+  line: string
 ): ReadonlyArray<PatternTake> {
-  return takes.filter((take) => !onHome(take) || take.id === playing)
+  return takes
+    .filter((take) => !onHome(take) || take.id === playing)
+    .map((take) => (take.answers === line ? take : { ...take, answers: line }))
 }
 
 /**

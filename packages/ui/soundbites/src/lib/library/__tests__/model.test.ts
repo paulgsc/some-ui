@@ -257,17 +257,25 @@ describe("Takes on home (ST32)", () => {
         take("c", ON_HOME),
         take("d", null),
       ]
-      expect(notYetHome(takes, null).map(({ id }) => id)).toEqual([
+      expect(notYetHome(takes, null, "library").map(({ id }) => id)).toEqual([
         "a",
         "b",
         "d",
       ])
       // One playing as it reaches home stays, with its Stop, until it stops.
-      expect(notYetHome(takes, "c").map(({ id }) => id)).toEqual([
+      expect(notYetHome(takes, "c", "library").map(({ id }) => id)).toEqual([
         "a",
         "b",
         "c",
         "d",
+      ])
+      // A take said for another line (a note on an episode) shows here too.
+      const said = {
+        ...take("e", { place: "phone" }),
+        answers: "episode-note:n1",
+      }
+      expect(notYetHome([said], null, "library")).toEqual([
+        { ...said, answers: "library" },
       ])
       const first = reachedHome(new Set(), takes)
       expect([...first.held]).toEqual(["c"])

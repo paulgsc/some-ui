@@ -8,12 +8,13 @@
  * A note may carry a spoken part (step 3): a take on the library desk
  * (`lib/library-takes`, ST32), recorded while the note is open and named by
  * its own id, which is its voice note id on home. It is said before the note
- * is kept, never added after: a kept note never changes.
+ * is kept, never added after.
  */
 import { assertNever } from "@some-ui/core-utils"
 import type { Category } from "@some-ui/video-render"
 import { CATEGORIES } from "@some-ui/video-render"
 import type { PatternTake } from "@some-ui/voice-capture"
+import { currentTakeOf } from "@some-ui/voice-capture"
 import { z } from "zod"
 
 import type { Appended } from "@/lib/bounded-list"
@@ -51,7 +52,7 @@ export type Draft =
   | { readonly kind: "closed" }
   | {
       readonly kind: "open"
-      /** The note's id, from the moment it opens, so its take can answer it. */
+      /** The note's id, from the moment it opens. */
       readonly id: string
       readonly atMs: number
       readonly picked: ReadonlyArray<Category>
@@ -123,27 +124,15 @@ export const keepable = (
  */
 export const spokenLine = (id: string): string => `episode-note:${id}`
 
-/** A take as the note reads it from the desk. */
-type SpokenTake = Pick<
-  PatternTake,
-  "id" | "answers" | "recordedAt" | "standing"
->
-
 /**
- * The take a note names: the newest of those said for it and not set
- * aside, or null when none was said. One said again before it (D2) stays a
- * library take, kept, and the note names the newer.
+ * The take a note names: the newest said for it and still its own. One said
+ * again before it (D2) stays a library take, kept, and the note names the
+ * newer.
  */
-export function spokenTakeOf(
-  takes: ReadonlyArray<SpokenTake>,
+export const spokenTakeOf = (
+  takes: ReadonlyArray<PatternTake>,
   id: string
-): string | null {
-  const line = spokenLine(id)
-  const said = takes
-    .filter((take) => take.answers === line && take.standing === "current")
-    .sort((a, b) => b.recordedAt.localeCompare(a.recordedAt))
-  return said[0]?.id ?? null
-}
+): string | null => currentTakeOf(takes, spokenLine(id))?.id ?? null
 
 /**
  * The note a draft becomes, with `take` its spoken part when one was said,

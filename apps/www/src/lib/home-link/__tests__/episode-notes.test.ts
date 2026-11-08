@@ -137,11 +137,10 @@ describe("notes on episodes going home (SFEED6)", () => {
     const storage = memoryStorage()
     const sent: Array<[string, string, unknown]> = []
     const port = phoneEpisodeNotes(storage, "p1")
-    const without = { ...note("s") }
     await sendEpisodeNotes(
       port,
       home(
-        { s: { status: 200, body: { change: "added", note: without } } },
+        { s: { status: 200, body: { change: "added", note: note("s") } } },
         sent
       )
     )

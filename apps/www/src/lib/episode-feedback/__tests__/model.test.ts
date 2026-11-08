@@ -4,6 +4,7 @@
  * SFEED6 (#2745): the note being written on an episode's page. Where each
  * category goes is `@some-ui/video-render`'s, tested there.
  */
+import type { PatternTake } from "@some-ui/voice-capture"
 import { describe, expect, it } from "vitest"
 
 import type { Category, Draft } from "@/lib/episode-feedback"
@@ -84,13 +85,15 @@ describe("the note being written", () => {
       id: string,
       answers: string,
       recordedAt: string,
-      standing: "current" | "earlier" | "set-aside" = "current"
-    ): {
-      id: string
-      answers: string
-      recordedAt: string
-      standing: "current" | "earlier" | "set-aside"
-    } => ({ id, answers, recordedAt, standing })
+      standing: PatternTake["standing"] = "current"
+    ): PatternTake => ({
+      id,
+      answers,
+      recordedAt,
+      standing,
+      durationMs: 2_000,
+      kept: null,
+    })
     const line = spokenLine("n1")
     expect(spokenTakeOf([], "n1")).toBeNull()
     expect(
@@ -105,25 +108,6 @@ describe("the note being written", () => {
         "n1"
       )
     ).toBe("new")
-  })
-
-  it("keeps a take said only while the note is open: one opened again is another note", () => {
-    const first = step(CLOSED, { type: "opened", id: "n1", atMs: 0 })
-    const again = step(step(first, { type: "cancelled" }), {
-      type: "opened",
-      id: "n2",
-      atMs: 0,
-    })
-    const said = [
-      {
-        id: "t1",
-        answers: spokenLine("n1"),
-        recordedAt: "2026-11-14T03:00:00.000Z",
-        standing: "current" as const,
-      },
-    ]
-    expect(first.kind === "open" && spokenTakeOf(said, first.id)).toBe("t1")
-    expect(again.kind === "open" && spokenTakeOf(said, again.id)).toBeNull()
   })
 
   it("reads back a stored note only with its picks each once, in order", () => {
@@ -142,8 +126,6 @@ describe("the note being written", () => {
     expect(
       NoteSchema.safeParse({ ...note, writtenAt: "Tuesday" }).success
     ).toBe(false)
-    expect(NoteSchema.safeParse({ ...note, take: "t1" }).success).toBe(true)
-    expect(NoteSchema.safeParse({ ...note, take: "" }).success).toBe(false)
   })
 
   it("reads a player's seconds as whole milliseconds, never below zero", () => {

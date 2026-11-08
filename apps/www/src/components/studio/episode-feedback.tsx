@@ -11,6 +11,7 @@ import type { JSX, RefObject } from "react"
 import { useEffect, useReducer, useState, useSyncExternalStore } from "react"
 import { dayOf, listed } from "@some-ui/core-utils"
 import { Button, Notice, TakeList, useTakePattern } from "@some-ui/shared"
+import type { LibraryPhone } from "@some-ui/soundbites"
 import { useQuery } from "@tanstack/react-query"
 
 import { FEED_WORDS } from "@/lib/call-videos"
@@ -82,11 +83,15 @@ const Choices = ({
 
 /**
  * The open note's spoken part: its takes on the library desk, answering
- * the note's own line. A take under way when the note closes is kept
- * (`leave`), as on every screen of the pattern.
+ * the note's own line. A take under way when the note closes is kept.
  */
-const SpokenPart = ({ id }: { id: string }): JSX.Element => {
-  const phone = libraryTakes()
+const SpokenPart = ({
+  id,
+  phone,
+}: {
+  id: string
+  phone: LibraryPhone
+}): JSX.Element => {
   const { takes } = useSyncExternalStore(phone.subscribe, phone.getSnapshot)
   const line = spokenLine(id)
   useEffect(
@@ -177,7 +182,7 @@ export const EpisodeNote = ({
             picked={draft.picked}
             onToggle={(category) => dispatch({ type: "toggled", category })}
           />
-          <SpokenPart id={draft.id} />
+          <SpokenPart id={draft.id} phone={phone} />
           {draft.refused !== null && (
             <Notice key={draft.refused} tone="danger">
               {WORDS.refused[draft.refused]}
