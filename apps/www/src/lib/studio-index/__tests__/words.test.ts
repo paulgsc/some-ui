@@ -35,6 +35,7 @@ const all = [
     STUDIO_INDEX_WORDS.templates.chapters(n),
   ]),
   STUDIO_INDEX_WORDS.templates.usedBy("The weekly call"),
+  STUDIO_INDEX_WORDS.clips.landed("2026-11-08"),
   STUDIO_INDEX_WORDS.intuitions.fed("Playoff Delta"),
   ...[null, 0, 1, 7].map(STUDIO_INDEX_WORDS.intuitions.onPhone),
 ]
