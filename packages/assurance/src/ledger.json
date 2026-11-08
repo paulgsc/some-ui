@@ -1813,9 +1813,12 @@
         "server:infra/kokoro",
         "some-ui:apps/www/tests/record/call.ts",
         "server:apps/servers/file_host/src/handlers/call_videos.rs",
-        "server:apps/servers/file_host/src/routes/call_videos.rs"
+        "server:apps/servers/file_host/src/routes/call_videos.rs",
+        "server:apps/servers/file_host/src/feeds",
+        "server:apps/servers/file_host/src/handlers/feed_videos.rs",
+        "server:apps/servers/file_host/src/routes/feed_videos.rs"
       ],
-      "modules": ["call_videos"],
+      "modules": ["call_videos", "feed_videos"],
       "objectives": [
         {
           "id": "CW1",
@@ -2058,7 +2061,7 @@
             {
               "class": "structural",
               "says": "Each step commits its receipt before it touches the drive and answers only once its files are gone; a step that has a receipt removes what is left of it when asked again, so one the drive refused or the process stopped in is finished, never lost; a step already done answers with its receipt; the video needs a recorded link and the rest the video's receipt, which the table's trigger and foreign key hold too; each tested.",
-              "ref": "server:apps/servers/file_host/src/call_weeks/videos.rs"
+              "ref": "server:apps/servers/file_host/src/feeds/videos.rs"
             },
             {
               "class": "structural",
@@ -2083,8 +2086,8 @@
           "proof": [
             "server:crates/db/call_week/src/video.rs#a_link_is_recorded_once_and_the_newest_stands",
             "server:crates/db/call_week/src/video.rs#a_week_goes_video_first_then_the_rest_each_once_with_a_receipt_kept_for_good",
-            "server:apps/servers/file_host/src/call_weeks/videos.rs#a_week_goes_video_first_then_the_rest_once_its_link_is_recorded",
-            "server:apps/servers/file_host/src/call_weeks/videos.rs#a_step_the_drive_refuses_keeps_its_receipt_and_is_finished_when_asked_again",
+            "server:apps/servers/file_host/src/feeds/videos.rs#a_week_goes_video_first_then_the_rest_once_its_link_is_recorded",
+            "server:apps/servers/file_host/src/feeds/videos.rs#a_step_the_drive_refuses_keeps_its_receipt_and_is_finished_when_asked_again",
             "some-ui:apps/www/src/lib/my-data/__tests__/call-deleting.test.ts#stepCallSheet",
             "some-ui:apps/www/src/lib/my-data/__tests__/call-deleting.test.ts#createCallDeleting"
           ]
@@ -2139,7 +2142,10 @@
         "server:infra/render",
         "server:infra/compose/call-render.yml",
         "server:infra/docker/Dockerfile.render",
-        "some-ui:apps/www/tests/record/playoff-delta.ts"
+        "some-ui:apps/www/tests/record/playoff-delta.ts",
+        "server:apps/servers/file_host/src/feeds",
+        "server:apps/servers/file_host/src/handlers/feed_videos.rs",
+        "server:apps/servers/file_host/src/routes/feed_videos.rs"
       ],
       "modules": [],
       "objectives": [
@@ -2295,6 +2301,36 @@
           "watch": {
             "by": "alert",
             "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
+          },
+          "amendments": []
+        },
+        {
+          "id": "PK6",
+          "kind": "OA3",
+          "property": "outcome",
+          "claim": "A Playoff Delta episode's video leaves home only once I've recorded its YouTube link, the video first and then the rest, and each delete leaves a receipt, as the call's do.",
+          "requirement": "A paired phone's My data deletes a rendered episode in two steps, by the same code as the call's weeks (feeds::videos): its episode.mp4, only once a YouTube video link is recorded for it, and then the rest of its folder, only once the video has gone; each step writes an append-only receipt (the episode, the step, the bytes that went, the link recorded, when) kept for good in pd_video_deletion, and a repeated step answers with the same receipt and deletes nothing more; a link is a YouTube video's id, kept append-only in pd_video_link, the newest standing; the video's step also takes the fill out of the render worker's folder, so it is never rendered again; the fill stays in pd_fill.",
+          "verdict": "holds",
+          "conclusion": "Shown in home's tests on its own SQLite and drive: an episode goes only once a link is recorded, the video first and then the rest, each with a receipt kept for good, and its fill leaves the worker's folder; Playoff Delta's tables refuse UPDATE and DELETE and a rest before its video. Nothing tells the owner if a step stops working later.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "One implementation lets an episode of either feed go: the receipt is committed first, then the files removed, and a step asked again after a refused delete finishes it.",
+              "ref": "server:apps/servers/file_host/src/feeds/videos.rs"
+            },
+            {
+              "class": "measured",
+              "says": "pd_video_link and pd_video_deletion are keyed to pd_fill's episode, append-only by trigger, and refuse the rest before the video.",
+              "ref": "server:crates/db/pd_fill/src/video.rs"
+            }
+          ],
+          "proof": [
+            "server:apps/servers/file_host/src/feeds/videos.rs#a_playoff_delta_episode_goes_by_the_same_steps_and_leaves_the_workers_input",
+            "server:crates/db/pd_fill/src/video.rs#an_episode_goes_video_first_then_the_rest_once_its_link_is_recorded_each_kept_for_good",
+            "server:apps/servers/file_host/src/handlers/feed_videos.rs#only_a_paired_phone_reaches_a_feeds_videos_and_an_unknown_feed_is_not_found"
+          ],
+          "watch": {
+            "by": "none"
           },
           "amendments": []
         }
@@ -2901,6 +2937,18 @@
       "store": "server:pd_fill",
       "class": "record",
       "growth": "One row per fill of Playoff Delta home takes from paulgsc/testing (a legend and one per played week, about 18 a season per team): the fill as served (about 2 to 3 KB) and its season file as served then (45 KB at week 8 of 2026, about 90 KB by its last week), each with its SHA-256; append-only, triggers abort UPDATE and DELETE.",
+      "family": "pd-kept"
+    },
+    {
+      "store": "server:pd_video_deletion",
+      "class": "record",
+      "growth": "Per step of a Playoff Delta episode the owner lets go from My data (video, then the rest): one small receipt row (the episode, the step, its YouTube video's id, the bytes that went, when), at most two per episode, so bounded by pd_fill's rows; append-only, triggers abort UPDATE and DELETE, kept for good.",
+      "family": "pd-kept"
+    },
+    {
+      "store": "server:pd_video_link",
+      "class": "record",
+      "growth": "Per YouTube video the owner records for a Playoff Delta episode: one tiny row (the episode, the video's id, when), the newest standing; about one per episode; append-only, triggers abort UPDATE and DELETE.",
       "family": "pd-kept"
     },
     {
@@ -4031,7 +4079,7 @@
           "paths": [
             "server:apps/servers/file_host/src/routes/call_videos.rs",
             "server:apps/servers/file_host/src/handlers/call_videos.rs",
-            "server:apps/servers/file_host/src/call_weeks/videos.rs"
+            "server:apps/servers/file_host/src/feeds/videos.rs"
           ]
         },
         {
@@ -4080,7 +4128,7 @@
     {
       "id": "pd-fills",
       "name": "Keeping every fill of Playoff Delta on home, and making its video",
-      "why": "The narration routine writes each week's fill and the index of fills to paulgsc/testing, home reads the index hourly and keeps each fill it lacks with its season, and home's render worker makes each voiced fill's video (FEED4, #2647).",
+      "why": "The narration routine writes each week's fill and the index of fills to paulgsc/testing, home reads the index hourly and keeps each fill it lacks with its season, home's render worker makes each voiced fill's video, and the owner watches it on the phone, shares it to the YouTube app, records its link and lets home's copy go from My data (FEED4, #2647).",
       "serves": ["pd-kept"],
       "witnesses": ["PK1", "PK2", "PK5"],
       "segments": [
@@ -4140,6 +4188,46 @@
             "server:apps/servers/file_host/src/pd_fills/render.rs",
             "some-ui:apps/www/tests/record/playoff-delta.ts"
           ]
+        },
+        {
+          "id": "videos",
+          "name": "Home lists the episodes it holds, serves each episode's video in parts, keeps its YouTube link and lets it go from My data, by the call's code. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": [
+            "server:apps/servers/file_host/src/routes/feed_videos.rs",
+            "server:apps/servers/file_host/src/handlers/feed_videos.rs",
+            "server:apps/servers/file_host/src/feeds/videos.rs",
+            "server:crates/db/pd_fill/src/video.rs"
+          ]
+        },
+        {
+          "id": "home-network",
+          "name": "The phone reaches home over the home network, as the paired phone.",
+          "owner": "network",
+          "on": "between",
+          "paths": []
+        },
+        {
+          "id": "phone",
+          "name": "Studio's feed videos bring an episode's video to the phone a part at a time, play it, hand it to the share sheet and send its YouTube link, and My data lets home's copy go, the call's screens for every feed. Ours, on the phone.",
+          "owner": "ours",
+          "on": "phone",
+          "paths": [
+            "some-ui:apps/www/src/lib/call-videos",
+            "some-ui:apps/www/src/lib/home-link/call-videos.ts",
+            "some-ui:apps/www/src/components/call-videos.tsx",
+            "some-ui:apps/www/src/lib/my-data/call-deleting.ts",
+            "some-ui:apps/www/src/lib/my-data/call-deleting-runtime.ts",
+            "some-ui:apps/www/src/components/settings/device-my-data-calls.tsx"
+          ]
+        },
+        {
+          "id": "publish",
+          "name": "Android's share sheet hands the video to the YouTube app, which uploads and publishes it. Someone else's.",
+          "owner": "foreign",
+          "on": "outside",
+          "paths": []
         }
       ],
       "signals": [
