@@ -162,7 +162,7 @@ const Brief = (
       >
         {WORDS.toReviewOf(said, week.tickets.length)}
       </Button>
-      <Button variant="outline" onClick={() => props.paste.open(week.id)}>
+      <Button variant="outline" onClick={() => props.paste.open()}>
         {WORDS.paste.open}
       </Button>
       {props.back}

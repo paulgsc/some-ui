@@ -11,9 +11,10 @@
  *   (`send: "on-confirm"`), named `<week>:PASTE:<at>` (paulgsc/server#727),
  *   `at` when the paste was begun; it waits on the phone until Keep, which
  *   keeps the paste first and only then lets the note go home.
- * - **A paste begun is kept as it is typed** (`./store`'s `pasteDraft`), so
- *   leaving and coming back finds it; Keep adds it, whole and dated, to the
- *   pastes kept, which only grow.
+ * - **A paste begun is kept as it is typed**, one a week (`./store`'s
+ *   `pasteStores`), so leaving and coming back finds it, and a paste begun in
+ *   one week is never carried into the next; Keep adds it, whole and dated,
+ *   to the pastes kept, which only grow.
  * - **One note a paste.** Saying it again replaces it; the one replaced,
  *   which never left the phone, is deleted at Keep.
  * - **A note a kept paste names goes home.** Each opening lets go home any
@@ -161,8 +162,8 @@ export type PasteRuntime = {
   readonly dispatch: (
     event: Exclude<PasteEvent, { type: "open" | "kept" | "draftKept" }>
   ) => void
-  /** Opens the paste for `week`, begun now if none is. */
-  readonly open: (week: string) => void
+  /** Opens the week's paste, begun now if none is. */
+  readonly open: () => void
   /** D1's tap on the note's button: a take, or its stop. */
   readonly tap: (snapshot: TakePatternSnapshot) => void
   /**
@@ -175,15 +176,16 @@ export type PasteRuntime = {
 export function pasteRuntime(
   takes: BundleTakes,
   stores: PasteStores,
+  week: string,
   now: () => number
 ): PasteRuntime {
   const kept = stores.pastes.list()
   // A draft a kept paste already holds: its Keep couldn't clear it.
-  const restored = stores.draft.read()
+  const restored = stores.draft.read(week)
   const done =
     restored !== null &&
     kept.some((each) => each.week === restored.week && each.at === restored.at)
-  if (done) stores.draft.write(null)
+  if (done) stores.draft.write(week, null)
   let state: PasteState = {
     showing: false,
     draft: done ? null : restored,
@@ -212,14 +214,17 @@ export function pasteRuntime(
 
   function run(effect: PasteEffect): void {
     if (effect.type === "keepDraft") {
-      send({ type: "draftKept", kept: stores.draft.write(effect.draft) })
+      send({
+        type: "draftKept",
+        kept: stores.draft.write(week, effect.draft),
+      })
       return
     }
     const kept = stores.pastes.add(effect.paste)
     if (kept) {
       takes.release(effect.release)
       takes.discard(effect.discard)
-      stores.draft.write(null)
+      stores.draft.write(week, null)
     }
     send({ type: "kept", kept })
   }
@@ -233,8 +238,7 @@ export function pasteRuntime(
       }
     },
     dispatch: send,
-    open: (week) =>
-      send({ type: "open", week, at: new Date(now()).toISOString() }),
+    open: () => send({ type: "open", week, at: new Date(now()).toISOString() }),
     tap(snapshot): void {
       const { draft } = state
       if (draft === null) return

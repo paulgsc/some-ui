@@ -111,7 +111,12 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
   return {
     machine,
     bundle,
-    paste: pasteRuntime(ports.takes, pasteStores(ports.storage), ports.now),
+    paste: pasteRuntime(
+      ports.takes,
+      pasteStores(ports.storage),
+      week.id,
+      ports.now
+    ),
     heard: {
       getSnapshot: () => snapshot,
       subscribe(listener): () => void {

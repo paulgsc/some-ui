@@ -2832,7 +2832,7 @@
     {
       "store": "phone:rust-rounds-week-pastes",
       "class": "record",
-      "growth": "Per error pasted from the owner's own code in a week (RR13, #2504): the week, when, rustc's output as pasted (at most PASTE_MAX = 20,000 characters) and its note's take id; only grows, each kept once by when it was begun; the one being written is one slot beside it, written over as it is typed; no cap until RR14 keeps it on home (`some-ui:rust-rounds.week-pastes`, `some-ui:rust-rounds.week-paste-draft`).",
+      "growth": "Per error pasted from the owner's own code in a week (RR13, #2504): the week, when, rustc's output as pasted (at most PASTE_MAX = 20,000 characters) and its note's take id; only grows, each kept once by when it was begun; the one being written is one per week beside it, written over as it is typed and cleared at Keep; no cap until RR14 keeps it on home (`some-ui:rust-rounds.week-pastes`, `some-ui:rust-rounds.week-paste-drafts`).",
       "family": "what-is-kept"
     },
     {

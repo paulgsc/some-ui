@@ -5,6 +5,7 @@
  * then lets it go; a paste begun is kept as it is typed; and the week's own
  * clean-up never drops a paste's note.
  */
+import type { Week } from "@rust-rounds/lib/formats/week"
 import { QUILLMOSS_WEEK } from "@rust-rounds/lib/sample-week"
 import { pasteLine } from "@rust-rounds/lib/week-play/paste"
 import type { RustWeek } from "@rust-rounds/lib/week-play/runtime"
@@ -34,12 +35,13 @@ const pass = async (ms = 0): Promise<void> => {
 
 function phone(
   storage: KeyedStorage,
-  simulated: SimulatedPattern
+  simulated: SimulatedPattern,
+  playing: Week = QUILLMOSS_WEEK
 ): { week: RustWeek; release: ReturnType<typeof vi.fn> } {
   const { pattern, store } = simulated
   const release = vi.fn(store.release)
   const week = createRustWeek({
-    week: { week: QUILLMOSS_WEEK, sha256: "a", runs: {}, ended: [] },
+    week: { week: playing, sha256: "a", runs: {}, ended: [] },
     takes: {
       pattern,
       takes: { getSnapshot: store.getSnapshot, subscribe: store.subscribe },
@@ -78,7 +80,7 @@ describe("an error pasted in a week (RR13)", () => {
     const storage = inMemoryStorage()
     const simulated = onConfirm()
     const { week, release } = phone(storage, simulated)
-    week.paste.open(QUILLMOSS_WEEK.id)
+    week.paste.open()
     week.paste.dispatch({ type: "text", text: "error[E0502]: cannot borrow" })
     await sayNote(week, simulated)
     await sayNote(week, simulated)
@@ -114,7 +116,7 @@ describe("an error pasted in a week (RR13)", () => {
   it("keeps a paste begun as it is typed, and nothing without text", () => {
     const storage = inMemoryStorage()
     const first = phone(storage, onConfirm())
-    first.week.paste.open(QUILLMOSS_WEEK.id)
+    first.week.paste.open()
     first.week.paste.dispatch({ type: "keep" })
     expect(pasteStores(storage).pastes.list()).toEqual([])
     first.week.paste.dispatch({ type: "text", text: "warning: unused" })
@@ -127,7 +129,7 @@ describe("an error pasted in a week (RR13)", () => {
     const storage = inMemoryStorage()
     const simulated = onConfirm()
     const first = phone(storage, simulated)
-    first.week.paste.open(QUILLMOSS_WEEK.id)
+    first.week.paste.open()
     first.week.paste.dispatch({ type: "text", text: "error[E0599]" })
     await sayNote(first.week, simulated)
     // A Keep whose release the phone couldn't store.
@@ -139,20 +141,40 @@ describe("an error pasted in a week (RR13)", () => {
     expect(again.release).toHaveBeenCalledWith([note?.id])
   })
 
+  it("never carries a paste begun in one week into the next", () => {
+    const storage = inMemoryStorage()
+    const first = phone(storage, onConfirm())
+    first.week.paste.open()
+    first.week.paste.dispatch({ type: "text", text: "error[E0499]" })
+    const next = { ...QUILLMOSS_WEEK, id: "2026-w47" }
+    const later = phone(storage, onConfirm(), next)
+    expect(later.week.paste.getSnapshot().draft).toBeNull()
+    later.week.paste.open()
+    later.week.paste.dispatch({ type: "text", text: "warning: dead_code" })
+    later.week.paste.dispatch({ type: "keep" })
+    expect(pasteStores(storage).pastes.list()).toEqual([
+      { week: next.id, at: NOW, text: "warning: dead_code", note: null },
+    ])
+    // The earlier week's paste is still there, as it was left.
+    expect(pasteStores(storage).draft.read(QUILLMOSS_WEEK.id)?.text).toBe(
+      "error[E0499]"
+    )
+  })
+
   it("clears, at the next opening, a draft a kept paste already holds", () => {
     const storage = inMemoryStorage()
     const first = phone(storage, onConfirm())
-    first.week.paste.open(QUILLMOSS_WEEK.id)
+    first.week.paste.open()
     first.week.paste.dispatch({ type: "text", text: "error[E0382]" })
-    const draft = storage.getItem("some-ui:rust-rounds.week-paste-draft")
+    const draft = storage.getItem("some-ui:rust-rounds.week-paste-drafts")
     first.week.paste.dispatch({ type: "keep" })
     // A Keep whose clearing of the draft the phone couldn't store.
     if (draft !== null) {
-      storage.setItem("some-ui:rust-rounds.week-paste-draft", draft)
+      storage.setItem("some-ui:rust-rounds.week-paste-drafts", draft)
     }
     const again = phone(storage, onConfirm())
     expect(again.week.paste.getSnapshot().draft).toBeNull()
-    expect(pasteStores(storage).draft.read()).toBeNull()
+    expect(pasteStores(storage).draft.read(QUILLMOSS_WEEK.id)).toBeNull()
     expect(pasteStores(storage).pastes.list()).toHaveLength(1)
   })
 
@@ -168,7 +190,7 @@ describe("an error pasted in a week (RR13)", () => {
   it("says when a change to the paste couldn't be kept", () => {
     const storage = inMemoryStorage()
     const on = phone(storage, onConfirm())
-    on.week.paste.open(QUILLMOSS_WEEK.id)
+    on.week.paste.open()
     storage.setItem = (): void => {
       throw new Error("full")
     }
@@ -180,7 +202,7 @@ describe("an error pasted in a week (RR13)", () => {
     const storage = inMemoryStorage()
     const simulated = onConfirm()
     const first = phone(storage, simulated)
-    first.week.paste.open(QUILLMOSS_WEEK.id)
+    first.week.paste.open()
     await sayNote(first.week, simulated)
     phone(storage, simulated)
     await pass()

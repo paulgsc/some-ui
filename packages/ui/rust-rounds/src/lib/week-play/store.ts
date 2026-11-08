@@ -11,8 +11,8 @@
  *   drop or rewrite one already kept is refused.
  * - **The words home heard** in each take sent (`heardWords`), by take: a
  *   copy of home's, each kept once and never written over.
- * - **An error pasted** (`pasteStores`, `./paste`): the one being written,
- *   kept as it is typed, and those kept, which only grow. They go home with
+ * - **An error pasted** (`pasteStores`, `./paste`): the one being written in
+ *   each week, kept as it is typed, and those kept, which only grow. They go home with
  *   the week's record (RR14); until then they are kept here.
  */
 import { WEEK_SENT_KEY } from "@rust-rounds/lib/play/keys"
@@ -34,7 +34,7 @@ import type { WeekSent } from "./spec"
 
 const DRAFTS_KEY = "some-ui:rust-rounds.week-drafts"
 const HEARD_KEY = "some-ui:rust-rounds.week-heard"
-const PASTE_DRAFT_KEY = "some-ui:rust-rounds.week-paste-draft"
+const PASTE_DRAFTS_KEY = "some-ui:rust-rounds.week-paste-drafts"
 const PASTES_KEY = "some-ui:rust-rounds.week-pastes"
 
 const DraftSchema: z.ZodType<BundleDraft> = z.object({
@@ -179,10 +179,8 @@ const KeptPasteSchema: z.ZodType<KeptPaste> = z.object({
   note: z.string().nullable(),
 })
 
-const readPasteDraft = readJson((value) => {
-  const parsed = z
-    .object({ draft: PasteDraftSchema.nullable() })
-    .safeParse(value)
+const readPasteDrafts = readJson((value) => {
+  const parsed = z.record(z.string(), PasteDraftSchema).safeParse(value)
   return parsed.success ? parsed.data : null
 })
 
@@ -192,10 +190,12 @@ const readPastes = readJson((value) => {
 })
 
 export type PasteStores = {
+  /** The paste being written in each week, by the week's id. */
   readonly draft: {
-    /** The paste being written, or null for none (or one that can't be read). */
-    readonly read: () => PasteDraft | null
-    readonly write: (draft: PasteDraft | null) => boolean
+    /** Week `week`'s, or null for none (or one that can't be read). */
+    readonly read: (week: string) => PasteDraft | null
+    /** Sets week `week`'s, leaving every other week's as it is. */
+    readonly write: (week: string, draft: PasteDraft | null) => boolean
   }
   readonly pastes: {
     readonly list: () => ReadonlyArray<KeptPaste>
@@ -214,13 +214,23 @@ export function pasteStores(storage: KeyedStorage | null): PasteStores {
     value: ReadonlyArray<KeptPaste>
     writable: boolean
   } => openKept(storage, PASTES_KEY, readPastes, [])
+  const openDrafts = (): {
+    value: Readonly<Partial<Record<string, PasteDraft>>>
+    writable: boolean
+  } => openKept(storage, PASTE_DRAFTS_KEY, readPasteDrafts, {})
   return {
     draft: {
-      read: () =>
-        openKept(storage, PASTE_DRAFT_KEY, readPasteDraft, { draft: null })
-          .value.draft,
-      write: (draft) =>
-        writeKept(storage, PASTE_DRAFT_KEY, { draft }, readPasteDraft),
+      read(week): PasteDraft | null {
+        const draft = openDrafts().value[week]
+        return draft?.week === week ? draft : null
+      },
+      write(week, draft): boolean {
+        const opened = openDrafts()
+        if (!opened.writable) return false
+        const { [week]: _gone, ...others } = opened.value
+        const next = draft === null ? others : { ...others, [week]: draft }
+        return writeKept(storage, PASTE_DRAFTS_KEY, next, readPasteDrafts)
+      },
     },
     pastes: {
       list: () => openPastes().value,
