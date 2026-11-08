@@ -70,8 +70,11 @@ export const repeatedId = (scene: string, n: number): string => `${scene}-${n}`
  *   last: their mark.
  * - `chapters`: the scenes that open with a chapter slide, which says the
  *   section's name aloud, so an episode can be listened to.
- * - `subtitles`: the words said, drawn at the foot of the frame a line at a
- *   time, with each word lit as it is said under `word`.
+ * - `subtitles`: whether the words said are captioned (SFEED11, #2707):
+ *   `line` and `word` both draw the captions burn-in, in the look the series
+ *   names, and the look says whether the word being said is lit (its
+ *   `highlight`, `@some-ui/burn-ins`). Versions already pinned keep the
+ *   field as they wrote it.
  */
 export const ShapeSchema = z.strictObject({
   brand: z.strictObject({ intro: z.boolean(), outro: z.boolean() }),
@@ -126,7 +129,7 @@ export const FormatSchema = z
     /** The look every episode is drawn in: the show's, never the episode's. */
     look: z.enum(LOOKS),
     scenes: z.array(FormatSceneSchema).min(1).max(PRIMER_V2_CUTS),
-    /** Absent in a version from before shapes: no intro, chapters or subtitles. */
+    /** Absent in a version from before shapes: no intro, chapters or captions. */
     shape: ShapeSchema.optional(),
   })
   .refine((f) => new Set(f.scenes.map((s) => s.id)).size === f.scenes.length, {

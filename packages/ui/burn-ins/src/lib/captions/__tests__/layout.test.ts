@@ -1,5 +1,6 @@
 /** @vitest-environment node */
 import { layoutCaption, measureFor } from "@burn-ins/lib/captions/layout"
+import { captionSpace } from "@burn-ins/lib/captions/space"
 import { sizedFor, THEME_IDS, THEMES } from "@burn-ins/lib/captions/theme"
 import {
   frameName,
@@ -19,6 +20,33 @@ const CASES = FRAMES.flatMap((frame) =>
     g: geometryOf(frame),
   }))
 )
+
+describe("the caption band (captionSpace)", () => {
+  it.each(CASES)(
+    "holds every caption the look draws ($id, $frame)",
+    ({ id, g }) => {
+      const row = [{ text: "MMMM" }]
+      const { box } = layoutCaption([row, row], sizedFor(THEMES[id], g), g)
+      expect(box.y).toBeGreaterThanOrEqual(
+        g.frame.height - captionSpace(g.frame)
+      )
+    }
+  )
+
+  it.each(FRAMES.map((f) => [frameName(f), f] as const))(
+    "is no taller than the tallest look's two rows (%s)",
+    (_, frame) => {
+      const g = geometryOf(frame)
+      const row = [{ text: "MMMM" }]
+      const highest = Math.min(
+        ...THEME_IDS.map(
+          (id) => layoutCaption([row, row], sizedFor(THEMES[id], g), g).box.y
+        )
+      )
+      expect(highest - (frame.height - captionSpace(frame))).toBeLessThan(1)
+    }
+  )
+})
 
 describe("the safe area", () => {
   it.each(CASES)(

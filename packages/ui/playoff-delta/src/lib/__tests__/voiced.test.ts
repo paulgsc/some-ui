@@ -99,7 +99,7 @@ describe("the locked intro", () => {
 })
 
 describe("the cut list", () => {
-  it("is drawn in the series' full-frame version, with subtitles, a shot per scene", async () => {
+  it("is drawn in the series' full-frame version, captioned, a shot per scene", async () => {
     const fill = await fillOf(9)
     const scenes = voicedScenes(SAMPLE_SEASON, 9, 2, fill)
     const cut = parseCutList(
@@ -112,7 +112,7 @@ describe("the cut list", () => {
     )
     if (!cut.ok) throw new Error(cut.problems.join("; "))
     expect(cut.value.series).toEqual({ id: "playoff-delta-week", version: 2 })
-    expect(cut.value.subtitles).toBe("word")
+    expect(cut.value.burnIns).toEqual([{ kind: "captions", params: {} }])
     expect(cut.value.shots.map((s) => s.id)).toEqual(scenes.map((s) => s.id))
   })
 })

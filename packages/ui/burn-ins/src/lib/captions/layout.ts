@@ -29,6 +29,27 @@ export const measureFor = (
   limit: geometry.safeArea.width - 2 * padX(theme) - theme.strokePx,
 })
 
+const bottomOf = (geometry: Geometry): number =>
+  geometry.safeArea.y + geometry.safeArea.height - CAPTION_LIFT_PX
+
+const heightOf = (
+  rows: number,
+  lineHeightPx: number,
+  theme: CaptionTheme
+): number => rows * lineHeightPx + 2 * padY(theme) + theme.strokePx
+
+/**
+ * The highest a caption of `rows` rows reaches in `theme`: its type at full
+ * size, since a long line only ever shrinks it (`layoutCaption`).
+ */
+export const captionTop = (
+  rows: number,
+  theme: CaptionTheme,
+  geometry: Geometry
+): number =>
+  bottomOf(geometry) -
+  heightOf(rows, theme.font.sizePx * theme.font.lineHeight, theme)
+
 export type CaptionLayout = {
   /** The bound the caption is drawn inside; its text is centred in it. */
   readonly box: Box
@@ -55,11 +76,11 @@ export function layoutCaption(
   // `min` because `longest * (limit / longest)` can round above `limit`.
   const width =
     Math.min(limit, longest * scale) + 2 * padX(theme) + theme.strokePx
-  const height = rows.length * lineHeightPx + 2 * padY(theme) + theme.strokePx
+  const height = heightOf(rows.length, lineHeightPx, theme)
   return {
     box: {
       x: safe.x + (safe.width - width) / 2,
-      y: safe.y + safe.height - CAPTION_LIFT_PX - height,
+      y: bottomOf(geometry) - height,
       width,
       height,
     },

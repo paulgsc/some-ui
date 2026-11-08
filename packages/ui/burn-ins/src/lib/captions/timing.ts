@@ -46,7 +46,7 @@ const GROUPING: GroupingRules = {
   lingerMs: 500,
 }
 
-const MAX_ROWS = 2
+export const MAX_ROWS = 2
 
 export function groupCaptions(
   lines: ReadonlyArray<SpokenLine>,
