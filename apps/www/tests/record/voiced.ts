@@ -11,8 +11,8 @@
  * made.
  */
 
-import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises"
-import { basename, dirname, join, resolve } from "node:path"
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises"
+import { join, resolve } from "node:path"
 import type { Browser, Page } from "@playwright/test"
 import {
   chapterLines,
@@ -36,6 +36,7 @@ import type {
 import {
   keyOf,
   nodePorts,
+  placeBrandFiles,
   readSeries,
   stepCache,
 } from "@some-ui/video-render/node"
@@ -205,10 +206,10 @@ export function policyOf(values: {
 }
 
 /**
- * The music bed `seriesDir`'s version `version` names, copied into `root`
- * from `brand`, home's folder of the owner's files (never a repository's);
- * the renderer checks it against the series' sum. False when the series
- * names none.
+ * The brand files `seriesDir`'s version `version` names (its music bed, each
+ * sound of its kit), copied into `root` from `brand`, home's folder of the
+ * owner's files (`placeBrandFiles`); the renderer checks each against the
+ * series' sum. Whether the series names a bed.
  */
 export async function placeBed(
   seriesDir: string,
@@ -218,15 +219,13 @@ export async function placeBed(
 ): Promise<boolean> {
   const series = await readSeries(seriesDir, version)
   if (!series.ok) fail(["The series can't be read:", ...series.problems])
-  const bed = series.value.music?.bed
-  if (!bed) return false
-  if (!brand)
-    fail([
-      `The series names the music ${bed.file}, and --brand names no folder holding it`,
-    ])
-  await mkdir(dirname(join(root, bed.file)), { recursive: true })
-  await copyFile(join(here(brand), basename(bed.file)), join(root, bed.file))
-  return true
+  const placed = await placeBrandFiles(
+    series.value,
+    brand === undefined ? undefined : here(brand),
+    root
+  )
+  if (!placed.ok) fail(placed.problems)
+  return placed.value.bed
 }
 
 /** The built app served from `dist`, or the one already served at `app`. */
