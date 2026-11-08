@@ -220,6 +220,68 @@
       "gray": "The owner asked for a bed we make ourselves (#2673) and named no music.",
       "undo": "Change music-bed.ts; its sum, file name and the series that pin it move together as a new version, or pin a file of the owner's own.",
       "refs": ["#2673", "#2765"]
+    },
+    {
+      "id": "C17",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": ["packages/some-styles/src/theme/video-palette.ts"],
+      "chose": "Mochi Night's accents are held to 4.5:1 on the ground only, not on cards; the warning, 4.1:1 on a card to someone with protanopia, always comes with a word or a glyph.",
+      "options": [
+        "on the ground only",
+        "on the ground and on cards, changing the warning's hex"
+      ],
+      "gray": "The research measured on the background, which is what a video frame is, and the owner chose the hexes.",
+      "undo": "Measure on `surface` too in videoPaletteProblems and change the warning's hex.",
+      "refs": ["#2675", "#2774"]
+    },
+    {
+      "id": "C18",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/some-styles/src/theme/video-palette.ts",
+        "packages/some-styles/themes/mochi-night.css"
+      ],
+      "chose": "Mochi Night's success colour is #8ccf9a, which the research palette lacked and a theme needs.",
+      "options": [
+        "#8ccf9a, passing every rule",
+        "no success role, falling back to the base theme's"
+      ],
+      "gray": "The owner's chosen palette had no success colour.",
+      "undo": "Change `success` in MOCHI_NIGHT and mochi-night.css together.",
+      "refs": ["#2675", "#2774"]
+    },
+    {
+      "id": "C19",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/call.ts",
+        "packages/ui/playoff-delta/src/lib/show.ts"
+      ],
+      "chose": "From the call's and Playoff Delta's template v3, the brand slides draw the mark in Mochi Night, the template's own theme.",
+      "options": [
+        "Mochi Night, the template's theme",
+        "the app's theme as the stage finds it"
+      ],
+      "gray": "Ask #2674 made the mark's theme a template setting and chose no theme for it.",
+      "undo": "A new template version whose shape's brand.theme names another theme (Studio's mark-theme control sends one).",
+      "refs": ["#2674", "#2766", "#2774"]
+    },
+    {
+      "id": "C20",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": ["packages/video-render/src/plan.ts"],
+      "chose": "The renderer converts to video by BT.709 and tags it so, which changes every video's colours a little from the next render, Build Journal shorts included.",
+      "options": [
+        "BT.709 for every video",
+        "BT.709 only for new template versions"
+      ],
+      "gray": "Old renders aren't touched, but every new render's bytes move, which the owner would notice in a re-render.",
+      "undo": "Revert TO_VIDEO and BT709 in plan.ts.",
+      "refs": ["#2675", "#2774"]
     }
   ]
 }
