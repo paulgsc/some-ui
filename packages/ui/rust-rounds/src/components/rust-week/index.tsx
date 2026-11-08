@@ -13,9 +13,11 @@
  * (docs/monorepo-boundaries.md, "Inside a React package").
  */
 import type { JSX, ReactNode } from "react"
-import { useEffect, useState, useSyncExternalStore } from "react"
+import { useEffect, useId, useState, useSyncExternalStore } from "react"
 import { RunView } from "@rust-rounds/components/rustc-run"
 import type { Ticket, Week } from "@rust-rounds/lib/formats/week"
+import type { PasteRuntime } from "@rust-rounds/lib/week-play/paste"
+import { PASTE_MAX, pasteLine } from "@rust-rounds/lib/week-play/paste"
 import type {
   RustWeekPorts,
   WeekHeard,
@@ -34,7 +36,10 @@ import {
   CodeCard,
   ConfirmSheet,
   Notice,
+  TakeItem,
   TakeRow,
+  Textarea,
+  useConfirmSheet,
   useTakePattern,
 } from "@some-ui/shared"
 import type {
@@ -113,7 +118,12 @@ const Story = ({ week }: { week: Week }): JSX.Element => (
 )
 
 const Brief = (
-  props: Parts & { held: HeldWeek; back: ReactNode; onRounds?: () => void }
+  props: Parts & {
+    held: HeldWeek
+    back: ReactNode
+    onRounds?: () => void
+    paste: PasteRuntime
+  }
 ): JSX.Element => {
   const { machine, state, dispatch, held } = props
   const { week } = held
@@ -151,6 +161,9 @@ const Brief = (
         onClick={() => dispatch({ type: "review" })}
       >
         {WORDS.toReviewOf(said, week.tickets.length)}
+      </Button>
+      <Button variant="outline" onClick={() => props.paste.open()}>
+        {WORDS.paste.open}
       </Button>
       {props.back}
       {props.onRounds !== undefined && (
@@ -321,12 +334,87 @@ const Sent = (
   )
 }
 
+/** An error from your own code, pasted as rustc printed it, and a note on it. */
+const Paste = ({
+  paste,
+  state,
+  takes,
+  snapshot,
+}: Pick<Parts, "state" | "takes" | "snapshot"> & {
+  paste: PasteRuntime
+}): JSX.Element | null => {
+  const id = useId()
+  const confirm = useConfirmSheet()
+  const { draft } = useSyncExternalStore(paste.subscribe, paste.getSnapshot)
+  if (draft === null) return null
+  const line = pasteLine(draft.week, draft.at)
+  const view = takeItemView(snapshot, state.takes, line, takes.pattern.options)
+  const recording = snapshot.take.kind !== "idle"
+  return (
+    <div className="flex flex-col gap-4">
+      <header className="space-y-1">
+        <h2 className="text-2xl font-extrabold">{WORDS.paste.heading}</h2>
+        <p className="text-muted-foreground">{WORDS.paste.line}</p>
+      </header>
+      <label htmlFor={id} className="text-sm font-semibold">
+        {WORDS.paste.label}
+      </label>
+      <Textarea
+        id={id}
+        value={draft.text}
+        rows={8}
+        maxLength={PASTE_MAX}
+        className="font-mono text-xs"
+        onChange={(event) =>
+          paste.dispatch({ type: "text", text: event.currentTarget.value })
+        }
+      />
+      <p className="text-muted-foreground text-xs">
+        {WORDS.paste.left(PASTE_MAX - draft.text.length)}
+      </p>
+      <p className="text-sm">{WORDS.paste.say}</p>
+      <TakeItem
+        view={view}
+        onTap={() => paste.tap(snapshot)}
+        onPlay={(take) => takes.pattern.play(take)}
+        onRedo={() => paste.tap(snapshot)}
+        onLetGo={() =>
+          confirm.ask({
+            title: WORDS.paste.deleteNote.title,
+            description: WORDS.paste.deleteNote.line,
+            confirm: WORDS.confirm.yes,
+            keep: WORDS.confirm.keep,
+            onConfirm: paste.deleteNote,
+          })
+        }
+      />
+      {confirm.sheet}
+      <p className="text-muted-foreground text-sm">{WORDS.paste.where}</p>
+      <Button
+        size="lg"
+        disabled={draft.text.trim() === "" || recording}
+        onClick={() => paste.dispatch({ type: "keep" })}
+      >
+        {WORDS.paste.keep}
+      </Button>
+      <Button
+        variant="outline"
+        disabled={recording}
+        onClick={() => paste.dispatch({ type: "close" })}
+      >
+        {WORDS.paste.back}
+      </Button>
+    </div>
+  )
+}
+
 const Screen = (
   props: Parts & {
     held: HeldWeek
     heard: WeekHeard
     back: ReactNode
     onRounds?: () => void
+    paste: PasteRuntime
   }
 ): JSX.Element => {
   const { state, dispatch, held } = props
@@ -400,6 +488,10 @@ export const RustWeek = ({
     week.heard.subscribe,
     week.heard.getSnapshot
   )
+  const pasting = useSyncExternalStore(
+    week.paste.subscribe,
+    week.paste.getSnapshot
+  )
   const snapshot = useTakePattern(desk.pattern)
   const { dispatch } = week.bundle
   const backable = state.screen === "cards" || state.screen === "review"
@@ -423,17 +515,35 @@ export const RustWeek = ({
           {WORDS.back}
         </Button>
       )}
-      <Screen
-        machine={week.machine}
-        state={state}
-        takes={desk}
-        snapshot={snapshot}
-        dispatch={dispatch}
-        held={held}
-        heard={heard}
-        back={back}
-        {...(onRounds === undefined ? {} : { onRounds })}
-      />
+      {pasting.showing && state.screen === "intro" ? (
+        <Paste
+          paste={week.paste}
+          state={state}
+          takes={desk}
+          snapshot={snapshot}
+        />
+      ) : (
+        <Screen
+          machine={week.machine}
+          state={state}
+          takes={desk}
+          snapshot={snapshot}
+          dispatch={dispatch}
+          held={held}
+          heard={heard}
+          back={back}
+          paste={week.paste}
+          {...(onRounds === undefined ? {} : { onRounds })}
+        />
+      )}
+      {pasting.notice !== null && (
+        <Notice
+          key={pasting.notice}
+          onDismiss={() => week.paste.dispatch({ type: "noticeDismissed" })}
+        >
+          {WORDS.paste[pasting.notice]}
+        </Notice>
+      )}
       <ConfirmSheet
         request={bundleConfirm(
           { machine: week.machine, state, dispatch, words: WORDS },

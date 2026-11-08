@@ -19,7 +19,7 @@ import { nodePorts } from "@some-ui/video-render/node"
 import { capture, cutList, shot } from "@some-ui/video-render/testing"
 import { serve } from "@tests/ui-fit/harness"
 
-import { openRecorder, RECORDING_SIZE, renderWithBurnIns } from "./burn-ins"
+import { openRecorder, renderWithBurnIns } from "./burn-ins"
 
 const DIST = resolve(process.env["WWW_DIST"] ?? "dist")
 const SERIES = resolve(
@@ -117,11 +117,7 @@ test.describe("the burn-in recorder", () => {
   }) => {
     const site = await serve(DIST, { fallback: "index.html" })
     try {
-      const page = await browser.newPage({
-        viewport: RECORDING_SIZE,
-        deviceScaleFactor: 1,
-      })
-      await openRecorder(page, site.origin)
+      const page = await openRecorder(browser, site.origin)
       const ports = nodePorts(root)
       const sum = async (file: string): Promise<string> =>
         (await ports.sha256(file)) ?? ""

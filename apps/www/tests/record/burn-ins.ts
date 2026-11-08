@@ -21,12 +21,8 @@ import { spawn } from "node:child_process"
 import { once } from "node:events"
 import { mkdir } from "node:fs/promises"
 import { dirname, resolve } from "node:path"
-import type { Page } from "@playwright/test"
-import type {
-  BurnInRequest,
-  Rendered,
-  RenderOptions,
-} from "@some-ui/video-render"
+import type { Browser, Page } from "@playwright/test"
+import type { BurnInRequest, Rendered } from "@some-ui/video-render"
 import { renderFolder } from "@some-ui/video-render/node"
 
 /** The page global the protocol is reached by (burn-ins' `RECORDER_GLOBAL`). */
@@ -36,7 +32,7 @@ const GLOBAL = "someUiBurnIns"
  * The size the recorder's page is opened at: the short's. Each burn-in is
  * recorded at its own video's frame, which the recorder sizes the page to.
  */
-export const RECORDING_SIZE = { width: 1080, height: 1920 } as const
+const RECORDING_SIZE = { width: 1080, height: 1920 } as const
 
 type Loaded =
   | { ok: true; value: { runtimeMs: number | null } }
@@ -47,13 +43,21 @@ const isLoaded = (x: unknown): x is Loaded =>
   x !== null &&
   typeof Reflect.get(x, "ok") === "boolean"
 
-/** Opens the recorder's page on `page`, which must be at scale 1. */
-export async function openRecorder(page: Page, origin: string): Promise<void> {
+/** The recorder's page of the app at `origin`, opened in `browser` at scale 1. */
+export async function openRecorder(
+  browser: Browser,
+  origin: string
+): Promise<Page> {
+  const page = await browser.newPage({
+    viewport: RECORDING_SIZE,
+    deviceScaleFactor: 1,
+  })
   await page.goto(`${origin}/burn-ins?record=true`)
   await page.addStyleTag({
     content: "html, body, #app { background: transparent !important; }",
   })
   await page.waitForFunction((name) => Reflect.has(window, name), GLOBAL)
+  return page
 }
 
 /** Calls one of the protocol's methods on the page and returns its answer. */
@@ -214,7 +218,10 @@ export async function renderWithBurnIns(
   page: Page,
   root: string,
   seriesDir: string,
-  options: RenderOptions
+  options: Omit<
+    Parameters<typeof renderFolder>[2],
+    "recordBurnIn" | "checkBurnIns"
+  >
 ): Promise<Rendered> {
   const reasons: Array<string> = []
   const done = await renderFolder(root, seriesDir, {

@@ -11,7 +11,6 @@
 import { z } from "zod"
 
 import { LOOKS, VOICES } from "./plans"
-import { TimedWordSchema } from "./subtitles"
 import {
   BackgroundSchema,
   CueSchema,
@@ -117,6 +116,15 @@ export const IdeaSchema = z.discriminatedUnion("origin", [
   }),
 ])
 
+/** A word said, and when, in ms: what home's speaker gives (`/timed`). */
+export const TimedWordSchema = z.object({
+  text: z.string().min(1),
+  startMs: z.number().int().nonnegative(),
+  endMs: z.number().int().nonnegative(),
+})
+
+export type TimedWord = Readonly<z.infer<typeof TimedWordSchema>>
+
 export const ShotSchema = z.object({
   id,
   /** The primer's cut this scene says. */
@@ -126,7 +134,7 @@ export const ShotSchema = z.object({
   /**
    * One cut's take, trimmed to `inMs`..`outMs`, with each word said in it
    * and when, in ms into the file, where the speaker gave them (`/timed`):
-   * what the video's subtitles draw.
+   * what the video's captions draw.
    */
   take: z
     .object({
@@ -166,8 +174,6 @@ export const CutListSchema = z.object({
   voice: z.enum(VOICES),
   /** The music bed, if this video sets one over its look's. */
   music: z.enum(MUSIC_MODES).optional(),
-  /** Subtitles, from its takes' words (`subtitles.ts`); none when absent. */
-  subtitles: z.enum(["line", "word"]).optional(),
   shots: z.array(ShotSchema).min(1),
   /** Burn-ins over the whole video, such as captions. */
   burnIns: z.array(BurnInSchema).default([]),

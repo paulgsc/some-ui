@@ -1,4 +1,5 @@
 import type { JSX, ReactNode } from "react"
+import { captionSpace, LANDSCAPE } from "@some-ui/burn-ins"
 import { assertNever } from "@some-ui/core-utils"
 import { useOverflows } from "@some-ui/react-hooks"
 import { BrandMark } from "@some-ui/shared"
@@ -7,9 +8,9 @@ import {
   callFormat,
   CallIndexSchema,
   CallWeekSchema,
+  hasCaptions,
   refUrl,
   sampleCallWeek,
-  subtitleBand,
 } from "@some-ui/video-render"
 import type { CallRef, CallScene, CallWeek } from "@some-ui/video-render"
 
@@ -447,11 +448,9 @@ export const CallStagePage = ({
       </ul>
     )
   const week = shown.week
-  // On record with subtitles, the footer is the band they're drawn in, left
-  // empty: the renderer draws the words said there, a line at a time.
-  const subtitled =
-    record &&
-    (callFormat(week.template.version).shape?.subtitles ?? "off") !== "off"
+  // On record with captions, the footer is the band they're drawn in, left
+  // empty: the renderer lays each scene's there.
+  const captioned = record && hasCaptions(callFormat(week.template.version))
   const step = (by: number): string | undefined => at.scenes[at.index + by]?.id
   const previous = step(-1)
   const next = step(1)
@@ -483,12 +482,14 @@ export const CallStagePage = ({
           <div className="min-h-0 flex-1 overflow-hidden px-[1.6em] py-[1.2em]">
             <Screen week={week} view={at.view} />
           </div>
-          {subtitled ? (
+          {captioned ? (
             <footer
-              data-subtitle-band=""
+              data-caption-band=""
               className="border-border shrink-0 border-t"
-              // The frame's height is 9/16 of its width, the container's unit.
-              style={{ height: `${56.25 * subtitleBand(1080).share}cqw` }}
+              // In the frame's width, the container's unit.
+              style={{
+                height: `${(100 * captionSpace(LANDSCAPE)) / LANDSCAPE.width}cqw`,
+              }}
             />
           ) : (
             <footer className="bg-background/80 border-border border-t px-[1.6em] py-[0.8em] text-[1.05em] leading-snug">

@@ -23,7 +23,8 @@ it is; each module's header does the same for its part:
   fits the short can be refused there, with the reason.
 - `src/lib/text.ts`, `src/lib/advances.ts`: text set by the font's own
   advance widths, subtitles' lines included.
-- `src/lib/captions/`: the subtitles (GWB11, #2085).
+- `src/lib/captions/`: the subtitles (GWB11, #2085), every feed's captions
+  (SFEED11, #2707), and `captionSpace`, the band a stage leaves for them.
 - `src/lib/journal.ts`: the Build Journal headline and card, design `v1`.
 - `src/lib/authorship.ts`: whose idea and whose hands, design `cells-v1`:
   an intro and an end card over the bare cards that open and close the
@@ -55,7 +56,9 @@ video, which the host page loads in the weights 600 and 800.
 
 ## Word timings
 
-Real subtitles need each word's start and end, from home's transcriber
-(whisper.cpp's per-word times). The owner approved keeping them
-(2026-10-26, confirmed 2026-10-29; the shape is on GWB11, #2085). Until that
-server change lands, subtitles run on the sample.
+Captions need each word's start and end. A voiced feed (the weekly call,
+Playoff Delta) has them from home's speaker (`/timed`), and the renderer
+(`@some-ui/video-render`) draws each scene's captions from its take's words,
+a scene at a time. Words from my own takes need home's transcriber
+(whisper.cpp's per-word times), which the owner approved keeping
+(2026-10-26, confirmed 2026-10-29; the shape is on GWB11, #2085).

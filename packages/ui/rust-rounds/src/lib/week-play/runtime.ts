@@ -25,9 +25,11 @@ import type {
 import { bundleRuntime } from "@some-ui/voice-capture"
 
 import { weekOpenNow } from "./open-now"
+import type { PasteRuntime } from "./paste"
+import { pasteRuntime } from "./paste"
 import type { WeekKind } from "./spec"
 import { weekMachine } from "./spec"
-import { heardWords, weekDrafts, weeksSent } from "./store"
+import { heardWords, pasteStores, weekDrafts, weeksSent } from "./store"
 
 export type RustWeekPorts = {
   /** The week to play: the one this phone holds that is open now. */
@@ -53,6 +55,8 @@ export type RustWeek = {
     readonly getSnapshot: () => WeekHeard
     readonly subscribe: (listener: () => void) => () => void
   }
+  /** An error pasted from the owner's own code, with a note (`./paste`). */
+  readonly paste: PasteRuntime
   /** The screen is showing. Returns the detach. */
   readonly attach: () => () => void
 }
@@ -107,6 +111,12 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
   return {
     machine,
     bundle,
+    paste: pasteRuntime(
+      ports.takes,
+      pasteStores(ports.storage),
+      week.id,
+      ports.now
+    ),
     heard: {
       getSnapshot: () => snapshot,
       subscribe(listener): () => void {
