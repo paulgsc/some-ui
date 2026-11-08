@@ -50,6 +50,7 @@ import {
 } from "@soundbites/lib/idea/redo"
 import type { IdeaStore } from "@soundbites/lib/idea/store"
 import { keptIdeaStore } from "@soundbites/lib/idea/store"
+import type { Mock } from "vitest"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const AT = "2026-11-01T09:00:00.000Z"
@@ -404,7 +405,7 @@ type Phone = {
   readonly runtime: OnHomeRuntime
   readonly simulated: SimulatedPattern
   readonly ideas: IdeaStore
-  readonly setAside: ReturnType<typeof vi.fn>
+  readonly setAside: Mock<(ids: ReadonlyArray<string>, at: string) => boolean>
   readonly attach: () => () => void
 }
 
@@ -415,6 +416,8 @@ function phone(
     readonly kept?: ReadonlyArray<Idea>
     readonly ideas?: (kept: IdeaStore) => IdeaStore
     readonly seed?: ReadonlyArray<PatternTake>
+    /** Takes whose release the desk refuses. */
+    readonly unreleasable?: ReadonlyArray<string>
   } = {}
 ): Phone {
   const storage = inMemoryStorage()
@@ -445,7 +448,16 @@ function phone(
     home,
     ideas,
     lists: keptIdeaLists(() => storage),
-    redo: { takes: bundleTakesOf(simulated), setAside },
+    redo: {
+      takes: {
+        ...bundleTakesOf(simulated),
+        release: (ids): boolean =>
+          ids.some((id) => options.unreleasable?.includes(id) === true)
+            ? false
+            : simulated.store.release(ids),
+      },
+      setAside,
+    },
     now: Date.now,
   })
   return {
@@ -597,6 +609,112 @@ describe("an answer said again, end to end on the simulated microphone (#2579)",
     )
     expect(openRedos(on.runtime.getSnapshot())).toHaveLength(1)
     again()
+  })
+
+  it("finishes this idea's cut-short send before sending again: the waiting take goes, then the one it replaced is set aside", async () => {
+    const on = phone()
+    const detach = on.attach()
+    await pass()
+    await sayAgain(on)
+    const [r1] = takesOf(on)
+    on.setAside.mockReturnValueOnce(false)
+    on.runtime.dispatch({ type: "sendAgain" })
+    on.runtime.dispatch({ type: "noticeDismissed" })
+    await sayAgain(on)
+    on.runtime.dispatch({ type: "sendAgain" })
+    expect(on.runtime.getSnapshot().notice).toBe("sentAgain")
+    expect(on.setAside.mock.calls.map(([ids]) => ids)).toEqual([
+      ["t0"],
+      ["t0"],
+      [r1!.id],
+    ])
+    expect(takesOf(on).map((each) => each.waits)).toEqual([
+      undefined,
+      undefined,
+    ])
+    expect(firstTakes(on)).toHaveLength(3)
+    detach()
+  })
+
+  it("is neither blocked nor marked by another idea's cut-short send, nor sets aside a note home deleted there (review of #2804)", async () => {
+    const lineB = answersOf("idea-2", "what")
+    const B: Idea = {
+      ...SENT,
+      id: "idea-2",
+      answers: [
+        {
+          question: "what",
+          versions: [],
+          takes: [
+            { at: AT, take: "b0" },
+            { at: LATER, take: "kb" },
+          ],
+        },
+      ],
+      sent: [AT, LATER],
+    }
+    const homeB: HomeIdea = {
+      ...onHome("b0", { deletedAt: AT }),
+      id: "idea-2",
+      title: "B",
+    }
+    const on = phone({
+      kept: [SENT, B],
+      home: [onHome(), homeB],
+      seed: [take("kb", lineB, LATER)],
+      unreleasable: ["kb"],
+    })
+    const detach = on.attach()
+    await pass()
+    await sayAgain(on)
+    on.runtime.dispatch({ type: "sendAgain" })
+    expect(on.runtime.getSnapshot().notice).toBe("sentAgain")
+    expect(on.setAside.mock.calls.flatMap(([ids]) => ids)).not.toContain("b0")
+    expect(firstTakes(on)).toHaveLength(2)
+    detach()
+  })
+
+  it("says nothing was kept when this idea's own cut-short send still can't finish", async () => {
+    const on = phone({ unreleasable: ["take-1"] })
+    const detach = on.attach()
+    await pass()
+    await sayAgain(on)
+    on.runtime.dispatch({ type: "sendAgain" })
+    expect(on.runtime.getSnapshot().notice).toBe("sentAgainPartly")
+    on.runtime.dispatch({ type: "noticeDismissed" })
+    await sayAgain(on)
+    on.runtime.dispatch({ type: "sendAgain" })
+    expect(on.runtime.getSnapshot().notice).toBe("notSentAgain")
+    expect(firstTakes(on)).toHaveLength(2)
+    expect(takesOf(on).find((each) => each.id === "take-2")?.waits).toBe(true)
+    detach()
+  })
+
+  it("names every deleted note home's read shows when it sends again, not only the open idea's", () => {
+    const other: HomeIdea = {
+      ...onHome("b0", { deletedAt: AT }),
+      id: "idea-2",
+    }
+    const { effects } = steps(INITIAL_ON_HOME, [
+      READ_PHONE,
+      { type: "entered", lists: false },
+      {
+        type: "ideasRead",
+        seq: 1,
+        read: {
+          kind: "read",
+          value: { ideas: [onHome(), other], more: false },
+        },
+      },
+      { type: "open", id: "idea-1" },
+      { type: "redoTakes", takes: [take("r1", LINE, LATER)] },
+      { type: "sendAgain" },
+    ])
+    expect(effects).toContainEqual({
+      type: "sendAgain",
+      id: "idea-1",
+      deleted: ["b0"],
+    })
   })
 
   it("deletes nothing before the ideas on this phone are read", () => {

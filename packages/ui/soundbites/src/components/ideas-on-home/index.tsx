@@ -432,6 +432,12 @@ const OneIdea = ({
     saidAgain.filter((take) => !draftIds.has(take.id)).map((take) => take.id)
   )
   const waiting = drafts.filter((take) => take.waits === true)
+  // Kept in the idea but not started home: a send again cut short.
+  const unstarted = new Set(
+    saidAgain
+      .filter((take) => take.waits === true && resent.has(take.id))
+      .map((take) => take.id)
+  )
   const redos = openRedos(state)
   const playFrom = (note: string): BundleTakes | undefined => {
     if (takes !== undefined && playable.has(note)) return takes
@@ -484,7 +490,11 @@ const OneIdea = ({
                     {WORDS.typed}
                   </span>
                 )}
-                {sent === null ? wordsOf(answer) : WORDS.answerSentAgain}
+                {sent === null
+                  ? wordsOf(answer)
+                  : unstarted.has(sent)
+                    ? WORDS.answerSentAgainWaiting
+                    : WORDS.answerSentAgain}
               </p>
               {sent !== null ? (
                 <AnswerRecording

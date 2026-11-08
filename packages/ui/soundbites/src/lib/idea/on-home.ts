@@ -212,7 +212,9 @@ export function withHomeWords(
         take === undefined ||
         // Words typed or fixed since its take now was said stand. Words heard
         // in an earlier take never do, however late home heard them: an
-        // answer said again (#2579) still hears its new take's.
+        // answer said again (#2579) still hears its new take's. So a take
+        // home hears again (a new `heardAt`) adds its newer words after the
+        // first, which only grows the answer.
         answer.versions.some(
           (version) =>
             version.how !== "heard" &&
@@ -708,7 +710,15 @@ export function stepOnHome(state: OnHomeState, event: OnHomeEvent): OnHomeStep {
       return {
         state: { ...state, writing: true, notice: null },
         effects: [
-          { type: "sendAgain", id: idea.id, deleted: deletedNotes([idea]) },
+          {
+            type: "sendAgain",
+            id: idea.id,
+            // Every idea home's read shows, as the settle after a read does.
+            deleted:
+              state.ideas.kind === "read"
+                ? deletedNotes(state.ideas.value.ideas)
+                : [],
+          },
         ],
       }
     }

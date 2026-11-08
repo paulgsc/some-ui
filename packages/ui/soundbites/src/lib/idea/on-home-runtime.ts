@@ -171,8 +171,11 @@ export function createIdeasOnHome(ports: OnHomePorts): OnHomeRuntime {
     }
     const at = new Date(now()).toISOString()
     const takes = redo.takes.takes.getSnapshot()
-    if (!setAsideThenRelease(redo, cutShort(listed, takes), deleted, at)) {
-      return "partly"
+    // This idea's own alone: another's is the next read's to finish, and
+    // never blocks or speaks for this send. Not finished, nothing of this
+    // send is kept (the new takes still wait).
+    if (!setAsideThenRelease(redo, cutShort([idea], takes), deleted, at)) {
+      return "unkept"
     }
     const resent = sendAgain(idea, waitingRedos(takes, id), at)
     if (resent === null) return "unkept"
