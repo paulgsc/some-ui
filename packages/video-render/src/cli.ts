@@ -40,14 +40,15 @@
 
 import { execFile } from "node:child_process"
 import { existsSync, readFileSync } from "node:fs"
-import { access, readdir, writeFile } from "node:fs/promises"
+import { access, readdir, readFile, writeFile } from "node:fs/promises"
 import { dirname, join, relative } from "node:path"
+import { fileURLToPath } from "node:url"
 import { parseArgs, promisify } from "node:util"
 import { z } from "zod"
 
 import { ASK_LABEL, readAskIssue } from "./ask"
 import { callFolderProblems } from "./call"
-import { callsOf, changeOf, trailersOf, whereWeAreOf } from "./call-facts"
+import { callsOfWeek, changeOf, trailersOf, whereWeAreOf } from "./call-facts"
 import type { CallFacts } from "./call-facts"
 import { clipFolderProblems, parseClipIndex } from "./clip"
 import { problemsOf } from "./cut-list"
@@ -309,7 +310,6 @@ const PullHit = z.object({
   title: z.string(),
   author: z.string(),
   mergedAt: z.string(),
-  body: z.string(),
 })
 const CommitHit = z.object({ sha: z.string(), message: z.string() })
 const IssueHit = z.object({
@@ -319,11 +319,21 @@ const IssueHit = z.object({
   body: z.string(),
 })
 
+/**
+ * The calls record, read from this checkout: the weekly run starts from
+ * some-ui's `main` (`CALL-ROUTINE.md`, step 1).
+ */
+const CALLS_RECORD = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "../../../docs/calls.json"
+)
+
 /** The weekly call's facts for `from`..`to`, both days included. */
 async function callFacts(from: string, to: string): Promise<CallFacts> {
   const facts: CallFacts = {
     week: { from, to },
     pulls: [],
+    calls: callsOfWeek(await readFile(CALLS_RECORD, "utf8"), from, to),
     promises: [],
     asks: [],
     epics: [],
@@ -346,7 +356,7 @@ async function callFacts(from: string, to: string): Promise<CallFacts> {
     const pulls = await search(
       "search/issues",
       `repo:paulgsc/${repo} is:pr is:merged merged:${from}..${to}`,
-      '.items[] | {number, title, author: (.user.login // "ghost"), mergedAt: .pull_request.merged_at, body: (.body // "")}',
+      '.items[] | {number, title, author: (.user.login // "ghost"), mergedAt: .pull_request.merged_at}',
       PullHit
     )
     for (const p of pulls) {
@@ -358,7 +368,6 @@ async function callFacts(from: string, to: string): Promise<CallFacts> {
         author: p.author,
         mergedAt: p.mergedAt,
         ...(change === undefined ? {} : { change }),
-        calls: callsOf(p.body),
       })
     }
     const asks = await search(

@@ -570,6 +570,27 @@ earlier promise it was coupled to. The share of defect commits over time is the 
 Stories mean the product is moving. A run of defects that relate to one another means patches
 are chasing a promise nobody has stated.
 
+**A gray-area call keeps who made it** (ST37, #2637). When an agent or the owner makes a
+call in a gray area, it is recorded in `docs/calls.json`: what was chosen, the options, why it
+was gray, how to undo it, the paths it governs, and whose authority it rests on (`by: claude`,
+`by: claude` with the day the owner `agreed`, or `by: owner`). The commit that makes it
+carries `Call: <ID>`, and the PR's "Calls I made" lists the IDs. Recording one never waits on
+the owner, and agents keep making calls. Until the owner writes their own definition, a gray
+area is a choice between options that no check, convention or earlier owner decision settles,
+that the owner would notice on the screen or in how they work.
+
+- **A change to a recorded call is a story, never a defect.** Before calling a change a
+  defect, search the record for its paths. If what fails is what a call chose, the owner is
+  moving a story whose author the entry names, often a call made on a mental model that
+  didn't match theirs. The change is a new entry that `moves` the old one, and its PR says
+  whose call it moves. Agreeing at the time doesn't change that. A defect stays what it is:
+  code failing in a state its story covered.
+- **The record only grows.** An entry is never edited or removed, except that a Claude call
+  gains the day the owner agreed to it. The weekly call reads the calls made or agreed to in
+  its week from the record, not from PR bodies.
+
+Held by: `pnpm check:calls`
+
 **Issues carry the kind too.** Whoever files an issue, a person, an agent or the reflection
 routine, labels it `kind:story` or `kind:defect`. The existing `story` and `epic` labels say
 how big the work is, and the `kind:` label says whether a promise broke. A defect issue names

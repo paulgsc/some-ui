@@ -22,8 +22,9 @@ up to 14 days.
 2. **Read the facts:**
    `pnpm --filter @some-ui/video-render render call-facts --from <from> --to <to> > facts.json`
    in the scratchpad. It holds the week's merged pull requests (with each
-   one's change kind and "Calls I made"), promise trailers, open asks, and
-   the epics that moved, with their "Where we are".
+   one's change kind), the calls made or agreed to in the week (from
+   `docs/calls.json`, each with who made it), promise trailers, open asks,
+   and the epics that moved, with their "Where we are".
 3. **Read the ledger:** the Residual Ledger's `items`
    (https://claude.ai/artifact/Ktc1i8JtBGQVdXEraobxgA) with `ArtifactData`,
    every item whose `status` isn't `done`.
@@ -43,9 +44,10 @@ up to 14 days.
      what each batch changed for the owner, never how.
    - **gray:** up to 8 promises declared or amended this week, from the
      trailers, said as what they now hold.
-   - **mine:** up to 8 calls from the week's "Calls I made" sections worth
-     the owner hearing: the options, the one taken, why, how to undo it.
-     Leave out what a check or a convention decided.
+   - **mine:** up to 8 of the week's `calls` worth the owner hearing: the
+     options, the one taken, why it was gray, and how to undo it. Say whose
+     call it was: Claude's alone, Claude's with the owner agreeing, or the
+     owner's.
    - **asks:** up to 12 open asks that parse: first those filed this week,
      newest first, then the rest by how much each unblocks. An ask that
      doesn't parse is named in the PR body, never guessed. The others go in
@@ -100,5 +102,5 @@ up to 14 days.
 
 - Answer an ask, close one, or change an epic's text. The call reports; the
   owner decides.
-- Invent a call made without the owner. If "Calls I made" is empty, `mine`
-  is empty, and the close says so.
+- Invent a call made without the owner. If the week's `calls` is empty,
+  `mine` is empty, and the close says so.

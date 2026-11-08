@@ -1,12 +1,14 @@
 /**
  * The weekly call's facts read a pull request's or an epic's body by its
  * sections, outside fenced code, as the PR template and the epics write
- * them: "Calls I made" unless it says none, and an epic's "Where we are",
- * whose heading may carry a date; and a squash commit's change kind and
- * promise trailers.
+ * them: an epic's "Where we are", whose heading may carry a date; the
+ * week's calls from the calls record (ST37); and a squash commit's change
+ * kind and promise trailers.
  */
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
 import {
-  callsOf,
+  callsOfWeek,
   changeOf,
   sectionOf,
   trailersOf,
@@ -14,49 +16,49 @@ import {
 } from "@video-render/call-facts"
 import { describe, expect, it } from "vitest"
 
-const pr = [
-  "## Description",
-  "",
-  "Adds the thing.",
-  "",
-  "## Calls I made",
-  "",
-  "- Kept it in video-render. To undo, move it.",
-  "",
-  "## Change kind",
-  "",
-  "`story` (the user story moved) or `defect`, as in every commit's trailer.",
-  "",
-  "`defect`",
-].join("\n")
+const record = (calls: Array<Record<string, unknown>>): string =>
+  JSON.stringify({ schema: "some-ui.calls/1", calls })
 
-describe("a pull request's body", () => {
-  it("gives its calls", () => {
-    expect(callsOf(pr)).toBe("- Kept it in video-render. To undo, move it.")
+describe("the calls record", () => {
+  const calls = [
+    { id: "C1", made: "2026-11-05", by: "claude", chose: "An icon." },
+    { id: "C2", made: "2026-11-06", by: "owner", chose: "Top." },
+    { id: "C3", made: "2026-10-30", by: "claude", agreed: "2026-11-12" },
+    { id: "C4", made: "2026-11-13", by: "claude" },
+  ]
+
+  it("gives the calls made or agreed to in the week, each as recorded", () => {
+    expect(
+      callsOfWeek(record(calls), "2026-11-06", "2026-11-12").map((c) => c.id)
+    ).toEqual(["C2", "C3"])
+    expect(callsOfWeek(record(calls), "2026-11-06", "2026-11-12")[0]).toEqual(
+      calls[1]
+    )
   })
 
+  it("reads the repo's own record", () => {
+    const text = readFileSync(
+      join(import.meta.dirname, "../../../../docs/calls.json"),
+      "utf8"
+    )
+    expect(
+      callsOfWeek(text, "2026-11-06", "2026-11-06").length
+    ).toBeGreaterThan(0)
+  })
+
+  it("refuses what is not the record", () => {
+    expect(() => callsOfWeek("{}", "2026-11-06", "2026-11-12")).toThrow()
+  })
+})
+
+describe("a body's sections", () => {
   it("reads a section past a fenced block, never a heading inside one", () => {
     const fenced =
-      "## Calls I made\n\n```sh\n# install\n## Calls I made\n```\n\nKept it.\n\n## Next"
-    expect(callsOf(fenced)).toBe(
-      "```sh\n# install\n## Calls I made\n```\n\nKept it."
+      "## Where we are\n\n```sh\n# install\n## Where we are\n```\n\nNow.\n\n## Next"
+    expect(sectionOf(fenced, "Where we are")).toBe(
+      "```sh\n# install\n## Where we are\n```\n\nNow."
     )
-    expect(sectionOf("```\n## Calls I made\nx\n```", "Calls I made")).toBeNull()
-  })
-
-  it("gives no calls where it says none, only the template's guidance, or has no such section", () => {
-    for (const none of [
-      "None: nothing to decide.",
-      "- None.",
-      "**None.**",
-      "<!-- guidance -->\nNone.",
-      "<!-- guidance -->",
-    ])
-      expect(callsOf(`## Calls I made\n\n${none}`)).toBeNull()
-    expect(callsOf("## Description\n\nx")).toBeNull()
-    expect(
-      callsOf("## Calls I made\n\n- Kept it.\n<!-- unclosed guidance")
-    ).toBe("- Kept it.")
+    expect(sectionOf("```\n## Where we are\nx\n```", "Where we are")).toBeNull()
   })
 })
 

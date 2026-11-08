@@ -6,13 +6,17 @@
  * call says and writes its words.
  *
  * - **Merged pull requests**, each with its change kind (its squash
- *   commit's `Change-Kind:` trailer) and its "Calls I made" section (the PR template's), so the call can say what was
- *   decided without the owner.
+ *   commit's `Change-Kind:` trailer).
+ * - **Calls** made or agreed to in the week, from the calls record
+ *   (`docs/calls.json`, ST37 #2637), so the call can say what was decided
+ *   without the owner, and on whose authority.
  * - **Promises** declared or amended, from commits' `Promise:` and
  *   `Relates:` trailers: the gray-area calls.
  * - **Open asks** (`ask.ts`), each read or refused with why.
  * - **Epics that moved**, with their "Where we are" as the epic says it.
  */
+
+import { z } from "zod"
 
 import type { AskFile } from "./ask"
 import type { Repo } from "./refs"
@@ -64,31 +68,35 @@ export function sectionOf(body: string, heading: string): string | null {
   return text === "" ? null : text
 }
 
-/**
- * `text` without HTML comments, where the PR template keeps its guidance:
- * each `<!-- … -->` goes, and an unclosed one takes the rest, as a browser
- * reads it.
- */
-function withoutComments(text: string): string {
-  let kept = ""
-  let rest = text
-  for (;;) {
-    const open = rest.indexOf("<!--")
-    if (open === -1) return (kept + rest).trim()
-    kept += rest.slice(0, open)
-    const close = rest.indexOf("-->", open + 4)
-    if (close === -1) return kept.trim()
-    rest = rest.slice(close + 3)
-  }
-}
+/** A call in the calls record (`docs/calls.json`), as the routine reads it. */
+const CallSchema = z.looseObject({
+  id: z.string(),
+  made: z.string(),
+  by: z.enum(["claude", "owner"]),
+  agreed: z.string().optional(),
+})
 
-/** What a "Calls I made" section says, unless it says there were none. */
-export function callsOf(body: string): string | null {
-  const section = sectionOf(body, "Calls I made")
-  if (section === null) return null
-  const text = withoutComments(section)
-  if (text === "") return null
-  return /^[-*_\s]*none\b/i.test(text) ? null : text
+export type RecordedCall = z.infer<typeof CallSchema>
+
+const CallsFileSchema = z.object({
+  schema: z.literal("some-ui.calls/1"),
+  calls: z.array(CallSchema),
+})
+
+/**
+ * The calls `text` (the calls record) holds that were made, or agreed to by
+ * the owner, from `from` to `to`, both days included, in the record's order.
+ * Every field of each is kept as recorded.
+ */
+export function callsOfWeek(
+  text: string,
+  from: string,
+  to: string
+): Array<RecordedCall> {
+  const record = CallsFileSchema.parse(JSON.parse(text))
+  const within = (day: string | undefined): boolean =>
+    day !== undefined && day >= from && day <= to
+  return record.calls.filter((c) => within(c.made) || within(c.agreed))
 }
 
 /** A commit message's `Promise:` and `Relates:` trailers, in order. */
@@ -135,8 +143,9 @@ export type CallFacts = {
     readonly mergedAt: string
     /** From its squash commit's trailers; absent where none names one. */
     readonly change?: "story" | "defect"
-    readonly calls: string | null
   }>
+  /** The calls made or agreed to in the week (`callsOfWeek`). */
+  readonly calls: ReadonlyArray<RecordedCall>
   readonly promises: Array<{
     readonly repo: Repo
     readonly sha: string

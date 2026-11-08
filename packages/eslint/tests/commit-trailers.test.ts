@@ -104,6 +104,22 @@ describe("checkCommitTrailers", () => {
     ).toEqual([{ kind: "notFinal", key: "Promise" }])
   })
 
+  it("reads a Call line as the ids of calls in docs/calls.json (ST37)", () => {
+    expect(
+      checkCommitTrailers(
+        msg("feat(x): y", "Change-Kind: story\nCall: C13, C14")
+      )
+    ).toEqual([])
+    expect(
+      checkCommitTrailers(
+        msg("feat(x): y", "Change-Kind: story\nCall: the icon")
+      )
+    ).toEqual([{ kind: "badCall", value: "the icon" }])
+    expect(
+      checkCommitTrailers(msg("feat(x): y", "Call: C1", "Change-Kind: story"))
+    ).toEqual([{ kind: "notFinal", key: "Call" }])
+  })
+
   it("puts Relates with a defect, and allows Promise on a story", () => {
     expect(
       checkCommitTrailers(
