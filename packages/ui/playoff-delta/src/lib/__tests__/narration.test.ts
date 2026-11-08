@@ -3,6 +3,7 @@ import {
   dueWeeks,
   fillFile,
   NARRATION_SCHEMA,
+  narrationIndex,
   packetOf,
   SAID_MAX,
   type Narration,
@@ -299,5 +300,56 @@ describe("the weeks due", () => {
 
   it("ignore a file for a week the season doesn't have", () => {
     expect(due([LEGEND_WEEK, newest + 5])).toEqual([newest])
+  })
+})
+
+describe("the index home reads", () => {
+  const bytesOf = (value: unknown): Uint8Array =>
+    new TextEncoder().encode(`${JSON.stringify(value, null, 2)}\n`)
+  const fill = (season: string, team: string, week: number): Uint8Array =>
+    bytesOf({ schema: NARRATION_SCHEMA, season, team, week, scenes: [] })
+
+  it("lists each fill by season, team and week, with the sum of its bytes as they lie", async () => {
+    const legend = fill("2026", "SF", 0)
+    const index = await narrationIndex([
+      { season: "2026", name: "SF-week-08.json", bytes: fill("2026", "SF", 8) },
+      {
+        season: "2025",
+        name: "SF-week-17.json",
+        bytes: fill("2025", "SF", 17),
+      },
+      { season: "2026", name: "SF-week-00.json", bytes: legend },
+    ])
+    expect(index.ok).toBe(true)
+    const fills = index.ok ? index.value.fills : []
+    expect(fills.map((f) => [f.season, f.team, f.week])).toEqual([
+      ["2025", "SF", 17],
+      ["2026", "SF", 0],
+      ["2026", "SF", 8],
+    ])
+    expect(fills[1]?.sha256).toBe(
+      await sha256Hex(new Uint8Array(legend).buffer)
+    )
+  })
+
+  it("refuses a file that isn't a fill, or a fill lying where another episode's belongs", async () => {
+    const index = await narrationIndex([
+      { season: "2026", name: "notes.md", bytes: bytesOf("hi") },
+      { season: "next", name: "SF-week-01.json", bytes: fill("next", "SF", 1) },
+      { season: "2026", name: "SF-week-09.json", bytes: fill("2026", "SF", 8) },
+      { season: "2026", name: "SF-week-10.json", bytes: bytesOf({ week: 10 }) },
+      {
+        season: "2026",
+        name: "SF-week-11.json",
+        bytes: new Uint8Array([0xff]),
+      },
+    ])
+    expect(index.ok ? [] : index.problems).toEqual([
+      "2026/narration/notes.md isn't named as a fill: <season>/narration/<team>-week-NN.json",
+      "next/narration/SF-week-01.json isn't named as a fill: <season>/narration/<team>-week-NN.json",
+      "2026/narration/SF-week-09.json is the fill of 2026 SF week 8",
+      `2026/narration/SF-week-10.json isn't a fill (${NARRATION_SCHEMA})`,
+      "2026/narration/SF-week-11.json isn't JSON",
+    ])
   })
 })

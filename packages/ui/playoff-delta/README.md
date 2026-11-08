@@ -100,6 +100,7 @@ schema it fills (`some-ui.pd-narration/1`), what it reads, and the check
 pnpm --filter @some-ui/playoff-delta narration due --season <file|sample> --folder <narration folder>
 pnpm --filter @some-ui/playoff-delta narration packet --season <file|sample> --week 9
 pnpm --filter @some-ui/playoff-delta narration check <fill.json> --season <file|sample> --week 9
+pnpm --filter @some-ui/playoff-delta narration index --root <testing>/playoff-delta
 ```
 
 Each Tuesday in season a scheduled session fills the weeks due into
@@ -126,6 +127,11 @@ Each Tuesday in season a scheduled session fills the weeks due into
 
   It judges nothing else about the words.
 
+- **The index** (`playoff-delta/index.json`, `some-ui.pd-narration-index/1`)
+  lists every fill in the repository by season, team and week, with the
+  SHA-256 of its file. Home reads it hourly and keeps each fill it lacks,
+  with its season file, for good (FEED4 #2647); it is the one file home
+  needs, since `raw.githubusercontent.com` can't list a folder.
 - **The weeks due** are the legend once, then every played week after the
   newest one filled; a first run fills the legend and the newest week, not
   the weeks before it.

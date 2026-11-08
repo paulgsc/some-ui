@@ -53,12 +53,22 @@ those goes on the FEED epic for the owner.
    A refusal names the scene and why. Rewrite that scene and check again.
    Never change a fact, the packet or the check to get past it.
 
-7. **Open a pull request** in `paulgsc/testing` with the week's fills,
+7. **Write the index** home reads to learn of each fill (FEED4 #2647):
+
+   ```sh
+   pnpm --filter @some-ui/playoff-delta narration index \
+     --root <testing>/playoff-delta
+   ```
+
+   It rewrites `playoff-delta/index.json` from every fill in the
+   repository, with the sum of each. Commit it with the fills.
+
+8. **Open a pull request** in `paulgsc/testing` with the week's fills and the index,
    titled `data(playoff-delta): narration for <season> week <n>` (or weeks
    `<a>` and `<b>`). Its body lists each fill and that the check said
    ready. Merge it once every fill says ready: the repository has no CI, so
    the check is its gate.
-8. **Note the run** in the Residual Ledger's `log` collection
+9. **Note the run** in the Residual Ledger's `log` collection
    (https://claude.ai/artifact/Ktc1i8JtBGQVdXEraobxgA), item `feed`: which
    weeks were filled.
 

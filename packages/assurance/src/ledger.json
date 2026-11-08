@@ -2125,6 +2125,133 @@
           ]
         }
       ]
+    },
+    {
+      "id": "pd-kept",
+      "name": "Home keeps every fill of Playoff Delta",
+      "why": "Playoff Delta's narration routine writes each week's fill (what is said over each scene) to paulgsc/testing, and the owner watches the week on the phone once home has made it (FEED4, #2647). Home keeps each fill and the season it was said over, so it can make the week's video from what it holds alone: a timer on home reads the repository's index of fills and stores each fill it lacks, with its season file as served then.",
+      "paths": [
+        "server:apps/servers/file_host/src/pd_fills",
+        "server:crates/db/pd_fill",
+        "some-ui:packages/ui/playoff-delta/NARRATION-ROUTINE.md",
+        "some-ui:packages/ui/playoff-delta/scripts/narration.ts"
+      ],
+      "modules": [],
+      "objectives": [
+        {
+          "id": "PK1",
+          "kind": "OA4",
+          "property": "outcome",
+          "claim": "Every fill of Playoff Delta the repository lists is kept on home once, as first served, with its season, and a fill that fails is named by why and taken on a later pass.",
+          "requirement": "Each fill playoff-delta/index.json lists that home holds no fill of that episode (season, team, week) for is fetched and checked (its SHA-256 the index's, some-ui.pd-narration/1 for exactly that episode, with a format version), its season file (that season and team's) beside it, each at most 1 MiB, and both are stored byte for byte with their SHA-256 in pd_fill, never updated or deleted; a fill that fails is counted by kind (timeout, connect, transport, refused, too_big, unreadable), the other fills are still taken, and it is asked again on the next pass.",
+          "verdict": "holds",
+          "conclusion": "Shown on home's own SQLite in the store's and the pass's tests: each fill is kept once with its season as served, an edit in the repository is not taken, a fill whose bytes are not the index's or whose pins name another week is refused, a failing fill is named by kind while the others are kept, and it is taken once it reads.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "A fill and its season are stored byte for byte with their SHA-256, a second put of other bytes for the same episode adds nothing, UPDATE and DELETE are refused, and an episode that is not a four-digit season, a team of capitals and a week to 99 is refused.",
+              "ref": "server:crates/db/pd_fill/src/lib.rs"
+            },
+            {
+              "class": "measured",
+              "says": "A pass fetches only the fills home lacks, oldest first, and each season once; a refusal, a timeout, an unreadable, changed or oversized body are each counted by kind, the good fills are still kept, and the failed ones are asked again.",
+              "ref": "server:apps/servers/file_host/src/pd_fills/pass.rs"
+            }
+          ],
+          "proof": [
+            "server:crates/db/pd_fill/src/lib.rs#a_fill_is_kept_once_as_served_with_its_season",
+            "server:crates/db/pd_fill/src/lib.rs#no_kept_fill_is_rewritten_or_deleted_and_a_bad_episode_is_refused",
+            "server:apps/servers/file_host/src/pd_fills/pass.rs#each_listed_fill_home_lacks_is_fetched_once_and_kept_with_its_season",
+            "server:apps/servers/file_host/src/pd_fills/pass.rs#what_does_not_check_out_is_counted_by_kind_and_left_for_the_next_pass",
+            "some-ui:packages/ui/playoff-delta/src/lib/__tests__/narration.test.ts#lists each fill by season, team and week"
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        },
+        {
+          "id": "PK2",
+          "kind": "OA6",
+          "property": "outcome",
+          "claim": "A Playoff Delta fills worker that has stopped, or keeps failing, reads as such rather than as a quiet week.",
+          "requirement": "The worker says when it last tried and whether its last pass failed, and the owner is told when it has not tried within two intervals, or when every pass has failed for 3 hours.",
+          "verdict": "holds",
+          "conclusion": "Slack tells you when home has not read the fills for 2 hours, or when every read has failed for 3, which covers a fill the repository lists that home cannot fetch. The worker is always on, so there is no switch to report.",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "The worker stamps the start of every pass and whether it failed, on storage or on any fill it could not read; PlayoffDeltaFillsStale fires past 2 hours without a stamp, PlayoffDeltaFillsFailing after 3 hours of failed passes, each tested by promtool in CI.",
+              "ref": "server:infra/prometheus/rules/home.yml"
+            },
+            {
+              "class": "structural",
+              "says": "Grafana reads what Prometheus has firing from ALERTS and sends each alert to the Slack contact point, one message per alert.",
+              "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
+            }
+          ],
+          "watch": {
+            "by": "alert",
+            "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
+          },
+          "amendments": [],
+          "proof": [
+            "server:infra/prometheus/rules/home.test.yml#PlayoffDeltaFillsStale",
+            "server:infra/prometheus/rules/home.test.yml#PlayoffDeltaFillsFailing"
+          ]
+        },
+        {
+          "id": "PK3",
+          "kind": "RE3",
+          "property": "work",
+          "claim": "Home reads the repository once an hour, and fetches a fill only while it lacks it.",
+          "requirement": "A pass is one request for the index plus, per listed fill home holds no fill of that episode for, one for the fill and one per season for its season file; a fill home holds is never fetched again; a pass that failed is tried again after 10 minutes, doubled per failure in a row, to at most the hourly interval; each answer is at most 1 MiB.",
+          "verdict": "unproven",
+          "conclusion": "The pass tests show the requests a pass makes and the retry spacing, from 10 minutes to the hour. Not bounded: an answer over 1 MiB is refused only once it has been read whole, as the call's are (CW3).",
+          "tracked": "server#684",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "A second pass over the same index asks for the index alone, a season is fetched once a pass, and a failing source is asked again after 600, 1200 and 2400 s, then hourly.",
+              "ref": "server:apps/servers/file_host/src/pd_fills/pass.rs"
+            }
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        },
+        {
+          "id": "PK4",
+          "kind": "RE9",
+          "property": "work",
+          "claim": "What home keeps of Playoff Delta's fills grows by one fill a week in season, with its season, and is kept for good.",
+          "requirement": "pd_fill gains one row per fill (a legend and one per played week, per season and team), the fill as served (about 2 to 3 KB) and its season file as served then (45 KB at week 8 of 2026, about 90 KB by its last week), never updated or deleted; nothing else is kept.",
+          "verdict": "holds",
+          "conclusion": "One row per episode, keyed by season, team and week, append-only by trigger: about 18 rows and 1.3 MB a season for one team. Shown in the store's tests.",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "pd_fill's key is the episode (season, team, week), and its triggers refuse UPDATE and DELETE.",
+              "ref": "server:migrations/20261108000200_create_pd_fill.up.sql"
+            },
+            {
+              "class": "measured",
+              "says": "2026's season file is 45,192 bytes at week 8, its legend's fill 2,878 and week 8's 2,143.",
+              "ref": "https://github.com/paulgsc/testing/tree/main/playoff-delta/2026"
+            }
+          ],
+          "proof": [
+            "server:crates/db/pd_fill/src/lib.rs#a_fill_is_kept_once_as_served_with_its_season",
+            "server:crates/db/pd_fill/src/lib.rs#no_kept_fill_is_rewritten_or_deleted_and_a_bad_episode_is_refused"
+          ],
+          "watch": {
+            "by": "dashboard",
+            "ref": "server:infra/grafana/dashboards/storage.jsonnet"
+          },
+          "amendments": []
+        }
+      ]
     }
   ],
   "synchronous": [
@@ -2722,6 +2849,12 @@
       "class": "record",
       "growth": "Per YouTube video the owner records for a week of the call: one tiny row (the week, the video's id, when), the newest standing; about one per week; append-only, triggers abort UPDATE and DELETE.",
       "family": "call-kept"
+    },
+    {
+      "store": "server:pd_fill",
+      "class": "record",
+      "growth": "One row per fill of Playoff Delta home takes from paulgsc/testing (a legend and one per played week, about 18 a season per team): the fill as served (about 2 to 3 KB) and its season file as served then (45 KB at week 8 of 2026, about 90 KB by its last week), each with its SHA-256; append-only, triggers abort UPDATE and DELETE.",
+      "family": "pd-kept"
     },
     {
       "store": "server:curriculum",
@@ -3893,6 +4026,54 @@
           "says": "Slack is told when home stops reading the weeks or every read fails (CW2), and when a week's render fails, waits 3 hours unattempted, or the render worker stops passing (CW5); it does not say why a render failed, which the worker's log file on the drive does.",
           "status": "live",
           "ref": "server:apps/servers/file_host/src/call_weeks/render.rs"
+        }
+      ],
+      "checks": []
+    },
+    {
+      "id": "pd-fills",
+      "name": "Keeping every fill of Playoff Delta on home",
+      "why": "The narration routine writes each week's fill and the index of fills to paulgsc/testing, and home reads the index hourly and keeps each fill it lacks with its season, so it can make the week's video from what it holds (FEED4, #2647).",
+      "serves": ["pd-kept"],
+      "witnesses": ["PK1", "PK2"],
+      "segments": [
+        {
+          "id": "routine",
+          "name": "Playoff Delta's narration routine, at Anthropic, writes each week's fill and the index of fills to paulgsc/testing. Someone else's.",
+          "owner": "foreign",
+          "on": "outside",
+          "paths": ["some-ui:packages/ui/playoff-delta/NARRATION-ROUTINE.md"]
+        },
+        {
+          "id": "github",
+          "name": "GitHub serves paulgsc/testing's playoff-delta folder. Someone else's.",
+          "owner": "foreign",
+          "on": "outside",
+          "paths": []
+        },
+        {
+          "id": "internet",
+          "name": "Home reaches GitHub over the internet.",
+          "owner": "network",
+          "on": "between",
+          "paths": []
+        },
+        {
+          "id": "keeper",
+          "name": "The Playoff Delta fills worker reads the index and keeps each fill home lacks, with its season. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": [
+            "server:apps/servers/file_host/src/pd_fills",
+            "server:crates/db/pd_fill"
+          ]
+        }
+      ],
+      "signals": [
+        {
+          "says": "Slack is told when home stops reading the fills or every read fails (PK2); a fill the routine never wrote is not seen here.",
+          "status": "live",
+          "ref": "server:infra/prometheus/rules/home.yml"
         }
       ],
       "checks": []
