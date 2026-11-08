@@ -61,6 +61,8 @@ Each module's header says why it is the way it is.
 - `src/templates.ts`: every template Studio lists (SFEED1, #2731), each
   the newest version pinned under `src/templates/<id>/`, Playoff Delta's
   included.
+- `src/synth.ts`, `src/music-bed.ts`: the sounds we make ourselves
+  (#2673); `render music-bed --out <file>.wav` writes the music bed.
 - `src/storyboard.ts`: a template's storyboard (SFEED3, #2744), every frame
   of one episode drawn from its sample before the fill, the fill's words
   left as bars. Each is pinned as `storyboard.json` beside its formats,
