@@ -29,7 +29,7 @@ import type {
   ListState,
   VideosState,
 } from "@/lib/call-videos/model"
-import { standing } from "@/lib/call-videos/model"
+import { homeBytes, standing } from "@/lib/call-videos/model"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 import { EpisodeNote } from "@/components/studio/episode-feedback"
 import { TILE, TileBody } from "@/components/studio/layout"
@@ -356,5 +356,29 @@ export const EpisodeScreen = ({
         )}
       </EpisodesList>
     </div>
+  )
+}
+
+/**
+ * What home holds of `feed`'s episodes, by size (SFEED8, #2748), as a line
+ * of its feed's "Where it's kept", once its list is read and home holds any.
+ * It reads the list the feed's episodes on the same page open, and asks for
+ * none itself.
+ */
+export const FeedHomeSize = ({
+  feed,
+  label,
+}: {
+  feed: Feed
+  /** What comes before the size. */
+  label: string
+}): JSX.Element | null => {
+  const videos = feedVideos(feed)
+  const { list } = useSyncExternalStore(videos.subscribe, videos.getSnapshot)
+  const bytes = list.kind === "read" ? homeBytes(list.episodes) : null
+  return bytes === null ? null : (
+    <dd className="text-sm">
+      {label} {formatSize(bytes)}
+    </dd>
   )
 }

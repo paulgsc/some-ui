@@ -10,7 +10,7 @@
         "server:apps/servers/file_host/src/mailbox",
         "server:crates/mailbox_kit"
       ],
-      "modules": ["jobs", "routine", "leetype_files"],
+      "modules": ["jobs", "routine", "leetype_files", "episode_notes"],
       "objectives": [
         {
           "id": "MI1",
@@ -1961,13 +1961,11 @@
         "server:infra/docker/Dockerfile.render",
         "server:infra/kokoro",
         "some-ui:apps/www/tests/record/call.ts",
-        "server:apps/servers/file_host/src/handlers/call_videos.rs",
-        "server:apps/servers/file_host/src/routes/call_videos.rs",
         "server:apps/servers/file_host/src/feeds",
         "server:apps/servers/file_host/src/handlers/feed_videos.rs",
         "server:apps/servers/file_host/src/routes/feed_videos.rs"
       ],
-      "modules": ["call_videos", "feed_videos"],
+      "modules": ["call_videos", "feed_videos", "renders"],
       "objectives": [
         {
           "id": "CW1",
@@ -2042,20 +2040,31 @@
           "property": "work",
           "claim": "Home reads the repository once an hour, and fetches a week only while it lacks it.",
           "requirement": "A pass is one request for the index plus one per listed week home holds no week of; a week home holds is never fetched again; a pass that failed is tried again after 10 minutes, doubled per failure in a row, to at most the hourly interval; each answer is at most 1 MiB.",
-          "verdict": "unproven",
-          "conclusion": "The pass tests show the requests a pass makes and the retry spacing, from 10 minutes to the hour. Not bounded: an answer over 1 MiB is refused only once it has been read whole, as the game feed's are (GA3).",
-          "tracked": "server#684",
+          "verdict": "holds",
+          "conclusion": "The pass tests show the requests a pass makes and the retry spacing, from 10 minutes to the hour. Each answer is read in chunks and refused once it passes 1 MiB, or before its body when it declares more: an unending answer costs home 1 MiB and one chunk, and a refusal's body is never read.",
           "evidence": [
             {
               "class": "measured",
               "says": "A second pass over the same index asks for the index alone, and a failing source is asked again after 600, 1200 and 2400 s, then hourly.",
               "ref": "server:apps/servers/file_host/src/call_weeks/pass.rs"
+            },
+            {
+              "class": "measured",
+              "says": "An answer over the cap is refused, and one with no length that never ends is refused at the chunk that passes 1 MiB, the chunks it handed out counted; another status's body is never read.",
+              "ref": "server:apps/servers/file_host/src/game_feed/pass.rs"
             }
           ],
           "watch": {
             "by": "none"
           },
-          "amendments": []
+          "amendments": [],
+          "proof": [
+            "server:apps/servers/file_host/src/call_weeks/pass.rs#each_listed_week_home_lacks_is_fetched_once_and_kept_as_served",
+            "server:apps/servers/file_host/src/call_weeks/pass.rs#a_failing_source_is_retried_sooner_but_never_more_often_than_it_is_read",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_declared_length_over_the_cap_is_refused_before_its_body",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#an_unending_answer_is_refused_once_it_passes_the_cap",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_refusal_over_the_cap_is_still_a_refusal"
+          ]
         },
         {
           "id": "CW4",
@@ -2094,7 +2103,7 @@
           "claim": "Every week of the call home holds becomes a video within the render policy's caps, and a week that hasn't is tried again.",
           "requirement": "Each week in call_week is written to call-weeks beside home's database, on its drive (STORAGE); within the next hourly pass the render worker records it from the pinned stage with each scene said by home's Kokoro speaker, renders it, and moves the finished folder into renders/call/<from>/ on the same drive, whole; a week that fails is left without a folder and tried again each hour, keeping its finished steps; a week whose video would pass the render policy's length or size (set in the render worker) is refused before it is drawn or once it is made, which fails its attempt with the cap named; no finished video is deleted.",
           "verdict": "unproven",
-          "conclusion": "Home rendered the real week of Oct 30 on Nov 7: all 36 scenes recorded, the video written and its folder moved into renders/call. Slack says when a week's attempt fails, naming the file that holds its whole output, when a week has waited 3 hours with no attempt, and when the worker has not passed for 4 hours, each tested by promtool; the CALL dashboard shows each. The worker's own guarantees (each hour's retry, the steps it keeps, the whole move, no video deleted) are rehearsed, not tested.",
+          "conclusion": "Home rendered the real week of Oct 30 on Nov 7: all 36 scenes recorded, the video written and its folder moved into renders/call. The worker's own handling of a week is tested in CI, one pass at a time with a fake recorder: a failed week is left without a folder, keeps its work and is tried on the next pass, which reuses it; a finished week is moved in whole and its work removed; a pass over a finished week leaves it untouched; no cap on waiting work removes a video. Slack says when a week's attempt fails, naming the file that holds its whole output, when a week has waited 3 hours with no attempt, and when the worker has not passed for 4 hours, each tested by promtool; the CALL dashboard shows each. Not yet proven: the hourly retry itself (the test runs each pass by hand), that the worker hands the recorder the render policy's caps, and that each week is said by the pinned speaker from the pinned stage.",
           "tracked": "some-ui#2659",
           "evidence": [
             {
@@ -2131,6 +2140,11 @@
               "class": "structural",
               "says": "The renderer refuses a video past RenderPolicy.maxVideoMs before any ffmpeg call and removes one past maxVideoBytes once made; the recorder refuses a week past the length by its words before anything is said; each tested.",
               "ref": "some-ui:packages/video-render/src/policy.ts"
+            },
+            {
+              "class": "measured",
+              "says": "render-calls.sh, sourced over a temporary folder with a fake recorder, keeps a failed week's work with no folder in renders/call and reuses it on the next pass, moves a finished week whole without its cache, leaves a finished week's folder byte for byte on a later pass, and removes only another waiting week's work past the cap, never a video; CI runs it on every pull request.",
+              "ref": "server:infra/render/render-calls.test.sh"
             }
           ],
           "watch": {
@@ -2159,7 +2173,7 @@
           "claim": "The call's videos grow by one folder a week, kept until I let a week go from My data once its YouTube link is recorded.",
           "requirement": "renders/call on home's database drive (STORAGE) gains one folder per week of the call (the video, its takes, stills, cut list and week), deleted only by the owner from My data once the week's YouTube link is recorded (CW7); a waiting week's work and step cache stay in renders/call-work between attempts, within the render policy's caps for one week and for all of them, and leave once the week renders; a step or a week's work past a cap is said, never silently dropped.",
           "verdict": "unproven",
-          "conclusion": "The first week's folder is 112 MB (the video is 95 MB), so about 6 GB a year, kept for good as you chose (#2640). file_host reads the bytes of the videos and of the waiting work, and the drive's free space, each minute (the CALL dashboard); Slack says when a cache cap was passed in the last day and when the drive has under a tenth free.",
+          "conclusion": "The first week's folder is 112 MB (the video is 95 MB), so about 6 GB a year, kept for good as you chose (#2640). file_host reads the bytes of the videos and of the waiting work, and the drive's free space, each minute (the CALL dashboard); Slack says when a cache cap was passed in the last day and when the drive has under a tenth free. The worker's part is tested in CI: a finished week's work leaves with it, a week let go loses its waiting work, past the all-weeks cap only another waiting week's work is removed and said in work.cache.log, and no pass deletes a video. The growth per week on home is still to be read from the dashboard after a few weeks.",
           "tracked": "some-ui#2659",
           "evidence": [
             {
@@ -2171,6 +2185,11 @@
               "class": "structural",
               "says": "Each minute file_host sums the bytes under renders/call and renders/call-work, reads the newest cache warning and the drive's free space (statvfs); CallRenderCacheFull and HomeDriveLow fire on them, each tested by promtool.",
               "ref": "server:apps/servers/file_host/src/call_weeks/render.rs"
+            },
+            {
+              "class": "measured",
+              "says": "render-calls.sh, one pass at a time with a fake recorder: no pass deletes a finished video, a finished week's work is removed, a week no longer held loses its waiting work, and past the cap only another waiting week's work goes, said as a cache warning.",
+              "ref": "server:infra/render/render-calls.test.sh"
             }
           ],
           "watch": {
@@ -3281,7 +3300,7 @@
     {
       "store": "server:mailbox_outgoing",
       "class": "record",
-      "growth": "Per file the phone (or the poller, for transcripts and LeetType session logs) files for the mailbox (decisions, scout, opened, transcript, leetype-log, reflection, prompt), bytes verbatim; append-only. A LeetType session's log is filed again as log-<session>.r<n>.json only when an event of it arrives home after its last copy, and each copy repeats every earlier event of the session. The routines' indexes (jobs, reflections) add nothing here or in mailbox_handed or mailbox_archive: each is a view home recomputes from these records and keeps no copy of, so the mailbox holds one index per routine, the latest only (owner, paulgsc/server#509).",
+      "growth": "Per file the phone (or the poller, for transcripts and LeetType session logs) files for the mailbox (decisions, scout, opened, transcript, leetype-log, reflection, prompt, feedback), bytes verbatim; append-only. A LeetType session's log is filed again as log-<session>.r<n>.json only when an event of it arrives home after its last copy, and each copy repeats every earlier event of the session. The routines' indexes (jobs, reflections) add nothing here or in mailbox_handed or mailbox_archive: each is a view home recomputes from these records and keeps no copy of, so the mailbox holds one index per routine, the latest only (owner, paulgsc/server#509).",
       "family": "routine-to-home"
     },
     {
@@ -3358,6 +3377,13 @@
       "store": "server:storage_sample",
       "class": "telemetry",
       "growth": "Per UTC day: one row per table and index plus database, wal and disk_free, about 80 rows a day (\"a few MB a year\", docs/storage.md); append-only, triggers abort UPDATE, DELETE and REPLACE.",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:episode_note",
+      "class": "record",
+      "growth": "Per note the phone leaves on a feed's episode (SFEED6, paulgsc/some-ui#2745; paulgsc/server invariant 38): its feed, episode, moment, one to fourteen categories from the fixed set, the take's voice-note id or null, when written and when it reached home; one row per id, append-only, body <= BODY_CEILING = 16 KiB; each is filed once for the mailbox's feedback folder as it arrives.",
+      "horizon": "kept for good: no delete and no switch (the owner's ruling on ask paulgsc/some-ui#2749); it goes only with the account",
       "family": "what-is-kept"
     },
     {
@@ -4270,8 +4296,8 @@
           "owner": "ours",
           "on": "home",
           "paths": [
-            "server:apps/servers/file_host/src/routes/call_videos.rs",
-            "server:apps/servers/file_host/src/handlers/call_videos.rs",
+            "server:apps/servers/file_host/src/routes/feed_videos.rs",
+            "server:apps/servers/file_host/src/handlers/feed_videos.rs",
             "server:apps/servers/file_host/src/feeds/videos.rs"
           ]
         },

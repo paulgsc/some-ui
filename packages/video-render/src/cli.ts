@@ -24,6 +24,11 @@
  * its index, every week it lists against the call's schema, and no week
  * file it forgets; it prints every reason it can't be published.
  *
+ *   pnpm --filter @some-ui/video-render render clip-check <clips folder>
+ *
+ * checks paulgsc/testing's `clips/` folder before it is pushed
+ * (`clipFolderProblems`, SFEED7).
+ *
  *   pnpm --filter @some-ui/video-render render compare-hearings <home transcript> <session words>
  *
  * lines up two hearings of one take (ST25, `hearings.ts`) and prints the
@@ -39,6 +44,7 @@
 
 import { execFile } from "node:child_process"
 import { createHash } from "node:crypto"
+import { existsSync, readFileSync } from "node:fs"
 import { access, readdir, writeFile } from "node:fs/promises"
 import { dirname, join, relative } from "node:path"
 import { parseArgs, promisify } from "node:util"
@@ -48,6 +54,7 @@ import { ASK_LABEL, readAskIssue } from "./ask"
 import { callFolderProblems } from "./call"
 import { callsOf, changeOf, trailersOf, whereWeAreOf } from "./call-facts"
 import type { CallFacts } from "./call-facts"
+import { clipFolderProblems, parseClipIndex } from "./clip"
 import { problemsOf } from "./cut-list"
 import { compareHearings } from "./hearings"
 import { MUSIC_BED, musicBedWav } from "./music-bed"
@@ -122,6 +129,28 @@ async function main(): Promise<void> {
     process.stdout.write(
       `${second}: ${weeks} ${weeks === 1 ? "week" : "weeks"}, ready
 `
+    )
+    return
+  }
+  if (first === "clip-check") {
+    if (!second) fail(["usage: render clip-check <clips folder>"])
+    const dir = here(second)
+    const read = (path: string): unknown => {
+      try {
+        return JSON.parse(readFileSync(join(dir, path), "utf8"))
+      } catch {
+        return undefined
+      }
+    }
+    const problems = clipFolderProblems(read, (path) =>
+      existsSync(join(dir, path))
+    )
+    if (problems.length > 0)
+      fail([`${second} can't be published:`, ...problems])
+    const index = parseClipIndex(read("index.json"))
+    const n = index.ok ? index.value.clips.length : 0
+    process.stdout.write(
+      `${second}: ${n} ${n === 1 ? "clip" : "clips"}, ready\n`
     )
     return
   }

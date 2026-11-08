@@ -6,7 +6,7 @@
  * words (its name, how an episode is labelled) stay `FEED_WORDS`
  * (`lib/call-videos/words`); these add what it is fed and when it runs.
  */
-import { counted } from "@some-ui/core-utils"
+import { counted, formatDay } from "@some-ui/core-utils"
 
 import type { Feed } from "@/lib/feeds"
 
@@ -79,6 +79,59 @@ export const FEED_FACTS = {
   },
 } as const satisfies Record<Feed, FeedFacts>
 
+/** The places a feed leaves something, in the order a feed's page lists them. */
+export const PLACES = ["home", "phone", "testing", "drive"] as const
+
+type Place = (typeof PLACES)[number]
+
+type Kept = { readonly what: string; readonly letGo: string }
+
+/** My data's two steps for an episode (`lib/my-data/words`' videos). */
+const HOME_LETS_GO =
+  "Once an episode's YouTube link is saved, Settings › My data lets its video go, then what it was made from, and home keeps a note of each. Its words stay."
+
+const ON_THE_PHONE: Kept = {
+  what: "Your notes on its episodes, under Feedback, and a copy of each episode you watched.",
+  letGo:
+    "Your notes are kept. A watched copy is the phone's to clear, and it goes when home's video is let go.",
+}
+
+const NOTHING_IN_DRIVE: Kept = {
+  what: "Nothing. This feed keeps nothing in Drive.",
+  letGo: "Nothing to let go.",
+}
+
+/**
+ * What each feed leaves behind, and where (SFEED8, #2748). Nothing more can be
+ * let go than My data already offers (the owner's ruling on ask #2749).
+ */
+export const FEED_KEPT = {
+  call: {
+    home: {
+      what: "Every week Claude wrote for the call, as home first read it, and each episode's video and what it was made from.",
+      letGo: HOME_LETS_GO,
+    },
+    phone: ON_THE_PHONE,
+    testing: {
+      what: "Each week's words, in the public paulgsc/testing. Only the newest weeks stay there: an older one leaves once home holds it.",
+      letGo: "Never by hand. Home keeps every week.",
+    },
+    drive: NOTHING_IN_DRIVE,
+  },
+  "playoff-delta": {
+    home: {
+      what: "Every week's words Claude wrote, with the season as it stood that week, and each episode's video and what it was made from.",
+      letGo: HOME_LETS_GO,
+    },
+    phone: ON_THE_PHONE,
+    testing: {
+      what: "The season's numbers and every week's words, in the public paulgsc/testing.",
+      letGo: "Never. A week's words are kept as they were written.",
+    },
+    drive: NOTHING_IN_DRIVE,
+  },
+} as const satisfies Record<Feed, Record<Place, Kept>>
+
 export const STUDIO_INDEX_WORDS = {
   heading: "Studio",
   aToZ: "Listed A to Z. None comes first.",
@@ -113,6 +166,18 @@ export const STUDIO_INDEX_WORDS = {
     intro:
       "A clip shows what a change built, as you'd see it: in the app, on a dashboard, or at a command line. Code records it from sample data, before and after the change. Every one is kept here, and only some are picked for an episode.",
     none: "No clips yet. The first ones come with the change that records them.",
+    reading: "Reading the Library…",
+    away: "The Library couldn't be read. Try again in a moment.",
+    stale:
+      "The Library couldn't be read again, so this is what was read before.",
+    gone: "This clip isn't in the Library any more.",
+    landed: (day: string): string => `Landed ${formatDay(day)}`,
+    before: "Before",
+    after: "After",
+    nothingBefore: "New with this change: there was nothing to show before.",
+    walked: "Code recorded it from sample data.",
+    recorded: "Taken by the session that made the change, from sample data.",
+    open: "See the change",
   },
 
   episodes: {
@@ -137,6 +202,15 @@ export const STUDIO_INDEX_WORDS = {
     cadence: "When it runs",
     templates: "Made with",
     episodes: "Its episodes",
+    kept: "Where it's kept",
+    places: {
+      home: "On home",
+      phone: "On this phone",
+      testing: "In the public record",
+      drive: "In Drive",
+    } satisfies Record<Place, string>,
+    /** Before the size of what home holds of a feed's episodes. */
+    homeHolds: "Its episodes take up on home:",
   },
 
   intuitions: {

@@ -5,16 +5,21 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router"
 
 import type { Feed } from "@/lib/feeds"
 import { FEED_TEMPLATES, isFeed } from "@/lib/feeds"
-import { FEED_FACTS, STUDIO_INDEX_WORDS } from "@/lib/studio-index"
-import { FeedEpisodes } from "@/components/studio/feed-episodes"
+import {
+  FEED_FACTS,
+  FEED_KEPT,
+  PLACES,
+  STUDIO_INDEX_WORDS,
+} from "@/lib/studio-index"
+import { FeedEpisodes, FeedSizeOnHome } from "@/components/studio/feed-episodes"
 import { Part, StudioPage, TILE, TileBody } from "@/components/studio/layout"
 
 const WORDS = STUDIO_INDEX_WORDS.feeds
 
 /**
  * One feed (SFEED1, #2731): the intuition it was fed, when it runs, the
- * templates its episodes are made with, and its episodes, each linking to
- * its own page.
+ * templates its episodes are made with, its episodes, each linking to its
+ * own page, and where what it leaves behind is kept (SFEED8, #2748).
  */
 const FeedPage = (): JSX.Element => {
   const { feed }: { feed: Feed } = Route.useParams()
@@ -44,6 +49,22 @@ const FeedPage = (): JSX.Element => {
       </Part>
       <Part label={WORDS.episodes}>
         <FeedEpisodes feed={feed} pairWords={STUDIO_WORDS.pair.pair} />
+      </Part>
+      <Part label={WORDS.kept}>
+        <dl className="flex flex-col gap-3">
+          {PLACES.map((place) => (
+            <div key={place} className="flex flex-col gap-1">
+              <dt className="text-sm font-medium">{WORDS.places[place]}</dt>
+              <dd className="text-sm">{FEED_KEPT[feed][place].what}</dd>
+              {place === "home" && (
+                <FeedSizeOnHome feed={feed} label={WORDS.homeHolds} />
+              )}
+              <dd className="text-muted-foreground text-sm">
+                {FEED_KEPT[feed][place].letGo}
+              </dd>
+            </div>
+          ))}
+        </dl>
       </Part>
     </StudioPage>
   )
