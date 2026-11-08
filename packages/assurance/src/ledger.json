@@ -2104,7 +2104,7 @@
           "claim": "Every week of the call home holds becomes a video within the render policy's caps, and a week that hasn't is tried again.",
           "requirement": "Each week in call_week is written to call-weeks beside home's database, on its drive (STORAGE); once home's lane admits it (room for its peak above the floor, and no interactive work waiting: server:docs/home-compute.md, \"The lane\"), the render worker records it from the pinned stage with each scene said by home's Kokoro speaker, renders it, and moves the finished folder into renders/call/<from>/ on the same drive, whole; a render the lane pauses or stops resumes from its finished steps, and giving way is never itself a failure (an attempt that exits soon after a pause is run again, at most 3 times a job, then is a failure); a week that fails is left without a folder and tried again no sooner than an hour later, once the lane admits it, keeping its finished steps; a week whose video would pass the render policy's length or size (set in the render worker) is refused before it is drawn or once it is made, which fails its attempt with the cap named (a video refused once made is removed then, never moved into place); no video moved into renders/call is deleted but by the owner letting its week go (CW8).",
           "verdict": "unproven",
-          "conclusion": "Home rendered the real week of Oct 30 on Nov 7: all 36 scenes recorded, the video written and its folder moved into renders/call. The worker's own handling of a week is tested in CI, one pass at a time with a fake recorder: a failed week is left without a folder, keeps its work and is tried on the next pass, which reuses it; a finished week is moved in whole and its work removed; a pass over a finished week leaves it untouched; no cap on waiting work removes a video; a render starts only once the lane has seen its job, a pause freezes the recorder and what it started, and a stop kills them and the render resumes from its kept steps with the same bytes. Slack says when a week's attempt fails, naming the file that holds its whole output, when a week has waited 3 hours with no attempt, and when the worker has not passed for 4 hours, each tested by promtool; the CALL dashboard shows each. Not yet proven: the hourly retry on its own clock (the test holds its gate but runs each pass by hand), the lane's pauses and stops with the real recorder (the test's is a fake), that the worker hands the recorder the render policy's caps, and that each week is said by the pinned speaker from the pinned stage.",
+          "conclusion": "Home rendered the real week of Oct 30 on Nov 7: all 36 scenes recorded, the video written and its folder moved into renders/call. The worker's own handling of a week is tested in CI, one pass at a time with a fake recorder: a failed week is left without a folder, keeps its work and is tried on the next pass, which reuses it; a finished week is moved in whole and its work removed; a pass over a finished week leaves it untouched; no cap on waiting work removes a video; a render starts only once the lane has seen its job, a pause freezes the recorder and what it started, and a stop kills them and the render resumes from its kept steps with the same bytes. Slack says when a week's attempt fails, naming the file that holds its whole output, when a week has waited 3 hours with no attempt, and when the worker has not passed for 4 hours, each tested by promtool; the CALL dashboard shows each. The test also holds (server#755) that the worker hands the recorder the render policy's caps, the pinned stage and home's speaker, for a week and for a preview; that a video past the size cap fails its week's attempt with the cap named and leaves no folder; that the stage and the speaker's base are pinned by digest and the recorders by a whole commit; and that the worker's own loop tries a failed week again by itself, no sooner than RETRY_AFTER after it failed, on a test clock. Not yet proven: the lane's pauses and stops with the real recorder (the test's is a fake), which only home can show.",
           "tracked": "some-ui#2659",
           "evidence": [
             {
@@ -2145,6 +2145,11 @@
             {
               "class": "measured",
               "says": "render-calls.sh, sourced over a temporary folder with a fake recorder, keeps a failed week's work with no folder in renders/call and reuses it on the next pass, moves a finished week whole without its cache, leaves a finished week's folder byte for byte on a later pass, and removes only another waiting week's work past the cap, never a video; and starts a render only on a lane decision written after its job was named, freezes the recorder's whole process tree on pause and kills it on stop, keeping its finished steps, so with that fake recorder a stopped render resumes with the same bytes as one never stopped; CI runs it on every pull request.",
+              "ref": "server:infra/render/render-calls.test.sh"
+            },
+            {
+              "class": "measured",
+              "says": "The worker hands the call's and a preview's recorder --max-video-minutes 15, --max-video-mb 500, --cache-mb 2048, the pinned stage and home's Kokoro speaker; a video past the size cap fails its week's attempt with the cap named; the stage and the speaker's base are pinned by digest and the recorders by a whole commit; its own loop tries a failed week again, no sooner than RETRY_AFTER after it failed.",
               "ref": "server:infra/render/render-calls.test.sh"
             }
           ],
@@ -2601,8 +2606,8 @@
           "property": "work",
           "claim": "Home keeps at most one preview per template, and none past a day.",
           "requirement": "Per template, home keeps at most one request not yet ready, one ready preview of at most the render policy's largest video (MAX_VIDEO_MB), and the failed requests of the last day: a preview is deleted 24 h after it is made, the newest included, and an older one as soon as a newer one is ready; a failed request goes 24 h after it failed; a preview's work (stills, takes, step cache) goes with it, or when its request fails; the job in progress is never deleted. No switch and no receipt: a preview is derived from sample data, not the owner's record.",
-          "verdict": "unproven",
-          "conclusion": "Home's prune is on server main (server#743) and tested: it takes a preview a day after it is made, an older one once a newer one is ready, a failed request a day after it failed, and never the job in progress. No test yet proves the ready video's bound (MAX_VIDEO_MB, 500 MB), so the claim stays unproven until one does (server#752).",
+          "verdict": "holds",
+          "conclusion": "Home's prune is on server main (server#743) and tested: it takes a preview a day after it is made, an older one once a newer one is ready, a failed request a day after it failed, and never the job in progress. The ready video's bound is tested too (server#755): a preview past MAX_VIDEO_MB, 500 MB, fails with the cap named, keeps no folder and is never tried again.",
           "evidence": [
             {
               "class": "unknown",
@@ -2615,16 +2620,21 @@
               "ref": "server:apps/servers/file_host/src/previews/tests.rs"
             },
             {
-              "class": "unknown",
-              "says": "The render worker refuses a video past MAX_VIDEO_MB, but no test holds that bound.",
-              "ref": "server#752"
+              "class": "measured",
+              "says": "A preview past MAX_VIDEO_MB fails with the cap named, keeps no folder in renders/preview and is never tried again.",
+              "ref": "server:infra/render/render-calls.test.sh"
             }
+          ],
+          "proof": [
+            "server:apps/servers/file_host/src/previews/tests.rs#the_prune_takes_a_day_old_preview_and_any_older_than_the_newest_ready",
+            "server:apps/servers/file_host/src/previews/tests.rs#the_prune_takes_a_failed_one_a_day_after_and_never_the_job_in_progress",
+            "server:apps/servers/file_host/src/previews/tests.rs#a_request_writes_one_and_another_while_it_is_pending_answers_that_one",
+            "server:infra/render/render-calls.test.sh#a preview past MAX_VIDEO_MB fails, with the cap named"
           ],
           "watch": {
             "by": "none"
           },
-          "amendments": [],
-          "tracked": "server#752"
+          "amendments": []
         }
       ]
     }
