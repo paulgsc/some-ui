@@ -157,8 +157,9 @@ at rest, has home's Kokoro speaker say each in `PD_VOICE`, and renders one
 - the **brand intro and outro**, the owner's mark;
 - a **chapter slide** said aloud before each slide the format marks
   (`SHAPE` in `src/lib/show.ts`);
-- the slides, each said as the fill says it, with **subtitles** lit word by
-  word in the band the stage leaves empty at the frame's foot.
+- the slides, each said as the fill says it, with **captions** in the
+  series' look (`@some-ui/burn-ins`), the word being said lit, in the band
+  the stage leaves empty at the frame's foot (`captionSpace`).
 
 The same fill and season give the same bytes. The recorder refuses a scene
 the frame can't hold (`data-overflow`). A fill written for version 1 was for

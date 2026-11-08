@@ -237,7 +237,7 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
         "packages/video-render/src/stills.ts",
       ],
       profiles: ["lan", "pages"],
-      why: "the weekly call's template and its sample week, which only the call's stage draws (src/lib/web-surface/call), and whether a format's shape draws subtitles (`hasSubtitles`), which only Playoff Delta's stage reads (src/lib/web-surface/playoff-delta): desktop pages the Android app's build leaves out",
+      why: "the weekly call's template and its sample week, which only the call's stage draws (src/lib/web-surface/call), and whether a format's shape draws captions (`hasCaptions`), which only Playoff Delta's stage reads (src/lib/web-surface/playoff-delta): desktop pages the Android app's build leaves out",
     },
     {
       modules: ["packages/some-styles/src/theme/boundary.ts"],

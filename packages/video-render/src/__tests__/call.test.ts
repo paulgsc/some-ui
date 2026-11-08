@@ -231,7 +231,7 @@ describe("the call as a cut list", () => {
     expect(shot("board")?.durationMs).toBe(readingMs(w.board.said))
     expect(shot("brand-in")?.durationMs).toBe(BRAND_MS)
     expect(cut.value.shots).toHaveLength(scenes.length)
-    expect(cut.value.subtitles).toBe("word")
+    expect(cut.value.burnIns).toEqual([{ kind: "captions", params: {} }])
     expect(cut.value.music).toBe("off")
     expect(callCutList(w, takes, { bed: true }).music).toBeUndefined()
   })

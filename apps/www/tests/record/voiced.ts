@@ -5,14 +5,15 @@
  *
  * A take is keyed by the speaker's model, the voice and the words, so a
  * retry asks the speaker only for what changed; with `timed`, each word's
- * place in it (`/timed`, for subtitles) is kept beside it. Takes and every
- * ffmpeg step are kept in `<root>/cache/steps` between attempts; home's
- * render worker removes the cache once a video is made.
+ * place in it (`/timed`, for captions) is kept beside it. Takes, every
+ * ffmpeg step and each scene's captions are kept in `<root>/cache/steps`
+ * between attempts; home's render worker removes the cache once a video is
+ * made.
  */
 
 import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises"
 import { basename, dirname, join, resolve } from "node:path"
-import type { Page } from "@playwright/test"
+import type { Browser, Page } from "@playwright/test"
 import {
   DEFAULT_POLICY,
   estimatedMs,
@@ -32,13 +33,13 @@ import {
   keyOf,
   nodePorts,
   readSeries,
-  renderFolder,
   stepCache,
 } from "@some-ui/video-render/node"
 import type { StepCache } from "@some-ui/video-render/node"
 import { serve } from "@tests/ui-fit/harness"
 import { z } from "zod"
 
+import { openRecorder, renderWithBurnIns } from "./burn-ins"
 import { fail, here } from "./command"
 
 /** A take and each word said in it, as the speaker's `/timed` gives them. */
@@ -50,7 +51,7 @@ const TimedSchema = z.object({
 /**
  * `text` said in `voice` by home's Kokoro speaker at `speaker`, as a WAV: the
  * same bytes for the same words and voice. With `timed`, each word's place
- * in it too (`/timed`), for the subtitles.
+ * in it too (`/timed`), for the captions.
  */
 async function said(
   speaker: string,
@@ -328,25 +329,43 @@ export async function recordStills({
   return takes
 }
 
-/** `cutList` kept as `cut-list.json` in `root` and rendered to `out` in `series`. */
+/**
+ * `cutList` kept as `cut-list.json` in `root` and rendered to `out` in
+ * `series`, its burn-ins (each scene's captions) drawn by the recorder page
+ * of the app at `origin` (`./burn-ins`).
+ */
 export async function renderStills(
   root: string,
   series: string,
   cutList: CutList,
-  { out, policy }: { readonly out: string; readonly policy: RenderPolicy }
+  {
+    out,
+    policy,
+    browser,
+    origin,
+  }: {
+    readonly out: string
+    readonly policy: RenderPolicy
+    readonly browser: Browser
+    readonly origin: string
+  }
 ): Promise<void> {
   await writeFile(
     join(root, "cut-list.json"),
     `${JSON.stringify(cutList, null, 1)}\n`
   )
-  const done = await renderFolder(root, series, {
-    workDir: "cache",
-    out,
-    withoutBurnIns: true,
-    policy,
-    stepCacheDir: STEPS,
-    warn,
-  })
-  if (!done.ok) fail(["Nothing was rendered:", ...done.problems])
-  console.log(`wrote ${join(root, done.value.video)}`)
+  const page = await openRecorder(browser, origin)
+  try {
+    const done = await renderWithBurnIns(page, root, series, {
+      workDir: "cache",
+      out,
+      policy,
+      stepCacheDir: STEPS,
+      warn,
+    })
+    if (!done.ok) fail(["Nothing was rendered:", ...done.problems])
+    console.log(`wrote ${join(root, done.value.video)}`)
+  } finally {
+    await page.close()
+  }
 }

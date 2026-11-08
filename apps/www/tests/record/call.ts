@@ -27,8 +27,10 @@
  * records the one already served at `--app` (home's render worker records
  * the published image, #2639). Needs `ffmpeg` and `ffprobe` on `PATH`.
  *
- * With a shape that has subtitles (version 2 on), it asks the speaker for
- * each take's words too (`/timed`) and keeps them beside it. A series that
+ * With a shape that has captions (version 2 on), it asks the speaker for
+ * each take's words too (`/timed`) and keeps them beside it, and records
+ * each scene's captions in the series' look from the app's burn-ins page
+ * (`./burn-ins`), which `--app` serves too. A series that
  * names a music bed takes its file from `--brand`, home's folder of the
  * owner's files, never a repository.
  *
@@ -50,7 +52,7 @@ import {
   callCutList,
   callFormat,
   callScenes,
-  hasSubtitles,
+  hasCaptions,
   parseCallWeek,
 } from "@some-ui/video-render"
 import type { CallWeek } from "@some-ui/video-render"
@@ -180,7 +182,7 @@ async function main(): Promise<void> {
       })),
       frame: (id) => `[data-scene="${id}"]`,
       speaker: values.voices === "kokoro" ? values.speaker : null,
-      timed: hasSubtitles(callFormat(week.template.version)),
+      timed: hasCaptions(callFormat(week.template.version)),
       policy,
     })
     // The music bed plays once the call's series names one (#2673).
@@ -197,6 +199,8 @@ async function main(): Promise<void> {
     await renderStills(root, SERIES, callCutList(week, takes, { bed }), {
       out: "call.mp4",
       policy,
+      browser,
+      origin: site.origin,
     })
   } finally {
     await browser.close()

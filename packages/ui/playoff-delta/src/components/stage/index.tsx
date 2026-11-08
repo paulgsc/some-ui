@@ -18,10 +18,11 @@ import {
   type VoicedScene,
 } from "@playoff-delta/lib/voiced"
 import { INTRO } from "@playoff-delta/lib/words"
+import { captionSpace } from "@some-ui/burn-ins"
 import { assertNever } from "@some-ui/intent-kit"
 import { useOverflows } from "@some-ui/react-hooks"
 import { BrandMark } from "@some-ui/shared"
-import { hasSubtitles, subtitleBand } from "@some-ui/video-render"
+import { hasCaptions } from "@some-ui/video-render"
 
 import "./index.css"
 
@@ -165,7 +166,7 @@ const Frame = ({
   framing?: Framing
   /** The format version recorded, for the intro to name. */
   version?: number
-  /** Record mode with subtitles: the band at the foot is left empty for them. */
+  /** Record mode with captions: the band at the foot is left empty for them. */
   band?: boolean
   onBack?: () => void
   onNext?: () => void
@@ -175,10 +176,11 @@ const Frame = ({
   const { ref, overflows } = useOverflows(
     `${week?.week ?? LEGEND_WEEK}-${shown}`
   )
-  // The band's height is a share of the frame's: the container's height unit.
+  // The band's height is a share of the frame's, the container's height
+  // unit; it runs to the frame's foot.
   const style: CSSProperties | undefined = band
     ? {
-        paddingBottom: `calc(6cqw + ${100 * subtitleBand(RECORDING.height, RECORDING.width).share}cqh)`,
+        paddingBottom: `${(100 * captionSpace(RECORDING)) / RECORDING.height}cqh`,
       }
     : undefined
   const brand = framing?.kind === "brand-in" || framing?.kind === "brand-out"
@@ -308,7 +310,7 @@ const WeekStory = ({
         framing={named?.kind === "slide" ? undefined : named}
         version={version}
         band={
-          version !== undefined && hasSubtitles(formatOf(kindOf(n), version))
+          version !== undefined && hasCaptions(formatOf(kindOf(n), version))
         }
       />
     )
@@ -371,7 +373,7 @@ const WeekStory = ({
  * with nothing to press: the recorder sizes the viewport (1080x1920) and
  * captures it. With `version` (2 on, FEED3) it draws that format version's
  * shape: `scene` names the slide, the intro, a brand slide or a chapter
- * (`lib/voiced`), and the band at the foot is left empty for subtitles.
+ * (`lib/voiced`), and the band at the foot is left empty for captions.
  */
 export const PlayoffDeltaStage = ({
   season = SAMPLE_SEASON,

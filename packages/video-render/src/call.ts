@@ -34,7 +34,7 @@ import { once, problemsOf } from "./cut-list"
 import type { CutList, Parsed } from "./cut-list"
 import { FORMAT_SCHEMA, repeatedId, showId, words } from "./format"
 import type { Format, Shape } from "./format"
-import { estimatedMs, stillFile, stillsCutList } from "./stills"
+import { estimatedMs, hasCaptions, stillFile, stillsCutList } from "./stills"
 import type { StillTake } from "./stills"
 import sample from "./templates/conference-call/sample-week.json"
 
@@ -629,7 +629,7 @@ export const estimatedCallMs = (week: CallWeek): number =>
  * The call as a cut list the renderer draws (`stillsCutList`, which holds
  * CV1): one still per scene (`<file>.png`, the stage recorded), and its take
  * (`<file>.wav`, home's speaker's) where one was said, `takes[i]`.
- * Subtitles are drawn as the week's shape says, and the music bed plays
+ * Captions are drawn as the week's shape says, and the music bed plays
  * under the voice once the series names one (`bed`).
  */
 export function callCutList(
@@ -642,7 +642,7 @@ export function callCutList(
       title: `The weekly call, ${week.week.from} to ${week.week.to}`,
       series: callFormat().series,
       look: "calm",
-      subtitles: callFormat(week.template.version).shape?.subtitles ?? "off",
+      captions: hasCaptions(callFormat(week.template.version)),
       bed,
     },
     callScenes(week).map((scene, i) => ({

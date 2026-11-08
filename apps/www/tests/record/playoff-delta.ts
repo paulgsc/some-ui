@@ -54,7 +54,7 @@ import {
   type StorySeason,
 } from "@some-ui/playoff-delta/recording"
 import { THEME_STORAGE_KEY } from "@some-ui/styles/theme"
-import { clipFile, hasSubtitles } from "@some-ui/video-render"
+import { clipFile, hasCaptions } from "@some-ui/video-render"
 import { readJson } from "@some-ui/video-render/node"
 
 import { fail, here, launchChromium, runCommand } from "./command"
@@ -214,7 +214,7 @@ async function voiced(browser: Browser, origin: string): Promise<void> {
     })),
     frame: (id) => `[data-slide="${id}"]`,
     speaker: values.voices === "kokoro" ? values.speaker : null,
-    timed: hasSubtitles(format),
+    timed: hasCaptions(format),
     policy,
   }).finally(() => context.close())
   const bed = await placeBed(SERIES, format.series.version, values.brand, root)
@@ -226,7 +226,7 @@ async function voiced(browser: Browser, origin: string): Promise<void> {
     root,
     SERIES,
     voicedCutList(season, week, fill, takes, { bed }),
-    { out: "episode.mp4", policy }
+    { out: "episode.mp4", policy, browser, origin }
   )
 }
 

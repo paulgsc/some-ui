@@ -5,16 +5,15 @@
  * on a timeline the renderer draws.
  *
  * CV1 (promise, #2671): every scene shows the whole still the stage
- * recorded, held still (`__tests__/call-video.test.ts`). Subtitles change
- * only the band at the frame's foot, which a stage leaves empty for them
- * (`subtitleBand`).
+ * recorded, held still (`__tests__/call-video.test.ts`). Captions draw only
+ * in the band at the frame's foot, which a stage leaves empty for them
+ * (`@some-ui/burn-ins`' `captionSpace`).
  */
 
 import { CUT_LIST_SCHEMA } from "./cut-list"
-import type { CutList } from "./cut-list"
+import type { CutList, TimedWord } from "./cut-list"
 import type { Format } from "./format"
 import type { Look } from "./plans"
-import type { SubtitleStyle, TimedWord } from "./subtitles"
 
 /** How long a brand slide holds, with nothing said over it. */
 export const BRAND_MS = 3_000
@@ -36,8 +35,8 @@ export const estimatedMs = (
   scenes: ReadonlyArray<{ readonly said: string }>
 ): number => scenes.reduce((total, scene) => total + unsaidMs(scene.said), 0)
 
-/** Whether a format version's shape draws subtitles, which need each word's time. */
-export const hasSubtitles = (format: Format): boolean =>
+/** Whether a format version's shape draws captions, which need each word's time. */
+export const hasCaptions = (format: Format): boolean =>
   (format.shape?.subtitles ?? "off") !== "off"
 
 /** Scene `index`'s files in the video's folder, without their extension: "03-board". */
@@ -61,7 +60,7 @@ export type StillScene = {
 /**
  * The feed as a cut list: each scene's still (`<file>.png`), and its take
  * (`<file>.wav`) where one was said, `takes[i]`; a scene with none holds for
- * `unsaidMs`. Subtitles are drawn from the takes' words as `subtitles` says,
+ * `unsaidMs`. With `captions`, each scene's are drawn from its take's words,
  * and the music bed plays under the voice once the series names one
  * (`bed`).
  */
@@ -70,7 +69,7 @@ export function stillsCutList(
     readonly title: string
     readonly series: CutList["series"]
     readonly look: Look
-    readonly subtitles: SubtitleStyle | "off"
+    readonly captions: boolean
     readonly bed: boolean
   },
   scenes: ReadonlyArray<StillScene>,
@@ -84,7 +83,6 @@ export function stillsCutList(
     voice: "read",
     // The look's mode (calm: under the voice) once the series has a bed.
     ...(feed.bed ? {} : { music: "off" as const }),
-    ...(feed.subtitles === "off" ? {} : { subtitles: feed.subtitles }),
     shots: scenes.map((scene, i) => {
       const take = takes[i] ?? null
       return {
@@ -112,7 +110,8 @@ export function stillsCutList(
         idea: { origin: "agent" },
       }
     }),
-    burnIns: [],
+    // In the look the series names (`designs.captions`).
+    burnIns: feed.captions ? [{ kind: "captions", params: {} }] : [],
     revisions: [],
     notes: [],
   }
