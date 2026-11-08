@@ -8,7 +8,7 @@
 import type { Fetch, FetchFailure, PartRead } from "./model"
 import type { VideoFiles } from "./runtime"
 
-export type PartPorts = {
+type PartPorts = {
   /** Bytes `start` to `end` of the video, or why there are none. */
   part: (
     start: number,
@@ -29,7 +29,7 @@ function decodedBytes(base64: string): number {
 }
 
 /** Brings `total` bytes over; never rejects unless a port does. */
-export async function fetchParts(
+async function fetchParts(
   ports: PartPorts,
   total: number
 ): Promise<"done" | "stopped" | FetchFailure> {

@@ -11,7 +11,7 @@ import { z } from "zod"
 import type { Fetch } from "@/lib/call-videos/model"
 
 /** Where a preview stands on home, in the words home's renders use. */
-export const PREVIEW_STATES = [
+const PREVIEW_STATES = [
   "waiting",
   "rendering",
   "paused",
@@ -101,7 +101,7 @@ export type PreviewState = {
 export type ReadFailure = "away" | "unreadable"
 
 /** What the page says once, over itself (a `Notice`). */
-export type Said =
+type Said =
   | { readonly kind: "makeFailed"; readonly why: MakeFailure }
   | { readonly kind: "readFailed"; readonly why: ReadFailure }
 
