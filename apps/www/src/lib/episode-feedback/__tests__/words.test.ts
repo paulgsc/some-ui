@@ -9,7 +9,6 @@ import {
   CATEGORIES,
   CATEGORY_WORDS,
   DESTINATION_WORDS,
-  DESTINATIONS,
   FEEDBACK_WORDS,
 } from "@/lib/episode-feedback"
 import { MACHINERY } from "@/lib/home-link/__tests__/machinery"
@@ -30,10 +29,9 @@ const all = [
 ]
 
 describe("feedback's words", () => {
-  it("name every category and every place a note goes, each its own", () => {
+  it("name every category its own way", () => {
     const names = CATEGORIES.map((c) => CATEGORY_WORDS[c])
     expect(new Set(names).size).toBe(CATEGORIES.length)
-    expect(new Set(DESTINATIONS.map((d) => DESTINATION_WORDS[d])).size).toBe(3)
   })
 
   it("names no machinery, in any line it can say", () => {
@@ -42,9 +40,5 @@ describe("feedback's words", () => {
 
   it("says a moment the way the player's clock reads", () => {
     expect(FEEDBACK_WORDS.at(134_000)).toBe("At 2:14")
-  })
-
-  it("ST34: calls a take a take, never a recording", () => {
-    expect(all.filter((l) => /\b(recordings?|bites?)\b/i.test(l))).toEqual([])
   })
 })

@@ -7,8 +7,12 @@
 import { beforeEach, describe, expect, it } from "vitest"
 
 import type { Note } from "@/lib/episode-feedback"
-import { episodeFeedback, MAX_NOTES, notesOn } from "@/lib/episode-feedback"
-import { keepNote, readNotes } from "@/lib/episode-feedback/store"
+import { episodeFeedback, notesOn } from "@/lib/episode-feedback"
+import {
+  keepNote,
+  MAX as MAX_NOTES,
+  readNotes,
+} from "@/lib/episode-feedback/store"
 
 const note = (id: string, episode = "2026-11-13"): Note => ({
   id,
@@ -24,24 +28,23 @@ beforeEach(() => {
 })
 
 describe("the phone's notes", () => {
-  it("keeps each after the others, once", () => {
-    expect(keepNote(note("a"))).toBe(true)
-    expect(keepNote(note("b"))).toBe(true)
-    expect(keepNote(note("a"))).toBe(true)
+  it("keeps each after the others", () => {
+    expect(keepNote(note("a"))).toBe("kept")
+    expect(keepNote(note("b"))).toBe("kept")
     expect(readNotes().map((n) => n.id)).toEqual(["a", "b"])
   })
 
   it("refuses a new note once full, and drops none", () => {
     const full = Array.from({ length: MAX_NOTES }, (_, i) => note(`n${i}`))
     localStorage.setItem("some-ui:episode-feedback", JSON.stringify(full))
-    expect(keepNote(note("one-more"))).toBe(false)
+    expect(keepNote(note("one-more"))).toBe("full")
     expect(readNotes()).toHaveLength(MAX_NOTES)
     expect(readNotes()[0]?.id).toBe("n0")
   })
 
   it("copies an unreadable value aside before writing over it", () => {
     localStorage.setItem("some-ui:episode-feedback", "not json")
-    expect(keepNote(note("a"))).toBe(true)
+    expect(keepNote(note("a"))).toBe("kept")
     expect(localStorage.getItem("some-ui:episode-feedback:unreadable:1")).toBe(
       "not json"
     )

@@ -8,13 +8,11 @@
  * - a broken slide is a defect (`defect`);
  * - the rest of how it looked or sounded changes the feed's template
  *   (`template`).
- *
- * Pure: the note being written (`Draft`, `step`) and what a kept note is
- * (`NoteSchema`). The phone's copy is `./store`.
  */
 import { assertNever } from "@some-ui/core-utils"
 import { z } from "zod"
 
+import type { Appended } from "@/lib/bounded-list"
 import type { Feed } from "@/lib/feeds"
 import { FEEDS } from "@/lib/feeds"
 
@@ -45,7 +43,7 @@ export const CATEGORIES = [...SAID, ...SHOWN] as const
 export type Category = (typeof CATEGORIES)[number]
 
 /** Where a note goes once it is filed, in the order a note lists them. */
-export const DESTINATIONS = ["nextFill", "template", "defect"] as const
+const DESTINATIONS = ["nextFill", "template", "defect"] as const
 
 export type Destination = (typeof DESTINATIONS)[number]
 
@@ -79,9 +77,14 @@ export const NoteSchema = z.object({
   /** The moment in the episode, from its start. */
   atMs: z.number().int().nonnegative(),
   /** Picked from the fixed set, in its order, each once, at least one. */
-  categories: z.array(z.enum(CATEGORIES)).min(1),
-  /** When it was written, as an ISO instant. */
-  writtenAt: z.string().min(1),
+  categories: z
+    .array(z.enum(CATEGORIES))
+    .min(1)
+    .refine(
+      (picked) =>
+        CATEGORIES.filter((c) => picked.includes(c)).join() === picked.join()
+    ),
+  writtenAt: z.iso.datetime(),
 })
 
 /** A kept note. */
@@ -94,8 +97,8 @@ export type Draft =
       readonly kind: "open"
       readonly atMs: number
       readonly picked: ReadonlyArray<Category>
-      /** The phone couldn't keep it; the categories stay picked. */
-      readonly refused: boolean
+      /** Why the phone couldn't keep it; the categories stay picked. */
+      readonly refused: Exclude<Appended, "kept"> | null
     }
 
 export const CLOSED: Draft = { kind: "closed" }
@@ -106,7 +109,7 @@ export type DraftEvent =
   | { readonly type: "toggled"; readonly category: Category }
   | { readonly type: "cancelled" }
   /** What keeping it came to. */
-  | { readonly type: "kept"; readonly stored: boolean }
+  | { readonly type: "kept"; readonly came: Appended }
 
 /** A moment as whole milliseconds, from a player's seconds. */
 export function momentOf(seconds: number): number {
@@ -121,7 +124,7 @@ export function step(draft: Draft, event: DraftEvent): Draft {
       // A note already open keeps its moment and what was picked.
       return draft.kind === "open"
         ? draft
-        : { kind: "open", atMs: event.atMs, picked: [], refused: false }
+        : { kind: "open", atMs: event.atMs, picked: [], refused: null }
     }
     case "toggled": {
       if (draft.kind === "closed") return draft
@@ -129,14 +132,14 @@ export function step(draft: Draft, event: DraftEvent): Draft {
       const picked = CATEGORIES.filter((category) =>
         category === event.category ? !on : draft.picked.includes(category)
       )
-      return { ...draft, picked, refused: false }
+      return { ...draft, picked, refused: null }
     }
     case "cancelled": {
       return CLOSED
     }
     case "kept": {
       if (draft.kind === "closed") return draft
-      return event.stored ? CLOSED : { ...draft, refused: true }
+      return event.came === "kept" ? CLOSED : { ...draft, refused: event.came }
     }
     default: {
       return assertNever(event)
@@ -145,7 +148,9 @@ export function step(draft: Draft, event: DraftEvent): Draft {
 }
 
 /** Whether the draft can be kept: open, with something picked. */
-export const keepable = (draft: Draft): boolean =>
+export const keepable = (
+  draft: Draft
+): draft is Extract<Draft, { kind: "open" }> =>
   draft.kind === "open" && draft.picked.length > 0
 
 /** The note a draft becomes, or null while it can't be kept. */
@@ -154,7 +159,7 @@ export function noteOf(
   where: { readonly feed: Feed; readonly episode: string },
   made: { readonly id: string; readonly now: Date }
 ): Note | null {
-  if (draft.kind !== "open" || draft.picked.length === 0) return null
+  if (!keepable(draft)) return null
   return {
     id: made.id,
     feed: where.feed,

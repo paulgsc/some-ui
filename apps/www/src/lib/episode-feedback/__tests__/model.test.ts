@@ -17,7 +17,6 @@ import {
   noteOf,
   NoteSchema,
   SAID,
-  SHOWN,
   step,
 } from "@/lib/episode-feedback"
 
@@ -25,7 +24,7 @@ const open = (picked: ReadonlyArray<Category> = []): Draft => ({
   kind: "open",
   atMs: 134_000,
   picked,
-  refused: false,
+  refused: null,
 })
 
 describe("where a note goes", () => {
@@ -34,23 +33,20 @@ describe("where a note goes", () => {
     expect(new Set(CATEGORIES).size).toBe(14)
   })
 
-  it("what it said guides the next fill", () => {
-    expect(SAID.map(destinationOf)).toEqual(SAID.map(() => "nextFill"))
-  })
-
-  it("a broken slide is a defect, the rest of the show the template's", () => {
-    expect(Object.fromEntries(SHOWN.map((c) => [c, destinationOf(c)]))).toEqual(
-      {
-        textClipped: "defect",
-        slideShakes: "defect",
-        overlap: "defect",
-        hardToRead: "template",
-        pacing: "template",
-        voice: "template",
-        musicLoud: "template",
-        subtitlesOff: "template",
-      }
-    )
+  it("what it said guides the next fill, a broken slide is a defect, the rest of the show the template's", () => {
+    expect(
+      Object.fromEntries(CATEGORIES.map((c) => [c, destinationOf(c)]))
+    ).toEqual({
+      ...Object.fromEntries(SAID.map((c) => [c, "nextFill"])),
+      textClipped: "defect",
+      slideShakes: "defect",
+      overlap: "defect",
+      hardToRead: "template",
+      pacing: "template",
+      voice: "template",
+      musicLoud: "template",
+      subtitlesOff: "template",
+    })
   })
 
   it("lists each place once, in a fixed order", () => {
@@ -81,9 +77,9 @@ describe("the note being written", () => {
   })
 
   it("closes once kept, and stays open with its picks when refused", () => {
-    expect(step(open(["voice"]), { type: "kept", stored: true })).toBe(CLOSED)
-    const refused = step(open(["voice"]), { type: "kept", stored: false })
-    expect(refused).toEqual({ ...open(["voice"]), refused: true })
+    expect(step(open(["voice"]), { type: "kept", came: "kept" })).toBe(CLOSED)
+    const refused = step(open(["voice"]), { type: "kept", came: "full" })
+    expect(refused).toEqual({ ...open(["voice"]), refused: "full" })
     expect(step(refused, { type: "toggled", category: "pacing" })).toEqual(
       open(["pacing", "voice"])
     )
@@ -96,7 +92,7 @@ describe("the note being written", () => {
     expect(keepable(open(["tooShort"]))).toBe(true)
   })
 
-  it("becomes a note that reads back as one", () => {
+  it("becomes a note", () => {
     const where = { feed: "call", episode: "2026-11-13" } as const
     const made = { id: "n1", now: new Date("2026-11-14T03:00:00Z") }
     expect(noteOf(open(), where, made)).toBeNull()
@@ -109,7 +105,24 @@ describe("the note being written", () => {
       categories: ["overlap"],
       writtenAt: "2026-11-14T03:00:00.000Z",
     })
+  })
+
+  it("reads back a stored note only with its picks each once, in order", () => {
+    const note = {
+      id: "n1",
+      feed: "call",
+      episode: "2026-11-13",
+      atMs: 0,
+      categories: ["shallow", "voice"],
+      writtenAt: "2026-11-14T03:00:00.000Z",
+    }
     expect(NoteSchema.safeParse(note).success).toBe(true)
+    for (const categories of [["voice", "shallow"], ["voice", "voice"], []]) {
+      expect(NoteSchema.safeParse({ ...note, categories }).success).toBe(false)
+    }
+    expect(
+      NoteSchema.safeParse({ ...note, writtenAt: "Tuesday" }).success
+    ).toBe(false)
   })
 
   it("reads a player's seconds as whole milliseconds, never below zero", () => {

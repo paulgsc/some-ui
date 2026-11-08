@@ -39,8 +39,11 @@ export const FEEDBACK_WORDS = {
   pick: "Pick what the note is about. Each goes where it belongs.",
   keep: "Keep the note",
   cancel: "Not now",
-  refused:
-    "The phone couldn't keep this note. Your picks are still here; try again.",
+  refused: {
+    unwritable:
+      "The phone couldn't keep this note. Your picks are still here; try again.",
+    full: "The phone already keeps a thousand notes, and keeps no more until home keeps them. Your picks are still here.",
+  },
   kept: "Note kept on this phone.",
   /** The episode page's count of its notes. */
   onThis: (n: number): string => `${counted(n, "note")} on this episode`,

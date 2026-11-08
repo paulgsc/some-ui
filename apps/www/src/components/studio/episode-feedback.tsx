@@ -91,9 +91,9 @@ export const EpisodeNote = ({
       { id: crypto.randomUUID(), now: new Date() }
     )
     if (note === null) return
-    const stored = episodeFeedback.keep(note)
-    dispatch({ type: "kept", stored })
-    if (stored) setKept((n) => n + 1)
+    const came = episodeFeedback.keep(note)
+    dispatch({ type: "kept", came })
+    if (came === "kept") setKept((n) => n + 1)
   }
   return (
     <div className="flex flex-col gap-2">
@@ -102,11 +102,9 @@ export const EpisodeNote = ({
           {WORDS.kept}
         </Notice>
       )}
-      {notes.length > 0 && (
-        <p className="text-muted-foreground text-sm">
-          {WORDS.onThis(notes.length)}
-        </p>
-      )}
+      <p className="text-muted-foreground text-sm">
+        {WORDS.onThis(notes.length)}
+      </p>
       {draft.kind === "closed" ? (
         <Button
           size="sm"
@@ -137,8 +135,10 @@ export const EpisodeNote = ({
             picked={draft.picked}
             onToggle={(category) => dispatch({ type: "toggled", category })}
           />
-          {draft.refused && (
-            <p className="text-destructive text-sm">{WORDS.refused}</p>
+          {draft.refused !== null && (
+            <Notice key={draft.refused} tone="danger">
+              {WORDS.refused[draft.refused]}
+            </Notice>
           )}
           <div className="flex gap-2">
             <Button size="sm" disabled={!keepable(draft)} onClick={keep}>

@@ -4,8 +4,7 @@
  * Episodes (SFEED1, `EpisodeScreen`). On it, Watch brings the video to the
  * phone and plays it, Share to YouTube hands it to the share sheet, and its
  * YouTube link is saved with the episode; once home's copy is let go (My
- * data), the link is how it is watched. While it plays, a note can be left
- * at a moment of it (SFEED6, `EpisodeNote`). Reads `lib/call-videos`' snapshot of
+ * data), the link is how it is watched. Reads `lib/call-videos`' snapshot of
  * the feed (`useFeedVideos`) and says what was pressed; every word is its
  * `VIDEOS_WORDS` and `FEED_WORDS`. Phone build only.
  */

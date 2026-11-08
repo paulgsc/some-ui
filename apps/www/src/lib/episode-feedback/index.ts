@@ -1,17 +1,16 @@
 /**
  * Feedback on an episode (SFEED6, #2745): the pure note (`./model`), its
  * words (`./words`), and the phone's copy (`./store`) behind one snapshot a
- * screen subscribes to. Writing is synchronous, so nothing here waits.
- *
- * Phone-only in use (Studio's pages are the APK's), and pure enough for every
- * build: the viewer's build keeps its notes in its in-memory storage.
+ * screen subscribes to. The first read may copy an unreadable stored value
+ * aside (`openKept`), once, since the snapshot is kept until a note is.
  */
+import type { Appended } from "@/lib/bounded-list"
+
 import type { Note } from "./model"
 import { keepNote, readNotes } from "./store"
 
 export * from "./model"
 export * from "./words"
-export { MAX as MAX_NOTES } from "./store"
 
 type Listener = () => void
 
@@ -28,8 +27,8 @@ export const episodeFeedback = {
     snapshot ??= readNotes()
     return snapshot
   },
-  /** Keeps `note`; says whether the phone stored it. */
-  keep(note: Note): boolean {
+  /** Keeps `note`; says what that came to. */
+  keep(note: Note): Appended {
     const stored = keepNote(note)
     snapshot = null
     for (const listener of listeners) listener()
