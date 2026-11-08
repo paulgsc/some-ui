@@ -47,7 +47,7 @@ pnpm --filter @some-ui/video-motion motion video <video folder> [--series <folde
   caption per screen; each line is held to what fits its place in the frame. It pins
   `series/vertical` version 2, which names the sound kit (HYPER4, #2727): a whoosh as the
   hook leaves, a pop as the frame opens, a click on each tap, a whoosh as the feature
-  leaves and a ding as the close's mark lands. So it needs `--brand`, whose `sounds/` holds
+  leaves and a ding as the close's mark comes in. So it needs `--brand`, whose `sounds/` holds
   the kit `render sounds --out <brand>/sounds` writes (`@some-ui/video-render`'s `cues.ts`).
 
 CI runs `prove`, `video` and `promo` on every change here (`pr.yml`, "HyperFrames renders the

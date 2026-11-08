@@ -81,13 +81,14 @@ const SERIES_VERSION = 2
  * Where each scene's sounds land (HYPER4, the dry run's cue sheet on
  * #2726), each on what its composition moves: the hook's words leave 0.55 s
  * before its end, the feature's frame opens from its start and leaves 0.5 s
- * before its end, and the close's mark lands 0.3 s in.
+ * before its end, and the close's mark comes in from 0.2 s; the ding
+ * strikes 0.1 s into that, as the dry run's did, and rings as it settles.
  */
 const CUE_AT = {
   hookLeaves: 550,
   frameOpens: 50,
   featureLeaves: 500,
-  closeLands: 300,
+  closeComesIn: 300,
 } as const
 
 /** Every reason `release` can't be drawn over `walk`, of its app. */
@@ -179,7 +180,7 @@ export function promoCutList(release: Release, walk: WalkFile): CutList {
           badge1: release.fill.badges[0],
           badge2: release.fill.badges[1],
         },
-        () => [{ sound: "ding", atMs: CUE_AT.closeLands }]
+        () => [{ sound: "ding", atMs: CUE_AT.closeComesIn }]
       ),
     ],
     burnIns: [],
