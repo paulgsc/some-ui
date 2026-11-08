@@ -1,0 +1,215 @@
+{
+  "schema": "some-ui.storyboard/1",
+  "template": {
+    "id": "conference-call",
+    "version": 2
+  },
+  "sample": "the sample week, October 30 to November 5",
+  "frames": [
+    {
+      "id": "intro",
+      "kind": "intro",
+      "name": "The weekly call",
+      "by": "code",
+      "said": "This is the weekly call for October 30 to November 5. Claude wrote the words, from the two repositories and the ledger. Code drew every frame, and every voice you hear is synthetic. Inside: 2 questions wait on you, 1 call Claude made without you, 1 technical call in a gray area.",
+      "ms": 22000
+    },
+    {
+      "id": "brand-in",
+      "kind": "brand-in",
+      "name": "The weekly call",
+      "by": "none",
+      "said": "",
+      "ms": 3000
+    },
+    {
+      "id": "open",
+      "kind": "section",
+      "scene": "open",
+      "name": "The week",
+      "by": "fill",
+      "said": "",
+      "ms": 16800
+    },
+    {
+      "id": "chapter-board",
+      "kind": "chapter",
+      "scene": "board",
+      "name": "The board",
+      "by": "code",
+      "said": "The board.",
+      "ms": 3000
+    },
+    {
+      "id": "board",
+      "kind": "section",
+      "scene": "board",
+      "name": "The board",
+      "by": "fill",
+      "said": "",
+      "ms": 14800
+    },
+    {
+      "id": "chapter-moved",
+      "kind": "chapter",
+      "scene": "moved",
+      "name": "Where we are",
+      "by": "code",
+      "said": "Where things stand.",
+      "ms": 3000
+    },
+    {
+      "id": "moved-1",
+      "kind": "section",
+      "scene": "moved",
+      "name": "Where we are",
+      "item": 1,
+      "by": "fill",
+      "said": "",
+      "ms": 13200
+    },
+    {
+      "id": "moved-2",
+      "kind": "section",
+      "scene": "moved",
+      "name": "Where we are",
+      "item": 2,
+      "by": "fill",
+      "said": "",
+      "ms": 12800
+    },
+    {
+      "id": "chapter-done",
+      "kind": "chapter",
+      "scene": "done",
+      "name": "What landed",
+      "by": "code",
+      "said": "What landed.",
+      "ms": 3000
+    },
+    {
+      "id": "done-1",
+      "kind": "section",
+      "scene": "done",
+      "name": "What landed",
+      "item": 1,
+      "by": "fill",
+      "said": "",
+      "ms": 10400
+    },
+    {
+      "id": "done-2",
+      "kind": "section",
+      "scene": "done",
+      "name": "What landed",
+      "item": 2,
+      "by": "fill",
+      "said": "",
+      "ms": 10400
+    },
+    {
+      "id": "done-3",
+      "kind": "section",
+      "scene": "done",
+      "name": "What landed",
+      "item": 3,
+      "by": "fill",
+      "said": "",
+      "ms": 10800
+    },
+    {
+      "id": "done-4",
+      "kind": "section",
+      "scene": "done",
+      "name": "What landed",
+      "item": 4,
+      "by": "fill",
+      "said": "",
+      "ms": 7600
+    },
+    {
+      "id": "chapter-gray",
+      "kind": "chapter",
+      "scene": "gray",
+      "name": "A call in a gray area",
+      "by": "code",
+      "said": "Calls in a gray area.",
+      "ms": 3200
+    },
+    {
+      "id": "gray-1",
+      "kind": "section",
+      "scene": "gray",
+      "name": "A call in a gray area",
+      "item": 1,
+      "by": "fill",
+      "said": "",
+      "ms": 10000
+    },
+    {
+      "id": "chapter-mine",
+      "kind": "chapter",
+      "scene": "mine",
+      "name": "A call made without you",
+      "by": "code",
+      "said": "Calls made without you.",
+      "ms": 3000
+    },
+    {
+      "id": "mine-1",
+      "kind": "section",
+      "scene": "mine",
+      "name": "A call made without you",
+      "item": 1,
+      "by": "fill",
+      "said": "",
+      "ms": 11600
+    },
+    {
+      "id": "chapter-asks",
+      "kind": "chapter",
+      "scene": "asks",
+      "name": "Waiting on you",
+      "by": "code",
+      "said": "Waiting on you.",
+      "ms": 3000
+    },
+    {
+      "id": "asks-1",
+      "kind": "section",
+      "scene": "asks",
+      "name": "Waiting on you",
+      "item": 1,
+      "by": "fill",
+      "said": "",
+      "ms": 10000
+    },
+    {
+      "id": "asks-2",
+      "kind": "section",
+      "scene": "asks",
+      "name": "Waiting on you",
+      "item": 2,
+      "by": "fill",
+      "said": "",
+      "ms": 7600
+    },
+    {
+      "id": "close",
+      "kind": "section",
+      "scene": "close",
+      "name": "Close",
+      "by": "fill",
+      "said": "",
+      "ms": 8800
+    },
+    {
+      "id": "brand-out",
+      "kind": "brand-out",
+      "name": "The weekly call",
+      "by": "none",
+      "said": "",
+      "ms": 3000
+    }
+  ]
+}
