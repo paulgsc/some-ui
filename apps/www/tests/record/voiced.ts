@@ -15,6 +15,8 @@ import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises"
 import { basename, dirname, join, resolve } from "node:path"
 import type { Browser, Page } from "@playwright/test"
 import {
+  chapterLines,
+  chaptersOf,
   DEFAULT_POLICY,
   estimatedMs,
   MB,
@@ -23,6 +25,7 @@ import {
   TimedWordSchema,
 } from "@some-ui/video-render"
 import type {
+  ChapterMark,
   CutList,
   Ports,
   RenderPolicy,
@@ -332,7 +335,10 @@ export async function recordStills({
 /**
  * `cutList` kept as `cut-list.json` in `root` and rendered to `out` in
  * `series`, its burn-ins (each scene's captions) drawn by the recorder page
- * of the app at `origin` (`./burn-ins`).
+ * of the app at `origin` (`./burn-ins`). The episode's chapters at the
+ * scenes' real times (`marks`, SFEED4) go in `description.txt` beside it,
+ * for the upload's YouTube description; with too few to show, it is not
+ * written.
  */
 export async function renderStills(
   root: string,
@@ -343,8 +349,10 @@ export async function renderStills(
     policy,
     browser,
     origin,
+    marks,
   }: {
     readonly out: string
+    readonly marks: ReadonlyArray<ChapterMark>
     readonly policy: RenderPolicy
     readonly browser: Browser
     readonly origin: string
@@ -365,6 +373,11 @@ export async function renderStills(
     })
     if (!done.ok) fail(["Nothing was rendered:", ...done.problems])
     console.log(`wrote ${join(root, done.value.video)}`)
+    const chapters = chaptersOf(done.value.shotTimes, marks)
+    if (chapters.length > 0) {
+      await writeFile(join(root, "description.txt"), chapterLines(chapters))
+      console.log(`wrote ${join(root, "description.txt")}`)
+    }
   } finally {
     await page.close()
   }

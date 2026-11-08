@@ -54,7 +54,7 @@ import {
   type StorySeason,
 } from "@some-ui/playoff-delta/recording"
 import { THEME_STORAGE_KEY } from "@some-ui/styles/theme"
-import { clipFile, hasCaptions } from "@some-ui/video-render"
+import { chapterSlides, clipFile, hasCaptions } from "@some-ui/video-render"
 import { readJson } from "@some-ui/video-render/node"
 
 import { fail, here, launchChromium, runCommand } from "./command"
@@ -226,7 +226,13 @@ async function voiced(browser: Browser, origin: string): Promise<void> {
     root,
     SERIES,
     voicedCutList(season, week, fill, takes, { bed }),
-    { out: "episode.mp4", policy, browser, origin }
+    {
+      out: "episode.mp4",
+      policy,
+      browser,
+      origin,
+      marks: chapterSlides(scenes),
+    }
   )
 }
 
