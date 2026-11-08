@@ -19,6 +19,9 @@
  * - **A note a kept paste names goes home.** Each opening lets go home any
  *   such note still waiting (a Keep whose release the phone couldn't
  *   store), and the screen says when a change to the paste couldn't be kept.
+ * - **A kept paste is not written again.** An opening that finds the draft
+ *   a kept paste already holds (a Keep that couldn't clear it) clears it,
+ *   and Keep never counts another paste begun at the same instant as kept.
  */
 import { assertNever } from "@some-ui/core-utils"
 import type {
@@ -174,16 +177,23 @@ export function pasteRuntime(
   stores: PasteStores,
   now: () => number
 ): PasteRuntime {
+  const kept = stores.pastes.list()
+  // A draft a kept paste already holds: its Keep couldn't clear it.
+  const restored = stores.draft.read()
+  const done =
+    restored !== null &&
+    kept.some((each) => each.week === restored.week && each.at === restored.at)
+  if (done) stores.draft.write(null)
   let state: PasteState = {
     showing: false,
-    draft: stores.draft.read(),
+    draft: done ? null : restored,
     notice: null,
   }
   const listeners = new Set<() => void>()
 
   // A note a kept paste names that still waits: its Keep couldn't let it go.
   const named = new Set(
-    stores.pastes.list().flatMap(({ note }) => (note === null ? [] : [note]))
+    kept.flatMap(({ note }) => (note === null ? [] : [note]))
   )
   const stranded = takes.takes
     .getSnapshot()

@@ -139,6 +139,32 @@ describe("an error pasted in a week (RR13)", () => {
     expect(again.release).toHaveBeenCalledWith([note?.id])
   })
 
+  it("clears, at the next opening, a draft a kept paste already holds", () => {
+    const storage = inMemoryStorage()
+    const first = phone(storage, onConfirm())
+    first.week.paste.open(QUILLMOSS_WEEK.id)
+    first.week.paste.dispatch({ type: "text", text: "error[E0382]" })
+    const draft = storage.getItem("some-ui:rust-rounds.week-paste-draft")
+    first.week.paste.dispatch({ type: "keep" })
+    // A Keep whose clearing of the draft the phone couldn't store.
+    if (draft !== null) {
+      storage.setItem("some-ui:rust-rounds.week-paste-draft", draft)
+    }
+    const again = phone(storage, onConfirm())
+    expect(again.week.paste.getSnapshot().draft).toBeNull()
+    expect(pasteStores(storage).draft.read()).toBeNull()
+    expect(pasteStores(storage).pastes.list()).toHaveLength(1)
+  })
+
+  it("never counts another paste begun at the same instant as kept", () => {
+    const stores = pasteStores(inMemoryStorage())
+    const paste = { week: QUILLMOSS_WEEK.id, at: NOW, text: "a", note: null }
+    expect(stores.pastes.add(paste)).toBe(true)
+    expect(stores.pastes.add(paste)).toBe(true)
+    expect(stores.pastes.add({ ...paste, text: "b" })).toBe(false)
+    expect(stores.pastes.list()).toEqual([paste])
+  })
+
   it("says when a change to the paste couldn't be kept", () => {
     const storage = inMemoryStorage()
     const on = phone(storage, onConfirm())

@@ -199,7 +199,11 @@ export type PasteStores = {
   }
   readonly pastes: {
     readonly list: () => ReadonlyArray<KeptPaste>
-    /** Adds `paste` once to the pastes kept; false when not kept. */
+    /**
+     * Adds `paste` once to the pastes kept: true when it is kept, already
+     * whole; false when not, or when another paste begun at the same instant
+     * is kept already.
+     */
     readonly add: (paste: KeptPaste) => boolean
   }
 }
@@ -223,7 +227,10 @@ export function pasteStores(storage: KeyedStorage | null): PasteStores {
       add(paste): boolean {
         const opened = openPastes()
         if (!opened.writable) return false
-        if (opened.value.some((each) => each.at === paste.at)) return true
+        const same = opened.value.find((each) => each.at === paste.at)
+        if (same !== undefined) {
+          return canonicalJson(same) === canonicalJson(paste)
+        }
         return writeKept(
           storage,
           PASTES_KEY,
