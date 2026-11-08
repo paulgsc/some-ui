@@ -23,7 +23,7 @@ import {
   rendersQuery,
 } from "@/lib/renders"
 
-import { Part, TILE } from "./layout"
+import { Part, StudioPage, TILE } from "./layout"
 
 const WORDS = RENDERS_WORDS
 
@@ -184,3 +184,10 @@ export const RendersLine = (): JSX.Element | null => {
     </Link>
   )
 }
+
+/** The whole page, heading and all, so its words ship only where it does. */
+export const RendersPage = (): JSX.Element => (
+  <StudioPage heading={WORDS.heading} intro={WORDS.intro} back="index">
+    <RendersBoard />
+  </StudioPage>
+)
