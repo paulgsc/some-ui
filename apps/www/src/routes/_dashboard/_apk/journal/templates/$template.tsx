@@ -15,8 +15,8 @@ import {
   FEEDS_A_TO_Z,
   STUDIO_INDEX_WORDS,
 } from "@/lib/studio-index"
-import { CaptionLook } from "@/components/studio/caption-look"
 import { PairHomeLink } from "@/components/pair-home-link"
+import { CaptionLook } from "@/components/studio/caption-look"
 import { StudioPage } from "@/components/studio/layout"
 import { TemplateShape } from "@/components/studio/template"
 import { TemplatePreview } from "@/components/studio/template-preview"
