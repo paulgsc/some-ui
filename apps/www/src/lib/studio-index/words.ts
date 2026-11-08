@@ -265,7 +265,7 @@ export const STUDIO_INDEX_WORDS = {
 
   templates: {
     intro:
-      "How each kind of video looks. It's the same for every episode, and the AI fills only what's said.",
+      "How each kind of video looks. It's the same for every video of its kind, and the AI fills only what's said.",
     version: (n: number): string => `Version ${String(n)}`,
     usedBy: (feed: string): string => `Used by ${feed}`,
     /** The storyboard (SFEED3): every frame of one episode, from its sample. */
@@ -300,6 +300,34 @@ export const STUDIO_INDEX_WORDS = {
       `${counted(n, "chapter slide")} said aloud`,
     noShape:
       "Made before templates had a shape: no intro, chapters or captions.",
+    /** The release promo (C32): made for a release of an app. */
+    promo: {
+      name: "Release promo",
+      line: "Made for a release of an app",
+      intro:
+        "A short vertical video for a release of an app: its name, the app itself screen by screen, and where to get it. Every release's is made the same way, and the AI writes only the words.",
+      scenes: "Its three scenes",
+      hook: "The opening: the app's name, its version, and two facts on chips",
+      feature:
+        "The app, screen by screen, as code steps through it from sample data, one caption each",
+      featureFor: (before: number, after: number): string =>
+        `As long as that run through the app, with ${counted(before, "second")} before and ${counted(after, "second")} after`,
+      close: "Where to get it, with two badges",
+      lasts: (s: number): string => `${counted(s, "second")} long`,
+      writes: "What the AI writes",
+      title: "The app's name",
+      platform: "Where it runs, on the first chip",
+      stage: "Where it stands, on the second chip",
+      caption: "A caption for each screen",
+      cta: "Where to get it",
+      badge: "Each of the two badges",
+      limit: (lines: number, chars: number): string =>
+        lines === 1
+          ? `One line, up to ${counted(chars, "character")}`
+          : `Up to ${counted(lines, "line")} of ${counted(chars, "character")}`,
+      sounds: "Its sounds come from the kit home keeps, on each scene's moves.",
+      made: "Made on home when asked, once a release's words and sample data are in place. There's no preview of it here.",
+    },
     /** The caption look control (SFEED11, #2707). */
     look: {
       label: "The caption look",
