@@ -19,13 +19,21 @@
  *   mark as it now stands, the lists as they now stand.
  * - **Setting an idea aside asks first.** Home keeps it set aside, every
  *   revision with it: a mark, never a delete (paulgsc/server invariant 32).
+ * - **An answer said again waits on this phone** (#2579, `./redo`): "Say it
+ *   again" records on a desk of its own, and only "Send it again" keeps the
+ *   idea grown (one write, like the others) and lets the new takes go home,
+ *   the takes they replace set aside there. A waiting take a newer one
+ *   replaced is deleted for good once the desk lists both (`dropping`
+ *   asks once), and a send cut short is finished after each read.
  * - **Grouping and sorting are the phone's** (paulgsc/server#645): home
  *   lists newest begun first, and `groupsOf` does the rest.
  */
 import { assertNever, dayOf } from "@some-ui/core-utils"
+import type { PatternTake } from "@some-ui/voice-capture"
 
 import type { Idea, IdeaFormat } from "./model"
 import { withWords } from "./model"
+import { overtaken, waitingRedos } from "./redo"
 
 /** What home heard in a said answer's note. */
 type HomeHeard = {
@@ -194,16 +202,24 @@ export function withHomeWords(
     const held = byId.get(idea.id)
     if (held === undefined) return idea
     return idea.answers.reduce((growing, answer) => {
-      const take = answer.takes?.at(-1)?.take
+      const newest = answer.takes?.at(-1)
+      const take = newest?.take
       const heard = held.answers.find(
         (each) => each.note !== null && each.note === take
       )?.heard
       if (
+        newest === undefined ||
         take === undefined ||
-        answer.versions.length > 0 ||
+        // Words kept since its take now was said: an answer said again
+        // (#2579) still hears its new take's.
+        answer.versions.some(
+          (version) => Date.parse(version.at) >= Date.parse(newest.at)
+        ) ||
         heard === null ||
         heard === undefined ||
-        heard.text.trim() === ""
+        heard.text.trim() === "" ||
+        // Heard once already, whatever the two clocks say.
+        answer.versions.some((version) => version.at === heard.heardAt)
       ) {
         return growing
       }
@@ -229,6 +245,41 @@ export type OnHomeNotice =
   | "removed"
   | "notWritten"
   | "away"
+  /** The idea was sent again with its answers said again (#2579). */
+  | "sentAgain"
+  /** It was kept, but its new takes didn't all start home: next time. */
+  | "sentAgainPartly"
+  /** This phone couldn't keep it, so nothing changed. */
+  | "notSentAgain"
+
+/** How sending an idea again went, as the runtime tells the machine. */
+export type SentAgain = "sent" | "partly" | "unkept"
+
+/** Answers said again on this phone (#2579): what the machine holds of them. */
+export type RedoState = {
+  /**
+   * By idea, the questions this phone can say again (`./redo`'s
+   * `sayable`), from the ideas it keeps; none until they are read.
+   */
+  readonly sayable: Readonly<Record<string, ReadonlyArray<string>>>
+  /** The takes on the desk of answers said again, as last listed. */
+  readonly takes: ReadonlyArray<PatternTake>
+  /** Waiting takes already asked to be deleted, so none is asked twice. */
+  readonly dropping: ReadonlyArray<string>
+}
+
+/** The notes home says were deleted for good from My data. */
+export function deletedNotes(
+  ideas: ReadonlyArray<HomeIdea>
+): ReadonlyArray<string> {
+  return ideas.flatMap((idea) =>
+    idea.answers.flatMap((answer) =>
+      answer.note !== null && typeof answer.deletedAt === "string"
+        ? [answer.note]
+        : []
+    )
+  )
+}
 
 type Reading<T> = { readonly kind: "reading" } | HomeRead<T>
 
@@ -248,6 +299,7 @@ export type OnHomeState = {
   readonly notice: OnHomeNotice | null
   /** The latest read asked for; an answer to an earlier one is stale. */
   readonly seq: number
+  readonly redo: RedoState
 }
 
 export type OnHomeIntent =
@@ -261,6 +313,8 @@ export type OnHomeIntent =
   | { readonly type: "askSetAside" }
   | { readonly type: "confirmed" }
   | { readonly type: "keepIt" }
+  /** Sends the open idea again, with the answers said again (#2579). */
+  | { readonly type: "sendAgain" }
   /** The person closed what the screen said. */
   | { readonly type: "noticeDismissed" }
   | {
@@ -301,6 +355,14 @@ export type OnHomeEvent =
       readonly listed: boolean
       readonly write: HomeWrite<HomeLists>
     }
+  /** The desk of answers said again listed its takes. */
+  | { readonly type: "redoTakes"; readonly takes: ReadonlyArray<PatternTake> }
+  /** The ideas on this phone were read: which answers it can say again. */
+  | {
+      readonly type: "phoneRead"
+      readonly sayable: Readonly<Record<string, ReadonlyArray<string>>>
+    }
+  | { readonly type: "sentAgain"; readonly outcome: SentAgain }
 
 export type OnHomeEffect =
   | { readonly type: "readIdeas"; readonly seq: number }
@@ -319,6 +381,20 @@ export type OnHomeEffect =
     }
   /** Home's words for said answers, added to the ideas on this phone. */
   | { readonly type: "fill"; readonly ideas: ReadonlyArray<HomeIdea> }
+  /**
+   * Finishes a send again cut short, then reads which answers this phone
+   * can say again (`phoneRead`). `deleted`: notes home deleted for good,
+   * which are never set aside.
+   */
+  | { readonly type: "settleRedos"; readonly deleted: ReadonlyArray<string> }
+  /** Deletes these waiting takes for good: nothing will send them. */
+  | { readonly type: "dropRedos"; readonly takes: ReadonlyArray<string> }
+  /** Keeps idea `id` sent again, then sets aside and lets go its takes. */
+  | {
+      readonly type: "sendAgain"
+      readonly id: string
+      readonly deleted: ReadonlyArray<string>
+    }
 
 export type OnHomeStep = {
   readonly state: OnHomeState
@@ -335,6 +411,28 @@ export const INITIAL_ON_HOME: OnHomeState = {
   confirm: null,
   notice: null,
   seq: 0,
+  redo: { sayable: {}, takes: [], dropping: [] },
+}
+
+/** The redos of the open idea waiting on this phone to be sent again. */
+export function openRedos(state: OnHomeState): ReturnType<typeof waitingRedos> {
+  const idea = openIdea(state)
+  return idea === null ? [] : waitingRedos(state.redo.takes, idea.id)
+}
+
+/** Whether this phone can say `question` of idea `id` again. */
+export function canSayAgain(
+  state: OnHomeState,
+  id: string,
+  question: string
+): boolean {
+  return state.redo.sayable[id]?.includes(question) === true
+}
+
+const SENT_AGAIN: Readonly<Record<SentAgain, OnHomeNotice>> = {
+  sent: "sentAgain",
+  partly: "sentAgainPartly",
+  unkept: "notSentAgain",
 }
 
 const same = (state: OnHomeState): OnHomeStep => ({ state, effects: [] })
@@ -400,7 +498,13 @@ export function stepOnHome(state: OnHomeState, event: OnHomeEvent): OnHomeStep {
         state: { ...state, ideas: event.read },
         effects:
           event.read.kind === "read"
-            ? [{ type: "fill", ideas: event.read.value.ideas }]
+            ? [
+                { type: "fill", ideas: event.read.value.ideas },
+                {
+                  type: "settleRedos",
+                  deleted: deletedNotes(event.read.value.ideas),
+                },
+              ]
             : [],
       }
     }
@@ -508,6 +612,47 @@ export function stepOnHome(state: OnHomeState, event: OnHomeEvent): OnHomeStep {
                 },
               }
             : ideas,
+      })
+    }
+    case "redoTakes": {
+      const listed = new Set(event.takes.map((take) => take.id))
+      const dropping = state.redo.dropping.filter((id) => listed.has(id))
+      const drop = overtaken(event.takes).filter((id) => !dropping.includes(id))
+      return {
+        state: {
+          ...state,
+          redo: {
+            ...state.redo,
+            takes: event.takes,
+            dropping: [...dropping, ...drop],
+          },
+        },
+        effects: drop.length === 0 ? [] : [{ type: "dropRedos", takes: drop }],
+      }
+    }
+    case "phoneRead": {
+      return same({
+        ...state,
+        redo: { ...state.redo, sayable: event.sayable },
+      })
+    }
+    case "sendAgain": {
+      const idea = openIdea(state)
+      if (idea === null || state.writing || openRedos(state).length === 0) {
+        return same(state)
+      }
+      return {
+        state: { ...state, writing: true, notice: null },
+        effects: [
+          { type: "sendAgain", id: idea.id, deleted: deletedNotes([idea]) },
+        ],
+      }
+    }
+    case "sentAgain": {
+      return same({
+        ...state,
+        writing: false,
+        notice: SENT_AGAIN[event.outcome],
       })
     }
     case "entry": {

@@ -3,6 +3,8 @@
  * every idea sent whole as home keeps it, grouped and sorted by what it is,
  * one idea at a time with home's words for each answer and its still
  * furnishing mark, and the subjects and keywords every new idea picks from.
+ * A said answer offers Say it again (#2579): its new take waits on this
+ * phone until Send it again sends the idea.
  * Renders `lib/idea/on-home.ts`'s state and forwards taps; its words are
  * Studio's (`onHome`, `lists`).
  */
@@ -15,12 +17,17 @@ import {
   Input,
   Notice,
   SameWidth,
+  TakeList,
   useTakePattern,
 } from "@some-ui/shared"
-import type { BundleTakes, TakePattern } from "@some-ui/voice-capture"
-import { TAKE_WORDS } from "@some-ui/voice-capture"
+import type {
+  BundleTakes,
+  PatternTake,
+  TakePattern,
+} from "@some-ui/voice-capture"
+import { TAKE_WORDS, takeItemView } from "@some-ui/voice-capture"
 import { Unpaired } from "@soundbites/components/unpaired"
-import { keptIdeaLists } from "@soundbites/lib/idea/draft"
+import { answersOf, keptIdeaLists } from "@soundbites/lib/idea/draft"
 import type { QuestionId } from "@soundbites/lib/idea/model"
 import { IDEA_QUESTIONS } from "@soundbites/lib/idea/model"
 import type {
@@ -32,14 +39,16 @@ import type {
   OnHomeState,
 } from "@soundbites/lib/idea/on-home"
 import {
+  canSayAgain,
   dayBegun,
   GROUP_BY,
   groupsOf,
   isEntry,
   openIdea,
+  openRedos,
   SORT_BY,
 } from "@soundbites/lib/idea/on-home"
-import type { IdeasHome } from "@soundbites/lib/idea/on-home-runtime"
+import type { IdeasHome, RedoPorts } from "@soundbites/lib/idea/on-home-runtime"
 import { createIdeasOnHome } from "@soundbites/lib/idea/on-home-runtime"
 import { keptIdeaStore } from "@soundbites/lib/idea/store"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
@@ -64,6 +73,12 @@ export type IdeasOnHomeProps = {
    * it, no answer offers Delete….
    */
   openInMyData?: ((note: string) => void) | undefined
+  /**
+   * The phone's desk of answers said again, and the way to set a replaced
+   * take aside on home (#2579). Without it, no answer offers Say it again.
+   * Read once.
+   */
+  redo?: RedoPorts | undefined
   /** The app's way to pairing, shown while this phone isn't paired (ST34). */
   pair: ReactNode
 }
@@ -279,11 +294,19 @@ function wordsOf(answer: HomeAnswer): string {
   return answer.heard.text.trim() === "" ? WORDS.silent : answer.heard.text
 }
 
+function knownQuestion(question: string): QuestionId | undefined {
+  return IDEA_QUESTIONS.find((each): each is QuestionId => each === question)
+}
+
 function askOf(question: string): string {
-  const known = IDEA_QUESTIONS.find(
-    (each): each is QuestionId => each === question
-  )
+  const known = knownQuestion(question)
   return known === undefined ? question : ASK[known].ask
+}
+
+/** What a take of idea `id`'s answer to `question` answers, as said again. */
+function lineOf(id: string, question: string): string {
+  const known = knownQuestion(question)
+  return known === undefined ? "" : answersOf(id, known)
 }
 
 /**
@@ -324,16 +347,71 @@ const AnswerRecording = ({
   </div>
 )
 
+/**
+ * An answer said again (#2579): Say it again starts a take on the phone's
+ * desk of answers said again (D1, tap to start); once one is under way or
+ * waits, the take pattern's parts show it, with Play, Redo and Delete
+ * (which asks first: it never left the phone).
+ */
+const AnswerRedo = ({
+  pattern,
+  waiting,
+  line,
+  ask,
+  writing,
+}: {
+  pattern: TakePattern
+  /** The desk's takes still waiting to be sent. */
+  waiting: ReadonlyArray<PatternTake>
+  line: string
+  ask: string
+  writing: boolean
+}): JSX.Element => {
+  const snapshot = useTakePattern(pattern)
+  const view = takeItemView(snapshot, waiting, line, pattern.options)
+  const { kind } = view.button
+  const shown =
+    view.current.length > 0 ||
+    view.said !== null ||
+    (kind !== "ready" && kind !== "elsewhere")
+  if (!shown) {
+    return (
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        className="self-start"
+        aria-label={WORDS.sayAgainName(ask)}
+        disabled={writing || snapshot.take.kind !== "idle"}
+        onClick={() => pattern.tap(line, null)}
+      >
+        {WORDS.sayAgain}
+      </Button>
+    )
+  }
+  return (
+    <TakeList
+      pattern={pattern}
+      answers={line}
+      takes={waiting}
+      label={WORDS.sayAgainName(ask)}
+      describe={() => WORDS.saidAgain}
+    />
+  )
+}
+
 const OneIdea = ({
   idea,
   state,
   takes,
+  redo,
   dispatch,
   openInMyData,
 }: {
   idea: HomeIdea
   state: OnHomeState
   takes: BundleTakes | undefined
+  redo: BundleTakes | undefined
   dispatch: Dispatch
   openInMyData: ((note: string) => void) | undefined
 }): JSX.Element => {
@@ -341,14 +419,30 @@ const OneIdea = ({
     takes?.takes.subscribe ?? noSubscribe,
     takes?.takes.getSnapshot ?? noTakes
   )
+  const saidAgain = useSyncExternalStore(
+    redo?.takes.subscribe ?? noSubscribe,
+    redo?.takes.getSnapshot ?? noTakes
+  )
   const playable = new Set(onPhone.map((take) => take.id))
+  // An answer said again and sent plays from the desk it was said on.
+  const resent = new Set(
+    saidAgain.filter((take) => take.waits !== true).map((take) => take.id)
+  )
+  const waiting = saidAgain.filter((take) => take.waits === true)
+  const redos = openRedos(state)
+  const playFrom = (note: string): BundleTakes | undefined => {
+    if (takes !== undefined && playable.has(note)) return takes
+    return redo !== undefined && resent.has(note) ? redo : undefined
+  }
   // Leaving the idea (back, set aside, or the page) stops what it played,
-  // or was loading to play: the desk is the phone's one, and outlives it.
+  // or was loading to play, and keeps a take under way: the desks are the
+  // phone's, and outlive it.
   useEffect(
     () => (): void => {
       takes?.pattern.stopPlaying()
+      redo?.pattern.leave()
     },
-    [takes]
+    [takes, redo]
   )
   return (
     <div className="flex flex-col gap-4">
@@ -390,17 +484,39 @@ const OneIdea = ({
                 note={answer.note}
                 ask={askOf(answer.question)}
                 setAside={answer.setAside}
-                takes={
-                  takes !== undefined && playable.has(answer.note)
-                    ? takes
-                    : undefined
-                }
+                takes={playFrom(answer.note)}
                 openInMyData={openInMyData}
               />
             )}
+            {redo !== undefined &&
+              answer.note !== null &&
+              canSayAgain(state, idea.id, answer.question) && (
+                <AnswerRedo
+                  pattern={redo.pattern}
+                  waiting={waiting}
+                  line={lineOf(idea.id, answer.question)}
+                  ask={askOf(answer.question)}
+                  writing={state.writing}
+                />
+              )}
           </li>
         ))}
       </ul>
+      {redos.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <Button
+            type="button"
+            className="self-start"
+            disabled={state.writing}
+            onClick={() => dispatch({ type: "sendAgain" })}
+          >
+            {WORDS.sendAgain}
+          </Button>
+          <p className="text-muted-foreground text-xs">
+            {WORDS.sendAgainLine(redos.length)}
+          </p>
+        </div>
+      )}
       <div className="flex flex-col gap-1">
         <Button
           type="button"
@@ -534,12 +650,14 @@ const Lists = ({
 const Screen = ({
   state,
   takes,
+  redo,
   dispatch,
   openInMyData,
   pair,
 }: {
   state: OnHomeState
   takes: BundleTakes | undefined
+  redo: BundleTakes | undefined
   dispatch: Dispatch
   openInMyData: ((note: string) => void) | undefined
   pair: ReactNode
@@ -558,6 +676,7 @@ const Screen = ({
           idea={idea}
           state={state}
           takes={takes}
+          redo={redo}
           dispatch={dispatch}
           openInMyData={openInMyData}
         />
@@ -596,12 +715,19 @@ export const IdeasOnHome = ({
   takes,
   initialLists = false,
   openInMyData,
+  redo,
   pair,
 }: IdeasOnHomeProps): JSX.Element => {
   /* eslint-disable owner-guard/no-mount-snapshot -- the runtime, and what it runs on, are taken once per mount, as the idea screens' are */
   const [runtime] = useState(() =>
-    createIdeasOnHome({ home, ideas: keptIdeaStore(), lists: keptIdeaLists() })
+    createIdeasOnHome({
+      home,
+      ideas: keptIdeaStore(),
+      lists: keptIdeaLists(),
+      redo,
+    })
   )
+  const [redoTakes] = useState(() => redo?.takes)
   const [lists] = useState(initialLists)
   /* eslint-enable owner-guard/no-mount-snapshot */
   useEffect(() => runtime.attach(lists), [runtime, lists])
@@ -625,6 +751,7 @@ export const IdeasOnHome = ({
       <Screen
         state={state}
         takes={takes}
+        redo={redoTakes}
         dispatch={dispatch}
         openInMyData={openInMyData}
         pair={pair}

@@ -1127,6 +1127,15 @@ export const STUDIO_WORDS = {
     deleteAnswerName: (ask: string): string => `Delete your take for “${ask}”…`,
     answerDeleted: (day: string): string =>
       `You deleted this take for good on ${day}. The answer keeps its place.`,
+    /** One said answer's "Say it again", recorded on this phone (#2579). */
+    sayAgain: "Say it again",
+    sayAgainName: (ask: string): string => `Say “${ask}” again`,
+    /** The new take, under the answer, while it waits to be sent. */
+    saidAgain:
+      "Your new take waits on this phone. Home keeps this answer as it is until you send the idea again.",
+    sendAgain: "Send it again",
+    sendAgainLine: (n: number): string =>
+      `Sends the idea with ${plural(n, "new take", "new takes")}. Home keeps every version, and sets aside each take a new one replaces.`,
     setAside: "Set it aside",
     setAsideLine:
       "Home keeps it, every version, out of this list. Nothing reads it.",
@@ -1146,6 +1155,12 @@ export const STUDIO_WORDS = {
       removed: "Taken off. Ideas that use it keep it.",
       notWritten: "Home didn't take that, so nothing changed.",
       away: "Home can't be reached right now, so nothing changed.",
+      sentAgain:
+        "Sent again. It reaches home with its new takes, and the takes they replace are set aside there.",
+      sentAgainPartly:
+        "Kept on this phone. Some new takes haven't started home yet; that finishes the next time this list opens.",
+      notSentAgain:
+        "This phone couldn't keep that, so nothing changed. Your new takes still wait here.",
     } satisfies Record<OnHomeNotice, string>,
   },
 

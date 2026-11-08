@@ -6,6 +6,7 @@
  * which answer still counts is `stepOnHome`'s.
  */
 import { assertNever } from "@some-ui/core-utils"
+import type { BundleTakes } from "@some-ui/voice-capture"
 
 import type {
   HomeIdea,
@@ -17,8 +18,10 @@ import type {
   OnHomeEvent,
   OnHomeIntent,
   OnHomeState,
+  SentAgain,
 } from "./on-home"
 import { INITIAL_ON_HOME, stepOnHome, withHomeWords } from "./on-home"
+import { cutShort, sayable, sendAgain, waitingRedos } from "./redo"
 import type { IdeaStore } from "./store"
 
 /** Home, as Ideas on home reads and writes it. Every call resolves. */
@@ -44,11 +47,29 @@ export type IdeasHome = {
   ) => Promise<HomeWrite<HomeLists>>
 }
 
+/**
+ * The desk of answers said again (#2579; www's `lib/idea-takes`,
+ * `send: "on-confirm"`), and the way to set a replaced take aside on home.
+ */
+export type RedoPorts = {
+  readonly takes: BundleTakes
+  /**
+   * Sets each of these takes aside on home, keeping it, wherever this
+   * phone keeps it: the takes answers said again replace. Says whether
+   * every one was.
+   */
+  readonly setAside: (ids: ReadonlyArray<string>) => boolean
+}
+
 export type OnHomePorts = {
   readonly home: IdeasHome
   readonly ideas: IdeaStore
   /** Where a new idea finds the lists as home last said them. */
   readonly lists: { readonly write: (lists: HomeLists) => boolean }
+  /** Without it, no answer can be said again. */
+  readonly redo?: RedoPorts | undefined
+  /** Milliseconds since the epoch; `Date.now` unless a test gives one. */
+  readonly now?: (() => number) | undefined
 }
 
 export type OnHomeRuntime = {
@@ -86,6 +107,42 @@ export function createIdeasOnHome(ports: OnHomePorts): OnHomeRuntime {
   /** Ignored when not kept: New idea then picks from the last copy kept. */
   const remember = (lists: HomeLists): void => {
     ports.lists.write(lists)
+  }
+
+  const now = ports.now ?? Date.now
+
+  /**
+   * The replaced takes set aside on home first, then the new ones let go:
+   * a take that still waits is what tells the next read a send was cut
+   * short (`cutShort`), so neither half is lost. A note home deleted for
+   * good is never set aside. Says whether both were stored.
+   */
+  function setAsideThenRelease(
+    redo: RedoPorts,
+    sent: {
+      readonly release: ReadonlyArray<string>
+      readonly replaced: ReadonlyArray<string>
+    },
+    deleted: ReadonlyArray<string>
+  ): boolean {
+    const aside = sent.replaced.filter((take) => !deleted.includes(take))
+    if (aside.length > 0 && !redo.setAside(aside)) return false
+    return sent.release.length === 0 || redo.takes.release(sent.release)
+  }
+
+  /** Keeps idea `id` sent again with its waiting redos, then lets them go. */
+  function sentAgain(id: string, deleted: ReadonlyArray<string>): SentAgain {
+    const { redo } = ports
+    const idea = ports.ideas.list()?.find((each) => each.id === id)
+    if (redo === undefined || idea === undefined) return "unkept"
+    const waiting = waitingRedos(redo.takes.takes.getSnapshot(), id)
+    const resent = sendAgain(idea, waiting, new Date(now()).toISOString())
+    if (resent === null) return "unkept"
+    const kept = ports.ideas.keep((ideas) =>
+      ideas.map((each) => (each.id === id ? resent.idea : each))
+    )
+    if (kept === null) return "unkept"
+    return setAsideThenRelease(redo, resent, deleted) ? "sent" : "partly"
   }
 
   function run(effect: OnHomeEffect): void {
@@ -139,6 +196,35 @@ export function createIdeasOnHome(ports: OnHomePorts): OnHomeRuntime {
         ports.ideas.keep((ideas) => withHomeWords(ideas, effect.ideas) ?? ideas)
         return
       }
+      case "settleRedos": {
+        const { redo } = ports
+        const kept = ports.ideas.list()
+        if (redo === undefined || kept === null) return
+        const cut = cutShort(kept, redo.takes.takes.getSnapshot())
+        // Ignored when not stored: the takes still wait, and the next read
+        // finishes it.
+        setAsideThenRelease(redo, cut, effect.deleted)
+        send({
+          type: "phoneRead",
+          sayable: Object.fromEntries(
+            kept.map((idea) => [idea.id, sayable(idea)])
+          ),
+        })
+        return
+      }
+      case "dropRedos": {
+        // Ignored when not stored: they wait, sent by nothing, and are asked
+        // for again the next time the screen opens.
+        ports.redo?.takes.discard(effect.takes)
+        return
+      }
+      case "sendAgain": {
+        send({
+          type: "sentAgain",
+          outcome: sentAgain(effect.id, effect.deleted),
+        })
+        return
+      }
       default: {
         assertNever(effect)
       }
@@ -156,9 +242,18 @@ export function createIdeasOnHome(ports: OnHomePorts): OnHomeRuntime {
     dispatch: (intent) => send(intent),
     attach(lists): () => void {
       attached = true
+      const desk = ports.redo?.takes.takes
+      const listed = (): void => {
+        if (desk !== undefined) {
+          send({ type: "redoTakes", takes: desk.getSnapshot() })
+        }
+      }
+      const unlisten = desk?.subscribe(listed)
+      listed()
       send({ type: "entered", lists })
       return (): void => {
         attached = false
+        unlisten?.()
       }
     },
   }
