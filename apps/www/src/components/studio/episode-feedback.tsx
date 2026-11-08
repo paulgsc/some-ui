@@ -3,7 +3,7 @@
  * note here" catches the moment the video stands at and offers decision 7's
  * fixed categories; Studio's Feedback page lists every note kept. Reads
  * `lib/episode-feedback`'s snapshot, and steps its pure draft; every word is
- * its table's.
+ * its table's. Phone build only (`build.paths.ts`).
  */
 import type { JSX, RefObject } from "react"
 import { useReducer, useState, useSyncExternalStore } from "react"
@@ -33,7 +33,7 @@ import { FEED_FACTS } from "@/lib/studio-index"
 const WORDS = FEEDBACK_WORDS
 
 /** Every note kept on this phone, oldest first. */
-export const useEpisodeNotes = (): ReadonlyArray<Note> =>
+const useEpisodeNotes = (): ReadonlyArray<Note> =>
   useSyncExternalStore(episodeFeedback.subscribe, episodeFeedback.getSnapshot)
 
 const Choices = ({
@@ -158,8 +158,23 @@ export const EpisodeNote = ({
   )
 }
 
-/** Studio's Feedback page's list: every note, the newest first. */
-export const FeedbackList = ({
+/**
+ * Studio's Feedback page's body: every note, the newest first, or `none`
+ * when there is none.
+ */
+export const FeedbackNotes = ({ none }: { none: string }): JSX.Element => {
+  const notes = useEpisodeNotes()
+  return notes.length === 0 ? (
+    <p className="text-muted-foreground text-sm">{none}</p>
+  ) : (
+    <>
+      <p className="text-muted-foreground text-sm">{WORDS.waiting}</p>
+      <FeedbackList notes={notes} />
+    </>
+  )
+}
+
+const FeedbackList = ({
   notes,
 }: {
   notes: ReadonlyArray<Note>
