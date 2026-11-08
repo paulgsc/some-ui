@@ -12,6 +12,7 @@ import {
   BRAND_MOTION,
   FORMAT_SCHEMA,
   inTheme,
+  versionRefusal,
   type Format,
   type Parsed,
   type Shape,
@@ -102,14 +103,24 @@ function shapeOf(kind: FormatKind, version: number): Shape {
 /** A format's id: its folder's name. */
 export const formatId = (kind: FormatKind): string => `playoff-delta-${kind}`
 
+/** Why `version` of `kind`'s format can't be drawn here, or null (VS1). */
+export const versionRefusalOf = (
+  kind: FormatKind,
+  version: number
+): string | null =>
+  versionRefusal(formatId(kind), FORMAT_VERSION[kind], version)
+
 /**
  * The show's format at `version` (the newest by default): every scene a week
- * (or the legend) has, in order, and from version 2 its shape.
+ * (or the legend) has, in order, and from version 2 its shape. Throws for a
+ * version this build doesn't know (`versionRefusalOf`).
  */
 export function formatOf(
   kind: FormatKind,
   version: number = FORMAT_VERSION[kind]
 ): Format {
+  const refused = versionRefusalOf(kind, version)
+  if (refused !== null) throw new Error(refused)
   const slides = slidesOf(kind)
   return {
     schema: FORMAT_SCHEMA,

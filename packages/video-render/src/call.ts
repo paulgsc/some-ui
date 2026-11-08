@@ -34,7 +34,14 @@ import type { ChapterMark } from "./chapters"
 import { chapterSlides } from "./chapters"
 import { once, problemsOf } from "./cut-list"
 import type { CutList, Parsed } from "./cut-list"
-import { FORMAT_SCHEMA, inTheme, repeatedId, showId, words } from "./format"
+import {
+  FORMAT_SCHEMA,
+  inTheme,
+  repeatedId,
+  showId,
+  versionRefusal,
+  words,
+} from "./format"
 import type { Format, Shape } from "./format"
 import {
   choiceProblems,
@@ -145,11 +152,18 @@ const scene = (
   ...(isRepeated(id) ? { repeat: { max: CALL_MOST[id] } } : {}),
 })
 
+/** Why `version` of the call's template can't be drawn here, or null (VS1). */
+export const callVersionRefusal = (version: number): string | null =>
+  versionRefusal("the call's template", CALL_VERSION, version)
+
 /**
  * The call's format at `version`: its sections, in the order every call says
- * them, and from version 2 its shape.
+ * them, and from version 2 its shape. Throws for a version this build doesn't
+ * know (`callVersionRefusal`).
  */
 export function callFormat(version: number = CALL_VERSION): Format {
+  const refused = callVersionRefusal(version)
+  if (refused !== null) throw new Error(refused)
   return {
     schema: FORMAT_SCHEMA,
     id: CALL_ID,
@@ -284,8 +298,17 @@ export const CallWeekSchema = z.strictObject({
   schema: z.literal(CALL_WEEK_SCHEMA),
   template: z.strictObject({
     id: z.literal(CALL_ID),
-    /** The format version it was written for, and so is drawn in. */
-    version: z.number().int().min(1).max(CALL_VERSION),
+    /**
+     * The format version it was written for, and so is drawn in; one newer
+     * than this build knows is refused (VS1), never drawn in an older look.
+     */
+    version: z
+      .number()
+      .int()
+      .min(1)
+      .max(CALL_VERSION, {
+        message: `newer than this build knows: it draws up to version ${CALL_VERSION}, so publish a newer stage first`,
+      }),
   }),
   /** The days it covers, both included. */
   week: z.strictObject({ from: day, to: day }),

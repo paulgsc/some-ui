@@ -13,7 +13,7 @@
 
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { join, resolve } from "node:path"
-import type { Browser, Page } from "@playwright/test"
+import type { Browser, Locator, Page } from "@playwright/test"
 import { installedCompositionPort } from "@some-ui/video-motion/node"
 import {
   chapterLines,
@@ -269,6 +269,25 @@ export type Shot = {
  * recorded, the scenes whose frame says they overflow (`data-overflow`).
  * Every animation is at rest in the still.
  */
+/**
+ * Waits for `frame` on `page`, or for the stage's refusal (VS1, #2796): a
+ * stage asked for a template version newer than it knows says so in a
+ * `[data-refused]` element, and the recording fails with its words instead
+ * of drawing the newer template in an older look.
+ */
+export async function shownFrame(page: Page, frame: string): Promise<Locator> {
+  const refusal = page.locator("[data-refused]")
+  await page.locator(`${frame}, [data-refused]`).first().waitFor()
+  if ((await refusal.count()) > 0)
+    fail([
+      "The stage refused to draw this:",
+      ...((await refusal.first().getAttribute("data-refused")) ?? "").split(
+        "\n"
+      ),
+    ])
+  return page.locator(frame)
+}
+
 export async function recordStills({
   page,
   root,
@@ -296,8 +315,7 @@ export async function recordStills({
   for (const [i, shot] of shots.entries()) {
     const file = stillFile(i, shot.id)
     await page.goto(shot.url)
-    const shown = page.locator(frame(shot.id))
-    await shown.waitFor()
+    const shown = await shownFrame(page, frame(shot.id))
     await page.evaluate(async () => {
       await document.fonts.ready
     })

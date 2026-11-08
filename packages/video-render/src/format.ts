@@ -216,6 +216,22 @@ export const FormatSchema = z
 export type Format = z.infer<typeof FormatSchema>
 export type FormatScene = z.infer<typeof FormatSceneSchema>
 
+/**
+ * Why a stage that draws format `name` up to version `newest` can't draw
+ * `version`, or null when it can (VS1, #2796): a version newer than the
+ * build knows is a fill written for a later stage, which this one would draw
+ * in an older look, silently.
+ */
+export function versionRefusal(
+  name: string,
+  newest: number,
+  version: number
+): string | null {
+  if (Number.isInteger(version) && version >= 1 && version <= newest)
+    return null
+  return `This stage draws ${name} up to version ${String(newest)}, and was asked for version ${String(version)}: publish a newer stage first`
+}
+
 export function parseFormat(raw: unknown): Parsed<Format> {
   const parsed = FormatSchema.safeParse(raw)
   return parsed.success

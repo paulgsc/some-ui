@@ -8,7 +8,6 @@ import {
   CALL_CHAPTERS,
   callFormat,
   CallIndexSchema,
-  CallWeekSchema,
   hasCaptions,
   markThemeOf,
   refUrl,
@@ -423,7 +422,7 @@ export const CallStagePage = ({
   const fetched = weekSource.useResource(
     ["call", "week", pick.from],
     pick.from ?? "",
-    CallWeekSchema,
+    undefined,
     { enabled: live && pick.from !== null, retry: 1 }
   )
   const state = stageOf({
@@ -447,7 +446,17 @@ export const CallStagePage = ({
   if (state.kind === "waiting" || state.kind === "blank") return null
   if (shown === null || at === null)
     return (
-      <ul className="p-6 font-mono text-sm">
+      // VS1 (#2796): what keeps the week off the frame (a template version
+      // newer than this stage knows among it) is published where the
+      // recorder reads it, so a recording fails instead of waiting.
+      <ul
+        data-refused={
+          state.kind === "none"
+            ? state.problems.join("\n")
+            : "the week has no scene to show"
+        }
+        className="p-6 font-mono text-sm"
+      >
         {(state.kind === "none" ? state.problems : []).map((problem, i) => (
           // eslint-disable-next-line react/no-array-index-key
           <li key={i}>{problem}</li>

@@ -152,7 +152,11 @@ export type StageState =
       /** Why the live week couldn't make a call, when it was read. */
       readonly problems: ReadonlyArray<string>
     }
-  /** Nothing to show at all: the sample itself can't make a call. */
+  /**
+   * Nothing to show at all: the sample itself can't make a call, or, on
+   * record, the live week was read and can't (VS1: one written for a newer
+   * template than this stage knows, say).
+   */
   | { readonly kind: "none"; readonly problems: ReadonlyArray<string> }
 
 /**
@@ -165,7 +169,8 @@ export function stageOf(input: {
   readonly record: boolean
   readonly from: string | undefined
   readonly index: Read<CallIndex>
-  readonly week: Read<CallWeek>
+  /** The week's file as read, parsed here. */
+  readonly week: Read<unknown>
   readonly sample: Parsed<CallWeek>
 }): StageState {
   const live = input.reads && input.from !== "sample"
@@ -191,8 +196,12 @@ export function stageOf(input: {
   // An index that keeps no week yet is nothing to read, not a failed read.
   const empty = input.index.data?.weeks.length === 0
   const unread = live && !empty
-  if (input.record && unread) return { kind: "blank" }
   const problems = real?.ok === false ? real.problems : []
+  // VS1 (#2796): a week read and refused is said on the frame, where the
+  // recorder reads it; one never read leaves it blank, and the recorder fails
+  // on that too.
+  if (input.record && problems.length > 0) return { kind: "none", problems }
+  if (input.record && unread) return { kind: "blank" }
   if (!input.sample.ok)
     return { kind: "none", problems: [...problems, ...input.sample.problems] }
   return {
