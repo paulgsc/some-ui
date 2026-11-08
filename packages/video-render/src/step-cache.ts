@@ -17,8 +17,8 @@
  * is never room (VC1): only a folder or an entry that is not there counts as
  * nothing held; any other error reading them keeps the step uncached, with a
  * warning, and the render goes on. Entries are written to a temporary name
- * and renamed into place,
- * so a step killed half way leaves nothing that reads as kept. A kept file is
+ * and renamed into place, so a step killed half way leaves nothing that reads
+ * as kept. A kept file is
  * copied out, never linked: ffmpeg's `-y` rewrites a file in place, which
  * would change a linked entry.
  */
@@ -26,6 +26,7 @@
 import { createHash } from "node:crypto"
 import * as nodeFs from "node:fs/promises"
 import { extname, isAbsolute, join, resolve } from "node:path"
+import { isRecord } from "@some-ui/core-utils"
 
 import type { RenderPolicy } from "./policy"
 import { overBudget } from "./policy"
@@ -62,7 +63,6 @@ export type CacheFs = {
   readonly rm: (path: string) => Promise<void>
 }
 
-/** The cache's file operations on the real disk. */
 export const nodeCacheFs: CacheFs = {
   readdir: (path) => nodeFs.readdir(path),
   stat: (path) => nodeFs.stat(path),
@@ -72,21 +72,16 @@ export const nodeCacheFs: CacheFs = {
   rm: (path) => nodeFs.rm(path, { force: true }),
 }
 
-/** What the cache holds: its bytes, or why they could not be counted. */
 type Held = { readonly bytes: number } | { readonly unknown: string }
 
 const absent = (error: unknown): boolean =>
-  typeof error === "object" &&
-  error !== null &&
-  "code" in error &&
-  error.code === "ENOENT"
+  isRecord(error) && error["code"] === "ENOENT"
 
 async function heldBytes(dir: string, fs: CacheFs): Promise<Held> {
   let names: ReadonlyArray<string>
   try {
     names = await fs.readdir(dir)
   } catch (error) {
-    // No folder yet is nothing kept; any other failure is a size unknown.
     if (absent(error)) return { bytes: 0 }
     return { unknown: `its folder could not be listed (${String(error)})` }
   }

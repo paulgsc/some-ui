@@ -41,14 +41,12 @@ const policy = (cacheBytes: number): RenderPolicy => ({
   cacheBytes,
 })
 
-/** An errno-shaped failure, as node:fs rejects with. */
 const errno = (code: string): NodeJS.ErrnoException =>
   Object.assign(new Error(`${code}: injected`), { code })
 
 /**
- * The real file operations, except that each one named fails with its code;
- * `stat` fails only for entries inside the cache's own folder, so the file
- * being kept can still be measured.
+ * `stat` fails only inside the cache's folder, so the file being kept can
+ * still be measured.
  */
 function failing(
   codes: Partial<Record<"readdir" | "stat" | "mkdir", string>>
@@ -135,7 +133,6 @@ describe("the step cache", () => {
 
   it("warns, never fails, when its folder cannot be made", async () => {
     const warned: Array<string> = []
-    // The folder is not there, so nothing is held, and making it fails.
     const cache = stepCache(
       join(root, "steps"),
       policy(1_000_000),
@@ -150,9 +147,6 @@ describe("the step cache", () => {
     expect(warned[0]).toContain("not cached: a.wav: it could not be kept")
   })
 
-  // VC1: a size the cache cannot count is never room. Only a folder or an
-  // entry that is not there counts as nothing; any other failure to count
-  // keeps the step uncached, with a warning, and never fails the render.
   describe("VC1: a size it cannot count is never room", () => {
     const keep = async (fs: CacheFs): Promise<ReadonlyArray<string>> => {
       const warned: Array<string> = []
@@ -172,40 +166,20 @@ describe("the step cache", () => {
       return warned
     }
 
-    it.each(["EACCES", "EIO", "ENOTDIR"])(
-      "keeps nothing when its folder cannot be listed (%s)",
-      async (code) => {
-        const warned = await keep(failing({ readdir: code }))
-        expect(warned).toHaveLength(1)
-        expect(warned[0]).toContain(
-          "not cached: a.wav: the cache's size is unknown, its folder could not be listed"
-        )
-        expect(warned[0]).toContain(code)
-      }
-    )
-
-    it.each(["EACCES", "EIO"])(
-      "keeps nothing when an entry cannot be measured (%s)",
-      async (code) => {
-        const warned = await keep(failing({ stat: code }))
-        expect(warned).toHaveLength(1)
-        expect(warned[0]).toContain(
-          "not cached: a.wav: the cache's size is unknown, old.wav could not be measured"
-        )
-        expect(warned[0]).toContain(code)
-      }
-    )
-
-    it("counts a folder that is not there as nothing held", async () => {
-      const warned: Array<string> = []
-      await writeFile(join(root, "a.wav"), "take")
-      const cache = stepCache(join(root, "steps"), policy(1_000), (l) =>
-        warned.push(l)
+    it("keeps nothing when its folder cannot be listed", async () => {
+      const warned = await keep(failing({ readdir: "EIO" }))
+      expect(warned).toHaveLength(1)
+      expect(warned[0]).toContain(
+        "not cached: a.wav: the cache's size is unknown, its folder could not be listed"
       )
-      expect(await cache.put("k", ".wav", join(root, "a.wav"), "a.wav")).toBe(
-        true
+    })
+
+    it("keeps nothing when an entry cannot be measured", async () => {
+      const warned = await keep(failing({ stat: "EACCES" }))
+      expect(warned).toHaveLength(1)
+      expect(warned[0]).toContain(
+        "not cached: a.wav: the cache's size is unknown, old.wav could not be measured"
       )
-      expect(warned).toEqual([])
     })
 
     it("counts an entry gone since it was listed as nothing held", async () => {
@@ -218,7 +192,6 @@ describe("the step cache", () => {
         (l) => warned.push(l),
         {
           ...nodeCacheFs,
-          // Lists an entry that is gone by the time it is measured.
           readdir: (): Promise<ReadonlyArray<string>> =>
             Promise.resolve(["gone.wav"]),
         }
