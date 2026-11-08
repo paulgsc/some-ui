@@ -72,22 +72,15 @@ same data the slide draws:
 ## The show
 
 Playoff Delta is a show (SHOW epic, #2525): every week is an episode of the
-same format, fed that week's data, and the owner brings only the voice.
+same format, fed that week's data, filled by a routine and said by home's
+speaker; the owner watches it (FEED, #2643).
 `src/lib/show.ts` makes both formats (the week's and the legend's) from the
 slides above, a compile-time template, and pins each version under
 `@some-ui/video-render`'s `src/templates/<id>/v<n>.json`. Its test holds the newest equal to the
 code, so a change to the slides (their order, names, points or holds)
-fails until a new version is pinned. An episode is
-`episodeFor(season, week, sum, inMs)`: a primer the phone's Studio opens
-(each scene's point and the facts a take keeps, voiced ad-lib), listed
-under the show "Playoff Delta" and pinned to the format, the series and `sum`, with a cut list whose pictures are the
-clips, each starting at `inMs`. The recorder sums the season as the stage
-read it (its contract JSON), not the published file's bytes.
-The episode also carries its upload's title and description (SH5),
-`uploadOf(season, week)`, worded in `UPLOAD` (`src/lib/words.ts`) under the
-same words rules as the slides and held to YouTube's limits; the phone's
-Finish shows them once the episode is ready, and the owner uploads by hand.
-The schemas are `@some-ui/video-render`'s (`format.ts`, `episode.ts`).
+fails until a new version is pinned. `factsOf(season, week)` gives the facts
+each scene keeps, which the fill's check holds the narration to.
+The format schema is `@some-ui/video-render`'s (`format.ts`).
 
 ## What is said
 
@@ -141,7 +134,6 @@ Each Tuesday in season a scheduled session fills the weeks due into
 ```sh
 pnpm --filter www build
 pnpm --filter www record:playoff-delta --week 8 --narration SF-week-08.json --season-file SF.json
-pnpm --filter www record:playoff-delta --clips --week 9   # my own voice, until FEED6
 ```
 
 From format version 2 an episode is voiced (FEED3, #2646):
@@ -163,9 +155,8 @@ at rest, has home's Kokoro speaker say each in `PD_VOICE`, and renders one
 
 The same fill and season give the same bytes. The recorder refuses a scene
 the frame can't hold (`data-overflow`). A fill written for version 1 was for
-my voice and isn't voiced. `--clips` records the version 1 episode Studio
-opens for my voice: one clip and still per slide and `episode.json`. The
-recorder's header has every option.
+my voice and isn't voiced: an episode is never mine to voice (FEED6, #2649).
+The recorder's header has every option.
 
 ## Next
 

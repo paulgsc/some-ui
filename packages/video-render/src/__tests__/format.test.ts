@@ -9,14 +9,12 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import {
-  clipFile,
-  episodeOf,
-  parseEpisode,
   UPLOAD_DESCRIPTION_MAX_BYTES,
   UPLOAD_TITLE_MAX_CHARS,
   UploadCopySchema,
 } from "@video-render/episode"
-import type { EpisodeInput } from "@video-render/episode"
+import { clipFile, episodeOf, parseEpisode } from "@video-render/episode-file"
+import type { EpisodeInput } from "@video-render/episode-file"
 import { FORMAT_SCHEMA, parseFormat } from "@video-render/format"
 import type { Format } from "@video-render/format"
 import { readFormat } from "@video-render/node"

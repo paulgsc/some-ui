@@ -4,13 +4,6 @@
  * episodes, the narration's check, and the voiced episode (FEED3).
  */
 export { checkNarration, type Narration } from "./lib/narration"
-export {
-  CLIPS_VERSION,
-  episodeFor,
-  formatOf,
-  kindOf,
-  RECORDING,
-  VOICED_VERSION,
-} from "./lib/show"
+export { formatOf, kindOf, RECORDING, VOICED_VERSION } from "./lib/show"
 export { parseStorySeason, type StorySeason } from "./lib/story"
 export { PD_VOICE, voicedCutList, voicedScenes } from "./lib/voiced"

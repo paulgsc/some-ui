@@ -30,7 +30,7 @@ const USAGE = [
   "       motion prove <composition> [--variables <file>] [--runs 2]",
   "       motion video <video folder> [--series <folder>] [--brand <folder>] [--prove]",
   "       motion walk <app> --sample <file> --out <folder>",
-  "       motion promo <release folder> --out <folder> [--prove]",
+  "       motion promo <release folder> --out <folder> [--brand <folder>] [--prove]",
 ].join("\n")
 
 /** The apps a walk can show, each by its sample's schema and its steps. */
