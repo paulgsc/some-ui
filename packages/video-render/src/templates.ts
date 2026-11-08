@@ -13,6 +13,9 @@
 
 import type { Format } from "./format"
 import { parseFormat } from "./format"
+import callSeries from "./sample/series/conference-call/v1.json"
+import weekSeries from "./sample/series/playoff-delta-week/v2.json"
+import { parseSeries } from "./series"
 import callV2 from "./templates/conference-call/v2.json"
 import legendV2 from "./templates/playoff-delta-legend/v2.json"
 import weekV2 from "./templates/playoff-delta-week/v2.json"
@@ -41,4 +44,40 @@ export function templateFormat(id: TemplateId): Format {
   const parsed = parseFormat(NEWEST[id])
   if (!parsed.ok) throw new Error(`${id}: ${parsed.problems.join("; ")}`)
   return parsed.value
+}
+
+/**
+ * The series each template's videos are drawn in, by its folder under
+ * `sample/series/`, as home's recorders name it (www's `tests/record`):
+ * Playoff Delta's legend is drawn in the week's.
+ */
+export const TEMPLATE_SERIES = {
+  "conference-call": "conference-call",
+  "playoff-delta-legend": "playoff-delta-week",
+  "playoff-delta-week": "playoff-delta-week",
+} as const satisfies Record<TemplateId, string>
+
+const NEWEST_SERIES: Readonly<
+  Record<(typeof TEMPLATE_SERIES)[TemplateId], unknown>
+> = {
+  "conference-call": callSeries,
+  "playoff-delta-week": weekSeries,
+}
+
+/**
+ * How template `id`'s videos are captioned (SFEED11, #2707): the `captions`
+ * design its series' newest version names, a look of `@some-ui/burn-ins`, or
+ * `null` when it names none, and the frame it is drawn in.
+ */
+export function templateCaptions(id: TemplateId): {
+  readonly look: string | null
+  readonly frame: { readonly width: number; readonly height: number }
+} {
+  const parsed = parseSeries(NEWEST_SERIES[TEMPLATE_SERIES[id]])
+  if (!parsed.ok) throw new Error(`${id}: ${parsed.problems.join("; ")}`)
+  const { designs, frame } = parsed.value
+  return {
+    look: designs.captions ?? null,
+    frame: { width: frame.width, height: frame.height },
+  }
 }
