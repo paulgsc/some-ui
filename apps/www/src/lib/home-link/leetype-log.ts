@@ -192,7 +192,7 @@ export type TakenEvents = {
 }
 
 /** No event remembered: every event goes. */
-export const NONE_TAKEN: TakenEvents = {
+const NONE_TAKEN: TakenEvents = {
   took: () => false,
   take: () => undefined,
   forget: () => undefined,
