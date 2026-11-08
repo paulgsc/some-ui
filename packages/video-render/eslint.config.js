@@ -29,6 +29,8 @@ const ENGINE_CHOSEN = [
   "pow",
   "cbrt",
   "hypot",
+  // Not a function of its input at all.
+  "random",
 ]
 
 const config = [
@@ -53,6 +55,11 @@ const config = [
         {
           selector: "MemberExpression[object.name='Math'][computed=true]",
           message: "Name the Math function, so lint can see it.",
+        },
+        {
+          selector:
+            "MemberExpression[object.name='globalThis'][property.name='Math']",
+          message: "Name Math itself, so lint can see what is called.",
         },
         // This override replaces the preset's, so its selectors come too.
         ...reactImportBanSelectors,

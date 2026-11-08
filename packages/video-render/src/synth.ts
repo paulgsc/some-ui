@@ -48,9 +48,11 @@ const ease = (u: number): number => {
 export type Partials = ReadonlyArray<readonly [ratio: number, level: number]>
 
 /**
- * One sine voice with its partials, added into `out` from `start` for
- * `length` samples. Past the end it wraps to the start, for a loop, or with
- * `wrap: false` stops there. `gain(i)` is its level `i` samples in.
+ * One sine voice with its partials, added into `out` from sample `start`
+ * for `length` samples. Past the end it wraps to the start, for a loop, or
+ * with `wrap: false` stops there. `gain(i)` is its level `i` samples in.
+ * Refuses a start that isn't a whole sample inside `out`, which a typed
+ * array would otherwise drop without a word.
  */
 export function addTone(
   out: Float64Array,
@@ -61,6 +63,10 @@ export function addTone(
   gain: (i: number) => number,
   { wrap = true }: { readonly wrap?: boolean } = {}
 ): void {
+  if (!Number.isInteger(start) || start < 0 || start >= out.length)
+    throw new RangeError(
+      `a tone starts at sample ${String(start)}, outside 0..${String(out.length - 1)}`
+    )
   const steps = partials.map(([ratio]) => (hz * ratio) / SAMPLE_RATE)
   const phases = partials.map(() => 0)
   for (let i = 0; i < length; i++) {
@@ -104,10 +110,18 @@ export function dice(seed: number): () => number {
   }
 }
 
-/** `x` as 16-bit samples, scaled so its peak is `peak` of full scale. */
+/**
+ * `x` as 16-bit samples, scaled so its peak is `peak` of full scale, in
+ * (0, 1]. Refuses a sample that isn't a number, which would make it silent.
+ */
 export function pcm16(x: Float64Array, peak: number): Int16Array {
+  if (!(peak > 0 && peak <= 1))
+    throw new RangeError(`a peak of ${String(peak)} is outside (0, 1]`)
   let top = 0
-  for (const v of x) top = Math.max(top, v < 0 ? -v : v)
+  for (const v of x) {
+    if (Number.isNaN(v)) throw new RangeError("a sample isn't a number")
+    top = Math.max(top, v < 0 ? -v : v)
+  }
   const scale = top > 0 ? peak / top : 0
   const out = new Int16Array(x.length)
   for (const [i, v] of x.entries()) out[i] = Math.round(v * scale * 32767)
