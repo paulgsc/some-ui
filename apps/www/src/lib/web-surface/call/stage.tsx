@@ -3,12 +3,14 @@ import { captionSpace, LANDSCAPE } from "@some-ui/burn-ins"
 import { assertNever } from "@some-ui/core-utils"
 import { useOverflows } from "@some-ui/react-hooks"
 import { BrandMark } from "@some-ui/shared"
+import { sessionThemeProps } from "@some-ui/styles/theme"
 import {
   CALL_CHAPTERS,
   callFormat,
   CallIndexSchema,
   CallWeekSchema,
   hasCaptions,
+  markThemeOf,
   refUrl,
   sampleCallWeek,
 } from "@some-ui/video-render"
@@ -222,7 +224,12 @@ const Screen = ({
     case "brand-out": {
       return (
         <div className="flex h-full flex-col items-center justify-center gap-[0.8em]">
-          <BrandMark tone="brand" className="size-[12em]" title={W.mark} />
+          <BrandMark
+            tone="brand"
+            className="size-[12em]"
+            title={W.mark}
+            theme={markThemeOf(callFormat(week.template.version).shape)}
+          />
           <p className="text-[1.6em] font-bold">
             {view.section === "brand-in" ? W.title : W.source}
           </p>
@@ -450,7 +457,8 @@ export const CallStagePage = ({
   const week = shown.week
   // On record with captions, the footer is the band they're drawn in, left
   // empty: the renderer lays each scene's there.
-  const captioned = record && hasCaptions(callFormat(week.template.version))
+  const format = callFormat(week.template.version)
+  const captioned = record && hasCaptions(format)
   const step = (by: number): string | undefined => at.scenes[at.index + by]?.id
   const previous = step(-1)
   const next = step(1)
@@ -468,7 +476,10 @@ export const CallStagePage = ({
           data-scene={at.scene.id}
           data-overflow={overflows ? "true" : undefined}
           data-week={record ? JSON.stringify(week) : undefined}
-          className="bg-surface border-border flex aspect-video w-full flex-col overflow-hidden border text-[1.5cqw] [overflow-wrap:anywhere]"
+          {...sessionThemeProps(format.shape?.theme, {
+            className:
+              "bg-surface text-foreground border-border flex aspect-video w-full flex-col overflow-hidden border text-[1.5cqw] [overflow-wrap:anywhere]",
+          })}
         >
           <header className="border-border flex items-center justify-between border-b px-[1.2em] py-[0.6em] text-[0.8em]">
             <span className="font-semibold">{W.title}</span>

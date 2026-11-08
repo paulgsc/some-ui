@@ -33,13 +33,14 @@ Each module's header says why it is the way it is.
 - `src/format.ts`, `src/episode.ts`: a show (SHOW, #2525) is a series plus
   a format, the ordered scenes every episode has (name, picture source,
   hold, when left out), versioned as a series is (`readFormat`). An episode
-  is a format applied to one period's data by a pure function (`episodeOf`):
-  a primer version 2 the phone's Studio opens, the episode's pins (its
-  show's name, format, period, the data's sum) and a cut list whose pictures
-  are the recorded clips. `parseEpisode` reads an episode file back, as
-  Studio does to open it as an episode (SH3), and refuses one whose cut
-  list's scenes are not its cuts. Playoff Delta's formats and episodes come
-  from its own workspace (`packages/ui/playoff-delta/src/lib/show.ts`).
+  is a format applied to one period's data, pinned to its show's name,
+  format, period and the data's sum.
+  Only tests write and read an episode file (`src/episode-file.ts`, on
+  `./testing`); Studio keeps the pins of the episodes a phone holds
+  (`src/episode.ts`). Playoff Delta's
+  formats come from its own workspace (`packages/ui/playoff-delta/src/lib/show.ts`),
+  and its voiced episodes from `src/stills.ts`, each scene's take marked with
+  the speech model that said it (`speaker`).
 - `src/call.ts`: the weekly call (ST29's first template): the agents'
   stand-up for the owner, the same sections every week (the week, the
   ledger's board, where each epic is, what landed in batches, gray-area
@@ -49,19 +50,39 @@ Each module's header says why it is the way it is.
   under `src/templates/conference-call/`, beside its sample week; its
   series is sampled in `src/sample/series/conference-call/`. `callScenes`
   gives the scenes in order, each ask with the id a reply names.
+- `src/clip.ts`: clips (SFEED7), what a user-facing change built, kept in
+  `paulgsc/testing`'s `clips/` and listed for Studio's Library. A walked side
+  is `motion walk`'s own folder. `render clip-check <folder>` checks it
+  before it is pushed.
+- `src/session-note.ts`: a session's note (SFEED9, #2753), what its agent
+  distills before archiving it, kept in `paulgsc/testing`'s `sessions/` and
+  read by the weekly call's routine. `render session-check <folder>` checks
+  the folder before it is pushed.
 - `src/templates.ts`: every template Studio lists (SFEED1, #2731), each
   the newest version pinned under `src/templates/<id>/`, Playoff Delta's
   included.
+- `src/synth.ts`, `src/music-bed.ts`: the sounds we make ourselves
+  (#2673); `render music-bed --out <file>.wav` writes the music bed.
+- `src/storyboard.ts`: a template's storyboard (SFEED3, #2744), every frame
+  of one episode drawn from its sample before the fill, the fill's words
+  left as bars. Each is pinned as `storyboard.json` beside its formats,
+  since the phone can't carry the code that makes it (the call's
+  `callStoryboard`, Playoff Delta's `storyboardFor`), and that code's test
+  holds the pin to it.
+- `src/preview.ts`: a template's preview, its sample cut to 15–30 s (SFEED12,
+  #2757).
 - `src/resolve.ts`, `src/timing.ts`: each lever from the layer that sets
   it; each scene placed in whole frames.
 - `src/plan.ts`: the ffmpeg calls, as data. `src/render.ts` runs them over
   ports; `src/node.ts` gives it ffmpeg and the file system.
 - `src/steps.ts`: who owns each step of making a video, now and by when
   (ST10, #2258); its test holds the rules for moving one.
-- `src/take-check.ts`, `src/hearings.ts`: does a take say what its cut
-  asks (ST21, #2321), and its two hearings lined up (ST25, #2323).
+- `src/heard.ts`, `src/hearings.ts`: a take's words as heard, numbers
+  however written, and its two hearings lined up (ST25, #2323).
 - `src/authorship.ts`: whose idea and whose hands each scene shows (ST16,
-  #2274), read from each scene's `idea`, its voice and the step table. A
+  #2274), read from each scene's `idea`, its voice, who said its take
+  (`speaker`: a speech model's take is never the owner's) and the step
+  table. A
   video carries the mark as a video-wide `authorship` burn-in with no
   params, between a bare card first and last; the renderer writes its
   params from the scenes.

@@ -570,6 +570,29 @@ earlier promise it was coupled to. The share of defect commits over time is the 
 Stories mean the product is moving. A run of defects that relate to one another means patches
 are chasing a promise nobody has stated.
 
+**A gray-area call keeps who made it** (ST37, #2637). When an agent or the owner makes a
+call in a gray area, it is recorded in `docs/calls.json`: what was chosen, the options, why it
+was gray, how to undo it, the paths it governs, and whose authority it rests on (`by: claude`,
+`by: claude` with the day the owner `agreed`, or `by: owner`). The commit that makes it
+carries `Call: <ID>` (`check:commit-trailers` refuses an ID the record lacks at that commit),
+and the PR's "Calls I made" lists the IDs. Recording one never waits on
+the owner, and agents keep making calls. Until the owner writes their own definition, a gray
+area is a choice between options that no check, convention or earlier owner decision settles,
+that the owner would notice on the screen or in how they work.
+
+- **A change to a recorded call is a story, never a defect.** Before calling a change a
+  defect, search the record for its paths. If what fails is what a call chose, the owner is
+  moving a story whose author the entry names, often a call made on a mental model that
+  didn't match theirs. The change is a new entry that `moves` the old one, and its PR says
+  whose call it moves. Agreeing at the time doesn't change that. A defect stays what it is:
+  code failing in a state its story covered.
+- **The record only grows.** An entry is never edited or removed, except that a Claude call
+  gains the day the owner agreed to it, and the owner's own call the options and why it was
+  gray, which are the owner's to give. The weekly call reads the calls that reached the
+  record on `main` in its week, or were agreed to in it, not PR bodies.
+
+Held by: `pnpm check:calls`
+
 **Issues carry the kind too.** Whoever files an issue, a person, an agent or the reflection
 routine, labels it `kind:story` or `kind:defect`. The existing `story` and `epic` labels say
 how big the work is, and the `kind:` label says whether a promise broke. A defect issue names
@@ -803,8 +826,15 @@ handoff document (owner, 2026-10-25). It lives in two places, for two readers:
 - **Winding down,** whether the work is done or too large for one session: open and merge the
   PR for what you did (`.claude/skills/steward/SKILL.md`), then amend every issue you touched
   and its epic's "Where we are", then the ledger item (`summary`, `status`, `flag`,
-  `first_step`, `issues`, `keywords`), then archive the session. Nothing about the story may
-  live only in the session that is ending.
+  `first_step`, `issues`, `keywords`), then distill the session, then archive it. Nothing about
+  the story may live only in the session that is ending.
+- **A session is archived only by its own agent, once distilled** (SFEED9, #2753): a note for
+  the weekly call in `paulgsc/testing`'s `sessions/` (`@some-ui/video-render`'s
+  `session-note.ts`; `render session-check` checks the folder), pushed to testing's `main`
+  before the session is archived. A resumed session's later note covers what it did since its
+  last. A coordinating session asks another to wind down, never archives it. A session that
+  can't write its note stays unarchived and says why, unless it never started work and so has
+  nothing to distill.
 
 Cloud sessions keep no files between them, so the issues and the ledger are the only memory.
 A footgun that recurs across sessions belongs promoted into this file (the section above) rather

@@ -153,6 +153,23 @@
     --feeling-outline: none;
   }
 
+  .dark.mochi-night .feeling-tension {
+    --feeling-accent: oklch(80% 0.102 260deg);
+    --feeling-background: repeating-linear-gradient(
+        90deg,
+        oklch(80% 0.102 260deg / 13.6%) 0 1px,
+        transparent 1px 8px
+      ),
+      oklch(28.33% 0.0118 289.7deg);
+    --feeling-caption-fill: oklch(87% 0.14 260deg);
+    --feeling-caption-halo: oklch(22.78% 0.0206 56.5deg);
+    --feeling-caption-stroke: oklch(22% 0.06 260deg);
+    --feeling-ground: oklch(28.33% 0.0118 289.7deg);
+    --feeling-ink: oklch(92.31% 0.0302 259.7deg);
+    --feeling-muted: oklch(73.46% 0.0254 262.7deg);
+    --feeling-outline: none;
+  }
+
   @keyframes feeling-rivalry {
     0% {
       opacity: 0.2;
@@ -264,6 +281,23 @@
     --feeling-outline: none;
   }
 
+  .dark.mochi-night .feeling-rivalry {
+    --feeling-accent: oklch(80% 0.114 300deg);
+    --feeling-background: repeating-linear-gradient(
+        135deg,
+        oklch(80% 0.114 300deg / 15.6%) 0 2px,
+        transparent 2px 11px
+      ),
+      oklch(28.6% 0.0256 330.2deg);
+    --feeling-caption-fill: oklch(87% 0.14 300deg);
+    --feeling-caption-halo: oklch(22.78% 0.0206 56.5deg);
+    --feeling-caption-stroke: oklch(22% 0.06 300deg);
+    --feeling-ground: oklch(28.6% 0.0256 330.2deg);
+    --feeling-ink: oklch(92.31% 0.0348 315.6deg);
+    --feeling-muted: oklch(74.46% 0.0336 323.8deg);
+    --feeling-outline: none;
+  }
+
   @keyframes feeling-chill {
     0% {
       filter: blur(4px) saturate(0);
@@ -366,6 +400,23 @@
     --feeling-ground: oklch(26.79% 0.0575 256.1deg);
     --feeling-ink: oklch(73% 0.0313 225.6deg);
     --feeling-muted: oklch(70% 0.0578 248.4deg);
+    --feeling-outline: none;
+  }
+
+  .dark.mochi-night .feeling-chill {
+    --feeling-accent: oklch(80% 0.132 235deg);
+    --feeling-background: radial-gradient(
+          oklch(80% 0.132 235deg / 10%) 1px,
+          transparent 1.6px
+        )
+        0 0 / 16px 16px,
+      oklch(29.01% 0.0224 234.1deg);
+    --feeling-caption-fill: oklch(87% 0.14 235deg);
+    --feeling-caption-halo: oklch(22.78% 0.0206 56.5deg);
+    --feeling-caption-stroke: oklch(22% 0.06 235deg);
+    --feeling-ground: oklch(29.01% 0.0224 234.1deg);
+    --feeling-ink: oklch(92.31% 0.0323 223.6deg);
+    --feeling-muted: oklch(71.46% 0.0277 219.9deg);
     --feeling-outline: none;
   }
 
@@ -483,6 +534,23 @@
     --feeling-ground: oklch(25.84% 0.0425 312.2deg);
     --feeling-ink: oklch(73% 0.0487 7.9deg);
     --feeling-muted: oklch(71% 0.0547 333.2deg);
+    --feeling-outline: none;
+  }
+
+  .dark.mochi-night .feeling-cringe {
+    --feeling-accent: oklch(80% 0.096 350deg);
+    --feeling-background: radial-gradient(
+          oklch(80% 0.096 350deg / 12.4%) 1.3px,
+          transparent 1.8px
+        )
+        0 0 / 9px 9px,
+      oklch(28.2% 0.0305 16.4deg);
+    --feeling-caption-fill: oklch(87% 0.14 350deg);
+    --feeling-caption-halo: oklch(22.78% 0.0206 56.5deg);
+    --feeling-caption-stroke: oklch(22% 0.06 350deg);
+    --feeling-ground: oklch(28.2% 0.0305 16.4deg);
+    --feeling-ink: oklch(92.31% 0.0472 8.3deg);
+    --feeling-muted: oklch(72.46% 0.0502 13deg);
     --feeling-outline: none;
   }
 
@@ -679,6 +747,26 @@
       drop-shadow(0 -2.5px 0 oklch(74% 0.0563 39.2deg));
   }
 
+  .dark.mochi-night .feeling-fury {
+    --feeling-accent: oklch(80% 0.162 28deg);
+    --feeling-background: repeating-conic-gradient(
+        from 0deg at 50% 50%,
+        oklch(80% 0.162 28deg / 17.6%) 0deg 2deg,
+        transparent 2deg 9deg
+      ),
+      oklch(29.68% 0.0629 33.7deg);
+    --feeling-caption-fill: oklch(87% 0.14 28deg);
+    --feeling-caption-halo: oklch(22.78% 0.0206 56.5deg);
+    --feeling-caption-stroke: oklch(22% 0.06 28deg);
+    --feeling-ground: oklch(29.68% 0.0629 33.7deg);
+    --feeling-ink: oklch(92.31% 0.0552 40.3deg);
+    --feeling-muted: oklch(76.46% 0.0599 42.2deg);
+    --feeling-outline: drop-shadow(2.5px 0 0 oklch(92.31% 0.0552 40.3deg))
+      drop-shadow(-2.5px 0 0 oklch(92.31% 0.0552 40.3deg))
+      drop-shadow(0 2.5px 0 oklch(92.31% 0.0552 40.3deg))
+      drop-shadow(0 -2.5px 0 oklch(92.31% 0.0552 40.3deg));
+  }
+
   @keyframes feeling-twist {
     0% {
       opacity: 0;
@@ -781,6 +869,23 @@
     --feeling-ground: oklch(71.16% 0.0352 79.5deg);
     --feeling-ink: oklch(19.5% 0.04 285deg);
     --feeling-muted: oklch(29.48% 0.0219 296deg);
+    --feeling-outline: none;
+  }
+
+  .dark.mochi-night .feeling-twist {
+    --feeling-accent: oklch(52% 0.06 95deg);
+    --feeling-background: repeating-conic-gradient(
+        from 0deg at 50% 50%,
+        oklch(52% 0.06 95deg / 17.2%) 0deg 2deg,
+        transparent 2deg 10deg
+      ),
+      oklch(88.93% 0.035 83.9deg);
+    --feeling-caption-fill: oklch(87% 0.16 95deg);
+    --feeling-caption-halo: oklch(22.78% 0.0206 56.5deg);
+    --feeling-caption-stroke: oklch(22% 0.06 95deg);
+    --feeling-ground: oklch(88.93% 0.035 83.9deg);
+    --feeling-ink: oklch(22.78% 0.0206 56.5deg);
+    --feeling-muted: oklch(42.25% 0.0226 65.1deg);
     --feeling-outline: none;
   }
 
@@ -925,6 +1030,30 @@
     --feeling-outline: none;
   }
 
+  .dark.mochi-night .feeling-flutter {
+    --feeling-accent: oklch(80% 0.144 345deg);
+    --feeling-background: radial-gradient(
+          circle,
+          oklch(80% 0.144 345deg / 14.4%) 0 3px,
+          transparent 3.5px
+        )
+        0 0 / 26px 26px,
+      radial-gradient(
+          circle,
+          oklch(80% 0.144 345deg / 14.4%) 0 2px,
+          transparent 2.5px
+        )
+        13px 13px / 26px 26px,
+      oklch(29.28% 0.048 0.6deg);
+    --feeling-caption-fill: oklch(87% 0.14 345deg);
+    --feeling-caption-halo: oklch(22.78% 0.0206 56.5deg);
+    --feeling-caption-stroke: oklch(22% 0.06 345deg);
+    --feeling-ground: oklch(29.28% 0.048 0.6deg);
+    --feeling-ink: oklch(92.31% 0.046 3.7deg);
+    --feeling-muted: oklch(74.46% 0.0486 8.8deg);
+    --feeling-outline: none;
+  }
+
   @keyframes feeling-warmth {
     0% {
       filter: none;
@@ -1003,6 +1132,18 @@
     --feeling-ground: oklch(27.26% 0.0257 44.4deg);
     --feeling-ink: oklch(73% 0.06 75deg);
     --feeling-muted: oklch(70% 0.0311 58.7deg);
+    --feeling-outline: none;
+  }
+
+  .dark.mochi-night .feeling-warmth {
+    --feeling-accent: oklch(80% 0.15 75deg);
+    --feeling-background: oklch(29.41% 0.0578 70.7deg);
+    --feeling-caption-fill: oklch(87% 0.14 75deg);
+    --feeling-caption-halo: oklch(22.78% 0.0206 56.5deg);
+    --feeling-caption-stroke: oklch(22% 0.06 75deg);
+    --feeling-ground: oklch(29.41% 0.0578 70.7deg);
+    --feeling-ink: oklch(92.31% 0.0597 76.4deg);
+    --feeling-muted: oklch(69.46% 0.0646 75.4deg);
     --feeling-outline: none;
   }
 

@@ -5,9 +5,12 @@ import {
   homeHearing,
   IdeaShelf,
   IdeasOnHome,
+  keptDraftStore,
   keptIdeasForHome,
+  keptIdeaStore,
   phoneStudioKeeping,
   STUDIO_WORDS,
+  UnnamedIdeaTakes,
 } from "@some-ui/soundbites"
 import type { TurnListener } from "@some-ui/voice-capture"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
@@ -68,6 +71,23 @@ const openVideo = (project: string): JSX.Element => (
     {WORDS.openVideo}
   </Link>
 )
+
+/**
+ * A new idea's answers no idea holds (ST26, #2483), from this phone's desk,
+ * in the Android app alone.
+ */
+const unnamedPorts = device
+  ? (): Parameters<typeof UnnamedIdeaTakes>[0] => ({
+      takes: ideaBundleTakes(),
+      drafts: keptDraftStore(),
+      ideas: keptIdeaStore(),
+    })
+  : null
+
+const Unnamed = (): JSX.Element | null => {
+  const [ports] = useState(() => unnamedPorts?.() ?? null)
+  return ports === null ? null : <UnnamedIdeaTakes {...ports} />
+}
 
 const link =
   "text-muted-foreground text-sm underline underline-offset-4 self-start"
@@ -156,6 +176,7 @@ const IdeasRoute = (): JSX.Element => {
           </Link>
         }
       />
+      <Unnamed />
       {device && (
         <Link to="/journal/ideas" search={{ view: "home" }} className={link}>
           {STUDIO_WORDS.onHome.open}

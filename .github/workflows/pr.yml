@@ -491,12 +491,14 @@ jobs:
       # twice with the pins in packages/video-motion/src/pin.ts, on the nix
       # shell's Chromium and ffmpeg. Scoped to the workspace, the renderer it
       # imports, and the lockfile and flake, which pin HyperFrames, Chromium and
-      # ffmpeg. Uploads nothing.
+      # ffmpeg. Uploads nothing. Five runs; one that differs prints where, per
+      # frame (#2739).
       - name: E2E — HyperFrames renders the same bytes twice (video-motion)
         run: |
           files=$(git diff --name-only --diff-filter=ACMR HEAD^1 -- \
             'packages/video-motion/**' \
             'packages/video-render/**' \
+            'extensions/suspender-ledger/**' \
             'pnpm-lock.yaml' \
             'flake.nix' \
             'flake.lock' \
@@ -506,12 +508,27 @@ jobs:
               --filter='@some-ui/video-motion^...' \
               --concurrency=100%
             nix develop .#ci-playwright --command \
-              pnpm --filter @some-ui/video-motion motion prove sample --runs 3
+              pnpm --filter @some-ui/video-motion motion prove sample --runs 5
             # HYPER2 (#2725): a composition scene beside a card, through the
             # renderer, drawn twice from nothing. In a copy: it writes there.
             cp -r packages/video-motion/sample/video "$RUNNER_TEMP/video"
             nix develop .#ci-playwright --command \
               pnpm --filter @some-ui/video-motion motion video "$RUNNER_TEMP/video" --prove
+            # HYPER3 (#2726): Suspender Ledger 0.3.1's promo, from its data in
+            # paulgsc/testing at a pinned commit: the popup walked once in its
+            # sandbox, then the promo rendered twice from nothing.
+            data="$RUNNER_TEMP/promo-data"
+            mkdir -p "$data"
+            for file in release sample; do
+              curl -fsSL -o "$data/$file.json" \
+                "https://raw.githubusercontent.com/paulgsc/testing/853627e77d31499e81d16b3f48d9ae77b3237f46/promo/suspender-ledger/0.3.1/$file.json"
+            done
+            # HYPER4 (#2727): its series pins the sound kit, made here as
+            # home makes it, so a changed cue fails the render.
+            nix develop .#ci-playwright --command \
+              pnpm --filter @some-ui/video-render render sounds --out "$RUNNER_TEMP/brand/sounds"
+            nix develop .#ci-playwright --command \
+              pnpm --filter @some-ui/video-motion motion promo "$data" --out "$RUNNER_TEMP/promo" --brand "$RUNNER_TEMP/brand" --prove
           else
             echo "No files a composition's render reads changed."
           fi
@@ -655,6 +672,12 @@ jobs:
         env:
           BASE_REF: ${{ github.base_ref }}
         run: nix develop .#ci --command node scripts/check-policy-docs.ts --base "origin/$BASE_REF"
+      # ST37 (#2637): docs/calls.json's shape, and that it only grew since the
+      # base's (packages/eslint/src/calls.ts). Here for the same base fetch.
+      - name: Check the calls record
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: nix develop .#ci --command node scripts/check-calls.ts --base "origin/$BASE_REF"
 
   # ── Assurance ledger (repo-wide) ──────────────────────────────────────
   # docs/operational-assurance.md: the ledger of promises about outcomes and

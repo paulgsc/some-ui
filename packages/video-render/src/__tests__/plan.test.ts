@@ -1,10 +1,14 @@
 import {
+  BT709,
   duckExpr,
   planAssembly,
   planBed,
+  planJoin,
   planMix,
   planSegment,
+  planVoice,
   readLoudness,
+  TO_VIDEO,
 } from "@video-render/plan"
 import type { Assembly, Facts, Mix, Scene } from "@video-render/plan"
 import { resolve } from "@video-render/resolve"
@@ -154,6 +158,28 @@ describe("planAssembly", () => {
     return args[args.indexOf("-filter_complex") + 1] ?? ""
   }
 
+  it("draws a card's ground in RGB too, so it matches a scene with a picture", () => {
+    const g = graph(scene({ picture: { kind: "card" } }))
+    expect(g).toContain("[bg]format=gbrp[framed]")
+    expect(g).toContain(`${TO_VIDEO},format=yuv420p[v]`)
+  })
+
+  it("makes every encode BT.709, from RGB once, tagged so (SFEED10)", () => {
+    const a = assembly({ layers: [{ file: "captions.mov", startFrame: 0 }] })
+    const tagged = (args: ReadonlyArray<string>): boolean =>
+      args.join(" ").includes(BT709.join(" "))
+    const segment = planSegment(a.scenes[0]!, series(), FACTS, "s.mkv").args
+    expect(tagged(segment)).toBe(true)
+    expect(segment.join(" ")).toContain(`${TO_VIDEO},format=yuv420p[v]`)
+    expect(tagged(planJoin(a.scenes, a.segments, series(), "p.mkv").args)).toBe(
+      true
+    )
+    const final = planAssembly(a, series(), "video.mp4").args
+    expect(tagged(final)).toBe(true)
+    // A layer over the joined video is turned to video by the same matrix.
+    expect(filters(a)).toContain(`${TO_VIDEO},format=yuva420p,setpts`)
+  })
+
   it("joins every transition at its frame", () => {
     const a = assembly()
     const f = filters(a)
@@ -225,8 +251,61 @@ describe("the sound", () => {
       cues: [{ file: "kit/click.wav", atMs: 400 }],
     })
     expect(f).toContain("amix=inputs=3:normalize=0")
-    expect(f).toContain("adelay=400:all=1,volume=-8dB[c0]")
+    // The click is heard from 400 ms: that much silence, then it (#2785).
+    expect(f).toContain("anullsrc=r=48000:cl=mono,atrim=duration=0.400000,")
+    expect(f).toContain("[c0w][c0s]concat=n=2:v=0:a=1,volume=-8dB,")
     expect(mix()).toContain("anullsrc=r=48000:cl=mono")
+  })
+})
+
+describe("a mix's inputs (VR1 over ffmpeg's versions, #2785)", () => {
+  /** Each input `amix` reads, and the chain that makes it. */
+  function amixInputs(args: ReadonlyArray<string>): Array<string> {
+    const graph = args[args.indexOf("-filter_complex") + 1] ?? ""
+    const chains = graph.split(";")
+    const mix = chains.find((c) => c.includes("amix=")) ?? ""
+    const labels = mix.slice(0, mix.indexOf("amix=")).match(/\[[^\]]+\]/g)
+    return (labels ?? []).map(
+      (label) => chains.find((c) => c.endsWith(label)) ?? `none for ${label}`
+    )
+  }
+
+  it("places each after exact silence, and pads it to the whole length, so all end on the same sample", () => {
+    const voice = planVoice(
+      [
+        { file: "a.wav", inMs: 0, outMs: 800, atMs: 100 },
+        { file: "b.wav", inMs: 0, outMs: 800, atMs: 1100 },
+      ],
+      2000,
+      "voice.wav"
+    )
+    const mix = planMix(
+      {
+        totalFrames: 60,
+        voice: "voice-level.wav",
+        bed: "bed.wav",
+        cues: [{ file: "kit/click.wav", atMs: 400 }],
+      },
+      series(),
+      "mix.wav"
+    )
+    for (const [args, total] of [
+      [voice?.args ?? [], "2.000000"],
+      [mix.args, "2.000000"],
+    ] as const) {
+      const graph = args[args.indexOf("-filter_complex") + 1] ?? ""
+      const inputs = amixInputs(args)
+      expect(inputs.length).toBeGreaterThan(1)
+      // Nothing in the graph, upstream chains included, is placed by
+      // `adelay`, which ffmpeg 9 can lose.
+      expect(graph).not.toContain("adelay")
+      for (const chain of inputs)
+        expect(chain).toMatch(
+          new RegExp(
+            `apad=whole_dur=${total},atrim=duration=${total}\\[[^\\]]+\\]$`
+          )
+        )
+    }
   })
 })
 

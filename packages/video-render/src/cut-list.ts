@@ -144,6 +144,11 @@ export const ShotSchema = z.object({
       words: z.array(TimedWordSchema).optional(),
     })
     .optional(),
+  /**
+   * The speech model that said this scene's take (home's Kokoro, `kokoro`),
+   * absent when the owner said it: whose voice the authorship mark reports.
+   */
+  speaker: z.string().min(1).optional(),
   /** This scene's voice under a Mixed plan: the point said, or the line read. */
   voice: z.enum(["ad-lib", "read"]).optional(),
   /** When the take starts, after the scene does. */

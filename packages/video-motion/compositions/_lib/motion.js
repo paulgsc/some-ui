@@ -71,15 +71,59 @@ window.motion = (() => {
 
   const tracks = []
   const track = (el, keys) => {
+    // On a layer of its own from the first frame to the last: without it,
+    // Chrome may move a still element back into the page's layer at a moment
+    // that depends on timing, and the two draw its edges differently (#2739).
+    el.style.willChange = "transform, opacity"
     tracks.push([el, keys])
     draw(el, valuesAt(keys, 0))
   }
+
+  // Words fitted to their box, never grown: a block of `lines` takes a
+  // smaller size until its widest line fits its content width, and a `row`
+  // scales down about its centre until its items and their gaps do. Fitted
+  // at every seek, since HyperFrames seeks only once document.fonts is ready,
+  // so the measure is of the font that draws.
+  const blocks = []
+  const rows = []
+  const inner = (el) => {
+    const style = getComputedStyle(el)
+    return (
+      el.clientWidth -
+      parseFloat(style.paddingLeft) -
+      parseFloat(style.paddingRight)
+    )
+  }
+  const fit = () => {
+    for (const [el, base] of blocks) {
+      el.style.fontSize = `${base}px`
+      const widest = Math.max(
+        ...Array.from(el.querySelectorAll(".line"), (line) => line.offsetWidth)
+      )
+      const room = inner(el)
+      if (widest > room)
+        el.style.fontSize = `${Math.floor((base * room) / widest)}px`
+    }
+    for (const el of rows) {
+      const items = Array.from(el.children)
+      const gap = parseFloat(getComputedStyle(el).columnGap) || 0
+      const needed =
+        items.reduce((sum, item) => sum + item.offsetWidth, 0) +
+        gap * (items.length - 1)
+      const room = inner(el)
+      el.style.transform = needed > room ? `scale(${room / needed})` : ""
+    }
+  }
+  const row = (el) => rows.push(el)
   window.addEventListener("hf-seek", (event) => {
+    fit()
     for (const [el, keys] of tracks) draw(el, valuesAt(keys, event.detail.time))
   })
 
-  // "|" splits a string into lines, each its own element to move.
+  // "|" splits a string into lines, each its own element to move, fitted as
+  // one block.
   const lines = (el, text) => {
+    blocks.push([el, parseFloat(getComputedStyle(el).fontSize)])
     el.textContent = ""
     return text.split("|").map((line) => {
       const mask = document.createElement("span")
@@ -92,10 +136,18 @@ window.motion = (() => {
       return span
     })
   }
+  const $ = (id) => document.getElementById(id)
+  /** A new `tag` of `className`, appended to `parent`. */
+  const make = (tag, className, parent) => {
+    const el = document.createElement(tag)
+    el.className = className
+    parent.appendChild(el)
+    return el
+  }
   const vars = window.__hyperframes.getVariables()
   const style = document.documentElement.style
-  for (const key of ["ground", "ink", "mute", "accent", "accentInk"]) {
+  for (const key of ["ground", "ink", "accent", "accentInk"]) {
     if (vars[key]) style.setProperty(`--${key}`, vars[key])
   }
-  return { length, track, lines, vars }
+  return { length, track, lines, row, vars, $, make }
 })()

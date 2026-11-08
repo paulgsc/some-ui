@@ -8,8 +8,10 @@ import { describe, expect, it } from "vitest"
 
 import type { Episode } from "@/lib/call-videos/model"
 import {
+  homeBytes,
   INITIAL,
   isFeed,
+  readChapters,
   readEpisodes,
   readLinkSaved,
   readPart,
@@ -56,6 +58,19 @@ describe("isFeed", () => {
   })
 })
 
+describe("readChapters (SFEED4)", () => {
+  it("reads home's lines, none when it has none, and refuses anything else", () => {
+    expect(
+      readChapters({ status: 200, body: "0:00 Opening\n0:20 The board\n" })
+    ).toEqual({ kind: "lines", text: "0:00 Opening\n0:20 The board\n" })
+    expect(readChapters({ status: 404, body: "" })).toEqual({ kind: "none" })
+    expect(readChapters({ status: 200, body: "  " })).toEqual({ kind: "none" })
+    expect(readChapters({ status: 500, body: "" })).toEqual({
+      kind: "unreadable",
+    })
+  })
+})
+
 describe("readPart", () => {
   it("reads a range's bytes, a video gone and anything else", () => {
     expect(readPart({ status: 206, body: "AAEC" })).toEqual({
@@ -82,6 +97,22 @@ describe("readLinkSaved", () => {
     expect(readLinkSaved({ status: 409, body: "" })).toEqual({
       kind: "unreadable",
     })
+  })
+})
+
+describe("homeBytes", () => {
+  it("sums each video and its rest that home holds, and is null for none", () => {
+    expect(
+      homeBytes([
+        episode(),
+        episode({ key: "2026-11-06", videoBytes: null, restBytes: 7 }),
+      ])
+    ).toBe(22)
+    expect(homeBytes([])).toBeNull()
+    expect(homeBytes([episode({ videoBytes: null, restBytes: null })])).toBe(
+      null
+    )
+    expect(homeBytes([episode({ videoBytes: null, restBytes: 0 })])).toBeNull()
   })
 })
 

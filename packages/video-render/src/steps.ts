@@ -84,14 +84,27 @@ export const STEPS: ReadonlyArray<Step> = [
   },
   {
     id: "record-takes",
-    what: "Say each scene: the takes",
+    what: "Say each scene of a video of the owner's own: the takes",
     kind: "owner",
     now: "owner",
     target: "owner",
     milestone: null,
-    why: "The voice is the owner's own, whether the point is ad-libbed or the line read.",
+    why: "On the owner's own videos the voice is theirs, whether the point is ad-libbed or the line read.",
     reads: [{ file: "primer.json" }],
     writes: [{ field: "shots.take" }],
+  },
+  {
+    id: "say-scenes",
+    what: "Say each scene of an episode: its fill, in the show's voice",
+    kind: "small-model",
+    now: "home",
+    target: "home",
+    milestone: "M2",
+    why: "Home's Kokoro speaker says what the fill wrote, the same bytes for the same words; the owner watches it (FEED decision 6, #2643).",
+    reads: [{ file: "fill.json" }],
+    // Its takes are the WAVs; `shots.speaker` marks a scene's take as said
+    // by the speaker, never by the owner's `record-takes`.
+    writes: [{ file: "takes/" }, { field: "shots.speaker" }],
   },
   {
     id: "carry-takes",
@@ -116,19 +129,6 @@ export const STEPS: ReadonlyArray<Step> = [
       "ST25 (#2323) and ST20 (#2320): both hear every take until the gold set and a few real shorts show whether the session's hearing is worth keeping",
     reads: [{ file: "takes/" }],
     writes: [{ file: "transcripts/" }],
-  },
-  {
-    id: "check-takes",
-    what: "Mechanical take checks: the line read, the facts kept, the numbers said",
-    kind: "code",
-    now: "session",
-    target: "home",
-    milestone: "M1",
-    why: "Rules over a transcript (`take-check.ts`, ST21), no judgement of meaning. Each take's verdict goes back in the project file's `checks`, where Finish on an episode reads it (SHOW SH5).",
-    blockedBy:
-      "ST22 (paulgsc/server#577): how sure home was of each word, and ST13 (#2261): home running the check",
-    reads: [{ file: "takes/" }, { file: "transcripts/" }],
-    writes: [{ file: "take-checks.json" }],
   },
   {
     id: "judge-takes",

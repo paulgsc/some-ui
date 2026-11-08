@@ -106,3 +106,4 @@ export async function make(
   const ran = await ports.ffmpeg({ args: ["-v", "error", "-y", ...args] })
   if (!ran.ok) throw new Error(ran.stderr)
 }
+export * from "./episode-file"

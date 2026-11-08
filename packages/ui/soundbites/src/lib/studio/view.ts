@@ -103,10 +103,14 @@ export function startView(project: Project): StartView {
   return {
     title: latest(project).cutList.title,
     standing: STUDIO_WORDS.standing(lastLog(project)),
+    // An episode is never voiced or reshaped here (SH3, FEED6): it is
+    // watched, and finished once every scene has its take.
     sittings:
       episode === undefined
         ? sittings
-        : sittings.filter((row) => row.kind !== "shape"),
+        : sittings
+            .filter((row) => row.kind === "watch" || row.kind === "finish")
+            .map((row) => ({ ...row, startHere: row.kind === "watch" })),
     made:
       episode === undefined
         ? null
@@ -118,13 +122,13 @@ export function startView(project: Project): StartView {
   }
 }
 
-/** Where an episode stands: released, ready, under way, or waiting for your voice. */
+/** Where an episode stands: released, ready, or not made. */
 function standingOf(project: Project): EpisodeStanding {
   const finish = finishOf(project)
   if (finish.kind === "released" || finish.kind === "ready") {
     return finish.kind
   }
-  return takenCount(project) > 0 ? "going" : "voice"
+  return "waiting"
 }
 
 type Episodic = Project & { readonly episode: EpisodePin }
@@ -247,9 +251,7 @@ function finishStatus(finish: Finish): string {
     case "idea": {
       return words.idea(finish.count)
     }
-    case "facts": {
-      return words.facts(finish.n)
-    }
+    case "unsaid":
     case "unmarked":
     case "ready":
     case "released": {

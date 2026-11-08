@@ -70,6 +70,23 @@ export function readPart(answer: HomeAnswer): PartRead {
     : { kind: "bytes", base64: answer.body }
 }
 
+/**
+ * An episode's chapters as home holds them (SFEED4): YouTube's chapter lines,
+ * none (an episode with fewer than three, or rendered before chapters), or
+ * an answer that doesn't read.
+ */
+export type ChaptersRead =
+  | { readonly kind: "lines"; readonly text: string }
+  | { readonly kind: "none" }
+  | { readonly kind: "unreadable" }
+
+export function readChapters(answer: HomeAnswer): ChaptersRead {
+  if (answer.status === 404) return { kind: "none" }
+  if (answer.status !== 200) return { kind: "unreadable" }
+  const text = answer.body.trim()
+  return text === "" ? { kind: "none" } : { kind: "lines", text: `${text}\n` }
+}
+
 /** What saving a pasted link came to. */
 export type LinkSaved =
   | { readonly kind: "saved"; readonly url: string }
@@ -86,6 +103,18 @@ export function readLinkSaved(answer: HomeAnswer): LinkSaved {
   return kept === null
     ? { kind: "unreadable" }
     : { kind: "saved", url: kept.url }
+}
+
+/**
+ * What home holds of a feed's episodes, in bytes: each video and the rest
+ * it was made from (SFEED8); null when it holds nothing.
+ */
+export function homeBytes(episodes: ReadonlyArray<Episode>): number | null {
+  const sum = episodes.reduce(
+    (total, one) => total + (one.videoBytes ?? 0) + (one.restBytes ?? 0),
+    0
+  )
+  return sum === 0 ? null : sum
 }
 
 /** Where an episode stands on home. */

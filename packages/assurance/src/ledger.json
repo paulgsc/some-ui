@@ -10,7 +10,7 @@
         "server:apps/servers/file_host/src/mailbox",
         "server:crates/mailbox_kit"
       ],
-      "modules": ["jobs", "routine", "leetype_files"],
+      "modules": ["jobs", "routine", "leetype_files", "episode_notes"],
       "objectives": [
         {
           "id": "MI1",
@@ -1961,13 +1961,12 @@
         "server:infra/docker/Dockerfile.render",
         "server:infra/kokoro",
         "some-ui:apps/www/tests/record/call.ts",
-        "server:apps/servers/file_host/src/handlers/call_videos.rs",
-        "server:apps/servers/file_host/src/routes/call_videos.rs",
+        "some-ui:apps/www/tests/record/call-recording.ts",
         "server:apps/servers/file_host/src/feeds",
         "server:apps/servers/file_host/src/handlers/feed_videos.rs",
         "server:apps/servers/file_host/src/routes/feed_videos.rs"
       ],
-      "modules": ["call_videos", "feed_videos"],
+      "modules": ["call_videos", "feed_videos", "renders"],
       "objectives": [
         {
           "id": "CW1",
@@ -2042,20 +2041,31 @@
           "property": "work",
           "claim": "Home reads the repository once an hour, and fetches a week only while it lacks it.",
           "requirement": "A pass is one request for the index plus one per listed week home holds no week of; a week home holds is never fetched again; a pass that failed is tried again after 10 minutes, doubled per failure in a row, to at most the hourly interval; each answer is at most 1 MiB.",
-          "verdict": "unproven",
-          "conclusion": "The pass tests show the requests a pass makes and the retry spacing, from 10 minutes to the hour. Not bounded: an answer over 1 MiB is refused only once it has been read whole, as the game feed's are (GA3).",
-          "tracked": "server#684",
+          "verdict": "holds",
+          "conclusion": "The pass tests show the requests a pass makes and the retry spacing, from 10 minutes to the hour. Each answer is read in chunks and refused once it passes 1 MiB, or before its body when it declares more: an unending answer costs home 1 MiB and one chunk, and a refusal's body is never read.",
           "evidence": [
             {
               "class": "measured",
               "says": "A second pass over the same index asks for the index alone, and a failing source is asked again after 600, 1200 and 2400 s, then hourly.",
               "ref": "server:apps/servers/file_host/src/call_weeks/pass.rs"
+            },
+            {
+              "class": "measured",
+              "says": "An answer over the cap is refused, and one with no length that never ends is refused at the chunk that passes 1 MiB, the chunks it handed out counted; another status's body is never read.",
+              "ref": "server:apps/servers/file_host/src/game_feed/pass.rs"
             }
           ],
           "watch": {
             "by": "none"
           },
-          "amendments": []
+          "amendments": [],
+          "proof": [
+            "server:apps/servers/file_host/src/call_weeks/pass.rs#each_listed_week_home_lacks_is_fetched_once_and_kept_as_served",
+            "server:apps/servers/file_host/src/call_weeks/pass.rs#a_failing_source_is_retried_sooner_but_never_more_often_than_it_is_read",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_declared_length_over_the_cap_is_refused_before_its_body",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#an_unending_answer_is_refused_once_it_passes_the_cap",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_refusal_over_the_cap_is_still_a_refusal"
+          ]
         },
         {
           "id": "CW4",
@@ -2092,9 +2102,9 @@
           "kind": "OA2",
           "property": "outcome",
           "claim": "Every week of the call home holds becomes a video within the render policy's caps, and a week that hasn't is tried again.",
-          "requirement": "Each week in call_week is written to call-weeks beside home's database, on its drive (STORAGE); within the next hourly pass the render worker records it from the pinned stage with each scene said by home's Kokoro speaker, renders it, and moves the finished folder into renders/call/<from>/ on the same drive, whole; a week that fails is left without a folder and tried again each hour, keeping its finished steps; a week whose video would pass the render policy's length or size (set in the render worker) is refused before it is drawn or once it is made, which fails its attempt with the cap named; no finished video is deleted.",
+          "requirement": "Each week in call_week is written to call-weeks beside home's database, on its drive (STORAGE); once home's lane admits it (room for its peak above the floor, and no interactive work waiting: server:docs/home-compute.md, \"The lane\"), the render worker records it from the pinned stage with each scene said by home's Kokoro speaker, renders it, and moves the finished folder into renders/call/<from>/ on the same drive, whole; a render the lane pauses or stops resumes from its finished steps, and giving way is never itself a failure (an attempt that exits soon after a pause is run again, at most 3 times a job, then is a failure); a week that fails is left without a folder and tried again no sooner than an hour later, once the lane admits it, keeping its finished steps; a week whose video would pass the render policy's length or size (set in the render worker) is refused before it is drawn or once it is made, which fails its attempt with the cap named (a video refused once made is removed then, never moved into place); no video moved into renders/call is deleted but by the owner letting its week go (CW8).",
           "verdict": "unproven",
-          "conclusion": "Home rendered the real week of Oct 30 on Nov 7: all 36 scenes recorded, the video written and its folder moved into renders/call. Slack says when a week's attempt fails, naming the file that holds its whole output, when a week has waited 3 hours with no attempt, and when the worker has not passed for 4 hours, each tested by promtool; the CALL dashboard shows each. The worker's own guarantees (each hour's retry, the steps it keeps, the whole move, no video deleted) are rehearsed, not tested.",
+          "conclusion": "Home rendered the real week of Oct 30 on Nov 7: all 36 scenes recorded, the video written and its folder moved into renders/call. The worker's own handling of a week is tested in CI, one pass at a time with a fake recorder: a failed week is left without a folder, keeps its work and is tried on the next pass, which reuses it; a finished week is moved in whole and its work removed; a pass over a finished week leaves it untouched; no cap on waiting work removes a video; a render starts only once the lane has seen its job, a pause freezes the recorder and what it started, and a stop kills them and the render resumes from its kept steps with the same bytes. Slack says when a week's attempt fails, naming the file that holds its whole output, when a week has waited 3 hours with no attempt, and when the worker has not passed for 4 hours, each tested by promtool; the CALL dashboard shows each. Not yet proven: the hourly retry on its own clock (the test holds its gate but runs each pass by hand), the lane's pauses and stops with the real recorder (the test's is a fake), that the worker hands the recorder the render policy's caps, and that each week is said by the pinned speaker from the pinned stage.",
           "tracked": "some-ui#2659",
           "evidence": [
             {
@@ -2131,6 +2141,11 @@
               "class": "structural",
               "says": "The renderer refuses a video past RenderPolicy.maxVideoMs before any ffmpeg call and removes one past maxVideoBytes once made; the recorder refuses a week past the length by its words before anything is said; each tested.",
               "ref": "some-ui:packages/video-render/src/policy.ts"
+            },
+            {
+              "class": "measured",
+              "says": "render-calls.sh, sourced over a temporary folder with a fake recorder, keeps a failed week's work with no folder in renders/call and reuses it on the next pass, moves a finished week whole without its cache, leaves a finished week's folder byte for byte on a later pass, and removes only another waiting week's work past the cap, never a video; and starts a render only on a lane decision written after its job was named, freezes the recorder's whole process tree on pause and kills it on stop, keeping its finished steps, so with that fake recorder a stopped render resumes with the same bytes as one never stopped; CI runs it on every pull request.",
+              "ref": "server:infra/render/render-calls.test.sh"
             }
           ],
           "watch": {
@@ -2149,6 +2164,12 @@
               "change": "A week whose video would pass the render policy's length or size is refused, not rendered, and its failed attempt names the cap (reaching Slack as CallRenderFailed); a retry keeps the steps that already finished.",
               "why": "A week's length had no cap of its own (a scene runs as long as its words, which have no maximum), so a week that drifted long would render for hours and fill the drive; and a retry redid an hour of finished work to redo one failed step.",
               "decision": "https://github.com/paulgsc/some-ui/issues/2635#issuecomment-6701774052"
+            },
+            {
+              "on": "2026-11-08",
+              "change": "A week renders once home's lane admits it, not within the next hourly pass, and pauses or gives way when the lane says so, resuming from its finished steps; giving way is never itself a failure, and a failed attempt waits at least an hour and then for the lane. \"No finished video is deleted\" is narrowed: a video refused past the size cap is removed before it is moved into place, and one moved into place goes only when the owner lets its week go (CW8).",
+              "why": "There is no render window and no clock: a start time can't promise the render finishes, and it starves everything else at that time. Renders are home's lowest class: they start whenever home has room, give way the moment anything else needs it, and resume when room comes back. The render worker obeys the lane since paulgsc/server#734 (L4c).",
+              "decision": "https://github.com/paulgsc/server/issues/705"
             }
           ]
         },
@@ -2159,7 +2180,7 @@
           "claim": "The call's videos grow by one folder a week, kept until I let a week go from My data once its YouTube link is recorded.",
           "requirement": "renders/call on home's database drive (STORAGE) gains one folder per week of the call (the video, its takes, stills, cut list and week), deleted only by the owner from My data once the week's YouTube link is recorded (CW7); a waiting week's work and step cache stay in renders/call-work between attempts, within the render policy's caps for one week and for all of them, and leave once the week renders; a step or a week's work past a cap is said, never silently dropped.",
           "verdict": "unproven",
-          "conclusion": "The first week's folder is 112 MB (the video is 95 MB), so about 6 GB a year, kept for good as you chose (#2640). file_host reads the bytes of the videos and of the waiting work, and the drive's free space, each minute (the CALL dashboard); Slack says when a cache cap was passed in the last day and when the drive has under a tenth free.",
+          "conclusion": "The first week's folder is 112 MB (the video is 95 MB), so about 6 GB a year, kept for good as you chose (#2640). file_host reads the bytes of the videos and of the waiting work, and the drive's free space, each minute (the CALL dashboard); Slack says when a cache cap was passed in the last day and when the drive has under a tenth free. The worker's part is tested in CI: a finished week's work leaves with it, a week let go loses its waiting work, past the all-weeks cap only another waiting week's work is removed and said in work.cache.log, and no pass deletes a video. The growth per week on home is still to be read from the dashboard after a few weeks.",
           "tracked": "some-ui#2659",
           "evidence": [
             {
@@ -2171,6 +2192,11 @@
               "class": "structural",
               "says": "Each minute file_host sums the bytes under renders/call and renders/call-work, reads the newest cache warning and the drive's free space (statvfs); CallRenderCacheFull and HomeDriveLow fire on them, each tested by promtool.",
               "ref": "server:apps/servers/file_host/src/call_weeks/render.rs"
+            },
+            {
+              "class": "measured",
+              "says": "render-calls.sh, one pass at a time with a fake recorder: no pass deletes a finished video, a finished week's work is removed, a week no longer held loses its waiting work, and past the cap only another waiting week's work goes, said as a cache warning.",
+              "ref": "server:infra/render/render-calls.test.sh"
             }
           ],
           "watch": {
@@ -2416,7 +2442,7 @@
           "kind": "OA2",
           "property": "outcome",
           "claim": "Every voiced fill of Playoff Delta home holds becomes a video within the render policy's caps, and one that hasn't is tried again.",
-          "requirement": "Each fill in pd_fill of a voiced version (2 on) is written with its season to playoff-delta-episodes beside home's database, on its drive (STORAGE), whole; within the next hourly pass the render worker records it from the pinned stage with each scene said by home's Kokoro speaker, renders it within the same caps as the call's, and moves the finished folder into renders/playoff-delta/<season>-<team>-<NN>/ on the same drive, whole; an episode that fails is left without a folder and tried again each hour, keeping its finished steps; a fill written for the owner's own voice (version 1) is kept and never rendered, never failed; no finished video is deleted.",
+          "requirement": "Each fill in pd_fill of a voiced version (2 on) is written with its season to playoff-delta-episodes beside home's database, on its drive (STORAGE), whole; once home's lane admits it, as the call's (server:docs/home-compute.md, \"The lane\"), the render worker records it from the pinned stage with each scene said by home's Kokoro speaker, renders it within the same caps as the call's, and moves the finished folder into renders/playoff-delta/<season>-<team>-<NN>/ on the same drive, whole; a render the lane pauses or stops resumes from its finished steps, and giving way is never itself a failure (an attempt that exits soon after a pause is run again, at most 3 times a job, then is a failure); an episode that fails is left without a folder and tried again no sooner than an hour later, once the lane admits it, keeping its finished steps; a fill written for the owner's own voice (version 1) is kept and never rendered, never failed; no finished video is deleted.",
           "verdict": "unproven",
           "conclusion": "Shown in home's tests: each voiced fill is written for the worker once, whole, with its season, and one for your voice never is; each reads as rendered, waiting or failed, apart from yours. Slack says when an episode's attempt fails, naming the file that holds its whole output, and when one has waited 3 hours with no attempt, each tested by promtool. The worker's own job is rehearsed against a stand-in recorder, not tested, and no real week has rendered on home yet: the first voiced fill is the routine's of Tuesday Nov 10.",
           "tracked": "some-ui#2659",
@@ -2445,13 +2471,25 @@
               "class": "structural",
               "says": "Grafana reads what Prometheus has firing from ALERTS and sends each alert to the Slack contact point, one message per alert.",
               "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
+            },
+            {
+              "class": "structural",
+              "says": "Playoff Delta's job runs through the same attempt, render_episode and wait_for_room as the call's, so it obeys the lane as CW5's evidence shows: render-calls.test.sh exercises the call's job through those functions with a fake recorder; no test runs Playoff Delta's job itself.",
+              "ref": "server:infra/render/render-calls.sh"
             }
           ],
           "watch": {
             "by": "alert",
             "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-11-08",
+              "change": "An episode renders once home's lane admits it, not within the next hourly pass, and pauses or gives way when the lane says so, resuming from its finished steps; giving way is never itself a failure, and a failed attempt waits at least an hour and then for the lane.",
+              "why": "There is no render window and no clock: a start time can't promise the render finishes, and it starves everything else at that time. Renders are home's lowest class: they start whenever home has room, give way the moment anything else needs it, and resume when room comes back. The render worker obeys the lane since paulgsc/server#734 (L4c).",
+              "decision": "https://github.com/paulgsc/server/issues/705"
+            }
+          ]
         },
         {
           "id": "PK6",
@@ -2482,6 +2520,72 @@
             "by": "none"
           },
           "amendments": []
+        }
+      ]
+    },
+    {
+      "id": "template-preview",
+      "name": "A preview of a template, made by home and gone by itself",
+      "why": "The call and Playoff Delta render once a week, so a change to a template (its look, captions, music bed, mark) was first seen in a real episode. A preview lets the owner see it the same day: Preview on the template's page asks home, home makes a 15-30 s video of the template from its sample through the same steps as an episode, and the phone brings it over to play. It is a derived throwaway from sample data, never an episode, so home deletes it on its own (the owner, #2757).",
+      "paths": [
+        "some-ui:packages/video-render/src/preview.ts",
+        "some-ui:apps/www/tests/record/preview.ts",
+        "some-ui:apps/www/tests/record/call-recording.ts",
+        "server:apps/servers/file_host/src/routes/previews.rs",
+        "server:apps/servers/file_host/src/handlers/previews.rs",
+        "server:apps/servers/file_host/src/previews.rs",
+        "server:infra/render",
+        "server:infra/compose/call-render.yml",
+        "server:infra/docker/Dockerfile.render"
+      ],
+      "modules": ["previews"],
+      "objectives": [
+        {
+          "id": "PV1",
+          "kind": "OA2",
+          "property": "outcome",
+          "claim": "A preview the owner asks for is made, or ends with its reason on the phone; it never waits unseen.",
+          "requirement": "Each request home accepts reaches ready, or failed with a reason class (no-sample, too-long, too-large, render, or overdue once it is not ready a day after it was asked), and reads on the phone, from the newest request per template, as waiting, being made, paused, set aside, ready or failed; it waits only behind the lane's other work, and a second request while one is not yet ready answers with that one.",
+          "verdict": "unproven",
+          "conclusion": "The cut is tested and the recorder is written in some-ui; home's job, routes and overdue sweep are built and tested in server#743, not yet merged, and the phone's control (some-ui#2778) is not merged, so nothing makes or reports a preview yet.",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "The preview's cut is chosen by code, 15-30 s, the same cut list giving the same preview.",
+              "ref": "some-ui:packages/video-render/src/preview.ts"
+            },
+            {
+              "class": "structural",
+              "says": "The recorder renders a template's preview from its sample, and refuses a template with no sample fill, with its reason.",
+              "ref": "some-ui:apps/www/tests/record/preview.ts"
+            }
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": [],
+          "tracked": "some-ui#2757"
+        },
+        {
+          "id": "PV2",
+          "kind": "RE9",
+          "property": "work",
+          "claim": "Home keeps at most one preview per template, and none past a day.",
+          "requirement": "Per template, home keeps at most one request not yet ready, one ready preview of at most the render policy's largest video (MAX_VIDEO_MB), and the failed requests of the last day: a preview is deleted 24 h after it is made, the newest included, and an older one as soon as a newer one is ready; a failed request goes 24 h after it failed; a preview's work (stills, takes, step cache) goes with it, or when its request fails; the job in progress is never deleted. No switch and no receipt: a preview is derived from sample data, not the owner's record.",
+          "verdict": "unproven",
+          "conclusion": "Asked for by the owner on #2757 and agreed for home's prune; the prune is built and tested in server#743, not yet merged.",
+          "evidence": [
+            {
+              "class": "unknown",
+              "says": "The owner's ask: the default is 24 hours after it is made, newest per template only.",
+              "ref": "some-ui#2757"
+            }
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": [],
+          "tracked": "some-ui#2757"
         }
       ]
     }
@@ -2697,6 +2801,13 @@
       "class": "record",
       "growth": "Per video idea caught in Studio (ST18): the confirmed text of up to four answers, each a few versions (what was heard, then any fix), and since ST19 (#2301) up to three questions Claude asked back with their answers, each primer Claude fleshed it out into (up to 24 scenes of text), and a mark each time it is set aside or brought back; since ST26 (#2453) a new idea is added only when it is sent, whole: what it is (a title of at most 80 characters, a subject, keywords, a format), each answer's take ids and home's words once heard, and when it was sent; append-only; no audio is ever written, so nothing is discarded (owner, 2026-10-30, #2300); no cap (`some-ui:studio:ideas`).",
       "horizon": "an idea is never let go",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:episode-feedback",
+      "class": "record",
+      "growth": "bounded: each note left on a feed's episode (SFEED6, #2745): the feed, the episode's key, the moment in it, the categories picked from the fixed set and when it was written, a few hundred bytes each, append-only; at 1,000 notes (about 250 KB) a new one is refused and none is dropped (`some-ui:episode-feedback`).",
+      "horizon": "the phone keeps every note; none is rewritten or let go",
       "family": "what-is-kept"
     },
     {
@@ -3274,7 +3385,7 @@
     {
       "store": "server:mailbox_outgoing",
       "class": "record",
-      "growth": "Per file the phone (or the poller, for transcripts and LeetType session logs) files for the mailbox (decisions, scout, opened, transcript, leetype-log, reflection, prompt), bytes verbatim; append-only. A LeetType session's log is filed again as log-<session>.r<n>.json only when an event of it arrives home after its last copy, and each copy repeats every earlier event of the session. The routines' indexes (jobs, reflections) add nothing here or in mailbox_handed or mailbox_archive: each is a view home recomputes from these records and keeps no copy of, so the mailbox holds one index per routine, the latest only (owner, paulgsc/server#509).",
+      "growth": "Per file the phone (or the poller, for transcripts and LeetType session logs) files for the mailbox (decisions, scout, opened, transcript, leetype-log, reflection, prompt, feedback), bytes verbatim; append-only. A LeetType session's log is filed again as log-<session>.r<n>.json only when an event of it arrives home after its last copy, and each copy repeats every earlier event of the session. The routines' indexes (jobs, reflections) add nothing here or in mailbox_handed or mailbox_archive: each is a view home recomputes from these records and keeps no copy of, so the mailbox holds one index per routine, the latest only (owner, paulgsc/server#509).",
       "family": "routine-to-home"
     },
     {
@@ -3351,6 +3462,13 @@
       "store": "server:storage_sample",
       "class": "telemetry",
       "growth": "Per UTC day: one row per table and index plus database, wal and disk_free, about 80 rows a day (\"a few MB a year\", docs/storage.md); append-only, triggers abort UPDATE, DELETE and REPLACE.",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:episode_note",
+      "class": "record",
+      "growth": "Per note the phone leaves on a feed's episode (SFEED6, paulgsc/some-ui#2745; paulgsc/server invariant 38): its feed, episode, moment, one to fourteen categories from the fixed set, the take's voice-note id or null, when written and when it reached home; one row per id, append-only, body <= BODY_CEILING = 16 KiB; each is filed once for the mailbox's feedback folder as it arrives.",
+      "horizon": "kept for good: no delete and no switch (the owner's ruling on ask paulgsc/some-ui#2749); it goes only with the account",
       "family": "what-is-kept"
     },
     {
@@ -4254,7 +4372,8 @@
           "paths": [
             "server:infra/render",
             "server:infra/docker/Dockerfile.render",
-            "some-ui:apps/www/tests/record/call.ts"
+            "some-ui:apps/www/tests/record/call.ts",
+            "some-ui:apps/www/tests/record/call-recording.ts"
           ]
         },
         {
@@ -4263,8 +4382,8 @@
           "owner": "ours",
           "on": "home",
           "paths": [
-            "server:apps/servers/file_host/src/routes/call_videos.rs",
-            "server:apps/servers/file_host/src/handlers/call_videos.rs",
+            "server:apps/servers/file_host/src/routes/feed_videos.rs",
+            "server:apps/servers/file_host/src/handlers/feed_videos.rs",
             "server:apps/servers/file_host/src/feeds/videos.rs"
           ]
         },
@@ -4426,6 +4545,62 @@
           "says": "Slack is told when a voiced fill's render fails or waits 3 hours unattempted (PK5), and when the render worker stops passing (CW5); it does not say why a render failed, which the worker's log file on the drive does.",
           "status": "live",
           "ref": "server:apps/servers/file_host/src/pd_fills/render.rs"
+        }
+      ],
+      "checks": []
+    },
+    {
+      "id": "template-preview",
+      "name": "Previewing a template",
+      "why": "Preview on a template's page asks home for a short video of the template from its sample; home's render worker makes it under the lane like any render, and the phone brings it over and plays it until home lets it go (#2757).",
+      "serves": ["template-preview"],
+      "witnesses": ["PV1", "PV2"],
+      "segments": [
+        {
+          "id": "phone",
+          "name": "The template's page asks home for a preview, reads how far home has got, and brings the ready one over a part at a time to play. Ours, on the phone.",
+          "owner": "ours",
+          "on": "phone",
+          "paths": []
+        },
+        {
+          "id": "home-network",
+          "name": "The phone reaches home over the home network, as the paired phone.",
+          "owner": "network",
+          "on": "between",
+          "paths": []
+        },
+        {
+          "id": "previews",
+          "name": "Home takes the request, says where each preview stands, serves its video in parts, and deletes it on its own. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": [
+            "server:apps/servers/file_host/src/routes/previews.rs",
+            "server:apps/servers/file_host/src/handlers/previews.rs",
+            "server:apps/servers/file_host/src/previews.rs"
+          ]
+        },
+        {
+          "id": "render",
+          "name": "The render worker records the template's sample, cuts it to the preview and renders it, under the lane. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": [
+            "server:infra/render",
+            "server:infra/compose/call-render.yml",
+            "server:infra/docker/Dockerfile.render",
+            "some-ui:apps/www/tests/record/preview.ts",
+            "some-ui:apps/www/tests/record/call-recording.ts",
+            "some-ui:packages/video-render/src/preview.ts"
+          ]
+        }
+      ],
+      "signals": [
+        {
+          "says": "Each preview's state, from the lane's job state, on Studio's Renders page and the template's page.",
+          "status": "planned",
+          "tracked": "some-ui#2757"
         }
       ],
       "checks": []

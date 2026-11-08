@@ -24,6 +24,42 @@ export const RefSchema = z.strictObject({
 
 export type CallRef = z.infer<typeof RefSchema>
 
+export const PrSchema = RefSchema.extend({ kind: z.literal("pr") })
+export const IssueSchema = RefSchema.extend({ kind: z.literal("issue") })
+
+/** An epic's tag, as its title carries it: "STUDIO". */
+export const epicTag = z.string().regex(/^[A-Z][A-Z0-9-]{0,23}$/)
+
+/**
+ * A call an agent made without the owner's word: the options it had, the one
+ * it took, why, and how the owner undoes it. The weekly call's `mine` and a
+ * session's note (`session-note.ts`) both say one.
+ */
+export const ChoiceSchema = z.strictObject({
+  title: words,
+  options: z.array(words).min(2).max(4),
+  /** The option it took, by its place in `options`. */
+  chose: z.number().int().nonnegative(),
+  why: words,
+  /** How the owner undoes it, if they would rather not. */
+  undo: words,
+})
+
+/** Every reason a call's options contradict it: one taken it doesn't list, or two the same. */
+export function choiceProblems(
+  name: string,
+  choice: z.infer<typeof ChoiceSchema>
+): Array<string> {
+  return [
+    ...(new Set(choice.options).size === choice.options.length
+      ? []
+      : [`${name}: two options say the same`]),
+    ...(choice.chose < choice.options.length
+      ? []
+      : [`${name}: it chose an option it doesn't list`]),
+  ]
+}
+
 /** Where `ref` is on GitHub. */
 export const refUrl = (ref: CallRef): string =>
   `https://github.com/paulgsc/${ref.repo}/${ref.kind === "pr" ? "pull" : "issues"}/${ref.number}`

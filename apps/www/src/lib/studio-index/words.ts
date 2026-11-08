@@ -6,9 +6,10 @@
  * words (its name, how an episode is labelled) stay `FEED_WORDS`
  * (`lib/call-videos/words`); these add what it is fed and when it runs.
  */
-import { counted } from "@some-ui/core-utils"
+import { counted, formatDay, formatTimecode } from "@some-ui/core-utils"
 
 import type { Feed } from "@/lib/feeds"
+import { formatDurationMs } from "@/lib/format"
 
 import type { StudioKind } from "./index"
 
@@ -79,6 +80,59 @@ export const FEED_FACTS = {
   },
 } as const satisfies Record<Feed, FeedFacts>
 
+/** The places a feed leaves something, in the order a feed's page lists them. */
+export const PLACES = ["home", "phone", "testing", "drive"] as const
+
+type Place = (typeof PLACES)[number]
+
+type Kept = { readonly what: string; readonly letGo: string }
+
+/** My data's two steps for an episode (`lib/my-data/words`' videos). */
+const HOME_LETS_GO =
+  "Once an episode's YouTube link is saved, Settings › My data lets its video go, then what it was made from, and home keeps a note of each. Its words stay."
+
+const ON_THE_PHONE: Kept = {
+  what: "Your notes on its episodes, under Feedback, and a copy of each episode you watched.",
+  letGo:
+    "Your notes are kept. A watched copy is the phone's to clear, and it goes when home's video is let go.",
+}
+
+const NOTHING_IN_DRIVE: Kept = {
+  what: "Nothing. This feed keeps nothing in Drive.",
+  letGo: "Nothing to let go.",
+}
+
+/**
+ * What each feed leaves behind, and where (SFEED8, #2748). Nothing more can be
+ * let go than My data already offers (the owner's ruling on ask #2749).
+ */
+export const FEED_KEPT = {
+  call: {
+    home: {
+      what: "Every week Claude wrote for the call, as home first read it, and each episode's video and what it was made from.",
+      letGo: HOME_LETS_GO,
+    },
+    phone: ON_THE_PHONE,
+    testing: {
+      what: "Each week's words, in the public paulgsc/testing. Only the newest weeks stay there: an older one leaves once home holds it.",
+      letGo: "Never by hand. Home keeps every week.",
+    },
+    drive: NOTHING_IN_DRIVE,
+  },
+  "playoff-delta": {
+    home: {
+      what: "Every week's words Claude wrote, with the season as it stood that week, and each episode's video and what it was made from.",
+      letGo: HOME_LETS_GO,
+    },
+    phone: ON_THE_PHONE,
+    testing: {
+      what: "The season's numbers and every week's words, in the public paulgsc/testing.",
+      letGo: "Never. A week's words are kept as they were written.",
+    },
+    drive: NOTHING_IN_DRIVE,
+  },
+} as const satisfies Record<Feed, Record<Place, Kept>>
+
 export const STUDIO_INDEX_WORDS = {
   heading: "Studio",
   aToZ: "Listed A to Z. None comes first.",
@@ -92,7 +146,7 @@ export const STUDIO_INDEX_WORDS = {
 
   asks: {
     intro:
-      "Each is a decision only you can make. Answering by voice comes to Studio later. For now, answer one on its page.",
+      "Each is a decision only you can make. Answer one by voice on its page, or on GitHub.",
     reading: "Reading what waits on you…",
     away: "The asks couldn't be read. Try again in a moment.",
     stale: "The asks couldn't be read again, so this is what was read before.",
@@ -105,7 +159,34 @@ export const STUDIO_INDEX_WORDS = {
     options: "The options",
     recommended: "Recommended",
     unblocks: (what: string): string => `Unblocks ${what}`,
-    open: "Answer it on its page",
+    open: "Answer it on GitHub",
+    answer: {
+      label: "Your answer",
+      line: "Say which option, or what you'd rather. Home keeps what you say, and the morning routine files it as an issue that waits for you to start on it. The ask stays open until you do.",
+      unpaired:
+        "Only home hears an answer, and this phone isn't paired with it. Pair it in Settings, or answer on GitHub.",
+      noVoice: "This phone can't record here. Answer it on GitHub instead.",
+      again: "Say another answer",
+      heard: "Home heard",
+      hearingLine:
+        "Your answer is kept. Its words come back from home in a minute or two, and you can leave this page.",
+      kept: {
+        late: "Home has your answer and hasn't heard it yet. It's filed once home has.",
+        noWords:
+          "Home has your answer but can't give its words back. If it never hears them, nothing is filed: answer on GitHub to be sure.",
+        awayOnHome:
+          "Home can't be reached right now. It already has your answer.",
+        awayOnPhone:
+          "Home can't be reached right now. Your answer is kept on this phone and goes home once home is in reach.",
+      },
+      notice: {
+        silent: "Didn't hear anything. Try again.",
+        notStarted:
+          "Your answer can't be taken right now. Try again in a moment.",
+        full: "There's no room on this phone for another take until home has the ones before it.",
+        notKept: "Couldn't keep that answer. Try again.",
+      },
+    },
     gone: "This ask isn't waiting any more.",
   },
 
@@ -113,6 +194,18 @@ export const STUDIO_INDEX_WORDS = {
     intro:
       "A clip shows what a change built, as you'd see it: in the app, on a dashboard, or at a command line. Code records it from sample data, before and after the change. Every one is kept here, and only some are picked for an episode.",
     none: "No clips yet. The first ones come with the change that records them.",
+    reading: "Reading the Library…",
+    away: "The Library couldn't be read. Try again in a moment.",
+    stale:
+      "The Library couldn't be read again, so this is what was read before.",
+    gone: "This clip isn't in the Library any more.",
+    landed: (day: string): string => `Landed ${formatDay(day)}`,
+    before: "Before",
+    after: "After",
+    nothingBefore: "New with this change: there was nothing to show before.",
+    walked: "Code recorded it from sample data.",
+    recorded: "Taken by the session that made the change, from sample data.",
+    open: "See the change",
   },
 
   episodes: {
@@ -127,7 +220,7 @@ export const STUDIO_INDEX_WORDS = {
   feedback: {
     intro:
       "A note on an episode, at a moment in it: what kind of thing it is, what you said, and where it went.",
-    none: "No feedback yet. Leaving a note on an episode comes to Studio later.",
+    none: "No feedback yet. Leave a note on an episode while it plays, from its page under Episodes.",
   },
 
   feeds: {
@@ -137,6 +230,15 @@ export const STUDIO_INDEX_WORDS = {
     cadence: "When it runs",
     templates: "Made with",
     episodes: "Its episodes",
+    kept: "Where it's kept",
+    places: {
+      home: "On home",
+      phone: "On this phone",
+      testing: "In the public record",
+      drive: "In Drive",
+    } satisfies Record<Place, string>,
+    /** Before the size of what home holds of a feed's episodes. */
+    homeHolds: "Its episodes take up on home:",
   },
 
   intuitions: {
@@ -166,14 +268,25 @@ export const STUDIO_INDEX_WORDS = {
       "How each kind of video looks. It's the same for every episode, and the AI fills only what's said.",
     version: (n: number): string => `Version ${String(n)}`,
     usedBy: (feed: string): string => `Used by ${feed}`,
-    inOrder: "In order",
+    /** The storyboard (SFEED3): every frame of one episode, from its sample. */
+    frames: "Every frame, before it's filled",
+    drawnFrom: (sample: string): string =>
+      `Drawn from ${sample}. Grey bars are what the AI writes. The rest is the template's, as every episode has it.`,
+    inAll: (ms: number): string => `About ${formatDurationMs(ms)} in all`,
+    /** Where a frame starts and about how long it holds: "1:05, about 9 seconds". */
+    when: (atMs: number, ms: number): string =>
+      `${formatTimecode(atMs)}, about ${counted(Math.max(1, Math.round(ms / 1000)), "second")}`,
     who: "Who made this",
     whoLine:
       "Always first. Code fills it from the episode, and it can't be removed.",
     brandIn: "Your brand intro",
     brandOut: "Your brand outro",
     brandLine: "Your mark",
-    chapter: "A chapter slide, said aloud",
+    chapter: (section: string): string => `Chapter slide: ${section}`,
+    /** One item of a section that shows once per item: "Where we are, 2". */
+    item: (section: string, n: number): string => `${section}, ${String(n)}`,
+    aiWrites: "The AI writes what's said here",
+    nothingSaid: "Nothing is said",
     upTo: (n: number): string => `Up to ${String(n)}, one each`,
     sometimes: "Left out when there's nothing to say",
     captions: "Captions",
@@ -187,5 +300,35 @@ export const STUDIO_INDEX_WORDS = {
       `${counted(n, "chapter slide")} said aloud`,
     noShape:
       "Made before templates had a shape: no intro, chapters or captions.",
+    /** The caption look control (SFEED11, #2707). */
+    look: {
+      label: "The caption look",
+      named: (look: string): string => `Captioned in the ${look} look`,
+      line: "Change it here, then open it as a GitHub issue. Once the change is in the code, the next video uses it. Nothing changes until then.",
+      sample: ["Third", "and", "long,", "eleven", "to", "go"],
+      weight: "Weight",
+      bold: "Bold",
+      heavy: "Heavy",
+      size: "Size",
+      text: "Words",
+      lit: "The word being said",
+      litOn: "Light the word being said",
+      stroke: "Outline",
+      strokeWidth: "Outline width",
+      plate: "A plate behind the words",
+      plateColour: "Plate",
+      plateOpacity: "Plate opacity",
+      popIn: "Pop-in",
+      popInMs: (ms: number): string =>
+        ms === 0
+          ? "Every word at once"
+          : `Each word in ${(ms / 1000).toFixed(2)} s`,
+      reset: "Start over",
+      send: "Open it as a GitHub issue",
+      sendLine:
+        "Opens a new issue holding this look, for you to file. Videos already made keep the look they were drawn in.",
+      unchanged: "Change something to open it as an issue.",
+      none: "This template names no caption look.",
+    },
   },
 } as const

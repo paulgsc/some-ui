@@ -11,6 +11,7 @@
 @import "./themes/rose-night.css";
 @import "./themes/harvest-sky.css";
 @import "./themes/mochi.css";
+@import "./themes/mochi-night.css";
 
 @plugin "tailwindcss-animate";
 

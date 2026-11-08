@@ -145,10 +145,10 @@ describe("the check", () => {
     expect(
       await refuses({
         ...fill,
-        format: { id: "playoff-delta-week", version: 3 },
+        format: { id: "playoff-delta-week", version: 4 },
       })
     ).toEqual([
-      "the format is playoff-delta-week v3, not playoff-delta-week v2 or an earlier version",
+      "the format is playoff-delta-week v4, not playoff-delta-week v3 or an earlier version",
     ])
     expect(
       await refuses({
@@ -156,7 +156,7 @@ describe("the check", () => {
         format: { id: "playoff-delta-legend", version: 2 },
       })
     ).toEqual([
-      "the format is playoff-delta-legend v2, not playoff-delta-week v2 or an earlier version",
+      "the format is playoff-delta-legend v2, not playoff-delta-week v3 or an earlier version",
     ])
     // A fill written for an earlier version still checks: it is drawn in it.
     expect(

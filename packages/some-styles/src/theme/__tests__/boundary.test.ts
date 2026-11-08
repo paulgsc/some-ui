@@ -8,6 +8,7 @@ import {
   appearanceProps,
   applyAppearance,
   SESSION_THEMES,
+  sessionThemeProps,
 } from "../index"
 
 describe("appearanceProps", () => {
@@ -53,5 +54,25 @@ describe("applyAppearance", () => {
 
     expect(element.dataset.appearance).toBeUndefined()
     expect(Array.from(element.classList).sort()).toEqual(["dark", "flex"])
+  })
+})
+
+describe("sessionThemeProps", () => {
+  it("leaves the ground to what is around it, for a mark in another theme", () => {
+    expect(sessionThemeProps("mochi", { ground: false }).style).toEqual({
+      colorScheme: "light",
+      backgroundColor: "transparent",
+    })
+  })
+
+  it("keeps the caller's class, and with no theme gives only that", () => {
+    expect(
+      sessionThemeProps("mochi-night", { className: "pd-frame" })
+    ).toMatchObject({
+      className: "dark mochi-night pd-frame",
+    })
+    expect(sessionThemeProps(undefined, { className: "pd-frame" })).toEqual({
+      className: "pd-frame",
+    })
   })
 })

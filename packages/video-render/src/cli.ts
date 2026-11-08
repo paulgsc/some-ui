@@ -24,27 +24,57 @@
  * its index, every week it lists against the call's schema, and no week
  * file it forgets; it prints every reason it can't be published.
  *
+ *   pnpm --filter @some-ui/video-render render clip-check <clips folder>
+ *
+ * checks paulgsc/testing's `clips/` folder before it is pushed
+ * (`clipFolderProblems`, SFEED7).
+ *
+ *   pnpm --filter @some-ui/video-render render session-check <sessions folder>
+ *
+ * checks a `sessions/` folder of `paulgsc/testing` before it is pushed
+ * (`sessionFolderProblems`, SFEED9).
+ *
  *   pnpm --filter @some-ui/video-render render compare-hearings <home transcript> <session words>
  *
  * lines up two hearings of one take (ST25, `hearings.ts`) and prints the
  * comparison as JSON: home's transcript as the Jobs mailbox holds it
  * (`transcript-<note>-<n>.json`), and the session's words (`WordsSchema`).
  *
+ *   pnpm --filter @some-ui/video-render render music-bed --out <file>
+ *
+ * writes the music bed (`music-bed.ts`), refusing bytes its pin doesn't name.
+ *
+ *   pnpm --filter @some-ui/video-render render sounds --out <folder>
+ *
+ * writes the sound kit's six cues (`cues.ts`, HYPER4) into the folder, home's
+ * `${STORAGE}/brand/sounds`, refusing all of them if one's pin doesn't name it.
+ *
+ *   pnpm --filter @some-ui/video-render render pending <transcripts.json> <filed.json>
+ *
+ * prints the Studio takes left to file as pending issues (`pending.ts`):
+ * from the mailbox's transcripts (a list of their bodies) and the issues
+ * already filed (a list of their bodies, or of issues each with its `body`).
+ *
  * `pnpm --filter` runs this from the package; INIT_CWD is where it was typed.
  */
 
 import { execFile } from "node:child_process"
-import { access, readdir, writeFile } from "node:fs/promises"
+import { createHash } from "node:crypto"
+import { existsSync, readFileSync } from "node:fs"
+import { access, mkdir, readdir, writeFile } from "node:fs/promises"
 import { dirname, join, relative } from "node:path"
 import { parseArgs, promisify } from "node:util"
 import { z } from "zod"
 
 import { ASK_LABEL, readAskIssue } from "./ask"
 import { callFolderProblems } from "./call"
-import { callsOf, changeOf, trailersOf, whereWeAreOf } from "./call-facts"
+import { callsEntered, changeOf, trailersOf, whereWeAreOf } from "./call-facts"
 import type { CallFacts } from "./call-facts"
+import { clipFolderProblems, parseClipIndex } from "./clip"
+import { CUES, cueWav } from "./cues"
 import { problemsOf } from "./cut-list"
 import { compareHearings } from "./hearings"
+import { MUSIC_BED, musicBedWav } from "./music-bed"
 import {
   fail,
   here,
@@ -55,8 +85,19 @@ import {
   renderFolder,
   runCommand,
 } from "./node"
+import { toFile } from "./pending"
 import { REPOS } from "./refs"
+import { sessionFolderProblems } from "./session-note"
 import { fromTimelineV1 } from "./timeline-v1"
+import { SOUNDS } from "./vocabulary"
+
+/** The JSON files directly in `dir`, by name. */
+async function readJsonFolder(dir: string): Promise<Map<string, unknown>> {
+  const files = new Map<string, unknown>()
+  for (const name of (await readdir(dir)).filter((n) => n.endsWith(".json")))
+    files.set(name, await readJson(join(dir, name)))
+  return files
+}
 
 async function main(): Promise<void> {
   const { values, positionals } = parseArgs({
@@ -70,6 +111,46 @@ async function main(): Promise<void> {
     },
   })
   const [first, second, third] = positionals
+  if (first === "music-bed") {
+    if (!values.out.endsWith(".wav"))
+      fail(["usage: render music-bed --out <file>.wav"])
+    const wav = musicBedWav()
+    const sum = createHash("sha256").update(wav).digest("hex")
+    if (sum !== MUSIC_BED.sha256)
+      fail([
+        `The bed came out as ${sum}, and its pin is ${MUSIC_BED.sha256}; nothing was written`,
+      ])
+    await writeFile(here(values.out), wav)
+    process.stdout.write(
+      `wrote ${here(values.out)}, ${sum}; lay it in brand/ as ${MUSIC_BED.file}\n`
+    )
+    return
+  }
+  if (first === "sounds") {
+    if (values.out === "outputs/video.mp4")
+      fail(["usage: render sounds --out <folder>"])
+    const folder = here(values.out)
+    const made = SOUNDS.map((sound) => {
+      const wav = cueWav(sound)
+      return { sound, wav, sum: createHash("sha256").update(wav).digest("hex") }
+    })
+    const off = made.filter(({ sound, sum }) => sum !== CUES[sound].sha256)
+    if (off.length > 0)
+      fail([
+        ...off.map(
+          ({ sound, sum }) =>
+            `The ${sound} came out as ${sum}, and its pin is ${CUES[sound].sha256}`
+        ),
+        "nothing was written",
+      ])
+    await mkdir(folder, { recursive: true })
+    for (const { sound, wav, sum } of made) {
+      await writeFile(join(folder, CUES[sound].file), wav)
+      process.stdout.write(`${sound}: ${CUES[sound].file}, ${sum}\n`)
+    }
+    process.stdout.write(`wrote the kit to ${folder}\n`)
+    return
+  }
   if (first === "compare-hearings") {
     if (!second || !third) {
       fail(["usage: render compare-hearings <home transcript> <session words>"])
@@ -78,6 +159,16 @@ async function main(): Promise<void> {
     const session = await readAs(HeardSchema, here(third))
     process.stdout.write(
       `${JSON.stringify(compareHearings(home, session), null, 1)}\n`
+    )
+    return
+  }
+  if (first === "pending") {
+    if (!second || !third)
+      fail(["usage: render pending <transcripts.json> <filed.json>"])
+    const transcripts = await readAs(z.array(z.unknown()), here(second))
+    const filed = await readAs(FiledSchema, here(third))
+    process.stdout.write(
+      `${JSON.stringify(toFile(transcripts, filed), null, 1)}\n`
     )
     return
   }
@@ -90,17 +181,47 @@ async function main(): Promise<void> {
   }
   if (first === "call-check") {
     if (!second) fail(["usage: render call-check <call folder>"])
-    const dir = here(second)
-    const names = (await readdir(dir)).filter((n) => n.endsWith(".json"))
-    const files = new Map<string, unknown>()
-    for (const name of names) files.set(name, await readJson(join(dir, name)))
+    const files = await readJsonFolder(here(second))
     const problems = callFolderProblems(files)
     if (problems.length > 0)
       fail([`${second} can't be published:`, ...problems])
-    const weeks = names.length - 1
+    const weeks = files.size - 1
     process.stdout.write(
       `${second}: ${weeks} ${weeks === 1 ? "week" : "weeks"}, ready
 `
+    )
+    return
+  }
+  if (first === "clip-check") {
+    if (!second) fail(["usage: render clip-check <clips folder>"])
+    const dir = here(second)
+    const read = (path: string): unknown => {
+      try {
+        return JSON.parse(readFileSync(join(dir, path), "utf8"))
+      } catch {
+        return undefined
+      }
+    }
+    const problems = clipFolderProblems(read, (path) =>
+      existsSync(join(dir, path))
+    )
+    if (problems.length > 0)
+      fail([`${second} can't be published:`, ...problems])
+    const index = parseClipIndex(read("index.json"))
+    const n = index.ok ? index.value.clips.length : 0
+    process.stdout.write(
+      `${second}: ${n} ${n === 1 ? "clip" : "clips"}, ready\n`
+    )
+    return
+  }
+  if (first === "session-check") {
+    if (!second) fail(["usage: render session-check <sessions folder>"])
+    const files = await readJsonFolder(here(second))
+    const problems = sessionFolderProblems(files)
+    if (problems.length > 0)
+      fail([`${second} can't be published:`, ...problems])
+    process.stdout.write(
+      `${second}: ${files.size} ${files.size === 1 ? "note" : "notes"}, ready\n`
     )
     return
   }
@@ -158,6 +279,16 @@ const HeardSchema = z.union([
   WordsSchema,
   z.object({ words: WordsSchema }).transform(({ words }) => words),
 ])
+
+/** The bodies of the issues already filed: as text, or as GitHub lists them. */
+const FiledSchema = z.array(
+  z.union([
+    z.string(),
+    z
+      .object({ body: z.string().nullable() })
+      .transform(({ body }) => body ?? ""),
+  ])
+)
 
 async function readAs<T>(schema: z.ZodType<T>, file: string): Promise<T> {
   const parsed = schema.safeParse(await readJson(file))
@@ -280,7 +411,6 @@ const PullHit = z.object({
   title: z.string(),
   author: z.string(),
   mergedAt: z.string(),
-  body: z.string(),
 })
 const CommitHit = z.object({ sha: z.string(), message: z.string() })
 const IssueHit = z.object({
@@ -290,15 +420,65 @@ const IssueHit = z.object({
   body: z.string(),
 })
 
+/** The calls record's path in some-ui. */
+const CALLS_RECORD = "docs/calls.json"
+
+/**
+ * The calls record on this checkout's history as it stood at `day`'s start
+ * (UTC): null when there was none yet. The weekly run starts from some-ui's
+ * `main` (`CALL-ROUTINE.md`, step 1), with history back to the week's start.
+ */
+async function recordAt(day: string): Promise<string | null> {
+  const root = (
+    await run("git", ["rev-parse", "--show-toplevel"])
+  ).stdout.trim()
+  const commit = (
+    await run("git", [
+      "-C",
+      root,
+      "rev-list",
+      "-1",
+      "--first-parent",
+      `--before=${day}T00:00:00Z`,
+      "HEAD",
+    ])
+  ).stdout.trim()
+  if (commit === "")
+    fail([
+      `no commit before ${day} on this checkout: fetch main's history back to the week's start`,
+    ])
+  const at = `${commit}:${CALLS_RECORD}`
+  try {
+    await run("git", ["-C", root, "cat-file", "-e", at])
+  } catch {
+    return null
+  }
+  try {
+    return (await run("git", ["-C", root, "show", at])).stdout
+  } catch {
+    return fail([`${CALLS_RECORD} at ${commit} could not be read`])
+  }
+}
+
+/** The day after `day`. */
+const dayAfter = (day: string): string =>
+  new Date(Date.parse(`${day}T00:00:00Z`) + 86_400_000)
+    .toISOString()
+    .slice(0, 10)
+
 /** The weekly call's facts for `from`..`to`, both days included. */
 async function callFacts(from: string, to: string): Promise<CallFacts> {
   const facts: CallFacts = {
     week: { from, to },
     pulls: [],
+    calls: [],
     promises: [],
     asks: [],
     epics: [],
   }
+  const after = await recordAt(dayAfter(to))
+  if (after !== null)
+    facts.calls.push(...callsEntered(await recordAt(from), after))
   for (const repo of REPOS) {
     const changes = new Map<number, "story" | "defect">()
     const commits = await search(
@@ -317,7 +497,7 @@ async function callFacts(from: string, to: string): Promise<CallFacts> {
     const pulls = await search(
       "search/issues",
       `repo:paulgsc/${repo} is:pr is:merged merged:${from}..${to}`,
-      '.items[] | {number, title, author: (.user.login // "ghost"), mergedAt: .pull_request.merged_at, body: (.body // "")}',
+      '.items[] | {number, title, author: (.user.login // "ghost"), mergedAt: .pull_request.merged_at}',
       PullHit
     )
     for (const p of pulls) {
@@ -329,7 +509,6 @@ async function callFacts(from: string, to: string): Promise<CallFacts> {
         author: p.author,
         mergedAt: p.mergedAt,
         ...(change === undefined ? {} : { change }),
-        calls: callsOf(p.body),
       })
     }
     const asks = await search(

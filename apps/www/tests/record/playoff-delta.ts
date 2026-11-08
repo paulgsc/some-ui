@@ -24,24 +24,14 @@
  * animation at rest, so the same week gives the same bytes. It serves the built app (never `vite dev`)
  * from `--dist`, relative to apps/www, or records the one served at `--app`.
  * Needs `ffmpeg` and `ffprobe` on `PATH`. Policy flags as `record:call`'s.
- *
- *   pnpm --filter www record:playoff-delta --clips --week 9 [--theme mochi]
- *
- * `--clips` records the episode for my own voice instead (SHOW SH2): one
- * 1080x1920 clip per slide of version 1, a still of each, and `episode.json`,
- * the primer the phone's Studio opens, until FEED6 (#2649) retires my voice
- * from episodes. Its clips are Playwright's .webm.
  */
 
-import { createHash } from "node:crypto"
-import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises"
+import { readFile, writeFile } from "node:fs/promises"
 import { join, resolve } from "node:path"
 import { parseArgs } from "node:util"
 import type { Browser, BrowserContext, Page } from "@playwright/test"
 import {
   checkNarration,
-  CLIPS_VERSION,
-  episodeFor,
   formatOf,
   kindOf,
   parseStorySeason,
@@ -54,7 +44,7 @@ import {
   type StorySeason,
 } from "@some-ui/playoff-delta/recording"
 import { THEME_STORAGE_KEY } from "@some-ui/styles/theme"
-import { clipFile, hasCaptions } from "@some-ui/video-render"
+import { chapterSlides, hasCaptions } from "@some-ui/video-render"
 import { readJson } from "@some-ui/video-render/node"
 
 import { fail, here, launchChromium, runCommand } from "./command"
@@ -78,9 +68,6 @@ const SERIES = resolve(
 const TESTING_SEASON =
   /\/paulgsc\/testing\/main\/playoff-delta\/\d{4}\/[A-Z]{2,3}\.json$/
 
-/** After a slide's hold, in `--clips`: a beat of stillness to cut on. */
-const TAIL_MS = 600
-
 const { values } = parseArgs({
   options: {
     week: { type: "string", default: "9" },
@@ -94,7 +81,6 @@ const { values } = parseArgs({
     // Home's brand folder: the owner's files the series names (#2673).
     brand: { type: "string" },
     theme: { type: "string" },
-    clips: { type: "boolean", default: false },
     ...POLICY_OPTIONS,
   },
 })
@@ -104,13 +90,11 @@ if (!Number.isInteger(week) || week < 0) fail(["--week is a whole number"])
 
 /** A page at the recording size, in the chosen theme, every motion at rest. */
 async function open(
-  browser: Browser,
-  video?: string
+  browser: Browser
 ): Promise<{ context: BrowserContext; page: Page }> {
   const context = await browser.newContext({
     viewport: RECORDING,
     deviceScaleFactor: 1,
-    ...(video ? { recordVideo: { dir: video, size: RECORDING } } : {}),
   })
   if (values.theme) {
     const theme = values.theme
@@ -144,14 +128,11 @@ const urlOf = (origin: string, query: Record<string, string>): string =>
     ...query,
   }).toString()}`
 
-/**
- * The season the stage plays, as it publishes it on the frame, and the sum
- * of that JSON (the season as the stage read it, not the file's bytes).
- */
+/** The season the stage plays, as it publishes it on the frame. */
 async function seasonOn(
   browser: Browser,
   origin: string
-): Promise<{ season: StorySeason; sha256: string }> {
+): Promise<{ season: StorySeason }> {
   const probe = await open(browser)
   await probe.page.goto(urlOf(origin, { slide: "0" }))
   const data = await probe.page
@@ -162,10 +143,7 @@ async function seasonOn(
   const season = parseStorySeason(JSON.parse(data))
   if (week !== 0 && !season.weeks.some((w) => w.week === week))
     fail([`the season has no week ${week}`])
-  return {
-    season,
-    sha256: createHash("sha256").update(data).digest("hex"),
-  }
+  return { season }
 }
 
 /** The week's fill, checked against the season the stage plays. */
@@ -226,51 +204,21 @@ async function voiced(browser: Browser, origin: string): Promise<void> {
     root,
     SERIES,
     voicedCutList(season, week, fill, takes, { bed }),
-    { out: "episode.mp4", policy, browser, origin }
+    {
+      out: "episode.mp4",
+      policy,
+      browser,
+      origin,
+      marks: chapterSlides(scenes.filter((s) => s.kind === "chapter")),
+    }
   )
-}
-
-/** The episode for my own voice: SH2's clips and `episode.json`, until FEED6. */
-async function clips(browser: Browser, origin: string): Promise<void> {
-  const outDir = here(join(values.out, `week-${String(week).padStart(2, "0")}`))
-  await mkdir(outDir, { recursive: true })
-  const { season, sha256 } = await seasonOn(browser, origin)
-  const scenes = formatOf(kindOf(week), CLIPS_VERSION).scenes
-  /** Where each clip's slide appears, after the app's boot frames. */
-  const starts: Array<number> = []
-  for (const [i, scene] of scenes.entries()) {
-    const clip = clipFile(scene.id, i)
-    const name = clip.replace(/\.webm$/, "")
-    const tmp = join(outDir, ".video")
-    const { context, page } = await open(browser, tmp)
-    const opened = Date.now()
-    await page.goto(urlOf(origin, { slide: String(i) }))
-    await page.locator(`[data-slide="${scene.id}"]`).waitFor()
-    starts.push(Date.now() - opened)
-    await page.waitForTimeout(scene.holdMs + TAIL_MS)
-    await page.screenshot({ path: join(outDir, `${name}.png`) })
-    const video = page.video()
-    await context.close()
-    if (video) await rename(await video.path(), join(outDir, clip))
-    console.log(
-      `recorded ${name} (slide from ${((starts[i] ?? 0) / 1000).toFixed(1)}s)`
-    )
-  }
-  await rm(join(outDir, ".video"), { recursive: true, force: true })
-  const episode = episodeFor(season, week, sha256, (i) => starts[i] ?? 0)
-  if (!episode.ok) fail(episode.problems)
-  await writeFile(
-    join(outDir, "episode.json"),
-    `${JSON.stringify(episode.value, null, 2)}\n`
-  )
-  console.log(`wrote ${scenes.length} clips and episode.json to ${outDir}`)
 }
 
 async function main(): Promise<void> {
   const site = await siteOf(values)
   const browser = await launchChromium()
   try {
-    await (values.clips ? clips : voiced)(browser, site.origin)
+    await voiced(browser, site.origin)
   } finally {
     await browser.close()
     await site.close()
