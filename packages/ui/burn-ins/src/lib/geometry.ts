@@ -37,8 +37,7 @@ export const PORTRAIT = { width: 1080, height: 1920 } as const
 export const LANDSCAPE = { width: 1920, height: 1080 } as const
 
 /** The bands a burn-in may draw in. */
-const REGION_NAMES = ["header", "body", "lower-third", "gutter"] as const
-export type Region = (typeof REGION_NAMES)[number]
+export type Region = "header" | "body" | "lower-third" | "gutter"
 
 export type Geometry = {
   readonly frame: FrameSize
