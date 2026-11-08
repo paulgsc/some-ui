@@ -1314,9 +1314,9 @@
           "kind": "OA7",
           "property": "outcome",
           "claim": "A failing required check stops a merge, in both repositories.",
-          "requirement": "main in some-ui requires CI Gate and main in the server requires its five named checks (Artifact retention, Rust lint, rust_ci, metric_contract_ci, Deny Checks Summary); a deliberately failing pull request is shown to be blocked in each, and a check fails if either repository stops requiring them.",
-          "verdict": "holds",
-          "conclusion": "A failing required check stops a merge in both repositories, as probes showed even through the owner's account; a check reads both repositories' rules on every pull request and daily, and its red run shows only in Actions. It cannot see a bypass granted later, and some-ui's extension and pedagogy checks are not required; the server's other checks reach a merge through PR gate (GC5).",
+          "requirement": "main in some-ui requires CI Gate and main in the server requires its five named checks (Artifact retention, Rust lint, rust_ci, metric_contract_ci, Deny Checks Summary); a deliberately failing pull request is shown to be blocked in each, and a check fails if either repository stops requiring them. The checks a pull request passed must also have run against the main it merges into: main requires branches to be up to date before merging, or merges through a queue, and the check fails if it stops.",
+          "verdict": "unproven",
+          "conclusion": "A failing required check stops a merge in both repositories, as probes showed even through the owner's account. Unproven over merge order: on 2026-11-08 #2613 merged with checks that had run on a main from before #2771 and #2799, and the combined lockfile broke every install (#2815). Nothing yet requires a pull request's checks to run against the main it merges into.",
           "evidence": [
             {
               "class": "measured",
@@ -1349,12 +1349,19 @@
               "change": "The claim is to required checks; the server's half is its five named required checks, not one gate that waits on every check, which moved to GC5.",
               "why": "The server's checks span several workflows and a job cannot wait on another workflow's jobs, so one gate is real work (AS10), not a setting.",
               "decision": "https://github.com/paulgsc/some-ui/issues/2211#issuecomment-6483155448"
+            },
+            {
+              "on": "2026-11-08",
+              "change": "The family adds merge order: a required check that passed on a merge base main has since moved past. The requirement now asks for branches up to date (or a merge queue), and the verdict is unproven until main requires it.",
+              "why": "#2613's required checks ran before #2771 and #2799 merged; its lockfile merged without a conflict yet left four dangling references, so every install failed until #2815.",
+              "decision": "https://github.com/paulgsc/some-ui/issues/2816"
             }
           ],
           "proof": [
             "some-ui:packages/assurance/src/branch-rules.ts#readBranchRules",
             "some-ui:packages/assurance/src/__tests__/branch-rules.test.ts#names each check main no longer requires"
-          ]
+          ],
+          "tracked": "some-ui#2816"
         },
         {
           "id": "GC2",
