@@ -2,7 +2,7 @@
   "schema": "some-ui.storyboard/1",
   "template": {
     "id": "conference-call",
-    "version": 2
+    "version": 3
   },
   "sample": "the sample week, October 30 to November 5",
   "frames": [

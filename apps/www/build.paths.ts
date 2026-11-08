@@ -251,11 +251,6 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       why: "the weekly call's template and its sample week, which only the call's stage draws (src/lib/web-surface/call), and whether a format's shape draws captions (`hasCaptions`), which only Playoff Delta's stage reads (src/lib/web-surface/playoff-delta): desktop pages the Android app's build leaves out",
     },
     {
-      modules: ["packages/some-styles/src/theme/boundary.ts"],
-      profiles: [MOBILE_PROFILE, "pages"],
-      why: "the theme boundary's helpers as @some-ui/shared's source reaches them: only Rust Rounds' code card opens one (its `code` appearance), on the phone (src/routes/_dashboard/_apk/rust-rounds.tsx) and in the viewer's sample on Pages (src/routes/_dashboard/rust-rounds-sample.tsx). The web's activities bundle their own copy in their dist",
-    },
-    {
       modules: ["apps/www/src/lib/clipboard/**"],
       profiles: [MOBILE_PROFILE, "pages"],
       why: "copying text: the phone's paste kits, its failure log and Rust Rounds' Copy for a tutor, and that same copy in the viewer's Rust Rounds sample on Pages (src/lib/demo/rust-rounds-sample.ts). The home network's build copies nothing through it",

@@ -56,6 +56,7 @@ const BOUNDARY_OVERRIDE_CLASSES = [
   "rose-night",
   "harvest-sky",
   "mochi",
+  "mochi-night",
   "scheduler",
   "code",
   "cdrama",

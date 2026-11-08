@@ -2,7 +2,7 @@
   "schema": "some-ui.storyboard/1",
   "template": {
     "id": "playoff-delta-week",
-    "version": 2
+    "version": 3
   },
   "sample": "Playoff Delta, 2025 week 18",
   "frames": [

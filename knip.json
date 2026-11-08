@@ -11,7 +11,7 @@
     "packages/some-styles/styles-build/examples/**",
     "packages/video-motion/compositions/**"
   ],
-  "ignoreBinaries": ["typst", "rustc", "wasm-pack", "ffmpeg"],
+  "ignoreBinaries": ["typst", "rustc", "wasm-pack", "ffmpeg", "ffprobe"],
   "ignoreIssues": {
     "extensions/some-censor/src/lib/content/debug.ts": ["exports"],
     "packages/eslint/src/index.ts": ["duplicates"]

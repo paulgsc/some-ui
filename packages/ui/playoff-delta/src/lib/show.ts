@@ -10,6 +10,7 @@
 
 import {
   FORMAT_SCHEMA,
+  inTheme,
   type Format,
   type Parsed,
   type Shape,
@@ -38,11 +39,16 @@ export const kindOf = (week: number): FormatKind =>
  * folder. A fill names the version it was written for, and is drawn in it.
  *
  * 2 (FEED3 #2646): voiced, in the shape (`SHAPE`).
+ * 3 (SFEED10 #2675, SFEED14 #2766): drawn in Mochi Night, the palette made
+ *   for video, the mark too, in the series' version 3, which is Mochi
+ *   Night's ground and plays our music bed (#2673).
  */
 export const FORMAT_VERSION: Readonly<Record<FormatKind, number>> = {
-  week: 2,
-  legend: 2,
+  week: 3,
+  legend: 3,
 }
+
+const NIGHT_VERSION = 3
 
 /** The first version voiced and drawn in a shape. */
 export const VOICED_VERSION = 2
@@ -76,8 +82,11 @@ export const RECORDING = { width: 1080, height: 1920 } as const
  */
 const seriesOf = (version: number): Format["series"] => ({
   id: "playoff-delta-week",
-  version: version >= VOICED_VERSION ? 2 : 1,
+  version: version >= NIGHT_VERSION ? 3 : version >= VOICED_VERSION ? 2 : 1,
 })
+
+const shapeOf = (kind: FormatKind, version: number): Shape =>
+  version >= NIGHT_VERSION ? inTheme(SHAPE[kind], "mochi-night") : SHAPE[kind]
 
 /** A format's id: its folder's name. */
 export const formatId = (kind: FormatKind): string => `playoff-delta-${kind}`
@@ -109,7 +118,7 @@ export function formatOf(
       },
       holdMs: HOLD_MS[id],
     })),
-    ...(version >= VOICED_VERSION ? { shape: SHAPE[kind] } : {}),
+    ...(version >= VOICED_VERSION ? { shape: shapeOf(kind, version) } : {}),
   }
 }
 

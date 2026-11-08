@@ -14,17 +14,17 @@
 import type { Parsed } from "./cut-list"
 import type { Format } from "./format"
 import { parseFormat } from "./format"
-import callSeries from "./sample/series/conference-call/v1.json"
-import weekSeries from "./sample/series/playoff-delta-week/v2.json"
+import callSeries from "./sample/series/conference-call/v2.json"
+import weekSeries from "./sample/series/playoff-delta-week/v3.json"
 import { parseSeries } from "./series"
 import { parseStoryboard } from "./storyboard"
 import type { Storyboard } from "./storyboard"
 import callBoard from "./templates/conference-call/storyboard.json"
-import callV2 from "./templates/conference-call/v2.json"
+import callV3 from "./templates/conference-call/v3.json"
 import legendBoard from "./templates/playoff-delta-legend/storyboard.json"
-import legendV2 from "./templates/playoff-delta-legend/v2.json"
+import legendV3 from "./templates/playoff-delta-legend/v3.json"
 import weekBoard from "./templates/playoff-delta-week/storyboard.json"
-import weekV2 from "./templates/playoff-delta-week/v2.json"
+import weekV3 from "./templates/playoff-delta-week/v3.json"
 
 /** The folder under `templates/` each template's versions are pinned in. */
 export const TEMPLATE_IDS = [
@@ -36,9 +36,9 @@ export const TEMPLATE_IDS = [
 export type TemplateId = (typeof TEMPLATE_IDS)[number]
 
 const NEWEST: Readonly<Record<TemplateId, unknown>> = {
-  "conference-call": callV2,
-  "playoff-delta-legend": legendV2,
-  "playoff-delta-week": weekV2,
+  "conference-call": callV3,
+  "playoff-delta-legend": legendV3,
+  "playoff-delta-week": weekV3,
 }
 
 /** Whether `value` names a template Studio lists. */

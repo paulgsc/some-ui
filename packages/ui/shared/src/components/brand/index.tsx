@@ -1,5 +1,7 @@
 import type { JSX } from "react"
 import { cn } from "@some-ui/core-utils"
+import type { SessionThemeId } from "@some-ui/styles/theme"
+import { sessionThemeProps } from "@some-ui/styles/theme"
 
 /**
  * The Some UI mark: one plump honey mochi with a face, one solid shape with
@@ -79,16 +81,26 @@ type BrandMarkProps = {
    * names the thing (the wordmark, the "Home" label).
    */
   title?: string
+  /**
+   * The app's theme the mark's colours come from, where what it stands in
+   * names one (a video template's brand slides, SFEED14); absent, the
+   * theme around it.
+   */
+  theme?: SessionThemeId
 }
 
 export const BrandMark = ({
   className,
   tone = "current",
   title,
+  theme,
 }: BrandMarkProps): JSX.Element => (
   <svg
     viewBox="0 0 64 64"
-    className={cn("size-6", className)}
+    {...sessionThemeProps(theme, {
+      ground: false,
+      className: cn("size-6", className),
+    })}
     fill="currentColor"
     {...(title ? { role: "img" } : { "aria-hidden": true })}
   >

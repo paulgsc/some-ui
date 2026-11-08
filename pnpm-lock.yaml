@@ -1462,6 +1462,9 @@ importers:
       '@some-ui/shared':
         specifier: workspace:*
         version: link:../shared
+      '@some-ui/styles':
+        specifier: workspace:*
+        version: link:../../some-styles
       '@some-ui/video-render':
         specifier: workspace:*
         version: link:../../video-render
@@ -1818,6 +1821,9 @@ importers:
       '@some-ui/core-utils':
         specifier: workspace:*
         version: link:../core-utils
+      '@some-ui/styles':
+        specifier: workspace:*
+        version: link:../some-styles
       zod:
         specifier: 'catalog:'
         version: 4.6.6

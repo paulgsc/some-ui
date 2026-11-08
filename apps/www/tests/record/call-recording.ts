@@ -174,7 +174,7 @@ export async function recordCall(
     // The music bed plays once the call's series names one (#2673).
     const bed = await placeBed(
       SERIES,
-      callFormat().series.version,
+      callFormat(week.template.version).series.version,
       values.brand,
       root
     )
