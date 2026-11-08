@@ -20,8 +20,13 @@
  * in by the idea screens' routes (`routes/_dashboard/_apk/journal`), which
  * may import it. Phone-only (`build.paths.ts`).
  */
-import type { HearingPorts, HomeReach, IdeaHome } from "@some-ui/soundbites"
-import type { Listening, TurnListener } from "@some-ui/voice-capture"
+import type { HearingPorts } from "@some-ui/soundbites"
+import type {
+  BundleHome,
+  HomeReach,
+  Listening,
+  TurnListener,
+} from "@some-ui/voice-capture"
 import { onPageVisibility } from "@some-ui/voice-capture"
 
 import { deviceListener } from "@/lib/device-listen"
@@ -142,7 +147,7 @@ export function reachOf(
  * run, which carries ideas home (`lib/home-link/ideas`), found home out of
  * reach; near otherwise.
  */
-export const ideaHome: IdeaHome = {
+export const ideaHome: BundleHome = {
   reach: () =>
     reachOf(
       homeLink().getSnapshot().link,

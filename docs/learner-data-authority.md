@@ -884,11 +884,14 @@ only from the lane's hook and the scene notes read for home only there
   to `lib/takes-desk/index.ts` that lets `kept` (or `forExport`) list a take
   that still `waits`; one to `lib/takes-desk/pattern.ts` or `index.ts`'s
   `deskList` that clears `waits` anywhere but `release`, or lets `discard`
-  remove a take that no longer waits; one to soundbites'
-  `lib/idea/bundle-runtime.ts` that calls `release` before the ideas kept
-  hold the idea (`send`), or for takes no kept idea names (`send`'s and
-  `settle`'s takes, from `lib/idea/bundle.ts`' `namedBy`) (ST26); one to
-  `lib/idea-takes/index.ts`, `bundle-runtime.ts` or `bundle.ts` that lets
+  remove a take that no longer waits; one to voice-capture's
+  `lib/bundle-runtime.ts` (the shared bundle's runtime, which Studio's new
+  idea runs on through soundbites' `lib/idea/bundle-runtime.ts`) that calls
+  `release` before the records kept hold the record (`send`), or for takes
+  no kept record names (`send`'s and `settle`'s takes, from voice-capture's
+  `lib/bundle.ts`' `namedBy`, over the spec's `named`; for an idea,
+  soundbites' `lib/idea/bundle.ts`) (ST26); one to
+  `lib/idea-takes/index.ts`, either `bundle-runtime.ts` or either `bundle.ts` that lets
   the new idea's desk (`bundleDesk`, whose `from` is null) let go a take
   that no longer `waits`: a call of its pattern's `letGo`, or a removal
   there but through `discard`, the desk's `sweep` or its making room at
@@ -947,6 +950,7 @@ only from the lane's hook and the scene notes read for home only there
   `apps/www/src/lib/voice-marks/**`, `apps/www/src/lib/takes-desk/pattern.ts`
   and `index.ts`, `apps/www/src/lib/idea-takes/index.ts`,
   `packages/ui/soundbites/src/lib/idea/bundle-runtime.ts` and `bundle.ts`,
+  `packages/voice-capture/src/lib/bundle-runtime.ts` and `bundle.ts`,
   `apps/www/src/lib/jobs/runtime.ts`, `apps/www/src/lib/reflection-voice/index.ts`,
   `packages/ui/soundbites/src/lib/runtime.ts` and `aside-marks.ts`,
   `apps/www/src/lib/scene-voice/index.ts`, `runtime.ts`,

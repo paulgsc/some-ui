@@ -12,15 +12,13 @@
  * numbering each read and each play.
  */
 import type {
+  BundleHome,
   PatternTake,
   Player,
   TakePatternOptions,
   TakeRowView,
 } from "@some-ui/voice-capture"
-import { deletesInMyData } from "@some-ui/voice-capture"
-import { isPaired } from "@soundbites/lib/idea/bundle"
-import type { IdeaHome } from "@soundbites/lib/idea/bundle-runtime"
-import { NO_HOME } from "@soundbites/lib/idea/bundle-runtime"
+import { deletesInMyData, isPaired, NO_HOME } from "@some-ui/voice-capture"
 import type { Project, ProjectTake } from "@soundbites/lib/project/model"
 import { latest } from "@soundbites/lib/project/model"
 import type { ProjectStore } from "@soundbites/lib/project/store"
@@ -94,7 +92,7 @@ export type RecordsPorts = {
   readonly deletable: () => Promise<ReadonlySet<string>>
   readonly player: Player
   /** Home, for whether this phone is paired (ST34); never paired without one. */
-  readonly home?: IdeaHome
+  readonly home?: BundleHome
 }
 
 export type StudioRecords = {

@@ -138,15 +138,6 @@ export function answersOf(ideaId: string, question: QuestionId): string {
   return `idea:${ideaId}:${question}`
 }
 
-/** The question a take answers, when it is one of draft `ideaId`'s. */
-export function questionOf(ideaId: string, answers: string): QuestionId | null {
-  return (
-    IDEA_QUESTIONS.find(
-      (question) => answersOf(ideaId, question) === answers
-    ) ?? null
-  )
-}
-
 const DraftSchema: z.ZodType<IdeaDraft> = z.object({
   id: z.string().regex(/^[\w-]+$/),
   at: z.string(),

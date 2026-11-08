@@ -7,6 +7,7 @@
  */
 import { assertNever } from "@some-ui/core-utils"
 import type {
+  BundleHome,
   Listening,
   Playback,
   Player,
@@ -15,10 +16,12 @@ import type {
   TurnListener,
 } from "@some-ui/voice-capture"
 // eslint-disable-next-line one-owner/no-local-microphone -- Studio runs its own take until its machine embeds the take kit (#2442)
-import { NO_LISTENER, takeRunner } from "@some-ui/voice-capture"
-import { isPaired } from "@soundbites/lib/idea/bundle"
-import type { IdeaHome } from "@soundbites/lib/idea/bundle-runtime"
-import { NO_HOME } from "@soundbites/lib/idea/bundle-runtime"
+import {
+  isPaired,
+  NO_HOME,
+  NO_LISTENER,
+  takeRunner,
+} from "@some-ui/voice-capture"
 import { TAKE_TICK_MS } from "@soundbites/lib/policy"
 import type { ProjectStore } from "@soundbites/lib/project/store"
 import { ProjectFullError } from "@soundbites/lib/project/store"
@@ -74,7 +77,7 @@ export type StudioPorts = {
    * to be paired, and kept on this phone while it can't yet tell. Without
    * one, the phone counts as never paired.
    */
-  home?: IdeaHome
+  home?: BundleHome
   /**
    * Home, as Finish hands it an episode to make and reads where each stands
    * (ST33), where the app has a home link; without one nothing is handed

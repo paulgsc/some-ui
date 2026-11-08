@@ -57,7 +57,7 @@ const opened = (
   draft: kept,
   kept: ideas,
   takes,
-  lists: IDEA_LISTS_SEED,
+  context: IDEA_LISTS_SEED,
   id: "fresh",
   at: AT,
 })
@@ -131,7 +131,7 @@ describe("a new idea as one bundle (ST26)", () => {
         opened(null),
       ])
       expect(effects).toEqual([{ type: "open" }])
-      expect(state.screen).toBe("about")
+      expect(state.screen).toBe("intro")
       expect(state.draft).toMatchObject({
         id: "fresh",
         at: AT,
@@ -140,10 +140,10 @@ describe("a new idea as one bundle (ST26)", () => {
     })
 
     it("resumes a kept idea at its questions once it has a title", () => {
-      expect(onQuestions().screen).toBe("questions")
+      expect(onQuestions().screen).toBe("cards")
       expect(
         run([{ type: "entered", at: AT }, opened(draft())]).state.screen
-      ).toBe("about")
+      ).toBe("intro")
     })
 
     it("says what is kept can't be read, and keeps nothing, when the draft or the ideas can't be", () => {
@@ -256,12 +256,15 @@ describe("a new idea as one bundle (ST26)", () => {
     it("keeps each change to the draft as it is made", () => {
       const { state, effects } = run(
         [
-          tap({ type: "format", format: "video" }),
-          tap({ type: "title", text: "Two hearings, one word" }),
-          tap({ type: "topic", topic: "Korean" }),
-          tap({ type: "keyword", keyword: "voice" }),
-          tap({ type: "keyword", keyword: "mistakes" }),
-          tap({ type: "keyword", keyword: "voice" }),
+          tap({ type: "edit", edit: { type: "format", format: "video" } }),
+          tap({
+            type: "edit",
+            edit: { type: "title", text: "Two hearings, one word" },
+          }),
+          tap({ type: "edit", edit: { type: "topic", topic: "Korean" } }),
+          tap({ type: "edit", edit: { type: "keyword", keyword: "voice" } }),
+          tap({ type: "edit", edit: { type: "keyword", keyword: "mistakes" } }),
+          tap({ type: "edit", edit: { type: "keyword", keyword: "voice" } }),
         ],
         about
       )
@@ -278,9 +281,12 @@ describe("a new idea as one bundle (ST26)", () => {
     it("holds the title to 80 characters, and picks only from the lists", () => {
       const { state } = run(
         [
-          tap({ type: "title", text: "x".repeat(120) }),
-          tap({ type: "topic", topic: "Not a topic" }),
-          tap({ type: "keyword", keyword: "not a keyword" }),
+          tap({ type: "edit", edit: { type: "title", text: "x".repeat(120) } }),
+          tap({ type: "edit", edit: { type: "topic", topic: "Not a topic" } }),
+          tap({
+            type: "edit",
+            edit: { type: "keyword", keyword: "not a keyword" },
+          }),
         ],
         about
       )
@@ -290,9 +296,7 @@ describe("a new idea as one bundle (ST26)", () => {
     })
 
     it("goes on to the questions", () => {
-      expect(run([tap({ type: "start" })], about).state.screen).toBe(
-        "questions"
-      )
+      expect(run([tap({ type: "start" })], about).state.screen).toBe("cards")
     })
   })
 
@@ -334,7 +338,7 @@ describe("a new idea as one bundle (ST26)", () => {
   describe("saying an answer", () => {
     it("starts a take only with the draft it answers, kept first", () => {
       const at = onQuestions({}, [take("t1", "what")])
-      const { effects } = run([tap({ type: "tap", question: "what" })], at)
+      const { effects } = run([tap({ type: "tap", item: "what" })], at)
       expect(effects).toEqual([
         {
           type: "tap",
@@ -347,7 +351,7 @@ describe("a new idea as one bundle (ST26)", () => {
 
     it("says it again: once the new take is kept, the one it replaced is deleted for good, and only once", () => {
       const at = onQuestions({}, [take("t1", "what")])
-      const redone = run([tap({ type: "tap", question: "what" })], at).state
+      const redone = run([tap({ type: "tap", item: "what" })], at).state
       const now = take("t22", "what", {
         recordedAt: "2026-11-01T09:03:00.000Z",
       })
@@ -381,17 +385,15 @@ describe("a new idea as one bundle (ST26)", () => {
 
     it("stops the take under way on its tap, and nothing else", () => {
       const busy = run([{ type: "busy", busy: true }], onQuestions()).state
-      expect(
-        run([tap({ type: "tap", question: "what" })], busy).effects
-      ).toEqual([
+      expect(run([tap({ type: "tap", item: "what" })], busy).effects).toEqual([
         { type: "tap", answers: "idea:idea-1:what", supersedes: null },
       ])
     })
 
     it("redoes one from the look-over at its own card", () => {
       const review = run([tap({ type: "review" })], onQuestions()).state
-      const { state } = run([tap({ type: "tap", question: "spark" })], review)
-      expect(state.screen).toBe("questions")
+      const { state } = run([tap({ type: "tap", item: "spark" })], review)
+      expect(state.screen).toBe("cards")
       expect(state.index).toBe(2)
     })
   })
@@ -420,13 +422,13 @@ describe("a new idea as one bundle (ST26)", () => {
       const at = onQuestions()
       // Typing is never offered first.
       expect(
-        run([tap({ type: "typeInstead", question: "what" })], at).state.modes
+        run([tap({ type: "typeInstead", item: "what" })], at).state.modes
       ).toEqual({})
       const typed = run(
         [
           ended("blocked"),
-          tap({ type: "typeInstead", question: "what" }),
-          tap({ type: "typed", question: "what", text: "y".repeat(1_200) }),
+          tap({ type: "typeInstead", item: "what" }),
+          tap({ type: "typed", item: "what", text: "y".repeat(1_200) }),
         ],
         at
       )
@@ -436,8 +438,8 @@ describe("a new idea as one bundle (ST26)", () => {
       })
       const kept = run(
         [
-          tap({ type: "typed", question: "what", text: "  Two hearings  " }),
-          tap({ type: "keepTyped", question: "what" }),
+          tap({ type: "typed", item: "what", text: "  Two hearings  " }),
+          tap({ type: "keepTyped", item: "what" }),
         ],
         typed.state
       )
@@ -449,7 +451,7 @@ describe("a new idea as one bundle (ST26)", () => {
       // Say it instead: the take kept takes the typed words' place.
       const said = run(
         [
-          tap({ type: "tap", question: "what" }),
+          tap({ type: "tap", item: "what" }),
           {
             type: "takes",
             takes: [take("t1", "what")],
@@ -476,7 +478,7 @@ describe("a new idea as one bundle (ST26)", () => {
       // A try that fails, or is too short, leaves the take and its offer.
       for (const ending of ["failed", "blocked", "short", "early"] as const) {
         const retried = run(
-          [tap({ type: "tap", question: "what" }), ended(ending)],
+          [tap({ type: "tap", item: "what" }), ended(ending)],
           heard.state
         )
         expect(cardView(retried.state, "what", false)).toEqual({
@@ -496,9 +498,9 @@ describe("a new idea as one bundle (ST26)", () => {
       })
       const typed = run(
         [
-          tap({ type: "typeInstead", question: "what" }),
-          tap({ type: "typed", question: "what", text: "Two hearings" }),
-          tap({ type: "keepTyped", question: "what" }),
+          tap({ type: "typeInstead", item: "what" }),
+          tap({ type: "typed", item: "what", text: "Two hearings" }),
+          tap({ type: "keepTyped", item: "what" }),
         ],
         reopened.state
       )
@@ -536,10 +538,10 @@ describe("a new idea as one bundle (ST26)", () => {
       const typedFirst = run(
         [
           ended("failed"),
-          tap({ type: "typeInstead", question: "what" }),
-          tap({ type: "typed", question: "what", text: "Two hearings" }),
-          tap({ type: "keepTyped", question: "what" }),
-          tap({ type: "tap", question: "what" }),
+          tap({ type: "typeInstead", item: "what" }),
+          tap({ type: "typed", item: "what", text: "Two hearings" }),
+          tap({ type: "keepTyped", item: "what" }),
+          tap({ type: "tap", item: "what" }),
           unheardEnd("t1"),
           { type: "takes", takes: [take("t1", "what")] },
         ],
@@ -548,7 +550,7 @@ describe("a new idea as one bundle (ST26)", () => {
       expect(typedFirst.state.draft.typed).toEqual({ what: "Two hearings" })
       expect(typedFirst.state.draft.beside).toEqual({ what: "t1" })
       const besideT1 = typedFirst.state
-      const again = tap({ type: "tap", question: "what" })
+      const again = tap({ type: "tap", item: "what" })
       const listing: BundleEvent = { type: "takes", takes: [t1, t22] }
       for (const order of [
         [again, unheardEnd("t22"), listing],
@@ -635,10 +637,7 @@ describe("a new idea as one bundle (ST26)", () => {
 
     it("comes back later: marked, and on to the next card", () => {
       const { state } = run(
-        [
-          ended("failed", "takeaway"),
-          tap({ type: "later", question: "takeaway" }),
-        ],
+        [ended("failed", "takeaway"), tap({ type: "later", item: "takeaway" })],
         run([tap({ type: "go", index: 1 })], onQuestions()).state
       )
       expect(state.index).toBe(2)
@@ -646,8 +645,7 @@ describe("a new idea as one bundle (ST26)", () => {
       expect(cardView(state, "takeaway", false)).toEqual({ kind: "later" })
       // Said now, it is no longer left for later.
       expect(
-        run([tap({ type: "tap", question: "takeaway" })], state).state.draft
-          .later
+        run([tap({ type: "tap", item: "takeaway" })], state).state.draft.later
       ).toEqual([])
     })
   })
@@ -659,8 +657,8 @@ describe("a new idea as one bundle (ST26)", () => {
         take("t22", "what", { standing: "earlier" }),
         take("t333", "spark"),
       ])
-      const asked = run([tap({ type: "askDelete", question: "what" })], at)
-      expect(asked.state.confirm).toEqual({ kind: "answer", question: "what" })
+      const asked = run([tap({ type: "askDelete", item: "what" })], at)
+      expect(asked.state.confirm).toEqual({ kind: "answer", item: "what" })
       expect(
         run([tap({ type: "keepIt" })], asked.state).state.confirm
       ).toBeNull()
@@ -677,14 +675,10 @@ describe("a new idea as one bundle (ST26)", () => {
     it("deletes typed words the same way, and asks nothing for an answer not given", () => {
       const at = onQuestions({ typed: { spark: "a word" } })
       expect(
-        run([tap({ type: "askDelete", question: "takeaway" })], at).state
-          .confirm
+        run([tap({ type: "askDelete", item: "takeaway" })], at).state.confirm
       ).toBeNull()
       const { state } = run(
-        [
-          tap({ type: "askDelete", question: "spark" }),
-          tap({ type: "confirmed" }),
-        ],
+        [tap({ type: "askDelete", item: "spark" }), tap({ type: "confirmed" })],
         at
       )
       expect(state.draft.typed).toEqual({})
@@ -709,7 +703,7 @@ describe("a new idea as one bundle (ST26)", () => {
         [{ type: "deletedAll", deleted: true, id: "idea-2", at: LATER }],
         state
       ).state
-      expect(gone.screen).toBe("about")
+      expect(gone.screen).toBe("intro")
       expect(gone.draft.id).toBe("idea-2")
       expect(gone.notice).toBe("deletedAll")
       const kept = run(
@@ -766,7 +760,7 @@ describe("a new idea as one bundle (ST26)", () => {
       const { effects } = run([tap({ type: "send" })], review)
       const idea = bundleIdea(review, LATER)
       // Only the take each answer has now: the rest are never sent.
-      expect(effects).toEqual([{ type: "send", idea, takes: ["t2"] }])
+      expect(effects).toEqual([{ type: "send", record: idea, takes: ["t2"] }])
       expect(idea).toEqual({
         id: "idea-1",
         at: AT,
@@ -799,7 +793,7 @@ describe("a new idea as one bundle (ST26)", () => {
       ])
       const redone = run(
         [
-          tap({ type: "tap", question: "spark" }),
+          tap({ type: "tap", item: "spark" }),
           {
             type: "takes",
             takes: [
@@ -807,7 +801,7 @@ describe("a new idea as one bundle (ST26)", () => {
               take("t1", "spark", { standing: "earlier" }),
             ],
           },
-          tap({ type: "askDelete", question: "spark" }),
+          tap({ type: "askDelete", item: "spark" }),
           tap({ type: "confirmed" }),
         ],
         at
@@ -829,7 +823,7 @@ describe("a new idea as one bundle (ST26)", () => {
       expect(send).toMatchObject({ type: "send", takes: [] })
       expect(
         send?.type === "send" &&
-          send.idea.answers.map((answer) => answer.question)
+          send.record.answers.map((answer) => answer.question)
       ).toEqual(["what"])
     })
 
@@ -839,17 +833,17 @@ describe("a new idea as one bundle (ST26)", () => {
         onQuestions({}, [take("t1", "what")])
       ).state
       const idea = bundleIdea(review, LATER)
-      const sent = run([{ type: "sentKept", idea }], review).state
+      const sent = run([{ type: "sentKept", record: idea }], review).state
       expect(sent.screen).toBe("sent")
       expect(sent.sent).toBe(idea)
       expect(
-        run([{ type: "sentKept", idea: null }], review).state
+        run([{ type: "sentKept", record: null }], review).state
       ).toMatchObject({ screen: "review", notice: "notSent" })
       const another = run(
         [{ type: "another", id: "idea-2", at: LATER }],
         sent
       ).state
-      expect(another.screen).toBe("about")
+      expect(another.screen).toBe("intro")
       expect(another.draft.id).toBe("idea-2")
     })
   })

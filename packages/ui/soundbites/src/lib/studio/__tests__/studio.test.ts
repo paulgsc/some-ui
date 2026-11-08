@@ -3,6 +3,7 @@ import { inMemoryStorage } from "@some-ui/core-utils"
 import type { Idea, Shot, ShotTime } from "@some-ui/video-render"
 import { REVIEW_SCHEMA } from "@some-ui/video-render"
 import type {
+  HomeReach,
   Listened,
   Listening,
   Playback,
@@ -13,7 +14,6 @@ import type {
 } from "@some-ui/voice-capture"
 import { simulatedMicrophone, SPEAKING } from "@some-ui/voice-capture/testing"
 import { episodeProjectOf } from "@soundbites/fixtures"
-import type { HomeReach } from "@soundbites/lib/idea/bundle"
 import {
   run,
   shot,
