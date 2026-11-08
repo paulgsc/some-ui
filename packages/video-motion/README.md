@@ -9,7 +9,7 @@ workspace renders one to a lossless clip, the same bytes every time, which
 ```sh
 pnpm --filter @some-ui/video-motion motion prove sample
 pnpm --filter @some-ui/video-motion motion render sample --out sample.mkv --variables v.json
-pnpm --filter @some-ui/video-motion motion video <video folder> [--series <folder>] [--prove]
+pnpm --filter @some-ui/video-motion motion video <video folder> [--series <folder>] [--brand <folder>] [--prove]
 ```
 
 - `prove` renders a composition `--runs` times (two unless given) and fails unless every
@@ -26,6 +26,11 @@ pnpm --filter @some-ui/video-motion motion video <video folder> [--series <folde
   1080x1920 at 30 fps, the frame alone, for videos whose scenes are compositions.
   `sample/video` is a composition scene, then a card.
 
+- `--brand` names home's brand folder (`/brand` in the render service): the series' music bed
+  and sound kit are copied into the video's folder from it first (`placeBrandFiles` in
+  `@some-ui/video-render/node`), and the renderer refuses any file whose sum isn't the
+  series' pin.
+
 - `walk <app> --sample <file> --out <folder>` replays an app's scripted walk (SFEED7a,
   #2736) in a sandbox holding only the sample: the app's own built pages, served from
   `http://sandbox.invalid` with every other request refused, driven step by step. It
@@ -33,13 +38,17 @@ pnpm --filter @some-ui/video-motion motion video <video folder> [--series <folde
   place and time, on the walk's own timeline. Suspender Ledger's popup is the first
   (`src/walk/suspender-ledger.ts`); its stand-ins answer the popup's four reads from the
   sample.
-- `promo <release folder> --out <folder> [--prove]` makes a release's promo (HYPER3,
+- `promo <release folder> --out <folder> [--brand <folder>] [--prove]` makes a release's promo (HYPER3,
   #2726): the folder's `release.json` (`some-ui.promo/1`, the words a session writes) and
   `sample.json` (the walk's), from paulgsc/testing's `promo/<app>/<version>/`. It walks
   the app into `<out>`, writes a cut list of three composition scenes (`promo-hook`, the
   walk's screens in `promo-feature`, `promo-close`; `src/promo.ts`) and renders it as
   `video` does. The release's version must be the built app's, and the fill needs one
-  caption per screen; each line is held to what fits its place in the frame.
+  caption per screen; each line is held to what fits its place in the frame. It pins
+  `series/vertical` version 2, which names the sound kit (HYPER4, #2727): a whoosh as the
+  hook leaves, a pop as the frame opens, a click on each tap, a whoosh as the feature
+  leaves and a ding as the close's mark comes in. So it needs `--brand`, whose `sounds/` holds
+  the kit `render sounds --out <brand>/sounds` writes (`@some-ui/video-render`'s `cues.ts`).
 
 CI runs `prove`, `video` and `promo` on every change here (`pr.yml`, "HyperFrames renders the
 same bytes twice"). They need `ffmpeg` on `PATH` and Playwright's Chromium **headless shell**:
@@ -99,7 +108,9 @@ Chromium or CPU draws its own.
 - **What a render copies in beside it:** `lib/` (`compositions/_lib`, what they share), the brand's
   mark as `brand/mark.svg` (`packages/some-styles/brand/favicon.svg`), the fonts under
   `fonts/`, and the files a cut list names under `assets/`. A scene's length is set on the
-  root's `data-duration`, and its size must be the video's frame.
+  root's `data-duration`, and its size must be the video's frame, unless the root is marked
+  `data-fit-frame`: then the runner sets its `data-width` and `data-height` to the frame, and
+  its CSS sizes everything in `%` and `vmin`.
 - **Paint the ground on the root.** HyperFrames captures the page with no background, so
   anything see-through over `body`'s colour loses its blend.
 - **Name nothing at the top level of a script after a `window` property** (`top`, `name`,
@@ -117,3 +128,22 @@ Chromium or CPU draws its own.
   `pnpm check:android-only`; use `device-frame-stage` and a Google Play badge.
 - **No clock, no unseeded randomness, no fetch.** Every string and colour is a variable
   (`data-composition-variables`), read with `window.__hyperframes.getVariables()`.
+
+## The brand's open and close
+
+Every version is kept (HYPER5, #2728). A version is one composition, `compositions/brand-v<n>`:
+
+- `part` (`open` or `close`, an `enum` HyperFrames itself holds to) picks which it draws;
+- it fits any frame (`data-fit-frame`), so the call's 16:9 and a vertical share it;
+- `theme`, one of the app's themes, picks the mark's colours. The mark is the app's own, from
+  the code (`@some-ui/styles`' `brand/mark`): the runner writes it as `mark.svg` in that
+  theme at render time (`src/mark.ts`), and gives the theme's ground as `ground` unless the
+  cut list sets one. So the mark follows the code, and the template names its theme
+  (`brand.theme`, `markThemeOf`; ask #2674).
+
+`src/brand.ts` pins each version's files by sha256, and its test fails if a released version
+is edited: a version freezes its motion, and a new motion is a new folder and a new entry there.
+Version 1 is the still mochi, drawn in with a small overshoot and out with a shrink. What
+the versions share, `lib/motion.js`, isn't pinned: a change there must keep what `track`
+draws for the keys a version uses. The step cache's pin covers every theme's mark, so a retuned
+theme draws again.

@@ -1,6 +1,9 @@
 /**
  * @vitest-environment happy-dom
  */
+import { readFileSync } from "node:fs"
+import { dirname, join } from "node:path"
+import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
 
 import {
@@ -8,6 +11,7 @@ import {
   appearanceProps,
   applyAppearance,
   SESSION_THEMES,
+  sessionThemeProps,
 } from "../index"
 
 describe("appearanceProps", () => {
@@ -53,5 +57,44 @@ describe("applyAppearance", () => {
 
     expect(element.dataset.appearance).toBeUndefined()
     expect(Array.from(element.classList).sort()).toEqual(["dark", "flex"])
+  })
+})
+
+describe("sessionThemeProps", () => {
+  it("leaves the ground to what is around it, for a mark in another theme", () => {
+    expect(sessionThemeProps("mochi", { ground: false }).style).toEqual({
+      colorScheme: "light",
+      backgroundColor: "transparent",
+    })
+  })
+
+  it("keeps the caller's class, and with no theme gives only that", () => {
+    expect(
+      sessionThemeProps("mochi-night", { className: "pd-frame" })
+    ).toMatchObject({
+      className: "session-theme dark mochi-night pd-frame",
+    })
+    expect(sessionThemeProps(undefined, { className: "pd-frame" })).toEqual({
+      className: "pd-frame",
+    })
+  })
+
+  it("starts a nested theme from the base palette, then its own", () => {
+    const root = join(dirname(fileURLToPath(import.meta.url)), "../../..")
+    const base = readFileSync(join(root, "tokens/base.css"), "utf8")
+    // The palette is declared on the boundary as well as the page's root.
+    const palette = /:root,\s*\.session-theme\s*\{([^}]*)\}/.exec(base)
+    expect(palette?.[1]).toContain("--brand:")
+    expect(palette?.[1]).toContain("--background:")
+    // `.dark`, the same specificity, comes after, so it overrides it.
+    expect(base.indexOf(".dark {")).toBeGreaterThan(palette?.index ?? -1)
+    // Every session theme's own file comes after the palette, so it does too.
+    const tailwind = readFileSync(join(root, "tailwind.css"), "utf8")
+    const at = (file: string): number => tailwind.indexOf(`@import "${file}"`)
+    for (const theme of SESSION_THEMES.flatMap((t) => t.boundary.classNames))
+      if (theme !== "dark")
+        expect(at(`./themes/${theme}.css`)).toBeGreaterThan(
+          at("./tokens/base.css")
+        )
   })
 })

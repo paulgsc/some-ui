@@ -24,6 +24,7 @@ import {
   oneOwnerConfig,
   ownerGuardConfig,
   ownerGuardPlugin,
+  parentRelativeDynamicImportSelectors,
   parentRelativeImportPattern,
   queryGuardConfig,
   queryGuardPlugin,
@@ -96,7 +97,7 @@ export { switchLintConfig, switchLintPlugin }
 
 // ── Reusable no-restricted-syntax fragment for workspace-level overrides ───
 // See its own doc comment in react.config.ts.
-export { reactImportBanSelectors }
+export { parentRelativeDynamicImportSelectors, reactImportBanSelectors }
 
 // ── Raw-source workspaces (no build step, so "../" is allowed) ───────────
 // See raw-source.config.ts. Spread `rawSourceConfig` after a preset other

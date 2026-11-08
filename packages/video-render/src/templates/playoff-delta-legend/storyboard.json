@@ -1,0 +1,115 @@
+{
+  "schema": "some-ui.storyboard/1",
+  "template": {
+    "id": "playoff-delta-legend",
+    "version": 3
+  },
+  "sample": "Playoff Delta, the legend",
+  "frames": [
+    {
+      "id": "intro",
+      "kind": "intro",
+      "name": "Playoff Delta, the legend",
+      "by": "code",
+      "said": "This is Playoff Delta for 2025, the legend, read from the Niners' side. Claude wrote the words, from numbers code works out over every way the rest of the season can go. Code drew every frame, and every voice you hear is synthetic.",
+      "ms": 18400
+    },
+    {
+      "id": "brand-in",
+      "kind": "brand-in",
+      "name": "Playoff Delta, the legend",
+      "by": "none",
+      "said": "",
+      "ms": 3000
+    },
+    {
+      "id": "legend",
+      "kind": "section",
+      "scene": "legend",
+      "name": "The legend",
+      "by": "fill",
+      "said": "",
+      "ms": 6500
+    },
+    {
+      "id": "chapter-pieces",
+      "kind": "chapter",
+      "scene": "pieces",
+      "name": "The pieces",
+      "by": "code",
+      "said": "The pieces.",
+      "ms": 3000
+    },
+    {
+      "id": "pieces",
+      "kind": "section",
+      "scene": "pieces",
+      "name": "The pieces",
+      "by": "fill",
+      "said": "",
+      "ms": 10000
+    },
+    {
+      "id": "chapter-poles",
+      "kind": "chapter",
+      "scene": "poles",
+      "name": "The poles",
+      "by": "code",
+      "said": "The poles.",
+      "ms": 3000
+    },
+    {
+      "id": "poles",
+      "kind": "section",
+      "scene": "poles",
+      "name": "The poles",
+      "by": "fill",
+      "said": "",
+      "ms": 10000
+    },
+    {
+      "id": "moves",
+      "kind": "section",
+      "scene": "moves",
+      "name": "What a result did",
+      "by": "fill",
+      "said": "",
+      "ms": 8000
+    },
+    {
+      "id": "chapter-objectives",
+      "kind": "chapter",
+      "scene": "objectives",
+      "name": "What we play for",
+      "by": "code",
+      "said": "What we play for.",
+      "ms": 3000
+    },
+    {
+      "id": "objectives",
+      "kind": "section",
+      "scene": "objectives",
+      "name": "What we play for",
+      "by": "fill",
+      "said": "",
+      "ms": 9000
+    },
+    {
+      "id": "calls",
+      "kind": "section",
+      "scene": "calls",
+      "name": "The ladder and the call",
+      "by": "fill",
+      "said": "",
+      "ms": 8000
+    },
+    {
+      "id": "brand-out",
+      "kind": "brand-out",
+      "name": "Playoff Delta, the legend",
+      "by": "none",
+      "said": "",
+      "ms": 3000
+    }
+  ]
+}

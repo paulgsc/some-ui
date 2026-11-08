@@ -6,7 +6,7 @@
  *   pressed; home makes none while one is still being made;
  * - `GET /previews/:template` reads the newest, on open, a drag down, Try
  *   again, and once after Preview;
- * - `GET /previews/:template/:id/video`, a range of at most `PART_BYTES`
+ * - `GET /previews/:template/:id/video`, a range of at most `PART_BYTES` (`lib/call-videos/parts`)
  *   per part, while Watch brings preview `id` to the phone; naming it means a
  *   newer preview can't be sent in its place.
  *
@@ -15,23 +15,21 @@
  */
 import type { TemplateId } from "@some-ui/video-render"
 
-import type { CallAsked } from "./asked"
-import { asked } from "./asked"
 import { homeLink } from "./index"
-
-export { PART_BYTES } from "./asked"
+import type { Asked } from "./while-busy"
+import { asked } from "./while-busy"
 
 const previewPath = (template: TemplateId): string => `/previews/${template}`
 
 /** Asks home once to make a preview of `template`; never rejects. */
-export function askMakePreview(template: TemplateId): Promise<CallAsked> {
+export function askMakePreview(template: TemplateId): Promise<Asked> {
   return asked(() =>
     homeLink().keep((send) => send("POST", previewPath(template)))
   )
 }
 
 /** Asks home once for `template`'s newest preview; never rejects. */
-export function askPreview(template: TemplateId): Promise<CallAsked> {
+export function askPreview(template: TemplateId): Promise<Asked> {
   return asked(() =>
     homeLink().keep((send) => send("GET", previewPath(template)))
   )
@@ -43,7 +41,7 @@ export function askPreviewPart(
   id: string,
   start: number,
   end: number
-): Promise<CallAsked> {
+): Promise<Asked> {
   return asked(() =>
     homeLink().keep((send) =>
       send(

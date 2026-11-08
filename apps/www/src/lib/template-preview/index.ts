@@ -9,11 +9,11 @@ import type { TemplateId } from "@some-ui/video-render"
 
 import { videoFiles } from "@/lib/call-videos/files"
 import { readPart } from "@/lib/call-videos/model"
+import { PART_BYTES } from "@/lib/call-videos/parts"
 import {
   askMakePreview,
   askPreview,
   askPreviewPart,
-  PART_BYTES,
 } from "@/lib/home-link/previews"
 import { askWhileBusy } from "@/lib/home-link/while-busy"
 import type { Refresher } from "@/lib/pull-refresh/refreshers"

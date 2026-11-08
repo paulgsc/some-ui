@@ -22,13 +22,13 @@
 import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import { sampleWeek } from "@video-render/__tests__/sample-week"
 import {
   CALL_ID,
   callCutList,
   callFormat,
   callScenes,
   parseCallWeek,
-  sampleCallWeek,
 } from "@video-render/call"
 import type { CallWeek } from "@video-render/call"
 import { nodePorts, readSeries } from "@video-render/node"
@@ -60,17 +60,10 @@ const OCT_30 =
   "https://raw.githubusercontent.com/paulgsc/testing/aecb9131591e1ee443f34caff32ae564af569844/call/2026-10-30.json"
 
 let root = ""
-let pinned: Series
 let oct30: CallWeek | null = null
 
 beforeAll(async () => {
   root = await mkdtemp(join(tmpdir(), "call-video-"))
-  const read = await readSeries(
-    join(import.meta.dirname, "../sample/series", CALL_ID),
-    callFormat().series.version
-  )
-  if (!read.ok) throw new Error(read.problems.join("; "))
-  pinned = read.value
   try {
     const response = await fetch(OCT_30)
     if (!response.ok) throw new Error(`${OCT_30}: ${String(response.status)}`)
@@ -117,8 +110,14 @@ async function renderNew(
   }: { readonly captions?: boolean; readonly shape?: Shape }
 ): Promise<Rendered> {
   const { W, H } = shape
+  // The series the week's own template version is drawn in.
+  const pinned = await readSeries(
+    join(import.meta.dirname, "../sample/series", CALL_ID),
+    callFormat(week.template.version).series.version
+  )
+  if (!pinned.ok) throw new Error(pinned.problems.join("; "))
   const series: Series = {
-    ...pinned,
+    ...pinned.value,
     frame: { width: W, height: H, fps: FPS },
     window: { x: 0, y: 0, width: W, height: H },
   }
@@ -308,11 +307,10 @@ describe("a call's captions", () => {
   ] as const)(
     "are laid over each scene where they were drawn, at a %s frame's foot",
     async (name, shape) => {
-      const sample = sampleCallWeek()
-      if (!sample.ok) throw new Error(sample.problems.join("; "))
+      const sample = sampleWeek()
       const tag = name.replace(":", "x")
-      const plain = await renderWeek(sample.value, `plain-${tag}`, { shape })
-      const said = await renderWeek(sample.value, `said-${tag}`, {
+      const plain = await renderWeek(sample, `plain-${tag}`, { shape })
+      const said = await renderWeek(sample, `said-${tag}`, {
         captions: true,
         shape,
       })
@@ -339,19 +337,17 @@ describe("a call's captions", () => {
 
 describe("a call's video (CV1)", () => {
   it("shows each scene's whole still and holds it, for the sample week", async () => {
-    const sample = sampleCallWeek()
-    if (!sample.ok) throw new Error(sample.problems.join("; "))
-    const { frames, holds } = await renderWeek(sample.value, "sample")
-    expect(holds).toHaveLength(callScenes(sample.value).length)
+    const sample = sampleWeek()
+    const { frames, holds } = await renderWeek(sample, "sample")
+    expect(holds).toHaveLength(callScenes(sample).length)
     expect(holds.flatMap((h) => problemsOf(frames, h))).toEqual([])
     expect(everyFrame(frames, holds)).toEqual([])
   }, 240_000)
 
   it("shows each scene's whole still and holds it in a 9:16 frame, a short's", async () => {
-    const sample = sampleCallWeek()
-    if (!sample.ok) throw new Error(sample.problems.join("; "))
+    const sample = sampleWeek()
     // The same render the 9:16 captions case compares against.
-    const { frames, holds } = await renderWeek(sample.value, "plain-9x16", {
+    const { frames, holds } = await renderWeek(sample, "plain-9x16", {
       shape: TALL,
     })
     expect(holds.flatMap((h) => problemsOf(frames, h, TALL))).toEqual([])

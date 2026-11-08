@@ -34,12 +34,22 @@ import type { ChapterMark } from "./chapters"
 import { chapterSlides } from "./chapters"
 import { once, problemsOf } from "./cut-list"
 import type { CutList, Parsed } from "./cut-list"
-import { FORMAT_SCHEMA, repeatedId, showId, words } from "./format"
+import { FORMAT_SCHEMA, inTheme, repeatedId, showId, words } from "./format"
 import type { Format, Shape } from "./format"
-import { OptionSchema, RefSchema } from "./refs"
+import {
+  choiceProblems,
+  ChoiceSchema,
+  epicTag,
+  IssueSchema,
+  OptionSchema,
+  PrSchema,
+  RefSchema,
+} from "./refs"
 import type { CallRef } from "./refs"
 import { estimatedMs, hasCaptions, stillFile, stillsCutList } from "./stills"
 import type { StillTake } from "./stills"
+import { storyboardOf } from "./storyboard"
+import type { BoardScene, Storyboard } from "./storyboard"
 import sample from "./templates/conference-call/sample-week.json"
 
 export const CALL_WEEK_SCHEMA = "some-ui.call-week/1"
@@ -52,16 +62,25 @@ export const CALL_ID = "conference-call"
  * `templates/`. A week names the version it was written for, and is drawn in
  * that version's shape; the routine writes this one (`CALL-ROUTINE.md`).
  *
- * 2 (SFEED2, #2670): the shape (`CALL_SHAPE`).
+ * 2 (SFEED2, #2670): the shape (`shapeOf`).
+ * 3 (SFEED10 #2675, SFEED14 #2766): drawn in Mochi Night, the palette made
+ *   for video, the mark too, in the series' version 2, which is Mochi
+ *   Night's ground and plays our music bed (#2673).
  */
-export const CALL_VERSION = 2
+export const CALL_VERSION = 3
 
-/** The call's shape, from version 2. */
+/** The first version drawn in Mochi Night, with the music bed. */
+const NIGHT_VERSION = 3
+
+/** The call's shape from version 2. */
 const CALL_SHAPE: Shape = {
   brand: { intro: true, outro: true },
   chapters: ["board", "moved", "done", "gray", "mine", "asks"],
   subtitles: "word",
 }
+
+const shapeOf = (version: number): Shape =>
+  version >= NIGHT_VERSION ? inTheme(CALL_SHAPE, "mochi-night") : CALL_SHAPE
 
 export const CALL_MOST = {
   moved: 12,
@@ -120,7 +139,7 @@ export function callFormat(version: number = CALL_VERSION): Format {
     id: CALL_ID,
     version,
     title: "The weekly call",
-    series: { id: CALL_ID, version: 1 },
+    series: { id: CALL_ID, version: version >= NIGHT_VERSION ? 2 : 1 },
     look: "calm",
     scenes: [
       scene("open", "The week", "Which week this is, and what it read", 8_000),
@@ -162,12 +181,9 @@ export function callFormat(version: number = CALL_VERSION): Format {
       ),
       scene("close", "Close", "What the week comes to", 10_000),
     ],
-    ...(version >= 2 ? { shape: CALL_SHAPE } : {}),
+    ...(version >= 2 ? { shape: shapeOf(version) } : {}),
   }
 }
-
-const IssueSchema = RefSchema.extend({ kind: z.literal("issue") })
-const PrSchema = RefSchema.extend({ kind: z.literal("pr") })
 
 /** A ref's one name: "server#681". */
 const refKey = (ref: CallRef): string => `${ref.repo}#${ref.number}`
@@ -192,7 +208,7 @@ const BoardRowSchema = z.strictObject({
 const MovedSchema = z.strictObject({
   id: showId,
   /** The epic's tag, as its title carries it: "STUDIO". */
-  tag: z.string().regex(/^[A-Z][A-Z0-9-]{0,23}$/),
+  tag: epicTag,
   epic: IssueSchema,
   said: words,
   /** What landed for it this week: each is in a batch of `done`. */
@@ -226,18 +242,7 @@ const GraySchema = z.strictObject({
   refs,
 })
 
-const MineSchema = z.strictObject({
-  id: showId,
-  title: words,
-  said: words,
-  options: z.array(words).min(2).max(4),
-  /** The option it took, by its place in `options`. */
-  chose: z.number().int().nonnegative(),
-  why: words,
-  /** How the owner undoes it, if they would rather not. */
-  undo: words,
-  refs,
-})
+const MineSchema = ChoiceSchema.extend({ id: showId, said: words, refs })
 
 const AskSchema = z.strictObject({
   id: showId,
@@ -395,18 +400,15 @@ function weekProblems(week: CallWeek): Array<string> {
     for (const pull of epic.landed.map(refKey))
       if (!merged.has(pull))
         problems.push(`${epic.id}: ${pull} landed, and no batch has it`)
-  for (const item of [...week.mine, ...week.asks]) {
-    const says = item.options.map((o) => (typeof o === "string" ? o : o.says))
+  for (const call of week.mine) problems.push(...choiceProblems(call.id, call))
+  for (const ask of week.asks) {
+    const says = ask.options.map((o) => o.says)
     if (new Set(says).size !== says.length)
-      problems.push(`${item.id}: two options say the same`)
+      problems.push(`${ask.id}: two options say the same`)
   }
   const ledger = week.board.rows.map((row) => row.ledger)
   if (new Set(ledger).size !== ledger.length)
     problems.push("board: a ledger item is listed twice")
-  week.mine.forEach((call) => {
-    if (call.chose >= call.options.length)
-      problems.push(`${call.id}: it chose an option it doesn't list`)
-  })
   week.asks.forEach((ask) => {
     if (ask.recommended !== undefined && ask.recommended >= ask.options.length)
       problems.push(`${ask.id}: it recommends an option it doesn't list`)
@@ -643,7 +645,7 @@ export function callCutList(
   return stillsCutList(
     {
       title: `The weekly call, ${week.week.from} to ${week.week.to}`,
-      series: callFormat().series,
+      series: callFormat(week.template.version).series,
       look: "calm",
       captions: hasCaptions(callFormat(week.template.version)),
       bed,
@@ -654,5 +656,35 @@ export function callCutList(
       said: scene.said,
     })),
     takes
+  )
+}
+
+/**
+ * The call's storyboard (SFEED3): every frame of the template's sample week,
+ * as `callScenes` lays it out, with the fill's words left for the fill.
+ */
+export function callStoryboard(): Storyboard {
+  const week = sampleCallWeek()
+  if (!week.ok) throw new Error(week.problems.join("; "))
+  const { from, to } = week.value.week
+  return storyboardOf(
+    callFormat(week.value.template.version),
+    `the sample week, ${sayDay(from)} to ${sayDay(to)}`,
+    callScenes(week.value).map((scene): BoardScene => {
+      if (scene.section === "chapter")
+        return { kind: "chapter", id: scene.id, of: scene.of, said: scene.said }
+      if (
+        scene.section === "intro" ||
+        scene.section === "brand-in" ||
+        scene.section === "brand-out"
+      )
+        return { kind: scene.section, id: scene.id, said: scene.said }
+      return {
+        kind: "section",
+        id: scene.id,
+        scene: scene.section,
+        said: scene.said,
+      }
+    })
   )
 }

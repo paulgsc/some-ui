@@ -8,6 +8,9 @@
 import type { Fetch, FetchFailure, PartRead } from "./model"
 import type { VideoFiles } from "./runtime"
 
+/** The most bytes of a video one request asks for: about 4 MB. */
+export const PART_BYTES = 4 * 1024 * 1024
+
 type PartPorts = {
   /** Bytes `start` to `end` of the video, or why there are none. */
   part: (

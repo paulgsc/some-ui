@@ -1,7 +1,6 @@
+import type { HeardWord } from "@video-render/heard"
 import type { ComparedWord } from "@video-render/hearings"
 import { compareHearings, DRIFT_MS } from "@video-render/hearings"
-import type { HeardWord } from "@video-render/take-check"
-import { checkTake } from "@video-render/take-check"
 import { describe, expect, it } from "vitest"
 
 /**
@@ -71,16 +70,6 @@ describe("compareHearings", () => {
       "2000:session?",
       "units:both",
     ])
-    // Whichever is right, the line's number is reported unsure, not missing.
-    expect(
-      checkTake(
-        { voice: "read", line: "we sold two hundred units" },
-        compared.words
-      )
-    ).toMatchObject({
-      kind: "check",
-      facts: [{ unsure: ["200"], missing: [] }],
-    })
   })
 
   it("keeps the part of a hyphenated word both heard alike beside the part they differ on", () => {
@@ -97,12 +86,6 @@ describe("compareHearings", () => {
     expect(compared.disagreements).toEqual([
       { startMs: 500, endMs: 900, home: "two-year", session: "three-year" },
     ])
-    expect(
-      checkTake({ voice: "read", line: "a two-year plan" }, compared.words)
-    ).toMatchObject({
-      kind: "check",
-      facts: [{ unsure: ["2"], missing: [] }],
-    })
   })
 
   it("marks a word one hearing dropped unsure", () => {

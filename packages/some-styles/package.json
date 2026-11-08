@@ -17,6 +17,10 @@
   "exports": {
     ".": "./src/index.ts",
     "./theme": "./src/theme/index.ts",
+    "./theme/registry": "./src/theme/registry.ts",
+    "./theme/video-palette": "./src/theme/video-palette.ts",
+    "./theme/sources": "./src/theme/sources.ts",
+    "./brand/mark": "./src/brand/mark.ts",
     "./preset": "./src/preset/index.ts",
     "./config": "./src/config.ts",
     "./uno.config": "./uno.config.ts",

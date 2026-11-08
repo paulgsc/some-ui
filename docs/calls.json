@@ -205,6 +205,166 @@
       "gray": "The owner said they'd want to work out the definition themselves.",
       "undo": "Replace the definition in CLAUDE.md, \"Two kinds of pull request\".",
       "refs": ["#2637"]
+    },
+    {
+      "id": "C16",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": ["packages/video-render/src/music-bed.ts"],
+      "chose": "The music bed is a slow D-major progression (I, vi, IV, I, I, vi, IV, V) at 72 a minute, a soft pad with a bass and a sparse music-box line, peaking at -6 dBFS.",
+      "options": [
+        "a slow major progression with pad, bass and bells",
+        "a drone with no harmonic motion",
+        "a busier groove"
+      ],
+      "gray": "The owner asked for a bed we make ourselves (#2673) and named no music.",
+      "undo": "Change music-bed.ts; its sum, file name and the series that pin it move together as a new version, or pin a file of the owner's own.",
+      "refs": ["#2673", "#2765"]
+    },
+    {
+      "id": "C22",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": ["packages/video-render/src/cues.ts"],
+      "chose": "The six cues are synthesised: a whoosh of banded noise, a 90 ms click, a falling pop, a low thud, a brightening riser and a small bell, each at -6 dBFS.",
+      "options": ["these synthesised sounds", "other synthesised sounds"],
+      "gray": "The owner asked for effects we make ourselves (#2727) and described none of them.",
+      "undo": "Change cues.ts; each cue's sum, file name and the series version that pins it move together.",
+      "refs": ["#2727", "#2790"]
+    },
+    {
+      "id": "C23",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": ["packages/video-motion/src/promo.ts"],
+      "chose": "The promo's cues sit on the dry run's beats: a whoosh 0.55 s before the hook ends, a pop as the frame opens, a click on each tap, a whoosh 0.5 s before the feature ends, a ding 0.3 s into the close.",
+      "options": [
+        "the dry run's cue sheet",
+        "no cues until the owner places them"
+      ],
+      "gray": "The dry run's sheet was a placeholder the owner never confirmed.",
+      "undo": "Change CUE_AT in promo.ts.",
+      "refs": ["#2726", "#2727", "#2790"]
+    },
+    {
+      "id": "C24",
+      "made": "2026-11-08",
+      "by": "owner",
+      "paths": ["packages/video-render/src/preview.ts"],
+      "chose": "A template's preview is a 15–30 s check that the pipeline works, not an episode, so its cut may shorten or drop the locked intro to fit the window; the locked intro still opens every episode, with no switch.",
+      "undo": "Keep the intro whole in `fitted` in preview.ts, and drop sections from the preview.",
+      "refs": ["#2757", "#2762"]
+    },
+    {
+      "id": "C17",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": ["packages/some-styles/src/theme/video-palette.ts"],
+      "chose": "Mochi Night's accents are held to 4.5:1 on the ground only, not on cards; the warning, 4.1:1 on a card to someone with protanopia, always comes with a word or a glyph.",
+      "options": [
+        "on the ground only",
+        "on the ground and on cards, changing the warning's hex"
+      ],
+      "gray": "The research measured on the background, which is what a video frame is, and the owner chose the hexes.",
+      "undo": "Measure on `surface` too in videoPaletteProblems and change the warning's hex.",
+      "refs": ["#2675", "#2774"]
+    },
+    {
+      "id": "C18",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/some-styles/src/theme/video-palette.ts",
+        "packages/some-styles/themes/mochi-night.css"
+      ],
+      "chose": "Mochi Night's success colour is #8ccf9a, which the research palette lacked and a theme needs.",
+      "options": [
+        "#8ccf9a, passing every rule",
+        "no success role, falling back to the base theme's"
+      ],
+      "gray": "The owner's chosen palette had no success colour.",
+      "undo": "Change `success` in MOCHI_NIGHT and mochi-night.css together.",
+      "refs": ["#2675", "#2774"]
+    },
+    {
+      "id": "C19",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/call.ts",
+        "packages/ui/playoff-delta/src/lib/show.ts"
+      ],
+      "chose": "From the call's and Playoff Delta's template v3, the brand slides draw the mark in Mochi Night, the template's own theme.",
+      "options": [
+        "Mochi Night, the template's theme",
+        "the app's theme as the stage finds it"
+      ],
+      "gray": "Ask #2674 made the mark's theme a template setting and chose no theme for it.",
+      "undo": "A new template version whose shape's brand.theme names another theme (Studio's mark-theme control sends one).",
+      "refs": ["#2674", "#2766", "#2774"]
+    },
+    {
+      "id": "C20",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": ["packages/video-render/src/plan.ts"],
+      "chose": "The renderer converts to video by BT.709 and tags it so, which changes every video's colours a little from the next render, Build Journal shorts included.",
+      "options": [
+        "BT.709 for every video",
+        "BT.709 only for new template versions"
+      ],
+      "gray": "Old renders aren't touched, but every new render's bytes move, which the owner would notice in a re-render.",
+      "undo": "Revert TO_VIDEO and BT709 in plan.ts.",
+      "refs": ["#2675", "#2774"]
+    },
+    {
+      "id": "C21",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "apps/www/src/lib/mark-theme/index.ts",
+        "apps/www/src/components/studio/mark-theme.tsx"
+      ],
+      "chose": "Studio's mark-theme control offers every one of the app's themes, each tile showing the mark on that theme's ground, and only on templates whose brand slides draw it.",
+      "options": [
+        "every theme, on its ground",
+        "a curated few",
+        "the mark alone, on the card"
+      ],
+      "gray": "Ask #2674 said any of the app's themes and named no way to show them.",
+      "undo": "Filter MARK_THEMES in lib/mark-theme, or drop the tile's background.",
+      "refs": ["#2674", "#2766", "#2789"]
+    },
+    {
+      "id": "C25",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/video-motion/compositions/brand-v1/index.html",
+        "packages/video-motion/src/brand.ts"
+      ],
+      "chose": "Each version of the brand's open and close is one composition, `brand-v<n>`, whose `part` variable draws the open or the close, rather than two folders.",
+      "options": [
+        "one composition per version, `part` choosing",
+        "`brand-open-v<n>` and `brand-close-v<n>`"
+      ],
+      "gray": "The owner asked for an open and a close with versions kept, and named no layout.",
+      "undo": "Split it into `brand-open-v<n>` and `brand-close-v<n>`, each with its own pin in brand.ts.",
+      "refs": ["#2728", "#2771"]
+    },
+    {
+      "id": "C26",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/video-motion/src/brand.ts",
+        "packages/video-motion/compositions/_lib/motion.js"
+      ],
+      "chose": "A brand version's pin holds its own files only; `lib/motion.js`, which every composition shares, is not pinned per version, and a change there must keep what `track` draws for the keys a version uses.",
+      "options": ["the version's own files", "its files and lib/motion.js"],
+      "gray": "Pinning the shared library would fail every version on any change to it, and the promo was changing it.",
+      "undo": "Include lib/motion.js in ownDigest's files.",
+      "refs": ["#2728", "#2771"]
     }
   ]
 }

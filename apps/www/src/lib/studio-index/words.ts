@@ -6,9 +6,10 @@
  * words (its name, how an episode is labelled) stay `FEED_WORDS`
  * (`lib/call-videos/words`); these add what it is fed and when it runs.
  */
-import { counted, formatDay } from "@some-ui/core-utils"
+import { counted, formatDay, formatTimecode } from "@some-ui/core-utils"
 
 import type { Feed } from "@/lib/feeds"
+import { formatDurationMs } from "@/lib/format"
 
 import type { StudioKind } from "./index"
 
@@ -145,7 +146,7 @@ export const STUDIO_INDEX_WORDS = {
 
   asks: {
     intro:
-      "Each is a decision only you can make. Answering by voice comes to Studio later. For now, answer one on its page.",
+      "Each is a decision only you can make. Answer one by voice on its page, or on GitHub.",
     reading: "Reading what waits on you…",
     away: "The asks couldn't be read. Try again in a moment.",
     stale: "The asks couldn't be read again, so this is what was read before.",
@@ -158,7 +159,34 @@ export const STUDIO_INDEX_WORDS = {
     options: "The options",
     recommended: "Recommended",
     unblocks: (what: string): string => `Unblocks ${what}`,
-    open: "Answer it on its page",
+    open: "Answer it on GitHub",
+    answer: {
+      label: "Your answer",
+      line: "Say which option, or what you'd rather. Home keeps what you say, and the morning routine files it as an issue that waits for you to start on it. The ask stays open until you do.",
+      unpaired:
+        "Only home hears an answer, and this phone isn't paired with it. Pair it in Settings, or answer on GitHub.",
+      noVoice: "This phone can't record here. Answer it on GitHub instead.",
+      again: "Say another answer",
+      heard: "Home heard",
+      hearingLine:
+        "Your answer is kept. Its words come back from home in a minute or two, and you can leave this page.",
+      kept: {
+        late: "Home has your answer and hasn't heard it yet. It's filed once home has.",
+        noWords:
+          "Home has your answer but can't give its words back. If it never hears them, nothing is filed: answer on GitHub to be sure.",
+        awayOnHome:
+          "Home can't be reached right now. It already has your answer.",
+        awayOnPhone:
+          "Home can't be reached right now. Your answer is kept on this phone and goes home once home is in reach.",
+      },
+      notice: {
+        silent: "Didn't hear anything. Try again.",
+        notStarted:
+          "Your answer can't be taken right now. Try again in a moment.",
+        full: "There's no room on this phone for another take until home has the ones before it.",
+        notKept: "Couldn't keep that answer. Try again.",
+      },
+    },
     gone: "This ask isn't waiting any more.",
   },
 
@@ -240,14 +268,25 @@ export const STUDIO_INDEX_WORDS = {
       "How each kind of video looks. It's the same for every episode, and the AI fills only what's said.",
     version: (n: number): string => `Version ${String(n)}`,
     usedBy: (feed: string): string => `Used by ${feed}`,
-    inOrder: "In order",
+    /** The storyboard (SFEED3): every frame of one episode, from its sample. */
+    frames: "Every frame, before it's filled",
+    drawnFrom: (sample: string): string =>
+      `Drawn from ${sample}. Grey bars are what the AI writes. The rest is the template's, as every episode has it.`,
+    inAll: (ms: number): string => `About ${formatDurationMs(ms)} in all`,
+    /** Where a frame starts and about how long it holds: "1:05, about 9 seconds". */
+    when: (atMs: number, ms: number): string =>
+      `${formatTimecode(atMs)}, about ${counted(Math.max(1, Math.round(ms / 1000)), "second")}`,
     who: "Who made this",
     whoLine:
       "Always first. Code fills it from the episode, and it can't be removed.",
     brandIn: "Your brand intro",
     brandOut: "Your brand outro",
     brandLine: "Your mark",
-    chapter: "A chapter slide, said aloud",
+    chapter: (section: string): string => `Chapter slide: ${section}`,
+    /** One item of a section that shows once per item: "Where we are, 2". */
+    item: (section: string, n: number): string => `${section}, ${String(n)}`,
+    aiWrites: "The AI writes what's said here",
+    nothingSaid: "Nothing is said",
     upTo: (n: number): string => `Up to ${String(n)}, one each`,
     sometimes: "Left out when there's nothing to say",
     captions: "Captions",
@@ -284,12 +323,26 @@ export const STUDIO_INDEX_WORDS = {
         ms === 0
           ? "Every word at once"
           : `Each word in ${(ms / 1000).toFixed(2)} s`,
-      reset: "Start over",
-      send: "Open it as a GitHub issue",
       sendLine:
         "Opens a new issue holding this look, for you to file. Videos already made keep the look they were drawn in.",
-      unchanged: "Change something to open it as an issue.",
       none: "This template names no caption look.",
+    },
+    /** Sending a setting changed here (SFEED11, SFEED14). */
+    issue: {
+      send: "Open it as a GitHub issue",
+      unchanged: "Change something to open it as an issue.",
+      reset: "Start over",
+    },
+    /** The mark's theme control (SFEED14, #2766). */
+    mark: {
+      label: "The mark's theme",
+      named: (theme: string): string =>
+        `The brand intro and outro draw the mark in ${theme}`,
+      own: "The brand intro and outro draw the mark in the app's own theme",
+      line: "Choose a theme, then open it as a GitHub issue. Once the change is in the code, the next video uses it. Nothing changes until then.",
+      choose: "Draw the mark in",
+      sendLine:
+        "Opens a new issue holding this theme, for you to file. Videos already made keep the mark they were drawn in.",
     },
   },
 } as const

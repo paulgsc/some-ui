@@ -7,9 +7,9 @@
  * Phone-only (`build.paths.ts`).
  */
 import {
+  askDescription,
   askEpisodes,
   askVideoPart,
-  PART_BYTES,
   sendLink,
 } from "@/lib/home-link/call-videos"
 import { askWhileBusy } from "@/lib/home-link/while-busy"
@@ -17,8 +17,9 @@ import type { Refresher } from "@/lib/pull-refresh/refreshers"
 import { shareUris } from "@/lib/share-files"
 
 import { DIR, videoFiles } from "./files"
-import type { Feed, ListState } from "./model"
-import { readEpisodes, readLinkSaved, readPart } from "./model"
+import type { ChaptersRead, Feed, ListState } from "./model"
+import { readChapters, readEpisodes, readLinkSaved, readPart } from "./model"
+import { PART_BYTES } from "./parts"
 import type { FeedVideos } from "./runtime"
 import { createFeedVideos } from "./runtime"
 import { FEED_WORDS } from "./words"
@@ -94,4 +95,20 @@ export function feedVideos(feed: Feed): FeedVideos {
 /** A drag down on `feed`'s videos, made with its runtime. */
 export function videosRefresher(feed: Feed): Refresher {
   return madeFor(feed).refresher
+}
+
+/**
+ * An episode's chapters (SFEED4, #2763), read once; home not answering reads
+ * as none to show, since the page says where home is already. `wanted` stops
+ * the asking once the page has gone. Never rejects.
+ */
+export async function episodeChapters(
+  feed: Feed,
+  key: string,
+  wanted: () => boolean
+): Promise<ChaptersRead> {
+  const asked = await askWhileBusy(() => askDescription(feed, key), wanted)
+  return asked.kind === "answered"
+    ? readChapters(asked.answer)
+    : { kind: "none" }
 }

@@ -523,8 +523,12 @@ jobs:
               curl -fsSL -o "$data/$file.json" \
                 "https://raw.githubusercontent.com/paulgsc/testing/853627e77d31499e81d16b3f48d9ae77b3237f46/promo/suspender-ledger/0.3.1/$file.json"
             done
+            # HYPER4 (#2727): its series pins the sound kit, made here as
+            # home makes it, so a changed cue fails the render.
             nix develop .#ci-playwright --command \
-              pnpm --filter @some-ui/video-motion motion promo "$data" --out "$RUNNER_TEMP/promo" --prove
+              pnpm --filter @some-ui/video-render render sounds --out "$RUNNER_TEMP/brand/sounds"
+            nix develop .#ci-playwright --command \
+              pnpm --filter @some-ui/video-motion motion promo "$data" --out "$RUNNER_TEMP/promo" --brand "$RUNNER_TEMP/brand" --prove
           else
             echo "No files a composition's render reads changed."
           fi

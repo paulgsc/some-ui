@@ -29,11 +29,25 @@
  * checks paulgsc/testing's `clips/` folder before it is pushed
  * (`clipFolderProblems`, SFEED7).
  *
+ *   pnpm --filter @some-ui/video-render render session-check <sessions folder>
+ *
+ * checks a `sessions/` folder of `paulgsc/testing` before it is pushed
+ * (`sessionFolderProblems`, SFEED9).
+ *
  *   pnpm --filter @some-ui/video-render render compare-hearings <home transcript> <session words>
  *
  * lines up two hearings of one take (ST25, `hearings.ts`) and prints the
  * comparison as JSON: home's transcript as the Jobs mailbox holds it
  * (`transcript-<note>-<n>.json`), and the session's words (`WordsSchema`).
+ *
+ *   pnpm --filter @some-ui/video-render render music-bed --out <file>
+ *
+ * writes the music bed (`music-bed.ts`), refusing bytes its pin doesn't name.
+ *
+ *   pnpm --filter @some-ui/video-render render sounds --out <folder>
+ *
+ * writes the sound kit's six cues (`cues.ts`, HYPER4) into the folder, home's
+ * `${STORAGE}/brand/sounds`, refusing all of them if one's pin doesn't name it.
  *
  *   pnpm --filter @some-ui/video-render render pending <transcripts.json> <filed.json>
  *
@@ -45,8 +59,9 @@
  */
 
 import { execFile } from "node:child_process"
+import { createHash } from "node:crypto"
 import { existsSync, readFileSync } from "node:fs"
-import { access, readdir, writeFile } from "node:fs/promises"
+import { access, mkdir, readdir, writeFile } from "node:fs/promises"
 import { dirname, join, relative } from "node:path"
 import { parseArgs, promisify } from "node:util"
 import { z } from "zod"
@@ -56,8 +71,10 @@ import { callFolderProblems } from "./call"
 import { callsEntered, changeOf, trailersOf, whereWeAreOf } from "./call-facts"
 import type { CallFacts } from "./call-facts"
 import { clipFolderProblems, parseClipIndex } from "./clip"
+import { CUES, cueWav } from "./cues"
 import { problemsOf } from "./cut-list"
 import { compareHearings } from "./hearings"
+import { MUSIC_BED, musicBedWav } from "./music-bed"
 import {
   fail,
   here,
@@ -70,7 +87,17 @@ import {
 } from "./node"
 import { toFile } from "./pending"
 import { REPOS } from "./refs"
+import { sessionFolderProblems } from "./session-note"
 import { fromTimelineV1 } from "./timeline-v1"
+import { SOUNDS } from "./vocabulary"
+
+/** The JSON files directly in `dir`, by name. */
+async function readJsonFolder(dir: string): Promise<Map<string, unknown>> {
+  const files = new Map<string, unknown>()
+  for (const name of (await readdir(dir)).filter((n) => n.endsWith(".json")))
+    files.set(name, await readJson(join(dir, name)))
+  return files
+}
 
 async function main(): Promise<void> {
   const { values, positionals } = parseArgs({
@@ -84,6 +111,46 @@ async function main(): Promise<void> {
     },
   })
   const [first, second, third] = positionals
+  if (first === "music-bed") {
+    if (!values.out.endsWith(".wav"))
+      fail(["usage: render music-bed --out <file>.wav"])
+    const wav = musicBedWav()
+    const sum = createHash("sha256").update(wav).digest("hex")
+    if (sum !== MUSIC_BED.sha256)
+      fail([
+        `The bed came out as ${sum}, and its pin is ${MUSIC_BED.sha256}; nothing was written`,
+      ])
+    await writeFile(here(values.out), wav)
+    process.stdout.write(
+      `wrote ${here(values.out)}, ${sum}; lay it in brand/ as ${MUSIC_BED.file}\n`
+    )
+    return
+  }
+  if (first === "sounds") {
+    if (values.out === "outputs/video.mp4")
+      fail(["usage: render sounds --out <folder>"])
+    const folder = here(values.out)
+    const made = SOUNDS.map((sound) => {
+      const wav = cueWav(sound)
+      return { sound, wav, sum: createHash("sha256").update(wav).digest("hex") }
+    })
+    const off = made.filter(({ sound, sum }) => sum !== CUES[sound].sha256)
+    if (off.length > 0)
+      fail([
+        ...off.map(
+          ({ sound, sum }) =>
+            `The ${sound} came out as ${sum}, and its pin is ${CUES[sound].sha256}`
+        ),
+        "nothing was written",
+      ])
+    await mkdir(folder, { recursive: true })
+    for (const { sound, wav, sum } of made) {
+      await writeFile(join(folder, CUES[sound].file), wav)
+      process.stdout.write(`${sound}: ${CUES[sound].file}, ${sum}\n`)
+    }
+    process.stdout.write(`wrote the kit to ${folder}\n`)
+    return
+  }
   if (first === "compare-hearings") {
     if (!second || !third) {
       fail(["usage: render compare-hearings <home transcript> <session words>"])
@@ -114,14 +181,11 @@ async function main(): Promise<void> {
   }
   if (first === "call-check") {
     if (!second) fail(["usage: render call-check <call folder>"])
-    const dir = here(second)
-    const names = (await readdir(dir)).filter((n) => n.endsWith(".json"))
-    const files = new Map<string, unknown>()
-    for (const name of names) files.set(name, await readJson(join(dir, name)))
+    const files = await readJsonFolder(here(second))
     const problems = callFolderProblems(files)
     if (problems.length > 0)
       fail([`${second} can't be published:`, ...problems])
-    const weeks = names.length - 1
+    const weeks = files.size - 1
     process.stdout.write(
       `${second}: ${weeks} ${weeks === 1 ? "week" : "weeks"}, ready
 `
@@ -147,6 +211,17 @@ async function main(): Promise<void> {
     const n = index.ok ? index.value.clips.length : 0
     process.stdout.write(
       `${second}: ${n} ${n === 1 ? "clip" : "clips"}, ready\n`
+    )
+    return
+  }
+  if (first === "session-check") {
+    if (!second) fail(["usage: render session-check <sessions folder>"])
+    const files = await readJsonFolder(here(second))
+    const problems = sessionFolderProblems(files)
+    if (problems.length > 0)
+      fail([`${second} can't be published:`, ...problems])
+    process.stdout.write(
+      `${second}: ${files.size} ${files.size === 1 ? "note" : "notes"}, ready\n`
     )
     return
   }

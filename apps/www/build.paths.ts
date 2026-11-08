@@ -108,6 +108,7 @@ const SPEECH_ENTRY = "packages/speech/dist/@some-ui/speech"
 const DEVICE_MODULES = [
   `${SPEECH_ENTRY}/native.es.js`,
   "apps/www/src/lib/agent-export/**",
+  "apps/www/src/lib/ask-answer/**",
   "apps/www/src/lib/drive-filing/**",
   "apps/www/src/lib/episode-feedback/**",
   "apps/www/src/lib/game-bites/**",
@@ -115,6 +116,7 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/home-link/**",
   "apps/www/src/lib/idea-hearing/**",
   "apps/www/src/lib/call-videos/**",
+  "apps/www/src/lib/renders/**",
   "apps/www/src/lib/idea-keeping/**",
   "apps/www/src/lib/idea-home/**",
   "apps/www/src/lib/idea-takes/**",
@@ -145,6 +147,8 @@ const DEVICE_MODULES = [
   "apps/www/src/lib/study-nudge/native.ts",
   "apps/www/src/lib/study-nudge/schedule.ts",
   "apps/www/src/components/call-videos.tsx",
+  "apps/www/src/components/studio/ask-answer.tsx",
+  "apps/www/src/components/studio/renders.tsx",
   "apps/www/src/components/studio/episode-feedback.tsx",
   "apps/www/src/components/studio/template-preview.tsx",
   "apps/www/src/components/copy-button.tsx",
@@ -236,17 +240,17 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       why: "a cut list's timing, which fits a scene to its take as Record keeps it, an episode file, which Studio opens as an episode, a review render's review.json, which Watch reads, and a video's DNA, which Finish keeps for home to make (@some-ui/soundbites, lib/project and lib/studio): the web builds render no video and keep no project. The cut list's and a format's schemas are on every path: the phone's Studio checks a project and a primer against them, and the web's call stage draws a call's format",
     },
     {
+      modules: ["packages/video-render/src/pending.ts"],
+      profiles: [MOBILE_PROFILE],
+      why: "the ref a spoken answer to an ask is kept under on home (`answerRef`, SFEED5): only the Android app's Studio records one (src/lib/ask-answer). The reflections routine reads the same module from the repo, outside any build",
+    },
+    {
       modules: [
         "packages/video-render/src/call.ts",
         "packages/video-render/src/stills.ts",
       ],
       profiles: ["lan", "pages"],
       why: "the weekly call's template and its sample week, which only the call's stage draws (src/lib/web-surface/call), and whether a format's shape draws captions (`hasCaptions`), which only Playoff Delta's stage reads (src/lib/web-surface/playoff-delta): desktop pages the Android app's build leaves out",
-    },
-    {
-      modules: ["packages/some-styles/src/theme/boundary.ts"],
-      profiles: [MOBILE_PROFILE, "pages"],
-      why: "the theme boundary's helpers as @some-ui/shared's source reaches them: only Rust Rounds' code card opens one (its `code` appearance), on the phone (src/routes/_dashboard/_apk/rust-rounds.tsx) and in the viewer's sample on Pages (src/routes/_dashboard/rust-rounds-sample.tsx). The web's activities bundle their own copy in their dist",
     },
     {
       modules: ["apps/www/src/lib/clipboard/**"],

@@ -3,7 +3,8 @@
  * most forty takes of at most a minute; at its cap a new take makes room by
  * letting go the oldest home holds, and is refused while home holds none,
  * HF5). Each take goes home as a Studio voice note
- * (`lib/home-link/voice-copy`: `studio`, `idea:<idea>:<question>`).
+ * (`lib/home-link/voice-copy`: `studio`, `idea:<idea>:<question>`, or an
+ * ask's ref for an ask answered by voice, SFEED5's `lib/ask-answer`).
  *
  * - **A new idea's answers** (ST26, #2453): the take pattern with `send:
  *   "on-confirm"` (`lib/takes-desk/pattern`). Each take waits on this phone

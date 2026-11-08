@@ -2,7 +2,7 @@
  * A template's caption look, set on its page in Studio (SFEED11, #2707):
  * each part the control can change, a preview of a caption line in the look
  * as it is set, and the way to send it, a new GitHub issue holding the look
- * for a session to land (`lib/caption-look`). The preview is a still of one
+ * for a session to land (`lib/caption-look`, `./send-issue`). The preview is a still of one
  * line in the template's frame, drawn here from the look's values at the
  * video's scale, since the phone's build doesn't carry `@some-ui/burn-ins`'
  * recorder; a word's pop-in shows only on video.
@@ -13,7 +13,6 @@ import "@fontsource/barlow-condensed/latin-800.css"
 import type { CSSProperties, JSX, ReactNode } from "react"
 import { useId, useState } from "react"
 import type { CaptionTheme, ThemeId } from "@some-ui/burn-ins/contract"
-import { Button } from "@some-ui/shared"
 
 import type { LookEdit } from "@/lib/caption-look"
 import {
@@ -27,6 +26,7 @@ import {
 import { STUDIO_INDEX_WORDS } from "@/lib/studio-index"
 
 import { Part } from "./layout"
+import { SendIssue } from "./send-issue"
 
 const WORDS = STUDIO_INDEX_WORDS.templates.look
 
@@ -329,33 +329,11 @@ export const CaptionLook = ({
           onChange={(popInMs) => set(() => ({ popInMs }))}
         />
       </div>
-      <div className="flex flex-wrap items-center gap-2">
-        {changed ? (
-          <a
-            href={lookIssueUrl(template, from, shown)}
-            target="_blank"
-            rel="noreferrer"
-            className="bg-brand text-brand-foreground rounded-xl px-4 py-2 text-sm font-bold"
-          >
-            {WORDS.send}
-          </a>
-        ) : (
-          <span className="text-muted-foreground text-sm">
-            {WORDS.unchanged}
-          </span>
-        )}
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={!changed}
-          onClick={() => setEdit(editOf(look))}
-        >
-          {WORDS.reset}
-        </Button>
-      </div>
-      {changed && (
-        <p className="text-muted-foreground text-xs">{WORDS.sendLine}</p>
-      )}
+      <SendIssue
+        href={changed ? lookIssueUrl(template, from, shown) : null}
+        sendLine={WORDS.sendLine}
+        onReset={() => setEdit(editOf(look))}
+      />
     </Part>
   )
 }

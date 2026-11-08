@@ -1,5 +1,6 @@
 import type { Format } from "@some-ui/video-render"
-import { episodeOf, FORMAT_SCHEMA } from "@some-ui/video-render"
+import { FORMAT_SCHEMA } from "@some-ui/video-render"
+import { episodeOf } from "@some-ui/video-render/testing"
 import type { StartRecording } from "@some-ui/voice-capture"
 import { simulatedMicrophone, SPEAKING } from "@some-ui/voice-capture/testing"
 import { primerOf } from "@soundbites/fixtures"

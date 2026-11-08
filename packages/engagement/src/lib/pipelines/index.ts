@@ -39,6 +39,10 @@ export const UNMEASURED: ReadonlyArray<Unmeasured> = [
     why: "A preview of what every video carries, on sample data, and the recorder's page.",
   },
   { route: "/captions", why: "The burn-ins' old address; it opens them." },
+  {
+    route: "/journal/renders",
+    why: "What home is making and what's coming (SFEED13): a read of home's renders, with nothing to act on.",
+  },
   ...[
     "/journal",
     "/journal/asks",

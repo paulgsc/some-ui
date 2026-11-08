@@ -1,0 +1,47 @@
+{
+  "schema": "some-ui.video-series/1",
+  "id": "vertical",
+  "version": 2,
+  "title": "A vertical drawn by compositions, with the sound kit",
+  "frame": {
+    "width": 1080,
+    "height": 1920,
+    "fps": 30
+  },
+  "ground": "#111821",
+  "window": {
+    "x": 0,
+    "y": 0,
+    "width": 1080,
+    "height": 1920
+  },
+  "defaultLook": "plain",
+  "sounds": {
+    "whoosh": {
+      "file": "brand/sounds/whoosh-v1.wav",
+      "sha256": "2a46346c0d03281b4f8dfc73eb2d415dc14d51e70d7b82047dd0250e5c824a6a"
+    },
+    "click": {
+      "file": "brand/sounds/click-v1.wav",
+      "sha256": "e56fca071057709ecb90c44078dbebba0c3a7cc9e3e94d983df64d0104aa182a"
+    },
+    "pop": {
+      "file": "brand/sounds/pop-v1.wav",
+      "sha256": "20c255e78a2458134c7388cfab4f19cc228adb03935b31fa8c190fb6561e01c9"
+    },
+    "thud": {
+      "file": "brand/sounds/thud-v1.wav",
+      "sha256": "2ed62149277522ff29981d40cb07e6d82c0fd4a51a877dcb4cc8963f145511c2"
+    },
+    "riser": {
+      "file": "brand/sounds/riser-v1.wav",
+      "sha256": "867f00cca50af4250b3275b33cba1e72715eeb560e75c7f2fec054c2dda7780e"
+    },
+    "ding": {
+      "file": "brand/sounds/ding-v1.wav",
+      "sha256": "f78265d321764292a2cb9478e8bcb81bbb0d201a37738d872d70c61e83742b3e"
+    }
+  },
+  "soundGainDb": -8,
+  "designs": {}
+}

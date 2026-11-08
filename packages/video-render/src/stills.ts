@@ -18,9 +18,12 @@ import type { Look } from "./plans"
 /** How long a brand slide holds, with nothing said over it. */
 export const BRAND_MS = 3_000
 
+/** The speech model that says every scene of a voiced feed: home's Kokoro. */
+export const FEED_SPEAKER = "kokoro"
+
 /** When a scene's take starts, and the beat after it ends, in ms. */
 const VOICE_IN_MS = 300
-const TAIL_MS = 700
+export const TAIL_MS = 700
 
 /** How long a scene with no take holds: its words read at a calm pace. */
 export const readingMs = (said: string): number =>
@@ -101,6 +104,7 @@ export function stillsCutList(
                 outMs: take.ms,
                 ...(take.words ? { words: [...take.words] } : {}),
               },
+              speaker: FEED_SPEAKER,
             }),
         voiceInMs: VOICE_IN_MS,
         // CV1: the still's text runs to the frame's edges, which any zoom

@@ -8,6 +8,8 @@
 import type { CaptionTheme, ThemeId } from "@some-ui/burn-ins/contract"
 import { THEME_IDS, THEMES } from "@some-ui/burn-ins/contract"
 
+import { templateIssueUrl } from "@/lib/template-issue"
+
 export type LookEdit = {
   readonly weight: CaptionTheme["font"]["weight"]
   readonly sizePx: number
@@ -76,8 +78,6 @@ export const withEdit = (look: CaptionTheme, edit: LookEdit): CaptionTheme => ({
 export const sameLook = (a: CaptionTheme, b: CaptionTheme): boolean =>
   JSON.stringify(a) === JSON.stringify(b)
 
-const NEW_ISSUE = "https://github.com/paulgsc/some-ui/issues/new"
-
 /**
  * The GitHub page that files the changed look for a session to land: a new
  * issue in this repository, its body naming the template and the look it
@@ -89,7 +89,7 @@ export function lookIssueUrl(
   from: ThemeId,
   look: CaptionTheme
 ): string {
-  const body = [
+  return templateIssueUrl(`Caption look for ${template.title}`, [
     `A caption look set in Studio for ${template.title} (\`${template.id}\`), changed from the \`${from}\` look.`,
     "",
     'Land it under a new id in `@some-ui/burn-ins` (`THEMES`, `THEME_IDS`) and a new version of the series that names it, so videos already made keep the look they were drawn in (`packages/ui/burn-ins/README.md`, "A caption look sent from Studio"; SFEED11, #2707).',
@@ -102,10 +102,5 @@ export function lookIssueUrl(
       2
     ),
     "```",
-  ].join("\n")
-  const url = new URL(NEW_ISSUE)
-  url.searchParams.set("title", `Caption look for ${template.title}`)
-  url.searchParams.set("body", body)
-  url.searchParams.set("labels", "story,kind:story")
-  return url.toString()
+  ])
 }

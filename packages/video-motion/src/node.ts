@@ -12,11 +12,12 @@ import type { Compositions } from "@some-ui/video-render"
 import { ffmpegVersion } from "@some-ui/video-render/node"
 
 import { fontFiles } from "./fonts"
+import { everyMark } from "./mark"
 import { DRAW_FLAGS, HYPERFRAMES_VERSION } from "./pin"
 import { COMPOSITIONS, LIB, MARK, renderComposition } from "./render"
 
 /** Every file under `dir`, by its path from `dir`, sorted. */
-async function filesUnder(dir: string): Promise<ReadonlyArray<string>> {
+export async function filesUnder(dir: string): Promise<ReadonlyArray<string>> {
   const entries = await readdir(dir, { recursive: true, withFileTypes: true })
   return entries
     .filter((e) => e.isFile())
@@ -39,6 +40,8 @@ async function pinOf(
   hash.update(
     `hyperframes ${HYPERFRAMES_VERSION}\n${browser} ${DRAW_FLAGS.join(" ")}\n${ffmpeg}\n`
   )
+  // The marks a composition may be given, drawn from the code (HYPER5).
+  hash.update(`${everyMark()}\n`)
   const sources: Array<readonly [string, string]> = [
     ["mark", MARK],
     ...fontFiles(),

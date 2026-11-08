@@ -3,8 +3,10 @@ import { STUDIO_WORDS } from "@some-ui/soundbites"
 import type { TemplateId } from "@some-ui/video-render"
 import {
   isTemplateId,
+  markThemeOf,
   templateCaptions,
   templateFormat,
+  templateStoryboard,
 } from "@some-ui/video-render"
 import { createFileRoute, Link, notFound } from "@tanstack/react-router"
 
@@ -18,6 +20,7 @@ import {
 import { PairHomeLink } from "@/components/pair-home-link"
 import { CaptionLook } from "@/components/studio/caption-look"
 import { StudioPage } from "@/components/studio/layout"
+import { MarkTheme } from "@/components/studio/mark-theme"
 import { TemplateShape } from "@/components/studio/template"
 import { TemplatePreview } from "@/components/studio/template-preview"
 
@@ -52,8 +55,9 @@ const Preview =
 
 /**
  * One template (SFEED1, #2731): its newest version, the feeds that use it,
- * its shape, from the locked intro to the brand outro, and its preview
- * (SFEED12, #2757).
+ * its storyboard (SFEED3, #2744), every frame from the locked intro to the
+ * brand outro, its caption look (SFEED11), where it has brand slides, its
+ * mark's theme (SFEED14), and its preview (SFEED12, #2757).
  */
 const TemplatePage = (): JSX.Element => {
   const { template }: { template: TemplateId } = Route.useParams()
@@ -77,8 +81,16 @@ const TemplatePage = (): JSX.Element => {
           {WORDS.usedBy(FEED_FACTS[feed].name)}
         </Link>
       ))}
-      <TemplateShape format={format} />
+      <TemplateShape format={format} board={templateStoryboard(template)} />
       <LookOf template={template} title={format.title} />
+      {(format.shape?.brand.intro === true ||
+        format.shape?.brand.outro === true) && (
+        <MarkTheme
+          key={template}
+          template={{ id: template, title: format.title }}
+          from={markThemeOf(format.shape)}
+        />
+      )}
       {Preview !== null && (
         <Preview
           template={template}
