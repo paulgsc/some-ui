@@ -43,7 +43,7 @@ describe("homeRequest", () => {
     const range = { start: 0, end: 2 }
     const answer = await homeRequest({
       method: "GET",
-      url: "https://home.local/api/v1/call/videos/2026-10-30/video",
+      url: "https://home.local/api/v1/feeds/call/videos/2026-10-30/video",
       token: "t",
       range,
     })

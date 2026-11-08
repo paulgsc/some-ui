@@ -1,44 +1,55 @@
 /**
- * Studio's Calls (ST38, #2661): the weekly call's videos home has made, newest
- * week first. For each, Watch brings the video to the phone and plays it,
- * Share to YouTube hands it to the share sheet, and its YouTube link is saved
- * with the week; once home's copy is let go (My data), the link is how it is
- * watched. Reads `lib/call-videos`' snapshot and says what was pressed; every
- * word is its `CALLS_WORDS`. Phone build only.
+ * Studio's feed videos (ST38, #2661; FEED4): the episodes home has made
+ * of the weekly call or of Playoff Delta, newest first. For each, Watch
+ * brings the video to the phone and plays it, Share to YouTube hands it to
+ * the share sheet, and its YouTube link is saved with the episode; once
+ * home's copy is let go (My data), the link is how it is watched. Reads
+ * `lib/call-videos`' snapshot of the feed and says what was pressed; every
+ * word is its `VIDEOS_WORDS` and `FEED_WORDS`. Phone build only.
  */
 import type { JSX, ReactNode } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { assertNever, formatSize } from "@some-ui/core-utils"
 import { Button, Input, Notice } from "@some-ui/shared"
 
-import type { CallVideos } from "@/lib/call-videos"
-import { CALLS_WORDS, callsRefresher, callVideos } from "@/lib/call-videos"
-import type { Fetch, LinkSave, ListState, Week } from "@/lib/call-videos/model"
+import type { Feed, FeedVideos } from "@/lib/call-videos"
+import {
+  FEED_WORDS,
+  feedVideos,
+  VIDEOS_WORDS,
+  videosRefresher,
+} from "@/lib/call-videos"
+import type {
+  Episode,
+  Fetch,
+  LinkSave,
+  ListState,
+} from "@/lib/call-videos/model"
 import { standing } from "@/lib/call-videos/model"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 
-const WORDS = CALLS_WORDS
+const WORDS = VIDEOS_WORDS
 
 const Watching = ({
-  week,
+  episode,
   fetch,
-  calls,
+  videos,
 }: {
-  week: Week
+  episode: Episode
   fetch: Fetch | undefined
-  calls: CallVideos
+  videos: FeedVideos
 }): JSX.Element => {
   if (fetch?.kind === "ready") {
     return (
       <div className="flex flex-col gap-2">
-        {/* eslint-disable-next-line jsx-a11y/media-has-caption -- the call's words are drawn on screen in every scene, and home makes no caption file */}
+        {/* eslint-disable-next-line jsx-a11y/media-has-caption -- the words are drawn on screen (the call's in every scene, Playoff Delta's where its shape draws subtitles), and home makes no caption file */}
         <video
           src={fetch.src}
           controls
           playsInline
           className="w-full rounded-lg"
         />
-        <Button size="sm" onClick={() => void calls.share(week.from)}>
+        <Button size="sm" onClick={() => void videos.share(episode.key)}>
           {WORDS.share}
         </Button>
       </div>
@@ -61,23 +72,25 @@ const Watching = ({
       <Button
         size="sm"
         variant="outline"
-        onClick={() => void calls.watch(week.from)}
+        onClick={() => void videos.watch(episode.key)}
       >
         {WORDS.watch}
-        {week.videoBytes === null ? "" : ` (${formatSize(week.videoBytes)})`}
+        {episode.videoBytes === null
+          ? ""
+          : ` (${formatSize(episode.videoBytes)})`}
       </Button>
     </div>
   )
 }
 
 const LinkField = ({
-  week,
+  episode,
   save,
-  calls,
+  videos,
 }: {
-  week: Week
+  episode: Episode
   save: LinkSave | undefined
-  calls: CallVideos
+  videos: FeedVideos
 }): JSX.Element => {
   const [pasted, setPasted] = useState("")
   const saving = save?.kind === "saving"
@@ -86,14 +99,14 @@ const LinkField = ({
       className="flex flex-col gap-1"
       onSubmit={(event) => {
         event.preventDefault()
-        void calls.saveLink(week.from, pasted)
+        void videos.saveLink(episode.key, pasted)
       }}
     >
-      <label className="text-sm font-medium" htmlFor={`link-${week.from}`}>
+      <label className="text-sm font-medium" htmlFor={`link-${episode.key}`}>
         {WORDS.linkLabel}
       </label>
       <Input
-        id={`link-${week.from}`}
+        id={`link-${episode.key}`}
         inputMode="url"
         placeholder={WORDS.linkHint}
         value={pasted}
@@ -112,58 +125,68 @@ const LinkField = ({
   )
 }
 
-const WeekRow = ({
-  week,
+const EpisodeRow = ({
+  feed,
+  episode,
   fetch,
   save,
-  calls,
+  videos,
 }: {
-  week: Week
+  feed: Feed
+  episode: Episode
   fetch: Fetch | undefined
   save: LinkSave | undefined
-  calls: CallVideos
+  videos: FeedVideos
 }): JSX.Element => {
-  const stands = standing(week)
+  const stands = standing(episode)
   return (
     <li className="flex flex-col gap-2 rounded-lg border p-3">
-      <h2 className="font-medium">{WORDS.week(week.from, week.to)}</h2>
+      <h2 className="font-medium">{FEED_WORDS[feed].label(episode.key)}</h2>
       {stands === "waiting" && (
-        <p className="text-muted-foreground text-sm">{WORDS.waiting}</p>
+        <p className="text-muted-foreground text-sm">
+          {FEED_WORDS[feed].waiting}
+        </p>
       )}
       {stands === "kept" && (
-        <Watching week={week} fetch={fetch} calls={calls} />
+        <Watching episode={episode} fetch={fetch} videos={videos} />
       )}
       {stands === "letGo" && (
-        <p className="text-muted-foreground text-sm">{WORDS.letGo}</p>
+        <p className="text-muted-foreground text-sm">
+          {FEED_WORDS[feed].letGo}
+        </p>
       )}
-      {week.link !== null && (
+      {episode.link !== null && (
         <a
-          href={week.link.url}
+          href={episode.link.url}
           className="self-start text-sm underline underline-offset-4"
         >
           {WORDS.onYouTube}
         </a>
       )}
-      {stands === "kept" && <LinkField week={week} save={save} calls={calls} />}
+      {stands === "kept" && (
+        <LinkField episode={episode} save={save} videos={videos} />
+      )}
     </li>
   )
 }
 
 /**
- * Home's list of weeks as it stands: what it says while reading, unpaired,
- * unanswered or empty, and its children once there are weeks.
+ * Home's list of a feed's episodes as it stands: what it says while reading,
+ * unpaired, unanswered or empty, and its children once there are episodes.
  */
-export const CallWeeksList = ({
+export const EpisodesList = ({
+  feed,
   list,
   pair,
   onTryAgain,
   children,
 }: {
+  feed: Feed
   list: ListState
   /** The way to pairing, for a phone that isn't paired. */
   pair: JSX.Element
   onTryAgain: () => void
-  /** The weeks, drawn by the caller from `list`. */
+  /** The episodes, drawn by the caller from `list`. */
   children: ReactNode
 }): JSX.Element | null => {
   switch (list.kind) {
@@ -173,7 +196,7 @@ export const CallWeeksList = ({
     case "unpaired": {
       return (
         <>
-          <p className="text-sm">{WORDS.unpaired}</p>
+          <p className="text-sm">{FEED_WORDS[feed].unpaired}</p>
           {pair}
         </>
       )
@@ -183,7 +206,9 @@ export const CallWeeksList = ({
     case "unreadable": {
       return (
         <div className="flex flex-col gap-2">
-          <p className="text-sm">{WORDS[list.kind]}</p>
+          <p className="text-sm">
+            {list.kind === "older" ? FEED_WORDS[feed].older : WORDS[list.kind]}
+          </p>
           <Button size="sm" variant="outline" onClick={onTryAgain}>
             {WORDS.tryAgain}
           </Button>
@@ -191,8 +216,8 @@ export const CallWeeksList = ({
       )
     }
     case "read": {
-      return list.weeks.length === 0 ? (
-        <p className="text-muted-foreground text-sm">{WORDS.none}</p>
+      return list.episodes.length === 0 ? (
+        <p className="text-muted-foreground text-sm">{FEED_WORDS[feed].none}</p>
       ) : (
         <>{children}</>
       )
@@ -203,49 +228,55 @@ export const CallWeeksList = ({
   }
 }
 
-export const CallVideosScreen = ({
+export const FeedVideosScreen = ({
+  feed,
   pair,
 }: {
+  feed: Feed
   /** The way to pairing, for a phone that isn't paired. */
   pair: JSX.Element
 }): JSX.Element => {
-  const calls = callVideos()
-  const state = useSyncExternalStore(calls.subscribe, calls.getSnapshot)
+  const videos = feedVideos(feed)
+  const state = useSyncExternalStore(videos.subscribe, videos.getSnapshot)
   useEffect(() => {
-    void calls.open()
-    return screenRefreshers.register(callsRefresher)
-  }, [calls])
+    void videos.open()
+    return screenRefreshers.register(videosRefresher(feed))
+  }, [videos, feed])
   const { list, said } = state
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-muted-foreground text-sm">{WORDS.intro}</p>
+      <p className="text-muted-foreground text-sm">{FEED_WORDS[feed].intro}</p>
       {said !== null && (
         <Notice
-          key={`${said.kind}-${said.from}`}
-          onDismiss={() => calls.seen()}
+          key={`${said.kind}-${said.key}`}
+          onDismiss={() => videos.seen()}
         >
-          {said.kind === "linkSaved" ? WORDS.linkSaved : WORDS.shareFailed}
+          {said.kind === "linkSaved"
+            ? FEED_WORDS[feed].linkSaved
+            : WORDS.shareFailed}
         </Notice>
       )}
-      <CallWeeksList
+      <EpisodesList
+        feed={feed}
         list={list}
         pair={pair}
-        onTryAgain={() => void calls.open()}
+        onTryAgain={() => void videos.open()}
       >
         {list.kind === "read" && (
           <ul className="flex flex-col gap-3">
-            {list.weeks.map((week) => (
-              <WeekRow
-                key={week.from}
-                week={week}
-                fetch={state.fetches[week.from]}
-                save={state.links[week.from]}
-                calls={calls}
+            {list.episodes.map((episode) => (
+              <EpisodeRow
+                key={episode.key}
+                feed={feed}
+                episode={episode}
+                fetch={state.fetches[episode.key]}
+                save={state.links[episode.key]}
+                videos={videos}
               />
             ))}
           </ul>
         )}
-      </CallWeeksList>
+      </EpisodesList>
     </div>
   )
 }

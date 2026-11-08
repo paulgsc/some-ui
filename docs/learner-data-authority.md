@@ -450,15 +450,17 @@ declared (checked by reading every call site and by the tests named).
   it asks again a second later, at most ten times, and not once a newer
   read or leaving the screen has made that one stale; and, per Play, one
   `GET /voice-notes/:id/audio` through `lib/home-link/voice-audio`'s `keep`,
-  sending nothing but the take's id; ST32), Studio's Calls
-  (`lib/call-videos`, through `lib/home-link/call-videos`' `keep`: one
-  `GET /call/videos` each time the screen opens, on a drag down, on Try
-  again and once after a Save home kept; on Watch, one `GET /call/videos/:from/video` per part of the week's
-  video, each a range of at most `PART_BYTES`, into the phone's cache; and,
-  on Save, one `PUT /call/videos/:from/link` of the link the owner pasted,
-  only once it reads as a `YouTube` video; sending nothing of the phone's but
-  that link; while the link is busy with another run it asks again a second
-  later, at most ten times; ST38, #2661), and Studio's Finish
+  sending nothing but the take's id; ST32), Studio's feed videos,
+  the weekly call's and Playoff Delta's (`lib/call-videos`, through
+  `lib/home-link/call-videos`' `keep`: one `GET /feeds/:feed/videos` each
+  time a feed's screen opens, on a drag down, on Try again and once after a
+  Save home kept; on Watch, one `GET /feeds/:feed/videos/:key/video` per part
+  of the episode's video, each a range of at most `PART_BYTES`, into the
+  phone's cache; and, on Save, one `PUT /feeds/:feed/videos/:key/link` of the
+  link the owner pasted, only once it reads as a `YouTube` video; sending
+  nothing of the phone's but that link; while the link is busy with another
+  run it asks again a second later, at most ten times; ST38, #2661; FEED4,
+  #2647), and Studio's Finish
   (`routes/_dashboard/_apk/journal/index.tsx`, ST33), which hands the voice
   lane a video kept for home to make and hears what home answered and lists
   of it through `lib/home-link/studio-videos`, sending nothing of its own,
@@ -506,7 +508,7 @@ declared (checked by reading every call site and by the tests named).
   My data's "Delete for good".
   Nothing but the drain, Korean's look, the idea screen's ask for a
   take's words, My data's reads, Ideas on home's reads, Takes on home's
-  reads and Studio's Calls' list is sent when the app or Settings
+  reads and Studio's feed videos' list is sent when the app or Settings
   opens, on resume, on a timer or on a network change: making the runtime
   and `load` read only the phone's own record. There is no retry; a sync, a
   clear, a let-go or a drain's run ends at Stop,
@@ -601,7 +603,7 @@ declared (checked by reading every call site and by the tests named).
   `homeLink()` method that sends, `sendVideos` or `phoneVideos`; one that
   sends from `createHomeLink` or `load`, or, outside LA15's watch,
   Korean's look, the idea screen's ask for a take's words, My data's
-  reads, Ideas on home's reads, Takes on home's reads and Studio's Calls'
+  reads, Ideas on home's reads, Takes on home's reads and Studio's feed videos'
   list, from a `useEffect`, a timer, a `visibilitychange` or
   `online` listener; one that retries a failed home request, or queues one
   for later, outside LA15; one that lets the clear start without its
@@ -675,7 +677,7 @@ declared (checked by reading every call site and by the tests named).
   that module, and it and the voice run alone read `voice-audio.ts`;
   `lib/library/__tests__/model.test.ts` holds that a read answers only the
   one asked last, a search home would refuse is never asked, and audio is
-  asked only on a Play, one at a time), and Studio's Calls (`lib/call-videos`,
+  asked only on a Play, one at a time), and Studio's feed videos (`lib/call-videos`,
   whose requests are the three `call-videos.ts` sends, and only it calls
   that module; `lib/call-videos/__tests__` holds that a video is fetched a
   part at a time only on Watch, a link home would refuse is never sent, and
@@ -1570,8 +1572,9 @@ What is enforced by test, in
 
 - Of every request the phone sends home (`send(method, path, …)`), only
   `lib/home-link/delete-note.ts` sends a `DELETE`: one of `deletePath(id)`
-  per note, and one of `callStepPath(from, step)` per confirm of a call
-  week's step (ST38, #2661: the week's video, then the rest of its folder).
+  per note, and one of `callStepPath(feed, key, step)` per confirm of a
+  feed episode's step, a week of the call or of Playoff Delta (ST38, #2661;
+  FEED4: the episode's video, then the rest of its folder).
 - A request whose method isn't written where it is sent comes from one of
   five pinned callers, none of which can send a `DELETE` to a record: the
   Jobs notice's `/jobs/notice`, `noticingBusy`'s pass-through, the
@@ -1579,8 +1582,8 @@ What is enforced by test, in
   and Ideas on home's list entry (`PUT` or `DELETE` of
   `/idea-lists/{topics,keywords}/:name`, which puts an entry on a list
   home keeps or takes it off, a mark, never a record; ST26 (c), #2453).
-- No other source names a `DELETE` beside a `/voice-notes/` or
-  `/call/videos/` path.
+- No other source names a `DELETE` beside a `/voice-notes/`,
+  `/call/videos/` or `/feeds/` path.
 - Only `lib/my-data/index.ts` imports `delete-note`. It hands `deleteNotes`
   to `createDeleting`, and `deleteCallStep` to `createCallDeleting`, each as
   its one port. Only that delete runtime calls each port, once.
@@ -1693,7 +1696,7 @@ flag nor clear a diff on it. LA19's falsifier holds the part a hunk shows
 (only `lib/home-link` and the egress test's `HOME_LINK_CALLERS` import the
 link) and LA19's (only `lib/home-link/delete-note.ts` sends a `DELETE`, only
 My data's two delete runtimes call it, and no other source names a `DELETE`
-beside a `/voice-notes/` or `/call/videos/` path), so no chain can delete a record on home. It
+beside a `/voice-notes/`, `/call/videos/` or `/feeds/` path), so no chain can delete a record on home. It
 was true when declared (MD5, #2479), by the reading listed under LA19's
 "Held when declared". Tracked: #2473, the MY-DATA epic.
 

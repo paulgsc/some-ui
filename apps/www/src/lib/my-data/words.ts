@@ -5,6 +5,9 @@
  */
 import { assertNever, counted, formatSize, listed } from "@some-ui/core-utils"
 
+import type { Feed } from "@/lib/call-videos/model"
+import { FEED_WORDS } from "@/lib/call-videos/words"
+
 import type { DeletableKind, ReceiptsReading } from "./deleting"
 import { isDeletableKind } from "./deleting"
 import type { HomeReading, Of, Where } from "./model"
@@ -396,36 +399,38 @@ export function receiptsLine(home: ReceiptsReading["kind"]): string | null {
 }
 
 /**
- * My data's page for the weekly call's videos (ST38, #2661): a week's video
- * and then the rest of its folder are let go of home once the week's
- * YouTube link is saved, each asked once, "Keep it" first.
+ * My data's page for each feed's videos (ST38, #2661; FEED4): an episode's
+ * video, a week of the call or of Playoff Delta, and then the rest of its
+ * folder are let go of home once its YouTube link is saved, each asked once,
+ * "Keep it" first. Each feed's own words (its heading, an episode's label,
+ * "still making") are `FEED_WORDS`', as Studio says them.
  */
 export const CALL_DELETING = {
   /** The overview's way in. */
-  row: "The weekly call's videos",
-  rowLine: "Let home's copy go once a week is on YouTube",
-  title: "The weekly call's videos",
-  lead: "Home keeps each week's video until it's on YouTube. Once its link is saved in Studio, let home's copy go: the video first, then the rest.",
-  week: (from: string, to: string): string => `${from} to ${to}`,
+  row: "The videos home makes",
+  rowLine: "Let home's copy go once a video is on YouTube",
+  title: "The videos home makes",
+  lead: "Home keeps each video, the weekly call's and Playoff Delta's, until it's on YouTube. Once its link is saved in Studio, let home's copy go: the video first, then the rest.",
+  /** An episode, named with its feed, as the sheet says it. */
+  episode: (feed: Feed, key: string): string =>
+    `${FEED_WORDS[feed].heading}, ${FEED_WORDS[feed].label(key)}`,
   pair: "Pair this phone with home",
   noLink: "Save its YouTube link in Studio first.",
-  waiting: "Home is still making this week's video.",
   allGone: "Home's copy went. It lives on YouTube.",
   video: (size: string): string => `Delete the video (${size})…`,
   rest: (size: string): string => `Delete the rest (${size})…`,
   asks: {
-    video: "Delete this week's video?",
-    rest: "Delete the rest of this week?",
+    video: "Delete this video?",
+    rest: "Delete the rest of it?",
   },
   goes: {
-    video: (size: string): string =>
-      `The video home keeps of the week, ${size}.`,
+    video: (size: string): string => `The video home keeps of it, ${size}.`,
     rest: (size: string): string => `Its takes, stills and cut list, ${size}.`,
   },
-  stays: "The week's words, its YouTube link, and a receipt of this delete.",
-  gone: (at: string): string => `Deleted ${at}. A receipt stays with the week.`,
-  kept: "Home kept it. A week's video goes only once its link is saved, and the rest only after the video.",
-  notHeld: "Home doesn't hold this week.",
+  stays: "Its words, its YouTube link, and a receipt of this delete.",
+  gone: (at: string): string => `Deleted ${at}. A receipt stays with it.`,
+  kept: "Home kept it. A video goes only once its link is saved, and the rest only after the video.",
+  notHeld: "Home doesn't hold this one.",
   forgotten: "This phone isn't paired with home now, so nothing was deleted.",
   unanswered: "Home didn't answer, so nothing was deleted.",
 } as const

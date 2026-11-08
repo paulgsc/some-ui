@@ -21,7 +21,9 @@ import {
 import { audioPlayer } from "@some-ui/voice-capture"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 
-import { CALLS_WORDS } from "@/lib/call-videos/words"
+import type { Feed } from "@/lib/call-videos/model"
+import { FEEDS, isFeed } from "@/lib/call-videos/model"
+import { FEED_WORDS, VIDEOS_WORDS } from "@/lib/call-videos/words"
 import { deviceListener } from "@/lib/device-listen"
 import { studioVideos } from "@/lib/home-link/studio-videos"
 import { ideaHome } from "@/lib/idea-hearing"
@@ -34,7 +36,7 @@ import { deletableStudioTakes } from "@/lib/my-data"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 import { keepStudio } from "@/lib/studio-keeping"
 import { takesHome } from "@/lib/take-library"
-import { CallVideosScreen } from "@/components/call-videos"
+import { FeedVideosScreen } from "@/components/call-videos"
 import { CopyButton } from "@/components/copy-button"
 import { PairHomeLink } from "@/components/pair-home-link"
 
@@ -188,20 +190,24 @@ const Takes = (): JSX.Element | null => {
 }
 
 /**
- * The weekly call's videos (ST38): watch, share to YouTube and save the link,
- * in the Android app alone, as Takes on home is.
+ * A feed's videos, the weekly call's (ST38) or Playoff Delta's (FEED4):
+ * watch, share to YouTube and save the link, in the Android app alone, as
+ * Takes on home is.
  */
-const Calls = (): JSX.Element => (
+const Videos = ({ feed }: { feed: Feed }): JSX.Element => (
   <div className="mx-auto flex w-full max-w-md flex-col gap-4">
     <h1 className="text-muted-foreground text-sm font-bold tracking-wider uppercase">
-      {CALLS_WORDS.heading}
+      {FEED_WORDS[feed].heading}
     </h1>
-    <CallVideosScreen pair={<PairHomeLink>{WORDS.pair.pair}</PairHomeLink>} />
+    <FeedVideosScreen
+      feed={feed}
+      pair={<PairHomeLink>{WORDS.pair.pair}</PairHomeLink>}
+    />
     <Link
       to="/journal"
       className="text-muted-foreground self-start text-sm underline underline-offset-4"
     >
-      {CALLS_WORDS.back}
+      {VIDEOS_WORDS.back}
     </Link>
   </div>
 )
@@ -224,7 +230,7 @@ const studioCopy: StudioCopy | undefined =
  * Opened from Your ideas on a video an idea became, it opens that one.
  */
 const StudioRoute = (): JSX.Element => {
-  const { project, records, takes, calls } = Route.useSearch()
+  const { project, records, takes, videos } = Route.useSearch()
   useEffect(() => {
     if (import.meta.env.VITE_DEVICE_BACKEND !== "true") return
     keepStudio(phoneStudioKeeping())
@@ -235,8 +241,8 @@ const StudioRoute = (): JSX.Element => {
     return <Records />
   }
   if (takes === true && TAKE_PORTS !== null) return <Takes />
-  if (calls === true && import.meta.env.VITE_DEVICE_BACKEND === "true") {
-    return <Calls />
+  if (videos !== undefined && import.meta.env.VITE_DEVICE_BACKEND === "true") {
+    return <Videos feed={videos} />
   }
   return (
     <>
@@ -257,13 +263,16 @@ const StudioRoute = (): JSX.Element => {
           >
             {LIBRARY_WORDS.open}
           </Link>
-          <Link
-            to="/journal"
-            search={{ calls: true }}
-            className="text-muted-foreground self-start text-sm underline underline-offset-4"
-          >
-            {CALLS_WORDS.open}
-          </Link>
+          {FEEDS.map((feed) => (
+            <Link
+              key={feed}
+              to="/journal"
+              search={{ videos: feed }}
+              className="text-muted-foreground self-start text-sm underline underline-offset-4"
+            >
+              {FEED_WORDS[feed].open}
+            </Link>
+          ))}
           <Link
             to="/journal"
             search={{ records: true }}
@@ -280,22 +289,23 @@ const StudioRoute = (): JSX.Element => {
 /**
  * `?project`: the video to open on, as Your ideas links one an idea became;
  * `?records`: what Studio keeps (MD4); `?takes`: Takes on home (ST32);
- * `?calls`: the weekly call's videos (ST38).
+ * `?videos`: a feed's videos, the weekly call's (ST38) or Playoff Delta's
+ * (FEED4).
  */
 type StudioSearch = {
   project?: string
   records?: true
   takes?: true
-  calls?: true
+  videos?: Feed
 }
 
 function validateStudioSearch(search: Record<string, unknown>): StudioSearch {
-  const { project, records, takes, calls } = search
+  const { project, records, takes, videos } = search
   return {
     ...(typeof project === "string" && project !== "" ? { project } : {}),
     ...(records === true || records === "true" ? { records: true } : {}),
     ...(takes === true || takes === "true" ? { takes: true } : {}),
-    ...(calls === true || calls === "true" ? { calls: true } : {}),
+    ...(isFeed(videos) ? { videos } : {}),
   }
 }
 

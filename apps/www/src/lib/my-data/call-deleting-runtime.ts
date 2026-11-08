@@ -1,5 +1,5 @@
 /**
- * My data's let-go of a week of the call (ST38, #2661): the runtime that owns
+ * My data's let-go of a feed's episode (ST38, #2661; FEED4): the runtime that owns
  * the request, over `./call-deleting`'s pure sheet. The page reads the
  * snapshot and says what was pressed.
  *
@@ -7,25 +7,27 @@
  *   step accepted `confirmed` (from the asking sheet, or Try again after no
  *   answer), and calls `ports.deleteCallStep` once (LA19).
  * - **On the video's receipt** the phone's own copy of the video, if it
- *   fetched one for Studio's Calls, goes too (`forgetCopy`).
- * - **What went leaves the page:** once home answered, the list is read
- *   again (`reread`).
+ *   fetched one for Studio's feed videos, goes too (`forgetCopy`).
+ * - **What went leaves the page:** once home answered, the feed's list is
+ *   read again (`reread`).
  */
+import type { Feed } from "@/lib/call-videos/model"
 import type { CallStep, CallStepAsked } from "@/lib/home-link/delete-note"
 
 import type { CallAsk, CallSheet, CallSheetEvent } from "./call-deleting"
 import { CLOSED, readCallStep, stepCallSheet } from "./call-deleting"
 
 export type CallDeletingPorts = {
-  /** Asks home to let a week's step go, one run; never rejects. */
+  /** Asks home to let an episode's step go, one run; never rejects. */
   readonly deleteCallStep: (
-    from: string,
+    feed: Feed,
+    key: string,
     step: CallStep
   ) => Promise<CallStepAsked>
-  /** Removes the phone's own copy of a week's video; never rejects. */
-  readonly forgetCopy: (from: string) => Promise<void>
-  /** Reads the weeks again, so what went leaves the page. */
-  readonly reread: () => void
+  /** Removes the phone's own copy of an episode's video; never rejects. */
+  readonly forgetCopy: (feed: Feed, key: string) => Promise<void>
+  /** Reads the feed's episodes again, so what went leaves the page. */
+  readonly reread: (feed: Feed) => void
 }
 
 export type CallDeleting = {
@@ -53,12 +55,14 @@ export function createCallDeleting(ports: CallDeletingPorts): CallDeleting {
   const run = async (): Promise<void> => {
     if (sheet.kind !== "deleting") return
     const { ask } = sheet
-    const end = readCallStep(await ports.deleteCallStep(ask.from, ask.step))
+    const end = readCallStep(
+      await ports.deleteCallStep(ask.feed, ask.key, ask.step)
+    )
     dispatch({ type: "answered", end })
     if (end.kind === "gone" && ask.step === "video") {
-      await ports.forgetCopy(ask.from)
+      await ports.forgetCopy(ask.feed, ask.key)
     }
-    if (end.kind !== "unanswered") ports.reread()
+    if (end.kind !== "unanswered") ports.reread(ask.feed)
   }
 
   return {

@@ -40,16 +40,17 @@
  *   `GET /voice-notes/takes` per open, Try again, search or Show the
  *   newest, a blank search showing the newest, `?q=` holding the search's
  *   words) and, per Play, for one take's audio, through the same read Rust
- *   Rounds' notes use (`lib/home-link/voice-audio`). Studio's Calls
- *   (`lib/call-videos`, ST38) asks home for the weeks of the call it holds
- *   (`lib/home-link/call-videos`, one `GET /call/videos` per open, drag down,
- *   Try again or Save home kept), for a week's video on Watch, a part at a time (one
- *   `GET /call/videos/:from/video` per part), and sends a week's link on
- *   Save (one `PUT /call/videos/:from/link`).
+ *   Rounds' notes use (`lib/home-link/voice-audio`). Studio's feed videos
+ *   (`lib/call-videos`, ST38, FEED4) asks home for the episodes of a feed
+ *   (the weekly call or Playoff Delta) it holds (`lib/home-link/call-videos`,
+ *   one `GET /feeds/:feed/videos` per open, drag down, Try again or Save home
+ *   kept), for an episode's video on Watch, a part at a time (one
+ *   `GET /feeds/:feed/videos/:key/video` per part), and sends an episode's
+ *   link on Save (one `PUT /feeds/:feed/videos/:key/link`).
  *
  * - **LA19 (MY-DATA MD5): only My data deletes a record on home.** Only
  *   `lib/home-link/delete-note` sends home a `DELETE` (a recording's notes,
- *   or a step of a call's week), only `lib/my-data` imports it, and only its
+ *   or a step of a feed's episode), only `lib/my-data` imports it, and only its
  *   two delete runtimes call it, once a run each
  *   (docs/learner-data-authority.md holds the rest).
  *
@@ -128,9 +129,10 @@ const HOME_LINK_CALLERS = new Set([
   // keeps as the screen opens and on Try again, a search (a blank one reads
   // the newest) or Show the newest, and for one take's audio on each Play.
   "lib/take-library/index.ts",
-  // LA8 (ST38): Studio's Calls, which asks home for the weeks of the call it
-  // holds as the screen opens, on a drag down, on Try again and after a Save, for a week's
-  // video a part at a time on Watch, and sends a week's link on Save.
+  // LA8 (ST38, FEED4): Studio's feed videos, which asks home for a feed's
+  // episodes it holds as the screen opens, on a drag down, on Try again and
+  // after a Save, for an episode's video a part at a time on Watch, and sends
+  // an episode's link on Save.
   "lib/call-videos/index.ts",
   // LA8 (ST33): Studio's Finish, which hands the voice lane a video kept for
   // home to make and hears what home answered and lists of it
@@ -203,14 +205,20 @@ const TAKES_READ = "lib/home-link/takes-read.ts"
 const TAKES_SENDS = [['"GET"', "takesPath(q)"]]
 
 /**
- * LA8, ST38: Studio's Calls' reads of the weeks and of a week's video, a
- * part at a time, and its one send of a week's link.
+ * LA8, ST38, FEED4: Studio's feed videos' reads of a feed's episodes and of an
+ * episode's video, a part at a time, and its one send of an episode's link.
  */
 const CALLS_READ = "lib/home-link/call-videos.ts"
 const CALLS_SENDS = [
-  ['"GET"', "CALL_VIDEOS_PATH"],
-  ['"GET"', "videoPath(from)", "undefined", "{ start, end }"],
-  ['"PUT"', "linkPath(from)", "JSON.stringify({ link })"],
+  ['"GET"', "episodesPath(feed)"],
+  ['"GET"', "videoPath(feed, key)", "undefined", "{ start, end }"],
+  ['"PUT"', "linkPath(feed, key)", "JSON.stringify({ link })"],
+]
+/** The three paths those requests reach, as the read writes them. */
+const CALLS_PATHS = [
+  "return `/feeds/${feed}/videos`",
+  "return `/feeds/${feed}/videos/${encodeURIComponent(key)}/video`",
+  "return `/feeds/${feed}/videos/${encodeURIComponent(key)}/link`",
 ]
 
 /** LA8, MD3: the read of what home deleted, and the one request it may send. */
@@ -239,9 +247,9 @@ const DELETE_SENDS = [
   // A recording's notes, one per note.
   [expect.stringMatching(/^async \(send\) =>/)],
   ['"DELETE"', "deletePath(id)"],
-  // A call week's step (ST38), one per confirm.
+  // A feed episode's step (ST38, FEED4), one per confirm.
   [expect.stringMatching(/^\(send\) =>/)],
-  ['"DELETE"', "callStepPath(from, step)"],
+  ['"DELETE"', "callStepPath(feed, key, step)"],
 ]
 
 /**
@@ -310,15 +318,15 @@ function deleteRisks(
 
 /**
  * LA19: whether `text` names a `DELETE` in a string beside a string naming a
- * `/voice-notes/` or `/call/videos/` path: a request to one of home's deletes
- * however it is sent.
+ * `/voice-notes/`, `/call/videos/` or `/feeds/` path: a request to one of
+ * home's deletes however it is sent.
  */
 function namesRecordDelete(path: string, text: string): boolean {
   const found = { method: false, record: false }
   walk(parse(path, text), (node) => {
     if (ts.isStringLiteralLike(node) || ts.isTemplateHead(node)) {
       if (node.text === "DELETE") found.method = true
-      if (/\/voice-notes\/|\/call\/videos\//.test(node.text))
+      if (/\/voice-notes\/|\/call\/videos\/|\/feeds\//.test(node.text))
         found.record = true
     }
   })
@@ -754,9 +762,9 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(readers).toEqual(["lib/take-library/index.ts"])
   })
 
-  it("sends nothing from Studio's Calls but its list, its video's parts and a week's link, and only Calls asks them (ST38)", () => {
+  it("sends nothing from Studio's feed videos but a feed's list, its video's parts and an episode's link, and only Studio's feed videos asks them (ST38, FEED4)", () => {
     expect(sendCalls(CALLS_READ, read(CALLS_READ))).toEqual(CALLS_SENDS)
-    expect(read(CALLS_READ)).toContain('"/call/videos"')
+    for (const path of CALLS_PATHS) expect(read(CALLS_READ)).toContain(path)
     const readers = sourceFiles()
       .filter((f) => !isTestFile(f))
       .filter((f) =>
@@ -960,12 +968,15 @@ describe("LA19 (MD5): only My data deletes a record on home", () => {
   const sources = sourceFiles().filter((f) => !isTestFile(f))
   const read = (f: string): string => readFileSync(join(SRC, f), "utf8")
 
-  it("sends a DELETE to home from delete-note alone, a note's or a call week's step", () => {
+  it("sends a DELETE to home from delete-note alone, a note's or a feed episode's step", () => {
     const deleting = sources.filter(
       (f) => deleteRisks(f, read(f)).deletes.length > 0
     )
     expect(deleting).toEqual([DELETE_SEND])
     expect(sendCalls(DELETE_SEND, read(DELETE_SEND))).toEqual(DELETE_SENDS)
+    expect(read(DELETE_SEND)).toContain(
+      "return `/feeds/${feed}/videos/${encodeURIComponent(key)}/${step}`"
+    )
   })
 
   it("sends a method not written where it is sent only from the five callers that can't be a DELETE of a record", () => {
@@ -993,7 +1004,7 @@ describe("LA19 (MD5): only My data deletes a record on home", () => {
     )
   })
 
-  it("names a DELETE beside a voice-notes or call videos path nowhere but delete-note", () => {
+  it("names a DELETE beside a voice-notes, call videos or feeds path nowhere but delete-note", () => {
     expect(sources.filter((f) => namesRecordDelete(f, read(f)))).toEqual([
       DELETE_SEND,
     ])
@@ -1054,6 +1065,12 @@ describe("LA19 (MD5): only My data deletes a record on home", () => {
       namesRecordDelete(
         "x.ts",
         'void request(`/call/videos/${from}/rest`, { method: "DELETE" })'
+      )
+    ).toBe(true)
+    expect(
+      namesRecordDelete(
+        "x.ts",
+        'void request(`/feeds/${feed}/videos/${key}/rest`, { method: "DELETE" })'
       )
     ).toBe(true)
   })

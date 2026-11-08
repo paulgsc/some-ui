@@ -4,8 +4,9 @@ import { createFileRoute } from "@tanstack/react-router"
 import { DeviceMyDataCalls } from "@/components/settings/device-my-data-calls"
 
 /**
- * My data's page for the weekly call's videos (ST38, #2661): each week's
- * video, then the rest of it, let go of home once its YouTube link is saved.
+ * My data's page for each feed's videos, the weekly call's and Playoff
+ * Delta's (ST38, #2661; FEED4): each episode's video, then the rest of it,
+ * let go of home once its YouTube link is saved.
  */
 const CallsPage = (): JSX.Element => (
   <div className="max-w-xl space-y-4">

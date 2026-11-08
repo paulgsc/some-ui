@@ -1,84 +1,90 @@
 /**
- * Studio's Calls (ST38, #2661): the runtime that owns home's requests and the
- * phone's copies of the weekly call's videos, so the screen only reads a
- * snapshot and says what was pressed (R1). Every port resolves; what each
- * answer means is `./model`'s.
+ * Studio's feed videos (ST38, #2661; FEED4, #2647): the runtime that
+ * owns home's requests and the phone's copies of one feed's videos, the
+ * weekly call's or Playoff Delta's, so the screen only reads a snapshot and
+ * says what was pressed (R1). One runtime per feed, over that feed's ports
+ * (`./index`); every port resolves; what each answer means is `./model`'s.
  *
- * - **The list** is read once per open, drag down or Try again. A week whose
- *   whole video the phone already keeps reads as ready at once, and a ready
- *   week whose file has gone (Android cleared the cache) is forgotten, so
- *   Watch fetches it again.
- * - **Watch** fetches a week's video into the phone's cache a part at a time
- *   (at most `partBytes` a request, so it is never held whole), then hands
- *   the screen its address. A week already fetching or ready isn't fetched
- *   again; one that failed is fetched again from the start.
+ * - **The list** is read once per open, drag down or Try again. An episode
+ *   whose whole video the phone already keeps reads as ready at once, and a
+ *   ready episode whose file has gone (Android cleared the cache) is
+ *   forgotten, so Watch fetches it again.
+ * - **Watch** fetches an episode's video into the phone's cache a part at a
+ *   time (at most `partBytes` a request, so it is never held whole), then
+ *   hands the screen its address. An episode already fetching or ready isn't
+ *   fetched again; one that failed is fetched again key the start.
  * - **Share** hands the fetched file to Android's share sheet (the `YouTube`
- *   app takes it from there).
+ *   app takes it key there).
  * - **Save** sends the pasted link only when it reads as a `YouTube` video
- *   (`youtubeLink`, as Studio's Finish reads one), as its one form, and once home kept it reads the list again, so
- *   the week shows the link as home holds it.
+ *   (`youtubeLink`, as Studio's Finish reads one), as its one form, and once
+ *   home kept it reads the list again, so the episode shows the link as home
+ *   holds it.
  */
 import { youtubeLink } from "@some-ui/core-utils"
 
 import type {
-  CallsEvent,
-  CallsState,
+  Episode,
   FetchFailure,
   LinkSaved,
   ListState,
   PartRead,
-  Week,
+  VideosEvent,
+  VideosState,
 } from "./model"
 import { INITIAL, step } from "./model"
 
-/** The phone's copies of the videos, in its cache. Every call resolves. */
+/**
+ * The phone's copies of one feed's videos, in its cache, by episode key.
+ * Every call resolves.
+ */
 export type VideoFiles = {
-  /** How many bytes of a week's video the phone keeps, or `null`. */
-  size: (from: string) => Promise<number | null>
+  /** How many bytes of an episode's video the phone keeps, or `null`. */
+  size: (key: string) => Promise<number | null>
   /** Writes (`first`) or appends a part, as base64; false if it couldn't. */
-  put: (from: string, base64: string, first: boolean) => Promise<boolean>
+  put: (key: string, base64: string, first: boolean) => Promise<boolean>
   /** Where a kept video is: `uri` for sharing, `src` for the player. */
-  where: (from: string) => Promise<{ uri: string; src: string } | null>
+  where: (key: string) => Promise<{ uri: string; src: string } | null>
   /**
-   * Removes a week's video from the phone, if it is there; whether no copy
+   * Removes an episode's video from the phone, if it is there; whether no copy
    * is left. Never rejects.
    */
-  remove: (from: string) => Promise<boolean>
+  remove: (key: string) => Promise<boolean>
 }
 
-export type CallsPorts = {
+/** One feed's ports: its list, its parts, its links. */
+export type VideosPorts = {
   list: () => Promise<ListState>
   part: (
-    from: string,
+    key: string,
     start: number,
     end: number
   ) => Promise<PartRead | { readonly kind: "away" }>
   files: VideoFiles
   share: (
     uri: string,
-    from: string
+    key: string
   ) => Promise<"shared" | "cancelled" | "failed">
   saveLink: (
-    from: string,
+    key: string,
     link: string
   ) => Promise<LinkSaved | { readonly kind: "away" }>
   /** The most bytes one part asks for. */
   partBytes: number
 }
 
-export type CallVideos = {
+export type FeedVideos = {
   subscribe: (listener: () => void) => () => void
-  getSnapshot: () => CallsState
+  getSnapshot: () => VideosState
   /** Reads the list (on open, a drag down, Try again). */
   open: () => Promise<void>
-  watch: (from: string) => Promise<void>
-  share: (from: string) => Promise<void>
-  saveLink: (from: string, pasted: string) => Promise<void>
+  watch: (key: string) => Promise<void>
+  share: (key: string) => Promise<void>
+  saveLink: (key: string, pasted: string) => Promise<void>
   /**
-   * Lets go of the phone's copy of a week's video, once My data let home's
+   * Lets go of the phone's copy of an episode's video, once My data let home's
    * go (`lib/my-data`), and forgets it was ready.
    */
-  forget: (from: string) => Promise<void>
+  forget: (key: string) => Promise<void>
   /** The screen said what it had to say. */
   seen: () => void
 }
@@ -89,39 +95,39 @@ function decodedBytes(base64: string): number {
   return (base64.length / 4) * 3 - padding
 }
 
-export function createCallVideos(ports: CallsPorts): CallVideos {
+export function createFeedVideos(ports: VideosPorts): FeedVideos {
   let state = INITIAL
   const listeners = new Set<() => void>()
-  const dispatch = (event: CallsEvent): void => {
+  const dispatch = (event: VideosEvent): void => {
     state = step(state, event)
     for (const listener of listeners) listener()
   }
-  const weekOf = (from: string): Week | undefined =>
+  const episodeOf = (key: string): Episode | undefined =>
     state.list.kind === "read"
-      ? state.list.weeks.find((week) => week.from === from)
+      ? state.list.episodes.find((episode) => episode.key === key)
       : undefined
 
-  /** A week whose whole video the phone keeps reads as ready. */
-  const kept = async (week: Week): Promise<boolean> => {
-    if (week.videoBytes === null) return false
-    const size = await ports.files.size(week.from)
-    if (size !== week.videoBytes) return false
-    const where = await ports.files.where(week.from)
+  /** An episode whose whole video the phone keeps reads as ready. */
+  const kept = async (episode: Episode): Promise<boolean> => {
+    if (episode.videoBytes === null) return false
+    const size = await ports.files.size(episode.key)
+    if (size !== episode.videoBytes) return false
+    const where = await ports.files.where(episode.key)
     if (where === null) return false
     dispatch({
       type: "fetchMoved",
-      from: week.from,
+      key: episode.key,
       fetch: { kind: "ready", ...where },
     })
     return true
   }
 
-  /** Each week's fetch while it runs, and the weeks `forget` is stopping. */
+  /** Each episode's fetch while it runs, and the episodes `forget` is stopping. */
   const fetching = new Map<string, Promise<void>>()
   const stopping = new Set<string>()
 
-  const failed = (from: string, why: FetchFailure): void => {
-    dispatch({ type: "fetchMoved", from, fetch: { kind: "failed", why } })
+  const failed = (key: string, why: FetchFailure): void => {
+    dispatch({ type: "fetchMoved", key, fetch: { kind: "failed", why } })
   }
 
   const open = async (): Promise<void> => {
@@ -129,54 +135,54 @@ export function createCallVideos(ports: CallsPorts): CallVideos {
     const list = await ports.list()
     dispatch({ type: "listEnded", list })
     if (list.kind !== "read") return
-    for (const week of list.weeks) {
-      const now = state.fetches[week.from]
+    for (const episode of list.episodes) {
+      const now = state.fetches[episode.key]
       if (now === undefined) {
-        await kept(week)
-      } else if (now.kind === "ready" && !(await kept(week))) {
+        await kept(episode)
+      } else if (now.kind === "ready" && !(await kept(episode))) {
         // Android may clear the cache while the app stays open: Watch
         // fetches it again.
-        dispatch({ type: "fetchForgotten", from: week.from })
+        dispatch({ type: "fetchForgotten", key: episode.key })
       }
     }
   }
 
   /**
-   * Brings `week`'s video to the phone a part at a time. It stops, writing
-   * nothing more, once `forget` is stopping the week.
+   * Brings `episode`'s video to the phone a part at a time. It stops,
+   * writing nothing more, once `forget` is stopping the episode.
    */
-  const fetchVideo = async (week: Week, total: number): Promise<void> => {
-    const { from } = week
-    if (stopping.has(from) || (await kept(week))) return
+  const fetchVideo = async (episode: Episode, total: number): Promise<void> => {
+    const { key } = episode
+    if (stopping.has(key) || (await kept(episode))) return
     for (let start = 0; start < total; ) {
       const end = Math.min(start + ports.partBytes, total) - 1
-      const part = await ports.part(from, start, end)
-      if (stopping.has(from)) return
+      const part = await ports.part(key, start, end)
+      if (stopping.has(key)) return
       if (part.kind !== "bytes") {
-        failed(from, part.kind === "gone" ? "gone" : "away")
+        failed(key, part.kind === "gone" ? "gone" : "away")
         return
       }
       // Android's base64 may be wrapped in lines.
       const base64 = part.base64.replace(/\s/g, "")
       const got = decodedBytes(base64)
       if (got <= 0 || got > end - start + 1) {
-        failed(from, "away")
+        failed(key, "away")
         return
       }
-      const put = await ports.files.put(from, base64, start === 0)
-      if (stopping.has(from)) return
+      const put = await ports.files.put(key, base64, start === 0)
+      if (stopping.has(key)) return
       if (!put) {
-        failed(from, "phone")
+        failed(key, "phone")
         return
       }
       start += got
       dispatch({
         type: "fetchMoved",
-        from,
+        key,
         fetch: { kind: "fetching", done: start, total },
       })
     }
-    if (!(await kept(week))) failed(from, "phone")
+    if (!(await kept(episode))) failed(key, "phone")
   }
 
   return {
@@ -190,66 +196,66 @@ export function createCallVideos(ports: CallsPorts): CallVideos {
 
     open,
 
-    async watch(from): Promise<void> {
-      const now = state.fetches[from]
+    async watch(key): Promise<void> {
+      const now = state.fetches[key]
       if (now?.kind === "fetching" || now?.kind === "ready") return
-      const week = weekOf(from)
-      const total = week?.videoBytes ?? null
-      if (week === undefined || total === null) {
-        failed(from, "gone")
+      const episode = episodeOf(key)
+      const total = episode?.videoBytes ?? null
+      if (episode === undefined || total === null) {
+        failed(key, "gone")
         return
       }
       // In flight before the first wait, so a second Watch finds it fetching.
       dispatch({
         type: "fetchMoved",
-        from,
+        key,
         fetch: { kind: "fetching", done: 0, total },
       })
-      const run = fetchVideo(week, total)
-      fetching.set(from, run)
+      const run = fetchVideo(episode, total)
+      fetching.set(key, run)
       try {
         await run
       } finally {
-        fetching.delete(from)
+        fetching.delete(key)
       }
     },
 
-    async share(from): Promise<void> {
-      const now = state.fetches[from]
+    async share(key): Promise<void> {
+      const now = state.fetches[key]
       if (now?.kind !== "ready") return
-      const shared = await ports.share(now.uri, from)
-      if (shared === "failed") dispatch({ type: "shareFailed", from })
+      const shared = await ports.share(now.uri, key)
+      if (shared === "failed") dispatch({ type: "shareFailed", key })
     },
 
-    async saveLink(from, pasted): Promise<void> {
-      if (state.links[from]?.kind === "saving") return
+    async saveLink(key, pasted): Promise<void> {
+      if (state.links[key]?.kind === "saving") return
       // The one reading of a YouTube link (`youtubeLink`, as Finish's).
       const link = youtubeLink(pasted)
       if (link === null) {
-        dispatch({ type: "linkEnded", from, saved: { kind: "notAVideo" } })
+        dispatch({ type: "linkEnded", key, saved: { kind: "notAVideo" } })
         return
       }
-      dispatch({ type: "linkSaving", from })
-      const saved = await ports.saveLink(from, link)
-      dispatch({ type: "linkEnded", from, saved })
-      // Read again, so the week shows the link as home kept it.
+      dispatch({ type: "linkSaving", key })
+      const saved = await ports.saveLink(key, link)
+      dispatch({ type: "linkEnded", key, saved })
+      // Read again, so the episode shows the link as home kept it.
       if (saved.kind === "saved") await open()
     },
 
-    async forget(from): Promise<void> {
+    async forget(key): Promise<void> {
       // A fetch still running would write its part after the file went:
       // stop it, and wait for the write it is in.
-      stopping.add(from)
+      stopping.add(key)
       try {
-        await fetching.get(from)
-        if (await ports.files.remove(from)) {
-          dispatch({ type: "fetchForgotten", from })
-        } else if (state.fetches[from]?.kind === "fetching") {
+        await fetching.get(key)
+        if (await ports.files.remove(key)) {
+          dispatch({ type: "fetchForgotten", key })
+        } else if (state.fetches[key]?.kind === "fetching") {
           // The fetch it stopped left a part that wouldn't go.
-          failed(from, "phone")
+          failed(key, "phone")
         }
       } finally {
-        stopping.delete(from)
+        stopping.delete(key)
       }
     },
 

@@ -166,8 +166,9 @@ async function writeAndShare(dir: string, title: string, files: Files): Shared {
 
 /**
  * Opens the share sheet with files already in the cache under `dir`, at
- * `uris` (a week of the call's video, which `lib/call-videos` fetched there
- * a part at a time). Backing out is `cancelled`, not a failure.
+ * `uris` (an episode's video, the call's or Playoff Delta's, which
+ * `lib/call-videos` fetched there a part at a time). Backing out is
+ * `cancelled`, not a failure.
  */
 export function shareUris(
   dir: string,

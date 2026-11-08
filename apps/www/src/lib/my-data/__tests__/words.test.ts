@@ -112,10 +112,12 @@ describe("My data's words", () => {
     ).toEqual([])
   })
 
-  it("never name the machinery when letting a call's week go", () => {
+  it("never name the machinery when letting a feed's episode go", () => {
     const said = [
       ...strings(CALL_DELETING),
-      CALL_DELETING.week("2026-10-30", "2026-11-05"),
+      CALL_DELETING.episode("call", "2026-10-30"),
+      CALL_DELETING.episode("playoff-delta", "2026-SF-08"),
+      CALL_DELETING.episode("playoff-delta", "2026-SF-00"),
       CALL_DELETING.video("95 MB"),
       CALL_DELETING.rest("1.2 GB"),
       CALL_DELETING.goes.video("95 MB"),

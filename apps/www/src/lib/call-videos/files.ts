@@ -1,7 +1,7 @@
 /**
- * The phone's copies of the weekly call's videos (ST38): one file a week in
- * the app's cache, `call-videos/<from>.mp4`, written a part at a time as
- * home sends it, so a video is never held whole in memory. The cache is the
+ * The phone's copies of each feed's videos (ST38, FEED4): one file an episode
+ * in the app's cache (`cachePath`), written a part at a time as home sends
+ * it, so a video is never held whole in memory. The cache is the
  * phone's to clear; home keeps the video until the owner lets it go. Every
  * wait on the files is bounded (`callForeign`), and every call resolves.
  * Phone-only (`build.paths.ts`).
@@ -19,9 +19,10 @@ import {
 
 import { isMissingPlugin } from "@/lib/intent/foreign"
 
+import type { Feed } from "./model"
 import type { VideoFiles } from "./runtime"
 
-/** The cache folder the videos are kept in, and shared from. */
+/** The cache folder every feed's videos are kept in, and shared from. */
 export const DIR = "call-videos"
 
 /** Writing one part (a few MB) or reading what is kept. */
@@ -54,7 +55,14 @@ const PORT: ForeignPort = {
   report: reportFailure,
 }
 
-const pathOf = (from: string): string => `${DIR}/${from}.mp4`
+/**
+ * Where an episode's video is kept: the call's as it was before Playoff
+ * Delta's came (`<key>.mp4`, so a week already on the phone still matches),
+ * each other feed's named for it, so no two feeds' keys meet.
+ */
+export function cachePath(feed: Feed, key: string): string {
+  return feed === "call" ? `${DIR}/${key}.mp4` : `${DIR}/${feed}-${key}.mp4`
+}
 
 /** A call's value once it succeeded, `fallback` otherwise. */
 const valueOr = <T>(outcome: ForeignOutcome<T>, fallback: T): T =>
@@ -74,85 +82,98 @@ function playable(uri: string, host: object = globalThis): string {
   return typeof src === "string" ? src : uri
 }
 
-export const videoFiles: VideoFiles = {
-  async size(from) {
-    const outcome = await callForeign({
-      port: PORT,
-      deadlineMs: DEADLINE_MS,
-      start: async (): Promise<number | null> => {
-        const { Directory, Filesystem } = await import("@capacitor/filesystem")
-        try {
-          const { size } = await Filesystem.stat({
-            path: pathOf(from),
+/** The phone's copies of `feed`'s videos. */
+export function videoFiles(feed: Feed): VideoFiles {
+  const pathOf = (key: string): string => cachePath(feed, key)
+  const files: VideoFiles = {
+    async size(key) {
+      const outcome = await callForeign({
+        port: PORT,
+        deadlineMs: DEADLINE_MS,
+        start: async (): Promise<number | null> => {
+          const { Directory, Filesystem } = await import(
+            "@capacitor/filesystem"
+          )
+          try {
+            const { size } = await Filesystem.stat({
+              path: pathOf(key),
+              directory: Directory.Cache,
+            })
+            return size
+          } catch {
+            // Ignored: no file is the usual case, a video not fetched yet.
+            return null
+          }
+        },
+      }).outcome
+      return valueOr(outcome, null)
+    },
+
+    async put(key, base64, first) {
+      const outcome = await callForeign({
+        port: PORT,
+        deadlineMs: DEADLINE_MS,
+        start: async (): Promise<boolean> => {
+          const { Directory, Filesystem } = await import(
+            "@capacitor/filesystem"
+          )
+          const options = {
+            path: pathOf(key),
+            directory: Directory.Cache,
+            data: base64,
+          }
+          if (first) {
+            await Filesystem.writeFile({ ...options, recursive: true })
+          } else {
+            await Filesystem.appendFile(options)
+          }
+          return true
+        },
+      }).outcome
+      return valueOr(outcome, false)
+    },
+
+    async where(key) {
+      const outcome = await callForeign({
+        port: PORT,
+        deadlineMs: DEADLINE_MS,
+        start: async (): Promise<{ uri: string; src: string }> => {
+          const { Directory, Filesystem } = await import(
+            "@capacitor/filesystem"
+          )
+          const { uri } = await Filesystem.getUri({
+            path: pathOf(key),
             directory: Directory.Cache,
           })
-          return size
-        } catch {
-          // Ignored: no file is the usual case, a video not fetched yet.
-          return null
-        }
-      },
-    }).outcome
-    return valueOr(outcome, null)
-  },
+          return { uri, src: playable(uri) }
+        },
+      }).outcome
+      return valueOr(outcome, null)
+    },
 
-  async put(from, base64, first) {
-    const outcome = await callForeign({
-      port: PORT,
-      deadlineMs: DEADLINE_MS,
-      start: async (): Promise<boolean> => {
-        const { Directory, Filesystem } = await import("@capacitor/filesystem")
-        const options = {
-          path: pathOf(from),
-          directory: Directory.Cache,
-          data: base64,
-        }
-        if (first) {
-          await Filesystem.writeFile({ ...options, recursive: true })
-        } else {
-          await Filesystem.appendFile(options)
-        }
-        return true
-      },
-    }).outcome
-    return valueOr(outcome, false)
-  },
-
-  async where(from) {
-    const outcome = await callForeign({
-      port: PORT,
-      deadlineMs: DEADLINE_MS,
-      start: async (): Promise<{ uri: string; src: string }> => {
-        const { Directory, Filesystem } = await import("@capacitor/filesystem")
-        const { uri } = await Filesystem.getUri({
-          path: pathOf(from),
-          directory: Directory.Cache,
-        })
-        return { uri, src: playable(uri) }
-      },
-    }).outcome
-    return valueOr(outcome, null)
-  },
-
-  async remove(from) {
-    const outcome = await callForeign({
-      port: PORT,
-      deadlineMs: DEADLINE_MS,
-      start: async (): Promise<boolean> => {
-        const { Directory, Filesystem } = await import("@capacitor/filesystem")
-        const file = { path: pathOf(from), directory: Directory.Cache }
-        try {
-          await Filesystem.stat(file)
-        } catch {
-          // Ignored: no copy on the phone is the usual case, a week never
-          // watched here, and there is nothing to remove.
+    async remove(key) {
+      const outcome = await callForeign({
+        port: PORT,
+        deadlineMs: DEADLINE_MS,
+        start: async (): Promise<boolean> => {
+          const { Directory, Filesystem } = await import(
+            "@capacitor/filesystem"
+          )
+          const file = { path: pathOf(key), directory: Directory.Cache }
+          try {
+            await Filesystem.stat(file)
+          } catch {
+            // Ignored: no copy on the phone is the usual case, an episode never
+            // watched here, and there is nothing to remove.
+            return true
+          }
+          // A copy that won't go fails the call, which the port reports.
+          await Filesystem.deleteFile(file)
           return true
-        }
-        // A copy that won't go fails the call, which the port reports.
-        await Filesystem.deleteFile(file)
-        return true
-      },
-    }).outcome
-    return valueOr(outcome, false)
-  },
+        },
+      }).outcome
+      return valueOr(outcome, false)
+    },
+  }
+  return files
 }
