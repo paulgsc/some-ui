@@ -2806,6 +2806,36 @@
       "family": "what-is-kept"
     },
     {
+      "store": "phone:rust-rounds-weeks",
+      "class": "record",
+      "growth": "Per week the routine wrote that the phone read from home (RR13, #2688): the week as home serves it (a few KB, its tickets' programs among them), one recorded rustc run per ticket, filled once, and the tickets home ended for good; the first copy of a week id is kept and never rewritten; one a week, no cap (`some-ui:rust-rounds.weeks`).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:rust-rounds-week-drafts",
+      "class": "record",
+      "growth": "bounded per week: one draft of the week's bundle by week id (the tickets left for later), written over freely, since nothing in it has left the phone; one a week (`some-ui:rust-rounds.week-drafts`).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:rust-rounds-week-sent",
+      "class": "record",
+      "growth": "Per week sent from the phone (RR13): when, each ticket's take id and the tickets not said; only grows (a change that drops or rewrites one is refused); one a week, no cap until RR14 keeps it on home (`some-ui:rust-rounds.week-sent`).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:rust-rounds-week-heard",
+      "class": "record",
+      "growth": "Per take sent: the words home heard in it, a copy of home's, each kept once and never written over; a few hundred bytes a take, a few takes a week (`some-ui:rust-rounds.week-heard`).",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:rust-rounds-week-takes",
+      "class": "record",
+      "growth": "Per take on a week's ticket (RR13, up to three minutes at 32 kbps, ~720 KB): one current take a ticket, waiting on the phone until the week is sent (`send: on-confirm`), then going home as a Rust Rounds voice note; a take let go before Send is deleted for good; no count of its own (max = +Infinity), so takes grow until the device's measured room (withRoom, the 25 MiB pool) refuses one; none is evicted to make room (`some-ui:rust-rounds.week-takes`, `some-ui.rust-week-takes`).",
+      "family": "what-is-kept"
+    },
+    {
       "store": "phone:scene-voice",
       "class": "record",
       "growth": "bounded: SCENE_NOTES_MAX = 5 notes in the draft; SCENE_NOTES_KEPT = 20 notes on the phone, those set aside or recorded again counted until home holds them; past 20 a new note makes room with the oldest home holds out of the draft, and is refused while there is none; SCENE_AUDIO_MAX_BYTES = 20 x 240,000 = 4,800,000 B (raised from 5 when Redo and Let go began keeping notes: MIC5, paulgsc/some-ui#2439 review).",
@@ -3806,12 +3836,13 @@
       "segments": [
         {
           "id": "lane",
-          "name": "The home link's Rust Rounds lane sends each round pasted on the phone home once, and reads back what home recorded. Ours, on the phone.",
+          "name": "The home link's Rust Rounds lane sends each round pasted on the phone home once, and reads back what home recorded, then the weeks home holds and their runs (RR13). Ours, on the phone.",
           "owner": "ours",
           "on": "phone",
           "paths": [
             "some-ui:apps/www/src/lib/home-link/rust-rounds.ts",
-            "some-ui:packages/ui/rust-rounds/src/lib/home"
+            "some-ui:packages/ui/rust-rounds/src/lib/home",
+            "some-ui:packages/ui/rust-rounds/src/lib/weeks"
           ]
         },
         {

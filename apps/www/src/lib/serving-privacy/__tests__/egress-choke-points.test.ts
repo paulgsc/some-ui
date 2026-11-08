@@ -114,6 +114,10 @@ const HOME_LINK_CALLERS = new Set([
   // and how the voice lane's last run ended, and listens for either
   // changing, asking home nothing.
   "lib/idea-hearing/index.ts",
+  // LA8 (RR13): Rust Rounds' week, which reads whether the phone is paired
+  // (`ideaHome`) and asks home once per opening for the words of each take
+  // sent that the phone has none of.
+  "routes/_dashboard/_apk/rust-rounds.tsx",
   // LA15, PULL2: a pull on a Jobs screen or the status page hears how the
   // jobs lane's run in the pull of home ended (`pulledLane`), asking nothing
   // of its own.
@@ -803,7 +807,7 @@ describe("LA8: the phone reaches home through one module", () => {
     ])
   })
 
-  it("sends nothing from the read of a take's words but one GET of /voice-notes/:id/heard, and only Studio's idea answers read it (IH1)", () => {
+  it("sends nothing from the read of a take's words but one GET of /voice-notes/:id/heard, and only Studio's idea answers and Rust Rounds' week read it (IH1, RR13)", () => {
     expect(sendCalls(HEARD_READ, read(HEARD_READ))).toEqual(HEARD_SENDS)
     expect(read(HEARD_READ)).toContain("/heard`")
     const readers = sourceFiles()
@@ -811,7 +815,10 @@ describe("LA8: the phone reaches home through one module", () => {
       .filter((f) =>
         /from "\.\/heard"|from "@\/lib\/home-link\/heard"/.test(read(f))
       )
-    expect(readers).toEqual(["lib/idea-hearing/index.ts"])
+    expect(readers).toEqual([
+      "lib/idea-hearing/index.ts",
+      "routes/_dashboard/_apk/rust-rounds.tsx",
+    ])
   })
 
   it("sends nothing from the routine's read but one GET /routine/files and one PUT /routine/opened", () => {

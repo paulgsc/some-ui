@@ -22,6 +22,7 @@ import { phoneJobs } from "@/lib/jobs"
 import { leetypeTakesDesk } from "@/lib/leetype-takes"
 import { lensTakesDesk } from "@/lib/lens-takes"
 import { libraryTakesDesk } from "@/lib/library-takes"
+import { rustWeekDesk } from "@/lib/rust-rounds"
 import { reflections } from "@/lib/session-reflection"
 import { phoneVoiceHome } from "@/lib/voice-home"
 import type { Unsendable, VoiceHomeState } from "@/lib/voice-home/model"
@@ -92,6 +93,9 @@ export const voiceLane: Lane = {
     // A new idea's takes, released by its Send (ST26).
     const bundle = ideaBundleDesk.phone().takes
     useSyncExternalStore(bundle.subscribe, bundle.getSnapshot)
+    // A week's takes, released by its Send (RR13).
+    const week = rustWeekDesk.phone().takes
+    useSyncExternalStore(week.subscribe, week.getSnapshot)
     const library = libraryTakesDesk.phone().takes
     useSyncExternalStore(library.subscribe, library.getSnapshot)
     const { gone } = useSyncExternalStore(

@@ -169,3 +169,4 @@ export type {
   BundleTakes,
 } from "./lib/bundle-runtime"
 export { bundleRuntime, NO_HOME } from "./lib/bundle-runtime"
+export type { HeardAnswer } from "./lib/heard"

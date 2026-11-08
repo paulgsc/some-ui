@@ -20,7 +20,7 @@
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { readAs } from "@some-ui/core-utils"
-import type { HeardAnswer } from "@some-ui/soundbites"
+import type { HeardAnswer } from "@some-ui/voice-capture"
 import { z } from "zod"
 
 import { homeLink, paired } from "./index"

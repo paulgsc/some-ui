@@ -4,7 +4,11 @@ import { cn, formatTimecode } from "@some-ui/core-utils"
 import type { Offer, Visit } from "@some-ui/engagement"
 import { pageVisit, watchVisit } from "@some-ui/engagement"
 import { useShelf } from "@some-ui/react-hooks"
-import { RUST_ROUNDS_TITLE, rustRoundsEntry } from "@some-ui/rust-rounds/entry"
+import {
+  RUST_ROUNDS_TITLE,
+  rustRoundsEntry,
+  rustWeekEntry,
+} from "@some-ui/rust-rounds/entry"
 import {
   BrandMark,
   Button,
@@ -275,14 +279,21 @@ const StudyCard = ({
 }
 
 /**
- * Rust Rounds' way in (#2235, the owner's D2): one tap opens it on the card
- * left last, or one tap from the first. It says where you left off, and
- * nothing about how long or how much.
+ * Rust Rounds' way in (#2235, the owner's D2): one tap opens the week open
+ * now, saying its deadline and how many tickets are said (RR13); while the
+ * phone holds no week, the card left last, or one tap from the first.
  */
 const RustRoundsCard = ({ visit }: { visit: Visit }): JSX.Element => {
   // Read once as Home opens, never on each render; it changes only in Rust
-  // Rounds itself, which is left to come back here.
-  const [line] = useState(() => rustRoundsEntry(browserLocalStorage))
+  // Rounds itself, which is left to come back here. The week open now
+  // (RR13), or, while the phone holds none, where the rounds were left.
+  /* eslint-disable owner-guard/no-mount-snapshot -- read once as Home opens, as the line above says: Rust Rounds is left to come back here, which mounts Home afresh */
+  const [line] = useState(
+    () =>
+      rustWeekEntry(browserLocalStorage, Date.now()) ??
+      rustRoundsEntry(browserLocalStorage)
+  )
+  /* eslint-enable owner-guard/no-mount-snapshot */
   useShelf(visit, "rust-rounds", RUST_ROUNDS)
   return (
     <Link

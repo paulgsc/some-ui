@@ -125,6 +125,7 @@ vi.mock("@/lib/leetype-takes", () => ({
   leetypeNotesHeldByHome: (): void => undefined,
 }))
 vi.mock("@/lib/rust-rounds", () => ({
+  rustWeekDesk: desk(() => []),
   rustRoundsDesk: desk(() => fakes.rust),
   rustRoundRef: () => (): string => "indexing-01:a",
 }))

@@ -414,7 +414,12 @@ declared (checked by reading every call site and by the tests named).
   shows a take home is hearing, never while the page is hidden, for at most
   3 minutes from the take's keeping; once home didn't answer, none more for
   that take, nor for any for 5 minutes on that pairing; the owner's
-  direction on #2428, 2026-11-01, and IH1), and My data asking home what it
+  direction on #2428, 2026-11-01, and IH1), and Rust Rounds' week asking
+  home for the words of each take sent (`routes/_dashboard/_apk/rust-rounds.tsx`
+  hands `lib/home-link/heard`'s read to `@some-ui/rust-rounds`'
+  `createRustWeek`: one `GET /voice-notes/:id/heard` per take sent whose
+  words the phone lacks, each time the week opens on what was sent, never on
+  a clock; RR13 #2688), and My data asking home what it
   keeps (`lib/my-data`, through `lib/home-link/kept-read`'s `keep`: one
   `GET /voice-notes/kept`, with `?of=` on a kind's page (and `&note=` for
   the recording another screen's "Delete…" opened it on), and on the
@@ -588,7 +593,8 @@ declared (checked by reading every call site and by the tests named).
   has `letGoDeleted` (`lib/home-link/voice-copy`) called for a note home
   did not answer with a receipt; one that has `heard.ts` send anything but one
   `GET` of `heardPath(id)` per ask, lets anything but `lib/idea-hearing`
-  read it, or has `@some-ui/soundbites`' `stepHearing` ask while the page is
+  and the Rust Rounds route read it, has `createRustWeek` ask for a take
+  more than once per opening, for one it holds words of, or on a clock, or has `@some-ui/soundbites`' `stepHearing` ask while the page is
   hidden, more often than `pollMs`, with a second ask out, or past
   `deadlineMs` (`HEARING_TIMING`, 5 s and 3 minutes), or widens either; one that
   has `lib/home-link/on-drive.ts` send anything but its `GET`s, one per 100
@@ -1057,7 +1063,8 @@ answers name) and Studio's videos kept for home to
 make (ST33, each as the DNA its Finish mark keeps, which the voice lane
 carries after its set-aside marks, the notes their takes name gone before),
 and the rounds pasted in Rust Rounds, whose run also brings
-home's rounds and the runs home recorded back to the phone, RR4b, and the
+home's rounds and the runs home recorded back to the phone, RR4b, and then
+the weeks home holds with theirs, which the phone only reads, RR13, and the
 notes of how each take ended, CK2, `app-events.ts`) goes
 through one wiring (`lib/home-link/lanes.ts`):
 each declares its lane (its exchange, how its record moves, its sheet's
@@ -1108,7 +1115,8 @@ its own (`components/__tests__/device-home-glyph.test.tsx`), and that a
 screen hears its lane's end in the pull under way, one run a lane between
 them (`lib/home-link/__tests__/pull.test.ts`). What no test
 can say is when a run is asked for. Rust Rounds' lane
-(`rust-rounds.ts`) is held by `packages/ui/rust-rounds/src/lib/home/index.test.ts`
+(`rust-rounds.ts`) is held by `packages/ui/rust-rounds/src/lib/home/index.test.ts`,
+`packages/ui/rust-rounds/src/lib/weeks/index.test.ts`
 and `components/__tests__/device-home-glyph.test.tsx`.
 
 - _Claim:_ `askKept` and `pullKept` (`lib/home-link/kept-watch.ts`) ask for
@@ -1281,8 +1289,13 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   accepts; a hunk to `lib/home-link/rust-rounds.ts` that makes the lane's
   `revision` anything but `roundsTaken` of what plays (the rounds taken on
   this phone, never one taken from home), its `subscribe` anything but the
-  store's, or its `exchange` anything but `exchangeRounds` over
-  `phoneRounds()`; a hunk to `@some-ui/rust-rounds`'s `lib/home` that sends
+  store's, or its `exchange` anything but `exchangeRustRounds` over
+  `phoneRounds()` and `phoneWeeks()` (the rounds' exchange, then, once it is
+  synced, the weeks'); a hunk to `@some-ui/rust-rounds`'s `lib/weeks` that
+  sends anything but one `GET /rust-weeks` and at most
+  `WEEK_READS_PER_EXCHANGE` `GET`s of a week `weeksToRead` names, writes a
+  week other than through its store's `hold`, or rewrites a week the phone
+  holds; a hunk to `@some-ui/rust-rounds`'s `lib/home` that sends
   anything but one `PUT` of a round `roundsToSend` names, one
   `GET /rust-rounds` and at most `READS_PER_EXCHANGE` `GET`s of a round
   `roundsToRead` names, or that writes what plays other than through its
@@ -1357,6 +1370,7 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   `packages/ui/leetype/src/lib/leetype/session-log/home.ts`,
   `apps/www/src/lib/home-link/rust-rounds.ts`,
   `packages/ui/rust-rounds/src/lib/home/index.ts`,
+  `packages/ui/rust-rounds/src/lib/weeks/index.ts`,
   `packages/ui/rust-rounds/src/lib/play/store.ts`,
   `packages/ui/rust-rounds/src/lib/play/held.ts`.
 - _Why not enforced:_ whether a moment is one where the person is using the

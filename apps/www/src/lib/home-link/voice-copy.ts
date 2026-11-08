@@ -29,6 +29,10 @@
  *   its transcript reaches the tutor through the mailbox; once home holds
  *   it, its audio leaves this phone and the note stays listed, heard from
  *   home after (`./voice-audio`);
+ * - a take on a week's ticket (`lib/rust-rounds`' `rustWeekDesk`, RR13
+ *   #2688): `rust-round`, the week and ticket as `<week>:<ticket>`, when
+ *   taken, but only once its week is sent: until then it waits on the phone
+ *   (`waits`), as a new idea's take does;
  * - a Studio idea answer's take (`lib/idea-takes`, MIC10): `studio`, the
  *   answer as `idea:<idea>:<question>`, when taken; home gives its words back
  *   to the idea screen (`./heard`). A new idea's take (ST26) goes the same
@@ -153,7 +157,7 @@ import {
   reflectionNotesKept,
 } from "@/lib/reflection-voice"
 import type { RustRoundTake } from "@/lib/rust-rounds"
-import { rustRoundRef, rustRoundsDesk } from "@/lib/rust-rounds"
+import { rustRoundRef, rustRoundsDesk, rustWeekDesk } from "@/lib/rust-rounds"
 import type { KeptSceneNote } from "@/lib/scene-voice"
 import { phoneSceneVoice, sceneNotes, sceneNotesKept } from "@/lib/scene-voice"
 import { reflections } from "@/lib/session-reflection"
@@ -347,6 +351,20 @@ export function rustRoundNote(
         at: new Date(take.takenAt).toISOString(),
         contentType: take.mimeType,
       }
+}
+
+/**
+ * A take on a week's ticket (its `line` is `<week>:<ticket>`), as home is
+ * told it: a Rust Rounds note named by its week and ticket.
+ */
+export function rustWeekNote(take: RustRoundTake): VoiceOut {
+  return {
+    id: take.id,
+    of: "rust-round",
+    ref: take.line,
+    at: new Date(take.takenAt).toISOString(),
+    contentType: take.mimeType,
+  }
 }
 
 /**
@@ -618,6 +636,12 @@ function listed(
           },
         ]
   })
+  // RR13: only the takes of a week sent; one still waiting is not listed.
+  const week = rustWeekDesk.kept().map((take) => ({
+    note: rustWeekNote(take),
+    audio: (): Promise<Blob | null> => rustWeekDesk.audio(take.id),
+    aside: asideAt(take),
+  }))
   const ideas = ideaTakesDesk.kept().map((take) => ({
     note: ideaNote(take),
     audio: (): Promise<Blob | null> => ideaTakesDesk.audio(take.id),
@@ -644,6 +668,7 @@ function listed(
     ...lens,
     ...leetype,
     ...rust,
+    ...week,
     ...ideas,
     ...bundled,
     ...library,
@@ -1021,13 +1046,14 @@ export async function letGoDeleted(
   const studio = studioKeeping()
   const deleted = new Set(ids)
   try {
-    const [, kit, bundle, library] = await Promise.all([
+    const [, kit, bundle, library, week] = await Promise.all([
       studio?.letGoDeletedTakes(deleted),
       ideaTakesDesk.letGoDeleted(deleted),
       ideaBundleDesk.letGoDeleted(deleted),
       libraryTakesDesk.letGoDeleted(deleted),
+      rustWeekDesk.letGoDeleted(deleted),
     ])
-    return studio !== null && kit && bundle && library
+    return studio !== null && kit && bundle && library && week
   } catch (error) {
     reportFailure({
       port: "my data: this phone's copy of what home deleted",
@@ -1119,6 +1145,7 @@ function holdOffline(): void {
   rustRoundsDesk.audioFrom(askAudio)
   ideaTakesDesk.keptWhere(voiceKept)
   ideaBundleDesk.keptWhere(voiceKept)
+  rustWeekDesk.keptWhere(voiceKept)
   libraryTakesDesk.keptWhere(voiceKept)
   sceneNotesKept(voiceKept)
   reflectionNotesKept(voiceKept)
@@ -1156,6 +1183,8 @@ export function watchVoiceNotes(): () => void {
         ideaTakesDesk.phone().subscribe(copySoon),
         // A new idea's takes go once it is sent (ST26): its Send is a change.
         ideaBundleDesk.phone().takes.subscribe(copySoon),
+        // A week's takes go once it is sent (RR13): its Send is a change.
+        rustWeekDesk.phone().takes.subscribe(copySoon),
         libraryTakesDesk.phone().takes.subscribe(copySoon)
       )
     }
