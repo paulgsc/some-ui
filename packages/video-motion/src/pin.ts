@@ -39,6 +39,31 @@ export const renderArgs = (run: Run): ReadonlyArray<string> => [
 ]
 
 /**
+ * Chrome's own switches for drawing only once every raster is done, which
+ * HyperFrames adds for its BeginFrame capture but not for the screenshots
+ * `--low-memory-mode` takes (#2739). Without them a screenshot can catch an
+ * element mid re-raster: on CI, the sample's mark differed at its edges for
+ * a few frames after its last scale key, by up to 14 of 255.
+ */
+export const DRAW_FLAGS = [
+  "--run-all-compositor-stages-before-draw",
+  "--disable-new-content-rendering-timeout",
+  "--disable-checker-imaging",
+] as const
+
+/**
+ * A shell script that starts `chrome` with `DRAW_FLAGS` before HyperFrames'
+ * own arguments, since HyperFrames takes no switches of ours: it is named as
+ * the browser (`renderEnv`).
+ */
+export const chromeWrapper = (chrome: string): string =>
+  [
+    "#!/bin/sh",
+    `exec '${chrome.replaceAll("'", `'\\''`)}' ${DRAW_FLAGS.join(" ")} "$@"`,
+    "",
+  ].join("\n")
+
+/**
  * The environment HyperFrames runs in: the caller's, with telemetry off,
  * low memory set, the browser named, and its temporary files on `tmp`. Home's
  * /tmp is a 1 GB RAM disk counted against the render's memory, and

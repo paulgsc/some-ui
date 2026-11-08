@@ -13,9 +13,9 @@ import {
   renderFolder,
   runCommand,
 } from "@some-ui/video-render/node"
-import { chromium } from "playwright-core"
 import { z } from "zod"
 
+import { browserRoots, findHeadlessShell } from "./browser"
 import { difference, saidOf } from "./difference"
 import { compositionPort } from "./node"
 import { HYPERFRAMES_VERSION } from "./pin"
@@ -49,10 +49,16 @@ const { positionals, values } = parseArgs({
   },
 })
 
-const chrome =
-  values.chrome ??
-  process.env["PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"] ??
-  chromium.executablePath()
+/** The browser to draw with: `--chrome`, or Playwright's headless shell (`browser.ts`). */
+function browser(): string {
+  const found = values.chrome ?? findHeadlessShell(browserRoots(process.env))
+  if (found === null) {
+    throw new Refused(
+      `no Chromium headless shell under ${browserRoots(process.env).join(" or ")}; install Playwright's (\`playwright install chromium-headless-shell\`) or name one with --chrome`
+    )
+  }
+  return found
+}
 
 const say = (line: string): void => {
   process.stdout.write(`${line}\n`)
@@ -100,7 +106,7 @@ async function renderOnce(
     fps: fps(),
     out,
     work,
-    chrome,
+    chrome: browser(),
   })
   if (!made.ok) throw new Refused(made.problem)
   return (performance.now() - started) / 1000
@@ -238,7 +244,7 @@ async function prove(composition: string): Promise<void> {
       (a, b) => framesDiffering(base, a, b)
     )
   )
-  say(`(hyperframes ${HYPERFRAMES_VERSION}, ${chrome})`)
+  say(`(hyperframes ${HYPERFRAMES_VERSION}, ${browser()})`)
 }
 
 /**
@@ -258,7 +264,7 @@ async function renderVideo(
       const made = await renderFolder(folder, series, {
         workDir,
         out: "video.mp4",
-        compositions: compositionPort(folder, chrome, join(base, "draw")),
+        compositions: compositionPort(folder, browser(), join(base, "draw")),
         ...(prove ? {} : { stepCacheDir: "cache" }),
       })
       await rm(join(folder, workDir), { recursive: true, force: true })

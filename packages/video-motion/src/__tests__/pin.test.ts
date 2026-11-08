@@ -1,5 +1,16 @@
-import { readFileSync } from "node:fs"
+import { execFileSync } from "node:child_process"
 import {
+  chmodSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import {
+  chromeWrapper,
+  DRAW_FLAGS,
   encodeArgs,
   fetched,
   HYPERFRAMES_VERSION,
@@ -74,5 +85,31 @@ describe("the HyperFrames pin (HYPER1)", () => {
     ].join("\n")
     expect(fetched(out)).toHaveLength(1)
     expect(fetched("[INFO] nothing fetched here")).toEqual([])
+  })
+})
+
+describe("the browser HyperFrames starts (#2739)", () => {
+  it("is ours, with the switches that draw only once raster is done, then HyperFrames' own", () => {
+    const dir = mkdtempSync(join(tmpdir(), "it's chrome-"))
+    try {
+      // A stand-in browser that prints each argument it was given.
+      const chrome = join(dir, "real chrome")
+      writeFileSync(chrome, '#!/bin/sh\nfor a in "$@"; do echo "$a"; done\n')
+      chmodSync(chrome, 0o755)
+      const wrapper = join(dir, "chrome")
+      writeFileSync(wrapper, chromeWrapper(chrome))
+      chmodSync(wrapper, 0o755)
+      const said = execFileSync(wrapper, ["--headless", "a b", "it's"], {
+        encoding: "utf8",
+      })
+      expect(said.trim().split("\n")).toEqual([
+        ...DRAW_FLAGS,
+        "--headless",
+        "a b",
+        "it's",
+      ])
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
   })
 })

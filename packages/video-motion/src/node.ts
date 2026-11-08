@@ -12,7 +12,7 @@ import type { Compositions } from "@some-ui/video-render"
 import { ffmpegVersion } from "@some-ui/video-render/node"
 
 import { fontFiles } from "./fonts"
-import { HYPERFRAMES_VERSION } from "./pin"
+import { DRAW_FLAGS, HYPERFRAMES_VERSION } from "./pin"
 import { COMPOSITIONS, LIB, MARK, renderComposition } from "./render"
 
 /** Every file under `dir`, by its path from `dir`, sorted. */
@@ -27,8 +27,8 @@ async function filesUnder(dir: string): Promise<ReadonlyArray<string>> {
 /**
  * What decides a composition's bytes besides its request: every file a
  * render copies in (the composition's own, what they share, the mark, the
- * fonts), the HyperFrames pin, the browser that draws it and the ffmpeg that
- * encodes the clip.
+ * fonts), the HyperFrames pin, the browser that draws it with its switches
+ * (`DRAW_FLAGS`), and the ffmpeg that encodes the clip.
  */
 async function pinOf(
   ref: string,
@@ -36,7 +36,9 @@ async function pinOf(
   ffmpeg: string
 ): Promise<string> {
   const hash = createHash("sha256")
-  hash.update(`hyperframes ${HYPERFRAMES_VERSION}\n${browser}\n${ffmpeg}\n`)
+  hash.update(
+    `hyperframes ${HYPERFRAMES_VERSION}\n${browser} ${DRAW_FLAGS.join(" ")}\n${ffmpeg}\n`
+  )
   const sources: Array<readonly [string, string]> = [
     ["mark", MARK],
     ...fontFiles(),

@@ -26,8 +26,9 @@ pnpm --filter @some-ui/video-motion motion video <video folder> [--series <folde
   `sample/video` is a composition scene, then a card.
 
 CI runs both on every change here (`pr.yml`, "HyperFrames renders the same bytes twice").
-They need `ffmpeg` on `PATH` and a Chromium: Playwright's pinned one by default, or
-`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`, or `--chrome`.
+They need `ffmpeg` on `PATH` and Playwright's Chromium **headless shell**: found under
+`PLAYWRIGHT_BROWSERS_PATH` or Playwright's cache, or named with `--chrome` (`src/browser.ts`).
+The full Chrome is refused (see "The pins, and why").
 
 ## The pins, and why
 
@@ -45,9 +46,15 @@ They need `ffmpeg` on `PATH` and a Chromium: Playwright's pinned one by default,
 - **Frames, then our ffmpeg.** HyperFrames' own MP4 is not the same bytes twice (measured on
   0.9.22: the PNG frames matched, the MP4s did not), so it writes PNG frames and the clip
   is encoded here: FFV1, RGB, one thread, bit-exact, as the renderer's VR1 does each step.
-- **The Chromium we already pin**, Playwright's (`playwright-core` 1.62.1, the recorders'),
-  not HyperFrames' `render --docker` image: one browser to pin. The sample gave the same
-  bytes on Playwright 1.62.1's Chromium (home's image) and 1.63's, full and headless shell.
+- **Playwright's headless shell, drawing only once raster is done.** Not HyperFrames'
+  `render --docker` image: the browser is Playwright's, as the recorders' is (home's image,
+  CI's nix shell). HyperFrames starts it through a wrapper adding Chrome's own switches
+  for finishing every raster before a frame is drawn (`DRAW_FLAGS` in `src/pin.ts`), which
+  HyperFrames adds only for its BeginFrame capture, not for the screenshots
+  `--low-memory-mode` takes. Without them, a screenshot caught the sample's mark
+  mid re-raster on CI: its edges differed by up to 14 of 255 for a few frames after its
+  last scale key (#2739). The full Chrome never draws a frame with those switches, so it
+  is refused.
 - **Strict:** a lint error, an undeclared variable or unready media fails the render.
 - **No network.** Every font is vendored by the lockfile (`src/fonts.ts`, `@fontsource/*`,
   OFL) and copied in beside the composition. A font HyperFrames reached the network for
@@ -75,8 +82,9 @@ Chromium or CPU draws its own.
 - **Motion through `lib/motion.js`'s `track`, nothing else.** Each frame's styles are set
   from its time when HyperFrames seeks to it, so no animation runs on a timeline of the
   browser's own: CSS keyframes and the Web Animations API, seeked by HyperFrames, gave two
-  sums on one CI machine (#2737). The root is marked `data-no-timeline`. Not GSAP, whose
-  licence is not open source (ask #2723), though most of the catalogue animates with it.
+  sums on one CI machine (#2737). The root is marked `data-no-timeline`. Not GSAP: the
+  owner's answer on #2723, since its licence is not open source, though most of the
+  catalogue animates with it.
 - **Android only:** the catalogue's iPhone, macOS and App Store blocks fail
   `pnpm check:android-only`; use `device-frame-stage` and a Google Play badge.
 - **No clock, no unseeded randomness, no fetch.** Every string and colour is a variable
