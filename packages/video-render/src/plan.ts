@@ -263,15 +263,47 @@ function spaceChain(
 const cover = (b: Box): string =>
   `scale=${b.width}:${b.height}:force_original_aspect_ratio=increase:flags=lanczos,crop=${b.width}:${b.height},setsar=1`
 
+/** How many inputs `inputs` names: the index the next one gets. */
+const inputCount = (inputs: ReadonlyArray<string>): number =>
+  inputs.filter((a) => a === "-i").length
+
+/**
+ * `file`, a recording with transparency, as the next input, laid over `acc`
+ * from `startFrame` on; where it ends first, the picture passes. Returns the
+ * label of the result, `[label]`.
+ */
+function overlay(
+  file: string,
+  startFrame: number,
+  fps: number,
+  acc: string,
+  label: string,
+  inputs: Array<string>,
+  filters: Array<string>
+): string {
+  const n = inputCount(inputs)
+  inputs.push(...DECODE, "-i", file)
+  filters.push(
+    `[${n}:v]setpts=PTS-STARTPTS+${at(startFrame, fps)}/TB[${label}in]`,
+    `${acc}[${label}in]overlay=0:0:eof_action=pass[${label}]`
+  )
+  return `[${label}]`
+}
+
 /** A scene and where it sits. */
 export type Scene = { readonly shot: ResolvedShot; readonly placed: Placed }
 
-/** One scene, picture only, to `out`: exactly `placed.frames` frames. */
+/**
+ * One scene, picture only, to `out`: exactly `placed.frames` frames, with
+ * `layer`, a recording with transparency from the scene's first frame (its
+ * captions, SFEED11), laid over it where one is given.
+ */
 export function planSegment(
   { shot, placed }: Scene,
   series: Series,
   facts: Facts,
-  out: string
+  out: string,
+  layer?: string
 ): FfmpegCall {
   const { width, height, fps } = series.frame
   const frame = { width, height }
@@ -344,11 +376,16 @@ export function planSegment(
     const y = series.window.y + (series.window.height - box.height) / 2
     filters.push(
       `[src]${spaceChain(shot, series, facts, box, placed.frames)}[pic]`,
-      `[bg][pic]overlay=x=${x}:y=${y},format=yuv420p[v]`
+      `[bg][pic]overlay=x=${x}:y=${y}[framed]`
     )
   } else {
-    filters.push(`[bg]format=yuv420p[v]`)
+    filters.push(`[bg]null[framed]`)
   }
+  const shown =
+    layer === undefined
+      ? "[framed]"
+      : overlay(layer, 0, fps, "[framed]", "layered", inputs, filters)
+  filters.push(`${shown}format=yuv420p[v]`)
   return {
     args: [
       ...QUIET,
@@ -694,7 +731,7 @@ function joinChain(
   inputs: Array<string>,
   filters: Array<string>
 ): string {
-  const first = inputs.filter((a) => a === "-i").length
+  const first = inputCount(inputs)
   segments.forEach((file, i) => {
     inputs.push(...DECODE, "-i", file)
     filters.push(`[${first + i}:v]settb=AVTB,setpts=PTS-STARTPTS[s${i}]`)
@@ -810,20 +847,23 @@ export function planAssembly(
   const inputs: Array<string> = []
   const filters: Array<string> = []
   let acc = joinChain(a.scenes, a.segments, 0, fps, inputs, filters)
-  let next = a.segments.length
   a.layers.forEach((layer, i) => {
-    inputs.push(...DECODE, "-i", layer.file)
-    filters.push(
-      `[${next++}:v]setpts=PTS-STARTPTS+${at(layer.startFrame, fps)}/TB[b${i}]`,
-      `${acc}[b${i}]overlay=0:0:eof_action=pass[l${i}]`
+    acc = overlay(
+      layer.file,
+      layer.startFrame,
+      fps,
+      acc,
+      `l${i}`,
+      inputs,
+      filters
     )
-    acc = `[l${i}]`
   })
   if (a.subtitles !== undefined) {
     filters.push(`${acc}subtitles=filename=${filterPath(a.subtitles)}[sub]`)
     acc = "[sub]"
   }
   filters.push(`${acc}format=yuv420p[v]`)
+  const mix = inputCount(inputs)
   inputs.push(...DECODE, "-i", a.mix)
   return {
     args: [
@@ -835,7 +875,7 @@ export function planAssembly(
       "-map",
       "[v]",
       "-map",
-      `${next}:a`,
+      `${mix}:a`,
       "-frames:v",
       String(a.totalFrames),
       "-r",

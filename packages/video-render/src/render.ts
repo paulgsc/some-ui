@@ -9,7 +9,7 @@
 import { sha256Hex } from "@some-ui/core-utils"
 
 import { authorshipParams } from "./authorship"
-import { isAuthorship } from "./cut-list"
+import { isAuthorship, isCaptions } from "./cut-list"
 import type { BurnIn, CutList, Parsed } from "./cut-list"
 import {
   batches,
@@ -102,26 +102,59 @@ export type Rendered = Parsed<{
 }>
 
 /**
- * Every word said in the video, when it is said: each take's words, those
- * inside its trim, moved to where the take is placed.
+ * The words of a scene's take that are heard, those inside its trim, in ms
+ * from the scene's start: where the take is placed in it.
  */
+function heardWords(shot: ResolvedShot): ReadonlyArray<TimedWord> {
+  const take = shot.shot.take
+  if (!take?.words) return []
+  const atMs = shot.shot.voiceInMs
+  // A word the trim cuts into keeps the part of it that is heard.
+  return take.words
+    .filter((w) => w.endMs > take.inMs && w.startMs < take.outMs)
+    .map((w) => ({
+      text: w.text,
+      startMs: atMs + Math.max(w.startMs, take.inMs) - take.inMs,
+      endMs: atMs + Math.min(w.endMs, take.outMs) - take.inMs,
+    }))
+}
+
+/** Every word said in the video, when it is said. */
 function wordsSaid(
   scenes: ReadonlyArray<Scene>,
   fps: number
 ): ReadonlyArray<TimedWord> {
   return scenes.flatMap(({ shot, placed }) => {
-    const take = shot.shot.take
-    if (!take?.words) return []
-    const atMs = toMs(placed.startFrame, fps) + shot.shot.voiceInMs
-    // A word the trim cuts into keeps the part of it that is heard.
-    return take.words
-      .filter((w) => w.endMs > take.inMs && w.startMs < take.outMs)
-      .map((w) => ({
-        text: w.text,
-        startMs: atMs + Math.max(w.startMs, take.inMs) - take.inMs,
-        endMs: atMs + Math.min(w.endMs, take.outMs) - take.inMs,
-      }))
+    const fromMs = toMs(placed.startFrame, fps)
+    return heardWords(shot).map((w) => ({
+      ...w,
+      startMs: fromMs + w.startMs,
+      endMs: fromMs + w.endMs,
+    }))
   })
+}
+
+/** A word that ends a sentence ends the speaker's line. */
+const SENTENCE_END = /[.?!]["')\]]*$/
+
+/**
+ * Words as the speaker's lines (`@some-ui/burn-ins`' captions params): a
+ * line ends with a sentence, and a caption never spans two.
+ */
+function spokenLines(
+  words: ReadonlyArray<TimedWord>
+): ReadonlyArray<{ readonly words: ReadonlyArray<TimedWord> }> {
+  const lines: Array<{ words: Array<TimedWord> }> = []
+  let line: Array<TimedWord> = []
+  for (const word of words) {
+    line.push(word)
+    if (SENTENCE_END.test(word.text)) {
+      lines.push({ words: line })
+      line = []
+    }
+  }
+  if (line.length > 0) lines.push({ words: line })
+  return lines
 }
 
 const refused = (problems: ReadonlyArray<string>): Rendered => ({
@@ -182,7 +215,15 @@ export async function render(
   if (!checked.ok) return refused(checked.problems)
 
   const work = options.workDir
-  const requests = burnInRequests(cutList, placement.value, series, work)
+  const layered = burnInRequests(cutList, placement.value, series, work)
+  const captions = captionRequests(
+    cutList,
+    scenes,
+    placement.value,
+    series,
+    work
+  )
+  const requests = [...layered, ...captions.map((c) => c.request)]
   if (requests.length && !ports.recordBurnIn && !options.withoutBurnIns) {
     return refused([
       "nothing here can draw burn-ins; render with them left out, or with " +
@@ -196,25 +237,40 @@ export async function render(
   await ports.mkdir(work)
   await ports.mkdir(dirOf(options.out))
 
+  // With nothing to record them, every burn-in is left out, and listed.
+  const record = ports.recordBurnIn
+  const leftOut = record
+    ? []
+    : requests.map(({ kind, design, params }) => ({ kind, design, params }))
+  const notRecorded = (r: BurnInRequest): Rendered =>
+    refused([`the ${r.kind} burn-in (${r.design}) did not record`])
+
   const layers: Array<Layer> = []
-  const leftOut: Array<Pick<BurnInRequest, "kind" | "design" | "params">> = []
-  for (const r of requests) {
-    if (!ports.recordBurnIn) {
-      leftOut.push({ kind: r.kind, design: r.design, params: r.params })
-    } else if (await ports.recordBurnIn(r)) {
+  if (record) {
+    for (const r of layered) {
+      if (!(await record(r))) return notRecorded(r)
       layers.push({ file: r.out, startFrame: r.startFrame })
-    } else {
-      return refused([`the ${r.kind} burn-in (${r.design}) did not record`])
     }
   }
 
+  // Each scene's captions, recorded just before its segment (`captionRequests`).
+  const captionOf = new Map(captions.map((c) => [c.scene, c.request]))
   const segments: Array<string> = []
   for (const scene of scenes) {
-    const out = `${work}/${scene.shot.shot.id}.mkv`
+    const id = scene.shot.shot.id
+    const caption = record && captionOf.get(id)
+    if (caption && !(await record(caption))) return notRecorded(caption)
+    const out = `${work}/${id}.mkv`
     const ran = await ports.ffmpeg(
-      planSegment(scene, series, checked.value, out)
+      planSegment(
+        scene,
+        series,
+        checked.value,
+        out,
+        caption ? caption.out : undefined
+      )
     )
-    if (!ran.ok) return refused([`${scene.shot.shot.id}: ${tail(ran.stderr)}`])
+    if (!ran.ok) return refused([`${id}: ${tail(ran.stderr)}`])
     segments.push(out)
   }
 
@@ -421,6 +477,27 @@ async function checkInputs(
   return problems.length ? { ok: false, problems } : { ok: true, value: facts }
 }
 
+/** The design a burn-in is drawn in, its own or its series'. */
+function design(b: BurnIn, series: Series): string {
+  const d = designOf(b, series)
+  // `resolve` refuses a burn-in with no design before this runs.
+  if (d === null) throw new Error(`the ${b.kind} burn-in has no design`)
+  return d
+}
+
+/**
+ * How many frames scene `i`'s burn-ins last: until the next scene starts, so
+ * during a transition one scene's and the next one's are never both up.
+ */
+const framesUntilNext = (placement: Placement, i: number): number => {
+  const at = placement.shots[i]
+  if (!at) throw new Error(`scene ${i} was not placed`)
+  return (
+    (placement.shots[i + 1]?.startFrame ?? placement.totalFrames) -
+    at.startFrame
+  )
+}
+
 /** The burn-ins to record: the video's over its length, each scene's over it. */
 function burnInRequests(
   cutList: CutList,
@@ -428,39 +505,73 @@ function burnInRequests(
   series: Series,
   work: string
 ): ReadonlyArray<BurnInRequest> {
-  const design = (b: BurnIn): string => {
-    const d = designOf(b, series)
-    // `resolve` refuses a burn-in with no design before this runs.
-    if (d === null) throw new Error(`the ${b.kind} burn-in has no design`)
-    return d
-  }
-  const whole = cutList.burnIns.map((b, i) => ({
-    ...b,
-    design: design(b),
-    // The authorship mark is drawn from the scenes, never from what was
-    // written for it (`parseCutList` refuses any).
-    params: isAuthorship(b)
-      ? authorshipParams(cutList, placement, series.frame.fps)
-      : b.params,
-    startFrame: 0,
-    frames: placement.totalFrames,
-    frame: series.frame,
-    out: `${work}/burn-in-${i}-${b.kind}.mov`,
-  }))
+  // Captions are recorded a scene at a time (`captionRequests`).
+  const whole = cutList.burnIns.flatMap((b, i) =>
+    isCaptions(b)
+      ? []
+      : [
+          {
+            ...b,
+            design: design(b, series),
+            // The authorship mark is drawn from the scenes, never from what was
+            // written for it (`parseCutList` refuses any).
+            params: isAuthorship(b)
+              ? authorshipParams(cutList, placement, series.frame.fps)
+              : b.params,
+            startFrame: 0,
+            frames: placement.totalFrames,
+            frame: series.frame,
+            out: `${work}/burn-in-${i}-${b.kind}.mov`,
+          },
+        ]
+  )
   const perShot = cutList.shots.flatMap((s, i) => {
     const at = placement.shots[i]
     if (!at) throw new Error(`${s.id} was not placed`)
-    // A scene's burn-ins end where the next scene starts, so during a
-    // transition its headline and the next one's are never both up.
-    const until = placement.shots[i + 1]?.startFrame ?? placement.totalFrames
     return s.burnIns.map((b, k) => ({
       ...b,
-      design: design(b),
+      design: design(b, series),
       startFrame: at.startFrame,
-      frames: until - at.startFrame,
+      frames: framesUntilNext(placement, i),
       frame: series.frame,
       out: `${work}/burn-in-${s.id}-${k}-${b.kind}.mov`,
     }))
   })
   return [...whole, ...perShot]
+}
+
+/**
+ * Each scene's captions, when the video asks for them (SFEED11): the words
+ * heard in its take, in its own time, recorded on their own and laid over
+ * the scene's segment, so no step holds more than one scene's frames. A
+ * scene with nothing said has none.
+ */
+function captionRequests(
+  cutList: CutList,
+  scenes: ReadonlyArray<Scene>,
+  placement: Placement,
+  series: Series,
+  work: string
+): ReadonlyArray<{ readonly scene: string; readonly request: BurnInRequest }> {
+  const asked = cutList.burnIns.find(isCaptions)
+  if (!asked) return []
+  return scenes.flatMap(({ shot, placed }, i) => {
+    const words = heardWords(shot)
+    if (words.length === 0) return []
+    const id = shot.shot.id
+    return [
+      {
+        scene: id,
+        request: {
+          kind: asked.kind,
+          design: design(asked, series),
+          params: { lines: spokenLines(words) },
+          startFrame: placed.startFrame,
+          frames: framesUntilNext(placement, i),
+          frame: series.frame,
+          out: `${work}/burn-in-${id}-captions.mov`,
+        },
+      },
+    ]
+  })
 }

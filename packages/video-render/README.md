@@ -76,6 +76,19 @@ pnpm --filter @some-ui/video-render render <video folder> --series <series folde
 Needs `ffmpeg` and `ffprobe` on `PATH`; the repo's nix shells carry them
 (`nix/video`).
 
+## Captions, a scene at a time
+
+A video asks for captions with one burn-in over the whole video, kind
+`captions` and nothing written for it (SFEED11, #2707): the renderer draws
+each scene's from the words heard in its take, in the look the video or its
+series names (`designs.captions`). Each scene's captions are recorded as
+their own burn-in, as long as the scene shows before the next starts, kept
+in the step cache under what they draw (the look, the words and their
+times, the frames and the frame: `withCachedBurnIns`), and laid over that
+scene's segment before the join (`planSegment`). No step holds more than
+one scene's frames, so a long video costs more time, never more memory, and
+a retry records only the scenes whose words changed.
+
 ## Not yet
 
 - **Burn-ins** (headlines, captions, cards, the authorship mark) are drawn

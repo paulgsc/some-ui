@@ -1,0 +1,130 @@
+<!doctype html>
+<!-- The sample composition (HYPER1, #2724): the README says what it may use. -->
+<html
+  lang="en"
+  data-composition-variables='[
+    {"id":"title","type":"string","label":"Title","default":"Same bytes"},
+    {"id":"chip","type":"string","label":"Chip","default":"twice"},
+    {"id":"ground","type":"color","label":"Ground","default":"#111821"},
+    {"id":"ink","type":"color","label":"Ink","default":"#f4efe6"},
+    {"id":"accent","type":"color","label":"Accent","default":"#f5b75b"}
+  ]'
+>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <style>
+      @font-face {
+        font-family: "Display";
+        src: url("fonts/barlow-condensed-800.woff2") format("woff2");
+        font-weight: 800;
+      }
+      @font-face {
+        font-family: "Display";
+        src: url("fonts/barlow-condensed-600.woff2") format("woff2");
+        font-weight: 600;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: var(--ground);
+      }
+      #root {
+        position: relative;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        color: var(--ink);
+        font-family: "Display";
+      }
+      #mark {
+        position: absolute;
+        left: 420px;
+        top: 520px;
+        width: 240px;
+        height: 240px;
+        border-radius: 56px;
+        background: var(--accent);
+      }
+      #title {
+        position: absolute;
+        left: 0;
+        top: 860px;
+        width: 1080px;
+        text-align: center;
+        font-size: 150px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        animation: rise 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both;
+      }
+      #chip {
+        position: absolute;
+        left: 390px;
+        top: 1100px;
+        width: 300px;
+        height: 72px;
+        border-radius: 36px;
+        border: 2px solid var(--accent);
+        text-align: center;
+        line-height: 68px;
+        font-size: 40px;
+        font-weight: 600;
+        animation: rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.8s both;
+      }
+      @keyframes rise {
+        from {
+          transform: translateY(80px);
+          opacity: 0;
+        }
+        to {
+          transform: none;
+          opacity: 1;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="2"
+      data-width="1080"
+      data-height="1920"
+      data-fps="30"
+      data-no-timeline
+    >
+      <div id="mark"></div>
+      <h1 id="title"></h1>
+      <div id="chip"></div>
+    </div>
+    <script>
+      const V = window.__hyperframes.getVariables()
+      const style = document.documentElement.style
+      style.setProperty("--ground", V.ground)
+      style.setProperty("--ink", V.ink)
+      style.setProperty("--accent", V.accent)
+      document.getElementById("title").textContent = V.title
+      document.getElementById("chip").textContent = V.chip
+      // WAAPI, paused: HyperFrames seeks it to each frame's time.
+      document
+        .getElementById("mark")
+        .animate(
+          [
+            { transform: "scale(0.4) rotate(-14deg)", opacity: 0 },
+            { transform: "scale(1.08) rotate(0deg)", opacity: 1 },
+            { transform: "scale(1) rotate(0deg)", opacity: 1 },
+          ],
+          { duration: 900, delay: 100, fill: "both", easing: "ease-out" }
+        )
+        .pause()
+    </script>
+  </body>
+</html>

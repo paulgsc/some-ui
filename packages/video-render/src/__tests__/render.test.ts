@@ -17,6 +17,7 @@ import { DEFAULT_POLICY, MB } from "@video-render/policy"
 import type { Ports } from "@video-render/render"
 import { render } from "@video-render/render"
 import type { Series } from "@video-render/series"
+import type { TimedWord } from "@video-render/subtitles"
 import * as fixtures from "@video-render/testing"
 import {
   BACKGROUND_KINDS,
@@ -493,10 +494,29 @@ describe("render", () => {
 
   it("lays burn-ins over the video, or lists what it left out", async () => {
     const cut = everyMember()
+    const word = (text: string, startMs: number, endMs: number): TimedWord => ({
+      text,
+      startMs,
+      endMs,
+    })
     const withLayers: CutList = {
       ...cut,
       shots: cut.shots.slice(0, 2).map((s) => ({
         ...s,
+        // S1's take says two lines; its last word is past the take's trim.
+        ...(s.take
+          ? {
+              take: {
+                ...s.take,
+                words: [
+                  word("Every", 0, 250),
+                  word("word.", 300, 500),
+                  word("Next", 600, 900),
+                  word("cut", 1100, 1300),
+                ],
+              },
+            }
+          : {}),
         burnIns: [
           { kind: "headline", design: "v1", params: { headline: s.id } },
         ],
@@ -519,7 +539,7 @@ describe("render", () => {
     })
     expect(
       leftOut.ok ? leftOut.value.leftOut.map((b) => b.kind) : leftOut.problems
-    ).toEqual(["captions", "authorship", "headline", "headline"])
+    ).toEqual(["authorship", "headline", "headline", "captions"])
 
     const asked: Array<string> = []
     const clashing = await render(
@@ -538,10 +558,11 @@ describe("render", () => {
     expect(clashing.ok ? [] : clashing.problems).toEqual([
       "the headline and the card clash",
     ])
-    expect(asked).toEqual(["captions", "authorship", "headline", "headline"])
+    expect(asked).toEqual(["authorship", "headline", "headline", "captions"])
 
     const recorded: Array<string> = []
     const marks: Array<unknown> = []
+    const captions: Array<unknown> = []
     const drawn = await render(
       withLayers,
       series(),
@@ -550,6 +571,7 @@ describe("render", () => {
         recordBurnIn: async (r) => {
           recorded.push(`${r.kind}@${r.startFrame}+${r.frames}`)
           if (r.kind === "authorship") marks.push(r.params)
+          if (r.kind === "captions") captions.push(r.params)
           const d = (r.frames / r.frame.fps).toFixed(3)
           const { width, height, fps } = r.frame
           const ran = await ports.ffmpeg({
@@ -584,12 +606,25 @@ describe("render", () => {
       },
     ])
     expect(recorded).toEqual([
-      "captions@0+60",
       "authorship@0+60",
       // The first scene's headline ends where the crossfade into the second
       // begins, so the two are never up together.
       "headline@0+24",
       "headline@24+36",
+      // SFEED11: S1's captions alone, for as long as it shows before S2,
+      // in its own time; S2 says nothing, so it has none.
+      "captions@0+24",
     ])
+    // The words heard, from where the take starts in the scene (100 ms),
+    // as the speaker's two sentences.
+    expect(captions).toEqual([
+      {
+        lines: [
+          { words: [word("Every", 100, 350), word("word.", 400, 600)] },
+          { words: [word("Next", 700, 1000)] },
+        ],
+      },
+    ])
+    expect(await frames("out-b2/video.mp4")).toBe(60)
   }, 120_000)
 })

@@ -1,6 +1,7 @@
 /**
- * The burn-in recorder in CI (STUDIO ST15, #2273): a short with captions, a
- * headline and the authorship mark, rendered twice through `record:short`'s
+ * The burn-in recorder in CI (STUDIO ST15, #2273): a short with a scene's
+ * captions, a headline and the authorship mark, rendered twice through
+ * `record:short`'s
  * path (the built app's `/burn-ins?record` page filling the renderer's
  * `recordBurnIn`), gives the same MP4 and the same burn-in recordings both
  * times. Its sources are made here by ffmpeg, so it needs nothing from Drive.
@@ -30,8 +31,8 @@ type Word = { text: string; startMs: number; endMs: number }
 const words = (line: string, fromMs: number): Array<Word> =>
   line.split(" ").map((text, i) => ({
     text,
-    startMs: fromMs + i * 300,
-    endMs: fromMs + i * 300 + 260,
+    startMs: fromMs + i * 120,
+    endMs: fromMs + i * 120 + 100,
   }))
 
 const card = (id: string): Shot =>
@@ -43,7 +44,12 @@ const CUT_LIST = cutList(
     shot("S1", {
       picture: capture(0),
       durationMs: 1500,
-      take: { file: "voice/a.wav", inMs: 0, outMs: 1000 },
+      take: {
+        file: "voice/a.wav",
+        inMs: 0,
+        outMs: 1000,
+        words: words("Every word on screen. Comes from one place.", 0),
+      },
       burnIns: [
         {
           kind: "headline",
@@ -71,16 +77,7 @@ const CUT_LIST = cutList(
     series: { id: "build-journal-short", version: 1 },
     look: "plain",
     burnIns: [
-      {
-        kind: "captions",
-        design: "gridiron",
-        params: {
-          lines: [
-            { words: words("Every word on screen", 1100) },
-            { words: words("comes from one place", 2600) },
-          ],
-        },
-      },
+      { kind: "captions", design: "gridiron", params: {} },
       { kind: "authorship", design: "cells-v1", params: {} },
     ],
   }
