@@ -10,7 +10,9 @@ const PROMO_SCHEMA = "some-ui.promo/1"
 
 /**
  * Lines a scene draws, split on "|": at most `lines` of at most `chars`
- * characters each, so every one fits its place in the frame.
+ * characters each. The count keeps the words to their place; the width is
+ * fitted where they're drawn (`fit` in compositions/_lib/motion.js), since
+ * only the font knows it.
  */
 const drawn = (lines: number, chars: number): z.ZodString =>
   z
