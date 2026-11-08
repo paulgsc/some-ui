@@ -63,8 +63,8 @@ Each module's header says why it is the way it is.
   ports; `src/node.ts` gives it ffmpeg and the file system.
 - `src/steps.ts`: who owns each step of making a video, now and by when
   (ST10, #2258); its test holds the rules for moving one.
-- `src/take-check.ts`, `src/hearings.ts`: a transcript's words, and a
-  take's two hearings lined up (ST25, #2323).
+- `src/heard.ts`, `src/hearings.ts`: a take's words as heard, numbers
+  however written, and its two hearings lined up (ST25, #2323).
 - `src/authorship.ts`: whose idea and whose hands each scene shows (ST16,
   #2274), read from each scene's `idea`, its voice, who said its take
   (`speaker`: a speech model's take is never the owner's) and the step

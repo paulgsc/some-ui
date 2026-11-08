@@ -199,6 +199,13 @@ function ideasToConfirm(n: number): string {
   return `Whose idea: ${plural(n, "scene", "scenes")} to confirm`
 }
 
+/** Why nothing on an episode is recorded here (FEED6 #2649), wherever Studio says so. */
+const HOME_VOICES =
+  "Home makes and voices each episode, so there's nothing to record: watch it in the show's videos."
+
+/** An episode with a scene that has no take, on its show's list and on Finish. */
+const NOT_MADE = "Not made"
+
 /** Where an episode stands, on its show's list (SHOW SH3). */
 export type EpisodeStanding = "waiting" | "ready" | "released"
 
@@ -278,8 +285,7 @@ export const STUDIO_WORDS = {
     sentProblem:
       "That isn't something Claude made for Studio, or part of it is missing. Ask Claude for it again.",
     /** An episode file picked on Start: home says episodes now (FEED6). */
-    episodeSaid:
-      "That's an episode of a show. Home makes and voices each one, so there's nothing to record: watch it in the show's videos.",
+    episodeSaid: `That's an episode of a show. ${HOME_VOICES}`,
     /** Claude's reply about an idea, picked here instead of on the idea (ST19). */
     ideaReply:
       "That's Claude's reply about one of your ideas. Open it from the idea, in Your ideas.",
@@ -489,7 +495,7 @@ export const STUDIO_WORDS = {
     plans: shapeStatus,
     episodes: "Episodes on this phone",
     standing: {
-      waiting: "Not made",
+      waiting: NOT_MADE,
       ready: "Ready to upload",
       released: "Up on YouTube",
     } satisfies Record<EpisodeStanding, string>,
@@ -661,8 +667,7 @@ export const STUDIO_WORDS = {
     idea: ideasToConfirm,
     goIdea: (n: number): string => `Watch from scene ${n}`,
     /** A stored episode with a scene with no take (FEED6): never asked for. */
-    unsaid:
-      "Not every scene of this episode has a take. Home makes and voices episodes, so there's nothing to record: watch it in the show's videos.",
+    unsaid: `Not every scene of this episode has a take. ${HOME_VOICES}`,
     unmarked:
       "Every scene has its take and its idea said, and no note is open. Say it's ready when you have watched it through.",
     mark: "It's ready",
@@ -748,7 +753,7 @@ export const STUDIO_WORDS = {
       note: "A note is open",
       take: (n: number): string => `Scene ${n} needs a take`,
       idea: ideasToConfirm,
-      unsaid: "Not voiced",
+      unsaid: NOT_MADE,
       unmarked: "Ready to mark",
       ready: "Ready for YouTube",
       released: "Released",
