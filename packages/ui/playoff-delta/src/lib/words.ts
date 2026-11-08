@@ -245,32 +245,6 @@ export const CALLS: Readonly<
 }
 
 /**
- * The upload's copy (SHOW SH5): the title and description every episode
- * goes up with, filled from its week by `uploadOf` (`./show`), in the same
- * words the short says. A draft for the owner, who uploads by hand.
- */
-export const UPLOAD = {
-  /** "Playoff Delta · 2026 week 7 · Keep driving". */
-  weekTitle: (label: string, week: number, call: string): string =>
-    `Playoff Delta · ${label} week ${week} · ${call}`,
-  /** "Playoff Delta · 2026 · the legend". */
-  legendTitle: (label: string): string =>
-    `Playoff Delta · ${label} · the legend`,
-  /** The description's first line: whose week, and our own game. */
-  weekOpening: (
-    label: string,
-    week: number,
-    team: string,
-    game: string
-  ): string => `${label} week ${week}, read from the ${team}' side. ${game}`,
-  won: (opponent: string): string => `We beat the ${opponent}.`,
-  lost: (opponent: string): string => `We lost to the ${opponent}.`,
-  bye: "Our bye week.",
-  legendOpening: (label: string, team: string): string =>
-    `The words every week of Playoff Delta uses, and what each one means, read on the ${team}' ${label} season.`,
-} as const
-
-/**
  * The locked intro (SFEED2, #2670): who wrote an episode, what drew it, that
  * its voice is synthetic, and whose side it is read from. Code fills it,
  * never the fill, so no fill can change who it says made the video.

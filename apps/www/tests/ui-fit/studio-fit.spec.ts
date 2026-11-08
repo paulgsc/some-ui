@@ -47,6 +47,19 @@ const start = (page: Page): Promise<void> =>
     timeout: 10_000,
   })
 
+/**
+ * An episode's Start, with the same first-stop wait as `start`: home voices
+ * every episode, so it offers Watch and Finish and never Record (FEED6 #2649).
+ */
+const startEpisode = async (page: Page): Promise<void> => {
+  await page.getByRole("button", { name: sitting("Watch") }).waitFor({
+    timeout: 10_000,
+  })
+  await expect(
+    page.getByRole("button", { name: sitting("Record") })
+  ).toHaveCount(0)
+}
+
 /** The planted fixtures, each by what the sweep must report it as. */
 const PLANTED = {
   "planted-overflow": "leak",
@@ -247,7 +260,7 @@ const WALKS: Record<
     },
   ],
   "studio-episode": [
-    { screen: "Start, an episode of a show", go: start },
+    { screen: "Start, an episode of a show", go: startEpisode },
     {
       // A note on an episode asks what it is about before it is kept (SH4).
       screen: "Watch, what a note on an episode is about",
@@ -287,7 +300,7 @@ const WALKS: Record<
       screen: "Start, the earlier episode",
       go: async (page): Promise<void> => {
         await tap(page, /^2026 week 7/)
-        await start(page)
+        await startEpisode(page)
       },
     },
   ],

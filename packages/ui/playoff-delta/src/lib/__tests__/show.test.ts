@@ -1,19 +1,18 @@
 /**
- * The show (SH1, SH2): each pinned format version parses, the newest is the
- * one the code makes, so a change to the slides (their order, names, points
- * or holds) fails here until a new version is pinned; and every week of the
- * bundled 2025 season and of 2026's published weeks, and the legend, makes
- * an episode whose facts carry the slide's own numbers.
+ * The show (SH1): each pinned format version parses, the newest is the one
+ * the code makes, so a change to the slides (their order, names, points or
+ * holds) fails here until a new version is pinned; and every week of the
+ * bundled 2025 season and of 2026's published weeks, and the legend, gives
+ * facts that carry the slide's own numbers.
  */
 import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { SAMPLE_SEASON } from "@playoff-delta/lib/sample"
 import {
-  episodeFor,
+  factsOf,
   FORMAT_VERSION,
   formatId,
   formatOf,
-  uploadOf,
   type FormatKind,
 } from "@playoff-delta/lib/show"
 import {
@@ -46,8 +45,6 @@ function versionsOf(
     .sort((a, b) => a.version - b.version)
 }
 
-const SUM = "0".repeat(64)
-
 describe("the formats", () => {
   it.each(["week", "legend"] as const)(
     "%s: every pinned version parses, and the newest is the code's",
@@ -74,7 +71,7 @@ describe("the formats", () => {
   )
 })
 
-describe("an episode", () => {
+describe("an episode's facts", () => {
   const cases = [
     ...SAMPLE_SEASON.weeks.map((w) => [SAMPLE_SEASON, w.week] as const),
     ...SEASON_2026.weeks.map((w) => [SEASON_2026, w.week] as const),
@@ -82,33 +79,24 @@ describe("an episode", () => {
   ]
 
   it.each(cases)(
-    "%#: one cut per slide, with the slide's numbers",
+    "%#: one list per slide, with the slide's numbers",
     (season, week) => {
-      const got = episodeFor(season, week, SUM, () => 0)
+      const got = factsOf(season, week)
       if (!got.ok) throw new Error(got.problems.join("; "))
-      const e = got.value
       const slides = week === LEGEND_WEEK ? LEGEND_SLIDES : WEEK_SLIDES
-      expect(e.cuts.map((c) => c.id)).toEqual([...slides])
-      expect(e.episode.data).toEqual({
-        source: `playoff-delta/${season.label}/${season.team}.json`,
-        sha256: SUM,
-      })
-      // The copy Finish shows is the week's own, pinned with the episode.
-      expect(e.episode.upload).toEqual(
-        uploadOf(season, season.weeks.find((w) => w.week === week) ?? null)
-      )
+      expect(got.value).toHaveLength(slides.length)
       if (week === LEGEND_WEEK) return
       const after = season.weeks.find((w) => w.week === week)?.poles.after
-      const division = e.cuts.find((c) => c.id === "division")
-      expect(division?.keep[0]).toMatch(
+      const division = got.value[WEEK_SLIDES.indexOf("division")]
+      expect(division?.[0]).toMatch(
         new RegExp(`^The floor: ${wins(after?.division.floor ?? -1)}, `)
       )
-      expect(e.cuts.every((c) => c.keep.length > 0)).toBe(true)
+      expect(got.value.every((keep) => keep.length > 0)).toBe(true)
     }
   )
 
   it("says the season has no such week", () => {
-    expect(episodeFor(SEASON_2026, 30, SUM, () => 0)).toEqual({
+    expect(factsOf(SEASON_2026, 30)).toEqual({
       ok: false,
       problems: ["the season has no week 30"],
     })
