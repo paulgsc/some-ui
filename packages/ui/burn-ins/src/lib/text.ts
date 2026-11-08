@@ -12,10 +12,17 @@ import { greedy } from "./lines"
 
 const FONT_STACK = '"Barlow Condensed", "Arial Narrow", sans-serif'
 
+/** Where a text block starts, and how wide it may run. */
+export type At = {
+  readonly x: number
+  readonly y: number
+  readonly width: number
+}
+
 export type TextStyle = {
   readonly family: string
   readonly weight: 600 | 800
-  /** In the frame's pixels: both frames are 1080 on their shorter side. */
+  /** In the frame's pixels, at `typeScale` 1 (`./geometry`). */
   readonly sizePx: number
   /** Line height as a multiple of the size. */
   readonly lineHeight: number
@@ -94,7 +101,7 @@ export const rowText = (
 export function setText(
   text: string,
   style: TextStyle,
-  at: { readonly x: number; readonly y: number; readonly width: number },
+  at: At,
   maxRows: number
 ): TextBlock | null {
   const rows = wrap(text, style, at.width)
@@ -120,7 +127,7 @@ export function setText(
 export function fitLine(
   text: string,
   style: TextStyle,
-  at: { readonly x: number; readonly y: number; readonly width: number },
+  at: At,
   floorPx: number
 ): TextBlock | null {
   for (let size = style.sizePx; size >= floorPx; size -= 2) {

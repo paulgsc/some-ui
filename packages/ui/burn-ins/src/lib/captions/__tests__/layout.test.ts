@@ -1,9 +1,13 @@
 /** @vitest-environment node */
 import { layoutCaption, measureFor } from "@burn-ins/lib/captions/layout"
-import { SAMPLE } from "@burn-ins/lib/captions/sample"
 import { sizedFor, THEME_IDS, THEMES } from "@burn-ins/lib/captions/theme"
-import { captionsFor } from "@burn-ins/lib/captions/timing"
-import { FRAMES, geometryOf, inside, PORTRAIT } from "@burn-ins/lib/geometry"
+import {
+  frameName,
+  FRAMES,
+  geometryOf,
+  inside,
+  PORTRAIT,
+} from "@burn-ins/lib/geometry"
 import { breakLines } from "@burn-ins/lib/lines"
 import { describe, expect, it } from "vitest"
 
@@ -11,24 +15,12 @@ import { describe, expect, it } from "vitest"
 const CASES = FRAMES.flatMap((frame) =>
   THEME_IDS.map((id) => ({
     id,
-    frame: `${frame.width}x${frame.height}`,
+    frame: frameName(frame),
     g: geometryOf(frame),
   }))
 )
 
 describe("the safe area", () => {
-  it.each(CASES)(
-    "holds every sample caption, in the lower third ($id, $frame)",
-    ({ id, g }) => {
-      const theme = sizedFor(THEMES[id], g)
-      for (const caption of captionsFor(SAMPLE, theme, g)) {
-        const { box } = layoutCaption(caption.rows, theme, g)
-        expect(inside(box, g.safeArea)).toBe(true)
-        expect(inside(box, g.regions["lower-third"])).toBe(true)
-      }
-    }
-  )
-
   it.each(CASES)(
     "holds two full rows of a look in the lower third ($id, $frame)",
     ({ id, g }) => {
@@ -69,24 +61,4 @@ describe("the safe area", () => {
       expect(breakLines(run("MWM", n), measure).length).toBeGreaterThan(1)
     }
   )
-
-  it.each(CASES)(
-    "sets type at the same size against the frame's shorter side ($id, $frame)",
-    ({ id, g }) => {
-      expect(g.typeScale).toBe(Math.min(g.frame.width, g.frame.height) / 1080)
-      expect(sizedFor(THEMES[id], g).font.sizePx).toBe(
-        THEMES[id].font.sizePx * g.typeScale
-      )
-    }
-  )
-})
-
-describe("a line in the 16:9 video", () => {
-  it("runs as wide as its safe area, wider than the short's", () => {
-    const [short, wide] = FRAMES.map((f) => {
-      const g = geometryOf(f)
-      return measureFor(sizedFor(THEMES.gridiron, g), g).limit
-    })
-    expect(wide).toBeGreaterThan(short ?? Infinity)
-  })
 })

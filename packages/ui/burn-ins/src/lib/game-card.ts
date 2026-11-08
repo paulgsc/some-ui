@@ -42,6 +42,7 @@ import {
   bottomOf,
   setText,
   widthOf,
+  type At,
   type TextBlock,
   type TextStyle,
 } from "./text"
@@ -207,7 +208,6 @@ const spaceOf = (g: Geometry): Space => {
 }
 
 type Named = Array<readonly [string, TextBlock | null]>
-type At = { readonly x: number; readonly y: number; readonly width: number }
 
 const at = (s: Space, y: number, x = s.x, width = s.width): At => ({
   x,

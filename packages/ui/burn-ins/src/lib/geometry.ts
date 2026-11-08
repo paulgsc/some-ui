@@ -36,11 +36,8 @@ export const PORTRAIT = { width: 1080, height: 1920 } as const
 /** The 16:9 video. */
 export const LANDSCAPE = { width: 1920, height: 1080 } as const
 
-/** The frames burn-ins are drawn for. */
-export const FRAMES: ReadonlyArray<FrameSize> = [PORTRAIT, LANDSCAPE]
-
-/** The bands a burn-in may draw in, in the order a clash names them. */
-export const REGION_NAMES = ["header", "body", "lower-third", "gutter"] as const
+/** The bands a burn-in may draw in. */
+const REGION_NAMES = ["header", "body", "lower-third", "gutter"] as const
 export type Region = (typeof REGION_NAMES)[number]
 
 export type Geometry = {
@@ -119,9 +116,6 @@ const PORTRAIT_GEOMETRY: Geometry = {
  * Each inset of the 1920x1080 video, in its pixels, and why it is there.
  * YouTube's landscape player draws a title band along the top and the
  * progress bar and controls along the bottom, and nothing down either side.
- * These are this slice's call (SFEED11), rounded up from the player as it
- * draws today; they can be tuned, as a new geometry, once a video shows
- * them too tight or too loose.
  */
 const LANDSCAPE_INSETS = {
   /** 8%: the title, the channel's picture and the buttons beside them. */
@@ -184,18 +178,27 @@ const GEOMETRIES: ReadonlyArray<Geometry> = [
   LANDSCAPE_GEOMETRY,
 ]
 
-const same = (a: FrameSize, b: FrameSize): boolean =>
-  a.width === b.width && a.height === b.height
+/** The frames burn-ins are drawn for. */
+export const FRAMES: ReadonlyArray<FrameSize> = GEOMETRIES.map((g) => g.frame)
+
+/** A frame as its size reads, `1080x1920`. */
+export const frameName = (frame: FrameSize): string =>
+  `${frame.width}x${frame.height}`
+
+const find = (frame: FrameSize): Geometry | undefined =>
+  GEOMETRIES.find(
+    (g) => g.frame.width === frame.width && g.frame.height === frame.height
+  )
 
 /** Why burn-ins can't be drawn into `frame`; null when they can. */
 export const frameProblem = (frame: FrameSize): string | null =>
-  GEOMETRIES.some((g) => same(g.frame, frame))
-    ? null
-    : `burn-ins are drawn for ${FRAMES.map((f) => `${f.width}x${f.height}`).join(" or ")}, not ${frame.width}x${frame.height}`
+  find(frame) === undefined
+    ? `burn-ins are drawn for ${FRAMES.map(frameName).join(" or ")}, not ${frameName(frame)}`
+    : null
 
 /** The frame's safe area and regions; throws for a frame burn-ins aren't drawn for. */
 export function geometryOf(frame: FrameSize): Geometry {
-  const found = GEOMETRIES.find((g) => same(g.frame, frame))
+  const found = find(frame)
   if (found === undefined) throw new Error(frameProblem(frame) ?? "no frame")
   return found
 }

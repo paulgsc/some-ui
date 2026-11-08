@@ -24,7 +24,14 @@ import { z } from "zod"
 
 import type { Box, Geometry } from "./geometry"
 import type { Parsed } from "./parsed"
-import { barlow, bottomOf, fitLine, setText, type TextBlock } from "./text"
+import {
+  barlow,
+  bottomOf,
+  fitLine,
+  setText,
+  type At,
+  type TextBlock,
+} from "./text"
 
 export const JOURNAL_DESIGNS = ["v1"] as const
 
@@ -59,10 +66,7 @@ export type TextFrame = {
  * width, as `render.py` set them (54 px in, 972 wide, from 40 px down, in
  * the short).
  */
-const headerRow = (
-  g: Geometry,
-  dy: number
-): { readonly x: number; readonly y: number; readonly width: number } => ({
+const headerRow = (g: Geometry, dy: number): At => ({
   x: g.regions.header.x,
   y: g.regions.header.y + dy,
   width: g.regions.header.width,
@@ -137,11 +141,7 @@ export type CardSpace = {
   /** The body region, where the picture's window is. */
   readonly panel: Panel
   /** Text inside the panel: in from its edges as `render.py` set it. */
-  readonly inner: {
-    readonly x: number
-    readonly y: number
-    readonly width: number
-  }
+  readonly inner: At
   /** How far down the panel text may reach. */
   readonly innerBottom: number
 }

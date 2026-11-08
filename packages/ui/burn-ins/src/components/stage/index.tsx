@@ -5,7 +5,6 @@ import { GameCardLayer } from "@burn-ins/components/stage/game-card"
 import { TextLayer } from "@burn-ins/components/stage/text"
 import { unitsOf, type Units } from "@burn-ins/components/stage/units"
 import type { BurnInFrame } from "@burn-ins/lib/burn-in"
-import { sizedFor, THEMES } from "@burn-ins/lib/captions/theme"
 import type { Geometry } from "@burn-ins/lib/geometry"
 import { assertNever } from "@some-ui/intent-kit"
 
@@ -13,21 +12,15 @@ import "./index.css"
 
 const Layer = ({
   frame,
-  geometry,
   units,
 }: {
   frame: BurnInFrame
-  geometry: Geometry
   units: Units
 }): JSX.Element | null => {
   switch (frame.kind) {
     case "captions": {
       return frame.frame.caption === null ? null : (
-        <Caption
-          frame={frame.frame}
-          theme={sizedFor(THEMES[frame.design], geometry)}
-          units={units}
-        />
+        <Caption frame={frame.frame} theme={frame.theme} units={units} />
       )
     }
     case "headline":
@@ -107,12 +100,7 @@ export const BurnInStage = ({
         </>
       ) : null}
       {frames.map((frame, i) => (
-        <Layer
-          key={`${frame.kind}-${i}`}
-          frame={frame}
-          geometry={geometry}
-          units={units}
-        />
+        <Layer key={`${frame.kind}-${i}`} frame={frame} units={units} />
       ))}
     </div>
   )

@@ -106,13 +106,7 @@ export const THEMES: Readonly<Record<ThemeId, CaptionTheme>> = {
   },
 }
 
-/**
- * A look at the size it draws in a frame (`../geometry`): every length
- * multiplied by the frame's `typeScale`, its shorter side over 1080, so a
- * caption reads the same against the frame's shorter side whichever way the
- * frame is turned. Both frames burn-ins draw for are 1080 px on their
- * shorter side, so today this is the look itself, at scale 1.
- */
+/** A look at the size it draws in a frame: every length times its `typeScale` (`../geometry`). */
 export function sizedFor(
   theme: CaptionTheme,
   geometry: { readonly typeScale: number }

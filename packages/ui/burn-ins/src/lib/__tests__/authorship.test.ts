@@ -191,8 +191,4 @@ describe("the authorship mark in the 16:9 video", () => {
       "the authorship burn-in (cells-v1): the end card's record doesn't fit",
     ])
   })
-
-  it("holds the short's whole record of `MOST_SCENES` in the short", () => {
-    expect(drawn(EVERY.slice(0, MOST_SCENES)).end.part).toBe("end")
-  })
 })

@@ -3,7 +3,7 @@ import { prepare, runtimeMs, type Prepared } from "@burn-ins/lib/burn-in"
 import { SAMPLE } from "@burn-ins/lib/captions/sample"
 import { THEMES } from "@burn-ins/lib/captions/theme"
 import { captionsFor, runtimeOf } from "@burn-ins/lib/captions/timing"
-import { geometryOf, PORTRAIT } from "@burn-ins/lib/geometry"
+import { frameName, geometryOf, PORTRAIT } from "@burn-ins/lib/geometry"
 import { SAMPLES } from "@burn-ins/lib/samples"
 import { describe, expect, it } from "vitest"
 
@@ -55,7 +55,7 @@ describe("a burn-in", () => {
       ).toEqual({
         ok: false,
         problems: [
-          `the card burn-in (v1): burn-ins are drawn for 1080x1920 or 1920x1080, not ${frame.width}x${frame.height}`,
+          `the card burn-in (v1): burn-ins are drawn for 1080x1920 or 1920x1080, not ${frameName(frame)}`,
         ],
       })
     }

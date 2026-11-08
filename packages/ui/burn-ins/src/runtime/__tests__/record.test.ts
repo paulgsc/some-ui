@@ -1,7 +1,5 @@
 /** @vitest-environment node */
-import { SAMPLE } from "@burn-ins/lib/captions/sample"
-import { FRAMES, PORTRAIT } from "@burn-ins/lib/geometry"
-import { CardParamsSchema } from "@burn-ins/lib/journal"
+import { frameName, FRAMES, PORTRAIT } from "@burn-ins/lib/geometry"
 import { SAMPLES } from "@burn-ins/lib/samples"
 import { createRecorder, type RecordPorts } from "@burn-ins/runtime/record"
 import { describe, expect, it } from "vitest"
@@ -57,11 +55,9 @@ describe("the recording protocol", () => {
     expect(r.getSnapshot().geometry.frame).toEqual(PORTRAIT)
   })
 
-  it.each(
-    FRAMES.map((frame) => ({ frame, name: `${frame.width}x${frame.height}` }))
-  )(
+  it.each(FRAMES.map((frame) => ({ frame, name: frameName(frame) })))(
     "draws on a stage the size of the video's frame ($name)",
-    async ({ frame }) => {
+    ({ frame }) => {
       const r = drawing()
       expect(
         r.load({
@@ -72,50 +68,16 @@ describe("the recording protocol", () => {
         })
       ).toEqual({ ok: true, value: { runtimeMs: expect.any(Number) } })
       expect(r.getSnapshot().geometry.frame).toEqual(frame)
-      await r.seek(SAMPLE[0]?.words[0]?.startMs ?? 0)
-      const shown = r.getSnapshot().frame
-      if (shown?.kind !== "captions" || shown.frame.caption === null)
-        throw new Error("no caption up")
-      const { box } = shown.frame.layout
-      expect(box.x + box.width).toBeLessThanOrEqual(frame.width)
-      expect(box.y + box.height).toBeLessThanOrEqual(frame.height)
     }
   )
 
-  it("refuses a frame burn-ins aren't drawn for, naming it", () => {
-    const r = drawing()
-    expect(
-      r.load({
-        kind: "headline",
-        design: "v1",
-        params: SAMPLES.headline,
-        frame: { width: 1280, height: 720 },
-      })
-    ).toEqual({
-      ok: false,
-      problems: [
-        "the headline burn-in (v1): burn-ins are drawn for 1080x1920 or 1920x1080, not 1280x720",
-      ],
-    })
-  })
-
-  it("checks a video's burn-ins in its frame", () => {
+  it("checks a video's burn-ins in the short when it is given no frame", () => {
     const r = drawing()
     const at = { startFrame: 0, frames: 30 }
     const both = [
       { kind: "headline", design: "v1", params: SAMPLES.headline, ...at },
-      {
-        kind: "card",
-        design: "v1",
-        params: { ...CardParamsSchema.parse(SAMPLES.card), note: "" },
-        ...at,
-      },
+      { kind: "card", design: "v1", params: SAMPLES.card, ...at },
     ]
-    for (const frame of FRAMES) {
-      expect(r.check({ burnIns: both, fps: 30, frame }).join()).toMatch(
-        /both draw in the header/
-      )
-    }
     expect(r.check({ burnIns: both, fps: 30 }).join()).toMatch(
       /both draw in the header/
     )

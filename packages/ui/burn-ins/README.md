@@ -20,8 +20,7 @@ it is; each module's header does the same for its part:
   Build Journal shorts) or the 16:9 video (1920x1080: the weekly call), and
   any other frame is refused (SFEED11, #2707). Each kind lays itself out from
   the regions of its frame. The 16:9 frame's body is shorter, so a card that
-  fits the short can be refused there with the reason (the sample card's
-  note, a chain or path game card, an end card past eight scenes).
+  fits the short can be refused there, with the reason.
 - `src/lib/text.ts`, `src/lib/advances.ts`: text set by the font's own
   advance widths, subtitles' lines included.
 - `src/lib/captions/`: the subtitles (GWB11, #2085).

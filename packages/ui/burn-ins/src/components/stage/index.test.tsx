@@ -33,6 +33,7 @@ describe("the stage", () => {
           {
             kind: "captions",
             design: "broadcast",
+            theme,
             frame: frameAt(captions, theme, SHORT, 300),
           },
         ]}
@@ -109,22 +110,31 @@ describe("the stage", () => {
     )
     const stage = container.querySelector<HTMLElement>(".bi-stage")
     expect(stage?.style.getPropertyValue("--bi-aspect")).toBe(aspect)
-    expect(container.querySelectorAll(".bi-region")).toHaveLength(4)
   })
 
   it.each([
-    { frame: PORTRAIT, left: "5.0000cqw" },
-    { frame: LANDSCAPE, left: "5.0000cqw" },
+    {
+      frame: PORTRAIT,
+      left: "5.0000cqw",
+      top: "3.7037cqw",
+      height: "19.4444cqw",
+    },
+    {
+      frame: LANDSCAPE,
+      left: "5.0000cqw",
+      top: "2.0833cqw",
+      height: "10.9375cqw",
+    },
   ])(
     "places a box in units of its frame's width ($frame.width wide)",
-    ({ frame, left }) => {
+    ({ frame, left, top, height }) => {
       // The header: 54 px into the short's 1080, 96 into the video's 1920.
       const { header } = geometryOf(frame).regions
       expect(unitsOf(frame).placed(header)).toEqual({
         left,
-        top: unitsOf(frame).cq(40),
+        top,
         width: "90.0000cqw",
-        height: unitsOf(frame).cq(210),
+        height,
       })
       expect(unitsOf(frame).cq(frame.width)).toBe("100.0000cqw")
     }

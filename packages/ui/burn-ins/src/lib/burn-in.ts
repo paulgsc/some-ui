@@ -148,6 +148,8 @@ export type BurnInFrame =
   | {
       readonly kind: "captions"
       readonly design: ThemeId
+      /** The design's look, sized for the frame. */
+      readonly theme: CaptionTheme
       readonly frame: CaptionFrame
     }
   | {
@@ -296,6 +298,7 @@ export function frameAt(p: Prepared, t: number): BurnInFrame {
       return {
         kind: p.kind,
         design: p.design,
+        theme: p.theme,
         frame: captionFrameAt(p.captions, p.theme, p.geometry, t),
       }
     }

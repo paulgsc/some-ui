@@ -264,7 +264,6 @@ function introFrame(g: Geometry): Parsed<AuthorshipFrame> {
     ])
     across = x + TEXT_IN + width + GRAMMAR_GAP
   })
-  // Across the card's text, and down from the panel's top to its text's foot.
   const top = space.panel.box.y
   const room: Box = {
     x: inner.x,

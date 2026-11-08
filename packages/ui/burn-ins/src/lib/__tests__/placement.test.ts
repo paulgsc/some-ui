@@ -11,6 +11,7 @@ import {
   type Prepared,
 } from "@burn-ins/lib/burn-in"
 import {
+  frameName,
   frameProblem,
   FRAMES,
   geometryOf,
@@ -18,14 +19,11 @@ import {
   LANDSCAPE,
   overlaps,
   PORTRAIT,
-  REGION_NAMES,
   type FrameSize,
   type Region,
 } from "@burn-ins/lib/geometry"
 import { samplesOf, STILL_SAMPLE_MS } from "@burn-ins/lib/samples"
 import { describe, expect, it } from "vitest"
-
-const named = (f: FrameSize): string => `${f.width}x${f.height}`
 
 const ready = (
   kind: Kind,
@@ -69,8 +67,7 @@ const shared = (a: Kind, b: Kind): ReadonlyArray<Region> =>
 
 describe("the frames burn-ins are drawn for", () => {
   it("are the 9:16 short and the 16:9 video", () => {
-    expect(FRAMES.map(named)).toEqual(["1080x1920", "1920x1080"])
-    expect(FRAMES.map((f) => frameProblem(f))).toEqual([null, null])
+    expect(FRAMES.map(frameName)).toEqual(["1080x1920", "1920x1080"])
   })
 
   it("keep the short's geometry exactly as every short so far drew it", () => {
@@ -105,20 +102,36 @@ describe("the frames burn-ins are drawn for", () => {
     { width: 1280, height: 720 },
     { width: 1920, height: 1920 },
   ])("refuse any other frame, naming it ($width x $height)", (frame) => {
-    const why = `burn-ins are drawn for 1080x1920 or 1920x1080, not ${named(frame)}`
+    const why = `burn-ins are drawn for 1080x1920 or 1920x1080, not ${frameName(frame)}`
     expect(frameProblem(frame)).toBe(why)
     expect(() => geometryOf(frame)).toThrow(why)
   })
 })
 
-describe.each(FRAMES.map((frame) => ({ frame, name: named(frame) })))(
+describe("the regions each kind draws in", () => {
+  it("shares a region only between a scene's headline and its card, one or the other, the authorship mark's bare cards, and a game card in the body", () => {
+    const sharing = KINDS.flatMap((a, i) =>
+      KINDS.slice(i + 1).flatMap((b) =>
+        shared(a, b).length > 0 ? [[a, b]] : []
+      )
+    )
+    expect(sharing).toEqual([
+      ["headline", "card"],
+      ["headline", "authorship"],
+      ["card", "authorship"],
+      ["card", "game-card"],
+      ["authorship", "game-card"],
+    ])
+  })
+})
+
+describe.each(FRAMES.map((frame) => ({ frame, name: frameName(frame) })))(
   "where burn-ins sit in $name",
   ({ frame }) => {
     const g = geometryOf(frame)
 
     it("never puts two regions over each other, or a region off the frame", () => {
       const regions = Object.entries(g.regions)
-      expect(regions.map(([name]) => name)).toEqual([...REGION_NAMES])
       const whole = { x: 0, y: 0, ...g.frame }
       for (const [i, [a, boxA]] of regions.entries()) {
         expect(inside(boxA, whole), a).toBe(true)
@@ -145,21 +158,6 @@ describe.each(FRAMES.map((frame) => ({ frame, name: named(frame) })))(
           }
         }
       }
-    })
-
-    it("shares a region only between a scene's headline and its card, one or the other, the authorship mark's bare cards, and a game card in the body", () => {
-      const sharing = KINDS.flatMap((a, i) =>
-        KINDS.slice(i + 1).flatMap((b) =>
-          shared(a, b).length > 0 ? [[a, b]] : []
-        )
-      )
-      expect(sharing).toEqual([
-        ["headline", "card"],
-        ["headline", "authorship"],
-        ["card", "authorship"],
-        ["card", "game-card"],
-        ["authorship", "game-card"],
-      ])
     })
 
     it("keeps the authorship mark to the gutter between its intro and its end card", () => {

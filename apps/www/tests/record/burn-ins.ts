@@ -138,7 +138,6 @@ function burnInRecorder(
 ): (request: BurnInRequest) => Promise<boolean> {
   return async (r) => {
     const name = `the ${r.kind} burn-in (${r.design})`
-    // The page refuses a frame burn-ins aren't drawn for, naming it.
     const loaded = await load(page, r)
     if (!loaded.ok) {
       for (const p of loaded.problems) report(p)
