@@ -155,6 +155,28 @@ export const WEEK_WORDS = {
     notAnswered: "Not answered.",
   },
   card: CARD_WORDS,
+  /** An error pasted from your own code, and a note on it. */
+  paste: {
+    open: "Paste an error",
+    heading: "An error from your own code",
+    line: "Paste rustc's output as it printed it. Next week's exercise can be built from it.",
+    label: "Paste it as rustc printed it",
+    left: (n: number): string => `${n} characters left`,
+    say: "Say what you make of it, if you like.",
+    where:
+      "Kept on this phone as you type it. Nothing leaves before you keep it.",
+    keep: "Keep it",
+    back: "Back to the week",
+    deleteNote: {
+      title: "Delete this note?",
+      line: "Your note on the paste hasn't left this phone, so deleting it removes it for good. You can say it again.",
+    },
+    kept: "Kept on this phone. A note on it goes home with your other takes; the error itself stays here until home keeps the week's record.",
+    notKept:
+      "This phone couldn't keep the paste, so nothing went. It's all still here.",
+    draftNotKept:
+      "This phone couldn't keep that change to the paste, so it would be lost if you left now.",
+  },
   /** The cards from before the weeks, until RR20 retires them. */
   rounds: "The rounds from before",
 } as const

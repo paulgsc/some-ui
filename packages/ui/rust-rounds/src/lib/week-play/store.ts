@@ -11,6 +11,9 @@
  *   drop or rewrite one already kept is refused.
  * - **The words home heard** in each take sent (`heardWords`), by take: a
  *   copy of home's, each kept once and never written over.
+ * - **An error pasted** (`pasteStores`, `./paste`): the one being written in
+ *   each week, kept as it is typed, and those kept, which only grow. They go home with
+ *   the week's record (RR14); until then they are kept here.
  */
 import { WEEK_SENT_KEY } from "@rust-rounds/lib/play/keys"
 import type { KeyedStorage } from "@some-ui/core-utils"
@@ -31,6 +34,8 @@ import type { WeekSent } from "./spec"
 
 const DRAFTS_KEY = "some-ui:rust-rounds.week-drafts"
 const HEARD_KEY = "some-ui:rust-rounds.week-heard"
+const PASTE_DRAFTS_KEY = "some-ui:rust-rounds.week-paste-drafts"
+const PASTES_KEY = "some-ui:rust-rounds.week-pastes"
 
 const DraftSchema: z.ZodType<BundleDraft> = z.object({
   id: z.string(),
@@ -147,6 +152,102 @@ export function heardWords(storage: KeyedStorage | null): HeardWords {
         { ...opened.value, [take]: text },
         readHeard
       )
+    },
+  }
+}
+
+/** A paste being written: the week it is in, when it was begun, its text. */
+export type PasteDraft = {
+  readonly week: string
+  readonly at: string
+  readonly text: string
+}
+
+/** A paste kept: its text, and the take of its note, if it has one. */
+export type KeptPaste = PasteDraft & { readonly note: string | null }
+
+const PasteDraftSchema: z.ZodType<PasteDraft> = z.object({
+  week: z.string(),
+  at: z.string(),
+  text: z.string(),
+})
+
+const KeptPasteSchema: z.ZodType<KeptPaste> = z.object({
+  week: z.string(),
+  at: z.string(),
+  text: z.string(),
+  note: z.string().nullable(),
+})
+
+const readPasteDrafts = readJson((value) => {
+  const parsed = z.record(z.string(), PasteDraftSchema).safeParse(value)
+  return parsed.success ? parsed.data : null
+})
+
+const readPastes = readJson((value) => {
+  const parsed = z.array(KeptPasteSchema).safeParse(value)
+  return parsed.success ? parsed.data : null
+})
+
+export type PasteStores = {
+  /** The paste being written in each week, by the week's id. */
+  readonly draft: {
+    /** Week `week`'s, or null for none (or one that can't be read). */
+    readonly read: (week: string) => PasteDraft | null
+    /** Sets week `week`'s, leaving every other week's as it is. */
+    readonly write: (week: string, draft: PasteDraft | null) => boolean
+  }
+  readonly pastes: {
+    readonly list: () => ReadonlyArray<KeptPaste>
+    /**
+     * Adds `paste` once to the pastes kept: true when it is kept, already
+     * whole; false when not, or when another paste begun at the same instant
+     * is kept already.
+     */
+    readonly add: (paste: KeptPaste) => boolean
+  }
+}
+
+/** The pastes kept in `storage`. */
+export function pasteStores(storage: KeyedStorage | null): PasteStores {
+  const openPastes = (): {
+    value: ReadonlyArray<KeptPaste>
+    writable: boolean
+  } => openKept(storage, PASTES_KEY, readPastes, [])
+  const openDrafts = (): {
+    value: Readonly<Partial<Record<string, PasteDraft>>>
+    writable: boolean
+  } => openKept(storage, PASTE_DRAFTS_KEY, readPasteDrafts, {})
+  return {
+    draft: {
+      read(week): PasteDraft | null {
+        const draft = openDrafts().value[week]
+        return draft?.week === week ? draft : null
+      },
+      write(week, draft): boolean {
+        const opened = openDrafts()
+        if (!opened.writable) return false
+        const { [week]: _gone, ...others } = opened.value
+        const next = draft === null ? others : { ...others, [week]: draft }
+        return writeKept(storage, PASTE_DRAFTS_KEY, next, readPasteDrafts)
+      },
+    },
+    pastes: {
+      list: () => openPastes().value,
+      add(paste): boolean {
+        const opened = openPastes()
+        if (!opened.writable) return false
+        const same = opened.value.find((each) => each.at === paste.at)
+        if (same !== undefined) {
+          return canonicalJson(same) === canonicalJson(paste)
+        }
+        return writeKept(
+          storage,
+          PASTES_KEY,
+          [...opened.value, paste],
+          readPastes
+        )
+      },
     },
   }
 }
