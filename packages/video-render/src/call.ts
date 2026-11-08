@@ -36,7 +36,15 @@ import { once, problemsOf } from "./cut-list"
 import type { CutList, Parsed } from "./cut-list"
 import { FORMAT_SCHEMA, repeatedId, showId, words } from "./format"
 import type { Format, Shape } from "./format"
-import { OptionSchema, RefSchema } from "./refs"
+import {
+  choiceProblems,
+  ChoiceSchema,
+  epicTag,
+  IssueSchema,
+  OptionSchema,
+  PrSchema,
+  RefSchema,
+} from "./refs"
 import type { CallRef } from "./refs"
 import { estimatedMs, hasCaptions, stillFile, stillsCutList } from "./stills"
 import type { StillTake } from "./stills"
@@ -166,9 +174,6 @@ export function callFormat(version: number = CALL_VERSION): Format {
   }
 }
 
-const IssueSchema = RefSchema.extend({ kind: z.literal("issue") })
-const PrSchema = RefSchema.extend({ kind: z.literal("pr") })
-
 /** A ref's one name: "server#681". */
 const refKey = (ref: CallRef): string => `${ref.repo}#${ref.number}`
 
@@ -192,7 +197,7 @@ const BoardRowSchema = z.strictObject({
 const MovedSchema = z.strictObject({
   id: showId,
   /** The epic's tag, as its title carries it: "STUDIO". */
-  tag: z.string().regex(/^[A-Z][A-Z0-9-]{0,23}$/),
+  tag: epicTag,
   epic: IssueSchema,
   said: words,
   /** What landed for it this week: each is in a batch of `done`. */
@@ -226,18 +231,7 @@ const GraySchema = z.strictObject({
   refs,
 })
 
-const MineSchema = z.strictObject({
-  id: showId,
-  title: words,
-  said: words,
-  options: z.array(words).min(2).max(4),
-  /** The option it took, by its place in `options`. */
-  chose: z.number().int().nonnegative(),
-  why: words,
-  /** How the owner undoes it, if they would rather not. */
-  undo: words,
-  refs,
-})
+const MineSchema = ChoiceSchema.extend({ id: showId, said: words, refs })
 
 const AskSchema = z.strictObject({
   id: showId,
@@ -395,18 +389,15 @@ function weekProblems(week: CallWeek): Array<string> {
     for (const pull of epic.landed.map(refKey))
       if (!merged.has(pull))
         problems.push(`${epic.id}: ${pull} landed, and no batch has it`)
-  for (const item of [...week.mine, ...week.asks]) {
-    const says = item.options.map((o) => (typeof o === "string" ? o : o.says))
+  for (const call of week.mine) problems.push(...choiceProblems(call.id, call))
+  for (const ask of week.asks) {
+    const says = ask.options.map((o) => o.says)
     if (new Set(says).size !== says.length)
-      problems.push(`${item.id}: two options say the same`)
+      problems.push(`${ask.id}: two options say the same`)
   }
   const ledger = week.board.rows.map((row) => row.ledger)
   if (new Set(ledger).size !== ledger.length)
     problems.push("board: a ledger item is listed twice")
-  week.mine.forEach((call) => {
-    if (call.chose >= call.options.length)
-      problems.push(`${call.id}: it chose an option it doesn't list`)
-  })
   week.asks.forEach((ask) => {
     if (ask.recommended !== undefined && ask.recommended >= ask.options.length)
       problems.push(`${ask.id}: it recommends an option it doesn't list`)

@@ -53,6 +53,10 @@ Each module's header says why it is the way it is.
   `paulgsc/testing`'s `clips/` and listed for Studio's Library. A walked side
   is `motion walk`'s own folder. `render clip-check <folder>` checks it
   before it is pushed.
+- `src/session-note.ts`: a session's note (SFEED9, #2753), what its agent
+  distills before archiving it, kept in `paulgsc/testing`'s `sessions/` and
+  read by the weekly call's routine. `render session-check <folder>` checks
+  the folder before it is pushed.
 - `src/templates.ts`: every template Studio lists (SFEED1, #2731), each
   the newest version pinned under `src/templates/<id>/`, Playoff Delta's
   included.
