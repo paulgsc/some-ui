@@ -92,10 +92,18 @@ window.motion = (() => {
       return span
     })
   }
+  const $ = (id) => document.getElementById(id)
+  /** A new `tag` of `className`, appended to `parent`. */
+  const make = (tag, className, parent) => {
+    const el = document.createElement(tag)
+    el.className = className
+    parent.appendChild(el)
+    return el
+  }
   const vars = window.__hyperframes.getVariables()
   const style = document.documentElement.style
-  for (const key of ["ground", "ink", "mute", "accent", "accentInk"]) {
+  for (const key of ["ground", "ink", "accent", "accentInk"]) {
     if (vars[key]) style.setProperty(`--${key}`, vars[key])
   }
-  return { length, track, lines, vars }
+  return { length, track, lines, vars, $, make }
 })()

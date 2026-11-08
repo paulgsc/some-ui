@@ -22,7 +22,22 @@ pnpm --filter @some-ui/video-motion motion video <video folder> [--series <folde
   1080x1920 at 30 fps, the frame alone, for videos whose scenes are compositions.
   `sample/video` is a composition scene, then a card.
 
-CI runs both on every change here (`pr.yml`, "HyperFrames renders the same bytes twice").
+- `walk <app> --sample <file> --out <folder>` replays an app's scripted walk (SFEED7a,
+  #2736) in a sandbox holding only the sample: the app's own built pages, served from
+  `http://sandbox.invalid` with every other request refused, driven step by step. It
+  writes each step's screen as a snip and `walk.json`: each snip's time and each tap's
+  place and time, on the walk's own timeline. Suspender Ledger's popup is the first
+  (`src/walk/suspender-ledger.ts`); its stand-ins answer the popup's four reads from the
+  sample.
+- `promo <release folder> --out <folder> [--prove]` makes a release's promo (HYPER3,
+  #2726): the folder's `release.json` (`some-ui.promo/1`, the words a session writes) and
+  `sample.json` (the walk's), from paulgsc/testing's `promo/<app>/<version>/`. It walks
+  the app into `<out>`, writes a cut list of three composition scenes (`promo-hook`, the
+  walk's screens in `promo-feature`, `promo-close`; `src/promo.ts`) and renders it as
+  `video` does. The release's version must be the built app's, and the fill needs one
+  caption per screen; each line is held to what fits its place in the frame.
+
+CI runs `prove`, `video` and `promo` on every change here (`pr.yml`, "HyperFrames renders the same bytes twice").
 They need `ffmpeg` on `PATH` and a Chromium: Playwright's pinned one by default, or
 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`, or `--chrome`.
 
