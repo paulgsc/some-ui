@@ -167,11 +167,12 @@ describe("the step cache", () => {
     }
 
     it("keeps nothing when its folder cannot be listed", async () => {
-      const warned = await keep(failing({ readdir: "EIO" }))
+      const warned = await keep(failing({ readdir: "ENOTDIR" }))
       expect(warned).toHaveLength(1)
       expect(warned[0]).toContain(
         "not cached: a.wav: the cache's size is unknown, its folder could not be listed"
       )
+      expect(warned[0]).toContain("ENOTDIR")
     })
 
     it("keeps nothing when an entry cannot be measured", async () => {
@@ -180,6 +181,7 @@ describe("the step cache", () => {
       expect(warned[0]).toContain(
         "not cached: a.wav: the cache's size is unknown, old.wav could not be measured"
       )
+      expect(warned[0]).toContain("EACCES")
     })
 
     it("counts an entry gone since it was listed as nothing held", async () => {
