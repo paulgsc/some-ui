@@ -52,6 +52,11 @@ Each module's header says why it is the way it is.
 - `src/templates.ts`: every template Studio lists (SFEED1, #2731), each
   the newest version pinned under `src/templates/<id>/`, Playoff Delta's
   included.
+- `src/music-bed.ts`: the music bed we make ourselves (#2673), a quiet
+  53 s loop synthesised from arithmetic alone, so it holds nothing anyone
+  else made and comes out as the same bytes on any machine. The file is
+  never committed: `render music-bed --out <file>.wav` writes it, checked
+  against the sum a series pins (`MUSIC_BED`), for home's `brand/` folder.
 - `src/resolve.ts`, `src/timing.ts`: each lever from the layer that sets
   it; each scene placed in whole frames.
 - `src/plan.ts`: the ffmpeg calls, as data. `src/render.ts` runs them over

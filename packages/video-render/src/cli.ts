@@ -30,10 +30,17 @@
  * comparison as JSON: home's transcript as the Jobs mailbox holds it
  * (`transcript-<note>-<n>.json`), and the session's words (`WordsSchema`).
  *
+ *   pnpm --filter @some-ui/video-render render music-bed --out <file>
+ *
+ * writes the music bed we make ourselves (`music-bed.ts`, #2673) and checks
+ * it against the sum a series pins (`MUSIC_BED`), for the owner to lay in
+ * `${STORAGE}/brand/` on home.
+ *
  * `pnpm --filter` runs this from the package; INIT_CWD is where it was typed.
  */
 
 import { execFile } from "node:child_process"
+import { createHash } from "node:crypto"
 import { access, readdir, writeFile } from "node:fs/promises"
 import { dirname, join, relative } from "node:path"
 import { parseArgs, promisify } from "node:util"
@@ -45,6 +52,7 @@ import { callsOf, changeOf, trailersOf, whereWeAreOf } from "./call-facts"
 import type { CallFacts } from "./call-facts"
 import { problemsOf } from "./cut-list"
 import { compareHearings } from "./hearings"
+import { MUSIC_BED, musicBedWav } from "./music-bed"
 import {
   fail,
   here,
@@ -70,6 +78,21 @@ async function main(): Promise<void> {
     },
   })
   const [first, second, third] = positionals
+  if (first === "music-bed") {
+    if (!values.out.endsWith(".wav"))
+      fail(["usage: render music-bed --out <file>.wav"])
+    const wav = musicBedWav()
+    const sum = createHash("sha256").update(wav).digest("hex")
+    if (sum !== MUSIC_BED.sha256)
+      fail([
+        `The bed came out as ${sum}, and its pin is ${MUSIC_BED.sha256}; nothing was written`,
+      ])
+    await writeFile(here(values.out), wav)
+    process.stdout.write(
+      `wrote ${here(values.out)}, ${sum}; lay it in brand/ as ${MUSIC_BED.file}\n`
+    )
+    return
+  }
   if (first === "compare-hearings") {
     if (!second || !third) {
       fail(["usage: render compare-hearings <home transcript> <session words>"])
