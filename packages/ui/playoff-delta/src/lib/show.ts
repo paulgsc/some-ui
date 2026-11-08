@@ -9,6 +9,7 @@
  */
 
 import {
+  BRAND_MOTION,
   FORMAT_SCHEMA,
   inTheme,
   versionRefusal,
@@ -43,13 +44,18 @@ export const kindOf = (week: number): FormatKind =>
  * 3 (SFEED10 #2675, SFEED14 #2766): drawn in Mochi Night, the palette made
  *   for video, the mark too, in the series' version 3, which is Mochi
  *   Night's ground and plays our music bed (#2673).
+ * 4 (HYPER5, #2728): the brand intro and outro are `brand-v1`, the code's
+ *   mark moving in the mark's theme, rather than the stage's slides.
  */
 export const FORMAT_VERSION: Readonly<Record<FormatKind, number>> = {
-  week: 3,
-  legend: 3,
+  week: 4,
+  legend: 4,
 }
 
 const NIGHT_VERSION = 3
+
+/** The first version whose brand intro and outro move (HYPER5). */
+const MOTION_VERSION = 4
 
 /** The first version voiced and drawn in a shape. */
 export const VOICED_VERSION = 2
@@ -86,8 +92,13 @@ const seriesOf = (version: number): Format["series"] => ({
   version: version >= NIGHT_VERSION ? 3 : version >= VOICED_VERSION ? 2 : 1,
 })
 
-const shapeOf = (kind: FormatKind, version: number): Shape =>
-  version >= NIGHT_VERSION ? inTheme(SHAPE[kind], "mochi-night") : SHAPE[kind]
+function shapeOf(kind: FormatKind, version: number): Shape {
+  if (version < NIGHT_VERSION) return SHAPE[kind]
+  const night = inTheme(SHAPE[kind], "mochi-night")
+  return version >= MOTION_VERSION
+    ? { ...night, brand: { ...night.brand, motion: BRAND_MOTION } }
+    : night
+}
 
 /** A format's id: its folder's name. */
 export const formatId = (kind: FormatKind): string => `playoff-delta-${kind}`

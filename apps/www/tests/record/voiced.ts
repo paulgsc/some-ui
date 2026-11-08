@@ -11,9 +11,10 @@
  * made.
  */
 
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { join, resolve } from "node:path"
 import type { Browser, Locator, Page } from "@playwright/test"
+import { installedCompositionPort } from "@some-ui/video-motion/node"
 import {
   chapterLines,
   chaptersOf,
@@ -380,6 +381,15 @@ export async function renderStills(
     join(root, "cut-list.json"),
     `${JSON.stringify(cutList, null, 1)}\n`
   )
+  // From the templates' version 4 (HYPER5), the brand's open and close are
+  // compositions, drawn by video-motion beside the stills.
+  const draws = cutList.shots.some((s) => s.picture.kind === "composition")
+  // On the video's own drive: home's /tmp is a small RAM disk HyperFrames
+  // can't draw on (video-motion's `pin.ts`).
+  const draw = draws ? await mkdtemp(join(root, "draw-")) : null
+  const compositions =
+    draw === null ? null : installedCompositionPort(root, draw)
+  if (compositions?.ok === false) fail([compositions.problem])
   const page = await openRecorder(browser, origin)
   try {
     const done = await renderWithBurnIns(page, root, series, {
@@ -388,6 +398,7 @@ export async function renderStills(
       policy,
       stepCacheDir: STEPS,
       warn,
+      ...(compositions?.ok ? { compositions: compositions.port } : {}),
     })
     if (!done.ok) fail(["Nothing was rendered:", ...done.problems])
     console.log(`wrote ${join(root, done.value.video)}`)
@@ -406,5 +417,6 @@ export async function renderStills(
     }
   } finally {
     await page.close()
+    if (draw !== null) await rm(draw, { recursive: true, force: true })
   }
 }

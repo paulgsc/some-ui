@@ -20,11 +20,11 @@ import { parseSeries } from "./series"
 import { parseStoryboard } from "./storyboard"
 import type { Storyboard } from "./storyboard"
 import callBoard from "./templates/conference-call/storyboard.json"
-import callV3 from "./templates/conference-call/v3.json"
+import callV4 from "./templates/conference-call/v4.json"
 import legendBoard from "./templates/playoff-delta-legend/storyboard.json"
-import legendV3 from "./templates/playoff-delta-legend/v3.json"
+import legendV4 from "./templates/playoff-delta-legend/v4.json"
 import weekBoard from "./templates/playoff-delta-week/storyboard.json"
-import weekV3 from "./templates/playoff-delta-week/v3.json"
+import weekV4 from "./templates/playoff-delta-week/v4.json"
 
 /** The folder under `templates/` each template's versions are pinned in. */
 export const TEMPLATE_IDS = [
@@ -36,9 +36,9 @@ export const TEMPLATE_IDS = [
 export type TemplateId = (typeof TEMPLATE_IDS)[number]
 
 const NEWEST: Readonly<Record<TemplateId, unknown>> = {
-  "conference-call": callV3,
-  "playoff-delta-legend": legendV3,
-  "playoff-delta-week": weekV3,
+  "conference-call": callV4,
+  "playoff-delta-legend": legendV4,
+  "playoff-delta-week": weekV4,
 }
 
 /** Whether `value` names a template Studio lists. */
