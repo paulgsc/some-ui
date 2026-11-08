@@ -17,11 +17,6 @@
  *   delete nothing and are never asked again. Only no answer, or home or
  *   this phone being busy, offers Try again, a tap, and only for the notes
  *   home didn't answer. Nothing retries on its own.
- * - **A note asked to be deleted is held back until home's word on it**
- *   (`lib/home-link/deleting-notes`): kept before the `DELETE` goes, so the
- *   voice lane never sends it again, and settled by home's answer or, once
- *   that answer was lost, by home's list of what it deleted, read as My
- *   data opens (`./deleting-runtime`'s `resume`).
  *
  * LA19 (docs/learner-data-authority.md): `deleting` is reached only from
  * `asking` or an `ended` sheet's `retryable` notes, and `asked` only for
@@ -109,18 +104,6 @@ export type NoteEnd = HomeDeleteEnd<Receipt>
 /** What one note's answer from home says. */
 export function readDeletion(answer: HomeAnswer | null): NoteEnd {
   return readHomeDelete(Deleted, answer)
-}
-
-/**
- * The notes `asked` holds home's last word on: deleted, kept, or not there
- * (`gone`, `kept`, `notHeld`); none for a run home did not answer.
- */
-export function answeredIds(asked: DeleteAsked): Array<string> {
-  if (asked.kind !== "answered") return []
-  return asked.answers.flatMap(({ id, answer }) => {
-    const end = readDeletion(answer).kind
-    return end === "gone" || end === "kept" || end === "notHeld" ? [id] : []
-  })
 }
 
 /** How this phone's let-go of its own copies went, once there are receipts. */

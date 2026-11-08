@@ -485,8 +485,6 @@ function useMyData(of: Of | null, note?: string): MyDataState {
   const state = useSyncExternalStore(data.subscribe, data.getSnapshot)
   useEffect(() => {
     data.open(of, note ?? null)
-    // A delete whose answer was lost settles on home's list of what it deleted.
-    phoneDeleting().resume()
     const drop = screenRefreshers.register({
       what: MY_DATA.pullWhat,
       checkAgain: data.checkAgain,

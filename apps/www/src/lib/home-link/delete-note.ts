@@ -56,17 +56,18 @@ export type DeleteAsked =
 
 /**
  * Asks home once to delete each of `ids` for good, and hands what came of
- * it to `settle`, once; never rejects but for `settle`.
+ * it to `settle`, once; never rejects.
  */
 export async function deleteNotes(
   ids: ReadonlyArray<string>,
   settle: (asked: DeleteAsked) => Promise<void>
-): Promise<void> {
-  let said = false
-  const say = async (asked: DeleteAsked): Promise<void> => {
-    if (said) return
-    said = true
+): Promise<DeleteAsked> {
+  let said: DeleteAsked | null = null
+  const say = async (asked: DeleteAsked): Promise<DeleteAsked> => {
+    if (said !== null) return said
+    said = asked
     await settle(asked)
+    return asked
   }
   if (!paired()) return say({ kind: "unpaired" })
   try {
@@ -86,7 +87,7 @@ export async function deleteNotes(
         answers: ids.map((id) => ({ id, answer: answered.get(id) ?? null })),
       })
     })
-    if (outcome?.kind !== "done") await say({ kind: "busy" })
+    return outcome?.kind === "done" ? outcome.value : say({ kind: "busy" })
   } catch {
     return say({ kind: "unreachable" })
   }

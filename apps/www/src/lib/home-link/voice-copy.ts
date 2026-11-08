@@ -165,7 +165,6 @@ import type { Reflection } from "@/lib/session-reflection/policy"
 import { onSoundbitesKept, soundbiteKeeping } from "@/lib/soundbite-keeping"
 import { onStudioKept, studioKeeping } from "@/lib/studio-keeping"
 import { phoneVoiceHome } from "@/lib/voice-home"
-import type { VoiceHomePort } from "@/lib/voice-home/home"
 import { exchangeVoice } from "@/lib/voice-home/home"
 import type {
   AsideMark,
@@ -184,7 +183,6 @@ import {
 } from "@/lib/voice-home/model"
 import { wireVoiceMarks } from "@/lib/voice-marks"
 
-import { owedDeletes } from "./deleting-notes"
 import { phoneIdeas, sendIdeas } from "./ideas"
 import { homeLink, paired } from "./index"
 import { lensEntriesHeld } from "./lens-record"
@@ -966,19 +964,7 @@ export async function sendVoice(
   if (running !== null) await running
   const pass = running === null ? NO_PASS : lastPass
   const home = phoneVoiceHome()
-  // A note asked to be deleted goes nowhere until home's word on it.
-  const deleting = new Set(owedDeletes().map((entry) => entry.id))
-  const keeping: VoiceHomePort = {
-    ...home.keeping,
-    state: () => {
-      const held = home.keeping.state()
-      return {
-        ...held,
-        waiting: held.waiting.filter((note) => !deleting.has(note.id)),
-      }
-    },
-  }
-  const exchanged = await exchangeVoice(keeping, send)
+  const exchanged = await exchangeVoice(home.keeping, send)
   if (exchanged.kind !== "synced") return runEnd(pass, exchanged)
   await letGoOnHomesWord(send)
   const ideas = await sendIdeas(

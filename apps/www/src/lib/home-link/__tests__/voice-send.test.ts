@@ -21,12 +21,6 @@ import { keptSaid, ShelfFullError, TAKE_WORDS } from "@some-ui/voice-capture"
 import { renderHook } from "@testing-library/react"
 import { beforeAll, describe, expect, it, vi } from "vitest"
 
-import { deleteNotes } from "@/lib/home-link/delete-note"
-import {
-  deletesAnswered,
-  owedDeletes,
-  oweDeletes,
-} from "@/lib/home-link/deleting-notes"
 import { readSent, rememberSent } from "@/lib/home-link/sent"
 import { useUnsendable, voiceLane } from "@/lib/home-link/voice"
 import {
@@ -39,7 +33,6 @@ import {
 import { keepIdeas } from "@/lib/idea-keeping"
 import type { JobEvent, JobsState } from "@/lib/jobs/model"
 import { EMPTY } from "@/lib/jobs/model"
-import { createDeleting } from "@/lib/my-data/deleting-runtime"
 import { keepSoundbites } from "@/lib/soundbite-keeping"
 import { keepStudio } from "@/lib/studio-keeping"
 import type { VoiceHome } from "@/lib/voice-home/runtime"
@@ -64,8 +57,6 @@ const fakes = vi.hoisted(
     deleted: Array<ReadonlyArray<string>>
     /** Whether the phone is paired with home. */
     paired: boolean
-    /** Home as a tap's run reaches it: My data's delete. */
-    tap: HomeCall
   } => ({
     jobs: null,
     audio: new Map(),
@@ -76,7 +67,6 @@ const fakes = vi.hoisted(
     onDrive: [],
     deleted: [],
     paired: true,
-    tap: () => Promise.reject(new Error("no tap expected")),
   })
 )
 
@@ -129,15 +119,7 @@ vi.mock("@/lib/home-link/lanes", () => ({
   useLaneHome: (): unknown => null,
 }))
 vi.mock("@/lib/home-link", () => ({
-  homeLink: (): unknown => ({
-    subscribe: () => (): void => undefined,
-    send: async (
-      run: (send: HomeCall) => Promise<unknown>
-    ): Promise<{ kind: "done"; value: unknown }> => ({
-      kind: "done",
-      value: await run((...call) => fakes.tap(...call)),
-    }),
-  }),
+  homeLink: (): unknown => ({ subscribe: () => (): void => undefined }),
   paired: (): boolean => fakes.paired,
   pairingOf: (): string => PAIRING,
 }))
@@ -402,71 +384,6 @@ describe("Studio's takes, once its route hands them in (ST12)", () => {
     expect(fakes.home?.getSnapshot().waiting).toEqual([])
     expect(await fakes.home?.keeping.audio("t1")).toBeNull()
     expect(fakes.deleted).toEqual([["t1"]])
-  })
-
-  it("MD3: a note whose delete's answer was lost goes nowhere, then leaves the phone once home's list says it deleted it", async () => {
-    setUp(5, {})
-    handStudioIn()
-    localStorage.clear()
-    const unanswered: HomeCall = () => Promise.reject(new Error("no answer"))
-    // Home stored the upload, and its answer never came back.
-    await expect(sendVoice(unanswered, AT_PAIRING)).rejects.toThrow()
-    const receipt = {
-      id: "t1",
-      of: "studio",
-      recordedAt: "2026-10-29T08:00:00.000Z",
-      storedAt: "2026-10-29T08:01:00.000Z",
-      size: 4,
-      deletedAt: "2026-11-08T10:00:00.000Z",
-      went: ["recording"],
-      stayed: [],
-    }
-    let listed = false
-    const deleting = createDeleting({
-      deleteNotes,
-      letGo: (_of, ids) => letGoDeleted(ids),
-      reread: () => undefined,
-      owed: {
-        list: () => owedDeletes(),
-        owe: (of, ids) => oweDeletes(of, ids),
-        answered: deletesAnswered,
-      },
-      askReceipts: () =>
-        Promise.resolve(
-          listed
-            ? { kind: "read", receipts: [receipt], total: 1 }
-            : { kind: "read", receipts: [], total: 0 }
-        ),
-    })
-    // Home deleted it, and that answer never came back either.
-    fakes.tap = (): Promise<never> => Promise.reject(new Error("no answer"))
-    fakes.deleted = []
-    deleting.ask("studio", ["t1"])
-    deleting.confirm()
-    await vi.waitFor(() =>
-      expect(deleting.getSnapshot().sheet.kind).toBe("ended")
-    )
-    const sent: Array<string> = []
-    const answering: HomeCall = (method, path, body) => {
-      sent.push(`${method} ${path.split("?")[0] ?? ""}`)
-      return send(method, path, body)
-    }
-    expect(await sendVoice(answering, AT_PAIRING)).toEqual({ kind: "synced" })
-    expect(sent).not.toContain("PUT /voice-notes/t1")
-    expect(fakes.home?.getSnapshot().refused).toEqual([])
-    // My data opening before home lists it lets nothing go.
-    deleting.resume()
-    await new Promise((resolve) => setTimeout(resolve, 0))
-    expect(owedDeletes()).toHaveLength(1)
-    expect(fakes.deleted).toEqual([])
-    listed = true
-    deleting.resume()
-    await vi.waitFor(() => expect(owedDeletes()).toEqual([]))
-    expect(fakes.home?.getSnapshot().waiting).toEqual([])
-    expect(await fakes.home?.keeping.audio("t1")).toBeNull()
-    expect(fakes.deleted).toEqual([["t1"]])
-    expect(await sendVoice(answering, AT_PAIRING)).toEqual({ kind: "synced" })
-    expect(sent).not.toContain("PUT /voice-notes/t1")
   })
 
   /**

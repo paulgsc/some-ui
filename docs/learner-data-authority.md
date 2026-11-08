@@ -1663,15 +1663,7 @@ reaches:
 - _Falsified by:_
   - a hunk to `deleting-runtime.ts` that calls `ports.deleteNotes` other
     than in `run`, starts `run` but after a `confirmed` the step accepted,
-    or retries on its own; that has `resume` send anything but its read of
-    what home deleted (`askReceipts`), or let go of a note that read does
-    not name; that sends before `ports.owed.owe` has kept the run's notes,
-    takes a note off `owed` other than on home's word for it, or lets go
-    outside the `settle` `deleteNotes` hands back (`delete-note.ts`, which
-    calls it inside the link's run); a hunk to `voice-copy.ts`'s
-    `sendVoice` that hands `exchangeVoice` a waiting note `owedDeletes`
-    names, or to `deleting-notes.ts` that drops a note but in
-    `deletesAnswered`;
+    or retries on its own;
   - a hunk to `deleting.ts` that lets `stepDeleting` reach `deleting` from
     any sheet but `asking`, or any `ended` sheet's notes but `retryable`'s;
     widens `retryable` to a final answer (`kept`, `notHeld`, `forgotten`);
@@ -1707,8 +1699,7 @@ reaches:
     `VARIABLE_METHOD_SENDS`, `DELETE_WIRING`).
 - _Scope:_ `apps/www/src/lib/my-data/deleting.ts`, `deleting-runtime.ts`,
   `call-deleting.ts`, `call-deleting-runtime.ts`, `index.ts`,
-  `apps/www/src/lib/home-link/delete-note.ts`, `deleting-notes.ts`,
-  `voice-copy.ts`'s `sendVoice`,
+  `apps/www/src/lib/home-link/delete-note.ts`,
   `apps/www/src/components/settings/device-my-data.tsx`,
   `device-my-data-delete.tsx` and `device-my-data-calls.tsx`. For a draft's delete: every module in
   `apps/www` and `packages` that deletes a recording on the phone.

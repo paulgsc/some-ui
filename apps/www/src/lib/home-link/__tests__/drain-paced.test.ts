@@ -396,7 +396,7 @@ describe("the practice drain under home's limit (AD3, LA15)", () => {
     )
     expect(tap.value?.kind).toBe("done")
     expect(tap.ms).toBeLessThanOrEqual(2_000)
-    // The tap's DELETE is the last request home has seen.
+    // No drain request between the tap and its own.
     expect(home.reached.at(-1)).toBe("DELETE /voice-notes/n1")
     await until(() => !run.getSnapshot().running)
     expect(run.getSnapshot().last?.kind).toBe("busy")
