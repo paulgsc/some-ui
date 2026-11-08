@@ -1,73 +1,27 @@
 /**
  * Feedback on an episode (SFEED6, #2745; FEED5, #2648): a note left at a
  * moment of one of a feed's episodes, with categories picked from the fixed
- * set (SFEED decisions 7 and 10, #2670). Where each category goes is code's,
- * never a choice made on screen (FEED decision 5, #2643):
- *
- * - what it said shapes the feed's next fill (`nextFill`);
- * - a broken slide is a defect (`defect`);
- * - the rest of how it looked or sounded changes the feed's template
- *   (`template`).
+ * set (SFEED decisions 7 and 10, #2670). The set, and where each category
+ * goes, are `@some-ui/video-render`'s `feedback.ts`, which the routine's
+ * filing reads too.
  */
 import { assertNever } from "@some-ui/core-utils"
+import type { Category } from "@some-ui/video-render"
+import { CATEGORIES } from "@some-ui/video-render"
 import { z } from "zod"
 
 import type { Appended } from "@/lib/bounded-list"
 import type { Feed } from "@/lib/feeds"
 import { FEEDS } from "@/lib/feeds"
 
-/** What it said (decision 7's first group). */
-export const SAID = [
-  "shallow",
-  "technical",
-  "missedIntuition",
-  "unsupported",
-  "tooLong",
-  "tooShort",
-] as const
-
-/** How it looked or sounded (decision 7's second group). */
-export const SHOWN = [
-  "textClipped",
-  "slideShakes",
-  "overlap",
-  "hardToRead",
-  "pacing",
-  "voice",
-  "musicLoud",
-  "subtitlesOff",
-] as const
-
-export const CATEGORIES = [...SAID, ...SHOWN] as const
-
-export type Category = (typeof CATEGORIES)[number]
-
-/** Where a note goes once it is filed, in the order a note lists them. */
-const DESTINATIONS = ["nextFill", "template", "defect"] as const
-
-export type Destination = (typeof DESTINATIONS)[number]
-
-/** A slide drawn wrong is broken: the template promised better (#2671). */
-const BROKEN: ReadonlySet<Category> = new Set<Category>([
-  "textClipped",
-  "slideShakes",
-  "overlap",
-])
-
-const SAID_SET: ReadonlySet<Category> = new Set<Category>(SAID)
-
-export function destinationOf(category: Category): Destination {
-  if (SAID_SET.has(category)) return "nextFill"
-  return BROKEN.has(category) ? "defect" : "template"
-}
-
-/** Every place a note's categories send it, each once, in `DESTINATIONS` order. */
-export function destinationsOf(
-  categories: ReadonlyArray<Category>
-): ReadonlyArray<Destination> {
-  const reached = new Set(categories.map(destinationOf))
-  return DESTINATIONS.filter((destination) => reached.has(destination))
-}
+export type { Category, Destination } from "@some-ui/video-render"
+export {
+  CATEGORIES,
+  destinationOf,
+  destinationsOf,
+  SAID,
+  SHOWN,
+} from "@some-ui/video-render"
 
 export const NoteSchema = z.object({
   id: z.string().min(1),

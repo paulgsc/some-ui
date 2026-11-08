@@ -622,8 +622,10 @@ Home keeps what the owner says in Studio about something to be done (the take
 and its transcript) and never files an issue itself; this run files each one
 as a **pending** issue, which waits until the owner starts a session for it
 (paulgsc/some-ui#2670, decisions 6 and 11; #2746). Today that is an answer to
-an ask, said on the ask's page. Which takes these are, and which were filed
-already, is `@some-ui/video-render`'s `pending.ts`, never this run's reading.
+an ask, said on the ask's page, and a note left on an episode, with the
+categories the owner picked and maybe a spoken note (#2745). Which these are,
+where a note goes, and which were filed already, is `@some-ui/video-render`'s
+`pending.ts`, never this run's reading.
 
 E1. If the mailbox is usable (2a) and the GitHub tools are, list the
 `transcript` folder's live items as 2a says, whether or not home's index
@@ -631,8 +633,10 @@ stands (2b): the index names only reflections' and prompts' notes. For each
 note, take only its newest transcript, `transcript-<note>-<n>.json` with the
 highest `<n>`, compared as a number. Fetch each one no reflection or drama
 prompt claims by id, once per run, as "Each transcript you use" says, and save
-their bodies as one JSON list in a scratch file outside the checkout. Then
-list the issues already filed with the label `from-studio`, open and closed,
+their bodies as one JSON list in a scratch file outside the checkout. List
+the `feedback` folder's live items the same way, fetch each
+`feedback-<note>.json` once, and save their bodies as one JSON list in a third
+scratch file. Then list the issues already filed with the label `from-studio`, open and closed,
 whether or not they still carry `pending`, in `paulgsc/some-ui` and
 `paulgsc/server` (`list_issues`, every page), and save them, with their
 bodies, as one JSON list in a second scratch file. If a repository's list is refused, file nothing in that
@@ -644,16 +648,20 @@ never filed; a daily run reaches every take well before then.
 E2. From the repo root, run
 
 ```sh
-pnpm --filter @some-ui/video-render render pending <transcripts file> <filed file>
+pnpm --filter @some-ui/video-render render pending <transcripts file> <filed file> <feedback file>
 ```
 
-It prints `items`, the takes left to file, oldest said first, and `passed`,
-each transcript that didn't read (by its place in the list) and why. Each item
-names its `kind`, the `repo` it concerns, the issue it is `about`, the take's
-`note` id and when it was said (`at`), what home `heard`, the `labels` to file
-it with, and the `line` its issue ends with. Never file a take the script
-didn't print, and never change its `line`: that line is how the next run knows
-it was filed.
+It prints `items`, what is left to file, oldest first, and `passed`, each
+transcript or note (`in: "feedback"`) that didn't read, by its place in its
+list, and why. Each item names its `kind`, the `repo` it concerns, its `note`
+id and when it was said or written (`at`), what home `heard` (`null` for a
+note with nothing said), the `labels` to file it with, and the `line` its
+issue ends with. An `ask` item names the issue it is `about`. A `feedback`
+item is one place a note goes, `goes`: `nextFill`, `template` or `defect`,
+with the note's `feed`, `episode`, its moment `atMs`, and the `categories`
+that send it there; a note that goes to two places is two items. Never file
+an item the script didn't print, and never change its `line`: that line is
+how the next run knows it was filed.
 
 E3. File one issue per item in the item's `repo`, at most four this run (a cap
 of its own, beside C4's), the oldest first; the rest wait for the next run,
@@ -668,6 +676,23 @@ What the issue says depends on its `kind`:
   Body: which option the owner chose, by its `says`, and what that unblocks
   (its `unblocks`); or that they chose none, and what they want instead. Then
   `Answers #<about>.`
+- **`feedback`, a note left on an episode.** Title:
+  `Feedback on <the feed: "the call" or "Playoff Delta"> <episode> at <m:ss of atMs>: <the categories, in a few words>`.
+  Body: the episode and the moment, the categories as the owner picked them,
+  and where the note goes, by `goes`:
+
+  - `nextFill`: what the feed's next fill should do differently, for the
+    session that next changes its guidance (`packages/video-render/CALL-ROUTINE.md`
+    for the call, `packages/ui/playoff-delta/NARRATION-ROUTINE.md` for
+    Playoff Delta);
+  - `template`: how the feed's template should look or sound different
+    (`packages/video-render/src/templates/`);
+  - `defect`: the slide drawn wrong at that moment, which the template
+    promised to draw right.
+
+  With a spoken note (`heard` not `null`), say what it adds in your own
+  words. Each item is its own issue: when the same note went to two places,
+  each issue links the other once both are filed.
 
 Every issue, of any kind:
 
@@ -676,8 +701,10 @@ Every issue, of any kind:
 - says plainly when what home heard is unclear or matches no option, and
   what is unclear, rather than guessing which was meant: the owner's session
   reads the take on home before acting;
-- is labelled with the item's `labels` and `kind:story` (an answer moves a
-  story; the repo's `CLAUDE.md`, "Two kinds of pull request"). `from-studio`
+- is labelled with the item's `labels` and its kind, from the repo's
+  `CLAUDE.md`, "Two kinds of pull request": `kind:defect` for a `feedback`
+  item whose `goes` is `defect` (a promise of the template broke), and
+  `kind:story` for every other (an answer or a note moves a story). `from-studio`
   is how E1 finds it again, so if it is refused, file nothing more in that
   repository this run, and name the issue just filed in the summary so the
   owner can label it, or the next run files its take again; any other label refused,

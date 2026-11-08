@@ -49,11 +49,13 @@
  * writes the sound kit's six cues (`cues.ts`, HYPER4) into the folder, home's
  * `${STORAGE}/brand/sounds`, refusing all of them if one's pin doesn't name it.
  *
- *   pnpm --filter @some-ui/video-render render pending <transcripts.json> <filed.json>
+ *   pnpm --filter @some-ui/video-render render pending <transcripts.json> <filed.json> [feedback.json]
  *
- * prints the Studio takes left to file as pending issues (`pending.ts`):
- * from the mailbox's transcripts (a list of their bodies) and the issues
- * already filed (a list of their bodies, or of issues each with its `body`).
+ * prints the Studio takes and the notes on episodes left to file as pending
+ * issues (`pending.ts`): from the mailbox's transcripts (a list of their
+ * bodies), the issues already filed (a list of their bodies, or of issues
+ * each with its `body`) and, when given, the mailbox's `feedback` folder (a
+ * list of its bodies).
  *
  * `pnpm --filter` runs this from the package; INIT_CWD is where it was typed.
  */
@@ -110,7 +112,7 @@ async function main(): Promise<void> {
       to: { type: "string" },
     },
   })
-  const [first, second, third] = positionals
+  const [first, second, third, fourth] = positionals
   if (first === "music-bed") {
     if (!values.out.endsWith(".wav"))
       fail(["usage: render music-bed --out <file>.wav"])
@@ -164,11 +166,16 @@ async function main(): Promise<void> {
   }
   if (first === "pending") {
     if (!second || !third)
-      fail(["usage: render pending <transcripts.json> <filed.json>"])
+      fail([
+        "usage: render pending <transcripts.json> <filed.json> [feedback.json]",
+      ])
     const transcripts = await readAs(z.array(z.unknown()), here(second))
     const filed = await readAs(FiledSchema, here(third))
+    const feedback = fourth
+      ? await readAs(z.array(z.unknown()), here(fourth))
+      : []
     process.stdout.write(
-      `${JSON.stringify(toFile(transcripts, filed), null, 1)}\n`
+      `${JSON.stringify(toFile(transcripts, filed, feedback), null, 1)}\n`
     )
     return
   }
