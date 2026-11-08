@@ -7,11 +7,14 @@
  * open `ask` issues ask, opening each one's page.
  */
 import { Route as IndexRoute } from "@/routes/_dashboard/_apk/journal/index"
-import { withQueryClient } from "@/test-support/query-client"
+import {
+  createTestQueryClient,
+  withQueryClient,
+} from "@/test-support/query-client"
 import { routeComponent } from "@/test-support/router-stubs"
 import { templateFormat } from "@some-ui/video-render"
 import type * as ReactRouterModule from "@tanstack/react-router"
-import { cleanup, render, screen, within } from "@testing-library/react"
+import { act, cleanup, render, screen, within } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import {
@@ -129,6 +132,21 @@ describe("Asks", () => {
       expect(link.getAttribute("to")).toBe("/journal/asks/$ask")
     expect(fetch).toHaveBeenCalledTimes(2)
     screen.getByText(STUDIO_INDEX_WORDS.asks.from.server)
+  })
+
+  it("keeps what was read when a refresh fails, and says so", async () => {
+    vi.spyOn(globalThis, "fetch")
+      .mockImplementationOnce(() =>
+        Promise.resolve(answer([issue(9, "Redeploy home?")]))
+      )
+      .mockImplementationOnce(() => Promise.resolve(answer([])))
+      .mockResolvedValue(new Response("rate limited", { status: 403 }))
+    const client = createTestQueryClient()
+    render(withQueryClient(<AsksList />, client))
+    await screen.findByText("Redeploy home?")
+    await act(() => client.refetchQueries())
+    await screen.findByText(STUDIO_INDEX_WORDS.asks.stale)
+    screen.getByText("Redeploy home?")
   })
 
   it("says so when they can't be read, with a way to try again", async () => {

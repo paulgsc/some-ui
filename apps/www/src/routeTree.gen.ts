@@ -31,6 +31,7 @@ import { Route as DashboardApkAphRouteImport } from './routes/_dashboard/_apk/ap
 import { Route as DashboardApkFoyerRouteImport } from './routes/_dashboard/_apk/foyer'
 import { Route as DashboardApkGameWeekRouteImport } from './routes/_dashboard/_apk/game-week'
 import { Route as DashboardApkJobsRouteImport } from './routes/_dashboard/_apk/jobs'
+import { Route as DashboardApkJournalRouteImport } from './routes/_dashboard/_apk/journal'
 import { Route as DashboardApkRustRoundsRouteImport } from './routes/_dashboard/_apk/rust-rounds'
 import { Route as DashboardApkSoundbitesRouteImport } from './routes/_dashboard/_apk/soundbites'
 import { Route as DashboardLanHomeSwitchesRouteImport } from './routes/_dashboard/_lan/home-switches'
@@ -185,6 +186,11 @@ const DashboardApkJobsRoute = DashboardApkJobsRouteImport.update({
   path: '/jobs',
   getParentRoute: () => DashboardApkRoute,
 } as any)
+const DashboardApkJournalRoute = DashboardApkJournalRouteImport.update({
+  id: '/journal',
+  path: '/journal',
+  getParentRoute: () => DashboardApkRoute,
+} as any)
 const DashboardApkRustRoundsRoute = DashboardApkRustRoundsRouteImport.update({
   id: '/rust-rounds',
   path: '/rust-rounds',
@@ -287,38 +293,38 @@ const DashboardApkJobsScoutRoute = DashboardApkJobsScoutRouteImport.update({
 } as any)
 const DashboardApkJournalIndexRoute =
   DashboardApkJournalIndexRouteImport.update({
-    id: '/journal/',
-    path: '/journal/',
-    getParentRoute: () => DashboardApkRoute,
+    id: '/',
+    path: '/',
+    getParentRoute: () => DashboardApkJournalRoute,
   } as any)
 const DashboardApkJournalClipsRoute =
   DashboardApkJournalClipsRouteImport.update({
-    id: '/journal/clips',
-    path: '/journal/clips',
-    getParentRoute: () => DashboardApkRoute,
+    id: '/clips',
+    path: '/clips',
+    getParentRoute: () => DashboardApkJournalRoute,
   } as any)
 const DashboardApkJournalFeedbackRoute =
   DashboardApkJournalFeedbackRouteImport.update({
-    id: '/journal/feedback',
-    path: '/journal/feedback',
-    getParentRoute: () => DashboardApkRoute,
+    id: '/feedback',
+    path: '/feedback',
+    getParentRoute: () => DashboardApkJournalRoute,
   } as any)
 const DashboardApkJournalIdeaRoute = DashboardApkJournalIdeaRouteImport.update({
-  id: '/journal/idea',
-  path: '/journal/idea',
-  getParentRoute: () => DashboardApkRoute,
+  id: '/idea',
+  path: '/idea',
+  getParentRoute: () => DashboardApkJournalRoute,
 } as any)
 const DashboardApkJournalIdeasRoute =
   DashboardApkJournalIdeasRouteImport.update({
-    id: '/journal/ideas',
-    path: '/journal/ideas',
-    getParentRoute: () => DashboardApkRoute,
+    id: '/ideas',
+    path: '/ideas',
+    getParentRoute: () => DashboardApkJournalRoute,
   } as any)
 const DashboardApkJournalIntuitionsRoute =
   DashboardApkJournalIntuitionsRouteImport.update({
-    id: '/journal/intuitions',
-    path: '/journal/intuitions',
-    getParentRoute: () => DashboardApkRoute,
+    id: '/intuitions',
+    path: '/intuitions',
+    getParentRoute: () => DashboardApkJournalRoute,
   } as any)
 const DashboardApkPracticeIndexRoute =
   DashboardApkPracticeIndexRouteImport.update({
@@ -346,63 +352,63 @@ const DashboardApkSettingsStatusRoute =
   } as any)
 const DashboardApkJournalAsksIndexRoute =
   DashboardApkJournalAsksIndexRouteImport.update({
-    id: '/journal/asks/',
-    path: '/journal/asks/',
-    getParentRoute: () => DashboardApkRoute,
+    id: '/asks/',
+    path: '/asks/',
+    getParentRoute: () => DashboardApkJournalRoute,
   } as any)
 const DashboardApkJournalAsksAskRoute =
   DashboardApkJournalAsksAskRouteImport.update({
-    id: '/journal/asks/$ask',
-    path: '/journal/asks/$ask',
-    getParentRoute: () => DashboardApkRoute,
+    id: '/asks/$ask',
+    path: '/asks/$ask',
+    getParentRoute: () => DashboardApkJournalRoute,
   } as any)
 const DashboardApkJournalEpisodesIndexRoute =
   DashboardApkJournalEpisodesIndexRouteImport.update({
-    id: '/journal/episodes/',
-    path: '/journal/episodes/',
-    getParentRoute: () => DashboardApkRoute,
+    id: '/episodes/',
+    path: '/episodes/',
+    getParentRoute: () => DashboardApkJournalRoute,
   } as any)
 const DashboardApkJournalEpisodesMakingRoute =
   DashboardApkJournalEpisodesMakingRouteImport.update({
-    id: '/journal/episodes/making',
-    path: '/journal/episodes/making',
-    getParentRoute: () => DashboardApkRoute,
+    id: '/episodes/making',
+    path: '/episodes/making',
+    getParentRoute: () => DashboardApkJournalRoute,
   } as any)
 const DashboardApkJournalFeedsIndexRoute =
   DashboardApkJournalFeedsIndexRouteImport.update({
-    id: '/journal/feeds/',
-    path: '/journal/feeds/',
-    getParentRoute: () => DashboardApkRoute,
+    id: '/feeds/',
+    path: '/feeds/',
+    getParentRoute: () => DashboardApkJournalRoute,
   } as any)
 const DashboardApkJournalFeedsFeedRoute =
   DashboardApkJournalFeedsFeedRouteImport.update({
-    id: '/journal/feeds/$feed',
-    path: '/journal/feeds/$feed',
-    getParentRoute: () => DashboardApkRoute,
+    id: '/feeds/$feed',
+    path: '/feeds/$feed',
+    getParentRoute: () => DashboardApkJournalRoute,
   } as any)
 const DashboardApkJournalTakesIndexRoute =
   DashboardApkJournalTakesIndexRouteImport.update({
-    id: '/journal/takes/',
-    path: '/journal/takes/',
-    getParentRoute: () => DashboardApkRoute,
+    id: '/takes/',
+    path: '/takes/',
+    getParentRoute: () => DashboardApkJournalRoute,
   } as any)
 const DashboardApkJournalTakesKeptRoute =
   DashboardApkJournalTakesKeptRouteImport.update({
-    id: '/journal/takes/kept',
-    path: '/journal/takes/kept',
-    getParentRoute: () => DashboardApkRoute,
+    id: '/takes/kept',
+    path: '/takes/kept',
+    getParentRoute: () => DashboardApkJournalRoute,
   } as any)
 const DashboardApkJournalTemplatesIndexRoute =
   DashboardApkJournalTemplatesIndexRouteImport.update({
-    id: '/journal/templates/',
-    path: '/journal/templates/',
-    getParentRoute: () => DashboardApkRoute,
+    id: '/templates/',
+    path: '/templates/',
+    getParentRoute: () => DashboardApkJournalRoute,
   } as any)
 const DashboardApkJournalTemplatesTemplateRoute =
   DashboardApkJournalTemplatesTemplateRouteImport.update({
-    id: '/journal/templates/$template',
-    path: '/journal/templates/$template',
-    getParentRoute: () => DashboardApkRoute,
+    id: '/templates/$template',
+    path: '/templates/$template',
+    getParentRoute: () => DashboardApkJournalRoute,
   } as any)
 const DashboardApkSettingsDataIndexRoute =
   DashboardApkSettingsDataIndexRouteImport.update({
@@ -436,9 +442,9 @@ const DashboardApkJobsPickDayPickIdRoute =
   } as any)
 const DashboardApkJournalEpisodesFeedKeyRoute =
   DashboardApkJournalEpisodesFeedKeyRouteImport.update({
-    id: '/journal/episodes/$feed/$key',
-    path: '/journal/episodes/$feed/$key',
-    getParentRoute: () => DashboardApkRoute,
+    id: '/episodes/$feed/$key',
+    path: '/episodes/$feed/$key',
+    getParentRoute: () => DashboardApkJournalRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -461,6 +467,7 @@ export interface FileRoutesByFullPath {
   '/foyer': typeof DashboardApkFoyerRoute
   '/game-week': typeof DashboardApkGameWeekRoute
   '/jobs': typeof DashboardApkJobsRouteWithChildren
+  '/journal': typeof DashboardApkJournalRouteWithChildren
   '/rust-rounds': typeof DashboardApkRustRoundsRoute
   '/soundbites': typeof DashboardApkSoundbitesRoute
   '/home-switches': typeof DashboardLanHomeSwitchesRoute
@@ -595,6 +602,7 @@ export interface FileRoutesById {
   '/_dashboard/_apk/foyer': typeof DashboardApkFoyerRoute
   '/_dashboard/_apk/game-week': typeof DashboardApkGameWeekRoute
   '/_dashboard/_apk/jobs': typeof DashboardApkJobsRouteWithChildren
+  '/_dashboard/_apk/journal': typeof DashboardApkJournalRouteWithChildren
   '/_dashboard/_apk/rust-rounds': typeof DashboardApkRustRoundsRoute
   '/_dashboard/_apk/soundbites': typeof DashboardApkSoundbitesRoute
   '/_dashboard/_lan/home-switches': typeof DashboardLanHomeSwitchesRoute
@@ -663,6 +671,7 @@ export interface FileRouteTypes {
     | '/foyer'
     | '/game-week'
     | '/jobs'
+    | '/journal'
     | '/rust-rounds'
     | '/soundbites'
     | '/home-switches'
@@ -796,6 +805,7 @@ export interface FileRouteTypes {
     | '/_dashboard/_apk/foyer'
     | '/_dashboard/_apk/game-week'
     | '/_dashboard/_apk/jobs'
+    | '/_dashboard/_apk/journal'
     | '/_dashboard/_apk/rust-rounds'
     | '/_dashboard/_apk/soundbites'
     | '/_dashboard/_lan/home-switches'
@@ -1013,6 +1023,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardApkJobsRouteImport
       parentRoute: typeof DashboardApkRoute
     }
+    '/_dashboard/_apk/journal': {
+      id: '/_dashboard/_apk/journal'
+      path: '/journal'
+      fullPath: '/journal'
+      preLoaderRoute: typeof DashboardApkJournalRouteImport
+      parentRoute: typeof DashboardApkRoute
+    }
     '/_dashboard/_apk/rust-rounds': {
       id: '/_dashboard/_apk/rust-rounds'
       path: '/rust-rounds'
@@ -1148,45 +1165,45 @@ declare module '@tanstack/react-router' {
     }
     '/_dashboard/_apk/journal/': {
       id: '/_dashboard/_apk/journal/'
-      path: '/journal'
+      path: '/'
       fullPath: '/journal/'
       preLoaderRoute: typeof DashboardApkJournalIndexRouteImport
-      parentRoute: typeof DashboardApkRoute
+      parentRoute: typeof DashboardApkJournalRoute
     }
     '/_dashboard/_apk/journal/clips': {
       id: '/_dashboard/_apk/journal/clips'
-      path: '/journal/clips'
+      path: '/clips'
       fullPath: '/journal/clips'
       preLoaderRoute: typeof DashboardApkJournalClipsRouteImport
-      parentRoute: typeof DashboardApkRoute
+      parentRoute: typeof DashboardApkJournalRoute
     }
     '/_dashboard/_apk/journal/feedback': {
       id: '/_dashboard/_apk/journal/feedback'
-      path: '/journal/feedback'
+      path: '/feedback'
       fullPath: '/journal/feedback'
       preLoaderRoute: typeof DashboardApkJournalFeedbackRouteImport
-      parentRoute: typeof DashboardApkRoute
+      parentRoute: typeof DashboardApkJournalRoute
     }
     '/_dashboard/_apk/journal/idea': {
       id: '/_dashboard/_apk/journal/idea'
-      path: '/journal/idea'
+      path: '/idea'
       fullPath: '/journal/idea'
       preLoaderRoute: typeof DashboardApkJournalIdeaRouteImport
-      parentRoute: typeof DashboardApkRoute
+      parentRoute: typeof DashboardApkJournalRoute
     }
     '/_dashboard/_apk/journal/ideas': {
       id: '/_dashboard/_apk/journal/ideas'
-      path: '/journal/ideas'
+      path: '/ideas'
       fullPath: '/journal/ideas'
       preLoaderRoute: typeof DashboardApkJournalIdeasRouteImport
-      parentRoute: typeof DashboardApkRoute
+      parentRoute: typeof DashboardApkJournalRoute
     }
     '/_dashboard/_apk/journal/intuitions': {
       id: '/_dashboard/_apk/journal/intuitions'
-      path: '/journal/intuitions'
+      path: '/intuitions'
       fullPath: '/journal/intuitions'
       preLoaderRoute: typeof DashboardApkJournalIntuitionsRouteImport
-      parentRoute: typeof DashboardApkRoute
+      parentRoute: typeof DashboardApkJournalRoute
     }
     '/_dashboard/_apk/practice/': {
       id: '/_dashboard/_apk/practice/'
@@ -1218,73 +1235,73 @@ declare module '@tanstack/react-router' {
     }
     '/_dashboard/_apk/journal/asks/': {
       id: '/_dashboard/_apk/journal/asks/'
-      path: '/journal/asks'
+      path: '/asks'
       fullPath: '/journal/asks/'
       preLoaderRoute: typeof DashboardApkJournalAsksIndexRouteImport
-      parentRoute: typeof DashboardApkRoute
+      parentRoute: typeof DashboardApkJournalRoute
     }
     '/_dashboard/_apk/journal/asks/$ask': {
       id: '/_dashboard/_apk/journal/asks/$ask'
-      path: '/journal/asks/$ask'
+      path: '/asks/$ask'
       fullPath: '/journal/asks/$ask'
       preLoaderRoute: typeof DashboardApkJournalAsksAskRouteImport
-      parentRoute: typeof DashboardApkRoute
+      parentRoute: typeof DashboardApkJournalRoute
     }
     '/_dashboard/_apk/journal/episodes/': {
       id: '/_dashboard/_apk/journal/episodes/'
-      path: '/journal/episodes'
+      path: '/episodes'
       fullPath: '/journal/episodes/'
       preLoaderRoute: typeof DashboardApkJournalEpisodesIndexRouteImport
-      parentRoute: typeof DashboardApkRoute
+      parentRoute: typeof DashboardApkJournalRoute
     }
     '/_dashboard/_apk/journal/episodes/making': {
       id: '/_dashboard/_apk/journal/episodes/making'
-      path: '/journal/episodes/making'
+      path: '/episodes/making'
       fullPath: '/journal/episodes/making'
       preLoaderRoute: typeof DashboardApkJournalEpisodesMakingRouteImport
-      parentRoute: typeof DashboardApkRoute
+      parentRoute: typeof DashboardApkJournalRoute
     }
     '/_dashboard/_apk/journal/feeds/': {
       id: '/_dashboard/_apk/journal/feeds/'
-      path: '/journal/feeds'
+      path: '/feeds'
       fullPath: '/journal/feeds/'
       preLoaderRoute: typeof DashboardApkJournalFeedsIndexRouteImport
-      parentRoute: typeof DashboardApkRoute
+      parentRoute: typeof DashboardApkJournalRoute
     }
     '/_dashboard/_apk/journal/feeds/$feed': {
       id: '/_dashboard/_apk/journal/feeds/$feed'
-      path: '/journal/feeds/$feed'
+      path: '/feeds/$feed'
       fullPath: '/journal/feeds/$feed'
       preLoaderRoute: typeof DashboardApkJournalFeedsFeedRouteImport
-      parentRoute: typeof DashboardApkRoute
+      parentRoute: typeof DashboardApkJournalRoute
     }
     '/_dashboard/_apk/journal/takes/': {
       id: '/_dashboard/_apk/journal/takes/'
-      path: '/journal/takes'
+      path: '/takes'
       fullPath: '/journal/takes/'
       preLoaderRoute: typeof DashboardApkJournalTakesIndexRouteImport
-      parentRoute: typeof DashboardApkRoute
+      parentRoute: typeof DashboardApkJournalRoute
     }
     '/_dashboard/_apk/journal/takes/kept': {
       id: '/_dashboard/_apk/journal/takes/kept'
-      path: '/journal/takes/kept'
+      path: '/takes/kept'
       fullPath: '/journal/takes/kept'
       preLoaderRoute: typeof DashboardApkJournalTakesKeptRouteImport
-      parentRoute: typeof DashboardApkRoute
+      parentRoute: typeof DashboardApkJournalRoute
     }
     '/_dashboard/_apk/journal/templates/': {
       id: '/_dashboard/_apk/journal/templates/'
-      path: '/journal/templates'
+      path: '/templates'
       fullPath: '/journal/templates/'
       preLoaderRoute: typeof DashboardApkJournalTemplatesIndexRouteImport
-      parentRoute: typeof DashboardApkRoute
+      parentRoute: typeof DashboardApkJournalRoute
     }
     '/_dashboard/_apk/journal/templates/$template': {
       id: '/_dashboard/_apk/journal/templates/$template'
-      path: '/journal/templates/$template'
+      path: '/templates/$template'
       fullPath: '/journal/templates/$template'
       preLoaderRoute: typeof DashboardApkJournalTemplatesTemplateRouteImport
-      parentRoute: typeof DashboardApkRoute
+      parentRoute: typeof DashboardApkJournalRoute
     }
     '/_dashboard/_apk/settings/data/': {
       id: '/_dashboard/_apk/settings/data/'
@@ -1323,10 +1340,10 @@ declare module '@tanstack/react-router' {
     }
     '/_dashboard/_apk/journal/episodes/$feed/$key': {
       id: '/_dashboard/_apk/journal/episodes/$feed/$key'
-      path: '/journal/episodes/$feed/$key'
+      path: '/episodes/$feed/$key'
       fullPath: '/journal/episodes/$feed/$key'
       preLoaderRoute: typeof DashboardApkJournalEpisodesFeedKeyRouteImport
-      parentRoute: typeof DashboardApkRoute
+      parentRoute: typeof DashboardApkJournalRoute
     }
   }
 }
@@ -1366,57 +1383,33 @@ const DashboardApkJobsRouteChildren: DashboardApkJobsRouteChildren = {
 const DashboardApkJobsRouteWithChildren =
   DashboardApkJobsRoute._addFileChildren(DashboardApkJobsRouteChildren)
 
-interface DashboardApkRouteChildren {
-  DashboardApkAphRoute: typeof DashboardApkAphRouteWithChildren
-  DashboardApkFoyerRoute: typeof DashboardApkFoyerRoute
-  DashboardApkGameWeekRoute: typeof DashboardApkGameWeekRoute
-  DashboardApkJobsRoute: typeof DashboardApkJobsRouteWithChildren
-  DashboardApkRustRoundsRoute: typeof DashboardApkRustRoundsRoute
-  DashboardApkSoundbitesRoute: typeof DashboardApkSoundbitesRoute
+interface DashboardApkJournalRouteChildren {
   DashboardApkJournalClipsRoute: typeof DashboardApkJournalClipsRoute
   DashboardApkJournalFeedbackRoute: typeof DashboardApkJournalFeedbackRoute
   DashboardApkJournalIdeaRoute: typeof DashboardApkJournalIdeaRoute
   DashboardApkJournalIdeasRoute: typeof DashboardApkJournalIdeasRoute
   DashboardApkJournalIntuitionsRoute: typeof DashboardApkJournalIntuitionsRoute
-  DashboardApkSettingsHomeRoute: typeof DashboardApkSettingsHomeRoute
-  DashboardApkSettingsPhoneRoute: typeof DashboardApkSettingsPhoneRoute
-  DashboardApkSettingsStatusRoute: typeof DashboardApkSettingsStatusRoute
   DashboardApkJournalIndexRoute: typeof DashboardApkJournalIndexRoute
-  DashboardApkPracticeIndexRoute: typeof DashboardApkPracticeIndexRoute
   DashboardApkJournalAsksAskRoute: typeof DashboardApkJournalAsksAskRoute
   DashboardApkJournalEpisodesMakingRoute: typeof DashboardApkJournalEpisodesMakingRoute
   DashboardApkJournalFeedsFeedRoute: typeof DashboardApkJournalFeedsFeedRoute
   DashboardApkJournalTakesKeptRoute: typeof DashboardApkJournalTakesKeptRoute
   DashboardApkJournalTemplatesTemplateRoute: typeof DashboardApkJournalTemplatesTemplateRoute
-  DashboardApkSettingsDataKindRoute: typeof DashboardApkSettingsDataKindRoute
-  DashboardApkSettingsDataCallsRoute: typeof DashboardApkSettingsDataCallsRoute
-  DashboardApkSettingsDataDeletedRoute: typeof DashboardApkSettingsDataDeletedRoute
   DashboardApkJournalAsksIndexRoute: typeof DashboardApkJournalAsksIndexRoute
   DashboardApkJournalEpisodesIndexRoute: typeof DashboardApkJournalEpisodesIndexRoute
   DashboardApkJournalFeedsIndexRoute: typeof DashboardApkJournalFeedsIndexRoute
   DashboardApkJournalTakesIndexRoute: typeof DashboardApkJournalTakesIndexRoute
   DashboardApkJournalTemplatesIndexRoute: typeof DashboardApkJournalTemplatesIndexRoute
-  DashboardApkSettingsDataIndexRoute: typeof DashboardApkSettingsDataIndexRoute
   DashboardApkJournalEpisodesFeedKeyRoute: typeof DashboardApkJournalEpisodesFeedKeyRoute
 }
 
-const DashboardApkRouteChildren: DashboardApkRouteChildren = {
-  DashboardApkAphRoute: DashboardApkAphRouteWithChildren,
-  DashboardApkFoyerRoute: DashboardApkFoyerRoute,
-  DashboardApkGameWeekRoute: DashboardApkGameWeekRoute,
-  DashboardApkJobsRoute: DashboardApkJobsRouteWithChildren,
-  DashboardApkRustRoundsRoute: DashboardApkRustRoundsRoute,
-  DashboardApkSoundbitesRoute: DashboardApkSoundbitesRoute,
+const DashboardApkJournalRouteChildren: DashboardApkJournalRouteChildren = {
   DashboardApkJournalClipsRoute: DashboardApkJournalClipsRoute,
   DashboardApkJournalFeedbackRoute: DashboardApkJournalFeedbackRoute,
   DashboardApkJournalIdeaRoute: DashboardApkJournalIdeaRoute,
   DashboardApkJournalIdeasRoute: DashboardApkJournalIdeasRoute,
   DashboardApkJournalIntuitionsRoute: DashboardApkJournalIntuitionsRoute,
-  DashboardApkSettingsHomeRoute: DashboardApkSettingsHomeRoute,
-  DashboardApkSettingsPhoneRoute: DashboardApkSettingsPhoneRoute,
-  DashboardApkSettingsStatusRoute: DashboardApkSettingsStatusRoute,
   DashboardApkJournalIndexRoute: DashboardApkJournalIndexRoute,
-  DashboardApkPracticeIndexRoute: DashboardApkPracticeIndexRoute,
   DashboardApkJournalAsksAskRoute: DashboardApkJournalAsksAskRoute,
   DashboardApkJournalEpisodesMakingRoute:
     DashboardApkJournalEpisodesMakingRoute,
@@ -1424,18 +1417,53 @@ const DashboardApkRouteChildren: DashboardApkRouteChildren = {
   DashboardApkJournalTakesKeptRoute: DashboardApkJournalTakesKeptRoute,
   DashboardApkJournalTemplatesTemplateRoute:
     DashboardApkJournalTemplatesTemplateRoute,
-  DashboardApkSettingsDataKindRoute: DashboardApkSettingsDataKindRoute,
-  DashboardApkSettingsDataCallsRoute: DashboardApkSettingsDataCallsRoute,
-  DashboardApkSettingsDataDeletedRoute: DashboardApkSettingsDataDeletedRoute,
   DashboardApkJournalAsksIndexRoute: DashboardApkJournalAsksIndexRoute,
   DashboardApkJournalEpisodesIndexRoute: DashboardApkJournalEpisodesIndexRoute,
   DashboardApkJournalFeedsIndexRoute: DashboardApkJournalFeedsIndexRoute,
   DashboardApkJournalTakesIndexRoute: DashboardApkJournalTakesIndexRoute,
   DashboardApkJournalTemplatesIndexRoute:
     DashboardApkJournalTemplatesIndexRoute,
-  DashboardApkSettingsDataIndexRoute: DashboardApkSettingsDataIndexRoute,
   DashboardApkJournalEpisodesFeedKeyRoute:
     DashboardApkJournalEpisodesFeedKeyRoute,
+}
+
+const DashboardApkJournalRouteWithChildren =
+  DashboardApkJournalRoute._addFileChildren(DashboardApkJournalRouteChildren)
+
+interface DashboardApkRouteChildren {
+  DashboardApkAphRoute: typeof DashboardApkAphRouteWithChildren
+  DashboardApkFoyerRoute: typeof DashboardApkFoyerRoute
+  DashboardApkGameWeekRoute: typeof DashboardApkGameWeekRoute
+  DashboardApkJobsRoute: typeof DashboardApkJobsRouteWithChildren
+  DashboardApkJournalRoute: typeof DashboardApkJournalRouteWithChildren
+  DashboardApkRustRoundsRoute: typeof DashboardApkRustRoundsRoute
+  DashboardApkSoundbitesRoute: typeof DashboardApkSoundbitesRoute
+  DashboardApkSettingsHomeRoute: typeof DashboardApkSettingsHomeRoute
+  DashboardApkSettingsPhoneRoute: typeof DashboardApkSettingsPhoneRoute
+  DashboardApkSettingsStatusRoute: typeof DashboardApkSettingsStatusRoute
+  DashboardApkPracticeIndexRoute: typeof DashboardApkPracticeIndexRoute
+  DashboardApkSettingsDataKindRoute: typeof DashboardApkSettingsDataKindRoute
+  DashboardApkSettingsDataCallsRoute: typeof DashboardApkSettingsDataCallsRoute
+  DashboardApkSettingsDataDeletedRoute: typeof DashboardApkSettingsDataDeletedRoute
+  DashboardApkSettingsDataIndexRoute: typeof DashboardApkSettingsDataIndexRoute
+}
+
+const DashboardApkRouteChildren: DashboardApkRouteChildren = {
+  DashboardApkAphRoute: DashboardApkAphRouteWithChildren,
+  DashboardApkFoyerRoute: DashboardApkFoyerRoute,
+  DashboardApkGameWeekRoute: DashboardApkGameWeekRoute,
+  DashboardApkJobsRoute: DashboardApkJobsRouteWithChildren,
+  DashboardApkJournalRoute: DashboardApkJournalRouteWithChildren,
+  DashboardApkRustRoundsRoute: DashboardApkRustRoundsRoute,
+  DashboardApkSoundbitesRoute: DashboardApkSoundbitesRoute,
+  DashboardApkSettingsHomeRoute: DashboardApkSettingsHomeRoute,
+  DashboardApkSettingsPhoneRoute: DashboardApkSettingsPhoneRoute,
+  DashboardApkSettingsStatusRoute: DashboardApkSettingsStatusRoute,
+  DashboardApkPracticeIndexRoute: DashboardApkPracticeIndexRoute,
+  DashboardApkSettingsDataKindRoute: DashboardApkSettingsDataKindRoute,
+  DashboardApkSettingsDataCallsRoute: DashboardApkSettingsDataCallsRoute,
+  DashboardApkSettingsDataDeletedRoute: DashboardApkSettingsDataDeletedRoute,
+  DashboardApkSettingsDataIndexRoute: DashboardApkSettingsDataIndexRoute,
 }
 
 const DashboardApkRouteWithChildren = DashboardApkRoute._addFileChildren(

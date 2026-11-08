@@ -95,6 +95,7 @@ export const STUDIO_INDEX_WORDS = {
       "Each is a decision only you can make. Answering by voice comes to Studio later. For now, answer one on its page.",
     reading: "Reading what waits on you…",
     away: "The asks couldn't be read. Try again in a moment.",
+    stale: "The asks couldn't be read again, so this is what was read before.",
     none: "Nothing waits on you.",
     from: { "some-ui": "About the apps", server: "About home" },
     heading: "An ask",

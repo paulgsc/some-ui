@@ -7,7 +7,7 @@
  * The read is the query's (`studioAsksQuery`); this only draws its outcome.
  */
 import type { JSX, ReactNode } from "react"
-import { Button } from "@some-ui/shared"
+import { Button, Notice } from "@some-ui/shared"
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 
@@ -39,7 +39,24 @@ const Read = ({
         </Button>
       </div>
     ),
-    ready: (asks) => <>{children(asks)}</>,
+    // A refresh that failed keeps what was read before, and says so.
+    ready: (asks, refreshError) => (
+      <>
+        {refreshError !== undefined && (
+          <Notice
+            tone="warning"
+            dismissible
+            action={{
+              label: STUDIO_INDEX_WORDS.tryAgain,
+              onClick: refreshError.retry,
+            }}
+          >
+            {WORDS.stale}
+          </Notice>
+        )}
+        {children(asks)}
+      </>
+    ),
   })
 
 /** The list: each ask a link to its page, A to Z. */
