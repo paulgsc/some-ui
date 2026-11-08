@@ -99,13 +99,15 @@ export function videosRefresher(feed: Feed): Refresher {
 
 /**
  * An episode's chapters (SFEED4, #2763), read once; home not answering reads
- * as none to show, since the page says where home is already. Never rejects.
+ * as none to show, since the page says where home is already. `wanted` stops
+ * the asking once the page has gone. Never rejects.
  */
 export async function episodeChapters(
   feed: Feed,
-  key: string
+  key: string,
+  wanted: () => boolean
 ): Promise<ChaptersRead> {
-  const asked = await askWhileBusy(() => askDescription(feed, key))
+  const asked = await askWhileBusy(() => askDescription(feed, key), wanted)
   return asked.kind === "answered"
     ? readChapters(asked.answer)
     : { kind: "none" }

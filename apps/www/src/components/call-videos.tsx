@@ -3,8 +3,9 @@
  * each feed (`FEEDS`), newest first, each on its own page under Studio's
  * Episodes (SFEED1, `EpisodeScreen`). On it, Watch brings the video to the
  * phone and plays it, Share to YouTube hands it to the share sheet, and its
- * YouTube link is saved with the episode; once home's copy is let go (My
- * data), the link is how it is watched. Reads `lib/call-videos`' snapshot of
+ * YouTube link is saved with the episode, beside its chapters to copy into
+ * the upload's description (SFEED4); once home's copy is let go (My data),
+ * the link is how it is watched. Reads `lib/call-videos`' snapshot of
  * the feed (`useFeedVideos`) and says what was pressed; every word is its
  * `VIDEOS_WORDS` and `FEED_WORDS`. Phone build only.
  */
@@ -192,11 +193,13 @@ const Chapters = ({
   feed: Feed
   episodeKey: string
 }): JSX.Element | null => {
-  // Read when the page opens, and kept for a minute.
+  // Read each time the page opens (the app's default is not to), so chapters
+  // home made since, or an answer home couldn't give before, show.
   const { data } = useQuery({
     queryKey: ["feeds", feed, "chapters", episodeKey],
-    queryFn: () => episodeChapters(feed, episodeKey),
-    staleTime: 60_000,
+    queryFn: ({ signal }) =>
+      episodeChapters(feed, episodeKey, () => !signal.aborted),
+    refetchOnMount: "always",
     retry: false,
   })
   if (data?.kind !== "lines") return null
