@@ -54,8 +54,9 @@ They need `ffmpeg` on `PATH` and a Chromium: Playwright's pinned one by default,
 
 Measured on home's image and limits (Playwright 1.62.1-noble, Ubuntu noble's ffmpeg,
 `--memory 4g --cpus 2 --network none`, uid 10000, read-only root), 2026-11-08: the sample
-(2 s, 60 frames) took 9.5 s a run, the container peaked at 528 MB, and both runs and the
-sandbox's own matched (`ecfbf33c…`).
+(2 s, 60 frames) took 9.4 s a run, the same bytes three times (`a9c7b986…`), and the
+container peaked at 576 MB. Bytes match per machine, not across machines: another
+Chromium or CPU draws its own.
 
 ## Writing a composition
 

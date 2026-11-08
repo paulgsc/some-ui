@@ -1,6 +1,6 @@
 /** `motion render | prove | video`: the README says what each does. */
 
-import { mkdtemp, rm } from "node:fs/promises"
+import { mkdtemp, readFile, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -22,7 +22,7 @@ import { renderComposition } from "./render"
 
 const USAGE = [
   "usage: motion render <composition> --out <clip.mkv> [--variables <file>]",
-  "       motion prove <composition> [--variables <file>]",
+  "       motion prove <composition> [--variables <file>] [--runs 2]",
   "       motion video <video folder> [--series <folder>] [--prove]",
 ].join("\n")
 
@@ -44,6 +44,7 @@ const { positionals, values } = parseArgs({
     work: { type: "string" },
     chrome: { type: "string" },
     prove: { type: "boolean", default: false },
+    runs: { type: "string", default: "2" },
   },
 })
 
@@ -123,9 +124,10 @@ async function sameBytes(
   what: string,
   times: number,
   dir: string,
-  make: (run: number) => Promise<string>
+  make: (run: number) => Promise<string>,
+  differ?: (first: string, other: string) => Promise<string>
 ): Promise<void> {
-  const sums: Array<string> = []
+  const made: Array<{ file: string; sha: string }> = []
   for (let run = 0; run < times; run++) {
     const started = performance.now()
     const file = await make(run)
@@ -133,21 +135,57 @@ async function sameBytes(
     if (sha === null) throw new Refused(`${file} could not be read`)
     const seconds = (performance.now() - started) / 1000
     say(`${what} run ${String(run + 1)}: ${sha} in ${seconds.toFixed(1)} s`)
-    sums.push(sha)
+    made.push({ file, sha })
   }
-  if (sums.some((sha) => sha !== sums[0])) {
-    throw new Refused(`${what} is not the same bytes twice`)
+  const [first] = made
+  const other = made.find((m) => m.sha !== first?.sha)
+  if (first && other) {
+    const where = differ ? `: ${await differ(first.file, other.file)}` : ""
+    throw new Refused(`${what} is not the same bytes every run${where}`)
   }
-  if (times > 1) say(`${what}: the same bytes twice`)
+  if (times > 1) say(`${what}: the same bytes ${String(times)} times`)
+}
+
+/** Which frames of two clips differ, by each decoded frame's MD5. */
+async function framesDiffering(
+  dir: string,
+  a: string,
+  b: string
+): Promise<string> {
+  const sums = async (clip: string): Promise<ReadonlyArray<string>> => {
+    const out = `${clip}.framemd5`
+    await nodePorts(dir).ffmpeg({
+      args: ["-v", "error", "-y", "-i", clip, "-f", "framemd5", out],
+    })
+    return (await readFile(out, "utf8"))
+      .split("\n")
+      .filter((l) => l && !l.startsWith("#"))
+      .map((l) => l.split(",").at(-1)?.trim() ?? "")
+  }
+  const [x, y] = [await sums(a), await sums(b)]
+  const frames = x.flatMap((sum, i) => (sum === y[i] ? [] : [i]))
+  return frames.length === 0
+    ? `the same frames, ${String(x.length)} and ${String(y.length)} of them`
+    : `frames ${frames.slice(0, 12).join(", ")}${frames.length > 12 ? "…" : ""} of ${String(x.length)} differ`
 }
 
 async function prove(composition: string): Promise<void> {
+  const runs = Number(values.runs)
+  if (!Number.isInteger(runs) || runs < 2) {
+    throw new Refused(`--runs ${String(values.runs)} is not 2 or more`)
+  }
   await withWork((base) =>
-    sameBytes(composition, 2, base, async (run) => {
-      const file = join(base, `${String(run)}.mkv`)
-      await renderOnce(composition, file, join(base, "work"))
-      return file
-    })
+    sameBytes(
+      composition,
+      runs,
+      base,
+      async (run) => {
+        const file = join(base, `${String(run)}.mkv`)
+        await renderOnce(composition, file, join(base, "work"))
+        return file
+      },
+      (a, b) => framesDiffering(base, a, b)
+    )
   )
   say(`(hyperframes ${HYPERFRAMES_VERSION}, ${chrome})`)
 }

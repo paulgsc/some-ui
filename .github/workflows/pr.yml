@@ -506,7 +506,7 @@ jobs:
               --filter='@some-ui/video-motion^...' \
               --concurrency=100%
             nix develop .#ci-playwright --command \
-              pnpm --filter @some-ui/video-motion motion prove sample
+              pnpm --filter @some-ui/video-motion motion prove sample --runs 3
             # HYPER2 (#2725): a composition scene beside a card, through the
             # renderer, drawn twice from nothing. In a copy: it writes there.
             cp -r packages/video-motion/sample/video "$RUNNER_TEMP/video"

@@ -1,24 +1,23 @@
 // What every composition here animates with, copied into each render as
-// lib/motion.js (src/render.ts). No GSAP (ask #2723), and no CSS or Web
-// Animations either: each frame's styles are a pure function of its time,
-// set on the page when HyperFrames seeks to it (its `hf-seek` event), so
-// nothing runs on an animation timeline of the browser's own. A WAAPI
-// version gave two sums on one CI machine (#2737's run of `motion prove`).
+// lib/motion.js (src/render.ts). It draws each frame from the time HyperFrames
+// seeks to: the README's "Writing a composition" says why.
 //
 // `track(el, keys)` gives an element one track over the whole scene: `keys`
 // are [seconds, values, the ease from this key to the next], the values
 // numbers (opacity; x and y in px; yPct, a share of its own height; scale,
-// scaleX; rotate in degrees). Before the first key the element holds its
+// scaleX; rotate in degrees), and a value a key leaves out is its rest value
+// (`REST`), not the key before's. Before the first key the element holds its
 // first values, after the last its last.
 window.motion = (() => {
   const root = document.querySelector("[data-composition-id]")
   const length = Number(root.getAttribute("data-duration"))
 
-  // A cubic Bézier easing, solved by bisection: plain arithmetic, the same
-  // on every machine.
+  // A cubic Bézier easing, solved by bisection in plain arithmetic, exact at
+  // its ends as CSS's is.
   const bezier = (x1, y1, x2, y2) => (p) => {
+    if (p <= 0 || p >= 1) return p
     const at = (a, b, s) =>
-      3 * a * s * (1 - s) ** 2 + 3 * b * s ** 2 * (1 - s) + s ** 3
+      3 * a * s * (1 - s) * (1 - s) + 3 * b * s * s * (1 - s) + s * s * s
     let lo = 0
     let hi = 1
     for (let i = 0; i < 40; i++) {
@@ -60,7 +59,7 @@ window.motion = (() => {
       if (t < t1) {
         const a = full(keys[i])
         const b = full(keys[i + 1])
-        const e = t1 > t0 ? EASE[ease ?? "out"]((t - t0) / (t1 - t0)) : 1
+        const e = EASE[ease ?? "out"]((t - t0) / (t1 - t0))
         const v = {}
         for (const name of Object.keys(REST))
           v[name] = a[name] + (b[name] - a[name]) * e
