@@ -8,7 +8,10 @@ import { describe, expect, it } from "vitest"
 
 import { readFeedNotes } from "@/lib/episode-feedback/home"
 
-const answer = (status: number, body: unknown = {}) => ({
+const answer = (
+  status: number,
+  body: unknown = {}
+): { status: number; body: string } => ({
   status,
   body: JSON.stringify(body),
 })
