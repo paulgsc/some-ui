@@ -24,7 +24,8 @@ const Layer = ({
       )
     }
     case "headline":
-    case "card": {
+    case "card":
+    case "preview-mark": {
       return <TextLayer frame={frame.frame} units={units} />
     }
     case "authorship": {

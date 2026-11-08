@@ -9,6 +9,7 @@
  * `PREVIEW_WINDOW`: the locked intro, the brand intro, the first chapter and
  * its sections, as many as fit whole up to `PREVIEW_SECTIONS_MOST`, and the
  * brand outro. Slides keep their length; the said scenes share the rest.
+ * Every frame carries the preview mark (`PREVIEW_MARK`) as well as the title.
  *
  * A scene's role is read from the ids the call and Playoff Delta give it
  * (`intro`, `brand-in`, `chapter-<section>`, `brand-out`; anything else is a
@@ -17,7 +18,7 @@
  */
 
 import { parseCutList } from "./cut-list"
-import type { CutList, Parsed, Shot } from "./cut-list"
+import type { BurnIn, CutList, Parsed, Shot } from "./cut-list"
 import { BRAND_MS, TAIL_MS } from "./stills"
 
 /** The owner's window, 15 to 30 seconds (#2757). */
@@ -32,6 +33,17 @@ export const PREVIEW_SECTIONS_MOST = 2
 /** A preview's title: it is never an episode, and its words are a sample. */
 export const PREVIEW_TITLE = (title: string): string =>
   `Preview, sample data: ${title}`
+
+/**
+ * What says so on every frame (`@some-ui/burn-ins`' `preview-mark`, drawn
+ * under the stage and the captions): only `previewOf` adds it, so no
+ * episode carries it.
+ */
+export const PREVIEW_MARK: BurnIn = {
+  kind: "preview-mark",
+  design: "plate-v1",
+  params: {},
+}
 
 type Role = "intro" | "brand-in" | "chapter" | "section" | "brand-out"
 
@@ -143,6 +155,7 @@ export function previewOf(cut: CutList): Parsed<CutList> {
     ...cut,
     title: PREVIEW_TITLE(cut.title),
     shots: fit,
+    burnIns: [...cut.burnIns, PREVIEW_MARK],
     revisions: [],
     notes: [],
   })

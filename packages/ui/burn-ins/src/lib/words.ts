@@ -64,6 +64,11 @@ export const WORDS = {
       about:
         "Whose idea each scene is, and whose hands made it: a short key at the start, a small mark beside the picture as each scene plays, and every scene's record at the end. The sample is five scenes, one for each way an idea can come about.",
     },
+    "preview-mark": {
+      name: "Preview mark",
+      about:
+        "On a template's preview, never an episode: a plate under the picture saying the video is a preview of sample data.",
+    },
   } satisfies Record<Kind, { name: string; about: string }>,
   lookHeading: "Look",
   looks: {
@@ -96,8 +101,12 @@ export const WORDS = {
       about:
         "White on a deep navy plate with a yellow stripe down its left edge; the line above, a scenario's icon and the leader's points in yellow.",
     },
+    "plate-v1": {
+      name: "Plate",
+      about: "Amber capitals on a dark plate with an amber edge.",
+    },
   } satisfies Record<
-    ThemeId | "v1" | "cells-v1" | "gridiron-v1",
+    ThemeId | "v1" | "cells-v1" | "gridiron-v1" | "plate-v1",
     { name: string; about: string }
   >,
   templateHeading: "Which card",
@@ -185,6 +194,8 @@ export const WORDS = {
     seed: (seed: number): string => `as high as the ${ordinal(seed)} seed`,
     noWayIn: "No way in is left",
   },
+  /** What the preview mark says inside a template's preview. */
+  previewMark: "Preview, sample data",
   /** The page the end card links to. */
   record: {
     title: "Who made each scene",

@@ -62,6 +62,11 @@ import {
   type TextFrame,
 } from "./journal"
 import { isOneOf, type Parsed } from "./parsed"
+import {
+  drawPreviewMark,
+  PREVIEW_MARK_DESIGNS,
+  PreviewMarkParamsSchema,
+} from "./preview-mark"
 
 export const KINDS = [
   "captions",
@@ -69,6 +74,7 @@ export const KINDS = [
   "card",
   "authorship",
   "game-card",
+  "preview-mark",
 ] as const
 export type Kind = (typeof KINDS)[number]
 
@@ -81,6 +87,7 @@ export const DESIGNS = {
   card: JOURNAL_DESIGNS,
   authorship: AUTHORSHIP_DESIGNS,
   "game-card": GAME_CARD_DESIGNS,
+  "preview-mark": PREVIEW_MARK_DESIGNS,
 } as const satisfies Record<Kind, ReadonlyArray<string>>
 
 /** Where each kind draws. */
@@ -93,6 +100,8 @@ export const REGIONS_OF = {
   authorship: ["gutter", "header", "body"],
   // A panel at the body's top, under a scene's headline, over its picture.
   "game-card": ["body"],
+  // Under the safe area, where only what is never uploaded sits.
+  "preview-mark": ["foot"],
 } as const satisfies Record<Kind, ReadonlyArray<Region>>
 
 const TimedWordSchema = z
@@ -142,6 +151,11 @@ export type Prepared =
       readonly design: (typeof GAME_CARD_DESIGNS)[number]
       readonly frame: GameCardFrame
     }
+  | {
+      readonly kind: "preview-mark"
+      readonly design: (typeof PREVIEW_MARK_DESIGNS)[number]
+      readonly frame: TextFrame
+    }
 
 /** What is on screen at a moment. */
 export type BurnInFrame =
@@ -166,6 +180,11 @@ export type BurnInFrame =
       readonly kind: "game-card"
       readonly design: (typeof GAME_CARD_DESIGNS)[number]
       readonly frame: GameCardFrame
+    }
+  | {
+      readonly kind: "preview-mark"
+      readonly design: (typeof PREVIEW_MARK_DESIGNS)[number]
+      readonly frame: TextFrame
     }
 
 const issues = (name: string, error: z.ZodError): ReadonlyArray<string> =>
@@ -285,6 +304,22 @@ export function prepare(b: BurnInData, frame: FrameSize): Parsed<Prepared> {
           }
         : c
     }
+    case "preview-mark": {
+      const c = checked(
+        name,
+        PREVIEW_MARK_DESIGNS,
+        b,
+        PreviewMarkParamsSchema,
+        drawPreviewMark,
+        g
+      )
+      return c.ok
+        ? {
+            ok: true,
+            value: { kind, design: c.value.design, frame: c.value.value },
+          }
+        : c
+    }
     default: {
       return assertNever(kind)
     }
@@ -304,7 +339,8 @@ export function frameAt(p: Prepared, t: number): BurnInFrame {
     }
     case "headline":
     case "card":
-    case "game-card": {
+    case "game-card":
+    case "preview-mark": {
       return p
     }
     case "authorship": {
@@ -332,7 +368,8 @@ export function boxesOf(f: BurnInFrame): ReadonlyArray<Box> {
       return f.frame.caption === null ? [] : [f.frame.layout.box]
     }
     case "headline":
-    case "card": {
+    case "card":
+    case "preview-mark": {
       return textBoxes(f.frame)
     }
     case "authorship": {

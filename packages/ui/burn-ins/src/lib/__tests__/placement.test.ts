@@ -10,6 +10,7 @@ import {
   type Kind,
   type Prepared,
 } from "@burn-ins/lib/burn-in"
+import { captionSpace } from "@burn-ins/lib/captions/space"
 import {
   frameName,
   frameProblem,
@@ -79,6 +80,7 @@ describe("the frames burn-ins are drawn for", () => {
         body: { x: 54, y: 250, width: 972, height: 1000 },
         "lower-third": { x: 65, y: 1250, width: 853, height: 286 },
         gutter: { x: 6, y: 250, width: 42, height: 1000 },
+        foot: { x: 65, y: 1536, width: 853, height: 384 },
       },
       typeScale: 1,
     })
@@ -93,6 +95,7 @@ describe("the frames burn-ins are drawn for", () => {
         body: { x: 96, y: 250, width: 1728, height: 450 },
         "lower-third": { x: 96, y: 700, width: 1728, height: 250 },
         gutter: { x: 48, y: 250, width: 42, height: 450 },
+        foot: { x: 96, y: 950, width: 1728, height: 130 },
       },
       typeScale: 1,
     })
@@ -157,6 +160,19 @@ describe.each(FRAMES.map((frame) => ({ frame, name: frameName(frame) })))(
             ).toBe(true)
           }
         }
+      }
+    })
+
+    it("keeps the preview mark in the foot: in the band a stage leaves for captions, clear of the lower third they are drawn in", () => {
+      const p = ready("preview-mark", "plate-v1", {}, frame)
+      const boxes = boxesOf(frameAt(p, 0))
+      expect(boxes.length).toBeGreaterThan(0)
+      for (const box of boxes) {
+        expect(inside(box, g.regions.foot)).toBe(true)
+        expect(overlaps(box, g.regions["lower-third"])).toBe(false)
+        expect(box.y).toBeGreaterThanOrEqual(
+          g.frame.height - captionSpace(g.frame)
+        )
       }
     })
 

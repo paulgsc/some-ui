@@ -11,7 +11,7 @@ address) through the web surface's door.
 ## What it is
 
 A burn-in is a kind (`captions`, `headline`, `card`, `authorship`,
-`game-card`), a named design and one video's params, which the cut list
+`game-card`, `preview-mark`), a named design and one video's params, which the cut list
 carries. `src/lib/burn-in.ts` holds the contract and says why it is the way
 it is; each module's header does the same for its part:
 
@@ -35,6 +35,10 @@ it is; each module's header does the same for its part:
   `/authorship?r=…`, which draws the mark's key and that video's record from
   the link alone and keeps nothing.
 - `src/lib/game-card.ts`: Game Week Bites' cards (GWB12), design `gridiron-v1`.
+- `src/lib/preview-mark.ts`: the mark on every frame of a template's preview
+  (SFEED12, #2757), design `plate-v1`, in the frame's foot: under the band
+  captions are drawn in, where a stage draws nothing. Only a preview's cut
+  carries it (`@some-ui/video-render`'s `previewOf`), never an episode's.
 - `src/runtime/record.ts`, `src/components/record`: the recording protocol.
 - `src/components/preview`, `src/components/stage`: the preview page.
 

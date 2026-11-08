@@ -3,7 +3,11 @@ import { sampleWeek } from "@video-render/__tests__/sample-week"
 import { callCutList, callScenes } from "@video-render/call"
 import type { CallWeek } from "@video-render/call"
 import type { CutList } from "@video-render/cut-list"
-import { PREVIEW_SHOT_LEAST_MS, previewOf } from "@video-render/preview"
+import {
+  PREVIEW_MARK,
+  PREVIEW_SHOT_LEAST_MS,
+  previewOf,
+} from "@video-render/preview"
 import type { StillTake } from "@video-render/stills"
 import { describe, expect, it } from "vitest"
 
@@ -88,6 +92,19 @@ describe("a template's preview", () => {
       )
     )
     expect(preview(bare).shots[0]?.take?.outMs).toBeGreaterThan(0)
+  })
+
+  it("carries the preview mark over the whole video, and the episode it is cut from carries none", () => {
+    const week = sampleWeek()
+    const cut = callCutList(week, takesOf(week))
+    const isMark = (b: { kind: string }): boolean => b.kind === "preview-mark"
+    // The renderer draws a video's own burn-ins over its whole length and
+    // each scene's over it (`render.ts`), so these are all an episode's.
+    expect(cut.burnIns.filter(isMark)).toEqual([])
+    expect(cut.shots.flatMap((s) => s.burnIns).filter(isMark)).toEqual([])
+    const made = preview(cut)
+    expect(made.burnIns.filter(isMark)).toEqual([PREVIEW_MARK])
+    expect(made.burnIns.filter((b) => !isMark(b))).toEqual(cut.burnIns)
   })
 
   it("refuses a cut that doesn't open with the locked intro", () => {

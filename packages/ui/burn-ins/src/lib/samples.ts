@@ -105,6 +105,7 @@ export const SAMPLES: Readonly<
     ],
     endMs: STILL_SAMPLE_MS,
   },
+  "preview-mark": {},
 }
 
 export const samplesOf = (kind: Kind): ReadonlyArray<BurnInData["params"]> =>

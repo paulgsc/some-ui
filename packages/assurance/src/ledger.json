@@ -2564,7 +2564,7 @@
             },
             {
               "class": "structural",
-              "says": "The recorder renders each template's preview from its sample in code, Playoff Delta's said from a fixed fill that passes the narration's check.",
+              "says": "The recorder renders each template's preview from its sample in code, Playoff Delta's said from a fixed fill that passes the narration's check, and marks every frame as a preview of sample data.",
               "ref": "some-ui:apps/www/tests/record/preview.ts"
             },
             {
