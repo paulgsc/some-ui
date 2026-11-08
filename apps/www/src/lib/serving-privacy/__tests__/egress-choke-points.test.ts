@@ -146,6 +146,10 @@ const HOME_LINK_CALLERS = new Set([
   // half minute while home has something under way. It sends nothing of its
   // own.
   "lib/renders/read.ts",
+  // LA8 (SFEED6): Studio's Feedback page, which asks home for the notes it
+  // keeps on each feed's episodes. It sends nothing of its own: the notes go
+  // home on the voice lane's run (`lib/home-link/episode-notes`).
+  "lib/episode-feedback/home-read.ts",
   // LA8 (ST33): Studio's Finish, which hands the voice lane a video kept for
   // home to make and hears what home answered and lists of it
   // (`studioVideos`), sending nothing of its own.
@@ -179,11 +183,16 @@ const KEEPERS = new Set([
   "lib/home-link/takes-read.ts",
   "lib/home-link/call-videos.ts",
   "lib/home-link/renders.ts",
+  "lib/home-link/episode-notes-read.ts",
 ])
 
 /** SFEED13: Studio › Renders' read, and the one request it may send. */
 const RENDERS_READ = "lib/home-link/renders.ts"
 const RENDERS_SENDS = [['"GET"', '"/renders"']]
+
+/** SFEED6: the Feedback page's read, and the one request it may send. */
+const NOTES_READ = "lib/home-link/episode-notes-read.ts"
+const NOTES_SENDS = [['"GET"', "`/feeds/${feed}/notes`"]]
 
 /** The routine's read, and the two requests it may send. */
 const ROUTINE_READ = "lib/home-link/routine.ts"
@@ -793,6 +802,18 @@ describe("LA8: the phone reaches home through one module", () => {
         )
       )
     expect(readers).toEqual(["lib/call-videos/index.ts"])
+  })
+
+  it("sends nothing from Studio's Feedback page but one GET of a feed's notes, and only the page's read asks it (SFEED6)", () => {
+    expect(sendCalls(NOTES_READ, read(NOTES_READ))).toEqual(NOTES_SENDS)
+    const readers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /from "\.\/episode-notes-read"|from "@\/lib\/home-link\/episode-notes-read"/.test(
+          read(f)
+        )
+      )
+    expect(readers).toEqual(["lib/episode-feedback/home-read.ts"])
   })
 
   it("sends nothing from Studio › Renders but one GET of /renders, and only Studio › Renders asks it (SFEED13)", () => {

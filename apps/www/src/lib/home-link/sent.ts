@@ -9,7 +9,8 @@
  * home answered for it (`./notes`), each grammar-lens entry's digest as home
  * read it back (`./lens-record`), each other Korean entry's (`./korean-record`,
  * as `<kind>/<key>`), each Studio idea's as home answered it
- * (`./ideas`, held or refused), each Studio video kept for home to make as
+ * (`./ideas`, held or refused), each note on an episode as home answered it
+ * (`./episode-notes`, held or refused), each Studio video kept for home to make as
  * home answered it (`./videos`), the events of a log home took
  * (`events`, `./leetype-log`'s `TakenEvents`), and the digests home refused, so the drain does not offer an unchanged refused item again
  * (it goes once its bytes change). Kept for one pairing (`pairing`, the
@@ -47,6 +48,7 @@ export type Sent = {
   readonly lens: Readonly<Record<string, string>>
   readonly korean: Readonly<Record<string, string>>
   readonly ideas: Readonly<Record<string, string>>
+  readonly episodeNotes: Readonly<Record<string, string>>
   readonly videos: Readonly<Record<string, string>>
   readonly events: Readonly<Record<string, string>>
 }
@@ -66,6 +68,7 @@ const emptyFor = (pairing: string): Sent => ({
   lens: {},
   korean: {},
   ideas: {},
+  episodeNotes: {},
   videos: {},
   events: {},
 })
@@ -103,6 +106,7 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
   const lens = stringsOf(parsed.lens)
   const korean = stringsOf(parsed.korean)
   const ideas = stringsOf(parsed.ideas)
+  const episodeNotes = stringsOf(parsed.episodeNotes)
   const videos = stringsOf(parsed.videos)
   const events = stringsOf(parsed.events)
   return {
@@ -119,6 +123,7 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
       lens: lens.value,
       korean: korean.value,
       ideas: ideas.value,
+      episodeNotes: episodeNotes.value,
       videos: videos.value,
       events: events.value,
     },
@@ -134,6 +139,7 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
       lens,
       korean,
       ideas,
+      episodeNotes,
       videos,
       events,
     ].every((kind) => kind.whole),
@@ -212,6 +218,7 @@ export function rememberSent(
     lens: keptOnly({ ...sent.lens, ...more.lens }, stays.lens),
     korean: keptOnly({ ...sent.korean, ...more.korean }, stays.korean),
     ideas: { ...sent.ideas, ...more.ideas },
+    episodeNotes: { ...sent.episodeNotes, ...more.episodeNotes },
     videos: { ...sent.videos, ...more.videos },
     events: keptOnly({ ...sent.events, ...more.events }, stays.events),
   }

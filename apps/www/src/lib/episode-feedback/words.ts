@@ -3,7 +3,7 @@
  * table, in the person's terms, held by its test to no machinery. The
  * categories are decision 7's fixed set (#2670), as the owner wrote them.
  */
-import { counted, formatTimecode } from "@some-ui/core-utils"
+import { counted, dayWords, formatTimecode } from "@some-ui/core-utils"
 
 import type { Category, Destination } from "./model"
 
@@ -44,11 +44,24 @@ export const FEEDBACK_WORDS = {
       "The phone couldn't keep this note. Your picks are still here; try again.",
     full: "The phone already keeps a thousand notes, and keeps no more until home keeps them. Your picks are still here.",
   },
-  kept: "Note kept on this phone.",
+  keptHere: "Note kept on this phone.",
   /** The episode page's count of its notes. */
   onThis: (n: number): string => `${counted(n, "note")} on this episode`,
-  /** Where every note waits, on the Feedback page. */
-  waiting:
-    "Each note waits on this phone. Home doesn't keep notes yet, and nothing files them until it does.",
+  /** Where every note is kept, on the Feedback page. */
+  kept: "Every note stays on this phone, and each goes home on its own while the phone is paired.",
+  /** One note's place, by what home last said of it. */
+  onHome: (storedAt: string, today: string): string =>
+    `On home since ${dayWords(storedAt, today)}`,
+  /** Home read it back when it was sent; its list wasn't read just now. */
+  onHomeSent: "On home",
+  onPhone: "On this phone; it goes home on its own",
+  notTaken: "Home didn't take this note, so it stays on this phone",
+  /** Why the page says nothing of home. */
+  home: {
+    unpaired: "This phone isn't paired with home, so the notes are only here.",
+    older:
+      "Home doesn't keep notes on episodes yet, so they wait on this phone.",
+    away: "Home didn't answer, so this is what the phone knows of it.",
+  },
   goes: "Where it goes",
 } as const

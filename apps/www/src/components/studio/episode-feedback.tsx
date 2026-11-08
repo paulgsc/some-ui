@@ -7,8 +7,9 @@
  */
 import type { JSX, RefObject } from "react"
 import { useReducer, useState, useSyncExternalStore } from "react"
-import { listed } from "@some-ui/core-utils"
+import { dayOf, listed } from "@some-ui/core-utils"
 import { Button, Notice } from "@some-ui/shared"
+import { useQuery } from "@tanstack/react-query"
 
 import { FEED_WORDS } from "@/lib/call-videos"
 import type { Category, Note } from "@/lib/episode-feedback"
@@ -27,6 +28,12 @@ import {
   SHOWN,
   step,
 } from "@/lib/episode-feedback"
+import type { HomeNotesOutcome } from "@/lib/episode-feedback/home-query"
+import {
+  episodeNotesMoved,
+  homeNotesQuery,
+  notesAnswered,
+} from "@/lib/episode-feedback/home-query"
 import type { Feed } from "@/lib/feeds"
 import { FEED_FACTS } from "@/lib/studio-index"
 
@@ -99,7 +106,7 @@ export const EpisodeNote = ({
     <div className="flex flex-col gap-2">
       {kept > 0 && (
         <Notice key={kept} onDismiss={() => setKept(0)}>
-          {WORDS.kept}
+          {WORDS.keptHere}
         </Notice>
       )}
       <p className="text-muted-foreground text-sm">
@@ -158,26 +165,58 @@ export const EpisodeNote = ({
   )
 }
 
+/** Where one note is, as home's list or the phone's last word from home says. */
+type Place = (id: string) => string
+
+/** What the page says of home, above the notes, when it can't list them. */
+function homeLine(
+  read: HomeNotesOutcome | undefined,
+  failed: boolean
+): string | null {
+  if (failed) return WORDS.home.away
+  if (read === undefined || read.kind === "read") return null
+  return WORDS.home[read.kind]
+}
+
 /**
- * Studio's Feedback page's body: every note, the newest first, or `none`
- * when there is none.
+ * Studio's Feedback page's body: every note, the newest first, each with
+ * where it is, or `none` when there is none.
  */
 export const FeedbackNotes = ({ none }: { none: string }): JSX.Element => {
   const notes = useEpisodeNotes()
-  return notes.length === 0 ? (
-    <p className="text-muted-foreground text-sm">{none}</p>
-  ) : (
+  const moved = useSyncExternalStore(
+    episodeNotesMoved.subscribe,
+    episodeNotesMoved.getSnapshot
+  )
+  const home = useQuery(homeNotesQuery(moved))
+  if (notes.length === 0)
+    return <p className="text-muted-foreground text-sm">{none}</p>
+  const { held, refused } = notesAnswered()
+  const storedAt =
+    home.data?.kind === "read" ? home.data.storedAt : new Map<string, string>()
+  const today = dayOf(new Date())
+  const place: Place = (id) => {
+    const at = storedAt.get(id)
+    if (at !== undefined) return WORDS.onHome(at, today)
+    if (held.has(id)) return WORDS.onHomeSent
+    return refused.has(id) ? WORDS.notTaken : WORDS.onPhone
+  }
+  const line = homeLine(home.data, home.isError)
+  return (
     <>
-      <p className="text-muted-foreground text-sm">{WORDS.waiting}</p>
-      <FeedbackList notes={notes} />
+      <p className="text-muted-foreground text-sm">{WORDS.kept}</p>
+      {line !== null && <p className="text-sm">{line}</p>}
+      <FeedbackList notes={notes} place={place} />
     </>
   )
 }
 
 const FeedbackList = ({
   notes,
+  place,
 }: {
   notes: ReadonlyArray<Note>
+  place: Place
 }): JSX.Element => (
   <ul className="flex flex-col gap-2">
     {[...notes].reverse().map((note) => (
@@ -199,6 +238,7 @@ const FeedbackList = ({
             destinationsOf(note.categories).map((d) => DESTINATION_WORDS[d])
           )}
         </span>
+        <span className="text-muted-foreground text-xs">{place(note.id)}</span>
       </li>
     ))}
   </ul>
