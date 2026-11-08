@@ -1057,7 +1057,8 @@ answers name) and Studio's videos kept for home to
 make (ST33, each as the DNA its Finish mark keeps, which the voice lane
 carries after its set-aside marks, the notes their takes name gone before),
 and the rounds pasted in Rust Rounds, whose run also brings
-home's rounds and the runs home recorded back to the phone, RR4b, and the
+home's rounds and the runs home recorded back to the phone, RR4b, and then
+the weeks home holds with theirs, which the phone only reads, RR13, and the
 notes of how each take ended, CK2, `app-events.ts`) goes
 through one wiring (`lib/home-link/lanes.ts`):
 each declares its lane (its exchange, how its record moves, its sheet's
@@ -1108,7 +1109,8 @@ its own (`components/__tests__/device-home-glyph.test.tsx`), and that a
 screen hears its lane's end in the pull under way, one run a lane between
 them (`lib/home-link/__tests__/pull.test.ts`). What no test
 can say is when a run is asked for. Rust Rounds' lane
-(`rust-rounds.ts`) is held by `packages/ui/rust-rounds/src/lib/home/index.test.ts`
+(`rust-rounds.ts`) is held by `packages/ui/rust-rounds/src/lib/home/index.test.ts`,
+`packages/ui/rust-rounds/src/lib/weeks/index.test.ts`
 and `components/__tests__/device-home-glyph.test.tsx`.
 
 - _Claim:_ `askKept` and `pullKept` (`lib/home-link/kept-watch.ts`) ask for

@@ -21,8 +21,9 @@ import type {
   NotesPort,
   RoundsStore,
   RustRoundsPorts,
+  WeeksStore,
 } from "@some-ui/rust-rounds"
-import { homeRef, keptRounds } from "@some-ui/rust-rounds"
+import { homeRef, keptRounds, keptWeeks } from "@some-ui/rust-rounds"
 import { onPageVisibility } from "@some-ui/voice-capture"
 
 import { copyText } from "@/lib/clipboard"
@@ -87,6 +88,18 @@ let rounds: RoundsStore | null = null
 export function phoneRounds(): RoundsStore {
   rounds ??= keptRounds(browserLocalStorage)
   return rounds
+}
+
+let weeks: WeeksStore | null = null
+
+/**
+ * The weeks this phone holds (RR13), kept in this device's storage, which
+ * the lane fills from home (`lib/home-link/rust-rounds`) and the week's
+ * screens read: one per page load.
+ */
+export function phoneWeeks(): WeeksStore {
+  weeks ??= keptWeeks(browserLocalStorage)
+  return weeks
 }
 
 /** The ports the session reads once, on mount. */

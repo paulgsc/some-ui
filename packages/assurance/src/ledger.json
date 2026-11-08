@@ -3806,12 +3806,13 @@
       "segments": [
         {
           "id": "lane",
-          "name": "The home link's Rust Rounds lane sends each round pasted on the phone home once, and reads back what home recorded. Ours, on the phone.",
+          "name": "The home link's Rust Rounds lane sends each round pasted on the phone home once, and reads back what home recorded, then the weeks home holds and their runs (RR13). Ours, on the phone.",
           "owner": "ours",
           "on": "phone",
           "paths": [
             "some-ui:apps/www/src/lib/home-link/rust-rounds.ts",
-            "some-ui:packages/ui/rust-rounds/src/lib/home"
+            "some-ui:packages/ui/rust-rounds/src/lib/home",
+            "some-ui:packages/ui/rust-rounds/src/lib/weeks"
           ]
         },
         {

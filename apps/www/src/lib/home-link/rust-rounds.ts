@@ -1,15 +1,21 @@
 /**
  * Rust Rounds' lane (RR4b, #2347; LA15): `exchangeRounds` in
- * `@some-ui/rust-rounds`'s `lib/home`, through the one wiring (`./lanes`).
+ * `@some-ui/rust-rounds`'s `lib/home`, then, once the rounds are synced, the
+ * weeks home holds (`lib/weeks`, RR13 #2688), which the phone only reads
+ * (`exchangeRustRounds`), through the one wiring (`./lanes`).
  *
  * Its record moves with each round taken on this phone, never with one taken
  * from home. The lane has no wing mark: Settings' readout says where the
  * rounds are kept.
  */
 import { useSyncExternalStore } from "react"
-import { exchangeRounds, roundsCounts, roundsTaken } from "@some-ui/rust-rounds"
+import {
+  exchangeRustRounds,
+  roundsCounts,
+  roundsTaken,
+} from "@some-ui/rust-rounds"
 
-import { phoneRounds } from "@/lib/rust-rounds"
+import { phoneRounds, phoneWeeks } from "@/lib/rust-rounds"
 
 import type { Lane, LaneCounts } from "./lanes"
 
@@ -21,7 +27,7 @@ function countsKey(): string {
 
 export const rustRoundsLane: Lane = {
   id: "rust-rounds",
-  exchange: (send) => exchangeRounds(phoneRounds(), send),
+  exchange: (send) => exchangeRustRounds(phoneRounds(), phoneWeeks(), send),
   revision: () => roundsTaken(phoneRounds().held()),
   subscribe: (listener) => phoneRounds().subscribe(listener),
   useCounts: (): LaneCounts => {
