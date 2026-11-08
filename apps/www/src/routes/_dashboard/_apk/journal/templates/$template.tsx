@@ -74,7 +74,8 @@ const TemplatePage = (): JSX.Element => {
       ))}
       <TemplateShape format={format} />
       <LookOf template={template} title={format.title} />
-      {format.shape !== undefined && (
+      {(format.shape?.brand.intro === true ||
+        format.shape?.brand.outro === true) && (
         <MarkTheme
           key={template}
           template={{ id: template, title: format.title }}
