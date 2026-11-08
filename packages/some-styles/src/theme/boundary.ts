@@ -88,6 +88,13 @@ export function applyAppearance(
 }
 
 /**
+ * The class that starts a nested theme from the base palette
+ * (`tokens/base.css`), before its own overrides, so it never inherits a
+ * token from the theme around it.
+ */
+const SESSION_THEME_BASE = "session-theme"
+
+/**
  * Attributes that draw a subtree in one of the app's themes, when what the
  * subtree shows chooses it and the person reading does not: a video
  * template's frame (SFEED10), which looks the same whatever theme the app is
@@ -110,7 +117,7 @@ export function sessionThemeProps(
   const theme = id === undefined ? undefined : getSessionTheme(id)
   if (theme === undefined) return className === undefined ? {} : { className }
   return {
-    className: [...theme.boundary.classNames, className]
+    className: [SESSION_THEME_BASE, ...theme.boundary.classNames, className]
       .filter(Boolean)
       .join(" "),
     "data-theme": theme.boundary.dataTheme,
