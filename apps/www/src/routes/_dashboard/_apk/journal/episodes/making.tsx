@@ -25,7 +25,6 @@ import { STUDIO_INDEX_WORDS } from "@/lib/studio-index"
 import { CopyButton } from "@/components/copy-button"
 import { BackLink } from "@/components/studio/layout"
 
-
 const WORDS = STUDIO_WORDS
 
 /**
