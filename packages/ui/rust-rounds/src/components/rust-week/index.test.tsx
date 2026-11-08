@@ -136,4 +136,17 @@ describe("a week on the phone (RR13)", () => {
     expect(screen.getByRole("button", { name: WORDS.send(0) })).toBeDisabled()
     expect(screen.getByText(WORDS.needs.nothing)).toBeInTheDocument()
   })
+
+  it("pastes an error from your own code, keeps it, and says where it is kept", async () => {
+    render(<RustWeek ports={ports()} />)
+    await settle()
+    press(WORDS.paste.open)
+    fireEvent.change(screen.getByLabelText(WORDS.paste.label), {
+      target: { value: "error[E0382]: borrow of moved value" },
+    })
+    press(WORDS.paste.keep)
+    expect(screen.getByText(WORDS.paste.kept)).toBeInTheDocument()
+    // Back on the brief.
+    expect(screen.getByText(QUILLMOSS_WEEK.company.name)).toBeInTheDocument()
+  })
 })
