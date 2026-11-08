@@ -109,5 +109,6 @@ up to 14 days.
 
 - Answer an ask, close one, or change an epic's text. The call reports; the
   owner decides.
-- Invent a call made without the owner. If the week's `calls` is empty,
-  `mine` is empty, and the close says so.
+- Invent a call made without the owner. If neither the week's `calls` nor
+  its session notes' `calls` holds one, `mine` is empty, and the close says
+  so.
