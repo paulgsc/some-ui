@@ -2233,7 +2233,7 @@
             {
               "class": "structural",
               "says": "pd_fill's key is the episode (season, team, week), and its triggers refuse UPDATE and DELETE.",
-              "ref": "server:migrations/20261108000100_create_pd_fill.up.sql"
+              "ref": "server:migrations/20261108000200_create_pd_fill.up.sql"
             },
             {
               "class": "measured",
