@@ -36,10 +36,7 @@ export type KeptPorts = {
   keep: HomeLink["keep"]
   /** Whether the phone is paired, read when the link turns a run away. */
   paired: () => boolean
-  /**
-   * Whether home is still waiting out a busy (AD3), read when the link
-   * turns a run away: then the run was home's to turn away too.
-   */
+  /** Whether home is busy (AD3): a run the link turns away then was home's. */
   homeBusy: () => boolean
   now: () => number
 }

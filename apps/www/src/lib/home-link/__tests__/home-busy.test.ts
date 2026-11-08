@@ -8,6 +8,7 @@
  * back, the network, an edit, a pull) sends nothing and says busy, and the
  * end of the wait asks each lane it turned away once.
  */
+import { fakeClock } from "@/test-support/fake-clock"
 import type { HomeAnswer, HomeExchanged } from "@some-ui/core-utils"
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
 
@@ -67,8 +68,7 @@ type Home = {
 /** A paired link to a home that answers its first request busy, then 200. */
 async function pairedHome(retryAfter: string): Promise<Home> {
   const sent: Array<string> = []
-  let now = 0
-  let timers: Array<{ at: number; run: () => void }> = []
+  const clock = fakeClock()
   let busy = true
   held.link = createHomeLink({
     credential: {
@@ -87,25 +87,11 @@ async function pairedHome(retryAfter: string): Promise<Home> {
       return Promise.resolve({ status: 429, body: "", retryAfter })
     },
     onHidden: () => (): void => undefined,
-    now: () => now,
-    after: (ms, run): (() => void) => {
-      const timer = { at: now + ms, run }
-      timers.push(timer)
-      return (): void => {
-        timers = timers.filter((each) => each !== timer)
-      }
-    },
+    now: clock.now,
+    after: clock.after,
   })
   await held.link.load()
-  return {
-    sent,
-    pass: (ms): void => {
-      now += ms
-      const due = timers.filter((timer) => timer.at <= now)
-      timers = timers.filter((timer) => timer.at > now)
-      for (const timer of due) timer.run()
-    },
-  }
+  return { sent, pass: clock.pass }
 }
 
 type Watched = {

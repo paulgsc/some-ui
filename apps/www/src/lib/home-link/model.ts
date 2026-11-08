@@ -8,9 +8,8 @@
  * start one while another runs. A result for an operation that is no longer the current
  * one is dropped.
  *
- * Home's busy is part of the state (`homeBusyUntil`, AD3): once home answers
- * `429`, the runtime sends nothing until the time home asked for has passed,
- * and the end of that wait is an event every watch hears.
+ * Home's busy is part of the state (`homeBusyUntil`; what it means is
+ * `./runtime`'s, AD3).
  */
 import { assertNever } from "@some-ui/core-utils"
 
@@ -75,10 +74,7 @@ export type HomeLinkState = {
     readonly failure: PairFailure
     readonly base: string
   } | null
-  /**
-   * Home answered busy (`429`): until when (ms since the epoch) nothing is
-   * sent to it; null while it is not (AD3).
-   */
+  /** When home's busy ends (AD3, `./runtime`); null while it is not busy. */
   readonly homeBusyUntil: number | null
 }
 
@@ -237,7 +233,6 @@ export function step(
       return { ...state, activity: idle }
     }
     case "homeBusy": {
-      // A later answer can only lengthen the wait, never cut it short.
       const until = Math.max(state.homeBusyUntil ?? event.until, event.until)
       if (until === state.homeBusyUntil) return state
       return { ...state, homeBusyUntil: until }

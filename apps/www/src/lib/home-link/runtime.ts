@@ -61,7 +61,6 @@ export type HomeLinkPorts = {
    * already is; returns an unsubscribe.
    */
   onHidden: (listener: () => void) => () => void
-  /** Milliseconds since the epoch. */
   now: () => number
   /** Runs `run` once, `ms` from now; returns the cancel. */
   after: (ms: number, run: () => void) => () => void

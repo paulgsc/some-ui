@@ -4,6 +4,7 @@
  * unpair forgets it on the phone whether or not home heard; Stop and the
  * background end a sync before its next request.
  */
+import { fakeClock } from "@/test-support/fake-clock"
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { describe, expect, it } from "vitest"
 
@@ -38,8 +39,7 @@ function setup(options: Options = {}): Home {
   let record = options.record ?? null
   const sent: Array<HomeRequest> = []
   let hide: () => void = () => undefined
-  let now = 0
-  let timers: Array<{ at: number; run: () => void }> = []
+  const clock = fakeClock()
   const credential: CredentialPort = {
     read:
       options.read ??
@@ -72,27 +72,15 @@ function setup(options: Options = {}): Home {
         hide = (): void => undefined
       }
     },
-    now: () => now,
-    after: (ms, run): (() => void) => {
-      const timer = { at: now + ms, run }
-      timers.push(timer)
-      return (): void => {
-        timers = timers.filter((each) => each !== timer)
-      }
-    },
+    now: clock.now,
+    after: clock.after,
   })
   return {
     link,
     sent,
     record: (): string | null => record,
     hide: (): void => hide(),
-    pass: (ms, timersRun = true): void => {
-      now += ms
-      if (!timersRun) return
-      const due = timers.filter((timer) => timer.at <= now)
-      timers = timers.filter((timer) => timer.at > now)
-      for (const timer of due) timer.run()
-    },
+    pass: clock.pass,
   }
 }
 
@@ -422,19 +410,15 @@ describe("the home link", () => {
     expect(await statuses()).toEqual([429, 429])
     expect(home.sent).toHaveLength(1)
     expect(home.link.getSnapshot().homeBusyUntil).toBe(30_000)
-    // Every run, and the sync, while it lasts.
+    // The sync too, while it lasts (the lanes' runs: home-busy.test.ts).
     home.pass(29_999)
-    expect(await statuses()).toEqual([429, 429])
     const synced = await home.link.sync(
       async (get) => (await get(`${HOME.base}/curriculum/manifest.json`)).status
     )
     expect(synced).toEqual({ kind: "done", value: 429 })
     expect(home.sent).toHaveLength(1)
-
     home.pass(1)
     expect(home.link.getSnapshot().homeBusyUntil).toBeNull()
-    expect(await statuses()).toEqual([200, 200])
-    expect(home.sent).toHaveLength(3)
   })
 
   it("ends home's busy once its time has passed, even when the timer is held back", async () => {
