@@ -38,6 +38,7 @@ describe("what deleting the account says", () => {
       "Korean's word sets and reading records",
       "Written reflections",
       "Asks for the next scene",
+      "Notes on the feeds' episodes",
       "Voice notes, game bites included",
       "What the phone noted beside a soundbite or a LeetType answer",
       "Rust Rounds' rounds",

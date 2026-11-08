@@ -10,7 +10,7 @@
         "server:apps/servers/file_host/src/mailbox",
         "server:crates/mailbox_kit"
       ],
-      "modules": ["jobs", "routine", "leetype_files"],
+      "modules": ["jobs", "routine", "leetype_files", "episode_notes"],
       "objectives": [
         {
           "id": "MI1",
@@ -3279,7 +3279,7 @@
     {
       "store": "server:mailbox_outgoing",
       "class": "record",
-      "growth": "Per file the phone (or the poller, for transcripts and LeetType session logs) files for the mailbox (decisions, scout, opened, transcript, leetype-log, reflection, prompt), bytes verbatim; append-only. A LeetType session's log is filed again as log-<session>.r<n>.json only when an event of it arrives home after its last copy, and each copy repeats every earlier event of the session. The routines' indexes (jobs, reflections) add nothing here or in mailbox_handed or mailbox_archive: each is a view home recomputes from these records and keeps no copy of, so the mailbox holds one index per routine, the latest only (owner, paulgsc/server#509).",
+      "growth": "Per file the phone (or the poller, for transcripts and LeetType session logs) files for the mailbox (decisions, scout, opened, transcript, leetype-log, reflection, prompt, feedback), bytes verbatim; append-only. A LeetType session's log is filed again as log-<session>.r<n>.json only when an event of it arrives home after its last copy, and each copy repeats every earlier event of the session. The routines' indexes (jobs, reflections) add nothing here or in mailbox_handed or mailbox_archive: each is a view home recomputes from these records and keeps no copy of, so the mailbox holds one index per routine, the latest only (owner, paulgsc/server#509).",
       "family": "routine-to-home"
     },
     {
@@ -3356,6 +3356,13 @@
       "store": "server:storage_sample",
       "class": "telemetry",
       "growth": "Per UTC day: one row per table and index plus database, wal and disk_free, about 80 rows a day (\"a few MB a year\", docs/storage.md); append-only, triggers abort UPDATE, DELETE and REPLACE.",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:episode_note",
+      "class": "record",
+      "growth": "Per note the phone leaves on a feed's episode (SFEED6, paulgsc/some-ui#2745; paulgsc/server invariant 38): its feed, episode, moment, one to fourteen categories from the fixed set, the take's voice-note id or null, when written and when it reached home; one row per id, append-only, body <= BODY_CEILING = 16 KiB; each is filed once for the mailbox's feedback folder as it arrives.",
+      "horizon": "kept for good: no delete and no switch (the owner's ruling on ask paulgsc/some-ui#2749); it goes only with the account",
       "family": "what-is-kept"
     },
     {
