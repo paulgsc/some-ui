@@ -1,13 +1,14 @@
+import type { HomeLinkPorts } from "@/lib/home-link/runtime"
+
 /**
- * A clock a test moves, for the ports that take `now` and `after` (the home
- * link, the drain's pace, the game bites). `pass` moves it on, running each
- * timer that falls due, unless they are held back (a WebView in the
- * background); `next` moves it to the earliest timer waiting.
+ * A clock a test moves, for the ports that take `now` and `after`. `pass`
+ * moves it on, running each timer that falls due, unless they are held back
+ * (a WebView in the background); `next` moves it to the earliest timer
+ * waiting.
  */
 export type FakeClock = {
-  readonly now: () => number
-  /** Runs `run` once, `ms` from now; returns the cancel. */
-  readonly after: (ms: number, run: () => void) => () => void
+  readonly now: HomeLinkPorts["now"]
+  readonly after: HomeLinkPorts["after"]
   readonly pass: (ms: number, timersRun?: boolean) => void
   /** Moves to the earliest timer and runs those due then; false when none waits. */
   readonly next: () => boolean

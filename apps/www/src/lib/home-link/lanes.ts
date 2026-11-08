@@ -90,9 +90,8 @@ const wired = new Map<LaneId, Wired>()
 const watched = new Set<Kept>()
 
 /** Whether home is still to be left alone, on the link's clock (AD3). */
-function busyNow(): boolean {
-  const link = homeLink()
-  return homeBusy(link.getSnapshot(), link.now())
+export function busyNow(): boolean {
+  return homeBusy(homeLink().getSnapshot(), LINK_CLOCK.now())
 }
 
 /**
@@ -107,7 +106,7 @@ const LINK_PORTS: Omit<KeptPorts, "exchange"> = {
   keep: (run) => homeLink().keep(run),
   paired,
   homeBusy: busyNow,
-  now: Date.now,
+  now: LINK_CLOCK.now,
 }
 
 /** One runtime per lane per page load, over the first `lane` handed in. */

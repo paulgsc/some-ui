@@ -1661,10 +1661,10 @@
           "id": "AD3",
           "kind": "RE10",
           "property": "work",
-          "claim": "After home says it is busy, the phone sends it nothing until home's Retry-After has passed, then asks once; and the phone's drain never spends home's whole minute, however much it holds, nor leaves a record it cannot finish.",
-          "requirement": "The first 429 any request of the phone's home link hears starts a wait of home's Retry-After (held between 1 s and 10 minutes, a minute when it can't be read) that every lane, every moment a watch asks on and a pull keep: the link answers each request busy itself and sends nothing, each lane says home is busy, and the wait's end asks each lane it turned away once. Every lane's requests wait their turn on one pace, 49 at once and then one each 2 s, inside home's 60 a minute and its refill of one a second, and none is refused for it, so a run goes through all it holds; a LeetType session or Studio sitting a run leaves part way resumes at the first event home has not taken.",
+          "claim": "After home says it is busy, the phone sends it nothing until home's Retry-After has passed, then asks once; within one page load the phone's drain alone never takes home's bucket below 11, however much it holds, and leaves no record it cannot finish.",
+          "requirement": "The first 429 any request of the phone's home link hears starts a wait of home's Retry-After (held between 1 s and 10 minutes, a minute when it can't be read) that every lane, every moment a watch asks on and a pull keep: the link answers each request busy itself and sends nothing, each lane says home is busy, and the wait's end asks each lane it turned away once. Every lane's requests wait their turn on one pace, 49 at once and then one each 2 s, against home's bucket of 60 that refills one a second, so within one page load the drain alone never takes it below 11; none is refused for the pace, so one run goes through all a lane holds. A page reload starts the pace whole again, so a reload right after a burst can meet home's busy, which the wait above then handles. A LeetType session or Studio sitting a run leaves part way resumes at the first event home has not taken.",
           "verdict": "holds",
-          "conclusion": "Once home says busy, the phone stays quiet until home's own time is up and then asks each lane once; a pull stops reaching home at the first busy lane; and against file_host's limiter the practice drain takes a LeetType session of 20 or 100 events home whole, each event once, home never busy, with the reflection after it, and resumes one home turned away part way where it stopped.",
+          "conclusion": "Once home says busy, the phone stays quiet until home's own time is up and then asks each lane once; a pull stops reaching home at the first busy lane; within a page load the pace never takes home's bucket below 11; and against file_host's limiter one run of the practice drain takes a LeetType session of 100 events home whole, each event once, home never busy, with the reflection after it, and a LeetType session or Studio sitting home turned away part way resumes where it stopped.",
           "evidence": [
             {
               "class": "structural",
@@ -1686,10 +1686,11 @@
             "some-ui:apps/www/src/lib/home-link/__tests__/home-busy.test.ts#after home says busy, the phone sends nothing until home's Retry-After has passed, then asks once",
             "some-ui:apps/www/src/lib/home-link/__tests__/home-busy.test.ts#a pull stops at home's busy: the lanes after it say busy, and nothing more is sent",
             "some-ui:apps/www/src/lib/home-link/__tests__/runtime.test.ts#after home says busy, sends nothing until its Retry-After has passed, answering busy itself (AD3)",
-            "some-ui:apps/www/src/lib/home-link/__tests__/kept.test.ts#paces the drain inside home's 60 requests a minute: 49 at once, then one each 2 s (AD3)",
+            "some-ui:apps/www/src/lib/home-link/__tests__/kept.test.ts#paces the drain so that, in one page load, it alone never takes home's bucket below 11: 49 at once, then one each 2 s (AD3)",
             "some-ui:apps/www/src/lib/home-link/__tests__/kept.test.ts#sends each request only once the pace gives it a turn, refusing none",
-            "some-ui:apps/www/src/lib/home-link/__tests__/drain-paced.test.ts#takes a LeetType session of %i events home whole, each event once, home never busy, and the reflection after it still goes",
-            "some-ui:apps/www/src/lib/home-link/__tests__/drain-paced.test.ts#resumes a session home turned away part way at the first event it had not taken, once home's busy is over"
+            "some-ui:apps/www/src/lib/home-link/__tests__/drain-paced.test.ts#takes a LeetType session of 100 events home whole in one run, each event once, home never busy, and the reflection after it still goes",
+            "some-ui:apps/www/src/lib/home-link/__tests__/drain-paced.test.ts#resumes a session home turned away part way at the first event it had not taken, once home's busy is over",
+            "some-ui:apps/www/src/lib/home-link/__tests__/drain-paced.test.ts#resumes a Studio sitting home turned away part way at the first event it had not taken, once home's busy is over"
           ],
           "watch": {
             "by": "none"

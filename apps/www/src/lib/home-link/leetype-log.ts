@@ -262,7 +262,7 @@ export async function sendLogs(
   send: HomeCall,
   report: LogReport,
   held: (name: string, digest: string) => void,
-  taken: TakenEvents = NONE_TAKEN
+  taken: TakenEvents
 ): Promise<void> {
   for (const session of logs) {
     const paths = session.events.map(

@@ -14,7 +14,7 @@ import type { Friction, Project, Sitting, TimeEvent } from "@some-ui/soundbites"
 import type { studioKeeping } from "@/lib/studio-keeping"
 
 import type { EventLog, LogReport, TakenEvents } from "./leetype-log"
-import { bucketOf, NONE_TAKEN, sendLogs } from "./leetype-log"
+import { bucketOf, sendLogs } from "./leetype-log"
 import type { Sent } from "./sent"
 import { digestOf } from "./sent"
 import { answerOrEnd } from "./shelf"
@@ -114,7 +114,7 @@ export async function sendStudio(
   send: HomeCall,
   report: LogReport,
   held: (key: string, digest: string) => void,
-  taken: TakenEvents = NONE_TAKEN
+  taken: TakenEvents
 ): Promise<void> {
   await sendLogs(going.sittings, sittingPath, send, report, held, taken)
   if (report.forgotten || report.unreachable) return

@@ -10,10 +10,8 @@
  * read it back (`./lens-record`), each other Korean entry's (`./korean-record`,
  * as `<kind>/<key>`), each Studio idea's as home answered it
  * (`./ideas`, held or refused), each Studio video kept for home to make as
- * home answered it (`./videos`), each event of a LeetType session or Studio
- * sitting home took while the log is not read back yet, by the event's
- * path (`events`, so a run that ends part way resumes there), and the
- * digests home refused, so the drain does not offer an unchanged refused item again
+ * home answered it (`./videos`), the events of a log home took
+ * (`events`, `./leetype-log`'s `TakenEvents`), and the digests home refused, so the drain does not offer an unchanged refused item again
  * (it goes once its bytes change). Kept for one pairing (`pairing`, the
  * link's id for it): another pairing starts from nothing. Bookkeeping, not
  * the record: lost, it only means sending again, which home answers as

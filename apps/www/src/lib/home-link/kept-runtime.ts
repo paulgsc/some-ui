@@ -165,10 +165,9 @@ function sayingBusy(exchange: Exchange): Exchange {
  * each second), and the app shell asks every lane at once (on opening,
  * coming back to the front, a pull): 49 at once leaves 11 for a screen's
  * own reads, and one each 2 s after that, 30 a minute, is half of what
- * home gives back, so the drain alone never empties home's bucket. A
- * request waits for its turn and none is refused, so a run is never cut
- * short by the pace: whatever a lane holds goes in one run, however much
- * it is.
+ * home gives back, so within one page load the drain alone never takes
+ * home's bucket below 11. A reload starts the pace whole again: one right
+ * after a burst can meet home's busy, which the link then waits out.
  */
 const BURST = 49
 const MS_PER_REQUEST = 2_000

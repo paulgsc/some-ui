@@ -6,6 +6,7 @@
  * (`@some-ui/aph`'s `lib/__tests__/sync.test.ts`, www's
  * `lib/jobs/__tests__/home.test.ts`, `drain.test.ts`).
  */
+import { fakeClock } from "@/test-support/fake-clock"
 import { noAnswer } from "@/test-support/no-answer"
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 import { addFailureSink } from "@some-ui/intent-kit"
@@ -339,33 +340,30 @@ describe("a lane's run", () => {
     expect(sent).toHaveLength(3)
   })
 
-  it("paces the drain inside home's 60 requests a minute: 49 at once, then one each 2 s (AD3)", async () => {
-    let now = 0
-    let timers: Array<{ at: number; run: () => void }> = []
-    const pace = createPace({
-      now: () => now,
-      after: (ms, run) => {
-        timers.push({ at: now + ms, run })
-        return (): void => undefined
-      },
-    })
+  it("paces the drain so that, in one page load, it alone never takes home's bucket below 11: 49 at once, then one each 2 s (AD3)", async () => {
+    const clock = fakeClock()
+    const pace = createPace(clock)
+    // Home's bucket as file_host keeps it: 60, one back each second.
+    let bucket = 60
+    let filled = 0
+    let lowest = bucket
     let went = 0
-    const turns = Array.from({ length: 52 }, () =>
+    const take = (): Promise<void> =>
       pace().then(() => {
+        bucket = Math.min(60, bucket + (clock.now() - filled) / 1_000) - 1
+        filled = clock.now()
+        lowest = Math.min(lowest, bucket)
         went += 1
       })
-    )
     const settle = (): Promise<void> =>
       new Promise((resolve) => setTimeout(resolve, 0))
-    await settle()
-    expect(went).toBe(49)
     const pass = async (ms: number): Promise<void> => {
-      now += ms
-      const due = timers.filter((timer) => timer.at <= now)
-      timers = timers.filter((timer) => timer.at > now)
-      for (const timer of due) timer.run()
+      clock.pass(ms)
       await settle()
     }
+    const turns = Array.from({ length: 52 }, take)
+    await settle()
+    expect(went).toBe(49)
     await pass(1_999)
     expect(went).toBe(49)
     await pass(1)
@@ -376,15 +374,12 @@ describe("a lane's run", () => {
     await Promise.all(turns)
     // Left alone, it refills to the burst and no further.
     await pass(600_000)
-    const again = Array.from({ length: 50 }, () =>
-      pace().then(() => {
-        went += 1
-      })
-    )
+    const again = Array.from({ length: 50 }, take)
     await settle()
     expect(went).toBe(52 + 49)
     await pass(2_000)
     await Promise.all(again)
+    expect(lowest).toBeGreaterThanOrEqual(11)
   })
 
   it("says forgotten, a stop, or no answer as they were when home was not busy", async () => {

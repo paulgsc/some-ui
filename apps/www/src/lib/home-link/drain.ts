@@ -4,8 +4,7 @@
  * since home last held it, in order. Finished sessions are copied as a copy
  * to home copies them (`./sessions`, reading home only to plan), kept shelf
  * items PUT as the shelf sends them (`./shelf`), each finished LeetType
- * session PUT event by event and read back (`./leetype-log`), resuming at
- * the first event home has not taken (`sent.events`), then Studio's
+ * session PUT event by event and read back (`./leetype-log`), then Studio's
  * sittings and answers the same way (`./studio-log`), then each written
  * reflection (`./reflections`, LA16), then each ask for the next scene
  * (`./prompts`, LA18), then each soundbite's record and LeetType answer's

@@ -7,9 +7,6 @@
  * send and aph's keeping are arms of `activity`, and `step` refuses to
  * start one while another runs. A result for an operation that is no longer the current
  * one is dropped.
- *
- * Home's busy is part of the state (`homeBusyUntil`; what it means is
- * `./runtime`'s, AD3).
  */
 import { assertNever } from "@some-ui/core-utils"
 

@@ -7,7 +7,7 @@
  * The one wiring (`./lanes`) hands in each lane's record and its runtime
  * (`./kept-runtime`); this module names no record.
  */
-import { homeLink, paired, pairingOf } from "./index"
+import { homeLink, LINK_CLOCK, paired, pairingOf } from "./index"
 import type { KeptRun } from "./kept-model"
 import type { Kept } from "./kept-runtime"
 import { linkOpen } from "./model"
@@ -65,7 +65,7 @@ export function watchKept(
   let revision = record.revision()
   let wasPaired = pairingOf(link.getSnapshot()) !== null
   let idle = link.getSnapshot().activity.kind === "idle"
-  let open = linkOpen(link.getSnapshot(), link.now())
+  let open = linkOpen(link.getSnapshot(), LINK_CLOCK.now())
   // Who turned the lane's last run away, while it has not been asked since:
   // read off its runs as they end, since the link frees (a run's own end)
   // before that run's end reaches the lane.
@@ -85,7 +85,7 @@ export function watchKept(
     const state = link.getSnapshot()
     const nowPaired = pairingOf(state) !== null
     const nowIdle = state.activity.kind === "idle"
-    const nowOpen = linkOpen(state, link.now())
+    const nowOpen = linkOpen(state, LINK_CLOCK.now())
     // Turned away by another run: asked once that run ends, even while home
     // is busy, when the run only says so (it sends nothing). Turned away by
     // home: asked once home's busy ends, and not before.

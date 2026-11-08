@@ -1,14 +1,8 @@
 /**
  * @vitest-environment jsdom
  *
- * AD3 and LA15 together, over the real senders: the practice lane's drain
- * (`drainHome`, LeetType's `sendLog`, the written reflections), wired as
- * the app shell wires it (`./lanes`, its pace and the link), against a home
- * whose limiter is file_host's (a burst of 60, one back each second, `429`
- * past it). A LeetType session of any length goes home whole, each event
- * once, home never says busy, and what comes after it in the drain still
- * goes; and a run home turns away part way resumes, once home's busy is
- * over, at the first event home had not taken.
+ * AD3 and LA15 over the real senders, wired as the app shell wires them
+ * (`./lanes`, its pace and the link), against file_host's limiter.
  */
 import type { FakeClock } from "@/test-support/fake-clock"
 import { fakeClock } from "@/test-support/fake-clock"
@@ -24,6 +18,7 @@ import { drainHome } from "@/lib/home-link/drain"
 import type { KeptRun } from "@/lib/home-link/kept-model"
 import type { Lane, LaneId } from "@/lib/home-link/lanes"
 import { askLane, laneRun } from "@/lib/home-link/lanes"
+import type { EventLog } from "@/lib/home-link/leetype-log"
 import type { HomeLinkState } from "@/lib/home-link/model"
 import { writtenToSend } from "@/lib/home-link/reflections"
 import type { HomeLink } from "@/lib/home-link/runtime"
@@ -193,14 +188,28 @@ async function limitedHome(): Promise<Home> {
   }
 }
 
+/** A Studio sitting of `count` events. */
+function sittingOf(name: string, count: number): EventLog {
+  const events = Array.from({ length: count }, (_, i) => ({
+    id: `${name}-${String(i)}`,
+    at: "2026-10-30T10:00:00.000Z",
+    sitting: name,
+    kind: "record",
+    type: "sitting_opened",
+    screen: null,
+  }))
+  return { name, events }
+}
+
 /**
- * The practice lane's drain over `session` and one written reflection after
- * it, under `id`: `./lanes` keeps one runtime per lane id per page load, so
- * each test drains under an id of its own.
+ * The practice lane's drain over a LeetType `session` or a Studio
+ * `sitting`, and one written reflection after it, under `id`: `./lanes`
+ * keeps one runtime per lane id per page load, so each test drains under
+ * an id of its own.
  */
 function practiceLane(
-  session: HomeSession,
-  id: LaneId
+  id: LaneId,
+  going: { session?: HomeSession; sitting?: EventLog }
 ): {
   lane: Lane
   storage: DrainPorts["storage"]
@@ -211,8 +220,21 @@ function practiceLane(
   const ports: DrainPorts = {
     read: () => Promise.resolve({ local: [], kept: [] }),
     logGoing: () =>
-      Promise.resolve(logToSend([session], readSent(storage, PAIRING))),
-    studioGoing: () => Promise.resolve({ sittings: [], reports: [] }),
+      Promise.resolve(
+        going.session === undefined
+          ? []
+          : logToSend([going.session], readSent(storage, PAIRING))
+      ),
+    studioGoing: () => {
+      const { sitting } = going
+      const held =
+        sitting === undefined ||
+        readSent(storage, PAIRING).studio[sitting.name] === digestOf(sitting)
+      return Promise.resolve({
+        sittings: held ? [] : [sitting],
+        reports: [],
+      })
+    },
     reflectionsGoing: () => writtenToSend([LINE], readSent(storage, PAIRING)),
     letGoHeld: () => undefined,
     promptsGoing: () => [],
@@ -237,84 +259,56 @@ function practiceLane(
 }
 
 /**
- * Asks `lane` for a run and moves the clock on, timer by timer, until that
- * run has ended; asks again, after `rest` ms, while it ends short of in
- * step, up to `runs` runs. How the last run ended, and how many ran.
+ * Asks `lane` for one run and moves the clock on, timer by timer, until
+ * that run has ended; how it ended.
  */
-async function drain(
-  lane: Lane,
-  rest: number,
-  runs = 40
-): Promise<{ last: KeptRun | null; ran: number }> {
+async function drain(lane: Lane): Promise<KeptRun | null> {
   const run = laneRun(lane)
   const settle = async (): Promise<void> => {
     await new Promise((resolve) => setTimeout(resolve, 0))
   }
-  let ran = 0
-  while (ran < runs) {
-    askLane(lane)
-    ran += 1
+  askLane(lane)
+  await settle()
+  while (run.getSnapshot().running) {
+    if (!theClock().next()) await settle()
     await settle()
-    while (run.getSnapshot().running) {
-      if (!theClock().next()) await settle()
-      await settle()
-    }
-    if (run.getSnapshot().last?.kind === "synced") break
-    theClock().pass(rest)
   }
-  return { last: run.getSnapshot().last, ran }
+  return run.getSnapshot().last
 }
 
 const puts = (home: Home, path: string): number =>
   home.reached.filter((each) => each === `PUT ${path}`).length
 
 describe("the practice drain under home's limit (AD3, LA15)", () => {
-  it.each([20, 100])(
-    "takes a LeetType session of %i events home whole, each event once, home never busy, and the reflection after it still goes",
-    async (count) => {
-      const home = await limitedHome()
-      const session = sessionOf(`s${String(count)}`, count)
-      const { lane, storage } = practiceLane(
-        session,
-        count === 20 ? "practice" : "jobs"
-      )
-      const { last } = await drain(lane, 16_000)
-      expect(last?.kind).toBe("synced")
-      expect(home.turnedAway()).toBe(0)
-      for (const event of session.events) {
-        expect(
-          puts(home, `/leetype/sessions/${session.session}/events/${event.id}`)
-        ).toBe(1)
-      }
-      expect(
-        home.reached.filter(
-          (each) => each === `GET /leetype/sessions/${session.session}/events`
-        )
-      ).toHaveLength(1)
-      expect(puts(home, "/routine/reflections/r1")).toBe(1)
-      const sent = readSent(storage, PAIRING)
-      expect(sent.leetype[session.session]).toBe(digestOf(session))
-      expect(Object.keys(sent.reflections)).toEqual(["r1"])
-      expect(sent.events).toEqual({})
+  it("takes a LeetType session of 100 events home whole in one run, each event once, home never busy, and the reflection after it still goes", async () => {
+    const home = await limitedHome()
+    const session = sessionOf("s1", 100)
+    const { lane, storage } = practiceLane("practice", { session })
+    expect((await drain(lane))?.kind).toBe("synced")
+    expect(home.turnedAway()).toBe(0)
+    for (const event of session.events) {
+      expect(puts(home, `/leetype/sessions/s1/events/${event.id}`)).toBe(1)
     }
-  )
+    expect(
+      home.reached.filter((each) => each === "GET /leetype/sessions/s1/events")
+    ).toHaveLength(1)
+    expect(puts(home, "/routine/reflections/r1")).toBe(1)
+    const sent = readSent(storage, PAIRING)
+    expect(sent.leetype.s1).toBe(digestOf(session))
+    expect(Object.keys(sent.reflections)).toEqual(["r1"])
+    expect(sent.events).toEqual({})
+  })
 
   it("resumes a session home turned away part way at the first event it had not taken, once home's busy is over", async () => {
     const home = await limitedHome()
     const session = sessionOf("s1", 100)
-    const { lane, storage } = practiceLane(session, "voice")
+    const { lane, storage } = practiceLane("jobs", { session })
     home.busyAt(31, 20)
-    const first = await drain(lane, 0, 1)
-    expect(first.last).toMatchObject({ kind: "failed", why: "busy" })
+    expect(await drain(lane)).toMatchObject({ kind: "failed", why: "busy" })
     expect(home.reached).toHaveLength(30)
     expect(Object.keys(readSent(storage, PAIRING).events)).toHaveLength(30)
-    // Asked again while home's 20 s last: nothing reaches it.
-    theClock().pass(10_000)
-    expect((await drain(lane, 0, 1)).last).toMatchObject({ why: "busy" })
-    expect(home.reached).toHaveLength(30)
-    theClock().pass(10_000)
-    const { last } = await drain(lane, 16_000)
-    expect(last?.kind).toBe("synced")
+    theClock().pass(20_000)
+    expect((await drain(lane))?.kind).toBe("synced")
     for (const event of session.events) {
       expect(
         puts(home, `/leetype/sessions/s1/events/${event.id}`),
@@ -323,5 +317,26 @@ describe("the practice drain under home's limit (AD3, LA15)", () => {
     }
     expect(puts(home, "/routine/reflections/r1")).toBe(1)
     expect(readSent(storage, PAIRING).leetype.s1).toBe(digestOf(session))
+  })
+
+  it("resumes a Studio sitting home turned away part way at the first event it had not taken, once home's busy is over", async () => {
+    const home = await limitedHome()
+    const sitting = sittingOf("s1-20261030T100000000Z", 100)
+    const { lane, storage } = practiceLane("voice", { sitting })
+    home.busyAt(31, 20)
+    expect(await drain(lane)).toMatchObject({ kind: "failed", why: "busy" })
+    expect(home.reached).toHaveLength(30)
+    theClock().pass(20_000)
+    expect((await drain(lane))?.kind).toBe("synced")
+    for (const event of sitting.events) {
+      expect(
+        puts(home, `/studio/sittings/${sitting.name}/events/${event.id}`),
+        event.id
+      ).toBe(1)
+    }
+    expect(puts(home, "/routine/reflections/r1")).toBe(1)
+    const sent = readSent(storage, PAIRING)
+    expect(sent.studio[sitting.name]).toBe(digestOf(sitting))
+    expect(sent.events).toEqual({})
   })
 })

@@ -192,8 +192,6 @@ export type HomeLink = {
     run: (send: HomeCall) => Promise<T>
   ) => Promise<SyncOutcome<T> | null>
   stop: () => void
-  /** The clock the link keeps home's busy on (its `now` port). */
-  now: () => number
 }
 
 export function createHomeLink(ports: HomeLinkPorts): HomeLink {
@@ -359,7 +357,6 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
 
   return {
     getSnapshot: (): HomeLinkState => state,
-    now: ports.now,
 
     subscribe(listener): () => void {
       listeners.add(listener)

@@ -1149,8 +1149,7 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   turned away. A run goes
   under the pairing the phone holds when it starts (`laneExchange`), each
   of its requests waiting its turn on the drain's one pace (`createPace`,
-  `kept-runtime.ts`, AD3: 49 at once, then one each 2 s, every lane's
-  requests together, none refused, so a run is never cut short by it), and
+  `kept-runtime.ts`; its rate is AD3's), and
   the link's `send` refuses a request once the phone stops or goes to the
   background. A run that ends part way (home busy, a stop, the background,
   no answer) keeps what home took: a LeetType session or Studio sitting

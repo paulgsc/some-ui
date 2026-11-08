@@ -8,6 +8,7 @@
  * back, the network, an edit, a pull) sends nothing and says busy, and the
  * end of the wait asks each lane it turned away once.
  */
+import type { FakeClock } from "@/test-support/fake-clock"
 import { fakeClock } from "@/test-support/fake-clock"
 import type { HomeAnswer, HomeExchanged } from "@some-ui/core-utils"
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest"
@@ -17,17 +18,22 @@ import type { Kept } from "@/lib/home-link/kept-runtime"
 import { createKept, laneExchange } from "@/lib/home-link/kept-runtime"
 import { watchKept } from "@/lib/home-link/kept-watch"
 import type { Lane, LaneId } from "@/lib/home-link/lanes"
+import { busyNow } from "@/lib/home-link/lanes"
 import type { HomeLinkState } from "@/lib/home-link/model"
-import { homeBusy } from "@/lib/home-link/model"
 import { homeRefresher } from "@/lib/home-link/pull"
 import type { HomeLink } from "@/lib/home-link/runtime"
 import { createHomeLink } from "@/lib/home-link/runtime"
 
 const BASE = "https://home.example/api/v1"
 
-const held = vi.hoisted((): { link: HomeLink | null } => ({ link: null }))
+/** The link this test made, and its clock, as `./index` hands them out. */
+const held = vi.hoisted(
+  (): { link: HomeLink | null; clock: FakeClock | null } => ({
+    link: null,
+    clock: null,
+  })
+)
 
-/** The link this test made, as `./index` hands it out. */
 function theLink(): HomeLink {
   if (held.link === null) throw new Error("no link made yet")
   return held.link
@@ -42,6 +48,11 @@ vi.mock("@/lib/home-link/index", () => {
     homeLink: theLink,
     pairingOf,
     paired: (): boolean => pairingOf() !== null,
+    LINK_CLOCK: {
+      now: (): number => held.clock?.now() ?? 0,
+      after: (ms: number, run: () => void): (() => void) =>
+        held.clock?.after(ms, run) ?? ((): void => undefined),
+    },
   }
 })
 
@@ -69,6 +80,7 @@ type Home = {
 async function pairedHome(retryAfter: string): Promise<Home> {
   const sent: Array<string> = []
   const clock = fakeClock()
+  held.clock = clock
   let busy = true
   held.link = createHomeLink({
     credential: {
@@ -134,7 +146,7 @@ function watchedLane(id: LaneId, watch = true): Watched {
     ),
     keep: (run) => theLink().keep(run),
     paired: () => true,
-    homeBusy: () => homeBusy(theLink().getSnapshot(), theLink().now()),
+    homeBusy: busyNow,
     now: () => 0,
   })
   if (watch) stops.push(watchKept(lane, kept))
