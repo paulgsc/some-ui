@@ -11,17 +11,19 @@
  * A request that fails on the way ends the run there: the notes answered
  * before it keep their answers, and those after it were not sent.
  *
- * It also sends My data's let-go of a week of the call (ST38, #2661;
- * paulgsc/server `DELETE /call/videos/:from/video` and `/rest`): on "Delete
- * for good" in My data's call week sheet, one run of the link's `send` with
- * one `DELETE` of that step. Home answers with the step's receipt, kept for
- * good; a step already done answers with the same receipt.
+ * It also sends My data's let-go of an episode of a feed (`FEEDS`; ST38,
+ * #2661; FEED4; paulgsc/server `DELETE /feeds/:feed/videos/:key/video` and
+ * `/rest`): on "Delete for good" in My data's videos sheet, one run of the
+ * link's `send` with one `DELETE` of that step. Home answers with the step's
+ * receipt, kept for good; a step already done answers with the same receipt.
  *
  * LA19 (docs/learner-data-authority.md): the one sender of a `DELETE` to
  * home, imported by `lib/my-data` alone and called by its delete runtimes
  * alone (the egress test's "LA19 (MD5)" checks).
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
+
+import type { Feed } from "@/lib/call-videos/model"
 
 import { homeLink, paired } from "./index"
 
@@ -81,28 +83,29 @@ export async function deleteNotes(
   }
 }
 
-/** A step of letting a week of the call go: its video, then the rest. */
+/** A step of letting an episode go: its video, then the rest. */
 export type CallStep = "video" | "rest"
 
-/** The let-go of a week's step, as home takes it. */
-function callStepPath(from: string, step: CallStep): string {
-  return `/call/videos/${encodeURIComponent(from)}/${step}`
+/** The let-go of an episode's step, as home takes it. */
+function callStepPath(feed: Feed, key: string, step: CallStep): string {
+  return `/feeds/${feed}/videos/${encodeURIComponent(key)}/${step}`
 }
 
-/** Home's answer to a week's step, or why there is none (as a note's). */
+/** Home's answer to an episode's step, or why there is none (as a note's). */
 export type CallStepAsked =
   | { readonly kind: "answered"; readonly answer: HomeAnswer }
   | Exclude<DeleteAsked, { readonly kind: "answered" }>
 
-/** Asks home once to let `step` of the week starting `from` go; never rejects. */
+/** Asks home once to let `step` of `feed`'s episode `key` go; never rejects. */
 export async function deleteCallStep(
-  from: string,
+  feed: Feed,
+  key: string,
   step: CallStep
 ): Promise<CallStepAsked> {
   if (!paired()) return { kind: "unpaired" }
   try {
     const outcome = await homeLink().send((send) =>
-      send("DELETE", callStepPath(from, step))
+      send("DELETE", callStepPath(feed, key, step))
     )
     return outcome?.kind === "done"
       ? { kind: "answered", answer: outcome.value }

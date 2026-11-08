@@ -1,18 +1,18 @@
 /**
- * My data's let-go of a week of the call (ST38, #2661), white-gloved as a
- * recording's delete is (`./deleting`): the sheet's states and their pure
- * `step`, and what home's answers mean. `./call-deleting-runtime` owns the
+ * My data's let-go of an episode of a feed (`FEEDS`; ST38, #2661; FEED4),
+ * white-gloved as a recording's delete is (`./deleting`): the sheet's states
+ * and their pure `step`, and what home's answers mean. `./call-deleting-runtime` owns the
  * request and the phone's copy; `./words`' `CALL_DELETING` says each state.
  *
  * - **Two steps, each asked once.** The video goes first, then the rest of
- *   the week's folder (takes, stills, cut list). Home holds the order and
+ *   the episode's folder (takes, stills, cut list). Home holds the order and
  *   the link rule; the page offers a step only when home's list shows it can
- *   go (the week has a link, and for the rest, its video went).
+ *   go (the episode has a link, and for the rest, its video went).
  * - **It asks once,** "Keep it" first: `asked` opens the sheet, `confirmed`
  *   deletes. While it deletes, the sheet can't be closed or asked again.
  * - **Home's answer is final but for silence.** A receipt (`200`) is the
  *   step gone; a `409` (home keeps it: no link, the video first, or no
- *   video), a `404` (no such week) and a `401` (home forgot this phone)
+ *   video), a `404` (no such episode) and a `401` (home forgot this phone)
  *   delete nothing and are never asked again. Only no answer, or the link
  *   being busy, offers Try again, a tap. Nothing retries on its own.
  *
@@ -22,6 +22,7 @@
 import { assertNever } from "@some-ui/core-utils"
 import { z } from "zod"
 
+import type { Feed } from "@/lib/call-videos/model"
 import type { CallStep, CallStepAsked } from "@/lib/home-link/delete-note"
 
 import type { HomeDeleteEnd } from "./deleting"
@@ -29,7 +30,7 @@ import { readHomeDelete } from "./deleting"
 
 const ReceiptSchema = z.object({
   receipt: z.object({
-    from: z.string(),
+    key: z.string(),
     step: z.enum(["video", "rest"]),
     url: z.string(),
     size: z.number().int().nonnegative(),
@@ -64,10 +65,13 @@ export function readCallStep(asked: CallStepAsked): CallStepEnd {
   }
 }
 
-/** The step a sheet is about: a week, which step, and how many bytes go. */
+/**
+ * The step a sheet is about: a feed's episode, which step, and how many
+ * bytes go.
+ */
 export type CallAsk = {
-  readonly from: string
-  readonly to: string
+  readonly feed: Feed
+  readonly key: string
   readonly step: CallStep
   readonly bytes: number
 }

@@ -1,10 +1,10 @@
 /**
  * @vitest-environment node
  *
- * My data's let-go of a week of the call (ST38): the sheet asks once, deletes
+ * My data's let-go of a feed's episode (ST38, FEED4): the sheet asks once, deletes
  * only after a confirm, takes home's answer as final but for silence, and
  * the runtime calls home once per confirm, lets the phone's copy go on the
- * video's receipt, and reads the weeks again.
+ * video's receipt, and reads that feed's episodes again.
  */
 import { describe, expect, it, vi } from "vitest"
 
@@ -19,14 +19,14 @@ import type { CallDeletingPorts } from "@/lib/my-data/call-deleting-runtime"
 import { createCallDeleting } from "@/lib/my-data/call-deleting-runtime"
 
 const ASK: CallAsk = {
-  from: "2026-10-30",
-  to: "2026-11-05",
+  feed: "call",
+  key: "2026-10-30",
   step: "video",
   bytes: 95,
 }
 
 const RECEIPT = {
-  from: "2026-10-30",
+  key: "2026-10-30",
   step: "video" as const,
   url: "https://youtu.be/dQw4w9WgXcQ",
   size: 95,
@@ -125,7 +125,11 @@ describe("createCallDeleting", () => {
     deleting.confirm()
     await settle()
     expect(fake.deleteCallStep).toHaveBeenCalledTimes(1)
-    expect(fake.deleteCallStep).toHaveBeenCalledWith("2026-10-30", "video")
+    expect(fake.deleteCallStep).toHaveBeenCalledWith(
+      "call",
+      "2026-10-30",
+      "video"
+    )
     expect(deleting.getSnapshot()).toEqual({
       kind: "ended",
       ask: ASK,
@@ -133,14 +137,29 @@ describe("createCallDeleting", () => {
     })
   })
 
-  it("lets the phone's copy go on the video's receipt, and reads the weeks again", async () => {
+  it("lets the phone's copy go on the video's receipt, and reads that feed's episodes again", async () => {
     const fake = ports(answered(200, JSON.stringify({ receipt: RECEIPT })))
     const deleting = createCallDeleting(fake.ports)
     deleting.ask(ASK)
     deleting.confirm()
     await settle()
-    expect(fake.forgetCopy).toHaveBeenCalledWith("2026-10-30")
+    expect(fake.forgetCopy).toHaveBeenCalledWith("call", "2026-10-30")
     expect(fake.reread).toHaveBeenCalledTimes(1)
+    expect(fake.reread).toHaveBeenCalledWith("call")
+
+    const pd = { ...RECEIPT, key: "2026-SF-08" }
+    const delta = ports(answered(200, JSON.stringify({ receipt: pd })))
+    const deltaDeleting = createCallDeleting(delta.ports)
+    deltaDeleting.ask({ ...ASK, feed: "playoff-delta", key: "2026-SF-08" })
+    deltaDeleting.confirm()
+    await settle()
+    expect(delta.deleteCallStep).toHaveBeenCalledWith(
+      "playoff-delta",
+      "2026-SF-08",
+      "video"
+    )
+    expect(delta.forgetCopy).toHaveBeenCalledWith("playoff-delta", "2026-SF-08")
+    expect(delta.reread).toHaveBeenCalledWith("playoff-delta")
 
     const rest = ports(
       answered(200, JSON.stringify({ receipt: { ...RECEIPT, step: "rest" } }))

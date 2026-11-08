@@ -15,7 +15,7 @@
 import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import { audioPlayer } from "@some-ui/voice-capture"
 
-import { callVideos } from "@/lib/call-videos"
+import { feedVideos } from "@/lib/call-videos"
 import { deleteCallStep, deleteNotes } from "@/lib/home-link/delete-note"
 import { askDeleted } from "@/lib/home-link/deleted-read"
 import { askKept } from "@/lib/home-link/kept-read"
@@ -177,16 +177,16 @@ export function phoneReceipts(): Receipts {
 let callDeleting: CallDeleting | null = null
 
 /**
- * My data's let-go of a week of the call (ST38), one per page load: home's
- * delete of the step (LA19), the phone's copy of the video once it went, and
- * the weeks read again.
+ * My data's let-go of a feed's episode (ST38, FEED4), one per page load:
+ * home's delete of the step (LA19), the phone's copy of the video once it
+ * went, and the feed's episodes read again.
  */
 export function phoneCallDeleting(): CallDeleting {
   callDeleting ??= createCallDeleting({
     deleteCallStep,
-    forgetCopy: (from) => callVideos().forget(from),
-    reread: () => {
-      void callVideos().open()
+    forgetCopy: (feed, key) => feedVideos(feed).forget(key),
+    reread: (feed) => {
+      void feedVideos(feed).open()
     },
   })
   return callDeleting

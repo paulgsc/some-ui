@@ -1,12 +1,15 @@
 /**
- * Studio's Calls (ST38, #2661): the weekly call's videos home holds, as the
- * screen reads them, and what the screen is doing with each. Pure, so every
- * answer and every turn of the screen is held by a test; the runtime
- * (`./runtime`) owns the requests and the phone's files.
+ * Studio's feed videos (ST38, #2661; FEED4, #2647): the episodes home holds
+ * of each feed (`FEEDS`), as the screen reads them, and what the screen is
+ * doing with each. Pure, so every answer
+ * and every turn of the screen is held by a test; the runtime (`./runtime`)
+ * owns the requests and the phone's files, one per feed.
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { assertNever, readAs } from "@some-ui/core-utils"
 import { z } from "zod"
+
+export { FEEDS, isFeed, type Feed } from "@/lib/feeds"
 
 const LinkSchema = z.object({
   url: z.string().min(1),
@@ -14,41 +17,40 @@ const LinkSchema = z.object({
 })
 
 const ReceiptSchema = z.object({
-  from: z.string().min(1),
+  key: z.string().min(1),
   step: z.enum(["video", "rest"]),
   url: z.string().min(1),
   size: z.number().int().nonnegative(),
   deletedAt: z.string().min(1),
 })
 
-const WeekSchema = z.object({
-  from: z.string().min(1),
-  to: z.string().min(1),
+const EpisodeSchema = z.object({
+  key: z.string().min(1),
   videoBytes: z.number().int().nonnegative().nullable(),
   restBytes: z.number().int().nonnegative().nullable(),
   link: LinkSchema.nullable(),
   receipts: z.array(ReceiptSchema),
 })
 
-const WeeksSchema = z.object({ weeks: z.array(WeekSchema) })
+const EpisodesSchema = z.object({ episodes: z.array(EpisodeSchema) })
 
-/** A week of the call, as home lists it (`GET /call/videos`). */
-export type Week = z.infer<typeof WeekSchema>
+/** An episode of a feed, as home lists it (`GET /feeds/:feed/videos`). */
+export type Episode = z.infer<typeof EpisodeSchema>
 
 /** What home's list says. */
-export type WeeksRead =
-  | { readonly kind: "read"; readonly weeks: ReadonlyArray<Week> }
-  /** A home from before the call's videos: it serves no such path. */
+export type EpisodesRead =
+  | { readonly kind: "read"; readonly episodes: ReadonlyArray<Episode> }
+  /** A home from before each feed's videos: it serves no such path. */
   | { readonly kind: "older" }
   | { readonly kind: "unreadable" }
 
-export function readWeeks(answer: HomeAnswer): WeeksRead {
+export function readEpisodes(answer: HomeAnswer): EpisodesRead {
   if (answer.status === 404) return { kind: "older" }
   if (answer.status !== 200) return { kind: "unreadable" }
-  const read = readAs(WeeksSchema, answer.body)
+  const read = readAs(EpisodesSchema, answer.body)
   return read === null
     ? { kind: "unreadable" }
-    : { kind: "read", weeks: read.weeks }
+    : { kind: "read", episodes: read.episodes }
 }
 
 /** What a part of a video asked of home came to. */
@@ -86,30 +88,32 @@ export function readLinkSaved(answer: HomeAnswer): LinkSaved {
     : { kind: "saved", url: kept.url }
 }
 
-/** Where a week stands on home. */
+/** Where an episode stands on home. */
 export type Standing =
-  /** Home has the week's words but no video yet. */
+  /** Home has the episode's words but no video yet. */
   | "waiting"
   /** Home has the video. */
   | "kept"
   /** The video was let go; its link is where it lives now. */
   | "letGo"
 
-export function standing(week: Week): Standing {
-  if (week.receipts.some((receipt) => receipt.step === "video")) return "letGo"
-  return week.videoBytes === null ? "waiting" : "kept"
+export function standing(episode: Episode): Standing {
+  if (episode.receipts.some((receipt) => receipt.step === "video")) {
+    return "letGo"
+  }
+  return episode.videoBytes === null ? "waiting" : "kept"
 }
 
 /** The list, as the screen shows it. */
 export type ListState =
   | { readonly kind: "reading" }
-  | { readonly kind: "read"; readonly weeks: ReadonlyArray<Week> }
+  | { readonly kind: "read"; readonly episodes: ReadonlyArray<Episode> }
   | { readonly kind: "unpaired" }
   | { readonly kind: "away" }
   | { readonly kind: "older" }
   | { readonly kind: "unreadable" }
 
-/** A week's video on the phone. */
+/** An episode's video on the phone. */
 export type Fetch =
   | { readonly kind: "fetching"; readonly done: number; readonly total: number }
   /** In the phone's cache, at `src` for the player and `uri` for sharing. */
@@ -124,7 +128,7 @@ export type FetchFailure =
   /** The phone couldn't keep it (full, or the files refused). */
   | "phone"
 
-/** A week's link being saved. */
+/** An episode's link being saved. */
 export type LinkSave =
   | { readonly kind: "saving" }
   | { readonly kind: "notAVideo" }
@@ -132,40 +136,41 @@ export type LinkSave =
 
 /** What the screen says once, over itself (a `Notice`). */
 type Said =
-  | { readonly kind: "linkSaved"; readonly from: string }
-  | { readonly kind: "shareFailed"; readonly from: string }
+  | { readonly kind: "linkSaved"; readonly key: string }
+  | { readonly kind: "shareFailed"; readonly key: string }
 
-export type CallsState = {
+/** One feed's screen; `fetches` and `links` are by episode key. */
+export type VideosState = {
   readonly list: ListState
   readonly fetches: Readonly<Partial<Record<string, Fetch>>>
   readonly links: Readonly<Partial<Record<string, LinkSave>>>
   readonly said: Said | null
 }
 
-export const INITIAL: CallsState = {
+export const INITIAL: VideosState = {
   list: { kind: "reading" },
   fetches: {},
   links: {},
   said: null,
 }
 
-export type CallsEvent =
+export type VideosEvent =
   | { readonly type: "listAsked" }
   | { readonly type: "listEnded"; readonly list: ListState }
   | {
       readonly type: "fetchMoved"
-      readonly from: string
+      readonly key: string
       readonly fetch: Fetch
     }
-  | { readonly type: "linkSaving"; readonly from: string }
+  | { readonly type: "linkSaving"; readonly key: string }
   | {
       readonly type: "linkEnded"
-      readonly from: string
+      readonly key: string
       readonly saved: LinkSaved | { readonly kind: "away" }
     }
-  /** The phone no longer holds a week it had (its cache was cleared). */
-  | { readonly type: "fetchForgotten"; readonly from: string }
-  | { readonly type: "shareFailed"; readonly from: string }
+  /** The phone no longer holds an episode it had (its cache was cleared). */
+  | { readonly type: "fetchForgotten"; readonly key: string }
+  | { readonly type: "shareFailed"; readonly key: string }
   | { readonly type: "saidSeen" }
 
 function without<T>(
@@ -177,7 +182,7 @@ function without<T>(
 }
 
 /** The screen's one way to change. */
-export function step(state: CallsState, event: CallsEvent): CallsState {
+export function step(state: VideosState, event: VideosEvent): VideosState {
   switch (event.type) {
     case "listAsked": {
       // A list already read stays on screen while it is read again.
@@ -191,33 +196,33 @@ export function step(state: CallsState, event: CallsEvent): CallsState {
     case "fetchMoved": {
       return {
         ...state,
-        fetches: { ...state.fetches, [event.from]: event.fetch },
+        fetches: { ...state.fetches, [event.key]: event.fetch },
       }
     }
     case "fetchForgotten": {
-      return { ...state, fetches: without(state.fetches, event.from) }
+      return { ...state, fetches: without(state.fetches, event.key) }
     }
     case "linkSaving": {
       return {
         ...state,
-        links: { ...state.links, [event.from]: { kind: "saving" } },
+        links: { ...state.links, [event.key]: { kind: "saving" } },
       }
     }
     case "linkEnded": {
-      const { saved, from } = event
+      const { saved, key } = event
       if (saved.kind === "saved") {
-        // The runtime reads the list again, so the week shows home's link.
+        // The runtime reads the list again, so the episode shows home's link.
         return {
           ...state,
-          links: without(state.links, from),
-          said: { kind: "linkSaved", from },
+          links: without(state.links, key),
+          said: { kind: "linkSaved", key },
         }
       }
       return {
         ...state,
         links: {
           ...state.links,
-          [from]:
+          [key]:
             saved.kind === "notAVideo"
               ? { kind: "notAVideo" }
               : { kind: "away" },
@@ -225,7 +230,7 @@ export function step(state: CallsState, event: CallsEvent): CallsState {
       }
     }
     case "shareFailed": {
-      return { ...state, said: { kind: "shareFailed", from: event.from } }
+      return { ...state, said: { kind: "shareFailed", key: event.key } }
     }
     case "saidSeen": {
       return { ...state, said: null }
