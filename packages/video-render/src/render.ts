@@ -295,7 +295,9 @@ export async function render(
     const p = scene.shot.shot.picture
     let call: FfmpegCall
     if (p.kind === "composition" && draw) {
-      const clip = `${work}/composition-${id}.mkv`
+      // Their own folder, as the join's parts: no scene's segment can be one.
+      await ports.mkdir(`${work}/compositions`)
+      const clip = `${work}/compositions/${id}.mkv`
       const drawn = await draw.record({
         scene: id,
         ref: p.ref,

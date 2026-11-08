@@ -665,7 +665,7 @@ describe("a composition scene (HYPER2)", () => {
     compositions: {
       pin: () => Promise.resolve("fixture"),
       record: async (r) => {
-        asked.push(`${r.ref}:${r.frames}:${r.files.join(",")}`)
+        asked.push(`${r.out} ${r.ref}:${r.frames}:${r.files.join(",")}`)
         const { width, height, fps } = r.frame
         const ran = await ports.ffmpeg({
           args: [
@@ -700,9 +700,10 @@ describe("a composition scene (HYPER2)", () => {
       )
       expect(drawn.ok ? drawn.value.leftOut : drawn.problems).toEqual([])
     }
+    // In a folder of their own, so no scene's segment shares a clip's name.
     expect(asked).toEqual([
-      "promo-hook:30:captures/still.png",
-      "promo-hook:30:captures/still.png",
+      "work-c1/compositions/S1.mkv promo-hook:30:captures/still.png",
+      "work-c2/compositions/S1.mkv promo-hook:30:captures/still.png",
     ])
     expect(await frames("out-c1/video.mp4")).toBe(60)
     expect(await sha("out-c1/video.mp4")).toBe(await sha("out-c2/video.mp4"))
