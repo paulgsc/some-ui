@@ -40,7 +40,7 @@ function who(by: SetBy): string {
 }
 
 /** A moment as the page says it, in this computer's own time zone. */
-export function when(iso: string, timeZone?: string): string {
+function when(iso: string, timeZone?: string): string {
   const at = new Date(iso)
   if (Number.isNaN(at.getTime())) return "a time home couldn't say"
   return at.toLocaleString("en-GB", {
@@ -64,12 +64,12 @@ export function standingLine(standing: Standing, timeZone?: string): string {
 }
 
 /** While a change is on its way to home. */
-export function changingLine(recording: boolean): string {
+function changingLine(recording: boolean): string {
   return recording ? "Turning recording on…" : "Pausing recording…"
 }
 
 /** Why home's answer did not come. */
-export function refusalLine(why: Refusal): string {
+function refusalLine(why: Refusal): string {
   switch (why) {
     case "signed-out": {
       return "Sign in again to see home's switches."
