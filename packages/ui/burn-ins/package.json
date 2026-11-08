@@ -54,7 +54,12 @@
       "import": "./dist/some-ui-burn-ins.es.js",
       "default": "./dist/some-ui-burn-ins.es.js"
     },
-    "./style.css": "./dist/burn-ins.css"
+    "./style.css": "./dist/burn-ins.css",
+    "./contract": {
+      "types": "./dist/some-ui-burn-ins/contract.d.ts",
+      "import": "./dist/some-ui-burn-ins/contract.es.js",
+      "default": "./dist/some-ui-burn-ins/contract.es.js"
+    }
   },
   "style": "./dist/burn-ins.css"
 }

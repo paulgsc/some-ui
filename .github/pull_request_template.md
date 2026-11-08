@@ -12,11 +12,12 @@ something existing code already does, name that code and say why both must exist
 ## Calls I made
 
 <!--
-Each call this change made that the owner didn't ask for and would want to hear about, one
-per line: the call, the options it chose between, why this one, and how to undo it. Leave
-out what a check or a convention decided, and mechanical choices. "None" if there were none.
-The weekly call reads this section to say what was decided without the owner
-(`packages/video-render/src/call.ts`, `mine`), and skips this comment.
+Each gray-area call this change made: a choice between options that no check, convention or
+earlier owner decision settles, that the owner would notice on the screen or in how they work.
+Record each one in docs/calls.json (who made it, why it was gray, the options, how to undo
+it), put `Call: <ID>` in the commit that makes it, and list the IDs here with a line each.
+"None" if there were none. The weekly call reads docs/calls.json, not this section
+(CLAUDE.md, "Two kinds of pull request").
 -->
 
 ## Change kind
