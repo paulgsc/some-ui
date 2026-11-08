@@ -71,6 +71,10 @@ window.motion = (() => {
 
   const tracks = []
   const track = (el, keys) => {
+    // On a layer of its own from the first frame to the last: without it,
+    // Chrome may move a still element back into the page's layer at a moment
+    // that depends on timing, and the two draw its edges differently (#2739).
+    el.style.willChange = "transform, opacity"
     tracks.push([el, keys])
     draw(el, valuesAt(keys, 0))
   }

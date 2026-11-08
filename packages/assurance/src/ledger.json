@@ -10,7 +10,7 @@
         "server:apps/servers/file_host/src/mailbox",
         "server:crates/mailbox_kit"
       ],
-      "modules": ["jobs", "routine", "leetype_files"],
+      "modules": ["jobs", "routine", "leetype_files", "episode_notes"],
       "objectives": [
         {
           "id": "MI1",
@@ -1551,6 +1551,155 @@
       ]
     },
     {
+      "id": "home-admits",
+      "name": "Home turns a client away only when it is over its limit, and says so",
+      "why": "Home answers every phone, browser and routine through one limiter. A client it refuses while under its limit loses work for nothing, a refusal nobody hears of is a silent failure, and a phone that keeps asking a busy home only stays refused.",
+      "paths": [
+        "server:crates/some-services/src/rate_limiter",
+        "server:apps/servers/file_host/src/rate_limiter",
+        "server:apps/servers/file_host/src/net.rs",
+        "server:infra/prometheus/rules/home.yml",
+        "some-ui:apps/www/src/lib/home-link/runtime.ts",
+        "some-ui:apps/www/src/lib/home-link/model.ts",
+        "some-ui:apps/www/src/lib/home-link/kept-runtime.ts",
+        "some-ui:apps/www/src/lib/home-link/kept-watch.ts",
+        "some-ui:apps/www/src/lib/home-link/lanes.ts",
+        "some-ui:apps/www/src/lib/home-link/pull.ts",
+        "some-ui:apps/www/src/lib/device-backend/native-http",
+        "some-ui:packages/ui/rust-rounds/src/lib/home",
+        "some-ui:packages/ui/rust-rounds/src/lib/weeks"
+      ],
+      "modules": [],
+      "objectives": [
+        {
+          "id": "AD1",
+          "kind": "RE8",
+          "property": "work",
+          "claim": "Home never turns away a client that is under its limit of 60 requests a minute, and two clients behind home's proxy never share one.",
+          "requirement": "Each client has its own budget of 60 requests a minute, a burst of 60; a request inside it is always admitted, reading the limiter (its metrics, its state) never changes a decision, and a client behind the trusted proxy is known by the address the proxy names, not by the proxy's own.",
+          "bound": {
+            "value": 60,
+            "unit": "requests a minute per client, a burst of 60",
+            "tighter": "higher"
+          },
+          "verdict": "holds",
+          "conclusion": "A client inside its 60 a minute is always let in, and the phone and a browser behind home's Caddy are counted apart; one over it is told when to come back.",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "The keyed limiter keeps one bucket per client and refuses only a request its bucket cannot pay for, answering 429 with Retry-After in whole seconds, rounded up, at least 1.",
+              "ref": "server:crates/some-services/src/rate_limiter"
+            },
+            {
+              "class": "structural",
+              "says": "file_host trusts only its container's default gateway (TRUSTED_PROXIES=gateway), so only Caddy can name a client; it keys the limiter by that address, an IPv6 client by its /64, through a process-stable key, so a bucket never resets at midnight.",
+              "ref": "server:apps/servers/file_host/src/net.rs"
+            }
+          ],
+          "proof": [
+            "server:crates/some-services/src/rate_limiter/keyed.rs#a_client_under_its_limit_is_never_refused",
+            "server:crates/some-services/src/rate_limiter/keyed.rs#reading_the_limiter_never_changes_a_decision",
+            "server:apps/servers/file_host/src/net.rs#clients_behind_a_trusted_proxy_are_told_apart",
+            "server:apps/servers/file_host/src/net.rs#under_homes_configuration_nobody_but_caddy_names_a_client"
+          ],
+          "watch": {
+            "by": "alert",
+            "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
+          },
+          "amendments": []
+        },
+        {
+          "id": "AD2",
+          "kind": "OA8",
+          "property": "outcome",
+          "claim": "When home turns a client away, you are told on Slack within 2 minutes, while home's server runs.",
+          "requirement": "While file_host answers Prometheus, an alert fires when any request was refused in the last 15 minutes, and it reaches the owner within 2 minutes of the refusal, Prometheus's 5 s scrape of file_host, its 15 s evaluation and Grafana's 1 min check included, and its delivery is tested. A file_host that stops answering is FileHostDown's to report.",
+          "bound": {
+            "value": 120,
+            "unit": "seconds",
+            "tighter": "lower"
+          },
+          "verdict": "holds",
+          "conclusion": "While home's server runs, Slack tells you within about 80 s of a refusal, inside the 2 minutes promised, and keeps saying so for 15 minutes after the last one; Grafana itself is not yet watched.",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "ClientRateLimited (objective label AD2) fires when file_host counted any refused request in the last 15 minutes; promtool tests it in CI.",
+              "ref": "server:infra/prometheus/rules/home.yml"
+            },
+            {
+              "class": "derived",
+              "says": "Worst case while file_host answers: Prometheus scrapes the refusal within 5 s, evaluates within 15 s and Grafana's rule runs within 60 s, about 80 s in all. The promtool tests evaluate once a minute, so they do not prove the seconds.",
+              "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
+            },
+            {
+              "class": "structural",
+              "says": "Grafana reads what Prometheus has firing from ALERTS and sends each alert to the Slack contact point, one message per alert.",
+              "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
+            },
+            {
+              "class": "measured",
+              "says": "On home on 2026-10-30, the contact point's test, a Grafana-evaluated error alert and a live FileHostDown from Prometheus (03:46 UTC, through home-alerts.yml's home_watchers route) all reached the owner's Slack.",
+              "ref": "server#525"
+            },
+            {
+              "class": "unknown",
+              "says": "Nothing watches Grafana itself, the one thing that delivers home's alerts.",
+              "ref": "some-ui#2289"
+            }
+          ],
+          "proof": [
+            "server:infra/prometheus/rules/home.test.yml#ClientRateLimited"
+          ],
+          "watch": {
+            "by": "alert",
+            "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
+          },
+          "amendments": []
+        },
+        {
+          "id": "AD3",
+          "kind": "RE10",
+          "property": "work",
+          "claim": "After home says it is busy, the phone sends it nothing until home's Retry-After has passed, then asks once; within one page load the phone's drain alone never takes home's bucket below 11, however much it holds, and leaves no record it cannot finish.",
+          "requirement": "The first 429 any request of the phone's home link hears starts a wait of home's Retry-After (held between 1 s and 10 minutes, a minute when it can't be read) that every lane, every moment a watch asks on and a pull keep: the link answers each request busy itself and sends nothing, each lane says home is busy, and the wait's end asks each lane it turned away once. Every lane's requests wait their turn on one pace, 49 at once and then one each 2 s, against home's bucket of 60 that refills one a second, so within one page load the drain alone never takes it below 11; none is refused for the pace, so one run goes through all a lane holds. A page reload starts the pace whole again, so a reload right after a burst can meet home's busy, which the wait above then handles. A LeetType session or Studio sitting a run leaves part way resumes at the first event home has not taken.",
+          "verdict": "holds",
+          "conclusion": "Once home says busy, the phone stays quiet until home's own time is up and then asks each lane once; a pull stops reaching home at the first busy lane; within a page load the pace never takes home's bucket below 11; and against file_host's limiter one run of the practice drain takes a LeetType session of 100 events home whole, each event once, home never busy, with the reflection after it, and a LeetType session or Studio sitting home turned away part way resumes where it stopped.",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "The link keeps home's busy in its state (homeBusyUntil) and answers every request of every run busy while it lasts, sending nothing; its end is the one event the watches ask on again.",
+              "ref": "some-ui:apps/www/src/lib/home-link/runtime.ts"
+            },
+            {
+              "class": "structural",
+              "says": "laneExchange sends each of a lane's requests only after its turn on the pace lanes.ts hands every lane (DRAIN_PACE, createPace: a burst of 49, one back each 2 s), skipped only for a request the link answers busy itself.",
+              "ref": "some-ui:apps/www/src/lib/home-link/kept-runtime.ts"
+            },
+            {
+              "class": "structural",
+              "says": "sendLogs skips each event sent.events says home took, and forgets a log's events only once it is read back; the drain keeps them however its part ends.",
+              "ref": "some-ui:apps/www/src/lib/home-link/leetype-log.ts"
+            }
+          ],
+          "proof": [
+            "some-ui:apps/www/src/lib/home-link/__tests__/home-busy.test.ts#after home says busy, the phone sends nothing until home's Retry-After has passed, then asks once",
+            "some-ui:apps/www/src/lib/home-link/__tests__/home-busy.test.ts#a pull stops at home's busy: the lanes after it say busy, and nothing more is sent",
+            "some-ui:apps/www/src/lib/home-link/__tests__/runtime.test.ts#after home says busy, sends nothing until its Retry-After has passed, answering busy itself (AD3)",
+            "some-ui:apps/www/src/lib/home-link/__tests__/kept.test.ts#paces the drain so that, in one page load, it alone never takes home's bucket below 11: 49 at once, then one each 2 s (AD3)",
+            "some-ui:apps/www/src/lib/home-link/__tests__/kept.test.ts#sends each request only once the pace gives it a turn, refusing none",
+            "some-ui:apps/www/src/lib/home-link/__tests__/drain-paced.test.ts#takes a LeetType session of 100 events home whole in one run, each event once, home never busy, and the reflection after it still goes",
+            "some-ui:apps/www/src/lib/home-link/__tests__/drain-paced.test.ts#resumes a session home turned away part way at the first event it had not taken, once home's busy is over",
+            "some-ui:apps/www/src/lib/home-link/__tests__/drain-paced.test.ts#resumes a Studio sitting home turned away part way at the first event it had not taken, once home's busy is over"
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        }
+      ]
+    },
+    {
       "id": "what-is-kept",
       "name": "What I keep, on home and on the phone",
       "why": "Sessions, study records, takes and notes are the evidence of growth over time, so what is kept grows by a stated model, and none of it is given up for space without the owner's say.",
@@ -1812,13 +1961,11 @@
         "server:infra/docker/Dockerfile.render",
         "server:infra/kokoro",
         "some-ui:apps/www/tests/record/call.ts",
-        "server:apps/servers/file_host/src/handlers/call_videos.rs",
-        "server:apps/servers/file_host/src/routes/call_videos.rs",
         "server:apps/servers/file_host/src/feeds",
         "server:apps/servers/file_host/src/handlers/feed_videos.rs",
         "server:apps/servers/file_host/src/routes/feed_videos.rs"
       ],
-      "modules": ["call_videos", "feed_videos"],
+      "modules": ["call_videos", "feed_videos", "renders"],
       "objectives": [
         {
           "id": "CW1",
@@ -1893,20 +2040,31 @@
           "property": "work",
           "claim": "Home reads the repository once an hour, and fetches a week only while it lacks it.",
           "requirement": "A pass is one request for the index plus one per listed week home holds no week of; a week home holds is never fetched again; a pass that failed is tried again after 10 minutes, doubled per failure in a row, to at most the hourly interval; each answer is at most 1 MiB.",
-          "verdict": "unproven",
-          "conclusion": "The pass tests show the requests a pass makes and the retry spacing, from 10 minutes to the hour. Not bounded: an answer over 1 MiB is refused only once it has been read whole, as the game feed's are (GA3).",
-          "tracked": "server#684",
+          "verdict": "holds",
+          "conclusion": "The pass tests show the requests a pass makes and the retry spacing, from 10 minutes to the hour. Each answer is read in chunks and refused once it passes 1 MiB, or before its body when it declares more: an unending answer costs home 1 MiB and one chunk, and a refusal's body is never read.",
           "evidence": [
             {
               "class": "measured",
               "says": "A second pass over the same index asks for the index alone, and a failing source is asked again after 600, 1200 and 2400 s, then hourly.",
               "ref": "server:apps/servers/file_host/src/call_weeks/pass.rs"
+            },
+            {
+              "class": "measured",
+              "says": "An answer over the cap is refused, and one with no length that never ends is refused at the chunk that passes 1 MiB, the chunks it handed out counted; another status's body is never read.",
+              "ref": "server:apps/servers/file_host/src/game_feed/pass.rs"
             }
           ],
           "watch": {
             "by": "none"
           },
-          "amendments": []
+          "amendments": [],
+          "proof": [
+            "server:apps/servers/file_host/src/call_weeks/pass.rs#each_listed_week_home_lacks_is_fetched_once_and_kept_as_served",
+            "server:apps/servers/file_host/src/call_weeks/pass.rs#a_failing_source_is_retried_sooner_but_never_more_often_than_it_is_read",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_declared_length_over_the_cap_is_refused_before_its_body",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#an_unending_answer_is_refused_once_it_passes_the_cap",
+            "server:apps/servers/file_host/src/game_feed/pass.rs#a_refusal_over_the_cap_is_still_a_refusal"
+          ]
         },
         {
           "id": "CW4",
@@ -1945,7 +2103,7 @@
           "claim": "Every week of the call home holds becomes a video within the render policy's caps, and a week that hasn't is tried again.",
           "requirement": "Each week in call_week is written to call-weeks beside home's database, on its drive (STORAGE); within the next hourly pass the render worker records it from the pinned stage with each scene said by home's Kokoro speaker, renders it, and moves the finished folder into renders/call/<from>/ on the same drive, whole; a week that fails is left without a folder and tried again each hour, keeping its finished steps; a week whose video would pass the render policy's length or size (set in the render worker) is refused before it is drawn or once it is made, which fails its attempt with the cap named; no finished video is deleted.",
           "verdict": "unproven",
-          "conclusion": "Home rendered the real week of Oct 30 on Nov 7: all 36 scenes recorded, the video written and its folder moved into renders/call. Slack says when a week's attempt fails, naming the file that holds its whole output, when a week has waited 3 hours with no attempt, and when the worker has not passed for 4 hours, each tested by promtool; the CALL dashboard shows each. The worker's own guarantees (each hour's retry, the steps it keeps, the whole move, no video deleted) are rehearsed, not tested.",
+          "conclusion": "Home rendered the real week of Oct 30 on Nov 7: all 36 scenes recorded, the video written and its folder moved into renders/call. The worker's own handling of a week is tested in CI, one pass at a time with a fake recorder: a failed week is left without a folder, keeps its work and is tried on the next pass, which reuses it; a finished week is moved in whole and its work removed; a pass over a finished week leaves it untouched; no cap on waiting work removes a video. Slack says when a week's attempt fails, naming the file that holds its whole output, when a week has waited 3 hours with no attempt, and when the worker has not passed for 4 hours, each tested by promtool; the CALL dashboard shows each. Not yet proven: the hourly retry itself (the test runs each pass by hand), that the worker hands the recorder the render policy's caps, and that each week is said by the pinned speaker from the pinned stage.",
           "tracked": "some-ui#2659",
           "evidence": [
             {
@@ -1982,6 +2140,11 @@
               "class": "structural",
               "says": "The renderer refuses a video past RenderPolicy.maxVideoMs before any ffmpeg call and removes one past maxVideoBytes once made; the recorder refuses a week past the length by its words before anything is said; each tested.",
               "ref": "some-ui:packages/video-render/src/policy.ts"
+            },
+            {
+              "class": "measured",
+              "says": "render-calls.sh, sourced over a temporary folder with a fake recorder, keeps a failed week's work with no folder in renders/call and reuses it on the next pass, moves a finished week whole without its cache, leaves a finished week's folder byte for byte on a later pass, and removes only another waiting week's work past the cap, never a video; CI runs it on every pull request.",
+              "ref": "server:infra/render/render-calls.test.sh"
             }
           ],
           "watch": {
@@ -2010,7 +2173,7 @@
           "claim": "The call's videos grow by one folder a week, kept until I let a week go from My data once its YouTube link is recorded.",
           "requirement": "renders/call on home's database drive (STORAGE) gains one folder per week of the call (the video, its takes, stills, cut list and week), deleted only by the owner from My data once the week's YouTube link is recorded (CW7); a waiting week's work and step cache stay in renders/call-work between attempts, within the render policy's caps for one week and for all of them, and leave once the week renders; a step or a week's work past a cap is said, never silently dropped.",
           "verdict": "unproven",
-          "conclusion": "The first week's folder is 112 MB (the video is 95 MB), so about 6 GB a year, kept for good as you chose (#2640). file_host reads the bytes of the videos and of the waiting work, and the drive's free space, each minute (the CALL dashboard); Slack says when a cache cap was passed in the last day and when the drive has under a tenth free.",
+          "conclusion": "The first week's folder is 112 MB (the video is 95 MB), so about 6 GB a year, kept for good as you chose (#2640). file_host reads the bytes of the videos and of the waiting work, and the drive's free space, each minute (the CALL dashboard); Slack says when a cache cap was passed in the last day and when the drive has under a tenth free. The worker's part is tested in CI: a finished week's work leaves with it, a week let go loses its waiting work, past the all-weeks cap only another waiting week's work is removed and said in work.cache.log, and no pass deletes a video. The growth per week on home is still to be read from the dashboard after a few weeks.",
           "tracked": "some-ui#2659",
           "evidence": [
             {
@@ -2022,6 +2185,11 @@
               "class": "structural",
               "says": "Each minute file_host sums the bytes under renders/call and renders/call-work, reads the newest cache warning and the drive's free space (statvfs); CallRenderCacheFull and HomeDriveLow fire on them, each tested by promtool.",
               "ref": "server:apps/servers/file_host/src/call_weeks/render.rs"
+            },
+            {
+              "class": "measured",
+              "says": "render-calls.sh, one pass at a time with a fake recorder: no pass deletes a finished video, a finished week's work is removed, a week no longer held loses its waiting work, and past the cap only another waiting week's work goes, said as a cache warning.",
+              "ref": "server:infra/render/render-calls.test.sh"
             }
           ],
           "watch": {
@@ -2548,6 +2716,13 @@
       "class": "record",
       "growth": "Per video idea caught in Studio (ST18): the confirmed text of up to four answers, each a few versions (what was heard, then any fix), and since ST19 (#2301) up to three questions Claude asked back with their answers, each primer Claude fleshed it out into (up to 24 scenes of text), and a mark each time it is set aside or brought back; since ST26 (#2453) a new idea is added only when it is sent, whole: what it is (a title of at most 80 characters, a subject, keywords, a format), each answer's take ids and home's words once heard, and when it was sent; append-only; no audio is ever written, so nothing is discarded (owner, 2026-10-30, #2300); no cap (`some-ui:studio:ideas`).",
       "horizon": "an idea is never let go",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "phone:episode-feedback",
+      "class": "record",
+      "growth": "bounded: each note left on a feed's episode (SFEED6, #2745): the feed, the episode's key, the moment in it, the categories picked from the fixed set and when it was written, a few hundred bytes each, append-only; at 1,000 notes (about 250 KB) a new one is refused and none is dropped (`some-ui:episode-feedback`).",
+      "horizon": "the phone keeps every note; none is rewritten or let go",
       "family": "what-is-kept"
     },
     {
@@ -3125,7 +3300,7 @@
     {
       "store": "server:mailbox_outgoing",
       "class": "record",
-      "growth": "Per file the phone (or the poller, for transcripts and LeetType session logs) files for the mailbox (decisions, scout, opened, transcript, leetype-log, reflection, prompt), bytes verbatim; append-only. A LeetType session's log is filed again as log-<session>.r<n>.json only when an event of it arrives home after its last copy, and each copy repeats every earlier event of the session. The routines' indexes (jobs, reflections) add nothing here or in mailbox_handed or mailbox_archive: each is a view home recomputes from these records and keeps no copy of, so the mailbox holds one index per routine, the latest only (owner, paulgsc/server#509).",
+      "growth": "Per file the phone (or the poller, for transcripts and LeetType session logs) files for the mailbox (decisions, scout, opened, transcript, leetype-log, reflection, prompt, feedback), bytes verbatim; append-only. A LeetType session's log is filed again as log-<session>.r<n>.json only when an event of it arrives home after its last copy, and each copy repeats every earlier event of the session. The routines' indexes (jobs, reflections) add nothing here or in mailbox_handed or mailbox_archive: each is a view home recomputes from these records and keeps no copy of, so the mailbox holds one index per routine, the latest only (owner, paulgsc/server#509).",
       "family": "routine-to-home"
     },
     {
@@ -3202,6 +3377,13 @@
       "store": "server:storage_sample",
       "class": "telemetry",
       "growth": "Per UTC day: one row per table and index plus database, wal and disk_free, about 80 rows a day (\"a few MB a year\", docs/storage.md); append-only, triggers abort UPDATE, DELETE and REPLACE.",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:episode_note",
+      "class": "record",
+      "growth": "Per note the phone leaves on a feed's episode (SFEED6, paulgsc/some-ui#2745; paulgsc/server invariant 38): its feed, episode, moment, one to fourteen categories from the fixed set, the take's voice-note id or null, when written and when it reached home; one row per id, append-only, body <= BODY_CEILING = 16 KiB; each is filed once for the mailbox's feedback folder as it arrives.",
+      "horizon": "kept for good: no delete and no switch (the owner's ruling on ask paulgsc/some-ui#2749); it goes only with the account",
       "family": "what-is-kept"
     },
     {
@@ -4114,8 +4296,8 @@
           "owner": "ours",
           "on": "home",
           "paths": [
-            "server:apps/servers/file_host/src/routes/call_videos.rs",
-            "server:apps/servers/file_host/src/handlers/call_videos.rs",
+            "server:apps/servers/file_host/src/routes/feed_videos.rs",
+            "server:apps/servers/file_host/src/handlers/feed_videos.rs",
             "server:apps/servers/file_host/src/feeds/videos.rs"
           ]
         },
@@ -4306,6 +4488,10 @@
     {
       "family": "home-up",
       "why": "Whether home itself answers, which every segment on home needs."
+    },
+    {
+      "family": "home-admits",
+      "why": "Home's one limiter admits every request, whichever process sends it, and the phone's home link waits out its busy, and paces every lane's requests on one pace inside it, for every lane."
     }
   ]
 }

@@ -14,6 +14,7 @@ import {
   onPageVisibility,
 } from "@some-ui/voice-capture"
 
+import { after } from "@/lib/clock"
 import { browserLocalStorage } from "@/lib/tenant/storage"
 
 import type { GameBites } from "./runtime"
@@ -34,10 +35,7 @@ export function phoneGameBites(): GameBites {
       maxBytes: Number.POSITIVE_INFINITY,
     }),
     now: () => Date.now(),
-    after: (ms, run): (() => void) => {
-      const timer = setTimeout(run, ms)
-      return () => clearTimeout(timer)
-    },
+    after,
     onVisibility: onPageVisibility,
   })
   return bites

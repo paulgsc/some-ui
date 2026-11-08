@@ -32,4 +32,10 @@ export const FEEDS_A_TO_Z: ReadonlyArray<Feed> = [...FEEDS].sort((a, b) =>
   FEED_FACTS[a].name.localeCompare(FEED_FACTS[b].name, "en")
 )
 
-export { FEED_FACTS, KIND_WORDS, STUDIO_INDEX_WORDS } from "./words"
+export {
+  FEED_FACTS,
+  FEED_KEPT,
+  KIND_WORDS,
+  PLACES,
+  STUDIO_INDEX_WORDS,
+} from "./words"

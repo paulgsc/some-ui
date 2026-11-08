@@ -7,9 +7,10 @@
  * The one wiring (`./lanes`) hands in each lane's record and its runtime
  * (`./kept-runtime`); this module names no record.
  */
-import { homeLink, paired, pairingOf } from "./index"
+import { homeLink, LINK_CLOCK, paired, pairingOf } from "./index"
 import type { KeptRun } from "./kept-model"
 import type { Kept } from "./kept-runtime"
+import { linkOpen } from "./model"
 
 /** A record as the watch sees it. */
 export type KeptRecord = {
@@ -39,10 +40,20 @@ export function pullKept(home: Kept, doc: Front): Promise<KeptRun | null> {
 }
 
 /**
+ * Who turned `run` away, if anyone: the link, busy with another run, or
+ * home being busy (AD3), which the link also answers for while it waits.
+ */
+function turnedAwayBy(run: KeptRun | null): "link" | "home" | null {
+  if (run?.kind === "busy") return "link"
+  return run?.kind === "failed" && run.why === "busy" ? "home" : null
+}
+
+/**
  * Asks once now; when the record changes on this phone, the app comes back to
  * the foreground, the network comes back, the phone is paired, or the link
- * frees up after turning a run away; until the returned unsubscribe is
- * called.
+ * opens again after turning a run away (it frees up, or home's busy ends:
+ * one ask however many moments came while it waited, AD3); until the
+ * returned unsubscribe is called.
  */
 export function watchKept(
   record: KeptRecord,
@@ -54,6 +65,11 @@ export function watchKept(
   let revision = record.revision()
   let wasPaired = pairingOf(link.getSnapshot()) !== null
   let idle = link.getSnapshot().activity.kind === "idle"
+  let open = linkOpen(link.getSnapshot(), LINK_CLOCK.now())
+  // Who turned the lane's last run away, while it has not been asked since:
+  // read off its runs as they end, since the link frees (a run's own end)
+  // before that run's end reaches the lane.
+  let owed: "link" | "home" | null = null
 
   const onRecord = (): void => {
     const now = record.revision()
@@ -61,29 +77,42 @@ export function watchKept(
     revision = now
     askKept(home, doc)
   }
+  const onRun = (): void => {
+    const run = home.getSnapshot()
+    if (!run.running) owed = turnedAwayBy(run.last)
+  }
   const onLink = (): void => {
     const state = link.getSnapshot()
     const nowPaired = pairingOf(state) !== null
     const nowIdle = state.activity.kind === "idle"
-    const freed = nowIdle && !idle
-    const turnedAway = home.getSnapshot().last?.kind === "busy"
-    if ((nowPaired && !wasPaired) || (freed && turnedAway)) {
+    const nowOpen = linkOpen(state, LINK_CLOCK.now())
+    // Turned away by another run: asked once that run ends, even while home
+    // is busy, when the run only says so (it sends nothing). Turned away by
+    // home: asked once home's busy ends, and not before.
+    const again =
+      (owed === "link" && nowIdle && !idle) ||
+      (owed !== null && nowOpen && !open)
+    if (again) owed = null
+    if ((nowPaired && !wasPaired) || again) {
       askKept(home, doc)
     }
     wasPaired = nowPaired
     idle = nowIdle
+    open = nowOpen
   }
   const onBack = (): void => {
     askKept(home, doc)
   }
 
   const unsubscribeRecord = record.subscribe(onRecord)
+  const unsubscribeRun = home.subscribe(onRun)
   const unsubscribeLink = link.subscribe(onLink)
   doc.addEventListener("visibilitychange", onBack)
   win.addEventListener("online", onBack)
   askKept(home, doc)
   return () => {
     unsubscribeRecord()
+    unsubscribeRun()
     unsubscribeLink()
     doc.removeEventListener("visibilitychange", onBack)
     win.removeEventListener("online", onBack)

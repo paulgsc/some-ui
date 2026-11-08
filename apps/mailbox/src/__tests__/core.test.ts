@@ -1691,6 +1691,124 @@ describe("drama prompts", () => {
   })
 })
 
+const NOTED = {
+  schema: "some-ui.episode-note/1",
+  note: "3f9c2a1e-7b4d-4c1a-9e2f-0a1b2c3d4e5f",
+  feed: "call",
+  episode: "2026-11-13",
+  atMs: 134_000,
+  categories: ["shallow", "overlap"],
+  take: null,
+  writtenAt: "2026-11-14T03:00:00.000Z",
+}
+
+describe("notes on an episode", () => {
+  const NOTE = JSON.stringify(NOTED)
+  const NAME = `feedback-${NOTED.note}.json`
+  const asHome = (
+    d: Deps,
+    name: string,
+    body: string = NOTE
+  ): Promise<Response> => put(d, "feedback", name, { token: HOME, body })
+
+  it("home puts a note once, and the routine reads it; neither the other way", async () => {
+    const d = deps()
+    expect((await asHome(d, NAME)).status).toBe(201)
+    expect((await asHome(d, NAME)).status).toBe(200)
+    expect(
+      (await asHome(d, NAME, JSON.stringify({ ...NOTED, atMs: 1 }))).status
+    ).toBe(409)
+
+    const path = `/v1/feedback/items/${NAME}`
+    const read = await send(d, "GET", path)
+    expect(read.status).toBe(200)
+    expect(await read.text()).toBe(NOTE)
+    expect((await send(d, "GET", path, { token: HOME })).status).toBe(403)
+    expect((await put(d, "feedback", NAME, { body: NOTE })).status).toBe(403)
+  })
+
+  it("the routine neither lists archived notes nor asks one back", async () => {
+    const d = deps()
+    expect((await asHome(d, NAME)).status).toBe(201)
+    expect((await send(d, "GET", "/v1/feedback/archived")).status).toBe(403)
+    expect((await send(d, "PUT", `/v1/feedback/wanted/${NAME}`)).status).toBe(
+      403
+    )
+  })
+
+  it("takes a spoken note's take by its id", async () => {
+    const d = deps()
+    const body = JSON.stringify({ ...NOTED, take: "take-7f3a91c2" })
+    expect((await asHome(d, NAME, body)).status).toBe(201)
+  })
+
+  it("takes only a note's own shape", async () => {
+    const d = deps()
+    const shapes: ReadonlyArray<readonly [unknown, string]> = [
+      [{ ...NOTED, words: "too slow" }, "words is not part of a note"],
+      [
+        { ...NOTED, audio: "T2dnUwACAAAAAAAA" },
+        "a note carries no audio: a spoken one goes as its take's transcript",
+      ],
+      [{ ...NOTED, driveId: "1AbCdEf" }, "a note names no Drive file"],
+      [{ ...NOTED, note: "another-id" }, "the name must carry the note's id"],
+      [{ ...NOTED, note: "a/b" }, "the name must carry the note's id"],
+      [{ ...NOTED, feed: "drama" }, "feed must be call or playoff-delta"],
+      [{ ...NOTED, episode: "" }, "episode must name the episode"],
+      [
+        { ...NOTED, atMs: -1 },
+        "atMs must be the moment, in whole milliseconds from the start",
+      ],
+      [
+        { ...NOTED, atMs: 1.5 },
+        "atMs must be the moment, in whole milliseconds from the start",
+      ],
+      ...[
+        [],
+        ["overlap", "shallow"],
+        ["voice", "voice"],
+        ["louder"],
+        [["shallow"], "overlap"],
+        [["overlap"]],
+      ].map(
+        (categories) =>
+          [
+            { ...NOTED, categories },
+            "categories must be the fixed set's, each once, in its order",
+          ] as const
+      ),
+      [
+        { ...NOTED, take: 7 },
+        "take must be the spoken note's take id, or null",
+      ],
+      [
+        { ...NOTED, writtenAt: "Tuesday" },
+        "writtenAt must be when it was written",
+      ],
+    ]
+    for (const [body, why] of shapes) {
+      const answer = await asHome(d, NAME, JSON.stringify(body))
+      expect(answer.status).toBe(422)
+      expect(await json(answer)).toEqual({ error: why })
+    }
+    // A body that carries its name, so only the name's own rule refuses it.
+    for (const note of ["a.b", "a b", "a".repeat(65)]) {
+      const answer = await asHome(
+        d,
+        `feedback-${note}.json`,
+        JSON.stringify({ ...NOTED, note })
+      )
+      expect(answer.status).toBe(422)
+      expect(await json(answer)).toEqual({
+        error: "the name does not fit this folder",
+      })
+    }
+    for (const name of ["feedback-.json", `feedback-${"a".repeat(65)}.json`]) {
+      expect((await asHome(d, name)).status).toBe(422)
+    }
+  })
+})
+
 describe("a reflection or a prompt", () => {
   it.each([
     {
@@ -2125,6 +2243,7 @@ describe("archiving", () => {
       "transcript",
       "reflection",
       "prompt",
+      "feedback",
     ]) {
       expect(
         (await send(d, "GET", `/v1/${folder}/items`, { token: ARCHIVE })).status

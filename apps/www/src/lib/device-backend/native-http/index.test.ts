@@ -84,17 +84,22 @@ describe("homeRequest", () => {
     )
   })
 
-  it("reads the tag in any case, and carries none it wasn't given", async () => {
+  it("reads the tag and home's Retry-After (AD3) in any case, and carries none it wasn't given", async () => {
     plugin.request.mockResolvedValue({
       status: 200,
       data: { topiks: [] },
-      headers: { etag: '"v2"' },
+      headers: { etag: '"v2"', "RETRY-after": "17" },
     })
     const answer = await homeRequest({
       method: "GET",
       url: "http://192.168.1.10:3000/api/v1/curriculum/manifest.json",
     })
-    expect(answer).toEqual({ status: 200, body: '{"topiks":[]}', etag: '"v2"' })
+    expect(answer).toEqual({
+      status: 200,
+      body: '{"topiks":[]}',
+      etag: '"v2"',
+      retryAfter: "17",
+    })
     expect(plugin.request).toHaveBeenCalledWith(
       expect.objectContaining({ headers: {} })
     )

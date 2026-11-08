@@ -16,13 +16,14 @@ import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 
-import { homeLink, paired, pairingOf, useHomeLink } from "./index"
+import { homeLink, LINK_CLOCK, paired, pairingOf, useHomeLink } from "./index"
 import type { KeptRun, KeptState } from "./kept-model"
-import type { Kept, KeptPorts } from "./kept-runtime"
-import { createKept, laneExchange } from "./kept-runtime"
+import type { Kept, KeptPorts, Pace } from "./kept-runtime"
+import { createKept, createPace, laneExchange } from "./kept-runtime"
 import type { KeptRecord } from "./kept-watch"
 import { askKept, watchKept } from "./kept-watch"
 import type { HomeLinkState } from "./model"
+import { homeBusy } from "./model"
 import type { HomeRefresher } from "./pull"
 import { homeRefresher } from "./pull"
 import type { LaneView } from "./words"
@@ -88,11 +89,24 @@ const wired = new Map<LaneId, Wired>()
 /** The runtimes of the lanes `useLaneHome` watches now: what a pull asks. */
 const watched = new Set<Kept>()
 
+/** Whether home is still to be left alone, on the link's clock (AD3). */
+export function busyNow(): boolean {
+  return homeBusy(homeLink().getSnapshot(), LINK_CLOCK.now())
+}
+
+/**
+ * The drain's one pace (`createPace`), on the link's clock. A request the
+ * link answers busy itself reaches no home, so it takes no turn.
+ */
+const DRAIN_PACE = createPace(LINK_CLOCK)
+const pace: Pace = () => (busyNow() ? Promise.resolve() : DRAIN_PACE())
+
 /** How every run here reaches home: through the link, one at a time. */
 const LINK_PORTS: Omit<KeptPorts, "exchange"> = {
   keep: (run) => homeLink().keep(run),
   paired,
-  now: Date.now,
+  homeBusy: busyNow,
+  now: LINK_CLOCK.now,
 }
 
 /** One runtime per lane per page load, over the first `lane` handed in. */
@@ -103,7 +117,7 @@ function wire(lane: Lane): Wired {
     record: { revision: lane.revision, subscribe: lane.subscribe },
     sending: createKept({
       ...LINK_PORTS,
-      exchange: laneExchange(lane, () => pairingOf()),
+      exchange: laneExchange(lane, () => pairingOf(), pace),
     }),
   }
   wired.set(lane.id, made)
