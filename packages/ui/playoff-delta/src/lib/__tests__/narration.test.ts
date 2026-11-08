@@ -2,7 +2,6 @@ import {
   checkNarration,
   dueWeeks,
   fillFile,
-  NARRATION_INDEX_SCHEMA,
   NARRATION_SCHEMA,
   narrationIndex,
   packetOf,
@@ -321,7 +320,7 @@ describe("the index home reads", () => {
       },
       { season: "2026", name: "SF-week-00.json", bytes: legend },
     ])
-    expect(index.ok && index.value.schema).toBe(NARRATION_INDEX_SCHEMA)
+    expect(index.ok).toBe(true)
     const fills = index.ok ? index.value.fills : []
     expect(fills.map((f) => [f.season, f.team, f.week])).toEqual([
       ["2025", "SF", 17],

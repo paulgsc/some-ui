@@ -315,9 +315,8 @@ export function dueWeeks(
   return [...(legend ? [] : [LEGEND_WEEK]), ...weeks]
 }
 
-export const NARRATION_INDEX_SCHEMA = "some-ui.pd-narration-index/1"
+const NARRATION_INDEX_SCHEMA = "some-ui.pd-narration-index/1"
 
-/** A fill as the index lists it: which episode, and the sum of its bytes. */
 type IndexedFill = {
   readonly season: string
   readonly team: string
@@ -351,12 +350,12 @@ export type FillOnDisk = {
 const FILL_NAME = /^([A-Z]{2,3})-week-(\d{2})\.json$/
 const SEASON_FOLDER = /^\d{4}$/
 
-const FillPinsSchema = z.looseObject({
-  schema: z.literal(NARRATION_SCHEMA),
-  season: z.string(),
-  team: z.string(),
-  week: z.number().int().nonnegative(),
-})
+const FillPinsSchema = NarrationSchema.pick({
+  schema: true,
+  season: true,
+  team: true,
+  week: true,
+}).loose()
 
 /**
  * The index of `files`, or why it can't be made: a name that isn't a fill's,
@@ -408,8 +407,11 @@ export async function narrationIndex(
     fills.push({ ...at, sha256: await sha256Hex(bytes) })
   }
   if (problems.length > 0) return { ok: false, problems }
-  const order = (f: IndexedFill): string =>
-    `${f.season}/${f.team}/${String(f.week).padStart(2, "0")}`
-  fills.sort((a, b) => order(a).localeCompare(order(b)))
+  fills.sort(
+    (a, b) =>
+      a.season.localeCompare(b.season) ||
+      a.team.localeCompare(b.team) ||
+      a.week - b.week
+  )
   return { ok: true, value: { schema: NARRATION_INDEX_SCHEMA, fills } }
 }

@@ -75,27 +75,21 @@ async function fillsUnder(root: string): Promise<ReadonlyArray<FillOnDisk>> {
   const entries = await readdir(here(root), { withFileTypes: true }).catch(
     (error: unknown) => fail([`${root} can't be read: ${String(error)}`])
   )
-  for (const season of entries) {
-    if (!season.isDirectory()) continue
-    const folder = join(here(root), season.name, "narration")
-    const names = await readdir(folder).catch((error: unknown) =>
-      missing(error) ? [] : fail([`${folder} can't be read: ${String(error)}`])
-    )
-    for (const name of [...names].sort()) {
+  const seasons = entries.filter((e) => e.isDirectory()).map((e) => e.name)
+  for (const season of seasons.sort()) {
+    const folder = join(root, season, "narration")
+    for (const name of [...(await namesIn(folder))].sort()) {
       fills.push({
-        season: season.name,
+        season,
         name,
-        bytes: await readFile(join(folder, name)),
+        bytes: await readFile(here(join(folder, name))),
       })
     }
   }
   return fills
 }
 
-/**
- * Writes `<root>/index.json` (FEED4 #2647), whole: home reads it to learn of
- * each fill. Run after every fill lands, by the routine.
- */
+/** Writes `<root>/index.json` whole (FEED4 #2647). */
 async function writeIndex(root: string): Promise<void> {
   const index = await narrationIndex(await fillsUnder(root))
   if (!index.ok) fail(index.problems)
