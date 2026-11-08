@@ -1,4 +1,4 @@
-import type { CallIndex, CallWeek } from "@some-ui/video-render"
+import type { CallIndex } from "@some-ui/video-render"
 
 import { TESTING_DATA, testingSource } from "@/lib/testing-data"
 
@@ -13,6 +13,11 @@ export const indexSource = testingSource<undefined, CallIndex>(
   () => new URL(`${CALL_DATA}/index.json`)
 )
 
-export const weekSource = testingSource<string, CallWeek>(
+/**
+ * A week's file as read, unchecked: the stage parses it (`stageOf`), so a
+ * week it can't draw, one written for a newer template among them (VS1),
+ * reaches the frame as its problems rather than as a failed read.
+ */
+export const weekSource = testingSource<string, unknown>(
   (from) => new URL(`${CALL_DATA}/${from}.json`)
 )

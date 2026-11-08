@@ -28,6 +28,7 @@ import {
   recordStills,
   refuseLong,
   renderStills,
+  shownFrame,
   siteOf,
 } from "./voiced"
 
@@ -141,8 +142,7 @@ export async function recordCall(
 
     // The week the stage plays, as it publishes it on the frame.
     await page.goto(url("open"))
-    const frame = page.locator("[data-scene]")
-    await frame.waitFor()
+    const frame = await shownFrame(page, "[data-scene]")
     const published = await frame.getAttribute("data-week")
     if (published === null) fail(["the stage published no week"])
     const parsed = parseCallWeek(JSON.parse(published))
