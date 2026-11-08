@@ -2101,7 +2101,7 @@
           "kind": "OA2",
           "property": "outcome",
           "claim": "Every week of the call home holds becomes a video within the render policy's caps, and a week that hasn't is tried again.",
-          "requirement": "Each week in call_week is written to call-weeks beside home's database, on its drive (STORAGE); within the next hourly pass the render worker records it from the pinned stage with each scene said by home's Kokoro speaker, renders it, and moves the finished folder into renders/call/<from>/ on the same drive, whole; a week that fails is left without a folder and tried again each hour, keeping its finished steps; a week whose video would pass the render policy's length or size (set in the render worker) is refused before it is drawn or once it is made, which fails its attempt with the cap named; no finished video is deleted.",
+          "requirement": "Each week in call_week is written to call-weeks beside home's database, on its drive (STORAGE); once home's lane admits it (room for its peak above the floor, and no interactive work waiting: docs/home-compute.md, \"The lane\"), the render worker records it from the pinned stage with each scene said by home's Kokoro speaker, renders it, and moves the finished folder into renders/call/<from>/ on the same drive, whole; a render the lane pauses or stops resumes from its finished steps and is never counted a failure; a week that fails is left without a folder and tried again an hour later, keeping its finished steps; a week whose video would pass the render policy's length or size (set in the render worker) is refused before it is drawn or once it is made, which fails its attempt with the cap named; no finished video is deleted.",
           "verdict": "unproven",
           "conclusion": "Home rendered the real week of Oct 30 on Nov 7: all 36 scenes recorded, the video written and its folder moved into renders/call. The worker's own handling of a week is tested in CI, one pass at a time with a fake recorder: a failed week is left without a folder, keeps its work and is tried on the next pass, which reuses it; a finished week is moved in whole and its work removed; a pass over a finished week leaves it untouched; no cap on waiting work removes a video. Slack says when a week's attempt fails, naming the file that holds its whole output, when a week has waited 3 hours with no attempt, and when the worker has not passed for 4 hours, each tested by promtool; the CALL dashboard shows each. Not yet proven: the hourly retry itself (the test runs each pass by hand), that the worker hands the recorder the render policy's caps, and that each week is said by the pinned speaker from the pinned stage.",
           "tracked": "some-ui#2659",
@@ -2143,7 +2143,7 @@
             },
             {
               "class": "measured",
-              "says": "render-calls.sh, sourced over a temporary folder with a fake recorder, keeps a failed week's work with no folder in renders/call and reuses it on the next pass, moves a finished week whole without its cache, leaves a finished week's folder byte for byte on a later pass, and removes only another waiting week's work past the cap, never a video; CI runs it on every pull request.",
+              "says": "render-calls.sh, sourced over a temporary folder with a fake recorder, keeps a failed week's work with no folder in renders/call and reuses it on the next pass, moves a finished week whole without its cache, leaves a finished week's folder byte for byte on a later pass, and removes only another waiting week's work past the cap, never a video; and starts a render only on a lane decision written after its job was named, freezes the recorder's whole process tree on pause and kills it on stop, keeping its finished steps, so a stopped render resumes with the same bytes as one never stopped; CI runs it on every pull request.",
               "ref": "server:infra/render/render-calls.test.sh"
             }
           ],
@@ -2163,6 +2163,12 @@
               "change": "A week whose video would pass the render policy's length or size is refused, not rendered, and its failed attempt names the cap (reaching Slack as CallRenderFailed); a retry keeps the steps that already finished.",
               "why": "A week's length had no cap of its own (a scene runs as long as its words, which have no maximum), so a week that drifted long would render for hours and fill the drive; and a retry redid an hour of finished work to redo one failed step.",
               "decision": "https://github.com/paulgsc/some-ui/issues/2635#issuecomment-6701774052"
+            },
+            {
+              "on": "2026-11-08",
+              "change": "No hourly bound: a week renders once home's lane admits it, not within the next hourly pass, and pauses or gives way when the lane says so, resuming from its finished steps; a yield is never a failure. A failed attempt is still tried again an hour later.",
+              "why": "There is no render window and no clock: a start time can't promise the render finishes, and it starves everything else at that time. Renders are home's lowest class: they start whenever home has room, give way the moment anything else needs it, and resume when room comes back. The render worker obeys the lane since paulgsc/server#734 (L4c).",
+              "decision": "https://github.com/paulgsc/server/issues/705"
             }
           ]
         },
@@ -2435,7 +2441,7 @@
           "kind": "OA2",
           "property": "outcome",
           "claim": "Every voiced fill of Playoff Delta home holds becomes a video within the render policy's caps, and one that hasn't is tried again.",
-          "requirement": "Each fill in pd_fill of a voiced version (2 on) is written with its season to playoff-delta-episodes beside home's database, on its drive (STORAGE), whole; within the next hourly pass the render worker records it from the pinned stage with each scene said by home's Kokoro speaker, renders it within the same caps as the call's, and moves the finished folder into renders/playoff-delta/<season>-<team>-<NN>/ on the same drive, whole; an episode that fails is left without a folder and tried again each hour, keeping its finished steps; a fill written for the owner's own voice (version 1) is kept and never rendered, never failed; no finished video is deleted.",
+          "requirement": "Each fill in pd_fill of a voiced version (2 on) is written with its season to playoff-delta-episodes beside home's database, on its drive (STORAGE), whole; once home's lane admits it, as the call's (docs/home-compute.md, \"The lane\"), the render worker records it from the pinned stage with each scene said by home's Kokoro speaker, renders it within the same caps as the call's, and moves the finished folder into renders/playoff-delta/<season>-<team>-<NN>/ on the same drive, whole; a render the lane pauses or stops resumes from its finished steps and is never counted a failure; an episode that fails is left without a folder and tried again an hour later, keeping its finished steps; a fill written for the owner's own voice (version 1) is kept and never rendered, never failed; no finished video is deleted.",
           "verdict": "unproven",
           "conclusion": "Shown in home's tests: each voiced fill is written for the worker once, whole, with its season, and one for your voice never is; each reads as rendered, waiting or failed, apart from yours. Slack says when an episode's attempt fails, naming the file that holds its whole output, and when one has waited 3 hours with no attempt, each tested by promtool. The worker's own job is rehearsed against a stand-in recorder, not tested, and no real week has rendered on home yet: the first voiced fill is the routine's of Tuesday Nov 10.",
           "tracked": "some-ui#2659",
@@ -2464,13 +2470,25 @@
               "class": "structural",
               "says": "Grafana reads what Prometheus has firing from ALERTS and sends each alert to the Slack contact point, one message per alert.",
               "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
+            },
+            {
+              "class": "structural",
+              "says": "The render worker starts a job only on a lane decision written after its id, freezes the recorder's whole process tree on pause and kills it on stop, keeping the step cache, so a resumed render pays only for unfinished steps; render-calls.test.sh holds that a stopped render resumes with the same bytes as one never stopped, in CI.",
+              "ref": "server:infra/render/render-calls.test.sh"
             }
           ],
           "watch": {
             "by": "alert",
             "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-11-08",
+              "change": "No hourly bound: an episode renders once home's lane admits it, not within the next hourly pass, and pauses or gives way when the lane says so, resuming from its finished steps; a yield is never a failure. A failed attempt is still tried again an hour later.",
+              "why": "There is no render window and no clock: a start time can't promise the render finishes, and it starves everything else at that time. Renders are home's lowest class: they start whenever home has room, give way the moment anything else needs it, and resume when room comes back. The render worker obeys the lane since paulgsc/server#734 (L4c).",
+              "decision": "https://github.com/paulgsc/server/issues/705"
+            }
+          ]
         },
         {
           "id": "PK6",
