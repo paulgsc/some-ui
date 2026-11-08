@@ -90,7 +90,10 @@ Chromium or CPU draws its own.
 - **Motion through `lib/motion.js`'s `track`, nothing else.** Each frame's styles are set
   from its time when HyperFrames seeks to it, so no animation runs on a timeline of the
   browser's own: CSS keyframes and the Web Animations API, seeked by HyperFrames, gave two
-  sums on one CI machine (#2737). The root is marked `data-no-timeline`. Not GSAP, whose
+  sums on one CI machine (#2737). The root is marked `data-no-timeline`. `track` also puts each element it moves on a layer of
+  its own for the whole scene (`will-change: transform, opacity`): Chrome otherwise moves a
+  still element back into the page's layer at a moment that depends on timing, and the two
+  draw its edges differently (#2739). Not GSAP, whose
   licence is not open source (ask #2723), though most of the catalogue animates with it.
 - **Android only:** the catalogue's iPhone, macOS and App Store blocks fail
   `pnpm check:android-only`; use `device-frame-stage` and a Google Play badge.
