@@ -11,6 +11,7 @@ import { Button } from "@some-ui/shared"
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 
+import { hasAudience } from "@/lib/build-profile"
 import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
 import type { Board, RendersOutcome } from "@/lib/renders"
 import {
@@ -177,7 +178,8 @@ export const RendersBoard = (): JSX.Element =>
 export const RendersLine = (): JSX.Element | null => {
   const read = useQuery(rendersQuery).data
   const line = read?.kind === "read" ? liveLine(read.board) : null
-  return line === null ? null : (
+  // The page is the phone's ("apk"), as this line is (A3).
+  return line === null || !hasAudience("apk") ? null : (
     <Link to="/journal/renders" className={TILE}>
       <span className="text-sm font-medium">{line}</span>
       <span className="text-muted-foreground text-sm">{WORDS.open}</span>
