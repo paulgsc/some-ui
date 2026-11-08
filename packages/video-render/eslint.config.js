@@ -8,7 +8,7 @@ import someUIEslint, {
  * (`src/synth.ts`): only arithmetic IEEE 754 rounds the same everywhere,
  * never an engine's own sine, exponential or power.
  */
-const SAME_BYTES = ["src/synth.ts", "src/music-bed.ts"]
+const SAME_BYTES = ["src/synth.ts", "src/music-bed.ts", "src/cues.ts"]
 const ENGINE_CHOSEN = [
   "sin",
   "cos",

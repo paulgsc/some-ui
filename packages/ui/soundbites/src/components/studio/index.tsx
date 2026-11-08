@@ -24,7 +24,7 @@ import { Button, Notice, TakeButton, TakeRow, usePager } from "@some-ui/shared"
 import { LOOKS, VOICES } from "@some-ui/video-render"
 import { FilePick } from "@soundbites/components/file-pick"
 import { phoneStudioPorts } from "@soundbites/lib/phone"
-import { BEST_OF, finishOf } from "@soundbites/lib/project/finish"
+import { finishOf } from "@soundbites/lib/project/finish"
 import { LET_GO_CHOICES, waitingCount } from "@soundbites/lib/project/let-go"
 import type { Project } from "@soundbites/lib/project/model"
 import { latest } from "@soundbites/lib/project/model"
@@ -1710,32 +1710,12 @@ const Finish = ({
           </Button>
         </>
       )}
+      {finish.kind === "unsaid" && <p className="text-sm">{words.unsaid}</p>}
       {finish.kind === "idea" && (
         <>
           <p className="text-sm">{words.idea(finish.count)}</p>
           <Button size="lg" onClick={() => dispatch({ type: "finishGo" })}>
             {words.goIdea(finish.n)}
-          </Button>
-        </>
-      )}
-      {finish.kind === "facts" && (
-        <>
-          <p className="text-sm">
-            {finish.rounds >= BEST_OF
-              ? words.factsBest(finish.n)
-              : words.facts(finish.n)}
-          </p>
-          {finish.rounds >= BEST_OF && (
-            <Button size="lg" onClick={() => dispatch({ type: "bestKept" })}>
-              {words.keepBest}
-            </Button>
-          )}
-          <Button
-            size="lg"
-            variant={finish.rounds >= BEST_OF ? "outline" : "default"}
-            onClick={() => dispatch({ type: "finishGo" })}
-          >
-            {words.goTake(finish.n)}
           </Button>
         </>
       )}

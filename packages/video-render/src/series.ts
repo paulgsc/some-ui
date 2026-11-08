@@ -91,7 +91,7 @@ export const SeriesSchema = z
         gainDb: z.number().max(0).default(-14),
       })
       .optional(),
-    /** The CC0 sound kit, by the vocabulary's names. */
+    /** The sound kit we make (`cues.ts`), by the vocabulary's names. */
     sounds: z.partialRecord(z.enum(SOUNDS), CheckedFileSchema).default({}),
     soundGainDb: z.number().max(0).default(-8),
     /** The design each burn-in kind is drawn in, where a video names none. */

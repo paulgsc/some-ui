@@ -44,6 +44,11 @@
  *
  * writes the music bed (`music-bed.ts`), refusing bytes its pin doesn't name.
  *
+ *   pnpm --filter @some-ui/video-render render sounds --out <folder>
+ *
+ * writes the sound kit's six cues (`cues.ts`, HYPER4) into the folder, home's
+ * `${STORAGE}/brand/sounds`, refusing all of them if one's pin doesn't name it.
+ *
  *   pnpm --filter @some-ui/video-render render pending <transcripts.json> <filed.json>
  *
  * prints the Studio takes left to file as pending issues (`pending.ts`):
@@ -56,7 +61,7 @@
 import { execFile } from "node:child_process"
 import { createHash } from "node:crypto"
 import { existsSync, readFileSync } from "node:fs"
-import { access, readdir, writeFile } from "node:fs/promises"
+import { access, mkdir, readdir, writeFile } from "node:fs/promises"
 import { dirname, join, relative } from "node:path"
 import { parseArgs, promisify } from "node:util"
 import { z } from "zod"
@@ -66,6 +71,7 @@ import { callFolderProblems } from "./call"
 import { callsEntered, changeOf, trailersOf, whereWeAreOf } from "./call-facts"
 import type { CallFacts } from "./call-facts"
 import { clipFolderProblems, parseClipIndex } from "./clip"
+import { CUES, cueWav } from "./cues"
 import { problemsOf } from "./cut-list"
 import { compareHearings } from "./hearings"
 import { MUSIC_BED, musicBedWav } from "./music-bed"
@@ -83,6 +89,7 @@ import { toFile } from "./pending"
 import { REPOS } from "./refs"
 import { sessionFolderProblems } from "./session-note"
 import { fromTimelineV1 } from "./timeline-v1"
+import { SOUNDS } from "./vocabulary"
 
 /** The JSON files directly in `dir`, by name. */
 async function readJsonFolder(dir: string): Promise<Map<string, unknown>> {
@@ -117,6 +124,31 @@ async function main(): Promise<void> {
     process.stdout.write(
       `wrote ${here(values.out)}, ${sum}; lay it in brand/ as ${MUSIC_BED.file}\n`
     )
+    return
+  }
+  if (first === "sounds") {
+    if (values.out === "outputs/video.mp4")
+      fail(["usage: render sounds --out <folder>"])
+    const folder = here(values.out)
+    const made = SOUNDS.map((sound) => {
+      const wav = cueWav(sound)
+      return { sound, wav, sum: createHash("sha256").update(wav).digest("hex") }
+    })
+    const off = made.filter(({ sound, sum }) => sum !== CUES[sound].sha256)
+    if (off.length > 0)
+      fail([
+        ...off.map(
+          ({ sound, sum }) =>
+            `The ${sound} came out as ${sum}, and its pin is ${CUES[sound].sha256}`
+        ),
+        "nothing was written",
+      ])
+    await mkdir(folder, { recursive: true })
+    for (const { sound, wav, sum } of made) {
+      await writeFile(join(folder, CUES[sound].file), wav)
+      process.stdout.write(`${sound}: ${CUES[sound].file}, ${sum}\n`)
+    }
+    process.stdout.write(`wrote the kit to ${folder}\n`)
     return
   }
   if (first === "compare-hearings") {

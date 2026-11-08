@@ -1,7 +1,7 @@
 /** The release promo's template (HYPER3, #2726): the README says what it is. */
 
 import { CUT_LIST_SCHEMA } from "@some-ui/video-render"
-import type { CutList } from "@some-ui/video-render"
+import type { CutList, SoundCue } from "@some-ui/video-render"
 import { z } from "zod"
 
 import type { WalkFile } from "./walk/run"
@@ -71,6 +71,26 @@ const CLOSE_SECONDS = 4
 const WALK_START = 0.8
 const WALK_TAIL = 0.6
 
+/**
+ * The series version the promo pins: version 2 names the sound kit
+ * (HYPER4, #2727), which `motion promo --brand` brings in from home.
+ */
+const SERIES_VERSION = 2
+
+/**
+ * Where each scene's sounds land (HYPER4, the dry run's cue sheet on
+ * #2726), each on what its composition moves: the hook's words leave 0.55 s
+ * before its end, the feature's frame opens from its start and leaves 0.5 s
+ * before its end, and the close's mark comes in from 0.2 s; the ding
+ * strikes 0.1 s into that, as the dry run's did, and rings as it settles.
+ */
+const CUE_AT = {
+  hookLeaves: 550,
+  frameOpens: 50,
+  featureLeaves: 500,
+  closeComesIn: 300,
+} as const
+
 /** Every reason `release` can't be drawn over `walk`, of its app. */
 export function releaseProblems(
   release: Release,
@@ -98,6 +118,7 @@ export function promoCutList(release: Release, walk: WalkFile): CutList {
     id: string,
     seconds: number,
     variables: Record<string, unknown>,
+    cues: (durationMs: number) => Array<SoundCue>,
     files: Array<string> = []
   ): CutList["shots"][number] => ({
     id,
@@ -109,23 +130,28 @@ export function promoCutList(release: Release, walk: WalkFile): CutList {
     },
     durationMs: Math.round(seconds * 1000),
     voiceInMs: 0,
-    overrides: {},
+    overrides: { cues: cues(Math.round(seconds * 1000)) },
     burnIns: [],
     idea: { origin: "agent" },
   })
   return {
     schema: CUT_LIST_SCHEMA,
     title: `${release.app} ${release.version}`,
-    series: { id: "vertical", version: 1 },
+    series: { id: "vertical", version: SERIES_VERSION },
     look: "plain",
     voice: "ad-lib",
     shots: [
-      scene("hook", HOOK_SECONDS, {
-        title: release.fill.title,
-        stage: release.stage,
-        platform: release.platform,
-        version,
-      }),
+      scene(
+        "hook",
+        HOOK_SECONDS,
+        {
+          title: release.fill.title,
+          stage: release.stage,
+          platform: release.platform,
+          version,
+        },
+        (ms) => [{ sound: "whoosh", atMs: ms - CUE_AT.hookLeaves }]
+      ),
       scene(
         "feature",
         WALK_START + walk.lengthMs / 1000 + WALK_TAIL,
@@ -136,13 +162,26 @@ export function promoCutList(release: Release, walk: WalkFile): CutList {
           captions: JSON.stringify(release.fill.captions),
           walkStart: WALK_START,
         },
+        (ms) => [
+          { sound: "pop", atMs: CUE_AT.frameOpens },
+          ...walk.taps.map((tap) => ({
+            sound: "click" as const,
+            atMs: Math.round(WALK_START * 1000 + tap.atMs),
+          })),
+          { sound: "whoosh", atMs: ms - CUE_AT.featureLeaves },
+        ],
         walk.snips.map((s) => s.file)
       ),
-      scene("close", CLOSE_SECONDS, {
-        cta: release.fill.cta,
-        badge1: release.fill.badges[0],
-        badge2: release.fill.badges[1],
-      }),
+      scene(
+        "close",
+        CLOSE_SECONDS,
+        {
+          cta: release.fill.cta,
+          badge1: release.fill.badges[0],
+          badge2: release.fill.badges[1],
+        },
+        () => [{ sound: "ding", atMs: CUE_AT.closeComesIn }]
+      ),
     ],
     burnIns: [],
     revisions: [],

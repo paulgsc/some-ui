@@ -368,8 +368,9 @@ export function rustWeekNote(take: RustRoundTake): VoiceOut {
 }
 
 /**
- * A Studio idea answer's take (its `line` is `idea:<idea>:<question>`), as
- * home is told it: a Studio note, whose `ref` home reads as any other.
+ * A take on the desk of Studio's answers, as home is told it: a Studio note
+ * under its `line`, `idea:<idea>:<question>` for an idea's answer or the
+ * ask's ref for an ask's (SFEED5, `answerRef`), which home reads as any other.
  */
 export function ideaNote(take: IdeaTake): VoiceOut {
   return {

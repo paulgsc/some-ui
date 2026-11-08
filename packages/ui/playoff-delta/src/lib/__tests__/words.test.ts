@@ -1,5 +1,4 @@
 import { SAMPLE_SEASON } from "@playoff-delta/lib/sample"
-import { uploadOf } from "@playoff-delta/lib/show"
 import {
   LEGEND_SLIDES,
   legendFacts,
@@ -80,29 +79,5 @@ describe("the vocabulary", () => {
     expect(numberWord(0)).toBe("no")
     expect(numberWord(10)).toBe("ten")
     expect(numberWord(14)).toBe("14")
-  })
-})
-
-describe("the upload's copy (SH5)", () => {
-  const copies = [SAMPLE_SEASON, SEASON_2026].flatMap((season) => [
-    { at: `${season.label}, the legend`, copy: uploadOf(season, null) },
-    ...season.weeks.map((w) => ({
-      at: `${season.label} week ${w.week}`,
-      copy: uploadOf(season, w),
-    })),
-  ])
-
-  it.each(copies)("says what can happen in $at", ({ copy }) => {
-    for (const line of [copy.title, copy.description]) {
-      expect(line).not.toMatch(FORECAST)
-      expect(line).not.toMatch(MACHINERY)
-    }
-  })
-
-  it("names each week apart", () => {
-    for (const season of [SAMPLE_SEASON, SEASON_2026]) {
-      const titles = season.weeks.map((w) => uploadOf(season, w).title)
-      expect(new Set(titles).size).toBe(titles.length)
-    }
   })
 })
