@@ -80,10 +80,7 @@ slides above, a compile-time template, and pins each version under
 code, so a change to the slides (their order, names, points or holds)
 fails until a new version is pinned. `factsOf(season, week)` gives the facts
 each scene keeps, which the fill's check holds the narration to.
-An episode's upload title and description (SH5) are
-`uploadOf(season, week)`, worded in `UPLOAD` (`src/lib/words.ts`) under the
-same words rules as the slides and held to YouTube's limits; the owner
-uploads by hand. The format schema is `@some-ui/video-render`'s (`format.ts`).
+The format schema is `@some-ui/video-render`'s (`format.ts`).
 
 ## What is said
 

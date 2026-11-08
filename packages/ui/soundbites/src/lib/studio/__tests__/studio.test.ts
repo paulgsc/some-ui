@@ -198,16 +198,15 @@ describe("an episode a phone opened before home said episodes (SHOW SH3, FEED6)"
   const stored = (id: string, period = "week 3", second = "b"): Project =>
     episodeProjectOf(id, episodeText(period, second), AT).project
 
-  it("is still an episode over its clips, with no Shape, and its takes keep the format", async () => {
+  it("is watched, never voiced or reshaped: no Record, no Shape, and Finish asks for no take", async () => {
     const runtime = studio(memoryProjectStore([stored("w3")]))
     await until(runtime, (state) => projectOf(state) !== null)
     const project = projectIn(runtime)
     expect(project.episode).toBeDefined()
     const view = startView(project)
-    expect(view.sittings.map((row) => row.kind)).toEqual([
-      "record",
-      "watch",
-      "finish",
+    expect(view.sittings.map((row) => [row.kind, row.startHere])).toEqual([
+      ["watch", true],
+      ["finish", false],
     ])
     expect(view.made?.map((row) => row.name)).toEqual([
       STUDIO_WORDS.show.data,
@@ -217,10 +216,12 @@ describe("an episode a phone opened before home said episodes (SHOW SH3, FEED6)"
     runtime.dispatch({ type: "shapeChosen" })
     expect(runtime.getSnapshot().screen.kind).toBe("start")
     runtime.dispatch({ type: "recordChosen" })
-    await recordOne(runtime)
-    const after = projectIn(runtime)
-    expect(after.chosen).toEqual({ open: "t1" })
-    expect(latest(after).cutList.shots[0]?.picture.kind).toBe("capture")
+    expect(runtime.getSnapshot().screen.kind).toBe("start")
+    expect(finishOf(project)).toEqual({ kind: "unsaid", rev: 1 })
+    runtime.dispatch({ type: "finishChosen" })
+    await until(runtime, (state) => state.screen.kind === "finish")
+    runtime.dispatch({ type: "finishGo" })
+    expect(runtime.getSnapshot().screen.kind).toBe("finish")
   })
 
   it("opens no new one from an episode file: home says episodes now", async () => {
@@ -1770,30 +1771,6 @@ describe("Finish", () => {
     if (screen.kind !== "watch") throw new Error("watch")
     expect(screen.atMs).toBe(second?.startMs)
     expect(ideaAsking(projectIn(runtime), screen, [])).toBe("b")
-  })
-
-  it("on an episode a phone holds, asks for no fact check (FEED6)", async () => {
-    const state = ["a", "b", "c"].reduce(
-      (at, id) =>
-        run(at, { type: "takeStarted", shot: id }, take(`t-${id}`, id)),
-      started()
-    )
-    const runtime = studio(
-      memoryProjectStore([
-        {
-          ...state.project,
-          checks: state.project.takes.map((each) => ({
-            take: each.id,
-            at: AT,
-            passed: false,
-          })),
-          episode: JSON.parse(episodeText()).episode,
-        },
-      ])
-    )
-    await until(runtime, (each) => projectOf(each) !== null)
-    // Every take failed its check, and Finish asks only for whose idea.
-    expect(finishOf(projectIn(runtime)).kind).toBe("idea")
   })
 
   it("keeps the owner's mark, then the YouTube link, on the latest version", async () => {

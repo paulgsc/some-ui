@@ -182,13 +182,21 @@ const check = (take: string, passed: boolean, at = AT): FactCheck => ({
   passed,
 })
 
-describe("Finish on an episode a phone opened before FEED6", () => {
+describe("Finish on an episode a phone holds", () => {
   it("asks for no fact check, whatever checks the episode kept", () => {
     const state = episode(taken(started()), [
       check("t-a", true),
       check("t-b", false),
     ])
     expect(finishOf(state.project)).toEqual({ kind: "unmarked", rev: 1 })
+  })
+
+  it("asks for no take: a scene without one is unsaid, never Record's", () => {
+    expect(finishOf(episode(started()).project)).toEqual({
+      kind: "unsaid",
+      rev: 1,
+    })
+    expect(finishOf(started().project)).toMatchObject({ kind: "take", n: 1 })
   })
 
   it("never lets a check go", () => {

@@ -18,8 +18,8 @@
  * - **The phone doesn't know the footage.** A scene the primer brings is a
  *   card (the series' ground) until a revision of Claude's sets its picture;
  *   a newer primer keeps every scene's picture whose cut kept its id.
- * - **No new project is an episode** (FEED6 #2649): home says episodes now.
- *   One a phone opened before then stays as it was, pinned (`episode`).
+ * - **No new project is an episode** (FEED6 #2649): home voices episodes.
+ *   One a phone holds stays pinned to its episode (`episode`).
  */
 import { extensionOf } from "@some-ui/core-utils"
 import type { Shot } from "@some-ui/video-render"

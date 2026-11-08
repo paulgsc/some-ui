@@ -1,5 +1,6 @@
 import { inMemoryStorage } from "@some-ui/core-utils"
-import { parseEpisode, REVIEW_SCHEMA } from "@some-ui/video-render"
+import { REVIEW_SCHEMA } from "@some-ui/video-render"
+import { parseEpisode } from "@some-ui/video-render/testing"
 import type { Playback } from "@some-ui/voice-capture"
 import { TAKE_WORDS } from "@some-ui/voice-capture"
 import { simulatedMicrophone, SPEAKING } from "@some-ui/voice-capture/testing"

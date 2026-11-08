@@ -5,7 +5,7 @@
  * IndexedDB, the microphone or the page's storage. The microphone they
  * record on is the shared simulated one (`@some-ui/voice-capture/testing`).
  */
-import { parseEpisode } from "@some-ui/video-render"
+import { parseEpisode } from "@some-ui/video-render/testing"
 import type { BundleTakes, TakePattern } from "@some-ui/voice-capture"
 import type { MemoryTakes } from "@some-ui/voice-capture/testing"
 
@@ -31,10 +31,9 @@ export function primerOf(text: string): Primer {
 }
 
 /**
- * A project a phone opened from the episode file `text` before home said
- * episodes (SHOW SH3, retired by FEED6 #2649): revision 1, Claude's, the
- * episode's cut list, pinned to it. Studio opens no new one, but keeps and
- * shows those it holds. Throws if `text` is no episode.
+ * A stored episode project, as a phone holds one (SHOW SH3): revision 1,
+ * Claude's, the episode file `text`'s cut list, pinned to it. Studio opens
+ * no episode file itself. Throws if `text` is no episode.
  */
 export function episodeProjectOf(
   id: string,

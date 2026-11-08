@@ -2093,7 +2093,13 @@ export function step(state: StudioState, event: StudioEvent): Step {
     }
 
     case "recordChosen": {
-      if (project === null || screen.kind !== "start") return stay(state)
+      // An episode is never voiced here (FEED6 #2649).
+      if (
+        project === null ||
+        project.episode !== undefined ||
+        screen.kind !== "start"
+      )
+        return stay(state)
       return enqueue(
         {
           ...state,
@@ -2551,6 +2557,9 @@ export function step(state: StudioState, event: StudioEvent): Step {
         return watchOpened(state, project, finish.shot, event.at)
       if (finish.kind !== "note" && finish.kind !== "take") return stay(state)
       const wanted = finish.kind === "note" ? finish.note.shot : finish.shot
+      // An episode's note opens on Watch: it is never voiced here (FEED6).
+      if (project.episode !== undefined)
+        return watchOpened(state, project, wanted, event.at)
       // A note on a scene a later revision dropped opens where work resumes.
       const there = latest(project).cutList.shots.some(
         (each) => each.id === wanted

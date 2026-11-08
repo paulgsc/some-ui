@@ -200,7 +200,7 @@ function ideasToConfirm(n: number): string {
 }
 
 /** Where an episode stands, on its show's list (SHOW SH3). */
-export type EpisodeStanding = "waiting" | "going" | "ready" | "released"
+export type EpisodeStanding = "waiting" | "ready" | "released"
 
 function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`
@@ -279,7 +279,7 @@ export const STUDIO_WORDS = {
       "That isn't something Claude made for Studio, or part of it is missing. Ask Claude for it again.",
     /** An episode file picked on Start: home says episodes now (FEED6). */
     episodeSaid:
-      "That's an episode of a show. Home says and makes each one now, so there's nothing to record: watch it in the show's videos.",
+      "That's an episode of a show. Home makes and voices each one, so there's nothing to record: watch it in the show's videos.",
     /** Claude's reply about an idea, picked here instead of on the idea (ST19). */
     ideaReply:
       "That's Claude's reply about one of your ideas. Open it from the idea, in Your ideas.",
@@ -475,7 +475,7 @@ export const STUDIO_WORDS = {
   show: {
     shows: "Shows",
     showsLine:
-      "Made every week from that week's data, and said by home. These are the episodes this phone opened before home said them.",
+      "Made every week from that week's data, and voiced by home. Here are the episodes this phone holds.",
     own: "Your own videos",
     ownLine:
       "Something new, starting from your idea. Claude shapes it with you.",
@@ -483,14 +483,13 @@ export const STUDIO_WORDS = {
       `${plural(n, "episode", "episodes")} on the phone · newest: ${newest}`,
     back: "Studio",
     intro:
-      "Each episode is made from that week's data and said by home. These are the ones this phone opened before home said them.",
+      "Each episode is made from that week's data and voiced by home. Here are the ones this phone holds.",
     version: (version: number, scenes: number): string =>
       `Version ${version} · ${plural(scenes, "scene", "scenes")}`,
     plans: shapeStatus,
     episodes: "Episodes on this phone",
     standing: {
-      waiting: "Not started",
-      going: "In progress",
+      waiting: "Not made",
       ready: "Ready to upload",
       released: "Up on YouTube",
     } satisfies Record<EpisodeStanding, string>,
@@ -661,6 +660,9 @@ export const STUDIO_WORDS = {
     goTake: (n: number): string => `Record scene ${n}`,
     idea: ideasToConfirm,
     goIdea: (n: number): string => `Watch from scene ${n}`,
+    /** A stored episode with a scene with no take (FEED6): never asked for. */
+    unsaid:
+      "Not every scene of this episode has a take. Home makes and voices episodes, so there's nothing to record: watch it in the show's videos.",
     unmarked:
       "Every scene has its take and its idea said, and no note is open. Say it's ready when you have watched it through.",
     mark: "It's ready",
@@ -746,6 +748,7 @@ export const STUDIO_WORDS = {
       note: "A note is open",
       take: (n: number): string => `Scene ${n} needs a take`,
       idea: ideasToConfirm,
+      unsaid: "Not voiced",
       unmarked: "Ready to mark",
       ready: "Ready for YouTube",
       released: "Released",

@@ -1,8 +1,8 @@
 /**
  * Does a take match its cut (STUDIO ST21, #2321)? A pure check over what
- * was heard in a take, for the take loop (ST8) and home's mechanical checks
- * (the `check-takes` step, `steps.ts`): no judgement of meaning, which stays
- * Claude's (`judge-takes`).
+ * was heard in a take of the owner's own video: no judgement of meaning,
+ * which stays Claude's (`judge-takes`, `steps.ts`). No step runs it today;
+ * its tokenizer is how two hearings are lined up (`hearings.ts`).
  *
  * - **A Read cut** is held to its line, word for word: how much of the line
  *   the take holds, and where its tightest reading sits in the take, so an

@@ -18,7 +18,7 @@
  *
  * A scene may repeat: one scene per item of the period's data, none up to
  * `repeat.max`, each named `<id>-<n>` (`repeatedId`). A format that repeats
- * is not a primer (`episodeOf` refuses it); its ids still fit a cut's, so a
+ * is not a primer (`./episode-file`'s `episodeOf` refuses it); its ids still fit a cut's, so a
  * take or a reply can name its scene. The weekly call (`call.ts`) repeats.
  */
 
@@ -106,7 +106,7 @@ const FormatSceneSchema = z.object({
   holdMs: ms.min(PRIMER_CUT_TARGET_MIN_MS).max(PRIMER_V2_BUDGET_MS),
   /**
    * When an episode may leave it out, in words; absent, it never is
-   * (`episodeOf` refuses to).
+   * (`./episode-file`'s `episodeOf` refuses to).
    */
   skip: words.optional(),
   /**

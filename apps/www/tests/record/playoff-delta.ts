@@ -24,9 +24,6 @@
  * animation at rest, so the same week gives the same bytes. It serves the built app (never `vite dev`)
  * from `--dist`, relative to apps/www, or records the one served at `--app`.
  * Needs `ffmpeg` and `ffprobe` on `PATH`. Policy flags as `record:call`'s.
- *
- * An episode is never voiced by the owner: FEED6 (#2649) retired SHOW SH2's
- * `--clips`, which recorded one for the phone's Studio to voice.
  */
 
 import { readFile, writeFile } from "node:fs/promises"

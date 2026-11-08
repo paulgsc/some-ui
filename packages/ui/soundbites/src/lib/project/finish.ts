@@ -9,6 +9,9 @@
  *   owner's mark on that revision. Missing ones are named in that order,
  *   one at a time, since each has its own place to go. A revision marked
  *   before Finish waited on the owner's word stays ready (owner, #2253).
+ * - **An episode is never voiced here** (FEED6 #2649). A stored episode with
+ *   a scene that has no kept take is `unsaid`: Finish says home makes and
+ *   voices episodes, and asks for no take.
  * - **Released** is the YouTube link the owner pastes after uploading by
  *   hand (owner, 2026-10-29: nothing here uploads).
  */
@@ -26,6 +29,8 @@ export type Finish =
       readonly shot: string
       readonly n: number
     }
+  /** A stored episode with a scene that has no kept take: never asked for. */
+  | { readonly kind: "unsaid"; readonly rev: number }
   /** Scenes whose idea waits on the owner's word: the first, from 1, and how many. */
   | {
       readonly kind: "idea"
@@ -56,7 +61,9 @@ export function finishOf(project: Project): Finish {
   const index = shots.findIndex((shot) => project.chosen[shot.id] === undefined)
   const shot = shots[index]
   if (shot !== undefined)
-    return { kind: "take", rev, shot: shot.id, n: index + 1 }
+    return project.episode === undefined
+      ? { kind: "take", rev, shot: shot.id, n: index + 1 }
+      : { kind: "unsaid", rev }
   if (isMarked(project, rev)) return { kind: "ready", rev }
   const waiting = originsWaiting(project)
   const [first] = waiting

@@ -1710,6 +1710,7 @@ const Finish = ({
           </Button>
         </>
       )}
+      {finish.kind === "unsaid" && <p className="text-sm">{words.unsaid}</p>}
       {finish.kind === "idea" && (
         <>
           <p className="text-sm">{words.idea(finish.count)}</p>

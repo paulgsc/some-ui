@@ -32,7 +32,7 @@
  * - **What an episode's takes were checked against stays** (SHOW SH5).
  *   `checks` holds each verdict a round brought (`./merge`), `accepted` the
  *   owner's word to keep a take anyway (PDM15); both only grow, and nothing
- *   reads them since episodes stopped being voiced here (FEED6 #2649).
+ *   reads them: an episode is never voiced here (FEED6 #2649).
  * - **An episode keeps its format** (SHOW SH3). A project opened from an
  *   episode file is pinned to it (`episode`), and a version that changes
  *   its scenes, their order, its series, its look or the voice plan (the

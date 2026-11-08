@@ -33,12 +33,11 @@ Each module's header says why it is the way it is.
 - `src/format.ts`, `src/episode.ts`: a show (SHOW, #2525) is a series plus
   a format, the ordered scenes every episode has (name, picture source,
   hold, when left out), versioned as a series is (`readFormat`). An episode
-  is a format applied to one period's data by a pure function (`episodeOf`):
-  a primer version 2, the episode's pins (its show's name, format, period,
-  the data's sum) and a cut list whose pictures are the recorded clips.
-  `parseEpisode` reads an episode file back and refuses one whose cut list's
-  scenes are not its cuts. Studio opens no new one since home says episodes
-  (FEED6, #2649); it keeps those a phone opened before. Playoff Delta's
+  is a format applied to one period's data, pinned to its show's name,
+  format, period and the data's sum.
+  Only tests write and read an episode file (`src/episode-file.ts`, on
+  `./testing`); Studio keeps the pins of the episodes a phone holds
+  (`src/episode.ts`). Playoff Delta's
   formats come from its own workspace (`packages/ui/playoff-delta/src/lib/show.ts`),
   and its voiced episodes from `src/stills.ts`, each scene's take marked with
   the speech model that said it (`speaker`).
@@ -64,8 +63,8 @@ Each module's header says why it is the way it is.
   ports; `src/node.ts` gives it ffmpeg and the file system.
 - `src/steps.ts`: who owns each step of making a video, now and by when
   (ST10, #2258); its test holds the rules for moving one.
-- `src/take-check.ts`, `src/hearings.ts`: does a take say what its cut
-  asks (ST21, #2321), and its two hearings lined up (ST25, #2323).
+- `src/take-check.ts`, `src/hearings.ts`: a transcript's words, and a
+  take's two hearings lined up (ST25, #2323).
 - `src/authorship.ts`: whose idea and whose hands each scene shows (ST16,
   #2274), read from each scene's `idea`, its voice, who said its take
   (`speaker`: a speech model's take is never the owner's) and the step

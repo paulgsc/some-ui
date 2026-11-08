@@ -81,8 +81,13 @@ describe("authorship", () => {
     // under an ad-lib plan.
     const said = shot("said", { take, voice: "ad-lib", speaker: "kokoro" })
     expect(handsOf(said)).not.toContain("you")
-    expect(handsOf(said)).toContain("code")
     expect(wordingOf(said, "ad-lib")).toBe("agent")
+    // The speaker's take is say-scenes' work: moved to Claude, its hand moves.
+    const moved = STEPS.map((s) =>
+      s.id === "say-scenes" ? { ...s, kind: "claude" as const } : s
+    )
+    expect(handsOf(said, moved)).toEqual(["agent", "code"])
+    expect(handsOf(shot("owner", { take }), moved)).toEqual(["you", "code"])
     expect(authorshipOf(cutList([said]))).toEqual([
       { shot: "said", origin: "agent", wording: "agent", hands: ["code"] },
     ])

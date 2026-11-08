@@ -1,12 +1,11 @@
 /**
  * Playoff Delta as a show (SHOW SH1): its two formats, the week's and the
- * legend's, made from this workspace's own slides, the facts each scene
- * keeps, and an episode's upload copy. An episode is said by home's speaker
- * from a fill (`./voiced`, FEED3), never by the owner (FEED6 #2649). The format is a compile-time template: `formatOf` reads the
- * slides' order, names and holds, and each version is pinned under
- * `@some-ui/video-render`'s `src/templates/` (its test holds the newest equal
- * to `formatOf`), so a change to the slides fails until a new version is
- * written.
+ * legend's, made from this workspace's own slides, and the facts each scene
+ * keeps. Home's speaker says an episode from a fill (`./voiced`). The format
+ * is a compile-time template: `formatOf` reads the slides' order, names and
+ * holds, and each version is pinned under `@some-ui/video-render`'s
+ * `src/templates/` (its test holds the newest equal to `formatOf`), so a
+ * change to the slides fails until a new version is written.
  */
 
 import {
@@ -14,24 +13,19 @@ import {
   type Format,
   type Parsed,
   type Shape,
-  type UploadCopy,
 } from "@some-ui/video-render"
 
-import { callOf, sentence } from "./reading"
 import {
   HOLD_MS,
   LEGEND_SLIDES,
   LEGEND_WEEK,
   legendFacts,
-  MODEL,
   SCENES,
   slidesOf,
   WEEK_SLIDES,
   weekFacts,
 } from "./slides"
-import type { StorySeason, StoryWeek } from "./story"
-import { nameOf } from "./story"
-import { CALLS, UPLOAD } from "./words"
+import type { StorySeason } from "./story"
 
 export type FormatKind = "week" | "legend"
 
@@ -124,45 +118,6 @@ export const episodeTitle = (season: StorySeason, week: number): string =>
   week === LEGEND_WEEK
     ? "Playoff Delta, the legend"
     : `Playoff Delta, ${season.label} week ${week}`
-
-/**
- * The upload's copy for one week (null for the legend), from the same reading
- * the short says: whose side, our own game, the week's sentence (the
- * outro's) and the model every number is read under. `UPLOAD` holds the
- * words.
- */
-export function uploadOf(
-  season: StorySeason,
-  week: StoryWeek | null
-): UploadCopy {
-  const team = nameOf(season, season.team)
-  if (week === null) {
-    return {
-      title: UPLOAD.legendTitle(season.label),
-      description: [UPLOAD.legendOpening(season.label, team), MODEL].join(
-        "\n\n"
-      ),
-    }
-  }
-  const game =
-    week.game === null
-      ? UPLOAD.bye
-      : week.game.won
-        ? UPLOAD.won(nameOf(season, week.game.opponent))
-        : UPLOAD.lost(nameOf(season, week.game.opponent))
-  return {
-    title: UPLOAD.weekTitle(
-      season.label,
-      week.week,
-      CALLS[callOf(week)].phrase
-    ),
-    description: [
-      UPLOAD.weekOpening(season.label, week.week, team, game),
-      sentence(week),
-      MODEL,
-    ].join("\n\n"),
-  }
-}
 
 /**
  * The facts each scene of week `week`'s episode keeps, in its format's

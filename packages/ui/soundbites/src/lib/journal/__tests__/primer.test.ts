@@ -1,9 +1,9 @@
 import {
-  episodeOf,
   FORMAT_SCHEMA,
   PRIMER_V2_BUDGET_MS,
   type Format,
 } from "@some-ui/video-render"
+import { episodeOf } from "@some-ui/video-render/testing"
 import { cutV1, readPrimer } from "@soundbites/lib/journal/primer"
 import { JOURNAL_BUDGET_MAX_MS } from "@soundbites/lib/policy"
 import { describe, expect, it } from "vitest"
