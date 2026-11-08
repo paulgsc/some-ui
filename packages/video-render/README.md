@@ -82,6 +82,20 @@ pnpm --filter @some-ui/video-render render <video folder> --series <series folde
 Needs `ffmpeg` and `ffprobe` on `PATH`; the repo's nix shells carry them
 (`nix/video`).
 
+## A mark's theme sent from Studio
+
+The phone's Studio shows each template's mark in every theme of the app's on its Templates
+page and sends the one chosen as a new GitHub issue holding it in one ` ```json mark-theme `
+block (SFEED14, #2766; www's `lib/mark-theme`). The theme is code, so a session lands it:
+
+1. Pin a new version of the template (`src/templates/<id>/v<n+1>.json`), its shape's
+   `brand.theme` naming the theme. Leave the version it changed from as it is: videos already
+   made pin it.
+2. Move what draws that template to the new version (`CALL_VERSION` in `src/call.ts`, or
+   `FORMAT_VERSION` in `packages/ui/playoff-delta/src/lib/show.ts`) and
+   `src/templates.ts`'s import of it.
+3. Close the issue with the PR.
+
 ## Compositions, a scene's picture
 
 A scene's picture may be a HyperFrames composition (HYPER2, #2725): `{ kind:

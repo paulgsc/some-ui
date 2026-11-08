@@ -2,6 +2,7 @@ import type { JSX } from "react"
 import type { TemplateId } from "@some-ui/video-render"
 import {
   isTemplateId,
+  markThemeOf,
   templateCaptions,
   templateFormat,
 } from "@some-ui/video-render"
@@ -16,6 +17,7 @@ import {
 } from "@/lib/studio-index"
 import { CaptionLook } from "@/components/studio/caption-look"
 import { StudioPage } from "@/components/studio/layout"
+import { MarkTheme } from "@/components/studio/mark-theme"
 import { TemplateShape } from "@/components/studio/template"
 
 const WORDS = STUDIO_INDEX_WORDS.templates
@@ -45,7 +47,8 @@ const LookOf = ({
 
 /**
  * One template (SFEED1, #2731): its newest version, the feeds that use it,
- * and its shape, from the locked intro to the brand outro.
+ * and its shape, from the locked intro to the brand outro, with its caption
+ * look (SFEED11) and, where it has brand slides, its mark's theme (SFEED14).
  */
 const TemplatePage = (): JSX.Element => {
   const { template }: { template: TemplateId } = Route.useParams()
@@ -71,6 +74,13 @@ const TemplatePage = (): JSX.Element => {
       ))}
       <TemplateShape format={format} />
       <LookOf template={template} title={format.title} />
+      {format.shape !== undefined && (
+        <MarkTheme
+          key={template}
+          template={{ id: template, title: format.title }}
+          from={markThemeOf(format.shape)}
+        />
+      )}
     </StudioPage>
   )
 }

@@ -284,12 +284,26 @@ export const STUDIO_INDEX_WORDS = {
         ms === 0
           ? "Every word at once"
           : `Each word in ${(ms / 1000).toFixed(2)} s`,
-      reset: "Start over",
-      send: "Open it as a GitHub issue",
       sendLine:
         "Opens a new issue holding this look, for you to file. Videos already made keep the look they were drawn in.",
-      unchanged: "Change something to open it as an issue.",
       none: "This template names no caption look.",
+    },
+    /** Sending a setting changed here (SFEED11, SFEED14). */
+    issue: {
+      send: "Open it as a GitHub issue",
+      unchanged: "Change something to open it as an issue.",
+      reset: "Start over",
+    },
+    /** The mark's theme control (SFEED14, #2766). */
+    mark: {
+      label: "The mark's theme",
+      named: (theme: string): string =>
+        `The brand intro and outro draw the mark in ${theme}`,
+      own: "The brand intro and outro draw the mark in the app's own theme",
+      line: "Choose a theme, then open it as a GitHub issue. Once the change is in the code, the next video uses it. Nothing changes until then.",
+      choose: "Draw the mark in",
+      sendLine:
+        "Opens a new issue holding this theme, for you to file. Videos already made keep the mark they were drawn in.",
     },
   },
 } as const
