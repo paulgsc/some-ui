@@ -20,8 +20,9 @@ import {
   routineTone,
   useRoutineStatus,
 } from "@some-ui/topik"
+import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
-import { ChevronRight } from "lucide-react"
+import { ChevronRight, Clapperboard } from "lucide-react"
 
 import { hasAudience } from "@/lib/build-profile"
 import { useMinuteClock } from "@/lib/clock"
@@ -29,6 +30,8 @@ import { kindJourney } from "@/lib/jobs/journey"
 import { everyMorning, morningOf } from "@/lib/jobs/morning"
 import { registerJobsPull } from "@/lib/jobs/pull"
 import { everyJourney } from "@/lib/journey"
+import { rendersQuery, SHAPE_WORDS } from "@/lib/renders"
+import type { RenderShape } from "@/lib/renders"
 import type { How } from "@/lib/sharing-marks"
 import { MARK_WORDS } from "@/lib/sharing-marks"
 import type { BoardPage, BoardRow, Look, RowMark } from "@/lib/status-board"
@@ -37,6 +40,7 @@ import {
   glanceOf,
   journeyRow,
   morningRow,
+  renderRow,
   routineRow,
 } from "@/lib/status-board"
 import { BOARD_WORDS, LOOK_WORDS } from "@/lib/status-board/words"
@@ -78,6 +82,34 @@ const LOOK_HOW: Readonly<Record<Exclude<Look, "not-yet">, How>> = {
   failed: "failed",
 }
 
+/** Every shape home's renders take, in the order its legend says them. */
+const RENDER_SHAPES: ReadonlyArray<RenderShape> = [
+  "making",
+  "paused",
+  "waiting",
+  "failed",
+  "quiet",
+]
+
+/** A render's shape, toned as the sharing mark's `how` it is most like. */
+const RENDER_HOW: Readonly<Record<RenderShape, How>> = {
+  making: "sending",
+  paused: "waiting",
+  waiting: "waiting",
+  failed: "failed",
+  quiet: "current",
+}
+
+const renderTone = (shape: RenderShape): string => howTone(RENDER_HOW[shape])
+
+/** Home's renders: a clapperboard, toned by how they stand. */
+const RenderMark = ({ shape }: { shape: RenderShape }): JSX.Element => (
+  <Clapperboard
+    aria-hidden
+    className={cn("size-5 shrink-0", renderTone(shape))}
+  />
+)
+
 const lookTone = (look: Look): string =>
   look === "not-yet" ? "text-muted-foreground" : howTone(LOOK_HOW[look])
 
@@ -102,7 +134,9 @@ const toneOfMark = (mark: RowMark): string =>
       ? themeText(mark.theme)
       : mark.kind === "routine"
         ? routineTone(mark.shape)
-        : lookTone(mark.look)
+        : mark.kind === "render"
+          ? renderTone(mark.shape)
+          : lookTone(mark.look)
 
 /** A row's mark, as its own surface draws it. */
 const RowMarkView = ({ mark }: { mark: RowMark }): JSX.Element => {
@@ -116,6 +150,7 @@ const RowMarkView = ({ mark }: { mark: RowMark }): JSX.Element => {
       </span>
     )
   }
+  if (mark.kind === "render") return <RenderMark shape={mark.shape} />
   if (mark.kind === "look") {
     return (
       <LookMark
@@ -133,6 +168,7 @@ const PAGES: Readonly<Record<BoardPage, string>> = {
   aph: "/aph",
   jobs: "/jobs",
   "home-settings": "/settings/home",
+  renders: "/journal/renders",
 }
 
 /** The rows lead to the Android app's pages, so only its build links them. */
@@ -233,6 +269,16 @@ const Legends = (): JSX.Element => (
         states={everyJourney("them")}
       />
       <RoutineLegend title={BOARD_WORDS.routine} />
+      {LINKED ? (
+        <MarkLegend
+          title={SHAPE_WORDS.name}
+          lines={RENDER_SHAPES.map((shape) => ({
+            key: shape,
+            mark: <RenderMark shape={shape} />,
+            text: SHAPE_WORDS.legend[shape],
+          }))}
+        />
+      ) : null}
       <MarkLegend
         title={LOOK_WORDS.name}
         lines={LOOKS.map((look) => ({
@@ -257,6 +303,8 @@ export const StatusBoard = (): JSX.Element => {
   const now = useMinuteClock()
   const routineFiles = useHomeRoutineFiles()
   const routine = useRoutineStatus(routineFiles?.key ?? "", now)
+  // What home is making (SFEED13): the phone's alone, as its page is (A3).
+  const renders = useQuery({ ...rendersQuery, enabled: LINKED })
   useEffect(registerJobsPull, [])
   const rows = [
     ...lanes.rows,
@@ -268,6 +316,10 @@ export const StatusBoard = (): JSX.Element => {
     // The routine's runs reach this phone only while Korean shows its files.
     ...(routineFiles === undefined ? [] : [routineRow(routine)]),
     ...(look === null ? [] : [look]),
+    // A failed refresh keeps the last board, and the row says it's the last.
+    ...(renders.data?.kind === "read"
+      ? [renderRow(renders.data.board, renders.isError)]
+      : []),
   ]
   const board = boardOf(rows)
   return (

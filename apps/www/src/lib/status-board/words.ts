@@ -12,6 +12,7 @@ export const BOARD_WORDS = {
   needsYou: "Needs you",
   groups: {
     home: "Sending to home",
+    studio: "Studio",
     jobs: "Jobs",
     korean: "Korean",
   } satisfies Record<GroupId, string>,
