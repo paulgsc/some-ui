@@ -185,6 +185,15 @@ export function fromLinearSrgb([r, g, b]: Rgb): Oklch {
 
 const encode = (x: number): number =>
   x <= 0.0031308 ? 12.92 * x : 1.055 * x ** (1 / 2.4) - 0.055
+
+/** The colour as `#rrggbb`, clamped to sRGB's gamut. */
+export function srgbHex(color: Oklch): string {
+  const byte = (x: number): string =>
+    Math.round(encode(x) * 255)
+      .toString(16)
+      .padStart(2, "0")
+  return `#${toLinearSrgb(color).map(byte).join("")}`
+}
 /** An sRGB channel, 0..1, to linear light. */
 export const decode = (x: number): number =>
   x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4

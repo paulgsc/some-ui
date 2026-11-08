@@ -1,13 +1,20 @@
 <!doctype html>
-<!-- The brand's open and close, version 1 (HYPER5, #2728): today's still mark
-     (its own copy, mark.svg), drawn in or out. A released version is never
-     edited: src/brand.ts pins its files, and a change is a new version. -->
+<!-- The brand's open and close, version 1 (HYPER5, #2728): the app's still
+     mark, drawn in or out. The mark is the code's, in the template's theme:
+     the runner writes it as mark.svg from `theme` (src/mark.ts), and the
+     ground is that theme's unless the cut list sets one. A released version
+     is never edited: src/brand.ts pins its files (its motion), and a change
+     is a new version. -->
 <html
   lang="en"
   data-composition-variables='[
     {"id":"part","type":"enum","label":"Open or close","default":"open",
      "options":[{"value":"open","label":"Open"},{"value":"close","label":"Close"}]},
-    {"id":"ground","type":"color","label":"Ground","default":"#111821"}
+    {"id":"theme","type":"enum","label":"Theme","default":"mochi-night",
+     "options":[{"value":"light","label":"Light"},{"value":"dark","label":"Dark"},
+       {"value":"mochi","label":"Mochi"},{"value":"rose-night","label":"Rosé Night"},
+       {"value":"harvest-sky","label":"Harvest Sky"},{"value":"mochi-night","label":"Mochi Night"}]},
+    {"id":"ground","type":"color","label":"Ground","default":"#241a13"}
   ]'
 >
   <head>

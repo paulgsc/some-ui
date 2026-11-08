@@ -2,9 +2,10 @@
  * The brand's open and close (HYPER5, #2728): every version kept. A version
  * is one composition, `brand-v<n>`, drawn as the open or the close by its
  * `part` variable, fitted to any video's frame (`data-fit-frame`), and
- * carrying its own copy of the mark. Its files are pinned here: a version a
- * published video used is never edited, and a new mark (ask #2674) or a new
- * motion is a new version, so an older one still renders the same bytes.
+ * drawing the app's own mark in the template's theme, written from the code
+ * at render time (`mark.ts`; ask #2674). Its files are pinned here, so they
+ * freeze the motion, not a mark: a version a published video used is never
+ * edited, and a new motion is a new version.
  *
  * What a version shares with the others, `lib/motion.js`, is not pinned:
  * a change there must keep what `track` draws for the keys a version uses.
@@ -32,7 +33,7 @@ export const BRAND_VERSIONS: ReadonlyArray<BrandVersion> = [
     version: 1,
     ref: "brand-v1",
     says: "today's still mochi, drawn in with a small overshoot and out with a shrink",
-    files: "91333047acdae2a45e848c1e6afbf8141bd8425fc896f3ed17d1c4cb59a8b7ec",
+    files: "c99857592d3a59aa383b314a2ea7e7249a42fc7005286a29750c88d78ad30485",
   },
 ]
 

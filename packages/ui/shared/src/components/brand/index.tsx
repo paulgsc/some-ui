@@ -1,28 +1,16 @@
 import type { JSX } from "react"
 import { cn } from "@some-ui/core-utils"
+import {
+  MOCHI_CHEEK as CHEEK,
+  MOCHI_BODY,
+  MOCHI_FACE,
+} from "@some-ui/styles/brand/mark"
 import type { SessionThemeId } from "@some-ui/styles/theme"
 import { sessionThemeProps } from "@some-ui/styles/theme"
 
-/**
- * The Some UI mark: one plump honey mochi with a face, one solid shape with
- * nothing cut between its parts.
- *
- * A 64 box: a flat-top hexagon of circumradius 19 rounded by 6, with the face
- * a little below centre. The same strings are drawn by `apps/www/public/favicon.svg`,
- * `packages/some-styles/brand/favicon.svg` and the Android launcher layers
- * (`apps/mobile/android/app/src/main/res/drawable/ic_launcher_*.xml`), which
- * cannot import this; `apps/www/src/lib/brand/favicon.test.ts` holds them to
- * it.
- */
-export const MOCHI_BODY =
-  "M56.2 29A6 6 0 0 1 56.2 35L46.7 51.45A6 6 0 0 1 41.5 54.45L22.5 54.45A6 6 0 0 1 17.3 51.45L7.8 35A6 6 0 0 1 7.8 29L17.3 12.55A6 6 0 0 1 22.5 9.55L41.5 9.55A6 6 0 0 1 46.7 12.55Z"
-
-/** Two eyes and a crescent smile, filled shapes so a one-colour mark can cut them out. */
-export const MOCHI_FACE =
-  "M22.9 33A2.6 2.6 0 1 0 28.1 33A2.6 2.6 0 1 0 22.9 33Z M35.9 33A2.6 2.6 0 1 0 41.1 33A2.6 2.6 0 1 0 35.9 33Z M28.5 38.4Q32 43.4 35.5 38.4Q32 40.2 28.5 38.4Z"
-
-/** The cheeks' pink: the same on every theme, since it is drawn on the brand fill, never the page. */
-const CHEEK = "#f08f7e"
+// The mark's geometry lives with the theme it is drawn in (`@some-ui/styles`,
+// `brand/mark`), so a renderer outside the browser draws the same mark.
+export { MOCHI_BODY, MOCHI_FACE } from "@some-ui/styles/brand/mark"
 
 /**
  * The mark's shapes, for a host that composes them into its own `<svg>` (a

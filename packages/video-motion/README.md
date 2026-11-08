@@ -135,11 +135,15 @@ Every version is kept (HYPER5, #2728). A version is one composition, `compositio
 
 - `part` (`open` or `close`, an `enum` HyperFrames itself holds to) picks which it draws;
 - it fits any frame (`data-fit-frame`), so the call's 16:9 and a vertical share it;
-- it carries its own copy of the mark, `mark.svg`, never `brand/mark.svg`, so a new mark
-  doesn't reach an old version.
+- `theme`, one of the app's themes, picks the mark's colours. The mark is the app's own, from
+  the code (`@some-ui/styles`' `brand/mark`): the runner writes it as `mark.svg` in that
+  theme at render time (`src/mark.ts`), and gives the theme's ground as `ground` unless the
+  cut list sets one. So the mark follows the code, and the template names its theme
+  (`brand.theme`, `markThemeOf`; ask #2674).
 
 `src/brand.ts` pins each version's files by sha256, and its test fails if a released version
-is edited. A new mark (ask #2674), or a new motion, is a new folder and a new entry there.
-Version 1 is today's still mochi, drawn in with a small overshoot and out with a shrink. What
+is edited: a version freezes its motion, and a new motion is a new folder and a new entry there.
+Version 1 is the still mochi, drawn in with a small overshoot and out with a shrink. What
 the versions share, `lib/motion.js`, isn't pinned: a change there must keep what `track`
-draws for the keys a version uses.
+draws for the keys a version uses. The step cache's pin covers every theme's mark, so a retuned
+theme draws again.
