@@ -314,3 +314,102 @@ export function dueWeeks(
   const legend = names.includes(fillFile(season.team, LEGEND_WEEK))
   return [...(legend ? [] : [LEGEND_WEEK]), ...weeks]
 }
+
+export const NARRATION_INDEX_SCHEMA = "some-ui.pd-narration-index/1"
+
+/** A fill as the index lists it: which episode, and the sum of its bytes. */
+export type IndexedFill = {
+  readonly season: string
+  readonly team: string
+  readonly week: number
+  /** Lowercase hex SHA-256 of the fill's file, byte for byte. */
+  readonly sha256: string
+}
+
+/**
+ * Every fill `paulgsc/testing` holds, in one file home can read
+ * (`playoff-delta/index.json`, FEED4 #2647): home reads only
+ * `raw.githubusercontent.com`, which can't list a folder. A fill's file is
+ * `<season>/narration/<team>-week-NN.json` and its season's
+ * `<season>/<team>.json`, both beside the index.
+ */
+export type NarrationIndex = {
+  readonly schema: typeof NARRATION_INDEX_SCHEMA
+  /** By season, team and week. */
+  readonly fills: ReadonlyArray<IndexedFill>
+}
+
+/** A file in a season's narration folder, as read from the repository. */
+export type FillOnDisk = {
+  /** Its season folder's name: "2026". */
+  readonly season: string
+  /** Its name in the season's `narration/`: "SF-week-08.json". */
+  readonly name: string
+  readonly bytes: Uint8Array
+}
+
+const FILL_NAME = /^([A-Z]{2,3})-week-(\d{2})\.json$/
+const SEASON_FOLDER = /^\d{4}$/
+
+const FillPinsSchema = z.looseObject({
+  schema: z.literal(NARRATION_SCHEMA),
+  season: z.string(),
+  team: z.string(),
+  week: z.number().int().nonnegative(),
+})
+
+/**
+ * The index of `files`, or why it can't be made: a name that isn't a fill's,
+ * or a fill whose pins name another episode than where it lies. It judges
+ * only where a fill is; whether its words check is `checkNarration`'s, run
+ * before the fill landed.
+ */
+export async function narrationIndex(
+  files: ReadonlyArray<FillOnDisk>
+): Promise<Parsed<NarrationIndex>> {
+  const problems: Array<string> = []
+  const fills: Array<IndexedFill> = []
+  for (const file of files) {
+    const where = `${file.season}/narration/${file.name}`
+    const named = FILL_NAME.exec(file.name)
+    if (!SEASON_FOLDER.test(file.season) || !named) {
+      problems.push(
+        `${where} isn't named as a fill: <season>/narration/<team>-week-NN.json`
+      )
+      continue
+    }
+    const [, team = "", week = ""] = named
+    let json: unknown
+    try {
+      json = JSON.parse(
+        new TextDecoder("utf-8", { fatal: true }).decode(file.bytes)
+      )
+    } catch {
+      problems.push(`${where} isn't JSON`)
+      continue
+    }
+    const pins = FillPinsSchema.safeParse(json)
+    if (!pins.success) {
+      problems.push(`${where} isn't a fill (${NARRATION_SCHEMA})`)
+      continue
+    }
+    const at = { season: file.season, team, week: Number(week) }
+    if (
+      pins.data.season !== at.season ||
+      pins.data.team !== at.team ||
+      pins.data.week !== at.week
+    ) {
+      problems.push(
+        `${where} is the fill of ${pins.data.season} ${pins.data.team} week ${pins.data.week}`
+      )
+      continue
+    }
+    const bytes = new Uint8Array(file.bytes).buffer
+    fills.push({ ...at, sha256: await sha256Hex(bytes) })
+  }
+  if (problems.length > 0) return { ok: false, problems }
+  const order = (f: IndexedFill): string =>
+    `${f.season}/${f.team}/${String(f.week).padStart(2, "0")}`
+  fills.sort((a, b) => order(a).localeCompare(order(b)))
+  return { ok: true, value: { schema: NARRATION_INDEX_SCHEMA, fills } }
+}

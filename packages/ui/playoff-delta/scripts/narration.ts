@@ -1,13 +1,15 @@
-/** The narration's `due`, `packet` and `check` (FEED1, FEED2); the README's "What is said" has their usage. */
+/** The narration's `due`, `packet`, `check` and `index` (FEED1, FEED2, FEED4); the README's "What is said" has their usage. */
 
-import { readdir } from "node:fs/promises"
-import { dirname } from "node:path"
+import { readdir, readFile, rename, writeFile } from "node:fs/promises"
+import { dirname, join } from "node:path"
 import { parseArgs } from "node:util"
 import {
   checkNarration,
   dueWeeks,
   fillFile,
+  narrationIndex,
   packetOf,
+  type FillOnDisk,
 } from "@playoff-delta/lib/narration"
 import { SAMPLE_SEASON } from "@playoff-delta/lib/sample"
 import { StorySeasonSchema, type StorySeason } from "@playoff-delta/lib/story"
@@ -18,6 +20,7 @@ const USAGE = [
   "usage: narration due --season <file|sample> --folder <narration folder>",
   "       narration packet --season <file|sample> --week <n>",
   "       narration check <fill.json> --season <file|sample> --week <n>",
+  "       narration index --root <testing>/playoff-delta",
 ]
 
 async function read(file: string): Promise<unknown> {
@@ -66,6 +69,45 @@ function weekOf(value: string | undefined): number {
   return week
 }
 
+/** Every fill under `root`: each season folder's `narration/`. */
+async function fillsUnder(root: string): Promise<ReadonlyArray<FillOnDisk>> {
+  const fills: Array<FillOnDisk> = []
+  const entries = await readdir(here(root), { withFileTypes: true }).catch(
+    (error: unknown) => fail([`${root} can't be read: ${String(error)}`])
+  )
+  for (const season of entries) {
+    if (!season.isDirectory()) continue
+    const folder = join(here(root), season.name, "narration")
+    const names = await readdir(folder).catch((error: unknown) =>
+      missing(error) ? [] : fail([`${folder} can't be read: ${String(error)}`])
+    )
+    for (const name of [...names].sort()) {
+      fills.push({
+        season: season.name,
+        name,
+        bytes: await readFile(join(folder, name)),
+      })
+    }
+  }
+  return fills
+}
+
+/**
+ * Writes `<root>/index.json` (FEED4 #2647), whole: home reads it to learn of
+ * each fill. Run after every fill lands, by the routine.
+ */
+async function writeIndex(root: string): Promise<void> {
+  const index = await narrationIndex(await fillsUnder(root))
+  if (!index.ok) fail(index.problems)
+  const file = join(here(root), "index.json")
+  await writeFile(
+    `${file}.partial`,
+    `${JSON.stringify(index.value, null, 2)}\n`
+  )
+  await rename(`${file}.partial`, file)
+  process.stdout.write(`${file}: ${index.value.fills.length} fills\n`)
+}
+
 async function main(): Promise<void> {
   const { values, positionals } = parseArgs({
     allowPositionals: true,
@@ -73,9 +115,11 @@ async function main(): Promise<void> {
       season: { type: "string" },
       week: { type: "string" },
       folder: { type: "string" },
+      root: { type: "string" },
     },
   })
   const [command, file] = positionals
+  if (command === "index" && values.root) return writeIndex(values.root)
   if (!values.season) fail(USAGE)
   const season = await seasonFrom(values.season)
 
