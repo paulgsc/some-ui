@@ -165,7 +165,13 @@ describe("a week that contradicts itself", () => {
       board: { ...w.board, rows: [...w.board.rows, w.board.rows[0]] },
       later: [...w.later, { ...w.later[0]!, id: w.asks[0]!.id }],
       mine: [{ ...w.mine[0]!, chose: 2, options: ["Same", "Same"] }],
-      asks: [{ ...w.asks[0]!, recommended: 5 }, w.asks[1]],
+      asks: [
+        { ...w.asks[0]!, recommended: 5 },
+        {
+          ...w.asks[1]!,
+          options: [w.asks[1]!.options[0]!, w.asks[1]!.options[0]!],
+        },
+      ],
     }
     expect(parseCallWeek(bad)).toEqual({
       ok: false,
@@ -176,8 +182,9 @@ describe("a week that contradicts itself", () => {
         "my-data-where: some-ui#2596 landed, and no batch has it",
         "my-data-where: server#678 landed, and no batch has it",
         "dna-strict: two options say the same",
-        "board: a ledger item is listed twice",
         "dna-strict: it chose an option it doesn't list",
+        "talk-d1: two options say the same",
+        "board: a ledger item is listed twice",
         "redeploy-home: it recommends an option it doesn't list",
       ],
     })
