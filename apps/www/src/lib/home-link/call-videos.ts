@@ -83,7 +83,7 @@ export function sendLink(
 }
 
 /** Asks home once for an episode's chapters; never rejects. */
-export function askDescription(feed: Feed, key: string): Promise<CallAsked> {
+export function askDescription(feed: Feed, key: string): Promise<Asked> {
   return asked(() =>
     homeLink().keep((send) => send("GET", descriptionPath(feed, key)))
   )
