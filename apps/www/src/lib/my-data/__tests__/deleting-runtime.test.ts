@@ -45,6 +45,8 @@ function ports(): {
   }>
   letGo: Array<{ ids: ReadonlyArray<string>; done: Deferred<boolean> }>
   reread: { count: number }
+  /** The let-go, the run's end and the reread, in the order they came. */
+  order: Array<string>
 } {
   const asked: Array<{
     ids: ReadonlyArray<string>
@@ -55,24 +57,36 @@ function ports(): {
     done: Deferred<boolean>
   }> = []
   const reread = { count: 0 }
+  const order: Array<string> = []
+  /** Whether the delete's run holds the link, as `deleteNotes` keeps it. */
+  let inRun = false
   return {
     asked,
     letGo,
     reread,
+    order,
     ports: {
       deleteNotes: async (ids, settle): Promise<DeleteAsked> => {
         const answer = deferred<DeleteAsked>()
         asked.push({ ids, answer })
         const said = await answer.promise
-        await settle(said)
+        inRun = true
+        try {
+          await settle(said)
+        } finally {
+          inRun = false
+          order.push("run ended")
+        }
         return said
       },
       letGo: (_of, ids): Promise<boolean> => {
+        order.push(inRun ? "let go in the run" : "let go after it")
         const done = deferred<boolean>()
         letGo.push({ ids, done })
         return done.promise
       },
       reread: (): void => {
+        order.push(inRun ? "reread in the run" : "reread after it")
         reread.count += 1
       },
     },
@@ -189,5 +203,20 @@ describe("My data's delete runtime", () => {
     deleting.confirm()
     await flush()
     expect(asked.map((each) => each.ids)).toEqual([["t1", "t2"], ["t2"]])
+  })
+
+  it("lets go inside the delete's run, and reads My data again once the run has ended", async () => {
+    const { ports: p, asked, letGo, order } = ports()
+    const deleting = createDeleting(p)
+    deleting.ask("studio", ["t1"])
+    deleting.confirm()
+    asked[0]?.answer.resolve({
+      kind: "answered",
+      answers: [{ id: "t1", answer: { status: 200, body: receipt("t1") } }],
+    })
+    await flush()
+    letGo[0]?.done.resolve(true)
+    await flush()
+    expect(order).toEqual(["let go in the run", "run ended", "reread after it"])
   })
 })

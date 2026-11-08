@@ -1695,7 +1695,8 @@
             "some-ui:apps/www/src/lib/home-link/__tests__/drain-paced.test.ts#takes a LeetType session of 100 events home whole in one run, each event once, home never busy, and the reflection after it still goes",
             "some-ui:apps/www/src/lib/home-link/__tests__/drain-paced.test.ts#resumes a session home turned away part way at the first event it had not taken, once home's busy is over",
             "some-ui:apps/www/src/lib/home-link/__tests__/drain-paced.test.ts#resumes a Studio sitting home turned away part way at the first event it had not taken, once home's busy is over",
-            "some-ui:apps/www/src/lib/home-link/__tests__/delete-note.test.ts#sends one DELETE per note, in order, and hands back each answer"
+            "some-ui:apps/www/src/lib/home-link/__tests__/delete-note.test.ts#sends one DELETE per note, in order, and hands back each answer",
+            "some-ui:apps/www/src/lib/my-data/__tests__/deleting-runtime.test.ts#lets go inside the delete's run, and reads My data again once the run has ended"
           ],
           "watch": {
             "by": "none"
