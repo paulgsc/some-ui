@@ -15,13 +15,7 @@ import type { Feed } from "@/lib/feeds"
 import { FEEDS } from "@/lib/feeds"
 
 export type { Category, Destination } from "@some-ui/video-render"
-export {
-  CATEGORIES,
-  destinationOf,
-  destinationsOf,
-  SAID,
-  SHOWN,
-} from "@some-ui/video-render"
+export { CATEGORIES, destinationsOf, SAID, SHOWN } from "@some-ui/video-render"
 
 export const NoteSchema = z.object({
   id: z.string().min(1),
