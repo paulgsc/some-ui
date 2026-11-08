@@ -8,6 +8,7 @@
  */
 import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
+import { sampleWeek } from "@video-render/__tests__/sample-week"
 import {
   CALL_ID,
   CALL_INDEX_SCHEMA,
@@ -21,7 +22,6 @@ import {
   estimatedCallMs,
   parseCallIndex,
   parseCallWeek,
-  sampleCallWeek,
 } from "@video-render/call"
 import type { CallWeek } from "@video-render/call"
 import { parseCutList } from "@video-render/cut-list"
@@ -34,11 +34,7 @@ import { describe, expect, it } from "vitest"
 
 const DIR = join(import.meta.dirname, "../templates", CALL_ID)
 
-const week = (): CallWeek => {
-  const parsed = sampleCallWeek()
-  if (!parsed.ok) throw new Error(parsed.problems.join("; "))
-  return parsed.value
-}
+const week = sampleWeek
 
 describe("the call's format", () => {
   it("every pinned version parses, and the newest is the code's", () => {

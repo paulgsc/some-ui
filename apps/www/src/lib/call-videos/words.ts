@@ -119,4 +119,9 @@ export const VIDEOS_WORDS = {
   notAVideo: "That isn't a link to a YouTube video.",
   linkAway: "Home didn't answer, so the link isn't saved. Try again.",
   onYouTube: "Watch on YouTube",
+  /** Its chapters, for the upload's YouTube description (SFEED4). */
+  chapters: "Its chapters",
+  chaptersLine:
+    "Paste them into the YouTube description when you upload it, and YouTube shows each as a chapter.",
+  chaptersWhat: "the chapters",
 } as const

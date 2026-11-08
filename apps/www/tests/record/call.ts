@@ -42,172 +42,18 @@
  * with a `cache warning:` line on stderr, which home's render worker reports.
  */
 
-import { readFile, writeFile } from "node:fs/promises"
-import { join, resolve } from "node:path"
 import { parseArgs } from "node:util"
-import type { Route } from "@playwright/test"
-import {
-  CALL_INDEX_SCHEMA,
-  CALL_VOICES,
-  callChapterMarks,
-  callCutList,
-  callFormat,
-  callScenes,
-  hasCaptions,
-  parseCallWeek,
-} from "@some-ui/video-render"
-import type { CallWeek } from "@some-ui/video-render"
 
-import { fail, here, launchChromium, runCommand } from "./command"
-import {
-  placeBed,
-  POLICY_OPTIONS,
-  policyOf,
-  recordStills,
-  refuseLong,
-  renderStills,
-  siteOf,
-} from "./voiced"
+import { CALL_OPTIONS, recordCall } from "./call-recording"
+import { runCommand } from "./command"
 
-/** The frame the stage is recorded at: the call's series. */
-const FRAME = { width: 1920, height: 1080 } as const
+const { values } = parseArgs({
+  options: {
+    week: { type: "string" },
+    out: { type: "string", default: "out/call" },
+    "week-file": { type: "string" },
+    ...CALL_OPTIONS,
+  },
+})
 
-/** The call's series, sampled in the renderer's workspace. */
-const SERIES = resolve(
-  import.meta.dirname,
-  "../../../../packages/video-render/src/sample/series/conference-call"
-)
-
-/** The stage's reads of `paulgsc/testing`'s `call/` folder. */
-const TESTING_CALL = /\/paulgsc\/testing\/main\/call\/[^/?#]+$/
-
-/** A week as home keeps it: its file's bytes, and its days. */
-type Kept = {
-  readonly bytes: Buffer
-  readonly from: string
-  readonly to: string
-}
-
-async function keptWeek(path: string): Promise<Kept> {
-  const bytes = await readFile(path)
-  const parsed = parseCallWeek(JSON.parse(bytes.toString("utf8")))
-  if (!parsed.ok)
-    fail([`${path} isn't a week of the call:`, ...parsed.problems])
-  return { bytes, ...parsed.value.week }
-}
-
-/**
- * Answers a read of `paulgsc/testing`'s `call/` from the kept week alone: an
- * index that lists only it, its own file, and nothing else.
- */
-async function answer(route: Route, kept: Kept): Promise<void> {
-  const name = new URL(route.request().url()).pathname.split("/").at(-1)
-  const json = (body: string | Buffer): Promise<void> =>
-    route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      headers: { "Access-Control-Allow-Origin": "*" },
-      body,
-    })
-  if (name === "index.json")
-    return json(
-      JSON.stringify({
-        schema: CALL_INDEX_SCHEMA,
-        keep: 1,
-        weeks: [{ from: kept.from, to: kept.to }],
-      })
-    )
-  if (name === `${kept.from}.json`) return json(kept.bytes)
-  return route.fulfill({ status: 404, body: "" })
-}
-
-async function main(): Promise<void> {
-  const { values } = parseArgs({
-    options: {
-      week: { type: "string" },
-      voices: { type: "string", default: "none" },
-      speaker: { type: "string", default: "http://127.0.0.1:8880" },
-      out: { type: "string", default: "out/call" },
-      dist: { type: "string", default: "dist" },
-      app: { type: "string" },
-      "week-file": { type: "string" },
-      // Home's brand folder: the owner's files the series names (#2673).
-      brand: { type: "string" },
-      ...POLICY_OPTIONS,
-    },
-  })
-  const policy = policyOf(values)
-  if (values.voices !== "kokoro" && values.voices !== "none")
-    fail(["--voices is kokoro or none"])
-  const kept = values["week-file"] ? await keptWeek(values["week-file"]) : null
-  const weekAsked = kept?.from ?? values.week
-  const site = await siteOf(values)
-  const browser = await launchChromium()
-  try {
-    const page = await browser.newPage({
-      viewport: FRAME,
-      deviceScaleFactor: 1,
-    })
-    if (kept) await page.route(TESTING_CALL, (route) => answer(route, kept))
-    const url = (scene: string): string =>
-      `${site.origin}/call?${new URLSearchParams({
-        ...(weekAsked ? { week: weekAsked } : {}),
-        scene,
-        record: "true",
-      }).toString()}`
-
-    // The week the stage plays, as it publishes it on the frame.
-    await page.goto(url("open"))
-    const frame = page.locator("[data-scene]")
-    await frame.waitFor()
-    const published = await frame.getAttribute("data-week")
-    if (published === null) fail(["the stage published no week"])
-    const parsed = parseCallWeek(JSON.parse(published))
-    if (!parsed.ok)
-      fail(["The stage's week can't make a call:", ...parsed.problems])
-    const week: CallWeek = parsed.value
-    if (weekAsked && weekAsked !== "sample" && week.week.from !== weekAsked)
-      fail([`there is no week of ${weekAsked}`])
-
-    const scenes = callScenes(week)
-    refuseLong(scenes, policy)
-    const root = here(join(values.out, week.week.from))
-    const takes = await recordStills({
-      page,
-      root,
-      shots: scenes.map((scene) => ({
-        id: scene.id,
-        url: url(scene.id),
-        said: scene.said,
-        voice: CALL_VOICES[scene.section],
-      })),
-      frame: (id) => `[data-scene="${id}"]`,
-      speaker: values.voices === "kokoro" ? values.speaker : null,
-      timed: hasCaptions(callFormat(week.template.version)),
-      policy,
-    })
-    // The music bed plays once the call's series names one (#2673).
-    const bed = await placeBed(
-      SERIES,
-      callFormat(week.template.version).series.version,
-      values.brand,
-      root
-    )
-    await writeFile(
-      join(root, "week.json"),
-      `${JSON.stringify(week, null, 1)}\n`
-    )
-    await renderStills(root, SERIES, callCutList(week, takes, { bed }), {
-      out: "call.mp4",
-      policy,
-      browser,
-      origin: site.origin,
-      marks: callChapterMarks(week),
-    })
-  } finally {
-    await browser.close()
-    await site.close()
-  }
-}
-
-await runCommand(main)
+await runCommand(() => recordCall(values))
