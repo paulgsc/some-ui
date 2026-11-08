@@ -17,12 +17,14 @@
  *   to the pastes kept, which only grow.
  * - **One note a paste.** Saying it again replaces it; the one replaced,
  *   which never left the phone, is deleted at Keep.
- * - **A note a kept paste names goes home.** Each opening lets go home any
- *   such note still waiting (a Keep whose release the phone couldn't
- *   store), and the screen says when a change to the paste couldn't be kept.
- * - **A kept paste is not written again.** An opening that finds the draft
- *   a kept paste already holds (a Keep that couldn't clear it) clears it,
- *   and Keep never counts another paste begun at the same instant as kept.
+ * - **What Keep owes is owed from the record.** Keep's writes after the
+ *   paste is kept (letting its note go, deleting the notes it replaced,
+ *   clearing the draft) are each redone at every opening from the pastes
+ *   kept (`settleKept`), so one the phone couldn't store is done the next
+ *   time, never lost: a kept paste's line can't take a new note, so every
+ *   other take on it still waiting is one it replaced. Keep never counts
+ *   another paste begun at the same instant as kept, and the screen says
+ *   when a change to the paste couldn't be kept.
  */
 import { assertNever } from "@some-ui/core-utils"
 import type {
@@ -156,6 +158,39 @@ function stepPaste(
   }
 }
 
+/**
+ * Redoes what each Keep owes once its paste is kept: its note goes home,
+ * every other take still waiting on its line (each one it replaced) is
+ * deleted, and week `week`'s draft is cleared if it is that paste. Returns
+ * the week's draft as it stands after.
+ */
+function settleKept(
+  takes: BundleTakes,
+  stores: PasteStores,
+  week: string
+): PasteDraft | null {
+  const kept = stores.pastes.list()
+  const lines = new Map(
+    kept.map((each) => [pasteLine(each.week, each.at), each])
+  )
+  const release: Array<string> = []
+  const discard: Array<string> = []
+  for (const take of takes.takes.getSnapshot()) {
+    const paste = lines.get(take.answers)
+    if (paste === undefined || take.waits !== true) continue
+    if (take.id === paste.note) release.push(take.id)
+    else discard.push(take.id)
+  }
+  if (release.length > 0) takes.release(release)
+  if (discard.length > 0) takes.discard(discard)
+  const draft = stores.draft.read(week)
+  if (draft === null || !lines.has(pasteLine(draft.week, draft.at))) {
+    return draft
+  }
+  stores.draft.write(week, null)
+  return null
+}
+
 export type PasteRuntime = {
   readonly getSnapshot: () => PasteState
   readonly subscribe: (listener: () => void) => () => void
@@ -179,29 +214,9 @@ export function pasteRuntime(
   week: string,
   now: () => number
 ): PasteRuntime {
-  const kept = stores.pastes.list()
-  // A draft a kept paste already holds: its Keep couldn't clear it.
-  const restored = stores.draft.read(week)
-  const done =
-    restored !== null &&
-    kept.some((each) => each.week === restored.week && each.at === restored.at)
-  if (done) stores.draft.write(week, null)
-  let state: PasteState = {
-    showing: false,
-    draft: done ? null : restored,
-    notice: null,
-  }
+  const restored = settleKept(takes, stores, week)
+  let state: PasteState = { showing: false, draft: restored, notice: null }
   const listeners = new Set<() => void>()
-
-  // A note a kept paste names that still waits: its Keep couldn't let it go.
-  const named = new Set(
-    kept.flatMap(({ note }) => (note === null ? [] : [note]))
-  )
-  const stranded = takes.takes
-    .getSnapshot()
-    .filter((take) => take.waits === true && named.has(take.id))
-    .map((take) => take.id)
-  if (stranded.length > 0) takes.release(stranded)
 
   function send(event: PasteEvent): void {
     const next = stepPaste(state, event, takes.takes.getSnapshot())

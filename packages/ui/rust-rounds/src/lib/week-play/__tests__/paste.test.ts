@@ -37,15 +37,20 @@ function phone(
   storage: KeyedStorage,
   simulated: SimulatedPattern,
   playing: Week = QUILLMOSS_WEEK
-): { week: RustWeek; release: ReturnType<typeof vi.fn> } {
+): {
+  week: RustWeek
+  release: ReturnType<typeof vi.fn>
+  discard: ReturnType<typeof vi.fn>
+} {
   const { pattern, store } = simulated
   const release = vi.fn(store.release)
+  const discard = vi.fn(store.discard)
   const week = createRustWeek({
     week: { week: playing, sha256: "a", runs: {}, ended: [] },
     takes: {
       pattern,
       takes: { getSnapshot: store.getSnapshot, subscribe: store.subscribe },
-      discard: store.discard,
+      discard,
       release,
     },
     storage,
@@ -59,7 +64,7 @@ function phone(
     },
   })
   week.attach()
-  return { week, release }
+  return { week, release, discard }
 }
 
 const onConfirm = (): SimulatedPattern =>
@@ -185,6 +190,29 @@ describe("an error pasted in a week (RR13)", () => {
     expect(stores.pastes.add(paste)).toBe(true)
     expect(stores.pastes.add({ ...paste, text: "b" })).toBe(false)
     expect(stores.pastes.list()).toEqual([paste])
+  })
+
+  it("deletes, at the next opening, a note a kept paste replaced that still waits", async () => {
+    const storage = inMemoryStorage()
+    const simulated = onConfirm()
+    const first = phone(storage, simulated)
+    first.week.paste.open()
+    first.week.paste.dispatch({ type: "text", text: "error[E0308]" })
+    await sayNote(first.week, simulated)
+    await sayNote(first.week, simulated)
+    // A Keep whose delete of the replaced note the phone couldn't store.
+    first.discard.mockReturnValueOnce(false)
+    first.week.paste.dispatch({ type: "keep" })
+    const [kept] = pasteStores(storage).pastes.list()
+    const replaced = simulated.store
+      .getSnapshot()
+      .find((take) => take.id !== kept?.note)
+    expect(replaced?.waits).toBe(true)
+    const again = phone(storage, simulated)
+    expect(again.discard).toHaveBeenCalledWith([replaced?.id])
+    expect(simulated.store.getSnapshot().map((take) => take.id)).toEqual([
+      kept?.note,
+    ])
   })
 
   it("says when a change to the paste couldn't be kept", () => {
