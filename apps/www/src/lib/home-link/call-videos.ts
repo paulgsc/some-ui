@@ -22,8 +22,6 @@ import type { CallAsked } from "./asked"
 import { asked } from "./asked"
 import { homeLink } from "./index"
 
-export type { CallAsked } from "./asked"
-
 /** The list of a feed's episodes home holds. */
 function episodesPath(feed: Feed): string {
   return `/feeds/${feed}/videos`

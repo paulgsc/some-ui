@@ -44,6 +44,14 @@ describe("readPreview", () => {
     })
   })
 
+  it("reads a preview not yet ready with no version, size or times", () => {
+    const waiting = { id: "conference-call-1", state: "waiting" }
+    expect(readPreview(answer(200, { preview: waiting }))).toEqual({
+      kind: "read",
+      preview: waiting,
+    })
+  })
+
   it("reads a home without previews as older, and anything else as unreadable", () => {
     expect(readPreview(answer(404))).toEqual({ kind: "older" })
     expect(readPreview(answer(500))).toEqual({ kind: "unreadable" })

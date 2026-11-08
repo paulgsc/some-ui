@@ -41,7 +41,7 @@ export const PREVIEW_WORDS = {
   /** Why home couldn't make one, where it says a reason the person can act on. */
   failedWhy: (reason: string | undefined): string | null =>
     reason === "no-sample"
-      ? "This template has no sample words yet, so it can't be previewed."
+      ? "This template has no sample yet, so it can't be previewed."
       : null,
   /** When a ready preview was made, and when home lets it go. */
   kept: (madeAt: number, expiresAt: number, timeZone?: string): string =>
