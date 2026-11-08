@@ -8,7 +8,9 @@
  * template's shape. The test of this module holds each entry to the newest
  * file in its folder, so a newly pinned version has to be listed here too.
  *
- * The release promo (HYPER3, #2726) joins once it is pinned.
+ * The release promo (HYPER3, #2726) is no pinned format: its scenes are
+ * compositions and its feature lasts as long as the app's walk, so its shape
+ * is `./promo-shape`'s, which Studio's Templates page reads apart (C32).
  */
 
 import type { Parsed } from "./cut-list"

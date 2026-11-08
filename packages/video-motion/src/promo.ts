@@ -1,7 +1,7 @@
 /** The release promo's template (HYPER3, #2726): the README says what it is. */
 
-import { CUT_LIST_SCHEMA } from "@some-ui/video-render"
-import type { CutList, SoundCue } from "@some-ui/video-render"
+import { CUT_LIST_SCHEMA, PROMO_SHAPE } from "@some-ui/video-render"
+import type { CutList, PromoWords, SoundCue } from "@some-ui/video-render"
 import { z } from "zod"
 
 import type { WalkFile } from "./walk/run"
@@ -32,15 +32,18 @@ const drawn = (lines: number, chars: number): z.ZodString =>
 
 const colour = z.string().regex(/^#[0-9a-f]{6}$/)
 
+const { fill } = PROMO_SHAPE
+const words = ({ lines, chars }: PromoWords): z.ZodString => drawn(lines, chars)
+
 /** What Claude writes for one release: the words, nothing else. */
 const FillSchema = z.strictObject({
   /** The app's name, as the opening sets it. */
-  title: drawn(2, 10),
+  title: words(fill.title),
   /** One caption per step of the walk, saying what that screen shows. */
-  captions: z.array(drawn(2, 24)).min(1),
+  captions: z.array(words(fill.caption)).min(1),
   /** Where to get it. */
-  cta: drawn(2, 18),
-  badges: z.tuple([drawn(1, 18), drawn(1, 18)]),
+  cta: words(fill.cta),
+  badges: z.tuple([words(fill.badge), words(fill.badge)]),
 })
 
 export const ReleaseSchema = z.strictObject({
@@ -65,17 +68,11 @@ export const ReleaseSchema = z.strictObject({
 export type Release = z.infer<typeof ReleaseSchema>
 
 /** The hook's and the close's lengths; the feature's is the walk's. */
-const HOOK_SECONDS = 3.2
-const CLOSE_SECONDS = 4
+const HOOK_SECONDS = PROMO_SHAPE.hook.seconds
+const CLOSE_SECONDS = PROMO_SHAPE.close.seconds
 /** Before the walk's first screen, and after its last, in the feature. */
-const WALK_START = 0.8
-const WALK_TAIL = 0.6
-
-/**
- * The series version the promo pins: version 2 names the sound kit
- * (HYPER4, #2727), which `motion promo --brand` brings in from home.
- */
-const SERIES_VERSION = 2
+const WALK_START = PROMO_SHAPE.feature.before
+const WALK_TAIL = PROMO_SHAPE.feature.after
 
 /**
  * Where each scene's sounds land (HYPER4, the dry run's cue sheet on
@@ -137,7 +134,8 @@ export function promoCutList(release: Release, walk: WalkFile): CutList {
   return {
     schema: CUT_LIST_SCHEMA,
     title: `${release.app} ${release.version}`,
-    series: { id: "vertical", version: SERIES_VERSION },
+    // Version 2 names the sound kit, which `motion promo --brand` brings in.
+    series: { ...PROMO_SHAPE.series },
     look: "plain",
     voice: "ad-lib",
     shots: [

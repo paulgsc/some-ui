@@ -133,6 +133,10 @@ export const FEED_KEPT = {
   },
 } as const satisfies Record<Feed, Record<Place, Kept>>
 
+/** A length in seconds as said: "3.2 seconds", "4 seconds". */
+const seconds = (s: number): string =>
+  `${String(s)} ${s === 1 ? "second" : "seconds"}`
+
 export const STUDIO_INDEX_WORDS = {
   heading: "Studio",
   aToZ: "Listed A to Z. None comes first.",
@@ -300,6 +304,32 @@ export const STUDIO_INDEX_WORDS = {
       `${counted(n, "chapter slide")} said aloud`,
     noShape:
       "Made before templates had a shape: no intro, chapters or captions.",
+    /** The release promo (C32): made for each release of an app, from its walk. */
+    promo: {
+      name: "Release promo",
+      line: "Made for each release of an app",
+      intro:
+        "A short vertical video for each release of an app: its name, the app itself screen by screen, and where to get it. The same for every release, and the AI writes only the words.",
+      scenes: "Its three scenes",
+      hook: "The opening: the app's name, its version, and two facts on chips",
+      feature:
+        "The app, screen by screen, as its walk shows it, one caption each",
+      featureFor: (before: number, after: number): string =>
+        `As long as the app's walk, with ${seconds(before)} before and ${seconds(after)} after`,
+      close: "Where to get it, with two badges",
+      lasts: (s: number): string => `${seconds(s)} long`,
+      writes: "What the AI writes",
+      title: "The app's name",
+      caption: "A caption for each screen",
+      cta: "Where to get it",
+      badge: "Each of the two badges",
+      limit: (lines: number, chars: number): string =>
+        lines === 1
+          ? `One line, up to ${counted(chars, "character")}`
+          : `Up to ${counted(lines, "line")} of ${counted(chars, "character")}`,
+      sounds: "Its sounds come from the kit home keeps, on each scene's moves.",
+      made: "Made on home for a release once its walk is recorded. There's no preview of it here.",
+    },
     /** The caption look control (SFEED11, #2707). */
     look: {
       label: "The caption look",

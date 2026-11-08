@@ -492,6 +492,24 @@
       "gray": "#2805 left the owner's story open between offering the stranded takes and sending them home; either keeps the take, and they differ in where it shows and whether the routine reads it.",
       "undo": "Drop the setAsideRedos effect from on-home.ts's setAsideDone and its case in on-home-runtime.ts; the takes then wait on the redo desk again, and #2805's first option can offer them.",
       "refs": ["#2805", "#2579"]
+    },
+    {
+      "id": "C32",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/promo-shape.ts",
+        "apps/www/src/routes/_dashboard/_apk/journal/templates/release-promo.tsx",
+        "packages/video-motion/src/promo.ts"
+      ],
+      "chose": "The release promo shows on Studio's Templates page as an entry of its own, read from one pure table of its shape (PROMO_SHAPE in @some-ui/video-render) that promo.ts makes the promo from: its three scenes in order with their lengths, the feature's as long as the app's walk, and what the AI writes for a release. It is no template: no version, storyboard, caption look or preview.",
+      "options": [
+        "(a) a composition picture kind with an optional hold in Format, the promo pinned as a template whose page lists a shapeless format's scenes in order",
+        "(b) a promo entry on the Templates page read from promo.ts rather than a pinned Format"
+      ],
+      "gray": "HYPER's session left both options on #2722: a Format scene has a fixed holdMs and a capture or card picture, while the promo's scenes are compositions and its feature lasts as long as the app's walk.",
+      "undo": "Delete release-promo.tsx and its tile on the Templates index, and its words; move PROMO_SHAPE's numbers back into promo.ts; then pin the promo as a Format under option (a), which also makes it a TemplateId that home's preview routes, the storyboard and the caption look must take.",
+      "refs": ["#2722", "#2726"]
     }
   ]
 }

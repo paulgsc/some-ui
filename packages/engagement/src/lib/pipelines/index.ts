@@ -58,6 +58,7 @@ export const UNMEASURED: ReadonlyArray<Unmeasured> = [
     "/journal/takes/kept",
     "/journal/templates",
     "/journal/templates/$template",
+    "/journal/templates/release-promo",
   ].map((route) => ({
     route,
     why: "Studio's index (SFEED1): a list or a page of what Studio keeps, a way to the rest. What each page offers is measured once the story that makes it an offer lands (answering an ask, a note on an episode).",
