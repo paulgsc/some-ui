@@ -186,7 +186,7 @@ describe("what this phone keeps on home", () => {
     await mount()
     expect(
       screen.getByText(
-        /2 voice notes, ideas, notes and videos wait on this phone/
+        /2 voice notes, ideas, episode notes and videos wait on this phone/
       )
     ).toBeTruthy()
     expect(home.runs).toBe(0)

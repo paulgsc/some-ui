@@ -184,11 +184,12 @@ function homeLine(
  */
 export const FeedbackNotes = ({ none }: { none: string }): JSX.Element => {
   const notes = useEpisodeNotes()
-  const moved = useSyncExternalStore(
+  // Home answering for a note on the lane's run: its place moves.
+  useSyncExternalStore(
     episodeNotesMoved.subscribe,
     episodeNotesMoved.getSnapshot
   )
-  const home = useQuery(homeNotesQuery(moved))
+  const home = useQuery(homeNotesQuery)
   if (notes.length === 0)
     return <p className="text-muted-foreground text-sm">{none}</p>
   const { held, refused } = notesAnswered()

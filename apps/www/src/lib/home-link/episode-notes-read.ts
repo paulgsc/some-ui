@@ -2,8 +2,7 @@
  * The notes home keeps on a feed's episodes (SFEED6, #2745; paulgsc/server
  * `routes::episode_notes`), through the link (LA8): one
  * `GET /feeds/:feed/notes` per feed each time Studio's Feedback page reads
- * them, as it opens, on a drag down, on Try again, and once home comes to
- * hold a note this phone sent. Nothing of the phone's is sent. What the page
+ * them, as it opens and on a drag down. Nothing of the phone's is sent. What the page
  * makes of the answer is `lib/episode-feedback/home`'s.
  */
 import type { Feed } from "@/lib/feeds"

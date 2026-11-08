@@ -27,10 +27,12 @@ export type HomeNotesOutcome =
  * busy. Rejects when home didn't answer or an answer couldn't be read, so the
  * page keeps what it last read and says so.
  */
-export async function readHomeNotes(): Promise<HomeNotesOutcome> {
+export async function readHomeNotes(
+  wanted: () => boolean = () => true
+): Promise<HomeNotesOutcome> {
   const storedAt = new Map<string, string>()
   for (const feed of FEEDS) {
-    const asked = await askWhileBusy(() => askEpisodeNotes(feed))
+    const asked = await askWhileBusy(() => askEpisodeNotes(feed), wanted)
     if (asked.kind === "unpaired") return asked
     if (asked.kind === "unreachable") throw new Error("home didn't answer")
     const read = readFeedNotes(asked.answer)

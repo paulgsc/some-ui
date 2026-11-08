@@ -42,7 +42,7 @@ export const FEEDBACK_WORDS = {
   refused: {
     unwritable:
       "The phone couldn't keep this note. Your picks are still here; try again.",
-    full: "The phone already keeps a thousand notes, and keeps no more until home keeps them. Your picks are still here.",
+    full: "The phone already keeps a thousand notes, so it can't keep another. Your picks are still here.",
   },
   keptHere: "Note kept on this phone.",
   /** The episode page's count of its notes. */
@@ -54,7 +54,7 @@ export const FEEDBACK_WORDS = {
     `On home since ${dayWords(storedAt, today)}`,
   /** Home read it back when it was sent; its list wasn't read just now. */
   onHomeSent: "On home",
-  onPhone: "On this phone; it goes home on its own",
+  onPhone: "On this phone; it goes home on its own while paired",
   notTaken: "Home didn't take this note, so it stays on this phone",
   /** Why the page says nothing of home. */
   home: {

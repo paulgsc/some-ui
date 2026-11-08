@@ -11,18 +11,19 @@ import { readHomeNotes } from "./home-read"
 export type { HomeNotesOutcome } from "./home-read"
 export { episodeNotesMoved, notesAnswered } from "./home-read"
 
-/** The page's read of home's notes; `moved` is the lane's count of answers. */
-export const homeNotesQuery = (
-  moved: number
-): UseQueryOptions<
+/**
+ * The page's read of home's notes, as it opens and on a drag down. A note
+ * home reads back while the page is open shows as on home at once, from the
+ * lane's answer (`notesAnswered`); when since is the next read's.
+ */
+export const homeNotesQuery: UseQueryOptions<
   HomeNotesOutcome,
   Error,
   HomeNotesOutcome,
-  Array<string | number>
-> =>
-  queryOptions({
-    queryKey: ["home", "episode-notes", moved],
-    queryFn: readHomeNotes,
-    staleTime: 15_000,
-    retry: false,
-  })
+  Array<string>
+> = queryOptions({
+  queryKey: ["home", "episode-notes"],
+  queryFn: ({ signal }) => readHomeNotes(() => !signal.aborted),
+  staleTime: 15_000,
+  retry: false,
+})
