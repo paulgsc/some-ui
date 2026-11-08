@@ -194,4 +194,20 @@ describe("the bundle machine, over a spec of its own", () => {
     expect(state.sent).toBe(sent)
     expect(run([{ type: "review", at: AT }], state).state.screen).toBe("sent")
   })
+
+  it("starts no second draft named as the record just sent", () => {
+    const sent: Sent = { id: "w46", answers: [], passed: ["QM-1"], at: AT }
+    const { state } = run([{ type: "entered", at: AT }, opened([], [sent])])
+    expect(run([{ type: "another", id: "other", at: AT }], state).state).toBe(
+      state
+    )
+  })
+
+  it("keeps the state as it was when a step changes nothing", () => {
+    const { state } = run([{ type: "entered", at: AT }, opened()])
+    const before = "2026-11-10T09:00:00.000Z"
+    expect(run([{ type: "swipe", to: "next", at: before }], state).state).toBe(
+      state
+    )
+  })
 })

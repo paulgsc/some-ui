@@ -156,13 +156,10 @@ export type {
   BundleNotice,
   BundleSpec,
   BundleState,
-  BundleStep,
-  BundleTap,
   CardView,
   HomeReach,
-  Missing,
 } from "./lib/bundle"
-export { bundleMachine, initialBundle, isPaired } from "./lib/bundle"
+export { bundleMachine, isPaired } from "./lib/bundle"
 export type {
   BundleDrafts,
   BundleHome,

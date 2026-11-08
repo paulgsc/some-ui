@@ -1,5 +1,5 @@
 /**
- * A bundle's parts (STUDIO ST26; shared for Rust Rounds' week, RR13 #2688):
+ * A bundle's parts (STUDIO ST26; RR13 #2688):
  * its cards, one item each, swiped between with the thumb (`BundleCards`),
  * each answer said and heard back on the take pattern's parts, and the look
  * over before Send (`BundleReview`). They render `@some-ui/voice-capture`'s
@@ -585,7 +585,7 @@ export const BundleReview = <K extends BundleKind>(
                 </div>
               )}
               {how === null && (
-                <div className="bg-card flex items-center justify-between gap-2 rounded-2xl p-3">
+                <div className="bg-card flex items-center justify-between rounded-2xl p-3">
                   <span className="text-muted-foreground text-sm">
                     {props.notSaid?.(item) ?? words.review.notSaid}
                   </span>

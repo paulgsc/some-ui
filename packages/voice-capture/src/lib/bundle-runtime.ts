@@ -176,11 +176,17 @@ export function bundleRuntime<K extends BundleKind>(
       case "send": {
         const { record } = effect
         const id = idOf(record)
-        const kept = ports.records.keep((records) =>
+        const named = (records: ReadonlyArray<K["record"]>): boolean =>
           records.some((each) => idOf(each) === id)
-            ? records
-            : [...records, record]
-        )
+        // Only a record added now lets takes go: one already kept under the
+        // id names other takes, so these would go home named by none.
+        const before = ports.records.list()
+        const kept =
+          before === null || named(before)
+            ? null
+            : ports.records.keep((records) =>
+                named(records) ? records : [...records, record]
+              )
         const sent = kept?.find((each) => idOf(each) === id) ?? null
         if (sent !== null) {
           ports.takes.release(effect.takes)

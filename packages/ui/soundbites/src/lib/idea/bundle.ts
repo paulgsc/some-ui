@@ -4,12 +4,9 @@
  * between, each answer said as a take on the take pattern and heard back,
  * then the whole idea looked over and sent together.
  *
- * The machine is the shared bundle's (`@some-ui/voice-capture`'s
- * `bundleMachine`, moved there for Rust Rounds' week, RR13 #2688), and so are
- * the rules it holds by structure: nothing leaves before Send, one take per
- * answer, deleting before Send asks first and is for good, typing only as the
- * fallback, nothing moving while a take is under way, one play at a time.
- * This is the idea's spec over it:
+ * The machine, and the rules it holds by structure, are the shared
+ * bundle's (`@some-ui/voice-capture`'s `bundleMachine`). This is the idea's
+ * spec over it:
  *
  * - **The questions** are `IDEA_QUESTIONS`, each take named
  *   `idea:<idea>:<question>` (`answersOf`), a Studio note's `ref`.

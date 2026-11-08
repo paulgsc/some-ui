@@ -1,6 +1,6 @@
 /**
  * A set of answers said as one bundle, as one state machine (STUDIO ST26,
- * #2453; moved here for Rust Rounds' week, RR13 #2688): a screen before the
+ * #2453; RR13 #2688): a screen before the
  * cards (`intro`: what a new idea is, a week's brief), then its items, one
  * card each, swiped between, each answer said as a take on the take pattern
  * and heard back, then the whole set looked over and sent together.
@@ -14,7 +14,7 @@
  * What a bundle is about is its `BundleSpec`: the items, how a take names
  * what it answers, the draft's own fields and their edits, what Send keeps
  * and what it still needs. Studio's new idea (`@some-ui/soundbites`' `lib/idea/bundle`)
- * and Rust Rounds' week (`@some-ui/rust-rounds`' `lib/week-play`) are its specs.
+ * and Rust Rounds' week of tickets (RR13) are its specs.
  *
  * Rules that hold by structure, whatever the spec:
  *
@@ -380,7 +380,7 @@ export type BundleStep<K extends BundleKind> = {
   readonly effects: ReadonlyArray<BundleEffect<K>>
 }
 
-export function initialBundle<K extends BundleKind>(
+function initialBundle<K extends BundleKind>(
   spec: BundleSpec<K>,
   context: K["context"],
   id: string,
@@ -1004,7 +1004,13 @@ export function bundleMachine<K extends BundleKind>(
     if (state.busy && MOVES.has(event.type)) return same(state)
     const at = "at" in event ? event.at : state.at
     const stamped = at === state.at ? state : { ...state, at }
-    return step(stamped, event)
+    const next = step(stamped, event)
+    // A step that changes nothing keeps the state as it was, unless the time
+    // changes what Send still needs (a deadline passing).
+    if (next.state !== stamped || next.effects.length > 0) return next
+    return spec.missing(state.draft, at) === spec.missing(state.draft, state.at)
+      ? same(state)
+      : same(stamped)
   }
 
   function step(state: State, event: Event): Step {
@@ -1131,9 +1137,14 @@ export function bundleMachine<K extends BundleKind>(
       }
       case "another": {
         if (state.screen !== "sent") return same(state)
+        const draft = spec.fresh(event.id, event.at, state.context)
+        // A draft named as the record just sent would answer what was sent.
+        if (state.sent !== null && spec.idOf(state.sent) === draft.id) {
+          return same(state)
+        }
         return same({
           ...state,
-          draft: spec.fresh(event.id, event.at, state.context),
+          draft,
           screen: "intro",
           sent: null,
           notice: null,
@@ -1171,7 +1182,6 @@ export function bundleMachine<K extends BundleKind>(
     }
   }
 
-  /** Where a card is: its take under way, a block of its own, or its take. */
   function cardView(state: State, item: I, recording: boolean): CardView {
     if (recording) return { kind: "take" }
     const mode = state.modes[item]
@@ -1258,7 +1268,7 @@ export type Missing<K extends BundleKind> = K["need"] | "required" | null
 /** How an item stands: said, typed, or neither yet. */
 export type Answered = "said" | "typed" | null
 
-const MOVES: ReadonlySet<string> = new Set([
+const MOVES: ReadonlySet<BundleEvent<BundleKind>["type"]> = new Set([
   "go",
   "swipe",
   "review",
