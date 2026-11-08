@@ -17,11 +17,10 @@ const WORDS = STUDIO_INDEX_WORDS
  * decision 1): the eight kinds of thing Studio keeps, each a tile the size
  * of the others, A to Z so the order ranks nothing, each opening its own
  * list. Deleting any of it stays in Settings › My data. One live line above
- * the tiles says what home is making, when it is making anything (SFEED13).
+ * the tiles, and not one of them, says what home is making (SFEED13).
  */
 const StudioIndex = (): JSX.Element => (
   <StudioPage heading={WORDS.heading} intro={WORDS.aToZ}>
-    {/* What home is making, above the tiles and not one of them (SFEED13). */}
     {import.meta.env.VITE_DEVICE_BACKEND === "true" ? <RendersLine /> : null}
     <ul className="grid grid-cols-2 gap-2">
       {STUDIO_KINDS.map((kind) => (

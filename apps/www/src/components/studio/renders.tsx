@@ -2,17 +2,15 @@
  * Studio › Renders (SFEED13, #2761): what home is making for the feeds, with
  * a rough bar while it renders, what waits its turn and why, what couldn't
  * finish, what finished lately, and what's coming. The read is the query's
- * (`rendersQuery`), which reads again on its own while home is making
- * something; a drag down reads again too (PULL). Every word is `lib/renders`'s.
+ * (`rendersQuery`), which reads again on its own while home has something
+ * under way; a drag down reads again too (PULL). Every word is `lib/renders`'s.
  */
 import type { JSX, ReactNode } from "react"
 import { assertNever } from "@some-ui/core-utils"
-import { Button } from "@some-ui/shared"
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 
 import { hasAudience } from "@/lib/build-profile"
-import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
 import type { Board, RendersOutcome } from "@/lib/renders"
 import {
   episodeName,
@@ -24,7 +22,7 @@ import {
   rendersQuery,
 } from "@/lib/renders"
 
-import { Part, StudioPage, TILE } from "./layout"
+import { Part, ReadList, StudioPage, TILE } from "./layout"
 
 const WORDS = RENDERS_WORDS
 
@@ -32,7 +30,7 @@ const Muted = ({ children }: { children: ReactNode }): JSX.Element => (
   <p className="text-muted-foreground text-sm">{children}</p>
 )
 
-/** A bar that moves: a share when home has one, a sweep when it doesn't. */
+/** A bar: home's share when it has one, a pulse when it doesn't. */
 const Bar = ({ percent }: { percent: number | null }): JSX.Element => (
   <div
     role="progressbar"
@@ -139,14 +137,8 @@ const notRead = (
     case "unpaired": {
       return WORDS.unpaired
     }
-    case "away": {
-      return WORDS.away
-    }
     case "older": {
       return WORDS.older
-    }
-    case "unreadable": {
-      return WORDS.unreadable
     }
     default: {
       return assertNever(outcome)
@@ -154,30 +146,20 @@ const notRead = (
   }
 }
 
-/** The page's body. */
-export const RendersBoard = (): JSX.Element =>
-  matchQueryOutcome(queryOutcome(useQuery(rendersQuery)), {
-    pending: () => <Muted>{WORDS.reading}</Muted>,
-    failed: (_error, retry) => (
-      <div className="flex flex-col gap-2">
-        <p className="text-sm">{WORDS.away}</p>
-        <Button size="sm" variant="outline" onClick={retry}>
-          {WORDS.tryAgain}
-        </Button>
-      </div>
-    ),
-    ready: (outcome) =>
-      outcome.kind === "read" ? (
-        <BoardView board={outcome.board} />
-      ) : (
-        <Muted>{notRead(outcome)}</Muted>
-      ),
-  })
+/** The line until home has answered, or when it hasn't. */
+const lineOf = (read: RendersOutcome | undefined): string | null => {
+  if (read === undefined) return WORDS.lineUntilRead
+  return read.kind === "read" ? liveLine(read.board) : null
+}
 
-/** Studio's one live line above its tiles: shown only when home has something to say. */
+/**
+ * Studio's one line above its tiles, there from the first paint so the tiles
+ * never move: what home is making once it has answered, and the way to the
+ * page before then. Not shown on a phone that isn't paired, or a home that
+ * can't say.
+ */
 export const RendersLine = (): JSX.Element | null => {
-  const read = useQuery(rendersQuery).data
-  const line = read?.kind === "read" ? liveLine(read.board) : null
+  const line = lineOf(useQuery(rendersQuery).data)
   // The page is the phone's ("apk"), as this line is (A3).
   return line === null || !hasAudience("apk") ? null : (
     <Link to="/journal/renders" className={TILE}>
@@ -190,6 +172,14 @@ export const RendersLine = (): JSX.Element | null => {
 /** The whole page, heading and all, so its words ship only where it does. */
 export const RendersPage = (): JSX.Element => (
   <StudioPage heading={WORDS.heading} intro={WORDS.intro} back="index">
-    <RendersBoard />
+    <ReadList query={rendersQuery} words={WORDS}>
+      {(outcome) =>
+        outcome.kind === "read" ? (
+          <BoardView board={outcome.board} />
+        ) : (
+          <Muted>{notRead(outcome)}</Muted>
+        )
+      }
+    </ReadList>
   </StudioPage>
 )

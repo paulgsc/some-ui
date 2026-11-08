@@ -66,9 +66,7 @@ export type Board = z.infer<typeof BoardSchema>
 export type Now = z.infer<typeof NowSchema>
 export type Phase = z.infer<typeof PhaseSchema>
 export type HeldBy = z.infer<typeof HeldBySchema>
-export type RenderEpisode = z.infer<typeof EpisodeSchema>
 export type RenderFailed = z.infer<typeof FailedSchema>
-export type Coming = z.infer<typeof ComingSchema>
 
 /** What home's answer says. */
 export type BoardRead =
@@ -84,9 +82,11 @@ export function readBoard(answer: HomeAnswer): BoardRead {
   return board === null ? { kind: "unreadable" } : { kind: "read", board }
 }
 
-/** Whether home is making something right now: the page then reads again on its own. */
-export const rendering = (board: Board): boolean =>
-  board.now?.state === "rendering" || board.now?.state === "finishing"
+/**
+ * Whether home has something under way (making it, paused, or waiting for
+ * room): the page then reads again on its own, since what it says can move.
+ */
+export const underWay = (board: Board): boolean => board.now !== null
 
-/** How often the page reads again while something renders. */
-export const WHILE_RENDERING_MS = 30_000
+/** How often the page reads again while something is under way. */
+export const WHILE_UNDER_WAY_MS = 30_000

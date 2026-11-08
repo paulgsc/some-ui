@@ -14,23 +14,22 @@ import type { Board, HeldBy, Now, RenderFailed } from "./model"
 
 /** A feed's name, or what a render of another kind is. */
 export function feedName(feed: string): string {
-  return isFeed(feed)
-    ? FEED_FACTS[feed].name
-    : feed === "preview"
-      ? "A preview"
-      : "Something else"
+  return isFeed(feed) ? FEED_FACTS[feed].name : "Something else"
 }
 
-/** An episode by its days or its season and week; a preview by its template. */
+/** An episode by its days or its season and week; another kind's by its key. */
 export function episodeName(feed: string, key: string): string {
-  if (isFeed(feed)) return FEED_WORDS[feed].label(key)
-  if (feed === "preview") return "A short preview of a template"
-  return "An episode"
+  return isFeed(feed) ? FEED_WORDS[feed].label(key) : key
+}
+
+/** A render named whole: its feed, then its episode. */
+function renderName(feed: string, key: string): string {
+  return `${feedName(feed)}: ${episodeName(feed, key)}`
 }
 
 /** Why it waits, in the person's terms. */
 const HELD_WORDS: Record<HeldBy, string> = {
-  busy: "Paused while you record or hear a note; it picks up again by itself.",
+  busy: "Paused while home does something you're waiting on; it picks up again by itself.",
   memory: "Waiting for room on home; it starts by itself once there is.",
   pressure: "Waiting for home to settle; it starts by itself once it has.",
   settling: "Room came back; it starts in a moment.",
@@ -70,7 +69,7 @@ export type NowLines = {
 
 /** What home is making, and how far along, roughly. */
 export function nowLines(now: Now): NowLines {
-  const title = `${feedName(now.feed)}: ${episodeName(now.feed, now.key)}`
+  const title = renderName(now.feed, now.key)
   const share =
     now.estimate === null
       ? null
@@ -122,24 +121,28 @@ export function failedLine(failed: RenderFailed): string {
     : "It couldn't be made this time. Home tries again in an hour, and keeps what it had finished."
 }
 
-/** The one line above Studio's tiles. */
-export function liveLine(board: Board): string | null {
+/** The one line above Studio's tiles, for any board home answers. */
+export function liveLine(board: Board): string {
   const now = board.now
-  if (now === null)
-    return board.waiting.length > 0
-      ? "Home has videos waiting to be made."
-      : null
-  const name = `${feedName(now.feed)}, ${episodeName(now.feed, now.key)}`
+  if (now === null) {
+    if (board.waiting.length > 0) return "Videos wait to be made."
+    if (board.failed.length > 0)
+      return board.failed.length === 1
+        ? "A video couldn't be made."
+        : `${String(board.failed.length)} videos couldn't be made.`
+    return "Home isn't making anything right now."
+  }
+  const name = renderName(now.feed, now.key)
   switch (now.state) {
     case "rendering":
     case "finishing": {
-      return `Home is making ${name}.`
+      return `Making ${name}.`
     }
     case "paused": {
-      return `Home paused ${name}; it picks up again by itself.`
+      return `Paused ${name}. It picks up again by itself.`
     }
     case "waiting": {
-      return `${name} waits for room on home.`
+      return `Waiting for room: ${name}.`
     }
     default: {
       return assertNever(now.state)
@@ -165,11 +168,12 @@ export const RENDERS_WORDS = {
       ? "It gave way once and picked up again."
       : `It gave way ${String(times)} times and picked up again.`,
   reading: "Asking home…",
-  away: "Home didn't answer. It may be off, or away from this network.",
+  stale: "Home didn't answer just now. This is what it said last.",
+  away: "Home didn't answer, or its answer couldn't be read. It may be off, or away from this network.",
   older:
     "Home doesn't say what it's making yet. It will after its next update.",
-  unreadable: "Home's answer couldn't be read.",
   unpaired: "Pair this phone with home to see what it's making.",
   tryAgain: "Try again",
   open: "See what home is making",
+  lineUntilRead: "Home's renders",
 } as const

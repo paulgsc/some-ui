@@ -143,8 +143,9 @@ const HOME_LINK_CALLERS = new Set([
   "lib/call-videos/index.ts",
   // LA8 (SFEED13): Studio › Renders, which asks home what it is making as
   // Studio's index or the page opens, on a drag down, on Try again, and every
-  // half minute while home is making something. It sends nothing of its own.
-  "lib/renders/index.ts",
+  // half minute while home has something under way. It sends nothing of its
+  // own.
+  "lib/renders/read.ts",
   // LA8 (ST33): Studio's Finish, which hands the voice lane a video kept for
   // home to make and hears what home answered and lists of it
   // (`studioVideos`), sending nothing of its own.
@@ -801,7 +802,7 @@ describe("LA8: the phone reaches home through one module", () => {
       .filter((f) =>
         /from "\.\/renders"|from "@\/lib\/home-link\/renders"/.test(read(f))
       )
-    expect(readers).toEqual(["lib/renders/index.ts"])
+    expect(readers).toEqual(["lib/renders/read.ts"])
   })
 
   it("sends nothing from Ideas on home but its four requests, and only it asks them (ST26 c)", () => {

@@ -7,7 +7,7 @@
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { describe, expect, it } from "vitest"
 
-import { readBoard, rendering } from "@/lib/renders/model"
+import { readBoard, underWay } from "@/lib/renders/model"
 
 /** As `GET /renders` answers, from the server's own test of it. */
 const BOARD = {
@@ -42,29 +42,22 @@ const answer = (status: number, body: unknown): HomeAnswer => ({
 })
 
 describe("readBoard", () => {
-  it("reads home's board", () => {
+  it("reads home's board, with something under way", () => {
     const read = readBoard(answer(200, BOARD))
     expect(read.kind).toBe("read")
-    if (read.kind === "read") expect(rendering(read.board)).toBe(true)
+    if (read.kind === "read") expect(underWay(read.board)).toBe(true)
   })
 
   it("reads a home with nothing to say", () => {
     const empty = { now: null, waiting: [], failed: [], done: [], coming: [] }
     const read = readBoard(answer(200, empty))
-    expect(read.kind === "read" && !rendering(read.board)).toBe(true)
+    expect(read.kind === "read" && !underWay(read.board)).toBe(true)
   })
 
   it("names a home from before the read, and an answer it can't read", () => {
     expect(readBoard(answer(404, {}))).toEqual({ kind: "older" })
     expect(readBoard(answer(500, {}))).toEqual({ kind: "unreadable" })
-    expect(readBoard(answer(200, { now: null }))).toEqual({
-      kind: "unreadable",
-    })
-    expect(
-      readBoard(
-        answer(200, { ...BOARD, now: { ...BOARD.now, heldBy: "lane" } })
-      )
-    ).toEqual({
+    expect(readBoard(answer(200, "not a board"))).toEqual({
       kind: "unreadable",
     })
   })

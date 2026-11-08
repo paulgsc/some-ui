@@ -95,7 +95,7 @@ describe("RENDERS_WORDS and what it says of each render", () => {
       RENDERS_WORDS.gaveWay(1),
       RENDERS_WORDS.gaveWay(3),
       ...everyNow.flatMap((n) => strings(nowLines(n))),
-      ...everyNow.map((n) => liveLine(board(n)) ?? ""),
+      ...everyNow.map((n) => liveLine(board(n))),
       ...(["recorder", "home"] as const).map((by) =>
         failedLine({
           feed: "call",
@@ -138,13 +138,27 @@ describe("RENDERS_WORDS and what it says of each render", () => {
     expect(nowLines(now("rendering", null, null)).title).toBe(
       "The weekly call: 2026-11-06 to 2026-11-12"
     )
-    expect(liveLine(board(null))).toBeNull()
+  })
+
+  it("has a line for every board, so the line above the tiles never comes and goes", () => {
+    expect(liveLine(board(now("rendering", null, null)))).toBe(
+      "Making The weekly call: 2026-11-06 to 2026-11-12."
+    )
+    expect(liveLine(board(null))).toBe("Home isn't making anything right now.")
     expect(
       liveLine({
         ...board(null),
         waiting: [{ feed: "call", key: "2026-11-06", at: 0 }],
       })
-    ).toBe("Home has videos waiting to be made.")
+    ).toBe("Videos wait to be made.")
+    expect(
+      liveLine({
+        ...board(null),
+        failed: [
+          { feed: "call", key: "2026-10-30", at: 0, by: "home", exit: null },
+        ],
+      })
+    ).toBe("A video couldn't be made.")
   })
 
   it("reads a day home expects as a day of the week", () => {
