@@ -353,6 +353,18 @@ describe("the Ideas on home machine (ST26 c)", () => {
       },
     ])
     expect(done.effects).toContainEqual({ type: "setAside", id: "a" })
+    // With no answer said again waiting, nothing more to set aside.
+    expect(done.effects).not.toContainEqual(
+      expect.objectContaining({ type: "setAsideRedos" })
+    )
+    // Home not taking it, the idea stays, and so does what waits for it.
+    const refused = run(asked.state, [
+      { type: "confirmed" },
+      { type: "setAsideDone", id: "a", write: { kind: "refused" } },
+    ])
+    expect(refused.effects).not.toContainEqual(
+      expect.objectContaining({ type: "setAsideRedos" })
+    )
     expect(done.state.screen).toEqual({ kind: "list" })
     expect(
       done.state.ideas.kind === "read" && done.state.ideas.value.ideas

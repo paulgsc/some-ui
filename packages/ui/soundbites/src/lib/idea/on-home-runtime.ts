@@ -67,6 +67,12 @@ export type RedoPorts = {
    * every one was. `at`: when, ISO 8601.
    */
   readonly setAside: (ids: ReadonlyArray<string>, at: string) => boolean
+  /**
+   * Sets aside on home these takes still waiting, which then go home set
+   * aside once let go: an idea's answers said again, the idea set aside
+   * (#2805). Says whether every one was.
+   */
+  readonly setAsideWaiting: (ids: ReadonlyArray<string>, at: string) => boolean
 }
 
 export type OnHomePorts = {
@@ -264,14 +270,12 @@ export function createIdeasOnHome(ports: OnHomePorts): OnHomeRuntime {
       }
       case "setAsideRedos": {
         const { redo } = ports
-        if (redo === undefined) return
-        // Ignored when not stored: the takes still wait on this phone, kept.
-        setAsideThenRelease(
-          redo,
-          { release: effect.takes, replaced: effect.takes },
-          [],
-          new Date(now()).toISOString()
-        )
+        // Not stored, the takes still wait on this phone, kept.
+        if (
+          redo?.setAsideWaiting(effect.takes, new Date(now()).toISOString())
+        ) {
+          redo.takes.release(effect.takes)
+        }
         return
       }
       case "sendAgain": {

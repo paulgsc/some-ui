@@ -119,6 +119,8 @@ export function setAsideReplaced(
 export const ideaRedoTakes = (): RedoPorts => ({
   takes: redoDesk.phone(),
   setAside: setAsideReplaced,
+  setAsideWaiting: (ids, at) =>
+    ids.every((id) => redoDesk.setAsideWaiting(id, at) === true),
 })
 
 /** The desk's snapshot as an idea's answers read it. */

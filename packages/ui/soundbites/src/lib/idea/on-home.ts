@@ -24,7 +24,9 @@
  *   idea grown (one write, like the others) and lets the new takes go home,
  *   the takes they replace set aside there. A waiting take a newer one
  *   replaced is deleted for good once the desk lists both (`dropping`
- *   asks once), and a send cut short is finished after each read.
+ *   asks once), and a send cut short is finished after each read. Once
+ *   the idea is set aside on home, its answers still waiting go home set
+ *   aside with it, kept (#2805).
  * - **Grouping and sorting are the phone's** (paulgsc/server#645): home
  *   lists newest begun first, and `groupsOf` does the rest.
  */
@@ -437,8 +439,8 @@ export type OnHomeEffect =
   /** Deletes these waiting takes for good: nothing will send them. */
   | { readonly type: "dropRedos"; readonly takes: ReadonlyArray<string> }
   /**
-   * The waiting takes of an idea just set aside on home: each set aside
-   * there, then let go home, so it is kept and out of what routines read.
+   * The answers said again of an idea just set aside on home, which nothing
+   * can send again now (#2805): each set aside, then let go home, kept.
    */
   | { readonly type: "setAsideRedos"; readonly takes: ReadonlyArray<string> }
   /** Keeps idea `id` sent again, then sets aside and lets go its takes. */
@@ -676,8 +678,6 @@ export function stepOnHome(state: OnHomeState, event: OnHomeEvent): OnHomeStep {
         return same({ ...state, writing: false, notice: unwritten(write) })
       }
       const { ideas } = state
-      // Its answers said again wait for a send nothing can offer now: they
-      // go home set aside with it, kept (#2805).
       const stranded = waitingRedos(draftRedos(state), event.id).map(
         (redo) => redo.take
       )

@@ -22,9 +22,6 @@
  *   short, and is never offered, overtaken or deleted as a draft.
  * - **A send cut short is finished** (`cutShort`): a waiting take the idea
  *   kept already names goes home, and the take before it is set aside.
- * - **An idea set aside takes its waiting answers with it** (#2805): once
- *   home sets the idea aside, nothing can offer Send it again, so each
- *   answer still waiting is set aside on home and let go there, kept.
  */
 import type { PatternTake } from "@some-ui/voice-capture"
 

@@ -406,6 +406,9 @@ type Phone = {
   readonly simulated: SimulatedPattern
   readonly ideas: IdeaStore
   readonly setAside: Mock<(ids: ReadonlyArray<string>, at: string) => boolean>
+  readonly setAsideWaiting: Mock<
+    (ids: ReadonlyArray<string>, at: string) => boolean
+  >
   readonly attach: () => () => void
 }
 
@@ -418,6 +421,8 @@ function phone(
     readonly seed?: ReadonlyArray<PatternTake>
     /** Takes whose release the desk refuses. */
     readonly unreleasable?: ReadonlyArray<string>
+    /** The desk can't set a waiting take aside. */
+    readonly unsettable?: boolean
   } = {}
 ): Phone {
   const storage = inMemoryStorage()
@@ -429,6 +434,9 @@ function phone(
     seed: options.seed,
   })
   const setAside = vi.fn((_ids: ReadonlyArray<string>, _at: string) => true)
+  const setAsideWaiting = vi.fn(
+    (_ids: ReadonlyArray<string>, _at: string) => options.unsettable !== true
+  )
   const home: IdeasHome = {
     ideas: () =>
       Promise.resolve({
@@ -459,6 +467,7 @@ function phone(
             : simulated.store.release(ids),
       },
       setAside,
+      setAsideWaiting,
     },
     now: Date.now,
   })
@@ -467,6 +476,7 @@ function phone(
     simulated,
     ideas,
     setAside,
+    setAsideWaiting,
     attach: (): (() => void) => {
       const detach = runtime.attach(false)
       runtime.dispatch({ type: "open", id: "idea-1" })
@@ -521,23 +531,27 @@ describe("an answer said again, end to end on the simulated microphone (#2579)",
     detach()
   })
 
-  it("set aside on home, takes its waiting answer with it: set aside there and let go, kept (#2805)", async () => {
-    const on = phone()
-    const detach = on.attach()
-    await pass()
-    await sayAgain(on)
-    const [redo] = takesOf(on)
-    on.runtime.dispatch({ type: "askSetAside" })
-    on.runtime.dispatch({ type: "confirmed" })
-    await pass()
-    expect(on.runtime.getSnapshot().notice).toBe("setAside")
-    expect(on.setAside).toHaveBeenCalledWith([redo!.id], expect.any(String))
-    expect(takesOf(on).map((each) => [each.id, each.waits])).toEqual([
-      [redo!.id, undefined],
-    ])
-    // The idea's own record is as it was: the take was never its answer.
-    expect(on.ideas.list()).toEqual([SENT])
-    detach()
+  it("set aside on home, takes its waiting answer with it: set aside, then let go, kept (#2805)", async () => {
+    for (const unsettable of [false, true]) {
+      const on = phone({ unsettable })
+      const detach = on.attach()
+      await pass()
+      await sayAgain(on)
+      const [redo] = takesOf(on)
+      on.runtime.dispatch({ type: "askSetAside" })
+      on.runtime.dispatch({ type: "confirmed" })
+      await pass()
+      expect(on.setAsideWaiting).toHaveBeenCalledWith(
+        [redo!.id],
+        expect.any(String)
+      )
+      // Let go only once set aside; otherwise it waits on the phone, kept.
+      expect(takesOf(on).map((each) => [each.id, each.waits])).toEqual([
+        [redo!.id, unsettable ? true : undefined],
+      ])
+      expect(on.ideas.list()).toEqual([SENT])
+      detach()
+    }
   })
 
   it("keeps one waiting take an answer: said twice, the first is deleted, and only the second goes", async () => {

@@ -129,7 +129,11 @@ async function sayAgainOnScreen(setsAside = true): Promise<{
   render(
     <IdeasOnHome
       home={home()}
-      redo={{ takes: bundleTakesOf(simulated), setAside }}
+      redo={{
+        takes: bundleTakesOf(simulated),
+        setAside,
+        setAsideWaiting: setAside,
+      }}
       openInMyData={openInMyData}
       pair={null}
     />
