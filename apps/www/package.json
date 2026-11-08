@@ -27,6 +27,7 @@
     "test:sw": "playwright test --config playwright.config.ts tests/study-nudge",
     "record:call": "tsx tests/record/call.ts",
     "record:playoff-delta": "tsx tests/record/playoff-delta.ts",
+    "record:preview": "tsx tests/record/preview.ts",
     "record:short": "tsx tests/record/short.ts"
   },
   "dependencies": {
