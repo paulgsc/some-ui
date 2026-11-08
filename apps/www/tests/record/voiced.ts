@@ -380,8 +380,8 @@ export async function renderStills(
     const lines = chapterLines(chaptersOf(done.value.shotTimes, marks))
     const description = UploadCopySchema.shape.description.safeParse(lines)
     if (lines !== "" && !description.success)
-      warn(
-        `no chapters: ${description.error.issues.map((i) => i.message).join("; ")}`
+      process.stderr.write(
+        `no chapters written: ${description.error.issues.map((i) => i.message).join("; ")}\n`
       )
     else if (lines !== "") {
       await writeFile(file, lines)

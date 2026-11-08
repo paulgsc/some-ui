@@ -36,9 +36,17 @@ export const chapterSlides = (
 ): Array<ChapterMark> =>
   slides.map((slide) => ({
     scene: slide.id,
-    title: slide.said.replace(/[.\s]+$/, ""),
+    title: withoutStop(slide.said),
     slide: true,
   }))
+
+/** `said` without the full stop and spaces it ends with. */
+function withoutStop(said: string): string {
+  let end = said.length
+  while (end > 0 && (said[end - 1] === "." || /\s/.test(said[end - 1] ?? "")))
+    end -= 1
+  return said.slice(0, end)
+}
 
 /** A title on one line, without the `<` and `>` YouTube refuses. */
 const oneLine = (title: string): string =>
@@ -63,7 +71,8 @@ export function chaptersOf(
   ]
   for (const time of [...times].sort((a, b) => a.startMs - b.startMs)) {
     const mark = byScene.get(time.id)
-    if (mark !== undefined)
+    // A title with nothing left once cleaned marks no chapter.
+    if (mark !== undefined && oneLine(mark.title) !== "")
       starts.push({
         startMs: time.startMs,
         title: oneLine(mark.title),
