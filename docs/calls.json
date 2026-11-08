@@ -365,6 +365,24 @@
       "gray": "Pinning the shared library would fail every version on any change to it, and the promo was changing it.",
       "undo": "Include lib/motion.js in ownDigest's files.",
       "refs": ["#2728", "#2771"]
+    },
+    {
+      "id": "C27",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "apps/www/src/lib/status-board/index.ts",
+        "apps/www/src/components/settings/status-board.tsx"
+      ],
+      "chose": "Settings › Status shows what home is making as its own row under a new Studio group, marked with a clapperboard, which watches a video that couldn't be made and asks nothing of one under way.",
+      "options": [
+        "its own Studio group",
+        "a row under Sending to home",
+        "a line at the top of the page, outside the groups"
+      ],
+      "gray": "Renders are home's work for Studio, neither something this phone sends nor a send that needs a hand, so no existing group says what they are.",
+      "undo": "Move renderRow's group to \"home\" and drop \"studio\" from GROUP_ORDER and BOARD_WORDS.groups.",
+      "refs": ["#2761"]
     }
   ]
 }
