@@ -12,7 +12,7 @@
  */
 
 import type { Oklch, SessionRoles } from "./feeling"
-import { mixOklab } from "./feeling"
+import { mixOklab, srgbHex } from "./feeling"
 import type { SessionTheme } from "./registry"
 
 /** CSS source text, by file: `tokens/base.css` and each `themes/<id>.css`. */
@@ -153,4 +153,20 @@ export function sessionRoles(
     foreground: role("--foreground"),
     mutedForeground: role("--muted-foreground"),
   }
+}
+
+/**
+ * Each custom property `names` lists, as `theme` resolves it, as `#rrggbb`: the
+ * colours a theme gives something drawn outside a browser (the mark on a
+ * video's brand slides, HYPER5).
+ */
+export function themeColours(
+  theme: SessionTheme,
+  sources: ThemeSources,
+  names: ReadonlyArray<string>
+): Readonly<Record<string, string>> {
+  const properties = cascade(theme, sources)
+  return Object.fromEntries(
+    names.map((name) => [name, srgbHex(resolve(`var(${name})`, properties))])
+  )
 }

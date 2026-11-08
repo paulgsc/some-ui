@@ -13,8 +13,8 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
 
-import { themeSources } from "../../../scripts/write-feeling-css"
 import { FEATURE_APPEARANCES, SESSION_THEMES } from "../index"
+import { themeSources } from "../sources"
 
 const PACKAGE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "../../..")
 

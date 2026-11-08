@@ -334,6 +334,37 @@
       "gray": "Ask #2674 said any of the app's themes and named no way to show them.",
       "undo": "Filter MARK_THEMES in lib/mark-theme, or drop the tile's background.",
       "refs": ["#2674", "#2766", "#2789"]
+    },
+    {
+      "id": "C25",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/video-motion/compositions/brand-v1/index.html",
+        "packages/video-motion/src/brand.ts"
+      ],
+      "chose": "Each version of the brand's open and close is one composition, `brand-v<n>`, whose `part` variable draws the open or the close, rather than two folders.",
+      "options": [
+        "one composition per version, `part` choosing",
+        "`brand-open-v<n>` and `brand-close-v<n>`"
+      ],
+      "gray": "The owner asked for an open and a close with versions kept, and named no layout.",
+      "undo": "Split it into `brand-open-v<n>` and `brand-close-v<n>`, each with its own pin in brand.ts.",
+      "refs": ["#2728", "#2771"]
+    },
+    {
+      "id": "C26",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/video-motion/src/brand.ts",
+        "packages/video-motion/compositions/_lib/motion.js"
+      ],
+      "chose": "A brand version's pin holds its own files only; `lib/motion.js`, which every composition shares, is not pinned per version, and a change there must keep what `track` draws for the keys a version uses.",
+      "options": ["the version's own files", "its files and lib/motion.js"],
+      "gray": "Pinning the shared library would fail every version on any change to it, and the promo was changing it.",
+      "undo": "Include lib/motion.js in ownDigest's files.",
+      "refs": ["#2728", "#2771"]
     }
   ]
 }

@@ -108,7 +108,9 @@ Chromium or CPU draws its own.
 - **What a render copies in beside it:** `lib/` (`compositions/_lib`, what they share), the brand's
   mark as `brand/mark.svg` (`packages/some-styles/brand/favicon.svg`), the fonts under
   `fonts/`, and the files a cut list names under `assets/`. A scene's length is set on the
-  root's `data-duration`, and its size must be the video's frame.
+  root's `data-duration`, and its size must be the video's frame, unless the root is marked
+  `data-fit-frame`: then the runner sets its `data-width` and `data-height` to the frame, and
+  its CSS sizes everything in `%` and `vmin`.
 - **Paint the ground on the root.** HyperFrames captures the page with no background, so
   anything see-through over `body`'s colour loses its blend.
 - **Name nothing at the top level of a script after a `window` property** (`top`, `name`,
@@ -126,3 +128,22 @@ Chromium or CPU draws its own.
   `pnpm check:android-only`; use `device-frame-stage` and a Google Play badge.
 - **No clock, no unseeded randomness, no fetch.** Every string and colour is a variable
   (`data-composition-variables`), read with `window.__hyperframes.getVariables()`.
+
+## The brand's open and close
+
+Every version is kept (HYPER5, #2728). A version is one composition, `compositions/brand-v<n>`:
+
+- `part` (`open` or `close`, an `enum` HyperFrames itself holds to) picks which it draws;
+- it fits any frame (`data-fit-frame`), so the call's 16:9 and a vertical share it;
+- `theme`, one of the app's themes, picks the mark's colours. The mark is the app's own, from
+  the code (`@some-ui/styles`' `brand/mark`): the runner writes it as `mark.svg` in that
+  theme at render time (`src/mark.ts`), and gives the theme's ground as `ground` unless the
+  cut list sets one. So the mark follows the code, and the template names its theme
+  (`brand.theme`, `markThemeOf`; ask #2674).
+
+`src/brand.ts` pins each version's files by sha256, and its test fails if a released version
+is edited: a version freezes its motion, and a new motion is a new folder and a new entry there.
+Version 1 is the still mochi, drawn in with a small overshoot and out with a shrink. What
+the versions share, `lib/motion.js`, isn't pinned: a change there must keep what `track`
+draws for the keys a version uses. The step cache's pin covers every theme's mark, so a retuned
+theme draws again.
