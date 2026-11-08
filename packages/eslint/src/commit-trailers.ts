@@ -5,6 +5,10 @@
 //
 //   Promise: <ID> <path>… | <dimension>, …
 //   Relates: <ID> breaks | widens | shares <dimension>
+//   Call: <CID>, …
+//
+// A `Call:` line names the gray-area calls the commit makes or moves, by
+// their ids in docs/calls.json (ST37, packages/eslint/src/calls.ts).
 //
 // A `Relates:` line belongs to a defect (it relates a failing state to an
 // earlier promise), so it needs `Change-Kind: defect` beside it.
@@ -23,8 +27,9 @@ const PROMISE_SHAPE = new RegExp(`^${PROMISE_ID}\\s+\\S.*?\\s+\\|\\s+\\S.*$`)
 const RELATES_SHAPE = new RegExp(
   `^${PROMISE_ID}\\s+(?:breaks|widens|shares\\s+\\S.*)$`
 )
+const CALL_SHAPE = /^C[1-9]\d*(?:,\s*C[1-9]\d*)*$/
 const TRAILER_LINE = /^([A-Za-z][A-Za-z0-9-]*):[ \t]*(.*?)\s*$/
-const RECORD_KEYS = ["Change-Kind", "Promise", "Relates"] as const
+const RECORD_KEYS = ["Change-Kind", "Promise", "Relates", "Call"] as const
 type RecordKey = (typeof RECORD_KEYS)[number]
 
 // commitlint's default ignores (`@commitlint/is-ignored`'s `wildcards`),
@@ -49,9 +54,13 @@ export type TrailerFinding =
   | { readonly kind: "kindNotFinal" }
   | { readonly kind: "duplicateKind" }
   | { readonly kind: "badKind"; readonly value: string }
-  | { readonly kind: "notFinal"; readonly key: "Promise" | "Relates" }
+  | {
+      readonly kind: "notFinal"
+      readonly key: "Promise" | "Relates" | "Call"
+    }
   | { readonly kind: "badPromise"; readonly value: string }
   | { readonly kind: "badRelates"; readonly value: string }
+  | { readonly kind: "badCall"; readonly value: string }
   | { readonly kind: "relatesOnStory" }
 
 /**
@@ -128,7 +137,7 @@ export function checkCommitTrailers(message: string): Array<TrailerFinding> {
     if (!KIND_VALUES.has(value)) findings.push({ kind: "badKind", value })
   }
 
-  for (const key of ["Promise", "Relates"] as const) {
+  for (const key of ["Promise", "Relates", "Call"] as const) {
     if (inEarlier.some(([k]) => k === key)) {
       findings.push({ kind: "notFinal", key })
     }
@@ -140,6 +149,9 @@ export function checkCommitTrailers(message: string): Array<TrailerFinding> {
     if (key === "Relates" && !RELATES_SHAPE.test(value)) {
       findings.push({ kind: "badRelates", value })
     }
+    if (key === "Call" && !CALL_SHAPE.test(value)) {
+      findings.push({ kind: "badCall", value })
+    }
   }
   if (
     inFinal.some(([key]) => key === "Relates") &&
@@ -149,6 +161,19 @@ export function checkCommitTrailers(message: string): Array<TrailerFinding> {
     findings.push({ kind: "relatesOnStory" })
   }
   return findings
+}
+
+/**
+ * The call ids a well-formed message's final paragraph names on `Call:`
+ * lines, in order. Whether each is in docs/calls.json at that commit is the
+ * script's to check: it can read the file.
+ */
+export function callIdsOf(message: string): Array<string> {
+  const paragraphs = message.trim().split(/\n[ \t]*\n/)
+  if (paragraphs.length < 2) return []
+  return recordLines(paragraphs[paragraphs.length - 1] ?? "")
+    .filter(([key, value]) => key === "Call" && CALL_SHAPE.test(value))
+    .flatMap(([, value]) => value.split(",").map((id) => id.trim()))
 }
 
 /** One human-readable line per finding, naming the fix. */
@@ -174,6 +199,9 @@ export function describeTrailerFinding(finding: TrailerFinding): string {
     }
     case "badRelates": {
       return `\`Relates: ${finding.value}\` does not read \`Relates: <ID> breaks\`, \`Relates: <ID> widens\` or \`Relates: <ID> shares <dimension>\`.`
+    }
+    case "badCall": {
+      return `\`Call: ${finding.value}\` does not read \`Call: <ID>, …\` (each a call's id in docs/calls.json, such as C12).`
     }
     case "relatesOnStory": {
       return "Relates: relates a failing state to an earlier promise, so it goes with `Change-Kind: defect`, not story."
