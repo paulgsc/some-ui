@@ -4,7 +4,14 @@
  * past its policy's budget, saying so.
  */
 
-import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises"
+import {
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { nodePorts } from "@video-render/node"
@@ -12,7 +19,13 @@ import type { FfmpegCall } from "@video-render/plan"
 import { DEFAULT_POLICY } from "@video-render/policy"
 import type { RenderPolicy } from "@video-render/policy"
 import type { Ports } from "@video-render/render"
-import { keyOf, stepCache, withCachedFfmpeg } from "@video-render/step-cache"
+import type { CacheFs } from "@video-render/step-cache"
+import {
+  keyOf,
+  nodeCacheFs,
+  stepCache,
+  withCachedFfmpeg,
+} from "@video-render/step-cache"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
 let root = ""
@@ -27,6 +40,35 @@ const policy = (cacheBytes: number): RenderPolicy => ({
   ...DEFAULT_POLICY,
   cacheBytes,
 })
+
+const errno = (code: string): NodeJS.ErrnoException =>
+  Object.assign(new Error(`${code}: injected`), { code })
+
+/**
+ * `stat` fails only inside the cache's folder, so the file being kept can
+ * still be measured.
+ */
+function failing(
+  codes: Partial<Record<"readdir" | "stat" | "mkdir", string>>
+): CacheFs {
+  return {
+    ...nodeCacheFs,
+    readdir: async (path): Promise<ReadonlyArray<string>> => {
+      if (codes.readdir) throw errno(codes.readdir)
+      return nodeCacheFs.readdir(path)
+    },
+    stat: async (path): Promise<{ readonly size: number }> => {
+      if (codes.stat && path.startsWith(join(root, "steps"))) {
+        throw errno(codes.stat)
+      }
+      return nodeCacheFs.stat(path)
+    },
+    mkdir: async (path): Promise<unknown> => {
+      if (codes.mkdir) throw errno(codes.mkdir)
+      return nodeCacheFs.mkdir(path)
+    },
+  }
+}
 
 /**
  * Real file ports with an ffmpeg that writes its output from its inputs'
@@ -91,12 +133,11 @@ describe("the step cache", () => {
 
   it("warns, never fails, when its folder cannot be made", async () => {
     const warned: Array<string> = []
-    // A file where the cache's folder would be: mkdir under it fails.
-    await writeFile(join(root, "blocked"), "a file, not a folder")
     const cache = stepCache(
-      join(root, "blocked", "steps"),
+      join(root, "steps"),
       policy(1_000_000),
-      (l) => warned.push(l)
+      (l) => warned.push(l),
+      failing({ mkdir: "EACCES" })
     )
     await writeFile(join(root, "a.wav"), "take")
     expect(await cache.put("k", ".wav", join(root, "a.wav"), "a.wav")).toBe(
@@ -104,6 +145,64 @@ describe("the step cache", () => {
     )
     expect(warned).toHaveLength(1)
     expect(warned[0]).toContain("not cached: a.wav: it could not be kept")
+  })
+
+  describe("VC1: a size it cannot count is never room", () => {
+    const keep = async (fs: CacheFs): Promise<ReadonlyArray<string>> => {
+      const warned: Array<string> = []
+      await mkdir(join(root, "steps"), { recursive: true })
+      await writeFile(join(root, "steps", "old.wav"), "kept before")
+      await writeFile(join(root, "a.wav"), "take")
+      const cache = stepCache(
+        join(root, "steps"),
+        policy(1_000_000),
+        (l) => warned.push(l),
+        fs
+      )
+      expect(await cache.put("k", ".wav", join(root, "a.wav"), "a.wav")).toBe(
+        false
+      )
+      expect(await readdir(join(root, "steps"))).toEqual(["old.wav"])
+      return warned
+    }
+
+    it("keeps nothing when its folder cannot be listed", async () => {
+      const warned = await keep(failing({ readdir: "ENOTDIR" }))
+      expect(warned).toHaveLength(1)
+      expect(warned[0]).toContain(
+        "not cached: a.wav: the cache's size is unknown, its folder could not be listed"
+      )
+      expect(warned[0]).toContain("ENOTDIR")
+    })
+
+    it("keeps nothing when an entry cannot be measured", async () => {
+      const warned = await keep(failing({ stat: "EACCES" }))
+      expect(warned).toHaveLength(1)
+      expect(warned[0]).toContain(
+        "not cached: a.wav: the cache's size is unknown, old.wav could not be measured"
+      )
+      expect(warned[0]).toContain("EACCES")
+    })
+
+    it("counts an entry gone since it was listed as nothing held", async () => {
+      const warned: Array<string> = []
+      await mkdir(join(root, "steps"), { recursive: true })
+      await writeFile(join(root, "a.wav"), "take")
+      const cache = stepCache(
+        join(root, "steps"),
+        policy(1_000),
+        (l) => warned.push(l),
+        {
+          ...nodeCacheFs,
+          readdir: (): Promise<ReadonlyArray<string>> =>
+            Promise.resolve(["gone.wav"]),
+        }
+      )
+      expect(await cache.put("k", ".wav", join(root, "a.wav"), "a.wav")).toBe(
+        true
+      )
+      expect(warned).toEqual([])
+    })
   })
 
   it("keys by what goes in, not by names", () => {
