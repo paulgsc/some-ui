@@ -1,6 +1,5 @@
 /** @vitest-environment node */
-import type { Player } from "@some-ui/voice-capture"
-import type { HomeReach } from "@soundbites/lib/idea/bundle"
+import type { HomeReach, Player } from "@some-ui/voice-capture"
 import { run, started, take } from "@soundbites/lib/project/__tests__/fixture"
 import { letGoDeletedTakes, letGoHeldTakes } from "@soundbites/lib/project/home"
 import { memoryProjectStore } from "@soundbites/lib/project/memory-store"

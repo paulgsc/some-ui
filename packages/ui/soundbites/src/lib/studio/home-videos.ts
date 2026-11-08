@@ -11,7 +11,7 @@
  * on this phone, and the line says why: not paired, or away from home, and
  * nothing about pairing while the phone hasn't read whether it is (ST34).
  */
-import type { HomeReach } from "@soundbites/lib/idea/bundle"
+import type { HomeReach } from "@some-ui/voice-capture"
 import type { VideoForHome } from "@soundbites/lib/project/dna"
 import { goneTakes, videoKey } from "@soundbites/lib/project/dna"
 import { finishOf, queuedOf } from "@soundbites/lib/project/finish"

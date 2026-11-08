@@ -8,10 +8,10 @@
  */
 import { inMemoryStorage } from "@some-ui/core-utils"
 import { ONE_TAKE, TAKE_WORDS } from "@some-ui/voice-capture"
+import type { HomeReach } from "@some-ui/voice-capture"
 import { simulatedPattern, SPEAKING } from "@some-ui/voice-capture/testing"
 import { IdeaBundle } from "@soundbites/components/idea-bundle"
 import { bundleTakesOf } from "@soundbites/fixtures"
-import type { HomeReach } from "@soundbites/lib/idea/bundle"
 import { keptDraftStore } from "@soundbites/lib/idea/draft"
 import { keptIdeaStore } from "@soundbites/lib/idea/store"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
@@ -129,14 +129,14 @@ describe("New idea, one bundle (ST26)", () => {
     mount()
     await pass()
     toQuestions()
-    expect(card()).toHaveAccessibleName(WORDS.questionOf(1, 4))
+    expect(card()).toHaveAccessibleName(WORDS.cardOf(1, 4))
     drag(-20)
-    expect(card()).toHaveAccessibleName(WORDS.questionOf(1, 4))
+    expect(card()).toHaveAccessibleName(WORDS.cardOf(1, 4))
     drag(-90)
-    expect(card()).toHaveAccessibleName(WORDS.questionOf(2, 4))
+    expect(card()).toHaveAccessibleName(WORDS.cardOf(2, 4))
     expect(card()).toHaveTextContent(ASK.takeaway.ask)
     drag(90)
-    expect(card()).toHaveAccessibleName(WORDS.questionOf(1, 4))
+    expect(card()).toHaveAccessibleName(WORDS.cardOf(1, 4))
     fireEvent.click(button(WORDS.dot.open(4)))
     expect(card()).toHaveTextContent(ASK.picture.ask)
   })
@@ -159,7 +159,7 @@ describe("New idea, one bundle (ST26)", () => {
     toQuestions()
     drag(-90, button(TAKE_WORDS.buttonLabel.ready))
     await pass()
-    expect(card()).toHaveAccessibleName(WORDS.questionOf(2, 4))
+    expect(card()).toHaveAccessibleName(WORDS.cardOf(2, 4))
     expect(
       screen.queryByRole("button", { name: TAKE_WORDS.buttonLabel.recording })
     ).not.toBeInTheDocument()

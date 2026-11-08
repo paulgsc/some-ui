@@ -144,3 +144,28 @@ export type {
 } from "./lib/turn-runtime"
 export { NO_LISTENER, turnListening } from "./lib/turn-runtime"
 export { TURN_WORDS, turnNoticeSaid } from "./lib/turn-words"
+export type {
+  Answered,
+  BundleAnswer,
+  BundleDraft,
+  BundleEffect,
+  BundleEvent,
+  BundleIntent,
+  BundleKind,
+  BundleMachine,
+  BundleNotice,
+  BundleSpec,
+  BundleState,
+  CardView,
+  HomeReach,
+} from "./lib/bundle"
+export { bundleMachine, isPaired } from "./lib/bundle"
+export type {
+  BundleDrafts,
+  BundleHome,
+  BundlePorts,
+  BundleRecords,
+  BundleRuntime,
+  BundleTakes,
+} from "./lib/bundle-runtime"
+export { bundleRuntime, NO_HOME } from "./lib/bundle-runtime"

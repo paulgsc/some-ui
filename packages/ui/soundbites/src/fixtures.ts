@@ -6,10 +6,9 @@
  * record on is the shared simulated one (`@some-ui/voice-capture/testing`).
  */
 import { parseEpisode } from "@some-ui/video-render"
-import type { TakePattern } from "@some-ui/voice-capture"
+import type { BundleTakes, TakePattern } from "@some-ui/voice-capture"
 import type { MemoryTakes } from "@some-ui/voice-capture/testing"
 
-import type { BundleTakes } from "./lib/idea/bundle-runtime"
 import type { Idea } from "./lib/idea/model"
 import { newIdea, withWords } from "./lib/idea/model"
 import type { Primer } from "./lib/journal/primer"

@@ -7,12 +7,12 @@
 import {
   audioPlayer,
   micRecorder,
+  NO_HOME,
   NO_LISTENER,
   onPageVisibility,
 } from "@some-ui/voice-capture"
 
 import type { BundlePorts } from "./idea/bundle-runtime"
-import { NO_HOME } from "./idea/bundle-runtime"
 import { keptDraftStore, keptIdeaLists } from "./idea/draft"
 import type { IdeaPorts } from "./idea/runtime"
 import type { ShelfPorts } from "./idea/shelf-runtime"

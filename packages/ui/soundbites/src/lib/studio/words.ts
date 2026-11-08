@@ -11,13 +11,12 @@ import {
   listed,
 } from "@some-ui/core-utils"
 import type { Idea, Look, Voice } from "@some-ui/video-render"
-import type { RecordingFailure } from "@some-ui/voice-capture"
+import type { HomeReach, RecordingFailure } from "@some-ui/voice-capture"
 import {
   RECORDING_FAILURE_COPY,
   TAKE_ENDING_WORDS,
   TAKE_WORDS,
 } from "@some-ui/voice-capture"
-import type { HomeReach } from "@soundbites/lib/idea/bundle"
 import type {
   IdeaFormat,
   IdeaStage,
@@ -829,10 +828,13 @@ export const STUDIO_WORDS = {
       pickAny: "pick any",
       start: "Start the questions",
     },
-    questionOf: (n: number, of: number): string => `Question ${n} of ${of}`,
+    cardOf: (n: number, of: number): string => `Question ${n} of ${of}`,
     canWait: "you can leave this one",
-    needed: "This one is needed before the idea can go home.",
-    swipeOn: "Swipe on to leave it for now.",
+    /** Under a card's take button while nothing is said. */
+    unsaid: (required: boolean): string =>
+      required
+        ? "This one is needed before the idea can go home."
+        : "Swipe on to leave it for now.",
     /** Each dot above the cards, for a screen reader. */
     dot: {
       said: (n: number): string => `Question ${n}, said`,

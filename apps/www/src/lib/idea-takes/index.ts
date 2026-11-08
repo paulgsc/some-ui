@@ -15,11 +15,8 @@
  *
  * Phone-only (`build.paths.ts`).
  */
-import type {
-  BundleTakes,
-  IdeaTakes,
-  IdeaTakeSnapshot,
-} from "@some-ui/soundbites"
+import type { IdeaTakes, IdeaTakeSnapshot } from "@some-ui/soundbites"
+import type { BundleTakes } from "@some-ui/voice-capture"
 import { ONE_TAKE } from "@some-ui/voice-capture"
 
 import type { DeskSnapshot, PhoneTakes } from "@/lib/takes-desk"

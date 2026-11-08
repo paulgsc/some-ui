@@ -1,6 +1,6 @@
+import type { BundleTakes } from "@some-ui/voice-capture"
 import { simulatedPattern } from "@some-ui/voice-capture/testing"
 import { IdeasOnHome } from "@soundbites/components/ideas-on-home"
-import type { BundleTakes } from "@soundbites/lib/idea/bundle-runtime"
 import type { HomeIdea, HomeLists } from "@soundbites/lib/idea/on-home"
 import type { IdeasHome } from "@soundbites/lib/idea/on-home-runtime"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"

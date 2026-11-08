@@ -17,10 +17,9 @@ import {
   SameWidth,
   useTakePattern,
 } from "@some-ui/shared"
-import type { TakePattern } from "@some-ui/voice-capture"
+import type { BundleTakes, TakePattern } from "@some-ui/voice-capture"
 import { TAKE_WORDS } from "@some-ui/voice-capture"
 import { Unpaired } from "@soundbites/components/unpaired"
-import type { BundleTakes } from "@soundbites/lib/idea/bundle-runtime"
 import { keptIdeaLists } from "@soundbites/lib/idea/draft"
 import type { QuestionId } from "@soundbites/lib/idea/model"
 import { IDEA_QUESTIONS } from "@soundbites/lib/idea/model"

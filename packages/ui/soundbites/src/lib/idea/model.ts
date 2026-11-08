@@ -67,7 +67,7 @@ export type AnswerWords = {
 }
 
 /** A take said for an answer (ST26): its id on this phone's desk of takes. */
-export type AnswerTake = {
+type AnswerTake = {
   /** ISO time it was recorded. */
   readonly at: string
   readonly take: string
