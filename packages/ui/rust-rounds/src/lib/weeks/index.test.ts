@@ -168,23 +168,6 @@ describe("the weeks from home (RR13)", () => {
     )
   })
 
-  it("stops reading once home says it is busy, sending nothing after it (AD3)", async () => {
-    const store = keptWeeks(inMemoryStorage())
-    const weeks = [51, 50, 49].map((n) => ({ ...week46(), id: `2026-w${n}` }))
-    const { send, calls } = home(weeks)
-    const busy: HomeCall = (method, path, body) => {
-      if (path !== "/rust-weeks/2026-w50") return send(method, path, body)
-      calls.push(`${method} ${path}`)
-      return Promise.resolve({ status: 429, body: "" })
-    }
-    expect(await exchangeWeeks(store, busy)).toMatchObject({ kind: "failed" })
-    expect(calls).toEqual([
-      "GET /rust-weeks",
-      "GET /rust-weeks/2026-w51",
-      "GET /rust-weeks/2026-w50",
-    ])
-  })
-
   it("says home forgot the phone, and keeps nothing, on a 401", async () => {
     const store = keptWeeks(inMemoryStorage())
     const send: HomeCall = () => Promise.resolve({ status: 401, body: "" })

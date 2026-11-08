@@ -129,11 +129,16 @@ export function working(
 }
 
 /**
- * Whether the link would take a run now: it is doing nothing, and home is
- * not waiting out a busy (AD3).
+ * Whether home is still to be left alone at `now` (AD3): a wait whose time
+ * has passed is over, even before the link hears its timer.
  */
-export function linkOpen(state: HomeLinkState): boolean {
-  return state.activity.kind === "idle" && state.homeBusyUntil === null
+export function homeBusy(state: HomeLinkState, now: number): boolean {
+  return state.homeBusyUntil !== null && now < state.homeBusyUntil
+}
+
+/** Whether the link would take a run at `now`: it is idle, and home is not busy. */
+export function linkOpen(state: HomeLinkState, now: number): boolean {
+  return state.activity.kind === "idle" && !homeBusy(state, now)
 }
 
 export function step(

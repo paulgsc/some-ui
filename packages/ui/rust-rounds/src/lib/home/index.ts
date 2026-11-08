@@ -23,9 +23,7 @@
  * - **Bounded.** One `PUT` per round waiting to go, one list, and at most
  *   `READS_PER_EXCHANGE` rounds read, newest first; the rest are read by a
  *   later exchange. A round the phone can't read is not read again, and a
- *   round home fails to answer for is skipped, the rest still read; but
- *   home saying it is busy (`429`) ends the reads there, since every read
- *   after it would be turned away too (AD3).
+ *   round home fails to answer for is skipped, the rest still read.
  * - **Each answer is kept as it lands**, read fresh from the store and
  *   written back at once, so an exchange stopped part way keeps what came,
  *   and a round pasted meanwhile is not written over.
@@ -55,12 +53,8 @@ const ROUNDS_PATH = "/rust-rounds"
 const roundPath = (id: string): string =>
   `${ROUNDS_PATH}/${encodeURIComponent(id)}`
 
-/**
- * How many rounds one exchange reads from home, at most: with the list, the
- * weeks' list and their reads, the lane's run stays inside its share of
- * home's limit (apps/www `lib/home-link/lanes.ts`, `REQUESTS_PER_RUN`).
- */
-export const READS_PER_EXCHANGE = 5
+/** How many rounds one exchange reads from home, at most. */
+export const READS_PER_EXCHANGE = 20
 
 /** What the exchange reads and writes of what plays. */
 export type RoundsHomePort = Pick<RoundsStore, "held" | "hold">
@@ -272,8 +266,6 @@ export async function exchangeRounds(
     if (answer.status === 401) return FORGOTTEN
     // Gone since it was listed (a round goes only with its account).
     if (answer.status === 404) continue
-    // Home is busy: every read after this one would be turned away too.
-    if (answer.status === 429) return unexpectedAnswer("a round", 429)
     if (answer.status !== 200) {
       failed ??= answer.status
       continue

@@ -177,6 +177,27 @@ export function emptyLogReport(): LogReport {
   }
 }
 
+/**
+ * Which events of a log home has taken (`200`) as they are now, so a run
+ * that ends part way (home busy, a stop, the background, no answer)
+ * resumes at the first event home has not taken instead of sending the
+ * log again (`./drain` keeps them in `sent.events`, by each event's path).
+ * A log read back, as sent or otherwise, forgets its events: what follows a
+ * read-back that differs is the whole log again.
+ */
+export type TakenEvents = {
+  readonly took: (path: string, event: unknown) => boolean
+  readonly take: (path: string, event: unknown) => void
+  readonly forget: (paths: ReadonlyArray<string>) => void
+}
+
+/** No event remembered: every event goes. */
+export const NONE_TAKEN: TakenEvents = {
+  took: () => false,
+  take: () => undefined,
+  forget: () => undefined,
+}
+
 /** A log home keeps as a list of events under one name. */
 export type EventLog = {
   readonly name: string
@@ -217,44 +238,60 @@ export async function sendLog(
   sessions: ReadonlyArray<HomeSession>,
   send: HomeCall,
   report: LogReport,
-  held: (session: string, digest: string) => void = () => undefined
+  held: (session: string, digest: string) => void = () => undefined,
+  taken: TakenEvents = NONE_TAKEN
 ): Promise<void> {
-  await sendLogs(sessions.map(leetypeLog), eventsPath, send, report, held)
+  await sendLogs(
+    sessions.map(leetypeLog),
+    eventsPath,
+    send,
+    report,
+    held,
+    taken
+  )
 }
 
 /**
- * Sends each log through `send` to `pathOf` its name, one PUT per event,
- * then reads it back, into `report`; `held` hears each log home read back
- * as sent, with its digest.
+ * Sends each log through `send` to `pathOf` its name, one PUT per event
+ * `taken` says home has not taken, then reads it back, into `report`;
+ * `held` hears each log home read back as sent, with its digest.
  */
 export async function sendLogs(
   logs: ReadonlyArray<EventLog>,
   pathOf: (name: string) => string,
   send: HomeCall,
   report: LogReport,
-  held: (name: string, digest: string) => void
+  held: (name: string, digest: string) => void,
+  taken: TakenEvents = NONE_TAKEN
 ): Promise<void> {
   for (const session of logs) {
-    let taken: "all" | "refused" | "other" = "all"
-    for (const event of session.events) {
+    const paths = session.events.map(
+      (event) => `${pathOf(session.name)}/${encodeURIComponent(event.id)}`
+    )
+    let went: "all" | "refused" | "other" = "all"
+    for (const [i, event] of session.events.entries()) {
+      const path = paths[i] ?? ""
+      if (taken.took(path, event)) continue
       const answer = await answerOrEnd(
         send,
         report,
         "PUT",
-        `${pathOf(session.name)}/${encodeURIComponent(event.id)}`,
+        path,
         JSON.stringify(event)
       )
       if (answer === null) return
       const bucket = bucketOf(answer.status)
-      if (bucket === "refused") taken = "refused"
-      else if (bucket === "other" && taken === "all") taken = "other"
+      if (bucket === "held") taken.take(path, event)
+      else if (bucket === "refused") went = "refused"
+      else if (went === "all") went = "other"
     }
-    if (taken !== "all") {
-      report[taken] += 1
+    if (went !== "all") {
+      report[went] += 1
       continue
     }
     const back = await answerOrEnd(send, report, "GET", pathOf(session.name))
     if (back === null) return
+    taken.forget(paths)
     if (back.status === 200 && holdsAll(session, back.body)) {
       report.held += 1
       held(session.name, digestOf(session))

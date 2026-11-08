@@ -1661,10 +1661,10 @@
           "id": "AD3",
           "kind": "RE10",
           "property": "work",
-          "claim": "After home says it is busy, the phone sends it nothing until home's Retry-After has passed, then asks once; and no one lane of the phone's can spend home's whole minute.",
-          "requirement": "The first 429 any request of the phone's home link hears starts a wait of home's Retry-After (held between 1 s and 10 minutes, a minute when it can't be read) that every lane, every moment a watch asks on and a pull keep: the link answers each request busy itself and sends nothing, each lane says home is busy, and the wait's end asks each lane it turned away once. One run of each lane sends at most its share, and a round of every lane stays at or under 50 of home's 60 requests a minute; a run that reaches its share is progress, in step, and its lane asks again at its turn on one refill schedule every lane shares, at most 30 requests a minute for every such lane together, waiting out home's busy if it falls inside one.",
+          "claim": "After home says it is busy, the phone sends it nothing until home's Retry-After has passed, then asks once; and the phone's drain never spends home's whole minute, however much it holds, nor leaves a record it cannot finish.",
+          "requirement": "The first 429 any request of the phone's home link hears starts a wait of home's Retry-After (held between 1 s and 10 minutes, a minute when it can't be read) that every lane, every moment a watch asks on and a pull keep: the link answers each request busy itself and sends nothing, each lane says home is busy, and the wait's end asks each lane it turned away once. Every lane's requests wait their turn on one pace, 49 at once and then one each 2 s, inside home's 60 a minute and its refill of one a second, and none is refused for it, so a run goes through all it holds; a LeetType session or Studio sitting a run leaves part way resumes at the first event home has not taken.",
           "verdict": "holds",
-          "conclusion": "Once home says busy, the phone stays quiet until home's own time is up and then asks each lane once; a pull stops reaching home at the first busy lane, and a round of every lane sends at most 49 requests; a lane with more waiting drains on its own at its turn, the capped lanes together at most 30 requests a minute.",
+          "conclusion": "Once home says busy, the phone stays quiet until home's own time is up and then asks each lane once; a pull stops reaching home at the first busy lane; and against file_host's limiter the practice drain takes a LeetType session of 20 or 100 events home whole, each event once, home never busy, with the reflection after it, and resumes one home turned away part way where it stopped.",
           "evidence": [
             {
               "class": "structural",
@@ -1673,18 +1673,23 @@
             },
             {
               "class": "structural",
-              "says": "Each lane's run sends at most its REQUESTS_PER_RUN, 49 for a round of the six, past which its send refuses as a stop does; Rust Rounds' reads stop at a 429.",
-              "ref": "some-ui:apps/www/src/lib/home-link/lanes.ts"
+              "says": "laneExchange sends each of a lane's requests only after its turn on the pace lanes.ts hands every lane (DRAIN_PACE, createPace: a burst of 49, one back each 2 s), skipped only for a request the link answers busy itself.",
+              "ref": "some-ui:apps/www/src/lib/home-link/kept-runtime.ts"
+            },
+            {
+              "class": "structural",
+              "says": "sendLogs skips each event sent.events says home took, and forgets a log's events only once it is read back; the drain keeps them however its part ends.",
+              "ref": "some-ui:apps/www/src/lib/home-link/leetype-log.ts"
             }
           ],
           "proof": [
             "some-ui:apps/www/src/lib/home-link/__tests__/home-busy.test.ts#after home says busy, the phone sends nothing until home's Retry-After has passed, then asks once",
             "some-ui:apps/www/src/lib/home-link/__tests__/home-busy.test.ts#a pull stops at home's busy: the lanes after it say busy, and nothing more is sent",
             "some-ui:apps/www/src/lib/home-link/__tests__/runtime.test.ts#after home says busy, sends nothing until its Retry-After has passed, answering busy itself (AD3)",
-            "some-ui:apps/www/src/lib/home-link/__tests__/kept.test.ts#leaves a whole round of every lane well inside home's 60 requests a minute (AD3)",
-            "some-ui:apps/www/src/lib/home-link/__tests__/home-busy.test.ts#a lane that stopped at its share drains by itself, a turn at a time, until a run ends uncapped",
-            "some-ui:apps/www/src/lib/home-link/__tests__/home-busy.test.ts#lanes capped together take turns, sending at most one request per 2 s between them",
-            "some-ui:apps/www/src/lib/home-link/__tests__/home-busy.test.ts#a capped lane's turn while home is busy waits for the busy's one ask"
+            "some-ui:apps/www/src/lib/home-link/__tests__/kept.test.ts#paces the drain inside home's 60 requests a minute: 49 at once, then one each 2 s (AD3)",
+            "some-ui:apps/www/src/lib/home-link/__tests__/kept.test.ts#sends each request only once the pace gives it a turn, refusing none",
+            "some-ui:apps/www/src/lib/home-link/__tests__/drain-paced.test.ts#takes a LeetType session of %i events home whole, each event once, home never busy, and the reflection after it still goes",
+            "some-ui:apps/www/src/lib/home-link/__tests__/drain-paced.test.ts#resumes a session home turned away part way at the first event it had not taken, once home's busy is over"
           ],
           "watch": {
             "by": "none"
@@ -4452,7 +4457,7 @@
     },
     {
       "family": "home-admits",
-      "why": "Home's one limiter admits every request, whichever process sends it, and the phone's home link waits out its busy for every lane."
+      "why": "Home's one limiter admits every request, whichever process sends it, and the phone's home link waits out its busy, and paces every lane's requests on one pace inside it, for every lane."
     }
   ]
 }

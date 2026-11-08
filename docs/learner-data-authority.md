@@ -1144,18 +1144,18 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   (`lib/jobs/pull.ts`, PULL2, registered while the Jobs screens or the
   status page show), and it joins the pull under way, or starts the one
   the refresher's own ask in that pull joins, so each lane is still asked
-  once, in turn. Nothing asks on a timer but one: a lane whose run stopped
-  at its share (`capped`) asks again at its turn on the refill schedule the
-  watches share (`Refill`, at most 30 requests a minute for every capped
-  lane together), or, if home is busy then, once home's busy ends; home's
-  busy ends on a timer of its own (the link's, `runtime.ts`), which only
-  opens the link again to the lanes home turned away. A run goes
-  under the pairing the phone holds when it starts (`laneExchange`), sends
-  at most its lane's `REQUESTS_PER_RUN` (`lanes.ts`; past that its `send`
-  refuses as a stop does, the run ends `capped`, which `resynced` accepts,
-  and what is left goes at the lane's next turn), and
+  once, in turn. Nothing asks on a timer: home's busy ends on one (the
+  link's, `runtime.ts`), which only opens the link again to the lanes home
+  turned away. A run goes
+  under the pairing the phone holds when it starts (`laneExchange`), each
+  of its requests waiting its turn on the drain's one pace (`createPace`,
+  `kept-runtime.ts`, AD3: 49 at once, then one each 2 s, every lane's
+  requests together, none refused, so a run is never cut short by it), and
   the link's `send` refuses a request once the phone stops or goes to the
-  background. For aph, the first run on a paired phone moves its record to
+  background. A run that ends part way (home busy, a stop, the background,
+  no answer) keeps what home took: a LeetType session or Studio sitting
+  resumes at the first event home has not taken (`sent.events`,
+  `lib/home-link/leetype-log.ts`'s `TakenEvents`), not from its first. For aph, the first run on a paired phone moves its record to
   home (`keepOnHome`, in the lane's `exchange`), and from then on the phone
   holds the settings and what home has not confirmed. Korean's look
   (`routineReads().list()`) is called only through the port
@@ -1171,9 +1171,7 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   `askKept` from anything but `watchKept`'s record subscription, its link
   subscription, its `visibilitychange` and `online` listeners and its first
   ask, has `pullKept` ask other than through `mayAsk` and the lane's `pull`,
-  adds a timer other than a capped run's turn on `Refill`, asks at that turn
-  while home is busy, books a turn other than through `Refill`'s `book` or
-  for a run that did not end `capped`, changes when a listener asks (the record subscription's
+  adds a timer, changes when a listener asks (the record subscription's
   check that the revision moved, the link subscription's test for a new
   pairing, for the link freeing up after a run it turned away, or for home's
   busy ending after a run home turned away, each read from the lane's runs
@@ -1210,7 +1208,14 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   `lib/home-link/kept-runtime.ts` that lets `laneExchange` run a lane's
   exchange unpaired or under a pairing other than the one read when the run
   starts, or makes a run say anything but busy once home answered one of
-  its requests `429` (unless it was forgotten or stopped); a hunk to
+  its requests `429` (unless it was forgotten or stopped), sends a lane's
+  request other than after its turn on the pace it is handed, or refuses
+  one for the pace; a hunk to `lib/home-link/lanes.ts` that hands
+  `laneExchange` a pace other than `DRAIN_PACE`, or skips its turn other
+  than for a request the link answers busy itself; a hunk to
+  `lib/home-link/leetype-log.ts`'s `sendLogs` that sends an event `taken`
+  says home took, or forgets a log's events other than once it is read
+  back; a hunk to
   `components/device-home-glyph.tsx` that calls `askLane` other than from a
   button's `onClick`, mounts a watch (`useLaneHome`, `useVoiceHome`)
   anywhere but `HomeLanes`, drops a lane from `HomeLanes`, or shows a lane

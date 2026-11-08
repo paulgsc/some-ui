@@ -2,7 +2,8 @@
  * The time, to the minute, as something React can subscribe to, for a page
  * left open (Home on the phone). It moves on each wall-clock minute and when
  * the page comes back into view (a backgrounded WebView's timers stall). Both
- * only re-read `Date.now()`, so a missed tick costs nothing.
+ * only re-read `Date.now()`, so a missed tick costs nothing. Beside it, the
+ * page's one-shot timer as the ports that take one name it (`after`).
  */
 import { useSyncExternalStore } from "react"
 
@@ -44,4 +45,10 @@ function minuteNow(): number {
 export function useMinuteClock(): Date {
   const minute = useSyncExternalStore(subscribe, minuteNow, minuteNow)
   return new Date(minute * MINUTE_MS)
+}
+
+/** Runs `run` once, `ms` from now, on the page's timers; returns the cancel. */
+export function after(ms: number, run: () => void): () => void {
+  const timer = setTimeout(run, ms)
+  return (): void => clearTimeout(timer)
 }

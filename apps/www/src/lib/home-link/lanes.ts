@@ -16,13 +16,14 @@ import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 
-import { homeLink, paired, pairingOf, useHomeLink } from "./index"
+import { homeLink, LINK_CLOCK, paired, pairingOf, useHomeLink } from "./index"
 import type { KeptRun, KeptState } from "./kept-model"
-import type { Kept, KeptPorts } from "./kept-runtime"
-import { createKept, laneExchange } from "./kept-runtime"
+import type { Kept, KeptPorts, Pace } from "./kept-runtime"
+import { createKept, createPace, laneExchange } from "./kept-runtime"
 import type { KeptRecord } from "./kept-watch"
 import { askKept, watchKept } from "./kept-watch"
 import type { HomeLinkState } from "./model"
+import { homeBusy } from "./model"
 import type { HomeRefresher } from "./pull"
 import { homeRefresher } from "./pull"
 import type { LaneView } from "./words"
@@ -35,32 +36,6 @@ export type LaneId =
   | "voice"
   | "rust-rounds"
   | "app-events"
-
-/**
- * How many requests one run of each lane may send (`laneExchange`); past
- * that its `send` refuses as a stop does, the run keeps what it heard and
- * ends `capped`, and the lane asks again at its turn on the refill schedule
- * the watches share (`./kept-watch`'s `Refill`: 30 a minute for every
- * capped lane together). Home lets this phone 60 requests
- * a minute (paulgsc/server `file_host`'s limiter, a burst of 60), and the
- * app shell asks every lane at once (on opening, coming back to the front, a
- * pull), so no one lane may spend it: 12 + 8 + 8 + 8 + 8 + 5 = 49 for a
- * whole round of the six, leaving 11 for a screen's own reads in the same
- * minute. Each share fits its lane's run when nothing has piled up: Rust
- * Rounds lists its rounds and its weeks and reads at most
- * `READS_PER_EXCHANGE` (5) rounds and `WEEK_READS_PER_EXCHANGE` (4) weeks,
- * 11 in all, with one round pasted here to send; the Jobs record makes at
- * most 7 reads and filings of its own, and one event; aph sends its
- * settings and three entries, then reads home's record back.
- */
-export const REQUESTS_PER_RUN: Readonly<Record<LaneId, number>> = {
-  "rust-rounds": 12,
-  practice: 8,
-  voice: 8,
-  jobs: 8,
-  "app-events": 8,
-  aph: 5,
-}
 
 /** What a lane's record holds of one kind, as the sheet names it. */
 export type LaneKind =
@@ -114,11 +89,24 @@ const wired = new Map<LaneId, Wired>()
 /** The runtimes of the lanes `useLaneHome` watches now: what a pull asks. */
 const watched = new Set<Kept>()
 
+/** Whether home is still to be left alone, on the link's clock (AD3). */
+function busyNow(): boolean {
+  const link = homeLink()
+  return homeBusy(link.getSnapshot(), link.now())
+}
+
+/**
+ * The drain's one pace (`createPace`), on the link's clock. A request the
+ * link answers busy itself reaches no home, so it takes no turn.
+ */
+const DRAIN_PACE = createPace(LINK_CLOCK)
+const pace: Pace = () => (busyNow() ? Promise.resolve() : DRAIN_PACE())
+
 /** How every run here reaches home: through the link, one at a time. */
 const LINK_PORTS: Omit<KeptPorts, "exchange"> = {
   keep: (run) => homeLink().keep(run),
   paired,
-  homeBusy: () => homeLink().getSnapshot().homeBusyUntil !== null,
+  homeBusy: busyNow,
   now: Date.now,
 }
 
@@ -130,11 +118,7 @@ function wire(lane: Lane): Wired {
     record: { revision: lane.revision, subscribe: lane.subscribe },
     sending: createKept({
       ...LINK_PORTS,
-      exchange: laneExchange(
-        lane,
-        () => pairingOf(),
-        REQUESTS_PER_RUN[lane.id]
-      ),
+      exchange: laneExchange(lane, () => pairingOf(), pace),
     }),
   }
   wired.set(lane.id, made)

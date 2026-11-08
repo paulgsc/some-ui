@@ -9,16 +9,20 @@
 import { noAnswer } from "@/test-support/no-answer"
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 import { addFailureSink } from "@some-ui/intent-kit"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
 import { FileHostUnreachableError } from "@/lib/file-host-config"
 import type { KeptState } from "@/lib/home-link/kept-model"
-import { INITIAL_KEPT, resynced, stepKept } from "@/lib/home-link/kept-model"
+import { INITIAL_KEPT, stepKept } from "@/lib/home-link/kept-model"
 import type { Kept, KeptPorts } from "@/lib/home-link/kept-runtime"
-import { createKept, laneExchange } from "@/lib/home-link/kept-runtime"
+import {
+  createKept,
+  createPace,
+  laneExchange,
+} from "@/lib/home-link/kept-runtime"
 import type { Lane, LaneCounts } from "@/lib/home-link/lanes"
-import { laneReading, REQUESTS_PER_RUN } from "@/lib/home-link/lanes"
+import { laneReading } from "@/lib/home-link/lanes"
 import { INITIAL, step } from "@/lib/home-link/model"
 import type { HomeLink } from "@/lib/home-link/runtime"
 import { HomeUnansweredError } from "@/lib/home-link/shelf"
@@ -269,14 +273,14 @@ function home(statuses: Array<number> = []): {
 
 const SYNCED: HomeExchanged = { kind: "synced" }
 
-/** More requests than any lane here makes: no run reaches its share. */
-const SHARE = 10
+/** A pace with a turn always free. */
+const FREE = (): Promise<void> => Promise.resolve()
 
 describe("a lane's run", () => {
   it("sends nothing unpaired", async () => {
     const { send, sent } = home()
     await expect(
-      laneExchange(lane(2, SYNCED), () => null, SHARE)(send)
+      laneExchange(lane(2, SYNCED), () => null, FREE)(send)
     ).resolves.toEqual(SYNCED)
     expect(sent).toEqual([])
   })
@@ -293,7 +297,7 @@ describe("a lane's run", () => {
       },
     }
     await expect(
-      laneExchange(declared, () => "p", SHARE)(send)
+      laneExchange(declared, () => "p", FREE)(send)
     ).resolves.toEqual(SYNCED)
     expect(sent).toEqual(["/jobs/0"])
     expect(under).toEqual(["p"])
@@ -305,7 +309,7 @@ describe("a lane's run", () => {
     for (const ends of [SYNCED, failed]) {
       const { send } = home([429])
       await expect(
-        laneExchange(lane(2, ends), () => "p", SHARE)(send)
+        laneExchange(lane(2, ends), () => "p", FREE)(send)
       ).resolves.toEqual(busy)
     }
     const throwing: Lane = {
@@ -316,82 +320,91 @@ describe("a lane's run", () => {
       },
     }
     await expect(
-      laneExchange(throwing, () => "p", SHARE)(home([429]).send)
+      laneExchange(throwing, () => "p", FREE)(home([429]).send)
     ).resolves.toEqual(busy)
   })
 
-  it("sends at most its share of requests, ending capped, a stop's way, with what it heard kept", async () => {
+  it("sends each request only once the pace gives it a turn, refusing none", async () => {
     const { send, sent } = home()
-    const heard: Array<number> = []
-    const declared: Lane = {
-      ...lane(0, SYNCED),
-      exchange: async (through) => {
-        for (let i = 0; i < 5; i += 1) {
-          heard.push((await through("PUT", `/jobs/${i}`)).status)
-        }
-        return SYNCED
-      },
+    const turns: Array<() => void> = []
+    const pace = (): Promise<void> =>
+      new Promise((resolve) => turns.push(resolve))
+    const run = laneExchange(lane(3, SYNCED), () => "p", pace)(send)
+    for (let i = 1; i <= 3; i += 1) {
+      await vi.waitFor(() => expect(turns).toHaveLength(i))
+      expect(sent).toHaveLength(i - 1)
+      turns[i - 1]?.()
     }
-    await expect(laneExchange(declared, () => "p", 3)(send)).resolves.toEqual({
-      kind: "capped",
-      sent: 3,
-    })
-    expect(sent).toEqual(["/jobs/0", "/jobs/1", "/jobs/2"])
-    expect(heard).toEqual([200, 200, 200])
-    // A lane that catches the refusal and resolves with what it did.
-    const catching: Lane = {
-      ...lane(0, SYNCED),
-      exchange: async (through) => {
-        await through("PUT", "/jobs/0")
-        await through("PUT", "/jobs/1").catch(() => undefined)
-        return SYNCED
-      },
-    }
-    await expect(
-      laneExchange(catching, () => "p", 1)(home().send)
-    ).resolves.toEqual({ kind: "capped", sent: 1 })
-    // A capped run is progress: in step, and its card keeps saying what waits.
-    const capped = { kind: "capped", at: 7, sent: 3 } as const
-    expect(resynced(capped)).toBe(true)
-    const view = laneReading(
-      "practice",
-      { held: {}, refused: {}, waiting: 4, hidden: 0, pulled: true },
-      { ...INITIAL_KEPT, last: capped },
-      step(INITIAL, {
-        type: "read",
-        found: { base: "https://home.lan", id: "p" },
-      })
-    ).view
-    expect([view.how, view.word]).toEqual(["waiting", "4 waiting"])
-    // Home busy before the share ran out is said as busy all the same.
-    await expect(
-      laneExchange(lane(5, SYNCED), () => "p", 3)(home([429]).send)
-    ).resolves.toEqual({ kind: "failed", why: "busy" })
+    await expect(run).resolves.toEqual(SYNCED)
+    expect(sent).toHaveLength(3)
   })
 
-  it("leaves a whole round of every lane well inside home's 60 requests a minute (AD3)", () => {
-    const round = Object.values(REQUESTS_PER_RUN).reduce((a, b) => a + b, 0)
-    expect(round).toBeLessThanOrEqual(50)
+  it("paces the drain inside home's 60 requests a minute: 49 at once, then one each 2 s (AD3)", async () => {
+    let now = 0
+    let timers: Array<{ at: number; run: () => void }> = []
+    const pace = createPace({
+      now: () => now,
+      after: (ms, run) => {
+        timers.push({ at: now + ms, run })
+        return (): void => undefined
+      },
+    })
+    let went = 0
+    const turns = Array.from({ length: 52 }, () =>
+      pace().then(() => {
+        went += 1
+      })
+    )
+    const settle = (): Promise<void> =>
+      new Promise((resolve) => setTimeout(resolve, 0))
+    await settle()
+    expect(went).toBe(49)
+    const pass = async (ms: number): Promise<void> => {
+      now += ms
+      const due = timers.filter((timer) => timer.at <= now)
+      timers = timers.filter((timer) => timer.at > now)
+      for (const timer of due) timer.run()
+      await settle()
+    }
+    await pass(1_999)
+    expect(went).toBe(49)
+    await pass(1)
+    expect(went).toBe(50)
+    await pass(2_000)
+    await pass(2_000)
+    expect(went).toBe(52)
+    await Promise.all(turns)
+    // Left alone, it refills to the burst and no further.
+    await pass(600_000)
+    const again = Array.from({ length: 50 }, () =>
+      pace().then(() => {
+        went += 1
+      })
+    )
+    await settle()
+    expect(went).toBe(52 + 49)
+    await pass(2_000)
+    await Promise.all(again)
   })
 
   it("says forgotten, a stop, or no answer as they were when home was not busy", async () => {
     const forgotten: HomeExchanged = { kind: "forgotten" }
     await expect(
-      laneExchange(lane(1, forgotten), () => "p", SHARE)(home([429]).send)
+      laneExchange(lane(1, forgotten), () => "p", FREE)(home([429]).send)
     ).resolves.toEqual(forgotten)
     const throwing: Lane = {
       ...lane(0, SYNCED),
       exchange: () => Promise.reject(new Error("home did not answer")),
     }
     await expect(
-      laneExchange(throwing, () => "p", SHARE)(home().send)
+      laneExchange(throwing, () => "p", FREE)(home().send)
     ).rejects.toThrow("home did not answer")
     const stopping: Lane = {
       ...lane(0, SYNCED),
       exchange: () => Promise.reject(new SyncStoppedError()),
     }
     await expect(
-      laneExchange(stopping, () => "p", SHARE)(home([429]).send)
+      laneExchange(stopping, () => "p", FREE)(home([429]).send)
     ).rejects.toBeInstanceOf(SyncStoppedError)
   })
 })

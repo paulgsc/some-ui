@@ -10,8 +10,10 @@
  * read it back (`./lens-record`), each other Korean entry's (`./korean-record`,
  * as `<kind>/<key>`), each Studio idea's as home answered it
  * (`./ideas`, held or refused), each Studio video kept for home to make as
- * home answered it (`./videos`), and the digests home
- * refused, so the drain does not offer an unchanged refused item again
+ * home answered it (`./videos`), each event of a LeetType session or Studio
+ * sitting home took while the log is not read back yet, by the event's
+ * path (`events`, so a run that ends part way resumes there), and the
+ * digests home refused, so the drain does not offer an unchanged refused item again
  * (it goes once its bytes change). Kept for one pairing (`pairing`, the
  * link's id for it): another pairing starts from nothing. Bookkeeping, not
  * the record: lost, it only means sending again, which home answers as
@@ -48,6 +50,7 @@ export type Sent = {
   readonly korean: Readonly<Record<string, string>>
   readonly ideas: Readonly<Record<string, string>>
   readonly videos: Readonly<Record<string, string>>
+  readonly events: Readonly<Record<string, string>>
 }
 
 type Store = KeyedStorage | null
@@ -66,6 +69,7 @@ const emptyFor = (pairing: string): Sent => ({
   korean: {},
   ideas: {},
   videos: {},
+  events: {},
 })
 
 /** The string entries of `value`, and whether every entry was one. */
@@ -102,6 +106,7 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
   const korean = stringsOf(parsed.korean)
   const ideas = stringsOf(parsed.ideas)
   const videos = stringsOf(parsed.videos)
+  const events = stringsOf(parsed.events)
   return {
     value: {
       pairing: parsed.pairing,
@@ -117,6 +122,7 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
       korean: korean.value,
       ideas: ideas.value,
       videos: videos.value,
+      events: events.value,
     },
     whole: [
       sessions,
@@ -131,6 +137,7 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
       korean,
       ideas,
       videos,
+      events,
     ].every((kind) => kind.whole),
   }
 }
@@ -157,6 +164,7 @@ export type Staying = {
   readonly notes?: (key: string) => boolean
   readonly lens?: (key: string) => boolean
   readonly korean?: (key: string) => boolean
+  readonly events?: (key: string) => boolean
 }
 
 /** `record` with only the keys `stays` keeps; all of them without it. */
@@ -207,6 +215,7 @@ export function rememberSent(
     korean: keptOnly({ ...sent.korean, ...more.korean }, stays.korean),
     ideas: { ...sent.ideas, ...more.ideas },
     videos: { ...sent.videos, ...more.videos },
+    events: keptOnly({ ...sent.events, ...more.events }, stays.events),
   }
   // Unwritten (full): the next send carries these again, and home says
   // unchanged.

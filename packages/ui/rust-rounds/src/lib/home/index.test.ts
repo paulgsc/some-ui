@@ -300,26 +300,6 @@ describe("exchangeRounds", () => {
     expect(store.held().home.fetched).toEqual(["indexing-10"])
   })
 
-  it("stops reading once home says it is busy, sending nothing after it (AD3)", async () => {
-    const store = phone()
-    const at = home()
-    for (const n of [10, 11, 12]) {
-      at.rounds.set(`indexing-${n}`, { ...PASTED, id: `indexing-${n}` })
-    }
-    // Listed newest first: 12, then 11, then 10.
-    at.answer = (_method, path): HomeAnswer | null =>
-      path === "/rust-rounds/indexing-11" ? { status: 429, body: "" } : null
-
-    expect(await exchangeRounds(store, at.send)).toMatchObject({
-      kind: "failed",
-    })
-    expect(
-      at.calls.filter((call) => call.startsWith("GET /rust-rounds/"))
-    ).toEqual(["GET /rust-rounds/indexing-12", "GET /rust-rounds/indexing-11"])
-    // What landed before home said busy is kept.
-    expect(store.held().home.fetched).toEqual(["indexing-12"])
-  })
-
   it("reads an older round once home records it, behind READS_PER_EXCHANGE newer rounds home will never run", async () => {
     const store = phone()
     const at = home()
@@ -359,8 +339,7 @@ describe("exchangeRounds", () => {
   it("reads at most READS_PER_EXCHANGE rounds, newest first, and notes one it can't read", async () => {
     const store = phone()
     const at = home()
-    // More than one exchange reads, few enough for the next to read the rest.
-    for (let n = 0; n < READS_PER_EXCHANGE + 3; n += 1) {
+    for (let n = 0; n < READS_PER_EXCHANGE + 5; n += 1) {
       const id = `indexing-${String(n + 10)}`
       at.rounds.set(id, { ...PASTED, id })
     }
@@ -378,7 +357,7 @@ describe("exchangeRounds", () => {
     at.calls.length = 0
     await exchangeRounds(store, at.send)
     expect(at.calls).not.toContain("GET /rust-rounds/broken-01")
-    expect(store.held().home.fetched).toHaveLength(READS_PER_EXCHANGE + 3)
+    expect(store.held().home.fetched).toHaveLength(READS_PER_EXCHANGE + 5)
   })
 
   it("does not read again a round it sent whose answer it couldn't read", async () => {

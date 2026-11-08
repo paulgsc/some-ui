@@ -4,7 +4,8 @@
  * since home last held it, in order. Finished sessions are copied as a copy
  * to home copies them (`./sessions`, reading home only to plan), kept shelf
  * items PUT as the shelf sends them (`./shelf`), each finished LeetType
- * session PUT event by event and read back (`./leetype-log`), then Studio's
+ * session PUT event by event and read back (`./leetype-log`), resuming at
+ * the first event home has not taken (`sent.events`), then Studio's
  * sittings and answers the same way (`./studio-log`), then each written
  * reflection (`./reflections`, LA16), then each ask for the next scene
  * (`./prompts`, LA18), then each soundbite's record and LeetType answer's
@@ -40,7 +41,7 @@ import { SessionNotFoundError } from "@/lib/tenant/sessions-repository"
 import type { SessionRecord } from "@/lib/tenant/types"
 
 import { sendKorean } from "./korean-record"
-import type { LogReport } from "./leetype-log"
+import type { LogReport, TakenEvents } from "./leetype-log"
 import { emptyLogReport, sendLog } from "./leetype-log"
 import type { LensEntry } from "./lens-record"
 import { sendLens } from "./lens-record"
@@ -51,6 +52,7 @@ import type { Written } from "./reflections"
 import { sendReflections } from "./reflections"
 import type { KeyedGoing, Sent, Staying } from "./sent"
 import {
+  fingerprintOf,
   readSent,
   rememberSent,
   sessionsHeld,
@@ -133,13 +135,15 @@ function answeredCopy(error: unknown): HomeExchanged | null {
 /**
  * One log's sender (`./leetype-log`'s `sendLog`, `./studio-log`'s
  * `sendStudio`, `./notes`' `sendNotes`, `./lens-record`'s `sendLens`,
- * `./korean-record`'s `sendKorean`).
+ * `./korean-record`'s `sendKorean`); `taken` is for those that send a log
+ * event by event.
  */
 type LogSender<T> = (
   going: T,
   send: HomeCall,
   report: LogReport,
-  held: (key: string, digest: string) => void
+  held: (key: string, digest: string) => void,
+  taken: TakenEvents
 ) => Promise<void>
 
 /**
@@ -225,12 +229,45 @@ export async function drainHome(
   ): Promise<HomeExchanged | null> => {
     const log = emptyLogReport()
     const readBack: Record<string, string> = {}
+    // The events home took this run, and those of logs read back since.
+    const events: Record<string, string> = {}
+    const forgotten = new Set<string>()
+    const from = sent.events
+    const taken: TakenEvents = {
+      took: (path, event) => {
+        const as = fingerprintOf(event)
+        return (
+          events[path] === as || (!forgotten.has(path) && from[path] === as)
+        )
+      },
+      take: (path, event) => {
+        events[path] = fingerprintOf(event)
+        forgotten.delete(path)
+      },
+      forget: (paths) => {
+        for (const path of paths) {
+          delete events[path]
+          forgotten.add(path)
+        }
+      },
+    }
     try {
-      await sender(going, send, log, (key, digest) => {
-        readBack[key] = digest
-      })
+      await sender(
+        going,
+        send,
+        log,
+        (key, digest) => {
+          readBack[key] = digest
+        },
+        taken
+      )
     } finally {
-      sent = rememberSent(ports.storage, sent, { [field]: readBack }, stays)
+      sent = rememberSent(
+        ports.storage,
+        sent,
+        { [field]: readBack, events },
+        { ...stays, events: (path) => !forgotten.has(path) }
+      )
     }
     if (log.refused + log.other + log.differs > 0) short ??= "refused"
     return endedPart(log)

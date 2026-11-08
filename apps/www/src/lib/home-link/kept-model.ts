@@ -12,25 +12,10 @@
 import type { HomeExchanged } from "@some-ui/core-utils"
 import { assertNever } from "@some-ui/core-utils"
 
-/**
- * How a lane's exchange ended, as a run makes it (`laneExchange`): as the
- * exchange did, or at the lane's share of home's limit (`capped`), having
- * sent `sent` requests, with more to go on a later run.
- */
-export type LaneExchanged =
-  | HomeExchanged
-  | { readonly kind: "capped"; readonly sent: number }
-
 /** How one run ended: as its exchange did, or before one could. */
 export type KeptRun =
   | Exclude<HomeExchanged, { kind: "synced" }>
   | { readonly kind: "synced"; readonly at: number }
-  /**
-   * It sent its lane's share and stopped there, keeping what home took; the
-   * rest goes on a later run (`./kept-watch` asks for it once home has had
-   * time to refill that share). Progress, not a failure.
-   */
-  | { readonly kind: "capped"; readonly at: number; readonly sent: number }
   /** Home did not answer: what is waiting stays on this phone. */
   | { readonly kind: "unreachable"; readonly at: number }
   /** Stopped (Stop, or the app went to the background) part way. */
@@ -68,14 +53,11 @@ export function answersPull(midRun: boolean, next: KeptState): boolean {
 
 /**
  * Whether a run's end leaves this phone in step with home: everything it
- * had to send went, and home's record was read; or what it sent was as much
- * as its share of home's limit allows, the rest going on its own (`capped`);
- * or the phone is no longer paired, so there is no home to be in step with.
+ * had to send went, and home's record was read; or the phone is no longer
+ * paired, so there is no home to be in step with.
  */
 export function resynced(run: KeptRun): boolean {
-  return (
-    run.kind === "synced" || run.kind === "capped" || run.kind === "unpaired"
-  )
+  return run.kind === "synced" || run.kind === "unpaired"
 }
 
 export function stepKept(state: KeptState, event: KeptEvent): KeptState {

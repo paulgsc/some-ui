@@ -44,7 +44,7 @@ import { isFileHostTimeout } from "@/lib/file-host-config/client"
 
 import type { HomeAddress } from "./address"
 import type { HomeLinkEvent, HomeLinkState, PairFailure } from "./model"
-import { INITIAL, step, working } from "./model"
+import { homeBusy, INITIAL, step, working } from "./model"
 
 /** The phone's sealed record (`HomeCredentialPlugin`): read, kept, forgotten. */
 export type CredentialPort = {
@@ -193,6 +193,8 @@ export type HomeLink = {
     run: (send: HomeCall) => Promise<T>
   ) => Promise<SyncOutcome<T> | null>
   stop: () => void
+  /** The clock the link keeps home's busy on (its `now` port). */
+  now: () => number
 }
 
 export function createHomeLink(ports: HomeLinkPorts): HomeLink {
@@ -230,10 +232,8 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
    * as well as on its timer, which a backgrounded WebView can hold back.
    */
   const homeBusyNow = (): boolean => {
-    const until = state.homeBusyUntil
-    if (until === null) return false
-    if (ports.now() < until) return true
-    cool()
+    if (homeBusy(state, ports.now())) return true
+    if (state.homeBusyUntil !== null) cool()
     return false
   }
   const heardBusy = (answer: HomeAnswer): void => {
@@ -360,6 +360,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
 
   return {
     getSnapshot: (): HomeLinkState => state,
+    now: ports.now,
 
     subscribe(listener): () => void {
       listeners.add(listener)
