@@ -2530,7 +2530,11 @@
       "paths": [
         "some-ui:packages/video-render/src/preview.ts",
         "some-ui:apps/www/tests/record/preview.ts",
-        "some-ui:apps/www/tests/record/call-recording.ts"
+        "some-ui:apps/www/tests/record/call-recording.ts",
+        "server:apps/servers/file_host/src/routes/previews.rs",
+        "server:apps/servers/file_host/src/handlers/previews.rs",
+        "server:apps/servers/file_host/src/previews.rs",
+        "server:infra/render"
       ],
       "modules": ["previews"],
       "objectives": [
@@ -2558,7 +2562,14 @@
             "by": "none"
           },
           "amendments": [],
-          "tracked": "some-ui#2757"
+          "tracked": "some-ui#2757",
+          "proof": [
+            "server:apps/servers/file_host/src/previews/tests.rs#a_request_writes_one_and_another_while_it_is_pending_answers_that_one",
+            "server:apps/servers/file_host/src/previews/tests.rs#a_ready_preview_says_when_it_was_made_its_size_version_and_when_it_goes",
+            "server:apps/servers/file_host/src/previews/tests.rs#a_failed_preview_says_why_in_a_class_never_its_log",
+            "server:apps/servers/file_host/src/handlers/previews.rs#only_a_paired_phone_reaches_previews_and_an_unknown_template_is_not_found",
+            "server:apps/servers/file_host/src/handlers/previews.rs#only_the_current_ready_preview_has_a_video"
+          ]
         },
         {
           "id": "PV2",
@@ -2579,7 +2590,11 @@
             "by": "none"
           },
           "amendments": [],
-          "tracked": "some-ui#2757"
+          "tracked": "some-ui#2757",
+          "proof": [
+            "server:apps/servers/file_host/src/previews/tests.rs#the_prune_takes_a_day_old_preview_and_any_older_than_the_newest_ready",
+            "server:apps/servers/file_host/src/previews/tests.rs#the_prune_takes_a_failed_one_a_day_after_and_never_the_job_in_progress"
+          ]
         }
       ]
     }
@@ -4569,7 +4584,11 @@
           "name": "Home takes the request, says where each preview stands, serves its video in parts, and deletes it on its own. Ours, on home.",
           "owner": "ours",
           "on": "home",
-          "paths": []
+          "paths": [
+            "server:apps/servers/file_host/src/routes/previews.rs",
+            "server:apps/servers/file_host/src/handlers/previews.rs",
+            "server:apps/servers/file_host/src/previews.rs"
+          ]
         },
         {
           "id": "render",
@@ -4577,6 +4596,7 @@
           "owner": "ours",
           "on": "home",
           "paths": [
+            "server:infra/render",
             "some-ui:apps/www/tests/record/preview.ts",
             "some-ui:apps/www/tests/record/call-recording.ts",
             "some-ui:packages/video-render/src/preview.ts"
