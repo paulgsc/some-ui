@@ -22,6 +22,7 @@
 import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import { sampleWeek } from "@video-render/__tests__/sample-week"
 import {
   CALL_ID,
   callCutList,
@@ -35,7 +36,7 @@ import { render } from "@video-render/render"
 import type { BurnInRequest, Ports } from "@video-render/render"
 import type { Series } from "@video-render/series"
 import { stillFile } from "@video-render/stills"
-import { make, sampleWeek } from "@video-render/testing"
+import { make } from "@video-render/testing"
 import { TRANSITION_MS } from "@video-render/vocabulary"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 

@@ -8,6 +8,7 @@
  */
 import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
+import { sampleWeek } from "@video-render/__tests__/sample-week"
 import {
   CALL_ID,
   CALL_INDEX_SCHEMA,
@@ -29,7 +30,6 @@ import { readSeries } from "@video-render/node"
 import { refUrl } from "@video-render/refs"
 import { versionOfFile } from "@video-render/series"
 import { BRAND_MS, readingMs } from "@video-render/stills"
-import { sampleWeek } from "@video-render/testing"
 import { describe, expect, it } from "vitest"
 
 const DIR = join(import.meta.dirname, "../templates", CALL_ID)

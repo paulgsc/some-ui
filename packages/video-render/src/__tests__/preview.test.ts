@@ -1,10 +1,10 @@
 /** A template's preview (SFEED12, #2757), cut from the call's sample. */
+import { sampleWeek } from "@video-render/__tests__/sample-week"
 import { callCutList, callScenes } from "@video-render/call"
 import type { CallWeek } from "@video-render/call"
 import type { CutList } from "@video-render/cut-list"
 import { PREVIEW_SHOT_LEAST_MS, previewOf } from "@video-render/preview"
 import type { StillTake } from "@video-render/stills"
-import { sampleWeek } from "@video-render/testing"
 import { describe, expect, it } from "vitest"
 
 /** A take for each said scene, a word every `each` ms, as the speaker gives them. */
