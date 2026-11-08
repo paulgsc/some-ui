@@ -43,7 +43,7 @@ export const ACCOUNT_ERASES = {
     },
     {
       label: "Filed with home for the mailbox",
-      text: "The decisions and scouts you filed with home, which lessons you opened, what home heard in your voice notes, how each LeetType session went, your written reflections, the scenes you asked for, and home's note of each one it passed on.",
+      text: "The decisions and scouts you filed with home, which lessons you opened, what home heard in your voice notes, how each LeetType session went, your written reflections, the scenes you asked for, your notes on the feeds' episodes, and home's note of each one it passed on.",
     },
     {
       label: "LeetType sessions",
@@ -63,7 +63,7 @@ export const ACCOUNT_ERASES = {
     },
     {
       label: "Notes on the feeds' episodes",
-      text: "Each note you left on an episode and your phone sent home: the moment, what it was about, and when you wrote it.",
+      text: "Each note you left at a moment of an episode and your phone sent home: which episode, the moment, what you picked about it, the take you said for it if any, and when you wrote it.",
     },
     {
       label: "Voice notes, game bites included",
