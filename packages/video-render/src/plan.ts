@@ -518,6 +518,38 @@ export function placeTakes(
   })
 }
 
+/**
+ * VR1 over ffmpeg's versions (#2785): the inputs of a mix are placed and
+ * sized without depending on the order their ends arrive in. On ffmpeg 9
+ * (CI's), in a graph of several inputs, an `adelay` sometimes loses what it
+ * still holds when its input ends, so a cue or a take vanished from about
+ * one render in six, and an `apad` after an `amix` sometimes added nothing.
+ * So each input starts after exact silence joined in sequence (`concat`
+ * runs its parts one after another), and is padded to the whole length on
+ * its own, so every input of the mix ends on the same sample. A correct
+ * render's bytes are unchanged; only the lost cases are gone.
+ */
+const toLength = (seconds: string): string =>
+  `apad=whole_dur=${seconds},atrim=duration=${seconds}`
+
+/**
+ * Chain `head` (a graph fragment with no output label) heard from `atMs`
+ * on, then `tail`, as `[out]`: exact silence, then it, in sequence.
+ */
+function placedAt(
+  head: string,
+  atMs: number,
+  tail: string,
+  out: string
+): string {
+  if (atMs <= 0) return `${head},${tail}[${out}]`
+  return (
+    `anullsrc=r=48000:cl=mono,atrim=duration=${sec(atMs)},${MONO}[${out}w];` +
+    `${head}[${out}s];` +
+    `[${out}w][${out}s]concat=n=2:v=0:a=1,${tail}[${out}]`
+  )
+}
+
 /** Every take on one mono track, high-passed, the video's length. */
 export function planVoice(
   takes: ReadonlyArray<PlacedTake>,
@@ -528,10 +560,12 @@ export function planVoice(
   const inputs = takes.flatMap((t) => ["-i", t.file])
   const chains = takes.map((t, i) => {
     const len = (t.outMs - t.inMs) / 1000
-    return (
+    return placedAt(
       `[${i}:a]atrim=start=${sec(t.inMs)}:end=${sec(t.outMs)},asetpts=PTS-STARTPTS,` +
-      `${MONO},afade=t=in:d=0.03,afade=t=out:st=${Math.max(0, len - 0.08).toFixed(6)}:d=0.08,` +
-      `adelay=${t.atMs}:all=1[t${i}]`
+        `${MONO},afade=t=in:d=0.03,afade=t=out:st=${Math.max(0, len - 0.08).toFixed(6)}:d=0.08`,
+      t.atMs,
+      toLength(sec(totalMs)),
+      `t${i}`
     )
   })
   const mix =
@@ -540,7 +574,7 @@ export function planVoice(
       .join(
         ""
       )}amix=inputs=${takes.length}:normalize=0:duration=longest,highpass=f=70,` +
-    `apad=whole_dur=${sec(totalMs)},atrim=duration=${sec(totalMs)}[o]`
+    `atrim=duration=${sec(totalMs)}[o]`
   return {
     args: [
       ...QUIET,
@@ -760,13 +794,18 @@ export function planMix(a: Mix, series: Series, out: string): FfmpegCall {
   for (const file of [a.voice, a.bed]) {
     if (!file) continue
     inputs.push("-i", file)
-    filters.push(`[${next}:a]${MONO}[p${next}]`)
+    filters.push(`[${next}:a]${MONO},${toLength(total)}[p${next}]`)
     parts.push(`[p${next++}]`)
   }
   a.cues.forEach((c, i) => {
     inputs.push("-i", c.file)
     filters.push(
-      `[${next++}:a]${MONO},adelay=${c.atMs}:all=1,volume=${series.soundGainDb}dB[c${i}]`
+      placedAt(
+        `[${next++}:a]${MONO}`,
+        c.atMs,
+        `volume=${series.soundGainDb}dB,${toLength(total)}`,
+        `c${i}`
+      )
     )
     parts.push(`[c${i}]`)
   })

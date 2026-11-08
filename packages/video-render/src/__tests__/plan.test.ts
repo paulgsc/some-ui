@@ -6,6 +6,7 @@ import {
   planJoin,
   planMix,
   planSegment,
+  planVoice,
   readLoudness,
   TO_VIDEO,
 } from "@video-render/plan"
@@ -250,8 +251,61 @@ describe("the sound", () => {
       cues: [{ file: "kit/click.wav", atMs: 400 }],
     })
     expect(f).toContain("amix=inputs=3:normalize=0")
-    expect(f).toContain("adelay=400:all=1,volume=-8dB[c0]")
+    // The click is heard from 400 ms: that much silence, then it (#2785).
+    expect(f).toContain("anullsrc=r=48000:cl=mono,atrim=duration=0.400000,")
+    expect(f).toContain("[c0w][c0s]concat=n=2:v=0:a=1,volume=-8dB,")
     expect(mix()).toContain("anullsrc=r=48000:cl=mono")
+  })
+})
+
+describe("a mix's inputs (VR1 over ffmpeg's versions, #2785)", () => {
+  /** Each input `amix` reads, and the chain that makes it. */
+  function amixInputs(args: ReadonlyArray<string>): Array<string> {
+    const graph = args[args.indexOf("-filter_complex") + 1] ?? ""
+    const chains = graph.split(";")
+    const mix = chains.find((c) => c.includes("amix=")) ?? ""
+    const labels = mix.slice(0, mix.indexOf("amix=")).match(/\[[^\]]+\]/g)
+    return (labels ?? []).map(
+      (label) => chains.find((c) => c.endsWith(label)) ?? `none for ${label}`
+    )
+  }
+
+  it("places each after exact silence, and pads it to the whole length, so all end on the same sample", () => {
+    const voice = planVoice(
+      [
+        { file: "a.wav", inMs: 0, outMs: 800, atMs: 100 },
+        { file: "b.wav", inMs: 0, outMs: 800, atMs: 1100 },
+      ],
+      2000,
+      "voice.wav"
+    )
+    const mix = planMix(
+      {
+        totalFrames: 60,
+        voice: "voice-level.wav",
+        bed: "bed.wav",
+        cues: [{ file: "kit/click.wav", atMs: 400 }],
+      },
+      series(),
+      "mix.wav"
+    )
+    for (const [args, total] of [
+      [voice?.args ?? [], "2.000000"],
+      [mix.args, "2.000000"],
+    ] as const) {
+      const graph = args[args.indexOf("-filter_complex") + 1] ?? ""
+      const inputs = amixInputs(args)
+      expect(inputs.length).toBeGreaterThan(1)
+      // Nothing in the graph, upstream chains included, is placed by
+      // `adelay`, which ffmpeg 9 can lose.
+      expect(graph).not.toContain("adelay")
+      for (const chain of inputs)
+        expect(chain).toMatch(
+          new RegExp(
+            `apad=whole_dur=${total},atrim=duration=${total}\\[[^\\]]+\\]$`
+          )
+        )
+    }
   })
 })
 
