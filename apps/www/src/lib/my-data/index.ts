@@ -18,6 +18,11 @@ import { audioPlayer } from "@some-ui/voice-capture"
 import { feedVideos } from "@/lib/call-videos"
 import { deleteCallStep, deleteNotes } from "@/lib/home-link/delete-note"
 import { askDeleted } from "@/lib/home-link/deleted-read"
+import {
+  deletesAnswered,
+  owedDeletes,
+  oweDeletes,
+} from "@/lib/home-link/deleting-notes"
 import { askKept } from "@/lib/home-link/kept-read"
 import {
   letGoDeleted,
@@ -162,6 +167,14 @@ export function phoneDeleting(): Deleting {
     reread: () => {
       phoneMyData().refreshShown()
     },
+    owed: {
+      list: () => owedDeletes(),
+      owe: (of, ids) => oweDeletes(of, ids),
+      answered: (ids) => {
+        deletesAnswered(ids)
+      },
+    },
+    askReceipts,
   })
   return deleting
 }

@@ -15,9 +15,9 @@ const asked: Array<[string, string]> = []
 /** Whether the tap's run holds the link. */
 let inRun = false
 /** What `settle` heard, and whether the run held the link then. */
-const heard: Array<{ kind: string; inRun: boolean }> = []
-const settled = (said: { kind: string }): Promise<void> => {
-  heard.push({ kind: said.kind, inRun })
+const heard: Array<{ said: DeleteAsked; inRun: boolean }> = []
+const settled = (said: DeleteAsked): Promise<void> => {
+  heard.push({ said, inRun })
   return Promise.resolve()
 }
 
@@ -46,6 +46,7 @@ vi.mock("@/lib/home-link", () => ({
 }))
 
 const { deleteNotes, deletePath } = await import("@/lib/home-link/delete-note")
+type DeleteAsked = Parameters<Parameters<typeof deleteNotes>[1]>[0]
 
 beforeEach(() => {
   pairedNow = true
@@ -64,53 +65,53 @@ describe("My data's delete through the link (MD3)", () => {
     const gone = { status: 200, body: "{}" }
     const kept = { status: 409, body: "{}" }
     answers = [gone, kept]
-    await expect(deleteNotes(["t1", "t2"], settled)).resolves.toEqual({
-      kind: "answered",
-      answers: [
-        { id: "t1", answer: gone },
-        { id: "t2", answer: kept },
-      ],
-    })
+    await deleteNotes(["t1", "t2"], settled)
+    expect(heard.map((each) => each.said)).toEqual([
+      {
+        kind: "answered",
+        answers: [
+          { id: "t1", answer: gone },
+          { id: "t2", answer: kept },
+        ],
+      },
+    ])
     expect(asked).toEqual([
       ["DELETE", "/voice-notes/t1"],
       ["DELETE", "/voice-notes/t2"],
     ])
     // Heard inside the run, so the phone lets go before a drain run could
     // send one of them again.
-    expect(heard).toEqual([{ kind: "answered", inRun: true }])
+    expect(heard.map((each) => each.inRun)).toEqual([true])
   })
 
   it("ends the run at a request that fails, sending none after it", async () => {
     const gone = { status: 200, body: "{}" }
     answers = [gone, new Error("no answer"), gone]
-    await expect(deleteNotes(["t1", "t2", "t3"], settled)).resolves.toEqual({
-      kind: "answered",
-      answers: [
-        { id: "t1", answer: gone },
-        { id: "t2", answer: null },
-        { id: "t3", answer: null },
-      ],
-    })
+    await deleteNotes(["t1", "t2", "t3"], settled)
+    expect(heard.map((each) => each.said)).toEqual([
+      {
+        kind: "answered",
+        answers: [
+          { id: "t1", answer: gone },
+          { id: "t2", answer: null },
+          { id: "t3", answer: null },
+        ],
+      },
+    ])
     expect(asked).toHaveLength(2)
   })
 
   it("sends nothing unpaired or busy, and says unreachable when nothing answers", async () => {
     pairedNow = false
-    await expect(deleteNotes(["t1"], settled)).resolves.toEqual({
-      kind: "unpaired",
-    })
+    await deleteNotes(["t1"], settled)
     pairedNow = true
     busy = true
-    await expect(deleteNotes(["t1"], settled)).resolves.toEqual({
-      kind: "busy",
-    })
+    await deleteNotes(["t1"], settled)
     expect(asked).toEqual([])
     busy = false
     answers = [new Error("no answer")]
-    await expect(deleteNotes(["t1"], settled)).resolves.toEqual({
-      kind: "unreachable",
-    })
-    expect(heard.map((each) => each.kind)).toEqual([
+    await deleteNotes(["t1"], settled)
+    expect(heard.map((each) => each.said.kind)).toEqual([
       "unpaired",
       "busy",
       "unreachable",
