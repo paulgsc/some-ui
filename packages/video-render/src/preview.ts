@@ -98,8 +98,8 @@ function trimmed(shot: Shot, durationMs: number): Shot {
     take.inMs + durationMs - shot.voiceInMs - TAIL_MS
   )
   const words = take.words?.filter((w) => w.endMs <= limit)
-  // With words, no word heard whole means nothing of the take is kept.
-  const outMs = words ? (words.at(-1)?.endMs ?? take.inMs) : limit
+  // Timed words, none heard whole: nothing of the take is kept.
+  const outMs = take.words?.length ? (words?.at(-1)?.endMs ?? take.inMs) : limit
   if (outMs <= take.inMs) return { ...rest, durationMs }
   return {
     ...rest,

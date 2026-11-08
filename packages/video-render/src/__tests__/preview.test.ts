@@ -69,6 +69,27 @@ describe("a template's preview", () => {
     expect(intro?.durationMs).toBeGreaterThanOrEqual(PREVIEW_SHOT_LEAST_MS)
   })
 
+  it("drops a trimmed take whose first word isn't heard whole, and keeps one without words", () => {
+    const week = sampleWeek()
+    // One long first word in every take: none ends before its trim.
+    const takes = takesOf(week).map((take) =>
+      take === null
+        ? null
+        : { ms: take.ms, words: [{ text: "long", startMs: 0, endMs: take.ms }] }
+    )
+    const cut = callCutList(week, takes)
+    const intro = preview(cut).shots[0]
+    expect(intro?.durationMs).toBeLessThan(cut.shots[0]?.durationMs ?? 0)
+    expect(intro?.take).toBeUndefined()
+    const bare = callCutList(
+      week,
+      takesOf(week).map((take) =>
+        take === null ? null : { ms: take.ms, words: [] }
+      )
+    )
+    expect(preview(bare).shots[0]?.take?.outMs).toBeGreaterThan(0)
+  })
+
   it("refuses a cut that doesn't open with the locked intro", () => {
     const week = sampleWeek()
     const cut = callCutList(
