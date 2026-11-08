@@ -48,12 +48,28 @@ async function publish(s: Series): Promise<void> {
   )
 }
 
-/** A video of two cards under captions, pinning `pinned`. */
+/** A video of two cards, the first one's take captioned, pinning `pinned`. */
 async function video(name: string, pinned: number): Promise<void> {
   await mkdir(join(root, name))
+  const made = await nodePorts(join(root, name)).ffmpeg({
+    args: [
+      ...["-v", "error", "-y", "-f", "lavfi", "-i", "sine=f=330:d=0.3"],
+      ...["-c:a", "pcm_s16le", "a.wav"],
+    ],
+  })
+  if (!made.ok) throw new Error(made.stderr)
   const cut = cutList(
     [
-      shot("S1", { picture: { kind: "card" }, durationMs: 500 }),
+      shot("S1", {
+        picture: { kind: "card" },
+        durationMs: 500,
+        take: {
+          file: "a.wav",
+          inMs: 0,
+          outMs: 300,
+          words: [{ text: "Hi.", startMs: 0, endMs: 200 }],
+        },
+      }),
       shot("S2", { picture: { kind: "card" }, durationMs: 500 }),
     ],
     {

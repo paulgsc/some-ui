@@ -18,12 +18,14 @@ import { nodePorts } from "@video-render/node"
 import type { FfmpegCall } from "@video-render/plan"
 import { DEFAULT_POLICY } from "@video-render/policy"
 import type { RenderPolicy } from "@video-render/policy"
-import type { Ports } from "@video-render/render"
+import type { BurnInRequest, Ports } from "@video-render/render"
 import type { CacheFs } from "@video-render/step-cache"
 import {
+  keptStep,
   keyOf,
   nodeCacheFs,
   stepCache,
+  withCachedBurnIns,
   withCachedFfmpeg,
 } from "@video-render/step-cache"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
@@ -205,6 +207,20 @@ describe("the step cache", () => {
     })
   })
 
+  it("keeps nothing a step that failed wrote, so it runs again", async () => {
+    const cache = stepCache(join(root, "steps"), policy(1_000), () => undefined)
+    let runs = 0
+    const step = { key: "k", out: "s.mkv", hit: { ok: true } }
+    const failing = async (): Promise<{ ok: boolean }> => {
+      runs++
+      await writeFile(join(root, "s.mkv"), "half")
+      return { ok: false }
+    }
+    expect(await keptStep(cache, root, step, failing)).toEqual({ ok: false })
+    expect(await keptStep(cache, root, step, failing)).toEqual({ ok: false })
+    expect(runs).toBe(2)
+  })
+
   it("keys by what goes in, not by names", () => {
     expect(keyOf({ a: 1 })).toBe(keyOf({ a: 1 }))
     expect(keyOf({ a: 1 })).not.toBe(keyOf({ a: 2 }))
@@ -273,5 +289,54 @@ describe("ffmpeg through the step cache", () => {
     await cached.ffmpeg(call("in.png", "s1.mkv"))
     expect(runs).toHaveLength(2)
     expect(warned).toHaveLength(2)
+  })
+})
+
+describe("burn-ins through the step cache", () => {
+  const caption = (over: Partial<BurnInRequest> = {}): BurnInRequest => ({
+    kind: "captions",
+    design: "broadcast",
+    params: { lines: [{ words: [{ text: "Hi.", startMs: 300, endMs: 600 }] }] },
+    startFrame: 0,
+    frames: 45,
+    frame: { width: 1920, height: 1080, fps: 30 },
+    out: "burn-in-open-captions.mov",
+    ...over,
+  })
+
+  it("records a scene's captions once for its words, again when they change", async () => {
+    const drawn: Array<string> = []
+    const cached = withCachedBurnIns(
+      {
+        ...nodePorts(root),
+        recordBurnIn: async (r): Promise<boolean> => {
+          drawn.push(r.out)
+          await writeFile(join(root, r.out), JSON.stringify(r.params))
+          return true
+        },
+      },
+      root,
+      stepCache(join(root, "steps"), policy(1_000_000), () => undefined)
+    )
+    expect(await cached.recordBurnIn?.(caption())).toBe(true)
+    // The same scene later in the video, under another name: kept.
+    expect(
+      await cached.recordBurnIn?.(
+        caption({ startFrame: 90, out: "burn-in-moved-captions.mov" })
+      )
+    ).toBe(true)
+    expect(drawn).toEqual(["burn-in-open-captions.mov"])
+    expect(
+      await readFile(join(root, "burn-in-moved-captions.mov"), "utf8")
+    ).toBe(JSON.stringify(caption().params))
+    // Other words, or the same words said at other times, record again.
+    await cached.recordBurnIn?.(
+      caption({
+        params: {
+          lines: [{ words: [{ text: "Hi.", startMs: 310, endMs: 600 }] }],
+        },
+      })
+    )
+    expect(drawn).toHaveLength(2)
   })
 })

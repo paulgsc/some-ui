@@ -9,7 +9,7 @@
  * threads, BITEXACT its metadata), so the key is the call's arguments with
  * each input file named by the SHA-256 of its bytes, its output by its place,
  * and ffmpeg's version. A take is keyed by its words, its voice and the
- * speaker's model.
+ * speaker's model; a burn-in by what it draws (`withCachedBurnIns`).
  *
  * What it may hold is policy (`RenderPolicy.cacheBytes`): a step that would
  * take the cache past it runs and is not kept, with a warning, never a
@@ -157,6 +157,26 @@ export function stepCache(
 }
 
 /**
+ * One step kept in `cache` (VR2): the file kept under `key` copied to `out`
+ * when there is one, without running; otherwise `run` writes it, and what it
+ * wrote is kept when it succeeds: each ffmpeg call and each burn-in
+ * recorded, so a retry redoes only the steps whose key changed.
+ */
+export async function keptStep<R extends { readonly ok: boolean }>(
+  cache: StepCache,
+  root: string,
+  step: { readonly key: string; readonly out: string; readonly hit: R },
+  run: () => Promise<R>
+): Promise<R> {
+  const ext = extname(step.out)
+  const path = isAbsolute(step.out) ? step.out : resolve(root, step.out)
+  if (await cache.get(step.key, ext, path)) return step.hit
+  const ran = await run()
+  if (ran.ok) await cache.put(step.key, ext, path, step.out)
+  return ran
+}
+
+/**
  * `ports` with every ffmpeg call that writes a file kept in `cache`: a call
  * whose key is kept is answered from it without running. A call that writes
  * nothing (a measure, to `-`) always runs, since what it says is on stderr.
@@ -188,11 +208,49 @@ export function withCachedFfmpeg(
       // its name is not, so a renamed scene still finds its step.
       const ext = extname(out)
       const key = keyOf({ step: 1, ffmpeg: await version(), args: named, ext })
-      const path = isAbsolute(out) ? out : resolve(root, out)
-      if (await cache.get(key, ext, path)) return { ok: true, stderr: "" }
-      const ran = await ports.ffmpeg(call)
-      if (ran.ok) await cache.put(key, ext, path, out)
-      return ran
+      return keptStep(
+        cache,
+        root,
+        { key, out, hit: { ok: true, stderr: "" } },
+        () => ports.ffmpeg(call)
+      )
+    },
+  }
+}
+
+/**
+ * `ports` with every burn-in it records kept in `cache`, keyed by what the
+ * recording draws: its kind, its design (a design is frozen once a video
+ * used it, `@some-ui/burn-ins`), its params (for a scene's captions, its
+ * words and their times), how many frames it lasts and the frame it is drawn
+ * in. Where it is laid, and the file it is written to, are not in the key,
+ * so a scene that moves in the video still finds its recording.
+ */
+export function withCachedBurnIns(
+  ports: Ports,
+  root: string,
+  cache: StepCache
+): Ports {
+  const record = ports.recordBurnIn
+  if (!record) return ports
+  return {
+    ...ports,
+    recordBurnIn: async (r): Promise<boolean> => {
+      const key = keyOf({
+        burnIn: 1,
+        kind: r.kind,
+        design: r.design,
+        params: r.params,
+        frames: r.frames,
+        frame: r.frame,
+      })
+      const kept = await keptStep(
+        cache,
+        root,
+        { key, out: r.out, hit: { ok: true } },
+        async () => ({ ok: await record(r) })
+      )
+      return kept.ok
     },
   }
 }

@@ -221,6 +221,12 @@ export function parseCutList(raw: unknown): Parsed<CutList> {
   const problems = once([
     ...shotProblems(parsed.data.shots),
     ...authorshipProblems(parsed.data),
+    ...wholeVideoProblems(
+      parsed.data,
+      isCaptions,
+      "the captions burn-in",
+      "each take's words"
+    ),
   ])
   return problems.length
     ? { ok: false, problems }
@@ -281,18 +287,48 @@ const AUTHORSHIP = "authorship"
 /** Whether a burn-in is the authorship mark. */
 export const isAuthorship = (b: BurnIn): boolean => b.kind === AUTHORSHIP
 
+/** The captions' kind among the burn-ins (`@some-ui/burn-ins`). */
+const CAPTIONS = "captions"
+
+/** Whether a burn-in is the captions. */
+export const isCaptions = (b: BurnIn): boolean => b.kind === CAPTIONS
+
+/**
+ * What a burn-in the renderer draws over the whole video, from the scenes
+ * alone, may not be: on one scene, asked for twice, or written for. The
+ * authorship mark and the captions (SFEED11) are such burn-ins.
+ */
+function wholeVideoProblems(
+  cut: CutList,
+  is: (b: BurnIn) => boolean,
+  name: string,
+  from: string
+): Array<string> {
+  const problems = cut.shots
+    .filter((s) => s.burnIns.some(is))
+    .map((s) => `${s.id}: ${name} covers the whole video`)
+  const asked = cut.burnIns.filter(is)
+  if (asked.length > 1) problems.push(`${name} is drawn once`)
+  if (asked.some((b) => Object.keys(b.params).length > 0)) {
+    problems.push(`${name} is drawn from ${from}; nothing is written for it`)
+  }
+  return problems
+}
+
 /**
  * Where the authorship mark can go: over the whole video, with nothing
  * written for it (the renderer draws it from the scenes alone), and a bare
  * card first and last for its intro and its end card.
  */
 function authorshipProblems(cut: CutList): Array<string> {
-  const problems: Array<string> = []
+  const problems = wholeVideoProblems(
+    cut,
+    isAuthorship,
+    "the authorship mark",
+    "the scenes"
+  )
   const authorOf = new Map(cut.notes.map((n) => [n.id, n.author]))
   for (const s of cut.shots) {
-    if (s.burnIns.some(isAuthorship)) {
-      problems.push(`${s.id}: the authorship mark covers the whole video`)
-    }
     const idea = s.idea
     // Only a note is checked here: the cut list carries its notes, but an
     // `idea` cites an answer kept on the phone, outside it, so the phone
@@ -313,14 +349,7 @@ function authorshipProblems(cut: CutList): Array<string> {
       )
     }
   }
-  const marks = cut.burnIns.filter(isAuthorship)
-  if (marks.length === 0) return problems
-  if (marks.length > 1) problems.push("the authorship mark is drawn once")
-  if (marks.some((b) => Object.keys(b.params).length > 0)) {
-    problems.push(
-      "the authorship mark is drawn from the scenes; nothing is written for it"
-    )
-  }
+  if (!cut.burnIns.some(isAuthorship)) return problems
   const bare = (s: Shot | undefined): boolean =>
     s?.picture.kind === "card" && s.burnIns.length === 0
   if (cut.shots.length < 3) {

@@ -180,7 +180,7 @@ describe("planAssembly", () => {
   it("lays a burn-in from its frame on", () => {
     expect(
       filters(assembly({ layers: [{ file: "b.mov", startFrame: 45 }] }))
-    ).toContain("setpts=PTS-STARTPTS+1.500000/TB[b0]")
+    ).toContain("setpts=PTS-STARTPTS+1.500000/TB[l0in]")
   })
 })
 

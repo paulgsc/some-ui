@@ -20,7 +20,7 @@ import { render } from "./render"
 import type { Ports, Rendered, RenderOptions } from "./render"
 import { parseSeries, versionFile, versionOfFile } from "./series"
 import type { Series } from "./series"
-import { stepCache, withCachedFfmpeg } from "./step-cache"
+import { stepCache, withCachedBurnIns, withCachedFfmpeg } from "./step-cache"
 
 type Ran = {
   readonly ok: boolean
@@ -281,8 +281,9 @@ export async function renderFolder(
   options: RenderOptions &
     Partial<Pick<Ports, "recordBurnIn" | "checkBurnIns">> & {
       /**
-       * Keep each ffmpeg step under this folder, relative to `root`, so a
-       * retry runs only what changed; held to `policy.cacheBytes`.
+       * Keep each ffmpeg step and each burn-in recorded under this folder,
+       * relative to `root`, so a retry runs only what changed; held to
+       * `policy.cacheBytes`.
        */
       readonly stepCacheDir?: string
       /** Where a step not kept, over the cache's budget, is said. */
@@ -308,19 +309,26 @@ export async function renderFolder(
     ...(checkBurnIns ? { checkBurnIns } : {}),
   }
   let version: Promise<string> | null = null
-  const ports = stepCacheDir
-    ? withCachedFfmpeg(
-        own,
-        root,
-        stepCache(
-          resolvePath(root, stepCacheDir),
-          rest.policy ?? DEFAULT_POLICY,
-          warn ??
-            ((line): void => {
-              process.stderr.write(`${line}\n`)
-            })
+  const cache = stepCacheDir
+    ? stepCache(
+        resolvePath(root, stepCacheDir),
+        rest.policy ?? DEFAULT_POLICY,
+        warn ??
+          ((line): void => {
+            process.stderr.write(`${line}\n`)
+          })
+      )
+    : null
+  const ports = cache
+    ? withCachedBurnIns(
+        withCachedFfmpeg(
+          own,
+          root,
+          cache,
+          (): Promise<string> => (version ??= ffmpegVersion(root))
         ),
-        (): Promise<string> => (version ??= ffmpegVersion(root))
+        root,
+        cache
       )
     : own
   return render(cutList.value, series.value, ports, rest)
