@@ -13,7 +13,7 @@ import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
 import { ForeignCallError } from "@/lib/intent/foreign"
 
-import type { KeptEvent, KeptRun, KeptState } from "./kept-model"
+import type { KeptEvent, KeptRun, KeptState, LaneExchanged } from "./kept-model"
 import { answersPull, INITIAL_KEPT, stepKept } from "./kept-model"
 import type { Lane } from "./lanes"
 import type { HomeLink } from "./runtime"
@@ -31,7 +31,7 @@ const BUSY: Extract<HomeExchanged, { kind: "failed" }> = {
 
 export type KeptPorts = {
   /** One exchange through `send`; throws what `send` throws. */
-  exchange: (send: HomeCall) => Promise<HomeExchanged>
+  exchange: (send: HomeCall) => Promise<LaneExchanged>
   keep: HomeLink["keep"]
   /** Whether the phone is paired, read when the link turns a run away. */
   paired: () => boolean
@@ -88,9 +88,9 @@ export function createKept(ports: KeptPorts): Kept {
       }
       if (outcome.kind === "stopped") return { kind: "stopped" }
       const { value } = outcome
-      return value.kind === "synced"
-        ? { kind: "synced", at: ports.now() }
-        : value
+      if (value.kind === "synced") return { kind: "synced", at: ports.now() }
+      if (value.kind === "capped") return { ...value, at: ports.now() }
+      return value
     } catch (error) {
       if (error instanceof SyncStoppedError) return { kind: "stopped" }
       if (unanswered(error) || error instanceof HomeUnansweredError) {
@@ -141,67 +141,74 @@ export function createKept(ports: KeptPorts): Kept {
   }
 }
 
-type Exchange = (send: HomeCall) => Promise<HomeExchanged>
-
 /**
- * A run asked for more requests than its lane's share (`spending`): it ends
- * there as a stop does, keeping what it heard, and what is left goes on the
- * next ask.
+ * A run asked for more requests than its lane's share (`spending`): the
+ * lane stops there as it does on a stop, keeping what it heard.
  */
-export class RunSpentError extends SyncStoppedError {
+class RunSpentError extends SyncStoppedError {
   constructor() {
     super()
     this.name = "RunSpentError"
   }
 }
 
-/** `send` refusing, as a stop does, every request past the first `share`. */
-function spending(send: HomeCall, share: number): HomeCall {
-  let sent = 0
-  return (...call) => {
-    if (sent >= share) return Promise.reject(new RunSpentError())
-    sent += 1
-    return send(...call)
-  }
-}
-
 /**
- * `exchange` ending as busy once home answered any of its requests `429`,
- * whatever else it found, unless home forgot the phone or it was stopped
- * (a run that spent its share after home said busy was turned away all the
- * same).
+ * `send` refusing, as a stop does, every request past the first `share`;
+ * `spent` says whether it refused one, and `sent` how many went.
  */
-function sayingBusy(exchange: Exchange): Exchange {
-  return async (link) => {
-    const { send, seen } = noticingBusy(link)
-    try {
-      const ended = await exchange(send)
-      return seen.busy && ended.kind !== "forgotten" ? BUSY : ended
-    } catch (error) {
-      const stop =
-        error instanceof SyncStoppedError && !(error instanceof RunSpentError)
-      if (seen.busy && !stop) return BUSY
-      throw error
-    }
+function spending(
+  send: HomeCall,
+  share: number
+): { send: HomeCall; spent: { over: boolean; sent: number } } {
+  const spent = { over: false, sent: 0 }
+  return {
+    spent,
+    send: (...call): ReturnType<HomeCall> => {
+      if (spent.sent >= share) {
+        spent.over = true
+        return Promise.reject(new RunSpentError())
+      }
+      spent.sent += 1
+      return send(...call)
+    },
   }
 }
 
 /**
  * `lane`'s exchange as a run makes it: under the pairing this phone holds
  * when the run starts (nothing, unpaired), sending at most `share` requests
- * (`spending`; each lane's is `REQUESTS_PER_RUN`, `./lanes`), and home being
- * busy said as such (`sayingBusy`).
+ * (each lane's is `REQUESTS_PER_RUN`, `./lanes`). It ends as busy once home
+ * answered any request `429`, whatever else it found, unless home forgot the
+ * phone or it was stopped; and as `capped` when it asked for more than its
+ * share, the rest waiting for a later run, unless it ended worse first.
  */
 export function laneExchange(
   lane: Lane,
   pairing: () => string | null,
   share: number
-): Exchange {
-  return (link) => {
+): (link: HomeCall) => Promise<LaneExchanged> {
+  return async (link) => {
     const under = pairing()
-    if (under === null) return Promise.resolve({ kind: "synced" })
-    return sayingBusy((send) =>
-      lane.exchange(spending(send, share), { pairing: under })
-    )(link)
+    if (under === null) return { kind: "synced" }
+    const busy = noticingBusy(link)
+    const { send, spent } = spending(busy.send, share)
+    let ended: HomeExchanged
+    try {
+      ended = await lane.exchange(send, { pairing: under })
+    } catch (error) {
+      // A stop of the lane's own (it never sent past its share) stays one.
+      const stop = error instanceof SyncStoppedError && !spent.over
+      if (busy.seen.busy && !stop) return BUSY
+      if (spent.over && error instanceof SyncStoppedError) {
+        return { kind: "capped", sent: spent.sent }
+      }
+      throw error
+    }
+    if (busy.seen.busy && ended.kind !== "forgotten") return BUSY
+    // A lane that caught the refusal and resolved with what it did.
+    if (spent.over && ended.kind === "synced") {
+      return { kind: "capped", sent: spent.sent }
+    }
+    return ended
   }
 }

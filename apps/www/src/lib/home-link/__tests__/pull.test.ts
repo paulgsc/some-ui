@@ -6,9 +6,9 @@
  * lane's own end stays in its runtime, which its marks read.
  */
 import { noAnswer } from "@/test-support/no-answer"
-import type { HomeExchanged } from "@some-ui/core-utils"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
+import type { LaneExchanged } from "@/lib/home-link/kept-model"
 import type { Kept } from "@/lib/home-link/kept-runtime"
 import { createKept } from "@/lib/home-link/kept-runtime"
 import type { HomePullPorts } from "@/lib/home-link/pull"
@@ -29,7 +29,7 @@ afterEach(() => {
 type Lane = Kept & { runs: number }
 
 /** A lane's runtime over the one link, whose runs end as `ends` says. */
-function lane(ends: () => Promise<HomeExchanged>): Lane {
+function lane(ends: () => Promise<LaneExchanged>): Lane {
   const counted = {
     runs: 0,
     ...createKept({
@@ -52,8 +52,8 @@ function lane(ends: () => Promise<HomeExchanged>): Lane {
   return counted
 }
 
-const synced = (): Promise<HomeExchanged> => Promise.resolve({ kind: "synced" })
-const silent = (): Promise<HomeExchanged> => Promise.reject(noAnswer())
+const synced = (): Promise<LaneExchanged> => Promise.resolve({ kind: "synced" })
+const silent = (): Promise<LaneExchanged> => Promise.reject(noAnswer())
 
 /** A pull over `lanes`, with the app in front unless said. */
 const pullOver = (
@@ -117,6 +117,19 @@ describe("a pull's ask of home", () => {
     freeing()
     await expect(pulled).resolves.toBeUndefined()
     expect(turned.runs).toBe(1)
+  })
+
+  it("is in step when a lane's run stopped at its share, the rest going on its own (AD3)", async () => {
+    const lanes = [
+      lane(synced),
+      lane(() => Promise.resolve({ kind: "capped", sent: 8 })),
+    ]
+    await expect(pullOver(lanes)).resolves.toBeUndefined()
+    expect(lanes[1]?.getSnapshot().last).toEqual({
+      kind: "capped",
+      at: 7,
+      sent: 8,
+    })
   })
 
   it("asks nothing, and has nothing to say, with the app not in front", async () => {

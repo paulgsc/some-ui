@@ -14,7 +14,7 @@ import { describe, expect, it } from "vitest"
 import { SyncStoppedError } from "@/lib/device-backend/home-sync"
 import { FileHostUnreachableError } from "@/lib/file-host-config"
 import type { KeptState } from "@/lib/home-link/kept-model"
-import { INITIAL_KEPT, stepKept } from "@/lib/home-link/kept-model"
+import { INITIAL_KEPT, resynced, stepKept } from "@/lib/home-link/kept-model"
 import type { Kept, KeptPorts } from "@/lib/home-link/kept-runtime"
 import { createKept, laneExchange } from "@/lib/home-link/kept-runtime"
 import type { Lane, LaneCounts } from "@/lib/home-link/lanes"
@@ -320,7 +320,7 @@ describe("a lane's run", () => {
     ).resolves.toEqual(busy)
   })
 
-  it("sends at most its share of requests, ending as a stop does, with what it heard kept", async () => {
+  it("sends at most its share of requests, ending capped, a stop's way, with what it heard kept", async () => {
     const { send, sent } = home()
     const heard: Array<number> = []
     const declared: Lane = {
@@ -332,11 +332,37 @@ describe("a lane's run", () => {
         return SYNCED
       },
     }
-    await expect(
-      laneExchange(declared, () => "p", 3)(send)
-    ).rejects.toBeInstanceOf(SyncStoppedError)
+    await expect(laneExchange(declared, () => "p", 3)(send)).resolves.toEqual({
+      kind: "capped",
+      sent: 3,
+    })
     expect(sent).toEqual(["/jobs/0", "/jobs/1", "/jobs/2"])
     expect(heard).toEqual([200, 200, 200])
+    // A lane that catches the refusal and resolves with what it did.
+    const catching: Lane = {
+      ...lane(0, SYNCED),
+      exchange: async (through) => {
+        await through("PUT", "/jobs/0")
+        await through("PUT", "/jobs/1").catch(() => undefined)
+        return SYNCED
+      },
+    }
+    await expect(
+      laneExchange(catching, () => "p", 1)(home().send)
+    ).resolves.toEqual({ kind: "capped", sent: 1 })
+    // A capped run is progress: in step, and its card keeps saying what waits.
+    const capped = { kind: "capped", at: 7, sent: 3 } as const
+    expect(resynced(capped)).toBe(true)
+    const view = laneReading(
+      "practice",
+      { held: {}, refused: {}, waiting: 4, hidden: 0, pulled: true },
+      { ...INITIAL_KEPT, last: capped },
+      step(INITIAL, {
+        type: "read",
+        found: { base: "https://home.lan", id: "p" },
+      })
+    ).view
+    expect([view.how, view.word]).toEqual(["waiting", "4 waiting"])
     // Home busy before the share ran out is said as busy all the same.
     await expect(
       laneExchange(lane(5, SYNCED), () => "p", 3)(home([429]).send)

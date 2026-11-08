@@ -1662,9 +1662,9 @@
           "kind": "RE10",
           "property": "work",
           "claim": "After home says it is busy, the phone sends it nothing until home's Retry-After has passed, then asks once; and no one lane of the phone's can spend home's whole minute.",
-          "requirement": "The first 429 any request of the phone's home link hears starts a wait of home's Retry-After (held between 1 s and 10 minutes, a minute when it can't be read) that every lane, every moment a watch asks on and a pull keep: the link answers each request busy itself and sends nothing, each lane says home is busy, and the wait's end asks each lane it turned away once. One run of each lane sends at most its share, and a round of every lane stays at or under 50 of home's 60 requests a minute.",
+          "requirement": "The first 429 any request of the phone's home link hears starts a wait of home's Retry-After (held between 1 s and 10 minutes, a minute when it can't be read) that every lane, every moment a watch asks on and a pull keep: the link answers each request busy itself and sends nothing, each lane says home is busy, and the wait's end asks each lane it turned away once. One run of each lane sends at most its share, and a round of every lane stays at or under 50 of home's 60 requests a minute; a run that reaches its share is progress, in step, and its lane asks again at its turn on one refill schedule every lane shares, at most 30 requests a minute for every such lane together, waiting out home's busy if it falls inside one.",
           "verdict": "holds",
-          "conclusion": "Once home says busy, the phone stays quiet until home's own time is up and then asks each lane once; a pull stops reaching home at the first busy lane, and a round of every lane sends at most 49 requests.",
+          "conclusion": "Once home says busy, the phone stays quiet until home's own time is up and then asks each lane once; a pull stops reaching home at the first busy lane, and a round of every lane sends at most 49 requests; a lane with more waiting drains on its own at its turn, the capped lanes together at most 30 requests a minute.",
           "evidence": [
             {
               "class": "structural",
@@ -1681,7 +1681,10 @@
             "some-ui:apps/www/src/lib/home-link/__tests__/home-busy.test.ts#after home says busy, the phone sends nothing until home's Retry-After has passed, then asks once",
             "some-ui:apps/www/src/lib/home-link/__tests__/home-busy.test.ts#a pull stops at home's busy: the lanes after it say busy, and nothing more is sent",
             "some-ui:apps/www/src/lib/home-link/__tests__/runtime.test.ts#after home says busy, sends nothing until its Retry-After has passed, answering busy itself (AD3)",
-            "some-ui:apps/www/src/lib/home-link/__tests__/kept.test.ts#leaves a whole round of every lane well inside home's 60 requests a minute (AD3)"
+            "some-ui:apps/www/src/lib/home-link/__tests__/kept.test.ts#leaves a whole round of every lane well inside home's 60 requests a minute (AD3)",
+            "some-ui:apps/www/src/lib/home-link/__tests__/home-busy.test.ts#a lane that stopped at its share drains by itself, a turn at a time, until a run ends uncapped",
+            "some-ui:apps/www/src/lib/home-link/__tests__/home-busy.test.ts#lanes capped together take turns, sending at most one request per 2 s between them",
+            "some-ui:apps/www/src/lib/home-link/__tests__/home-busy.test.ts#a capped lane's turn while home is busy waits for the busy's one ask"
           ],
           "watch": {
             "by": "none"

@@ -38,8 +38,10 @@ export type LaneId =
 
 /**
  * How many requests one run of each lane may send (`laneExchange`); past
- * that its `send` refuses as a stop does, the run keeps what it heard, and
- * what is left goes on the lane's next ask. Home lets this phone 60 requests
+ * that its `send` refuses as a stop does, the run keeps what it heard and
+ * ends `capped`, and the lane asks again at its turn on the refill schedule
+ * the watches share (`./kept-watch`'s `Refill`: 30 a minute for every
+ * capped lane together). Home lets this phone 60 requests
  * a minute (paulgsc/server `file_host`'s limiter, a burst of 60), and the
  * app shell asks every lane at once (on opening, coming back to the front, a
  * pull), so no one lane may spend it: 12 + 8 + 8 + 8 + 8 + 5 = 49 for a
