@@ -16,6 +16,7 @@ import {
   GAME_CARD_TEMPLATES,
   type GameCardTemplate,
 } from "@burn-ins/lib/game-card"
+import { geometryOf, PORTRAIT } from "@burn-ins/lib/geometry"
 import {
   GAME_CARD_SAMPLES,
   SAMPLES,
@@ -29,9 +30,13 @@ const designsOf = (kind: Kind): ReadonlyArray<string> => DESIGNS[kind]
 const designFor = (kind: Kind, asked: string | undefined): string =>
   designsOf(kind).find((d) => d === asked) ?? designsOf(kind)[0] ?? ""
 
+/** The frame the preview draws in: the short's. */
+const GEOMETRY = geometryOf(PORTRAIT)
+
 /**
- * A kind's sample in a design, a game card's for the template picked. The
- * samples are checked in tests, so a refusal here is a bug.
+ * A kind's sample in a design, a game card's for the template picked, in
+ * the short's frame. The samples are checked in tests, so a refusal here is
+ * a bug.
  */
 const sampleOf = (
   kind: Kind,
@@ -40,7 +45,7 @@ const sampleOf = (
 ): Prepared => {
   const params =
     kind === "game-card" ? GAME_CARD_SAMPLES[template] : SAMPLES[kind]
-  const prepared = prepare({ kind, design, params })
+  const prepared = prepare({ kind, design, params }, GEOMETRY.frame)
   if (!prepared.ok) throw new Error(prepared.problems.join("; "))
   return prepared.value
 }
@@ -209,6 +214,7 @@ export const BurnInsPreview = ({
         <div className="md:sticky md:top-8 md:self-start">
           <BurnInStage
             frames={[frame]}
+            geometry={GEOMETRY}
             outline={outline}
             label={WORDS.stageLabel}
           />

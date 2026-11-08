@@ -6,7 +6,6 @@ import {
   type JSX,
 } from "react"
 import { BurnInStage } from "@burn-ins/components/stage"
-import { FRAME } from "@burn-ins/lib/geometry"
 import {
   browserRecordPorts,
   createRecorder,
@@ -14,8 +13,9 @@ import {
 } from "@burn-ins/runtime/record"
 
 /**
- * The page the recorder captures: one burn-in at a time on a transparent,
- * 1080 px wide stage, nothing else, driven through the page global
+ * The page the recorder captures: one burn-in at a time on a transparent
+ * stage as wide as the video's frame (1080 px for the short, 1920 for the
+ * 16:9 video), nothing else, driven through the page global
  * (`runtime/record`). The page around it must paint no background either.
  */
 export const BurnInRecorder = (): JSX.Element => {
@@ -32,9 +32,13 @@ export const BurnInRecorder = (): JSX.Element => {
     }
   }, [recorder])
   return (
-    <div style={{ width: `${FRAME.width}px` }} data-burn-ins-recorder="">
+    <div
+      style={{ width: `${snapshot.geometry.frame.width}px` }}
+      data-burn-ins-recorder=""
+    >
       <BurnInStage
         frames={snapshot.frame === null ? [] : [snapshot.frame]}
+        geometry={snapshot.geometry}
         bare
         label=""
       />

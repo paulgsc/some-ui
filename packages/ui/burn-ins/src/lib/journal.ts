@@ -15,12 +15,14 @@
  * text never changes over a scene, so the frame is the same at every time.
  *
  * Text that does not fit is refused with the reason, never cut or shrunk
- * past the floor. An empty field draws nothing, as in `render.py`.
+ * past the floor. An empty field draws nothing, as in `render.py`. Each
+ * part is set from the regions of the frame it is drawn for (`./geometry`):
+ * in the short, exactly where `render.py` set it.
  */
 
 import { z } from "zod"
 
-import { REGIONS, type Box } from "./geometry"
+import type { Box, Geometry } from "./geometry"
 import type { Parsed } from "./parsed"
 import { barlow, bottomOf, fitLine, setText, type TextBlock } from "./text"
 
@@ -52,9 +54,24 @@ export type TextFrame = {
   readonly blocks: ReadonlyArray<TextBlock>
 }
 
-/** The header's left edge and width, as `render.py` set them. */
-const LEFT = REGIONS.header.x
-const WIDTH = REGIONS.header.width
+/**
+ * A row of the header, `dy` below its top: from its left edge across its
+ * width, as `render.py` set them (54 px in, 972 wide, from 40 px down, in
+ * the short).
+ */
+const headerRow = (
+  g: Geometry,
+  dy: number
+): { readonly x: number; readonly y: number; readonly width: number } => ({
+  x: g.regions.header.x,
+  y: g.regions.header.y + dy,
+  width: g.regions.header.width,
+})
+
+/** How far below the header's top each of its rows starts. */
+const KICKER_DY = 22
+const HEADLINE_DY = 64
+const LINE_DY = 150
 
 export const HeadlineParamsSchema = z.object({
   kicker: z.string().default(""),
@@ -74,13 +91,8 @@ export const CardParamsSchema = z.object({
 export type HeadlineParams = z.infer<typeof HeadlineParamsSchema>
 export type CardParams = z.infer<typeof CardParamsSchema>
 
-export const kicker = (text: string): TextBlock | null =>
-  setText(
-    text,
-    barlow(800, 30, INK.accent),
-    { x: LEFT, y: 62, width: WIDTH },
-    1
-  )
+export const kicker = (text: string, g: Geometry): TextBlock | null =>
+  setText(text, barlow(800, 30, INK.accent), headerRow(g, KICKER_DY), 1)
 
 export const blocksOf = (
   named: ReadonlyArray<readonly [string, TextBlock | null]>
@@ -98,72 +110,82 @@ export const blocksOf = (
   }
 }
 
-export function headlineFrame(p: HeadlineParams): Parsed<TextFrame> {
+export function headlineFrame(
+  p: HeadlineParams,
+  g: Geometry
+): Parsed<TextFrame> {
   return blocksOf([
-    ["kicker", kicker(p.kicker)],
+    ["kicker", kicker(p.kicker, g)],
     [
       "headline",
       fitLine(
         p.headline,
         barlow(800, 60, INK.text),
-        { x: LEFT, y: 104, width: WIDTH },
+        headerRow(g, HEADLINE_DY),
         44
       ),
     ],
     [
       "line",
-      fitLine(
-        p.line,
-        barlow(600, 30, INK.muted),
-        { x: LEFT, y: 190, width: WIDTH },
-        22
-      ),
+      fitLine(p.line, barlow(600, 30, INK.muted), headerRow(g, LINE_DY), 22),
     ],
   ])
 }
 
-/** The card's panel: the body region, where the picture's window is. */
-const PANEL: Panel = {
-  box: REGIONS.body,
-  fill: INK.panel,
-  edge: INK.edge,
-  edgePx: 2,
-  radiusPx: 28,
+/** Where a card's panel and its text sit in a frame. */
+export type CardSpace = {
+  /** The body region, where the picture's window is. */
+  readonly panel: Panel
+  /** Text inside the panel: in from its edges as `render.py` set it. */
+  readonly inner: {
+    readonly x: number
+    readonly y: number
+    readonly width: number
+  }
+  /** How far down the panel text may reach. */
+  readonly innerBottom: number
 }
 
-/** Text inside the panel: in from its edges as `render.py` set it. */
-const INNER = {
-  x: PANEL.box.x + 56,
-  y: PANEL.box.y + 90,
-  width: PANEL.box.width - 112,
-}
-const INNER_BOTTOM = PANEL.box.y + PANEL.box.height - 56
-
-export {
-  PANEL as CARD_PANEL,
-  INNER as CARD_INNER,
-  INNER_BOTTOM as CARD_INNER_BOTTOM,
+export function cardSpace(g: Geometry): CardSpace {
+  const box = g.regions.body
+  return {
+    panel: {
+      box,
+      fill: INK.panel,
+      edge: INK.edge,
+      edgePx: 2,
+      radiusPx: 28,
+    },
+    inner: { x: box.x + 56, y: box.y + 90, width: box.width - 112 },
+    innerBottom: box.y + box.height - 56,
+  }
 }
 
 /** Rows of `lineHeight * size` that fit from `y` to the panel's foot. */
-const rowsLeft = (y: number, sizePx: number, lineHeight = 1.25): number =>
-  Math.floor((INNER_BOTTOM - y) / (sizePx * lineHeight))
+const rowsLeft = (
+  space: CardSpace,
+  y: number,
+  sizePx: number,
+  lineHeight = 1.25
+): number => Math.floor((space.innerBottom - y) / (sizePx * lineHeight))
 
 /** A card's headline: up to two rows under the kicker. */
-export const cardHeadline = (text: string): TextBlock | null =>
-  setText(text, barlow(800, 54, INK.text), { x: LEFT, y: 104, width: WIDTH }, 2)
+export const cardHeadline = (text: string, g: Geometry): TextBlock | null =>
+  setText(text, barlow(800, 54, INK.text), headerRow(g, HEADLINE_DY), 2)
 
-export function cardFrame(p: CardParams): Parsed<TextFrame> {
-  const head = cardHeadline(p.headline)
+export function cardFrame(p: CardParams, g: Geometry): Parsed<TextFrame> {
+  const space = cardSpace(g)
+  const { inner } = space
+  const head = cardHeadline(p.headline, g)
   const inside: Array<readonly [string, TextBlock | null]> = []
   if (p.slot) {
     const label = setText(
       "Native clip to come",
       { ...barlow(800, 34, INK.accent), uppercase: true },
-      INNER,
+      inner,
       1
     )
-    const y = INNER.y + 70
+    const y = inner.y + 70
     inside.push(
       ["slot's label", label],
       [
@@ -171,8 +193,8 @@ export function cardFrame(p: CardParams): Parsed<TextFrame> {
         setText(
           p.body,
           barlow(800, 48, INK.text),
-          { ...INNER, y },
-          rowsLeft(y, 48)
+          { ...inner, y },
+          rowsLeft(space, y, 48)
         ),
       ]
     )
@@ -180,30 +202,33 @@ export function cardFrame(p: CardParams): Parsed<TextFrame> {
     const body = setText(
       p.body,
       barlow(800, 56, INK.text),
-      INNER,
-      rowsLeft(INNER.y, 56)
+      inner,
+      rowsLeft(space, inner.y, 56)
     )
     inside.push(["body", body])
     if (p.note !== "") {
-      const y = (body ? bottomOf(body) : INNER.y) + 50
+      const y = (body ? bottomOf(body) : inner.y) + 50
       inside.push([
         "note",
         setText(
           p.note,
           barlow(600, 40, INK.muted),
-          { ...INNER, y },
-          rowsLeft(y, 40)
+          { ...inner, y },
+          rowsLeft(space, y, 40)
         ),
       ])
     }
   }
   const fitted = blocksOf([
-    ["kicker", kicker(p.kicker)],
+    ["kicker", kicker(p.kicker, g)],
     ["headline", head],
     ...inside,
   ])
   return fitted.ok
-    ? { ok: true, value: { panels: [PANEL], blocks: fitted.value.blocks } }
+    ? {
+        ok: true,
+        value: { panels: [space.panel], blocks: fitted.value.blocks },
+      }
     : fitted
 }
 

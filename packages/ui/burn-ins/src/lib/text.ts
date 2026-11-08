@@ -15,7 +15,7 @@ const FONT_STACK = '"Barlow Condensed", "Arial Narrow", sans-serif'
 export type TextStyle = {
   readonly family: string
   readonly weight: 600 | 800
-  /** At 1080x1920. */
+  /** In the frame's pixels: both frames are 1080 on their shorter side. */
   readonly sizePx: number
   /** Line height as a multiple of the size. */
   readonly lineHeight: number

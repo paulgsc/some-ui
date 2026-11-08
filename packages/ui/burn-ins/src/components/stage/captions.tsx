@@ -1,16 +1,18 @@
 import type { CSSProperties, JSX } from "react"
-import { cq, placed, withAlpha } from "@burn-ins/components/stage/units"
+import { withAlpha, type Units } from "@burn-ins/components/stage/units"
 import type { CaptionFrame } from "@burn-ins/lib/captions/frame"
 import { popLook } from "@burn-ins/lib/captions/frame"
 import type { CaptionTheme } from "@burn-ins/lib/captions/theme"
 
-/** A caption as the frame model puts it up. */
+/** A caption as the frame model puts it up, in its look sized for the frame. */
 export const Caption = ({
   frame,
   theme,
+  units: { cq, placed },
 }: {
   frame: Extract<CaptionFrame, { caption: number }>
   theme: CaptionTheme
+  units: Units
 }): JSX.Element => {
   const { font, colours, plate, effects } = theme
   const text: CSSProperties = {

@@ -1,12 +1,14 @@
-/* The burn-ins stage: a 9:16 frame whose sizes are container units, so a
-   burn-in reads the same in a 400px preview as at 1080x1920. Where each one
-   sits and how it looks come from the pure frame models (lib/) as inline
-   styles; this file holds only the frame and how its parts are laid out.
+/* The burn-ins stage: a frame in the shape of the video's (9:16 or 16:9,
+   `--bi-aspect`, which the stage sets from its geometry) whose sizes are
+   container units, so a burn-in reads the same in a 400px preview as at
+   the video's own size. Where each one sits and how it looks come from the
+   pure frame models (lib/) as inline styles; this file holds only the frame
+   and how its parts are laid out.
    Every colour is a semantic token; a burn-in's own colours are its design's. */
 
 @layer utilities {
   .bi-stage {
-    aspect-ratio: 9 / 16;
+    aspect-ratio: var(--bi-aspect);
     container-type: inline-size;
     overflow: hidden;
     position: relative;

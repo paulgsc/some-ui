@@ -1,9 +1,10 @@
 /**
- * Where a caption sits in a 1080x1920 short, in that frame's pixels: centred
- * at the bottom of the safe area (`../geometry`), in the lower third.
+ * Where a caption sits in a frame, in that frame's pixels: centred at the
+ * bottom of its safe area (`../geometry`), in the lower third. The theme is
+ * the one sized for the frame (`sizedFor`).
  */
 
-import { SAFE_AREA, type Box } from "@burn-ins/lib/geometry"
+import type { Box, Geometry } from "@burn-ins/lib/geometry"
 import type { HasText, Measure } from "@burn-ins/lib/lines"
 import { rowText, widthOf } from "@burn-ins/lib/text"
 
@@ -19,10 +20,13 @@ const padY = (theme: CaptionTheme): number => theme.plate?.padYPx ?? 0
  * A line's width in the theme's type at its size, from the font's advance
  * widths, against the safe area's width less the plate and the outline.
  */
-export const measureFor = (theme: CaptionTheme): Measure => ({
+export const measureFor = (
+  theme: CaptionTheme,
+  geometry: Geometry
+): Measure => ({
   widthOf: (row: ReadonlyArray<HasText>) =>
     widthOf(rowText(row), theme.font, theme.font.letterSpacingEm),
-  limit: SAFE_AREA.width - 2 * padX(theme) - theme.strokePx,
+  limit: geometry.safeArea.width - 2 * padX(theme) - theme.strokePx,
 })
 
 export type CaptionLayout = {
@@ -39,9 +43,11 @@ export type CaptionLayout = {
  */
 export function layoutCaption(
   rows: ReadonlyArray<ReadonlyArray<HasText>>,
-  theme: CaptionTheme
+  theme: CaptionTheme,
+  geometry: Geometry
 ): CaptionLayout {
-  const { widthOf: rowPx, limit } = measureFor(theme)
+  const { widthOf: rowPx, limit } = measureFor(theme, geometry)
+  const safe = geometry.safeArea
   const longest = Math.max(1, ...rows.map(rowPx))
   const scale = Math.min(1, limit / longest)
   const fontPx = theme.font.sizePx * scale
@@ -52,8 +58,8 @@ export function layoutCaption(
   const height = rows.length * lineHeightPx + 2 * padY(theme) + theme.strokePx
   return {
     box: {
-      x: SAFE_AREA.x + (SAFE_AREA.width - width) / 2,
-      y: SAFE_AREA.y + SAFE_AREA.height - CAPTION_LIFT_PX - height,
+      x: safe.x + (safe.width - width) / 2,
+      y: safe.y + safe.height - CAPTION_LIFT_PX - height,
       width,
       height,
     },

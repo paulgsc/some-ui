@@ -1,11 +1,14 @@
 /**
  * Records burn-ins for the renderer (STUDIO ST15): `@some-ui/video-render`'s
  * `Ports.recordBurnIn`, filled by the built app's `/burn-ins?record` page in
- * a headless browser at 1080x1920.
+ * a headless browser, at the size of the video's frame: 1080x1920 for the
+ * 9:16 short, 1920x1080 for the 16:9 video (SFEED11). The page refuses any
+ * other frame, by name.
  *
  * The page holds `@some-ui/burn-ins`' recording protocol (its
  * `runtime/record.ts`): `check` finds any two of a video's burn-ins that
- * would draw in one place at once, `load` checks a burn-in and shows it,
+ * would draw in one place at once in its frame, `load` checks a burn-in for
+ * the video's frame and shows it on a stage that size,
  * `seek` shows a moment and answers once it is painted with its fonts, with
  * a key for the picture. For each frame of the burn-in this seeks to that frame's exact
  * time (`frame / fps`, never rounded), captures the picture with
@@ -29,7 +32,10 @@ import { renderFolder } from "@some-ui/video-render/node"
 /** The page global the protocol is reached by (burn-ins' `RECORDER_GLOBAL`). */
 const GLOBAL = "someUiBurnIns"
 
-/** The frame every burn-in design is drawn for (burn-ins' `FRAME`). */
+/**
+ * The size the recorder's page is opened at: the short's. Each burn-in is
+ * recorded at its own video's frame, which the recorder sizes the page to.
+ */
 export const RECORDING_SIZE = { width: 1080, height: 1920 } as const
 
 type Loaded =
@@ -41,7 +47,7 @@ const isLoaded = (x: unknown): x is Loaded =>
   x !== null &&
   typeof Reflect.get(x, "ok") === "boolean"
 
-/** Opens the recorder's page on `page`, which must be 1080x1920 at scale 1. */
+/** Opens the recorder's page on `page`, which must be at scale 1. */
 export async function openRecorder(page: Page, origin: string): Promise<void> {
   await page.goto(`${origin}/burn-ins?record=true`)
   await page.addStyleTag({
@@ -78,6 +84,7 @@ async function load(page: Page, r: BurnInRequest): Promise<Loaded> {
     kind: r.kind,
     design: r.design,
     params: r.params,
+    frame: { width: r.frame.width, height: r.frame.height },
   })
   if (!isLoaded(loaded)) throw new Error("the recorder's page did not answer")
   return loaded
@@ -109,6 +116,7 @@ function burnInChecker(
         frames: r.frames,
       })),
       fps: first.frame.fps,
+      frame: { width: first.frame.width, height: first.frame.height },
     })
     if (
       !Array.isArray(answer) ||
@@ -130,20 +138,16 @@ function burnInRecorder(
 ): (request: BurnInRequest) => Promise<boolean> {
   return async (r) => {
     const name = `the ${r.kind} burn-in (${r.design})`
-    if (
-      r.frame.width !== RECORDING_SIZE.width ||
-      r.frame.height !== RECORDING_SIZE.height
-    ) {
-      report(
-        `${name}: burn-ins are drawn for 1080x1920, not ${r.frame.width}x${r.frame.height}`
-      )
-      return false
-    }
+    // The page refuses a frame burn-ins aren't drawn for, naming it.
     const loaded = await load(page, r)
     if (!loaded.ok) {
       for (const p of loaded.problems) report(p)
       return false
     }
+    const size = { width: r.frame.width, height: r.frame.height }
+    const now = page.viewportSize()
+    if (now?.width !== size.width || now.height !== size.height)
+      await page.setViewportSize(size)
     const out = resolve(root, r.out)
     await mkdir(dirname(out), { recursive: true })
     const fps = r.frame.fps
@@ -184,7 +188,7 @@ function burnInRecorder(
       if (key !== shown || picture === null) {
         picture = await page.screenshot({
           omitBackground: true,
-          clip: { x: 0, y: 0, ...RECORDING_SIZE },
+          clip: { x: 0, y: 0, ...size },
         })
         shown = key
       }

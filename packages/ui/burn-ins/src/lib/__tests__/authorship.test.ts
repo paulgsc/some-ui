@@ -12,6 +12,7 @@ import {
   scenesOf,
 } from "@burn-ins/lib/authorship-link"
 import { prepare } from "@burn-ins/lib/burn-in"
+import { LANDSCAPE, PORTRAIT } from "@burn-ins/lib/geometry"
 import { describe, expect, it } from "vitest"
 
 const ORIGINS = ["you", "agent", "source"] as const
@@ -44,11 +45,14 @@ const bare: Omit<AuthoredScene, "startMs"> = {
 const drawn = (
   between: ReadonlyArray<Omit<AuthoredScene, "startMs">>
 ): AuthorshipDrawing => {
-  const p = prepare({
-    kind: "authorship",
-    design: "cells-v1",
-    params: recordParams(between),
-  })
+  const p = prepare(
+    {
+      kind: "authorship",
+      design: "cells-v1",
+      params: recordParams(between),
+    },
+    PORTRAIT
+  )
   if (!p.ok) throw new Error(p.problems.join("; "))
   if (p.value.kind !== "authorship") throw new Error("not the mark")
   return p.value.drawing
@@ -121,14 +125,17 @@ describe("the authorship mark", () => {
   })
 
   it("refuses params the renderer would never write", () => {
-    const backwards = prepare({
-      kind: "authorship",
-      design: "cells-v1",
-      params: {
-        scenes: [0, 400, 300].map((startMs) => ({ ...bare, startMs })),
-        endMs: 800,
+    const backwards = prepare(
+      {
+        kind: "authorship",
+        design: "cells-v1",
+        params: {
+          scenes: [0, 400, 300].map((startMs) => ({ ...bare, startMs })),
+          endMs: 800,
+        },
       },
-    })
+      PORTRAIT
+    )
     expect(backwards.ok ? [] : backwards.problems).toEqual([
       "the authorship burn-in (cells-v1): each scene starts after the one before, and before the end",
     ])
@@ -151,5 +158,41 @@ describe("the end card's link", () => {
       const rows = drawn(batch).end.blocks.flatMap((b) => b.rows)
       expect(rows).toContain(recordLink(batch))
     }
+  })
+})
+
+describe("the authorship mark in the 16:9 video", () => {
+  const inVideo = (
+    between: ReadonlyArray<Omit<AuthoredScene, "startMs">>
+  ): ReturnType<typeof prepare> =>
+    prepare(
+      {
+        kind: "authorship",
+        design: "cells-v1",
+        params: recordParams(between),
+      },
+      LANDSCAPE
+    )
+
+  it("sets its intro's actors two to a row and its grammar on one row", () => {
+    const p = inVideo([bare])
+    if (!p.ok || p.value.kind !== "authorship")
+      throw new Error(p.ok ? "not the mark" : p.problems.join("; "))
+    const keys = p.value.drawing.intro.cells
+    const actorRows = new Set(keys.slice(0, 4).map((c) => c.box.y))
+    const grammarRows = new Set(keys.slice(4).map((c) => c.box.y))
+    expect([actorRows.size, grammarRows.size]).toEqual([2, 1])
+  })
+
+  it("holds a record of eight scenes on its shorter end card, and refuses nine", () => {
+    expect(inVideo(EVERY.slice(0, 8)).ok).toBe(true)
+    const nine = inVideo(EVERY.slice(0, 9))
+    expect(nine.ok ? [] : nine.problems).toEqual([
+      "the authorship burn-in (cells-v1): the end card's record doesn't fit",
+    ])
+  })
+
+  it("holds the short's whole record of `MOST_SCENES` in the short", () => {
+    expect(drawn(EVERY.slice(0, MOST_SCENES)).end.part).toBe("end")
   })
 })

@@ -15,7 +15,13 @@ A burn-in is a kind (`captions`, `headline`, `card`, `authorship`,
 carries. `src/lib/burn-in.ts` holds the contract and says why it is the way
 it is; each module's header does the same for its part:
 
-- `src/lib/geometry.ts`: the frame, the safe area, the regions.
+- `src/lib/geometry.ts`: the frames, and each one's safe area and regions.
+  A burn-in is drawn into the 9:16 short (1080x1920: Playoff Delta, the
+  Build Journal shorts) or the 16:9 video (1920x1080: the weekly call), and
+  any other frame is refused (SFEED11, #2707). Each kind lays itself out from
+  the regions of its frame. The 16:9 frame's body is shorter, so a card that
+  fits the short can be refused there with the reason (the sample card's
+  note, a chain or path game card, an end card past eight scenes).
 - `src/lib/text.ts`, `src/lib/advances.ts`: text set by the font's own
   advance widths, subtitles' lines included.
 - `src/lib/captions/`: the subtitles (GWB11, #2085).
@@ -35,10 +41,10 @@ it is; each module's header does the same for its part:
 ## Recording
 
 `apps/www/tests/record/burn-ins.ts` fills the renderer's `recordBurnIn`
-port: it opens `/burn-ins?record` in a headless browser at 1080x1920, and
-for each frame seeks to its exact time and captures the picture with
-transparency, only when it changed, into a lossless `.mov` the renderer
-lays over the video. With it, a video renders with its burn-ins:
+port: it opens `/burn-ins?record` in a headless browser at the size of the
+video's frame, and for each frame seeks to its exact time and captures the
+picture with transparency, only when it changed, into a lossless `.mov`
+the renderer lays over the video. With it, a video renders with its burn-ins:
 
 ```sh
 pnpm --filter www build

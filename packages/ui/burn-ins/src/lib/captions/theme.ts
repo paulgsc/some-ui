@@ -19,7 +19,7 @@ export type CaptionTheme = {
   readonly font: {
     readonly family: string
     readonly weight: 600 | 800
-    /** At 1080x1920. */
+    /** In a frame whose shorter side is 1080 px (`sizedFor`). */
     readonly sizePx: number
     /** Line height as a multiple of the size. */
     readonly lineHeight: number
@@ -32,7 +32,7 @@ export type CaptionTheme = {
     readonly highlight: string
     readonly stroke: string
   }
-  /** The outline's width at 1080x1920; 0 for none. */
+  /** The outline's width, as `font.sizePx` is; 0 for none. */
   readonly strokePx: number
   readonly plate: {
     readonly colour: string
@@ -104,6 +104,34 @@ export const THEMES: Readonly<Record<ThemeId, CaptionTheme>> = {
     plate: null,
     effects: { highlight: false, popInMs: 220 },
   },
+}
+
+/**
+ * A look at the size it draws in a frame (`../geometry`): every length
+ * multiplied by the frame's `typeScale`, its shorter side over 1080, so a
+ * caption reads the same against the frame's shorter side whichever way the
+ * frame is turned. Both frames burn-ins draw for are 1080 px on their
+ * shorter side, so today this is the look itself, at scale 1.
+ */
+export function sizedFor(
+  theme: CaptionTheme,
+  geometry: { readonly typeScale: number }
+): CaptionTheme {
+  const k = geometry.typeScale
+  return {
+    ...theme,
+    font: { ...theme.font, sizePx: theme.font.sizePx * k },
+    strokePx: theme.strokePx * k,
+    plate:
+      theme.plate === null
+        ? null
+        : {
+            ...theme.plate,
+            radiusPx: theme.plate.radiusPx * k,
+            padXPx: theme.plate.padXPx * k,
+            padYPx: theme.plate.padYPx * k,
+          },
+  }
 }
 
 export const isThemeId = (value: unknown): value is ThemeId =>
