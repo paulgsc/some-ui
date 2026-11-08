@@ -11,6 +11,7 @@
 import {
   FORMAT_SCHEMA,
   inTheme,
+  versionRefusal,
   type Format,
   type Parsed,
   type Shape,
@@ -91,31 +92,23 @@ const shapeOf = (kind: FormatKind, version: number): Shape =>
 /** A format's id: its folder's name. */
 export const formatId = (kind: FormatKind): string => `playoff-delta-${kind}`
 
-/**
- * Why `version` of `kind`'s format can't be drawn here, or null when it can
- * (VS1, #2796): a version newer than this build knows is a fill written for a
- * later stage, which this one would draw in an older look, silently.
- */
-export function versionRefusal(
+/** Why `version` of `kind`'s format can't be drawn here, or null (VS1). */
+export const versionRefusalOf = (
   kind: FormatKind,
   version: number
-): string | null {
-  const newest = FORMAT_VERSION[kind]
-  if (Number.isInteger(version) && version >= 1 && version <= newest)
-    return null
-  return `This stage draws ${formatId(kind)} up to version ${newest}, and was asked for version ${version}: publish a newer stage first`
-}
+): string | null =>
+  versionRefusal(formatId(kind), FORMAT_VERSION[kind], version)
 
 /**
  * The show's format at `version` (the newest by default): every scene a week
  * (or the legend) has, in order, and from version 2 its shape. Throws for a
- * version this build doesn't know (`versionRefusal`).
+ * version this build doesn't know (`versionRefusalOf`).
  */
 export function formatOf(
   kind: FormatKind,
   version: number = FORMAT_VERSION[kind]
 ): Format {
-  const refused = versionRefusal(kind, version)
+  const refused = versionRefusalOf(kind, version)
   if (refused !== null) throw new Error(refused)
   const slides = slidesOf(kind)
   return {

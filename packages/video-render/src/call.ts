@@ -34,7 +34,14 @@ import type { ChapterMark } from "./chapters"
 import { chapterSlides } from "./chapters"
 import { once, problemsOf } from "./cut-list"
 import type { CutList, Parsed } from "./cut-list"
-import { FORMAT_SCHEMA, inTheme, repeatedId, showId, words } from "./format"
+import {
+  FORMAT_SCHEMA,
+  inTheme,
+  repeatedId,
+  showId,
+  versionRefusal,
+  words,
+} from "./format"
 import type { Format, Shape } from "./format"
 import {
   choiceProblems,
@@ -129,16 +136,9 @@ const scene = (
   ...(isRepeated(id) ? { repeat: { max: CALL_MOST[id] } } : {}),
 })
 
-/**
- * Why `version` of the call's template can't be drawn here, or null when it
- * can (VS1, #2796): a version newer than this build knows is a week written
- * for a later stage, which this one would draw in an older look, silently.
- */
-export function callVersionRefusal(version: number): string | null {
-  if (Number.isInteger(version) && version >= 1 && version <= CALL_VERSION)
-    return null
-  return `This stage draws the call's template up to version ${CALL_VERSION}, and was asked for version ${version}: publish a newer stage first`
-}
+/** Why `version` of the call's template can't be drawn here, or null (VS1). */
+export const callVersionRefusal = (version: number): string | null =>
+  versionRefusal("the call's template", CALL_VERSION, version)
 
 /**
  * The call's format at `version`: its sections, in the order every call says

@@ -141,7 +141,7 @@ describe("what the stage draws", () => {
     })
   })
 
-  it("on record, says why it refuses a week newer than it knows (VS1)", () => {
+  it("refuses a week newer than it knows: on record, saying why; off record, drawing the sample (VS1)", () => {
     const newer = {
       ...base,
       record: true,
@@ -155,6 +155,15 @@ describe("what the stage draws", () => {
     expect(state.kind === "none" && state.problems.join("\n")).toContain(
       `up to version ${String(CALL_VERSION)}`
     )
+    // Off record, a person looking gets the sample, never the newer week in
+    // an older look, and is told why.
+    expect(stageOf({ ...newer, record: false })).toMatchObject({
+      kind: "show",
+      sample: true,
+      problems: [
+        expect.stringContaining(`up to version ${String(CALL_VERSION)}`),
+      ],
+    })
   })
 
   it("draws the sample, unread or not, where nothing live is asked for", () => {

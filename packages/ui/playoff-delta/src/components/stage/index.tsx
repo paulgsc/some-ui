@@ -6,7 +6,7 @@ import {
   formatOf,
   kindOf,
   RECORDING,
-  versionRefusal,
+  versionRefusalOf,
 } from "@playoff-delta/lib/show"
 import {
   HOLD_MS,
@@ -428,7 +428,7 @@ export const PlayoffDeltaStage = ({
   const refused =
     version === undefined
       ? null
-      : versionRefusal(kindOf(week ?? season.weeks[0]?.week ?? 1), version)
+      : versionRefusalOf(kindOf(week ?? season.weeks[0]?.week ?? 1), version)
   if (refused !== null)
     return (
       <p data-refused={refused} className="p-6 font-mono text-sm">

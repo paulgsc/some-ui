@@ -13,7 +13,7 @@ import {
   FORMAT_VERSION,
   formatId,
   formatOf,
-  versionRefusal,
+  versionRefusalOf,
   type FormatKind,
 } from "@playoff-delta/lib/show"
 import {
@@ -67,9 +67,9 @@ describe("the formats", () => {
     (kind) => {
       const newest = FORMAT_VERSION[kind]
       for (let v = 1; v <= newest; v++)
-        expect(versionRefusal(kind, v)).toBe(null)
+        expect(versionRefusalOf(kind, v)).toBe(null)
       for (const v of [newest + 1, 0, 1.5])
-        expect(() => formatOf(kind, v)).toThrow(versionRefusal(kind, v) ?? "")
+        expect(() => formatOf(kind, v)).toThrow(versionRefusalOf(kind, v) ?? "")
     }
   )
 
