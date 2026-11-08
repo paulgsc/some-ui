@@ -1,0 +1,98 @@
+{
+  "schema": "some-ui.show-format/1",
+  "id": "playoff-delta-week",
+  "version": 2,
+  "title": "Playoff Delta week",
+  "series": {
+    "id": "playoff-delta-week",
+    "version": 2
+  },
+  "look": "calm",
+  "scenes": [
+    {
+      "id": "division",
+      "name": "Our division",
+      "point": "Where our division's best case and worst case stand after this week, and which rivals' games force the floor.",
+      "picture": {
+        "kind": "capture",
+        "from": "the stage's division slide",
+        "cssWidth": 1080
+      },
+      "holdMs": 9000
+    },
+    {
+      "id": "conference",
+      "name": "Our conference",
+      "point": "The same across the whole conference: the floor, the ceiling, and what forces the floor.",
+      "picture": {
+        "kind": "capture",
+        "from": "the stage's conference slide",
+        "cssWidth": 1080
+      },
+      "holdMs": 9000
+    },
+    {
+      "id": "results",
+      "name": "The results",
+      "point": "Which way this week's results moved us, and which of them were forced.",
+      "picture": {
+        "kind": "capture",
+        "from": "the stage's results slide",
+        "cssWidth": 1080
+      },
+      "holdMs": 9000
+    },
+    {
+      "id": "standings",
+      "name": "Where we stand",
+      "point": "Where the division and the #1 seed stand now, and how far each is from changing.",
+      "picture": {
+        "kind": "capture",
+        "from": "the stage's standings slide",
+        "cssWidth": 1080
+      },
+      "holdMs": 8000
+    },
+    {
+      "id": "ladder",
+      "name": "The ladder",
+      "point": "How high we can still finish, how low, and whether to keep watching.",
+      "picture": {
+        "kind": "capture",
+        "from": "the stage's ladder slide",
+        "cssWidth": 1080
+      },
+      "holdMs": 7000
+    },
+    {
+      "id": "season",
+      "name": "The season",
+      "point": "How the envelope has closed over the weeks followed so far.",
+      "picture": {
+        "kind": "capture",
+        "from": "the stage's season slide",
+        "cssWidth": 1080
+      },
+      "holdMs": 7000
+    },
+    {
+      "id": "outro",
+      "name": "In one line",
+      "point": "The week in one breath, and what comes next.",
+      "picture": {
+        "kind": "capture",
+        "from": "the stage's outro slide",
+        "cssWidth": 1080
+      },
+      "holdMs": 6000
+    }
+  ],
+  "shape": {
+    "brand": {
+      "intro": true,
+      "outro": true
+    },
+    "chapters": ["division", "results", "standings"],
+    "subtitles": "word"
+  }
+}

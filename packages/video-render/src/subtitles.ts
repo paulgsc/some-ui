@@ -30,8 +30,25 @@ export type SubtitleLine = {
   readonly endMs: number
 }
 
-/** The most characters a line holds, so it fits the frame on one row. */
+/** The most characters a line holds, so it fits a 16:9 frame on one row. */
 export const LINE_CHARS = 56
+
+/**
+ * The most characters a line holds in `frame`: `LINE_CHARS`, or fewer where
+ * the frame is too narrow for them at the band's size (a 9:16 short), each
+ * character counted as wide as six tenths of the size, wider than sans
+ * text's average, so a line fits between the side margins.
+ */
+export function lineCharsFor(frame: {
+  readonly width: number
+  readonly height: number
+}): number {
+  const { fontPx, sidePx } = subtitleBand(frame.height, frame.width)
+  return Math.min(
+    LINE_CHARS,
+    Math.floor((frame.width - 2 * sidePx) / (fontPx * 0.6))
+  )
+}
 
 /** A pause this long, or longer, between two words starts a new line. */
 const PAUSE_MS = 700
@@ -44,12 +61,13 @@ const ENDS = /[.?!:;]$/
 
 /**
  * The words, in the order said, broken into lines: at a sentence's or a
- * clause's end, at a pause, and before a line would pass `LINE_CHARS`.
+ * clause's end, at a pause, and before a line would pass `maxChars`.
  * Each line shows from its first word to its last, and lingers a little
  * unless the next line starts sooner.
  */
 export function subtitleLines(
-  words: ReadonlyArray<TimedWord>
+  words: ReadonlyArray<TimedWord>,
+  maxChars: number = LINE_CHARS
 ): ReadonlyArray<SubtitleLine> {
   const groups: Array<Array<TimedWord>> = []
   let current: Array<TimedWord> = []
@@ -61,7 +79,7 @@ export function subtitleLines(
       last !== undefined &&
       (ENDS.test(last.text) ||
         word.startMs - last.endMs >= PAUSE_MS ||
-        longer > LINE_CHARS)
+        longer > maxChars)
     ) {
       groups.push(current)
       current = []
@@ -85,21 +103,28 @@ export function subtitleLines(
 }
 
 /**
- * Where subtitles are drawn in a frame `height` px tall: the band at its foot,
- * as the share of the height a template leaves empty for them, the line's
- * size, and its margin from the bottom.
+ * Where subtitles are drawn in a frame `height` px tall and `width` wide (16:9
+ * when not given): the band at its foot, as the share of the height a
+ * template leaves empty for them, the line's size (from the frame's shorter
+ * side, so a 9:16 short's line fits across it), and its margins from the
+ * bottom and the sides.
  */
-export function subtitleBand(height: number): {
+export function subtitleBand(
+  height: number,
+  width: number = Math.round((height * 16) / 9)
+): {
   readonly bandPx: number
   /** The band's height as a share of the frame's. */
   readonly share: number
   readonly fontPx: number
   readonly marginPx: number
+  readonly sidePx: number
 } {
-  const fontPx = Math.round(height * 0.04)
+  const fontPx = Math.round(Math.min(width, height) * 0.04)
   const marginPx = Math.round(height * 0.03)
   const bandPx = Math.ceil(fontPx * 1.6 + marginPx * 2)
-  return { bandPx, share: bandPx / height, fontPx, marginPx }
+  const sidePx = Math.round(width * 0.05)
+  return { bandPx, share: bandPx / height, fontPx, marginPx, sidePx }
 }
 
 /** `ms` as ASS writes a time: H:MM:SS.cc. */
@@ -136,8 +161,11 @@ export function subtitlesAss(
   frame: { readonly width: number; readonly height: number },
   style: SubtitleStyle
 ): string {
-  const { fontPx, marginPx } = subtitleBand(frame.height)
-  const side = Math.round(frame.width * 0.05)
+  const {
+    fontPx,
+    marginPx,
+    sidePx: side,
+  } = subtitleBand(frame.height, frame.width)
   // &HAABBGGRR: lit words white, words not yet said grey, on one box of
   // near black at about three quarters behind the whole line (libass's
   // BorderStyle 4; under 3 each word gets a box, and they overlap in

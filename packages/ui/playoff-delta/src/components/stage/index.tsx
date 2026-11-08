@@ -2,16 +2,26 @@ import { useEffect, useReducer, type CSSProperties, type JSX } from "react"
 import { LEGEND, SLIDES } from "@playoff-delta/components/slides"
 import { clampSlide, initialPlayer, step } from "@playoff-delta/lib/player"
 import { SAMPLE_SEASON } from "@playoff-delta/lib/sample"
+import { formatOf, kindOf, RECORDING } from "@playoff-delta/lib/show"
 import {
   HOLD_MS,
   isLegendSlide,
-  LEGEND_SLIDES,
   LEGEND_WEEK,
-  WEEK_SLIDES,
+  slidesOf,
   type SlideId,
 } from "@playoff-delta/lib/slides"
 import { seasonData } from "@playoff-delta/lib/story"
 import type { StorySeason, StoryWeek } from "@playoff-delta/lib/story"
+import {
+  introOf,
+  voicedSceneOf,
+  type VoicedScene,
+} from "@playoff-delta/lib/voiced"
+import { INTRO } from "@playoff-delta/lib/words"
+import { assertNever } from "@some-ui/intent-kit"
+import { useOverflows } from "@some-ui/react-hooks"
+import { BrandMark } from "@some-ui/shared"
+import { hasSubtitles, subtitleBand } from "@some-ui/video-render"
 
 import "./index.css"
 
@@ -67,6 +77,65 @@ const SlideAt = ({
   return <Slide season={season} week={week} />
 }
 
+/** A scene the shape adds around the slides: the intro, a brand slide or a chapter. */
+type Framing = Exclude<VoicedScene, { kind: "slide" }>
+
+/** The intro, a brand slide or a chapter slide, drawn as a slide is. */
+const FramingSlide = ({
+  season,
+  week,
+  version,
+  scene,
+}: {
+  season: StorySeason
+  week: StoryWeek | null
+  version: number
+  scene: Framing
+}): JSX.Element => {
+  switch (scene.kind) {
+    case "intro": {
+      const intro = introOf(season, week?.week ?? LEGEND_WEEK, version)
+      return (
+        <div className="flex h-full flex-col justify-center gap-[5cqw]">
+          <p className="pd-kicker">{INTRO.title}</p>
+          <dl className="pd-say flex flex-col gap-[3cqw]">
+            {intro.rows.map((row) => (
+              <div key={row.label}>
+                <dt className="pd-small text-muted-foreground">{row.label}</dt>
+                <dd className="font-semibold">{row.says}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      )
+    }
+    case "brand-in":
+    case "brand-out": {
+      return (
+        <div className="flex h-full flex-col items-center justify-center gap-[4cqw]">
+          <BrandMark tone="brand" className="size-[40cqw]" title={INTRO.mark} />
+          <p className="pd-q text-center">{INTRO.show}</p>
+          {scene.kind === "brand-out" && (
+            <p className="pd-small pd-mono text-muted-foreground text-center">
+              {INTRO.source}
+            </p>
+          )}
+        </div>
+      )
+    }
+    case "chapter": {
+      return (
+        <div className="flex h-full flex-col justify-center">
+          <p className="pd-big">{scene.said.replace(/\.$/, "")}</p>
+        </div>
+      )
+    }
+    default: {
+      return assertNever(scene)
+    }
+  }
+}
+
 const Frame = ({
   season,
   week,
@@ -75,6 +144,9 @@ const Frame = ({
   running,
   fill,
   data,
+  framing,
+  version,
+  band = false,
   onBack,
   onNext,
 }: {
@@ -90,26 +162,61 @@ const Frame = ({
    * the episode from it (`lib/show`) and sums its bytes.
    */
   data?: string
+  framing?: Framing
+  /** The format version recorded, for the intro to name. */
+  version?: number
+  /** Record mode with subtitles: the band at the foot is left empty for them. */
+  band?: boolean
   onBack?: () => void
   onNext?: () => void
 }): JSX.Element => {
   const id = ids[at] ?? ids[0] ?? "legend"
+  const shown = framing?.id ?? id
+  const { ref, overflows } = useOverflows(
+    `${week?.week ?? LEGEND_WEEK}-${shown}`
+  )
+  // The band's height is a share of the frame's: the container's height unit.
+  const style: CSSProperties | undefined = band
+    ? {
+        paddingBottom: `calc(6cqw + ${100 * subtitleBand(RECORDING.height, RECORDING.width).share}cqh)`,
+      }
+    : undefined
+  const brand = framing?.kind === "brand-in" || framing?.kind === "brand-out"
   return (
     <div
       className={`pd-frame bg-background text-foreground ${fill ? "pd-frame--fill" : "border-border h-full max-w-full rounded-[calc(var(--radius)+0.75rem)] border"}`}
-      data-slide={id}
+      data-slide={shown}
       data-pd-season={data}
+      data-overflow={overflows ? "true" : undefined}
     >
-      <Segments ids={ids} at={at} running={running} />
-      <div className="pd-meta">
-        <span>
-          {week === null ? "THE LEGEND" : `WEEK ${week.week}`} · {season.team}
-        </span>
-        <span>{season.label}</span>
-      </div>
+      {framing === undefined && (
+        <Segments ids={ids} at={at} running={running} />
+      )}
+      {!brand && (
+        <div className="pd-meta">
+          <span>
+            {week === null ? "THE LEGEND" : `WEEK ${week.week}`} · {season.team}
+          </span>
+          <span>{season.label}</span>
+        </div>
+      )}
       {/* keyed by slide so every reveal replays when the slide changes */}
-      <div key={`${week?.week ?? LEGEND_WEEK}-${id}`} className="pd-slide">
-        <SlideAt season={season} week={week} id={id} />
+      <div
+        key={`${week?.week ?? LEGEND_WEEK}-${shown}`}
+        ref={ref}
+        className="pd-slide"
+        style={style}
+      >
+        {framing === undefined ? (
+          <SlideAt season={season} week={week} id={id} />
+        ) : (
+          <FramingSlide
+            season={season}
+            week={week}
+            version={version ?? 1}
+            scene={framing}
+          />
+        )}
       </div>
       {onBack && onNext ? (
         <div className="absolute inset-0 z-[1] grid grid-cols-[1fr_2fr]">
@@ -127,6 +234,8 @@ const WeekStory = ({
   week,
   initialSlide,
   record,
+  scene,
+  version,
   onWeekChange,
 }: {
   season: StorySeason
@@ -134,10 +243,11 @@ const WeekStory = ({
   week: StoryWeek | null
   initialSlide: number
   record: boolean
+  scene?: string
+  version?: number
   onWeekChange?: (week: number) => void
 }): JSX.Element => {
-  const ids: ReadonlyArray<SlideId> =
-    week === null ? LEGEND_SLIDES : WEEK_SLIDES
+  const ids = slidesOf(week === null ? "legend" : "week")
   const count = ids.length
   const [player, dispatch] = useReducer(
     step,
@@ -179,18 +289,30 @@ const WeekStory = ({
     return (): void => window.removeEventListener("keydown", onKey)
   }, [record, count])
 
-  if (record)
+  if (record) {
+    const n = week?.week ?? LEGEND_WEEK
+    const named =
+      version !== undefined && scene !== undefined
+        ? voicedSceneOf(season, n, version, scene)
+        : undefined
+
     return (
       <Frame
         season={season}
         week={week}
         ids={ids}
-        at={at}
+        at={named?.kind === "slide" ? named.slide : at}
         running={false}
         fill
         data={seasonData(season)}
+        framing={named?.kind === "slide" ? undefined : named}
+        version={version}
+        band={
+          version !== undefined && hasSubtitles(formatOf(kindOf(n), version))
+        }
       />
     )
+  }
 
   return (
     <div className="bg-background text-foreground flex h-dvh flex-col items-center gap-3 px-4 py-3">
@@ -247,13 +369,17 @@ const WeekStory = ({
  * week then uses.
  * `record` renders the one slide `initialSlide` names, filling the viewport,
  * with nothing to press: the recorder sizes the viewport (1080x1920) and
- * captures it.
+ * captures it. With `version` (2 on, FEED3) it draws that format version's
+ * shape: `scene` names the slide, the intro, a brand slide or a chapter
+ * (`lib/voiced`), and the band at the foot is left empty for subtitles.
  */
 export const PlayoffDeltaStage = ({
   season = SAMPLE_SEASON,
   week,
   initialSlide = 0,
   record = false,
+  scene,
+  version,
   onWeekChange,
 }: {
   season?: StorySeason
@@ -261,6 +387,10 @@ export const PlayoffDeltaStage = ({
   week?: number
   initialSlide?: number
   record?: boolean
+  /** Record mode: the scene of the shape, by its id. */
+  scene?: string
+  /** Record mode: the format version whose shape is drawn. */
+  version?: number
   onWeekChange?: (week: number) => void
 }): JSX.Element | null => {
   if (week === LEGEND_WEEK)
@@ -271,6 +401,8 @@ export const PlayoffDeltaStage = ({
         week={null}
         initialSlide={initialSlide}
         record={record}
+        scene={scene}
+        version={version}
         onWeekChange={onWeekChange}
       />
     )
@@ -283,6 +415,8 @@ export const PlayoffDeltaStage = ({
       week={shown}
       initialSlide={initialSlide}
       record={record}
+      scene={scene}
+      version={version}
       onWeekChange={onWeekChange}
     />
   )

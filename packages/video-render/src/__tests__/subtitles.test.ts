@@ -6,6 +6,7 @@
 import type { TimedWord } from "@video-render/subtitles"
 import {
   LINE_CHARS,
+  lineCharsFor,
   subtitleBand,
   subtitleLines,
   subtitlesAss,
@@ -83,7 +84,27 @@ describe("the subtitle script", () => {
   })
 
   it("leaves a band tall enough for a row and its box", () => {
-    const band = subtitleBand(1080)
-    expect(band.fontPx * 1.5 + band.marginPx).toBeLessThan(band.bandPx)
+    for (const band of [subtitleBand(1080), subtitleBand(1920, 1080)])
+      expect(band.fontPx * 1.5 + band.marginPx).toBeLessThan(band.bandPx)
+  })
+
+  it("keeps a 16:9 frame's line, and shortens a 9:16 frame's to fit across it", () => {
+    expect(lineCharsFor({ width: 1920, height: 1080 })).toBe(LINE_CHARS)
+    expect(subtitleBand(1080)).toEqual(subtitleBand(1080, 1920))
+    const short = { width: 1080, height: 1920 }
+    const band = subtitleBand(short.height, short.width)
+    const chars = lineCharsFor(short)
+    expect(chars).toBeLessThan(LINE_CHARS)
+    // Each character no wider than six tenths of the size fits between the sides.
+    expect(chars * band.fontPx * 0.6).toBeLessThanOrEqual(
+      short.width - 2 * band.sidePx
+    )
+    const words = said(
+      "Across the conference the floor rose from seven to eight and the north holds it"
+    )
+    for (const line of subtitleLines(words, chars))
+      expect(
+        line.words.map((w) => w.text).join(" ").length
+      ).toBeLessThanOrEqual(chars)
   })
 })

@@ -1,6 +1,6 @@
 import type { JSX, ReactNode } from "react"
-import { useLayoutEffect, useState } from "react"
 import { assertNever } from "@some-ui/core-utils"
+import { useOverflows } from "@some-ui/react-hooks"
 import { BrandMark } from "@some-ui/shared"
 import {
   CALL_CHAPTERS,
@@ -119,39 +119,6 @@ const labelOf = (
       return assertNever(scene)
     }
   }
-}
-
-/**
- * Whether the element's content, or any of its regions' (the frame's header,
- * body and footer), runs past its box, as laid out now: measured when the
- * element mounts (the frame mounts late, once its week is read), when `key`
- * changes, when it resizes and when a web font lands.
- */
-function useOverflows(key: string): {
-  ref: (element: HTMLElement | null) => void
-  overflows: boolean
-} {
-  const [box, setBox] = useState<HTMLElement | null>(null)
-  const [overflows, setOverflows] = useState(false)
-  useLayoutEffect(() => {
-    if (box === null) return undefined
-    const runsPast = (e: Element): boolean =>
-      e.scrollHeight > e.clientHeight + 1 || e.scrollWidth > e.clientWidth + 1
-    const measure = (): void => {
-      setOverflows(runsPast(box) || [...box.children].some(runsPast))
-    }
-    measure()
-    const observer = new ResizeObserver(measure)
-    observer.observe(box)
-    // The frame keeps its size while a web font loads, so the observer
-    // alone never sees text that grew with it.
-    document.fonts.addEventListener("loadingdone", measure)
-    return (): void => {
-      observer.disconnect()
-      document.fonts.removeEventListener("loadingdone", measure)
-    }
-  }, [box, key])
-  return { ref: setBox, overflows }
 }
 
 const Ref = ({ of: r }: { of: CallRef }): JSX.Element => (
@@ -464,8 +431,10 @@ export const CallStagePage = ({
   })
   const shown = state.kind === "show" ? state : null
   const at = shown === null ? null : callAt(shown.week, scene)
+  // The frame's header, body and footer are each clipped on their own.
   const { ref, overflows } = useOverflows(
-    `${shown?.week.week.from ?? ""}/${at?.scene.id ?? ""}`
+    `${shown?.week.week.from ?? ""}/${at?.scene.id ?? ""}`,
+    { regions: true }
   )
   if (state.kind === "waiting" || state.kind === "blank") return null
   if (shown === null || at === null)

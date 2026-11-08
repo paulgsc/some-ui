@@ -9,7 +9,6 @@
 import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import {
-  BRAND_MS,
   CALL_ID,
   CALL_INDEX_SCHEMA,
   CALL_STAGE_WIDTH,
@@ -22,7 +21,6 @@ import {
   estimatedCallMs,
   parseCallIndex,
   parseCallWeek,
-  readingMs,
   refUrl,
   sampleCallWeek,
 } from "@video-render/call"
@@ -31,6 +29,7 @@ import { parseCutList } from "@video-render/cut-list"
 import { parseFormat } from "@video-render/format"
 import { readSeries } from "@video-render/node"
 import { versionOfFile } from "@video-render/series"
+import { BRAND_MS, readingMs } from "@video-render/stills"
 import { describe, expect, it } from "vitest"
 
 const DIR = join(import.meta.dirname, "../templates", CALL_ID)

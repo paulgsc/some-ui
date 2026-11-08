@@ -33,12 +33,16 @@ async function packet(season: StorySeason, week: number): Promise<Packet> {
   return made.value
 }
 
-/** A fill that says each scene's point and facts as they are written. */
+/** `text` with each team's code said as its name, as the guidance asks. */
+const named = (p: Packet, text: string): string =>
+  text.replace(/\b[A-Z]{2,3}\b/g, (code) => p.names[code] ?? code)
+
+/** A fill that says each scene's point and facts, each team by its name. */
 const factsSaid = (p: Packet): Narration => ({
   ...p.pins,
   scenes: p.scenes.map((s) => ({
     id: s.id,
-    said: [s.point, ...s.facts].join(" "),
+    said: named(p, [s.point, ...s.facts].join(" ")),
   })),
 })
 
@@ -93,6 +97,18 @@ describe("the packet", () => {
 
 const fill = factsSaid(await packet(SAMPLE_SEASON, 9))
 
+describe("team codes", () => {
+  it("refuses a code said in place of a name, once a scene, and not a word in it", async () => {
+    const said = "LAR and SEA meet twice, and LAR can still reach it. No, Ne."
+    expect(
+      await refusalsOf(SAMPLE_SEASON, 9, saying(fill, "ladder", said))
+    ).toEqual([
+      `ladder says LAR, a team's code: say ${SAMPLE_SEASON.names["LAR"] ?? ""}`,
+      `ladder says SEA, a team's code: say ${SAMPLE_SEASON.names["SEA"] ?? ""}`,
+    ])
+  })
+})
+
 describe("the check", () => {
   it.each([
     ["2025", SAMPLE_SEASON],
@@ -128,11 +144,26 @@ describe("the check", () => {
     expect(
       await refuses({
         ...fill,
-        format: { id: "playoff-delta-week", version: 2 },
+        format: { id: "playoff-delta-week", version: 3 },
       })
     ).toEqual([
-      "the format is playoff-delta-week v2, not playoff-delta-week v1",
+      "the format is playoff-delta-week v3, not playoff-delta-week v2 or an earlier version",
     ])
+    expect(
+      await refuses({
+        ...fill,
+        format: { id: "playoff-delta-legend", version: 2 },
+      })
+    ).toEqual([
+      "the format is playoff-delta-legend v2, not playoff-delta-week v2 or an earlier version",
+    ])
+    // A fill written for an earlier version still checks: it is drawn in it.
+    expect(
+      await refuses({
+        ...fill,
+        format: { id: "playoff-delta-week", version: 1 },
+      })
+    ).toEqual([])
   })
 
   it("refuses scenes other than the format's, in its order", async () => {

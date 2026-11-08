@@ -35,7 +35,7 @@ import type { ResolvedShot } from "./resolve"
 import { reviewOf } from "./review"
 import { withSeries } from "./series"
 import type { Series } from "./series"
-import { subtitleLines, subtitlesAss } from "./subtitles"
+import { lineCharsFor, subtitleLines, subtitlesAss } from "./subtitles"
 import type { TimedWord } from "./subtitles"
 import { place, shotTimes, toMs } from "./timing"
 import type { Placement, ShotTime } from "./timing"
@@ -298,7 +298,7 @@ export async function render(
   const said = wordsSaid(scenes, fps)
   if (cutList.subtitles && said.length > 0) {
     const script = subtitlesAss(
-      subtitleLines(said),
+      subtitleLines(said, lineCharsFor(series.frame)),
       series.frame,
       cutList.subtitles
     )

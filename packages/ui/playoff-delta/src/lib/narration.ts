@@ -69,6 +69,8 @@ export type Packet = {
   readonly guidance: ReadonlyArray<string>
   readonly pins: Pins
   readonly scenes: ReadonlyArray<PacketScene>
+  /** Each team's code, as the facts write it, and its name, as it is said. */
+  readonly names: Readonly<Record<string, string>>
   /** What the legend taught, which every week's words mean; none in the legend itself. */
   readonly words: ReadonlyArray<string>
   readonly jsonSchema: unknown
@@ -82,7 +84,8 @@ function guidanceOf(season: StorySeason, kind: FormatKind): Array<string> {
       ? `Write what a voice says over each scene of one week of Playoff Delta, a short I watch about my team, the ${team}. I've seen the legend, so I know the words below.`
       : `Write what a voice says over each scene of Playoff Delta's legend, the short that teaches me, a fan of the ${team}, the words every week uses.`,
     "Each scene's facts are true, and they are what the screen shows while it is said. Make the scene's point from them, and say why where that helps me see how the week moved our paths to the playoffs.",
-    "A few sentences a scene, written to be heard: plain spoken English, with no lists, symbols or formatting. Name teams as the facts name them.",
+    "A few sentences a scene, written to be heard: plain spoken English, with no lists, symbols or formatting.",
+    "The facts write teams by code; say each by its name in names (LAR is the Rams), never by its code, which a voice can only spell or misread.",
     "Every number said is one its scene's facts give.",
     `Say what can still happen, never a forecast: none of the words ${FORECAST_WORDS.join(", ")}.`,
     "Return one JSON object in the shape of jsonSchema: copy pins as they are, then one entry in scenes per scene below, in the same order, with its id and what is said.",
@@ -133,6 +136,7 @@ export async function packetOf(
       guidance: guidanceOf(season, kindOf(week)),
       pins: await pinsOf(season, week),
       scenes: scenes.value,
+      names: season.names,
       words:
         week === LEGEND_WEEK
           ? []
@@ -201,6 +205,23 @@ function numbersIn(
   return counts
 }
 
+/**
+ * The team codes `text` says ("LAR"), each once, in the order first said: a
+ * voice spells a code or reads it as a word, so a fill names each team.
+ * A code counts only as a whole word in capitals, so "no" or "Ne" isn't one.
+ */
+function codesIn(text: string, season: StorySeason): ReadonlyArray<string> {
+  const codes = Object.keys(season.names).filter((c) => /^[A-Z]{2,3}$/.test(c))
+  if (codes.length === 0) return []
+  const found = text.match(
+    new RegExp(
+      `(?<![\\p{L}\\p{N}])(?:${codes.join("|")})(?![\\p{L}\\p{N}])`,
+      "gu"
+    )
+  )
+  return [...new Set(found ?? [])]
+}
+
 /** How `fill`'s pins differ from the episode's. */
 const pinProblems = (fill: Pins, want: Pins): ReadonlyArray<string> => [
   ...(["season", "team", "week", "sha256"] as const)
@@ -208,10 +229,11 @@ const pinProblems = (fill: Pins, want: Pins): ReadonlyArray<string> => [
     .map(
       (k) => `${k} is ${String(fill[k])}, not this episode's ${String(want[k])}`
     ),
+  // A fill is drawn in the version it was written for, any of the format's.
   ...(fill.format.id !== want.format.id ||
-  fill.format.version !== want.format.version
+  fill.format.version > want.format.version
     ? [
-        `the format is ${fill.format.id} v${fill.format.version}, not ${want.format.id} v${want.format.version}`,
+        `the format is ${fill.format.id} v${fill.format.version}, not ${want.format.id} v${want.format.version} or an earlier version`,
       ]
     : []),
 ]
@@ -242,6 +264,10 @@ export async function checkNarration(
     if (facts?.id !== scene.id) continue
     const forecast = FORECAST.exec(scene.said)
     if (forecast) problems.push(`${scene.id} forecasts: "${forecast[0]}"`)
+    for (const code of codesIn(scene.said, season))
+      problems.push(
+        `${scene.id} says ${code}, a team's code: say ${nameOf(season, code)}`
+      )
     const given = new Set(
       [facts.point, ...facts.facts].flatMap((f) => numbersIn(f, season))
     )

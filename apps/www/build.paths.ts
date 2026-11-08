@@ -232,9 +232,12 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       why: "a cut list's timing, which fits a scene to its take as Record keeps it, an episode file, which Studio opens as an episode, a review render's review.json, which Watch reads, and a video's DNA, which Finish keeps for home to make (@some-ui/soundbites, lib/project and lib/studio): the web builds render no video and keep no project. The cut list's and a format's schemas are on every path: the phone's Studio checks a project and a primer against them, and the web's call stage draws a call's format",
     },
     {
-      modules: ["packages/video-render/src/call.ts"],
+      modules: [
+        "packages/video-render/src/call.ts",
+        "packages/video-render/src/stills.ts",
+      ],
       profiles: ["lan", "pages"],
-      why: "the weekly call's template and its sample week, which only the call's stage draws (src/lib/web-surface/call), a desktop page the Android app's build leaves out",
+      why: "the weekly call's template and its sample week, which only the call's stage draws (src/lib/web-surface/call), and whether a format's shape draws subtitles (`hasSubtitles`), which only Playoff Delta's stage reads (src/lib/web-surface/playoff-delta): desktop pages the Android app's build leaves out",
     },
     {
       modules: ["packages/some-styles/src/theme/boundary.ts"],
