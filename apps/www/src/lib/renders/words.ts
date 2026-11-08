@@ -4,6 +4,8 @@
  * job, lane, state name or code reaches the screen. The estimate is an
  * estimate and says so, like an installer's bar.
  */
+import { assertNever } from "@some-ui/core-utils"
+
 import { FEED_WORDS } from "@/lib/call-videos/words"
 import { isFeed } from "@/lib/feeds"
 import { FEED_FACTS } from "@/lib/studio-index/words"
@@ -80,29 +82,35 @@ export function nowLines(now: Now): NowLines {
         ? "Nearly there."
         : `${roughly(now.estimate.secondsLeft)} left, roughly.`
   switch (now.state) {
-    case "rendering":
+    case "rendering": {
       return now.heldBy === null || now.heldBy === "clear"
         ? { title, line: "Making it now.", percent: share, left }
         : { title, line: HELD_WORDS[now.heldBy], percent: share, left: null }
-    case "finishing":
+    }
+    case "finishing": {
       return {
         title,
         line: "Putting the finished video in place.",
         percent: 100,
         left: null,
       }
-    case "paused":
+    }
+    case "paused": {
       return {
         title,
         line: HELD_WORDS[now.heldBy ?? "busy"],
         percent: share,
         left: null,
       }
+    }
     case "waiting": {
       const line = now.stuck
         ? "Home hasn't had room for this one for a while. It keeps waiting, and you'll hear if it never fits."
         : HELD_WORDS[now.heldBy ?? "unknown"]
       return { title, line, percent: share, left: null }
+    }
+    default: {
+      return assertNever(now.state)
     }
   }
 }
@@ -124,12 +132,18 @@ export function liveLine(board: Board): string | null {
   const name = `${feedName(now.feed)}, ${episodeName(now.feed, now.key)}`
   switch (now.state) {
     case "rendering":
-    case "finishing":
+    case "finishing": {
       return `Home is making ${name}.`
-    case "paused":
+    }
+    case "paused": {
       return `Home paused ${name}; it picks up again by itself.`
-    case "waiting":
+    }
+    case "waiting": {
       return `${name} waits for room on home.`
+    }
+    default: {
+      return assertNever(now.state)
+    }
   }
 }
 

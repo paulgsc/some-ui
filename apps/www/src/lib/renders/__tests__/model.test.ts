@@ -4,6 +4,7 @@
  * Home's render jobs as the phone reads them (SFEED13): the shape
  * paulgsc/server's `feeds::renders` answers, and every other answer.
  */
+import type { HomeAnswer } from "@some-ui/core-utils"
 import { describe, expect, it } from "vitest"
 
 import { readBoard, rendering } from "@/lib/renders/model"
@@ -35,7 +36,7 @@ const BOARD = {
   coming: [{ feed: "call", on: "2026-11-13" }],
 }
 
-const answer = (status: number, body: unknown) => ({
+const answer = (status: number, body: unknown): HomeAnswer => ({
   status,
   body: JSON.stringify(body),
 })

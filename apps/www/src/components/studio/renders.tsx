@@ -6,6 +6,7 @@
  * something; a drag down reads again too (PULL). Every word is `lib/renders`'s.
  */
 import type { JSX, ReactNode } from "react"
+import { assertNever } from "@some-ui/core-utils"
 import { Button } from "@some-ui/shared"
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
@@ -134,14 +135,21 @@ const notRead = (
   outcome: Exclude<RendersOutcome, { kind: "read" }>
 ): string => {
   switch (outcome.kind) {
-    case "unpaired":
+    case "unpaired": {
       return WORDS.unpaired
-    case "away":
+    }
+    case "away": {
       return WORDS.away
-    case "older":
+    }
+    case "older": {
       return WORDS.older
-    case "unreadable":
+    }
+    case "unreadable": {
       return WORDS.unreadable
+    }
+    default: {
+      return assertNever(outcome)
+    }
   }
 }
 

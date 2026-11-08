@@ -141,6 +141,10 @@ const HOME_LINK_CALLERS = new Set([
   // after a Save, for an episode's video a part at a time on Watch, and sends
   // an episode's link on Save.
   "lib/call-videos/index.ts",
+  // LA8 (SFEED13): Studio › Renders, which asks home what it is making as
+  // Studio's index or the page opens, on a drag down, on Try again, and every
+  // half minute while home is making something. It sends nothing of its own.
+  "lib/renders/index.ts",
   // LA8 (ST33): Studio's Finish, which hands the voice lane a video kept for
   // home to make and hears what home answered and lists of it
   // (`studioVideos`), sending nothing of its own.
@@ -173,7 +177,12 @@ const KEEPERS = new Set([
   "lib/home-link/idea-reads.ts",
   "lib/home-link/takes-read.ts",
   "lib/home-link/call-videos.ts",
+  "lib/home-link/renders.ts",
 ])
+
+/** SFEED13: Studio › Renders' read, and the one request it may send. */
+const RENDERS_READ = "lib/home-link/renders.ts"
+const RENDERS_SENDS = [['"GET"', '"/renders"']]
 
 /** The routine's read, and the two requests it may send. */
 const ROUTINE_READ = "lib/home-link/routine.ts"
@@ -783,6 +792,16 @@ describe("LA8: the phone reaches home through one module", () => {
         )
       )
     expect(readers).toEqual(["lib/call-videos/index.ts"])
+  })
+
+  it("sends nothing from Studio › Renders but one GET of /renders, and only Studio › Renders asks it (SFEED13)", () => {
+    expect(sendCalls(RENDERS_READ, read(RENDERS_READ))).toEqual(RENDERS_SENDS)
+    const readers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /from "\.\/renders"|from "@\/lib\/home-link\/renders"/.test(read(f))
+      )
+    expect(readers).toEqual(["lib/renders/index.ts"])
   })
 
   it("sends nothing from Ideas on home but its four requests, and only it asks them (ST26 c)", () => {
