@@ -2534,7 +2534,9 @@
         "server:apps/servers/file_host/src/routes/previews.rs",
         "server:apps/servers/file_host/src/handlers/previews.rs",
         "server:apps/servers/file_host/src/previews.rs",
-        "server:infra/render"
+        "server:infra/render",
+        "server:infra/compose/call-render.yml",
+        "server:infra/docker/Dockerfile.render"
       ],
       "modules": ["previews"],
       "objectives": [
@@ -2545,7 +2547,7 @@
           "claim": "A preview the owner asks for is made, or ends with its reason on the phone; it never waits unseen.",
           "requirement": "Each request home accepts reaches ready, or failed with a reason class (no-sample, too-long, too-large, render, or overdue once it is not ready a day after it was asked), and reads on the phone, from the newest request per template, as waiting, being made, paused, set aside, ready or failed; it waits only behind the lane's other work, and a second request while one is not yet ready answers with that one.",
           "verdict": "unproven",
-          "conclusion": "The cut is tested and the recorder is written in some-ui; home's job and routes are not built yet, so nothing makes or reports a preview.",
+          "conclusion": "The cut is tested and the recorder is written in some-ui; home's job, routes and overdue sweep are built and tested in server#743, not yet merged, and the phone's control (some-ui#2778) is not merged, so nothing makes or reports a preview yet.",
           "evidence": [
             {
               "class": "structural",
@@ -2562,15 +2564,7 @@
             "by": "none"
           },
           "amendments": [],
-          "tracked": "some-ui#2757",
-          "proof": [
-            "server:apps/servers/file_host/src/previews/tests.rs#a_request_writes_one_and_another_while_it_is_pending_answers_that_one",
-            "server:apps/servers/file_host/src/previews/tests.rs#a_request_not_ready_a_day_after_it_was_asked_fails_overdue",
-            "server:apps/servers/file_host/src/previews/tests.rs#a_ready_preview_says_when_it_was_made_its_size_version_and_when_it_goes",
-            "server:apps/servers/file_host/src/previews/tests.rs#a_failed_preview_says_why_in_a_class_never_its_log",
-            "server:apps/servers/file_host/src/handlers/previews.rs#only_a_paired_phone_reaches_previews_and_an_unknown_template_is_not_found",
-            "server:apps/servers/file_host/src/handlers/previews.rs#only_the_current_ready_preview_has_a_video"
-          ]
+          "tracked": "some-ui#2757"
         },
         {
           "id": "PV2",
@@ -2579,7 +2573,7 @@
           "claim": "Home keeps at most one preview per template, and none past a day.",
           "requirement": "Per template, home keeps at most one request not yet ready, one ready preview of at most the render policy's largest video (MAX_VIDEO_MB), and the failed requests of the last day: a preview is deleted 24 h after it is made, the newest included, and an older one as soon as a newer one is ready; a failed request goes 24 h after it failed; a preview's work (stills, takes, step cache) goes with it, or when its request fails; the job in progress is never deleted. No switch and no receipt: a preview is derived from sample data, not the owner's record.",
           "verdict": "unproven",
-          "conclusion": "Asked for by the owner on #2757 and agreed for home's prune; the prune is not built yet.",
+          "conclusion": "Asked for by the owner on #2757 and agreed for home's prune; the prune is built and tested in server#743, not yet merged.",
           "evidence": [
             {
               "class": "unknown",
@@ -2591,11 +2585,7 @@
             "by": "none"
           },
           "amendments": [],
-          "tracked": "some-ui#2757",
-          "proof": [
-            "server:apps/servers/file_host/src/previews/tests.rs#the_prune_takes_a_day_old_preview_and_any_older_than_the_newest_ready",
-            "server:apps/servers/file_host/src/previews/tests.rs#the_prune_takes_a_failed_one_a_day_after_and_never_the_job_in_progress"
-          ]
+          "tracked": "some-ui#2757"
         }
       ]
     }
@@ -4598,6 +4588,8 @@
           "on": "home",
           "paths": [
             "server:infra/render",
+            "server:infra/compose/call-render.yml",
+            "server:infra/docker/Dockerfile.render",
             "some-ui:apps/www/tests/record/preview.ts",
             "some-ui:apps/www/tests/record/call-recording.ts",
             "some-ui:packages/video-render/src/preview.ts"
