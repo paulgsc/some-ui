@@ -29,6 +29,12 @@
  * checks paulgsc/testing's `clips/` folder before it is pushed
  * (`clipFolderProblems`, SFEED7).
  *
+ *   pnpm --filter @some-ui/video-render render session-check <sessions folder>
+ *
+ * checks a `sessions/` folder of `paulgsc/testing` before it is pushed
+ * (`sessionFolderProblems`, SFEED9): every note against its schema, each
+ * named for its day and session.
+ *
  *   pnpm --filter @some-ui/video-render render compare-hearings <home transcript> <session words>
  *
  * lines up two hearings of one take (ST25, `hearings.ts`) and prints the
@@ -70,6 +76,7 @@ import {
 } from "./node"
 import { toFile } from "./pending"
 import { REPOS } from "./refs"
+import { sessionFolderProblems } from "./session-note"
 import { fromTimelineV1 } from "./timeline-v1"
 
 async function main(): Promise<void> {
@@ -147,6 +154,20 @@ async function main(): Promise<void> {
     const n = index.ok ? index.value.clips.length : 0
     process.stdout.write(
       `${second}: ${n} ${n === 1 ? "clip" : "clips"}, ready\n`
+    )
+    return
+  }
+  if (first === "session-check") {
+    if (!second) fail(["usage: render session-check <sessions folder>"])
+    const dir = here(second)
+    const names = (await readdir(dir)).filter((n) => n.endsWith(".json"))
+    const files = new Map<string, unknown>()
+    for (const name of names) files.set(name, await readJson(join(dir, name)))
+    const problems = sessionFolderProblems(files)
+    if (problems.length > 0)
+      fail([`${second} can't be published:`, ...problems])
+    process.stdout.write(
+      `${second}: ${names.length} ${names.length === 1 ? "note" : "notes"}, ready\n`
     )
     return
   }

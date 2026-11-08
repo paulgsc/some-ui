@@ -27,7 +27,10 @@ up to 14 days.
    trailers, open asks, and the epics that moved, with their "Where we
    are". It reads the record from the checkout's history, so the clone must
    reach back to the week's start (`git fetch --shallow-since=<from>` on a
-   shallow one).
+   shallow one). Then read the week's session notes: the files in
+   `paulgsc/testing`'s `sessions/` whose `ended` falls in the week
+   (`src/session-note.ts`, SFEED9). Each is what a session distilled before
+   it was archived, including sessions that opened no pull request.
 3. **Read the ledger:** the Residual Ledger's `items`
    (https://claude.ai/artifact/Ktc1i8JtBGQVdXEraobxgA) with `ArtifactData`,
    every item whose `status` isn't `done`.
@@ -41,16 +44,18 @@ up to 14 days.
      a card, its `status`, and its `tally.waits_on_you`.
    - **moved:** up to 12 epics that moved, each said from its "Where we
      are": what landed, and what is next. Every PR it says landed is in a
-     batch.
+     batch. A session note's `left` says what is next where the epic hasn't
+     caught up.
    - **done:** up to 12 batches of related pull requests, grouped by the
      story they moved. Leave out bots' PRs and route snapshot syncs. Say
      what each batch changed for the owner, never how.
    - **gray:** up to 8 promises declared or amended this week, from the
      trailers, said as what they now hold.
-   - **mine:** up to 8 of the week's `calls` worth the owner hearing: the
-     options, the one taken, why it was gray, and how to undo it. Say whose
+   - **mine:** up to 8 of the week's `calls`, and of its session notes'
+     `calls`, worth the owner hearing: the options, the one taken, why it
+     was gray, and how to undo it. A call in both is said once. Say whose
      call it was: Claude's alone, Claude's with the owner agreeing, or the
-     owner's.
+     owner's; a session note's calls are Claude's alone.
    - **asks:** up to 12 open asks that parse: first those filed this week,
      newest first, then the rest by how much each unblocks. An ask that
      doesn't parse is named in the PR body, never guessed. The others go in

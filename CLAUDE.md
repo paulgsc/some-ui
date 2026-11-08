@@ -826,8 +826,16 @@ handoff document (owner, 2026-10-25). It lives in two places, for two readers:
 - **Winding down,** whether the work is done or too large for one session: open and merge the
   PR for what you did (`.claude/skills/steward/SKILL.md`), then amend every issue you touched
   and its epic's "Where we are", then the ledger item (`summary`, `status`, `flag`,
-  `first_step`, `issues`, `keywords`), then archive the session. Nothing about the story may
-  live only in the session that is ending.
+  `first_step`, `issues`, `keywords`), then distill the session, then archive it. Nothing about
+  the story may live only in the session that is ending.
+- **A session is archived only by its own agent, once distilled** (SFEED9, #2753). The
+  distillation is a note for the weekly call in `paulgsc/testing`, as
+  `sessions/<ended>-<session id>.json`: what it did, the calls it made without the owner,
+  what it left and why, what waits on the owner. The schema is `@some-ui/video-render`'s
+  `session-note.ts`, and `render session-check` checks the folder. It is data, so it never
+  goes in some-ui or server, and it is public, so it carries nothing private. A coordinating
+  session never archives another session. It asks that session to wind down. A session that
+  can't write its note stays unarchived and says why.
 
 Cloud sessions keep no files between them, so the issues and the ledger are the only memory.
 A footgun that recurs across sessions belongs promoted into this file (the section above) rather
