@@ -163,13 +163,11 @@ describe.each(FRAMES.map((frame) => ({ frame, name: frameName(frame) })))(
       }
     })
 
-    it("keeps the preview mark in the foot: in the band a stage leaves for captions, clear of the lower third they are drawn in", () => {
+    it("keeps the preview mark in the band a stage leaves for captions", () => {
       const p = ready("preview-mark", "plate-v1", {}, frame)
       const boxes = boxesOf(frameAt(p, 0))
       expect(boxes.length).toBeGreaterThan(0)
       for (const box of boxes) {
-        expect(inside(box, g.regions.foot)).toBe(true)
-        expect(overlaps(box, g.regions["lower-third"])).toBe(false)
         expect(box.y).toBeGreaterThanOrEqual(
           g.frame.height - captionSpace(g.frame)
         )

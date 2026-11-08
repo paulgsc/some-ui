@@ -22,6 +22,7 @@ import {
   estimatedMs,
   MB,
   overLength,
+  previewOf,
   stillFile,
   TimedWordSchema,
   UploadCopySchema,
@@ -349,6 +350,37 @@ export async function recordStills({
       ...overflowing,
     ])
   return takes
+}
+
+/**
+ * Renders a recording's whole cut list, or, for a template's preview, the
+ * 15–30 s cut of it (`previewOf`) into `preview.mp4`. A preview is never
+ * uploaded, so it carries no chapter marks.
+ */
+export async function renderCut(
+  root: string,
+  series: string,
+  whole: CutList,
+  options: {
+    readonly preview: boolean
+    /** The episode's file, when it isn't a preview. */
+    readonly episode: string
+    readonly marks: () => ReadonlyArray<ChapterMark>
+    readonly policy: RenderPolicy
+    readonly browser: Browser
+    readonly origin: string
+  }
+): Promise<void> {
+  const { preview } = options
+  const cut = preview ? previewOf(whole) : { ok: true as const, value: whole }
+  if (!cut.ok) fail(["The preview can't be cut:", ...cut.problems])
+  await renderStills(root, series, cut.value, {
+    out: preview ? "preview.mp4" : options.episode,
+    policy: options.policy,
+    browser: options.browser,
+    origin: options.origin,
+    marks: preview ? [] : options.marks(),
+  })
 }
 
 /**

@@ -67,7 +67,7 @@ export const WORDS = {
     "preview-mark": {
       name: "Preview mark",
       about:
-        "On a template's preview, never an episode: a plate under the picture saying the video is a preview of sample data.",
+        "On a template's preview: a plate under the picture saying the video is a preview of sample data.",
     },
   } satisfies Record<Kind, { name: string; about: string }>,
   lookHeading: "Look",

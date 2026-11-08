@@ -1,10 +1,7 @@
 /**
- * Playoff Delta's recording (FEED3 #2646), shared by `record:playoff-delta`
- * (`./playoff-delta`) and a template's preview, `record:preview`
- * (`./preview`, SFEED12): a still of each scene of the fill's format version,
- * its shape included (`lib/voiced` in `@some-ui/playoff-delta`), said in
- * `PD_VOICE`, and the renderer laying them together (`./voiced`).
- * `./playoff-delta`'s header says how.
+ * Playoff Delta's recording, shared by `record:playoff-delta`
+ * (`./playoff-delta`, whose header says what it records) and a template's
+ * preview, `record:preview` (`./preview`, SFEED12).
  *
  * A preview is the sample season's episode of its template (the legend or
  * the sample's newest week), said from the sample's fill, which is kept in
@@ -33,7 +30,7 @@ import {
   type StorySeason,
 } from "@some-ui/playoff-delta/recording"
 import { THEME_STORAGE_KEY } from "@some-ui/styles/theme"
-import { chapterSlides, hasCaptions, previewOf } from "@some-ui/video-render"
+import { chapterSlides, hasCaptions } from "@some-ui/video-render"
 import { readJson } from "@some-ui/video-render/node"
 
 import { fail, here, launchChromium } from "./command"
@@ -43,7 +40,7 @@ import {
   policyOf,
   recordStills,
   refuseLong,
-  renderStills,
+  renderCut,
   siteOf,
 } from "./voiced"
 
@@ -57,7 +54,7 @@ const SERIES = resolve(
 const TESTING_SEASON =
   /\/paulgsc\/testing\/main\/playoff-delta\/\d{4}\/[A-Z]{2,3}\.json$/
 
-/** The flags `record:playoff-delta` takes beyond `record:preview`'s. */
+/** `record:playoff-delta`'s flags but `--out`. */
 export const PD_OPTIONS = {
   week: { type: "string", default: "9" },
   narration: { type: "string" },
@@ -178,7 +175,7 @@ async function fillOf(
   asked: Asked
 ): Promise<Narration> {
   const name = asked.preview ? "the sample's fill" : values.narration
-  if (name === undefined)
+  if (!name)
     fail(["--narration names the week's fill: what is said over each scene"])
   const checked = await checkNarration(
     season,
@@ -279,21 +276,19 @@ export async function recordPlayoffDelta(
       join(root, "narration.json"),
       `${JSON.stringify(fill, null, 1)}\n`
     )
-    const whole = voicedCutList(season, asked.week, fill, takes, { bed })
-    const cut = asked.preview
-      ? previewOf(whole)
-      : { ok: true as const, value: whole }
-    if (!cut.ok) fail(["The preview can't be cut:", ...cut.problems])
-    await renderStills(root, SERIES, cut.value, {
-      out: asked.preview ? "preview.mp4" : "episode.mp4",
-      policy,
-      browser,
-      origin,
-      // A preview is never uploaded, so it has no chapters to describe.
-      marks: asked.preview
-        ? []
-        : chapterSlides(scenes.filter((s) => s.kind === "chapter")),
-    })
+    await renderCut(
+      root,
+      SERIES,
+      voicedCutList(season, asked.week, fill, takes, { bed }),
+      {
+        preview: asked.preview,
+        episode: "episode.mp4",
+        marks: () => chapterSlides(scenes.filter((s) => s.kind === "chapter")),
+        policy,
+        browser,
+        origin,
+      }
+    )
   } finally {
     await browser.close()
     await site.close()
