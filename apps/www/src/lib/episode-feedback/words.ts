@@ -38,6 +38,12 @@ export const FEEDBACK_WORDS = {
   shown: "How it looked or sounded",
   pick: "Pick what the note is about. Each goes where it belongs.",
   keep: "Keep the note",
+  /** The note's spoken part, a take recorded with the note open. */
+  say: "Say it, if you like",
+  sayLine:
+    "What you say is kept with your takes and goes home like them, even if you don't keep the note. The newest take goes with the note.",
+  /** A kept note's row, when it has a spoken part. */
+  spoken: "With what you said",
   cancel: "Not now",
   refused: {
     unwritable:

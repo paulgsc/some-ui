@@ -1,14 +1,16 @@
 /**
  * Feedback on an episode (SFEED6, #2745): under an episode's video, "Leave a
  * note here" catches the moment the video stands at and offers decision 7's
- * fixed categories; Studio's Feedback page lists every note kept. Reads
- * `lib/episode-feedback`'s snapshot, and steps its pure draft; every word is
- * its table's. Phone build only (`build.paths.ts`).
+ * fixed categories, and a spoken part recorded on the library desk through
+ * the take pattern (`TakeList`); Studio's Feedback page lists every note
+ * kept. Reads `lib/episode-feedback`'s snapshot and the desk's, and steps
+ * the pure draft; every word is its table's. Phone build only
+ * (`build.paths.ts`).
  */
 import type { JSX, RefObject } from "react"
-import { useReducer, useState, useSyncExternalStore } from "react"
+import { useEffect, useReducer, useState, useSyncExternalStore } from "react"
 import { dayOf, listed } from "@some-ui/core-utils"
-import { Button, Notice } from "@some-ui/shared"
+import { Button, Notice, TakeList, useTakePattern } from "@some-ui/shared"
 import { useQuery } from "@tanstack/react-query"
 
 import { FEED_WORDS } from "@/lib/call-videos"
@@ -26,6 +28,8 @@ import {
   notesOn,
   SAID,
   SHOWN,
+  spokenLine,
+  spokenTakeOf,
   step,
 } from "@/lib/episode-feedback"
 import type { HomeNotesOutcome } from "@/lib/episode-feedback/home-query"
@@ -35,6 +39,7 @@ import {
   notesAnswered,
 } from "@/lib/episode-feedback/home-query"
 import type { Feed } from "@/lib/feeds"
+import { libraryTakes } from "@/lib/library-takes"
 import { FEED_FACTS } from "@/lib/studio-index"
 
 const WORDS = FEEDBACK_WORDS
@@ -76,6 +81,34 @@ const Choices = ({
 )
 
 /**
+ * The open note's spoken part: its takes on the library desk, answering
+ * the note's own line. A take under way when the note closes is kept
+ * (`leave`), as on every screen of the pattern.
+ */
+const SpokenPart = ({ id }: { id: string }): JSX.Element => {
+  const phone = libraryTakes()
+  const { takes } = useSyncExternalStore(phone.subscribe, phone.getSnapshot)
+  const line = spokenLine(id)
+  useEffect(
+    () => (): void => {
+      if (phone.pattern.getSnapshot().answers === line) phone.pattern.leave()
+    },
+    [phone, line]
+  )
+  return (
+    <div className="flex flex-col gap-2">
+      <TakeList
+        pattern={phone.pattern}
+        answers={line}
+        takes={takes}
+        label={WORDS.say}
+      />
+      <p className="text-muted-foreground text-xs">{WORDS.sayLine}</p>
+    </div>
+  )
+}
+
+/**
  * The note control under `feed`'s episode `episode`, reading the moment from
  * `video` when it opens.
  */
@@ -91,12 +124,13 @@ export const EpisodeNote = ({
   const [draft, dispatch] = useReducer(step, CLOSED)
   const [kept, setKept] = useState(0)
   const notes = notesOn(useEpisodeNotes(), feed, episode)
+  const phone = libraryTakes()
+  // A take under way: the note waits for it, so it can name it.
+  const recording = useTakePattern(phone.pattern).take.kind !== "idle"
   const keep = (): void => {
-    const note = noteOf(
-      draft,
-      { feed, episode },
-      { id: crypto.randomUUID(), now: new Date() }
-    )
+    if (draft.kind !== "open") return
+    const take = spokenTakeOf(phone.getSnapshot().takes, draft.id)
+    const note = noteOf(draft, { feed, episode }, { now: new Date(), take })
     if (note === null) return
     const came = episodeFeedback.keep(note)
     dispatch({ type: "kept", came })
@@ -120,6 +154,7 @@ export const EpisodeNote = ({
             video.current?.pause()
             dispatch({
               type: "opened",
+              id: crypto.randomUUID(),
               atMs: momentOf(video.current?.currentTime ?? 0),
             })
           }}
@@ -142,13 +177,18 @@ export const EpisodeNote = ({
             picked={draft.picked}
             onToggle={(category) => dispatch({ type: "toggled", category })}
           />
+          <SpokenPart id={draft.id} />
           {draft.refused !== null && (
             <Notice key={draft.refused} tone="danger">
               {WORDS.refused[draft.refused]}
             </Notice>
           )}
           <div className="flex gap-2">
-            <Button size="sm" disabled={!keepable(draft)} onClick={keep}>
+            <Button
+              size="sm"
+              disabled={!keepable(draft) || recording}
+              onClick={keep}
+            >
               {WORDS.keep}
             </Button>
             <Button
@@ -239,6 +279,9 @@ const FeedbackList = ({
             destinationsOf(note.categories).map((d) => DESTINATION_WORDS[d])
           )}
         </span>
+        {note.take !== undefined && (
+          <span className="text-muted-foreground text-sm">{WORDS.spoken}</span>
+        )}
         <span className="text-muted-foreground text-xs">{place(note.id)}</span>
       </li>
     ))}

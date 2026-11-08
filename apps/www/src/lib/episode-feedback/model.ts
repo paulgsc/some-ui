@@ -4,10 +4,16 @@
  * set (SFEED decisions 7 and 10, #2670). The set, and where each category
  * goes, are `@some-ui/video-render`'s `feedback.ts`, which the routine's
  * filing reads too.
+ *
+ * A note may carry a spoken part (step 3): a take on the library desk
+ * (`lib/library-takes`, ST32), recorded while the note is open and named by
+ * its own id, which is its voice note id on home. It is said before the note
+ * is kept, never added after: a kept note never changes.
  */
 import { assertNever } from "@some-ui/core-utils"
 import type { Category } from "@some-ui/video-render"
 import { CATEGORIES } from "@some-ui/video-render"
+import type { PatternTake } from "@some-ui/voice-capture"
 import { z } from "zod"
 
 import type { Appended } from "@/lib/bounded-list"
@@ -33,6 +39,8 @@ export const NoteSchema = z.object({
         CATEGORIES.filter((c) => picked.includes(c)).join() === picked.join()
     ),
   writtenAt: z.iso.datetime(),
+  /** The spoken part: a library take's id (its voice note id on home). */
+  take: z.string().min(1).optional(),
 })
 
 /** A kept note. */
@@ -43,6 +51,8 @@ export type Draft =
   | { readonly kind: "closed" }
   | {
       readonly kind: "open"
+      /** The note's id, from the moment it opens, so its take can answer it. */
+      readonly id: string
       readonly atMs: number
       readonly picked: ReadonlyArray<Category>
       /** Why the phone couldn't keep it; the categories stay picked. */
@@ -53,7 +63,7 @@ export const CLOSED: Draft = { kind: "closed" }
 
 export type DraftEvent =
   /** "Leave a note here", at the moment the video stood at. */
-  | { readonly type: "opened"; readonly atMs: number }
+  | { readonly type: "opened"; readonly id: string; readonly atMs: number }
   | { readonly type: "toggled"; readonly category: Category }
   | { readonly type: "cancelled" }
   /** What keeping it came to. */
@@ -72,7 +82,13 @@ export function step(draft: Draft, event: DraftEvent): Draft {
       // A note already open keeps its moment and what was picked.
       return draft.kind === "open"
         ? draft
-        : { kind: "open", atMs: event.atMs, picked: [], refused: null }
+        : {
+            kind: "open",
+            id: event.id,
+            atMs: event.atMs,
+            picked: [],
+            refused: null,
+          }
     }
     case "toggled": {
       if (draft.kind === "closed") return draft
@@ -101,19 +117,51 @@ export const keepable = (
 ): draft is Extract<Draft, { kind: "open" }> =>
   draft.kind === "open" && draft.picked.length > 0
 
-/** The note a draft becomes, or null while it can't be kept. */
+/**
+ * What the takes of an open note answer on the library desk: one line per
+ * note, so another note's takes, and the library's own, are never its.
+ */
+export const spokenLine = (id: string): string => `episode-note:${id}`
+
+/** A take as the note reads it from the desk. */
+type SpokenTake = Pick<
+  PatternTake,
+  "id" | "answers" | "recordedAt" | "standing"
+>
+
+/**
+ * The take a note names: the newest of those said for it and not set
+ * aside, or null when none was said. One said again before it (D2) stays a
+ * library take, kept, and the note names the newer.
+ */
+export function spokenTakeOf(
+  takes: ReadonlyArray<SpokenTake>,
+  id: string
+): string | null {
+  const line = spokenLine(id)
+  const said = takes
+    .filter((take) => take.answers === line && take.standing === "current")
+    .sort((a, b) => b.recordedAt.localeCompare(a.recordedAt))
+  return said[0]?.id ?? null
+}
+
+/**
+ * The note a draft becomes, with `take` its spoken part when one was said,
+ * or null while it can't be kept.
+ */
 export function noteOf(
   draft: Draft,
   where: { readonly feed: Feed; readonly episode: string },
-  made: { readonly id: string; readonly now: Date }
+  made: { readonly now: Date; readonly take: string | null }
 ): Note | null {
   if (!keepable(draft)) return null
   return {
-    id: made.id,
+    id: draft.id,
     feed: where.feed,
     episode: where.episode,
     atMs: draft.atMs,
     categories: [...draft.picked],
     writtenAt: made.now.toISOString(),
+    ...(made.take === null ? {} : { take: made.take }),
   }
 }
