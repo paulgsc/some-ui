@@ -16,7 +16,7 @@ import { HYPERFRAMES_VERSION } from "./pin"
 import { COMPOSITIONS, LIB, MARK, renderComposition } from "./render"
 
 /** Every file under `dir`, by its path from `dir`, sorted. */
-async function filesUnder(dir: string): Promise<ReadonlyArray<string>> {
+export async function filesUnder(dir: string): Promise<ReadonlyArray<string>> {
   const entries = await readdir(dir, { recursive: true, withFileTypes: true })
   return entries
     .filter((e) => e.isFile())

@@ -164,14 +164,27 @@ export async function renderComposition(
       await cp(asset.from, join(project, "assets", asset.as))
     }
     const index = join(project, "index.html")
-    const html = await readFile(index, "utf8")
-    const root = ROOT.exec(html)?.[0] ?? ""
+    let html = await readFile(index, "utf8")
+    let root = ROOT.exec(html)?.[0] ?? ""
     const [width, height] = [
       attribute(root, "data-width"),
       attribute(root, "data-height"),
     ]
+    /** Sets one attribute of the root's tag in the copy's markup. */
+    const setOnRoot = (name: string, value: string): void => {
+      const next = root.replace(
+        new RegExp(`\\b${name}="[^"]*"`),
+        `${name}="${value}"`
+      )
+      html = html.replace(root, next)
+      root = next
+    }
     const frame = request.frame
-    if (frame && (width !== frame.width || height !== frame.height)) {
+    if (frame && /\bdata-fit-frame\b/.test(root)) {
+      // Drawn at the video's frame, whatever size its markup names (HYPER5).
+      setOnRoot("data-width", String(frame.width))
+      setOnRoot("data-height", String(frame.height))
+    } else if (frame && (width !== frame.width || height !== frame.height)) {
       return {
         ok: false,
         problem: `${request.composition} is drawn ${String(width)}x${String(height)}, and the video is ${String(frame.width)}x${String(frame.height)}`,
@@ -184,15 +197,9 @@ export async function renderComposition(
           problem: `${request.composition} has no root data-duration to set`,
         }
       }
-      const seconds = String(request.seconds)
-      await writeFile(
-        index,
-        html.replace(
-          root,
-          root.replace(/\bdata-duration="[^"]*"/, `data-duration="${seconds}"`)
-        )
-      )
+      setOnRoot("data-duration", String(request.seconds))
     }
+    await writeFile(index, html)
     await writeFile(variables, JSON.stringify(request.variables))
     const drawn = await runNode(
       [
