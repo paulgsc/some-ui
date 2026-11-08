@@ -83,7 +83,8 @@ const Choices = ({
 
 /**
  * The open note's spoken part: its takes on the library desk, answering
- * the note's own line. A take under way when the note closes is kept.
+ * the note's own line. When the note closes, a take under way is kept and
+ * one of its takes playing stops.
  */
 const SpokenPart = ({
   id,
@@ -92,11 +93,22 @@ const SpokenPart = ({
   id: string
   phone: LibraryPhone
 }): JSX.Element => {
-  const { takes } = useSyncExternalStore(phone.subscribe, phone.getSnapshot)
+  const { takes, full } = useSyncExternalStore(
+    phone.subscribe,
+    phone.getSnapshot
+  )
   const line = spokenLine(id)
   useEffect(
     () => (): void => {
-      if (phone.pattern.getSnapshot().answers === line) phone.pattern.leave()
+      const { answers, playback } = phone.pattern.getSnapshot()
+      const playing =
+        playback.kind !== "quiet" &&
+        phone
+          .getSnapshot()
+          .takes.some(
+            (take) => take.id === playback.id && take.answers === line
+          )
+      if (answers === line || playing) phone.pattern.leave()
     },
     [phone, line]
   )
@@ -107,6 +119,7 @@ const SpokenPart = ({
         answers={line}
         takes={takes}
         label={WORDS.say}
+        full={full ? <p className="text-sm">{WORDS.sayFull}</p> : undefined}
       />
       <p className="text-muted-foreground text-xs">{WORDS.sayLine}</p>
     </div>

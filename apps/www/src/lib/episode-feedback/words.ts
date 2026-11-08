@@ -41,6 +41,8 @@ export const FEEDBACK_WORDS = {
   say: "Say it, if you like",
   sayLine:
     "What you say is kept with your takes and goes home like them, even if you don't keep the note. The newest take goes with the note.",
+  sayFull:
+    "The phone already keeps forty takes that haven't reached home, so it can't keep another until some do.",
   /** On the Feedback page. */
   spoken: "With what you said",
   cancel: "Not now",
