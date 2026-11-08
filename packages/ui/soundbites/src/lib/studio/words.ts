@@ -959,6 +959,20 @@ export const STUDIO_WORDS = {
   },
 
   /**
+   * A new idea's answers no idea on this phone names (ST26, #2483): how
+   * many wait, and the owner's way to send them home.
+   */
+  unnamed: {
+    heading: "Answers no idea holds",
+    line: (n: number): string =>
+      `${n === 1 ? "An answer" : `${n} answers`} you said for a new idea that no idea on this phone holds now. ${n === 1 ? "It waits" : "They wait"} here and ${n === 1 ? "takes" : "take"} room your next answers need.`,
+    keep: "Keep them in Takes on home",
+    keepLine:
+      "They go home as every take does, and leave this phone once home has them. Once one is on home, My data in Settings is where it can be deleted.",
+    kept: "They'll go home with your other takes.",
+    refused: "This phone couldn't do that. Nothing changed; try again.",
+  },
+  /**
    * The idea shelf (ST19): every idea kept, and one at a time moved on a
    * step, from just the idea to a video, or set aside, never let go.
    */

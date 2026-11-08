@@ -1784,9 +1784,6 @@ importers:
       hyperframes:
         specifier: 0.9.22
         version: 0.9.22(@types/node@26.6.3)(supports-color@10.2.2)
-      playwright-core:
-        specifier: 1.62.1
-        version: 1.62.1
       zod:
         specifier: 'catalog:'
         version: 4.6.6

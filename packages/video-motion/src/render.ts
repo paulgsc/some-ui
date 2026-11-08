@@ -11,6 +11,7 @@
 
 import { spawn } from "node:child_process"
 import {
+  chmod,
   cp,
   mkdir,
   mkdtemp,
@@ -27,8 +28,10 @@ import { fileURLToPath } from "node:url"
 import { nodePorts } from "@some-ui/video-render/node"
 import { z } from "zod"
 
+import { isHeadlessShell } from "./browser"
 import { fontFiles } from "./fonts"
 import {
+  chromeWrapper,
   encodeArgs,
   fetched,
   HYPERFRAMES_VERSION,
@@ -69,7 +72,7 @@ export type RenderRequest = {
   readonly out: string
   /** A folder of this render's own, on a drive with room for its frames. */
   readonly work: string
-  /** The Chromium to draw with. */
+  /** The Chromium headless shell to draw with (`browser.ts`). */
   readonly chrome: string
   /** The scene's length, over the composition's own `data-duration`. */
   readonly seconds?: number
@@ -106,10 +109,21 @@ function runNode(
   args: ReadonlyArray<string>,
   env: Record<string, string>
 ): Promise<Ran> {
+  return runCommand(process.execPath, args, env)
+}
+
+function runCommand(
+  command: string,
+  args: ReadonlyArray<string>,
+  env: Record<string, string>,
+  /** Killed after this long, when given. */
+  timeoutMs?: number
+): Promise<Ran> {
   return new Promise((done) => {
-    const child = spawn(process.execPath, [...args], {
+    const child = spawn(command, [...args], {
       env,
       stdio: ["ignore", "pipe", "pipe"],
+      ...(timeoutMs === undefined ? {} : { timeout: timeoutMs }),
     })
     let output = ""
     const keep = (chunk: Buffer): void => {
@@ -133,6 +147,12 @@ const lastLines = (output: string): string =>
 export async function renderComposition(
   request: RenderRequest
 ): Promise<Rendered> {
+  if (!isHeadlessShell(request.chrome)) {
+    return {
+      ok: false,
+      problem: `${request.chrome} is not a Chromium headless shell, the only browser that draws with DRAW_FLAGS (browser.ts)`,
+    }
+  }
   const source = join(COMPOSITIONS, request.composition)
   const entries = await readdir(COMPOSITIONS)
   if (request.composition === LIB || !entries.includes(request.composition)) {
@@ -194,12 +214,23 @@ export async function renderComposition(
       )
     }
     await writeFile(variables, JSON.stringify(request.variables))
+    const chrome = join(work, "chrome")
+    await writeFile(chrome, chromeWrapper(request.chrome))
+    await chmod(chrome, 0o755)
+    const env = renderEnv(process.env, chrome, tmp)
+    const runs = await runCommand(chrome, ["--version"], env, 30_000)
+    if (!runs.ok) {
+      return {
+        ok: false,
+        problem: `the browser can't be started from ${work}, where its wrapper is written (the browser missing, or the drive mounted noexec): ${lastLines(runs.output)}`,
+      }
+    }
     const drawn = await runNode(
       [
         await hyperframesBin(),
         ...renderArgs({ project, frames, variables, fps: request.fps }),
       ],
-      renderEnv(process.env, request.chrome, tmp)
+      env
     )
     if (!drawn.ok) {
       return {
