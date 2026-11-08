@@ -3,7 +3,7 @@
  *
  * Studio's index on the phone (SFEED1, #2731): it opens on the eight kinds,
  * A to Z, each a link to its own page, and with no video in the making
- * first; a template's page shows its pinned shape; and Asks lists what the
+ * first; a template's page draws its storyboard; and Asks lists what the
  * open `ask` issues ask, opening each one's page.
  */
 import { Route as IndexRoute } from "@/routes/_dashboard/_apk/journal/index"
@@ -12,7 +12,7 @@ import {
   withQueryClient,
 } from "@/test-support/query-client"
 import { routeComponent } from "@/test-support/router-stubs"
-import { templateFormat } from "@some-ui/video-render"
+import { templateFormat, templateStoryboard } from "@some-ui/video-render"
 import type * as ReactRouterModule from "@tanstack/react-router"
 import { act, cleanup, render, screen, within } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -67,18 +67,27 @@ describe("Studio's index", () => {
 })
 
 describe("a template's page", () => {
-  it("shows the call's shape: the intro, the brand, every section, the chapters", () => {
+  it("draws the call's storyboard: every frame of its sample, the AI's words as bars", () => {
     const format = templateFormat("conference-call")
-    render(<TemplateShape format={format} />)
+    const board = templateStoryboard("conference-call")
+    render(<TemplateShape format={format} board={board} />)
     const rows = screen.getAllByRole("listitem").map((row) => row.textContent)
     const W = STUDIO_INDEX_WORDS.templates
+    expect(rows).toHaveLength(board.frames.length)
     expect(rows[0]).toContain(W.who)
     expect(rows[1]).toContain(W.brandIn)
     expect(rows.at(-1)).toContain(W.brandOut)
     for (const scene of format.scenes)
       expect(rows.some((row) => row.startsWith(scene.name))).toBe(true)
-    expect(rows.filter((row) => row.includes(W.chapter))).toHaveLength(
-      format.shape?.chapters.length ?? -1
+    for (const id of format.shape?.chapters ?? []) {
+      const name = format.scenes.find((s) => s.id === id)?.name ?? ""
+      expect(
+        rows.filter((row) => row.startsWith(W.chapter(name)))
+      ).toHaveLength(1)
+    }
+    expect(rows[0]).toContain(board.frames[0]?.said)
+    expect(screen.getAllByRole("img", { name: W.aiWrites })).toHaveLength(
+      board.frames.filter((f) => f.by === "fill").length
     )
     screen.getByText(W.captioned.word)
   })

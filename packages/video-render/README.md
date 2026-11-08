@@ -53,11 +53,21 @@ Each module's header says why it is the way it is.
   `paulgsc/testing`'s `clips/` and listed for Studio's Library. A walked side
   is `motion walk`'s own folder. `render clip-check <folder>` checks it
   before it is pushed.
+- `src/session-note.ts`: a session's note (SFEED9, #2753), what its agent
+  distills before archiving it, kept in `paulgsc/testing`'s `sessions/` and
+  read by the weekly call's routine. `render session-check <folder>` checks
+  the folder before it is pushed.
 - `src/templates.ts`: every template Studio lists (SFEED1, #2731), each
   the newest version pinned under `src/templates/<id>/`, Playoff Delta's
   included.
 - `src/synth.ts`, `src/music-bed.ts`: the sounds we make ourselves
   (#2673); `render music-bed --out <file>.wav` writes the music bed.
+- `src/storyboard.ts`: a template's storyboard (SFEED3, #2744), every frame
+  of one episode drawn from its sample before the fill, the fill's words
+  left as bars. Each is pinned as `storyboard.json` beside its formats,
+  since the phone can't carry the code that makes it (the call's
+  `callStoryboard`, Playoff Delta's `storyboardFor`), and that code's test
+  holds the pin to it.
 - `src/resolve.ts`, `src/timing.ts`: each lever from the layer that sets
   it; each scene placed in whole frames.
 - `src/plan.ts`: the ffmpeg calls, as data. `src/render.ts` runs them over

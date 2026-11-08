@@ -6,9 +6,10 @@
  * words (its name, how an episode is labelled) stay `FEED_WORDS`
  * (`lib/call-videos/words`); these add what it is fed and when it runs.
  */
-import { counted, formatDay } from "@some-ui/core-utils"
+import { counted, formatDay, formatTimecode } from "@some-ui/core-utils"
 
 import type { Feed } from "@/lib/feeds"
+import { formatDurationMs } from "@/lib/format"
 
 import type { StudioKind } from "./index"
 
@@ -240,14 +241,25 @@ export const STUDIO_INDEX_WORDS = {
       "How each kind of video looks. It's the same for every episode, and the AI fills only what's said.",
     version: (n: number): string => `Version ${String(n)}`,
     usedBy: (feed: string): string => `Used by ${feed}`,
-    inOrder: "In order",
+    /** The storyboard (SFEED3): every frame of one episode, from its sample. */
+    frames: "Every frame, before it's filled",
+    drawnFrom: (sample: string): string =>
+      `Drawn from ${sample}. Grey bars are what the AI writes. The rest is the template's, as every episode has it.`,
+    inAll: (ms: number): string => `About ${formatDurationMs(ms)} in all`,
+    /** Where a frame starts and about how long it holds: "1:05, about 9 seconds". */
+    when: (atMs: number, ms: number): string =>
+      `${formatTimecode(atMs)}, about ${counted(Math.max(1, Math.round(ms / 1000)), "second")}`,
     who: "Who made this",
     whoLine:
       "Always first. Code fills it from the episode, and it can't be removed.",
     brandIn: "Your brand intro",
     brandOut: "Your brand outro",
     brandLine: "Your mark",
-    chapter: "A chapter slide, said aloud",
+    chapter: (section: string): string => `Chapter slide: ${section}`,
+    /** One item of a section that shows once per item: "Where we are, 2". */
+    item: (section: string, n: number): string => `${section}, ${String(n)}`,
+    aiWrites: "The AI writes what's said here",
+    nothingSaid: "Nothing is said",
     upTo: (n: number): string => `Up to ${String(n)}, one each`,
     sometimes: "Left out when there's nothing to say",
     captions: "Captions",

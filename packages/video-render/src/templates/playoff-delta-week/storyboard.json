@@ -1,0 +1,124 @@
+{
+  "schema": "some-ui.storyboard/1",
+  "template": {
+    "id": "playoff-delta-week",
+    "version": 3
+  },
+  "sample": "Playoff Delta, 2025 week 18",
+  "frames": [
+    {
+      "id": "intro",
+      "kind": "intro",
+      "name": "Playoff Delta week",
+      "by": "code",
+      "said": "This is Playoff Delta for 2025, week 18, read from the Niners' side. Claude wrote the words, from numbers code works out over every way the rest of the season can go. Code drew every frame, and every voice you hear is synthetic.",
+      "ms": 18400
+    },
+    {
+      "id": "brand-in",
+      "kind": "brand-in",
+      "name": "Playoff Delta week",
+      "by": "none",
+      "said": "",
+      "ms": 3000
+    },
+    {
+      "id": "chapter-division",
+      "kind": "chapter",
+      "scene": "division",
+      "name": "Our division",
+      "by": "code",
+      "said": "Our division.",
+      "ms": 3000
+    },
+    {
+      "id": "division",
+      "kind": "section",
+      "scene": "division",
+      "name": "Our division",
+      "by": "fill",
+      "said": "",
+      "ms": 9000
+    },
+    {
+      "id": "conference",
+      "kind": "section",
+      "scene": "conference",
+      "name": "Our conference",
+      "by": "fill",
+      "said": "",
+      "ms": 9000
+    },
+    {
+      "id": "chapter-results",
+      "kind": "chapter",
+      "scene": "results",
+      "name": "The results",
+      "by": "code",
+      "said": "The results.",
+      "ms": 3000
+    },
+    {
+      "id": "results",
+      "kind": "section",
+      "scene": "results",
+      "name": "The results",
+      "by": "fill",
+      "said": "",
+      "ms": 9000
+    },
+    {
+      "id": "chapter-standings",
+      "kind": "chapter",
+      "scene": "standings",
+      "name": "Where we stand",
+      "by": "code",
+      "said": "Where we stand.",
+      "ms": 3000
+    },
+    {
+      "id": "standings",
+      "kind": "section",
+      "scene": "standings",
+      "name": "Where we stand",
+      "by": "fill",
+      "said": "",
+      "ms": 8000
+    },
+    {
+      "id": "ladder",
+      "kind": "section",
+      "scene": "ladder",
+      "name": "The ladder",
+      "by": "fill",
+      "said": "",
+      "ms": 7000
+    },
+    {
+      "id": "season",
+      "kind": "section",
+      "scene": "season",
+      "name": "The season",
+      "by": "fill",
+      "said": "",
+      "ms": 7000
+    },
+    {
+      "id": "outro",
+      "kind": "section",
+      "scene": "outro",
+      "name": "In one line",
+      "by": "fill",
+      "said": "",
+      "ms": 6000
+    },
+    {
+      "id": "brand-out",
+      "kind": "brand-out",
+      "name": "Playoff Delta week",
+      "by": "none",
+      "said": "",
+      "ms": 3000
+    }
+  ]
+}
