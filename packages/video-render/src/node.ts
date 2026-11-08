@@ -6,8 +6,16 @@
 import { execFile } from "node:child_process"
 import { createHash } from "node:crypto"
 import { createReadStream } from "node:fs"
-import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises"
-import { join, resolve as resolvePath } from "node:path"
+import {
+  copyFile,
+  mkdir,
+  readdir,
+  readFile,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises"
+import { basename, dirname, join, resolve as resolvePath } from "node:path"
 import { z } from "zod"
 
 import { parseCutList } from "./cut-list"
@@ -263,6 +271,71 @@ async function readVersioned<T extends { readonly version: number }>(
   return parsed
 }
 
+/** Where in home's brand folder the sound kit is kept (HYPER4, #2727). */
+export const BRAND_SOUNDS = "sounds"
+
+/**
+ * The brand files a series version names, copied into a video's `root` from
+ * `brand`, home's folder of the owner's files (`${STORAGE}/brand`, mounted
+ * read-only at `/brand`; never a repository's): the music bed from `brand`
+ * itself, each sound of the kit from `brand/sounds`. Each is found by its
+ * file name and lands where the series names it. Nothing is checked here:
+ * the renderer checks each file against the series' sum, so a changed file
+ * is refused, not used.
+ */
+export async function placeBrandFiles(
+  series: Series,
+  brand: string | undefined,
+  root: string
+): Promise<Parsed<{ readonly bed: boolean; readonly sounds: number }>> {
+  const wanted: Array<{
+    readonly what: string
+    readonly from: string
+    readonly to: string
+  }> = []
+  const bed = series.music?.bed
+  if (bed)
+    wanted.push({
+      what: "the music bed",
+      from: basename(bed.file),
+      to: bed.file,
+    })
+  for (const [sound, kit] of Object.entries(series.sounds)) {
+    wanted.push({
+      what: `the ${sound} sound`,
+      from: join(BRAND_SOUNDS, basename(kit.file)),
+      to: kit.file,
+    })
+  }
+  if (wanted.length === 0) return { ok: true, value: { bed: false, sounds: 0 } }
+  if (brand === undefined) {
+    return {
+      ok: false,
+      problems: [
+        `The series names ${wanted.map((w) => w.what).join(", ")}, and no brand folder was given to hold them`,
+      ],
+    }
+  }
+  const problems: Array<string> = []
+  for (const w of wanted) {
+    const from = join(brand, w.from)
+    try {
+      await mkdir(dirname(join(root, w.to)), { recursive: true })
+      await copyFile(from, join(root, w.to))
+    } catch {
+      problems.push(`${w.what}: ${from} can't be read`)
+    }
+  }
+  if (problems.length > 0) return { ok: false, problems }
+  return {
+    ok: true,
+    value: {
+      bed: bed !== undefined,
+      sounds: Object.keys(series.sounds).length,
+    },
+  }
+}
+
 /** One version of the series in `dir`, or the newest (`readVersioned`). */
 export const readSeries = (
   dir: string,
@@ -294,6 +367,11 @@ export async function renderFolder(
       readonly stepCacheDir?: string
       /** Where a step not kept, over the cache's budget, is said. */
       readonly warn?: (line: string) => void
+      /**
+       * Home's brand folder: the series' brand files are copied into `root`
+       * from it first (`placeBrandFiles`). Without it, they must be there.
+       */
+      readonly brand?: string
     }
 ): Promise<Rendered> {
   const cutList = parseCutList(await readJson(join(root, "cut-list.json")))
@@ -314,8 +392,13 @@ export async function renderFolder(
     compositions,
     stepCacheDir,
     warn,
+    brand,
     ...rest
   } = options
+  if (brand !== undefined) {
+    const placed = await placeBrandFiles(series.value, brand, root)
+    if (!placed.ok) return placed
+  }
   const own: Ports = {
     ...nodePorts(root),
     ...(recordBurnIn ? { recordBurnIn } : {}),
