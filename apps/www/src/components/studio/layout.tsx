@@ -89,14 +89,10 @@ export const Part = ({
 )
 
 /**
- * The page of a kind nothing keeps yet (clips, SFEED7; feedback, SFEED6):
- * what one is, and that none is kept.
+ * The page of a kind nothing keeps yet (clips, SFEED7): what one is, and
+ * that none is kept.
  */
-export const EmptyKindPage = ({
-  kind,
-}: {
-  kind: "clips" | "feedback"
-}): JSX.Element => (
+export const EmptyKindPage = ({ kind }: { kind: "clips" }): JSX.Element => (
   <StudioPage
     heading={KIND_WORDS[kind].name}
     intro={STUDIO_INDEX_WORDS[kind].intro}

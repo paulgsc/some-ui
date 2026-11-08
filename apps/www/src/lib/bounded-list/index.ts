@@ -52,3 +52,36 @@ export function boundedList<T>(
     update: (each) => change((kept) => kept.map(each)),
   }
 }
+
+/** What appending came to. */
+export type Appended = "kept" | "full" | "unwritable"
+
+/**
+ * An oldest-first list in `localStorage` that only grows (CLAUDE.md, "Never
+ * lose the record"): an item is added after the others and never rewritten
+ * or dropped, and once `max` are kept a new one is refused (`full`) rather
+ * than making room. Read and written as `boundedList` is.
+ */
+export function appendList<T>(
+  key: string,
+  max: number,
+  isItem: (value: unknown) => value is T
+): {
+  read: () => Array<T>
+  append: (item: T) => Appended
+} {
+  const items = salvageList(isItem)
+  const open = (): Kept<Array<T>> =>
+    openKept(localStorageOrNull(), key, items, [])
+  return {
+    read: () => open().value,
+    append: (item): Appended => {
+      const kept = open()
+      if (!kept.writable) return "unwritable"
+      if (kept.value.length >= max) return "full"
+      return writeKept(localStorageOrNull(), key, [...kept.value, item], items)
+        ? "kept"
+        : "unwritable"
+    },
+  }
+}
