@@ -1,7 +1,6 @@
 /**
  * The release promo's shape (HYPER3, #2726; on Studio's Templates page,
- * C32): what every release's promo is made of, before its words are
- * written. `@some-ui/video-motion`'s `promo.ts` makes the promo from these
+ * C32): its scenes' lengths and the limits on its words. `@some-ui/video-motion`'s `promo.ts` makes the promo from these
  * numbers, and the phone's Templates page reads them, so the two can't
  * differ. It is no `Format`: its scenes are compositions, and its feature
  * lasts as long as the app's walk.
@@ -19,7 +18,7 @@ export const PROMO_SHAPE = {
   feature: { before: 0.8, after: 0.6 },
   /** Where to get it. */
   close: { seconds: 4 },
-  /** What the AI writes for a release, and nothing else. */
+  /** What a release's words say, as the AI writes them. */
   fill: {
     title: { lines: 2, chars: 10 },
     /** One per screen of the walk. */
@@ -27,8 +26,8 @@ export const PROMO_SHAPE = {
     cta: { lines: 2, chars: 18 },
     /** Two of them, on the close. */
     badge: { lines: 1, chars: 18 },
+    /** The opening's two chips: where it runs, and where it stands. */
+    platform: { lines: 1, chars: 18 },
+    stage: { lines: 1, chars: 22 },
   },
-} as const satisfies {
-  readonly fill: Readonly<Record<string, PromoWords>>
-  readonly [key: string]: unknown
-}
+} as const

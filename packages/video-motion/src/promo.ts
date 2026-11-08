@@ -14,7 +14,7 @@ const PROMO_SCHEMA = "some-ui.promo/1"
  * fitted where they're drawn (`fit` in compositions/_lib/motion.js), since
  * only the font knows it.
  */
-const drawn = (lines: number, chars: number): z.ZodString =>
+const drawn = ({ lines, chars }: PromoWords): z.ZodString =>
   z
     .string()
     .trim()
@@ -32,18 +32,17 @@ const drawn = (lines: number, chars: number): z.ZodString =>
 
 const colour = z.string().regex(/^#[0-9a-f]{6}$/)
 
-const { fill } = PROMO_SHAPE
-const words = ({ lines, chars }: PromoWords): z.ZodString => drawn(lines, chars)
+const { hook, feature, close, fill } = PROMO_SHAPE
 
 /** What Claude writes for one release: the words, nothing else. */
 const FillSchema = z.strictObject({
   /** The app's name, as the opening sets it. */
-  title: words(fill.title),
+  title: drawn(fill.title),
   /** One caption per step of the walk, saying what that screen shows. */
-  captions: z.array(words(fill.caption)).min(1),
+  captions: z.array(drawn(fill.caption)).min(1),
   /** Where to get it. */
-  cta: words(fill.cta),
-  badges: z.tuple([words(fill.badge), words(fill.badge)]),
+  cta: drawn(fill.cta),
+  badges: z.tuple([drawn(fill.badge), drawn(fill.badge)]),
 })
 
 export const ReleaseSchema = z.strictObject({
@@ -53,8 +52,8 @@ export const ReleaseSchema = z.strictObject({
   /** The release: the built app's own version, checked against the walk. */
   version: z.string().regex(/^\d+\.\d+\.\d+$/),
   /** The facts on the opening's chips. */
-  platform: drawn(1, 18),
-  stage: drawn(1, 22),
+  platform: drawn(fill.platform),
+  stage: drawn(fill.stage),
   palette: z
     .strictObject({
       ground: colour,
@@ -66,13 +65,6 @@ export const ReleaseSchema = z.strictObject({
   fill: FillSchema,
 })
 export type Release = z.infer<typeof ReleaseSchema>
-
-/** The hook's and the close's lengths; the feature's is the walk's. */
-const HOOK_SECONDS = PROMO_SHAPE.hook.seconds
-const CLOSE_SECONDS = PROMO_SHAPE.close.seconds
-/** Before the walk's first screen, and after its last, in the feature. */
-const WALK_START = PROMO_SHAPE.feature.before
-const WALK_TAIL = PROMO_SHAPE.feature.after
 
 /**
  * Where each scene's sounds land (HYPER4, the dry run's cue sheet on
@@ -134,14 +126,13 @@ export function promoCutList(release: Release, walk: WalkFile): CutList {
   return {
     schema: CUT_LIST_SCHEMA,
     title: `${release.app} ${release.version}`,
-    // Version 2 names the sound kit, which `motion promo --brand` brings in.
     series: { ...PROMO_SHAPE.series },
     look: "plain",
     voice: "ad-lib",
     shots: [
       scene(
         "hook",
-        HOOK_SECONDS,
+        hook.seconds,
         {
           title: release.fill.title,
           stage: release.stage,
@@ -152,19 +143,19 @@ export function promoCutList(release: Release, walk: WalkFile): CutList {
       ),
       scene(
         "feature",
-        WALK_START + walk.lengthMs / 1000 + WALK_TAIL,
+        feature.before + walk.lengthMs / 1000 + feature.after,
         {
           appName: release.fill.title.split("|").join(" "),
           version,
           walk: JSON.stringify(walk),
           captions: JSON.stringify(release.fill.captions),
-          walkStart: WALK_START,
+          walkStart: feature.before,
         },
         (ms) => [
           { sound: "pop", atMs: CUE_AT.frameOpens },
           ...walk.taps.map((tap) => ({
             sound: "click" as const,
-            atMs: Math.round(WALK_START * 1000 + tap.atMs),
+            atMs: Math.round(feature.before * 1000 + tap.atMs),
           })),
           { sound: "whoosh", atMs: ms - CUE_AT.featureLeaves },
         ],
@@ -172,7 +163,7 @@ export function promoCutList(release: Release, walk: WalkFile): CutList {
       ),
       scene(
         "close",
-        CLOSE_SECONDS,
+        close.seconds,
         {
           cta: release.fill.cta,
           badge1: release.fill.badges[0],

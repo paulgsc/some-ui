@@ -16,7 +16,7 @@ const TEMPLATES = TEMPLATE_IDS.map((id) => ({
 /**
  * Studio's Templates (SFEED1, #2731): every template home makes episodes
  * with, A to Z, each opening its shape, then the release promo (#2722),
- * which home makes for each release of an app.
+ * which home makes for a release of an app when asked.
  */
 const Templates = (): JSX.Element => (
   <StudioPage

@@ -4,7 +4,7 @@ import { PROMO_SHAPE } from "@some-ui/video-render"
 import { createFileRoute } from "@tanstack/react-router"
 
 import { STUDIO_INDEX_WORDS } from "@/lib/studio-index"
-import { StudioPage } from "@/components/studio/layout"
+import { Part, StudioPage, TileBody } from "@/components/studio/layout"
 
 const WORDS = STUDIO_INDEX_WORDS.templates.promo
 
@@ -21,47 +21,43 @@ const SCENES = [
 
 const WRITES: ReadonlyArray<{ what: string; words: PromoWords }> = [
   { what: WORDS.title, words: fill.title },
+  { what: WORDS.platform, words: fill.platform },
+  { what: WORDS.stage, words: fill.stage },
   { what: WORDS.caption, words: fill.caption },
   { what: WORDS.cta, words: fill.cta },
   { what: WORDS.badge, words: fill.badge },
 ]
 
-const ITEM =
-  "bg-card border-border/60 flex flex-col gap-1 rounded-2xl border px-4 py-3"
-
 /**
  * The release promo on Studio's Templates page (#2722, C32): its scenes in
  * order and what the AI writes for a release, from `PROMO_SHAPE`, which the
- * promo is made from too. It has no version or preview here: it is made on
- * home for each release, from the app's walk.
+ * promo is made from too. It has no version or preview here: home makes it
+ * when asked, from a release's words and sample data.
  */
 const ReleasePromo = (): JSX.Element => (
   <StudioPage heading={WORDS.name} intro={WORDS.intro} back="templates">
-    <section className="flex flex-col gap-2">
-      <h2 className="text-sm font-semibold">{WORDS.scenes}</h2>
+    <Part label={WORDS.scenes}>
       <ol className="flex flex-col gap-2">
         {SCENES.map(({ what, long }) => (
-          <li key={what} className={ITEM}>
-            <span className="text-base font-extrabold">{what}</span>
-            <span className="text-muted-foreground text-sm">{long}</span>
+          <li key={what} className="flex flex-col gap-1">
+            <TileBody title={what} line={long} />
           </li>
         ))}
       </ol>
       <p className="text-muted-foreground text-sm">{WORDS.sounds}</p>
-    </section>
-    <section className="flex flex-col gap-2">
-      <h2 className="text-sm font-semibold">{WORDS.writes}</h2>
+    </Part>
+    <Part label={WORDS.writes}>
       <ul className="flex flex-col gap-2">
         {WRITES.map(({ what, words }) => (
-          <li key={what} className={ITEM}>
-            <span className="text-base font-extrabold">{what}</span>
-            <span className="text-muted-foreground text-sm">
-              {WORDS.limit(words.lines, words.chars)}
-            </span>
+          <li key={what} className="flex flex-col gap-1">
+            <TileBody
+              title={what}
+              line={WORDS.limit(words.lines, words.chars)}
+            />
           </li>
         ))}
       </ul>
-    </section>
+    </Part>
     <p className="text-muted-foreground text-sm">{WORDS.made}</p>
   </StudioPage>
 )

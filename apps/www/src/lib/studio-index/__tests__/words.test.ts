@@ -35,6 +35,10 @@ const all = [
     STUDIO_INDEX_WORDS.templates.chapters(n),
   ]),
   STUDIO_INDEX_WORDS.templates.usedBy("The weekly call"),
+  STUDIO_INDEX_WORDS.templates.promo.featureFor(0.8, 0.6),
+  STUDIO_INDEX_WORDS.templates.promo.lasts(3.2),
+  STUDIO_INDEX_WORDS.templates.promo.limit(1, 18),
+  STUDIO_INDEX_WORDS.templates.promo.limit(2, 24),
   STUDIO_INDEX_WORDS.clips.landed("2026-11-08"),
   STUDIO_INDEX_WORDS.templates.drawnFrom("the sample week"),
   STUDIO_INDEX_WORDS.templates.inAll(540_000),
@@ -56,6 +60,13 @@ describe("Studio's index", () => {
     expect(STUDIO_INDEX_WORDS.templates.when(0, 400)).toBe(
       "0:00, about 1 second"
     )
+  })
+
+  it("says the promo's lengths and limits as a person would (C32)", () => {
+    const { promo } = STUDIO_INDEX_WORDS.templates
+    expect(promo.lasts(1)).toBe("1 second long")
+    expect(promo.limit(1, 18)).toBe("One line, up to 18 characters")
+    expect(promo.limit(2, 24)).toBe("Up to 2 lines of 24 characters")
   })
 
   it("lists the eight kinds A to Z, so none comes first", () => {
