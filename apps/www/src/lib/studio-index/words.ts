@@ -261,5 +261,35 @@ export const STUDIO_INDEX_WORDS = {
       `${counted(n, "chapter slide")} said aloud`,
     noShape:
       "Made before templates had a shape: no intro, chapters or captions.",
+    /** The caption look control (SFEED11, #2707). */
+    look: {
+      label: "The caption look",
+      named: (look: string): string => `Captioned in the ${look} look`,
+      line: "Change it here and send it. A session makes it a new version of the template, and videos use it from the next render after that. Nothing changes until then.",
+      sample: ["Third", "and", "long,", "eleven", "to", "go"],
+      weight: "Weight",
+      bold: "Bold",
+      heavy: "Heavy",
+      size: "Size",
+      text: "Words",
+      lit: "The word being said",
+      litOn: "Light the word being said",
+      stroke: "Outline",
+      strokeWidth: "Outline width",
+      plate: "A plate behind the words",
+      plateColour: "Plate",
+      plateOpacity: "Plate opacity",
+      popIn: "Pop-in",
+      popInMs: (ms: number): string =>
+        ms === 0
+          ? "Every word at once"
+          : `Each word in ${(ms / 1000).toFixed(2)} s`,
+      reset: "Start over",
+      send: "Send it to GitHub",
+      sendLine:
+        "Opens a new issue holding this look, for you to file. A session lands it from there.",
+      unchanged: "Change something to send it.",
+      none: "This template names no caption look.",
+    },
   },
 } as const
