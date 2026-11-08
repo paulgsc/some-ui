@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest"
 
 import { MACHINERY } from "@/lib/home-link/__tests__/machinery"
+import type { RenderShape } from "@/lib/renders/words"
 import { HOW_ORDER, WHERE_ORDER } from "@/lib/sharing-marks"
 import type { BoardRow, RowMark } from "@/lib/status-board"
 import { boardOf, glanceOf, lookOf, needOf } from "@/lib/status-board"
@@ -64,6 +65,15 @@ describe("what each mark asks of its person", () => {
     expect(morning("waiting")).toBe("you")
     expect(morning("moving")).toBe("moving")
     expect(morning("read")).toBe("fine")
+  })
+
+  it("watches a video home couldn't make, and asks nothing of one under way (SFEED13)", () => {
+    const need = (shape: RenderShape): string =>
+      needOf({ kind: "render", shape })
+    expect(need("failed")).toBe("watch")
+    for (const shape of ["making", "paused", "waiting"] as const)
+      expect(need(shape)).toBe("moving")
+    expect(need("quiet")).toBe("fine")
   })
 
   it("reads Korean's look as not yet, or how home answered", () => {

@@ -121,6 +121,52 @@ export function failedLine(failed: RenderFailed): string {
     : "It couldn't be made this time. Home tries again in an hour, and keeps what it had finished."
 }
 
+/** How home's renders stand at a glance, for Settings › Status's mark. */
+export type RenderShape = "making" | "paused" | "waiting" | "failed" | "quiet"
+
+/** What `board` comes to at a glance: what's under way, else what's left. */
+export function renderShape(board: Board): RenderShape {
+  const now = board.now
+  if (now === null) {
+    if (board.waiting.length > 0) return "waiting"
+    return board.failed.length > 0 ? "failed" : "quiet"
+  }
+  switch (now.state) {
+    case "rendering":
+    case "finishing": {
+      return "making"
+    }
+    case "paused": {
+      return "paused"
+    }
+    case "waiting": {
+      return "waiting"
+    }
+    default: {
+      return assertNever(now.state)
+    }
+  }
+}
+
+/** Each shape's word beside its mark, and its legend line. */
+export const SHAPE_WORDS = {
+  name: "Videos home makes",
+  words: {
+    making: "Making",
+    paused: "Paused",
+    waiting: "Waiting for room",
+    failed: "Couldn't finish",
+    quiet: "Nothing now",
+  } satisfies Record<RenderShape, string>,
+  legend: {
+    making: "Home is making a video now",
+    paused: "Home gave way for a while and picks up again by itself",
+    waiting: "A video waits for home to have room",
+    failed: "A video couldn't be made lately",
+    quiet: "Home isn't making anything right now",
+  } satisfies Record<RenderShape, string>,
+} as const
+
 /** The one line above Studio's tiles, for any board home answers. */
 export function liveLine(board: Board): string {
   const now = board.now

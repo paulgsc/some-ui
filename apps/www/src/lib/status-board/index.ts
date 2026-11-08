@@ -22,6 +22,9 @@ import {
 import { FILE_NAMES } from "@/lib/jobs/words"
 import type { Journey, JourneyTheme, Sign, Stop } from "@/lib/journey"
 import { journeySaid, signOf, stopOf, themeOf } from "@/lib/journey"
+import type { Board as RenderBoard } from "@/lib/renders/model"
+import type { RenderShape } from "@/lib/renders/words"
+import { liveLine, renderShape, SHAPE_WORDS } from "@/lib/renders/words"
 import type { How, Where } from "@/lib/sharing-marks"
 
 import { BOARD_WORDS } from "./words"
@@ -37,7 +40,7 @@ const NEED_ORDER: ReadonlyArray<Need> = [
   "off",
 ]
 
-const GROUP_ORDER = ["home", "jobs", "korean"] as const
+const GROUP_ORDER = ["home", "studio", "jobs", "korean"] as const
 
 export type GroupId = (typeof GROUP_ORDER)[number]
 
@@ -59,9 +62,15 @@ export type RowMark =
       readonly shape: RoutineShape
       readonly voice: ReadonlyArray<VoiceShape>
     }
+  | { readonly kind: "render"; readonly shape: RenderShape }
 
 /** The page that owns a row's process, where its row leads. */
-export type BoardPage = "practice" | "aph" | "jobs" | "home-settings"
+export type BoardPage =
+  | "practice"
+  | "aph"
+  | "jobs"
+  | "home-settings"
+  | "renders"
 
 export type BoardRow = {
   /** Unique on the board. */
@@ -127,6 +136,14 @@ const VOICE_NEEDS: Readonly<Record<VoiceShape, Need>> = {
   garbled: "watch",
 }
 
+const RENDER_NEEDS: Readonly<Record<RenderShape, Need>> = {
+  making: "moving",
+  paused: "moving",
+  waiting: "moving",
+  failed: "watch",
+  quiet: "fine",
+}
+
 /** The more pressing of two needs. */
 const most = (a: Need, b: Need): Need =>
   NEED_ORDER.indexOf(a) <= NEED_ORDER.indexOf(b) ? a : b
@@ -146,6 +163,9 @@ export function needOf(mark: RowMark): Need {
     }
     case "look": {
       return LOOK_NEEDS[mark.look]
+    }
+    case "render": {
+      return RENDER_NEEDS[mark.shape]
     }
     case "routine": {
       return mark.voice.reduce<Need>(
@@ -219,6 +239,24 @@ export function routineRow(view: RoutineView): BoardRow {
       voice: view.voice.map((voice) => voice.shape),
     },
     page: "practice",
+  }
+}
+
+/**
+ * What home is making for the feeds (SFEED13, #2761), as Studio's line says
+ * it; it opens Studio › Renders.
+ */
+export function renderRow(board: RenderBoard): BoardRow {
+  const shape = renderShape(board)
+  return {
+    id: "renders",
+    group: "studio",
+    name: SHAPE_WORDS.name,
+    word: SHAPE_WORDS.words[shape],
+    line: liveLine(board),
+    more: [],
+    mark: { kind: "render", shape },
+    page: "renders",
   }
 }
 
