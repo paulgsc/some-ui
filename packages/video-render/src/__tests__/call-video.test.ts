@@ -60,17 +60,10 @@ const OCT_30 =
   "https://raw.githubusercontent.com/paulgsc/testing/aecb9131591e1ee443f34caff32ae564af569844/call/2026-10-30.json"
 
 let root = ""
-let pinned: Series
 let oct30: CallWeek | null = null
 
 beforeAll(async () => {
   root = await mkdtemp(join(tmpdir(), "call-video-"))
-  const read = await readSeries(
-    join(import.meta.dirname, "../sample/series", CALL_ID),
-    callFormat().series.version
-  )
-  if (!read.ok) throw new Error(read.problems.join("; "))
-  pinned = read.value
   try {
     const response = await fetch(OCT_30)
     if (!response.ok) throw new Error(`${OCT_30}: ${String(response.status)}`)
@@ -117,8 +110,14 @@ async function renderNew(
   }: { readonly captions?: boolean; readonly shape?: Shape }
 ): Promise<Rendered> {
   const { W, H } = shape
+  // The series the week's own template version is drawn in.
+  const pinned = await readSeries(
+    join(import.meta.dirname, "../sample/series", CALL_ID),
+    callFormat(week.template.version).series.version
+  )
+  if (!pinned.ok) throw new Error(pinned.problems.join("; "))
   const series: Series = {
-    ...pinned,
+    ...pinned.value,
     frame: { width: W, height: H, fps: FPS },
     window: { x: 0, y: 0, width: W, height: H },
   }

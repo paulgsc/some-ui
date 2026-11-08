@@ -1,0 +1,32 @@
+{
+  "schema": "some-ui.video-series/1",
+  "id": "conference-call",
+  "version": 2,
+  "title": "The weekly call",
+  "frame": {
+    "width": 1920,
+    "height": 1080,
+    "fps": 30
+  },
+  "ground": "#241a13",
+  "window": {
+    "x": 0,
+    "y": 0,
+    "width": 1920,
+    "height": 1080
+  },
+  "defaultLook": "calm",
+  "music": {
+    "bed": {
+      "file": "brand/music-bed-v1.wav",
+      "sha256": "f815f02a429d5efb5db39e03a175f17ae1d09b3ddea1c935555d06687b9bd89f"
+    },
+    "gainDb": -14
+  },
+  "sounds": {},
+  "soundGainDb": -8,
+  "designs": {
+    "captions": "broadcast",
+    "authorship": "cells-v1"
+  }
+}

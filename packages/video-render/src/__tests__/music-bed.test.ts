@@ -6,7 +6,10 @@
 import { createHash } from "node:crypto"
 import { readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
+import { callFormat } from "@video-render/call"
 import { MUSIC_BED, musicBedWav, sin2pi } from "@video-render/music-bed"
+import { readSeries } from "@video-render/node"
+import { templateFormat } from "@video-render/templates"
 import { describe, expect, it } from "vitest"
 
 const wav = musicBedWav()
@@ -18,6 +21,25 @@ describe("the music bed", () => {
     expect(createHash("sha256").update(wav).digest("hex")).toBe(
       MUSIC_BED.sha256
     )
+  })
+
+  it("plays under the call and Playoff Delta, pinned by its sum in each's series", async () => {
+    for (const series of [
+      callFormat().series,
+      templateFormat("playoff-delta-week").series,
+      templateFormat("playoff-delta-legend").series,
+    ]) {
+      const read = await readSeries(
+        fileURLToPath(
+          new URL(`../sample/series/${series.id}`, import.meta.url)
+        ),
+        series.version
+      )
+      expect(read.ok && read.value.music?.bed).toEqual({
+        file: `brand/${MUSIC_BED.file}`,
+        sha256: MUSIC_BED.sha256,
+      })
+    }
   })
 
   it("is a mono 48 kHz 16-bit WAV of eight two-bar chords at 72 a minute", () => {

@@ -1,0 +1,103 @@
+/* ============================================================
+   MOCHI NIGHT THEME — dark, the mochi's honey on a cocoa night
+   ------------------------------------------------------------
+   The palette made for video (SFEED10, paulgsc/some-ui#2675),
+   the templates' theme for the call and Playoff Delta, and one
+   the app offers like any other. Its colours are the hex roles
+   in `src/theme/video-palette.ts`, which holds them to what
+   YouTube's encode does to colour; every value here is that hex
+   in oklch, and `video-palette.test.ts` holds the two equal.
+
+     ground     #241a13  flat cocoa, luma 0.11: no near-peak white
+                         fills the frame, and no gradient to band
+     ink        #f0e4d0  warm cream, 13.6:1, never pure white
+     muted ink  #ab9a82  6.2:1, for large text
+     honey      #f2aa3c  --primary and --brand, 8.6:1
+     sky        #78c2e8  the second accent, 8.7:1; honey and sky
+                         are Okabe-Ito's orange and blue, apart
+                         under every colour blindness
+     warning    #f0705a  5.8:1, destructive and warning, always
+                         with a word or an icon
+     highlight  #5b4214  the fill behind ink, which reads 7.5:1
+   Text carries its contrast in brightness, since 4:2:0 halves
+   colour's resolution: ink and muted ink are nearly grey, and no
+   text colour is strongly saturated (the palette's rule 2).
+
+   A video's frame is the ground itself, so `--surface` is the
+   ground, and cards sit one step above it.
+
+   Pairs with `.dark` (the controller adds both).
+   ============================================================ */
+
+.mochi-night {
+  --background: oklch(22.78% 0.0206 56.46deg);
+  --foreground: oklch(92.31% 0.0296 80.66deg);
+  --card: oklch(28.07% 0.0263 58.99deg);
+  --card-foreground: var(--foreground);
+  --popover: oklch(28.07% 0.0263 58.99deg);
+  --popover-foreground: var(--foreground);
+
+  /* Honey */
+  --primary: oklch(78.9% 0.1466 73.49deg);
+  --primary-foreground: oklch(22.78% 0.0206 56.46deg);
+  --secondary: oklch(28.07% 0.0263 58.99deg);
+  --secondary-foreground: var(--foreground);
+  --muted: oklch(28.07% 0.0263 58.99deg);
+  --muted-foreground: oklch(69.46% 0.0393 76.45deg);
+  --accent: oklch(28.07% 0.0263 58.99deg);
+  --accent-foreground: var(--foreground);
+
+  /* The warning, the only red */
+  --destructive: oklch(69.39% 0.1625 31.49deg);
+  --destructive-foreground: oklch(22.78% 0.0206 56.46deg);
+  --success: oklch(79.55% 0.1012 150.16deg);
+  --success-foreground: oklch(22.78% 0.0206 56.46deg);
+  --warning: oklch(69.39% 0.1625 31.49deg);
+  --warning-foreground: oklch(22.78% 0.0206 56.46deg);
+
+  /* The mark is the honey it always was. */
+  --brand: var(--primary);
+  --brand-foreground: var(--primary-foreground);
+
+  /* Sky against the warning: apart under every colour blindness. */
+  --diff-add: oklch(77.98% 0.0916 231.99deg);
+  --diff-remove: var(--destructive);
+  --border: oklch(36.17% 0.0322 62.72deg);
+  --input: oklch(39.3% 0.039 67.81deg);
+  --ring: var(--primary);
+
+  /* Honey, sky, leaf, muted ink, the warning */
+  --chart-1: oklch(78.9% 0.1466 73.49deg);
+  --chart-2: oklch(77.98% 0.0916 231.99deg);
+  --chart-3: oklch(79.55% 0.1012 150.16deg);
+  --chart-4: oklch(69.46% 0.0393 76.45deg);
+  --chart-5: oklch(69.39% 0.1625 31.49deg);
+  --sidebar: oklch(25.41% 0.0224 57.55deg);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+  --surface: oklch(22.78% 0.0206 56.46deg);
+  --surface-foreground: var(--muted-foreground);
+  --code: var(--card);
+  --code-foreground: var(--foreground);
+  --code-highlight: oklch(39.73% 0.0701 79.15deg);
+  --code-number: var(--muted-foreground);
+  --selection: oklch(39.73% 0.0701 79.15deg);
+  --selection-foreground: var(--foreground);
+
+  /* Flat: a gradient this dark spans a dozen brightness steps and bands. */
+  --gradient-heading: linear-gradient(var(--foreground), var(--foreground));
+  --gradient-accent: linear-gradient(var(--primary), var(--primary));
+  --gradient-muted: linear-gradient(
+    var(--muted-foreground),
+    var(--muted-foreground)
+  );
+  --radius: 1.25rem;
+
+  background-color: var(--background);
+  color: var(--foreground);
+}

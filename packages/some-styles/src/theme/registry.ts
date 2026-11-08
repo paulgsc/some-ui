@@ -175,6 +175,24 @@ export const SESSION_THEMES = [
       accent: "oklch(0.75 0.13 355)",
     },
   },
+  {
+    // The palette made for video (SFEED10, `./video-palette`): the call's and
+    // Playoff Delta's templates draw in it, and the app offers it too.
+    id: "mochi-night",
+    label: "Mochi Night",
+    mode: "dark",
+    scope: "session",
+    boundary: {
+      classNames: ["dark", "mochi-night"],
+      dataTheme: "mochi-night",
+    },
+    selectable: true,
+    swatch: {
+      bg: "oklch(0.2278 0.0206 56.46)",
+      fg: "oklch(0.9231 0.0296 80.66)",
+      accent: "oklch(0.789 0.1466 73.49)",
+    },
+  },
 ] as const satisfies ReadonlyArray<SessionTheme>
 
 /**

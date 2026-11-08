@@ -22,6 +22,8 @@
  * take or a reply can name its scene. The weekly call (`call.ts`) repeats.
  */
 
+import { SESSION_THEMES } from "@some-ui/styles/theme/registry"
+import type { SessionThemeId } from "@some-ui/styles/theme/registry"
 import { z } from "zod"
 
 import { problemsOf } from "./cut-list"
@@ -30,6 +32,12 @@ import { LOOKS } from "./plans"
 import { ms } from "./vocabulary"
 
 export const FORMAT_SCHEMA = "some-ui.show-format/1"
+
+/** One of the app's themes, by its id (`@some-ui/styles`). */
+const ThemeIdSchema = z.custom<SessionThemeId>(
+  (id) => SESSION_THEMES.some((theme) => theme.id === id),
+  { message: "names no theme of the app's" }
+)
 
 /** A primer cut's id names its take's file: short, lowercase, unique. */
 export const PRIMER_CUT_ID = /^[a-z0-9][a-z0-9-]{0,39}$/
@@ -75,11 +83,21 @@ export const repeatedId = (scene: string, n: number): string => `${scene}-${n}`
  *   names, and the look says whether the word being said is lit (its
  *   `highlight`, `@some-ui/burn-ins`). Versions already pinned keep the
  *   field as they wrote it.
+ * - `theme` (SFEED10, #2675): the app's theme every scene is drawn in, by
+ *   its id; Mochi Night is the one made for video. `brand.theme` (SFEED12,
+ *   #2766): the theme the mark is drawn in on the brand intro and outro,
+ *   chosen in Studio; absent, the template's. A version from before them
+ *   has neither and is drawn in the page's own theme.
  */
 export const ShapeSchema = z.strictObject({
-  brand: z.strictObject({ intro: z.boolean(), outro: z.boolean() }),
+  brand: z.strictObject({
+    intro: z.boolean(),
+    outro: z.boolean(),
+    theme: ThemeIdSchema.optional(),
+  }),
   chapters: z.array(sceneId),
   subtitles: z.enum(["off", "line", "word"]),
+  theme: ThemeIdSchema.optional(),
 })
 
 export type Shape = z.infer<typeof ShapeSchema>

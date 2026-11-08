@@ -14,8 +14,12 @@
  *
  */
 
-import type { FeatureAppearanceId, ThemeDefinition } from "./registry"
-import { getFeatureAppearance } from "./registry"
+import type {
+  FeatureAppearanceId,
+  SessionThemeId,
+  ThemeDefinition,
+} from "./registry"
+import { getFeatureAppearance, getSessionTheme } from "./registry"
 
 /**
  * What a component accepts for art direction. `inherit` — the only sane
@@ -81,4 +85,31 @@ export function applyAppearance(
   element.classList.add(...meta.boundary.classNames)
   element.dataset.appearance = meta.boundary.dataTheme
   return meta
+}
+
+/**
+ * Attributes that draw a subtree in one of the app's themes, when what the
+ * subtree shows chooses it and the person reading does not: a video
+ * template's frame (SFEED10), which looks the same whatever theme the app is
+ * in, and the mark on its brand slides (SFEED12). The host passes the id; a
+ * reusable component never picks one. `ground: false` leaves the subtree's
+ * ground to what is around it, for a mark drawn in another theme than its
+ * frame.
+ */
+export function sessionThemeProps(
+  id: SessionThemeId,
+  { ground = true }: { readonly ground?: boolean } = {}
+): BoundaryProps & {
+  "data-theme": string
+  style: { colorScheme: "light" | "dark"; backgroundColor?: "transparent" }
+} {
+  const theme = getSessionTheme(id)
+  return {
+    className: theme?.boundary.classNames.join(" ") ?? "",
+    "data-theme": theme?.boundary.dataTheme ?? id,
+    style: {
+      colorScheme: theme?.mode ?? "light",
+      ...(ground ? {} : { backgroundColor: "transparent" as const }),
+    },
+  }
 }

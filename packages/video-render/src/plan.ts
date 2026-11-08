@@ -66,6 +66,25 @@ const DECODE = ["-threads", "1"] as const
 const ENCODE = ["-threads", "2"] as const
 const FILTER_THREADS = ["-filter_complex_threads", "1"] as const
 
+/**
+ * SFEED10 (#2675): every video is BT.709, as YouTube reads HD. A segment is
+ * drawn in RGB and turned to video once, by BT.709's matrix in the video
+ * range (`TO_VIDEO`); a layer laid over the joined video is turned the same
+ * way first; and every encode tags its stream so (`BT709`), so no player or
+ * later step falls back to BT.601, ffmpeg's default for an untagged stream.
+ */
+export const TO_VIDEO = "scale=out_color_matrix=bt709:out_range=tv"
+export const BT709 = [
+  "-colorspace",
+  "bt709",
+  "-color_primaries",
+  "bt709",
+  "-color_trc",
+  "bt709",
+  "-color_range",
+  "tv",
+] as const
+
 /** How many scene segments one ffmpeg call joins at most (VR1). */
 export const JOIN_BATCH = 10
 
@@ -274,7 +293,8 @@ const inputCount = (inputs: ReadonlyArray<string>): number =>
 /**
  * `file`, a recording with transparency, as the next input, laid over `acc`
  * from `startFrame` on; where it ends first, the picture passes. Returns the
- * label of the result, `[label]`.
+ * label of the result, `[label]`. Over a segment, still in RGB, it is laid
+ * in RGB; over the joined video, it is turned to BT.709 first.
  */
 function overlay(
   file: string,
@@ -283,13 +303,15 @@ function overlay(
   acc: string,
   label: string,
   inputs: Array<string>,
-  filters: Array<string>
+  filters: Array<string>,
+  over: "rgb" | "video"
 ): string {
   const n = inputCount(inputs)
   inputs.push(...DECODE, "-i", file)
+  const into = over === "rgb" ? "" : `${TO_VIDEO},format=yuva420p,`
   filters.push(
-    `[${n}:v]setpts=PTS-STARTPTS+${at(startFrame, fps)}/TB[${label}in]`,
-    `${acc}[${label}in]overlay=0:0:eof_action=pass[${label}]`
+    `[${n}:v]${into}setpts=PTS-STARTPTS+${at(startFrame, fps)}/TB[${label}in]`,
+    `${acc}[${label}in]overlay=0:0:eof_action=pass${over === "rgb" ? ":format=gbrp" : ""}[${label}]`
   )
   return `[${label}]`
 }
@@ -380,7 +402,7 @@ export function planSegment(
     const y = series.window.y + (series.window.height - box.height) / 2
     filters.push(
       `[src]${spaceChain(shot, series, facts, box, placed.frames)}[pic]`,
-      `[bg][pic]overlay=x=${x}:y=${y}[framed]`
+      `[bg][pic]overlay=x=${x}:y=${y}:format=gbrp[framed]`
     )
   } else {
     filters.push(`[bg]null[framed]`)
@@ -434,8 +456,8 @@ function segmentCall(
   const shown =
     layer === undefined
       ? framed
-      : overlay(layer, 0, fps, framed, "layered", inputs, filters)
-  filters.push(`${shown}format=yuv420p[v]`)
+      : overlay(layer, 0, fps, framed, "layered", inputs, filters, "rgb")
+  filters.push(`${shown}${TO_VIDEO},format=yuv420p[v]`)
   return {
     args: [
       ...QUIET,
@@ -457,6 +479,7 @@ function segmentCall(
       "-crf",
       "8",
       ...ENCODE,
+      ...BT709,
       ...BITEXACT,
       out,
     ],
@@ -843,6 +866,7 @@ export function planJoin(
       "-crf",
       "8",
       ...ENCODE,
+      ...BT709,
       ...BITEXACT,
       out,
     ],
@@ -896,7 +920,8 @@ export function planAssembly(
       acc,
       `l${i}`,
       inputs,
-      filters
+      filters,
+      "video"
     )
   })
   filters.push(`${acc}format=yuv420p[v]`)
@@ -932,6 +957,7 @@ export function planAssembly(
       "-movflags",
       "+faststart",
       ...ENCODE,
+      ...BT709,
       ...BITEXACT,
       out,
     ],

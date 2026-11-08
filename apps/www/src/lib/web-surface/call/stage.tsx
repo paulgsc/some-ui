@@ -1,8 +1,10 @@
 import type { JSX, ReactNode } from "react"
 import { captionSpace, LANDSCAPE } from "@some-ui/burn-ins"
-import { assertNever } from "@some-ui/core-utils"
+import { assertNever, cn } from "@some-ui/core-utils"
 import { useOverflows } from "@some-ui/react-hooks"
 import { BrandMark } from "@some-ui/shared"
+import type { SessionThemeId } from "@some-ui/styles/theme"
+import { sessionThemeProps } from "@some-ui/styles/theme"
 import {
   CALL_CHAPTERS,
   callFormat,
@@ -193,6 +195,12 @@ const Options = ({
   </ol>
 )
 
+/** The theme the week's template draws its mark in: the mark's own, else the template's. */
+const markTheme = (week: CallWeek): SessionThemeId | undefined => {
+  const shape = callFormat(week.template.version).shape
+  return shape?.brand.theme ?? shape?.theme
+}
+
 const Screen = ({
   week,
   view,
@@ -222,7 +230,12 @@ const Screen = ({
     case "brand-out": {
       return (
         <div className="flex h-full flex-col items-center justify-center gap-[0.8em]">
-          <BrandMark tone="brand" className="size-[12em]" title={W.mark} />
+          <BrandMark
+            tone="brand"
+            className="size-[12em]"
+            title={W.mark}
+            theme={markTheme(week)}
+          />
           <p className="text-[1.6em] font-bold">
             {view.section === "brand-in" ? W.title : W.source}
           </p>
@@ -450,17 +463,24 @@ export const CallStagePage = ({
   const week = shown.week
   // On record with captions, the footer is the band they're drawn in, left
   // empty: the renderer lays each scene's there.
-  const captioned = record && hasCaptions(callFormat(week.template.version))
+  const format = callFormat(week.template.version)
+  const captioned = record && hasCaptions(format)
+  // The template's theme, whatever the app's is (SFEED10).
+  const theme = format.shape?.theme
+  const look = theme ? sessionThemeProps(theme) : null
   const step = (by: number): string | undefined => at.scenes[at.index + by]?.id
   const previous = step(-1)
   const next = step(1)
   return (
     <main
-      className={
+      data-theme={look?.["data-theme"]}
+      style={look?.style}
+      className={cn(
+        look?.className,
         record
           ? "bg-background text-foreground"
           : "bg-background text-foreground min-h-svh space-y-4 p-6"
-      }
+      )}
     >
       <div className="mx-auto w-full max-w-[1920px] [container-type:inline-size]">
         <section

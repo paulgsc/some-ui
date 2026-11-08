@@ -33,6 +33,7 @@
   },
   "dependencies": {
     "@some-ui/core-utils": "workspace:*",
+    "@some-ui/styles": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {

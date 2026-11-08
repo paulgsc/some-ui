@@ -111,7 +111,7 @@ describe("the cut list", () => {
       )
     )
     if (!cut.ok) throw new Error(cut.problems.join("; "))
-    expect(cut.value.series).toEqual({ id: "playoff-delta-week", version: 2 })
+    expect(cut.value.series).toEqual({ id: "playoff-delta-week", version: 3 })
     expect(cut.value.burnIns).toEqual([{ kind: "captions", params: {} }])
     expect(cut.value.shots.map((s) => s.id)).toEqual(scenes.map((s) => s.id))
   })

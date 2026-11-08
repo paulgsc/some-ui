@@ -50,16 +50,24 @@ export const CALL_ID = "conference-call"
  * `templates/`. A week names the version it was written for, and is drawn in
  * that version's shape; the routine writes this one (`CALL-ROUTINE.md`).
  *
- * 2 (SFEED2, #2670): the shape (`CALL_SHAPE`).
+ * 2 (SFEED2, #2670): the shape (`shapeOf`).
+ * 3 (SFEED10 #2675, SFEED12 #2766): drawn in Mochi Night, the palette made
+ *   for video, the mark too, in the series' version 2, which is Mochi
+ *   Night's ground and plays our music bed (#2673).
  */
-export const CALL_VERSION = 2
+export const CALL_VERSION = 3
 
-/** The call's shape, from version 2. */
-const CALL_SHAPE: Shape = {
-  brand: { intro: true, outro: true },
+/** The call's shape at `version`, from version 2. */
+const shapeOf = (version: number): Shape => ({
+  brand: {
+    intro: true,
+    outro: true,
+    ...(version >= 3 ? { theme: "mochi-night" as const } : {}),
+  },
   chapters: ["board", "moved", "done", "gray", "mine", "asks"],
   subtitles: "word",
-}
+  ...(version >= 3 ? { theme: "mochi-night" as const } : {}),
+})
 
 export const CALL_MOST = {
   moved: 12,
@@ -118,7 +126,7 @@ export function callFormat(version: number = CALL_VERSION): Format {
     id: CALL_ID,
     version,
     title: "The weekly call",
-    series: { id: CALL_ID, version: 1 },
+    series: { id: CALL_ID, version: version >= 3 ? 2 : 1 },
     look: "calm",
     scenes: [
       scene("open", "The week", "Which week this is, and what it read", 8_000),
@@ -160,7 +168,7 @@ export function callFormat(version: number = CALL_VERSION): Format {
       ),
       scene("close", "Close", "What the week comes to", 10_000),
     ],
-    ...(version >= 2 ? { shape: CALL_SHAPE } : {}),
+    ...(version >= 2 ? { shape: shapeOf(version) } : {}),
   }
 }
 
@@ -623,7 +631,7 @@ export function callCutList(
   return stillsCutList(
     {
       title: `The weekly call, ${week.week.from} to ${week.week.to}`,
-      series: callFormat().series,
+      series: callFormat(week.template.version).series,
       look: "calm",
       captions: hasCaptions(callFormat(week.template.version)),
       bed,
