@@ -59,8 +59,11 @@ const Preview = ({
   const { font, colours, plate } = look
   const u = unitsIn(frame)
   const line: CSSProperties = {
+    // One block that wraps inside the frame's safe width, as the video's
+    // captions do, so a plate stays one piece.
     display: "inline-block",
-    whiteSpace: "nowrap",
+    maxWidth: "80%",
+    textAlign: "center",
     fontFamily: font.family,
     fontWeight: font.weight,
     fontSize: u(font.sizePx),
@@ -237,11 +240,11 @@ export const CaptionLook = ({
             <select
               id={id}
               value={edit.weight}
-              onChange={(event) =>
-                set(() => ({
-                  weight: event.currentTarget.value === "800" ? 800 : 600,
-                }))
-              }
+              onChange={(event) => {
+                // Read now: React clears the event before an updater runs.
+                const weight = event.currentTarget.value === "800" ? 800 : 600
+                set(() => ({ weight }))
+              }}
               className="border-border bg-background rounded-md border px-2 py-1 text-sm"
             >
               <option value="600">{WORDS.bold}</option>
