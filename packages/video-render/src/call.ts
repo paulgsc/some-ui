@@ -616,7 +616,6 @@ export const CALL_VOICES: Readonly<Record<Section | Framing, string>> = {
   close: "am_michael",
 }
 
-
 /**
  * About how long a week's call runs, from its words alone, before any is
  * said: each scene for its reading time. The recorder refuses a week past
@@ -625,7 +624,6 @@ export const CALL_VOICES: Readonly<Record<Section | Framing, string>> = {
  */
 export const estimatedCallMs = (week: CallWeek): number =>
   estimatedMs(callScenes(week))
-
 
 /**
  * The call as a cut list the renderer draws (`stillsCutList`, which holds
