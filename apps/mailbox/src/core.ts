@@ -233,6 +233,99 @@ function wordsRefusal(words: unknown): string | null {
 }
 
 /**
+ * The keys of a `some-ui.episode-note/1` body: a note the owner left at a
+ * moment of one of a feed's episodes (paulgsc/some-ui#2745, SFEED6), as home
+ * keeps it. Any other is refused.
+ */
+const FEEDBACK_KEYS: ReadonlySet<string> = new Set([
+  "schema",
+  "note",
+  "feed",
+  "episode",
+  "atMs",
+  "categories",
+  "take",
+  "writtenAt",
+])
+const FEEDS: ReadonlySet<unknown> = new Set(["call", "playoff-delta"])
+/** The fixed set, in its order (www's `lib/episode-feedback`, SFEED decision 10). */
+const CATEGORIES: ReadonlyArray<string> = [
+  "shallow",
+  "technical",
+  "missedIntuition",
+  "unsupported",
+  "tooLong",
+  "tooShort",
+  "textClipped",
+  "slideShakes",
+  "overlap",
+  "hardToRead",
+  "pacing",
+  "voice",
+  "musicLoud",
+  "subtitlesOff",
+]
+const PHONE_ID = /^[A-Za-z0-9_-]{1,64}$/
+const NO_AUDIO_FEEDBACK =
+  "a note carries no audio: a spoken one goes as its take's transcript"
+const NO_DRIVE_FEEDBACK = "a note names no Drive file"
+
+/** Picked from the fixed set, at least one, each once, in its order. */
+function isPicked(value: unknown): boolean {
+  if (!Array.isArray(value) || value.length === 0) return false
+  const at = value.map((category) => CATEGORIES.indexOf(String(category)))
+  return at.every(
+    (place, i) => place >= 0 && (i === 0 || place > (at[i - 1] ?? place))
+  )
+}
+
+/**
+ * README, "What a put must satisfy": a note on an episode is which episode,
+ * the moment, what it is about, the take that says it if one does, and when
+ * it was written, and nothing else.
+ */
+function feedbackRefusal(
+  body: Readonly<Record<string, unknown>>,
+  text: string,
+  name: string
+): string | null {
+  const shape = shapeRefusal(
+    body,
+    text,
+    FEEDBACK_KEYS,
+    NO_AUDIO_FEEDBACK,
+    NO_DRIVE_FEEDBACK,
+    "note"
+  )
+  if (shape !== null) return shape
+  if (typeof body.note !== "string" || !PHONE_ID.test(body.note)) {
+    return "note must be the note's id"
+  }
+  if (name !== `feedback-${body.note}.json`) {
+    return "the name must carry the note's id"
+  }
+  if (!FEEDS.has(body.feed)) return "feed must be call or playoff-delta"
+  if (typeof body.episode !== "string" || !NOTE_REF.test(body.episode)) {
+    return "episode must name the episode"
+  }
+  const { atMs } = body
+  if (typeof atMs !== "number" || !Number.isSafeInteger(atMs) || atMs < 0) {
+    return "atMs must be the moment, in whole milliseconds from the start"
+  }
+  if (!isPicked(body.categories)) {
+    return "categories must be the fixed set's, each once, in its order"
+  }
+  if (
+    body.take !== null &&
+    (typeof body.take !== "string" || !NOTE_ID.test(body.take))
+  ) {
+    return "take must be the spoken note's take id, or null"
+  }
+  if (!isInstant(body.writtenAt)) return "writtenAt must be when it was written"
+  return null
+}
+
+/**
  * The keys of a `some-ui.reflection/1` body: only what the reflections
  * routine reads of a written reflection (paulgsc/some-ui#2174, D2). Any
  * other is refused.
@@ -788,6 +881,14 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
     schema: "some-ui.drama-prompt/1",
     refuses: promptRefusal,
   },
+  {
+    // A note the owner left on an episode, as home keeps it, named for the
+    // phone's id.
+    folder: "feedback",
+    name: /^feedback-[A-Za-z0-9_-]{1,64}\.json$/,
+    schema: "some-ui.episode-note/1",
+    refuses: feedbackRefusal,
+  },
 ]
 
 /** The Worker secrets. An unset or empty one never authenticates anyone. */
@@ -829,13 +930,15 @@ const RECORDS: ReadonlyArray<Folder> = [
   "transcript",
   "reflection",
   "prompt",
+  "feedback",
 ]
 
 const ALL: ReadonlyArray<Folder> = [...RECORDS, "index"]
 
-/** Every record but `reflection` and `prompt`, which the routine never asks back (README, "Who may do what"; MI6). */
+/** Every record but `reflection`, `prompt` and `feedback`, which the routine never asks back (README, "Who may do what"; MI6). */
 const ASKED: ReadonlyArray<Folder> = RECORDS.filter(
-  (folder) => folder !== "reflection" && folder !== "prompt"
+  (folder) =>
+    folder !== "reflection" && folder !== "prompt" && folder !== "feedback"
 )
 
 /** MB2. Another role (the phone's, say) is the owner's call, not a code change. */
@@ -861,6 +964,7 @@ const ROLES: ReadonlyArray<Grant> = [
       "index",
       "reflection",
       "prompt",
+      "feedback",
     ],
     ask: [],
     move: [],

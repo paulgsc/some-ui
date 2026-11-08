@@ -18,7 +18,9 @@ latest scenes, the lessons waiting unopened and which reflections and prompts st
 voice note), so a routine reads it instead of rebuilding it. The index is a view of what home
 keeps, so only the latest of each routine's stays. For the reflections routine: each **written
 reflection** home keeps (`reflection`), its text only, and each **drama prompt** (`prompt`),
-the next scene's prompt as the phone asked for it, its markdown only. For the Build Journal:
+the next scene's prompt as the phone asked for it, its markdown only, and each **note on an
+episode** (`feedback`), the moment and categories the owner picked (SFEED6), which the routine
+files as a pending issue. For the Build Journal:
 the build-journal session's **list of the Studio takes Drive holds** (`drive-takes-…` in
 `brief`), SHA-256s only, so home can tell the phone which takes Drive has too. Each side
 reaches it with its own token, so the files move between them without a hand-carried step.
@@ -102,7 +104,7 @@ Every request needs `Authorization: Bearer <token>`. Every answer is JSON, or th
 | anything else                                            | `404`; a method the path does not take is `405` with `Allow`. A missing or wrong token is `401`, a token that may not do this is `403`, and storage failing is `503`.                                                                                                                                                                                   |
 
 The folders are `brief`, `decisions`, `scout`, `scene`, `drama`, `run`, `opened`, `leetype`,
-`leetype-log`, `transcript`, `index`, `reflection` and `prompt`. `brief` also holds the
+`leetype-log`, `transcript`, `index`, `reflection`, `prompt` and `feedback`. `brief` also holds the
 build-journal session's lists of the takes Drive holds (`drive-takes-…`) and the Monday
 routine's weeks of Rust Rounds (`rust-week-…`), which home finds in the listing it makes of
 `brief` every pass anyway, so they cost no listing of their own (MI6).
@@ -115,11 +117,11 @@ then six repeats, then `seq 8`). Page with `after` set to the highest `seq` you 
 
 ### Who may do what
 
-| Secret          | Role      | May                                                                                                                                                                      |
-| --------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ROUTINE_TOKEN` | `routine` | read every folder; put `brief`, `scene`, `drama`, `run` and `leetype`; list what is archived and ask for it back, in every folder but `index`, `reflection` and `prompt` |
-| `HOME_TOKEN`    | `home`    | read `brief`, `scene`, `drama`, `run` and `leetype`; put `decisions`, `scout`, `opened`, `leetype-log`, `transcript`, `index`, `reflection` and `prompt`                 |
-| `ARCHIVE_TOKEN` | `archive` | read every folder; archive a file, put an archived one back and list the open asks, in every folder but `index`                                                          |
+| Secret          | Role      | May                                                                                                                                                                                  |
+| --------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ROUTINE_TOKEN` | `routine` | read every folder; put `brief`, `scene`, `drama`, `run` and `leetype`; list what is archived and ask for it back, in every folder but `index`, `reflection`, `prompt` and `feedback` |
+| `HOME_TOKEN`    | `home`    | read `brief`, `scene`, `drama`, `run` and `leetype`; put `decisions`, `scout`, `opened`, `leetype-log`, `transcript`, `index`, `reflection`, `prompt` and `feedback`                 |
+| `ARCHIVE_TOKEN` | `archive` | read every folder; archive a file, put an archived one back and list the open asks, in every folder but `index`                                                                      |
 
 The routine role is every scheduled routine's: the Jobs digest, the study reflections and,
 once it is scheduled, the LeetType review each put to their own folders.
@@ -129,7 +131,8 @@ puts (`written_reflection` in `paulgsc/server`), so it archives one by what it p
 folder only once one is old enough, and never answers an ask for it: a pass with nothing to do
 then makes no request for `reflection` at all. A reflection archived before the routine
 answered it is no longer offered to the routine; home still keeps it. Home holds every drama
-prompt it puts too (`drama_prompt` in `paulgsc/server`).
+prompt it puts too (`drama_prompt` in `paulgsc/server`), and every note on an episode
+(`episode_note`), so neither is asked back either.
 
 Home holds two tokens. `archive` is apart from `home` so the token home uses every pass cannot
 drop a byte. A secret that is unset or empty authenticates no one, and one value set for two
@@ -173,7 +176,8 @@ role, and it is the owner's call, so it is not built.
   `drama-YYYYMMDDTHHMMSSmmmZ.prompt.json`, named for the prompt's stamp as the phone names it
   (the moment it was asked for, in UTC to the millisecond, as home's
   `PUT /api/v1/routine/prompts/:stamp` takes it), so the drama that answers it is the
-  `drama` folder's `drama-<stamp>.json`. `brief` also takes `drive-takes-YYYYMMDDTHHMMSSZ.json`
+  `drama` folder's `drama-<stamp>.json`; and `feedback` takes `feedback-<id>.json`, named for
+  the phone's id for the note (1 to 64 letters, digits, `-` or `_`). `brief` also takes `drive-takes-YYYYMMDDTHHMMSSZ.json`
   (MB2, the owner's route a on paulgsc/some-ui#2401), named for when the build-journal session
   listed Drive's takes folder, in UTC to the second, so each list goes under a new name.
   `brief` also takes `rust-week-YYYY-wNN.json` (MB2, RR12 paulgsc/some-ui#2687), a week of Rust
@@ -183,7 +187,7 @@ role, and it is the owner's call, so it is not built.
   must be UTF-8 JSON with no byte-order mark.
 - **Schema**: the top-level `schema` must be `some-ui.job-digest/1`, `some-ui.job-decisions/1`,
   `some-ui.job-scouts/1`, `some-ui.routine-scene/1`, `some-ui.routine-drama/1`, `some-ui.routine-run/1`,
-  `some-ui.routine-opened/1`, `some-ui.leetype-session/1`, `some-ui.leetype-log/1`, `some-ui.voice-transcript/1`, `some-ui.routine-index/1`, `some-ui.reflection/1` or `some-ui.drama-prompt/1` to match the folder (and `some-ui.drive-takes/1` for a list of Drive's takes in `brief`, `some-ui.rust-week/1` for a week of Rust Rounds). The Worker checks that and nothing deeper, except for a transcript, an index, a reflection, a prompt, a list of Drive's takes and a week's `id`, which must be the name's (below); the readers validate the full shape.
+  `some-ui.routine-opened/1`, `some-ui.leetype-session/1`, `some-ui.leetype-log/1`, `some-ui.voice-transcript/1`, `some-ui.routine-index/1`, `some-ui.reflection/1`, `some-ui.drama-prompt/1` or `some-ui.episode-note/1` to match the folder (and `some-ui.drive-takes/1` for a list of Drive's takes in `brief`, `some-ui.rust-week/1` for a week of Rust Rounds). The Worker checks that and nothing deeper, except for a transcript, an index, a reflection, a prompt, a note on an episode, a list of Drive's takes and a week's `id`, which must be the name's (below); the readers validate the full shape.
 - **A scene** is `{"schema":"some-ui.routine-scene/1","answers":"<reflection>","title":"<the
 scene folder's name>","decks":[<read-aloud deck>,<lens deck>]}`, each deck exactly as the
   phone's word set check takes it. **A drama** is `{"schema":"some-ui.routine-drama/1",
@@ -313,6 +317,18 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
   as sent carries a `data:` URI, a Drive link or a run of 256 or more base64 characters, by
   the transcript's tests. A prompt is about 40 KB today, most of it the tree prompt; home
   takes one of at most 256 KiB of text, so a file is well under the cap.
+- **A note on an episode** is
+  `{"schema":"some-ui.episode-note/1","note","feed","episode","atMs","categories","take","writtenAt"}`:
+  the phone's id for the note (which the name carries), the feed (`call` or `playoff-delta`),
+  the episode's key, the moment in it in whole milliseconds, what it is about (one or more of
+  SFEED decision 7's fixed set, each once, in its order: `shallow`, `technical`,
+  `missedIntuition`, `unsupported`, `tooLong`, `tooShort`, `textClipped`, `slideShakes`,
+  `overlap`, `hardToRead`, `pacing`, `voice`, `musicLoud`, `subtitlesOff`), the spoken note's
+  take id or `null`, and when it was written (paulgsc/some-ui#2745). What the owner said in a
+  spoken note is that take's `transcript`, never this file. The Worker holds this shape
+  itself, as it holds a reflection's: every key is required, and any other key is `422`. One
+  that names audio is refused with `a note carries no audio: a spoken one goes as its take's
+transcript`, and one that names Drive with `a note names no Drive file`.
 - **A list of the takes Drive holds** is
   `{"schema":"some-ui.drive-takes/1","at","takes":[{"sha256"}]}`: when the build-journal
   session listed Drive's Build Journal takes folder (an instant, which the name carries to the
@@ -489,15 +505,18 @@ how each was checked when this workspace landed.
 
 - _Claim:_ the `ROLES` table in `src/core.ts` is the only place a token is mapped to what it
   may do, and it holds exactly three roles: `routine` (get every folder, put `brief`, `scene`,
-  `drama`, `run` and `leetype`, ask every folder but `index`, `reflection` and `prompt`), `home`
+  `drama`, `run` and `leetype`, ask every folder but `index`, `reflection`, `prompt` and `feedback`), `home`
   (get `brief`, `scene`, `drama`, `run` and `leetype`, put `decisions`, `scout`, `opened`,
-  `leetype-log`, `transcript`, `index`, `reflection` and `prompt`) and `archive` (get every folder, move
+  `leetype-log`, `transcript`, `index`, `reflection`, `prompt` and `feedback`) and `archive` (get every folder, move
   every folder but `index`; owner, 2026-10-23, and `scene` and `drama` the same day; `run` and
   `opened` 2026-10-24; `leetype` and `leetype-log` 2026-10-24 too; `transcript` 2026-10-25;
   `index` 2026-10-31, paulgsc/server#509, and kept out of `ask` and `move` the same day, since
   it is a view and not a record; `reflection` 2026-10-26, paulgsc/some-ui#2174 decision D2, and
   kept out of `ask` so home lists nothing of it while nothing is due; `prompt` the same day
-  and decision, paulgsc/some-ui#2179, kept out of `ask` for the same reason). The routine's `brief` also takes its one-time backfill: a Jobs decisions or
+  and decision, paulgsc/some-ui#2179, kept out of `ask` for the same reason; `feedback`
+  2026-11-08, SFEED decision 6 on paulgsc/some-ui#2670, "home writes down what I say … the
+  existing daily reflections routine files each as a pending issue", kept out of `ask` for the
+  same reason). The routine's `brief` also takes its one-time backfill: a Jobs decisions or
   scouts file under its Drive name, only as the phone names one (`sharedDay`: a real calendar
   day, a decisions share number from 2 to 99, a scouts stamp at a real time) and only for a
   day from 2026-10-17, when the phone could first share one, through 2026-11-03, the day
@@ -589,7 +608,12 @@ how each was checked when this workspace landed.
   held to `some-ui.rust-week/1` and `rustWeekRefusal` (an ISO week `id`, the name's);
   `core.test.ts` pins that the routine puts one and home reads it in the `brief` listing (home
   may put nothing in `brief`, pinned for the folder), and that a misnamed week, a non-week `id`
-  and another schema are refused.
+  and another schema are refused. _Checked at the feedback amendment (SFEED decision 6 on
+  paulgsc/some-ui#2670, 2026-11-07: notes on an episode are kept on home and filed by the
+  reflections routine; paulgsc/some-ui#2745):_ `ROLES` has three entries; `core.test.ts` pins
+  `feedback` as it pins `reflection`: home puts it and may not read it, the routine reads it
+  and may neither put it, list it as archived nor ask it back (`ASKED`, every record but
+  `reflection`, `prompt` and `feedback`), and the archive role reads and moves it.
 
 **MB3: No token reaches the repo or a log.**
 

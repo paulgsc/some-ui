@@ -21,6 +21,7 @@ export type Folder =
   | "index"
   | "reflection"
   | "prompt"
+  | "feedback"
 
 /** Who put an item. A restored item keeps its first putter. */
 export type Putter = "routine" | "home"
