@@ -177,6 +177,10 @@ export const ROOMS: ReadonlyArray<Room> = [
   { id: "jobs", wing: "jobs", roots: ["/jobs"] },
   { id: "job-run", wing: "jobs", roots: ["/job-run"], nav: "Morning run" },
   { id: "lessons", wing: "operate", roots: ["/lessons"], nav: "Lessons" },
+  // Administration (#2357): offered from the home network's launcher and
+  // front page (`lib/site-map`), not a sidebar, since Operate's web side is
+  // making and the `lan` build offers administration.
+  { id: "home-switches", wing: "operate", roots: ["/home-switches"] },
   {
     id: "resume-build",
     wing: "operate",

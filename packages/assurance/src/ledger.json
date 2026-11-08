@@ -732,9 +732,9 @@
           "kind": "OA2",
           "property": "outcome",
           "claim": "Every program in a round home keeps reaches an outcome that is its own: its recording, the runner's refusal of it, or that it lost the runner twice.",
-          "requirement": "While RUST_ROUNDS_ENABLED is on, each distinct program a stored round holds is queued once, and a pass asks about the waiting programs in arrival order under the runner's toolchain. A recording is kept as recorded, and a refusal of the program itself (malformed or too-large) as refused with its reason; either way the pass goes on. A runner that goes away after the whole request was sent, or does not answer within ASK_TIMEOUT (137 s, past its watchdog's job deadline of 132 s), is a loss held against the program (dropped or timed-out; a fault of the runner's machine after the program ran answers nothing, so it is one too), and the pass stops; at its DROPS (2)th loss, of either kind, the program is kept as runner-lost. A program kept as recorded, refused or runner-lost is never asked again under that toolchain. Anything else is an outage that keeps nothing and holds nothing against a program: a failed toolchain ask, a runner that cannot be reached or does not take the request, a refusal as wrong-toolchain, unavailable (its machine failed before the program ran) or peer, an answer that is not one, or a recording under another toolchain. The pass stops and every program waits for the next. Every stop but a deadline reached after at least one program was asked about is logged at ERROR and counted on operation_errors_total{operation=\"rust_rounds\"} by its kind, as is a storage failure. So no program holds up the queue for good, and a program is blamed only for what it did.",
+          "requirement": "The recorder always runs, and each pass first reads the operator's Rust Rounds recording switch (the rust-rounds admin setting, on by default) once; while it is paused the pass asks the runner nothing, and rounds and weeks are still kept and their programs wait; a switch it cannot read skips the pass, logged at ERROR and counted on operation_errors_total{operation=\"rust_rounds\"} as setting. While recording is on, each distinct program a stored round holds is queued once, and a pass asks about the waiting programs in arrival order under the runner's toolchain. A recording is kept as recorded, and a refusal of the program itself (malformed or too-large) as refused with its reason; either way the pass goes on. A runner that goes away after the whole request was sent, or does not answer within ASK_TIMEOUT (137 s, past its watchdog's job deadline of 132 s), is a loss held against the program (dropped or timed-out; a fault of the runner's machine after the program ran answers nothing, so it is one too), and the pass stops; at its DROPS (2)th loss, of either kind, the program is kept as runner-lost. A program kept as recorded, refused or runner-lost is never asked again under that toolchain. Anything else is an outage that keeps nothing and holds nothing against a program: a failed toolchain ask, a runner that cannot be reached or does not take the request, a refusal as wrong-toolchain, unavailable (its machine failed before the program ran) or peer, an answer that is not one, or a recording under another toolchain. The pass stops and every program waits for the next. No socket at the runner's path when the pass asks its toolchain is no runner on this machine: a deployment fact, not an outage; the pass stops as no_runner, keeps nothing, and it is logged once at WARN when first seen and once at INFO when a socket is there again, never as an error each pass; a runner that is deployed but down leaves its socket behind, so it is an outage. Every other stop but a deadline reached after at least one program was asked about is logged at ERROR and counted on operation_errors_total{operation=\"rust_rounds\"} by its kind, as is a storage failure. So no program holds up the queue for good, and a program is blamed only for what it did.",
           "verdict": "holds",
-          "conclusion": "While RUST_ROUNDS_ENABLED is on, every program ends recorded, refused, or after two losses runner-lost, and an outage keeps nothing, is reported at ERROR on every pass it lasts and leaves every program for the next; while it is off, rounds are kept, their programs wait, and nothing reports them.",
+          "conclusion": "While recording is on, every program ends recorded, refused, or after two losses runner-lost, and an outage keeps nothing, is reported at ERROR on every pass it lasts and leaves every program for the next; while the operator has it paused, or on a machine with no runner (said once), rounds are kept and their programs wait.",
           "evidence": [
             {
               "class": "measured",
@@ -760,6 +760,26 @@
               "class": "structural",
               "says": "A pass that failed, or a storage failure, is logged at ERROR and added to operation_errors_total{operation=\"rust_rounds\"} with its kind; that it is counted is read from the code, not tested.",
               "ref": "server:apps/servers/file_host/src/rust_rounds.rs"
+            },
+            {
+              "class": "measured",
+              "says": "No socket at the toolchain ask stops a pass as no_runner, three passes running, keeping nothing, holding no loss and failing none; a runner that then answers records every program, and a socket gone between the toolchain ask and a program's is an outage.",
+              "ref": "server:apps/servers/file_host/src/rust_rounds/pass.rs"
+            },
+            {
+              "class": "measured",
+              "says": "Pausing, resuming, no runner and a socket there again are each said once when they change, not every pass.",
+              "ref": "server:apps/servers/file_host/src/rust_rounds.rs"
+            },
+            {
+              "class": "measured",
+              "says": "An unset switch reads as on and says it is the default, and a stored value that no longer parses is an error, not the default.",
+              "ref": "server:apps/servers/file_host/src/settings.rs"
+            },
+            {
+              "class": "structural",
+              "says": "Each pass reads the switch once before it asks the runner anything, and skips while it is paused; read from the code.",
+              "ref": "server:apps/servers/file_host/src/rust_rounds.rs"
             }
           ],
           "proof": [
@@ -767,13 +787,23 @@
             "server:apps/servers/file_host/src/rust_rounds/pass.rs#a_refused_program_is_kept_as_that_and_the_queue_moves_on",
             "server:apps/servers/file_host/src/rust_rounds/pass.rs#a_program_that_loses_the_runner_is_kept_as_that",
             "server:apps/servers/file_host/src/rust_rounds/pass.rs#an_outage_keeps_nothing_and_every_program_waits",
-            "server:apps/servers/file_host/src/rust_rounds/pass.rs#a_toolchain_changed_mid_pass_keeps_nothing"
+            "server:apps/servers/file_host/src/rust_rounds/pass.rs#a_toolchain_changed_mid_pass_keeps_nothing",
+            "server:apps/servers/file_host/src/rust_rounds/pass.rs#no_runner_on_this_machine_is_not_an_error_and_every_program_waits",
+            "server:apps/servers/file_host/src/rust_rounds.rs#the_lever_is_said_when_it_moves_and_not_every_pass",
+            "server:apps/servers/file_host/src/rust_rounds.rs#no_runner_is_said_once_and_its_end_once"
           ],
           "watch": {
             "by": "alert",
             "ref": "server:infra/grafana/provisioning/alerting/file-host-errors.yml"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-11-08",
+              "change": "Recording is the operator's switch, on by default, read once a pass, in place of RUST_ROUNDS_ENABLED; and no socket at the runner's path is no runner on this machine, said once at WARN and not an error each pass, where every unreachable runner was an ERROR every pass.",
+              "why": "The owner made recording a lever set from the web app, with no environment limit, and asked that a missing runner be reported as a deployment fact, not an error every minute on a box that has no runner. A runner that is deployed but down still leaves its socket, so it is still an outage at ERROR every pass.",
+              "decision": "https://github.com/paulgsc/some-ui/issues/2357#issuecomment-6715197303"
+            }
+          ]
         },
         {
           "id": "RC2",
@@ -2103,6 +2133,10 @@
       "why": "Reads the activity catalogue; the answer is the outcome."
     },
     {
+      "module": "admin_settings",
+      "why": "The operator's levers (Rust Rounds recording first): each read answers with what home follows now, and each write with what it kept."
+    },
+    {
       "module": "aph",
       "why": "Reads and writes the APH log; each write answers with what it kept."
     },
@@ -2645,6 +2679,12 @@
       "growth": "Per activity block played (one row per block, idempotent on (session_id, block_index)); \"a daily learner writes a few thousand rows a year\" (outcome_repo constant doc); steady state is rate x 1 year.",
       "horizon": "365 days from ended_at, pruned by OutcomeRepository::prune (crates/db/outcome/src/repository.rs) from the waker's sweep_history (apps/servers/file_host/src/nudge/waker.rs), at most RETENTION_SWEEP_LIMIT=500 rows per pass; only while NUDGE_ENABLED is on",
       "family": "study-nudge"
+    },
+    {
+      "store": "server:admin_setting",
+      "class": "record",
+      "growth": "Per change the operator makes to a lever (append-only; the value standing again adds nothing), body <= BODY_CEILING = 4 KiB; names a role, never a subject; kept for good.",
+      "family": "what-is-kept"
     },
     {
       "store": "server:aph_entry",

@@ -10,11 +10,8 @@
 
 import type { JSX, ReactNode } from "react"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
-import { ShieldCheck } from "lucide-react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import type * as SiteMap from "@/lib/site-map"
-import type { Destination } from "@/lib/site-map"
 import type * as Launcher from "@/components/site-launcher"
 
 vi.mock("@tanstack/react-router", () => ({
@@ -31,22 +28,12 @@ async function load({
   audiences,
   mobile = false,
   kind = "local",
-  catalog,
 }: {
   audiences: ReadonlyArray<string>
   mobile?: boolean
   kind?: "local" | "account" | "pending"
-  /** Stands in for the site map's destinations, when a case needs its own. */
-  catalog?: ReadonlyArray<Destination>
 }): Promise<typeof Launcher> {
   vi.resetModules()
-  if (catalog) {
-    const actual = await vi.importActual<typeof SiteMap>("@/lib/site-map")
-    vi.doMock("@/lib/site-map", () => ({
-      ...actual,
-      destinationsHere: (): ReadonlyArray<Destination> => catalog,
-    }))
-  }
   vi.doMock("@/lib/build-profile", () => ({
     MOBILE_APP: mobile,
     hasAudience: (audience: string): boolean => audiences.includes(audience),
@@ -67,7 +54,6 @@ afterEach(() => {
   cleanup()
   vi.doUnmock("@/lib/build-profile")
   vi.doUnmock("@/lib/authority")
-  vi.doUnmock("@/lib/site-map")
   vi.resetModules()
 })
 
@@ -77,27 +63,18 @@ describe("the site launcher", () => {
       audiences: ["public", "lan", "web"],
     })
     render(<SiteLauncher />)
-    expect(openTiles()).toEqual(["/assurance", "/extensions", "/mission"])
+    expect(openTiles()).toEqual([
+      "/assurance",
+      "/home-switches",
+      "/extensions",
+      "/mission",
+    ])
     expect(screen.getByText("How it's running")).toBeTruthy()
   })
 
   it("marks a LAN tool as needing a passkey until the account is the authority", async () => {
-    // No LAN page is offered today, so the case stands on a catalog of its own.
-    const catalog: ReadonlyArray<Destination> = [
-      {
-        to: "/lessons",
-        title: "A LAN page",
-        blurb: "Behind the passkey.",
-        icon: ShieldCheck,
-        audience: "lan",
-        purpose: "administration",
-        launcher: "running",
-      },
-    ]
-    const signedOut = await load({
-      audiences: ["public", "lan", "web"],
-      catalog,
-    })
+    // Home's switches, the one LAN page the home network offers.
+    const signedOut = await load({ audiences: ["public", "lan", "web"] })
     render(<signedOut.SiteLauncher />)
     openTiles()
     expect(screen.getAllByText("Passkey")).toHaveLength(1)
@@ -106,7 +83,6 @@ describe("the site launcher", () => {
     const signedIn = await load({
       audiences: ["public", "lan", "web"],
       kind: "account",
-      catalog,
     })
     render(<signedIn.SiteLauncher />)
     openTiles()

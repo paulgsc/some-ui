@@ -5,6 +5,8 @@ export const API_BASE_PATH = "/api/v1";
 export type ServerRoute =
   | "/api/v1/activities"
   | "/api/v1/activities/:id"
+  | "/api/v1/admin/settings/:namespace"
+  | "/api/v1/admin/settings/:namespace/history"
   | "/api/v1/aph"
   | "/api/v1/aph/entries/:id"
   | "/api/v1/aph/settings"

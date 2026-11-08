@@ -31,6 +31,10 @@ export const UNMEASURED: ReadonlyArray<Unmeasured> = [
   },
   { route: "/aph/settings", why: "What aph measures against: a setting." },
   {
+    route: "/home-switches",
+    why: "What home does while it runs (Rust Rounds recording): a switch, not an offer.",
+  },
+  {
     route: "/burn-ins",
     why: "A preview of what every video carries, on sample data, and the recorder's page.",
   },

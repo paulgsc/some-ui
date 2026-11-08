@@ -7,6 +7,7 @@ import {
   Puzzle,
   ShieldCheck,
   Sparkles,
+  ToggleRight,
   Trophy,
 } from "lucide-react"
 
@@ -34,6 +35,7 @@ export type Destination = {
     | "/mission"
     | "/lessons"
     | "/resume-build"
+    | "/home-switches"
   readonly title: string
   readonly blurb: string
   readonly icon: LucideIcon
@@ -85,6 +87,16 @@ const DESTINATIONS: ReadonlyArray<Destination> = [
       "What my tools promise about outcomes and work, and the evidence for each.",
     icon: ShieldCheck,
     audience: "public",
+    purpose: "administration",
+    launcher: "running",
+  },
+  {
+    to: "/home-switches",
+    title: "Home's switches",
+    blurb:
+      "What home does while it runs, and who last changed it: Rust Rounds recording, on or paused.",
+    icon: ToggleRight,
+    audience: "lan",
     purpose: "administration",
     launcher: "running",
   },
