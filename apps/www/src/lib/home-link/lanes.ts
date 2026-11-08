@@ -47,6 +47,7 @@ export type LaneKind =
   | "jobs"
   | "voice"
   | "ideas"
+  | "episodeNotes"
   | "rounds"
   | "endings"
 

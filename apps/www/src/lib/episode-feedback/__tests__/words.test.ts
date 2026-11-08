@@ -26,6 +26,8 @@ const all = [
   ...strings(FEEDBACK_WORDS),
   ...[0, 1, 134_000, 3_725_000].map(FEEDBACK_WORDS.at),
   ...[1, 2].map(FEEDBACK_WORDS.onThis),
+  FEEDBACK_WORDS.onHome("2026-11-14T03:01:00.000Z", "2026-11-14"),
+  FEEDBACK_WORDS.onHome("2025-11-14T03:01:00.000Z", "2026-11-14"),
 ]
 
 describe("feedback's words", () => {

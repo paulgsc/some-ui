@@ -186,6 +186,7 @@ import {
 } from "@/lib/voice-home/model"
 import { wireVoiceMarks } from "@/lib/voice-marks"
 
+import { phoneEpisodeNotes, sendEpisodeNotes } from "./episode-notes"
 import { phoneIdeas, sendIdeas } from "./ideas"
 import { homeLink, paired } from "./index"
 import { lensEntriesHeld } from "./lens-record"
@@ -959,7 +960,8 @@ async function letGoOnHomesWord(send: HomeCall): Promise<void> {
  * again, then each copy waiting sent (`exchangeVoice`), then, once that
  * synced, home's word on which Studio takes Drive has (`letGoOnHomesWord`),
  * each Studio idea sent whole that home doesn't hold (`sendIdeas`, ST26),
- * whose said answers name notes that have just gone, the set-aside marks due
+ * whose said answers name notes that have just gone, each note left on an
+ * episode home doesn't hold (`sendEpisodeNotes`, SFEED6), the set-aside marks due
  * (`markSetAside`, MIC2), and, once those synced, each Studio video kept for
  * home to make (`sendVideos`, ST33), whose takes name notes too, which ends
  * the run in its exchange's place. A run that sent all it had still fails,
@@ -983,6 +985,11 @@ export async function sendVoice(
     send
   )
   if (ideas.kind !== "synced") return runEnd(pass, ideas)
+  const notes = await sendEpisodeNotes(
+    phoneEpisodeNotes(localStorageOrNull(), at.pairing),
+    send
+  )
+  if (notes.kind !== "synced") return runEnd(pass, notes)
   const sendable = marksSendable(candidates())
   const marks: AsidePort = {
     due: () => home.marks.due().filter(sendable),

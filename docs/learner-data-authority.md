@@ -472,7 +472,21 @@ declared (checked by reading every call site and by the tests named).
   link the owner pasted, only once it reads as a `YouTube` video; sending
   nothing of the phone's but that link; while the link is busy with another
   run it asks again a second later, at most ten times; ST38, #2661; FEED4,
-  #2647), and Studio's Finish
+  #2647), Studio › Renders (`lib/renders`, through `lib/home-link/renders`'
+  `keep`: one `GET /renders` each time Studio's index or the page opens, on a
+  drag down, on Try again, and every half minute while home has something
+  under way, sending nothing of the phone's; SFEED13, #2761), a template's
+  preview (`lib/template-preview`, through `lib/home-link/previews`' `keep`:
+  on Preview one bodiless `POST /previews/:template`; one
+  `GET /previews/:template` as the page opens, on a drag down, on Try again
+  and once after a press home took; on Watch one
+  `GET /previews/:template/:id/video` per part, each a range of at most
+  `PART_BYTES`, into the phone's cache; sending nothing of the phone's;
+  SFEED12, #2757), Studio's Feedback page (`lib/episode-feedback`, through
+  `lib/home-link/episode-notes-read`'s `keep`: one `GET /feeds/:feed/notes`
+  per feed as the page opens and on a drag down, sending nothing of the
+  phone's, asking again a second later while the link is busy, at most ten
+  times and not once the page has left it; SFEED6, #2745), and Studio's Finish
   (`routes/_dashboard/_apk/journal/episodes/making.tsx`, ST33), which hands the voice
   lane a video kept for home to make and hears what home answered and lists
   of it through `lib/home-link/studio-videos`, sending nothing of its own,
@@ -557,8 +571,14 @@ declared (checked by reading every call site and by the tests named).
   `lib/home-link/lanes.ts` (LA15), `lib/home-link/routine.ts`,
   `lib/home-link/heard.ts`, `lib/home-link/voice-audio.ts` (RR6),
   `lib/home-link/kept-read.ts`, `lib/home-link/deleted-read.ts`,
-  `lib/home-link/idea-reads.ts`, `lib/home-link/takes-read.ts` and
-  `lib/home-link/call-videos.ts`; one that has `call-videos.ts` send anything
+  `lib/home-link/idea-reads.ts`, `lib/home-link/takes-read.ts`,
+  `lib/home-link/call-videos.ts`, `lib/home-link/renders.ts`,
+  `lib/home-link/previews.ts` and `lib/home-link/episode-notes-read.ts`; one
+  that has `renders.ts` send anything but one `GET /renders`, `previews.ts`
+  anything but the three asks above, or `episode-notes-read.ts` anything but
+  one `GET /feeds/:feed/notes`, or lets anything but `lib/renders`,
+  `lib/template-preview` and `lib/episode-feedback/home-read.ts` call them,
+  each its own; one that has `call-videos.ts` send anything
   but one `GET` of `episodesPath(feed)` per list, one ranged `GET` of
   `videoPath(feed, key)` per part and one `PUT` of `linkPath(feed, key)` per
   Save, lets
