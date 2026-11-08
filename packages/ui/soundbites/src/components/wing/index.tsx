@@ -1,6 +1,7 @@
 /**
- * The Studio wing's two pages as the app lays them out (www's `/journal`
- * and `/journal/idea`): each screen under the wing's heading, in the
+ * The Studio wing's two pages as the app lays them out (www's
+ * `/journal/episodes/making`, the videos made in sittings under Studio's
+ * Episodes, and `/journal/idea`): each screen under its heading, in the
  * route's column. The app hands in its links, so a page with no router
  * (www's ui-fit phone page) mounts the same pages the routes do.
  */
@@ -21,6 +22,11 @@ export type WingLink = (props: {
 }) => ReactNode
 
 type StudioHomeProps = Omit<StudioProps, "newIdea" | "ideas"> & {
+  /**
+   * Over the page: Studio's name by default, or what the app calls the place
+   * it mounts this in (the index's "Videos you're making", SFEED1).
+   */
+  heading?: string
   /** The link to New idea. */
   ideaLink: WingLink
   /** The link to Your ideas. */
@@ -34,12 +40,13 @@ type StudioHomeProps = Omit<StudioProps, "newIdea" | "ideas"> & {
  * beside it.
  */
 export const StudioHome = ({
+  heading = WORDS.heading,
   ideaLink: IdeaLink,
   ideasLink: IdeasLink,
   ...studio
 }: StudioHomeProps): JSX.Element => (
   <div className="mx-auto flex w-full max-w-md flex-col gap-4">
-    <h1 className="text-2xl font-bold tracking-tight">{WORDS.heading}</h1>
+    <h1 className="text-2xl font-bold tracking-tight">{heading}</h1>
     <Studio
       {...studio}
       newIdea={{

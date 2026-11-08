@@ -75,7 +75,7 @@ Playoff Delta is a show (SHOW epic, #2525): every week is an episode of the
 same format, fed that week's data, and the owner brings only the voice.
 `src/lib/show.ts` makes both formats (the week's and the legend's) from the
 slides above, a compile-time template, and pins each version under
-`src/show/formats/<id>/v<n>.json`. Its test holds the newest equal to the
+`@some-ui/video-render`'s `src/templates/<id>/v<n>.json`. Its test holds the newest equal to the
 code, so a change to the slides (their order, names, points or holds)
 fails until a new version is pinned. An episode is
 `episodeFor(season, week, sum, inMs)`: a primer the phone's Studio opens

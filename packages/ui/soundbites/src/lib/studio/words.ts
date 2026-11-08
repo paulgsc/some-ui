@@ -1061,7 +1061,6 @@ export const STUDIO_WORDS = {
     none: "No takes yet. Record one in a video's scenes.",
     deleteLine:
       "Delete… opens My data on a take, where deleting it is asked once and leaves a receipt. It shows only on takes home lets you delete.",
-    back: "Back to Studio",
   },
 
   /**

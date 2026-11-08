@@ -34,6 +34,8 @@ import { once, problemsOf } from "./cut-list"
 import type { CutList, Parsed } from "./cut-list"
 import { FORMAT_SCHEMA, repeatedId, showId, words } from "./format"
 import type { Format, Shape } from "./format"
+import { OptionSchema, RefSchema } from "./refs"
+import type { CallRef } from "./refs"
 import { estimatedMs, hasCaptions, stillFile, stillsCutList } from "./stills"
 import type { StillTake } from "./stills"
 import sample from "./templates/conference-call/sample-week.json"
@@ -162,24 +164,11 @@ export function callFormat(version: number = CALL_VERSION): Format {
   }
 }
 
-/** A pull request or an issue in one of the two repositories. */
-export const RefSchema = z.strictObject({
-  repo: z.enum(["some-ui", "server"]),
-  kind: z.enum(["pr", "issue"]),
-  number: z.number().int().positive(),
-})
-
-export type CallRef = z.infer<typeof RefSchema>
-
 const IssueSchema = RefSchema.extend({ kind: z.literal("issue") })
 const PrSchema = RefSchema.extend({ kind: z.literal("pr") })
 
 /** A ref's one name: "server#681". */
 const refKey = (ref: CallRef): string => `${ref.repo}#${ref.number}`
-
-/** Where `ref` is on GitHub. */
-export const refUrl = (ref: CallRef): string =>
-  `https://github.com/paulgsc/${ref.repo}/${ref.kind === "pr" ? "pull" : "issues"}/${ref.number}`
 
 /** A day, as `YYYY-MM-DD`. */
 const day = z.iso.date()
@@ -246,12 +235,6 @@ const MineSchema = z.strictObject({
   /** How the owner undoes it, if they would rather not. */
   undo: words,
   refs,
-})
-
-export const OptionSchema = z.strictObject({
-  says: words,
-  /** What choosing it lets go ahead. */
-  unblocks: words,
 })
 
 const AskSchema = z.strictObject({

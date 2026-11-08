@@ -21,13 +21,13 @@ import {
   estimatedCallMs,
   parseCallIndex,
   parseCallWeek,
-  refUrl,
   sampleCallWeek,
 } from "@video-render/call"
 import type { CallWeek } from "@video-render/call"
 import { parseCutList } from "@video-render/cut-list"
 import { parseFormat } from "@video-render/format"
 import { readSeries } from "@video-render/node"
+import { refUrl } from "@video-render/refs"
 import { versionOfFile } from "@video-render/series"
 import { BRAND_MS, readingMs } from "@video-render/stills"
 import { describe, expect, it } from "vitest"

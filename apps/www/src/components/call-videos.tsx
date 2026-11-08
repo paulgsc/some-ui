@@ -1,6 +1,7 @@
 /**
  * Studio's feed videos (ST38, #2661; FEED4): the episodes home has made of
- * each feed (`FEEDS`), newest first. For each, Watch brings the video to the
+ * each feed (`FEEDS`), newest first, each on its own page under Studio's
+ * Episodes (SFEED1, `EpisodeScreen`). On it, Watch brings the video to the
  * phone and plays it, Share to YouTube hands it to the share sheet, and its
  * YouTube link is saved with the episode; once home's copy is let go (My
  * data), the link is how it is watched. Reads `lib/call-videos`' snapshot of
@@ -11,7 +12,9 @@ import type { JSX, ReactNode } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { assertNever, formatSize } from "@some-ui/core-utils"
 import { Button, Input, Notice } from "@some-ui/shared"
+import { Link } from "@tanstack/react-router"
 
+import { hasAudience } from "@/lib/build-profile"
 import type { Feed, FeedVideos } from "@/lib/call-videos"
 import {
   FEED_WORDS,
@@ -28,6 +31,7 @@ import type {
 } from "@/lib/call-videos/model"
 import { standing } from "@/lib/call-videos/model"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
+import { TILE, TileBody } from "@/components/studio/layout"
 
 const WORDS = VIDEOS_WORDS
 
@@ -246,7 +250,12 @@ export const EpisodesList = ({
   }
 }
 
-export const FeedVideosScreen = ({
+/**
+ * `feed`'s episodes as links to each one's page (SFEED1's Episodes list),
+ * newest first, as home's list has them, or what the list says while it
+ * can't show them.
+ */
+export const FeedEpisodeLinks = ({
   feed,
   pair,
 }: {
@@ -255,11 +264,62 @@ export const FeedVideosScreen = ({
   pair: JSX.Element
 }): JSX.Element => {
   const { videos, state } = useFeedVideos(feed)
+  const { list } = state
+  return (
+    <EpisodesList
+      feed={feed}
+      list={list}
+      pair={pair}
+      onTryAgain={() => void videos.open()}
+    >
+      {/* An episode's page is the phone's ("apk"), as this list is (A3). */}
+      {list.kind === "read" && hasAudience("apk") && (
+        <ul className="flex flex-col gap-2">
+          {list.episodes.map((episode) => (
+            <li key={episode.key}>
+              <Link
+                to="/journal/episodes/$feed/$key"
+                params={{ feed, key: episode.key }}
+                className={TILE}
+              >
+                <TileBody title={FEED_WORDS[feed].label(episode.key)} />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </EpisodesList>
+  )
+}
+
+/**
+ * One episode of `feed` (SFEED1's episode page): its video to watch, share to
+ * YouTube and save the link of, as home's list has it now, or what the list
+ * says while it can't show it.
+ */
+export const EpisodeScreen = ({
+  feed,
+  episodeKey,
+  pair,
+  gone,
+}: {
+  feed: Feed
+  episodeKey: string
+  /** The way to pairing, for a phone that isn't paired. */
+  pair: JSX.Element
+  /** What to say when home's list no longer has the episode. */
+  gone: string
+}): JSX.Element => {
+  const { videos, state } = useFeedVideos(feed)
   const { list, said } = state
+  const episode =
+    list.kind === "read"
+      ? list.episodes.find((one) => one.key === episodeKey)
+      : undefined
   return (
     <div className="flex flex-col gap-3">
       <p className="text-muted-foreground text-sm">{FEED_WORDS[feed].intro}</p>
-      {said !== null && (
+      {said !== null && said.key === episodeKey && (
         <Notice
           key={`${said.kind}-${said.key}`}
           onDismiss={() => videos.seen()}
@@ -275,18 +335,17 @@ export const FeedVideosScreen = ({
         pair={pair}
         onTryAgain={() => void videos.open()}
       >
-        {list.kind === "read" && (
+        {episode === undefined ? (
+          <p className="text-muted-foreground text-sm">{gone}</p>
+        ) : (
           <ul className="flex flex-col gap-3">
-            {list.episodes.map((episode) => (
-              <EpisodeRow
-                key={episode.key}
-                feed={feed}
-                episode={episode}
-                fetch={state.fetches[episode.key]}
-                save={state.links[episode.key]}
-                videos={videos}
-              />
-            ))}
+            <EpisodeRow
+              feed={feed}
+              episode={episode}
+              fetch={state.fetches[episode.key]}
+              save={state.links[episode.key]}
+              videos={videos}
+            />
           </ul>
         )}
       </EpisodesList>

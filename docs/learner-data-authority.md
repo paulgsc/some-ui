@@ -151,6 +151,7 @@ Which authority a build starts in depends on what it can reach (`Backend`):
 | LeetType session log (the phone's)                                                     | on the phone, never sent                     | its finished sessions copied to the paired home by the drain, each event without a spoken answer's ticks, read back before it counts as held; the phone keeps its whole log (LA15); for home's owner alone (its only account, or the one `MAILBOX_SUBJECT` names), home passes each finished session it holds on to the Jobs mailbox on Cloudflare, for the routine to read                                                                                                                                                                                                                                                                             | the same                                   |
 | Studio's time log and answers (the phone's)                                            | on the phone, never sent                     | each sitting's time log and its answer to how it went, copied to the paired home by the drain, the log read back before it counts as held; the phone keeps its whole log (LA15)                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | the same                                   |
 | Studio's ideas (the phone's)                                                           | on the phone, never sent                     | on a paired phone, each idea sent whole goes to the paired home by the voice lane as one bundle (its title, subject, keywords, format, when it was begun and sent, and each answer as its take's voice note by id or its typed words), once home holds those notes; the phone keeps every idea whole (LA13, LA15)                                                                                                                                                                                                                                                                                                                                       | the same                                   |
+| Studio's asks (GitHub's public issues)                                                 | not read                                     | in the Android app, read from GitHub's public list of open `ask` issues each time Asks opens, without credentials; nothing of the phone's sent (SFEED1)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | the same                                   |
 | Speech                                                                                 | the browser's own voice                      | the server's speech service                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | the same                                   |
 | Reminders                                                                              | the client's own policy, while a tab is open | the client's own policy, while a tab is open                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | the server's push, with the browser closed |
 
@@ -208,6 +209,10 @@ declared (checked by reading every call site and by the tests named).
   its own requests (`speech`, `ws`, `fetch-kit` corpus reads, and `resume`'s
   `renderResume`, which sends the owner's own contact details to the LAN
   résumé service), which carry no learner state by their own contracts.
+  Nor is Studio's Asks page in the Android app (`lib/studio-asks`, SFEED1),
+  which reads the open `ask` issues of both repositories from GitHub's public
+  list through `fetch-kit`, without credentials, and sends nothing of the
+  phone's.
 - _Why not enforced:_ the globals are, by lint
   (`apps/www/eslint.config.js`), and the lint's exemption list and the absence of
   a disable are pinned by `lib/serving-privacy/__tests__/egress-choke-points.test.ts`.
@@ -466,7 +471,7 @@ declared (checked by reading every call site and by the tests named).
   nothing of the phone's but that link; while the link is busy with another
   run it asks again a second later, at most ten times; ST38, #2661; FEED4,
   #2647), and Studio's Finish
-  (`routes/_dashboard/_apk/journal/index.tsx`, ST33), which hands the voice
+  (`routes/_dashboard/_apk/journal/episodes/making.tsx`, ST33), which hands the voice
   lane a video kept for home to make and hears what home answered and lists
   of it through `lib/home-link/studio-videos`, sending nothing of its own,
   which are the other callers of `lib/home-link`, is started by a tap in the Home server block of Settings
@@ -602,7 +607,7 @@ declared (checked by reading every call site and by the tests named).
   anything but the voice run (`voice-copy.ts`'s `sendVoice`) read it; one
   that has `lib/home-link/set-aside.ts` send anything but one `PUT` of
   `setAsidePath(mark)` per mark `due`, with no body, or lets anything but
-  the voice run call it; one that has `routes/_dashboard/_apk/journal/index.tsx`
+  the voice run call it; one that has `routes/_dashboard/_apk/journal/episodes/making.tsx`
   or `lib/home-link/studio-videos.ts` call anything in `lib/home-link` but
   what Finish reads (`studioVideos`, and, in `studio-videos.ts`,
   `pairingOf` and `./videos`' `videoAnswers`, `videoHanded`,

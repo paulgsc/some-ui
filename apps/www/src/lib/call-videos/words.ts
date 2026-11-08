@@ -6,6 +6,8 @@
  */
 import { addDays } from "@some-ui/core-utils"
 
+import { FEED_FACTS } from "@/lib/studio-index/words"
+
 import type { Feed, FetchFailure } from "./model"
 
 /** A share of `done` of `total`, below a hundred until it is whole. */
@@ -33,8 +35,6 @@ function playoffDeltaWeek(key: string): string | null {
 }
 
 type FeedWords = {
-  /** Studio's way in. */
-  readonly open: string
   readonly heading: string
   readonly intro: string
   readonly unpaired: string
@@ -57,8 +57,7 @@ type FeedWords = {
 
 export const FEED_WORDS = {
   call: {
-    open: "The weekly call's videos",
-    heading: "The weekly call",
+    heading: FEED_FACTS.call.name,
     intro:
       "Home makes each week's video. Watch it here, share it to YouTube, then save its link, and the week can be let go from My data.",
     unpaired: "Pair this phone with home to see the call's videos.",
@@ -77,8 +76,7 @@ export const FEED_WORDS = {
     what: "the call's videos",
   },
   "playoff-delta": {
-    open: "Playoff Delta's videos",
-    heading: "Playoff Delta",
+    heading: FEED_FACTS["playoff-delta"].name,
     intro:
       "Home makes each week's episode. Watch it here, share it to YouTube, then save its link, and the episode can be let go from My data.",
     unpaired: "Pair this phone with home to see Playoff Delta's videos.",
@@ -99,7 +97,6 @@ export const FEED_WORDS = {
 } as const satisfies Record<Feed, FeedWords>
 
 export const VIDEOS_WORDS = {
-  back: "Back to Studio",
   reading: "Reading what home has…",
   away: "Home didn't answer. Try again in a moment.",
   unreadable: "Home's answer couldn't be read. Try again.",

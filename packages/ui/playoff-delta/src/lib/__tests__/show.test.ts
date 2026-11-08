@@ -23,6 +23,7 @@ import {
 } from "@playoff-delta/lib/slides"
 import { parseStorySeason, wins } from "@playoff-delta/lib/story"
 import { parseFormat, versionOfFile } from "@some-ui/video-render"
+import { TEMPLATES_DIR } from "@some-ui/video-render/node"
 import { describe, expect, it } from "vitest"
 
 import raw2026 from "./season-2026.json"
@@ -33,7 +34,7 @@ const SEASON_2026 = parseStorySeason(raw2026)
 function versionsOf(
   kind: FormatKind
 ): ReadonlyArray<{ readonly version: number; readonly raw: unknown }> {
-  const dir = join(import.meta.dirname, "../../show/formats", formatId(kind))
+  const dir = join(TEMPLATES_DIR, formatId(kind))
   return readdirSync(dir)
     .map((file) => ({ file, version: versionOfFile(file) }))
     .filter((f): f is { file: string; version: number } => f.version !== null)

@@ -334,6 +334,13 @@ export async function renderFolder(
   return render(cutList.value, series.value, ports, rest)
 }
 
+/**
+ * The folder every show's format is pinned in, one folder per format
+ * (`templates.ts`): the call's and Playoff Delta's, whose tests read their
+ * pins here.
+ */
+export const TEMPLATES_DIR = join(import.meta.dirname, "templates")
+
 /** A path from where the command was typed (`pnpm --filter` sets INIT_CWD). */
 export const here = (p: string): string =>
   resolvePath(process.env["INIT_CWD"] ?? process.cwd(), p)
