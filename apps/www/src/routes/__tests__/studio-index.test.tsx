@@ -23,6 +23,7 @@ import {
   STUDIO_KINDS,
 } from "@/lib/studio-index"
 import { AsksList } from "@/components/studio/asks"
+import { ClipScreen, ClipsList } from "@/components/studio/clips"
 import { TemplateShape } from "@/components/studio/template"
 
 vi.mock("@tanstack/react-router", async (importOriginal) => {
@@ -156,5 +157,57 @@ describe("Asks", () => {
     render(withQueryClient(<AsksList />))
     await screen.findByText(STUDIO_INDEX_WORDS.asks.away)
     screen.getByRole("button", { name: STUDIO_INDEX_WORDS.tryAgain })
+  })
+})
+
+const CLIP = {
+  id: "never-suspend",
+  title: "Never suspend a site, from the popup",
+  app: "suspender-ledger",
+  change: { repo: "some-ui", kind: "pr", number: 2600 },
+  landed: "2026-11-01",
+  before: null,
+  after: {
+    made: "walk",
+    snips: [
+      { file: "after/snips/01.png", label: "The popup opens" },
+      { file: "after/snips/02.png", label: "Never suspend this site" },
+    ],
+  },
+}
+
+describe("the Library", () => {
+  it("lists every clip kept, each a link to its page", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      answer({ schema: "some-ui.clip-index/1", clips: [CLIP] })
+    )
+    const { container } = render(withQueryClient(<ClipsList />))
+    await screen.findByText(CLIP.title)
+    expect(container.querySelector("a")?.getAttribute("to")).toBe(
+      "/journal/clips/$clip"
+    )
+  })
+
+  it("is empty, not failed, before testing keeps any clip", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response("404: Not Found", { status: 404 })
+    )
+    render(withQueryClient(<ClipsList />))
+    await screen.findByText(STUDIO_INDEX_WORDS.clips.none)
+  })
+
+  it("shows a clip's after step by step, and that nothing came before", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      answer({ schema: "some-ui.clip-index/1", clips: [CLIP] })
+    )
+    render(withQueryClient(<ClipScreen id={CLIP.id} />))
+    await screen.findByText(STUDIO_INDEX_WORDS.clips.nothingBefore)
+    const shots = screen.getAllByRole("img")
+    expect(shots.map((img) => img.getAttribute("alt"))).toEqual(
+      CLIP.after.snips.map((snip) => snip.label)
+    )
+    expect(shots[0]?.getAttribute("src")).toBe(
+      "https://raw.githubusercontent.com/paulgsc/testing/main/clips/never-suspend/after/snips/01.png"
+    )
   })
 })

@@ -1,8 +1,7 @@
 /**
  * The pieces every page of Studio's index draws (SFEED1, #2731): a page
  * under its heading in the phone's column with the way back, a tile that
- * links somewhere, a labelled part of an item's page, and the page of a kind
- * nothing keeps yet. Every word is `lib/studio-index/words`'.
+ * links somewhere, and a labelled part of an item's page. Every word is `lib/studio-index/words`'.
  */
 import type { JSX, ReactNode } from "react"
 import { Link } from "@tanstack/react-router"
@@ -86,20 +85,4 @@ export const Part = ({
     </h2>
     {children}
   </section>
-)
-
-/**
- * The page of a kind nothing keeps yet (clips, SFEED7): what one is, and
- * that none is kept.
- */
-export const EmptyKindPage = ({ kind }: { kind: "clips" }): JSX.Element => (
-  <StudioPage
-    heading={KIND_WORDS[kind].name}
-    intro={STUDIO_INDEX_WORDS[kind].intro}
-    back="index"
-  >
-    <p className="text-muted-foreground text-sm">
-      {STUDIO_INDEX_WORDS[kind].none}
-    </p>
-  </StudioPage>
 )

@@ -6,7 +6,7 @@
  * words (its name, how an episode is labelled) stay `FEED_WORDS`
  * (`lib/call-videos/words`); these add what it is fed and when it runs.
  */
-import { counted } from "@some-ui/core-utils"
+import { counted, formatDay } from "@some-ui/core-utils"
 
 import type { Feed } from "@/lib/feeds"
 
@@ -113,6 +113,20 @@ export const STUDIO_INDEX_WORDS = {
     intro:
       "A clip shows what a change built, as you'd see it: in the app, on a dashboard, or at a command line. Code records it from sample data, before and after the change. Every one is kept here, and only some are picked for an episode.",
     none: "No clips yet. The first ones come with the change that records them.",
+    reading: "Reading the Library…",
+    away: "The Library couldn't be read. Try again in a moment.",
+    stale:
+      "The Library couldn't be read again, so this is what was read before.",
+    gone: "This clip isn't in the Library any more.",
+    landed: (day: string): string => `Landed ${formatDay(day)}`,
+    before: "Before",
+    after: "After",
+    /** A clip of something new, with no screen before it. */
+    nothingBefore: "New with this change: there was nothing to show before.",
+    walked: "Code recorded it from sample data.",
+    recorded: "Recorded by the session that made the change.",
+    watch: "Watch the video",
+    open: "See the change",
   },
 
   episodes: {
