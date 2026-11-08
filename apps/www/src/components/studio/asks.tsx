@@ -27,6 +27,7 @@ const Read = ({
     {children}
   </ReadList>
 )
+
 /** The list: each ask a link to its page, A to Z. */
 export const AsksList = (): JSX.Element => (
   <Read>

@@ -217,4 +217,17 @@ describe("the Library", () => {
       "https://raw.githubusercontent.com/paulgsc/testing/main/clips/never-suspend/after/snips/01.png"
     )
   })
+
+  it("says when the session took a side's screens, not code", async () => {
+    const taken = {
+      ...CLIP,
+      after: { ...CLIP.after, made: "session" },
+    }
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      asText({ schema: "some-ui.clip-index/1", clips: [taken] })
+    )
+    render(withQueryClient(<ClipScreen id={CLIP.id} />))
+    await screen.findByText(STUDIO_INDEX_WORDS.clips.recorded)
+    expect(screen.queryByText(STUDIO_INDEX_WORDS.clips.walked)).toBeNull()
+  })
 })

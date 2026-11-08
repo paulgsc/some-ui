@@ -27,6 +27,7 @@ const Read = ({
     {children}
   </ReadList>
 )
+
 /** The Library: each clip a link to its page. */
 export const ClipsList = (): JSX.Element => (
   <Read>
