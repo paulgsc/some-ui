@@ -65,8 +65,11 @@ if (args[0] === "--message-file" && args[1]) {
   commits = commitsIn(args[0] ?? "origin/main..HEAD")
 }
 
-/** The call ids docs/calls.json holds at `hash`, or in the tree for null. */
-function recordedCalls(hash: string | null): Set<string> {
+/**
+ * The call ids docs/calls.json holds at `hash`, or in the tree for null;
+ * null when it can't be read there.
+ */
+function recordedCalls(hash: string | null): Set<string> | null {
   let text: string
   try {
     text =
@@ -77,9 +80,10 @@ function recordedCalls(hash: string | null): Set<string> {
             stdio: ["ignore", "pipe", "ignore"],
           })
   } catch {
-    return new Set()
+    return null
   }
-  return new Set((readCalls(text).calls ?? []).map((call) => call.id))
+  const calls = readCalls(text).calls
+  return calls === null ? null : new Set(calls.map((call) => call.id))
 }
 
 let failed = 0
@@ -88,7 +92,11 @@ for (const commit of commits) {
   const ids = callIdsOf(commit.message)
   if (ids.length > 0) {
     const known = recordedCalls(commit.hash)
-    for (const id of ids.filter((i) => !known.has(i)))
+    if (known === null)
+      lines.push(
+        `names calls, but ${CALLS_FILE} can't be read at this commit (pnpm check:calls says why).`
+      )
+    for (const id of ids.filter((i) => known !== null && !known.has(i)))
       lines.push(
         `Call: ${id} is not in ${CALLS_FILE} at this commit. Record the call there in the same commit.`
       )

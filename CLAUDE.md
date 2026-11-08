@@ -587,7 +587,8 @@ that the owner would notice on the screen or in how they work.
   whose call it moves. Agreeing at the time doesn't change that. A defect stays what it is:
   code failing in a state its story covered.
 - **The record only grows.** An entry is never edited or removed, except that a Claude call
-  gains the day the owner agreed to it. The weekly call reads the calls that reached the
+  gains the day the owner agreed to it, and the owner's own call the options and why it was
+  gray, which are the owner's to give. The weekly call reads the calls that reached the
   record on `main` in its week, or were agreed to in it, not PR bodies.
 
 Held by: `pnpm check:calls`

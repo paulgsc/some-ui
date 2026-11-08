@@ -336,6 +336,7 @@ async function recordAt(day: string): Promise<string | null> {
       root,
       "rev-list",
       "-1",
+      "--first-parent",
       `--before=${day}T00:00:00Z`,
       "HEAD",
     ])
@@ -344,11 +345,16 @@ async function recordAt(day: string): Promise<string | null> {
     fail([
       `no commit before ${day} on this checkout: fetch main's history back to the week's start`,
     ])
+  const at = `${commit}:${CALLS_RECORD}`
   try {
-    return (await run("git", ["-C", root, "show", `${commit}:${CALLS_RECORD}`]))
-      .stdout
+    await run("git", ["-C", root, "cat-file", "-e", at])
   } catch {
     return null
+  }
+  try {
+    return (await run("git", ["-C", root, "show", at])).stdout
+  } catch {
+    return fail([`${CALLS_RECORD} at ${commit} could not be read`])
   }
 }
 

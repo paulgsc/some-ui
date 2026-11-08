@@ -10,10 +10,11 @@
 //   unique; days are `YYYY-MM-DD`; `by` is `claude` or `owner`; `agreed` is
 //   only on a Claude call, and never before the day it was made; `options`
 //   and `gray` may be left out only of the owner's own call, where they are
-//   the owner's to give; `moves` names a call listed before it.
+//   the owner's to give, then or later; `moves` names a call listed before it.
 // - **Append-only against the base branch.** An entry the base holds is still
 //   here with every field unchanged, except that a Claude call may gain the
-//   day the owner agreed to it. A later change to what a call chose is not an
+//   day the owner agreed to it, and the owner's own call its options and why
+//   it was gray. A later change to what a call chose is not an
 //   edit here: it is a story, a new entry that names the one it moves.
 //
 // Whether a call is gray at all, and whether an entry says it truly, is
@@ -204,6 +205,15 @@ export function readCalls(
 const same = (a: unknown, b: unknown): boolean =>
   JSON.stringify(a) === JSON.stringify(b)
 
+/**
+ * Whether `call` may gain `field` later: a Claude call the day the owner
+ * agreed, the owner's own call the options and why it was gray.
+ */
+const gains = (call: Call, field: string): boolean =>
+  call.by === "claude"
+    ? field === "agreed"
+    : field === "options" || field === "gray"
+
 /** A call's fields by name, for comparing them one by one. */
 const fieldsOf = (call: Call): ReadonlyMap<string, unknown> =>
   new Map(Object.entries(call))
@@ -227,7 +237,7 @@ export function ratchetCalls(
     const was = fieldsOf(before)
     const is = fieldsOf(after)
     for (const field of FIELDS) {
-      if (field === "agreed" && !was.has(field)) continue
+      if (gains(before, field) && !was.has(field)) continue
       if (!same(was.get(field), is.get(field)))
         findings.push({ kind: "rewritten", id: before.id, field })
     }

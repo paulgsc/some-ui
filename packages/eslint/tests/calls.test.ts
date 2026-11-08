@@ -120,6 +120,20 @@ describe("ratchetCalls", () => {
     )
   })
 
+  it("lets the owner's own call gain its options and why it was gray, and nothing else", () => {
+    const { options: _options, gray: _gray, ...bare } = call
+    const owners = { ...bare, by: "owner" as const }
+    expect(ratchetCalls([owners], [{ ...owners, gray: "Wording." }])).toEqual(
+      []
+    )
+    expect(
+      ratchetCalls([owners], [{ ...owners, agreed: "2026-11-08" }])
+    ).toEqual([{ kind: "rewritten", id: "C1", field: "agreed" }])
+    expect(ratchetCalls([bare], [{ ...bare, gray: "Wording." }])).toEqual([
+      { kind: "rewritten", id: "C1", field: "gray" },
+    ])
+  })
+
   it("refuses a call dropped", () => {
     expect(ratchetCalls([call], [])).toEqual([{ kind: "dropped", id: "C1" }])
   })
