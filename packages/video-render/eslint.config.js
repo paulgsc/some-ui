@@ -29,8 +29,6 @@ const ENGINE_CHOSEN = [
   "pow",
   "cbrt",
   "hypot",
-  // Not a function of its input at all.
-  "random",
 ]
 
 const config = [
@@ -45,6 +43,11 @@ const config = [
           property,
           message: "Its last bit is the engine's: use synth.ts's arithmetic.",
         })),
+        {
+          object: "Math",
+          property: "random",
+          message: "Not the same twice: use synth.ts's `dice`.",
+        },
       ],
       "no-restricted-syntax": [
         "error",
@@ -58,7 +61,7 @@ const config = [
         },
         {
           selector:
-            "MemberExpression[object.name='globalThis'][property.name='Math']",
+            "MemberExpression[object.name='globalThis']:matches([property.name='Math'], [property.value='Math'])",
           message: "Name Math itself, so lint can see what is called.",
         },
         // This override replaces the preset's, so its selectors come too.
