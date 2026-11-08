@@ -8,7 +8,8 @@
     "apps/www/tests/layout-invariants/stress-content.ts",
     "packages/eslint/tests/lint-fixtures/**",
     "packages/some-styles/styles-build/*.d.mts",
-    "packages/some-styles/styles-build/examples/**"
+    "packages/some-styles/styles-build/examples/**",
+    "packages/video-motion/compositions/**"
   ],
   "ignoreBinaries": ["typst", "rustc", "wasm-pack", "ffmpeg"],
   "ignoreIssues": {

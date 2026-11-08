@@ -6,7 +6,7 @@
 
 import { assertNever } from "@some-ui/core-utils"
 
-import { once } from "./cut-list"
+import { isComposition, once } from "./cut-list"
 import type { BurnIn, CutList, Parsed, Shot } from "./cut-list"
 import { LOOK_RULES } from "./plans"
 import type { Look, LookMotion } from "./plans"
@@ -45,7 +45,7 @@ export function resolve(cutList: CutList, series: Series): Parsed<Resolved> {
     )
   }
   const shots = cutList.shots.map((shot, i) =>
-    resolveShot(shot, i, cutList.look)
+    resolveShot(shot, i, cutList.look, cutList.shots[i - 1])
   )
   for (const s of shots) {
     for (const c of s.cues) {
@@ -76,7 +76,12 @@ export function resolve(cutList: CutList, series: Series): Parsed<Resolved> {
     : { ok: true, value: { shots, music } }
 }
 
-function resolveShot(shot: Shot, index: number, videoLook: Look): ResolvedShot {
+function resolveShot(
+  shot: Shot,
+  index: number,
+  videoLook: Look,
+  before: Shot | undefined
+): ResolvedShot {
   const look = shot.look ?? videoLook
   const rules = LOOK_RULES[look]
   const o = shot.overrides
@@ -90,11 +95,15 @@ function resolveShot(shot: Shot, index: number, videoLook: Look): ResolvedShot {
   return {
     shot,
     look,
-    // The first scene has nothing to come in from, whatever its look.
-    transitionIn: index === 0 ? "cut" : (o.transitionIn ?? rules.transition),
+    // The first scene has nothing to come in from, whatever its look, and a
+    // composition draws its own way in and out.
+    transitionIn:
+      index === 0 || isComposition(shot) || isComposition(before)
+        ? "cut"
+        : (o.transitionIn ?? rules.transition),
     motion:
       o.motion ??
-      (shot.picture.kind === "card"
+      (shot.picture.kind === "card" || isComposition(shot)
         ? { kind: "still" }
         : lookMotion(rules.motion, taps)),
     cues: o.cues ?? cues,

@@ -10,8 +10,18 @@
  */
 
 import { spawn } from "node:child_process"
-import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises"
+import {
+  cp,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises"
 import { createRequire } from "node:module"
+import { tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { nodePorts } from "@some-ui/video-render/node"
@@ -30,11 +40,24 @@ const require = createRequire(import.meta.url)
 
 const ManifestSchema = z.object({ version: z.string() })
 
-/** The workspace's compositions, one folder each. */
-const COMPOSITIONS = resolve(
-  dirname(fileURLToPath(import.meta.url)),
-  "../compositions"
-)
+const HERE = dirname(fileURLToPath(import.meta.url))
+
+/**
+ * The workspace's compositions, one folder each. `_lib` is what they share,
+ * copied into every render as `lib/`, and is not one.
+ */
+export const COMPOSITIONS = resolve(HERE, "../compositions")
+export const LIB = "_lib"
+
+/** The brand's mark, copied into every render as `brand/mark.svg`. */
+export const MARK = resolve(HERE, "../../some-styles/brand/favicon.svg")
+
+/** The root element's opening tag, as the composition's markup writes it. */
+const ROOT = /<[^>]*\bdata-composition-id="main"[^>]*>/
+
+/** A number attribute of the root's tag, or 0 when it has none. */
+const attribute = (tag: string, name: string): number =>
+  Number(new RegExp(`\\b${name}="([\\d.]+)"`).exec(tag)?.[1] ?? 0)
 
 export type RenderRequest = {
   /** A folder under `compositions/`. */
@@ -48,6 +71,15 @@ export type RenderRequest = {
   readonly work: string
   /** The Chromium to draw with. */
   readonly chrome: string
+  /** The scene's length, over the composition's own `data-duration`. */
+  readonly seconds?: number
+  /** The video's frame, which the composition's own size must be. */
+  readonly frame?: { readonly width: number; readonly height: number }
+  /** Files the composition reads, copied in under `assets/`. */
+  readonly assets?: ReadonlyArray<{
+    readonly from: string
+    readonly as: string
+  }>
 }
 
 export type Rendered =
@@ -103,7 +135,7 @@ export async function renderComposition(
 ): Promise<Rendered> {
   const source = join(COMPOSITIONS, request.composition)
   const entries = await readdir(COMPOSITIONS)
-  if (!entries.includes(request.composition)) {
+  if (request.composition === LIB || !entries.includes(request.composition)) {
     return {
       ok: false,
       problem: `there is no composition named ${request.composition}`,
@@ -112,15 +144,54 @@ export async function renderComposition(
   const work = resolve(request.work)
   const project = join(work, "project")
   const frames = join(work, "frames")
-  const tmp = join(work, "tmp")
   const variables = join(work, "variables.json")
   await rm(work, { recursive: true, force: true })
   await mkdir(join(project, "fonts"), { recursive: true })
-  await mkdir(tmp, { recursive: true })
+  await mkdir(join(work, "tmp"), { recursive: true })
+  // The work drive's tmp, by a short path (renderEnv says why).
+  let link: string | null = null
   try {
+    link = await mkdtemp(join(tmpdir(), "hf-"))
+    const tmp = join(link, "t")
+    await symlink(join(work, "tmp"), tmp)
     await cp(source, project, { recursive: true })
+    await cp(join(COMPOSITIONS, LIB), join(project, "lib"), { recursive: true })
+    await cp(MARK, join(project, "brand", "mark.svg"))
     for (const [name, file] of fontFiles()) {
       await cp(file, join(project, "fonts", name))
+    }
+    for (const asset of request.assets ?? []) {
+      await cp(asset.from, join(project, "assets", asset.as))
+    }
+    const index = join(project, "index.html")
+    const html = await readFile(index, "utf8")
+    const root = ROOT.exec(html)?.[0] ?? ""
+    const [width, height] = [
+      attribute(root, "data-width"),
+      attribute(root, "data-height"),
+    ]
+    const frame = request.frame
+    if (frame && (width !== frame.width || height !== frame.height)) {
+      return {
+        ok: false,
+        problem: `${request.composition} is drawn ${String(width)}x${String(height)}, and the video is ${String(frame.width)}x${String(frame.height)}`,
+      }
+    }
+    if (request.seconds !== undefined) {
+      if (!/\bdata-duration="/.test(root)) {
+        return {
+          ok: false,
+          problem: `${request.composition} has no root data-duration to set`,
+        }
+      }
+      const seconds = String(request.seconds)
+      await writeFile(
+        index,
+        html.replace(
+          root,
+          root.replace(/\bdata-duration="[^"]*"/, `data-duration="${seconds}"`)
+        )
+      )
     }
     await writeFile(variables, JSON.stringify(request.variables))
     const drawn = await runNode(
@@ -146,10 +217,14 @@ export async function renderComposition(
     const count = (await readdir(frames)).filter((f) =>
       /^frame_\d{6}\.png$/.test(f)
     ).length
-    if (count === 0) {
+    const asked =
+      request.seconds === undefined
+        ? null
+        : Math.round(request.seconds * request.fps)
+    if (count === 0 || (asked !== null && count !== asked)) {
       return {
         ok: false,
-        problem: `HyperFrames drew no frames of ${request.composition}`,
+        problem: `HyperFrames drew ${String(count)} frames of ${request.composition}${asked === null ? "" : `, not the ${String(asked)} asked for`}`,
       }
     }
     await mkdir(dirname(resolve(request.out)), { recursive: true })
@@ -164,6 +239,7 @@ export async function renderComposition(
     }
     return { ok: true }
   } finally {
+    if (link) await rm(link, { recursive: true, force: true })
     await rm(work, { recursive: true, force: true })
   }
 }

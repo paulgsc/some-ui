@@ -1,4 +1,5 @@
 import { parseCutList } from "@video-render/cut-list"
+import type { Composition } from "@video-render/cut-list"
 import { cutList, shot } from "@video-render/testing"
 import { describe, expect, it } from "vitest"
 
@@ -58,6 +59,33 @@ describe("parseCutList", () => {
       "S1: two scenes share this id",
       "S1: a motion time is past the scene's end",
       "S3: a card has no picture to move",
+    ])
+  })
+
+  it("lets a composition draw its own picture and its own way in and out (HYPER2)", () => {
+    const composed: Composition = {
+      kind: "composition",
+      ref: "promo-hook",
+      variables: { title: "Hi" },
+      files: ["walk/01.png"],
+    }
+    const parsed = parseCutList(
+      cutList([
+        shot("S1", { picture: { kind: "card" } }),
+        shot("S2", {
+          picture: composed,
+          overrides: {
+            transitionIn: "crossfade",
+            motion: { kind: "push-in", amount: 0.1 },
+          },
+        }),
+        shot("S3", { overrides: { transitionIn: "wipe" } }),
+      ])
+    )
+    expect(parsed.ok ? [] : parsed.problems).toEqual([
+      "S2: a composition draws its own picture",
+      "S2: a composition draws its own way in",
+      "S3: the composition before it draws its own way out",
     ])
   })
 

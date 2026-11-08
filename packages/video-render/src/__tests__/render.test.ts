@@ -14,7 +14,7 @@ import type { CutList, Shot } from "@video-render/cut-list"
 import { nodePorts } from "@video-render/node"
 import { JOIN_BATCH } from "@video-render/plan"
 import { DEFAULT_POLICY, MB } from "@video-render/policy"
-import type { Ports } from "@video-render/render"
+import type { BurnInRequest, Ports } from "@video-render/render"
 import { render } from "@video-render/render"
 import type { Series } from "@video-render/series"
 import type { TimedWord } from "@video-render/subtitles"
@@ -155,6 +155,26 @@ function everyMember(): CutList {
     fixtures.shot("S7", { picture: { kind: "card" }, durationMs: 900 })
   )
   return fixtures.cutList(shots)
+}
+
+/** A burn-in recorded as a red tint, as long as it asks for. */
+async function tint(r: BurnInRequest): Promise<boolean> {
+  const { width, height, fps } = r.frame
+  const ran = await ports.ffmpeg({
+    args: [
+      "-v",
+      "error",
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      `color=c=red@0.4:s=${width}x${height}:r=${fps}:d=${(r.frames / fps).toFixed(3)},format=rgba`,
+      "-c:v",
+      "png",
+      r.out,
+    ],
+  })
+  return ran.ok
 }
 
 async function frames(file: string): Promise<number> {
@@ -572,23 +592,7 @@ describe("render", () => {
           recorded.push(`${r.kind}@${r.startFrame}+${r.frames}`)
           if (r.kind === "authorship") marks.push(r.params)
           if (r.kind === "captions") captions.push(r.params)
-          const d = (r.frames / r.frame.fps).toFixed(3)
-          const { width, height, fps } = r.frame
-          const ran = await ports.ffmpeg({
-            args: [
-              "-v",
-              "error",
-              "-y",
-              "-f",
-              "lavfi",
-              "-i",
-              `color=c=red@0.4:s=${width}x${height}:r=${fps}:d=${d},format=rgba`,
-              "-c:v",
-              "png",
-              r.out,
-            ],
-          })
-          return ran.ok
+          return tint(r)
         },
       },
       { workDir: "work-b2", out: "out-b2/video.mp4" }
@@ -627,4 +631,92 @@ describe("render", () => {
     ])
     expect(await frames("out-b2/video.mp4")).toBe(60)
   }, 120_000)
+})
+
+describe("a composition scene (HYPER2)", () => {
+  const said = (text: string): Array<TimedWord> => [
+    { text, startMs: 0, endMs: 500 },
+  ]
+  const mixed = fixtures.cutList(
+    [
+      fixtures.shot("S1", {
+        picture: {
+          kind: "composition",
+          ref: "promo-hook",
+          variables: { title: "Hi" },
+          files: ["captures/still.png"],
+        },
+        durationMs: 1000,
+        voiceInMs: 100,
+        take: { file: "voice/a.wav", inMs: 0, outMs: 800, words: said("Hi.") },
+      }),
+      fixtures.shot("S2", {
+        picture: { kind: "still", source: "captures/still.png" },
+        durationMs: 1000,
+        voiceInMs: 100,
+        take: { file: "voice/b.wav", inMs: 0, outMs: 800, words: said("Bye.") },
+      }),
+    ],
+    { burnIns: [{ kind: "captions", design: "gridiron", params: {} }] }
+  )
+  const asked: Array<string> = []
+  /** Draws a composition as ffmpeg's test pattern, and a burn-in as a tint. */
+  const drawing: Partial<Ports> = {
+    compositions: {
+      pin: () => Promise.resolve("fixture"),
+      record: async (r) => {
+        asked.push(`${r.ref}:${r.frames}:${r.files.join(",")}`)
+        const { width, height, fps } = r.frame
+        const ran = await ports.ffmpeg({
+          args: [
+            "-v",
+            "error",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            `testsrc2=s=${width}x${height}:r=${fps}`,
+            "-frames:v",
+            String(r.frames),
+            "-c:v",
+            "ffv1",
+            r.out,
+          ],
+        })
+        return ran.ok ? { ok: true } : { ok: false, problem: ran.stderr }
+      },
+    },
+    recordBurnIn: tint,
+  }
+
+  it("is drawn by the port, captioned and voiced like any scene, the same bytes twice", async () => {
+    const outs = ["out-c1/video.mp4", "out-c2/video.mp4"]
+    for (const [i, out] of outs.entries()) {
+      const drawn = await render(
+        mixed,
+        series(),
+        { ...ports, ...drawing },
+        { workDir: `work-c${i + 1}`, out }
+      )
+      expect(drawn.ok ? drawn.value.leftOut : drawn.problems).toEqual([])
+    }
+    expect(asked).toEqual([
+      "promo-hook:30:captures/still.png",
+      "promo-hook:30:captures/still.png",
+    ])
+    expect(await frames("out-c1/video.mp4")).toBe(60)
+    expect(await sha("out-c1/video.mp4")).toBe(await sha("out-c2/video.mp4"))
+  }, 120_000)
+
+  it("is refused before anything runs when nothing can draw it", async () => {
+    const drawn = await render(
+      mixed,
+      series(),
+      { ...ports, ...drawing, compositions: undefined },
+      { workDir: "work-c3", out: "out-c3/video.mp4" }
+    )
+    expect(drawn.ok ? [] : drawn.problems).toEqual([
+      "nothing here can draw a composition",
+    ])
+  })
 })

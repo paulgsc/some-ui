@@ -9,8 +9,8 @@
 import { sha256Hex } from "@some-ui/core-utils"
 
 import { authorshipParams } from "./authorship"
-import { isAuthorship, isCaptions } from "./cut-list"
-import type { BurnIn, CutList, Parsed } from "./cut-list"
+import { isAuthorship, isCaptions, isComposition } from "./cut-list"
+import type { BurnIn, Composition, CutList, Parsed } from "./cut-list"
 import {
   batches,
   JOIN_BATCH,
@@ -19,6 +19,7 @@ import {
   placeTakes,
   planAssembly,
   planBed,
+  planCompositionSegment,
   planJoin,
   planLevel,
   planMeasure,
@@ -72,6 +73,31 @@ export type Ports = {
   readonly checkBurnIns?: (
     requests: ReadonlyArray<BurnInRequest>
   ) => Promise<ReadonlyArray<string>>
+  /** Draws a composition scene's picture (HYPER2), when one can. */
+  readonly compositions?: Compositions
+}
+
+/** A composition scene's picture to draw: the whole frame, as long as the scene. */
+export type CompositionRequest = Omit<Composition, "kind"> & {
+  readonly scene: string
+  readonly frames: number
+  readonly frame: Series["frame"]
+  /** Where the clip is to be written, relative to the video's folder. */
+  readonly out: string
+}
+
+export type Compositions = {
+  /** Draws `request` to its `out`, or says why it could not. */
+  readonly record: (
+    request: CompositionRequest
+  ) => Promise<
+    { readonly ok: true } | { readonly ok: false; readonly problem: string }
+  >
+  /**
+   * What decides a composition's bytes besides the request: its files, its
+   * renderer's pin. A clip is kept in the step cache under it.
+   */
+  readonly pin: (ref: string) => Promise<string>
 }
 
 export type RenderOptions = {
@@ -213,6 +239,10 @@ export async function render(
 
   const checked = await checkInputs(series, shots, music, ports)
   if (!checked.ok) return refused(checked.problems)
+  const draw = ports.compositions
+  if (!draw && shots.some((s) => isComposition(s.shot))) {
+    return refused(["nothing here can draw a composition"])
+  }
 
   const work = options.workDir
   const layered = burnInRequests(cutList, placement.value, series, work)
@@ -261,15 +291,26 @@ export async function render(
     const caption = record && captionOf.get(id)
     if (caption && !(await record(caption))) return notRecorded(caption)
     const out = `${work}/${id}.mkv`
-    const ran = await ports.ffmpeg(
-      planSegment(
-        scene,
-        series,
-        checked.value,
-        out,
-        caption ? caption.out : undefined
-      )
-    )
+    const layer = caption ? caption.out : undefined
+    const p = scene.shot.shot.picture
+    let call: FfmpegCall
+    if (p.kind === "composition" && draw) {
+      const clip = `${work}/composition-${id}.mkv`
+      const drawn = await draw.record({
+        scene: id,
+        ref: p.ref,
+        variables: p.variables,
+        files: p.files,
+        frames: scene.placed.frames,
+        frame: series.frame,
+        out: clip,
+      })
+      if (!drawn.ok) return refused([`${id}: ${drawn.problem}`])
+      call = planCompositionSegment(scene, series, clip, out, layer)
+    } else {
+      call = planSegment(scene, series, checked.value, out, layer)
+    }
+    const ran = await ports.ffmpeg(call)
     if (!ran.ok) return refused([`${id}: ${tail(ran.stderr)}`])
     segments.push(out)
   }
@@ -444,6 +485,13 @@ async function checkInputs(
           problems.push(
             `${shot.id}: ${p.source} is too short (${need} ms needed)`
           )
+        }
+      }
+    }
+    if (p.kind === "composition") {
+      for (const file of p.files) {
+        if ((await ports.sha256(file)) === null) {
+          problems.push(`${shot.id}: ${file} is missing`)
         }
       }
     }

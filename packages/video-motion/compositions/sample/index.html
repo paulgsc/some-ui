@@ -34,9 +34,9 @@
         width: 1080px;
         height: 1920px;
         overflow: hidden;
-        background: var(--ground);
       }
       #root {
+        background: var(--ground);
         position: relative;
         width: 1080px;
         height: 1920px;
@@ -105,26 +105,16 @@
       <h1 id="title"></h1>
       <div id="chip"></div>
     </div>
+    <script src="lib/motion.js"></script>
     <script>
-      const V = window.__hyperframes.getVariables()
-      const style = document.documentElement.style
-      style.setProperty("--ground", V.ground)
-      style.setProperty("--ink", V.ink)
-      style.setProperty("--accent", V.accent)
-      document.getElementById("title").textContent = V.title
-      document.getElementById("chip").textContent = V.chip
-      // WAAPI, paused: HyperFrames seeks it to each frame's time.
-      document
-        .getElementById("mark")
-        .animate(
-          [
-            { transform: "scale(0.4) rotate(-14deg)", opacity: 0 },
-            { transform: "scale(1.08) rotate(0deg)", opacity: 1 },
-            { transform: "scale(1) rotate(0deg)", opacity: 1 },
-          ],
-          { duration: 900, delay: 100, fill: "both", easing: "ease-out" }
-        )
-        .pause()
+      const { track, vars } = window.motion
+      document.getElementById("title").textContent = vars.title
+      document.getElementById("chip").textContent = vars.chip
+      track(document.getElementById("mark"), [
+        [0.1, { transform: "scale(0.4) rotate(-14deg)", opacity: 0 }],
+        [0.7, { transform: "scale(1.08) rotate(0deg)", opacity: 1 }],
+        [1.0, { transform: "scale(1) rotate(0deg)", opacity: 1 }],
+      ])
     </script>
   </body>
 </html>

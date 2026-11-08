@@ -30,7 +30,7 @@ import { isRecord } from "@some-ui/core-utils"
 
 import type { RenderPolicy } from "./policy"
 import { overBudget } from "./policy"
-import type { Ports } from "./render"
+import type { Compositions, Ports } from "./render"
 
 export type StepCache = {
   /** Copies the file kept under `key` to `to`; false when none is kept. */
@@ -251,6 +251,48 @@ export function withCachedBurnIns(
         async () => ({ ok: await record(r) })
       )
       return kept.ok
+    },
+  }
+}
+
+/**
+ * `ports` with every composition clip it draws kept in `cache` (HYPER2),
+ * keyed by what decides the clip's bytes: the composition and its pin, its
+ * variables, the name and bytes of each file it reads, how many frames it
+ * lasts and the frame. The scene's
+ * place in the video and the clip's name are not in the key.
+ */
+export function withCachedCompositions(
+  ports: Ports,
+  root: string,
+  cache: StepCache
+): Ports {
+  const drawn = ports.compositions
+  if (!drawn) return ports
+  return {
+    ...ports,
+    compositions: {
+      ...drawn,
+      record: async (r): ReturnType<Compositions["record"]> => {
+        const key = keyOf({
+          composition: 1,
+          ref: r.ref,
+          pin: await drawn.pin(r.ref),
+          variables: r.variables,
+          // By name too: the composition reads each as assets/<name>.
+          files: await Promise.all(
+            r.files.map(async (f) => [f, await ports.sha256(f)])
+          ),
+          frames: r.frames,
+          frame: r.frame,
+        })
+        return keptStep(
+          cache,
+          root,
+          { key, out: r.out, hit: { ok: true } as const },
+          () => drawn.record(r)
+        )
+      },
     },
   }
 }

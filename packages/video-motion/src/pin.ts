@@ -1,5 +1,7 @@
 /** Every pin a composition is rendered with, besides its own files: the README says why each. */
 
+import { BITEXACT, QUIET } from "@some-ui/video-render"
+
 /** The HyperFrames release every composition is drawn with. */
 export const HYPERFRAMES_VERSION = "0.9.22"
 
@@ -41,7 +43,8 @@ export const renderArgs = (run: Run): ReadonlyArray<string> => [
  * low memory set, the browser named, and its temporary files on `tmp`. Home's
  * /tmp is a 1 GB RAM disk counted against the render's memory, and
  * HyperFrames refuses to start with that little room, so `tmp` is on the
- * work drive.
+ * work drive, named by a short link (render.ts): Chrome makes sockets in it,
+ * and a socket's path past about 108 bytes aborts Chrome.
  */
 export const renderEnv = (
   base: Readonly<Record<string, string | undefined>>,
@@ -70,11 +73,7 @@ export const encodeArgs = (
   count: number,
   out: string
 ): ReadonlyArray<string> => [
-  "-hide_banner",
-  "-nostdin",
-  "-v",
-  "error",
-  "-y",
+  ...QUIET,
   "-threads",
   "1",
   "-framerate",
@@ -91,14 +90,7 @@ export const encodeArgs = (
   "bgr0",
   "-threads",
   "1",
-  "-fflags",
-  "+bitexact",
-  "-flags:v",
-  "+bitexact",
-  "-map_metadata",
-  "-1",
-  "-map_chapters",
-  "-1",
+  ...BITEXACT,
   out,
 ]
 

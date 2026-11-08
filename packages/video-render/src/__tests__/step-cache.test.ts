@@ -18,7 +18,11 @@ import { nodePorts } from "@video-render/node"
 import type { FfmpegCall } from "@video-render/plan"
 import { DEFAULT_POLICY } from "@video-render/policy"
 import type { RenderPolicy } from "@video-render/policy"
-import type { BurnInRequest, Ports } from "@video-render/render"
+import type {
+  BurnInRequest,
+  CompositionRequest,
+  Ports,
+} from "@video-render/render"
 import type { CacheFs } from "@video-render/step-cache"
 import {
   keptStep,
@@ -26,6 +30,7 @@ import {
   nodeCacheFs,
   stepCache,
   withCachedBurnIns,
+  withCachedCompositions,
   withCachedFfmpeg,
 } from "@video-render/step-cache"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
@@ -338,5 +343,58 @@ describe("burn-ins through the step cache", () => {
       })
     )
     expect(drawn).toHaveLength(2)
+  })
+
+  it("draws a composition once for its inputs, again when one changes (HYPER2)", async () => {
+    const drawn: Array<string> = []
+    let pin = "v1"
+    await writeFile(join(root, "snip.png"), "first")
+    const request = (
+      over: Partial<CompositionRequest> = {}
+    ): CompositionRequest => ({
+      scene: "hook",
+      ref: "promo-hook",
+      variables: { title: "Hi" },
+      files: ["snip.png"],
+      frames: 30,
+      frame: { width: 1080, height: 1920, fps: 30 },
+      out: "composition-hook.mkv",
+      ...over,
+    })
+    const cached = withCachedCompositions(
+      {
+        ...nodePorts(root),
+        compositions: {
+          pin: (): Promise<string> => Promise.resolve(pin),
+          record: async (r) => {
+            drawn.push(r.out)
+            await writeFile(join(root, r.out), JSON.stringify(r.variables))
+            return { ok: true }
+          },
+        },
+      },
+      root,
+      stepCache(join(root, "steps"), policy(1_000_000), () => undefined)
+    )
+    const draw = (over: Partial<CompositionRequest> = {}): Promise<unknown> =>
+      cached.compositions?.record(request(over)) ?? Promise.resolve(null)
+    expect(await draw()).toEqual({ ok: true })
+    // The same scene, moved and renamed: kept.
+    await draw({ scene: "open", out: "composition-open.mkv" })
+    expect(drawn).toEqual(["composition-hook.mkv"])
+    expect(await readFile(join(root, "composition-open.mkv"), "utf8")).toBe(
+      JSON.stringify({ title: "Hi" })
+    )
+    // Each input that decides the bytes draws it again.
+    await draw({ variables: { title: "Bye" } })
+    await draw({ frames: 31 })
+    await writeFile(join(root, "snip.png"), "second")
+    await draw()
+    // The same bytes under another name: the composition reads it by name.
+    await writeFile(join(root, "other.png"), "second")
+    await draw({ files: ["other.png"] })
+    pin = "v2"
+    await draw()
+    expect(drawn).toHaveLength(6)
   })
 })
