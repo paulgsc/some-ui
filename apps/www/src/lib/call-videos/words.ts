@@ -4,6 +4,8 @@
  * every feed's screen says is `VIDEOS_WORDS`; what differs by feed (its name,
  * what an episode is called, how one is labelled) is `FEED_WORDS`.
  */
+import { addDays } from "@some-ui/core-utils"
+
 import type { Feed, FetchFailure } from "./model"
 
 /** A share of `done` of `total`, below a hundred until it is whole. */
@@ -12,19 +14,9 @@ export function share(done: number, total: number): number {
   return Math.min(99, Math.floor((done / total) * 100))
 }
 
-/** The day six days after `from` (`YYYY-MM-DD`), or `null` if it isn't a day. */
-function weekEnd(from: string): string | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(from)) return null
-  const day = new Date(`${from}T00:00:00Z`)
-  if (Number.isNaN(day.getTime())) return null
-  day.setUTCDate(day.getUTCDate() + 6)
-  return day.toISOString().slice(0, 10)
-}
-
 /** A week of the call by its days: its key is its first. */
 function callWeek(key: string): string {
-  const to = weekEnd(key)
-  return to === null ? key : `${key} to ${to}`
+  return /^\d{4}-\d{2}-\d{2}$/.test(key) ? `${key} to ${addDays(key, 6)}` : key
 }
 
 /**

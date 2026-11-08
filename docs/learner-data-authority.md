@@ -547,8 +547,9 @@ declared (checked by reading every call site and by the tests named).
   `lib/home-link/kept-read.ts`, `lib/home-link/deleted-read.ts`,
   `lib/home-link/idea-reads.ts`, `lib/home-link/takes-read.ts` and
   `lib/home-link/call-videos.ts`; one that has `call-videos.ts` send anything
-  but one `GET` of `CALL_VIDEOS_PATH` per list, one ranged `GET` of
-  `videoPath(from)` per part and one `PUT` of `linkPath(from)` per Save, lets
+  but one `GET` of `episodesPath(feed)` per list, one ranged `GET` of
+  `videoPath(feed, key)` per part and one `PUT` of `linkPath(feed, key)` per
+  Save, lets
   anything but `lib/call-videos` call it, or has `lib/call-videos` read the
   list but on the screen opening, a drag down, Try again or once after a
   Save home kept, fetch a video but
