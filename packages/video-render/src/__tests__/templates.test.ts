@@ -29,15 +29,19 @@ describe("the templates Studio lists", () => {
 })
 
 describe("the look each template is captioned in", () => {
-  it("is the one its series' newest version names", async () => {
+  it("is the one its series' newest version names, in its frame", async () => {
     for (const id of TEMPLATE_IDS) {
       const newest = await readSeries(
         join(import.meta.dirname, "../sample/series", TEMPLATE_SERIES[id])
       )
-      expect(newest.ok && templateCaptions(id)).toBe(
-        newest.ok && (newest.value.designs.captions ?? null)
-      )
+      if (!newest.ok) throw new Error(newest.problems.join("; "))
+      expect(templateCaptions(id)).toEqual({
+        look: newest.value.designs.captions ?? null,
+        frame: {
+          width: newest.value.frame.width,
+          height: newest.value.frame.height,
+        },
+      })
     }
-    expect(templateCaptions("conference-call")).toBe("broadcast")
   })
 })

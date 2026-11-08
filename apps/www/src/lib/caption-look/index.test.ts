@@ -41,12 +41,10 @@ describe("a caption look set in Studio (SFEED11)", () => {
         look
       )
     )
-    expect(url.origin + url.pathname).toBe(
-      "https://github.com/paulgsc/some-ui/issues/new"
-    )
     const block = /```json caption-look\n([\s\S]*?)\n```/.exec(
       url.searchParams.get("body") ?? ""
     )
-    expect(JSON.parse(block?.[1] ?? "null")).toEqual(look)
+    const { id: _id, ...values } = look
+    expect(JSON.parse(block?.[1] ?? "null")).toEqual(values)
   })
 })

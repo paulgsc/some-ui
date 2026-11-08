@@ -265,7 +265,7 @@ export const STUDIO_INDEX_WORDS = {
     look: {
       label: "The caption look",
       named: (look: string): string => `Captioned in the ${look} look`,
-      line: "Change it here and send it. A session makes it a new version of the template, and videos use it from the next render after that. Nothing changes until then.",
+      line: "Change it here, then open it as a GitHub issue. Once the change is in the code, the next video uses it. Nothing changes until then.",
       sample: ["Third", "and", "long,", "eleven", "to", "go"],
       weight: "Weight",
       bold: "Bold",
@@ -285,10 +285,10 @@ export const STUDIO_INDEX_WORDS = {
           ? "Every word at once"
           : `Each word in ${(ms / 1000).toFixed(2)} s`,
       reset: "Start over",
-      send: "Send it to GitHub",
+      send: "Open it as a GitHub issue",
       sendLine:
-        "Opens a new issue holding this look, for you to file. A session lands it from there.",
-      unchanged: "Change something to send it.",
+        "Opens a new issue holding this look, for you to file. Videos already made keep the look they were drawn in.",
+      unchanged: "Change something to open it as an issue.",
       none: "This template names no caption look.",
     },
   },

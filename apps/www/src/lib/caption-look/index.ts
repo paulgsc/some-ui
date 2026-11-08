@@ -8,7 +8,6 @@
 import type { CaptionTheme, ThemeId } from "@some-ui/burn-ins/contract"
 import { THEME_IDS, THEMES } from "@some-ui/burn-ins/contract"
 
-/** What the control sets. */
 export type LookEdit = {
   readonly weight: CaptionTheme["font"]["weight"]
   readonly sizePx: number
@@ -23,7 +22,6 @@ export type LookEdit = {
   readonly popInMs: number
 }
 
-/** Each number's range and step, in the look's own units. */
 export const LOOK_RANGES = {
   sizePx: { min: 48, max: 110, step: 2 },
   strokePx: { min: 0, max: 16, step: 1 },
@@ -36,6 +34,8 @@ export const lookNamed = (id: string | null): CaptionTheme | null => {
   const named = THEME_IDS.find((each) => each === id)
   return named === undefined ? null : THEMES[named]
 }
+
+const NO_SHAPE = { radiusPx: 0, padXPx: 0, padYPx: 0 } as const
 
 export const editOf = (look: CaptionTheme): LookEdit => ({
   weight: look.font.weight,
@@ -52,8 +52,13 @@ export const editOf = (look: CaptionTheme): LookEdit => ({
   popInMs: look.effects.popInMs,
 })
 
-/** A plate's shape when the control adds one to a look without it. */
-const PLATE_SHAPE = { radiusPx: 18, padXPx: 28, padYPx: 16 } as const
+/**
+ * The plate the control adds to a look without one: the first look's that
+ * has one.
+ */
+export const FIRST_PLATE = THEME_IDS.map((id) => THEMES[id].plate).find(
+  (plate) => plate !== null
+)
 
 /** `look` with `edit` applied: what a session would pin. */
 export const withEdit = (look: CaptionTheme, edit: LookEdit): CaptionTheme => ({
@@ -64,7 +69,7 @@ export const withEdit = (look: CaptionTheme, edit: LookEdit): CaptionTheme => ({
   plate:
     edit.plate === null
       ? null
-      : { ...(look.plate ?? PLATE_SHAPE), ...edit.plate },
+      : { ...(look.plate ?? FIRST_PLATE ?? NO_SHAPE), ...edit.plate },
   effects: { highlight: edit.lit, popInMs: edit.popInMs },
 })
 
@@ -87,10 +92,15 @@ export function lookIssueUrl(
   const body = [
     `A caption look set in Studio for ${template.title} (\`${template.id}\`), changed from the \`${from}\` look.`,
     "",
-    "Land it as a new look in `@some-ui/burn-ins` (`THEMES`) and a new version of the series that names it, so videos already made keep the look they were drawn in (SFEED11, #2707).",
+    'Land it under a new id in `@some-ui/burn-ins` (`THEMES`, `THEME_IDS`) and a new version of the series that names it, so videos already made keep the look they were drawn in (`packages/ui/burn-ins/README.md`, "A caption look sent from Studio"; SFEED11, #2707).',
     "",
     "```json caption-look",
-    JSON.stringify(look, null, 2),
+    // The id is the session's to choose.
+    JSON.stringify(
+      look,
+      (key, value: unknown) => (key === "id" ? undefined : value),
+      2
+    ),
     "```",
   ].join("\n")
   const url = new URL(NEW_ISSUE)

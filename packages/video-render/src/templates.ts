@@ -51,24 +51,33 @@ export function templateFormat(id: TemplateId): Format {
  * `sample/series/`, as home's recorders name it (www's `tests/record`):
  * Playoff Delta's legend is drawn in the week's.
  */
-export const TEMPLATE_SERIES: Readonly<Record<TemplateId, string>> = {
+export const TEMPLATE_SERIES = {
   "conference-call": "conference-call",
   "playoff-delta-legend": "playoff-delta-week",
   "playoff-delta-week": "playoff-delta-week",
-}
+} as const satisfies Record<TemplateId, string>
 
-const NEWEST_SERIES: Readonly<Record<string, unknown>> = {
+const NEWEST_SERIES: Readonly<
+  Record<(typeof TEMPLATE_SERIES)[TemplateId], unknown>
+> = {
   "conference-call": callSeries,
   "playoff-delta-week": weekSeries,
 }
 
 /**
- * The caption look template `id`'s videos are drawn in (SFEED11, #2707):
- * the `captions` design its series' newest version names, a look of
- * `@some-ui/burn-ins`, or `null` when it names none.
+ * How template `id`'s videos are captioned (SFEED11, #2707): the `captions`
+ * design its series' newest version names, a look of `@some-ui/burn-ins`, or
+ * `null` when it names none, and the frame it is drawn in.
  */
-export function templateCaptions(id: TemplateId): string | null {
+export function templateCaptions(id: TemplateId): {
+  readonly look: string | null
+  readonly frame: { readonly width: number; readonly height: number }
+} {
   const parsed = parseSeries(NEWEST_SERIES[TEMPLATE_SERIES[id]])
   if (!parsed.ok) throw new Error(`${id}: ${parsed.problems.join("; ")}`)
-  return parsed.value.designs.captions ?? null
+  const { designs, frame } = parsed.value
+  return {
+    look: designs.captions ?? null,
+    frame: { width: frame.width, height: frame.height },
+  }
 }

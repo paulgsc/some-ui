@@ -3,9 +3,13 @@
  * each part the control can change, a preview of a caption line in the look
  * as it is set, and the way to send it, a new GitHub issue holding the look
  * for a session to land (`lib/caption-look`). The preview is a still of one
- * line, drawn here from the look's values, since the phone's build doesn't
- * carry `@some-ui/burn-ins`' recorder; a word's pop-in shows only on video.
+ * line in the template's frame, drawn here from the look's values at the
+ * video's scale, since the phone's build doesn't carry `@some-ui/burn-ins`'
+ * recorder; a word's pop-in shows only on video.
  */
+import "@fontsource/barlow-condensed/latin-600.css"
+import "@fontsource/barlow-condensed/latin-800.css"
+
 import type { CSSProperties, JSX, ReactNode } from "react"
 import { useId, useState } from "react"
 import type { CaptionTheme, ThemeId } from "@some-ui/burn-ins/contract"
@@ -14,6 +18,7 @@ import { Button } from "@some-ui/shared"
 import type { LookEdit } from "@/lib/caption-look"
 import {
   editOf,
+  FIRST_PLATE,
   LOOK_RANGES,
   lookIssueUrl,
   sameLook,
@@ -25,45 +30,65 @@ import { Part } from "./layout"
 
 const WORDS = STUDIO_INDEX_WORDS.templates.look
 
-/** The preview's frame is a third of a 1080 px one across. */
-const SCALE = 1 / 3
 /** The word the preview shows being said. */
 const SAID = 3
+
+type Frame = { readonly width: number; readonly height: number }
 
 const rgba = (hex: string, opacity: number): string => {
   const n = Number.parseInt(hex.slice(1), 16)
   return `rgba(${String((n >> 16) & 255)}, ${String((n >> 8) & 255)}, ${String(n & 255)}, ${String(opacity)})`
 }
 
-const Preview = ({ look }: { look: CaptionTheme }): JSX.Element => {
+/**
+ * A look's length on the preview: a look's lengths are in a frame whose
+ * shorter side is 1080 px (`sizedFor`), here as a share of the preview's width.
+ */
+const unitsIn =
+  (frame: Frame) =>
+  (px: number): string =>
+    `${String(((px / 1080) * Math.min(frame.width, frame.height) * 100) / frame.width)}cqw`
+
+const Preview = ({
+  look,
+  frame,
+}: {
+  look: CaptionTheme
+  frame: Frame
+}): JSX.Element => {
   const { font, colours, plate } = look
+  const u = unitsIn(frame)
   const line: CSSProperties = {
+    display: "inline-block",
+    whiteSpace: "nowrap",
     fontFamily: font.family,
     fontWeight: font.weight,
-    fontSize: font.sizePx * SCALE,
+    fontSize: u(font.sizePx),
     lineHeight: font.lineHeight,
     letterSpacing: `${String(font.letterSpacingEm)}em`,
     textTransform: font.uppercase ? "uppercase" : "none",
     color: colours.text,
     WebkitTextStroke:
-      look.strokePx > 0
-        ? `${String(look.strokePx * SCALE)}px ${colours.stroke}`
-        : undefined,
+      look.strokePx > 0 ? `${u(look.strokePx)} ${colours.stroke}` : undefined,
     paintOrder: "stroke fill",
     ...(plate === null
       ? {}
       : {
           background: rgba(plate.colour, plate.opacity),
-          borderRadius: plate.radiusPx * SCALE,
-          padding: `${String(plate.padYPx * SCALE)}px ${String(plate.padXPx * SCALE)}px`,
+          borderRadius: u(plate.radiusPx),
+          padding: `${u(plate.padYPx)} ${u(plate.padXPx)}`,
         }),
   }
   return (
     <div
       aria-hidden
-      className="flex aspect-video items-end justify-center rounded-xl bg-[linear-gradient(160deg,#3a4a3f,#151a22)] p-3"
+      style={{
+        aspectRatio: `${String(frame.width)} / ${String(frame.height)}`,
+        containerType: "inline-size",
+      }}
+      className={`flex items-end justify-center overflow-hidden rounded-xl bg-[linear-gradient(160deg,#3a4a3f,#151a22)] pb-[8%] ${frame.height > frame.width ? "mx-auto w-1/2" : "w-full"}`}
     >
-      <span style={line} className="text-center">
+      <span style={line}>
         {WORDS.sample.map((word, i) => (
           <span
             key={word}
@@ -82,7 +107,6 @@ const Preview = ({ look }: { look: CaptionTheme }): JSX.Element => {
   )
 }
 
-/** A labelled control in the list. */
 const Field = ({
   label,
   children,
@@ -184,23 +208,29 @@ export const CaptionLook = ({
   template,
   from,
   look,
+  frame,
 }: {
   template: { readonly id: string; readonly title: string }
   from: ThemeId
   look: CaptionTheme
+  frame: Frame
 }): JSX.Element => {
   /* eslint-disable owner-guard/no-mount-snapshot -- an edit buffer over the look it edits; the page keys it by template */
   const [edit, setEdit] = useState<LookEdit>(() => editOf(look))
   /* eslint-enable owner-guard/no-mount-snapshot */
-  const set = (change: Partial<LookEdit>): void =>
-    setEdit((now) => ({ ...now, ...change }))
+  const set = (change: (now: LookEdit) => Partial<LookEdit>): void =>
+    setEdit((now) => ({ ...now, ...change(now) }))
+  const plate = (change: Partial<NonNullable<LookEdit["plate"]>>): void =>
+    set((now) => ({
+      plate: now.plate === null ? null : { ...now.plate, ...change },
+    }))
   const shown = withEdit(look, edit)
   const changed = !sameLook(shown, look)
   return (
     <Part label={WORDS.label}>
       <p className="text-sm">{WORDS.named(from)}</p>
       <p className="text-muted-foreground text-sm">{WORDS.line}</p>
-      <Preview look={shown} />
+      <Preview look={shown} frame={frame} />
       <div className="flex flex-col gap-2">
         <Field label={WORDS.weight}>
           {(id) => (
@@ -208,7 +238,9 @@ export const CaptionLook = ({
               id={id}
               value={edit.weight}
               onChange={(event) =>
-                set({ weight: event.currentTarget.value === "800" ? 800 : 600 })
+                set(() => ({
+                  weight: event.currentTarget.value === "800" ? 800 : 600,
+                }))
               }
               className="border-border bg-background rounded-md border px-2 py-1 text-sm"
             >
@@ -222,46 +254,52 @@ export const CaptionLook = ({
           value={edit.sizePx}
           range={LOOK_RANGES.sizePx}
           said={String(edit.sizePx)}
-          onChange={(sizePx) => set({ sizePx })}
+          onChange={(sizePx) => set(() => ({ sizePx }))}
         />
         <Colour
           label={WORDS.text}
           value={edit.text}
-          onChange={(text) => set({ text })}
+          onChange={(text) => set(() => ({ text }))}
         />
         <Toggle
           label={WORDS.litOn}
           checked={edit.lit}
-          onChange={(lit) => set({ lit })}
+          onChange={(lit) => set(() => ({ lit }))}
         />
         {edit.lit && (
           <Colour
             label={WORDS.lit}
             value={edit.highlight}
-            onChange={(highlight) => set({ highlight })}
+            onChange={(highlight) => set(() => ({ highlight }))}
           />
         )}
         <Colour
           label={WORDS.stroke}
           value={edit.stroke}
-          onChange={(stroke) => set({ stroke })}
+          onChange={(stroke) => set(() => ({ stroke }))}
         />
         <Range
           label={WORDS.strokeWidth}
           value={edit.strokePx}
           range={LOOK_RANGES.strokePx}
           said={String(edit.strokePx)}
-          onChange={(strokePx) => set({ strokePx })}
+          onChange={(strokePx) => set(() => ({ strokePx }))}
         />
         <Toggle
           label={WORDS.plate}
           checked={edit.plate !== null}
           onChange={(on) =>
-            set({
+            set(() => ({
               plate: on
-                ? (editOf(look).plate ?? { colour: "#0a1630", opacity: 0.86 })
+                ? (editOf(look).plate ??
+                  (FIRST_PLATE === undefined
+                    ? null
+                    : {
+                        colour: FIRST_PLATE.colour,
+                        opacity: FIRST_PLATE.opacity,
+                      }))
                 : null,
-            })
+            }))
           }
         />
         {edit.plate !== null && (
@@ -269,20 +307,14 @@ export const CaptionLook = ({
             <Colour
               label={WORDS.plateColour}
               value={edit.plate.colour}
-              onChange={(colour) =>
-                set({ plate: { opacity: edit.plate?.opacity ?? 1, colour } })
-              }
+              onChange={(colour) => plate({ colour })}
             />
             <Range
               label={WORDS.plateOpacity}
               value={edit.plate.opacity}
               range={LOOK_RANGES.opacity}
               said={`${String(Math.round(edit.plate.opacity * 100))}%`}
-              onChange={(opacity) =>
-                set({
-                  plate: { colour: edit.plate?.colour ?? "#000000", opacity },
-                })
-              }
+              onChange={(opacity) => plate({ opacity })}
             />
           </>
         )}
@@ -291,7 +323,7 @@ export const CaptionLook = ({
           value={edit.popInMs}
           range={LOOK_RANGES.popInMs}
           said={WORDS.popInMs(edit.popInMs)}
-          onChange={(popInMs) => set({ popInMs })}
+          onChange={(popInMs) => set(() => ({ popInMs }))}
         />
       </div>
       <div className="flex flex-wrap items-center gap-2">

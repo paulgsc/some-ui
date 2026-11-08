@@ -28,7 +28,8 @@ const LookOf = ({
   template: TemplateId
   title: string
 }): JSX.Element => {
-  const look = lookNamed(templateCaptions(template))
+  const { look: named, frame } = templateCaptions(template)
+  const look = lookNamed(named)
   return look === null ? (
     <p className="text-muted-foreground text-sm">{WORDS.look.none}</p>
   ) : (
@@ -37,6 +38,7 @@ const LookOf = ({
       template={{ id: template, title }}
       from={look.id}
       look={look}
+      frame={frame}
     />
   )
 }
