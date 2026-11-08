@@ -22,6 +22,7 @@ import {
   WEEK_SLIDES,
 } from "@playoff-delta/lib/slides"
 import { parseStorySeason, wins } from "@playoff-delta/lib/story"
+import { storyboardFor } from "@playoff-delta/lib/voiced"
 import { parseFormat, versionOfFile } from "@some-ui/video-render"
 import { TEMPLATES_DIR } from "@some-ui/video-render/node"
 import { describe, expect, it } from "vitest"
@@ -60,6 +61,15 @@ describe("the formats", () => {
       expect(versions.at(-1)?.version).toBe(FORMAT_VERSION[kind])
       // A pinned version is never edited: the code still makes each one.
       for (const v of versions) expect(v.raw).toEqual(formatOf(kind, v.version))
+    }
+  )
+
+  it.each(["week", "legend"] as const)(
+    "%s: the pinned storyboard is the code's (SFEED3)",
+    (kind) => {
+      const file = join(TEMPLATES_DIR, formatId(kind), "storyboard.json")
+      const raw: unknown = JSON.parse(readFileSync(file, "utf8"))
+      expect(raw).toEqual(storyboardFor(kind))
     }
   )
 })

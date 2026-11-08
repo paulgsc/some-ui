@@ -4,6 +4,7 @@ import {
   isTemplateId,
   templateCaptions,
   templateFormat,
+  templateStoryboard,
 } from "@some-ui/video-render"
 import { createFileRoute, Link, notFound } from "@tanstack/react-router"
 
@@ -45,7 +46,8 @@ const LookOf = ({
 
 /**
  * One template (SFEED1, #2731): its newest version, the feeds that use it,
- * and its shape, from the locked intro to the brand outro.
+ * and its storyboard (SFEED3, #2744), every frame from the locked intro to
+ * the brand outro.
  */
 const TemplatePage = (): JSX.Element => {
   const { template }: { template: TemplateId } = Route.useParams()
@@ -69,7 +71,7 @@ const TemplatePage = (): JSX.Element => {
           {WORDS.usedBy(FEED_FACTS[feed].name)}
         </Link>
       ))}
-      <TemplateShape format={format} />
+      <TemplateShape format={format} board={templateStoryboard(template)} />
       <LookOf template={template} title={format.title} />
     </StudioPage>
   )

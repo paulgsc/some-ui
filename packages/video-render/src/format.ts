@@ -58,6 +58,12 @@ export const REPEATED_ID_MAX = 40 - 1 - String(PRIMER_V2_CUTS).length
 /** The id of item `n` (from 1) of a repeated scene: "done-3". */
 export const repeatedId = (scene: string, n: number): string => `${scene}-${n}`
 
+/** Which item of repeated scene `scene` the id `id` is (`repeatedId`'s inverse), if it is one. */
+export function itemOfRepeated(scene: string, id: string): number | undefined {
+  const n = id.startsWith(`${scene}-`) ? id.slice(scene.length + 1) : ""
+  return /^[1-9][0-9]*$/.test(n) ? Number(n) : undefined
+}
+
 /**
  * A template's shape (SFEED2 #2670, FEED7 #2664): what every episode opens,
  * marks and closes with, set in the template and never by the fill.

@@ -40,6 +40,8 @@ import { OptionSchema, RefSchema } from "./refs"
 import type { CallRef } from "./refs"
 import { estimatedMs, hasCaptions, stillFile, stillsCutList } from "./stills"
 import type { StillTake } from "./stills"
+import { storyboardOf } from "./storyboard"
+import type { BoardScene, Storyboard } from "./storyboard"
 import sample from "./templates/conference-call/sample-week.json"
 
 export const CALL_WEEK_SCHEMA = "some-ui.call-week/1"
@@ -654,5 +656,35 @@ export function callCutList(
       said: scene.said,
     })),
     takes
+  )
+}
+
+/**
+ * The call's storyboard (SFEED3): every frame of the template's sample week,
+ * as `callScenes` lays it out, with the fill's words left for the fill.
+ */
+export function callStoryboard(): Storyboard {
+  const week = sampleCallWeek()
+  if (!week.ok) throw new Error(week.problems.join("; "))
+  const { from, to } = week.value.week
+  return storyboardOf(
+    callFormat(week.value.template.version),
+    `the sample week, ${sayDay(from)} to ${sayDay(to)}`,
+    callScenes(week.value).map((scene): BoardScene => {
+      if (scene.section === "chapter")
+        return { kind: "chapter", id: scene.id, of: scene.of, said: scene.said }
+      if (
+        scene.section === "intro" ||
+        scene.section === "brand-in" ||
+        scene.section === "brand-out"
+      )
+        return { kind: scene.section, id: scene.id, said: scene.said }
+      return {
+        kind: "section",
+        id: scene.id,
+        scene: scene.section,
+        said: scene.said,
+      }
+    })
   )
 }
