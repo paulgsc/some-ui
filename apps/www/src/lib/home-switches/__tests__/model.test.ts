@@ -44,13 +44,18 @@ describe("stepSwitches", () => {
     })
   })
 
-  it("a set that fails leaves the switch as home follows it", () => {
+  it("a set that fails may have landed, so the switch is read again", () => {
     const failed = run([
       { type: "read", standing: ON },
       { type: "set-asked", recording: false },
       { type: "set-failed", why: "unreachable" },
     ])
-    expect(failed).toEqual({ kind: "read", standing: ON, setting: null })
+    expect(failed).toEqual({ kind: "reading" })
+    expect(stepSwitches(failed, { type: "read", standing: PAUSED })).toEqual({
+      kind: "read",
+      standing: PAUSED,
+      setting: null,
+    })
   })
 
   it("a read that fails says why, and asking again reads again", () => {

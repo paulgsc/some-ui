@@ -92,7 +92,7 @@ describe("home switches' words", () => {
       })
     ).toBe("Pausing recording…")
     expect(changeFailed("unreachable", false).title).toBe(
-      "Recording wasn't paused."
+      "Home didn't confirm recording is paused."
     )
   })
 

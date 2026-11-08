@@ -95,16 +95,19 @@ function refusalLine(why: Refusal): string {
   }
 }
 
-/** A change that did not land, said over the screen. */
+/**
+ * A change home did not confirm, said over the screen. It may still have
+ * landed, so the page asks home again and says how it stands then.
+ */
 export function changeFailed(
   why: Refusal,
   recording: boolean
 ): { readonly title: string; readonly description: string } {
   return {
     title: recording
-      ? "Recording wasn't turned on."
-      : "Recording wasn't paused.",
-    description: refusalLine(why),
+      ? "Home didn't confirm recording is on."
+      : "Home didn't confirm recording is paused.",
+    description: `${refusalLine(why)} Asking home how it stands now.`,
   }
 }
 

@@ -6,7 +6,8 @@
  *
  * Stale answers: `stepSwitches` drops a read's answer once a set is under
  * way, and only one set runs at a time (`canSet`), so the last answer to
- * land is always the newest thing home said.
+ * land is always the newest thing home said. A set that fails may still
+ * have landed, so it is followed by a read of what home now follows.
  */
 import type { SwitchesClient } from "./client"
 import { refusalOf } from "./client"
@@ -53,6 +54,8 @@ export function createHomeSwitches(ports: SwitchesPorts): HomeSwitches {
       const why = refusalOf(error)
       dispatch({ type: "set-failed", why })
       ports.notify(why, recording)
+      // What home follows is unknown now; ask it (the state is `reading`).
+      await read()
     }
   }
 

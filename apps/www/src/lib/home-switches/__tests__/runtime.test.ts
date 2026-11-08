@@ -111,7 +111,7 @@ describe("createHomeSwitches", () => {
     expect(switches.getSnapshot()).toMatchObject({ standing: PAUSED })
   })
 
-  it("says a change that did not land, and the switch stays as home follows it", async () => {
+  it("says a change home did not confirm, then shows what home follows now", async () => {
     const home = fakeHome()
     const notify = vi.fn()
     const switches = createHomeSwitches({ client: home.client, notify })
@@ -124,9 +124,14 @@ describe("createHomeSwitches", () => {
     )
     await settled()
     expect(notify).toHaveBeenCalledWith("not-operator", false)
+    expect(switches.getSnapshot()).toEqual({ kind: "reading" })
+    expect(home.reads).toHaveLength(2)
+    // Home took the change and only its answer was lost: the page shows it.
+    home.reads[1]?.resolve(PAUSED)
+    await settled()
     expect(switches.getSnapshot()).toEqual({
       kind: "read",
-      standing: ON,
+      standing: PAUSED,
       setting: null,
     })
   })

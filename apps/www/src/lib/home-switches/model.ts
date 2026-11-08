@@ -90,10 +90,13 @@ export function stepSwitches(
         : state
     }
     case "set-failed": {
-      // The switch goes back to what home follows; the failure is said
-      // over the screen (`./runtime`'s `notify`), not in the layout.
+      // A set that did not answer may still have landed (home took it and
+      // the answer was lost or late), so the standing held here is no
+      // longer known: the page asks home again (`./runtime` reads) rather
+      // than show the value from before the set. The failure is said over
+      // the screen (`./runtime`'s `notify`), not in the layout.
       return state.kind === "read" && state.setting !== null
-        ? { ...state, setting: null }
+        ? { kind: "reading" }
         : state
     }
     default: {
