@@ -16,6 +16,8 @@ import {
 import { chromium } from "playwright-core"
 import { z } from "zod"
 
+import { checkKit, KitSchema } from "./kit"
+import type { Heard } from "./kit"
 import { compositionPort } from "./node"
 import { HYPERFRAMES_VERSION } from "./pin"
 import { renderComposition } from "./render"
@@ -23,7 +25,8 @@ import { renderComposition } from "./render"
 const USAGE = [
   "usage: motion render <composition> --out <clip.mkv> [--variables <file>]",
   "       motion prove <composition> [--variables <file>] [--runs 2]",
-  "       motion video <video folder> [--series <folder>] [--prove]",
+  "       motion video <video folder> [--series <folder>] [--brand <folder>] [--prove]",
+  "       motion kit <kit folder>",
 ].join("\n")
 
 /** The series of a vertical whose scenes are compositions, the default. */
@@ -45,6 +48,7 @@ const { positionals, values } = parseArgs({
     chrome: { type: "string" },
     prove: { type: "boolean", default: false },
     runs: { type: "string", default: "2" },
+    brand: { type: "string" },
   },
 })
 
@@ -209,12 +213,40 @@ async function renderVideo(
         out: "video.mp4",
         compositions: compositionPort(folder, chrome, join(base, "draw")),
         ...(prove ? {} : { stepCacheDir: "cache" }),
+        ...(values.brand === undefined ? {} : { brand: here(values.brand) }),
       })
       await rm(join(folder, workDir), { recursive: true, force: true })
       if (!made.ok) throw new Refused(made.problems.join("\n"))
       return "video.mp4"
     })
   )
+}
+
+/**
+ * Checks the sound kit in `folder` (home's `/brand/sounds`) against its
+ * `kit.json` and prints the series' `sounds` for a new version, each pinned
+ * by its sum, and one line a sound for the issue (`kit.ts`).
+ */
+async function kit(folder: string): Promise<void> {
+  const parsed = KitSchema.safeParse(await readJson(join(folder, "kit.json")))
+  if (!parsed.success) {
+    throw new Refused(`${folder}/kit.json: ${parsed.error.message}`)
+  }
+  const ports = nodePorts(folder)
+  const heard = new Map<string, Heard>()
+  for (const entry of Object.values(parsed.data.sounds)) {
+    const file = join(folder, entry.file)
+    const facts = await ports.probe(file)
+    heard.set(entry.file, {
+      sha256: await ports.sha256(file),
+      durationMs: facts?.durationMs ?? null,
+      picture: (facts?.width ?? 0) > 0,
+    })
+  }
+  const checked = checkKit(parsed.data, heard)
+  if (!checked.ok) throw new Refused(checked.problems.join("\n"))
+  say(JSON.stringify({ sounds: checked.sounds }, null, 2))
+  for (const line of checked.record) say(line)
 }
 
 async function main(): Promise<void> {
@@ -233,6 +265,9 @@ async function main(): Promise<void> {
         values.series === undefined ? VERTICAL : here(values.series),
         values.prove
       )
+    }
+    case "kit": {
+      return kit(here(name))
     }
     default: {
       throw new Refused(USAGE)

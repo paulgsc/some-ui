@@ -9,7 +9,8 @@ workspace renders one to a lossless clip, the same bytes every time, which
 ```sh
 pnpm --filter @some-ui/video-motion motion prove sample
 pnpm --filter @some-ui/video-motion motion render sample --out sample.mkv --variables v.json
-pnpm --filter @some-ui/video-motion motion video <video folder> [--series <folder>] [--prove]
+pnpm --filter @some-ui/video-motion motion video <video folder> [--series <folder>] [--brand <folder>] [--prove]
+pnpm --filter @some-ui/video-motion motion kit <kit folder>
 ```
 
 - `prove` renders a composition twice and fails unless the two clips are the same bytes,
@@ -22,7 +23,14 @@ pnpm --filter @some-ui/video-motion motion video <video folder> [--series <folde
   1080x1920 at 30 fps, the frame alone, for videos whose scenes are compositions.
   `sample/video` is a composition scene, then a card.
 
-CI runs both on every change here (`pr.yml`, "HyperFrames renders the same bytes twice").
+- `--brand` names home's brand folder (`/brand` in the render service): the series' music bed
+  and sound kit are copied into the video's folder from it first (`placeBrandFiles` in
+  `@some-ui/video-render/node`), and the renderer refuses any file whose sum isn't the
+  series' pin.
+- `kit` checks the sound kit (HYPER4, #2727, below) and prints the `sounds` a series
+  version pins, with one line a sound for the issue.
+
+CI runs `prove` and `video` on every change here (`pr.yml`, "HyperFrames renders the same bytes twice").
 They need `ffmpeg` on `PATH` and a Chromium: Playwright's pinned one by default, or
 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`, or `--chrome`.
 
@@ -78,3 +86,30 @@ Chromium or CPU draws its own.
   `pnpm check:android-only`; use `device-frame-stage` and a Google Play badge.
 - **No clock, no unseeded randomness, no fetch.** Every string and colour is a variable
   (`data-composition-variables`), read with `window.__hyperframes.getVariables()`.
+
+## The sound kit
+
+The six sounds the renderer names (`whoosh`, `click`, `pop`, `thud`, `riser`, `ding`;
+`SOUNDS` in `@some-ui/video-render`) are CC0 files kept on home in
+`${STORAGE}/brand/sounds/`, never in a repository. Beside them is `kit.json`, the record of
+which file is which sound and where it came from:
+
+```json
+{
+  "schema": "some-ui.sound-kit/1",
+  "sounds": {
+    "click": {
+      "file": "click_001.ogg",
+      "source": "https://kenney.nl/assets/interface-sounds",
+      "licence": "CC0-1.0"
+    }
+  }
+}
+```
+
+`motion kit /brand/sounds` refuses a kit that lacks one of the six, a licence other than
+`CC0-1.0`, a file ffprobe can't read, one with a picture, or one longer than 4 s. Otherwise it
+prints the `sounds` block for a new series version (each file under `kit/`, pinned by its
+sha256) and one line per sound with its sum, length, source and licence. Those lines are
+the licence record, posted on #2727 when the kit is laid down or changed. A changed file
+is then refused at render ("changed since it was chosen"), never used silently.
