@@ -2530,7 +2530,13 @@
       "paths": [
         "some-ui:packages/video-render/src/preview.ts",
         "some-ui:apps/www/tests/record/preview.ts",
-        "some-ui:apps/www/tests/record/call-recording.ts"
+        "some-ui:apps/www/tests/record/call-recording.ts",
+        "server:apps/servers/file_host/src/routes/previews.rs",
+        "server:apps/servers/file_host/src/handlers/previews.rs",
+        "server:apps/servers/file_host/src/previews.rs",
+        "server:infra/render",
+        "server:infra/compose/call-render.yml",
+        "server:infra/docker/Dockerfile.render"
       ],
       "modules": ["previews"],
       "objectives": [
@@ -2541,7 +2547,7 @@
           "claim": "A preview the owner asks for is made, or ends with its reason on the phone; it never waits unseen.",
           "requirement": "Each request home accepts reaches ready, or failed with a reason class (no-sample, too-long, too-large, render, or overdue once it is not ready a day after it was asked), and reads on the phone, from the newest request per template, as waiting, being made, paused, set aside, ready or failed; it waits only behind the lane's other work, and a second request while one is not yet ready answers with that one.",
           "verdict": "unproven",
-          "conclusion": "The cut is tested and the recorder is written in some-ui; home's job and routes are not built yet, so nothing makes or reports a preview.",
+          "conclusion": "The cut is tested and the recorder is written in some-ui; home's job, routes and overdue sweep are built and tested in server#743, not yet merged, and the phone's control (some-ui#2778) is not merged, so nothing makes or reports a preview yet.",
           "evidence": [
             {
               "class": "structural",
@@ -2567,7 +2573,7 @@
           "claim": "Home keeps at most one preview per template, and none past a day.",
           "requirement": "Per template, home keeps at most one request not yet ready, one ready preview of at most the render policy's largest video (MAX_VIDEO_MB), and the failed requests of the last day: a preview is deleted 24 h after it is made, the newest included, and an older one as soon as a newer one is ready; a failed request goes 24 h after it failed; a preview's work (stills, takes, step cache) goes with it, or when its request fails; the job in progress is never deleted. No switch and no receipt: a preview is derived from sample data, not the owner's record.",
           "verdict": "unproven",
-          "conclusion": "Asked for by the owner on #2757 and agreed for home's prune; the prune is not built yet.",
+          "conclusion": "Asked for by the owner on #2757 and agreed for home's prune; the prune is built and tested in server#743, not yet merged.",
           "evidence": [
             {
               "class": "unknown",
@@ -4569,7 +4575,11 @@
           "name": "Home takes the request, says where each preview stands, serves its video in parts, and deletes it on its own. Ours, on home.",
           "owner": "ours",
           "on": "home",
-          "paths": []
+          "paths": [
+            "server:apps/servers/file_host/src/routes/previews.rs",
+            "server:apps/servers/file_host/src/handlers/previews.rs",
+            "server:apps/servers/file_host/src/previews.rs"
+          ]
         },
         {
           "id": "render",
@@ -4577,6 +4587,9 @@
           "owner": "ours",
           "on": "home",
           "paths": [
+            "server:infra/render",
+            "server:infra/compose/call-render.yml",
+            "server:infra/docker/Dockerfile.render",
             "some-ui:apps/www/tests/record/preview.ts",
             "some-ui:apps/www/tests/record/call-recording.ts",
             "some-ui:packages/video-render/src/preview.ts"
