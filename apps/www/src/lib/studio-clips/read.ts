@@ -7,10 +7,9 @@
  */
 import { apiClient, ApiError } from "@some-ui/fetch-kit"
 import type { Clip } from "@some-ui/video-render"
-import { ClipIndexSchema, clipPath } from "@some-ui/video-render"
+import { ClipIndexSchema, clipPath, TESTING_DATA } from "@some-ui/video-render"
 
 import { PUBLIC_READ } from "@/lib/file-host-config"
-import { TESTING_DATA } from "@/lib/testing-data"
 
 import { newestFirst } from "./order"
 

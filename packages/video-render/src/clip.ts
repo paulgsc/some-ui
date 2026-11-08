@@ -26,6 +26,10 @@ import { showId, words } from "./format"
 import { RefSchema } from "./refs"
 
 export const CLIP_INDEX_SCHEMA = "some-ui.clip-index/1"
+
+/** Where paulgsc/testing's `main` is served, publicly: every reader of it, the phone's and the desktop stages', starts here. */
+export const TESTING_DATA =
+  "https://raw.githubusercontent.com/paulgsc/testing/main"
 export const WALK_SCHEMA = "some-ui.walk/1"
 
 /** A file in a clip's folder: a plain relative path, never out of it. */
