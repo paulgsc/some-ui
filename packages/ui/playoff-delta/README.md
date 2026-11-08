@@ -158,6 +158,17 @@ the frame can't hold (`data-overflow`). A fill written for version 1 was for
 my voice and isn't voiced: an episode is never mine to voice (FEED6, #2649).
 The recorder's header has every option.
 
+A template's preview (SFEED12, #2757) is the sample season's episode of
+that format, the legend or the sample's newest week, cut to 15–30 s:
+
+```sh
+pnpm --filter www record:preview --template playoff-delta-week --voices none --out <folder>
+```
+
+It is said from the sample's fill, written once and kept in code
+(`src/lib/sample-fill.ts`), so no model is asked for a preview. Its test
+holds it passing the check, in each format's newest version.
+
 ## Next
 
 - **The NFL's tiebreakers** (paulgsc/server#496): today a tie goes to us, in

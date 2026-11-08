@@ -16,7 +16,6 @@ import {
   callScenes,
   hasCaptions,
   parseCallWeek,
-  previewOf,
 } from "@some-ui/video-render"
 import type { CallWeek } from "@some-ui/video-render"
 
@@ -27,7 +26,7 @@ import {
   policyOf,
   recordStills,
   refuseLong,
-  renderStills,
+  renderCut,
   shownFrame,
   siteOf,
 } from "./voiced"
@@ -182,16 +181,13 @@ export async function recordCall(
       join(root, "week.json"),
       `${JSON.stringify(week, null, 1)}\n`
     )
-    const whole = callCutList(week, takes, { bed })
-    const cut = preview ? previewOf(whole) : { ok: true as const, value: whole }
-    if (!cut.ok) fail(["The preview can't be cut:", ...cut.problems])
-    await renderStills(root, SERIES, cut.value, {
-      out: preview ? "preview.mp4" : "call.mp4",
+    await renderCut(root, SERIES, callCutList(week, takes, { bed }), {
+      preview,
+      episode: "call.mp4",
+      marks: () => callChapterMarks(week),
       policy,
       browser,
       origin: site.origin,
-      // A preview is never uploaded, so it has no chapters to describe.
-      marks: preview ? [] : callChapterMarks(week),
     })
   } finally {
     await browser.close()

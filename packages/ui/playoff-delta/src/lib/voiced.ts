@@ -17,7 +17,7 @@ import {
 } from "@some-ui/video-render"
 
 import type { Narration } from "./narration"
-import { SAMPLE_SEASON } from "./sample"
+import { SAMPLE_SEASON, sampleWeekOf } from "./sample"
 import { episodeTitle, formatOf, kindOf, type FormatKind } from "./show"
 import { LEGEND_WEEK, SCENES, slidesOf, type SlideId } from "./slides"
 import { nameOf, type StorySeason } from "./story"
@@ -175,10 +175,7 @@ export function voicedCutList(
  * to this.
  */
 export function storyboardFor(kind: FormatKind): Storyboard {
-  const week =
-    kind === "legend"
-      ? LEGEND_WEEK
-      : (SAMPLE_SEASON.weeks.at(-1)?.week ?? LEGEND_WEEK + 1)
+  const week = sampleWeekOf(kind)
   const format = formatOf(kind)
   return storyboardOf(
     format,
