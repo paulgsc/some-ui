@@ -318,7 +318,7 @@ export function dueWeeks(
 export const NARRATION_INDEX_SCHEMA = "some-ui.pd-narration-index/1"
 
 /** A fill as the index lists it: which episode, and the sum of its bytes. */
-export type IndexedFill = {
+type IndexedFill = {
   readonly season: string
   readonly team: string
   readonly week: number
