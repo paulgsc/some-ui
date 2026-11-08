@@ -58,7 +58,8 @@ export function pendingOfRef(ref: string): Pending | null {
 export const filedLine = (note: string): string =>
   `Kept on home as the take \`${note}\`.`
 
-const FILED = /^Kept on home as the take `([^`]+)`\.$/gm
+// A body edited on GitHub ends its lines in CRLF.
+const FILED = /^Kept on home as the take `([^`]+)`\.\r?$/gm
 
 function filedNotes(bodies: ReadonlyArray<string>): Set<string> {
   const notes = new Set<string>()
@@ -85,7 +86,7 @@ export type Passed = { readonly place: number; readonly why: string }
 
 /**
  * The takes left to file, oldest said first, from the mailbox's transcripts
- * (one per note, its newest) and the bodies of the issues already labelled
+ * (one per note, its newest; of two of one note, the later in the list) and the bodies of the issues already labelled
  * `from-studio` in either repository, open or closed: `pending` comes off
  * once the owner starts on one, and `from-studio` never does.
  */
@@ -98,7 +99,7 @@ export function toFile(
 } {
   const done = filedNotes(filed)
   const passed: Array<Passed> = []
-  const items: Array<ToFile> = []
+  const byNote = new Map<string, ToFile>()
   transcripts.forEach((raw, place) => {
     const read = TranscriptSchema.safeParse(raw)
     if (!read.success) {
@@ -108,7 +109,7 @@ export function toFile(
     const heard = read.data
     const pending = heard.of === "studio" ? pendingOfRef(heard.ref) : null
     if (pending === null || done.has(heard.note)) return
-    items.push({
+    byNote.set(heard.note, {
       ...pending,
       note: heard.note,
       at: heard.at,
@@ -117,7 +118,7 @@ export function toFile(
       line: filedLine(heard.note),
     })
   })
-  items.sort(
+  const items = [...byNote.values()].sort(
     (a, b) =>
       Date.parse(a.at) - Date.parse(b.at) || a.note.localeCompare(b.note)
   )

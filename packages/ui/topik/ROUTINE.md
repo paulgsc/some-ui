@@ -679,7 +679,8 @@ Every issue, of any kind:
 - is labelled with the item's `labels` and `kind:story` (an answer moves a
   story; the repo's `CLAUDE.md`, "Two kinds of pull request"). `from-studio`
   is how E1 finds it again, so if it is refused, file nothing more in that
-  repository this run and say so in the summary; any other label refused,
+  repository this run, and name the issue just filed in the summary so the
+  owner can label it, or the next run files its take again; any other label refused,
   file without it and say so;
 - ends with a blank line and the item's `line`, exactly.
 

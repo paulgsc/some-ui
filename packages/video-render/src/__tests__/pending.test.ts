@@ -61,6 +61,11 @@ describe("toFile", () => {
     expect(
       toFile([heard({})], ["mentions `n1` in passing"]).items
     ).toHaveLength(1)
+    const edited = `Kept on home as the take \`n1\`.\r\nEdited on GitHub.`
+    expect(toFile([heard({})], [edited]).items).toEqual([])
+    expect(
+      toFile([heard({ text: "first" }), heard({ text: "again" })], []).items
+    ).toMatchObject([{ heard: "again" }])
   })
 
   it("leaves out every other kind of note, and reports what doesn't read", () => {
