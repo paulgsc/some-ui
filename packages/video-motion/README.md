@@ -38,13 +38,17 @@ pnpm --filter @some-ui/video-motion motion video <video folder> [--series <folde
   place and time, on the walk's own timeline. Suspender Ledger's popup is the first
   (`src/walk/suspender-ledger.ts`); its stand-ins answer the popup's four reads from the
   sample.
-- `promo <release folder> --out <folder> [--prove]` makes a release's promo (HYPER3,
+- `promo <release folder> --out <folder> [--brand <folder>] [--prove]` makes a release's promo (HYPER3,
   #2726): the folder's `release.json` (`some-ui.promo/1`, the words a session writes) and
   `sample.json` (the walk's), from paulgsc/testing's `promo/<app>/<version>/`. It walks
   the app into `<out>`, writes a cut list of three composition scenes (`promo-hook`, the
   walk's screens in `promo-feature`, `promo-close`; `src/promo.ts`) and renders it as
   `video` does. The release's version must be the built app's, and the fill needs one
-  caption per screen; each line is held to what fits its place in the frame.
+  caption per screen; each line is held to what fits its place in the frame. It pins
+  `series/vertical` version 2, which names the sound kit (HYPER4, #2727): a whoosh as the
+  hook leaves, a pop as the frame opens, a click on each tap, a whoosh as the feature
+  leaves and a ding as the close's mark lands. So it needs `--brand`, whose `sounds/` holds
+  the kit `render sounds --out <brand>/sounds` writes (`@some-ui/video-render`'s `cues.ts`).
 
 CI runs `prove`, `video` and `promo` on every change here (`pr.yml`, "HyperFrames renders the
 same bytes twice"). They need `ffmpeg` on `PATH` and Playwright's Chromium **headless shell**:

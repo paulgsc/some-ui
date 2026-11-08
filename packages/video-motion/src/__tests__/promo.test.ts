@@ -1,4 +1,6 @@
-import { parseCutList } from "@some-ui/video-render"
+import { readFileSync } from "node:fs"
+import { parseCutList, parseSeries, SOUNDS } from "@some-ui/video-render"
+import { CUES } from "@some-ui/video-render/cues"
 import {
   promoCutList,
   releaseProblems,
@@ -74,5 +76,44 @@ describe("the release promo (HYPER3)", () => {
       ["feature", 6200],
       ["close", 4000],
     ])
+  })
+
+  it("sounds on what each scene moves: the hook and feature leaving, the frame, each tap, the close", () => {
+    const cut = promoCutList(ReleaseSchema.parse(release()), walk)
+    expect(cut.series).toEqual({ id: "vertical", version: 2 })
+    expect(cut.shots.map((s) => [s.id, s.overrides.cues])).toEqual([
+      ["hook", [{ sound: "whoosh", atMs: 2650 }]],
+      [
+        "feature",
+        [
+          { sound: "pop", atMs: 50 },
+          { sound: "click", atMs: 2800 },
+          { sound: "whoosh", atMs: 5700 },
+        ],
+      ],
+      ["close", [{ sound: "ding", atMs: 300 }]],
+    ])
+  })
+
+  it("pins the series' sound kit to the cues the renderer makes (HYPER4)", () => {
+    const read = parseSeries(
+      JSON.parse(
+        readFileSync(
+          new URL("../../series/vertical/v2.json", import.meta.url),
+          "utf8"
+        )
+      )
+    )
+    expect(read.ok && read.value.sounds).toEqual(
+      Object.fromEntries(
+        SOUNDS.map((sound) => [
+          sound,
+          {
+            file: `brand/sounds/${CUES[sound].file}`,
+            sha256: CUES[sound].sha256,
+          },
+        ])
+      )
+    )
   })
 })
