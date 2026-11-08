@@ -246,6 +246,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       why: "the ref a spoken answer to an ask is kept under on home (`answerRef`, SFEED5): only the Android app's Studio records one (src/lib/ask-answer). The reflections routine reads the same module from the repo, outside any build",
     },
     {
+      modules: ["packages/video-render/src/feedback.ts"],
+      profiles: [MOBILE_PROFILE],
+      why: "the categories a note on an episode picks from and where each goes (SFEED6): only the Android app's Studio leaves a note (src/lib/episode-feedback). The reflections routine's filing (`pending.ts`) reads the same module from the repo, outside any build",
+    },
+    {
       modules: [
         "packages/video-render/src/call.ts",
         "packages/video-render/src/stills.ts",
