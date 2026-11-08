@@ -91,7 +91,7 @@ export function applyAppearance(
  * Attributes that draw a subtree in one of the app's themes, when what the
  * subtree shows chooses it and the person reading does not: a video
  * template's frame (SFEED10), which looks the same whatever theme the app is
- * in, and the mark on its brand slides (SFEED12). The host passes the id; a
+ * in, and the mark on its brand slides (SFEED14). The host passes the id; a
  * reusable component never picks one. `ground: false` leaves the subtree's
  * ground to what is around it, for a mark drawn in another theme than its
  * frame.

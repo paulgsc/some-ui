@@ -51,7 +51,7 @@ export const CALL_ID = "conference-call"
  * that version's shape; the routine writes this one (`CALL-ROUTINE.md`).
  *
  * 2 (SFEED2, #2670): the shape (`shapeOf`).
- * 3 (SFEED10 #2675, SFEED12 #2766): drawn in Mochi Night, the palette made
+ * 3 (SFEED10 #2675, SFEED14 #2766): drawn in Mochi Night, the palette made
  *   for video, the mark too, in the series' version 2, which is Mochi
  *   Night's ground and plays our music bed (#2673).
  */

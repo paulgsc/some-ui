@@ -83,7 +83,7 @@ type BrandMarkProps = {
   title?: string
   /**
    * The app's theme the mark's colours come from, where what it stands in
-   * names one (a video template's brand slides, SFEED12); absent, the
+   * names one (a video template's brand slides, SFEED14); absent, the
    * theme around it. The host passes it: the mark never picks one.
    */
   theme?: SessionThemeId

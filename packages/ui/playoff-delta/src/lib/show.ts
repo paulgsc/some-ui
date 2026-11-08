@@ -46,7 +46,7 @@ export const kindOf = (week: number): FormatKind =>
  * folder. A fill names the version it was written for, and is drawn in it.
  *
  * 2 (FEED3 #2646): voiced, in the shape (`SHAPE`).
- * 3 (SFEED10 #2675, SFEED12 #2766): drawn in Mochi Night, the palette made
+ * 3 (SFEED10 #2675, SFEED14 #2766): drawn in Mochi Night, the palette made
  *   for video, the mark too, in the series' version 3, which is Mochi
  *   Night's ground and plays our music bed (#2673).
  */

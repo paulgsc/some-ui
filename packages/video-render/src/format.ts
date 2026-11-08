@@ -84,7 +84,7 @@ export const repeatedId = (scene: string, n: number): string => `${scene}-${n}`
  *   `highlight`, `@some-ui/burn-ins`). Versions already pinned keep the
  *   field as they wrote it.
  * - `theme` (SFEED10, #2675): the app's theme every scene is drawn in, by
- *   its id; Mochi Night is the one made for video. `brand.theme` (SFEED12,
+ *   its id; Mochi Night is the one made for video. `brand.theme` (SFEED14,
  *   #2766): the theme the mark is drawn in on the brand intro and outro,
  *   chosen in Studio; absent, the template's. A version from before them
  *   has neither and is drawn in the page's own theme.
