@@ -10,7 +10,7 @@ import {
   type Packet,
 } from "@playoff-delta/lib/narration"
 import { SAMPLE_SEASON } from "@playoff-delta/lib/sample"
-import { factsOf, formatOf, FORMAT_VERSION } from "@playoff-delta/lib/show"
+import { factsOf, FORMAT_VERSION, formatOf } from "@playoff-delta/lib/show"
 import {
   LEGEND_SLIDES,
   LEGEND_WEEK,
