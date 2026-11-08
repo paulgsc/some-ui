@@ -17,9 +17,9 @@ export function feedName(feed: string): string {
   return isFeed(feed) ? FEED_FACTS[feed].name : "Something else"
 }
 
-/** An episode by its days or its season and week; another kind's by its key. */
+/** An episode by its days or its season and week; another kind's, generically. */
 export function episodeName(feed: string, key: string): string {
-  return isFeed(feed) ? FEED_WORDS[feed].label(key) : key
+  return isFeed(feed) ? FEED_WORDS[feed].label(key) : "A video"
 }
 
 /** A render named whole: its feed, then its episode. */
@@ -136,10 +136,10 @@ export function liveLine(board: Board): string {
   switch (now.state) {
     case "rendering":
     case "finishing": {
-      return `Making ${name}.`
+      return `Making: ${name}.`
     }
     case "paused": {
-      return `Paused ${name}. It picks up again by itself.`
+      return `Paused: ${name}. It picks up again by itself.`
     }
     case "waiting": {
       return `Waiting for room: ${name}.`
@@ -173,7 +173,6 @@ export const RENDERS_WORDS = {
   older:
     "Home doesn't say what it's making yet. It will after its next update.",
   unpaired: "Pair this phone with home to see what it's making.",
-  tryAgain: "Try again",
   open: "See what home is making",
   lineUntilRead: "Home's renders",
 } as const

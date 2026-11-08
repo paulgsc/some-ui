@@ -146,27 +146,28 @@ const notRead = (
   }
 }
 
-/** The line until home has answered, or when it hasn't. */
-const lineOf = (read: RendersOutcome | undefined): string | null => {
+/** The line for whatever the read came to, so it never comes and goes. */
+const lineOf = (read: RendersOutcome | undefined): string => {
   if (read === undefined) return WORDS.lineUntilRead
-  return read.kind === "read" ? liveLine(read.board) : null
+  return read.kind === "read" ? liveLine(read.board) : notRead(read)
 }
 
 /**
- * Studio's one line above its tiles, there from the first paint so the tiles
- * never move: what home is making once it has answered, and the way to the
- * page before then. Not shown on a phone that isn't paired, or a home that
- * can't say.
+ * Studio's one line above its tiles, there from the first paint and one line
+ * tall whatever it says, so the tiles never move: what home is making once it
+ * has answered, and the way to the page before then.
  */
 export const RendersLine = (): JSX.Element | null => {
   const line = lineOf(useQuery(rendersQuery).data)
   // The page is the phone's ("apk"), as this line is (A3).
-  return line === null || !hasAudience("apk") ? null : (
+  return hasAudience("apk") ? (
     <Link to="/journal/renders" className={TILE}>
-      <span className="text-sm font-medium">{line}</span>
-      <span className="text-muted-foreground text-sm">{WORDS.open}</span>
+      <span className="truncate text-sm font-medium">{line}</span>
+      <span className="text-muted-foreground truncate text-sm">
+        {WORDS.open}
+      </span>
     </Link>
-  )
+  ) : null
 }
 
 /** The whole page, heading and all, so its words ship only where it does. */

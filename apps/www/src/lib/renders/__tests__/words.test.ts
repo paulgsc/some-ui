@@ -17,6 +17,7 @@ import type {
 } from "@/lib/renders/model"
 import {
   dayOf,
+  episodeName,
   failedLine,
   liveLine,
   nowLines,
@@ -135,6 +136,7 @@ describe("RENDERS_WORDS and what it says of each render", () => {
   })
 
   it("names an episode by its week, never its key", () => {
+    expect(episodeName("preview", "preview-conference-call")).toBe("A video")
     expect(nowLines(now("rendering", null, null)).title).toBe(
       "The weekly call: 2026-11-06 to 2026-11-12"
     )
@@ -142,7 +144,7 @@ describe("RENDERS_WORDS and what it says of each render", () => {
 
   it("has a line for every board, so the line above the tiles never comes and goes", () => {
     expect(liveLine(board(now("rendering", null, null)))).toBe(
-      "Making The weekly call: 2026-11-06 to 2026-11-12."
+      "Making: The weekly call: 2026-11-06 to 2026-11-12."
     )
     expect(liveLine(board(null))).toBe("Home isn't making anything right now.")
     expect(
