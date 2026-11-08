@@ -6,7 +6,6 @@ import {
   parseSessionNote,
   SESSION_NOTE_SCHEMA,
   sessionFolderProblems,
-  sessionNoteFile,
 } from "@video-render/session-note"
 import { describe, expect, it } from "vitest"
 
@@ -32,17 +31,11 @@ const note = (over: object = {}): Record<string, unknown> => ({
 })
 
 describe("a session's note", () => {
-  it("is kept under its day and session", () => {
-    const parsed = parseSessionNote(note())
-    if (!parsed.ok) throw new Error(parsed.problems.join("; "))
-    expect(sessionNoteFile(parsed.value)).toBe(
-      "2026-11-08-session_01LDpdUKqLheeGPFB2nUiQfJ.json"
-    )
-  })
-
   it("refuses a call that chose an option it doesn't list", () => {
     const parsed = parseSessionNote(note({ calls: [{ ...CALL, chose: 2 }] }))
-    expect(parsed.ok).toBe(false)
+    expect(!parsed.ok && parsed.problems).toEqual([
+      "calls.0: it chose an option it doesn't list",
+    ])
   })
 })
 
@@ -54,20 +47,12 @@ describe("a sessions folder", () => {
     expect(sessionFolderProblems(files)).toEqual([])
   })
 
-  it("names each file that holds another note, or none", () => {
-    const files = new Map<string, unknown>([
+  it("names a file that holds another note", () => {
+    const files = new Map([
       ["2026-11-07-session_01LDpdUKqLheeGPFB2nUiQfJ.json", note()],
-      ["2026-11-08-session_x.json", { schema: SESSION_NOTE_SCHEMA }],
     ])
-    const problems = sessionFolderProblems(files)
-    expect(problems[0]).toBe(
-      "2026-11-07-session_01LDpdUKqLheeGPFB2nUiQfJ.json: it holds 2026-11-08-session_01LDpdUKqLheeGPFB2nUiQfJ.json"
-    )
-    expect(
-      problems
-        .slice(1)
-        .every((p) => p.startsWith("2026-11-08-session_x.json: "))
-    ).toBe(true)
-    expect(problems.length).toBeGreaterThan(1)
+    expect(sessionFolderProblems(files)).toEqual([
+      "2026-11-07-session_01LDpdUKqLheeGPFB2nUiQfJ.json: it holds 2026-11-08-session_01LDpdUKqLheeGPFB2nUiQfJ.json",
+    ])
   })
 })

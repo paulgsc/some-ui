@@ -29,8 +29,7 @@ up to 14 days.
    reach back to the week's start (`git fetch --shallow-since=<from>` on a
    shallow one). Then read the week's session notes: the files in
    `paulgsc/testing`'s `sessions/` whose `ended` falls in the week
-   (`src/session-note.ts`, SFEED9). Each is what a session distilled before
-   it was archived, including sessions that opened no pull request.
+   (`src/session-note.ts`, SFEED9).
 3. **Read the ledger:** the Residual Ledger's `items`
    (https://claude.ai/artifact/Ktc1i8JtBGQVdXEraobxgA) with `ArtifactData`,
    every item whose `status` isn't `done`.

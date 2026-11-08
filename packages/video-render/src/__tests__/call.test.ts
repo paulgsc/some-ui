@@ -176,8 +176,8 @@ describe("a week that contradicts itself", () => {
         "my-data-where: some-ui#2596 landed, and no batch has it",
         "my-data-where: server#678 landed, and no batch has it",
         "dna-strict: two options say the same",
-        "board: a ledger item is listed twice",
         "dna-strict: it chose an option it doesn't list",
+        "board: a ledger item is listed twice",
         "redeploy-home: it recommends an option it doesn't list",
       ],
     })

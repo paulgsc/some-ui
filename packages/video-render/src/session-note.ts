@@ -17,58 +17,54 @@ import { z } from "zod"
 import { once, problemsOf } from "./cut-list"
 import type { Parsed } from "./cut-list"
 import { words } from "./format"
-import { RefSchema } from "./refs"
+import {
+  choiceProblems,
+  ChoiceSchema,
+  epicTag,
+  IssueSchema,
+  PrSchema,
+} from "./refs"
 
 export const SESSION_NOTE_SCHEMA = "some-ui.session-note/1"
 
 /** A cloud session's id, as its link ends: "session_01LDpd…". */
 const sessionId = z.string().regex(/^session_[A-Za-z0-9]{8,64}$/)
 
-const CallSchema = z.strictObject({
-  title: words,
-  options: z.array(words).min(2).max(4),
-  /** The option it took, by its place in `options`. */
-  chose: z.number().int().nonnegative(),
-  why: words,
-  /** How the owner undoes it, if they would rather not. */
-  undo: words,
+export const SessionNoteSchema = z.strictObject({
+  schema: z.literal(SESSION_NOTE_SCHEMA),
+  session: sessionId,
+  /** The day it ended, as `YYYY-MM-DD`: the week whose call reads it. */
+  ended: z.iso.date(),
+  /** The epics it worked, by the tag their titles carry: "SFEED". */
+  epics: z.array(epicTag).max(12),
+  /** The pull requests it opened, merged or not. */
+  pulls: z.array(PrSchema).max(40),
+  /** What it did, in a few spoken sentences, in the owner's terms. */
+  did: words,
+  /** Calls it made without the owner's word, worth hearing. */
+  calls: z.array(ChoiceSchema).max(8),
+  /** What it left undone, each with why. */
+  left: z.array(words).max(12),
+  /** The issues it left waiting on the owner: asks, mostly. */
+  waits: z.array(IssueSchema).max(12),
 })
-
-export const SessionNoteSchema = z
-  .strictObject({
-    schema: z.literal(SESSION_NOTE_SCHEMA),
-    session: sessionId,
-    /** The day it ended, as `YYYY-MM-DD`: the week whose call reads it. */
-    ended: z.iso.date(),
-    /** The epics it worked, by the tag their titles carry: "SFEED". */
-    epics: z.array(z.string().regex(/^[A-Z][A-Z0-9-]{0,23}$/)).max(12),
-    /** The pull requests it opened, merged or not. */
-    pulls: z.array(RefSchema.extend({ kind: z.literal("pr") })).max(40),
-    /** What it did, in a few spoken sentences, in the owner's terms. */
-    did: words,
-    /** Calls it made without the owner's word, worth hearing. */
-    calls: z.array(CallSchema).max(8),
-    /** What it left undone, each with why. */
-    left: z.array(words).max(12),
-    /** The issues it left waiting on the owner: asks, mostly. */
-    waits: z.array(RefSchema.extend({ kind: z.literal("issue") })).max(12),
-  })
-  .refine((note) => note.calls.every((c) => c.chose < c.options.length), {
-    message: "a call chose an option it doesn't list",
-    path: ["calls"],
-  })
 
 export type SessionNote = z.infer<typeof SessionNoteSchema>
 
+/** The note, or every reason it can't be read: a call's options contradicting it among them. */
 export function parseSessionNote(raw: unknown): Parsed<SessionNote> {
   const parsed = SessionNoteSchema.safeParse(raw)
-  return parsed.success
-    ? { ok: true, value: parsed.data }
-    : { ok: false, problems: problemsOf(parsed.error, "session note") }
+  if (!parsed.success)
+    return { ok: false, problems: problemsOf(parsed.error, "session note") }
+  const problems = parsed.data.calls.flatMap((call, i) =>
+    choiceProblems(`calls.${i}`, call)
+  )
+  return problems.length > 0
+    ? { ok: false, problems }
+    : { ok: true, value: parsed.data }
 }
 
-/** The file a note is kept as in `sessions/`. */
-export const sessionNoteFile = (note: SessionNote): string =>
+const sessionNoteFile = (note: SessionNote): string =>
   `${note.ended}-${note.session}.json`
 
 /**

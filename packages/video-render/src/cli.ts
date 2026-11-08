@@ -32,8 +32,7 @@
  *   pnpm --filter @some-ui/video-render render session-check <sessions folder>
  *
  * checks a `sessions/` folder of `paulgsc/testing` before it is pushed
- * (`sessionFolderProblems`, SFEED9): every note against its schema, each
- * named for its day and session.
+ * (`sessionFolderProblems`, SFEED9).
  *
  *   pnpm --filter @some-ui/video-render render compare-hearings <home transcript> <session words>
  *
@@ -79,6 +78,14 @@ import { REPOS } from "./refs"
 import { sessionFolderProblems } from "./session-note"
 import { fromTimelineV1 } from "./timeline-v1"
 
+/** The JSON files directly in `dir`, by name. */
+async function readJsonFolder(dir: string): Promise<Map<string, unknown>> {
+  const files = new Map<string, unknown>()
+  for (const name of (await readdir(dir)).filter((n) => n.endsWith(".json")))
+    files.set(name, await readJson(join(dir, name)))
+  return files
+}
+
 async function main(): Promise<void> {
   const { values, positionals } = parseArgs({
     allowPositionals: true,
@@ -121,14 +128,11 @@ async function main(): Promise<void> {
   }
   if (first === "call-check") {
     if (!second) fail(["usage: render call-check <call folder>"])
-    const dir = here(second)
-    const names = (await readdir(dir)).filter((n) => n.endsWith(".json"))
-    const files = new Map<string, unknown>()
-    for (const name of names) files.set(name, await readJson(join(dir, name)))
+    const files = await readJsonFolder(here(second))
     const problems = callFolderProblems(files)
     if (problems.length > 0)
       fail([`${second} can't be published:`, ...problems])
-    const weeks = names.length - 1
+    const weeks = files.size - 1
     process.stdout.write(
       `${second}: ${weeks} ${weeks === 1 ? "week" : "weeks"}, ready
 `
@@ -159,15 +163,12 @@ async function main(): Promise<void> {
   }
   if (first === "session-check") {
     if (!second) fail(["usage: render session-check <sessions folder>"])
-    const dir = here(second)
-    const names = (await readdir(dir)).filter((n) => n.endsWith(".json"))
-    const files = new Map<string, unknown>()
-    for (const name of names) files.set(name, await readJson(join(dir, name)))
+    const files = await readJsonFolder(here(second))
     const problems = sessionFolderProblems(files)
     if (problems.length > 0)
       fail([`${second} can't be published:`, ...problems])
     process.stdout.write(
-      `${second}: ${names.length} ${names.length === 1 ? "note" : "notes"}, ready\n`
+      `${second}: ${files.size} ${files.size === 1 ? "note" : "notes"}, ready\n`
     )
     return
   }
