@@ -97,9 +97,13 @@ describe("step", () => {
     }
   })
 
-  it("keeps the copy when home didn't answer the read", () => {
-    const next = step(watched, { type: "readEnded", home: { kind: "away" } })
-    expect(next.fetch).toEqual(watched.fetch)
+  it("keeps what was read, and says so once, when a read again gets no answer", () => {
+    for (const kind of ["away", "unreadable"] as const) {
+      const next = step(watched, { type: "readEnded", home: { kind } })
+      expect(next.home).toEqual(watched.home)
+      expect(next.fetch).toEqual(watched.fetch)
+      expect(next.said).toEqual({ kind: "readFailed", why: kind })
+    }
   })
 
   it("says once why a press of Preview didn't reach home", () => {

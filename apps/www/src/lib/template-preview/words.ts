@@ -6,7 +6,9 @@
  */
 import { VIDEOS_WORDS } from "@/lib/call-videos/words"
 
-import type { MakeFailure, PreviewStanding } from "./model"
+import type { MakeFailure, PreviewStanding, ReadFailure } from "./model"
+
+const OLDER = "Home doesn't make previews yet. Update home, then try again."
 
 /** A moment, as the phone's clock reads it: "Sun 9:05 AM". */
 function moment(unixSeconds: number, timeZone?: string): string {
@@ -23,7 +25,7 @@ export const PREVIEW_WORDS = {
   /** What a drag down reads again. */
   what: "this template's preview",
   intro:
-    "Home makes a short video of this template from its sample words, the way it makes an episode. It's only a preview: it's never an episode, and home lets it go a day after it's made.",
+    "A preview is a short video of this template, made by home from its sample words the way it makes an episode. Home keeps only the newest, and lets it go on its own.",
   make: "Make a preview",
   asking: "Asking home…",
   none: "There's no preview of this template yet.",
@@ -42,11 +44,16 @@ export const PREVIEW_WORDS = {
   makeFailed: {
     unpaired: "Pair this phone with home to make a preview.",
     away: "Home didn't answer, so no preview was asked for. Try again.",
-    older: "Home doesn't make previews yet. Update home, then try again.",
-    unreadable: "Home's answer couldn't be read. Try again.",
+    older: OLDER,
+    unreadable: VIDEOS_WORDS.unreadable,
   } satisfies Record<MakeFailure, string>,
+  readFailed: {
+    away: "Home didn't answer, so this is the preview as last read.",
+    unreadable:
+      "Home's answer couldn't be read, so this is the preview as last read.",
+  } satisfies Record<ReadFailure, string>,
   unpaired: "Pair this phone with home to see this template's preview.",
-  older: "Home doesn't make previews yet. Update home, then try again.",
+  older: OLDER,
   reading: VIDEOS_WORDS.reading,
   away: VIDEOS_WORDS.away,
   unreadable: VIDEOS_WORDS.unreadable,

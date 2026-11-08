@@ -94,11 +94,16 @@ export type PreviewState = {
   readonly asking: boolean
   /** The phone's copy of the preview named `id`. */
   readonly fetch: { readonly id: string; readonly fetch: Fetch } | null
-  readonly said: {
-    readonly kind: "makeFailed"
-    readonly why: MakeFailure
-  } | null
+  readonly said: Said | null
 }
+
+/** A read again that didn't come back, while the page still shows the last. */
+export type ReadFailure = "away" | "unreadable"
+
+/** What the page says once, over itself (a `Notice`). */
+export type Said =
+  | { readonly kind: "makeFailed"; readonly why: MakeFailure }
+  | { readonly kind: "readFailed"; readonly why: ReadFailure }
 
 export const INITIAL: PreviewState = {
   home: { kind: "reading" },
@@ -134,6 +139,13 @@ export function step(state: PreviewState, event: PreviewEvent): PreviewState {
         : { ...state, home: { kind: "reading" } }
     }
     case "readEnded": {
+      // A read again that didn't come back keeps what was read on the page,
+      // a preview being watched included, and says so once.
+      if (
+        state.home.kind === "read" &&
+        (event.home.kind === "away" || event.home.kind === "unreadable")
+      )
+        return { ...state, said: { kind: "readFailed", why: event.home.kind } }
       const next = { ...state, home: event.home }
       // The phone's copy is of the ready preview home still holds, or none.
       return state.fetch !== null &&

@@ -155,8 +155,13 @@ export const TemplatePreview = ({
     <Part label={WORDS.heading}>
       <p className="text-muted-foreground text-sm">{WORDS.intro}</p>
       {state.said !== null && (
-        <Notice key={state.said.why} onDismiss={() => runtime.seen()}>
-          {WORDS.makeFailed[state.said.why]}
+        <Notice
+          key={`${state.said.kind}-${state.said.why}`}
+          onDismiss={() => runtime.seen()}
+        >
+          {state.said.kind === "makeFailed"
+            ? WORDS.makeFailed[state.said.why]
+            : WORDS.readFailed[state.said.why]}
         </Notice>
       )}
       <Button

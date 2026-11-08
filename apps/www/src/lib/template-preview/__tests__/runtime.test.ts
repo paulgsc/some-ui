@@ -56,7 +56,7 @@ function fakes(home: HomeState = { kind: "read", preview: ready() }): {
       make: vi.fn<PreviewPorts["make"]>(() =>
         Promise.resolve({ kind: "asked" as const })
       ),
-      part: vi.fn<PreviewPorts["part"]>((start, end) =>
+      part: vi.fn<PreviewPorts["part"]>((_id, start, end) =>
         Promise.resolve({
           kind: "bytes" as const,
           base64: bytes(end - start + 1),
@@ -100,9 +100,9 @@ describe("a template's preview", () => {
     expect(ports.part).not.toHaveBeenCalled()
     await preview.watch()
     expect(ports.part.mock.calls).toEqual([
-      [0, 3],
-      [4, 7],
-      [8, 9],
+      ["conference-call-1", 0, 3],
+      ["conference-call-1", 4, 7],
+      ["conference-call-1", 8, 9],
     ])
     expect(preview.getSnapshot().fetch).toEqual({
       id: "conference-call-1",
@@ -125,10 +125,10 @@ describe("a template's preview", () => {
   })
 
   it("stops bringing a preview over once a read finds a newer one", async () => {
-    const { ports, setHome } = fakes()
+    const { ports, kept, setHome } = fakes()
     const preview = createTemplatePreview(ports)
     await preview.open()
-    ports.part.mockImplementationOnce(async (start, end) => {
+    ports.part.mockImplementationOnce(async (_id, start, end) => {
       setHome({ kind: "read", preview: ready({ id: "conference-call-2" }) })
       await preview.open()
       return { kind: "bytes", base64: bytes(end - start + 1) }
@@ -136,6 +136,22 @@ describe("a template's preview", () => {
     await preview.watch()
     expect(ports.part).toHaveBeenCalledTimes(1)
     expect(preview.getSnapshot().fetch).toBeNull()
+    // The old preview's part-written copy is let go.
+    expect(kept.has("conference-call-1")).toBe(false)
+  })
+
+  it("keeps a preview being watched on the page when a read again gets no answer", async () => {
+    const { ports, kept, setHome } = fakes()
+    const preview = createTemplatePreview(ports)
+    await preview.open()
+    await preview.watch()
+    setHome({ kind: "away" })
+    await preview.open()
+    const after = preview.getSnapshot()
+    expect(after.home).toEqual({ kind: "read", preview: ready() })
+    expect(after.fetch?.fetch.kind).toBe("ready")
+    expect(after.said).toEqual({ kind: "readFailed", why: "away" })
+    expect(kept.has("conference-call-1")).toBe(true)
   })
 
   it("says why a fetch failed: home let the preview go", async () => {

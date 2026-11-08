@@ -6,29 +6,26 @@
  *
  * - **The read** happens on open, a drag down, Try again, and once after
  *   Preview. Nothing reads on a clock: the page says how far home has got
- *   when it is read.
+ *   when it is read. A read that finds a newer preview, or none, lets the
+ *   phone's copy of the old one go.
  * - **Preview** asks home once; a press while one is asked does nothing.
- * - **Watch** brings the ready preview to the phone a part at a time
- *   (`fetchParts`, as Studio's feed videos do), then hands the page its
- *   address. A copy already on the phone, whole, reads as ready at once.
+ * - **Watch** brings the ready preview over as Studio's feed videos bring an
+ *   episode (`bringVideo`). Each Watch is its own run, stopped once a read
+ *   lets its preview go.
  */
-import type { FetchFailure, PartRead } from "@/lib/call-videos/model"
-import { fetchParts } from "@/lib/call-videos/parts"
+import type { PartRead } from "@/lib/call-videos/model"
+import { bringVideo, keptCopy } from "@/lib/call-videos/parts"
 import type { VideoFiles } from "@/lib/call-videos/runtime"
 
-import type {
-  HomeState,
-  MakeAsked,
-  Preview,
-  PreviewEvent,
-  PreviewState,
-} from "./model"
+import type { HomeState, MakeAsked, PreviewEvent, PreviewState } from "./model"
 import { INITIAL, readyPreview, step } from "./model"
 
 export type PreviewPorts = {
   read: () => Promise<HomeState>
   make: () => Promise<MakeAsked>
+  /** Bytes `start` to `end` of preview `id`'s video. */
   part: (
+    id: string,
     start: number,
     end: number
   ) => Promise<PartRead | { readonly kind: "away" }>
@@ -52,35 +49,38 @@ export function createTemplatePreview(ports: PreviewPorts): TemplatePreview {
     state = step(state, event)
     for (const listener of listeners) listener()
   }
-
-  /** A ready preview whose whole video the phone keeps reads as ready. */
-  const kept = async (preview: Preview): Promise<boolean> => {
-    const size = await ports.files.size(preview.id)
-    if (size === null || size !== preview.bytes) return false
-    const where = await ports.files.where(preview.id)
-    if (where === null) return false
-    dispatch({
-      type: "fetchMoved",
-      id: preview.id,
-      fetch: { kind: "ready", ...where },
-    })
-    return true
-  }
-
-  const failed = (id: string, why: FetchFailure): void => {
-    dispatch({ type: "fetchMoved", id, fetch: { kind: "failed", why } })
-  }
+  /** The Watch running now, by a number no other has; 0 while none. */
+  let run = 0
+  let runs = 0
 
   const open = async (): Promise<void> => {
     dispatch({ type: "readAsked" })
+    const had = state.fetch?.id ?? null
     const home = await ports.read()
     dispatch({ type: "readEnded", home })
+    if (had !== null && state.fetch === null) {
+      // Home holds a newer preview, or none: stop the old one's Watch, and
+      // let the phone's copy of it go.
+      // A Watch still running lets its copy go itself once its last write
+      // ends; with none, it goes now.
+      if (run === 0) {
+        await ports.files.remove(had)
+      } else {
+        run = 0
+      }
+    }
     const ready = readyPreview(state)
-    if (ready === null) return
+    if (ready?.bytes === undefined) return
     const now = state.fetch?.fetch
-    if (now === undefined) {
-      await kept(ready)
-    } else if (now.kind === "ready" && !(await kept(ready))) {
+    if (now?.kind === "fetching") return
+    const where = await keptCopy(ports.files, ready.id, ready.bytes)
+    if (where !== null) {
+      dispatch({
+        type: "fetchMoved",
+        id: ready.id,
+        fetch: { kind: "ready", ...where },
+      })
+    } else if (now?.kind === "ready") {
       // Android may clear the cache while the app stays open.
       dispatch({ type: "fetchForgotten" })
     }
@@ -112,37 +112,35 @@ export function createTemplatePreview(ports: PreviewPorts): TemplatePreview {
       const total = ready?.bytes
       if (ready === null || total === undefined) return
       const { id } = ready
+      runs += 1
+      const mine = runs
+      run = mine
       // In flight before the first wait, so a second Watch finds it fetching.
       dispatch({
         type: "fetchMoved",
         id,
         fetch: { kind: "fetching", done: 0, total },
       })
-      if (await kept(ready)) return
-      // A newer read let this preview go: stop writing it.
-      const stopped = (): boolean => state.fetch?.id !== id
-      const ended = await fetchParts(
+      await bringVideo(
         {
-          part: ports.part,
-          put: (base64, first) => ports.files.put(id, base64, first),
+          files: ports.files,
+          part: (start, end) => ports.part(id, start, end),
           partBytes: ports.partBytes,
-          stopped,
-          moved: (done) => {
-            dispatch({
-              type: "fetchMoved",
-              id,
-              fetch: { kind: "fetching", done, total },
-            })
+          stopped: () => run !== mine,
+          moved: (fetch) => {
+            dispatch({ type: "fetchMoved", id, fetch })
           },
         },
+        id,
         total
       )
-      if (ended === "stopped") return
-      if (ended !== "done") {
-        failed(id, ended)
-        return
+      if (run === mine) {
+        run = 0
+      } else if (state.fetch?.id !== id) {
+        // A read let this preview go while it came in, and no later Watch
+        // brings it again.
+        await ports.files.remove(id)
       }
-      if (!(await kept(ready))) failed(id, "phone")
     },
 
     seen(): void {

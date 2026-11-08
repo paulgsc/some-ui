@@ -31,7 +31,7 @@ import type {
   VideosState,
 } from "./model"
 import { INITIAL, step } from "./model"
-import { fetchParts } from "./parts"
+import { bringVideo, keptCopy } from "./parts"
 
 /**
  * The phone's copies of one feed's videos, in its cache, by episode key.
@@ -103,9 +103,7 @@ export function createFeedVideos(ports: VideosPorts): FeedVideos {
   /** An episode whose whole video the phone keeps reads as ready. */
   const kept = async (episode: Episode): Promise<boolean> => {
     if (episode.videoBytes === null) return false
-    const size = await ports.files.size(episode.key)
-    if (size !== episode.videoBytes) return false
-    const where = await ports.files.where(episode.key)
+    const where = await keptCopy(ports.files, episode.key, episode.videoBytes)
     if (where === null) return false
     dispatch({
       type: "fetchMoved",
@@ -144,32 +142,20 @@ export function createFeedVideos(ports: VideosPorts): FeedVideos {
    * Brings `episode`'s video to the phone a part at a time. It stops,
    * writing nothing more, once `forget` is stopping the episode.
    */
-  const fetchVideo = async (episode: Episode, total: number): Promise<void> => {
-    const { key } = episode
-    if (stopping.has(key) || (await kept(episode))) return
-    const ended = await fetchParts(
+  const fetchVideo = (episode: Episode, total: number): Promise<void> =>
+    bringVideo(
       {
-        part: (start, end) => ports.part(key, start, end),
-        put: (base64, first) => ports.files.put(key, base64, first),
+        files: ports.files,
+        part: (start, end) => ports.part(episode.key, start, end),
         partBytes: ports.partBytes,
-        stopped: () => stopping.has(key),
-        moved: (done) => {
-          dispatch({
-            type: "fetchMoved",
-            key,
-            fetch: { kind: "fetching", done, total },
-          })
+        stopped: () => stopping.has(episode.key),
+        moved: (fetch) => {
+          dispatch({ type: "fetchMoved", key: episode.key, fetch })
         },
       },
+      episode.key,
       total
     )
-    if (ended === "stopped") return
-    if (ended !== "done") {
-      failed(key, ended)
-      return
-    }
-    if (!(await kept(episode))) failed(key, "phone")
-  }
 
   return {
     subscribe(listener): () => void {

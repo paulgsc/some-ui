@@ -6,8 +6,9 @@
  *   pressed; home makes none while one is still being made;
  * - `GET /previews/:template` reads the newest, on open, a drag down, Try
  *   again, and once after Preview;
- * - `GET /previews/:template/video`, a range of at most `PART_BYTES` per
- *   part, while Watch brings it to the phone.
+ * - `GET /previews/:template/:id/video`, a range of at most `PART_BYTES`
+ *   per part, while Watch brings preview `id` to the phone; naming it means a
+ *   newer preview can't be sent in its place.
  *
  * Nothing of the phone's is sent. What the screen makes of each answer is
  * `lib/template-preview`'s, its one caller.
@@ -34,15 +35,21 @@ export function askPreview(template: TemplateId): Promise<CallAsked> {
   )
 }
 
-/** Asks home once for bytes `start` to `end` of the preview's video; never rejects. */
+/** Asks home once for bytes `start` to `end` of preview `id`'s video; never rejects. */
 export function askPreviewPart(
   template: TemplateId,
+  id: string,
   start: number,
   end: number
 ): Promise<CallAsked> {
   return asked(() =>
     homeLink().keep((send) =>
-      send("GET", `${previewPath(template)}/video`, undefined, { start, end })
+      send(
+        "GET",
+        `${previewPath(template)}/${encodeURIComponent(id)}/video`,
+        undefined,
+        { start, end }
+      )
     )
   )
 }

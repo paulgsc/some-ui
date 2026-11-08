@@ -43,9 +43,9 @@ function create(template: TemplateId): TemplatePreview {
       if (asked.kind === "answered") return readMade(asked.answer)
       return { kind: "away" }
     },
-    async part(start, end) {
+    async part(id, start, end) {
       const asked = await askWhileBusy(() =>
-        askPreviewPart(template, start, end)
+        askPreviewPart(template, id, start, end)
       )
       return asked.kind === "answered"
         ? readPart(asked.answer)
