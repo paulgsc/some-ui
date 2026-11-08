@@ -98,6 +98,7 @@ describe("homeBytes", () => {
     expect(homeBytes([episode({ videoBytes: null, restBytes: null })])).toBe(
       null
     )
+    expect(homeBytes([episode({ videoBytes: null, restBytes: 0 })])).toBeNull()
   })
 })
 

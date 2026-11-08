@@ -90,18 +90,14 @@ export function readLinkSaved(answer: HomeAnswer): LinkSaved {
 
 /**
  * What home holds of a feed's episodes, in bytes: each video and the rest
- * it was made from (SFEED8); null for none held.
+ * it was made from (SFEED8); null when it holds nothing.
  */
 export function homeBytes(episodes: ReadonlyArray<Episode>): number | null {
-  const held = episodes.filter(
-    (one) => one.videoBytes !== null || one.restBytes !== null
+  const sum = episodes.reduce(
+    (total, one) => total + (one.videoBytes ?? 0) + (one.restBytes ?? 0),
+    0
   )
-  return held.length === 0
-    ? null
-    : held.reduce(
-        (sum, one) => sum + (one.videoBytes ?? 0) + (one.restBytes ?? 0),
-        0
-      )
+  return sum === 0 ? null : sum
 }
 
 /** Where an episode stands on home. */

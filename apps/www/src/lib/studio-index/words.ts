@@ -93,7 +93,7 @@ const HOME_LETS_GO =
 const ON_THE_PHONE: Kept = {
   what: "Your notes on its episodes, under Feedback, and a copy of each episode you watched.",
   letGo:
-    "Your notes are kept. A watched copy is the phone's to clear, and home still has the episode.",
+    "Your notes are kept. A watched copy is the phone's to clear, and it goes when home's video is let go.",
 }
 
 const NOTHING_IN_DRIVE: Kept = {
