@@ -487,6 +487,30 @@ jobs:
             echo "No burn-in or renderer files changed."
           fi
 
+      # HYPER1 (#2724): HyperFrames draws a composition to the same bytes
+      # twice with the pins in packages/video-motion/src/pin.ts, on the nix
+      # shell's Chromium and ffmpeg. Scoped to the workspace, the renderer it
+      # imports, and the lockfile and flake, which pin HyperFrames, Chromium and
+      # ffmpeg. Uploads nothing.
+      - name: E2E — HyperFrames renders the same bytes twice (video-motion)
+        run: |
+          files=$(git diff --name-only --diff-filter=ACMR HEAD^1 -- \
+            'packages/video-motion/**' \
+            'packages/video-render/**' \
+            'pnpm-lock.yaml' \
+            'flake.nix' \
+            'flake.lock' \
+            'nix/video/**' || true)
+          if [ -n "$files" ]; then
+            nix develop .#ci --command pnpm turbo run build \
+              --filter='@some-ui/video-motion^...' \
+              --concurrency=100%
+            nix develop .#ci-playwright --command \
+              pnpm --filter @some-ui/video-motion motion prove sample
+          else
+            echo "No files a composition's render reads changed."
+          fi
+
       # MIC9 (#2379): the real recorder (packages/voice-capture's recorder.ts:
       # getUserMedia, MediaRecorder, the level meter), which every other test
       # replaces. Chromium plays a committed clip as its microphone, the page

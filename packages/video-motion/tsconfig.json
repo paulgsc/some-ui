@@ -1,0 +1,16 @@
+{
+  "extends": "@some-ui/tsconfig/base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "noEmit": true,
+    "types": ["node"],
+    "rootDir": ".",
+    "paths": {
+      "@video-motion/*": ["./src/*"]
+    }
+  },
+  "include": ["src", "eslint.config.js", "vitest.config.ts"],
+  "exclude": ["node_modules", "dist"]
+}

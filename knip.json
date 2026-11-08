@@ -126,6 +126,9 @@
         "tests/real-microphone/*.spec.ts",
         "tests/real-microphone/clips/make-clips.ts"
       ]
+    },
+    "packages/video-motion": {
+      "ignoreDependencies": ["@fontsource/barlow-condensed"]
     }
   }
 }
