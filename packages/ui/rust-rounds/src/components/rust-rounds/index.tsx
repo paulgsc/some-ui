@@ -14,6 +14,7 @@
  */
 import type { JSX, ReactNode } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
+import { RunView } from "@rust-rounds/components/rustc-run"
 import type { Card, Round, RustcRun } from "@rust-rounds/lib/formats"
 import { programLines, resolvePrograms } from "@rust-rounds/lib/formats"
 import {
@@ -32,7 +33,7 @@ import { cardNote, deskNote } from "@rust-rounds/lib/play/note"
 import type { NotesPort, RustRoundsPorts } from "@rust-rounds/lib/play/runtime"
 import { createRustRounds, NO_MICROPHONE } from "@rust-rounds/lib/play/runtime"
 import type { Visit } from "@rust-rounds/lib/play/store"
-import { runHeading, WORDS } from "@rust-rounds/lib/play/words"
+import { WORDS } from "@rust-rounds/lib/play/words"
 import {
   Button,
   CodeCard,
@@ -51,79 +52,12 @@ export type RustRoundsProps = {
 
 type Dispatch = (intent: PlayIntent) => void
 
-/** What the tutor's page made of a reply. */
-
-/** Text exactly as printed: kept whole, never wrapped, scrolled sideways. */
-const Printed = ({
-  label,
-  text,
-}: {
-  label: string
-  text: string
-}): JSX.Element => (
-  <section className="flex min-w-0 flex-col gap-1">
-    <h3 className="text-muted-foreground text-xs font-semibold">{label}</h3>
-    <pre
-      data-scroll-intent="code-display"
-      className="bg-muted/40 m-0 min-w-0 overflow-x-auto rounded-md p-3 font-mono text-xs leading-relaxed whitespace-pre"
-    >
-      {text}
-    </pre>
-  </section>
-)
-
 const NO_RUN_WORDS: Readonly<Record<NoRun, string>> = {
   waits: WORDS.noRun,
   ended: WORDS.noRunWillCome,
   refused: WORDS.noRunRefused,
   unread: WORDS.noRunUnread,
   "no-home": WORDS.noRunHere,
-}
-
-/** rustc's recorded result, laid out from its JSON, as printed. */
-
-const RunView = ({
-  run,
-  none,
-}: {
-  run: RustcRun | null
-  /** Why there is no run, when `run` is null. */
-  none: NoRun
-}): JSX.Element => {
-  if (run === null) {
-    return <p className="text-muted-foreground text-sm">{NO_RUN_WORDS[none]}</p>
-  }
-  const compiling =
-    run.outcome !== "compile-error" && run.compileStderr !== "" ? (
-      <Printed label={WORDS.compiling} text={run.compileStderr} />
-    ) : null
-  return (
-    <div className="flex min-w-0 flex-col gap-3">
-      <p className="flex flex-wrap items-baseline justify-between gap-x-3">
-        <span className="font-semibold">{runHeading(run)}</span>
-        <span className="text-muted-foreground font-mono text-xs">
-          {WORDS.rustcVersion(run.toolchain)}
-        </span>
-      </p>
-      {run.outcome === "compile-error" ? (
-        <Printed label={WORDS.rustcPrinted} text={run.stderr} />
-      ) : (
-        <>
-          {compiling}
-          {run.stdout === "" ? (
-            <p className="text-muted-foreground text-sm">
-              {WORDS.printedNothing}
-            </p>
-          ) : (
-            <Printed label={WORDS.printed} text={run.stdout} />
-          )}
-          {run.outcome !== "prints" && run.stderr !== "" && (
-            <Printed label={WORDS.errorOutput} text={run.stderr} />
-          )}
-        </>
-      )}
-    </div>
-  )
 }
 
 /** What a card's voice note needs besides the session: the notes the phone keeps. */
@@ -367,11 +301,15 @@ const CardScreen = ({
           <Program round={round} card={card} run={run} />
           <RunView
             run={run}
-            none={whyNoRun(
-              state.held,
-              { round: visit.round, card: visit.card },
-              home
-            )}
+            none={
+              NO_RUN_WORDS[
+                whyNoRun(
+                  state.held,
+                  { round: visit.round, card: visit.card },
+                  home
+                )
+              ]
+            }
           />
           <p className="text-lg font-semibold">{card.ask}</p>
           <VoiceNote

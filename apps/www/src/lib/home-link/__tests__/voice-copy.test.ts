@@ -19,6 +19,7 @@ import {
   reflectionNote,
   refOf,
   rustRoundNote,
+  rustWeekNote,
   sceneNote,
   soundbiteNote,
   unsendable,
@@ -54,6 +55,24 @@ describe("what each voice note is told home as", () => {
       contentType: "audio/webm",
     })
     expect(rustRoundNote({ ...take, line: "elsewhere" }, ref)).toBeNull()
+  })
+
+  it("tells a take on a week's ticket by its week and ticket, the ref home takes (RR13)", () => {
+    expect(
+      rustWeekNote({
+        id: "w1",
+        line: "2026-w46:QM-311",
+        takenAt: Date.parse("2026-11-10T18:20:00.000Z"),
+        durationMs: 3000,
+        mimeType: "audio/webm",
+      })
+    ).toEqual({
+      id: "w1",
+      of: "rust-round",
+      ref: "2026-w46:QM-311",
+      at: "2026-11-10T18:20:00.000Z",
+      contentType: "audio/webm",
+    })
   })
 
   it("tells a soundbite by how it came to be recorded, a lens take by its line and a LeetType take by its file and screen (HF5)", () => {

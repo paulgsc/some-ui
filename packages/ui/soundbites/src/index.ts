@@ -19,7 +19,6 @@ export type { IdeasHome } from "./lib/idea/on-home-runtime"
 export { IdeaShelf } from "./components/idea-shelf"
 export type { IdeaShare, IdeaShelfProps } from "./components/idea-shelf"
 export type {
-  HeardAnswer,
   HearingPorts,
   HearingTiming,
   IdeaTakes,

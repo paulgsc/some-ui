@@ -414,7 +414,12 @@ declared (checked by reading every call site and by the tests named).
   shows a take home is hearing, never while the page is hidden, for at most
   3 minutes from the take's keeping; once home didn't answer, none more for
   that take, nor for any for 5 minutes on that pairing; the owner's
-  direction on #2428, 2026-11-01, and IH1), and My data asking home what it
+  direction on #2428, 2026-11-01, and IH1), and Rust Rounds' week asking
+  home for the words of each take sent (`routes/_dashboard/_apk/rust-rounds.tsx`
+  hands `lib/home-link/heard`'s read to `@some-ui/rust-rounds`'
+  `createRustWeek`: one `GET /voice-notes/:id/heard` per take sent whose
+  words the phone lacks, each time the week opens on what was sent, never on
+  a clock; RR13 #2688), and My data asking home what it
   keeps (`lib/my-data`, through `lib/home-link/kept-read`'s `keep`: one
   `GET /voice-notes/kept`, with `?of=` on a kind's page (and `&note=` for
   the recording another screen's "Delete…" opened it on), and on the
@@ -588,7 +593,8 @@ declared (checked by reading every call site and by the tests named).
   has `letGoDeleted` (`lib/home-link/voice-copy`) called for a note home
   did not answer with a receipt; one that has `heard.ts` send anything but one
   `GET` of `heardPath(id)` per ask, lets anything but `lib/idea-hearing`
-  read it, or has `@some-ui/soundbites`' `stepHearing` ask while the page is
+  and the Rust Rounds route read it, has `createRustWeek` ask for a take
+  more than once per opening, for one it holds words of, or on a clock, or has `@some-ui/soundbites`' `stepHearing` ask while the page is
   hidden, more often than `pollMs`, with a second ask out, or past
   `deadlineMs` (`HEARING_TIMING`, 5 s and 3 minutes), or widens either; one that
   has `lib/home-link/on-drive.ts` send anything but its `GET`s, one per 100

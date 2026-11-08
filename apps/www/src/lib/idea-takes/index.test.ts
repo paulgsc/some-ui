@@ -1,10 +1,12 @@
 /** @vitest-environment node */
 import { fileURLToPath } from "node:url"
+import type { homeHearing as HomeHearing } from "@some-ui/soundbites"
 import type {
+  BlobShelf,
   HeardAnswer,
-  homeHearing as HomeHearing,
-} from "@some-ui/soundbites"
-import type { BlobShelf, Listened, Playback } from "@some-ui/voice-capture"
+  Listened,
+  Playback,
+} from "@some-ui/voice-capture"
 import { microphoneOwner } from "@some-ui/voice-capture"
 import { simulatedMicrophone, SPEAKING } from "@some-ui/voice-capture/testing"
 import { afterEach, describe, expect, it, vi } from "vitest"

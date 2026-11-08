@@ -1,6 +1,11 @@
 /** @vitest-environment node */
 import { inMemoryStorage } from "@some-ui/core-utils"
-import type { Listening, TakeKit, TurnListener } from "@some-ui/voice-capture"
+import type {
+  HeardAnswer,
+  Listening,
+  TakeKit,
+  TurnListener,
+} from "@some-ui/voice-capture"
 import { microphoneOwner, NO_LISTENER, takeKit } from "@some-ui/voice-capture"
 import type { KeepScript, MicScript } from "@some-ui/voice-capture/testing"
 import {
@@ -8,11 +13,7 @@ import {
   simulatedMicrophone,
   SPEAKING,
 } from "@some-ui/voice-capture/testing"
-import type {
-  HeardAnswer,
-  HearingState,
-  IdeaTakes,
-} from "@soundbites/lib/idea/hearing"
+import type { HearingState, IdeaTakes } from "@soundbites/lib/idea/hearing"
 import {
   HEARING_TIMING,
   homeHearing,

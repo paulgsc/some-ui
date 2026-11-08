@@ -155,8 +155,15 @@ export type BundleSpec<K extends BundleKind> = {
     edit: K["edit"],
     context: K["context"]
   ) => K["draft"]
-  /** What else Send needs of `draft` at `at`, besides the required items; null for nothing. */
-  readonly missing: (draft: K["draft"], at: string) => K["need"] | null
+  /**
+   * What else Send needs of `draft` at `at`, with `said` items answered,
+   * besides the required items; null for nothing.
+   */
+  readonly missing: (
+    draft: K["draft"],
+    at: string,
+    said: number
+  ) => K["need"] | null
   /** Whether a draft kept opens on its cards, rather than on the screen before them. */
   readonly resumesOnCards: (draft: K["draft"]) => boolean
   /** The record Send keeps: the answers, and the items passed over, in order. */
@@ -569,7 +576,7 @@ export function bundleMachine<K extends BundleKind>(
 
   /** What Send still needs: the spec's own first, then a required answer. */
   function missing(state: Pick<State, "draft" | "takes" | "at">): Missing<K> {
-    const own = spec.missing(state.draft, state.at)
+    const own = spec.missing(state.draft, state.at, answeredCount(state))
     if (own !== null) return own
     const first = items.find(
       (item) => spec.required(item) && answered(state, item) === null
@@ -943,7 +950,7 @@ export function bundleMachine<K extends BundleKind>(
           : withDraft(next, { ...draft, later: [...draft.later, event.item] })
       }
       case "review": {
-        return state.screen === "cards"
+        return state.screen === "cards" || state.screen === "intro"
           ? then(hushed(state), (quiet) =>
               same({ ...quiet, screen: "review", notice: null })
             )
@@ -1008,7 +1015,9 @@ export function bundleMachine<K extends BundleKind>(
     // A step that changes nothing keeps the state as it was, unless the time
     // changes what Send still needs (a deadline passing).
     if (next.state !== stamped || next.effects.length > 0) return next
-    return spec.missing(state.draft, at) === spec.missing(state.draft, state.at)
+    const said = answeredCount(state)
+    return spec.missing(state.draft, at, said) ===
+      spec.missing(state.draft, state.at, said)
       ? same(state)
       : same(stamped)
   }
