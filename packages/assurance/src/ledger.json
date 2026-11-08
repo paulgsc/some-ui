@@ -2700,6 +2700,13 @@
       "family": "what-is-kept"
     },
     {
+      "store": "phone:episode-feedback",
+      "class": "record",
+      "growth": "bounded: each note left on a feed's episode (SFEED6, #2745): the feed, the episode's key, the moment in it, the categories picked from the fixed set and when it was written, a few hundred bytes each, append-only; at 1,000 notes (about 250 KB) a new one is refused and none is dropped (`some-ui:episode-feedback`).",
+      "horizon": "the phone keeps every note; none is rewritten or let go",
+      "family": "what-is-kept"
+    },
+    {
       "store": "phone:idea-draft",
       "class": "cache",
       "growth": "One new idea before it is sent (ST26, #2453): its title (at most 80 characters), subject, keywords, format, the questions left for later and any answer typed because voice didn't work (at most 1,000 characters each), a few KB; overwritten on each change (`some-ui:studio:idea-draft`).",

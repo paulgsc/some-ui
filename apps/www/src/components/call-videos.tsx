@@ -4,12 +4,13 @@
  * Episodes (SFEED1, `EpisodeScreen`). On it, Watch brings the video to the
  * phone and plays it, Share to YouTube hands it to the share sheet, and its
  * YouTube link is saved with the episode; once home's copy is let go (My
- * data), the link is how it is watched. Reads `lib/call-videos`' snapshot of
+ * data), the link is how it is watched. While it plays, a note can be left
+ * at a moment of it (SFEED6, `EpisodeNote`). Reads `lib/call-videos`' snapshot of
  * the feed (`useFeedVideos`) and says what was pressed; every word is its
  * `VIDEOS_WORDS` and `FEED_WORDS`. Phone build only.
  */
 import type { JSX, ReactNode } from "react"
-import { useEffect, useState, useSyncExternalStore } from "react"
+import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { assertNever, formatSize } from "@some-ui/core-utils"
 import { Button, Input, Notice } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
@@ -31,24 +32,29 @@ import type {
 } from "@/lib/call-videos/model"
 import { standing } from "@/lib/call-videos/model"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
+import { EpisodeNote } from "@/components/studio/episode-feedback"
 import { TILE, TileBody } from "@/components/studio/layout"
 
 const WORDS = VIDEOS_WORDS
 
 const Watching = ({
+  feed,
   episode,
   fetch,
   videos,
 }: {
+  feed: Feed
   episode: Episode
   fetch: Fetch | undefined
   videos: FeedVideos
 }): JSX.Element => {
+  const video = useRef<HTMLVideoElement>(null)
   if (fetch?.kind === "ready") {
     return (
       <div className="flex flex-col gap-2">
         {/* eslint-disable-next-line jsx-a11y/media-has-caption -- the words are drawn on screen (the call's in every scene, Playoff Delta's where its shape draws captions), and home makes no caption file */}
         <video
+          ref={video}
           src={fetch.src}
           controls
           playsInline
@@ -57,6 +63,7 @@ const Watching = ({
         <Button size="sm" onClick={() => void videos.share(episode.key)}>
           {WORDS.share}
         </Button>
+        <EpisodeNote feed={feed} episode={episode.key} video={video} />
       </div>
     )
   }
@@ -153,7 +160,7 @@ const EpisodeRow = ({
         </p>
       )}
       {stands === "kept" && (
-        <Watching episode={episode} fetch={fetch} videos={videos} />
+        <Watching feed={feed} episode={episode} fetch={fetch} videos={videos} />
       )}
       {stands === "letGo" && (
         <p className="text-muted-foreground text-sm">
