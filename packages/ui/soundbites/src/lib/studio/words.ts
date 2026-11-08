@@ -1134,6 +1134,9 @@ export const STUDIO_WORDS = {
     saidAgain:
       "Your new take waits on this phone. Home keeps this answer as it is until you send the idea again.",
     sendAgain: "Send it again",
+    /** An answer sent again that home's last word doesn't show yet. */
+    answerSentAgain:
+      "Said again and sent from this phone. Home's words for it show here once it has the new take.",
     sendAgainLine: (n: number): string =>
       `Sends the idea with ${plural(n, "new take", "new takes")}. Home keeps every version, and sets aside each take a new one replaces.`,
     setAside: "Set it aside",

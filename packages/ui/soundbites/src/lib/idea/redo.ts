@@ -17,7 +17,9 @@
  * - **One waiting take per answer.** A take said again before the idea is
  *   sent replaces the waiting one, which never left the phone and nothing
  *   will send, so it is deleted for good (`overtaken`), as a new idea's is
- *   before its Send.
+ *   before its Send. Only a draft: a take a kept idea names (`namedTakes`)
+ *   is the idea's record, even while it still waits after a send again cut
+ *   short, and is never offered, overtaken or deleted as a draft.
  * - **A send cut short is finished** (`cutShort`): a waiting take the idea
  *   kept already names goes home, and the take before it is set aside.
  */
@@ -95,6 +97,33 @@ export function sayable(idea: Idea): ReadonlyArray<QuestionId> {
     const typed = answer.versions.some((version) => version.how === "typed")
     return said && !typed ? [question] : []
   })
+}
+
+/**
+ * Every take the kept ideas name: each one the idea's record, which no
+ * clean-up of drafts may delete, even while it still waits to go home.
+ */
+export function namedTakes(ideas: ReadonlyArray<Idea>): ReadonlyArray<string> {
+  return ideas.flatMap((idea) =>
+    idea.answers.flatMap((answer) => (answer.takes ?? []).map((t) => t.take))
+  )
+}
+
+/** By idea and question, the take each said answer is now. */
+export function latestTakes(
+  ideas: ReadonlyArray<Idea>
+): Readonly<Record<string, Readonly<Record<string, string>>>> {
+  return Object.fromEntries(
+    ideas.map((idea) => [
+      idea.id,
+      Object.fromEntries(
+        idea.answers.flatMap((answer) => {
+          const take = answer.takes?.at(-1)?.take
+          return take === undefined ? [] : [[answer.question, take]]
+        })
+      ),
+    ])
+  )
 }
 
 /** What sending an idea again does. */

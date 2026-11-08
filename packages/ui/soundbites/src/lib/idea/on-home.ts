@@ -210,10 +210,13 @@ export function withHomeWords(
       if (
         newest === undefined ||
         take === undefined ||
-        // Words kept since its take now was said: an answer said again
-        // (#2579) still hears its new take's.
+        // Words typed or fixed since its take now was said stand. Words heard
+        // in an earlier take never do, however late home heard them: an
+        // answer said again (#2579) still hears its new take's.
         answer.versions.some(
-          (version) => Date.parse(version.at) >= Date.parse(newest.at)
+          (version) =>
+            version.how !== "heard" &&
+            Date.parse(version.at) >= Date.parse(newest.at)
         ) ||
         heard === null ||
         heard === undefined ||
@@ -255,23 +258,65 @@ export type OnHomeNotice =
 /** How sending an idea again went, as the runtime tells the machine. */
 export type SentAgain = "sent" | "partly" | "unkept"
 
-/** Answers said again on this phone (#2579): what the machine holds of them. */
-export type RedoState = {
-  /**
-   * By idea, the questions this phone can say again (`./redo`'s
-   * `sayable`), from the ideas it keeps; none until they are read.
-   */
+/** What the ideas kept on this phone say of their said answers (#2579). */
+type PhoneIdeas = {
+  /** By idea, the questions this phone can say again (`./redo`'s `sayable`). */
   readonly sayable: Readonly<Record<string, ReadonlyArray<string>>>
+  /**
+   * Every take a kept idea names (`./redo`'s `namedTakes`): the idea's
+   * record, never a draft, even while one still waits to go home after a
+   * send again cut short.
+   */
+  readonly named: ReadonlyArray<string>
+  /** By idea and question, the take its answer is now (`latestTakes`). */
+  readonly latest: Readonly<Record<string, Readonly<Record<string, string>>>>
+}
+
+/** Answers said again on this phone (#2579): what the machine holds of them. */
+type RedoState = {
+  /** What the ideas kept on this phone say; null until they are read. */
+  readonly phone: PhoneIdeas | null
   /** The takes on the desk of answers said again, as last listed. */
   readonly takes: ReadonlyArray<PatternTake>
   /** Waiting takes already asked to be deleted, so none is asked twice. */
   readonly dropping: ReadonlyArray<string>
 }
 
+/**
+ * The desk's waiting takes that are drafts: those no kept idea names. Null
+ * while the kept ideas aren't read, when none can be told from a record.
+ */
+function drafts(redo: RedoState): ReadonlyArray<PatternTake> | null {
+  const { phone } = redo
+  if (phone === null) return null
+  const named = new Set(phone.named)
+  return redo.takes.filter((take) => !named.has(take.id))
+}
+
+/**
+ * The drafts a newer one overtook, not asked for yet: deleted for good. A
+ * take a kept idea names is never one (Codex P1 on #2804).
+ */
+function dropsOf(redo: RedoState): ReadonlyArray<string> {
+  const listed = drafts(redo)
+  if (listed === null) return []
+  return overtaken(listed).filter((id) => !redo.dropping.includes(id))
+}
+
+/** `state` with `redo`, asking to delete any draft it newly finds overtaken. */
+function withRedo(state: OnHomeState, redo: RedoState): OnHomeStep {
+  const drop = dropsOf(redo)
+  return {
+    state: {
+      ...state,
+      redo: { ...redo, dropping: [...redo.dropping, ...drop] },
+    },
+    effects: drop.length === 0 ? [] : [{ type: "dropRedos", takes: drop }],
+  }
+}
+
 /** The notes home says were deleted for good from My data. */
-export function deletedNotes(
-  ideas: ReadonlyArray<HomeIdea>
-): ReadonlyArray<string> {
+function deletedNotes(ideas: ReadonlyArray<HomeIdea>): ReadonlyArray<string> {
   return ideas.flatMap((idea) =>
     idea.answers.flatMap((answer) =>
       answer.note !== null && typeof answer.deletedAt === "string"
@@ -360,7 +405,7 @@ export type OnHomeEvent =
   /** The ideas on this phone were read: which answers it can say again. */
   | {
       readonly type: "phoneRead"
-      readonly sayable: Readonly<Record<string, ReadonlyArray<string>>>
+      readonly phone: PhoneIdeas
     }
   | { readonly type: "sentAgain"; readonly outcome: SentAgain }
 
@@ -411,13 +456,21 @@ export const INITIAL_ON_HOME: OnHomeState = {
   confirm: null,
   notice: null,
   seq: 0,
-  redo: { sayable: {}, takes: [], dropping: [] },
+  redo: { phone: null, takes: [], dropping: [] },
+}
+
+/**
+ * The desk's takes the screen shows as said again and not sent yet: the
+ * drafts, never a take a kept idea names (Codex P1 on #2804).
+ */
+export function draftRedos(state: OnHomeState): ReadonlyArray<PatternTake> {
+  return drafts(state.redo) ?? []
 }
 
 /** The redos of the open idea waiting on this phone to be sent again. */
 export function openRedos(state: OnHomeState): ReturnType<typeof waitingRedos> {
   const idea = openIdea(state)
-  return idea === null ? [] : waitingRedos(state.redo.takes, idea.id)
+  return idea === null ? [] : waitingRedos(draftRedos(state), idea.id)
 }
 
 /** Whether this phone can say `question` of idea `id` again. */
@@ -426,7 +479,29 @@ export function canSayAgain(
   id: string,
   question: string
 ): boolean {
-  return state.redo.sayable[id]?.includes(question) === true
+  return state.redo.phone?.sayable[id]?.includes(question) === true
+}
+
+/**
+ * The take this phone last sent as idea `id`'s answer to `question`, while
+ * home's last read names another (Codex P2 on #2804): the idea sent again
+ * hasn't reached home yet, and the screen shows the phone's answer until
+ * it has. Null when home's answer is the phone's.
+ */
+export function sentAgainTake(
+  state: OnHomeState,
+  id: string,
+  question: string
+): string | null {
+  const latest = state.redo.phone?.latest[id]?.[question]
+  const { ideas } = state
+  if (latest === undefined || ideas.kind !== "read") return null
+  const home = ideas.value.ideas
+    .find((idea) => idea.id === id)
+    ?.answers.find((answer) => answer.question === question)
+  return home === undefined || home.note === null || home.note === latest
+    ? null
+    : latest
 }
 
 const SENT_AGAIN: Readonly<Record<SentAgain, OnHomeNotice>> = {
@@ -616,25 +691,14 @@ export function stepOnHome(state: OnHomeState, event: OnHomeEvent): OnHomeStep {
     }
     case "redoTakes": {
       const listed = new Set(event.takes.map((take) => take.id))
-      const dropping = state.redo.dropping.filter((id) => listed.has(id))
-      const drop = overtaken(event.takes).filter((id) => !dropping.includes(id))
-      return {
-        state: {
-          ...state,
-          redo: {
-            ...state.redo,
-            takes: event.takes,
-            dropping: [...dropping, ...drop],
-          },
-        },
-        effects: drop.length === 0 ? [] : [{ type: "dropRedos", takes: drop }],
-      }
+      return withRedo(state, {
+        ...state.redo,
+        takes: event.takes,
+        dropping: state.redo.dropping.filter((id) => listed.has(id)),
+      })
     }
     case "phoneRead": {
-      return same({
-        ...state,
-        redo: { ...state.redo, sayable: event.sayable },
-      })
+      return withRedo(state, { ...state.redo, phone: event.phone })
     }
     case "sendAgain": {
       const idea = openIdea(state)

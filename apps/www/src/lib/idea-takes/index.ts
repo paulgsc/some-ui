@@ -118,7 +118,7 @@ export function setAsideReplaced(
 /** The phone's desk of answers said again, as Ideas on home uses it (#2579). */
 export const ideaRedoTakes = (): RedoPorts => ({
   takes: redoDesk.phone(),
-  setAside: (ids) => setAsideReplaced(ids, new Date().toISOString()),
+  setAside: setAsideReplaced,
 })
 
 /** The desk's snapshot as an idea's answers read it. */

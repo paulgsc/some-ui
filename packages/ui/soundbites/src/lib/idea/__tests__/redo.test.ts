@@ -32,6 +32,7 @@ import type {
 import {
   INITIAL_ON_HOME,
   openRedos,
+  sentAgainTake,
   stepOnHome,
   withHomeWords,
 } from "@soundbites/lib/idea/on-home"
@@ -233,6 +234,58 @@ describe("saying an answer again, as data (#2579)", () => {
     ])
     expect(withHomeWords(next!, [home])).toBeNull()
   })
+
+  it("hears the new take's words even when home heard the first take after it was said", () => {
+    const late = {
+      ...SENT,
+      answers: [
+        {
+          ...SENT.answers[0]!,
+          // Home heard the first take only after the new one was said.
+          versions: [
+            {
+              at: "2026-11-08T11:00:00.000Z",
+              how: "heard" as const,
+              words: "first",
+            },
+          ],
+        },
+        SENT.answers[1]!,
+      ],
+    }
+    const resent = sendAgain(
+      late,
+      [{ question: "what", take: "r1", at: LATER }],
+      LATER
+    )!.idea
+    const home = onHome("r1", {
+      heard: { text: "second", heardAt: "2026-11-08T11:05:00.000Z" },
+    })
+    expect(
+      withHomeWords([resent], [home])?.[0]?.answers[0]?.versions.map(
+        (v) => v.words
+      )
+    ).toEqual(["first", "second"])
+    // Words fixed since the new take still stand.
+    const fixed = {
+      ...resent,
+      answers: [
+        {
+          ...resent.answers[0]!,
+          versions: [
+            ...resent.answers[0]!.versions,
+            {
+              at: "2026-11-08T10:30:00.000Z",
+              how: "fixed" as const,
+              words: "mine",
+            },
+          ],
+        },
+        resent.answers[1]!,
+      ],
+    }
+    expect(withHomeWords([fixed], [home])).toBeNull()
+  })
 })
 
 /** Steps `events` in order from `state`, keeping every effect. */
@@ -249,7 +302,18 @@ function steps(
   )
 }
 
+/** The ideas on this phone read, naming only the idea's first take. */
+const READ_PHONE: OnHomeEvent = {
+  type: "phoneRead",
+  phone: {
+    sayable: { "idea-1": ["what"] },
+    named: ["t0"],
+    latest: { "idea-1": { what: "t0" } },
+  },
+}
+
 const opened: ReadonlyArray<OnHomeEvent> = [
+  READ_PHONE,
   { type: "entered", lists: false },
   {
     type: "ideasRead",
@@ -266,6 +330,7 @@ describe("the Ideas on home machine, saying an answer again (#2579)", () => {
       take("r2", LINE, "2026-11-08T09:05:00.000Z"),
     ]
     const { state, effects } = steps(INITIAL_ON_HOME, [
+      READ_PHONE,
       { type: "redoTakes", takes: listed },
       { type: "redoTakes", takes: listed },
     ])
@@ -360,7 +425,7 @@ function phone(
     options: { ...ONE_TAKE, send: "on-confirm" },
     seed: options.seed,
   })
-  const setAside = vi.fn((_ids: ReadonlyArray<string>) => true)
+  const setAside = vi.fn((_ids: ReadonlyArray<string>, _at: string) => true)
   const home: IdeasHome = {
     ideas: () =>
       Promise.resolve({
@@ -418,7 +483,7 @@ describe("an answer said again, end to end on the simulated microphone (#2579)",
     const on = phone()
     let detach = on.attach()
     await pass()
-    expect(on.runtime.getSnapshot().redo.sayable).toEqual({
+    expect(on.runtime.getSnapshot().redo.phone?.sayable).toEqual({
       "idea-1": ["what"],
     })
     await sayAgain(on)
@@ -436,7 +501,7 @@ describe("an answer said again, end to end on the simulated microphone (#2579)",
     expect(on.runtime.getSnapshot().notice).toBe("sentAgain")
     expect(firstTakes(on)).toEqual(["t0", redo!.id])
     expect(on.ideas.list()?.[0]?.sent).toHaveLength(2)
-    expect(on.setAside).toHaveBeenCalledWith(["t0"])
+    expect(on.setAside).toHaveBeenCalledWith(["t0"], expect.any(String))
     expect(takesOf(on)[0]?.waits).toBeUndefined()
     expect(openRedos(on.runtime.getSnapshot())).toEqual([])
     detach()
@@ -468,7 +533,7 @@ describe("an answer said again, end to end on the simulated microphone (#2579)",
     on.runtime.dispatch({ type: "sendAgain" })
     expect(firstTakes(on)).toHaveLength(3)
     expect(on.ideas.list()?.[0]?.sent).toHaveLength(3)
-    expect(on.setAside).toHaveBeenLastCalledWith([r1])
+    expect(on.setAside).toHaveBeenLastCalledWith([r1], expect.any(String))
     detach()
   })
 
@@ -501,8 +566,75 @@ describe("an answer said again, end to end on the simulated microphone (#2579)",
 
     on.attach()
     await pass()
-    expect(on.setAside).toHaveBeenLastCalledWith(["t0"])
+    expect(on.setAside).toHaveBeenLastCalledWith(["t0"], expect.any(String))
     expect(takesOf(on)[0]?.waits).toBeUndefined()
+  })
+
+  it("never deletes a take the idea kept names, still waiting after a send cut short, when the answer is said again (Codex P1 on #2804)", async () => {
+    const on = phone()
+    const detach = on.attach()
+    await pass()
+    await sayAgain(on)
+    const [kept] = takesOf(on)
+    on.setAside.mockReturnValueOnce(false)
+    on.runtime.dispatch({ type: "sendAgain" })
+    expect(firstTakes(on)).toEqual(["t0", kept!.id])
+    // It is the idea's record now, not a draft: nothing offers to send or
+    // delete it as one.
+    expect(openRedos(on.runtime.getSnapshot())).toEqual([])
+    on.runtime.dispatch({ type: "noticeDismissed" })
+    // Even a take said again that supersedes it, as a Redo on its row would.
+    await sayAgain(on, kept!.id)
+    expect(takesOf(on).map((each) => each.id)).toContain(kept!.id)
+    detach()
+
+    // The next read finishes the cut-short send, and the new take still
+    // waits to be sent on its own.
+    const again = on.attach()
+    await pass()
+    expect(takesOf(on).find((each) => each.id === kept!.id)?.waits).toBe(
+      undefined
+    )
+    expect(openRedos(on.runtime.getSnapshot())).toHaveLength(1)
+    again()
+  })
+
+  it("deletes nothing before the ideas on this phone are read", () => {
+    const committed = take("r1", LINE, "2026-11-08T09:00:00.000Z")
+    const draft = take("r2", LINE, "2026-11-08T09:05:00.000Z")
+    const { effects } = steps(INITIAL_ON_HOME, [
+      { type: "redoTakes", takes: [committed, draft] },
+    ])
+    expect(effects).toEqual([])
+    const named = steps(INITIAL_ON_HOME, [
+      { type: "redoTakes", takes: [committed, draft] },
+      {
+        type: "phoneRead",
+        phone: { sayable: {}, named: ["r1"], latest: {} },
+      },
+    ])
+    expect(named.effects).toEqual([])
+  })
+
+  it("shows the answer sent again until home names it (Codex P2 on #2804)", async () => {
+    const on = phone()
+    const detach = on.attach()
+    await pass()
+    expect(sentAgainTake(on.runtime.getSnapshot(), "idea-1", "what")).toBe(null)
+    await sayAgain(on)
+    const [redo] = takesOf(on)
+    on.runtime.dispatch({ type: "sendAgain" })
+    expect(sentAgainTake(on.runtime.getSnapshot(), "idea-1", "what")).toBe(
+      redo!.id
+    )
+    detach()
+    // Home names it once the idea reaches it: home's answer stands again.
+    const home = phone({ home: [onHome(redo!.id)], kept: on.ideas.list()! })
+    home.attach()
+    await pass()
+    expect(sentAgainTake(home.runtime.getSnapshot(), "idea-1", "what")).toBe(
+      null
+    )
   })
 
   it("never sets aside a take home deleted for good", async () => {

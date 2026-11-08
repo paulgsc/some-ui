@@ -27,9 +27,11 @@ import type {
 } from "@some-ui/voice-capture"
 import { TAKE_WORDS, takeItemView } from "@some-ui/voice-capture"
 import { Unpaired } from "@soundbites/components/unpaired"
-import { answersOf, keptIdeaLists } from "@soundbites/lib/idea/draft"
-import type { QuestionId } from "@soundbites/lib/idea/model"
-import { IDEA_QUESTIONS } from "@soundbites/lib/idea/model"
+import {
+  answersOf,
+  keptIdeaLists,
+  questionOf,
+} from "@soundbites/lib/idea/draft"
 import type {
   HomeAnswer,
   HomeIdea,
@@ -41,11 +43,13 @@ import type {
 import {
   canSayAgain,
   dayBegun,
+  draftRedos,
   GROUP_BY,
   groupsOf,
   isEntry,
   openIdea,
   openRedos,
+  sentAgainTake,
   SORT_BY,
 } from "@soundbites/lib/idea/on-home"
 import type { IdeasHome, RedoPorts } from "@soundbites/lib/idea/on-home-runtime"
@@ -294,19 +298,15 @@ function wordsOf(answer: HomeAnswer): string {
   return answer.heard.text.trim() === "" ? WORDS.silent : answer.heard.text
 }
 
-function knownQuestion(question: string): QuestionId | undefined {
-  return IDEA_QUESTIONS.find((each): each is QuestionId => each === question)
-}
-
 function askOf(question: string): string {
-  const known = knownQuestion(question)
-  return known === undefined ? question : ASK[known].ask
+  const known = questionOf(question)
+  return known === null ? question : ASK[known].ask
 }
 
 /** What a take of idea `id`'s answer to `question` answers, as said again. */
 function lineOf(id: string, question: string): string {
-  const known = knownQuestion(question)
-  return known === undefined ? "" : answersOf(id, known)
+  const known = questionOf(question)
+  return known === null ? "" : answersOf(id, known)
 }
 
 /**
@@ -424,11 +424,14 @@ const OneIdea = ({
     redo?.takes.getSnapshot ?? noTakes
   )
   const playable = new Set(onPhone.map((take) => take.id))
-  // An answer said again and sent plays from the desk it was said on.
+  // An answer said again plays from the desk it was said on, once it is
+  // the idea's record: sent, or named by the idea sent again.
+  const drafts = draftRedos(state)
+  const draftIds = new Set(drafts.map((take) => take.id))
   const resent = new Set(
-    saidAgain.filter((take) => take.waits !== true).map((take) => take.id)
+    saidAgain.filter((take) => !draftIds.has(take.id)).map((take) => take.id)
   )
-  const waiting = saidAgain.filter((take) => take.waits === true)
+  const waiting = drafts.filter((take) => take.waits === true)
   const redos = openRedos(state)
   const playFrom = (note: string): BundleTakes | undefined => {
     if (takes !== undefined && playable.has(note)) return takes
@@ -465,42 +468,59 @@ const OneIdea = ({
         {idea.furnishing ? WORDS.furnishing : WORDS.furnish}
       </Button>
       <ul className="flex flex-col gap-3">
-        {idea.answers.map((answer) => (
-          <li
-            key={answer.question}
-            className="bg-card border-border/60 flex flex-col gap-2 rounded-2xl border p-3"
-          >
-            <p className="text-sm font-bold">{askOf(answer.question)}</p>
-            <p className="text-sm">
-              {answer.typed !== null && (
-                <span className="text-muted-foreground block text-xs">
-                  {WORDS.typed}
-                </span>
-              )}
-              {wordsOf(answer)}
-            </p>
-            {answer.note !== null && typeof answer.deletedAt !== "string" && (
-              <AnswerRecording
-                note={answer.note}
-                ask={askOf(answer.question)}
-                setAside={answer.setAside}
-                takes={playFrom(answer.note)}
-                openInMyData={openInMyData}
-              />
-            )}
-            {redo !== undefined &&
-              answer.note !== null &&
-              canSayAgain(state, idea.id, answer.question) && (
-                <AnswerRedo
-                  pattern={redo.pattern}
-                  waiting={waiting}
-                  line={lineOf(idea.id, answer.question)}
+        {idea.answers.map((answer) => {
+          // Sent again and not on home yet: the phone's answer shows until
+          // home's next read names it (Codex P2 on #2804).
+          const sent = sentAgainTake(state, idea.id, answer.question)
+          return (
+            <li
+              key={answer.question}
+              className="bg-card border-border/60 flex flex-col gap-2 rounded-2xl border p-3"
+            >
+              <p className="text-sm font-bold">{askOf(answer.question)}</p>
+              <p className="text-sm">
+                {answer.typed !== null && (
+                  <span className="text-muted-foreground block text-xs">
+                    {WORDS.typed}
+                  </span>
+                )}
+                {sent === null ? wordsOf(answer) : WORDS.answerSentAgain}
+              </p>
+              {sent !== null ? (
+                <AnswerRecording
+                  note={sent}
                   ask={askOf(answer.question)}
-                  writing={state.writing}
+                  setAside={false}
+                  takes={playFrom(sent)}
+                  // Not on home yet, so nothing there to delete.
+                  openInMyData={undefined}
                 />
+              ) : (
+                answer.note !== null &&
+                typeof answer.deletedAt !== "string" && (
+                  <AnswerRecording
+                    note={answer.note}
+                    ask={askOf(answer.question)}
+                    setAside={answer.setAside}
+                    takes={playFrom(answer.note)}
+                    openInMyData={openInMyData}
+                  />
+                )
               )}
-          </li>
-        ))}
+              {redo !== undefined &&
+                answer.note !== null &&
+                canSayAgain(state, idea.id, answer.question) && (
+                  <AnswerRedo
+                    pattern={redo.pattern}
+                    waiting={waiting}
+                    line={lineOf(idea.id, answer.question)}
+                    ask={askOf(answer.question)}
+                    writing={state.writing}
+                  />
+                )}
+            </li>
+          )
+        })}
       </ul>
       {redos.length > 0 && (
         <div className="flex flex-col gap-1">

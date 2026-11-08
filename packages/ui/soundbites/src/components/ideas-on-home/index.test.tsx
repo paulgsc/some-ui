@@ -237,7 +237,7 @@ describe("Ideas on home (ST26 c)", () => {
     expect(screen.getByText(W.saidAgain)).toBeTruthy()
     fireEvent.click(screen.getByRole("button", { name: W.sendAgain }))
     expect(screen.getByText(W.notice.sentAgain)).toBeTruthy()
-    expect(setAside).toHaveBeenCalledWith(["t1"])
+    expect(setAside).toHaveBeenCalledWith(["t1"], expect.any(String))
     const [kept] = keptIdeaStore().list() ?? []
     expect(kept?.answers[0]?.takes?.map((each) => each.take)).toEqual([
       "t1",

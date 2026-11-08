@@ -8,6 +8,7 @@
 import { assertNever } from "@some-ui/core-utils"
 import type { BundleTakes } from "@some-ui/voice-capture"
 
+import type { Idea } from "./model"
 import type {
   HomeIdea,
   HomeLists,
@@ -21,7 +22,14 @@ import type {
   SentAgain,
 } from "./on-home"
 import { INITIAL_ON_HOME, stepOnHome, withHomeWords } from "./on-home"
-import { cutShort, sayable, sendAgain, waitingRedos } from "./redo"
+import {
+  cutShort,
+  latestTakes,
+  namedTakes,
+  sayable,
+  sendAgain,
+  waitingRedos,
+} from "./redo"
 import type { IdeaStore } from "./store"
 
 /** Home, as Ideas on home reads and writes it. Every call resolves. */
@@ -56,9 +64,9 @@ export type RedoPorts = {
   /**
    * Sets each of these takes aside on home, keeping it, wherever this
    * phone keeps it: the takes answers said again replace. Says whether
-   * every one was.
+   * every one was. `at`: when, ISO 8601.
    */
-  readonly setAside: (ids: ReadonlyArray<string>) => boolean
+  readonly setAside: (ids: ReadonlyArray<string>, at: string) => boolean
 }
 
 export type OnHomePorts = {
@@ -123,26 +131,59 @@ export function createIdeasOnHome(ports: OnHomePorts): OnHomeRuntime {
       readonly release: ReadonlyArray<string>
       readonly replaced: ReadonlyArray<string>
     },
-    deleted: ReadonlyArray<string>
+    deleted: ReadonlyArray<string>,
+    at: string
   ): boolean {
     const aside = sent.replaced.filter((take) => !deleted.includes(take))
-    if (aside.length > 0 && !redo.setAside(aside)) return false
+    if (aside.length > 0 && !redo.setAside(aside, at)) return false
     return sent.release.length === 0 || redo.takes.release(sent.release)
   }
 
-  /** Keeps idea `id` sent again with its waiting redos, then lets them go. */
+  /**
+   * What the ideas kept on this phone say of their said answers, to the
+   * machine: which can be said again, which takes are the ideas' records
+   * (never a draft to delete), and what each answer is now.
+   */
+  function readPhone(kept: ReadonlyArray<Idea>): void {
+    send({
+      type: "phoneRead",
+      phone: {
+        sayable: Object.fromEntries(
+          kept.map((idea) => [idea.id, sayable(idea)])
+        ),
+        named: namedTakes(kept),
+        latest: latestTakes(kept),
+      },
+    })
+  }
+
+  /**
+   * Finishes any send again cut short, then keeps idea `id` sent again with
+   * its waiting redos, then lets them go. A take a cut-short send named
+   * goes first, so the take a new one replaces is always one that went.
+   */
   function sentAgain(id: string, deleted: ReadonlyArray<string>): SentAgain {
     const { redo } = ports
-    const idea = ports.ideas.list()?.find((each) => each.id === id)
-    if (redo === undefined || idea === undefined) return "unkept"
-    const waiting = waitingRedos(redo.takes.takes.getSnapshot(), id)
-    const resent = sendAgain(idea, waiting, new Date(now()).toISOString())
+    const listed = ports.ideas.list()
+    const idea = listed?.find((each) => each.id === id)
+    if (redo === undefined || listed === null || idea === undefined) {
+      return "unkept"
+    }
+    const at = new Date(now()).toISOString()
+    const takes = redo.takes.takes.getSnapshot()
+    if (!setAsideThenRelease(redo, cutShort(listed, takes), deleted, at)) {
+      return "partly"
+    }
+    const resent = sendAgain(idea, waitingRedos(takes, id), at)
     if (resent === null) return "unkept"
     const kept = ports.ideas.keep((ideas) =>
       ideas.map((each) => (each.id === id ? resent.idea : each))
     )
     if (kept === null) return "unkept"
-    return setAsideThenRelease(redo, resent, deleted) ? "sent" : "partly"
+    // The new takes are the idea's record from here: no clean-up of drafts
+    // may reach them, whatever the rest of the send comes to.
+    readPhone(kept)
+    return setAsideThenRelease(redo, resent, deleted, at) ? "sent" : "partly"
   }
 
   function run(effect: OnHomeEffect): void {
@@ -201,15 +242,15 @@ export function createIdeasOnHome(ports: OnHomePorts): OnHomeRuntime {
         const kept = ports.ideas.list()
         if (redo === undefined || kept === null) return
         const cut = cutShort(kept, redo.takes.takes.getSnapshot())
-        // Ignored when not stored: the takes still wait, and the next read
-        // finishes it.
-        setAsideThenRelease(redo, cut, effect.deleted)
-        send({
-          type: "phoneRead",
-          sayable: Object.fromEntries(
-            kept.map((idea) => [idea.id, sayable(idea)])
-          ),
-        })
+        // Ignored when not stored: the takes still wait, named by the idea
+        // and so never a draft, and the next read finishes it.
+        setAsideThenRelease(
+          redo,
+          cut,
+          effect.deleted,
+          new Date(now()).toISOString()
+        )
+        readPhone(kept)
         return
       }
       case "dropRedos": {
@@ -248,6 +289,10 @@ export function createIdeasOnHome(ports: OnHomePorts): OnHomeRuntime {
           send({ type: "redoTakes", takes: desk.getSnapshot() })
         }
       }
+      // The ideas kept first: until they are read, no waiting take can be
+      // told a draft from an idea's record, so none is deleted.
+      const kept = desk === undefined ? null : ports.ideas.list()
+      if (kept !== null) readPhone(kept)
       const unlisten = desk?.subscribe(listed)
       listed()
       send({ type: "entered", lists })

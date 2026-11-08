@@ -875,8 +875,10 @@ only from the lane's hook and the scene notes read for home only there
   idea's takes it doesn't name delete for good a take that still `waits`,
   through the desk's `discard`. An answer of an idea on home said again
   (#2579) waits the same way on a desk of its own (`redoDesk`), deleted for
-  good only while it waits (its Delete, or a newer take said again for the
-  same answer). Once a take on either desk no longer waits, the one write
+  good only while it waits and no kept idea names it (its Delete, or a
+  newer take said again for the same answer; soundbites' `draftRedos`): a
+  take a send again already kept in the idea is let go home by the next
+  read or send, never deleted. Once a take on either desk no longer waits, the one write
   of its standing is its set-aside, when an answer said again replaces it
   and the idea is sent again (`setAsideReplaced`, through the desk's
   `setAsideSent` inside `setAsideOwing`, both desks' `from` `studio`;
@@ -924,7 +926,10 @@ only from the lane's hook and the scene notes read for home only there
   standing outside `setAsideOwing`; one to soundbites'
   `lib/idea/on-home-runtime.ts` that sets aside a replaced take before the
   idea sent again is kept, lets its new take go before the replaced one is
-  set aside, or sets aside a note home deleted for good;
+  set aside, or sets aside a note home deleted for good; one to soundbites'
+  `lib/idea/on-home.ts` that lets `dropRedos`, `openRedos` or `draftRedos`
+  reach a take a kept idea names, or ask to drop one before the kept ideas
+  are read;
   a hunk to `lib/scene-voice/runtime.ts` that lets `letGo` remove a scene note that
   is not `prompted` (an ask home holds named it, LA18) or that home does not
   hold; a hunk
@@ -980,7 +985,7 @@ only from the lane's hook and the scene notes read for home only there
   `apps/www/src/lib/voice-marks/**`, `apps/www/src/lib/takes-desk/pattern.ts`
   and `index.ts`, `apps/www/src/lib/idea-takes/index.ts`,
   `packages/ui/soundbites/src/lib/idea/bundle-runtime.ts`, `bundle.ts` and
-  `on-home-runtime.ts`,
+  `on-home.ts` and `on-home-runtime.ts`,
   `packages/voice-capture/src/lib/bundle-runtime.ts` and `bundle.ts`,
   `apps/www/src/lib/jobs/runtime.ts`, `apps/www/src/lib/reflection-voice/index.ts`,
   `packages/ui/soundbites/src/lib/runtime.ts` and `aside-marks.ts`,
