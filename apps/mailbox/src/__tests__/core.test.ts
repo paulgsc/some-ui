@@ -1791,6 +1791,18 @@ describe("notes on an episode", () => {
       expect(answer.status).toBe(422)
       expect(await json(answer)).toEqual({ error: why })
     }
+    // A body that carries its name, so only the name's own rule refuses it.
+    for (const note of ["a.b", "a b", "a".repeat(65)]) {
+      const answer = await asHome(
+        d,
+        `feedback-${note}.json`,
+        JSON.stringify({ ...NOTED, note })
+      )
+      expect(answer.status).toBe(422)
+      expect(await json(answer)).toEqual({
+        error: "the name does not fit this folder",
+      })
+    }
     for (const name of ["feedback-.json", `feedback-${"a".repeat(65)}.json`]) {
       expect((await asHome(d, name)).status).toBe(422)
     }
