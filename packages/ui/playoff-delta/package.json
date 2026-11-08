@@ -23,6 +23,7 @@
     "react-dom": "^19.2.0"
   },
   "dependencies": {
+    "@some-ui/burn-ins": "workspace:*",
     "@some-ui/core-utils": "workspace:*",
     "@some-ui/intent-kit": "workspace:*",
     "@some-ui/react-hooks": "workspace:*",

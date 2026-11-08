@@ -61,7 +61,7 @@ export const CLIPS_VERSION = 1
 /**
  * Each format's shape from version 2 (SFEED2 #2680): the locked intro
  * (`INTRO`, filled by code), the brand intro and outro, a chapter slide said
- * aloud before each marked scene, and subtitles with each word lit. The
+ * aloud before each marked scene, and captions in the series' look. The
  * chapters mark where an episode turns.
  */
 const SHAPE: Readonly<Record<FormatKind, Shape>> = {

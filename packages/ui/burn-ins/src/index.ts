@@ -1,3 +1,5 @@
 export { BurnInsPreview } from "./components/preview"
 export { BurnInRecorder } from "./components/record"
 export { AuthorshipRecord } from "./components/authorship-record"
+export { captionSpace } from "./lib/captions/space"
+export { LANDSCAPE } from "./lib/geometry"

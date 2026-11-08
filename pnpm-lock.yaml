@@ -1447,6 +1447,9 @@ importers:
 
   packages/ui/playoff-delta:
     dependencies:
+      '@some-ui/burn-ins':
+        specifier: workspace:*
+        version: link:../burn-ins
       '@some-ui/core-utils':
         specifier: workspace:*
         version: link:../../core-utils

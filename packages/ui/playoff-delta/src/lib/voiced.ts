@@ -6,6 +6,7 @@
  */
 
 import {
+  hasCaptions,
   stillFile,
   stillsCutList,
   type CutList,
@@ -132,7 +133,7 @@ export const voicedSceneOf = (
 /**
  * The episode as a cut list (`stillsCutList`, which holds CV1): scene `i`'s
  * still is `stillFile(i, id)`.png and its take, `takes[i]`, the WAV beside
- * it. Subtitles as the shape says; the music bed under the voice once the
+ * it. Captions as the shape says; the music bed under the voice once the
  * series names one (`bed`).
  */
 export function voicedCutList(
@@ -148,7 +149,7 @@ export function voicedCutList(
       title: episodeTitle(season, week),
       series: format.series,
       look: format.look,
-      subtitles: format.shape?.subtitles ?? "off",
+      captions: hasCaptions(format),
       bed,
     },
     voicedScenes(season, week, fill.format.version, fill).map((scene, i) => ({

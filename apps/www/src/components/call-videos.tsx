@@ -47,7 +47,7 @@ const Watching = ({
   if (fetch?.kind === "ready") {
     return (
       <div className="flex flex-col gap-2">
-        {/* eslint-disable-next-line jsx-a11y/media-has-caption -- the words are drawn on screen (the call's in every scene, Playoff Delta's where its shape draws subtitles), and home makes no caption file */}
+        {/* eslint-disable-next-line jsx-a11y/media-has-caption -- the words are drawn on screen (the call's in every scene, Playoff Delta's where its shape draws captions), and home makes no caption file */}
         <video
           src={fetch.src}
           controls

@@ -33,9 +33,9 @@ import {
 import type { CallWeek } from "@video-render/call"
 import { nodePorts, readSeries } from "@video-render/node"
 import { render } from "@video-render/render"
+import type { BurnInRequest, Ports } from "@video-render/render"
 import type { Series } from "@video-render/series"
 import { stillFile } from "@video-render/stills"
-import { subtitleBand } from "@video-render/subtitles"
 import { make } from "@video-render/testing"
 import { TRANSITION_MS } from "@video-render/vocabulary"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
@@ -101,7 +101,7 @@ const rendered = new Map<string, Promise<Rendered>>()
 function renderWeek(
   week: CallWeek,
   name: string,
-  options: { readonly subtitles?: boolean; readonly shape?: Shape } = {}
+  options: { readonly captions?: boolean; readonly shape?: Shape } = {}
 ): Promise<Rendered> {
   const kept = rendered.get(name) ?? renderNew(week, name, options)
   rendered.set(name, kept)
@@ -112,9 +112,9 @@ async function renderNew(
   week: CallWeek,
   name: string,
   {
-    subtitles = false,
+    captions = false,
     shape = WIDE,
-  }: { readonly subtitles?: boolean; readonly shape?: Shape }
+  }: { readonly captions?: boolean; readonly shape?: Shape }
 ): Promise<Rendered> {
   const { W, H } = shape
   const series: Series = {
@@ -161,7 +161,7 @@ async function renderNew(
       `${file}.wav`,
     ])
   }
-  // Each take's words, spread over it, when the subtitles are drawn.
+  // Each take's words, spread over it, for its captions.
   const takes = scenes.map((s, i) => {
     if (s.said === "") return null
     const ms = takeMs(i)
@@ -176,13 +176,13 @@ async function renderNew(
       })),
     }
   })
-  const { subtitles: style, ...rest } = callCutList(week, takes)
-  const cut = subtitles ? { ...rest, subtitles: style } : rest
-  const done = await render(cut, series, ports, {
-    workDir: "work",
-    out: "call.mp4",
-    withoutBurnIns: true,
-  })
+  const cut = callCutList(week, takes)
+  const done = await render(
+    captions ? cut : { ...cut, burnIns: [] },
+    series,
+    captions ? { ...ports, recordBurnIn: band(ports) } : ports,
+    { workDir: "work", out: "call.mp4" }
+  )
   if (!done.ok) throw new Error(done.problems.join("\n"))
   await make(ports, [
     "-i",
@@ -277,25 +277,49 @@ function problemsOf(
   return problems
 }
 
-describe("a call's subtitles", () => {
+/** How much of the frame's foot the stand-in captions fill: a quarter. */
+const bandOf = (H: number): number => Math.round(H / 4)
+
+/**
+ * A stand-in for the recorder: each scene's captions as white filling the
+ * band at the frame's foot, clear above it. `@some-ui/burn-ins` holds that a
+ * real caption stays inside its band (`captionSpace`); this holds that the
+ * renderer lays a scene's recording exactly where it was drawn.
+ */
+const band =
+  (ports: Ports) =>
+  async (r: BurnInRequest): Promise<boolean> => {
+    const { width: W, height: H, fps } = r.frame
+    const ran = await ports.ffmpeg({
+      args: [
+        ...["-v", "error", "-y", "-f", "lavfi", "-i"],
+        `color=c=white:s=${W}x${bandOf(H)}:r=${fps}:d=${(r.frames / fps).toFixed(3)},format=rgba,` +
+          `pad=${W}:${H}:0:${H - bandOf(H)}:color=black@0`,
+        ...["-c:v", "png", r.out],
+      ],
+    })
+    return ran.ok
+  }
+
+describe("a call's captions", () => {
   it.each([
     ["16:9", WIDE],
     ["9:16", TALL],
   ] as const)(
-    "are drawn in the band at a %s frame's foot, and nowhere over the picture",
+    "are laid over each scene where they were drawn, at a %s frame's foot",
     async (name, shape) => {
       const sample = sampleCallWeek()
       if (!sample.ok) throw new Error(sample.problems.join("; "))
       const tag = name.replace(":", "x")
       const plain = await renderWeek(sample.value, `plain-${tag}`, { shape })
       const said = await renderWeek(sample.value, `said-${tag}`, {
-        subtitles: true,
+        captions: true,
         shape,
       })
       expect(said.frames.length).toBe(plain.frames.length)
       const { W, H } = shape
       const size = W * H
-      const above = (H - subtitleBand(H, W).bandPx) * W
+      const above = (H - bandOf(H)) * W
       let drawn = 0
       for (let n = 0; n * size < said.frames.length; n++) {
         const a = said.frames.subarray(n * size, (n + 1) * size)
@@ -303,7 +327,7 @@ describe("a call's subtitles", () => {
         for (let k = 0; k < size; k++) {
           const differs = Math.abs((a[k] ?? 0) - (b[k] ?? 0)) > NOISE
           if (differs && k < above)
-            throw new Error(`frame ${n}: a subtitle drew over the picture`)
+            throw new Error(`frame ${n}: a caption drew over the picture`)
           if (differs) drawn++
         }
       }
@@ -326,7 +350,7 @@ describe("a call's video (CV1)", () => {
   it("shows each scene's whole still and holds it in a 9:16 frame, a short's", async () => {
     const sample = sampleCallWeek()
     if (!sample.ok) throw new Error(sample.problems.join("; "))
-    // The same render the 9:16 subtitles case compares against.
+    // The same render the 9:16 captions case compares against.
     const { frames, holds } = await renderWeek(sample.value, "plain-9x16", {
       shape: TALL,
     })

@@ -19,7 +19,7 @@ import { join, resolve } from "node:path"
 import { parseArgs } from "node:util"
 import { serve } from "@tests/ui-fit/harness"
 
-import { openRecorder, RECORDING_SIZE, renderWithBurnIns } from "./burn-ins"
+import { openRecorder, renderWithBurnIns } from "./burn-ins"
 import { fail, here, launchChromium, runCommand } from "./command"
 
 async function main(): Promise<void> {
@@ -39,11 +39,7 @@ async function main(): Promise<void> {
   const site = await serve(resolve(values.dist), { fallback: "index.html" })
   const browser = await launchChromium()
   try {
-    const page = await browser.newPage({
-      viewport: RECORDING_SIZE,
-      deviceScaleFactor: 1,
-    })
-    await openRecorder(page, site.origin)
+    const page = await openRecorder(browser, site.origin)
     const done = await renderWithBurnIns(page, root, here(values.series), {
       workDir: "outputs/cache",
       out: values.out,
