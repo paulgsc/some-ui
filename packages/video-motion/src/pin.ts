@@ -39,11 +39,8 @@ export const renderArgs = (run: Run): ReadonlyArray<string> => [
 ]
 
 /**
- * Chrome's own switches for drawing only once every raster is done, which
- * HyperFrames adds for its BeginFrame capture but not for the screenshots
- * `--low-memory-mode` takes (#2739). Without them a screenshot can catch an
- * element mid re-raster: on CI, the sample's mark differed at its edges for
- * a few frames after its last scale key, by up to 14 of 255.
+ * Chrome's switches for drawing a frame only once every raster is done
+ * (README, "The pins, and why"; #2739).
  */
 export const DRAW_FLAGS = [
   "--run-all-compositor-stages-before-draw",

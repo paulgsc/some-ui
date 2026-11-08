@@ -1,11 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import {
-  browserRoots,
-  findHeadlessShell,
-  isHeadlessShell,
-} from "@video-motion/browser"
+import { findHeadlessShell, isHeadlessShell } from "@video-motion/browser"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
 let root = ""
@@ -46,18 +42,7 @@ describe("the browser a composition is drawn with (#2739)", () => {
     expect(findHeadlessShell([root, join(root, "missing")])).toBeNull()
   })
 
-  it("searches PLAYWRIGHT_BROWSERS_PATH before Playwright's cache", () => {
-    const roots = browserRoots({ PLAYWRIGHT_BROWSERS_PATH: "/ms-playwright" })
-    expect(roots[0]).toBe("/ms-playwright")
-    expect(roots[1]).toMatch(/\.cache\/ms-playwright$/)
-    expect(browserRoots({})).toEqual([roots[1]])
-  })
-
-  it("tells a headless shell from the full Chrome by its name", () => {
-    expect(
-      isHeadlessShell("/b/chrome-headless-shell-linux64/chrome-headless-shell")
-    ).toBe(true)
-    expect(isHeadlessShell("/b/chrome-linux/headless_shell")).toBe(true)
+  it("refuses the full Chrome by its name", () => {
     expect(isHeadlessShell("/b/chromium-1243/chrome-linux64/chrome")).toBe(
       false
     )

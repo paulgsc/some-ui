@@ -51,10 +51,10 @@ The full Chrome is refused (see "The pins, and why").
   CI's nix shell). HyperFrames starts it through a wrapper adding Chrome's own switches
   for finishing every raster before a frame is drawn (`DRAW_FLAGS` in `src/pin.ts`), which
   HyperFrames adds only for its BeginFrame capture, not for the screenshots
-  `--low-memory-mode` takes. Without them, a screenshot caught the sample's mark
-  mid re-raster on CI: its edges differed by up to 14 of 255 for a few frames after its
-  last scale key (#2739). The full Chrome never draws a frame with those switches, so it
-  is refused.
+  `--low-memory-mode` takes. Without them, a screenshot can catch the page's tiles
+  mid-raster: on CI, still frames of the sample differed at the mark's edges, by up to 14
+  of 255 (#2739). The full Chrome never draws a frame with those switches, so it is
+  refused.
 - **Strict:** a lint error, an undeclared variable or unready media fails the render.
 - **No network.** Every font is vendored by the lockfile (`src/fonts.ts`, `@fontsource/*`,
   OFL) and copied in beside the composition. A font HyperFrames reached the network for
@@ -82,9 +82,8 @@ Chromium or CPU draws its own.
 - **Motion through `lib/motion.js`'s `track`, nothing else.** Each frame's styles are set
   from its time when HyperFrames seeks to it, so no animation runs on a timeline of the
   browser's own: CSS keyframes and the Web Animations API, seeked by HyperFrames, gave two
-  sums on one CI machine (#2737). The root is marked `data-no-timeline`. Not GSAP: the
-  owner's answer on #2723, since its licence is not open source, though most of the
-  catalogue animates with it.
+  sums on one CI machine (#2737). The root is marked `data-no-timeline`. Not GSAP, whose
+  licence is not open source (ask #2723), though most of the catalogue animates with it.
 - **Android only:** the catalogue's iPhone, macOS and App Store blocks fail
   `pnpm check:android-only`; use `device-frame-stage` and a Google Play badge.
 - **No clock, no unseeded randomness, no fetch.** Every string and colour is a variable

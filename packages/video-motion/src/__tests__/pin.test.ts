@@ -92,7 +92,6 @@ describe("the browser HyperFrames starts (#2739)", () => {
   it("is ours, with the switches that draw only once raster is done, then HyperFrames' own", () => {
     const dir = mkdtempSync(join(tmpdir(), "it's chrome-"))
     try {
-      // A stand-in browser that prints each argument it was given.
       const chrome = join(dir, "real chrome")
       writeFileSync(chrome, '#!/bin/sh\nfor a in "$@"; do echo "$a"; done\n')
       chmodSync(chrome, 0o755)

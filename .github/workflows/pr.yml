@@ -491,8 +491,8 @@ jobs:
       # twice with the pins in packages/video-motion/src/pin.ts, on the nix
       # shell's Chromium and ffmpeg. Scoped to the workspace, the renderer it
       # imports, and the lockfile and flake, which pin HyperFrames, Chromium and
-      # ffmpeg. Uploads nothing. Five runs, because a difference has shown up
-      # on some CI runs only (#2739); one that differs prints where, per frame.
+      # ffmpeg. Uploads nothing. Five runs; one that differs prints where, per
+      # frame (#2739).
       - name: E2E — HyperFrames renders the same bytes twice (video-motion)
         run: |
           files=$(git diff --name-only --diff-filter=ACMR HEAD^1 -- \

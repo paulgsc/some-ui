@@ -1,14 +1,10 @@
 /**
  * The browser a composition is drawn with: Playwright's Chromium headless
- * shell, never the full Chrome (#2739). Only the headless shell draws with
- * `--run-all-compositor-stages-before-draw` (`DRAW_FLAGS`, pin.ts) outside
- * HyperFrames' BeginFrame capture; full Chrome given it never draws a frame,
- * so it is refused rather than left to hang.
- *
- * It is found where Playwright keeps its browsers: `PLAYWRIGHT_BROWSERS_PATH`
- * (CI's nix shell, home's image), then Playwright's own cache. CI's nix shell
- * names the full Chrome in `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`, so that is
- * not read.
+ * shell, never the full Chrome (README, "The pins, and why"). It is found
+ * where Playwright keeps its browsers, `PLAYWRIGHT_BROWSERS_PATH` (CI's nix
+ * shell, home's image) and then Playwright's cache, never by
+ * `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`, which CI's nix shell points at the
+ * full Chrome.
  */
 
 import { existsSync, readdirSync } from "node:fs"
@@ -21,7 +17,6 @@ const SHELLS = [
   "chrome-linux/headless_shell",
 ]
 
-/** Whether `chrome` names a headless shell, by its file's name. */
 export const isHeadlessShell = (chrome: string): boolean =>
   /headless/.test(basename(chrome))
 

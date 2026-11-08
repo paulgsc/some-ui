@@ -1,9 +1,7 @@
 /**
  * Where two drawings of one frame differ, for `motion prove`'s refusal
  * (#2739): the box of the pixels that differ, how many do, and the largest
- * change in any channel. A box over one element (the mark, a line of text)
- * says something drew it differently; a box over the whole frame says the
- * capture did.
+ * change in any channel.
  */
 
 export type Difference = {

@@ -49,15 +49,19 @@ const { positionals, values } = parseArgs({
   },
 })
 
+let chrome: string | undefined
+
 /** The browser to draw with: `--chrome`, or Playwright's headless shell (`browser.ts`). */
 function browser(): string {
-  const found = values.chrome ?? findHeadlessShell(browserRoots(process.env))
+  if (chrome !== undefined) return chrome
+  const roots = browserRoots(process.env)
+  const found = values.chrome ?? findHeadlessShell(roots)
   if (found === null) {
     throw new Refused(
-      `no Chromium headless shell under ${browserRoots(process.env).join(" or ")}; install Playwright's (\`playwright install chromium-headless-shell\`) or name one with --chrome`
+      `no Chromium headless shell under ${roots.join(" or ")}; install Playwright's (\`playwright install chromium-headless-shell\`) or name one with --chrome`
     )
   }
-  return found
+  return (chrome = found)
 }
 
 const say = (line: string): void => {
@@ -173,12 +177,11 @@ async function framesDiffering(
     await ports.ffmpeg({
       args: ["-v", "error", "-y", "-i", clip, "-f", "framemd5", out],
     })
-    const lines = (await readFile(out, "utf8")).split("\n")
-    const width = Number(
-      /^#dimensions 0: (\d+)x\d+/m.exec(lines.join("\n"))?.[1]
-    )
+    const text = await readFile(out, "utf8")
+    const width = Number(/^#dimensions 0: (\d+)x\d+/m.exec(text)?.[1])
     return {
-      sums: lines
+      sums: text
+        .split("\n")
         .filter((l) => l && !l.startsWith("#"))
         .map((l) => l.split(",").at(-1)?.trim() ?? ""),
       width,
@@ -188,16 +191,20 @@ async function framesDiffering(
     const out = `${clip}.${String(frame)}.rgb`
     const made = await ports.ffmpeg({
       args: [
-        ...[
-          "-v",
-          "error",
-          "-y",
-          "-i",
-          clip,
-          "-vf",
-          `select=eq(n\\,${String(frame)})`,
-        ],
-        ...["-frames:v", "1", "-f", "rawvideo", "-pix_fmt", "rgb24", out],
+        "-v",
+        "error",
+        "-y",
+        "-i",
+        clip,
+        "-vf",
+        `select=eq(n\\,${String(frame)})`,
+        "-frames:v",
+        "1",
+        "-f",
+        "rawvideo",
+        "-pix_fmt",
+        "rgb24",
+        out,
       ],
     })
     if (!made.ok)

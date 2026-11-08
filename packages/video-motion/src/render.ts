@@ -203,7 +203,6 @@ export async function renderComposition(
       )
     }
     await writeFile(variables, JSON.stringify(request.variables))
-    // The browser HyperFrames starts: ours, with DRAW_FLAGS (pin.ts).
     const chrome = join(work, "chrome")
     await writeFile(chrome, chromeWrapper(request.chrome))
     await chmod(chrome, 0o755)

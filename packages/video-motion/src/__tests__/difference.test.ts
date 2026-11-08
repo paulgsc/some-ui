@@ -33,13 +33,7 @@ describe("where two drawings of a frame differ (#2739)", () => {
       box: { left: 1, top: 1, right: 3, bottom: 2 },
     })
     expect(saidOf(51, d)).toBe("frame 51: 2 pixels in 1,1–3,2, at most 46")
-  })
-
-  it("counts a change in either direction", () => {
-    const a = set(flat(2, 2), 2, 0, 1, [200, 0, 0])
-    const d = difference(a, flat(2, 2), 2)
-    expect(d.most).toBe(200)
-    expect(d.box).toEqual({ left: 0, top: 1, right: 0, bottom: 1 })
+    expect(difference(b, a, 5)).toEqual(d)
   })
 
   it("refuses frames of different sizes, or not whole rows", () => {
