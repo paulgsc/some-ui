@@ -23,7 +23,7 @@ import { z } from "zod"
 import { once, problemsOf } from "./cut-list"
 import type { Parsed } from "./cut-list"
 import { showId, words } from "./format"
-import { RefSchema } from "./refs"
+import { PrSchema } from "./refs"
 
 export const CLIP_INDEX_SCHEMA = "some-ui.clip-index/1"
 
@@ -52,7 +52,7 @@ const ClipSchema = z.strictObject({
   title: words,
   /** The app or surface it shows: "suspender-ledger", "studio". */
   app: showId,
-  change: RefSchema.extend({ kind: z.literal("pr") }),
+  change: PrSchema,
   landed: z.iso.date(),
   before: SideSchema.nullable(),
   after: SideSchema,

@@ -36,6 +36,11 @@ const all = [
   ]),
   STUDIO_INDEX_WORDS.templates.usedBy("The weekly call"),
   STUDIO_INDEX_WORDS.clips.landed("2026-11-08"),
+  STUDIO_INDEX_WORDS.templates.drawnFrom("the sample week"),
+  STUDIO_INDEX_WORDS.templates.inAll(540_000),
+  STUDIO_INDEX_WORDS.templates.when(65_000, 9_000),
+  STUDIO_INDEX_WORDS.templates.chapter("The board"),
+  STUDIO_INDEX_WORDS.templates.item("Where we are", 2),
   STUDIO_INDEX_WORDS.intuitions.fed("Playoff Delta"),
   STUDIO_INDEX_WORDS.templates.look.named("broadcast"),
   ...[0, 140].map(STUDIO_INDEX_WORDS.templates.look.popInMs),
@@ -43,6 +48,15 @@ const all = [
 ]
 
 describe("Studio's index", () => {
+  it("says where a frame starts as a player does (SFEED3)", () => {
+    expect(STUDIO_INDEX_WORDS.templates.when(65_000, 9_000)).toBe(
+      "1:05, about 9 seconds"
+    )
+    expect(STUDIO_INDEX_WORDS.templates.when(0, 400)).toBe(
+      "0:00, about 1 second"
+    )
+  })
+
   it("lists the eight kinds A to Z, so none comes first", () => {
     const names = STUDIO_KINDS.map((kind) => KIND_WORDS[kind].name)
     expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b, "en")))
