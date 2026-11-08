@@ -12,6 +12,7 @@
  * order, and lines in time order.
  */
 
+import type { Geometry } from "@burn-ins/lib/geometry"
 import { breakLines, type Measure } from "@burn-ins/lib/lines"
 
 import { measureFor } from "./layout"
@@ -88,11 +89,12 @@ export function groupCaptions(
   })
 }
 
-/** The captions for spoken lines, as drawn in a theme. */
+/** The captions for spoken lines, as drawn in a theme sized for a frame. */
 export const captionsFor = (
   lines: ReadonlyArray<SpokenLine>,
-  theme: CaptionTheme
-): ReadonlyArray<Caption> => groupCaptions(lines, measureFor(theme))
+  theme: CaptionTheme,
+  geometry: Geometry
+): ReadonlyArray<Caption> => groupCaptions(lines, measureFor(theme, geometry))
 
 /** When the last caption leaves the screen; 0 for none. */
 export const runtimeOf = (captions: ReadonlyArray<Caption>): number =>
