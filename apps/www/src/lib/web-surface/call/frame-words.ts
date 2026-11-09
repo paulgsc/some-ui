@@ -10,4 +10,7 @@ export const STAGE_WORDS = {
     "This scene doesn't fit the frame: part of it would be cut off in the video.",
   mark: "The owner's mark",
   source: "The code: github.com/paulgsc/some-ui",
+  whoMadeThis: "Who made this",
+  brandIn: "Opening mark",
+  brandOut: "Closing mark",
 } as const

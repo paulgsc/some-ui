@@ -39,17 +39,19 @@
 
 import { z } from "zod"
 
+import {
+  CALL_ID,
+  CALL_STAGE_WIDTH,
+  day,
+  nightInMotion,
+  SaidSchema,
+  sayDay,
+} from "./call"
+import type { LockedIntro } from "./call"
 import { once, problemsOf } from "./cut-list"
 import type { Parsed } from "./cut-list"
-import {
-  FORMAT_SCHEMA,
-  inTheme,
-  repeatedId,
-  versionRefusal,
-  words,
-} from "./format"
+import { FORMAT_SCHEMA, repeatedId, versionRefusal, words } from "./format"
 import type { Format, Shape } from "./format"
-import { BRAND_MOTION } from "./stills"
 import sample from "./templates/rust-essay/sample-essay.json"
 
 export const ESSAY_SCHEMA = "some-ui.rust-essay/1"
@@ -88,9 +90,6 @@ export const SOLO_LEVELS = [
 /** SOLO, as the essay cites it on screen. */
 export const SOLO_SOURCE =
   "SOLO (Biggs & Collis, 1982), as applied to explaining code by Lister et al., ITiCSE 2006"
-
-/** The width the stage draws at, in CSS px: the call's frame, whose series it is drawn in. */
-export const ESSAY_STAGE_WIDTH = 1920
 
 /** How a speak-to point of the owner's answer stands beside the best fit. */
 export const MARKS = ["covered", "partly", "missing"] as const
@@ -135,7 +134,7 @@ const scene = (
   picture: {
     kind: "capture",
     from: `the essay's ${id} view`,
-    cssWidth: ESSAY_STAGE_WIDTH,
+    cssWidth: CALL_STAGE_WIDTH,
   },
   holdMs,
   ...(isRepeated(id) ? { repeat: { max: ESSAY_MOST[id] } } : {}),
@@ -146,17 +145,11 @@ const scene = (
  * with the moving brand intro and outro, and a chapter slide opening each
  * ticket and the close, so the essay can be listened to.
  */
-const ESSAY_SHAPE: Shape = (() => {
-  const night = inTheme(
-    {
-      brand: { intro: true, outro: true },
-      chapters: ["question", "weeks"],
-      subtitles: "word",
-    },
-    "mochi-night"
-  )
-  return { ...night, brand: { ...night.brand, motion: BRAND_MOTION } }
-})()
+const ESSAY_SHAPE: Shape = nightInMotion({
+  brand: { intro: true, outro: true },
+  chapters: ["question", "weeks"],
+  subtitles: "word",
+})
 
 /** Why `version` of the essay's template can't be drawn here, or null (VS1). */
 export const essayVersionRefusal = (version: number): string | null =>
@@ -176,7 +169,7 @@ export function essayFormat(version: number = ESSAY_VERSION): Format {
     version,
     title: "The Rust Rounds essay",
     // Drawn in the call's series: its frame, captions and music bed.
-    series: { id: "conference-call", version: 2 },
+    series: { id: CALL_ID, version: 2 },
     look: "calm",
     scenes: [
       scene(
@@ -227,9 +220,6 @@ export function essayFormat(version: number = ESSAY_VERSION): Format {
   }
 }
 
-/** A day, as `YYYY-MM-DD`. */
-const day = z.iso.date()
-
 /** A week's id, as `some-ui.rust-week/1` writes it (`@some-ui/rust-rounds`' `WEEK_ID`). */
 const weekId = z
   .string()
@@ -242,8 +232,6 @@ const ticketKey = z
 
 /** A program or snippet, shown as written: never only spaces. */
 const code = z.string().refine((s) => s.trim().length > 0, "it is empty")
-
-const SaidSchema = z.strictObject({ said: words })
 
 const SoloSchema = z.strictObject({
   /** Its place on `SOLO_LEVELS`, from 1. */
@@ -470,14 +458,6 @@ export const ESSAY_CHAPTERS: Readonly<Record<"weeks" | "next", string>> = {
   next: "Next week",
 }
 
-/** A day as it is said: "November 9". */
-const sayDay = (day: string): string =>
-  new Intl.DateTimeFormat("en-US", {
-    month: "long",
-    day: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(`${day}T00:00:00Z`))
-
 /** How many of the essay's tickets the owner answered. */
 export const answeredOf = (essay: Essay): number =>
   essay.tickets.filter((ticket) => ticket.answer.kind === "take").length
@@ -488,13 +468,7 @@ export const answeredOf = (essay: Essay): number =>
  * frame and all of it said. Filled by code from the essay alone, never by
  * the routine that writes it.
  */
-export function essayIntro(essay: Essay): {
-  readonly rows: ReadonlyArray<{
-    readonly label: string
-    readonly says: string
-  }>
-  readonly said: string
-} {
+export function essayIntro(essay: Essay): LockedIntro {
   const answered = answeredOf(essay)
   const of = `${answered} of ${essay.tickets.length} tickets`
   return {

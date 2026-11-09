@@ -97,12 +97,17 @@ const CALL_SHAPE: Shape = {
   subtitles: "word",
 }
 
+/** `shape` in Mochi Night, its brand intro and outro moving (HYPER5): the call's from version 4, and the essay's. */
+export const nightInMotion = (shape: Shape): Shape => {
+  const night = inTheme(shape, "mochi-night")
+  return { ...night, brand: { ...night.brand, motion: BRAND_MOTION } }
+}
+
 function shapeOf(version: number): Shape {
   if (version < NIGHT_VERSION) return CALL_SHAPE
-  const night = inTheme(CALL_SHAPE, "mochi-night")
   return version >= MOTION_VERSION
-    ? { ...night, brand: { ...night.brand, motion: BRAND_MOTION } }
-    : night
+    ? nightInMotion(CALL_SHAPE)
+    : inTheme(CALL_SHAPE, "mochi-night")
 }
 
 export const CALL_MOST = {
@@ -219,7 +224,7 @@ export function callFormat(version: number = CALL_VERSION): Format {
 const refKey = (ref: CallRef): string => `${ref.repo}#${ref.number}`
 
 /** A day, as `YYYY-MM-DD`. */
-const day = z.iso.date()
+export const day = z.iso.date()
 
 /** A commit, by its full sum. */
 const commit = z.string().regex(/^[0-9a-f]{40}$/)
@@ -292,7 +297,8 @@ const LaterSchema = z.strictObject({
   refs,
 })
 
-const SaidSchema = z.strictObject({ said: words })
+/** A section said once: its words. */
+export const SaidSchema = z.strictObject({ said: words })
 
 export const CallWeekSchema = z.strictObject({
   schema: z.literal(CALL_WEEK_SCHEMA),
@@ -501,7 +507,7 @@ export const CALL_CHAPTERS: Readonly<Record<Section, string>> = {
 }
 
 /** A day as it is said: "October 30". */
-const sayDay = (day: string): string =>
+export const sayDay = (day: string): string =>
   new Intl.DateTimeFormat("en-US", {
     month: "long",
     day: "numeric",
@@ -518,13 +524,16 @@ const count = (n: number, one: string, many: string): string =>
  * never by the routine that writes the week, so the fill can't change who
  * it says made the video.
  */
-export function callIntro(week: CallWeek): {
+/** A locked intro (SFEED2): its rows on the frame, and all of it said. */
+export type LockedIntro = {
   readonly rows: ReadonlyArray<{
     readonly label: string
     readonly says: string
   }>
   readonly said: string
-} {
+}
+
+export function callIntro(week: CallWeek): LockedIntro {
   const counted: ReadonlyArray<readonly [number, string, string]> = [
     [week.asks.length, "question waits on you", "questions wait on you"],
     [

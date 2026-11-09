@@ -54,7 +54,7 @@ const SAMPLE = sampleCallWeek()
 const sectionName = (at: { scene: CallScene; view: SceneView }): string => {
   switch (at.scene.section) {
     case "intro": {
-      return W.whoMadeThis
+      return SW.whoMadeThis
     }
     case "brand-in":
     case "brand-out": {
@@ -92,13 +92,13 @@ const labelOf = (
 ): string => {
   switch (scene.section) {
     case "intro": {
-      return W.whoMadeThis
+      return SW.whoMadeThis
     }
     case "brand-in": {
-      return W.brandIn
+      return SW.brandIn
     }
     case "brand-out": {
-      return W.brandOut
+      return SW.brandOut
     }
     case "chapter": {
       return W.chapter(CALL_CHAPTERS[scene.of])

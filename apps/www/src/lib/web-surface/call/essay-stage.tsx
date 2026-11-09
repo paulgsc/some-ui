@@ -18,7 +18,7 @@ import type {
 
 import type { EssayAt, EssayView } from "./essay-view"
 import { essayAt } from "./essay-view"
-import { ESSAY_WORDS as W } from "./essay-words"
+import { ESSAY_WORDS as W, weekNumber } from "./essay-words"
 import {
   BrandSlide,
   ChapterSlide,
@@ -36,9 +36,8 @@ import { STAGE_WORDS as SW } from "./frame-words"
  * A: two bubbles, the tutor and the owner, the one speaking lit, the scene's
  * content beside them, and the caption underneath.
  *
- * It plays the template's sample essay. An essay of the owner's comes from
- * home's store (ask #2684), reached through the mailbox (RR18), and home
- * renders it (RR16); neither reaches this stage yet.
+ * It plays the template's sample essay (`essay.ts` says where an owner's
+ * essay will come from).
  */
 
 export type EssayStageProps = {
@@ -58,13 +57,13 @@ const SAMPLE = sampleEssay()
 const labelOf = (scene: EssayScene, essay: Essay): string => {
   switch (scene.section) {
     case "intro": {
-      return W.whoMadeThis
+      return SW.whoMadeThis
     }
     case "brand-in": {
-      return W.brandIn
+      return SW.brandIn
     }
     case "brand-out": {
-      return W.brandOut
+      return SW.brandOut
     }
     case "chapter": {
       return W.chapter(scene.title)
@@ -183,7 +182,6 @@ const Inline = ({ text }: { text: string }): JSX.Element => (
   <>
     {text.split(/(`[^`]+`)/).map((part, i) =>
       part.startsWith("`") && part.endsWith("`") && part.length > 1 ? (
-        // A part may repeat; its place is its key.
         // eslint-disable-next-line react/no-array-index-key
         <code key={i} className="font-mono text-[0.9em]">
           {part.slice(1, -1)}
@@ -513,7 +511,7 @@ const Screen = ({
                 <th className="w-[34%]" />
                 {weeks.map((week) => (
                   <th key={week} className="font-normal">
-                    {week.slice(week.indexOf("w"))}
+                    w{weekNumber(week)}
                   </th>
                 ))}
               </tr>
@@ -525,7 +523,6 @@ const Screen = ({
                     {row.name}
                   </th>
                   {row.cells.map((cell, i) => (
-                    // A cell is its week's, in order.
                     // eslint-disable-next-line react/no-array-index-key
                     <Cell key={i} cell={cell} />
                   ))}
@@ -552,7 +549,7 @@ const Screen = ({
     case "next": {
       return (
         <Call speaker={at.speaker} tag={NAMES.next}>
-          <Title>{W.nextWeek(essay.next.week)}</Title>
+          <Title>{W.week(essay.next.week)}</Title>
           {essay.next.topics.length > 0 && (
             <Field label={W.comesBackTo}>
               <ul className="list-disc pl-[1.2em] text-[0.9em]">

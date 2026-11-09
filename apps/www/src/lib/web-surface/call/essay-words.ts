@@ -1,5 +1,8 @@
 import type { Mark } from "@some-ui/video-render"
 
+/** A week's number within its year, from its id: "46" from "2026-w46". */
+export const weekNumber = (id: string): string => id.slice(id.indexOf("w") + 1)
+
 /**
  * Every word the essay's stage shows besides the essay's own data, the
  * format's scene names and the frame's (`./frame-words`), in one table.
@@ -7,13 +10,11 @@ import type { Mark } from "@some-ui/video-render"
 export const ESSAY_WORDS = {
   title: "Rust Rounds",
   sample: "Sample essay",
-  whoMadeThis: "Who made this",
-  brandIn: "Opening mark",
-  brandOut: "Closing mark",
   chapter: (title: string): string => `Chapter: ${title}`,
   tutor: "Tutor",
   you: "You",
-  week: (id: string): string => `Week ${id.slice(id.indexOf("w") + 1)}`,
+  /** A week by its id, "2026-w46", as the frame names it: "Week 46". */
+  week: (id: string): string => `Week ${weekNumber(id)}`,
   sla: "The SLA",
   story: "The story",
   speakTo: "Speak to",
@@ -51,6 +52,5 @@ export const ESSAY_WORDS = {
   roleNext: (next: string, gap: string): string => `Next, ${next}: ${gap}`,
   roleSource: (ladder: string, source: string): string =>
     `On ${ladder} (${source}), worked out from the weeks above`,
-  nextWeek: (id: string): string => `Week ${id.slice(id.indexOf("w") + 1)}`,
   comesBackTo: "Comes back to",
 } as const

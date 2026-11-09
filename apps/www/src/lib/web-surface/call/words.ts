@@ -29,9 +29,6 @@ export const CALL_WORDS = {
   missing: (from: string): string =>
     `There's no call for the week of ${from}: this is the newest instead.`,
   promise: "Promise",
-  whoMadeThis: "Who made this",
-  brandIn: "Opening mark",
-  brandOut: "Closing mark",
   chapter: (title: string): string => `Chapter: ${title}`,
   items: (n: number): string => (n === 1 ? "1 of them" : `${n} of them`),
 } as const
