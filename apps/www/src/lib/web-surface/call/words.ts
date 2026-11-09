@@ -6,9 +6,6 @@ export const CALL_WORDS = {
   title: "The weekly call",
   sample: "Sample week",
   read: "Read at",
-  previous: "Previous",
-  next: "Next",
-  scenes: "Scenes",
   status: {
     decide: "Waits on you",
     open: "Open",
@@ -31,14 +28,7 @@ export const CALL_WORDS = {
   unread: "This week's call couldn't be read, so this is the sample instead.",
   missing: (from: string): string =>
     `There's no call for the week of ${from}: this is the newest instead.`,
-  overflows:
-    "This scene doesn't fit the frame: part of it would be cut off in the video.",
   promise: "Promise",
-  mark: "The owner's mark",
-  whoMadeThis: "Who made this",
-  brandIn: "Opening mark",
-  brandOut: "Closing mark",
   chapter: (title: string): string => `Chapter: ${title}`,
-  source: "The code: github.com/paulgsc/some-ui",
   items: (n: number): string => (n === 1 ? "1 of them" : `${n} of them`),
 } as const

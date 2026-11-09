@@ -2,10 +2,12 @@ import {
   CALL_INDEX_SCHEMA,
   CALL_VERSION,
   sampleCallWeek,
+  sampleEssay,
 } from "@some-ui/video-render"
-import type { CallIndex, CallWeek } from "@some-ui/video-render"
+import type { CallIndex, CallWeek, Essay } from "@some-ui/video-render"
 import { describe, expect, it } from "vitest"
 
+import { essayAt } from "./essay-view"
 import { callAt, stageOf, weekFrom } from "./view"
 
 const week = (): CallWeek => {
@@ -186,5 +188,35 @@ describe("what the stage draws", () => {
         week: read<CallWeek>(undefined),
       })
     ).toMatchObject({ kind: "show", sample: true, unread: false })
+  })
+})
+
+const essay = (): Essay => {
+  const parsed = sampleEssay()
+  if (!parsed.ok) throw new Error(parsed.problems.join("; "))
+  return parsed.value
+}
+
+describe("the essay's stage", () => {
+  it("draws each scene with its ticket, and each deep dive by its place in the ticket's", () => {
+    const answer = essayAt(essay(), "answer-1").view
+    expect(answer.section === "answer" && answer.ticket.id).toBe("QM-311")
+    const dive = essayAt(essay(), "dive-4").view
+    expect(
+      dive.section === "dive" && [dive.ticket.id, dive.n, dive.dive.title]
+    ).toEqual(["QM-312", 2, "What `clear` and `push_str` do to the bytes"])
+  })
+
+  it("numbers each ticket's chapter", () => {
+    expect(essayAt(essay(), "chapter-question-2").view).toEqual({
+      section: "chapter",
+      title: "QM-312: Reuse the read buffer without losing the fields",
+      ticket: { n: 2, of: 3 },
+    })
+  })
+
+  it("opens on the first scene when the id names none", () => {
+    expect(essayAt(essay(), "nope").scene.id).toBe("intro")
+    expect(essayAt(essay(), undefined).index).toBe(0)
   })
 })

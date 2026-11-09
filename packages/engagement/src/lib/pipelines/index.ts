@@ -67,4 +67,8 @@ export const UNMEASURED: ReadonlyArray<Unmeasured> = [
     route: "/call",
     why: "The weekly call's stage: one scene at a time, for its video and to look over, on the template's sample week.",
   },
+  {
+    route: "/essay",
+    why: "The Rust Rounds essay's stage: one scene at a time, for its video and to look over, on the template's sample essay.",
+  },
 ]

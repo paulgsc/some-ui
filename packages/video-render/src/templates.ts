@@ -37,6 +37,14 @@ export const TEMPLATE_IDS = [
 
 export type TemplateId = (typeof TEMPLATE_IDS)[number]
 
+/**
+ * The folders under `templates/` that pin a format Studio doesn't list yet:
+ * the Rust Rounds essay's (`essay.ts`, RR15), until home voices and renders
+ * an essay and its previews (RR16, #2691). A template Studio lists is one
+ * home can make a preview of.
+ */
+export const TEMPLATES_NOT_LISTED = ["rust-essay"] as const
+
 const NEWEST: Readonly<Record<TemplateId, unknown>> = {
   "conference-call": callV4,
   "playoff-delta-legend": legendV4,
