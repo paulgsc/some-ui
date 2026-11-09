@@ -37,8 +37,10 @@ on:
       - ".github/workflows/pages.yml"
       - ".github/workflows/_environment-approval.yml"
       - ".github/actions/**"
+  # A draft builds no preview (#2823); marking it ready does.
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "apps/www/**"
       - "packages/**"
@@ -93,9 +95,9 @@ jobs:
     # `approve` is skipped on pull_request and workflow_dispatch, and a job a
     # skipped one sits above is itself skipped unless its `if` says
     # otherwise, so this one and deploy spell out `!cancelled()`.
-    # pull_request runs only when its paths above matched, so it always
-    # builds the preview.
-    if: ${{ !cancelled() && (github.event_name != 'push' || needs.approve.result == 'success') }}
+    # pull_request runs only when its paths above matched, so it builds the
+    # preview for every PR that is not a draft.
+    if: ${{ !cancelled() && github.event.pull_request.draft != true && (github.event_name != 'push' || needs.approve.result == 'success') }}
     runs-on: ubuntu-latest
     # A newer queued build replacing an older queued one (the default
     # `queue: single`) is intended here and in

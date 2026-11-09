@@ -30,8 +30,15 @@ name: Extension CI
 # already in the trigger list below. crates/** here only bought a full
 # detect + build-workspace + per-extension verify matrix on crate-only pushes,
 # for a diff no extension could observe.
+#
+# A draft pull request runs only the `draft` job, which fails (#2823): the
+# runner pool is shared, and marking the PR ready (`ready_for_review`) runs the
+# rest. It fails rather than leave every job skipped, because a run of only
+# skipped jobs concludes success on that head, which is what a session checks
+# before merging (CLAUDE.md, "A cancelled `Extension CI` run").
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "extensions/**"
       - "packages/**"
@@ -53,8 +60,20 @@ concurrency:
   group: extension-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  draft:
+    name: Draft (not verified)
+    if: github.event.pull_request.draft == true
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Drafts are not verified
+        run: |
+          echo "::error::Draft pull request: Extension CI runs once it is marked ready for review."
+          exit 1
+
   detect:
     name: Detect Changed Extensions
+    if: github.event.pull_request.draft != true
     uses: ./.github/workflows/_extension-detect.yml
 
   # Build shared workspace packages once.
@@ -168,6 +187,7 @@ jobs:
   # GITHUB_TOKEN and so gets no CI, which makes this the script's only gate.
   release-scripts:
     name: Release scripts
+    if: github.event.pull_request.draft != true
     runs-on: ubuntu-latest
     permissions:
       contents: read

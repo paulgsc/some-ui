@@ -7,7 +7,7 @@
 //
 // The invariant IDs and the debt label count are held against the base ref's (`--base <ref>`, else
 // `origin/main` where it exists). Wired into the root `lint` script and
-// pr.yml's `policy-docs` job, which CI Gate requires. Runs on Node's built-in
+// pr.yml's `guards` job, which CI Gate requires. Runs on Node's built-in
 // type stripping, with no install (see scripts/check-test-layout.ts).
 import { readFileSync } from "node:fs"
 import { join } from "node:path"

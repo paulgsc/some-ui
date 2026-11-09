@@ -2,7 +2,7 @@
 // Guardrail: GES5 (#2524), one pager for the phone's paged cards. The rule,
 // and what it leaves to review, live in packages/eslint/src/gestures.ts.
 //
-// Wired into the root `lint` script and pr.yml's `gestures` job, which CI
+// Wired into the root `lint` script and pr.yml's `guards` job, which CI
 // Gate requires. Runs on Node's built-in type stripping, with no install (see
 // scripts/check-test-layout.ts).
 import { readFileSync } from "node:fs"

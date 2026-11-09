@@ -18,7 +18,7 @@
 //   edit here: it is a story, a new entry that names the one it moves.
 //
 // Whether a call is gray at all, and whether an entry says it truly, is
-// review's. `scripts/check-calls.ts` runs this in pr.yml's policy-docs job and
+// review's. `scripts/check-calls.ts` runs this in pr.yml's `guards` job and
 // root `pnpm lint`.
 
 export const CALLS_SCHEMA = "some-ui.calls/1"

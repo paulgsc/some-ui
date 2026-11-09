@@ -44,6 +44,19 @@ Each has one aggregate check, judged by `re-actors/alls-green` (#1952):
   counts as passed, so a gate skipped on a cancelled run would read green. The
   cost is a red gate on a head a newer push superseded.
 
+Both repositories share one personal account's pool of hosted runners, 20
+concurrent jobs on GitHub Free, and `main` requires branches to be up to date,
+so every merge re-runs every other open PR (#2823). Two rules follow:
+
+- **The repo-wide guards share one job** (`guards`, "Repo guards"), one named
+  step per check, so a push takes one runner and one Nix setup for them rather
+  than eleven. The steps carry no `if:`: the first failure stops the job, and
+  `pnpm lint` runs them all locally.
+- **A draft runs nothing.** Every `pr.yml` job but CI Gate skips on a draft,
+  and CI Gate fails there, so the skip can never read as a pass; the same
+  holds for Extension CI (its `draft` job fails) and the Pages preview build.
+  Marking the PR ready for review (`ready_for_review`) runs everything.
+
 ## Setting up a job
 
 `.github/actions/node-ci-setup` is the one place a workflow installs the

@@ -164,7 +164,7 @@ their watch.
 ## What `pnpm check:assurance` holds
 
 `scripts/check-assurance.ts`, rules in `packages/assurance/src/rules.ts`; in root `pnpm lint` and
-pr.yml's `assurance` job, which CI Gate needs.
+pr.yml's `guards` job, which CI Gate needs.
 
 - **Shape:** every field above is present and of its kind, a list is a list, and a field the
   grammar does not know (a typo such as `retierd`) is an error. IDs are unique, promise-shaped,
@@ -215,7 +215,7 @@ pr.yml's `assurance` job, which CI Gate needs.
 in each repository still requires the checks that file lists and either up-to-date branches
 (`strict_required_status_checks_policy: true`) or a merge queue. This makes checks run against
 the main a pull request merges into. A repository setting can be switched
-off with no diff, so it runs on every pull request (pr.yml's `branch-rules` job, which CI Gate
+off with no diff, so it runs on every pull request (pr.yml's `guards` job, which CI Gate
 needs) and daily (`.github/workflows/branch-rules.yml`). It reads GitHub's `rules/branches/main`,
 which lists only active rules, so a ruleset turned off reads as nothing required. A 5xx or
 lost answer is asked once more, and an answer it still cannot get or read fails it as unknown,

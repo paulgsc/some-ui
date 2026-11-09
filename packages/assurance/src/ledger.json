@@ -1340,7 +1340,7 @@
             },
             {
               "class": "structural",
-              "says": "pr.yml's Branch rules job, which CI Gate needs, and the daily branch-rules.yml run the check.",
+              "says": "pr.yml's Repo guards job, which CI Gate needs, and the daily branch-rules.yml run the check.",
               "ref": "some-ui:.github/workflows/branch-rules.yml"
             }
           ],

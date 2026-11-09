@@ -12,7 +12,7 @@
 //
 // The ratchet compares with the base ref's ledger (`--base <ref>`, else
 // `origin/main` where it exists). Wired into the root `lint` script and
-// pr.yml's `assurance` job, which CI Gate needs. Runs on Node's built-in type
+// pr.yml's `guards` job, which CI Gate needs. Runs on Node's built-in type
 // stripping, with no install (see scripts/check-test-layout.ts).
 import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"

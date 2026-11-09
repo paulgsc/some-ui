@@ -31,10 +31,16 @@ name: PR
 #   pass explicit spec paths to `test:e2e`, or it inherits those and fails
 #   PRs for work they never touched. Any new `test:e2e` step in CI must do
 #   the same.
+#
+# Drafts run nothing but CI Gate, which fails on them (#2823): a session can
+# open a draft without spending the shared runner pool, and marking it ready
+# (`ready_for_review`) runs everything. The gate fails rather than skips
+# because a skipped required check counts as passed, and on ready the draft
+# run's gate is the only CI Gate on that head until the new run reaches it.
 on:
   pull_request:
     branches: [main]
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, ready_for_review]
 concurrency:
   group: pr-${{ github.ref }}
   cancel-in-progress: true
@@ -43,7 +49,10 @@ jobs:
   # Coarse-grained: did Rust files change? Node files? CI config?
   # Decides which of the Rust, Node and Deny jobs run. Node filtering within
   # a run is handled by turbo, not by this step.
+  #
+  # Skipped on a draft, and with it every job that needs it (see `on:`).
   changes:
+    if: github.event.pull_request.draft == false
     uses: ./.github/workflows/_detect-changes.yml
 
   # ── Rust CI ────────────────────────────────────────────────────────────
@@ -578,48 +587,129 @@ jobs:
       rust: ${{ needs.changes.outputs.rust == 'true' || needs.changes.outputs.ci == 'true' }}
       node: ${{ needs.changes.outputs.node == 'true' || needs.changes.outputs.ci == 'true' }}
 
-  # ── Test layout (repo-wide) ────────────────────────────────────────────
-  # At most one *.test.* per source directory, none in a src/routes/ tree
-  # outside __tests__/ (#772, #1475). Its own job, with no `changes` gate:
-  # the invariant spans every workspace, and the node job above is skipped for
-  # an extensions-only PR, exactly where a stray test can land (bot-found on
-  # #1531). No install: the script runs on Node's built-in type stripping. A script
-  # rather than an ESLint rule because the verdict for one file depends on its
-  # siblings, which `eslint --cache` cannot see (packages/eslint/src/test-layout.ts).
-  test-layout:
-    name: Test layout guardrail
+  # ── Repo guards (repo-wide) ────────────────────────────────────────────
+  # Every repo-wide guard, one named step each, in one job: until #2823 each
+  # was its own job, eleven runners and eleven Nix setups (and their cache
+  # saves) for under a minute of work apiece, queued behind the Node jobs in
+  # the account's shared runner pool. No `changes` gate: each invariant spans
+  # every workspace and file type (a stray test or a React module can land in
+  # an extensions-only PR, a citation or an ID in a markdown edit, a workflow
+  # edit with any kind of PR), and several read files no path filter covers.
+  # No full install: the scripts run on Node's built-in type stripping; R1,
+  # F1 and HS2 need the TypeScript parser, so the eslint kit alone is
+  # installed before them.
+  #
+  # The steps carry no `if:`, so the first failing guard stops the job and
+  # fails CI Gate; `pnpm lint` runs them all locally. check:policy-docs
+  # requires that: a Held by check counts only from a step with no `if:` or
+  # `continue-on-error:`. Cheapest and Nix-free first.
+  #
+  # One full-history checkout serves them all: commit-trailers needs every
+  # commit, and it brings origin/<base>'s tip, which `--base` reads (R1, F1,
+  # HS2 and the policy, calls and assurance ratchets). origin/<base> is the
+  # base's tip now: a commit main gained after the event and the branch merged
+  # in is main's, not the PR's.
+  guards:
+    name: Repo guards
+    if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # CN1 (docs/canon/scripts/check-citations.sh): every canon lives in
+      # docs/canon and every cited canon path resolves. Bash and git only.
+      - name: Check canon citations
+        run: bash docs/canon/scripts/check-citations.sh
+      - name: Self-test the canon check
+        run: bash docs/canon/scripts/check-citations.test.sh
+
       - uses: ./.github/actions/nix-setup
+
+      # At most one *.test.* per source directory, none in a src/routes/ tree
+      # outside __tests__/ (#772, #1475). A script rather than an ESLint rule
+      # because the verdict for one file depends on its siblings, which
+      # `eslint --cache` cannot see (packages/eslint/src/test-layout.ts).
       - name: Check test layout
         run: nix develop .#ci --command node scripts/check-test-layout.ts
 
-  # ── React coordination (repo-wide) ─────────────────────────────────────
-  # R1 (docs/monorepo-boundaries.md, "Inside a React package"): every React
-  # module that awaits or chains a promise is listed in
-  # scripts/react-coordination.allowlist with its exact count. No `changes`
-  # gate, for test-layout's reason: a React module can land in an
-  # extensions-only PR, and the allowlist sits under scripts/, which no path
-  # filter covers. Unlike test-layout it needs the TypeScript parser, so it
-  # installs the one workspace that declares it (seconds), not the repo.
-  react-coordination:
-    name: React coordination guardrail
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/nix-setup
-      - uses: ./.github/actions/pnpm-cache
-      # Why not node-ci-setup: it installs the whole workspace, and this job
-      # needs one package.
-      - name: Install the eslint kit
-        run: nix develop .#ci --command pnpm install --frozen-lockfile --prefer-offline --filter @some-ui/eslint-kit
-      # The checkout is the merge ref alone, so fetch the base's tip for
-      # `--base` (R1 and F1's Grandfathered groups only shrink).
-      - name: Fetch the base branch
+      # Artifact retention (CLAUDE.md "Workflow storage") and the RS1
+      # fingerprint and RS2 branch-name checks (CLAUDE.md "Cross-repo coupling").
+      - name: Check workflows
+        run: nix develop .#ci --command node scripts/check-workflows.ts
+
+      # CLAUDE.md, "Gray-area invariants": every declaration has its parts, no
+      # ID is reused or dropped, debt labels name their issue and do not grow,
+      # the paths and headings CLAUDE.md, REVIEW.md and AGENTS.md name exist,
+      # each Held by line's check runs here, and AGENTS.md's digest matches
+      # REVIEW.md. A script rather than an ESLint rule because it reads other
+      # files (packages/eslint/src/policy-docs.ts).
+      - name: Check the policy documents
         env:
           BASE_REF: ${{ github.base_ref }}
-        run: git fetch --no-tags --depth=1 origin "+$BASE_REF:refs/remotes/origin/$BASE_REF"
+        run: nix develop .#ci --command node scripts/check-policy-docs.ts --base "origin/$BASE_REF"
+
+      # ST37 (#2637): docs/calls.json's shape, and that it only grew since the
+      # base's (packages/eslint/src/calls.ts).
+      - name: Check the calls record
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: nix develop .#ci --command node scripts/check-calls.ts --base "origin/$BASE_REF"
+
+      # docs/operational-assurance.md: the ledger's shape, proofs and issues,
+      # that every server route module is placed, and the ratchet against the
+      # base branch's ledger, so a promise is never weakened without an
+      # amendment.
+      - name: Check the assurance ledger
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: nix develop .#ci --command node scripts/check-assurance.ts --base "origin/$BASE_REF"
+
+      # GC1 (scripts/check-branch-rules.ts); also daily in branch-rules.yml.
+      - name: Check that main still requires its checks
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: nix develop .#ci --command node scripts/check-branch-rules.ts
+
+      # CLAUDE.md, "The phone and the desktop web are separate surfaces": the
+      # Apple-only tokens in packages/eslint/src/android-only.ts appear in no
+      # source, markup or path name, a workflow included.
+      - name: Check the Android-only tokens
+        run: nix develop .#ci --command node scripts/check-android-only.ts
+
+      # GES5 (packages/ui/shared/src/lib/pager): on the phone, a touch or
+      # pointer handler lives only in the shared pager's runtime and the
+      # pull's, and a PageControls comes with the pager
+      # (packages/eslint/src/gestures.ts).
+      - name: Check the phone's gestures
+        run: nix develop .#ci --command node scripts/check-gestures.ts
+
+      # scripts/check-commit-trailers.ts over every commit the PR adds; the
+      # commit-msg hook runs it only where husky is installed.
+      - name: Check every commit's trailers
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: nix develop .#ci --command node scripts/check-commit-trailers.ts "origin/$BASE_REF..$HEAD_SHA"
+
+      # scripts/sync-toolchain.sh --check: either side can move alone (a
+      # flake.lock bump, a hand edit of .nvmrc), and a hand edit of a copy is
+      # the drift this exists to catch. It only evaluates the flake.
+      - name: Check toolchain pins match the flake
+        run: scripts/sync-toolchain.sh --check
+
+      - uses: ./.github/actions/pnpm-cache
+      # Why not node-ci-setup: it installs the whole workspace, and these
+      # three counts need one package.
+      - name: Install the eslint kit
+        run: nix develop .#ci --command pnpm install --frozen-lockfile --prefer-offline --filter @some-ui/eslint-kit
+
+      # R1 (docs/monorepo-boundaries.md, "Inside a React package"): every React
+      # module that awaits or chains a promise is listed in
+      # scripts/react-coordination.allowlist with its exact count.
       - name: Check React coordination
         env:
           BASE_REF: ${{ github.base_ref }}
@@ -637,170 +727,6 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
         run: nix develop .#ci --command node scripts/check-stays-put.ts --base "origin/$BASE_REF"
 
-  # ── Workflow guards (repo-wide) ────────────────────────────────────────
-  # Artifact retention (CLAUDE.md "Workflow storage") and the RS1 fingerprint
-  # and RS2 branch-name checks (CLAUDE.md "Cross-repo coupling"). No `changes`
-  # gate for the same reason as test-layout: a workflow edit rides along with
-  # any kind of PR. No install: Node's built-in type stripping, like above.
-  workflows:
-    name: Workflow guards
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/nix-setup
-      - name: Check workflows
-        run: nix develop .#ci --command node scripts/check-workflows.ts
-
-  # ── Policy documents (repo-wide) ───────────────────────────────────────
-  # CLAUDE.md, "Gray-area invariants": every declaration has its parts, no ID
-  # is reused or dropped, debt labels name their issue and do not grow, the
-  # paths and headings CLAUDE.md, REVIEW.md and AGENTS.md name exist, each
-  # Held by line's check runs here, and AGENTS.md's digest matches REVIEW.md. No `changes` gate: a markdown edit matches no path
-  # filter. No install (Node's type stripping). A script rather than an ESLint
-  # rule because it reads other files (packages/eslint/src/policy-docs.ts).
-  policy-docs:
-    name: Policy documents
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/nix-setup
-      # The checkout is the merge ref alone, so fetch the base's tip for
-      # `--base` (an ID declared there stays declared).
-      - name: Fetch the base branch
-        env:
-          BASE_REF: ${{ github.base_ref }}
-        run: git fetch --no-tags --depth=1 origin "+$BASE_REF:refs/remotes/origin/$BASE_REF"
-      - name: Check the policy documents
-        env:
-          BASE_REF: ${{ github.base_ref }}
-        run: nix develop .#ci --command node scripts/check-policy-docs.ts --base "origin/$BASE_REF"
-      # ST37 (#2637): docs/calls.json's shape, and that it only grew since the
-      # base's (packages/eslint/src/calls.ts). Here for the same base fetch.
-      - name: Check the calls record
-        env:
-          BASE_REF: ${{ github.base_ref }}
-        run: nix develop .#ci --command node scripts/check-calls.ts --base "origin/$BASE_REF"
-
-  # ── Assurance ledger (repo-wide) ──────────────────────────────────────
-  # docs/operational-assurance.md: the ledger of promises about outcomes and
-  # work (packages/assurance/src/ledger.json). Its shape, proofs and issues,
-  # that every server route module is placed, and the ratchet against the
-  # base branch's ledger, so a promise is never weakened without an amendment.
-  # No `changes` gate: a change anywhere can remove a proof it names. No
-  # install (Node's type stripping).
-  assurance:
-    name: Assurance ledger
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/nix-setup
-      # The checkout is the merge ref alone, so fetch the base's tip for
-      # `--base` (the ratchet holds this ledger to the base's).
-      - name: Fetch the base branch
-        env:
-          BASE_REF: ${{ github.base_ref }}
-        run: git fetch --no-tags --depth=1 origin "+$BASE_REF:refs/remotes/origin/$BASE_REF"
-      - name: Check the assurance ledger
-        env:
-          BASE_REF: ${{ github.base_ref }}
-        run: nix develop .#ci --command node scripts/check-assurance.ts --base "origin/$BASE_REF"
-
-  # ── Branch rules (GC1) ─────────────────────────────────────────────────
-  # scripts/check-branch-rules.ts; also daily in branch-rules.yml. No
-  # `changes` gate and no install (Node's type stripping).
-  branch-rules:
-    name: Branch rules
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/nix-setup
-      - name: Check that main still requires its checks
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: nix develop .#ci --command node scripts/check-branch-rules.ts
-
-  # ── Android only (repo-wide) ───────────────────────────────────────────
-  # CLAUDE.md, "The phone and the desktop web are separate surfaces": a few
-  # Apple-only tokens, listed in packages/eslint/src/android-only.ts, appear in
-  # no source, markup or path name. No `changes` gate: the rule spans every
-  # workspace and every file type, a workflow included. No install (Node's
-  # type stripping). A script because the tokens can sit in HTML, JSON and
-  # workflows as well as TypeScript.
-  android-only:
-    name: Android only
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/nix-setup
-      - name: Check the Android-only tokens
-        run: nix develop .#ci --command node scripts/check-android-only.ts
-
-  # ── Gestures (repo-wide) ───────────────────────────────────────────────
-  # GES5 (packages/ui/shared/src/lib/pager): on the phone, a touch or pointer
-  # handler lives only in the shared pager's runtime and the pull's, and a
-  # PageControls comes with the pager (packages/eslint/src/gestures.ts). No
-  # `changes` gate, for test-layout's reason: a handler can land in any
-  # workspace. No install (Node's type stripping).
-  gestures:
-    name: Gestures
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/nix-setup
-      - name: Check the phone's gestures
-        run: nix develop .#ci --command node scripts/check-gestures.ts
-
-  # ── Canon citations (repo-wide) ────────────────────────────────────────
-  # CN1 (docs/canon/scripts/check-citations.sh): every canon lives in
-  # docs/canon and every cited canon path resolves. No `changes` gate: a
-  # citation can land in any file type, a markdown edit included. No install
-  # and no Nix: the script is bash and git.
-  canon:
-    name: Canon citations
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v7
-      - name: Check canon citations
-        run: bash docs/canon/scripts/check-citations.sh
-      - name: Self-test the canon check
-        run: bash docs/canon/scripts/check-citations.test.sh
-
-  # ── Change-kind record (repo-wide) ─────────────────────────────────────
-  # scripts/check-commit-trailers.ts over every commit the PR adds; the
-  # commit-msg hook runs it only where husky is installed. Full history, so
-  # origin/<base> is the base's tip now: a commit main gained after the event
-  # and the branch merged in is main's, not the PR's. No install.
-  commit-trailers:
-    name: Change-kind trailers
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-      - uses: ./.github/actions/nix-setup
-      - name: Check every commit's trailers
-        env:
-          BASE_REF: ${{ github.base_ref }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: nix develop .#ci --command node scripts/check-commit-trailers.ts "origin/$BASE_REF..$HEAD_SHA"
-
-  # ── Toolchain pins (repo-wide) ─────────────────────────────────────────
-  # scripts/sync-toolchain.sh --check. No `changes` gate: either side can move
-  # alone (a flake.lock bump, a hand edit of .nvmrc), and a hand edit of a copy
-  # is the drift this exists to catch. No install: it only evaluates the flake.
-  toolchain:
-    name: Toolchain pins
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/nix-setup
-      - name: Check toolchain pins match the flake
-        run: scripts/sync-toolchain.sh --check
-
   # ── CI Gate ────────────────────────────────────────────────────────────
   # A job whose `needs` fails is skipped, not failed, so the gate judges each
   # result itself. `allowed-skips`: the jobs whose `if:` skips them for an
@@ -814,29 +740,17 @@ jobs:
     name: CI Gate
     runs-on: ubuntu-latest
     needs:
-      [
-        changes,
-        rust,
-        node-checks,
-        node-lint,
-        node-test,
-        node-e2e,
-        deny,
-        test-layout,
-        react-coordination,
-        workflows,
-        policy-docs,
-        assurance,
-        branch-rules,
-        android-only,
-        gestures,
-        canon,
-        commit-trailers,
-        toolchain,
-      ]
+      [changes, rust, node-checks, node-lint, node-test, node-e2e, deny, guards]
     if: always()
     permissions: {}
     steps:
+      # A draft ran nothing (see `on:`), so the gate fails rather than pass a
+      # head nothing verified. Marking the PR ready runs the whole workflow.
+      - name: Drafts are not verified
+        if: github.event.pull_request.draft
+        run: |
+          echo "::error::Draft pull request: CI runs once it is marked ready for review."
+          exit 1
       - uses: re-actors/alls-green@v1.3.0
         with:
           jobs: ${{ toJSON(needs) }}

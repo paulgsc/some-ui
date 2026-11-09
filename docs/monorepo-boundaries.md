@@ -168,10 +168,11 @@ coordination, each fixed by one more local guard.
 >   `packages/eslint/src/react-coordination.ts`,
 >   `packages/eslint/src/site-count.ts` (its scope and allowlist parsing),
 >   `scripts/check-react-coordination.ts`, the root `lint` script or pr.yml's
->   `react-coordination` job (and its entry in CI Gate's `needs`, which
+>   `guards` job (and its entry in CI Gate's `needs`, which
 >   `allowed-skips` must not list) that narrows what is counted or stops it
 >   running: a path excluded, a kind of site dropped, a step removed, the
->   `--base` comparison or the base fetch dropped, a file deleted or renamed.
+>   `--base` comparison or the full-history checkout that brings the base
+>   dropped, a file deleted or renamed.
 > - _Scope:_ `scripts/react-coordination.allowlist` and the files named
 >   above.
 > - _Why not enforced:_ the count is. `pnpm check:react-coordination` fails
@@ -293,7 +294,7 @@ came first and stays: its four laws are the same idea inside one package.
 >   group, so an entry loses its reason. Also by a hunk to
 >   `packages/eslint/src/foreign-boundary.ts`, `packages/eslint/src/site-count.ts`,
 >   `scripts/check-foreign-boundary.ts`, the root `lint` script or the
->   "Check the foreign boundary" step of pr.yml's `react-coordination` job
+>   "Check the foreign boundary" step of pr.yml's `guards` job
 >   that narrows what is counted or stops it running: a foreign module or
 >   global dropped, a kind of site dropped, the `callForeign` exemption
 >   widened past its inline `start` function, a path excluded, a step
@@ -381,8 +382,8 @@ Partly. Be honest about which parts.
 - **Deep path-alias imports** of a hoisted module are gone by construction -
   the directory no longer exists.
 - **Coordination in React** is counted, not judged: R1 above, by
-  `pnpm check:react-coordination` (in root `pnpm lint` and its own pr.yml job
-  that CI Gate requires).
+  `pnpm check:react-coordination` (in root `pnpm lint` and a step of pr.yml's `guards`
+  job, which CI Gate requires).
 - **A failure reaches the log**: FT1 by `log-guard` in every preset; that
   a silent catch says why is `catch-guard/require-ignored-reason`, and
   whether it is true is FT2's, for review.
