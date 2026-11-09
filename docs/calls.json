@@ -611,7 +611,7 @@
       ],
       "gray": "Both close the lost-answer case; the owed list duplicates a guarantee home already gives and kept state that a wipe or reinstall loses.",
       "undo": "Revert 944c4f10, then fix what the review of 9e0867db found in it: a deleted take's audio stranded behind a false \"on home\", and entries that never settle.",
-      "refs": ["#2758"]
+      "refs": ["#2758", "server#760"]
     }
   ]
 }
