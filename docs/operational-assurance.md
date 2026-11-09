@@ -212,7 +212,9 @@ pr.yml's `assurance` job, which CI Gate needs.
 ## What `pnpm check:branch-rules` holds
 
 `scripts/check-branch-rules.ts`, rules in `packages/assurance/src/branch-rules.ts`: GC1, that `main`
-in each repository still requires the checks that file lists. A repository setting can be switched
+in each repository still requires the checks that file lists and either up-to-date branches
+(`strict_required_status_checks_policy: true`) or a merge queue. This makes checks run against
+the main a pull request merges into. A repository setting can be switched
 off with no diff, so it runs on every pull request (pr.yml's `branch-rules` job, which CI Gate
 needs) and daily (`.github/workflows/branch-rules.yml`). It reads GitHub's `rules/branches/main`,
 which lists only active rules, so a ruleset turned off reads as nothing required. A 5xx or
