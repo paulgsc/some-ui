@@ -12,6 +12,8 @@ name: Mobile APK
 # builds an APK, from that run's commit. Nothing consumes a version from this
 # workflow (versionCode is the run number), so no release PR or version bump
 # is involved (epic #1615, Decision 1).
+# Version/changelog-only release pushes need no new approval;
+# detect checks the whole push before entering the environment.
 #
 # Why CI builds it rather than a laptop or the agent sandbox: Gradle needs the
 # Android SDK (`compileSdkVersion` in apps/mobile/android/variables.gradle),
@@ -27,6 +29,7 @@ on:
       - "apps/www/**"
       - "packages/**"
       - "pnpm-lock.yaml"
+      - "scripts/release/**"
       - ".github/workflows/mobile-apk.yml"
       - ".github/workflows/_mobile-review.yml"
       - ".github/workflows/_environment-approval.yml"
@@ -45,8 +48,25 @@ permissions:
   actions: read
 
 jobs:
+  detect:
+    name: Detect release inputs
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.inputs.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: inputs
+        uses: ./.github/actions/release-inputs
+        with:
+          base: ${{ github.event.before }}
+
   approve:
     name: Approve APK build
+    needs: detect
+    # Dispatch has no before SHA, so detect keeps its existing approval.
+    if: needs.detect.outputs.changed == 'true'
     uses: ./.github/workflows/_environment-approval.yml
     with:
       environment: mobile-release

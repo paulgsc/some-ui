@@ -255,6 +255,8 @@ jobs:
             --filter=...[HEAD^1] \
             --filter='!./extensions/**' \
             --concurrency=100%
+      - name: Test release track boundaries (RT1)
+        run: nix develop .#ci --command node --test scripts/release/release.test.mjs
 
   node-e2e:
     name: Node CI / e2e

@@ -326,8 +326,10 @@ Only a debug build offers it.
 ### In CI (how to get the APK onto a phone)
 
 `.github/workflows/mobile-apk.yml` builds it from a push to `main` that
-touches what it is built from, once you approve that run, and on nothing
-else (pull requests do not). Each such push starts a run that waits on the
+touches what it is built from, once you approve that run; a manual dispatch
+can also validate a branch (pull requests do not build it). Pushes changing
+only package versions, changelogs and consumed changesets skip
+approval. Other matching pushes start a run that waits on the
 `mobile-release` environment: GitHub notifies its required reviewer, and
 **Review deployments** on the run approves it. A newer push cancels a run
 still waiting, so the one waiting is always `main`'s newest; an unapproved

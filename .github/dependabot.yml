@@ -55,9 +55,3 @@ updates:
       actions-core:
         patterns:
           - "actions/*"
-    # CS1: changesets/action's major pairs with the Changesets CLI's, so take
-    # a major by hand together with the CLI's. check:workflows fails a
-    # mismatched pair.
-    ignore:
-      - dependency-name: "changesets/action"
-        update-types: ["version-update:semver-major"]

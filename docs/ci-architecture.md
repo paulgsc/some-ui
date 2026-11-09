@@ -58,17 +58,53 @@ whose copy of the action would run), `pr.yml`'s one-package install, and
 
 ## Release tracks
 
-The publish legs are the leaves: they share nothing and change only on
-purpose. What gates each one:
+The shared policy in `scripts/release/policy.json` assigns packages and a
+release branch to each Changesets track. Each track serializes runs across
+refs because all its dispatches write that same branch. The publisher remains specific to
+its artifact:
 
-| Track               | Gate                                                    | Notes                                                                                              |
-| ------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| Pages               | Environment approval (`pages-release`) on a push        | A `workflow_dispatch` builds and deploys without it (#1859).                                       |
-| Mobile APK          | Environment approval (`mobile-release`)                 | #1859.                                                                                             |
-| Docker (`www`)      | Release PR (`changeset-release/www-docker`)             | `queue: max`; an ordinary run that starts after a newer release skips (#1958). Its version: #1951. |
-| Extensions          | Release PR (`suspender-ledger`, the one released today) | Its notes are chosen per version, so the version carries information (#1750).                      |
-| wasm crates         | changesets/action PR                                    | `queue: max` (#1958). A run's changesets do not survive the next run: #1959.                       |
-| npm (`release.yml`) | Manual dispatch, changesets/action                      | Decides from `main`'s state, so the default queue is right.                                        |
+| Track          | Gate                                                              | Release branch                                 |
+| -------------- | ----------------------------------------------------------------- | ---------------------------------------------- |
+| Pages          | Environment approval (`pages-release`); dispatch deploys directly | None                                           |
+| Mobile APK     | Environment approval (`mobile-release`), including dispatch       | None                                           |
+| Docker (`www`) | Merge its version PR                                              | `changeset-release/www-docker`                 |
+| Extensions     | Merge the reviewed AMO build/notes PR                             | `changeset-release/extension-suspender-ledger` |
+| WASM crates    | Merge their version PR                                            | `changeset-release/wasm`                       |
+| Node packages  | Manual dispatch to version intents, then merge their PR           | `changeset-release/node`                       |
+
+`track.mjs` projects the pnpm workspace onto the owning track for each
+Changesets invocation. It preserves the workspace's catalogs and overrides,
+hides foreign intents, rejects an intent that mixes tracks, and restores the
+original workspace/config/foreign intents on normal return or exception. This prevents
+WASM versioning from rewriting a Node consumer's registry pin. Each publisher
+also restricts Changesets to the exact owned package/version request; its tags
+and GitHub Releases use the same scope. `publish_only` dispatch retries current
+versions for that track; it does not create new intents. Normal Node dispatch
+versions pending Node intents, while normal WASM dispatch requests crate bumps.
+
+A version transition in an owned manifest requests publication. Commit titles
+are descriptive and can be edited without changing that decision. WASM can
+publish bumped crates and request bumps for different source-only crates in the
+same push. Refreshing the WASM PR carries forward the standing branch's
+still-unmerged crate bumps, so a second source run cannot drop the first
+crate's request. Older queued source runs whose crates gained a later version on
+main request no additional bump. Docker keeps its dependency-graph check for
+actual source changes.
+
+The shared semantic diff ignores version-only manifest modifications,
+changelogs and changeset bookkeeping when deciding whether Pages/APK need
+approval or Docker/WASM need another source release. Added/deleted manifests,
+dependency adoption, scripts and other manifest fields remain real changes.
+The extension release is separate from Changesets and retains its built-content
+digest and reviewed release record.
+
+`RT1` in `scripts/release/release.test.mjs` exercises real Git trees and the
+installed Changesets CLI, including isolated versioning, mixed intents,
+publication subsets, retry cleanup, and mixed/reordered pushes. PR CI's Node
+unit-test job runs it. Earlier checks paired CLI/action versions and required
+a www bump; neither distinguished release ownership or semantic source changes.
+The old shared `changeset-release/main` branch is superseded: pending release
+PRs on it should be closed and regenerated on their owning branches.
 
 `_environment-approval.yml` holds the approval job for Pages and the APK. A
 newer push cancels a run still waiting for approval (`cancel-in-progress` per
@@ -111,9 +147,8 @@ Each is known, rare, and clears on the next run:
   older Pages or APK run as the one waiting, and in a rare overlap an older
   Pages deploy can follow a newer one (#1859).
 - Two overlapping APK builds can briefly leave two APKs (#1859).
-- Queued release runs can swap. Docker's guard covers the refresh; a wasm
-  refresh then proposes bumps from an older tree, and `changeset publish`
-  skips a version already published. A `publish_only` dispatch that swaps with
+- Queued release runs can swap. Docker and WASM suppress source refreshes already covered by a newer
+  version on main; `changeset publish` skips a version already published. A `publish_only` dispatch that swaps with
   a newer release could move Docker's `latest` back (#1958).
 - A re-run that fails a validated run resets what the retention sweep keeps
   for that family (#1953).
@@ -126,4 +161,4 @@ Each is known, rare, and clears on the next run:
   or replaced.
 - **#1622:** is one shared push-to-main root worth its coupling? Expected
   answer: no, now that the install is shared and once #1619 lands.
-- **#1951** (Docker's version) and **#1959** (the wasm release branch).
+- **#1951** (Docker's version). The separate WASM branch addresses #1959.

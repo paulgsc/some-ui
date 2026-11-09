@@ -13,15 +13,9 @@ name: WWW Docker Release
 # build+push the image once a human merges that PR. The merge is the
 # judgment call detection can't make on its own.
 #
-# Deliberately NOT changesets/action for the PR step: release.yml and
-# wasm-release.yml already point changesets/action at the same
-# `changeset-release/main` branch (that coupling is exactly what
-# wasm-release.yml's cascading-bump workarounds exist to patch around — see
-# #657-#659). A third consumer of that shared branch would mix an unrelated
-# Docker-publish decision into the same PR as npm version bumps. This
-# workflow drives `@changesets/cli` directly and opens its own PR on its own
-# branch instead, so review here is scoped to "does this diff warrant a new
-# image" and nothing else.
+# Node, WASM and Docker have distinct branches and scoped Changesets
+# workspaces (scripts/release/policy.json). Only a www version transition
+# publishes this image; other tracks' bookkeeping requests no new Docker PR.
 on:
   push:
     branches: [main]
@@ -30,6 +24,7 @@ on:
       - "packages/**"
       - "crates/**"
       - "pnpm-lock.yaml"
+      - "scripts/release/**"
       - ".github/workflows/www-docker-release.yml"
   workflow_dispatch:
     inputs:
@@ -51,7 +46,7 @@ permissions:
 # does not guarantee FIFO, so two queued runs can swap; an ordinary run that
 # starts after a newer release skips (www-detect/detect.sh).
 concurrency:
-  group: www-docker-release-${{ github.ref }}
+  group: www-docker-release
   cancel-in-progress: false
   queue: max
 jobs:
@@ -63,13 +58,8 @@ jobs:
   # a PR instead of publishing directly. No strategy.matrix here, unlike
   # wasm-release.yml's per-crate matrix — there's exactly one image to build.
   #
-  # The decision itself lives in ./.github/actions/www-detect, not inline
-  # bash: GitHub's `${{ }}` templating splices context values (like a raw
-  # commit message) into the shell script as unquoted text before bash ever
-  # sees it, which is exactly what broke this job (see #674) — a multi-line
-  # commit message closed out of the `[[ ]]` early. Passing those values
-  # through `with:`/`env:` into the action keeps them as real shell
-  # variables that can be quoted correctly.
+  # The shared policy detects version transitions and semantic source changes;
+  # www-detect then checks whether those sources reach www's build graph.
   detect:
     name: Detect www Changes
     runs-on: ubuntu-latest
@@ -88,8 +78,6 @@ jobs:
         with:
           event-name: ${{ github.event_name }}
           publish-only: ${{ inputs.publish_only }}
-          commit-message: ${{ github.event.head_commit.message }}
-          release-commit-message: ${{ env.RELEASE_COMMIT_MESSAGE }}
           base-sha: ${{ github.event.before }}
           head-sha: ${{ github.sha }}
   # ── Open/update the release PR ──────────────────────────────────────────
@@ -144,7 +132,7 @@ jobs:
           commit-message: ${{ env.RELEASE_COMMIT_MESSAGE }}
           title: ${{ env.RELEASE_COMMIT_MESSAGE }}
           body: >
-            Opened automatically because a change reachable from `apps/www` landed on `main`. Review the diff — most workspace dependency bumps don't change www's actual behaviour — and merge via **squash** (the merge commit message drives the publish step below) to build and push `${{ env.DOCKERHUB_IMAGE }}`.
+            Opened automatically because a change reachable from `apps/www` landed on `main`. Review the diff and merge when the change warrants an image (the www version transition drives publishing) to build and push `${{ env.DOCKERHUB_IMAGE }}`.
 
   # ── Build + push the image ──────────────────────────────────────────────
   # Only runs once the release PR above has actually been merged (or a
