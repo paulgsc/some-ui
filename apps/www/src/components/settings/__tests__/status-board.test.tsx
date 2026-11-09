@@ -12,6 +12,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { EMPTY } from "@/lib/jobs/model"
 import { journey } from "@/lib/journey"
+import type { RendersOutcome } from "@/lib/renders"
 import type { BoardRow } from "@/lib/status-board"
 import { BOARD_WORDS } from "@/lib/status-board/words"
 import { StatusBoard } from "@/components/settings/status-board"
@@ -59,6 +60,32 @@ vi.mock("@/lib/clock", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   useMinuteClock: (): Date => new Date("2026-10-26T18:00:00Z"),
 }))
+// Home answers that it's making Playoff Delta's week (SFEED13).
+vi.mock("@tanstack/react-query", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  useQuery: (): { data: RendersOutcome } => ({
+    data: {
+      kind: "read",
+      board: {
+        now: {
+          feed: "playoff-delta",
+          key: "2026-w9",
+          state: "rendering",
+          since: 0,
+          stateSince: 0,
+          gaveWay: 0,
+          heldBy: null,
+          stuck: false,
+          estimate: null,
+        },
+        waiting: [],
+        failed: [],
+        done: [],
+        coming: [],
+      },
+    },
+  }),
+}))
 vi.mock(
   "@tanstack/react-router",
   async (importOriginal): Promise<typeof ReactRouterModule> => {
@@ -102,9 +129,10 @@ describe("StatusBoard", () => {
     }
     render(<StatusBoard />)
     const glance = screen.getByRole("region", { name: BOARD_WORDS.glance })
-    // The two lanes, the morning run, today's decisions, the routine and
-    // Korean's look; scouts, with nothing offered yet, have no row.
-    expect(within(glance).getAllByRole("listitem")).toHaveLength(6)
+    // The two lanes, the morning run, today's decisions, the routine,
+    // Korean's look and home's renders; scouts, with nothing offered yet,
+    // have no row.
+    expect(within(glance).getAllByRole("listitem")).toHaveLength(7)
     // The plain-link stub keeps `to`, as the page names where each row goes.
     const links = (name: string): Array<[string | null, string | null]> =>
       [...screen.getByRole("region", { name }).querySelectorAll("a")].map(
@@ -127,5 +155,9 @@ describe("StatusBoard", () => {
       [expect.stringMatching(/^Practice/), "/practice"],
     ])
     expect(links(BOARD_WORDS.groups.korean)).toHaveLength(1)
+    // What home is making opens Studio › Renders.
+    expect(links(BOARD_WORDS.groups.studio)).toEqual([
+      [expect.stringMatching(/^Videos home makesMaking/), "/journal/renders"],
+    ])
   })
 })

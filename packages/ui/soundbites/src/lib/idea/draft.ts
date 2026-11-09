@@ -138,6 +138,34 @@ export function answersOf(ideaId: string, question: QuestionId): string {
   return `idea:${ideaId}:${question}`
 }
 
+/**
+ * The idea and question a take answers, by `answersOf`'s shape; null for
+ * any other.
+ */
+export function answerOf(
+  answers: string
+): { readonly idea: string; readonly question: QuestionId } | null {
+  const [kind, idea, question, ...rest] = answers.split(":")
+  const known = question === undefined ? null : questionOf(question)
+  return kind === "idea" &&
+    idea !== undefined &&
+    idea !== "" &&
+    rest.length === 0 &&
+    known !== null
+    ? { idea, question: known }
+    : null
+}
+
+/** `question` as one of the idea's own questions; null for any other. */
+export function questionOf(question: string): QuestionId | null {
+  return IDEA_QUESTIONS.find((each) => each === question) ?? null
+}
+
+/** The idea a take answers, by `answersOf`'s shape; null for any other. */
+export function ideaAnswered(answers: string): string | null {
+  return answerOf(answers)?.idea ?? null
+}
+
 const DraftSchema: z.ZodType<IdeaDraft> = z.object({
   id: z.string().regex(/^[\w-]+$/),
   at: z.string(),

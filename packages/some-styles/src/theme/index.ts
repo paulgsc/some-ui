@@ -33,6 +33,7 @@ export {
   appearanceClassName,
   appearanceProps,
   applyAppearance,
+  sessionThemeProps,
 } from "./boundary"
 
 export type { ThemePreference } from "./controller"

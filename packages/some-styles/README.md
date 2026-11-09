@@ -258,7 +258,9 @@ Session themes come in two kinds. `light` and `dark` are vanilla: stock shadcn
 neutral, the familiar look a person finds in any other app. The named themes
 (`mochi`, `rose-night`, `harvest-sky`) are opinionated, with tinted grounds,
 dimmed text and one hue per role. `mochi` is the brand's own and what a fresh
-install opens in (`DEFAULT_PREFERENCE`). Palette quality is treated as an
+install opens in (`DEFAULT_PREFERENCE`). `mochi-night` is the palette made
+for video (SFEED10): the video templates draw in it, and `src/theme/video-palette.ts`
+holds its colours to what YouTube's encode does to colour. Palette quality is treated as an
 engagement lever, not decoration; see
 [`docs/theme-engagement.md`](../../docs/theme-engagement.md).
 

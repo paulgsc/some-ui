@@ -11,18 +11,24 @@
  * made.
  */
 
-import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises"
-import { basename, dirname, join, resolve } from "node:path"
-import type { Browser, Page } from "@playwright/test"
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { join, resolve } from "node:path"
+import type { Browser, Locator, Page } from "@playwright/test"
+import { installedCompositionPort } from "@some-ui/video-motion/node"
 import {
+  chapterLines,
+  chaptersOf,
   DEFAULT_POLICY,
   estimatedMs,
   MB,
   overLength,
+  previewOf,
   stillFile,
   TimedWordSchema,
+  UploadCopySchema,
 } from "@some-ui/video-render"
 import type {
+  ChapterMark,
   CutList,
   Ports,
   RenderPolicy,
@@ -32,6 +38,7 @@ import type {
 import {
   keyOf,
   nodePorts,
+  placeBrandFiles,
   readSeries,
   stepCache,
 } from "@some-ui/video-render/node"
@@ -201,10 +208,10 @@ export function policyOf(values: {
 }
 
 /**
- * The music bed `seriesDir`'s version `version` names, copied into `root`
- * from `brand`, home's folder of the owner's files (never a repository's);
- * the renderer checks it against the series' sum. False when the series
- * names none.
+ * The brand files `seriesDir`'s version `version` names (its music bed, each
+ * sound of its kit), copied into `root` from `brand`, home's folder of the
+ * owner's files (`placeBrandFiles`); the renderer checks each against the
+ * series' sum. Whether the series names a bed.
  */
 export async function placeBed(
   seriesDir: string,
@@ -214,15 +221,13 @@ export async function placeBed(
 ): Promise<boolean> {
   const series = await readSeries(seriesDir, version)
   if (!series.ok) fail(["The series can't be read:", ...series.problems])
-  const bed = series.value.music?.bed
-  if (!bed) return false
-  if (!brand)
-    fail([
-      `The series names the music ${bed.file}, and --brand names no folder holding it`,
-    ])
-  await mkdir(dirname(join(root, bed.file)), { recursive: true })
-  await copyFile(join(here(brand), basename(bed.file)), join(root, bed.file))
-  return true
+  const placed = await placeBrandFiles(
+    series.value,
+    brand === undefined ? undefined : here(brand),
+    root
+  )
+  if (!placed.ok) fail(placed.problems)
+  return placed.value.bed
 }
 
 /** The built app served from `dist`, or the one already served at `app`. */
@@ -265,6 +270,25 @@ export type Shot = {
  * recorded, the scenes whose frame says they overflow (`data-overflow`).
  * Every animation is at rest in the still.
  */
+/**
+ * Waits for `frame` on `page`, or for the stage's refusal (VS1, #2796): a
+ * stage asked for a template version newer than it knows says so in a
+ * `[data-refused]` element, and the recording fails with its words instead
+ * of drawing the newer template in an older look.
+ */
+export async function shownFrame(page: Page, frame: string): Promise<Locator> {
+  const refusal = page.locator("[data-refused]")
+  await page.locator(`${frame}, [data-refused]`).first().waitFor()
+  if ((await refusal.count()) > 0)
+    fail([
+      "The stage refused to draw this:",
+      ...((await refusal.first().getAttribute("data-refused")) ?? "").split(
+        "\n"
+      ),
+    ])
+  return page.locator(frame)
+}
+
 export async function recordStills({
   page,
   root,
@@ -292,8 +316,7 @@ export async function recordStills({
   for (const [i, shot] of shots.entries()) {
     const file = stillFile(i, shot.id)
     await page.goto(shot.url)
-    const shown = page.locator(frame(shot.id))
-    await shown.waitFor()
+    const shown = await shownFrame(page, frame(shot.id))
     await page.evaluate(async () => {
       await document.fonts.ready
     })
@@ -330,11 +353,45 @@ export async function recordStills({
 }
 
 /**
+ * Renders a recording's whole cut list, or, for a template's preview, the
+ * 15–30 s cut of it (`previewOf`) into `preview.mp4`. A preview is never
+ * uploaded, so it carries no chapter marks.
+ */
+export async function renderCut(
+  root: string,
+  series: string,
+  whole: CutList,
+  options: {
+    readonly preview: boolean
+    /** The episode's file, when it isn't a preview. */
+    readonly episode: string
+    readonly marks: () => ReadonlyArray<ChapterMark>
+    readonly policy: RenderPolicy
+    readonly browser: Browser
+    readonly origin: string
+  }
+): Promise<void> {
+  const { preview } = options
+  const cut = preview ? previewOf(whole) : { ok: true as const, value: whole }
+  if (!cut.ok) fail(["The preview can't be cut:", ...cut.problems])
+  await renderStills(root, series, cut.value, {
+    out: preview ? "preview.mp4" : options.episode,
+    policy: options.policy,
+    browser: options.browser,
+    origin: options.origin,
+    marks: preview ? [] : options.marks(),
+  })
+}
+
+/**
  * `cutList` kept as `cut-list.json` in `root` and rendered to `out` in
  * `series`, its burn-ins (each scene's captions) drawn by the recorder page
- * of the app at `origin` (`./burn-ins`).
+ * of the app at `origin` (`./burn-ins`). The episode's chapters at the
+ * scenes' real times (`marks`, SFEED4) go in `description.txt` beside it,
+ * for the upload's YouTube description; with too few to show, it is not
+ * written.
  */
-export async function renderStills(
+async function renderStills(
   root: string,
   series: string,
   cutList: CutList,
@@ -343,8 +400,10 @@ export async function renderStills(
     policy,
     browser,
     origin,
+    marks,
   }: {
     readonly out: string
+    readonly marks: ReadonlyArray<ChapterMark>
     readonly policy: RenderPolicy
     readonly browser: Browser
     readonly origin: string
@@ -354,6 +413,15 @@ export async function renderStills(
     join(root, "cut-list.json"),
     `${JSON.stringify(cutList, null, 1)}\n`
   )
+  // From the templates' version 4 (HYPER5), the brand's open and close are
+  // compositions, drawn by video-motion beside the stills.
+  const draws = cutList.shots.some((s) => s.picture.kind === "composition")
+  // On the video's own drive: home's /tmp is a small RAM disk HyperFrames
+  // can't draw on (video-motion's `pin.ts`).
+  const draw = draws ? await mkdtemp(join(root, "draw-")) : null
+  const compositions =
+    draw === null ? null : installedCompositionPort(root, draw)
+  if (compositions?.ok === false) fail([compositions.problem])
   const page = await openRecorder(browser, origin)
   try {
     const done = await renderWithBurnIns(page, root, series, {
@@ -362,10 +430,25 @@ export async function renderStills(
       policy,
       stepCacheDir: STEPS,
       warn,
+      ...(compositions?.ok ? { compositions: compositions.port } : {}),
     })
     if (!done.ok) fail(["Nothing was rendered:", ...done.problems])
     console.log(`wrote ${join(root, done.value.video)}`)
+    // A render with no chapters leaves none from an earlier one.
+    const file = join(root, "description.txt")
+    await rm(file, { force: true })
+    const lines = chapterLines(chaptersOf(done.value.shotTimes, marks))
+    const description = UploadCopySchema.shape.description.safeParse(lines)
+    if (lines !== "" && !description.success)
+      process.stderr.write(
+        `no chapters written: ${description.error.issues.map((i) => i.message).join("; ")}\n`
+      )
+    else if (lines !== "") {
+      await writeFile(file, lines)
+      console.log(`wrote ${file}`)
+    }
   } finally {
     await page.close()
+    if (draw !== null) await rm(draw, { recursive: true, force: true })
   }
 }

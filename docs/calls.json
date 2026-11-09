@@ -1,0 +1,551 @@
+{
+  "schema": "some-ui.calls/1",
+  "calls": [
+    {
+      "id": "C1",
+      "made": "2026-11-06",
+      "by": "owner",
+      "paths": [
+        "docs/ui-fit/README.md",
+        "packages/ui/shared/src/components/ui/notice/index.tsx"
+      ],
+      "chose": "What an app says about a tap floats over the screen as a Notice, never in the layout; content asked for grows below the tap (HS1, HS3).",
+      "undo": "Retire HS1 and HS3 in docs/ui-fit/README.md 2i.",
+      "refs": ["#2637", "#2623", "#2625", "#2634"]
+    },
+    {
+      "id": "C2",
+      "made": "2026-11-06",
+      "by": "claude",
+      "agreed": "2026-11-06",
+      "paths": ["scripts/notices.allowlist"],
+      "chose": "Kept in the layout as screen content (HS3 `Content:`): topik's served \"nothing fits\" answer, the delete sheet's ended step, the route loading screen, Settings' kept-on-home row lines.",
+      "options": ["a Notice", "screen content"],
+      "gray": "Each one both answers a tap and is the screen's content.",
+      "undo": "Make it a Notice and drop its allowlist group.",
+      "refs": ["#2637", "#2623", "#2625", "#2634"]
+    },
+    {
+      "id": "C3",
+      "made": "2026-11-06",
+      "by": "claude",
+      "agreed": "2026-11-06",
+      "paths": ["packages/ui/shared/src/components/ui/notice/index.tsx"],
+      "chose": "A refusal stays on the plane until closed, covering the top of the screen (in topik's full-screen lesson, Exit and Pause).",
+      "options": [
+        "until closed",
+        "status notices close themselves after a few seconds"
+      ],
+      "gray": "Covering controls against a word that vanishes unread.",
+      "undo": "Add a timeout to non-danger notices in Notice.",
+      "refs": ["#2637", "#2623", "#2625", "#2634"]
+    },
+    {
+      "id": "C4",
+      "made": "2026-11-06",
+      "by": "claude",
+      "agreed": "2026-11-06",
+      "paths": [
+        "apps/www/src/routes/_dashboard.tsx",
+        "packages/ui/shared/src/components/ui/sheet.tsx",
+        "packages/ui/shared/src/components/ui/dialog.tsx"
+      ],
+      "chose": "The notice plane sits under the www header (top-16) and at a sheet's top; each notice is capped at 60dvh and scrolls inside.",
+      "options": ["top", "bottom, above the bar", "near the control"],
+      "gray": "Where a notice lands; the owner named top and bottom as idiomatic.",
+      "undo": "Move NoticeLayer in _dashboard.tsx, sheet.tsx and dialog.tsx.",
+      "refs": ["#2637", "#2623", "#2625", "#2634"]
+    },
+    {
+      "id": "C5",
+      "made": "2026-11-06",
+      "by": "claude",
+      "agreed": "2026-11-06",
+      "paths": ["apps/www/src/components/device-home-glyph.tsx"],
+      "chose": "The header's sharing-lane word became a fixed-size icon; only trouble states raise a notice.",
+      "options": ["shorter words", "the gear after the mark", "an icon"],
+      "gray": "The widest word wrapped at 360px, and nothing said which to give up.",
+      "undo": "Put the word back in device-home-glyph.tsx.",
+      "refs": ["#2637", "#2623", "#2625", "#2634"]
+    },
+    {
+      "id": "C6",
+      "made": "2026-11-06",
+      "by": "claude",
+      "agreed": "2026-11-06",
+      "paths": ["packages/ui/soundbites/src/lib/studio/words.ts"],
+      "chose": "Studio's record length line reworded to stay on one line (\"Runs N s · a take up to M s\", \"Runs N s: your take and a breath\"), and the soundbites full paragraph reworded (\"Full. Unless you pick another below, your next one replaces…\").",
+      "options": [
+        "the earlier words, wrapping",
+        "words reworded to fit one line"
+      ],
+      "gray": "Wording.",
+      "undo": "Restore the earlier words in the soundbites WORDS.",
+      "refs": ["#2637", "#2623", "#2625", "#2634"]
+    },
+    {
+      "id": "C7",
+      "made": "2026-11-06",
+      "by": "claude",
+      "agreed": "2026-11-06",
+      "paths": ["apps/www/src", "packages/ui"],
+      "chose": "A control that can't be used now stays visible and disabled, rather than hidden.",
+      "options": ["disabled", "unmounted"],
+      "gray": "A control that explains its space against less clutter; read from the owner's \"no inexplicable gaps\".",
+      "undo": "Unmount it, per screen.",
+      "refs": ["#2637", "#2623", "#2625", "#2634"]
+    },
+    {
+      "id": "C8",
+      "made": "2026-11-06",
+      "by": "claude",
+      "paths": ["packages/ui/shared/src/components/patterns/take/index.ts"],
+      "chose": "An unplayable take is a warning tone with role alert, everywhere.",
+      "options": ["warning", "neutral"],
+      "gray": "Two wings disagreed.",
+      "undo": "Change the tone in TakeNotices, the shared take pattern.",
+      "refs": ["#2637", "#2623", "#2625", "#2634"]
+    },
+    {
+      "id": "C9",
+      "made": "2026-11-06",
+      "by": "claude",
+      "agreed": "2026-11-06",
+      "paths": ["packages/ui/shared/src/components/ui/button.tsx"],
+      "chose": "Every Button variant draws a transparent border, so a variant swap keeps its width.",
+      "options": ["fixes at each site", "the primitive"],
+      "gray": "It changes every button's width by 2px across the app.",
+      "undo": "Drop the border from button.tsx's variants.",
+      "refs": ["#2637", "#2623", "#2625", "#2634"]
+    },
+    {
+      "id": "C10",
+      "made": "2026-11-06",
+      "by": "owner",
+      "paths": ["docs/ui-fit/README.md"],
+      "chose": "HS2 (conditional lines only) was retired for HS3 (every line in the layout): the owner's idiom, Claude's encoding.",
+      "undo": "Restore HS2 and retire HS3 in docs/ui-fit/README.md.",
+      "refs": ["#2637", "#2623", "#2625", "#2634"]
+    },
+    {
+      "id": "C11",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": ["server:apps/servers/file_host/src/game_feed/pass.rs"],
+      "chose": "The bounded read (CW3) is a new Fetch::get_at_most that the call weeks and Playoff Delta fills read through; the game feed still reads whole, uncapped.",
+      "options": ["cap only the 1 MiB readers", "cap the game feed too"],
+      "gray": "The game feed keeps every response raw, so capping it means deciding what a refused one keeps, which GA3 (server#534) owns.",
+      "undo": "Read the game feed through get_at_most with a cap in game_feed/pass.rs.",
+      "refs": ["server#684", "server#731", "server#534"]
+    },
+    {
+      "id": "C12",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "server:infra/render/render-calls.sh",
+        "server:infra/render/render-calls.test.sh"
+      ],
+      "chose": "The render worker's test sources the script over a temporary ROOT and runs one pass of the call's job; the script loops only when executed.",
+      "options": [
+        "source the script and run a pass",
+        "an environment switch for one pass",
+        "split the script into files"
+      ],
+      "gray": "Any of them gives one pass without the hourly sleep, and L4c (server#708) rewrites that loop next.",
+      "undo": "Replace the sourced guard in render-calls.sh and adapt render-calls.test.sh.",
+      "refs": ["#2659", "server#732", "server#708"]
+    },
+    {
+      "id": "C13",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "docs/calls.json",
+        "packages/eslint/src/calls.ts",
+        ".github/pull_request_template.md"
+      ],
+      "chose": "A gray-area call is an entry in docs/calls.json, append-only and checked, and the commit that makes it carries `Call: <ID>`.",
+      "options": [
+        "a commit trailer alone",
+        "a label and an issue per call, as asks have",
+        "a record file in the repo"
+      ],
+      "gray": "#2637 left where the record lives to the owner or the session that builds it; a trailer alone can't hold the options and the undo in 100-character lines.",
+      "undo": "Move the entries to whichever home the owner picks and drop check:calls.",
+      "refs": ["#2637"]
+    },
+    {
+      "id": "C14",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/call-facts.ts",
+        "packages/video-render/CALL-ROUTINE.md"
+      ],
+      "chose": "The weekly call voices the calls that reached docs/calls.json on main in its week, or were agreed to in it, read from the record's history.",
+      "options": [
+        "the week's new calls",
+        "every call the owner hasn't agreed to yet"
+      ],
+      "gray": "#2637 left open whether the call voices only calls the owner hasn't heard; a new call is one they haven't.",
+      "undo": "Change which entries callsEntered hands the routine (call-facts.ts).",
+      "refs": ["#2637"]
+    },
+    {
+      "id": "C15",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": ["CLAUDE.md"],
+      "chose": "Until the owner writes their own, a gray area is a choice between options that no check, convention or earlier owner decision settles, that the owner would notice on the screen or in how they work.",
+      "options": [
+        "the working definition from #2637",
+        "no definition until the owner's"
+      ],
+      "gray": "The owner said they'd want to work out the definition themselves.",
+      "undo": "Replace the definition in CLAUDE.md, \"Two kinds of pull request\".",
+      "refs": ["#2637"]
+    },
+    {
+      "id": "C16",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": ["packages/video-render/src/music-bed.ts"],
+      "chose": "The music bed is a slow D-major progression (I, vi, IV, I, I, vi, IV, V) at 72 a minute, a soft pad with a bass and a sparse music-box line, peaking at -6 dBFS.",
+      "options": [
+        "a slow major progression with pad, bass and bells",
+        "a drone with no harmonic motion",
+        "a busier groove"
+      ],
+      "gray": "The owner asked for a bed we make ourselves (#2673) and named no music.",
+      "undo": "Change music-bed.ts; its sum, file name and the series that pin it move together as a new version, or pin a file of the owner's own.",
+      "refs": ["#2673", "#2765"]
+    },
+    {
+      "id": "C22",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": ["packages/video-render/src/cues.ts"],
+      "chose": "The six cues are synthesised: a whoosh of banded noise, a 90 ms click, a falling pop, a low thud, a brightening riser and a small bell, each at -6 dBFS.",
+      "options": ["these synthesised sounds", "other synthesised sounds"],
+      "gray": "The owner asked for effects we make ourselves (#2727) and described none of them.",
+      "undo": "Change cues.ts; each cue's sum, file name and the series version that pins it move together.",
+      "refs": ["#2727", "#2790"]
+    },
+    {
+      "id": "C23",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": ["packages/video-motion/src/promo.ts"],
+      "chose": "The promo's cues sit on the dry run's beats: a whoosh 0.55 s before the hook ends, a pop as the frame opens, a click on each tap, a whoosh 0.5 s before the feature ends, a ding 0.3 s into the close.",
+      "options": [
+        "the dry run's cue sheet",
+        "no cues until the owner places them"
+      ],
+      "gray": "The dry run's sheet was a placeholder the owner never confirmed.",
+      "undo": "Change CUE_AT in promo.ts.",
+      "refs": ["#2726", "#2727", "#2790"]
+    },
+    {
+      "id": "C24",
+      "made": "2026-11-08",
+      "by": "owner",
+      "paths": ["packages/video-render/src/preview.ts"],
+      "chose": "A template's preview is a 15–30 s check that the pipeline works, not an episode, so its cut may shorten or drop the locked intro to fit the window; the locked intro still opens every episode, with no switch.",
+      "undo": "Keep the intro whole in `fitted` in preview.ts, and drop sections from the preview.",
+      "refs": ["#2757", "#2762"]
+    },
+    {
+      "id": "C17",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": ["packages/some-styles/src/theme/video-palette.ts"],
+      "chose": "Mochi Night's accents are held to 4.5:1 on the ground only, not on cards; the warning, 4.1:1 on a card to someone with protanopia, always comes with a word or a glyph.",
+      "options": [
+        "on the ground only",
+        "on the ground and on cards, changing the warning's hex"
+      ],
+      "gray": "The research measured on the background, which is what a video frame is, and the owner chose the hexes.",
+      "undo": "Measure on `surface` too in videoPaletteProblems and change the warning's hex.",
+      "refs": ["#2675", "#2774"]
+    },
+    {
+      "id": "C18",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/some-styles/src/theme/video-palette.ts",
+        "packages/some-styles/themes/mochi-night.css"
+      ],
+      "chose": "Mochi Night's success colour is #8ccf9a, which the research palette lacked and a theme needs.",
+      "options": [
+        "#8ccf9a, passing every rule",
+        "no success role, falling back to the base theme's"
+      ],
+      "gray": "The owner's chosen palette had no success colour.",
+      "undo": "Change `success` in MOCHI_NIGHT and mochi-night.css together.",
+      "refs": ["#2675", "#2774"]
+    },
+    {
+      "id": "C19",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/call.ts",
+        "packages/ui/playoff-delta/src/lib/show.ts"
+      ],
+      "chose": "From the call's and Playoff Delta's template v3, the brand slides draw the mark in Mochi Night, the template's own theme.",
+      "options": [
+        "Mochi Night, the template's theme",
+        "the app's theme as the stage finds it"
+      ],
+      "gray": "Ask #2674 made the mark's theme a template setting and chose no theme for it.",
+      "undo": "A new template version whose shape's brand.theme names another theme (Studio's mark-theme control sends one).",
+      "refs": ["#2674", "#2766", "#2774"]
+    },
+    {
+      "id": "C20",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": ["packages/video-render/src/plan.ts"],
+      "chose": "The renderer converts to video by BT.709 and tags it so, which changes every video's colours a little from the next render, Build Journal shorts included.",
+      "options": [
+        "BT.709 for every video",
+        "BT.709 only for new template versions"
+      ],
+      "gray": "Old renders aren't touched, but every new render's bytes move, which the owner would notice in a re-render.",
+      "undo": "Revert TO_VIDEO and BT709 in plan.ts.",
+      "refs": ["#2675", "#2774"]
+    },
+    {
+      "id": "C21",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "apps/www/src/lib/mark-theme/index.ts",
+        "apps/www/src/components/studio/mark-theme.tsx"
+      ],
+      "chose": "Studio's mark-theme control offers every one of the app's themes, each tile showing the mark on that theme's ground, and only on templates whose brand slides draw it.",
+      "options": [
+        "every theme, on its ground",
+        "a curated few",
+        "the mark alone, on the card"
+      ],
+      "gray": "Ask #2674 said any of the app's themes and named no way to show them.",
+      "undo": "Filter MARK_THEMES in lib/mark-theme, or drop the tile's background.",
+      "refs": ["#2674", "#2766", "#2789"]
+    },
+    {
+      "id": "C25",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/video-motion/compositions/brand-v1/index.html",
+        "packages/video-motion/src/brand.ts"
+      ],
+      "chose": "Each version of the brand's open and close is one composition, `brand-v<n>`, whose `part` variable draws the open or the close, rather than two folders.",
+      "options": [
+        "one composition per version, `part` choosing",
+        "`brand-open-v<n>` and `brand-close-v<n>`"
+      ],
+      "gray": "The owner asked for an open and a close with versions kept, and named no layout.",
+      "undo": "Split it into `brand-open-v<n>` and `brand-close-v<n>`, each with its own pin in brand.ts.",
+      "refs": ["#2728", "#2771"]
+    },
+    {
+      "id": "C26",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/video-motion/src/brand.ts",
+        "packages/video-motion/compositions/_lib/motion.js"
+      ],
+      "chose": "A brand version's pin holds its own files only; `lib/motion.js`, which every composition shares, is not pinned per version, and a change there must keep what `track` draws for the keys a version uses.",
+      "options": ["the version's own files", "its files and lib/motion.js"],
+      "gray": "Pinning the shared library would fail every version on any change to it, and the promo was changing it.",
+      "undo": "Include lib/motion.js in ownDigest's files.",
+      "refs": ["#2728", "#2771"]
+    },
+    {
+      "id": "C27",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "apps/www/src/lib/status-board/index.ts",
+        "apps/www/src/components/settings/status-board.tsx"
+      ],
+      "chose": "Settings › Status shows what home is making as its own row under a new Studio group, marked with a clapperboard, which watches a video that couldn't be made and asks nothing of one under way.",
+      "options": [
+        "its own Studio group",
+        "a row under Sending to home",
+        "a line at the top of the page, outside the groups"
+      ],
+      "gray": "Renders are home's work for Studio, neither something this phone sends nor a send that needs a hand, so no existing group says what they are.",
+      "undo": "Move renderRow's group to \"home\" and drop \"studio\" from GROUP_ORDER and BOARD_WORDS.groups.",
+      "refs": ["#2761"]
+    },
+    {
+      "id": "C29",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/ui/soundbites/src/components/ideas-on-home/index.tsx",
+        "packages/ui/soundbites/src/lib/idea/redo.ts",
+        "packages/ui/soundbites/src/lib/studio/words.ts"
+      ],
+      "chose": "On Ideas on home, \"Say it again\" sits under each said answer (not a typed one) and starts a take at once; its take waits under the answer with Play, Redo and Delete; one \"Send it again\" under the answers sends every waiting answer of the idea together; saying an answer again twice before that deletes the first waiting take.",
+      "options": [
+        "Say it again under each said answer, one Send it again for the idea",
+        "Say it again and Send it again per answer",
+        "Say it again on typed answers too",
+        "keep every waiting take said for an answer"
+      ],
+      "gray": "The owner ruled that a redo waits until the idea is sent again (#2453, question 3) and named no wording beyond Say it again, no placement and no rule for a typed answer or a second redo.",
+      "undo": "Move the Send it again button into AnswerRedo, widen redo.ts' sayable to typed answers, or drop dropsOf from on-home.ts' withRedo.",
+      "refs": ["#2579", "#2453"]
+    },
+    {
+      "id": "C28",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/pending.ts",
+        "packages/ui/topik/ROUTINE.md"
+      ],
+      "chose": "A note left on an episode is filed as one pending issue per place its categories send it (the feed's next fill, its template, a slide to fix), each with only the categories that send it there; a slide to fix is labelled kind:defect, the others kind:story.",
+      "options": [
+        "one issue per note, listing every place it goes",
+        "one issue per place it goes"
+      ],
+      "gray": "#2745 says each note is filed as a pending issue that says where it goes; a note can go to more than one place, and an issue that is both a story and a defect has no one kind.",
+      "undo": "Make toFile give one feedback item per note, with every destination, and drop the per-place line in noteFiledLine.",
+      "refs": ["#2745", "#2670"]
+    },
+    {
+      "id": "C30",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "apps/www/src/lib/episode-feedback/model.ts",
+        "apps/www/src/components/studio/episode-feedback.tsx"
+      ],
+      "chose": "A note's spoken part is recorded on the library desk under a line of the note's own; the note names the newest take said for it, and every take said for it (an earlier one, or one said for a note then not kept) stays a library take, kept, in Takes and on home.",
+      "options": [
+        "the library desk, every take kept as a library take, the note naming the newest",
+        "a desk of the note's own that holds each take until the note is kept and deletes it when the note is not",
+        "one take per note, said again replacing it"
+      ],
+      "gray": "#2745's plan says the note records a library take, and never-lose-the-record keeps what was said; it doesn't say which take a note names when more than one is said, or what becomes of a take said for a note that is then not kept.",
+      "undo": "Give the note form a pattern desk of its own with send: \"on-confirm\" (as lib/idea-takes' bundle desk), releasing the take on Keep the note and discarding it on Not now, and wire that desk into voice-copy as a library note.",
+      "refs": ["#2745", "#2670"]
+    },
+    {
+      "id": "C33",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/ui/soundbites/src/lib/project",
+        "packages/ui/playoff-delta",
+        "apps/www/tests/record/playoff-delta.ts"
+      ],
+      "chose": "An episode a phone already holds in Studio stays, and is watched, never voiced: no Record or Shape sitting, Finish never asks it for a take, and a scene with no take reads Not made; one with every take still finishes and shows its pinned upload copy.",
+      "options": [
+        "keep a stored episode, watch-only for voicing",
+        "delete the whole episode-in-Studio path (ST33's home queue and its server routes)",
+        "keep its Record"
+      ],
+      "gray": "FEED6 retired the owner's voice from episodes (FEED decision 6, #2643), but a stored episode holds takes the owner recorded, and nothing said what becomes of it.",
+      "undo": "Restore record in view.ts' startView and the take kind in finish.ts; or delete the project.episode branches and ST33's home-link code, then the server routes in their own PR.",
+      "refs": ["#2772", "#2649", "#2643"]
+    },
+    {
+      "id": "C34",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/steps.ts",
+        "packages/ui/playoff-delta"
+      ],
+      "chose": "Who said a scene is a shot field, shots.speaker (set to kokoro by stillsCutList), not a field on the take, so the mark credits the speech model that said it and never the owner's hands or words for that scene.",
+      "options": [
+        "shots.speaker, a field of the shot",
+        "a speaker field on the take"
+      ],
+      "gray": "FEED6 made home's Kokoro say every episode, and the mark's authorship needed to say so; the steps' fields admit only top-level or shots.<key> fields, and nothing settled where the speaker is named.",
+      "undo": "Move speaker onto the take, widen steps.test.ts' allowed fields to take its key, and have the mark read it there.",
+      "refs": ["#2772", "#2649"]
+    },
+    {
+      "id": "C31",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/ui/soundbites/src/lib/idea/on-home.ts",
+        "packages/ui/soundbites/src/lib/idea/on-home-runtime.ts"
+      ],
+      "chose": "When an idea is set aside on home from Ideas on home, each of its answers said again and still waiting on the phone is set aside on home too and then let go there, under its answer's place: kept, out of the idea and out of what routines read, and in My data like every take sent.",
+      "options": [
+        "offer such takes where waiting takes are seen (Your ideas or My data), to send as library takes or let go by the owner's own act",
+        "send them home as library takes when their idea is set aside",
+        "send them home set aside with their idea, under their answer"
+      ],
+      "gray": "#2805 left the owner's story open between offering the stranded takes and sending them home; either keeps the take, and they differ in where it shows and whether the routine reads it.",
+      "undo": "Drop the setAsideRedos effect from on-home.ts's setAsideDone and its case in on-home-runtime.ts; the takes then wait on the redo desk again, and #2805's first option can offer them.",
+      "refs": ["#2805", "#2579"]
+    },
+    {
+      "id": "C32",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/promo-shape.ts",
+        "apps/www/src/routes/_dashboard/_apk/journal/templates/release-promo.tsx",
+        "packages/video-motion/src/promo.ts"
+      ],
+      "chose": "The release promo shows on Studio's Templates page as an entry of its own, read from one pure table of its shape (PROMO_SHAPE in @some-ui/video-render) that promo.ts makes the promo from: its three scenes in order with their lengths, the feature's as long as the app's walk, and what the AI writes for a release. It is no template: no version, storyboard, caption look or preview.",
+      "options": [
+        "(a) a composition picture kind with an optional hold in Format, the promo pinned as a template whose page lists a shapeless format's scenes in order",
+        "(b) a promo entry on the Templates page read from promo.ts rather than a pinned Format"
+      ],
+      "gray": "HYPER's session left both options on #2722: a Format scene has a fixed holdMs and a capture or card picture, while the promo's scenes are compositions and its feature lasts as long as the app's walk.",
+      "undo": "Delete release-promo.tsx and its tile on the Templates index, and its words; move PROMO_SHAPE's numbers back into promo.ts; then pin the promo as a Format under option (a), which also makes it a TemplateId that home's preview routes, the storyboard and the caption look must take.",
+      "refs": ["#2722", "#2726"]
+    },
+    {
+      "id": "C35",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/ui/burn-ins/src/lib/preview-mark.ts",
+        "packages/video-render/src/preview.ts"
+      ],
+      "chose": "A template's preview carries a burn-in, \"PREVIEW, SAMPLE DATA\" in amber capitals on a dark plate, over the whole video, at the left of a new foot region: the strip under the safe area, where no stage draws and below where captions are drawn. Only previewOf adds it; no episode ever carries it.",
+      "options": [
+        "the foot strip under the safe area, at its left",
+        "the header's top-right corner, over the stages' header rows",
+        "the gutter, which the authorship mark holds",
+        "centred in the foot"
+      ],
+      "gray": "#2757 asked for a visible mark clear of the stage and the captions band, but every stage fills the whole frame, so that place had to be read: as where the stage draws nothing and captions are never drawn. Its words also had to be chosen.",
+      "undo": "Change REGIONS_OF[\"preview-mark\"] and drawPreviewMark as a new design (or WORDS.previewMark for the words), and drop the foot region if nothing else uses it.",
+      "refs": ["#2757"]
+    },
+    {
+      "id": "C36",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/ui/playoff-delta/src/lib/sample-fill.ts",
+        "packages/ui/playoff-delta/src/lib/sample.ts"
+      ],
+      "chose": "Playoff Delta's previews show the legend and the sample season's newest week (2025 week 18), each in its format's newest version, said from a fixed fill whose words Claude wrote and checkNarration holds to the sample's facts.",
+      "options": [
+        "the sample's newest week",
+        "an earlier, more open week of the sample"
+      ],
+      "gray": "#2757 asked for a fixed sample fill per template so a preview never calls a model; which week of the sample to show, and the words themselves, were not settled.",
+      "undo": "Change sampleWeekOf and rewrite the week's words in sample-fill.ts; its test fails until they fit the facts.",
+      "refs": ["#2757"]
+    }
+  ]
+}

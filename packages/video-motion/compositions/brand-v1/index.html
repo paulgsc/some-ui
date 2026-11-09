@@ -1,0 +1,82 @@
+<!doctype html>
+<!-- The brand's open and close, version 1 (HYPER5, #2728): the app's still
+     mark, drawn in or out. The mark is the code's, in the template's theme:
+     the runner writes it as mark.svg from `theme` (src/mark.ts), and the
+     ground is that theme's unless the cut list sets one. A released version
+     is never edited: src/brand.ts pins its files (its motion), and a change
+     is a new version. -->
+<html
+  lang="en"
+  data-composition-variables='[
+    {"id":"part","type":"enum","label":"Open or close","default":"open",
+     "options":[{"value":"open","label":"Open"},{"value":"close","label":"Close"}]},
+    {"id":"theme","type":"enum","label":"Theme","default":"mochi-night",
+     "options":[{"value":"light","label":"Light"},{"value":"dark","label":"Dark"},
+       {"value":"mochi","label":"Mochi"},{"value":"rose-night","label":"Rosé Night"},
+       {"value":"harvest-sky","label":"Harvest Sky"},{"value":"mochi-night","label":"Mochi Night"}]},
+    {"id":"ground","type":"color","label":"Ground","default":"#241a13"}
+  ]'
+>
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body,
+      #root {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+      }
+      #root {
+        position: relative;
+        background: var(--ground);
+      }
+      #mark {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 30vmin;
+        height: 30vmin;
+        margin: -15vmin 0 0 -15vmin;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="2"
+      data-width="1080"
+      data-height="1920"
+      data-fps="30"
+      data-fit-frame
+      data-no-timeline
+    >
+      <img id="mark" src="mark.svg" alt="" />
+    </div>
+    <script src="lib/motion.js"></script>
+    <script>
+      {
+        const { length, track, vars } = window.motion
+        const keys = {
+          open: [
+            [0.1, { opacity: 0, scale: 0.4, rotate: -10 }],
+            [0.6, { scale: 1.06 }, "inOut"],
+            [0.9, {}],
+          ],
+          close: [
+            [length - 0.7, {}, "in"],
+            [length - 0.15, { opacity: 0, scale: 0.6 }],
+          ],
+        }[vars.part]
+        track(document.getElementById("mark"), keys)
+      }
+    </script>
+  </body>
+</html>

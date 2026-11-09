@@ -13,8 +13,8 @@ import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
 
-import { themeSources } from "../../../scripts/write-feeling-css"
 import { FEATURE_APPEARANCES, SESSION_THEMES } from "../index"
+import { themeSources } from "../sources"
 
 const PACKAGE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "../../..")
 
@@ -86,7 +86,12 @@ const AMBIENT_FEATURE_TOKENS = [
 
 describe("base tokens", () => {
   const base = read("tokens/base.css")
-  const rootBlock = base.match(/:root\s*\{([\s\S]*?)\n\}/)?.[1] ?? ""
+  // Every block whose selectors include :root (the palette is also on
+  // `.session-theme`, a nested theme's boundary).
+  const rootBlock = Array.from(
+    base.matchAll(/(?:^|\n)([^{}\n]*:root[^{}]*)\{([\s\S]*?)\n\}/g),
+    (match) => match[2] ?? ""
+  ).join("\n")
 
   it("declares every core semantic role on :root", () => {
     for (const role of CORE_ROLES) {

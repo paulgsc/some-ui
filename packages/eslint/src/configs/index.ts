@@ -5,6 +5,7 @@ export {
 export { default as typescriptConfig } from "./typescript.config.js"
 export {
   default as reactConfig,
+  parentRelativeDynamicImportSelectors,
   reactImportBanSelectors,
 } from "./react.config.js"
 export {

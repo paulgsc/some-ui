@@ -42,7 +42,8 @@ import {
   run,
 } from "@some-ui/soundbites/fixtures"
 import type { Format } from "@some-ui/video-render"
-import { episodeOf, FORMAT_SCHEMA } from "@some-ui/video-render"
+import { FORMAT_SCHEMA } from "@some-ui/video-render"
+import { episodeOf } from "@some-ui/video-render/testing"
 import { ONE_TAKE } from "@some-ui/voice-capture"
 import type { MicScript } from "@some-ui/voice-capture/testing"
 import {

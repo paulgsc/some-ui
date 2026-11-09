@@ -11,6 +11,7 @@
 
 import { spawn } from "node:child_process"
 import {
+  chmod,
   cp,
   mkdir,
   mkdtemp,
@@ -27,8 +28,11 @@ import { fileURLToPath } from "node:url"
 import { nodePorts } from "@some-ui/video-render/node"
 import { z } from "zod"
 
+import { isHeadlessShell } from "./browser"
 import { fontFiles } from "./fonts"
+import { withMark } from "./mark"
 import {
+  chromeWrapper,
   encodeArgs,
   fetched,
   HYPERFRAMES_VERSION,
@@ -69,7 +73,7 @@ export type RenderRequest = {
   readonly out: string
   /** A folder of this render's own, on a drive with room for its frames. */
   readonly work: string
-  /** The Chromium to draw with. */
+  /** The Chromium headless shell to draw with (`browser.ts`). */
   readonly chrome: string
   /** The scene's length, over the composition's own `data-duration`. */
   readonly seconds?: number
@@ -106,10 +110,21 @@ function runNode(
   args: ReadonlyArray<string>,
   env: Record<string, string>
 ): Promise<Ran> {
+  return runCommand(process.execPath, args, env)
+}
+
+function runCommand(
+  command: string,
+  args: ReadonlyArray<string>,
+  env: Record<string, string>,
+  /** Killed after this long, when given. */
+  timeoutMs?: number
+): Promise<Ran> {
   return new Promise((done) => {
-    const child = spawn(process.execPath, [...args], {
+    const child = spawn(command, [...args], {
       env,
       stdio: ["ignore", "pipe", "pipe"],
+      ...(timeoutMs === undefined ? {} : { timeout: timeoutMs }),
     })
     let output = ""
     const keep = (chunk: Buffer): void => {
@@ -133,6 +148,12 @@ const lastLines = (output: string): string =>
 export async function renderComposition(
   request: RenderRequest
 ): Promise<Rendered> {
+  if (!isHeadlessShell(request.chrome)) {
+    return {
+      ok: false,
+      problem: `${request.chrome} is not a Chromium headless shell, the only browser that draws with DRAW_FLAGS (browser.ts)`,
+    }
+  }
   const source = join(COMPOSITIONS, request.composition)
   const entries = await readdir(COMPOSITIONS)
   if (request.composition === LIB || !entries.includes(request.composition)) {
@@ -164,14 +185,27 @@ export async function renderComposition(
       await cp(asset.from, join(project, "assets", asset.as))
     }
     const index = join(project, "index.html")
-    const html = await readFile(index, "utf8")
-    const root = ROOT.exec(html)?.[0] ?? ""
+    let html = await readFile(index, "utf8")
+    let root = ROOT.exec(html)?.[0] ?? ""
     const [width, height] = [
       attribute(root, "data-width"),
       attribute(root, "data-height"),
     ]
+    /** Sets one attribute of the root's tag in the copy's markup. */
+    const setOnRoot = (name: string, value: string): void => {
+      const next = root.replace(
+        new RegExp(`\\b${name}="[^"]*"`),
+        `${name}="${value}"`
+      )
+      html = html.replace(root, next)
+      root = next
+    }
     const frame = request.frame
-    if (frame && (width !== frame.width || height !== frame.height)) {
+    if (frame && /\bdata-fit-frame\b/.test(root)) {
+      // Drawn at the video's frame, whatever size its markup names (HYPER5).
+      setOnRoot("data-width", String(frame.width))
+      setOnRoot("data-height", String(frame.height))
+    } else if (frame && (width !== frame.width || height !== frame.height)) {
       return {
         ok: false,
         problem: `${request.composition} is drawn ${String(width)}x${String(height)}, and the video is ${String(frame.width)}x${String(frame.height)}`,
@@ -184,22 +218,32 @@ export async function renderComposition(
           problem: `${request.composition} has no root data-duration to set`,
         }
       }
-      const seconds = String(request.seconds)
-      await writeFile(
-        index,
-        html.replace(
-          root,
-          root.replace(/\bdata-duration="[^"]*"/, `data-duration="${seconds}"`)
-        )
-      )
+      setOnRoot("data-duration", String(request.seconds))
     }
-    await writeFile(variables, JSON.stringify(request.variables))
+    await writeFile(index, html)
+    // HYPER5: a composition that declares a `theme` draws the app's own
+    // mark in it, written here from the code (`withMark`).
+    const marked = withMark(html, request.variables)
+    if (marked.mark !== null)
+      await writeFile(join(project, "mark.svg"), marked.mark)
+    await writeFile(variables, JSON.stringify(marked.variables))
+    const chrome = join(work, "chrome")
+    await writeFile(chrome, chromeWrapper(request.chrome))
+    await chmod(chrome, 0o755)
+    const env = renderEnv(process.env, chrome, tmp)
+    const runs = await runCommand(chrome, ["--version"], env, 30_000)
+    if (!runs.ok) {
+      return {
+        ok: false,
+        problem: `the browser can't be started from ${work}, where its wrapper is written (the browser missing, or the drive mounted noexec): ${lastLines(runs.output)}`,
+      }
+    }
     const drawn = await runNode(
       [
         await hyperframesBin(),
         ...renderArgs({ project, frames, variables, fps: request.fps }),
       ],
-      renderEnv(process.env, request.chrome, tmp)
+      env
     )
     if (!drawn.ok) {
       return {

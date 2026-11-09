@@ -2,7 +2,12 @@ import { useEffect, useReducer, type CSSProperties, type JSX } from "react"
 import { LEGEND, SLIDES } from "@playoff-delta/components/slides"
 import { clampSlide, initialPlayer, step } from "@playoff-delta/lib/player"
 import { SAMPLE_SEASON } from "@playoff-delta/lib/sample"
-import { formatOf, kindOf, RECORDING } from "@playoff-delta/lib/show"
+import {
+  formatOf,
+  kindOf,
+  RECORDING,
+  versionRefusalOf,
+} from "@playoff-delta/lib/show"
 import {
   HOLD_MS,
   isLegendSlide,
@@ -19,10 +24,13 @@ import {
 } from "@playoff-delta/lib/voiced"
 import { INTRO } from "@playoff-delta/lib/words"
 import { captionSpace } from "@some-ui/burn-ins"
+import { cn } from "@some-ui/core-utils"
 import { assertNever } from "@some-ui/intent-kit"
 import { useOverflows } from "@some-ui/react-hooks"
 import { BrandMark } from "@some-ui/shared"
-import { hasCaptions } from "@some-ui/video-render"
+import { sessionThemeProps } from "@some-ui/styles/theme"
+import { hasCaptions, markThemeOf } from "@some-ui/video-render"
+import type { Shape } from "@some-ui/video-render"
 
 import "./index.css"
 
@@ -86,11 +94,14 @@ const FramingSlide = ({
   season,
   week,
   version,
+  shape,
   scene,
 }: {
   season: StorySeason
   week: StoryWeek | null
   version: number
+  /** The format version's shape, which names the mark's theme. */
+  shape: Shape | undefined
   scene: Framing
 }): JSX.Element => {
   switch (scene.kind) {
@@ -114,7 +125,12 @@ const FramingSlide = ({
     case "brand-out": {
       return (
         <div className="flex h-full flex-col items-center justify-center gap-[4cqw]">
-          <BrandMark tone="brand" className="size-[40cqw]" title={INTRO.mark} />
+          <BrandMark
+            tone="brand"
+            className="size-[40cqw]"
+            title={INTRO.mark}
+            theme={markThemeOf(shape)}
+          />
           <p className="pd-q text-center">{INTRO.show}</p>
           {scene.kind === "brand-out" && (
             <p className="pd-small pd-mono text-muted-foreground text-center">
@@ -184,9 +200,20 @@ const Frame = ({
       }
     : undefined
   const brand = framing?.kind === "brand-in" || framing?.kind === "brand-out"
+  const shape =
+    version === undefined
+      ? undefined
+      : formatOf(kindOf(week?.week ?? LEGEND_WEEK), version).shape
   return (
     <div
-      className={`pd-frame bg-background text-foreground ${fill ? "pd-frame--fill" : "border-border h-full max-w-full rounded-[calc(var(--radius)+0.75rem)] border"}`}
+      {...sessionThemeProps(shape?.theme, {
+        className: cn(
+          "pd-frame bg-background text-foreground",
+          fill
+            ? "pd-frame--fill"
+            : "border-border h-full max-w-full rounded-[calc(var(--radius)+0.75rem)] border"
+        ),
+      })}
       data-slide={shown}
       data-pd-season={data}
       data-overflow={overflows ? "true" : undefined}
@@ -216,6 +243,7 @@ const Frame = ({
             season={season}
             week={week}
             version={version ?? 1}
+            shape={shape}
             scene={framing}
           />
         )}
@@ -395,6 +423,18 @@ export const PlayoffDeltaStage = ({
   version?: number
   onWeekChange?: (week: number) => void
 }): JSX.Element | null => {
+  // VS1 (#2796): a version newer than this stage knows is refused on the
+  // frame, where the recorder reads it, never drawn in an older look.
+  const refused =
+    version === undefined
+      ? null
+      : versionRefusalOf(kindOf(week ?? season.weeks[0]?.week ?? 1), version)
+  if (refused !== null)
+    return (
+      <p data-refused={refused} className="p-6 font-mono text-sm">
+        {refused}
+      </p>
+    )
   if (week === LEGEND_WEEK)
     return (
       <WeekStory

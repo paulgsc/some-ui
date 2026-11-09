@@ -11,12 +11,14 @@ import { join, resolve } from "node:path"
 import type { Compositions } from "@some-ui/video-render"
 import { ffmpegVersion } from "@some-ui/video-render/node"
 
+import { browserRoots, findHeadlessShell } from "./browser"
 import { fontFiles } from "./fonts"
-import { HYPERFRAMES_VERSION } from "./pin"
+import { everyMark } from "./mark"
+import { DRAW_FLAGS, HYPERFRAMES_VERSION } from "./pin"
 import { COMPOSITIONS, LIB, MARK, renderComposition } from "./render"
 
 /** Every file under `dir`, by its path from `dir`, sorted. */
-async function filesUnder(dir: string): Promise<ReadonlyArray<string>> {
+export async function filesUnder(dir: string): Promise<ReadonlyArray<string>> {
   const entries = await readdir(dir, { recursive: true, withFileTypes: true })
   return entries
     .filter((e) => e.isFile())
@@ -27,8 +29,8 @@ async function filesUnder(dir: string): Promise<ReadonlyArray<string>> {
 /**
  * What decides a composition's bytes besides its request: every file a
  * render copies in (the composition's own, what they share, the mark, the
- * fonts), the HyperFrames pin, the browser that draws it and the ffmpeg that
- * encodes the clip.
+ * fonts), the HyperFrames pin, the browser that draws it with its switches
+ * (`DRAW_FLAGS`), and the ffmpeg that encodes the clip.
  */
 async function pinOf(
   ref: string,
@@ -36,7 +38,11 @@ async function pinOf(
   ffmpeg: string
 ): Promise<string> {
   const hash = createHash("sha256")
-  hash.update(`hyperframes ${HYPERFRAMES_VERSION}\n${browser}\n${ffmpeg}\n`)
+  hash.update(
+    `hyperframes ${HYPERFRAMES_VERSION}\n${browser} ${DRAW_FLAGS.join(" ")}\n${ffmpeg}\n`
+  )
+  // The marks a composition may be given, drawn from the code (HYPER5).
+  hash.update(`${everyMark()}\n`)
   const sources: Array<readonly [string, string]> = [
     ["mark", MARK],
     ...fontFiles(),
@@ -95,4 +101,25 @@ export function compositionPort(
         chrome,
       }),
   }
+}
+
+/**
+ * The port for a video in `root` drawn with the Chromium headless shell
+ * Playwright installed, for a recorder that lays composition scenes among
+ * its stills (HYPER5, #2728): null, with where it looked, when there is none.
+ */
+export function installedCompositionPort(
+  root: string,
+  work: string
+):
+  | { readonly ok: true; readonly port: Compositions }
+  | { readonly ok: false; readonly problem: string } {
+  const roots = browserRoots(process.env)
+  const chrome = findHeadlessShell(roots)
+  return chrome === null
+    ? {
+        ok: false,
+        problem: `no Chromium headless shell under ${roots.join(" or ")} to draw the brand's open and close; install Playwright's (\`playwright install chromium-headless-shell\`)`,
+      }
+    : { ok: true, port: compositionPort(root, chrome, work) }
 }

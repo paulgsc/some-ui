@@ -29,10 +29,10 @@
  *   `./dna`'s `queueMark`); the mark is never rewritten, so each send of it
  *   is the body it holds.
  * - **The owner's word on whose idea a scene is stays** (ST5, `./origin`).
- * - **A take's fact check is the session's, and the owner's word is theirs**
- *   (SHOW SH5). `checks` holds each verdict a round brought (`./merge`),
- *   `accepted` the owner's word to keep a take that didn't pass after three
- *   rounds (PDM15); both only grow.
+ * - **What an episode's takes were checked against stays** (SHOW SH5).
+ *   `checks` holds each verdict a round brought (`./merge`), `accepted` the
+ *   owner's word to keep a take anyway (PDM15); both only grow, and nothing
+ *   reads them: an episode is never voiced here (FEED6 #2649).
  * - **An episode keeps its format** (SHOW SH3). A project opened from an
  *   episode file is pinned to it (`episode`), and a version that changes
  *   its scenes, their order, its series, its look or the voice plan (the
@@ -46,7 +46,7 @@ import { assertNever, youtubeLink } from "@some-ui/core-utils"
 import type { CutList, EpisodePin, ShotTime } from "@some-ui/video-render"
 import type { Primer } from "@soundbites/lib/journal/primer"
 
-import { BEST_OF, finishOf, isQueued, isReleased } from "./finish"
+import { finishOf, isQueued, isReleased } from "./finish"
 import { latestShot, sameJson, shotIds, shotIn } from "./lookup"
 import type { OriginMark } from "./origin"
 import { originRefusal } from "./origin"
@@ -180,9 +180,9 @@ export type Project = {
    * period and data. Absent on a video of your own.
    */
   readonly episode?: EpisodePin
-  /** Each take's fact check, as merges brought them; the latest by `at` counts (SH5). */
+  /** Each take's fact check, as merges brought them (SH5); kept, read by nothing. */
   readonly checks?: ReadonlyArray<FactCheck>
-  /** The owner's word on each take kept after three rounds (SH5). */
+  /** The owner's word on each take kept after three rounds (PDM15); kept, read by nothing. */
   readonly accepted?: ReadonlyArray<Accepted>
 }
 
@@ -239,8 +239,6 @@ export type ProjectEvent =
       "done" | "next" | "shot"
     >)
   | ({ readonly type: "markedReady" } & Mark)
-  /** The owner keeps scene `shot`'s chosen take after three rounds (SH5). */
-  | { readonly type: "bestKept"; readonly shot: string; readonly at: string }
   | ({ readonly type: "released" } & Release)
   /** Queue the latest revision, ready, for home to make (ST33), as `./dna`'s `queueMark` made its mark. */
   | ({ readonly type: "queued" } & Queued)
@@ -746,25 +744,6 @@ export function step(state: ProjectState, event: ProjectEvent): ProjectStep {
       return changed(state, {
         ...project,
         ready: [...(project.ready ?? []), { rev: event.rev, at: event.at }],
-      })
-    }
-
-    case "bestKept": {
-      const finish = finishOf(project)
-      if (
-        finish.kind !== "facts" ||
-        finish.shot !== event.shot ||
-        finish.rounds < BEST_OF
-      )
-        return refuse(state, "notReady")
-      const take = project.chosen[event.shot]
-      if (take === undefined) return refuse(state, "noTake")
-      return changed(state, {
-        ...project,
-        accepted: [
-          ...(project.accepted ?? []),
-          { shot: event.shot, take, at: event.at },
-        ],
       })
     }
 

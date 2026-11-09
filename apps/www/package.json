@@ -1,7 +1,7 @@
 {
   "name": "www",
   "private": true,
-  "version": "0.1.60",
+  "version": "0.1.63",
   "type": "module",
   "scripts": {
     "dev": "node scripts/sync-resume.mjs && vite",
@@ -27,6 +27,7 @@
     "test:sw": "playwright test --config playwright.config.ts tests/study-nudge",
     "record:call": "tsx tests/record/call.ts",
     "record:playoff-delta": "tsx tests/record/playoff-delta.ts",
+    "record:preview": "tsx tests/record/preview.ts",
     "record:short": "tsx tests/record/short.ts"
   },
   "dependencies": {
@@ -88,6 +89,7 @@
   "devDependencies": {
     "@playwright/test": "1.62.1",
     "@some-ui/contract-harness": "workspace:*",
+    "@some-ui/video-motion": "workspace:*",
     "@vitejs/plugin-react": "^6.1.2",
     "vite": "^8.3.5"
   }

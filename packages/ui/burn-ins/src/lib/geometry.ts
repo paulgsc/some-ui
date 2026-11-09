@@ -37,7 +37,7 @@ export const PORTRAIT = { width: 1080, height: 1920 } as const
 export const LANDSCAPE = { width: 1920, height: 1080 } as const
 
 /** The bands a burn-in may draw in. */
-export type Region = "header" | "body" | "lower-third" | "gutter"
+export type Region = "header" | "body" | "lower-third" | "gutter" | "foot"
 
 export type Geometry = {
   readonly frame: FrameSize
@@ -60,6 +60,14 @@ const safeAreaOf = (frame: FrameSize, insets: Insets): Box => ({
   y: insets.top,
   width: frame.width - insets.left - insets.right,
   height: frame.height - insets.top - insets.bottom,
+})
+
+/** Under the safe area, across its width, to the frame's bottom edge. */
+const footOf = (frame: FrameSize, safe: Box): Box => ({
+  x: safe.x,
+  y: safe.y + safe.height,
+  width: safe.width,
+  height: frame.height - safe.y - safe.height,
 })
 
 const typeScaleOf = (frame: FrameSize): number =>
@@ -93,6 +101,10 @@ const PORTRAIT_SAFE = safeAreaOf(PORTRAIT, PORTRAIT_INSETS)
  * - `gutter`: the strip of ground left of the picture's window, where the
  *   authorship mark stays small between its intro and its end card. Like the header it is
  *   outside the safe area's left margin; nothing of YouTube's is drawn there.
+ * - `foot`: under the safe area, across its width, to the frame's bottom
+ *   edge: inside the band a stage leaves empty for captions, below the
+ *   lower third they are drawn in. YouTube draws its title there, so only
+ *   what is never uploaded sits in it: a preview's mark (`./preview-mark`).
  */
 const PORTRAIT_GEOMETRY: Geometry = {
   frame: PORTRAIT,
@@ -107,6 +119,7 @@ const PORTRAIT_GEOMETRY: Geometry = {
       height: PORTRAIT_SAFE.y + PORTRAIT_SAFE.height - 1250,
     },
     gutter: { x: 6, y: 250, width: 42, height: 1000 },
+    foot: footOf(PORTRAIT, PORTRAIT_SAFE),
   },
   typeScale: typeScaleOf(PORTRAIT),
 }
@@ -143,6 +156,7 @@ const LANDSCAPE_LOWER_THIRD_Y = 700
  * - `lower-third`: the safe area's bottom 250 px, which holds a caption's
  *   two rows in any look above its lift (`captions/layout`).
  * - `gutter`: a strip in the left margin beside the body, as on the short.
+ * - `foot`: under the safe area, as on the short.
  */
 const LANDSCAPE_GEOMETRY: Geometry = {
   frame: LANDSCAPE,
@@ -168,6 +182,7 @@ const LANDSCAPE_GEOMETRY: Geometry = {
         LANDSCAPE_SAFE.y + LANDSCAPE_SAFE.height - LANDSCAPE_LOWER_THIRD_Y,
     },
     gutter: { x: 48, y: 250, width: 42, height: LANDSCAPE_LOWER_THIRD_Y - 250 },
+    foot: footOf(LANDSCAPE, LANDSCAPE_SAFE),
   },
   typeScale: typeScaleOf(LANDSCAPE),
 }

@@ -97,7 +97,7 @@ export type Motion = z.infer<typeof MotionSchema>
 export type MotionKind = Motion["kind"]
 export const MOTION_KINDS = MotionSchema.options.map((o) => o.shape.kind.value)
 
-/** The sound kit's names. A series maps each to a CC0 file. */
+/** The sound kit's names. A series pins each to its file, made by `cues.ts`. */
 export const SOUNDS = [
   "whoosh",
   "click",

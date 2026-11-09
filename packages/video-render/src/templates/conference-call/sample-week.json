@@ -2,7 +2,7 @@
   "schema": "some-ui.call-week/1",
   "template": {
     "id": "conference-call",
-    "version": 2
+    "version": 4
   },
   "week": {
     "from": "2026-10-30",

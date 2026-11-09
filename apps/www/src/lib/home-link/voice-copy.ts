@@ -37,7 +37,10 @@
  *   answer as `idea:<idea>:<question>`, when taken; home gives its words back
  *   to the idea screen (`./heard`). A new idea's take (ST26) goes the same
  *   way, but only once its idea is sent: until then it waits on the phone
- *   (`waits`), and its desk lists it for nobody here;
+ *   (`waits`), and its desk lists it for nobody here; an answer of an idea
+ *   on home said again (#2579) the same way, from a desk of its own, once
+ *   its idea is sent again, when the take it replaces is set aside on home
+ *   (`lib/idea-takes`' `setAsideReplaced`);
  * - a take with no scene yet, recorded on Takes on home (`lib/library-takes`,
  *   ST32): `studio`, named by its own id as `take:<id>`, when taken; home
  *   lists it with every take it keeps, and ST30 attaches it to a scene by
@@ -141,7 +144,7 @@ import { ON_PHONE } from "@some-ui/voice-capture"
 
 import { phoneGameBites } from "@/lib/game-bites"
 import type { IdeaTake } from "@/lib/idea-takes"
-import { ideaBundleDesk, ideaTakesDesk } from "@/lib/idea-takes"
+import { ideaBundleDesk, ideaRedoDesk, ideaTakesDesk } from "@/lib/idea-takes"
 import { jobVoiceAudio, phoneJobs } from "@/lib/jobs"
 import type { JobEvent, JobsState } from "@/lib/jobs/model"
 import type { LeetypeTake } from "@/lib/leetype-takes"
@@ -183,6 +186,7 @@ import {
 } from "@/lib/voice-home/model"
 import { wireVoiceMarks } from "@/lib/voice-marks"
 
+import { phoneEpisodeNotes, sendEpisodeNotes } from "./episode-notes"
 import { phoneIdeas, sendIdeas } from "./ideas"
 import { homeLink, paired } from "./index"
 import { lensEntriesHeld } from "./lens-record"
@@ -368,8 +372,9 @@ export function rustWeekNote(take: RustRoundTake): VoiceOut {
 }
 
 /**
- * A Studio idea answer's take (its `line` is `idea:<idea>:<question>`), as
- * home is told it: a Studio note, whose `ref` home reads as any other.
+ * A take on the desk of Studio's answers, as home is told it: a Studio note
+ * under its `line`, `idea:<idea>:<question>` for an idea's answer or the
+ * ask's ref for an ask's (SFEED5, `answerRef`), which home reads as any other.
  */
 export function ideaNote(take: IdeaTake): VoiceOut {
   return {
@@ -653,6 +658,12 @@ function listed(
     audio: (): Promise<Blob | null> => ideaBundleDesk.audio(take.id),
     aside: asideAt(take),
   }))
+  // #2579: only the takes of an answer said again whose idea was sent again.
+  const resaid = ideaRedoDesk.kept().map((take) => ({
+    note: ideaNote(take),
+    audio: (): Promise<Blob | null> => ideaRedoDesk.audio(take.id),
+    aside: asideAt(take),
+  }))
   const library = libraryTakesDesk.kept().map((take) => ({
     note: libraryNote(take),
     audio: (): Promise<Blob | null> => libraryTakesDesk.audio(take.id),
@@ -671,6 +682,7 @@ function listed(
     ...week,
     ...ideas,
     ...bundled,
+    ...resaid,
     ...library,
   ]
 }
@@ -948,7 +960,8 @@ async function letGoOnHomesWord(send: HomeCall): Promise<void> {
  * again, then each copy waiting sent (`exchangeVoice`), then, once that
  * synced, home's word on which Studio takes Drive has (`letGoOnHomesWord`),
  * each Studio idea sent whole that home doesn't hold (`sendIdeas`, ST26),
- * whose said answers name notes that have just gone, the set-aside marks due
+ * whose said answers name notes that have just gone, each note left on an
+ * episode home doesn't hold (`sendEpisodeNotes`, SFEED6), the set-aside marks due
  * (`markSetAside`, MIC2), and, once those synced, each Studio video kept for
  * home to make (`sendVideos`, ST33), whose takes name notes too, which ends
  * the run in its exchange's place. A run that sent all it had still fails,
@@ -972,6 +985,11 @@ export async function sendVoice(
     send
   )
   if (ideas.kind !== "synced") return runEnd(pass, ideas)
+  const notes = await sendEpisodeNotes(
+    phoneEpisodeNotes(localStorageOrNull(), at.pairing),
+    send
+  )
+  if (notes.kind !== "synced") return runEnd(pass, notes)
   const sendable = marksSendable(candidates())
   const marks: AsidePort = {
     due: () => home.marks.due().filter(sendable),
@@ -1046,14 +1064,15 @@ export async function letGoDeleted(
   const studio = studioKeeping()
   const deleted = new Set(ids)
   try {
-    const [, kit, bundle, library, week] = await Promise.all([
+    const [, kit, bundle, resaid, library, week] = await Promise.all([
       studio?.letGoDeletedTakes(deleted),
       ideaTakesDesk.letGoDeleted(deleted),
       ideaBundleDesk.letGoDeleted(deleted),
+      ideaRedoDesk.letGoDeleted(deleted),
       libraryTakesDesk.letGoDeleted(deleted),
       rustWeekDesk.letGoDeleted(deleted),
     ])
-    return studio !== null && kit && bundle && library && week
+    return studio !== null && kit && bundle && resaid && library && week
   } catch (error) {
     reportFailure({
       port: "my data: this phone's copy of what home deleted",
@@ -1145,6 +1164,7 @@ function holdOffline(): void {
   rustRoundsDesk.audioFrom(askAudio)
   ideaTakesDesk.keptWhere(voiceKept)
   ideaBundleDesk.keptWhere(voiceKept)
+  ideaRedoDesk.keptWhere(voiceKept)
   rustWeekDesk.keptWhere(voiceKept)
   libraryTakesDesk.keptWhere(voiceKept)
   sceneNotesKept(voiceKept)
@@ -1183,6 +1203,8 @@ export function watchVoiceNotes(): () => void {
         ideaTakesDesk.phone().subscribe(copySoon),
         // A new idea's takes go once it is sent (ST26): its Send is a change.
         ideaBundleDesk.phone().takes.subscribe(copySoon),
+        // An answer said again goes once its idea is sent again (#2579).
+        ideaRedoDesk.phone().takes.subscribe(copySoon),
         // A week's takes go once it is sent (RR13): its Send is a change.
         rustWeekDesk.phone().takes.subscribe(copySoon),
         libraryTakesDesk.phone().takes.subscribe(copySoon)

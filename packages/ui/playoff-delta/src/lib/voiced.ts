@@ -9,12 +9,16 @@ import {
   hasCaptions,
   stillFile,
   stillsCutList,
+  storyboardOf,
+  type BoardScene,
   type CutList,
   type StillTake,
+  type Storyboard,
 } from "@some-ui/video-render"
 
 import type { Narration } from "./narration"
-import { episodeTitle, formatOf, kindOf } from "./show"
+import { SAMPLE_SEASON, sampleWeekOf } from "./sample"
+import { episodeTitle, formatOf, kindOf, type FormatKind } from "./show"
 import { LEGEND_WEEK, SCENES, slidesOf, type SlideId } from "./slides"
 import { nameOf, type StorySeason } from "./story"
 import { INTRO } from "./words"
@@ -151,6 +155,7 @@ export function voicedCutList(
       look: format.look,
       captions: hasCaptions(format),
       bed,
+      ...(format.shape ? { shape: format.shape } : {}),
     },
     voicedScenes(season, week, fill.format.version, fill).map((scene, i) => ({
       id: scene.id,
@@ -158,5 +163,36 @@ export function voicedCutList(
       said: scene.said,
     })),
     takes
+  )
+}
+
+/**
+ * A format's storyboard (SFEED3, #2744): every scene of an episode of the
+ * sample season, its newest week for the week's format, as `voicedScenes`
+ * lays it out before the fill. Pinned as `storyboard.json` beside the
+ * format's versions in `@some-ui/video-render`'s `templates/`, so the phone,
+ * which can't carry this workspace, draws it; `show.test.ts` holds the pin
+ * to this.
+ */
+export function storyboardFor(kind: FormatKind): Storyboard {
+  const week = sampleWeekOf(kind)
+  const format = formatOf(kind)
+  return storyboardOf(
+    format,
+    episodeTitle(SAMPLE_SEASON, week),
+    voicedScenes(SAMPLE_SEASON, week, format.version, null).map(
+      (scene): BoardScene => {
+        if (scene.kind === "slide")
+          return { kind: "section", id: scene.id, scene: scene.id }
+        if (scene.kind === "chapter")
+          return {
+            kind: "chapter",
+            id: scene.id,
+            of: scene.of,
+            said: scene.said,
+          }
+        return { kind: scene.kind, id: scene.id, said: scene.said }
+      }
+    )
   )
 }

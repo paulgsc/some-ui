@@ -28,13 +28,14 @@
     "@some-ui/intent-kit": "workspace:*",
     "@some-ui/react-hooks": "workspace:*",
     "@some-ui/shared": "workspace:*",
+    "@some-ui/styles": "workspace:*",
     "@some-ui/video-render": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
     "@some-ui/vite-config": "workspace:*",
-    "@types/node": "^26.0.1",
+    "@types/node": "^26.6.6",
     "tsx": "^4.22.4"
   },
   "repository": {

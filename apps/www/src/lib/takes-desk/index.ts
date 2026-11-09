@@ -33,6 +33,7 @@ import {
 
 import { boundedList } from "@/lib/bounded-list"
 import type { MarkFrom } from "@/lib/voice-marks"
+import { setAsideOwing } from "@/lib/voice-marks"
 
 import type { DeskShape, PatternPhone, PatternTakesPorts } from "./pattern"
 import { createPatternTakes } from "./pattern"
@@ -121,6 +122,23 @@ type DeskShelf = {
   readonly letGoDeleted: (deleted: ReadonlySet<string>) => Promise<boolean>
   /** Where a take whose audio is not on this phone is heard from: home's. */
   readonly audioFrom: (back: (id: string) => Promise<Blob | null>) => void
+  /**
+   * Sets aside take `id`, one already sent (it no longer `waits`), at `at`
+   * (ISO 8601), with its set-aside mark owed under the desk's `from`
+   * through `setAsideOwing` (LA13): a take an answer said again replaced,
+   * once its idea is sent again (ST26, #2579). It stays listed, with its
+   * audio. `absent` when this desk lists no such sent take; otherwise
+   * whether it is set aside (already, or now).
+   */
+  readonly setAsideSent: (id: string, at: string) => boolean | "absent"
+  /**
+   * Sets aside take `id`, one still waiting for an item nothing can send
+   * now (an answer said again whose idea was set aside on home, #2805), at
+   * `at`, its mark owed as `setAsideSent` owes it. It still waits until the
+   * screen releases it, and then goes home set aside. `absent` when this
+   * desk lists no such waiting take; otherwise whether it is set aside.
+   */
+  readonly setAsideWaiting: (id: string, at: string) => boolean | "absent"
 }
 
 export type TakesDesk = DeskShelf & { readonly phone: () => PhoneTakes }
@@ -283,6 +301,22 @@ function desk<R extends Runtime>(
    * and `letGoDeleted`'s, once home deleted them. False when the phone
    * could not store the mark, so nothing went.
    */
+  /** Sets aside take `id` where `which` lists it, its mark owed first. */
+  const setAsideWhere = (
+    id: string,
+    at: string,
+    which: (take: Take) => boolean
+  ): boolean | "absent" => {
+    const take = takes.read().find((each) => each.id === id && which(each))
+    if (take === undefined) return "absent"
+    if (take.standing === "set-aside") return true
+    const stored = setAsideOwing(id, options.from, at, () =>
+      takes.setAside(id, Date.parse(at))
+    )
+    if (stored) runtime?.recount()
+    return stored
+  }
+
   const release = async (holds: ReadonlySet<string>): Promise<boolean> => {
     const named = takes
       .read()
@@ -366,6 +400,8 @@ function desk<R extends Runtime>(
     audioFrom: (next): void => {
       back = next
     },
+    setAsideSent: (id, at) => setAsideWhere(id, at, sent),
+    setAsideWaiting: (id, at) => setAsideWhere(id, at, (each) => !sent(each)),
   }
 }
 

@@ -466,11 +466,27 @@ declared (checked by reading every call site and by the tests named).
   time a feed's screen opens, on a drag down, on Try again and once after a
   Save home kept; on Watch, one `GET /feeds/:feed/videos/:key/video` per part
   of the episode's video, each a range of at most `PART_BYTES`, into the
-  phone's cache; and, on Save, one `PUT /feeds/:feed/videos/:key/link` of the
+  phone's cache; when an episode's page opens, one
+  `GET /feeds/:feed/videos/:key/description` of its chapters (SFEED4, #2763);
+  and, on Save, one `PUT /feeds/:feed/videos/:key/link` of the
   link the owner pasted, only once it reads as a `YouTube` video; sending
   nothing of the phone's but that link; while the link is busy with another
   run it asks again a second later, at most ten times; ST38, #2661; FEED4,
-  #2647), and Studio's Finish
+  #2647), Studio › Renders (`lib/renders`, through `lib/home-link/renders`'
+  `keep`: one `GET /renders` each time Studio's index or the page opens, on a
+  drag down, on Try again, and every half minute while home has something
+  under way, sending nothing of the phone's; SFEED13, #2761), a template's
+  preview (`lib/template-preview`, through `lib/home-link/previews`' `keep`:
+  on Preview one bodiless `POST /previews/:template`; one
+  `GET /previews/:template` as the page opens, on a drag down, on Try again
+  and once after a press home took; on Watch one
+  `GET /previews/:template/:id/video` per part, each a range of at most
+  `PART_BYTES`, into the phone's cache; sending nothing of the phone's;
+  SFEED12, #2757), Studio's Feedback page (`lib/episode-feedback`, through
+  `lib/home-link/episode-notes-read`'s `keep`: one `GET /feeds/:feed/notes`
+  per feed as the page opens and on a drag down, sending nothing of the
+  phone's, asking again a second later while the link is busy, at most ten
+  times and not once the page has left it; SFEED6, #2745), and Studio's Finish
   (`routes/_dashboard/_apk/journal/episodes/making.tsx`, ST33), which hands the voice
   lane a video kept for home to make and hears what home answered and lists
   of it through `lib/home-link/studio-videos`, sending nothing of its own,
@@ -555,8 +571,14 @@ declared (checked by reading every call site and by the tests named).
   `lib/home-link/lanes.ts` (LA15), `lib/home-link/routine.ts`,
   `lib/home-link/heard.ts`, `lib/home-link/voice-audio.ts` (RR6),
   `lib/home-link/kept-read.ts`, `lib/home-link/deleted-read.ts`,
-  `lib/home-link/idea-reads.ts`, `lib/home-link/takes-read.ts` and
-  `lib/home-link/call-videos.ts`; one that has `call-videos.ts` send anything
+  `lib/home-link/idea-reads.ts`, `lib/home-link/takes-read.ts`,
+  `lib/home-link/call-videos.ts`, `lib/home-link/renders.ts`,
+  `lib/home-link/previews.ts` and `lib/home-link/episode-notes-read.ts`; one
+  that has `renders.ts` send anything but one `GET /renders`, `previews.ts`
+  anything but the three asks above, or `episode-notes-read.ts` anything but
+  one `GET /feeds/:feed/notes`, or lets anything but `lib/renders`,
+  `lib/template-preview` and `lib/episode-feedback/home-read.ts` call them,
+  each its own; one that has `call-videos.ts` send anything
   but one `GET` of `episodesPath(feed)` per list, one ranged `GET` of
   `videoPath(feed, key)` per part and one `PUT` of `linkPath(feed, key)` per
   Save, lets
@@ -868,11 +890,20 @@ only from the lane's hook and the scene notes read for home only there
   notes, soundbites (through `soundbitesOweMarks`), and lens, LeetType
   and Rust Rounds takes (Rust Rounds' since its notes go home, RR6, `from`
   `rust-round`); game bites, Studio takes and the answers to Claude's questions
-  about an idea have no Let go. A new idea's takes (ST26) owe no marks
-  either (their desk's `from` is null): before Send, its Delete, a Redo
-  and the clean-up of a kept idea's takes it doesn't name delete for good
-  a take that still `waits`, through the desk's `discard`. Once a take no
-  longer waits, only the desk's own two exits remove it, as on every
+  about an idea have no Let go. A new idea's takes (ST26) have no Let go
+  either: before Send, its Delete, a Redo and the clean-up of a kept
+  idea's takes it doesn't name delete for good a take that still `waits`,
+  through the desk's `discard`. An answer of an idea on home said again
+  (#2579) waits the same way on a desk of its own (`redoDesk`), deleted for
+  good only while it waits and no kept idea names it (its Delete, or a
+  newer take said again for the same answer; soundbites' `draftRedos`): a
+  take a send again already kept in the idea is let go home by the next
+  read or send, never deleted. Once a take on either desk no longer waits, the one write
+  of its standing is its set-aside, when an answer said again replaces it
+  and the idea is sent again (`setAsideReplaced`, through the desk's
+  `setAsideSent` inside `setAsideOwing`, both desks' `from` `studio`;
+  one no desk lists any more is owed its mark alone, through
+  `voiceMarks.owe`). Only the desk's own two exits remove it, as on every
   takes desk: making room at the cap of 40, which lets the oldest take
   home holds go (`makesRoom`), and the sweep of a take whose audio never
   landed (`sweepIdeaTakes`), which takes a waiting one too. A mark
@@ -906,10 +937,19 @@ only from the lane's hook and the scene notes read for home only there
   `lib/bundle.ts`' `namedBy`, over the spec's `named`; for an idea,
   soundbites' `lib/idea/bundle.ts`) (ST26); one to
   `lib/idea-takes/index.ts`, either `bundle-runtime.ts` or either `bundle.ts` that lets
-  the new idea's desk (`bundleDesk`, whose `from` is null) let go a take
-  that no longer `waits`: a call of its pattern's `letGo`, or a removal
-  there but through `discard`, the desk's `sweep` or its making room at
-  the cap;
+  the new idea's desk (`bundleDesk`) or the desk of answers said again
+  (`redoDesk`) let go a take that no longer `waits`: a call of its
+  pattern's `letGo`, a removal there but through `discard`, the desk's
+  `sweep` or its making room at the cap, or a set-aside but through
+  `setAsideReplaced`; one to `lib/takes-desk/index.ts` that lets
+  `setAsideSent` set aside a take that still `waits`, or write the
+  standing outside `setAsideOwing`; one to soundbites'
+  `lib/idea/on-home-runtime.ts` that sets aside a replaced take before the
+  idea sent again is kept, lets its new take go before the replaced one is
+  set aside, or sets aside a note home deleted for good; one to soundbites'
+  `lib/idea/on-home.ts` that lets `dropRedos`, `openRedos` or `draftRedos`
+  reach a take a kept idea names, or ask to drop one before the kept ideas
+  are read;
   a hunk to `lib/scene-voice/runtime.ts` that lets `letGo` remove a scene note that
   is not `prompted` (an ask home holds named it, LA18) or that home does not
   hold; a hunk
@@ -928,7 +968,8 @@ only from the lane's hook and the scene notes read for home only there
   say a note is set aside for any standing but `set-aside`; a hunk that
   writes a `set-aside` standing anywhere but inside a `setAsideOwing`
   write (the `setAside` ports of `lib/takes-desk/pattern.ts`,
-  `lib/scene-voice/runtime.ts` and `lib/jobs/runtime.ts`, and
+  `lib/scene-voice/runtime.ts` and `lib/jobs/runtime.ts`, the takes
+  desk's `setAsideSent` in `lib/takes-desk/index.ts`, and
   `lib/reflection-voice/index.ts`' `setAside`) or soundbites' `setAside`
   port after `asideMarks().owe` (`packages/ui/soundbites/src/lib/runtime.ts`),
   that writes it when the mark was not owed or keeps it when the mark was
@@ -963,7 +1004,8 @@ only from the lane's hook and the scene notes read for home only there
   `voice-copy.ts`, `set-aside.ts`, `apps/www/src/lib/voice-home/**`,
   `apps/www/src/lib/voice-marks/**`, `apps/www/src/lib/takes-desk/pattern.ts`
   and `index.ts`, `apps/www/src/lib/idea-takes/index.ts`,
-  `packages/ui/soundbites/src/lib/idea/bundle-runtime.ts` and `bundle.ts`,
+  `packages/ui/soundbites/src/lib/idea/bundle-runtime.ts`, `bundle.ts` and
+  `on-home.ts` and `on-home-runtime.ts`,
   `packages/voice-capture/src/lib/bundle-runtime.ts` and `bundle.ts`,
   `apps/www/src/lib/jobs/runtime.ts`, `apps/www/src/lib/reflection-voice/index.ts`,
   `packages/ui/soundbites/src/lib/runtime.ts` and `aside-marks.ts`,

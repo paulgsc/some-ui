@@ -45,8 +45,10 @@
  *   (the weekly call or Playoff Delta) it holds (`lib/home-link/call-videos`,
  *   one `GET /feeds/:feed/videos` per open, drag down, Try again or Save home
  *   kept), for an episode's video on Watch, a part at a time (one
- *   `GET /feeds/:feed/videos/:key/video` per part), and sends an episode's
- *   link on Save (one `PUT /feeds/:feed/videos/:key/link`).
+ *   `GET /feeds/:feed/videos/:key/video` per part) and for its chapters when
+ *   its page opens (one `GET /feeds/:feed/videos/:key/description`, SFEED4),
+ *   and sends an episode's link on Save (one `PUT
+ *   /feeds/:feed/videos/:key/link`).
  *
  * - **LA19 (MY-DATA MD5): only My data deletes a record on home.** Only
  *   `lib/home-link/delete-note` sends home a `DELETE` (a recording's notes,
@@ -112,7 +114,8 @@ const HOME_LINK_CALLERS = new Set([
   // home for a take's words while the screen shows it being heard; and a new
   // idea's screen (ST26, `ideaHome`), which reads whether the phone is paired
   // and how the voice lane's last run ended, and listens for either
-  // changing, asking home nothing.
+  // changing, asking home nothing; and an ask's spoken answer (SFEED5), which
+  // reads the pairing and hears its take through the same listener.
   "lib/idea-hearing/index.ts",
   // LA8 (RR13): Rust Rounds' week, which reads whether the phone is paired
   // (`ideaHome`) and asks home once per opening for the words of each take
@@ -138,6 +141,18 @@ const HOME_LINK_CALLERS = new Set([
   // after a Save, for an episode's video a part at a time on Watch, and sends
   // an episode's link on Save.
   "lib/call-videos/index.ts",
+  // LA8 (SFEED13): Studio › Renders, which asks home what it is making as
+  // Studio's index or the page opens, on a drag down, on Try again, and every
+  // half minute while home has something under way. It sends nothing of its
+  // own.
+  "lib/renders/read.ts",
+  // LA8 (SFEED12): a template's preview, which asks home to make one, reads
+  // the newest, and asks for its video a part at a time on Watch.
+  "lib/template-preview/index.ts",
+  // LA8 (SFEED6): Studio's Feedback page, which asks home for the notes it
+  // keeps on each feed's episodes. It sends nothing of its own: the notes go
+  // home on the voice lane's run (`lib/home-link/episode-notes`).
+  "lib/episode-feedback/home-read.ts",
   // LA8 (ST33): Studio's Finish, which hands the voice lane a video kept for
   // home to make and hears what home answered and lists of it
   // (`studioVideos`), sending nothing of its own.
@@ -170,7 +185,18 @@ const KEEPERS = new Set([
   "lib/home-link/idea-reads.ts",
   "lib/home-link/takes-read.ts",
   "lib/home-link/call-videos.ts",
+  "lib/home-link/renders.ts",
+  "lib/home-link/previews.ts",
+  "lib/home-link/episode-notes-read.ts",
 ])
+
+/** SFEED13: Studio › Renders' read, and the one request it may send. */
+const RENDERS_READ = "lib/home-link/renders.ts"
+const RENDERS_SENDS = [['"GET"', '"/renders"']]
+
+/** SFEED6: the Feedback page's read, and the one request it may send. */
+const NOTES_READ = "lib/home-link/episode-notes-read.ts"
+const NOTES_SENDS = [['"GET"', "`/feeds/${feed}/notes`"]]
 
 /** The routine's read, and the two requests it may send. */
 const ROUTINE_READ = "lib/home-link/routine.ts"
@@ -209,20 +235,36 @@ const TAKES_READ = "lib/home-link/takes-read.ts"
 const TAKES_SENDS = [['"GET"', "takesPath(q)"]]
 
 /**
- * LA8, ST38, FEED4: Studio's feed videos' reads of a feed's episodes and of an
- * episode's video, a part at a time, and its one send of an episode's link.
+ * LA8, ST38, FEED4: Studio's feed videos' reads of a feed's episodes, of an
+ * episode's video, a part at a time, and of its chapters (SFEED4), and its
+ * one send of an episode's link.
  */
 const CALLS_READ = "lib/home-link/call-videos.ts"
 const CALLS_SENDS = [
   ['"GET"', "episodesPath(feed)"],
   ['"GET"', "videoPath(feed, key)", "undefined", "{ start, end }"],
   ['"PUT"', "linkPath(feed, key)", "JSON.stringify({ link })"],
+  ['"GET"', "descriptionPath(feed, key)"],
 ]
-/** The three paths those requests reach, as the read writes them. */
+/** The four paths those requests reach, as the read writes them. */
 const CALLS_PATHS = [
   "return `/feeds/${feed}/videos`",
   "return `/feeds/${feed}/videos/${encodeURIComponent(key)}/video`",
   "return `/feeds/${feed}/videos/${encodeURIComponent(key)}/link`",
+  "return `/feeds/${feed}/videos/${encodeURIComponent(key)}/description`",
+]
+
+/** LA8, SFEED12: a template's preview, and the three requests it may send. */
+const PREVIEWS_READ = "lib/home-link/previews.ts"
+const PREVIEWS_SENDS = [
+  ['"POST"', "previewPath(template)"],
+  ['"GET"', "previewPath(template)"],
+  [
+    '"GET"',
+    "`${previewPath(template)}/${encodeURIComponent(id)}/video`",
+    "undefined",
+    "{ start, end }",
+  ],
 ]
 
 /** LA8, MD3: the read of what home deleted, and the one request it may send. */
@@ -787,6 +829,42 @@ describe("LA8: the phone reaches home through one module", () => {
         )
       )
     expect(readers).toEqual(["lib/call-videos/index.ts"])
+  })
+
+  it("sends nothing from Studio's Feedback page but one GET of a feed's notes, and only the page's read asks it (SFEED6)", () => {
+    expect(sendCalls(NOTES_READ, read(NOTES_READ))).toEqual(NOTES_SENDS)
+    const readers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /from "\.\/episode-notes-read"|from "@\/lib\/home-link\/episode-notes-read"/.test(
+          read(f)
+        )
+      )
+    expect(readers).toEqual(["lib/episode-feedback/home-read.ts"])
+  })
+
+  it("sends nothing from Studio › Renders but one GET of /renders, and only Studio › Renders asks it (SFEED13)", () => {
+    expect(sendCalls(RENDERS_READ, read(RENDERS_READ))).toEqual(RENDERS_SENDS)
+    const readers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /from "\.\/renders"|from "@\/lib\/home-link\/renders"/.test(read(f))
+      )
+    expect(readers).toEqual(["lib/renders/read.ts"])
+  })
+
+  it("sends nothing from a template's preview but its make, its read and its video's parts, and only the preview asks them (SFEED12)", () => {
+    expect(sendCalls(PREVIEWS_READ, read(PREVIEWS_READ))).toEqual(
+      PREVIEWS_SENDS
+    )
+    expect(read(PREVIEWS_READ)).toContain("`/previews/${template}`")
+    expect(read(PREVIEWS_READ)).toContain("homeLink().keep(")
+    const readers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /from "\.\/previews"|from "@\/lib\/home-link\/previews"/.test(read(f))
+      )
+    expect(readers).toEqual(["lib/template-preview/index.ts"])
   })
 
   it("sends nothing from Ideas on home but its four requests, and only it asks them (ST26 c)", () => {

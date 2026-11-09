@@ -31,6 +31,7 @@ import type {
   VideosState,
 } from "./model"
 import { INITIAL, step } from "./model"
+import { bringVideo, keptCopy } from "./parts"
 
 /**
  * The phone's copies of one feed's videos, in its cache, by episode key.
@@ -87,12 +88,6 @@ export type FeedVideos = {
   seen: () => void
 }
 
-/** Bytes of base64 text, without decoding it. */
-function decodedBytes(base64: string): number {
-  const padding = base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0
-  return (base64.length / 4) * 3 - padding
-}
-
 export function createFeedVideos(ports: VideosPorts): FeedVideos {
   let state = INITIAL
   const listeners = new Set<() => void>()
@@ -108,9 +103,7 @@ export function createFeedVideos(ports: VideosPorts): FeedVideos {
   /** An episode whose whole video the phone keeps reads as ready. */
   const kept = async (episode: Episode): Promise<boolean> => {
     if (episode.videoBytes === null) return false
-    const size = await ports.files.size(episode.key)
-    if (size !== episode.videoBytes) return false
-    const where = await ports.files.where(episode.key)
+    const where = await keptCopy(ports.files, episode.key, episode.videoBytes)
     if (where === null) return false
     dispatch({
       type: "fetchMoved",
@@ -145,43 +138,20 @@ export function createFeedVideos(ports: VideosPorts): FeedVideos {
     }
   }
 
-  /**
-   * Brings `episode`'s video to the phone a part at a time. It stops,
-   * writing nothing more, once `forget` is stopping the episode.
-   */
-  const fetchVideo = async (episode: Episode, total: number): Promise<void> => {
-    const { key } = episode
-    if (stopping.has(key) || (await kept(episode))) return
-    for (let start = 0; start < total; ) {
-      const end = Math.min(start + ports.partBytes, total) - 1
-      const part = await ports.part(key, start, end)
-      if (stopping.has(key)) return
-      if (part.kind !== "bytes") {
-        failed(key, part.kind === "gone" ? "gone" : "away")
-        return
-      }
-      // Android's base64 may be wrapped in lines.
-      const base64 = part.base64.replace(/\s/g, "")
-      const got = decodedBytes(base64)
-      if (got <= 0 || got > end - start + 1) {
-        failed(key, "away")
-        return
-      }
-      const put = await ports.files.put(key, base64, start === 0)
-      if (stopping.has(key)) return
-      if (!put) {
-        failed(key, "phone")
-        return
-      }
-      start += got
-      dispatch({
-        type: "fetchMoved",
-        key,
-        fetch: { kind: "fetching", done: start, total },
-      })
-    }
-    if (!(await kept(episode))) failed(key, "phone")
-  }
+  const fetchVideo = (episode: Episode, total: number): Promise<void> =>
+    bringVideo(
+      {
+        files: ports.files,
+        part: (start, end) => ports.part(episode.key, start, end),
+        partBytes: ports.partBytes,
+        stopped: () => stopping.has(episode.key),
+        moved: (fetch) => {
+          dispatch({ type: "fetchMoved", key: episode.key, fetch })
+        },
+      },
+      episode.key,
+      total
+    )
 
   return {
     subscribe(listener): () => void {

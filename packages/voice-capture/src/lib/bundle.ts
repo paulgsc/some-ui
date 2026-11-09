@@ -65,6 +65,7 @@ import { assertNever } from "@some-ui/core-utils"
 
 import type { TakeEnded } from "./take-kit"
 import type { PatternTake } from "./take-pattern"
+import { currentTakeOf } from "./take-view"
 
 /**
  * The fields of a draft the machine reads and writes, by item; a spec's
@@ -466,14 +467,7 @@ export function bundleMachine<K extends BundleKind>(
 
   /** The take that answers `item` now, if one does. */
   function currentTake(state: Read<K>, item: I): PatternTake | null {
-    const answers = spec.answersOf(state.draft.id, item)
-    return (
-      state.takes
-        .filter(
-          (take) => take.answers === answers && take.standing === "current"
-        )
-        .sort((a, b) => b.recordedAt.localeCompare(a.recordedAt))[0] ?? null
-    )
+    return currentTakeOf(state.takes, spec.answersOf(state.draft.id, item))
   }
 
   /** Every take answering `item`, whatever its standing. */

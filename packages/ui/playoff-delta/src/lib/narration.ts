@@ -110,7 +110,8 @@ function scenesOf(
   }
 }
 
-async function pinsOf(season: StorySeason, week: number): Promise<Pins> {
+/** The pins of week `week`'s episode, in its format's newest version. */
+export async function pinsOf(season: StorySeason, week: number): Promise<Pins> {
   const format = formatOf(kindOf(week))
   return {
     schema: NARRATION_SCHEMA,

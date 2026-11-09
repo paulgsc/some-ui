@@ -39,11 +39,16 @@ export const UNMEASURED: ReadonlyArray<Unmeasured> = [
     why: "A preview of what every video carries, on sample data, and the recorder's page.",
   },
   { route: "/captions", why: "The burn-ins' old address; it opens them." },
+  {
+    route: "/journal/renders",
+    why: "What home is making and what's coming (SFEED13): a read of home's renders, with nothing to act on.",
+  },
   ...[
     "/journal",
     "/journal/asks",
     "/journal/asks/$ask",
     "/journal/clips",
+    "/journal/clips/$clip",
     "/journal/episodes",
     "/journal/episodes/$feed/$key",
     "/journal/feedback",
@@ -53,6 +58,7 @@ export const UNMEASURED: ReadonlyArray<Unmeasured> = [
     "/journal/takes/kept",
     "/journal/templates",
     "/journal/templates/$template",
+    "/journal/templates/release-promo",
   ].map((route) => ({
     route,
     why: "Studio's index (SFEED1): a list or a page of what Studio keeps, a way to the rest. What each page offers is measured once the story that makes it an offer lands (answering an ask, a note on an episode).",

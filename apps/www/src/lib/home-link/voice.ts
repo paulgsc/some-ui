@@ -4,7 +4,8 @@
  * paired (`./voice-copy`, which says which notes and how each is told), and
  * sent through the one wiring (`./lanes`) by `exchangeVoice`
  * (`lib/voice-home/home`), then each Studio idea sent whole (`./ideas`,
- * ST26), whose said answers name those notes, then the set-aside marks
+ * ST26), whose said answers name those notes, then each note left on an
+ * episode (`./episode-notes`, SFEED6), then the set-aside marks
  * owed for notes the owner let go (`./set-aside`, MIC2), then each Studio
  * video kept for home to make (`./videos`, ST33), whose takes name notes too. The lane has no wing mark of its
  * own: the app shell mounts `useVoiceHome` on every screen, so notes go
@@ -14,10 +15,11 @@ import { useEffect, useSyncExternalStore } from "react"
 import { localStorageOrNull } from "@some-ui/core-utils"
 import type { OutboxPort, OutboxView } from "@some-ui/game-week"
 
+import { episodeFeedback } from "@/lib/episode-feedback"
 import type { PhoneBite } from "@/lib/game-bites"
 import { phoneGameBites } from "@/lib/game-bites"
 import { ideasMoved } from "@/lib/idea-keeping"
-import { ideaBundleDesk, ideaTakesDesk } from "@/lib/idea-takes"
+import { ideaBundleDesk, ideaRedoDesk, ideaTakesDesk } from "@/lib/idea-takes"
 import { phoneJobs } from "@/lib/jobs"
 import { leetypeTakesDesk } from "@/lib/leetype-takes"
 import { lensTakesDesk } from "@/lib/lens-takes"
@@ -27,6 +29,7 @@ import { reflections } from "@/lib/session-reflection"
 import { phoneVoiceHome } from "@/lib/voice-home"
 import type { Unsendable, VoiceHomeState } from "@/lib/voice-home/model"
 
+import { episodeNotesMoved, episodeNotesWaiting } from "./episode-notes"
 import { ideasWaiting } from "./ideas"
 import { homeLink, paired, pairingOf } from "./index"
 import type { KeptState } from "./kept-model"
@@ -45,6 +48,10 @@ import {
 /** The Studio videos kept for home that home doesn't hold yet, under the pairing now. */
 const videosNow = (): number => videosWaiting(localStorageOrNull(), pairingOf())
 
+/** The notes on episodes home doesn't hold yet, and holds, under the pairing now. */
+const episodeNotesNow = (): ReturnType<typeof episodeNotesWaiting> =>
+  episodeNotesWaiting(localStorageOrNull(), pairingOf())
+
 /** The Studio ideas home doesn't hold yet, and holds, under the pairing now. */
 const ideasNow = (): ReturnType<typeof ideasWaiting> =>
   ideasWaiting(localStorageOrNull(), pairingOf())
@@ -53,15 +60,24 @@ export const voiceLane: Lane = {
   id: "voice",
   exchange: sendVoice,
   // A mark owed for a note set aside (MIC2), a Studio idea sent whole
-  // (ST26) and a video kept for home to make (ST33) are something to send too.
+  // (ST26), a note on an episode (SFEED6) and a video kept for home to make
+  // (ST33) are something to send too.
   revision: () => {
     const { waiting, aside } = phoneVoiceHome().getSnapshot()
-    return waiting.length + aside.owed.length + ideasNow().waiting + videosNow()
+    return (
+      waiting.length +
+      aside.owed.length +
+      ideasNow().waiting +
+      episodeNotesNow().waiting +
+      videosNow()
+    )
   },
   subscribe: (listener) => {
     const stops = [
       phoneVoiceHome().subscribe(listener),
       ideasMoved.subscribe(listener),
+      episodeFeedback.subscribe(listener),
+      episodeNotesMoved.subscribe(listener),
       videosMoved.subscribe(listener),
     ]
     return (): void => {
@@ -75,6 +91,12 @@ export const voiceLane: Lane = {
     // home, or home answering for one (ST33).
     useSyncExternalStore(ideasMoved.subscribe, ideasMoved.getSnapshot)
     useSyncExternalStore(videosMoved.subscribe, videosMoved.getSnapshot)
+    // A note left on an episode, or home answering for one (SFEED6).
+    useSyncExternalStore(episodeFeedback.subscribe, episodeFeedback.getSnapshot)
+    useSyncExternalStore(
+      episodeNotesMoved.subscribe,
+      episodeNotesMoved.getSnapshot
+    )
     // Read so a reflection, Jobs note, game bite, Studio take, soundbite,
     // lens take, LeetType take, idea take or take with no scene added, or a
     // new idea's sent, renders the offer again.
@@ -93,6 +115,9 @@ export const voiceLane: Lane = {
     // A new idea's takes, released by its Send (ST26).
     const bundle = ideaBundleDesk.phone().takes
     useSyncExternalStore(bundle.subscribe, bundle.getSnapshot)
+    // An answer said again, released by its idea's send again (#2579).
+    const resaid = ideaRedoDesk.phone().takes
+    useSyncExternalStore(resaid.subscribe, resaid.getSnapshot)
     // A week's takes, released by its Send (RR13).
     const week = rustWeekDesk.phone().takes
     useSyncExternalStore(week.subscribe, week.getSnapshot)
@@ -107,12 +132,25 @@ export const voiceLane: Lane = {
       ({ note }) => !home.settled(note.id) && !gone.has(note.id)
     )
     const sent = ideasNow()
+    const notes = episodeNotesNow()
     return {
-      held: { voice: state.held.length, ideas: sent.held },
-      refused: { voice: state.refused.length, ideas: sent.refused },
+      held: {
+        voice: state.held.length,
+        ideas: sent.held,
+        episodeNotes: notes.held.size,
+      },
+      refused: {
+        voice: state.refused.length,
+        ideas: sent.refused,
+        episodeNotes: notes.refused.size,
+      },
       // A note not copied yet is no safer than one copied and not sent.
       waiting:
-        state.waiting.length + onPhone.length + sent.waiting + videosNow(),
+        state.waiting.length +
+        onPhone.length +
+        sent.waiting +
+        notes.waiting +
+        videosNow(),
       hidden: 0,
       pulled: true,
     }

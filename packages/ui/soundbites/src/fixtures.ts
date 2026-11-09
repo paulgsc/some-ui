@@ -5,7 +5,7 @@
  * IndexedDB, the microphone or the page's storage. The microphone they
  * record on is the shared simulated one (`@some-ui/voice-capture/testing`).
  */
-import { parseEpisode } from "@some-ui/video-render"
+import { parseEpisode } from "@some-ui/video-render/testing"
 import type { BundleTakes, TakePattern } from "@some-ui/voice-capture"
 import type { MemoryTakes } from "@some-ui/voice-capture/testing"
 
@@ -14,8 +14,7 @@ import { newIdea, withWords } from "./lib/idea/model"
 import type { Primer } from "./lib/journal/primer"
 import { readPrimer } from "./lib/journal/primer"
 import type { ProjectEvent, ProjectState } from "./lib/project/model"
-import { step } from "./lib/project/model"
-import { projectFromEpisode } from "./lib/project/script"
+import { newProject, step } from "./lib/project/model"
 
 export { memoryProjectStore } from "./lib/project/memory-store"
 
@@ -31,7 +30,11 @@ export function primerOf(text: string): Primer {
   return reading.primer
 }
 
-/** The project the episode file `text` opens as; throws if it is no episode. */
+/**
+ * A stored episode project, as a phone holds one (SHOW SH3): revision 1,
+ * Claude's, the episode file `text`'s cut list, pinned to it. Studio opens
+ * no episode file itself. Throws if `text` is no episode.
+ */
 export function episodeProjectOf(
   id: string,
   text: string,
@@ -40,7 +43,19 @@ export function episodeProjectOf(
   const episode = parseEpisode(JSON.parse(text))
   if (!episode.ok)
     throw new Error(`the episode does not read: ${episode.problems.join("; ")}`)
-  return projectFromEpisode(id, episode.value, primerOf(text), at)
+  const primer = primerOf(text)
+  const { revisions: _, notes: __, ...cutList } = episode.value.cutList
+  return newProject(
+    id,
+    {
+      author: "claude",
+      message: `Episode: ${primer.title}`,
+      at,
+      cutList,
+      primer,
+    },
+    episode.value.episode
+  )
 }
 
 /** `events` in order from `state`, each one accepted; throws on a refusal. */

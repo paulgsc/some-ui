@@ -1,8 +1,11 @@
 import type { BundleTakes } from "@some-ui/voice-capture"
+import { ONE_TAKE, TAKE_WORDS } from "@some-ui/voice-capture"
 import { simulatedPattern } from "@some-ui/voice-capture/testing"
 import { IdeasOnHome } from "@soundbites/components/ideas-on-home"
+import { bundleTakesOf } from "@soundbites/fixtures"
 import type { HomeIdea, HomeLists } from "@soundbites/lib/idea/on-home"
 import type { IdeasHome } from "@soundbites/lib/idea/on-home-runtime"
+import { keptIdeaStore } from "@soundbites/lib/idea/store"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
 import { act, fireEvent, render, screen } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
@@ -73,6 +76,87 @@ function home(more: Partial<IdeasHome> = {}): IdeasHome {
 const settle = (): Promise<void> => act(() => Promise.resolve())
 
 const NO_TAKES: ReturnType<BundleTakes["takes"]["getSnapshot"]> = []
+
+/**
+ * Ideas on home with idea i1 kept on this phone as sent, its first answer
+ * said again and waiting (#2579). `setsAside`: how the set-aside answers.
+ */
+async function sayAgainOnScreen(setsAside = true): Promise<{
+  simulated: ReturnType<typeof simulatedPattern>
+  setAside: ReturnType<typeof vi.fn>
+  openInMyData: ReturnType<typeof vi.fn>
+  tap: ReturnType<typeof vi.spyOn>
+}> {
+  localStorage.clear()
+  keptIdeaStore().keep(() => [
+    {
+      id: "i1",
+      at: IDEA.createdAt,
+      questions: 1,
+      answers: [
+        {
+          question: "what",
+          versions: [],
+          takes: [{ at: IDEA.createdAt, take: "t1" }],
+        },
+        {
+          question: "takeaway",
+          versions: [
+            {
+              at: IDEA.createdAt,
+              how: "typed",
+              words: "Keep the phone a hand away.",
+            },
+          ],
+        },
+      ],
+      passed: [],
+      about: {
+        title: IDEA.title,
+        topic: "Studio",
+        keywords: ["voice"],
+        format: "short",
+      },
+      sent: [IDEA.sentAt],
+    },
+  ])
+  const simulated = simulatedPattern({
+    options: { ...ONE_TAKE, send: "on-confirm" },
+  })
+  const tap = vi.spyOn(simulated.pattern, "tap")
+  const setAside = vi.fn(() => setsAside)
+  const openInMyData = vi.fn()
+  render(
+    <IdeasOnHome
+      home={home()}
+      redo={{
+        takes: bundleTakesOf(simulated),
+        setAside,
+        setAsideWaiting: setAside,
+      }}
+      openInMyData={openInMyData}
+      pair={null}
+    />
+  )
+  await settle()
+  fireEvent.click(screen.getByRole("button", { name: /Why the mic clips/ }))
+  // Only the said answer offers it, and nothing waits to send yet.
+  const again = screen.getAllByRole("button", { name: /^Say “/ })
+  expect(again).toHaveLength(1)
+  expect(screen.queryByRole("button", { name: W.sendAgain })).toBeNull()
+  fireEvent.click(again[0]!)
+  // A take kept for it waits on the phone, until Send it again.
+  act(() => {
+    simulated.store.ports.keep(
+      { blob: new Blob(["v"]), durationMs: 2_000, mimeType: "audio/webm" },
+      "idea:i1:what",
+      null,
+      () => undefined
+    )
+  })
+  expect(screen.getByText(W.saidAgain)).toBeTruthy()
+  return { simulated, setAside, openInMyData, tap }
+}
 
 describe("Ideas on home (ST26 c)", () => {
   it("lists home's ideas by subject, opens one with home's words, and marks it still furnishing", async () => {
@@ -165,6 +249,45 @@ describe("Ideas on home (ST26 c)", () => {
     expect(stopPlaying).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole("button", { name: W.back }))
     expect(stopPlaying).toHaveBeenCalledTimes(1)
+  })
+
+  it("says a said answer again on this phone, sends the idea again with it, and shows the new take until home has it (#2579)", async () => {
+    const { simulated, setAside, openInMyData, tap } = await sayAgainOnScreen()
+    expect(tap).toHaveBeenCalledWith("idea:i1:what", null)
+    fireEvent.click(screen.getByRole("button", { name: W.sendAgain }))
+    expect(screen.getByText(W.notice.sentAgain)).toBeTruthy()
+    expect(setAside).toHaveBeenCalledWith(["t1"], expect.any(String))
+    const [redo] = simulated.store.getSnapshot()
+    const [kept] = keptIdeaStore().list() ?? []
+    expect(kept?.answers[0]?.takes?.map((each) => each.take)).toEqual([
+      "t1",
+      redo?.id,
+    ])
+    expect(kept?.sent).toHaveLength(2)
+    expect(screen.queryByRole("button", { name: W.sendAgain })).toBeNull()
+    // Home's last read still names t1: the answer shows the new take, plays
+    // it from the phone's desk, and offers no Delete… (not on home yet).
+    expect(screen.getByText(W.answerSentAgain)).toBeTruthy()
+    expect(screen.queryByText("The mic clips when I shout")).toBeNull()
+    expect(
+      screen.queryByRole("button", { name: /^Delete your take for/ })
+    ).toBeNull()
+    const play = vi.spyOn(simulated.pattern, "play")
+    fireEvent.click(screen.getByRole("button", { name: TAKE_WORDS.play }))
+    expect(play).toHaveBeenCalledWith(redo?.id)
+    expect(openInMyData).not.toHaveBeenCalled()
+    localStorage.clear()
+  })
+
+  it("says the new take hasn't started home when the send again was cut short (#2804)", async () => {
+    const { setAside } = await sayAgainOnScreen(false)
+    fireEvent.click(screen.getByRole("button", { name: W.sendAgain }))
+    expect(setAside).toHaveBeenCalled()
+    expect(screen.getByText(W.notice.sentAgainPartly)).toBeTruthy()
+    expect(screen.getByText(W.answerSentAgainWaiting)).toBeTruthy()
+    // Kept in the idea, it is no draft: nothing offers to send it again.
+    expect(screen.queryByRole("button", { name: W.sendAgain })).toBeNull()
+    localStorage.clear()
   })
 
   it("groups by keyword and sorts by title when asked", async () => {

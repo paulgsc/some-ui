@@ -55,18 +55,22 @@ const PORT: ForeignPort = {
   report: reportFailure,
 }
 
-/** What each feed's file names start with, so no two feeds' keys meet. */
-const PREFIX: Record<Feed, string> = {
+/** Whose videos a folder of files holds: a feed's, or the templates' previews (SFEED12). */
+export type VideoOwner = Feed | "preview"
+
+/** What each owner's file names start with, so no two owners' keys meet. */
+const PREFIX: Record<VideoOwner, string> = {
   call: "",
   "playoff-delta": "playoff-delta-",
+  preview: "preview-",
 }
 
 /**
  * Where an episode's video is kept; the call's keep the bare `<key>.mp4` so
  * copies already on phones still match.
  */
-export function cachePath(feed: Feed, key: string): string {
-  return `${DIR}/${PREFIX[feed]}${key}.mp4`
+export function cachePath(owner: VideoOwner, key: string): string {
+  return `${DIR}/${PREFIX[owner]}${key}.mp4`
 }
 
 /** A call's value once it succeeded, `fallback` otherwise. */
@@ -87,9 +91,9 @@ function playable(uri: string, host: object = globalThis): string {
   return typeof src === "string" ? src : uri
 }
 
-/** The phone's copies of `feed`'s videos. */
-export function videoFiles(feed: Feed): VideoFiles {
-  const pathOf = (key: string): string => cachePath(feed, key)
+/** The phone's copies of `owner`'s videos. */
+export function videoFiles(owner: VideoOwner): VideoFiles {
+  const pathOf = (key: string): string => cachePath(owner, key)
   return {
     async size(key): Promise<number | null> {
       const outcome = await callForeign({

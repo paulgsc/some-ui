@@ -159,41 +159,6 @@
     },
     {
       "method": "GET",
-      "path": "/call/videos",
-      "full_path": "/api/v1/call/videos",
-      "versioned": true,
-      "module": "call_videos"
-    },
-    {
-      "method": "PUT",
-      "path": "/call/videos/:from/link",
-      "full_path": "/api/v1/call/videos/:from/link",
-      "versioned": true,
-      "module": "call_videos"
-    },
-    {
-      "method": "DELETE",
-      "path": "/call/videos/:from/rest",
-      "full_path": "/api/v1/call/videos/:from/rest",
-      "versioned": true,
-      "module": "call_videos"
-    },
-    {
-      "method": "DELETE",
-      "path": "/call/videos/:from/video",
-      "full_path": "/api/v1/call/videos/:from/video",
-      "versioned": true,
-      "module": "call_videos"
-    },
-    {
-      "method": "GET",
-      "path": "/call/videos/:from/video",
-      "full_path": "/api/v1/call/videos/:from/video",
-      "versioned": true,
-      "module": "call_videos"
-    },
-    {
-      "method": "GET",
       "path": "/curriculum/:key",
       "full_path": "/api/v1/curriculum/:key",
       "versioned": true,
@@ -240,6 +205,62 @@
       "full_path": "/api/v1/curriculum/operator/lessons/:key/retire",
       "versioned": true,
       "module": "curriculum_operator"
+    },
+    {
+      "method": "GET",
+      "path": "/feeds/:feed/notes",
+      "full_path": "/api/v1/feeds/:feed/notes",
+      "versioned": true,
+      "module": "episode_notes"
+    },
+    {
+      "method": "PUT",
+      "path": "/feeds/:feed/notes/:id",
+      "full_path": "/api/v1/feeds/:feed/notes/:id",
+      "versioned": true,
+      "module": "episode_notes"
+    },
+    {
+      "method": "GET",
+      "path": "/feeds/:feed/videos",
+      "full_path": "/api/v1/feeds/:feed/videos",
+      "versioned": true,
+      "module": "feed_videos"
+    },
+    {
+      "method": "GET",
+      "path": "/feeds/:feed/videos/:key/description",
+      "full_path": "/api/v1/feeds/:feed/videos/:key/description",
+      "versioned": true,
+      "module": "feed_videos"
+    },
+    {
+      "method": "PUT",
+      "path": "/feeds/:feed/videos/:key/link",
+      "full_path": "/api/v1/feeds/:feed/videos/:key/link",
+      "versioned": true,
+      "module": "feed_videos"
+    },
+    {
+      "method": "DELETE",
+      "path": "/feeds/:feed/videos/:key/rest",
+      "full_path": "/api/v1/feeds/:feed/videos/:key/rest",
+      "versioned": true,
+      "module": "feed_videos"
+    },
+    {
+      "method": "DELETE",
+      "path": "/feeds/:feed/videos/:key/video",
+      "full_path": "/api/v1/feeds/:feed/videos/:key/video",
+      "versioned": true,
+      "module": "feed_videos"
+    },
+    {
+      "method": "GET",
+      "path": "/feeds/:feed/videos/:key/video",
+      "full_path": "/api/v1/feeds/:feed/videos/:key/video",
+      "versioned": true,
+      "module": "feed_videos"
     },
     {
       "method": "GET",
@@ -515,6 +536,27 @@
       "module": "presence"
     },
     {
+      "method": "GET",
+      "path": "/previews/:template",
+      "full_path": "/api/v1/previews/:template",
+      "versioned": true,
+      "module": "previews"
+    },
+    {
+      "method": "POST",
+      "path": "/previews/:template",
+      "full_path": "/api/v1/previews/:template",
+      "versioned": true,
+      "module": "previews"
+    },
+    {
+      "method": "GET",
+      "path": "/previews/:template/:id/video",
+      "full_path": "/api/v1/previews/:template/:id/video",
+      "versioned": true,
+      "module": "previews"
+    },
+    {
       "method": "DELETE",
       "path": "/push/subscriptions",
       "full_path": "/api/v1/push/subscriptions",
@@ -548,6 +590,13 @@
       "full_path": "/ready",
       "versioned": false,
       "module": "readiness"
+    },
+    {
+      "method": "GET",
+      "path": "/renders",
+      "full_path": "/api/v1/renders",
+      "versioned": true,
+      "module": "renders"
     },
     {
       "method": "GET",

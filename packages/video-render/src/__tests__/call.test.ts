@@ -8,6 +8,7 @@
  */
 import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
+import { sampleWeek } from "@video-render/__tests__/sample-week"
 import {
   CALL_ID,
   CALL_INDEX_SCHEMA,
@@ -18,13 +19,14 @@ import {
   callFormat,
   callIntro,
   callScenes,
+  callVersionRefusal,
   estimatedCallMs,
   parseCallIndex,
   parseCallWeek,
-  sampleCallWeek,
 } from "@video-render/call"
 import type { CallWeek } from "@video-render/call"
 import { parseCutList } from "@video-render/cut-list"
+import type { CutList } from "@video-render/cut-list"
 import { parseFormat } from "@video-render/format"
 import { readSeries } from "@video-render/node"
 import { refUrl } from "@video-render/refs"
@@ -34,11 +36,7 @@ import { describe, expect, it } from "vitest"
 
 const DIR = join(import.meta.dirname, "../templates", CALL_ID)
 
-const week = (): CallWeek => {
-  const parsed = sampleCallWeek()
-  if (!parsed.ok) throw new Error(parsed.problems.join("; "))
-  return parsed.value
-}
+const week = sampleWeek
 
 describe("the call's format", () => {
   it("every pinned version parses, and the newest is the code's", () => {
@@ -61,6 +59,21 @@ describe("the call's format", () => {
     expect(JSON.parse(readFileSync(join(DIR, newest.file), "utf8"))).toEqual(
       callFormat()
     )
+  })
+
+  it("refuses a version newer than the newest, or none at all (VS1)", () => {
+    for (let v = 1; v <= CALL_VERSION; v++)
+      expect(callVersionRefusal(v)).toBe(null)
+    for (const v of [CALL_VERSION + 1, 0, 1.5])
+      expect(() => callFormat(v)).toThrow(callVersionRefusal(v) ?? "")
+    const newer = sampleWeek()
+    const parsed = parseCallWeek({
+      ...newer,
+      template: { ...newer.template, version: CALL_VERSION + 1 },
+    })
+    expect(parsed.ok ? [] : parsed.problems).toEqual([
+      `template.version: newer than this build knows: it draws up to version ${String(CALL_VERSION)}, so publish a newer stage first`,
+    ])
   })
 
   it("is drawn in its own series", async () => {
@@ -165,7 +178,13 @@ describe("a week that contradicts itself", () => {
       board: { ...w.board, rows: [...w.board.rows, w.board.rows[0]] },
       later: [...w.later, { ...w.later[0]!, id: w.asks[0]!.id }],
       mine: [{ ...w.mine[0]!, chose: 2, options: ["Same", "Same"] }],
-      asks: [{ ...w.asks[0]!, recommended: 5 }, w.asks[1]],
+      asks: [
+        { ...w.asks[0]!, recommended: 5 },
+        {
+          ...w.asks[1]!,
+          options: [w.asks[1]!.options[0]!, w.asks[1]!.options[0]!],
+        },
+      ],
     }
     expect(parseCallWeek(bad)).toEqual({
       ok: false,
@@ -176,8 +195,9 @@ describe("a week that contradicts itself", () => {
         "my-data-where: some-ui#2596 landed, and no batch has it",
         "my-data-where: server#678 landed, and no batch has it",
         "dna-strict: two options say the same",
-        "board: a ledger item is listed twice",
         "dna-strict: it chose an option it doesn't list",
+        "talk-d1: two options say the same",
+        "board: a ledger item is listed twice",
         "redeploy-home: it recommends an option it doesn't list",
       ],
     })
@@ -234,6 +254,36 @@ describe("the call as a cut list", () => {
     expect(cut.value.burnIns).toEqual([{ kind: "captions", params: {} }])
     expect(cut.value.music).toBe("off")
     expect(callCutList(w, takes, { bed: true }).music).toBeUndefined()
+  })
+
+  it("from version 4, opens and closes with the brand's composition in the mark's theme (HYPER5)", () => {
+    const w = week()
+    const shots = (version: number): CutList["shots"] =>
+      callCutList({ ...w, template: { ...w.template, version } }, []).shots
+    const brand = (version: number): ReadonlyArray<unknown> =>
+      shots(version)
+        .filter((s) => s.id === "brand-in" || s.id === "brand-out")
+        .map((s) => s.picture)
+    expect(brand(4)).toEqual([
+      {
+        kind: "composition",
+        ref: "brand-v1",
+        variables: { part: "open", theme: "mochi-night" },
+        files: [],
+      },
+      {
+        kind: "composition",
+        ref: "brand-v1",
+        variables: { part: "close", theme: "mochi-night" },
+        files: [],
+      },
+    ])
+    expect(parseCutList(callCutList(w, [])).ok).toBe(true)
+    // An older version is drawn as it was: the stage's slides.
+    expect(brand(3)).toEqual([
+      { kind: "still", source: expect.stringMatching(/brand-in\.png$/) },
+      { kind: "still", source: expect.stringMatching(/brand-out\.png$/) },
+    ])
   })
 })
 

@@ -19,3 +19,15 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Studio › Renders' bar when home has no share yet (SFEED13): a sweep, like an
+   installer's, which says work goes on without claiming how much. */
+@keyframes renders-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(300%);
+  }
+}

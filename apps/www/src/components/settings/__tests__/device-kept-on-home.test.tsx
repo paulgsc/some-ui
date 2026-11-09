@@ -165,17 +165,18 @@ describe("what this phone keeps on home", () => {
   it("says each record is kept on home once paired, and sends nothing", async () => {
     await mount()
     // Practice's four kinds, aph, the Jobs record, voice notes, Studio's
-    // ideas, Rust Rounds' rounds and how each recording ended.
+    // ideas, notes on episodes, Rust Rounds' rounds and how each recording
+    // ended.
     expect(
       screen.getAllByText(/: Kept on home$|: Nothing on home yet$/)
-    ).toHaveLength(10)
+    ).toHaveLength(11)
     expect(home.sent).toEqual([])
   })
 
   it("says everything is only on this phone while it isn't paired", async () => {
     home.record = null
     await mount()
-    expect(screen.getAllByText(/: Only on this phone$/)).toHaveLength(10)
+    expect(screen.getAllByText(/: Only on this phone$/)).toHaveLength(11)
     expect(sendable()).toEqual([])
     expect(home.sent).toEqual([])
   })
@@ -184,7 +185,9 @@ describe("what this phone keeps on home", () => {
     home.voiceWaiting = 2
     await mount()
     expect(
-      screen.getByText(/2 voice notes, ideas and videos wait on this phone/)
+      screen.getByText(
+        /2 voice notes, ideas, episode notes and videos wait on this phone/
+      )
     ).toBeTruthy()
     expect(home.runs).toBe(0)
     expect(sendable()).toHaveLength(1)

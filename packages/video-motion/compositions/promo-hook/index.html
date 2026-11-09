@@ -1,0 +1,107 @@
+<!doctype html>
+<!-- A release promo's opening (HYPER3): the mark, the app's name, its release. -->
+<html
+  lang="en"
+  data-composition-variables='[
+    {"id":"title","type":"string","label":"App name (| splits lines)","default":"Suspender|Ledger"},
+    {"id":"stage","type":"string","label":"Where it is","default":"New release"},
+    {"id":"platform","type":"string","label":"Platform","default":"Firefox"},
+    {"id":"version","type":"string","label":"Version","default":"v0.3.1"},
+    {"id":"ground","type":"color","label":"Ground","default":"#111821"},
+    {"id":"ink","type":"color","label":"Ink","default":"#f4efe6"},
+    {"id":"accent","type":"color","label":"Accent","default":"#f5b75b"},
+    {"id":"accentInk","type":"color","label":"Ink on accent","default":"#2a1a0c"}
+  ]'
+>
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="lib/promo.css" />
+    <style>
+      #glow {
+        top: 120px;
+      }
+      #mark {
+        left: 380px;
+        top: 440px;
+        width: 320px;
+        height: 320px;
+      }
+      #title {
+        position: absolute;
+        left: 0;
+        width: 1080px;
+        top: 840px;
+        padding: 0 48px;
+        font-size: 210px;
+      }
+      #chips {
+        position: absolute;
+        left: 0;
+        width: 1080px;
+        top: 1330px;
+        padding: 0 48px;
+        display: flex;
+        gap: 20px;
+        justify-content: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="3.2"
+      data-width="1080"
+      data-height="1920"
+      data-fps="30"
+      data-no-timeline
+    >
+      <div id="glow" class="glow"></div>
+      <img id="mark" class="mark" src="brand/mark.svg" alt="" />
+      <h1 id="title" class="display"></h1>
+      <div id="chips">
+        <span class="chip"><i class="dot"></i><span id="stage"></span></span>
+        <span class="chip" id="platform"></span>
+        <span class="chip" id="version"></span>
+      </div>
+    </div>
+    <script src="lib/motion.js"></script>
+    <script>
+      const { length: L, track, lines, row, vars, $ } = window.motion
+      $("stage").textContent = vars.stage
+      $("platform").textContent = vars.platform
+      $("version").textContent = vars.version
+      const leave = L - 0.55
+      track($("glow"), [
+        [0, { opacity: 0, scale: 0.6 }],
+        [1.4, {}],
+        [leave + 0.2, {}, "in"],
+        [L, { opacity: 0 }],
+      ])
+      track($("mark"), [
+        [0.1, { opacity: 0, scale: 0.5, rotate: -14 }],
+        [1.1, {}, "inOut"],
+        [leave, { y: -16 }, "in"],
+        [L, { opacity: 0, y: -16, scale: 1.3 }],
+      ])
+      lines($("title"), vars.title).forEach((line, i) =>
+        track(line, [
+          [0.5 + i * 0.1, { yPct: 110 }],
+          [1.5 + i * 0.1, {}],
+          [leave + i * 0.05, {}, "in"],
+          [leave + 0.4 + i * 0.05, { yPct: -110 }],
+        ])
+      )
+      row($("chips"))
+      document.querySelectorAll(".chip").forEach((chip, i) =>
+        track(chip, [
+          [1.3 + i * 0.08, { opacity: 0, y: 28 }],
+          [2.0 + i * 0.08, {}],
+          [leave - 0.1 + i * 0.04, {}, "in"],
+          [leave + 0.2 + i * 0.04, { opacity: 0, y: -16 }],
+        ])
+      )
+    </script>
+  </body>
+</html>
