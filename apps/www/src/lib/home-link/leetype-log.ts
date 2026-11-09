@@ -157,6 +157,8 @@ export async function sendEach<T>(
       continue
     }
     const holds = await as.heldAs(item, text, answer.body)
+    // A read in `heldAs` that home did not answer ends the run, as a PUT's does.
+    if (report.forgotten || report.unreachable) return
     if (holds === null) {
       report.differs += 1
     } else {

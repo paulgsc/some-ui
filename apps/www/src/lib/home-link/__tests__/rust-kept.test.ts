@@ -167,6 +167,24 @@ describe("sendRustKept", () => {
     expect(keptCounts([WEEK], readSent(storage, "p1")).rustWeeks).toBe(1)
   })
 
+  it("stops at a sitting's read-back home no longer answers for this phone", async () => {
+    const at = home()
+    const other: KeptItem = {
+      ...sitting(1),
+      id: "sitting-2",
+      path: "/rust-round-log/sessions/sitting-2",
+    }
+    at.answer = (method): HomeAnswer | null =>
+      method === "GET" ? { status: 401, body: "{}" } : null
+    expect(
+      await sendRustKept(at.send, [sitting(1), other], inMemoryStorage(), "p1")
+    ).toEqual({ kind: "forgotten" })
+    expect(at.calls).toEqual([
+      `PUT ${sitting(1).path}`,
+      `GET ${sitting(1).path}`,
+    ])
+  })
+
   it("says when home no longer knows the phone", async () => {
     const at = home()
     at.answer = (): HomeAnswer => ({ status: 401, body: "{}" })
