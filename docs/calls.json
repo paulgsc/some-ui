@@ -574,7 +574,7 @@
         "the send or Unpair stops the drain",
         "the send or Unpair waits for the drain to end"
       ],
-      "gray": "Waiting is simpler but holds a tap for as long as the paced backlog takes (about 90 s for 94 items after the burst); stopping means a run ends part-way and must resume.",
+      "gray": "Waiting is simpler but holds a tap for as long as the paced backlog takes (about 90 s for 94 items, 45 of them after the burst); stopping means a run ends part-way and must resume.",
       "undo": "Make a send and Unpair wait on the drain side in model.ts instead of stopping it.",
       "refs": ["#2758"]
     },
