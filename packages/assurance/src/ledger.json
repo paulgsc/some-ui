@@ -3528,19 +3528,19 @@
     {
       "store": "server:rust_week_sent",
       "class": "record",
-      "growth": "Per Rust Rounds week a paired phone sends (RR14, some-ui#2689): its answers as sent, each ticket's take id and when it was said, and the tickets passed over, a few hundred bytes; one row per (subject, week), sent once, never updated (another body for the week is refused); a week that closed unsent has no row, and home reads it as every ticket unanswered; append-only; leaves with the account.",
+      "growth": "Per Rust Rounds week a paired phone sends (RR14): its answers as sent (each ticket's take id and when it was said, and the tickets passed over), <= SENT_CEILING = 16 KiB; one row per (subject, week), never updated (another body for the week is refused); append-only; leaves with the account.",
       "family": "what-is-kept"
     },
     {
       "store": "server:rust_week_paste",
       "class": "record",
-      "growth": "Per error pasted in a Rust Rounds week and kept on the phone (RR14): rustc's output as pasted, <= 20,000 characters, and its note's id; one row per (subject, week, when it was begun), never updated; at most a few a week; append-only; leaves with the account.",
+      "growth": "Per error pasted in a Rust Rounds week that a paired phone sends (RR14): rustc's output as pasted, <= PASTE_MAX_CHARS = 20,000 characters, and its note's take id; one row per (subject, week, when it was begun), never updated; a few a week; append-only; leaves with the account.",
       "family": "what-is-kept"
     },
     {
       "store": "server:rust_round_log",
       "class": "record",
-      "growth": "Per sitting of the card-era Rust Rounds log (`some-ui.rust-round-log/1`) the phone sends (RR14): the sitting's JSON as sent, <= 512 KiB, with its SHA-256; a sitting that only grew is kept again as a new revision, never rewritten; ends with RR20 retiring the cards, which write no new sittings; append-only; leaves with the account.",
+      "growth": "Per revision of a sitting of the card-era Rust Rounds log (`some-ui.rust-round-log/1`) a paired phone sends (RR14): the sitting's JSON as sent, <= SESSION_CEILING = 512 KiB, with its SHA-256; one row per (subject, sitting, revision), never updated; a sitting that grew adds a revision holding the whole sitting again; append-only; leaves with the account.",
       "family": "what-is-kept"
     },
     {
