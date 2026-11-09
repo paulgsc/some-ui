@@ -1315,8 +1315,8 @@
           "property": "outcome",
           "claim": "A failing required check stops a merge, in both repositories.",
           "requirement": "main in some-ui requires CI Gate and main in the server requires its five named checks (Artifact retention, Rust lint, rust_ci, metric_contract_ci, Deny Checks Summary); a deliberately failing pull request is shown to be blocked in each, and a check fails if either repository stops requiring them. The checks a pull request passed must also have run against the main it merges into: main requires branches to be up to date before merging, or merges through a queue, and the check fails if it stops.",
-          "verdict": "unproven",
-          "conclusion": "A failing required check stops a merge in both repositories, as probes showed even through the owner's account. Unproven over merge order: on 2026-11-08 #2613 merged with checks that had run on a main from before #2771 and #2799, and the combined lockfile broke every install (#2815). Nothing yet requires a pull request's checks to run against the main it merges into.",
+          "verdict": "holds",
+          "conclusion": "A failing required check stops a merge in both repositories, as probes showed even through the owner's account. Both repositories require up-to-date branches, confirmed through their active main rules on 2026-11-08. check:branch-rules asserts the named required checks and either strict up-to-date branches or a merge queue, so disabling merge-order protection fails CI Gate and the daily check.",
           "evidence": [
             {
               "class": "measured",
@@ -1332,6 +1332,11 @@
               "class": "measured",
               "says": "GET /repos/paulgsc/{some-ui,server}/rules/branches/main on 2026-10-28 required CI Gate in some-ui and the five named checks in the server.",
               "ref": "https://github.com/paulgsc/some-ui/issues/2211#issuecomment-6483420143"
+            },
+            {
+              "class": "measured",
+              "says": "Both repositories' active main rules require strict_required_status_checks_policy: true, confirmed on 2026-11-08 after the owner enabled the settings.",
+              "ref": "some-ui#2819"
             },
             {
               "class": "structural",
@@ -1359,9 +1364,9 @@
           ],
           "proof": [
             "some-ui:packages/assurance/src/branch-rules.ts#readBranchRules",
-            "some-ui:packages/assurance/src/__tests__/branch-rules.test.ts#names each check main no longer requires"
-          ],
-          "tracked": "some-ui#2816"
+            "some-ui:packages/assurance/src/__tests__/branch-rules.test.ts#names each check main no longer requires",
+            "some-ui:packages/assurance/src/__tests__/branch-rules.test.ts#requires up-to-date branches or a merge queue"
+          ]
         },
         {
           "id": "GC2",
