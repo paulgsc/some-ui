@@ -1,9 +1,5 @@
-import type { JSX, ReactNode } from "react"
-import { captionSpace, LANDSCAPE } from "@some-ui/burn-ins"
+import type { JSX } from "react"
 import { assertNever } from "@some-ui/core-utils"
-import { useOverflows } from "@some-ui/react-hooks"
-import { BrandMark } from "@some-ui/shared"
-import { sessionThemeProps } from "@some-ui/styles/theme"
 import {
   CALL_CHAPTERS,
   callFormat,
@@ -18,22 +14,25 @@ import type { CallRef, CallScene, CallWeek } from "@some-ui/video-render"
 import { FETCHES_CONTENT } from "@/lib/data-mode"
 
 import { indexSource, weekSource } from "./feed"
+import {
+  BrandSlide,
+  ChapterSlide,
+  Field,
+  LockedIntro,
+  StageFrame,
+  StageRefused,
+} from "./frame"
+import { STAGE_WORDS as SW } from "./frame-words"
 import type { SceneView } from "./view"
 import { callAt, stageOf, weekFrom } from "./view"
 import { CALL_WORDS as W } from "./words"
 
 /**
  * The weekly call's stage (`@some-ui/video-render`'s `call.ts`): one scene of
- * a week at a time, in a 16:9 frame that scales with the window, the words
- * said under it. The recorder draws it at 1920 CSS px wide with `record`,
- * which leaves out everything that isn't the frame. It plays the week
- * `week` names (its first day), else the newest `paulgsc/testing` keeps
- * (`./feed`), read where the build reads content; elsewhere, or with
- * `week=sample`, the template's sample week.
- *
- * The frame is fixed, so text that doesn't fit would be cut off unseen: the
- * frame says so instead (`data-overflow`, and a line under it off record),
- * for the recorder to refuse.
+ * a week at a time, in the stage's frame (`./frame`), which refuses a
+ * scene it can't hold. It plays the week `week` names (its first day), else
+ * the newest `paulgsc/testing` keeps (`./feed`), read where the build reads
+ * content; elsewhere, or with `week=sample`, the template's sample week.
  */
 
 export type CallStageProps = {
@@ -142,21 +141,6 @@ const Refs = ({ refs }: { refs: ReadonlyArray<CallRef> }): JSX.Element => (
   </p>
 )
 
-const Field = ({
-  label,
-  children,
-}: {
-  label: string
-  children: ReactNode
-}): JSX.Element => (
-  <div className="space-y-[0.2em]">
-    <p className="text-muted-foreground text-[0.7em] tracking-wide uppercase">
-      {label}
-    </p>
-    <div>{children}</div>
-  </div>
-)
-
 const Options = ({
   options,
   marked,
@@ -204,47 +188,27 @@ const Screen = ({
   switch (view.section) {
     case "intro": {
       return (
-        <div className="flex h-full flex-col justify-center space-y-[1em]">
-          <p className="text-primary text-[0.8em] tracking-wide uppercase">
-            {W.title} · {week.week.from} – {week.week.to}
-          </p>
-          <dl className="grid grid-cols-[auto_1fr] gap-x-[1.2em] gap-y-[0.6em] text-[1.2em]">
-            {view.rows.map((row) => (
-              <div key={row.label} className="contents">
-                <dt className="text-primary font-semibold">{row.label}</dt>
-                <dd>{row.says}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
+        <LockedIntro
+          heading={`${W.title} · ${week.week.from} – ${week.week.to}`}
+          rows={view.rows}
+        />
       )
     }
     case "brand-in":
     case "brand-out": {
       return (
-        <div className="flex h-full flex-col items-center justify-center gap-[0.8em]">
-          <BrandMark
-            tone="brand"
-            className="size-[12em]"
-            title={W.mark}
-            theme={markThemeOf(callFormat(week.template.version).shape)}
-          />
-          <p className="text-[1.6em] font-bold">
-            {view.section === "brand-in" ? W.title : W.source}
-          </p>
-        </div>
+        <BrandSlide
+          theme={markThemeOf(callFormat(week.template.version).shape)}
+          line={view.section === "brand-in" ? W.title : SW.source}
+        />
       )
     }
     case "chapter": {
       return (
-        <div className="flex h-full flex-col justify-center space-y-[0.4em]">
-          <p className="text-[3.2em] font-bold">{view.title}</p>
-          {view.items > 0 && (
-            <p className="text-muted-foreground text-[1.2em]">
-              {W.items(view.items)}
-            </p>
-          )}
-        </div>
+        <ChapterSlide
+          title={view.title}
+          holds={view.items > 0 ? W.items(view.items) : undefined}
+        />
       )
     }
     case "open": {
@@ -438,160 +402,77 @@ export const CallStagePage = ({
   })
   const shown = state.kind === "show" ? state : null
   const at = shown === null ? null : callAt(shown.week, scene)
-  // The frame's header, body and footer are each clipped on their own.
-  const { ref, overflows } = useOverflows(
-    `${shown?.week.week.from ?? ""}/${at?.scene.id ?? ""}`,
-    { regions: true }
-  )
   if (state.kind === "waiting" || state.kind === "blank") return null
   if (shown === null || at === null)
     return (
       // VS1 (#2796): what keeps the week off the frame (a template version
       // newer than this stage knows among it) is published where the
       // recorder reads it, so a recording fails instead of waiting.
-      <ul
-        data-refused={
+      <StageRefused
+        reason={
           state.kind === "none"
             ? state.problems.join("\n")
             : "the week has no scene to show"
         }
-        className="p-6 font-mono text-sm"
-      >
-        {(state.kind === "none" ? state.problems : []).map((problem, i) => (
-          // eslint-disable-next-line react/no-array-index-key
-          <li key={i}>{problem}</li>
-        ))}
-      </ul>
+        problems={state.kind === "none" ? state.problems : []}
+      />
     )
   const week = shown.week
-  // On record with captions, the footer is the band they're drawn in, left
-  // empty: the renderer lays each scene's there.
   const format = callFormat(week.template.version)
-  const captioned = record && hasCaptions(format)
-  const step = (by: number): string | undefined => at.scenes[at.index + by]?.id
-  const previous = step(-1)
-  const next = step(1)
   return (
-    <main
-      className={
-        record
-          ? "bg-background text-foreground"
-          : "bg-background text-foreground min-h-svh space-y-4 p-6"
+    <StageFrame
+      record={record}
+      scene={at.scene.id}
+      measureKey={`${week.week.from}/${at.scene.id}`}
+      data={{ "data-week": record ? JSON.stringify(week) : undefined }}
+      theme={format.shape?.theme}
+      title={W.title}
+      where={`${[sectionName(at), `${at.index + 1}/${at.scenes.length}`]
+        .filter(Boolean)
+        .join(" · ")}${shown.sample ? ` · ${W.sample}` : ""}`}
+      captioned={record && hasCaptions(format)}
+      said={at.scene.said}
+      notes={
+        <>
+          {shown.unread && (
+            <div
+              role="status"
+              className="text-muted-foreground mx-auto max-w-[1920px] text-sm"
+            >
+              <p>{W.unread}</p>
+              {shown.problems.length > 0 && (
+                <ul className="font-mono text-xs">
+                  {shown.problems.map((problem, i) => (
+                    // eslint-disable-next-line react/no-array-index-key
+                    <li key={i}>{problem}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+          {shown.missing && from !== undefined && (
+            <p
+              role="status"
+              className="text-muted-foreground mx-auto max-w-[1920px] text-sm"
+            >
+              {W.missing(from)}
+            </p>
+          )}
+        </>
+      }
+      nav={
+        onScene === undefined
+          ? undefined
+          : {
+              scenes: at.scenes.map((s) => ({
+                id: s.id,
+                label: labelOf(s, at.scenes),
+              })),
+              onScene,
+            }
       }
     >
-      <div className="mx-auto w-full max-w-[1920px] [container-type:inline-size]">
-        <section
-          ref={ref}
-          data-scene={at.scene.id}
-          data-overflow={overflows ? "true" : undefined}
-          data-week={record ? JSON.stringify(week) : undefined}
-          {...sessionThemeProps(format.shape?.theme, {
-            className:
-              "bg-surface text-foreground border-border flex aspect-video w-full flex-col overflow-hidden border text-[1.5cqw] [overflow-wrap:anywhere]",
-          })}
-        >
-          <header className="border-border flex items-center justify-between border-b px-[1.2em] py-[0.6em] text-[0.8em]">
-            <span className="font-semibold">{W.title}</span>
-            <span className="text-muted-foreground">
-              {[sectionName(at), `${at.index + 1}/${at.scenes.length}`]
-                .filter(Boolean)
-                .join(" · ")}
-              {shown.sample && ` · ${W.sample}`}
-            </span>
-          </header>
-          <div className="min-h-0 flex-1 overflow-hidden px-[1.6em] py-[1.2em]">
-            <Screen week={week} view={at.view} />
-          </div>
-          {captioned ? (
-            <footer
-              data-caption-band=""
-              className="border-border shrink-0 border-t"
-              // In the frame's width, the container's unit.
-              style={{
-                height: `${(100 * captionSpace(LANDSCAPE)) / LANDSCAPE.width}cqw`,
-              }}
-            />
-          ) : (
-            <footer className="bg-background/80 border-border border-t px-[1.6em] py-[0.8em] text-[1.05em] leading-snug">
-              {at.scene.said}
-            </footer>
-          )}
-        </section>
-      </div>
-      {!record && shown.unread && (
-        <div
-          role="status"
-          className="text-muted-foreground mx-auto max-w-[1920px] text-sm"
-        >
-          <p>{W.unread}</p>
-          {shown.problems.length > 0 && (
-            <ul className="font-mono text-xs">
-              {shown.problems.map((problem, i) => (
-                // eslint-disable-next-line react/no-array-index-key
-                <li key={i}>{problem}</li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-      {!record && shown.missing && from !== undefined && (
-        <p
-          role="status"
-          className="text-muted-foreground mx-auto max-w-[1920px] text-sm"
-        >
-          {W.missing(from)}
-        </p>
-      )}
-      {!record && overflows && (
-        <p
-          role="status"
-          className="text-destructive mx-auto max-w-[1920px] text-sm"
-        >
-          {W.overflows}
-        </p>
-      )}
-      {!record && onScene !== undefined && (
-        <nav
-          aria-label={W.scenes}
-          className="mx-auto flex max-w-[1920px] flex-wrap items-center gap-2 text-sm"
-        >
-          <button
-            type="button"
-            disabled={previous === undefined}
-            onClick={() => {
-              if (previous !== undefined) onScene(previous)
-            }}
-            className="border-border rounded border px-3 py-1 disabled:opacity-40"
-          >
-            {W.previous}
-          </button>
-          <button
-            type="button"
-            disabled={next === undefined}
-            onClick={() => {
-              if (next !== undefined) onScene(next)
-            }}
-            className="border-border rounded border px-3 py-1 disabled:opacity-40"
-          >
-            {W.next}
-          </button>
-          {at.scenes.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              aria-current={s.id === at.scene.id ? "step" : undefined}
-              onClick={() => onScene(s.id)}
-              className={
-                s.id === at.scene.id
-                  ? "bg-primary text-primary-foreground rounded px-2 py-1 text-xs"
-                  : "text-muted-foreground hover:text-foreground rounded px-2 py-1 text-xs"
-              }
-            >
-              {labelOf(s, at.scenes)}
-            </button>
-          ))}
-        </nav>
-      )}
-    </main>
+      <Screen week={week} view={at.view} />
+    </StageFrame>
   )
 }

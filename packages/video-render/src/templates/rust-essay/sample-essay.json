@@ -1,0 +1,286 @@
+{
+  "schema": "some-ui.rust-essay/1",
+  "template": {
+    "id": "rust-essay",
+    "version": 1
+  },
+  "week": {
+    "id": "2026-w46",
+    "from": "2026-11-09",
+    "to": "2026-11-15"
+  },
+  "company": {
+    "name": "Quillmoss",
+    "about": "Sensor telemetry for cold storage: freezers report temperature and door events, about 40,000 a second at peak."
+  },
+  "story": "As an operator, I need every batch of sensor events parsed and handed to the writer within 2 ms, so an alarm fires before a freezer warms.",
+  "sla": [
+    {
+      "what": "Parse one 1,000-event batch and hand it to the writer",
+      "target": "2 ms, p99"
+    },
+    {
+      "what": "Peak load",
+      "target": "40,000 events a second"
+    }
+  ],
+  "references": [
+    "The Rust Reference",
+    "The Ownership Inventory (Crichton, Gray & Krishnamurthi, OOPSLA 2023)"
+  ],
+  "open": {
+    "said": "Week 46 was Quillmoss, an invented company that watches freezers. Forty thousand sensor events a second, and every batch of a thousand has to be parsed and handed to the writer within two milliseconds, so an alarm fires before a freezer warms. Three tickets, all on that one budget. Two of them got an answer, and one got silence, which is an answer too."
+  },
+  "tickets": [
+    {
+      "id": "QM-311",
+      "title": "Parse the batch without a copy per field",
+      "spec": "The ingest worker calls `fields` on every event, and at peak the batch misses its 2 ms p99. rustc has nothing to say about this code.",
+      "figures": [
+        "At peak, a 1,000-event batch takes 3.1 ms at p99, against the 2 ms SLA."
+      ],
+      "program": "fn fields(line: &str) -> Vec<String> {\n    line.split(',')\n        .map(|f| f.trim().to_string())\n        .collect()\n}\n\nfn main() {\n    let input =\n        [\"7,ok,12.5\", \"8,late,40.1\"];\n    for line in input {\n        let f = fields(line);\n        println!(\"{} {}\", f[0], f[1]);\n    }\n}\n",
+      "points": [
+        {
+          "to": "Where the time goes, though rustc is silent",
+          "best": "Each `to_string` allocates: three per event, three thousand per batch. The allocator, not the split, is the cost."
+        },
+        {
+          "to": "What change removes it",
+          "best": "Return `&str` slices that borrow from `line`, and reuse one `Vec` across lines instead of collecting a new one."
+        },
+        {
+          "to": "What that asks of the caller",
+          "best": "The fields borrow from `line`. Elision ties the output to the one input reference, so they can't outlive the line."
+        }
+      ],
+      "answer": {
+        "kind": "take",
+        "transcript": "Every field becomes its own String, so each event costs three heap allocations, and at forty thousand events a second that's what blows the p99. The fields only need to live as long as the line, so fields can hand back &str slices into the line. Then the cost is just the splitting. The catch is the result can't outlive the line.",
+        "marks": [
+          {
+            "mark": "covered"
+          },
+          {
+            "mark": "partly",
+            "note": "Slices, yes; the `Vec` still allocates on every call."
+          },
+          {
+            "mark": "covered"
+          }
+        ],
+        "solo": {
+          "level": 4,
+          "why": "You joined the allocation per field, the SLA and the borrow's lifetime into one reason."
+        }
+      },
+      "question": {
+        "said": "Ticket QM-311. The ingest worker calls fields on every event, and at peak the batch misses its two millisecond p99: three point one milliseconds, by the scenario's figures. rustc has nothing to say about this code. Speak to where the time goes, though rustc is silent; what change removes it; and what that asks of the caller."
+      },
+      "best": {
+        "said": "Here is an answer that fits each point closely. Each to_string allocates: three per event, three thousand per batch, so the allocator is the cost, not the split. Return string slices that borrow from the line, and reuse one vector across lines instead of collecting a new one each time. The fields then borrow from the line: elision ties the output to the one input reference, so they can't outlive it."
+      },
+      "beside": {
+        "said": "Set beside the best fit: where the time goes, covered. What change removes it, partly: the slices are right, and the vector still allocates on every call. What it asks of the caller, covered. On SOLO, that reads relational: one reason joined the allocations, the SLA and the borrow's lifetime."
+      },
+      "dives": [
+        {
+          "point": 1,
+          "title": "The allocation that's left",
+          "shows": [
+            "`collect()` builds a new `Vec` on every call.",
+            "Pass one in and `clear()` it: the hot path stops allocating.",
+            "`clear` keeps the capacity, so after the first batch nothing grows."
+          ],
+          "code": "fn fields<'a>(line: &'a str, out: &mut Vec<&'a str>) {\n    out.clear();\n    out.extend(line.split(',').map(str::trim));\n}\n",
+          "said": "Slices took the strings off the hot path, and one allocation is left: collect builds a fresh vector on every call, a thousand times a batch. The usual way out is to let the caller own the vector and pass it in. The function clears it and extends it with the slices. Clear drops the elements and keeps the capacity, so once the first long line has grown it, nothing on the hot path asks the allocator for anything again. Notice what the signature now says: the slices pushed into out borrow from line, so out's element lifetime has to be line's. That's the 'a written twice, and it's the same promise the caller has to keep."
+        },
+        {
+          "point": 2,
+          "title": "Elision: the rule rustc applied without a word",
+          "shows": [
+            "One reference in, references out: rustc gives them the input's lifetime.",
+            "Nothing to write, and nothing printed when it holds.",
+            "Two references in, and you name which one the output borrows."
+          ],
+          "said": "You covered this one, so here is one step past it. When fields took one reference and returned a vector of slices, you wrote no lifetimes, and rustc still knew the slices borrow from line. That's lifetime elision: with exactly one reference in, every reference out gets its lifetime. It's silent when it holds. Add the second parameter, the vector to fill, and there are two references in, so the rule no longer picks one for you, and you name it, as the deep dive before this one did."
+        }
+      ]
+    },
+    {
+      "id": "QM-312",
+      "title": "Reuse the read buffer without losing the fields",
+      "spec": "To stop copying, a teammate reuses one read buffer and keeps borrowed fields in the batch. rustc refuses it.",
+      "figures": [],
+      "program": "fn main() {\n    let input =\n        [\"7,ok,12.5\", \"8,late,40.1\"];\n    let mut buf = String::new();\n    let mut batch = Vec::new();\n    for line in input {\n        buf.clear();\n        buf.push_str(line);\n        let id = buf.split(',').next();\n        batch.push(id.unwrap());\n    }\n    println!(\"{}\", batch.len());\n}\n",
+      "points": [
+        {
+          "to": "What rustc is protecting",
+          "best": "`batch` holds slices into `buf`. `clear` and `push_str` can overwrite or move those bytes, so the slices would dangle."
+        },
+        {
+          "to": "Two ways out",
+          "best": "Offsets `(start, end)` into a buffer that only grows; or bytes each line owns: an arena freed per batch, or reference-counted bytes."
+        },
+        {
+          "to": "What each costs against 2 ms",
+          "best": "Offsets cost no copy, and bookkeeping on every read; owned bytes cost one copy per line, with simpler lifetimes. Measure both."
+        }
+      ],
+      "answer": {
+        "kind": "take",
+        "transcript": "This is the borrow checker. buf is borrowed by batch and then I mutate it, so it's a lifetime problem. I'd probably reach for an arena, or Cow, or put it behind an Arc.",
+        "marks": [
+          {
+            "mark": "partly",
+            "note": "Named the borrow checker, not what happens to the bytes."
+          },
+          {
+            "mark": "partly",
+            "note": "An arena fits; `Cow` and `Arc` don't, as said."
+          },
+          {
+            "mark": "missing"
+          }
+        ],
+        "solo": {
+          "level": 3,
+          "why": "Borrow checker, lifetime, arena, `Cow` and `Arc` all belong here, but nothing tied them to what `clear` does to the bytes."
+        }
+      },
+      "question": {
+        "said": "Ticket QM-312. To stop copying, a teammate reuses one read buffer and keeps borrowed fields in the batch. rustc refuses it, with two E0502s. Speak to what rustc is protecting; two ways out; and what each costs against two milliseconds."
+      },
+      "best": {
+        "said": "Here is an answer that fits each point closely. The batch holds slices into the buffer, and clear and push_str can overwrite or move those bytes, so the slices would dangle. One way out keeps offsets, a start and an end, into a buffer that only grows. The other gives each line bytes it owns: an arena freed once per batch, or reference-counted bytes. Offsets cost no copy and some bookkeeping on every read; owned bytes cost one copy per line, with simpler lifetimes. Measure both against the p99."
+      },
+      "beside": {
+        "said": "Set beside the best fit: what rustc is protecting, partly: the borrow checker was named, and not what happens to the bytes. Two ways out, partly: an arena fits, and Cow and Arc don't, as said. What each costs, missing. On SOLO, that reads multistructural: the right words, not yet tied to one mechanism."
+      },
+      "dives": [
+        {
+          "point": 2,
+          "title": "Copies against bookkeeping, measured",
+          "shows": [
+            "Offsets: no copy, a bounds check on every read.",
+            "Owned bytes: one copy per line, lifetimes as simple as a `String`'s.",
+            "Count what each allocates per batch, then measure the p99."
+          ],
+          "said": "Nothing was said about cost, so start there. Offsets keep a start and an end per field into one buffer that only grows during the batch. No byte is copied; every read slices the buffer with a bounds check, and the buffer is cleared once, after the writer is done with the batch. Owned bytes copy each line once, into an arena or a reference-counted slice. That copy is a memcpy of maybe thirty bytes, and the lifetimes stay as simple as a String's. Which meets two milliseconds is not something to argue: count what each allocates per batch, then measure the p99 under the peak load the scenario gives."
+        },
+        {
+          "point": 0,
+          "title": "What `clear` and `push_str` do to the bytes",
+          "shows": [
+            "`push_str` may reallocate: every slice into the old bytes points at freed memory.",
+            "`clear` keeps the memory and lets the next line write over it.",
+            "Either way, `batch` would read bytes that changed under it."
+          ],
+          "said": "The borrow checker is the messenger here; the bytes are the story. batch holds slices that point into buf's heap memory. push_str may need more room, and then it allocates a bigger block, copies, and frees the old one: every slice into the old block now points at freed memory. clear doesn't free anything, and that's no better: the next line is written over the same bytes, so the first event's id quietly becomes the second's. E0502 is rustc refusing both futures at once: a shared borrow alive in batch, and a mutable one in clear."
+        }
+      ]
+    },
+    {
+      "id": "QM-313",
+      "title": "Hand the batch to the writer thread",
+      "spec": "The batch goes to a writer thread so parsing never waits on disk. With `thread::spawn` it doesn't compile; with `thread::scope` the same body does.",
+      "figures": [],
+      "program": "use std::thread;\n\nfn main() {\n    let buf = String::from(\n        \"7,ok,12.5\\n8,late,40.1\",\n    );\n    let batch: Vec<&str> =\n        buf.lines().collect();\n    let writer = thread::spawn(move || {\n        let n = batch.len();\n        println!(\"{n} rows\");\n    });\n    writer.join().unwrap();\n}\n",
+      "points": [
+        {
+          "to": "Why spawn refuses and scope accepts",
+          "best": "`spawn` needs a `'static` closure: the thread may outlive `buf`. `scope` joins every thread before it returns, so the borrow is long enough."
+        },
+        {
+          "to": "Which you'd ship here, and why",
+          "best": "A writer that lives across batches can't be scoped: send owned rows over a channel. Scope fits only a writer that finishes within the batch."
+        }
+      ],
+      "answer": {
+        "kind": "silence",
+        "opened": 2,
+        "guess": "You opened it twice and didn't speak. My guess: nothing in earlier weeks touched thread::scope, so the ticket looked like it had no answer."
+      },
+      "question": {
+        "said": "Ticket QM-313. The batch goes to a writer thread so parsing never waits on disk. With thread spawn it doesn't compile, with E0597; with thread scope the same body does. Speak to why spawn refuses and scope accepts; and which you'd ship here, and why."
+      },
+      "best": {
+        "said": "Here is an answer that fits each point closely. spawn needs a 'static closure, because the new thread may outlive buf. scope joins every thread it started before it returns, so a borrow of buf is long enough. A writer that lives across batches can't be scoped, so send it owned rows over a channel; scope fits only a writer that finishes within the batch."
+      },
+      "beside": {
+        "said": "With nothing to set beside it, every point is a gap, so the next minutes go deep on both."
+      },
+      "dives": [
+        {
+          "point": 0,
+          "title": "What `'static` asks of a thread",
+          "shows": [
+            "A spawned thread can run after the frame that made it returns.",
+            "So it may hold only what it owns, or what lives forever.",
+            "`scope` changes the promise: every thread ends before the scope does."
+          ],
+          "said": "Start with the error: E0597, buf does not live long enough, because spawn requires buf to be borrowed for 'static. thread spawn hands its closure to a thread that can keep running after main's frame is gone; nothing in its signature says when the thread ends. So the closure may only hold what it owns, or what lives forever, and batch is a vector of slices into buf, which dies at the end of main. thread scope makes a different promise: every thread spawned inside it is joined before scope returns. Inside that promise a borrow of buf is long enough, and the same body compiles."
+        },
+        {
+          "point": 1,
+          "title": "Which to ship: scope, or owned rows down a channel",
+          "shows": [
+            "A writer that finishes within the batch: scope fits.",
+            "A writer that lives across batches: it must own what it gets.",
+            "Move the whole buffer in: one move, no copy per row."
+          ],
+          "said": "Which to ship turns on how long the writer lives. If it writes one batch and ends, scope fits, and nothing is copied. Quillmoss's writer lives across batches, so it can't be scoped, and whatever it receives must be owned. Sending each row as its own String copies every field again, the cost the first ticket took away. Moving the whole buffer down the channel is one move: the writer then slices its own copy of the bytes, on its own thread. Check that parsing on the writer's side still meets two milliseconds."
+        }
+      ]
+    }
+  ],
+  "weeks": {
+    "said": "Over the weeks. Borrows into a reused buffer came back lower than in week 41: that's decay, not something new. 'static and threads went unanswered, so it isn't known yet. Allocation on the hot path held at relational. On the Dreyfus ladder, that reads advanced beginner, and the gap to competent is relational answers held across threads and buffers, week after week. This sample's chart and role line are drawn by hand; the rule that derives them comes with the decay record.",
+    "weeks": [
+      "2026-w41",
+      "2026-w42",
+      "2026-w43",
+      "2026-w44",
+      "2026-w45",
+      "2026-w46"
+    ],
+    "concepts": [
+      {
+        "name": "Allocation on the hot path",
+        "cells": ["unmet", 4, "unmet", "unmet", "unmet", 4]
+      },
+      {
+        "name": "Borrows into a reused buffer",
+        "cells": [4, "unmet", "unmet", "unmet", "unmet", 3]
+      },
+      {
+        "name": "'static and threads",
+        "cells": ["unmet", "unmet", "unmet", "unmet", "unmet", "silent"]
+      },
+      {
+        "name": "Lifetime elision",
+        "cells": ["unmet", "unmet", 4, "unmet", "unmet", 4]
+      },
+      {
+        "name": "Send and Sync",
+        "cells": ["unmet", "unmet", "unmet", 2, "unmet", "unmet"]
+      },
+      {
+        "name": "Cancellation safety",
+        "cells": ["unmet", "unmet", "unmet", "unmet", "silent", "unmet"]
+      }
+    ],
+    "role": {
+      "ladder": "The Dreyfus model of skill acquisition",
+      "source": "Dreyfus & Dreyfus, 1980",
+      "fits": "Advanced beginner",
+      "next": "Competent",
+      "gap": "Relational answers held across threads and reused buffers, over several weeks, not one."
+    }
+  },
+  "next": {
+    "said": "Next week comes back to borrows into a reused buffer, from a new side, and to 'static and threads, which went unanswered. See you then.",
+    "week": "2026-w47",
+    "topics": ["Borrows into a reused buffer", "'static and threads"]
+  }
+}

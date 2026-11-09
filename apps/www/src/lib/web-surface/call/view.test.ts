@@ -2,10 +2,12 @@ import {
   CALL_INDEX_SCHEMA,
   CALL_VERSION,
   sampleCallWeek,
+  sampleEssay,
 } from "@some-ui/video-render"
-import type { CallIndex, CallWeek } from "@some-ui/video-render"
+import type { CallIndex, CallWeek, Essay } from "@some-ui/video-render"
 import { describe, expect, it } from "vitest"
 
+import { essayAt } from "./essay-view"
 import { callAt, stageOf, weekFrom } from "./view"
 
 const week = (): CallWeek => {
@@ -186,5 +188,62 @@ describe("what the stage draws", () => {
         week: read<CallWeek>(undefined),
       })
     ).toMatchObject({ kind: "show", sample: true, unread: false })
+  })
+})
+
+const essay = (): Essay => {
+  const parsed = sampleEssay()
+  if (!parsed.ok) throw new Error(parsed.problems.join("; "))
+  return parsed.value
+}
+
+describe("the essay's stage", () => {
+  it("lights the owner's bubble for a take, and the tutor's for a silence", () => {
+    const take = essayAt(essay(), "answer-1")
+    expect(take.speaker).toBe("you")
+    expect(take.view.section === "answer" && take.view.ticket.id).toBe("QM-311")
+    expect(essayAt(essay(), "answer-3").speaker).toBe("tutor")
+    expect(essayAt(essay(), "best-3").speaker).toBe("tutor")
+  })
+
+  it("draws each deep dive with its ticket, and says when it goes past it", () => {
+    const dives = [1, 2, 3, 4, 5, 6].map((n) => essayAt(essay(), `dive-${n}`))
+    expect(
+      dives.map((at) =>
+        at.view.section === "dive"
+          ? [at.view.ticket.id, at.view.n, at.view.past]
+          : null
+      )
+    ).toEqual([
+      ["QM-311", 1, false],
+      ["QM-311", 2, true],
+      ["QM-312", 1, false],
+      ["QM-312", 2, false],
+      ["QM-313", 1, false],
+      ["QM-313", 2, false],
+    ])
+  })
+
+  it("numbers each ticket's chapter, and draws the weeks with decay marked", () => {
+    expect(essayAt(essay(), "chapter-question-2").view).toEqual({
+      section: "chapter",
+      title: "QM-312: Reuse the read buffer without losing the fields",
+      ticket: { n: 2, of: 3 },
+    })
+    const weeks = essayAt(essay(), "weeks").view
+    const buffer =
+      weeks.section === "weeks"
+        ? weeks.rows.find((row) => row.name === "Borrows into a reused buffer")
+        : undefined
+    expect(buffer?.cells.at(-1)).toEqual({
+      kind: "level",
+      level: 3,
+      decayed: true,
+    })
+  })
+
+  it("opens on the first scene when the id names none", () => {
+    expect(essayAt(essay(), "nope").scene.id).toBe("intro")
+    expect(essayAt(essay(), undefined).index).toBe(0)
   })
 })

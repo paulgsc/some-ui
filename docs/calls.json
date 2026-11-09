@@ -648,6 +648,70 @@
       "gray": "Settling now saves one PUT but lets the take's row say it is on home while it is not; waiting costs that PUT.",
       "undo": "Pass letGoDeleted unconditionally in sendVoice and drop DeletedPort's deferred set.",
       "refs": ["server#760", "#2758"]
+    },
+    {
+      "id": "C43",
+      "made": "2026-11-09",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/templates.ts",
+        "packages/video-render/src/templates/rust-essay"
+      ],
+      "chose": "The Rust Rounds essay's format is pinned under templates/rust-essay/ and kept off Studio's Templates list (TEMPLATES_NOT_LISTED) until home can voice, render and preview an essay (RR16).",
+      "options": [
+        "pinned and not listed in Studio until RR16",
+        "listed in Studio now, with no preview home can make"
+      ],
+      "gray": "#2690 asks for the format pinned under src/templates/, and every template there was listed in Studio; a listed template is one Studio offers a preview of, which home can't make for the essay yet.",
+      "undo": "Move rust-essay from TEMPLATES_NOT_LISTED into TEMPLATE_IDS with its storyboard, series and a preview recorder (tests/record/preview.ts), as RR16 will.",
+      "refs": ["#2690", "#2691"]
+    },
+    {
+      "id": "C44",
+      "made": "2026-11-09",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/templates/rust-essay/sample-essay.json"
+      ],
+      "chose": "The sample essay's role line is drawn by hand on the Dreyfus model of skill acquisition (Dreyfus & Dreyfus, 1980), fitting Advanced beginner with Competent next, and its chart's levels are hand-written; RR19 names the ladder and the rule that derives both.",
+      "options": [
+        "Dreyfus's stages, hand-drawn for the sample",
+        "a public engineering career framework",
+        "no role line until RR19"
+      ],
+      "gray": "#2694 settled that the essay carries a role line on a published ladder derived by RR19, which isn't built, and named no ladder.",
+      "undo": "Replace weeks.role and the chart's cells in sample-essay.json with RR19's derivation once it lands.",
+      "refs": ["#2694", "#2695"]
+    },
+    {
+      "id": "C45",
+      "made": "2026-11-09",
+      "by": "claude",
+      "paths": ["apps/www/src/lib/web-surface/call/essay-stage.tsx"],
+      "chose": "In template A the owner's bubble is the prototype's plain person icon, and the tutor's its plain hexagon, both in the theme's colours; the owner's brand mark stays on the brand intro and outro only.",
+      "options": [
+        "the prototype's plain person icon",
+        "the owner's brand mark",
+        "a photo or avatar of the owner"
+      ],
+      "gray": "#2690 asks for the tutor's icon and the owner's, the tutor's neutral, and says nothing of what the owner's is.",
+      "undo": "Draw another icon in YouIcon (essay-stage.tsx).",
+      "refs": ["#2690"]
+    },
+    {
+      "id": "C46",
+      "made": "2026-11-09",
+      "by": "claude",
+      "paths": ["packages/video-render/src/essay.ts"],
+      "chose": "The essay opens each ticket with a chapter slide naming it (\"QM-311: …\"), and Over the weeks with one; Next week has none. A ticket's scenes keep one order whether it was answered or not, and only the lit bubble and the answer scene's words change.",
+      "options": [
+        "a chapter per ticket and one for Over the weeks",
+        "a chapter per section, as the call has",
+        "no chapters"
+      ],
+      "gray": "The call puts a chapter before each section; the essay's sections repeat per ticket, so a section's chapter would come back with each ticket, and #2690 names no chapters.",
+      "undo": "A new essay format version whose shape lists other chapters (ESSAY_SHAPE in essay.ts).",
+      "refs": ["#2690", "#2670"]
     }
   ]
 }

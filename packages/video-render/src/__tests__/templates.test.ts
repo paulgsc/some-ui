@@ -20,20 +20,23 @@ import {
   TEMPLATE_SERIES,
   templateCaptions,
   templateFormat,
+  TEMPLATES_NOT_LISTED,
   templateStoryboard,
 } from "@video-render/templates"
 import { describe, expect, it } from "vitest"
 
 describe("the templates Studio lists", () => {
-  it("are every folder that pins a format, each its newest version", async () => {
+  it("are every folder that pins a format, each its newest version, but those not listed yet", async () => {
     const pinned: Array<string> = []
     for (const id of readdirSync(TEMPLATES_DIR).sort()) {
       const newest = await readFormat(join(TEMPLATES_DIR, id))
       if (!newest.ok) continue
       pinned.push(id)
-      expect(isTemplateId(id) && templateFormat(id)).toEqual(newest.value)
+      if (!isTemplateId(id)) continue
+      expect(templateFormat(id)).toEqual(newest.value)
     }
-    expect(pinned).toEqual([...TEMPLATE_IDS])
+    expect(pinned).toEqual([...TEMPLATE_IDS, ...TEMPLATES_NOT_LISTED].sort())
+    expect(TEMPLATES_NOT_LISTED.filter((id) => isTemplateId(id))).toEqual([])
   })
 })
 
