@@ -6,7 +6,7 @@
 // branch-name checks (CLAUDE.md, "Cross-repo coupling"). The rules live in
 // packages/eslint/src/workflow-guards.ts.
 //
-// Wired into the root `lint` script and into pr.yml as its own job, which runs
+// Wired into the root `lint` script and into pr.yml's `guards` job, which runs
 // on every PR and which CI Gate requires. Like check-test-layout.ts, it runs on
 // Node's built-in type stripping with no install, and reads tracked plus
 // untracked, non-ignored files, so it describes the tree as it is now.

@@ -6,7 +6,7 @@
 //
 // docs/calls.json's shape, and that it only grew since the base ref's
 // (`--base <ref>`, else `origin/main` where it exists; a base without the file
-// holds nothing). Wired into the root `lint` script and pr.yml's policy-docs
+// holds nothing). Wired into the root `lint` script and pr.yml's `guards`
 // job, which CI Gate requires. Runs on Node's built-in type stripping, with no
 // install (see scripts/check-test-layout.ts).
 import { readFileSync } from "node:fs"

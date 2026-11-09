@@ -8,7 +8,7 @@
 // siblings, which is exactly what a per-file, content-keyed lint cache cannot
 // see. Checks every tracked file plus untracked, non-ignored ones, so a stray
 // test fails `pnpm check:test-layout` locally before it is ever committed.
-// Wired into the root `lint` script and into pr.yml as its own job, which
+// Wired into the root `lint` script and into pr.yml's `guards` job, which
 // runs on every PR (extension-only ones included) and which CI Gate requires.
 //
 // Runs on Node's built-in type stripping (on by default since Node 22.18 and

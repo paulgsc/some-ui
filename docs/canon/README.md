@@ -78,7 +78,7 @@ pnpm --filter @some-ui/canon canon:build   # render PDFs, if typst is installed
 Both are bash, alongside the repository's other guardrails
 (`scripts/check-wasm-bindgen-boundary.sh`,
 `scripts/check-mutation-boundary.sh`). Root `pnpm lint` runs the check, and
-`pr.yml`'s `canon` job runs it and its self-test,
+`pr.yml`'s `guards` job runs it and its self-test,
 `scripts/check-citations.test.sh`, on every PR.
 
 `canon:build` is a local convenience and is intentionally **not** a turbo

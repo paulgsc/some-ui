@@ -648,6 +648,25 @@
       "gray": "Settling now saves one PUT but lets the take's row say it is on home while it is not; waiting costs that PUT.",
       "undo": "Pass letGoDeleted unconditionally in sendVoice and drop DeletedPort's deferred set.",
       "refs": ["server#760", "#2758"]
+    },
+    {
+      "id": "C43",
+      "made": "2026-11-09",
+      "by": "claude",
+      "paths": [
+        ".github/workflows/pr.yml",
+        ".github/workflows/extension.yml",
+        ".github/workflows/pages.yml"
+      ],
+      "chose": "A draft pull request runs no CI, and its CI Gate (and Extension CI's draft job) fails with a line saying CI runs once it is marked ready, so a draft shows a red check until then.",
+      "options": [
+        "drafts run nothing and the gate fails",
+        "drafts run nothing and the gate is skipped, so the draft shows no failure",
+        "drafts keep running all of CI"
+      ],
+      "gray": "A skipped gate looks cleaner on a draft, but a skipped required check counts as passed, and on ready that draft run's gate is the only CI Gate on the head until the new run reaches it; failing costs a red X on every draft.",
+      "undo": "Drop ready_for_review and the draft conditions from the three workflows, and the Drafts are not verified steps.",
+      "refs": ["#2823"]
     }
   ]
 }

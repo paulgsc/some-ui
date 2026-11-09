@@ -3,7 +3,7 @@
 // "The phone and the desktop web are separate surfaces"). The rule, and what it
 // leaves to review, live in packages/eslint/src/android-only.ts.
 //
-// Wired into the root `lint` script and pr.yml's `android-only` job, which CI
+// Wired into the root `lint` script and pr.yml's `guards` job, which CI
 // Gate requires. Runs on Node's built-in type stripping, with no install (see
 // scripts/check-test-layout.ts).
 import { readFileSync } from "node:fs"
