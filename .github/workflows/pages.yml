@@ -37,7 +37,6 @@ on:
       - ".github/workflows/pages.yml"
       - ".github/workflows/_environment-approval.yml"
       - ".github/actions/**"
-  # A draft builds no preview (#2823); marking it ready does.
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened, ready_for_review]

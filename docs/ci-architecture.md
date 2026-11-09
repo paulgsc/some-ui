@@ -53,8 +53,8 @@ so every merge re-runs every other open PR (#2823). Two rules follow:
   than eleven. The steps carry no `if:`: the first failure stops the job, and
   `pnpm lint` runs them all locally.
 - **A draft runs nothing.** Every `pr.yml` job but CI Gate skips on a draft,
-  and CI Gate fails there, so the skip can never read as a pass; the same
-  holds for Extension CI (its `draft` job fails) and the Pages preview build.
+  and CI Gate fails there, so the skip can never read as a pass. Extension
+  CI's `draft` job fails the same way, and Pages builds no preview.
   Marking the PR ready for review (`ready_for_review`) runs everything.
 
 ## Setting up a job

@@ -31,11 +31,9 @@ name: Extension CI
 # detect + build-workspace + per-extension verify matrix on crate-only pushes,
 # for a diff no extension could observe.
 #
-# A draft pull request runs only the `draft` job, which fails (#2823): the
-# runner pool is shared, and marking the PR ready (`ready_for_review`) runs the
-# rest. It fails rather than leave every job skipped, because a run of only
-# skipped jobs concludes success on that head, which is what a session checks
-# before merging (CLAUDE.md, "A cancelled `Extension CI` run").
+# Drafts run only `draft`, which fails (#2823; docs/ci-architecture.md): a run
+# of only skipped jobs would conclude success on that head, which is what a
+# session checks before merging (CLAUDE.md, "A cancelled `Extension CI` run").
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
