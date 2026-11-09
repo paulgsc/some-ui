@@ -18,8 +18,8 @@ import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 
 import { homeLink, LINK_CLOCK, paired, pairingOf, useHomeLink } from "./index"
 import type { KeptRun, KeptState } from "./kept-model"
-import type { Kept, KeptPorts, Pace } from "./kept-runtime"
-import { createKept, createPace, laneExchange } from "./kept-runtime"
+import type { Kept, KeptPorts } from "./kept-runtime"
+import { createKept, laneExchange } from "./kept-runtime"
 import type { KeptRecord } from "./kept-watch"
 import { askKept, watchKept } from "./kept-watch"
 import type { HomeLinkState } from "./model"
@@ -95,16 +95,9 @@ export function busyNow(): boolean {
   return homeBusy(homeLink().getSnapshot(), LINK_CLOCK.now())
 }
 
-/**
- * The drain's one pace (`createPace`), on the link's clock. A request the
- * link answers busy itself reaches no home, so it takes no turn.
- */
-const DRAIN_PACE = createPace(LINK_CLOCK)
-const pace: Pace = () => (busyNow() ? Promise.resolve() : DRAIN_PACE())
-
-/** How every run here reaches home: through the link, one at a time. */
+/** How every run here reaches home: through the link's drain, one at a time. */
 const LINK_PORTS: Omit<KeptPorts, "exchange"> = {
-  keep: (run) => homeLink().keep(run),
+  keep: (run) => homeLink().drain(run),
   paired,
   homeBusy: busyNow,
   now: LINK_CLOCK.now,
@@ -118,7 +111,7 @@ function wire(lane: Lane): Wired {
     record: { revision: lane.revision, subscribe: lane.subscribe },
     sending: createKept({
       ...LINK_PORTS,
-      exchange: laneExchange(lane, () => pairingOf(), pace),
+      exchange: laneExchange(lane, () => pairingOf()),
     }),
   }
   wired.set(lane.id, made)

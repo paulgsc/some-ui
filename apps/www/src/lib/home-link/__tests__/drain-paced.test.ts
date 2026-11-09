@@ -28,10 +28,7 @@ import { digestOf, logToSend, readSent } from "@/lib/home-link/sent"
 const BASE = "https://home.example/api/v1"
 const PAIRING = "p"
 
-/**
- * The link this test made, and the one clock of the file, which the drain's
- * pace (made as `./lanes` loads) keeps too.
- */
+/** The link this test made, and the one clock of the file (`LINK_CLOCK`). */
 const held = vi.hoisted(
   (): { link: HomeLink | null; clock: FakeClock | null } => ({
     link: null,
@@ -106,6 +103,8 @@ type Home = {
   readonly turnedAway: () => number
   /** Has home answer the `n`th request from now busy, asking for `seconds`. */
   readonly busyAt: (n: number, seconds: number) => void
+  /** The fewest requests home's bucket held. */
+  readonly lowest: () => number
 }
 
 /**
@@ -115,13 +114,12 @@ type Home = {
  */
 async function limitedHome(): Promise<Home> {
   const clock = theClock()
-  // Long enough since the last test for the pace to be whole again.
-  clock.pass(600_000)
   const reached: Array<string> = []
   const events = new Map<string, Array<unknown>>()
   let tokens = 60
   let filled = clock.now()
   let turnedAway = 0
+  let lowest = tokens
   let busyIn: { n: number; seconds: number } | null = null
   const answer = (call: HomeRequest): HomeAnswer => {
     tokens = Math.min(60, tokens + (clock.now() - filled) / 1000)
@@ -136,6 +134,7 @@ async function limitedHome(): Promise<Home> {
       return { status: 429, body: "", retryAfter: "1" }
     }
     tokens -= 1
+    lowest = Math.min(lowest, tokens)
     const path = call.url.slice(BASE.length)
     reached.push(`${call.method} ${path}`)
     const [, , , session = ""] = path.split("/")
@@ -185,6 +184,7 @@ async function limitedHome(): Promise<Home> {
     busyAt: (n, seconds): void => {
       busyIn = { n, seconds }
     },
+    lowest: () => lowest,
   }
 }
 
@@ -264,16 +264,34 @@ function practiceLane(
  */
 async function drain(lane: Lane): Promise<KeptRun | null> {
   const run = laneRun(lane)
+  askLane(lane)
+  await until(() => !run.getSnapshot().running)
+  return run.getSnapshot().last
+}
+
+/** Moves the clock on, timer by timer, until `done` holds. */
+async function until(done: () => boolean): Promise<void> {
   const settle = async (): Promise<void> => {
     await new Promise((resolve) => setTimeout(resolve, 0))
   }
-  askLane(lane)
   await settle()
-  while (run.getSnapshot().running) {
+  while (!done()) {
     if (!theClock().next()) await settle()
     await settle()
   }
-  return run.getSnapshot().last
+}
+
+/** `asked`'s outcome, and how long after it was asked it ended. */
+async function timed<T>(asked: Promise<T>): Promise<{ value: T; ms: number }> {
+  const from = theClock().now()
+  const ended: Array<{ value: T; ms: number }> = []
+  void asked.then((value) => {
+    ended.push({ value, ms: theClock().now() - from })
+  })
+  await until(() => ended.length > 0)
+  const first = ended.at(0)
+  if (first === undefined) throw new Error("never ended")
+  return first
 }
 
 const puts = (home: Home, path: string): number =>
@@ -338,5 +356,72 @@ describe("the practice drain under home's limit (AD3, LA15)", () => {
     const sent = readSent(storage, PAIRING)
     expect(sent.studio[sitting.name]).toBe(digestOf(sitting))
     expect(sent.events).toEqual({})
+  })
+
+  it("answers a screen's read and Sync within one turn of the pace while a 100-event drain runs, and home's bucket never goes below 11 (AD3)", async () => {
+    const home = await limitedHome()
+    const session = sessionOf("s2", 100)
+    const { lane } = practiceLane("rust-rounds", { session })
+    const run = laneRun(lane)
+    askLane(lane)
+    const reads: Array<number> = []
+    for (let n = 0; n < 6; n += 1) {
+      await until(() => home.reached.length >= 50 + n * 8)
+      expect(run.getSnapshot().running).toBe(true)
+      const read = await timed(
+        theLink().keep((send) => send("GET", "/voice-notes/kept"))
+      )
+      expect(read.value?.kind).toBe("done")
+      reads.push(read.ms)
+    }
+    const synced = await timed(
+      theLink().sync((get) => get(`${BASE}/curriculum/manifest.json`))
+    )
+    expect(synced.value?.kind).toBe("done")
+    expect(Math.max(...reads, synced.ms)).toBeLessThanOrEqual(2_000)
+    await until(() => !run.getSnapshot().running)
+    expect(run.getSnapshot().last?.kind).toBe("synced")
+    expect(home.lowest()).toBeGreaterThanOrEqual(11)
+  })
+
+  it("stops the drain's run for a tap's send, which goes first, and the run resumes where it stopped", async () => {
+    const home = await limitedHome()
+    const session = sessionOf("s3", 100)
+    const { lane } = practiceLane("app-events", { session })
+    const run = laneRun(lane)
+    askLane(lane)
+    await until(() => home.reached.length >= 60)
+    const tap = await timed(
+      theLink().send((send) => send("DELETE", "/voice-notes/n1"))
+    )
+    expect(tap.value?.kind).toBe("done")
+    expect(tap.ms).toBeLessThanOrEqual(2_000)
+    // No drain request between the tap and its own.
+    expect(home.reached.at(-1)).toBe("DELETE /voice-notes/n1")
+    await until(() => !run.getSnapshot().running)
+    expect(run.getSnapshot().last?.kind).toBe("busy")
+    expect((await drain(lane))?.kind).toBe("synced")
+    for (const event of session.events) {
+      expect(puts(home, `/leetype/sessions/s3/events/${event.id}`)).toBe(1)
+    }
+  })
+
+  it("stops the drain's run for Unpair, and nothing reaches home after its sign-out", async () => {
+    const home = await limitedHome()
+    const session = sessionOf("s4", 100)
+    const { lane } = practiceLane("aph", { session })
+    const run = laneRun(lane)
+    askLane(lane)
+    await until(() => home.reached.length >= 60)
+    const unpaired = await timed(theLink().unpair())
+    expect(unpaired.ms).toBeLessThanOrEqual(2_000)
+    expect(theLink().getSnapshot().link).toEqual({
+      kind: "unpaired",
+      note: "unpaired",
+    })
+    await until(() => !run.getSnapshot().running)
+    theClock().pass(60_000)
+    await until(() => true)
+    expect(home.reached.at(-1)).toBe("POST /auth/sign-out")
   })
 })

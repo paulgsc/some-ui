@@ -9,7 +9,9 @@
  * came.
  *
  * A request that fails on the way ends the run there: the notes answered
- * before it keep their answers, and those after it were not sent.
+ * before it keep their answers, and those after it were not sent. `settle`
+ * hears the answers inside the run, before the link frees, so the phone
+ * lets its own copies go before any drain run could send one again.
  *
  * It also sends My data's let-go of an episode of a feed (`FEEDS`; ST38,
  * #2661; FEED4; paulgsc/server `DELETE /feeds/:feed/videos/:key/video` and
@@ -52,11 +54,22 @@ export type DeleteAsked =
   /** No answer at all. */
   | { readonly kind: "unreachable" }
 
-/** Asks home once to delete each of `ids` for good; never rejects. */
+/**
+ * Asks home once to delete each of `ids` for good, and hands what came of
+ * it to `settle`, once; never rejects.
+ */
 export async function deleteNotes(
-  ids: ReadonlyArray<string>
+  ids: ReadonlyArray<string>,
+  settle: (asked: DeleteAsked) => Promise<void>
 ): Promise<DeleteAsked> {
-  if (!paired()) return { kind: "unpaired" }
+  let said: DeleteAsked | null = null
+  const say = async (asked: DeleteAsked): Promise<DeleteAsked> => {
+    if (said !== null) return said
+    said = asked
+    await settle(asked)
+    return asked
+  }
+  if (!paired()) return say({ kind: "unpaired" })
   try {
     const outcome = await homeLink().send(async (send) => {
       const answers: Array<NoteAnswer> = []
@@ -68,18 +81,15 @@ export async function deleteNotes(
           break
         }
       }
-      return answers
+      const answered = new Map(answers.map(({ id, answer }) => [id, answer]))
+      return say({
+        kind: "answered",
+        answers: ids.map((id) => ({ id, answer: answered.get(id) ?? null })),
+      })
     })
-    if (outcome?.kind !== "done") return { kind: "busy" }
-    const answered = new Map(
-      outcome.value.map(({ id, answer }) => [id, answer])
-    )
-    return {
-      kind: "answered",
-      answers: ids.map((id) => ({ id, answer: answered.get(id) ?? null })),
-    }
+    return outcome?.kind === "done" ? outcome.value : say({ kind: "busy" })
   } catch {
-    return { kind: "unreachable" }
+    return say({ kind: "unreachable" })
   }
 }
 

@@ -546,6 +546,72 @@
       "gray": "#2757 asked for a fixed sample fill per template so a preview never calls a model; which week of the sample to show, and the words themselves, were not settled.",
       "undo": "Change sampleWeekOf and rewrite the week's words in sample-fill.ts; its test fails until they fit the facts.",
       "refs": ["#2757"]
+    },
+    {
+      "id": "C37",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "apps/www/src/lib/home-link/model.ts",
+        "apps/www/src/lib/home-link/kept-runtime.ts"
+      ],
+      "chose": "The phone drains one lane to home at a time; a screen's read or Sync runs beside that run, but lanes never run beside each other.",
+      "options": ["one lane at a time", "lanes draining concurrently"],
+      "gray": "Concurrent lanes would empty a backlog sooner, but the lanes share a read-then-write of what was sent, which would need reworking first.",
+      "undo": "Let the drain side in model.ts admit more than one run, after making the shared `sent` write safe under concurrency.",
+      "refs": ["#2758", "#2740"]
+    },
+    {
+      "id": "C38",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "apps/www/src/lib/home-link/model.ts",
+        "apps/www/src/lib/home-link/runtime.ts"
+      ],
+      "chose": "A tap's send or Unpair stops a running drain and goes first; the stopped run keeps what home took and asks again once the link frees.",
+      "options": [
+        "the send or Unpair stops the drain",
+        "the send or Unpair waits for the drain to end"
+      ],
+      "gray": "Waiting is simpler but holds a tap for as long as the paced backlog takes (about 90 s for 94 items, 45 of them after the burst); stopping means a run ends part-way and must resume.",
+      "undo": "Make a send and Unpair wait on the drain side in model.ts instead of stopping it.",
+      "refs": ["#2758"]
+    },
+    {
+      "id": "C39",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "apps/www/src/lib/home-link/pace.ts",
+        "apps/www/src/lib/home-link/runtime.ts"
+      ],
+      "chose": "Every request to home, the person's included, takes a turn on one pace (49 at once, then one every 2 s), with the person's turns ahead of any waiting drain turn, so after the burst a tap waits up to 2 s.",
+      "options": [
+        "pace every request, the person's included",
+        "pace only the drains and let the person's requests through unpaced"
+      ],
+      "gray": "Pacing the person costs up to 2 s on a tap after the burst; not pacing them gives up the bound on home's bucket over everything the phone sends.",
+      "undo": "Let the person side's requests in runtime.ts skip the pace in pace.ts, and narrow AD3's bound to drains.",
+      "refs": ["#2758"]
+    },
+    {
+      "id": "C40",
+      "made": "2026-11-08",
+      "by": "claude",
+      "agreed": "2026-11-08",
+      "paths": [
+        "apps/www/src/lib/home-link/delete-note.ts",
+        "apps/www/src/lib/my-data/deleting-runtime.ts"
+      ],
+      "chose": "The phone keeps no list of notes it owes home a delete for. A voice note whose delete answer was lost is left to home, which refuses to keep it again; until home's refusal carries its own code and the phone lets its copy go on it, that note's audio stays on the phone.",
+      "options": [
+        "a phone-side owed list of pending deletes",
+        "rely on home's deletion receipt, with a distinct refusal code the phone acts on"
+      ],
+      "gray": "Both close the lost-answer case; the owed list duplicates a guarantee home already gives and kept state that a wipe or reinstall loses.",
+      "undo": "Revert 944c4f10, then fix what the review of 9e0867db found in it: a deleted take's audio stranded behind a false \"on home\", and entries that never settle.",
+      "refs": ["#2758", "server#760"]
     }
   ]
 }

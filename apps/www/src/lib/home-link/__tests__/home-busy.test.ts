@@ -139,12 +139,8 @@ function watchedLane(id: LaneId, watch = true): Watched {
     },
   }
   const kept = createKept({
-    exchange: laneExchange(
-      lane,
-      () => "p",
-      () => Promise.resolve()
-    ),
-    keep: (run) => theLink().keep(run),
+    exchange: laneExchange(lane, () => "p"),
+    keep: (run) => theLink().drain(run),
     paired: () => true,
     homeBusy: busyNow,
     now: () => 0,

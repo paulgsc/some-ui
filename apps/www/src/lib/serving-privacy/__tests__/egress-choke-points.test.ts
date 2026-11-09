@@ -753,6 +753,17 @@ describe("LA8: the phone reaches home through one module", () => {
     ).toEqual(LET_GO_CALLERS)
   })
 
+  it("runs the link's drain only from the lanes' wiring (LA15)", () => {
+    const drains = (f: string): boolean => /\.drain\(/.test(read(f))
+    expect(
+      sources.filter(
+        (f) =>
+          (f.startsWith("lib/home-link/") || HOME_LINK_CALLERS.has(f)) &&
+          drains(f)
+      )
+    ).toEqual(["lib/home-link/lanes.ts"])
+  })
+
   it("calls the link's keep only from the drain and Korean's look (LA15)", () => {
     const keeps = (f: string): boolean => /\.keep\(/.test(read(f))
     const reach = sources.filter(
@@ -761,7 +772,6 @@ describe("LA8: the phone reaches home through one module", () => {
         !KEEPERS.has(f)
     )
     expect(reach.filter(keeps)).toEqual([])
-    expect(read("lib/home-link/lanes.ts")).toContain("homeLink().keep(")
     expect(read(ROUTINE_READ)).toContain("homeLink().keep(")
     expect(read(HEARD_READ)).toContain("homeLink().keep(")
     expect(read(AUDIO_READ)).toContain("homeLink().keep(")
