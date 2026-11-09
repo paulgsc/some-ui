@@ -36,7 +36,7 @@ export type LogReport = EndedReport & {
 
 /** How home's answer to one write counts. */
 export function bucketOf(status: number): "held" | "refused" | "other" {
-  if (status === 200) return "held"
+  if (status === 200 || status === 201) return "held"
   return status === 409 || status === 422 ? "refused" : "other"
 }
 
@@ -137,7 +137,7 @@ export function entryCarries(body: string, text: string): boolean {
 
 /**
  * Sends each item through `send` as one PUT of its body, into `report`, by
- * `bucketOf` its status; a 200 home answers for other bytes differs. `held`
+ * `bucketOf` its status; a 200 or 201 home answers for other bytes differs. `held`
  * hears each item home holds as sent, by its key and digest.
  */
 export async function sendEach<T>(

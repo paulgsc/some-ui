@@ -13,5 +13,3 @@ export const WEEKS_KEY = "some-ui:rust-rounds.weeks"
 export const WEEK_SENT_KEY = "some-ui:rust-rounds.week-sent"
 /** The week's takes, on apps/www's desk (`lib/rust-rounds`'s `rustWeekDesk`). */
 export const WEEK_TAKES_KEY = "some-ui:rust-rounds.week-takes"
-/** What this phone knows home keeps of the weeks sent, the pastes and the log (RR14, `lib/kept-home`). */
-export const ON_HOME_KEY = "some-ui:rust-rounds.on-home"

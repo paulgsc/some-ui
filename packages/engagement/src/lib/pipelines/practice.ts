@@ -421,11 +421,8 @@ const rustRounds: Pipeline = {
         { id: "say-it", name: "Saying it" },
       ],
     },
-    // A ticket of the week (RR13), opened on its card, by its place in the
-    // week's order, never its key: an event carries no item. Each time a
-    // ticket's card is on screen is one `taken` and, once it goes, one
-    // `left`; home counts a ticket's opens from the `left`s of its place
-    // within the week's dates (RR14, #2689).
+    // A ticket of the week opened on its card, by its place in the week
+    // (RR14; `rust-rounds`' `lib/week-play/opens`).
     {
       id: "week-ticket",
       surface: "apk",

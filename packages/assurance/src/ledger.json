@@ -2866,7 +2866,7 @@
     {
       "store": "phone:home-sent",
       "class": "cache",
-      "growth": "Per finished session, kept shelf item, LeetType session, Studio sitting, written reflection, ask for the next scene, Studio idea sent whole (ST26) and Studio video kept for home to make (ST33) home holds or refused (one digest, fingerprint or updatedAt each; for a video whose takes home lacks, also those takes' ids), for one pairing; no cap (`some-ui.home.sent.v1`).",
+      "growth": "Per finished session, kept shelf item, LeetType session, Studio sitting, written reflection, ask for the next scene, Studio idea sent whole (ST26), Studio video kept for home to make (ST33), and Rust Rounds week sent, paste kept and card-log sitting (RR14) home holds or refused (one digest, fingerprint or updatedAt each; for a video whose takes home lacks, also those takes' ids), for one pairing; no cap (`some-ui.home.sent.v1`).",
       "horizon": "a new pairing starts it over (the next write replaces the old pairing's record); a refused digest leaves when home later holds the item, and refused digests of items no longer kept are dropped (home-link/standing.ts)",
       "family": "what-is-kept"
     },
@@ -3123,7 +3123,7 @@
     {
       "store": "phone:rust-rounds-log",
       "class": "record",
-      "growth": "Per card played in Rust Rounds: one event (pick, note id, rustc's recorded run as printed, up to ~4 KB), per pin, and per error pasted from the desk (the text as pasted and a note id, RR4c); append-only, nothing logged is rewritten; each sitting goes home as it is kept and again as it grows (RR14, #2689, `lib/kept-home`), and the phone keeps its own copy; no cap, and RR20 retires the cards that add to it (`some-ui:rust-rounds.log`).",
+      "growth": "Per card played in Rust Rounds: one event (pick, note id, rustc's recorded run as printed, up to ~4 KB), per pin, and per error pasted from the desk (the text as pasted and a note id, RR4c); append-only, nothing logged is rewritten; each sitting goes home as it is kept and again as it grows (RR14, #2689, `lib/kept-home`), and the phone keeps its own copy; no cap (`some-ui:rust-rounds.log`).",
       "family": "what-is-kept"
     },
     {
@@ -3155,12 +3155,6 @@
       "store": "phone:rust-rounds-week-sent",
       "class": "record",
       "growth": "Per week sent from the phone (RR13): when, each ticket's take id and the tickets not said; only grows (a change that drops or rewrites one is refused); each goes home as kept (RR14, `lib/kept-home`) and the phone keeps its own copy; one a week, no cap (`some-ui:rust-rounds.week-sent`).",
-      "family": "what-is-kept"
-    },
-    {
-      "store": "phone:rust-rounds-on-home",
-      "class": "record",
-      "growth": "Per week sent, paste kept and log sitting home holds or refused (RR14, #2689): its id and a fingerprint of what went, so a later change sends it again; a few dozen bytes each, a few a week; written over only as each is settled again (`some-ui:rust-rounds.on-home`).",
       "family": "what-is-kept"
     },
     {

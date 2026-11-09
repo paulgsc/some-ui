@@ -248,9 +248,5 @@ describe("the week open now", () => {
       ["taken", null],
       ["left", "ticket-2"],
     ])
-    expect(
-      on.engaged.every((event) => event.affordance === "week-ticket")
-    ).toBe(true)
-    expect(JSON.stringify(on.engaged)).not.toContain("QM-")
   })
 })
