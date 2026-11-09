@@ -58,6 +58,7 @@ function phone(
     heard: () => Promise.resolve({ kind: "notYet" }),
     now: Date.now,
     newId: () => "unused",
+    engage: () => undefined,
     onVisibility: (listener) => {
       listener(false)
       return (): void => undefined

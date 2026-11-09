@@ -29,6 +29,7 @@ import type { Week } from "@rust-rounds/lib/formats/week"
 import { WeekSchema } from "@rust-rounds/lib/formats/week"
 import type { RoundsHomePort } from "@rust-rounds/lib/home"
 import { exchangeRounds } from "@rust-rounds/lib/home"
+import { exchangeKeptHome } from "@rust-rounds/lib/kept-home"
 import { WEEKS_KEY } from "@rust-rounds/lib/play/keys"
 import { readWeek } from "@rust-rounds/lib/week-check"
 import type { HomeCall, HomeExchanged, KeyedStorage } from "@some-ui/core-utils"
@@ -230,14 +231,18 @@ export async function exchangeWeeks(
 }
 
 /**
- * The lane's run: the rounds' exchange, then, once it is synced, the weeks'.
- * Throws what `send` throws.
+ * The lane's run: the rounds' exchange, then, once it is synced, the weeks',
+ * then what Rust Rounds keeps that goes home (`lib/kept-home`, RR14), from
+ * `kept`. Throws what `send` throws.
  */
 export async function exchangeRustRounds(
   rounds: RoundsHomePort,
   weeks: WeeksStore,
+  kept: KeyedStorage | null,
   send: HomeCall
 ): Promise<HomeExchanged> {
   const done = await exchangeRounds(rounds, send)
-  return done.kind === "synced" ? exchangeWeeks(weeks, send) : done
+  if (done.kind !== "synced") return done
+  const read = await exchangeWeeks(weeks, send)
+  return read.kind === "synced" ? exchangeKeptHome(kept, send) : read
 }

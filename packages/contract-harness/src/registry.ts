@@ -26,6 +26,7 @@ import { contracts as leetypeLogContracts } from "../contracts/leetype-log.contr
 import { contracts as previewContracts } from "../contracts/previews.contract"
 import { contracts as renderContracts } from "../contracts/renders.contract"
 import { contracts as routineContracts } from "../contracts/routine.contract"
+import { contracts as rustKeptContracts } from "../contracts/rust-kept.contract"
 import { contracts as rustRoundContracts } from "../contracts/rust-rounds.contract"
 import { contracts as sessionContracts } from "../contracts/sessions.contract"
 import { contracts as shelfContracts } from "../contracts/shelf.contract"
@@ -53,6 +54,7 @@ export const allContracts: ReadonlyArray<Contract> = [
   ...previewContracts,
   ...renderContracts,
   ...routineContracts,
+  ...rustKeptContracts,
   ...rustRoundContracts,
   ...sessionContracts,
   ...shelfContracts,

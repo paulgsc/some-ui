@@ -50,6 +50,8 @@ export const KEPT_FOR_GOOD: Readonly<Record<RecordKind, string>> = {
   self: "Self entries",
   leetype: "LeetType sessions",
   "rust-rounds": "Rust Rounds",
+  "rust-weeks": "Rust Rounds weeks you sent",
+  "rust-round-log": "What you did on the Rust Rounds cards",
   "scene-asks": "Asks for the next scene",
   "studio-log": "Studio's log",
 }

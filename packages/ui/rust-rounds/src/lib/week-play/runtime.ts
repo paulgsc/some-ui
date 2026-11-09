@@ -15,6 +15,7 @@
  */
 import type { HeldWeek } from "@rust-rounds/lib/weeks"
 import type { KeyedStorage } from "@some-ui/core-utils"
+import type { EngagementEvent } from "@some-ui/engagement"
 import type {
   BundleHome,
   BundleMachine,
@@ -25,6 +26,8 @@ import type {
 import { bundleRuntime } from "@some-ui/voice-capture"
 
 import { weekOpenNow } from "./open-now"
+import type { OnScreen, Open } from "./opens"
+import { stepOpens } from "./opens"
 import type { PasteRuntime } from "./paste"
 import { pasteRuntime } from "./paste"
 import type { WeekKind } from "./spec"
@@ -45,6 +48,8 @@ export type RustWeekPorts = {
   readonly now: () => number
   readonly newId: () => string
   readonly onVisibility: (listener: (hidden: boolean) => void) => () => void
+  /** Where each opening of a ticket is told (`./opens`): the app's engagement sink. */
+  readonly engage: (event: EngagementEvent) => void
 }
 
 export type RustWeek = {
@@ -108,6 +113,32 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
     }
   }
 
+  /** Tells each ticket opened and left while the screen shows (`./opens`). */
+  const watchOpens = (): (() => void) => {
+    let open: Open = null
+    let hidden = false
+    const move = (now: OnScreen): void => {
+      const next = stepOpens(open, now, new Date(ports.now()).toISOString())
+      open = next.open
+      for (const event of next.events) ports.engage(event)
+    }
+    const look = (): void => {
+      const state = bundle.getSnapshot()
+      move(!hidden && state.screen === "cards" ? state.index : null)
+    }
+    const stopState = bundle.subscribe(look)
+    const stopSeen = ports.onVisibility((now) => {
+      hidden = now
+      look()
+    })
+    look()
+    return (): void => {
+      stopState()
+      stopSeen()
+      move(null)
+    }
+  }
+
   return {
     machine,
     bundle,
@@ -132,7 +163,11 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
       // the sent screen here; one sent later in this opening is not asked.
       const detach = bundle.attach()
       void askSent()
-      return detach
+      const stopOpens = watchOpens()
+      return (): void => {
+        stopOpens()
+        detach()
+      }
     },
   }
 }

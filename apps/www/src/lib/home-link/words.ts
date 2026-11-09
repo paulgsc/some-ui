@@ -162,13 +162,26 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
   "rust-rounds": {
     markLabel: "Where Rust Rounds is kept",
     title: "Rust Rounds and home",
-    rows: [{ kind: "rounds", label: "Rounds", one: "round" }],
-    waits: waits("pasted round"),
+    rows: [
+      { kind: "rustWeeks", label: "Weeks you sent", one: "week" },
+      {
+        kind: "rustPastes",
+        label: "What rustc said, pasted from your code",
+        one: "paste",
+      },
+      { kind: "rounds", label: "Rounds", one: "round" },
+      {
+        kind: "roundLog",
+        label: "What you did on the cards, each time you opened them",
+        one: "time",
+      },
+    ],
+    waits: waits("item"),
     phoneOnly: `Rust Rounds is only on this phone, and its rounds have no runs from home. ${PAIR}`,
     partly:
-      "Some rounds are on home. A round you paste stays on this phone until it is paired again.",
+      "Some of Rust Rounds is on home. What you send or paste stays on this phone until it is paired again.",
     footnote:
-      "A round you paste goes to home, which runs each of its programs through rustc and keeps what it printed. While the app is open, this phone brings home's rounds and those runs here, so every card plays without home. This phone keeps every round it has.",
+      "Each week you send goes to home, which keeps it for good: which tickets you answered and when. A week you didn't send by its deadline is kept there as not answered, and the takes you said for it stay on this phone. Each paste of what rustc said, what you did on the cards, and each round you paste go too, and home runs each round's programs through rustc and keeps what it printed. This phone keeps its own copy of all of it.",
     clash: null,
     unread: null,
   },

@@ -17,6 +17,7 @@
  * (`withRoom`) refuses a note, which the session then says, never letting
  * one go before home holds it.
  */
+import { engage } from "@some-ui/engagement"
 import type {
   NotesPort,
   RoundsStore,
@@ -152,6 +153,7 @@ export function phoneRustWeekPorts(
         now: () => Date.now(),
         newId: () => crypto.randomUUID(),
         onVisibility: onPageVisibility,
+        engage,
       }
 }
 

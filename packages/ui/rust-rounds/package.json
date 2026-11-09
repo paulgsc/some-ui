@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@some-ui/core-utils": "workspace:*",
+    "@some-ui/engagement": "workspace:*",
     "@some-ui/shared": "workspace:*",
     "@some-ui/voice-capture": "workspace:*",
     "lucide-react": "catalog:",
