@@ -5,7 +5,7 @@ cd "$(git rev-parse --show-toplevel)"
 # Temporarily relinks consumer packages to the local crates/* copy of a wasm
 # package instead of its pinned npm version, so you can build/test against
 # unreleased crate changes. Consumers otherwise pin an exact npm version
-# (see wasm-release.yml's post-publish bump step) precisely so that turbo
+# (adopted after publication by Dependabot) precisely so that turbo
 # doesn't drag a wasm-pack build into every JS-only change.
 #
 # Usage:

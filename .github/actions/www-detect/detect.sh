@@ -1,47 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Is this push *the* release commit (the PR opened by the release-pr job
-# just got merged), rather than an ordinary source change? That commit only
-# touches apps/www/package.json + CHANGELOG.md, which still match this
-# workflow's trigger paths - it must still run, but as a publish rather than
-# another round of detection, or it would loop forever re-detecting its own
-# version bump as "www changed".
-is_release_commit=false
-if [ "$EVENT_NAME" = "workflow_dispatch" ] && [ "$PUBLISH_ONLY" = "true" ]; then
-	is_release_commit=true
-elif [ "$EVENT_NAME" = "push" ] && [[ "$COMMIT_MESSAGE" == "$RELEASE_COMMIT_MESSAGE"* ]]; then
-	is_release_commit=true
+# Shared semantic detection recognizes a Docker version transition without
+# depending on the squash commit's title, and ignores other tracks' metadata.
+plan=$(mktemp)
+GITHUB_OUTPUT="$plan" node scripts/release/track.mjs docker detect
+release_mode=$(sed -n 's/^release_mode=//p' "$plan")
+rm -f "$plan"
+
+# Older queued source runs cannot reopen a release for a tree already covered
+# by a newer Docker version. Compare actual versions rather than commit titles.
+if [ "$EVENT_NAME" = "push" ] && [ "$release_mode" = "release-pr" ]; then
+    git fetch -q origin main
+    current=$(git show "${HEAD_SHA}:apps/www/package.json" | jq -r .version)
+    latest=$(git show FETCH_HEAD:apps/www/package.json | jq -r .version)
+    if [ "$current" != "$latest" ]; then release_mode=skip; fi
 fi
 
-# A release merged after this push already shipped it: the image is built
-# from that release's tree, which contains this commit. Runs queue rather
-# than replace each other (www-docker-release.yml, `queue: max`), and two
-# queued runs can swap, so an ordinary run can start after a newer release;
-# without this it would reopen a release PR for what already shipped.
-# main's live tip is fetched here: actions/checkout points origin/main back
-# at this run's own commit, so it cannot show what landed since.
-shipped_since=false
-if [ "$EVENT_NAME" = "push" ]; then
-	if git fetch -q origin main; then
-		while IFS= read -r subject; do
-			if [[ "$subject" == "$RELEASE_COMMIT_MESSAGE"* ]]; then shipped_since=true; fi
-		done < <(git log --format=%s "${HEAD_SHA}..FETCH_HEAD")
-	else
-		echo "::warning::Could not fetch main; not checking for a newer release."
-	fi
-fi
-
-if [ "$is_release_commit" = "true" ]; then
-	release_mode=publish
-elif [ "$shipped_since" = "true" ]; then
-	release_mode=skip
-elif [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-	release_mode=release-pr
-elif [ -z "$BASE_SHA" ] || [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
-	# First push to main we've seen (or history was rewritten) - no prior
-	# state to diff against, so treat as changed.
-	release_mode=release-pr
+if [ "$release_mode" != "release-pr" ] || [ "$EVENT_NAME" = "workflow_dispatch" ] ||
+   [ -z "$BASE_SHA" ] || [[ "$BASE_SHA" =~ ^0+$ ]]; then
+    :
 else
 	# `www...[from...to]` = www and everything it depends on, scoped to
 	# what actually changed in that range. An empty task list means

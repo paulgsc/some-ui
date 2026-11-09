@@ -5,6 +5,8 @@ on:
     paths:
       - "crates/**"
       - "Cargo.lock"
+      - "Cargo.toml"
+      - "scripts/release/**"
       - ".github/workflows/wasm-release.yml"
   workflow_dispatch:
     inputs:
@@ -17,130 +19,38 @@ env:
 permissions:
   contents: write
   pull-requests: write
-# `queue: max`, for www-docker-release.yml's reason: a replaced run loses a
-# publish or its push's range. Two queued runs can swap; an ordinary run that
-# starts after a newer release then proposes bumps from its older tree, and
-# `changeset publish` skips a version already on npm rather than overwrite it.
+# Every publish event keeps its place in the queue. Detection suppresses an
+# older source run when main already carries a later version of that crate.
 concurrency:
-  group: wasm-release-${{ github.ref }}
+  group: wasm-release
   cancel-in-progress: false
   queue: max
 jobs:
-  # ── Detect changed crates ────────────────────────────────────────────────
-  # A wasm crate is any crates/*/ dir with both Cargo.toml (buildable) and
-  # package.json (npm-publishable) - discovered at runtime rather than
-  # hardcoded, so a new crate opts in just by having both files. No compiled
-  # detector binary: a plain bash diff is enough, so this doesn't pay for a
-  # cargo build on every push just to decide what to build ("save the
-  # penguins" - a shell script can answer this without spending CI minutes).
+  # A crate version transition publishes that crate; source changes request
+  # a version PR. One push may contain both, independently of its commit title.
   detect:
     name: Detect Changed WASM Crates
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.detect.outputs.matrix }}
       has_changes: ${{ steps.detect.outputs.has_changes }}
-      is_release_commit: ${{ steps.detect.outputs.is_release_commit }}
+      has_sources: ${{ steps.detect.outputs.has_sources }}
+      has_releases: ${{ steps.detect.outputs.has_releases }}
+      publish_packages: ${{ steps.detect.outputs.publish_packages }}
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - name: Detect changed wasm crates
-        id: detect
+      - name: Refresh main for superseded source runs
+        run: git fetch --quiet origin main:refs/remotes/origin/main
+      - id: detect
         env:
-          HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
-        run: |
-          set -euo pipefail
-
-          mapfile -t all_crates < <(
-            for d in crates/*/; do
-              [ -f "${d}Cargo.toml" ] && [ -f "${d}package.json" ] && basename "$d"
-            done
-          )
-
-          BASE="${{ github.event.before }}"
-          base_missing=false
-          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
-            base_missing=true
-          fi
-
-          # Is this a rebuild-and-publish pass rather than a detect-new-
-          # changes pass? Two cases:
-          #  - This push *is* the changesets release commit landing on main
-          #    (the Version PR was just merged). That commit only touches
-          #    crates/*/package.json and CHANGELOG.md, which match this
-          #    workflow's trigger paths - so it still needs to run, but
-          #    minting another changeset for every bumped crate here would
-          #    loop forever (see git blame on this file).
-          #  - A maintainer dispatched with publish_only=true, to backfill a
-          #    version that's already committed but never made it to npm
-          #    (e.g. because this exact loop-prevention guard also ate the
-          #    publish step before this fix).
-          is_release_commit=false
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.publish_only }}" = "true" ]; then
-            is_release_commit=true
-          elif [ "${{ github.event_name }}" != "workflow_dispatch" ] && \
-               [[ "$HEAD_COMMIT_MESSAGE" == "$RELEASE_COMMIT_MESSAGE"* ]]; then
-            is_release_commit=true
-          fi
-          echo "is_release_commit=${is_release_commit}" >> "$GITHUB_OUTPUT"
-
-          if [ "$is_release_commit" = "true" ]; then
-            # Rebuild exactly the crates this release commit bumped -
-            # nothing from the PR's own workflow run survives (dist
-            # artifacts are scoped to that run), so `release` below has
-            # nothing to publish unless we rebuild it here.
-            if [ "$base_missing" = "true" ]; then
-              changed_crates=("${all_crates[@]}")
-            else
-              mapfile -t changed_files < <(git diff --name-only "$BASE" "${{ github.sha }}")
-              changed_crates=()
-              for crate in "${all_crates[@]}"; do
-                if printf '%s\n' "${changed_files[@]}" | grep -qx "crates/${crate}/package.json"; then
-                  changed_crates+=("$crate")
-                fi
-              done
-            fi
-          elif [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "$base_missing" = "true" ]; then
-            changed_crates=("${all_crates[@]}")
-          else
-            mapfile -t changed_files < <(git diff --name-only "$BASE" "${{ github.sha }}")
-
-            # Cargo.lock touches the whole workspace's dependency graph - rebuild everything.
-            if printf '%s\n' "${changed_files[@]}" | grep -qx 'Cargo.lock'; then
-              changed_crates=("${all_crates[@]}")
-            else
-              changed_crates=()
-              for crate in "${all_crates[@]}"; do
-                if printf '%s\n' "${changed_files[@]}" | grep -q "^crates/${crate}/"; then
-                  changed_crates+=("$crate")
-                fi
-              done
-            fi
-          fi
-
-          include="[]"
-          for crate in "${changed_crates[@]:-}"; do
-            [ -z "$crate" ] && continue
-            # Crates normally inherit their version via
-            # `version.workspace = true` rather than declaring their own -
-            # fall back to the workspace root's version in that case.
-            if grep -qx 'version.workspace = true' "crates/${crate}/Cargo.toml"; then
-              version=$(grep -m1 '^version[[:space:]]*=' Cargo.toml | sed -E 's/version[[:space:]]*=[[:space:]]*"(.*)"/\1/')
-            else
-              version=$(grep -m1 '^version[[:space:]]*=' "crates/${crate}/Cargo.toml" | sed -E 's/version[[:space:]]*=[[:space:]]*"(.*)"/\1/')
-            fi
-            include=$(jq -c --arg name "$crate" --arg version "$version" '. + [{"crate_name": $name, "version": $version}]' <<<"$include")
-          done
-
-          matrix=$(jq -c -n --argjson include "$include" '{include: $include}')
-          count=$(jq '.include | length' <<<"$matrix")
-
-          echo "matrix=${matrix}" >> "$GITHUB_OUTPUT"
-          if [ "$count" -gt 0 ]; then
-            echo "has_changes=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "has_changes=false" >> "$GITHUB_OUTPUT"
-          fi
+          CHECK_LATEST: "true"
+          EVENT_NAME: ${{ github.event_name }}
+          PUBLISH_ONLY: ${{ inputs.publish_only }}
+          BASE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: node scripts/release/track.mjs wasm detect
   # ── Build changed crates ─────────────────────────────────────────────────
   build:
     name: Build WASM — ${{ matrix.crate_name }}
@@ -156,17 +66,8 @@ jobs:
       - uses: ./.github/actions/cargo-cache
         with:
           key-suffix: wasm-${{ matrix.crate_name }}
-      # No pnpm install here on purpose: wasm-pack build below only needs
-      # the Rust/cargo toolchain from the nix devshell, and nothing later in
-      # this job touches node_modules. A workspace-wide pnpm install would
-      # also be broken on the release commit itself - changesets has just
-      # bumped consumer package.json files (e.g. packages/ui/leetype) to pin
-      # the crate version this job is about to build, and pnpm-lock.yaml
-      # can't reflect that until it's regenerated.
-      # Each crate's own package.json wraps this same invocation under
-      # different script names (wasm:prod, build, ...) - calling wasm-pack
-      # directly here keeps the matrix build uniform regardless of which
-      # script name a given crate happens to use locally.
+      # wasm-pack needs Rust, not an installed Node workspace. Its dist is
+      # consumed by this run's publish job, whose package scope is explicit.
       - name: Build WASM package
         run: |
           nix develop .#ci --command wasm-pack build \
@@ -174,16 +75,12 @@ jobs:
             --release \
             --out-dir dist \
             "crates/${{ matrix.crate_name }}"
-      # Skipped on the release commit itself: those crates are already
-      # versioned by the changeset that requested this bump, so minting
-      # another one here would leave `.changeset/` non-empty forever and
-      # `release` below would keep opening version PRs instead of publishing.
+      # Already-versioned crates publish; only source-only crates mint intents.
       - name: Create changeset
         id: changeset
-        if: needs.detect.outputs.is_release_commit != 'true'
+        if: matrix.mode == 'source'
         run: |
           PACKAGE_NAME=$(jq -r .name "crates/${{ matrix.crate_name }}/package.json")
-          VERSION="${{ matrix.version }}"
           CHANGESET_ID="${{ matrix.crate_name }}-$(date +%s)"
           CHANGESET_FILE=".changeset/${CHANGESET_ID}.md"
 
@@ -192,12 +89,12 @@ jobs:
           "${PACKAGE_NAME}": patch
           ---
 
-          Update WASM package for ${{ matrix.crate_name }} to version ${VERSION}
+          Update WASM source for ${{ matrix.crate_name }}
           EOF
 
           echo "file=${CHANGESET_FILE}" >> "$GITHUB_OUTPUT"
-      # Read only by `release` below, in this same run; the default kept every
-      # run's copy for 90 days. Past a day, "Re-run failed jobs" on `release`
+      # Read only by `publish` below, in this same run; the default kept every
+      # run's copy for 90 days. Past a day, "Re-run failed jobs" on `publish`
       # finds nothing to download: use "Re-run all jobs", which rebuilds it, or
       # a publish_only dispatch for a release commit whose publish failed.
       - name: Upload dist artifact
@@ -208,11 +105,11 @@ jobs:
           if-no-files-found: error
           retention-days: 1
       # The build job's checkout is a separate, ephemeral working tree from
-      # the release job's - a changeset file written here never reaches
-      # `release` unless it travels as an artifact like the dist output does.
+      # the consuming job's - a changeset file written here never reaches
+      # `release-pr` unless it travels as an artifact like the dist output does.
       # A day, like the dist artifact above and for the same reason.
       - name: Upload changeset
-        if: needs.detect.outputs.is_release_commit != 'true'
+        if: matrix.mode == 'source'
         uses: actions/upload-artifact@v7
         with:
           name: wasm-changeset-${{ matrix.crate_name }}
@@ -220,10 +117,10 @@ jobs:
           if-no-files-found: error
           retention-days: 1
   # ── Publish via changesets ───────────────────────────────────────────────
-  release:
-    name: Changesets WASM Release
+  publish:
+    name: Publish WASM packages
     needs: [detect, build]
-    if: needs.detect.outputs.has_changes == 'true'
+    if: needs.detect.outputs.has_releases == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -235,12 +132,6 @@ jobs:
           pattern: wasm-dist-*
           path: dist/wasm
           merge-multiple: false
-      - name: Download all WASM changesets
-        uses: actions/download-artifact@v8
-        with:
-          pattern: wasm-changeset-*
-          path: .changeset
-          merge-multiple: true
       # actions/download-artifact nests each artifact under its own name
       # only when more than one matches the pattern; a lone match is
       # extracted straight into `path`. Globbing for `wasm-dist-*`
@@ -272,20 +163,8 @@ jobs:
             rm -rf "crates/${crate_name}/dist"
             mv "$source_dir" "crates/${crate_name}/dist"
           done
-      # This only needs the root project's own devDependencies (changesets
-      # and friends) to run `npx changeset publish` below - nothing here
-      # needs the rest of the workspace installed. That's not just an
-      # optimization: a full install is actually broken at this point in the
-      # pipeline. On the release commit, changesets has already bumped
-      # consumer package.json files (e.g. packages/ui/honeycomb pinning
-      # "@some-ui/some-hexagon": "0.0.5") to a version that doesn't exist on
-      # npm yet - this job is what's about to publish it. Those are plain
-      # semver pins, not `workspace:`, so pnpm won't link them locally; any
-      # whole-workspace resolution (even with --no-frozen-lockfile, even
-      # just to compute a fresh lockfile) fails with ERR_PNPM_NO_MATCHING_VERSION
-      # before ever reaching the publish step. `--filter .` scopes
-      # resolution to the root package, and `--no-lockfile` skips the
-      # workspace-wide lockfile pnpm would otherwise insist on computing.
+      # Publishing needs the root CLI and changelog dependencies only. Package
+      # dists above are already built, so this leg never installs consumers.
       # Why not node-ci-setup: its install is the whole workspace's, frozen.
       - name: Install dependencies
         run: |
@@ -294,20 +173,63 @@ jobs:
             --prefer-offline
         env:
           HUSKY: 0
-      # changesets/action v2 leaves npm auth to the workflow; v1 wrote this
-      # file from NPM_TOKEN. `nix develop` keeps HOME, so the CLI reads it.
+      # The CLI reads npm auth from HOME, which nix develop preserves.
       - name: Authenticate to npm
         run: printf '//registry.npmjs.org/:_authToken=%s\n' "$NPM_TOKEN" >> ~/.npmrc
         env:
           NPM_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
-      # CS1: the action's major pairs with the Changesets CLI's; see
-      # packages/eslint/src/workflow-guards.ts.
-      - name: Create Release PR or Publish
-        uses: changesets/action@v2.1.2
-        with:
-          commit-message: ${{ env.RELEASE_COMMIT_MESSAGE }}
-          pr-title: ${{ env.RELEASE_COMMIT_MESSAGE }}
-          version-script: nix develop .#ci --command scripts/wasm-changeset-version.sh
-          publish-script: nix develop .#ci --command npx changeset publish
+      - name: Publish only this track's released versions
         env:
-          NODE_ENV: production
+          PUBLISH_PACKAGES: ${{ needs.detect.outputs.publish_packages }}
+          GH_TOKEN: ${{ github.token }}
+        run: nix develop .#ci --command node scripts/release/track.mjs wasm publish
+
+  release-pr:
+    name: Open/update WASM release PR
+    needs: [detect, build]
+    if: needs.detect.outputs.has_sources == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+      - uses: ./.github/actions/node-ci-setup
+        with:
+          build: none
+          resume-assets: "false"
+      - name: Download source-change intents
+        uses: actions/download-artifact@v8
+        with:
+          pattern: wasm-changeset-*
+          path: .changeset
+          merge-multiple: true
+      - name: Read the standing WASM release request
+        id: pending
+        run: |
+          branch=changeset-release/wasm
+          remote=$(git ls-remote --heads origin "refs/heads/$branch")
+          if [ -n "$remote" ]; then
+            git fetch --quiet origin "+refs/heads/$branch:refs/remotes/origin/$branch"
+            echo "ref=refs/remotes/origin/$branch" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Version only WASM packages
+        id: version
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PREVIOUS_RELEASE_REF: ${{ steps.pending.outputs.ref }}
+        run: nix develop .#ci --command node scripts/release/track.mjs wasm version
+      - name: Open release PR
+        if: steps.version.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v8
+        env:
+          HUSKY: "0"
+        with:
+          branch: changeset-release/wasm
+          base: main
+          delete-branch: true
+          commit-message: ${{ env.RELEASE_COMMIT_MESSAGE }}
+          title: ${{ env.RELEASE_COMMIT_MESSAGE }}
+          body: "Versions WASM packages only. Merging publishes the changed versions; consumer dependency pins are adopted separately after publication."

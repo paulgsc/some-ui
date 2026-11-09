@@ -24,6 +24,8 @@ name: Pages
 # The Pages site is not a versioned artifact, so there is no version to
 # bump. A workflow_dispatch builds and deploys at once without the approval,
 # since dispatching is itself someone asking to deploy.
+# Version/changelog-only release pushes need no new approval;
+# detect checks the whole push before entering the environment.
 on:
   push:
     branches: [main]
@@ -31,6 +33,7 @@ on:
       - "apps/www/**"
       - "packages/**"
       - "pnpm-lock.yaml"
+      - "scripts/release/**"
       - ".github/workflows/pages.yml"
       - ".github/workflows/_environment-approval.yml"
       - ".github/actions/**"
@@ -40,6 +43,7 @@ on:
       - "apps/www/**"
       - "packages/**"
       - "pnpm-lock.yaml"
+      - "scripts/release/**"
       - ".github/workflows/pages.yml"
       - ".github/actions/**"
   workflow_dispatch:
@@ -56,10 +60,26 @@ permissions:
 # group, so a newer push would queue behind it and approving the waiting run
 # would deploy the older commit. Each job below takes its own group instead.
 jobs:
+  detect:
+    name: Detect release inputs
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.inputs.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: inputs
+        uses: ./.github/actions/release-inputs
+        with:
+          base: ${{ github.event.before }}
+
   # ── Approve the deploy ──────────────────────────────────────────────────
   approve:
     name: Approve Pages deploy
-    if: github.event_name == 'push'
+    needs: detect
+    if: needs.detect.outputs.changed == 'true'
     uses: ./.github/workflows/_environment-approval.yml
     with:
       environment: pages-release
