@@ -268,9 +268,11 @@ const Cell = ({ cell }: { cell: CellView }): JSX.Element => {
       return (
         <td
           title={`${SOLO_LEVELS[cell.level - 1] ?? ""}${cell.decayed ? `: ${W.cell.decayed}` : ""}`}
-          className={`border-border text-primary-foreground border text-center font-bold ${LEVEL_CLASS[cell.level] ?? ""}`}
+          className={`border-border border text-center font-bold ${cell.level >= 3 ? "text-primary-foreground" : "text-foreground"} ${LEVEL_CLASS[cell.level] ?? ""}`}
         >
-          {cell.decayed ? "↓" : ""}
+          {/* A recording has no tooltips: the level is drawn. */}
+          {cell.level}
+          {cell.decayed ? " ↓" : ""}
         </td>
       )
     }

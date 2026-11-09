@@ -47,7 +47,7 @@ export const ESSAY_WORDS = {
     silent: "Not answered",
     decayed: "Lower than before: decayed",
   },
-  legendLevel: "Shown, by SOLO level",
+  legendLevel: "1–5: shown, by SOLO level",
   role: "The role it fits",
   roleNext: (next: string, gap: string): string => `Next, ${next}: ${gap}`,
   roleSource: (ladder: string, source: string): string =>
