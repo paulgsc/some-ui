@@ -955,12 +955,6 @@ async function letGoOnHomesWord(send: HomeCall): Promise<void> {
 }
 
 /**
- * Notes home answered deleted for good before Studio's store was handed in
- * this launch, so before this phone could let them go (`DeletedPort`).
- */
-const deletedUnheard = new Set<string>()
-
-/**
  * The voice lane's exchange: a copy pass first, so a note the watch could
  * not copy yet (no room, storage that would not keep its record) is tried
  * again, then each copy waiting sent (`exchangeVoice`), then, once that
@@ -985,7 +979,7 @@ export async function sendVoice(
   const home = phoneVoiceHome()
   const exchanged = await exchangeVoice(home.keeping, send, {
     letGo: studioKeeping() === null ? null : letGoDeleted,
-    deferred: deletedUnheard,
+    heldBack: home.deletedHeldBack,
   })
   if (exchanged.kind !== "synced") return runEnd(pass, exchanged)
   await letGoOnHomesWord(send)
@@ -1057,19 +1051,19 @@ export function voiceKept(id: string): TakeKept {
  * and an idea answer's or a take with no scene leaves its desk, the take
  * staying listed (`letGoDeleted` on `lib/idea-takes`' two desks, #2579, and
  * on `lib/library-takes`'). A receipt is home's word
- * that it held the note, so a copy still waiting for an answer this phone
- * never heard goes as a held one does; and any set-aside mark still owed
- * for one is dropped, since home holds no note to mark now. Resolves
+ * that it held the note, so once every store has let go, a copy still
+ * waiting for an answer this phone never heard goes as a held one does,
+ * and any set-aside mark still owed for one is dropped, since home holds
+ * no note to mark now; until then the copy waits, so the voice run sends it
+ * again and home's `deleted_for_good` brings it back here (LA8). Resolves
  * false when Studio's store isn't handed in, a desk couldn't store its
  * mark, or the write failed (that said to the native log); never rejects.
- * The one caller is `lib/my-data`'s delete, on home's receipt.
+ * Its callers are `lib/my-data`'s delete, on home's receipt, and the voice
+ * run (`sendVoice`), on home's `deleted_for_good`.
  */
 export async function letGoDeleted(
   ids: ReadonlyArray<string>
 ): Promise<boolean> {
-  const home = phoneVoiceHome()
-  for (const id of ids) home.keeping.answered({ kind: "held", id })
-  home.drop(ids)
   const studio = studioKeeping()
   const deleted = new Set(ids)
   try {
@@ -1081,7 +1075,9 @@ export async function letGoDeleted(
       libraryTakesDesk.letGoDeleted(deleted),
       rustWeekDesk.letGoDeleted(deleted),
     ])
-    return studio !== null && kit && bundle && resaid && library && week
+    const gone = studio !== null && kit && bundle && resaid && library && week
+    if (gone) settleDeleted(ids)
+    return gone
   } catch (error) {
     reportFailure({
       port: "my data: this phone's copy of what home deleted",
@@ -1093,6 +1089,13 @@ export async function letGoDeleted(
     })
     return false
   }
+}
+
+/** Retires the voice record's copies of notes home deleted for good. */
+function settleDeleted(ids: ReadonlyArray<string>): void {
+  const home = phoneVoiceHome()
+  for (const id of ids) home.keeping.answered({ kind: "held", id })
+  home.drop(ids)
 }
 
 /** A store whose notes leave this phone once home holds them. */

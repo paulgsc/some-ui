@@ -517,8 +517,10 @@ declared (checked by reading every call site and by the tests named).
   receipt (`letGoDeleted`), and of each the voice run's `PUT` finds home
   refusing as deleted for good (a `409` coded `deleted_for_good`: a delete
   whose answer this phone never heard), by the same `letGoDeleted` once
-  Studio's store is handed in, the note held back unsent for that launch
-  until then (`lib/voice-home/home`'s `DeletedPort`), and of no other.
+  Studio's store is handed in, the note held back unsent until then, and
+  for the rest of the launch once its let-go fails, the voice record
+  keeping it waiting so a later launch tries again (`lib/voice-home/home`'s
+  `DeletedPort`), and of no other.
   Whichever way a session leaves
   the phone (either let-go, or a delete), what the phone kept about it goes
   with it: its autosave-failure note and its copy receipt's entries
@@ -624,7 +626,12 @@ declared (checked by reading every call site and by the tests named).
   not mark it `deletable`, or this phone can't let go of that kind), or
   has `letGoDeleted` (`lib/home-link/voice-copy`) called for a note home
   did not answer with a receipt or refuse as `deleted_for_good`, or by the
-  voice run before Studio's store is handed in; one that has `heard.ts` send anything but one
+  voice run before Studio's store is handed in; one that removes or narrows
+  `exchangeVoice`'s `deleted_for_good` branch (`lib/voice-home/home`),
+  sends a note `DeletedPort` holds back (until Studio's store is handed in,
+  or for the launch once its let-go failed) again within that launch, keeps
+  what it holds back past the launch, or has `letGoDeleted` retire the
+  voice record's copy before every store has let go; one that has `heard.ts` send anything but one
   `GET` of `heardPath(id)` per ask, lets anything but `lib/idea-hearing`
   and the Rust Rounds route read it, has `createRustWeek` ask for a take
   more than once per opening, for one it holds words of, or on a clock, or has `@some-ui/soundbites`' `stepHearing` ask while the page is

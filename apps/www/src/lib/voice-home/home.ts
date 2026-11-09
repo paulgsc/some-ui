@@ -12,10 +12,7 @@
  * kept and never sent again. A `422` naming only the body means the bytes
  * did not arrive (Android 7's native request sends none): not the note's
  * fault, so it ends the exchange and the note waits.
- *
- * A `409` coded `deleted_for_good` is home's word that the owner deleted the
- * note from My data, whose answer this phone never heard: the phone lets its
- * copy go as it would have on that answer's receipt (`DeletedPort`, LA8).
+ * A `409` coded `deleted_for_good` is let go instead (`DeletedPort`, LA8).
  */
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 import { readAs, refusalOf, unexpectedAnswer } from "@some-ui/core-utils"
@@ -39,15 +36,25 @@ export type VoiceHomePort = {
 }
 
 /**
- * How this phone lets go of a note home answers deleted for good (LA8).
- * `letGo` is My data's own let-go on a receipt (`letGoDeleted`), null until
- * Studio's store is handed in: until then a note so answered is kept in
- * `deferred`, for this launch only, and not sent again, so the first run
- * that can let it go sends it once more and does.
+ * How this phone lets go of a note home answers deleted for good: home's
+ * word that the owner deleted it from My data, whose answer this phone never
+ * heard (LA8). `letGo` is My data's own let-go on a receipt
+ * (`letGoDeleted`), null until Studio's store is handed in. A note so
+ * answered that can't be let go yet is held back, for this launch only, in
+ * `heldBack`: until `letGo` is handed in (`studio`), so the first run that
+ * can sends it once more and lets it go; or for the rest of the launch once
+ * its let-go failed (`failed`), so a store that keeps failing costs one
+ * request a launch.
  */
 export type DeletedPort = {
   readonly letGo: ((ids: ReadonlyArray<string>) => Promise<boolean>) | null
-  readonly deferred: Set<string>
+  readonly heldBack: Map<string, "studio" | "failed">
+}
+
+/** Whether `deleted` holds `id` back from this run. */
+function heldBack(deleted: DeletedPort, id: string): boolean {
+  const why = deleted.heldBack.get(id)
+  return why === "failed" || (why === "studio" && deleted.letGo === null)
 }
 
 const DeletedForGood = z.object({
@@ -83,7 +90,7 @@ export async function exchangeVoice(
   deleted: DeletedPort
 ): Promise<HomeExchanged> {
   for (const note of port.state().waiting) {
-    if (deleted.letGo === null && deleted.deferred.has(note.id)) continue
+    if (heldBack(deleted, note.id)) continue
     const blob = await port.audio(note.id)
     if (blob === null) {
       port.answered({
@@ -109,11 +116,12 @@ export async function exchangeVoice(
     if (answer.status === 401) return { kind: "forgotten" }
     if (answer.status === 409 && readAs(DeletedForGood, answer.body) !== null) {
       if (deleted.letGo === null) {
-        deleted.deferred.add(note.id)
-        continue
+        deleted.heldBack.set(note.id, "studio")
+      } else if (await deleted.letGo([note.id])) {
+        deleted.heldBack.delete(note.id)
+      } else {
+        deleted.heldBack.set(note.id, "failed")
       }
-      deleted.deferred.delete(note.id)
-      await deleted.letGo([note.id])
       continue
     }
     if (answer.status === 409) {

@@ -85,7 +85,7 @@ const refusal = (details: Record<string, Array<string>>): HomeAnswer => ({
 function exchange(
   p: VoiceHomePort,
   send: HomeCall,
-  deleted: DeletedPort = { letGo: null, deferred: new Set() }
+  deleted: DeletedPort = { letGo: null, heldBack: new Map() }
 ): ReturnType<typeof exchangeVoice> {
   return exchangeVoice(p, send, deleted)
 }
@@ -237,7 +237,7 @@ describe("sending voice notes home", () => {
       return deletedForGood
     })
     await expect(
-      exchange(p, h.send, { letGo, deferred: new Set() })
+      exchange(p, h.send, { letGo, heldBack: new Map() })
     ).resolves.toEqual({ kind: "synced" })
     expect(order).toEqual(["sent t1", "let go t1", "sent t2", "let go t2"])
     expect(p.current().refused).toEqual([])
@@ -245,7 +245,7 @@ describe("sending voice notes home", () => {
 
   it("holds back a note home deleted for good until it can be let go, then sends it once more", async () => {
     const p = port([note("t1", "studio"), note("n2")])
-    const deferred = new Set<string>()
+    const heldBack: DeletedPort["heldBack"] = new Map()
     const answer = (id: string, body: HomeBytes): HomeAnswer =>
       id === "t1"
         ? deletedForGood
@@ -256,7 +256,7 @@ describe("sending voice notes home", () => {
             }),
           }
     const before = home(answer)
-    await exchange(p, before.send, { letGo: null, deferred })
+    await exchange(p, before.send, { letGo: null, heldBack })
     expect(before.sent.map(({ path }) => path.split("?")[0])).toEqual([
       "/voice-notes/t1",
       "/voice-notes/n2",
@@ -267,7 +267,7 @@ describe("sending voice notes home", () => {
     })
 
     const still = home(answer)
-    await exchange(p, still.send, { letGo: null, deferred })
+    await exchange(p, still.send, { letGo: null, heldBack })
     expect(still.sent).toEqual([])
 
     const letGone: Array<string> = []
@@ -277,10 +277,28 @@ describe("sending voice notes home", () => {
         letGone.push(...ids)
         return Promise.resolve(true)
       },
-      deferred,
+      heldBack,
     })
     expect(after.sent).toHaveLength(1)
     expect(letGone).toEqual(["t1"])
-    expect(deferred.size).toBe(0)
+    expect(heldBack.size).toBe(0)
+  })
+
+  it("holds back, for the rest of the launch, a note home deleted for good whose let-go failed", async () => {
+    const p = port([note("t1", "studio")])
+    const heldBack: DeletedPort["heldBack"] = new Map()
+    const asked: Array<string> = []
+    const letGo = (ids: ReadonlyArray<string>): Promise<boolean> => {
+      asked.push(...ids)
+      return Promise.resolve(false)
+    }
+    const first = home(() => deletedForGood)
+    await exchange(p, first.send, { letGo, heldBack })
+    const again = home(() => deletedForGood)
+    await exchange(p, again.send, { letGo, heldBack })
+    expect(first.sent).toHaveLength(1)
+    expect(again.sent).toEqual([])
+    expect(asked).toEqual(["t1"])
+    expect(p.current().refused).toEqual([])
   })
 })
