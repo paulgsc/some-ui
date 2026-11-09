@@ -50,6 +50,14 @@ Each module's header says why it is the way it is.
   under `src/templates/conference-call/`, beside its sample week; its
   series is sampled in `src/sample/series/conference-call/`. `callScenes`
   gives the scenes in order, each ask with the id a reply names.
+- `src/essay.ts`: the Rust Rounds essay (RR15, #2690), the second template
+  beside the call and drawn in its series: after a week's deadline, each
+  ticket's question, the owner's take or silence, a best fit, the two side
+  by side on SOLO's whole scale, and two deep dives, then the weeks and next
+  week, from one essay's data (`EssaySchema`, `some-ui.rust-essay/1`). Its
+  format is pinned under `src/templates/rust-essay/`, beside its sample
+  essay; `essayScenes` gives the scenes in order, a group per ticket. www's
+  `/essay` stage draws it in template A, the call's two bubbles.
 - `src/clip.ts`: clips (SFEED7), what a user-facing change built, kept in
   `paulgsc/testing`'s `clips/` and listed for Studio's Library. A walked side
   is `motion walk`'s own folder. `render clip-check <folder>` checks it
@@ -60,7 +68,8 @@ Each module's header says why it is the way it is.
   the folder before it is pushed.
 - `src/templates.ts`: every template Studio lists (SFEED1, #2731), each
   the newest version pinned under `src/templates/<id>/`, Playoff Delta's
-  included.
+  included; the essay's is pinned and not listed until home renders it
+  (`TEMPLATES_NOT_LISTED`, RR16).
 - `src/synth.ts`, `src/music-bed.ts`: the sounds we make ourselves
   (#2673); `render music-bed --out <file>.wav` writes the music bed.
 - `src/storyboard.ts`: a template's storyboard (SFEED3, #2744), every frame

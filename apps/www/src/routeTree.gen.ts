@@ -17,6 +17,7 @@ import { Route as AuthorshipRouteImport } from './routes/authorship'
 import { Route as BurnInsRouteImport } from './routes/burn-ins'
 import { Route as CallRouteImport } from './routes/call'
 import { Route as CaptionsRouteImport } from './routes/captions'
+import { Route as EssayRouteImport } from './routes/essay'
 import { Route as ExtensionsRouteImport } from './routes/extensions'
 import { Route as MissionRouteImport } from './routes/mission'
 import { Route as PlayoffDeltaRouteImport } from './routes/playoff-delta'
@@ -118,6 +119,11 @@ const CallRoute = CallRouteImport.update({
 const CaptionsRoute = CaptionsRouteImport.update({
   id: '/captions',
   path: '/captions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EssayRoute = EssayRouteImport.update({
+  id: '/essay',
+  path: '/essay',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ExtensionsRoute = ExtensionsRouteImport.update({
@@ -476,6 +482,7 @@ export interface FileRoutesByFullPath {
   '/burn-ins': typeof BurnInsRoute
   '/call': typeof CallRoute
   '/captions': typeof CaptionsRoute
+  '/essay': typeof EssayRoute
   '/extensions': typeof ExtensionsRoute
   '/mission': typeof MissionRoute
   '/playoff-delta': typeof PlayoffDeltaRoute
@@ -546,6 +553,7 @@ export interface FileRoutesByTo {
   '/burn-ins': typeof BurnInsRoute
   '/call': typeof CallRoute
   '/captions': typeof CaptionsRoute
+  '/essay': typeof EssayRoute
   '/extensions': typeof ExtensionsRoute
   '/mission': typeof MissionRoute
   '/playoff-delta': typeof PlayoffDeltaRoute
@@ -615,6 +623,7 @@ export interface FileRoutesById {
   '/burn-ins': typeof BurnInsRoute
   '/call': typeof CallRoute
   '/captions': typeof CaptionsRoute
+  '/essay': typeof EssayRoute
   '/extensions': typeof ExtensionsRoute
   '/mission': typeof MissionRoute
   '/playoff-delta': typeof PlayoffDeltaRoute
@@ -689,6 +698,7 @@ export interface FileRouteTypes {
     | '/burn-ins'
     | '/call'
     | '/captions'
+    | '/essay'
     | '/extensions'
     | '/mission'
     | '/playoff-delta'
@@ -759,6 +769,7 @@ export interface FileRouteTypes {
     | '/burn-ins'
     | '/call'
     | '/captions'
+    | '/essay'
     | '/extensions'
     | '/mission'
     | '/playoff-delta'
@@ -827,6 +838,7 @@ export interface FileRouteTypes {
     | '/burn-ins'
     | '/call'
     | '/captions'
+    | '/essay'
     | '/extensions'
     | '/mission'
     | '/playoff-delta'
@@ -901,6 +913,7 @@ export interface RootRouteChildren {
   BurnInsRoute: typeof BurnInsRoute
   CallRoute: typeof CallRoute
   CaptionsRoute: typeof CaptionsRoute
+  EssayRoute: typeof EssayRoute
   ExtensionsRoute: typeof ExtensionsRoute
   MissionRoute: typeof MissionRoute
   PlayoffDeltaRoute: typeof PlayoffDeltaRoute
@@ -962,6 +975,13 @@ declare module '@tanstack/react-router' {
       path: '/captions'
       fullPath: '/captions'
       preLoaderRoute: typeof CaptionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/essay': {
+      id: '/essay'
+      path: '/essay'
+      fullPath: '/essay'
+      preLoaderRoute: typeof EssayRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/extensions': {
@@ -1600,6 +1620,7 @@ const rootRouteChildren: RootRouteChildren = {
   BurnInsRoute: BurnInsRoute,
   CallRoute: CallRoute,
   CaptionsRoute: CaptionsRoute,
+  EssayRoute: EssayRoute,
   ExtensionsRoute: ExtensionsRoute,
   MissionRoute: MissionRoute,
   PlayoffDeltaRoute: PlayoffDeltaRoute,
