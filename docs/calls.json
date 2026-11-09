@@ -612,6 +612,42 @@
       "gray": "Both close the lost-answer case; the owed list duplicates a guarantee home already gives and kept state that a wipe or reinstall loses.",
       "undo": "Revert 944c4f10, then fix what the review of 9e0867db found in it: a deleted take's audio stranded behind a false \"on home\", and entries that never settle.",
       "refs": ["#2758", "server#760"]
+    },
+    {
+      "id": "C41",
+      "made": "2026-11-09",
+      "by": "claude",
+      "agreed": "2026-11-09",
+      "paths": [
+        "apps/www/src/lib/voice-home/home.ts",
+        "docs/learner-data-authority.md"
+      ],
+      "chose": "The phone lets go of its copy of a voice note whose PUT home refuses as deleted for good (409 `deleted_for_good`), by My data's own letGoDeleted, as if it had heard the delete's receipt; LA8's let-go rule gains that case.",
+      "options": [
+        "let the copy go on that refusal (amend LA8)",
+        "keep it as a refusal with true words, the audio staying until let go by hand"
+      ],
+      "gray": "LA8 let a copy go only on a tap's answer; this refusal follows the owner's own My data delete, but arrives on the voice lane's run, not the tap's.",
+      "undo": "Drop the deleted_for_good branch in exchangeVoice so the refusal is kept like any 409, and restore LA8's claim and falsifier.",
+      "refs": ["server#760", "#2758"]
+    },
+    {
+      "id": "C42",
+      "made": "2026-11-09",
+      "by": "claude",
+      "agreed": "2026-11-09",
+      "paths": [
+        "apps/www/src/lib/home-link/voice-copy.ts",
+        "apps/www/src/lib/voice-home/home.ts"
+      ],
+      "chose": "Before Studio's store is handed in, a note home refuses as deleted for good is held back unsent for that launch; the first run after Studio is handed in sends it once more and lets it go on the answer.",
+      "options": [
+        "hold it back until Studio is handed in, then send once more",
+        "settle the voice record now and let Studio's take go when Studio opens"
+      ],
+      "gray": "Settling now saves one PUT but lets the take's row say it is on home while it is not; waiting costs that PUT.",
+      "undo": "Pass letGoDeleted unconditionally in sendVoice and drop DeletedPort's deferred set.",
+      "refs": ["server#760", "#2758"]
     }
   ]
 }

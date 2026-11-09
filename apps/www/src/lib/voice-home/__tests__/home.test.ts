@@ -2,13 +2,13 @@
  * One exchange of voice notes with home (`../home`), against a home that
  * answers as paulgsc/server's `PUT /voice-notes/:id` does: a note held once
  * its hash is the phone's, a replay unchanged, other audio a refusal, a
- * field home won't take a refusal, a body that didn't arrive a wait, and a
- * stopped choice the end of it.
+ * field home won't take a refusal, a body that didn't arrive a wait, a note
+ * deleted for good let go, and a stopped choice the end of it.
  */
 import type { HomeAnswer, HomeBytes, HomeCall } from "@some-ui/core-utils"
 import { describe, expect, it } from "vitest"
 
-import type { VoiceHomePort } from "@/lib/voice-home/home"
+import type { DeletedPort, VoiceHomePort } from "@/lib/voice-home/home"
 import { exchangeVoice, NOTE_CEILING } from "@/lib/voice-home/home"
 import type { VoiceHomeState, VoiceOut } from "@/lib/voice-home/model"
 import { INITIAL_VOICE_HOME, stepVoiceHome } from "@/lib/voice-home/model"
@@ -81,11 +81,28 @@ const refusal = (details: Record<string, Array<string>>): HomeAnswer => ({
   body: JSON.stringify({ error: { details } }),
 })
 
+/** The exchange, by default before Studio's store is handed in. */
+function exchange(
+  p: VoiceHomePort,
+  send: HomeCall,
+  deleted: DeletedPort = { letGo: null, heldBack: new Map() }
+): ReturnType<typeof exchangeVoice> {
+  return exchangeVoice(p, send, deleted)
+}
+
+/** Home's refusal of a note the owner deleted for good from My data. */
+const deletedForGood: HomeAnswer = {
+  status: 409,
+  body: JSON.stringify({
+    error: { code: "deleted_for_good", message: "deleted for good" },
+  }),
+}
+
 describe("sending voice notes home", () => {
   it("sends each note as its audio, with what it belongs to, and counts it home's once the hash matches", async () => {
     const p = port([note("n1"), note("n2", "jobs")])
     const h = home()
-    await expect(exchangeVoice(p, h.send)).resolves.toEqual({ kind: "synced" })
+    await expect(exchange(p, h.send)).resolves.toEqual({ kind: "synced" })
     expect(h.sent).toEqual([
       {
         path: "/voice-notes/n1?of=reflection&ref=session-7f2a&at=2026-10-25T03%3A10%3A00.000Z",
@@ -107,7 +124,7 @@ describe("sending voice notes home", () => {
       fields: { how: "offered", scenario: "in.third-long", strip: "Q3 8:42" },
     }
     const h = home()
-    await exchangeVoice(port([bite]), h.send)
+    await exchange(port([bite]), h.send)
     expect(h.sent.map(({ path }) => path)).toEqual([
       "/voice-notes/b1?of=game&ref=401772981&at=2026-10-25T03%3A10%3A00.000Z&how=offered&scenario=in.third-long&strip=Q3+8%3A42",
     ])
@@ -122,10 +139,10 @@ describe("sending voice notes home", () => {
         note: { id, sha256: `sha-of-${atob(body.base64)}` },
       }),
     }))
-    await exchangeVoice(p, replay.send)
+    await exchange(p, replay.send)
     expect(p.current().held).toEqual(["n1"])
     const again = home()
-    await exchangeVoice(p, again.send)
+    await exchange(p, again.send)
     expect(again.sent).toEqual([])
   })
 
@@ -143,7 +160,7 @@ describe("sending voice notes home", () => {
               }),
             }
     )
-    await expect(exchangeVoice(p, h.send)).resolves.toEqual({ kind: "synced" })
+    await expect(exchange(p, h.send)).resolves.toEqual({ kind: "synced" })
     expect(p.current()).toMatchObject({
       waiting: [],
       held: ["n3"],
@@ -157,7 +174,7 @@ describe("sending voice notes home", () => {
   it("lets a note wait when only its body is refused: the bytes didn't arrive", async () => {
     const p = port([note("n1"), note("n2")])
     const h = home(() => refusal({ body: ["empty"] }))
-    await expect(exchangeVoice(p, h.send)).resolves.toEqual({
+    await expect(exchange(p, h.send)).resolves.toEqual({
       kind: "failed",
       why: "a voice note: home answered 422",
     })
@@ -168,7 +185,7 @@ describe("sending voice notes home", () => {
   it("ends at a forgotten phone, refusing nothing", async () => {
     const forgotten = port([note("n1")])
     await expect(
-      exchangeVoice(forgotten, home(() => ({ status: 401, body: "" })).send)
+      exchange(forgotten, home(() => ({ status: 401, body: "" })).send)
     ).resolves.toEqual({ kind: "forgotten" })
     expect(forgotten.current().waiting).toHaveLength(1)
   })
@@ -181,7 +198,7 @@ describe("sending voice notes home", () => {
     ]) {
       const p = port([note("n1")])
       await expect(
-        exchangeVoice(p, home(() => ({ status: 200, body })).send)
+        exchange(p, home(() => ({ status: 200, body })).send)
       ).resolves.toEqual({
         kind: "failed",
         why: "a voice note: home answered 200",
@@ -196,11 +213,92 @@ describe("sending voice notes home", () => {
       id === "gone" ? null : big
     )
     const h = home()
-    await exchangeVoice(p, h.send)
+    await exchange(p, h.send)
     expect(h.sent).toEqual([])
     expect(p.current().refused).toEqual([
       { id: "gone", why: "its recording is gone from this phone" },
       { id: "big", why: "longer than home keeps" },
     ])
+  })
+
+  it("lets go of a note home deleted for good, inside the exchange, and refuses nothing", async () => {
+    const p = port([note("t1", "studio"), note("t2", "studio")])
+    const order: Array<string> = []
+    // Recorded once the let-go ends, so an exchange that didn't wait fails.
+    const letGo = (ids: ReadonlyArray<string>): Promise<boolean> =>
+      new Promise((resolve) => {
+        setTimeout(() => {
+          order.push(`let go ${ids.join()}`)
+          resolve(true)
+        }, 0)
+      })
+    const h = home((id) => {
+      order.push(`sent ${id}`)
+      return deletedForGood
+    })
+    await expect(
+      exchange(p, h.send, { letGo, heldBack: new Map() })
+    ).resolves.toEqual({ kind: "synced" })
+    expect(order).toEqual(["sent t1", "let go t1", "sent t2", "let go t2"])
+    expect(p.current().refused).toEqual([])
+  })
+
+  it("holds back a note home deleted for good until it can be let go, then sends it once more", async () => {
+    const p = port([note("t1", "studio"), note("n2")])
+    const heldBack: DeletedPort["heldBack"] = new Map()
+    const answer = (id: string, body: HomeBytes): HomeAnswer =>
+      id === "t1"
+        ? deletedForGood
+        : {
+            status: 200,
+            body: JSON.stringify({
+              note: { id, sha256: `sha-of-${atob(body.base64)}` },
+            }),
+          }
+    const before = home(answer)
+    await exchange(p, before.send, { letGo: null, heldBack })
+    expect(before.sent.map(({ path }) => path.split("?")[0])).toEqual([
+      "/voice-notes/t1",
+      "/voice-notes/n2",
+    ])
+    expect(p.current()).toMatchObject({
+      waiting: [{ id: "t1" }],
+      refused: [],
+    })
+
+    const still = home(answer)
+    await exchange(p, still.send, { letGo: null, heldBack })
+    expect(still.sent).toEqual([])
+
+    const letGone: Array<string> = []
+    const after = home(answer)
+    await exchange(p, after.send, {
+      letGo: (ids): Promise<boolean> => {
+        letGone.push(...ids)
+        return Promise.resolve(true)
+      },
+      heldBack,
+    })
+    expect(after.sent).toHaveLength(1)
+    expect(letGone).toEqual(["t1"])
+    expect(heldBack.size).toBe(0)
+  })
+
+  it("holds back, for the rest of the launch, a note home deleted for good whose let-go failed", async () => {
+    const p = port([note("t1", "studio")])
+    const heldBack: DeletedPort["heldBack"] = new Map()
+    const asked: Array<string> = []
+    const letGo = (ids: ReadonlyArray<string>): Promise<boolean> => {
+      asked.push(...ids)
+      return Promise.resolve(false)
+    }
+    const first = home(() => deletedForGood)
+    await exchange(p, first.send, { letGo, heldBack })
+    const again = home(() => deletedForGood)
+    await exchange(p, again.send, { letGo, heldBack })
+    expect(first.sent).toHaveLength(1)
+    expect(again.sent).toEqual([])
+    expect(asked).toEqual(["t1"])
+    expect(p.current().refused).toEqual([])
   })
 })
