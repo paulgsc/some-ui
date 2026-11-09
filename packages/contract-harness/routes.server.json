@@ -628,6 +628,27 @@
     },
     {
       "method": "GET",
+      "path": "/rust-round-log/sessions",
+      "full_path": "/api/v1/rust-round-log/sessions",
+      "versioned": true,
+      "module": "rust_rounds"
+    },
+    {
+      "method": "GET",
+      "path": "/rust-round-log/sessions/:id",
+      "full_path": "/api/v1/rust-round-log/sessions/:id",
+      "versioned": true,
+      "module": "rust_rounds"
+    },
+    {
+      "method": "PUT",
+      "path": "/rust-round-log/sessions/:id",
+      "full_path": "/api/v1/rust-round-log/sessions/:id",
+      "versioned": true,
+      "module": "rust_rounds"
+    },
+    {
+      "method": "GET",
       "path": "/rust-rounds",
       "full_path": "/api/v1/rust-rounds",
       "versioned": true,
@@ -658,6 +679,27 @@
       "method": "GET",
       "path": "/rust-weeks/:id",
       "full_path": "/api/v1/rust-weeks/:id",
+      "versioned": true,
+      "module": "rust_rounds"
+    },
+    {
+      "method": "PUT",
+      "path": "/rust-weeks/:id/pastes/:at",
+      "full_path": "/api/v1/rust-weeks/:id/pastes/:at",
+      "versioned": true,
+      "module": "rust_rounds"
+    },
+    {
+      "method": "GET",
+      "path": "/rust-weeks/:id/record",
+      "full_path": "/api/v1/rust-weeks/:id/record",
+      "versioned": true,
+      "module": "rust_rounds"
+    },
+    {
+      "method": "PUT",
+      "path": "/rust-weeks/:id/sent",
+      "full_path": "/api/v1/rust-weeks/:id/sent",
       "versioned": true,
       "module": "rust_rounds"
     },
