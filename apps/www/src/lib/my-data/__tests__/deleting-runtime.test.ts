@@ -215,6 +215,7 @@ describe("My data's delete runtime", () => {
       answers: [{ id: "t1", answer: { status: 200, body: receipt("t1") } }],
     })
     await flush()
+    expect(order).toEqual(["let go in the run"])
     letGo[0]?.done.resolve(true)
     await flush()
     expect(order).toEqual(["let go in the run", "run ended", "reread after it"])
