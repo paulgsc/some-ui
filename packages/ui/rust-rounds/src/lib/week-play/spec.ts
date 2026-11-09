@@ -18,8 +18,9 @@
  *   through, the card offers to try again or come back later.
  * - **What Send keeps** is the week sent (`WeekSent`): when, each ticket's
  *   take, and the tickets passed over, on this phone (`./store`). The takes
- *   go home as voice notes (apps/www `lib/home-link/voice-copy`); home keeping
- *   the week's record is RR14's.
+ *   go home as voice notes (apps/www `lib/home-link/voice-copy`), and the week
+ *   sent goes home as it is kept (`lib/kept-home`, RR14), where home makes
+ *   the week's record from it.
  */
 import type { Week } from "@rust-rounds/lib/formats/week"
 import type {

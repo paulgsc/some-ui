@@ -49,6 +49,9 @@ export type LaneKind =
   | "ideas"
   | "episodeNotes"
   | "rounds"
+  | "rustWeeks"
+  | "rustPastes"
+  | "roundLog"
   | "endings"
 
 /** What a lane's sheet counts, as its record says. */

@@ -12,6 +12,7 @@ import { weeksSent } from "@rust-rounds/lib/week-play/store"
 import type { HeldWeek } from "@rust-rounds/lib/weeks"
 import type { KeyedStorage } from "@some-ui/core-utils"
 import { inMemoryStorage } from "@some-ui/core-utils"
+import type { EngagementEvent } from "@some-ui/engagement"
 import type { BundleTakes, HeardAnswer } from "@some-ui/voice-capture"
 import { ONE_TAKE } from "@some-ui/voice-capture"
 import type { SimulatedPattern } from "@some-ui/voice-capture/testing"
@@ -44,6 +45,8 @@ type Phone = {
   readonly release: ReturnType<typeof vi.fn>
   readonly heard: ReturnType<typeof vi.fn>
   readonly detach: () => void
+  /** What the week told the engagement sink, in order. */
+  readonly engaged: Array<EngagementEvent>
 }
 
 function phone(
@@ -66,6 +69,7 @@ function phone(
     over.heard ??
       ((): Promise<HeardAnswer> => Promise.resolve({ kind: "notYet" }))
   )
+  const engaged: Array<EngagementEvent> = []
   const week = createRustWeek({
     week: HELD,
     takes: { ...takes, release },
@@ -74,13 +78,14 @@ function phone(
     heard,
     now: over.now ?? Date.now,
     newId: () => "unused",
+    engage: (event) => engaged.push(event),
     onVisibility: (listener) => {
       listener(false)
       return (): void => undefined
     },
   })
   const detach = week.attach()
-  return { week, simulated, release, heard, detach }
+  return { week, simulated, release, heard, detach, engaged }
 }
 
 const onConfirm = (): SimulatedPattern =>
@@ -222,5 +227,26 @@ describe("the week open now", () => {
       w46
     )
     expect(currentWeek([], Date.now())).toBeNull()
+  })
+
+  it("tells each ticket opened and left, by its place in the week, never its key (RR14)", async () => {
+    const on = phone(inMemoryStorage(), onConfirm())
+    on.week.bundle.dispatch({ type: "go", index: 0 })
+    await pass(5_000)
+    on.week.bundle.dispatch({ type: "swipe", to: "next" })
+    await pass(5_000)
+    on.week.bundle.dispatch({ type: "back" })
+    on.detach()
+    expect(
+      on.engaged.map((event) => [
+        event.kind,
+        event.kind === "left" ? event.place : null,
+      ])
+    ).toEqual([
+      ["taken", null],
+      ["left", "ticket-1"],
+      ["taken", null],
+      ["left", "ticket-2"],
+    ])
   })
 })

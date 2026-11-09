@@ -213,6 +213,10 @@ const readLog = readJson(parsed(RoundLogSchema))
 const readHeld = readJson(parsed(HeldSchema))
 const readPlace = readJson(parsed(PlaceRecordSchema))
 
+/** The log as kept in `storage`, read only: what goes home of it (`lib/kept-home`). */
+export const keptLog = (storage: KeyedStorage | null): RoundLog =>
+  openKept(storage, LOG_KEY, readLog, EMPTY_LOG).value
+
 /** Where the session was: the card on screen, the take under way, and the cards waiting on a note. */
 type Whereabouts = {
   readonly place: Place | null

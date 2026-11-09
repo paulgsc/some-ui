@@ -1176,7 +1176,9 @@ screen hears its lane's end in the pull under way, one run a lane between
 them (`lib/home-link/__tests__/pull.test.ts`). What no test
 can say is when a run is asked for. Rust Rounds' lane
 (`rust-rounds.ts`) is held by `packages/ui/rust-rounds/src/lib/home/index.test.ts`,
-`packages/ui/rust-rounds/src/lib/weeks/index.test.ts`
+`packages/ui/rust-rounds/src/lib/weeks/index.test.ts`,
+`packages/ui/rust-rounds/src/lib/kept-home/index.test.ts`,
+`lib/home-link/__tests__/rust-kept.test.ts`
 and `components/__tests__/device-home-glyph.test.tsx`.
 
 - _Claim:_ `askKept` and `pullKept` (`lib/home-link/kept-watch.ts`) ask for
@@ -1368,13 +1370,24 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   makes `holdNotes` do anything but hand LeetType's answer notes
   (`leetypeNotesHeldByHome`) and the soundbites (their `heldByHome`) how to
   read what home holds of them; a hunk to `lib/home-link/leetype-log.ts` that
-  lets `sendEach` count an item held on any answer but a `200` its `heldAs`
-  accepts; a hunk to `lib/home-link/rust-rounds.ts` that makes the lane's
-  `revision` anything but `roundsTaken` of what plays (the rounds taken on
-  this phone, never one taken from home), its `subscribe` anything but the
-  store's, or its `exchange` anything but `exchangeRustRounds` over
-  `phoneRounds()` and `phoneWeeks()` (the rounds' exchange, then, once it is
-  synced, the weeks'); a hunk to `@some-ui/rust-rounds`'s `lib/weeks` that
+  lets `sendEach` count an item held on any answer but a `200` or `201` its
+  `heldAs` accepts; a hunk to `lib/home-link/rust-rounds.ts` that makes the
+  lane's `revision` anything but a fingerprint of `roundsTaken` of what plays
+  (the rounds taken on this phone, never one taken from home) and of what
+  `keptGoing` names as it is now, its `subscribe` anything but the store's,
+  or its `exchange` anything but `exchangeRustRoundsLane`; a hunk to
+  `lib/home-link/rust-kept.ts` that has `exchangeRustRoundsLane` do anything
+  but `exchangeRustRounds` over `phoneRounds()` and `phoneWeeks()` (the
+  rounds' exchange, then, once it is synced, the weeks') and, once that is
+  synced, `sendRustKept`, or has `sendRustKept` send anything but one `PUT`
+  (and, for a card-log sitting, one `GET` back) of each item `keptGoing`
+  names that the run's pairing's `sent` does not hold as it is now, count
+  one held but on home's answer carrying it as sent (a sitting, its read
+  back), remember an answer anywhere but `sent.rustWeeks`,
+  `sent.rustPastes` or `sent.roundLog` under the run's pairing, or let
+  anything on the phone go; a hunk to `@some-ui/rust-rounds`'s
+  `lib/kept-home` that names an item other than a week sent, a paste kept or
+  a sitting of the log as kept, or with another body; a hunk to `@some-ui/rust-rounds`'s `lib/weeks` that
   sends anything but one `GET /rust-weeks` and at most
   `WEEK_READS_PER_EXCHANGE` `GET`s of a week `weeksToRead` names, writes a
   week other than through its store's `hold`, or rewrites a week the phone
@@ -1481,7 +1494,13 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   watch only in `HomeLanes`' `LaneWatch`, its Send now only in Settings'
   readout, its revision `roundsTaken`, which a round taken from home does
   not move, and `exchangeRounds`' three requests, each answer kept as it
-  lands. Amended for ST26 (b) (#2453) by reading the ideas' part: one
+  lands. Amended for RR14 (#2689) by reading the kept-for-good part
+  (`rust-kept.ts`): one `PUT` per week sent, paste and card-log sitting
+  `keptGoing` names that the pairing's `sent` lacks as it is now (a sitting
+  read back by one `GET`), only after the weeks' exchange synced; the
+  lane's revision a fingerprint of `roundsTaken` and what `keptGoing` names,
+  read only on its watch's moments; and `sendEach` counting home's `201`
+  (newly kept) as `200`. Amended for ST26 (b) (#2453) by reading the ideas' part: one
   `PUT` per idea `ideasToSend` names, only inside `sendVoice` after its
   notes' exchange synced, and the lane's revision and count reading
   `ideasWaiting`, which `ideasMoved` (a Send kept, or home's answer

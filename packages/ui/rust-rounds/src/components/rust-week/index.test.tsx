@@ -68,6 +68,7 @@ function ports(storage = inMemoryStorage()): RustWeekPorts {
     heard: () => Promise.resolve({ kind: "heard", text: "It copies." }),
     now: Date.now,
     newId: () => "unused",
+    engage: () => undefined,
     onVisibility: (listener) => {
       listener(false)
       return (): void => undefined

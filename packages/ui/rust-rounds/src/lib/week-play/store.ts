@@ -12,8 +12,8 @@
  * - **The words home heard** in each take sent (`heardWords`), by take: a
  *   copy of home's, each kept once and never written over.
  * - **An error pasted** (`pasteStores`, `./paste`): the one being written in
- *   each week, kept as it is typed, and those kept, which only grow. They go home with
- *   the week's record (RR14); until then they are kept here.
+ *   each week, kept as it is typed, and those kept, which only grow. Each
+ *   one kept goes home (`lib/kept-home`, RR14), and stays here too.
  */
 import { WEEK_SENT_KEY } from "@rust-rounds/lib/play/keys"
 import type { KeyedStorage } from "@some-ui/core-utils"
