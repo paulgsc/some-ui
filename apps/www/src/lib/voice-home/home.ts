@@ -12,6 +12,10 @@
  * kept and never sent again. A `422` naming only the body means the bytes
  * did not arrive (Android 7's native request sends none): not the note's
  * fault, so it ends the exchange and the note waits.
+ *
+ * A `409` coded `deleted_for_good` is home's word that the owner deleted the
+ * note from My data, whose answer this phone never heard: the phone lets its
+ * copy go as it would have on that answer's receipt (`DeletedPort`, LA8).
  */
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
 import { readAs, refusalOf, unexpectedAnswer } from "@some-ui/core-utils"
@@ -33,6 +37,22 @@ export type VoiceHomePort = {
   /** What home said of a note: held, or refused for good. */
   answered: (answer: NoteAnswered) => void
 }
+
+/**
+ * How this phone lets go of a note home answers deleted for good (LA8).
+ * `letGo` is My data's own let-go on a receipt (`letGoDeleted`), null until
+ * Studio's store is handed in: until then a note so answered is kept in
+ * `deferred`, for this launch only, and not sent again, so the first run
+ * that can let it go sends it once more and does.
+ */
+export type DeletedPort = {
+  readonly letGo: ((ids: ReadonlyArray<string>) => Promise<boolean>) | null
+  readonly deferred: Set<string>
+}
+
+const DeletedForGood = z.object({
+  error: z.object({ code: z.literal("deleted_for_good") }),
+})
 
 const NoteAnswer = z.object({
   note: z.object({ id: z.string(), sha256: z.string() }),
@@ -59,9 +79,11 @@ function pathOf(note: VoiceOut): string {
 
 export async function exchangeVoice(
   port: VoiceHomePort,
-  send: HomeCall
+  send: HomeCall,
+  deleted: DeletedPort
 ): Promise<HomeExchanged> {
   for (const note of port.state().waiting) {
+    if (deleted.letGo === null && deleted.deferred.has(note.id)) continue
     const blob = await port.audio(note.id)
     if (blob === null) {
       port.answered({
@@ -85,6 +107,15 @@ export async function exchangeVoice(
       base64,
     })
     if (answer.status === 401) return { kind: "forgotten" }
+    if (answer.status === 409 && readAs(DeletedForGood, answer.body) !== null) {
+      if (deleted.letGo === null) {
+        deleted.deferred.add(note.id)
+        continue
+      }
+      deleted.deferred.delete(note.id)
+      await deleted.letGo([note.id])
+      continue
+    }
     if (answer.status === 409) {
       port.answered({
         kind: "refused",

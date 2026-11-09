@@ -955,6 +955,12 @@ async function letGoOnHomesWord(send: HomeCall): Promise<void> {
 }
 
 /**
+ * Notes home answered deleted for good before Studio's store was handed in
+ * this launch, so before this phone could let them go (`DeletedPort`).
+ */
+const deletedUnheard = new Set<string>()
+
+/**
  * The voice lane's exchange: a copy pass first, so a note the watch could
  * not copy yet (no room, storage that would not keep its record) is tried
  * again, then each copy waiting sent (`exchangeVoice`), then, once that
@@ -977,7 +983,10 @@ export async function sendVoice(
   if (running !== null) await running
   const pass = running === null ? NO_PASS : lastPass
   const home = phoneVoiceHome()
-  const exchanged = await exchangeVoice(home.keeping, send)
+  const exchanged = await exchangeVoice(home.keeping, send, {
+    letGo: studioKeeping() === null ? null : letGoDeleted,
+    deferred: deletedUnheard,
+  })
   if (exchanged.kind !== "synced") return runEnd(pass, exchanged)
   await letGoOnHomesWord(send)
   const ideas = await sendIdeas(
