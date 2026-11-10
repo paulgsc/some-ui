@@ -3154,7 +3154,7 @@
     {
       "store": "phone:rust-rounds-week-sent",
       "class": "record",
-      "growth": "Per week sent from the phone (RR13): when, each ticket's take id and the tickets not said; only grows (a change that drops or rewrites one is refused); each goes home as kept (RR14, `lib/kept-home`) and the phone keeps its own copy; one a week, no cap (`some-ui:rust-rounds.week-sent`).",
+      "growth": "Per send of a week from the phone (RR13; RR22, #2832): when, each ticket's take id and the tickets not said; only grows (a change that drops or rewrites one is refused); a week stays open until its deadline and can be sent again, so a few a week, no cap; the phone keeps every send, and only each week's latest goes home (RR14, `lib/kept-home`), none once the week has closed (`some-ui:rust-rounds.week-sent`).",
       "family": "what-is-kept"
     },
     {
@@ -3172,7 +3172,7 @@
     {
       "store": "phone:rust-rounds-week-takes",
       "class": "record",
-      "growth": "Per take on a week's ticket (RR13, up to three minutes at 32 kbps, ~720 KB): one current take a ticket, and one a pasted error's note, waiting on the phone until the week is sent or the paste kept (`send: on-confirm`), then going home as a Rust Rounds voice note; a take let go before Send is deleted for good; no count of its own (max = +Infinity), so takes grow until the device's measured room (withRoom, the 25 MiB pool) refuses one; none is evicted to make room (`some-ui:rust-rounds.week-takes`, `some-ui.rust-week-takes`).",
+      "growth": "Per take on a week's ticket (RR13, up to three minutes at 32 kbps, ~720 KB): one current take a ticket, and one a pasted error's note, waiting on the phone until the week is sent or the paste kept (`send: on-confirm`), then going home as a Rust Rounds voice note; a ticket said again after a send (RR22) keeps the take sent, set apart, beside the new one, so a ticket can hold a few; a take let go before it is sent is deleted for good; no count of its own (max = +Infinity), so takes grow until the device's measured room (withRoom, the 25 MiB pool) refuses one; none is evicted to make room (`some-ui:rust-rounds.week-takes`, `some-ui.rust-week-takes`).",
       "family": "what-is-kept"
     },
     {
