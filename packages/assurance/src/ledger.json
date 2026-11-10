@@ -2677,7 +2677,9 @@
         "server:apps/servers/file_host/src/handlers/feed_videos.rs",
         "server:apps/servers/file_host/src/routes/feed_videos.rs",
         "some-ui:packages/video-render/src/essay.ts",
-        "some-ui:apps/www/src/lib/web-surface/call"
+        "some-ui:apps/www/src/lib/web-surface/call",
+        "some-ui:apps/www/tests/record/essay.ts",
+        "some-ui:apps/www/tests/record/essay-recording.ts"
       ],
       "modules": [],
       "objectives": [
@@ -2713,6 +2715,16 @@
           "conclusion": "Not yet shown on home. The recorder's half (record:essay, its refusal of a missing or stray take, and an owner's take played whole as theirs) is tested in paulgsc/some-ui; the worker's half is RR16-home's open server change.",
           "tracked": "some-ui#2691",
           "evidence": [
+            {
+              "class": "structural",
+              "says": "record:essay refuses, before anything is drawn, a take missing for an answered ticket, two for one, or one for a ticket left silent (essayTakeFiles), and lays each owner's take whole in its answer scene, named as no speech model's (essayCutList); each tested.",
+              "ref": "some-ui:packages/video-render/src/essay.ts"
+            },
+            {
+              "class": "measured",
+              "says": "Recorded locally on 2026-11-10 from the sample essay and two takes in home's layout: all 28 scenes at 1920×1080 with no overflow, a 9:49 essay.mp4 with each take played whole and captioned from its word times.",
+              "ref": "some-ui#2838"
+            },
             {
               "class": "structural",
               "says": "The renderer refuses a video past RenderPolicy.maxVideoMs before any ffmpeg call and removes one past maxVideoBytes once made.",
@@ -4909,7 +4921,9 @@
           "paths": [
             "server:infra/render",
             "server:infra/docker/Dockerfile.render",
-            "some-ui:packages/video-render/src/essay.ts"
+            "some-ui:packages/video-render/src/essay.ts",
+            "some-ui:apps/www/tests/record/essay.ts",
+            "some-ui:apps/www/tests/record/essay-recording.ts"
           ]
         },
         {
