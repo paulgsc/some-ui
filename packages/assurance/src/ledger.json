@@ -1837,12 +1837,12 @@
             },
             {
               "class": "structural",
-              "says": "file_host applies its pending migrations as it starts, after a verified VACUUM INTO backup (integrity_check ok, the same applied count), and exits rather than serve a schema half applied.",
+              "says": "file_host applies its pending migrations as it starts, after a VACUUM INTO backup it verifies (integrity_check ok, the same applied count), and exits rather than serve a schema half applied; tested (a_database_behind_its_build_is_backed_up_then_brought_current, a_failed_migration_says_why_and_keeps_the_backup).",
               "ref": "server:apps/servers/file_host/src/migrate.rs"
             },
             {
               "class": "structural",
-              "says": "make home-deploy puts the previous image back when the new one is not healthy within 300 s, and never restores the database.",
+              "says": "make home-deploy puts the previous file_host image back when the new one is not healthy within 300 s, skips an image that already failed, and never restores the database; tested by its self-test in Lint's Deploy script job (test_an_image_that_never_becomes_ready_ends_with_the_previous_one_serving).",
               "ref": "server:scripts/deploy.py"
             }
           ],
