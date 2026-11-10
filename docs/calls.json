@@ -1182,15 +1182,30 @@
         "server:nix/modules/home-deploy.nix",
         "server:scripts/deploy.py"
       ],
-      "chose": "Home's deploy unit runs as root and runs make as the checkout's owner through `runuser -u <user> -- env HOME=… XDG_RUNTIME_DIR=/run/home-deploy`.",
+      "chose": "Home's deploy unit runs as root, and runs make as the checkout's owner through runuser.",
       "options": [
         "root, with runuser for make",
         "the owner's user throughout, with STORAGE's deploy/ group-writable",
         "root throughout, with sops pointed at the owner's key"
       ],
-      "gray": "STORAGE is file_host's uid 10000, docker is root's, and the sops age key is the owner's. No convention covers a host unit needing both. The second widens STORAGE's permissions, and the third has root build envctl in the owner's checkout.",
-      "undo": "In nix/modules/home-deploy.nix, set User= in serviceConfig and drop --as-user; in scripts/deploy.py, drop runuser_prefix.",
+      "gray": "STORAGE belongs to file_host's uid 10000 and the sops age key is the owner's; no convention covers a host unit needing both. The second option widens STORAGE's permissions, and the third has root build envctl in the owner's checkout.",
+      "undo": "For the second option: in nix/modules/home-deploy.nix set User= to the owner and drop --as-user, drop runuser_prefix in scripts/deploy.py, and make ${STORAGE}/deploy group-writable for that user.",
       "refs": ["server#779", "#2833"]
+    },
+    {
+      "id": "C84",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["some-ui:packages/assurance/src/ledger.json"],
+      "chose": "The compat route and home's on-demand deploy get a family of their own, home-catches-up, with two objectives written from what server#779 does: home pulls only when asked and within its bounds (HD1), and a failed or stuck deploy reaches the owner (HD2).",
+      "options": [
+        "a family of its own, with new objectives",
+        "home-up's modules, as an exception to crosscutting, with the bounds as AV1 evidence",
+        "synchronous"
+      ],
+      "gray": "No family covered a module whose later outcome is a deploy. home-up is crosscutting, so no process may serve it, and the deploy's bounds are about wasted work, not uptime; synchronous is for routes that owe nothing later, and /compat owes a deploy. A new family is a promise the owner had not stated.",
+      "undo": "Remove the home-catches-up family and the home-deploy process's serves and witnesses, and place compat in home-up's modules.",
+      "refs": ["server#779", "#2833", "#2846"]
     }
   ]
 }

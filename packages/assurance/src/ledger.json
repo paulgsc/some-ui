@@ -1809,7 +1809,7 @@
         "server:infra/prometheus/rules/home.yml",
         "some-ui:apps/mailbox"
       ],
-      "modules": ["compat"],
+      "modules": [],
       "objectives": [
         {
           "id": "AV1",
@@ -1844,16 +1844,6 @@
               "class": "structural",
               "says": "make home-deploy puts the previous file_host image back when the new one exits, restarts or reads unhealthy, or is not ready within 360 s; skips an image that already failed; and never restores the database; tested by its self-test in Lint's Deploy script job (test_an_image_that_never_becomes_ready_ends_with_the_previous_one_serving, test_when_the_previous_image_fails_too_it_says_so_and_names_the_backup).",
               "ref": "server:scripts/deploy.py"
-            },
-            {
-              "class": "structural",
-              "says": "Home pulls a newer file_host only when a client asks GET /compat?needs=<epoch> for an epoch above the one it runs: one deploy at a time (the marker is linked exclusively and every ask while it waits reads in_flight), at least 10 minutes between pulls, 6 hours before pulling again for a need the last pull found nothing to serve, and never for a need more than 1000 epochs past the running one; tested (one_deploy_at_a_time, pulls_keep_their_gap, a_need_the_last_pull_could_not_meet_waits_six_hours, a_forged_need_past_the_ceiling_pulls_nothing).",
-              "ref": "server:apps/servers/file_host/src/deploy.rs"
-            },
-            {
-              "class": "structural",
-              "says": "home-deploy is a systemd path unit on ${STORAGE}/deploy/wanted with no timer: nothing on home polls for a newer image; the service it starts deploys only an image whose epoch is above the running one and records what it did in state.json; tested by deploy.py's --self-test (test_no_marker_no_pull, test_a_newer_epoch_is_deployed_and_recorded).",
-              "ref": "server:nix/modules/home-deploy.nix"
             }
           ],
           "tracked": "some-ui#2281",
@@ -1913,6 +1903,89 @@
           "watch": {
             "by": "alert",
             "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
+          },
+          "amendments": []
+        }
+      ]
+    },
+    {
+      "id": "home-catches-up",
+      "name": "Home catches up with the app",
+      "why": "An app built against a newer server than home runs needs home to update before it works fully. Home pulls a newer server only when the app asks for one, and a deploy that fails or never starts has to reach the owner.",
+      "paths": [
+        "server:apps/servers/file_host/src/handlers/compat.rs",
+        "server:apps/servers/file_host/src/deploy.rs",
+        "server:scripts/deploy.py",
+        "server:nix/modules/home-deploy.nix",
+        "server:infra/prometheus/rules/home.yml"
+      ],
+      "modules": ["compat"],
+      "objectives": [
+        {
+          "id": "HD1",
+          "kind": "RE3",
+          "property": "work",
+          "claim": "Home pulls a newer server only when the app asks for one, and never more than its bounds allow.",
+          "requirement": "Nothing on home pulls a newer server by itself: the on-demand deploy starts only when the app asks for a server newer than home runs. It runs one deploy at a time, pulls at most once every 10 minutes, waits 6 hours before pulling again for an app the last pull found nothing to serve, refuses an ask more than 1000 versions past the one it runs, and deploys only an image newer than the one running.",
+          "verdict": "holds",
+          "conclusion": "Each bound is tested on the server, and the unit that runs the deploy has no timer. Nothing in the app asks yet (some-ui#2843 adds that), so today home pulls nothing on demand.",
+          "proof": [
+            "server:apps/servers/file_host/src/deploy.rs#a_need_the_last_pull_could_not_meet_waits_six_hours",
+            "server:apps/servers/file_host/src/deploy.rs#a_forged_need_past_the_ceiling_pulls_nothing",
+            "server:apps/servers/file_host/src/deploy.rs#pulls_keep_their_gap",
+            "server:apps/servers/file_host/src/deploy.rs#asks_in_the_same_second_never_share_a_file",
+            "server:scripts/deploy.py#test_the_same_epoch_republished_is_not_deployed"
+          ],
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "One deploy at a time, at most one pull per 10 minutes, one per 6 hours for an app nothing published serves, and no pull for an ask past the ceiling; tested (one_deploy_at_a_time, pulls_keep_their_gap, a_need_the_last_pull_could_not_meet_waits_six_hours, a_forged_need_past_the_ceiling_pulls_nothing, the_marker_is_written_once_whoever_asks, asks_in_the_same_second_never_share_a_file; and a_newer_client_writes_the_marker_once_and_then_reads_in_flight in handlers/compat.rs).",
+              "ref": "server:apps/servers/file_host/src/deploy.rs"
+            },
+            {
+              "class": "structural",
+              "says": "The deploy puts up an image only when its version is newer than the one running; tested by its self-test in Lint's Deploy script job (test_a_newer_epoch_is_deployed_and_recorded, test_the_same_epoch_republished_is_not_deployed, test_an_image_whose_epoch_cannot_be_read_is_not_deployed).",
+              "ref": "server:scripts/deploy.py"
+            },
+            {
+              "class": "structural",
+              "says": "The deploy runs when the app's ask leaves its mark, and on nothing else: no timer starts it. This is read from the unit, not tested.",
+              "ref": "server:nix/modules/home-deploy.nix"
+            }
+          ],
+          "watch": {
+            "by": "dashboard",
+            "ref": "server:apps/servers/file_host/src/metrics/deploy.rs"
+          },
+          "amendments": []
+        },
+        {
+          "id": "HD2",
+          "kind": "OA6",
+          "property": "outcome",
+          "claim": "A deploy the app asked for that fails, or that never starts, reaches the owner.",
+          "requirement": "While home's server runs, an alert fires when a deploy the app asked for rolled back or failed in the last hour (DeployFailed), and when the app's ask has waited 30 minutes with no deploy answering it (DeployStuck); both are tested by promtool and sent to Slack as every home alert is. A deploy cut short before it records anything is reported as the server being down (FileHostDown) or as stuck.",
+          "verdict": "holds",
+          "conclusion": "Both alerts are tested, and they reach Slack by the route every home alert takes. While home's server is down nothing reads the deploy's record, and FileHostDown is what tells you.",
+          "proof": [
+            "server:infra/prometheus/rules/home.test.yml#a deploy that rolled back is DeployFailed for the hour after",
+            "server:infra/prometheus/rules/home.test.yml#a deploy-wanted marker unanswered for 30 minutes is DeployStuck"
+          ],
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "DeployFailed fires for the hour after a deploy rolled back or failed, and DeployStuck when the app's ask has waited 30 minutes unanswered; promtool tests both in CI.",
+              "ref": "server:infra/prometheus/rules/home.yml"
+            },
+            {
+              "class": "structural",
+              "says": "Home's server reads the deploy's record every 10 s and exports it, with how long the app's ask has waited, for those alerts to read.",
+              "ref": "server:apps/servers/file_host/src/metrics/deploy.rs"
+            }
+          ],
+          "watch": {
+            "by": "alert",
+            "ref": "server:infra/prometheus/rules/home.yml"
           },
           "amendments": []
         }
@@ -5018,14 +5091,14 @@
     },
     {
       "id": "home-deploy",
-      "name": "Home's on-demand deploy",
-      "why": "When a client was built against a newer server than home runs, home pulls a newer file_host, deploys it if its contract epoch is higher, and rolls back if it is not ready, so the client works without the owner deploying by hand. It is a systemd path unit and a oneshot service on home, outside compose (nix/modules/home-deploy.nix), running as root and running make as the checkout's owner through runuser (call C83); in home's compute it is Interactive (server:docs/home-compute.md, \"Classes\").",
-      "serves": [],
-      "witnesses": ["AV1"],
+      "name": "Home updates itself when the app needs it",
+      "why": "When the app was built against a newer server than home runs, home pulls a newer server, puts it up if it is newer, and rolls it back if it is not ready.",
+      "serves": ["home-catches-up"],
+      "witnesses": ["HD1", "HD2"],
       "segments": [
         {
           "id": "compat",
-          "name": "file_host answers GET /compat?needs=<epoch> and, when needs is above the running epoch within the bounds, writes ${STORAGE}/deploy/wanted. Ours, on home.",
+          "name": "Home's server answers the app's ask for a newer server and, within its bounds, leaves a mark that a deploy is wanted. Ours, on home.",
           "owner": "ours",
           "on": "home",
           "paths": [
@@ -5036,14 +5109,14 @@
         },
         {
           "id": "unit",
-          "name": "The path unit starts the oneshot service while the marker exists; the service runs scripts/deploy.py --on-demand as root, and make as the owner. Ours, on home's systemd.",
+          "name": "A systemd path unit starts the deploy while the mark is there (call C83). Ours, on home.",
           "owner": "ours",
           "on": "home",
           "paths": ["server:nix/modules/home-deploy.nix"]
         },
         {
           "id": "deploy",
-          "name": "Pull, read the image's epoch, deploy only a newer one, wait for it to be ready, roll back, record state.json and remove the marker. Ours, on home.",
+          "name": "Pull, put up only a newer server, wait for it to be ready, roll back, record what happened and clear the mark. Ours, on home.",
           "owner": "ours",
           "on": "home",
           "paths": ["server:scripts/deploy.py"]
@@ -5057,7 +5130,7 @@
         },
         {
           "id": "registry",
-          "name": "Docker Hub holds the published file_host images. Someone else's.",
+          "name": "Docker Hub holds the published server images. Someone else's.",
           "owner": "foreign",
           "on": "outside",
           "paths": []
@@ -5065,19 +5138,9 @@
       ],
       "signals": [
         {
-          "says": "Every /compat ask is counted by what home answered (compat_checks_total), and a marker still waiting is exported as its age (home_deploy_wanted_age_seconds); a client that never asks leaves nothing.",
+          "says": "Every ask is counted by what home answered, and what each deploy did (runs by outcome, pulls, bytes, the last run's time and exit) is exported every 10 s from the deploy's record; DeployFailed and DeployStuck tell the owner (HD2). It misses everything while home's server is down, and a deploy cut short before it records.",
           "status": "live",
           "ref": "server:apps/servers/file_host/src/metrics/deploy.rs"
-        },
-        {
-          "says": "file_host reads ${STORAGE}/deploy/state.json, which the deploy writes after each run, and exports it as home_deploy_* metrics: runs by outcome, pulls, bytes pulled, the last run's time and exit code.",
-          "status": "live",
-          "ref": "server:apps/servers/file_host/src/metrics/periodic.rs"
-        },
-        {
-          "says": "DeployFailed tells the owner when a deploy rolled back or failed in the last hour, and DeployStuck when a marker has waited 30 minutes unanswered (AV1).",
-          "status": "live",
-          "ref": "server:infra/prometheus/rules/home.yml"
         }
       ],
       "checks": []
