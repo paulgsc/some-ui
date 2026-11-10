@@ -1449,7 +1449,7 @@
           "claim": "Every check the server runs on a pull request can stop its merge.",
           "requirement": "main in the server requires one gate that waits on every pull request check, path-filtered ones such as Check some-ui against it included, and reads a skipped check as passed only where its paths did not change.",
           "verdict": "broken",
-          "conclusion": "main in the server now requires PR gate, which waits on every pull request check and fails if any fails, is cancelled or never appears, so a red Check some-ui against it, infra_ci or Assurance ledger now stops a merge; a job allowed to fail (deny's advisories, the client steps under client-breaking-route), a job skipped for any reason, and a pull request that edits its own gate still get through.",
+          "conclusion": "main in the server now requires PR gate, which waits on every pull request check and fails if any fails, is cancelled or never appears, so a red Check some-ui against it, infra_ci or Assurance ledger now stops a merge; a job allowed to fail (deny's advisories, the client steps under client-breaking-route), a job skipped for any reason, and a pull request that edits gate.yml still get through (gate-verdict.yml runs main's copy, so editing it does not).",
           "evidence": [
             {
               "class": "measured",
@@ -1458,7 +1458,7 @@
             },
             {
               "class": "structural",
-              "says": "PR gate (gate.yml, pr_gate.py) waits on every other check of the head commit, path-filtered ones included, and fails on any that fails or never appears.",
+              "says": "PR gate (pr_gate.py) is decided by short jobs: gate.yml's PR gate (open) on the pull request's own events, and gate-verdict.yml's PR gate (verdict) each time another check of the head commit finishes. It fails on any check that fails, is cancelled, takes over an hour, or never appears, and is pending, never green, while any is unfinished. A scheduled sweep every 15 minutes re-judges any gate still unfinished, so a check GitHub sends no event for can't leave it pending.",
               "ref": "server:scripts/pr_gate.py"
             },
             {
@@ -3528,7 +3528,20 @@
     {
       "store": "server:rust_week_sent",
       "class": "record",
-      "growth": "Per Rust Rounds week a paired phone sends (RR14): its answers as sent (each ticket's take id and when it was said, and the tickets passed over), <= SENT_CEILING = 16 KiB; one row per (subject, week), never updated (another body for the week is refused); append-only; leaves with the account.",
+      "growth": "Per Rust Rounds week a paired phone sends (RR14): its answers as sent (each ticket's take id and when it was said, and the tickets passed over), <= SENT_CEILING = 16 KiB; one row per (subject, week), never updated (another body for the week is refused); append-only; leaves with the account; no row is added after RR22 (paulgsc/some-ui#2832), whose drafts and finals are rust_week_draft and rust_week_final.",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:rust_week_draft",
+      "class": "cache",
+      "growth": "bounded: one row per (subject, Rust Rounds week not yet final): the phone's current draft of the week's Send (RR22), <= SENT_CEILING = 16 KiB, replaced by each newer draft before the week's due",
+      "horizon": "deleted in the transaction that writes the week's final to rust_week_final, at the first read after due, or with the account",
+      "family": "what-is-kept"
+    },
+    {
+      "store": "server:rust_week_final",
+      "class": "record",
+      "growth": "Per Rust Rounds week a paired phone sent a draft of (RR22): the draft standing at the week's due, as sent (each ticket's take id and when it was said, and the tickets passed over), <= SENT_CEILING = 16 KiB; one row per (subject, week), written once at the first read after due, never updated; append-only; leaves with the account.",
       "family": "what-is-kept"
     },
     {
