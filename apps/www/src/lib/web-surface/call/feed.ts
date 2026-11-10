@@ -2,6 +2,7 @@ import { createDataSource } from "@some-ui/fetch-kit"
 import type { CallIndex } from "@some-ui/video-render"
 
 import { DATA_MODE } from "@/lib/data-mode"
+import { PUBLIC_READ } from "@/lib/file-host-config"
 import { TESTING_DATA, testingSource } from "@/lib/testing-data"
 
 /**
@@ -42,6 +43,7 @@ export const essaySource = createDataSource<string, unknown>(
   { static: essayAddress, server: essayAddress },
   {
     mode: DATA_MODE,
-    fetchOptions: { credentials: "same-origin", responseAs: "json" },
+    // No cookie goes with it (LA4): the recorder answers it from the file.
+    fetchOptions: { ...PUBLIC_READ, responseAs: "json" },
   }
 )
