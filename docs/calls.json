@@ -919,6 +919,161 @@
       "gray": "The call's captions come from Kokoro's own word times, which an owner's take doesn't have. Whether home's transcriber keeps times is RR16-home's to settle, and the spread caption is something the owner sees in every essay.",
       "undo": "Change spreadWords in stills.ts, or have record:essay refuse a take with no .words.json (essayTakeFiles in essay.ts).",
       "refs": ["#2691"]
+    },
+    {
+      "id": "C60",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["server:apps/servers/file_host/src/mailbox/bell.rs"],
+      "chose": "Home counts the bell as dead after 90 seconds with no pong, ring or other frame, sending a ping every 30 seconds.",
+      "options": [
+        "90 seconds of silence",
+        "10 seconds after an unanswered ping"
+      ],
+      "gray": "The protocol agreed on #2833 allowed either.",
+      "undo": "Change `silence` in Timings::new in bell.rs.",
+      "refs": ["server#500", "server#499", "#2142", "#2833"]
+    },
+    {
+      "id": "C61",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["server:apps/servers/file_host/src/mailbox/bell.rs"],
+      "chose": "The reconnect backoff starts over only after a connection has held for 10 minutes, so a bell that connects and drops at once backs off to 5 minutes rather than costing a catch-up pass every second or two.",
+      "options": [
+        "start over after 10 minutes held",
+        "start over on every connect",
+        "start over after 60 seconds held"
+      ],
+      "gray": "server#500 asks for capped exponential backoff and a catch-up pass on every connect, but not when the backoff starts over, which sets MI6's worst case.",
+      "undo": "Change `steady` in Timings::new in bell.rs.",
+      "refs": ["server#500", "server#499", "#2142", "#2833"]
+    },
+    {
+      "id": "C62",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": [
+        "server:apps/servers/file_host/src/mailbox.rs",
+        "server:apps/servers/file_host/src/handlers"
+      ],
+      "chose": "Every route that files something for the mailbox wakes a pass when it adds a file: Jobs files, opened lessons, reflections, prompts, notes on an episode, and a transcriber pass that heard something. A file sent again unchanged wakes nothing.",
+      "options": [
+        "only what server#500 names (Jobs files, opened, transcripts)",
+        "every route that files for the mailbox"
+      ],
+      "gray": "server#500 lists three, but the others go out the same way, and the epic's done-when is about how soon what home puts reaches the mailbox.",
+      "undo": "Drop outbox.filed() from a handler.",
+      "refs": ["server#500", "server#499", "#2142", "#2833"]
+    },
+    {
+      "id": "C63",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["server:apps/servers/file_host/src/mailbox.rs"],
+      "chose": "A pass that folds several causes is counted and logged once, under the first of ring, connect, local and timer, and every pass restarts the backstop timer.",
+      "options": [
+        "count every cause a pass folds",
+        "count each pass once, by precedence"
+      ],
+      "gray": "server#500 asks for passes counted by cause without saying how folded causes count.",
+      "undo": "Change Wake::take and record_pass_cause in run_passes (mailbox.rs).",
+      "refs": ["server#500", "server#499", "#2142", "#2833"]
+    },
+    {
+      "id": "C64",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": [
+        "server:apps/servers/file_host/src/mailbox.rs",
+        "server:apps/servers/file_host/src/mailbox/bell.rs"
+      ],
+      "chose": "Home's backstop pass follows the bell: hourly while home holds the bell's connection, every 15 minutes while it doesn't, and no two timer or catch-up passes come closer than 15 minutes, so a flapping bell can't exceed an idle day's 96 passes.",
+      "options": [
+        "hourly always",
+        "every 15 minutes always",
+        "hourly while the bell is held, every 15 minutes while it isn't"
+      ],
+      "gray": "The owner chose an hourly backstop to stay under MI6. Hourly always would quietly break MI4's 20 minutes whenever the bell is down, and every 15 minutes always keeps MI6 at its bound, so the coordinator read the owner's choice as hourly while the bell carries the files.",
+      "undo": "Make Timings' interval a constant again (mailbox.rs, bell.rs).",
+      "refs": ["server#500", "#2833"]
+    },
+    {
+      "id": "C52",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["server:crates/db/rust_round/src/sent.rs"],
+      "chose": "Re-sent weeks go in a revisions table, rust_week_resend (rev from 2), beside an untouched rust_week_sent, with additive revision and sends fields.",
+      "options": [
+        "rebuild rust_week_sent with a revision column",
+        "a new side table for revisions"
+      ],
+      "gray": "The brief allowed a new table and a ledger entry but refused a reshape, and a side table fit append-only #2474.",
+      "undo": "Nothing to undo: C53 replaced it the same day, after the owner's draft and final decision, and it never merged.",
+      "refs": ["server#770", "#2832", "#2833"]
+    },
+    {
+      "id": "C53",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": [
+        "server:migrations/20261110000100_create_rust_week_draft_final.up.sql",
+        "server:migrations/20261110000100_create_rust_week_draft_final.down.sql",
+        "server:crates/db/rust_round/src/sent.rs",
+        "server:apps/servers/file_host/src/handlers/rust_week_record.rs",
+        "server:apps/servers/file_host/src/handlers/subjects.rs",
+        "server:crates/db/storage/src/kept.rs",
+        "server:crates/db/storage/src/subject.rs",
+        "server:apps/servers/file_host/src/routes/rust_rounds.rs",
+        "server:docs/identity.md"
+      ],
+      "chose": "A week has a draft and a final. rust_week_sent is frozen as RR14's archive and copied once into rust_week_draft, the current draft, replaced on each send (cache class); rust_week_final is the record, append-only and kept until the account ends. A week becomes final on the first read after its deadline, in one transaction, with no sweep and no grace. A send is identified by its `at` as an instant, sameness is a comparison of parsed values, and an older `at` gets 200 superseded.",
+      "options": [
+        "make rust_week_sent the finals table",
+        "finalize with a background sweep at the deadline",
+        "finalize after a grace window",
+        "draft and final, finalized on the first read after the deadline"
+      ],
+      "gray": "It trades RR14's \"kept once\" for the owner's \"only the deadline lock counts\" and adds a cache-class server store. Making rust_week_sent the finals table would have left the pre-deadline w46 row unreplaceable, so the final would silently be the stale send; a sweep adds a worker loop home doesn't need for determinism; and the owner said no to a grace window.",
+      "undo": "The down migration refuses once any final exists or any draft is not the seed copy. Before that, revert a714284 and run the down migration; rust_week_sent was never touched.",
+      "refs": ["server#770", "#2832", "#2833"],
+      "moves": "C52"
+    },
+    {
+      "id": "C54",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": [
+        "server:crates/db/rust_round/src/sent.rs",
+        "server:apps/servers/file_host/src/handlers/rust_week_record.rs"
+      ],
+      "chose": "Both races Codex found in server#770 are fixed in the pull request: `now` is read after the IMMEDIATE lock, a send to a week already final is refused (422), and the standing is read as one UNION statement (sent.rs is_final and standing, rust_week_record.rs put_sent).",
+      "options": [
+        "fix both races in the pull request",
+        "file them as an issue"
+      ],
+      "gray": "The races were narrow, but either could silently drop an acknowledged send or blank the record.",
+      "undo": "Revert d9c4569's part of the squash.",
+      "refs": ["server#770", "#2832", "#2833"]
+    },
+    {
+      "id": "C66",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": [
+        "server:.github/workflows/gate-verdict.yml",
+        "server:scripts/pr_gate.py",
+        "server:docs/assurance.md"
+      ],
+      "chose": "gate-verdict.yml's sweep can be run by hand: a workflow_dispatch with empty inputs runs the sweep, and one with pr and head_sha judges that head as before. Both inputs become optional, defaulting to empty.",
+      "options": [
+        "wait for the cron and prove the sweep only on its schedule",
+        "a separate workflow for a manual sweep",
+        "a dispatch with empty inputs runs the sweep"
+      ],
+      "gray": "It adds a second, manual trigger to the gate's machinery, so anyone with write access can start a sweep. That is harmless, since a sweep only re-judges unfinished gates inside each head's concurrency group, but it is new surface. It was also the only way to prove the sweep end to end while the cron wasn't firing (server#772).",
+      "undo": "Make pr and head_sha required again, set the sweep job's `if:` back to `github.event_name == 'schedule'` and the verdict job's to `github.event_name != 'schedule'`, and drop the routing test's dispatch-without-inputs case.",
+      "refs": ["server#772", "server#773", "server#762"]
     }
   ]
 }

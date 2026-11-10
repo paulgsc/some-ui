@@ -4,7 +4,7 @@
     {
       "id": "routine-to-home",
       "name": "What the routines make reaches home",
-      "why": "The morning Jobs run and the reflections routine put their files in the mailbox; home reads them every 15 minutes and keeps a checked copy, which is what the phone shows.",
+      "why": "The morning Jobs run and the reflections routine put their files in the mailbox; home reads them as soon as the mailbox rings it over a connection home holds open, and at least hourly while it does or every 15 minutes while it does not, and keeps a checked copy, which is what the phone shows.",
       "paths": [
         "some-ui:apps/mailbox",
         "server:apps/servers/file_host/src/mailbox",
@@ -78,23 +78,23 @@
           "kind": "OA6",
           "property": "outcome",
           "claim": "If the poller stops while home's server runs, you are told within 20 minutes.",
-          "requirement": "While file_host answers Prometheus, an alert fires when no pass has started within the interval plus the pass budget plus 60 seconds (900 + 120 + 60 at today's settings), and when the metric itself is missing; it reaches the owner within 20 minutes of the last pass start, Prometheus's 15 s evaluation and Grafana's 1 min check included, and its delivery is tested. A file_host that stops answering is FileHostDown's to report.",
+          "requirement": "While file_host answers Prometheus, an alert fires when the pass loop has not said it is alive within its heartbeat plus the pass budget plus 60 seconds (60 + 120 + 60 = 240 s), when no pass has started within the backstop interval plus the pass budget plus 60 seconds (900 + 120 + 60 = 1,080 s while home does not hold the mailbox's bell; 3,600 + 120 + 60 while it does, when every put rings home and an hour without a pass is normal), and when the metric itself is missing; it reaches the owner within 20 minutes of the poller stopping, Prometheus's 15 s evaluation and Grafana's 1 min check included, and its delivery is tested. A file_host that stops answering is FileHostDown's to report.",
           "bound": {
             "value": 1200,
             "unit": "seconds",
             "tighter": "lower"
           },
           "verdict": "holds",
-          "conclusion": "While home's server runs, Slack tells you within about 19 minutes of the poller's last pass, inside the 20 promised; a server that stops answering is its own alert, and Grafana itself is not yet watched.",
+          "conclusion": "While home's server runs, Slack tells you within about 5 minutes if the poller's loop stops or a pass hangs, and within about 19 minutes if it stops passing while the bell is down, inside the 20 promised; a server that stops answering is its own alert, and Grafana itself is not yet watched.",
           "evidence": [
             {
               "class": "structural",
-              "says": "MailboxPollerStale fires when no pass has started for the interval plus the budget plus 60 s (1080 s), and MailboxPollerMetricsMissing when the poller is on with its stamp gone; promtool tests both in CI.",
+              "says": "MailboxPollerStale fires when the loop's heartbeat (mailbox_poll_alive_timestamp_seconds, stamped every minute while idle and after each pass, never during one) is 240 s old, or when no pass has started for the current interval plus the budget plus 60 s (mailbox_poll_interval_seconds: 900 s while the bell is not held, 3,600 s while it is; paulgsc/server#500); MailboxPollerMetricsMissing when the poller is on with its stamp gone; MailboxBellDown when home has held no bell for 30 minutes. promtool tests each in CI.",
               "ref": "server:infra/prometheus/rules/home.yml"
             },
             {
               "class": "derived",
-              "says": "Worst case while file_host answers: the rule fires at 1080 s, Prometheus evaluates within 15 s and Grafana's rule runs within 60 s, about 1155 s in all. The promtool tests evaluate once a minute, so they do not prove the seconds.",
+              "says": "Worst case while file_host answers: a dead loop or a hung pass fires at 240 s; a live loop that never passes fires at 1,080 s while the bell is down, as before the bell. Prometheus evaluates within 15 s and Grafana's rule runs within 60 s: about 315 s and 1,155 s in all. With the bell held, a loop that is alive but never passes is the timer alone failing while rings still run passes, and is told at 3,780 s; the heartbeat proves the loop alive meanwhile. The promtool tests evaluate once a minute, so they do not prove the seconds.",
               "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
             },
             {
@@ -115,7 +115,8 @@
           ],
           "proof": [
             "server:infra/prometheus/rules/home.test.yml#MailboxPollerStale",
-            "server:infra/prometheus/rules/home.test.yml#MailboxPollerMetricsMissing"
+            "server:infra/prometheus/rules/home.test.yml#MailboxPollerMetricsMissing",
+            "server:infra/prometheus/rules/home.test.yml#MailboxBellDown"
           ],
           "watch": {
             "by": "alert",
@@ -127,6 +128,12 @@
               "change": "The claim covers a poller that stops while home's server runs, and the bound is 20 minutes (1200 s), up from 18 (1080 s), now including delivery; the alert still fires at 1080 s, and a server that stops answering is FileHostDown's to report.",
               "why": "A message lands up to about 75 s after the rule fires (Prometheus every 15 s, Grafana every minute), so 18 minutes could hold only by cutting the interval, the 120 s pass budget or the 60 s slack; a dead server leaves the rule no data, and FileHostDown reports it within about 3.5 minutes. The owner chose the wider bound and the narrower scope over faster rules: stronger reliability waits on a real need.",
               "decision": "https://github.com/paulgsc/server/issues/525#issuecomment-6514571124"
+            },
+            {
+              "on": "2026-11-10",
+              "change": "The poller is also watched by its heartbeat (240 s), and the no-pass check follows the backstop: 1,080 s while the bell is down, 3,780 s while it is held.",
+              "why": "paulgsc/server#500 (MBP2): the backstop is hourly while the mailbox's bell is held (owner, 2026-11-10) and 15 minutes while it is not (C64), so the claim's 20 minutes holds in both modes.",
+              "decision": "https://github.com/paulgsc/some-ui/issues/2833#issuecomment-6757266130"
             }
           ]
         },
@@ -147,6 +154,11 @@
             {
               "class": "unknown",
               "says": "No metric records the age of the oldest file the mailbox holds that home has not kept."
+            },
+            {
+              "class": "derived",
+              "says": "While home holds the mailbox's bell, a put rings home and a pass keeps the file within seconds; while it does not, the backstop passes every 15 minutes (mailbox::UNHELD, C64), so a file waits at most 15 minutes plus a pass. Nothing yet measures the wait.",
+              "ref": "server:apps/servers/file_host/src/mailbox.rs"
             }
           ],
           "tracked": "server#525",
@@ -197,7 +209,7 @@
           "evidence": [
             {
               "class": "derived",
-              "says": "96 passes a day × 5 folder listings (brief, scene, drama, run, leetype) = 480; with archiving, + 10 wanted listings + 10 archive listings = 25 a pass, 2,400 a day. Filing LeetType logs reads home's database only. Home's index (index) adds no listing: archiving walks every folder but it (ARCHIVES), the routine's backfill rides brief, which a pass lists anyway, and with no files home computes no index. Once it holds some, it puts one only when a file it counts arrives or an open pick lapses (the index's validThrough), never for the day turning alone, so a day with no arrival and no lapse is exactly 2,400; the day a pick lapses adds one put, which is work, not idle (paulgsc/server#509). Written reflections (reflection) add no request either: home puts each when the phone sends it, which is work, never lists its asks (the routine cannot ask one back, apps/mailbox ASKED), and lists its live files only once a reflection it filed has been in the mailbox for MAILBOX_ARCHIVE_DAYS and is not yet archived, which it reads from its own tables (mailbox_repo::filed_due), so a pass with nothing to do is still 25 requests (paulgsc/some-ui#2178). Drama prompts (prompt) are the same, by the same tables (mailbox_repo::filed_due, unanswered_archives) (paulgsc/some-ui#2179). The reflections routine's index (index-reflections-*) adds no listing either: home computes it from its own tables (mailbox_repo::reflections_inputs) after each pass, and puts one only when something it counts arrives or leaves (a scene, drama, written reflection, drama prompt, list of opened lessons, reflection or scene voice note or its transcript) or a moment it carries passes (its validUntil: a group of reflections settling two hours after its newest, a reflection's or prompt's two-day wait for a voice note ending, a batch of lessons leaving the unopened window). Each such moment is owed to a record that arrived, so it adds one put on that pass, which is work, not idle, and a pass with nothing new and no moment passed is still 25 requests (an_idle_pass_makes_twenty_five_requests_and_none_reaches_the_index; paulgsc/server#509). The build-journal session's lists of the takes Drive holds add no listing either: they live in brief (drive-takes-<stamp>.json), which a pass lists anyway, and home gets one only when a new one is listed, which is work, not idle; archiving already walks brief (paulgsc/some-ui#2401).",
+              "says": "Hourly while home holds the mailbox's bell, every 15 minutes while it doesn't (mailbox::INTERVAL and mailbox::UNHELD; the owner's decision of 2026-11-10 and C64, paulgsc/server#500), and no two timer or catch-up passes closer than 15 minutes, so a reconnect's catch-up pass waits for that. A pass is 5 folder listings (brief, scene, drama, run, leetype); with archiving, + 10 wanted listings + 10 archive listings = 25. A bell down all day is 96 passes, 480 requests (2,400 with archiving), exactly as before the bell. A bell held all day is 24 passes, 120 (600), plus the upgrade request per reconnect. A day is never more than the 96 passes of a bell that is down: a reconnect's catch-up pass comes no sooner than 15 minutes after the last pass (C64), and only a ring or a file filed, which are work, not idle, runs a pass sooner. The bell's ping is auto-responded and costs no request. Filing LeetType logs reads home's database only. Home's index (index) adds no listing: archiving walks every folder but it (ARCHIVES), the routine's backfill rides brief, which a pass lists anyway, and with no files home computes no index. Once it holds some, it puts one only when a file it counts arrives or an open pick lapses (the index's validThrough), never for the day turning alone, so a day with no arrival and no lapse is exactly 2,400; the day a pick lapses adds one put, which is work, not idle (paulgsc/server#509). Written reflections (reflection) add no request either: home puts each when the phone sends it, which is work, never lists its asks (the routine cannot ask one back, apps/mailbox ASKED), and lists its live files only once a reflection it filed has been in the mailbox for MAILBOX_ARCHIVE_DAYS and is not yet archived, which it reads from its own tables (mailbox_repo::filed_due), so a pass with nothing to do is still 25 requests (paulgsc/some-ui#2178). Drama prompts (prompt) are the same, by the same tables (mailbox_repo::filed_due, unanswered_archives) (paulgsc/some-ui#2179). The reflections routine's index (index-reflections-*) adds no listing either: home computes it from its own tables (mailbox_repo::reflections_inputs) after each pass, and puts one only when something it counts arrives or leaves (a scene, drama, written reflection, drama prompt, list of opened lessons, reflection or scene voice note or its transcript) or a moment it carries passes (its validUntil: a group of reflections settling two hours after its newest, a reflection's or prompt's two-day wait for a voice note ending, a batch of lessons leaving the unopened window). Each such moment is owed to a record that arrived, so it adds one put on that pass, which is work, not idle, and a pass with nothing new and no moment passed is still 25 requests (an_idle_pass_makes_twenty_five_requests_and_none_reaches_the_index; paulgsc/server#509). The build-journal session's lists of the takes Drive holds add no listing either: they live in brief (drive-takes-<stamp>.json), which a pass lists anyway, and home gets one only when a new one is listed, which is work, not idle; archiving already walks brief (paulgsc/some-ui#2401).",
               "ref": "server:apps/servers/file_host/src/mailbox/pass.rs"
             }
           ],
@@ -211,6 +223,12 @@
               "change": "The idle bound is 480 mailbox requests a day without archiving and 2,400 with it, up from 384 and 1,920.",
               "why": "paulgsc/server#583 (some-ui#2026, #2027) has home read the leetype folder, so an idle pass lists five folders, and adds leetype and leetype-log to the ten folders archiving walks for asks and old files: 5 + 10 + 10 = 25 listings a pass, 96 passes a day. The owner chose the higher bound: \"yes, raise the bound to 2,400\".",
               "decision": "https://github.com/paulgsc/some-ui/pull/2338#issuecomment-6536715212"
+            },
+            {
+              "on": "2026-11-10",
+              "change": "The backstop is hourly while the mailbox's bell is held and 15 minutes while it is not, never closer; the idle bound stays 2,400, a bell-down day's figure.",
+              "why": "paulgsc/server#500 (MBP2); the owner chose the hourly backstop, and C64 keeps 15 minutes while the bell is down so MI3 and MI4 hold.",
+              "decision": "https://github.com/paulgsc/some-ui/issues/2833#issuecomment-6757266130"
             }
           ]
         },
@@ -4260,7 +4278,7 @@
     {
       "id": "mailbox-passes",
       "name": "Home reads the mailbox",
-      "why": "The routines put their files in the Jobs mailbox, a Cloudflare Worker; every 15 minutes home reads them, keeps a checked copy, archives what has sat a while and puts back what a routine asks for.",
+      "why": "The routines put their files in the Jobs mailbox, a Cloudflare Worker; home reads them as soon as the mailbox rings it over a connection home holds open, and at least hourly while it does or every 15 minutes while it does not, keeps a checked copy, archives what has sat a while and puts back what a routine asks for.",
       "serves": ["routine-to-home", "archive-restore"],
       "witnesses": ["MI1", "MI2", "MI3", "MI4"],
       "segments": [
@@ -4280,7 +4298,7 @@
         },
         {
           "id": "internet",
-          "name": "Home reaches the mailbox over the internet.",
+          "name": "Home reaches the mailbox over the internet, and holds a connection open to its bell.",
           "owner": "network",
           "on": "between",
           "paths": []
@@ -4295,9 +4313,14 @@
       ],
       "signals": [
         {
-          "says": "Each pass stamps when it started and counts its failures by kind, and Slack is told within 20 minutes if passes stop while home runs (MI3).",
+          "says": "The pass loop says it is alive every minute and each pass stamps when it started and counts its failures by kind; Slack is told within 5 minutes if the loop stops or a pass hangs, and within 20 if passes stop while the bell is down (MI3).",
           "status": "live",
           "ref": "server:apps/servers/file_host/src/metrics/mailbox.rs"
+        },
+        {
+          "says": "Whether home holds its connection to the mailbox's bell, why each pass ran (ring, connect, local, timer), rings by folder and bell failures by kind, on the MAILBOX dashboard's bell row; Slack is told after 30 minutes without the bell (MailboxBellDown), and every file still arrives on the 15-minute backstop.",
+          "status": "live",
+          "ref": "server:apps/servers/file_host/src/mailbox/bell.rs"
         }
       ],
       "checks": []
