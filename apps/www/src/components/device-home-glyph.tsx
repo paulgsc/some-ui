@@ -37,6 +37,7 @@ import {
   askLane,
   useHandedLane,
   useHomePull,
+  useHomeServes,
   useLaneHome,
   useLaneView,
 } from "@/lib/home-link/lanes"
@@ -214,10 +215,12 @@ const VoiceWatch = (): null => {
  * so what this phone keeps goes home from any wing while the app is open
  * and the phone is paired (LA15), and on a pull (`useHomePull`, PULL3).
  * aph's lane runs while aph's screens are mounted, since only they may hand
- * its store in.
+ * its store in. It also asks whether home works with this build
+ * (`useHomeServes`, #2843), which every lane's mark then says first.
  */
 export const HomeLanes = (): JSX.Element => {
   useHomePull()
+  useHomeServes()
   const aph = useHandedLane("aph")
   return (
     <>

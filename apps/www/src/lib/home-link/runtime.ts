@@ -13,7 +13,8 @@
  *   (LA15), or `keep`, which `lib/home-link/routine` calls for Korean's
  *   look at the routine's files, and `lib/home-link/heard`, which reads
  *   home's words for an idea answer's take while the idea screen shows it
- *   (MIC10). Creating the runtime and `load` read only the phone's own
+ *   (MIC10), or `look`, which `lib/home-link/compat-read` calls for whether
+ *   home serves this build (`./serves`, #2843). Creating the runtime and `load` read only the phone's own
  *   record; the one read on a timer is that last one, bounded by its screen.
  * - **No retry.** A failed request is said once and left; the next tap, or
  *   the drain's next ask (LA15), is the next try.
@@ -201,6 +202,18 @@ export type HomeLink = {
   drain: <T>(
     run: (send: HomeCall) => Promise<T>
   ) => Promise<SyncOutcome<T> | null>
+  /**
+   * One `GET` of `path` at the paired home's own address, outside the API
+   * and without the credential: home's word on itself, which it answers
+   * anyone (`/compat`, `./compat-read`). Goes as a screen's read does, beside
+   * a drain run; `null` when unpaired or busy.
+   */
+  look: (path: string) => Promise<SyncOutcome<HomeAnswer> | null>
+  /**
+   * Calls `listener` each time a request with the credential is answered
+   * not found (`./serves`); returns an unsubscribe.
+   */
+  onMissing: (listener: () => void) => () => void
   /** Stops the person's sync, send or read. */
   stop: () => void
 }
@@ -215,6 +228,7 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
   // finds home no longer holds it, or finds no record left to send.
   let toldBefore = false
   const listeners = new Set<() => void>()
+  const missingListeners = new Set<() => void>()
 
   const dispatch = (event: HomeLinkEvent): void => {
     const next = step(state, event)
@@ -414,6 +428,11 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
           token: pairing.token,
           ...(body === undefined ? {} : { body }),
           ...(range === undefined ? {} : { range }),
+        }).then((answer) => {
+          if (answer.status === 404) {
+            for (const listener of missingListeners) listener()
+          }
+          return answer
         })
       }
       return run(send)
@@ -514,6 +533,25 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       run: (send: HomeCall) => Promise<T>
     ): Promise<SyncOutcome<T> | null> {
       return credentialed("person", { type: "keepStarted" }, run)
+    },
+
+    look(path: string): Promise<SyncOutcome<HomeAnswer> | null> {
+      return work("person", { type: "keepStarted" }, async () => {
+        const pairing = await readPairing()
+        if (pairing === null) throw new Error("this phone's pairing is gone")
+        if (!path.startsWith("/")) throw new Error(`not a path: ${path}`)
+        return ask("person", {
+          method: "GET",
+          url: new URL(path, pairing.base).href,
+        })
+      })
+    },
+
+    onMissing(listener): () => void {
+      missingListeners.add(listener)
+      return (): void => {
+        missingListeners.delete(listener)
+      }
     },
 
     async drain<T>(

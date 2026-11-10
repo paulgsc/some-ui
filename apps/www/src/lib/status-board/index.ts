@@ -94,6 +94,9 @@ export type BoardRow = {
 
 const LANE_NEEDS: Readonly<Record<How, Need>> = {
   current: "fine",
+  updating: "moving",
+  "not-yet": "watch",
+  "too-old": "you",
   waiting: "moving",
   sending: "moving",
   "no-answer": "watch",

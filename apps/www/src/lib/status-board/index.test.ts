@@ -42,6 +42,9 @@ describe("what each mark asks of its person", () => {
     ])
     expect(Object.fromEntries(asks)).toEqual({
       current: "fine",
+      updating: "moving",
+      "not-yet": "watch",
+      "too-old": "you",
       waiting: "moving",
       sending: "moving",
       "no-answer": "watch",

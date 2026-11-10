@@ -26,7 +26,12 @@ import type {
   LaneId,
   LaneReading,
 } from "@/lib/home-link/lanes"
-import { askLane, laneReading, useLaneView } from "@/lib/home-link/lanes"
+import {
+  askLane,
+  laneReading,
+  useLaneView,
+  useServes,
+} from "@/lib/home-link/lanes"
 import { practiceLane } from "@/lib/home-link/practice"
 import { rustRoundsLane } from "@/lib/home-link/rust-rounds"
 import { useUnsendable, voiceLane } from "@/lib/home-link/voice"
@@ -66,7 +71,7 @@ const PAGES: Readonly<Record<LaneId, BoardPage>> = {
  * own screens are open, so there is no run here to tell.
  */
 function useAphReading(): LaneReading {
-  return laneReading("aph", NO_COUNTS, INITIAL_KEPT, useHomeLink())
+  return laneReading("aph", NO_COUNTS, INITIAL_KEPT, useHomeLink(), useServes())
 }
 
 /**

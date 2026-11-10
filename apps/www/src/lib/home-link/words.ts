@@ -19,6 +19,7 @@ import type { ClearEnd } from "./clear"
 import type { KeptState } from "./kept-model"
 import type { LaneCounts, LaneId, LaneKind } from "./lanes"
 import type { LastRead } from "./routine-model"
+import type { Serves } from "./serves-model"
 import type { LetGoEnd, LetGoPromise } from "./study-let-go"
 
 /** One row of a lane's sheet: what one kind is called, and one of it. */
@@ -409,6 +410,8 @@ export type LaneFacts = LaneCounts & {
   /** The phone is paired with home, so the lane drains. */
   paired: boolean
   run: KeptState
+  /** Whether home works with this version of the app (`./serves-model`). */
+  serves: Serves | null
 }
 
 export type LaneView = {
@@ -485,6 +488,32 @@ export function laneView(words: LaneWords, facts: LaneFacts): LaneView {
     return some
       ? show("partly", null, "Partly on home", words.partly)
       : show("phone", null, "Phone only", words.phoneOnly)
+  }
+
+  // Nothing goes properly until home works with this version (#2843).
+  if (facts.serves === "updating") {
+    return show(
+      "kept",
+      "updating",
+      "Home updating",
+      "Home is updating to work with this version of the app."
+    )
+  }
+  if (facts.serves === "not-yet") {
+    return show(
+      "kept",
+      "not-yet",
+      "Not yet",
+      "Home can't work with this version of the app yet."
+    )
+  }
+  if (facts.serves === "too-old") {
+    return show(
+      "kept",
+      "too-old",
+      "Update the app",
+      "This app is older than home. Install the newest version."
+    )
   }
 
   const later =
