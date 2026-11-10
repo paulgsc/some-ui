@@ -800,7 +800,7 @@
         "server:apps/servers/file_host/src/mailbox.rs",
         "server:apps/servers/file_host/src/mailbox/bell.rs"
       ],
-      "chose": "Home's backstop pass follows the bell: hourly while home holds the bell's connection, every 15 minutes while it doesn't.",
+      "chose": "Home's backstop pass follows the bell: hourly while home holds the bell's connection, every 15 minutes while it doesn't, and no two timer or catch-up passes come closer than 15 minutes, so a flapping bell can't exceed an idle day's 96 passes.",
       "options": [
         "hourly always",
         "every 15 minutes always",
