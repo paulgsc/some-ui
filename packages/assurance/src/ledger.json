@@ -1834,6 +1834,16 @@
               "class": "structural",
               "says": "/ready answers ready, degraded or unavailable: the status a heartbeat would carry.",
               "ref": "server:apps/servers/file_host/src/handlers/readiness.rs"
+            },
+            {
+              "class": "structural",
+              "says": "file_host applies its pending migrations as it starts, after a verified VACUUM INTO backup (integrity_check ok, the same applied count), and exits rather than serve a schema half applied.",
+              "ref": "server:apps/servers/file_host/src/migrate.rs"
+            },
+            {
+              "class": "structural",
+              "says": "make home-deploy puts the previous image back when the new one is not healthy within 300 s, and never restores the database.",
+              "ref": "server:scripts/deploy.py"
             }
           ],
           "tracked": "some-ui#2281",
