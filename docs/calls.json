@@ -1173,6 +1173,39 @@
       "gray": "The owner's correction asked for no polling and nothing beyond pulling the image; the coordinator asked to drop the fast-forward unless the on-demand path truly needs it. Auto-pulling main also runs main's compose and sops changes on home unreviewed by anyone there. No convention covers it.",
       "undo": "Add a fast-forward step to scripts/deploy.py's deploy() before the pull (an earlier rehearsed version had update_checkout), and drop CHECKOUT_HINT.",
       "refs": ["server#776", "#2833"]
+    },
+    {
+      "id": "C83",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": [
+        "server:nix/modules/home-deploy.nix",
+        "server:scripts/deploy.py"
+      ],
+      "chose": "Home's deploy unit runs as root, and runs make as the checkout's owner through runuser.",
+      "options": [
+        "root, with runuser for make",
+        "the owner's user throughout, with STORAGE's deploy/ group-writable",
+        "root throughout, with sops pointed at the owner's key"
+      ],
+      "gray": "STORAGE belongs to file_host's uid 10000 and the sops age key is the owner's; no convention covers a host unit needing both. The second option widens STORAGE's permissions, and the third has root build envctl in the owner's checkout.",
+      "undo": "For the second option: in nix/modules/home-deploy.nix set User= to the owner, set Environment=XDG_RUNTIME_DIR=/run/home-deploy (the unit's RuntimeDirectory, then owned by that user), and drop --as-user; drop runuser_prefix in scripts/deploy.py; and make ${STORAGE}/deploy group-writable for that user.",
+      "refs": ["server#779", "#2833"]
+    },
+    {
+      "id": "C84",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["some-ui:packages/assurance/src/ledger.json"],
+      "chose": "The compat route and home's on-demand deploy get a family of their own, home-catches-up, with two objectives written from what server#779 does: home pulls only when asked and within its bounds (HD1), and a failed or stuck deploy reaches the owner (HD2).",
+      "options": [
+        "a family of its own, with new objectives",
+        "home-up's modules, as an exception to crosscutting, with the bounds as AV1 evidence",
+        "synchronous"
+      ],
+      "gray": "No family covered a module whose later outcome is a deploy. home-up is crosscutting, so no process may serve it, and the deploy's bounds are about wasted work, not uptime; synchronous is for routes that owe nothing later, and /compat owes a deploy. A new family is a promise the owner had not stated.",
+      "undo": "Retire HD1 and HD2 with an amendment naming the owner's decision, move compat to home-up's modules, and drop HD1 and HD2 from the home-deploy process's witnesses; it still serves home-catches-up, which keeps the retired objectives.",
+      "refs": ["server#779", "#2833", "#2846"]
     }
   ]
 }
