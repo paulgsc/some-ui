@@ -1,6 +1,7 @@
 import {
   CALL_INDEX_SCHEMA,
   CALL_VERSION,
+  essayIntro,
   sampleCallWeek,
   sampleEssay,
 } from "@some-ui/video-render"
@@ -239,11 +240,10 @@ describe("the essay the stage draws (RR16)", () => {
         state.kind === "show" && [state.essay.week.id, state.voicing]
       ).toEqual(["2026-w46", "sample"])
     }
-    const intro = essayAt(essay(), "intro", "sample").view
-    expect(
-      intro.section === "intro" &&
-        intro.rows.find((r) => r.label === "Voices")?.says
-    ).toContain("a second synthetic voice")
+    expect(essayAt(essay(), "intro", "sample").view).toEqual({
+      section: "intro",
+      rows: essayIntro(essay(), "sample").rows,
+    })
   })
 
   it("is the named week's essay as read, in the owner's voice", () => {

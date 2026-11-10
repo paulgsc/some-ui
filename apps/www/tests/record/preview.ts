@@ -18,8 +18,7 @@
  * Each template's sample is in code: the weekly call's sample week, Playoff
  * Delta's sample season, its legend or its newest week, said from the
  * sample's fill (`sampleFill` in `@some-ui/playoff-delta`), and the Rust
- * Rounds essay's sample essay, its answers read by a second synthetic voice
- * since no owner said them (C76), written as `<out>/essay.json`.
+ * Rounds essay's sample essay (`Voicing`), written as `<out>/essay.json`.
  */
 
 import { parseArgs } from "node:util"

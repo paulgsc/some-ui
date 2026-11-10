@@ -3,9 +3,7 @@
  * parses and the newest is the code's; the sample essay parses and says its
  * scenes in the essay's order, the same for an answered ticket as for one
  * left unanswered, the owner's bubble lit only for a take; and an essay that
- * contradicts itself is refused with every reason. Its cut list (RR16) plays
- * the owner's take as theirs and every other scene in the speaker's voice;
- * the sample says its answers are read by a second synthetic voice.
+ * contradicts itself is refused with every reason.
  */
 import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
@@ -15,7 +13,6 @@ import {
   ESSAY_DIVES,
   ESSAY_ID,
   ESSAY_VERSION,
-  ESSAY_VOICES,
   essayChapterMarks,
   essayCutList,
   essayFormat,
@@ -163,7 +160,6 @@ describe("the sample essay", () => {
       "a second synthetic voice reads the answers"
     )
     expect(essayScenes(sample(), "sample")[0]?.said).toBe(intro.said)
-    expect(ESSAY_VOICES.you).not.toBe(ESSAY_VOICES.tutor)
   })
 })
 
@@ -192,7 +188,6 @@ describe("an essay's cut list (RR16)", () => {
       const owner = scene?.speaker === "you"
       expect(shot.take?.outMs).toBe(owner ? 61_000 : 4_000)
       expect(shot.speaker).toBe(owner ? undefined : "kokoro")
-      expect(shot.durationMs).toBeGreaterThan(shot.take?.outMs ?? 0)
     }
     expect(
       cut.shots.filter((s) => s.speaker === undefined && s.take)

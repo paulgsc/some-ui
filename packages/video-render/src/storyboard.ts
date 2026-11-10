@@ -138,6 +138,33 @@ export type BoardScene =
       readonly said?: string
     }
 
+/**
+ * A template's scene as a storyboard frame's source: a chapter slide, the
+ * locked intro or a brand slide by its section, any other as a section,
+ * as the call's and the essay's scenes are both laid out.
+ */
+export function boardSceneOf(scene: {
+  readonly section: string
+  readonly id: string
+  readonly said: string
+  readonly of?: string
+}): BoardScene {
+  if (scene.section === "chapter" && scene.of !== undefined)
+    return { kind: "chapter", id: scene.id, of: scene.of, said: scene.said }
+  if (
+    scene.section === "intro" ||
+    scene.section === "brand-in" ||
+    scene.section === "brand-out"
+  )
+    return { kind: scene.section, id: scene.id, said: scene.said }
+  return {
+    kind: "section",
+    id: scene.id,
+    scene: scene.section,
+    said: scene.said,
+  }
+}
+
 /** The format's scene `id`. */
 function formatScene(format: Format, id: string): Format["scenes"][number] {
   const scene = format.scenes.find((s) => s.id === id)

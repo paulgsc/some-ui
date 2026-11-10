@@ -12,7 +12,7 @@ import {
   estimatedCallMs,
   sampleCallWeek,
 } from "@video-render/call"
-import { essayScenes, essayStoryboard, sampleEssay } from "@video-render/essay"
+import { essayStoryboard } from "@video-render/essay"
 import { readFormat, readSeries, TEMPLATES_DIR } from "@video-render/node"
 import { framesInTime, parseStoryboard } from "@video-render/storyboard"
 import {
@@ -87,15 +87,8 @@ describe("a template's storyboard", () => {
 })
 
 describe("the essay's storyboard", () => {
-  it("is its sample essay, a frame per scene, voiced as the sample", () => {
-    const essay = sampleEssay()
-    if (!essay.ok) throw new Error(essay.problems.join("; "))
-    const board = templateStoryboard("rust-essay")
-    expect(board).toEqual(essayStoryboard())
-    expect(parseStoryboard(board).ok).toBe(true)
-    expect(board.frames.map((f) => f.id)).toEqual(
-      essayScenes(essay.value, "sample").map((s) => s.id)
-    )
-    expect(board.frames[0]?.said).toContain("This is a sample")
+  it("is its sample essay's, pinned as the code makes it", () => {
+    // The pin is the code's; the phone reads the pin, since it can't carry essay.ts.
+    expect(templateStoryboard("rust-essay")).toEqual(essayStoryboard())
   })
 })

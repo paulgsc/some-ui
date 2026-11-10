@@ -22,26 +22,21 @@
  *
  * It writes `<out>/<week>/essay.mp4`, with `cut-list.json`, `essay.json` and
  * `description.txt` (its chapters) beside it. The rest is `record:call`'s
- * (`./call` says how): `--voices none` leaves the tutor silent, each scene
- * held for its words' reading time, while the owner's takes still play; the
- * stage is served from `--dist` or reached at `--app`; a scene the frame
- * can't hold is refused; `--brand` is home's folder of the owner's files;
- * and the policy flags cap the video and the step cache, a step past the
- * cache's budget printing a `cache warning:` line. Needs `ffmpeg` and
- * `ffprobe` on `PATH`.
+ * (`./call` says how); with `--voices none` the owner's takes still play.
  */
 
 import { parseArgs } from "node:util"
 
+import { CALL_OPTIONS } from "./call-recording"
 import { runCommand } from "./command"
-import { ESSAY_OPTIONS, recordEssay } from "./essay-recording"
+import { recordEssay } from "./essay-recording"
 
 const { values } = parseArgs({
   options: {
     out: { type: "string", default: "out/essay" },
     "essay-file": { type: "string" },
     takes: { type: "string" },
-    ...ESSAY_OPTIONS,
+    ...CALL_OPTIONS,
   },
 })
 

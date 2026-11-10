@@ -589,7 +589,7 @@ export const EssayStagePage = ({
     week,
     read: {
       data: read.data,
-      pending: named && read.isPending,
+      pending: read.isPending,
       failed: read.isError,
     },
     sample: SAMPLE,
@@ -597,8 +597,6 @@ export const EssayStagePage = ({
   if (state.kind === "waiting") return null
   if (state.kind === "none")
     return (
-      // What keeps the essay off the frame is published where the recorder
-      // reads it, so a recording fails instead of waiting (VS1).
       <StageRefused
         reason={state.problems.join("\n")}
         problems={state.problems}

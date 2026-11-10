@@ -36,6 +36,7 @@ import type {
   Ports,
   RenderPolicy,
   StillTake,
+  TakeFiles,
   TimedWord,
 } from "@some-ui/video-render"
 import {
@@ -64,7 +65,7 @@ async function ownTake({
   file,
   ports,
 }: {
-  readonly own: OwnTake
+  readonly own: TakeFiles
   readonly said: string
   readonly timed: boolean
   readonly file: string
@@ -293,13 +294,6 @@ export function refuseLong(
 /** Where the cache of takes and ffmpeg steps is kept in a video's folder. */
 const STEPS = "cache/steps"
 
-/** The owner's take of a scene, as home hands it over: absolute paths. */
-export type OwnTake = {
-  readonly audio: string
-  /** Its word times (`TimedWord`s as JSON), or null where home kept none. */
-  readonly words: string | null
-}
-
 /**
  * A scene to record: its stage address, and what is said over it, in which
  * voice, or by the owner (`own`), whose take plays instead.
@@ -309,7 +303,8 @@ export type Shot = {
   readonly url: string
   readonly said: string
   readonly voice: string
-  readonly own?: OwnTake
+  /** Absolute paths. */
+  readonly own?: TakeFiles
 }
 
 /**

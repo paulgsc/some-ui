@@ -36,8 +36,7 @@
  * mailbox's `rust-essay` folder (RR18). Home's render worker records it from
  * the file it keeps, with the owner's takes beside it (RR16, www's
  * `record:essay`); with no essay named, the stage plays the sample
- * (`sampleEssay`), whose answers no owner said, so a second synthetic voice
- * reads them and its intro says so (`Voicing`).
+ * (`sampleEssay`), voiced as one (`Voicing`).
  */
 
 import { z } from "zod"
@@ -57,10 +56,10 @@ import { once, problemsOf } from "./cut-list"
 import type { CutList, Parsed } from "./cut-list"
 import { FORMAT_SCHEMA, repeatedId, versionRefusal, words } from "./format"
 import type { Format, Shape } from "./format"
-import { estimatedMs, hasCaptions, stillFile, stillsCutList } from "./stills"
+import { hasCaptions, stillFile, stillsCutList } from "./stills"
 import type { StillTake } from "./stills"
-import { storyboardOf } from "./storyboard"
-import type { BoardScene, Storyboard } from "./storyboard"
+import { boardSceneOf, storyboardOf } from "./storyboard"
+import type { Storyboard } from "./storyboard"
 import sample from "./templates/rust-essay/sample-essay.json"
 
 export const ESSAY_SCHEMA = "some-ui.rust-essay/1"
@@ -442,12 +441,7 @@ export type Speaker = "tutor" | "you"
  */
 export type Voicing = "owner" | "sample"
 
-/**
- * The voice each speaker is said in, by Kokoro's voice names (home's
- * speaker, as the call's `CALL_VOICES`): the tutor in the call's host's
- * voice. `you` says an answer only in the sample (`Voicing`); in an essay of
- * the owner's, their take plays instead.
- */
+/** Each speaker's Kokoro voice, as the call's `CALL_VOICES`; `you` only in the sample (`Voicing`). */
 export const ESSAY_VOICES: Readonly<Record<Speaker, string>> = {
   tutor: "am_michael",
   you: "bm_george",
@@ -687,15 +681,6 @@ export function cellsOf(cells: ReadonlyArray<EssayCell>): Array<CellView> {
 }
 
 /**
- * About how long an essay runs, from its words alone, before anything is
- * said: each scene for its reading time. The recorder refuses an essay past
- * the policy's length on this; the renderer checks the placed length, takes
- * included, exactly.
- */
-export const estimatedEssayMs = (essay: Essay): number =>
-  estimatedMs(essayScenes(essay))
-
-/**
  * The essay as a cut list the renderer draws (`stillsCutList`, which holds
  * CV1): one still per scene (`<file>.png`, the stage recorded), and its take
  * (`<file>.wav`) where one was said, `takes[i]`: the speaker's for the
@@ -750,22 +735,7 @@ export function essayStoryboard(): Storyboard {
   return storyboardOf(
     essayFormat(essay.value.template.version),
     `the sample essay, ${essay.value.week.id}`,
-    essayScenes(essay.value, "sample").map((scene): BoardScene => {
-      if (scene.section === "chapter")
-        return { kind: "chapter", id: scene.id, of: scene.of, said: scene.said }
-      if (
-        scene.section === "intro" ||
-        scene.section === "brand-in" ||
-        scene.section === "brand-out"
-      )
-        return { kind: scene.section, id: scene.id, said: scene.said }
-      return {
-        kind: "section",
-        id: scene.id,
-        scene: scene.section,
-        said: scene.said,
-      }
-    })
+    essayScenes(essay.value, "sample").map(boardSceneOf)
   )
 }
 
@@ -776,7 +746,7 @@ export type TakeFiles = {
 }
 
 /** The suffix of a take's word times beside its audio: `QM-311.words.json`. */
-export const TAKE_WORDS = ".words.json"
+const TAKE_WORDS = ".words.json"
 
 /**
  * Which of `names`, the files in the folder home hands the recorder, is each
@@ -784,8 +754,7 @@ export const TAKE_WORDS = ".words.json"
  * each ticket the owner answered, and its word times `<TICKET>.words.json`
  * where home kept them. Refuses, with every reason, a take missing, two for
  * one ticket, one for a ticket left silent or not in the essay, and word
- * times with no take, so nothing is drawn from the wrong voice. A name
- * starting with a dot is no take.
+ * times with no take, so nothing is drawn from the wrong voice.
  */
 export function essayTakeFiles(
   essay: Essay,

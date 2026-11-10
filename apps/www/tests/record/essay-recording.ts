@@ -5,7 +5,7 @@
  * take, and the renderer laying them together. `./essay`'s header says how.
  */
 import { readdir, readFile, writeFile } from "node:fs/promises"
-import { join, resolve } from "node:path"
+import { join } from "node:path"
 import type { Route } from "@playwright/test"
 import {
   ESSAY_VOICES,
@@ -20,9 +20,8 @@ import {
 import type { Essay, TakeFiles, Voicing } from "@some-ui/video-render"
 
 import type { CallValues } from "./call-recording"
-import { CALL_OPTIONS } from "./call-recording"
+import { FRAME, SERIES } from "./call-recording"
 import { fail, here, launchChromium } from "./command"
-import type { OwnTake } from "./voiced"
 import {
   placeBed,
   policyOf,
@@ -33,20 +32,8 @@ import {
   siteOf,
 } from "./voiced"
 
-/** The frame the stage is recorded at: the call's series, which the essay is drawn in. */
-const FRAME = { width: 1920, height: 1080 } as const
-
-/** The call's series, sampled in the renderer's workspace. */
-const SERIES = resolve(
-  import.meta.dirname,
-  "../../../../packages/video-render/src/sample/series/conference-call"
-)
-
 /** The stage's read of an essay named by its week (`call/feed.ts`). */
 const ESSAY_READ = /\/rust-essays\/[^/?#]+\.json$/
-
-/** The flags `record:essay` and the essay's preview share with the call's. */
-export const ESSAY_OPTIONS = CALL_OPTIONS
 
 export type EssayValues = Omit<CallValues, "week" | "week-file"> & {
   readonly "essay-file"?: string
@@ -68,13 +55,13 @@ async function keptEssay(path: string): Promise<Kept> {
 async function takesIn(
   dir: string,
   essay: Essay
-): Promise<Readonly<Record<string, OwnTake>>> {
+): Promise<Readonly<Record<string, TakeFiles>>> {
   const files = essayTakeFiles(essay, await readdir(dir))
   if (!files.ok)
     fail([`The takes in ${dir} don't fit the essay:`, ...files.problems])
   const at = (name: string): string => join(dir, name)
   return Object.fromEntries(
-    Object.entries(files.value).map(([ticket, take]: [string, TakeFiles]) => [
+    Object.entries(files.value).map(([ticket, take]) => [
       ticket,
       {
         audio: at(take.audio),
@@ -98,8 +85,8 @@ function answer(route: Route, kept: Kept): Promise<void> {
 
 /**
  * Records and renders the essay of `values` into `<out>/<week>/essay.mp4`;
- * with `preview`, the template's sample essay, its answers read by a second
- * synthetic voice (C76), cut to its preview into `<out>/preview.mp4`.
+ * with `preview`, the template's sample essay (`Voicing`), cut to its
+ * preview into `<out>/preview.mp4`.
  */
 export async function recordEssay(
   values: EssayValues,
@@ -131,7 +118,6 @@ export async function recordEssay(
     const url = (scene: string): string =>
       `${site.origin}/essay?${new URLSearchParams({ week, scene, record: "true" }).toString()}`
 
-    // The essay the stage plays, as it publishes it on the frame.
     await page.goto(url("intro"))
     const frame = await shownFrame(page, "[data-scene]")
     const published = await frame.getAttribute("data-essay")
@@ -168,7 +154,6 @@ export async function recordEssay(
       timed: hasCaptions(format),
       policy,
     })
-    // The music bed plays once the call's series names one (#2673).
     const bed = await placeBed(
       SERIES,
       format.series.version,

@@ -29,8 +29,7 @@ export const weekSource = testingSource<string, unknown>(
  * Where the essay's stage reads an essay named by its week (RR16): beside
  * the stage, never `paulgsc/testing`, since an essay carries the owner's
  * words. Home's render worker answers it from the essay home keeps
- * (`record:essay --essay-file`); where home's store serves it to a browser
- * is RR18's (#2693), so until then nothing else answers it.
+ * (`record:essay --essay-file`); nothing else serves it to a browser yet.
  */
 const essayAddress = (week: string): URL =>
   new URL(
