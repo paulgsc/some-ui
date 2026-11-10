@@ -30,8 +30,8 @@ import type { OnScreen, Open } from "./opens"
 import { stepOpens } from "./opens"
 import type { PasteRuntime } from "./paste"
 import { pasteRuntime } from "./paste"
-import type { WeekKind } from "./spec"
-import { weekMachine } from "./spec"
+import type { WeekAtHome, WeekKind, WeekSent } from "./spec"
+import { weekAtHome, weekMachine } from "./spec"
 import { heardWords, pasteStores, weekDrafts, weeksSent } from "./store"
 
 export type RustWeekPorts = {
@@ -44,6 +44,14 @@ export type RustWeekPorts = {
   readonly home: BundleHome
   /** Home's words for a note, asked once; never rejects. */
   readonly heard: (take: string) => Promise<HeardAnswer>
+  /**
+   * Whether home holds this send of the week, as the link last heard (RR22):
+   * read when the week opens, after each Send and whenever the link says it
+   * heard more (`onHomeHolds`), never asked of home.
+   */
+  readonly homeHolds: (sent: WeekSent) => boolean
+  /** Calls `listener` whenever what `homeHolds` answers may have changed. Returns the stop. */
+  readonly onHomeHolds: (listener: () => void) => () => void
   /** Milliseconds since the epoch. */
   readonly now: () => number
   readonly newId: () => string
@@ -58,6 +66,14 @@ export type RustWeek = {
   /** What home said of each take sent, by take, the same object while unchanged. */
   readonly heard: {
     readonly getSnapshot: () => WeekHeard
+    readonly subscribe: (listener: () => void) => () => void
+  }
+  /**
+   * What home holds of the week and what this phone last sent (`./spec`'s
+   * `weekAtHome`), the same object while unchanged.
+   */
+  readonly atHome: {
+    readonly getSnapshot: () => WeekAtHome
     readonly subscribe: (listener: () => void) => () => void
   }
   /** An error pasted from the owner's own code, with a note (`./paste`). */
@@ -82,6 +98,27 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
     newId: ports.newId,
     onVisibility: ports.onVisibility,
   })
+  const sends = weeksSent(ports.storage)
+  const readAtHome = (): WeekAtHome =>
+    weekAtHome(sends.list() ?? [], week, ports.homeHolds)
+  let atHome = readAtHome()
+  let atHomeOf: WeekSent | null = null
+  const homeListeners = new Set<() => void>()
+  /** Reads what home holds again, once a Send changes what was sent. */
+  const lookHome = (force = false): void => {
+    const { sent } = bundle.getSnapshot()
+    if (!force && sent === atHomeOf) return
+    atHomeOf = sent
+    const next = readAtHome()
+    if (
+      next.holds?.at === atHome.holds?.at &&
+      next.last?.at === atHome.last?.at
+    ) {
+      return
+    }
+    atHome = next
+    for (const listener of homeListeners) listener()
+  }
   const words = heardWords(ports.storage)
   const fromStore = (): WeekHeard =>
     Object.fromEntries(
@@ -105,9 +142,14 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
    * other with busy.
    */
   const askSent = async (): Promise<void> => {
-    const { sent } = bundle.getSnapshot()
-    if (sent === null) return
-    for (const { take } of sent.answers) {
+    // The last send's takes, and those of the send home holds, which a
+    // closed week reads back.
+    const takes = new Set(
+      [bundle.getSnapshot().sent, atHome.holds].flatMap(
+        (sent) => sent?.answers.map(({ take }) => take) ?? []
+      )
+    )
+    for (const take of takes) {
       if (snapshot[take]?.kind === "heard") continue
       answered(take, await ports.heard(take))
     }
@@ -148,6 +190,15 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
       week.id,
       ports.now
     ),
+    atHome: {
+      getSnapshot: () => atHome,
+      subscribe(listener): () => void {
+        homeListeners.add(listener)
+        return (): void => {
+          homeListeners.delete(listener)
+        }
+      },
+    },
     heard: {
       getSnapshot: () => snapshot,
       subscribe(listener): () => void {
@@ -159,13 +210,18 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
     },
     attach(): () => void {
       snapshot = fromStore()
-      // Opening reads what is kept at once, so a week already sent is on
-      // the sent screen here; one sent later in this opening is not asked.
+      // Opening reads what is kept at once, so a week already sent holds
+      // its last send here; one sent later in this opening is not asked.
       const detach = bundle.attach()
+      lookHome(true)
+      const stopHome = bundle.subscribe(() => lookHome())
+      const stopHeld = ports.onHomeHolds(() => lookHome(true))
       void askSent()
       const stopOpens = watchOpens()
       return (): void => {
         stopOpens()
+        stopHeld()
+        stopHome()
         detach()
       }
     },

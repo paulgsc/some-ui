@@ -4,7 +4,10 @@
  * stands), each ticket's card (its spec, its speak-to points, the program
  * and rustc's recorded result, and one take), swiped between, then every
  * take looked over and sent home together; once sent, each ticket with its
- * take and the words home heard in it. Nothing answers on any of them.
+ * take and the words home heard in it. Until the deadline the week stays
+ * open after a send, to answer, say again and send again (RR22); after it,
+ * the week reads back what was sent, and nothing records or sends. Nothing
+ * answers on any of them.
  *
  * It renders `lib/week-play`'s state and forwards taps; the cards and the
  * look over are the shared bundle's parts (`@some-ui/shared`'s `BundleCards`
@@ -23,7 +26,12 @@ import type {
   WeekHeard,
 } from "@rust-rounds/lib/week-play/runtime"
 import { createRustWeek } from "@rust-rounds/lib/week-play/runtime"
-import type { WeekKind, WeekState } from "@rust-rounds/lib/week-play/spec"
+import type {
+  WeekAtHome,
+  WeekKind,
+  WeekState,
+} from "@rust-rounds/lib/week-play/spec"
+import { isClosed, ticketLine } from "@rust-rounds/lib/week-play/spec"
 import type { TicketStanding } from "@rust-rounds/lib/week-play/words"
 import { WEEK_WORDS } from "@rust-rounds/lib/week-play/words"
 import type { HeldWeek } from "@rust-rounds/lib/weeks"
@@ -46,9 +54,11 @@ import type {
   BundleIntent,
   BundleMachine,
   BundleTakes,
+  TakeItemView,
   TakePatternSnapshot,
+  TakeRowView,
 } from "@some-ui/voice-capture"
-import { takeItemView } from "@some-ui/voice-capture"
+import { currentTakeOf, takeItemView } from "@some-ui/voice-capture"
 import { ChevronLeft } from "lucide-react"
 
 const WORDS = WEEK_WORDS
@@ -72,18 +82,25 @@ type Parts = {
   readonly dispatch: Dispatch
 }
 
-/** Where a ticket stands: on this phone, sent home, or left unanswered. */
+/** The take the last send holds for `ticket`, if it holds one. */
+const sentTake = (state: WeekState, ticket: string): string | null =>
+  state.sent?.answers.find((each) => each.ticket === ticket)?.take ?? null
+
+/** Whether `ticket`'s take now is another than the one last sent. */
+const saidAgain = (state: WeekState, ticket: string): boolean => {
+  const current = currentTakeOf(state.takes, ticketLine(state.draft.id, ticket))
+  return current !== null && current.id !== sentTake(state, ticket)
+}
+
+/** Where a ticket stands: on this phone, sent, or said again since. */
 function standing(
   { machine, state }: Pick<Parts, "machine" | "state">,
   ticket: string
 ): TicketStanding {
-  const { sent } = state
-  if (sent !== null) {
-    return sent.answers.some((each) => each.ticket === ticket)
-      ? "sent"
-      : "unanswered"
+  if (sentTake(state, ticket) === null) {
+    return machine.answered(state, ticket) === null ? "open" : "said"
   }
-  return machine.answered(state, ticket) === null ? "open" : "said"
+  return saidAgain(state, ticket) ? "resaid" : "sent"
 }
 
 /** What the ticket's program did, as the brief says it in a word. */
@@ -123,14 +140,27 @@ const Brief = (
     back: ReactNode
     onRounds?: () => void
     paste: PasteRuntime
+    atHome: WeekAtHome
   }
 ): JSX.Element => {
   const { machine, state, dispatch, held } = props
   const { week } = held
   const said = machine.answeredCount(state)
+  const { holds, last } = props.atHome
+  const of = week.tickets.length
   return (
     <div className="flex flex-col gap-4">
       <Story week={week} />
+      {last !== null && (
+        <section className="bg-card flex flex-col gap-1 rounded-2xl p-3 text-sm">
+          <p className="font-semibold">
+            {holds?.at === last.at
+              ? WORDS.held(last.answers.length, of, last.at)
+              : WORDS.goesHome(last.answers.length, of, last.at)}
+          </p>
+          <p className="text-muted-foreground">{WORDS.openUntil(week)}</p>
+        </section>
+      )}
       <section className="flex flex-col gap-2">
         <h3 className="text-sm font-semibold">{WORDS.tickets}</h3>
         {week.tickets.map((ticket, i) => (
@@ -175,8 +205,54 @@ const Brief = (
   )
 }
 
-/** A ticket's card above its take: what it asks, and what rustc did. */
+/** What home heard in a take sent, or why it doesn't show yet. */
+const HeardLine = ({ words }: { words: WeekHeard[string] }): JSX.Element =>
+  words?.kind === "heard" ? (
+    <blockquote className="bg-card rounded-2xl p-3 text-sm">
+      <span className="text-muted-foreground block text-xs font-semibold">
+        {WORDS.sent.heard}
+      </span>
+      {words.text === "" ? WORDS.sent.noWords : words.text}
+    </blockquote>
+  ) : (
+    <p className="text-muted-foreground text-sm">
+      {words?.kind === "notYet" ? WORDS.sent.hearing : WORDS.sent.later}
+    </p>
+  )
+
+/** A ticket's card above its take: what it asks, what rustc did, what home holds. */
 const TicketHead = ({
+  held,
+  ticket,
+  n,
+  state,
+  heard,
+}: {
+  held: HeldWeek
+  ticket: Ticket
+  n: number
+  state: WeekState
+  heard: WeekHeard
+}): JSX.Element => {
+  const home = sentTake(state, ticket.id)
+  return (
+    <>
+      <TicketBody held={held} ticket={ticket} n={n} />
+      {home !== null && (
+        <section className="flex flex-col gap-2">
+          <p className="text-muted-foreground text-sm">
+            {saidAgain(state, ticket.id) ? WORDS.home.again : WORDS.home.holds}
+          </p>
+          <HeardLine words={heard[home]} />
+        </section>
+      )}
+      <h3 className="text-lg font-bold">{WORDS.guideOn(ticket.id)}</h3>
+    </>
+  )
+}
+
+/** What a ticket asks, and what rustc did with its program. */
+const TicketBody = ({
   held,
   ticket,
   n,
@@ -228,7 +304,6 @@ const TicketHead = ({
           </ul>
         </section>
       )}
-      <h3 className="text-lg font-bold">{WORDS.guideOn(ticket.id)}</h3>
     </>
   )
 }
@@ -236,7 +311,8 @@ const TicketHead = ({
 const Review = (props: Parts & { held: HeldWeek }): JSX.Element => {
   const { machine, state, held } = props
   const needs = machine.missing(state)
-  const n = machine.answeredCount(state)
+  // What the send would hold, tickets home holds from the last one included.
+  const n = machine.bundleRecord(state, state.at).answers.length
   const notNear = state.reach === "near" ? null : WORDS.notNear[state.reach]
   const label = (id: string): string =>
     WORDS.ticketLabel(
@@ -257,9 +333,89 @@ const Review = (props: Parts & { held: HeldWeek }): JSX.Element => {
           <p className="text-muted-foreground text-center text-sm">{notNear}</p>
         )
       }
-      send={WORDS.send(n)}
+      send={state.sent === null ? WORDS.send(n) : WORDS.sendAgain(n)}
       needs={needs === null || needs === "required" ? null : WORDS.needs[needs]}
     />
+  )
+}
+
+/** The row of the take `take`, current or superseded since, if this phone lists it. */
+const sentRow = (
+  view: TakeItemView,
+  take: string | null
+): TakeRowView | undefined =>
+  [...view.current, ...view.earlier].find((row) => row.take.id === take)
+
+/**
+ * The week read back once it closed (RR22): the brief, then every ticket
+ * with what it asked and the take sent by the deadline, playable, or "Not
+ * answered.". Nothing here records, deletes or sends.
+ */
+const ReadBack = (
+  props: Parts & {
+    held: HeldWeek
+    heard: WeekHeard
+    back: ReactNode
+    atHome: WeekAtHome
+  }
+): JSX.Element => {
+  const { machine, state, snapshot, takes, dispatch, held, heard } = props
+  const { week } = held
+  const { holds, last } = props.atHome
+  const answered = holds?.answers ?? []
+  return (
+    <div className="flex flex-col gap-4">
+      <Story week={week} />
+      <section className="bg-card flex flex-col gap-1 rounded-2xl p-3 text-sm">
+        <p className="font-semibold">{WORDS.closed.title(week)}</p>
+        <p className="text-muted-foreground">{WORDS.closed.line(week)}</p>
+        <p>{WORDS.sent.title(answered.length, week.tickets.length)}</p>
+        {last !== null && last.at !== holds?.at && (
+          <p className="text-muted-foreground">{WORDS.closed.late(last.at)}</p>
+        )}
+      </section>
+      <ol className="flex flex-col gap-6">
+        {week.tickets.map((ticket, i) => {
+          const answer = answered.find((each) => each.ticket === ticket.id)
+          const row = sentRow(
+            takeItemView(
+              snapshot,
+              state.takes,
+              machine.answersOf(state, ticket.id),
+              takes.pattern.options
+            ),
+            answer?.take ?? null
+          )
+          return (
+            <li key={ticket.id} className="flex flex-col gap-3">
+              <TicketBody held={held} ticket={ticket} n={i + 1} />
+              {answer === undefined ? (
+                <p className="text-muted-foreground text-sm">
+                  {WORDS.sent.notAnswered}
+                </p>
+              ) : (
+                <>
+                  {row === undefined ? (
+                    <p className="text-muted-foreground text-sm">
+                      {WORDS.closed.unplayable}
+                    </p>
+                  ) : (
+                    <TakeRow
+                      row={{ ...row, canRedo: false, canLetGo: false }}
+                      onPlay={() =>
+                        dispatch({ type: "play", take: row.take.id })
+                      }
+                    />
+                  )}
+                  <HeardLine words={heard[answer.take]} />
+                </>
+              )}
+            </li>
+          )
+        })}
+      </ol>
+      {props.back}
+    </div>
   )
 }
 
@@ -280,15 +436,22 @@ const Sent = (
         {WORDS.sent.title(answered.length, held.week.tickets.length)}
       </h2>
       <p className="text-muted-foreground">{WORDS.sent.line}</p>
+      <p className="text-muted-foreground">{WORDS.sent.again(held.week)}</p>
+      <Button size="lg" onClick={() => dispatch({ type: "back" })}>
+        {WORDS.backToWeek}
+      </Button>
       <ol className="flex flex-col gap-3">
         {held.week.tickets.map((ticket) => {
           const answer = answered.find((each) => each.ticket === ticket.id)
-          const row = takeItemView(
-            snapshot,
-            state.takes,
-            machine.answersOf(state, ticket.id),
-            takes.pattern.options
-          ).current.find((each) => each.take.id === answer?.take)
+          const row = sentRow(
+            takeItemView(
+              snapshot,
+              state.takes,
+              machine.answersOf(state, ticket.id),
+              takes.pattern.options
+            ),
+            answer?.take ?? null
+          )
           const words = answer === undefined ? undefined : heard[answer.take]
           return (
             <li key={ticket.id} className="flex flex-col gap-2">
@@ -309,20 +472,7 @@ const Sent = (
                       }
                     />
                   )}
-                  {words?.kind === "heard" ? (
-                    <blockquote className="bg-card rounded-2xl p-3 text-sm">
-                      <span className="text-muted-foreground block text-xs font-semibold">
-                        {WORDS.sent.heard}
-                      </span>
-                      {words.text === "" ? WORDS.sent.noWords : words.text}
-                    </blockquote>
-                  ) : (
-                    <p className="text-muted-foreground text-sm">
-                      {words?.kind === "notYet"
-                        ? WORDS.sent.hearing
-                        : WORDS.sent.later}
-                    </p>
-                  )}
+                  <HeardLine words={words} />
                 </>
               )}
             </li>
@@ -415,9 +565,17 @@ const Screen = (
     back: ReactNode
     onRounds?: () => void
     paste: PasteRuntime
+    atHome: WeekAtHome
   }
 ): JSX.Element => {
   const { state, dispatch, held } = props
+  if (
+    state.screen !== "loading" &&
+    state.screen !== "unreadable" &&
+    isClosed(held.week, state.at)
+  ) {
+    return <ReadBack {...props} />
+  }
   switch (state.screen) {
     case "loading": {
       return <p className="text-muted-foreground text-sm">{WORDS.reading}</p>
@@ -449,7 +607,13 @@ const Screen = (
           renderHead={(id, n) => {
             const ticket = held.week.tickets.find((each) => each.id === id)
             return ticket === undefined ? null : (
-              <TicketHead held={held} ticket={ticket} n={n} />
+              <TicketHead
+                held={held}
+                ticket={ticket}
+                n={n}
+                state={state}
+                heard={props.heard}
+              />
             )
           }}
         />
@@ -488,13 +652,19 @@ export const RustWeek = ({
     week.heard.subscribe,
     week.heard.getSnapshot
   )
+  const atHome = useSyncExternalStore(
+    week.atHome.subscribe,
+    week.atHome.getSnapshot
+  )
   const pasting = useSyncExternalStore(
     week.paste.subscribe,
     week.paste.getSnapshot
   )
   const snapshot = useTakePattern(desk.pattern)
   const { dispatch } = week.bundle
-  const backable = state.screen === "cards" || state.screen === "review"
+  const closed = isClosed(held.week, state.at)
+  const backable =
+    !closed && (state.screen === "cards" || state.screen === "review")
   const label = (id: string): string =>
     WORDS.ticketLabel(
       id,
@@ -515,7 +685,7 @@ export const RustWeek = ({
           {WORDS.back}
         </Button>
       )}
-      {pasting.showing && state.screen === "intro" ? (
+      {pasting.showing && state.screen === "intro" && !closed ? (
         <Paste
           paste={week.paste}
           state={state}
@@ -531,6 +701,7 @@ export const RustWeek = ({
           dispatch={dispatch}
           held={held}
           heard={heard}
+          atHome={atHome}
           back={back}
           paste={week.paste}
           {...(onRounds === undefined ? {} : { onRounds })}

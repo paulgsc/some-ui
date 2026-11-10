@@ -8,7 +8,7 @@
  *
  * Send is three writes in one order: the record joins the records kept,
  * which only grow; then the takes it names are let go home; then the draft
- * is cleared. A Send stopped between them leaves takes a kept record names
+ * is cleared (kept, where the spec `resends`). A Send stopped between them leaves takes a kept record names
  * waiting, which the next opening lets go (`settle`), and a draft already
  * kept, which it clears.
  */
@@ -110,7 +110,7 @@ export function bundleRuntime<K extends BundleKind>(
   let state = machine.initial(ports.context(), ports.newId(), at())
   const listeners = new Set<() => void>()
   const { pattern } = ports.takes
-  const { idOf } = machine.spec
+  const { idOf, resends } = machine.spec
 
   const send = (event: BundleEvent<K>): void => {
     const next = machine.stepBundle(state, event)
@@ -182,15 +182,17 @@ export function bundleRuntime<K extends BundleKind>(
         // id names other takes, so these would go home named by none.
         const before = ports.records.list()
         const kept =
-          before === null || named(before)
+          before === null || (!resends && named(before))
             ? null
             : ports.records.keep((records) =>
-                named(records) ? records : [...records, record]
+                !resends && named(records) ? records : [...records, record]
               )
-        const sent = kept?.find((each) => idOf(each) === id) ?? null
+        const sent = resends
+          ? (kept?.at(-1) ?? null)
+          : (kept?.find((each) => idOf(each) === id) ?? null)
         if (sent !== null) {
           ports.takes.release(effect.takes)
-          ports.drafts.write(null)
+          if (!resends) ports.drafts.write(null)
         }
         send({ type: "sentKept", record: sent })
         return

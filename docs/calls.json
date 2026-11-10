@@ -1074,6 +1074,75 @@
       "gray": "It adds a second, manual trigger to the gate's machinery, so anyone with write access can start a sweep. That is harmless, since a sweep only re-judges unfinished gates inside each head's concurrency group, but it is new surface. It was also the only way to prove the sweep end to end while the cron wasn't firing (server#772).",
       "undo": "Make pr and head_sha required again, set the sweep job's `if:` back to `github.event_name == 'schedule'` and the verdict job's to `github.event_name != 'schedule'`, and drop the routing test's dispatch-without-inputs case.",
       "refs": ["server#772", "server#773", "server#762"]
+    },
+    {
+      "id": "C56",
+      "made": "2026-11-10",
+      "by": "owner",
+      "paths": [
+        "packages/ui/rust-rounds/src/lib/week-play",
+        "server:apps/servers/file_host/src/handlers/rust_rounds.rs"
+      ],
+      "chose": "A week's sends before its deadline are drafts: home keeps the latest in place of the one before. Only what stands at the deadline is final and kept for good, an unanswered ticket included.",
+      "options": [
+        "keep every send for good",
+        "keep only the first",
+        "drafts until the deadline"
+      ],
+      "gray": "The RR14 record kept the first send for good, and re-sending had to choose what the record is.",
+      "undo": "Keep every revision.",
+      "refs": ["#2832", "#2833"]
+    },
+    {
+      "id": "C57",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": [
+        "packages/ui/rust-rounds/src/components/rust-week/index.tsx",
+        "packages/voice-capture/src/lib/bundle.ts"
+      ],
+      "chose": "A week already sent opens on its brief, with what home holds over the tickets and each ticket's standing, not on the sent screen; the words home heard show on each ticket's card. Right after a Send the sent screen shows, with \"Back to the week\".",
+      "options": [
+        "open on the brief, words heard on each card",
+        "open on the sent screen with a way back to the week",
+        "open on the first ticket's card"
+      ],
+      "gray": "#2832 asks that the week stay open after a send and say per ticket what home holds, but names no screen it opens on.",
+      "undo": "In bundle.ts's opened step, open a resending draft with a kept record on \"sent\" again.",
+      "refs": ["#2832"]
+    },
+    {
+      "id": "C58",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": [
+        "packages/ui/rust-rounds/src/lib/week-play/spec.ts",
+        "packages/voice-capture/src/lib/bundle.ts"
+      ],
+      "chose": "Each send holds the whole week: a ticket sent before and not said since goes again with the take sent, since home keeps only the latest send (C56). Send again waits until something changed since the last send.",
+      "options": [
+        "every send holds the whole week, and needs a change",
+        "a send holds only what changed since the last",
+        "any send, changed or not"
+      ],
+      "gray": "With home keeping the latest send only (C56), a send of the changed tickets alone would drop the others from what counts; whether an unchanged send is offered is a choice no check settles.",
+      "undo": "Drop the merge of `last` in weekSpec's record, and the \"unchanged\" need in bundle.ts's missing.",
+      "refs": ["#2832"]
+    },
+    {
+      "id": "C59",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["packages/ui/rust-rounds/src/components/rust-week/index.tsx"],
+      "chose": "After the deadline the week reads back on one scrolling screen: the brief, then every ticket with its spec, speak-to points, program and rustc's result, the take home had at the deadline (playable) with the words home heard, or \"Not answered.\"; a send home didn't have by then is named as not counting.",
+      "options": [
+        "one scrolling screen",
+        "the swiped cards, read-only",
+        "the brief only, each ticket opened from it"
+      ],
+      "gray": "#2832 lists what the read-back shows, not how it is laid out.",
+      "undo": "Render ReadBack's tickets as read-only cards on the pager.",
+      "refs": ["#2832"]
     }
   ]
 }

@@ -1,10 +1,15 @@
 import { LOG_SCHEMA } from "@rust-rounds/lib/formats"
 import { keptGoing } from "@rust-rounds/lib/kept-home"
 import { keptRounds } from "@rust-rounds/lib/play/store"
+import { QUILLMOSS_WEEK } from "@rust-rounds/lib/sample-week"
 import type { WeekSent } from "@rust-rounds/lib/week-play/spec"
 import { pasteStores, weeksSent } from "@rust-rounds/lib/week-play/store"
+import { keptWeeks } from "@rust-rounds/lib/weeks"
 import { inMemoryStorage } from "@some-ui/core-utils"
 import { describe, expect, it } from "vitest"
+
+const MID = Date.parse("2026-11-13T21:00:00.000Z")
+const AFTER = Date.parse(QUILLMOSS_WEEK.due) + 60_000
 
 const SENT: WeekSent = {
   week: "2026-w46",
@@ -34,7 +39,7 @@ describe("keptGoing", () => {
       { kind: "pin", ref: { round: "indexing-01", card: "a" } }
     )
 
-    const going = keptGoing(storage)
+    const going = keptGoing(storage, MID)
     expect(going.map(({ kind, path }) => [kind, path])).toEqual([
       ["rustWeeks", "/rust-weeks/2026-w46/sent"],
       [
@@ -53,5 +58,34 @@ describe("keptGoing", () => {
       schema: LOG_SCHEMA,
       id: "sitting-1",
     })
+  })
+
+  it("sends only a week's latest send, and nothing once the week has closed (RR22)", () => {
+    const storage = inMemoryStorage()
+    const again: WeekSent = {
+      ...SENT,
+      at: "2026-11-13T20:00:00.000Z",
+      passed: ["QM-313"],
+      answers: [
+        ...SENT.answers,
+        { ticket: "QM-311", take: "t", recordedAt: "2026-11-13T19:00:00Z" },
+      ],
+    }
+    weeksSent(storage).keep((kept) => [...kept, SENT, again])
+    const weeksAt = (at: number): Array<[string, unknown]> =>
+      keptGoing(storage, at)
+        .filter(({ kind }) => kind === "rustWeeks")
+        .map(({ id, wire }) => [id, wire])
+    expect(weeksAt(MID)).toEqual([["2026-w46/2026-11-13T20:00:00.000Z", again]])
+    // A week this phone doesn't hold goes whatever the clock says.
+    expect(weeksAt(AFTER)).toHaveLength(1)
+    keptWeeks(storage).hold({
+      weeks: [
+        { week: QUILLMOSS_WEEK, sha256: "a".repeat(64), runs: {}, ended: [] },
+      ],
+      unread: [],
+    })
+    expect(weeksAt(MID)).toHaveLength(1)
+    expect(weeksAt(AFTER)).toEqual([])
   })
 })

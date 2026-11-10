@@ -11,12 +11,17 @@
  */
 import type { HomeCall, HomeExchanged, KeyedStorage } from "@some-ui/core-utils"
 import { canonicalJson, isRecord, jsonOf } from "@some-ui/core-utils"
-import type { KeptItem } from "@some-ui/rust-rounds"
-import { exchangeRustRounds, keptGoing } from "@some-ui/rust-rounds"
+import type { KeptItem, WeekSent } from "@some-ui/rust-rounds"
+import {
+  exchangeRustRounds,
+  keptGoing,
+  weekSendKey,
+} from "@some-ui/rust-rounds"
 
 import { phoneRounds, phoneWeeks } from "@/lib/rust-rounds"
 import { browserLocalStorage } from "@/lib/tenant/storage"
 
+import { homeLink, pairingOf } from "./index"
 import type { EachSent } from "./leetype-log"
 import { emptyLogReport, sendEach } from "./leetype-log"
 import type { Sent } from "./sent"
@@ -39,6 +44,33 @@ export function keptCounts(
   }
   return counts
 }
+
+/**
+ * Whether home holds `sent`, one send of a week, as this phone last heard
+ * under `pairing` (RR22): by its own key, or by the week alone, as a send
+ * made before RR22 is remembered.
+ */
+export function holdsWeekSend(memory: Sent | null, sent: WeekSent): boolean {
+  if (memory === null) return false
+  const print = fingerprintOf(sent)
+  return (
+    memory.rustWeeks[weekSendKey(sent)] === print ||
+    memory.rustWeeks[sent.week] === print
+  )
+}
+
+/** `holdsWeekSend` under the pairing this phone holds now: the week's port. */
+export const homeHoldsWeekSend = (sent: WeekSent): boolean => {
+  const pairing = pairingOf()
+  return holdsWeekSend(
+    pairing === null ? null : readSent(browserLocalStorage, pairing),
+    sent
+  )
+}
+
+/** Calls `listener` each time the link changes, when what home holds may have. */
+export const onHomeHoldsWeekSend = (listener: () => void): (() => void) =>
+  homeLink().subscribe(listener)
 
 /** The key home's answer to a PUT holds the item under, where it echoes one. */
 const ECHO = { rustWeeks: "sent", rustPastes: "paste" } as const
@@ -103,7 +135,7 @@ export async function exchangeRustRoundsLane(
   if (done.kind !== "synced") return done
   return sendRustKept(
     send,
-    keptGoing(browserLocalStorage),
+    keptGoing(browserLocalStorage, Date.now()),
     browserLocalStorage,
     pairing
   )

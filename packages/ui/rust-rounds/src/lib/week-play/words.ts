@@ -86,7 +86,13 @@ const BUNDLE: BundleWords = {
 }
 
 /** Where a ticket stands, on the brief. */
-export type TicketStanding = "open" | "said" | "sent" | "unanswered"
+export type TicketStanding =
+  | "open"
+  | "said"
+  | "sent"
+  /** Sent before, and said again since, on this phone (RR22). */
+  | "resaid"
+  | "unanswered"
 
 export const WEEK_WORDS = {
   ...BUNDLE,
@@ -105,7 +111,8 @@ export const WEEK_WORDS = {
   standing: {
     open: "Not said",
     said: "Said, on this phone",
-    sent: "Sent home",
+    sent: "Sent",
+    resaid: "Said again, on this phone until you send",
     unanswered: "Not answered",
   } satisfies Record<TicketStanding, string>,
   /** What a ticket's program did, in a word, once home ran it. */
@@ -130,8 +137,12 @@ export const WEEK_WORDS = {
   /** The look over. */
   ticketLabel: (id: string, title: string): string => `${id} · ${title}`,
   send: (n: number): string => `Send to home · ${answers(n)}`,
+  /** Send, once the week went home before (RR22). */
+  sendAgain: (n: number): string => `Send again · ${answers(n)}`,
   needs: {
     nothing: "Say one ticket at least to send the week.",
+    unchanged:
+      "Home already holds the week as it is. Say a ticket, or say one again, to send it again.",
     closed:
       "The week closed at its deadline, so these takes can't count. They stay on this phone.",
   },
@@ -142,10 +153,27 @@ export const WEEK_WORDS = {
       "This phone isn't paired with home yet. The takes are kept here and go home once it is.",
     unknown: null,
   },
+  /** Over the brief, once the week was sent and while it is open (RR22). */
+  held: (n: number, of: number, at: string): string =>
+    `Home has your send from ${weekday(at)} ${clock(at)}: ${n} of ${of} answered.`,
+  /** Sent from this phone, and home hasn't had it yet. */
+  goesHome: (n: number, of: number, at: string): string =>
+    `Your send from ${weekday(at)} ${clock(at)}, ${n} of ${of} answered, is on this phone. It goes home when you're in reach.`,
+  openUntil: (week: Pick<Week, "due">): string =>
+    `What home has at ${weekday(week.due)} ${clock(week.due)} is what counts, and is kept for good. Until then you can answer any ticket, say one again and send the week again.`,
+  backToWeek: "Back to the week",
+  /** A ticket's card, for its take home holds. */
+  home: {
+    holds: "This is the take you sent for this ticket.",
+    again:
+      "You sent an earlier take for this ticket. The one here goes when you send again.",
+  },
   /** After Send. */
   sent: {
     title: (n: number, of: number): string => `Sent home: ${n} of ${of}.`,
     line: "Home keeps your takes and writes down the words it hears in them. Nothing answers now. The essay comes after the deadline, and covers every ticket, answered or not.",
+    again: (week: Pick<Week, "due">): string =>
+      `What home has at ${weekday(week.due)} ${clock(week.due)} is what counts. Until then you can still answer, say a ticket again and send again.`,
     heard: "What home heard",
     hearing: "Home is hearing it.",
     /** Not asked this opening, or home doesn't hold it or couldn't say. */
@@ -153,6 +181,17 @@ export const WEEK_WORDS = {
       "Its words show here once home has heard it, the next time you open the week.",
     noWords: "Home heard no words in it.",
     notAnswered: "Not answered.",
+  },
+  /** The week read back once it closed (RR22): nothing records or sends. */
+  closed: {
+    title: (week: Pick<Week, "id">): string =>
+      `Week ${weekNumber(week.id)} has closed.`,
+    line: (week: Pick<Week, "due">): string =>
+      `It closed ${weekday(week.due)} ${clock(week.due)}. What home had then is what counts, kept for good, and the essay comes from home. Nothing more can be said or sent here.`,
+    /** A send made on this phone that home didn't have by the deadline. */
+    late: (at: string): string =>
+      `Your send from ${weekday(at)} ${clock(at)} didn't reach home before the deadline, so it doesn't count. It stays on this phone.`,
+    unplayable: "This take isn't on this phone to play.",
   },
   card: CARD_WORDS,
   /** An error pasted from your own code, and a note on it. */

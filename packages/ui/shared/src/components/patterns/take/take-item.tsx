@@ -24,8 +24,11 @@ export type TakeItemProps = {
   onPlay: (id: string) => void
   /** Records a current take again (D2). */
   onRedo: (id: string) => void
-  /** Sets a current take aside (D3); `place` is where it is kept. */
-  onLetGo: (id: string, place: TakePlace) => void
+  /**
+   * Sets a current take aside (D3); `place` is where it is kept. Absent, no
+   * row offers Let go (a week's take already sent, RR22).
+   */
+  onLetGo?: ((id: string, place: TakePlace) => void) | undefined
   /**
    * Opens My data on a take that is a record home marks deletable (MD4,
    * the pattern's `records: "delete-in-my-data"`); absent, no row offers
@@ -214,8 +217,11 @@ export const TakeRows = ({
                   ? undefined
                   : (): void => onRedo(row.take.id)
               }
-              onLetGo={(): void =>
-                onLetGo(row.take.id, row.take.kept?.place ?? "phone")
+              onLetGo={
+                onLetGo === undefined
+                  ? undefined
+                  : (): void =>
+                      onLetGo(row.take.id, row.take.kept?.place ?? "phone")
               }
               onDelete={deleting(row.take.id)}
               extra={extra?.(row)}

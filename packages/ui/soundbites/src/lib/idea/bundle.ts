@@ -150,6 +150,8 @@ const IDEA_BUNDLE_SPEC: BundleSpec<IdeaBundleKind> = {
     idea.answers.flatMap((answer) =>
       (answer.takes ?? []).map((each) => each.take)
     ),
+  resends: false,
+  closed: () => false,
 }
 
 /** The idea's bundle: the shared machine over the idea's spec. */

@@ -1,13 +1,17 @@
 /**
  * What Rust Rounds keeps on home for good (RR14, paulgsc/some-ui#2689):
- * each week's answers as sent, each error pasted in a week, and the card-era
- * log's sittings (`some-ui.rust-round-log/1`). The phone sends them through
+ * each week's answers as they stand at its deadline (RR22, #2832: each send
+ * before it is a draft, the latest in place of the one before, and what
+ * stands at the deadline is final), each error pasted in a week, and the
+ * card-era log's sittings (`some-ui.rust-round-log/1`). The phone sends them through
  * its Rust Rounds lane (`packages/ui/rust-rounds/src/lib/kept-home`); home
  * makes each week's record from what was sent, a week that closed unsent
  * included, and counts each ticket's opens from the app events.
  *
  * Hand-written against paulgsc/server's RR14 handlers, as RR14-home settled
- * them: `RecordSchema` is the week's record, and `LogListSchema` the list
+ * them and paulgsc/server#770 (RR22) changed them: `RecordSchema` is the
+ * week's record, its `sent` the draft standing before the deadline
+ * (`draft: true`) or the final after it, and `LogListSchema` the list
  * of sittings by id, revision and the SHA-256 of the latest revision as sent.
  *
  * **Who may call.** A paired phone only (`subject::Paired`): no session is
@@ -17,9 +21,13 @@
  * with the account, so no probe may store one: a week's answers or paste
  * go to a week no routine writes (`404`, checked before the body), and a
  * sitting whose id is not the path's is refused with a `422` before any
- * write. A `201`, the `200` of the same body again, the `409` of another,
- * a sitting kept again as it grew, and the deadline's `422` are held by
- * the server's own handler tests.
+ * write. A week's send answers `{ change, sent }`: a `201` added for its
+ * first draft, a `200` replaced, unchanged (the same `at` and body) or
+ * superseded (an older `at`, answered with the draft that stands), a `409`
+ * for another body at the draft's `at`, and a `422` for an `at` past the
+ * deadline or a week already final. Those, a paste's `201`, `200` and
+ * `409`, and a sitting kept again as it grew are held by the server's own
+ * handler tests.
  */
 
 import { z } from "zod"
@@ -70,7 +78,7 @@ const RecordSchema = z.object({
   opens: When,
   due: When,
   closed: z.boolean(),
-  sent: z.object({ at: When, receivedAt: When }).nullable(),
+  sent: z.object({ at: When, receivedAt: When, draft: z.boolean() }).nullable(),
   tickets: z.array(
     z.object({
       ticket: Ticket,
@@ -188,7 +196,7 @@ export const contracts = [
     method: "GET",
     path: "/rust-weeks/:id/record",
     summary:
-      "a week's record: each ticket answered or not, with its take, when it was said and how often it was opened, the tickets unanswered and the errors pasted; a week that closed unsent has every ticket unanswered; a 404 where home holds no such week",
+      "a week's record: what was sent, as the draft standing before the deadline or the final after it; each ticket answered or not, with its take, when it was said and how often it was opened, the tickets unanswered and the errors pasted; a week that closed unsent has every ticket unanswered; a 404 where home holds no such week",
     request: { path: { id: SAMPLE_WEEK } },
     expect: { status: [200, 404], schemaFor: 200, schema: RecordSchema },
   }),

@@ -5,6 +5,10 @@ import { Button } from "@some-ui/shared"
 import { createFileRoute, Link } from "@tanstack/react-router"
 
 import { askHeard } from "@/lib/home-link/heard"
+import {
+  homeHoldsWeekSend,
+  onHomeHoldsWeekSend,
+} from "@/lib/home-link/rust-kept"
 import { ideaHome } from "@/lib/idea-hearing"
 import { phoneRustRoundsPorts, phoneRustWeekPorts } from "@/lib/rust-rounds"
 
@@ -19,15 +23,21 @@ import { phoneRustRoundsPorts, phoneRustWeekPorts } from "@/lib/rust-rounds"
  * The week's ports reach home in two ways only: whether home is in reach,
  * read from the voice lane's last run (`ideaHome`), and the words home heard
  * in a take sent (`askHeard`, one `GET /voice-notes/:id/heard` per take
- * without words, each time the week opens already sent). They are handed in
- * here, not by `lib/rust-rounds`: `lib/home-link`'s voice lane imports that
+ * without words, each time the week opens already sent). They also read
+ * whether home holds a send of the week, from what the link last heard
+ * (`homeHoldsWeekSend`, RR22), never asking home. They are handed in here, not by `lib/rust-rounds`: `lib/home-link`'s voice lane imports that
  * module, so it can't import the link back.
  */
 const PhoneRustRounds = (): JSX.Element => {
   // Made once per mount: the session and the week read them once.
   const [ports] = useState(() => ({
     rounds: phoneRustRoundsPorts(),
-    week: phoneRustWeekPorts({ home: ideaHome, heard: askHeard }),
+    week: phoneRustWeekPorts({
+      home: ideaHome,
+      heard: askHeard,
+      homeHolds: homeHoldsWeekSend,
+      onHomeHolds: onHomeHoldsWeekSend,
+    }),
   }))
   const [rounds, setRounds] = useState(false)
   if (ports.week === null || rounds) return <RustRounds ports={ports.rounds} />

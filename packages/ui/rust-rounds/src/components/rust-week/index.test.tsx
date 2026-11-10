@@ -2,7 +2,9 @@
  * The week's screens (RR13, #2688), on the simulated microphone and the
  * real take pattern: the brief, a ticket with its speak-to points and
  * rustc's recorded result as printed, a take said on it, the look over, and
- * the week sent with the words home heard. Nothing on any screen answers.
+ * the week sent with the words home heard; the week still open after a send
+ * and sent again, and read back once it closed (RR22). Nothing on any
+ * screen answers.
  */
 import { RustWeek } from "@rust-rounds/components/rust-week"
 import type { RustcRun } from "@rust-rounds/lib/formats"
@@ -51,10 +53,15 @@ const HELD: HeldWeek = {
   ended: [],
 }
 
-function ports(storage = inMemoryStorage()): RustWeekPorts {
-  const { pattern, store } = simulatedPattern({
+function ports(
+  storage = inMemoryStorage(),
+  simulated = simulatedPattern({
     options: { ...ONE_TAKE, send: "on-confirm" },
-  })
+  }),
+  now: () => number = Date.now,
+  homeHolds: RustWeekPorts["homeHolds"] = (): boolean => false
+): RustWeekPorts {
+  const { pattern, store } = simulated
   return {
     week: HELD,
     takes: {
@@ -66,7 +73,9 @@ function ports(storage = inMemoryStorage()): RustWeekPorts {
     storage,
     home: { reach: () => "near", subscribe: () => (): void => undefined },
     heard: () => Promise.resolve({ kind: "heard", text: "It copies." }),
-    now: Date.now,
+    homeHolds,
+    onHomeHolds: () => (): void => undefined,
+    now,
     newId: () => "unused",
     engage: () => undefined,
     onVisibility: (listener) => {
@@ -125,9 +134,133 @@ describe("a week on the phone (RR13)", () => {
     expect(screen.getByText(WORDS.sent.later)).toBeInTheDocument()
     expect(screen.getAllByText(WORDS.sent.notAnswered)).toHaveLength(2)
     unmount()
-    render(<RustWeek ports={phone} />)
+    // Home has had the send since (RR22).
+    render(<RustWeek ports={{ ...phone, homeHolds: () => true }} />)
     await settle()
+    // Still open: the brief, with what home has and where each ticket stands.
+    expect(
+      screen.getByText(/^Home has your send from .*: 1 of 3 answered\.$/)
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", {
+        name: new RegExp(`^${WORDS.ticketLabel(first.id, first.title)}`),
+      })
+    ).toHaveTextContent(WORDS.standing.sent)
+    press(new RegExp(`^${WORDS.ticketLabel(first.id, first.title)}`))
+    expect(
+      screen.getByRole("region", { name: WORDS.cardOf(1, 3) })
+    ).toHaveTextContent("It copies.")
+  })
+
+  it("stays open after a send: a skipped ticket answered and the week sent again", async () => {
+    const storage = inMemoryStorage()
+    const simulated = simulatedPattern({
+      options: { ...ONE_TAKE, send: "on-confirm" },
+    })
+    const sayOn = async (n: number): Promise<void> => {
+      const card = screen.getByRole("region", { name: WORDS.cardOf(n, 3) })
+      fireEvent.click(takeButton(card))
+      await settle(2_000)
+      fireEvent.click(takeButton(card))
+      await settle()
+    }
+    const first = render(<RustWeek ports={ports(storage, simulated)} />)
+    await settle()
+    press(WORDS.toReviewOf(0, 3))
+    press(WORDS.back)
+    await sayOn(1)
+    press(WORDS.toReview)
+    press(WORDS.send(1))
+    await settle()
+    expect(
+      screen.getByText(WORDS.sent.again(QUILLMOSS_WEEK))
+    ).toBeInTheDocument()
+    press(WORDS.backToWeek)
+    // Not home's yet: on this phone, until home is in reach.
+    expect(
+      screen.getByText(/1 of 3 answered, is on this phone\./)
+    ).toBeInTheDocument()
+    first.unmount()
+
+    render(<RustWeek ports={ports(storage, simulated)} />)
+    await settle()
+    const [, second] = QUILLMOSS_WEEK.tickets
+    if (second === undefined) throw new Error("tickets")
+    press(new RegExp(`^${WORDS.ticketLabel(second.id, second.title)}`))
+    await sayOn(2)
+    press(WORDS.toReview)
+    press(WORDS.sendAgain(2))
+    await settle()
+    expect(screen.getByText(WORDS.sent.title(2, 3))).toBeInTheDocument()
+  })
+
+  it("reads back what home had at the deadline, recording and sending nothing", async () => {
+    const storage = inMemoryStorage()
+    const simulated = simulatedPattern({
+      options: { ...ONE_TAKE, send: "on-confirm" },
+    })
+    const open = render(<RustWeek ports={ports(storage, simulated)} />)
+    await settle()
+    press(WORDS.toReviewOf(0, 3))
+    press(WORDS.back)
+    const card = screen.getByRole("region", { name: WORDS.cardOf(1, 3) })
+    fireEvent.click(takeButton(card))
+    await settle(2_000)
+    fireEvent.click(takeButton(card))
+    await settle()
+    press(WORDS.toReview)
+    press(WORDS.send(1))
+    await settle()
+    open.unmount()
+
+    const after = Date.parse(QUILLMOSS_WEEK.due) + 60_000
+    const closed = render(
+      <RustWeek
+        ports={ports(
+          storage,
+          simulated,
+          () => after,
+          () => false
+        )}
+      />
+    )
+    await settle()
+    // Home never had it: it didn't count, and it says so.
+    expect(screen.getByText(WORDS.sent.title(0, 3))).toBeInTheDocument()
+    expect(
+      screen.getByText(/didn't reach home before the deadline/)
+    ).toBeInTheDocument()
+    expect(screen.getAllByText(WORDS.sent.notAnswered)).toHaveLength(3)
+    closed.unmount()
+
+    render(
+      <RustWeek
+        ports={ports(
+          storage,
+          simulated,
+          () => after,
+          () => true
+        )}
+      />
+    )
+    await settle()
+    expect(
+      screen.getByText(WORDS.closed.title(QUILLMOSS_WEEK))
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/didn't reach home/)).toBeNull()
+    expect(screen.getByText(WORDS.sent.title(1, 3))).toBeInTheDocument()
+    expect(screen.getAllByText(WORDS.sent.notAnswered)).toHaveLength(2)
+    for (const ticket of QUILLMOSS_WEEK.tickets) {
+      for (const point of ticket.speakTo) {
+        expect(screen.getAllByText(point).length).toBeGreaterThan(0)
+      }
+    }
     expect(screen.getByText("It copies.")).toBeInTheDocument()
+    // Nothing records, deletes or sends.
+    expect(
+      screen.queryByRole("button", { name: new RegExp(WORDS.toReview) })
+    ).toBeNull()
+    expect(screen.queryByRole("button", { name: WORDS.paste.open })).toBeNull()
   })
 
   it("holds Send until a ticket is said", async () => {

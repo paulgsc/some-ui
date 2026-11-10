@@ -121,16 +121,31 @@ export function rustWeekEntry(
   const week = weekOpenNow(weeks, ({ opens }) => opens, at)
   if (week === null) return null
   const readSent = readJson((value) => (Array.isArray(value) ? value : null))
+  const due = Date.parse(week.due)
+  // The last send kept by the deadline, as home's record reads it (RR22).
   const sent = openKept<ReadonlyArray<unknown>>(
     storage,
     WEEK_SENT_KEY,
     readSent,
     []
-  ).value.find((each) => isRecord(each) && each.week === week.id)
+  )
+    .value.slice()
+    .reverse()
+    .find(
+      (each) =>
+        isRecord(each) &&
+        each.week === week.id &&
+        typeof each.at === "string" &&
+        Date.parse(each.at) <= due
+    )
   const of = week.tickets.length
+  const closed = due < at
   if (isRecord(sent) && Array.isArray(sent.answers)) {
-    return CARD_WORDS.sent(sent.answers.length, of)
+    const n = sent.answers.length
+    return closed
+      ? CARD_WORDS.closedSent(week, n, of)
+      : CARD_WORDS.sent(week, n, of)
   }
-  if (Date.parse(week.due) < at) return CARD_WORDS.closed(week)
+  if (closed) return CARD_WORDS.closed(week)
   return CARD_WORDS.open(week, saidOn(storage, week), of)
 }

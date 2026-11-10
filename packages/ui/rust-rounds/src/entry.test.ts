@@ -62,7 +62,7 @@ describe("Practice Home's line for the week (RR13)", () => {
     expect(rustWeekEntry(storage, before)).toBe(CARD_WORDS.open(W46.week, 1, 3))
   })
 
-  it("says what was sent, then that the week closed", () => {
+  it("says what was sent, then that the week closed, from the last send by the deadline", () => {
     const storage = inMemoryStorage()
     keptWeeks(storage).hold({ weeks: [W46], unread: [] })
     const after = Date.parse(QUILLMOSS_WEEK.due) + 60_000
@@ -75,6 +75,30 @@ describe("Practice Home's line for the week (RR13)", () => {
         passed: ["QM-312", "QM-313"],
       },
     ])
-    expect(rustWeekEntry(storage, MID_46)).toBe(CARD_WORDS.sent(1, 3))
+    expect(rustWeekEntry(storage, MID_46)).toBe(CARD_WORDS.sent(W46.week, 1, 3))
+    // Sent again, the last send by the deadline is what the card says (RR22);
+    // one stamped after it never counts.
+    weeksSent(storage).keep((kept) => [
+      ...kept,
+      {
+        week: "2026-w46",
+        at: "2026-11-13T00:00:00.000Z",
+        answers: [
+          { ticket: "QM-311", take: "t", recordedAt: "x" },
+          { ticket: "QM-312", take: "u", recordedAt: "y" },
+        ],
+        passed: ["QM-313"],
+      },
+      {
+        week: "2026-w46",
+        at: new Date(after).toISOString(),
+        answers: [],
+        passed: ["QM-311", "QM-312", "QM-313"],
+      },
+    ])
+    expect(rustWeekEntry(storage, MID_46)).toBe(CARD_WORDS.sent(W46.week, 2, 3))
+    expect(rustWeekEntry(storage, after)).toBe(
+      CARD_WORDS.closedSent(W46.week, 2, 3)
+    )
   })
 })
