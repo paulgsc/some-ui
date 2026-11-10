@@ -37,7 +37,7 @@ export const rustRoundsLane: Lane = {
     fnv1a(
       [
         roundsTaken(phoneRounds().held()),
-        ...keptGoing(browserLocalStorage).map(
+        ...keptGoing(browserLocalStorage, Date.now()).map(
           (item) => `${item.kind}/${item.id}@${fingerprintOf(item.wire)}`
         ),
       ].join("|")
@@ -49,7 +49,7 @@ export const rustRoundsLane: Lane = {
     const pairing = pairingOf(useHomeLink())
     const [onHome = 0, refused = 0, waiting = 0] = key.split("/").map(Number)
     const kept = keptCounts(
-      keptGoing(browserLocalStorage),
+      keptGoing(browserLocalStorage, Date.now()),
       pairing === null ? null : readSent(browserLocalStorage, pairing)
     )
     return {

@@ -1,30 +1,39 @@
 /**
  * What Rust Rounds keeps goes home (RR14, #2689), against a home kept in
- * memory that answers as paulgsc/server#763 does, with RR22's revisions
- * (#2832): each send of a week is kept by its `at` and a paste once (201,
- * then 200 for the same body), and a different body under the same one is
- * a 409; a sitting answers with its revision and reads back as sent.
+ * memory that answers as paulgsc/server#763 does, with RR22's drafts
+ * (#2832, the owner's call C56): a week's newest send stands in place of
+ * the one before (201, then 200 replaced), the same send again is 200
+ * unchanged, an older one 200 superseded with the one standing, and a
+ * different body at the same `at` a 409; a paste is kept once (201, then
+ * 200 for the same body, 409 for another); a sitting answers with its
+ * revision and reads back as sent.
  */
 import type { HomeAnswer, HomeCall } from "@some-ui/core-utils"
 import { canonicalJson, inMemoryStorage } from "@some-ui/core-utils"
-import type { KeptItem } from "@some-ui/rust-rounds"
+import type { KeptItem, WeekSent } from "@some-ui/rust-rounds"
 import { describe, expect, it } from "vitest"
 
-import { keptCounts, sendRustKept } from "@/lib/home-link/rust-kept"
+import {
+  holdsWeekSend,
+  keptCounts,
+  sendRustKept,
+} from "@/lib/home-link/rust-kept"
 import { readSent } from "@/lib/home-link/sent"
+
+const WEEK_SENT: WeekSent = {
+  week: "2026-w46",
+  at: "2026-11-12T20:00:00.000Z",
+  answers: [
+    { ticket: "QM-312", take: "t", recordedAt: "2026-11-12T19:58:00.000Z" },
+  ],
+  passed: ["QM-311", "QM-313"],
+}
 
 const WEEK: KeptItem = {
   kind: "rustWeeks",
   id: "2026-w46/2026-11-12T20:00:00.000Z",
   path: "/rust-weeks/2026-w46/sent",
-  wire: {
-    week: "2026-w46",
-    at: "2026-11-12T20:00:00.000Z",
-    answers: [
-      { ticket: "QM-312", take: "t", recordedAt: "2026-11-12T19:58:00.000Z" },
-    ],
-    passed: ["QM-311", "QM-313"],
-  },
+  wire: WEEK_SENT,
 }
 
 const PASTE: KeptItem = {
@@ -74,18 +83,36 @@ function home(): Home {
       kept.set(path, body)
       return { status: held === undefined ? 201 : 200, body: "{}" }
     }
-    // A week's sends are kept one per `at` (RR22).
-    const sent = path.endsWith("/sent")
-    const key = sent ? `${path}@${String(JSON.parse(body).at)}` : path
-    const same = kept.get(key)
-    if (same !== undefined && same !== body) return { status: 409, body: "{}" }
-    kept.set(key, body)
+    if (path.endsWith("/sent")) {
+      // The week's draft: the newest send stands (RR22).
+      const atOf = (text: string): number =>
+        Date.parse(String(JSON.parse(text).at))
+      const answer = (
+        status: number,
+        change: string,
+        sent: string
+      ): HomeAnswer => ({
+        status,
+        body: JSON.stringify({ change, sent: JSON.parse(sent) }),
+      })
+      if (held === undefined) {
+        kept.set(path, body)
+        return answer(201, "added", body)
+      }
+      if (atOf(body) === atOf(held)) {
+        return held === body
+          ? answer(200, "unchanged", held)
+          : { status: 409, body: "{}" }
+      }
+      if (atOf(body) < atOf(held)) return answer(200, "superseded", held)
+      kept.set(path, body)
+      return answer(200, "replaced", body)
+    }
+    if (held !== undefined && held !== body) return { status: 409, body: "{}" }
+    kept.set(path, body)
     return {
-      status: same === undefined ? 201 : 200,
-      body: JSON.stringify({
-        change: "added",
-        [sent ? "sent" : "paste"]: JSON.parse(body),
-      }),
+      status: held === undefined ? 201 : 200,
+      body: JSON.stringify({ change: "added", paste: JSON.parse(body) }),
     }
   }
   const made: Home = {
@@ -104,32 +131,39 @@ function home(): Home {
 }
 
 /** WEEK sent again, a ticket more said (RR22). */
+const AGAIN_SENT: WeekSent = {
+  week: "2026-w46",
+  at: "2026-11-13T20:00:00.000Z",
+  answers: [
+    { ticket: "QM-311", take: "u", recordedAt: "2026-11-13T19:00:00.000Z" },
+    { ticket: "QM-312", take: "t", recordedAt: "2026-11-12T19:58:00.000Z" },
+  ],
+  passed: ["QM-313"],
+}
+
 const AGAIN: KeptItem = {
   ...WEEK,
   id: "2026-w46/2026-11-13T20:00:00.000Z",
-  wire: {
-    week: "2026-w46",
-    at: "2026-11-13T20:00:00.000Z",
-    answers: [
-      { ticket: "QM-311", take: "u", recordedAt: "2026-11-13T19:00:00.000Z" },
-      { ticket: "QM-312", take: "t", recordedAt: "2026-11-12T19:58:00.000Z" },
-    ],
-    passed: ["QM-313"],
-  },
+  wire: AGAIN_SENT,
 }
 
 describe("sendRustKept", () => {
-  it("sends each send of a week on its own, and counts each once home carries it (RR22)", async () => {
+  it("sends a week's newer send in place of the one home has, and knows home holds each (RR22)", async () => {
     const storage = inMemoryStorage()
     const at = home()
     await sendRustKept(at.send, [WEEK], storage, "p1")
     at.calls.length = 0
-    await sendRustKept(at.send, [WEEK, AGAIN], storage, "p1")
+    // keptGoing offers a week's latest send alone.
+    await sendRustKept(at.send, [AGAIN], storage, "p1")
     expect(at.calls).toEqual([`PUT ${AGAIN.path}`])
-    expect(keptCounts([WEEK, AGAIN], readSent(storage, "p1"))).toMatchObject({
-      rustWeeks: 2,
+    expect(at.kept.get(AGAIN.path)).toBe(canonicalJson(AGAIN.wire))
+    const memory = readSent(storage, "p1")
+    expect(keptCounts([AGAIN], memory)).toMatchObject({
+      rustWeeks: 1,
       waiting: 0,
     })
+    expect(holdsWeekSend(memory, AGAIN_SENT)).toBe(true)
+    expect(holdsWeekSend(null, AGAIN_SENT)).toBe(false)
   })
 
   it("sends a send home held under the week alone once more, which home takes as it is", async () => {
@@ -137,6 +171,7 @@ describe("sendRustKept", () => {
     const at = home()
     // The phone before RR22 remembered a week's one send under the week.
     await sendRustKept(at.send, [{ ...WEEK, id: "2026-w46" }], storage, "p1")
+    expect(holdsWeekSend(readSent(storage, "p1"), WEEK_SENT)).toBe(true)
     at.calls.length = 0
     expect(await sendRustKept(at.send, [WEEK], storage, "p1")).toEqual({
       kind: "synced",
@@ -160,9 +195,7 @@ describe("sendRustKept", () => {
       `PUT ${sitting(1).path}`,
       `GET ${sitting(1).path}`,
     ])
-    expect(at.kept.get(`${WEEK.path}@2026-11-12T20:00:00.000Z`)).toBe(
-      canonicalJson(WEEK.wire)
-    )
+    expect(at.kept.get(WEEK.path)).toBe(canonicalJson(WEEK.wire))
     expect(keptCounts(going, readSent(storage, "p1"))).toEqual({
       rustWeeks: 1,
       rustPastes: 1,

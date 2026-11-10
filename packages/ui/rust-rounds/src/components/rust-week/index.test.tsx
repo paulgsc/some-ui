@@ -58,7 +58,8 @@ function ports(
   simulated = simulatedPattern({
     options: { ...ONE_TAKE, send: "on-confirm" },
   }),
-  now: () => number = Date.now
+  now: () => number = Date.now,
+  homeHolds: RustWeekPorts["homeHolds"] = (): boolean => false
 ): RustWeekPorts {
   const { pattern, store } = simulated
   return {
@@ -72,6 +73,7 @@ function ports(
     storage,
     home: { reach: () => "near", subscribe: () => (): void => undefined },
     heard: () => Promise.resolve({ kind: "heard", text: "It copies." }),
+    homeHolds,
     now,
     newId: () => "unused",
     engage: () => undefined,
@@ -131,10 +133,13 @@ describe("a week on the phone (RR13)", () => {
     expect(screen.getByText(WORDS.sent.later)).toBeInTheDocument()
     expect(screen.getAllByText(WORDS.sent.notAnswered)).toHaveLength(2)
     unmount()
-    render(<RustWeek ports={phone} />)
+    // Home has had the send since (RR22).
+    render(<RustWeek ports={{ ...phone, homeHolds: () => true }} />)
     await settle()
-    // Still open (RR22): the brief, with what home holds per ticket.
-    expect(screen.getByText(WORDS.held(1, 3))).toBeInTheDocument()
+    // Still open: the brief, with what home has and where each ticket stands.
+    expect(
+      screen.getByText(/^Home has your send from .*: 1 of 3 answered\.$/)
+    ).toBeInTheDocument()
     expect(
       screen.getByRole("button", {
         name: new RegExp(`^${WORDS.ticketLabel(first.id, first.title)}`),
@@ -170,7 +175,10 @@ describe("a week on the phone (RR13)", () => {
       screen.getByText(WORDS.sent.again(QUILLMOSS_WEEK))
     ).toBeInTheDocument()
     press(WORDS.backToWeek)
-    expect(screen.getByText(WORDS.held(1, 3))).toBeInTheDocument()
+    // Not home's yet: on this phone, until home is in reach.
+    expect(
+      screen.getByText(/1 of 3 answered, is on this phone\./)
+    ).toBeInTheDocument()
     first.unmount()
 
     render(<RustWeek ports={ports(storage, simulated)} />)
@@ -185,7 +193,7 @@ describe("a week on the phone (RR13)", () => {
     expect(screen.getByText(WORDS.sent.title(2, 3))).toBeInTheDocument()
   })
 
-  it("reads the week back once it closed, recording and sending nothing", async () => {
+  it("reads back what home had at the deadline, recording and sending nothing", async () => {
     const storage = inMemoryStorage()
     const simulated = simulatedPattern({
       options: { ...ONE_TAKE, send: "on-confirm" },
@@ -205,11 +213,40 @@ describe("a week on the phone (RR13)", () => {
     open.unmount()
 
     const after = Date.parse(QUILLMOSS_WEEK.due) + 60_000
-    render(<RustWeek ports={ports(storage, simulated, () => after)} />)
+    const closed = render(
+      <RustWeek
+        ports={ports(
+          storage,
+          simulated,
+          () => after,
+          () => false
+        )}
+      />
+    )
+    await settle()
+    // Home never had it: it didn't count, and it says so.
+    expect(screen.getByText(WORDS.closed.sentOf(0, 3))).toBeInTheDocument()
+    expect(
+      screen.getByText(/didn't reach home before the deadline/)
+    ).toBeInTheDocument()
+    expect(screen.getAllByText(WORDS.closed.notAnswered)).toHaveLength(3)
+    closed.unmount()
+
+    render(
+      <RustWeek
+        ports={ports(
+          storage,
+          simulated,
+          () => after,
+          () => true
+        )}
+      />
+    )
     await settle()
     expect(
       screen.getByText(WORDS.closed.title(QUILLMOSS_WEEK))
     ).toBeInTheDocument()
+    expect(screen.queryByText(/didn't reach home/)).toBeNull()
     expect(screen.getByText(WORDS.closed.sentOf(1, 3))).toBeInTheDocument()
     expect(screen.getAllByText(WORDS.closed.notAnswered)).toHaveLength(2)
     for (const ticket of QUILLMOSS_WEEK.tickets) {

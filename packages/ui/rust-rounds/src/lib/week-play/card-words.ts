@@ -33,10 +33,10 @@ export const CARD_WORDS = {
     `Week ${weekNumber(week.id)} · ${week.company.name} · due ${weekday(week.due)} · ${said} of ${of} said`,
   /** Sent, and open until the deadline to send again (RR22). */
   sent: (week: CardWeek, said: number, of: number): string =>
-    `Week ${weekNumber(week.id)} · sent home: ${said} of ${of} · open until ${weekday(week.due)}`,
+    `Week ${weekNumber(week.id)} · sent: ${said} of ${of} · open until ${weekday(week.due)}`,
   closed: (week: Pick<Week, "id">): string =>
     `Week ${weekNumber(week.id)} has closed. Its essay comes from home.`,
   /** Closed, with what was sent by the deadline: read back on opening. */
   closedSent: (week: Pick<Week, "id">, said: number, of: number): string =>
-    `Week ${weekNumber(week.id)} has closed · sent home: ${said} of ${of}. Its essay comes from home.`,
+    `Week ${weekNumber(week.id)} has closed · sent: ${said} of ${of}. Its essay comes from home.`,
 } as const

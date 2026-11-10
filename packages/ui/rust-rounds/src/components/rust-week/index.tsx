@@ -26,7 +26,11 @@ import type {
   WeekHeard,
 } from "@rust-rounds/lib/week-play/runtime"
 import { createRustWeek } from "@rust-rounds/lib/week-play/runtime"
-import type { WeekKind, WeekState } from "@rust-rounds/lib/week-play/spec"
+import type {
+  WeekAtHome,
+  WeekKind,
+  WeekState,
+} from "@rust-rounds/lib/week-play/spec"
 import { isClosed, ticketLine } from "@rust-rounds/lib/week-play/spec"
 import type { TicketStanding } from "@rust-rounds/lib/week-play/words"
 import { WEEK_WORDS } from "@rust-rounds/lib/week-play/words"
@@ -140,19 +144,23 @@ const Brief = (
     back: ReactNode
     onRounds?: () => void
     paste: PasteRuntime
+    atHome: WeekAtHome
   }
 ): JSX.Element => {
   const { machine, state, dispatch, held } = props
   const { week } = held
   const said = machine.answeredCount(state)
-  const { sent } = state
+  const { holds, last } = props.atHome
+  const of = week.tickets.length
   return (
     <div className="flex flex-col gap-4">
       <Story week={week} />
-      {sent !== null && (
+      {last !== null && (
         <section className="bg-card flex flex-col gap-1 rounded-2xl p-3 text-sm">
           <p className="font-semibold">
-            {WORDS.held(sent.answers.length, week.tickets.length)}
+            {holds?.at === last.at
+              ? WORDS.held(last.answers.length, of, last.at)
+              : WORDS.goesHome(last.answers.length, of, last.at)}
           </p>
           <p className="text-muted-foreground">{WORDS.openUntil(week)}</p>
         </section>
@@ -359,11 +367,14 @@ const ReadBack = (
     held: HeldWeek
     heard: WeekHeard
     back: ReactNode
+    atHome: WeekAtHome
   }
 ): JSX.Element => {
   const { machine, state, snapshot, takes, dispatch, held, heard } = props
   const { week } = held
-  const answered = state.sent?.answers ?? []
+  const { holds, last } = props.atHome
+  // What counts is what home had at the deadline (C56).
+  const answered = holds?.answers ?? []
   return (
     <div className="flex flex-col gap-4">
       <Story week={week} />
@@ -371,6 +382,9 @@ const ReadBack = (
         <p className="font-semibold">{WORDS.closed.title(week)}</p>
         <p className="text-muted-foreground">{WORDS.closed.line(week)}</p>
         <p>{WORDS.closed.sentOf(answered.length, week.tickets.length)}</p>
+        {last !== null && last.at !== holds?.at && (
+          <p className="text-muted-foreground">{WORDS.closed.late(last.at)}</p>
+        )}
       </section>
       <ol className="flex flex-col gap-6">
         {week.tickets.map((ticket, i) => {
@@ -563,6 +577,7 @@ const Screen = (
     back: ReactNode
     onRounds?: () => void
     paste: PasteRuntime
+    atHome: WeekAtHome
   }
 ): JSX.Element => {
   const { state, dispatch, held } = props
@@ -650,6 +665,10 @@ export const RustWeek = ({
     week.heard.subscribe,
     week.heard.getSnapshot
   )
+  const atHome = useSyncExternalStore(
+    week.atHome.subscribe,
+    week.atHome.getSnapshot
+  )
   const pasting = useSyncExternalStore(
     week.paste.subscribe,
     week.paste.getSnapshot
@@ -695,6 +714,7 @@ export const RustWeek = ({
           dispatch={dispatch}
           held={held}
           heard={heard}
+          atHome={atHome}
           back={back}
           paste={week.paste}
           {...(onRounds === undefined ? {} : { onRounds })}

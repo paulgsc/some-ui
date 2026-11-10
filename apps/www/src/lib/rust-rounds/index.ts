@@ -140,7 +140,7 @@ export function phoneWeeks(): WeeksStore {
  * the route, which may reach home.
  */
 export function phoneRustWeekPorts(
-  reach: Pick<RustWeekPorts, "home" | "heard">
+  reach: Pick<RustWeekPorts, "home" | "heard" | "homeHolds">
 ): RustWeekPorts | null {
   const week = currentWeek(phoneWeeks().held().weeks, Date.now())
   return week === null

@@ -735,6 +735,24 @@
     {
       "id": "C56",
       "made": "2026-11-10",
+      "by": "owner",
+      "paths": [
+        "packages/ui/rust-rounds/src/lib/week-play",
+        "server:apps/servers/file_host/src/handlers/rust_rounds.rs"
+      ],
+      "chose": "A week's sends before its deadline are drafts: home keeps the latest in place of the one before. Only what stands at the deadline is final and kept for good, an unanswered ticket included.",
+      "options": [
+        "keep every send for good",
+        "keep only the first",
+        "drafts until the deadline"
+      ],
+      "gray": "The RR14 record kept the first send for good, and re-sending had to choose what the record is.",
+      "undo": "Keep every revision.",
+      "refs": ["#2832", "#2833"]
+    },
+    {
+      "id": "C57",
+      "made": "2026-11-10",
       "by": "claude",
       "paths": [
         "packages/ui/rust-rounds/src/components/rust-week/index.tsx",
@@ -751,29 +769,29 @@
       "refs": ["#2832"]
     },
     {
-      "id": "C57",
+      "id": "C58",
       "made": "2026-11-10",
       "by": "claude",
       "paths": [
         "packages/ui/rust-rounds/src/lib/week-play/spec.ts",
         "packages/voice-capture/src/lib/bundle.ts"
       ],
-      "chose": "Each send again holds every ticket: one sent before and not said since goes again with the take home holds, so the last send is the whole week. Send again waits until something changed since the last send.",
+      "chose": "Each send holds the whole week: a ticket sent before and not said since goes again with the take sent, since home keeps only the latest send (C56). Send again waits until something changed since the last send.",
       "options": [
         "every send holds the whole week, and needs a change",
         "a send holds only what changed since the last",
         "any send, changed or not"
       ],
-      "gray": "Home's record answers from the last send by the deadline (#2832), so a send of only the changed tickets would drop the others from the record; whether an unchanged send is offered is a choice no check settles.",
+      "gray": "With home keeping the latest send only (C56), a send of the changed tickets alone would drop the others from what counts; whether an unchanged send is offered is a choice no check settles.",
       "undo": "Drop the merge of `last` in weekSpec's record, and the \"unchanged\" need in bundle.ts's missing.",
       "refs": ["#2832"]
     },
     {
-      "id": "C58",
+      "id": "C59",
       "made": "2026-11-10",
       "by": "claude",
       "paths": ["packages/ui/rust-rounds/src/components/rust-week/index.tsx"],
-      "chose": "After the deadline the week reads back on one scrolling screen: the brief, then every ticket with its spec, speak-to points, program and rustc's result, the take sent by the deadline (playable) with the words home heard, or \"Not answered.\"",
+      "chose": "After the deadline the week reads back on one scrolling screen: the brief, then every ticket with its spec, speak-to points, program and rustc's result, the take home had at the deadline (playable) with the words home heard, or \"Not answered.\"; a send home didn't have by then is named as not counting.",
       "options": [
         "one scrolling screen",
         "the swiped cards, read-only",
@@ -781,20 +799,6 @@
       ],
       "gray": "#2832 lists what the read-back shows, not how it is laid out.",
       "undo": "Render ReadBack's tickets as read-only cards on the pager.",
-      "refs": ["#2832"]
-    },
-    {
-      "id": "C59",
-      "made": "2026-11-10",
-      "by": "claude",
-      "paths": [
-        "apps/www/src/lib/home-link/words.ts",
-        "packages/ui/rust-rounds/src/lib/kept-home/index.ts"
-      ],
-      "chose": "Where Rust Rounds is kept counts each send of a week, as \"Each time you sent a week\", since each goes home and is kept there on its own.",
-      "options": ["count each send", "count each week sent at least once"],
-      "gray": "Weeks and sends were one and the same until a week could be sent again; which the owner wants counted is theirs to notice.",
-      "undo": "Key keptGoing's week items by the week again, sending only its last send.",
       "refs": ["#2832"]
     }
   ]

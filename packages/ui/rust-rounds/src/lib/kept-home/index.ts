@@ -5,13 +5,17 @@
  * Rust Rounds lane (`lib/home-link/rust-kept.ts`) sends them, and the phone
  * lets go of none of them.
  *
- * - **Each send of a week** (`lib/week-play/store`'s `weeksSent`), as it is
- *   kept, to `PUT /rust-weeks/:id/sent`, one by one in the order sent: a
- *   week open until its deadline can be sent again (RR22, #2832), and home
- *   keeps each send as a revision, known by its `at`, and makes the week's
- *   record from the last one by the deadline. Home records a week that
- *   closed unsent itself: nothing goes for silence. A take said but not sent
- *   by the deadline stays in the week's draft.
+ * - **The latest send of each week** (`lib/week-play/store`'s
+ *   `weeksSent`), as it is kept, to `PUT /rust-weeks/:id/sent`, known by
+ *   its `at` (`weekSendKey`). A week is open until its deadline and can be
+ *   sent again (RR22, #2832): home keeps the latest in place of the one
+ *   before, and what it holds at the deadline counts, for good (the
+ *   owner's call, C56). Earlier sends stay on this phone and go nowhere.
+ *   Nothing goes once the week's deadline has passed on this phone's clock,
+ *   since home refuses it then; the week's screen says it didn't count.
+ *   Home records a week that closed unsent itself: nothing goes for
+ *   silence. A take said but not sent by the deadline stays in the week's
+ *   draft.
  * - **Each error pasted and kept** (`pasteStores`), to
  *   `PUT /rust-weeks/:id/pastes/:at`.
  * - **Each sitting of the card-era log** (`some-ui.rust-round-log/1`), to
@@ -19,15 +23,18 @@
  */
 import { LOG_SCHEMA } from "@rust-rounds/lib/formats"
 import { keptLog } from "@rust-rounds/lib/play/store"
+import type { WeekSent } from "@rust-rounds/lib/week-play/spec"
+import { isClosed, weekSendKey } from "@rust-rounds/lib/week-play/spec"
 import { pasteStores, weeksSent } from "@rust-rounds/lib/week-play/store"
+import { heldWeek, keptWeeks } from "@rust-rounds/lib/weeks"
 import type { KeyedStorage } from "@some-ui/core-utils"
 
 /** One thing that goes home, by kind. */
 export type KeptItem = {
   readonly kind: "rustWeeks" | "rustPastes" | "roundLog"
   /**
-   * Its id among its kind: the week and when it was sent, when the paste
-   * was begun, the sitting.
+   * Its id among its kind: the week and when it was sent
+   * (`weekSendKey`), when the paste was begun, the sitting.
    */
   readonly id: string
   readonly path: string
@@ -36,16 +43,36 @@ export type KeptItem = {
 
 const week = (id: string): string => `/rust-weeks/${encodeURIComponent(id)}`
 
-/** Everything Rust Rounds keeps that goes home, in the order it goes. */
-export function keptGoing(storage: KeyedStorage | null): Array<KeptItem> {
-  const weeks = (weeksSent(storage).list() ?? []).map(
-    (sent): KeptItem => ({
-      kind: "rustWeeks",
-      id: `${sent.week}/${sent.at}`,
-      path: `${week(sent.week)}/sent`,
-      wire: sent,
+/**
+ * Everything Rust Rounds keeps that goes home at `at` (milliseconds since
+ * the epoch), in the order it goes.
+ */
+export function keptGoing(
+  storage: KeyedStorage | null,
+  at: number
+): Array<KeptItem> {
+  const latest = new Map<string, WeekSent>()
+  for (const sent of weeksSent(storage).list() ?? []) {
+    const before = latest.get(sent.week)
+    if (before === undefined || Date.parse(sent.at) >= Date.parse(before.at)) {
+      latest.set(sent.week, sent)
+    }
+  }
+  const held = keptWeeks(storage).held()
+  const now = new Date(at).toISOString()
+  const weeks = [...latest.values()]
+    .filter((sent) => {
+      const of = heldWeek(held, sent.week)
+      return of === null || !isClosed(of.week, now)
     })
-  )
+    .map(
+      (sent): KeptItem => ({
+        kind: "rustWeeks",
+        id: weekSendKey(sent),
+        path: `${week(sent.week)}/sent`,
+        wire: sent,
+      })
+    )
   const pastes = pasteStores(storage)
     .pastes.list()
     .map(

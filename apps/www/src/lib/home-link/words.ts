@@ -163,7 +163,7 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
     markLabel: "Where Rust Rounds is kept",
     title: "Rust Rounds and home",
     rows: [
-      { kind: "rustWeeks", label: "Each time you sent a week", one: "send" },
+      { kind: "rustWeeks", label: "Weeks you sent", one: "week" },
       {
         kind: "rustPastes",
         label: "What rustc said, pasted from your code",

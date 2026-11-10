@@ -111,7 +111,7 @@ export const WEEK_WORDS = {
   standing: {
     open: "Not said",
     said: "Said, on this phone",
-    sent: "Sent home",
+    sent: "Sent",
     resaid: "Said again, on this phone until you send",
     unanswered: "Not answered",
   } satisfies Record<TicketStanding, string>,
@@ -153,24 +153,27 @@ export const WEEK_WORDS = {
       "This phone isn't paired with home yet. The takes are kept here and go home once it is.",
     unknown: null,
   },
-  /** Over the brief, once the week went home and while it is open (RR22). */
-  held: (n: number, of: number): string =>
-    `Home holds ${n} of ${of} from your last send.`,
+  /** Over the brief, once the week was sent and while it is open (RR22). */
+  held: (n: number, of: number, at: string): string =>
+    `Home has your send from ${weekday(at)} ${clock(at)}: ${n} of ${of} answered.`,
+  /** Sent from this phone, and home hasn't had it yet. */
+  goesHome: (n: number, of: number, at: string): string =>
+    `Your send from ${weekday(at)} ${clock(at)}, ${n} of ${of} answered, is on this phone. It goes home when you're in reach.`,
   openUntil: (week: Pick<Week, "due">): string =>
-    `Until ${weekday(week.due)} ${clock(week.due)} you can answer any ticket, say one again and send the week again. Home keeps every send.`,
+    `What home has at ${weekday(week.due)} ${clock(week.due)} is what counts, and is kept for good. Until then you can answer any ticket, say one again and send the week again.`,
   backToWeek: "Back to the week",
   /** A ticket's card, for its take home holds. */
   home: {
-    holds: "Home holds the take you sent for this ticket.",
+    holds: "This is the take you sent for this ticket.",
     again:
-      "Home holds the take you sent before. The one here goes when you send again.",
+      "You sent an earlier take for this ticket. The one here goes when you send again.",
   },
   /** After Send. */
   sent: {
     title: (n: number, of: number): string => `Sent home: ${n} of ${of}.`,
     line: "Home keeps your takes and writes down the words it hears in them. Nothing answers now. The essay comes after the deadline, and covers every ticket, answered or not.",
     again: (week: Pick<Week, "due">): string =>
-      `Until ${weekday(week.due)} ${clock(week.due)} you can still answer, say a ticket again and send again.`,
+      `What home has at ${weekday(week.due)} ${clock(week.due)} is what counts. Until then you can still answer, say a ticket again and send again.`,
     heard: "What home heard",
     hearing: "Home is hearing it.",
     /** Not asked this opening, or home doesn't hold it or couldn't say. */
@@ -184,7 +187,10 @@ export const WEEK_WORDS = {
     title: (week: Pick<Week, "id">): string =>
       `Week ${weekNumber(week.id)} has closed.`,
     line: (week: Pick<Week, "due">): string =>
-      `It closed ${weekday(week.due)} ${clock(week.due)}. What you sent by then is what home keeps, and the essay comes from home. Nothing more can be said or sent here.`,
+      `It closed ${weekday(week.due)} ${clock(week.due)}. What home had then is what counts, kept for good, and the essay comes from home. Nothing more can be said or sent here.`,
+    /** A send made on this phone that home didn't have by the deadline. */
+    late: (at: string): string =>
+      `Your send from ${weekday(at)} ${clock(at)} didn't reach home before the deadline, so it doesn't count. It stays on this phone.`,
     sentOf: (n: number, of: number): string => `Sent home: ${n} of ${of}.`,
     notAnswered: "Not answered.",
     unplayable: "This take isn't on this phone to play.",

@@ -9,6 +9,8 @@
 import { QUILLMOSS_WEEK } from "@rust-rounds/lib/sample-week"
 import type { RustWeek } from "@rust-rounds/lib/week-play/runtime"
 import { createRustWeek, currentWeek } from "@rust-rounds/lib/week-play/runtime"
+import type { WeekSent } from "@rust-rounds/lib/week-play/spec"
+import { weekAtHome } from "@rust-rounds/lib/week-play/spec"
 import { weeksSent } from "@rust-rounds/lib/week-play/store"
 import type { HeldWeek } from "@rust-rounds/lib/weeks"
 import type { KeyedStorage } from "@some-ui/core-utils"
@@ -56,6 +58,7 @@ function phone(
   over: {
     now?: () => number
     heard?: (take: string) => Promise<HeardAnswer>
+    homeHolds?: (sent: WeekSent) => boolean
   } = {}
 ): Phone {
   const { pattern, store } = simulated
@@ -77,6 +80,7 @@ function phone(
     storage,
     home: { reach: () => "near", subscribe: () => (): void => undefined },
     heard,
+    homeHolds: over.homeHolds ?? ((): boolean => false),
     now: over.now ?? Date.now,
     newId: () => "unused",
     engage: (event) => engaged.push(event),
@@ -306,5 +310,44 @@ describe("the week open now", () => {
       ["taken", null],
       ["left", "ticket-2"],
     ])
+  })
+})
+
+describe("what home has of a week (RR22, C56)", () => {
+  const send = (week: string, at: string): WeekSent => ({
+    week,
+    at,
+    answers: [],
+    passed: [],
+  })
+  const first = send("2026-w46", "2026-11-12T20:00:00.000Z")
+  const second = send("2026-w46", "2026-11-13T20:00:00-08:00")
+  const other = send("2026-w47", "2026-11-20T20:00:00.000Z")
+
+  it("is the latest send home holds, by instant, beside the latest made", () => {
+    const kept = [second, other, first]
+    expect(weekAtHome(kept, { id: "2026-w46" }, () => true)).toEqual({
+      holds: second,
+      last: second,
+    })
+    expect(
+      weekAtHome(kept, { id: "2026-w46" }, (sent) => sent === first)
+    ).toEqual({ holds: first, last: second })
+    expect(weekAtHome(kept, { id: "2026-w48" }, () => true)).toEqual({
+      holds: null,
+      last: null,
+    })
+  })
+
+  it("reads again once a Send lands, from the link's word", async () => {
+    const storage = inMemoryStorage()
+    const on = phone(storage, onConfirm(), { homeHolds: () => true })
+    expect(on.week.atHome.getSnapshot()).toEqual({ holds: null, last: null })
+    on.week.bundle.dispatch({ type: "go", index: 0 })
+    await say(on, "QM-311")
+    on.week.bundle.dispatch({ type: "review" })
+    on.week.bundle.dispatch({ type: "send" })
+    const [sent] = weeksSent(storage).list() ?? []
+    expect(on.week.atHome.getSnapshot()).toEqual({ holds: sent, last: sent })
   })
 })
