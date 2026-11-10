@@ -7,6 +7,8 @@ import {
   handle,
   LIST_LIMIT_MAX,
   MAX_BODY_BYTES,
+  ringMessage,
+  RINGS,
 } from "@mailbox/core"
 import type { Folder, Store } from "@mailbox/store"
 import { describe, expect, it } from "vitest"
@@ -29,9 +31,21 @@ const DIGEST_NAME = "digest-2026-10-21.json"
 const DECISIONS_NAME = "decisions-2026-10-21.json"
 const SCOUTS_NAME = "scouts-20261021T145200.json"
 
+/** A bell that records what rang; Node cannot answer `101`, so listening answers `200`. */
+function recordingBell(rings: Array<Folder> = []): Deps["bell"] {
+  return {
+    listen: (): Promise<Response> =>
+      Promise.resolve(new Response("listening", { status: 200 })),
+    ring: (folder): void => {
+      rings.push(folder)
+    },
+  }
+}
+
 function deps(
   store: Store = memoryStore(),
-  reported: Array<unknown> = []
+  reported: Array<unknown> = [],
+  rings: Array<Folder> = []
 ): Deps {
   return {
     tokens: { routine: ROUTINE, home: HOME, archive: ARCHIVE },
@@ -40,6 +54,7 @@ function deps(
     report: (error): void => {
       reported.push(error)
     },
+    bell: recordingBell(rings),
   }
 }
 
@@ -2192,6 +2207,185 @@ describe("routes", () => {
       expect([method, path, response.status]).toEqual([method, path, 405])
       expect(response.headers.get("allow")).toBe(allow)
     }
+  })
+})
+
+describe("the bell (MBP1: MB2, MB6)", () => {
+  const UPGRADE = { upgrade: "websocket" }
+  const SCENE = JSON.stringify({
+    schema: "some-ui.routine-scene/1",
+    answers: "2026-10-13_morning-drama_session-",
+    title: "t",
+    decks: [],
+  })
+
+  it("only home listens, and a token is checked before anything else", async () => {
+    const { store, touched } = untouchable()
+    const d = deps(store)
+    expect(
+      (await send(d, "GET", "/v1/bell", { token: null, headers: UPGRADE }))
+        .status
+    ).toBe(401)
+    expect(
+      (await send(d, "GET", "/v1/bell", { token: "wrong", headers: UPGRADE }))
+        .status
+    ).toBe(401)
+    for (const token of [ROUTINE, ARCHIVE]) {
+      const response = await send(d, "GET", "/v1/bell", {
+        token,
+        headers: UPGRADE,
+      })
+      expect([token, response.status]).toEqual([token, 403])
+    }
+    const home = await send(d, "GET", "/v1/bell", {
+      token: HOME,
+      headers: UPGRADE,
+    })
+    expect(home.status).toBe(200)
+    expect(await home.text()).toBe("listening")
+    // Listening reads nothing from the store: no D1 quota for a connection.
+    expect(touched()).toBe(0)
+  })
+
+  it("is a WebSocket, on GET only", async () => {
+    const d = deps(untouchable().store)
+    const plain = await send(d, "GET", "/v1/bell", { token: HOME })
+    expect(plain.status).toBe(426)
+    expect(plain.headers.get("upgrade")).toBe("websocket")
+    for (const method of ["PUT", "POST", "DELETE"]) {
+      const response = await send(d, method, "/v1/bell", {
+        token: HOME,
+        headers: UPGRADE,
+      })
+      expect([method, response.status]).toEqual([method, 405])
+      expect(response.headers.get("allow")).toBe("GET")
+    }
+    // The bell is the exact path only.
+    const near = await send(d, "GET", "/v1/bell/", {
+      token: HOME,
+      headers: UPGRADE,
+    })
+    expect(near.status).toBe(404)
+  })
+
+  it("a bell that fails to answer is a 503, reported", async () => {
+    const reported: Array<unknown> = []
+    const d: Deps = {
+      ...deps(untouchable().store, reported),
+      bell: {
+        listen: () => Promise.reject(new Error("no bell")),
+        ring: (): void => undefined,
+      },
+    }
+    const response = await send(d, "GET", "/v1/bell", {
+      token: HOME,
+      headers: UPGRADE,
+    })
+    expect(response.status).toBe(503)
+    expect(reported).toHaveLength(1)
+  })
+
+  it("rings with the folder when a file is added to a folder home reads", async () => {
+    const rings: Array<Folder> = []
+    const d = deps(memoryStore(), [], rings)
+    expect((await put(d, "brief", DIGEST_NAME, { body: DIGEST })).status).toBe(
+      201
+    )
+    expect(rings).toEqual(["brief"])
+    // The same bytes again change nothing, so nothing rings.
+    expect((await put(d, "brief", DIGEST_NAME, { body: DIGEST })).status).toBe(
+      200
+    )
+    // Other bytes are refused, and nothing rings.
+    const other = JSON.stringify({ schema: "some-ui.job-digest/1", picks: [1] })
+    expect((await put(d, "brief", DIGEST_NAME, { body: other })).status).toBe(
+      409
+    )
+    expect(
+      (
+        await put(d, "scene", "scene-2026-10-13_morning-drama_session-.json", {
+          body: SCENE,
+        })
+      ).status
+    ).toBe(201)
+    expect(rings).toEqual(["brief", "scene"])
+  })
+
+  it("does not ring for a folder home does not read, or a put refused", async () => {
+    const rings: Array<Folder> = []
+    const d = deps(memoryStore(), [], rings)
+    expect(
+      (
+        await put(d, "decisions", DECISIONS_NAME, {
+          body: DECISIONS,
+          token: HOME,
+        })
+      ).status
+    ).toBe(201)
+    expect(
+      (await put(d, "scout", SCOUTS_NAME, { body: SCOUTS, token: HOME })).status
+    ).toBe(201)
+    expect((await put(d, "brief", "nope.json", { body: DIGEST })).status).toBe(
+      422
+    )
+    expect(
+      (await put(d, "brief", DIGEST_NAME, { body: DIGEST, token: HOME })).status
+    ).toBe(403)
+    expect(rings).toEqual([])
+  })
+
+  it("rings with the folder when the routine asks for an archived file, once", async () => {
+    const rings: Array<Folder> = []
+    let now = NOW
+    const d: Deps = { ...deps(memoryStore(), [], rings), now: () => now }
+    await put(d, "brief", DIGEST_NAME, { body: DIGEST })
+    now = new Date(NOW.getTime() + ARCHIVE_MIN_AGE_DAYS * 86_400_000)
+    const sha = createHash("sha256").update(DIGEST).digest("hex")
+    expect(
+      (
+        await send(d, "DELETE", `/v1/brief/items/${DIGEST_NAME}`, {
+          token: ARCHIVE,
+          headers: { "if-match": `"${sha}"` },
+        })
+      ).status
+    ).toBe(200)
+    expect(rings).toEqual(["brief"])
+    const ask = (): Promise<Response> =>
+      send(d, "PUT", `/v1/brief/wanted/${DIGEST_NAME}`)
+    expect((await ask()).status).toBe(202)
+    expect(rings).toEqual(["brief", "brief"])
+    expect((await ask()).status).toBe(200)
+    // Home puts it back with the archive token: home's own act, so no ring.
+    expect(
+      (await put(d, "brief", DIGEST_NAME, { body: DIGEST, token: ARCHIVE }))
+        .status
+    ).toBe(201)
+    expect(rings).toEqual(["brief", "brief"])
+  })
+
+  it("a ring that fails is reported and never changes the answer", async () => {
+    const reported: Array<unknown> = []
+    const d: Deps = {
+      ...deps(memoryStore(), reported),
+      bell: {
+        listen: () => Promise.reject(new Error("unused")),
+        ring: (): void => {
+          throw new Error("no bell")
+        },
+      },
+    }
+    const response = await put(d, "brief", DIGEST_NAME, { body: DIGEST })
+    expect(response.status).toBe(201)
+    expect(await json(response)).toEqual({ change: "added", seq: 1 })
+    expect(reported).toHaveLength(1)
+  })
+
+  it("rings for exactly paulgsc/server's pass::READS, which lives in the other repo", () => {
+    expect(RINGS).toEqual(["brief", "scene", "drama", "run", "leetype"])
+  })
+
+  it("a ring names its folder and nothing else (MB6)", () => {
+    expect(ringMessage("run")).toBe('{"ring":"run"}')
   })
 })
 

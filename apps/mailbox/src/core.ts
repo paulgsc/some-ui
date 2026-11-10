@@ -17,6 +17,8 @@
  * - MB5: an item never changes, and leaves `item` only into `archived`, or,
  *   for home's index, once a newer index of its routine is live (`store.ts`,
  *   `migrations/`).
+ * - MB6: a ring carries only a folder name (`ringMessage`, the one thing the
+ *   bell sends; `bell.ts`).
  */
 
 import type { Folder, Role, Store } from "./store"
@@ -912,6 +914,8 @@ type Grant = {
   readonly ask: ReadonlyArray<Folder>
   /** Archive items, put archived ones back, and list the asks. */
   readonly move: ReadonlyArray<Folder>
+  /** Listen on the bell (`GET /v1/bell`) for its rings. */
+  readonly listen: boolean
 }
 
 /**
@@ -944,6 +948,18 @@ const ASKED: ReadonlyArray<Folder> = RECORDS.filter(
     folder !== "reflection" && folder !== "prompt" && folder !== "feedback"
 )
 
+/**
+ * What home reads: the folders paulgsc/server's `mailbox::pass::READS` lists.
+ * A file added to one rings the bell (`RINGS`).
+ */
+const HOME_READS: ReadonlyArray<Folder> = [
+  "brief",
+  "scene",
+  "drama",
+  "run",
+  "leetype",
+]
+
 /** MB2. Another role (the phone's, say) is the owner's call, not a code change. */
 const ROLES: ReadonlyArray<Grant> = [
   {
@@ -953,11 +969,12 @@ const ROLES: ReadonlyArray<Grant> = [
     put: ["brief", "scene", "drama", "run", "leetype"],
     ask: ASKED,
     move: [],
+    listen: false,
   },
   {
     role: "home",
     token: (tokens) => tokens.home,
-    get: ["brief", "scene", "drama", "run", "leetype"],
+    get: HOME_READS,
     put: [
       "decisions",
       "scout",
@@ -971,6 +988,7 @@ const ROLES: ReadonlyArray<Grant> = [
     ],
     ask: [],
     move: [],
+    listen: true,
   },
   {
     role: "archive",
@@ -979,15 +997,48 @@ const ROLES: ReadonlyArray<Grant> = [
     put: [],
     ask: [],
     move: RECORDS,
+    listen: false,
   },
 ]
+
+/** The folders an added file rings the bell for (README, "The bell"). */
+export const RINGS: ReadonlyArray<Folder> = HOME_READS
+
+/**
+ * The one message the bell sends (MB6): which folder to look in, never what
+ * is in it. Home reads the rest through the listing, as its poll does.
+ */
+export function ringMessage(folder: Folder): string {
+  return JSON.stringify({ ring: folder })
+}
+
+/** Every folder a ring may name: what home reads, and what the routine may ask back. */
+export const RINGING: ReadonlySet<Folder> = new Set([...RINGS, ...ASKED])
+
+/** Home's heartbeat on the bell, answered without waking it: it sends `PING` and gets `PONG`. */
+export const PING = "ping"
+export const PONG = "pong"
+/** The close code an earlier listener gets when home connects again: one listener at a time. */
+export const REPLACED = 4000
+
+/** The Durable Object the Worker forwards to; `index.ts` binds it. */
+type BellPort = {
+  /** Takes home's upgrade request and answers it with the socket (`101`). */
+  readonly listen: (request: Request) => Promise<Response>
+  /**
+   * Rings whoever listens, without the caller waiting: best effort, so a
+   * put's answer never depends on it.
+   */
+  readonly ring: (folder: Folder) => void
+}
 
 export type Deps = {
   readonly tokens: Tokens
   readonly store: Store
   readonly now: () => Date
-  /** Told of a storage failure. */
+  /** Told of a storage failure, or a ring that could not be sent. */
   readonly report: (error: unknown) => void
+  readonly bell: BellPort
 }
 
 function answer(
@@ -1007,6 +1058,15 @@ function refuse(
   headers: Record<string, string> = {}
 ): Response {
   return answer(status, { error }, headers)
+}
+
+/** Best effort: a ring that fails is reported, never answered. */
+function ring(folder: Folder, deps: Deps): void {
+  try {
+    deps.bell.ring(folder)
+  } catch (error) {
+    deps.report(error)
+  }
 }
 
 async function sha256(data: string | Uint8Array): Promise<Uint8Array> {
@@ -1291,6 +1351,9 @@ async function write(
   if (result.change === "superseded") {
     return refuse(409, "a newer index of this routine is held")
   }
+  if (result.change === "added" && RINGS.includes(rules.folder)) {
+    ring(rules.folder, deps)
+  }
   return answer(result.change === "added" ? 201 : 200, {
     change: result.change,
     seq: result.seq,
@@ -1396,6 +1459,7 @@ async function ask(
   )
   switch (result.change) {
     case "asked": {
+      ring(rules.folder, deps)
       return answer(202, { change: result.change })
     }
     case "unchanged":
@@ -1454,6 +1518,22 @@ async function serve(
   return write(request, rules, name, grant.role, deps)
 }
 
+/** `GET /v1/bell` with `Upgrade: websocket`, for a role that may listen (MB2). */
+function listen(
+  request: Request,
+  grant: Grant,
+  deps: Deps
+): Promise<Response> | Response {
+  if (request.method !== "GET") {
+    return refuse(405, "method_not_allowed", { allow: "GET" })
+  }
+  if (!grant.listen) return refuse(403, "forbidden")
+  if (request.headers.get("upgrade")?.toLowerCase() !== "websocket") {
+    return refuse(426, "the bell is a WebSocket", { upgrade: "websocket" })
+  }
+  return deps.bell.listen(request)
+}
+
 /** A missing or wrong token is answered before the store is touched: no D1 quota for strangers. */
 export async function handle(request: Request, deps: Deps): Promise<Response> {
   const grant = await authenticate(
@@ -1464,6 +1544,9 @@ export async function handle(request: Request, deps: Deps): Promise<Response> {
     return refuse(401, "unauthorized", { "www-authenticate": "Bearer" })
   }
   try {
+    if (new URL(request.url).pathname === "/v1/bell") {
+      return await listen(request, grant, deps)
+    }
     return await serve(request, grant, deps)
   } catch (error) {
     deps.report(error)
