@@ -958,6 +958,25 @@
       "gray": "The races were narrow, but either could silently drop an acknowledged send or blank the record.",
       "undo": "Revert d9c4569's part of the squash.",
       "refs": ["server#770", "#2832", "#2833"]
+    },
+    {
+      "id": "C66",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": [
+        "server:.github/workflows/gate-verdict.yml",
+        "server:scripts/pr_gate.py",
+        "server:docs/assurance.md"
+      ],
+      "chose": "gate-verdict.yml's sweep can be run by hand: a workflow_dispatch with empty inputs runs the sweep, and one with pr and head_sha judges that head as before. Both inputs become optional, defaulting to empty.",
+      "options": [
+        "wait for the cron and prove the sweep only on its schedule",
+        "a separate workflow for a manual sweep",
+        "a dispatch with empty inputs runs the sweep"
+      ],
+      "gray": "It adds a second, manual trigger to the gate's machinery, so anyone with write access can start a sweep. That is harmless, since a sweep only re-judges unfinished gates inside each head's concurrency group, but it is new surface. It was also the only way to prove the sweep end to end while the cron wasn't firing (server#772).",
+      "undo": "Make pr and head_sha required again, set the sweep job's `if:` back to `github.event_name == 'schedule'` and the verdict job's to `github.event_name != 'schedule'`, and drop the routing test's dispatch-without-inputs case.",
+      "refs": ["server#772", "server#773", "server#762"]
     }
   ]
 }
