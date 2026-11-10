@@ -850,6 +850,23 @@
       "undo": "The down migration refuses once any final exists or any draft is not the seed copy. Before that, revert a714284 and run the down migration; rust_week_sent was never touched.",
       "refs": ["server#770", "#2832", "#2833"],
       "moves": "C52"
+    },
+    {
+      "id": "C54",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": [
+        "server:crates/db/rust_round/src/sent.rs",
+        "server:apps/servers/file_host/src/handlers/rust_week_record.rs"
+      ],
+      "chose": "Both races Codex found in server#770 are fixed in the pull request: `now` is read after the IMMEDIATE lock, a send to a week already final is refused (422), and the standing is read as one UNION statement (sent.rs is_final and standing, rust_week_record.rs put_sent).",
+      "options": [
+        "fix both races in the pull request",
+        "file them as an issue"
+      ],
+      "gray": "The races were narrow, but either could silently drop an acknowledged send or blank the record.",
+      "undo": "Revert d9c4569's part of the squash.",
+      "refs": ["server#770", "#2832", "#2833"]
     }
   ]
 }
