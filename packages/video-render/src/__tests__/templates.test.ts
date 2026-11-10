@@ -12,6 +12,7 @@ import {
   estimatedCallMs,
   sampleCallWeek,
 } from "@video-render/call"
+import { essayStoryboard } from "@video-render/essay"
 import { readFormat, readSeries, TEMPLATES_DIR } from "@video-render/node"
 import { framesInTime, parseStoryboard } from "@video-render/storyboard"
 import {
@@ -20,13 +21,12 @@ import {
   TEMPLATE_SERIES,
   templateCaptions,
   templateFormat,
-  TEMPLATES_NOT_LISTED,
   templateStoryboard,
 } from "@video-render/templates"
 import { describe, expect, it } from "vitest"
 
 describe("the templates Studio lists", () => {
-  it("are every folder that pins a format, each its newest version, but those not listed yet", async () => {
+  it("are every folder that pins a format, each its newest version", async () => {
     const pinned: Array<string> = []
     for (const id of readdirSync(TEMPLATES_DIR).sort()) {
       const newest = await readFormat(join(TEMPLATES_DIR, id))
@@ -35,8 +35,7 @@ describe("the templates Studio lists", () => {
       if (!isTemplateId(id)) continue
       expect(templateFormat(id)).toEqual(newest.value)
     }
-    expect(pinned).toEqual([...TEMPLATE_IDS, ...TEMPLATES_NOT_LISTED].sort())
-    expect(TEMPLATES_NOT_LISTED.filter((id) => isTemplateId(id))).toEqual([])
+    expect(pinned).toEqual([...TEMPLATE_IDS].sort())
   })
 })
 
@@ -84,5 +83,12 @@ describe("a template's storyboard", () => {
     expect(asks.map((f) => f.item)).toEqual(
       week.value.asks.map((_, i) => i + 1)
     )
+  })
+})
+
+describe("the essay's storyboard", () => {
+  it("is its sample essay's, pinned as the code makes it", () => {
+    // The pin is the code's; the phone reads the pin, since it can't carry essay.ts.
+    expect(templateStoryboard("rust-essay")).toEqual(essayStoryboard())
   })
 })

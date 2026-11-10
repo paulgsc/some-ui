@@ -1,6 +1,7 @@
 /**
  * `/essay` reads its recording address from the URL, as `/call` does:
- * `?scene` as a scene's id and `?record` as a flag. Anything else is dropped
+ * `?week` as the essay's week, `?scene` as a scene's id and `?record` as a
+ * flag. Anything else is dropped
  * rather than passed to the stage, which opens on the first scene for an id
  * it doesn't know.
  */
@@ -15,15 +16,18 @@ const read = (search: Record<string, unknown>): unknown => {
 }
 
 describe("/essay's search", () => {
-  it("takes a scene and the record flag", () => {
-    expect(read({ scene: "dive-3", record: "true" })).toEqual({
-      scene: "dive-3",
-      record: true,
-    })
+  it("takes a week, a scene and the record flag", () => {
+    expect(read({ week: "2026-w46", scene: "dive-3", record: "true" })).toEqual(
+      {
+        week: "2026-w46",
+        scene: "dive-3",
+        record: true,
+      }
+    )
   })
 
-  it("drops what is not a scene's id or the flag", () => {
-    expect(read({ scene: 3, record: "yes", week: "2026-w46" })).toEqual({})
-    expect(read({ scene: "" })).toEqual({})
+  it("drops what is not a week, a scene's id or the flag", () => {
+    expect(read({ week: 46, scene: 3, record: "yes", ticket: "x" })).toEqual({})
+    expect(read({ week: "", scene: "" })).toEqual({})
   })
 })

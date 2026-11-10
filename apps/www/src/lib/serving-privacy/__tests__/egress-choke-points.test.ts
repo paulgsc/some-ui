@@ -630,6 +630,7 @@ describe("LA4: a corpus read carries no credentials", () => {
     expect(found.sort()).toEqual([
       "lib/testing-data/index.ts",
       "lib/topik-content/index.ts",
+      "lib/web-surface/call/feed.ts",
       "lib/web-surface/hangul/vocab.ts",
     ])
   })

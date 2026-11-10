@@ -32,10 +32,10 @@ import {
 } from "./voiced"
 
 /** The frame the stage is recorded at: the call's series. */
-const FRAME = { width: 1920, height: 1080 } as const
+export const FRAME = { width: 1920, height: 1080 } as const
 
 /** The call's series, sampled in the renderer's workspace. */
-const SERIES = resolve(
+export const SERIES = resolve(
   import.meta.dirname,
   "../../../../packages/video-render/src/sample/series/conference-call"
 )

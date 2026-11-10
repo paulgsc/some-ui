@@ -7,14 +7,18 @@
  */
 import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
+import { parseCutList } from "@video-render/cut-list"
 import {
   cellsOf,
   ESSAY_DIVES,
   ESSAY_ID,
   ESSAY_VERSION,
+  essayChapterMarks,
+  essayCutList,
   essayFormat,
   essayIntro,
   essayScenes,
+  essayTakeFiles,
   essayVersionRefusal,
   isPast,
   parseEssay,
@@ -23,6 +27,7 @@ import {
 import type { Essay, EssayTicket } from "@video-render/essay"
 import { parseFormat } from "@video-render/format"
 import { versionOfFile } from "@video-render/series"
+import { spreadWords } from "@video-render/stills"
 import { describe, expect, it } from "vitest"
 
 const DIR = join(import.meta.dirname, "../templates", ESSAY_ID)
@@ -146,6 +151,72 @@ describe("the sample essay", () => {
     expect(intro.rows.at(-1)?.says).toBe("2 of 3 tickets")
     expect(intro.said).toContain("the other voice is the owner's own")
   })
+
+  it("says, as the sample, that no owner said its answers (C76)", () => {
+    const intro = essayIntro(sample(), "sample")
+    expect(intro.said).toContain("both voices are synthetic")
+    expect(intro.said).not.toContain("the owner's own")
+    expect(intro.rows.find((r) => r.label === "Voices")?.says).toContain(
+      "a second synthetic voice reads the answers"
+    )
+    expect(essayScenes(sample(), "sample")[0]?.said).toBe(intro.said)
+  })
+})
+
+describe("an essay's cut list (RR16)", () => {
+  const essay = sample()
+  const scenes = essayScenes(essay)
+  const takes = scenes.map((scene) =>
+    scene.said === ""
+      ? null
+      : scene.speaker === "you"
+        ? { ms: 61_000, owner: true }
+        : { ms: 4_000 }
+  )
+  const cut = essayCutList(essay, takes)
+
+  it("is a cut list the renderer takes, a still per scene", () => {
+    expect(parseCutList(cut).ok).toBe(true)
+    expect(cut.shots.map((s) => s.id)).toEqual(scenes.map((s) => s.id))
+    expect(cut.title).toBe("The Rust Rounds essay, 2026-w46")
+  })
+
+  it("plays an owner's take whole, as theirs; every other take is the speaker's", () => {
+    for (const [i, shot] of cut.shots.entries()) {
+      const scene = scenes[i]
+      if (scene?.said === "") continue
+      const owner = scene?.speaker === "you"
+      expect(shot.take?.outMs).toBe(owner ? 61_000 : 4_000)
+      expect(shot.speaker).toBe(owner ? undefined : "kokoro")
+    }
+    expect(
+      cut.shots.filter((s) => s.speaker === undefined && s.take)
+    ).toHaveLength(2)
+  })
+
+  it("marks a chapter at each ticket and the close's sections", () => {
+    expect(essayChapterMarks(essay).map((m) => [m.scene, m.title])).toEqual([
+      ...essay.tickets.map((t, i) => [
+        `chapter-question-${i + 1}`,
+        `${t.id}: ${t.title}`,
+      ]),
+      ["chapter-weeks", "Over the weeks"],
+    ])
+  })
+})
+
+describe("captions for a take with no word times", () => {
+  it("cover the take in order, each word as long as its letters", () => {
+    const words = spreadWords("  a borrow   outlives ", 1_700)
+    expect(words.map((w) => w.text)).toEqual(["a", "borrow", "outlives"])
+    expect(words[0]?.startMs).toBe(0)
+    expect(words.at(-1)?.endMs).toBe(1_700)
+    for (const [i, word] of words.entries()) {
+      expect(word.endMs).toBeGreaterThan(word.startMs)
+      if (i > 0) expect(word.startMs).toBe(words[i - 1]?.endMs)
+    }
+    expect(spreadWords("", 1_000)).toEqual([])
+  })
 })
 
 describe("an essay that contradicts itself", () => {
@@ -229,5 +300,46 @@ describe("the chart's cells", () => {
       { kind: "level", level: 5, decayed: false },
       { kind: "level", level: 4, decayed: true },
     ])
+  })
+})
+
+describe("the takes home hands the recorder", () => {
+  const essay = sample()
+
+  it("are one audio file per answered ticket, with its word times where kept", () => {
+    expect(
+      essayTakeFiles(essay, [
+        "QM-311.m4a",
+        "QM-311.words.json",
+        "QM-312.webm",
+        ".DS_Store",
+      ])
+    ).toEqual({
+      ok: true,
+      value: {
+        "QM-311": { audio: "QM-311.m4a", words: "QM-311.words.json" },
+        "QM-312": { audio: "QM-312.webm", words: null },
+      },
+    })
+  })
+
+  it("are refused with every reason when any is missing, doubled or stray", () => {
+    const refused = essayTakeFiles(essay, [
+      "QM-311.m4a",
+      "QM-311.wav",
+      "QM-313.m4a",
+      "QM-399.m4a",
+      "QM-400.words.json",
+    ])
+    expect(refused).toEqual({
+      ok: false,
+      problems: [
+        "QM-311: 2 takes (QM-311.m4a, QM-311.wav); one plays",
+        "QM-312: answered, and there is no take of it",
+        "QM-313.m4a: QM-313 was left silent",
+        "QM-399.m4a: names no ticket the essay answers",
+        "QM-400.words.json: word times with no take",
+      ],
+    })
   })
 })

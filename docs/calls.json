@@ -794,6 +794,86 @@
       "undo": "Remove gate-verdict.yml's schedule and workflow_dispatch triggers and its sweep job, and pr_gate.py's sweep(); the gap is then back as a gate left pending.",
       "refs": ["server#762", "server#767", "#2833"],
       "moves": "C70"
+    },
+    {
+      "id": "C65",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["apps/mailbox/src/core.ts", "apps/mailbox/README.md"],
+      "chose": "A Rust Rounds essay's script rides the mailbox's brief folder, beside the weeks of Rust Rounds, rather than a rust-essay folder of its own.",
+      "options": [
+        "a rust-essay folder of its own",
+        "the brief folder, as the weeks of Rust Rounds do"
+      ],
+      "gray": "The owner's answer on #2684 says the routine puts the script in a mailbox folder named rust-essay. Its point was that the script stays on home and in the mailbox. A folder of its own adds a listing to every pass home makes, which MI6 counts, while brief is listed anyway, and the home side of RR16 is built to read brief.",
+      "undo": "Add a rust-essay folder to FOLDERS, the routine's put and home's get in ROLES, and paulgsc/server's pass::READS, then move the essay kind out of brief's also.",
+      "refs": ["#2684", "#2691", "#2833"]
+    },
+    {
+      "id": "C72",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["apps/mailbox/src/core.ts", "apps/mailbox/README.md"],
+      "chose": "A corrected essay script goes under a new name, rust-essay-YYYY-wNN-rN.json with N from 2, since a name in the mailbox holds one body for good.",
+      "options": [
+        "a correction under -rN, N from 2",
+        "no corrections: one script per week"
+      ],
+      "gray": "Nothing settled whether a week's essay can be corrected once put, and a held name refuses other bytes (MB5), so a fix needs a new name or none can be made.",
+      "undo": "Drop the (-rN) part of the rust-essay name in brief's also in core.ts, and its tests.",
+      "refs": ["#2691", "#2833"]
+    },
+    {
+      "id": "C76",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/essay.ts",
+        "apps/www/src/lib/web-surface/call/essay-view.ts",
+        "apps/www/tests/record/essay-recording.ts"
+      ],
+      "chose": "Where the essay plays its sample (the stage with no week named, its storyboard and its preview), a second Kokoro voice (ESSAY_VOICES.you) reads the sample's answers, and the locked intro says the essay is a sample with both voices synthetic. An essay home renders plays the owner's own takes, and its intro says the other voice is theirs.",
+      "options": [
+        "a second synthetic voice reads the sample's answers, and the intro says so",
+        "the sample's answer scenes stay silent, held for their reading time",
+        "the tutor's voice reads the sample's answers too"
+      ],
+      "gray": "#2691 lists the essay's preview, but no owner ever said the sample's answers, and RR15's intro says the other voice is the owner's own, which would be false over a synthetic one. No check or earlier decision says how a sample stands in for the owner's voice.",
+      "undo": "Change ESSAY_VOICES.you or the Voicing branch of essayIntro in essay.ts, re-pin templates/rust-essay/storyboard.json, and record the preview again.",
+      "refs": ["#2691", "#2690"]
+    },
+    {
+      "id": "C77",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["apps/www/src/lib/web-surface/call/essay-view.ts"],
+      "chose": "/essay?week=<id> draws only that week's essay. When it can't be read, or what is read belongs to another week, the stage says why and draws nothing, even outside a recording. The sample plays only with no week named, or week=sample.",
+      "options": [
+        "refuse, saying why, whenever a named essay can't be read",
+        "fall back to the sample outside a recording, as /call does with a week"
+      ],
+      "gray": "/call shows its sample week when a live week can't be read, unless it is recording. An essay carries the owner's own words and takes, though, and a sample drawn in its place reads as theirs. No rule decides it.",
+      "undo": "Have essayStageOf return the sample with voicing \"sample\" when it isn't recording, as stageOf in view.ts does.",
+      "refs": ["#2691"]
+    },
+    {
+      "id": "C78",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": [
+        "apps/www/tests/record/essay-recording.ts",
+        "apps/www/tests/record/voiced.ts",
+        "packages/video-render/src/stills.ts"
+      ],
+      "chose": "Home hands record:essay one audio file per answered ticket (<TICKET>.<ext>), with the take's word times beside it (<TICKET>.words.json) where home kept them. A take with no times is captioned by spreading the transcript across it, each word's share as long as its letters (spreadWords).",
+      "options": [
+        "word times where home kept them, else the transcript spread by letters",
+        "captions only where home kept word times",
+        "the transcript shown whole for the length of the take"
+      ],
+      "gray": "The call's captions come from Kokoro's own word times, which an owner's take doesn't have. Whether home's transcriber keeps times is RR16-home's to settle, and the spread caption is something the owner sees in every essay.",
+      "undo": "Change spreadWords in stills.ts, or have record:essay refuse a take with no .words.json (essayTakeFiles in essay.ts).",
+      "refs": ["#2691"]
     }
   ]
 }

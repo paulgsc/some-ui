@@ -69,6 +69,6 @@ export const UNMEASURED: ReadonlyArray<Unmeasured> = [
   },
   {
     route: "/essay",
-    why: "The Rust Rounds essay's stage: one scene at a time, for its video and to look over, on the template's sample essay.",
+    why: "The Rust Rounds essay's stage: one scene at a time, for its video and to look over, on a week's essay as home's render worker hands it over, or the template's sample essay.",
   },
 ]

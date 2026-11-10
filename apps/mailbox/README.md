@@ -108,7 +108,8 @@ Every request needs `Authorization: Bearer <token>`. Every answer is JSON, or th
 The folders are `brief`, `decisions`, `scout`, `scene`, `drama`, `run`, `opened`, `leetype`,
 `leetype-log`, `transcript`, `index`, `reflection`, `prompt` and `feedback`. `brief` also holds the
 build-journal session's lists of the takes Drive holds (`drive-takes-…`) and the Monday
-routine's weeks of Rust Rounds (`rust-week-…`), which home finds in the listing it makes of
+routine's weeks of Rust Rounds (`rust-week-…`) and the essays that answer them
+(`rust-essay-…`), which home finds in the listing it makes of
 `brief` every pass anyway, so they cost no listing of their own (MI6).
 
 **`seq` only grows, and it has gaps.** SQLite hands out a number for every put that reaches the
@@ -205,13 +206,16 @@ role, and it is the owner's call, so it is not built.
   (MB2, the owner's route a on paulgsc/some-ui#2401), named for when the build-journal session
   listed Drive's takes folder, in UTC to the second, so each list goes under a new name.
   `brief` also takes `rust-week-YYYY-wNN.json` (MB2, RR12 paulgsc/some-ui#2687), a week of Rust
-  Rounds named for the ISO week it opens, which is its `id`.
+  Rounds named for the ISO week it opens, which is its `id`. `brief` also takes
+  `rust-essay-YYYY-wNN.json` (MB2, RR16 paulgsc/some-ui#2691), the script of the essay that
+  answers a week of Rust Rounds, named for that week, its `week.id`, and
+  `rust-essay-YYYY-wNN-rN.json` for a correction, `N` from 2 with no leading zero.
   Anything else, an audio file's name included, is `422`.
 - **Content type** `application/json` (parameters such as `charset` are ignored), and the body
   must be UTF-8 JSON with no byte-order mark.
 - **Schema**: the top-level `schema` must be `some-ui.job-digest/1`, `some-ui.job-decisions/1`,
   `some-ui.job-scouts/1`, `some-ui.routine-scene/1`, `some-ui.routine-drama/1`, `some-ui.routine-run/1`,
-  `some-ui.routine-opened/1`, `some-ui.leetype-session/1`, `some-ui.leetype-log/1`, `some-ui.voice-transcript/1`, `some-ui.routine-index/1`, `some-ui.reflection/1`, `some-ui.drama-prompt/1` or `some-ui.episode-note/1` to match the folder (and `some-ui.drive-takes/1` for a list of Drive's takes in `brief`, `some-ui.rust-week/1` for a week of Rust Rounds). The Worker checks that and nothing deeper, except for a transcript, an index, a reflection, a prompt, a note on an episode, a list of Drive's takes and a week's `id`, which must be the name's (below); the readers validate the full shape.
+  `some-ui.routine-opened/1`, `some-ui.leetype-session/1`, `some-ui.leetype-log/1`, `some-ui.voice-transcript/1`, `some-ui.routine-index/1`, `some-ui.reflection/1`, `some-ui.drama-prompt/1` or `some-ui.episode-note/1` to match the folder (and `some-ui.drive-takes/1` for a list of Drive's takes in `brief`, `some-ui.rust-week/1` for a week of Rust Rounds, `some-ui.rust-essay/1` for an essay's script). The Worker checks that and nothing deeper, except for a transcript, an index, a reflection, a prompt, a note on an episode, a list of Drive's takes and a week's `id`, which must be the name's (below); the readers validate the full shape.
 - **A scene** is `{"schema":"some-ui.routine-scene/1","answers":"<reflection>","title":"<the
 scene folder's name>","decks":[<read-aloud deck>,<lens deck>]}`, each deck exactly as the
   phone's word set check takes it. **A drama** is `{"schema":"some-ui.routine-drama/1",
@@ -566,7 +570,8 @@ how each was checked when this workspace landed.
   which only the routine role puts and home reads with the digests, and, the same way, a week of
   Rust Rounds (`rust-week-…`, `rustWeekRefusal`; the owner's RR12,
   [paulgsc/some-ui#2687](https://github.com/paulgsc/some-ui/issues/2687): "the routine puts a
-  week, and home reads it"). Every request passes `authenticate` and then one of `serve`'s
+  week, and home reads it"), and an essay's script (`rust-essay-…`, `rustEssayRefusal`;
+  [the owner's answer on paulgsc/some-ui#2684](https://github.com/paulgsc/some-ui/issues/2684#issuecomment-6714043601): "the routine puts it in a mailbox folder …, home reads and keeps it"). Every request passes `authenticate` and then one of `serve`'s
   `may(grant.get | put | ask | move)` checks before anything reaches the store, and
   `GET /v1/bell` passes `authenticate` and `listen`'s `grant.listen` check before anything
   reaches the bell.
@@ -582,7 +587,8 @@ how each was checked when this workspace landed.
   `DRIVE_ONLY_ENDED`, or lets `kindOf` take a backfill name `sharedDay` does not read or for a
   day outside them; or adds a kind to any folder's `also`, loosens the `drive-takes` name or
   `driveTakesRefusal` (a key beyond `schema`, `at` and `takes`, or beyond `sha256` per take),
-  loosens the `rust-week` name or `rustWeekRefusal`,
+  loosens the `rust-week` name or `rustWeekRefusal`, loosens the `rust-essay` name or
+  `rustEssayRefusal`,
   or removes `kindOf`'s reading of `also`; when the PR description does not name the owner's
   decision to do so.
 - _Scope:_ `apps/mailbox/src/core.ts` and `wrangler.jsonc`.
@@ -661,7 +667,14 @@ how each was checked when this workspace landed.
   `handle` reaches the bell only through `listen`, after `authenticate` and the
   `grant.listen` check, and through `ring`, after a put or an ask its own `may` check
   allowed; `core.test.ts` pins that no token and a wrong one are `401` and touch nothing, and
-  that the routine and archive tokens are `403`.
+  that the routine and archive tokens are `403`. _Checked at the Rust Rounds essay amendment
+  (RR16, paulgsc/some-ui#2691; [the owner's answer on paulgsc/some-ui#2684](https://github.com/paulgsc/some-ui/issues/2684#issuecomment-6714043601), 2026-11-07, "on home and the mailbox only"):_ `ROLES`
+  is unchanged; `brief`'s `also` holds three kinds, the third the essay's script, taken only as
+  `rust-essay-YYYY-wNN.json` or `-rN.json` with `N` from 2, and held to `some-ui.rust-essay/1`
+  and `rustEssayRefusal` (an ISO week in `week.id`, the name's); `core.test.ts` pins that the
+  routine puts one, that it rings `brief`, that home reads it in the listing and may not put it,
+  that `-r2` and `-r10` are taken and `-r0`, `-r1`, `-r02` and a bare `-r` are not, and that a
+  misnamed essay, a non-week `week.id` and another schema are refused.
 
 **MB3: No token reaches the repo or a log.**
 

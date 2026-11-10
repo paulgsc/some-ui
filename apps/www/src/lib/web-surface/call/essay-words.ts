@@ -53,4 +53,8 @@ export const ESSAY_WORDS = {
   roleSource: (ladder: string, source: string): string =>
     `On ${ladder} (${source}), worked out from the weeks above`,
   comesBackTo: "Comes back to",
+  /** Why the stage draws no essay of the week it was asked for. */
+  unread: (week: string): string => `No essay of ${week} could be read`,
+  otherWeek: (asked: string, got: string): string =>
+    `The essay read is ${got}'s, not ${asked}'s`,
 } as const
