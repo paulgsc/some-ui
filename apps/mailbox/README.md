@@ -42,6 +42,7 @@ cloud routine ◀──GET index── [ mailbox ] ◀──PUT index── home
 cloud routine ◀──GET reflection── [ mailbox ] ◀──PUT reflection── home ◀── phone (a written reflection)
 cloud routine ◀──GET prompt── [ mailbox ] ◀──PUT prompt── home ◀── phone (Ask for the next scene)
 build journal ──PUT brief (drive-takes)──▶ [ mailbox ] ◀──GET brief── home ──▶ phone (Drive has it)
+                                           [ mailbox ] ──ring──▶ home (a socket home holds open)
 ```
 
 The phone talks to home only. The mailbox carries no audio: home keeps the audio
@@ -101,6 +102,7 @@ Every request needs `Authorization: Bearer <token>`. Every answer is JSON, or th
 | `GET /v1/:folder/archived?after=<seq>&limit=<n>`         | `200 {"items":[{"seq","name","size","sha256","contentType","putAt","archivedAt"}]}`, oldest first by the `seq` each had while live. Paged as above.                                                                                                                                                                                                     |
 | `PUT /v1/:folder/wanted/:name` (no body)                 | Asks home to put an archived file back: `202 {"change":"asked"}`; `200 {"change":"unchanged"}` if already asked; `200 {"change":"live"}` if it is there now; `404` if never archived.                                                                                                                                                                   |
 | `GET /v1/:folder/wanted?limit=<n>`                       | `200 {"items":[{"name","askedAt"}]}`, the open asks, oldest first.                                                                                                                                                                                                                                                                                      |
+| `GET /v1/bell` with `Upgrade: websocket`                 | `101`, a WebSocket the mailbox rings (below, "The bell"); `426` without the upgrade; `405` for another method. `home` only.                                                                                                                                                                                                                             |
 | anything else                                            | `404`; a method the path does not take is `405` with `Allow`. A missing or wrong token is `401`, a token that may not do this is `403`, and storage failing is `503`.                                                                                                                                                                                   |
 
 The folders are `brief`, `decisions`, `scout`, `scene`, `drama`, `run`, `opened`, `leetype`,
@@ -115,13 +117,34 @@ So after a few repeats the next new file can jump ahead (for example `seq 1`,
 then six repeats, then `seq 8`). Page with `after` set to the highest `seq` you have seen, never
 `after + 1`.
 
+### The bell
+
+Home learns that something waits for it without waiting for its next poll: it holds a
+WebSocket open on `GET /v1/bell`, and the mailbox rings it there (MBP1,
+[#2142](https://github.com/paulgsc/some-ui/issues/2142); the owner chose push on 2026-10-26).
+
+- **A ring** is the text `{"ring":"<folder>"}` and nothing else (MB6). It goes out after a put
+  that adds a file (`201`, never an `unchanged` repeat) to a folder home reads (`brief`,
+  `scene`, `drama`, `run`, `leetype`, as paulgsc/server's `mailbox::pass::READS`), and after
+  the routine opens an ask for an archived file (`202`), with the ask's folder. Home reads
+  the rest through the listing, as its poll does. Home's own puts and an archive put back
+  ring nothing.
+- **Best effort.** The put's answer goes out without waiting on the ring, and a ring that
+  fails changes nothing about it. With no one listening the ring is dropped: home runs a pass
+  when it connects, and its poll stays as the backstop.
+- **One listener.** The bell is a Durable Object (`Bell`, `src/bell.ts`), one for the
+  mailbox. A new connection closes the earlier one with code `4000` (`replaced`).
+- **Heartbeat.** Home sends `ping` and gets `pong`, answered without waking the bell
+  (`setWebSocketAutoResponse`). Any other message is ignored. The bell takes the socket
+  with the hibernation API (`acceptWebSocket`), so an open socket bills no duration.
+
 ### Who may do what
 
-| Secret          | Role      | May                                                                                                                                                                                  |
-| --------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ROUTINE_TOKEN` | `routine` | read every folder; put `brief`, `scene`, `drama`, `run` and `leetype`; list what is archived and ask for it back, in every folder but `index`, `reflection`, `prompt` and `feedback` |
-| `HOME_TOKEN`    | `home`    | read `brief`, `scene`, `drama`, `run` and `leetype`; put `decisions`, `scout`, `opened`, `leetype-log`, `transcript`, `index`, `reflection`, `prompt` and `feedback`                 |
-| `ARCHIVE_TOKEN` | `archive` | read every folder; archive a file, put an archived one back and list the open asks, in every folder but `index`                                                                      |
+| Secret          | Role      | May                                                                                                                                                                                      |
+| --------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ROUTINE_TOKEN` | `routine` | read every folder; put `brief`, `scene`, `drama`, `run` and `leetype`; list what is archived and ask for it back, in every folder but `index`, `reflection`, `prompt` and `feedback`     |
+| `HOME_TOKEN`    | `home`    | read `brief`, `scene`, `drama`, `run` and `leetype`; put `decisions`, `scout`, `opened`, `leetype-log`, `transcript`, `index`, `reflection`, `prompt` and `feedback`; listen on the bell |
+| `ARCHIVE_TOKEN` | `archive` | read every folder; archive a file, put an archived one back and list the open asks, in every folder but `index`                                                                          |
 
 The routine role is every scheduled routine's: the Jobs digest, the study reflections and,
 once it is scheduled, the LeetType review each put to their own folders.
@@ -375,8 +398,17 @@ operation; it does not bill (see MB4).
   CPU. I have not measured whether it fits in 10 ms; files are far below it in practice
   (the sizes are under "What a put must satisfy").
 
+- The bell (above) is a SQLite-backed Durable Object, the only kind Workers Free takes, and
+  it stores nothing. Durable Objects Free: 100,000 requests and 13,000 GB-s of duration a
+  day. A connection is one Worker request and one Durable Object request; home's `ping` is
+  answered without waking it, so it bills neither; a ring is one Durable Object request, and
+  sending it is free. Measured on 2026-11-10 from the live database: 87 files reached a
+  folder that rings in the 19 days from 2026-10-22, about 5 a day and 12 on the busiest, and
+  no ask was open. With a few connections a day that is tens of requests against 100,000,
+  and the bell is awake for milliseconds each time.
+
 A missing or wrong token is answered before any query runs, so a request without a token does
-not spend D1 quota.
+not spend D1 quota. Opening the bell runs no query at all.
 
 ## Gray-area invariants
 
@@ -506,7 +538,9 @@ how each was checked when this workspace landed.
 **MB2: Roles.**
 
 - _Claim:_ the `ROLES` table in `src/core.ts` is the only place a token is mapped to what it
-  may do, and it holds exactly three roles: `routine` (get every folder, put `brief`, `scene`,
+  may do, `home` is the only role whose `listen` is `true` (the bell, MBP1,
+  [#2142](https://github.com/paulgsc/some-ui/issues/2142): "the bell is `home`'s only"), and
+  it holds exactly three roles: `routine` (get every folder, put `brief`, `scene`,
   `drama`, `run` and `leetype`, ask every folder but `index`, `reflection`, `prompt` and `feedback`), `home`
   (get `brief`, `scene`, `drama`, `run` and `leetype`, put `decisions`, `scout`, `opened`,
   `leetype-log`, `transcript`, `index`, `reflection`, `prompt` and `feedback`) and `archive` (get every folder, move
@@ -532,9 +566,13 @@ how each was checked when this workspace landed.
   Rust Rounds (`rust-week-…`, `rustWeekRefusal`; the owner's RR12,
   [paulgsc/some-ui#2687](https://github.com/paulgsc/some-ui/issues/2687): "the routine puts a
   week, and home reads it"). Every request passes `authenticate` and then one of `serve`'s
-  `may(grant.get | put | ask | move)` checks before anything reaches the store.
+  `may(grant.get | put | ask | move)` checks before anything reaches the store, and
+  `GET /v1/bell` passes `authenticate` and `listen`'s `grant.listen` check before anything
+  reaches the bell.
 - _Falsified by_ a hunk that adds, removes or renames a role; adds a folder to, or removes one
-  from, any role's `get`, `put`, `ask` or `move` list; changes which secret a role reads, or
+  from, any role's `get`, `put`, `ask` or `move` list (`HOME_READS` is home's `get`); sets
+  `listen` to `true` for any role but `home`, or loosens or removes `listen`'s `grant.listen`
+  check, or lets `handle` reach `deps.bell` other than through `listen` and `ring`; changes which secret a role reads, or
   lets `authenticate` read another secret or accept an unset, empty or shared one; edits,
   loosens or removes a `may` check in `serve`, or changes which right a listing or method is
   checked against; lets `handle` reach `serve` or the store without a grant; adds a method to
@@ -615,7 +653,14 @@ how each was checked when this workspace landed.
   reflections routine; paulgsc/some-ui#2745):_ `ROLES` has three entries; `core.test.ts` pins
   `feedback` as it pins `reflection`: home puts it and may not read it, the routine reads it
   and may neither put it, list it as archived nor ask it back (`ASKED`, every record but
-  `reflection`, `prompt` and `feedback`), and the archive role reads and moves it.
+  `reflection`, `prompt` and `feedback`), and the archive role reads and moves it. _Checked at
+  the bell amendment (MBP1, [#2142](https://github.com/paulgsc/some-ui/issues/2142), the
+  owner's choice of push on 2026-10-26, "the bell is `home`'s only"):_ `ROLES` has three
+  entries and only `home`'s `listen` is `true`; home's `get` is `HOME_READS`, unchanged;
+  `handle` reaches the bell only through `listen`, after `authenticate` and the
+  `grant.listen` check, and through `ring`, after a put or an ask its own `may` check
+  allowed; `core.test.ts` pins that no token and a wrong one are `401` and touch nothing, and
+  that the routine and archive tokens are `403`.
 
 **MB3: No token reaches the repo or a log.**
 
@@ -640,6 +685,30 @@ how each was checked when this workspace landed.
 - _Checked at landing:_ one `console` call (`src/index.ts`, `report`, the error's `message`);
   no `vars` in `wrangler.jsonc`; no token-shaped string in the workspace. _Checked when the rule
   landed (2026-10-25, #2042):_ `src/` passes it; `report` logging `String(error)` fails it.
+
+**MB6: A ring carries only a folder name.**
+
+- _Claim:_ the only message the bell sends home is `ringMessage(folder)` in `src/core.ts`,
+  `{"ring":"<folder>"}`, for a folder in `RINGING`; nothing of an item (its name, bytes,
+  SHA-256, size, putter or time) reaches a ring.
+- _Falsified by_ a hunk that adds a key or a value to what `ringMessage` returns, or makes it
+  take anything but a `Folder`; that adds a `send` on a socket in `src/bell.ts` or
+  `src/listeners.ts` other than `ringAll`'s of `ringMessage`, or changes the `PONG`
+  auto-response to carry anything but a fixed word; that lets `ringAll` send for a folder
+  outside `RINGING`, or widens `RINGING` past `RINGS` and `ASKED`; that changes `BellPort`'s
+  `ring` or the `Bell` object's `ring` to take anything but a folder; or that deletes
+  or loosens the ring cases in `__tests__/core.test.ts` or `__tests__/listeners.test.ts`.
+- _Scope:_ `apps/mailbox/src` (`core.ts`, `bell.ts`, `listeners.ts`, `index.ts`).
+- _Why not enforced:_ the types hold half of it: `ring` and `ringMessage` take a `Folder`, so
+  a name or a body cannot be passed where a folder goes, and the tests pin the message
+  exactly. A hunk that changes the message and its test together passes both, and a socket
+  `send` elsewhere is plain code no rule tells apart from `ringAll`'s, so whether a new one
+  leaks an item needs a person.
+- _Checked at landing:_ `ringMessage` is `JSON.stringify({ ring: folder })`; the one `send`
+  is `ringAll`'s, of `ringMessage`; `RINGING` is `RINGS` and `ASKED`; `core.test.ts` pins
+  `{"ring":"brief"}` byte for byte and `listeners.test.ts` that `index` reaches no one; under
+  `wrangler dev` a `home` socket got exactly `{"ring":"brief"}` after a routine put to
+  `brief` and nothing after home's put to `decisions`.
 
 **MB4 (not reviewable): The Cloudflare account has no payment method.** It is account state, so
 no diff can show it. It is listed so a reviewer knows the cost model rests on it. With a card
@@ -699,6 +768,10 @@ the latest) must be in before the Worker whose index put drops the one before, o
 fails with `503` until it is. For archiving (`0002_archive.sql`), also put `ARCHIVE_TOKEN` (step 4) and give the
 same value to home as `MAILBOX_ARCHIVE_TOKEN`.
 
+The bell's Durable Object (`Bell`) is not a D1 migration: `wrangler deploy` creates its class
+itself, from `wrangler.jsonc`'s `migrations` (`v1`, `new_sqlite_classes`). Until home listens,
+the bell rings no one and the poll carries everything, as before.
+
 ## Working on it
 
 ```sh
@@ -709,7 +782,9 @@ pnpm --filter @some-ui/mailbox deploy:dry  # bundles the Worker; needs no accoun
 ```
 
 - `src/core.ts` is the request-to-answer logic with no I/O; `src/store.ts` is the storage port
-  and the D1 adapter; `src/index.ts` only wires the bindings in.
+  and the D1 adapter; `src/listeners.ts` is the bell's rules over the hibernation API's
+  sockets and `src/bell.ts` the Durable Object that binds them; `src/index.ts` only wires the
+  bindings in.
 - `core.test.ts` runs all of `core.ts` against an in-memory store. `store.test.ts` applies the
   real migration to real SQLite (sql.js) and runs one set of cases against the in-memory store
   and the D1 adapter, so the stand-in cannot drift from the real one.

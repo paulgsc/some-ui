@@ -22,6 +22,9 @@
       "ignoreDependencies": ["@changesets/cli", "typescript-language-server"],
       "ignoreBinaries": ["web-ext"]
     },
+    "apps/mailbox": {
+      "ignoreDependencies": ["cloudflare"]
+    },
     "apps/mobile": {
       "ignoreDependencies": [
         "@capacitor-community/sqlite",
