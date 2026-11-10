@@ -212,8 +212,8 @@ export type HomeLink = {
   look: (path: string) => Promise<SyncOutcome<HomeAnswer> | null>
   /**
    * Calls `listener` each time a request with the credential is answered
-   * with home's empty not-found, which it gives a route it doesn't have
-   * (`./serves`); returns an unsubscribe.
+   * not found other than as home's JSON error, which is how home answers a
+   * route it doesn't have (`./serves`); returns an unsubscribe.
    */
   onMissing: (listener: () => void) => () => void
   /** Stops the person's sync, send or read. */
@@ -431,9 +431,12 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
           ...(body === undefined ? {} : { body }),
           ...(range === undefined ? {} : { range }),
         }).then((answer) => {
-          // An empty not-found is home's answer for a route it doesn't
-          // have; a record it doesn't hold comes with words.
-          if (answer.status === 404 && answer.body.trim() === "") {
+          // Home answers a route it doesn't have in plain words ("not
+          // found"); a record it doesn't hold comes as its JSON error.
+          if (
+            answer.status === 404 &&
+            !answer.body.trimStart().startsWith("{")
+          ) {
             for (const listener of missingListeners) listener()
           }
           return answer
@@ -546,6 +549,8 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       if (pairing === null) return null
       if (homeBusyNow()) return { kind: "done", value: HOME_BUSY }
       if (!(await pace.turn(false))) return null
+      // Home may have asked to be left alone while this waited its turn.
+      if (homeBusyNow()) return { kind: "done", value: HOME_BUSY }
       const answer = await ports.request({
         method: "GET",
         url: `${pairing.base.replace(/\/api\/v1$/, "")}${path}`,

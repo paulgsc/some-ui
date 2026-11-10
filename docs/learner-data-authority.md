@@ -498,8 +498,9 @@ declared (checked by reading every call site and by the tests named).
   was made against when the phone is found paired (the app's start, a new
   pairing), when the app comes back to the foreground, on a pull, once more
   at the link's next change after it let that ask's turn go, and, at most
-  once a minute, when a credentialed request is answered with home's empty
-  not-found (a route home lacks), one at a time and never on a timer;
+  once a minute, when a credentialed request is answered not found other
+  than as home's JSON error (a route home lacks), one at a time and never on
+  a timer;
   #2843),
   which are the other callers of `lib/home-link`, is started by a tap in the Home server block of Settings
   (`components/settings/device-section.tsx`): the sync (published lessons

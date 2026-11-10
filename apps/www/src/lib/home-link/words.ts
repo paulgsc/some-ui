@@ -507,9 +507,6 @@ export function laneView(words: LaneWords, facts: LaneFacts): LaneView {
       "Home no longer knows this phone. Pair it again in Settings."
     )
   }
-  if (last?.kind === "unreachable") {
-    return show("kept", "no-answer", "No answer", `Home didn't answer.${later}`)
-  }
   if (last?.kind === "unpaired") {
     return show(
       "kept",
@@ -518,9 +515,10 @@ export function laneView(words: LaneWords, facts: LaneFacts): LaneView {
       `This phone isn't paired with home now. Pair it in Settings.${later}`
     )
   }
-  // Before how the last send went: nothing goes properly until home works
-  // with this version (#2843). After pairing again, which is the person's
-  // own step whatever home runs.
+  // Before how the last send went, no answer included (home restarts as it
+  // updates): nothing goes properly until home works with this version
+  // (#2843). After pairing again, which is the person's own step whatever
+  // home runs.
   if (facts.serves === "updating") {
     return show(
       "kept",
@@ -544,6 +542,9 @@ export function laneView(words: LaneWords, facts: LaneFacts): LaneView {
       "Update the app",
       `This app is older than home. Install the newest version.${later}`
     )
+  }
+  if (last?.kind === "unreachable") {
+    return show("kept", "no-answer", "No answer", `Home didn't answer.${later}`)
   }
   if (last?.kind === "failed") {
     if (last.why === "busy") {

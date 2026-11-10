@@ -5,8 +5,9 @@
  *
  * `watchServes` hears those moments: the phone found paired (the app's
  * start, or a new pairing), the app back in the foreground, and a request
- * answered with home's empty not-found; `servesRefresher` hears a pull. An
- * ask the link turned away is asked once more at the link's next change.
+ * answered not found other than as home's JSON error (a route home lacks);
+ * `servesRefresher` hears a pull. Any ask the link turned away, a pull's
+ * too, is asked once more at the link's next change.
  * Never on a timer.
  */
 import type { Refresher } from "@/lib/pull-refresh/refreshers"
@@ -32,12 +33,15 @@ export type ServesRun = {
   ) => Promise<CompatAsked["kind"] | null>
   /** The phone is no longer paired: what home said is forgotten. */
   forget: () => void
+  /** The last ask that ended was turned away by the link. */
+  owes: () => boolean
 }
 
 export function createServes(ports: ServesPorts): ServesRun {
   let state = INITIAL_SERVES
   // Moves when the pairing is forgotten, so an answer from before it drops.
   let generation = 0
+  let owed = false
   const listeners = new Set<() => void>()
   const dispatch = (event: ServesEvent): void => {
     const next = step(state, event)
@@ -61,6 +65,7 @@ export function createServes(ports: ServesPorts): ServesRun {
       const asked = generation
       const answered = await ports.read()
       if (asked !== generation) return null
+      owed = answered.kind === "busy"
       if (answered.kind === "answered") {
         dispatch({ type: "answered", serves: servesOf(answered.answer) })
       } else if (answered.kind === "unpaired") {
@@ -70,8 +75,10 @@ export function createServes(ports: ServesPorts): ServesRun {
       }
       return answered.kind
     },
+    owes: () => owed,
     forget(): void {
       generation += 1
+      owed = false
       dispatch({ type: "unpaired" })
     },
   }
@@ -96,13 +103,9 @@ export function watchServes(
   { link, doc }: ServesWatchPorts
 ): () => void {
   let pairing = pairingOf(link.getSnapshot())
-  // The last ask was turned away by the link: asked again at its next change.
-  let owed = false
   const ask = (why: "start" | "front" | "missing"): void => {
     if (pairing === null || doc.visibilityState !== "visible") return
-    void serves.ask(why).then((ended) => {
-      if (ended !== null) owed = ended === "busy"
-    })
+    void serves.ask(why)
   }
 
   const onLink = (): void => {
@@ -111,8 +114,7 @@ export function watchServes(
       pairing = now
       if (now === null) serves.forget()
       else ask("start")
-    } else if (owed) {
-      owed = false
+    } else if (serves.owes() && !serves.getSnapshot().asking) {
       ask("start")
     }
   }

@@ -499,6 +499,35 @@ describe("a look at home's word on itself (#2843)", () => {
     expect(home.link.getSnapshot().activity).toEqual({ kind: "idle" })
   })
 
+  it("sends nothing once home asked to be left alone while it waited its turn (AD3)", async () => {
+    let next: HomeAnswer = { status: 200, body: "{}" }
+    const home = setup({
+      record: JSON.stringify({ base: HOME.base, token: "t", id: "p1" }),
+      answer: () => next,
+    })
+    await home.link.load()
+    // Use up the pace's burst, so the next asks wait their turns.
+    for (let i = 0; i < 49; i += 1) {
+      await home.link.keep((send) => send("GET", "/aph"))
+    }
+    next = { status: 429, body: "", retryAfter: "60" }
+    const looked = home.link.look("/compat?needs=2")
+    // The person's read goes first, and hears home's busy.
+    const kept = home.link.keep((send) => send("GET", "/aph"))
+    const settle = (): Promise<void> =>
+      new Promise((resolve) => setTimeout(resolve, 0))
+    await settle()
+    home.pass(2_000)
+    await kept
+    await settle()
+    home.pass(2_000)
+    expect(await looked).toEqual({
+      kind: "done",
+      value: { status: 429, body: "" },
+    })
+    expect(home.sent.filter((call) => call.url.includes("/compat"))).toEqual([])
+  })
+
   it("asks nothing unpaired", async () => {
     const home = setup()
     await home.link.load()
@@ -506,13 +535,16 @@ describe("a look at home's word on itself (#2843)", () => {
     expect(home.sent).toEqual([])
   })
 
-  it("hears only home's empty not-found, which a route it lacks gets", async () => {
+  it("hears only the not-found home gives a route it lacks, never its error for a record it doesn't hold", async () => {
     const home = setup({
       record: JSON.stringify({ base: HOME.base, token: "t", id: "p1" }),
       answer: (call) =>
         call.url.endsWith("/gone")
-          ? { status: 404, body: "" }
-          : { status: 404, body: '{"error":"not found"}' },
+          ? { status: 404, body: "not found" }
+          : {
+              status: 404,
+              body: '{"error":{"code":"not_found","message":"not found"}}',
+            },
     })
     await home.link.load()
     let heard = 0

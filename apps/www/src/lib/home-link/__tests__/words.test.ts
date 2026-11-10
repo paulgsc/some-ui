@@ -264,6 +264,16 @@ describe("each lane's sharing words", () => {
           facts({
             paired: true,
             serves,
+            run: { ...INITIAL_KEPT, last: { kind: "unreachable", at: 1 } },
+          })
+        ).how
+      ).toBe(serves)
+      expect(
+        laneView(
+          WORDS.practice,
+          facts({
+            paired: true,
+            serves,
             run: { ...INITIAL_KEPT, last: { kind: "forgotten" } },
           })
         ).how

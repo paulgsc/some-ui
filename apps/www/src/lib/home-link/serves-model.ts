@@ -10,8 +10,9 @@
  * When it asks (`ask`'s `why`): the app starting with the phone paired
  * (`start`, also a new pairing), the app coming back to the foreground
  * (`front`), the person pulling the screen down (`pull`), and a route this
- * build calls answering home's empty not-found, which means home lacks the
- * route (`missing`), at most once a `MISSING_GAP`. Never on a timer.
+ * build calls answered not found other than as home's JSON error, which
+ * means home lacks the route (`missing`), at most once a `MISSING_GAP`.
+ * Never on a timer.
  */
 import { assertNever, isRecord } from "@some-ui/core-utils"
 
