@@ -1458,7 +1458,7 @@
             },
             {
               "class": "structural",
-              "says": "PR gate (pr_gate.py) is decided by short jobs: gate.yml's PR gate (open) on the pull request's own events, and gate-verdict.yml's PR gate (verdict) each time another check of the head commit finishes. It fails on any check that fails, is cancelled, takes over an hour, or never appears, and is pending, never green, while any is unfinished.",
+              "says": "PR gate (pr_gate.py) is decided by short jobs: gate.yml's PR gate (open) on the pull request's own events, and gate-verdict.yml's PR gate (verdict) each time another check of the head commit finishes. It fails on any check that fails, is cancelled, takes over an hour, or never appears, and is pending, never green, while any is unfinished. A scheduled sweep every 15 minutes re-judges any gate still unfinished, so a check GitHub sends no event for can't leave it pending.",
               "ref": "server:scripts/pr_gate.py"
             },
             {
