@@ -10,7 +10,7 @@
  * The swipe is the shared pager's (`usePager`, GES5), beside the dots that
  * do the same. vitest's touches don't reproduce a phone's (CK7, #2386).
  */
-import type { JSX, ReactNode } from "react"
+import type { ComponentProps, JSX, ReactNode } from "react"
 import { useId } from "react"
 import type {
   BundleIntent,
@@ -378,7 +378,12 @@ const Card = <K extends BundleKind>({
             onTap={() => dispatch({ type: "tap", item })}
             onPlay={(take) => dispatch({ type: "play", take })}
             onRedo={() => dispatch({ type: "tap", item })}
-            onLetGo={() => dispatch({ type: "askDelete", item })}
+            // A take that left the phone is never let go here (RR22).
+            onLetGo={
+              view.current.some((row) => row.unsent)
+                ? (): void => dispatch({ type: "askDelete", item })
+                : undefined
+            }
           />
           {view.current.length === 0 && !recording && (
             <p className="text-muted-foreground text-center text-sm">
@@ -513,6 +518,19 @@ export type BundleReviewProps<K extends BundleKind> = Parts<K> & {
   needs: ReactNode
 }
 
+/** An answer's take rows, offering Let go only for a take still waiting on this phone (RR22). */
+const ReviewRows = ({
+  view,
+  onLetGo,
+  ...rest
+}: ComponentProps<typeof TakeRows>): JSX.Element => (
+  <TakeRows
+    view={view}
+    {...rest}
+    onLetGo={view.current.some((row) => row.unsent) ? onLetGo : undefined}
+  />
+)
+
 /** The answers looked over, played in order, and sent together. */
 export const BundleReview = <K extends BundleKind>(
   props: BundleReviewProps<K>
@@ -547,7 +565,7 @@ export const BundleReview = <K extends BundleKind>(
             <li key={item} className="flex flex-col gap-2">
               <p className="text-sm font-semibold">{props.label(item)}</p>
               {take && (
-                <TakeRows
+                <ReviewRows
                   view={takeItemView(
                     snapshot,
                     state.takes,

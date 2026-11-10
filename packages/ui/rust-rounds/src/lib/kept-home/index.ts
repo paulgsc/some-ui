@@ -5,10 +5,13 @@
  * Rust Rounds lane (`lib/home-link/rust-kept.ts`) sends them, and the phone
  * lets go of none of them.
  *
- * - **Each week sent** (`lib/week-play/store`'s `weeksSent`), as it is kept,
- *   to `PUT /rust-weeks/:id/sent`. Home makes the week's record from it and
- *   records a week that closed unsent itself: nothing goes for silence. A
- *   take said but not sent by the deadline stays in the week's draft.
+ * - **Each send of a week** (`lib/week-play/store`'s `weeksSent`), as it is
+ *   kept, to `PUT /rust-weeks/:id/sent`, one by one in the order sent: a
+ *   week open until its deadline can be sent again (RR22, #2832), and home
+ *   keeps each send as a revision, known by its `at`, and makes the week's
+ *   record from the last one by the deadline. Home records a week that
+ *   closed unsent itself: nothing goes for silence. A take said but not sent
+ *   by the deadline stays in the week's draft.
  * - **Each error pasted and kept** (`pasteStores`), to
  *   `PUT /rust-weeks/:id/pastes/:at`.
  * - **Each sitting of the card-era log** (`some-ui.rust-round-log/1`), to
@@ -22,7 +25,10 @@ import type { KeyedStorage } from "@some-ui/core-utils"
 /** One thing that goes home, by kind. */
 export type KeptItem = {
   readonly kind: "rustWeeks" | "rustPastes" | "roundLog"
-  /** Its id among its kind: the week, when the paste was begun, the sitting. */
+  /**
+   * Its id among its kind: the week and when it was sent, when the paste
+   * was begun, the sitting.
+   */
   readonly id: string
   readonly path: string
   readonly wire: unknown
@@ -35,7 +41,7 @@ export function keptGoing(storage: KeyedStorage | null): Array<KeptItem> {
   const weeks = (weeksSent(storage).list() ?? []).map(
     (sent): KeptItem => ({
       kind: "rustWeeks",
-      id: sent.week,
+      id: `${sent.week}/${sent.at}`,
       path: `${week(sent.week)}/sent`,
       wire: sent,
     })

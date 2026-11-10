@@ -731,6 +731,71 @@
       "gray": "The call puts a chapter before each section; the essay's sections repeat per ticket, so a section's chapter would come back with each ticket, and #2690 names no chapters.",
       "undo": "A new essay format version whose shape lists other chapters (ESSAY_SHAPE in essay.ts).",
       "refs": ["#2690", "#2670"]
+    },
+    {
+      "id": "C56",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": [
+        "packages/ui/rust-rounds/src/components/rust-week/index.tsx",
+        "packages/voice-capture/src/lib/bundle.ts"
+      ],
+      "chose": "A week already sent opens on its brief, with what home holds over the tickets and each ticket's standing, not on the sent screen; the words home heard show on each ticket's card. Right after a Send the sent screen shows, with \"Back to the week\".",
+      "options": [
+        "open on the brief, words heard on each card",
+        "open on the sent screen with a way back to the week",
+        "open on the first ticket's card"
+      ],
+      "gray": "#2832 asks that the week stay open after a send and say per ticket what home holds, but names no screen it opens on.",
+      "undo": "In bundle.ts's opened step, open a resending draft with a kept record on \"sent\" again.",
+      "refs": ["#2832"]
+    },
+    {
+      "id": "C57",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": [
+        "packages/ui/rust-rounds/src/lib/week-play/spec.ts",
+        "packages/voice-capture/src/lib/bundle.ts"
+      ],
+      "chose": "Each send again holds every ticket: one sent before and not said since goes again with the take home holds, so the last send is the whole week. Send again waits until something changed since the last send.",
+      "options": [
+        "every send holds the whole week, and needs a change",
+        "a send holds only what changed since the last",
+        "any send, changed or not"
+      ],
+      "gray": "Home's record answers from the last send by the deadline (#2832), so a send of only the changed tickets would drop the others from the record; whether an unchanged send is offered is a choice no check settles.",
+      "undo": "Drop the merge of `last` in weekSpec's record, and the \"unchanged\" need in bundle.ts's missing.",
+      "refs": ["#2832"]
+    },
+    {
+      "id": "C58",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["packages/ui/rust-rounds/src/components/rust-week/index.tsx"],
+      "chose": "After the deadline the week reads back on one scrolling screen: the brief, then every ticket with its spec, speak-to points, program and rustc's result, the take sent by the deadline (playable) with the words home heard, or \"Not answered.\"",
+      "options": [
+        "one scrolling screen",
+        "the swiped cards, read-only",
+        "the brief only, each ticket opened from it"
+      ],
+      "gray": "#2832 lists what the read-back shows, not how it is laid out.",
+      "undo": "Render ReadBack's tickets as read-only cards on the pager.",
+      "refs": ["#2832"]
+    },
+    {
+      "id": "C59",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": [
+        "apps/www/src/lib/home-link/words.ts",
+        "packages/ui/rust-rounds/src/lib/kept-home/index.ts"
+      ],
+      "chose": "Where Rust Rounds is kept counts each send of a week, as \"Each time you sent a week\", since each goes home and is kept there on its own.",
+      "options": ["count each send", "count each week sent at least once"],
+      "gray": "Weeks and sends were one and the same until a week could be sent again; which the owner wants counted is theirs to notice.",
+      "undo": "Key keptGoing's week items by the week again, sending only its last send.",
+      "refs": ["#2832"]
     }
   ]
 }

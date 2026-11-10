@@ -1,8 +1,9 @@
 /**
  * What Rust Rounds keeps goes home (RR14, #2689), against a home kept in
- * memory that answers as paulgsc/server#763 does: a week sent and a paste
- * are kept once (201, then 200 for the same body) and a different body is a
- * 409; a sitting answers with its revision and reads back as sent.
+ * memory that answers as paulgsc/server#763 does, with RR22's revisions
+ * (#2832): each send of a week is kept by its `at` and a paste once (201,
+ * then 200 for the same body), and a different body under the same one is
+ * a 409; a sitting answers with its revision and reads back as sent.
  */
 import type { HomeAnswer, HomeCall } from "@some-ui/core-utils"
 import { canonicalJson, inMemoryStorage } from "@some-ui/core-utils"
@@ -14,7 +15,7 @@ import { readSent } from "@/lib/home-link/sent"
 
 const WEEK: KeptItem = {
   kind: "rustWeeks",
-  id: "2026-w46",
+  id: "2026-w46/2026-11-12T20:00:00.000Z",
   path: "/rust-weeks/2026-w46/sent",
   wire: {
     week: "2026-w46",
@@ -73,12 +74,18 @@ function home(): Home {
       kept.set(path, body)
       return { status: held === undefined ? 201 : 200, body: "{}" }
     }
-    if (held !== undefined && held !== body) return { status: 409, body: "{}" }
-    kept.set(path, body)
-    const as = path.endsWith("/sent") ? "sent" : "paste"
+    // A week's sends are kept one per `at` (RR22).
+    const sent = path.endsWith("/sent")
+    const key = sent ? `${path}@${String(JSON.parse(body).at)}` : path
+    const same = kept.get(key)
+    if (same !== undefined && same !== body) return { status: 409, body: "{}" }
+    kept.set(key, body)
     return {
-      status: held === undefined ? 201 : 200,
-      body: JSON.stringify({ change: "added", [as]: JSON.parse(body) }),
+      status: same === undefined ? 201 : 200,
+      body: JSON.stringify({
+        change: "added",
+        [sent ? "sent" : "paste"]: JSON.parse(body),
+      }),
     }
   }
   const made: Home = {
@@ -96,7 +103,48 @@ function home(): Home {
   return made
 }
 
+/** WEEK sent again, a ticket more said (RR22). */
+const AGAIN: KeptItem = {
+  ...WEEK,
+  id: "2026-w46/2026-11-13T20:00:00.000Z",
+  wire: {
+    week: "2026-w46",
+    at: "2026-11-13T20:00:00.000Z",
+    answers: [
+      { ticket: "QM-311", take: "u", recordedAt: "2026-11-13T19:00:00.000Z" },
+      { ticket: "QM-312", take: "t", recordedAt: "2026-11-12T19:58:00.000Z" },
+    ],
+    passed: ["QM-313"],
+  },
+}
+
 describe("sendRustKept", () => {
+  it("sends each send of a week on its own, and counts each once home carries it (RR22)", async () => {
+    const storage = inMemoryStorage()
+    const at = home()
+    await sendRustKept(at.send, [WEEK], storage, "p1")
+    at.calls.length = 0
+    await sendRustKept(at.send, [WEEK, AGAIN], storage, "p1")
+    expect(at.calls).toEqual([`PUT ${AGAIN.path}`])
+    expect(keptCounts([WEEK, AGAIN], readSent(storage, "p1"))).toMatchObject({
+      rustWeeks: 2,
+      waiting: 0,
+    })
+  })
+
+  it("sends a send home held under the week alone once more, which home takes as it is", async () => {
+    const storage = inMemoryStorage()
+    const at = home()
+    // The phone before RR22 remembered a week's one send under the week.
+    await sendRustKept(at.send, [{ ...WEEK, id: "2026-w46" }], storage, "p1")
+    at.calls.length = 0
+    expect(await sendRustKept(at.send, [WEEK], storage, "p1")).toEqual({
+      kind: "synced",
+    })
+    expect(at.calls).toEqual([`PUT ${WEEK.path}`])
+    expect(keptCounts([WEEK], readSent(storage, "p1")).rustWeeks).toBe(1)
+  })
+
   it("sends each item once, counting it home's only once home carries it", async () => {
     const storage = inMemoryStorage()
     const at = home()
@@ -112,7 +160,9 @@ describe("sendRustKept", () => {
       `PUT ${sitting(1).path}`,
       `GET ${sitting(1).path}`,
     ])
-    expect(at.kept.get(WEEK.path)).toBe(canonicalJson(WEEK.wire))
+    expect(at.kept.get(`${WEEK.path}@2026-11-12T20:00:00.000Z`)).toBe(
+      canonicalJson(WEEK.wire)
+    )
     expect(keptCounts(going, readSent(storage, "p1"))).toEqual({
       rustWeeks: 1,
       rustPastes: 1,

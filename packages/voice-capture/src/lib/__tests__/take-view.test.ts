@@ -110,11 +110,16 @@ describe("one item's takes", () => {
     const held: TakePatternOptions = { ...ONE, send: "on-confirm" }
     const takes = [
       taken("t1", "01", { standing: "earlier", kept: { place: "going" } }),
-      taken("t2", "02"),
+      taken("t2", "02", { waits: true }),
     ]
     const view = takeItemView(IDLE, takes, "card-1", held)
     expect(view.current[0]?.unsent).toBe(true)
     expect(view.earlier[0]?.unsent).toBe(false)
+    // Let go home, a take still on this phone has left it (RR22).
+    const released = [taken("t2", "02")]
+    expect(
+      takeItemView(IDLE, released, "card-1", held).current[0]?.unsent
+    ).toBe(false)
     expect(takeItemView(IDLE, takes, "card-1", ONE).current[0]?.unsent).toBe(
       false
     )
@@ -339,7 +344,7 @@ describe("a record's Delete… (MD4)", () => {
       }),
     ]
     expect(view(records, gone).current[0]?.canDelete).toBe(false)
-    const unsent = [taken("t1", "00", { deletable: true })]
+    const unsent = [taken("t1", "00", { deletable: true, waits: true })]
     expect(
       view({ ...records, send: "on-confirm" }, unsent).current[0]?.canDelete
     ).toBe(false)

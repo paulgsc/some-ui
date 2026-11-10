@@ -14,6 +14,15 @@
  * - **No ticket must be said**: a ticket left unsaid goes as not answered,
  *   which the essay speaks to. Send needs one take at least, and closes at
  *   the week's deadline (`due`): a take not sent by then stays on the phone.
+ * - **The week stays open until `due`** (RR22, #2832): after a Send every
+ *   ticket can still be said, said again (Redo keeps the earlier take) or
+ *   answered for the first time, and the week sent again. Each Send is kept
+ *   beside the earlier ones (`./store`'s `weeksSent` only grow) and goes
+ *   home as its own revision; a ticket sent before and not said since goes
+ *   again with the take home already holds (`record`'s `last`). Sending
+ *   again needs something changed. At `due` the week closes: nothing
+ *   records or sends, and the screen reads back the last Send before it
+ *   (`lastSentBy`).
  * - **No typing.** A ticket's answer is spoken; when voice doesn't come
  *   through, the card offers to try again or come back later.
  * - **What Send keeps** is the week sent (`WeekSent`): when, each ticket's
@@ -67,8 +76,23 @@ export const ticketLine = (week: string, ticket: string): string =>
   `${week}:${ticket}`
 
 /** Whether `at` is past the week's deadline. */
-const isClosed = (week: Pick<Week, "due">, at: string): boolean =>
+export const isClosed = (week: Pick<Week, "due">, at: string): boolean =>
   Date.parse(at) > Date.parse(week.due)
+
+/**
+ * The last Send of `week` kept by its deadline, of `kept` in the order
+ * kept: what home's record answers from; null when none was.
+ */
+export function lastSentBy(
+  kept: ReadonlyArray<WeekSent>,
+  week: Pick<Week, "id" | "due">
+): WeekSent | null {
+  return (
+    [...kept]
+      .reverse()
+      .find((sent) => sent.week === week.id && !isClosed(week, sent.at)) ?? null
+  )
+}
 
 function weekSpec(week: Week): BundleSpec<WeekKind> {
   return {
@@ -83,18 +107,33 @@ function weekSpec(week: Week): BundleSpec<WeekKind> {
     missing: (_draft, at, said) =>
       isClosed(week, at) ? "closed" : said === 0 ? "nothing" : null,
     resumesOnCards: () => false,
-    record: (draft, answers, passed, at) => ({
-      week: draft.id,
-      at,
-      answers: answers.flatMap(({ item, take }) =>
-        take === null
-          ? []
-          : [{ ticket: item, take: take.id, recordedAt: take.at }]
-      ),
-      passed,
-    }),
+    record: (draft, answers, passed, at, last): WeekSent => {
+      const said = new Map(
+        answers.flatMap(({ item, take }) =>
+          take === null
+            ? []
+            : [[item, { ticket: item, take: take.id, recordedAt: take.at }]]
+        )
+      )
+      // A ticket sent before and not said since goes again as home holds it.
+      for (const earlier of last?.answers ?? []) {
+        if (!said.has(earlier.ticket)) said.set(earlier.ticket, earlier)
+      }
+      const order = week.tickets.map(({ id }) => id)
+      return {
+        week: draft.id,
+        at,
+        answers: order.flatMap((ticket) => {
+          const answer = said.get(ticket)
+          return answer === undefined ? [] : [answer]
+        }),
+        passed: passed.filter((ticket) => !said.has(ticket)),
+      }
+    },
     idOf: (sent) => sent.week,
     named: (sent) => sent.answers.map(({ take }) => take),
+    resends: true,
+    closed: (_draft, at) => isClosed(week, at),
   }
 }
 

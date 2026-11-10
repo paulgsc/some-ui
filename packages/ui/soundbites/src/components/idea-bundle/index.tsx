@@ -250,11 +250,12 @@ const Review = ({
       }
       send={near ? WORDS.review.send(n) : WORDS.review.keep(n)}
       needs={
-        needs === null
-          ? null
-          : needs === "title"
-            ? WORDS.review.needsTitle
-            : WORDS.review.needsFirst
+        needs === "title"
+          ? WORDS.review.needsTitle
+          : needs === "required"
+            ? WORDS.review.needsFirst
+            : // Nothing, or "unchanged", which an idea, sent once, never needs.
+              null
       }
     />
   )

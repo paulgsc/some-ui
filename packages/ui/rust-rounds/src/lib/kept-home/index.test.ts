@@ -44,6 +44,7 @@ describe("keptGoing", () => {
       ["roundLog", "/rust-round-log/sessions/sitting-1"],
     ])
     expect(going[0]?.wire).toEqual(SENT)
+    expect(going[0]?.id).toBe("2026-w46/2026-11-12T20:00:00.000Z")
     expect(going[1]?.wire).toEqual({
       at: "2026-11-11T08:00:00.000Z",
       text: "error[E0499]",
@@ -53,5 +54,24 @@ describe("keptGoing", () => {
       schema: LOG_SCHEMA,
       id: "sitting-1",
     })
+  })
+
+  it("sends each send of a week on its own, in the order sent (RR22)", () => {
+    const storage = inMemoryStorage()
+    const again: WeekSent = {
+      ...SENT,
+      at: "2026-11-13T20:00:00.000Z",
+      passed: ["QM-313"],
+      answers: [
+        ...SENT.answers,
+        { ticket: "QM-311", take: "t", recordedAt: "2026-11-13T19:00:00Z" },
+      ],
+    }
+    weeksSent(storage).keep((kept) => [...kept, SENT, again])
+    const weeks = keptGoing(storage).filter(({ kind }) => kind === "rustWeeks")
+    expect(weeks.map(({ id, path, wire }) => [id, path, wire])).toEqual([
+      ["2026-w46/2026-11-12T20:00:00.000Z", "/rust-weeks/2026-w46/sent", SENT],
+      ["2026-w46/2026-11-13T20:00:00.000Z", "/rust-weeks/2026-w46/sent", again],
+    ])
   })
 })

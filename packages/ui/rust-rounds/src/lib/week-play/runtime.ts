@@ -159,8 +159,8 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
     },
     attach(): () => void {
       snapshot = fromStore()
-      // Opening reads what is kept at once, so a week already sent is on
-      // the sent screen here; one sent later in this opening is not asked.
+      // Opening reads what is kept at once, so a week already sent holds
+      // its last send here; one sent later in this opening is not asked.
       const detach = bundle.attach()
       void askSent()
       const stopOpens = watchOpens()

@@ -221,8 +221,11 @@ export function takeItemView(
   const ids = new Set(
     takes.filter((take) => take.answers === answers).map((take) => take.id)
   )
+  // Released (sent), a take on this phone no longer waits: it has left.
   const unsent = (take: PatternTake): boolean =>
-    take.kept !== null && discards(options, take.kept.place)
+    take.kept !== null &&
+    discards(options, take.kept.place) &&
+    take.waits === true
   const canDelete = (take: PatternTake): boolean =>
     deletesInMyData(options, take) && !unsent(take)
   return {

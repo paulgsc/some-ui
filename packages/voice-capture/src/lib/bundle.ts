@@ -60,6 +60,14 @@
  * - **A draft sent opens on what was sent.** A fresh draft whose id a kept
  *   record already has (a week, whose id is the week's) opens on the sent
  *   screen, never as a second draft answering the same items.
+ * - **A spec that `resends` (a week, RR22 #2832) stays open after Send**
+ *   until it is `closed`: the draft stays, opening goes to the screen before
+ *   the cards with `sent` the last record kept under its id, and each Send
+ *   adds another record beside the earlier ones, which only grow. A take
+ *   that left the phone is never deleted here: Redo supersedes it and keeps
+ *   it, and delete and Delete all reach only the takes still waiting. Send
+ *   again needs something changed (`unchanged`). Once `closed`, nothing
+ *   records, edits, deletes or sends: the screen reads back what was sent.
  */
 import { assertNever } from "@some-ui/core-utils"
 
@@ -167,17 +175,29 @@ export type BundleSpec<K extends BundleKind> = {
   ) => K["need"] | null
   /** Whether a draft kept opens on its cards, rather than on the screen before them. */
   readonly resumesOnCards: (draft: K["draft"]) => boolean
-  /** The record Send keeps: the answers, and the items passed over, in order. */
+  /**
+   * The record Send keeps: the answers, and the items passed over, in order;
+   * `last`, the record last kept under the draft's id (only where the spec
+   * `resends`), else null.
+   */
   readonly record: (
     draft: K["draft"],
     answers: ReadonlyArray<BundleAnswer<Item<K>>>,
     passed: ReadonlyArray<Item<K>>,
-    at: string
+    at: string,
+    last: K["record"] | null
   ) => K["record"]
   /** A record's id: its draft's. */
   readonly idOf: (record: K["record"]) => string
   /** The takes a record names. */
   readonly named: (record: K["record"]) => ReadonlyArray<string>
+  /**
+   * Whether a draft stays open after Send, to be sent again under its id
+   * until it is `closed` (a week, RR22); false sends each draft once.
+   */
+  readonly resends: boolean
+  /** Whether nothing more can be said, changed or sent in `draft` at `at`. */
+  readonly closed: (draft: K["draft"], at: string) => boolean
 }
 
 /** How far a person is through a bundle. */
@@ -256,7 +276,10 @@ export type BundleState<K extends BundleKind> = {
   readonly context: K["context"]
   readonly reach: HomeReach
   readonly notice: BundleNotice | null
-  /** The record just sent, or the one a draft opened on was sent as. */
+  /**
+   * The record just sent, or the one a draft opened on was sent as; where
+   * the spec `resends`, the last kept under the draft's id.
+   */
   readonly sent: K["record"] | null
   /** Takes already asked to be dropped (`drop`), so none is asked twice. */
   readonly dropping: ReadonlyArray<string>
@@ -568,14 +591,27 @@ export function bundleMachine<K extends BundleKind>(
       : null
   }
 
-  /** What Send still needs: the spec's own first, then a required answer. */
-  function missing(state: Pick<State, "draft" | "takes" | "at">): Missing<K> {
+  /**
+   * What Send still needs: the spec's own first, then a required answer,
+   * then, sending again, something changed since the last Send.
+   */
+  function missing(
+    state: Pick<State, "draft" | "takes" | "at"> & Partial<Pick<State, "sent">>
+  ): Missing<K> {
     const own = spec.missing(state.draft, state.at, answeredCount(state))
     if (own !== null) return own
     const first = items.find(
       (item) => spec.required(item) && answered(state, item) === null
     )
-    return first === undefined ? null : "required"
+    if (first !== undefined) return "required"
+    const last = lastOf(state)
+    if (last === null) return null
+    const next = bundleRecord(state, state.at)
+    const had = new Set(spec.named(last))
+    const has = spec.named(next)
+    return has.length === had.size && has.every((take) => had.has(take))
+      ? "unchanged"
+      : null
   }
 
   /** How many items are answered, said or typed. */
@@ -586,7 +622,10 @@ export function bundleMachine<K extends BundleKind>(
    * The record a draft sends: each answer said (its one take) or typed, and
    * the items with neither passed over.
    */
-  function bundleRecord(state: Read<K>, at: string): K["record"] {
+  function bundleRecord(
+    state: Read<K> & Partial<Pick<State, "sent">>,
+    at: string
+  ): K["record"] {
     const answers = items.flatMap((item): ReadonlyArray<BundleAnswer<I>> => {
       const current = currentTake(state, item)
       if (current !== null) {
@@ -599,8 +638,18 @@ export function bundleMachine<K extends BundleKind>(
     })
     const said = new Set(answers.map((answer) => answer.item))
     const passed = items.filter((item) => !said.has(item))
-    return spec.record(state.draft, answers, passed, at)
+    return spec.record(state.draft, answers, passed, at, lastOf(state))
   }
+
+  /** The record last sent under the draft's id, where the spec resends. */
+  const lastOf = (state: Partial<Pick<State, "sent">>): K["record"] | null =>
+    spec.resends ? (state.sent ?? null) : null
+
+  /** The takes of `item` still waiting on this phone: the only ones a delete reaches. */
+  const waitingOf = (state: Read<K>, item: I): ReadonlyArray<string> =>
+    takesOf(state, item)
+      .filter((take) => take.waits === true)
+      .map((take) => take.id)
 
   /** The draft changed, and kept. */
   const withDraft = (state: State, draft: D): Step => ({
@@ -839,6 +888,13 @@ export function bundleMachine<K extends BundleKind>(
       }
       case "askDelete": {
         if (answered(state, event.item) === null) return same(state)
+        // A take that left the phone is never deleted here (RR22).
+        if (
+          state.draft.typed[event.item] === undefined &&
+          waitingOf(state, event.item).length === 0
+        ) {
+          return same(state)
+        }
         return then(hushed(state), (quiet) =>
           same({ ...quiet, confirm: { kind: "answer", item: event.item } })
         )
@@ -860,7 +916,9 @@ export function bundleMachine<K extends BundleKind>(
             effects: [
               {
                 type: "deleteAll",
-                takes: draftTakes(state).map((take) => take.id),
+                takes: draftTakes(state)
+                  .filter((take) => take.waits === true)
+                  .map((take) => take.id),
               },
             ],
           }
@@ -870,7 +928,7 @@ export function bundleMachine<K extends BundleKind>(
         if (currentTake(state, item) !== null) {
           const deleteTakes = {
             type: "deleteTakes",
-            takes: takesOf(state, item).map((take) => take.id),
+            takes: waitingOf(state, item),
           } as const
           // Words typed beside its take go with the answer (ST34).
           const typed = withUnheard(withoutTyped(draft, item), item, null)
@@ -963,7 +1021,9 @@ export function bundleMachine<K extends BundleKind>(
             ? "intro"
             : state.screen === "review"
               ? "cards"
-              : null
+              : state.screen === "sent" && spec.resends
+                ? "intro"
+                : null
         return to === null
           ? same(state)
           : then(hushed(state), (quiet) =>
@@ -1005,6 +1065,15 @@ export function bundleMachine<K extends BundleKind>(
     if (state.busy && MOVES.has(event.type)) return same(state)
     const at = "at" in event ? event.at : state.at
     const stamped = at === state.at ? state : { ...state, at }
+    // Once closed, nothing is said, changed, deleted or sent; a take under
+    // way still stops on its own button, and is kept.
+    if (
+      CHANGES.has(event.type) &&
+      !(event.type === "tap" && state.busy) &&
+      spec.closed(state.draft, at)
+    ) {
+      return same(stamped)
+    }
     const next = step(stamped, event)
     // A step that changes nothing keeps the state as it was, unless the time
     // changes what Send still needs (a deadline passing).
@@ -1046,15 +1115,21 @@ export function bundleMachine<K extends BundleKind>(
         const settle: ReadonlyArray<Effect> =
           waiting.length === 0 ? [] : [{ type: "settle", takes: waiting }]
         const fresh = spec.fresh(event.id, event.at, context)
-        // Sent before the screen could clear it, the draft goes.
+        const lastUnder = (id: string): K["record"] | null =>
+          [...kept].reverse().find((record) => spec.idOf(record) === id) ?? null
+        // Sent before the screen could clear it, the draft goes, unless it
+        // stays open to be sent again.
         const sent =
+          !spec.resends &&
           draft !== null &&
           kept.some((record) => spec.idOf(record) === draft.id)
         const resumed = draft === null || sent ? null : draft
-        // A fresh draft already sent opens on what was sent.
-        const done =
-          resumed === null
-            ? (kept.find((record) => spec.idOf(record) === fresh.id) ?? null)
+        // A fresh draft already sent opens on what was sent; one that
+        // resends opens on the screen before the cards, the last Send beside it.
+        const done = spec.resends
+          ? lastUnder((resumed ?? fresh).id)
+          : resumed === null
+            ? lastUnder(fresh.id)
             : null
         const opened: State = {
           ...state,
@@ -1062,7 +1137,7 @@ export function bundleMachine<K extends BundleKind>(
           draft: resumed ?? fresh,
           sent: done,
           screen:
-            done !== null
+            done !== null && !spec.resends
               ? "sent"
               : resumed !== null && spec.resumesOnCards(resumed)
                 ? "cards"
@@ -1248,10 +1323,15 @@ export type BundleMachine<K extends BundleKind> = {
   readonly standsBeside: (state: Read<K>, item: K["item"]) => boolean
   /** What Send still needs. */
   readonly missing: (
-    state: Pick<BundleState<K>, "draft" | "takes" | "at">
+    state: Pick<BundleState<K>, "draft" | "takes" | "at"> &
+      Partial<Pick<BundleState<K>, "sent">>
   ) => Missing<K>
   /** The record a draft sends at `at`. */
-  readonly bundleRecord: (state: Read<K>, at: string) => K["record"]
+  /** `sent`, where the spec resends: the last send, whose takes go again. */
+  readonly bundleRecord: (
+    state: Read<K> & Partial<Pick<BundleState<K>, "sent">>,
+    at: string
+  ) => K["record"]
   /** What a card shows; `recording`, its take is under way. */
   readonly cardView: (
     state: BundleState<K>,
@@ -1265,11 +1345,29 @@ export type BundleMachine<K extends BundleKind> = {
   ) => string
 }
 
-/** What Send still needs: the spec's own, or a required answer; null for nothing. */
-type Missing<K extends BundleKind> = K["need"] | "required" | null
+/**
+ * What Send still needs: the spec's own, a required answer, or, sending
+ * again, something changed since the last Send; null for nothing.
+ */
+type Missing<K extends BundleKind> = K["need"] | "required" | "unchanged" | null
 
 /** How an item stands: said, typed, or neither yet. */
 export type Answered = "said" | "typed" | null
+
+/** What a closed bundle refuses: everything that says, changes, deletes or sends. */
+const CHANGES: ReadonlySet<BundleEvent<BundleKind>["type"]> = new Set([
+  "tap",
+  "askDelete",
+  "askDeleteAll",
+  "confirmed",
+  "typeInstead",
+  "typed",
+  "keepTyped",
+  "later",
+  "review",
+  "send",
+  "edit",
+])
 
 const MOVES: ReadonlySet<BundleEvent<BundleKind>["type"]> = new Set([
   "go",
