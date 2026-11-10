@@ -1173,6 +1173,24 @@
       "gray": "The owner's correction asked for no polling and nothing beyond pulling the image; the coordinator asked to drop the fast-forward unless the on-demand path truly needs it. Auto-pulling main also runs main's compose and sops changes on home unreviewed by anyone there. No convention covers it.",
       "undo": "Add a fast-forward step to scripts/deploy.py's deploy() before the pull (an earlier rehearsed version had update_checkout), and drop CHECKOUT_HINT.",
       "refs": ["server#776", "#2833"]
+    },
+    {
+      "id": "C83",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": [
+        "server:nix/modules/home-deploy.nix",
+        "server:scripts/deploy.py"
+      ],
+      "chose": "Home's deploy unit runs as root and runs make as the checkout's owner through `runuser -u <user> -- env HOME=… XDG_RUNTIME_DIR=/run/home-deploy`.",
+      "options": [
+        "root, with runuser for make",
+        "the owner's user throughout, with STORAGE's deploy/ group-writable",
+        "root throughout, with sops pointed at the owner's key"
+      ],
+      "gray": "STORAGE is file_host's uid 10000, docker is root's, and the sops age key is the owner's. No convention covers a host unit needing both. The second widens STORAGE's permissions, and the third has root build envctl in the owner's checkout.",
+      "undo": "In nix/modules/home-deploy.nix, set User= in serviceConfig and drop --as-user; in scripts/deploy.py, drop runuser_prefix.",
+      "refs": ["server#779", "#2833"]
     }
   ]
 }
