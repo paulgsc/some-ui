@@ -58,7 +58,7 @@ import type {
   TakePatternSnapshot,
   TakeRowView,
 } from "@some-ui/voice-capture"
-import { takeItemView } from "@some-ui/voice-capture"
+import { currentTakeOf, takeItemView } from "@some-ui/voice-capture"
 import { ChevronLeft } from "lucide-react"
 
 const WORDS = WEEK_WORDS
@@ -86,25 +86,21 @@ type Parts = {
 const sentTake = (state: WeekState, ticket: string): string | null =>
   state.sent?.answers.find((each) => each.ticket === ticket)?.take ?? null
 
-/**
- * Where a ticket stands: on this phone, sent home, said again since, or,
- * once the week closed, left unanswered.
- */
+/** Whether `ticket`'s take now is another than the one last sent. */
+const saidAgain = (state: WeekState, ticket: string): boolean => {
+  const current = currentTakeOf(state.takes, ticketLine(state.draft.id, ticket))
+  return current !== null && current.id !== sentTake(state, ticket)
+}
+
+/** Where a ticket stands: on this phone, sent, or said again since. */
 function standing(
   { machine, state }: Pick<Parts, "machine" | "state">,
-  ticket: string,
-  closed: boolean
+  ticket: string
 ): TicketStanding {
-  const home = sentTake(state, ticket)
-  if (closed) return home === null ? "unanswered" : "sent"
-  const now = machine.answered(state, ticket)
-  if (home === null) return now === null ? "open" : "said"
-  const current = state.takes.find(
-    (take) =>
-      take.answers === machine.answersOf(state, ticket) &&
-      take.standing === "current"
-  )
-  return current === undefined || current.id === home ? "sent" : "resaid"
+  if (sentTake(state, ticket) === null) {
+    return machine.answered(state, ticket) === null ? "open" : "said"
+  }
+  return saidAgain(state, ticket) ? "resaid" : "sent"
 }
 
 /** What the ticket's program did, as the brief says it in a word. */
@@ -179,7 +175,7 @@ const Brief = (
             </span>
             <span className="text-muted-foreground text-xs font-normal">
               {[
-                WORDS.standing[standing(props, ticket.id, false)],
+                WORDS.standing[standing(props, ticket.id)],
                 shape(held, ticket),
                 WORDS.speakToCount(ticket.speakTo.length),
               ]
@@ -239,20 +235,13 @@ const TicketHead = ({
   heard: WeekHeard
 }): JSX.Element => {
   const home = sentTake(state, ticket.id)
-  const current = state.takes.find(
-    (take) =>
-      take.answers === ticketLine(state.draft.id, ticket.id) &&
-      take.standing === "current"
-  )
   return (
     <>
       <TicketBody held={held} ticket={ticket} n={n} />
       {home !== null && (
         <section className="flex flex-col gap-2">
           <p className="text-muted-foreground text-sm">
-            {current === undefined || current.id === home
-              ? WORDS.home.holds
-              : WORDS.home.again}
+            {saidAgain(state, ticket.id) ? WORDS.home.again : WORDS.home.holds}
           </p>
           <HeardLine words={heard[home]} />
         </section>
@@ -373,7 +362,6 @@ const ReadBack = (
   const { machine, state, snapshot, takes, dispatch, held, heard } = props
   const { week } = held
   const { holds, last } = props.atHome
-  // What counts is what home had at the deadline (C56).
   const answered = holds?.answers ?? []
   return (
     <div className="flex flex-col gap-4">
@@ -381,7 +369,7 @@ const ReadBack = (
       <section className="bg-card flex flex-col gap-1 rounded-2xl p-3 text-sm">
         <p className="font-semibold">{WORDS.closed.title(week)}</p>
         <p className="text-muted-foreground">{WORDS.closed.line(week)}</p>
-        <p>{WORDS.closed.sentOf(answered.length, week.tickets.length)}</p>
+        <p>{WORDS.sent.title(answered.length, week.tickets.length)}</p>
         {last !== null && last.at !== holds?.at && (
           <p className="text-muted-foreground">{WORDS.closed.late(last.at)}</p>
         )}
@@ -403,7 +391,7 @@ const ReadBack = (
               <TicketBody held={held} ticket={ticket} n={i + 1} />
               {answer === undefined ? (
                 <p className="text-muted-foreground text-sm">
-                  {WORDS.closed.notAnswered}
+                  {WORDS.sent.notAnswered}
                 </p>
               ) : (
                 <>
@@ -581,7 +569,6 @@ const Screen = (
   }
 ): JSX.Element => {
   const { state, dispatch, held } = props
-  // Past the deadline the week only reads back (RR22).
   if (
     state.screen !== "loading" &&
     state.screen !== "unreadable" &&

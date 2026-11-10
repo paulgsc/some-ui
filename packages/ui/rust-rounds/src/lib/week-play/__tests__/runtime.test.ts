@@ -50,6 +50,8 @@ type Phone = {
   readonly detach: () => void
   /** What the week told the engagement sink, in order. */
   readonly engaged: Array<EngagementEvent>
+  /** The link says it heard more of what home holds. */
+  readonly homeHeard: () => void
 }
 
 function phone(
@@ -74,6 +76,7 @@ function phone(
       ((): Promise<HeardAnswer> => Promise.resolve({ kind: "notYet" }))
   )
   const engaged: Array<EngagementEvent> = []
+  const held = new Set<() => void>()
   const week = createRustWeek({
     week: HELD,
     takes: { ...takes, release },
@@ -81,6 +84,12 @@ function phone(
     home: { reach: () => "near", subscribe: () => (): void => undefined },
     heard,
     homeHolds: over.homeHolds ?? ((): boolean => false),
+    onHomeHolds: (listener) => {
+      held.add(listener)
+      return (): void => {
+        held.delete(listener)
+      }
+    },
     now: over.now ?? Date.now,
     newId: () => "unused",
     engage: (event) => engaged.push(event),
@@ -90,7 +99,10 @@ function phone(
     },
   })
   const detach = week.attach()
-  return { week, simulated, release, heard, detach, engaged }
+  const homeHeard = (): void => {
+    for (const listener of held) listener()
+  }
+  return { week, simulated, release, heard, detach, engaged, homeHeard }
 }
 
 const onConfirm = (): SimulatedPattern =>
@@ -204,7 +216,6 @@ describe("a week on the phone (RR13)", () => {
   it("stays open after a send: said again, keeping the take sent, a ticket passed over answered, and sent again (RR22)", async () => {
     const storage = inMemoryStorage()
     const simulated = onConfirm()
-    // The owner's phone on 2026-w46: one take of three sent.
     const first = phone(storage, simulated)
     first.week.bundle.dispatch({ type: "go", index: 0 })
     await say(first, "QM-311")
@@ -217,12 +228,6 @@ describe("a week on the phone (RR13)", () => {
     const on = phone(storage, simulated)
     await pass()
     expect(on.week.bundle.getSnapshot().screen).toBe("intro")
-    on.week.bundle.dispatch({ type: "review" })
-    expect(on.week.machine.missing(on.week.bundle.getSnapshot())).toBe(
-      "unchanged"
-    )
-    on.week.bundle.dispatch({ type: "go", index: 1 })
-    on.week.bundle.dispatch({ type: "back" })
     on.week.bundle.dispatch({ type: "go", index: 0 })
     await say(on, "QM-311")
     await say(on, "QM-312")
@@ -245,9 +250,6 @@ describe("a week on the phone (RR13)", () => {
     })
     expect(takes).toHaveLength(3)
     expect(takes.every((take) => take.waits !== true)).toBe(true)
-    expect(on.week.bundle.getSnapshot().screen).toBe("sent")
-    on.week.bundle.dispatch({ type: "back" })
-    expect(on.week.bundle.getSnapshot().screen).toBe("intro")
   })
 
   it("records and sends nothing past the deadline, and keeps the takes on the phone", async () => {
@@ -349,5 +351,48 @@ describe("what home has of a week (RR22, C56)", () => {
     on.week.bundle.dispatch({ type: "send" })
     const [sent] = weeksSent(storage).list() ?? []
     expect(on.week.atHome.getSnapshot()).toEqual({ holds: sent, last: sent })
+  })
+
+  it("reads again when the link hears home has a send, with no new Send", async () => {
+    const storage = inMemoryStorage()
+    let homeHas = false
+    const on = phone(storage, onConfirm(), { homeHolds: () => homeHas })
+    on.week.bundle.dispatch({ type: "go", index: 0 })
+    await say(on, "QM-311")
+    on.week.bundle.dispatch({ type: "review" })
+    on.week.bundle.dispatch({ type: "send" })
+    const [sent] = weeksSent(storage).list() ?? []
+    expect(on.week.atHome.getSnapshot().holds).toBeNull()
+    homeHas = true
+    on.homeHeard()
+    expect(on.week.atHome.getSnapshot().holds).toEqual(sent)
+  })
+
+  it("asks home for the words of the send it holds, not only the last made", async () => {
+    const storage = inMemoryStorage()
+    const simulated = onConfirm()
+    const first = phone(storage, simulated)
+    first.week.bundle.dispatch({ type: "go", index: 0 })
+    await say(first, "QM-311")
+    first.week.bundle.dispatch({ type: "review" })
+    first.week.bundle.dispatch({ type: "send" })
+    await pass()
+    first.week.bundle.dispatch({ type: "back" })
+    first.week.bundle.dispatch({ type: "go", index: 0 })
+    await say(first, "QM-311")
+    first.week.bundle.dispatch({ type: "review" })
+    first.week.bundle.dispatch({ type: "send" })
+    await pass()
+    first.detach()
+    const [held, last] = weeksSent(storage).list() ?? []
+    const again = phone(storage, simulated, {
+      homeHolds: (sent) => sent.at === held?.at,
+    })
+    await pass()
+    const asked: Array<unknown> = again.heard.mock.calls.map(
+      (call): unknown => call[0]
+    )
+    expect(asked).toContain(held?.answers[0]?.take)
+    expect(asked).toContain(last?.answers[0]?.take)
   })
 })

@@ -74,6 +74,7 @@ function ports(
     home: { reach: () => "near", subscribe: () => (): void => undefined },
     heard: () => Promise.resolve({ kind: "heard", text: "It copies." }),
     homeHolds,
+    onHomeHolds: () => (): void => undefined,
     now,
     newId: () => "unused",
     engage: () => undefined,
@@ -225,11 +226,11 @@ describe("a week on the phone (RR13)", () => {
     )
     await settle()
     // Home never had it: it didn't count, and it says so.
-    expect(screen.getByText(WORDS.closed.sentOf(0, 3))).toBeInTheDocument()
+    expect(screen.getByText(WORDS.sent.title(0, 3))).toBeInTheDocument()
     expect(
       screen.getByText(/didn't reach home before the deadline/)
     ).toBeInTheDocument()
-    expect(screen.getAllByText(WORDS.closed.notAnswered)).toHaveLength(3)
+    expect(screen.getAllByText(WORDS.sent.notAnswered)).toHaveLength(3)
     closed.unmount()
 
     render(
@@ -247,8 +248,8 @@ describe("a week on the phone (RR13)", () => {
       screen.getByText(WORDS.closed.title(QUILLMOSS_WEEK))
     ).toBeInTheDocument()
     expect(screen.queryByText(/didn't reach home/)).toBeNull()
-    expect(screen.getByText(WORDS.closed.sentOf(1, 3))).toBeInTheDocument()
-    expect(screen.getAllByText(WORDS.closed.notAnswered)).toHaveLength(2)
+    expect(screen.getByText(WORDS.sent.title(1, 3))).toBeInTheDocument()
+    expect(screen.getAllByText(WORDS.sent.notAnswered)).toHaveLength(2)
     for (const ticket of QUILLMOSS_WEEK.tickets) {
       for (const point of ticket.speakTo) {
         expect(screen.getAllByText(point).length).toBeGreaterThan(0)

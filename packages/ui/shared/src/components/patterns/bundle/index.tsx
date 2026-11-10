@@ -378,7 +378,6 @@ const Card = <K extends BundleKind>({
             onTap={() => dispatch({ type: "tap", item })}
             onPlay={(take) => dispatch({ type: "play", take })}
             onRedo={() => dispatch({ type: "tap", item })}
-            // A take that left the phone is never let go here (RR22).
             onLetGo={
               view.current.some((row) => row.unsent)
                 ? (): void => dispatch({ type: "askDelete", item })

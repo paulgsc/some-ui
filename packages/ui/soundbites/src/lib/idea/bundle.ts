@@ -150,7 +150,6 @@ const IDEA_BUNDLE_SPEC: BundleSpec<IdeaBundleKind> = {
     idea.answers.flatMap((answer) =>
       (answer.takes ?? []).map((each) => each.take)
     ),
-  // An idea is sent once, and never closes before it is.
   resends: false,
   closed: () => false,
 }

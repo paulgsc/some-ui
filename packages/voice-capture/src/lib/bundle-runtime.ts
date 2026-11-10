@@ -179,9 +179,7 @@ export function bundleRuntime<K extends BundleKind>(
         const named = (records: ReadonlyArray<K["record"]>): boolean =>
           records.some((each) => idOf(each) === id)
         // Only a record added now lets takes go: one already kept under the
-        // id names other takes, so these would go home named by none. A
-        // spec that resends adds each Send beside the earlier ones, and its
-        // draft stays.
+        // id names other takes, so these would go home named by none.
         const before = ports.records.list()
         const kept =
           before === null || (!resends && named(before))

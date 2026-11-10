@@ -57,6 +57,7 @@ function phone(
     home: { reach: () => "near", subscribe: () => (): void => undefined },
     heard: () => Promise.resolve({ kind: "notYet" }),
     homeHolds: () => false,
+    onHomeHolds: () => (): void => undefined,
     now: Date.now,
     newId: () => "unused",
     engage: () => undefined,

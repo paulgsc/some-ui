@@ -21,7 +21,7 @@ import {
 import { phoneRounds, phoneWeeks } from "@/lib/rust-rounds"
 import { browserLocalStorage } from "@/lib/tenant/storage"
 
-import { pairingOf } from "./index"
+import { homeLink, pairingOf } from "./index"
 import type { EachSent } from "./leetype-log"
 import { emptyLogReport, sendEach } from "./leetype-log"
 import type { Sent } from "./sent"
@@ -67,6 +67,10 @@ export const homeHoldsWeekSend = (sent: WeekSent): boolean => {
     sent
   )
 }
+
+/** Calls `listener` each time the link changes, when what home holds may have. */
+export const onHomeHoldsWeekSend = (listener: () => void): (() => void) =>
+  homeLink().subscribe(listener)
 
 /** The key home's answer to a PUT holds the item under, where it echoes one. */
 const ECHO = { rustWeeks: "sent", rustPastes: "paste" } as const

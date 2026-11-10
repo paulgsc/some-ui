@@ -23,8 +23,11 @@
  */
 import { LOG_SCHEMA } from "@rust-rounds/lib/formats"
 import { keptLog } from "@rust-rounds/lib/play/store"
-import type { WeekSent } from "@rust-rounds/lib/week-play/spec"
-import { isClosed, weekSendKey } from "@rust-rounds/lib/week-play/spec"
+import {
+  isClosed,
+  latestSend,
+  weekSendKey,
+} from "@rust-rounds/lib/week-play/spec"
 import { pasteStores, weeksSent } from "@rust-rounds/lib/week-play/store"
 import { heldWeek, keptWeeks } from "@rust-rounds/lib/weeks"
 import type { KeyedStorage } from "@some-ui/core-utils"
@@ -51,16 +54,14 @@ export function keptGoing(
   storage: KeyedStorage | null,
   at: number
 ): Array<KeptItem> {
-  const latest = new Map<string, WeekSent>()
-  for (const sent of weeksSent(storage).list() ?? []) {
-    const before = latest.get(sent.week)
-    if (before === undefined || Date.parse(sent.at) >= Date.parse(before.at)) {
-      latest.set(sent.week, sent)
-    }
-  }
+  const sends = weeksSent(storage).list() ?? []
   const held = keptWeeks(storage).held()
   const now = new Date(at).toISOString()
-  const weeks = [...latest.values()]
+  const weeks = [...new Set(sends.map(({ week: id }) => id))]
+    .flatMap((id) => {
+      const sent = latestSend(sends.filter(({ week: of }) => of === id))
+      return sent === null ? [] : [sent]
+    })
     .filter((sent) => {
       const of = heldWeek(held, sent.week)
       return of === null || !isClosed(of.week, now)

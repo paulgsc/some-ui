@@ -191,8 +191,6 @@ export const WEEK_WORDS = {
     /** A send made on this phone that home didn't have by the deadline. */
     late: (at: string): string =>
       `Your send from ${weekday(at)} ${clock(at)} didn't reach home before the deadline, so it doesn't count. It stays on this phone.`,
-    sentOf: (n: number, of: number): string => `Sent home: ${n} of ${of}.`,
-    notAnswered: "Not answered.",
     unplayable: "This take isn't on this phone to play.",
   },
   card: CARD_WORDS,

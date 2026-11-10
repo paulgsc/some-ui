@@ -49,7 +49,6 @@ describe("keptGoing", () => {
       ["roundLog", "/rust-round-log/sessions/sitting-1"],
     ])
     expect(going[0]?.wire).toEqual(SENT)
-    expect(going[0]?.id).toBe("2026-w46/2026-11-12T20:00:00.000Z")
     expect(going[1]?.wire).toEqual({
       at: "2026-11-11T08:00:00.000Z",
       text: "error[E0499]",

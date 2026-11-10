@@ -888,7 +888,6 @@ export function bundleMachine<K extends BundleKind>(
       }
       case "askDelete": {
         if (answered(state, event.item) === null) return same(state)
-        // A take that left the phone is never deleted here (RR22).
         if (
           state.draft.typed[event.item] === undefined &&
           waitingOf(state, event.item).length === 0
@@ -1326,8 +1325,10 @@ export type BundleMachine<K extends BundleKind> = {
     state: Pick<BundleState<K>, "draft" | "takes" | "at"> &
       Partial<Pick<BundleState<K>, "sent">>
   ) => Missing<K>
-  /** The record a draft sends at `at`. */
-  /** `sent`, where the spec resends: the last send, whose takes go again. */
+  /**
+   * The record a draft sends at `at`; `sent`, where the spec resends, the
+   * last send, whose takes go again.
+   */
   readonly bundleRecord: (
     state: Read<K> & Partial<Pick<BundleState<K>, "sent">>,
     at: string

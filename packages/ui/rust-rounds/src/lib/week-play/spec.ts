@@ -107,14 +107,19 @@ export function weekAtHome(
   week: Pick<Week, "id">,
   held: (sent: WeekSent) => boolean
 ): WeekAtHome {
-  const sends = kept
-    .filter((sent) => sent.week === week.id)
-    .sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
-  return {
-    holds: sends.filter(held).at(-1) ?? null,
-    last: sends.at(-1) ?? null,
-  }
+  const sends = kept.filter((sent) => sent.week === week.id)
+  return { holds: latestSend(sends.filter(held)), last: latestSend(sends) }
 }
+
+/** The send of `sends` made last, by instant; null for none. */
+export const latestSend = (sends: ReadonlyArray<WeekSent>): WeekSent | null =>
+  sends.reduce<WeekSent | null>(
+    (latest, sent) =>
+      latest === null || Date.parse(sent.at) >= Date.parse(latest.at)
+        ? sent
+        : latest,
+    null
+  )
 
 function weekSpec(week: Week): BundleSpec<WeekKind> {
   return {

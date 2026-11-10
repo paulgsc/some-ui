@@ -46,9 +46,12 @@ export type RustWeekPorts = {
   readonly heard: (take: string) => Promise<HeardAnswer>
   /**
    * Whether home holds this send of the week, as the link last heard (RR22):
-   * read when the week opens and after each Send, never asked of home.
+   * read when the week opens, after each Send and whenever the link says it
+   * heard more (`onHomeHolds`), never asked of home.
    */
   readonly homeHolds: (sent: WeekSent) => boolean
+  /** Calls `listener` whenever what `homeHolds` answers may have changed. Returns the stop. */
+  readonly onHomeHolds: (listener: () => void) => () => void
   /** Milliseconds since the epoch. */
   readonly now: () => number
   readonly newId: () => string
@@ -139,9 +142,14 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
    * other with busy.
    */
   const askSent = async (): Promise<void> => {
-    const { sent } = bundle.getSnapshot()
-    if (sent === null) return
-    for (const { take } of sent.answers) {
+    // The last send's takes, and those of the send home holds, which a
+    // closed week reads back.
+    const takes = new Set(
+      [bundle.getSnapshot().sent, atHome.holds].flatMap(
+        (sent) => sent?.answers.map(({ take }) => take) ?? []
+      )
+    )
+    for (const take of takes) {
       if (snapshot[take]?.kind === "heard") continue
       answered(take, await ports.heard(take))
     }
@@ -207,10 +215,12 @@ export function createRustWeek(ports: RustWeekPorts): RustWeek {
       const detach = bundle.attach()
       lookHome(true)
       const stopHome = bundle.subscribe(() => lookHome())
+      const stopHeld = ports.onHomeHolds(() => lookHome(true))
       void askSent()
       const stopOpens = watchOpens()
       return (): void => {
         stopOpens()
+        stopHeld()
         stopHome()
         detach()
       }
