@@ -824,6 +824,51 @@
       "refs": ["#2691", "#2833"]
     },
     {
+      "id": "C73",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": [
+        "server:apps/servers/file_host/src/feeds.rs",
+        "server:apps/servers/file_host/src/feeds/videos.rs"
+      ],
+      "chose": "The Rust Rounds essay is a third Feed (`rust-essay`) on the existing /feeds/:feed/videos routes, keyed by week, with the caller's subject threaded through every Feed method so the essay feed answers only the caller's own.",
+      "options": [
+        "a third Feed on the existing routes, subject threaded",
+        "a separate essay-videos route module"
+      ],
+      "gray": "The call's and Playoff Delta's videos are no one's, while an essay's plays the owner's voice, and nothing said whether a subject-scoped feed shares the feeds' routes.",
+      "undo": "Drop Feed::RustEssay and the subject parameters from Feed's methods and feeds::videos.",
+      "refs": ["#2691", "#2833", "server#774"]
+    },
+    {
+      "id": "C74",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["server:apps/servers/file_host/src/rust_essays.rs"],
+      "chose": "Each minute the essays worker tidies the drive against what the subject holds: an account gone, a take deleted or a video made removes the files it no longer may keep. There are no hooks in account deletion or the voice delete route.",
+      "options": [
+        "a reconcile each minute",
+        "hooks in delete_subject and DELETE /voice-notes/:id"
+      ],
+      "gray": "No invariant said where file cleanup for a subject-scoped render lives. A reconcile catches every path within a minute, at a few local reads per essay week.",
+      "undo": "Remove rust_essays::tidy and add the hooks.",
+      "refs": ["#2691", "server#774"]
+    },
+    {
+      "id": "C75",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["server:scripts/check_assurance_ledger.py"],
+      "chose": "The stores and a family of existing server paths go in the ledger before server#774; rust_essays.rs and the proofs follow its merge, with rust_essays.rs in KNOWN_UNPLACED until then, as pd-kept followed server#687.",
+      "options": [
+        "stores before, family paths after",
+        "the whole family before the server PR"
+      ],
+      "gray": "A family naming a server file before it is on main fails every server PR's ledger rule 2, and the rule for a new process family said only 'before'.",
+      "undo": "Drop the KNOWN_UNPLACED entry once the family names rust_essays.rs.",
+      "refs": ["#2691", "#2833", "server#774"]
+    },
+    {
       "id": "C76",
       "made": "2026-11-10",
       "by": "claude",
