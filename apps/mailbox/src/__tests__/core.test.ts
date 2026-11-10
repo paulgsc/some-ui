@@ -462,6 +462,84 @@ describe("a week of Rust Rounds rides brief (MB2, RR12)", () => {
   })
 })
 
+describe("a Rust Rounds essay's script rides brief (MB2, RR16)", () => {
+  const essay = (week: string): string =>
+    JSON.stringify({
+      schema: "some-ui.rust-essay/1",
+      week: { id: week, from: "2026-11-09", to: "2026-11-15" },
+      tickets: [],
+    })
+  const ESSAY = essay("2026-w46")
+  const NAME = "rust-essay-2026-w46.json"
+
+  it("the routine puts one in brief, home reads it with the digests, and it rings", async () => {
+    const rings: Array<Folder> = []
+    const d = deps(memoryStore(), [], rings)
+    expect((await put(d, "brief", NAME, { body: ESSAY })).status).toBe(201)
+    expect(rings).toEqual(["brief"])
+    const read = await send(d, "GET", `/v1/brief/items/${NAME}`, {
+      token: HOME,
+    })
+    expect(await read.text()).toBe(ESSAY)
+    const listed = await send(d, "GET", "/v1/brief/items", { token: HOME })
+    expect(await json(listed)).toMatchObject({
+      items: [expect.objectContaining({ name: NAME })],
+    })
+    expect(
+      (await put(d, "brief", NAME, { body: ESSAY, token: HOME })).status
+    ).toBe(403)
+  })
+
+  it("takes a correction as -r2 and on, never -r1 or -r0", async () => {
+    const d = deps()
+    for (const name of [
+      "rust-essay-2026-w46-r2.json",
+      "rust-essay-2026-w46-r10.json",
+    ]) {
+      const response = await put(d, "brief", name, { body: ESSAY })
+      expect([name, response.status]).toEqual([name, 201])
+    }
+    for (const name of [
+      "rust-essay-2026-w46-r1.json",
+      "rust-essay-2026-w46-r0.json",
+      "rust-essay-2026-w46-r02.json",
+      "rust-essay-2026-w46-r.json",
+    ]) {
+      const response = await put(d, "brief", name, { body: ESSAY })
+      expect([name, response.status]).toEqual([name, 422])
+    }
+  })
+
+  it("refuses an essay whose name is not its week's, or another schema", async () => {
+    const d = deps()
+    for (const name of [
+      "rust-essay-2026-w47.json",
+      "rust-essay-2026-w47-r2.json",
+    ]) {
+      const misnamed = await put(d, "brief", name, { body: ESSAY })
+      expect(await json(misnamed)).toEqual({
+        error: "the name must carry the week's id",
+      })
+    }
+    for (const body of [
+      essay("week-46"),
+      JSON.stringify({ schema: "some-ui.rust-essay/1", week: "2026-w46" }),
+      JSON.stringify({ schema: "some-ui.rust-essay/1" }),
+    ]) {
+      expect(await json(await put(d, "brief", NAME, { body }))).toEqual({
+        error: "week.id must be the week's, like 2026-w46",
+      })
+    }
+    const wrong = await put(d, "brief", NAME, { body: DIGEST })
+    expect(await json(wrong)).toEqual({
+      error: "the body's schema must be some-ui.rust-essay/1",
+    })
+    expect(
+      (await put(d, "brief", "rust-essay-2026-46.json", { body: ESSAY })).status
+    ).toBe(422)
+  })
+})
+
 describe("the build-journal session's list of the takes Drive holds (MB2, HF11)", () => {
   const SHA_A = "a".repeat(64)
   const SHA_B = `${"0123456789abcdef".repeat(4)}`

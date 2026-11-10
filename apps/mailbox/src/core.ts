@@ -689,6 +689,25 @@ function rustWeekRefusal(
     : "the name must carry the week's id"
 }
 
+/**
+ * A Rust Rounds essay's script, named for the week it answers, and `-r2` on
+ * for a correction (`some-ui.rust-essay/1`'s `week.id`, `EssaySchema` in
+ * `@some-ui/video-render`).
+ */
+function rustEssayRefusal(
+  body: Readonly<Record<string, unknown>>,
+  _text: string,
+  name: string
+): string | null {
+  const week = isRecord(body.week) ? body.week.id : undefined
+  if (typeof week !== "string" || !WEEK_ID.test(week)) {
+    return "week.id must be the week's, like 2026-w46"
+  }
+  return name.replace(/(-r\d+)?\.json$/, "") === `rust-essay-${week}`
+    ? null
+    : "the name must carry the week's id"
+}
+
 /** `WEEK_ID` in `packages/ui/rust-rounds/src/lib/formats/week.ts`, which this Worker cannot import. */
 const WEEK_ID = /^\d{4}-w(?:0[1-9]|[1-4]\d|5[0-3])$/
 
@@ -809,6 +828,15 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
         name: /^rust-week-\d{4}-w\d{2}\.json$/,
         schema: "some-ui.rust-week/1",
         refuses: rustWeekRefusal,
+      },
+      // The script of the essay that answers a week, for home to keep and
+      // render; `-r2` on is a correction (RR16, paulgsc/some-ui#2691; the
+      // owner's answer on #2684: home and the mailbox only).
+      {
+        folder: "brief",
+        name: /^rust-essay-\d{4}-w\d{2}(-r(?:[2-9]|[1-9]\d+))?\.json$/,
+        schema: "some-ui.rust-essay/1",
+        refuses: rustEssayRefusal,
       },
     ],
   },

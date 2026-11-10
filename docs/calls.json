@@ -796,6 +796,34 @@
       "moves": "C70"
     },
     {
+      "id": "C65",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["apps/mailbox/src/core.ts", "apps/mailbox/README.md"],
+      "chose": "A Rust Rounds essay's script rides the mailbox's brief folder, beside the weeks of Rust Rounds, rather than a rust-essay folder of its own.",
+      "options": [
+        "a rust-essay folder of its own",
+        "the brief folder, as the weeks of Rust Rounds do"
+      ],
+      "gray": "The owner's answer on #2684 says the routine puts the script in a mailbox folder named rust-essay. Its point was that the script stays on home and in the mailbox. A folder of its own adds a listing to every pass home makes, which MI6 counts, while brief is listed anyway, and the home side of RR16 is built to read brief.",
+      "undo": "Add a rust-essay folder to FOLDERS, the routine's put and home's get in ROLES, and paulgsc/server's pass::READS, then move the essay kind out of brief's also.",
+      "refs": ["#2684", "#2691", "#2833"]
+    },
+    {
+      "id": "C72",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["apps/mailbox/src/core.ts", "apps/mailbox/README.md"],
+      "chose": "A corrected essay script goes under a new name, rust-essay-YYYY-wNN-rN.json with N from 2, since a name in the mailbox holds one body for good.",
+      "options": [
+        "a correction under -rN, N from 2",
+        "no corrections: one script per week"
+      ],
+      "gray": "Nothing settled whether a week's essay can be corrected once put, and a held name refuses other bytes (MB5), so a fix needs a new name or none can be made.",
+      "undo": "Drop the (-rN) part of the rust-essay name in brief's also in core.ts, and its tests.",
+      "refs": ["#2691", "#2833"]
+    },
+    {
       "id": "C76",
       "made": "2026-11-10",
       "by": "claude",
