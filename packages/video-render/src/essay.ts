@@ -33,8 +33,10 @@
  * are their own take, so an answer scene's `said` is its transcript.
  *
  * The essay reaches the stage from home's store (ask #2684), through the
- * mailbox's `rust-essay` folder (RR18); until then the stage plays the
- * sample (`sampleEssay`).
+ * mailbox's `rust-essay` folder (RR18). Home's render worker records it from
+ * the file it keeps, with the owner's takes beside it (RR16, www's
+ * `record:essay`); with no essay named, the stage plays the sample
+ * (`sampleEssay`), voiced as one (`Voicing`).
  */
 
 import { z } from "zod"
@@ -48,10 +50,16 @@ import {
   sayDay,
 } from "./call"
 import type { LockedIntro } from "./call"
+import type { ChapterMark } from "./chapters"
+import { chapterSlides } from "./chapters"
 import { once, problemsOf } from "./cut-list"
-import type { Parsed } from "./cut-list"
+import type { CutList, Parsed } from "./cut-list"
 import { FORMAT_SCHEMA, repeatedId, versionRefusal, words } from "./format"
 import type { Format, Shape } from "./format"
+import { hasCaptions, stillFile, stillsCutList } from "./stills"
+import type { StillTake } from "./stills"
+import { boardSceneOf, storyboardOf } from "./storyboard"
+import type { Storyboard } from "./storyboard"
 import sample from "./templates/rust-essay/sample-essay.json"
 
 export const ESSAY_SCHEMA = "some-ui.rust-essay/1"
@@ -425,6 +433,20 @@ export const sampleEssay = (): Parsed<Essay> => parseEssay(sample)
 /** Who is speaking, and so whose bubble is lit. */
 export type Speaker = "tutor" | "you"
 
+/**
+ * Whose voice says the owner's answers: their own takes, in an essay home
+ * renders; or, in the template's sample (its storyboard, its preview, the
+ * stage with no essay named), a second synthetic voice, since no owner said
+ * the sample's answers (C76). The locked intro says which.
+ */
+export type Voicing = "owner" | "sample"
+
+/** Each speaker's Kokoro voice, as the call's `CALL_VOICES`; `you` only in the sample (`Voicing`). */
+export const ESSAY_VOICES: Readonly<Record<Speaker, string>> = {
+  tutor: "am_michael",
+  you: "bm_george",
+}
+
 /** One scene of an essay: its section, its id in the video, who says it and what. */
 export type EssayScene =
   | {
@@ -468,14 +490,20 @@ export const answeredOf = (essay: Essay): number =>
  * frame and all of it said. Filled by code from the essay alone, never by
  * the routine that writes it.
  */
-export function essayIntro(essay: Essay): LockedIntro {
+export function essayIntro(
+  essay: Essay,
+  voicing: Voicing = "owner"
+): LockedIntro {
   const answered = answeredOf(essay)
   const of = `${answered} of ${essay.tickets.length} tickets`
+  const sample = voicing === "sample"
   return {
     rows: [
       {
         label: "Written by",
-        says: "Claude, from the week's exercise and the owner's takes",
+        says: sample
+          ? "Claude, as the template's sample: the week and its answers are made up"
+          : "Claude, from the week's exercise and the owner's takes",
       },
       {
         label: "Drawn by",
@@ -483,7 +511,9 @@ export function essayIntro(essay: Essay): LockedIntro {
       },
       {
         label: "Voices",
-        says: "The tutor is Kokoro, a synthetic speaker. The other voice is the owner's own, from their takes",
+        says: sample
+          ? "Both are Kokoro, a synthetic speaker. In a sample, a second synthetic voice reads the answers"
+          : "The tutor is Kokoro, a synthetic speaker. The other voice is the owner's own, from their takes",
       },
       { label: "Judged by", says: SOLO_SOURCE },
       { label: "Checked against", says: essay.references.join(" · ") },
@@ -492,8 +522,10 @@ export function essayIntro(essay: Essay): LockedIntro {
     said: [
       `This is the Rust Rounds essay for ${essay.week.id}, ${sayDay(essay.week.from)} to ${sayDay(essay.week.to)}.`,
       "Claude wrote the tutor's words, and code drew every frame.",
-      "The tutor's voice is synthetic; the other voice is the owner's own.",
-      `The owner answered ${of}.`,
+      sample
+        ? "This is a sample: both voices are synthetic, and the second reads made-up answers."
+        : "The tutor's voice is synthetic; the other voice is the owner's own.",
+      sample ? `Its answers cover ${of}.` : `The owner answered ${of}.`,
     ].join(" "),
   }
 }
@@ -504,14 +536,17 @@ export function essayIntro(essay: Essay): LockedIntro {
  * deep dives. The locked intro and the brand intro open it, a chapter slide
  * opens each ticket and the close's sections, and the brand outro ends it.
  */
-export function essayScenes(essay: Essay): ReadonlyArray<EssayScene> {
+export function essayScenes(
+  essay: Essay,
+  voicing: Voicing = "owner"
+): ReadonlyArray<EssayScene> {
   const shape = essayFormat(essay.template.version).shape ?? ESSAY_SHAPE
   const scenes: Array<EssayScene> = [
     {
       section: "intro",
       id: "intro",
       speaker: "tutor",
-      said: essayIntro(essay).said,
+      said: essayIntro(essay, voicing).said,
     },
   ]
   if (shape.brand.intro)
@@ -643,4 +678,126 @@ export function cellsOf(cells: ReadonlyArray<EssayCell>): Array<CellView> {
     best = Math.max(best, cell)
     return { kind: "level", level: cell, decayed }
   })
+}
+
+/**
+ * The essay as a cut list the renderer draws (`stillsCutList`, which holds
+ * CV1): one still per scene (`<file>.png`, the stage recorded), and its take
+ * (`<file>.wav`) where one was said, `takes[i]`: the speaker's for the
+ * tutor, the owner's own for an answer (`owner`), played whole. Captions are
+ * drawn as the essay's shape says, and the music bed plays under the voice
+ * once the series names one (`bed`).
+ */
+export function essayCutList(
+  essay: Essay,
+  takes: ReadonlyArray<StillTake | null>,
+  {
+    bed = false,
+    voicing = "owner",
+  }: { readonly bed?: boolean; readonly voicing?: Voicing } = {}
+): CutList {
+  const format = essayFormat(essay.template.version)
+  return stillsCutList(
+    {
+      title: `The Rust Rounds essay, ${essay.week.id}`,
+      series: format.series,
+      look: "calm",
+      captions: hasCaptions(format),
+      bed,
+      ...(format.shape ? { shape: format.shape } : {}),
+    },
+    essayScenes(essay, voicing).map((scene, i) => ({
+      id: scene.id,
+      file: stillFile(i, scene.id),
+      said: scene.said,
+    })),
+    takes
+  )
+}
+
+/**
+ * Where the essay's chapters start (SFEED4): each chapter slide, a ticket's
+ * titled by its key and title, so a rewatch can go straight to a ticket.
+ */
+export const essayChapterMarks = (essay: Essay): Array<ChapterMark> =>
+  chapterSlides(
+    essayScenes(essay).filter((scene) => scene.section === "chapter")
+  )
+
+/**
+ * The essay's storyboard (SFEED3): every frame of the template's sample
+ * essay, as `essayScenes` lays it out, with the fill's words left for the
+ * fill.
+ */
+export function essayStoryboard(): Storyboard {
+  const essay = sampleEssay()
+  if (!essay.ok) throw new Error(essay.problems.join("; "))
+  return storyboardOf(
+    essayFormat(essay.value.template.version),
+    `the sample essay, ${essay.value.week.id}`,
+    essayScenes(essay.value, "sample").map(boardSceneOf)
+  )
+}
+
+/** An owner's take as home hands it to the recorder: its audio, and its word times if home kept them. */
+export type TakeFiles = {
+  readonly audio: string
+  readonly words: string | null
+}
+
+/** The suffix of a take's word times beside its audio: `QM-311.words.json`. */
+const TAKE_WORDS = ".words.json"
+
+/**
+ * Which of `names`, the files in the folder home hands the recorder, is each
+ * answered ticket's take (RR16): exactly one audio file `<TICKET>.<ext>` for
+ * each ticket the owner answered, and its word times `<TICKET>.words.json`
+ * where home kept them. Refuses, with every reason, a take missing, two for
+ * one ticket, one for a ticket left silent or not in the essay, and word
+ * times with no take, so nothing is drawn from the wrong voice.
+ */
+export function essayTakeFiles(
+  essay: Essay,
+  names: ReadonlyArray<string>
+): Parsed<Readonly<Record<string, TakeFiles>>> {
+  const audio = new Map<string, Array<string>>()
+  const words = new Map<string, string>()
+  const problems: Array<string> = []
+  for (const name of [...names].sort()) {
+    if (name.startsWith(".")) continue
+    if (name.endsWith(TAKE_WORDS)) {
+      words.set(name.slice(0, -TAKE_WORDS.length), name)
+      continue
+    }
+    const dot = name.lastIndexOf(".")
+    const ticket = dot <= 0 ? name : name.slice(0, dot)
+    audio.set(ticket, [...(audio.get(ticket) ?? []), name])
+  }
+  const files: Record<string, TakeFiles> = {}
+  const answered = new Set<string>()
+  for (const ticket of essay.tickets) {
+    if (ticket.answer.kind !== "take") continue
+    answered.add(ticket.id)
+    const found = audio.get(ticket.id) ?? []
+    const [only] = found
+    if (only === undefined || found.length > 1) {
+      problems.push(
+        only === undefined
+          ? `${ticket.id}: answered, and there is no take of it`
+          : `${ticket.id}: ${found.length} takes (${found.join(", ")}); one plays`
+      )
+      continue
+    }
+    files[ticket.id] = { audio: only, words: words.get(ticket.id) ?? null }
+  }
+  for (const [ticket, found] of audio)
+    if (!answered.has(ticket))
+      problems.push(
+        `${found.join(", ")}: ${essay.tickets.some((t) => t.id === ticket) ? `${ticket} was left silent` : "names no ticket the essay answers"}`
+      )
+  for (const [ticket, name] of words)
+    if (!audio.has(ticket)) problems.push(`${name}: word times with no take`)
+  return problems.length > 0
+    ? { ok: false, problems }
+    : { ok: true, value: files }
 }

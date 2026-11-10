@@ -1,13 +1,23 @@
 import { assertNever } from "@some-ui/core-utils"
-import { cellsOf, essayIntro, essayScenes, isPast } from "@some-ui/video-render"
+import {
+  cellsOf,
+  essayIntro,
+  essayScenes,
+  isPast,
+  parseEssay,
+} from "@some-ui/video-render"
 import type {
   CellView,
   Essay,
   EssayDive,
   EssayScene,
   EssayTicket,
+  Parsed,
   Speaker,
+  Voicing,
 } from "@some-ui/video-render"
+
+import { ESSAY_WORDS as W } from "./essay-words"
 
 /**
  * Which scene of an essay the stage shows, and what it draws: a pure read of
@@ -63,7 +73,7 @@ const ticketOf = (essay: Essay, id: string | undefined): EssayTicket => {
   return found
 }
 
-function viewOf(essay: Essay, scene: EssayScene): EssayView {
+function viewOf(essay: Essay, scene: EssayScene, voicing: Voicing): EssayView {
   switch (scene.section) {
     case "brand-in":
     case "brand-out":
@@ -72,7 +82,7 @@ function viewOf(essay: Essay, scene: EssayScene): EssayView {
       return { section: scene.section }
     }
     case "intro": {
-      return { section: "intro", rows: essayIntro(essay).rows }
+      return { section: "intro", rows: essayIntro(essay, voicing).rows }
     }
     case "chapter": {
       const n = essay.tickets.findIndex((t) => t.id === scene.ticket)
@@ -116,9 +126,16 @@ function viewOf(essay: Essay, scene: EssayScene): EssayView {
   }
 }
 
-/** Scene `id` of the essay, or its first scene when it has none by that id. */
-export function essayAt(essay: Essay, id: string | undefined): EssayAt {
-  const scenes = essayScenes(essay)
+/**
+ * Scene `id` of the essay, or its first scene when it has none by that id;
+ * the sample's intro says whose voice reads its answers (`Voicing`).
+ */
+export function essayAt(
+  essay: Essay,
+  id: string | undefined,
+  voicing: Voicing = "owner"
+): EssayAt {
+  const scenes = essayScenes(essay, voicing)
   const index = Math.max(
     0,
     scenes.findIndex((scene) => scene.id === id)
@@ -130,6 +147,46 @@ export function essayAt(essay: Essay, id: string | undefined): EssayAt {
     index,
     scene,
     speaker: scene.speaker,
-    view: viewOf(essay, scene),
+    view: viewOf(essay, scene, voicing),
   }
+}
+
+/** What the essay's stage draws: an essay, nothing yet, or why it can't. */
+export type EssayStageState =
+  | { readonly kind: "waiting" }
+  | { readonly kind: "show"; readonly essay: Essay; readonly voicing: Voicing }
+  | { readonly kind: "none"; readonly problems: ReadonlyArray<string> }
+
+/**
+ * What the stage draws from its read (RR16): with a week named, that week's
+ * essay, as read, or why it can't, never the sample in its place, so a
+ * recording of a week fails instead of drawing someone else's; with none, or
+ * `sample`, the template's sample, voiced as one.
+ */
+export function essayStageOf(input: {
+  readonly week: string | undefined
+  /** The named essay's file as read, parsed here. */
+  readonly read: {
+    readonly data: unknown
+    readonly pending: boolean
+    readonly failed: boolean
+  }
+  readonly sample: Parsed<Essay>
+}): EssayStageState {
+  const { week, read } = input
+  if (week === undefined || week === "sample")
+    return input.sample.ok
+      ? { kind: "show", essay: input.sample.value, voicing: "sample" }
+      : { kind: "none", problems: input.sample.problems }
+  if (read.pending) return { kind: "waiting" }
+  if (read.failed || read.data === undefined)
+    return { kind: "none", problems: [W.unread(week)] }
+  const parsed = parseEssay(read.data)
+  if (!parsed.ok) return { kind: "none", problems: parsed.problems }
+  if (parsed.value.week.id !== week)
+    return {
+      kind: "none",
+      problems: [W.otherWeek(week, parsed.value.week.id)],
+    }
+  return { kind: "show", essay: parsed.value, voicing: "owner" }
 }

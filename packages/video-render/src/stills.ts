@@ -51,6 +51,28 @@ export const stillFile = (index: number, scene: string): string =>
 export type StillTake = {
   readonly ms: number
   readonly words?: ReadonlyArray<TimedWord>
+  /**
+   * The owner said it (a Rust Rounds answer, `essay.ts`), not the speaker:
+   * the cut list names no speech model for it, so the authorship mark
+   * reports a person's voice.
+   */
+  readonly owner?: boolean
+}
+
+/**
+ * `text`'s words placed across a take of `ms` with no word times of its
+ * own, each for a share as long as its letters: captions for a take the
+ * speaker didn't say, as an owner's take is when home kept no times for it.
+ */
+export function spreadWords(text: string, ms: number): Array<TimedWord> {
+  const said = text.trim().split(/\s+/).filter(Boolean)
+  const weight = said.reduce((total, word) => total + word.length + 1, 0)
+  let at = 0
+  return said.map((word) => {
+    const startMs = Math.round((at / weight) * ms)
+    at += word.length + 1
+    return { text: word, startMs, endMs: Math.round((at / weight) * ms) }
+  })
 }
 
 /** A scene of a voiced feed: its id, its files' name without extension, and what is said. */
@@ -137,7 +159,7 @@ export function stillsCutList(
                 outMs: take.ms,
                 ...(take.words ? { words: [...take.words] } : {}),
               },
-              speaker: FEED_SPEAKER,
+              ...(take.owner ? {} : { speaker: FEED_SPEAKER }),
             }),
         voiceInMs: VOICE_IN_MS,
         // CV1: the still's text runs to the frame's edges, which any zoom
