@@ -1164,7 +1164,7 @@
       "made": "2026-11-10",
       "by": "claude",
       "paths": ["server:scripts/deploy.py", "server:README.md"],
-      "chose": "The deploy does not update home's checkout. An image that needs a newer checkout fails its preflight or start, is rolled back, and says \"this image needs a newer checkout on home\".",
+      "chose": "The deploy does not update home's checkout. An image that needs a newer checkout fails its preflight (nothing is replaced) or its start (it is rolled back), and where the preflight or the container's last log lines name a missing or refused variable, it says this image needs a newer checkout on home.",
       "options": [
         "never touch the checkout",
         "git fetch and fast-forward main when it is clean, before each deploy",

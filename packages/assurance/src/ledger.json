@@ -1842,7 +1842,7 @@
             },
             {
               "class": "structural",
-              "says": "make home-deploy puts the previous file_host image back when the new one is not healthy within 300 s, skips an image that already failed, and never restores the database; tested by its self-test in Lint's Deploy script job (test_an_image_that_never_becomes_ready_ends_with_the_previous_one_serving).",
+              "says": "make home-deploy puts the previous file_host image back when the new one exits, restarts or reads unhealthy, or is not ready within 360 s; skips an image that already failed; and never restores the database; tested by its self-test in Lint's Deploy script job (test_an_image_that_never_becomes_ready_ends_with_the_previous_one_serving, test_when_the_previous_image_fails_too_it_says_so_and_names_the_backup).",
               "ref": "server:scripts/deploy.py"
             }
           ],
