@@ -731,6 +731,66 @@
       "gray": "The call puts a chapter before each section; the essay's sections repeat per ticket, so a section's chapter would come back with each ticket, and #2690 names no chapters.",
       "undo": "A new essay format version whose shape lists other chapters (ESSAY_SHAPE in essay.ts).",
       "refs": ["#2690", "#2670"]
+    },
+    {
+      "id": "C60",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["server:apps/servers/file_host/src/mailbox/bell.rs"],
+      "chose": "Home counts the bell as dead after 90 seconds with no pong, ring or other frame, sending a ping every 30 seconds.",
+      "options": [
+        "90 seconds of silence",
+        "10 seconds after an unanswered ping"
+      ],
+      "gray": "The protocol agreed on #2833 allowed either.",
+      "undo": "Change `silence` in Timings::new in bell.rs.",
+      "refs": ["server#500", "server#499", "#2142", "#2833"]
+    },
+    {
+      "id": "C61",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["server:apps/servers/file_host/src/mailbox/bell.rs"],
+      "chose": "The reconnect backoff starts over only after a connection has held for 10 minutes, so a bell that connects and drops at once backs off to 5 minutes rather than costing a catch-up pass every second or two.",
+      "options": [
+        "start over after 10 minutes held",
+        "start over on every connect",
+        "start over after 60 seconds held"
+      ],
+      "gray": "server#500 asks for capped exponential backoff and a catch-up pass on every connect, but not when the backoff starts over, which sets MI6's worst case.",
+      "undo": "Change `steady` in Timings::new in bell.rs.",
+      "refs": ["server#500", "server#499", "#2142", "#2833"]
+    },
+    {
+      "id": "C62",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": [
+        "server:apps/servers/file_host/src/mailbox.rs",
+        "server:apps/servers/file_host/src/handlers"
+      ],
+      "chose": "Every route that files something for the mailbox wakes a pass when it adds a file: Jobs files, opened lessons, reflections, prompts, notes on an episode, and a transcriber pass that heard something. A file sent again unchanged wakes nothing.",
+      "options": [
+        "only what server#500 names (Jobs files, opened, transcripts)",
+        "every route that files for the mailbox"
+      ],
+      "gray": "server#500 lists three, but the others go out the same way, and the epic's done-when is about how soon what home puts reaches the mailbox.",
+      "undo": "Drop outbox.filed() from a handler.",
+      "refs": ["server#500", "server#499", "#2142", "#2833"]
+    },
+    {
+      "id": "C63",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["server:apps/servers/file_host/src/mailbox.rs"],
+      "chose": "A pass that folds several causes is counted and logged once, under the first of ring, connect, local and timer, and every pass restarts the backstop timer.",
+      "options": [
+        "count every cause a pass folds",
+        "count each pass once, by precedence"
+      ],
+      "gray": "server#500 asks for passes counted by cause without saying how folded causes count.",
+      "undo": "Change Wake::take and record_pass_cause in run_passes (mailbox.rs).",
+      "refs": ["server#500", "server#499", "#2142", "#2833"]
     }
   ]
 }
