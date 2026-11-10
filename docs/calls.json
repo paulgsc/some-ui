@@ -1143,6 +1143,36 @@
       "gray": "#2832 lists what the read-back shows, not how it is laid out.",
       "undo": "Render ReadBack's tickets as read-only cards on the pager.",
       "refs": ["#2832"]
+    },
+    {
+      "id": "C80",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["server:scripts/deploy.py", "server:README.md"],
+      "chose": "rust-runner and orchestrator stay manual pulls; make home-deploy pulls, health-gates and rolls back file_host alone.",
+      "options": [
+        "file_host only",
+        "also pull rust-runner and orchestrator, restarting them without a health gate",
+        "also pull them, with healthchecks added to both first"
+      ],
+      "gray": "The owner's ask named file_host (\"home (file_host) run migrations on start… pulls latest image\") and nothing on the others. Neither service has a healthcheck to judge a rollback by, and PR 2's contract epoch is file_host's contract only. No check or earlier decision covers the other two.",
+      "undo": "Add their images to scripts/deploy.py's pull step, beside IMAGE (the deploy() function), and to README \"Deploying to home\".",
+      "refs": ["server#776", "server#564", "#2833"]
+    },
+    {
+      "id": "C82",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["server:scripts/deploy.py", "server:README.md"],
+      "chose": "The deploy does not update home's checkout. An image that needs a newer checkout fails its preflight (nothing is replaced) or its start (it is rolled back), and where the preflight or the container's last log lines name a missing or refused variable, it says this image needs a newer checkout on home.",
+      "options": [
+        "never touch the checkout",
+        "git fetch and fast-forward main when it is clean, before each deploy",
+        "deploy from a clone the deploy owns, separate from the owner's checkout"
+      ],
+      "gray": "The owner's correction asked for no polling and nothing beyond pulling the image; the coordinator asked to drop the fast-forward unless the on-demand path truly needs it. Auto-pulling main also runs main's compose and sops changes on home unreviewed by anyone there. No convention covers it.",
+      "undo": "Add a fast-forward step to scripts/deploy.py's deploy() before the pull (an earlier rehearsed version had update_checkout), and drop CHECKOUT_HINT.",
+      "refs": ["server#776", "#2833"]
     }
   ]
 }
