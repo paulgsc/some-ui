@@ -15,9 +15,10 @@
  * `<out>` as `record:call` does, under the same policy flags; a step past
  * the cache's budget prints a `cache warning:` line, which the worker keeps.
  *
- * Each template's sample is in code: the weekly call's sample week, and
- * Playoff Delta's sample season, its legend or its newest week, said from
- * the sample's fill (`sampleFill` in `@some-ui/playoff-delta`).
+ * Each template's sample is in code: the weekly call's sample week, Playoff
+ * Delta's sample season, its legend or its newest week, said from the
+ * sample's fill (`sampleFill` in `@some-ui/playoff-delta`), and the Rust
+ * Rounds essay's sample essay (`Voicing`), written as `<out>/essay.json`.
  */
 
 import { parseArgs } from "node:util"
@@ -25,6 +26,7 @@ import { isTemplateId, type TemplateId } from "@some-ui/video-render"
 
 import { CALL_OPTIONS, recordCall, type CallValues } from "./call-recording"
 import { fail, runCommand } from "./command"
+import { recordEssay } from "./essay-recording"
 import { recordPlayoffDelta } from "./playoff-delta-recording"
 
 const { values } = parseArgs({
@@ -42,6 +44,7 @@ const PREVIEWS: Readonly<
   "conference-call": (v) => recordCall(v, { preview: true }),
   "playoff-delta-legend": (v) => recordPlayoffDelta(v, { preview: "legend" }),
   "playoff-delta-week": (v) => recordPlayoffDelta(v, { preview: "week" }),
+  "rust-essay": (v) => recordEssay(v, { preview: true }),
 }
 
 await runCommand(async () => {

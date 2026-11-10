@@ -8,7 +8,8 @@
  * place in it (`/timed`, for captions) is kept beside it. Takes, every
  * ffmpeg step and each scene's captions are kept in `<root>/cache/steps`
  * between attempts; home's render worker removes the cache once a video is
- * made.
+ * made. A scene the owner said (a Rust Rounds answer, RR16) plays their own
+ * take instead, never the speaker's.
  */
 
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
@@ -23,6 +24,8 @@ import {
   MB,
   overLength,
   previewOf,
+  QUIET,
+  spreadWords,
   stillFile,
   TimedWordSchema,
   UploadCopySchema,
@@ -33,6 +36,7 @@ import type {
   Ports,
   RenderPolicy,
   StillTake,
+  TakeFiles,
   TimedWord,
 } from "@some-ui/video-render"
 import {
@@ -48,6 +52,41 @@ import { z } from "zod"
 
 import { openRecorder, renderWithBurnIns } from "./burn-ins"
 import { fail, here } from "./command"
+
+/**
+ * The owner's take of scene `file`, from `own` (any audio ffmpeg reads), as
+ * `<file>.wav` in the video's folder (`ports`'), played whole: its length is the scene's. Its words
+ * are the times home kept beside it, or with none, `said` spread over it.
+ */
+async function ownTake({
+  own,
+  said: text,
+  timed,
+  file,
+  ports,
+}: {
+  readonly own: TakeFiles
+  readonly said: string
+  readonly timed: boolean
+  readonly file: string
+  readonly ports: Ports
+}): Promise<StillTake> {
+  const made = await ports.ffmpeg({
+    args: [...QUIET, "-i", own.audio, "-vn", "-ac", "1", `${file}.wav`],
+  })
+  if (!made.ok) fail([`${own.audio} can't be read as audio:`, made.stderr])
+  const facts = await ports.probe(`${file}.wav`)
+  if (!facts) fail([`${own.audio} can't be read as audio`])
+  const ms = Math.round(facts.durationMs)
+  if (!timed) return { ms, owner: true }
+  const words =
+    own.words === null
+      ? spreadWords(text, ms)
+      : TimedSchema.shape.words.parse(
+          JSON.parse(await readFile(own.words, "utf8"))
+        )
+  return { ms, words, owner: true }
+}
 
 /** A take and each word said in it, as the speaker's `/timed` gives them. */
 const TimedSchema = z.object({
@@ -255,12 +294,17 @@ export function refuseLong(
 /** Where the cache of takes and ffmpeg steps is kept in a video's folder. */
 const STEPS = "cache/steps"
 
-/** A scene to record: its stage address, and what is said over it, in which voice. */
+/**
+ * A scene to record: its stage address, and what is said over it, in which
+ * voice, or by the owner (`own`), whose take plays instead.
+ */
 export type Shot = {
   readonly id: string
   readonly url: string
   readonly said: string
   readonly voice: string
+  /** Absolute paths. */
+  readonly own?: TakeFiles
 }
 
 /**
@@ -328,19 +372,27 @@ export async function recordStills({
       caret: "hide",
     })
     takes.push(
-      speaker !== null && model !== null && shot.said !== ""
-        ? await takeOf({
-            speaker,
-            model,
-            voice: shot.voice,
-            text: shot.said,
+      shot.own !== undefined
+        ? await ownTake({
+            own: shot.own,
+            said: shot.said,
             timed,
-            root,
             file,
-            cache,
             ports,
           })
-        : null
+        : speaker !== null && model !== null && shot.said !== ""
+          ? await takeOf({
+              speaker,
+              model,
+              voice: shot.voice,
+              text: shot.said,
+              timed,
+              root,
+              file,
+              cache,
+              ports,
+            })
+          : null
     )
     console.log(`recorded ${file}`)
   }
