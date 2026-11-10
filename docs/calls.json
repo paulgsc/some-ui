@@ -791,6 +791,24 @@
       "gray": "server#500 asks for passes counted by cause without saying how folded causes count.",
       "undo": "Change Wake::take and record_pass_cause in run_passes (mailbox.rs).",
       "refs": ["server#500", "server#499", "#2142", "#2833"]
+    },
+    {
+      "id": "C64",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": [
+        "server:apps/servers/file_host/src/mailbox.rs",
+        "server:apps/servers/file_host/src/mailbox/bell.rs"
+      ],
+      "chose": "Home's backstop pass follows the bell: hourly while home holds the bell's connection, every 15 minutes while it doesn't.",
+      "options": [
+        "hourly always",
+        "every 15 minutes always",
+        "hourly while the bell is held, every 15 minutes while it isn't"
+      ],
+      "gray": "The owner chose an hourly backstop to stay under MI6. Hourly always would quietly break MI4's 20 minutes whenever the bell is down, and every 15 minutes always keeps MI6 at its bound, so the coordinator read the owner's choice as hourly while the bell carries the files.",
+      "undo": "Make Timings' interval a constant again (mailbox.rs, bell.rs).",
+      "refs": ["server#500", "#2833"]
     }
   ]
 }
