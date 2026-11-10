@@ -336,6 +336,36 @@ describe("a spec that resends, until it closes (RR22)", () => {
     expect(all.effects).toContainEqual({ type: "deleteAll", takes: ["t2"] })
   })
 
+  it("never deletes or drops a take a kept send names, though letting it go home failed", () => {
+    // `t1` still waits: the Send kept the record, the release didn't hold.
+    const waiting = take("t1", "QM-1")
+    const open = again([
+      { type: "entered", at: AT },
+      opened([waiting], [sentOne]),
+      { type: "go", index: 0, at: AT },
+    ]).state
+    expect(open.recorded).toEqual(["t1"])
+    const redo = { ...take("t2", "QM-1"), recordedAt: LATER }
+    const said = again(
+      [{ type: "takes", takes: [{ ...waiting, standing: "earlier" }, redo] }],
+      open
+    )
+    expect(said.effects).not.toContainEqual(
+      expect.objectContaining({ type: "drop" })
+    )
+    const both = again(
+      [
+        { type: "askDelete", item: "QM-1", at: LATER },
+        { type: "confirmed", at: LATER },
+        { type: "askDeleteAll", at: LATER },
+        { type: "confirmed", at: LATER },
+      ],
+      said.state
+    )
+    expect(both.effects).toContainEqual({ type: "deleteTakes", takes: ["t2"] })
+    expect(both.effects).toContainEqual({ type: "deleteAll", takes: ["t2"] })
+  })
+
   it("goes back to the week from what was just sent", () => {
     const { state } = again([
       { type: "entered", at: AT },

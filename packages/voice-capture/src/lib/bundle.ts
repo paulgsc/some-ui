@@ -64,8 +64,10 @@
  *   until it is `closed`: the draft stays, opening goes to the screen before
  *   the cards with `sent` the last record kept under its id, and each Send
  *   adds another record beside the earlier ones, which only grow. A take
- *   that left the phone is never deleted here: Redo supersedes it and keeps
- *   it, and delete and Delete all reach only the takes still waiting. Send
+ *   that left the phone, or that a kept record names (`recorded`, though
+ *   letting it go home failed), is never deleted here: Redo supersedes it
+ *   and keeps it, and delete and Delete all reach only the other takes
+ *   still waiting. Send
  *   again needs something changed (`unchanged`). Once `closed`, nothing
  *   records, edits, deletes or sends: the screen reads back what was sent.
  */
@@ -283,6 +285,11 @@ export type BundleState<K extends BundleKind> = {
   readonly sent: K["record"] | null
   /** Takes already asked to be dropped (`drop`), so none is asked twice. */
   readonly dropping: ReadonlyArray<string>
+  /**
+   * Takes a kept record names: never deleted or dropped here, even while
+   * one still waits because letting it go home couldn't be kept.
+   */
+  readonly recorded: ReadonlyArray<string>
   /** When the last event the screen stamped happened, ISO: what `missing` is read at. */
   readonly at: string
 }
@@ -432,6 +439,7 @@ function initialBundle<K extends BundleKind>(
     notice: null,
     sent: null,
     dropping: [],
+    recorded: [],
     at,
   }
 }
@@ -511,12 +519,12 @@ export function bundleMachine<K extends BundleKind>(
    * been unreadable. None already asked for.
    */
   function droppable(
-    state: Pick<State, "draft" | "takes" | "dropping">,
+    state: Pick<State, "draft" | "takes" | "dropping" | "recorded">,
     kept: ReadonlyArray<K["record"]> | null
   ): ReadonlyArray<string> {
     return state.takes
       .filter((take) => {
-        if (take.waits !== true || state.dropping.includes(take.id)) {
+        if (!deletable(state, take) || state.dropping.includes(take.id)) {
           return false
         }
         const item = itemOf(state.draft.id, take.answers)
@@ -645,10 +653,19 @@ export function bundleMachine<K extends BundleKind>(
   const lastOf = (state: Partial<Pick<State, "sent">>): K["record"] | null =>
     spec.resends ? (state.sent ?? null) : null
 
-  /** The takes of `item` still waiting on this phone: the only ones a delete reaches. */
-  const waitingOf = (state: Read<K>, item: I): ReadonlyArray<string> =>
+  /** Whether `take` never left the phone and no kept record names it: the only takes a delete reaches. */
+  const deletable = (
+    state: Pick<State, "recorded">,
+    take: PatternTake
+  ): boolean => take.waits === true && !state.recorded.includes(take.id)
+
+  /** The takes of `item` a delete reaches (`deletable`). */
+  const waitingOf = (
+    state: Read<K> & Pick<State, "recorded">,
+    item: I
+  ): ReadonlyArray<string> =>
     takesOf(state, item)
-      .filter((take) => take.waits === true)
+      .filter((take) => deletable(state, take))
       .map((take) => take.id)
 
   /** The draft changed, and kept. */
@@ -916,7 +933,7 @@ export function bundleMachine<K extends BundleKind>(
               {
                 type: "deleteAll",
                 takes: draftTakes(state)
-                  .filter((take) => take.waits === true)
+                  .filter((take) => deletable(state, take))
                   .map((take) => take.id),
               },
             ],
@@ -1135,6 +1152,7 @@ export function bundleMachine<K extends BundleKind>(
           context,
           draft: resumed ?? fresh,
           sent: done,
+          recorded: [...named],
           screen:
             done !== null && !spec.resends
               ? "sent"
@@ -1190,6 +1208,7 @@ export function bundleMachine<K extends BundleKind>(
           ...state,
           screen: "sent",
           sent: event.record,
+          recorded: [...state.recorded, ...spec.named(event.record)],
           modes: {},
           index: 0,
           notice: null,
