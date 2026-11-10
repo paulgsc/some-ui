@@ -2680,6 +2680,144 @@
           "amendments": []
         }
       ]
+    },
+    {
+      "id": "rust-essay-rendered",
+      "name": "Home makes each week's Rust Rounds essay into a video",
+      "why": "After a week's deadline, home renders the week's essay the way it renders the call, from the week's final record (#2832), with each answer the owner's own take. The owner chose that an essay video may hold their takes (#2691, 2026-11-10).",
+      "paths": [
+        "server:crates/db/rust_round",
+        "server:infra/render",
+        "server:infra/compose/call-render.yml",
+        "server:infra/docker/Dockerfile.render",
+        "server:infra/kokoro",
+        "server:apps/servers/file_host/src/feeds",
+        "server:apps/servers/file_host/src/handlers/feed_videos.rs",
+        "server:apps/servers/file_host/src/routes/feed_videos.rs",
+        "some-ui:packages/video-render/src/essay.ts",
+        "some-ui:apps/www/src/lib/web-surface/call",
+        "some-ui:apps/www/tests/record/essay.ts",
+        "some-ui:apps/www/tests/record/essay-recording.ts",
+        "some-ui:apps/mailbox"
+      ],
+      "modules": [],
+      "objectives": [
+        {
+          "id": "EV1",
+          "kind": "OA4",
+          "property": "outcome",
+          "claim": "A week's essay reaches the render only from the week's final record, never a draft, and one that contradicts that record is refused and said.",
+          "requirement": "The rust_essays worker takes a rust-essay-<week>.json from the mailbox's brief folder only once the week is past its due and its final send (the last before due, #2832) is kept; it writes the essay and one take per ticket that record answered (and the take's word times) to the week's folder on home's database drive, whole; an essay whose answered tickets or transcripts differ from that record is not rendered, and is written to <week>.refused.log.",
+          "verdict": "unproven",
+          "conclusion": "Unknown: nothing on home takes an essay until server#774 lands, and its tests are to be the proof.",
+          "tracked": "some-ui#2691",
+          "evidence": [
+            {
+              "class": "unknown",
+              "says": "Needs home's rust_essays worker and its tests, which server#774 adds.",
+              "ref": "server#774"
+            }
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        },
+        {
+          "id": "EV2",
+          "kind": "OA2",
+          "property": "outcome",
+          "claim": "Every essay home holds becomes a video within the render policy's caps, each answer playing exactly its take, whole, and a week that hasn't is tried again.",
+          "requirement": "Once home's lane admits it, the render worker's rust-essay job records the pinned stage's /essay with the tutor said by home's Kokoro speaker and each answer scene playing its take whole (its length the scene's), renders it within the call's caps (15 minutes, 500 MB, a 2,048 MB step cache), and moves the finished folder into renders/rust-essay/<week>/ on the database's drive, whole; the recorder checks the takes again and refuses a missing, doubled or stray one before anything is drawn; a failed week is left without a folder, keeps its finished steps and is tried again no sooner than an hour later.",
+          "verdict": "unproven",
+          "conclusion": "Structural and measured for the recorder's half (tested in paulgsc/some-ui, rendered once locally); unknown for the worker's half on home until server#774.",
+          "tracked": "some-ui#2691",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "record:essay refuses, before anything is drawn, a take missing for an answered ticket, two for one, or one for a ticket left silent (essayTakeFiles), and lays each owner's take whole in its answer scene, named as no speech model's (essayCutList); each tested.",
+              "ref": "some-ui:packages/video-render/src/essay.ts"
+            },
+            {
+              "class": "measured",
+              "says": "Recorded locally on 2026-11-10 from the sample essay and two takes in home's layout: all 28 scenes at 1920×1080 with no overflow, a 9:49 essay.mp4 with each take played whole and captioned from its word times.",
+              "ref": "some-ui#2838"
+            },
+            {
+              "class": "structural",
+              "says": "The renderer refuses a video past RenderPolicy.maxVideoMs before any ffmpeg call and removes one past maxVideoBytes once made.",
+              "ref": "some-ui:packages/video-render/src/policy.ts"
+            }
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        },
+        {
+          "id": "EV3",
+          "kind": "OA6",
+          "property": "outcome",
+          "claim": "An essay that fails to render, waits too long, is refused, or a worker that keeps failing, reads as such to the owner rather than as a quiet week.",
+          "requirement": "Slack is told when a week's essay render fails (RustEssayRenderFailed, naming renders/rust-essay-worker/<week>.failed.log on home's database drive), when a held essay has waited unrendered (RustEssayRenderOverdue), when an essay is refused (RustEssayRefused, naming <week>.refused.log), and when the rust_essays worker keeps failing (RustEssaysFailing); the Renders page shows a failed entry.",
+          "verdict": "unproven",
+          "conclusion": "Unknown: no essay alert exists until server#774 lands.",
+          "tracked": "some-ui#2691",
+          "evidence": [
+            {
+              "class": "unknown",
+              "says": "Needs the essay alerts and their promtool tests, which server#774 adds.",
+              "ref": "server#774"
+            }
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        },
+        {
+          "id": "EV4",
+          "kind": "RE9",
+          "property": "work",
+          "claim": "The essay videos grow by one folder a week, and a week's copies of its takes live only while it waits to render.",
+          "requirement": "renders/rust-essay on home's database drive gains one folder per week (the video, stills, cut list and essay), and renders/rust-essay-worker one failed or refused log per failed attempt; the week's copies of its takes are deleted once its essay.mp4 exists, and a waiting week's work leaves once it renders.",
+          "verdict": "unproven",
+          "conclusion": "Unknown until essays render on home; the call's folder (112 MB a week) is the nearest guide.",
+          "tracked": "some-ui#2691",
+          "evidence": [
+            {
+              "class": "unknown",
+              "says": "Needs essays rendered on home to read the growth from its dashboard.",
+              "ref": "server#774"
+            }
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        },
+        {
+          "id": "EV5",
+          "kind": "OA3",
+          "property": "outcome",
+          "claim": "A week's essay video leaves home only by the owner's act from My data, and each delete leaves a receipt; deleting one of the week's takes deletes the video too, and the week is never rendered again.",
+          "requirement": "My data lets a week's essay go as the call's (its video once its YouTube link is recorded, then the rest), and deleting a take of the week deletes its video and the rest with cause take-deleted; each step writes an append-only receipt to rust_essay_video_deletion kept with the account, and a week let go or with a take deleted is not rendered again.",
+          "verdict": "unproven",
+          "conclusion": "Unknown: the let-go and the take-deleted cascade come with server#774.",
+          "tracked": "some-ui#2691",
+          "evidence": [
+            {
+              "class": "unknown",
+              "says": "Needs the essay's let-go and the take-deleted cascade, which server#774 adds.",
+              "ref": "server#774"
+            }
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        }
+      ]
     }
   ],
   "synchronous": [
@@ -3727,6 +3865,18 @@
       "class": "telemetry",
       "growth": "Per obligation the phone ran to an ending (a take, about one row a take) and per engagement event (an offer, a take, a pass, a leave or an answer), a few hundred bytes each, append-only; no horizon (CK2 and ENG2, server app_event_repo).",
       "family": "take-endings"
+    },
+    {
+      "store": "server:rust_essay_video_link",
+      "class": "record",
+      "growth": "About one row per Rust Rounds essay week whose YouTube link the owner records (subject, week, YouTube id, when), the newest standing; append-only, triggers abort UPDATE, DELETE only once the account is gone; subject-scoped, it leaves with the account.",
+      "family": "rust-essay-rendered"
+    },
+    {
+      "store": "server:rust_essay_video_deletion",
+      "class": "record",
+      "growth": "Per step of an essay week let go (the video, then the rest), one receipt row (subject, week, step, cause let-go or take-deleted, YouTube id when there was one, bytes, when): at most two per week; append-only, subject-scoped, it leaves with the account.",
+      "family": "rust-essay-rendered"
     }
   ],
   "processes": [
@@ -4733,6 +4883,85 @@
           "says": "Each preview's state, from the lane's job state, on Studio's Renders page and the template's page.",
           "status": "planned",
           "tracked": "some-ui#2757"
+        }
+      ],
+      "checks": []
+    },
+    {
+      "id": "rust-essays",
+      "name": "Making each week's Rust Rounds essay into a video on home",
+      "why": "The Monday routine puts the week's essay in the mailbox; home's rust_essays worker gives it to the render only from the week's final record, with a copy of each take it plays; the render worker records the stage with home's speaker and the takes and keeps the video until the owner lets it go (#2691).",
+      "serves": ["rust-essay-rendered"],
+      "witnesses": ["EV2", "EV3"],
+      "segments": [
+        {
+          "id": "routine",
+          "name": "The Monday routine, at Anthropic, writes the week's essay and puts it in the mailbox's brief folder. Someone else's.",
+          "owner": "foreign",
+          "on": "outside",
+          "paths": []
+        },
+        {
+          "id": "mailbox",
+          "name": "The mailbox holds the essay until home takes it. Ours, on Cloudflare.",
+          "owner": "ours",
+          "on": "mailbox",
+          "paths": ["some-ui:apps/mailbox"]
+        },
+        {
+          "id": "given",
+          "name": "The rust_essays worker checks the essay against the week's final record and writes it with the takes it plays to the week's folder. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": ["server:crates/db/rust_round"]
+        },
+        {
+          "id": "speaker",
+          "name": "Home's Kokoro speaker says the tutor's lines, the same audio for the same words. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": ["server:infra/kokoro"]
+        },
+        {
+          "id": "stage",
+          "name": "The published home-network app, pinned by digest, serves the essay's stage to the worker. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": [
+            "server:infra/compose/call-render.yml",
+            "some-ui:apps/www/src/lib/web-surface/call"
+          ]
+        },
+        {
+          "id": "render",
+          "name": "The render worker's rust-essay job records the stage with the takes, renders the week under home's lane, and keeps it. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": [
+            "server:infra/render",
+            "server:infra/docker/Dockerfile.render",
+            "some-ui:packages/video-render/src/essay.ts",
+            "some-ui:apps/www/tests/record/essay.ts",
+            "some-ui:apps/www/tests/record/essay-recording.ts"
+          ]
+        },
+        {
+          "id": "videos",
+          "name": "Home lists the essay weeks it holds on the feed routes, serves each video in parts, keeps its YouTube link and lets it go from My data. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": [
+            "server:apps/servers/file_host/src/routes/feed_videos.rs",
+            "server:apps/servers/file_host/src/handlers/feed_videos.rs",
+            "server:apps/servers/file_host/src/feeds"
+          ]
+        }
+      ],
+      "signals": [
+        {
+          "says": "Slack will be told when an essay render fails, is overdue or refused, or the worker keeps failing (EV3); it will not say why a render failed, which the worker's log on the drive does.",
+          "status": "planned",
+          "tracked": "some-ui#2691"
         }
       ],
       "checks": []
