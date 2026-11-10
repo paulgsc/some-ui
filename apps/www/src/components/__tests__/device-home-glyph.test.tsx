@@ -479,7 +479,6 @@ async function pull(): Promise<ReadonlyArray<string>> {
   return unread
 }
 
-/** What each request sent since `from` reached: its path's first part after the base. */
 /** What the drain sent since `from`: the shell's ask of `/compat` is not a lane's. */
 const sentSince = (from: number): Array<string> =>
   home.sent

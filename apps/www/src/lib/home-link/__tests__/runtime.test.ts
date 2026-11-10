@@ -477,3 +477,52 @@ describe("the home link", () => {
     await expect(syncing).resolves.toEqual({ kind: "done", value: "ok" })
   })
 })
+
+describe("a look at home's word on itself (#2843)", () => {
+  it("asks home's own address, under any path the pairing has, without the credential or the person's activity", async () => {
+    const home = setup({
+      record: JSON.stringify({
+        base: "https://home.example/under/api/v1",
+        token: "t",
+        id: "p1",
+      }),
+    })
+    await home.link.load()
+    const outcome = await home.link.look("/compat?needs=2")
+    expect(outcome).toEqual({
+      kind: "done",
+      value: { status: 200, body: "{}" },
+    })
+    expect(home.sent).toEqual([
+      { method: "GET", url: "https://home.example/under/compat?needs=2" },
+    ])
+    expect(home.link.getSnapshot().activity).toEqual({ kind: "idle" })
+  })
+
+  it("asks nothing unpaired", async () => {
+    const home = setup()
+    await home.link.load()
+    expect(await home.link.look("/compat?needs=2")).toBeNull()
+    expect(home.sent).toEqual([])
+  })
+
+  it("hears only home's empty not-found, which a route it lacks gets", async () => {
+    const home = setup({
+      record: JSON.stringify({ base: HOME.base, token: "t", id: "p1" }),
+      answer: (call) =>
+        call.url.endsWith("/gone")
+          ? { status: 404, body: "" }
+          : { status: 404, body: '{"error":"not found"}' },
+    })
+    await home.link.load()
+    let heard = 0
+    const stop = home.link.onMissing(() => {
+      heard += 1
+    })
+    await home.link.keep((send) => send("GET", "/voice-notes/1/heard"))
+    expect(heard).toBe(0)
+    await home.link.keep((send) => send("GET", "/gone"))
+    expect(heard).toBe(1)
+    stop()
+  })
+})

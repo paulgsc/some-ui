@@ -29,7 +29,7 @@ import { homeBusy } from "./model"
 import type { HomeRefresher } from "./pull"
 import { homeRefresher } from "./pull"
 import type { ServesRun } from "./serves"
-import { createServes, watchServes } from "./serves"
+import { createServes, servesRefresher, watchServes } from "./serves"
 import type { Serves } from "./serves-model"
 import type { LaneView } from "./words"
 import { laneView, WORDS } from "./words"
@@ -258,13 +258,18 @@ function servesRun(): ServesRun {
 
 /**
  * While mounted (the app shell's `HomeLanes`), asks home whether it works
- * with this build at the moments `./serves` names (#2843).
+ * with this build at the moments `./serves` names, a pull among them (#2843).
  */
 export function useHomeServes(): void {
-  useEffect(
-    () => watchServes(servesRun(), { link: homeLink(), doc: document }),
-    []
-  )
+  useEffect(() => {
+    const run = servesRun()
+    const unwatch = watchServes(run, { link: homeLink(), doc: document })
+    const drop = screenRefreshers.register(servesRefresher(run))
+    return (): void => {
+      unwatch()
+      drop()
+    }
+  }, [])
 }
 
 /** What home last said of this build, for the marks; null when it said nothing. */

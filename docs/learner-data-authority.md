@@ -493,11 +493,14 @@ declared (checked by reading every call site and by the tests named).
   and the marks asking whether home works with this build
   (`lib/home-link/serves`, through `lib/home-link/compat-read`'s `look`,
   the link's one read at home's own address, outside its API and without
-  the credential: one `GET /compat?needs=` of the server version this build
+  the credential, on the drain's turn of the pace and holding no activity
+  of the person's: one `GET /compat?needs=` of the server version this build
   was made against when the phone is found paired (the app's start, a new
-  pairing), when the app comes back to the foreground, once more when the
-  link frees after turning one away, and on a request answered not found at
-  most once a minute, one at a time and never on a timer; #2843),
+  pairing), when the app comes back to the foreground, on a pull, once more
+  at the link's next change after it let that ask's turn go, and, at most
+  once a minute, when a credentialed request is answered with home's empty
+  not-found (a route home lacks), one at a time and never on a timer;
+  #2843),
   which are the other callers of `lib/home-link`, is started by a tap in the Home server block of Settings
   (`components/settings/device-section.tsx`): the sync (published lessons
   and dramas, read with no credential), pairing (the code only), unpairing,

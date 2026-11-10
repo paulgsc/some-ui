@@ -205,13 +205,15 @@ export type HomeLink = {
   /**
    * One `GET` of `path` at the paired home's own address, outside the API
    * and without the credential: home's word on itself, which it answers
-   * anyone (`/compat`, `./compat-read`). Goes as a screen's read does, beside
-   * a drain run; `null` when unpaired or busy.
+   * anyone (`/compat`, `./compat-read`). It takes the drain's turn on the
+   * pace and holds no activity, so it goes beside anything the person or a
+   * lane is doing; `null` when unpaired or its turn was let go.
    */
   look: (path: string) => Promise<SyncOutcome<HomeAnswer> | null>
   /**
    * Calls `listener` each time a request with the credential is answered
-   * not found (`./serves`); returns an unsubscribe.
+   * with home's empty not-found, which it gives a route it doesn't have
+   * (`./serves`); returns an unsubscribe.
    */
   onMissing: (listener: () => void) => () => void
   /** Stops the person's sync, send or read. */
@@ -429,7 +431,9 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
           ...(body === undefined ? {} : { body }),
           ...(range === undefined ? {} : { range }),
         }).then((answer) => {
-          if (answer.status === 404) {
+          // An empty not-found is home's answer for a route it doesn't
+          // have; a record it doesn't hold comes with words.
+          if (answer.status === 404 && answer.body.trim() === "") {
             for (const listener of missingListeners) listener()
           }
           return answer
@@ -535,16 +539,19 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
       return credentialed("person", { type: "keepStarted" }, run)
     },
 
-    look(path: string): Promise<SyncOutcome<HomeAnswer> | null> {
-      return work("person", { type: "keepStarted" }, async () => {
-        const pairing = await readPairing()
-        if (pairing === null) throw new Error("this phone's pairing is gone")
-        if (!path.startsWith("/")) throw new Error(`not a path: ${path}`)
-        return ask("person", {
-          method: "GET",
-          url: new URL(path, pairing.base).href,
-        })
+    async look(path: string): Promise<SyncOutcome<HomeAnswer> | null> {
+      if (!path.startsWith("/")) throw new Error(`not a path: ${path}`)
+      if (state.link.kind !== "paired") return null
+      const pairing = await readPairing()
+      if (pairing === null) return null
+      if (homeBusyNow()) return { kind: "done", value: HOME_BUSY }
+      if (!(await pace.turn(false))) return null
+      const answer = await ports.request({
+        method: "GET",
+        url: `${pairing.base.replace(/\/api\/v1$/, "")}${path}`,
       })
+      if (answer.status === 429) heardBusy(answer)
+      return { kind: "done", value: answer }
     },
 
     onMissing(listener): () => void {

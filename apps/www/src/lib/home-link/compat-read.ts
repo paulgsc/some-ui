@@ -11,15 +11,14 @@ import type { HomeAnswer } from "@some-ui/core-utils"
 import { homeLink, paired } from "./index"
 
 /** The ask for a build made against server version `needs`. */
-const compatPath = (needs: number): string =>
-  `/compat?needs=${String(needs)}`
+const compatPath = (needs: number): string => `/compat?needs=${String(needs)}`
 
 /** Home's answer, or why there is none. */
 export type CompatAsked =
   | { readonly kind: "answered"; readonly answer: HomeAnswer }
   /** Not paired: nothing was asked. */
   | { readonly kind: "unpaired" }
-  /** The link was busy with another read, or the app went to the background. */
+  /** The link let its turn go: ask again once it is free. */
   | { readonly kind: "busy" }
   /** No answer. */
   | { readonly kind: "unreachable" }
@@ -29,9 +28,13 @@ export async function askCompat(needs: number): Promise<CompatAsked> {
   if (!paired()) return { kind: "unpaired" }
   try {
     const outcome = await homeLink().look(compatPath(needs))
-    return outcome?.kind === "done"
-      ? { kind: "answered", answer: outcome.value }
-      : { kind: "busy" }
+    if (outcome?.kind !== "done") return { kind: "busy" }
+    // Busy, or something between the phone and home answering for it:
+    // nothing was said of this build.
+    const { status } = outcome.value
+    return status === 429 || status >= 500
+      ? { kind: "unreachable" }
+      : { kind: "answered", answer: outcome.value }
   } catch {
     return { kind: "unreachable" }
   }

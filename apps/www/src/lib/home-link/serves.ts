@@ -5,9 +5,12 @@
  *
  * `watchServes` hears those moments: the phone found paired (the app's
  * start, or a new pairing), the app back in the foreground, and a request
- * answered not found. An ask the link turned away while busy with another
- * read is asked once more when the link is free. Never on a timer.
+ * answered with home's empty not-found; `servesRefresher` hears a pull. An
+ * ask the link turned away is asked once more at the link's next change.
+ * Never on a timer.
  */
+import type { Refresher } from "@/lib/pull-refresh/refreshers"
+
 import type { CompatAsked } from "./compat-read"
 import { pairingOf } from "./index"
 import type { HomeLinkState } from "./model"
@@ -93,7 +96,7 @@ export function watchServes(
   { link, doc }: ServesWatchPorts
 ): () => void {
   let pairing = pairingOf(link.getSnapshot())
-  // The last ask was turned away by the link's other read.
+  // The last ask was turned away by the link: asked again at its next change.
   let owed = false
   const ask = (why: "start" | "front" | "missing"): void => {
     if (pairing === null || doc.visibilityState !== "visible") return
@@ -103,13 +106,12 @@ export function watchServes(
   }
 
   const onLink = (): void => {
-    const state = link.getSnapshot()
-    const now = pairingOf(state)
+    const now = pairingOf(link.getSnapshot())
     if (now !== pairing) {
       pairing = now
       if (now === null) serves.forget()
       else ask("start")
-    } else if (owed && state.activity.kind === "idle") {
+    } else if (owed) {
       owed = false
       ask("start")
     }
@@ -129,5 +131,14 @@ export function watchServes(
     unsubscribeLink()
     unsubscribeMissing()
     doc.removeEventListener("visibilitychange", onFront)
+  }
+}
+
+/** A pull's ask (`lib/pull-refresh`): the person asked to read home again. */
+export function servesRefresher(serves: ServesRun): Refresher {
+  return {
+    what: "whether home works with this version of the app",
+    // How it went shows on the marks; a pull never fails on it.
+    checkAgain: () => serves.ask("pull").then(() => undefined),
   }
 }

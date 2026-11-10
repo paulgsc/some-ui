@@ -9,7 +9,6 @@ import { describe, expect, it } from "vitest"
 import type { ClearEnd } from "@/lib/home-link/clear"
 import type { KeptRun, KeptState } from "@/lib/home-link/kept-model"
 import { INITIAL_KEPT } from "@/lib/home-link/kept-model"
-import type { Serves } from "@/lib/home-link/serves-model"
 import type { LetGoEnd } from "@/lib/home-link/study-let-go"
 import type { LaneFacts } from "@/lib/home-link/words"
 import * as words from "@/lib/home-link/words"
@@ -39,14 +38,6 @@ const runs: Array<KeptState> = [
   ).map((last) => ({ ...INITIAL_KEPT, last })),
 ]
 
-const SERVES: ReadonlyArray<Serves | null> = [
-  null,
-  "fits",
-  "updating",
-  "not-yet",
-  "too-old",
-]
-
 const facts = (over: Partial<LaneFacts> = {}): LaneFacts => ({
   known: true,
   paired: false,
@@ -64,12 +55,9 @@ function every(): Array<LaneFacts> {
   const all: Array<LaneFacts> = []
   for (const paired of [false, true]) {
     for (const held of [{}, { sessions: 3, shelf: 1, jobs: 4 }]) {
-      for (const [run, serves] of runs.flatMap((r) =>
-        SERVES.map((s) => [r, s] as const)
-      )) {
+      for (const run of runs) {
         all.push(
           facts({
-            serves,
             known: run !== INITIAL_KEPT,
             paired,
             held,
@@ -82,6 +70,9 @@ function every(): Array<LaneFacts> {
         )
       }
     }
+  }
+  for (const serves of ["updating", "not-yet", "too-old"] as const) {
+    all.push(facts({ paired: true, waiting: 3, serves }))
   }
   return all
 }
@@ -253,8 +244,11 @@ describe("each lane's sharing words", () => {
     )
   })
 
-  it("says home doesn't work with this version first, over how the last send went, and only while paired (#2843)", () => {
-    const sending = { ...INITIAL_KEPT, running: true }
+  it("says home doesn't work with this version over a send that didn't go, after pairing again, and only while paired (#2843)", () => {
+    const failed = {
+      ...INITIAL_KEPT,
+      last: { kind: "failed", why: "fault" },
+    } as const
     const cases = [
       ["updating", "Home is updating to work with this version of the app."],
       ["not-yet", "Home can't work with this version of the app yet."],
@@ -262,8 +256,18 @@ describe("each lane's sharing words", () => {
     ] as const
     for (const [serves, line] of cases) {
       expect(
-        laneView(WORDS.practice, facts({ paired: true, serves, run: sending }))
+        laneView(WORDS.practice, facts({ paired: true, serves, run: failed }))
       ).toMatchObject({ where: "kept", how: serves, line })
+      expect(
+        laneView(
+          WORDS.practice,
+          facts({
+            paired: true,
+            serves,
+            run: { ...INITIAL_KEPT, last: { kind: "forgotten" } },
+          })
+        ).how
+      ).toBe("forgotten")
       expect(
         laneView(WORDS.practice, facts({ paired: false, serves })).how
       ).toBeNull()
@@ -271,9 +275,9 @@ describe("each lane's sharing words", () => {
     expect(
       laneView(
         WORDS.practice,
-        facts({ paired: true, serves: "fits", run: sending })
+        facts({ paired: true, serves: "fits", run: failed })
       ).how
-    ).toBe("sending")
+    ).toBe("fault")
   })
 
   it("says what aph holds aside, and what it shows before home answers", () => {

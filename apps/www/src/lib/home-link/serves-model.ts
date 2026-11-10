@@ -9,8 +9,9 @@
  *
  * When it asks (`ask`'s `why`): the app starting with the phone paired
  * (`start`, also a new pairing), the app coming back to the foreground
- * (`front`), and a route this build calls answering not found (`missing`),
- * at most once a `MISSING_GAP`. Never on a timer.
+ * (`front`), the person pulling the screen down (`pull`), and a route this
+ * build calls answering home's empty not-found, which means home lacks the
+ * route (`missing`), at most once a `MISSING_GAP`. Never on a timer.
  */
 import { assertNever, isRecord } from "@some-ui/core-utils"
 
@@ -33,7 +34,7 @@ export type ServesState = {
 export type ServesEvent =
   | {
       readonly type: "ask"
-      readonly why: "start" | "front" | "missing"
+      readonly why: "start" | "front" | "pull" | "missing"
       readonly at: number
     }
   /** Home answered, and what it said, or null when it said nothing readable. */

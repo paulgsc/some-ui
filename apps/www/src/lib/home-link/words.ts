@@ -490,32 +490,6 @@ export function laneView(words: LaneWords, facts: LaneFacts): LaneView {
       : show("phone", null, "Phone only", words.phoneOnly)
   }
 
-  // Nothing goes properly until home works with this version (#2843).
-  if (facts.serves === "updating") {
-    return show(
-      "kept",
-      "updating",
-      "Home updating",
-      "Home is updating to work with this version of the app."
-    )
-  }
-  if (facts.serves === "not-yet") {
-    return show(
-      "kept",
-      "not-yet",
-      "Not yet",
-      "Home can't work with this version of the app yet."
-    )
-  }
-  if (facts.serves === "too-old") {
-    return show(
-      "kept",
-      "too-old",
-      "Update the app",
-      "This app is older than home. Install the newest version."
-    )
-  }
-
   const later =
     facts.waiting > 0
       ? ` ${words.waits(facts.waiting)} on this phone and go${facts.waiting === 1 ? "es" : ""} next time.`
@@ -542,6 +516,33 @@ export function laneView(words: LaneWords, facts: LaneFacts): LaneView {
       "unpaired",
       "Not paired",
       `This phone isn't paired with home now. Pair it in Settings.${later}`
+    )
+  }
+  // Before how the last send went: nothing goes properly until home works
+  // with this version (#2843). After pairing again, which is the person's
+  // own step whatever home runs.
+  if (facts.serves === "updating") {
+    return show(
+      "kept",
+      "updating",
+      "Home updating",
+      `Home is updating to work with this version of the app.${later}`
+    )
+  }
+  if (facts.serves === "not-yet") {
+    return show(
+      "kept",
+      "not-yet",
+      "Not yet",
+      `Home can't work with this version of the app yet.${later}`
+    )
+  }
+  if (facts.serves === "too-old") {
+    return show(
+      "kept",
+      "too-old",
+      "Update the app",
+      `This app is older than home. Install the newest version.${later}`
     )
   }
   if (last?.kind === "failed") {

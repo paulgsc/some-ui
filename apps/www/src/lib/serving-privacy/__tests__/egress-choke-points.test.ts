@@ -799,9 +799,7 @@ describe("LA8: the phone reaches home through one module", () => {
     const askers = sourceFiles()
       .filter((f) => !isTestFile(f))
       .filter((f) =>
-        /import \{[^}]*\} from "(\.\/|@\/lib\/home-link\/)compat-read"/.test(
-          read(f)
-        )
+        /import \{[^}]*\} from "[^"]*compat-read(\.ts)?"/.test(read(f))
       )
     expect(askers).toEqual(["lib/home-link/lanes.ts"])
   })

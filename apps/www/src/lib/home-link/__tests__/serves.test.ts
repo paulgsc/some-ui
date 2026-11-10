@@ -8,7 +8,11 @@ import type { CompatAsked } from "@/lib/home-link/compat-read"
 import type { HomeLinkState } from "@/lib/home-link/model"
 import { INITIAL } from "@/lib/home-link/model"
 import type { ServesWatchPorts } from "@/lib/home-link/serves"
-import { createServes, watchServes } from "@/lib/home-link/serves"
+import {
+  createServes,
+  servesRefresher,
+  watchServes,
+} from "@/lib/home-link/serves"
 import {
   INITIAL_SERVES,
   MISSING_GAP,
@@ -36,7 +40,10 @@ const PAIRED: HomeLinkState = {
     notForgotten: true,
   },
 }
-const UNPAIRED: HomeLinkState = { ...INITIAL, link: { kind: "unpaired", note: null } }
+const UNPAIRED: HomeLinkState = {
+  ...INITIAL,
+  link: { kind: "unpaired", note: null },
+}
 
 describe("what home's answer says", () => {
   it("reads each answer home gives, and nothing from what isn't one", () => {
@@ -243,5 +250,14 @@ describe("when the phone asks", () => {
     land(answer({ supported: false, deploy: "client_behind" }))
     expect(await out).toBeNull()
     expect(serves.getSnapshot()).toBe(INITIAL_SERVES)
+  })
+
+  it("asks on a pull, and the pull never fails on it", async () => {
+    const read = vi
+      .fn<() => Promise<CompatAsked>>()
+      .mockResolvedValue({ kind: "unreachable" })
+    const refresher = servesRefresher(createServes({ read, now: () => 0 }))
+    await expect(refresher.checkAgain()).resolves.toBeUndefined()
+    expect(read).toHaveBeenCalledTimes(1)
   })
 })
