@@ -859,7 +859,7 @@
       "made": "2026-11-10",
       "by": "claude",
       "paths": ["server:scripts/check_assurance_ledger.py"],
-      "chose": "Only the essay video stores are placed in the ledger before server#774. The rust-essay-rendered family's server file paths and proofs follow its merge, with rust_essays.rs in KNOWN_UNPLACED until then, as pd-kept followed server#687.",
+      "chose": "The stores and a family of existing server paths go in the ledger before server#774; rust_essays.rs and the proofs follow its merge, with rust_essays.rs in KNOWN_UNPLACED until then, as pd-kept followed server#687.",
       "options": [
         "stores before, family paths after",
         "the whole family before the server PR"
