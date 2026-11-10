@@ -1,7 +1,7 @@
 /**
  * Every template Studio lists (SFEED1, #2731): the newest pinned version of
  * each show's format, as `templates/<id>/v<n>.json` holds it. Each format is
- * made in code (the call's in `call.ts`, Playoff Delta's in
+ * made in code (the call's in `call.ts`, the essay's in `essay.ts`, Playoff Delta's in
  * `@some-ui/playoff-delta`'s `show.ts`), and each one's test holds that code
  * equal to its pins. This module only reads the newest pin, so the phone,
  * whose build doesn't carry Playoff Delta's workspace, can show every
@@ -27,28 +27,24 @@ import legendBoard from "./templates/playoff-delta-legend/storyboard.json"
 import legendV4 from "./templates/playoff-delta-legend/v4.json"
 import weekBoard from "./templates/playoff-delta-week/storyboard.json"
 import weekV4 from "./templates/playoff-delta-week/v4.json"
+import essayBoard from "./templates/rust-essay/storyboard.json"
+import essayV1 from "./templates/rust-essay/v1.json"
 
 /** The folder under `templates/` each template's versions are pinned in. */
 export const TEMPLATE_IDS = [
   "conference-call",
   "playoff-delta-legend",
   "playoff-delta-week",
+  "rust-essay",
 ] as const
 
 export type TemplateId = (typeof TEMPLATE_IDS)[number]
-
-/**
- * The folders under `templates/` that pin a format Studio doesn't list yet:
- * the Rust Rounds essay's (`essay.ts`, RR15), until home voices and renders
- * an essay and its previews (RR16, #2691). A template Studio lists is one
- * home can make a preview of.
- */
-export const TEMPLATES_NOT_LISTED = ["rust-essay"] as const
 
 const NEWEST: Readonly<Record<TemplateId, unknown>> = {
   "conference-call": callV4,
   "playoff-delta-legend": legendV4,
   "playoff-delta-week": weekV4,
+  "rust-essay": essayV1,
 }
 
 /** Whether `value` names a template Studio lists. */
@@ -67,12 +63,14 @@ function orThrow<T>(id: TemplateId, parsed: Parsed<T>): T {
 /**
  * The series each template's videos are drawn in, by its folder under
  * `sample/series/`, as home's recorders name it (www's `tests/record`):
- * Playoff Delta's legend is drawn in the week's.
+ * Playoff Delta's legend is drawn in the week's, and the Rust Rounds essay in
+ * the call's (`essay.ts`).
  */
 export const TEMPLATE_SERIES = {
   "conference-call": "conference-call",
   "playoff-delta-legend": "playoff-delta-week",
   "playoff-delta-week": "playoff-delta-week",
+  "rust-essay": "conference-call",
 } as const satisfies Record<TemplateId, string>
 
 const NEWEST_SERIES: Readonly<
@@ -110,6 +108,7 @@ const BOARDS: Readonly<Record<TemplateId, unknown>> = {
   "conference-call": callBoard,
   "playoff-delta-legend": legendBoard,
   "playoff-delta-week": weekBoard,
+  "rust-essay": essayBoard,
 }
 
 /** Every frame of an episode of template `id`, drawn from its sample before the fill (SFEED3). */
