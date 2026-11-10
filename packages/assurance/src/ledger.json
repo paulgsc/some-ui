@@ -2709,25 +2709,30 @@
           "property": "outcome",
           "claim": "A week's essay reaches the render only from the week's final record, never a draft, and one that contradicts that record is refused and said.",
           "requirement": "The rust_essays worker takes a rust-essay-<week>.json from the mailbox's brief folder only once the week is past its due and its final send (the last before due, #2832) is kept; it writes the essay and one take per ticket that record answered (and the take's word times) to the week's folder on home's database drive, whole; an essay whose answered tickets or transcripts differ from that record is not rendered, and is written to <week>.refused.log.",
-          "verdict": "holds",
-          "conclusion": "Structural, shown on home's own SQLite and a temporary drive in CI: an essay waits until its week is final and its takes are home, is given once with only the takes the final record names, is refused and said when it contradicts that record or is misnamed, and a week two accounts hold is given to neither.",
+          "verdict": "unproven",
+          "conclusion": "Structural, tested in server CI: an essay is given only from the final record and refused when its answers contradict it. Not yet shown: home compares no transcript with the record (it holds none), and a refusal when only a draft stands past the deadline has no test.",
+          "tracked": "some-ui#2691",
           "evidence": [
             {
               "class": "structural",
-              "says": "The rust_essays worker gives a week's essay only from its final record, writes it with its takes whole, and writes <week>.refused.log for one it refuses; each case tested.",
+              "says": "The worker waits for the week to be final and its takes to be home, gives the essay once with only the takes the final record names, and writes <week>.refused.log for an essay that names a take as a silence or the wrong week.",
               "ref": "server:apps/servers/file_host/src/rust_essays.rs"
+            },
+            {
+              "class": "structural",
+              "says": "A later send replaces the draft, and the draft standing at the deadline is the week's final record.",
+              "ref": "server:crates/db/rust_round/src/sent.rs"
+            },
+            {
+              "class": "structural",
+              "says": "An essay plays exactly the takes the week's final record names.",
+              "ref": "server:crates/db/rust_round/src/essay.rs"
             }
           ],
           "watch": {
             "by": "none"
           },
-          "amendments": [],
-          "proof": [
-            "server:apps/servers/file_host/src/rust_essays.rs#an_essay_is_given_once_its_week_is_final_and_never_from_a_draft",
-            "server:apps/servers/file_host/src/rust_essays.rs#an_essay_that_contradicts_the_weeks_final_is_refused_and_said",
-            "server:apps/servers/file_host/src/rust_essays.rs#a_week_two_accounts_hold_is_given_to_neither",
-            "server:crates/db/rust_round/src/essay.rs#an_essay_plays_exactly_the_takes_the_weeks_final_record_names"
-          ]
+          "amendments": []
         },
         {
           "id": "EV2",
@@ -2758,11 +2763,6 @@
               "class": "measured",
               "says": "render-calls.sh, with a fake recorder, records each essay file_host gave from its essay and takes into renders/rust-essay whole, under the call's caps, and previews the essay's template; CI runs it on every pull request.",
               "ref": "server:infra/render/render-calls.test.sh"
-            },
-            {
-              "class": "structural",
-              "says": "A correction given before the video is made replaces the essay; once the video is made it is never made again.",
-              "ref": "server:apps/servers/file_host/src/rust_essays.rs"
             }
           ],
           "watch": {
@@ -2782,7 +2782,7 @@
           "evidence": [
             {
               "class": "structural",
-              "says": "RustEssayRenderFailed, RustEssayRenderOverdue, RustEssayRefused and RustEssaysFailing fire on what file_host reads of the worker's folders each minute, each tested by promtool in CI.",
+              "says": "RustEssayRenderFailed, RustEssayRenderOverdue and RustEssayRefused fire on what file_host reads of the worker's folders each minute, and RustEssaysFailing on the rust_essays pass failing; each tested by promtool in CI.",
               "ref": "server:infra/prometheus/rules/home.yml"
             },
             {
@@ -2824,25 +2824,25 @@
           "property": "outcome",
           "claim": "A week's essay video leaves home only by the owner's act from My data, and each delete leaves a receipt; deleting one of the week's takes deletes the video too, and the week is never rendered again.",
           "requirement": "My data lets a week's essay go as the call's (its video once its YouTube link is recorded, then the rest), and deleting a take of the week deletes its video and the rest with cause take-deleted; each step writes an append-only receipt to rust_essay_video_deletion kept with the account, and a week let go or with a take deleted is not rendered again.",
-          "verdict": "holds",
-          "conclusion": "Structural, shown on home's own SQLite and a temporary drive in CI: a week's essay video goes only by the owner's let-go, the video first and then the rest, each with a receipt, and only for its own subject; a deleted take withdraws the week at once, both steps, with a receipt naming it, and the week is never given or rendered again.",
+          "verdict": "unproven",
+          "conclusion": "Structural on home, tested in server CI. Not yet shown: the phone's My data offers no essay let-go yet (RR17, #2692), and no test shows a week let go is never rendered again.",
+          "tracked": "some-ui#2691",
           "evidence": [
             {
               "class": "structural",
-              "says": "The feed's let-go removes the week's input with its video so the worker is not given it again; a take deleted withdraws both steps and the next minute removes what is left; an account gone takes its essays and their work with it; each tested.",
+              "says": "Home lets an essay week go only for its own subject, its video once a link is recorded and then the rest, each with a receipt kept with the account, and removes its input with the video.",
+              "ref": "server:crates/db/rust_round/src/essay_video.rs"
+            },
+            {
+              "class": "structural",
+              "says": "A take deleted withdraws the week at once, both steps with a receipt naming it, and the next minute removes what is left; the week is never given again.",
               "ref": "server:apps/servers/file_host/src/rust_essays.rs"
             }
           ],
           "watch": {
             "by": "none"
           },
-          "amendments": [],
-          "proof": [
-            "server:apps/servers/file_host/src/feeds/videos.rs#an_essay_is_its_subjects_alone_and_goes_video_first_as_every_feeds",
-            "server:crates/db/rust_round/src/essay_video.rs#a_week_whose_take_is_deleted_is_withdrawn_both_steps_at_once_linked_or_not",
-            "server:apps/servers/file_host/src/rust_essays.rs#an_essay_whose_take_is_deleted_is_withdrawn_and_its_files_go",
-            "server:apps/servers/file_host/src/rust_essays.rs#an_essay_the_subject_no_longer_holds_leaves_the_drive"
-          ]
+          "amendments": []
         }
       ]
     }
