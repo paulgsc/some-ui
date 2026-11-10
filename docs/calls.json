@@ -1189,7 +1189,7 @@
         "root throughout, with sops pointed at the owner's key"
       ],
       "gray": "STORAGE belongs to file_host's uid 10000 and the sops age key is the owner's; no convention covers a host unit needing both. The second option widens STORAGE's permissions, and the third has root build envctl in the owner's checkout.",
-      "undo": "For the second option: in nix/modules/home-deploy.nix set User= to the owner and drop --as-user, drop runuser_prefix in scripts/deploy.py, and make ${STORAGE}/deploy group-writable for that user.",
+      "undo": "For the second option: in nix/modules/home-deploy.nix set User= to the owner, set Environment=XDG_RUNTIME_DIR=/run/home-deploy (the unit's RuntimeDirectory, then owned by that user), and drop --as-user; drop runuser_prefix in scripts/deploy.py; and make ${STORAGE}/deploy group-writable for that user.",
       "refs": ["server#779", "#2833"]
     },
     {
@@ -1204,7 +1204,7 @@
         "synchronous"
       ],
       "gray": "No family covered a module whose later outcome is a deploy. home-up is crosscutting, so no process may serve it, and the deploy's bounds are about wasted work, not uptime; synchronous is for routes that owe nothing later, and /compat owes a deploy. A new family is a promise the owner had not stated.",
-      "undo": "Remove the home-catches-up family and the home-deploy process's serves and witnesses, and place compat in home-up's modules.",
+      "undo": "Retire HD1 and HD2 with an amendment naming the owner's decision, move compat to home-up's modules, and remove the home-deploy process (home-up is crosscutting, so no process may serve it).",
       "refs": ["server#779", "#2833", "#2846"]
     }
   ]

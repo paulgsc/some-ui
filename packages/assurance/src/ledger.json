@@ -1917,7 +1917,8 @@
         "server:apps/servers/file_host/src/deploy.rs",
         "server:scripts/deploy.py",
         "server:nix/modules/home-deploy.nix",
-        "server:infra/prometheus/rules/home.yml"
+        "server:infra/prometheus/rules/home.yml",
+        "server:nix/modules/test.nix"
       ],
       "modules": ["compat"],
       "objectives": [
@@ -1926,36 +1927,38 @@
           "kind": "RE3",
           "property": "work",
           "claim": "Home pulls a newer server only when the app asks for one, and never more than its bounds allow.",
-          "requirement": "Nothing on home pulls a newer server by itself: the on-demand deploy starts only when the app asks for a server newer than home runs. It runs one deploy at a time, pulls at most once every 10 minutes, waits 6 hours before pulling again for an app the last pull found nothing to serve, refuses an ask more than 1000 versions past the one it runs, and deploys only an image newer than the one running.",
+          "requirement": "Nothing on home pulls a newer server by itself: the on-demand deploy starts only when the app asks for a server that works with newer apps than the one home runs. It runs one deploy at a time, each pull fetching one image and each run stopped after 30 minutes; it pulls at most once every 10 minutes, and, when the last pull could tell which apps the newest server works with and it still could not serve the app, it waits 6 hours before pulling again; it refuses an ask from an app more than 1000 server generations ahead, and puts up a newer server only when it works with newer apps than the one running.",
           "verdict": "holds",
-          "conclusion": "Each bound is tested on the server, and the unit that runs the deploy has no timer. Nothing in the app asks yet (some-ui#2843 adds that), so today home pulls nothing on demand.",
+          "conclusion": "Each bound is tested on the server, and so is that nothing starts the deploy on a timer. Where the last pull could not tell which apps the newest server works with, only the 10-minute gap holds, so an app nothing serves can cause a pull every 10 minutes while it keeps asking. Nothing in the app asks yet (some-ui#2843 adds that).",
           "proof": [
             "server:apps/servers/file_host/src/deploy.rs#a_need_the_last_pull_could_not_meet_waits_six_hours",
             "server:apps/servers/file_host/src/deploy.rs#a_forged_need_past_the_ceiling_pulls_nothing",
             "server:apps/servers/file_host/src/deploy.rs#pulls_keep_their_gap",
             "server:apps/servers/file_host/src/deploy.rs#asks_in_the_same_second_never_share_a_file",
-            "server:scripts/deploy.py#test_the_same_epoch_republished_is_not_deployed"
+            "server:scripts/deploy.py#test_the_same_epoch_republished_is_not_deployed",
+            "server:nix/modules/test.nix#nothing runs on a timer",
+            "server:nix/modules/test.nix#the marker starts the deploy"
           ],
           "evidence": [
             {
               "class": "structural",
-              "says": "One deploy at a time, at most one pull per 10 minutes, one per 6 hours for an app nothing published serves, and no pull for an ask past the ceiling; tested (one_deploy_at_a_time, pulls_keep_their_gap, a_need_the_last_pull_could_not_meet_waits_six_hours, a_forged_need_past_the_ceiling_pulls_nothing, the_marker_is_written_once_whoever_asks, asks_in_the_same_second_never_share_a_file; and a_newer_client_writes_the_marker_once_and_then_reads_in_flight in handlers/compat.rs).",
+              "says": "One deploy at a time, at most one pull per 10 minutes, one per 6 hours for an app the newest server could be read not to serve, and no pull for an ask past the ceiling; tested (one_deploy_at_a_time, pulls_keep_their_gap, a_need_the_last_pull_could_not_meet_waits_six_hours, a_forged_need_past_the_ceiling_pulls_nothing, the_marker_is_written_once_whoever_asks, asks_in_the_same_second_never_share_a_file; and a_newer_client_writes_the_marker_once_and_then_reads_in_flight in handlers/compat.rs).",
               "ref": "server:apps/servers/file_host/src/deploy.rs"
             },
             {
               "class": "structural",
-              "says": "The deploy puts up an image only when its version is newer than the one running; tested by its self-test in Lint's Deploy script job (test_a_newer_epoch_is_deployed_and_recorded, test_the_same_epoch_republished_is_not_deployed, test_an_image_whose_epoch_cannot_be_read_is_not_deployed).",
+              "says": "The deploy puts up a server only when it works with newer apps than the one running, and a newer build that works with the same apps is left alone; tested by its self-test in Lint's Deploy script job (test_a_newer_epoch_is_deployed_and_recorded, test_the_same_epoch_republished_is_not_deployed, test_an_image_whose_epoch_cannot_be_read_is_not_deployed).",
               "ref": "server:scripts/deploy.py"
             },
             {
               "class": "structural",
-              "says": "The deploy runs when the app's ask leaves its mark, and on nothing else: no timer starts it. This is read from the unit, not tested.",
-              "ref": "server:nix/modules/home-deploy.nix"
+              "says": "Only the app's ask starts the deploy: no timer does, and a run is stopped after 30 minutes; tested in Lint's Nix module job (the marker starts the deploy, nothing runs on a timer).",
+              "ref": "server:nix/modules/test.nix"
             }
           ],
           "watch": {
             "by": "dashboard",
-            "ref": "server:apps/servers/file_host/src/metrics/deploy.rs"
+            "ref": "server:infra/grafana/dashboards/lib/deploy-panels.libsonnet"
           },
           "amendments": []
         },
@@ -1963,10 +1966,10 @@
           "id": "HD2",
           "kind": "OA6",
           "property": "outcome",
-          "claim": "A deploy the app asked for that fails, or that never starts, reaches the owner.",
-          "requirement": "While home's server runs, an alert fires when a deploy the app asked for rolled back or failed in the last hour (DeployFailed), and when the app's ask has waited 30 minutes with no deploy answering it (DeployStuck); both are tested by promtool and sent to Slack as every home alert is. A deploy cut short before it records anything is reported as the server being down (FileHostDown) or as stuck.",
+          "claim": "Once home has taken the app's ask, a deploy that fails, or that never starts, reaches the owner.",
+          "requirement": "While home's server runs, an alert fires when a deploy the app asked for rolled back or failed in the last hour (DeployFailed), and when an ask home has taken has waited 30 minutes with no deploy answering it (DeployStuck); both are tested by promtool and sent to Slack as every home alert is. A deploy cut short before it records anything is reported as home's server being down or as stuck. An ask home could not take (it could not write it down) is counted on the dashboard only.",
           "verdict": "holds",
-          "conclusion": "Both alerts are tested, and they reach Slack by the route every home alert takes. While home's server is down nothing reads the deploy's record, and FileHostDown is what tells you.",
+          "conclusion": "Both alerts are tested, and they reach Slack by the route every home alert takes. While home's server is down nothing reads the deploy's record, and the alert that home's server stopped answering is what tells you. An ask home could not take reaches no one yet: it shows only on the dashboard. The alerts still name AV1 as their promise until the server relabels them.",
           "proof": [
             "server:infra/prometheus/rules/home.test.yml#a deploy that rolled back is DeployFailed for the hour after",
             "server:infra/prometheus/rules/home.test.yml#a deploy-wanted marker unanswered for 30 minutes is DeployStuck"
