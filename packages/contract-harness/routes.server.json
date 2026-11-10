@@ -2,6 +2,8 @@
   "schema_version": 1,
   "api_base_path": "/api/v1",
   "server_version": "0.0.0",
+  "contract_epoch": 1,
+  "oldest_supported": 1,
   "routes": [
     {
       "method": "GET",
@@ -156,6 +158,13 @@
       "full_path": "/api/v1/auth/sign-out-everywhere",
       "versioned": true,
       "module": "auth"
+    },
+    {
+      "method": "GET",
+      "path": "/compat",
+      "full_path": "/compat",
+      "versioned": false,
+      "module": "compat"
     },
     {
       "method": "GET",
