@@ -17,8 +17,9 @@ import type {
 } from "@some-ui/video-render"
 
 import type { EssayAt, EssayView } from "./essay-view"
-import { essayAt } from "./essay-view"
+import { essayAt, essayStageOf } from "./essay-view"
 import { ESSAY_WORDS as W, weekNumber } from "./essay-words"
+import { essaySource } from "./feed"
 import {
   BrandSlide,
   ChapterSlide,
@@ -36,11 +37,14 @@ import { STAGE_WORDS as SW } from "./frame-words"
  * A: two bubbles, the tutor and the owner, the one speaking lit, the scene's
  * content beside them, and the caption underneath.
  *
- * It plays the template's sample essay (`essay.ts` says where an owner's
- * essay will come from).
+ * It plays the essay of the week `week` names, as home's render worker hands
+ * it over (`./feed`'s `essaySource`, RR16), or with no week, or `sample`,
+ * the template's sample essay, voiced as a sample.
  */
 
 export type EssayStageProps = {
+  /** The essay shown, by its week's id ("2026-w46"), or "sample". */
+  week?: string
   /** The scene shown, by its id; the first when absent or unknown. */
   scene?: string
   record?: boolean
@@ -571,19 +575,37 @@ const Screen = ({
 }
 
 export const EssayStagePage = ({
+  week,
   scene,
   record = false,
   onScene,
-}: EssayStageProps): JSX.Element => {
-  if (!SAMPLE.ok)
+}: EssayStageProps): JSX.Element | null => {
+  const named = week !== undefined && week !== "sample"
+  const read = essaySource.useResource(["essay", week], week ?? "", undefined, {
+    enabled: named,
+    retry: false,
+  })
+  const state = essayStageOf({
+    week,
+    read: {
+      data: read.data,
+      pending: named && read.isPending,
+      failed: read.isError,
+    },
+    sample: SAMPLE,
+  })
+  if (state.kind === "waiting") return null
+  if (state.kind === "none")
     return (
+      // What keeps the essay off the frame is published where the recorder
+      // reads it, so a recording fails instead of waiting (VS1).
       <StageRefused
-        reason={SAMPLE.problems.join("\n")}
-        problems={SAMPLE.problems}
+        reason={state.problems.join("\n")}
+        problems={state.problems}
       />
     )
-  const essay = SAMPLE.value
-  const at = essayAt(essay, scene)
+  const { essay, voicing } = state
+  const at = essayAt(essay, scene, voicing)
   const format = essayFormat(essay.template.version)
   return (
     <StageFrame
@@ -593,7 +615,11 @@ export const EssayStagePage = ({
       data={{ "data-essay": record ? JSON.stringify(essay) : undefined }}
       theme={format.shape?.theme}
       title={W.title}
-      where={`${whereOf(at, essay)} · ${W.sample}`}
+      where={
+        voicing === "sample"
+          ? `${whereOf(at, essay)} · ${W.sample}`
+          : whereOf(at, essay)
+      }
       captioned={record && hasCaptions(format)}
       said={at.scene.said}
       nav={

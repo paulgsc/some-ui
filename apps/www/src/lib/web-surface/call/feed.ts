@@ -1,5 +1,7 @@
+import { createDataSource } from "@some-ui/fetch-kit"
 import type { CallIndex } from "@some-ui/video-render"
 
+import { DATA_MODE } from "@/lib/data-mode"
 import { TESTING_DATA, testingSource } from "@/lib/testing-data"
 
 /**
@@ -20,4 +22,26 @@ export const indexSource = testingSource<undefined, CallIndex>(
  */
 export const weekSource = testingSource<string, unknown>(
   (from) => new URL(`${CALL_DATA}/${from}.json`)
+)
+
+/**
+ * Where the essay's stage reads an essay named by its week (RR16): beside
+ * the stage, never `paulgsc/testing`, since an essay carries the owner's
+ * words. Home's render worker answers it from the essay home keeps
+ * (`record:essay --essay-file`); where home's store serves it to a browser
+ * is RR18's (#2693), so until then nothing else answers it.
+ */
+const essayAddress = (week: string): URL =>
+  new URL(
+    `/rust-essays/${encodeURIComponent(week)}.json`,
+    window.location.origin
+  )
+
+/** An essay's file as read, unchecked: the stage parses it (`essayStageOf`). */
+export const essaySource = createDataSource<string, unknown>(
+  { static: essayAddress, server: essayAddress },
+  {
+    mode: DATA_MODE,
+    fetchOptions: { credentials: "same-origin", responseAs: "json" },
+  }
 )

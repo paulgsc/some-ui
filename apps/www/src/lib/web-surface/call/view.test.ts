@@ -7,7 +7,7 @@ import {
 import type { CallIndex, CallWeek, Essay } from "@some-ui/video-render"
 import { describe, expect, it } from "vitest"
 
-import { essayAt } from "./essay-view"
+import { essayAt, essayStageOf } from "./essay-view"
 import { callAt, stageOf, weekFrom } from "./view"
 
 const week = (): CallWeek => {
@@ -218,5 +218,72 @@ describe("the essay's stage", () => {
   it("opens on the first scene when the id names none", () => {
     expect(essayAt(essay(), "nope").scene.id).toBe("intro")
     expect(essayAt(essay(), undefined).index).toBe(0)
+  })
+})
+
+describe("the essay the stage draws (RR16)", () => {
+  const read = (
+    data: unknown,
+    more: { pending?: boolean; failed?: boolean } = {}
+  ): { data: unknown; pending: boolean; failed: boolean } => ({
+    data,
+    pending: more.pending ?? false,
+    failed: more.failed ?? false,
+  })
+  const sample = sampleEssay()
+
+  it("is the sample, voiced as one, with no week or with `sample`", () => {
+    for (const week of [undefined, "sample"]) {
+      const state = essayStageOf({ week, read: read(undefined), sample })
+      expect(
+        state.kind === "show" && [state.essay.week.id, state.voicing]
+      ).toEqual(["2026-w46", "sample"])
+    }
+    const intro = essayAt(essay(), "intro", "sample").view
+    expect(
+      intro.section === "intro" &&
+        intro.rows.find((r) => r.label === "Voices")?.says
+    ).toContain("a second synthetic voice")
+  })
+
+  it("is the named week's essay as read, in the owner's voice", () => {
+    const state = essayStageOf({
+      week: "2026-w46",
+      read: read(essay()),
+      sample,
+    })
+    expect(state.kind === "show" && state.voicing).toBe("owner")
+    expect(
+      essayStageOf({
+        week: "2026-w46",
+        read: read(undefined, { pending: true }),
+        sample,
+      })
+    ).toEqual({ kind: "waiting" })
+  })
+
+  it("is never the sample in place of a week it can't read", () => {
+    expect(
+      essayStageOf({
+        week: "2026-w46",
+        read: read(undefined, { failed: true }),
+        sample,
+      })
+    ).toEqual({
+      kind: "none",
+      problems: ["No essay of 2026-w46 could be read"],
+    })
+    expect(
+      essayStageOf({ week: "2026-w47", read: read(essay()), sample })
+    ).toEqual({
+      kind: "none",
+      problems: ["The essay read is 2026-w46's, not 2026-w47's"],
+    })
+    const broken = essayStageOf({
+      week: "2026-w46",
+      read: read({ ...essay(), tickets: [] }),
+      sample,
+    })
+    expect(broken.kind === "none" && broken.problems.length).toBeGreaterThan(0)
   })
 })
