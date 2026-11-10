@@ -731,6 +731,49 @@
       "gray": "The call puts a chapter before each section; the essay's sections repeat per ticket, so a section's chapter would come back with each ticket, and #2690 names no chapters.",
       "undo": "A new essay format version whose shape lists other chapters (ESSAY_SHAPE in essay.ts).",
       "refs": ["#2690", "#2670"]
+    },
+    {
+      "id": "C68",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["server:scripts/pr_gate.py", "server:docs/assurance.md"],
+      "chose": "PR gate keeps the 60-minute bound, applied per run: a first attempt counts from its created_at, so time queued counts, and a re-run from its run_started_at; a run longer than that fails the gate.",
+      "options": [
+        "drop the timeout, as server#762 proposed",
+        "keep the bound, per run"
+      ],
+      "gray": "server#762 said to drop the timeout, but dropping it would let a 61-minute run pass that fails the gate today.",
+      "undo": "Delete the `event and seconds(run) > RUN_LIMIT_SECONDS` branch in judge() in scripts/pr_gate.py and its self-tests.",
+      "refs": ["server#762", "server#767", "#2833"]
+    },
+    {
+      "id": "C69",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": [
+        "server:scripts/pr_gate.py",
+        "server:.github/workflows/gate.yml"
+      ],
+      "chose": "When the base branch has no .github/workflows/gate-verdict.yml, `--open` falls back to waiting in the job as before (up to 60 minutes), still writing the API check run PR gate.",
+      "options": [
+        "no fallback, so that pull request's gate stays pending for good",
+        "land it as two pull requests",
+        "fall back to waiting in the job"
+      ],
+      "gray": "It keeps a polling path, which only runs on the pull request that adds the verdict workflow, or if that workflow is ever deleted.",
+      "undo": "Once main has gate-verdict.yml, drop the api.exists(...) branch and wait() from open_gate() in scripts/pr_gate.py in a follow-up.",
+      "refs": ["server#762", "server#767", "#2833"]
+    },
+    {
+      "id": "C70",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["server:.github/workflows/gate-verdict.yml"],
+      "chose": "gate-verdict.yml also runs on `check_run: completed`, only when the check run's app is not github-actions, so CodeQL's check run decides the gate too.",
+      "options": ["workflow_run only", "workflow_run and check_run"],
+      "gray": "It is not verified whether GitHub sends check_run for Actions' own check runs; if it does, each adds a skipped run that uses no runner.",
+      "undo": "Remove the check_run trigger and the job's `if:` from .github/workflows/gate-verdict.yml.",
+      "refs": ["server#762", "server#767", "#2833"]
     }
   ]
 }
