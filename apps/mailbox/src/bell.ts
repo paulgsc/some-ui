@@ -23,10 +23,9 @@ export class Bell extends DurableObject<unknown> {
 
   /** Home's upgrade, already checked by `core.ts` (`listen`). */
   override fetch(): Response {
-    const [client, server] = Object.values(new WebSocketPair())
-    if (client === undefined || server === undefined) {
-      return new Response(null, { status: 500 })
-    }
+    const pair = new WebSocketPair()
+    const client = pair[0]
+    const server = pair[1]
     admit(this.ctx, server)
     return new Response(null, { status: 101, webSocket: client })
   }
@@ -38,13 +37,13 @@ export class Bell extends DurableObject<unknown> {
 
   /** Home sends only `PING`, answered without waking; anything else is ignored. */
   override webSocketMessage(): void {
-    // Nothing home says changes what the bell does.
+    return
   }
 
-  override webSocketClose(ws: WebSocket, code: number): void {
+  /** Completes home's close; a reserved code cannot be echoed, so it is always 1000. */
+  override webSocketClose(ws: WebSocket): void {
     try {
-      // 1005 and 1006 name a close no frame carried, and cannot be sent back.
-      ws.close(code === 1005 || code === 1006 ? 1000 : code, "closed")
+      ws.close(1000, "closed")
     } catch {
       // Ignored: the socket is already closed, which is what this asked for.
     }

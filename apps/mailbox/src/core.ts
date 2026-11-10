@@ -1001,13 +1001,7 @@ const ROLES: ReadonlyArray<Grant> = [
   },
 ]
 
-/**
- * The bell (MBP1, paulgsc/some-ui#2142): home holds a WebSocket open on
- * `GET /v1/bell`, and the mailbox rings it when there is something for home
- * to do, so home need not wait for its next poll. A file added to a folder
- * home reads rings with that folder; so does an ask for an archived file,
- * which home's pass answers.
- */
+/** The folders an added file rings the bell for (README, "The bell"). */
 export const RINGS: ReadonlyArray<Folder> = HOME_READS
 
 /**

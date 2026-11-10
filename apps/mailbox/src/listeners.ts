@@ -55,8 +55,7 @@ export function ringAll<S extends Listener>(
       listener.send(message)
       reached += 1
     } catch {
-      // Ignored: the socket closed as the ring went out; home's pass on its
-      // next connection catches up what it missed.
+      // Ignored: it closed as the ring went out.
     }
   }
   return reached

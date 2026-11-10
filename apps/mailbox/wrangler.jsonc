@@ -16,7 +16,6 @@
   ],
   // The bell home listens on (MBP1, paulgsc/some-ui#2142). Workers Free takes
   // only SQLite-backed Durable Objects, so it is a `new_sqlite_classes` class.
-  // The bell stores nothing; the backend is the plan's requirement.
   "durable_objects": {
     "bindings": [{ "name": "BELL", "class_name": "Bell" }],
   },

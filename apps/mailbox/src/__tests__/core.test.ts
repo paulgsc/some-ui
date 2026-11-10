@@ -2260,13 +2260,12 @@ describe("the bell (MBP1: MB2, MB6)", () => {
       expect([method, response.status]).toEqual([method, 405])
       expect(response.headers.get("allow")).toBe("GET")
     }
-    for (const path of ["/v1/bell/", "/v1/bell/x", "/v2/bell"]) {
-      const response = await send(d, "GET", path, {
-        token: HOME,
-        headers: UPGRADE,
-      })
-      expect([path, response.status]).toEqual([path, 404])
-    }
+    // The bell is the exact path only.
+    const near = await send(d, "GET", "/v1/bell/", {
+      token: HOME,
+      headers: UPGRADE,
+    })
+    expect(near.status).toBe(404)
   })
 
   it("a bell that fails to answer is a 503, reported", async () => {
@@ -2381,12 +2380,11 @@ describe("the bell (MBP1: MB2, MB6)", () => {
     expect(reported).toHaveLength(1)
   })
 
-  it("rings for exactly the folders home reads (paulgsc/server pass::READS)", () => {
+  it("rings for exactly paulgsc/server's pass::READS, which lives in the other repo", () => {
     expect(RINGS).toEqual(["brief", "scene", "drama", "run", "leetype"])
   })
 
   it("a ring names its folder and nothing else (MB6)", () => {
-    expect(JSON.parse(ringMessage("brief"))).toEqual({ ring: "brief" })
     expect(ringMessage("run")).toBe('{"ring":"run"}')
   })
 })

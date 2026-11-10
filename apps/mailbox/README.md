@@ -126,8 +126,9 @@ WebSocket open on `GET /v1/bell`, and the mailbox rings it there (MBP1,
 - **A ring** is the text `{"ring":"<folder>"}` and nothing else (MB6). It goes out after a put
   that adds a file (`201`, never an `unchanged` repeat) to a folder home reads (`brief`,
   `scene`, `drama`, `run`, `leetype`, as paulgsc/server's `mailbox::pass::READS`), and after
-  the routine opens an ask for an archived file (`202`), with the ask's folder. Home reads
-  the rest through the listing, as its poll does. Home's own puts and an archive put back
+  the routine opens an ask for an archived file (`202`), with the ask's folder. A ring does
+  not say which of the two it is: any ring starts home's whole pass, which reads the listings
+  and answers the asks, as its poll does. Home's own puts and an archive put back
   ring nothing.
 - **Best effort.** The put's answer goes out without waiting on the ring, and a ring that
   fails changes nothing about it. With no one listening the ring is dropped: home runs a pass
@@ -538,7 +539,7 @@ how each was checked when this workspace landed.
 **MB2: Roles.**
 
 - _Claim:_ the `ROLES` table in `src/core.ts` is the only place a token is mapped to what it
-  may do, `home` is the only role whose `listen` is `true` (the bell, MBP1,
+  may do, `listen` is `true` for `home` and only `home` (the bell, MBP1,
   [#2142](https://github.com/paulgsc/some-ui/issues/2142): "the bell is `home`'s only"), and
   it holds exactly three roles: `routine` (get every folder, put `brief`, `scene`,
   `drama`, `run` and `leetype`, ask every folder but `index`, `reflection`, `prompt` and `feedback`), `home`
@@ -693,8 +694,9 @@ how each was checked when this workspace landed.
   SHA-256, size, putter or time) reaches a ring.
 - _Falsified by_ a hunk that adds a key or a value to what `ringMessage` returns, or makes it
   take anything but a `Folder`; that adds a `send` on a socket in `src/bell.ts` or
-  `src/listeners.ts` other than `ringAll`'s of `ringMessage`, or changes the `PONG`
-  auto-response to carry anything but a fixed word; that lets `ringAll` send for a folder
+  `src/listeners.ts` other than `ringAll`'s of `ringMessage`, gives a `close` there a reason
+  other than a fixed word, or changes the `PONG` auto-response to carry anything but a fixed
+  word; that lets `ringAll` send for a folder
   outside `RINGING`, or widens `RINGING` past `RINGS` and `ASKED`; that changes `BellPort`'s
   `ring` or the `Bell` object's `ring` to take anything but a folder; or that deletes
   or loosens the ring cases in `__tests__/core.test.ts` or `__tests__/listeners.test.ts`.

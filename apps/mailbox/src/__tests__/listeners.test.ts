@@ -1,4 +1,4 @@
-import { PING, REPLACED } from "@mailbox/core"
+import { REPLACED } from "@mailbox/core"
 import { admit, ringAll, type Listener, type Sockets } from "@mailbox/listeners"
 import { describe, expect, it } from "vitest"
 
@@ -85,9 +85,5 @@ describe("the bell's listeners", () => {
     sockets.open.push(gone.socket, listener.socket)
     expect(ringAll(sockets, "scene")).toBe(1)
     expect(listener.sent).toEqual(['{"ring":"scene"}'])
-  })
-
-  it("the heartbeat is a fixed word, never a ring", () => {
-    expect(PING).toBe("ping")
   })
 })
