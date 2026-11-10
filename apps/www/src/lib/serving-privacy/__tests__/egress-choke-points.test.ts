@@ -190,6 +190,9 @@ const KEEPERS = new Set([
   "lib/home-link/episode-notes-read.ts",
 ])
 
+/** LA8, #2843: whether home works with this build, its one ask through `look`. */
+const COMPAT_READ = "lib/home-link/compat-read.ts"
+
 /** SFEED13: Studio › Renders' read, and the one request it may send. */
 const RENDERS_READ = "lib/home-link/renders.ts"
 const RENDERS_SENDS = [['"GET"', '"/renders"']]
@@ -780,6 +783,25 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(read(DELETED_READ)).toContain("homeLink().keep(")
     expect(read(TAKES_READ)).toContain("homeLink().keep(")
     expect(read(CALLS_READ)).toContain("homeLink().keep(")
+  })
+
+  it("looks at home's own word only for whether home works with this build: one GET of /compat, without the credential, which only the marks' wiring asks (#2843)", () => {
+    const looks = (f: string): boolean => /\.look\(/.test(read(f))
+    expect(
+      sources.filter(
+        (f) =>
+          (f.startsWith("lib/home-link/") || HOME_LINK_CALLERS.has(f)) &&
+          looks(f)
+      )
+    ).toEqual([COMPAT_READ])
+    expect(read(COMPAT_READ)).toContain("homeLink().look(compatPath(needs))")
+    expect(read(COMPAT_READ)).toContain("`/compat?needs=${String(needs)}`")
+    const askers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /import \{[^}]*\} from "[^"]*compat-read(\.ts)?"/.test(read(f))
+      )
+    expect(askers).toEqual(["lib/home-link/lanes.ts"])
   })
 
   it("sends nothing from the read of what home deleted but one GET of /voice-notes/deleted, and only My data reads it (MD3)", () => {

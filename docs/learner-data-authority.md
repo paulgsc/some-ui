@@ -490,6 +490,18 @@ declared (checked by reading every call site and by the tests named).
   (`routes/_dashboard/_apk/journal/episodes/making.tsx`, ST33), which hands the voice
   lane a video kept for home to make and hears what home answered and lists
   of it through `lib/home-link/studio-videos`, sending nothing of its own,
+  and the marks asking whether home works with this build
+  (`lib/home-link/serves`, through `lib/home-link/compat-read`'s `look`,
+  the link's one read at home's own address, outside its API and without
+  the credential, on the drain's turn of the pace and holding no activity
+  of the person's: one `GET /compat?needs=` of the server version this build
+  was made against when the phone is found paired (the app's start, a new
+  pairing), when the app comes back to the foreground, on a pull, once more
+  at the link's next change after it let that ask's turn go, and, at most
+  once a minute, when a credentialed request is answered not found other
+  than as home's JSON error (a route home lacks), one at a time and never on
+  a timer;
+  #2843),
   which are the other callers of `lib/home-link`, is started by a tap in the Home server block of Settings
   (`components/settings/device-section.tsx`): the sync (published lessons
   and dramas, read with no credential), pairing (the code only), unpairing,
@@ -541,7 +553,8 @@ declared (checked by reading every call site and by the tests named).
   My data's "Delete for good".
   Nothing but the drain, Korean's look, the idea screen's ask for a
   take's words, My data's reads, Ideas on home's reads, Takes on home's
-  reads and Studio's feed videos' list is sent when the app or Settings
+  reads, Studio's feed videos' list and the marks' ask whether home works
+  with this build is sent when the app or Settings
   opens, on resume, on a timer or on a network change: making the runtime
   and `load` read only the phone's own record. There is no retry; a sync, a
   clear, a let-go or a drain's run ends at Stop,
@@ -581,6 +594,11 @@ declared (checked by reading every call site and by the tests named).
   `lib/home-link/idea-reads.ts`, `lib/home-link/takes-read.ts`,
   `lib/home-link/call-videos.ts`, `lib/home-link/renders.ts`,
   `lib/home-link/previews.ts` and `lib/home-link/episode-notes-read.ts`; one
+  that calls its `look` from anywhere but `lib/home-link/compat-read.ts`,
+  has `compat-read.ts` send anything but one `GET` of `compatPath(needs)`,
+  lets anything but `lib/home-link/lanes.ts` call it, or has
+  `lib/home-link/serves` ask but at the moments above, with a second ask
+  out, or on a not-found sooner than `MISSING_GAP` after the last; one
   that has `renders.ts` send anything but one `GET /renders`, `previews.ts`
   anything but the three asks above, or `episode-notes-read.ts` anything but
   one `GET /feeds/:feed/notes`, or lets anything but `lib/renders`,

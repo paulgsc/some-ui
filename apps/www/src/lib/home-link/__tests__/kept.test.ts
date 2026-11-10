@@ -383,7 +383,7 @@ describe("Send now", () => {
     last,
   })
   const offered = (run: KeptState): boolean =>
-    laneReading("practice", NOTHING_WAITS, run, PAIRED).sendNow
+    laneReading("practice", NOTHING_WAITS, run, PAIRED, null).sendNow
 
   it("is offered with nothing counted waiting after a run that didn't get everything home", () => {
     for (const why of ["full", "refused", "busy", "fault"]) {
@@ -403,7 +403,8 @@ describe("Send now", () => {
         "practice",
         NOTHING_WAITS,
         after({ kind: "failed", why: "full" }),
-        INITIAL
+        INITIAL,
+        null
       ).sendNow
     ).toBe(false)
   })

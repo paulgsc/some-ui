@@ -11,5 +11,5 @@
  * (some-ui#1040).
  */
 
-export { API_BASE_PATH } from "./generated/routes"
+export { API_BASE_PATH, SERVER_CONTRACT_EPOCH } from "./generated/routes"
 export type { ServerRoute, UnversionedRoute } from "./generated/routes"

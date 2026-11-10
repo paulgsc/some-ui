@@ -253,7 +253,15 @@ describe("Practice's sharing mark", () => {
     await waitFor(() => expect(home.sent.length).toBeGreaterThan(0))
     await waitFor(() => expect(howOf(mark())).toBe("no-answer"))
     // Sessions go first, as the drain orders them.
-    expect(new URL(home.sent[0]?.url ?? "").pathname).toBe("/api/v1/sessions")
+    expect(sentSince(0)[0]).toBe("/api/v1/sessions")
+    // The shell asks once whether home works with this build, at home's own
+    // address and without the credential (#2843).
+    const asks = home.sent.filter(
+      (call) => new URL(call.url).pathname === "/compat"
+    )
+    expect(asks).toHaveLength(1)
+    expect(asks[0]?.url).toMatch(/^https:\/\/home\.example\/compat\?needs=\d+$/)
+    expect(asks[0]).not.toHaveProperty("token")
   })
 
   it("asks for a run again from Send now", async () => {
@@ -471,11 +479,12 @@ async function pull(): Promise<ReadonlyArray<string>> {
   return unread
 }
 
-/** What each request sent since `from` reached: its path's first part after the base. */
+/** What the drain sent since `from`: the shell's ask of `/compat` is not a lane's. */
 const sentSince = (from: number): Array<string> =>
   home.sent
     .slice(from)
     .map((call) => new URL(call.url).pathname.split("/").slice(0, 4).join("/"))
+    .filter((path) => path !== "/compat")
 
 describe("a pull (PULL3)", () => {
   it("is up to date when home answers every lane, which take the one link in turn", async () => {

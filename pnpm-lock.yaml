@@ -509,6 +509,9 @@ importers:
       '@some-ui/rust-rounds':
         specifier: workspace:*
         version: link:../../packages/ui/rust-rounds
+      '@some-ui/server-routes':
+        specifier: workspace:*
+        version: link:../../packages/server-routes
       '@some-ui/shared':
         specifier: workspace:*
         version: link:../../packages/ui/shared

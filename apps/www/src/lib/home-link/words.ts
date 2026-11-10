@@ -19,6 +19,7 @@ import type { ClearEnd } from "./clear"
 import type { KeptState } from "./kept-model"
 import type { LaneCounts, LaneId, LaneKind } from "./lanes"
 import type { LastRead } from "./routine-model"
+import type { Serves } from "./serves-model"
 import type { LetGoEnd, LetGoPromise } from "./study-let-go"
 
 /** One row of a lane's sheet: what one kind is called, and one of it. */
@@ -409,6 +410,8 @@ export type LaneFacts = LaneCounts & {
   /** The phone is paired with home, so the lane drains. */
   paired: boolean
   run: KeptState
+  /** Whether home works with this version of the app (`./serves-model`). */
+  serves: Serves | null
 }
 
 export type LaneView = {
@@ -504,9 +507,6 @@ export function laneView(words: LaneWords, facts: LaneFacts): LaneView {
       "Home no longer knows this phone. Pair it again in Settings."
     )
   }
-  if (last?.kind === "unreachable") {
-    return show("kept", "no-answer", "No answer", `Home didn't answer.${later}`)
-  }
   if (last?.kind === "unpaired") {
     return show(
       "kept",
@@ -514,6 +514,37 @@ export function laneView(words: LaneWords, facts: LaneFacts): LaneView {
       "Not paired",
       `This phone isn't paired with home now. Pair it in Settings.${later}`
     )
+  }
+  // Before how the last send went, no answer included (home restarts as it
+  // updates): nothing goes properly until home works with this version
+  // (#2843). After pairing again, which is the person's own step whatever
+  // home runs.
+  if (facts.serves === "updating") {
+    return show(
+      "kept",
+      "updating",
+      "Home updating",
+      `Home is updating to work with this version of the app.${later}`
+    )
+  }
+  if (facts.serves === "not-yet") {
+    return show(
+      "kept",
+      "not-yet",
+      "Not yet",
+      `Home can't work with this version of the app yet.${later}`
+    )
+  }
+  if (facts.serves === "too-old") {
+    return show(
+      "kept",
+      "too-old",
+      "Update the app",
+      `This app is older than home. Install the newest version.${later}`
+    )
+  }
+  if (last?.kind === "unreachable") {
+    return show("kept", "no-answer", "No answer", `Home didn't answer.${later}`)
   }
   if (last?.kind === "failed") {
     if (last.why === "busy") {
