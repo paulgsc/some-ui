@@ -1927,9 +1927,9 @@
           "kind": "RE3",
           "property": "work",
           "claim": "Home pulls a newer server only when the app asks for one, and never more than its bounds allow.",
-          "requirement": "Nothing on home pulls a newer server by itself: the on-demand deploy starts only when the app asks for a server that works with newer apps than the one home runs. It runs one deploy at a time, each pull fetching one image and each run stopped after 30 minutes; it pulls at most once every 10 minutes, and, when the last pull could tell which apps the newest server works with and it still could not serve the app, it waits 6 hours before pulling again; it refuses an ask from an app more than 1000 server generations ahead, and puts up a newer server only when it works with newer apps than the one running.",
+          "requirement": "Nothing on home pulls a newer server by itself: the on-demand deploy starts only when the app asks for a server that works with newer apps than the one home runs. It runs one deploy at a time, each pull fetching one image and each run stopped after 30 minutes; it pulls at most once every 10 minutes, and, when the last pull could tell which apps the newest server works with and the newest server it found does not work with the app, it waits 6 hours before pulling again; it refuses an ask from an app more than 1000 steps ahead in which apps it works with, and puts up a newer server only when it works with newer apps than the one running.",
           "verdict": "holds",
-          "conclusion": "Each bound is tested on the server, and so is that nothing starts the deploy on a timer. Where the last pull could not tell which apps the newest server works with, only the 10-minute gap holds, so an app nothing serves can cause a pull every 10 minutes while it keeps asking. Nothing in the app asks yet (some-ui#2843 adds that).",
+          "conclusion": "Each bound but the 30-minute stop is tested on the server, and so is that nothing starts the deploy on a timer. Where the last pull could not tell which apps the newest server works with, only the 10-minute gap holds, so an app nothing serves can cause a pull every 10 minutes while it keeps asking. Nothing in the app asks yet (some-ui#2843 adds that).",
           "proof": [
             "server:apps/servers/file_host/src/deploy.rs#a_need_the_last_pull_could_not_meet_waits_six_hours",
             "server:apps/servers/file_host/src/deploy.rs#a_forged_need_past_the_ceiling_pulls_nothing",
@@ -1952,8 +1952,13 @@
             },
             {
               "class": "structural",
-              "says": "Only the app's ask starts the deploy: no timer does, and a run is stopped after 30 minutes; tested in Lint's Nix module job (the marker starts the deploy, nothing runs on a timer).",
+              "says": "Only the app's ask starts the deploy: no timer does; tested in Lint's NixOS modules job (the marker starts the deploy, nothing runs on a timer).",
               "ref": "server:nix/modules/test.nix"
+            },
+            {
+              "class": "structural",
+              "says": "A run is stopped after 30 minutes. This is read from the unit, not tested.",
+              "ref": "server:nix/modules/home-deploy.nix"
             }
           ],
           "watch": {

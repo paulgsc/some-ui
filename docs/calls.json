@@ -1204,7 +1204,7 @@
         "synchronous"
       ],
       "gray": "No family covered a module whose later outcome is a deploy. home-up is crosscutting, so no process may serve it, and the deploy's bounds are about wasted work, not uptime; synchronous is for routes that owe nothing later, and /compat owes a deploy. A new family is a promise the owner had not stated.",
-      "undo": "Retire HD1 and HD2 with an amendment naming the owner's decision, move compat to home-up's modules, and remove the home-deploy process (home-up is crosscutting, so no process may serve it).",
+      "undo": "Retire HD1 and HD2 with an amendment naming the owner's decision, move compat to home-up's modules, and drop HD1 and HD2 from the home-deploy process's witnesses; it still serves home-catches-up, which keeps the retired objectives.",
       "refs": ["server#779", "#2833", "#2846"]
     }
   ]
