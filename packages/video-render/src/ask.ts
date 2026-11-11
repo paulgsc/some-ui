@@ -29,8 +29,8 @@ import { z } from "zod"
 import { problemsOf } from "./cut-list"
 import type { Parsed } from "./cut-list"
 import { words } from "./format"
-import { OptionSchema, RefSchema, REPOS } from "./refs"
-import type { Repo } from "./refs"
+import { OptionSchema, RefSchema, WORK_REPOS } from "./refs"
+import type { Repo, WorkRepo } from "./refs"
 
 export const ASK_SCHEMA = "some-ui.ask/1"
 
@@ -107,9 +107,9 @@ export const askId = (issue: {
 /** The ask an `askId` names, or `null` when it names none. */
 export function parseAskId(
   id: string
-): { readonly repo: Repo; readonly number: number } | null {
+): { readonly repo: WorkRepo; readonly number: number } | null {
   const match = /^(.+)-([1-9]\d*)$/.exec(id)
-  const repo = z.enum(REPOS).safeParse(match?.[1])
+  const repo = z.enum(WORK_REPOS).safeParse(match?.[1])
   return repo.success && match?.[2] !== undefined
     ? { repo: repo.data, number: Number(match[2]) }
     : null
