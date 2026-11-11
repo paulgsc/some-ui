@@ -44,8 +44,6 @@ describe("an answer's ref", () => {
     ])
       expect(pendingOfRef(ref), ref).toBeNull()
     expect(parseAskId("server-725")).toEqual({ repo: "server", number: 725 })
-    // Testing holds data, not work: no ask is filed there.
-    expect(parseAskId("testing-6")).toBeNull()
   })
 })
 

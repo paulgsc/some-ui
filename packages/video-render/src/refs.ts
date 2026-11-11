@@ -12,7 +12,7 @@ import { words } from "./format"
 
 /**
  * Where a ref may point: the two code repositories, and paulgsc/testing,
- * whose pull requests carry data (a call may cite its guard, testing#6).
+ * whose pull requests carry data.
  */
 export const REF_REPOS = ["some-ui", "server", "testing"] as const
 
