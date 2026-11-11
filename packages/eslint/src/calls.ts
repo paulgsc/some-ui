@@ -34,7 +34,10 @@ export type Call = {
   readonly by: CallBy
   /** For a Claude call, the day the owner said they agreed. */
   readonly agreed?: string
-  /** The paths it governs: this repo's, or `server:<path>` for paulgsc/server's. */
+  /**
+   * The paths it governs: this repo's, `server:<path>` for paulgsc/server's,
+   * or `paulgsc/testing:<path>` for paulgsc/testing's.
+   */
   readonly paths: ReadonlyArray<string>
   /** What was chosen. */
   readonly chose: string
@@ -46,7 +49,10 @@ export type Call = {
   /** Why no check, convention or earlier decision settled it; as `options`. */
   readonly gray?: string
   readonly undo: string
-  /** The issues and pull requests it was made in: `#2623`, `server#731`. */
+  /**
+   * The issues and pull requests it was made in: `#2623`, `server#731`,
+   * `testing#6` (paulgsc/testing's).
+   */
   readonly refs: ReadonlyArray<string>
   /** The earlier call this one moves, if any. */
   readonly moves?: string
@@ -61,7 +67,7 @@ export type CallsFinding =
 
 const ID = /^C[1-9]\d*$/
 const DAY = /^\d{4}-\d{2}-\d{2}$/
-const REF = /^(?:server)?#[1-9]\d*$/
+const REF = /^(?:server|testing)?#[1-9]\d*$/
 const FIELDS = new Set([
   "id",
   "made",
@@ -128,7 +134,7 @@ function callOf(entry: unknown): Call | string {
   if (!(options === undefined && owners) && !isTexts(options, 2))
     return "needs `options`, at least two"
   if (!isTexts(refs, 1) || !refs.every((ref) => REF.test(ref)))
-    return "needs `refs`, each `#<n>` or `server#<n>`"
+    return "needs `refs`, each `#<n>`, `server#<n>` or `testing#<n>`"
   if (moves !== undefined && (typeof moves !== "string" || !ID.test(moves)))
     return "has a `moves` that is not a call's id"
   return {

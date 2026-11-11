@@ -60,8 +60,12 @@ describe("readCalls", () => {
     ])
     expect(why({ ...call, gray: " " })).toEqual(["needs `gray`, in words"])
     expect(why({ ...call, refs: ["2637"] })).toEqual([
-      "needs `refs`, each `#<n>` or `server#<n>`",
+      "needs `refs`, each `#<n>`, `server#<n>` or `testing#<n>`",
     ])
+    expect(why({ ...call, refs: ["other#6"] })).toEqual([
+      "needs `refs`, each `#<n>`, `server#<n>` or `testing#<n>`",
+    ])
+    expect(why({ ...call, refs: ["testing#6"] })).toEqual([])
     expect(why({ ...call, paths: [] })).toEqual(["needs `paths`, at least one"])
     expect(why({ ...call, said: "x" })).toEqual([
       "has a field no call has: said",
