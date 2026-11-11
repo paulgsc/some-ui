@@ -1421,6 +1421,62 @@
       "gray": "Proposed by Claude in the design; the owner did not object. A month is a guess at the cost of reviewing third-party moves against the risk of a stale CVE fix, and no convention covers it.",
       "undo": "Change the release-lock schedule, or drop the third-party services from the release and the guard.",
       "refs": ["server#787", "server#796"]
+    },
+    {
+      "id": "C123",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": [
+        "paulgsc/testing:scripts/guard.py",
+        ".claude/skills/steward/SKILL.md"
+      ],
+      "chose": "paulgsc/testing refuses all media and binaries, by extension and by first bytes. The six clips PNGs present before the guard stay, each held to its SHA-256 in guard.py's LEGACY_MEDIA, which nothing joins.",
+      "options": [
+        "refuse all media, the existing PNGs held to their bytes in one named list",
+        "hold media to a small budget in one place",
+        "refuse all media and delete the existing PNGs"
+      ],
+      "gray": "The owner said to reject media in general and fold it into the size guard. The record is append-only (CLAUDE.md, 'Never lose the record'), and clips/ already held six PNGs that Studio's Library reads. The owner later confirmed keeping the list.",
+      "undo": "Remove an entry from LEGACY_MEDIA, or add a media budget to guard.py's CAPS, in a guarded testing PR.",
+      "refs": ["testing#6"]
+    },
+    {
+      "id": "C124",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": [
+        "paulgsc/testing:.github/workflows/guard.yml",
+        "paulgsc/testing:.github/workflows/playoff-delta.yml"
+      ],
+      "chose": "The guard runs on every push and pull request, checking every commit in the range. A failure on main opens or comments on one issue. Playoff Delta runs the guard itself before its own commit. No ruleset requires the guard.",
+      "options": [
+        "fail the run and open an issue on main, with no required check",
+        "a ruleset requiring the guard on main",
+        "post to some-ui's Slack webhook"
+      ],
+      "gray": "A required check would block the choir's direct pushes to main and the GITHUB_TOKEN commit, which can't be a ruleset bypass actor. some-ui's Slack step is commented out with no secret behind it. Nothing said which loud channel the owner hears.",
+      "undo": "Delete the tell-the-owner job, or have the owner add a ruleset once every writer uses pull requests.",
+      "refs": ["testing#6"]
+    },
+    {
+      "id": "C125",
+      "made": "2026-11-11",
+      "by": "claude",
+      "agreed": "2026-11-11",
+      "paths": [
+        "apps/www/src/lib/studio-clips/read.ts",
+        "packages/video-render/src/clip.ts",
+        "apps/mailbox/README.md"
+      ],
+      "chose": "Home makes walk clips' frames itself on its render lane, from the index in testing. Session-taken frames ride no mailbox folder, and only their labels are kept.",
+      "options": [
+        "home makes walk frames itself, and session-taken frames are not kept",
+        "amend the mailbox's brief to carry base64 frames",
+        "a new mailbox folder for frames"
+      ],
+      "gray": "The owner chose home for frames, but the mailbox takes only JSON under 1 MiB and refuses encoded bytes by design. MI6 needs the owner's amendment for a new folder, and brief has never carried media.",
+      "undo": "Build the brief-amendment route that the TESTING-GUARD build brief spells out (SOME-UI 4).",
+      "refs": ["testing#6"]
     }
   ]
 }
