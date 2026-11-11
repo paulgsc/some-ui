@@ -29,7 +29,6 @@ import { showId, words } from "./format"
 import { PrSchema } from "./refs"
 
 export const CLIP_INDEX_SCHEMA = "some-ui.clip-index/2"
-/** The first index, before frames moved home: still read, never written. */
 export const CLIP_INDEX_SCHEMA_V1 = "some-ui.clip-index/1"
 
 /** Where paulgsc/testing's `main` is served, publicly: every reader of it, the phone's and the desktop stages', starts here. */
@@ -106,7 +105,6 @@ export type Clip = z.infer<typeof ClipSchema> | z.infer<typeof ClipSchemaV1>
 const uniqueIds = (i: { clips: ReadonlyArray<{ id: string }> }): boolean =>
   new Set(i.clips.map((c) => c.id)).size === i.clips.length
 
-/** The index as written now (`/2`), or as it was first (`/1`), which is still read. */
 export const ClipIndexSchema = z
   .discriminatedUnion("schema", [
     z.strictObject({

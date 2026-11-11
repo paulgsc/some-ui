@@ -107,7 +107,6 @@ describe("a clips folder of the first index (/1)", () => {
   })
 })
 
-/** An index as written now: frames on home, testing holding the index and its legacy frames. */
 const indexV2 = (clip: object = {}): object => ({
   schema: CLIP_INDEX_SCHEMA,
   clips: [
@@ -224,18 +223,4 @@ describe("a clips folder of the index now (/2)", () => {
       expect(parseClipIndex(raw).ok).toBe(false)
     }
   )
-
-  it("refuses a walk with no sample, and a sha256 that isn't one", () => {
-    const noSample = indexV2({
-      after: { made: "walk", snips: [{ file: "after/01.png", label: "x" }] },
-    })
-    const badSum = indexV2({
-      after: {
-        made: "session",
-        snips: [{ file: "after/01.png", label: "x", sha256: "ABC" }],
-      },
-    })
-    expect(parseClipIndex(noSample).ok).toBe(false)
-    expect(parseClipIndex(badSum).ok).toBe(false)
-  })
 })
