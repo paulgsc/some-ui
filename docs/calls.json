@@ -1426,10 +1426,7 @@
       "id": "C123",
       "made": "2026-11-11",
       "by": "claude",
-      "paths": [
-        "testing:scripts/guard.py",
-        ".claude/skills/steward/SKILL.md"
-      ],
+      "paths": ["testing:scripts/guard.py", ".claude/skills/steward/SKILL.md"],
       "chose": "paulgsc/testing refuses all media and binaries, by extension and by first bytes. The six clips PNGs present before the guard stay, each held to its SHA-256 in guard.py's LEGACY_MEDIA, which nothing joins.",
       "options": [
         "refuse all media, the existing PNGs held to their bytes in one named list",
