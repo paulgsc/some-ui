@@ -2455,6 +2455,95 @@
       ]
     },
     {
+      "id": "clips-kept",
+      "name": "Home keeps each clip's frames",
+      "why": "paulgsc/testing keeps no media (testing#6), so home keeps clip frames (owner, 2026-11-11, C125): an hourly timer reads clips/index.json; a walk side home renders itself on its render lane with motion walk, checked against the index's snips and labels; the 6 legacy PNGs are fetched and held to pinned SHA-256s; a session-taken side keeps only its labels. The paired phone reads them from home.",
+      "paths": [
+        "server:apps/servers/file_host/src/clips",
+        "server:crates/db/clip_frame",
+        "server:apps/servers/file_host/src/handlers/clips.rs",
+        "server:apps/servers/file_host/src/routes/clips.rs",
+        "server:infra/render",
+        "some-ui:packages/video-render/src/clip.ts",
+        "some-ui:packages/video-motion/src/walk"
+      ],
+      "modules": ["clips"],
+      "objectives": [
+        {
+          "id": "CL1",
+          "kind": "OA4",
+          "property": "outcome",
+          "claim": "Every frame the clip index names that home should keep is kept once, as checked, and one that fails is named by kind and tried on a later pass.",
+          "requirement": "Each hour home reads clips/index.json (some-ui.clip-index/1 or /2); a legacy frame is fetched and kept only if its SHA-256 is the pinned one; a walk side is rendered on the render lane and kept only if its walk.json's snips and labels equal the index's; each frame is a PNG by its magic bytes, at most 1 MiB, at most 12 a side; a held frame is never replaced, and other bytes under a held name are an error; failures counted by kind, the rest still taken.",
+          "verdict": "holds",
+          "conclusion": "Shown in the pass's tests on home's SQLite and a temporary drive.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "A pass keeps each frame home lacks once, refuses a legacy frame whose digest differs, a non-PNG, an oversized frame and a walk whose labels differ, and leaves them for the next pass.",
+              "ref": "server:apps/servers/file_host/src/clips/pass.rs"
+            }
+          ],
+          "proof": [
+            "server:apps/servers/file_host/src/clips/pass.rs#each_frame_home_lacks_is_kept_once_as_checked",
+            "server:apps/servers/file_host/src/clips/pass.rs#a_walk_that_does_not_match_the_index_is_not_kept",
+            "server:apps/servers/file_host/src/clips/pass.rs#a_legacy_frame_is_held_to_its_pinned_digest"
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        },
+        {
+          "id": "CL2",
+          "kind": "OA4",
+          "property": "outcome",
+          "claim": "A kept frame is never rewritten or deleted.",
+          "requirement": "clip_frame gains one row per frame; its triggers refuse UPDATE and DELETE; a second keep of the same (id, side, file) with other bytes adds nothing and is an error.",
+          "verdict": "holds",
+          "conclusion": "Shown in the store's tests.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "A frame is kept once; UPDATE and DELETE are refused.",
+              "ref": "server:crates/db/clip_frame/src/lib.rs"
+            }
+          ],
+          "proof": [
+            "server:crates/db/clip_frame/src/lib.rs#a_frame_is_kept_once_as_taken",
+            "server:crates/db/clip_frame/src/lib.rs#no_kept_frame_is_rewritten_or_deleted"
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        },
+        {
+          "id": "CL3",
+          "kind": "OA4",
+          "property": "outcome",
+          "claim": "Only a paired phone reads home's clip frames.",
+          "requirement": "GET /clips/:id/:side/:file takes Paired (no session 401, a browser's 403); a held frame is raw image/png with ETag \"<sha256>\" and immutable caching, 304 on a matching If-None-Match, and 404 when home doesn't hold it (a file on the drive with no clip_frame row included).",
+          "verdict": "holds",
+          "conclusion": "Shown in the handler's test through the real router.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "A paired phone gets a held frame's bytes with its ETag and a 304 for it; no session is 401, a browser 403, an unheld or unknown frame 404.",
+              "ref": "server:apps/servers/file_host/src/handlers/clips.rs"
+            }
+          ],
+          "proof": [
+            "server:apps/servers/file_host/src/handlers/clips.rs#a_frame_is_served_to_a_paired_phone_only"
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        }
+      ]
+    },
+    {
       "id": "pd-kept",
       "name": "Home keeps every fill of Playoff Delta, and makes its video",
       "why": "Playoff Delta's narration routine writes each week's fill (what is said over each scene) to paulgsc/testing, and the owner watches the week on the phone once home has made it (FEED4, #2647). Home keeps each fill and the season it was said over: a timer on home reads the repository's index of fills and stores each fill it lacks, with its season file as served then. Then home makes each voiced fill's video, as it makes the call's: its own Kokoro speaker says each scene, and its render worker records the pinned stage and renders it.",
@@ -3600,6 +3689,12 @@
       "class": "record",
       "growth": "Per YouTube video the owner records for a week of the call: one tiny row (the week, the video's id, when), the newest standing; about one per week; append-only, triggers abort UPDATE and DELETE.",
       "family": "call-kept"
+    },
+    {
+      "store": "server:clip_frame",
+      "class": "record",
+      "growth": "One row per frame of a clip home keeps (a walk's snips it renders itself, and the 6 legacy PNGs): clip id, side, file, SHA-256, bytes, when taken; the PNG (at most 1 MiB, at most 12 a walk side) is on the drive under renders/clips/<id>/<side>/, never the row. Append-only, triggers abort UPDATE and DELETE. Under 50 MB a year.",
+      "family": "clips-kept"
     },
     {
       "store": "server:pd_fill",
