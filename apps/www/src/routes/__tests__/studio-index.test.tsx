@@ -25,7 +25,7 @@ import {
 } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { askClipSide } from "@/lib/home-link/clips"
+import { askClipFrame } from "@/lib/home-link/clips"
 import {
   KIND_WORDS,
   STUDIO_INDEX_WORDS,
@@ -51,7 +51,7 @@ vi.mock("@/lib/home-link", async (importOriginal) => ({
   paired: (): boolean => link.kind === "paired",
   useHomeLink: (): object => ({ link: { kind: link.kind } }),
 }))
-vi.mock("@/lib/home-link/clips", () => ({ askClipSide: vi.fn() }))
+vi.mock("@/lib/home-link/clips", () => ({ askClipFrame: vi.fn() }))
 
 // Studio's pages are the phone's: links to them draw only where it is.
 vi.mock("@/lib/build-profile", async (importOriginal) => ({
@@ -219,14 +219,12 @@ const CLIP = {
 /** A PNG's first bytes, as home's answer carries them. */
 const PNG = "iVBORw0KGgo="
 
-/** Home answering every frame of a side the same way. */
+/** Home answering every frame the same way. */
 const frames = (status: number, body: string): void => {
-  vi.mocked(askClipSide).mockImplementation((_id, _side, files) =>
-    Promise.resolve({
-      kind: "answered",
-      answers: files.map(() => ({ status, body })),
-    })
-  )
+  vi.mocked(askClipFrame).mockResolvedValue({
+    kind: "answered",
+    answer: { status, body },
+  })
 }
 
 describe("the Library", () => {
@@ -267,14 +265,13 @@ describe("the Library", () => {
       CLIP.after.snips.map((snip) => snip.label)
     )
     expect(shots[0]?.getAttribute("src")).toBe(`data:image/png;base64,${PNG}`)
-    expect(askClipSide).toHaveBeenCalledTimes(1)
-    expect(askClipSide).toHaveBeenCalledWith("never-suspend", "after", [
-      "after/snips/01.png",
-      "after/snips/02.png",
+    expect(vi.mocked(askClipFrame).mock.calls).toEqual([
+      ["never-suspend", "after", "after/snips/01.png"],
+      ["never-suspend", "after", "after/snips/02.png"],
     ])
   })
 
-  it("asks home once a side however many frames it has, and shows them all", async () => {
+  it("shows every frame of a big clip, each asked of home in turn", async () => {
     const snips = (side: string): Array<object> =>
       Array.from({ length: 12 }, (_, i) => ({
         file: `${side}/snips/${String(i + 10)}.png`,
@@ -291,7 +288,7 @@ describe("the Library", () => {
     frames(200, PNG)
     render(withQueryClient(<ClipScreen id={CLIP.id} />))
     await waitFor(() => expect(screen.getAllByRole("img")).toHaveLength(24))
-    expect(askClipSide).toHaveBeenCalledTimes(2)
+    expect(askClipFrame).toHaveBeenCalledTimes(24)
     expect(screen.queryByText(STUDIO_INDEX_WORDS.clips.homeAway)).toBeNull()
   })
 
@@ -345,7 +342,7 @@ describe("the Library", () => {
     render(withQueryClient(<ClipScreen id={CLIP.id} />))
     await screen.findByText("The popup opens")
     expect(screen.queryByText(STUDIO_INDEX_WORDS.clips.onlyLabels)).toBeNull()
-    expect(askClipSide).not.toHaveBeenCalled()
+    expect(askClipFrame).not.toHaveBeenCalled()
   })
 
   it("lists the labels in a web build, which never asks home", async () => {
@@ -357,7 +354,7 @@ describe("the Library", () => {
     await screen.findByText("Never suspend this site")
     expect(screen.queryByRole("img")).toBeNull()
     expect(screen.queryByText(STUDIO_INDEX_WORDS.clips.onlyLabels)).toBeNull()
-    expect(askClipSide).not.toHaveBeenCalled()
+    expect(askClipFrame).not.toHaveBeenCalled()
   })
 
   it("lists only the labels away from home, and says so", async () => {
@@ -369,7 +366,7 @@ describe("the Library", () => {
     await screen.findByText(STUDIO_INDEX_WORDS.clips.onlyLabels)
     screen.getByText("Never suspend this site")
     expect(screen.queryByRole("img")).toBeNull()
-    expect(askClipSide).not.toHaveBeenCalled()
+    expect(askClipFrame).not.toHaveBeenCalled()
   })
 
   it("says when the session took a side's screens, not code", async () => {

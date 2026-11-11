@@ -1,8 +1,8 @@
 /**
- * A clip's frames from home, the Android app's only (`build.paths.ts`): each
- * side's frames read together through the paired link (`clipSideQuery`), a
- * frame home doesn't hold shown as its label and why, never a broken image,
- * and, away from home, the labels alone with a line saying so. While the
+ * A clip's frames from home, the Android app's only (`build.paths.ts`): read
+ * one at a time through the paired link while the page shows them
+ * (`clipFramesQuery`); a frame home doesn't hold shown as its label and why,
+ * never a broken image; and, away from home, the labels alone with a line saying so. While the
  * phone's own record of its pairing is still being read, the page says
  * nothing about home: the labels show, and no line appears only to vanish.
  */
@@ -14,7 +14,7 @@ import { useQuery } from "@tanstack/react-query"
 
 import { useHomeLink } from "@/lib/home-link"
 import type { FrameShown } from "@/lib/studio-clips/frames"
-import { clipSideQuery } from "@/lib/studio-clips/home"
+import { clipFramesQuery } from "@/lib/studio-clips/home"
 import { STUDIO_INDEX_WORDS } from "@/lib/studio-index"
 
 import { ClipParts, LabelList } from "./clip-parts"
@@ -58,8 +58,10 @@ const Frame = ({
   snip: ClipSide["snips"][number]
 }): JSX.Element => {
   // Bytes that read as base64 but don't decode as an image (a truncated PNG)
-  // show as their label and why, never as a broken image.
-  const [undecodable, setUndecodable] = useState(false)
+  // show as their label and why, never as a broken image; new bytes are
+  // tried afresh.
+  const [failed, setFailed] = useState<string | null>(null)
+  const undecodable = data?.kind === "frame" && failed === data.src
   const shows = data?.kind === "frame" && !undecodable
   const why = undecodable ? WORDS.unreadable : missing(data, made)
   return (
@@ -69,7 +71,7 @@ const Frame = ({
           src={data.src}
           alt={snip.label}
           onError={() => {
-            setUndecodable(true)
+            setFailed(data.src)
           }}
           className="border-border/60 w-full rounded-xl border"
         />
@@ -82,43 +84,40 @@ const Frame = ({
   )
 }
 
-/** One side's frames from home, read together, each shown as it came. */
-const HomeFrames = ({
-  id,
-  name,
-  side,
-}: {
-  id: string
-  name: "before" | "after"
-  side: ClipSide
-}): JSX.Element => {
-  const files = side.snips.map((snip) => snip.file)
-  const { data } = useQuery(clipSideQuery(id, name, files))
-  return (
+/** One side's frames as home answered them, or as labels when not asked. */
+const sideOf = (
+  side: ClipSide,
+  shown: ReadonlyArray<FrameShown | undefined> | undefined
+): JSX.Element =>
+  shown === undefined ? (
+    <LabelList side={side} />
+  ) : (
     <>
       {side.snips.map((snip, i) => (
-        <Frame key={snip.file} shown={data?.[i]} made={side.made} snip={snip} />
+        <Frame key={snip.file} shown={shown[i]} made={side.made} snip={snip} />
       ))}
     </>
-  )
-}
-
-/** One side: its frames from home when this phone is paired, else its labels. */
-const sideOf = (
-  atHome: boolean,
-  id: string,
-  name: "before" | "after",
-  side: ClipSide
-): JSX.Element =>
-  atHome ? (
-    <HomeFrames id={id} name={name} side={side} />
-  ) : (
-    <LabelList side={side} />
   )
 
 /** A clip's before and after, each frame from home when this phone is paired. */
 export const ClipFrames = ({ clip }: { clip: Clip }): JSX.Element => {
   const { link } = useHomeLink()
+  const atHome = link.kind === "paired"
+  const before = clip.before?.snips ?? []
+  const frames = [
+    ...before.map((snip) => ({ side: "before" as const, file: snip.file })),
+    ...clip.after.snips.map((snip) => ({
+      side: "after" as const,
+      file: snip.file,
+    })),
+  ]
+  const { data } = useQuery({
+    ...clipFramesQuery(clip.id, frames),
+    enabled: atHome,
+  })
+  const shown = atHome
+    ? (data ?? frames.map((): undefined => undefined))
+    : undefined
   return (
     <>
       {link.kind !== "unpaired" ? null : (
@@ -129,9 +128,9 @@ export const ClipFrames = ({ clip }: { clip: Clip }): JSX.Element => {
         before={
           clip.before === null
             ? null
-            : sideOf(link.kind === "paired", clip.id, "before", clip.before)
+            : sideOf(clip.before, shown?.slice(0, before.length))
         }
-        after={sideOf(link.kind === "paired", clip.id, "after", clip.after)}
+        after={sideOf(clip.after, shown?.slice(before.length))}
       />
     </>
   )
