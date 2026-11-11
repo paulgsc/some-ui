@@ -1427,7 +1427,7 @@
       "made": "2026-11-11",
       "by": "claude",
       "paths": [
-        "paulgsc/testing:scripts/guard.py",
+        "testing:scripts/guard.py",
         ".claude/skills/steward/SKILL.md"
       ],
       "chose": "paulgsc/testing refuses all media and binaries, by extension and by first bytes. The six clips PNGs present before the guard stay, each held to its SHA-256 in guard.py's LEGACY_MEDIA, which nothing joins.",
@@ -1445,8 +1445,8 @@
       "made": "2026-11-11",
       "by": "claude",
       "paths": [
-        "paulgsc/testing:.github/workflows/guard.yml",
-        "paulgsc/testing:.github/workflows/playoff-delta.yml"
+        "testing:.github/workflows/guard.yml",
+        "testing:.github/workflows/playoff-delta.yml"
       ],
       "chose": "The guard runs on every push and pull request, checking every commit in the range. A failure on main opens or comments on one issue. Playoff Delta runs the guard itself before its own commit. No ruleset requires the guard.",
       "options": [
