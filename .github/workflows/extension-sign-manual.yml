@@ -8,7 +8,9 @@ name: Sign Firefox Extension (Manual)
 #
 # The compliance_confirmed checkbox is a hard gate — the workflow fails
 # immediately if it is not checked. This prevents accidental signs before
-# all A+B issues in epic #310 are closed.
+# all A+B issues in epic #310 are closed. Checking it is not the approval:
+# _extension-sign.yml still waits for the owner to approve the amo-release
+# deployment (AMO1), which the top-level `actions: read` lets it check.
 permissions:
   contents: read
   actions: read
