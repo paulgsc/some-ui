@@ -23,12 +23,14 @@ function strings(value: unknown): Array<string> {
 const KEYS: Record<Feed, ReadonlyArray<string>> = {
   call: ["2026-10-30", "2026-12-28"],
   "playoff-delta": ["2026-SF-08", "2026-SF-00", "2026-SF-17"],
+  "rust-essay": ["2026-w46", "2027-w01"],
 }
 
 /** Keys a feed can't read: another feed's, and none of home's. */
 const UNREAD: Record<Feed, ReadonlyArray<string>> = {
   call: ["2026-SF-08", "week-44", ""],
   "playoff-delta": ["2026-10-30", "2026-SF-8", ""],
+  "rust-essay": ["2026-10-30", "2026-w4", "2026-w00", ""],
 }
 
 /** All a feed says of an episode by its key. */
@@ -68,6 +70,14 @@ describe("VIDEOS_WORDS and FEED_WORDS", () => {
     )
     expect(FEED_WORDS["playoff-delta"].shareTitle("2026-SF-08")).toBe(
       "Playoff Delta, 2026, week 8"
+    )
+  })
+
+  it("names a Rust Rounds essay by its year and week", () => {
+    expect(FEED_WORDS["rust-essay"].label("2026-w46")).toBe("2026, week 46")
+    expect(FEED_WORDS["rust-essay"].label("2027-w01")).toBe("2027, week 1")
+    expect(FEED_WORDS["rust-essay"].shareTitle("2026-w46")).toBe(
+      "Rust Rounds, 2026, week 46"
     )
   })
 

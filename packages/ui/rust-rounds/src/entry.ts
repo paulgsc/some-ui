@@ -1,6 +1,7 @@
 /**
  * Rust Rounds' way in from Practice Home (`@some-ui/rust-rounds/entry`): its
- * name, and the week open now (`rustWeekEntry`), or, while the phone holds
+ * name, and the week open now (`rustWeekEntry`, which once the week has
+ * closed names the week whose essay its card links to), or, while the phone holds
  * no week, where the session was left, read from the card kept on screen.
  * Light on purpose: it loads none of the formats' schemas, so the Home that
  * shows it carries none of the session's weight.
@@ -19,7 +20,12 @@ import { entryLine, WORDS } from "./lib/play/words"
 import { CARD_WORDS } from "./lib/week-play/card-words"
 import { weekOpenNow } from "./lib/week-play/open-now"
 
+export { WEEK_ID, weekNumber } from "./lib/formats/week-id"
+
 export const RUST_ROUNDS_TITLE = WORDS.title
+
+/** The way from a closed week's card to its essay. */
+export const RUST_ESSAY_LINK = CARD_WORDS.essay
 
 /** The kept card's title; null for none, or one this light read cannot make out. */
 function titleOf(value: unknown): Title | null {
@@ -98,14 +104,23 @@ function saidOn(storage: KeyedStorage | null, week: CardWeek): number {
 }
 
 /**
- * The card's line for the week open at `at` (RR13), the same week the
- * screen opens on (`lib/week-play/runtime`'s `currentWeek`); null while the
- * phone holds no week, when the card says what the rounds' entry says.
+ * The card for the week open now: its line, and once its deadline has
+ * passed, the week whose essay the card links to (RR17, #2692), else `null`.
+ */
+export type RustWeekCard = {
+  readonly line: string
+  readonly essay: string | null
+}
+
+/**
+ * The card for the week open at `at` (RR13), the same week the screen opens
+ * on (`lib/week-play/runtime`'s `currentWeek`); null while the phone holds no
+ * week, when the card says what the rounds' entry says.
  */
 export function rustWeekEntry(
   storage: KeyedStorage | null,
   at: number
-): string | null {
+): RustWeekCard | null {
   const readList = readJson((value) =>
     isRecord(value) && Array.isArray(value.weeks) ? value.weeks : null
   )
@@ -140,12 +155,16 @@ export function rustWeekEntry(
     )
   const of = week.tickets.length
   const closed = due < at
+  const essay = closed ? week.id : null
   if (isRecord(sent) && Array.isArray(sent.answers)) {
     const n = sent.answers.length
-    return closed
-      ? CARD_WORDS.closedSent(week, n, of)
-      : CARD_WORDS.sent(week, n, of)
+    return {
+      line: closed
+        ? CARD_WORDS.closedSent(week, n, of)
+        : CARD_WORDS.sent(week, n, of),
+      essay,
+    }
   }
-  if (closed) return CARD_WORDS.closed(week)
-  return CARD_WORDS.open(week, saidOn(storage, week), of)
+  if (closed) return { line: CARD_WORDS.closed(week), essay }
+  return { line: CARD_WORDS.open(week, saidOn(storage, week), of), essay }
 }
