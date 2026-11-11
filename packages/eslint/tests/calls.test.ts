@@ -18,7 +18,7 @@ const call: Call = {
   options: ["shorter words", "an icon"],
   gray: "The widest word wrapped.",
   undo: "Put the word back.",
-  refs: ["#2637", "server#731"],
+  refs: ["#2637", "server#731", "testing#6"],
 }
 
 const file = (...calls: Array<unknown>): string =>
@@ -65,7 +65,6 @@ describe("readCalls", () => {
     expect(why({ ...call, refs: ["other#6"] })).toEqual([
       "needs `refs`, each `#<n>`, `server#<n>` or `testing#<n>`",
     ])
-    expect(why({ ...call, refs: ["testing#6"] })).toEqual([])
     expect(why({ ...call, paths: [] })).toEqual(["needs `paths`, at least one"])
     expect(why({ ...call, said: "x" })).toEqual([
       "has a field no call has: said",

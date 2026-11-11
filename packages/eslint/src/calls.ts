@@ -35,8 +35,8 @@ export type Call = {
   /** For a Claude call, the day the owner said they agreed. */
   readonly agreed?: string
   /**
-   * The paths it governs: this repo's, `server:<path>` for paulgsc/server's,
-   * or `paulgsc/testing:<path>` for paulgsc/testing's.
+   * The paths it governs: this repo's (bare or `some-ui:<path>`), or
+   * `server:<path>` and `testing:<path>` for paulgsc/server's and paulgsc/testing's.
    */
   readonly paths: ReadonlyArray<string>
   /** What was chosen. */
@@ -49,10 +49,7 @@ export type Call = {
   /** Why no check, convention or earlier decision settled it; as `options`. */
   readonly gray?: string
   readonly undo: string
-  /**
-   * The issues and pull requests it was made in: `#2623`, `server#731`,
-   * `testing#6` (paulgsc/testing's).
-   */
+  /** The issues and pull requests it was made in: `#2623`, `server#731`, `testing#6`. */
   readonly refs: ReadonlyArray<string>
   /** The earlier call this one moves, if any. */
   readonly moves?: string
