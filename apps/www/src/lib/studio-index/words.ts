@@ -78,6 +78,12 @@ export const FEED_FACTS = {
       "How did this week's results move my team's paths to the playoffs?",
     cadence: "Every Tuesday in season",
   },
+  "rust-essay": {
+    name: "The Rust Rounds essay",
+    intuition:
+      "Keep my sharpness and intuition when I look at Rust code, now that I rarely write it.",
+    cadence: "Every Monday, for the week that closed on Sunday",
+  },
 } as const satisfies Record<Feed, FeedFacts>
 
 /** The places a feed leaves something, in the order a feed's page lists them. */
@@ -128,6 +134,23 @@ export const FEED_KEPT = {
     testing: {
       what: "The season's numbers and every week's words, in the public paulgsc/testing.",
       letGo: "Never. A week's words are kept as they were written.",
+    },
+    drive: NOTHING_IN_DRIVE,
+  },
+  "rust-essay": {
+    home: {
+      what: "Every essay Claude wrote for a week, as home first read it, the takes you sent that it plays, and each essay's video and what it was made from.",
+      letGo:
+        "Once an essay's YouTube link is saved, Settings › My data lets its video go, then what it was made from, and home keeps a note of each. Its words and your takes stay.",
+    },
+    phone: {
+      what: "A copy of each essay you watched.",
+      letGo:
+        "A watched copy is the phone's to clear, and it goes when home's video is let go.",
+    },
+    testing: {
+      what: "Nothing. An essay holds your voice, so it stays on home until you share it.",
+      letGo: "Nothing to let go.",
     },
     drive: NOTHING_IN_DRIVE,
   },
@@ -214,7 +237,11 @@ export const STUDIO_INDEX_WORDS = {
     makingLine:
       "Made in sittings from your takes: record, watch, shape, finish.",
     open: "Open",
-    gone: "Home doesn't have this episode any more.",
+    /** What the page says when home's list has no such episode. */
+    gone: (feed: Feed): string =>
+      feed === "rust-essay"
+        ? "Home hasn't made this essay yet. It comes once its week has closed and Claude has written it."
+        : "Home doesn't have this episode any more.",
   },
 
   feedback: {

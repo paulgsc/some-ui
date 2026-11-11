@@ -27,7 +27,7 @@ const EpisodePage = (): JSX.Element => {
           feed={feed}
           episodeKey={key}
           pair={<PairHomeLink>{STUDIO_WORDS.pair.pair}</PairHomeLink>}
-          gone={STUDIO_INDEX_WORDS.episodes.gone}
+          gone={STUDIO_INDEX_WORDS.episodes.gone(feed)}
         />
       )}
     </StudioPage>

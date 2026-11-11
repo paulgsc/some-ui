@@ -280,24 +280,35 @@ const StudyCard = ({
 
 /**
  * Rust Rounds' way in (#2235, the owner's D2): one tap opens the week open
- * now, saying its deadline and how many tickets are said (RR13); while the
- * phone holds no week, the card left last, or one tap from the first.
+ * now, saying its deadline and how many tickets are said (RR13), and once its
+ * deadline has passed, the week's essay (RR17); while the phone holds no
+ * week, the card left last, or one tap from the first.
  */
 const RustRoundsCard = ({ visit }: { visit: Visit }): JSX.Element => {
   // Read once as Home opens, never on each render; it changes only in Rust
   // Rounds itself, which is left to come back here. The week open now
   // (RR13), or, while the phone holds none, where the rounds were left.
   /* eslint-disable owner-guard/no-mount-snapshot -- read once as Home opens, as the line above says: Rust Rounds is left to come back here, which mounts Home afresh */
-  const [line] = useState(
+  const [{ line, essay }] = useState(
     () =>
-      rustWeekEntry(browserLocalStorage, Date.now()) ??
-      rustRoundsEntry(browserLocalStorage)
+      rustWeekEntry(browserLocalStorage, Date.now()) ?? {
+        line: rustRoundsEntry(browserLocalStorage),
+        essay: null,
+      }
   )
   /* eslint-enable owner-guard/no-mount-snapshot */
   useShelf(visit, "rust-rounds", RUST_ROUNDS)
+  // Once the week has closed, the card opens its essay in Studio (RR17).
+  const to =
+    essay === null
+      ? ({ to: "/rust-rounds" } as const)
+      : ({
+          to: "/journal/episodes/$feed/$key",
+          params: { feed: "rust-essay", key: essay },
+        } as const)
   return (
     <Link
-      to="/rust-rounds"
+      {...to}
       onClick={() => visit.take(HOME_OFFERS.rustRounds)}
       className="bg-card border-border/50 flex items-center gap-3 rounded-2xl border p-4 shadow-sm"
     >

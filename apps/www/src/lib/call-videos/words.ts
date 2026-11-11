@@ -34,9 +34,23 @@ function playoffDeltaWeek(key: string): string | null {
   return n === 0 ? `${season}, the legend` : `${season}, week ${String(n)}`
 }
 
+/**
+ * A week of Rust Rounds by its year and number (its key is `<year>-w<NN>`),
+ * or `null`.
+ */
+function rustWeek(key: string): string | null {
+  const parts = /^(\d{4})-w(\d{2})$/.exec(key)
+  if (parts === null) return null
+  const [, year = "", week = ""] = parts
+  const n = Number(week)
+  return n === 0 ? null : `${year}, week ${String(n)}`
+}
+
 type FeedWords = {
   readonly heading: string
   readonly intro: string
+  /** Said wherever its episodes are listed when they hold the owner's own voice, else `null`. */
+  readonly voice: string | null
   readonly unpaired: string
   readonly older: string
   readonly none: string
@@ -60,6 +74,7 @@ export const FEED_WORDS = {
     heading: FEED_FACTS.call.name,
     intro:
       "Home makes each week's video. Watch it here, share it to YouTube, then save its link, and the week can be let go from My data.",
+    voice: null,
     unpaired: "Pair this phone with home to see the call's videos.",
     older:
       "Home doesn't keep the call's videos yet. Update home, then try again.",
@@ -79,6 +94,7 @@ export const FEED_WORDS = {
     heading: FEED_FACTS["playoff-delta"].name,
     intro:
       "Home makes each week's episode. Watch it here, share it to YouTube, then save its link, and the episode can be let go from My data.",
+    voice: null,
     unpaired: "Pair this phone with home to see Playoff Delta's videos.",
     older:
       "Home doesn't keep Playoff Delta's videos yet. Update home, then try again.",
@@ -93,6 +109,27 @@ export const FEED_WORDS = {
       return week === null ? "Playoff Delta" : `Playoff Delta, ${week}`
     },
     what: "Playoff Delta's videos",
+  },
+  "rust-essay": {
+    heading: FEED_FACTS["rust-essay"].name,
+    intro:
+      "Home makes each week's essay once the week has closed. Watch it here, share it to YouTube, then save its link, and the essay can be let go from My data.",
+    voice:
+      "Its video holds your voice: every take you sent that week plays in it, whole.",
+    unpaired: "Pair this phone with home to see the Rust Rounds essays.",
+    older:
+      "Home doesn't keep the Rust Rounds essays yet. Update home, then try again.",
+    none: "Home hasn't made an essay yet. Each comes after its week has closed.",
+    week: rustWeek,
+    label: (key: string): string => rustWeek(key) ?? "This essay",
+    waiting: "Home is still making this week's essay.",
+    linkSaved: "Saved. Home keeps the link with the week.",
+    letGo: "You let home's copy go. The essay lives on YouTube.",
+    shareTitle: (key: string): string => {
+      const week = rustWeek(key)
+      return week === null ? "Rust Rounds" : `Rust Rounds, ${week}`
+    },
+    what: "the Rust Rounds essays",
   },
 } as const satisfies Record<Feed, FeedWords>
 

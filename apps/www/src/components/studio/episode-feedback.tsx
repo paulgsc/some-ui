@@ -39,7 +39,7 @@ import {
   homeNotesQuery,
   notesAnswered,
 } from "@/lib/episode-feedback/home-query"
-import type { Feed } from "@/lib/feeds"
+import type { NotedFeed } from "@/lib/feeds"
 import { libraryTakes } from "@/lib/library-takes"
 import { FEED_FACTS } from "@/lib/studio-index"
 
@@ -135,7 +135,7 @@ export const EpisodeNote = ({
   episode,
   video,
 }: {
-  feed: Feed
+  feed: NotedFeed
   episode: string
   video: RefObject<HTMLVideoElement | null>
 }): JSX.Element => {

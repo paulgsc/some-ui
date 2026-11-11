@@ -33,6 +33,7 @@ import type {
   VideosState,
 } from "@/lib/call-videos/model"
 import { homeBytes, standing } from "@/lib/call-videos/model"
+import { isNoted } from "@/lib/feeds"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 import { CopyButton } from "@/components/copy-button"
 import { EpisodeNote } from "@/components/studio/episode-feedback"
@@ -67,7 +68,10 @@ const Watching = ({
         <Button size="sm" onClick={() => void videos.share(episode.key)}>
           {WORDS.share}
         </Button>
-        <EpisodeNote feed={feed} episode={episode.key} video={video} />
+        {/* Home keeps no note on an essay: its week was answered by voice. */}
+        {isNoted(feed) && (
+          <EpisodeNote feed={feed} episode={episode.key} video={video} />
+        )}
       </div>
     )
   }
@@ -216,7 +220,8 @@ export function useFeedVideos(feed: Feed): {
 
 /**
  * Home's list of a feed's episodes as it stands: what it says while reading,
- * unpaired, unanswered or empty, and its children once there are episodes.
+ * unpaired, unanswered or empty, and its children once there are episodes,
+ * after the feed's `voice` line when its episodes hold the owner's voice.
  */
 export const EpisodesList = ({
   feed,
@@ -260,10 +265,15 @@ export const EpisodesList = ({
       )
     }
     case "read": {
+      const { none, voice } = FEED_WORDS[feed]
       return list.episodes.length === 0 ? (
-        <p className="text-muted-foreground text-sm">{FEED_WORDS[feed].none}</p>
+        <p className="text-muted-foreground text-sm">{none}</p>
       ) : (
-        <>{children}</>
+        <>
+          {/* Wherever an episode holding the owner's voice is listed, it says so (#2692). */}
+          {voice !== null && <p className="text-sm font-medium">{voice}</p>}
+          {children}
+        </>
       )
     }
     default: {

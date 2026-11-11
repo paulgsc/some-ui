@@ -1206,6 +1206,24 @@
       "gray": "No family covered a module whose later outcome is a deploy. home-up is crosscutting, so no process may serve it, and the deploy's bounds are about wasted work, not uptime; synchronous is for routes that owe nothing later, and /compat owes a deploy. A new family is a promise the owner had not stated.",
       "undo": "Retire HD1 and HD2 with an amendment naming the owner's decision, move compat to home-up's modules, and drop HD1 and HD2 from the home-deploy process's witnesses; it still serves home-catches-up, which keeps the retired objectives.",
       "refs": ["server#779", "#2833", "#2846"]
+    },
+    {
+      "id": "C97",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": [
+        "some-ui:apps/www/src/lib/studio-index/words.ts",
+        "some-ui:apps/www/src/lib/call-videos/words.ts"
+      ],
+      "chose": "Studio lists the essays as a feed named \"The Rust Rounds essay\", fed the intuition \"Keep my sharpness and intuition when I look at Rust code, now that I rarely write it.\" (paraphrased from the owner's words on #2231), run every Monday for the week that closed on Sunday; an essay is named by its year and week (\"2026, week 46\") and shared as \"Rust Rounds, 2026, week 46\".",
+      "options": [
+        "these words",
+        "the essay as a part of a \"Rust Rounds\" feed named by the series",
+        "a quote of the owner's 2026-10-29 words verbatim as the intuition"
+      ],
+      "gray": "The feed's name and intuition are said on the owner's screens as the owner's own, and the YouTube share title is public; no check or earlier decision names them.",
+      "undo": "Edit FEED_FACTS[\"rust-essay\"] and FEED_WORDS[\"rust-essay\"]; nothing stores them.",
+      "refs": ["#2692", "#2231"]
     }
   ]
 }

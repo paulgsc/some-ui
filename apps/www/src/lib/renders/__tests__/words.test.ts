@@ -19,6 +19,7 @@ import {
   dayOf,
   episodeName,
   failedLine,
+  feedName,
   liveLine,
   nowLines,
   RENDERS_WORDS,
@@ -140,6 +141,10 @@ describe("RENDERS_WORDS and what it says of each render", () => {
 
   it("names an episode by its week, never its key", () => {
     expect(episodeName("preview", "preview-conference-call")).toBe("A video")
+    // A Rust Rounds essay's render, a failed one included, is named as Studio
+    // names it (EV3, RR17).
+    expect(feedName("rust-essay")).toBe("The Rust Rounds essay")
+    expect(episodeName("rust-essay", "2026-w46")).toBe("2026, week 46")
     expect(nowLines(now("rendering", null, null)).title).toBe(
       "The weekly call: 2026-11-06 to 2026-11-12"
     )

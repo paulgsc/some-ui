@@ -62,6 +62,7 @@ export type VideoOwner = Feed | "preview"
 const PREFIX: Record<VideoOwner, string> = {
   call: "",
   "playoff-delta": "playoff-delta-",
+  "rust-essay": "rust-essay-",
   preview: "preview-",
 }
 
