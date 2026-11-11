@@ -1,0 +1,11 @@
+{
+  "schema": "some-ui.voice-transcript/1",
+  "note": "note-311",
+  "of": "rust-round",
+  "ref": "2026-w46:QM-311",
+  "at": "2026-11-14T20:12:40.000Z",
+  "text": "Every field becomes its own String, so each event costs three heap allocations, and at forty thousand events a second that's what blows the p99. The fields only need to live as long as the line, so fields can hand back &str slices into the line. Then the cost is just the splitting. The catch is the result can't outlive the line.",
+  "language": "en",
+  "model": "ggml-small.en",
+  "heardAt": "2026-11-14T20:12:40.000Z"
+}

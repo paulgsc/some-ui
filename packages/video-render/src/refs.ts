@@ -1,6 +1,6 @@
 /**
  * What the weekly call and an ask both name (`call.ts`, `ask.ts`): a pull
- * request or an issue in one of the two repositories, and an option the
+ * request or an issue in a repository it may point to, and an option the
  * owner can choose. Its own module, so Studio's Asks on the phone (SFEED1)
  * read an ask without the call's template, which only the desktop's stage
  * draws.
@@ -10,14 +10,29 @@ import { z } from "zod"
 
 import { words } from "./format"
 
-/** The two repositories. */
-export const REPOS = ["some-ui", "server"] as const
+/**
+ * Where a ref may point: the two code repositories, and paulgsc/testing,
+ * whose pull requests carry data.
+ */
+export const REF_REPOS = ["some-ui", "server", "testing"] as const
 
-export type Repo = (typeof REPOS)[number]
+export type Repo = (typeof REF_REPOS)[number]
 
-/** A pull request or an issue in one of the two repositories. */
+/**
+ * Where the work is filed: the repositories whose asks Studio and the call
+ * read, and whose merged changes, trailers and epics the call's facts hold.
+ * Testing holds data, not work, so it isn't one.
+ */
+export const WORK_REPOS = [
+  "some-ui",
+  "server",
+] as const satisfies ReadonlyArray<Repo>
+
+export type WorkRepo = (typeof WORK_REPOS)[number]
+
+/** A pull request or an issue in a repository a ref may point to. */
 export const RefSchema = z.strictObject({
-  repo: z.enum(REPOS),
+  repo: z.enum(REF_REPOS),
   kind: z.enum(["pr", "issue"]),
   number: z.number().int().positive(),
 })

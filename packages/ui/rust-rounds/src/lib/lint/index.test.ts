@@ -1,4 +1,4 @@
-import ROUTINE from "@rust-rounds-root/ROUTINE.md?raw"
+import CARD_TUTOR from "@rust-rounds-root/CARD-TUTOR.md?raw"
 import type { Card, Round, RoundLog } from "@rust-rounds/lib/formats"
 import { LOG_SCHEMA } from "@rust-rounds/lib/formats"
 import type { Finding } from "@rust-rounds/lib/lint"
@@ -141,8 +141,8 @@ describe("describeFinding", () => {
     expect(describeFinding({ kind: "no-tutor-notes" })).toMatch(/tutor notes/)
   })
 
-  it("agrees with ROUTINE.md on both caps", () => {
-    expect(ROUTINE).toContain(`at most ${LINE_WIDTH_CAP} columns`)
-    expect(ROUTINE).toContain(`at most ${PROGRAM_LINE_CAP} lines`)
+  it("agrees with CARD-TUTOR.md on both caps", () => {
+    expect(CARD_TUTOR).toContain(`at most ${LINE_WIDTH_CAP} columns`)
+    expect(CARD_TUTOR).toContain(`at most ${PROGRAM_LINE_CAP} lines`)
   })
 })

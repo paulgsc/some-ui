@@ -1,0 +1,11 @@
+{
+  "schema": "some-ui.voice-transcript/1",
+  "note": "note-312",
+  "of": "rust-round",
+  "ref": "2026-w46:QM-312",
+  "at": "2026-11-14T20:24:02.000Z",
+  "text": "This is the borrow checker. buf is borrowed by batch and then I mutate it, so it's a lifetime problem. I'd probably reach for an arena, or Cow, or put it behind an Arc.",
+  "language": "en",
+  "model": "ggml-small.en",
+  "heardAt": "2026-11-14T20:24:02.000Z"
+}

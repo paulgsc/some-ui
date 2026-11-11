@@ -63,8 +63,10 @@ those goes on the FEED epic for the owner.
    It rewrites `playoff-delta/index.json` from every fill in the
    repository, with the sum of each. Commit it with the fills.
 
-8. **Open a pull request** in `paulgsc/testing` with the week's fills and the index,
-   titled `data(playoff-delta): narration for <season> week <n>` (or weeks
+8. **Open a pull request** in `paulgsc/testing`. Before pushing, run
+   `python3 scripts/guard.py --staged` in paulgsc/testing until it says
+   ready (the size and media guard; see its README). It carries the week's
+   fills and the index, titled `data(playoff-delta): narration for <season> week <n>` (or weeks
    `<a>` and `<b>`). Its body lists each fill and that the check said
    ready. Merge it once every fill says ready: the repository has no CI, so
    the check is its gate.

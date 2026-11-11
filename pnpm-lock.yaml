@@ -1530,6 +1530,9 @@ importers:
       '@some-ui/shared':
         specifier: workspace:*
         version: link:../shared
+      '@some-ui/video-render':
+        specifier: workspace:*
+        version: link:../../video-render
       '@some-ui/voice-capture':
         specifier: workspace:*
         version: link:../../voice-capture
@@ -1555,6 +1558,9 @@ importers:
       '@types/react':
         specifier: ^19.0.4
         version: 19.2.17
+      tsx:
+        specifier: ^4.22.4
+        version: 4.22.4
 
   packages/ui/shared:
     dependencies:
