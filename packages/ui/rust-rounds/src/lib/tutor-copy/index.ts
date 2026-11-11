@@ -1,16 +1,18 @@
 /**
  * "Copy for a tutor": the log as markdown, for any chat to answer with the
  * next round. Pasted into a chat with no other context, it is enough: it
- * carries the tutor's instructions and the formats (`ROUTINE.md`), one
- * worked example, the problems found in the last round, the tutor notes so
- * far, and the log with every voice note's transcript inline. It names notes
+ * carries the card era's tutor instructions and the formats (`CARD-TUTOR.md`,
+ * kept until RR20 #2696 retires the cards; the weekly routine's are
+ * `ROUTINE.md`), one worked example, the problems found in the last round,
+ * the tutor notes so far, and the log with every voice note's transcript
+ * inline. It names notes
  * by id and never holds audio.
  *
  * The instructions and the example are not written here, so neither can
- * drift: `ROUTINE.md` is the routine's own text, and the example is the one
+ * drift: `CARD-TUTOR.md` is the tutor's own text, and the example is the one
  * the schemas are tested against (`lib/worked-example`).
  */
-import ROUTINE from "@rust-rounds-root/ROUTINE.md?raw"
+import CARD_TUTOR from "@rust-rounds-root/CARD-TUTOR.md?raw"
 import type {
   Card,
   CardEvent,
@@ -249,7 +251,7 @@ export function copyForTutor(input: TutorCopyInput): string {
     "",
     ...ABOUT,
     "",
-    nested(ROUTINE.trimEnd()),
+    nested(CARD_TUTOR.trimEnd()),
     "",
     "## The worked example",
     "",

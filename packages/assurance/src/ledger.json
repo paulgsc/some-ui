@@ -2811,7 +2811,7 @@
           "claim": "A week's essay reaches the render only from the week's final record, never a draft, and one that contradicts that record is refused and said.",
           "requirement": "The rust_essays worker takes a rust-essay-<week>.json from the mailbox's brief folder only once the week is past its due and its final send (the last before due, #2832) is kept; it writes the essay and one take per ticket that record answered (and the take's word times) to the week's folder on home's database drive, whole; an essay whose answered tickets or transcripts differ from that record is not rendered, and is written to <week>.refused.log.",
           "verdict": "unproven",
-          "conclusion": "Structural, tested in server CI: an essay is given only from the final record and refused when its answers contradict it. Not yet shown: home compares no transcript with the record (it holds none), and a refusal when only a draft stands past the deadline has no test.",
+          "conclusion": "Structural, tested in server CI: an essay is given only from the final record and refused when its answers contradict it. The routine's essays take each answer's transcript only from home's own transcript of the take the final record names (some-ui's Monday finish step), so an essay it writes can't carry other words; an essay put by hand still can, since home compares no transcript with the record (it holds none). Not yet shown: a refusal when only a draft stands past the deadline has no test.",
           "tracked": "some-ui#2691",
           "evidence": [
             {
@@ -2828,6 +2828,11 @@
               "class": "structural",
               "says": "An essay plays exactly the takes the week's final record names.",
               "ref": "server:crates/db/rust_round/src/essay.rs"
+            },
+            {
+              "class": "structural",
+              "says": "The Monday routine writes an essay only from the week's final record, and fills each answer's transcript from home's newest transcript of the take that record names; the values the model writes have no transcript field, and a test pins the restated words.",
+              "ref": "some-ui:packages/ui/rust-rounds/src/lib/monday/finish.ts"
             }
           ],
           "watch": {
