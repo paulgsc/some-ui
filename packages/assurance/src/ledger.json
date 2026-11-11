@@ -2102,7 +2102,8 @@
         "some-ui:packages/video-render/CALL-ROUTINE.md",
         "server:infra/render",
         "server:infra/compose/call-render.yml",
-        "server:infra/docker/Dockerfile.render",
+        "some-ui:infra/render/Dockerfile",
+        "some-ui:apps/www/stage",
         "server:infra/kokoro",
         "some-ui:apps/www/tests/record/call.ts",
         "some-ui:apps/www/tests/record/call-recording.ts",
@@ -2465,7 +2466,8 @@
         "server:apps/servers/file_host/src/call_weeks/render.rs",
         "server:infra/render",
         "server:infra/compose/call-render.yml",
-        "server:infra/docker/Dockerfile.render",
+        "some-ui:infra/render/Dockerfile",
+        "some-ui:apps/www/stage",
         "some-ui:apps/www/tests/record/playoff-delta.ts",
         "server:apps/servers/file_host/src/feeds",
         "server:apps/servers/file_host/src/handlers/feed_videos.rs",
@@ -2685,7 +2687,8 @@
         "server:apps/servers/file_host/src/previews.rs",
         "server:infra/render",
         "server:infra/compose/call-render.yml",
-        "server:infra/docker/Dockerfile.render",
+        "some-ui:infra/render/Dockerfile",
+        "some-ui:apps/www/stage",
         "some-ui:apps/www/src/lib/home-link/previews.ts",
         "some-ui:apps/www/src/lib/template-preview",
         "some-ui:apps/www/src/components/studio/template-preview.tsx"
@@ -2791,7 +2794,8 @@
         "server:apps/servers/file_host/src/rust_essays.rs",
         "server:infra/render",
         "server:infra/compose/call-render.yml",
-        "server:infra/docker/Dockerfile.render",
+        "some-ui:infra/render/Dockerfile",
+        "some-ui:apps/www/stage",
         "server:infra/kokoro",
         "server:apps/servers/file_host/src/feeds",
         "server:apps/servers/file_host/src/handlers/feed_videos.rs",
@@ -4787,7 +4791,8 @@
           "on": "home",
           "paths": [
             "server:infra/render",
-            "server:infra/docker/Dockerfile.render",
+            "some-ui:infra/render/Dockerfile",
+            "some-ui:apps/www/stage",
             "some-ui:apps/www/tests/record/call.ts",
             "some-ui:apps/www/tests/record/call-recording.ts"
           ]
@@ -4905,7 +4910,8 @@
           "on": "home",
           "paths": [
             "server:infra/render",
-            "server:infra/docker/Dockerfile.render",
+            "some-ui:infra/render/Dockerfile",
+            "some-ui:apps/www/stage",
             "server:apps/servers/file_host/src/pd_fills/render.rs",
             "some-ui:apps/www/tests/record/playoff-delta.ts"
           ]
@@ -5009,7 +5015,8 @@
           "paths": [
             "server:infra/render",
             "server:infra/compose/call-render.yml",
-            "server:infra/docker/Dockerfile.render",
+            "some-ui:infra/render/Dockerfile",
+            "some-ui:apps/www/stage",
             "some-ui:apps/www/tests/record/preview.ts",
             "some-ui:apps/www/tests/record/call-recording.ts",
             "some-ui:packages/video-render/src/preview.ts"
@@ -5080,7 +5087,8 @@
           "on": "home",
           "paths": [
             "server:infra/render",
-            "server:infra/docker/Dockerfile.render",
+            "some-ui:infra/render/Dockerfile",
+            "some-ui:apps/www/stage",
             "some-ui:packages/video-render/src/essay.ts",
             "some-ui:apps/www/tests/record/essay.ts",
             "some-ui:apps/www/tests/record/essay-recording.ts"

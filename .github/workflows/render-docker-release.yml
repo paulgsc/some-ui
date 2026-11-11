@@ -1,0 +1,130 @@
+name: Render Docker Release
+# Publishes home's render worker, `pgathondu/render` (infra/render/Dockerfile),
+# from main once the image to be pushed has proved its bytes.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/www/**"
+      - "packages/**"
+      - "extensions/**"
+      - "infra/render/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/render-docker-release.yml"
+  # A publish of main as it is, whatever changed (a failed push, say).
+  workflow_dispatch:
+env:
+  DOCKERHUB_IMAGE: "pgathondu/render"
+permissions:
+  contents: read
+# One publish at a time, none cancelled: a cancelled run's push is lost. Two
+# queued runs can swap, leaving `:latest` a commit behind; home pins by digest.
+concurrency:
+  group: render-docker-release
+  cancel-in-progress: false
+  queue: max
+jobs:
+  # ── Detect whether the render graph changed ─────────────────────────────
+  # The graph is what the image builds (infra/render/Dockerfile's turbo
+  # filters; keep the two in step), plus www itself and the closures of what
+  # the stage's bundle carries (fetch-kit, content-registry).
+  detect:
+    name: Detect render changes
+    runs-on: ubuntu-latest
+    outputs:
+      publish: ${{ steps.detect.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/node-ci-setup
+        with:
+          build: none
+          resume-assets: "false"
+      - id: detect
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" != "push" ] || [ -z "$BASE_SHA" ] || [[ "$BASE_SHA" =~ ^0+$ ]]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if git diff --quiet "$BASE_SHA" "$HEAD_SHA" -- infra/render .github/workflows/render-docker-release.yml; then
+            range="[${BASE_SHA}...${HEAD_SHA}]"
+            task_count=$(
+              bash .github/actions/www-detect/graph-changed.sh \
+                --filter="www${range}" \
+                --filter="@some-ui/playoff-delta...${range}" \
+                --filter="@some-ui/honeycomb...${range}" \
+                --filter="@some-ui/video-render...${range}" \
+                --filter="@some-ui/video-motion...${range}" \
+                --filter="@some-ui/fetch-kit...${range}" \
+                --filter="@some-ui/content-registry...${range}"
+            )
+          else
+            task_count=1
+          fi
+          if [ "$task_count" -gt 0 ]; then publish=true; else publish=false; fi
+          echo "publish=${publish}" >> "$GITHUB_OUTPUT"
+
+  # ── Build, prove, push ──────────────────────────────────────────────────
+  # The image is built once and loaded, proved offline as home runs it (no
+  # network, uid 10000, a read-only root), and that same image is pushed: a
+  # second build could differ from what was proved. No layer cache: the build
+  # is a base pull, one apt install and one pnpm install, a few minutes cold.
+  publish:
+    name: Build, prove & push the render image
+    needs: detect
+    if: needs.detect.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build
+        run: |
+          docker build \
+            --file infra/render/Dockerfile \
+            --build-arg SOME_UI_COMMIT="$GITHUB_SHA" \
+            --tag render:proof \
+            .
+      # The same bytes twice, from nothing but the image: the sample
+      # composition, then the weekly call's preview, recorded from the stage
+      # the image carries and rendered with no voices. The music bed is the
+      # one file a preview takes from home's /brand; the renderer makes it
+      # from code (`render music-bed`, which refuses bytes its pin doesn't
+      # name), so the proof needs nothing of home's.
+      - name: Prove the bytes
+        run: |
+          work="$RUNNER_TEMP/render-proof"
+          mkdir -p "$work/brand" "$work/motion"
+          chmod -R 777 "$work"
+          run() {
+            docker run --rm --network none --user 10000:10001 --read-only \
+              --tmpfs /tmp:size=1G,exec --memory 4g --cpus 2 \
+              -v "$work:/work" --entrypoint /opt/some-ui/node_modules/.bin/tsx "$@"
+          }
+          run -w /opt/some-ui/packages/video-render render:proof \
+            src/cli.ts music-bed --out /work/brand/music-bed-v1.wav
+          run -w /opt/some-ui/packages/video-motion render:proof \
+            src/cli.ts prove sample --work /work/motion
+          for n in 1 2; do
+            run -w /opt/some-ui/apps/www render:proof \
+              tests/record/preview.ts --template conference-call --voices none \
+              --dist /opt/stage --brand /work/brand --out "/work/preview-$n"
+          done
+          sha256sum "$work"/preview-*/preview.mp4 | tee -a "$GITHUB_STEP_SUMMARY"
+          cmp "$work/preview-1/preview.mp4" "$work/preview-2/preview.mp4"
+      - uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Push
+        run: |
+          docker tag render:proof "$DOCKERHUB_IMAGE:$GITHUB_SHA"
+          docker tag render:proof "$DOCKERHUB_IMAGE:latest"
+          docker push "$DOCKERHUB_IMAGE:$GITHUB_SHA"
+          docker push "$DOCKERHUB_IMAGE:latest"
+          digest=$(docker inspect --format '{{index .RepoDigests 0}}' "$DOCKERHUB_IMAGE:$GITHUB_SHA")
+          echo "Pushed \`$digest\` from $GITHUB_SHA (home pins this digest)." | tee -a "$GITHUB_STEP_SUMMARY"
