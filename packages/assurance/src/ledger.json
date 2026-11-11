@@ -2893,7 +2893,7 @@
             },
             {
               "class": "structural",
-              "says": "The Renders page names each render by its feed, a Rust Rounds essay's failed one included, as Studio names it; tested.",
+              "says": "The Renders page names each render, a Rust Rounds essay's failed one included, by Studio's own names for its feed and episode (FEED_FACTS, FEED_WORDS), whose essay names are tested.",
               "ref": "some-ui:apps/www/src/lib/renders/words.ts"
             }
           ],

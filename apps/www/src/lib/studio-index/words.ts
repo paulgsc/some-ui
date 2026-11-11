@@ -237,11 +237,6 @@ export const STUDIO_INDEX_WORDS = {
     makingLine:
       "Made in sittings from your takes: record, watch, shape, finish.",
     open: "Open",
-    /** What the page says when home's list has no such episode. */
-    gone: (feed: Feed): string =>
-      feed === "rust-essay"
-        ? "Home hasn't made this essay yet. It comes once its week has closed and Claude has written it."
-        : "Home doesn't have this episode any more.",
   },
 
   feedback: {

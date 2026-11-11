@@ -1,7 +1,7 @@
 /**
  * Rust Rounds' way in from Practice Home (`@some-ui/rust-rounds/entry`): its
  * name, and the week open now (`rustWeekEntry`, which once the week has
- * closed names the week whose essay it opens), or, while the phone holds
+ * closed names the week whose essay its card links to), or, while the phone holds
  * no week, where the session was left, read from the card kept on screen.
  * Light on purpose: it loads none of the formats' schemas, so the Home that
  * shows it carries none of the session's weight.
@@ -20,7 +20,12 @@ import { entryLine, WORDS } from "./lib/play/words"
 import { CARD_WORDS } from "./lib/week-play/card-words"
 import { weekOpenNow } from "./lib/week-play/open-now"
 
+export { WEEK_ID, weekNumber } from "./lib/formats/week-id"
+
 export const RUST_ROUNDS_TITLE = WORDS.title
+
+/** The way from a closed week's card to its essay. */
+export const RUST_ESSAY_LINK = CARD_WORDS.essay
 
 /** The kept card's title; null for none, or one this light read cannot make out. */
 function titleOf(value: unknown): Title | null {
@@ -100,7 +105,7 @@ function saidOn(storage: KeyedStorage | null, week: CardWeek): number {
 
 /**
  * The card for the week open now: its line, and once its deadline has
- * passed, the week whose essay the card opens (RR17, #2692), else `null`.
+ * passed, the week whose essay the card links to (RR17, #2692), else `null`.
  */
 export type RustWeekCard = {
   readonly line: string
@@ -150,7 +155,6 @@ export function rustWeekEntry(
     )
   const of = week.tickets.length
   const closed = due < at
-  // Past its deadline, the card opens the week's essay (RR17).
   const essay = closed ? week.id : null
   if (isRecord(sent) && Array.isArray(sent.answers)) {
     const n = sent.answers.length

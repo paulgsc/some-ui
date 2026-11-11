@@ -5,6 +5,7 @@ import type { Offer, Visit } from "@some-ui/engagement"
 import { pageVisit, watchVisit } from "@some-ui/engagement"
 import { useShelf } from "@some-ui/react-hooks"
 import {
+  RUST_ESSAY_LINK,
   RUST_ROUNDS_TITLE,
   rustRoundsEntry,
   rustWeekEntry,
@@ -280,9 +281,10 @@ const StudyCard = ({
 
 /**
  * Rust Rounds' way in (#2235, the owner's D2): one tap opens the week open
- * now, saying its deadline and how many tickets are said (RR13), and once its
- * deadline has passed, the week's essay (RR17); while the phone holds no
- * week, the card left last, or one tap from the first.
+ * now, saying its deadline and how many tickets are said (RR13), its
+ * read-back once closed, and under it, the way to the week's essay in Studio
+ * (RR17); while the phone holds no week, the card left last, or one tap from
+ * the first.
  */
 const RustRoundsCard = ({ visit }: { visit: Visit }): JSX.Element => {
   // Read once as Home opens, never on each render; it changes only in Rust
@@ -298,28 +300,31 @@ const RustRoundsCard = ({ visit }: { visit: Visit }): JSX.Element => {
   )
   /* eslint-enable owner-guard/no-mount-snapshot */
   useShelf(visit, "rust-rounds", RUST_ROUNDS)
-  // Once the week has closed, the card opens its essay in Studio (RR17).
-  const to =
-    essay === null
-      ? ({ to: "/rust-rounds" } as const)
-      : ({
-          to: "/journal/episodes/$feed/$key",
-          params: { feed: "rust-essay", key: essay },
-        } as const)
   return (
-    <Link
-      {...to}
-      onClick={() => visit.take(HOME_OFFERS.rustRounds)}
-      className="bg-card border-border/50 flex items-center gap-3 rounded-2xl border p-4 shadow-sm"
-    >
-      <span className="bg-brand/30 text-brand-foreground dark:text-brand flex size-12 shrink-0 items-center justify-center rounded-2xl">
-        <SquareTerminal aria-hidden className="size-6" />
-      </span>
-      <span className="flex min-w-0 flex-1 flex-col">
-        <span className="font-bold">{RUST_ROUNDS_TITLE}</span>
-        <span className="text-muted-foreground text-sm">{line}</span>
-      </span>
-    </Link>
+    <div className="flex flex-col gap-2">
+      <Link
+        to="/rust-rounds"
+        onClick={() => visit.take(HOME_OFFERS.rustRounds)}
+        className="bg-card border-border/50 flex items-center gap-3 rounded-2xl border p-4 shadow-sm"
+      >
+        <span className="bg-brand/30 text-brand-foreground dark:text-brand flex size-12 shrink-0 items-center justify-center rounded-2xl">
+          <SquareTerminal aria-hidden className="size-6" />
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="font-bold">{RUST_ROUNDS_TITLE}</span>
+          <span className="text-muted-foreground text-sm">{line}</span>
+        </span>
+      </Link>
+      {essay !== null && (
+        <Link
+          to="/journal/episodes/$feed/$key"
+          params={{ feed: "rust-essay", key: essay }}
+          className="self-start rounded-full px-3 py-1.5 text-sm font-medium underline underline-offset-4"
+        >
+          {RUST_ESSAY_LINK}
+        </Link>
+      )}
+    </div>
   )
 }
 

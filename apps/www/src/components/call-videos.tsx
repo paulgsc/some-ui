@@ -68,7 +68,6 @@ const Watching = ({
         <Button size="sm" onClick={() => void videos.share(episode.key)}>
           {WORDS.share}
         </Button>
-        {/* Home keeps no note on an essay: its week was answered by voice. */}
         {isNoted(feed) && (
           <EpisodeNote feed={feed} episode={episode.key} video={video} />
         )}
@@ -270,7 +269,6 @@ export const EpisodesList = ({
         <p className="text-muted-foreground text-sm">{none}</p>
       ) : (
         <>
-          {/* Wherever an episode holding the owner's voice is listed, it says so (#2692). */}
           {voice !== null && <p className="text-sm font-medium">{voice}</p>}
           {children}
         </>
@@ -333,14 +331,11 @@ export const EpisodeScreen = ({
   feed,
   episodeKey,
   pair,
-  gone,
 }: {
   feed: Feed
   episodeKey: string
   /** The way to pairing, for a phone that isn't paired. */
   pair: JSX.Element
-  /** What to say when home's list no longer has the episode. */
-  gone: string
 }): JSX.Element => {
   const { videos, state } = useFeedVideos(feed)
   const { list, said } = state
@@ -368,7 +363,9 @@ export const EpisodeScreen = ({
         onTryAgain={() => void videos.open()}
       >
         {episode === undefined ? (
-          <p className="text-muted-foreground text-sm">{gone}</p>
+          <p className="text-muted-foreground text-sm">
+            {FEED_WORDS[feed].gone}
+          </p>
         ) : (
           <>
             <ul className="flex flex-col gap-3">

@@ -3,7 +3,7 @@
  * week's stores and apps/www's takes desk really write: the same week the
  * screen opens on (`currentWeek`), its deadline and the tickets said, then
  * what was sent, then that it closed and the week whose essay the card then
- * opens (RR17); the rounds' line while no week is held.
+ * links to (RR17); the rounds' line while no week is held.
  */
 import { rustWeekEntry } from "@rust-rounds/entry"
 import { WEEK_TAKES_KEY } from "@rust-rounds/lib/play/keys"
@@ -72,7 +72,6 @@ describe("Practice Home's line for the week (RR13)", () => {
     const storage = inMemoryStorage()
     keptWeeks(storage).hold({ weeks: [W46], unread: [] })
     const after = Date.parse(QUILLMOSS_WEEK.due) + 60_000
-    // Closed, the card opens the week's essay (RR17).
     expect(rustWeekEntry(storage, after)).toEqual({
       line: CARD_WORDS.closed(W46.week),
       essay: "2026-w46",

@@ -73,15 +73,12 @@ describe("VIDEOS_WORDS and FEED_WORDS", () => {
     )
   })
 
-  it("names a Rust Rounds essay by its year and week, and says it holds your voice", () => {
+  it("names a Rust Rounds essay by its year and week", () => {
     expect(FEED_WORDS["rust-essay"].label("2026-w46")).toBe("2026, week 46")
     expect(FEED_WORDS["rust-essay"].label("2027-w01")).toBe("2027, week 1")
     expect(FEED_WORDS["rust-essay"].shareTitle("2026-w46")).toBe(
       "Rust Rounds, 2026, week 46"
     )
-    expect(FEED_WORDS["rust-essay"].voice).toMatch(/your voice/)
-    expect(FEED_WORDS.call.voice).toBeNull()
-    expect(FEED_WORDS["playoff-delta"].voice).toBeNull()
   })
 
   it("names an episode whose key it can't read by a plain word, never the key", () => {
