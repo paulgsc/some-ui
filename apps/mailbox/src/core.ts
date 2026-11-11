@@ -532,6 +532,15 @@ const CALL_INDEX_KEYS: ReadonlySet<string> = new Set([
 ])
 /** The keys of each week the call index lists; any other is refused. */
 const HELD_WEEK_KEYS: ReadonlySet<string> = new Set(["from", "to", "sha256"])
+/** The keys of a `some-ui.routine-index/1` body for the Rust Rounds routine; any other is refused. */
+const RUST_INDEX_KEYS: ReadonlySet<string> = new Set([
+  "schema",
+  "routine",
+  "asOf",
+  "weeks",
+])
+/** Most characters of one pasted error, as home keeps it (paulgsc/server `rust_round_repo::sent::PASTE_MAX_CHARS`). */
+const PASTE_MAX_CHARS = 20_000
 const NO_AUDIO_INDEX = "an index carries no audio: home keeps the audio"
 const NO_DRIVE_INDEX = "an index names no Drive file"
 
@@ -630,14 +639,93 @@ const callShape: IndexShape = (body) => {
   return null
 }
 
+/** The pasted errors' texts in a Rust Rounds index, each as `JSON.parse` kept it. */
+function pastedTexts(body: Readonly<Record<string, unknown>>): Array<string> {
+  const weeks: unknown = body.weeks
+  return (Array.isArray(weeks) ? weeks : []).flatMap((week: unknown) => {
+    const pastes: unknown = isRecord(week) ? week.pastes : undefined
+    return (Array.isArray(pastes) ? pastes : []).flatMap((paste: unknown) =>
+      isRecord(paste) && typeof paste.text === "string" ? [paste.text] : []
+    )
+  })
+}
+
+/**
+ * The Rust Rounds index (RR18, paulgsc/some-ui#2693): every final week among
+ * the newest home holds, each as home's record of it
+ * (paulgsc/server `GET /rust-weeks/:id/record`), so the Monday routine writes
+ * each essay from the final record, never a draft. A pasted error is the
+ * owner's own text, and a linker's symbol can run past 256 base64-like
+ * characters, so the scan for encoded bytes leaves each paste's text out
+ * (`rustScanned`); a paste is still held to no `data:` URI, no Drive link and
+ * home's own length.
+ */
+const rustShape: IndexShape = (body) => {
+  const asOf = asOfRefusal(body)
+  if (asOf !== null) return asOf
+  const list = shapeOf([], ["weeks"], body)
+  if (list !== null) return list
+  const weeks: unknown = body.weeks
+  const seen = new Set<string>()
+  for (const week of Array.isArray(weeks) ? weeks.values() : []) {
+    if (!isRecord(week)) return "each week must be an object"
+    if (typeof week.week !== "string" || !WEEK_ID.test(week.week)) {
+      return "each week's week must be its id, like 2026-w46"
+    }
+    if (seen.has(week.week)) return "each week is named once"
+    seen.add(week.week)
+    if (week.closed !== true) return "each week must be past its deadline"
+    if (
+      week.sent !== null &&
+      !(isRecord(week.sent) && week.sent.draft === false)
+    ) {
+      return "each week's send must be its final, or null"
+    }
+    if (!Array.isArray(week.tickets) || !Array.isArray(week.pastes)) {
+      return "each week's tickets and pastes must be lists"
+    }
+  }
+  for (const text of pastedTexts(body)) {
+    if (text.length > PASTE_MAX_CHARS) {
+      return `a pasted error is at most ${PASTE_MAX_CHARS} characters`
+    }
+    if (DATA_URI.test(text)) return NO_AUDIO_INDEX
+    if (DRIVE_LINK.test(text)) return NO_DRIVE_INDEX
+  }
+  return null
+}
+
+/**
+ * The text the scan for audio reads in a Rust Rounds index: the body as sent,
+ * less each pasted error's text as `JSON.stringify` writes it. A text written
+ * any other way, or a key given twice, stays in and is scanned.
+ */
+const rustScanned = (
+  body: Readonly<Record<string, unknown>>,
+  text: string
+): string =>
+  pastedTexts(body).reduce(
+    (rest, paste) => rest.replaceAll(JSON.stringify(paste), '""'),
+    text
+  )
+
 /** The routines home computes an index for (README, "What a put must satisfy"), each with its keys and shape. */
 const INDEX_ROUTINES: ReadonlyMap<
   unknown,
-  { readonly keys: ReadonlySet<string>; readonly shape: IndexShape }
+  {
+    readonly keys: ReadonlySet<string>
+    readonly shape: IndexShape
+    /** The text the scan for audio and Drive reads; the body as sent when absent. */
+    readonly scanned?: (
+      body: Readonly<Record<string, unknown>>,
+      text: string
+    ) => string
+  }
 > = new Map([
   ["jobs", { keys: JOBS_INDEX_KEYS, shape: jobsShape }],
   ["reflections", { keys: REFLECTIONS_INDEX_KEYS, shape: reflectionsShape }],
   ["call", { keys: CALL_INDEX_KEYS, shape: callShape }],
+  ["rust", { keys: RUST_INDEX_KEYS, shape: rustShape, scanned: rustScanned }],
 ])
 
 /**
@@ -656,7 +744,7 @@ function indexRefusal(
   const what = `${String(body.routine)} index`
   const shape = shapeRefusal(
     body,
-    text,
+    routine.scanned?.(body, text) ?? text,
     routine.keys,
     NO_AUDIO_INDEX,
     NO_DRIVE_INDEX,

@@ -1333,7 +1333,7 @@ describe("home's indexes", () => {
       return json(response)
     }
     expect(await refused({ ...JOBS, routine: "topik" })).toEqual({
-      error: "routine must be jobs or reflections or call",
+      error: "routine must be jobs or reflections or call or rust",
     })
     expect(await refused(JOBS, "index-topik-20261031T144502118Z.json")).toEqual(
       { error: "the name must carry the body's routine" }
@@ -1608,6 +1608,134 @@ describe("home's call index", () => {
       error: "each held week is named once",
     })
     expect((await asHome(d, { ...CALL, held: [] })).status).toBe(201)
+  })
+})
+
+describe("home's Rust Rounds index", () => {
+  // A final week as home's record gives it (RR18, paulgsc/some-ui#2693).
+  const W46 = {
+    week: "2026-w46",
+    opens: "2026-11-09T00:00:00-08:00",
+    due: "2026-11-15T23:59:00-08:00",
+    closed: true,
+    sent: {
+      at: "2026-11-14T20:31:07.000Z",
+      receivedAt: "2026-11-14T20:31:09.120Z",
+      draft: false,
+    },
+    tickets: [
+      {
+        ticket: "QM-311",
+        answered: true,
+        take: "note-311",
+        recordedAt: "2026-11-14T20:12:40.000Z",
+        opens: 3,
+      },
+    ],
+    unanswered: [],
+    pastes: [
+      {
+        at: "2026-11-12T17:04:00.000Z",
+        text: "error[E0277]: `Rc<Vec<u8>>` cannot be sent between threads safely",
+        note: "note-p1",
+        receivedAt: "2026-11-12T17:04:02.000Z",
+      },
+    ],
+  }
+  const RUST = {
+    schema: "some-ui.routine-index/1",
+    routine: "rust",
+    asOf: "2026-11-14T20:31:09.120Z",
+    weeks: [W46],
+  }
+  const NAME = "index-rust-20261116T090000000Z.json"
+  const asHome = (d: Deps, body: unknown = RUST): Promise<Response> =>
+    put(d, "index", NAME, { token: HOME, body: JSON.stringify(body) })
+  const refused = async (d: Deps, body: unknown): Promise<unknown> => {
+    const response = await asHome(d, body)
+    expect(response.status).toBe(422)
+    return json(response)
+  }
+  const withPaste = (text: string): Record<string, unknown> => ({
+    ...RUST,
+    weeks: [{ ...W46, pastes: [{ ...W46.pastes[0], text }] }],
+  })
+
+  it("home puts it and the routine reads it, as home put it", async () => {
+    const d = deps()
+    expect((await asHome(d)).status).toBe(201)
+    expect(await json(await send(d, "GET", `/v1/index/items/${NAME}`))).toEqual(
+      RUST
+    )
+    expect(
+      (await asHome(deps(), { ...RUST, asOf: null, weeks: [] })).status
+    ).toBe(201)
+  })
+
+  it("takes only final weeks, each once, and says why not", async () => {
+    const d = deps()
+    expect(await refused(d, { ...RUST, extra: 1 })).toEqual({
+      error: "extra is not part of a rust index",
+    })
+    expect(await refused(d, { ...RUST, asOf: "Monday" })).toEqual({
+      error: "asOf must be when home last took in what the index counts",
+    })
+    expect(await refused(d, { ...RUST, weeks: {} })).toEqual({
+      error: "weeks must be a list",
+    })
+    expect(await refused(d, { ...RUST, weeks: ["2026-w46"] })).toEqual({
+      error: "each week must be an object",
+    })
+    expect(
+      await refused(d, { ...RUST, weeks: [{ ...W46, week: "w46" }] })
+    ).toEqual({
+      error: "each week's week must be its id, like 2026-w46",
+    })
+    expect(await refused(d, { ...RUST, weeks: [W46, W46] })).toEqual({
+      error: "each week is named once",
+    })
+    expect(
+      await refused(d, { ...RUST, weeks: [{ ...W46, closed: false }] })
+    ).toEqual({
+      error: "each week must be past its deadline",
+    })
+    for (const sent of [{ ...W46.sent, draft: true }, "final"]) {
+      expect(await refused(d, { ...RUST, weeks: [{ ...W46, sent }] })).toEqual({
+        error: "each week's send must be its final, or null",
+      })
+    }
+    expect(
+      await refused(d, { ...RUST, weeks: [{ ...W46, pastes: {} }] })
+    ).toEqual({ error: "each week's tickets and pastes must be lists" })
+    expect(
+      (await asHome(d, { ...RUST, weeks: [{ ...W46, sent: null }] })).status
+    ).toBe(201)
+  })
+
+  it("reads a pasted error as text, and still refuses audio or a Drive link in it", async () => {
+    // A v0-mangled symbol: past 256 base64-like characters, and only text.
+    const symbol = `_RNvMs${"0123456789abcdefABCDEF_".repeat(14)}`
+    expect(
+      (await asHome(deps(), withPaste(`undefined symbol: ${symbol}`))).status
+    ).toBe(201)
+    const d = deps()
+    expect(
+      await refused(d, withPaste("see data:audio/webm;base64,AAAA"))
+    ).toEqual({
+      error: "an index carries no audio: home keeps the audio",
+    })
+    expect(
+      await refused(d, withPaste("https://drive.google.com/file/d/x"))
+    ).toEqual({
+      error: "an index names no Drive file",
+    })
+    expect(await refused(d, withPaste("e".repeat(20_001)))).toEqual({
+      error: "a pasted error is at most 20000 characters",
+    })
+    // Outside a paste's text, a long encoded run is refused as anywhere else.
+    expect(
+      await refused(d, { ...RUST, weeks: [{ ...W46, unanswered: [symbol] }] })
+    ).toEqual({ error: "an index carries no audio: home keeps the audio" })
   })
 })
 
