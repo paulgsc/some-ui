@@ -8,6 +8,7 @@
  * Picking a clip for an episode comes with the episode's own page.
  */
 import type { JSX, ReactNode } from "react"
+import { useState } from "react"
 import { assertNever } from "@some-ui/core-utils"
 import type { Clip, ClipSide } from "@some-ui/video-render"
 import { refUrl } from "@some-ui/video-render"
@@ -102,13 +103,20 @@ const Frame = ({
   snip: ClipSide["snips"][number]
 }): JSX.Element => {
   const { data } = useQuery(clipFrameQuery(id, side, snip.file))
-  const why = missing(data, made)
+  // Bytes that read as base64 but don't decode as an image (a truncated PNG)
+  // show as their label and why, never as a broken image.
+  const [undecodable, setUndecodable] = useState(false)
+  const shows = data?.kind === "frame" && !undecodable
+  const why = undecodable ? WORDS.unreadable : missing(data, made)
   return (
     <li className="flex flex-col gap-1">
-      {data?.kind === "frame" ? (
+      {shows ? (
         <img
           src={data.src}
           alt={snip.label}
+          onError={() => {
+            setUndecodable(true)
+          }}
           className="border-border/60 w-full rounded-xl border"
         />
       ) : null}

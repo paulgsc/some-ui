@@ -17,6 +17,7 @@ import type * as ReactRouterModule from "@tanstack/react-router"
 import {
   act,
   cleanup,
+  fireEvent,
   render,
   screen,
   waitFor,
@@ -278,6 +279,19 @@ describe("the Library", () => {
     )
     screen.getByText("The popup opens")
     expect(screen.queryByRole("img")).toBeNull()
+  })
+
+  it("shows a frame the phone can't draw as its label and why, never a broken image", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      asText({ schema: "some-ui.clip-index/1", clips: [CLIP] })
+    )
+    vi.mocked(askClipFrame).mockResolvedValue(frame(200, PNG))
+    render(withQueryClient(<ClipScreen id={CLIP.id} />))
+    await waitFor(() => expect(screen.getAllByRole("img")).toHaveLength(2))
+    fireEvent.error(screen.getAllByRole("img")[0])
+    expect(screen.getAllByRole("img")).toHaveLength(1)
+    screen.getByText(STUDIO_INDEX_WORDS.clips.unreadable)
+    screen.getByText("The popup opens")
   })
 
   it("says a screen the session took is on the change's page", async () => {
