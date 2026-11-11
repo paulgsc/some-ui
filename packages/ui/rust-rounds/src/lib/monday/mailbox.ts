@@ -9,7 +9,7 @@
  * `201` (added) or `200` (the same bytes were already there).
  */
 import { TRANSCRIPT_NAME } from "@rust-rounds/lib/monday/record"
-import { isRecord } from "@some-ui/core-utils"
+import { isRecord, sha256Hex } from "@some-ui/core-utils"
 
 export type Fetch = (url: string, init?: RequestInit) => Promise<Response>
 
@@ -71,13 +71,6 @@ export async function list(
       after = Math.max(after, item.seq)
     }
   }
-}
-
-async function sha256Hex(bytes: ArrayBuffer): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", bytes)
-  return [...new Uint8Array(digest)]
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("")
 }
 
 /** One item's body, parsed, once its bytes match the listing's sum. */
