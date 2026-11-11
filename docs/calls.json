@@ -1256,6 +1256,242 @@
       "gray": "www's image waits on a merged release PR because it is served to people; the render image is served to no one and home runs it only by a digest moved on paulgsc/server, so a second gate before Docker Hub would be the owner's judgment either way. No check or earlier decision says which.",
       "undo": "Drop the push trigger from render-docker-release.yml, leaving workflow_dispatch, or put a release PR in front of the publish job as www-docker-release.yml does.",
       "refs": ["server#758"]
+    },
+    {
+      "id": "C85",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": [
+        "server:.github/workflows/gate-verdict.yml",
+        "server:scripts/pr_gate.py",
+        "server:docs/assurance.md",
+        "server:.github/workflows/assurance.yml",
+        "server:.github/workflows/deny.yml",
+        "server:.github/workflows/detect.yml",
+        "server:.github/workflows/lint.yml",
+        "server:.github/workflows/loc.yml",
+        "server:.github/workflows/routes.yml",
+        "server:.github/workflows/rust-runner.yml",
+        "server:.github/workflows/test.yml"
+      ],
+      "chose": "A bot PR's finished runs reach PR gate through a last job in every pull-request workflow, Tell PR gate, which needs every other job, runs only when github-actions[bot] pushed a head of this repository, and workflow_dispatches gate-verdict.yml; pr_gate.py fails a workflow that lacks it, rather than giving the image bot's push a GitHub App token so its runs are ordinary.",
+      "options": [
+        "each pull-request workflow ends with Tell PR gate, which dispatches the verdict",
+        "a GitHub App token for the bot's push, so its runs are ordinary and fire workflow_run",
+        "PR gate (open) waits in the job for bot heads, as the C69 fallback does"
+      ],
+      "gray": "GitHub fires no workflow_run when a run whose actor is github-actions[bot] finishes, so only the throttled 15-minute sweep could decide a bot PR's gate (#781). An App token would remove both the approval step and the need for the job, but it is a new credential, and a credential is the owner's call; no check or earlier decision chose between them.",
+      "undo": "Remove the tell_gate jobs from the eight workflows and the untold check from scripts/pr_gate.py; if the owner adopts an App token for detect.yml's push, they become unneeded.",
+      "refs": ["server#772", "server#781", "server#783"]
+    },
+    {
+      "id": "C86",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": [
+        "server:.github/workflows/gate-verdict.yml",
+        "server:scripts/pr_gate.py"
+      ],
+      "chose": "A dispatched verdict first waits, at most 3 minutes, only for runs whose sole unfinished job is Tell PR gate (or whose status lags that job's finish), then judges as before; nothing holds a runner while other checks are still working.",
+      "options": [
+        "settle briefly on runs whose only unfinished job is Tell PR gate, then judge",
+        "PR gate (open) waits in the job for bot heads until their checks finish, as the C69 fallback does"
+      ],
+      "gray": "The dispatch comes from inside the run it reports on, so the run is not yet complete when the verdict reads it. Waiting in the job for every check brings back the runner hold #762 removed; a short bounded settle on the telling job alone does not, and no convention set the bound.",
+      "undo": "Drop the settle wait from scripts/pr_gate.py and gate-verdict.yml; a dispatched verdict then reads a run still in progress and leaves the gate pending until the sweep.",
+      "refs": ["server#762", "server#772", "server#783"]
+    },
+    {
+      "id": "C87",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": [
+        "server:.github/workflows/assurance.yml",
+        "server:.github/workflows/deny.yml",
+        "server:.github/workflows/detect.yml",
+        "server:.github/workflows/lint.yml",
+        "server:.github/workflows/loc.yml",
+        "server:.github/workflows/routes.yml",
+        "server:.github/workflows/rust-runner.yml",
+        "server:.github/workflows/test.yml"
+      ],
+      "chose": "Tell PR gate is skipped when the head is a fork's, and fork heads are left to the sweep, as before.",
+      "options": [
+        "skip Tell PR gate on a fork's head and leave it to the sweep",
+        "let it run and fail"
+      ],
+      "gray": "A fork's pull_request token is read-only, so the dispatch would fail and turn an otherwise green run red (Codex on server#783). Skipping keeps such a gate on the slow sweep; failing makes it red for a reason that is not the code's.",
+      "undo": "Drop the head.repo.full_name clause from TELL_IF in the eight workflows.",
+      "refs": ["server#772", "server#783"]
+    },
+    {
+      "id": "C89",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": ["server:deny.toml", "server:docs/storage.md"],
+      "chose": "RUSTSEC-2026-0459 (the SQLite that sqlx 0.8.6 bundles) is cleared by a dated, reasoned ignore in deny.toml, revisited by 2027-02-11 and resting on a written invariant that every SQLite file opened here is one this deployment wrote, not by a sqlx bump.",
+      "options": [
+        "a dated, reasoned ignore in deny.toml, backed by a written invariant",
+        "upgrade sqlx to 0.9",
+        "leave the advisories job red"
+      ],
+      "gray": "No sqlx release reaches the fixed libsqlite3-sys 0.39: every sqlx-sqlite 0.8.x pins ^0.30.1, and 0.9.0 caps below 0.38, so the bump would not clear it. The flaw needs a database and -wal pair a less-trusted party wrote, and nothing here opens one; whether that is enough to ignore an advisory no convention says.",
+      "undo": "Drop the RUSTSEC-2026-0459 entry from deny.toml once a sqlx-sqlite release accepts libsqlite3-sys >= 0.39, then bump sqlx.",
+      "refs": ["server#764", "server#784"]
+    },
+    {
+      "id": "C90",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": ["server:docs/storage.md", "server:deny.toml"],
+      "chose": "The invariant the ignore rests on, which SQLite files are opened, lives in docs/storage.md as its own section, which deny.toml's comment names, rather than as a Tolerance in docs/home-compute.md.",
+      "options": [
+        "docs/storage.md, as a new section",
+        "a Tolerance in docs/home-compute.md",
+        "only in deny.toml's comment"
+      ],
+      "gray": "It constrains which SQLite files are opened, not how much of home a service takes, and a comment in deny.toml is not where someone adding an import would look. No convention placed an invariant that a security ignore depends on.",
+      "undo": "Move the section; deny.toml's comment points at it by name.",
+      "refs": ["server#764", "server#784"]
+    },
+    {
+      "id": "C93",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": ["server:nix/modules/home-deploy.nix", "server:Makefile"],
+      "chose": "The on-demand unit gets its envctl the way `make up` always did: ExecStartPre builds it as the checkout's owner (runuser -u <user> -- bash -c 'HOME=~<user> exec make -s envctl', cargo through `nix develop .#rust`), and ExecStart, as root, runs <checkout>/target/debug/envctl deploy --on-demand.",
+      "options": [
+        "build as the owner in the checkout (ExecStartPre), run that binary as root",
+        "package envctl as a flake output (rustPlatform.buildRustPackage) and put it on the unit's path from the nix store",
+        "run the whole unit's make, envctl included, as the owner, with root only for docker and STORAGE (needs C83's second option)"
+      ],
+      "gray": "Root runs a binary the owner's user built from the owner's checkout. Before, root ran deploy.py from the same checkout, which is the same trust, and `make -s up`, which built envctl as the owner, already ran inside it. A store-built envctl would pin the deploy to the flake input dotfiles locks rather than the checkout, which changes what `git pull` on home deploys. No convention covers it. The owner chose Rust and envctl; this call is only how the unit gets that binary.",
+      "undo": "Add packages.envctl to flake.nix (buildRustPackage over the workspace, -p envctl, SQLX_OFFLINE=true) and set ExecStart to \"${envctl}/bin/envctl --repo ${cfg.checkout} deploy …\"; drop ExecStartPre; update nix/modules/test.nix's \"the deploy runs on demand…\" expectation.",
+      "refs": ["server#786"]
+    },
+    {
+      "id": "C117",
+      "made": "2026-11-11",
+      "by": "owner",
+      "paths": [
+        "server:deploy/home/release.json",
+        "server:apps/envctl/src/deploy.rs",
+        "server:infra/compose/file_host.yml"
+      ],
+      "chose": "Home deploys one release: every compose service's image by digest in server's deploy/home/release.json, pulled, health-gated and rolled back together; rust-runner, orchestrator, render, kokoro and third-party images are no longer moved by hand.",
+      "options": [
+        "file_host only (C80)",
+        "a lockfile in server, bumped by an auto-merging release PR, applied whole",
+        "a manifest published as its own image, pulled by home"
+      ],
+      "gray": "The owner (2026-11-11): \"There's only one way to deploy this. We need all of them to be up\". rust-runner and orchestrator still have no healthcheck until R5 (server#794); until then the deploy gates them on 60 s without a restart.",
+      "undo": "Point envctl deploy back at the single file_host image and drop the IMAGE_* interpolation from infra/compose; release.json then pins nothing.",
+      "refs": ["server#787", "server#788", "server#793"],
+      "moves": "C80"
+    },
+    {
+      "id": "C118",
+      "made": "2026-11-11",
+      "by": "owner",
+      "paths": [
+        "server:apps/envctl/src/deploy.rs",
+        "server:nix/modules/home-deploy.nix"
+      ],
+      "chose": "The deploy fetches main and applies the release from a worktree of the commit that carries it (/var/lib/home-deploy/releases/<sha>), so compose, the deploy/<role>/ names and the image digests move as one commit; the owner's own checkout is never touched.",
+      "options": [
+        "never update anything on home but images (C82)",
+        "fast-forward the owner's checkout",
+        "run each release from its own worktree of main"
+      ],
+      "gray": "C82 kept main's compose and sops changes off home unreviewed. Every release is now a merged main commit whose CI checked the set, and the owner's checkout is left alone, so C82's reason holds while its rule moves. Home now does a git fetch on a demanded pass.",
+      "undo": "Run compose from the owner's checkout again and read release.json there; an image that needs a newer checkout then fails its preflight as under C82.",
+      "refs": ["server#787", "server#793"],
+      "moves": "C82"
+    },
+    {
+      "id": "C119",
+      "made": "2026-11-11",
+      "by": "owner",
+      "paths": ["server:.github/workflows/release-lock.yml"],
+      "chose": "A publish (server's image changesets, some-ui's www and render releases) opens a release PR in server that auto-merges on green; each image keeps its one human approval where it has it today, and forming the set adds none.",
+      "options": [
+        "the release PR waits for the owner",
+        "the release PR auto-merges on green"
+      ],
+      "gray": "It adds a writer to main. Its CI is what refuses an inconsistent set (server#790), so a set that merges is one the checks accepted, not one a person read.",
+      "undo": "Remove the auto-merge step from release-lock.yml; release PRs then wait for the owner's merge.",
+      "refs": ["server#787", "server#789", "server#791"]
+    },
+    {
+      "id": "C120",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": [
+        "server:deploy/home/release.json",
+        "server:.github/workflows/release-lock.yml"
+      ],
+      "chose": "Third-party images (redis, nats, prometheus, grafana, cadvisor, the exporters, metabase, redisinsight, ollama) are in the release, pinned repo:<real tag>@sha256, and refreshed by their own release PR monthly or on dispatch, never with an app publish. caddy runs at NixOS level and stays out.",
+      "options": [
+        "leave them floating on :latest",
+        "pin them in the release, refreshed on their own cadence",
+        "pin them in the release, refreshed with every publish"
+      ],
+      "gray": "Proposed by Claude in the design; the owner did not object. A month is a guess at the cost of reviewing third-party moves against the risk of a stale CVE fix, and no convention covers it.",
+      "undo": "Change the release-lock schedule, or drop the third-party services from the release and the guard.",
+      "refs": ["server#787", "server#796"]
+    },
+    {
+      "id": "C123",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": ["testing:scripts/guard.py", ".claude/skills/steward/SKILL.md"],
+      "chose": "paulgsc/testing refuses all media and binaries, by extension and by first bytes. The six clips PNGs present before the guard stay, each held to its SHA-256 in guard.py's LEGACY_MEDIA, which nothing joins.",
+      "options": [
+        "refuse all media, the existing PNGs held to their bytes in one named list",
+        "hold media to a small budget in one place",
+        "refuse all media and delete the existing PNGs"
+      ],
+      "gray": "The owner said to reject media in general and fold it into the size guard. The record is append-only (CLAUDE.md, 'Never lose the record'), and clips/ already held six PNGs that Studio's Library reads. The owner later confirmed keeping the list.",
+      "undo": "Remove an entry from LEGACY_MEDIA, or add a media budget to guard.py's CAPS, in a guarded testing PR.",
+      "refs": ["testing#6"]
+    },
+    {
+      "id": "C124",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": [
+        "testing:.github/workflows/guard.yml",
+        "testing:.github/workflows/playoff-delta.yml"
+      ],
+      "chose": "The guard runs on every push and pull request, checking every commit in the range. A failure on main opens or comments on one issue. Playoff Delta runs the guard itself before its own commit. No ruleset requires the guard.",
+      "options": [
+        "fail the run and open an issue on main, with no required check",
+        "a ruleset requiring the guard on main",
+        "post to some-ui's Slack webhook"
+      ],
+      "gray": "A required check would block the choir's direct pushes to main and the GITHUB_TOKEN commit, which can't be a ruleset bypass actor. some-ui's Slack step is commented out with no secret behind it. Nothing said which loud channel the owner hears.",
+      "undo": "Delete the tell-the-owner job, or have the owner add a ruleset once every writer uses pull requests.",
+      "refs": ["testing#6"]
+    },
+    {
+      "id": "C125",
+      "made": "2026-11-11",
+      "by": "claude",
+      "agreed": "2026-11-11",
+      "paths": [
+        "apps/www/src/lib/studio-clips/read.ts",
+        "packages/video-render/src/clip.ts",
+        "apps/mailbox/README.md"
+      ],
+      "chose": "Home makes walk clips' frames itself on its render lane, from the index in testing. Session-taken frames ride no mailbox folder, and only their labels are kept.",
+      "options": [
+        "home makes walk frames itself, and session-taken frames are not kept",
+        "amend the mailbox's brief to carry base64 frames",
+        "a new mailbox folder for frames"
+      ],
+      "gray": "The owner chose home for frames, but the mailbox takes only JSON under 1 MiB and refuses encoded bytes by design. MI6 needs the owner's amendment for a new folder, and brief has never carried media.",
+      "undo": "Build the brief-amendment route that the TESTING-GUARD build brief spells out (SOME-UI 4).",
+      "refs": ["testing#6"]
     }
   ]
 }
