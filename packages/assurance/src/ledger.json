@@ -2457,7 +2457,7 @@
     {
       "id": "clips-kept",
       "name": "Home keeps each clip's frames",
-      "why": "paulgsc/testing keeps no media (testing#6), so home keeps clip frames (owner, 2026-11-11, C125): an hourly timer reads clips/index.json; a walk side home renders itself on its render lane with motion walk, checked against the index's snips and labels; the 6 legacy PNGs are fetched and held to pinned SHA-256s; a session-taken side keeps only its labels. The paired phone reads them from home.",
+      "why": "paulgsc/testing keeps no media (testing#6), so home keeps clip frames (owner, 2026-11-11, C125): an hourly timer reads clips/index.json; a walk side home renders itself on its render lane with motion walk, checked against the index's snips and labels; the 6 legacy PNGs are fetched and held to pinned SHA-256s; a session-taken side keeps only its labels. Home serves them to the paired phone; Studio still reads paulgsc/testing until CLIPS-UI's reader lands.",
       "paths": [
         "server:apps/servers/file_host/src/clips",
         "server:crates/db/clip_frame",
@@ -2547,8 +2547,9 @@
           "property": "work",
           "claim": "What home keeps of the clips grows by a few frames per clip, and is kept for good.",
           "requirement": "clip_frame gains one row per frame home keeps (its clip, side and file, how it was made, its SHA-256, size and when), never updated or deleted; each frame is a PNG of at most 1 MiB on the drive under renders/clips/<id>/<side>/<file>, never replaced, at most 12 a walk side; a walk home kept also leaves its walk.json and the same snips under renders/clip-walk/<clip>-<side>; nothing else is kept.",
-          "verdict": "holds",
-          "conclusion": "One row per frame, keyed by clip, side and file, append-only by trigger. The six legacy frames are 1.15 MB together; at a few clips a week, each at most 12 frames of at most 1 MiB, kept twice for a walk, it stays under 50 MB a year. Shown in the store's and the pass's tests.",
+          "verdict": "unproven",
+          "conclusion": "One row per frame, keyed by clip, side and file, append-only by trigger. A walk side keeps at most 24 MiB (12 frames of at most 1 MiB, kept twice), and the six legacy frames are 1.15 MB together. Assuming a few clips a week with two walk sides each, that is at most about 7.5 GB a year at the cap; what a rendered walk frame weighs is not measured yet, so the real rate is unknown (server#807).",
+          "tracked": "server#807",
           "evidence": [
             {
               "class": "structural",
@@ -3725,7 +3726,7 @@
     {
       "store": "server:clip_frame",
       "class": "record",
-      "growth": "One row per frame of a clip home keeps (a walk's snips it renders itself, and the 6 legacy PNGs): clip id, side, file, SHA-256, bytes, when taken; the PNG (at most 1 MiB, at most 12 a walk side) is on the drive under renders/clips/<id>/<side>/, never the row. Append-only, triggers abort UPDATE and DELETE. Under 50 MB a year.",
+      "growth": "One row per frame of a clip home keeps (a walk's snips it renders itself, and the 6 legacy PNGs): clip id, side, file, SHA-256, bytes, when taken; the PNG is on the drive under renders/clips/<id>/<side>/, never the row, and a walk home kept also leaves its walk.json and the same snips under renders/clip-walk/<clip>-<side>. Append-only, triggers abort UPDATE and DELETE. At most 12 frames of at most 1 MiB a walk side, kept twice: at most 24 MiB a walk side. The six legacy frames are 1.15 MB together; no rendered walk frame has been measured yet.",
       "family": "clips-kept"
     },
     {
@@ -4981,7 +4982,7 @@
     {
       "id": "clips",
       "name": "Keeping each clip's frames on home, and showing them on the phone",
-      "why": "paulgsc/testing keeps no media (testing#6), so home keeps clip frames (the owner's decision, 2026-11-11, C125): home reads the clip index hourly, renders each walk side itself on its render lane and keeps it once it matches the index, keeps the six legacy frames held to their pinned digests, and serves each frame to the paired phone's Studio.",
+      "why": "paulgsc/testing keeps no media (testing#6), so home keeps clip frames (the owner's decision, 2026-11-11, C125): home reads the clip index hourly, renders each walk side itself on its render lane and keeps it once it matches the index, keeps the six legacy frames held to their pinned digests, and serves each frame to the paired phone, which Studio reads from once CLIPS-UI's reader lands.",
       "serves": ["clips-kept"],
       "witnesses": ["CL1", "CL2", "CL3", "CL4"],
       "segments": [
@@ -5046,10 +5047,13 @@
         },
         {
           "id": "studio",
-          "name": "Studio's Library shows each clip's frames from home, and a frame home doesn't hold as not held. Ours, on the phone.",
+          "name": "Studio's Library shows each clip's frames from paulgsc/testing today; reading them from home is CLIPS-UI's coming reader (claude/clips-from-home), which updates this segment when it lands. Ours, on the phone.",
           "owner": "ours",
           "on": "phone",
-          "paths": ["some-ui:packages/video-render/src/clip.ts"]
+          "paths": [
+            "some-ui:apps/www/src/lib/studio-clips",
+            "some-ui:apps/www/src/components/studio/clips.tsx"
+          ]
         }
       ],
       "signals": [
