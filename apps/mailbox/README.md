@@ -15,7 +15,8 @@ routines read it instead of hearing the audio themselves. For the routines' book
 the Jobs routine, the queue, what is new since the last digest and each waiting note's newest
 transcript; for the reflections routine, what is answered, the word ids its decks use, its
 latest scenes, the lessons waiting unopened and which reflections and prompts still wait on a
-voice note), so a routine reads it instead of rebuilding it. The index is a view of what home
+voice note; for the Rust Rounds routine, home's record of each week past its deadline), so a
+routine reads it instead of rebuilding it. The index is a view of what home
 keeps, so only the latest of each routine's stays. For the reflections routine: each **written
 reflection** home keeps (`reflection`), its text only, and each **drama prompt** (`prompt`),
 the next scene's prompt as the phone asked for it, its markdown only, and each **note on an
@@ -110,7 +111,9 @@ The folders are `brief`, `decisions`, `scout`, `scene`, `drama`, `run`, `opened`
 build-journal session's lists of the takes Drive holds (`drive-takes-…`) and the Monday
 routine's weeks of Rust Rounds (`rust-week-…`) and the essays that answer them
 (`rust-essay-…`), which home finds in the listing it makes of
-`brief` every pass anyway, so they cost no listing of their own (MI6).
+`brief` every pass anyway, so they cost no listing of their own (MI6). Home's record of each
+final week goes back the same way, as the Rust Rounds routine's index in `index` (below), a
+folder home already puts to: no new folder and no new listing.
 
 **`seq` only grows, and it has gaps.** SQLite hands out a number for every put that reaches the
 table, including a put of a name already held (`unchanged` or `conflict`), which stores nothing.
@@ -263,7 +266,7 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
   copy. Home puts a new one only when something it counts arrives or a moment the index
   carries passes (for the Jobs index, an open pick lapsing): a new day alone moves nothing
   else, so a day with neither puts none. Its `routine` names the routine, as the file's
-  name does: `jobs`, `reflections` or `call`. The Worker holds every index to its routine's keys and
+  name does: `jobs`, `reflections`, `call` or `rust`. The Worker holds every index to its routine's keys and
   no other, a name that carries the body's `routine`, and no audio or Drive link, by the same
   tests as a transcript, each refusal with its reason (`an index carries no audio` or
   `an index names no Drive file`). The Jobs index is
@@ -322,6 +325,26 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
   keys: an `asOf` that is an instant, and a `held` list whose every week has exactly `from`,
   `to` and `sha256`, two calendar days with `to` no earlier than `from`, a SHA-256 in lower-case
   hex, and a `from` no other week in the list has. It carries no week's words.
+  The Rust Rounds index is
+  `{"schema":"some-ui.routine-index/1","routine":"rust","asOf","weeks":[<record>…]}`
+  (RR18, paulgsc/some-ui#2693; the owner's choice A, 2026-11-11): `weeks`, every week among the
+  newest four home holds that is past its deadline, newest first, each exactly as
+  `GET /rust-weeks/:id/record` gives it (paulgsc/server `handlers/rust_week_record.rs`), its
+  final send (or `null` when nothing was sent by the deadline), each ticket answered or not with
+  its take's note id, and the errors pasted that week; `asOf`, the latest moment among those
+  weeks' deadlines and what reached home of them, or `null` with no week. The Monday routine
+  writes each week's essay from this record, never from a draft
+  (`packages/ui/rust-rounds/ROUTINE.md`). The Worker holds it to an `asOf` that is an instant
+  or `null`, and a `weeks` list whose every week is an object with a `week` id like `2026-w46`
+  that no other week in the list has, `closed` true, a `sent` that is `null` or an object
+  whose `draft` is false, and `tickets` and `pastes` lists. A pasted error is the owner's own
+  text: a linker's symbol in one can run past 256 base64-like characters, so the scan for
+  encoded bytes reads the body less each paste's text where it stands as a `"text"` value, as
+  `JSON.stringify` writes it (the same string under any other key, or written any other way,
+  stays in and is scanned), and each paste's text
+  is held instead to at most 20,000 characters (home's own cap) with no `data:` URI and no
+  Drive link. It carries the pasted errors' text and the takes' note ids, never what was
+  said: that is the `transcript` folder's.
 - **A written reflection** is `{"schema":"some-ui.reflection/1","reflection","session","at","text"}`:
   the phone's id for it (which the name carries), the session it is about (the phone's id for
   it, as a reflection transcript's `ref` names it), when it was written, and the typed line.
@@ -384,7 +407,8 @@ names no Drive file or link` when it names Drive or a file id), a take with any 
   the cap. A reflections index grows with the bases answered (tens of bytes each) and the
   distinct word ids the decks use (about 35 bytes each, a few new ones per scene), so about
   1 KB a day; the rest of it is bounded by what still waits. The call index grows by about
-  100 bytes a week.
+  100 bytes a week. The Rust Rounds index holds at most four weeks, a few KB each; a pasted
+  error can add up to about 80 KB, and home drops the oldest weeks to stay under the cap.
 
 ## Limits
 
