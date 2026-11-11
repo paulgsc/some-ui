@@ -686,7 +686,8 @@ const rustShape: IndexShape = (body) => {
     }
   }
   for (const text of pastedTexts(body)) {
-    if (text.length > PASTE_MAX_CHARS) {
+    // Home counts characters, not UTF-16 units (`chars().count()`).
+    if ([...text].length > PASTE_MAX_CHARS) {
       return `a pasted error is at most ${PASTE_MAX_CHARS} characters`
     }
     if (DATA_URI.test(text)) return NO_AUDIO_INDEX
@@ -697,15 +698,18 @@ const rustShape: IndexShape = (body) => {
 
 /**
  * The text the scan for audio reads in a Rust Rounds index: the body as sent,
- * less each pasted error's text as `JSON.stringify` writes it. A text written
- * any other way, or a key given twice, stays in and is scanned.
+ * less each pasted error's text where it stands as a `"text"` value, written
+ * as `JSON.stringify` writes it with no space after the key, as home writes it.
+ * The same string under any other key stays in and is scanned, and so does a
+ * text written any other way.
  */
 const rustScanned = (
   body: Readonly<Record<string, unknown>>,
   text: string
 ): string =>
   pastedTexts(body).reduce(
-    (rest, paste) => rest.replaceAll(JSON.stringify(paste), '""'),
+    (rest, paste) =>
+      rest.replaceAll(`"text":${JSON.stringify(paste)}`, '"text":""'),
     text
   )
 

@@ -1732,6 +1732,24 @@ describe("home's Rust Rounds index", () => {
     expect(await refused(d, withPaste("e".repeat(20_001)))).toEqual({
       error: "a pasted error is at most 20000 characters",
     })
+    // Home's cap is in characters: 20,000 emoji are 40,000 UTF-16 units.
+    expect((await asHome(deps(), withPaste("🦀".repeat(20_000)))).status).toBe(
+      201
+    )
+    // The same long run under another key is still scanned (Codex, #2864).
+    const run = "A".repeat(300)
+    expect(
+      await refused(d, {
+        ...withPaste(run),
+        weeks: [
+          {
+            ...W46,
+            pastes: [{ ...W46.pastes[0], text: run }],
+            unanswered: [run],
+          },
+        ],
+      })
+    ).toEqual({ error: "an index carries no audio: home keeps the audio" })
     // Outside a paste's text, a long encoded run is refused as anywhere else.
     expect(
       await refused(d, { ...RUST, weeks: [{ ...W46, unanswered: [symbol] }] })

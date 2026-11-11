@@ -339,8 +339,9 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
   that no other week in the list has, `closed` true, a `sent` that is `null` or an object
   whose `draft` is false, and `tickets` and `pastes` lists. A pasted error is the owner's own
   text: a linker's symbol in one can run past 256 base64-like characters, so the scan for
-  encoded bytes reads the body less each paste's text as `JSON.stringify` writes it (a text
-  written any other way, or a key given twice, stays in and is scanned), and each paste's text
+  encoded bytes reads the body less each paste's text where it stands as a `"text"` value, as
+  `JSON.stringify` writes it (the same string under any other key, or written any other way,
+  stays in and is scanned), and each paste's text
   is held instead to at most 20,000 characters (home's own cap) with no `data:` URI and no
   Drive link. It carries the pasted errors' text and the takes' note ids, never what was
   said: that is the `transcript` folder's.
