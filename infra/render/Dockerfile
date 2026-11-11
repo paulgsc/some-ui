@@ -1,0 +1,82 @@
+# syntax=docker/dockerfile:1.7
+
+# Home's render worker (`pgathondu/render`): the recorders (apps/www/tests/record),
+# the recording stage they capture (apps/www/stage, `build:stage`) and the
+# motion compositions (@some-ui/video-motion), all from the one commit this
+# image is built from, so a recorder and its stage can never be at two
+# versions (paulgsc/server#758). .github/workflows/render-docker-release.yml
+# publishes it from main; paulgsc/server's infra/compose/call-render.yml runs
+# it by digest, with infra/render/render-calls.sh (kept there, beside the
+# folders file_host writes) as its entrypoint.
+#
+# Everything that decides a video's bytes is pinned, so the same episode gives
+# the same video:
+# - Node and Chromium: Playwright's image for the version this repo pins
+#   (@playwright/test 1.62.1), by digest. Its Chromium headless shell, under
+#   PLAYWRIGHT_BROWSERS_PATH (/ms-playwright), draws the compositions.
+# - ffmpeg: Ubuntu noble's own build, at a version and from a dated snapshot
+#   of the archive (below), so a rebuild installs the same packages.
+# - the recorders, the stage and the motion: this checkout, at the commit the
+#   image is labelled with (`org.opencontainers.image.revision`).
+#
+# The stage is served by the recorders themselves (`siteOf` in
+# tests/record/voiced.ts) from /opt/stage, given as `--dist /opt/stage`: no
+# stage container, and no build of the whole app.
+#
+# What paulgsc/server's call-render.yml relies on: the recorders run from
+# /opt/some-ui/apps/www with /opt/some-ui/node_modules/.bin/tsx; the motion
+# from /opt/some-ui/packages/video-motion with its own node_modules/.bin/tsx;
+# the stage at /opt/stage; nothing in /usr/local/bin (render-calls.sh is
+# mounted there); nothing fetched at run time.
+FROM mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e
+
+# ffmpeg from snapshot.ubuntu.com, which serves the archive as it stood at
+# UBUNTU_SNAPSHOT: the version and every package it pulls in are what they
+# were then, signed by the same archive key, so a rebuild months later is the
+# same install. FFMPEG_VERSION is noble's release build (the base already
+# carries its libav* libraries at that version). Move both together.
+ARG UBUNTU_SNAPSHOT=20261110T000000Z
+ARG FFMPEG_VERSION=7:6.1.1-3ubuntu5
+RUN rm -f /etc/apt/sources.list /etc/apt/sources.list.d/* \
+    && printf '%s\n' \
+       'Types: deb' \
+       "URIs: https://snapshot.ubuntu.com/ubuntu/${UBUNTU_SNAPSHOT}" \
+       'Suites: noble noble-updates noble-security' \
+       'Components: main universe' \
+       'Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg' \
+       > /etc/apt/sources.list.d/ubuntu-snapshot.sources \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends "ffmpeg=${FFMPEG_VERSION}" \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /opt/some-ui
+COPY . .
+
+# One install and one build for all of it: www's graph (the recorders, the
+# stage and @some-ui/video-motion, a devDependency of www) and the workspace
+# packages the stage and the recorders load built (their `exports` name
+# dist/), never the whole app. `record:playoff-delta` imports
+# @some-ui/playoff-delta's `recording` entry, which exists only once that
+# package is built. Then the stage, into /opt/stage. The turbo filters are
+# render-docker-release.yml's detect graph too: keep the two in step.
+RUN corepack enable \
+    && pnpm install --frozen-lockfile --filter "www..." \
+    && pnpm exec turbo run build \
+       --filter="@some-ui/playoff-delta..." \
+       --filter="@some-ui/honeycomb..." \
+       --filter="@some-ui/video-render^..." \
+       --filter="@some-ui/video-motion^..." \
+    && pnpm --filter www build:stage \
+    && mv apps/www/out/stage /opt/stage \
+    && rm -rf apps/www/out /root/.cache /root/.local/share/pnpm/store
+
+ARG SOME_UI_COMMIT=
+LABEL org.opencontainers.image.source="https://github.com/paulgsc/some-ui" \
+      org.opencontainers.image.revision="${SOME_UI_COMMIT}"
+
+# The root is read-only at run time (call-render.yml); tsx and the renderer
+# write only under /tmp.
+ENV HOME=/tmp \
+    XDG_CACHE_HOME=/tmp/.cache \
+    TSX_CACHE_DIR=/tmp/tsx \
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
