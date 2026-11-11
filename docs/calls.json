@@ -1208,6 +1208,20 @@
       "refs": ["server#779", "#2833", "#2846"]
     },
     {
+      "id": "C104",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": ["apps/mailbox/src/core.ts", "apps/mailbox/README.md"],
+      "chose": "In the Rust Rounds index, the Worker's scan for encoded bytes leaves out each pasted error's text, as JSON.stringify writes it, and holds each paste's text instead to home's 20,000-character cap with no data: URI and no Drive link.",
+      "options": [
+        "leave pasted errors' text out of the encoded-run scan, held to its own checks",
+        "scan the whole index as every other index is scanned"
+      ],
+      "gray": "A pasted error is the owner's own text, and a linker's mangled symbol can run past the scan's 256 base64-like characters; one such paste would get the whole index refused, and every essay held back, until that week left the newest four (RR18-home's heads-up on the contract). No check or earlier decision said which matters more there.",
+      "undo": "Drop rustScanned from the rust entry of INDEX_ROUTINES in core.ts, and its paste checks in rustShape, with the README's sentence and the test of a long symbol.",
+      "refs": ["#2693", "#2231"]
+    },
+    {
       "id": "C97",
       "made": "2026-11-11",
       "by": "claude",
