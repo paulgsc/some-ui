@@ -96,8 +96,10 @@ up to 14 days.
    Never delete a week home doesn't hold byte for byte, and never edit a
    week home already holds.
 
-7. **Open a pull request** in `paulgsc/testing` with the week, the index and
-   any week leaving, titled `data(call): the weekly call for <from> to <to>`.
+7. **Open a pull request** in `paulgsc/testing`. Before pushing, run
+   `python3 scripts/guard.py --staged` in paulgsc/testing until it says
+   ready (the size and media guard; see its README). It carries the week,
+   the index and any week leaving, titled `data(call): the weekly call for <from> to <to>`.
    Its body says what the week's facts held (counts), any ask that didn't
    parse, and any week kept past `keep`. Merge it once `call-check` says the
    folder is ready: the repository has no CI, so that check is its gate.
