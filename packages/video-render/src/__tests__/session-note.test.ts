@@ -31,6 +31,14 @@ const note = (over: object = {}): Record<string, unknown> => ({
 })
 
 describe("a session's note", () => {
+  it("names a pull request in testing, where its data lands", () => {
+    const pulls = [
+      { repo: "some-ui", kind: "pr", number: 2869 },
+      { repo: "testing", kind: "pr", number: 6 },
+    ]
+    expect(parseSessionNote(note({ pulls })).ok).toBe(true)
+  })
+
   it("refuses a call that chose an option it doesn't list", () => {
     const parsed = parseSessionNote(note({ calls: [{ ...CALL, chose: 2 }] }))
     expect(!parsed.ok && parsed.problems).toEqual([

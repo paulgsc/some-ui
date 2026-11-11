@@ -8,7 +8,7 @@
  * An ask whose block `parseAskBody` refuses is still listed, by its title,
  * so the owner sees that it is there and can open its page.
  */
-import type { AskFile, Repo } from "@some-ui/video-render"
+import type { AskFile, WorkRepo } from "@some-ui/video-render"
 import { readAskIssue } from "@some-ui/video-render"
 import { z } from "zod"
 
@@ -29,7 +29,7 @@ export type Issues = z.infer<typeof IssuesSchema>
 export type StudioAsk = {
   /** Its repository and number (`askId`), as its page's address names it. */
   readonly id: string
-  readonly repo: Repo
+  readonly repo: WorkRepo
   readonly number: number
   /** Its page on GitHub. */
   readonly url: string
@@ -44,7 +44,7 @@ export const questionOf = (ask: StudioAsk): string =>
   ask.ask?.question ?? ask.title
 
 /** The open asks among `issues` of `repo`; pull requests are never asks. */
-export function asksOf(repo: Repo, issues: Issues): Array<StudioAsk> {
+export function asksOf(repo: WorkRepo, issues: Issues): Array<StudioAsk> {
   return issues
     .filter((issue) => issue.pull_request === undefined)
     .map((issue) => {
