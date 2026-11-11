@@ -45,10 +45,11 @@ import {
 } from "@rust-rounds/lib/formats"
 import { z } from "zod"
 
-export const WEEK_SCHEMA = "some-ui.rust-week/1"
+import { WEEK_ID } from "./week-id"
 
-/** A week's id: its ISO year and week, like `2026-w46`. One week per id, never reused. */
-export const WEEK_ID = /^\d{4}-w(?:0[1-9]|[1-4]\d|5[0-3])$/
+export { WEEK_ID } from "./week-id"
+
+export const WEEK_SCHEMA = "some-ui.rust-week/1"
 
 /**
  * A ticket's key, as a tracker writes one: `QM-311`. Upper case on purpose:

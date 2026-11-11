@@ -18,15 +18,15 @@ import { currentTakeOf } from "@some-ui/voice-capture"
 import { z } from "zod"
 
 import type { Appended } from "@/lib/bounded-list"
-import type { Feed } from "@/lib/feeds"
-import { FEEDS } from "@/lib/feeds"
+import type { NotedFeed } from "@/lib/feeds"
+import { NOTED_FEEDS } from "@/lib/feeds"
 
 export type { Category, Destination } from "@some-ui/video-render"
 export { CATEGORIES, destinationsOf, SAID, SHOWN } from "@some-ui/video-render"
 
 export const NoteSchema = z.object({
   id: z.string().min(1),
-  feed: z.enum(FEEDS),
+  feed: z.enum(NOTED_FEEDS),
   /** The episode's key, as home lists it. */
   episode: z.string().min(1),
   /** The moment in the episode, from its start. */
@@ -140,7 +140,7 @@ export const spokenTakeOf = (
  */
 export function noteOf(
   draft: Draft,
-  where: { readonly feed: Feed; readonly episode: string },
+  where: { readonly feed: NotedFeed; readonly episode: string },
   made: { readonly now: Date; readonly take: string | null }
 ): Note | null {
   if (!keepable(draft)) return null

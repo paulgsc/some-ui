@@ -3,7 +3,8 @@
  *
  * Practice's Home: its study card must not read a failed sessions read as
  * "nothing in progress" and offer Start over a session that is only
- * unreadable. Its Rust Rounds card opens the session on the card left last.
+ * unreadable. Its Rust Rounds card opens the session on the card left last,
+ * and once the week has closed, still opens it, with its essay beside it.
  */
 
 import { fakeQueryResult, withQueryClient } from "@/test-support/query-client"
@@ -12,8 +13,8 @@ import { sessionRecord } from "@/test-support/session-record"
 import { seedStop, stopRecord } from "@/test-support/session-stop"
 import type { EngagementEvent } from "@some-ui/engagement"
 import { setEngagementSink } from "@some-ui/engagement"
-import { keptRounds } from "@some-ui/rust-rounds"
-import { RUST_ROUNDS_TITLE } from "@some-ui/rust-rounds/entry"
+import { keptRounds, keptWeeks, QUILLMOSS_WEEK } from "@some-ui/rust-rounds"
+import { RUST_ESSAY_LINK, RUST_ROUNDS_TITLE } from "@some-ui/rust-rounds/entry"
 import type * as ReactRouterModule from "@tanstack/react-router"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -237,6 +238,38 @@ describe("Practice's Rust Rounds card", () => {
     expect(rustRoundsCard()?.textContent).toContain(
       "Continue: indexing, card 3"
     )
+  })
+
+  it("still opens a closed week, for its read-back, and offers its essay beside it (RR17)", () => {
+    keptWeeks(localStorage).hold({
+      weeks: [{ week: QUILLMOSS_WEEK, sha256: "a", runs: {}, ended: [] }],
+      unread: [],
+    })
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(Date.parse(QUILLMOSS_WEEK.due) + 60_000)
+    try {
+      renderWith({ data: [], isError: false })
+      expect(rustRoundsCard()?.getAttribute("to")).toBe("/rust-rounds")
+      const essay = screen.getByText(RUST_ESSAY_LINK).closest("a")
+      expect(essay?.getAttribute("to")).toBe("/journal/episodes/$feed/$key")
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("offers no essay while the week is open", () => {
+    keptWeeks(localStorage).hold({
+      weeks: [{ week: QUILLMOSS_WEEK, sha256: "a", runs: {}, ended: [] }],
+      unread: [],
+    })
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(Date.parse(QUILLMOSS_WEEK.due) - 60_000)
+    try {
+      renderWith({ data: [], isError: false })
+      expect(screen.queryByText(RUST_ESSAY_LINK)).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 

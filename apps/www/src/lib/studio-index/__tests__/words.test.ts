@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest"
 
 import { MACHINERY } from "@/lib/home-link/__tests__/machinery"
 import {
+  FEED_FACTS,
   FEED_KEPT,
   KIND_WORDS,
   STUDIO_INDEX_WORDS,
@@ -27,6 +28,7 @@ const all = [
   ...strings(KIND_WORDS),
   ...strings(STUDIO_INDEX_WORDS),
   ...strings(FEED_KEPT),
+  ...strings(FEED_FACTS),
   ...STUDIO_KINDS.map(STUDIO_INDEX_WORDS.backTo),
   STUDIO_INDEX_WORDS.asks.unblocks("the next story"),
   ...[1, 3, 12].flatMap((n) => [

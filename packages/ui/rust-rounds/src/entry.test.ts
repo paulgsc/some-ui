@@ -2,7 +2,8 @@
  * Practice Home's line for the week (RR13), read lightly from what the
  * week's stores and apps/www's takes desk really write: the same week the
  * screen opens on (`currentWeek`), its deadline and the tickets said, then
- * what was sent, then that it closed; the rounds' line while no week is held.
+ * what was sent, then that it closed and the week whose essay the card then
+ * links to (RR17); the rounds' line while no week is held.
  */
 import { rustWeekEntry } from "@rust-rounds/entry"
 import { WEEK_TAKES_KEY } from "@rust-rounds/lib/play/keys"
@@ -55,18 +56,26 @@ describe("Practice Home's line for the week (RR13)", () => {
       ])
     )
     expect(currentWeek([W47, W46], MID_46)).toBe(W46)
-    expect(rustWeekEntry(storage, MID_46)).toBe(CARD_WORDS.open(W46.week, 1, 3))
+    expect(rustWeekEntry(storage, MID_46)).toEqual({
+      line: CARD_WORDS.open(W46.week, 1, 3),
+      essay: null,
+    })
     // Before either opens, the one that opens first.
     const before = Date.parse("2026-11-01T00:00:00Z")
     expect(currentWeek([W47, W46], before)).toBe(W46)
-    expect(rustWeekEntry(storage, before)).toBe(CARD_WORDS.open(W46.week, 1, 3))
+    expect(rustWeekEntry(storage, before)?.line).toBe(
+      CARD_WORDS.open(W46.week, 1, 3)
+    )
   })
 
   it("says what was sent, then that the week closed, from the last send by the deadline", () => {
     const storage = inMemoryStorage()
     keptWeeks(storage).hold({ weeks: [W46], unread: [] })
     const after = Date.parse(QUILLMOSS_WEEK.due) + 60_000
-    expect(rustWeekEntry(storage, after)).toBe(CARD_WORDS.closed(W46.week))
+    expect(rustWeekEntry(storage, after)).toEqual({
+      line: CARD_WORDS.closed(W46.week),
+      essay: "2026-w46",
+    })
     weeksSent(storage).keep(() => [
       {
         week: "2026-w46",
@@ -75,7 +84,10 @@ describe("Practice Home's line for the week (RR13)", () => {
         passed: ["QM-312", "QM-313"],
       },
     ])
-    expect(rustWeekEntry(storage, MID_46)).toBe(CARD_WORDS.sent(W46.week, 1, 3))
+    expect(rustWeekEntry(storage, MID_46)).toEqual({
+      line: CARD_WORDS.sent(W46.week, 1, 3),
+      essay: null,
+    })
     // Sent again, the last send by the deadline is what the card says (RR22);
     // one stamped after it never counts.
     weeksSent(storage).keep((kept) => [
@@ -96,9 +108,12 @@ describe("Practice Home's line for the week (RR13)", () => {
         passed: ["QM-311", "QM-312", "QM-313"],
       },
     ])
-    expect(rustWeekEntry(storage, MID_46)).toBe(CARD_WORDS.sent(W46.week, 2, 3))
-    expect(rustWeekEntry(storage, after)).toBe(
-      CARD_WORDS.closedSent(W46.week, 2, 3)
+    expect(rustWeekEntry(storage, MID_46)?.line).toBe(
+      CARD_WORDS.sent(W46.week, 2, 3)
     )
+    expect(rustWeekEntry(storage, after)).toEqual({
+      line: CARD_WORDS.closedSent(W46.week, 2, 3),
+      essay: "2026-w46",
+    })
   })
 })

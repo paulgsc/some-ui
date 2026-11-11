@@ -402,7 +402,7 @@ export function receiptsLine(home: ReceiptsReading["kind"]): string | null {
 
 /**
  * My data's page for each feed's videos (ST38, #2661; FEED4): an episode's
- * video, a week of the call or of Playoff Delta, and then the rest of its
+ * video, a week of the call, of Playoff Delta or of Rust Rounds, and then the rest of its
  * folder are let go of home once its YouTube link is saved, each asked once,
  * "Keep it" first. Each feed's own words (its heading, an episode's label,
  * "still making") are `FEED_WORDS`', as Studio says them.
@@ -412,7 +412,7 @@ export const CALL_DELETING = {
   row: "The videos home makes",
   rowLine: "Let home's copy go once a video is on YouTube",
   title: "The videos home makes",
-  lead: "Home keeps each video, the weekly call's and Playoff Delta's, until it's on YouTube. Once its link is saved in Studio, let home's copy go: the video first, then the rest.",
+  lead: "Home keeps each video, the weekly call's, Playoff Delta's and each Rust Rounds essay's, until it's on YouTube. Once its link is saved in Studio, let home's copy go: the video first, then the rest.",
   /** An episode, named with its feed, as the sheet says it. */
   episode: (feed: Feed, key: string): string => {
     const { heading, week } = FEED_WORDS[feed]
