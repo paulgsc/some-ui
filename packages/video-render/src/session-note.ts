@@ -10,6 +10,9 @@
  *
  * Everything in a note is public, as the testing repository is: what was
  * done and decided, never the owner's data.
+ *
+ * `render session-check` checks the folder, and `python3 scripts/guard.py
+ * --staged` in paulgsc/testing says ready before the note is pushed to main.
  */
 
 import { z } from "zod"

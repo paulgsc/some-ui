@@ -1,0 +1,43 @@
+{
+  "week": "2026-w46",
+  "opens": "2026-11-09T00:00:00-08:00",
+  "due": "2026-11-15T23:59:00-08:00",
+  "closed": true,
+  "sent": {
+    "at": "2026-11-14T20:31:07.000Z",
+    "receivedAt": "2026-11-14T20:31:09.120Z",
+    "draft": false
+  },
+  "tickets": [
+    {
+      "ticket": "QM-311",
+      "answered": true,
+      "take": "note-311",
+      "recordedAt": "2026-11-14T20:12:40.000Z",
+      "opens": 3
+    },
+    {
+      "ticket": "QM-312",
+      "answered": true,
+      "take": "note-312",
+      "recordedAt": "2026-11-14T20:24:02.000Z",
+      "opens": 2
+    },
+    {
+      "ticket": "QM-313",
+      "answered": false,
+      "take": null,
+      "recordedAt": null,
+      "opens": 2
+    }
+  ],
+  "unanswered": ["QM-313"],
+  "pastes": [
+    {
+      "at": "2026-11-12T17:04:00.000Z",
+      "text": "error[E0277]: `Rc<Vec<u8>>` cannot be sent between threads safely\n  --> src/render.rs:41:27\n   |\n41 |     let worker = thread::spawn(move || {\n   |                  ------------- ^------\n   |                  |             |\n   |                  |             `Rc<Vec<u8>>` cannot be sent between threads safely\n   |                  required by a bound introduced by this call",
+      "note": "note-p1",
+      "receivedAt": "2026-11-12T17:04:02.000Z"
+    }
+  ]
+}

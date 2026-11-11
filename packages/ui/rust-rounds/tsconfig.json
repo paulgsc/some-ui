@@ -8,6 +8,13 @@
       "@rust-rounds-root/*": ["./*"]
     }
   },
-  "include": ["src", "vite.config.ts", "vitest.config.ts", "vitest.setup.ts"],
+  "include": [
+    "src",
+    "src/**/*.json",
+    "scripts",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "vitest.setup.ts"
+  ],
   "exclude": ["node_modules", "build", "dist"]
 }

@@ -1492,6 +1492,54 @@
       "gray": "The owner chose home for frames, but the mailbox takes only JSON under 1 MiB and refuses encoded bytes by design. MI6 needs the owner's amendment for a new folder, and brief has never carried media.",
       "undo": "Build the brief-amendment route that the TESTING-GUARD build brief spells out (SOME-UI 4).",
       "refs": ["testing#6"]
+    },
+    {
+      "id": "C101",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": ["packages/ui/rust-rounds/src/lib/monday/finish.ts"],
+      "chose": "Until the decay record (RR19) derives it, the Monday routine's finish step draws the essay's chart: a row for each concept the week's tickets named, a column for each week the mailbox holds an essay for (at most 12, this one last), and each cell the highest SOLO level of that week's answered tickets naming the concept, silent when every ticket naming it went unanswered, unmet when none named it.",
+      "options": [
+        "draw the chart from the mailbox's weeks and essays by that rule",
+        "draw only this week's column",
+        "leave the chart to RR19 and hold every essay until then"
+      ],
+      "gray": "The essay's format requires a chart, #2231 gives deriving it to RR19, which isn't built, and C45's sample chart was drawn by hand; nothing said what an essay written before RR19 shows.",
+      "undo": "Replace chartOf in finish.ts with RR19's derivation once it lands.",
+      "refs": ["#2693", "#2695", "#2231"]
+    },
+    {
+      "id": "C102",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": ["packages/ui/rust-rounds/src/lib/monday/finish.ts"],
+      "chose": "Until RR19 derives it, every essay the routine writes carries the role line on the Dreyfus ladder the sample cites, saying the fit isn't worked out yet and that the rule comes with the decay record; the model writes no role.",
+      "options": [
+        "a fixed line saying it isn't worked out yet",
+        "a role the model judges each week",
+        "hold every essay until RR19"
+      ],
+      "gray": "The essay's format requires a role line, and the owner's answer on #2694 says the routine doesn't write it and RR19 derives it; RR19 isn't built.",
+      "undo": "Replace ROLE_NOT_YET in finish.ts with RR19's derived line.",
+      "refs": ["#2694", "#2695", "#2693"]
+    },
+    {
+      "id": "C103",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": [
+        "packages/ui/rust-rounds/src/lib/monday/finish.ts",
+        "packages/ui/rust-rounds/ROUTINE.md"
+      ],
+      "chose": "The routine's finish step holds each deep dive's said text to 300 to 750 words, the owner's 2 to 5 minutes at an estimated 150 words a minute, and leaves the essay's own format (parseEssay) as it is.",
+      "options": [
+        "a word bound in the routine's finish step",
+        "a bound in the essay's format itself",
+        "no bound until a rendered essay measures Kokoro's pace"
+      ],
+      "gray": "#2231 lists the missing 2-to-5-minute hold as a known gap and no one has measured Kokoro's pace; a bound in the format would refuse the template's sample, whose dives are about 100 words.",
+      "undo": "Drop the word check from essayTicket in finish.ts and DIVE_WORDS_* with ROUTINE.md's sentence, or set WORDS_A_MINUTE to the pace a rendered essay measures.",
+      "refs": ["#2693", "#2231"]
     }
   ]
 }

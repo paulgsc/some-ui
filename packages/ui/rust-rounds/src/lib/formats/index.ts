@@ -10,7 +10,7 @@
  * - `some-ui.rust-tutor-notes/1`, the open and smoothed rough edges per
  *   concept, travels with every round.
  *
- * `ROUTINE.md` (beside `package.json`) describes them for a tutor, field by
+ * `CARD-TUTOR.md` (beside `package.json`) describes them for a tutor, field by
  * field; a test holds it to naming every field these schemas have.
  *
  * Every object is strict: a key the format does not name is refused, so a
