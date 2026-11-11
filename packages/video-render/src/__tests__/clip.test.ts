@@ -196,6 +196,35 @@ describe("a clips folder of the index now (/2)", () => {
     ])
   })
 
+  it("names two frames of one side with the same name", () => {
+    const raw = indexV2({
+      after: {
+        made: "session",
+        snips: [
+          { file: "after/a/01.png", label: "One" },
+          { file: "after/b/01.png", label: "Two" },
+        ],
+      },
+    })
+    expect(clipFolderProblems(folderV2(raw), nothing)).toEqual([
+      "never-suspend: its after has two frames named 01.png, and home keeps them by name",
+    ])
+  })
+
+  it.each(["../sample.json", "/etc/sample.json", "after/../../x.json"])(
+    "refuses a sample out of the clip's folder: %s",
+    (sample) => {
+      const raw = indexV2({
+        after: {
+          made: "walk",
+          walk: { app: "suspender-ledger", sample },
+          snips: [{ file: "after/01.png", label: "x" }],
+        },
+      })
+      expect(parseClipIndex(raw).ok).toBe(false)
+    }
+  )
+
   it("refuses a walk with no sample, and a sha256 that isn't one", () => {
     const noSample = indexV2({
       after: { made: "walk", snips: [{ file: "after/01.png", label: "x" }] },

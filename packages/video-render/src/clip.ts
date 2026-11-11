@@ -143,6 +143,10 @@ const LEGACY_FRAMES: ReadonlySet<string> = new Set([
   "studio-release-promo/before/01-templates.png",
 ])
 
+/** A snip's file name without its folders: home keeps a side's frames by it. */
+export const frameName = (file: string): string =>
+  file.slice(file.lastIndexOf("/") + 1)
+
 /** Where a file of clip `id` is, under `clips/`. */
 export const clipPath = (id: string, file: string): string => `${id}/${file}`
 
@@ -156,7 +160,8 @@ const WalkFileSchema = z.object({
  * Every reason a `clips/` folder can't be published: its index unread, a
  * legacy frame (`LEGACY_FRAMES`) the index names that isn't there, a frame
  * kept here that isn't legacy, and for a walk either the sample home replays
- * missing (`/2`) or its `walk.json` missing or listing other snips (`/1`).
+ * missing (`/2`) or its `walk.json` missing or listing other snips (`/1`),
+ * and two frames of one side with the same name, since home serves them by it.
  * `read` gives a JSON file under `clips/` (undefined when it's missing or
  * isn't JSON); `exists` says whether any file is there.
  */
@@ -172,6 +177,11 @@ export function clipFolderProblems(
     for (const side of ["before", "after"] as const) {
       const it: ClipSide | null = clip[side]
       if (it === null) continue
+      const names = it.snips.map((snip) => frameName(snip.file))
+      for (const name of once(names.filter((n, i) => names.indexOf(n) !== i)))
+        problems.push(
+          `${clip.id}: its ${side} has two frames named ${name}, and home keeps them by name`
+        )
       for (const snip of it.snips) {
         const path = clipPath(clip.id, snip.file)
         if (LEGACY_FRAMES.has(path) || v1) {
