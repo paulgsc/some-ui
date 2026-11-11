@@ -226,6 +226,9 @@ it("links a reference to where it is on GitHub", () => {
   expect(refUrl({ repo: "some-ui", kind: "issue", number: 2248 })).toBe(
     "https://github.com/paulgsc/some-ui/issues/2248"
   )
+  expect(refUrl({ repo: "testing", kind: "pr", number: 6 })).toBe(
+    "https://github.com/paulgsc/testing/pull/6"
+  )
 })
 
 describe("the call as a cut list", () => {
