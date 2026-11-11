@@ -3062,7 +3062,7 @@
           "claim": "A week's essay video leaves home only by the owner's act from My data, and each delete leaves a receipt; deleting one of the week's takes deletes the video too, and the week is never rendered again.",
           "requirement": "My data lets a week's essay go as the call's (its video once its YouTube link is recorded, then the rest), and deleting a take of the week deletes its video and the rest with cause take-deleted; each step writes an append-only receipt to rust_essay_video_deletion kept with the account, and a week let go or with a take deleted is not rendered again.",
           "verdict": "unproven",
-          "conclusion": "Structural on home, tested in server CI, and My data offers the essay's let-go through the call's two steps and receipts (RR17, #2692). Not yet shown: no test shows a week let go is never rendered again, and no owner's run on a phone.",
+          "conclusion": "Structural on home, tested in server CI, including that a week let go is never given to the renderer again, and My data offers the essay's let-go through the call's two steps and receipts (RR17, #2692). Not yet shown: no owner's run on a phone.",
           "tracked": "some-ui#2691",
           "evidence": [
             {
@@ -3079,6 +3079,16 @@
               "class": "structural",
               "says": "My data lists each essay home holds beside the call's, and offers its video only once its link is saved, then the rest, each asked once and ending on home's receipt, through the one let-go every feed shares; the list says the video holds your voice.",
               "ref": "some-ui:apps/www/src/components/settings/device-my-data-calls.tsx"
+            },
+            {
+              "class": "measured",
+              "says": "A week let go, video then rest, is never given to the worker again once its renders folder is gone: export gives nothing and recreates no input, and tidy leaves none (a_week_let_go_is_never_given_again).",
+              "ref": "server:apps/servers/file_host/src/rust_essays.rs"
+            },
+            {
+              "class": "measured",
+              "says": "A week withdrawn for a deleted take is neither listed among the feed's videos nor let go (an_essay_withdrawn_for_a_deleted_take_is_not_listed).",
+              "ref": "server:apps/servers/file_host/src/feeds/videos.rs"
             }
           ],
           "watch": {
