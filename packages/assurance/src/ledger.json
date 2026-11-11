@@ -2540,6 +2540,38 @@
             "by": "none"
           },
           "amendments": []
+        },
+        {
+          "id": "CL4",
+          "kind": "RE9",
+          "property": "work",
+          "claim": "What home keeps of the clips grows by a few frames per clip, and is kept for good.",
+          "requirement": "clip_frame gains one row per frame home keeps (its clip, side and file, how it was made, its SHA-256, size and when), never updated or deleted; each frame is a PNG of at most 1 MiB on the drive under renders/clips/<id>/<side>/<file>, never replaced, at most 12 a walk side; a walk home kept also leaves its walk.json and the same snips under renders/clip-walk/<clip>-<side>; nothing else is kept.",
+          "verdict": "holds",
+          "conclusion": "One row per frame, keyed by clip, side and file, append-only by trigger. The six legacy frames are 1.15 MB together; at a few clips a week, each at most 12 frames of at most 1 MiB, kept twice for a walk, it stays under 50 MB a year. Shown in the store's and the pass's tests.",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "clip_frame's key is the clip, side and file; its checks hold a frame to 1 MiB and a plain .png name, and its triggers refuse UPDATE and DELETE.",
+              "ref": "server:migrations/20261111000100_create_clip_frame.up.sql"
+            },
+            {
+              "class": "measured",
+              "says": "The six legacy frames, all home keeps from session-taken clips, are 1,154,781 bytes together, the largest 347,126.",
+              "ref": "https://github.com/paulgsc/testing/tree/main/clips"
+            }
+          ],
+          "proof": [
+            "server:crates/db/clip_frame/src/lib.rs#a_frame_is_kept_once_as_taken",
+            "server:crates/db/clip_frame/src/lib.rs#no_kept_frame_is_rewritten_or_deleted",
+            "server:crates/db/clip_frame/src/lib.rs#what_is_not_a_plain_frame_is_refused",
+            "server:apps/servers/file_host/src/clips/pass.rs#a_walk_that_does_not_match_the_index_is_not_kept"
+          ],
+          "watch": {
+            "by": "dashboard",
+            "ref": "server:infra/grafana/dashboards/storage.jsonnet"
+          },
+          "amendments": []
         }
       ]
     },
@@ -4942,6 +4974,94 @@
           "says": "Slack is told when home stops reading the weeks or every read fails (CW2), and when a week's render fails, waits 3 hours unattempted, or the render worker stops passing (CW5); it does not say why a render failed, which the worker's log file on the drive does.",
           "status": "live",
           "ref": "server:apps/servers/file_host/src/call_weeks/render.rs"
+        }
+      ],
+      "checks": []
+    },
+    {
+      "id": "clips",
+      "name": "Keeping each clip's frames on home, and showing them on the phone",
+      "why": "paulgsc/testing keeps no media (testing#6), so home keeps clip frames (the owner's decision, 2026-11-11, C125): home reads the clip index hourly, renders each walk side itself on its render lane and keeps it once it matches the index, keeps the six legacy frames held to their pinned digests, and serves each frame to the paired phone's Studio.",
+      "serves": ["clips-kept"],
+      "witnesses": ["CL1", "CL2", "CL3", "CL4"],
+      "segments": [
+        {
+          "id": "sessions",
+          "name": "The session that lands a change writes its clip to paulgsc/testing: clips/index.json, and a walk's sample. Someone else's.",
+          "owner": "foreign",
+          "on": "outside",
+          "paths": ["some-ui:packages/video-render/src/clip.ts"]
+        },
+        {
+          "id": "github",
+          "name": "GitHub serves paulgsc/testing's clips folder. Someone else's.",
+          "owner": "foreign",
+          "on": "outside",
+          "paths": []
+        },
+        {
+          "id": "internet",
+          "name": "Home reaches GitHub over the internet.",
+          "owner": "network",
+          "on": "between",
+          "paths": []
+        },
+        {
+          "id": "keeper",
+          "name": "The clips worker reads the index, gives each walk to the render worker, checks a finished walk against the index and keeps its frames, and keeps the legacy frames. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": [
+            "server:apps/servers/file_host/src/clips",
+            "server:crates/db/clip_frame"
+          ]
+        },
+        {
+          "id": "render",
+          "name": "The render worker replays each walk with the motion when the lane admits it, and keeps its snips and walk.json. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": [
+            "server:infra/render",
+            "some-ui:packages/video-motion/src/walk",
+            "some-ui:infra/render/Dockerfile"
+          ]
+        },
+        {
+          "id": "frames",
+          "name": "Home serves each frame it holds to the paired phone, by its SHA-256. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": [
+            "server:apps/servers/file_host/src/routes/clips.rs",
+            "server:apps/servers/file_host/src/handlers/clips.rs"
+          ]
+        },
+        {
+          "id": "home-network",
+          "name": "The phone reaches home over the home network, as the paired phone.",
+          "owner": "network",
+          "on": "between",
+          "paths": []
+        },
+        {
+          "id": "studio",
+          "name": "Studio's Library shows each clip's frames from home, and a frame home doesn't hold as not held. Ours, on the phone.",
+          "owner": "ours",
+          "on": "phone",
+          "paths": ["some-ui:packages/video-render/src/clip.ts"]
+        }
+      ],
+      "signals": [
+        {
+          "says": "Each clips pass logs what it kept and every failure by kind (a mismatched walk, a legacy frame not its pinned bytes, a frame that isn't a PNG); nothing tells Slack yet.",
+          "status": "live",
+          "ref": "server:apps/servers/file_host/src/clips.rs"
+        },
+        {
+          "says": "A walk the render worker could not run is on the phone's Renders page as failed, its whole log on home's drive.",
+          "status": "live",
+          "ref": "server:apps/servers/file_host/src/feeds/renders.rs"
         }
       ],
       "checks": []
