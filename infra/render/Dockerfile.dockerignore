@@ -1,0 +1,11 @@
+# The render image's context is the repository (infra/render/Dockerfile). Not
+# the root .dockerignore: that one leaves out `tests/`, where the recorders
+# live (apps/www/tests/record).
+.git
+**/node_modules
+**/dist
+**/out
+**/target
+**/.turbo
+**/*.tsbuildinfo
+**/.eslintcache
