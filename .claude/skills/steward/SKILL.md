@@ -259,12 +259,20 @@ duplicated in this file.
 ## A user-facing change leaves its clip
 
 The session that lands a change a user can see (an app's or an extension's screen, a
-dashboard) makes its clip before it ends (SFEED7, epic #2670 decision 5), into paulgsc/testing's
-`clips/` as `@some-ui/video-render`'s `clip.ts` says, and `render clip-check <clips folder>`
-must say ready before it is pushed. Walk it with `motion walk` (SFEED7a, #2736) where the
-surface has a walk, before and after the change; otherwise take its screens from sample data
-yourself. Command-line clips wait on the CARDS epic, #2465: say so on the PR. A clip that can't
-be made is said, with why, on the PR and its issue, never merged past as if it were made.
+dashboard) makes its clip before it ends (SFEED7, epic #2670 decision 5), as
+`@some-ui/video-render`'s `clip.ts` says. What reaches paulgsc/testing is `clips/index.json`
+and nothing else: the session commits that file only, and never a frame, since testing's guard
+refuses every image but its six legacy PNGs. The frames are kept on home (owner, 2026-11-11):
+
+- **A walk** (`motion walk`, SFEED7a, #2736), where the surface has one, before and after the
+  change: the index names the walk, and home makes its frames itself.
+- **Screens the session takes** from sample data, where there is no walk: attach them to the
+  PR. They are not kept anywhere; only their labels are, in the index.
+
+Before the push, `render clip-check <clips folder>` and `python3 scripts/guard.py --staged` in
+paulgsc/testing must both say ready. Command-line clips wait on the CARDS epic, #2465: say so
+on the PR. A clip that can't be made is said, with why, on the PR and its issue, never merged
+past as if it were made.
 
 ## Cross-repo PRs: name every one, every time
 
