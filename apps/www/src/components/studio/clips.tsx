@@ -1,17 +1,23 @@
 /**
  * Studio's Library (SFEED7, epic #2670 decision 5): every clip kept, the
  * newest first, each opening its own page, where its before and after show
- * step by step as a user saw them. The read is the query's
- * (`studioClipsQuery`); this only draws its outcome. Picking a clip for an
- * episode comes with the episode's own page.
+ * step by step as a user saw them. The list is testing's index and each
+ * frame is home's (`studioClipsQuery`, `clipFrameQuery`); this only draws
+ * their outcomes. A frame home doesn't hold shows its label and why, never a
+ * broken image; away from home, the page lists only the labels and says so.
+ * Picking a clip for an episode comes with the episode's own page.
  */
 import type { JSX, ReactNode } from "react"
+import { assertNever } from "@some-ui/core-utils"
 import type { Clip, ClipSide } from "@some-ui/video-render"
 import { refUrl } from "@some-ui/video-render"
+import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 
 import { hasAudience } from "@/lib/build-profile"
-import { clipUrl, studioClipsQuery } from "@/lib/studio-clips"
+import { pairingOf, useHomeLink } from "@/lib/home-link"
+import type { FrameShown } from "@/lib/studio-clips"
+import { clipFrameQuery, studioClipsQuery } from "@/lib/studio-clips"
 import { STUDIO_INDEX_WORDS } from "@/lib/studio-index"
 
 import { OutLink, Part, ReadList, TILE } from "./layout"
@@ -57,21 +63,92 @@ export const ClipsList = (): JSX.Element => (
   </Read>
 )
 
+/** Why a frame isn't shown, in the person's terms, or `null` when it is. */
+function missing(
+  shown: FrameShown | undefined,
+  made: ClipSide["made"]
+): string | null {
+  if (shown === undefined) return null
+  switch (shown.kind) {
+    case "frame":
+    case "unpaired": {
+      return null
+    }
+    case "not-taken": {
+      return made === "walk" ? WORDS.notTaken : WORDS.notKept
+    }
+    case "away": {
+      return WORDS.homeAway
+    }
+    case "unreadable": {
+      return WORDS.unreadable
+    }
+    default: {
+      return assertNever(shown)
+    }
+  }
+}
+
+/** One screen: home's frame above its label, or its label and why there's no frame. */
+const Frame = ({
+  id,
+  side,
+  made,
+  snip,
+}: {
+  id: string
+  side: "before" | "after"
+  made: ClipSide["made"]
+  snip: ClipSide["snips"][number]
+}): JSX.Element => {
+  const { data } = useQuery(clipFrameQuery(id, side, snip.file))
+  const why = missing(data, made)
+  return (
+    <li className="flex flex-col gap-1">
+      {data?.kind === "frame" ? (
+        <img
+          src={data.src}
+          alt={snip.label}
+          className="border-border/60 w-full rounded-xl border"
+        />
+      ) : null}
+      <span className="text-sm">{snip.label}</span>
+      {why === null ? null : (
+        <span className="text-muted-foreground text-xs">{why}</span>
+      )}
+    </li>
+  )
+}
+
 /** One side of a clip: its screens in order, and who recorded them. */
-const Side = ({ id, side }: { id: string; side: ClipSide }): JSX.Element => (
+const Side = ({
+  id,
+  name,
+  side,
+  atHome,
+}: {
+  id: string
+  name: "before" | "after"
+  side: ClipSide
+  atHome: boolean
+}): JSX.Element => (
   <>
     <ol className="flex flex-col gap-3">
-      {side.snips.map((snip) => (
-        <li key={snip.file} className="flex flex-col gap-1">
-          <img
-            src={clipUrl(id, snip.file)}
-            alt={snip.label}
-            loading="lazy"
-            className="border-border/60 w-full rounded-xl border"
+      {side.snips.map((snip) =>
+        atHome ? (
+          <Frame
+            key={snip.file}
+            id={id}
+            side={name}
+            made={side.made}
+            snip={snip}
           />
-          <span className="text-sm">{snip.label}</span>
-        </li>
-      ))}
+        ) : (
+          <li key={snip.file} className="text-sm">
+            {snip.label}
+          </li>
+        )
+      )}
     </ol>
     <p className="text-muted-foreground text-xs">
       {side.made === "walk" ? WORDS.walked : WORDS.recorded}
@@ -86,27 +163,34 @@ export const ClipScreen = ({ id }: { id: string }): JSX.Element => (
       const clip = clips.find((c) => c.id === id)
       if (clip === undefined)
         return <p className="text-muted-foreground text-sm">{WORDS.gone}</p>
-      return (
-        <>
-          <h2 className="text-lg leading-snug font-bold">{clip.title}</h2>
-          <p className="text-muted-foreground text-sm">
-            {WORDS.landed(clip.landed)}
-          </p>
-          <Part label={WORDS.before}>
-            {clip.before === null ? (
-              <p className="text-muted-foreground text-sm">
-                {WORDS.nothingBefore}
-              </p>
-            ) : (
-              <Side id={clip.id} side={clip.before} />
-            )}
-          </Part>
-          <Part label={WORDS.after}>
-            <Side id={clip.id} side={clip.after} />
-          </Part>
-          <OutLink href={refUrl(clip.change)}>{WORDS.open}</OutLink>
-        </>
-      )
+      return <ClipPage clip={clip} />
     }}
   </Read>
 )
+
+/** A clip's page: its frames from home when this phone is paired, else its labels. */
+const ClipPage = ({ clip }: { clip: Clip }): JSX.Element => {
+  const atHome = pairingOf(useHomeLink()) !== null
+  return (
+    <>
+      <h2 className="text-lg leading-snug font-bold">{clip.title}</h2>
+      <p className="text-muted-foreground text-sm">
+        {WORDS.landed(clip.landed)}
+      </p>
+      {atHome ? null : (
+        <p className="text-muted-foreground text-sm">{WORDS.onlyLabels}</p>
+      )}
+      <Part label={WORDS.before}>
+        {clip.before === null ? (
+          <p className="text-muted-foreground text-sm">{WORDS.nothingBefore}</p>
+        ) : (
+          <Side id={clip.id} name="before" side={clip.before} atHome={atHome} />
+        )}
+      </Part>
+      <Part label={WORDS.after}>
+        <Side id={clip.id} name="after" side={clip.after} atHome={atHome} />
+      </Part>
+      <OutLink href={refUrl(clip.change)}>{WORDS.open}</OutLink>
+    </>
+  )
+}

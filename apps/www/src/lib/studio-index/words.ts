@@ -228,6 +228,14 @@ export const STUDIO_INDEX_WORDS = {
     nothingBefore: "New with this change: there was nothing to show before.",
     walked: "Code recorded it from sample data.",
     recorded: "Taken by the session that made the change, from sample data.",
+    notTaken: "Home hasn't made this screen yet.",
+    notKept:
+      "This screen is on the change's page. Only what it showed is kept here.",
+    homeAway:
+      "Home didn't answer, so this screen isn't here. Try again in a moment.",
+    unreadable: "Home sent this screen, but it couldn't be shown.",
+    onlyLabels:
+      "This phone isn't paired with home, where the screens are kept, so only what each one shows is listed.",
     open: "See the change",
   },
 

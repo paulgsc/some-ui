@@ -1597,6 +1597,39 @@
       "gray": "The owner chose /2 for new clips but not when testing's file moves. Every build made before #2870 pins the schema to /1 and refuses a /2 file on that string alone, so a looser reader saves no build already in use; both clips listed today are valid /1 as they are.",
       "undo": "Mark testing#7 ready and merge it, which moves clips/index.json to /2; the builds made before #2870 then show no Library until they are rebuilt.",
       "refs": ["#2870"]
+    },
+    {
+      "id": "C132",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": [
+        "apps/www/src/components/studio/clips.tsx",
+        "apps/www/src/lib/studio-index/words.ts"
+      ],
+      "chose": "A clip frame home doesn't hold shows its label and why, never a broken image: on a walk side \"Home hasn't made this screen yet.\", on a session side \"This screen is on the change's page. Only what it showed is kept here.\"",
+      "options": [
+        "the label and why, the reason told apart for a walk side and a session side",
+        "the label and one shared line for any frame home doesn't hold",
+        "the label alone, with no reason"
+      ],
+      "gray": "The owner decided that a frame home doesn't hold shows its label, not what it says. A session-taken frame is never kept, so a line saying home hasn't taken it yet would promise a frame that never comes.",
+      "undo": "Use one line for both in missing() in clips.tsx, and drop notKept from the clips words in studio-index/words.ts.",
+      "refs": ["#2670", "#2870"]
+    },
+    {
+      "id": "C133",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": ["apps/www/src/components/studio/clips.tsx"],
+      "chose": "On a phone not paired with home, a clip's page lists only the labels and says so, without asking home and without falling back to the six legacy frames testing still holds.",
+      "options": [
+        "labels only, saying why",
+        "show testing's six legacy frames, and labels for the rest",
+        "show nothing until the phone is paired"
+      ],
+      "gray": "The owner decided that away from home the page shows labels only and says so, not whether the legacy frames still in testing should show meanwhile. A fallback would show some clips and not others for a reason the page couldn't state plainly, and those frames leave testing later anyway.",
+      "undo": "In ClipPage in clips.tsx, read a legacy frame from TESTING_DATA when the phone isn't paired.",
+      "refs": ["#2670"]
     }
   ]
 }
