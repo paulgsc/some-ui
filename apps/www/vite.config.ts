@@ -130,6 +130,42 @@ function fitPageEntry(): Record<string, string> {
   }
 }
 
+// `pnpm build:stage`: the recording stage alone (stage/main.tsx says what it
+// carries), into out/stage, with its page at the output's root, where the
+// recorders' `--dist` serves it. The stage reads what the recorders answer,
+// as the home image's does, so it is the `lan` profile's build and no other's.
+const isStageBuild = process.env.WWW_STAGE === "1"
+
+function stageEntry(): Record<string, string> {
+  const profile = process.env.SOME_UI_PROFILE
+  if (profile !== undefined && profile !== "" && profile !== "lan") {
+    throw new Error(
+      `The recording stage is built under the lan profile only (SOME_UI_PROFILE=${profile}); pnpm --filter www build:stage.`
+    )
+  }
+  return { stage: resolve(import.meta.dirname, "stage/index.html") }
+}
+
+// Vite writes an HTML entry at its path under the root (stage/index.html);
+// the recorders' server answers every path with the output's index.html.
+function stagePageAtRoot(): Plugin {
+  let outDir = ""
+  return {
+    name: "stage-page-at-root",
+    apply: "build",
+    configResolved(config): void {
+      outDir = resolve(config.root, config.build.outDir)
+    },
+    closeBundle(): void {
+      fs.renameSync(
+        resolve(outDir, "stage/index.html"),
+        resolve(outDir, "index.html")
+      )
+      fs.rmdirSync(resolve(outDir, "stage"))
+    },
+  }
+}
+
 // What a profile's output carries from public/ that it never loads
 // (build.paths.ts, `offPathPublicFiles`; the Android app's résumé PDFs are
 // about as much as every other file it ships from public/ together). Vite
@@ -218,6 +254,9 @@ export default defineConfig(
     // GitHub Pages serves this app under /<repo>/ instead of domain root;
     // Docker/nginx and local dev serve it at "/". Unset -> "/" for both.
     base: process.env.VITE_BASE_PATH || "/",
+    // The recording stage loads nothing from public/ (favicons, the résumé
+    // PDFs, the app's service worker), so its output carries none of it.
+    ...(isStageBuild ? { publicDir: false as const } : {}),
     server: {
       // Loopback, plain HTTP: Caddy serves it to other devices as
       // dev.home.maishatu.com, HMR websocket included (docs/study-nudge.md,
@@ -319,6 +358,7 @@ export default defineConfig(
         : []),
       omitOffPathPublicFiles(offPathPublicFiles(process.env.SOME_UI_PROFILE)),
       pagesConnectPolicy(),
+      ...(isStageBuild ? [stagePageAtRoot()] : []),
     ],
     // An http:// page skips the proxy and asks :3000 directly
     // (src/lib/file-host-config) - the container. While the proxy points
@@ -360,7 +400,7 @@ export default defineConfig(
     build: {
       // Enable rollup bundle analysis
       rolldownOptions: {
-        // The fit build aside (above), two HTML entries, one JS app: both
+        // The fit and stage builds aside (above), two HTML entries, one JS app: both
         // boot the same src/main.tsx/router, so the /resume shell isn't a
         // second copy of the app - it's the same SPA under a route-specific document (see
         // resume/index.html's header comment) that GitHub Pages can serve
@@ -368,14 +408,16 @@ export default defineConfig(
         // 404.html fallback every other unmatched path relies on.
         input: isFitHarnessBuild
           ? fitPageEntry()
-          : {
-              main: resolve(import.meta.dirname, "index.html"),
-              ...(isMobileBuild
-                ? {}
-                : {
-                    resume: resolve(import.meta.dirname, "resume/index.html"),
-                  }),
-            },
+          : isStageBuild
+            ? stageEntry()
+            : {
+                main: resolve(import.meta.dirname, "index.html"),
+                ...(isMobileBuild
+                  ? {}
+                  : {
+                      resume: resolve(import.meta.dirname, "resume/index.html"),
+                    }),
+              },
         // No `output.manualChunks`. The hand-rolled version here matched with
         // `id.includes(pkg)` — a substring test against the full module path —
         // which under pnpm matches far more than the package named. pnpm
