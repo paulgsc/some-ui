@@ -41,12 +41,13 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
 
 // A clip's frames are home's: this phone is paired unless a test says not,
 // and each frame's answer is the test's.
-const link = vi.hoisted(() => ({ paired: true }))
+const link = vi.hoisted(() => ({
+  kind: "paired" as "paired" | "unpaired" | "reading",
+}))
 vi.mock("@/lib/home-link", async (importOriginal) => ({
   ...(await importOriginal<object>()),
-  pairingOf: (): string | null => (link.paired ? "pairing" : null),
-  paired: (): boolean => link.paired,
-  useHomeLink: (): object => ({}),
+  paired: (): boolean => link.kind === "paired",
+  useHomeLink: (): object => ({ link: { kind: link.kind } }),
 }))
 vi.mock("@/lib/home-link/clips", () => ({ askClipFrame: vi.fn() }))
 
@@ -59,7 +60,7 @@ vi.mock("@/lib/build-profile", async (importOriginal) => ({
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
-  link.paired = true
+  link.kind = "paired"
 })
 
 describe("Studio's index", () => {
@@ -292,8 +293,19 @@ describe("the Library", () => {
     )
   })
 
+  it("says nothing about home while the pairing is still being read", async () => {
+    link.kind = "reading"
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      asText({ schema: "some-ui.clip-index/1", clips: [CLIP] })
+    )
+    render(withQueryClient(<ClipScreen id={CLIP.id} />))
+    await screen.findByText("The popup opens")
+    expect(screen.queryByText(STUDIO_INDEX_WORDS.clips.onlyLabels)).toBeNull()
+    expect(askClipFrame).not.toHaveBeenCalled()
+  })
+
   it("lists only the labels away from home, and says so", async () => {
-    link.paired = false
+    link.kind = "unpaired"
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       asText({ schema: "some-ui.clip-index/1", clips: [CLIP] })
     )

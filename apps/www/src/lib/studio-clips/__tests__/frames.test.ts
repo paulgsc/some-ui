@@ -30,11 +30,12 @@ describe("a clip's frame", () => {
     expect(readFrame({ status: 404, body: "" })).toEqual({ kind: "not-taken" })
   })
 
-  it.each([
-    { status: 200, body: "" },
-    { status: 200, body: "<html>" },
-    { status: 500, body: "iVBORw0KGgo=" },
-  ])("doesn't read $status with $body", (answer) => {
-    expect(readFrame(answer)).toEqual({ kind: "unreadable" })
+  it("is away when home answers anything else", () => {
+    expect(readFrame({ status: 429, body: "" })).toEqual({ kind: "away" })
+    expect(readFrame({ status: 401, body: "" })).toEqual({ kind: "away" })
+  })
+
+  it.each(["", "<html>"])("doesn't read a body of %j", (body) => {
+    expect(readFrame({ status: 200, body })).toEqual({ kind: "unreadable" })
   })
 })

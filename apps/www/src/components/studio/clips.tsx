@@ -15,7 +15,7 @@ import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 
 import { hasAudience } from "@/lib/build-profile"
-import { pairingOf, useHomeLink } from "@/lib/home-link"
+import { useHomeLink } from "@/lib/home-link"
 import type { FrameShown } from "@/lib/studio-clips"
 import { clipFrameQuery, studioClipsQuery } from "@/lib/studio-clips"
 import { STUDIO_INDEX_WORDS } from "@/lib/studio-index"
@@ -170,14 +170,18 @@ export const ClipScreen = ({ id }: { id: string }): JSX.Element => (
 
 /** A clip's page: its frames from home when this phone is paired, else its labels. */
 const ClipPage = ({ clip }: { clip: Clip }): JSX.Element => {
-  const atHome = pairingOf(useHomeLink()) !== null
+  // While the phone's own record of its pairing is still being read, the
+  // page says nothing about home: the labels show, and no line appears only
+  // to vanish a moment later.
+  const { link } = useHomeLink()
+  const atHome = link.kind === "paired"
   return (
     <>
       <h2 className="text-lg leading-snug font-bold">{clip.title}</h2>
       <p className="text-muted-foreground text-sm">
         {WORDS.landed(clip.landed)}
       </p>
-      {atHome ? null : (
+      {link.kind !== "unpaired" ? null : (
         <p className="text-muted-foreground text-sm">{WORDS.onlyLabels}</p>
       )}
       <Part label={WORDS.before}>

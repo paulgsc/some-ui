@@ -3,7 +3,7 @@
  * listed in paulgsc/testing, read when Clips opens and on Try again
  * (`./read`), and kept for a minute so a clip's page opened from the list
  * shows at once. Each frame is read from home when its page shows it
- * (`clipFrameQuery`), and again after a minute, as home may take it since.
+ * (`clipFrameQuery`); one home holds is kept for the page load.
  */
 import { queryOptions } from "@tanstack/react-query"
 
@@ -42,6 +42,8 @@ export const clipFrameQuery = (
   queryOptions({
     queryKey: frameKey(id, side, file),
     queryFn: (): Promise<FrameShown> => readClipFrame(id, side, file),
-    staleTime: 60_000,
+    // A frame home holds never changes; anything else is asked again on
+    // the next visit.
+    staleTime: (query) => (query.state.data?.kind === "frame" ? Infinity : 0),
     retry: false,
   })
