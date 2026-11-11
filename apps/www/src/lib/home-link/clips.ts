@@ -7,11 +7,11 @@
  * phone's is sent. What the screen makes of each answer is
  * `lib/studio-clips`'s, its one caller.
  */
+import type { HomeAnswer } from "@some-ui/core-utils"
 import { frameName } from "@some-ui/video-render"
 
-import { homeLink } from "./index"
-import type { Asked } from "./while-busy"
-import { asked } from "./while-busy"
+import { homeLink, paired } from "./index"
+import type { NotAnswered } from "./while-busy"
 
 /** Where home serves a frame: by its name alone within its side. */
 export const clipFramePath = (
@@ -21,15 +21,36 @@ export const clipFramePath = (
 ): string =>
   `/clips/${[id, side, frameName(file)].map(encodeURIComponent).join("/")}`
 
-/** Asks home once for one frame of clip `id`; never rejects. */
-export function askClipFrame(
+/** Home's answer for each of a side's frames, in order, or why there is none. */
+export type SideAsked =
+  | { readonly kind: "answered"; readonly answers: ReadonlyArray<HomeAnswer> }
+  | NotAnswered
+
+/**
+ * Asks home once for every frame of one side of clip `id`, one after another
+ * in a single run of the link, so a side's frames never queue against each
+ * other or keep the person's own sends waiting turn after turn; never
+ * rejects.
+ */
+export async function askClipSide(
   id: string,
   side: "before" | "after",
-  file: string
-): Promise<Asked> {
-  return asked(() =>
-    homeLink().keep((send) =>
-      send("GET", clipFramePath(id, side, file), undefined, "whole")
-    )
-  )
+  files: ReadonlyArray<string>
+): Promise<SideAsked> {
+  if (!paired()) return { kind: "unpaired" }
+  try {
+    const outcome = await homeLink().keep(async (send) => {
+      const answers: Array<HomeAnswer> = []
+      for (const file of files)
+        answers.push(
+          await send("GET", clipFramePath(id, side, file), undefined, "whole")
+        )
+      return answers
+    })
+    return outcome?.kind === "done"
+      ? { kind: "answered", answers: outcome.value }
+      : { kind: "busy" }
+  } catch {
+    return { kind: "unreachable" }
+  }
 }

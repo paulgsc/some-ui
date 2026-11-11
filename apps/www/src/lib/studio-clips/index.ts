@@ -2,13 +2,13 @@
  * Studio's clips (SFEED7, epic #2670 decision 5): the Library, every clip
  * listed in paulgsc/testing, read when Clips opens and on Try again
  * (`./read`), and kept for a minute so a clip's page opened from the list
- * shows at once. Each frame is read from home when its page shows it
- * (`clipFrameQuery`); one home holds is kept for the page load.
+ * shows at once. A side's frames are read from home together when its page
+ * shows it (`clipSideQuery`); frames home holds are kept for the page load.
  */
 import { queryOptions } from "@tanstack/react-query"
 
 import type { FrameShown } from "./frames"
-import { readClipFrame, readStudioClips } from "./read"
+import { readClipSide, readStudioClips } from "./read"
 
 export type { FrameShown } from "./frames"
 
@@ -21,29 +21,33 @@ export const studioClipsQuery = queryOptions({
 
 type FrameSide = "before" | "after"
 
-const frameKey = (id: string, side: FrameSide, file: string) =>
-  ["studio", "clip-frame", id, side, file] as const
+const sideKey = (id: string, side: FrameSide, files: ReadonlyArray<string>) =>
+  ["studio", "clip-side", id, side, ...files] as const
 
-type FrameQueryOptions = ReturnType<
+type SideQueryOptions = ReturnType<
   typeof queryOptions<
-    FrameShown,
+    ReadonlyArray<FrameShown>,
     Error,
-    FrameShown,
-    ReturnType<typeof frameKey>
+    ReadonlyArray<FrameShown>,
+    ReturnType<typeof sideKey>
   >
 >
 
-/** One frame of clip `id`, from home, read when its page shows it. */
-export const clipFrameQuery = (
+/** Every frame of one side of clip `id`, from home, read when its page shows it. */
+export const clipSideQuery = (
   id: string,
   side: FrameSide,
-  file: string
-): FrameQueryOptions =>
+  files: ReadonlyArray<string>
+): SideQueryOptions =>
   queryOptions({
-    queryKey: frameKey(id, side, file),
-    queryFn: (): Promise<FrameShown> => readClipFrame(id, side, file),
-    // A frame home holds never changes; anything else is asked again on
+    queryKey: sideKey(id, side, files),
+    queryFn: ({ signal }): Promise<ReadonlyArray<FrameShown>> =>
+      readClipSide(id, side, files, () => !signal.aborted),
+    // Frames home holds never change; a side missing any is asked again on
     // the next visit.
-    staleTime: (query) => (query.state.data?.kind === "frame" ? Infinity : 0),
+    staleTime: (query) =>
+      query.state.data?.every((f) => f.kind === "frame") === true
+        ? Infinity
+        : 0,
     retry: false,
   })

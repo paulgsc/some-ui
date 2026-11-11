@@ -18,7 +18,7 @@ import { Link } from "@tanstack/react-router"
 import { hasAudience } from "@/lib/build-profile"
 import { useHomeLink } from "@/lib/home-link"
 import type { FrameShown } from "@/lib/studio-clips"
-import { clipFrameQuery, studioClipsQuery } from "@/lib/studio-clips"
+import { clipSideQuery, studioClipsQuery } from "@/lib/studio-clips"
 import { STUDIO_INDEX_WORDS } from "@/lib/studio-index"
 
 import { OutLink, Part, ReadList, TILE } from "./layout"
@@ -92,17 +92,14 @@ function missing(
 
 /** One screen: home's frame above its label, or its label and why there's no frame. */
 const Frame = ({
-  id,
-  side,
+  shown: data,
   made,
   snip,
 }: {
-  id: string
-  side: "before" | "after"
+  shown: FrameShown | undefined
   made: ClipSide["made"]
   snip: ClipSide["snips"][number]
 }): JSX.Element => {
-  const { data } = useQuery(clipFrameQuery(id, side, snip.file))
   // Bytes that read as base64 but don't decode as an image (a truncated PNG)
   // show as their label and why, never as a broken image.
   const [undecodable, setUndecodable] = useState(false)
@@ -128,6 +125,27 @@ const Frame = ({
   )
 }
 
+/** One side's frames from home, read together, each shown as it came. */
+const HomeFrames = ({
+  id,
+  name,
+  side,
+}: {
+  id: string
+  name: "before" | "after"
+  side: ClipSide
+}): JSX.Element => {
+  const files = side.snips.map((snip) => snip.file)
+  const { data } = useQuery(clipSideQuery(id, name, files))
+  return (
+    <>
+      {side.snips.map((snip, i) => (
+        <Frame key={snip.file} shown={data?.[i]} made={side.made} snip={snip} />
+      ))}
+    </>
+  )
+}
+
 /** One side of a clip: its screens in order, and who recorded them. */
 const Side = ({
   id,
@@ -142,20 +160,14 @@ const Side = ({
 }): JSX.Element => (
   <>
     <ol className="flex flex-col gap-3">
-      {side.snips.map((snip) =>
-        atHome ? (
-          <Frame
-            key={snip.file}
-            id={id}
-            side={name}
-            made={side.made}
-            snip={snip}
-          />
-        ) : (
+      {atHome ? (
+        <HomeFrames id={id} name={name} side={side} />
+      ) : (
+        side.snips.map((snip) => (
           <li key={snip.file} className="text-sm">
             {snip.label}
           </li>
-        )
+        ))
       )}
     </ol>
     <p className="text-muted-foreground text-xs">

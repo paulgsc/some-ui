@@ -25,7 +25,7 @@ import {
 } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { askClipFrame } from "@/lib/home-link/clips"
+import { askClipSide } from "@/lib/home-link/clips"
 import {
   KIND_WORDS,
   STUDIO_INDEX_WORDS,
@@ -51,7 +51,7 @@ vi.mock("@/lib/home-link", async (importOriginal) => ({
   paired: (): boolean => link.kind === "paired",
   useHomeLink: (): object => ({ link: { kind: link.kind } }),
 }))
-vi.mock("@/lib/home-link/clips", () => ({ askClipFrame: vi.fn() }))
+vi.mock("@/lib/home-link/clips", () => ({ askClipSide: vi.fn() }))
 
 // Studio's pages are the phone's: links to them draw only where it is.
 vi.mock("@/lib/build-profile", async (importOriginal) => ({
@@ -218,13 +218,15 @@ const CLIP = {
 /** A PNG's first bytes, as home's answer carries them. */
 const PNG = "iVBORw0KGgo="
 
-const frame = (
-  status: number,
-  body: string
-): Awaited<ReturnType<typeof askClipFrame>> => ({
-  kind: "answered",
-  answer: { status, body },
-})
+/** Home answering every frame of a side the same way. */
+const frames = (status: number, body: string): void => {
+  vi.mocked(askClipSide).mockImplementation((_id, _side, files) =>
+    Promise.resolve({
+      kind: "answered",
+      answers: files.map(() => ({ status, body })),
+    })
+  )
+}
 
 describe("the Library", () => {
   it("lists every clip kept, each a link to its page", async () => {
@@ -250,7 +252,7 @@ describe("the Library", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       asText({ schema: "some-ui.clip-index/1", clips: [CLIP] })
     )
-    vi.mocked(askClipFrame).mockResolvedValue(frame(200, PNG))
+    frames(200, PNG)
     render(withQueryClient(<ClipScreen id={CLIP.id} />))
     await screen.findByText(STUDIO_INDEX_WORDS.clips.nothingBefore)
     await waitFor(() => expect(screen.getAllByRole("img")).toHaveLength(2))
@@ -259,18 +261,39 @@ describe("the Library", () => {
       CLIP.after.snips.map((snip) => snip.label)
     )
     expect(shots[0]?.getAttribute("src")).toBe(`data:image/png;base64,${PNG}`)
-    expect(askClipFrame).toHaveBeenCalledWith(
-      "never-suspend",
-      "after",
-      "after/snips/01.png"
+    expect(askClipSide).toHaveBeenCalledTimes(1)
+    expect(askClipSide).toHaveBeenCalledWith("never-suspend", "after", [
+      "after/snips/01.png",
+      "after/snips/02.png",
+    ])
+  })
+
+  it("asks home once a side however many frames it has, and shows them all", async () => {
+    const snips = (side: string): Array<object> =>
+      Array.from({ length: 12 }, (_, i) => ({
+        file: `${side}/snips/${String(i + 10)}.png`,
+        label: `${side} screen ${String(i + 1)}`,
+      }))
+    const big = {
+      ...CLIP,
+      before: { made: "walk", snips: snips("before") },
+      after: { made: "walk", snips: snips("after") },
+    }
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      asText({ schema: "some-ui.clip-index/1", clips: [big] })
     )
+    frames(200, PNG)
+    render(withQueryClient(<ClipScreen id={CLIP.id} />))
+    await waitFor(() => expect(screen.getAllByRole("img")).toHaveLength(24))
+    expect(askClipSide).toHaveBeenCalledTimes(2)
+    expect(screen.queryByText(STUDIO_INDEX_WORDS.clips.homeAway)).toBeNull()
   })
 
   it("shows a frame home hasn't made as its label and why, never a broken image", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       asText({ schema: "some-ui.clip-index/1", clips: [CLIP] })
     )
-    vi.mocked(askClipFrame).mockResolvedValue(frame(404, ""))
+    frames(404, "")
     render(withQueryClient(<ClipScreen id={CLIP.id} />))
     await waitFor(() =>
       expect(
@@ -285,7 +308,7 @@ describe("the Library", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       asText({ schema: "some-ui.clip-index/1", clips: [CLIP] })
     )
-    vi.mocked(askClipFrame).mockResolvedValue(frame(200, PNG))
+    frames(200, PNG)
     render(withQueryClient(<ClipScreen id={CLIP.id} />))
     await waitFor(() => expect(screen.getAllByRole("img")).toHaveLength(2))
     fireEvent.error(screen.getAllByRole("img")[0])
@@ -299,7 +322,7 @@ describe("the Library", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       asText({ schema: "some-ui.clip-index/1", clips: [taken] })
     )
-    vi.mocked(askClipFrame).mockResolvedValue(frame(404, ""))
+    frames(404, "")
     render(withQueryClient(<ClipScreen id={CLIP.id} />))
     await waitFor(() =>
       expect(
@@ -316,7 +339,7 @@ describe("the Library", () => {
     render(withQueryClient(<ClipScreen id={CLIP.id} />))
     await screen.findByText("The popup opens")
     expect(screen.queryByText(STUDIO_INDEX_WORDS.clips.onlyLabels)).toBeNull()
-    expect(askClipFrame).not.toHaveBeenCalled()
+    expect(askClipSide).not.toHaveBeenCalled()
   })
 
   it("lists only the labels away from home, and says so", async () => {
@@ -328,7 +351,7 @@ describe("the Library", () => {
     await screen.findByText(STUDIO_INDEX_WORDS.clips.onlyLabels)
     screen.getByText("Never suspend this site")
     expect(screen.queryByRole("img")).toBeNull()
-    expect(askClipFrame).not.toHaveBeenCalled()
+    expect(askClipSide).not.toHaveBeenCalled()
   })
 
   it("says when the session took a side's screens, not code", async () => {
