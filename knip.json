@@ -38,7 +38,8 @@
     "apps/www": {
       "entry": [
         "tests/ui-fit/panel-page/main.tsx",
-        "tests/ui-fit/phone-page/main.tsx"
+        "tests/ui-fit/phone-page/main.tsx",
+        "stage/main.tsx"
       ]
     },
     "extensions/common": {

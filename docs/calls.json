@@ -1240,6 +1240,24 @@
       "refs": ["#2692", "#2231"]
     },
     {
+      "id": "C109",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": [
+        "some-ui:.github/workflows/render-docker-release.yml",
+        "some-ui:infra/render/Dockerfile"
+      ],
+      "chose": "The render image (pgathondu/render) publishes straight from main on every push that reaches its graph, as :<sha> and :latest, once the very image to be pushed has made the sample composition and the weekly call's preview the same bytes twice, offline; there is no release PR to merge first.",
+      "options": [
+        "publish from main, gated by the byte proof",
+        "a standing release PR as www's image has, merged by hand before each publish",
+        "publish only on a manual dispatch"
+      ],
+      "gray": "www's image waits on a merged release PR because it is served to people; the render image is served to no one and home runs it only by a digest moved on paulgsc/server, so a second gate before Docker Hub would be the owner's judgment either way. No check or earlier decision says which.",
+      "undo": "Drop the push trigger from render-docker-release.yml, leaving workflow_dispatch, or put a release PR in front of the publish job as www-docker-release.yml does.",
+      "refs": ["server#758"]
+    },
+    {
       "id": "C101",
       "made": "2026-11-11",
       "by": "claude",
