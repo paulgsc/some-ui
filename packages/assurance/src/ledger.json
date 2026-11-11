@@ -2455,6 +2455,128 @@
       ]
     },
     {
+      "id": "clips-kept",
+      "name": "Home keeps each clip's frames",
+      "why": "paulgsc/testing keeps no media (testing#6), so home keeps clip frames (owner, 2026-11-11, C125): an hourly timer reads clips/index.json; a walk side home renders itself on its render lane with motion walk, checked against the index's snips and labels; the 6 legacy PNGs are fetched and held to pinned SHA-256s; a session-taken side keeps only its labels. Home serves them to the paired phone; Studio still reads paulgsc/testing until CLIPS-UI's reader lands.",
+      "paths": [
+        "server:apps/servers/file_host/src/clips",
+        "server:crates/db/clip_frame",
+        "server:apps/servers/file_host/src/handlers/clips.rs",
+        "server:apps/servers/file_host/src/routes/clips.rs",
+        "server:infra/render",
+        "some-ui:packages/video-render/src/clip.ts",
+        "some-ui:packages/video-motion/src/walk"
+      ],
+      "modules": ["clips"],
+      "objectives": [
+        {
+          "id": "CL1",
+          "kind": "OA4",
+          "property": "outcome",
+          "claim": "Every frame the clip index names that home should keep is kept once, as checked, and one that fails is named by kind and tried on a later pass.",
+          "requirement": "Each hour home reads clips/index.json (some-ui.clip-index/1 or /2); a legacy frame is fetched and kept only if its SHA-256 is the pinned one; a walk side is rendered on the render lane and kept only if its walk.json's snips and labels equal the index's; each frame is a PNG by its magic bytes, at most 1 MiB, at most 12 a side; a held frame is never replaced, and other bytes under a held name are an error; failures counted by kind, the rest still taken.",
+          "verdict": "holds",
+          "conclusion": "Shown in the pass's tests on home's SQLite and a temporary drive.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "A pass keeps each frame home lacks once, refuses a legacy frame whose digest differs, a non-PNG, an oversized frame and a walk whose labels differ, and leaves them for the next pass.",
+              "ref": "server:apps/servers/file_host/src/clips/pass.rs"
+            }
+          ],
+          "proof": [
+            "server:apps/servers/file_host/src/clips/pass.rs#each_frame_home_lacks_is_kept_once_as_checked",
+            "server:apps/servers/file_host/src/clips/pass.rs#a_walk_that_does_not_match_the_index_is_not_kept",
+            "server:apps/servers/file_host/src/clips/pass.rs#a_legacy_frame_is_held_to_its_pinned_digest"
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        },
+        {
+          "id": "CL2",
+          "kind": "OA4",
+          "property": "outcome",
+          "claim": "A kept frame is never rewritten or deleted.",
+          "requirement": "clip_frame gains one row per frame; its triggers refuse UPDATE and DELETE; a second keep of the same (id, side, file) with other bytes adds nothing and is an error.",
+          "verdict": "holds",
+          "conclusion": "Shown in the store's tests.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "A frame is kept once; UPDATE and DELETE are refused.",
+              "ref": "server:crates/db/clip_frame/src/lib.rs"
+            }
+          ],
+          "proof": [
+            "server:crates/db/clip_frame/src/lib.rs#a_frame_is_kept_once_as_taken",
+            "server:crates/db/clip_frame/src/lib.rs#no_kept_frame_is_rewritten_or_deleted"
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        },
+        {
+          "id": "CL3",
+          "kind": "OA4",
+          "property": "outcome",
+          "claim": "Only a paired phone reads home's clip frames.",
+          "requirement": "GET /clips/:id/:side/:file takes Paired (no session 401, a browser's 403); a held frame is raw image/png with ETag \"<sha256>\" and immutable caching, 304 on a matching If-None-Match, and 404 when home doesn't hold it (a file on the drive with no clip_frame row included).",
+          "verdict": "holds",
+          "conclusion": "Shown in the handler's test through the real router.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "A paired phone gets a held frame's bytes with its ETag and a 304 for it; no session is 401, a browser 403, an unheld or unknown frame 404.",
+              "ref": "server:apps/servers/file_host/src/handlers/clips.rs"
+            }
+          ],
+          "proof": [
+            "server:apps/servers/file_host/src/handlers/clips.rs#a_frame_is_served_to_a_paired_phone_only"
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        },
+        {
+          "id": "CL4",
+          "kind": "RE9",
+          "property": "work",
+          "claim": "What home keeps of the clips grows by a few frames per clip, and is kept for good.",
+          "requirement": "clip_frame gains one row per frame home keeps (its clip, side and file, how it was made, its SHA-256, size and when), never updated or deleted; each frame is a PNG of at most 1 MiB on the drive under renders/clips/<id>/<side>/<file>, never replaced, at most 12 a walk side; a walk home kept also leaves its walk.json and the same snips under renders/clip-walk/<clip>-<side>; nothing else is kept.",
+          "verdict": "unproven",
+          "conclusion": "One row per frame, keyed by clip, side and file, append-only by trigger. A walk side keeps at most 24 MiB (12 frames of at most 1 MiB, kept twice), and the six legacy frames are 1.15 MB together. Assuming a few clips a week with two walk sides each, that is at most about 7.5 GB a year at the cap; what a rendered walk frame weighs is not measured yet, so the real rate is unknown (server#807).",
+          "tracked": "server#807",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "clip_frame's key is the clip, side and file; its checks hold a frame to 1 MiB and a plain .png name, and its triggers refuse UPDATE and DELETE.",
+              "ref": "server:migrations/20261111000100_create_clip_frame.up.sql"
+            },
+            {
+              "class": "measured",
+              "says": "The six legacy frames, all home keeps from session-taken clips, are 1,154,781 bytes together, the largest 347,126.",
+              "ref": "https://github.com/paulgsc/testing/tree/main/clips"
+            }
+          ],
+          "proof": [
+            "server:crates/db/clip_frame/src/lib.rs#a_frame_is_kept_once_as_taken",
+            "server:crates/db/clip_frame/src/lib.rs#no_kept_frame_is_rewritten_or_deleted",
+            "server:crates/db/clip_frame/src/lib.rs#what_is_not_a_plain_frame_is_refused",
+            "server:apps/servers/file_host/src/clips/pass.rs#a_walk_that_does_not_match_the_index_is_not_kept"
+          ],
+          "watch": {
+            "by": "dashboard",
+            "ref": "server:infra/grafana/dashboards/storage.jsonnet"
+          },
+          "amendments": []
+        }
+      ]
+    },
+    {
       "id": "pd-kept",
       "name": "Home keeps every fill of Playoff Delta, and makes its video",
       "why": "Playoff Delta's narration routine writes each week's fill (what is said over each scene) to paulgsc/testing, and the owner watches the week on the phone once home has made it (FEED4, #2647). Home keeps each fill and the season it was said over: a timer on home reads the repository's index of fills and stores each fill it lacks, with its season file as served then. Then home makes each voiced fill's video, as it makes the call's: its own Kokoro speaker says each scene, and its render worker records the pinned stage and renders it.",
@@ -3615,6 +3737,12 @@
       "class": "record",
       "growth": "Per YouTube video the owner records for a week of the call: one tiny row (the week, the video's id, when), the newest standing; about one per week; append-only, triggers abort UPDATE and DELETE.",
       "family": "call-kept"
+    },
+    {
+      "store": "server:clip_frame",
+      "class": "record",
+      "growth": "One row per frame of a clip home keeps (a walk's snips it renders itself, and the 6 legacy PNGs): clip id, side, file, SHA-256, bytes, when taken; the PNG is on the drive under renders/clips/<id>/<side>/, never the row, and a walk home kept also leaves its walk.json and the same snips under renders/clip-walk/<clip>-<side>. Append-only, triggers abort UPDATE and DELETE. At most 12 frames of at most 1 MiB a walk side, kept twice: at most 24 MiB a walk side. The six legacy frames are 1.15 MB together; no rendered walk frame has been measured yet.",
+      "family": "clips-kept"
     },
     {
       "store": "server:pd_fill",
@@ -4862,6 +4990,97 @@
           "says": "Slack is told when home stops reading the weeks or every read fails (CW2), and when a week's render fails, waits 3 hours unattempted, or the render worker stops passing (CW5); it does not say why a render failed, which the worker's log file on the drive does.",
           "status": "live",
           "ref": "server:apps/servers/file_host/src/call_weeks/render.rs"
+        }
+      ],
+      "checks": []
+    },
+    {
+      "id": "clips",
+      "name": "Keeping each clip's frames on home, and showing them on the phone",
+      "why": "paulgsc/testing keeps no media (testing#6), so home keeps clip frames (the owner's decision, 2026-11-11, C125): home reads the clip index hourly, renders each walk side itself on its render lane and keeps it once it matches the index, keeps the six legacy frames held to their pinned digests, and serves each frame to the paired phone, which Studio reads from once CLIPS-UI's reader lands.",
+      "serves": ["clips-kept"],
+      "witnesses": ["CL1", "CL2", "CL3", "CL4"],
+      "segments": [
+        {
+          "id": "sessions",
+          "name": "The session that lands a change writes its clip to paulgsc/testing: clips/index.json, and a walk's sample. Someone else's.",
+          "owner": "foreign",
+          "on": "outside",
+          "paths": ["some-ui:packages/video-render/src/clip.ts"]
+        },
+        {
+          "id": "github",
+          "name": "GitHub serves paulgsc/testing's clips folder. Someone else's.",
+          "owner": "foreign",
+          "on": "outside",
+          "paths": []
+        },
+        {
+          "id": "internet",
+          "name": "Home reaches GitHub over the internet.",
+          "owner": "network",
+          "on": "between",
+          "paths": []
+        },
+        {
+          "id": "keeper",
+          "name": "The clips worker reads the index, gives each walk to the render worker, checks a finished walk against the index and keeps its frames, and keeps the legacy frames. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": [
+            "server:apps/servers/file_host/src/clips",
+            "server:crates/db/clip_frame"
+          ]
+        },
+        {
+          "id": "render",
+          "name": "The render worker replays each walk with the motion when the lane admits it, and keeps its snips and walk.json. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": [
+            "server:infra/render",
+            "some-ui:packages/video-motion/src/walk",
+            "some-ui:infra/render/Dockerfile"
+          ]
+        },
+        {
+          "id": "frames",
+          "name": "Home serves each frame it holds to the paired phone, by its SHA-256. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": [
+            "server:apps/servers/file_host/src/routes/clips.rs",
+            "server:apps/servers/file_host/src/handlers/clips.rs"
+          ]
+        },
+        {
+          "id": "home-network",
+          "name": "The phone reaches home over the home network, as the paired phone.",
+          "owner": "network",
+          "on": "between",
+          "paths": []
+        },
+        {
+          "id": "studio",
+          "name": "Studio's Library shows each clip's frames from paulgsc/testing today; reading them from home is CLIPS-UI's coming reader (claude/clips-from-home), which updates this segment when it lands. Ours, on the phone.",
+          "owner": "ours",
+          "on": "phone",
+          "paths": [
+            "some-ui:apps/www/src/lib/studio-clips",
+            "some-ui:apps/www/src/components/studio/clips.tsx"
+          ]
+        }
+      ],
+      "signals": [
+        {
+          "says": "Each clips pass logs what it kept and every failure by kind (a mismatched walk, a legacy frame not its pinned bytes, a frame that isn't a PNG); nothing tells Slack yet.",
+          "status": "live",
+          "ref": "server:apps/servers/file_host/src/clips.rs"
+        },
+        {
+          "says": "A walk the render worker could not run is on the phone's Renders page as failed, its whole log on home's drive.",
+          "status": "live",
+          "ref": "server:apps/servers/file_host/src/feeds/renders.rs"
         }
       ],
       "checks": []
