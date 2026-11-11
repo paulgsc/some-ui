@@ -40,15 +40,20 @@ export function isHomeBytes(body: unknown): body is HomeBytes {
   )
 }
 
-/** Bytes `start` to `end` of what home serves at a path, both included. */
-export type HomeRange = { readonly start: number; readonly end: number }
+/**
+ * Bytes `start` to `end` of what home serves at a path, both included; or
+ * `"whole"`, all of a small file (a clip's frame) in one answer.
+ */
+export type HomeRange =
+  | { readonly start: number; readonly end: number }
+  | "whole"
 
 /**
  * A credentialed request to the paired home, at `path` under its API base,
  * with `body` sent as these bytes: JSON text, or `HomeBytes`. The one request
  * port every exchange with home sends through. With a `range`, a `GET` asks
- * for those bytes of a file home serves (a week of the call's video), and the
- * answer's `body` is them as base64.
+ * for those bytes of a file home serves (a week of the call's video), or for
+ * all of a small one, and the answer's `body` is them as base64.
  */
 export type HomeCall = (
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",

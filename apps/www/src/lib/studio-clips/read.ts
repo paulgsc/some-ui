@@ -4,18 +4,15 @@
  * the shared fetch client, carrying no account. The host serves JSON as
  * text, so it is read as JSON whatever its type says. A folder not made yet
  * is no clips, not a failure.
+
  */
 import { apiClient, ApiError } from "@some-ui/fetch-kit"
 import type { Clip } from "@some-ui/video-render"
-import { ClipIndexSchema, clipPath, TESTING_DATA } from "@some-ui/video-render"
+import { ClipIndexSchema, TESTING_DATA } from "@some-ui/video-render"
 
 import { PUBLIC_READ } from "@/lib/file-host-config"
 
 import { newestFirst } from "./order"
-
-/** Where a file of clip `id` is served, for an `<img>`. */
-export const clipUrl = (id: string, file: string): string =>
-  `${TESTING_DATA}/clips/${clipPath(id, file)}`
 
 /** Every clip kept, the newest first; rejects when the index can't be read. */
 export async function readStudioClips(): Promise<Array<Clip>> {

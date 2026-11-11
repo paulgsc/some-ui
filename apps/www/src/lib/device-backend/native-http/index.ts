@@ -57,7 +57,8 @@ export type HomeRequest = {
   /**
    * Sent as `Range: bytes=start-end`: the answer's body is those bytes as
    * base64, read as the plugin's `blob`, so a large file comes a part at a
-   * time and is never held whole.
+   * time and is never held whole. `"whole"` sends no `Range` and reads all
+   * of a small file as base64 the same way.
    */
   range?: HomeRange
 }
@@ -109,7 +110,7 @@ export async function homeRequest(call: HomeRequest): Promise<HomeAnswer> {
     headers["Content-Type"] = bytes?.contentType ?? "application/json"
   }
   if (ifNoneMatch !== undefined) headers["If-None-Match"] = ifNoneMatch
-  if (range !== undefined) {
+  if (range !== undefined && range !== "whole") {
     headers.Range = `bytes=${String(range.start)}-${String(range.end)}`
   }
   const answer = await foreignValue(

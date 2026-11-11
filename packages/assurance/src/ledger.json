@@ -2457,7 +2457,7 @@
     {
       "id": "clips-kept",
       "name": "Home keeps each clip's frames",
-      "why": "paulgsc/testing keeps no media (testing#6), so home keeps clip frames (owner, 2026-11-11, C125): an hourly timer reads clips/index.json; a walk side home renders itself on its render lane with motion walk, checked against the index's snips and labels; the 6 legacy PNGs are fetched and held to pinned SHA-256s; a session-taken side keeps only its labels. Home serves them to the paired phone; Studio still reads paulgsc/testing until CLIPS-UI's reader lands.",
+      "why": "paulgsc/testing keeps no media (testing#6), so home keeps clip frames (owner, 2026-11-11, C125): an hourly timer reads clips/index.json; a walk side home renders itself on its render lane with motion walk, checked against the index's snips and labels; the 6 legacy PNGs are fetched and held to pinned SHA-256s; a session-taken side keeps only its labels. Home serves them to the paired phone, and Studio's clip page reads them from there (some-ui#2894).",
       "paths": [
         "server:apps/servers/file_host/src/clips",
         "server:crates/db/clip_frame",
@@ -4997,7 +4997,7 @@
     {
       "id": "clips",
       "name": "Keeping each clip's frames on home, and showing them on the phone",
-      "why": "paulgsc/testing keeps no media (testing#6), so home keeps clip frames (the owner's decision, 2026-11-11, C125): home reads the clip index hourly, renders each walk side itself on its render lane and keeps it once it matches the index, keeps the six legacy frames held to their pinned digests, and serves each frame to the paired phone, which Studio reads from once CLIPS-UI's reader lands.",
+      "why": "paulgsc/testing keeps no media (testing#6), so home keeps clip frames (the owner's decision, 2026-11-11, C125): home reads the clip index hourly, renders each walk side itself on its render lane and keeps it once it matches the index, keeps the six legacy frames held to their pinned digests, and serves each frame to the paired phone, which Studio's clip page reads from.",
       "serves": ["clips-kept"],
       "witnesses": ["CL1", "CL2", "CL3", "CL4"],
       "segments": [
@@ -5062,7 +5062,7 @@
         },
         {
           "id": "studio",
-          "name": "Studio's Library shows each clip's frames from paulgsc/testing today; reading them from home is CLIPS-UI's coming reader (claude/clips-from-home), which updates this segment when it lands. Ours, on the phone.",
+          "name": "Studio's clip page reads each frame from home through the paired link, one whole PNG per frame; a frame home doesn't hold shows its label and why, and away from home the page lists only the labels. Ours, on the phone.",
           "owner": "ours",
           "on": "phone",
           "paths": [

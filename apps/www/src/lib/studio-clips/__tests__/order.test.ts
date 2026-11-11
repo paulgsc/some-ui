@@ -2,7 +2,7 @@
 import type { Clip } from "@some-ui/video-render"
 import { describe, expect, it } from "vitest"
 
-import { newestFirst } from "./order"
+import { newestFirst } from "@/lib/studio-clips/order"
 
 const clip = (title: string, landed: string): Clip => ({
   id: title.toLowerCase(),

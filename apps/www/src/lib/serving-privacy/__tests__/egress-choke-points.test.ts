@@ -153,6 +153,11 @@ const HOME_LINK_CALLERS = new Set([
   // keeps on each feed's episodes. It sends nothing of its own: the notes go
   // home on the voice lane's run (`lib/home-link/episode-notes`).
   "lib/episode-feedback/home-read.ts",
+  // LA8 (clips, server#801): Studio's clip page, which reads whether this
+  // phone is paired with home, and the read of each frame home keeps, asked
+  // whole when the page shows it. Neither sends anything of the phone's.
+  "components/studio/clip-frames.tsx",
+  "lib/studio-clips/frames-read.ts",
   // LA8 (ST33): Studio's Finish, which hands the voice lane a video kept for
   // home to make and hears what home answered and lists of it
   // (`studioVideos`), sending nothing of its own.
@@ -187,6 +192,7 @@ const KEEPERS = new Set([
   "lib/home-link/call-videos.ts",
   "lib/home-link/renders.ts",
   "lib/home-link/previews.ts",
+  "lib/home-link/clips.ts",
   "lib/home-link/episode-notes-read.ts",
 ])
 
@@ -268,6 +274,12 @@ const PREVIEWS_SENDS = [
     "undefined",
     "{ start, end }",
   ],
+]
+
+/** LA8, server#801: a clip's frame, and the one request it may send. */
+const CLIPS_READ = "lib/home-link/clips.ts"
+const CLIPS_SENDS = [
+  ['"GET"', "clipFramePath(id, side, file)", "undefined", '"whole"'],
 ]
 
 /** LA8, MD3: the read of what home deleted, and the one request it may send. */
@@ -874,6 +886,18 @@ describe("LA8: the phone reaches home through one module", () => {
         /from "\.\/renders"|from "@\/lib\/home-link\/renders"/.test(read(f))
       )
     expect(readers).toEqual(["lib/renders/read.ts"])
+  })
+
+  it("sends nothing from a clip's frame but its one GET, and only the clips' read asks it (server#801)", () => {
+    expect(sendCalls(CLIPS_READ, read(CLIPS_READ))).toEqual(CLIPS_SENDS)
+    expect(read(CLIPS_READ)).toContain("`/clips/${")
+    expect(read(CLIPS_READ)).toContain("homeLink().keep(")
+    const readers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /from "\.\/clips"|from "@\/lib\/home-link\/clips"/.test(read(f))
+      )
+    expect(readers).toEqual(["lib/studio-clips/frames-read.ts"])
   })
 
   it("sends nothing from a template's preview but its make, its read and its video's parts, and only the preview asks them (SFEED12)", () => {

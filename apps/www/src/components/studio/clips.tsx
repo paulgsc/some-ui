@@ -1,20 +1,24 @@
 /**
  * Studio's Library (SFEED7, epic #2670 decision 5): every clip kept, the
  * newest first, each opening its own page, where its before and after show
- * step by step as a user saw them. The read is the query's
- * (`studioClipsQuery`); this only draws its outcome. Picking a clip for an
- * episode comes with the episode's own page.
+ * step by step as a user saw them. The list is testing's index and each
+ * frame is home's, which only the Android app reads (`./clip-frames`); this
+ * only draws their outcomes. A frame home doesn't hold shows its label and why, never a
+ * broken image; away from home, the page lists only the labels and says so.
+ * Picking a clip for an episode comes with the episode's own page.
  */
 import type { JSX, ReactNode } from "react"
-import type { Clip, ClipSide } from "@some-ui/video-render"
+import type { Clip } from "@some-ui/video-render"
 import { refUrl } from "@some-ui/video-render"
 import { Link } from "@tanstack/react-router"
 
 import { hasAudience } from "@/lib/build-profile"
-import { clipUrl, studioClipsQuery } from "@/lib/studio-clips"
+import { studioClipsQuery } from "@/lib/studio-clips"
 import { STUDIO_INDEX_WORDS } from "@/lib/studio-index"
 
-import { OutLink, Part, ReadList, TILE } from "./layout"
+import { ClipFrames } from "./clip-frames"
+import { ClipParts, LabelList } from "./clip-parts"
+import { OutLink, ReadList, TILE } from "./layout"
 
 const WORDS = STUDIO_INDEX_WORDS.clips
 
@@ -57,28 +61,6 @@ export const ClipsList = (): JSX.Element => (
   </Read>
 )
 
-/** One side of a clip: its screens in order, and who recorded them. */
-const Side = ({ id, side }: { id: string; side: ClipSide }): JSX.Element => (
-  <>
-    <ol className="flex flex-col gap-3">
-      {side.snips.map((snip) => (
-        <li key={snip.file} className="flex flex-col gap-1">
-          <img
-            src={clipUrl(id, snip.file)}
-            alt={snip.label}
-            loading="lazy"
-            className="border-border/60 w-full rounded-xl border"
-          />
-          <span className="text-sm">{snip.label}</span>
-        </li>
-      ))}
-    </ol>
-    <p className="text-muted-foreground text-xs">
-      {side.made === "walk" ? WORDS.walked : WORDS.recorded}
-    </p>
-  </>
-)
-
 /** One clip's page, by its id, or that it's gone from the Library. */
 export const ClipScreen = ({ id }: { id: string }): JSX.Element => (
   <Read>
@@ -92,18 +74,18 @@ export const ClipScreen = ({ id }: { id: string }): JSX.Element => (
           <p className="text-muted-foreground text-sm">
             {WORDS.landed(clip.landed)}
           </p>
-          <Part label={WORDS.before}>
-            {clip.before === null ? (
-              <p className="text-muted-foreground text-sm">
-                {WORDS.nothingBefore}
-              </p>
-            ) : (
-              <Side id={clip.id} side={clip.before} />
-            )}
-          </Part>
-          <Part label={WORDS.after}>
-            <Side id={clip.id} side={clip.after} />
-          </Part>
+          {/* Only the Android app reaches home; a web build lists the labels. */}
+          {import.meta.env.VITE_DEVICE_BACKEND === "true" ? (
+            <ClipFrames clip={clip} />
+          ) : (
+            <ClipParts
+              clip={clip}
+              before={
+                clip.before === null ? null : <LabelList side={clip.before} />
+              }
+              after={<LabelList side={clip.after} />}
+            />
+          )}
           <OutLink href={refUrl(clip.change)}>{WORDS.open}</OutLink>
         </>
       )

@@ -67,6 +67,27 @@ describe("homeRequest", () => {
     expect(plugin.request).not.toHaveBeenCalled()
   })
 
+  it("asks for all of a small file as a blob, with no Range", async () => {
+    plugin.request.mockResolvedValue({
+      status: 200,
+      data: "iVBORw0KGgo=",
+      headers: {},
+    })
+    const answer = await homeRequest({
+      method: "GET",
+      url: "https://home.local/api/v1/clips/a/after/01.png",
+      token: "t",
+      range: "whole",
+    })
+    expect(answer).toEqual({ status: 200, body: "iVBORw0KGgo=" })
+    expect(plugin.request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        headers: { Authorization: "Bearer t" },
+        responseType: "blob",
+      })
+    )
+  })
+
   it("sends If-None-Match, and reads a bodiless 304 with its ETag", async () => {
     plugin.request.mockResolvedValue({
       status: 304,
