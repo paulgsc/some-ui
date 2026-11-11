@@ -1,15 +1,10 @@
 /**
  * What home's answer for one clip frame comes to (`lib/home-link/clips`):
  * the frame, ready for an `<img>`; not taken yet (home hasn't made or kept
- * it: a 404); home not answering it this time; or bytes that don't read. Pure, so every answer's
- * reading is tested without a link.
+ * it: a 404); home not answering it this time; or bytes that don't read.
+ * Pure, so every answer's reading is tested without a link.
  */
 import type { HomeAnswer } from "@some-ui/core-utils"
-
-export type FrameRead =
-  | { readonly kind: "frame"; readonly src: string }
-  | { readonly kind: "not-taken" }
-  | { readonly kind: "unreadable" }
 
 /**
  * A frame comes as base64 (the phone's native request carries bytes so), and
@@ -26,7 +21,11 @@ export function readFrame(answer: HomeAnswer): FrameShown {
 
 /** One frame as the clip's page shows it: read, or why home gave none. */
 export type FrameShown =
-  | FrameRead
+  | { readonly kind: "frame"; readonly src: string }
+  /** Home doesn't hold it. */
+  | { readonly kind: "not-taken" }
+  /** Home sent bytes that don't read as a frame. */
+  | { readonly kind: "unreadable" }
   /** This phone isn't paired, so home wasn't asked. */
   | { readonly kind: "unpaired" }
   /** Home didn't answer. */

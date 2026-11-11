@@ -41,9 +41,10 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
 
 // A clip's frames are home's: this phone is paired unless a test says not,
 // and each frame's answer is the test's.
-const link = vi.hoisted(() => ({
-  kind: "paired" as "paired" | "unpaired" | "reading",
-}))
+const link = vi.hoisted(() => {
+  const state: { kind: "paired" | "unpaired" | "reading" } = { kind: "paired" }
+  return state
+})
 vi.mock("@/lib/home-link", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   paired: (): boolean => link.kind === "paired",
