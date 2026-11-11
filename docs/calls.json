@@ -1540,6 +1540,63 @@
       "gray": "#2231 lists the missing 2-to-5-minute hold as a known gap and no one has measured Kokoro's pace; a bound in the format would refuse the template's sample, whose dives are about 100 words.",
       "undo": "Drop the word check from essayTicket in finish.ts and DIVE_WORDS_* with ROUTINE.md's sentence, or set WORDS_A_MINUTE to the pace a rendered essay measures.",
       "refs": ["#2693", "#2231"]
+    },
+    {
+      "id": "C128",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": ["server:apps/servers/file_host/src/clips/pass.rs"],
+      "chose": "A walk whose snips or labels don't match the clip index has its render output removed, so the worker draws it again an hour later.",
+      "options": [
+        "remove its render output, so the worker draws it again an hour later",
+        "keep the rejected output and wait for a person to clear it"
+      ],
+      "gray": "The owner decided that home makes a walk's frames, not what happens to a walk that fails its check. The worker skips any walk whose walk.json exists, so a kept rejection never recovers, and a redraw costs one short walk an hour while it stays wrong.",
+      "undo": "In clips/pass.rs take_walk, stop removing the walk's folder on mismatch.",
+      "refs": ["server#801"]
+    },
+    {
+      "id": "C129",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": ["server:apps/servers/file_host/src/clips/pass.rs"],
+      "chose": "A walk's kept frames are copied beside the render output they were checked from, so a walk side is on the drive twice, at most 24 MiB.",
+      "options": [
+        "copy them, so a walk side is on the drive twice, at most 24 MiB",
+        "hard-link them to the render output, kept once"
+      ],
+      "gray": "No check or owner decision says how kept frames relate to the render worker's folder. A copy stays independent of a folder the pass deletes when it rejects a walk, at the cost of space no real walk has measured yet (server#807).",
+      "undo": "Hard-link in put() in clips/pass.rs instead of writing the bytes again, once server#807 shows the space matters.",
+      "refs": ["server#801", "server#807"]
+    },
+    {
+      "id": "C130",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": ["server:infra/render/render-calls.sh"],
+      "chose": "The walk job runs the published render image's own motion, beside the recorders.",
+      "options": [
+        "the published render image's own motion, beside the recorders",
+        "a separately pinned motion checkout"
+      ],
+      "gray": "Server#802 replaced the old image, which had a separate checkout, with some-ui's published one, which builds the motion and the recorders at one commit. Nothing said which one a walk should run.",
+      "undo": "Point MOTION_DIR in infra/render/render-calls.sh at another checkout.",
+      "refs": ["server#801", "server#802"]
+    },
+    {
+      "id": "C131",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": ["packages/video-render/src/clip.ts"],
+      "chose": "Testing's clips/index.json stays at some-ui.clip-index/1 until the owner's APK, the Pages build and home's www image all carry #2870's reader; testing#7, which moves it to /2, waits as a draft.",
+      "options": [
+        "keep the index at /1 until every shipped reader reads /2",
+        "make the reader accept the new fields, and move the index to /2 now",
+        "move the index to /2 now, and let builds made before #2870 show no Library until they are rebuilt"
+      ],
+      "gray": "The owner chose /2 for new clips but not when testing's file moves. Every build made before #2870 pins the schema to /1 and refuses a /2 file on that string alone, so a looser reader saves no build already in use; both clips listed today are valid /1 as they are.",
+      "undo": "Mark testing#7 ready and merge it, which moves clips/index.json to /2; the builds made before #2870 then show no Library until they are rebuilt.",
+      "refs": ["#2870"]
     }
   ]
 }
