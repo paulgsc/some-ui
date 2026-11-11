@@ -22,19 +22,10 @@ if [ "$release_mode" != "release-pr" ] || [ "$EVENT_NAME" = "workflow_dispatch" 
     :
 else
 	# `www...[from...to]` = www and everything it depends on, scoped to
-	# what actually changed in that range. An empty task list means
-	# nothing reachable from www moved.
-	#
-	# TURBO_TELEMETRY_DISABLED silences turbo's one-time telemetry
-	# banner, which otherwise prints ahead of the JSON on a fresh CI
-	# runner (no persisted `~/.turbo/config.json`) and breaks a plain
-	# `jq` parse of stdout.
+	# what actually changed in that range.
 	task_count=$(
-		TURBO_TELEMETRY_DISABLED=1 \
-			nix develop .#ci --command pnpm turbo run build \
-			--filter="www...[${BASE_SHA}...${HEAD_SHA}]" \
-			--dry=json |
-			jq '.tasks | length'
+		bash "$(dirname "$0")/graph-changed.sh" \
+			--filter="www...[${BASE_SHA}...${HEAD_SHA}]"
 	)
 	if [ "$task_count" -gt 0 ]; then
 		release_mode=release-pr
