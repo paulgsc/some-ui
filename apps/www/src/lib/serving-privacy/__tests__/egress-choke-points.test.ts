@@ -156,8 +156,8 @@ const HOME_LINK_CALLERS = new Set([
   // LA8 (clips, server#801): Studio's clip page, which reads whether this
   // phone is paired with home, and the read of each frame home keeps, asked
   // whole when the page shows it. Neither sends anything of the phone's.
-  "components/studio/clips.tsx",
-  "lib/studio-clips/read.ts",
+  "components/studio/clip-frames.tsx",
+  "lib/studio-clips/side-read.ts",
   // LA8 (ST33): Studio's Finish, which hands the voice lane a video kept for
   // home to make and hears what home answered and lists of it
   // (`studioVideos`), sending nothing of its own.
@@ -897,7 +897,7 @@ describe("LA8: the phone reaches home through one module", () => {
       .filter((f) =>
         /from "\.\/clips"|from "@\/lib\/home-link\/clips"/.test(read(f))
       )
-    expect(readers).toEqual(["lib/studio-clips/read.ts"])
+    expect(readers).toEqual(["lib/studio-clips/side-read.ts"])
   })
 
   it("sends nothing from a template's preview but its make, its read and its video's parts, and only the preview asks them (SFEED12)", () => {

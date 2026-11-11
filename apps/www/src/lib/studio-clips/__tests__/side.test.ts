@@ -9,7 +9,7 @@ import type { HomeCall } from "@some-ui/core-utils"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { askClipSide } from "@/lib/home-link/clips"
-import { readClipSide } from "@/lib/studio-clips/read"
+import { readClipSide } from "@/lib/studio-clips/side-read"
 
 const link = vi.hoisted(() => ({
   keep: vi.fn(),

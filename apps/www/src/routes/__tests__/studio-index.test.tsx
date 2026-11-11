@@ -23,7 +23,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react"
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { askClipSide } from "@/lib/home-link/clips"
 import {
@@ -62,6 +62,7 @@ vi.mock("@/lib/build-profile", async (importOriginal) => ({
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
+  vi.unstubAllEnvs()
   link.kind = "paired"
 })
 
@@ -229,6 +230,11 @@ const frames = (status: number, body: string): void => {
 }
 
 describe("the Library", () => {
+  beforeEach(() => {
+    // A clip's frames are the Android app's: its build reads them from home.
+    vi.stubEnv("VITE_DEVICE_BACKEND", "true")
+  })
+
   it("lists every clip kept, each a link to its page", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       asText({ schema: "some-ui.clip-index/1", clips: [CLIP] })
@@ -338,6 +344,18 @@ describe("the Library", () => {
     )
     render(withQueryClient(<ClipScreen id={CLIP.id} />))
     await screen.findByText("The popup opens")
+    expect(screen.queryByText(STUDIO_INDEX_WORDS.clips.onlyLabels)).toBeNull()
+    expect(askClipSide).not.toHaveBeenCalled()
+  })
+
+  it("lists the labels in a web build, which never asks home", async () => {
+    vi.stubEnv("VITE_DEVICE_BACKEND", "false")
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      asText({ schema: "some-ui.clip-index/1", clips: [CLIP] })
+    )
+    render(withQueryClient(<ClipScreen id={CLIP.id} />))
+    await screen.findByText("Never suspend this site")
+    expect(screen.queryByRole("img")).toBeNull()
     expect(screen.queryByText(STUDIO_INDEX_WORDS.clips.onlyLabels)).toBeNull()
     expect(askClipSide).not.toHaveBeenCalled()
   })
