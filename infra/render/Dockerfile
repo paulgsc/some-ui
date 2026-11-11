@@ -20,8 +20,14 @@
 #   image is labelled with (`org.opencontainers.image.revision`).
 #
 # The stage is served by the recorders themselves (`siteOf` in
-# tests/record/voiced.ts) from apps/www/dist, their default `--dist`: no
+# tests/record/voiced.ts) from /opt/stage, given as `--dist /opt/stage`: no
 # stage container, and no build of the whole app.
+#
+# What paulgsc/server's call-render.yml relies on: the recorders run from
+# /opt/some-ui/apps/www with /opt/some-ui/node_modules/.bin/tsx; the motion
+# from /opt/some-ui/packages/video-motion with its own node_modules/.bin/tsx;
+# the stage at /opt/stage; nothing in /usr/local/bin (render-calls.sh is
+# mounted there); nothing fetched at run time.
 FROM mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f2814476b21571c5124a3fca2267d73041f56e7580e
 
 # ffmpeg from snapshot.ubuntu.com, which serves the archive as it stood at
@@ -52,7 +58,7 @@ COPY . .
 # packages the stage and the recorders load built (their `exports` name
 # dist/), never the whole app. `record:playoff-delta` imports
 # @some-ui/playoff-delta's `recording` entry, which exists only once that
-# package is built. Then the stage, into apps/www/dist.
+# package is built. Then the stage, into /opt/stage.
 RUN corepack enable \
     && pnpm install --frozen-lockfile --filter "www..." \
     && pnpm exec turbo run build \
@@ -61,7 +67,7 @@ RUN corepack enable \
        --filter="@some-ui/video-render^..." \
        --filter="@some-ui/video-motion^..." \
     && pnpm --filter www build:stage \
-    && mv apps/www/out/stage apps/www/dist \
+    && mv apps/www/out/stage /opt/stage \
     && rm -rf apps/www/out /root/.cache /root/.local/share/pnpm/store
 
 ARG SOME_UI_COMMIT=
@@ -72,4 +78,5 @@ LABEL org.opencontainers.image.source="https://github.com/paulgsc/some-ui" \
 # write only under /tmp.
 ENV HOME=/tmp \
     XDG_CACHE_HOME=/tmp/.cache \
-    TSX_CACHE_DIR=/tmp/tsx
+    TSX_CACHE_DIR=/tmp/tsx \
+    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright

@@ -2,8 +2,8 @@
  * The recording stage (`pnpm --filter www build:stage`): the four pages the
  * recorders capture (`tests/record`), `/call`, `/essay`, `/playoff-delta` and
  * `/burn-ins`, and nothing else of the app. The render image
- * (infra/render/Dockerfile) carries this build and the recorders serve it
- * themselves through `--dist`, so a render needs no copy of the whole app.
+ * (infra/render/Dockerfile) carries this build (at /opt/stage) and the recorders
+ * serve it themselves through `--dist`, so a render needs no copy of the whole app.
  *
  * The routes are www's own route files, under a bare root: the same search
  * validation and the same stages, through the web surface's door (A4,

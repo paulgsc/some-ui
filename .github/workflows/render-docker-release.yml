@@ -128,7 +128,7 @@ jobs:
           for n in 1 2; do
             run -w /opt/some-ui/apps/www render:proof \
               tests/record/preview.ts --template conference-call --voices none \
-              --brand /work/brand --out "/work/preview-$n"
+              --dist /opt/stage --brand /work/brand --out "/work/preview-$n"
           done
           sha256sum "$work"/preview-*/preview.mp4 | tee -a "$GITHUB_STEP_SUMMARY"
           cmp "$work/preview-1/preview.mp4" "$work/preview-2/preview.mp4"
