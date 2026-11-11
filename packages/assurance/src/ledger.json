@@ -2878,7 +2878,7 @@
           "claim": "An essay that fails to render, waits too long, is refused, or a worker that keeps failing, reads as such to the owner rather than as a quiet week.",
           "requirement": "Slack is told when a week's essay render fails (RustEssayRenderFailed, naming renders/rust-essay-worker/<week>.failed.log on home's database drive), when a held essay has waited unrendered (RustEssayRenderOverdue), when an essay is refused (RustEssayRefused, naming <week>.refused.log), and when the rust_essays worker keeps failing (RustEssaysFailing); the Renders page shows a failed entry.",
           "verdict": "unproven",
-          "conclusion": "Structural: the four alerts and their promtool tests are on home's rules; the Renders page's failed entry for an essay is not yet shown (RR17).",
+          "conclusion": "Structural: the four alerts and their promtool tests are on home's rules, and the Renders page names an essay's failed entry as Studio names the essay (RR17); no essay has yet failed on home, which only home can show.",
           "tracked": "some-ui#2691",
           "evidence": [
             {
@@ -2890,6 +2890,11 @@
               "class": "structural",
               "says": "Grafana reads what Prometheus has firing from ALERTS and sends each alert to the Slack contact point, one message per alert.",
               "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
+            },
+            {
+              "class": "structural",
+              "says": "The Renders page names each render, a Rust Rounds essay's failed one included, by Studio's own names for its feed and episode (FEED_FACTS, FEED_WORDS), whose essay names are tested.",
+              "ref": "some-ui:apps/www/src/lib/renders/words.ts"
             }
           ],
           "watch": {
@@ -2926,7 +2931,7 @@
           "claim": "A week's essay video leaves home only by the owner's act from My data, and each delete leaves a receipt; deleting one of the week's takes deletes the video too, and the week is never rendered again.",
           "requirement": "My data lets a week's essay go as the call's (its video once its YouTube link is recorded, then the rest), and deleting a take of the week deletes its video and the rest with cause take-deleted; each step writes an append-only receipt to rust_essay_video_deletion kept with the account, and a week let go or with a take deleted is not rendered again.",
           "verdict": "unproven",
-          "conclusion": "Structural on home, tested in server CI. Not yet shown: the phone's My data offers no essay let-go yet (RR17, #2692), and no test shows a week let go is never rendered again.",
+          "conclusion": "Structural on home, tested in server CI, and My data offers the essay's let-go through the call's two steps and receipts (RR17, #2692). Not yet shown: no test shows a week let go is never rendered again, and no owner's run on a phone.",
           "tracked": "some-ui#2691",
           "evidence": [
             {
@@ -2938,6 +2943,11 @@
               "class": "structural",
               "says": "A take deleted withdraws the week at once, both steps with a receipt naming it, and the next minute removes what is left; the week is never given again.",
               "ref": "server:apps/servers/file_host/src/rust_essays.rs"
+            },
+            {
+              "class": "structural",
+              "says": "My data lists each essay home holds beside the call's, and offers its video only once its link is saved, then the rest, each asked once and ending on home's receipt, through the one let-go every feed shares; the list says the video holds your voice.",
+              "ref": "some-ui:apps/www/src/components/settings/device-my-data-calls.tsx"
             }
           ],
           "watch": {
