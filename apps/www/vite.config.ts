@@ -130,10 +130,8 @@ function fitPageEntry(): Record<string, string> {
   }
 }
 
-// `pnpm build:stage`: the recording stage alone (stage/main.tsx says what it
-// carries), into out/stage, with its page at the output's root, where the
-// recorders' `--dist` serves it. The stage reads what the recorders answer,
-// as the home image's does, so it is the `lan` profile's build and no other's.
+// `pnpm build:stage`: the recording stage alone (stage/main.tsx), into
+// out/stage, with its page at the output's root.
 const isStageBuild = process.env.WWW_STAGE === "1"
 
 function stageEntry(): Record<string, string> {

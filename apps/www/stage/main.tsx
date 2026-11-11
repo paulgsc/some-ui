@@ -1,18 +1,14 @@
 /**
  * The recording stage (`pnpm --filter www build:stage`): the four pages the
  * recorders capture (`tests/record`), `/call`, `/essay`, `/playoff-delta` and
- * `/burn-ins`, and nothing else of the app. The render image
- * (infra/render/Dockerfile) carries this build (at /opt/stage) and the recorders
- * serve it themselves through `--dist`, so a render needs no copy of the whole app.
+ * `/burn-ins`, and nothing else of the app (infra/render/Dockerfile).
  *
  * The routes are www's own route files, under a bare root: the same search
  * validation and the same stages, through the web surface's door (A4,
  * packages/some-vite-config/AUDIENCES.md). The root leaves out the app's
  * sign-in and phone guards, and the providers are only the ones a stage
  * depends on: the theme, for its look, and the query client its reads go
- * through (`@some-ui/fetch-kit`'s `useResource`). Built under the `lan` profile only
- * (vite.config.ts refuses any other), so the stage reads what the recorders
- * answer, as the home image does.
+ * through (`@some-ui/fetch-kit`'s `useResource`).
  */
 
 import { StrictMode } from "react"
@@ -47,9 +43,6 @@ import.meta.glob(
 
 const rootRoute = createRootRoute({ component: Outlet })
 
-// As src/routeTree.gen.ts attaches each file route to www's root, here to
-// the stage's: the same route objects, so the search each page accepts is
-// the one the app's route declares.
 const stageRoutes = [
   [CallRoute, "/call"],
   [EssayRoute, "/essay"],
@@ -60,8 +53,6 @@ const stageRoutes = [
 const routeTree = rootRoute.addChildren(
   stageRoutes.map(([route, path]) =>
     route.update(
-      // The generated tree's own cast: a file route's `update` types only
-      // what a route file may set, not where the route is mounted.
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-explicit-any -- as src/routeTree.gen.ts mounts the same routes
       { id: path, path, getParentRoute: () => rootRoute } as any
     )

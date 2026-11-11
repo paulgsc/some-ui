@@ -33,9 +33,8 @@ FROM mcr.microsoft.com/playwright:v1.62.1-noble@sha256:dcc5531e97840b9b5e794f281
 # ffmpeg from snapshot.ubuntu.com, which serves the archive as it stood at
 # UBUNTU_SNAPSHOT: the version and every package it pulls in are what they
 # were then, signed by the same archive key, so a rebuild months later is the
-# same install. FFMPEG_VERSION is noble's release build, the one home's image
-# installed from the live archive until this image (the base already carries
-# its libav* libraries at that version). Move both together, on purpose.
+# same install. FFMPEG_VERSION is noble's release build (the base already
+# carries its libav* libraries at that version). Move both together.
 ARG UBUNTU_SNAPSHOT=20261110T000000Z
 ARG FFMPEG_VERSION=7:6.1.1-3ubuntu5
 RUN rm -f /etc/apt/sources.list /etc/apt/sources.list.d/* \
@@ -58,7 +57,8 @@ COPY . .
 # packages the stage and the recorders load built (their `exports` name
 # dist/), never the whole app. `record:playoff-delta` imports
 # @some-ui/playoff-delta's `recording` entry, which exists only once that
-# package is built. Then the stage, into /opt/stage.
+# package is built. Then the stage, into /opt/stage. The turbo filters are
+# render-docker-release.yml's detect graph too: keep the two in step.
 RUN corepack enable \
     && pnpm install --frozen-lockfile --filter "www..." \
     && pnpm exec turbo run build \
