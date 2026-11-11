@@ -88,7 +88,7 @@ import {
   runCommand,
 } from "./node"
 import { toFile } from "./pending"
-import { REPOS } from "./refs"
+import { WORK_REPOS } from "./refs"
 import { sessionFolderProblems } from "./session-note"
 import { fromTimelineV1 } from "./timeline-v1"
 import { SOUNDS } from "./vocabulary"
@@ -486,7 +486,7 @@ async function callFacts(from: string, to: string): Promise<CallFacts> {
   const after = await recordAt(dayAfter(to))
   if (after !== null)
     facts.calls.push(...callsEntered(await recordAt(from), after))
-  for (const repo of REPOS) {
+  for (const repo of WORK_REPOS) {
     const changes = new Map<number, "story" | "defect">()
     const commits = await search(
       "search/commits",
