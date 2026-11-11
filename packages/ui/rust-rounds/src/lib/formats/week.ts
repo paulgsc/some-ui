@@ -59,7 +59,7 @@ export const WEEK_SCHEMA = "some-ui.rust-week/1"
 export const TICKET_KEY = /^[A-Z][A-Z0-9]{0,5}-\d{1,6}$/
 
 /** The references a week draws on, the known space "right" is checked against. */
-const ReferenceSchema = z.enum([
+export const ReferenceSchema = z.enum([
   "rust-reference",
   "rustonomicon",
   "async-book",
@@ -98,7 +98,7 @@ export type Concept = z.infer<typeof ConceptSchema>
 
 const speakToCount = `a ticket has ${SPEAK_TO_MIN} or ${SPEAK_TO_MAX} speak-to points`
 
-const TicketSchema = z.strictObject({
+export const TicketSchema = z.strictObject({
   id: z
     .string()
     .regex(

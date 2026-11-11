@@ -1,4 +1,4 @@
-import ROUTINE from "@rust-rounds-root/ROUTINE.md?raw"
+import CARD_TUTOR from "@rust-rounds-root/CARD-TUTOR.md?raw"
 import type { Card, Round, RustcRun } from "@rust-rounds/lib/formats"
 import {
   expectMatches,
@@ -207,7 +207,7 @@ function namesIn(schema: unknown, names = new Set<string>()): Set<string> {
   return names
 }
 
-describe("ROUTINE.md", () => {
+describe("CARD-TUTOR.md", () => {
   it("names every field, tag and value the three formats have", () => {
     const names = new Set<string>()
     for (const schema of [RoundSchema, RoundLogSchema, TutorNotesSchema]) {
@@ -216,7 +216,7 @@ describe("ROUTINE.md", () => {
     expect(names.size).toBeGreaterThan(40)
     const missing = [...names].filter(
       (name) =>
-        !ROUTINE.includes(`\`${name}\``) && !ROUTINE.includes(`"${name}"`)
+        !CARD_TUTOR.includes(`\`${name}\``) && !CARD_TUTOR.includes(`"${name}"`)
     )
     expect(missing).toEqual([])
   })
