@@ -179,11 +179,11 @@
             "tighter": "lower"
           },
           "verdict": "broken",
-          "conclusion": "Each request has a 30-second limit but the pass has none: at today's constants a full pass may make up to 842 calls, about 7.0 hours of waiting in the worst case.",
+          "conclusion": "Each request has a 30-second limit but the pass has none: at today's constants a full pass may make up to 844 calls, about 7.0 hours of waiting in the worst case.",
           "evidence": [
             {
               "class": "derived",
-              "says": "Inbound 5 folders × (10 pages + 20 gets) = 150, outbound 20, the routines' indexes 2 puts (jobs and reflections), restore 10 folders × (1 + 50) = 510, archive 12 folders × 10 pages + 20 × (get + archive) = 160: 842 calls, × 30 s ≈ 25,260 s. Filing transcripts and LeetType logs makes no call, archiving walks 12 of the 13 folders (not index), reflection's and prompt's only once one is due, and restore walks the 10 the routine can ask back (not index, reflection or prompt; paulgsc/some-ui#2178, #2179). Drama prompts share outbound's 20, and the build-journal session's lists of Drive's takes ride brief, sharing inbound's listing and its 20 gets (paulgsc/some-ui#2401).",
+              "says": "Inbound 5 folders × (10 pages + 20 gets) = 150, outbound 20, the routines' indexes 4 puts (jobs, reflections, call and rust), restore 10 folders × (1 + 50) = 510, archive 12 folders × 10 pages + 20 × (get + archive) = 160: 844 calls, × 30 s ≈ 25,320 s. Filing transcripts and LeetType logs makes no call, archiving walks 12 of the 13 folders (not index), reflection's and prompt's only once one is due, and restore walks the 10 the routine can ask back (not index, reflection or prompt; paulgsc/some-ui#2178, #2179). Drama prompts share outbound's 20, and the build-journal session's lists of Drive's takes ride brief, sharing inbound's listing and its 20 gets (paulgsc/some-ui#2401).",
               "ref": "server:apps/servers/file_host/src/mailbox/pass.rs"
             }
           ],
@@ -209,7 +209,7 @@
           "evidence": [
             {
               "class": "derived",
-              "says": "Hourly while home holds the mailbox's bell, every 15 minutes while it doesn't (mailbox::INTERVAL and mailbox::UNHELD; the owner's decision of 2026-11-10 and C64, paulgsc/server#500), and no two timer or catch-up passes closer than 15 minutes, so a reconnect's catch-up pass waits for that. A pass is 5 folder listings (brief, scene, drama, run, leetype); with archiving, + 10 wanted listings + 10 archive listings = 25. A bell down all day is 96 passes, 480 requests (2,400 with archiving), exactly as before the bell. A bell held all day is 24 passes, 120 (600), plus the upgrade request per reconnect. A day is never more than the 96 passes of a bell that is down: a reconnect's catch-up pass comes no sooner than 15 minutes after the last pass (C64), and only a ring or a file filed, which are work, not idle, runs a pass sooner. The bell's ping is auto-responded and costs no request. Filing LeetType logs reads home's database only. Home's index (index) adds no listing: archiving walks every folder but it (ARCHIVES), the routine's backfill rides brief, which a pass lists anyway, and with no files home computes no index. Once it holds some, it puts one only when a file it counts arrives or an open pick lapses (the index's validThrough), never for the day turning alone, so a day with no arrival and no lapse is exactly 2,400; the day a pick lapses adds one put, which is work, not idle (paulgsc/server#509). Written reflections (reflection) add no request either: home puts each when the phone sends it, which is work, never lists its asks (the routine cannot ask one back, apps/mailbox ASKED), and lists its live files only once a reflection it filed has been in the mailbox for MAILBOX_ARCHIVE_DAYS and is not yet archived, which it reads from its own tables (mailbox_repo::filed_due), so a pass with nothing to do is still 25 requests (paulgsc/some-ui#2178). Drama prompts (prompt) are the same, by the same tables (mailbox_repo::filed_due, unanswered_archives) (paulgsc/some-ui#2179). The reflections routine's index (index-reflections-*) adds no listing either: home computes it from its own tables (mailbox_repo::reflections_inputs) after each pass, and puts one only when something it counts arrives or leaves (a scene, drama, written reflection, drama prompt, list of opened lessons, reflection or scene voice note or its transcript) or a moment it carries passes (its validUntil: a group of reflections settling two hours after its newest, a reflection's or prompt's two-day wait for a voice note ending, a batch of lessons leaving the unopened window). Each such moment is owed to a record that arrived, so it adds one put on that pass, which is work, not idle, and a pass with nothing new and no moment passed is still 25 requests (an_idle_pass_makes_twenty_five_requests_and_none_reaches_the_index; paulgsc/server#509). The build-journal session's lists of the takes Drive holds add no listing either: they live in brief (drive-takes-<stamp>.json), which a pass lists anyway, and home gets one only when a new one is listed, which is work, not idle; archiving already walks brief (paulgsc/some-ui#2401).",
+              "says": "Hourly while home holds the mailbox's bell, every 15 minutes while it doesn't (mailbox::INTERVAL and mailbox::UNHELD; the owner's decision of 2026-11-10 and C64, paulgsc/server#500), and no two timer or catch-up passes closer than 15 minutes, so a reconnect's catch-up pass waits for that. A pass is 5 folder listings (brief, scene, drama, run, leetype); with archiving, + 10 wanted listings + 10 archive listings = 25. A bell down all day is 96 passes, 480 requests (2,400 with archiving), exactly as before the bell. A bell held all day is 24 passes, 120 (600), plus the upgrade request per reconnect. A day is never more than the 96 passes of a bell that is down: a reconnect's catch-up pass comes no sooner than 15 minutes after the last pass (C64), and only a ring or a file filed, which are work, not idle, runs a pass sooner. The bell's ping is auto-responded and costs no request. Filing LeetType logs reads home's database only. Home's index (index) adds no listing: archiving walks every folder but it (ARCHIVES), the routine's backfill rides brief, which a pass lists anyway, and with no files home computes no index. Once it holds some, it puts one only when a file it counts arrives or an open pick lapses (the index's validThrough), never for the day turning alone, so a day with no arrival and no lapse is exactly 2,400; the day a pick lapses adds one put, which is work, not idle (paulgsc/server#509). Written reflections (reflection) add no request either: home puts each when the phone sends it, which is work, never lists its asks (the routine cannot ask one back, apps/mailbox ASKED), and lists its live files only once a reflection it filed has been in the mailbox for MAILBOX_ARCHIVE_DAYS and is not yet archived, which it reads from its own tables (mailbox_repo::filed_due), so a pass with nothing to do is still 25 requests (paulgsc/some-ui#2178). Drama prompts (prompt) are the same, by the same tables (mailbox_repo::filed_due, unanswered_archives) (paulgsc/some-ui#2179). The reflections routine's index (index-reflections-*) adds no listing either: home computes it from its own tables (mailbox_repo::reflections_inputs) after each pass, and puts one only when something it counts arrives or leaves (a scene, drama, written reflection, drama prompt, list of opened lessons, reflection or scene voice note or its transcript) or a moment it carries passes (its validUntil: a group of reflections settling two hours after its newest, a reflection's or prompt's two-day wait for a voice note ending, a batch of lessons leaving the unopened window). Each such moment is owed to a record that arrived, so it adds one put on that pass, which is work, not idle, and a pass with nothing new and no moment passed is still 25 requests (an_idle_pass_makes_twenty_five_requests_and_none_reaches_the_index; paulgsc/server#509). The build-journal session's lists of the takes Drive holds add no listing either: they live in brief (drive-takes-<stamp>.json), which a pass lists anyway, and home gets one only when a new one is listed, which is work, not idle; archiving already walks brief (paulgsc/some-ui#2401). The Rust Rounds index (index-rust-*) adds no listing: home builds it from its own tables for the newest 4 weeks it holds, makes a week final once past its due, and puts only when a final week's record changes, so an idle pass is still 25 requests.",
               "ref": "server:apps/servers/file_host/src/mailbox/pass.rs"
             }
           ],
@@ -1842,8 +1842,8 @@
             },
             {
               "class": "structural",
-              "says": "make home-deploy puts the previous file_host image back when the new one exits, restarts or reads unhealthy, or is not ready within 360 s; skips an image that already failed; and never restores the database; tested by its self-test in Lint's Deploy script job (test_an_image_that_never_becomes_ready_ends_with_the_previous_one_serving, test_when_the_previous_image_fails_too_it_says_so_and_names_the_backup).",
-              "ref": "server:scripts/deploy.py"
+              "says": "make home-deploy (envctl deploy) puts the previous file_host image back when the new one exits, restarts or reads unhealthy, or is not ready within 360 s; skips an image that already failed; and never restores the database; tested in Lint's Deploy script job (an_image_that_never_becomes_ready_ends_with_the_previous_one_serving, when_the_previous_image_fails_too_it_says_so_and_names_the_backup).",
+              "ref": "server:apps/envctl/src/deploy.rs"
             }
           ],
           "tracked": "some-ui#2281",
@@ -1915,7 +1915,7 @@
       "paths": [
         "server:apps/servers/file_host/src/handlers/compat.rs",
         "server:apps/servers/file_host/src/deploy.rs",
-        "server:scripts/deploy.py",
+        "server:apps/envctl/src/deploy.rs",
         "server:nix/modules/home-deploy.nix",
         "server:infra/prometheus/rules/home.yml",
         "server:nix/modules/test.nix"
@@ -1935,7 +1935,7 @@
             "server:apps/servers/file_host/src/deploy.rs#a_forged_need_past_the_ceiling_pulls_nothing",
             "server:apps/servers/file_host/src/deploy.rs#pulls_keep_their_gap",
             "server:apps/servers/file_host/src/deploy.rs#asks_in_the_same_second_never_share_a_file",
-            "server:scripts/deploy.py#test_the_same_epoch_republished_is_not_deployed",
+            "server:apps/envctl/src/deploy.rs#the_same_epoch_republished_is_not_deployed",
             "server:nix/modules/test.nix#nothing runs on a timer",
             "server:nix/modules/test.nix#the marker starts the deploy"
           ],
@@ -1947,8 +1947,8 @@
             },
             {
               "class": "structural",
-              "says": "The deploy puts up a server only when it works with newer apps than the one running, and a newer build that works with the same apps is left alone; tested by its self-test in Lint's Deploy script job (test_a_newer_epoch_is_deployed_and_recorded, test_the_same_epoch_republished_is_not_deployed, test_an_image_whose_epoch_cannot_be_read_is_not_deployed).",
-              "ref": "server:scripts/deploy.py"
+              "says": "The deploy puts up a server only when it works with newer apps than the one running, and a newer build that works with the same apps is left alone; tested by its self-test in Lint's Deploy script job (a_newer_epoch_is_deployed_and_recorded, the_same_epoch_republished_is_not_deployed, an_image_whose_epoch_cannot_be_read_is_not_deployed).",
+              "ref": "server:apps/envctl/src/deploy.rs"
             },
             {
               "class": "structural",
@@ -3067,7 +3067,7 @@
     {
       "store": "mailbox:item",
       "class": "cache",
-      "growth": "Per file the routine or home puts (folders brief, decisions, scout, scene, drama, run, opened, leetype, leetype-log, transcript, index, reflection, prompt), body <= MAX_BODY_BYTES = 1,048,576; a few KB a day per README (a written reflection is its typed line, its session and when, paulgsc/some-ui#2178; a drama prompt about 40 KB per ask, its text at most 256 KiB, paulgsc/some-ui#2179; a list of the takes Drive holds about 78 B a take, at most 10,000 takes, one per build-journal session that lists Drive's takes folder, in brief, paulgsc/some-ui#2401); bytes leave once archived. Home's index (index) is one per routine (jobs, reflections, call), the latest only: putting a new one drops the one before of its routine in the same write, and it is never archived (owner, paulgsc/server#509). The reflections index grows by about 1 KB a day (the bases answered and the distinct word ids its decks use); the rest of it is bounded by what still waits. The call index grows by about 100 B a week (one week's days and hash).",
+      "growth": "Per file the routine or home puts (folders brief, decisions, scout, scene, drama, run, opened, leetype, leetype-log, transcript, index, reflection, prompt), body <= MAX_BODY_BYTES = 1,048,576; a few KB a day per README (a written reflection is its typed line, its session and when, paulgsc/some-ui#2178; a drama prompt about 40 KB per ask, its text at most 256 KiB, paulgsc/some-ui#2179; a list of the takes Drive holds about 78 B a take, at most 10,000 takes, one per build-journal session that lists Drive's takes folder, in brief, paulgsc/some-ui#2401); bytes leave once archived. Home's index (index) is one per routine (jobs, reflections, call, rust), the latest only: putting a new one drops the one before of its routine in the same write, and it is never archived (owner, paulgsc/server#509). The reflections index grows by about 1 KB a day (the bases answered and the distinct word ids its decks use); the rest of it is bounded by what still waits. The call index grows by about 100 B a week (one week's days and hash). The rust index holds at most the newest 4 final weeks' records, a few KB each plus their pastes (each at most 20,000 characters), under the 1 MiB cap.",
       "horizon": "a file's bytes are deleted once it has been live >= 30 days (ARCHIVE_MIN_AGE_DAYS) and home has archived them (home waits MAILBOX_ARCHIVE_DAYS, >= 30); metadata moves to `archived`. An index's row and bytes go when home puts a newer one of its routine, with no `archived` row",
       "family": "routine-to-home"
     },
@@ -5150,7 +5150,7 @@
           "name": "Pull, put up only a newer server, wait for it to be ready, roll back, record what happened and clear the mark. Ours, on home.",
           "owner": "ours",
           "on": "home",
-          "paths": ["server:scripts/deploy.py"]
+          "paths": ["server:apps/envctl/src/deploy.rs"]
         },
         {
           "id": "internet",
