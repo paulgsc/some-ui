@@ -2,7 +2,7 @@
   "schema_version": 1,
   "api_base_path": "/api/v1",
   "server_version": "0.0.0",
-  "contract_epoch": 1,
+  "contract_epoch": 2,
   "oldest_supported": 1,
   "routes": [
     {
@@ -158,6 +158,13 @@
       "full_path": "/api/v1/auth/sign-out-everywhere",
       "versioned": true,
       "module": "auth"
+    },
+    {
+      "method": "GET",
+      "path": "/clips/:id/:side/:file",
+      "full_path": "/api/v1/clips/:id/:side/:file",
+      "versioned": true,
+      "module": "clips"
     },
     {
       "method": "GET",
