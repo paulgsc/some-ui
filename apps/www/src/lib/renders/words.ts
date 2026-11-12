@@ -5,26 +5,109 @@
  * estimate and says so, like an installer's bar.
  */
 import { assertNever } from "@some-ui/core-utils"
+import { templateFormat } from "@some-ui/video-render"
 
 import { FEED_WORDS } from "@/lib/call-videos/words"
 import { isFeed } from "@/lib/feeds"
 import { FEED_FACTS } from "@/lib/studio-index/words"
+import { PREVIEW_WORDS } from "@/lib/template-preview/words"
 
-import type { Board, HeldBy, Now, RenderFailed } from "./model"
+import type { Board, HeldBy, Now, RenderEpisode, RenderFailed } from "./model"
+import type { Row, Subject } from "./subject"
+import { subjectOf } from "./subject"
 
 /** A feed's name, or what a render of another kind is. */
 export function feedName(feed: string): string {
   return isFeed(feed) ? FEED_FACTS[feed].name : "Something else"
 }
 
-/** An episode by its days or its season and week; another kind's, generically. */
-export function episodeName(feed: string, key: string): string {
-  return isFeed(feed) ? FEED_WORDS[feed].label(key) : "A video"
+/** What kind of thing a row is: its feed's name, a preview, a clip's walk. */
+export function kindName(subject: Subject): string {
+  switch (subject.kind) {
+    case "episode": {
+      return FEED_FACTS[subject.feed].name
+    }
+    case "preview": {
+      return "Preview"
+    }
+    case "walk": {
+      return "A clip's walk-through"
+    }
+    case "other": {
+      return "Something else"
+    }
+    default: {
+      return assertNever(subject)
+    }
+  }
 }
 
-/** A render named whole: its feed, then its episode. */
-function renderName(feed: string, key: string): string {
-  return `${feedName(feed)}: ${episodeName(feed, key)}`
+/** The thing itself: an episode's days or week, a preview's template. */
+export function thingName(subject: Subject): string {
+  switch (subject.kind) {
+    case "episode": {
+      return FEED_WORDS[subject.feed].label(subject.key)
+    }
+    case "preview": {
+      return subject.template === null
+        ? "A preview of a template"
+        : `A preview of ${templateFormat(subject.template).title}`
+    }
+    case "walk": {
+      return `The ${subject.side} side of a clip`
+    }
+    case "other": {
+      return "A video"
+    }
+    default: {
+      return assertNever(subject)
+    }
+  }
+}
+
+/**
+ * A render named whole, in the person's terms (#2899): an episode by its
+ * feed, then its days or week; a preview by its template, never its key.
+ */
+export function renderName(row: Row): string {
+  const subject = subjectOf(row)
+  return subject.kind === "preview"
+    ? thingName(subject)
+    : `${kindName(subject)}: ${thingName(subject)}`
+}
+
+/** What the page's link to `subject`'s own page says. */
+export function openWords(subject: Subject): string | null {
+  switch (subject.kind) {
+    case "episode": {
+      return "Open the episode"
+    }
+    case "preview": {
+      return subject.template === null ? null : "Open the template's preview"
+    }
+    case "walk": {
+      return "Open the clip"
+    }
+    case "other": {
+      return null
+    }
+    default: {
+      return assertNever(subject)
+    }
+  }
+}
+
+/**
+ * The line under a finished render, where it has one: when home lets a
+ * preview go.
+ */
+export function doneLine(
+  done: RenderEpisode,
+  timeZone?: string
+): string | null {
+  return done.feed === "preview" && done.expiresAt !== undefined
+    ? PREVIEW_WORDS.kept(done.at, done.expiresAt, timeZone)
+    : null
 }
 
 /** Why it waits, in the person's terms. */
@@ -69,7 +152,7 @@ export type NowLines = {
 
 /** What home is making, and how far along, roughly. */
 export function nowLines(now: Now): NowLines {
-  const title = renderName(now.feed, now.key)
+  const title = renderName(now)
   const share =
     now.estimate === null
       ? null
@@ -116,6 +199,11 @@ export function nowLines(now: Now): NowLines {
 
 /** What stopped a render, in the person's terms. */
 export function failedLine(failed: RenderFailed): string {
+  // A preview is made once a person asks, never again on its own.
+  if (failed.feed === "preview")
+    return (
+      PREVIEW_WORDS.failedWhy(failed.reason) ?? PREVIEW_WORDS.standing.failed
+    )
   return failed.by === "home"
     ? "Home couldn't keep its files. It tries again in an hour."
     : "It couldn't be made this time. Home tries again in an hour, and keeps what it had finished."
@@ -178,7 +266,7 @@ export function liveLine(board: Board): string {
         : `${String(board.failed.length)} videos couldn't be made.`
     return "Home isn't making anything right now."
   }
-  const name = renderName(now.feed, now.key)
+  const name = renderName(now)
   switch (now.state) {
     case "rendering":
     case "finishing": {
@@ -199,7 +287,7 @@ export function liveLine(board: Board): string {
 export const RENDERS_WORDS = {
   heading: "Renders",
   intro:
-    "What home is making for your feeds, what waits its turn, and what's coming. Home makes videos only when it has room, so the times are rough.",
+    "What home is making for your feeds and templates, what waits its turn, what it finished, and what's coming. Each opens its own page. Home makes videos only when it has room, so the times are rough.",
   now: "Now",
   nothingNow: "Nothing is being made right now.",
   waiting: "Waiting its turn",

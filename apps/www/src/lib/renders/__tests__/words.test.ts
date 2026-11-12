@@ -15,16 +15,21 @@ import type {
   Phase,
   RenderFailed,
 } from "@/lib/renders/model"
+import { subjectOf } from "@/lib/renders/subject"
 import {
   dayOf,
-  episodeName,
+  doneLine,
   failedLine,
+  kindName,
   liveLine,
   nowLines,
+  openWords,
+  renderName,
   RENDERS_WORDS,
   renderShape,
   roughly,
   SHAPE_WORDS,
+  thingName,
 } from "@/lib/renders/words"
 
 function strings(value: unknown): Array<string> {
@@ -82,6 +87,22 @@ const everyNow = PHASES.flatMap((state) =>
   )
 )
 
+/** A row of every kind home's board holds, from either home (#2899). */
+const ROWS = [
+  { feed: "call", key: "2026-11-06" },
+  { feed: "playoff-delta", key: "2026-SF-09" },
+  { feed: "rust-essay", key: "2026-11-02" },
+  {
+    feed: "preview",
+    key: "conference-call-20261112T024837Z",
+    template: "conference-call",
+  },
+  { feed: "preview", key: "conference-call-20261112T024837Z" },
+  { feed: "preview", key: "a-template-from-later-20261112T024837Z" },
+  { feed: "clip-walk", key: "tray-fix-after" },
+  { feed: "a-kind-from-later", key: "x" },
+] as const
+
 const board = (n: Now | null): Board => ({
   now: n,
   waiting: [],
@@ -109,6 +130,27 @@ describe("RENDERS_WORDS and what it says of each render", () => {
           exit: 1,
         } satisfies RenderFailed)
       ),
+      ...ROWS.flatMap((row) => {
+        const subject = subjectOf(row)
+        return [
+          renderName(row),
+          kindName(subject),
+          thingName(subject),
+          openWords(subject) ?? "",
+          failedLine({ ...row, at: 0, by: "recorder", exit: 1 }),
+          failedLine({
+            ...row,
+            at: 0,
+            by: "home",
+            exit: null,
+            reason: "no-sample",
+          }),
+          doneLine(
+            { ...row, at: 1_762_588_000, expiresAt: 1_762_674_400 },
+            "UTC"
+          ) ?? "",
+        ]
+      }),
     ]
     for (const line of said) expect(line, line).not.toMatch(MACHINERY)
   })
@@ -139,7 +181,6 @@ describe("RENDERS_WORDS and what it says of each render", () => {
   })
 
   it("names an episode by its week, never its key", () => {
-    expect(episodeName("preview", "preview-conference-call")).toBe("A video")
     expect(nowLines(now("rendering", null, null)).title).toBe(
       "The weekly call: 2026-11-06 to 2026-11-12"
     )
@@ -196,5 +237,76 @@ describe("RENDERS_WORDS and what it says of each render", () => {
 
   it("reads a day home expects as a day of the week", () => {
     expect(dayOf("2026-11-13")).toBe("Friday, November 13")
+  })
+
+  it("names a preview by its template, from either home, never its key (#2899)", () => {
+    const made = "conference-call-20261112T024837Z"
+    expect(
+      renderName({ feed: "preview", key: made, template: "conference-call" })
+    ).toMatch(/^A preview of /)
+    // A home from before the template was named: read off the key.
+    expect(subjectOf({ feed: "preview", key: made })).toEqual({
+      kind: "preview",
+      template: "conference-call",
+    })
+    // The longest template that fits, where one id begins another.
+    expect(
+      subjectOf({ feed: "preview", key: "playoff-delta-week-20261112T024837Z" })
+    ).toEqual({ kind: "preview", template: "playoff-delta-week" })
+    expect(subjectOf({ feed: "preview", key: "nothing-known-1" })).toEqual({
+      kind: "preview",
+      template: null,
+    })
+    for (const line of [renderName({ feed: "preview", key: made })])
+      expect(line).not.toContain("2026")
+  })
+
+  it("opens every row that has a page, and only those (#2899)", () => {
+    expect(subjectOf({ feed: "call", key: "2026-11-06" })).toEqual({
+      kind: "episode",
+      feed: "call",
+      key: "2026-11-06",
+    })
+    expect(subjectOf({ feed: "clip-walk", key: "tray-fix-after" })).toEqual({
+      kind: "walk",
+      clip: "tray-fix",
+      side: "after",
+    })
+    expect(subjectOf({ feed: "clip-walk", key: "-after" })).toEqual({
+      kind: "other",
+    })
+    expect(openWords({ kind: "other" })).toBeNull()
+    expect(openWords({ kind: "preview", template: null })).toBeNull()
+    expect(
+      openWords({ kind: "preview", template: "rust-essay" })
+    ).not.toBeNull()
+  })
+
+  it("says what a preview that couldn't be made needs, and that it isn't tried again", () => {
+    const failed: RenderFailed = {
+      feed: "preview",
+      key: "rust-essay-1",
+      template: "rust-essay",
+      at: 0,
+      by: "recorder",
+      exit: 1,
+    }
+    expect(failedLine({ ...failed, reason: "no-sample" })).toMatch(/no sample/)
+    expect(failedLine(failed)).toMatch(/Make another/)
+  })
+
+  it("says when home lets a finished preview go, and nothing under an episode", () => {
+    expect(
+      doneLine(
+        {
+          feed: "preview",
+          key: "k",
+          at: 1_762_588_000,
+          expiresAt: 1_762_674_400,
+        },
+        "UTC"
+      )
+    ).toBe("Made Sat 7:46 AM. Home lets it go Sun 7:46 AM.")
+    expect(doneLine({ feed: "call", key: "2026-11-06", at: 0 })).toBeNull()
   })
 })

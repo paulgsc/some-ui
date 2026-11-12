@@ -42,6 +42,44 @@ const answer = (status: number, body: unknown): HomeAnswer => ({
 })
 
 describe("readBoard", () => {
+  it("reads a board with previews on it, and its extras (#2899)", () => {
+    const withPreviews = {
+      ...BOARD,
+      now: {
+        ...BOARD.now,
+        feed: "preview",
+        key: "conference-call-20261112T024837Z",
+        template: "conference-call",
+        estimate: null,
+      },
+      done: [
+        ...BOARD.done,
+        {
+          feed: "preview",
+          key: "rust-essay-20261111T010000Z",
+          template: "rust-essay",
+          at: 1793843200,
+          expiresAt: 1793929600,
+        },
+      ],
+      failed: [
+        {
+          ...BOARD.failed[0],
+          feed: "preview",
+          key: "rust-essay-x",
+          template: "rust-essay",
+          reason: "no-sample",
+        },
+      ],
+    }
+    const read = readBoard(answer(200, withPreviews))
+    expect(read.kind).toBe("read")
+    if (read.kind !== "read") return
+    expect(read.board.now?.template).toBe("conference-call")
+    expect(read.board.done[1]?.expiresAt).toBe(1793929600)
+    expect(read.board.failed[0]?.reason).toBe("no-sample")
+  })
+
   it("reads home's board, with something under way", () => {
     const read = readBoard(answer(200, BOARD))
     expect(read.kind).toBe("read")

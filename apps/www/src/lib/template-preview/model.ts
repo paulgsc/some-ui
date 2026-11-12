@@ -101,8 +101,12 @@ export type PreviewState = {
 /** A read again that didn't come back, while the page still shows the last. */
 export type ReadFailure = "away" | "unreadable"
 
-/** What the page says once, over itself (a `Notice`). */
-type Said =
+/**
+ * What the page says once, over itself (a `Notice`): that home took the
+ * press and what it is making (#2899), or why something didn't come back.
+ */
+export type Said =
+  | { readonly kind: "asked" }
   | { readonly kind: "makeFailed"; readonly why: MakeFailure }
   | { readonly kind: "readFailed"; readonly why: ReadFailure }
 
@@ -160,7 +164,7 @@ export function step(state: PreviewState, event: PreviewEvent): PreviewState {
     case "makeEnded": {
       const { made } = event
       return made.kind === "asked"
-        ? { ...state, asking: false }
+        ? { ...state, asking: false, said: { kind: "asked" } }
         : {
             ...state,
             asking: false,

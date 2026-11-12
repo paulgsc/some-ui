@@ -1,6 +1,8 @@
 /**
  * A template's preview on its Templates page (SFEED12, #2757): Make a
- * preview asks home for a short video of the template from its sample, the
+ * preview asks first what home will make (#2899), then asks home for a
+ * short video of the template from its sample, says over the page that home
+ * took it, with the way to Renders, and the
  * page says how far home has got, and once it's ready, Watch brings it to the
  * phone and plays it. Reads `lib/template-preview`'s snapshot and says what
  * was pressed; every word is its `PREVIEW_WORDS`. Phone build only.
@@ -8,9 +10,12 @@
 import type { JSX } from "react"
 import { useEffect, useSyncExternalStore } from "react"
 import { assertNever } from "@some-ui/core-utils"
-import { Button, Notice } from "@some-ui/shared"
+import { Button, Notice, useConfirmSheet } from "@some-ui/shared"
 import type { TemplateId } from "@some-ui/video-render"
+import { templateFormat } from "@some-ui/video-render"
+import { useNavigate } from "@tanstack/react-router"
 
+import { hasAudience } from "@/lib/build-profile"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 import {
   previewRefresher,
@@ -18,7 +23,7 @@ import {
   PREVIEW_WORDS as WORDS,
 } from "@/lib/template-preview"
 import type { TemplatePreview as Runtime } from "@/lib/template-preview"
-import type { Preview, PreviewState } from "@/lib/template-preview/model"
+import type { Preview, PreviewState, Said } from "@/lib/template-preview/model"
 import { Part } from "@/components/studio/layout"
 import { VideoFetch } from "@/components/video-fetch"
 
@@ -122,6 +127,24 @@ const Standing = ({
   }
 }
 
+/** What the page says once, over itself, of `said`. */
+const saying = (said: Said, title: string): string => {
+  switch (said.kind) {
+    case "asked": {
+      return WORDS.asked(title)
+    }
+    case "makeFailed": {
+      return WORDS.makeFailed[said.why]
+    }
+    case "readFailed": {
+      return WORDS.readFailed[said.why]
+    }
+    default: {
+      return assertNever(said)
+    }
+  }
+}
+
 export const TemplatePreview = ({
   template,
   pair,
@@ -132,6 +155,9 @@ export const TemplatePreview = ({
 }): JSX.Element => {
   const runtime = templatePreview(template)
   const state = useSyncExternalStore(runtime.subscribe, runtime.getSnapshot)
+  const { ask, sheet } = useConfirmSheet()
+  const navigate = useNavigate()
+  const title = templateFormat(template).title
   useEffect(() => {
     void runtime.open()
     return screenRefreshers.register(previewRefresher(template))
@@ -141,19 +167,38 @@ export const TemplatePreview = ({
       <p className="text-muted-foreground text-sm">{WORDS.intro}</p>
       {state.said !== null && (
         <Notice
-          key={`${state.said.kind}-${state.said.why}`}
+          key={saying(state.said, title)}
           onDismiss={() => runtime.seen()}
+          action={
+            // Renders is the phone's ("apk"), as this page is (A3).
+            state.said.kind === "asked" && hasAudience("apk")
+              ? {
+                  label: WORDS.seeRenders,
+                  onClick: (): void => {
+                    runtime.seen()
+                    void navigate({ to: "/journal/renders" })
+                  },
+                }
+              : undefined
+          }
         >
-          {state.said.kind === "makeFailed"
-            ? WORDS.makeFailed[state.said.why]
-            : WORDS.readFailed[state.said.why]}
+          {saying(state.said, title)}
         </Notice>
       )}
+      {sheet}
       <Button
         size="sm"
         className="self-start"
         disabled={state.asking || state.home.kind === "unpaired"}
-        onClick={() => void runtime.make()}
+        onClick={() =>
+          ask({
+            title: WORDS.confirm.title(title),
+            description: WORDS.confirm.description,
+            confirm: WORDS.confirm.confirm,
+            keep: WORDS.confirm.keep,
+            onConfirm: () => void runtime.make(),
+          })
+        }
       >
         {state.asking ? WORDS.asking : WORDS.make}
       </Button>

@@ -79,6 +79,7 @@ describe("a template's preview", () => {
     await Promise.all([preview.make(), preview.make()])
     expect(ports.make).toHaveBeenCalledTimes(1)
     expect(ports.read).toHaveBeenCalledTimes(1)
+    expect(preview.getSnapshot().said).toEqual({ kind: "asked" })
   })
 
   it("reads nothing again when home didn't take the press, and says why", async () => {

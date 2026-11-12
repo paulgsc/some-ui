@@ -22,6 +22,8 @@ describe("PREVIEW_WORDS", () => {
       ...strings(PREVIEW_WORDS),
       PREVIEW_WORDS.kept(1_762_588_000, 1_762_674_400, "UTC"),
       PREVIEW_WORDS.failedWhy("no-sample") ?? "",
+      PREVIEW_WORDS.confirm.title("Conference call"),
+      PREVIEW_WORDS.asked("Conference call"),
     ]
     for (const line of said) expect(line).not.toMatch(MACHINERY)
   })
