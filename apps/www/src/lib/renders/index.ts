@@ -10,6 +10,7 @@ import { underWay, WHILE_UNDER_WAY_MS } from "./model"
 import { readRenders } from "./read"
 
 export * from "./model"
+export * from "./subject"
 export type { RendersOutcome } from "./read"
 export * from "./words"
 

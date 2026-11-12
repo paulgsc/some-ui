@@ -32,7 +32,7 @@ import type {
   ListState,
   VideosState,
 } from "@/lib/call-videos/model"
-import { homeBytes, standing } from "@/lib/call-videos/model"
+import { homeBytes, listedEpisode, standing } from "@/lib/call-videos/model"
 import { isNoted } from "@/lib/feeds"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 import { CopyButton } from "@/components/copy-button"
@@ -339,10 +339,7 @@ export const EpisodeScreen = ({
 }): JSX.Element => {
   const { videos, state } = useFeedVideos(feed)
   const { list, said } = state
-  const episode =
-    list.kind === "read"
-      ? list.episodes.find((one) => one.key === episodeKey)
-      : undefined
+  const episode = listedEpisode(list, episodeKey)
   return (
     <div className="flex flex-col gap-3">
       <p className="text-muted-foreground text-sm">{FEED_WORDS[feed].intro}</p>
@@ -362,7 +359,7 @@ export const EpisodeScreen = ({
         pair={pair}
         onTryAgain={() => void videos.open()}
       >
-        {episode === undefined ? (
+        {episode === null ? (
           <p className="text-muted-foreground text-sm">
             {FEED_WORDS[feed].gone}
           </p>

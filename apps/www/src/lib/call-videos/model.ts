@@ -142,6 +142,18 @@ export type ListState =
   | { readonly kind: "older" }
   | { readonly kind: "unreadable" }
 
+/**
+ * The episode a page opened by its key shows, once home's list is read:
+ * `null` for a key the list doesn't hold, which the page says plainly
+ * (`FEED_WORDS[feed].gone`) rather than drawing nothing. Studio › Renders
+ * links an episode by the key home's board names, and the board can name
+ * one the list hides (an essay withdrawn, say; #2899).
+ */
+export function listedEpisode(list: ListState, key: string): Episode | null {
+  if (list.kind !== "read") return null
+  return list.episodes.find((one) => one.key === key) ?? null
+}
+
 /** An episode's video on the phone. */
 export type Fetch =
   | { readonly kind: "fetching"; readonly done: number; readonly total: number }

@@ -25,9 +25,17 @@ const EstimateSchema = z.object({
   secondsLeft: z.number().int().nonnegative().nullable(),
 })
 
+/**
+ * What a row names beyond its feed and key (#2899), each optional so a home
+ * from before it still reads: a preview's template, and when home lets a
+ * finished preview go.
+ */
+const TEMPLATE = z.string().min(1).optional()
+
 const NowSchema = z.object({
   feed: z.string().min(1),
   key: z.string().min(1),
+  template: TEMPLATE,
   state: PhaseSchema,
   since: z.number().int(),
   stateSince: z.number().int(),
@@ -41,11 +49,15 @@ const EpisodeSchema = z.object({
   feed: z.string().min(1),
   key: z.string().min(1),
   at: z.number().int(),
+  template: TEMPLATE,
+  expiresAt: z.number().int().nonnegative().optional(),
 })
 
 const FailedSchema = EpisodeSchema.extend({
   by: z.enum(["recorder", "home"]),
   exit: z.number().int().nullable(),
+  /** Why, where home knows one the person can act on (`no-sample`). */
+  reason: z.string().min(1).optional(),
 })
 
 const ComingSchema = z.object({
@@ -67,6 +79,7 @@ export type Now = z.infer<typeof NowSchema>
 export type Phase = z.infer<typeof PhaseSchema>
 export type HeldBy = z.infer<typeof HeldBySchema>
 export type RenderFailed = z.infer<typeof FailedSchema>
+export type RenderEpisode = z.infer<typeof EpisodeSchema>
 
 /** What home's answer says. */
 export type BoardRead =

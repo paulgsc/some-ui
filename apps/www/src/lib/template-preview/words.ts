@@ -27,6 +27,21 @@ export const PREVIEW_WORDS = {
   intro:
     "A preview is a short video of this template, made by home from its sample words the way it makes an episode. Home keeps only the newest, and lets it go on its own.",
   make: "Make a preview",
+  /**
+   * The question before home is asked (#2899): what it will make, that
+   * nothing is posted, and what it takes the place of.
+   */
+  confirm: {
+    title: (template: string): string => `Make a preview of ${template}?`,
+    description:
+      "Home makes a short video of this template from its sample words, the way it makes an episode. Nothing is posted. Home keeps only the newest preview, so this one takes the place of any it has.",
+    confirm: "Make the preview",
+    keep: "Not now",
+  },
+  /** Said over the page once home took the press, with the way to Renders. */
+  asked: (template: string): string =>
+    `Home is making a preview of ${template}. Renders shows it while it's made, and once it's ready.`,
+  seeRenders: "See it on Renders",
   asking: "Asking home…",
   none: "There's no preview of this template yet.",
   standing: {

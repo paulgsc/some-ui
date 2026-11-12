@@ -1,7 +1,8 @@
 /**
- * Studio › Renders (SFEED13, #2761): what home is making for the feeds, with
- * a rough bar while it renders, what waits its turn and why, what couldn't
- * finish, what finished lately, and what's coming. The read is the query's
+ * Studio › Renders (SFEED13, #2761): what home is making for the feeds and
+ * templates, with a rough bar while it renders, what waits its turn and why,
+ * what couldn't finish, what finished lately, and what's coming. Each row
+ * names its kind and the thing, and opens its own page (#2899). The read is the query's
  * (`rendersQuery`), which reads again on its own while home has something
  * under way; a drag down reads again too (PULL). Every word is `lib/renders`'s.
  */
@@ -11,20 +12,28 @@ import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 
 import { hasAudience } from "@/lib/build-profile"
-import type { Board, RendersOutcome } from "@/lib/renders"
+import type { Board, RendersOutcome, Row, Subject } from "@/lib/renders"
 import {
-  episodeName,
+  doneLine,
   failedLine,
   feedName,
+  kindName,
   liveLine,
   nowLines,
+  openWords,
   RENDERS_WORDS,
   rendersQuery,
+  subjectOf,
+  thingName,
 } from "@/lib/renders"
 
 import { Part, ReadList, StudioPage, TILE } from "./layout"
 
 const WORDS = RENDERS_WORDS
+
+/** A quiet link, as Studio's pages draw one. */
+const LINK =
+  "text-brand self-start text-sm font-semibold underline underline-offset-4"
 
 const Muted = ({ children }: { children: ReactNode }): JSX.Element => (
   <p className="text-muted-foreground text-sm">{children}</p>
@@ -53,21 +62,133 @@ const Bar = ({ percent }: { percent: number | null }): JSX.Element => (
   </div>
 )
 
+/** A link to `subject`'s own page, or none where it has none. */
+const ToPage = ({
+  subject,
+  className,
+  children,
+}: {
+  subject: Subject
+  className: string
+  children: ReactNode
+}): JSX.Element | null => {
+  // Each page is the phone's ("apk"), as this one is (A3).
+  if (!hasAudience("apk")) return null
+  switch (subject.kind) {
+    case "episode": {
+      return (
+        <Link
+          to="/journal/episodes/$feed/$key"
+          params={{ feed: subject.feed, key: subject.key }}
+          className={className}
+        >
+          {children}
+        </Link>
+      )
+    }
+    case "preview": {
+      return subject.template === null ? null : (
+        <Link
+          to="/journal/templates/$template"
+          params={{ template: subject.template }}
+          className={className}
+        >
+          {children}
+        </Link>
+      )
+    }
+    case "walk": {
+      return (
+        <Link
+          to="/journal/clips/$clip"
+          params={{ clip: subject.clip }}
+          className={className}
+        >
+          {children}
+        </Link>
+      )
+    }
+    case "other": {
+      return null
+    }
+    default: {
+      return assertNever(subject)
+    }
+  }
+}
+
+/** Whether this build can open `subject`'s page (A3). */
+const opens = (subject: Subject): boolean =>
+  hasAudience("apk") && openWords(subject) !== null
+
+/**
+ * One render as a tile (#2899): what kind it is, the thing by name, and a
+ * line under it where it has one; the tile opens its page where it has one.
+ */
+const RowTile = ({
+  row,
+  line,
+  tone = "muted",
+}: {
+  row: Row
+  line: string | null
+  tone?: "muted" | "plain"
+}): JSX.Element => {
+  const subject = subjectOf(row)
+  const body = (
+    <>
+      <span className="text-muted-foreground text-xs">{kindName(subject)}</span>
+      <span className="text-sm font-medium">{thingName(subject)}</span>
+      {line !== null && (
+        <span
+          className={
+            tone === "muted" ? "text-muted-foreground text-sm" : "text-sm"
+          }
+        >
+          {line}
+        </span>
+      )}
+    </>
+  )
+  return (
+    <li>
+      {!opens(subject) ? (
+        <div className={TILE}>{body}</div>
+      ) : (
+        <ToPage subject={subject} className={TILE}>
+          {body}
+        </ToPage>
+      )}
+    </li>
+  )
+}
+
 const BoardView = ({ board }: { board: Board }): JSX.Element => {
   const now = board.now === null ? null : nowLines(board.now)
+  const nowSubject = board.now === null ? null : subjectOf(board.now)
+  const open =
+    nowSubject === null || !opens(nowSubject) ? null : openWords(nowSubject)
   return (
     <>
       <Part label={WORDS.now}>
-        {now === null || board.now === null ? (
+        {now === null || board.now === null || nowSubject === null ? (
           <Muted>{WORDS.nothingNow}</Muted>
         ) : (
           <div className="flex flex-col gap-2">
-            <span className="text-base font-bold">{now.title}</span>
+            <span className="text-muted-foreground text-xs">
+              {kindName(nowSubject)}
+            </span>
+            <span className="text-base font-bold">{thingName(nowSubject)}</span>
             <span className="text-sm">{now.line}</span>
             <Bar percent={now.percent} />
             {now.left !== null && <Muted>{now.left}</Muted>}
             {board.now.gaveWay > 0 && (
               <Muted>{WORDS.gaveWay(board.now.gaveWay)}</Muted>
+            )}
+            {open !== null && (
+              <ToPage subject={nowSubject} className={LINK}>
+                {open}
+              </ToPage>
             )}
           </div>
         )}
@@ -76,12 +197,13 @@ const BoardView = ({ board }: { board: Board }): JSX.Element => {
         {board.waiting.length === 0 ? (
           <Muted>{WORDS.nothingWaiting}</Muted>
         ) : (
-          <ul className="flex flex-col gap-1">
+          <ul className="flex flex-col gap-2">
             {board.waiting.map((episode) => (
-              <li key={`${episode.feed}/${episode.key}`} className="text-sm">
-                {feedName(episode.feed)}:{" "}
-                {episodeName(episode.feed, episode.key)}
-              </li>
+              <RowTile
+                key={`${episode.feed}/${episode.key}`}
+                row={episode}
+                line={null}
+              />
             ))}
           </ul>
         )}
@@ -90,27 +212,24 @@ const BoardView = ({ board }: { board: Board }): JSX.Element => {
         <Part label={WORDS.failed}>
           <ul className="flex flex-col gap-2">
             {board.failed.map((failed) => (
-              <li key={`${failed.feed}/${failed.key}`} className="text-sm">
-                <span className="block font-medium">
-                  {feedName(failed.feed)}:{" "}
-                  {episodeName(failed.feed, failed.key)}
-                </span>
-                <span className="text-muted-foreground block">
-                  {failedLine(failed)}
-                </span>
-              </li>
+              <RowTile
+                key={`${failed.feed}/${failed.key}`}
+                row={failed}
+                line={failedLine(failed)}
+              />
             ))}
           </ul>
         </Part>
       )}
       {board.done.length > 0 && (
         <Part label={WORDS.done}>
-          <ul className="flex flex-col gap-1">
+          <ul className="flex flex-col gap-2">
             {board.done.map((episode) => (
-              <li key={`${episode.feed}/${episode.key}`} className="text-sm">
-                {feedName(episode.feed)}:{" "}
-                {episodeName(episode.feed, episode.key)}
-              </li>
+              <RowTile
+                key={`${episode.feed}/${episode.key}`}
+                row={episode}
+                line={doneLine(episode)}
+              />
             ))}
           </ul>
         </Part>

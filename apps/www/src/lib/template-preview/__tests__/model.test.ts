@@ -124,4 +124,11 @@ describe("step", () => {
     })
     expect(step(ended, { type: "saidSeen" }).said).toBeNull()
   })
+
+  it("says once that home took the press, so what it makes is never a surprise (#2899)", () => {
+    const asking = step(INITIAL, { type: "makeAsked" })
+    const ended = step(asking, { type: "makeEnded", made: { kind: "asked" } })
+    expect(ended).toMatchObject({ asking: false, said: { kind: "asked" } })
+    expect(step(ended, { type: "saidSeen" }).said).toBeNull()
+  })
 })

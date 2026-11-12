@@ -123,7 +123,7 @@ export const FEED_WORDS = {
     older:
       "Home doesn't keep the Rust Rounds essays yet. Update home, then try again.",
     none: "Home hasn't made an essay yet. Each comes after its week has closed.",
-    gone: "Home hasn't made this essay yet. It comes once its week has closed and Claude has written it.",
+    gone: "This essay isn't among home's essays. Home lists each once its week has closed and Claude has written it.",
     week: rustWeek,
     label: (key: string): string => rustWeek(key) ?? "This essay",
     waiting: "Home is still making this week's essay.",
