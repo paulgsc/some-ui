@@ -11,6 +11,7 @@ import {
   homeBytes,
   INITIAL,
   isFeed,
+  listedEpisode,
   readChapters,
   readEpisodes,
   readLinkSaved,
@@ -152,5 +153,29 @@ describe("step", () => {
     expect(saved.links["2026-10-30"]).toBeUndefined()
     expect(saved.said).toEqual({ kind: "linkSaved", key: "2026-10-30" })
     expect(step(saved, { type: "saidSeen" }).said).toBeNull()
+  })
+})
+
+describe("listedEpisode (#2899)", () => {
+  const episode = {
+    key: "2026-w45",
+    videoBytes: 10,
+    restBytes: null,
+    link: null,
+    receipts: [],
+  }
+
+  it("finds the episode a page opened by its key", () => {
+    expect(
+      listedEpisode({ kind: "read", episodes: [episode] }, "2026-w45")
+    ).toBe(episode)
+  })
+
+  it("finds none for a key the list hides, so the page says so rather than nothing", () => {
+    // Renders links by the board's key, which can name an essay the list hides.
+    expect(
+      listedEpisode({ kind: "read", episodes: [episode] }, "2026-w44")
+    ).toBeNull()
+    expect(listedEpisode({ kind: "reading" }, "2026-w45")).toBeNull()
   })
 })
