@@ -72,6 +72,8 @@ const ToPage = ({
   className: string
   children: ReactNode
 }): JSX.Element | null => {
+  // Each page is the phone's ("apk"), as this one is (A3).
+  if (!hasAudience("apk")) return null
   switch (subject.kind) {
     case "episode": {
       return (
@@ -115,6 +117,10 @@ const ToPage = ({
   }
 }
 
+/** Whether this build can open `subject`'s page (A3). */
+const opens = (subject: Subject): boolean =>
+  hasAudience("apk") && openWords(subject) !== null
+
 /**
  * One render as a tile (#2899): what kind it is, the thing by name, and a
  * line under it where it has one; the tile opens its page where it has one.
@@ -146,7 +152,7 @@ const RowTile = ({
   )
   return (
     <li>
-      {openWords(subject) === null ? (
+      {!opens(subject) ? (
         <div className={TILE}>{body}</div>
       ) : (
         <ToPage subject={subject} className={TILE}>
@@ -160,7 +166,8 @@ const RowTile = ({
 const BoardView = ({ board }: { board: Board }): JSX.Element => {
   const now = board.now === null ? null : nowLines(board.now)
   const nowSubject = board.now === null ? null : subjectOf(board.now)
-  const open = nowSubject === null ? null : openWords(nowSubject)
+  const open =
+    nowSubject === null || !opens(nowSubject) ? null : openWords(nowSubject)
   return (
     <>
       <Part label={WORDS.now}>
