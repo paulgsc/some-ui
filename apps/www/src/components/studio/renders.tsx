@@ -8,21 +8,28 @@
  */
 import type { JSX, ReactNode } from "react"
 import { assertNever } from "@some-ui/core-utils"
+import { StationStrip } from "@some-ui/shared"
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 
 import { hasAudience } from "@/lib/build-profile"
 import type { Board, RendersOutcome, Row, Subject } from "@/lib/renders"
 import {
+  CONVEYOR_WORDS,
   doneLine,
   failedLine,
   feedName,
   kindName,
   liveLine,
+  nowAside,
   nowLines,
+  nowStation,
   openWords,
   RENDERS_WORDS,
   rendersQuery,
+  ROW_TAGS,
+  stationLine,
+  STATIONS,
   subjectOf,
   thingName,
 } from "@/lib/renders"
@@ -30,6 +37,12 @@ import {
 import { Part, ReadList, StudioPage, TILE } from "./layout"
 
 const WORDS = RENDERS_WORDS
+
+/** The conveyor's stations, in its own words, for the strip (#2899). */
+const STRIP = STATIONS.map((id) => ({
+  id,
+  name: CONVEYOR_WORDS.stations[id],
+}))
 
 /** A quiet link, as Studio's pages draw one. */
 const LINK =
@@ -127,17 +140,23 @@ const opens = (subject: Subject): boolean =>
  */
 const RowTile = ({
   row,
+  tag,
   line,
   tone = "muted",
 }: {
   row: Row
+  /** Where it is on the conveyor (#2899). */
+  tag: string
   line: string | null
   tone?: "muted" | "plain"
 }): JSX.Element => {
   const subject = subjectOf(row)
   const body = (
     <>
-      <span className="text-muted-foreground text-xs">{kindName(subject)}</span>
+      <span className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
+        {kindName(subject)}
+        <span className="rounded-full border px-2">{tag}</span>
+      </span>
       <span className="text-sm font-medium">{thingName(subject)}</span>
       {line !== null && (
         <span
@@ -166,6 +185,8 @@ const RowTile = ({
 const BoardView = ({ board }: { board: Board }): JSX.Element => {
   const now = board.now === null ? null : nowLines(board.now)
   const nowSubject = board.now === null ? null : subjectOf(board.now)
+  const aside = board.now === null ? null : nowAside(board.now)
+  const working = board.now === null ? null : stationLine(board.now)
   const open =
     nowSubject === null || !opens(nowSubject) ? null : openWords(nowSubject)
   return (
@@ -179,7 +200,18 @@ const BoardView = ({ board }: { board: Board }): JSX.Element => {
               {kindName(nowSubject)}
             </span>
             <span className="text-base font-bold">{thingName(nowSubject)}</span>
-            <span className="text-sm">{now.line}</span>
+            <StationStrip
+              label={CONVEYOR_WORDS.label}
+              stations={STRIP}
+              at={nowStation(board.now)}
+              aside={
+                aside === null
+                  ? null
+                  : { name: CONVEYOR_WORDS.asides[aside], line: now.line }
+              }
+            />
+            {aside === null && <span className="text-sm">{now.line}</span>}
+            {working !== null && <span className="text-sm">{working}</span>}
             <Bar percent={now.percent} />
             {now.left !== null && <Muted>{now.left}</Muted>}
             {board.now.gaveWay > 0 && (
@@ -202,6 +234,7 @@ const BoardView = ({ board }: { board: Board }): JSX.Element => {
               <RowTile
                 key={`${episode.feed}/${episode.key}`}
                 row={episode}
+                tag={ROW_TAGS.waiting}
                 line={null}
               />
             ))}
@@ -215,6 +248,7 @@ const BoardView = ({ board }: { board: Board }): JSX.Element => {
               <RowTile
                 key={`${failed.feed}/${failed.key}`}
                 row={failed}
+                tag={ROW_TAGS.failed}
                 line={failedLine(failed)}
               />
             ))}
@@ -228,6 +262,7 @@ const BoardView = ({ board }: { board: Board }): JSX.Element => {
               <RowTile
                 key={`${episode.feed}/${episode.key}`}
                 row={episode}
+                tag={ROW_TAGS.done}
                 line={doneLine(episode)}
               />
             ))}
