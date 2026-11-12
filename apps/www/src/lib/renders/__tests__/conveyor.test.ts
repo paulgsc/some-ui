@@ -31,6 +31,7 @@ const PROGRESS: ReadonlyArray<Progress | null | undefined> = [
   null,
   { station: "recording", scene: 4, scenes: 9, since: 0 },
   { station: "recording", scene: null, scenes: null, since: 0 },
+  { station: "recording", scene: 3, scenes: null, since: 0 },
   { station: "recording", scene: 12, scenes: 9, since: 0 },
   { station: "assembling", scene: null, scenes: null, since: 0 },
   { station: "a-station-from-later", scene: 1, scenes: 2, since: 0 },
@@ -67,7 +68,7 @@ describe("home's conveyor", () => {
   it("reads each state as its station", () => {
     expect(nowStation(now("waiting", undefined))).toBe("room")
     expect(nowStation(now("rendering", undefined))).toBe("oven")
-    expect(nowStation(now("rendering", PROGRESS[5]))).toBe("boxing")
+    expect(nowStation(now("rendering", PROGRESS[6]))).toBe("boxing")
     expect(nowStation(now("paused", PROGRESS[2]))).toBe("oven")
     expect(nowStation(now("finishing", undefined))).toBe("boxing")
   })
@@ -82,11 +83,15 @@ describe("home's conveyor", () => {
       "Recording scene 4 of 9."
     )
     expect(stationLine(now("rendering", PROGRESS[3]))).toBeNull()
-    expect(stationLine(now("rendering", PROGRESS[4]))).toBeNull()
-    expect(stationLine(now("rendering", PROGRESS[5]))).toBe(
+    // A recorder from before `scenes <n>`: the scene, of no total.
+    expect(stationLine(now("rendering", PROGRESS[4]))).toBe(
+      "Recording scene 3."
+    )
+    expect(stationLine(now("rendering", PROGRESS[5]))).toBeNull()
+    expect(stationLine(now("rendering", PROGRESS[6]))).toBe(
       "Putting the scenes together."
     )
-    expect(stationLine(now("rendering", PROGRESS[6]))).toBeNull()
+    expect(stationLine(now("rendering", PROGRESS[7]))).toBeNull()
     expect(stationLine(now("rendering", undefined))).toBeNull()
   })
 

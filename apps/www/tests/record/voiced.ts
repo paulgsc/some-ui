@@ -357,6 +357,9 @@ export async function recordStills({
   const model = speaker === null ? null : await speakerModel(speaker)
   const takes: Array<StillTake | null> = []
   const overflowing: Array<string> = []
+  // Home's board says "scene k of n" (#2899): `scenes <n>` once, before the
+  // first `recorded <file>`, is the n (paulgsc/server's render worker reads it).
+  console.log(`scenes ${String(shots.length)}`)
   for (const [i, shot] of shots.entries()) {
     const file = stillFile(i, shot.id)
     await page.goto(shot.url)
@@ -423,6 +426,9 @@ export async function renderCut(
     readonly origin: string
   }
 ): Promise<void> {
+  // The scenes are recorded; home's board now says they are being put
+  // together (#2899). Read by paulgsc/server's render worker.
+  console.log("assembling")
   const { preview } = options
   const cut = preview ? previewOf(whole) : { ok: true as const, value: whole }
   if (!cut.ok) fail(["The preview can't be cut:", ...cut.problems])

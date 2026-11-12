@@ -33,6 +33,8 @@ export const CONVEYOR_WORDS = {
   /** What the worker is doing in the oven, where home says. */
   recording: (scene: number, scenes: number): string =>
     `Recording scene ${String(scene)} of ${String(scenes)}.`,
+  /** The scene, where home doesn't say of how many. */
+  recordingAt: (scene: number): string => `Recording scene ${String(scene)}.`,
   assembling: "Putting the scenes together.",
 } as const
 
@@ -65,16 +67,17 @@ export const nowAside = (now: Now): Aside | null =>
 
 /**
  * What the worker is doing at its station, where home says: the scene
- * it records, of how many, or that it is putting them together.
+ * it records, of how many where home knows (a recorder from before it says
+ * `scenes <n>` doesn't), or that it is putting them together.
  */
 export function stationLine(now: Now): string | null {
   const progress = now.progress
   if (progress === null || progress === undefined) return null
   if (progress.station === ASSEMBLING) return CONVEYOR_WORDS.assembling
-  return progress.station === RECORDING &&
-    progress.scene !== null &&
-    progress.scenes !== null &&
-    progress.scene <= progress.scenes
+  if (progress.station !== RECORDING || progress.scene === null) return null
+  if (progress.scenes === null)
+    return CONVEYOR_WORDS.recordingAt(progress.scene)
+  return progress.scene <= progress.scenes
     ? CONVEYOR_WORDS.recording(progress.scene, progress.scenes)
     : null
 }
