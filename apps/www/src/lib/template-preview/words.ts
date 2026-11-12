@@ -20,6 +20,27 @@ function moment(unixSeconds: number, timeZone?: string): string {
   }).format(new Date(unixSeconds * 1000))
 }
 
+/**
+ * Home's reasons a preview failed that say something the person can act on
+ * or should know, by home's word for each (paulgsc/server `previews`);
+ * home's text, so a reason it adds later reads as none.
+ */
+const FAILED_WHY: ReadonlyMap<string, string> = new Map([
+  ["no-sample", "This template has no sample yet, so it can't be previewed."],
+  [
+    "too-long",
+    "Its sample makes a video longer than home will make, so it can't be previewed as it is.",
+  ],
+  [
+    "too-large",
+    "The preview came out larger than home will keep, so it can't be previewed as it is.",
+  ],
+  [
+    "overdue",
+    "Home didn't finish the preview in time and set it aside. Make another to try again.",
+  ],
+])
+
 export const PREVIEW_WORDS = {
   heading: "Preview",
   /** What a drag down reads again. */
@@ -53,11 +74,13 @@ export const PREVIEW_WORDS = {
     ready: "The preview is ready.",
     failed: "Home couldn't make the preview. Make another to try again.",
   } satisfies Record<PreviewStanding, string>,
-  /** Why home couldn't make one, where it says a reason the person can act on. */
+  /**
+   * Why home couldn't make one, where it says a reason the person can act
+   * on or should know (`no-sample`, `too-long`, `too-large`, `overdue`); any
+   * other reason is the plain failed line (#2899).
+   */
   failedWhy: (reason: string | undefined): string | null =>
-    reason === "no-sample"
-      ? "This template has no sample yet, so it can't be previewed."
-      : null,
+    (reason === undefined ? undefined : FAILED_WHY.get(reason)) ?? null,
   /** When a ready preview was made, and when home lets it go. */
   kept: (madeAt: number, expiresAt: number, timeZone?: string): string =>
     `Made ${moment(madeAt, timeZone)}. Home lets it go ${moment(expiresAt, timeZone)}.`,

@@ -32,6 +32,18 @@ const EstimateSchema = z.object({
  */
 const TEMPLATE = z.string().min(1).optional()
 
+/**
+ * How far the worker has got with what home is making (#2899): where it is
+ * on the line and which scene, from a home that says so. The station is read
+ * as text, so one a later home adds reads as none rather than unreadable.
+ */
+const ProgressSchema = z.object({
+  station: z.string().min(1),
+  scene: z.number().int().positive().nullable(),
+  scenes: z.number().int().positive().nullable(),
+  since: z.number().int(),
+})
+
 const NowSchema = z.object({
   feed: z.string().min(1),
   key: z.string().min(1),
@@ -43,6 +55,7 @@ const NowSchema = z.object({
   heldBy: HeldBySchema.nullable(),
   stuck: z.boolean(),
   estimate: EstimateSchema.nullable(),
+  progress: ProgressSchema.nullable().optional(),
 })
 
 const EpisodeSchema = z.object({
@@ -76,6 +89,7 @@ const BoardSchema = z.object({
 /** Home's read of its render jobs. */
 export type Board = z.infer<typeof BoardSchema>
 export type Now = z.infer<typeof NowSchema>
+export type Progress = z.infer<typeof ProgressSchema>
 export type Phase = z.infer<typeof PhaseSchema>
 export type HeldBy = z.infer<typeof HeldBySchema>
 export type RenderFailed = z.infer<typeof FailedSchema>

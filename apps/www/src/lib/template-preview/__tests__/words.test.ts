@@ -21,7 +21,9 @@ describe("PREVIEW_WORDS", () => {
     const said = [
       ...strings(PREVIEW_WORDS),
       PREVIEW_WORDS.kept(1_762_588_000, 1_762_674_400, "UTC"),
-      PREVIEW_WORDS.failedWhy("no-sample") ?? "",
+      ...["no-sample", "too-long", "too-large", "overdue"].map(
+        (reason) => PREVIEW_WORDS.failedWhy(reason) ?? ""
+      ),
       PREVIEW_WORDS.confirm.title("Conference call"),
       PREVIEW_WORDS.asked("Conference call"),
     ]
@@ -30,6 +32,9 @@ describe("PREVIEW_WORDS", () => {
 
   it("say why home couldn't make one only where the person can act on it", () => {
     expect(PREVIEW_WORDS.failedWhy("no-sample")).toMatch(/no sample/)
+    expect(PREVIEW_WORDS.failedWhy("too-long")).toMatch(/longer/)
+    expect(PREVIEW_WORDS.failedWhy("too-large")).toMatch(/larger/)
+    expect(PREVIEW_WORDS.failedWhy("overdue")).toMatch(/Make another/)
     expect(PREVIEW_WORDS.failedWhy("render")).toBeNull()
     expect(PREVIEW_WORDS.failedWhy(undefined)).toBeNull()
   })
