@@ -3,8 +3,8 @@
  */
 import { describe, expect, it } from "vitest"
 
-import type { AnswerEvent, AnswerState } from "./model"
-import { initialAnswer, step } from "./model"
+import type { AnswerEvent, AnswerState } from "@/lib/ask-answer/model"
+import { initialAnswer, step } from "@/lib/ask-answer/model"
 
 const run = (events: ReadonlyArray<AnswerEvent>): AnswerState =>
   events.reduce((state, event) => step(state, event).state, initialAnswer)
