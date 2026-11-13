@@ -104,6 +104,8 @@ type Harness = {
   hide: (hidden: boolean) => void
   relink: () => void
   setNow: (to: number) => void
+  /** A request of the link's finds no answer: a stretch away begins (AW1). */
+  silence: () => void
 }
 
 type Watched = {
@@ -144,8 +146,7 @@ function harness(paired = true): Harness {
     },
     pairingId: () => state.pairingId,
     held: () => heldAway(away, now),
-    reached: (answered) =>
-      toLink(answered ? { type: "answered" } : { type: "unanswered", now }),
+    reached: () => toLink({ type: "answered" }),
     open: (url, token, on) => {
       const socket: Socket = { url, token, on, sent: [], closed: false }
       sockets.push(socket)
@@ -205,6 +206,7 @@ function harness(paired = true): Harness {
     setNow: (to): void => {
       now = to
     },
+    silence: (): void => toLink({ type: "unanswered", now }),
   }
 }
 
@@ -295,15 +297,26 @@ describe("liveFeed", () => {
     expect(last()).toMatchObject({ link: "away", offer: null })
   })
 
-  it("counts a socket that never opens as home out of reach, and tries again once the link's hold ends (AW1)", async () => {
+  it("counts a socket that never opens as home out of reach, and tries again", async () => {
     const h = harness()
     const { last } = await watched(h)
     await h.advance(OPEN_MS)
     expect([last().link, h.sockets[0].closed]).toEqual(["away", true])
-    await h.advance(FIRST_HOLD_MS - 1)
+    await h.advance(1_000)
+    expect(h.sockets).toHaveLength(2)
+  })
+
+  it("while the link holds the phone away from home, tries only as each hold ends, and an open socket ends the stretch (AW1)", async () => {
+    const h = harness()
+    const { last } = await watched(h)
+    h.silence()
+    await h.advance(OPEN_MS)
+    expect([last().link, h.sockets.length]).toEqual(["away", 1])
+    await h.advance(FIRST_HOLD_MS - OPEN_MS - 1)
     expect(h.sockets).toHaveLength(1)
     await h.advance(1)
     expect(h.sockets).toHaveLength(2)
+    h.silence()
     h.sockets[1].on.closed(1006)
     await h.advance(holdMs(1) - 1)
     expect(h.sockets).toHaveLength(2)
@@ -312,6 +325,10 @@ describe("liveFeed", () => {
     h.sockets[2].on.opened()
     h.sockets[2].on.message(offerText(42))
     expect(last().link).toBe("live")
+    // Home answered: the next drop tries again on the socket's own time.
+    h.sockets[2].on.closed(1006)
+    await h.advance(1_000)
+    expect(h.sockets).toHaveLength(4)
   })
 
   it("stops trying when this build can't read home, or the phone isn't paired", async () => {

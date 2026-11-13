@@ -55,8 +55,8 @@ export type LivePorts = {
   onLink: (listener: () => void) => () => void
   /** Whether the home link holds the phone away from home now (AW1). */
   held: () => boolean
-  /** Tells the home link whether home answered the socket (AW1). */
-  reached: (answered: boolean) => void
+  /** Tells the home link home answered the socket (AW1). */
+  reached: () => void
   /** The id of the pairing this phone holds now, or null. */
   pairingId: () => string | null
   open: (url: string, token: string, on: LiveSocketEvents) => LiveSocket
@@ -166,7 +166,7 @@ export function liveFeed(ports: LivePorts): FeedPort {
         return
       }
       case "reached": {
-        ports.reached(effect.answered)
+        ports.reached()
         return
       }
       default: {
@@ -237,7 +237,7 @@ export function gameDayFeed(wire: LiveWire): FeedPort {
     pairing: livePairing,
     onLink: link.subscribe,
     held: () => awayHeld(link.getSnapshot(), Date.now()),
-    reached: link.reached,
+    reached: () => link.answered(),
     pairingId: () => pairingOf(),
     open: openLiveSocket,
     now: () => Date.now(),

@@ -136,30 +136,27 @@ describe("the live socket's machine", () => {
     const kinds = (s: { effects: ReadonlyArray<{ kind: string }> }): string =>
       s.effects.map((e) => e.kind).join(",")
 
-    it("tells the link a socket that never opened, and arms no try of its own", () => {
-      for (const ending of [
-        { kind: "closed", at: 1, code: 1006 },
-        { kind: "due", at: 1, timer: "quiet" },
-      ] as const) {
-        for (const held of [false, true]) {
-          const after = step({ ...connecting, held }, ending)
-          expect(after.state.phase).toBe("idle")
+    it("arms no try of its own while the link holds the phone away, whatever ended the socket", () => {
+      for (const state of [connecting, open(null)]) {
+        for (const ending of [
+          { kind: "closed", at: 1, code: 1006 },
+          { kind: "due", at: 1, timer: "quiet" },
+        ] as const) {
+          const after = step({ ...state, held: true }, ending)
           expect(after.state.link).toBe("away")
-          expect(after.effects).toContainEqual({
-            kind: "reached",
-            answered: false,
-          })
           expect(after.effects.map((e) => e.kind)).not.toContain("arm")
         }
       }
     })
 
-    it("tries again on its own after a socket that had opened drops", () => {
-      const after = step(open(null), { kind: "closed", at: 1, code: 1006 })
-      expect(kinds(after)).not.toContain("reached")
-      expect(after.effects).toContainEqual(
-        expect.objectContaining({ kind: "arm", timer: "retry" })
-      )
+    it("tries again on its own time when the link holds nothing, and starts no stretch itself", () => {
+      for (const state of [connecting, open(null)]) {
+        const after = step(state, { kind: "closed", at: 1, code: 1006 })
+        expect(kinds(after)).not.toContain("reached")
+        expect(after.effects).toContainEqual(
+          expect.objectContaining({ kind: "arm", timer: "retry" })
+        )
+      }
     })
 
     it("asks for no socket while held, and asks once when the hold ends", () => {
@@ -199,7 +196,7 @@ describe("the live socket's machine", () => {
     it("tells the link home answered once a socket opens", () => {
       expect(
         step(connecting, { kind: "opened", at: 1 }).effects
-      ).toContainEqual({ kind: "reached", answered: true })
+      ).toContainEqual({ kind: "reached" })
     })
   })
 })

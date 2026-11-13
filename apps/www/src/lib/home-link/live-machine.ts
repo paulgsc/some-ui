@@ -134,8 +134,8 @@ export type LiveEffect =
     }
   | { readonly kind: "disarm" }
   | { readonly kind: "keep-week"; readonly games: ReadonlyArray<Game> }
-  /** Tell the home link whether home answered (AW1): a socket opened, or never did. */
-  | { readonly kind: "reached"; readonly answered: boolean }
+  /** Tell the home link home answered (AW1): a socket opened. */
+  | { readonly kind: "reached" }
 
 export type LiveStep = {
   readonly state: LiveState
@@ -221,12 +221,13 @@ function hello(state: LiveState): LiveStep {
 }
 
 /**
- * The socket is gone with `code`: say where that leaves the phone. One made
- * that never opened found no answer from home (`silent`): that is the home
- * link's to wait out (AW1), so it is told, and the next try waits for the
- * link's hold to end (`home`) rather than `retryDelayMs`.
+ * The socket is gone with `code`: say where that leaves the phone. While the
+ * home link holds the phone away from home (AW1), the next try waits for the
+ * hold to end (`home`) rather than `retryDelayMs`. A socket that never
+ * opened starts no stretch itself: a refused handshake looks the same as
+ * silence, and home may still answer every request.
  */
-function closed(state: LiveState, code: number, silent = false): LiveStep {
+function closed(state: LiveState, code: number): LiveStep {
   // Home could not have sent the `lastSeq` this phone told it (the phone
   // kept one across a home whose clock or counter moved): forget it and say
   // hello again without one, at once.
@@ -235,13 +236,8 @@ function closed(state: LiveState, code: number, silent = false): LiveStep {
   }
   const next = linkAfterClose(code)
   const ended = end(state, next)
-  if (silent && next === "away") {
-    return done(ended.state, [
-      ...ended.effects,
-      { kind: "reached", answered: false },
-    ])
-  }
-  if (!triesAgain(next) || state.hidden || !state.watched) return ended
+  if (!triesAgain(next) || state.hidden || !state.watched || state.held)
+    return ended
   return done({ ...ended.state, attempt: state.attempt + 1 }, [
     ...ended.effects,
     {
@@ -363,7 +359,7 @@ export function step(state: LiveState, event: LiveEvent): LiveStep {
       const said = hello({ ...state, phase: "open" })
       return done(said.state, [
         { kind: "arm", timer: "quiet", ms: QUIET_MS, at: event.at },
-        { kind: "reached", answered: true },
+        { kind: "reached" },
         ...said.effects,
         { kind: "ping" },
         { kind: "arm", timer: "ping", ms: PING_MS, at: event.at },
@@ -373,12 +369,12 @@ export function step(state: LiveState, event: LiveEvent): LiveStep {
       return heard(state, event.message, event.now)
     }
     case "closed": {
-      return closed(state, event.code, state.phase === "connecting")
+      return closed(state, event.code)
     }
     case "due": {
       switch (event.timer) {
         case "quiet": {
-          return closed(state, 1006, state.phase === "connecting")
+          return closed(state, 1006)
         }
         case "ping": {
           return state.phase === "open"

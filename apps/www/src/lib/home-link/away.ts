@@ -3,7 +3,8 @@
  * answers only on the home network, so off it every request waits out the
  * connect timeout and finds nothing. The first request that finds no answer
  * starts a stretch away; while its hold lasts the link sends nothing the
- * phone started on its own (a drain, a screen's read, home's word on itself)
+ * phone started on its own (a drain, a screen's timed read, home's word on
+ * itself)
  * and answers each as unanswered at once; the hold doubles with each try that
  * finds no answer again, from `FIRST_HOLD_MS` to `LONGEST_HOLD_MS`. Any
  * answer from home ends the stretch; a network change or the person's pull
@@ -12,20 +13,23 @@
  *
  * **AW1: away from home is said once and waited out, not a failure per call.**
  *
- * - _Claim:_ once a request to home finds no answer, the link tells it once
- *   (`report`, as the stretch starts) and, until home answers, sends nothing
- *   the phone starts on its own (a lane's drain, a screen's read, home's
- *   word on itself, Game day's socket) but one try each hold, `holdMs`
- *   doubling from 30 s to 10 minutes; a network change or a pull lets the
- *   next try go at once, a tap still goes, and nothing waiting on the phone
- *   is dropped. The lanes say "Away from home since …" (`./words`).
+ * - _Claim:_ once a request to home other than a pairing's or an Unpair's
+ *   finds no answer, the link tells it once (`report`, as the stretch
+ *   starts) and, until home answers, sends nothing the phone starts on its
+ *   own (a lane's drain, a screen's read on its own, home's word on itself,
+ *   Game day's socket) but one try each hold, `holdMs` doubling from 30 s to
+ *   10 minutes; a network change, a pull or Send now lets the next try go at
+ *   once, what the person asks for (a sync, a send, a screen's read) still
+ *   goes, and nothing waiting on the phone is dropped. The lanes say "Away
+ *   from home since …" (`./words`).
  * - _Family:_ every ordering of a silence, an answer, the hold's end, a
  *   network change or a pull, and time passing (six long); requests in
  *   flight as a stretch starts, settling in either order; an answer to a
  *   request sent before the stretch began; every moment a lane is asked
  *   (an edit, the app in front, the network, a pull, the hold's end); the
  *   live socket made, found silent or opened against a hold beginning or
- *   ending.
+ *   ending; a screen's read asked for or on its own; a pairing or Unpair
+ *   finding no answer.
  * - _Proof:_ `__tests__/away.test.ts` ("AW1"), over `stepAway` and over the
  *   real link, lanes and watches; `__tests__/live-machine.test.ts` and
  *   `__tests__/live.test.ts` for the socket; `__tests__/words.test.ts` for
@@ -44,6 +48,11 @@ export type Away = {
   readonly tries: number
   /** Until when nothing the phone starts on its own is sent; null once over. */
   readonly heldUntil: number | null
+  /**
+   * The hold was let go by a network change or the person, whose own ask
+   * follows: the lanes' watches leave that ask to them (`./kept-watch`).
+   */
+  readonly askedAgain: boolean
 }
 
 export type AwayEvent =
@@ -81,18 +90,22 @@ export function stepAway(away: Away | null, event: AwayEvent): Away | null {
         since: away?.since ?? event.now,
         tries: tries + 1,
         heldUntil: event.now + holdMs(tries),
+        askedAgain: false,
       }
     }
     case "answered": {
       return null
     }
     case "lapsed": {
-      return away?.heldUntil == null ? away : { ...away, heldUntil: null }
+      return away?.heldUntil == null
+        ? away
+        : { ...away, heldUntil: null, askedAgain: false }
     }
     case "lookAgain": {
-      return away === null || (away.heldUntil === null && away.tries === 0)
+      return away === null ||
+        (away.heldUntil === null && away.tries === 0 && away.askedAgain)
         ? away
-        : { ...away, tries: 0, heldUntil: null }
+        : { ...away, tries: 0, heldUntil: null, askedAgain: true }
     }
     default: {
       return assertNever(event)

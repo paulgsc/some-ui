@@ -38,11 +38,12 @@
  * AW1 (#2928, `./away`), as this module holds it: **away from home is said
  * once, and waited out.** A request that finds no answer starts a stretch
  * away, told to `report` once, when it starts; while its hold lasts, a drain,
- * a screen's read (`keep`) and `look` send nothing and are answered as
- * unanswered (`HomeAwayError`) at once, nor told again. The person's own
- * sync, send, pairing and Unpair still go: a tap is a try. Any answer ends
- * the stretch; the hold's end, a network change (`onNetwork`) or `lookAgain`
- * (a pull) lets the next ask go.
+ * a screen's read on its own (`keep`'s `onItsOwn`) and `look` send nothing
+ * and are answered as unanswered (`HomeAwayError`) at once, nor told again.
+ * What the person asks for still goes (a sync, a send, a screen's read,
+ * pairing and Unpair): a tap is a try. Any answer ends the stretch; the
+ * hold's end, a network change (`onNetwork`) or `lookAgain` (a pull, Send
+ * now) lets the next ask go.
  */
 import type { HomeAnswer, HomeCall } from "@some-ui/core-utils"
 import { isRecord } from "@some-ui/core-utils"
@@ -210,10 +211,12 @@ export type HomeLink = {
   /**
    * As `send`, for a screen's read (Korean's look at the routine's files,
    * `./routine`; an idea answer's words, `./heard`; My data), which goes
-   * beside a drain run.
+   * beside a drain run. `onItsOwn`: a read the screen makes without the
+   * person asking just then, held away from home as a drain is (AW1).
    */
   keep: <T>(
-    run: (send: HomeCall) => Promise<T>
+    run: (send: HomeCall) => Promise<T>,
+    options?: { readonly onItsOwn?: boolean }
   ) => Promise<SyncOutcome<T> | null>
   /**
    * As `send`, for one lane's run of the drain (`./lanes`, LA15); `null`
@@ -244,10 +247,10 @@ export type HomeLink = {
    */
   lookAgain: () => void
   /**
-   * Tells the link whether home answered a way to it other than a request
-   * (Game day's live socket, LA21), as a request's answer would.
+   * Tells the link home answered a way to it other than a request (Game
+   * day's live socket, LA21), ending a stretch away as an answer would.
    */
-  reached: (answered: boolean) => void
+  answered: () => void
 }
 
 /** The person's side of the link, or the drain's (`./model`). */
@@ -412,7 +415,11 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
   /** `call` sent at its turn on the pace, as the person's (pairing, Unpair). */
   const personal = async (call: HomeRequest): Promise<HomeAnswer> => {
     await pace.turn(true)
-    return heard(ports.request(call))
+    const answer = await ports.request(call)
+    // An answer ends a stretch away; a silence here is a pairing's or an
+    // Unpair's own to say, and starts none (AW1).
+    reached(true)
+    return answer
   }
 
   // The drain's run under way, until it has ended, and whether a send or
@@ -643,9 +650,15 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
     },
 
     keep<T>(
-      run: (send: HomeCall) => Promise<T>
+      run: (send: HomeCall) => Promise<T>,
+      options?: { readonly onItsOwn?: boolean }
     ): Promise<SyncOutcome<T> | null> {
-      return credentialed("person", { type: "keepStarted" }, false, run)
+      return credentialed(
+        "person",
+        { type: "keepStarted" },
+        options?.onItsOwn !== true,
+        run
+      )
     },
 
     async look(path: string): Promise<SyncOutcome<HomeAnswer> | null> {
@@ -696,8 +709,8 @@ export function createHomeLink(ports: HomeLinkPorts): HomeLink {
 
     lookAgain,
 
-    reached(answered): void {
-      reached(answered)
+    answered(): void {
+      reached(true)
     },
   }
 }

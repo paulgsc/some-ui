@@ -1217,8 +1217,9 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   lane, say busy and send nothing, and its end asks once), or the link's
   hold away from home ending after a run found no answer (AW1,
   `lib/home-link/away.ts`: the link sends nothing a lane asks while the hold
-  lasts, answering each request as unanswered itself, and its end, a network
-  change or a pull asks once); from `askLane`,
+  lasts, answering each request as unanswered itself; its end on its time or
+  home answering asks once, while a network change, a pull or Send now lets
+  it go and asks itself); from `askLane`,
   which a mark's sheet and Settings' readout call only from their Send now
   button; or, for a pull (a drag down from the top
   of a page, PULL3, the owner's D1 on #2456, 2026-11-02), from `pullKept`,
@@ -1878,10 +1879,10 @@ say is that no other path opens it:
   socket open, ignores an offer numbered no later than the last and every
   event from an earlier opening; it asks for no socket while the home link
   holds the phone away from home (`held`, AW1, `lib/home-link/away.ts`), and
-  tells the link (`reached`) when a socket opens and when one made never
-  opened; it tries again only after a close that leaves it `away`: after
-  `retryDelayMs` when the socket had opened, or, when it never opened, once
-  the link's hold ends (`home`), or at once after a `4400` that
+  tells the link (`reached`) when a socket opens; it tries again only after
+  a close that leaves it `away`: after `retryDelayMs` while the link holds
+  nothing, or once the link's hold ends (`home`) while it does, or at once
+  after a `4400` that
   followed a hello with a `lastSeq` (with the `lastSeq` forgotten), and
   after `update` or `unpaired` not until the pairing changes, the app comes
   back to the front or Game day is opened again; `liveFeed` (`live.ts`) opens, sends and arms timers only as
@@ -1892,7 +1893,7 @@ say is that no other path opens it:
   anything but `watch`, the shown branch of `visibility`, `relinked` (on a
   changed pairing), the `retry` timer, the 4400 rule or `home` (the link's
   hold ending); that weakens `connect`'s guard, its `held` check included;
-  that arms the `retry` timer after a socket that never opened; that returns a `hello` or `ping` effect from anywhere but
+  that arms the `retry` timer while the link holds the phone away; that returns a `hello` or `ping` effect from anywhere but
   `hello`, `opened` and the `ping` timer; that keeps `offer` across `end`,
   removes the `seq` check in `heard` or the `stale` check in `step`, or
   removes or lengthens the quiet timer or the opening one (`OPEN_MS`); that retries after a close
@@ -1924,10 +1925,10 @@ say is that no other path opens it:
   only in `gameWeekPorts`'s non-`DEV` branch. One limit, stated rather
   than held: home refuses a revoked session's upgrade with a 401 or 403,
   which a page sees only as close 1006, so a phone that still holds a
-  pairing home has ended reads it as `away` and keeps trying (one try each
-  of the link's holds, 30 s doubling to 10 minutes, and only while Game day
-  shows) until the pairing changes; `4401` reaches it only on a socket
-  already open.
+  pairing home has ended reads it as `away` and keeps trying (at most every
+  30 s, or one try each of the link's holds while it holds the phone away,
+  and only while Game day shows) until the pairing changes; `4401` reaches
+  it only on a socket already open.
 
 ## Not covered, on purpose
 

@@ -431,4 +431,35 @@ describe("away from home over the real link (AW1)", () => {
     await tap
     expect(theLink().getSnapshot().away).toBeNull()
   })
+
+  it("a screen's read the person asked for goes while held; one on its own does not", async () => {
+    const home = await pairedHome()
+    const lanes = threeLanes()
+    await settled(lanes)
+    const before = home.sent.length
+    await expect(
+      theLink().keep((send) => send("GET", "/on-its-own"), { onItsOwn: true })
+    ).rejects.toThrow()
+    expect(home.sent).toHaveLength(before)
+    home.reachable = true
+    const read = await theLink().keep((send) => send("GET", "/asked"))
+    expect(read?.kind).toBe("done")
+    expect(home.sent[before]).toBe("/asked")
+    expect(theLink().getSnapshot().away).toBeNull()
+    // Home answered: each lane the stretch held goes again, once.
+    await settled(lanes)
+    expect(home.sent.slice(before + 1).sort()).toEqual([
+      "/jobs",
+      "/practice",
+      "/voice",
+    ])
+  })
+
+  it("a pairing or Unpair that finds no answer starts no stretch, and is not told as one", async () => {
+    const home = await pairedHome()
+    await theLink().unpair()
+    expect(theLink().getSnapshot().link.kind).toBe("unpaired")
+    expect(theLink().getSnapshot().away).toBeNull()
+    expect(home.told).toEqual([])
+  })
 })

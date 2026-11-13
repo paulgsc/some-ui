@@ -10,7 +10,7 @@
 import { homeLink, LINK_CLOCK, paired, pairingOf } from "./index"
 import type { KeptRun } from "./kept-model"
 import type { Kept } from "./kept-runtime"
-import { drainFree, linkOpen } from "./model"
+import { awayHeld, drainFree, linkOpen } from "./model"
 
 /** A record as the watch sees it. */
 export type KeptRecord = {
@@ -44,9 +44,9 @@ export function pullKept(home: Kept, doc: Front): Promise<KeptRun | null> {
  * home being busy (AD3) or out of reach (AW1), which the link also answers
  * for while it waits.
  */
-function turnedAwayBy(run: KeptRun | null): "link" | "home" | null {
+function turnedAwayBy(run: KeptRun | null): "link" | "home" | "away" | null {
   if (run?.kind === "busy") return "link"
-  if (run?.kind === "unreachable") return "home"
+  if (run?.kind === "unreachable") return "away"
   return run?.kind === "failed" && run.why === "busy" ? "home" : null
 }
 
@@ -71,7 +71,11 @@ export function watchKept(
   // Who turned the lane's last run away, while it has not been asked since:
   // read off its runs as they end, since the link frees (a run's own end)
   // before that run's end reaches the lane.
-  let owed: "link" | "home" | null = null
+  let owed: "link" | "home" | "away" | null = null
+  // The hold away from home was released on its time or by home answering,
+  // since the lane last asked; a network change or a pull asks itself (AW1).
+  let held = awayHeld(link.getSnapshot(), LINK_CLOCK.now())
+  let released = false
 
   const onRecord = (): void => {
     const now = record.revision()
@@ -81,26 +85,38 @@ export function watchKept(
   }
   const onRun = (): void => {
     const run = home.getSnapshot()
-    if (!run.running) owed = turnedAwayBy(run.last)
+    if (run.running) return
+    owed = turnedAwayBy(run.last)
+    // Only a release after this run counts for it.
+    released = false
   }
   const onLink = (): void => {
     const state = link.getSnapshot()
     const nowPaired = pairingOf(state) !== null
     const nowIdle = drainFree(state)
     const nowOpen = linkOpen(state, LINK_CLOCK.now())
+    const nowHeld = awayHeld(state, LINK_CLOCK.now())
+    if (held && !nowHeld && state.away?.askedAgain !== true) released = true
     // Turned away by another run: asked once that run ends, even while home
     // is busy, when the run only says so (it sends nothing). Turned away by
     // home: asked once home's busy or the hold away ends, and not before.
+    // Found no answer: asked once the hold away is released on its time or
+    // home answers, as soon as the link is open (AW1).
     const again =
       (owed === "link" && nowIdle && !idle) ||
-      (owed !== null && nowOpen && !open)
-    if (again) owed = null
+      ((owed === "link" || owed === "home") && nowOpen && !open) ||
+      (owed === "away" && released && nowOpen)
+    if (again) {
+      owed = null
+      released = false
+    }
     if ((nowPaired && !wasPaired) || again) {
       askKept(home, doc)
     }
     wasPaired = nowPaired
     idle = nowIdle
     open = nowOpen
+    held = nowHeld
   }
   const onBack = (): void => {
     askKept(home, doc)

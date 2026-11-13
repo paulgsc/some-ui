@@ -282,8 +282,12 @@ export function useServes(): Serves | null {
   return useSyncExternalStore(run.subscribe, run.getSnapshot).serves
 }
 
-/** "Send now": asks for a run, as any moment the watch names would. */
+/**
+ * "Send now": asks for a run, as any moment the watch names would; the
+ * person's tap, so away from home it lets the link's hold go first (AW1).
+ */
 export function askLane(lane: Lane): void {
+  homeLink().lookAgain()
   askKept(wire(lane).sending, document)
 }
 
