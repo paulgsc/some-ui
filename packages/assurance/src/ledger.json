@@ -4496,7 +4496,7 @@
     {
       "store": "server:studio_take_move",
       "class": "record",
-      "growth": "Per move of a Studio take along the conveyor (CONVEYOR1, some-ui#2873): one small row (the take's id, its seq, the station it left and reached, when the owner moved it, its labels when they changed, a comment of at most 280 characters, the issue a pickup filed it as), one per move the owner makes by hand on the conveyor page plus one per pickup by the routine; append-only (UPDATE aborts), so per take bounded by its moves, O(takes x moves) a person. Rows leave only with their take, when the owner deletes it for good from My data (its receipt says the conveyor history went), and with the account.",
+      "growth": "Per move of a Studio take along the conveyor (CONVEYOR1, some-ui#2873): one small row (the take's id, its seq, the station it left and reached, when the owner moved it, its labels when they changed, a comment of at most 280 characters, the issue a pickup filed it as), one per move the owner makes by hand on the conveyor page (unbounded per take: a take can go back and forth between stations), plus at most one per take for its pickup by the routine; append-only (UPDATE aborts). Rows leave only with their take, when the owner deletes it for good from My data (its receipt says the conveyor history went), and with the account.",
       "family": "voice-heard"
     },
     {

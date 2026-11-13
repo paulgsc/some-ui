@@ -139,7 +139,13 @@ describe("My data's words", () => {
       "The recording and home's words for it"
     )
     expect(receiptParts(["recording", "conveyor history"])).toBe(
-      "The recording and where it stood on the conveyor, and each move"
+      "The recording and each move it made along the conveyor"
+    )
+    // The whole receipt home sends for a take heard, let go and moved.
+    expect(
+      receiptParts(["recording", "words", "set-aside mark", "conveyor history"])
+    ).toBe(
+      "The recording, home's words for it, its Let go mark and each move it made along the conveyor"
     )
     expect(receiptParts([])).toBe("Nothing else")
   })
