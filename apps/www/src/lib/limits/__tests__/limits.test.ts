@@ -121,3 +121,30 @@ describe("standingOf", () => {
     )
   })
 })
+
+describe("checkAgain", () => {
+  it("is judged on its own reads, not on a newer refresh that overtook them", async () => {
+    let calls = 0
+    let release = (): void => undefined
+    const limits = createLimits([
+      row("a", () => {
+        calls += 1
+        // The check's own read fails late; a refresh begun after it succeeds.
+        if (calls === 1) {
+          return new Promise((_, reject) => {
+            release = (): void => reject(new Error("unreadable"))
+          })
+        }
+        return Promise.resolve({ kept: 1, limit: 2 })
+      }),
+    ])
+    const check = limits.checkAgain("phone")
+    await limits.refresh("phone")
+    release()
+    await expect(check).rejects.toThrow()
+    expect(limits.getSnapshot()["a"]).toEqual({
+      kind: "counted",
+      count: { kept: 1, limit: 2 },
+    })
+  })
+})

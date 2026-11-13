@@ -1,7 +1,8 @@
 /**
  * How much of each bounded record Korean keeps on this device, read through
  * each record's own store, beside the bound it keeps (paulgsc/some-ui#2121,
- * SM2): what Settings shows of Korean's limits. Reads only.
+ * SM2): what Settings shows of Korean's limits. Opening a store may tidy
+ * it as it always does (an expired last drama goes); nothing else is written.
  */
 
 import type { KeyedStorage } from "@some-ui/core-utils"

@@ -34,7 +34,7 @@ export type LimitWords = {
 export const WHAT_HAPPENS: Readonly<Record<AtLimit, string>> = {
   refused: "Then refused",
   "oldest-goes": "Then the oldest goes",
-  "makes-room": "Then one home has makes room",
+  "makes-room": "Then the oldest home has makes room",
   waits: "Then it waits",
   forgotten: "Then forgotten",
 }
@@ -61,7 +61,13 @@ export const PHONE_LIMITS = {
     standing: (count, limit) =>
       `${count} kept. Your newest ${limit} always stay`,
     atLimit: "makes-room",
-    then: "Your newest are always kept. Past them, a written one stays until home has it; a voice note replaces the oldest home has, and isn't kept while home has none.",
+    then: "Your newest are always kept, and an older one stays until home has it. A new one is never turned away for lack of room.",
+  },
+  reflectionVoice: {
+    what: "Room for voice reflections",
+    standing: using,
+    atLimit: "refused",
+    then: "A voice reflection past it isn't kept.",
   },
   sharedMarks: {
     what: "Which reflections you shared",
@@ -73,7 +79,7 @@ export const PHONE_LIMITS = {
     what: "Scene notes said aloud",
     standing: kept,
     atLimit: "makes-room",
-    then: `${MAKES_ROOM} The next scene holds up to five.`,
+    then: "A new note replaces the oldest that home already has and the next scene no longer holds. While there is none, the new one isn't kept, and the screen you record on says so. The next scene holds up to five.",
   },
   lensTakes: {
     what: "Grammar lens takes",
@@ -147,13 +153,7 @@ export const PHONE_LIMITS = {
     what: "Korean kept to replay",
     standing: kept,
     atLimit: "refused",
-    then: "Keeping another isn't kept until you remove one. Keeping one again replaces it.",
-  },
-  shelfLeetype: {
-    what: "LeetType kept to replay",
-    standing: kept,
-    atLimit: "refused",
-    then: "Keeping another isn't kept until you remove one. Keeping one again replaces it.",
+    then: "Another isn't kept until you remove one. Keeping the same one again replaces it.",
   },
   stops: {
     what: "Sessions you stopped early",

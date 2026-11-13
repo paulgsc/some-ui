@@ -96,6 +96,8 @@ type DeskShelf = {
    * takes wait for their item (`send: "on-confirm"`), only those sent.
    */
   readonly kept: () => ReadonlyArray<Take>
+  /** How many takes the desk holds against its cap, waiting ones included. */
+  readonly held: () => number
   /** A take's audio, or null when it is gone. */
   readonly audio: (id: string) => Promise<Blob | null>
   /**
@@ -386,6 +388,7 @@ function desk<R extends Runtime>(
     },
     keptOn: (line, since): string | null => keptOn(takes.read(), line, since),
     kept: () => takes.read().filter(sent),
+    held: () => takes.read().length,
     audio: (id) => shelf.shelf().get(id),
     keptWhere: (next): void => {
       where = next

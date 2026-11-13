@@ -60,7 +60,7 @@ async function topik(): Promise<TopikKeptCounts> {
   return topikKeptCounts()
 }
 
-async function shelfCount(activity: "topik" | "leetype"): Promise<LimitCount> {
+async function shelfCount(activity: "topik"): Promise<LimitCount> {
   const { createShelfClient } = await import("@/lib/shelf-client")
   const client = createShelfClient(activity)
   if (client === undefined) throw new Error("this build keeps no shelf")
@@ -83,9 +83,9 @@ const TOPIK = "packages/ui/topik/src/lib/topik"
 
 /** A desk of takes: how many it keeps now, against its cap. */
 const deskCount = (
-  desk: { readonly kept: () => ReadonlyArray<unknown> },
+  desk: { readonly held: () => number },
   limit: number
-): LimitCount => ({ kept: desk.kept().length, limit })
+): LimitCount => ({ kept: desk.held(), limit })
 
 export const LIMIT_ROWS: ReadonlyArray<LimitRow> = [
   {
@@ -112,11 +112,7 @@ export const LIMIT_ROWS: ReadonlyArray<LimitRow> = [
     concern: "phone",
     words: PHONE_LIMITS.reflections,
     unit: "count",
-    sources: [
-      `${WWW}/session-reflection/policy.ts#REFLECTION_LIMIT`,
-      `${WWW}/reflection-voice/budget.ts#REFLECTION_AUDIO_MAX_BYTES`,
-      `${WWW}/reflection-voice/index.ts#REFLECTION_AUDIO_MAX_BYTES`,
-    ],
+    sources: [`${WWW}/session-reflection/policy.ts#REFLECTION_LIMIT`],
     read: async (): Promise<LimitCount> => {
       const [{ reflections }, { REFLECTION_LIMIT }] = await Promise.all([
         import("@/lib/session-reflection"),
@@ -125,6 +121,27 @@ export const LIMIT_ROWS: ReadonlyArray<LimitRow> = [
       return {
         kept: reflections.getSnapshot().kept.length,
         limit: REFLECTION_LIMIT,
+      }
+    },
+  },
+  {
+    id: "reflectionVoice",
+    concern: "phone",
+    words: PHONE_LIMITS.reflectionVoice,
+    unit: "bytes",
+    sources: [
+      `${WWW}/reflection-voice/budget.ts#REFLECTION_AUDIO_MAX_BYTES`,
+      `${WWW}/reflection-voice/index.ts#REFLECTION_AUDIO_MAX_BYTES`,
+    ],
+    read: async (): Promise<LimitCount> => {
+      const [{ reflectionAudio }, { REFLECTION_AUDIO_MAX_BYTES }] =
+        await Promise.all([
+          import("@/lib/reflection-voice"),
+          import("@/lib/reflection-voice/budget"),
+        ])
+      return {
+        kept: await shelfBytes(reflectionAudio()),
+        limit: REFLECTION_AUDIO_MAX_BYTES,
       }
     },
   },
@@ -299,14 +316,6 @@ export const LIMIT_ROWS: ReadonlyArray<LimitRow> = [
     read: () => shelfCount("topik"),
   },
   {
-    id: "shelfLeetype",
-    concern: "phone",
-    words: PHONE_LIMITS.shelfLeetype,
-    unit: "count",
-    sources: [`${WWW}/device-backend/handlers/shelf/index.ts#SHELF_CAP`],
-    read: () => shelfCount("leetype"),
-  },
-  {
     id: "stops",
     concern: "phone",
     words: PHONE_LIMITS.stops,
@@ -468,7 +477,8 @@ export function createLimits(rows: ReadonlyArray<LimitRow>): Limits {
     for (const listener of listeners) listener()
   }
 
-  const readRow = async (row: LimitRow): Promise<void> => {
+  /** Reads `row`, and answers what this read found, stale or not. */
+  const readRow = async (row: LimitRow): Promise<LimitReading> => {
     const generation = (generations.get(row.id) ?? 0) + 1
     generations.set(row.id, generation)
     if (snapshot[row.id] === undefined) set(row.id, { kind: "counting" })
@@ -480,12 +490,16 @@ export function createLimits(rows: ReadonlyArray<LimitRow>): Limits {
       reading = { kind: "unread" }
     }
     if (generations.get(row.id) === generation) set(row.id, reading)
+    return reading
   }
 
+  const readConcern = (
+    concern: LimitConcern
+  ): Promise<ReadonlyArray<LimitReading>> =>
+    Promise.all(rows.filter((row) => row.concern === concern).map(readRow))
+
   const refresh = async (concern: LimitConcern): Promise<void> => {
-    await Promise.all(
-      rows.filter((row) => row.concern === concern).map(readRow)
-    )
+    await readConcern(concern)
   }
 
   return {
@@ -498,9 +512,9 @@ export function createLimits(rows: ReadonlyArray<LimitRow>): Limits {
     getSnapshot: () => snapshot,
     refresh,
     checkAgain: async (concern): Promise<void> => {
-      await refresh(concern)
-      const unread = rows.filter(
-        (row) => row.concern === concern && snapshot[row.id]?.kind === "unread"
+      // Judged on this check's own reads, not on a newer refresh's.
+      const unread = (await readConcern(concern)).filter(
+        (reading) => reading.kind === "unread"
       )
       if (unread.length > 0) {
         throw new Error(`${String(unread.length)} limits not counted`)

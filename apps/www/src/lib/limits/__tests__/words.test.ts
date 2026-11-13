@@ -42,6 +42,7 @@ describe("limit words", () => {
       LIMITS_WORDS.title,
       LIMITS_WORDS.lead,
       LIMITS_WORDS.counting,
+      LIMITS_WORDS.pull,
       LIMITS_WORDS.unread,
       LIMITS_WORDS.days(1),
       LIMITS_WORDS.days(30),
