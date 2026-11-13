@@ -1807,6 +1807,26 @@
         "#2013",
         "#2006"
       ]
+    },
+    {
+      "id": "C146",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "apps/www/src/lib/limits/index.ts",
+        "apps/www/src/lib/limits/__tests__/coverage.test.ts"
+      ],
+      "chose": "Settings' limits leave out Soundbites' six and Studio's takes' time budget: each is shown on its own screen beside the recorder, where the next take's fate is decided, and the limits test lists both with that reason.",
+      "options": [
+        "shown on their own screens only",
+        "a row on Settings › This phone as well"
+      ],
+      "gray": "SM2 asks for every cap on a Settings page, but these two already say their count where they are recorded, and reading them from Settings means reaching into Studio's own store.",
+      "undo": "Add rows for SOUNDBITE_LIMIT and JOURNAL_TAKES_MAX_BYTES to LIMIT_ROWS with a read of each store, and drop them from NOT_SHOWN.",
+      "refs": [
+        "#2121",
+        "#2107"
+      ]
     }
   ]
 }
