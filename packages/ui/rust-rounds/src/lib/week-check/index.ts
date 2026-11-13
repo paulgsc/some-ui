@@ -10,6 +10,7 @@ import { pathOf } from "@rust-rounds/lib/intake"
 import { describeProgramFinding, measureProgram } from "@rust-rounds/lib/lint"
 import {
   addDays,
+  isoWeekOf,
   PACIFIC_TIME_ZONE,
   pacificDay,
   pacificMinutes,
@@ -27,19 +28,9 @@ export type WeekReading =
   | { ok: true; week: Week }
   | { ok: false; problems: Array<WeekProblem> }
 
-const DAY_MS = 86_400_000
-
 /** The ISO week id (`2026-w46`) of a `YYYY-MM-DD` calendar date. */
 export function isoWeekId(date: string): string {
-  const [year = 0, month = 1, day = 1] = date.split("-").map(Number)
-  const at = new Date(Date.UTC(year, month - 1, day))
-  // The Thursday of this week decides its ISO year.
-  at.setUTCDate(at.getUTCDate() + 4 - (at.getUTCDay() || 7))
-  const isoYear = at.getUTCFullYear()
-  const week = Math.ceil(
-    ((at.getTime() - Date.UTC(isoYear, 0, 1)) / DAY_MS + 1) / 7
-  )
-  return `${isoYear}-w${String(week).padStart(2, "0")}`
+  return isoWeekOf(date).toLowerCase()
 }
 
 /** `at` on the owner's clock, as a problem names it: "2026-11-15 15:59". */
