@@ -95,7 +95,8 @@
  *   × every home state (held; waiting; unpaired; off the LAN, which the
  *   phone sees alike as not held; held only by the home of another
  *   pairing, a re-paired or reset one, which it sees as not held either:
- *   HP1, `lib/voice-home/model.ts`); for Studio takes, × every
+ *   HP1, `lib/voice-home/model.ts`, which lets nothing go on it; a game
+ *   bite's own stamp still says it is on home, #2955); for Studio takes, × every
  *   choice (none yet, once home has them, until Drive has it too) × the
  *   owner's "Drive has it" on the take (tapped or not), home's word that
  *   Drive has it (said, not said, or not read) and the share sheet's
@@ -124,8 +125,7 @@
  *   `lib/takes-desk/__tests__/runtime.test.ts`,
  *   `lib/leetype-takes/index.test.ts` and topik's
  *   `adapter/lens-record-store/index.test.ts` (each "HF5": at the cap only
- *   one home holds makes room, and with none held the new one is refused;
- *   and the desk's "HP1": none another pairing's home holds makes room),
+ *   one home holds makes room, and with none held the new one is refused),
  *   and for Rust Rounds' notes `lib/takes-desk/__tests__/audio-leaves.test.ts`
  *   ("LG1 (RR6)": only a note home holds lets its audio go, its take stays
  *   listed and plays from home, and a mark not stored lets nothing go),
@@ -1210,7 +1210,7 @@ function holdOffline(): void {
 
 /**
  * The pairing this phone holds, as the voice record follows it (HP1,
- * `lib/voice-home/model.ts`): none stepped while the link is still read.
+ * `lib/voice-home/model.ts`).
  */
 const linkPairing: PairingPort = {
   current: () => {

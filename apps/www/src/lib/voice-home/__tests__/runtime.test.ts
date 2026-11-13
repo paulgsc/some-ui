@@ -213,8 +213,6 @@ describe("the voice notes on their way home", () => {
     const make = (): ReturnType<typeof createVoiceHome> => {
       const made = createVoiceHome({ storage, shelf: shelf(), encode, now })
       made.follow(link)
-      // Handing in the port it follows again does nothing.
-      made.follow(link)
       return made
     }
     const home = make()

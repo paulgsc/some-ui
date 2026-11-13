@@ -15,8 +15,7 @@
  *
  * The record follows the pairing the phone holds (HP1, `./model`) once
  * the home link hands it in (`follow`): each change it says is stepped in,
- * so what home holds is read under that pairing alone. While the pairing is
- * still being read nothing is stepped.
+ * so what home holds is read under that pairing alone.
  */
 import type { KeyedStorage } from "@some-ui/core-utils"
 import { openRecord, writeRecord } from "@some-ui/core-utils"
@@ -198,8 +197,7 @@ export function createVoiceHome(ports: VoiceHomePorts): VoiceHome {
             ? { ...answer, at: new Date(ports.now()).toISOString() }
             : answer
         )
-        // Only once the record says this pairing's home holds it: a word
-        // heard after the pairing changed leaves the copy waiting (HP1).
+        // Only once this pairing's home holds it (HP1).
         if (answer.kind === "held" && state.held.includes(answer.id)) {
           // Ignored: a copy home holds is named by no record once this step
           // is kept, so the next `sweep` clears one that fails to go.

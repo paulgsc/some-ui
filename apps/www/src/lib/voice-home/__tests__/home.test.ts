@@ -21,11 +21,11 @@ const note = (id: string, of: VoiceOut["of"] = "reflection"): VoiceOut => ({
   contentType: "audio/webm;codecs=opus",
 })
 
-/** A port over a record, with each note's audio its id's bytes. */
 /** The pairing a run goes under: what home holds is its word (HP1). */
 const PAIRING = "pairing-1"
 const paired: VoiceHomeState = { ...INITIAL_VOICE_HOME, pairing: PAIRING }
 
+/** A port over a record, with each note's audio its id's bytes. */
 function port(
   notes: ReadonlyArray<VoiceOut>,
   audio: (id: string) => Blob | null = (id) => new Blob([id])

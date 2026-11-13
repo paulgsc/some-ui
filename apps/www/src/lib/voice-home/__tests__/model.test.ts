@@ -368,7 +368,7 @@ describe("what home holds, by the pairing that said so (HP1, #2437)", () => {
         held: [],
         heldAt: {},
         others: { [PAIRING]: { held: ["n1"], heldAt: { n1: HEARD } } },
-        // Where each other note was is the phone's, not a home's.
+        // Waiting and refused stay as they were (refusals: #2955).
         waiting: [OTHER],
         refused: [{ id: "n3", why: "x" }],
       })

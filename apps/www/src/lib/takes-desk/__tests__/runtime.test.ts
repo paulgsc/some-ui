@@ -246,54 +246,6 @@ describe("createTakes", () => {
     expect(p.listed).toHaveLength(LENS_TAKES_MAX)
   })
 
-  it("makes no room at forty with what another pairing's home holds, and each reads as kept on this phone (HP1)", async () => {
-    const full = Array.from({ length: LENS_TAKES_MAX }, (_, index) =>
-      kept(`old-${index}`, NOW - index)
-    )
-    const p = ports(full)
-    // The first home holds every take; the phone is then paired with another.
-    const first = full.reduce(
-      (state, { id }) =>
-        stepVoiceHome(
-          stepVoiceHome(state, {
-            kind: "copied",
-            note: {
-              id,
-              of: "lens",
-              ref: "older",
-              at: new Date(NOW).toISOString(),
-              contentType: "audio/webm",
-            } satisfies VoiceOut,
-          }),
-          {
-            kind: "held",
-            id,
-            at: new Date(NOW).toISOString(),
-            pairing: "first",
-          }
-        ),
-      stepVoiceHome(INITIAL_VOICE_HOME, { kind: "paired", pairing: "first" })
-    )
-    const lane = stepVoiceHome(first, { kind: "paired", pairing: "second" })
-    const where = keptIn(lane)
-    expect(where("old-0")).toEqual({ place: "phone" })
-    const takes = createTakes(
-      { ...p, held: (id) => homeHolds(where(id)) },
-      LIMITS
-    )
-    expect(takes.getSnapshot().full).toBe(true)
-    takes.start("school-bus")
-    await settle()
-    expect(takes.getSnapshot().take.kind).toBe("idle")
-    expect(p.audio.remove).not.toHaveBeenCalled()
-    expect(p.listed).toHaveLength(LENS_TAKES_MAX)
-    // Back with the first home, its word counts again.
-    const back = keptIn(
-      stepVoiceHome(lane, { kind: "paired", pairing: "first" })
-    )
-    expect(homeHolds(back("old-0"))).toBe(true)
-  })
-
   it("makes room at forty by letting go the oldest take home holds, and only one home holds (HF5)", async () => {
     const full = Array.from({ length: LENS_TAKES_MAX }, (_, index) =>
       kept(`old-${index}`, NOW - index)
