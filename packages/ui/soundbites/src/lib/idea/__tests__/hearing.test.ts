@@ -527,7 +527,7 @@ describe("IH1: an answer said as a take, its words from home", () => {
 })
 
 describe("SFEED5: an ask's answer, as home hears it", () => {
-  it("starts the take on what it answers, so it is kept under the ask's ref", () => {
+  it("starts the take on what it answers, the ask's ref", () => {
     vi.useFakeTimers({ now: NOW })
     const now = (): number => Date.now()
     const mic = simulatedMicrophone({ now })
