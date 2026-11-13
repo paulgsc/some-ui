@@ -1,4 +1,5 @@
 import type { SessionLogStore } from "@leetype/lib/leetype/session-log"
+import { engagedOf } from "@leetype/lib/leetype/session-log/engaged"
 import { parkedNow } from "@leetype/lib/leetype/session-log/model"
 import type {
   SpokenTakes,
@@ -7,6 +8,7 @@ import type {
 import { answersOf } from "@leetype/lib/leetype/spoken-take"
 import type { SessionFile } from "@leetype/types/session-file"
 import { rubricText } from "@leetype/types/session-file"
+import type { EngagementEvent } from "@some-ui/engagement"
 import type { TakePlace } from "@some-ui/voice-capture"
 import { takeItemView } from "@some-ui/voice-capture"
 
@@ -62,6 +64,8 @@ export type IncidentPlayPorts = {
   readonly visibility?: Visibility
   /** Calls `fire` after `ms`, unless cancelled. */
   readonly after?: (ms: number, fire: () => void) => () => void
+  /** Where what the log keeps is told in ENGAGE's words (`session-log/engaged`). */
+  readonly engage?: (event: EngagementEvent) => void
 }
 
 type SpokenEvent = Extract<Stepped["events"][number], { type: "spoken" }>
@@ -186,7 +190,7 @@ export class IncidentPlayRuntime {
           )
         : []),
     ]
-    for (const event of events) this.ports.log.append(event)
+    for (const event of events) this.keep(event)
     this.publishProblem()
   }
 
@@ -363,10 +367,20 @@ export class IncidentPlayRuntime {
     }
   }
 
+  /**
+   * Appends `event` and tells it in ENGAGE's words once kept; one the log
+   * already kept says nothing (`engagedOf`).
+   */
+  private keep(event: Parameters<SessionLogStore["append"]>[0]): void {
+    const before = this.ports.log.getSnapshot().log
+    if (!this.ports.log.append(event)) return
+    for (const engaged of engagedOf(before, event)) this.ports.engage?.(engaged)
+  }
+
   private apply({ play, events }: Stepped): void {
     const before = this.snapshot.play
     for (const event of events) {
-      this.ports.log.append(event)
+      this.keep(event)
       if (event.type === "spoken" && before !== null) {
         this.noteAnswer(before, event.answer)
       }
