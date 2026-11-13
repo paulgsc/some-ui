@@ -1136,7 +1136,7 @@ describe("voice transcripts", () => {
   })
 
   it("takes an interview take's transcript, named by its week and question or read card (IW1)", async () => {
-    for (const ref of ["2026-W46:about-you", "2026-W46:read:iw1-motivation"]) {
+    for (const ref of ["2026-w47:about-you", "2026-w47:read:home-first"]) {
       const said = { ...HEARD, of: "interview", ref }
       expect((await asHome(deps(), NAME, JSON.stringify(said))).status).toBe(
         201

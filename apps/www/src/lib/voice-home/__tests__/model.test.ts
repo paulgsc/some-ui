@@ -126,7 +126,7 @@ describe("the record of voice notes on their way home", () => {
       ...NOTE,
       id: "i1",
       of: "interview",
-      ref: "2026-W46:read:iw1-motivation",
+      ref: "2026-w47:read:home-first",
     }
     const state = stepVoiceHome(
       copied(
