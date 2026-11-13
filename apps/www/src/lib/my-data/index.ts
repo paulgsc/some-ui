@@ -52,7 +52,7 @@ export type { Deleting } from "./deleting-runtime"
 export type { Receipts, ReceiptsState } from "./receipts"
 export type { MyData } from "./runtime"
 export type { MyDataState } from "./state"
-export type { WordSetsSaid, WordSetsState } from "./word-sets"
+export type { WordSetsSaid } from "./word-sets"
 export type { WordSetsPage } from "./word-sets-runtime"
 
 async function askHome(

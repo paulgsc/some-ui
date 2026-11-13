@@ -42,7 +42,7 @@ export const ALL_SETS_ID = ":all"
 export const ADDED_SET_LIMIT = 50
 
 /** How long after its first open a set is said to be not opened in a while. */
-export const NOT_OPENED_IN_A_WHILE_DAYS = 30
+const NOT_OPENED_IN_A_WHILE_DAYS = 30
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -58,7 +58,7 @@ export type AddedSet = {
 }
 
 /** Whether the set is in use: not archived. */
-export const inUse = (set: AddedSet): boolean => set.archivedAt === null
+const inUse = (set: AddedSet): boolean => set.archivedAt === null
 
 /** The sets in use, in their order: what counts against `ADDED_SET_LIMIT`. */
 export const setsInUse = (added: ReadonlyArray<AddedSet>): Array<AddedSet> =>
@@ -297,7 +297,7 @@ export function bringBack(
 }
 
 /** Whether there is room to bring an archived set back. */
-export const roomToBringBack = (added: ReadonlyArray<AddedSet>): boolean =>
+const roomToBringBack = (added: ReadonlyArray<AddedSet>): boolean =>
   setsInUse(added).length < ADDED_SET_LIMIT
 
 /**
