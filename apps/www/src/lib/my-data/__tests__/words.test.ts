@@ -80,7 +80,7 @@ describe("My data's words", () => {
           [
             { kind: "silent" },
             { kind: "notYet" },
-            { kind: "words", text: "a word" },
+            { kind: "words", text: "a word", cut: false },
           ] as const
         ).map((heard) => heardLine(heard, where) ?? "")
       ),
@@ -100,9 +100,12 @@ describe("My data's words", () => {
   })
 
   it("say what home heard only of a recording home holds (MD8, MDL1)", () => {
-    expect(heardLine({ kind: "words", text: "hello there" }, "home")).toBe(
-      "“hello there”"
-    )
+    expect(
+      heardLine({ kind: "words", text: "hello there", cut: false }, "home")
+    ).toBe("“hello there”")
+    expect(
+      heardLine({ kind: "words", text: "hello there", cut: true }, "home")
+    ).toBe("“hello there…”")
     expect(heardLine({ kind: "notYet" }, "aside")).toBe(
       "Home hasn't heard it yet."
     )

@@ -232,7 +232,7 @@ export function itemWhere(where: Where, bytes: number): string {
 export function heardLine(heard: Heard, where: Where): string | null {
   switch (heard.kind) {
     case "words": {
-      return `“${heard.text}”`
+      return heard.cut ? `“${heard.text}…”` : `“${heard.text}”`
     }
     case "silent": {
       return "Home heard no words in it."

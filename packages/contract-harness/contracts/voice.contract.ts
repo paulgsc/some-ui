@@ -50,7 +50,7 @@
  * empty answer, which the harness probes for its shape; an `of` naming no
  * kind is a `422`. Each note says whether My data may delete it
  * (`deletable`, MD3 some-ui#2477), and what it is (MD8): how long, once
- * home heard it (`durationMs`), the first words home heard (`heard`), and
+ * home heard it (`durationMs`), the first words home heard (`heard`, `heardCut` when it heard more), and
  * whether home gives its audio back to the phone (`playsBack`).
  *
  * The takes home keeps (`GET /voice-notes/takes`, ST32): Studio's Takes on
@@ -121,6 +121,7 @@ const KeptSchema = z.object({
         deletable: z.boolean(),
         durationMs: z.number().int().nullable(),
         heard: z.string().nullable(),
+        heardCut: z.boolean(),
         playsBack: z.boolean(),
       })
     )

@@ -78,6 +78,8 @@ const Kept = z.object({
         durationMs: z.number().int().nonnegative().nullable().default(null),
         /** The first words home heard in it, or null (MD8). */
         heard: z.string().nullable().default(null),
+        /** Home cut `heard` short of all it heard (MD8). */
+        heardCut: z.boolean().default(false),
         /**
          * Home gives its audio back to this phone (MD8), so it plays from
          * home. An older home says nothing, which is no.
@@ -313,7 +315,12 @@ export type PlaysFrom = "here" | "home" | "none"
  * nothing yet (home hasn't heard it, or doesn't hold it).
  */
 export type Heard =
-  | { readonly kind: "words"; readonly text: string }
+  | {
+      readonly kind: "words"
+      readonly text: string
+      /** Home heard more than these first words. */
+      readonly cut: boolean
+    }
   | { readonly kind: "silent" }
   | { readonly kind: "notYet" }
 
@@ -358,7 +365,7 @@ type KeptNote = NonNullable<HomeKept["notes"]>[number]
 /** What home heard in `note`: words, none (heard, and silent), or not yet. */
 export function heardOf(note: KeptNote): Heard {
   const text = note.heard?.trim() ?? ""
-  if (text !== "") return { kind: "words", text }
+  if (text !== "") return { kind: "words", text, cut: note.heardCut }
   // A length comes only from a hearing, so one without words heard silence.
   return note.durationMs === null ? { kind: "notYet" } : { kind: "silent" }
 }

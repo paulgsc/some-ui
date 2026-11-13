@@ -60,6 +60,7 @@ const HOME: HomeReading = {
         i % 4 === 0
           ? "So what I keep coming back to is that the second scene doesn't earn the turn, and the whole middle sags because of it"
           : null,
+      heardCut: i % 8 === 0,
       playsBack: i % 4 !== 3,
     })),
   },

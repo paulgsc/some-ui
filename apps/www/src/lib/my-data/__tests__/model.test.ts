@@ -241,6 +241,7 @@ describe("a kind's list", () => {
           deletable: true,
           durationMs: 42_000,
           heard: "  first words ",
+          heardCut: true,
           playsBack: true,
         },
         {
@@ -252,6 +253,7 @@ describe("a kind's list", () => {
           deletable: false,
           durationMs: 3_000,
           heard: null,
+          heardCut: false,
           playsBack: true,
         },
         {
@@ -263,6 +265,7 @@ describe("a kind's list", () => {
           deletable: false,
           durationMs: null,
           heard: null,
+          heardCut: false,
           playsBack: false,
         },
       ],
@@ -299,7 +302,7 @@ describe("a kind's list", () => {
         where: "home",
         plays: "here",
         durationMs: 42_000,
-        heard: { kind: "words", text: "first words" },
+        heard: { kind: "words", text: "first words", cut: true },
         deletable: true,
       },
       {
