@@ -2047,7 +2047,7 @@
         "packages/ui/interview-week/src/lib/faults/fillers.json",
         "packages/ui/interview-week/src/lib/faults/words.ts"
       ],
-      "chose": "The closed filler list holds only vocalised hesitations (um, umm, uh, uhh, uhm, er, erm, ah, ahh, hm, hmm, mm, mhm), each matched as one whole word after lowercasing and keeping letters and digits; lexical fillers (like, you know, so, basically, I mean) are left out. The list lives in fillers.json, the canonical copy home's transcriber cites.",
+      "chose": "The closed filler list holds only vocalised hesitations (um, umm, uh, uhh, uhm, er, err, erm, ah, ahh, hm, hmm, mm, mhm), each matched as one whole word after lowercasing and keeping letters and digits, a hyphenated word made only of fillers (Mm-hmm) counting once; lexical fillers (like, you know, so, basically, I mean) are left out. The list lives in fillers.json, the canonical copy home's transcriber cites.",
       "options": [
         "(a) vocalised hesitations only",
         "(b) vocalised hesitations plus lexical fillers (like, you know, so, basically)",

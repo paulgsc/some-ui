@@ -83,7 +83,8 @@ export type SpokenToken = {
 /**
  * The heard words as comparable words, in the order they were spoken. A heard
  * word that is punctuation alone gives none; one with a hyphen gives one per
- * part, each with the whole word's timing.
+ * part, each with the whole word's timing, except that a word made only of
+ * fillers ("Mm-hmm") is one filler (`asFillers`).
  */
 export function spokenTokens(
   words: ReadonlyArray<HeardWord>
@@ -92,12 +93,19 @@ export function spokenTokens(
     .map((word, index) => ({ word, index }))
     .sort((a, b) => a.word.startMs - b.word.startMs || a.index - b.index)
   return ordered.flatMap(({ word }) =>
-    tokens(word.text).map((token) => ({
+    asFillers(tokens(word.text)).map((token) => ({
       token,
       startMs: word.startMs,
       endMs: word.endMs,
       p: word.p,
-      filler: FILLERS.has(token),
+      filler: token.split("-").every((part) => FILLERS.has(part)),
     }))
   )
+}
+
+/** Joins the parts of one hyphenated word ("mm-hmm") when every part is a filler. */
+export function asFillers(parts: ReadonlyArray<string>): Array<string> {
+  return parts.length > 1 && parts.every((part) => FILLERS.has(part))
+    ? [parts.join("-")]
+    : [...parts]
 }

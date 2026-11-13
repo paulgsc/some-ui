@@ -3,6 +3,7 @@ import { z } from "zod"
 import { MIN_PHRASE_WORDS, READ_PAUSE_MS, REPEAT_WINDOW } from "./thresholds"
 import { Count, gapsBetween, longest, Ms, perMinute, Rate, wpm } from "./timing"
 import {
+  asFillers,
   FILLERS,
   HeardWordsSchema,
   normalised,
@@ -96,7 +97,7 @@ function scriptTokens(script: string): Array<ScriptToken> {
   const words = tokens(script)
   const between = normalised(script).split(/[\p{L}\p{N}]+/u)
   // `between[k + 1]` is the text after word `k`.
-  return words.map((token, k) => {
+  const marked = words.map((token, k) => {
     const after = between[k + 1] ?? ""
     const next = words[k + 1] ?? ""
     const inNumber =
@@ -104,8 +105,25 @@ function scriptTokens(script: string): Array<ScriptToken> {
     return {
       token,
       breakAfter: k === words.length - 1 || (!inNumber && BREAK.test(after)),
+      hyphened: after === "-",
     }
   })
+  // A hyphenated word made only of fillers ("Mm-hmm") is one, as it is heard.
+  const joined: Array<ScriptToken> = []
+  let group: Array<(typeof marked)[number]> = []
+  for (const word of marked) {
+    group.push(word)
+    if (word.hyphened && word !== marked.at(-1)) continue
+    const last = group.at(-1)
+    for (const token of asFillers(group.map((part) => part.token))) {
+      joined.push({ token, breakAfter: false })
+    }
+    const end = joined.at(-1)
+    if (end !== undefined && last !== undefined)
+      end.breakAfter = last.breakAfter
+    group = []
+  }
+  return joined
 }
 
 /** No alignment is this long, so a step that costs it is never taken. */
