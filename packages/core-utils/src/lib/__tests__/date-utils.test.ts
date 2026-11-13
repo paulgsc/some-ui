@@ -6,8 +6,12 @@ import {
   formatMonth,
   formatRelativeTime,
   formatWeekday,
+  isoWeekMonday,
+  isoWeekOf,
+  isoWeeksIn,
   pacificDay,
   pacificMinutes,
+  parseIsoWeek,
   weekOf,
 } from "@core-utils/lib/date-utils"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -198,5 +202,29 @@ describe("pacificMinutes", () => {
     expect(pacificMinutes(new Date("2026-12-01T15:52:00Z"))).toBe(7 * 60 + 52)
     expect(pacificMinutes(new Date("2026-10-22T07:00:00Z"))).toBe(0)
     expect(pacificMinutes(new Date("2026-10-22T06:59:00Z"))).toBe(23 * 60 + 59)
+  })
+})
+
+describe("ISO weeks", () => {
+  it("numbers a day's week in its Thursday's year", () => {
+    expect(isoWeekOf("2026-11-13")).toBe("2026-W46")
+    expect(isoWeekOf("2026-01-01")).toBe("2026-W01")
+    expect(isoWeekOf("2025-12-29")).toBe("2026-W01")
+    expect(isoWeekOf("2027-01-03")).toBe("2026-W53")
+    expect(isoWeekOf("2021-01-03")).toBe("2020-W53")
+  })
+
+  it("knows which years have a week 53", () => {
+    expect(isoWeeksIn(2020)).toBe(53)
+    expect(isoWeeksIn(2025)).toBe(52)
+    expect(isoWeeksIn(2026)).toBe(53)
+  })
+
+  it("starts a week on its Monday, and refuses a week that is not one", () => {
+    expect(isoWeekMonday("2026-W46")).toBe("2026-11-09")
+    expect(isoWeekMonday("2026-W01")).toBe("2025-12-29")
+    expect(() => isoWeekMonday("2025-W53")).toThrow(RangeError)
+    expect(() => isoWeekMonday("2026-46")).toThrow(RangeError)
+    expect(parseIsoWeek("2026-W53")).toEqual({ year: 2026, week: 53 })
   })
 })
