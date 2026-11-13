@@ -125,6 +125,92 @@ describe("measureRead", () => {
     })
   })
 
+  it("keeps a pause at a full stop when the word before it was skipped", () => {
+    const script = "one two three. four five six."
+    const words = joined(
+      said("one two", { atMs: 0 }), // ends 700
+      said("four five six", { atMs: 2000 })
+    )
+    expect(measure(words, script).pauses).toEqual({
+      atBreak: 1,
+      midPhrase: 0,
+      longestMidPhraseMs: null,
+    })
+  })
+
+  it("keeps a pause at a break when a word was added before it", () => {
+    const script = "the cat sat. the dog ran."
+    const words = joined(
+      said("the cat sat and", { atMs: 0 }), // ends 1500
+      said("the dog ran", { atMs: 1500 + READ_PAUSE_MS })
+    )
+    expect(measure(words, script).pauses.atBreak).toBe(1)
+  })
+
+  it("takes a pause after an opening filler as before the script, not a stumble", () => {
+    const words = joined(
+      said("um", { atMs: 0 }),
+      said("one two three.", { atMs: 2000 })
+    )
+    const faults = measure(words, "one two three.")
+    expect(faults.pauses.atBreak).toBe(1)
+    expect(faults.misread.fillers).toBe(1)
+  })
+
+  it("reads a filler the script itself says as read, not added", () => {
+    const script = "Ah, that makes sense."
+    expect(measure(said(script), script).misread).toEqual({
+      skipped: 0,
+      substituted: 0,
+      repeated: 0,
+      inserted: 0,
+      fillers: 0,
+    })
+  })
+
+  it("never lets a filler stand in for a skipped word", () => {
+    expect(measure(said("I built um to"), "I built this to").misread).toEqual({
+      skipped: 1,
+      substituted: 0,
+      repeated: 0,
+      inserted: 1,
+      fillers: 1,
+    })
+  })
+
+  it("counts the second of two copies of an added word as the repeat", () => {
+    expect(measure(said("a x x b"), "a b").misread).toEqual({
+      skipped: 0,
+      substituted: 0,
+      repeated: 1,
+      inserted: 1,
+      fillers: 0,
+    })
+  })
+
+  it("takes a spaced hyphen as a break and a hyphen inside a word as none", () => {
+    const words = joined(
+      said("I came", { atMs: 0 }), // ends 700
+      said("I saw well known", { atMs: 700 + READ_PAUSE_MS })
+    )
+    expect(measure(words, "I came - I saw well-known.").pauses.atBreak).toBe(1)
+    expect(measure(words, "I came-I saw well-known.").pauses.midPhrase).toBe(1)
+  })
+
+  it("compares a composed and a decomposed letter as one", () => {
+    const faults = measure(said("caf\u00e9"), "cafe\u0301")
+    expect(faults.misread.substituted).toBe(0)
+  })
+
+  it("refuses a take whose word ends before it starts", () => {
+    expect(() =>
+      measureRead({
+        words: [{ text: "a", startMs: 500, endMs: 100 }],
+        script: "a",
+      })
+    ).toThrow()
+  })
+
   it("counts no pause just under the threshold", () => {
     const words = joined(
       said("I built this to", { atMs: 0 }),

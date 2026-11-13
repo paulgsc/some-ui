@@ -130,6 +130,16 @@ describe("measureAnswer", () => {
     expect(faults.length.spokenMs).toBe(1200)
   })
 
+  it("refuses a take with times that are not whole milliseconds", () => {
+    expect(() =>
+      measureAnswer({
+        words: [{ text: "a", startMs: 0.5, endMs: 10 }],
+        targetMs: TARGET,
+        takeMs: null,
+      })
+    ).toThrow()
+  })
+
   it("ignores a heard word that is punctuation alone", () => {
     expect(measure([{ text: " ...", startMs: 0, endMs: 10 }]).words).toBe(0)
   })

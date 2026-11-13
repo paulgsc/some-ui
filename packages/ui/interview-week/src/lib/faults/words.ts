@@ -63,7 +63,12 @@ const TOKEN = /[\p{L}\p{N}]+/gu
  * ("well-known" is two). Punctuation alone is no word.
  */
 export function tokens(text: string): Array<string> {
-  return text.toLowerCase().replace(APOSTROPHE, "").match(TOKEN) ?? []
+  return normalised(text).match(TOKEN) ?? []
+}
+
+/** Text as words are compared: composed, lowercased, without apostrophes. */
+export function normalised(text: string): string {
+  return text.normalize("NFC").toLowerCase().replace(APOSTROPHE, "")
 }
 
 /** A comparable word with the timing of the heard word it came from. */

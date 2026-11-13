@@ -3,7 +3,9 @@ import { z } from "zod"
 import { MIN_PHRASE_WORDS, READ_PAUSE_MS, REPEAT_WINDOW } from "./thresholds"
 import { gapsBetween, perMinute, spokenMs } from "./timing"
 import {
+  FILLERS,
   HeardWordsSchema,
+  normalised,
   spokenTokens,
   tokens,
   type HeardWord,
@@ -63,7 +65,8 @@ export const ReadFaultsSchema = z.object({
    * Words a minute of spoken time, fillers aside; how many phrases (the words
    * between two breaks) were long enough to time; and how much their pace
    * varied (standard deviation over mean, null under two phrases). A low
-   * variation is an even, unvarying pace.
+   * variation is an even, unvarying pace. A phrase is timed from its first
+   * word to its last, so a stumble inside it slows it too.
    */
   pace: z.object({
     wpm: Rate.nullable(),
@@ -77,20 +80,17 @@ export type ReadFaults = z.infer<typeof ReadFaultsSchema>
 
 type ScriptToken = { token: string; breakAfter: boolean }
 
-const BREAK = /[,;:.!?…–—\n]/
+const BREAK = /[,;:.!?\u2026\u2013\u2014\n]|\s-+\s|--/
 
 /**
  * The script's comparable words, each marked when a break follows it: a
  * comma, semicolon, colon, full stop, question or exclamation mark, ellipsis,
- * dash or line end before the next word. The last word ends the script, so it
- * is a break too.
+ * dash (a spaced hyphen too) or line end before the next word. The last word
+ * ends the script, so it is a break too.
  */
 function scriptTokens(script: string): Array<ScriptToken> {
   const words = tokens(script)
-  const between = script
-    .toLowerCase()
-    .replace(/['’]/g, "")
-    .split(/[\p{L}\p{N}]+/u)
+  const between = normalised(script).split(/[\p{L}\p{N}]+/u)
   // `between[k + 1]` is the text after word `k`.
   return words.map((token, k) => ({
     token,
@@ -98,13 +98,24 @@ function scriptTokens(script: string): Array<ScriptToken> {
   }))
 }
 
+/** No alignment is this long, so a step that costs it is never taken. */
+const NEVER = 1 << 20
+
+/** What reading script word `b` as `a` costs: 0 the same, 1 another word. */
+function readCost(a: string | undefined, b: string | undefined): number {
+  if (a === b) return 0
+  return FILLERS.has(a ?? "") || FILLERS.has(b ?? "") ? NEVER : 1
+}
+
 type Step = "match" | "substitute" | "skip" | "insert"
 
 /**
  * A word-level edit alignment (Levenshtein) of what was said to the script:
  * for each spoken word, the script word it reads (or null when it was added),
- * and the counts of each step. Ties prefer reading a word over skipping one,
- * and skipping over adding, so the result is the same for the same input.
+ * and the counts of each step. A filler reads only the same filler in the
+ * script ("Ah, that makes sense"), never stands in for another word, and is
+ * otherwise added. Ties prefer reading a word over skipping one, and skipping
+ * over adding, so the result is the same for the same input.
  */
 function align(
   said: ReadonlyArray<string>,
@@ -118,7 +129,7 @@ function align(
     for (let j = 1; j <= script.length; j++) {
       const diagonal =
         (cost[(i - 1) * width + j - 1] ?? 0) +
-        (said[i - 1] === script[j - 1] ? 0 : 1)
+        readCost(said[i - 1], script[j - 1])
       const skip = (cost[i * width + j - 1] ?? 0) + 1
       const insert = (cost[(i - 1) * width + j] ?? 0) + 1
       cost[i * width + j] = Math.min(diagonal, skip, insert)
@@ -137,7 +148,8 @@ function align(
     const here = cost[i * width + j] ?? 0
     if (i > 0 && j > 0) {
       const same = said[i - 1] === script[j - 1]
-      if (here === (cost[(i - 1) * width + j - 1] ?? 0) + (same ? 0 : 1)) {
+      const read = readCost(said[i - 1], script[j - 1])
+      if (here === (cost[(i - 1) * width + j - 1] ?? 0) + read) {
         steps[same ? "match" : "substitute"] += 1
         at[i - 1] = j - 1
         i -= 1
@@ -156,53 +168,84 @@ function align(
   return { at, steps }
 }
 
-/** Whether the added word at `k` says again a word spoken near it. */
-function isRepeat(said: ReadonlyArray<string>, k: number): boolean {
+/**
+ * Whether the added word at `k` says again a word spoken near it: one the
+ * script reads, or an earlier added one. Of two copies of an added word, the
+ * second is the repeat.
+ */
+function isRepeat(
+  said: ReadonlyArray<string>,
+  at: ReadonlyArray<number | null>,
+  k: number
+): boolean {
   const from = Math.max(0, k - REPEAT_WINDOW)
   const to = Math.min(said.length - 1, k + REPEAT_WINDOW)
   for (let n = from; n <= to; n++) {
-    if (n !== k && said[n] === said[k]) return true
+    if (n === k || said[n] !== said[k] || FILLERS.has(said[k] ?? "")) continue
+    if (n < k || (at[n] ?? null) !== null) return true
   }
   return false
 }
 
-type Placed = SpokenToken & { breakAfter: boolean | null }
+/**
+ * For each spoken word, whether a break of the script lies between it and
+ * the next word that reads the script: a break after any script word from the
+ * last one read so far up to, not including, the next one read. A word
+ * skipped before a full stop leaves the full stop where it was, and a word or
+ * filler added at a break stays at it. Before the first word read is the
+ * script's start, a break too.
+ */
+function breaksAfter(
+  at: ReadonlyArray<number | null>,
+  script: ReadonlyArray<ScriptToken>
+): Array<boolean> {
+  const next: Array<number> = Array.from(at, () => script.length)
+  let ahead = script.length
+  for (let k = at.length - 1; k >= 0; k--) {
+    next[k] = ahead
+    ahead = at[k] ?? ahead
+  }
+  let last: number | null = null
+  return at.map((place, k) => {
+    last = place ?? last
+    if (last === null) return true
+    for (let j = last; j < (next[k] ?? script.length); j++) {
+      if (script[j]?.breakAfter === true) return true
+    }
+    return false
+  })
+}
+
+type Placed = SpokenToken & { breakAfter: boolean }
 
 /**
  * The measured faults of one teleprompter read. Pure: same take, same record.
- * Fillers are set aside before the alignment, so one is always an added word
- * and never stands in for a script word.
+ * The take is checked against `ReadTakeSchema` first, and one that fails it
+ * throws.
  */
 export function measureRead(take: ReadTake): ReadFaults {
-  const spoken = spokenTokens(take.words)
-  const script = scriptTokens(take.script)
-  const content = spoken.filter((word) => !word.filler)
-  const said = content.map((word) => word.token)
+  const { words: heard, script: text } = ReadTakeSchema.parse(take)
+  const spoken = spokenTokens(heard)
+  const script = scriptTokens(text)
+  const said = spoken.map((word) => word.token)
   const { at, steps } = align(
     said,
     script.map((word) => word.token)
   )
-  const fillers = spoken.length - content.length
+  // A filler counts as added, never as repeated.
+  const fillers = spoken.filter(
+    (word, k) => word.filler && at[k] === null
+  ).length
   const repeated = at.filter(
-    (place, k) => place === null && isRepeat(said, k)
+    (place, k) => place === null && isRepeat(said, at, k)
   ).length
 
-  // Each spoken word with the break after the script word it reads: null for
-  // a word the reader added. A filler takes the place of the word before it.
-  const placeOf = new Map<SpokenToken, boolean | null>(
-    content.map((word, k) => {
-      const place = at[k] ?? null
-      return [word, place === null ? null : (script[place]?.breakAfter ?? null)]
-    })
-  )
-  const placed: Array<Placed> = []
-  for (const word of spoken) {
-    const before = placed.at(-1)?.breakAfter ?? null
-    placed.push({
-      ...word,
-      breakAfter: word.filler ? before : (placeOf.get(word) ?? null),
-    })
-  }
+  // Each spoken word with whether a break of the script lies after it.
+  const after = breaksAfter(at, script)
+  const placed: Array<Placed> = spoken.map((word, k) => ({
+    ...word,
+    breakAfter: after[k] ?? true,
+  }))
 
   const gaps = gapsBetween(spoken)
   let atBreak = 0
@@ -224,7 +267,7 @@ export function measureRead(take: ReadTake): ReadFaults {
       skipped: steps.skip,
       substituted: steps.substitute,
       repeated,
-      inserted: steps.insert - repeated + fillers,
+      inserted: steps.insert - repeated,
       fillers,
     },
     pauses: {
@@ -233,7 +276,10 @@ export function measureRead(take: ReadTake): ReadFaults {
       longestMidPhraseMs: stumbles.length === 0 ? null : Math.max(...stumbles),
     },
     pace: {
-      wpm: perMinute(content.length, spokenMs(spoken)),
+      wpm: perMinute(
+        spoken.filter((word) => !word.filler).length,
+        spokenMs(spoken)
+      ),
       phrases: phraseRates.length,
       variation: variation(phraseRates),
     },

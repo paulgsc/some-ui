@@ -33,6 +33,10 @@ file.
 
 - Words are compared as written: a script's "2" and a heard "two" are a
   substitution.
+- The alignment takes the fewest changes, so a word said twice in place of the
+  next one ("a a c" for "a b c") is one substitution, not a repeat and a skip.
+- A hyphenated word counts as one word per part ("state-of-the-art" is four),
+  each with the whole word's timing.
 - Pitch and loudness need the audio, so they are home's (#2942), not here.
 
 ## What reaches it

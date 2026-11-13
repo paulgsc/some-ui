@@ -27,7 +27,10 @@ const Rate = z.number().nonnegative()
  * the essay charts each count over the weeks.
  */
 export const AnswerFaultsSchema = z.object({
-  /** Every word heard, fillers included. */
+  /**
+   * Every word heard, fillers included, counted as compared: a hyphenated word
+   * ("state-of-the-art") is one per part, each with the whole word's timing.
+   */
   words: Count,
   /** Words from the closed list (`fillers.json`), and how many a minute. */
   fillers: z.object({ count: Count, perMinute: Rate.nullable() }),
@@ -63,8 +66,13 @@ export const AnswerFaultsSchema = z.object({
 })
 export type AnswerFaults = z.infer<typeof AnswerFaultsSchema>
 
-/** The measured faults of one interview take. Pure: same take, same record. */
-export function measureAnswer(take: AnswerTake): AnswerFaults {
+/**
+ * The measured faults of one interview take. Pure: same take, same record.
+ * The take is checked against `AnswerTakeSchema` first, and one that fails it
+ * throws.
+ */
+export function measureAnswer(input: AnswerTake): AnswerFaults {
+  const take = AnswerTakeSchema.parse(input)
   const spoken = spokenTokens(take.words)
   const spokenTime = spokenMs(spoken)
   const gaps = gapsBetween(spoken)
