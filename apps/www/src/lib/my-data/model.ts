@@ -71,6 +71,23 @@ const Kept = z.object({
          * nothing, which is no.
          */
         deletable: z.boolean().default(false),
+        /**
+         * How long it is, from home's hearing of it; null until home heard
+         * it (MD8). An older home says nothing, which is not known.
+         */
+        durationMs: z.number().int().nonnegative().nullable().default(null),
+        /**
+         * The first words home heard in it, or null (MD8). Absent from an
+         * older home, which says nothing of what it heard.
+         */
+        heard: z.string().nullable().optional(),
+        /** Home cut `heard` short of all it heard (MD8). */
+        heardCut: z.boolean().default(false),
+        /**
+         * Home gives its audio back to this phone (MD8), so it plays from
+         * home. An older home says nothing, which is no.
+         */
+        playsBack: z.boolean().default(false),
       })
     )
     .nullable(),
@@ -290,6 +307,27 @@ export function overviewOf(
   }
 }
 
+/**
+ * Where a row's audio plays from (MD8): this phone's copy, home's (asked for
+ * on each Play), or nowhere, when home holds it and gives none back.
+ */
+type PlaysFrom = "here" | "home" | "none"
+
+/**
+ * What home heard in a recording (MD8): its words, that it heard none,
+ * nothing yet, or `unsaid` when home (an older one) didn't say.
+ */
+export type Heard =
+  | {
+      readonly kind: "words"
+      readonly text: string
+      /** Home heard more than these first words. */
+      readonly cut: boolean
+    }
+  | { readonly kind: "silent" }
+  | { readonly kind: "notYet" }
+  | { readonly kind: "unsaid" }
+
 /** One recording in a kind's list. */
 export type KindItem = {
   readonly id: string
@@ -297,8 +335,10 @@ export type KindItem = {
   readonly at: string
   readonly bytes: number
   readonly where: Where
-  /** Its audio is on this phone, so it plays here. */
-  readonly playable: boolean
+  readonly plays: PlaysFrom
+  /** How long it is, in milliseconds, once home heard it; else null. */
+  readonly durationMs: number | null
+  readonly heard: Heard
   /**
    * Home said My data may offer to delete it (MD3, #2477). Whether the page
    * does is `./deleting`'s `offersDelete`, which also asks whether this
@@ -317,6 +357,23 @@ export type KindView = {
   readonly since: string | null
   /** Newest first: home's newest and every one on this phone. */
   readonly items: ReadonlyArray<KindItem>
+}
+
+const playsFrom = (here: boolean, playsBack: boolean): PlaysFrom => {
+  if (here) return "here"
+  return playsBack ? "home" : "none"
+}
+
+type KeptNote = NonNullable<HomeKept["notes"]>[number]
+
+/** What home heard in `note`: words, none (heard, and silent), or not yet. */
+function heardOf(note: KeptNote): Heard {
+  if (note.heard === undefined) return { kind: "unsaid" }
+  const text = note.heard?.trim() ?? ""
+  if (text !== "") return { kind: "words", text, cut: note.heardCut }
+  // Home's length comes only from its hearing (server `voice_repo::kept`),
+  // so one without words heard silence.
+  return note.durationMs === null ? { kind: "notYet" } : { kind: "silent" }
 }
 
 /**
@@ -348,7 +405,9 @@ export function kindOf(
           at: note.recordedAt,
           bytes: note.size,
           where: note.setAsideAt === null ? "home" : "aside",
-          playable: here.has(note.id),
+          plays: playsFrom(here.has(note.id), note.playsBack),
+          durationMs: note.durationMs,
+          heard: heardOf(note),
           deletable: note.deletable,
         }))
       : []
@@ -359,7 +418,9 @@ export function kindOf(
       at: note.at,
       bytes: note.bytes,
       where: note.going ? "going" : "phone",
-      playable: true,
+      plays: "here",
+      durationMs: null,
+      heard: { kind: "notYet" },
       // Only home's word makes a recording deletable: one home doesn't hold
       // is a draft, deleted where it was made.
       deletable: false,

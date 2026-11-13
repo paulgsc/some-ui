@@ -239,6 +239,22 @@ describe("a kind's list", () => {
           size: 3_000,
           setAsideAt: null,
           deletable: true,
+          durationMs: 42_000,
+          heard: "  first words ",
+          heardCut: true,
+          playsBack: true,
+        },
+        {
+          id: "let-go",
+          recordedAt: "2026-10-15T09:00:00.000Z",
+          storedAt: "2026-10-15T09:01:00.000Z",
+          size: 2_000,
+          setAsideAt: null,
+          deletable: false,
+          durationMs: 3_000,
+          heard: null,
+          heardCut: false,
+          playsBack: true,
         },
         {
           id: "aside",
@@ -247,12 +263,16 @@ describe("a kind's list", () => {
           size: 3_000,
           setAsideAt: "2026-10-11T09:00:00.000Z",
           deletable: false,
+          durationMs: null,
+          heard: null,
+          heardCut: false,
+          playsBack: false,
         },
       ],
     },
   }
 
-  it("lists home's newest and this phone's, newest first, playable where the audio is here", () => {
+  it("lists home's newest and this phone's, newest first, each playing from here, from home or not at all, with what home heard (MD8, MDL1)", () => {
     const view = kindOf(
       "studio",
       "studio",
@@ -270,7 +290,9 @@ describe("a kind's list", () => {
         at: "2026-11-01T09:00:00.000Z",
         bytes: 100,
         where: "going",
-        playable: true,
+        plays: "here",
+        durationMs: null,
+        heard: { kind: "notYet" },
         deletable: false,
       },
       {
@@ -278,15 +300,29 @@ describe("a kind's list", () => {
         at: "2026-10-20T09:00:00.000Z",
         bytes: 3_000,
         where: "home",
-        playable: true,
+        plays: "here",
+        durationMs: 42_000,
+        heard: { kind: "words", text: "first words", cut: true },
         deletable: true,
+      },
+      {
+        id: "let-go",
+        at: "2026-10-15T09:00:00.000Z",
+        bytes: 2_000,
+        where: "home",
+        plays: "home",
+        durationMs: 3_000,
+        heard: { kind: "silent" },
+        deletable: false,
       },
       {
         id: "aside",
         at: "2026-10-10T09:00:00.000Z",
         bytes: 3_000,
         where: "aside",
-        playable: false,
+        plays: "none",
+        durationMs: null,
+        heard: { kind: "notYet" },
         deletable: false,
       },
     ])
@@ -305,11 +341,12 @@ describe("a kind's list", () => {
     expect(view.notes).toBe(3)
     expect(view.items.map((item) => [item.id, item.where])).toEqual([
       ["on-home", "home"],
+      ["let-go", "home"],
       ["aside", "aside"],
     ])
   })
 
-  it("reads a note as not deletable when home doesn't say (MD3: an older home)", () => {
+  it("reads a note as not deletable, not playing from home and not heard when home doesn't say (MD3, MD8: an older home)", () => {
     const answer = {
       status: 200,
       body: JSON.stringify({
@@ -330,7 +367,13 @@ describe("a kind's list", () => {
       expect.objectContaining({ id: "older", deletable: false }),
     ])
     expect(kindOf("studio", "studio", home, [], NOW).items).toEqual([
-      expect.objectContaining({ id: "older", deletable: false }),
+      expect.objectContaining({
+        id: "older",
+        deletable: false,
+        plays: "none",
+        durationMs: null,
+        heard: { kind: "unsaid" },
+      }),
     ])
   })
 
