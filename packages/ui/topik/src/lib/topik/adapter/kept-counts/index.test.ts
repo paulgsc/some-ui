@@ -63,7 +63,6 @@ describe("topikKeptCounts", () => {
     readAloud.archive("b", "y")
 
     const counts = topikKeptCounts(storage, () => 13 * DAY)
-    // An archived set is kept, and out of the count against the limit.
     expect(counts.wordSets).toEqual({
       kept: 2,
       limit: ADDED_SET_LIMIT,

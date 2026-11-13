@@ -441,8 +441,9 @@ export const CALL_DELETING = {
 } as const
 
 /**
- * My data's Korean word sets page (MD7, #2496): each set opened from the
- * routine's scenes, kept on this phone, and Archive or Bring back. An
+ * My data's Korean word sets page (MD7, #2496): each read-aloud word set
+ * kept on this phone, from a routine scene or a picked file, and Archive or
+ * Bring back. An
  * archived set is kept whole; only the owner archives one (C232).
  */
 export const WORD_SETS = {
@@ -484,6 +485,4 @@ export const WORD_SETS = {
     noRoom: (limit: number): string =>
       `All ${String(limit)} places are in use, so it stays archived. Archive another set first.`,
   },
-  /** The archive notice's undo. */
-  undo: "Bring back",
 } as const

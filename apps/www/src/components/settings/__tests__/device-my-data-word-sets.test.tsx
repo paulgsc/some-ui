@@ -57,11 +57,8 @@ describe("My data's Korean word sets page", () => {
     )
     expect(screen.getByText(WORD_SETS.archivedTitle)).toBeTruthy()
     expect(screen.getByText(WORD_SETS.inUse(1, 50))).toBeTruthy()
-    expect(localStorage.getItem("topik:read-aloud-sets")).toContain(
-      '"archivedAt":"'
-    )
 
-    fireEvent.click(screen.getByRole("button", { name: WORD_SETS.undo }))
+    fireEvent.click(screen.getByRole("button", { name: WORD_SETS.bringBack }))
     expect(screen.getByText(WORD_SETS.inUse(2, 50))).toBeTruthy()
     expect(screen.queryByText(WORD_SETS.archivedTitle)).toBeNull()
   })

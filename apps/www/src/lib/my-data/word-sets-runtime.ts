@@ -95,17 +95,14 @@ export function createWordSetsPage(ports: WordSetsPorts): WordSetsPage {
     },
     bringBack(id): void {
       const title = titleOf(id)
-      if (held === null || title === null || state.kind !== "read") return
-      const { room, limit } = state.list
-      const kept = room && held.bringBack(id)
+      if (held === null || title === null) return
+      const kept = held.bringBack(id)
       const list = held.list(ports.now())
-      // The store may have filled since the list was read: say that, not a
-      // failure to keep it.
       const said: WordSetsSaid = kept
         ? { kind: "broughtBack", title }
-        : room && list.room
+        : list.room
           ? { kind: "notKept" }
-          : { kind: "noRoom", limit }
+          : { kind: "noRoom", limit: list.limit }
       dispatch({ type: "did", list, said })
     },
     dismiss(): void {

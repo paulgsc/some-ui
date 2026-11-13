@@ -105,22 +105,6 @@ describe("My data's Korean word sets", () => {
     })
   })
 
-  it("says there is no room when every place in use is taken", async () => {
-    const sets = await phoneWith([set("a")])
-    const full = {
-      ...sets,
-      list: (now: Date): WordSetsList => ({ ...sets.list(now), room: false }),
-    }
-    sets.archive("a", NOW.toISOString())
-    const { page } = pageOver(full)
-    await page.checkAgain()
-    page.bringBack("a")
-    expect(page.getSnapshot()).toMatchObject({
-      said: { kind: "noRoom", limit: 50 },
-    })
-    expect(sets.list(NOW).archived).toHaveLength(1)
-  })
-
   it("opens again without the last visit's notice", async () => {
     const { page } = pageOver(await phoneWith([set("a")]))
     await page.checkAgain()

@@ -269,7 +269,6 @@ export const HandheldLesson = ({
   ): typeof added | null => {
     // Judged together first, so a group that doesn't fit says what the phone
     // holds now, not after its first set.
-    // An archived set picked again comes back in use, so it counts as new.
     const fresh = new Set(
       texts.flatMap((text) => {
         const intake = intakeSet(text, added)

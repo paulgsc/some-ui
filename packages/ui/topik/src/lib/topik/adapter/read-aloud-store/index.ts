@@ -37,7 +37,6 @@ import {
   bringBack,
   homeSet,
   readAddedSets,
-  roomToBringBack,
   storedSet,
   wordSetsList,
 } from "@topik/lib/topik/read-aloud/added-sets"
@@ -110,7 +109,8 @@ export type ReadAloudStore = {
   archive: (id: string, at: string) => boolean
   /**
    * Brings the archived set `id` back in use, when there is room under
-   * `ADDED_SET_LIMIT`. Whether the phone kept the change.
+   * `ADDED_SET_LIMIT`. Whether the phone kept the change: false when there
+   * was no room.
    */
   bringBack: (id: string) => boolean
   /** What the learner said at the end of a sitting, or null if nothing. */
@@ -239,6 +239,17 @@ export function createReadAloudStore(
     read(READ_ALOUD_STORAGE_KEYS.sets, READERS.sets, [])
   const saveSets = (next: ReadonlyArray<AddedSet>): boolean =>
     write(READ_ALOUD_STORAGE_KEYS.sets, READERS.sets, next.map(storedSet))
+  /**
+   * Keeps what `edit` makes of the sets when it changed one: false when
+   * nothing changed (an unknown id, no room) or the phone didn't keep it.
+   */
+  const change = (
+    edit: (before: Array<AddedSet>) => Array<AddedSet>
+  ): boolean => {
+    const before = sets()
+    const next = edit(before)
+    return next.some((set, at) => set !== before[at]) && saveSets(next)
+  }
 
   return {
     paces,
@@ -287,8 +298,9 @@ export function createReadAloudStore(
     saveSets: (next): void => {
       saveSets(next)
     },
-    archive: (id, at): boolean => saveSets(archiveSet(sets(), id, at)),
-    bringBack: (id): boolean => saveSets(bringBack(sets(), id)),
+    archive: (id, at): boolean =>
+      change((before) => archiveSet(before, id, at)),
+    bringBack: (id): boolean => change((before) => bringBack(before, id)),
     feedback: (): ReadAloudFeedback | null =>
       read(READ_ALOUD_STORAGE_KEYS.feedback, READERS.feedback, null),
     saveFeedback: (feedback): boolean =>
@@ -322,10 +334,7 @@ export function phoneWordSets(
   return {
     list: (now) => wordSetsList(store.sets(), now),
     archive: (id, at) => store.archive(id, at),
-    bringBack: (id) =>
-      roomToBringBack(store.sets()) &&
-      store.bringBack(id) &&
-      store.sets().some((set) => set.deck.id === id && set.archivedAt === null),
+    bringBack: (id) => store.bringBack(id),
   }
 }
 

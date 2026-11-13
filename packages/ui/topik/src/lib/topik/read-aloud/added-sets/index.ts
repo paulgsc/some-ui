@@ -226,8 +226,9 @@ export function intakeSet(
 /**
  * `added` with `deck` in it. A new set goes last; a set picked again under
  * the same id replaces the one kept in its place, so which set's word wins a
- * clash does not move, and reads as new: unopened, and in use if it was
- * archived.
+ * clash does not move, and reads as new: unopened. An archived set picked
+ * again comes back in use and keeps its first open, as opening its scene
+ * again does.
  */
 export function addSet(
   added: ReadonlyArray<AddedSet>,
@@ -241,7 +242,13 @@ export function addSet(
     archivedAt: null,
   }
   return added.some((set) => set.deck.id === deck.id)
-    ? added.map((set) => (set.deck.id === deck.id ? fresh : set))
+    ? added.map((set) =>
+        set.deck.id !== deck.id
+          ? set
+          : set.archivedAt === null
+            ? fresh
+            : { ...fresh, openedAt: set.openedAt }
+      )
     : [...added, fresh]
 }
 
@@ -283,9 +290,7 @@ export function bringBack(
   const archived = added.some(
     (set) => set.deck.id === id && set.archivedAt !== null
   )
-  if (!archived || setsInUse(added).length >= ADDED_SET_LIMIT) {
-    return [...added]
-  }
+  if (!archived || !roomToBringBack(added)) return [...added]
   return added.map((set) =>
     set.deck.id === id ? { ...set, archivedAt: null } : set
   )
@@ -327,7 +332,6 @@ export type WordSetsList = {
   readonly inUse: ReadonlyArray<WordSetRow>
   /** Archived, most recently archived first. */
   readonly archived: ReadonlyArray<WordSetRow>
-  /** `ADDED_SET_LIMIT`. */
   readonly limit: number
   /** Whether an archived set can be brought back now. */
   readonly room: boolean
@@ -380,7 +384,9 @@ const StoredSetSchema = z.object({
 })
 
 /** A set as the store writes it: its deck in the file format it came in. */
-export const storedSet = (set: AddedSet): unknown => ({
+export const storedSet = (
+  set: Omit<AddedSet, "archivedAt"> | AddedSet
+): unknown => ({
   ...set,
   deck: { schemaVersion: 1, ...set.deck },
 })
@@ -389,10 +395,8 @@ export const storedSet = (set: AddedSet): unknown => ({
  * A set as home's Korean record keeps it: `storedSet` without whether it is
  * archived, which stays on this phone (MD7; home keeps every set either way).
  */
-export const homeSet = ({
-  archivedAt: _archived,
-  ...set
-}: AddedSet): unknown => ({ ...set, deck: { schemaVersion: 1, ...set.deck } })
+export const homeSet = ({ archivedAt: _archived, ...set }: AddedSet): unknown =>
+  storedSet(set)
 
 /**
  * The stored list (`storedSet`'s), each deck parsed again on the way out: a

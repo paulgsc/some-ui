@@ -89,7 +89,7 @@ const Said = ({
         <Notice
           onDismiss={page.dismiss}
           action={{
-            label: WORDS.undo,
+            label: WORDS.bringBack,
             onClick: () => page.bringBack(said.id),
           }}
         >

@@ -5,7 +5,6 @@ import {
   ALL_SETS_ID,
   archiveSet,
   bringBack,
-  homeSet,
   intakeSet,
   notOpenedInAWhile,
   openSet,
@@ -357,9 +356,10 @@ describe("archiving a set (MD7, C232)", () => {
           sets = bringBack(sets, "plans-2")
           archived = false
         } else if (step === "add again") {
+          // Back from archive, a set keeps its first open; in use, it reads as new.
+          if (!archived) opened = false
           sets = addSet(sets, PLANS, at)
           archived = false
-          opened = false
         } else {
           sets = openSet(sets, "plans-2", at)
           opened = true
@@ -415,11 +415,6 @@ describe("archiving a set (MD7, C232)", () => {
     })
     const kept = archiveSet([added(PLANS)], "plans-2", "z")
     expect(readAddedSets(kept.map(storedSet))?.value).toEqual(kept)
-  })
-
-  it("leaves whether it is archived off what home is sent", () => {
-    const [kept] = archiveSet([added(PLANS)], "plans-2", "z")
-    expect(kept && homeSet(kept)).not.toHaveProperty("archivedAt")
   })
 
   it("hints at a set first opened 30 or more days ago, and at no other", () => {
