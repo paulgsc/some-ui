@@ -2,7 +2,9 @@
  * The recording stage (`pnpm --filter www build:stage`): the five pages the
  * recorders capture (`tests/record`), `/call`, `/essay`, `/report`,
  * `/playoff-delta` and `/burn-ins`, and nothing else of the app
- * (infra/render/Dockerfile).
+ * (infra/render/Dockerfile). RI2
+ * (`src/lib/render-image/__tests__/stage-routes.test.ts`) reads `stageRoutes`
+ * below and fails a recorder that opens a page it does not list.
  *
  * The routes are www's own route files, under a bare root: the same search
  * validation and the same stages, through the web surface's door (A4,
