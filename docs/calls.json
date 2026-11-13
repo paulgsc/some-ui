@@ -1969,6 +1969,39 @@
       ]
     },
     {
+      "id": "C220",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "apps/www/src/lib/home-switches/words.ts",
+        "apps/www/src/lib/home-switches/model.ts",
+        "apps/www/src/routes/_dashboard/_lan/home-switches.tsx"
+      ],
+      "chose": "The game feed's switch is a second row on Home's switches, under Rust Rounds recording, labelled \"Following NFL games\" and reading \"Following\" or \"Paused\", each switch with its own runtime and its own words in the one words table.",
+      "options": [
+        "(a) a second row on the same page, labelled for what home does (following NFL games)",
+        "(b) a row labelled for the feature (\"Game feed\"), reading On or Paused",
+        "(c) its own page under the game day surface"
+      ],
+      "gray": "The owner asked for the switch beside Rust Rounds' and said nothing of its words or place on the page; the label and the on/off words are what the owner sees each time they open it.",
+      "undo": "Change GAME_FEED's label and on word in apps/www/src/lib/home-switches/words.ts, or reorder SWITCH_KEYS in model.ts.",
+      "refs": ["#2074", "#2712"]
+    },
+    {
+      "id": "C221",
+      "made": "2026-11-13",
+      "by": "owner",
+      "moves": "C142",
+      "paths": [
+        "server:apps/servers/file_host/src/game_feed",
+        "apps/www/src/lib/home-switches",
+        "packages/assurance/src/ledger.json"
+      ],
+      "chose": "Whether home follows NFL games is the owner's switch on Home's switches (the game-feed setting), on by default, in place of GAME_FEED_ENABLED and the sops step C142 chose; policy is not kept as an environment variable.",
+      "undo": "Bring back GAME_FEED_ENABLED in paulgsc/server's file_host config and drop the game-feed row and SWITCH_KEYS entry from apps/www/src/lib/home-switches.",
+      "refs": ["#2074", "#2927", "server#617"]
+    },
+    {
       "id": "C250",
       "made": "2026-11-13",
       "by": "claude",

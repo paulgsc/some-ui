@@ -15,9 +15,9 @@ import {
   stepSwitches,
 } from "@/lib/home-switches/model"
 
-const ON: Standing = { recording: true, set: null }
+const ON: Standing = { on: true, set: null }
 const PAUSED: Standing = {
-  recording: false,
+  on: false,
   set: { by: "owner", at: "2026-11-08T14:05:00.000Z" },
 }
 
@@ -33,7 +33,7 @@ describe("stepSwitches", () => {
     })
     const setting = run([
       { type: "read", standing: ON },
-      { type: "set-asked", recording: false },
+      { type: "set-asked", on: false },
     ])
     expect(setting).toEqual({ kind: "read", standing: ON, setting: false })
     expect(canSet(setting)).toBe(false)
@@ -47,7 +47,7 @@ describe("stepSwitches", () => {
   it("a set that fails may have landed, so the switch is read again", () => {
     const failed = run([
       { type: "read", standing: ON },
-      { type: "set-asked", recording: false },
+      { type: "set-asked", on: false },
       { type: "set-failed", why: "unreachable" },
     ])
     expect(failed).toEqual({ kind: "reading" })
@@ -69,13 +69,13 @@ describe("stepSwitches", () => {
   it("changes nothing on an event that does not fit, the same object", () => {
     const setting = run([
       { type: "read", standing: ON },
-      { type: "set-asked", recording: false },
+      { type: "set-asked", on: false },
     ])
     const misfits: Array<[SwitchesState, SwitchesEvent]> = [
-      [INITIAL_SWITCHES, { type: "set-asked", recording: false }],
+      [INITIAL_SWITCHES, { type: "set-asked", on: false }],
       [INITIAL_SWITCHES, { type: "set", standing: PAUSED }],
       [INITIAL_SWITCHES, { type: "set-failed", why: "failed" }],
-      [setting, { type: "set-asked", recording: true }],
+      [setting, { type: "set-asked", on: true }],
       [setting, { type: "read-asked" }],
       [setting, { type: "read", standing: ON }],
       [setting, { type: "read-failed", why: "failed" }],

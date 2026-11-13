@@ -1004,7 +1004,7 @@
           "kind": "OA6",
           "property": "outcome",
           "claim": "A game feed that has stopped reads as stopped, not as a quiet week.",
-          "requirement": "Every wake stamps game_feed_last_attempt_timestamp_seconds, whether or not anything is due, so a dashboard tells 'nothing to fetch' (a recent stamp) from 'not running' (an old one), and game_feed_enabled tells 'switched off' from both; an alert tells the owner when the stamp goes stale.",
+          "requirement": "Every wake stamps game_feed_last_attempt_timestamp_seconds, whether or not anything is due, so a dashboard tells 'nothing to fetch' (a recent stamp) from 'not running' (an old one), and game_feed_enabled, the owner's switch as the last wake read it (1 following, 0 paused), tells 'switched off' from both; an alert tells the owner when the stamp goes stale.",
           "verdict": "holds",
           "conclusion": "The dashboard tells a quiet week from a stopped feed, and Slack tells you within about three minutes of its last wake once it stops, or through the server-down alert if home's server stops; a feed that is on but has never woken has no alert, and Grafana itself is not yet watched.",
           "evidence": [
@@ -1042,7 +1042,14 @@
             "by": "alert",
             "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-11-13",
+              "change": "game_feed_enabled is the owner's switch on Home's switches (the game-feed setting, on by default), as each wake reads it before any fetch, in place of GAME_FEED_ENABLED read once at start.",
+              "why": "The owner does not keep policy as an environment variable: whether home follows games is a switch set from the web app, as Rust Rounds recording is. The gauge still tells 'switched off' from a quiet week and from a stopped feed, so the claim holds as before.",
+              "decision": "https://github.com/paulgsc/server/issues/617#issuecomment-6861136019"
+            }
+          ]
         },
         {
           "id": "GA5",
@@ -1065,7 +1072,7 @@
             },
             {
               "class": "unknown",
-              "says": "The ratio of response rows to bodies on a real Sunday, and their bytes from storage_sample, are not read yet: the feed is off.",
+              "says": "The ratio of response rows to bodies on a real Sunday, and their bytes from storage_sample, are not read yet: the feed was off. Home follows games by default once the game feed's switch ships, so they are measurable from the first Sunday after it deploys.",
               "ref": "server:docs/storage.md"
             }
           ],
@@ -1081,7 +1088,7 @@
     {
       "id": "bite-matched",
       "name": "Home matches each game bite to its play",
-      "why": "Home's reconciler, a task beside the game feed's worker, reads the feed's play log and the game's bites, and keeps for each bite the play it was about or why there was none, so every short can lay the right moment over a bite (GWB7, paulgsc/some-ui#2081). It runs only while the game feed is on.",
+      "why": "Home's reconciler, a task beside the game feed's worker, reads the feed's play log and the game's bites, and keeps for each bite the play it was about or why there was none, so every short can lay the right moment over a bite (GWB7, paulgsc/some-ui#2081). It runs whether or not home is following games, and reads only what the feed has kept; while the feed is paused a pass reconciles only games already final, again only when their bites or mappings changed, or after home restarts.",
       "paths": [
         "server:apps/servers/file_host/src/reconcile.rs",
         "server:crates/db/voice/src/bite_match.rs"
@@ -1139,7 +1146,7 @@
           "kind": "RE7",
           "property": "work",
           "claim": "A game already final is reconciled again only when it has new bites.",
-          "requirement": "Every reconcile::TICK (10 minutes) the task reconciles a game in play, and a final game only when a bite arrived since its last pass; with the game feed off it logs that once and spawns nothing.",
+          "requirement": "Every reconcile::TICK (10 minutes) the task reconciles a final game once per start, and again only when a bite or mapping arrived since its last pass; it runs whatever the game feed's switch says.",
           "verdict": "holds",
           "conclusion": "The worker's test passes over a final game once, then again only after a new bite; idle, a pass reads the newest scoreboard and the games it names and writes nothing.",
           "evidence": [
@@ -1155,7 +1162,14 @@
           "watch": {
             "by": "none"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-11-13",
+              "change": "The reconciler always runs, a pass every reconcile::TICK, where it was spawned only while GAME_FEED_ENABLED was on and logged once and spawned nothing while it was off.",
+              "why": "Whether home follows games became the owner's switch, read each wake, so it is no longer known when home starts; the reconciler runs regardless, and a pass still reconciles a final game again only when a bite arrived since its last pass. The requirement also no longer says a game in play is reconciled: the worker reconciles only final games.",
+              "decision": "https://github.com/paulgsc/server/issues/617#issuecomment-6861136019"
+            }
+          ]
         },
         {
           "id": "BM4",
@@ -3459,7 +3473,7 @@
     },
     {
       "module": "admin_settings",
-      "why": "The operator's levers (Rust Rounds recording first): each read answers with what home follows now, and each write with what it kept."
+      "why": "The operator's levers (Rust Rounds recording, and whether home follows NFL games): each read answers with what home follows now, and each write with what it kept."
     },
     {
       "module": "aph",
@@ -5146,7 +5160,7 @@
     {
       "id": "bite-matched",
       "name": "Home matches bites to plays",
-      "why": "A task in file_host wakes every 10 minutes while the game feed is on and matches each game's bites to its plays.",
+      "why": "A task in file_host wakes every 10 minutes, whether or not home is following games, and matches each final game's bites to its plays.",
       "serves": ["bite-matched"],
       "witnesses": ["BM1", "BM3"],
       "segments": [
@@ -5163,7 +5177,7 @@
       ],
       "signals": [
         {
-          "says": "Each pass logs how many bites it matched, marked unmatched and left as they were; with the feed off it logs that it is not running.",
+          "says": "A pass that reconciled or failed a game logs its counts; a pass whose storage failed logs that it failed.",
           "status": "live",
           "ref": "server:apps/servers/file_host/src/reconcile.rs"
         }
