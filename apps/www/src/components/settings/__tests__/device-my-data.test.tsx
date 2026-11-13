@@ -121,6 +121,10 @@ const HOME: HomeReading = {
         size: 2048,
         setAsideAt: null,
         deletable: false,
+        durationMs: null,
+        heard: null,
+        heardCut: false,
+        playsBack: false,
       },
     ],
   },
@@ -140,6 +144,10 @@ const DELETABLE: HomeReading = {
         size: 2048,
         setAsideAt: null,
         deletable: true,
+        durationMs: null,
+        heard: null,
+        heardCut: false,
+        playsBack: false,
       },
     ],
   },
@@ -243,14 +251,15 @@ describe("My data's overview", () => {
 })
 
 describe("a kind's list", () => {
-  it("lists newest first, with Play only where the audio is on this phone", () => {
+  it("lists newest first, with Play where the audio is on this phone or home gives it back", () => {
     const onPlay = vi.fn()
     const view = kindOf("studio", "studio", HOME, [], NOW)
     render(
       <MyDataKind view={view} playing={null} onPlay={onPlay} onStop={vi.fn()} />
     )
     expect(screen.getByText(`3 kept · 3.0 MB · since ${SINCE}`)).toBeTruthy()
-    expect(screen.getByText(WHERE_WORDS.home)).toBeTruthy()
+    expect(screen.getByText(`${WHERE_WORDS.home} · 2.0 KB`)).toBeTruthy()
+    expect(screen.getByText(MY_DATA.kind.noPlay)).toBeTruthy()
     expect(screen.queryByRole("button")).toBeNull()
     expect(screen.getByText(MY_DATA.kind.newest(1, 3))).toBeTruthy()
 
@@ -261,6 +270,57 @@ describe("a kind's list", () => {
     )
     fireEvent.click(screen.getByRole("button", { name: /^Play/ }))
     expect(onPlay).toHaveBeenCalledWith("p1")
+  })
+
+  it("says what a recording home holds is, plays it from home, and says a miss in an alert (MD8, MDL1)", () => {
+    const onPlay = vi.fn()
+    const notes = HOME.kept.notes ?? []
+    const heard: HomeReading = {
+      kind: "read",
+      kept: {
+        kinds: [],
+        weeks: [],
+        notes: notes.map((note) => ({
+          ...note,
+          durationMs: 42_000,
+          heard: "I was thinking about the scene",
+          playsBack: true,
+        })),
+      },
+    }
+    const view = kindOf("studio", "studio", heard, [], NOW)
+    const { rerender } = render(
+      <MyDataKind view={view} playing={null} onPlay={onPlay} onStop={vi.fn()} />
+    )
+    expect(screen.getByText("“I was thinking about the scene”")).toBeTruthy()
+    expect(screen.getByText(/^Recorded .* · 42 s long$/)).toBeTruthy()
+    expect(screen.queryByText(MY_DATA.kind.noPlay)).toBeNull()
+    fireEvent.click(screen.getByRole("button", { name: /^Play/ }))
+    expect(onPlay).toHaveBeenCalledWith("t1")
+
+    rerender(
+      <MyDataKind
+        view={view}
+        playing="t1"
+        fetching
+        onPlay={onPlay}
+        onStop={vi.fn()}
+      />
+    )
+    expect(
+      screen.getByRole("button", { name: /^Getting the recording/ })
+    ).toBeTruthy()
+
+    rerender(
+      <MyDataKind
+        view={view}
+        playing={null}
+        missed="t1"
+        onPlay={onPlay}
+        onStop={vi.fn()}
+      />
+    )
+    expect(screen.getByRole("alert").textContent).toContain(MY_DATA.kind.missed)
   })
 })
 
@@ -440,6 +500,8 @@ describe("on the phone", () => {
       home: HOME,
       phone: { notes: PHONE, unread: ["studio"] },
       playing: null,
+      fetching: false,
+      missed: null,
     }
     const { unmount } = render(<DeviceMyData />)
     expect(runtime.open).toHaveBeenCalledWith(null, null)
