@@ -1,5 +1,13 @@
 # @some-ui/hangul-game-core
 
+## 0.0.10
+
+### Patch Changes
+
+- Update WASM source for hangul-game-core
+
+- Preserve source changes already awaiting this WASM release.
+
 ## 0.0.9
 
 ### Patch Changes

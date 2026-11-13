@@ -1,5 +1,13 @@
 # @some-ui/some-hexagon
 
+## 0.0.10
+
+### Patch Changes
+
+- Update WASM source for some-hexagon
+
+- Preserve source changes already awaiting this WASM release.
+
 ## 0.0.9
 
 ### Patch Changes
