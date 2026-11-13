@@ -375,9 +375,12 @@ describe("measureRead over any read", () => {
           minLength: 1,
           maxLength: 40,
         }),
-        fc.array(fc.constantFrom("the", "um", "home", "grows", "late"), {
-          maxLength: 40,
-        }),
+        fc.array(
+          fc.constantFrom("the", "um", "mm-hmm", "uh-huh", "home", "grows"),
+          {
+            maxLength: 40,
+          }
+        ),
         (parts, other) => {
           const script = parts.map(([word, gap]) => word + gap).join("")
           const exact = measure(
@@ -393,9 +396,15 @@ describe("measureRead over any read", () => {
           })
           const faults = measure(said(other.join(" ")), script)
           const { skipped, repeated, inserted } = faults.misread
-          // Every heard word reads a script word, or was added.
+          // Every part heard reads a script word, or was added, except that
+          // the filler parts of one heard word ("mm-hmm") are added once.
           const read = faults.script.words - skipped
-          expect(read + repeated + inserted).toBe(faults.words)
+          const extraFillerParts = other.filter(
+            (word) => word === "mm-hmm"
+          ).length
+          expect(read + repeated + inserted + extraFillerParts).toBe(
+            faults.words
+          )
         }
       )
     )

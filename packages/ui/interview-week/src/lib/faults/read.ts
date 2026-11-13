@@ -46,7 +46,8 @@ export const ReadFaultsSchema = z.object({
    * when it says again, within `REPEAT_WINDOW` words, a word that reads the
    * script or an earlier added word (so of two copies the second repeats),
    * and `inserted` otherwise. An added filler is inserted and also counted
-   * in `fillers`, once per heard word ("Mm-hmm" is one).
+   * in `fillers`, once per heard word: "Mm-hmm" is one inserted word, though
+   * `words` counts its two parts.
    */
   misread: z.object({
     skipped: Count,
