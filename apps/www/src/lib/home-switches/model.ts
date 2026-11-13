@@ -3,18 +3,24 @@
  * (CLAUDE.md, "React is not the coordinator"). `./runtime` owns the calls to
  * home and feeds their endings in here; the page reads a snapshot.
  *
- * One switch today: Rust Rounds recording (the administration epic's first
- * lever, #2357). Home keeps every change, and reads an untouched switch as
- * its default, which for recording is on.
+ * One state per switch (`SwitchKey`): Rust Rounds recording
+ * (the administration epic's first lever, #2357) and whether home follows
+ * NFL games. Each is on or off; home keeps every change, and reads an
+ * untouched switch as its default, which for both is on.
  */
 import { assertNever } from "@some-ui/core-utils"
+
+/** Each switch home has: what the page shows a row, and a runtime, for. */
+export const SWITCH_KEYS = ["rust-rounds", "game-feed"] as const
+
+export type SwitchKey = (typeof SWITCH_KEYS)[number]
 
 /** Who set a switch: the owner's account, or an operator home lists. */
 export type SetBy = "owner" | "operator"
 
 /** A switch as home follows it. `set` is null while nobody has set it. */
 export type Standing = {
-  readonly recording: boolean
+  readonly on: boolean
   readonly set: { readonly by: SetBy; readonly at: string } | null
 }
 
@@ -41,7 +47,7 @@ export type SwitchesEvent =
   | { readonly type: "read-asked" }
   | { readonly type: "read"; readonly standing: Standing }
   | { readonly type: "read-failed"; readonly why: Refusal }
-  | { readonly type: "set-asked"; readonly recording: boolean }
+  | { readonly type: "set-asked"; readonly on: boolean }
   | { readonly type: "set"; readonly standing: Standing }
   | { readonly type: "set-failed"; readonly why: Refusal }
 
@@ -81,7 +87,7 @@ export function stepSwitches(
     }
     case "set-asked": {
       return canSet(state) && state.kind === "read"
-        ? { ...state, setting: event.recording }
+        ? { ...state, setting: event.on }
         : state
     }
     case "set": {
