@@ -22,13 +22,17 @@ const note = (id: string, of: VoiceOut["of"] = "reflection"): VoiceOut => ({
 })
 
 /** A port over a record, with each note's audio its id's bytes. */
+/** The pairing a run goes under: what home holds is its word (HP1). */
+const PAIRING = "pairing-1"
+const paired: VoiceHomeState = { ...INITIAL_VOICE_HOME, pairing: PAIRING }
+
 function port(
   notes: ReadonlyArray<VoiceOut>,
   audio: (id: string) => Blob | null = (id) => new Blob([id])
 ): VoiceHomePort & { current: () => VoiceHomeState } {
   let state = notes.reduce(
     (s, n) => stepVoiceHome(s, { kind: "copied", note: n }),
-    INITIAL_VOICE_HOME
+    paired
   )
   return {
     current: () => state,
@@ -87,7 +91,7 @@ function exchange(
   send: HomeCall,
   deleted: DeletedPort = { letGo: null, heldBack: new Map() }
 ): ReturnType<typeof exchangeVoice> {
-  return exchangeVoice(p, send, deleted)
+  return exchangeVoice(p, send, deleted, PAIRING)
 }
 
 /** Home's refusal of a note the owner deleted for good from My data. */

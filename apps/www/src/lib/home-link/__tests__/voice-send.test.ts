@@ -122,7 +122,11 @@ vi.mock("@/lib/home-link/lanes", () => ({
   useLaneHome: (): unknown => null,
 }))
 vi.mock("@/lib/home-link", () => ({
-  homeLink: (): unknown => ({ subscribe: () => (): void => undefined }),
+  // Read as paired: the voice record follows its pairing (HP1).
+  homeLink: (): unknown => ({
+    subscribe: () => (): void => undefined,
+    getSnapshot: () => ({ link: { kind: "paired" } }),
+  }),
   paired: (): boolean => fakes.paired,
   pairingOf: (): string => PAIRING,
 }))

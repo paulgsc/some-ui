@@ -93,7 +93,9 @@
  *   stores the room it makes or not (RM1, `lib/takes-desk/runtime.ts`),
  *   and the audio of each Rust Rounds note home holds (RR6),
  *   × every home state (held; waiting; unpaired; off the LAN, which the
- *   phone sees alike as not held); for Studio takes, × every
+ *   phone sees alike as not held; held only by the home of another
+ *   pairing, a re-paired or reset one, which it sees as not held either:
+ *   HP1, `lib/voice-home/model.ts`); for Studio takes, × every
  *   choice (none yet, once home has them, until Drive has it too) × the
  *   owner's "Drive has it" on the take (tapped or not), home's word that
  *   Drive has it (said, not said, or not read) and the share sheet's
@@ -122,7 +124,8 @@
  *   `lib/takes-desk/__tests__/runtime.test.ts`,
  *   `lib/leetype-takes/index.test.ts` and topik's
  *   `adapter/lens-record-store/index.test.ts` (each "HF5": at the cap only
- *   one home holds makes room, and with none held the new one is refused),
+ *   one home holds makes room, and with none held the new one is refused;
+ *   and the desk's "HP1": none another pairing's home holds makes room),
  *   and for Rust Rounds' notes `lib/takes-desk/__tests__/audio-leaves.test.ts`
  *   ("LG1 (RR6)": only a note home holds lets its audio go, its take stays
  *   listed and plays from home, and a mark not stored lets nothing go),
@@ -184,11 +187,12 @@ import {
   passWith,
   runEnd,
 } from "@/lib/voice-home/model"
+import type { PairingPort } from "@/lib/voice-home/runtime"
 import { wireVoiceMarks } from "@/lib/voice-marks"
 
 import { phoneEpisodeNotes, sendEpisodeNotes } from "./episode-notes"
 import { phoneIdeas, sendIdeas } from "./ideas"
-import { homeLink, paired } from "./index"
+import { homeLink, paired, pairingOf } from "./index"
 import { lensEntriesHeld } from "./lens-record"
 import { notesHeld } from "./notes"
 import { askOnDrive } from "./on-drive"
@@ -972,15 +976,21 @@ export async function sendVoice(
   send: HomeCall,
   at: { readonly pairing: string }
 ): Promise<HomeExchanged> {
+  phoneVoiceHome().follow(linkPairing)
   copySoon()
   const running = copying
   if (running !== null) await running
   const pass = running === null ? NO_PASS : lastPass
   const home = phoneVoiceHome()
-  const exchanged = await exchangeVoice(home.keeping, send, {
-    letGo: studioKeeping() === null ? null : letGoDeleted,
-    heldBack: home.deletedHeldBack,
-  })
+  const exchanged = await exchangeVoice(
+    home.keeping,
+    send,
+    {
+      letGo: studioKeeping() === null ? null : letGoDeleted,
+      heldBack: home.deletedHeldBack,
+    },
+    at.pairing
+  )
   if (exchanged.kind !== "synced") return runEnd(pass, exchanged)
   await letGoOnHomesWord(send)
   const ideas = await sendIdeas(
@@ -1091,10 +1101,17 @@ export async function letGoDeleted(
   }
 }
 
-/** Retires the voice record's copies of notes home deleted for good. */
+/**
+ * Retires the voice record's copies of notes home deleted for good: the
+ * receipt is the word of the pairing the phone holds (HP1). Unpaired, a
+ * copy waits, and the next run's `deleted_for_good` retires it.
+ */
 function settleDeleted(ids: ReadonlyArray<string>): void {
   const home = phoneVoiceHome()
-  for (const id of ids) home.keeping.answered({ kind: "held", id })
+  const pairing = pairingOf()
+  if (pairing !== null) {
+    for (const id of ids) home.keeping.answered({ kind: "held", id, pairing })
+  }
   home.drop(ids)
 }
 
@@ -1191,7 +1208,21 @@ function holdOffline(): void {
  * that never was builds none of them for this.
  */
 
+/**
+ * The pairing this phone holds, as the voice record follows it (HP1,
+ * `lib/voice-home/model.ts`): none stepped while the link is still read.
+ */
+const linkPairing: PairingPort = {
+  current: () => {
+    const state = homeLink().getSnapshot()
+    return state.link.kind === "reading" ? undefined : pairingOf(state)
+  },
+  subscribe: (listener) => homeLink().subscribe(listener),
+}
+
 export function watchVoiceNotes(): () => void {
+  // First, so what home holds is read under the pairing alone (HP1).
+  phoneVoiceHome().follow(linkPairing)
   const stores: Array<() => void> = []
   let takes = false
   let saidBites = false
