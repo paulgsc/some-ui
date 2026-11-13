@@ -8,7 +8,7 @@
  * `rust_round_repo::interview` (`Sent`, strict), as on its `main` at
  * 3e8910c: `WeekList` of `WeekEntry`, at most `LIST_LIMIT`, and
  * `HeldInterviewWeek` and `InterviewRecord`. `week` is the routine's file byte for byte, so
- * here it is only an object; `@some-ui/interview-week`'s `readWeek` reads it.
+ * here it is only an object; the interview week's own format reads it (IW4).
  *
  * A send is a draft until the week's due, and what stands then is final, as
  * Rust Rounds' are (RR22): `{ change, sent }`, a `201` added, a `200`
@@ -31,6 +31,9 @@ const MODULE = "interview_weeks"
 
 /** A week no routine writes, in the id's own form. */
 const ABSENT_WEEK = "1999-w01"
+
+/** The first week the routine writes (Monday 16 November 2026); a home that holds it shows its shape. */
+const FIRST_WEEK = "2026-w47"
 
 const When = z.iso.datetime({ offset: true })
 const NoteId = z.string().regex(/^[A-Za-z0-9._:-]{1,64}$/)
@@ -152,6 +155,17 @@ export const contracts = [
   ),
 
   defineContract({
+    id: "interview-weeks.week",
+    module: MODULE,
+    paired: true,
+    method: "GET",
+    path: "/interview-weeks/:id",
+    summary:
+      "one interview week as the routine put it, byte for byte, with the hash home keeps and when it arrived; a 404 where home holds no such week",
+    request: { path: { id: FIRST_WEEK } },
+    expect: { status: [200, 404], schemaFor: 200, schema: WeekSchema },
+  }),
+  defineContract({
     id: "interview-weeks.week_absent",
     module: MODULE,
     paired: true,
@@ -159,7 +173,7 @@ export const contracts = [
     path: "/interview-weeks/:id",
     summary: "an interview week home holds none of is a 404",
     request: { path: { id: ABSENT_WEEK } },
-    expect: { status: [200, 404], schemaFor: 200, schema: WeekSchema },
+    expect: { status: 404 },
   }),
   ...strangers(
     "interview-weeks.week",
@@ -190,15 +204,25 @@ export const contracts = [
   ),
 
   defineContract({
-    id: "interview-weeks.record_absent",
+    id: "interview-weeks.record",
     module: MODULE,
     paired: true,
     method: "GET",
     path: "/interview-weeks/:id/record",
     summary:
       "an interview week's record: what was sent, as the draft standing before the deadline or the final after it; each question answered or not and each card read or not, with its take and when it was said; a 404 where home holds no such week",
-    request: { path: { id: ABSENT_WEEK } },
+    request: { path: { id: FIRST_WEEK } },
     expect: { status: [200, 404], schemaFor: 200, schema: RecordSchema },
+  }),
+  defineContract({
+    id: "interview-weeks.record_absent",
+    module: MODULE,
+    paired: true,
+    method: "GET",
+    path: "/interview-weeks/:id/record",
+    summary: "the record of an interview week home holds none of is a 404",
+    request: { path: { id: ABSENT_WEEK } },
+    expect: { status: 404 },
   }),
   ...strangers(
     "interview-weeks.record",
