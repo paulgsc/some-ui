@@ -229,11 +229,9 @@ function pagesConnectPolicy(): Plugin {
   }
 }
 
-// The phone's look (POLISH PL1, #2948): the Android app's document says it is
-// the phone's (`data-surface="phone"`), and `src/index.css` gives that surface
-// its own shapes (pill buttons). Written into the HTML at build time, so it
-// holds before any script runs and reaches what a portal mounts on `body`; the
-// desktop and Pages builds carry nothing.
+// Marks the Android build's document `data-surface="phone"` (`src/index.css`,
+// PL1), in the HTML at build time, so it holds before any script runs and
+// reaches what a portal mounts on `body`.
 function phoneSurface(): Plugin {
   return {
     name: "phone-surface",

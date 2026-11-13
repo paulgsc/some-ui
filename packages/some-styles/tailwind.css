@@ -132,17 +132,15 @@
   }
 }
 
-/* A card lifted off the page (POLISH PL1, #2948): the card's own tone a shade
-   lighter than the ground, no outline, and a soft shadow mixed from the ink,
-   so it reads warm on a cream theme and stays a theme's own on every other.
-   Low-contrast on purpose: one cream for page and card made the card vanish,
-   and an outline read as a form field. */
+/* A card lifted off the page (POLISH PL1, #2948): the card's own tone, no
+   outline, and a soft shadow of the page's own ground darkened, so it reads
+   warm on a cream theme and stays a shadow on a dark one. */
 @utility lifted {
   background-color: var(--card);
   border-color: transparent;
   box-shadow:
-    0 1px 2px color-mix(in oklab, var(--foreground) 6%, transparent),
-    0 6px 16px -6px color-mix(in oklab, var(--foreground) 14%, transparent);
+    0 1px 2px oklch(from var(--background) calc(l * 0.45) c h / 12%),
+    0 6px 16px -6px oklch(from var(--background) calc(l * 0.45) c h / 28%);
 }
 
 @utility border-grid {

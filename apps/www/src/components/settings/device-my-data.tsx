@@ -31,7 +31,6 @@ import { Button, Notice } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
 import {
   Check,
-  ChevronLeft,
   ChevronRight,
   LoaderCircle,
   Lock,
@@ -88,6 +87,7 @@ import {
   unreadLine,
 } from "@/lib/my-data/words"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
+import { BackLink } from "@/components/back-link"
 
 import {
   GrowthLine,
@@ -586,13 +586,7 @@ const PageRow = ({
 export const MyDataHeading = ({ title }: { title: string }): JSX.Element => (
   <div className="space-y-1">
     {hasAudience("apk") ? (
-      <Link
-        to="/settings/data"
-        className="text-muted-foreground hover:text-foreground -ml-1 inline-flex items-center gap-1 text-sm"
-      >
-        <ChevronLeft className="size-4" aria-hidden />
-        {MY_DATA.kind.back}
-      </Link>
+      <BackLink to="/settings/data">{MY_DATA.kind.back}</BackLink>
     ) : null}
     <h1 className="text-2xl font-semibold tracking-tight break-words">
       {title}

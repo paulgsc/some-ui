@@ -231,13 +231,13 @@ const StudyCard = ({
       {lessons && (
         <div className="flex flex-wrap gap-2">
           <NextLesson
-            className="h-12 rounded-2xl px-6 text-base"
+            className="h-12 px-6 text-base"
             onLaunch={() => launch(HOME_OFFERS.nextLesson)}
           />
           <NextLesson
             open="menu"
             variant="outline"
-            className="h-12 rounded-2xl px-6 text-base"
+            className="h-12 px-6 text-base"
             onLaunch={() => launch(HOME_OFFERS.hungry)}
           />
         </div>

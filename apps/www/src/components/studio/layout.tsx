@@ -10,39 +10,37 @@ import { cn } from "@some-ui/core-utils"
 import { Button, buttonVariants, Notice } from "@some-ui/shared"
 import type { QueryKey, UseQueryOptions } from "@tanstack/react-query"
 import { useQuery } from "@tanstack/react-query"
-import { Link } from "@tanstack/react-router"
-import { ChevronLeft, ExternalLink } from "lucide-react"
+import { ExternalLink } from "lucide-react"
 
 import { hasAudience } from "@/lib/build-profile"
 import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
 import type { StudioKind } from "@/lib/studio-index"
 import { KIND_WORDS, kindPath, STUDIO_INDEX_WORDS } from "@/lib/studio-index"
+import { BackLink } from "@/components/back-link"
 
 /** A tile's link: a card the size of its neighbours, lifted off the page (PL1). */
 export const TILE =
   "lifted focus-visible:ring-ring flex h-full flex-col gap-1 rounded-2xl px-4 py-3 focus-visible:ring-2 focus-visible:outline-none"
 
 /**
- * The way back to a kind's list, or to the index, at the top of the page as
- * an app's header carries it (`‹ Episodes`, PL1): Studio's pages are the
- * phone's ("apk"), so a build without them draws nothing (A3).
+ * The way back to a kind's list, or to the index (PL1): Studio's pages are
+ * the phone's ("apk"), so a build without them draws nothing (A3).
  */
-export const BackLink = ({
+export const StudioBack = ({
   to,
 }: {
   to: StudioKind | "index"
 }): JSX.Element | null =>
   hasAudience("apk") ? (
-    <Link
-      to={to === "index" ? "/journal" : kindPath(to)}
-      aria-label={
-        to === "index" ? STUDIO_INDEX_WORDS.back : STUDIO_INDEX_WORDS.backTo(to)
-      }
-      className="text-muted-foreground hover:bg-accent hover:text-foreground -mb-2 -ml-2 flex h-9 items-center gap-0.5 self-start rounded-full pr-3 pl-1 text-sm font-semibold"
-    >
-      <ChevronLeft aria-hidden className="size-5" />
-      {to === "index" ? STUDIO_INDEX_WORDS.heading : KIND_WORDS[to].name}
-    </Link>
+    to === "index" ? (
+      <BackLink to="/journal" label={STUDIO_INDEX_WORDS.back}>
+        {STUDIO_INDEX_WORDS.heading}
+      </BackLink>
+    ) : (
+      <BackLink to={kindPath(to)} label={STUDIO_INDEX_WORDS.backTo(to)}>
+        {KIND_WORDS[to].name}
+      </BackLink>
+    )
   ) : null
 
 /** A page of Studio's: the way back, its heading, what it holds, its body. */
@@ -59,7 +57,7 @@ export const StudioPage = ({
   children: ReactNode
 }): JSX.Element => (
   <div className="mx-auto flex w-full max-w-md flex-col gap-4">
-    {back !== undefined && <BackLink to={back} />}
+    {back !== undefined && <StudioBack to={back} />}
     <h1 className="text-2xl font-bold tracking-tight">{heading}</h1>
     {intro !== undefined && (
       <p className="text-muted-foreground text-sm">{intro}</p>
@@ -152,10 +150,7 @@ export function ReadList<T, K extends QueryKey>({
   })
 }
 
-/**
- * The way out to where an item lives, on GitHub: a filled button with the
- * glyph for leaving the app (PL1), since it is the page's one action.
- */
+/** The way out to where an item lives, on GitHub: a button with the leave-the-app glyph. */
 export const OutLink = ({
   href,
   children,
@@ -167,7 +162,10 @@ export const OutLink = ({
     href={href}
     target="_blank"
     rel="noreferrer"
-    className={cn(buttonVariants({ size: "sm" }), "gap-1.5 self-start")}
+    className={cn(
+      buttonVariants({ variant: "outline", size: "sm" }),
+      "gap-1.5 self-start"
+    )}
   >
     {children}
     <ExternalLink aria-hidden className="size-4" />

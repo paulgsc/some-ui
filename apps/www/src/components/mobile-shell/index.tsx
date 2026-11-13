@@ -100,8 +100,7 @@ const TabMark = ({
   <span
     className={cn(
       "flex h-7 w-12 items-center justify-center rounded-full",
-      // The tab you are on in the honey itself, ink on it (7.2:1 in
-      // mochi): a tint of it read as no mark at all on the cream (PL1).
+      // The honey itself, its ink on it (7.2:1 in mochi; PL1).
       active && "bg-brand text-brand-foreground"
     )}
   >

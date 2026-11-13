@@ -8,10 +8,11 @@ import {
   CardTitle,
 } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { ChevronRight } from "lucide-react"
 
 import type { Concern, ConcernId } from "@/lib/front-desk"
 import { concern, deskBar, FRONT_DESK_WORDS, pageOf } from "@/lib/front-desk"
+import { BackLink } from "@/components/back-link"
 
 export const PageHeading = ({
   title,
@@ -56,13 +57,7 @@ export const SettingsPage = ({
 }): JSX.Element => (
   <div className="max-w-xl space-y-4">
     {deskBar() === null ? (
-      <Link
-        to="/settings"
-        className="text-muted-foreground hover:text-foreground -ml-1 inline-flex items-center gap-1 text-sm"
-      >
-        <ChevronLeft className="size-4" aria-hidden />
-        {FRONT_DESK_WORDS.title}
-      </Link>
+      <BackLink to="/settings">{FRONT_DESK_WORDS.title}</BackLink>
     ) : null}
     <PageHeading title={concern(id).title} lead={concern(id).lead} />
     {children}

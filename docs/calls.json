@@ -2052,14 +2052,14 @@
         "apps/www/src/routes/_dashboard/_apk/practice/index.tsx",
         "apps/www/src/components/mobile-shell/index.tsx"
       ],
-      "chose": "A card on the phone is lifted: the card's tone, no outline, and a soft two-layer shadow mixed from the theme's ink (the `lifted` utility), on Studio's tiles and parts, the foyer's wings and Practice's cards; the bar's current tab is filled with the honey (--brand) instead of a 30% tint of it.",
+      "chose": "A card on the phone is lifted: the card's tone, no outline, and a soft two-layer shadow of the page's ground darkened (the `lifted` utility), on Studio's tiles, parts, feedback notes and heard answers, the foyer's wings and Practice's cards; the bar's current tab is filled with the honey (--brand) instead of a 30% tint of it; and Studio's way out to GitHub is an outline button with the leave-the-app glyph instead of an underlined link.",
       "options": [
         "Lifted: card tone, no outline, a soft ink-mixed shadow",
         "Keep the outline and add a shadow",
         "A darker page ground under unchanged cards"
       ],
       "gray": "How a card stands off the page and how loudly the current tab is marked are on every phone screen, and no check or earlier call settles either.",
-      "undo": "Put `bg-card border-border/60 border` back where `lifted` stands, and `bg-brand/30 dark:text-brand` on the bar's TabMark.",
+      "undo": "Put `bg-card border-border/60 border` back where `lifted` stands, `bg-brand/30 dark:text-brand` on the bar's TabMark, and the underlined OutLink.",
       "refs": [
         "#2948"
       ]
@@ -2071,9 +2071,10 @@
       "paths": [
         "apps/www/vite.config.ts",
         "apps/www/src/index.css",
-        "packages/ui/shared/src/components/ui/button.tsx"
+        "packages/ui/shared/src/components/ui/button.tsx",
+        "apps/www/src/routes/_dashboard/_apk/practice/index.tsx"
       ],
-      "chose": "In the Android build every button is a pill and every figure is tabular: the build marks its document data-surface=\"phone\", which sets --button-radius to a full round and tabular numerals; the shared Button reads that radius and falls back to the theme's md corners, so the desktop web is unchanged.",
+      "chose": "In the Android build every button is a pill and every figure is tabular: the build marks its document data-surface=\"phone\", which sets --button-radius to a full round and tabular numerals; the shared Button reads that radius and falls back to the theme's md corners, so the desktop web is unchanged. A screen that sets its own corners on a button keeps them (TOPIK's read-aloud cards); Practice's two headline buttons drop theirs to be pills.",
       "options": [
         "Pills and tabular figures for the whole phone surface, from one marker",
         "A pill variant chosen screen by screen",
@@ -2091,9 +2092,12 @@
       "by": "claude",
       "paths": [
         "apps/www/src/components/studio/layout.tsx",
+        "apps/www/src/components/back-link.tsx",
+        "apps/www/src/components/settings/settings-page.tsx",
+        "apps/www/src/components/settings/device-my-data.tsx",
         "apps/www/src/routes/_dashboard/_apk/journal/episodes/making.tsx"
       ],
-      "chose": "Studio's way back is a `‹ Episodes` (the kind's name, or Studio) at the top of the page above its heading, named \"Back to …\" for a screen reader, in place of the underlined \"Back to …\" under the page; the shell's header keeps the wing's mark.",
+      "chose": "Studio's way back is a `‹ Episodes` (the kind's name, or Studio) at the top of the page above its heading, named \"Back to …\" for a screen reader, in place of the underlined \"Back to …\" under the page; Settings' and My data's way back take the same shared BackLink; the shell's header keeps the wing's mark.",
       "options": [
         "At the top of the page, above the heading",
         "In the shell's header, in place of the wing's mark",

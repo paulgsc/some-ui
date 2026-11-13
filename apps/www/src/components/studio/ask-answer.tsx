@@ -104,9 +104,7 @@ export const AskAnswer = ({
           <span className="text-muted-foreground text-xs font-bold">
             {WORDS.heard}
           </span>
-          <p className="bg-card border-border/60 rounded-2xl border p-3 text-base">
-            {phase.words}
-          </p>
+          <p className="lifted rounded-2xl p-3 text-base">{phase.words}</p>
         </div>
       )}
       {phase.kind === "kept" && <Notice>{keptSaid(phase)}</Notice>}

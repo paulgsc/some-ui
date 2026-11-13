@@ -23,7 +23,7 @@ import { shareStudio } from "@/lib/journal-share"
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 import { STUDIO_INDEX_WORDS } from "@/lib/studio-index"
 import { CopyButton } from "@/components/copy-button"
-import { BackLink } from "@/components/studio/layout"
+import { StudioBack } from "@/components/studio/layout"
 
 const WORDS = STUDIO_WORDS
 
@@ -125,7 +125,7 @@ const Making = (): JSX.Element => {
   return (
     <>
       <div className="mx-auto mb-2 flex w-full max-w-md flex-col">
-        <BackLink to="episodes" />
+        <StudioBack to="episodes" />
       </div>
       <StudioHome
         heading={STUDIO_INDEX_WORDS.episodes.making}

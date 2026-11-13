@@ -281,7 +281,7 @@ const FeedbackList = ({
     {[...notes].reverse().map((note) => (
       <li
         key={note.id}
-        className="bg-card border-border/60 flex flex-col gap-1 rounded-2xl border px-4 py-3"
+        className="lifted flex flex-col gap-1 rounded-2xl px-4 py-3"
       >
         <span className="text-base font-extrabold">
           {FEED_FACTS[note.feed].name} ·{" "}
