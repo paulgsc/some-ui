@@ -70,6 +70,11 @@ export type LiveState = {
   readonly attempt: number
   /** The pairing the current opening was made under. */
   readonly pairedAs: string | null
+  /**
+   * The home link holds what the phone starts on its own, away from home
+   * (AW1, `./away`): no socket is asked for until the hold ends.
+   */
+  readonly held: boolean
 }
 
 export type LiveTimer = "quiet" | "ping" | "retry"
@@ -79,6 +84,8 @@ export type LiveEvent =
   | { readonly kind: "unwatch" }
   | { readonly kind: "visibility"; readonly hidden: boolean }
   | { readonly kind: "relinked"; readonly pairingId: string | null }
+  /** The home link's hold away from home began or ended (AW1). */
+  | { readonly kind: "home"; readonly held: boolean }
   | { readonly kind: "choose"; readonly choice: FeedChoice }
   | {
       readonly kind: "pairing-read"
@@ -127,6 +134,8 @@ export type LiveEffect =
     }
   | { readonly kind: "disarm" }
   | { readonly kind: "keep-week"; readonly games: ReadonlyArray<Game> }
+  /** Tell the home link whether home answered (AW1): a socket opened, or never did. */
+  | { readonly kind: "reached"; readonly answered: boolean }
 
 export type LiveStep = {
   readonly state: LiveState
@@ -149,6 +158,7 @@ export function initialLive(games: ReadonlyArray<Game>): LiveState {
     hidden: false,
     attempt: 0,
     pairedAs: null,
+    held: false,
   }
 }
 
@@ -187,10 +197,14 @@ function end(state: LiveState, next: FeedLink): LiveStep {
   )
 }
 
-/** Opens a socket, if the recorder watches in front and none is open. */
+/**
+ * Opens a socket, if the recorder watches in front, none is open and the
+ * home link does not hold the phone away (AW1).
+ */
 function connect(previous: LiveStep): LiveStep {
   const { state } = previous
-  if (state.phase !== "idle" || state.hidden || !state.watched) return previous
+  if (state.phase !== "idle" || state.hidden || !state.watched || state.held)
+    return previous
   const at = state.opening + 1
   return done({ ...state, phase: "pairing", opening: at }, [
     ...previous.effects,
@@ -206,8 +220,13 @@ function hello(state: LiveState): LiveStep {
   ])
 }
 
-/** The socket is gone with `code`: say where that leaves the phone. */
-function closed(state: LiveState, code: number): LiveStep {
+/**
+ * The socket is gone with `code`: say where that leaves the phone. One made
+ * that never opened found no answer from home (`silent`): that is the home
+ * link's to wait out (AW1), so it is told, and the next try waits for the
+ * link's hold to end (`home`) rather than `retryDelayMs`.
+ */
+function closed(state: LiveState, code: number, silent = false): LiveStep {
   // Home could not have sent the `lastSeq` this phone told it (the phone
   // kept one across a home whose clock or counter moved): forget it and say
   // hello again without one, at once.
@@ -216,6 +235,12 @@ function closed(state: LiveState, code: number): LiveStep {
   }
   const next = linkAfterClose(code)
   const ended = end(state, next)
+  if (silent && next === "away") {
+    return done(ended.state, [
+      ...ended.effects,
+      { kind: "reached", answered: false },
+    ])
+  }
   if (!triesAgain(next) || state.hidden || !state.watched) return ended
   return done({ ...ended.state, attempt: state.attempt + 1 }, [
     ...ended.effects,
@@ -303,6 +328,12 @@ export function step(state: LiveState, event: LiveEvent): LiveStep {
         ? end({ ...state, hidden: true }, "asking")
         : connect(done({ ...state, hidden: false }))
     }
+    case "home": {
+      if (event.held === state.held) return done(state)
+      return event.held
+        ? done({ ...state, held: true })
+        : connect(done({ ...state, held: false }))
+    }
     case "relinked": {
       if (event.pairingId === state.pairedAs) return done(state)
       return connect(end({ ...state, attempt: 0, lastSeq: null }, "asking"))
@@ -332,6 +363,7 @@ export function step(state: LiveState, event: LiveEvent): LiveStep {
       const said = hello({ ...state, phase: "open" })
       return done(said.state, [
         { kind: "arm", timer: "quiet", ms: QUIET_MS, at: event.at },
+        { kind: "reached", answered: true },
         ...said.effects,
         { kind: "ping" },
         { kind: "arm", timer: "ping", ms: PING_MS, at: event.at },
@@ -341,12 +373,12 @@ export function step(state: LiveState, event: LiveEvent): LiveStep {
       return heard(state, event.message, event.now)
     }
     case "closed": {
-      return closed(state, event.code)
+      return closed(state, event.code, state.phase === "connecting")
     }
     case "due": {
       switch (event.timer) {
         case "quiet": {
-          return closed(state, 1006)
+          return closed(state, 1006, state.phase === "connecting")
         }
         case "ping": {
           return state.phase === "open"

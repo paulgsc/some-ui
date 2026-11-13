@@ -95,7 +95,11 @@ function classify(error: unknown): ForeignVerdict {
 const PORT: ForeignPort = {
   name: "home server (native http)",
   classify,
-  report: reportFailure,
+  // Home's silence is the link's to tell, once a stretch away (AW1,
+  // `lib/home-link/away`); every other failure is told here.
+  report: (failure) => {
+    if (failure.error.kind !== "unreachable") reportFailure(failure)
+  },
 }
 
 export async function homeRequest(call: HomeRequest): Promise<HomeAnswer> {

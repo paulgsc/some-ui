@@ -14,6 +14,13 @@ import type {
 } from "@some-ui/game-week"
 import { describe, expect, it } from "vitest"
 
+import type { Away, AwayEvent } from "@/lib/home-link/away"
+import {
+  FIRST_HOLD_MS,
+  held as heldAway,
+  holdMs,
+  stepAway,
+} from "@/lib/home-link/away"
 import type { LivePorts, LiveWire } from "@/lib/home-link/live"
 import { liveFeed, OPEN_MS, PING_MS, QUIET_MS } from "@/lib/home-link/live"
 import type { LiveSocketEvents } from "@/lib/home-link/live-socket"
@@ -112,6 +119,17 @@ function harness(paired = true): Harness {
   const linkListeners = new Set<() => void>()
   let visibility: ((hidden: boolean) => void) | null = null
   const state: Harness["state"] = { paired, pairingId: paired ? "p1" : null }
+  // The home link's hold away from home (AW1), as `./away` steps it.
+  let away: Away | null = null
+  const toLink = (event: AwayEvent): void => {
+    const next = stepAway(away, event)
+    if (next === away) return
+    away = next
+    if (event.type === "unanswered" && next?.heldUntil != null) {
+      ports.after(next.heldUntil - now, () => toLink({ type: "lapsed" }))
+    }
+    for (const listener of linkListeners) listener()
+  }
   const ports: LivePorts = {
     wire: WIRE,
     pairing: () =>
@@ -125,6 +143,9 @@ function harness(paired = true): Harness {
       return () => linkListeners.delete(listener)
     },
     pairingId: () => state.pairingId,
+    held: () => heldAway(away, now),
+    reached: (answered) =>
+      toLink(answered ? { type: "answered" } : { type: "unanswered", now }),
     open: (url, token, on) => {
       const socket: Socket = { url, token, on, sent: [], closed: false }
       sockets.push(socket)
@@ -274,13 +295,23 @@ describe("liveFeed", () => {
     expect(last()).toMatchObject({ link: "away", offer: null })
   })
 
-  it("counts a socket that never opens as home out of reach, and tries again", async () => {
+  it("counts a socket that never opens as home out of reach, and tries again once the link's hold ends (AW1)", async () => {
     const h = harness()
     const { last } = await watched(h)
     await h.advance(OPEN_MS)
     expect([last().link, h.sockets[0].closed]).toEqual(["away", true])
-    await h.advance(1_000)
+    await h.advance(FIRST_HOLD_MS - 1)
+    expect(h.sockets).toHaveLength(1)
+    await h.advance(1)
     expect(h.sockets).toHaveLength(2)
+    h.sockets[1].on.closed(1006)
+    await h.advance(holdMs(1) - 1)
+    expect(h.sockets).toHaveLength(2)
+    await h.advance(1)
+    expect(h.sockets).toHaveLength(3)
+    h.sockets[2].on.opened()
+    h.sockets[2].on.message(offerText(42))
+    expect(last().link).toBe("live")
   })
 
   it("stops trying when this build can't read home, or the phone isn't paired", async () => {

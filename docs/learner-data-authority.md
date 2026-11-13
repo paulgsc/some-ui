@@ -1214,7 +1214,11 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   turned the lane's away, or home's busy ending after home turned it away
   (AD3: the link sends nothing while home's `Retry-After` lasts, answering
   each request busy itself, so the moments that come meanwhile run the
-  lane, say busy and send nothing, and its end asks once); from `askLane`,
+  lane, say busy and send nothing, and its end asks once), or the link's
+  hold away from home ending after a run found no answer (AW1,
+  `lib/home-link/away.ts`: the link sends nothing a lane asks while the hold
+  lasts, answering each request as unanswered itself, and its end, a network
+  change or a pull asks once); from `askLane`,
   which a mark's sheet and Settings' readout call only from their Send now
   button; or, for a pull (a drag down from the top
   of a page, PULL3, the owner's D1 on #2456, 2026-11-02), from `pullKept`,
@@ -1228,9 +1232,10 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   (`lib/jobs/pull.ts`, PULL2, registered while the Jobs screens or the
   status page show), and it joins the pull under way, or starts the one
   the refresher's own ask in that pull joins, so each lane is still asked
-  once, in turn. Nothing asks on a timer: home's busy ends on one (the
-  link's, `runtime.ts`), which only opens the link again to the lanes home
-  turned away. A run goes
+  once, in turn; a pull first lets the link's hold away from home go (AW1).
+  Nothing asks on a timer: home's busy and the hold away each end on one
+  (the link's, `runtime.ts`), which only opens the link again to the lanes
+  home turned away. A run goes
   under the pairing the phone holds when it starts (`laneExchange`),
   through the link's `drain` (what goes beside it is
   `lib/home-link/model.ts`'s), each request at its turn on the pace every
@@ -1258,8 +1263,9 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   adds a timer, changes when a listener asks (the record subscription's
   check that the revision moved, the link subscription's test for a new
   pairing, for the link freeing up after a run it turned away, or for home's
-  busy ending after a run home turned away, each read from the lane's runs
-  as they end and asked once), removes or
+  busy or the hold away from home ending after a run home turned away or
+  that found no answer, each read from the lane's runs as they end and asked
+  once), removes or
   changes anything the cleanup `watchKept` returns undoes, or removes
   `mayAsk`'s check that the phone is paired or that the document is
   visible; a hunk that calls `pullKept` from anywhere but `homeRefresher`,
@@ -1870,8 +1876,12 @@ say is that no other path opens it:
   `choose` while open) and a `ping` every `PING_MS`; it drops the offer on
   every close, on `QUIET_MS` with nothing from home or `OPEN_MS` with no
   socket open, ignores an offer numbered no later than the last and every
-  event from an earlier opening; it tries again only after a close that
-  leaves it `away`, after `retryDelayMs`, or at once after a `4400` that
+  event from an earlier opening; it asks for no socket while the home link
+  holds the phone away from home (`held`, AW1, `lib/home-link/away.ts`), and
+  tells the link (`reached`) when a socket opens and when one made never
+  opened; it tries again only after a close that leaves it `away`: after
+  `retryDelayMs` when the socket had opened, or, when it never opened, once
+  the link's hold ends (`home`), or at once after a `4400` that
   followed a hello with a `lastSeq` (with the `lastSeq` forgotten), and
   after `update` or `unpaired` not until the pairing changes, the app comes
   back to the front or Game day is opened again; `liveFeed` (`live.ts`) opens, sends and arms timers only as
@@ -1880,8 +1890,9 @@ say is that no other path opens it:
 - _Falsified by:_ a hunk to `lib/home-link/live-machine.ts` that returns a
   `read-pairing` effect from anything but `connect`, or calls `connect` from
   anything but `watch`, the shown branch of `visibility`, `relinked` (on a
-  changed pairing), the `retry` timer or the 4400 rule; that weakens
-  `connect`'s guard; that returns a `hello` or `ping` effect from anywhere but
+  changed pairing), the `retry` timer, the 4400 rule or `home` (the link's
+  hold ending); that weakens `connect`'s guard, its `held` check included;
+  that arms the `retry` timer after a socket that never opened; that returns a `hello` or `ping` effect from anywhere but
   `hello`, `opened` and the `ping` timer; that keeps `offer` across `end`,
   removes the `seq` check in `heard` or the `stale` check in `step`, or
   removes or lengthens the quiet timer or the opening one (`OPEN_MS`); that retries after a close
@@ -1890,7 +1901,8 @@ say is that no other path opens it:
   `retryDelayMs` (`live-model.ts`) to retry sooner or after `update` or
   `unpaired`; a hunk to `lib/home-link/live.ts` that opens a socket, sends on
   it or arms a timer other than in `run` for the matching effect, or drops
-  `stop`'s `unwatch` or its unsubscribes; a hunk to `live-socket.ts` that
+  `stop`'s `unwatch` or its unsubscribes, or feeds `home` other than from
+  the link's own hold (`gameDayFeed`'s `held`); a hunk to `live-socket.ts` that
   removes the `wss:` check, sends the token anywhere but the offered
   subprotocols, or reports a close it asked for; a hunk to
   `routes/_dashboard/_apk/game-week.tsx` that calls `gameDayFeed` outside
@@ -1906,15 +1918,16 @@ say is that no other path opens it:
   new event or effect opens the socket at a moment the person is not on Game
   day is a reading of intent no test or lint can make. Held when declared, by
   reading every call: `connect` from `watch`, `visibility`, `relinked`, the
-  `retry` timer and `closed`'s 4400 rule; `hello` effects only from `hello`
+  `retry` timer, `closed`'s 4400 rule and `home` (amended for AW1, #2928); `hello` effects only from `hello`
   (called by `choose` and `opened`); `ping` effects only from `opened` and the
   `ping` timer; `socket.send` and `ports.open` only in `run`; `gameDayFeed`
   only in `gameWeekPorts`'s non-`DEV` branch. One limit, stated rather
   than held: home refuses a revoked session's upgrade with a 401 or 403,
   which a page sees only as close 1006, so a phone that still holds a
-  pairing home has ended reads it as `away` and keeps trying (at most every
-  30 s, and only while Game day shows) until the pairing changes; `4401`
-  reaches it only on a socket already open.
+  pairing home has ended reads it as `away` and keeps trying (one try each
+  of the link's holds, 30 s doubling to 10 minutes, and only while Game day
+  shows) until the pairing changes; `4401` reaches it only on a socket
+  already open.
 
 ## Not covered, on purpose
 

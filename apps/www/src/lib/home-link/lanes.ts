@@ -229,6 +229,10 @@ export function laneReading(
       paired: isPaired,
       run,
       serves,
+      away:
+        state.away === null
+          ? null
+          : { since: state.away.since, now: LINK_CLOCK.now() },
     }),
     sendNow: offersSendNow(run, counts, isPaired),
   }

@@ -41,19 +41,21 @@ export function pullKept(home: Kept, doc: Front): Promise<KeptRun | null> {
 
 /**
  * Who turned `run` away, if anyone: the link, busy with another run, or
- * home being busy (AD3), which the link also answers for while it waits.
+ * home being busy (AD3) or out of reach (AW1), which the link also answers
+ * for while it waits.
  */
 function turnedAwayBy(run: KeptRun | null): "link" | "home" | null {
   if (run?.kind === "busy") return "link"
+  if (run?.kind === "unreachable") return "home"
   return run?.kind === "failed" && run.why === "busy" ? "home" : null
 }
 
 /**
  * Asks once now; when the record changes on this phone, the app comes back to
  * the foreground, the network comes back, the phone is paired, or the link
- * opens again after turning a run away (it frees up, or home's busy ends:
- * one ask however many moments came while it waited, AD3); until the
- * returned unsubscribe is called.
+ * opens again after turning a run away (it frees up, home's busy ends, or
+ * the hold away from home ends: one ask however many moments came while it
+ * waited, AD3, AW1); until the returned unsubscribe is called.
  */
 export function watchKept(
   record: KeptRecord,
@@ -88,7 +90,7 @@ export function watchKept(
     const nowOpen = linkOpen(state, LINK_CLOCK.now())
     // Turned away by another run: asked once that run ends, even while home
     // is busy, when the run only says so (it sends nothing). Turned away by
-    // home: asked once home's busy ends, and not before.
+    // home: asked once home's busy or the hold away ends, and not before.
     const again =
       (owed === "link" && nowIdle && !idle) ||
       (owed !== null && nowOpen && !open)
