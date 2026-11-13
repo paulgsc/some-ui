@@ -54,7 +54,7 @@ describe("the corpus", () => {
           "**L3 (retired): gone.**",
         ].join("\n"),
       },
-      { path: "other.md", text: "**RS1: a second declaration.**\n" },
+      { path: "other.md", text: "> **RS1: a second declaration.**\n" },
     ]
     const found = invariantsOf(docs)
     expect(found.map((i) => [i.id, i.path, i.title])).toEqual([
@@ -70,6 +70,26 @@ describe("the corpus", () => {
     )
     expect(found[1]?.text).toBe(
       "**RS2 (not reviewable): nothing else writes it.**\n- _Claim:_ nothing else."
+    )
+  })
+
+  it("reads a claim that wraps, and prefers a declaration to a quoted copy", () => {
+    const found = invariantsOf([
+      {
+        path: "CLAUDE.md",
+        text: "> **L3: An exemption names\n> what ends it.**\n>\n> - quoted",
+      },
+      {
+        path: "docs/x.md",
+        text: "**L3: An exemption names\nwhat ends it.**\n\n- the real one\n\n**MB4 (not reviewable): No payment.** It is account state.",
+      },
+    ])
+    expect(found.map((i) => [i.id, i.path, i.title])).toEqual([
+      ["L3", "docs/x.md", "L3: An exemption names what ends it."],
+      ["MB4", "docs/x.md", "MB4: No payment."],
+    ])
+    expect(found[0]?.text).toBe(
+      "**L3: An exemption names\nwhat ends it.**\n\n- the real one"
     )
   })
 

@@ -19,8 +19,8 @@
  * What the file never holds, by design:
  *
  * - **A real employer's name.** The interview is faux (owner, 2026-11-13).
- *   The routine's `finish` checks every text against the employers it knows
- *   (`lib/monday/employers.ts`).
+ *   The routine's `finish` checks the week's texts against the employers it
+ *   knows, as written (`lib/monday/employers.ts`, C279).
  * - **A model answer or a score.** Model answers are written after the
  *   deadline, in the essay (IW6). Every object is strict, so a field like
  *   `answer` is refused rather than ignored.

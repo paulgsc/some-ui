@@ -2286,7 +2286,7 @@
         "packages/ui/interview-week/src/lib/monday/bundle.ts",
         "packages/ui/interview-week/src/lib/monday/finish.ts"
       ],
-      "chose": "A week asks five questions, one from each family, each family's variants rotated least recently asked first (targets: about yourself 90 s, a time you… 120 s, why this role 60 s, strengths and weaknesses 90 s, a decision 120 s), and carries three cards, one each from an epic with a Why, a doc under docs/ and a declared invariant, topped up from any kind when one has none. Each card gets its own situation from a closed list of four, rotated the same way. A card's target is its script's words at 150 a minute, held to 150 to 300 words and at most 30 words a line.",
+      "chose": "A week asks five questions, one from each family, each family's variants rotated least recently asked first (targets: about yourself 90 s, a time you… 120 s, why this role 60 s, strengths and weaknesses 90 s, a decision 120 s), with four while the calls record holds no call, and carries three cards, one each from an epic with a Why, a doc under docs/ and a declared invariant, topped up from any kind when one has none. Each card gets its own situation from a closed list of four, rotated the same way. A card's target is its script's words at 150 a minute, held to 150 to 300 words and at most 30 words a line.",
       "options": [
         "(a) one question per family and one card per kind, every week",
         "(b) a varying subset of families each week",

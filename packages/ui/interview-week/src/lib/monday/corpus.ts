@@ -70,12 +70,11 @@ const cut = (text: string): string =>
   text.length > MATERIAL_MOST ? `${text.slice(0, MATERIAL_MOST)}…` : text
 
 /**
- * A declaration's first line (CLAUDE.md, "Gray-area invariants"): `**<ID>:`,
- * or `**<ID> (not reviewable):`, in a blockquote or not. A retired one is
- * left out: it no longer holds.
+ * A declaration's head (CLAUDE.md, "Gray-area invariants"): `**<ID>:`, or
+ * `**<ID> (not reviewable):`, in a blockquote or not. Its bold claim may wrap
+ * onto the lines after it. A retired one is left out: it no longer holds.
  */
-const DECLARATION =
-  /^(?:>\s*)?\*\*([A-Z][A-Z0-9]*\d+)(?: \(([^)]*)\))?: (.+?)\*\*\s*$/
+const HEAD = /^(>\s*)?\*\*([A-Z][A-Z0-9]*\d+)(?: \(([^)]*)\))?: /
 
 /** A line that ends a declaration's block: a heading, or the next declaration. */
 const ENDS = /^(?:>\s*)?(?:#{1,6} |\*\*[A-Z][A-Z0-9]*\d+(?: \([^)]*\))?: )/
@@ -85,36 +84,49 @@ export type Invariant = Material & {
   readonly path: string
 }
 
+const unquote = (line: string): string => line.replace(/^>\s?/, "")
+
 /**
  * Every invariant `docs` declare, by its ID, with the declaration's block as
- * its text. An ID declared twice is the policy check's to refuse, so the
- * first is kept.
+ * its text. A declaration outside a blockquote wins over one inside: a
+ * quoted one is a copy, as CLAUDE.md quotes L3 from GOOD_CITIZEN.md. Between
+ * two of a kind the first is kept; an ID declared twice is the policy
+ * check's to refuse.
  */
 export function invariantsOf(docs: ReadonlyArray<Doc>): Array<Invariant> {
-  const found = new Map<string, Invariant>()
+  const found = new Map<string, Invariant & { readonly quoted: boolean }>()
   for (const doc of docs) {
     const lines = doc.text.split("\n")
     lines.forEach((line, i) => {
-      const head = DECLARATION.exec(line)
+      const head = HEAD.exec(line)
       if (head === null) return
-      const [, id = "", note = "", claim = ""] = head
-      if (note === "retired" || found.has(id)) return
+      const [whole, quote, id = "", note = ""] = head
+      const quoted = quote !== undefined
+      const earlier = found.get(id)
+      if (note === "retired" || (earlier && (quoted || !earlier.quoted))) {
+        return
+      }
       const rest = lines.slice(i + 1)
       const end = rest.findIndex((l) => ENDS.test(l))
-      const block = [line, ...(end === -1 ? rest : rest.slice(0, end))]
-        .map((l) => l.replace(/^>\s?/, ""))
-        .join("\n")
-        .trim()
+      const block = [line, ...(end === -1 ? rest : rest.slice(0, end))].map(
+        unquote
+      )
+      // The claim runs from the head to the closing `**`, across lines.
+      const claim = /^(.*?)\*\*/s.exec(
+        `${line.slice(whole.length)}\n${block.slice(1).join("\n")}`
+      )?.[1]
+      if (claim === undefined) return
       found.set(id, {
         key: `invariant:${id}`,
         id,
         path: doc.path,
-        title: `${id}: ${claim}`,
-        text: cut(block),
+        title: `${id}: ${claim.replace(/\s+/g, " ").trim()}`,
+        text: cut(block.join("\n").trim()),
+        quoted,
       })
     })
   }
-  return [...found.values()]
+  return [...found.values()].map(({ quoted: _, ...invariant }) => invariant)
 }
 
 /** A doc's title: its first `# ` heading, or its path. */

@@ -37,7 +37,9 @@ export const READ_WORDS_PER_MINUTE = 150
 
 /**
  * Where a read like a card's is given, a closed list rotated over the weeks.
- * The cue the owner reads after, so a script is written for one place.
+ * The cue the owner reads after, so a script is written for one place. A
+ * week keeps the text, not the key, so rewording one starts its rotation
+ * over: add a situation rather than reword one.
  */
 export const SITUATIONS: Readonly<Record<string, string>> = {
   "demo-opening":

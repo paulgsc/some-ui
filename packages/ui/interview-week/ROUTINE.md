@@ -2,8 +2,9 @@
 
 A scheduled cloud session runs this every Monday (IW4, #2935). It writes the
 week of mock interview that opens that day (`some-ui.interview-week/1`): an
-invented company and role, five questions to answer by voice, and three
-teleprompter cards to read. The essay on the week that ended comes later
+invented company and role, five questions to answer by voice (four while
+`docs/calls.json` holds no call to ask about), and three teleprompter cards
+to read. The essay on the week that ended comes later
 (IW6, #2937).
 
 This is a routine of its own, apart from Rust Rounds' `pnpm monday` (C277).
@@ -41,7 +42,7 @@ folder outside the checkout as `<run>`.
    the epics that moved in the last week, each with its "Why".
 3. **Prepare:** `pnpm monday prepare --from <run>`. It writes
    `<run>/bundle.json` and prints what it chose. The bundle's `next` is
-   `null` when the mailbox already holds this week. Then write
+   `null` when the mailbox already holds this week. Only in that case, write
    `{"schema":"some-ui.interview-monday-values/1","week":null}` and go to
    step 5.
 4. **Write `<run>/values.json`** from the bundle alone, as "What you write"
