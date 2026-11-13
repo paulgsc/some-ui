@@ -314,6 +314,8 @@ const RECEIPT_PARTS: Readonly<Record<string, string>> = {
   "mailbox copy": "a copy of its words in the Jobs mailbox",
   "drive copy": "its copy in Drive",
   idea: "the idea it answered",
+  // Its moves along Studio's conveyor (CONVEYOR1, paulgsc/server#839).
+  "conveyor history": "each move it made along the conveyor",
 }
 
 /** A receipt's list of what went or stayed, as a sentence: `the recording and home's words for it`. */

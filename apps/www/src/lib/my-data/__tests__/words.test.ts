@@ -152,6 +152,7 @@ describe("My data's words", () => {
         .map(receiptsLine)
         .filter((line): line is string => line !== null),
       receiptParts(["recording", "words", "set-aside mark"]),
+      receiptParts(["recording", "conveyor history"]),
       receiptParts(["mailbox copy", "drive copy", "a newer part"]),
       receiptParts([]),
       receiptKind("studio"),
@@ -163,7 +164,9 @@ describe("My data's words", () => {
     expect(said.filter((text) => MACHINERY.test(text))).toEqual([])
     // Home's fixed words never reach the screen as they are.
     expect(
-      said.filter((text) => /set-aside mark|mailbox copy|drive copy/.test(text))
+      said.filter((text) =>
+        /set-aside mark|mailbox copy|drive copy|conveyor history/.test(text)
+      )
     ).toEqual([])
   })
 
@@ -189,6 +192,15 @@ describe("My data's words", () => {
   it("say what went and stayed as a sentence", () => {
     expect(receiptParts(["recording", "words"])).toBe(
       "The recording and home's words for it"
+    )
+    expect(receiptParts(["recording", "conveyor history"])).toBe(
+      "The recording and each move it made along the conveyor"
+    )
+    // The whole receipt home sends for a take heard, let go and moved.
+    expect(
+      receiptParts(["recording", "words", "set-aside mark", "conveyor history"])
+    ).toBe(
+      "The recording, home's words for it, its Let go mark and each move it made along the conveyor"
     )
     expect(receiptParts([])).toBe("Nothing else")
   })
