@@ -33,6 +33,7 @@ import {
 } from "@leetype/lib/leetype/session-log"
 import type { SessionFile } from "@leetype/types/session-file"
 import { assertNever, cn } from "@some-ui/core-utils"
+import { engage } from "@some-ui/engagement"
 import { Button, Notice } from "@some-ui/shared"
 
 type IncidentSessionProps = {
@@ -78,6 +79,7 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
         visibility: ports?.visibility ?? pageVisibility,
         ...(ports?.takes === undefined ? {} : { takes: ports.takes }),
         ...(ports?.after === undefined ? {} : { after: ports.after }),
+        engage: ports?.engage ?? engage,
       }),
     }
   })
