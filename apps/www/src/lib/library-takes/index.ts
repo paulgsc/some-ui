@@ -31,7 +31,7 @@ const MAX_MS = 180_000
  * and a take leaves only once home holds it, so a phone away from home
  * that long is told it is full rather than losing one.
  */
-const MAX = 40
+export const LIBRARY_TAKES_MAX = 40
 
 /** What every take here answers: no scene, no idea, the library itself. */
 const LIBRARY_LINE = "library"
@@ -41,9 +41,9 @@ const desk = patternDesk({
   screen: "studio.take-library",
   from: "studio",
   dbName: "some-ui.library-takes",
-  limits: { max: MAX, maxMs: MAX_MS },
+  limits: { max: LIBRARY_TAKES_MAX, maxMs: MAX_MS },
   shape: {
-    takes: { per: "many", max: MAX, full: "make-room" },
+    takes: { per: "many", max: LIBRARY_TAKES_MAX, full: "make-room" },
     play: "each",
   },
 })
