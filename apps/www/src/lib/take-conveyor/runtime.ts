@@ -19,7 +19,7 @@ import type {
   MoveRefused,
   StationMove,
   TakeStanding,
-  TakeStation,
+  There,
 } from "./model"
 import {
   homeStationOf,
@@ -52,7 +52,8 @@ export type TakeConveyorPorts = {
 type MoveAnswer =
   | { readonly kind: "held" }
   | { readonly kind: "refused" }
-  | { readonly kind: "stale"; readonly there: TakeStation | null }
+  | { readonly kind: "off" }
+  | { readonly kind: "stale"; readonly there: There | null }
 
 /** What `lib/home-link/take-stations` reads and answers through. */
 export type StationsPort = {

@@ -61,6 +61,8 @@ export type LibraryTake = {
   readonly station?: string | null | undefined
   /** When it was moved there; null for a take never moved. */
   readonly stationAt?: string | null | undefined
+  /** Its newest move number on the conveyor: 0 for none, null on none. */
+  readonly stationSeq?: number | null | undefined
 }
 
 /** How home picked the takes it lists. */

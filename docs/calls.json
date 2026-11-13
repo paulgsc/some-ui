@@ -2157,7 +2157,7 @@
         "apps/www/src/lib/take-conveyor/runtime.ts",
         "apps/www/src/lib/home-link/take-stations.ts"
       ],
-      "chose": "A take is In the oven until someone moves it: nothing is written when it is recorded, and home reads a take with no moves as In the oven. Each move is the phone's own record (kept until home answers, never removed), sent on the voice lane after the set-aside marks and naming where it was made from; a move home answers stale (the take had moved on) is dropped and said on the take's row, not made again from where the take is now.",
+      "chose": "A take is In the oven until someone moves it: nothing is written when it is recorded, and home reads a take with no moves as In the oven. Each move is the phone's own record (kept until home answers, never removed), sent last on the voice lane, naming where it was made from and the take's newest move number it saw (moves are ordered by number, never by a clock); a move home answers stale (the take had moved on) or off the conveyor is dropped, with the later moves made along its chain, and said on the take's row, not made again from where the take is now.",
       "options": [
         "no row at recording; In the oven is what no move means",
         "home writes an In the oven row as each take arrives",

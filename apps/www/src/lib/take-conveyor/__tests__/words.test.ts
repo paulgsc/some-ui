@@ -24,20 +24,29 @@ function everyWord(): Array<string> {
     ...Object.values(means),
     ...Object.values(refused),
     ...TAKE_STATIONS.flatMap((station) => [
-      standing({ station, at: null, going: false, missed: null }),
-      standing({ station, at: AT, going: false, missed: null }),
-      standing({ station, at: AT, going: true, missed: null }),
+      standing({ station, at: null, seq: 0, going: false, missed: null }),
+      standing({ station, at: AT, seq: 0, going: false, missed: null }),
+      standing({ station, at: AT, seq: 0, going: true, missed: null }),
       standing({
         station,
         at: AT,
+        seq: 0,
         going: false,
         missed: { to: station, why: "stale" },
       }),
       standing({
         station,
         at: null,
+        seq: 0,
         going: false,
         missed: { to: station, why: "refused" },
+      }),
+      standing({
+        station,
+        at: null,
+        seq: 0,
+        going: false,
+        missed: { to: station, why: "off" },
       }),
     ]),
   ]
@@ -61,7 +70,7 @@ describe("TAKE_CONVEYOR_WORDS", () => {
 
   it("says since when a take stands where it is, when home hasn't heard, and a move it didn't keep", () => {
     const { standing } = TAKE_CONVEYOR_WORDS
-    const none = { going: false, missed: null }
+    const none = { seq: 0, going: false, missed: null }
     expect(standing({ station: "in-the-oven", at: null, ...none })).toBe(
       "In the oven"
     )
@@ -72,6 +81,7 @@ describe("TAKE_CONVEYOR_WORDS", () => {
       standing({
         station: "ready-for-pickup",
         at: AT,
+        seq: 0,
         going: true,
         missed: null,
       })
@@ -80,6 +90,7 @@ describe("TAKE_CONVEYOR_WORDS", () => {
       standing({
         station: "in-the-oven",
         at: null,
+        seq: 0,
         going: false,
         missed: { to: "ready-for-pickup", why: "stale" },
       })

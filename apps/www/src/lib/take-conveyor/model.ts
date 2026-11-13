@@ -20,11 +20,13 @@
  *   take still stands there; a move made from a station the take has left
  *   (on another device, or by the pickup) is dropped, with where home says
  *   the take is, and said (`stationOf`'s `missed`). A move home didn't keep
- *   takes the phone's later moves of the same take with it, since each was
- *   made from where the one before would have put it.
- * - **A move says where the take is until home says later.** The station
- *   shown is the newer of the phone's latest kept-or-owed move and home's
- *   own word on the take, by when each was made (`stationOf`).
+ *   takes with it the phone's later moves of the take made from where it
+ *   would have put the take; a move made from home's word stays owed.
+ * - **Moves are ordered by number, never by a clock.** A move names the
+ *   take's newest move number it was made from (`seq`); home keeps it only
+ *   while that is still the newest, and the station shown is the phone's
+ *   latest move while it is ahead of home's number, else home's word
+ *   (`stationOf`). A phone's wrong clock changes only the day it shows.
  */
 import { assertNever, isRecord } from "@some-ui/core-utils"
 
@@ -68,23 +70,33 @@ export type StationMove = {
   /** Where the take stood when the owner moved it. */
   readonly from: TakeStation
   readonly to: TakeStation
-  /** When the owner moved it (ISO 8601). */
+  /** When the owner moved it (ISO 8601): said, never used to order moves. */
   readonly at: string
+  /**
+   * The take's newest move number as the owner saw it when moving (0 for a
+   * take never moved): home keeps the move only while that is still the
+   * newest, so moves are ordered by number, never by a clock.
+   */
+  readonly seq: number
   /** The take's labels from now on; null keeps the ones it has. */
   readonly labels: ReadonlyArray<string> | null
   readonly comment: string | null
 }
 
 /**
- * How home answered a move: not yet, kept, refused as it is, or dropped
- * because the take had already left the station it was made from.
+ * How home answered a move: not yet, kept, refused as it is, dropped
+ * because the take had moved on since it was made, or dropped because the
+ * take is off the conveyor (let go, or not one home keeps on it).
  */
-type MoveHome = "owed" | "held" | "refused" | "stale"
+type MoveHome = "owed" | "held" | "refused" | "stale" | "off"
+
+/** Where home said the take was, on a stale move: its station and number. */
+export type There = { readonly station: TakeStation; readonly seq: number }
 
 type KeptMove = StationMove & {
   readonly home: MoveHome
   /** On a stale move: where home said the take was instead, if it said. */
-  readonly there?: TakeStation | undefined
+  readonly there?: There | undefined
 }
 
 /** Every move made on this phone, oldest first. */
@@ -98,38 +110,47 @@ export type ConveyorEvent =
   | { readonly kind: "held"; readonly move: string }
   /** Home will never keep the move as it is. */
   | { readonly kind: "refused"; readonly move: string }
-  /** The take had left the station the move was made from, for `there`. */
+  /** The take is off the conveyor: home keeps no moves of it. */
+  | { readonly kind: "off"; readonly move: string }
+  /** The take had moved on since the move was made, to `there`. */
   | {
       readonly kind: "stale"
       readonly move: string
-      readonly there: TakeStation | null
+      readonly there: There | null
     }
 
 /**
  * How home answered `move`, from owed; a move never goes back to owed. A
- * move home didn't keep makes each later owed move of the same take stale
- * with it: each was made from where the one before would have put it.
+ * move home didn't keep takes with it each later owed move of the same take
+ * made from where it would have put the take (its `to`, and the next move
+ * number), and so on along that chain; any other owed move stays owed.
  */
 function answered(
   state: ConveyorState,
   move: string,
   home: Exclude<MoveHome, "owed">,
-  there: TakeStation | null = null
+  there: There | null = null
 ): ConveyorState {
   const at = state.moves.findIndex(
     (kept) => kept.move === move && kept.home === "owed"
   )
   if (at === -1) return state
-  const { take } = state.moves[at]
-  const unkept = home !== "held"
+  let after = home === "held" ? null : state.moves[at]
   return {
     moves: state.moves.map((kept, index) => {
       if (index === at) {
         return there === null ? { ...kept, home } : { ...kept, home, there }
       }
-      return unkept && index > at && kept.take === take && kept.home === "owed"
-        ? { ...kept, home: "stale" }
-        : kept
+      const chained =
+        after !== null &&
+        index > at &&
+        kept.home === "owed" &&
+        kept.take === after.take &&
+        kept.from === after.to &&
+        kept.seq === after.seq + 1
+      if (!chained) return kept
+      after = kept
+      return { ...kept, home: "stale" }
     }),
   }
 }
@@ -146,7 +167,8 @@ export function stepConveyor(
       return { moves: [...state.moves, { ...event.move, home: "owed" }] }
     }
     case "held":
-    case "refused": {
+    case "refused":
+    case "off": {
       return answered(state, event.move, event.kind)
     }
     case "stale": {
@@ -170,12 +192,15 @@ export type HomeStation = {
   readonly station?: TakeStation | null | undefined
   /** When home's newest move of it was made; null while it has none. */
   readonly stationAt?: string | null | undefined
+  /** Home's newest move number of it: 0 for none, absent before it. */
+  readonly stationSeq?: number | null | undefined
 }
 
 /** What home says of a take, read as stations this phone knows. */
 export const homeStationOf = (take: {
   readonly station?: string | null | undefined
   readonly stationAt?: string | null | undefined
+  readonly stationSeq?: number | null | undefined
 }): HomeStation => ({
   station:
     take.station === null
@@ -184,6 +209,7 @@ export const homeStationOf = (take: {
         ? take.station
         : undefined,
   stationAt: take.stationAt,
+  stationSeq: take.stationSeq,
 })
 
 /** The labels typed, with commas between; none typed keeps the take's. */
@@ -195,29 +221,30 @@ export function labelsOf(typed: string): ReadonlyArray<string> | null {
 /** Why the phone's latest move of a take didn't reach home. */
 type Missed = {
   readonly to: TakeStation
-  readonly why: "refused" | "stale"
+  readonly why: "refused" | "stale" | "off"
 }
 
 /** Where a take stands, and whether home has heard of it yet. */
 export type TakeStanding = {
   readonly station: TakeStation
-  /** When it was moved there; null for a take never moved. */
+  /** When it was moved there; null for a take never moved or not known. */
   readonly at: string | null
+  /** Its newest move number, as the next move names it (0 for none). */
+  readonly seq: number
   /** Moved on this phone, and home hasn't kept that move yet. */
   readonly going: boolean
   /** The phone's latest move of it, which home didn't keep; else null. */
   readonly missed: Missed | null
 }
 
-const later = (a: string, b: string): boolean =>
-  new Date(a).getTime() > new Date(b).getTime()
-
 /**
- * Where take `id` stands: the newer of the phone's latest kept-or-owed move
- * and home's word, unless a move after it went unkept, which says where it
- * found the take (a stale move's `there`), and is itself said (`missed`,
- * the first of those). Null for a take on no conveyor, and for one home
- * says nothing of (a home before the conveyor) that the phone never moved.
+ * Where take `id` stands, by move number, never by a clock. The phone's
+ * latest kept-or-owed move counts while it is ahead of home's newest
+ * (`seq + 1 > stationSeq`); else home's word does. A move after it that
+ * home didn't keep is said (`missed`, the first of them) while home is no
+ * further on than that move found it, and a stale one shows where home said
+ * the take was. Null for a take on no conveyor, and for one home says
+ * nothing of (a home before the conveyor) that the phone never moved.
  */
 export function stationOf(
   id: string,
@@ -226,7 +253,7 @@ export function stationOf(
 ): TakeStanding | null {
   if (home.station === null) return null
   const homeAt = home.stationAt ?? null
-  const newer = (at: string): boolean => homeAt === null || later(at, homeAt)
+  const homeSeq = home.stationSeq ?? 0
   const mine = state.moves.filter((kept) => kept.take === id)
   const lastTaken = mine.reduce(
     (last, kept, index) =>
@@ -234,28 +261,44 @@ export function stationOf(
     -1
   )
   const taken = lastTaken === -1 ? undefined : mine[lastTaken]
-  const unkept = mine.slice(lastTaken + 1).find((kept) => newer(kept.at))
+  // How far home may be and still be the place an unkept move found.
+  const upTo = (kept: KeptMove): number => kept.there?.seq ?? kept.seq
+  const unkept = mine.slice(lastTaken + 1).find((kept) => homeSeq <= upTo(kept))
   const missed: Missed | null =
     unkept === undefined
       ? null
-      : { to: unkept.to, why: unkept.home === "stale" ? "stale" : "refused" }
-  if (unkept?.there !== undefined) {
-    // When home's word is the same station, it says since when.
-    const at = unkept.there === home.station ? homeAt : null
-    return { station: unkept.there, at, going: false, missed }
+      : {
+          to: unkept.to,
+          why:
+            unkept.home === "stale" || unkept.home === "off"
+              ? unkept.home
+              : "refused",
+        }
+  const there = unkept?.there
+  if (there !== undefined) {
+    // When home's word is that station, it says since when.
+    const at =
+      there.station === home.station && there.seq === homeSeq ? homeAt : null
+    return { station: there.station, at, seq: there.seq, going: false, missed }
   }
-  if (taken !== undefined && newer(taken.at)) {
+  if (taken !== undefined && taken.seq + 1 > homeSeq) {
     return {
       station: taken.to,
       at: taken.at,
+      seq: taken.seq + 1,
       going: taken.home === "owed",
       missed,
     }
   }
-  if (home.station === undefined && mine.length === 0) return null
+  // A home before the conveyor, or a station this phone doesn't know yet
+  // (home has moves of it: `stationSeq` past 0), says nothing it can show.
+  if (home.station === undefined && (mine.length === 0 || homeSeq > 0)) {
+    return null
+  }
   return {
     station: home.station ?? FIRST_STATION,
     at: homeAt,
+    seq: homeSeq,
     going: false,
     missed,
   }
@@ -268,6 +311,8 @@ const CONTROL = /\p{Cc}/u
 export type MoveAsked = {
   readonly take: string
   readonly from: TakeStation
+  /** The take's newest move number as the owner saw it (`TakeStanding`). */
+  readonly seq: number
   readonly to: TakeStation
   /** The take's labels from now on; null or absent keeps them. */
   readonly labels?: ReadonlyArray<string> | null
@@ -327,6 +372,7 @@ export function moveOf(
       from: asked.from,
       to: asked.to,
       at,
+      seq: asked.seq,
       labels,
       comment: comment === "" ? null : comment,
     },
@@ -336,7 +382,19 @@ export function moveOf(
 const isStrings = (value: unknown): value is Array<string> =>
   Array.isArray(value) && value.every((item) => typeof item === "string")
 
-const HOMES: ReadonlyArray<MoveHome> = ["owed", "held", "refused", "stale"]
+const HOMES: ReadonlyArray<MoveHome> = [
+  "owed",
+  "held",
+  "refused",
+  "stale",
+  "off",
+]
+
+const isThere = (value: unknown): value is There =>
+  isRecord(value) &&
+  isTakeStation(value.station) &&
+  typeof value.seq === "number" &&
+  Number.isInteger(value.seq)
 
 function isKeptMove(kept: unknown): kept is KeptMove {
   return (
@@ -346,10 +404,12 @@ function isKeptMove(kept: unknown): kept is KeptMove {
     isTakeStation(kept.from) &&
     isTakeStation(kept.to) &&
     typeof kept.at === "string" &&
+    typeof kept.seq === "number" &&
+    Number.isInteger(kept.seq) &&
     (kept.labels === null || isStrings(kept.labels)) &&
     (kept.comment === null || typeof kept.comment === "string") &&
     HOMES.some((home) => home === kept.home) &&
-    (kept.there === undefined || isTakeStation(kept.there))
+    (kept.there === undefined || isThere(kept.there))
   )
 }
 

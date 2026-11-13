@@ -23,24 +23,35 @@ import {
   TAKE_STATIONS,
 } from "@/lib/take-conveyor/model"
 
+/** A move of `take` from `from` (seen at move number `seq`) to `to`. */
 const move = (
   id: string,
+  from: TakeStation,
   to: TakeStation,
-  at: string,
+  seq: number,
   take = "take-1",
-  from: TakeStation = "in-the-oven"
+  at = "2026-11-13T10:00:00Z"
 ): StationMove => ({
   move: id,
   take,
   from,
   to,
   at,
+  seq,
   labels: null,
   comment: null,
 })
 
-const moved = (state: ConveyorState, made: StationMove): ConveyorState =>
-  stepConveyor(state, { kind: "moved", move: made })
+const moved = (
+  state: ConveyorState,
+  ...made: ReadonlyArray<StationMove>
+): ConveyorState =>
+  made.reduce(
+    (next, one) => stepConveyor(next, { kind: "moved", move: one }),
+    state
+  )
+
+const oven = { station: "in-the-oven", stationSeq: 0 } as const
 
 describe("the stations", () => {
   it("start In the oven, and the phone moves only to Cooking, Ready for pickup and Canned", () => {
@@ -52,25 +63,18 @@ describe("the stations", () => {
 
 describe("stepConveyor", () => {
   it("keeps every move, oldest first, owed until home answers", () => {
-    const a = move("m1", "cooking", "2026-11-13T10:00:00Z")
-    const b = move("m2", "ready-for-pickup", "2026-11-13T11:00:00Z")
-    const state = moved(moved(INITIAL_CONVEYOR, a), b)
+    const a = move("m1", "in-the-oven", "cooking", 0)
+    const b = move("m2", "cooking", "ready-for-pickup", 1)
+    const state = moved(INITIAL_CONVEYOR, a, b)
     expect(movesOwed(state)).toEqual([a, b])
     const held = stepConveyor(state, { kind: "held", move: "m1" })
     expect(movesOwed(held)).toEqual([b])
     expect(held.moves).toHaveLength(2)
-    const stale = stepConveyor(held, {
-      kind: "stale",
-      move: "m2",
-      there: null,
-    })
-    expect(movesOwed(stale)).toEqual([])
-    expect(stale.moves).toHaveLength(2)
   })
 
   it("keeps a move made twice once, and never takes back home's answer", () => {
-    const a = move("m1", "cooking", "2026-11-13T10:00:00Z")
-    expect(moved(moved(INITIAL_CONVEYOR, a), a).moves).toHaveLength(1)
+    const a = move("m1", "in-the-oven", "cooking", 0)
+    expect(moved(INITIAL_CONVEYOR, a, a).moves).toHaveLength(1)
     const held = stepConveyor(moved(INITIAL_CONVEYOR, a), {
       kind: "held",
       move: "m1",
@@ -78,17 +82,33 @@ describe("stepConveyor", () => {
     expect(stepConveyor(held, { kind: "refused", move: "m1" })).toBe(held)
     expect(stepConveyor(held, { kind: "held", move: "nope" })).toBe(held)
   })
+
+  it("takes with an unkept move only the later moves made along its chain", () => {
+    const a = move("m1", "in-the-oven", "cooking", 0)
+    const b = move("m2", "cooking", "canned", 1)
+    const c = move("m3", "canned", "ready-for-pickup", 2)
+    const fromHome = move("m4", "canned", "ready-for-pickup", 5)
+    const other = move("m5", "in-the-oven", "canned", 0, "take-2")
+    const state = stepConveyor(
+      moved(INITIAL_CONVEYOR, a, b, c, fromHome, other),
+      { kind: "refused", move: "m1" }
+    )
+    expect(movesOwed(state)).toEqual([fromHome, other])
+  })
 })
 
 describe("stationOf", () => {
-  const home = { station: "cooking" as const, stationAt: "2026-11-13T12:00Z" }
+  const cooking = {
+    station: "cooking",
+    stationAt: "2026-11-13T12:00:00Z",
+    stationSeq: 3,
+  } as const
 
   it("is In the oven for a take nobody moved, and none for a take on no conveyor or from a home before it", () => {
-    expect(
-      stationOf("take-1", { station: "in-the-oven" }, INITIAL_CONVEYOR)
-    ).toEqual({
+    expect(stationOf("take-1", oven, INITIAL_CONVEYOR)).toEqual({
       station: "in-the-oven",
       at: null,
+      seq: 0,
       going: false,
       missed: null,
     })
@@ -96,110 +116,108 @@ describe("stationOf", () => {
     expect(stationOf("take-1", {}, INITIAL_CONVEYOR)).toBeNull()
   })
 
-  it("is home's word when the phone made no later move", () => {
-    const earlier = moved(
+  it("is home's word once home is as far on as the phone's move, whatever the clocks say", () => {
+    // Made at a later hour, but from move 2: home's move 3 is newer.
+    const late = moved(
       INITIAL_CONVEYOR,
-      move("m1", "ready-for-pickup", "2026-11-13T11:00:00Z")
+      move("m1", "cooking", "canned", 2, "take-1", "2030-01-01T00:00:00Z")
     )
-    expect(stationOf("take-1", home, earlier)).toEqual({
+    expect(stationOf("take-1", cooking, late)).toMatchObject({
       station: "cooking",
-      at: home.stationAt,
+      seq: 3,
       going: false,
-      missed: null,
     })
   })
 
-  it("is the phone's later move, going until home keeps it", () => {
-    const later = moved(
+  it("is the phone's move while it is ahead of home's, going until home keeps it", () => {
+    // Made at an earlier hour, but from move 3: it is move 4.
+    const ahead = moved(
       INITIAL_CONVEYOR,
-      move("m1", "ready-for-pickup", "2026-11-13T13:00:00Z")
+      move(
+        "m1",
+        "cooking",
+        "ready-for-pickup",
+        3,
+        "take-1",
+        "1999-01-01T00:00:00Z"
+      )
     )
-    expect(stationOf("take-1", home, later)).toEqual({
+    expect(stationOf("take-1", cooking, ahead)).toEqual({
       station: "ready-for-pickup",
-      at: "2026-11-13T13:00:00Z",
+      at: "1999-01-01T00:00:00Z",
+      seq: 4,
       going: true,
       missed: null,
     })
-    const held = stepConveyor(later, { kind: "held", move: "m1" })
-    expect(stationOf("take-1", home, held)?.going).toBe(false)
+    const held = stepConveyor(ahead, { kind: "held", move: "m1" })
+    expect(stationOf("take-1", cooking, held)?.going).toBe(false)
   })
 
-  it("shows home's word with the move home didn't keep, until a later word", () => {
-    const state = stepConveyor(
-      moved(
-        moved(
-          INITIAL_CONVEYOR,
-          move("m0", "canned", "2026-11-13T13:00Z", "another")
-        ),
-        move("m1", "ready-for-pickup", "2026-11-13T13:00:00Z")
-      ),
-      { kind: "stale", move: "m1", there: null }
+  it("says the first move home didn't keep, until home moves on past it", () => {
+    const refused = stepConveyor(
+      moved(INITIAL_CONVEYOR, move("m1", "cooking", "canned", 3)),
+      { kind: "refused", move: "m1" }
     )
-    expect(stationOf("take-1", home, state)).toEqual({
+    expect(stationOf("take-1", cooking, refused)).toMatchObject({
       station: "cooking",
-      at: home.stationAt,
-      going: false,
-      missed: { to: "ready-for-pickup", why: "stale" },
+      missed: { to: "canned", why: "refused" },
     })
+    expect(
+      stationOf("take-1", { ...cooking, stationSeq: 4 }, refused)?.missed
+    ).toBeNull()
+  })
+
+  it("shows where home said a stale move found the take, and since when if home says so", () => {
+    const stale = stepConveyor(
+      moved(INITIAL_CONVEYOR, move("m1", "in-the-oven", "cooking", 0)),
+      { kind: "stale", move: "m1", there: { station: "cooking", seq: 3 } }
+    )
+    expect(stationOf("take-1", oven, stale)).toEqual({
+      station: "cooking",
+      at: null,
+      seq: 3,
+      going: false,
+      missed: { to: "cooking", why: "stale" },
+    })
+    expect(stationOf("take-1", cooking, stale)?.at).toBe(cooking.stationAt)
+    // Home moved on again since: its word, and nothing missed.
+    expect(
+      stationOf("take-1", { station: "canned", stationSeq: 4 }, stale)
+    ).toMatchObject({ station: "canned", missed: null })
+  })
+
+  it("says a move dropped as off the conveyor", () => {
+    const off = stepConveyor(
+      moved(INITIAL_CONVEYOR, move("m1", "in-the-oven", "cooking", 0)),
+      { kind: "off", move: "m1" }
+    )
+    expect(stationOf("take-1", oven, off)?.missed).toEqual({
+      to: "cooking",
+      why: "off",
+    })
+  })
+
+  it("shows the phone's move from a home before the conveyor, and nothing for a station it doesn't know", () => {
+    const state = moved(
+      INITIAL_CONVEYOR,
+      move("m1", "in-the-oven", "cooking", 0)
+    )
+    expect(stationOf("take-1", {}, state)?.station).toBe("cooking")
     expect(
       stationOf(
         "take-1",
-        { station: "canned", stationAt: "2026-11-13T14:00Z" },
+        { stationAt: "2026-11-13T12:00:00Z", stationSeq: 4 },
         state
-      )?.missed
+      )
     ).toBeNull()
   })
 })
 
-describe("a move home didn't keep (review of #2944)", () => {
-  it("takes the phone's later moves of the same take with it, and says the first", () => {
-    const a = move("m1", "cooking", "2026-11-13T10:00:00Z")
-    const b = move("m2", "canned", "2026-11-13T10:05:00Z", "take-1", "cooking")
-    const other = move("m3", "canned", "2026-11-13T10:06:00Z", "take-2")
-    const state = stepConveyor(
-      moved(moved(moved(INITIAL_CONVEYOR, a), b), other),
-      { kind: "refused", move: "m1" }
-    )
-    expect(movesOwed(state)).toEqual([other])
-    expect(stationOf("take-1", { station: "in-the-oven" }, state)).toEqual({
-      station: "in-the-oven",
-      at: null,
-      going: false,
-      missed: { to: "cooking", why: "refused" },
-    })
-  })
-
-  it("shows where home said a stale move found the take", () => {
-    const state = stepConveyor(
-      moved(
-        INITIAL_CONVEYOR,
-        move("m1", "ready-for-pickup", "2026-11-13T10:00:00Z")
-      ),
-      { kind: "stale", move: "m1", there: "canned" }
-    )
-    expect(stationOf("take-1", { station: "in-the-oven" }, state)).toEqual({
-      station: "canned",
-      at: null,
-      going: false,
-      missed: { to: "ready-for-pickup", why: "stale" },
-    })
-  })
-
-  it("shows the phone's move from a home before the conveyor, which says nothing", () => {
-    const state = moved(
-      INITIAL_CONVEYOR,
-      move("m1", "cooking", "2026-11-13T10:00:00Z")
-    )
-    expect(stationOf("take-1", {}, state)?.station).toBe("cooking")
-  })
-})
-
 describe("homeStationOf", () => {
-  it("reads home's station, none for an idea's answer, and drops one it doesn't know", () => {
-    expect(homeStationOf({ station: "canned", stationAt: "x" })).toEqual({
-      station: "canned",
-      stationAt: "x",
-    })
+  it("reads home's station and number, none for an idea's answer, and drops one it doesn't know", () => {
+    expect(
+      homeStationOf({ station: "canned", stationAt: "x", stationSeq: 2 })
+    ).toEqual({ station: "canned", stationAt: "x", stationSeq: 2 })
     expect(homeStationOf({ station: null }).station).toBeNull()
     expect(homeStationOf({ station: "elsewhere" }).station).toBeUndefined()
     expect(homeStationOf({}).station).toBeUndefined()
@@ -217,12 +235,13 @@ describe("labelsOf", () => {
 describe("moveOf", () => {
   const at = "2026-11-13T10:00:00.000Z"
 
-  it("makes the move asked, trimming what rides along", () => {
+  it("makes the move asked from the move number seen, trimming what rides along", () => {
     expect(
       moveOf(
         {
           take: "t",
           from: "in-the-oven",
+          seq: 0,
           to: "cooking",
           labels: [" like it ", "", "like it", "rough"],
           comment: "  ",
@@ -238,15 +257,19 @@ describe("moveOf", () => {
         from: "in-the-oven",
         to: "cooking",
         at,
+        seq: 0,
         labels: ["like it", "rough"],
         comment: null,
       },
     })
-    const kept = moveOf({ take: "t", from: "cooking", to: "canned" }, "m", at)
+    const kept = moveOf(
+      { take: "t", from: "cooking", seq: 1, to: "canned" },
+      "m",
+      at
+    )
     expect(kept.kind === "move" && kept.move.labels).toBeNull()
-    // Blank labels keep the take's, as none typed does.
     const blank = moveOf(
-      { take: "t", from: "cooking", to: "canned", labels: [" ", ""] },
+      { take: "t", from: "cooking", seq: 1, to: "canned", labels: [" ", ""] },
       "m",
       at
     )
@@ -258,12 +281,12 @@ describe("moveOf", () => {
       const made = moveOf(asked, "m", at)
       return made.kind === "refused" ? made.why : null
     }
-    const base = { take: "t", from: "cooking" } as const
+    const base = { take: "t", from: "cooking", seq: 1 } as const
     expect(why({ ...base, to: "cooking" })).toBe("here")
     expect(why({ ...base, to: "picked-up" })).toBe("pickup")
-    expect(why({ take: "t", from: "picked-up", to: "canned" })).toBe("final")
+    expect(why({ ...base, from: "picked-up", to: "canned" })).toBe("final")
     expect(why({ ...base, to: "in-the-oven" })).toBe("oven")
-    expect(why({ take: "t", from: "canned", to: "cooking" })).toBeNull()
+    expect(why({ ...base, from: "canned", to: "cooking" })).toBeNull()
     expect(
       why({
         ...base,
@@ -280,7 +303,7 @@ describe("moveOf", () => {
     expect(
       why({ ...base, to: "canned", comment: "x".repeat(COMMENT_CHARS) })
     ).toBeNull()
-    // Home keeps no control character (a line break) in either.
+    // Home keeps no control character (a tab or a line break) in either.
     expect(why({ ...base, to: "canned", comment: "two\nlines" })).toBe(
       "comment"
     )
@@ -289,15 +312,18 @@ describe("moveOf", () => {
 })
 
 describe("parseConveyor", () => {
-  it("reads back what it keeps, and nothing else", () => {
-    const state = moved(
-      INITIAL_CONVEYOR,
-      move("m1", "cooking", "2026-11-13T10:00:00Z")
+  it("reads back what it keeps, a stale move's place included, and nothing else", () => {
+    const state = stepConveyor(
+      moved(INITIAL_CONVEYOR, move("m1", "in-the-oven", "cooking", 0)),
+      { kind: "stale", move: "m1", there: { station: "canned", seq: 2 } }
     )
     expect(parseConveyor(JSON.parse(JSON.stringify(state)))).toEqual(state)
     expect(parseConveyor({ moves: [{ move: "m1" }] })).toBeNull()
     expect(
-      parseConveyor({ moves: [{ ...state.moves[0], to: "oven" }] })
+      parseConveyor({ moves: [{ ...state.moves[0], seq: "1" }] })
+    ).toBeNull()
+    expect(
+      parseConveyor({ moves: [{ ...state.moves[0], there: "canned" }] })
     ).toBeNull()
     expect(parseConveyor(null)).toBeNull()
   })

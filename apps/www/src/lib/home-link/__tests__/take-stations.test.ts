@@ -40,6 +40,7 @@ function conveyorWith(takes: ReadonlyArray<string>): TakeConveyor {
     conveyor.move({
       take,
       from: "in-the-oven",
+      seq: 0,
       to: "cooking",
       labels: ["keep"],
     })
@@ -86,6 +87,7 @@ describe("a move of a take, to home (CONVEYOR1)", () => {
     from: "cooking",
     to: "ready-for-pickup",
     at: AT,
+    seq: 1,
     labels: ["like it"],
     comment: null,
   }
@@ -96,6 +98,7 @@ describe("a move of a take, to home (CONVEYOR1)", () => {
       from: "cooking",
       to: "ready-for-pickup",
       at: AT,
+      seq: 1,
       labels: ["like it"],
     })
     expect(
@@ -104,6 +107,7 @@ describe("a move of a take, to home (CONVEYOR1)", () => {
       from: "cooking",
       to: "ready-for-pickup",
       at: AT,
+      seq: 1,
       comment: "for week 9",
     })
   })
@@ -119,9 +123,9 @@ describe("a move of a take, to home (CONVEYOR1)", () => {
       ["POST", "/voice-notes/t2/station"],
     ])
     expect(conveyor.port.due()).toEqual([])
-    expect(conveyor.standing("t1", { station: "in-the-oven" })?.going).toBe(
-      false
-    )
+    expect(
+      conveyor.standing("t1", { station: "in-the-oven", stationSeq: 0 })?.going
+    ).toBe(false)
   })
 
   it("counts a move home already holds (unchanged) as kept", async () => {
@@ -152,13 +156,13 @@ describe("a move of a take, to home (CONVEYOR1)", () => {
     await sendStationMoves(
       conveyor.port,
       home({ t1: 409 }, sent, {
-        t1: { id: "t1", station: "canned", labels: [], history: [] },
+        t1: { id: "t1", station: "canned", seq: 2, labels: [], history: [] },
       })
     )
     expect(sent.map(([method]) => method)).toEqual(["POST", "GET"])
     expect(conveyor.port.due()).toEqual([])
     expect(
-      conveyor.standing("t1", { station: "in-the-oven", stationAt: null })
+      conveyor.standing("t1", { station: "in-the-oven", stationSeq: 0 })
     ).toMatchObject({
       station: "canned",
       missed: { to: "cooking", why: "stale" },
@@ -192,7 +196,12 @@ describe("a move of a take, to home (CONVEYOR1)", () => {
   it("sends no later move of a take whose earlier one went stale, or stays owed", async () => {
     const twice = (): TakeConveyor => {
       const conveyor = conveyorWith(["t1"])
-      conveyor.move({ take: "t1", from: "cooking", to: "ready-for-pickup" })
+      conveyor.move({
+        take: "t1",
+        from: "cooking",
+        seq: 1,
+        to: "ready-for-pickup",
+      })
       return conveyor
     }
     const stale = twice()
@@ -200,12 +209,14 @@ describe("a move of a take, to home (CONVEYOR1)", () => {
     await sendStationMoves(
       stale.port,
       home({ t1: 409 }, sent, {
-        t1: { id: "t1", station: "cooking", labels: [], history: [] },
+        t1: { id: "t1", station: "cooking", seq: 1, labels: [], history: [] },
       })
     )
     expect(sent.map(([method]) => method)).toEqual(["POST", "GET"])
     expect(stale.port.due()).toEqual([])
-    expect(stale.standing("t1", { station: "cooking" })?.missed).toEqual({
+    expect(
+      stale.standing("t1", { station: "cooking", stationSeq: 1 })?.missed
+    ).toEqual({
       to: "cooking",
       why: "stale",
     })
@@ -225,6 +236,7 @@ describe("a move of a take, to home (CONVEYOR1)", () => {
         t1: {
           id: "t1",
           station: "canned",
+          seq: 2,
           labels: [],
           history: [
             {
@@ -244,17 +256,84 @@ describe("a move of a take, to home (CONVEYOR1)", () => {
       })
     )
     expect(conveyor.port.due()).toEqual([])
-    expect(conveyor.standing("t1", { station: "canned" })?.missed).toBeNull()
+    expect(
+      conveyor.standing("t1", { station: "canned", stationSeq: 2 })?.missed
+    ).toBeNull()
   })
 
   it("answers a move home refuses for good, and the take shows where it was", async () => {
     const conveyor = conveyorWith(["t1"])
     await sendStationMoves(conveyor.port, home({ t1: 422 }, []))
     expect(conveyor.port.due()).toEqual([])
-    expect(conveyor.standing("t1", { station: "in-the-oven" })).toMatchObject({
+    expect(
+      conveyor.standing("t1", { station: "in-the-oven", stationSeq: 0 })
+    ).toMatchObject({
       station: "in-the-oven",
       missed: { to: "cooking", why: "refused" },
     })
+  })
+
+  it("drops a move of a take home keeps off the conveyor (its own 404), and keeps one a home without the route can't take", async () => {
+    const off = conveyorWith(["t1"])
+    const notHeld: HomeCall = () =>
+      Promise.resolve({
+        status: 404,
+        body: JSON.stringify({ error: { code: "not_found" } }),
+      })
+    await sendStationMoves(off.port, notHeld)
+    expect(off.port.due()).toEqual([])
+    expect(
+      off.standing("t1", { station: "in-the-oven", stationSeq: 0 })?.missed
+    ).toEqual({ to: "cooking", why: "off" })
+
+    const older = conveyorWith(["t1"])
+    await sendStationMoves(older.port, home({ t1: 404 }, []))
+    expect(older.port.due()).toHaveLength(1)
+  })
+
+  it("still sends a later move made from home's word after an earlier one went stale", async () => {
+    const conveyor = conveyorWith(["t1"])
+    conveyor.move({
+      take: "t1",
+      from: "canned",
+      seq: 2,
+      to: "ready-for-pickup",
+    })
+    const sent: Sent = []
+    let posts = 0
+    const call: HomeCall = (method, path, body) => {
+      sent.push([method, path, body])
+      if (method === "GET") {
+        return Promise.resolve({
+          status: 200,
+          body: JSON.stringify({
+            id: "t1",
+            station: "canned",
+            seq: 2,
+            labels: [],
+            history: [],
+          }),
+        })
+      }
+      posts += 1
+      return Promise.resolve(
+        posts === 1
+          ? { status: 409, body: "{}" }
+          : {
+              status: 200,
+              body: JSON.stringify({
+                change: "moved",
+                take: { id: "t1", station: "ready-for-pickup", seq: 3 },
+              }),
+            }
+      )
+    }
+    await sendStationMoves(conveyor.port, call)
+    expect(sent.map(([method]) => method)).toEqual(["POST", "GET", "POST"])
+    expect(conveyor.port.due()).toEqual([])
+    expect(
+      conveyor.standing("t1", { station: "canned", stationSeq: 2 })
+    ).toMatchObject({ station: "ready-for-pickup", going: false })
   })
 
   it("ends the run on a 401, and on an answer it can't read, the move still owed", async () => {

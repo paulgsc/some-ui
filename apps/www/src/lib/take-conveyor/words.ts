@@ -4,7 +4,7 @@
  * heard of a move yet, never the machinery. The stations are the owner's
  * pizza names (ask #2876). `__tests__/words.test.ts` holds both.
  */
-import { dayOf, formatDay } from "@some-ui/core-utils"
+import { assertNever, dayOf, formatDay } from "@some-ui/core-utils"
 
 import type { MoveRefused, TakeStanding, TakeStation } from "./model"
 import { COMMENT_CHARS, LABEL_CHARS, LABELS_MAX } from "./model"
@@ -44,9 +44,20 @@ export const TAKE_CONVEYOR_WORDS = {
     if (missed === null) return where
     const to = STATIONS[missed.to]
     const said = where.endsWith(".") ? where : `${where}.`
-    return missed.why === "stale"
-      ? `${said} Your move to ${to} wasn't made: it had already moved on.`
-      : `${said} Home didn't take your move to ${to}.`
+    switch (missed.why) {
+      case "stale": {
+        return `${said} Your move to ${to} wasn't made: it had already moved on.`
+      }
+      case "off": {
+        return `${said} Your move to ${to} wasn't made: it's off the conveyor now.`
+      }
+      case "refused": {
+        return `${said} Home didn't take your move to ${to}.`
+      }
+      default: {
+        return assertNever(missed.why)
+      }
+    }
   },
   /** Why a move wasn't made. */
   refused: {

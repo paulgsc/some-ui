@@ -56,7 +56,8 @@
  * Studio's takes on a conveyor (CONVEYOR1, some-ui#2873; `studio_take_move`):
  * the phone moves a take with `POST /voice-notes/:id/station`
  * (`apps/www/src/lib/home-link/take-stations.ts`), which names where the
- * move was made from; home reads a take's station and history with
+ * move was made from and the take's newest move number it saw (`seq`), so
+ * moves are ordered by number, never by a clock; home reads a take's station and history with
  * `GET /voice-notes/:id/station`, and the takes at a station with
  * `GET /voice-notes/conveyor?station=`. Each is any session's (a paired
  * phone's or the owner's browser), so no session is a `401`. No probe may
@@ -65,8 +66,10 @@
  * caller doesn't hold a `404`. A move from a station the take has left is
  * a `409`, and a move kept the `200` `{ change, take }`; neither can be
  * probed without a take, so both are held by the server's own test
- * (`handlers/voice.rs`). `GET /voice-notes/takes` names each take's
- * `station` and `stationAt` too (null for an idea's answer).
+ * (`handlers/voice.rs`). A `404` for a take is home's JSON error, which
+ * the phone reads as the take off the conveyor (let go, or an idea's
+ * answer). `GET /voice-notes/takes` names each take's `station`,
+ * `stationAt` and `stationSeq` too (null for a take off the conveyor).
  *
  * The takes home keeps (`GET /voice-notes/takes`, ST32): Studio's Takes on
  * home asks for the newest as it opens and on Show the newest or a blank
@@ -166,6 +169,7 @@ const ConveyorSchema = z.object({
       ref: z.string(),
       recordedAt: z.string(),
       movedAt: z.string().nullable(),
+      seq: z.number().int(),
       labels: z.array(z.string()),
       issue: z.string().nullable(),
     })
@@ -198,6 +202,7 @@ const TakesSchema = z.object({
         .nullable(),
       station: StationSchema.nullable().optional(),
       stationAt: z.string().nullable().optional(),
+      stationSeq: z.number().int().nullable().optional(),
     })
   ),
   total: z.number().int(),
@@ -463,6 +468,7 @@ export const contracts = [
     request: {
       path: { id: "contract-harness-does-not-exist" },
       body: {
+        seq: 0,
         from: "in-the-oven",
         to: "cooking",
         at: "2026-11-13T09:15:00.000Z",
@@ -482,6 +488,7 @@ export const contracts = [
     request: {
       path: { id: "contract-harness-does-not-exist" },
       body: {
+        seq: 0,
         from: "cooking",
         to: "in-the-oven",
         at: "2026-11-13T09:15:00.000Z",

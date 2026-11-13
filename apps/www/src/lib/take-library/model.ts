@@ -35,6 +35,13 @@ const TakeSchema = z.object({
     )
     .optional(),
   stationAt: z.string().min(1).nullable().optional().catch(undefined),
+  stationSeq: z
+    .number()
+    .int()
+    .nonnegative()
+    .nullable()
+    .optional()
+    .catch(undefined),
 })
 
 const TakesSchema: z.ZodType<LibraryPage> = z.object({
