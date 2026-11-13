@@ -50,7 +50,7 @@ const KEY = "some-ui:reflections"
 const LEGACY_KEY = "some-ui:session-reflections"
 const SHARED_KEY = "some-ui:reflections-shared"
 /** Shared marks are only a note on a card, so old ones may fall off. */
-const SHARED_LIMIT = 50
+export const SHARED_LIMIT = 50
 
 type SharedMark = { sessionId: string; sharedAt: string }
 
