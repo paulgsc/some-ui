@@ -18,7 +18,10 @@ export type MyDataPorts = {
   readonly askHome: (of: Of | null, note: string | null) => Promise<HomeReading>
   /** This phone's recordings; never rejects (one it can't read is left out). */
   readonly readPhone: () => Promise<PhoneRead>
-  /** Recording `id`'s audio on this phone, or null. */
+  /**
+   * Recording `id`'s audio: this phone's copy, else home's (MD8), or null
+   * when neither came.
+   */
   readonly audioOf: (id: string) => Promise<Blob | null>
   readonly player: Player
 }
@@ -88,15 +91,16 @@ export function createMyData(ports: MyDataPorts): MyData {
     dispatch({ type: "played", id })
     const audio = await ports
       .audioOf(id)
-      // Ignored: audio this phone can't read plays nothing, and its row
-      // offers Play again.
+      // Ignored: audio this phone can't read is missed, which the page
+      // says, and its row offers Play again.
       .catch(() => null)
     if (asked !== ask || state.playing !== id) return
     if (audio === null) {
-      dispatch({ type: "stopped", id })
+      dispatch({ type: "missed", id })
       return
     }
     const started = ports.player.play(audio)
+    dispatch({ type: "started", id })
     const mine = { id, stop: started.stop }
     playback = mine
     await started.ended

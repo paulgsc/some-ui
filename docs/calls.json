@@ -2002,6 +2002,46 @@
       "refs": ["#2074", "#2927", "server#617"]
     },
     {
+      "id": "C230",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "apps/www/src/lib/my-data/words.ts",
+        "apps/www/src/components/settings/device-my-data.tsx"
+      ],
+      "chose": "A row in My data's kind list leads with the first words home heard, in quotes, then 'Recorded 1 Nov at 13:37 · 42 s long', then where it is and its size; a length is in seconds and minutes, never m:ss.",
+      "options": [
+        "words first, then when and how long, then where and size",
+        "when first, words beneath",
+        "keep the one line and add the length to it as m:ss"
+      ],
+      "gray": "The owner read the clock time as a length; m:ss would repeat that, and which line leads is a reading choice no check settles.",
+      "undo": "Reorder the spans in device-my-data.tsx's Item and change itemLine and lengthOf in lib/my-data/words.ts.",
+      "refs": [
+        "#2473"
+      ]
+    },
+    {
+      "id": "C231",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "apps/www/src/lib/my-data/model.ts",
+        "apps/www/src/lib/my-data/index.ts"
+      ],
+      "chose": "A row plays from this phone's copy when it has one, else from home's, asked for on each Play, and only where home says it gives that recording's audio back (playsBack); a row home doesn't play back says 'Its audio stays on home.'",
+      "options": [
+        "Play from home where home says it gives the audio back",
+        "Play from home on every row, saying a refusal after the tap",
+        "Play only what is on this phone"
+      ],
+      "gray": "Which rows offer Play is on the screen, and whether home's policy or the phone decides it is a choice no check settles.",
+      "undo": "Drop playsBack from the kept read and set plays to here or none in kindOf.",
+      "refs": [
+        "#2473"
+      ]
+    },
+    {
       "id": "C232",
       "made": "2026-11-13",
       "by": "claude",

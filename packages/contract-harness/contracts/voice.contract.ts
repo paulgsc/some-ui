@@ -49,7 +49,9 @@
  * `403`. The contract run's paired phone holds no notes, so its `200` is the
  * empty answer, which the harness probes for its shape; an `of` naming no
  * kind is a `422`. Each note says whether My data may delete it
- * (`deletable`, MD3 some-ui#2477).
+ * (`deletable`, MD3 some-ui#2477), and what it is (MD8): how long, once
+ * home heard it (`durationMs`), the first words home heard (`heard`, `heardCut` when it heard more), and
+ * whether home gives its audio back to the phone (`playsBack`).
  *
  * The takes home keeps (`GET /voice-notes/takes`, ST32): Studio's Takes on
  * home asks for the newest as it opens and on Show the newest or a blank
@@ -117,6 +119,11 @@ const KeptSchema = z.object({
         size: z.number().int(),
         setAsideAt: z.string().nullable(),
         deletable: z.boolean(),
+        // Optional until paulgsc/server serves them (MD8).
+        durationMs: z.number().int().nullable().optional(),
+        heard: z.string().nullable().optional(),
+        heardCut: z.boolean().optional(),
+        playsBack: z.boolean().optional(),
       })
     )
     .nullable(),
