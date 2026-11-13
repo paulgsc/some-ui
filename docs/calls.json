@@ -1889,6 +1889,25 @@
       "refs": ["#2078", "server#824"]
     },
     {
+      "id": "C160",
+      "made": "2026-11-13",
+      "by": "claude",
+      "agreed": "2026-11-13",
+      "paths": [
+        "server:apps/servers/file_host/src/reconcile.rs",
+        "server:apps/servers/file_host/src/game_feed",
+        "packages/assurance/src/ledger.json"
+      ],
+      "chose": "GWB7's bite reconciler runs as its own file_host task (`reconcile::start`, the `bite-matched` family), beside the game feed's worker rather than inside it, so GF4 (the feed's worker writes only its three tables, none holding anything about a person) holds as written.",
+      "options": [
+        "(a) inside the game feed's worker, after each pass, amending GF4 to let it read bites and write bite_match",
+        "(b) a separate task that reads the feed's play log and the bites and writes bite_match alone"
+      ],
+      "gray": "Both match bites the same way. (a) reuses the feed's wake-ups but puts subject-scoped data in a worker declared to hold none (GF4); (b) keeps that line, at the cost of a second task and its own ledger family. No check or earlier decision settles which. Owner, 2026-11-13, on Game Week Bites: \"Let's just go with the recommended.\"",
+      "undo": "Call the matcher from the game feed's pass instead of spawning reconcile::start, amend GF4 in paulgsc/server's game-feed.md to say the worker also reads bites and writes bite_match, and fold the bite-matched family's paths into game-feed in packages/assurance/src/ledger.json.",
+      "refs": ["#2081", "#2074"]
+    },
+    {
       "id": "C190",
       "made": "2026-11-13",
       "by": "claude",

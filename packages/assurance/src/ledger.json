@@ -1079,6 +1079,122 @@
       ]
     },
     {
+      "id": "bite-matched",
+      "name": "Home matches each game bite to its play",
+      "why": "Home's reconciler, a task beside the game feed's worker, reads the feed's play log and the game's bites, and keeps for each bite the play it was about or why there was none, so every short can lay the right moment over a bite (GWB7, paulgsc/some-ui#2081). It runs only while the game feed is on.",
+      "paths": [
+        "server:apps/servers/file_host/src/reconcile.rs",
+        "server:crates/db/voice/src/bite_match.rs"
+      ],
+      "modules": [],
+      "objectives": [
+        {
+          "id": "BM1",
+          "kind": "OA4",
+          "property": "outcome",
+          "claim": "Every bite home holds with a scenario is matched to a play or marked unmatched and kept, never dropped.",
+          "requirement": "Each pass over a game appends one bite_match row for each of its bites whose match changed, naming the play (same game, a play the scenario's rule accepts, at or before the bite's start on home's clock, within the broadcast-delay window, the nearest) or why there was none; bite_match refuses UPDATE and DELETE, and a reader takes each bite's newest row.",
+          "verdict": "holds",
+          "conclusion": "The reconciler's test matches each bite to its play or marks it unmatched and keeps it, and the store refuses rewriting a match. Whether the match is the right play (8 in 10 on a real Sunday, #2081) is the owner's spot check, not this objective.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "Each bite of a replayed game is matched to its play, or marked unmatched with why, and kept.",
+              "ref": "server:apps/servers/file_host/src/reconcile.rs"
+            }
+          ],
+          "proof": [
+            "server:apps/servers/file_host/src/reconcile.rs#each_bite_is_matched_to_its_play_or_marked_and_kept"
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        },
+        {
+          "id": "BM2",
+          "kind": "OA3",
+          "property": "outcome",
+          "claim": "A scenario proposed for a said-first bite is kept only if home's engine says it could have been happening.",
+          "requirement": "A proposal (from the shot writer, GWB9) becomes an append-only bite_mapping row only if its scenario is in the catalog and replaying the engine at the bite's time offers it; a rejected one leaves the bite unmapped, never mislabelled, and the bite itself is never rewritten.",
+          "verdict": "holds",
+          "conclusion": "The reconciler's test keeps a proposal the engine offered at the bite's time and refuses one it did not. Nothing calls `propose` until GWB9.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "A proposal the engine could not have offered at the bite's time is refused and leaves the bite unmapped.",
+              "ref": "server:apps/servers/file_host/src/reconcile.rs"
+            }
+          ],
+          "proof": [
+            "server:apps/servers/file_host/src/reconcile.rs#a_proposal_is_kept_only_if_it_could_have_been_happening"
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        },
+        {
+          "id": "BM3",
+          "kind": "RE7",
+          "property": "work",
+          "claim": "A game already final is reconciled again only when it has new bites.",
+          "requirement": "Every reconcile::TICK (10 minutes) the task reconciles a game in play, and a final game only when a bite arrived since its last pass; with the game feed off it logs that once and spawns nothing.",
+          "verdict": "holds",
+          "conclusion": "The worker's test passes over a final game once, then again only after a new bite; idle, a pass reads the newest scoreboard and the games it names and writes nothing.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "A final game is reconciled once, skipped on the next tick, and reconciled again after a new bite.",
+              "ref": "server:apps/servers/file_host/src/reconcile.rs"
+            }
+          ],
+          "proof": [
+            "server:apps/servers/file_host/src/reconcile.rs#the_worker_reconciles_a_final_game_again_only_when_it_has_new_bites"
+          ],
+          "watch": {
+            "by": "none"
+          },
+          "amendments": []
+        },
+        {
+          "id": "BM4",
+          "kind": "RE9",
+          "property": "work",
+          "claim": "What the reconciler keeps grows by bites, not by passes.",
+          "requirement": "A pass appends a bite_match row only for a bite whose match changed, and a bite_mapping row only for an accepted proposal, so the rows grow by about one small row per bite (more only when a later pass finds a nearer play) and never by the 10-minute tick; neither is updated or deleted but with the account.",
+          "verdict": "holds",
+          "conclusion": "Both tables refuse UPDATE and leave only with the account, and the worker's test writes nothing on a tick that changes no match; at a few hundred bites a season, the rows stay in the tens of kilobytes.",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "bite_match and bite_mapping refuse UPDATE, are deleted only by their account's deletion trigger, and hold no audio or text a person said.",
+              "ref": "server:migrations/20261113000500_create_bite_match.up.sql"
+            },
+            {
+              "class": "measured",
+              "says": "A tick over a game whose bites' matches did not change writes no row.",
+              "ref": "server:apps/servers/file_host/src/reconcile.rs"
+            },
+            {
+              "class": "measured",
+              "says": "A match is added once; a later, different one is a new row.",
+              "ref": "server:crates/db/voice/src/bite_match.rs"
+            }
+          ],
+          "proof": [
+            "server:apps/servers/file_host/src/reconcile.rs#the_worker_reconciles_a_final_game_again_only_when_it_has_new_bites",
+            "server:crates/db/voice/src/bite_match.rs#a_match_is_added_once_and_a_later_one_is_a_new_row"
+          ],
+          "watch": {
+            "by": "dashboard",
+            "ref": "server:infra/grafana/dashboards/storage.jsonnet"
+          },
+          "amendments": []
+        }
+      ]
+    },
+    {
       "id": "study-nudge",
       "name": "Study nudges stay bounded",
       "why": "Home decides when to nudge you to study from the phone's presence and signals, and sends the nudge by push.",
@@ -4031,6 +4147,18 @@
       "family": "voice-heard"
     },
     {
+      "store": "server:bite_match",
+      "class": "record",
+      "growth": "Per pass that changes a bite's match: one small row (bite, scenario, ESPN play id or why none, gap in seconds, engine_version, matched_at); append-only, subject-scoped, leaves with the account.",
+      "family": "bite-matched"
+    },
+    {
+      "store": "server:bite_mapping",
+      "class": "record",
+      "growth": "Per accepted scenario proposal for a said-first bite: one small row (bite, scenario, proposed_by, catalog and engine versions, mapped_at); append-only, subject-scoped, leaves with the account. None until GWB9 calls propose.",
+      "family": "bite-matched"
+    },
+    {
       "store": "server:game_feed_body",
       "class": "record",
       "growth": "One row per distinct ESPN body, keyed by its SHA-256 (server#544): a live game's summary repeats between plays, so far fewer rows than fetches.",
@@ -5012,6 +5140,33 @@
           "says": "Every answer is kept and counted by what it was, and Slack is told when the feed stops while it is on (GA4).",
           "status": "live",
           "ref": "server:crates/db/game_feed"
+        }
+      ],
+      "checks": []
+    },
+    {
+      "id": "bite-matched",
+      "name": "Home matches bites to plays",
+      "why": "A task in file_host wakes every 10 minutes while the game feed is on and matches each game's bites to its plays.",
+      "serves": ["bite-matched"],
+      "witnesses": ["BM1", "BM3"],
+      "segments": [
+        {
+          "id": "reconciler",
+          "name": "The bite reconciler reads the feed's plays and the game's bites and appends what it matched. Ours, on home.",
+          "owner": "ours",
+          "on": "home",
+          "paths": [
+            "server:apps/servers/file_host/src/reconcile.rs",
+            "server:crates/db/voice/src/bite_match.rs"
+          ]
+        }
+      ],
+      "signals": [
+        {
+          "says": "Each pass logs how many bites it matched, marked unmatched and left as they were; with the feed off it logs that it is not running.",
+          "status": "live",
+          "ref": "server:apps/servers/file_host/src/reconcile.rs"
         }
       ],
       "checks": []
