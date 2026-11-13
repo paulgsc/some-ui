@@ -5,8 +5,8 @@ description: How a coordinator session runs a choir of other cloud sessions acro
 
 # coordinate
 
-The rules the Nov 8–13 coordinator runs learned (#2814, with run records #2823, #2833 and
-#2885). A later statement by the owner supersedes this file; fold it in here in a PR.
+The rules the Nov 8–13 coordinator runs learned (#2814, with run records #2823, #2833,
+#2885 and #2918). A later statement by the owner supersedes this file; fold it in here in a PR.
 
 There are three roles. **You decide** is the owner. **Coordinator** is the session that holds
 the plan, the ledger and the merge queue. **Choir** is every worker session it starts. Write
@@ -107,6 +107,18 @@ default (owner, #2814 Nov 10; measurements on #2833).
 - A message reaches a session mid-turn only when its turn ends, sometimes batched with
   others. Restate whatever it supersedes (#2814, Nov 10).
 - Never pipe a command whose exit code matters (#2814, Nov 10; server `CLAUDE.md`).
+- Under strict up-to-date, keep one updated PR in CI per repo, chosen by critical path, and
+  update the next only when it lands. Updating every ready PR at once costs about N²/2 CI runs,
+  because each merge stales all the others (#2918, Nov 13).
+- Every PR that records a call appends to `docs/calls.json`, so two in flight always conflict
+  after the first merges. Resolve by taking `main`'s file text exactly and appending the PR's new
+  entries, never by reformatting (#2918, Nov 13).
+- Before merging a some-ui PR that adds a `server:` path to the assurance ledger, check that the
+  file is on server `main` (AL1, #2924). Otherwise every server PR goes red (#2918, Nov 13).
+- After a some-ui merge that touches `apps/www/tests/record` or `infra/render`, check that
+  `render-docker-release.yml` pushed. It builds only on `main`, and a failed proof publishes
+  nothing (RI1, #2925). If server's `release-lock.yml` doesn't run after it, dispatch it by hand
+  (#2918, Nov 13).
 - A bot PR pushed with `GITHUB_TOKEN` runs no CI. To start it:
 
   - approve its `action_required` runs (`actions_run_trigger` → `rerun_workflow_run`), again
