@@ -59,6 +59,7 @@ jobs:
                 --filter="www${range}" \
                 --filter="@some-ui/playoff-delta...${range}" \
                 --filter="@some-ui/honeycomb...${range}" \
+                --filter="@some-ui/engagement...${range}" \
                 --filter="@some-ui/video-render...${range}" \
                 --filter="@some-ui/video-motion...${range}" \
                 --filter="@some-ui/fetch-kit...${range}" \
