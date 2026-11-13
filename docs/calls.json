@@ -2147,6 +2147,19 @@
       "gray": "The phone cannot tell off the home network from home being down on it, and Android's WebView does not announce a switch from mobile data to the home Wi-Fi, so how long it waits decides how soon what waits goes once the owner is home. The owner's standing word is to go with the recommended where a choice is open (#2928, 2026-11-13).",
       "undo": "Change holdMs and FIRST_HOLD_MS/LONGEST_HOLD_MS in apps/www/src/lib/home-link/away.ts, or pass tapped=false for send, sync and keep in runtime.ts to hold what the person asks for too.",
       "refs": ["#2928"]
+    },
+    {
+      "id": "C296",
+      "made": "2026-11-13",
+      "by": "owner",
+      "paths": [
+        "apps/mailbox/src/core.ts",
+        "apps/mailbox/README.md",
+        "server:crates/db/voice/src/conveyor.rs"
+      ],
+      "chose": "A Studio take moved to ready for pickup goes to the mailbox (the routine's side) with its labels and what home heard in it; the move's comment, and the audio, stay on home.",
+      "undo": "Add comment to PICKUP_KEYS and pickupRefusal in apps/mailbox/src/core.ts (and the README's shape), and have home put the move's comment in some-ui.take-pickup/1.",
+      "refs": ["#2875", "#2872"]
     }
   ]
 }

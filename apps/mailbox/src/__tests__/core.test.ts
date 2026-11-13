@@ -2057,6 +2057,208 @@ describe("notes on an episode", () => {
   })
 })
 
+const READY = {
+  schema: "some-ui.take-pickup/1",
+  note: "take-7f3a91c2",
+  ref: "build-journal:ep04:2",
+  heard: "This shot opens on the conveyor page, then cuts to the phone.",
+  labels: ["ep04", "opening"],
+  readyAt: "2026-11-13T21:40:00.000Z",
+  seq: 3,
+}
+const FILED = {
+  schema: "some-ui.take-picked/1",
+  note: READY.note,
+  seq: READY.seq,
+  issue: "paulgsc/some-ui#2990",
+}
+
+describe("a take ready for pickup, and the routine's answer (CONVEYOR3)", () => {
+  const PICKUP = JSON.stringify(READY)
+  const PICKED = JSON.stringify(FILED)
+  const PICKUP_NAME = `pickup-${READY.note}-${READY.seq}.json`
+  const PICKED_NAME = `picked-${FILED.note}-${FILED.seq}.json`
+  const asHome = (
+    d: Deps,
+    name: string,
+    body: string = PICKUP
+  ): Promise<Response> => put(d, "pickup", name, { token: HOME, body })
+  const asRoutine = (
+    d: Deps,
+    name: string,
+    body: string = PICKED
+  ): Promise<Response> => put(d, "picked", name, { body })
+
+  it("home puts a pickup once, and the routine reads it; neither the other way", async () => {
+    const d = deps()
+    expect((await asHome(d, PICKUP_NAME)).status).toBe(201)
+    expect((await asHome(d, PICKUP_NAME)).status).toBe(200)
+    expect(
+      (
+        await asHome(
+          d,
+          PICKUP_NAME,
+          JSON.stringify({ ...READY, labels: ["ep05"] })
+        )
+      ).status
+    ).toBe(409)
+    const path = `/v1/pickup/items/${PICKUP_NAME}`
+    const read = await send(d, "GET", path)
+    expect(read.status).toBe(200)
+    expect(await read.text()).toBe(PICKUP)
+    expect((await send(d, "GET", path, { token: HOME })).status).toBe(403)
+    expect((await put(d, "pickup", PICKUP_NAME, { body: PICKUP })).status).toBe(
+      403
+    )
+  })
+
+  it("the routine neither lists archived pickups nor asks one back", async () => {
+    const d = deps()
+    expect((await asHome(d, PICKUP_NAME)).status).toBe(201)
+    expect((await send(d, "GET", "/v1/pickup/archived")).status).toBe(403)
+    expect(
+      (await send(d, "PUT", `/v1/pickup/wanted/${PICKUP_NAME}`)).status
+    ).toBe(403)
+  })
+
+  it("the routine puts its answer, which rings home, and home reads it; neither the other way", async () => {
+    const rings: Array<Folder> = []
+    const d = deps(memoryStore(), [], rings)
+    expect((await asRoutine(d, PICKED_NAME)).status).toBe(201)
+    expect(rings).toEqual(["picked"])
+    expect((await asRoutine(d, PICKED_NAME)).status).toBe(200)
+    expect(rings).toEqual(["picked"])
+    const path = `/v1/picked/items/${PICKED_NAME}`
+    const read = await send(d, "GET", path, { token: HOME })
+    expect(read.status).toBe(200)
+    expect(await read.text()).toBe(PICKED)
+    expect(
+      (await send(d, "GET", "/v1/picked/items", { token: HOME })).status
+    ).toBe(200)
+    expect(
+      (await put(d, "picked", PICKED_NAME, { token: HOME, body: PICKED }))
+        .status
+    ).toBe(403)
+  })
+
+  it("takes a take with no labels", async () => {
+    const d = deps()
+    const body = JSON.stringify({ ...READY, labels: [] })
+    expect((await asHome(d, PICKUP_NAME, body)).status).toBe(201)
+  })
+
+  it("takes only a pickup's own shape, and no comment", async () => {
+    const d = deps()
+    const shapes: ReadonlyArray<readonly [unknown, string]> = [
+      [
+        { ...READY, comment: "use the second half" },
+        "comment is not part of a take ready for pickup",
+      ],
+      [
+        { ...READY, audio: "T2dnUwACAAAAAAAA" },
+        "a take carries no audio: home keeps the audio",
+      ],
+      [
+        { ...READY, heard: `data:audio/webm;base64,${"A".repeat(40)}` },
+        "a take carries no audio: home keeps the audio",
+      ],
+      [
+        { ...READY, driveId: "1AbCdEf" },
+        "a take names no Drive file: home keeps the audio",
+      ],
+      [{ ...READY, note: "a/b" }, "note must be the take's id"],
+      [{ ...READY, seq: 0 }, "seq must be the ready-for-pickup move's number"],
+      [
+        { ...READY, seq: 1.5 },
+        "seq must be the ready-for-pickup move's number",
+      ],
+      [
+        { ...READY, seq: "3" },
+        "seq must be the ready-for-pickup move's number",
+      ],
+      [
+        { ...READY, note: "another-take" },
+        "the name must carry the take's id and the move's number",
+      ],
+      [
+        { ...READY, seq: 4 },
+        "the name must carry the take's id and the move's number",
+      ],
+      [{ ...READY, ref: "" }, "ref must name the shot the take belongs to"],
+      [{ ...READY, heard: "  " }, "heard must be what home heard in the take"],
+      [{ ...READY, heard: null }, "heard must be what home heard in the take"],
+      ...[
+        undefined,
+        "ep04",
+        [""],
+        [" ep04"],
+        ["a".repeat(33)],
+        ["tab\there"],
+        [7],
+        Array.from({ length: 9 }, (_, n) => `l${n}`),
+      ].map(
+        (labels) =>
+          [
+            { ...READY, labels },
+            "labels must be the take's, at most 8, each 1 to 32 printable characters",
+          ] as const
+      ),
+      [
+        { ...READY, readyAt: "Thursday" },
+        "readyAt must be when the take was moved to ready for pickup",
+      ],
+    ]
+    for (const [body, why] of shapes) {
+      const answer = await asHome(d, PICKUP_NAME, JSON.stringify(body))
+      expect([body, answer.status]).toEqual([body, 422])
+      expect(await json(answer)).toEqual({ error: why })
+    }
+    for (const name of [
+      `pickup-${READY.note}.json`,
+      `pickup-${READY.note}-0.json`,
+      `pickup-${READY.note}-03.json`,
+      `pickup-${"a".repeat(65)}-3.json`,
+      `picked-${READY.note}-3.json`,
+    ]) {
+      expect((await asHome(d, name)).status).toBe(422)
+    }
+  })
+
+  it("takes only an answer's own shape", async () => {
+    const d = deps()
+    const shapes: ReadonlyArray<readonly [unknown, string]> = [
+      [
+        { ...FILED, labels: ["ep04"] },
+        "labels is not part of a take picked up",
+      ],
+      [
+        { ...FILED, seq: 4 },
+        "the name must carry the take's id and the move's number",
+      ],
+      ...[
+        "#2990",
+        "paulgsc/some-ui",
+        "paulgsc/some-ui#0",
+        "paulgsc/some-ui#02",
+        "https://github.com/paulgsc/some-ui/issues/2990",
+        "paul gsc/some-ui#1",
+        2990,
+      ].map(
+        (issue) =>
+          [
+            { ...FILED, issue },
+            "issue must be the issue it was filed as, <owner>/<repo>#<n>",
+          ] as const
+      ),
+    ]
+    for (const [body, why] of shapes) {
+      const answer = await asRoutine(d, PICKED_NAME, JSON.stringify(body))
+      expect([body, answer.status]).toEqual([body, 422])
+      expect(await json(answer)).toEqual({ error: why })
+    }
+  })
+})
+
 describe("a reflection or a prompt", () => {
   it.each([
     {
@@ -2614,7 +2816,15 @@ describe("the bell (MBP1: MB2, MB6)", () => {
   })
 
   it("rings for exactly paulgsc/server's pass::READS, which lives in the other repo", () => {
-    expect(RINGS).toEqual(["brief", "scene", "drama", "run", "leetype"])
+    // `picked` until home's half of CONVEYOR3 lands there (paulgsc/some-ui#2875).
+    expect(RINGS).toEqual([
+      "brief",
+      "scene",
+      "drama",
+      "run",
+      "leetype",
+      "picked",
+    ])
   })
 
   it("a ring names its folder and nothing else (MB6)", () => {
@@ -2671,6 +2881,8 @@ describe("archiving", () => {
       "reflection",
       "prompt",
       "feedback",
+      "pickup",
+      "picked",
     ]) {
       expect(
         (await send(d, "GET", `/v1/${folder}/items`, { token: ARCHIVE })).status
