@@ -1908,6 +1908,27 @@
       "refs": ["#2081", "#2074"]
     },
     {
+      "id": "C177",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "packages/ui/aph/src/components/aph-log/index.tsx",
+        "apps/www/src/routes/_dashboard/_apk/aph.tsx"
+      ],
+      "chose": "aph's log of mine counts as offered while the form is on mine and taken when a figure of mine is saved, not when the Log view opens, since aph opens on it; History and Trend count as taken when pressed on the view strip.",
+      "options": [
+        "taken when a figure of mine is saved",
+        "taken when the form is first touched",
+        "taken whenever the Log view opens"
+      ],
+      "gray": "The registry says only that the log is offered and taken; aph opens on the Log view, so counting the opening would count every visit as a take, and no rule says which later moment is the start. The owner said on 2026-11-13: \"Let's just go with the recommended.\"",
+      "undo": "Move the take in packages/ui/aph/src/components/aph-log/index.tsx from the save to where the form is first changed.",
+      "refs": [
+        "#2542",
+        "#2533"
+      ]
+    },
+    {
       "id": "C190",
       "made": "2026-11-13",
       "by": "claude",

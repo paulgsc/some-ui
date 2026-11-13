@@ -1191,6 +1191,12 @@ importers:
       '@some-ui/core-utils':
         specifier: workspace:*
         version: link:../../core-utils
+      '@some-ui/engagement':
+        specifier: workspace:*
+        version: link:../../engagement
+      '@some-ui/react-hooks':
+        specifier: workspace:*
+        version: link:../../react-hooks
       '@some-ui/shared':
         specifier: workspace:*
         version: link:../shared

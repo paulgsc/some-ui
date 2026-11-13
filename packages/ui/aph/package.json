@@ -24,6 +24,8 @@
   },
   "dependencies": {
     "@some-ui/core-utils": "workspace:*",
+    "@some-ui/engagement": "workspace:*",
+    "@some-ui/react-hooks": "workspace:*",
     "@some-ui/shared": "workspace:*",
     "lucide-react": "catalog:",
     "zod": "catalog:"

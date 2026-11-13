@@ -2,6 +2,8 @@ import { AphLog } from "@aph/components/aph-log"
 import { SEED_ENTRIES, SEED_SETTINGS } from "@aph/lib/seed"
 import type { AphStore } from "@aph/lib/store"
 import { createAphStore } from "@aph/lib/store"
+import type { EngagementEvent } from "@some-ui/engagement"
+import { createVisit } from "@some-ui/engagement"
 import { fireEvent, render, screen } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 
@@ -24,6 +26,24 @@ function setup(props: Partial<Parameters<typeof AphLog>[0]> = {}): {
   }
   return { store, onSaved, type }
 }
+
+describe("the log on the visit (ENG9)", () => {
+  it("is offered only while the form is on mine, and taken when mine is saved", () => {
+    const sent: Array<EngagementEvent> = []
+    const visit = createVisit(
+      () => noon,
+      (event) => sent.push(event)
+    )
+    const { type } = setup({ initialSide: "theirs", visit })
+    const kinds = (): Array<string> => sent.map((e) => e.kind)
+    expect(kinds()).toEqual([])
+    fireEvent.click(screen.getByRole("radio", { name: "Mine" }))
+    expect(kinds()).toEqual(["offered"])
+    type("4600")
+    fireEvent.click(screen.getByRole("button", { name: /Save draft · 12:00/ }))
+    expect(kinds()).toEqual(["offered", "taken"])
+  })
+})
 
 describe("logging mine", () => {
   it("opens on the checkpoint that is due, and says the delta before saving", () => {
