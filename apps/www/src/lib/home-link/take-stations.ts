@@ -26,10 +26,10 @@
  *   said to the native log;
  * - `404` as home's JSON error: home keeps no such take on the conveyor
  *   (let go, an idea's answer, or none of this phone's owner): dropped as
- *   off the conveyor, with the take's later moves. A move is only ever
- *   made of a take home lists on the conveyor (the conveyor page offers
- *   moves only on rows home names a station for), so this never drops a
- *   move of a take home doesn't hold yet;
+ *   off the conveyor, with the take's later moves. Nothing on the phone
+ *   makes a move yet; the conveyor page (CONVEYOR2, #2874) must offer moves
+ *   only on rows home names a station for, so that this never drops a move
+ *   of a take home doesn't hold yet;
  * - `404` in plain words, a home without the conveyor's routes: every move
  *   stays owed and the run asks no more of them, said to the native log
  *   once a launch;

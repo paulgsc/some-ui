@@ -30,7 +30,7 @@ const move = (
   to: TakeStation,
   seq: number,
   take = "take-1",
-  at = "2026-11-13T10:00:00Z"
+  at = "2026-11-13T10:00:00.000Z"
 ): StationMove => ({
   move: id,
   take,
@@ -226,6 +226,20 @@ describe("stationOf", () => {
     })
   })
 
+  it("stands a move another device already made as taken, though home's read lags", () => {
+    const state = stepConveyor(
+      moved(INITIAL_CONVEYOR, move("m1", "in-the-oven", "cooking", 0)),
+      { kind: "stale", move: "m1", there: { station: "cooking", seq: 1 } }
+    )
+    expect(stationOf("take-1", oven, state)).toEqual({
+      station: "cooking",
+      at: "2026-11-13T10:00:00.000Z",
+      seq: 1,
+      going: false,
+      missed: null,
+    })
+  })
+
   it("says a move dropped as off the conveyor", () => {
     const off = stepConveyor(
       moved(INITIAL_CONVEYOR, move("m1", "in-the-oven", "cooking", 0)),
@@ -361,6 +375,9 @@ describe("parseConveyor", () => {
     expect(parseConveyor({ moves: [{ move: "m1" }] })).toBeNull()
     expect(
       parseConveyor({ moves: [{ ...state.moves[0], at: "soon" }] })
+    ).toBeNull()
+    expect(
+      parseConveyor({ moves: [{ ...state.moves[0], at: "2026-11-13" }] })
     ).toBeNull()
     expect(
       parseConveyor({ moves: [{ ...state.moves[0], seq: "1" }] })

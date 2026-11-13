@@ -270,18 +270,20 @@ export function stationOf(
   const homeAt = home.stationAt ?? null
   const homeSeq = home.stationSeq ?? 0
   const mine = state.moves.filter((kept) => kept.take === id)
+  // A stale move whose take home already put where it was going (another
+  // device made the same move) stands as taken, and isn't one missed.
+  const landed = (kept: KeptMove): boolean =>
+    kept.there?.station === kept.to && kept.there.seq === kept.seq + 1
   const lastTaken = mine.reduce(
     (last, kept, index) =>
-      kept.home === "owed" || kept.home === "held" ? index : last,
+      kept.home === "owed" || kept.home === "held" || landed(kept)
+        ? index
+        : last,
     -1
   )
   const taken = lastTaken === -1 ? undefined : mine[lastTaken]
   // How far home may be and still be the place an unkept move found.
   const upTo = (kept: KeptMove): number => kept.there?.seq ?? kept.seq
-  // A stale move whose take home already put where it was going isn't one
-  // the owner missed.
-  const landed = (kept: KeptMove): boolean =>
-    kept.there?.station === kept.to && kept.there.seq === kept.seq + 1
   // The latest the owner missed: a move dropped with an earlier one is said
   // through that one, so the head of a refused chain is the one named.
   const unkept = mine
@@ -418,6 +420,12 @@ const HOMES: ReadonlyArray<MoveHome> = [
   "chained",
 ]
 
+/** A time as `toISOString` writes it, the only kind a move is made with. */
+function isInstant(at: string): boolean {
+  const ms = Date.parse(at)
+  return !Number.isNaN(ms) && new Date(ms).toISOString() === at
+}
+
 const isThere = (value: unknown): value is There =>
   isRecord(value) &&
   isTakeStation(value.station) &&
@@ -432,7 +440,7 @@ function isKeptMove(kept: unknown): kept is KeptMove {
     isTakeStation(kept.from) &&
     isTakeStation(kept.to) &&
     typeof kept.at === "string" &&
-    !Number.isNaN(Date.parse(kept.at)) &&
+    isInstant(kept.at) &&
     typeof kept.seq === "number" &&
     Number.isInteger(kept.seq) &&
     kept.seq >= 0 &&
