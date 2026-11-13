@@ -526,6 +526,45 @@ describe("IH1: an answer said as a take, its words from home", () => {
   })
 })
 
+describe("SFEED5: an ask's answer, as home hears it", () => {
+  it("starts the take on what it answers, the ask's ref", () => {
+    vi.useFakeTimers({ now: NOW })
+    const now = (): number => Date.now()
+    const mic = simulatedMicrophone({ now })
+    const kit = takeKit(
+      {
+        screen: "test",
+        startRecording: mic.startRecording,
+        now,
+        keep: memoryKeep([]).keep,
+        owner: microphoneOwner(),
+      },
+      LIMITS
+    )
+    const takes = kitTakes(kit, false, () => false)
+    const started: Array<string> = []
+    const hearing = homeHearing({
+      takes: {
+        ...takes,
+        start: (answers): void => {
+          started.push(answers)
+          takes.start(answers)
+        },
+      },
+      heard: () => Promise.resolve({ kind: "notYet" }),
+      now,
+      onVisibility: page().onVisibility,
+    })
+    const listening = hearing.listen(
+      () => undefined,
+      () => undefined,
+      { answers: "ask:some-ui-2676", onHearing: () => undefined }
+    )
+    expect(started).toEqual(["ask:some-ui-2676"])
+    listening.cancel()
+  })
+})
+
 describe("stepHearing", () => {
   const kept = (state: HearingState): HearingState =>
     stepHearing(
