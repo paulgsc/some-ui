@@ -51,6 +51,7 @@ const UNPAIRED: HomeLinkState = {
   pairFailure: null,
   homeBusyUntil: null,
   away: null,
+  awayReleases: 0,
 }
 
 const PAIRED: HomeLinkState = {
@@ -65,6 +66,7 @@ const PAIRED: HomeLinkState = {
   pairFailure: null,
   homeBusyUntil: null,
   away: null,
+  awayReleases: 0,
 }
 
 const rows = vi.hoisted((): { list: Array<SessionRecord> } => ({ list: [] }))

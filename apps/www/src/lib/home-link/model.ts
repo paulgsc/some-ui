@@ -96,6 +96,12 @@ export type HomeLinkState = {
   readonly homeBusyUntil: number | null
   /** The stretch away from home under way (AW1, `./away`); null at home. */
   readonly away: Away | null
+  /**
+   * How many times a hold away ended on its time or a stretch ended with home
+   * answering (AW1): each is one ask of the lanes that found no answer
+   * (`./kept-watch`). A network change, a pull or Send now ask themselves.
+   */
+  readonly awayReleases: number
 }
 
 export type HomeLinkEvent =
@@ -137,6 +143,7 @@ export const INITIAL: HomeLinkState = {
   pairFailure: null,
   homeBusyUntil: null,
   away: null,
+  awayReleases: 0,
 }
 
 const idle = { kind: "idle" } as const
@@ -305,7 +312,14 @@ export function step(
     case "lapsed":
     case "lookAgain": {
       const away = stepAway(state.away, event)
-      return away === state.away ? state : { ...state, away }
+      if (away === state.away) return state
+      // A hold ending on its time, or home answering: a release (AW1).
+      const released = event.type === "lapsed" || event.type === "answered"
+      return {
+        ...state,
+        away,
+        awayReleases: state.awayReleases + (released ? 1 : 0),
+      }
     }
     default: {
       return assertNever(event)

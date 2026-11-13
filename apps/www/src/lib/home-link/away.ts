@@ -42,11 +42,6 @@ export type Away = {
   readonly tries: number
   /** Until when nothing the phone starts on its own is sent; null once over. */
   readonly heldUntil: number | null
-  /**
-   * The hold was let go by a network change or the person, whose own ask
-   * follows: the lanes' watches leave that ask to them (`./kept-watch`).
-   */
-  readonly askedAgain: boolean
 }
 
 export type AwayEvent =
@@ -84,22 +79,18 @@ export function stepAway(away: Away | null, event: AwayEvent): Away | null {
         since: away?.since ?? event.now,
         tries: tries + 1,
         heldUntil: event.now + holdMs(tries),
-        askedAgain: false,
       }
     }
     case "answered": {
       return null
     }
     case "lapsed": {
-      return away?.heldUntil == null
-        ? away
-        : { ...away, heldUntil: null, askedAgain: false }
+      return away?.heldUntil == null ? away : { ...away, heldUntil: null }
     }
     case "lookAgain": {
-      return away === null ||
-        (away.heldUntil === null && away.tries === 0 && away.askedAgain)
+      return away === null || (away.heldUntil === null && away.tries === 0)
         ? away
-        : { ...away, tries: 0, heldUntil: null, askedAgain: true }
+        : { ...away, tries: 0, heldUntil: null }
     }
     default: {
       return assertNever(event)

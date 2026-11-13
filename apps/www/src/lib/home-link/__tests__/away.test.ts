@@ -107,7 +107,7 @@ describe("stepAway over every ordering (AW1)", () => {
     }
   }
 
-  it("is away only after a silence no answer followed, since its first, and holds at most ten minutes", () => {
+  it("is away only after a silence no answer followed, since its first, each hold holdMs long", () => {
     for (const order of orderings(6)) {
       let away: Away | null = null
       let now = 0
@@ -456,6 +456,36 @@ describe("away from home over the real link (AW1)", () => {
     home.clock.pass(FIRST_HOLD_MS, false)
     const before = home.sent.length
     document.dispatchEvent(new Event("visibilitychange"))
+    await settled(lanes)
+    expect(home.sent.slice(before).sort()).toEqual([
+      "/jobs",
+      "/practice",
+      "/voice",
+    ])
+  })
+
+  it("after a hold's end whose try found no answer, Send now still sends for its own lane", async () => {
+    const home = await pairedHome()
+    const lanes = threeLanes()
+    await settled(lanes)
+    home.clock.pass(FIRST_HOLD_MS)
+    await settled(lanes)
+    const before = home.sent.length
+    theLink().lookAgain()
+    askKept(lanes[1].kept, document)
+    await settled(lanes)
+    expect(home.sent.slice(before)).toEqual(["/jobs"])
+  })
+
+  it("after a hold's end whose try found no answer, the network coming back runs each lane once", async () => {
+    const home = await pairedHome()
+    const lanes = threeLanes()
+    await settled(lanes)
+    home.clock.pass(FIRST_HOLD_MS)
+    await settled(lanes)
+    home.reachable = true
+    const before = home.sent.length
+    window.dispatchEvent(new Event("online"))
     await settled(lanes)
     expect(home.sent.slice(before).sort()).toEqual([
       "/jobs",

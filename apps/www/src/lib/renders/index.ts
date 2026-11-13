@@ -8,7 +8,7 @@ import { queryOptions } from "@tanstack/react-query"
 
 import { underWay, WHILE_UNDER_WAY_MS } from "./model"
 import type { RendersOutcome } from "./read"
-import { readRenders } from "./read"
+import { readRenders, RendersUnanswered } from "./read"
 
 export * from "./model"
 export * from "./conveyor"
@@ -18,15 +18,14 @@ export * from "./words"
 
 /**
  * When the board is read again on its own: every half minute while home has
- * something under way, never otherwise, and not once a read found no answer
- * (away from home, a timed read waits for the screen to open again or a
- * pull; AW1, lib/home-link/away).
+ * something under way, never otherwise, and not once home gave no answer
+ * (away from home; AW1, lib/home-link/away): a pull or Try again reads again.
  */
 export function rendersAgainIn(state: {
-  readonly status: string
+  readonly error: unknown
   readonly data: RendersOutcome | undefined
 }): number | false {
-  return state.status !== "error" &&
+  return !(state.error instanceof RendersUnanswered) &&
     state.data?.kind === "read" &&
     underWay(state.data.board)
     ? WHILE_UNDER_WAY_MS
