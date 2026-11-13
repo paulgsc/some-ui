@@ -3500,6 +3500,10 @@
       "why": "The owner's ideas and the lists they pick from (ST26, paulgsc/server#645); each write answers with what home now holds, and the phone compares it with what it sent."
     },
     {
+      "module": "interview_weeks",
+      "why": "The interview week (IW4): reads the week the routine wrote; each Send answers with the draft home keeps, and the record with what stood at the deadline, silence included."
+    },
+    {
       "module": "korean",
       "why": "Reads and writes Korean lists; each write answers with what it kept."
     },
