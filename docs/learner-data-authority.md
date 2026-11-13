@@ -1218,8 +1218,9 @@ and `components/__tests__/device-home-glyph.test.tsx`.
   hold away from home ending after a run found no answer (AW1,
   `lib/home-link/away.ts`: the link sends nothing a lane asks while the hold
   lasts, answering each request as unanswered itself; its end on its time or
-  home answering asks once, while a network change, a pull or Send now lets
-  it go and asks itself); from `askLane`,
+  home answering asks once, while a network change or a pull lets it go and
+  asks every lane itself, and Send now lets it go and asks its own); from
+  `askLane`,
   which a mark's sheet and Settings' readout call only from their Send now
   button; or, for a pull (a drag down from the top
   of a page, PULL3, the owner's D1 on #2456, 2026-11-02), from `pullKept`,

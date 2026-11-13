@@ -72,9 +72,11 @@ export function watchKept(
   // read off its runs as they end, since the link frees (a run's own end)
   // before that run's end reaches the lane.
   let owed: "link" | "home" | "away" | null = null
-  // The hold away from home was released on its time or by home answering,
-  // since the lane last asked; a network change or a pull asks itself (AW1).
+  // The hold away from home was released on its time, or the stretch ended
+  // with home answering, since the lane's run started; a network change, a
+  // pull or Send now asks itself (AW1).
   let held = awayHeld(link.getSnapshot(), LINK_CLOCK.now())
+  let away = link.getSnapshot().away !== null
   let released = false
 
   const onRecord = (): void => {
@@ -85,10 +87,13 @@ export function watchKept(
   }
   const onRun = (): void => {
     const run = home.getSnapshot()
-    if (run.running) return
+    if (run.running) {
+      // Asked: what it owed is paid, and only a release from here counts.
+      owed = null
+      released = false
+      return
+    }
     owed = turnedAwayBy(run.last)
-    // Only a release after this run counts for it.
-    released = false
   }
   const onLink = (): void => {
     const state = link.getSnapshot()
@@ -96,7 +101,12 @@ export function watchKept(
     const nowIdle = drainFree(state)
     const nowOpen = linkOpen(state, LINK_CLOCK.now())
     const nowHeld = awayHeld(state, LINK_CLOCK.now())
-    if (held && !nowHeld && state.away?.askedAgain !== true) released = true
+    const nowAway = state.away !== null
+    if (
+      (held && !nowHeld && state.away?.askedAgain !== true) ||
+      (away && !nowAway)
+    )
+      released = true
     // Turned away by another run: asked once that run ends, even while home
     // is busy, when the run only says so (it sends nothing). Turned away by
     // home: asked once home's busy or the hold away ends, and not before.
@@ -115,6 +125,7 @@ export function watchKept(
     idle = nowIdle
     open = nowOpen
     held = nowHeld
+    away = nowAway
   }
   const onBack = (): void => {
     askKept(home, doc)

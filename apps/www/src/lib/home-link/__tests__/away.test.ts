@@ -33,7 +33,7 @@ import {
 } from "@/lib/home-link/away"
 import type { Kept } from "@/lib/home-link/kept-runtime"
 import { createKept, laneExchange } from "@/lib/home-link/kept-runtime"
-import { watchKept } from "@/lib/home-link/kept-watch"
+import { askKept, watchKept } from "@/lib/home-link/kept-watch"
 import type { Lane, LaneId } from "@/lib/home-link/lanes"
 import { busyNow } from "@/lib/home-link/lanes"
 import type { HomeLinkState } from "@/lib/home-link/model"
@@ -425,5 +425,42 @@ describe("away from home over the real link (AW1)", () => {
     expect(theLink().getSnapshot().link.kind).toBe("unpaired")
     expect(theLink().getSnapshot().away).toBeNull()
     expect(home.told).toEqual([])
+  })
+
+  it("Send now on one lane, home answering: every lane the stretch held is asked once", async () => {
+    const home = await pairedHome()
+    const lanes = threeLanes()
+    await settled(lanes)
+    home.reachable = true
+    const before = home.sent.length
+    // Send now, as `askLane` does.
+    theLink().lookAgain()
+    askKept(lanes[1].kept, document)
+    await settled(lanes)
+    expect(theLink().getSnapshot().away).toBeNull()
+    expect(home.sent[before]).toBe("/jobs")
+    expect(home.sent.slice(before).sort()).toEqual([
+      "/jobs",
+      "/practice",
+      "/voice",
+    ])
+    expect(kinds(lanes)).toEqual(["synced", "synced", "synced"])
+  })
+
+  it("a hold's end seen late, as the app comes back, runs each lane once", async () => {
+    const home = await pairedHome()
+    const lanes = threeLanes()
+    await settled(lanes)
+    home.reachable = true
+    // In the background the hold's timer is held back.
+    home.clock.pass(FIRST_HOLD_MS, false)
+    const before = home.sent.length
+    document.dispatchEvent(new Event("visibilitychange"))
+    await settled(lanes)
+    expect(home.sent.slice(before).sort()).toEqual([
+      "/jobs",
+      "/practice",
+      "/voice",
+    ])
   })
 })
