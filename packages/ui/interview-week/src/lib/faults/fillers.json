@@ -1,6 +1,6 @@
 {
   "schema": "some-ui.fillers/1",
-  "about": "The closed list of fillers an interview take is counted for. Each is a vocalised hesitation, matched as one whole word after lowercasing and keeping only letters and digits. Lexical fillers (like, you know, so, basically, I mean) are left out: telling them from their ordinary use is judging, which the model does (LEVERS, #2162). This file is the canonical copy (#2934); home's transcriber cites it for the fillers its prompt keeps (#2933).",
+  "about": "The closed list of fillers an interview take is counted for. Each is a vocalised hesitation, matched as one whole word after lowercasing and keeping only letters and digits. Lexical fillers (like, you know, so, basically, I mean) are left out: telling them from their ordinary use is judging, which the model does (LEVERS, #2162). This file owns the list (C265, #2934). Home's transcriber keeps the same words in paulgsc/server apps/servers/file_host/src/transcribe/verbatim.rs (FILLERS, #2933), a copy that cites this file: change the list here first, then there.",
   "fillers": [
     "um",
     "umm",
