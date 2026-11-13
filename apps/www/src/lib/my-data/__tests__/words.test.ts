@@ -111,6 +111,7 @@ describe("My data's words", () => {
     )
     expect(heardLine({ kind: "notYet" }, "phone")).toBeNull()
     expect(heardLine({ kind: "notYet" }, "going")).toBeNull()
+    expect(heardLine({ kind: "unsaid" }, "home")).toBeNull()
   })
 
   it("never name the machinery when deleting, nor on a receipt (MD3)", () => {

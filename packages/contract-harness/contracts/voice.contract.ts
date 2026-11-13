@@ -119,10 +119,11 @@ const KeptSchema = z.object({
         size: z.number().int(),
         setAsideAt: z.string().nullable(),
         deletable: z.boolean(),
-        durationMs: z.number().int().nullable(),
-        heard: z.string().nullable(),
-        heardCut: z.boolean(),
-        playsBack: z.boolean(),
+        // Optional until paulgsc/server serves them (MD8).
+        durationMs: z.number().int().nullable().optional(),
+        heard: z.string().nullable().optional(),
+        heardCut: z.boolean().optional(),
+        playsBack: z.boolean().optional(),
       })
     )
     .nullable(),

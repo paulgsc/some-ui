@@ -372,7 +372,7 @@ describe("a kind's list", () => {
         deletable: false,
         plays: "none",
         durationMs: null,
-        heard: { kind: "notYet" },
+        heard: { kind: "unsaid" },
       }),
     ])
   })

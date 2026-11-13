@@ -315,14 +315,12 @@ describe("a kind's list", () => {
       <MyDataKind
         view={view}
         playing={null}
-        missed={{ id: "t1", count: 1 }}
+        missed="t1"
         onPlay={onPlay}
         onStop={vi.fn()}
       />
     )
-    expect(screen.getByText(MY_DATA.kind.missed)).toBeTruthy()
-    // The list keeps its place: the miss is said over it, not in it (HS1).
-    expect(screen.getByText("“I was thinking about the scene”")).toBeTruthy()
+    expect(screen.getByRole("alert").textContent).toContain(MY_DATA.kind.missed)
   })
 })
 

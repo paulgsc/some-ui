@@ -104,16 +104,14 @@ async function readPhone(): Promise<PhoneRead> {
   }
 }
 
-/**
- * Recording `id`'s audio: this phone's copy, else home's, asked for once
- * (MD8; `lib/home-link/voice-audio`, which sends nothing but the id and
- * keeps nothing it gets). Away from home, or for a kind home gives no audio
- * back for, none.
- */
+/** Recording `id`'s audio: this phone's copy, else home's (MD8). */
 async function audioOf(id: string): Promise<Blob | null> {
-  const { notes } = await recordingsOnPhone()
+  const { notes } = await recordingsOnPhone().catch(() => ({ notes: [] }))
   const found = notes.find((note) => note.id === id)
-  const here = found === undefined ? null : await found.audio()
+  const here = await found
+    ?.audio()
+    // Ignored: a copy this phone can't read is asked of home instead.
+    .catch(() => null)
   return here ?? askAudio(id)
 }
 

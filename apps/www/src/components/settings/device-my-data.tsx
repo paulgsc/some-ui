@@ -7,11 +7,10 @@
  * each and since when (MD2b, #2519).
  *
  * Each row of a kind's list says what it is (MD8): when it was recorded, how
- * long it is and the first words home heard, once home heard it, and it
- * plays from this phone's copy, else from home's while this phone reaches
- * home. Away from home, home's rows aren't listed at all (home's line says
- * home couldn't be reached), so what is left plays here. A Play whose audio
- * didn't come is said in a `Notice` over the list (HS1).
+ * long it is and the first words home heard, once home heard it, and
+ * plays (`lib/my-data/runtime`). Away from home, home's rows aren't listed
+ * (home's line says it couldn't be reached). A Play whose audio didn't come
+ * is said in a `Notice` over the list (HS1).
  *
  * Deleting (MD3, #2477) is offered on a kind's list only for a recording
  * home marks deletable (`lib/my-data`'s `offersDelete`): "Delete…" on its
@@ -27,7 +26,7 @@
  */
 import type { JSX } from "react"
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
-import { formatSize } from "@some-ui/core-utils"
+import { cn, formatSize } from "@some-ui/core-utils"
 import { Button, Notice } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
 import {
@@ -361,13 +360,19 @@ const Item = ({
       <span className="min-w-0 flex-1">
         {heard === null ? null : (
           <span
-            className={`line-clamp-2 text-sm break-words ${item.heard.kind === "words" ? "" : "text-muted-foreground italic"}`}
+            className={cn(
+              "line-clamp-2 text-sm break-words",
+              item.heard.kind !== "words" && "text-muted-foreground italic"
+            )}
           >
             {heard}
           </span>
         )}
         <span
-          className={`block tabular-nums ${heard === null ? "text-sm" : "text-muted-foreground text-xs"}`}
+          className={cn(
+            "block tabular-nums",
+            heard === null ? "text-sm" : "text-muted-foreground text-xs"
+          )}
         >
           {itemLine(item.at, item.durationMs)}
         </span>
@@ -413,7 +418,7 @@ export const MyDataKind = ({
   playing: string | null
   /** `playing`'s audio is on its way from home. */
   fetching?: boolean
-  /** The last Play whose audio didn't come, numbered so each is said. */
+  /** The recording whose Play didn't get its audio, until the next Play. */
   missed?: MyDataState["missed"]
   onPlay: (id: string) => void
   onStop: () => void
@@ -460,7 +465,7 @@ export const MyDataKind = ({
       <Status line={unreadLine(unread)} />
       {waits ? <Status line={DELETING.waitsOnStudio} /> : null}
       {missed === null ? null : (
-        <Notice key={missed.count} tone="warning" dismissible>
+        <Notice tone="warning" role="alert" dismissible>
           {MY_DATA.kind.missed}
         </Notice>
       )}
@@ -505,7 +510,7 @@ export const MyDataKind = ({
               key={item.id}
               item={item}
               playing={playing === item.id}
-              fetching={playing === item.id && fetching}
+              fetching={fetching}
               onPlay={onPlay}
               onStop={onStop}
               remove={removeOf(item)}

@@ -11,7 +11,7 @@
  * - At most one recording plays; one that ends or fails clears only itself.
  *   Until its audio is in hand (home's copy comes over the link, MD8) it is
  *   `fetching`; one whose audio didn't come is `missed`, which the page says
- *   over the screen, numbered so a second miss is said again.
+ *   over the screen until the next Play.
  */
 import { assertNever } from "@some-ui/core-utils"
 
@@ -28,8 +28,8 @@ export type MyDataState = {
   readonly playing: string | null
   /** `playing`'s audio isn't in hand yet. */
   readonly fetching: boolean
-  /** The last recording whose audio didn't come, and how many have missed. */
-  readonly missed: { readonly id: string; readonly count: number } | null
+  /** The recording whose audio didn't come, until the next Play. */
+  readonly missed: string | null
 }
 
 export const INITIAL_MY_DATA: MyDataState = {
@@ -71,7 +71,7 @@ export function stepMyData(
             ...state,
             seq: state.seq + 1,
             of: event.of,
-            // A miss is said on the page it happened on, not on the next.
+            // A miss is said only on the kind it happened on.
             missed: null,
             home:
               state.home.kind === "read"
@@ -86,7 +86,7 @@ export function stepMyData(
       return event.seq === state.seq ? { ...state, phone: event.phone } : state
     }
     case "played": {
-      return { ...state, playing: event.id, fetching: true }
+      return { ...state, playing: event.id, fetching: true, missed: null }
     }
     case "started": {
       return state.playing === event.id ? { ...state, fetching: false } : state
@@ -97,7 +97,7 @@ export function stepMyData(
             ...state,
             playing: null,
             fetching: false,
-            missed: { id: event.id, count: (state.missed?.count ?? 0) + 1 },
+            missed: event.id,
           }
         : state
     }

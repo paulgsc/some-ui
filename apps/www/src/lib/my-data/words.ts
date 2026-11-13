@@ -134,14 +134,12 @@ export const MY_DATA = {
     empty: "None of these yet.",
     play: (when: string): string => `Play the recording of ${when}`,
     stop: (when: string): string => `Stop the recording of ${when}`,
-    /** While its audio comes from home (MD8). */
-    fetching: (when: string): string =>
-      `Getting the recording of ${when} from home`,
+    /** While its audio is read, here or from home (MD8). */
+    fetching: (when: string): string => `Getting the recording of ${when}`,
     /** A row home holds and gives no audio back for. */
     noPlay: "Its audio stays on home.",
     /** Said over the list when a Play's audio didn't come. */
-    missed:
-      "Couldn't play it: this recording is on home, and home didn't send it just now. It plays while this phone can reach home.",
+    missed: "Couldn't play that recording just now. Try again in a moment.",
     newest: (shown: number, total: number): string =>
       `Showing the newest ${shown} of ${total}.`,
   },
@@ -208,8 +206,7 @@ export function lengthOf(ms: number): string {
 
 /**
  * When a recording was made, and how long it is once home heard it, in a
- * kind's list (MD8): `Recorded 1 Nov at 21:12 · 42 s long`. The time is
- * when, never how long: a bare `21:12` read as a length (the owner, Nov 13).
+ * kind's list (MD8): `Recorded 1 Nov at 21:12 · 42 s long` (C230).
  */
 export function itemLine(at: string, durationMs: number | null): string {
   const when = new Date(at)
@@ -241,6 +238,9 @@ export function heardLine(heard: Heard, where: Where): string | null {
       return where === "home" || where === "aside"
         ? "Home hasn't heard it yet."
         : null
+    }
+    case "unsaid": {
+      return null
     }
     default: {
       return assertNever(heard)

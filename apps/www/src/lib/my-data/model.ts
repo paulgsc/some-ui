@@ -76,8 +76,11 @@ const Kept = z.object({
          * it (MD8). An older home says nothing, which is not known.
          */
         durationMs: z.number().int().nonnegative().nullable().default(null),
-        /** The first words home heard in it, or null (MD8). */
-        heard: z.string().nullable().default(null),
+        /**
+         * The first words home heard in it, or null (MD8). Absent from an
+         * older home, which says nothing of what it heard.
+         */
+        heard: z.string().nullable().optional(),
         /** Home cut `heard` short of all it heard (MD8). */
         heardCut: z.boolean().default(false),
         /**
@@ -308,11 +311,11 @@ export function overviewOf(
  * Where a row's audio plays from (MD8): this phone's copy, home's (asked for
  * on each Play), or nowhere, when home holds it and gives none back.
  */
-export type PlaysFrom = "here" | "home" | "none"
+type PlaysFrom = "here" | "home" | "none"
 
 /**
- * What home heard in a recording (MD8): its words, that it heard none, or
- * nothing yet (home hasn't heard it, or doesn't hold it).
+ * What home heard in a recording (MD8): its words, that it heard none,
+ * nothing yet, or `unsaid` when home (an older one) didn't say.
  */
 export type Heard =
   | {
@@ -323,6 +326,7 @@ export type Heard =
     }
   | { readonly kind: "silent" }
   | { readonly kind: "notYet" }
+  | { readonly kind: "unsaid" }
 
 /** One recording in a kind's list. */
 export type KindItem = {
@@ -363,10 +367,12 @@ const playsFrom = (here: boolean, playsBack: boolean): PlaysFrom => {
 type KeptNote = NonNullable<HomeKept["notes"]>[number]
 
 /** What home heard in `note`: words, none (heard, and silent), or not yet. */
-export function heardOf(note: KeptNote): Heard {
+function heardOf(note: KeptNote): Heard {
+  if (note.heard === undefined) return { kind: "unsaid" }
   const text = note.heard?.trim() ?? ""
   if (text !== "") return { kind: "words", text, cut: note.heardCut }
-  // A length comes only from a hearing, so one without words heard silence.
+  // Home's length comes only from its hearing (server `voice_repo::kept`),
+  // so one without words heard silence.
   return note.durationMs === null ? { kind: "notYet" } : { kind: "silent" }
 }
 
