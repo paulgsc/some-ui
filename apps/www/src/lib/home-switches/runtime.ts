@@ -1,5 +1,5 @@
 /**
- * The runtime behind `./model`: it owns the calls to home (`./client`),
+ * The runtime behind `./model`, one per switch: it owns the calls to home (`./client`),
  * feeds each ending to `stepSwitches`, and says a failed set over the screen
  * through `notify`. The page reads `getSnapshot` and calls `read` and `turn`;
  * it holds no request of its own.
@@ -17,16 +17,16 @@ import { canSet, INITIAL_SWITCHES, stepSwitches } from "./model"
 export type SwitchesPorts = {
   readonly client: SwitchesClient
   /** Says a set that did not land, over the screen. */
-  readonly notify: (why: Refusal, recording: boolean) => void
+  readonly notify: (why: Refusal, on: boolean) => void
 }
 
 export type HomeSwitches = {
   getSnapshot: () => SwitchesState
   subscribe: (listener: () => void) => () => void
-  /** Reads the switch from home, again if asked again. */
+  /** Reads its switch from home, again if asked again. */
   read: () => void
-  /** Sets recording on or paused; ignored while a set is under way. */
-  turn: (recording: boolean) => void
+  /** Turns the switch on or off; ignored while a set is under way. */
+  turn: (on: boolean) => void
 }
 
 export function createHomeSwitches(ports: SwitchesPorts): HomeSwitches {
@@ -47,13 +47,13 @@ export function createHomeSwitches(ports: SwitchesPorts): HomeSwitches {
     }
   }
 
-  const turn = async (recording: boolean): Promise<void> => {
+  const turn = async (on: boolean): Promise<void> => {
     try {
-      dispatch({ type: "set", standing: await ports.client.set(recording) })
+      dispatch({ type: "set", standing: await ports.client.set(on) })
     } catch (error) {
       const why = refusalOf(error)
       dispatch({ type: "set-failed", why })
-      ports.notify(why, recording)
+      ports.notify(why, on)
       // What home follows is unknown now; ask it (the state is `reading`).
       await read()
     }
@@ -72,10 +72,10 @@ export function createHomeSwitches(ports: SwitchesPorts): HomeSwitches {
       // Not while a set is under way: its answer is the newer one.
       if (state.kind === "reading") void read()
     },
-    turn: (recording): void => {
+    turn: (on): void => {
       if (!canSet(state)) return
-      dispatch({ type: "set-asked", recording })
-      void turn(recording)
+      dispatch({ type: "set-asked", on })
+      void turn(on)
     },
   }
 }
