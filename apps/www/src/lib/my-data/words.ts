@@ -25,6 +25,7 @@ export const KIND_NAMES: Readonly<Record<Of, string>> = {
   soundbite: "Soundbites",
   jobs: "Jobs notes",
   "rust-round": "Rust Rounds notes",
+  interview: "Interview takes",
 }
 
 /** Where a recording is kept. */
