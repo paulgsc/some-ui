@@ -6,7 +6,9 @@
  * keeps, the record's count with it on the overview
  * (`lib/home-link/kept-read`, LA8), and this phone's recordings as
  * the voice lane lists them and says where each is kept
- * (`lib/home-link/voice-copy`'s `recordingsOnPhone` and `voiceKept`). Phone-only
+ * (`lib/home-link/voice-copy`'s `recordingsOnPhone` and `voiceKept`), and a
+ * recording's audio from home when this phone let its own go
+ * (`lib/home-link/voice-audio`, MD8). Phone-only
  * (`build.paths.ts`).
  *
  * Deleting a record home keeps (MD3, #2477) is `./deleting` and
@@ -19,6 +21,7 @@ import { feedVideos } from "@/lib/call-videos"
 import { deleteCallStep, deleteNotes } from "@/lib/home-link/delete-note"
 import { askDeleted } from "@/lib/home-link/deleted-read"
 import { askKept } from "@/lib/home-link/kept-read"
+import { askAudio } from "@/lib/home-link/voice-audio"
 import {
   letGoDeleted,
   recordingsOnPhone,
@@ -101,10 +104,15 @@ async function readPhone(): Promise<PhoneRead> {
   }
 }
 
+/** Recording `id`'s audio: this phone's copy, else home's (MD8). */
 async function audioOf(id: string): Promise<Blob | null> {
-  const { notes } = await recordingsOnPhone()
+  const { notes } = await recordingsOnPhone().catch(() => ({ notes: [] }))
   const found = notes.find((note) => note.id === id)
-  return found === undefined ? null : found.audio()
+  const here = await found
+    ?.audio()
+    // Ignored: a copy this phone can't read is asked of home instead.
+    .catch(() => null)
+  return here ?? askAudio(id)
 }
 
 /**

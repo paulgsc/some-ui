@@ -53,6 +53,15 @@ const HOME: HomeReading = {
       // As home will mark takes once they're switched on (MD3): every row
       // that offers Delete… is drawn beside those that don't.
       deletable: i % 2 === 0,
+      // Each way a row says what it is (MD8): long words, none heard, not
+      // heard yet, and one whose audio home keeps to itself.
+      durationMs: i % 4 === 2 ? null : 30_000 + i * 61_000,
+      heard:
+        i % 4 === 0
+          ? "So what I keep coming back to is that the second scene doesn't earn the turn, and the whole middle sags because of it"
+          : null,
+      heardCut: i % 8 === 0,
+      playsBack: i % 4 !== 3,
     })),
   },
 }

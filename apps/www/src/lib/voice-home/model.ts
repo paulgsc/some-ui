@@ -35,6 +35,7 @@ export const VOICE_OFS = [
   "lens",
   "leetype",
   "rust-round",
+  "interview",
 ] as const
 
 type VoiceOf = (typeof VOICE_OFS)[number]
@@ -50,7 +51,9 @@ export type VoiceOut = {
    * answer's `idea:<idea>:<question>`), how a
    * soundbite came to be recorded (its `context.source`), the grammar-lens
    * line read aloud, LeetType's session file and screen (`<file>:<screen>`),
-   * the Rust Rounds card (`@some-ui/rust-rounds`' `homeRef`).
+   * the Rust Rounds card (`@some-ui/rust-rounds`' `homeRef`), the interview
+   * week's question (`<week>:<question>`) or teleprompter read
+   * (`<week>:read:<card>`).
    */
   readonly ref: string
   /** When it was recorded, ISO 8601. */
