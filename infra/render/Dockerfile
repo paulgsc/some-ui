@@ -57,13 +57,16 @@ COPY . .
 # packages the stage and the recorders load built (their `exports` name
 # dist/), never the whole app. `record:playoff-delta` imports
 # @some-ui/playoff-delta's `recording` entry, which exists only once that
-# package is built. Then the stage, into /opt/stage. The turbo filters are
-# render-docker-release.yml's detect graph too: keep the two in step.
+# package is built, and `record:report` imports @some-ui/engagement's
+# registry, which likewise loads only from its dist/. Then the stage, into
+# /opt/stage. The turbo filters are render-docker-release.yml's detect graph
+# too: keep the two in step.
 RUN corepack enable \
     && pnpm install --frozen-lockfile --filter "www..." \
     && pnpm exec turbo run build \
        --filter="@some-ui/playoff-delta..." \
        --filter="@some-ui/honeycomb..." \
+       --filter="@some-ui/engagement..." \
        --filter="@some-ui/video-render^..." \
        --filter="@some-ui/video-motion^..." \
     && pnpm --filter www build:stage \
