@@ -11,7 +11,7 @@
  */
 import type { PhoneWordSets } from "@some-ui/topik"
 
-import type { WordSetsEvent, WordSetsState } from "./word-sets"
+import type { WordSetsEvent, WordSetsSaid, WordSetsState } from "./word-sets"
 import { READING, stepWordSets } from "./word-sets"
 
 export type WordSetsPorts = {
@@ -76,6 +76,8 @@ export function createWordSetsPage(ports: WordSetsPorts): WordSetsPage {
     },
     getSnapshot: () => state,
     open(): void {
+      // A notice from the last visit is over: the page opens on the list.
+      dispatch({ type: "dismissed" })
       read().catch(() => {
         // Ignored: `read` reported it and the page says it as `unread`.
       })
@@ -96,15 +98,15 @@ export function createWordSetsPage(ports: WordSetsPorts): WordSetsPage {
       if (held === null || title === null || state.kind !== "read") return
       const { room, limit } = state.list
       const kept = room && held.bringBack(id)
-      dispatch({
-        type: "did",
-        list: held.list(ports.now()),
-        said: kept
-          ? { kind: "broughtBack", title }
-          : room
-            ? { kind: "notKept" }
-            : { kind: "noRoom", limit },
-      })
+      const list = held.list(ports.now())
+      // The store may have filled since the list was read: say that, not a
+      // failure to keep it.
+      const said: WordSetsSaid = kept
+        ? { kind: "broughtBack", title }
+        : room && list.room
+          ? { kind: "notKept" }
+          : { kind: "noRoom", limit }
+      dispatch({ type: "did", list, said })
     },
     dismiss(): void {
       dispatch({ type: "dismissed" })

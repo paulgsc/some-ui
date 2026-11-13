@@ -119,6 +119,7 @@ import { intakeTree } from "@topik/lib/topik/generation/tree-intake"
 import {
   ADDED_SET_LIMIT,
   addSet,
+  bringBack,
   intakeSet,
   openSet,
   readySets,
@@ -283,7 +284,7 @@ export const HandheldLesson = ({
     ) {
       say({
         tone: "problem",
-        text: `This phone keeps ${ADDED_SET_LIMIT} word sets in use and has ${inUse.length}, so these ${fresh} weren't added. Archive some in My data to make room.`,
+        text: `This phone keeps ${ADDED_SET_LIMIT} word sets in use and has ${inUse.length}, so these ${fresh} weren't added. Archiving some makes room.`,
       })
       return null
     }
@@ -369,12 +370,28 @@ export const HandheldLesson = ({
     const missing = texts.filter(
       (_, at) => !added.some((set) => set.deck.id === ids[at])
     )
+    // Opening its scene again is reading it again: an archived set of the
+    // pair comes back in use, record and all, when there is room for it.
+    const archived = added.filter(
+      (set) => set.archivedAt !== null && ids.includes(set.deck.id)
+    )
+    if (
+      archived.length > 0 &&
+      inUse.length + archived.length + missing.length > ADDED_SET_LIMIT
+    ) {
+      setRoutineNote({
+        tone: "problem",
+        text: `This phone keeps ${ADDED_SET_LIMIT} word sets in use and has ${inUse.length}, so this scene's sets weren't brought back. Archiving some makes room.`,
+      })
+      return false
+    }
     let held = added
     if (missing.length > 0) {
       const next = addSetTexts(missing, setRoutineNote)
       if (next === null) return false
       held = next
     }
+    held = archived.reduce((sets, set) => bringBack(sets, set.deck.id), held)
     const chosen = session?.id ?? ids[0]
     if (chosen == null) return false
     keepSets(openSet(held, chosen, now().toISOString()))

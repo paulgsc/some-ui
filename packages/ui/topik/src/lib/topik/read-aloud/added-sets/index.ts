@@ -197,7 +197,7 @@ export function intakeSet(
   if (!replacing && inUseNow.length >= ADDED_SET_LIMIT) {
     return {
       ok: false,
-      error: `This phone keeps ${ADDED_SET_LIMIT} word sets in use, and has ${inUseNow.length}. Archive one in My data to make room.`,
+      error: `This phone keeps ${ADDED_SET_LIMIT} word sets in use, and has ${inUseNow.length}. Archiving one makes room.`,
     }
   }
   const after = resolveSets(addSet(added, deck, "")).sets

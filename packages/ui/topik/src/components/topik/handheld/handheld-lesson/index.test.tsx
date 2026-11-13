@@ -528,6 +528,69 @@ describe("HandheldLesson", () => {
     ).not.toBeNull()
   })
 
+  it("leaves an archived set out of Read aloud and Ready for you, and counts it again once picked again", async () => {
+    const store = createReadAloudStore(memoryStorage())
+    store.saveSets([
+      { deck: STARTER_SET, addedAt: "a", openedAt: "a", archivedAt: null },
+      { deck: LEVEL_ONE_SET, addedAt: "b", openedAt: null, archivedAt: "c" },
+    ])
+    renderLesson({
+      speaker: voice(() => Promise.resolve({ kind: "heard" })),
+      readAloudStore: store,
+    })
+    const card = await screen.findByRole("button", { name: /Read aloud/ })
+    expect(card.textContent).toContain("1 word set")
+    expect(screen.queryByRole("region", { name: "Ready for you" })).toBeNull()
+
+    await pickFile(NEW_WORDS, () =>
+      Promise.resolve(JSON.stringify({ schemaVersion: 1, ...LEVEL_ONE_SET }))
+    )
+    expect(
+      (await screen.findByRole("button", { name: /Read aloud/ })).textContent
+    ).toContain("2 word sets")
+    expect(store.sets().every((set) => set.archivedAt === null)).toBe(true)
+  })
+
+  it("brings a scene's archived sets back when its scene is opened again", async () => {
+    const store = createReadAloudStore(memoryStorage())
+    const decks = [
+      routineDeck("plans-2", "Plans"),
+      routineDeck("plans-2-lens", "Plans, lens"),
+    ]
+    store.saveSets(
+      decks.map((raw) => {
+        const parsed = parseReadAloudDeck(raw)
+        if (!parsed.ok) throw new Error("fixture")
+        return {
+          deck: parsed.deck,
+          addedAt: "2026-10-01T00:00:00.000Z",
+          openedAt: "2026-10-02T00:00:00.000Z",
+          archivedAt: "2026-11-01T00:00:00.000Z",
+        }
+      })
+    )
+    renderLesson({
+      speaker: voice(() => Promise.resolve({ kind: "heard" })),
+      readAloudStore: store,
+      routineFeed: { list: () => Promise.resolve([routineScene(decks)]) },
+    })
+    const waiting = await screen.findByRole("region", {
+      name: "From the routine",
+    })
+    fireEvent.click(
+      within(waiting).getByRole("button", { name: "Read aloud: 약속" })
+    )
+    expect(
+      document.querySelector('[data-slot="read-aloud-level"]')
+    ).not.toBeNull()
+    expect(store.sets().map((set) => set.archivedAt)).toEqual([null, null])
+    // Its record stands: the first open is the one it had.
+    expect(store.sets().map((set) => set.openedAt)).toEqual([
+      "2026-10-02T00:00:00.000Z",
+      "2026-10-02T00:00:00.000Z",
+    ])
+  })
+
   it("opens a scene on its grammar lens set from the lens's own button", async () => {
     const store = createReadAloudStore(memoryStorage())
     const opened = createOpenedStore(memoryStorage())
@@ -665,7 +728,7 @@ describe("HandheldLesson", () => {
     expect(
       document.querySelector('[data-slot="routine-note"]')?.textContent
     ).toBe(
-      "This phone keeps 50 word sets in use and has 49, so these 2 weren't added. Archive some in My data to make room."
+      "This phone keeps 50 word sets in use and has 49, so these 2 weren't added. Archiving some makes room."
     )
     expect(store.sets()).toHaveLength(49)
   })

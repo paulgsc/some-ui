@@ -450,13 +450,13 @@ export const WORD_SETS = {
   row: "Korean word sets",
   rowLine: "Archive the sets you're done reading aloud",
   title: "Korean word sets",
-  lead: "Each word set you've opened from the routine's scenes, kept on this phone. Archiving one takes it out of Read aloud and Ready for you and frees its place. It stays on this phone, and so do your counts on its sentences and each word's pace. Bring it back any time.",
+  lead: "Each word set on this phone for reading aloud, from the routine's scenes or a file you picked. Archiving one takes it out of Read aloud and Ready for you and frees its place. It stays on this phone, and so do your counts on its sentences and each word's pace. Bring it back any time.",
   /** What a drag down reads again. */
   pullWhat: "this phone's word sets",
   reading: "Reading this phone's word sets…",
   unread:
     "This phone's word sets couldn't be read just now. Drag down to try again.",
-  none: "No word sets on this phone yet. Open a scene from the routine to add its words.",
+  none: "No word sets on this phone yet. Opening a scene from the routine, or picking a word set file, adds one.",
   inUse: (n: number, limit: number): string =>
     `In use · ${String(n)} of ${String(limit)}`,
   noneInUse: "None in use. Bring one back to read it aloud again.",

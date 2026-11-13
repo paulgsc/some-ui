@@ -121,6 +121,31 @@ describe("My data's Korean word sets", () => {
     expect(sets.list(NOW).archived).toHaveLength(1)
   })
 
+  it("opens again without the last visit's notice", async () => {
+    const { page } = pageOver(await phoneWith([set("a")]))
+    await page.checkAgain()
+    page.archive("a")
+    expect(page.getSnapshot()).toMatchObject({ said: { kind: "archived" } })
+    page.open()
+    expect(page.getSnapshot()).toMatchObject({ said: null })
+  })
+
+  it("says there is no room when the phone filled since the list was read", async () => {
+    const sets = await phoneWith([set("a")])
+    sets.archive("a", NOW.toISOString())
+    let full = false
+    const filling: PhoneWordSets = {
+      ...sets,
+      list: (now: Date): WordSetsList => ({ ...sets.list(now), room: !full }),
+      bringBack: (id) => !full && sets.bringBack(id),
+    }
+    const { page } = pageOver(filling)
+    await page.checkAgain()
+    full = true
+    page.bringBack("a")
+    expect(page.getSnapshot()).toMatchObject({ said: { kind: "noRoom" } })
+  })
+
   it("says the sets couldn't be read, reports it, and reads them on a drag down", async () => {
     const sets = await phoneWith([set("a")])
     let opens = 0
