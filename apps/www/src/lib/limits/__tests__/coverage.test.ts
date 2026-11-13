@@ -99,6 +99,8 @@ const NOT_SHOWN: Readonly<Record<string, string>> = {
   "apps/www/src/lib/jobs/runtime.ts#DRAFT_NOT_KEPT": NOT_A_BOUND,
   "apps/www/src/lib/jobs/runtime.ts#NOT_KEPT": NOT_A_BOUND,
   "apps/www/src/lib/home-link/kept-model.ts#INITIAL_KEPT": NOT_A_BOUND,
+  "packages/ui/game-week/src/lib/bite.ts#MAX_OFFSET_MS":
+    "The clock offset a bite carries home, within what home takes: a range on one field, not a bound on what is kept.",
   "apps/www/src/lib/studio-index/words.ts#FEED_KEPT": NOT_A_BOUND,
   "packages/ui/rust-rounds/src/lib/home/index.ts#NOT_KEPT": NOT_A_BOUND,
   "packages/ui/rust-rounds/src/lib/weeks/index.ts#NOT_KEPT": NOT_A_BOUND,
