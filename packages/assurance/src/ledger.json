@@ -1173,10 +1173,16 @@
               "class": "measured",
               "says": "A tick over a game whose bites' matches did not change writes no row.",
               "ref": "server:apps/servers/file_host/src/reconcile.rs"
+            },
+            {
+              "class": "measured",
+              "says": "A match is added once; a later, different one is a new row.",
+              "ref": "server:crates/db/voice/src/bite_match.rs"
             }
           ],
           "proof": [
-            "server:apps/servers/file_host/src/reconcile.rs#the_worker_reconciles_a_final_game_again_only_when_it_has_new_bites"
+            "server:apps/servers/file_host/src/reconcile.rs#the_worker_reconciles_a_final_game_again_only_when_it_has_new_bites",
+            "server:crates/db/voice/src/bite_match.rs#a_match_is_added_once_and_a_later_one_is_a_new_row"
           ],
           "watch": {
             "by": "dashboard",
