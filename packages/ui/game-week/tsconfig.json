@@ -7,6 +7,12 @@
       "@game-week/*": ["./src/*"]
     }
   },
-  "include": ["src", "vite.config.ts", "vitest.config.ts", "vitest.setup.ts"],
+  "include": [
+    "src",
+    "src/**/*.json",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "vitest.setup.ts"
+  ],
   "exclude": ["node_modules", "build", "dist"]
 }

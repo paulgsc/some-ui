@@ -6,11 +6,10 @@
  * here: the race is a render-cycle gap only a synchronous guard at dispatch
  * closes. Disabling while `working` is a visible echo of it.
  *
- * The outer action stack is stable across every state, so a toolbar does not
- * jump as the intent settles; a retryable failure replaces the action with
- * its retry rather than adding a second control. The button sits where it
- * sat before the failure, at the stack's start, with the failure below it.
- * `failureOwnLine` puts the failure on its own line
+ * The button is the one control in every state, so a toolbar does not jump
+ * as the intent settles: a retryable failure relabels it as its retry rather
+ * than adding a second control, word labels share the widest one's width
+ * (`SameWidth`), and the failure is an `IntentFailure`, a `Notice`
  * (`tests/ui-fit/intent-failure-fit`).
  *
  * A non-retryable failure disables the button only when
@@ -21,18 +20,21 @@
  * input and resubmit.
  */
 
-import type { JSX, PropsWithChildren, ReactNode } from "react"
+import type { JSX, ReactNode } from "react"
 import { cn } from "@some-ui/core-utils"
-import type { Intent } from "@some-ui/intent-kit"
+import type { Intent, IntentError } from "@some-ui/intent-kit"
 import { matchIntent } from "@some-ui/intent-kit"
 import type { ButtonProps } from "@some-ui/shared"
-import { Button } from "@some-ui/shared"
+import { Button, SameWidth } from "@some-ui/shared"
 
 import { IntentFailure } from "@/lib/intent/render/intent-failure"
 
 export type IntentButtonProps<TStep extends string = never> = {
   state: Intent<unknown, TStep>
   onPress: () => void
+  /** Also called when a press retries a retryable failure, which runs the
+   * intent's own retry rather than `onPress`. */
+  onRetry?: () => void
   idleLabel: ReactNode
   workingLabel: ReactNode
   /** For a composite intent's `working` step (e.g. "Saving...",
@@ -47,34 +49,41 @@ export type IntentButtonProps<TStep extends string = never> = {
   /** Composed with the intent's own working-state disable, e.g. a
    * caller's `!isDirty` or a validation failure. */
   disabled?: boolean
-  failureClassName?: string
-  /**
-   * For a host that lays several actions in one `flex flex-wrap` row: the
-   * button is the row's own item, and a failure takes a whole line at the
-   * row's end, so it moves neither this button nor its neighbours.
-   */
-  failureOwnLine?: boolean
   /** Passed to every rendered `<Button>`; needed for an icon-only button
    * (`sessions/index.tsx`'s row actions). */
   title?: string
 }
 
-const ActionStack = ({
-  ownLine,
-  children,
-}: PropsWithChildren<{ ownLine: boolean }>): JSX.Element => (
-  <div
-    className={
-      ownLine ? "contents" : "inline-flex flex-col items-start gap-1.5"
-    }
-  >
-    {children}
-  </div>
-)
+/** What the button shows in a state, and the failure said beside it. */
+type Shown = {
+  label: ReactNode
+  onClick: (() => void) | undefined
+  disabled: boolean
+  error: IntentError | null
+}
+
+/** What a retryable failure relabels the button. */
+const RETRY = "Try again"
+
+/** Every word a button may say, when its labels are words; none otherwise. */
+function wordsOf(
+  idle: ReactNode,
+  ...others: ReadonlyArray<ReactNode>
+): ReadonlyArray<string> {
+  if (typeof idle !== "string") return []
+  return [
+    ...new Set([
+      idle,
+      RETRY,
+      ...others.filter((label) => typeof label === "string"),
+    ]),
+  ]
+}
 
 export const IntentButton = <TStep extends string = never>({
   state,
   onPress,
+  onRetry,
   idleLabel,
   workingLabel,
   workingStepLabel,
@@ -83,80 +92,70 @@ export const IntentButton = <TStep extends string = never>({
   size,
   className,
   disabled = false,
-  failureClassName,
-  failureOwnLine = false,
   title,
-}: IntentButtonProps<TStep>): JSX.Element =>
-  matchIntent<unknown, JSX.Element, TStep>(state, {
-    idle: () => (
-      <ActionStack ownLine={failureOwnLine}>
-        <Button
-          variant={variant}
-          size={size}
-          className={className}
-          disabled={disabled}
-          onClick={onPress}
-          title={title}
-        >
-          {idleLabel}
-        </Button>
-      </ActionStack>
-    ),
-    working: (step) => (
-      <ActionStack ownLine={failureOwnLine}>
-        <Button
-          variant={variant}
-          size={size}
-          className={className}
-          disabled
-          title={title}
-        >
-          {workingStepLabel?.(step) ?? workingLabel}
-        </Button>
-      </ActionStack>
-    ),
-    succeeded: () => (
-      <ActionStack ownLine={failureOwnLine}>
-        <Button
-          variant={variant}
-          size={size}
-          className={className}
-          disabled={disabled}
-          onClick={onPress}
-          title={title}
-        >
-          {succeededLabel ?? idleLabel}
-        </Button>
-      </ActionStack>
-    ),
+}: IntentButtonProps<TStep>): JSX.Element => {
+  const every = wordsOf(idleLabel, workingLabel, succeededLabel)
+  const say = (shown: ReactNode): ReactNode =>
+    every.length === 0 ? (
+      shown
+    ) : (
+      <SameWidth every={every} className="justify-items-center">
+        {shown}
+      </SameWidth>
+    )
+  // One button in every state, so a state change keeps it, and its focus.
+  const shown = matchIntent<unknown, Shown, TStep>(state, {
+    idle: () => ({ label: idleLabel, onClick: onPress, disabled, error: null }),
+    working: (step) => ({
+      label: workingStepLabel?.(step) ?? workingLabel,
+      onClick: undefined,
+      disabled: true,
+      error: null,
+    }),
+    succeeded: () => ({
+      label: succeededLabel ?? idleLabel,
+      onClick: onPress,
+      disabled,
+      error: null,
+    }),
     failed: (error, retry) => {
       const blocked = !error.retryable && error.blocksResubmission === true
-      return (
-        <ActionStack ownLine={failureOwnLine}>
-          <Button
-            variant={variant}
-            size={size}
-            className={cn(
-              className,
-              "opacity-80 hover:opacity-100 transition-opacity",
-              // Custom striped CSS gradient layered over the existing background
-              "bg-[linear-gradient(135deg,rgba(0,0,0,0.15)_25%,transparent_25%,transparent_50%,rgba(0,0,0,0.15)_50%,rgba(0,0,0,0.15)_75%,transparent_75%,transparent)]",
-              "bg-[size:1rem_1rem]" // Adjust tile size for tighter/wider stripes
-            )}
-            disabled={disabled || blocked}
-            onClick={error.retryable ? retry : blocked ? undefined : onPress}
-            title={title}
-          >
-            {error.retryable ? "Try again" : idleLabel}
-          </Button>
-          <IntentFailure
-            error={error}
-            className={cn(
-              failureOwnLine ? "order-last basis-full" : "w-full",
-              failureClassName
-            )}
-          />
-        </ActionStack>
-      )
+      return {
+        label: error.retryable ? RETRY : idleLabel,
+        onClick: error.retryable
+          ? (): void => {
+              onRetry?.()
+              retry()
+            }
+          : blocked
+            ? undefined
+            : onPress,
+        disabled: disabled || blocked,
+        error,
+      }
     },
   })
+  return (
+    <>
+      <Button
+        variant={variant}
+        size={size}
+        className={cn(
+          className,
+          shown.error !== null && [
+            "opacity-80 hover:opacity-100 transition-opacity",
+            // Custom striped CSS gradient layered over the existing background
+            "bg-[linear-gradient(135deg,rgba(0,0,0,0.15)_25%,transparent_25%,transparent_50%,rgba(0,0,0,0.15)_50%,rgba(0,0,0,0.15)_75%,transparent_75%,transparent)]",
+            "bg-[size:1rem_1rem]", // Adjust tile size for tighter/wider stripes
+          ]
+        )}
+        disabled={shown.disabled}
+        onClick={shown.onClick}
+        title={title}
+      >
+        {say(shown.label)}
+      </Button>
+      {shown.error === null ? null : <IntentFailure error={shown.error} />}
+    </>
+  )
+}

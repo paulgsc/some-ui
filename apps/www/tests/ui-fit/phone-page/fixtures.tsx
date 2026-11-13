@@ -29,6 +29,7 @@ import {
   keptLetGo,
   keptTimeLog,
   NewIdeaPage,
+  STUDIO_WORDS,
   StudioHome,
 } from "@some-ui/soundbites"
 import {
@@ -41,8 +42,8 @@ import {
   run,
 } from "@some-ui/soundbites/fixtures"
 import type { Format } from "@some-ui/video-render"
-import { episodeOf, FORMAT_SCHEMA } from "@some-ui/video-render"
-import type { TurnListener } from "@some-ui/voice-capture"
+import { FORMAT_SCHEMA } from "@some-ui/video-render"
+import { episodeOf } from "@some-ui/video-render/testing"
 import { ONE_TAKE } from "@some-ui/voice-capture"
 import type { MicScript } from "@some-ui/voice-capture/testing"
 import {
@@ -51,10 +52,15 @@ import {
   SPEAKING,
 } from "@some-ui/voice-capture/testing"
 
+import { APH_FIXTURES } from "./aph"
 import { MY_DATA_FIXTURES } from "./my-data"
 import { PULL_FIXTURES } from "./pull"
+import { ROUNDS_FIXTURES } from "./rounds"
 import { SettingsBar } from "./settings-bar"
+import { hearsOnStop, SOUNDBITES_FIXTURES } from "./soundbites"
 import { FIT_CUTS, FIT_PRIMER_TEXT } from "./studio-seed"
+import { TOPIK_FIXTURES } from "./topik"
+import { WWW_FIXTURES } from "./www"
 
 const AT = "2026-10-30T09:00:00.000Z"
 
@@ -205,21 +211,13 @@ const HELD: Project = ((): Project => {
   }
 })()
 
-const noop = (): void => undefined
-
-/** A recognizer that is there and never finishes, so each screen offers to listen. */
-const listener: TurnListener = {
-  available: () => Promise.resolve(true),
-  listen: () => ({
-    done: new Promise(() => undefined),
-    stop: noop,
-    cancel: noop,
-  }),
-}
-
-/** Studio on `projects`, in memory: a microphone that always hears, and a time log of this page load. */
+/**
+ * Studio on `projects`, in memory: a microphone that always hears, and a
+ * time log of this page load; `now`, the clock, when it is not the page's.
+ */
 function studioPorts(
-  projects: ReadonlyArray<Project>
+  projects: ReadonlyArray<Project>,
+  now?: () => number
 ): NonNullable<StudioProps["ports"]> {
   return {
     store: memoryProjectStore(projects).store,
@@ -231,7 +229,8 @@ function studioPorts(
     timeLog: keptTimeLog(inMemoryStorage),
     // Kept as long as the page is: a choice made on Start stays made.
     letGo: keptLetGo(once(inMemoryStorage())),
-    listener,
+    listener: hearsOnStop,
+    ...(now === undefined ? {} : { now }),
   }
 }
 
@@ -264,7 +263,20 @@ function newIdea(refuse: boolean): () => JSX.Element {
     ideas: keptIdeaStore(storage),
   }
   const IdeaFixture = (): JSX.Element => (
-    <NewIdeaPage takes={takes} ports={ports} backLink={STUDIO_LINK} />
+    <NewIdeaPage
+      takes={takes}
+      ports={ports}
+      backLink={STUDIO_LINK}
+      // The route's way to pairing (`PairHomeLink`), as an anchor here.
+      pair={
+        <a
+          href="#pair"
+          className="text-brand self-start text-sm font-semibold underline underline-offset-4"
+        >
+          {STUDIO_WORDS.pair.pair}
+        </a>
+      }
+    />
   )
   return IdeaFixture
 }
@@ -288,11 +300,14 @@ const IDEA_LINK = anchorTo("#idea")
 const IDEAS_LINK = anchorTo("#ideas")
 const STUDIO_LINK = anchorTo("#studio")
 
-/** The Studio wing's Home on `projects`. */
-function studioOn(projects: ReadonlyArray<Project>): () => JSX.Element {
+/** The Studio wing's Home on `projects`, on the clock `now` if given. */
+function studioOn(
+  projects: ReadonlyArray<Project>,
+  now?: () => number
+): () => JSX.Element {
   const StudioFixture = (): JSX.Element => (
     <StudioHome
-      ports={studioPorts(projects)}
+      ports={studioPorts(projects, now)}
       ideaLink={IDEA_LINK}
       ideasLink={IDEAS_LINK}
     />
@@ -380,6 +395,22 @@ export const PHONE_FIXTURES = {
   "settings-bar": SettingsBar,
   /** My data, its overview and a kind's list (`../my-data-fit.spec.ts`). */
   ...MY_DATA_FIXTURES,
+  /** aph's logger and History (`./aph`, `../stays-put.spec.ts`). */
+  ...APH_FIXTURES,
+  /** The rounds wing's screens (`./rounds`, `../stays-put-rounds.spec.ts`). */
+  ...ROUNDS_FIXTURES,
+  /** The handheld lesson (`./topik`, `../stays-put-topik.spec.ts`). */
+  ...TOPIK_FIXTURES,
+  /** www's screens and shared parts (`./www`, `../stays-put-www.spec.ts`). */
+  ...WWW_FIXTURES,
+  /** Studio's wing, for `../stays-put-soundbites.spec.ts` (`./soundbites`). */
+  ...SOUNDBITES_FIXTURES,
+  /**
+   * Nothing recorded yet, on a clock that holds still, so a take under way
+   * neither fills the take button (an animation each tick, which no measure
+   * can wait out) nor reaches its cap and stops itself between two taps.
+   */
+  "studio-fresh-still": studioOn([FRESH], () => Date.parse(AT)),
 } satisfies Record<string, () => JSX.Element>
 
 export type PhoneId = keyof typeof PHONE_FIXTURES

@@ -8,10 +8,10 @@
  */
 import { inMemoryStorage } from "@some-ui/core-utils"
 import { ONE_TAKE, TAKE_WORDS } from "@some-ui/voice-capture"
+import type { HomeReach } from "@some-ui/voice-capture"
 import { simulatedPattern, SPEAKING } from "@some-ui/voice-capture/testing"
 import { IdeaBundle } from "@soundbites/components/idea-bundle"
 import { bundleTakesOf } from "@soundbites/fixtures"
-import type { HomeReach } from "@soundbites/lib/idea/bundle"
 import { keptDraftStore } from "@soundbites/lib/idea/draft"
 import { keptIdeaStore } from "@soundbites/lib/idea/store"
 import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
@@ -34,6 +34,9 @@ const pass = (ms = 0): Promise<void> =>
     await vi.advanceTimersByTimeAsync(ms)
   })
 
+/** The app's way to pairing, as the route hands it in. */
+const PAIR = <a href="#pair">{STUDIO_WORDS.pair.pair}</a>
+
 function mount(
   reach: HomeReach = "unpaired"
 ): ReturnType<typeof simulatedPattern> {
@@ -50,6 +53,7 @@ function mount(
         newId: () => "idea-1",
         home: { reach: () => reach, subscribe: () => (): void => undefined },
       }}
+      pair={PAIR}
     />
   )
   return simulated
@@ -125,14 +129,14 @@ describe("New idea, one bundle (ST26)", () => {
     mount()
     await pass()
     toQuestions()
-    expect(card()).toHaveAccessibleName(WORDS.questionOf(1, 4))
+    expect(card()).toHaveAccessibleName(WORDS.cardOf(1, 4))
     drag(-20)
-    expect(card()).toHaveAccessibleName(WORDS.questionOf(1, 4))
+    expect(card()).toHaveAccessibleName(WORDS.cardOf(1, 4))
     drag(-90)
-    expect(card()).toHaveAccessibleName(WORDS.questionOf(2, 4))
+    expect(card()).toHaveAccessibleName(WORDS.cardOf(2, 4))
     expect(card()).toHaveTextContent(ASK.takeaway.ask)
     drag(90)
-    expect(card()).toHaveAccessibleName(WORDS.questionOf(1, 4))
+    expect(card()).toHaveAccessibleName(WORDS.cardOf(1, 4))
     fireEvent.click(button(WORDS.dot.open(4)))
     expect(card()).toHaveTextContent(ASK.picture.ask)
   })
@@ -155,7 +159,7 @@ describe("New idea, one bundle (ST26)", () => {
     toQuestions()
     drag(-90, button(TAKE_WORDS.buttonLabel.ready))
     await pass()
-    expect(card()).toHaveAccessibleName(WORDS.questionOf(2, 4))
+    expect(card()).toHaveAccessibleName(WORDS.cardOf(2, 4))
     expect(
       screen.queryByRole("button", { name: TAKE_WORDS.buttonLabel.recording })
     ).not.toBeInTheDocument()
@@ -199,7 +203,7 @@ describe("New idea, one bundle (ST26)", () => {
     })
     fireEvent.click(button(TAKE_WORDS.buttonLabel.ready))
     await pass(50)
-    expect(screen.getByRole("status")).toHaveTextContent(WORDS.failed.title)
+    expect(screen.getByRole("alert")).toHaveTextContent(WORDS.failed.title)
     expect(button(WORDS.failed.again)).toBeInTheDocument()
     expect(button(WORDS.failed.later)).toBeInTheDocument()
     fireEvent.click(button(WORDS.failed.type))
@@ -218,14 +222,49 @@ describe("New idea, one bundle (ST26)", () => {
     ).toBeInTheDocument()
   })
 
+  it("keeps a take with no voice heard in it, says so, and offers typing beside it, marked (ST34)", async () => {
+    const { mic } = mount()
+    await pass()
+    toQuestions()
+    mic.script({ ...SPEAKING, level: 0 })
+    await say()
+    expect(screen.getByText(TAKE_WORDS.ended.unheard)).toBeInTheDocument()
+    fireEvent.click(button(new RegExp(WORDS.unheard.type)))
+    expect(card().querySelector("[data-typing='fallback']")).toHaveTextContent(
+      WORDS.typing.mark
+    )
+    fireEvent.change(screen.getByLabelText(WORDS.typing.hint), {
+      target: { value: "Two hearings disagreed" },
+    })
+    fireEvent.click(button(WORDS.typing.keep))
+    expect(card().querySelector("[data-typing='kept']")).toHaveTextContent(
+      WORDS.typed.mark
+    )
+    expect(
+      screen.getByRole("button", { name: WORDS.dot.typed(1) })
+    ).toBeInTheDocument()
+    // Looked over, the take shows beside the typed words, playable, and
+    // deleting the answer says the take goes too.
+    fireEvent.click(button(WORDS.toReview))
+    expect(screen.getByText("Two hearings disagreed")).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: /^Play the take of/ })
+    ).toBeEnabled()
+    expect(button(WORDS.review.playAll)).toBeEnabled()
+    fireEvent.click(screen.getByRole("button", { name: /^Delete the take/ }))
+    expect(
+      screen.getByRole("dialog", { name: WORDS.confirm.answerTitle })
+    ).toHaveTextContent(WORDS.confirm.besideLine(ASK.what.ask))
+  })
+
   it("says a full phone is a full phone, not voice failing, and offers typing and later, not again", async () => {
     const { keeping } = mount()
     await pass()
     toQuestions()
     keeping("full")
     await say()
-    expect(screen.getByRole("status")).toHaveTextContent(WORDS.full.title)
-    expect(screen.getByRole("status")).not.toHaveTextContent(WORDS.failed.title)
+    expect(screen.getByRole("alert")).toHaveTextContent(WORDS.full.title)
+    expect(screen.getByRole("alert")).not.toHaveTextContent(WORDS.failed.title)
     expect(
       screen.queryByRole("button", { name: WORDS.failed.again })
     ).not.toBeInTheDocument()
@@ -265,7 +304,9 @@ describe("New idea, one bundle (ST26)", () => {
     toQuestions()
     await say()
     fireEvent.click(button(WORDS.toReview))
-    expect(screen.queryByText(WORDS.review.away)).not.toBeInTheDocument()
+    expect(
+      screen.queryByText(WORDS.review.notNear.away)
+    ).not.toBeInTheDocument()
     fireEvent.click(button(WORDS.review.send(1)))
     expect(
       screen.getByRole("heading", { name: WORDS.sent.title })
@@ -274,20 +315,48 @@ describe("New idea, one bundle (ST26)", () => {
     expect(screen.getByText("Two hearings, one word")).toBeInTheDocument()
   })
 
-  it("away from home, or unpaired, keeps the idea and says it goes home when back in reach", async () => {
-    mount("unpaired")
+  it("away from home, keeps the idea and says it goes home when back in reach, with no way to pairing", async () => {
+    mount("away")
     await pass()
     toQuestions()
     await say()
     fireEvent.click(button(WORDS.toReview))
-    expect(screen.getByText(WORDS.review.away)).toBeInTheDocument()
+    expect(screen.getByText(WORDS.review.notNear.away)).toBeInTheDocument()
     expect(
       screen.queryByRole("button", { name: WORDS.review.send(1) })
     ).not.toBeInTheDocument()
     fireEvent.click(button(WORDS.review.keep(1)))
     expect(
-      screen.getByRole("heading", { name: WORDS.sent.kept })
+      screen.getByRole("heading", { name: WORDS.sent.notNear.away.title })
     ).toBeInTheDocument()
-    expect(screen.getByText(WORDS.sent.away)).toBeInTheDocument()
+    expect(screen.getByText(WORDS.sent.notNear.away.line)).toBeInTheDocument()
+    expect(
+      screen.queryByRole("link", { name: STUDIO_WORDS.pair.pair })
+    ).not.toBeInTheDocument()
+  })
+
+  it("on a phone never paired, says so rather than out of reach, and offers the app's way to pairing (ST34)", async () => {
+    mount("unpaired")
+    await pass()
+    toQuestions()
+    await say()
+    fireEvent.click(button(WORDS.toReview))
+    expect(screen.getByText(WORDS.review.notNear.unpaired)).toBeInTheDocument()
+    expect(
+      screen.queryByText(WORDS.review.notNear.away)
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole("link", { name: STUDIO_WORDS.pair.pair })
+    ).toBeInTheDocument()
+    fireEvent.click(button(WORDS.review.keep(1)))
+    expect(
+      screen.getByRole("heading", { name: WORDS.sent.notNear.unpaired.title })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(WORDS.sent.notNear.unpaired.line)
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole("link", { name: STUDIO_WORDS.pair.pair })
+    ).toBeInTheDocument()
   })
 })

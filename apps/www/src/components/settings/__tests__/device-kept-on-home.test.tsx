@@ -77,6 +77,8 @@ vi.mock("@/lib/home-link/going", () => ({
     Promise.resolve({ going: [], onPhone: () => true }),
   lensGoing: (): Promise<unknown> =>
     Promise.resolve({ going: [], onPhone: () => true }),
+  koreanGoing: (): Promise<unknown> =>
+    Promise.resolve({ going: [], onPhone: () => true }),
 }))
 vi.mock("@/lib/jobs", async () => {
   const { EMPTY } = await import("@/lib/jobs/model")
@@ -153,22 +155,29 @@ async function mount(): Promise<void> {
   await act(() => Promise.resolve())
 }
 
+/** The Send now buttons that can be pressed now; every row keeps one. */
+const sendable = (): Array<HTMLButtonElement> =>
+  screen
+    .getAllByRole<HTMLButtonElement>("button", { name: "Send now" })
+    .filter((button) => !button.disabled)
+
 describe("what this phone keeps on home", () => {
   it("says each record is kept on home once paired, and sends nothing", async () => {
     await mount()
     // Practice's four kinds, aph, the Jobs record, voice notes, Studio's
-    // ideas, Rust Rounds' rounds and how each recording ended.
+    // ideas, notes on episodes, Rust Rounds' four (weeks sent, pastes,
+    // rounds, the card log) and how each recording ended.
     expect(
       screen.getAllByText(/: Kept on home$|: Nothing on home yet$/)
-    ).toHaveLength(10)
+    ).toHaveLength(14)
     expect(home.sent).toEqual([])
   })
 
   it("says everything is only on this phone while it isn't paired", async () => {
     home.record = null
     await mount()
-    expect(screen.getAllByText(/: Only on this phone$/)).toHaveLength(10)
-    expect(screen.queryByRole("button", { name: "Send now" })).toBeNull()
+    expect(screen.getAllByText(/: Only on this phone$/)).toHaveLength(14)
+    expect(sendable()).toEqual([])
     expect(home.sent).toEqual([])
   })
 
@@ -176,10 +185,14 @@ describe("what this phone keeps on home", () => {
     home.voiceWaiting = 2
     await mount()
     expect(
-      screen.getByText(/2 voice notes and ideas wait on this phone/)
+      screen.getByText(
+        /2 voice notes, ideas, episode notes and videos wait on this phone/
+      )
     ).toBeTruthy()
     expect(home.runs).toBe(0)
-    fireEvent.click(screen.getByRole("button", { name: "Send now" }))
+    expect(sendable()).toHaveLength(1)
+    const [send] = sendable()
+    fireEvent.click(send)
     await waitFor(() => expect(home.runs).toBe(1))
   })
 
@@ -192,7 +205,7 @@ describe("what this phone keeps on home", () => {
       )
     ).toBeTruthy()
     expect(screen.queryByText(/wait/)).toBeNull()
-    expect(screen.queryByRole("button", { name: "Send now" })).toBeNull()
+    expect(sendable()).toEqual([])
   })
 
   it("offers the arrival notice under the Jobs record, where this build can be told", async () => {

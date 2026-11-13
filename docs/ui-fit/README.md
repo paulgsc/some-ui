@@ -380,13 +380,126 @@ kind and the widest numbers it says, and the spec sweeps each at
 `PHONE_VIEWPORTS` with `findViolations` and a check that nothing is wider
 than the phone, once more with the tables shown.
 
+### 2i. `apps/www/tests/ui-fit/stays-put.spec.ts` (Playwright, a screen holds still while it is used)
+
+The other specs ask whether a screen fits at rest. This one asks whether it
+holds still while it is used (promise HS1). A screen at any moment is a
+still picture; a person acting on it (typing a figure on a keypad, tapping
+through a study card, filling a form) is acting on that picture, and is
+still acting on it when the app answers. A thumb and an eye aim where a
+control was a moment ago, so an answer that rearranges the picture takes the
+next tap meant for another control. aph's logger did that on every number:
+the first digit typed was outside the usual range, a "Typo?" banner mounted
+above the keypad, and the keypad dropped 48px, about one row of keys.
+
+So the rule has two halves, and neither is satisfied by machinery the person
+can see:
+
+1. **What the app says about what was just done is said over the screen,
+   never in it.** A warning, a refusal, "saved", "loading", a hint: each is
+   said with `Notice` (`@some-ui/shared`), which floats on the screen's
+   notice plane, as a toast or a popover does, and takes no room in the
+   layout. The www shell puts the plane under its header; a sheet or dialog
+   has its own at its top, since a modal hides the page's. A notice nothing
+   else takes away (a refusal) carries a close button.
+2. **The layout changes only when the person asked for other content:**
+   another screen, another form of this one (a mode switch), or more of it
+   (a translation, the rest of a list), which then grows _below_ what was
+   tapped. Nothing holds room for what might appear: no blank line kept for
+   a message, no invisible stand-in for a control. A control that cannot be
+   used now stays in its place, disabled, which says why it is there; a word
+   that changes ("Copy", "Copied") keeps one width (`SameWidth`); every
+   `Button` variant draws a border, transparent unless it shows, so a toggle
+   between `outline` and `default` keeps its width.
+
+The spec walks a screen tap by tap (`holdStill`,
+`apps/www/tests/layout-invariants/stays-put.ts`). Before and after each tap,
+once animations have ended, it reads every visible target's box in its
+scrolled content and fails on any that moved, and it fails on any element
+with `role="alert"` or `role="status"` that takes room in the screen instead
+of being on the notice plane, an empty one held open included. A tap whose
+point is a new layout declares it with `reflows` and says why; a tap that
+asks for more declares `grows`, and may move only what is below it. A
+message, a preview or a refusal is never either.
+
+A CLS budget would not have caught any of this. The Layout Instability API
+leaves out every shift within 500ms of an input (`hadRecentInput`), which is
+every shift a tap causes, so a screen that moves under each tap scores zero.
+
+The walks, and HS1's Family, are in `stays-put.spec.ts` (aph, and the
+measure's planted self-test) and one spec per wing beside it
+(`stays-put-rounds`, `-soundbites`, `-topik`, `-www`), each listed in
+`pr.yml`. A phone screen none of them walks is outside HS1 until one does,
+with its fixture on the phone page (`./phone-page/fixtures.tsx`). A spec is
+its walks: taps built from the measure's own (`button`, `toScreen`,
+`waitsFor`, `putAway`, `picksFile`, `refuseWrites`), handed to `walkEachPhone` (`harness.ts`), which
+opens each walk's fixture at every phone size. What happens on a screen
+without a tap (a save refused, home answering, the phone filling up) is a
+fixture's action (`./phone-page/fit-actions.ts`), which a walk calls with
+`happens`. Run them against a built phone page:
+
+```sh
+pnpm --filter www build:fit-phone
+pnpm --filter www test:ui-fit tests/ui-fit/stays-put.spec.ts
+```
+
+### 2j. `pnpm check:stays-put` (a count, HS3)
+
+The walks in 2i hold the screens they walk. What keeps a new screen from
+bringing the fault back before anyone writes a walk for it is a count of its
+shape in the source: an error or status line drawn in a phone screen's
+layout instead of said with `Notice`.
+
+> **HS3: a phone surface draws no error or status line in its layout, except
+> the ones listed as its content.**
+>
+> - _Claim:_ every phone source file (`packages/eslint/src/phone-sources.ts`,
+>   the scope GES5 holds too) with a JSX element of `role="alert"` or
+>   `role="status"`, or an `<Alert>`, other than a `<Notice>`, is listed in
+>   `scripts/notices.allowlist` at its exact count, in a group whose
+>   `Content:` line is true (the line is the screen's own content, such as a
+>   figure, not news of what was just done), or in the `Grandfathered:` group,
+>   which only shrinks.
+> - _Falsified by_ an allowlist hunk that adds or raises an entry under a
+>   `Content:` line that the file it names, as it stands after the diff,
+>   contradicts: the line answers a tap, a save or a load (a refusal, a
+>   warning, progress). Or a hunk that rewords a `Content:` line so it no
+>   longer says what content the line is. Or a hunk that narrows
+>   `staysPutSites` in `packages/eslint/src/stays-put.ts` or `phoneSources` in
+>   `packages/eslint/src/phone-sources.ts`.
+> - _Scope:_ `scripts/notices.allowlist` and the files it names;
+>   `packages/eslint/src/stays-put.ts` and `phone-sources.ts`.
+> - _Why not enforced:_ that each line is listed at its count is enforced
+>   (`pnpm check:stays-put`, in root `pnpm lint` and pr.yml). Whether a line
+>   is content or news is a reading no AST can make; the walks in 2i measure
+>   it for the screens they walk.
+
+> **HS2 (retired): a line a phone surface mounts on a condition is listed,
+> with why it moves nothing.**
+>
+> - _Claim:_ every phone source file that mounted an element with
+>   `role="alert"`, `role="status"` or `<Alert>` on a condition was listed in
+>   `scripts/stays-put.allowlist`, under a true `Placement:` line or
+>   `Grandfathered:`.
+> - _Falsified by_ an allowlist hunk under a `Placement:` line its file
+>   contradicted.
+> - _Scope:_ `scripts/stays-put.allowlist`, `packages/eslint/src/stays-put.ts`.
+> - _Why not enforced:_ whether a listed line moved a control was layout.
+> - _Retired:_ by HS3 (the owner, 2026-11-06); 2i says why.
+
+What the count cannot see (a line with no role, a role set by a spread, text
+that changes length in an element that stays) is in the module's header, and
+stays with review and the walks.
+
 ### 3. CI
 
 The ui-fit specs ran nowhere until #899. `pnpm test:ui-fit` existed, this
 document called them "the actual gate", and no workflow invoked them — which
 is its own lesson about where guardrails actually live. `pr.yml` now builds
 the panel page and the phone page and runs `panel-fit`, `incident-fit`,
-`studio-fit`, `settings-bar-fit`, `my-data-fit`, `launcher-fit` and `exercise-shell-fit` whenever a PR touches `packages/ui/**`, `packages/some-content-registry/**`,
+`studio-fit`, `settings-bar-fit`, `my-data-fit`, `launcher-fit`,
+`exercise-shell-fit`, `intent-failure-fit`, `rust-rounds-fit`,
+`take-pattern-fit` and `stays-put` whenever a PR touches `packages/ui/**`, `packages/some-content-registry/**`,
 `packages/some-styles/**`, `apps/www/src/**`, `apps/www/tests/ui-fit/**`,
 www's build config (the list is in `pr.yml`), the root `package.json` or
 `pnpm-lock.yaml`.

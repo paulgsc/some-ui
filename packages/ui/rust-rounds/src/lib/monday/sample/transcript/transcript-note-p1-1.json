@@ -1,0 +1,11 @@
+{
+  "schema": "some-ui.voice-transcript/1",
+  "note": "note-p1",
+  "of": "rust-round",
+  "ref": "2026-w46:PASTE:2026-11-12T17:04:00.000Z",
+  "at": "2026-11-12T17:04:00.000Z",
+  "text": "This one's from the label renderer. I moved the page into the worker thread and it wants Send. I wrapped it in Rc because two things read it, and I don't really get why that matters to a thread.",
+  "language": "en",
+  "model": "ggml-small.en",
+  "heardAt": "2026-11-12T17:04:00.000Z"
+}

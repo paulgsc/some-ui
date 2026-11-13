@@ -33,12 +33,14 @@ import { useEffect, useState, useSyncExternalStore } from "react"
 import {
   BrandMark,
   Button,
+  Notice,
   TakeButton,
+  TakeNotices,
   TakeRows,
   useTakePattern,
 } from "@some-ui/shared"
 import type { TakeRowView } from "@some-ui/voice-capture"
-import { TAKE_WORDS, takeItemView, takeSaid } from "@some-ui/voice-capture"
+import { takeItemView } from "@some-ui/voice-capture"
 import { describeContext, formatWhen } from "@soundbites/lib/format"
 import { homeHeld, homeHoldsNow } from "@soundbites/lib/home-held"
 import type { SoundbiteSituation } from "@soundbites/lib/machine"
@@ -151,6 +153,7 @@ export const Soundbites = ({
   // One reading of what home holds for this render, not one per soundbite.
   const held = homeHoldsNow()
   const replaced = kept === null ? null : nextReplaced(kept, choice, held)
+  const unpicked = kept === null ? null : nextReplaced(kept, null, held)
   const bites = new Map((kept ?? []).map((bite) => [bite.id, bite]))
   const view = takeItemView(
     take,
@@ -158,7 +161,6 @@ export const Soundbites = ({
     SOUNDBITE_ITEM,
     pattern.options
   )
-  const said = view.said === null ? null : takeSaid(TAKE_WORDS, view.said)
 
   /** What the app noted, under a row's length. */
   const describe = ({ id }: { id: string }): ReactNode => {
@@ -171,9 +173,11 @@ export const Soundbites = ({
   const replaceNext = (row: TakeRowView): ReactNode => {
     const { id } = row.take
     if (!full || !held(id)) return undefined
+    // The mark and the button take the same room, a line of the row's own,
+    // so a pick moves no row (HS1).
     if (replaced?.id === id)
       return (
-        <span className="text-warning px-2 text-xs font-medium">
+        <span className="text-warning flex h-9 basis-full items-center justify-end px-3 text-xs font-medium">
           Replaced by your next one
         </span>
       )
@@ -182,7 +186,7 @@ export const Soundbites = ({
         type="button"
         size="sm"
         variant="ghost"
-        className="text-muted-foreground"
+        className="text-muted-foreground basis-full justify-end"
         onClick={() => dispatch({ type: "replacePicked", id })}
       >
         Replace this one next instead
@@ -201,25 +205,23 @@ export const Soundbites = ({
           <p className="text-muted-foreground text-sm">{ask.lede}</p>
         </header>
 
-        <div className="flex flex-col items-center gap-3">
+        {/* One width on a phone held sideways: what is said under the
+            button wraps in it rather than widening it (HS1). */}
+        <div className="flex flex-col items-center gap-3 [@media(max-height:479px)]:w-80 [@media(max-height:479px)]:shrink-0">
           <TakeButton
             view={view.button}
             size="large"
             onTap={() => pattern.tap(SOUNDBITE_ITEM, view.supersedes)}
           />
-          <p
-            aria-live="polite"
-            data-take-ended={
-              view.said?.kind === "ended" ? view.said.ended.seq : undefined
-            }
-            className="text-muted-foreground min-h-5 text-center text-sm"
-          >
-            {said}
-          </p>
+          <TakeNotices view={view} />
           {notice !== "" && (
-            <p role="alert" className="text-destructive text-center text-sm">
+            <Notice
+              key={notice}
+              tone="danger"
+              onDismiss={() => dispatch({ type: "noticeDismissed" })}
+            >
               {notice}
-            </p>
+            </Notice>
           )}
         </div>
       </div>
@@ -257,35 +259,32 @@ export const Soundbites = ({
           )}
         </div>
 
-        {full && replaced !== null && (
+        {/* The one replaced unless another is picked: a pick moves the
+            mark on the rows, never these words. */}
+        {full && unpicked !== null && (
           <p className="text-muted-foreground text-xs">
             {WORDS.fullReplaces}{" "}
             <span className="text-foreground font-medium">
-              {formatWhen(replaced.recordedAt, now)}
+              {formatWhen(unpicked.recordedAt, now)}
             </span>
-            {WORDS.whichGoes[replacedBy(replaced, choice)]}
-            {WORDS.pickAnother}
+            {WORDS.whichGoes[replacedBy(unpicked)]}.
           </p>
         )}
 
-        {full && replaced === null && (
+        {full && unpicked === null && (
           <p className="text-muted-foreground text-xs">{WORDS.fullNoneHeld}</p>
         )}
 
         {library.kind === "unreadable" ? (
-          <div
-            role="alert"
-            className="bg-muted/40 space-y-3 rounded-2xl p-4 text-center text-sm"
+          <Notice
+            tone="danger"
+            action={{
+              label: "Read them again",
+              onClick: () => dispatch({ type: "retryRead" }),
+            }}
           >
-            <p className="text-muted-foreground">{WORDS.unreadable}</p>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => dispatch({ type: "retryRead" })}
-            >
-              Read them again
-            </Button>
-          </div>
+            {WORDS.unreadable}
+          </Notice>
         ) : kept === null ? null : kept.length === 0 ? (
           <p className="bg-card border-border/50 text-muted-foreground flex items-center gap-3 rounded-2xl border p-4 text-sm font-medium">
             <BrandMark tone="brand" className="size-9 shrink-0" />

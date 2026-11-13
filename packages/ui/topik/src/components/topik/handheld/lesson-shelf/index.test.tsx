@@ -224,8 +224,11 @@ describe("the learner shelf (canon Rem. 7.3)", () => {
       await screen.findByRole("button", { name: /Keep on this account/ })
     )
     expect(await screen.findByText("Sign in to keep this.")).toBeTruthy()
+    // Its button stays in its place, disabled: a tap there does nothing now.
     expect(
-      screen.queryByRole("button", { name: /Keep on this account/ })
-    ).toBeNull()
+      screen
+        .getByRole("button", { name: /Keep on this account/ })
+        .hasAttribute("disabled")
+    ).toBe(true)
   })
 })

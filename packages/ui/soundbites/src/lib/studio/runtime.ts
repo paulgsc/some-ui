@@ -7,6 +7,7 @@
  */
 import { assertNever } from "@some-ui/core-utils"
 import type {
+  BundleHome,
   Listening,
   Playback,
   Player,
@@ -15,11 +16,17 @@ import type {
   TurnListener,
 } from "@some-ui/voice-capture"
 // eslint-disable-next-line one-owner/no-local-microphone -- Studio runs its own take until its machine embeds the take kit (#2442)
-import { NO_LISTENER, takeRunner } from "@some-ui/voice-capture"
+import {
+  isPaired,
+  NO_HOME,
+  NO_LISTENER,
+  takeRunner,
+} from "@some-ui/voice-capture"
 import { TAKE_TICK_MS } from "@soundbites/lib/policy"
 import type { ProjectStore } from "@soundbites/lib/project/store"
 import { ProjectFullError } from "@soundbites/lib/project/store"
 
+import type { VideosHome } from "./home-videos"
 import type { LetGoStore } from "./let-go-store"
 import type {
   StudioEffect,
@@ -64,6 +71,19 @@ export type StudioPorts = {
    * through `checkAgain` (SHOW SH6).
    */
   refresh?: StudioRefresh
+  /**
+   * Home, as far as this phone can tell (ST34): whether it is paired, so a
+   * take not on home yet says it is going home only once the phone is known
+   * to be paired, and kept on this phone while it can't yet tell. Without
+   * one, the phone counts as never paired.
+   */
+  home?: BundleHome
+  /**
+   * Home, as Finish hands it an episode to make and reads where each stands
+   * (ST33), where the app has a home link; without one nothing is handed
+   * over, and a video kept for home says it waits on this phone.
+   */
+  videos?: VideosHome
 }
 
 /**
@@ -307,6 +327,10 @@ export function createStudio(
         listening = null
         return
       }
+      case "handHome": {
+        ports.videos?.handed(effect.video)
+        return
+      }
       case "checked": {
         const answered = checks
         checks = []
@@ -340,11 +364,25 @@ export function createStudio(
       const unwatchStore = ports.store.subscribe(() =>
         send({ type: "storeChanged" })
       )
+      const home = ports.home ?? NO_HOME
+      const tellPaired = (): void =>
+        send({ type: "paired", paired: isPaired(home.reach()) })
+      const unwatchHome = home.subscribe(tellPaired)
+      tellPaired()
+      const { videos } = ports
+      const heard = (): void => {
+        if (videos !== undefined)
+          send({ type: "videosHeard", videos: videos.getSnapshot() })
+      }
+      const unwatchVideos = videos?.subscribe(heard)
+      heard()
       // Detached, the runtime still finishes a take under way and keeps it:
       // its writes land after the screen is gone.
       return () => {
         unwatchPage()
         unwatchStore()
+        unwatchHome()
+        unwatchVideos?.()
         send({ type: "left" })
       }
     },

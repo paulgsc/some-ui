@@ -170,7 +170,11 @@ describe("RecordScreenView", () => {
     const onTyped = vi.spyOn(runtime, "dispatch")
     show(runtime)
     expect(screen.getByText(/You can still type one/)).toBeTruthy()
-    expect(document.querySelector("[data-take]")).toBeNull()
+    // The take button stays where it is, out of reach.
+    expect(document.querySelector("[data-take]")).toHaveProperty(
+      "disabled",
+      true
+    )
     typedAnswer()
     fireEvent.click(screen.getByRole("button", { name: "Done" }))
     expect(onTyped).toHaveBeenCalledWith({

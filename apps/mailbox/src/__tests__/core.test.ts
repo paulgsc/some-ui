@@ -7,6 +7,8 @@ import {
   handle,
   LIST_LIMIT_MAX,
   MAX_BODY_BYTES,
+  ringMessage,
+  RINGS,
 } from "@mailbox/core"
 import type { Folder, Store } from "@mailbox/store"
 import { describe, expect, it } from "vitest"
@@ -29,9 +31,21 @@ const DIGEST_NAME = "digest-2026-10-21.json"
 const DECISIONS_NAME = "decisions-2026-10-21.json"
 const SCOUTS_NAME = "scouts-20261021T145200.json"
 
+/** A bell that records what rang; Node cannot answer `101`, so listening answers `200`. */
+function recordingBell(rings: Array<Folder> = []): Deps["bell"] {
+  return {
+    listen: (): Promise<Response> =>
+      Promise.resolve(new Response("listening", { status: 200 })),
+    ring: (folder): void => {
+      rings.push(folder)
+    },
+  }
+}
+
 function deps(
   store: Store = memoryStore(),
-  reported: Array<unknown> = []
+  reported: Array<unknown> = [],
+  rings: Array<Folder> = []
 ): Deps {
   return {
     tokens: { routine: ROUTINE, home: HOME, archive: ARCHIVE },
@@ -40,6 +54,7 @@ function deps(
     report: (error): void => {
       reported.push(error)
     },
+    bell: recordingBell(rings),
   }
 }
 
@@ -399,6 +414,129 @@ describe("the routine's backfill of files only Drive holds (MB2)", () => {
     expect(
       (await put(d, "decisions", OLD_DECISIONS, { body: DECISIONS })).status
     ).toBe(403)
+  })
+})
+
+describe("a week of Rust Rounds rides brief (MB2, RR12)", () => {
+  const WEEK = JSON.stringify({
+    schema: "some-ui.rust-week/1",
+    id: "2026-w46",
+    tickets: [{ id: "QM-311", program: "fn main() {}\n" }],
+  })
+  const NAME = "rust-week-2026-w46.json"
+
+  it("the routine puts one in brief, and home reads it with the digests", async () => {
+    const d = deps()
+    expect((await put(d, "brief", NAME, { body: WEEK })).status).toBe(201)
+    const read = await send(d, "GET", `/v1/brief/items/${NAME}`, {
+      token: HOME,
+    })
+    expect(await read.text()).toBe(WEEK)
+    const listed = await send(d, "GET", "/v1/brief/items", { token: HOME })
+    expect(await json(listed)).toMatchObject({
+      items: [expect.objectContaining({ name: NAME })],
+    })
+  })
+
+  it("refuses a week whose name is not its id's, or another schema", async () => {
+    const d = deps()
+    const misnamed = await put(d, "brief", "rust-week-2026-w47.json", {
+      body: WEEK,
+    })
+    expect(await json(misnamed)).toEqual({
+      error: "the name must carry the week's id",
+    })
+    const noId = await put(d, "brief", NAME, {
+      body: JSON.stringify({ schema: "some-ui.rust-week/1", id: "week-46" }),
+    })
+    expect(await json(noId)).toEqual({
+      error: "id must be the week's, like 2026-w46",
+    })
+    const wrong = await put(d, "brief", NAME, { body: DIGEST })
+    expect(await json(wrong)).toEqual({
+      error: "the body's schema must be some-ui.rust-week/1",
+    })
+    expect(
+      (await put(d, "brief", "rust-week-2026-46.json", { body: WEEK })).status
+    ).toBe(422)
+  })
+})
+
+describe("a Rust Rounds essay's script rides brief (MB2, RR16)", () => {
+  const essay = (week: string): string =>
+    JSON.stringify({
+      schema: "some-ui.rust-essay/1",
+      week: { id: week, from: "2026-11-09", to: "2026-11-15" },
+      tickets: [],
+    })
+  const ESSAY = essay("2026-w46")
+  const NAME = "rust-essay-2026-w46.json"
+
+  it("the routine puts one in brief, home reads it with the digests, and it rings", async () => {
+    const rings: Array<Folder> = []
+    const d = deps(memoryStore(), [], rings)
+    expect((await put(d, "brief", NAME, { body: ESSAY })).status).toBe(201)
+    expect(rings).toEqual(["brief"])
+    const read = await send(d, "GET", `/v1/brief/items/${NAME}`, {
+      token: HOME,
+    })
+    expect(await read.text()).toBe(ESSAY)
+    const listed = await send(d, "GET", "/v1/brief/items", { token: HOME })
+    expect(await json(listed)).toMatchObject({
+      items: [expect.objectContaining({ name: NAME })],
+    })
+    expect(
+      (await put(d, "brief", NAME, { body: ESSAY, token: HOME })).status
+    ).toBe(403)
+  })
+
+  it("takes a correction as -r2 and on, never -r1 or -r0", async () => {
+    const d = deps()
+    for (const name of [
+      "rust-essay-2026-w46-r2.json",
+      "rust-essay-2026-w46-r10.json",
+    ]) {
+      const response = await put(d, "brief", name, { body: ESSAY })
+      expect([name, response.status]).toEqual([name, 201])
+    }
+    for (const name of [
+      "rust-essay-2026-w46-r1.json",
+      "rust-essay-2026-w46-r0.json",
+      "rust-essay-2026-w46-r02.json",
+      "rust-essay-2026-w46-r.json",
+    ]) {
+      const response = await put(d, "brief", name, { body: ESSAY })
+      expect([name, response.status]).toEqual([name, 422])
+    }
+  })
+
+  it("refuses an essay whose name is not its week's, or another schema", async () => {
+    const d = deps()
+    for (const name of [
+      "rust-essay-2026-w47.json",
+      "rust-essay-2026-w47-r2.json",
+    ]) {
+      const misnamed = await put(d, "brief", name, { body: ESSAY })
+      expect(await json(misnamed)).toEqual({
+        error: "the name must carry the week's id",
+      })
+    }
+    for (const body of [
+      essay("week-46"),
+      JSON.stringify({ schema: "some-ui.rust-essay/1", week: "2026-w46" }),
+      JSON.stringify({ schema: "some-ui.rust-essay/1" }),
+    ]) {
+      expect(await json(await put(d, "brief", NAME, { body }))).toEqual({
+        error: "week.id must be the week's, like 2026-w46",
+      })
+    }
+    const wrong = await put(d, "brief", NAME, { body: DIGEST })
+    expect(await json(wrong)).toEqual({
+      error: "the body's schema must be some-ui.rust-essay/1",
+    })
+    expect(
+      (await put(d, "brief", "rust-essay-2026-46.json", { body: ESSAY })).status
+    ).toBe(422)
   })
 })
 
@@ -1195,7 +1333,7 @@ describe("home's indexes", () => {
       return json(response)
     }
     expect(await refused({ ...JOBS, routine: "topik" })).toEqual({
-      error: "routine must be jobs or reflections",
+      error: "routine must be jobs or reflections or call or rust",
     })
     expect(await refused(JOBS, "index-topik-20261031T144502118Z.json")).toEqual(
       { error: "the name must carry the body's routine" }
@@ -1404,6 +1542,221 @@ describe("home's reflections index", () => {
   })
 })
 
+describe("home's call index", () => {
+  const HASH = "a".repeat(64)
+  const CALL = {
+    schema: "some-ui.routine-index/1",
+    routine: "call",
+    asOf: "2026-11-06T09:00:00.000Z",
+    held: [
+      { from: "2026-11-06", to: "2026-11-12", sha256: "b".repeat(64) },
+      { from: "2026-10-30", to: "2026-11-05", sha256: HASH },
+    ],
+  }
+  const NAME = "index-call-20261106T090000000Z.json"
+  const asHome = (d: Deps, body: unknown = CALL): Promise<Response> =>
+    put(d, "index", NAME, { token: HOME, body: JSON.stringify(body) })
+
+  it("home puts it and the routine reads it, as home put it", async () => {
+    const d = deps()
+    expect((await asHome(d)).status).toBe(201)
+    expect(await json(await send(d, "GET", `/v1/index/items/${NAME}`))).toEqual(
+      CALL
+    )
+  })
+
+  it("takes only a call index's own shape, and says why not", async () => {
+    const d = deps()
+    const refused = async (body: Record<string, unknown>): Promise<unknown> => {
+      const response = await asHome(d, body)
+      expect(response.status).toBe(422)
+      return json(response)
+    }
+    const week = { from: "2026-10-30", to: "2026-11-05", sha256: HASH }
+    for (const asOf of [null, "this morning", "2026-11-06"]) {
+      expect(await refused({ ...CALL, asOf })).toEqual({
+        error: "asOf must be when home last took a week",
+      })
+    }
+    expect(await refused({ ...CALL, held: {} })).toEqual({
+      error: "held must be a list",
+    })
+    for (const held of [
+      ["2026-10-30"],
+      [{ from: "2026-10-30", to: "2026-11-05" }],
+      [{ ...week, words: "Hello." }],
+    ]) {
+      expect(await refused({ ...CALL, held })).toEqual({
+        error: "each held week is its from, to and sha256",
+      })
+    }
+    for (const days of [
+      { from: "2026-11-05", to: "2026-10-30" },
+      { from: "2026-02-30", to: "2026-03-05" },
+      { from: "../2026-10-30", to: "2026-11-05" },
+    ]) {
+      expect(await refused({ ...CALL, held: [{ ...week, ...days }] })).toEqual({
+        error: "each held week runs from a day to a day no earlier",
+      })
+    }
+    for (const sha256 of ["A".repeat(64), "a".repeat(63), 7]) {
+      expect(await refused({ ...CALL, held: [{ ...week, sha256 }] })).toEqual({
+        error: "each held week's sha256 is 64 lower-case hex characters",
+      })
+    }
+    expect(await refused({ ...CALL, held: [week, week] })).toEqual({
+      error: "each held week is named once",
+    })
+    expect((await asHome(d, { ...CALL, held: [] })).status).toBe(201)
+  })
+})
+
+describe("home's Rust Rounds index", () => {
+  // A final week as home's record gives it (RR18, paulgsc/some-ui#2693).
+  const W46 = {
+    week: "2026-w46",
+    opens: "2026-11-09T00:00:00-08:00",
+    due: "2026-11-15T23:59:00-08:00",
+    closed: true,
+    sent: {
+      at: "2026-11-14T20:31:07.000Z",
+      receivedAt: "2026-11-14T20:31:09.120Z",
+      draft: false,
+    },
+    tickets: [
+      {
+        ticket: "QM-311",
+        answered: true,
+        take: "note-311",
+        recordedAt: "2026-11-14T20:12:40.000Z",
+        opens: 3,
+      },
+    ],
+    unanswered: [],
+    pastes: [
+      {
+        at: "2026-11-12T17:04:00.000Z",
+        text: "error[E0277]: `Rc<Vec<u8>>` cannot be sent between threads safely",
+        note: "note-p1",
+        receivedAt: "2026-11-12T17:04:02.000Z",
+      },
+    ],
+  }
+  const RUST = {
+    schema: "some-ui.routine-index/1",
+    routine: "rust",
+    asOf: "2026-11-14T20:31:09.120Z",
+    weeks: [W46],
+  }
+  const NAME = "index-rust-20261116T090000000Z.json"
+  const asHome = (d: Deps, body: unknown = RUST): Promise<Response> =>
+    put(d, "index", NAME, { token: HOME, body: JSON.stringify(body) })
+  const refused = async (d: Deps, body: unknown): Promise<unknown> => {
+    const response = await asHome(d, body)
+    expect(response.status).toBe(422)
+    return json(response)
+  }
+  const withPaste = (text: string): Record<string, unknown> => ({
+    ...RUST,
+    weeks: [{ ...W46, pastes: [{ ...W46.pastes[0], text }] }],
+  })
+
+  it("home puts it and the routine reads it, as home put it", async () => {
+    const d = deps()
+    expect((await asHome(d)).status).toBe(201)
+    expect(await json(await send(d, "GET", `/v1/index/items/${NAME}`))).toEqual(
+      RUST
+    )
+    expect(
+      (await asHome(deps(), { ...RUST, asOf: null, weeks: [] })).status
+    ).toBe(201)
+  })
+
+  it("takes only final weeks, each once, and says why not", async () => {
+    const d = deps()
+    expect(await refused(d, { ...RUST, extra: 1 })).toEqual({
+      error: "extra is not part of a rust index",
+    })
+    expect(await refused(d, { ...RUST, asOf: "Monday" })).toEqual({
+      error: "asOf must be when home last took in what the index counts",
+    })
+    expect(await refused(d, { ...RUST, weeks: {} })).toEqual({
+      error: "weeks must be a list",
+    })
+    expect(await refused(d, { ...RUST, weeks: ["2026-w46"] })).toEqual({
+      error: "each week must be an object",
+    })
+    expect(
+      await refused(d, { ...RUST, weeks: [{ ...W46, week: "w46" }] })
+    ).toEqual({
+      error: "each week's week must be its id, like 2026-w46",
+    })
+    expect(await refused(d, { ...RUST, weeks: [W46, W46] })).toEqual({
+      error: "each week is named once",
+    })
+    expect(
+      await refused(d, { ...RUST, weeks: [{ ...W46, closed: false }] })
+    ).toEqual({
+      error: "each week must be past its deadline",
+    })
+    for (const sent of [{ ...W46.sent, draft: true }, "final"]) {
+      expect(await refused(d, { ...RUST, weeks: [{ ...W46, sent }] })).toEqual({
+        error: "each week's send must be its final, or null",
+      })
+    }
+    expect(
+      await refused(d, { ...RUST, weeks: [{ ...W46, pastes: {} }] })
+    ).toEqual({ error: "each week's tickets and pastes must be lists" })
+    expect(
+      (await asHome(d, { ...RUST, weeks: [{ ...W46, sent: null }] })).status
+    ).toBe(201)
+  })
+
+  it("reads a pasted error as text, and still refuses audio or a Drive link in it", async () => {
+    // A v0-mangled symbol: past 256 base64-like characters, and only text.
+    const symbol = `_RNvMs${"0123456789abcdefABCDEF_".repeat(14)}`
+    expect(
+      (await asHome(deps(), withPaste(`undefined symbol: ${symbol}`))).status
+    ).toBe(201)
+    const d = deps()
+    expect(
+      await refused(d, withPaste("see data:audio/webm;base64,AAAA"))
+    ).toEqual({
+      error: "an index carries no audio: home keeps the audio",
+    })
+    expect(
+      await refused(d, withPaste("https://drive.google.com/file/d/x"))
+    ).toEqual({
+      error: "an index names no Drive file",
+    })
+    expect(await refused(d, withPaste("e".repeat(20_001)))).toEqual({
+      error: "a pasted error is at most 20000 characters",
+    })
+    // Home's cap is in characters: 20,000 emoji are 40,000 UTF-16 units.
+    expect((await asHome(deps(), withPaste("🦀".repeat(20_000)))).status).toBe(
+      201
+    )
+    // The same long run under another key is still scanned (Codex, #2864).
+    const run = "A".repeat(300)
+    expect(
+      await refused(d, {
+        ...withPaste(run),
+        weeks: [
+          {
+            ...W46,
+            pastes: [{ ...W46.pastes[0], text: run }],
+            unanswered: [run],
+          },
+        ],
+      })
+    ).toEqual({ error: "an index carries no audio: home keeps the audio" })
+    // Outside a paste's text, a long encoded run is refused as anywhere else.
+    expect(
+      await refused(d, { ...RUST, weeks: [{ ...W46, unanswered: [symbol] }] })
+    ).toEqual({ error: "an index carries no audio: home keeps the audio" })
+  })
+})
+
 const WRITTEN = {
   schema: "some-ui.reflection/1",
   reflection: "3f9c2a1e-7b4d-4c1a-9e2f-0a1b2c3d4e5f",
@@ -1572,6 +1925,124 @@ describe("drama prompts", () => {
       "drama-20261031T0715031Z.prompt.json",
       `prompt-${STAMP}.json`,
     ]) {
+      expect((await asHome(d, name)).status).toBe(422)
+    }
+  })
+})
+
+const NOTED = {
+  schema: "some-ui.episode-note/1",
+  note: "3f9c2a1e-7b4d-4c1a-9e2f-0a1b2c3d4e5f",
+  feed: "call",
+  episode: "2026-11-13",
+  atMs: 134_000,
+  categories: ["shallow", "overlap"],
+  take: null,
+  writtenAt: "2026-11-14T03:00:00.000Z",
+}
+
+describe("notes on an episode", () => {
+  const NOTE = JSON.stringify(NOTED)
+  const NAME = `feedback-${NOTED.note}.json`
+  const asHome = (
+    d: Deps,
+    name: string,
+    body: string = NOTE
+  ): Promise<Response> => put(d, "feedback", name, { token: HOME, body })
+
+  it("home puts a note once, and the routine reads it; neither the other way", async () => {
+    const d = deps()
+    expect((await asHome(d, NAME)).status).toBe(201)
+    expect((await asHome(d, NAME)).status).toBe(200)
+    expect(
+      (await asHome(d, NAME, JSON.stringify({ ...NOTED, atMs: 1 }))).status
+    ).toBe(409)
+
+    const path = `/v1/feedback/items/${NAME}`
+    const read = await send(d, "GET", path)
+    expect(read.status).toBe(200)
+    expect(await read.text()).toBe(NOTE)
+    expect((await send(d, "GET", path, { token: HOME })).status).toBe(403)
+    expect((await put(d, "feedback", NAME, { body: NOTE })).status).toBe(403)
+  })
+
+  it("the routine neither lists archived notes nor asks one back", async () => {
+    const d = deps()
+    expect((await asHome(d, NAME)).status).toBe(201)
+    expect((await send(d, "GET", "/v1/feedback/archived")).status).toBe(403)
+    expect((await send(d, "PUT", `/v1/feedback/wanted/${NAME}`)).status).toBe(
+      403
+    )
+  })
+
+  it("takes a spoken note's take by its id", async () => {
+    const d = deps()
+    const body = JSON.stringify({ ...NOTED, take: "take-7f3a91c2" })
+    expect((await asHome(d, NAME, body)).status).toBe(201)
+  })
+
+  it("takes only a note's own shape", async () => {
+    const d = deps()
+    const shapes: ReadonlyArray<readonly [unknown, string]> = [
+      [{ ...NOTED, words: "too slow" }, "words is not part of a note"],
+      [
+        { ...NOTED, audio: "T2dnUwACAAAAAAAA" },
+        "a note carries no audio: a spoken one goes as its take's transcript",
+      ],
+      [{ ...NOTED, driveId: "1AbCdEf" }, "a note names no Drive file"],
+      [{ ...NOTED, note: "another-id" }, "the name must carry the note's id"],
+      [{ ...NOTED, note: "a/b" }, "the name must carry the note's id"],
+      [{ ...NOTED, feed: "drama" }, "feed must be call or playoff-delta"],
+      [{ ...NOTED, episode: "" }, "episode must name the episode"],
+      [
+        { ...NOTED, atMs: -1 },
+        "atMs must be the moment, in whole milliseconds from the start",
+      ],
+      [
+        { ...NOTED, atMs: 1.5 },
+        "atMs must be the moment, in whole milliseconds from the start",
+      ],
+      ...[
+        [],
+        ["overlap", "shallow"],
+        ["voice", "voice"],
+        ["louder"],
+        [["shallow"], "overlap"],
+        [["overlap"]],
+      ].map(
+        (categories) =>
+          [
+            { ...NOTED, categories },
+            "categories must be the fixed set's, each once, in its order",
+          ] as const
+      ),
+      [
+        { ...NOTED, take: 7 },
+        "take must be the spoken note's take id, or null",
+      ],
+      [
+        { ...NOTED, writtenAt: "Tuesday" },
+        "writtenAt must be when it was written",
+      ],
+    ]
+    for (const [body, why] of shapes) {
+      const answer = await asHome(d, NAME, JSON.stringify(body))
+      expect(answer.status).toBe(422)
+      expect(await json(answer)).toEqual({ error: why })
+    }
+    // A body that carries its name, so only the name's own rule refuses it.
+    for (const note of ["a.b", "a b", "a".repeat(65)]) {
+      const answer = await asHome(
+        d,
+        `feedback-${note}.json`,
+        JSON.stringify({ ...NOTED, note })
+      )
+      expect(answer.status).toBe(422)
+      expect(await json(answer)).toEqual({
+        error: "the name does not fit this folder",
+      })
+    }
+    for (const name of ["feedback-.json", `feedback-${"a".repeat(65)}.json`]) {
       expect((await asHome(d, name)).status).toBe(422)
     }
   })
@@ -1963,6 +2434,185 @@ describe("routes", () => {
   })
 })
 
+describe("the bell (MBP1: MB2, MB6)", () => {
+  const UPGRADE = { upgrade: "websocket" }
+  const SCENE = JSON.stringify({
+    schema: "some-ui.routine-scene/1",
+    answers: "2026-10-13_morning-drama_session-",
+    title: "t",
+    decks: [],
+  })
+
+  it("only home listens, and a token is checked before anything else", async () => {
+    const { store, touched } = untouchable()
+    const d = deps(store)
+    expect(
+      (await send(d, "GET", "/v1/bell", { token: null, headers: UPGRADE }))
+        .status
+    ).toBe(401)
+    expect(
+      (await send(d, "GET", "/v1/bell", { token: "wrong", headers: UPGRADE }))
+        .status
+    ).toBe(401)
+    for (const token of [ROUTINE, ARCHIVE]) {
+      const response = await send(d, "GET", "/v1/bell", {
+        token,
+        headers: UPGRADE,
+      })
+      expect([token, response.status]).toEqual([token, 403])
+    }
+    const home = await send(d, "GET", "/v1/bell", {
+      token: HOME,
+      headers: UPGRADE,
+    })
+    expect(home.status).toBe(200)
+    expect(await home.text()).toBe("listening")
+    // Listening reads nothing from the store: no D1 quota for a connection.
+    expect(touched()).toBe(0)
+  })
+
+  it("is a WebSocket, on GET only", async () => {
+    const d = deps(untouchable().store)
+    const plain = await send(d, "GET", "/v1/bell", { token: HOME })
+    expect(plain.status).toBe(426)
+    expect(plain.headers.get("upgrade")).toBe("websocket")
+    for (const method of ["PUT", "POST", "DELETE"]) {
+      const response = await send(d, method, "/v1/bell", {
+        token: HOME,
+        headers: UPGRADE,
+      })
+      expect([method, response.status]).toEqual([method, 405])
+      expect(response.headers.get("allow")).toBe("GET")
+    }
+    // The bell is the exact path only.
+    const near = await send(d, "GET", "/v1/bell/", {
+      token: HOME,
+      headers: UPGRADE,
+    })
+    expect(near.status).toBe(404)
+  })
+
+  it("a bell that fails to answer is a 503, reported", async () => {
+    const reported: Array<unknown> = []
+    const d: Deps = {
+      ...deps(untouchable().store, reported),
+      bell: {
+        listen: () => Promise.reject(new Error("no bell")),
+        ring: (): void => undefined,
+      },
+    }
+    const response = await send(d, "GET", "/v1/bell", {
+      token: HOME,
+      headers: UPGRADE,
+    })
+    expect(response.status).toBe(503)
+    expect(reported).toHaveLength(1)
+  })
+
+  it("rings with the folder when a file is added to a folder home reads", async () => {
+    const rings: Array<Folder> = []
+    const d = deps(memoryStore(), [], rings)
+    expect((await put(d, "brief", DIGEST_NAME, { body: DIGEST })).status).toBe(
+      201
+    )
+    expect(rings).toEqual(["brief"])
+    // The same bytes again change nothing, so nothing rings.
+    expect((await put(d, "brief", DIGEST_NAME, { body: DIGEST })).status).toBe(
+      200
+    )
+    // Other bytes are refused, and nothing rings.
+    const other = JSON.stringify({ schema: "some-ui.job-digest/1", picks: [1] })
+    expect((await put(d, "brief", DIGEST_NAME, { body: other })).status).toBe(
+      409
+    )
+    expect(
+      (
+        await put(d, "scene", "scene-2026-10-13_morning-drama_session-.json", {
+          body: SCENE,
+        })
+      ).status
+    ).toBe(201)
+    expect(rings).toEqual(["brief", "scene"])
+  })
+
+  it("does not ring for a folder home does not read, or a put refused", async () => {
+    const rings: Array<Folder> = []
+    const d = deps(memoryStore(), [], rings)
+    expect(
+      (
+        await put(d, "decisions", DECISIONS_NAME, {
+          body: DECISIONS,
+          token: HOME,
+        })
+      ).status
+    ).toBe(201)
+    expect(
+      (await put(d, "scout", SCOUTS_NAME, { body: SCOUTS, token: HOME })).status
+    ).toBe(201)
+    expect((await put(d, "brief", "nope.json", { body: DIGEST })).status).toBe(
+      422
+    )
+    expect(
+      (await put(d, "brief", DIGEST_NAME, { body: DIGEST, token: HOME })).status
+    ).toBe(403)
+    expect(rings).toEqual([])
+  })
+
+  it("rings with the folder when the routine asks for an archived file, once", async () => {
+    const rings: Array<Folder> = []
+    let now = NOW
+    const d: Deps = { ...deps(memoryStore(), [], rings), now: () => now }
+    await put(d, "brief", DIGEST_NAME, { body: DIGEST })
+    now = new Date(NOW.getTime() + ARCHIVE_MIN_AGE_DAYS * 86_400_000)
+    const sha = createHash("sha256").update(DIGEST).digest("hex")
+    expect(
+      (
+        await send(d, "DELETE", `/v1/brief/items/${DIGEST_NAME}`, {
+          token: ARCHIVE,
+          headers: { "if-match": `"${sha}"` },
+        })
+      ).status
+    ).toBe(200)
+    expect(rings).toEqual(["brief"])
+    const ask = (): Promise<Response> =>
+      send(d, "PUT", `/v1/brief/wanted/${DIGEST_NAME}`)
+    expect((await ask()).status).toBe(202)
+    expect(rings).toEqual(["brief", "brief"])
+    expect((await ask()).status).toBe(200)
+    // Home puts it back with the archive token: home's own act, so no ring.
+    expect(
+      (await put(d, "brief", DIGEST_NAME, { body: DIGEST, token: ARCHIVE }))
+        .status
+    ).toBe(201)
+    expect(rings).toEqual(["brief", "brief"])
+  })
+
+  it("a ring that fails is reported and never changes the answer", async () => {
+    const reported: Array<unknown> = []
+    const d: Deps = {
+      ...deps(memoryStore(), reported),
+      bell: {
+        listen: () => Promise.reject(new Error("unused")),
+        ring: (): void => {
+          throw new Error("no bell")
+        },
+      },
+    }
+    const response = await put(d, "brief", DIGEST_NAME, { body: DIGEST })
+    expect(response.status).toBe(201)
+    expect(await json(response)).toEqual({ change: "added", seq: 1 })
+    expect(reported).toHaveLength(1)
+  })
+
+  it("rings for exactly paulgsc/server's pass::READS, which lives in the other repo", () => {
+    expect(RINGS).toEqual(["brief", "scene", "drama", "run", "leetype"])
+  })
+
+  it("a ring names its folder and nothing else (MB6)", () => {
+    expect(ringMessage("run")).toBe('{"ring":"run"}')
+  })
+})
+
 describe("archiving", () => {
   const DAY = 86_400_000
   const DIGEST_SHA = createHash("sha256").update(DIGEST).digest("hex")
@@ -2011,6 +2661,7 @@ describe("archiving", () => {
       "transcript",
       "reflection",
       "prompt",
+      "feedback",
     ]) {
       expect(
         (await send(d, "GET", `/v1/${folder}/items`, { token: ARCHIVE })).status

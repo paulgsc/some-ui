@@ -106,7 +106,8 @@ describe("IdeaCapture, on Claude's questions about an idea (ST19)", () => {
     const box = await screen.findByRole("textbox", {
       name: FIRST,
     })
-    expect(screen.queryByRole("button", { name: T.talk })).toBeNull()
+    // Held in its place, so the screen is the one a listening phone shows.
+    expect(screen.getByRole("button", { name: T.talk })).toBeDisabled()
     expect(screen.getByText(W.noVoice)).toBeTruthy()
     fireEvent.change(box, { target: { value: "typed idea" } })
     fireEvent.click(screen.getByRole("button", { name: T.keepWords }))

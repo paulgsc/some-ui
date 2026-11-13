@@ -1,0 +1,1972 @@
+{
+  "schema": "some-ui.calls/1",
+  "calls": [
+    {
+      "id": "C1",
+      "made": "2026-11-06",
+      "by": "owner",
+      "paths": [
+        "docs/ui-fit/README.md",
+        "packages/ui/shared/src/components/ui/notice/index.tsx"
+      ],
+      "chose": "What an app says about a tap floats over the screen as a Notice, never in the layout; content asked for grows below the tap (HS1, HS3).",
+      "undo": "Retire HS1 and HS3 in docs/ui-fit/README.md 2i.",
+      "refs": ["#2637", "#2623", "#2625", "#2634"]
+    },
+    {
+      "id": "C2",
+      "made": "2026-11-06",
+      "by": "claude",
+      "agreed": "2026-11-06",
+      "paths": ["scripts/notices.allowlist"],
+      "chose": "Kept in the layout as screen content (HS3 `Content:`): topik's served \"nothing fits\" answer, the delete sheet's ended step, the route loading screen, Settings' kept-on-home row lines.",
+      "options": ["a Notice", "screen content"],
+      "gray": "Each one both answers a tap and is the screen's content.",
+      "undo": "Make it a Notice and drop its allowlist group.",
+      "refs": ["#2637", "#2623", "#2625", "#2634"]
+    },
+    {
+      "id": "C3",
+      "made": "2026-11-06",
+      "by": "claude",
+      "agreed": "2026-11-06",
+      "paths": ["packages/ui/shared/src/components/ui/notice/index.tsx"],
+      "chose": "A refusal stays on the plane until closed, covering the top of the screen (in topik's full-screen lesson, Exit and Pause).",
+      "options": [
+        "until closed",
+        "status notices close themselves after a few seconds"
+      ],
+      "gray": "Covering controls against a word that vanishes unread.",
+      "undo": "Add a timeout to non-danger notices in Notice.",
+      "refs": ["#2637", "#2623", "#2625", "#2634"]
+    },
+    {
+      "id": "C4",
+      "made": "2026-11-06",
+      "by": "claude",
+      "agreed": "2026-11-06",
+      "paths": [
+        "apps/www/src/routes/_dashboard.tsx",
+        "packages/ui/shared/src/components/ui/sheet.tsx",
+        "packages/ui/shared/src/components/ui/dialog.tsx"
+      ],
+      "chose": "The notice plane sits under the www header (top-16) and at a sheet's top; each notice is capped at 60dvh and scrolls inside.",
+      "options": ["top", "bottom, above the bar", "near the control"],
+      "gray": "Where a notice lands; the owner named top and bottom as idiomatic.",
+      "undo": "Move NoticeLayer in _dashboard.tsx, sheet.tsx and dialog.tsx.",
+      "refs": ["#2637", "#2623", "#2625", "#2634"]
+    },
+    {
+      "id": "C5",
+      "made": "2026-11-06",
+      "by": "claude",
+      "agreed": "2026-11-06",
+      "paths": ["apps/www/src/components/device-home-glyph.tsx"],
+      "chose": "The header's sharing-lane word became a fixed-size icon; only trouble states raise a notice.",
+      "options": ["shorter words", "the gear after the mark", "an icon"],
+      "gray": "The widest word wrapped at 360px, and nothing said which to give up.",
+      "undo": "Put the word back in device-home-glyph.tsx.",
+      "refs": ["#2637", "#2623", "#2625", "#2634"]
+    },
+    {
+      "id": "C6",
+      "made": "2026-11-06",
+      "by": "claude",
+      "agreed": "2026-11-06",
+      "paths": ["packages/ui/soundbites/src/lib/studio/words.ts"],
+      "chose": "Studio's record length line reworded to stay on one line (\"Runs N s · a take up to M s\", \"Runs N s: your take and a breath\"), and the soundbites full paragraph reworded (\"Full. Unless you pick another below, your next one replaces…\").",
+      "options": [
+        "the earlier words, wrapping",
+        "words reworded to fit one line"
+      ],
+      "gray": "Wording.",
+      "undo": "Restore the earlier words in the soundbites WORDS.",
+      "refs": ["#2637", "#2623", "#2625", "#2634"]
+    },
+    {
+      "id": "C7",
+      "made": "2026-11-06",
+      "by": "claude",
+      "agreed": "2026-11-06",
+      "paths": ["apps/www/src", "packages/ui"],
+      "chose": "A control that can't be used now stays visible and disabled, rather than hidden.",
+      "options": ["disabled", "unmounted"],
+      "gray": "A control that explains its space against less clutter; read from the owner's \"no inexplicable gaps\".",
+      "undo": "Unmount it, per screen.",
+      "refs": ["#2637", "#2623", "#2625", "#2634"]
+    },
+    {
+      "id": "C8",
+      "made": "2026-11-06",
+      "by": "claude",
+      "paths": ["packages/ui/shared/src/components/patterns/take/index.ts"],
+      "chose": "An unplayable take is a warning tone with role alert, everywhere.",
+      "options": ["warning", "neutral"],
+      "gray": "Two wings disagreed.",
+      "undo": "Change the tone in TakeNotices, the shared take pattern.",
+      "refs": ["#2637", "#2623", "#2625", "#2634"]
+    },
+    {
+      "id": "C9",
+      "made": "2026-11-06",
+      "by": "claude",
+      "agreed": "2026-11-06",
+      "paths": ["packages/ui/shared/src/components/ui/button.tsx"],
+      "chose": "Every Button variant draws a transparent border, so a variant swap keeps its width.",
+      "options": ["fixes at each site", "the primitive"],
+      "gray": "It changes every button's width by 2px across the app.",
+      "undo": "Drop the border from button.tsx's variants.",
+      "refs": ["#2637", "#2623", "#2625", "#2634"]
+    },
+    {
+      "id": "C10",
+      "made": "2026-11-06",
+      "by": "owner",
+      "paths": ["docs/ui-fit/README.md"],
+      "chose": "HS2 (conditional lines only) was retired for HS3 (every line in the layout): the owner's idiom, Claude's encoding.",
+      "undo": "Restore HS2 and retire HS3 in docs/ui-fit/README.md.",
+      "refs": ["#2637", "#2623", "#2625", "#2634"]
+    },
+    {
+      "id": "C11",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": ["server:apps/servers/file_host/src/game_feed/pass.rs"],
+      "chose": "The bounded read (CW3) is a new Fetch::get_at_most that the call weeks and Playoff Delta fills read through; the game feed still reads whole, uncapped.",
+      "options": ["cap only the 1 MiB readers", "cap the game feed too"],
+      "gray": "The game feed keeps every response raw, so capping it means deciding what a refused one keeps, which GA3 (server#534) owns.",
+      "undo": "Read the game feed through get_at_most with a cap in game_feed/pass.rs.",
+      "refs": ["server#684", "server#731", "server#534"]
+    },
+    {
+      "id": "C12",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "server:infra/render/render-calls.sh",
+        "server:infra/render/render-calls.test.sh"
+      ],
+      "chose": "The render worker's test sources the script over a temporary ROOT and runs one pass of the call's job; the script loops only when executed.",
+      "options": [
+        "source the script and run a pass",
+        "an environment switch for one pass",
+        "split the script into files"
+      ],
+      "gray": "Any of them gives one pass without the hourly sleep, and L4c (server#708) rewrites that loop next.",
+      "undo": "Replace the sourced guard in render-calls.sh and adapt render-calls.test.sh.",
+      "refs": ["#2659", "server#732", "server#708"]
+    },
+    {
+      "id": "C13",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "docs/calls.json",
+        "packages/eslint/src/calls.ts",
+        ".github/pull_request_template.md"
+      ],
+      "chose": "A gray-area call is an entry in docs/calls.json, append-only and checked, and the commit that makes it carries `Call: <ID>`.",
+      "options": [
+        "a commit trailer alone",
+        "a label and an issue per call, as asks have",
+        "a record file in the repo"
+      ],
+      "gray": "#2637 left where the record lives to the owner or the session that builds it; a trailer alone can't hold the options and the undo in 100-character lines.",
+      "undo": "Move the entries to whichever home the owner picks and drop check:calls.",
+      "refs": ["#2637"]
+    },
+    {
+      "id": "C14",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/call-facts.ts",
+        "packages/video-render/CALL-ROUTINE.md"
+      ],
+      "chose": "The weekly call voices the calls that reached docs/calls.json on main in its week, or were agreed to in it, read from the record's history.",
+      "options": [
+        "the week's new calls",
+        "every call the owner hasn't agreed to yet"
+      ],
+      "gray": "#2637 left open whether the call voices only calls the owner hasn't heard; a new call is one they haven't.",
+      "undo": "Change which entries callsEntered hands the routine (call-facts.ts).",
+      "refs": ["#2637"]
+    },
+    {
+      "id": "C15",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": ["CLAUDE.md"],
+      "chose": "Until the owner writes their own, a gray area is a choice between options that no check, convention or earlier owner decision settles, that the owner would notice on the screen or in how they work.",
+      "options": [
+        "the working definition from #2637",
+        "no definition until the owner's"
+      ],
+      "gray": "The owner said they'd want to work out the definition themselves.",
+      "undo": "Replace the definition in CLAUDE.md, \"Two kinds of pull request\".",
+      "refs": ["#2637"]
+    },
+    {
+      "id": "C16",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": ["packages/video-render/src/music-bed.ts"],
+      "chose": "The music bed is a slow D-major progression (I, vi, IV, I, I, vi, IV, V) at 72 a minute, a soft pad with a bass and a sparse music-box line, peaking at -6 dBFS.",
+      "options": [
+        "a slow major progression with pad, bass and bells",
+        "a drone with no harmonic motion",
+        "a busier groove"
+      ],
+      "gray": "The owner asked for a bed we make ourselves (#2673) and named no music.",
+      "undo": "Change music-bed.ts; its sum, file name and the series that pin it move together as a new version, or pin a file of the owner's own.",
+      "refs": ["#2673", "#2765"]
+    },
+    {
+      "id": "C22",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": ["packages/video-render/src/cues.ts"],
+      "chose": "The six cues are synthesised: a whoosh of banded noise, a 90 ms click, a falling pop, a low thud, a brightening riser and a small bell, each at -6 dBFS.",
+      "options": ["these synthesised sounds", "other synthesised sounds"],
+      "gray": "The owner asked for effects we make ourselves (#2727) and described none of them.",
+      "undo": "Change cues.ts; each cue's sum, file name and the series version that pins it move together.",
+      "refs": ["#2727", "#2790"]
+    },
+    {
+      "id": "C23",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": ["packages/video-motion/src/promo.ts"],
+      "chose": "The promo's cues sit on the dry run's beats: a whoosh 0.55 s before the hook ends, a pop as the frame opens, a click on each tap, a whoosh 0.5 s before the feature ends, a ding 0.3 s into the close.",
+      "options": [
+        "the dry run's cue sheet",
+        "no cues until the owner places them"
+      ],
+      "gray": "The dry run's sheet was a placeholder the owner never confirmed.",
+      "undo": "Change CUE_AT in promo.ts.",
+      "refs": ["#2726", "#2727", "#2790"]
+    },
+    {
+      "id": "C24",
+      "made": "2026-11-08",
+      "by": "owner",
+      "paths": ["packages/video-render/src/preview.ts"],
+      "chose": "A template's preview is a 15–30 s check that the pipeline works, not an episode, so its cut may shorten or drop the locked intro to fit the window; the locked intro still opens every episode, with no switch.",
+      "undo": "Keep the intro whole in `fitted` in preview.ts, and drop sections from the preview.",
+      "refs": ["#2757", "#2762"]
+    },
+    {
+      "id": "C17",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": ["packages/some-styles/src/theme/video-palette.ts"],
+      "chose": "Mochi Night's accents are held to 4.5:1 on the ground only, not on cards; the warning, 4.1:1 on a card to someone with protanopia, always comes with a word or a glyph.",
+      "options": [
+        "on the ground only",
+        "on the ground and on cards, changing the warning's hex"
+      ],
+      "gray": "The research measured on the background, which is what a video frame is, and the owner chose the hexes.",
+      "undo": "Measure on `surface` too in videoPaletteProblems and change the warning's hex.",
+      "refs": ["#2675", "#2774"]
+    },
+    {
+      "id": "C18",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/some-styles/src/theme/video-palette.ts",
+        "packages/some-styles/themes/mochi-night.css"
+      ],
+      "chose": "Mochi Night's success colour is #8ccf9a, which the research palette lacked and a theme needs.",
+      "options": [
+        "#8ccf9a, passing every rule",
+        "no success role, falling back to the base theme's"
+      ],
+      "gray": "The owner's chosen palette had no success colour.",
+      "undo": "Change `success` in MOCHI_NIGHT and mochi-night.css together.",
+      "refs": ["#2675", "#2774"]
+    },
+    {
+      "id": "C19",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/call.ts",
+        "packages/ui/playoff-delta/src/lib/show.ts"
+      ],
+      "chose": "From the call's and Playoff Delta's template v3, the brand slides draw the mark in Mochi Night, the template's own theme.",
+      "options": [
+        "Mochi Night, the template's theme",
+        "the app's theme as the stage finds it"
+      ],
+      "gray": "Ask #2674 made the mark's theme a template setting and chose no theme for it.",
+      "undo": "A new template version whose shape's brand.theme names another theme (Studio's mark-theme control sends one).",
+      "refs": ["#2674", "#2766", "#2774"]
+    },
+    {
+      "id": "C20",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": ["packages/video-render/src/plan.ts"],
+      "chose": "The renderer converts to video by BT.709 and tags it so, which changes every video's colours a little from the next render, Build Journal shorts included.",
+      "options": [
+        "BT.709 for every video",
+        "BT.709 only for new template versions"
+      ],
+      "gray": "Old renders aren't touched, but every new render's bytes move, which the owner would notice in a re-render.",
+      "undo": "Revert TO_VIDEO and BT709 in plan.ts.",
+      "refs": ["#2675", "#2774"]
+    },
+    {
+      "id": "C21",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "apps/www/src/lib/mark-theme/index.ts",
+        "apps/www/src/components/studio/mark-theme.tsx"
+      ],
+      "chose": "Studio's mark-theme control offers every one of the app's themes, each tile showing the mark on that theme's ground, and only on templates whose brand slides draw it.",
+      "options": [
+        "every theme, on its ground",
+        "a curated few",
+        "the mark alone, on the card"
+      ],
+      "gray": "Ask #2674 said any of the app's themes and named no way to show them.",
+      "undo": "Filter MARK_THEMES in lib/mark-theme, or drop the tile's background.",
+      "refs": ["#2674", "#2766", "#2789"]
+    },
+    {
+      "id": "C25",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/video-motion/compositions/brand-v1/index.html",
+        "packages/video-motion/src/brand.ts"
+      ],
+      "chose": "Each version of the brand's open and close is one composition, `brand-v<n>`, whose `part` variable draws the open or the close, rather than two folders.",
+      "options": [
+        "one composition per version, `part` choosing",
+        "`brand-open-v<n>` and `brand-close-v<n>`"
+      ],
+      "gray": "The owner asked for an open and a close with versions kept, and named no layout.",
+      "undo": "Split it into `brand-open-v<n>` and `brand-close-v<n>`, each with its own pin in brand.ts.",
+      "refs": ["#2728", "#2771"]
+    },
+    {
+      "id": "C26",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/video-motion/src/brand.ts",
+        "packages/video-motion/compositions/_lib/motion.js"
+      ],
+      "chose": "A brand version's pin holds its own files only; `lib/motion.js`, which every composition shares, is not pinned per version, and a change there must keep what `track` draws for the keys a version uses.",
+      "options": ["the version's own files", "its files and lib/motion.js"],
+      "gray": "Pinning the shared library would fail every version on any change to it, and the promo was changing it.",
+      "undo": "Include lib/motion.js in ownDigest's files.",
+      "refs": ["#2728", "#2771"]
+    },
+    {
+      "id": "C27",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "apps/www/src/lib/status-board/index.ts",
+        "apps/www/src/components/settings/status-board.tsx"
+      ],
+      "chose": "Settings › Status shows what home is making as its own row under a new Studio group, marked with a clapperboard, which watches a video that couldn't be made and asks nothing of one under way.",
+      "options": [
+        "its own Studio group",
+        "a row under Sending to home",
+        "a line at the top of the page, outside the groups"
+      ],
+      "gray": "Renders are home's work for Studio, neither something this phone sends nor a send that needs a hand, so no existing group says what they are.",
+      "undo": "Move renderRow's group to \"home\" and drop \"studio\" from GROUP_ORDER and BOARD_WORDS.groups.",
+      "refs": ["#2761"]
+    },
+    {
+      "id": "C29",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/ui/soundbites/src/components/ideas-on-home/index.tsx",
+        "packages/ui/soundbites/src/lib/idea/redo.ts",
+        "packages/ui/soundbites/src/lib/studio/words.ts"
+      ],
+      "chose": "On Ideas on home, \"Say it again\" sits under each said answer (not a typed one) and starts a take at once; its take waits under the answer with Play, Redo and Delete; one \"Send it again\" under the answers sends every waiting answer of the idea together; saying an answer again twice before that deletes the first waiting take.",
+      "options": [
+        "Say it again under each said answer, one Send it again for the idea",
+        "Say it again and Send it again per answer",
+        "Say it again on typed answers too",
+        "keep every waiting take said for an answer"
+      ],
+      "gray": "The owner ruled that a redo waits until the idea is sent again (#2453, question 3) and named no wording beyond Say it again, no placement and no rule for a typed answer or a second redo.",
+      "undo": "Move the Send it again button into AnswerRedo, widen redo.ts' sayable to typed answers, or drop dropsOf from on-home.ts' withRedo.",
+      "refs": ["#2579", "#2453"]
+    },
+    {
+      "id": "C28",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/pending.ts",
+        "packages/ui/topik/ROUTINE.md"
+      ],
+      "chose": "A note left on an episode is filed as one pending issue per place its categories send it (the feed's next fill, its template, a slide to fix), each with only the categories that send it there; a slide to fix is labelled kind:defect, the others kind:story.",
+      "options": [
+        "one issue per note, listing every place it goes",
+        "one issue per place it goes"
+      ],
+      "gray": "#2745 says each note is filed as a pending issue that says where it goes; a note can go to more than one place, and an issue that is both a story and a defect has no one kind.",
+      "undo": "Make toFile give one feedback item per note, with every destination, and drop the per-place line in noteFiledLine.",
+      "refs": ["#2745", "#2670"]
+    },
+    {
+      "id": "C30",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "apps/www/src/lib/episode-feedback/model.ts",
+        "apps/www/src/components/studio/episode-feedback.tsx"
+      ],
+      "chose": "A note's spoken part is recorded on the library desk under a line of the note's own; the note names the newest take said for it, and every take said for it (an earlier one, or one said for a note then not kept) stays a library take, kept, in Takes and on home.",
+      "options": [
+        "the library desk, every take kept as a library take, the note naming the newest",
+        "a desk of the note's own that holds each take until the note is kept and deletes it when the note is not",
+        "one take per note, said again replacing it"
+      ],
+      "gray": "#2745's plan says the note records a library take, and never-lose-the-record keeps what was said; it doesn't say which take a note names when more than one is said, or what becomes of a take said for a note that is then not kept.",
+      "undo": "Give the note form a pattern desk of its own with send: \"on-confirm\" (as lib/idea-takes' bundle desk), releasing the take on Keep the note and discarding it on Not now, and wire that desk into voice-copy as a library note.",
+      "refs": ["#2745", "#2670"]
+    },
+    {
+      "id": "C33",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/ui/soundbites/src/lib/project",
+        "packages/ui/playoff-delta",
+        "apps/www/tests/record/playoff-delta.ts"
+      ],
+      "chose": "An episode a phone already holds in Studio stays, and is watched, never voiced: no Record or Shape sitting, Finish never asks it for a take, and a scene with no take reads Not made; one with every take still finishes and shows its pinned upload copy.",
+      "options": [
+        "keep a stored episode, watch-only for voicing",
+        "delete the whole episode-in-Studio path (ST33's home queue and its server routes)",
+        "keep its Record"
+      ],
+      "gray": "FEED6 retired the owner's voice from episodes (FEED decision 6, #2643), but a stored episode holds takes the owner recorded, and nothing said what becomes of it.",
+      "undo": "Restore record in view.ts' startView and the take kind in finish.ts; or delete the project.episode branches and ST33's home-link code, then the server routes in their own PR.",
+      "refs": ["#2772", "#2649", "#2643"]
+    },
+    {
+      "id": "C34",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/steps.ts",
+        "packages/ui/playoff-delta"
+      ],
+      "chose": "Who said a scene is a shot field, shots.speaker (set to kokoro by stillsCutList), not a field on the take, so the mark credits the speech model that said it and never the owner's hands or words for that scene.",
+      "options": [
+        "shots.speaker, a field of the shot",
+        "a speaker field on the take"
+      ],
+      "gray": "FEED6 made home's Kokoro say every episode, and the mark's authorship needed to say so; the steps' fields admit only top-level or shots.<key> fields, and nothing settled where the speaker is named.",
+      "undo": "Move speaker onto the take, widen steps.test.ts' allowed fields to take its key, and have the mark read it there.",
+      "refs": ["#2772", "#2649"]
+    },
+    {
+      "id": "C31",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/ui/soundbites/src/lib/idea/on-home.ts",
+        "packages/ui/soundbites/src/lib/idea/on-home-runtime.ts"
+      ],
+      "chose": "When an idea is set aside on home from Ideas on home, each of its answers said again and still waiting on the phone is set aside on home too and then let go there, under its answer's place: kept, out of the idea and out of what routines read, and in My data like every take sent.",
+      "options": [
+        "offer such takes where waiting takes are seen (Your ideas or My data), to send as library takes or let go by the owner's own act",
+        "send them home as library takes when their idea is set aside",
+        "send them home set aside with their idea, under their answer"
+      ],
+      "gray": "#2805 left the owner's story open between offering the stranded takes and sending them home; either keeps the take, and they differ in where it shows and whether the routine reads it.",
+      "undo": "Drop the setAsideRedos effect from on-home.ts's setAsideDone and its case in on-home-runtime.ts; the takes then wait on the redo desk again, and #2805's first option can offer them.",
+      "refs": ["#2805", "#2579"]
+    },
+    {
+      "id": "C32",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/promo-shape.ts",
+        "apps/www/src/routes/_dashboard/_apk/journal/templates/release-promo.tsx",
+        "packages/video-motion/src/promo.ts"
+      ],
+      "chose": "The release promo shows on Studio's Templates page as an entry of its own, read from one pure table of its shape (PROMO_SHAPE in @some-ui/video-render) that promo.ts makes the promo from: its three scenes in order with their lengths, the feature's as long as the app's walk, and what the AI writes for a release. It is no template: no version, storyboard, caption look or preview.",
+      "options": [
+        "(a) a composition picture kind with an optional hold in Format, the promo pinned as a template whose page lists a shapeless format's scenes in order",
+        "(b) a promo entry on the Templates page read from promo.ts rather than a pinned Format"
+      ],
+      "gray": "HYPER's session left both options on #2722: a Format scene has a fixed holdMs and a capture or card picture, while the promo's scenes are compositions and its feature lasts as long as the app's walk.",
+      "undo": "Delete release-promo.tsx and its tile on the Templates index, and its words; move PROMO_SHAPE's numbers back into promo.ts; then pin the promo as a Format under option (a), which also makes it a TemplateId that home's preview routes, the storyboard and the caption look must take.",
+      "refs": ["#2722", "#2726"]
+    },
+    {
+      "id": "C35",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/ui/burn-ins/src/lib/preview-mark.ts",
+        "packages/video-render/src/preview.ts"
+      ],
+      "chose": "A template's preview carries a burn-in, \"PREVIEW, SAMPLE DATA\" in amber capitals on a dark plate, over the whole video, at the left of a new foot region: the strip under the safe area, where no stage draws and below where captions are drawn. Only previewOf adds it; no episode ever carries it.",
+      "options": [
+        "the foot strip under the safe area, at its left",
+        "the header's top-right corner, over the stages' header rows",
+        "the gutter, which the authorship mark holds",
+        "centred in the foot"
+      ],
+      "gray": "#2757 asked for a visible mark clear of the stage and the captions band, but every stage fills the whole frame, so that place had to be read: as where the stage draws nothing and captions are never drawn. Its words also had to be chosen.",
+      "undo": "Change REGIONS_OF[\"preview-mark\"] and drawPreviewMark as a new design (or WORDS.previewMark for the words), and drop the foot region if nothing else uses it.",
+      "refs": ["#2757"]
+    },
+    {
+      "id": "C36",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "packages/ui/playoff-delta/src/lib/sample-fill.ts",
+        "packages/ui/playoff-delta/src/lib/sample.ts"
+      ],
+      "chose": "Playoff Delta's previews show the legend and the sample season's newest week (2025 week 18), each in its format's newest version, said from a fixed fill whose words Claude wrote and checkNarration holds to the sample's facts.",
+      "options": [
+        "the sample's newest week",
+        "an earlier, more open week of the sample"
+      ],
+      "gray": "#2757 asked for a fixed sample fill per template so a preview never calls a model; which week of the sample to show, and the words themselves, were not settled.",
+      "undo": "Change sampleWeekOf and rewrite the week's words in sample-fill.ts; its test fails until they fit the facts.",
+      "refs": ["#2757"]
+    },
+    {
+      "id": "C37",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "apps/www/src/lib/home-link/model.ts",
+        "apps/www/src/lib/home-link/kept-runtime.ts"
+      ],
+      "chose": "The phone drains one lane to home at a time; a screen's read or Sync runs beside that run, but lanes never run beside each other.",
+      "options": ["one lane at a time", "lanes draining concurrently"],
+      "gray": "Concurrent lanes would empty a backlog sooner, but the lanes share a read-then-write of what was sent, which would need reworking first.",
+      "undo": "Let the drain side in model.ts admit more than one run, after making the shared `sent` write safe under concurrency.",
+      "refs": ["#2758", "#2740"]
+    },
+    {
+      "id": "C38",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "apps/www/src/lib/home-link/model.ts",
+        "apps/www/src/lib/home-link/runtime.ts"
+      ],
+      "chose": "A tap's send or Unpair stops a running drain and goes first; the stopped run keeps what home took and asks again once the link frees.",
+      "options": [
+        "the send or Unpair stops the drain",
+        "the send or Unpair waits for the drain to end"
+      ],
+      "gray": "Waiting is simpler but holds a tap for as long as the paced backlog takes (about 90 s for 94 items, 45 of them after the burst); stopping means a run ends part-way and must resume.",
+      "undo": "Make a send and Unpair wait on the drain side in model.ts instead of stopping it.",
+      "refs": ["#2758"]
+    },
+    {
+      "id": "C39",
+      "made": "2026-11-08",
+      "by": "claude",
+      "paths": [
+        "apps/www/src/lib/home-link/pace.ts",
+        "apps/www/src/lib/home-link/runtime.ts"
+      ],
+      "chose": "Every request to home, the person's included, takes a turn on one pace (49 at once, then one every 2 s), with the person's turns ahead of any waiting drain turn, so after the burst a tap waits up to 2 s.",
+      "options": [
+        "pace every request, the person's included",
+        "pace only the drains and let the person's requests through unpaced"
+      ],
+      "gray": "Pacing the person costs up to 2 s on a tap after the burst; not pacing them gives up the bound on home's bucket over everything the phone sends.",
+      "undo": "Let the person side's requests in runtime.ts skip the pace in pace.ts, and narrow AD3's bound to drains.",
+      "refs": ["#2758"]
+    },
+    {
+      "id": "C40",
+      "made": "2026-11-08",
+      "by": "claude",
+      "agreed": "2026-11-08",
+      "paths": [
+        "apps/www/src/lib/home-link/delete-note.ts",
+        "apps/www/src/lib/my-data/deleting-runtime.ts"
+      ],
+      "chose": "The phone keeps no list of notes it owes home a delete for. A voice note whose delete answer was lost is left to home, which refuses to keep it again; until home's refusal carries its own code and the phone lets its copy go on it, that note's audio stays on the phone.",
+      "options": [
+        "a phone-side owed list of pending deletes",
+        "rely on home's deletion receipt, with a distinct refusal code the phone acts on"
+      ],
+      "gray": "Both close the lost-answer case; the owed list duplicates a guarantee home already gives and kept state that a wipe or reinstall loses.",
+      "undo": "Revert 944c4f10, then fix what the review of 9e0867db found in it: a deleted take's audio stranded behind a false \"on home\", and entries that never settle.",
+      "refs": ["#2758", "server#760"]
+    },
+    {
+      "id": "C41",
+      "made": "2026-11-09",
+      "by": "claude",
+      "agreed": "2026-11-09",
+      "paths": [
+        "apps/www/src/lib/voice-home/home.ts",
+        "docs/learner-data-authority.md"
+      ],
+      "chose": "The phone lets go of its copy of a voice note whose PUT home refuses as deleted for good (409 `deleted_for_good`), by My data's own letGoDeleted, as if it had heard the delete's receipt; LA8's let-go rule gains that case.",
+      "options": [
+        "let the copy go on that refusal (amend LA8)",
+        "keep it as a refusal with true words, the audio staying until let go by hand"
+      ],
+      "gray": "LA8 let a copy go only on a tap's answer; this refusal follows the owner's own My data delete, but arrives on the voice lane's run, not the tap's.",
+      "undo": "Drop the deleted_for_good branch in exchangeVoice so the refusal is kept like any 409, and restore LA8's claim and falsifier.",
+      "refs": ["server#760", "#2758"]
+    },
+    {
+      "id": "C42",
+      "made": "2026-11-09",
+      "by": "claude",
+      "agreed": "2026-11-09",
+      "paths": [
+        "apps/www/src/lib/home-link/voice-copy.ts",
+        "apps/www/src/lib/voice-home/home.ts"
+      ],
+      "chose": "Before Studio's store is handed in, a note home refuses as deleted for good is held back unsent for that launch; the first run after Studio is handed in sends it once more and lets it go on the answer.",
+      "options": [
+        "hold it back until Studio is handed in, then send once more",
+        "settle the voice record now and let Studio's take go when Studio opens"
+      ],
+      "gray": "Settling now saves one PUT but lets the take's row say it is on home while it is not; waiting costs that PUT.",
+      "undo": "Pass letGoDeleted unconditionally in sendVoice and drop DeletedPort's deferred set.",
+      "refs": ["server#760", "#2758"]
+    },
+    {
+      "id": "C43",
+      "made": "2026-11-09",
+      "by": "claude",
+      "paths": [
+        ".github/workflows/pr.yml",
+        ".github/workflows/extension.yml",
+        ".github/workflows/pages.yml"
+      ],
+      "chose": "A draft pull request runs no CI, and its CI Gate (and Extension CI's draft job) fails with a line saying CI runs once it is marked ready, so a draft shows a red check until then.",
+      "options": [
+        "drafts run nothing and the gate fails",
+        "drafts run nothing and the gate is skipped, so the draft shows no failure",
+        "drafts keep running all of CI"
+      ],
+      "gray": "A skipped gate looks cleaner on a draft, but a skipped required check counts as passed, and on ready that draft run's gate is the only CI Gate on the head until the new run reaches it; failing costs a red X on every draft.",
+      "undo": "Drop ready_for_review and the draft conditions from the three workflows, and the Drafts are not verified steps.",
+      "refs": ["#2823"]
+    },
+    {
+      "id": "C44",
+      "made": "2026-11-09",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/templates.ts",
+        "packages/video-render/src/templates/rust-essay"
+      ],
+      "chose": "The Rust Rounds essay's format is pinned under templates/rust-essay/ and kept off Studio's Templates list (TEMPLATES_NOT_LISTED) until home can voice, render and preview an essay (RR16).",
+      "options": [
+        "pinned and not listed in Studio until RR16",
+        "listed in Studio now, with no preview home can make"
+      ],
+      "gray": "#2690 asks for the format pinned under src/templates/, and every template there was listed in Studio; a listed template is one Studio offers a preview of, which home can't make for the essay yet.",
+      "undo": "Move rust-essay from TEMPLATES_NOT_LISTED into TEMPLATE_IDS with its storyboard, series and a preview recorder (tests/record/preview.ts), as RR16 will.",
+      "refs": ["#2690", "#2691"]
+    },
+    {
+      "id": "C45",
+      "made": "2026-11-09",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/templates/rust-essay/sample-essay.json"
+      ],
+      "chose": "The sample essay's role line is drawn by hand on the Dreyfus model of skill acquisition (Dreyfus & Dreyfus, 1980), fitting Advanced beginner with Competent next, and its chart's levels are hand-written; RR19 names the ladder and the rule that derives both.",
+      "options": [
+        "Dreyfus's stages, hand-drawn for the sample",
+        "a public engineering career framework",
+        "no role line until RR19"
+      ],
+      "gray": "#2694 settled that the essay carries a role line on a published ladder derived by RR19, which isn't built, and named no ladder.",
+      "undo": "Replace weeks.role and the chart's cells in sample-essay.json with RR19's derivation once it lands.",
+      "refs": ["#2694", "#2695"]
+    },
+    {
+      "id": "C46",
+      "made": "2026-11-09",
+      "by": "claude",
+      "paths": ["apps/www/src/lib/web-surface/call/essay-stage.tsx"],
+      "chose": "In template A the owner's bubble is the prototype's plain person icon, and the tutor's its plain hexagon, both in the theme's colours; the owner's brand mark stays on the brand intro and outro only.",
+      "options": [
+        "the prototype's plain person icon",
+        "the owner's brand mark",
+        "a photo or avatar of the owner"
+      ],
+      "gray": "#2690 asks for the tutor's icon and the owner's, the tutor's neutral, and says nothing of what the owner's is.",
+      "undo": "Draw another icon in YouIcon (essay-stage.tsx).",
+      "refs": ["#2690"]
+    },
+    {
+      "id": "C47",
+      "made": "2026-11-09",
+      "by": "claude",
+      "paths": ["packages/video-render/src/essay.ts"],
+      "chose": "The essay opens each ticket with a chapter slide naming it (\"QM-311: …\"), and Over the weeks with one; Next week has none. A ticket's scenes keep one order whether it was answered or not, and only the lit bubble and the answer scene's words change.",
+      "options": [
+        "a chapter per ticket and one for Over the weeks",
+        "a chapter per section, as the call has",
+        "no chapters"
+      ],
+      "gray": "The call puts a chapter before each section; the essay's sections repeat per ticket, so a section's chapter would come back with each ticket, and #2690 names no chapters.",
+      "undo": "A new essay format version whose shape lists other chapters (ESSAY_SHAPE in essay.ts).",
+      "refs": ["#2690", "#2670"]
+    },
+    {
+      "id": "C68",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["server:scripts/pr_gate.py", "server:docs/assurance.md"],
+      "chose": "PR gate keeps the 60-minute bound, applied per run: a first attempt counts from its created_at, so time queued counts, and a re-run from its run_started_at; a run longer than that fails the gate.",
+      "options": [
+        "drop the timeout, as server#762 proposed",
+        "keep the bound, per run"
+      ],
+      "gray": "server#762 said to drop the timeout, but dropping it would let a 61-minute run pass that fails the gate today.",
+      "undo": "Delete the `event and seconds(run) > RUN_LIMIT_SECONDS` branch in judge() in scripts/pr_gate.py and its self-tests.",
+      "refs": ["server#762", "server#767", "#2833"]
+    },
+    {
+      "id": "C69",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": [
+        "server:scripts/pr_gate.py",
+        "server:.github/workflows/gate.yml"
+      ],
+      "chose": "When the base branch has no .github/workflows/gate-verdict.yml, `--open` falls back to waiting in the job as before (up to 60 minutes), still writing the API check run PR gate.",
+      "options": [
+        "no fallback, so that pull request's gate stays pending for good",
+        "land it as two pull requests",
+        "fall back to waiting in the job"
+      ],
+      "gray": "It keeps a polling path, which only runs on the pull request that adds the verdict workflow, or if that workflow is ever deleted.",
+      "undo": "Once main has gate-verdict.yml, drop the api.exists(...) branch and wait() from open_gate() in scripts/pr_gate.py in a follow-up.",
+      "refs": ["server#762", "server#767", "#2833"]
+    },
+    {
+      "id": "C70",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["server:.github/workflows/gate-verdict.yml"],
+      "chose": "gate-verdict.yml also runs on `check_run: completed`, only when the check run's app is not github-actions, so CodeQL's check run decides the gate too. Closing review of server#767 (d9f6e3a) found the trigger dead: GitHub does not run a check_run workflow for a check suite whose head SHA is associated with GitHub Actions, which every pull request head here is. Removed before merge; C71 replaces it.",
+      "options": ["workflow_run only", "workflow_run and check_run"],
+      "gray": "It is not verified whether GitHub sends check_run for Actions' own check runs; if it does, each adds a skipped run that uses no runner.",
+      "undo": "Nothing to undo: the trigger was removed before server#767 merged.",
+      "refs": ["server#762", "server#767", "#2833"]
+    },
+    {
+      "id": "C71",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": [
+        "server:.github/workflows/gate-verdict.yml",
+        "server:scripts/pr_gate.py",
+        "server:docs/assurance.md"
+      ],
+      "chose": "A scheduled backstop, PR gate (sweep): every 15 minutes it dispatches the verdict job for each open pull request whose PR gate is unfinished. It never judges directly, so every write stays in the head's concurrency group.",
+      "options": [
+        "leave the pending-only gap documented and file a follow-up",
+        "a scheduled sweep that dispatches the verdict job",
+        "keep the opener polling while another app's checks are unfinished, a waiting runner again"
+      ],
+      "gray": "It adds a recurring cost (96 short runs a day, at most 96 billed runner-minutes) to close a gap not yet seen: CodeQL finished within about 3 seconds on every head inspected. The owner's goal for server#762 is that nobody babysits the gate, and the coordinator chose the sweep on 2026-11-10.",
+      "undo": "Remove gate-verdict.yml's schedule and workflow_dispatch triggers and its sweep job, and pr_gate.py's sweep(); the gap is then back as a gate left pending.",
+      "refs": ["server#762", "server#767", "#2833"],
+      "moves": "C70"
+    },
+    {
+      "id": "C65",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["apps/mailbox/src/core.ts", "apps/mailbox/README.md"],
+      "chose": "A Rust Rounds essay's script rides the mailbox's brief folder, beside the weeks of Rust Rounds, rather than a rust-essay folder of its own.",
+      "options": [
+        "a rust-essay folder of its own",
+        "the brief folder, as the weeks of Rust Rounds do"
+      ],
+      "gray": "The owner's answer on #2684 says the routine puts the script in a mailbox folder named rust-essay. Its point was that the script stays on home and in the mailbox. A folder of its own adds a listing to every pass home makes, which MI6 counts, while brief is listed anyway, and the home side of RR16 is built to read brief.",
+      "undo": "Add a rust-essay folder to FOLDERS, the routine's put and home's get in ROLES, and paulgsc/server's pass::READS, then move the essay kind out of brief's also.",
+      "refs": ["#2684", "#2691", "#2833"]
+    },
+    {
+      "id": "C72",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["apps/mailbox/src/core.ts", "apps/mailbox/README.md"],
+      "chose": "A corrected essay script goes under a new name, rust-essay-YYYY-wNN-rN.json with N from 2, since a name in the mailbox holds one body for good.",
+      "options": [
+        "a correction under -rN, N from 2",
+        "no corrections: one script per week"
+      ],
+      "gray": "Nothing settled whether a week's essay can be corrected once put, and a held name refuses other bytes (MB5), so a fix needs a new name or none can be made.",
+      "undo": "Drop the (-rN) part of the rust-essay name in brief's also in core.ts, and its tests.",
+      "refs": ["#2691", "#2833"]
+    },
+    {
+      "id": "C73",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": [
+        "server:apps/servers/file_host/src/feeds.rs",
+        "server:apps/servers/file_host/src/feeds/videos.rs"
+      ],
+      "chose": "The Rust Rounds essay is a third Feed (`rust-essay`) on the existing /feeds/:feed/videos routes, keyed by week, with the caller's subject threaded through every Feed method so the essay feed answers only the caller's own.",
+      "options": [
+        "a third Feed on the existing routes, subject threaded",
+        "a separate essay-videos route module"
+      ],
+      "gray": "The call's and Playoff Delta's videos are no one's, while an essay's plays the owner's voice, and nothing said whether a subject-scoped feed shares the feeds' routes.",
+      "undo": "Drop Feed::RustEssay and the subject parameters from Feed's methods and feeds::videos.",
+      "refs": ["#2691", "#2833", "server#774"]
+    },
+    {
+      "id": "C74",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["server:apps/servers/file_host/src/rust_essays.rs"],
+      "chose": "Each minute the essays worker tidies the drive against what the subject holds: an account gone, a take deleted or a video made removes the files it no longer may keep. There are no hooks in account deletion or the voice delete route.",
+      "options": [
+        "a reconcile each minute",
+        "hooks in delete_subject and DELETE /voice-notes/:id"
+      ],
+      "gray": "No invariant said where file cleanup for a subject-scoped render lives. A reconcile catches every path within a minute, at a few local reads per essay week.",
+      "undo": "Remove rust_essays::tidy and add the hooks.",
+      "refs": ["#2691", "server#774"]
+    },
+    {
+      "id": "C75",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["server:scripts/check_assurance_ledger.py"],
+      "chose": "The stores and a family of existing server paths go in the ledger before server#774; rust_essays.rs and the proofs follow its merge, with rust_essays.rs in KNOWN_UNPLACED until then, as pd-kept followed server#687.",
+      "options": [
+        "stores before, family paths after",
+        "the whole family before the server PR"
+      ],
+      "gray": "A family naming a server file before it is on main fails every server PR's ledger rule 2, and the rule for a new process family said only 'before'.",
+      "undo": "Drop the KNOWN_UNPLACED entry once the family names rust_essays.rs.",
+      "refs": ["#2691", "#2833", "server#774"]
+    },
+    {
+      "id": "C76",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/essay.ts",
+        "apps/www/src/lib/web-surface/call/essay-view.ts",
+        "apps/www/tests/record/essay-recording.ts"
+      ],
+      "chose": "Where the essay plays its sample (the stage with no week named, its storyboard and its preview), a second Kokoro voice (ESSAY_VOICES.you) reads the sample's answers, and the locked intro says the essay is a sample with both voices synthetic. An essay home renders plays the owner's own takes, and its intro says the other voice is theirs.",
+      "options": [
+        "a second synthetic voice reads the sample's answers, and the intro says so",
+        "the sample's answer scenes stay silent, held for their reading time",
+        "the tutor's voice reads the sample's answers too"
+      ],
+      "gray": "#2691 lists the essay's preview, but no owner ever said the sample's answers, and RR15's intro says the other voice is the owner's own, which would be false over a synthetic one. No check or earlier decision says how a sample stands in for the owner's voice.",
+      "undo": "Change ESSAY_VOICES.you or the Voicing branch of essayIntro in essay.ts, re-pin templates/rust-essay/storyboard.json, and record the preview again.",
+      "refs": ["#2691", "#2690"]
+    },
+    {
+      "id": "C77",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["apps/www/src/lib/web-surface/call/essay-view.ts"],
+      "chose": "/essay?week=<id> draws only that week's essay. When it can't be read, or what is read belongs to another week, the stage says why and draws nothing, even outside a recording. The sample plays only with no week named, or week=sample.",
+      "options": [
+        "refuse, saying why, whenever a named essay can't be read",
+        "fall back to the sample outside a recording, as /call does with a week"
+      ],
+      "gray": "/call shows its sample week when a live week can't be read, unless it is recording. An essay carries the owner's own words and takes, though, and a sample drawn in its place reads as theirs. No rule decides it.",
+      "undo": "Have essayStageOf return the sample with voicing \"sample\" when it isn't recording, as stageOf in view.ts does.",
+      "refs": ["#2691"]
+    },
+    {
+      "id": "C78",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": [
+        "apps/www/tests/record/essay-recording.ts",
+        "apps/www/tests/record/voiced.ts",
+        "packages/video-render/src/stills.ts"
+      ],
+      "chose": "Home hands record:essay one audio file per answered ticket (<TICKET>.<ext>), with the take's word times beside it (<TICKET>.words.json) where home kept them. A take with no times is captioned by spreading the transcript across it, each word's share as long as its letters (spreadWords).",
+      "options": [
+        "word times where home kept them, else the transcript spread by letters",
+        "captions only where home kept word times",
+        "the transcript shown whole for the length of the take"
+      ],
+      "gray": "The call's captions come from Kokoro's own word times, which an owner's take doesn't have. Whether home's transcriber keeps times is RR16-home's to settle, and the spread caption is something the owner sees in every essay.",
+      "undo": "Change spreadWords in stills.ts, or have record:essay refuse a take with no .words.json (essayTakeFiles in essay.ts).",
+      "refs": ["#2691"]
+    },
+    {
+      "id": "C60",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["server:apps/servers/file_host/src/mailbox/bell.rs"],
+      "chose": "Home counts the bell as dead after 90 seconds with no pong, ring or other frame, sending a ping every 30 seconds.",
+      "options": [
+        "90 seconds of silence",
+        "10 seconds after an unanswered ping"
+      ],
+      "gray": "The protocol agreed on #2833 allowed either.",
+      "undo": "Change `silence` in Timings::new in bell.rs.",
+      "refs": ["server#500", "server#499", "#2142", "#2833"]
+    },
+    {
+      "id": "C61",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["server:apps/servers/file_host/src/mailbox/bell.rs"],
+      "chose": "The reconnect backoff starts over only after a connection has held for 10 minutes, so a bell that connects and drops at once backs off to 5 minutes rather than costing a catch-up pass every second or two.",
+      "options": [
+        "start over after 10 minutes held",
+        "start over on every connect",
+        "start over after 60 seconds held"
+      ],
+      "gray": "server#500 asks for capped exponential backoff and a catch-up pass on every connect, but not when the backoff starts over, which sets MI6's worst case.",
+      "undo": "Change `steady` in Timings::new in bell.rs.",
+      "refs": ["server#500", "server#499", "#2142", "#2833"]
+    },
+    {
+      "id": "C62",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": [
+        "server:apps/servers/file_host/src/mailbox.rs",
+        "server:apps/servers/file_host/src/handlers"
+      ],
+      "chose": "Every route that files something for the mailbox wakes a pass when it adds a file: Jobs files, opened lessons, reflections, prompts, notes on an episode, and a transcriber pass that heard something. A file sent again unchanged wakes nothing.",
+      "options": [
+        "only what server#500 names (Jobs files, opened, transcripts)",
+        "every route that files for the mailbox"
+      ],
+      "gray": "server#500 lists three, but the others go out the same way, and the epic's done-when is about how soon what home puts reaches the mailbox.",
+      "undo": "Drop outbox.filed() from a handler.",
+      "refs": ["server#500", "server#499", "#2142", "#2833"]
+    },
+    {
+      "id": "C63",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["server:apps/servers/file_host/src/mailbox.rs"],
+      "chose": "A pass that folds several causes is counted and logged once, under the first of ring, connect, local and timer, and every pass restarts the backstop timer.",
+      "options": [
+        "count every cause a pass folds",
+        "count each pass once, by precedence"
+      ],
+      "gray": "server#500 asks for passes counted by cause without saying how folded causes count.",
+      "undo": "Change Wake::take and record_pass_cause in run_passes (mailbox.rs).",
+      "refs": ["server#500", "server#499", "#2142", "#2833"]
+    },
+    {
+      "id": "C64",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": [
+        "server:apps/servers/file_host/src/mailbox.rs",
+        "server:apps/servers/file_host/src/mailbox/bell.rs"
+      ],
+      "chose": "Home's backstop pass follows the bell: hourly while home holds the bell's connection, every 15 minutes while it doesn't, and no two timer or catch-up passes come closer than 15 minutes, so a flapping bell can't exceed an idle day's 96 passes.",
+      "options": [
+        "hourly always",
+        "every 15 minutes always",
+        "hourly while the bell is held, every 15 minutes while it isn't"
+      ],
+      "gray": "The owner chose an hourly backstop to stay under MI6. Hourly always would quietly break MI4's 20 minutes whenever the bell is down, and every 15 minutes always keeps MI6 at its bound, so the coordinator read the owner's choice as hourly while the bell carries the files.",
+      "undo": "Make Timings' interval a constant again (mailbox.rs, bell.rs).",
+      "refs": ["server#500", "#2833"]
+    },
+    {
+      "id": "C52",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["server:crates/db/rust_round/src/sent.rs"],
+      "chose": "Re-sent weeks go in a revisions table, rust_week_resend (rev from 2), beside an untouched rust_week_sent, with additive revision and sends fields.",
+      "options": [
+        "rebuild rust_week_sent with a revision column",
+        "a new side table for revisions"
+      ],
+      "gray": "The brief allowed a new table and a ledger entry but refused a reshape, and a side table fit append-only #2474.",
+      "undo": "Nothing to undo: C53 replaced it the same day, after the owner's draft and final decision, and it never merged.",
+      "refs": ["server#770", "#2832", "#2833"]
+    },
+    {
+      "id": "C53",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": [
+        "server:migrations/20261110000100_create_rust_week_draft_final.up.sql",
+        "server:migrations/20261110000100_create_rust_week_draft_final.down.sql",
+        "server:crates/db/rust_round/src/sent.rs",
+        "server:apps/servers/file_host/src/handlers/rust_week_record.rs",
+        "server:apps/servers/file_host/src/handlers/subjects.rs",
+        "server:crates/db/storage/src/kept.rs",
+        "server:crates/db/storage/src/subject.rs",
+        "server:apps/servers/file_host/src/routes/rust_rounds.rs",
+        "server:docs/identity.md"
+      ],
+      "chose": "A week has a draft and a final. rust_week_sent is frozen as RR14's archive and copied once into rust_week_draft, the current draft, replaced on each send (cache class); rust_week_final is the record, append-only and kept until the account ends. A week becomes final on the first read after its deadline, in one transaction, with no sweep and no grace. A send is identified by its `at` as an instant, sameness is a comparison of parsed values, and an older `at` gets 200 superseded.",
+      "options": [
+        "make rust_week_sent the finals table",
+        "finalize with a background sweep at the deadline",
+        "finalize after a grace window",
+        "draft and final, finalized on the first read after the deadline"
+      ],
+      "gray": "It trades RR14's \"kept once\" for the owner's \"only the deadline lock counts\" and adds a cache-class server store. Making rust_week_sent the finals table would have left the pre-deadline w46 row unreplaceable, so the final would silently be the stale send; a sweep adds a worker loop home doesn't need for determinism; and the owner said no to a grace window.",
+      "undo": "The down migration refuses once any final exists or any draft is not the seed copy. Before that, revert a714284 and run the down migration; rust_week_sent was never touched.",
+      "refs": ["server#770", "#2832", "#2833"],
+      "moves": "C52"
+    },
+    {
+      "id": "C54",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": [
+        "server:crates/db/rust_round/src/sent.rs",
+        "server:apps/servers/file_host/src/handlers/rust_week_record.rs"
+      ],
+      "chose": "Both races Codex found in server#770 are fixed in the pull request: `now` is read after the IMMEDIATE lock, a send to a week already final is refused (422), and the standing is read as one UNION statement (sent.rs is_final and standing, rust_week_record.rs put_sent).",
+      "options": [
+        "fix both races in the pull request",
+        "file them as an issue"
+      ],
+      "gray": "The races were narrow, but either could silently drop an acknowledged send or blank the record.",
+      "undo": "Revert d9c4569's part of the squash.",
+      "refs": ["server#770", "#2832", "#2833"]
+    },
+    {
+      "id": "C66",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": [
+        "server:.github/workflows/gate-verdict.yml",
+        "server:scripts/pr_gate.py",
+        "server:docs/assurance.md"
+      ],
+      "chose": "gate-verdict.yml's sweep can be run by hand: a workflow_dispatch with empty inputs runs the sweep, and one with pr and head_sha judges that head as before. Both inputs become optional, defaulting to empty.",
+      "options": [
+        "wait for the cron and prove the sweep only on its schedule",
+        "a separate workflow for a manual sweep",
+        "a dispatch with empty inputs runs the sweep"
+      ],
+      "gray": "It adds a second, manual trigger to the gate's machinery, so anyone with write access can start a sweep. That is harmless, since a sweep only re-judges unfinished gates inside each head's concurrency group, but it is new surface. It was also the only way to prove the sweep end to end while the cron wasn't firing (server#772).",
+      "undo": "Make pr and head_sha required again, set the sweep job's `if:` back to `github.event_name == 'schedule'` and the verdict job's to `github.event_name != 'schedule'`, and drop the routing test's dispatch-without-inputs case.",
+      "refs": ["server#772", "server#773", "server#762"]
+    },
+    {
+      "id": "C56",
+      "made": "2026-11-10",
+      "by": "owner",
+      "paths": [
+        "packages/ui/rust-rounds/src/lib/week-play",
+        "server:apps/servers/file_host/src/handlers/rust_rounds.rs"
+      ],
+      "chose": "A week's sends before its deadline are drafts: home keeps the latest in place of the one before. Only what stands at the deadline is final and kept for good, an unanswered ticket included.",
+      "options": [
+        "keep every send for good",
+        "keep only the first",
+        "drafts until the deadline"
+      ],
+      "gray": "The RR14 record kept the first send for good, and re-sending had to choose what the record is.",
+      "undo": "Keep every revision.",
+      "refs": ["#2832", "#2833"]
+    },
+    {
+      "id": "C57",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": [
+        "packages/ui/rust-rounds/src/components/rust-week/index.tsx",
+        "packages/voice-capture/src/lib/bundle.ts"
+      ],
+      "chose": "A week already sent opens on its brief, with what home holds over the tickets and each ticket's standing, not on the sent screen; the words home heard show on each ticket's card. Right after a Send the sent screen shows, with \"Back to the week\".",
+      "options": [
+        "open on the brief, words heard on each card",
+        "open on the sent screen with a way back to the week",
+        "open on the first ticket's card"
+      ],
+      "gray": "#2832 asks that the week stay open after a send and say per ticket what home holds, but names no screen it opens on.",
+      "undo": "In bundle.ts's opened step, open a resending draft with a kept record on \"sent\" again.",
+      "refs": ["#2832"]
+    },
+    {
+      "id": "C58",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": [
+        "packages/ui/rust-rounds/src/lib/week-play/spec.ts",
+        "packages/voice-capture/src/lib/bundle.ts"
+      ],
+      "chose": "Each send holds the whole week: a ticket sent before and not said since goes again with the take sent, since home keeps only the latest send (C56). Send again waits until something changed since the last send.",
+      "options": [
+        "every send holds the whole week, and needs a change",
+        "a send holds only what changed since the last",
+        "any send, changed or not"
+      ],
+      "gray": "With home keeping the latest send only (C56), a send of the changed tickets alone would drop the others from what counts; whether an unchanged send is offered is a choice no check settles.",
+      "undo": "Drop the merge of `last` in weekSpec's record, and the \"unchanged\" need in bundle.ts's missing.",
+      "refs": ["#2832"]
+    },
+    {
+      "id": "C59",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["packages/ui/rust-rounds/src/components/rust-week/index.tsx"],
+      "chose": "After the deadline the week reads back on one scrolling screen: the brief, then every ticket with its spec, speak-to points, program and rustc's result, the take home had at the deadline (playable) with the words home heard, or \"Not answered.\"; a send home didn't have by then is named as not counting.",
+      "options": [
+        "one scrolling screen",
+        "the swiped cards, read-only",
+        "the brief only, each ticket opened from it"
+      ],
+      "gray": "#2832 lists what the read-back shows, not how it is laid out.",
+      "undo": "Render ReadBack's tickets as read-only cards on the pager.",
+      "refs": ["#2832"]
+    },
+    {
+      "id": "C80",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["server:scripts/deploy.py", "server:README.md"],
+      "chose": "rust-runner and orchestrator stay manual pulls; make home-deploy pulls, health-gates and rolls back file_host alone.",
+      "options": [
+        "file_host only",
+        "also pull rust-runner and orchestrator, restarting them without a health gate",
+        "also pull them, with healthchecks added to both first"
+      ],
+      "gray": "The owner's ask named file_host (\"home (file_host) run migrations on start… pulls latest image\") and nothing on the others. Neither service has a healthcheck to judge a rollback by, and PR 2's contract epoch is file_host's contract only. No check or earlier decision covers the other two.",
+      "undo": "Add their images to scripts/deploy.py's pull step, beside IMAGE (the deploy() function), and to README \"Deploying to home\".",
+      "refs": ["server#776", "server#564", "#2833"]
+    },
+    {
+      "id": "C82",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["server:scripts/deploy.py", "server:README.md"],
+      "chose": "The deploy does not update home's checkout. An image that needs a newer checkout fails its preflight (nothing is replaced) or its start (it is rolled back), and where the preflight or the container's last log lines name a missing or refused variable, it says this image needs a newer checkout on home.",
+      "options": [
+        "never touch the checkout",
+        "git fetch and fast-forward main when it is clean, before each deploy",
+        "deploy from a clone the deploy owns, separate from the owner's checkout"
+      ],
+      "gray": "The owner's correction asked for no polling and nothing beyond pulling the image; the coordinator asked to drop the fast-forward unless the on-demand path truly needs it. Auto-pulling main also runs main's compose and sops changes on home unreviewed by anyone there. No convention covers it.",
+      "undo": "Add a fast-forward step to scripts/deploy.py's deploy() before the pull (an earlier rehearsed version had update_checkout), and drop CHECKOUT_HINT.",
+      "refs": ["server#776", "#2833"]
+    },
+    {
+      "id": "C83",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": [
+        "server:nix/modules/home-deploy.nix",
+        "server:scripts/deploy.py"
+      ],
+      "chose": "Home's deploy unit runs as root, and runs make as the checkout's owner through runuser.",
+      "options": [
+        "root, with runuser for make",
+        "the owner's user throughout, with STORAGE's deploy/ group-writable",
+        "root throughout, with sops pointed at the owner's key"
+      ],
+      "gray": "STORAGE belongs to file_host's uid 10000 and the sops age key is the owner's; no convention covers a host unit needing both. The second option widens STORAGE's permissions, and the third has root build envctl in the owner's checkout.",
+      "undo": "For the second option: in nix/modules/home-deploy.nix set User= to the owner, set Environment=XDG_RUNTIME_DIR=/run/home-deploy (the unit's RuntimeDirectory, then owned by that user), and drop --as-user; drop runuser_prefix in scripts/deploy.py; and make ${STORAGE}/deploy group-writable for that user.",
+      "refs": ["server#779", "#2833"]
+    },
+    {
+      "id": "C84",
+      "made": "2026-11-10",
+      "by": "claude",
+      "paths": ["some-ui:packages/assurance/src/ledger.json"],
+      "chose": "The compat route and home's on-demand deploy get a family of their own, home-catches-up, with two objectives written from what server#779 does: home pulls only when asked and within its bounds (HD1), and a failed or stuck deploy reaches the owner (HD2).",
+      "options": [
+        "a family of its own, with new objectives",
+        "home-up's modules, as an exception to crosscutting, with the bounds as AV1 evidence",
+        "synchronous"
+      ],
+      "gray": "No family covered a module whose later outcome is a deploy. home-up is crosscutting, so no process may serve it, and the deploy's bounds are about wasted work, not uptime; synchronous is for routes that owe nothing later, and /compat owes a deploy. A new family is a promise the owner had not stated.",
+      "undo": "Retire HD1 and HD2 with an amendment naming the owner's decision, move compat to home-up's modules, and drop HD1 and HD2 from the home-deploy process's witnesses; it still serves home-catches-up, which keeps the retired objectives.",
+      "refs": ["server#779", "#2833", "#2846"]
+    },
+    {
+      "id": "C104",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": ["apps/mailbox/src/core.ts", "apps/mailbox/README.md"],
+      "chose": "In the Rust Rounds index, the Worker's scan for encoded bytes leaves out each pasted error's text, as JSON.stringify writes it, and holds each paste's text instead to home's 20,000-character cap with no data: URI and no Drive link.",
+      "options": [
+        "leave pasted errors' text out of the encoded-run scan, held to its own checks",
+        "scan the whole index as every other index is scanned"
+      ],
+      "gray": "A pasted error is the owner's own text, and a linker's mangled symbol can run past the scan's 256 base64-like characters; one such paste would get the whole index refused, and every essay held back, until that week left the newest four (RR18-home's heads-up on the contract). No check or earlier decision said which matters more there.",
+      "undo": "Drop rustScanned from the rust entry of INDEX_ROUTINES in core.ts, and its paste checks in rustShape, with the README's sentence and the test of a long symbol.",
+      "refs": ["#2693", "#2231"]
+    },
+    {
+      "id": "C97",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": [
+        "some-ui:apps/www/src/lib/studio-index/words.ts",
+        "some-ui:apps/www/src/lib/call-videos/words.ts"
+      ],
+      "chose": "Studio lists the essays as a feed named \"The Rust Rounds essay\", fed the intuition \"Keep my sharpness and intuition when I look at Rust code, now that I rarely write it.\" (paraphrased from the owner's words on #2231), run every Monday for the week that closed on Sunday; an essay is named by its year and week (\"2026, week 46\") and shared as \"Rust Rounds, 2026, week 46\".",
+      "options": [
+        "these words",
+        "the essay as a part of a \"Rust Rounds\" feed named by the series",
+        "a quote of the owner's 2026-10-29 words verbatim as the intuition"
+      ],
+      "gray": "The feed's name and intuition are said on the owner's screens as the owner's own, and the YouTube share title is public; no check or earlier decision names them.",
+      "undo": "Edit FEED_FACTS[\"rust-essay\"] and FEED_WORDS[\"rust-essay\"]; nothing stores them.",
+      "refs": ["#2692", "#2231"]
+    },
+    {
+      "id": "C109",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": [
+        "some-ui:.github/workflows/render-docker-release.yml",
+        "some-ui:infra/render/Dockerfile"
+      ],
+      "chose": "The render image (pgathondu/render) publishes straight from main on every push that reaches its graph, as :<sha> and :latest, once the very image to be pushed has made the sample composition and the weekly call's preview the same bytes twice, offline; there is no release PR to merge first.",
+      "options": [
+        "publish from main, gated by the byte proof",
+        "a standing release PR as www's image has, merged by hand before each publish",
+        "publish only on a manual dispatch"
+      ],
+      "gray": "www's image waits on a merged release PR because it is served to people; the render image is served to no one and home runs it only by a digest moved on paulgsc/server, so a second gate before Docker Hub would be the owner's judgment either way. No check or earlier decision says which.",
+      "undo": "Drop the push trigger from render-docker-release.yml, leaving workflow_dispatch, or put a release PR in front of the publish job as www-docker-release.yml does.",
+      "refs": ["server#758"]
+    },
+    {
+      "id": "C85",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": [
+        "server:.github/workflows/gate-verdict.yml",
+        "server:scripts/pr_gate.py",
+        "server:docs/assurance.md",
+        "server:.github/workflows/assurance.yml",
+        "server:.github/workflows/deny.yml",
+        "server:.github/workflows/detect.yml",
+        "server:.github/workflows/lint.yml",
+        "server:.github/workflows/loc.yml",
+        "server:.github/workflows/routes.yml",
+        "server:.github/workflows/rust-runner.yml",
+        "server:.github/workflows/test.yml"
+      ],
+      "chose": "A bot PR's finished runs reach PR gate through a last job in every pull-request workflow, Tell PR gate, which needs every other job, runs only when github-actions[bot] pushed a head of this repository, and workflow_dispatches gate-verdict.yml; pr_gate.py fails a workflow that lacks it, rather than giving the image bot's push a GitHub App token so its runs are ordinary.",
+      "options": [
+        "each pull-request workflow ends with Tell PR gate, which dispatches the verdict",
+        "a GitHub App token for the bot's push, so its runs are ordinary and fire workflow_run",
+        "PR gate (open) waits in the job for bot heads, as the C69 fallback does"
+      ],
+      "gray": "GitHub fires no workflow_run when a run whose actor is github-actions[bot] finishes, so only the throttled 15-minute sweep could decide a bot PR's gate (#781). An App token would remove both the approval step and the need for the job, but it is a new credential, and a credential is the owner's call; no check or earlier decision chose between them.",
+      "undo": "Remove the tell_gate jobs from the eight workflows and the untold check from scripts/pr_gate.py; if the owner adopts an App token for detect.yml's push, they become unneeded.",
+      "refs": ["server#772", "server#781", "server#783"]
+    },
+    {
+      "id": "C86",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": [
+        "server:.github/workflows/gate-verdict.yml",
+        "server:scripts/pr_gate.py"
+      ],
+      "chose": "A dispatched verdict first waits, at most 3 minutes, only for runs whose sole unfinished job is Tell PR gate (or whose status lags that job's finish), then judges as before; nothing holds a runner while other checks are still working.",
+      "options": [
+        "settle briefly on runs whose only unfinished job is Tell PR gate, then judge",
+        "PR gate (open) waits in the job for bot heads until their checks finish, as the C69 fallback does"
+      ],
+      "gray": "The dispatch comes from inside the run it reports on, so the run is not yet complete when the verdict reads it. Waiting in the job for every check brings back the runner hold #762 removed; a short bounded settle on the telling job alone does not, and no convention set the bound.",
+      "undo": "Drop the settle wait from scripts/pr_gate.py and gate-verdict.yml; a dispatched verdict then reads a run still in progress and leaves the gate pending until the sweep.",
+      "refs": ["server#762", "server#772", "server#783"]
+    },
+    {
+      "id": "C87",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": [
+        "server:.github/workflows/assurance.yml",
+        "server:.github/workflows/deny.yml",
+        "server:.github/workflows/detect.yml",
+        "server:.github/workflows/lint.yml",
+        "server:.github/workflows/loc.yml",
+        "server:.github/workflows/routes.yml",
+        "server:.github/workflows/rust-runner.yml",
+        "server:.github/workflows/test.yml"
+      ],
+      "chose": "Tell PR gate is skipped when the head is a fork's, and fork heads are left to the sweep, as before.",
+      "options": [
+        "skip Tell PR gate on a fork's head and leave it to the sweep",
+        "let it run and fail"
+      ],
+      "gray": "A fork's pull_request token is read-only, so the dispatch would fail and turn an otherwise green run red (Codex on server#783). Skipping keeps such a gate on the slow sweep; failing makes it red for a reason that is not the code's.",
+      "undo": "Drop the head.repo.full_name clause from TELL_IF in the eight workflows.",
+      "refs": ["server#772", "server#783"]
+    },
+    {
+      "id": "C89",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": ["server:deny.toml", "server:docs/storage.md"],
+      "chose": "RUSTSEC-2026-0459 (the SQLite that sqlx 0.8.6 bundles) is cleared by a dated, reasoned ignore in deny.toml, revisited by 2027-02-11 and resting on a written invariant that every SQLite file opened here is one this deployment wrote, not by a sqlx bump.",
+      "options": [
+        "a dated, reasoned ignore in deny.toml, backed by a written invariant",
+        "upgrade sqlx to 0.9",
+        "leave the advisories job red"
+      ],
+      "gray": "No sqlx release reaches the fixed libsqlite3-sys 0.39: every sqlx-sqlite 0.8.x pins ^0.30.1, and 0.9.0 caps below 0.38, so the bump would not clear it. The flaw needs a database and -wal pair a less-trusted party wrote, and nothing here opens one; whether that is enough to ignore an advisory no convention says.",
+      "undo": "Drop the RUSTSEC-2026-0459 entry from deny.toml once a sqlx-sqlite release accepts libsqlite3-sys >= 0.39, then bump sqlx.",
+      "refs": ["server#764", "server#784"]
+    },
+    {
+      "id": "C90",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": ["server:docs/storage.md", "server:deny.toml"],
+      "chose": "The invariant the ignore rests on, which SQLite files are opened, lives in docs/storage.md as its own section, which deny.toml's comment names, rather than as a Tolerance in docs/home-compute.md.",
+      "options": [
+        "docs/storage.md, as a new section",
+        "a Tolerance in docs/home-compute.md",
+        "only in deny.toml's comment"
+      ],
+      "gray": "It constrains which SQLite files are opened, not how much of home a service takes, and a comment in deny.toml is not where someone adding an import would look. No convention placed an invariant that a security ignore depends on.",
+      "undo": "Move the section; deny.toml's comment points at it by name.",
+      "refs": ["server#764", "server#784"]
+    },
+    {
+      "id": "C93",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": ["server:nix/modules/home-deploy.nix", "server:Makefile"],
+      "chose": "The on-demand unit gets its envctl the way `make up` always did: ExecStartPre builds it as the checkout's owner (runuser -u <user> -- bash -c 'HOME=~<user> exec make -s envctl', cargo through `nix develop .#rust`), and ExecStart, as root, runs <checkout>/target/debug/envctl deploy --on-demand.",
+      "options": [
+        "build as the owner in the checkout (ExecStartPre), run that binary as root",
+        "package envctl as a flake output (rustPlatform.buildRustPackage) and put it on the unit's path from the nix store",
+        "run the whole unit's make, envctl included, as the owner, with root only for docker and STORAGE (needs C83's second option)"
+      ],
+      "gray": "Root runs a binary the owner's user built from the owner's checkout. Before, root ran deploy.py from the same checkout, which is the same trust, and `make -s up`, which built envctl as the owner, already ran inside it. A store-built envctl would pin the deploy to the flake input dotfiles locks rather than the checkout, which changes what `git pull` on home deploys. No convention covers it. The owner chose Rust and envctl; this call is only how the unit gets that binary.",
+      "undo": "Add packages.envctl to flake.nix (buildRustPackage over the workspace, -p envctl, SQLX_OFFLINE=true) and set ExecStart to \"${envctl}/bin/envctl --repo ${cfg.checkout} deploy …\"; drop ExecStartPre; update nix/modules/test.nix's \"the deploy runs on demand…\" expectation.",
+      "refs": ["server#786"]
+    },
+    {
+      "id": "C117",
+      "made": "2026-11-11",
+      "by": "owner",
+      "paths": [
+        "server:deploy/home/release.json",
+        "server:apps/envctl/src/deploy.rs",
+        "server:infra/compose/file_host.yml"
+      ],
+      "chose": "Home deploys one release: every compose service's image by digest in server's deploy/home/release.json, pulled, health-gated and rolled back together; rust-runner, orchestrator, render, kokoro and third-party images are no longer moved by hand.",
+      "options": [
+        "file_host only (C80)",
+        "a lockfile in server, bumped by an auto-merging release PR, applied whole",
+        "a manifest published as its own image, pulled by home"
+      ],
+      "gray": "The owner (2026-11-11): \"There's only one way to deploy this. We need all of them to be up\". rust-runner and orchestrator still have no healthcheck until R5 (server#794); until then the deploy gates them on 60 s without a restart.",
+      "undo": "Point envctl deploy back at the single file_host image and drop the IMAGE_* interpolation from infra/compose; release.json then pins nothing.",
+      "refs": ["server#787", "server#788", "server#793"],
+      "moves": "C80"
+    },
+    {
+      "id": "C118",
+      "made": "2026-11-11",
+      "by": "owner",
+      "paths": [
+        "server:apps/envctl/src/deploy.rs",
+        "server:nix/modules/home-deploy.nix"
+      ],
+      "chose": "The deploy fetches main and applies the release from a worktree of the commit that carries it (/var/lib/home-deploy/releases/<sha>), so compose, the deploy/<role>/ names and the image digests move as one commit; the owner's own checkout is never touched.",
+      "options": [
+        "never update anything on home but images (C82)",
+        "fast-forward the owner's checkout",
+        "run each release from its own worktree of main"
+      ],
+      "gray": "C82 kept main's compose and sops changes off home unreviewed. Every release is now a merged main commit whose CI checked the set, and the owner's checkout is left alone, so C82's reason holds while its rule moves. Home now does a git fetch on a demanded pass.",
+      "undo": "Run compose from the owner's checkout again and read release.json there; an image that needs a newer checkout then fails its preflight as under C82.",
+      "refs": ["server#787", "server#793"],
+      "moves": "C82"
+    },
+    {
+      "id": "C119",
+      "made": "2026-11-11",
+      "by": "owner",
+      "paths": ["server:.github/workflows/release-lock.yml"],
+      "chose": "A publish (server's image changesets, some-ui's www and render releases) opens a release PR in server that auto-merges on green; each image keeps its one human approval where it has it today, and forming the set adds none.",
+      "options": [
+        "the release PR waits for the owner",
+        "the release PR auto-merges on green"
+      ],
+      "gray": "It adds a writer to main. Its CI is what refuses an inconsistent set (server#790), so a set that merges is one the checks accepted, not one a person read.",
+      "undo": "Remove the auto-merge step from release-lock.yml; release PRs then wait for the owner's merge.",
+      "refs": ["server#787", "server#789", "server#791"]
+    },
+    {
+      "id": "C120",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": [
+        "server:deploy/home/release.json",
+        "server:.github/workflows/release-lock.yml"
+      ],
+      "chose": "Third-party images (redis, nats, prometheus, grafana, cadvisor, the exporters, metabase, redisinsight, ollama) are in the release, pinned repo:<real tag>@sha256, and refreshed by their own release PR monthly or on dispatch, never with an app publish. caddy runs at NixOS level and stays out.",
+      "options": [
+        "leave them floating on :latest",
+        "pin them in the release, refreshed on their own cadence",
+        "pin them in the release, refreshed with every publish"
+      ],
+      "gray": "Proposed by Claude in the design; the owner did not object. A month is a guess at the cost of reviewing third-party moves against the risk of a stale CVE fix, and no convention covers it.",
+      "undo": "Change the release-lock schedule, or drop the third-party services from the release and the guard.",
+      "refs": ["server#787", "server#796"]
+    },
+    {
+      "id": "C123",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": ["testing:scripts/guard.py", ".claude/skills/steward/SKILL.md"],
+      "chose": "paulgsc/testing refuses all media and binaries, by extension and by first bytes. The six clips PNGs present before the guard stay, each held to its SHA-256 in guard.py's LEGACY_MEDIA, which nothing joins.",
+      "options": [
+        "refuse all media, the existing PNGs held to their bytes in one named list",
+        "hold media to a small budget in one place",
+        "refuse all media and delete the existing PNGs"
+      ],
+      "gray": "The owner said to reject media in general and fold it into the size guard. The record is append-only (CLAUDE.md, 'Never lose the record'), and clips/ already held six PNGs that Studio's Library reads. The owner later confirmed keeping the list.",
+      "undo": "Remove an entry from LEGACY_MEDIA, or add a media budget to guard.py's CAPS, in a guarded testing PR.",
+      "refs": ["testing#6"]
+    },
+    {
+      "id": "C124",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": [
+        "testing:.github/workflows/guard.yml",
+        "testing:.github/workflows/playoff-delta.yml"
+      ],
+      "chose": "The guard runs on every push and pull request, checking every commit in the range. A failure on main opens or comments on one issue. Playoff Delta runs the guard itself before its own commit. No ruleset requires the guard.",
+      "options": [
+        "fail the run and open an issue on main, with no required check",
+        "a ruleset requiring the guard on main",
+        "post to some-ui's Slack webhook"
+      ],
+      "gray": "A required check would block the choir's direct pushes to main and the GITHUB_TOKEN commit, which can't be a ruleset bypass actor. some-ui's Slack step is commented out with no secret behind it. Nothing said which loud channel the owner hears.",
+      "undo": "Delete the tell-the-owner job, or have the owner add a ruleset once every writer uses pull requests.",
+      "refs": ["testing#6"]
+    },
+    {
+      "id": "C125",
+      "made": "2026-11-11",
+      "by": "claude",
+      "agreed": "2026-11-11",
+      "paths": [
+        "apps/www/src/lib/studio-clips/read.ts",
+        "packages/video-render/src/clip.ts",
+        "apps/mailbox/README.md"
+      ],
+      "chose": "Home makes walk clips' frames itself on its render lane, from the index in testing. Session-taken frames ride no mailbox folder, and only their labels are kept.",
+      "options": [
+        "home makes walk frames itself, and session-taken frames are not kept",
+        "amend the mailbox's brief to carry base64 frames",
+        "a new mailbox folder for frames"
+      ],
+      "gray": "The owner chose home for frames, but the mailbox takes only JSON under 1 MiB and refuses encoded bytes by design. MI6 needs the owner's amendment for a new folder, and brief has never carried media.",
+      "undo": "Build the brief-amendment route that the TESTING-GUARD build brief spells out (SOME-UI 4).",
+      "refs": ["testing#6"]
+    },
+    {
+      "id": "C101",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": ["packages/ui/rust-rounds/src/lib/monday/finish.ts"],
+      "chose": "Until the decay record (RR19) derives it, the Monday routine's finish step draws the essay's chart: a row for each concept the week's tickets named, a column for each week the mailbox holds an essay for (at most 12, this one last), and each cell the highest SOLO level of that week's answered tickets naming the concept, silent when every ticket naming it went unanswered, unmet when none named it.",
+      "options": [
+        "draw the chart from the mailbox's weeks and essays by that rule",
+        "draw only this week's column",
+        "leave the chart to RR19 and hold every essay until then"
+      ],
+      "gray": "The essay's format requires a chart, #2231 gives deriving it to RR19, which isn't built, and C45's sample chart was drawn by hand; nothing said what an essay written before RR19 shows.",
+      "undo": "Replace chartOf in finish.ts with RR19's derivation once it lands.",
+      "refs": ["#2693", "#2695", "#2231"]
+    },
+    {
+      "id": "C102",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": ["packages/ui/rust-rounds/src/lib/monday/finish.ts"],
+      "chose": "Until RR19 derives it, every essay the routine writes carries the role line on the Dreyfus ladder the sample cites, saying the fit isn't worked out yet and that the rule comes with the decay record; the model writes no role.",
+      "options": [
+        "a fixed line saying it isn't worked out yet",
+        "a role the model judges each week",
+        "hold every essay until RR19"
+      ],
+      "gray": "The essay's format requires a role line, and the owner's answer on #2694 says the routine doesn't write it and RR19 derives it; RR19 isn't built.",
+      "undo": "Replace ROLE_NOT_YET in finish.ts with RR19's derived line.",
+      "refs": ["#2694", "#2695", "#2693"]
+    },
+    {
+      "id": "C103",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": [
+        "packages/ui/rust-rounds/src/lib/monday/finish.ts",
+        "packages/ui/rust-rounds/ROUTINE.md"
+      ],
+      "chose": "The routine's finish step holds each deep dive's said text to 300 to 750 words, the owner's 2 to 5 minutes at an estimated 150 words a minute, and leaves the essay's own format (parseEssay) as it is.",
+      "options": [
+        "a word bound in the routine's finish step",
+        "a bound in the essay's format itself",
+        "no bound until a rendered essay measures Kokoro's pace"
+      ],
+      "gray": "#2231 lists the missing 2-to-5-minute hold as a known gap and no one has measured Kokoro's pace; a bound in the format would refuse the template's sample, whose dives are about 100 words.",
+      "undo": "Drop the word check from essayTicket in finish.ts and DIVE_WORDS_* with ROUTINE.md's sentence, or set WORDS_A_MINUTE to the pace a rendered essay measures.",
+      "refs": ["#2693", "#2231"]
+    },
+    {
+      "id": "C128",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": ["server:apps/servers/file_host/src/clips/pass.rs"],
+      "chose": "A walk whose snips or labels don't match the clip index has its render output removed, so the worker draws it again an hour later.",
+      "options": [
+        "remove its render output, so the worker draws it again an hour later",
+        "keep the rejected output and wait for a person to clear it"
+      ],
+      "gray": "The owner decided that home makes a walk's frames, not what happens to a walk that fails its check. The worker skips any walk whose walk.json exists, so a kept rejection never recovers, and a redraw costs one short walk an hour while it stays wrong.",
+      "undo": "In clips/pass.rs take_walk, stop removing the walk's folder on mismatch.",
+      "refs": ["server#801"]
+    },
+    {
+      "id": "C129",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": ["server:apps/servers/file_host/src/clips/pass.rs"],
+      "chose": "A walk's kept frames are copied beside the render output they were checked from, so a walk side is on the drive twice, at most 24 MiB.",
+      "options": [
+        "copy them, so a walk side is on the drive twice, at most 24 MiB",
+        "hard-link them to the render output, kept once"
+      ],
+      "gray": "No check or owner decision says how kept frames relate to the render worker's folder. A copy stays independent of a folder the pass deletes when it rejects a walk, at the cost of space no real walk has measured yet (server#807).",
+      "undo": "Hard-link in put() in clips/pass.rs instead of writing the bytes again, once server#807 shows the space matters.",
+      "refs": ["server#801", "server#807"]
+    },
+    {
+      "id": "C130",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": ["server:infra/render/render-calls.sh"],
+      "chose": "The walk job runs the published render image's own motion, beside the recorders.",
+      "options": [
+        "the published render image's own motion, beside the recorders",
+        "a separately pinned motion checkout"
+      ],
+      "gray": "Server#802 replaced the old image, which had a separate checkout, with some-ui's published one, which builds the motion and the recorders at one commit. Nothing said which one a walk should run.",
+      "undo": "Point MOTION_DIR in infra/render/render-calls.sh at another checkout.",
+      "refs": ["server#801", "server#802"]
+    },
+    {
+      "id": "C131",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": ["packages/video-render/src/clip.ts"],
+      "chose": "Testing's clips/index.json stays at some-ui.clip-index/1 until the owner's APK, the Pages build and home's www image all carry #2870's reader; testing#7, which moves it to /2, waits as a draft.",
+      "options": [
+        "keep the index at /1 until every shipped reader reads /2",
+        "make the reader accept the new fields, and move the index to /2 now",
+        "move the index to /2 now, and let builds made before #2870 show no Library until they are rebuilt"
+      ],
+      "gray": "The owner chose /2 for new clips but not when testing's file moves. Every build made before #2870 pins the schema to /1 and refuses a /2 file on that string alone, so a looser reader saves no build already in use; both clips listed today are valid /1 as they are.",
+      "undo": "Mark testing#7 ready and merge it, which moves clips/index.json to /2; the builds made before #2870 then show no Library until they are rebuilt.",
+      "refs": ["#2870"]
+    },
+    {
+      "id": "C132",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": [
+        "apps/www/src/components/studio/clips.tsx",
+        "apps/www/src/lib/studio-index/words.ts"
+      ],
+      "chose": "A clip frame home doesn't hold shows its label and why, never a broken image: on a walk side \"Home hasn't made this screen yet.\", on a session side \"This screen is on the change's page. Only what it showed is kept here.\"",
+      "options": [
+        "the label and why, the reason told apart for a walk side and a session side",
+        "the label and one shared line for any frame home doesn't hold",
+        "the label alone, with no reason"
+      ],
+      "gray": "The owner decided that a frame home doesn't hold shows its label, not what it says. A session-taken frame is never kept, so a line saying home hasn't taken it yet would promise a frame that never comes.",
+      "undo": "Use one line for both in missing() in clips.tsx, and drop notKept from the clips words in studio-index/words.ts.",
+      "refs": ["#2670", "#2870"]
+    },
+    {
+      "id": "C133",
+      "made": "2026-11-11",
+      "by": "claude",
+      "paths": ["apps/www/src/components/studio/clips.tsx"],
+      "chose": "On a phone not paired with home, a clip's page lists only the labels and says so, without asking home and without falling back to the six legacy frames testing still holds.",
+      "options": [
+        "labels only, saying why",
+        "show testing's six legacy frames, and labels for the rest",
+        "show nothing until the phone is paired"
+      ],
+      "gray": "The owner decided that away from home the page shows labels only and says so, not whether the legacy frames still in testing should show meanwhile. A fallback would show some clips and not others for a reason the page couldn't state plainly, and those frames leave testing later anyway.",
+      "undo": "In ClipPage in clips.tsx, read a legacy frame from TESTING_DATA when the phone isn't paired.",
+      "refs": ["#2670"]
+    },
+    {
+      "id": "C134",
+      "made": "2026-11-12",
+      "by": "claude",
+      "paths": [
+        "apps/www/src/components/studio/template-preview.tsx",
+        "apps/www/src/lib/template-preview/words.ts",
+        "apps/www/src/lib/template-preview/model.ts"
+      ],
+      "chose": "Make a preview asks first, in a sheet that names the template, says nothing is posted and that the new preview takes the place of any home has; after a yes, a notice over the page says what home is making, with a button to Renders.",
+      "options": [
+        "a question first, then a notice with the way to Renders",
+        "no question; only the notice after the press",
+        "a clearer button label alone"
+      ],
+      "gray": "The owner asked for an affordance that says what is being made, after making a preview by accident, but not whether a press should ask first. A question costs every deliberate press one more tap; a notice alone tells only after home was already asked.",
+      "undo": "In TemplatePreview (template-preview.tsx), call runtime.make() straight from the button's onClick and drop the confirm words from PREVIEW_WORDS.",
+      "refs": ["#2899", "#2670"]
+    },
+    {
+      "id": "C135",
+      "made": "2026-11-12",
+      "by": "claude",
+      "paths": [
+        "apps/www/src/components/studio/renders.tsx",
+        "apps/www/src/lib/renders/words.ts",
+        "apps/www/src/lib/renders/subject.ts"
+      ],
+      "chose": "Each row on Renders is a tile: its kind on top (the feed's name, Preview, A clip's walk-through), the thing by name under it (the days or week, \"A preview of <template>\", the clip's side), and the whole tile opens its page: an episode's page, the template's page for a preview, the clip's page for a walk. Now has an \"Open …\" link under its bar.",
+      "options": [
+        "the whole row a tile that opens its page",
+        "a plain line with a separate Open link",
+        "rows as before, with links only on finished ones"
+      ],
+      "gray": "The owner asked to go from Renders to previews and episodes, not how a row should look or whether waiting and failed rows link too. A waiting episode's page exists before it is made, so linking every row was a choice.",
+      "undo": "In renders.tsx, render RowTile's body without ToPage, and drop the open link under Now.",
+      "refs": ["#2899", "#2670"]
+    },
+    {
+      "id": "C136",
+      "made": "2026-11-12",
+      "by": "claude",
+      "paths": ["apps/www/src/lib/renders/subject.ts"],
+      "chose": "Where a home from before #2899 sends a preview row without its template, the phone reads the template off the key's start (the longest known template id followed by a dash), and names and links it; a key that starts with none is named \"A preview of a template\" with no link.",
+      "options": [
+        "read the template off the key's start",
+        "name it generically with no link until home names the template"
+      ],
+      "gray": "Home's preview key is <template>-<stamp> today, but the board's contract gives the template as its own field; reading the key couples the phone to a naming the server could change, and the owner has no say recorded either way.",
+      "undo": "In subjectOf (subject.ts), return template: null when row.template is absent, and delete templateOfKey.",
+      "refs": ["#2899"]
+    },
+    {
+      "id": "C139",
+      "made": "2026-11-12",
+      "by": "claude",
+      "agreed": "2026-11-12",
+      "paths": [
+        "apps/www/src/lib/renders/conveyor.ts",
+        "apps/www/src/components/studio/renders.tsx",
+        "packages/ui/shared/src/components/ui/station-strip/index.tsx"
+      ],
+      "chose": "Every render on Studio › Renders moves along one conveyor of pizza-named stations, like the takes conveyor's (#2876): In line, Waiting for an oven, In the oven (recording scene k of n), Boxing, Ready for pickup, with Set on the counter (paused) and Burnt (couldn't finish) as side tracks, drawn by one display-only StationStrip in packages/ui/shared that the takes conveyor can reuse.",
+      "options": [
+        "pizza names, matching the takes conveyor",
+        "plain names (waiting, making, putting it together, ready)",
+        "no conveyor: the Now block's line and bar as before"
+      ],
+      "gray": "The owner asked whether the conveyor pattern should carry renders' status, and named pizza for takes (#2876), not for renders; two conveyors could share the names or keep their own.",
+      "undo": "Change CONVEYOR_WORDS in apps/www/src/lib/renders/conveyor.ts to plain names, or drop the StationStrip and row tags from renders.tsx.",
+      "refs": ["#2899", "#2872", "#2876"]
+    },
+    {
+      "id": "C140",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "server:crates/scenario_engine/testdata/replay-401873010.txt",
+        "server:crates/scenario_engine/src/rules.rs"
+      ],
+      "chose": "GWB3's done-when (the owner steps through a replayed game and agrees 7 times in 10) was judged by an agent's reading standing in for the owner's: 68 moments of NE at CHI, the wanted scenario on offer and first in 66. #2077 closed on it.",
+      "options": [
+        "the agent judges the replay, at the owner's word",
+        "wait for the owner to step through it"
+      ],
+      "gray": "The bar names the owner as the judge. The owner, 2026-11-13: \"These aren't blocked on me… for one of them, there is a wait on me. Let's just go with the recommended.\"",
+      "undo": "Reopen #2077 and ask the owner to step through the replay file.",
+      "refs": ["#2077", "#2074"]
+    },
+    {
+      "id": "C141",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": ["server:crates/scenario_engine/src/rules.rs"],
+      "chose": "\"Just happened\" keeps counting scenario entries, not plays: one touchdown may fill Standard's two (the try and the red-zone trip), each a way to file a bite about it.",
+      "options": [
+        "scenario entries (as built)",
+        "one entry per play, its most specific scenario"
+      ],
+      "gray": "Asked on #2077 with no recommendation written; the replay meets the 8-in-10 bar either way. The owner, 2026-11-13: \"These aren't blocked on me… for one of them, there is a wait on me. Let's just go with the recommended.\"",
+      "undo": "In rules::just_happened, keep only the first entry per play_id, and bump ENGINE_VERSION.",
+      "refs": ["#2077"]
+    },
+    {
+      "id": "C142",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "server:apps/servers/file_host/docs/game-feed.md",
+        "server:deploy/home/file_host.sops.env"
+      ],
+      "chose": "GAME_FEED_ENABLED stays false as the code default; turning the feed on is the owner's one-line sops edit of deploy/home/file_host.sops.env, written in the game-feed doc.",
+      "options": [
+        "the owner's one-line sops step, documented",
+        "flip the clap default to true"
+      ],
+      "gray": "The task offered either; flipping the default would change nothing on home while the deployment file states the value, and no session holds a key to edit it. The owner, 2026-11-13: \"These aren't blocked on me… for one of them, there is a wait on me. Let's just go with the recommended.\"",
+      "undo": "Set default_value_t = true for game_feed_enabled in apps/servers/file_host/src/config.rs and infra/env/file_host.json.",
+      "refs": ["#2074", "server#534", "server#544"]
+    },
+    {
+      "id": "C143",
+      "made": "2026-11-13",
+      "by": "claude",
+      "agreed": "2026-11-13",
+      "paths": [
+        "apps/www/src/lib/jobs/journey.ts",
+        "apps/www/src/lib/jobs/model.ts"
+      ],
+      "chose": "JB2's first tolerance call (a share nobody confirmed, that a run read, still asks \"Did they arrive?\") is answered (a) keep, because it is moot: HF2 (#2177) took the Jobs share sheet away, so nothing in Jobs asks \"Did they arrive?\" any more. Every share is filed with home and recorded shared and arrived at one instant. A sheet share from before HF2 that nobody confirmed reads as read once a run named it, otherwise as on the phone, and what it held is filed with home either way.",
+      "options": [
+        "(a) keep it",
+        "(b) once a digest's read names the file, record arrived and say so on the card",
+        "(c) stop asking, but keep the audio until the owner confirms"
+      ],
+      "gray": "#2013 put it to the owner as a choice between keeping the confirmation and recording arrival from a run's read; nothing recorded settled it. Owner, 2026-11-13, on #2013 and two other items: \"These aren't blocked on me… for one of them, there is a wait on me. Let's just go with the recommended.\"",
+      "undo": "Nothing to undo in code: a confirmation would first have to come back with a share sheet, and then (b) or (c) could be built on it.",
+      "refs": ["#2013", "#2006", "#2177"]
+    },
+    {
+      "id": "C144",
+      "made": "2026-11-13",
+      "by": "claude",
+      "agreed": "2026-11-13",
+      "paths": [
+        "apps/www/src/lib/jobs/journey.ts",
+        "apps/www/src/lib/jobs/model.ts",
+        "apps/www/src/lib/jobs/stored.ts",
+        "apps/www/src/lib/jobs/__tests__/journey.test.ts"
+      ],
+      "chose": "JB2's second tolerance call (a reinstalled phone loses carried, the phone's note of where each share's file began) is answered (a) keep the Tolerance: the note stays on the phone. A restored phone heals on a later exchange without a tap, as JB2's Tolerance says and journey.test.ts shows.",
+      "options": [
+        "(a) keep the Tolerance",
+        "(b) raise it: home's shared event gains a field for where the file began, paulgsc/server first and deployed, then the phone"
+      ],
+      "gray": "#2013 put it to the owner; (b) changes home's event shape and its deploy is the owner's to approve, against a rare state (a reinstall while a reshare made after a missed run is still within the kept digests) that heals itself. Owner, 2026-11-13, on #2013 and two other items: \"These aren't blocked on me… for one of them, there is a wait on me. Let's just go with the recommended.\"",
+      "undo": "Take (b): add the field to paulgsc/server's shared event and deploy it, then have the phone send carried with each shared event and take it back in on restore (model.ts restored), and drop the restored-phone sentence from JB2's Tolerance in journey.ts.",
+      "refs": ["#2013", "#2006"]
+    },
+    {
+      "id": "C146",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "apps/www/src/lib/limits/index.ts",
+        "apps/www/src/lib/limits/__tests__/coverage.test.ts"
+      ],
+      "chose": "Settings' limits leave out Soundbites' six and Studio's takes' time budget: each is shown on its own screen beside the recorder, where the next take's fate is decided, and the limits test lists both with that reason.",
+      "options": [
+        "shown on their own screens only",
+        "a row on Settings › This phone as well"
+      ],
+      "gray": "SM2 asks for every cap on a Settings page, but these two already say their count where they are recorded, and reading them from Settings means reaching into Studio's own store.",
+      "undo": "Add rows for SOUNDBITE_LIMIT and JOURNAL_TAKES_MAX_BYTES to LIMIT_ROWS with a read of each store, and drop them from NOT_SHOWN.",
+      "refs": [
+        "#2121",
+        "#2107"
+      ]
+    },
+    {
+      "id": "C175",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/engagement-report.ts"
+      ],
+      "chose": "In the weekly engagement report, a change shows its difference only where both weeks are 5 or more; where one side is under 5 it says only up or down, and where both are under 5 or a week has no record it says nothing of the change.",
+      "options": [
+        "the difference only where both sides are 5 or more",
+        "the difference always, beside a banded count",
+        "no difference at all, only up, down or flat"
+      ],
+      "gray": "The owner's rule (ask #2701) says counts under 5 show as \"fewer than 5\" and changes show with the difference; a difference beside a banded count would give the banded count away. The owner said on 2026-11-13: \"Let's just go with the recommended.\"",
+      "undo": "Change publicChange in packages/video-render/src/engagement-report.ts.",
+      "refs": [
+        "#2700",
+        "#2701",
+        "#2533"
+      ]
+    },
+    {
+      "id": "C176",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/engagement-report.ts"
+      ],
+      "chose": "In the weekly engagement report, each count (offered, taken, passed over, left) is banded on its own: where offered and taken are both 5 or more and passed over is under 5, the report still shows offered and taken, though their difference estimates passed over.",
+      "options": [
+        "band each count on its own, as the owner's rule reads",
+        "band offered and taken too whenever passed over is under 5",
+        "leave passed over out of the report"
+      ],
+      "gray": "The owner's rule (ask #2701) bands counts under 5 and lists passed over among the counts, and the issue's own example (\"Drama: offered 12, taken 0\") shows offered beside a banded taken; the visit runtime makes passed over close to offered less taken, so the bands cannot hide it without hiding counts the rule shows. The owner said on 2026-11-13: \"Let's just go with the recommended.\"",
+      "undo": "In publicLines, band offered and taken for a week whose passed over is under 5, or drop passedOver from COUNT_KINDS.",
+      "refs": [
+        "#2700",
+        "#2701",
+        "#2910"
+      ]
+    },
+    {
+      "id": "C205",
+      "made": "2026-11-13",
+      "by": "claude",
+      "agreed": "2026-11-13",
+      "paths": [
+        "docs/learner-data-authority.md",
+        "apps/www/src/lib/home-link/live-socket.ts",
+        "apps/www/src/lib/home-link/live.ts"
+      ],
+      "chose": "LA8 is widened as built on Oct 31: the paired phone reaches home through native HTTP and, for Game day alone, through one WebSocket (`live-socket.ts`, held by LA21), since native HTTP cannot carry a socket. LA1's exemption list gains that one file.",
+      "options": [
+        "(a) widen LA8 and LA1 for the game day socket, as built",
+        "(b) keep LA8 to native HTTP alone and carry live offers by polling a route instead of a socket"
+      ],
+      "gray": "The owner chose a WebSocket on 2026-10-25, but LA8 said every request to home goes through one module, and the Oct 31 session asked the owner to review the widening. Owner, 2026-11-13, on Game Week Bites: \"Let's just go with the recommended.\"",
+      "undo": "Take (b): replace `lib/home-link/live*.ts` with a feed that polls a home route through native HTTP, drop LA21, and restore LA8's and LA1's earlier claims.",
+      "refs": ["#2078", "#2074"]
+    },
+    {
+      "id": "C206",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "apps/www/src/lib/home-link/live-model.ts",
+        "apps/www/src/lib/home-link/live-machine.ts"
+      ],
+      "chose": "When home closes the game day socket 4400 (it could not read what the phone sent) after a hello that told it a lastSeq, the phone forgets that lastSeq and says hello again at once; after any other hello, a 4400 leaves Game day saying this app needs an update, and it stops trying, as for 4426.",
+      "options": [
+        "(a) any other 4400 is an update, and the phone stops trying",
+        "(b) any other 4400 counts as home being out of reach, and the phone keeps trying, 1 s doubling to 30 s"
+      ],
+      "gray": "Home sends 4400 for a lastSeq it could not have sent and for a frame it cannot read. Only the first is the phone's to repair; the second means this build and home disagree on the messages, which retrying cannot fix, but saying 'update' could be wrong if home misreads a frame for another reason.",
+      "undo": "In live-model.ts, drop UNREADABLE from linkAfterClose's update branch, so a 4400 not explained by a lastSeq reads as away and retries.",
+      "refs": ["#2078", "server#824"]
+    },
+    {
+      "id": "C160",
+      "made": "2026-11-13",
+      "by": "claude",
+      "agreed": "2026-11-13",
+      "paths": [
+        "server:apps/servers/file_host/src/reconcile.rs",
+        "server:apps/servers/file_host/src/game_feed",
+        "packages/assurance/src/ledger.json"
+      ],
+      "chose": "GWB7's bite reconciler runs as its own file_host task (`reconcile::start`, the `bite-matched` family), beside the game feed's worker rather than inside it, so GF4 (the feed's worker writes only its three tables, none holding anything about a person) holds as written.",
+      "options": [
+        "(a) inside the game feed's worker, after each pass, amending GF4 to let it read bites and write bite_match",
+        "(b) a separate task that reads the feed's play log and the bites and writes bite_match alone"
+      ],
+      "gray": "Both match bites the same way. (a) reuses the feed's wake-ups but puts subject-scoped data in a worker declared to hold none (GF4); (b) keeps that line, at the cost of a second task and its own ledger family. No check or earlier decision settles which. Owner, 2026-11-13, on Game Week Bites: \"Let's just go with the recommended.\"",
+      "undo": "Call the matcher from the game feed's pass instead of spawning reconcile::start, amend GF4 in paulgsc/server's game-feed.md to say the worker also reads bites and writes bite_match, and fold the bite-matched family's paths into game-feed in packages/assurance/src/ledger.json.",
+      "refs": ["#2081", "#2074"]
+    },
+    {
+      "id": "C177",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "packages/ui/aph/src/components/aph-log/index.tsx",
+        "apps/www/src/routes/_dashboard/_apk/aph.tsx"
+      ],
+      "chose": "aph's log of mine counts as offered while the form is on mine and taken when a figure of mine is saved, not when the Log view opens, since aph opens on it; History and Trend count as taken when pressed on the view strip.",
+      "options": [
+        "taken when a figure of mine is saved",
+        "taken when the form is first touched",
+        "taken whenever the Log view opens"
+      ],
+      "gray": "The registry says only that the log is offered and taken; aph opens on the Log view, so counting the opening would count every visit as a take, and no rule says which later moment is the start. The owner said on 2026-11-13: \"Let's just go with the recommended.\"",
+      "undo": "Move the take in packages/ui/aph/src/components/aph-log/index.tsx from the save to where the form is first changed.",
+      "refs": [
+        "#2542",
+        "#2533"
+      ]
+    },
+    {
+      "id": "C190",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/engagement-report-video.ts",
+        "apps/www/src/lib/web-surface/call/report-stage.tsx"
+      ],
+      "chose": "In the engagement report's video, a pipeline's table reads out each line that showed a count of 5 or more, and counts its quiet lines (fewer than 5 of anything in every week on record) and its unrecorded lines together in one sentence; on screen a quiet line is dimmed, its cells reading \"< 5\".",
+      "options": [
+        "read out every line's own sentence",
+        "count quiet and unrecorded lines together, reading out the rest",
+        "leave quiet lines out of the video"
+      ],
+      "gray": "The registry has 64 lines and only TOPIK's emit today, so reading each quiet line aloud makes most of the video the same sentence; leaving them out would hide what the app offered. The owner said on 2026-11-13, of ENG12: \"Let's just go with the recommended.\"",
+      "undo": "In pageSaid, return every line's said joined, and drop the dimming in report-stage.tsx's Statement.",
+      "refs": [
+        "#2700"
+      ]
+    },
+    {
+      "id": "C191",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "packages/video-render/src/engagement-report-video.ts",
+        "apps/www/tests/record/report-recording.ts"
+      ],
+      "chose": "The report recorder refuses home's answer for a week that hasn't ended (complete: false), so a report is only ever made of a whole week.",
+      "options": [
+        "refuse a week still under way",
+        "record it, marked as partial",
+        "record it as if whole"
+      ],
+      "gray": "A week still under way gives a different report each time it is read, which breaks \"the same records give the same video\", but a mid-week look could still be wanted. The owner said on 2026-11-13, of ENG12: \"Let's just go with the recommended.\"",
+      "undo": "Drop the complete check in reportWeeksOf.",
+      "refs": [
+        "#2700"
+      ]
+    }
+  ]
+}

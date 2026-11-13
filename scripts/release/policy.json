@@ -1,0 +1,16 @@
+{
+  "node": {
+    "branch": "changeset-release/node",
+    "roots": ["packages/", "apps/", "docs/canon/"],
+    "exclude": ["apps/www/"]
+  },
+  "wasm": {
+    "branch": "changeset-release/wasm",
+    "roots": ["crates/"],
+    "requires": "Cargo.toml"
+  },
+  "docker": {
+    "branch": "changeset-release/www-docker",
+    "roots": ["apps/www/"]
+  }
+}

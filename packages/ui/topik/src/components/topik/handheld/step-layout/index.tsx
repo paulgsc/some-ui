@@ -4,7 +4,11 @@ import { cn } from "@some-ui/core-utils"
 type StepLayoutProps = {
   /** What the step is about: the line, the question, the recap. */
   stage: ReactNode
-  /** What the thumb does: every control lives here, never in the stage. */
+  /**
+   * What the thumb does next. What the person asked for or made (a gloss, a
+   * take) is the stage's, which grows below what was there and leaves the
+   * dock where it was (HS1).
+   */
   dock: ReactNode
   /** A phone on its side: stage and dock side by side instead of stacked. */
   short: boolean

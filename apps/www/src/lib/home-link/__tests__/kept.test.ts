@@ -44,6 +44,7 @@ function homeWith(over: Partial<KeptPorts>): Kept {
     exchange: () => Promise.resolve<HomeExchanged>({ kind: "synced" }),
     keep: keep(),
     paired: () => true,
+    homeBusy: () => false,
     now: () => 7,
     ...over,
   })
@@ -132,6 +133,11 @@ describe("a record kept on home", () => {
     expect(await lastOf({ keep: keep(true), paired: () => false })).toEqual({
       kind: "unpaired",
     })
+    // While home waits out a busy, it was home's to turn away too (AD3).
+    expect(await lastOf({ keep: keep(true), homeBusy: () => true })).toEqual({
+      kind: "failed",
+      why: "busy",
+    })
   })
 
   it("runs once more for asks made while it ran, and not again after", async () => {
@@ -210,6 +216,33 @@ describe("stepKept", () => {
         running: false,
       })
     }
+  })
+})
+
+describe("the link's drain", () => {
+  it("runs one lane at a time, beside a read or a sync, and never beside a send or an Unpair", () => {
+    const paired = step(INITIAL, {
+      type: "read",
+      found: { base: "https://home.example/api/v1", id: "pairing-1" },
+    })
+    const draining = step(paired, { type: "drainStarted" })
+    expect(draining.drain).toEqual({ kind: "draining", stopping: false })
+    // A second lane waits for this one.
+    expect(step(draining, { type: "drainStarted" })).toBe(draining)
+    // A read or a sync goes beside it.
+    for (const pressed of ["keepStarted", "syncPressed"] as const) {
+      const both = step(draining, { type: pressed })
+      expect(both.activity.kind).not.toBe("idle")
+      expect(both.drain.kind).toBe("draining")
+    }
+    // A send or an Unpair may be pressed (the runtime stops the run first),
+    // and no run starts while one goes.
+    for (const pressed of ["sendPressed", "unpairPressed"] as const) {
+      const writer = step(paired, { type: pressed })
+      expect(step(draining, { type: pressed }).activity.kind).not.toBe("idle")
+      expect(step(writer, { type: "drainStarted" })).toBe(writer)
+    }
+    expect(step(INITIAL, { type: "drainStarted" })).toBe(INITIAL)
   })
 })
 
@@ -350,7 +383,7 @@ describe("Send now", () => {
     last,
   })
   const offered = (run: KeptState): boolean =>
-    laneReading("practice", NOTHING_WAITS, run, PAIRED).sendNow
+    laneReading("practice", NOTHING_WAITS, run, PAIRED, null).sendNow
 
   it("is offered with nothing counted waiting after a run that didn't get everything home", () => {
     for (const why of ["full", "refused", "busy", "fault"]) {
@@ -370,7 +403,8 @@ describe("Send now", () => {
         "practice",
         NOTHING_WAITS,
         after({ kind: "failed", why: "full" }),
-        INITIAL
+        INITIAL,
+        null
       ).sendNow
     ).toBe(false)
   })

@@ -153,6 +153,7 @@ describe('"/"', () => {
     expect(hrefs()).toEqual([
       "/settings",
       "/assurance",
+      "/home-switches",
       "/job-run",
       "/mission",
       "/extensions",

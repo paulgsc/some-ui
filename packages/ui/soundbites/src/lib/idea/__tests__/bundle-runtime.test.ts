@@ -8,11 +8,13 @@
  * go, and a delete before Send is gone for good.
  */
 import { inMemoryStorage } from "@some-ui/core-utils"
+import type { BundleRuntime } from "@some-ui/voice-capture"
 import { ONE_TAKE } from "@some-ui/voice-capture"
 import type { SimulatedPattern } from "@some-ui/voice-capture/testing"
 import { simulatedPattern, SPEAKING } from "@some-ui/voice-capture/testing"
 import { bundleTakesOf } from "@soundbites/fixtures"
-import type { BundleRuntime } from "@soundbites/lib/idea/bundle-runtime"
+import type { IdeaBundleKind } from "@soundbites/lib/idea/bundle"
+import { bundleIdea, cardView } from "@soundbites/lib/idea/bundle"
 import { createIdeaBundle } from "@soundbites/lib/idea/bundle-runtime"
 import type { DraftStore } from "@soundbites/lib/idea/draft"
 import {
@@ -38,7 +40,7 @@ const pass = async (ms = 0): Promise<void> => {
 }
 
 type Phone = {
-  readonly bundle: BundleRuntime
+  readonly bundle: BundleRuntime<IdeaBundleKind>
   readonly simulated: SimulatedPattern
   readonly drafts: DraftStore
   readonly ideas: IdeaStore
@@ -91,14 +93,17 @@ async function say(
   on: Phone,
   question: "what" | "takeaway" | "spark" | "picture"
 ): Promise<void> {
-  on.bundle.dispatch({ type: "tap", question })
+  on.bundle.dispatch({ type: "tap", item: question })
   await pass(2_000)
-  on.bundle.dispatch({ type: "tap", question })
+  on.bundle.dispatch({ type: "tap", item: question })
   await pass()
 }
 
 function titled(on: Phone): void {
-  on.bundle.dispatch({ type: "title", text: "Two hearings, one word" })
+  on.bundle.dispatch({
+    type: "edit",
+    edit: { type: "title", text: "Two hearings, one word" },
+  })
   on.bundle.dispatch({ type: "start" })
 }
 
@@ -149,7 +154,7 @@ describe("a new idea, end to end on the simulated microphone (ST26)", () => {
     await say(first, "what")
     const again = phone(storage, simulated)
     const state = again.bundle.getSnapshot()
-    expect(state.screen).toBe("questions")
+    expect(state.screen).toBe("cards")
     expect(state.draft.id).toBe(first.bundle.getSnapshot().draft.id)
     expect(state.takes).toHaveLength(1)
   })
@@ -161,19 +166,19 @@ describe("a new idea, end to end on the simulated microphone (ST26)", () => {
       ...SPEAKING,
       open: { kind: "refuse", reason: "denied", ms: 10 },
     })
-    on.bundle.dispatch({ type: "tap", question: "what" })
+    on.bundle.dispatch({ type: "tap", item: "what" })
     await pass(50)
     expect(on.bundle.getSnapshot().modes.what).toEqual({
       kind: "failed",
       full: false,
     })
-    on.bundle.dispatch({ type: "typeInstead", question: "what" })
+    on.bundle.dispatch({ type: "typeInstead", item: "what" })
     on.bundle.dispatch({
       type: "typed",
-      question: "what",
+      item: "what",
       text: "Two hearings",
     })
-    on.bundle.dispatch({ type: "keepTyped", question: "what" })
+    on.bundle.dispatch({ type: "keepTyped", item: "what" })
     expect(on.drafts.read()?.typed).toEqual({ what: "Two hearings" })
     // Say it instead: the take kept takes the typed words' place.
     await say(on, "what")
@@ -185,7 +190,7 @@ describe("a new idea, end to end on the simulated microphone (ST26)", () => {
     const on = phone()
     titled(on)
     await say(on, "what")
-    on.bundle.dispatch({ type: "askDelete", question: "what" })
+    on.bundle.dispatch({ type: "askDelete", item: "what" })
     expect(on.simulated.store.getSnapshot()).toHaveLength(1)
     on.bundle.dispatch({ type: "confirmed" })
     expect(on.simulated.store.getSnapshot()).toEqual([])
@@ -213,7 +218,7 @@ describe("a new idea, end to end on the simulated microphone (ST26)", () => {
     const [what] = on.simulated.store.getSnapshot()
     await say(on, "spark")
     await say(on, "spark")
-    on.bundle.dispatch({ type: "askDelete", question: "spark" })
+    on.bundle.dispatch({ type: "askDelete", item: "spark" })
     on.bundle.dispatch({ type: "confirmed" })
     expect(on.simulated.store.getSnapshot().map((take) => take.id)).toEqual([
       what?.id,
@@ -230,7 +235,7 @@ describe("a new idea, end to end on the simulated microphone (ST26)", () => {
   it("finishes and keeps a take under way when the app goes to the background, and records again once back", async () => {
     const on = phone()
     titled(on)
-    on.bundle.dispatch({ type: "tap", question: "what" })
+    on.bundle.dispatch({ type: "tap", item: "what" })
     await pass(2_000)
     expect(on.bundle.getSnapshot().busy).toBe(true)
     on.page(true)
@@ -257,7 +262,7 @@ describe("a new idea, end to end on the simulated microphone (ST26)", () => {
     storage.setItem(DRAFT_KEY, JSON.stringify({ draft: { id: 7 } }))
     const again = phone(storage, simulated)
     expect(again.drafts.read()).toBeNull()
-    expect(again.bundle.getSnapshot().screen).toBe("about")
+    expect(again.bundle.getSnapshot().screen).toBe("intro")
     expect(simulated.store.getSnapshot().map((take) => take.id)).toEqual(said)
     expect(again.release).not.toHaveBeenCalled()
   })
@@ -297,7 +302,7 @@ describe("a new idea, end to end on the simulated microphone (ST26)", () => {
     expect(again.release).not.toHaveBeenCalled()
   })
 
-  it("says it instead, then leaves mid-take: the take kept after the screen went replaces the typed words", async () => {
+  it("says it instead, then leaves mid-take: the take kept after the screen went answers in place of the typed words", async () => {
     const storage = inMemoryStorage()
     const simulated = simulatedPattern({
       options: { ...ONE_TAKE, send: "on-confirm" },
@@ -308,20 +313,28 @@ describe("a new idea, end to end on the simulated microphone (ST26)", () => {
       ...SPEAKING,
       open: { kind: "refuse", reason: "denied", ms: 10 },
     })
-    first.bundle.dispatch({ type: "tap", question: "what" })
+    first.bundle.dispatch({ type: "tap", item: "what" })
     await pass(50)
-    first.bundle.dispatch({ type: "typeInstead", question: "what" })
-    first.bundle.dispatch({ type: "typed", question: "what", text: "typed" })
-    first.bundle.dispatch({ type: "keepTyped", question: "what" })
+    first.bundle.dispatch({ type: "typeInstead", item: "what" })
+    first.bundle.dispatch({ type: "typed", item: "what", text: "typed" })
+    first.bundle.dispatch({ type: "keepTyped", item: "what" })
     // Say it instead, and leave while it records.
-    first.bundle.dispatch({ type: "tap", question: "what" })
+    first.bundle.dispatch({ type: "tap", item: "what" })
     await pass(2_000)
     first.detach()
     await pass(100)
     expect(simulated.store.getSnapshot()).toHaveLength(1)
     const again = phone(storage, simulated)
-    expect(again.drafts.read()?.typed).toEqual({})
-    again.bundle.dispatch({ type: "askDelete", question: "what" })
+    // Its end told no screen, the typed words stay on the draft, neither
+    // shown nor sent while the take answers.
+    expect(cardView(again.bundle.getSnapshot(), "what", false)).toEqual({
+      kind: "take",
+    })
+    expect(
+      bundleIdea(again.bundle.getSnapshot(), "2026-11-01T10:00:00.000Z")
+        .answers[0]?.versions
+    ).toEqual([])
+    again.bundle.dispatch({ type: "askDelete", item: "what" })
     again.bundle.dispatch({ type: "confirmed" })
     expect(simulated.store.getSnapshot()).toEqual([])
     // Deleted, the answer is gone: the typed words don't come back.
@@ -335,7 +348,7 @@ describe("a new idea, end to end on the simulated microphone (ST26)", () => {
       write: (): boolean => false,
     }))
     titled(on)
-    on.bundle.dispatch({ type: "tap", question: "what" })
+    on.bundle.dispatch({ type: "tap", item: "what" })
     await pass(2_000)
     expect(on.simulated.pattern.getSnapshot().take.kind).toBe("idle")
     expect(on.simulated.store.getSnapshot()).toEqual([])
@@ -353,7 +366,7 @@ describe("a new idea, end to end on the simulated microphone (ST26)", () => {
     expect(on.simulated.store.getSnapshot()).toEqual([])
     expect(on.drafts.read()).toBeNull()
     expect(on.bundle.getSnapshot()).toMatchObject({
-      screen: "about",
+      screen: "intro",
       notice: "deletedAll",
       draft: { about: { title: "" } },
     })
@@ -391,6 +404,6 @@ describe("a new idea, end to end on the simulated microphone (ST26)", () => {
       taken?.id,
     ])
     expect(again.drafts.read()).toBeNull()
-    expect(again.bundle.getSnapshot().screen).toBe("about")
+    expect(again.bundle.getSnapshot().screen).toBe("intro")
   })
 })

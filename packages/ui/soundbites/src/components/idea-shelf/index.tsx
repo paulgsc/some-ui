@@ -9,10 +9,9 @@
 import type { JSX, ReactNode } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { assertNever, cn } from "@some-ui/core-utils"
-import { Button } from "@some-ui/shared"
+import { Button, Notice } from "@some-ui/shared"
 import { FilePick } from "@soundbites/components/file-pick"
 import { IdeaCapture } from "@soundbites/components/idea"
-import { Notice } from "@soundbites/components/notice"
 import type { Idea, IdeaStage } from "@soundbites/lib/idea/model"
 import {
   ideaName,
@@ -59,10 +58,6 @@ export type IdeaShelfProps = {
 }
 
 type Dispatch = (intent: ShelfIntent) => void
-
-const ShelfLine = ({ state }: { state: ShelfState }): JSX.Element => (
-  <Notice text={state.notice === null ? "" : WORDS.notice[state.notice]} />
-)
 
 /** Where an idea is, and whether Claude's questions wait on it. */
 function stageLine(idea: Idea, stage: IdeaStage): string {
@@ -130,7 +125,14 @@ const List = ({
           {WORDS.showAll}
         </Button>
       )}
-      <ShelfLine state={state} />
+      {state.notice !== null && (
+        <Notice
+          key={state.notice}
+          onDismiss={() => dispatch({ type: "noticeDismissed" })}
+        >
+          {WORDS.notice[state.notice]}
+        </Notice>
+      )}
     </div>
   )
 }
@@ -290,23 +292,21 @@ const OneIdea = ({
         </Button>
       )}
       {stage === "fleshed" && asks === 0 && state.videosUnread && (
-        <div role="alert" className="flex flex-col gap-2">
-          <p className="text-sm">{WORDS.videosUnread}</p>
-          <Button
-            variant="outline"
-            size="sm"
-            className="self-start"
-            onClick={() => dispatch({ type: "videosAgain" })}
-          >
-            {STUDIO_WORDS.readAgain}
-          </Button>
-        </div>
+        <Notice
+          tone="danger"
+          action={{
+            label: STUDIO_WORDS.readAgain,
+            onClick: () => dispatch({ type: "videosAgain" }),
+          }}
+        >
+          {WORDS.videosUnread}
+        </Notice>
       )}
-      {stage === "fleshed" && asks === 0 && !state.videosUnread && (
+      {stage === "fleshed" && asks === 0 && (
         <div className="flex flex-col gap-2">
           <Button
             size="lg"
-            disabled={state.making !== null}
+            disabled={state.making !== null || state.videosUnread}
             onClick={() => dispatch({ type: "makeChosen" })}
           >
             {state.making === null ? WORDS.make : WORDS.making}
@@ -322,7 +322,14 @@ const OneIdea = ({
           onPick={(file) => dispatch({ type: "replyPicked", file })}
         />
       )}
-      <ShelfLine state={state} />
+      {state.notice !== null && (
+        <Notice
+          key={state.notice}
+          onDismiss={() => dispatch({ type: "noticeDismissed" })}
+        >
+          {WORDS.notice[state.notice]}
+        </Notice>
+      )}
 
       <Scenes idea={idea} />
       <Answers idea={idea} />
@@ -375,16 +382,15 @@ export const IdeaShelf = ({
     }
     case "unreadable": {
       return (
-        <div role="alert" className="space-y-2 text-sm">
-          <p>{WORDS.unreadable}</p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => dispatch({ type: "readAgain" })}
-          >
-            {STUDIO_WORDS.readAgain}
-          </Button>
-        </div>
+        <Notice
+          tone="danger"
+          action={{
+            label: STUDIO_WORDS.readAgain,
+            onClick: () => dispatch({ type: "readAgain" }),
+          }}
+        >
+          {WORDS.unreadable}
+        </Notice>
       )
     }
     case "list": {

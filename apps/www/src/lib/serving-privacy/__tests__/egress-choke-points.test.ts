@@ -40,12 +40,28 @@
  *   `GET /voice-notes/takes` per open, Try again, search or Show the
  *   newest, a blank search showing the newest, `?q=` holding the search's
  *   words) and, per Play, for one take's audio, through the same read Rust
- *   Rounds' notes use (`lib/home-link/voice-audio`).
+ *   Rounds' notes use (`lib/home-link/voice-audio`). Studio's feed videos
+ *   (`lib/call-videos`, ST38, FEED4) asks home for the episodes of a feed
+ *   (the weekly call or Playoff Delta) it holds (`lib/home-link/call-videos`,
+ *   one `GET /feeds/:feed/videos` per open, drag down, Try again or Save home
+ *   kept), for an episode's video on Watch, a part at a time (one
+ *   `GET /feeds/:feed/videos/:key/video` per part) and for its chapters when
+ *   its page opens (one `GET /feeds/:feed/videos/:key/description`, SFEED4),
+ *   and sends an episode's link on Save (one `PUT
+ *   /feeds/:feed/videos/:key/link`).
  *
  * - **LA19 (MY-DATA MD5): only My data deletes a record on home.** Only
- *   `lib/home-link/delete-note` sends home a `DELETE`, only `lib/my-data`
- *   imports it, and only its delete runtime calls it
+ *   `lib/home-link/delete-note` sends home a `DELETE` (a recording's notes,
+ *   or a step of a feed's episode), only `lib/my-data` imports it, and only its
+ *   two delete runtimes call it, once a run each
  *   (docs/learner-data-authority.md holds the rest).
+ *
+ * - **LA21: the game day's live socket is the phone's one other way home.**
+ *   Native HTTP has no socket, so `lib/home-link/live-socket` is the one
+ *   file that names `WebSocket` (an LA1 exemption), only `lib/home-link/live`
+ *   opens it and reads the pairing's token for it (`livePairing`, in
+ *   `lib/home-link/live-pairing`), and only
+ *   the Game day route wires that feed (`gameDayFeed`).
  *
  * The last group feeds the checks known-bad sources, so a check that stopped
  * looking cannot stay green.
@@ -67,10 +83,19 @@ vi.setConfig({ testTimeout: 30_000 })
 /** apps/www/src/lib/serving-privacy/__tests__ -> apps/www/src. */
 const SRC = resolve(dirname(fileURLToPath(import.meta.url)), "../../..")
 
+/** LA21: the one module that opens a socket to the home server. */
+const LIVE_SOCKET = "lib/home-link/live-socket.ts"
+
+/** LA21: who may open the live socket, read the token for it, and wire it. */
+const LIVE_RUNTIME = "lib/home-link/live.ts"
+const LIVE_FEED_CALLERS = ["routes/_dashboard/_apk/game-week.tsx"]
+
 /** Files that are the choke point, or stub the network on purpose. */
 const NETWORK_EXEMPT = new Set([
   "lib/file-host-config/client.ts",
   "lib/device-backend/interceptor/index.ts",
+  // LA21: the game day's live socket, the phone's one WebSocket to home.
+  LIVE_SOCKET,
 ])
 
 /** LA8: the one module that may reach the home server over native HTTP. */
@@ -93,7 +118,8 @@ const HOME_LINK_CALLERS = new Set([
   "components/settings/device-routine-reads.tsx",
   "components/player/device-routine-files.ts",
   // LA13: game day's line of what of its bites waits on the phone for home
-  // (`gameOutbox`), which reads and sends nothing.
+  // (`gameOutbox`), which reads and sends nothing; and LA21: the game day's
+  // live feed (`gameDayFeed`), open while the recorder watches it.
   "routes/_dashboard/_apk/game-week.tsx",
   // LA8: the study list's "Let it go" of one session, a tap after a confirm,
   // which copies it home and reads it back before the phone lets it go.
@@ -105,8 +131,13 @@ const HOME_LINK_CALLERS = new Set([
   // home for a take's words while the screen shows it being heard; and a new
   // idea's screen (ST26, `ideaHome`), which reads whether the phone is paired
   // and how the voice lane's last run ended, and listens for either
-  // changing, asking home nothing.
+  // changing, asking home nothing; and an ask's spoken answer (SFEED5), which
+  // reads the pairing and hears its take through the same listener.
   "lib/idea-hearing/index.ts",
+  // LA8 (RR13): Rust Rounds' week, which reads whether the phone is paired
+  // (`ideaHome`) and asks home once per opening for the words of each take
+  // sent that the phone has none of.
+  "routes/_dashboard/_apk/rust-rounds.tsx",
   // LA15, PULL2: a pull on a Jobs screen or the status page hears how the
   // jobs lane's run in the pull of home ended (`pulledLane`), asking nothing
   // of its own.
@@ -122,6 +153,32 @@ const HOME_LINK_CALLERS = new Set([
   // keeps as the screen opens and on Try again, a search (a blank one reads
   // the newest) or Show the newest, and for one take's audio on each Play.
   "lib/take-library/index.ts",
+  // LA8 (ST38, FEED4): Studio's feed videos, which asks home for a feed's
+  // episodes it holds as the screen opens, on a drag down, on Try again and
+  // after a Save, for an episode's video a part at a time on Watch, and sends
+  // an episode's link on Save.
+  "lib/call-videos/index.ts",
+  // LA8 (SFEED13): Studio › Renders, which asks home what it is making as
+  // Studio's index or the page opens, on a drag down, on Try again, and every
+  // half minute while home has something under way. It sends nothing of its
+  // own.
+  "lib/renders/read.ts",
+  // LA8 (SFEED12): a template's preview, which asks home to make one, reads
+  // the newest, and asks for its video a part at a time on Watch.
+  "lib/template-preview/index.ts",
+  // LA8 (SFEED6): Studio's Feedback page, which asks home for the notes it
+  // keeps on each feed's episodes. It sends nothing of its own: the notes go
+  // home on the voice lane's run (`lib/home-link/episode-notes`).
+  "lib/episode-feedback/home-read.ts",
+  // LA8 (clips, server#801): Studio's clip page, which reads whether this
+  // phone is paired with home, and the read of each frame home keeps, asked
+  // whole when the page shows it. Neither sends anything of the phone's.
+  "components/studio/clip-frames.tsx",
+  "lib/studio-clips/frames-read.ts",
+  // LA8 (ST33): Studio's Finish, which hands the voice lane a video kept for
+  // home to make and hears what home answered and lists of it
+  // (`studioVideos`), sending nothing of its own.
+  "routes/_dashboard/_apk/journal/episodes/making.tsx",
 ])
 
 /**
@@ -149,7 +206,23 @@ const KEEPERS = new Set([
   "lib/home-link/deleted-read.ts",
   "lib/home-link/idea-reads.ts",
   "lib/home-link/takes-read.ts",
+  "lib/home-link/call-videos.ts",
+  "lib/home-link/renders.ts",
+  "lib/home-link/previews.ts",
+  "lib/home-link/clips.ts",
+  "lib/home-link/episode-notes-read.ts",
 ])
+
+/** LA8, #2843: whether home works with this build, its one ask through `look`. */
+const COMPAT_READ = "lib/home-link/compat-read.ts"
+
+/** SFEED13: Studio › Renders' read, and the one request it may send. */
+const RENDERS_READ = "lib/home-link/renders.ts"
+const RENDERS_SENDS = [['"GET"', '"/renders"']]
+
+/** SFEED6: the Feedback page's read, and the one request it may send. */
+const NOTES_READ = "lib/home-link/episode-notes-read.ts"
+const NOTES_SENDS = [['"GET"', "`/feeds/${feed}/notes`"]]
 
 /** The routine's read, and the two requests it may send. */
 const ROUTINE_READ = "lib/home-link/routine.ts"
@@ -187,6 +260,45 @@ const KEPT_SENDS = [
 const TAKES_READ = "lib/home-link/takes-read.ts"
 const TAKES_SENDS = [['"GET"', "takesPath(q)"]]
 
+/**
+ * LA8, ST38, FEED4: Studio's feed videos' reads of a feed's episodes, of an
+ * episode's video, a part at a time, and of its chapters (SFEED4), and its
+ * one send of an episode's link.
+ */
+const CALLS_READ = "lib/home-link/call-videos.ts"
+const CALLS_SENDS = [
+  ['"GET"', "episodesPath(feed)"],
+  ['"GET"', "videoPath(feed, key)", "undefined", "{ start, end }"],
+  ['"PUT"', "linkPath(feed, key)", "JSON.stringify({ link })"],
+  ['"GET"', "descriptionPath(feed, key)"],
+]
+/** The four paths those requests reach, as the read writes them. */
+const CALLS_PATHS = [
+  "return `/feeds/${feed}/videos`",
+  "return `/feeds/${feed}/videos/${encodeURIComponent(key)}/video`",
+  "return `/feeds/${feed}/videos/${encodeURIComponent(key)}/link`",
+  "return `/feeds/${feed}/videos/${encodeURIComponent(key)}/description`",
+]
+
+/** LA8, SFEED12: a template's preview, and the three requests it may send. */
+const PREVIEWS_READ = "lib/home-link/previews.ts"
+const PREVIEWS_SENDS = [
+  ['"POST"', "previewPath(template)"],
+  ['"GET"', "previewPath(template)"],
+  [
+    '"GET"',
+    "`${previewPath(template)}/${encodeURIComponent(id)}/video`",
+    "undefined",
+    "{ start, end }",
+  ],
+]
+
+/** LA8, server#801: a clip's frame, and the one request it may send. */
+const CLIPS_READ = "lib/home-link/clips.ts"
+const CLIPS_SENDS = [
+  ['"GET"', "clipFramePath(id, side, file)", "undefined", '"whole"'],
+]
+
 /** LA8, MD3: the read of what home deleted, and the one request it may send. */
 const DELETED_READ = "lib/home-link/deleted-read.ts"
 const DELETED_SENDS = [['"GET"', "DELETED_PATH"]]
@@ -209,7 +321,14 @@ const SET_ASIDE_SENDS = [['"PUT"', "setAsidePath(mark)"]]
 
 /** LA19 (MD5): the one module that sends home a delete, and what it sends. */
 const DELETE_SEND = "lib/home-link/delete-note.ts"
-const DELETE_SENDS = [['"DELETE"', "deletePath(id)"]]
+const DELETE_SENDS = [
+  // A recording's notes, one per note.
+  [expect.stringMatching(/^async \(send\) =>/)],
+  ['"DELETE"', "deletePath(id)"],
+  // A feed episode's step (ST38, FEED4), one per confirm.
+  [expect.stringMatching(/^\(send\) =>/)],
+  ['"DELETE"', "callStepPath(feed, key, step)"],
+]
 
 /**
  * LA19 (MD5): the requests to home whose method is not written where they
@@ -233,9 +352,10 @@ const VARIABLE_METHOD_SENDS = [
   "lib/home-link/idea-reads.ts",
 ]
 
-/** LA19 (MD5): the one module that hands My data's delete runtime its port. */
+/** LA19 (MD5): the one module that hands My data's delete runtimes their ports. */
 const DELETE_WIRING = "lib/my-data/index.ts"
 const DELETE_RUNTIME = "lib/my-data/deleting-runtime.ts"
+const CALL_DELETE_RUNTIME = "lib/my-data/call-deleting-runtime.ts"
 
 /** Every call of a function named `send` in `text`, as its arguments' text. */
 function sendCalls(path: string, text: string): Array<Array<string>> {
@@ -276,17 +396,19 @@ function deleteRisks(
 
 /**
  * LA19: whether `text` names a `DELETE` in a string beside a string naming a
- * `/voice-notes/` path: a request to home's delete however it is sent.
+ * `/voice-notes/`, `/call/videos/` or `/feeds/` path: a request to one of
+ * home's deletes however it is sent.
  */
-function namesVoiceDelete(path: string, text: string): boolean {
-  const found = { method: false, voice: false }
+function namesRecordDelete(path: string, text: string): boolean {
+  const found = { method: false, record: false }
   walk(parse(path, text), (node) => {
     if (ts.isStringLiteralLike(node) || ts.isTemplateHead(node)) {
       if (node.text === "DELETE") found.method = true
-      if (node.text.includes("/voice-notes/")) found.voice = true
+      if (/\/voice-notes\/|\/call\/videos\/|\/feeds\//.test(node.text))
+        found.record = true
     }
   })
-  return found.method && found.voice
+  return found.method && found.record
 }
 
 /** Every mention of `CapacitorHttp` in `text`: an import, a member, a string. */
@@ -538,9 +660,10 @@ describe("LA4: a corpus read carries no credentials", () => {
         /createDataSource\s*[<(]/.test(readFileSync(join(SRC, f), "utf8"))
       )
     expect(found.sort()).toEqual([
+      "lib/testing-data/index.ts",
       "lib/topik-content/index.ts",
+      "lib/web-surface/call/feed.ts",
       "lib/web-surface/hangul/vocab.ts",
-      "lib/web-surface/playoff-delta/stage.tsx",
     ])
   })
 })
@@ -562,7 +685,7 @@ describe("LA1: only the choke points name a network global", () => {
     expect(problems).toEqual([])
   })
 
-  it("keeps the exemption list in eslint.config.js to the same two files", () => {
+  it("keeps the exemption list in eslint.config.js to the same files", () => {
     const config = readFileSync(join(SRC, "../eslint.config.js"), "utf8")
     // The `files` of every block that turns either network rule off.
     const blocks = [
@@ -663,6 +786,17 @@ describe("LA8: the phone reaches home through one module", () => {
     ).toEqual(LET_GO_CALLERS)
   })
 
+  it("runs the link's drain only from the lanes' wiring (LA15)", () => {
+    const drains = (f: string): boolean => /\.drain\(/.test(read(f))
+    expect(
+      sources.filter(
+        (f) =>
+          (f.startsWith("lib/home-link/") || HOME_LINK_CALLERS.has(f)) &&
+          drains(f)
+      )
+    ).toEqual(["lib/home-link/lanes.ts"])
+  })
+
   it("calls the link's keep only from the drain and Korean's look (LA15)", () => {
     const keeps = (f: string): boolean => /\.keep\(/.test(read(f))
     const reach = sources.filter(
@@ -671,13 +805,32 @@ describe("LA8: the phone reaches home through one module", () => {
         !KEEPERS.has(f)
     )
     expect(reach.filter(keeps)).toEqual([])
-    expect(read("lib/home-link/lanes.ts")).toContain("homeLink().keep(")
     expect(read(ROUTINE_READ)).toContain("homeLink().keep(")
     expect(read(HEARD_READ)).toContain("homeLink().keep(")
     expect(read(AUDIO_READ)).toContain("homeLink().keep(")
     expect(read(KEPT_READ)).toContain("homeLink().keep(")
     expect(read(DELETED_READ)).toContain("homeLink().keep(")
     expect(read(TAKES_READ)).toContain("homeLink().keep(")
+    expect(read(CALLS_READ)).toContain("homeLink().keep(")
+  })
+
+  it("looks at home's own word only for whether home works with this build: one GET of /compat, without the credential, which only the marks' wiring asks (#2843)", () => {
+    const looks = (f: string): boolean => /\.look\(/.test(read(f))
+    expect(
+      sources.filter(
+        (f) =>
+          (f.startsWith("lib/home-link/") || HOME_LINK_CALLERS.has(f)) &&
+          looks(f)
+      )
+    ).toEqual([COMPAT_READ])
+    expect(read(COMPAT_READ)).toContain("homeLink().look(compatPath(needs))")
+    expect(read(COMPAT_READ)).toContain("`/compat?needs=${String(needs)}`")
+    const askers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /import \{[^}]*\} from "[^"]*compat-read(\.ts)?"/.test(read(f))
+      )
+    expect(askers).toEqual(["lib/home-link/lanes.ts"])
   })
 
   it("sends nothing from the read of what home deleted but one GET of /voice-notes/deleted, and only My data reads it (MD3)", () => {
@@ -717,6 +870,67 @@ describe("LA8: the phone reaches home through one module", () => {
     expect(readers).toEqual(["lib/take-library/index.ts"])
   })
 
+  it("sends nothing from Studio's feed videos but a feed's list, its video's parts and an episode's link, and only Studio's feed videos asks them (ST38, FEED4)", () => {
+    expect(sendCalls(CALLS_READ, read(CALLS_READ))).toEqual(CALLS_SENDS)
+    for (const path of CALLS_PATHS) expect(read(CALLS_READ)).toContain(path)
+    const readers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /from "\.\/call-videos"|from "@\/lib\/home-link\/call-videos"/.test(
+          read(f)
+        )
+      )
+    expect(readers).toEqual(["lib/call-videos/index.ts"])
+  })
+
+  it("sends nothing from Studio's Feedback page but one GET of a feed's notes, and only the page's read asks it (SFEED6)", () => {
+    expect(sendCalls(NOTES_READ, read(NOTES_READ))).toEqual(NOTES_SENDS)
+    const readers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /from "\.\/episode-notes-read"|from "@\/lib\/home-link\/episode-notes-read"/.test(
+          read(f)
+        )
+      )
+    expect(readers).toEqual(["lib/episode-feedback/home-read.ts"])
+  })
+
+  it("sends nothing from Studio › Renders but one GET of /renders, and only Studio › Renders asks it (SFEED13)", () => {
+    expect(sendCalls(RENDERS_READ, read(RENDERS_READ))).toEqual(RENDERS_SENDS)
+    const readers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /from "\.\/renders"|from "@\/lib\/home-link\/renders"/.test(read(f))
+      )
+    expect(readers).toEqual(["lib/renders/read.ts"])
+  })
+
+  it("sends nothing from a clip's frame but its one GET, and only the clips' read asks it (server#801)", () => {
+    expect(sendCalls(CLIPS_READ, read(CLIPS_READ))).toEqual(CLIPS_SENDS)
+    expect(read(CLIPS_READ)).toContain("`/clips/${")
+    expect(read(CLIPS_READ)).toContain("homeLink().keep(")
+    const readers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /from "\.\/clips"|from "@\/lib\/home-link\/clips"/.test(read(f))
+      )
+    expect(readers).toEqual(["lib/studio-clips/frames-read.ts"])
+  })
+
+  it("sends nothing from a template's preview but its make, its read and its video's parts, and only the preview asks them (SFEED12)", () => {
+    expect(sendCalls(PREVIEWS_READ, read(PREVIEWS_READ))).toEqual(
+      PREVIEWS_SENDS
+    )
+    expect(read(PREVIEWS_READ)).toContain("`/previews/${template}`")
+    expect(read(PREVIEWS_READ)).toContain("homeLink().keep(")
+    const readers = sourceFiles()
+      .filter((f) => !isTestFile(f))
+      .filter((f) =>
+        /from "\.\/previews"|from "@\/lib\/home-link\/previews"/.test(read(f))
+      )
+    expect(readers).toEqual(["lib/template-preview/index.ts"])
+  })
+
   it("sends nothing from Ideas on home but its four requests, and only it asks them (ST26 c)", () => {
     expect(sendCalls(IDEA_READS, read(IDEA_READS))).toEqual(IDEA_SENDS)
     expect(read(IDEA_READS)).toContain("homeLink().keep(")
@@ -745,7 +959,7 @@ describe("LA8: the phone reaches home through one module", () => {
     ])
   })
 
-  it("sends nothing from the read of a take's words but one GET of /voice-notes/:id/heard, and only Studio's idea answers read it (IH1)", () => {
+  it("sends nothing from the read of a take's words but one GET of /voice-notes/:id/heard, and only Studio's idea answers and Rust Rounds' week read it (IH1, RR13)", () => {
     expect(sendCalls(HEARD_READ, read(HEARD_READ))).toEqual(HEARD_SENDS)
     expect(read(HEARD_READ)).toContain("/heard`")
     const readers = sourceFiles()
@@ -753,7 +967,10 @@ describe("LA8: the phone reaches home through one module", () => {
       .filter((f) =>
         /from "\.\/heard"|from "@\/lib\/home-link\/heard"/.test(read(f))
       )
-    expect(readers).toEqual(["lib/idea-hearing/index.ts"])
+    expect(readers).toEqual([
+      "lib/idea-hearing/index.ts",
+      "routes/_dashboard/_apk/rust-rounds.tsx",
+    ])
   })
 
   it("sends nothing from the routine's read but one GET /routine/files and one PUT /routine/opened", () => {
@@ -797,6 +1014,47 @@ describe("LA8: the phone reaches home through one module", () => {
       expect(
         valueImportsOf(caller, read(caller), isHomeLink).length
       ).toBeGreaterThan(0)
+    }
+  })
+})
+
+describe("LA21: the game day's live socket opens from one feed", () => {
+  const sources = sourceFiles().filter((f) => !isTestFile(f))
+  const read = (f: string): string => readFileSync(join(SRC, f), "utf8")
+  const names = (f: string, name: string): boolean =>
+    new RegExp(`\\b${name}\\b`).test(read(f))
+
+  it("opens the socket only from the feed, and wires the feed only from Game day", () => {
+    const outside = sources.filter((f) => f !== LIVE_SOCKET)
+    expect(
+      outside.filter((f) => f !== LIVE_RUNTIME && names(f, "openLiveSocket"))
+    ).toEqual([])
+    expect(
+      sources.filter(
+        (f) =>
+          f !== LIVE_RUNTIME &&
+          f !== "lib/home-link/live-pairing.ts" &&
+          names(f, "livePairing")
+      )
+    ).toEqual([])
+    expect(
+      sources.filter(
+        (f) =>
+          f !== LIVE_RUNTIME &&
+          !LIVE_FEED_CALLERS.includes(f) &&
+          names(f, "gameDayFeed")
+      )
+    ).toEqual([])
+  })
+
+  it("still finds what it is meant to guard", () => {
+    expect(
+      networkGlobalUses(LIVE_SOCKET, read(LIVE_SOCKET)).length
+    ).toBeGreaterThan(0)
+    expect(names(LIVE_RUNTIME, "openLiveSocket")).toBe(true)
+    expect(names(LIVE_RUNTIME, "livePairing")).toBe(true)
+    for (const caller of LIVE_FEED_CALLERS) {
+      expect(names(caller, "gameDayFeed")).toBe(true)
     }
   })
 })
@@ -910,16 +1168,15 @@ describe("LA19 (MD5): only My data deletes a record on home", () => {
   const sources = sourceFiles().filter((f) => !isTestFile(f))
   const read = (f: string): string => readFileSync(join(SRC, f), "utf8")
 
-  it("sends a DELETE to home from delete-note alone, one of deletePath(id) per note", () => {
+  it("sends a DELETE to home from delete-note alone, a note's or a feed episode's step", () => {
     const deleting = sources.filter(
       (f) => deleteRisks(f, read(f)).deletes.length > 0
     )
     expect(deleting).toEqual([DELETE_SEND])
-    expect(sendCalls(DELETE_SEND, read(DELETE_SEND))).toEqual([
-      // The run itself, handed to the link's `send`.
-      [expect.stringMatching(/^async \(send\) =>/)],
-      ...DELETE_SENDS,
-    ])
+    expect(sendCalls(DELETE_SEND, read(DELETE_SEND))).toEqual(DELETE_SENDS)
+    expect(read(DELETE_SEND)).toContain(
+      "return `/feeds/${feed}/videos/${encodeURIComponent(key)}/${step}`"
+    )
   })
 
   it("sends a method not written where it is sent only from the five callers that can't be a DELETE of a record", () => {
@@ -947,13 +1204,13 @@ describe("LA19 (MD5): only My data deletes a record on home", () => {
     )
   })
 
-  it("names a DELETE beside a voice-notes path nowhere but delete-note", () => {
-    expect(sources.filter((f) => namesVoiceDelete(f, read(f)))).toEqual([
+  it("names a DELETE beside a voice-notes, call videos or feeds path nowhere but delete-note", () => {
+    expect(sources.filter((f) => namesRecordDelete(f, read(f)))).toEqual([
       DELETE_SEND,
     ])
   })
 
-  it("is imported by My data alone, which hands it to its delete runtime as one port", () => {
+  it("is imported by My data alone, which hands each delete runtime its one port", () => {
     const isDelete = (module: string): boolean =>
       module === "lib/home-link/delete-note"
     expect(
@@ -962,16 +1219,26 @@ describe("LA19 (MD5): only My data deletes a record on home", () => {
     const wiring = read(DELETE_WIRING)
     expect(wiring.match(/\bdeleteNotes\b/g)).toHaveLength(2)
     expect(wiring).toMatch(/createDeleting\(\{\s*deleteNotes,/)
-    // The runtime calls the port once, in its run.
+    expect(wiring.match(/\bdeleteCallStep\b/g)).toHaveLength(2)
+    expect(wiring).toMatch(/createCallDeleting\(\{\s*deleteCallStep,/)
+    // Each runtime calls its port once, in its run.
     expect(read(DELETE_RUNTIME).match(/ports\.deleteNotes\(/g)).toHaveLength(1)
+    expect(
+      read(CALL_DELETE_RUNTIME).match(/ports\.deleteCallStep\(/g)
+    ).toHaveLength(1)
     expect(
       sources
         .filter((f) => f !== DELETE_RUNTIME)
         .filter((f) => /\.deleteNotes\(/.test(read(f)))
     ).toEqual([])
+    expect(
+      sources
+        .filter((f) => f !== CALL_DELETE_RUNTIME)
+        .filter((f) => /\.deleteCallStep\(/.test(read(f)))
+    ).toEqual([])
   })
 
-  it("flags a second sender, a variable method and a hidden voice-notes delete", () => {
+  it("flags a second sender, a variable method and a hidden record delete", () => {
     expect(
       deleteRisks("x.ts", 'void send("DELETE", `/voice-notes/${id}`)').deletes
     ).toHaveLength(1)
@@ -983,17 +1250,29 @@ describe("LA19 (MD5): only My data deletes a record on home", () => {
       deleteRisks("x.ts", "void send(`${how}`, path)").variable
     ).toHaveLength(1)
     expect(
-      namesVoiceDelete(
+      namesRecordDelete(
         "x.ts",
         'void request(`/voice-notes/${id}`, { method: "DELETE" })'
       )
     ).toBe(true)
     expect(
-      namesVoiceDelete(
+      namesRecordDelete(
         "x.ts",
         '// "DELETE" /voice-notes/x\nvoid get("/voice-notes/kept")'
       )
     ).toBe(false)
+    expect(
+      namesRecordDelete(
+        "x.ts",
+        'void request(`/call/videos/${from}/rest`, { method: "DELETE" })'
+      )
+    ).toBe(true)
+    expect(
+      namesRecordDelete(
+        "x.ts",
+        'void request(`/feeds/${feed}/videos/${key}/rest`, { method: "DELETE" })'
+      )
+    ).toBe(true)
   })
 })
 

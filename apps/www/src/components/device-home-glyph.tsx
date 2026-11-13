@@ -7,7 +7,10 @@
  * from any wing, and aph's once its screens hand its store in. A record's
  * mark, in the header while its wing shows, says where it is kept, at a
  * glance, and opens a sheet with what is on home, what waits and Send now;
- * it sends nothing of its own. Its words are `lib/home-link/words`'s alone.
+ * it sends nothing of its own. The mark is a fixed-size icon, so the gear
+ * beside it never moves as the lane's state changes (HS1); a send that
+ * didn't go is said in a `Notice`, and the rest shows on the mark's tone
+ * and in its sheet. Its words are `lib/home-link/words`'s alone.
  * It draws `laneView`'s `where` and `how` marks (`./sharing-marks`), and
  * the sheet's legend draws each (`__tests__/device-home-glyph.test.tsx`).
  */
@@ -16,6 +19,7 @@ import { useState } from "react"
 import { cn } from "@some-ui/core-utils"
 import {
   Button,
+  Notice,
   Sheet,
   SheetContent,
   SheetDescription,
@@ -33,6 +37,7 @@ import {
   askLane,
   useHandedLane,
   useHomePull,
+  useHomeServes,
   useLaneHome,
   useLaneView,
 } from "@/lib/home-link/lanes"
@@ -40,6 +45,7 @@ import { practiceLane } from "@/lib/home-link/practice"
 import { rustRoundsLane } from "@/lib/home-link/rust-rounds"
 import { useVoiceHome } from "@/lib/home-link/voice"
 import { SHEET, WORDS } from "@/lib/home-link/words"
+import { HOW_TROUBLE } from "@/lib/sharing-marks"
 import type { WingId } from "@/lib/wings"
 import {
   HowMark,
@@ -55,6 +61,8 @@ const LaneMark = ({ lane }: { lane: Lane }): JSX.Element => {
   const { run, paired, view, sendNow } = useLaneView(lane)
   const [open, setOpen] = useState(false)
   const words = WORDS[lane.id]
+  const trouble =
+    view.how !== null && HOW_TROUBLE.has(view.how) ? view.line : null
 
   return (
     <>
@@ -63,7 +71,7 @@ const LaneMark = ({ lane }: { lane: Lane }): JSX.Element => {
         aria-label={`${words.markLabel}: ${view.line}`}
         onClick={() => setOpen(true)}
         className={cn(
-          "hover:bg-accent flex h-10 items-center gap-1.5 rounded-md px-2 text-xs font-medium",
+          "hover:bg-accent relative flex size-10 shrink-0 items-center justify-center rounded-md",
           toneOf(view.where, view.how)
         )}
       >
@@ -76,10 +84,23 @@ const LaneMark = ({ lane }: { lane: Lane }): JSX.Element => {
           )}
         />
         {view.how !== null ? (
-          <HowMark how={view.how} className="size-4 shrink-0" />
+          <HowMark
+            how={view.how}
+            className="bg-background absolute right-0.5 bottom-0.5 size-3.5 rounded-full"
+          />
         ) : null}
-        <span>{view.word}</span>
       </button>
+      {/* Hidden while the sheet is open, which says it first. */}
+      {trouble !== null && (
+        <Notice
+          key={trouble}
+          tone="warning"
+          dismissible
+          className={open ? "hidden" : undefined}
+        >
+          {trouble}
+        </Notice>
+      )}
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent
           side="bottom"
@@ -115,8 +136,16 @@ const LaneMark = ({ lane }: { lane: Lane }): JSX.Element => {
                 {note}
               </p>
             ))}
-            {sendNow ? (
-              <Button size="lg" className={BIG} onClick={() => askLane(lane)}>
+            {/* Kept while paired, off when there is nothing to send or a
+                send is under way: the sheet grows up from the bottom, so a
+                button that went would move everything above it (HS1). */}
+            {paired ? (
+              <Button
+                size="lg"
+                className={BIG}
+                disabled={!sendNow}
+                onClick={() => askLane(lane)}
+              >
                 {SHEET.sendNow}
               </Button>
             ) : null}
@@ -186,10 +215,12 @@ const VoiceWatch = (): null => {
  * so what this phone keeps goes home from any wing while the app is open
  * and the phone is paired (LA15), and on a pull (`useHomePull`, PULL3).
  * aph's lane runs while aph's screens are mounted, since only they may hand
- * its store in.
+ * its store in. It also asks whether home works with this build
+ * (`useHomeServes`, #2843), which every lane's mark then says first.
  */
 export const HomeLanes = (): JSX.Element => {
   useHomePull()
+  useHomeServes()
   const aph = useHandedLane("aph")
   return (
     <>

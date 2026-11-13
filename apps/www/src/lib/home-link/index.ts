@@ -6,16 +6,19 @@
  * phone keeps (aph, the Jobs record, Practice's record, voice notes, Rust
  * Rounds' rounds, whose run also brings home's rounds and runs back), which
  * a paired phone sends on its own while the app is open (`./lanes`, LA15);
- * and Korean's look at the routine's files on home (`./routine`).
+ * Korean's look at the routine's files on home (`./routine`); and the game
+ * day's live socket (`./live`, LA21), which alone reads the pairing's token
+ * (`./live-pairing`) to open it.
  * Phone-only (`build.paths.ts`).
  */
 import { useSyncExternalStore } from "react"
 
+import { after } from "@/lib/clock"
 import { homeRequest } from "@/lib/device-backend/native-http"
 
 import { nativeCredential } from "./credential"
 import type { HomeLinkState } from "./model"
-import type { HomeLink } from "./runtime"
+import type { HomeLink, HomeLinkPorts } from "./runtime"
 import { createHomeLink } from "./runtime"
 import { onHidden } from "./visibility"
 
@@ -24,6 +27,12 @@ export type { HomeLinkState, PairFailure, UnpairedNote } from "./model"
 export type { HomeLink } from "./runtime"
 
 let link: HomeLink | null = null
+
+/** The page's clock, which the link keeps home's busy and its pace on. */
+export const LINK_CLOCK: Pick<HomeLinkPorts, "now" | "after"> = {
+  now: () => Date.now(),
+  after,
+}
 
 /**
  * One runtime per page load, made by the first block that shows the link,
@@ -35,6 +44,7 @@ export function homeLink(): HomeLink {
       credential: nativeCredential,
       request: homeRequest,
       onHidden,
+      ...LINK_CLOCK,
     })
     void link.load()
   }

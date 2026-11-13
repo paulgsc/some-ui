@@ -9,17 +9,13 @@
  *   owner's mark on that revision. Missing ones are named in that order,
  *   one at a time, since each has its own place to go. A revision marked
  *   before Finish waited on the owner's word stays ready (owner, #2253).
- * - **An episode's takes say their facts** (SHOW SH5). On an episode, a
- *   scene whose kept take's latest fact check (ST21, as a round brought it:
- *   `checks`) didn't pass is named after the takes, with how many of the
- *   scene's takes didn't, until it is taken again or the owner keeps it
- *   after three rounds (`accepted`, PDM15). A take with no check yet is let
- *   through (owner, 2026-11-04): nothing writes checks until ST8's loop
- *   does (#2256).
+ * - **An episode is never voiced here** (FEED6 #2649). A stored episode with
+ *   a scene that has no kept take is `unsaid`: Finish says home makes and
+ *   voices episodes, and asks for no take.
  * - **Released** is the YouTube link the owner pastes after uploading by
  *   hand (owner, 2026-10-29: nothing here uploads).
  */
-import type { FactCheck, Note, Project } from "./model"
+import type { Note, Project, Queued } from "./model"
 import { originsWaiting } from "./origin"
 
 /** Where the latest revision stands, for Finish. */
@@ -33,17 +29,8 @@ export type Finish =
       readonly shot: string
       readonly n: number
     }
-  /**
-   * An episode's scene whose kept take didn't pass its fact check, and how
-   * many of its takes haven't (`BEST_OF` or more: the owner may keep it).
-   */
-  | {
-      readonly kind: "facts"
-      readonly rev: number
-      readonly shot: string
-      readonly n: number
-      readonly rounds: number
-    }
+  /** A stored episode with a scene that has no kept take: never asked for. */
+  | { readonly kind: "unsaid"; readonly rev: number }
   /** Scenes whose idea waits on the owner's word: the first, from 1, and how many. */
   | {
       readonly kind: "idea"
@@ -74,11 +61,9 @@ export function finishOf(project: Project): Finish {
   const index = shots.findIndex((shot) => project.chosen[shot.id] === undefined)
   const shot = shots[index]
   if (shot !== undefined)
-    return { kind: "take", rev, shot: shot.id, n: index + 1 }
-  if (project.episode !== undefined) {
-    const facts = factsOf(project, rev, shots)
-    if (facts !== null) return facts
-  }
+    return project.episode === undefined
+      ? { kind: "take", rev, shot: shot.id, n: index + 1 }
+      : { kind: "unsaid", rev }
   if (isMarked(project, rev)) return { kind: "ready", rev }
   const waiting = originsWaiting(project)
   const [first] = waiting
@@ -87,81 +72,21 @@ export function finishOf(project: Project): Finish {
   return { kind: "unmarked", rev }
 }
 
-/** Rounds of a scene's take check after which the owner may keep the best (PDM15). */
-export const BEST_OF = 3
-
-/**
- * A take's latest fact check by when it ran, or undefined before its first.
- * Not the last in `checks`: a merge of an older file appends its checks after
- * newer ones.
- */
-function checkOf(project: Project, take: string): FactCheck | undefined {
-  let latest: FactCheck | undefined
-  for (const each of project.checks ?? []) {
-    if (
-      each.take === take &&
-      (latest === undefined || Date.parse(each.at) >= Date.parse(latest.at))
-    )
-      latest = each
-  }
-  return latest
-}
-
-/** The first scene whose kept take's check didn't pass and isn't kept by the owner's word, or null. */
-function factsOf(
-  project: Project,
-  rev: number,
-  shots: ReadonlyArray<{ readonly id: string }>
-): Finish | null {
-  for (const [index, shot] of shots.entries()) {
-    const take = project.chosen[shot.id]
-    if (take === undefined) continue
-    const check = checkOf(project, take)
-    if (check === undefined || check.passed) continue
-    const kept = (project.accepted ?? []).some(
-      (each) => each.shot === shot.id && each.take === take
-    )
-    if (kept) continue
-    const rounds = project.takes.filter(
-      (each) =>
-        each.shot === shot.id && checkOf(project, each.id)?.passed === false
-    ).length
-    return { kind: "facts", rev, shot: shot.id, n: index + 1, rounds }
-  }
-  return null
-}
-
 /** Whether the owner marked revision `rev` ready. */
 function isMarked(project: Project, rev: number): boolean {
   return project.ready?.some((each) => each.rev === rev) === true
 }
 
+/** The mark that queued revision `rev` for home to make (ST33), if it was. */
+export function queuedOf(project: Project, rev: number): Queued | null {
+  return project.queued?.find((each) => each.rev === rev) ?? null
+}
+
+/** Whether revision `rev` is queued for home to make (ST33). */
+export const isQueued = (project: Project, rev: number): boolean =>
+  queuedOf(project, rev) !== null
+
 /** A revision `rev` has been released, so it takes no new note. */
 export function isReleased(project: Project, rev: number): boolean {
   return project.released?.some((each) => each.rev === rev) === true
-}
-
-const YOUTUBE_ID = /^[\w-]{11}$/
-
-/**
- * The video a pasted YouTube link names, as one link
- * (`https://youtu.be/<id>`); null for anything else.
- */
-export function youtubeLink(text: string): string | null {
-  let url: URL
-  try {
-    url = new URL(text.trim())
-  } catch {
-    return null
-  }
-  if (url.protocol !== "https:") return null
-  const host = url.hostname.replace(/^(www|m)\./, "")
-  const path = url.pathname.split("/").filter((part) => part !== "")
-  let id: string | null = null
-  if (host === "youtu.be" && path.length === 1) id = path[0] ?? null
-  else if (host === "youtube.com") {
-    if (path[0] === "watch" && path.length === 1) id = url.searchParams.get("v")
-    else if (path[0] === "shorts" && path.length === 2) id = path[1] ?? null
-  }
-  return id !== null && YOUTUBE_ID.test(id) ? `https://youtu.be/${id}` : null
 }

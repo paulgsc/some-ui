@@ -76,6 +76,23 @@ describe("authorship", () => {
     }
   })
 
+  it("never credits the owner for a scene a speech model said (FEED6)", () => {
+    // An episode's scene: the fill's words, said by home's Kokoro, even
+    // under an ad-lib plan.
+    const said = shot("said", { take, voice: "ad-lib", speaker: "kokoro" })
+    expect(handsOf(said)).not.toContain("you")
+    expect(wordingOf(said, "ad-lib")).toBe("agent")
+    // The speaker's take is say-scenes' work: moved to Claude, its hand moves.
+    const moved = STEPS.map((s) =>
+      s.id === "say-scenes" ? { ...s, kind: "claude" as const } : s
+    )
+    expect(handsOf(said, moved)).toEqual(["agent", "code"])
+    expect(handsOf(shot("owner", { take }), moved)).toEqual(["you", "code"])
+    expect(authorshipOf(cutList([said]))).toEqual([
+      { shot: "said", origin: "agent", wording: "agent", hands: ["code"] },
+    ])
+  })
+
   it("moves a scene's hands when a step moves to another kind", () => {
     const moved = STEPS.map((s) =>
       s.id === "render" ? { ...s, kind: "claude" as const } : s
@@ -129,10 +146,10 @@ describe("where the authorship mark can go", () => {
       )
     ).toEqual([
       "A: the authorship mark covers the whole video",
-      "B: its idea cites note n9, which the project doesn't have",
-      "C: its idea cites note n1, which isn't in the owner's words",
       "the authorship mark is drawn once",
       "the authorship mark is drawn from the scenes; nothing is written for it",
+      "B: its idea cites note n9, which the project doesn't have",
+      "C: its idea cites note n1, which isn't in the owner's words",
       "the authorship mark's intro needs a bare card as the first scene",
       "the authorship mark's end card needs a bare card as the last scene",
     ])

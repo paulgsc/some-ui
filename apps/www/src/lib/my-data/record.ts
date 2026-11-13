@@ -27,6 +27,8 @@ export const RECORD_KINDS = [
   "self",
   "leetype",
   "rust-rounds",
+  "rust-weeks",
+  "rust-round-log",
   "scene-asks",
   "studio-log",
 ] as const

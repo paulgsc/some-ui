@@ -4,9 +4,13 @@ import { MOST_SCENES } from "@burn-ins/lib/authorship"
 import type { SceneRecord } from "@burn-ins/lib/authorship-link"
 import { recordParams, scenesOf } from "@burn-ins/lib/authorship-link"
 import { frameAt, prepare, type Prepared } from "@burn-ins/lib/burn-in"
+import { geometryOf, PORTRAIT } from "@burn-ins/lib/geometry"
 import { INK } from "@burn-ins/lib/journal"
 import { SAMPLES } from "@burn-ins/lib/samples"
 import { sceneLine, WORDS } from "@burn-ins/lib/words"
+
+/** The frame the mark is drawn in here: the short's, where it is published. */
+const GEOMETRY = geometryOf(PORTRAIT)
 
 /** What a link's code draws: the video's mark and scenes, or why there are none. */
 type Read =
@@ -22,20 +26,26 @@ function read(code: string | undefined): Read {
   const scenes = code === undefined ? null : scenesOf(code)
   if (scenes === null || scenes.length === 0) return { kind: "none" }
   if (scenes.length > MOST_SCENES) return { kind: "too-long" }
-  const p = prepare({
-    kind: "authorship",
-    design: "cells-v1",
-    params: recordParams(scenes),
-  })
+  const p = prepare(
+    {
+      kind: "authorship",
+      design: "cells-v1",
+      params: recordParams(scenes),
+    },
+    GEOMETRY.frame
+  )
   return p.ok ? { kind: "mark", mark: p.value, scenes } : { kind: "none" }
 }
 
 /** The key every video opens with: the mark's intro, at its start. */
-const KEY = prepare({
-  kind: "authorship",
-  design: "cells-v1",
-  params: SAMPLES.authorship,
-})
+const KEY = prepare(
+  {
+    kind: "authorship",
+    design: "cells-v1",
+    params: SAMPLES.authorship,
+  },
+  GEOMETRY.frame
+)
 
 /**
  * The page an authorship mark's end card names (STUDIO ST16): what the mark
@@ -61,6 +71,7 @@ export const AuthorshipRecord = ({ code }: { code?: string }): JSX.Element => {
           {KEY.ok && (
             <BurnInStage
               frames={[frameAt(KEY.value, 0)]}
+              geometry={GEOMETRY}
               ground={INK.ground}
               label={words.keyLabel}
             />
@@ -72,6 +83,7 @@ export const AuthorshipRecord = ({ code }: { code?: string }): JSX.Element => {
             <>
               <BurnInStage
                 frames={[frameAt(record.mark, Number.MAX_SAFE_INTEGER)]}
+                geometry={GEOMETRY}
                 ground={INK.ground}
                 label={words.recordLabel}
               />

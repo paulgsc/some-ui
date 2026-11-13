@@ -1,7 +1,7 @@
 import type { JSX } from "react"
 import { useEffect, useRef, useState } from "react"
 import { cn } from "@some-ui/core-utils"
-import { Button } from "@some-ui/shared"
+import { Button, Notice, SameWidth } from "@some-ui/shared"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
 import { GlyphLine } from "@topik/components/topik/read-aloud/glyph-line"
 import type { ReadAloudDeck } from "@topik/lib/topik/read-aloud/content"
@@ -53,11 +53,21 @@ type RepCardProps = {
   onResume?: () => void
 }
 
-/** In place of Resume, while the host's session holds the drill. */
-export const HeldNote = (): JSX.Element => (
-  <p className="text-muted-foreground py-3 text-center text-sm">
-    Resumes with the session
-  </p>
+/**
+ * Resume, while the host's session holds the drill, and why. `className` is
+ * the Resume it stands for, so the dock keeps its height.
+ */
+export const HeldResume = ({
+  className = "h-14",
+}: {
+  className?: string
+}): JSX.Element => (
+  <>
+    <Button disabled className={cn("gap-2 rounded-2xl", className)}>
+      <Play className="size-5" /> Resume
+    </Button>
+    <Notice>Resumes with the session</Notice>
+  </>
 )
 
 const LABEL: Record<RepCardStep, string> = {
@@ -114,6 +124,8 @@ function useMarch(
   return markAt(weights, tick.runKey === runKey ? tick.syllable : 0)
 }
 
+const MARKS: ReadonlyArray<Mark> = ["new", "seen"]
+
 /** A hollow ring for what is new, dots for what has been seen before. */
 const MarkGlyph = ({ kind }: { kind: Mark }): JSX.Element =>
   kind === "new" ? (
@@ -130,9 +142,11 @@ const MarkGlyph = ({ kind }: { kind: Mark }): JSX.Element =>
   )
 
 /**
- * The mark beside the step label, outside the live region: it holds still
- * while the steps change and is not announced with them. `text-foreground`,
- * since the muted colour misses 4.5:1 in the topik dark theme.
+ * The mark at the end of the step label's row, outside the live region: it
+ * holds still while the steps change (the row is pinned to the stage's top,
+ * and the label's words never push it) and is not announced with them.
+ * `text-foreground`, since the muted colour misses 4.5:1 in the topik dark
+ * theme.
  */
 const MarkChip = ({
   kind,
@@ -140,10 +154,17 @@ const MarkChip = ({
 }: NonNullable<RepCardProps["exposure"]>): JSX.Element => {
   const look =
     "text-foreground inline-flex items-center gap-1.5 text-xs font-medium"
+  // One width whichever mark it is, so the next sentence's mark lands
+  // where this one was (HS1): the glyph in a box as wide as the dots, the
+  // words as wide as the longer.
   const inside = (
     <>
-      <MarkGlyph kind={kind} />
-      {TALLY_WORDS.mark(kind)}
+      <span className="flex w-[1.375rem] shrink-0 justify-center">
+        <MarkGlyph kind={kind} />
+      </span>
+      <SameWidth every={MARKS.map((mark) => TALLY_WORDS.mark(mark))}>
+        {TALLY_WORDS.mark(kind)}
+      </SameWidth>
     </>
   )
   return onOpen ? (
@@ -252,17 +273,21 @@ export const RepCard = ({
   const gloss = step === "gloss" || introduction ? glossOf(deck, item) : null
   const metered = (step === "turn" || step === "echo") && stepMs !== null
 
+  // The step's label and the mark sit in a row pinned to the stage's top,
+  // the label at its start and the mark at its end: a step, a pause or a
+  // tap on Stuck changes the label's words and what is drawn below, and
+  // neither moves the mark, which can be tapped (HS1).
   const stage = (
     <div
       data-slot="read-aloud-rep"
       data-step={step}
       data-kind={item.kind}
-      className="flex w-full max-w-md flex-col items-center gap-4 text-center"
+      className="mx-auto flex w-full max-w-md flex-1 flex-col items-center gap-4 text-center"
     >
-      <div className="flex min-h-4 max-w-full flex-wrap items-baseline justify-center gap-x-3 gap-y-1">
+      <div className="flex w-full items-start justify-between gap-3">
         <div
           aria-live="polite"
-          className="flex max-w-full flex-wrap items-baseline justify-center gap-x-2"
+          className="flex min-w-0 flex-wrap items-baseline gap-x-2 pt-0.5 text-left"
         >
           <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
             {LABEL[step]}
@@ -279,59 +304,65 @@ export const RepCard = ({
         {exposure && <MarkChip {...exposure} />}
       </div>
 
-      <GlyphLine
-        deck={deck}
-        item={item}
-        mode={MODE[step]}
-        mark={mark}
-        short={short}
-      />
+      {/* Centred in the room below the row; auto margins never push it past
+          the top of a stage that scrolls. */}
+      <div className="my-auto flex w-full flex-col items-center gap-4">
+        <GlyphLine
+          deck={deck}
+          item={item}
+          mode={MODE[step]}
+          mark={mark}
+          short={short}
+        />
 
-      {metered && <Meter ms={stepMs} runKey={stepKey} />}
+        {metered && <Meter ms={stepMs} runKey={stepKey} />}
 
-      {gloss?.kind === "word" && (
-        <p className="text-base leading-relaxed">
-          <span lang="ko" className="font-semibold">
-            {gloss.lemma}
-          </span>
-          <span className="text-muted-foreground"> · {gloss.meaning}</span>
-        </p>
-      )}
-
-      {gloss?.kind === "sentence" && (
-        <div className="flex flex-col items-center gap-3">
-          <p className="text-muted-foreground text-base leading-relaxed">
-            {gloss.english}
+        {gloss?.kind === "word" && (
+          <p className="text-base leading-relaxed">
+            <span lang="ko" className="font-semibold">
+              {gloss.lemma}
+            </span>
+            <span className="text-muted-foreground"> · {gloss.meaning}</span>
           </p>
-          <ul
-            aria-label="Words in this sentence"
-            className="flex flex-wrap justify-center gap-1.5"
-          >
-            {gloss.words.map((word) => (
-              <li
-                key={word.wordId}
-                className="bg-muted rounded-lg px-2 py-1 text-sm"
-              >
-                <span lang="ko" className="font-medium">
-                  {word.lemma}
-                </span>
-                <span className="text-muted-foreground"> {word.meaning}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+        )}
+
+        {gloss?.kind === "sentence" && (
+          <div className="flex flex-col items-center gap-3">
+            <p className="text-muted-foreground text-base leading-relaxed">
+              {gloss.english}
+            </p>
+            <ul
+              aria-label="Words in this sentence"
+              className="flex flex-wrap justify-center gap-1.5"
+            >
+              {gloss.words.map((word) => (
+                <li
+                  key={word.wordId}
+                  className="bg-muted rounded-lg px-2 py-1 text-sm"
+                >
+                  <span lang="ko" className="font-medium">
+                    {word.lemma}
+                  </span>
+                  <span className="text-muted-foreground"> {word.meaning}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
     </div>
   )
 
   const controls =
     step === "paused" ? (
       onResume ? (
-        <Button className="h-12 gap-2 rounded-2xl" onClick={onResume}>
+        // As tall as the row it stands in for, so pausing keeps the dock's
+        // height, and the centred stage above it where it was (HS1).
+        <Button className="h-14 gap-2 rounded-2xl" onClick={onResume}>
           <Play className="size-5" /> Resume
         </Button>
       ) : (
-        <HeldNote />
+        <HeldResume />
       )
     ) : (
       <div className="flex gap-2">

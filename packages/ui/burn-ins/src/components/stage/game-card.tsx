@@ -1,6 +1,6 @@
 import type { JSX } from "react"
 import { TextLayer } from "@burn-ins/components/stage/text"
-import { placed } from "@burn-ins/components/stage/units"
+import type { Units } from "@burn-ins/components/stage/units"
 import type { GameCardFrame } from "@burn-ins/lib/game-card"
 
 /**
@@ -10,16 +10,18 @@ import type { GameCardFrame } from "@burn-ins/lib/game-card"
  */
 export const GameCardLayer = ({
   frame,
+  units,
 }: {
   frame: GameCardFrame
+  units: Units
 }): JSX.Element => (
   <>
-    <TextLayer frame={frame} />
+    <TextLayer frame={frame} units={units} />
     {frame.glyphs.map((g) => (
       <svg
         key={`${g.box.x},${g.box.y}`}
         className="bi-glyph"
-        style={placed(g.box)}
+        style={units.placed(g.box)}
         viewBox="0 0 24 24"
         fill="none"
         stroke={g.colour}

@@ -1,7 +1,7 @@
 import type { JSX, SubmitEvent } from "react"
 import { useState } from "react"
 import { formatTimecode } from "@some-ui/core-utils"
-import { Button, Input, useConfirmSheet } from "@some-ui/shared"
+import { Button, Input, Notice, useConfirmSheet } from "@some-ui/shared"
 import { X } from "lucide-react"
 
 import { useMinuteClock } from "@/lib/clock"
@@ -180,9 +180,9 @@ export const ReflectPanel = ({
       </div>
 
       {refused !== null && (
-        <p role="alert" className="text-destructive text-sm">
+        <Notice tone="danger" onDismiss={() => setRefused(null)}>
           {refused}
-        </p>
+        </Notice>
       )}
 
       {own.length > 0 && (

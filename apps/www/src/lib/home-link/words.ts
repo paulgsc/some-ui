@@ -19,6 +19,7 @@ import type { ClearEnd } from "./clear"
 import type { KeptState } from "./kept-model"
 import type { LaneCounts, LaneId, LaneKind } from "./lanes"
 import type { LastRead } from "./routine-model"
+import type { Serves } from "./serves-model"
 import type { LetGoEnd, LetGoPromise } from "./study-let-go"
 
 /** One row of a lane's sheet: what one kind is called, and one of it. */
@@ -141,8 +142,16 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
         one: "voice note",
       },
       { kind: "ideas", label: "Studio ideas, each sent whole", one: "idea" },
+      {
+        kind: "episodeNotes",
+        label: "Notes left on episodes",
+        one: "note",
+      },
     ],
-    waits: waits("voice note or idea", "voice notes and ideas"),
+    waits: waits(
+      "voice note, idea, episode note or video",
+      "voice notes, ideas, episode notes and videos"
+    ),
     phoneOnly: `Voice notes are only on this phone, and in Drive when you share them. ${PAIR}`,
     partly:
       "Some voice notes are on home. New ones stay on this phone until it is paired again.",
@@ -154,13 +163,26 @@ export const WORDS: Readonly<Record<LaneId, LaneWords>> = {
   "rust-rounds": {
     markLabel: "Where Rust Rounds is kept",
     title: "Rust Rounds and home",
-    rows: [{ kind: "rounds", label: "Rounds", one: "round" }],
-    waits: waits("pasted round"),
+    rows: [
+      { kind: "rustWeeks", label: "Weeks you sent", one: "week" },
+      {
+        kind: "rustPastes",
+        label: "What rustc said, pasted from your code",
+        one: "paste",
+      },
+      { kind: "rounds", label: "Rounds", one: "round" },
+      {
+        kind: "roundLog",
+        label: "What you did on the cards, each time you opened them",
+        one: "time",
+      },
+    ],
+    waits: waits("item"),
     phoneOnly: `Rust Rounds is only on this phone, and its rounds have no runs from home. ${PAIR}`,
     partly:
-      "Some rounds are on home. A round you paste stays on this phone until it is paired again.",
+      "Some of Rust Rounds is on home. What you send or paste stays on this phone until it is paired again.",
     footnote:
-      "A round you paste goes to home, which runs each of its programs through rustc and keeps what it printed. While the app is open, this phone brings home's rounds and those runs here, so every card plays without home. This phone keeps every round it has.",
+      "Each week you send goes to home, which keeps it for good: which tickets you answered and when. A week you didn't send by its deadline is kept there as not answered, and the takes you said for it stay on this phone. Each paste of what rustc said, what you did on the cards, and each round you paste go too, and home runs each round's programs through rustc and keeps what it printed. This phone keeps its own copy of all of it.",
     clash: null,
     unread: null,
   },
@@ -203,7 +225,7 @@ export function unsentLines({ gone }: Unsendable): Array<string> {
 
 /** Settings' Home server block, once paired: what goes, and when. */
 export const HOME_BLOCK = {
-  lead: "Everything this phone keeps goes to home on its own while the app is open: finished sessions, kept items, LeetType sessions and spoken answers, Studio sittings, soundbites, written reflections, asks for the next scene, the Jobs record, voice notes, the Studio ideas you send, rounds you paste in Rust Rounds, a note of how each recording ended, and aph while it is open. Rust Rounds also brings home's rounds and their runs here. Nothing leaves this phone until home has read it back. Dragging a page down from its top sends what waits and checks home again.",
+  lead: "Everything this phone keeps goes to home on its own while the app is open: finished sessions, kept items, LeetType sessions and spoken answers, Studio sittings, soundbites, written reflections, asks for the next scene, the Jobs record, voice notes, the Studio ideas you send, the notes you leave on episodes, rounds you paste in Rust Rounds, a note of how each recording ended, and aph while it is open. Rust Rounds also brings home's rounds and their runs here. Nothing leaves this phone until home has read it back. Dragging a page down from its top sends what waits and checks home again.",
 } as const
 
 /** What a drag down names when this phone couldn't get in step with home (PULL3). */
@@ -388,6 +410,8 @@ export type LaneFacts = LaneCounts & {
   /** The phone is paired with home, so the lane drains. */
   paired: boolean
   run: KeptState
+  /** Whether home works with this version of the app (`./serves-model`). */
+  serves: Serves | null
 }
 
 export type LaneView = {
@@ -483,9 +507,6 @@ export function laneView(words: LaneWords, facts: LaneFacts): LaneView {
       "Home no longer knows this phone. Pair it again in Settings."
     )
   }
-  if (last?.kind === "unreachable") {
-    return show("kept", "no-answer", "No answer", `Home didn't answer.${later}`)
-  }
   if (last?.kind === "unpaired") {
     return show(
       "kept",
@@ -493,6 +514,37 @@ export function laneView(words: LaneWords, facts: LaneFacts): LaneView {
       "Not paired",
       `This phone isn't paired with home now. Pair it in Settings.${later}`
     )
+  }
+  // Before how the last send went, no answer included (home restarts as it
+  // updates): nothing goes properly until home works with this version
+  // (#2843). After pairing again, which is the person's own step whatever
+  // home runs.
+  if (facts.serves === "updating") {
+    return show(
+      "kept",
+      "updating",
+      "Home updating",
+      `Home is updating to work with this version of the app.${later}`
+    )
+  }
+  if (facts.serves === "not-yet") {
+    return show(
+      "kept",
+      "not-yet",
+      "Not yet",
+      `Home can't work with this version of the app yet.${later}`
+    )
+  }
+  if (facts.serves === "too-old") {
+    return show(
+      "kept",
+      "too-old",
+      "Update the app",
+      `This app is older than home. Install the newest version.${later}`
+    )
+  }
+  if (last?.kind === "unreachable") {
+    return show("kept", "no-answer", "No answer", `Home didn't answer.${later}`)
   }
   if (last?.kind === "failed") {
     if (last.why === "busy") {

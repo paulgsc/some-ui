@@ -3,15 +3,18 @@
  *
  * Practice's Home: its study card must not read a failed sessions read as
  * "nothing in progress" and offer Start over a session that is only
- * unreadable. Its Rust Rounds card opens the session on the card left last.
+ * unreadable. Its Rust Rounds card opens the session on the card left last,
+ * and once the week has closed, still opens it, with its essay beside it.
  */
 
 import { fakeQueryResult, withQueryClient } from "@/test-support/query-client"
 import { routeComponent } from "@/test-support/router-stubs"
 import { sessionRecord } from "@/test-support/session-record"
 import { seedStop, stopRecord } from "@/test-support/session-stop"
-import { keptRounds } from "@some-ui/rust-rounds"
-import { RUST_ROUNDS_TITLE } from "@some-ui/rust-rounds/entry"
+import type { EngagementEvent } from "@some-ui/engagement"
+import { setEngagementSink } from "@some-ui/engagement"
+import { keptRounds, keptWeeks, QUILLMOSS_WEEK } from "@some-ui/rust-rounds"
+import { RUST_ESSAY_LINK, RUST_ROUNDS_TITLE } from "@some-ui/rust-rounds/entry"
 import type * as ReactRouterModule from "@tanstack/react-router"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -136,7 +139,7 @@ describe("Practice's study card", () => {
     const open = { ...finished("Korean", 0), status: "active" as const }
     refresh({ data: [open], isError: false })
     expect(screen.getByText("Resume")).toBeTruthy()
-    expect(screen.queryByText(/Next lesson|Getting it ready/)).not.toBeNull()
+    expect(screen.queryByText(/Next lesson|Starting/)).not.toBeNull()
   })
 
   it("offers Pick up for a session stopped within the window", () => {
@@ -236,6 +239,38 @@ describe("Practice's Rust Rounds card", () => {
       "Continue: indexing, card 3"
     )
   })
+
+  it("still opens a closed week, for its read-back, and offers its essay beside it (RR17)", () => {
+    keptWeeks(localStorage).hold({
+      weeks: [{ week: QUILLMOSS_WEEK, sha256: "a", runs: {}, ended: [] }],
+      unread: [],
+    })
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(Date.parse(QUILLMOSS_WEEK.due) + 60_000)
+    try {
+      renderWith({ data: [], isError: false })
+      expect(rustRoundsCard()?.getAttribute("to")).toBe("/rust-rounds")
+      const essay = screen.getByText(RUST_ESSAY_LINK).closest("a")
+      expect(essay?.getAttribute("to")).toBe("/journal/episodes/$feed/$key")
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("offers no essay while the week is open", () => {
+    keptWeeks(localStorage).hold({
+      weeks: [{ week: QUILLMOSS_WEEK, sha256: "a", runs: {}, ended: [] }],
+      unread: [],
+    })
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(Date.parse(QUILLMOSS_WEEK.due) - 60_000)
+    try {
+      renderWith({ data: [], isError: false })
+      expect(screen.queryByText(RUST_ESSAY_LINK)).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })
 
 function finished(
@@ -252,3 +287,66 @@ function finished(
     finalElapsedMs: elapsedMs,
   })
 }
+
+describe("what Practice Home offers and what was taken (ENGAGE)", () => {
+  afterEach(() => {
+    setEngagementSink(null)
+  })
+
+  it("offers each card once, takes the one pressed, and passes the rest over", () => {
+    // What earlier tests' Homes offered with no sink set waits for one.
+    setEngagementSink(() => undefined)
+    const used: Array<EngagementEvent> = []
+    setEngagementSink((event) => used.push(event))
+    renderWith({ data: [], isError: false })
+    const card = rustRoundsCard()
+    if (card === null) throw new Error("no Rust Rounds card")
+    fireEvent.click(card)
+    cleanup()
+    expect(
+      used.map((event) =>
+        event.kind === "passed-over"
+          ? `${event.kind} ${event.affordance} ${event.ending}`
+          : `${event.kind} ${event.affordance}`
+      )
+    ).toEqual([
+      "offered start",
+      "offered next-lesson",
+      "offered hungry",
+      "offered say-why",
+      "offered home-card",
+      "taken home-card",
+      "passed-over start took-another",
+      "passed-over next-lesson took-another",
+      "passed-over hungry took-another",
+      "passed-over say-why took-another",
+    ])
+  })
+
+  it("offers nothing new while a lesson launches, and takes each button once", () => {
+    setEngagementSink(() => undefined)
+    const used: Array<EngagementEvent> = []
+    setEngagementSink((event) => used.push(event))
+    const { refresh } = renderWith({ data: [], isError: false })
+    const next = screen.getByRole("button", { name: "Next lesson" })
+    const menu = screen.getByRole("button", { name: "Pick a portion" })
+    fireEvent.click(next)
+    fireEvent.click(next)
+    fireEvent.click(menu)
+    const open = { ...finished("Korean", 0), status: "active" as const }
+    refresh({ data: [open], isError: false })
+    cleanup()
+    expect(used.map((event) => `${event.kind} ${event.affordance}`)).toEqual([
+      "offered start",
+      "offered next-lesson",
+      "offered hungry",
+      "offered say-why",
+      "offered home-card",
+      "taken next-lesson",
+      "taken hungry",
+      "passed-over start",
+      "passed-over say-why",
+      "passed-over home-card",
+    ])
+  })
+})

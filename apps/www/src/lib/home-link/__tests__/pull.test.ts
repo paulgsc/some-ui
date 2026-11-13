@@ -45,6 +45,7 @@ function lane(ends: () => Promise<HomeExchanged>): Lane {
         }
       },
       paired: () => true,
+      homeBusy: () => false,
       now: () => 7,
     }),
   }

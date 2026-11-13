@@ -21,7 +21,10 @@ import { useState } from "react"
 import { Button } from "@some-ui/shared"
 import { StepLayout } from "@topik/components/topik/handheld/step-layout"
 import { PoolNote } from "@topik/components/topik/read-aloud/pool-note"
-import { HeldNote, RepCard } from "@topik/components/topik/read-aloud/rep-card"
+import {
+  HeldResume,
+  RepCard,
+} from "@topik/components/topik/read-aloud/rep-card"
 import { SentenceFacts } from "@topik/components/topik/read-aloud/sentence-facts"
 import { SessionHeader } from "@topik/components/topik/read-aloud/session-header"
 import type { SetCardProps } from "@topik/components/topik/read-aloud/set-card"
@@ -197,7 +200,7 @@ export const ReadAloudSession = ({
           stage={<p className="text-muted-foreground text-sm">Paused</p>}
           dock={
             held ? (
-              <HeldNote />
+              <HeldResume className="h-12" />
             ) : (
               <Button className="h-12 gap-2 rounded-2xl" onClick={vm.resume}>
                 <Play className="size-5" /> Resume

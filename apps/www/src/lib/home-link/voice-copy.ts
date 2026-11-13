@@ -29,11 +29,22 @@
  *   its transcript reaches the tutor through the mailbox; once home holds
  *   it, its audio leaves this phone and the note stays listed, heard from
  *   home after (`./voice-audio`);
+ * - a take on a week's ticket (`lib/rust-rounds`' `rustWeekDesk`, RR13
+ *   #2688): `rust-round`, the week and ticket as `<week>:<ticket>`, when
+ *   taken, but only once its week is sent: until then it waits on the phone
+ *   (`waits`), as a new idea's take does;
  * - a Studio idea answer's take (`lib/idea-takes`, MIC10): `studio`, the
  *   answer as `idea:<idea>:<question>`, when taken; home gives its words back
  *   to the idea screen (`./heard`). A new idea's take (ST26) goes the same
  *   way, but only once its idea is sent: until then it waits on the phone
- *   (`waits`), and its desk lists it for nobody here.
+ *   (`waits`), and its desk lists it for nobody here; an answer of an idea
+ *   on home said again (#2579) the same way, from a desk of its own, once
+ *   its idea is sent again, when the take it replaces is set aside on home
+ *   (`lib/idea-takes`' `setAsideReplaced`);
+ * - a take with no scene yet, recorded on Takes on home (`lib/library-takes`,
+ *   ST32): `studio`, named by its own id as `take:<id>`, when taken; home
+ *   lists it with every take it keeps, and ST30 attaches it to a scene by
+ *   that id.
  *
  * Copying deletes nothing where the note was recorded; letting it go there
  * leaves the copy, which goes once home holds the note. Each pass says what
@@ -44,8 +55,8 @@
  * D3 on epic #2368) owes home its set-aside mark (MIC2 #2372), so home's
  * routines stop reading it. Every store with Let go (reflections, Jobs
  * notes, scene notes, soundbites, lens and LeetType takes, Rust Rounds
- * notes; game bites,
- * Studio takes and idea takes have none) sets a note aside through
+ * notes, takes with no scene; game bites,
+ * Studio's scene takes and idea takes have none) sets a note aside through
  * `lib/voice-marks`. Let go owes the mark in the voice-home record before it writes the
  * standing (`lib/voice-marks`, which `watchVoiceNotes` wires), where it
  * outlives the note on this phone; each pass and each hand-off of what
@@ -75,9 +86,10 @@
  * - _Family:_ every share kind (reflections; the study-context export with
  *   its soundbites, grammar-lens entries and takes, and LeetType answers and
  *   takes; Studio takes) and every cap that makes room (soundbites, lens
- *   takes, LeetType takes and answer notes, Studio idea takes, scene notes,
- *   and the grammar-lens record, HF5 #2180; the session budget's offer of
- *   the oldest finished session, "Remove it", #2422), whether the phone
+ *   takes, LeetType takes and answer notes, Studio idea takes, takes with
+ *   no scene (ST32), scene notes, and the grammar-lens record, HF5 #2180;
+ *   the session budget's offer of the oldest finished session, "Remove
+ *   it", #2422), whether the phone
  *   stores the room it makes or not (RM1, `lib/takes-desk/runtime.ts`),
  *   and the audio of each Rust Rounds note home holds (RR6),
  *   × every home state (held; waiting; unpaired; off the LAN, which the
@@ -132,13 +144,15 @@ import { ON_PHONE } from "@some-ui/voice-capture"
 
 import { phoneGameBites } from "@/lib/game-bites"
 import type { IdeaTake } from "@/lib/idea-takes"
-import { ideaBundleDesk, ideaTakesDesk } from "@/lib/idea-takes"
+import { ideaBundleDesk, ideaRedoDesk, ideaTakesDesk } from "@/lib/idea-takes"
 import { jobVoiceAudio, phoneJobs } from "@/lib/jobs"
 import type { JobEvent, JobsState } from "@/lib/jobs/model"
 import type { LeetypeTake } from "@/lib/leetype-takes"
 import { leetypeNotesHeldByHome, leetypeTakesDesk } from "@/lib/leetype-takes"
 import type { LensTake } from "@/lib/lens-takes"
 import { lensTakesDesk } from "@/lib/lens-takes"
+import type { LibraryTake } from "@/lib/library-takes"
+import { libraryTakesDesk } from "@/lib/library-takes"
 import {
   isSaving,
   onAudioSettled,
@@ -146,7 +160,7 @@ import {
   reflectionNotesKept,
 } from "@/lib/reflection-voice"
 import type { RustRoundTake } from "@/lib/rust-rounds"
-import { rustRoundRef, rustRoundsDesk } from "@/lib/rust-rounds"
+import { rustRoundRef, rustRoundsDesk, rustWeekDesk } from "@/lib/rust-rounds"
 import type { KeptSceneNote } from "@/lib/scene-voice"
 import { phoneSceneVoice, sceneNotes, sceneNotesKept } from "@/lib/scene-voice"
 import { reflections } from "@/lib/session-reflection"
@@ -172,12 +186,14 @@ import {
 } from "@/lib/voice-home/model"
 import { wireVoiceMarks } from "@/lib/voice-marks"
 
+import { phoneEpisodeNotes, sendEpisodeNotes } from "./episode-notes"
 import { phoneIdeas, sendIdeas } from "./ideas"
 import { homeLink, paired } from "./index"
 import { lensEntriesHeld } from "./lens-record"
 import { notesHeld } from "./notes"
 import { askOnDrive } from "./on-drive"
 import { markSetAside } from "./set-aside"
+import { phoneVideos, sendVideos } from "./videos"
 import { askAudio } from "./voice-audio"
 
 /**
@@ -342,14 +358,44 @@ export function rustRoundNote(
 }
 
 /**
- * A Studio idea answer's take (its `line` is `idea:<idea>:<question>`), as
- * home is told it: a Studio note, whose `ref` home reads as any other.
+ * A take on a week's ticket (its `line` is `<week>:<ticket>`), as home is
+ * told it: a Rust Rounds note named by its week and ticket.
+ */
+export function rustWeekNote(take: RustRoundTake): VoiceOut {
+  return {
+    id: take.id,
+    of: "rust-round",
+    ref: take.line,
+    at: new Date(take.takenAt).toISOString(),
+    contentType: take.mimeType,
+  }
+}
+
+/**
+ * A take on the desk of Studio's answers, as home is told it: a Studio note
+ * under its `line`, `idea:<idea>:<question>` for an idea's answer or the
+ * ask's ref for an ask's (SFEED5, `answerRef`), which home reads as any other.
  */
 export function ideaNote(take: IdeaTake): VoiceOut {
   return {
     id: take.id,
     of: "studio",
     ref: refOf(take.line),
+    at: new Date(take.takenAt).toISOString(),
+    contentType: take.mimeType,
+  }
+}
+
+/**
+ * A take with no scene yet (ST32), as home is told it: a Studio note named
+ * by its own id, so a scene can name it later (ST30). Home lists it as a
+ * take (`GET /voice-notes/takes`) and deletes it from My data as one.
+ */
+export function libraryNote(take: LibraryTake): VoiceOut {
+  return {
+    id: take.id,
+    of: "studio",
+    ref: refOf(`take:${take.id}`),
     at: new Date(take.takenAt).toISOString(),
     contentType: take.mimeType,
   }
@@ -595,6 +641,12 @@ function listed(
           },
         ]
   })
+  // RR13: only the takes of a week sent; one still waiting is not listed.
+  const week = rustWeekDesk.kept().map((take) => ({
+    note: rustWeekNote(take),
+    audio: (): Promise<Blob | null> => rustWeekDesk.audio(take.id),
+    aside: asideAt(take),
+  }))
   const ideas = ideaTakesDesk.kept().map((take) => ({
     note: ideaNote(take),
     audio: (): Promise<Blob | null> => ideaTakesDesk.audio(take.id),
@@ -604,6 +656,17 @@ function listed(
   const bundled = ideaBundleDesk.kept().map((take) => ({
     note: ideaNote(take),
     audio: (): Promise<Blob | null> => ideaBundleDesk.audio(take.id),
+    aside: asideAt(take),
+  }))
+  // #2579: only the takes of an answer said again whose idea was sent again.
+  const resaid = ideaRedoDesk.kept().map((take) => ({
+    note: ideaNote(take),
+    audio: (): Promise<Blob | null> => ideaRedoDesk.audio(take.id),
+    aside: asideAt(take),
+  }))
+  const library = libraryTakesDesk.kept().map((take) => ({
+    note: libraryNote(take),
+    audio: (): Promise<Blob | null> => libraryTakesDesk.audio(take.id),
     aside: asideAt(take),
   }))
   return [
@@ -616,8 +679,11 @@ function listed(
     ...lens,
     ...leetype,
     ...rust,
+    ...week,
     ...ideas,
     ...bundled,
+    ...resaid,
+    ...library,
   ]
 }
 
@@ -894,10 +960,13 @@ async function letGoOnHomesWord(send: HomeCall): Promise<void> {
  * again, then each copy waiting sent (`exchangeVoice`), then, once that
  * synced, home's word on which Studio takes Drive has (`letGoOnHomesWord`),
  * each Studio idea sent whole that home doesn't hold (`sendIdeas`, ST26),
- * whose said answers name notes that have just gone, and the set-aside
- * marks due (`markSetAside`, MIC2), which end the run in its exchange's
- * place. A run that sent all it had still fails, saying why, if that pass
- * left a note it could copy uncopied (`runEnd`, LA14).
+ * whose said answers name notes that have just gone, each note left on an
+ * episode home doesn't hold (`sendEpisodeNotes`, SFEED6), the set-aside marks due
+ * (`markSetAside`, MIC2), and, once those synced, each Studio video kept for
+ * home to make (`sendVideos`, ST33), whose takes name notes too, which ends
+ * the run in its exchange's place. A run that sent all it had still fails,
+ * saying why, if that pass left a note it could copy uncopied (`runEnd`,
+ * LA14).
  */
 export async function sendVoice(
   send: HomeCall,
@@ -908,7 +977,10 @@ export async function sendVoice(
   if (running !== null) await running
   const pass = running === null ? NO_PASS : lastPass
   const home = phoneVoiceHome()
-  const exchanged = await exchangeVoice(home.keeping, send)
+  const exchanged = await exchangeVoice(home.keeping, send, {
+    letGo: studioKeeping() === null ? null : letGoDeleted,
+    heldBack: home.deletedHeldBack,
+  })
   if (exchanged.kind !== "synced") return runEnd(pass, exchanged)
   await letGoOnHomesWord(send)
   const ideas = await sendIdeas(
@@ -916,12 +988,23 @@ export async function sendVoice(
     send
   )
   if (ideas.kind !== "synced") return runEnd(pass, ideas)
+  const notes = await sendEpisodeNotes(
+    phoneEpisodeNotes(localStorageOrNull(), at.pairing),
+    send
+  )
+  if (notes.kind !== "synced") return runEnd(pass, notes)
   const sendable = marksSendable(candidates())
   const marks: AsidePort = {
     due: () => home.marks.due().filter(sendable),
     answered: home.marks.answered,
   }
-  return runEnd(pass, await markSetAside(marks, send))
+  const marked = await markSetAside(marks, send)
+  if (marked.kind !== "synced") return runEnd(pass, marked)
+  // After the marks, so a video home won't take never holds them up.
+  return runEnd(
+    pass,
+    await sendVideos(phoneVideos(localStorageOrNull(), at.pairing), send)
+  )
 }
 
 /** Home's held notes as a set, made again only when the list changes. */
@@ -965,30 +1048,36 @@ export function voiceKept(id: string): TakeKept {
  * nothing else. Studio's recordings are the one kind My data can delete: a
  * take's audio leaves the phone whatever the owner's let-go choice, its
  * record staying in its shot (`@some-ui/soundbites`' `letGoDeletedTakes`),
- * and an idea answer's leaves its desks, the take staying listed
- * (`letGoDeleted` on `lib/idea-takes`' two desks, #2579). A receipt is home's word
- * that it held the note, so a copy still waiting for an answer this phone
- * never heard goes as a held one does; and any set-aside mark still owed
- * for one is dropped, since home holds no note to mark now. Resolves
+ * and an idea answer's or a take with no scene leaves its desk, the take
+ * staying listed (`letGoDeleted` on `lib/idea-takes`' two desks, #2579, and
+ * on `lib/library-takes`'). A receipt is home's word
+ * that it held the note, so once every store has let go, a copy still
+ * waiting for an answer this phone never heard goes as a held one does,
+ * and any set-aside mark still owed for one is dropped, since home holds
+ * no note to mark now; until then the copy waits, so the voice run sends it
+ * again and home's `deleted_for_good` brings it back here (LA8). Resolves
  * false when Studio's store isn't handed in, a desk couldn't store its
  * mark, or the write failed (that said to the native log); never rejects.
- * The one caller is `lib/my-data`'s delete, on home's receipt.
+ * Its callers are `lib/my-data`'s delete, on home's receipt, and the voice
+ * run (`sendVoice`), on home's `deleted_for_good`.
  */
 export async function letGoDeleted(
   ids: ReadonlyArray<string>
 ): Promise<boolean> {
-  const home = phoneVoiceHome()
-  for (const id of ids) home.keeping.answered({ kind: "held", id })
-  home.drop(ids)
   const studio = studioKeeping()
   const deleted = new Set(ids)
   try {
-    const [, kit, bundle] = await Promise.all([
+    const [, kit, bundle, resaid, library, week] = await Promise.all([
       studio?.letGoDeletedTakes(deleted),
       ideaTakesDesk.letGoDeleted(deleted),
       ideaBundleDesk.letGoDeleted(deleted),
+      ideaRedoDesk.letGoDeleted(deleted),
+      libraryTakesDesk.letGoDeleted(deleted),
+      rustWeekDesk.letGoDeleted(deleted),
     ])
-    return studio !== null && kit && bundle
+    const gone = studio !== null && kit && bundle && resaid && library && week
+    if (gone) settleDeleted(ids)
+    return gone
   } catch (error) {
     reportFailure({
       port: "my data: this phone's copy of what home deleted",
@@ -1000,6 +1089,13 @@ export async function letGoDeleted(
     })
     return false
   }
+}
+
+/** Retires the voice record's copies of notes home deleted for good. */
+function settleDeleted(ids: ReadonlyArray<string>): void {
+  const home = phoneVoiceHome()
+  for (const id of ids) home.keeping.answered({ kind: "held", id })
+  home.drop(ids)
 }
 
 /** A store whose notes leave this phone once home holds them. */
@@ -1067,8 +1163,8 @@ export function holdNotes(): void {
 /**
  * Hands each offline set what home holds, read back, so it may make room at
  * its cap with those and no others (HF5): the lens takes, LeetType takes,
- * Rust Rounds notes and Studio idea takes by their voice notes, with where
- * each is kept (MIC3,
+ * Rust Rounds notes, Studio idea takes and takes with no scene by their
+ * voice notes, with where each is kept (MIC3,
  * `voiceKept`), where each scene note and each spoken reflection is kept,
  * the stores of study notes (`holdNotes`), and the grammar-lens record by
  * each entry as it is now. Each reads `sent` once per look.
@@ -1080,6 +1176,9 @@ function holdOffline(): void {
   rustRoundsDesk.audioFrom(askAudio)
   ideaTakesDesk.keptWhere(voiceKept)
   ideaBundleDesk.keptWhere(voiceKept)
+  ideaRedoDesk.keptWhere(voiceKept)
+  rustWeekDesk.keptWhere(voiceKept)
+  libraryTakesDesk.keptWhere(voiceKept)
   sceneNotesKept(voiceKept)
   reflectionNotesKept(voiceKept)
   holdNotes()
@@ -1115,7 +1214,12 @@ export function watchVoiceNotes(): () => void {
         rustRoundsDesk.phone().takes.subscribe(copySoon),
         ideaTakesDesk.phone().subscribe(copySoon),
         // A new idea's takes go once it is sent (ST26): its Send is a change.
-        ideaBundleDesk.phone().takes.subscribe(copySoon)
+        ideaBundleDesk.phone().takes.subscribe(copySoon),
+        // An answer said again goes once its idea is sent again (#2579).
+        ideaRedoDesk.phone().takes.subscribe(copySoon),
+        // A week's takes go once it is sent (RR13): its Send is a change.
+        rustWeekDesk.phone().takes.subscribe(copySoon),
+        libraryTakesDesk.phone().takes.subscribe(copySoon)
       )
     }
     // A kept take is a write to its project, once Studio has handed it in.

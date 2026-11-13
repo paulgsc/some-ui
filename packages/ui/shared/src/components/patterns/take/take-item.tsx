@@ -4,11 +4,13 @@ import type {
   TakeItemView,
   TakePlace,
   TakeRowView,
+  TakeSaid,
   TakeWords,
 } from "@some-ui/voice-capture"
 import { TAKE_WORDS, takeSaid } from "@some-ui/voice-capture"
 
 import { cn } from "../../../lib/utils"
+import { Notice } from "../../ui/notice"
 import type { TakeButtonProps } from "./take-button"
 import { TakeButton } from "./take-button"
 import { TakeRow } from "./take-row"
@@ -22,8 +24,11 @@ export type TakeItemProps = {
   onPlay: (id: string) => void
   /** Records a current take again (D2). */
   onRedo: (id: string) => void
-  /** Sets a current take aside (D3); `place` is where it is kept. */
-  onLetGo: (id: string, place: TakePlace) => void
+  /**
+   * Sets a current take aside (D3); `place` is where it is kept. Absent, no
+   * row offers Let go (a week's take already sent, RR22).
+   */
+  onLetGo?: ((id: string, place: TakePlace) => void) | undefined
   /**
    * Opens My data on a take that is a record home marks deletable (MD4,
    * the pattern's `records: "delete-in-my-data"`); absent, no row offers
@@ -35,7 +40,7 @@ export type TakeItemProps = {
   /** The screen's words about one take, under its length. */
   describe?: (take: PatternTake) => ReactNode
   /**
-   * The line beside the button, where a screen's store says more than the
+   * What is said of the last take, where a screen's store says more than the
    * pattern's table can (its way to make room when full): `TAKE_WORDS`,
    * spread, unless given.
    */
@@ -47,22 +52,75 @@ export type TakeItemProps = {
   extra?: (row: TakeRowView) => ReactNode
   /**
    * Set while the screen's store keeps no new take (a phone full until home
-   * has some): the button and its line give way to these words, saying what
-   * makes room, and no row offers Redo, which records one. Every take still
-   * plays, and a current one can still be let go.
+   * has some): these words say what makes room, and the button and each
+   * row's Redo, which record one, stay where they are, disabled. Every take
+   * still plays, and a current one can still be let go.
    */
   full?: ReactNode
   className?: string
 } & Pick<TakeButtonProps, "size">
 
+/** Which saying `said` is, so a closed one stays closed until another. */
+function sayingOf(said: TakeSaid, line: string): string {
+  return said.kind === "ended"
+    ? `ended ${said.ended.seq}`
+    : `${said.kind} ${line}`
+}
+
+export type TakeNoticesProps = {
+  /** The item's view: what is said of its last take. */
+  view: Pick<TakeItemView, "said">
+  /** What is said of the last take: `TAKE_WORDS` unless given. */
+  words?: TakeWords | undefined
+  /**
+   * Set while the screen's store keeps no new take: these words say what
+   * makes room, said instead of the last take's.
+   */
+  full?: ReactNode
+}
+
 /**
- * One item's takes, from its view: the take button with its one line beside
- * it (how the last take ended, a take set aside, a take that couldn't play),
- * then the item's current takes, then the earlier ones a Redo superseded,
- * collapsed (D2). It renders `view` and forwards what is tapped, so a screen
- * whose own machine stands between a tap and the pattern (Rust Rounds' card,
- * LeetType's answer) uses the same parts as `TakeList`, which wires them to
- * the pattern directly.
+ * What the take pattern says over the screen: that the phone is full, or
+ * what the last take came to (how it ended, a take set aside, a take that
+ * couldn't play). Each can be closed, and says itself again once it is new.
+ */
+export const TakeNotices = ({
+  view,
+  words = TAKE_WORDS,
+  full,
+}: TakeNoticesProps): JSX.Element | null => {
+  if (full !== undefined)
+    return (
+      <Notice tone="warning" dismissible>
+        {full}
+      </Notice>
+    )
+  const { said } = view
+  if (said === null) return null
+  const line = takeSaid(words, said)
+  return (
+    <Notice
+      key={sayingOf(said, line)}
+      role={said.kind === "unplayable" ? "alert" : undefined}
+      tone={said.kind === "unplayable" ? "warning" : "neutral"}
+      dismissible
+    >
+      <span
+        data-take-ended={said.kind === "ended" ? said.ended.seq : undefined}
+      >
+        {line}
+      </span>
+    </Notice>
+  )
+}
+
+/**
+ * One item's takes, from its view: the take button, then the item's current
+ * takes, then the earlier ones a Redo superseded, collapsed (D2), with
+ * `TakeNotices` saying what the last take came to. It renders
+ * `view` and forwards what is tapped, so a screen whose own machine stands
+ * between a tap and the pattern (Rust Rounds' card, LeetType's answer) uses
+ * the same parts as `TakeList`, which wires them to the pattern directly.
  */
 export const TakeItem = ({
   view,
@@ -79,34 +137,25 @@ export const TakeItem = ({
   size,
   className,
 }: TakeItemProps): JSX.Element => {
-  const { said } = view
   return (
     <section
       aria-label={label}
       className={cn("flex flex-col gap-3", className)}
     >
-      {full === undefined ? (
-        <div className="flex flex-col items-center gap-2">
-          <TakeButton view={view.button} size={size} onTap={onTap} />
-          <p
-            aria-live="polite"
-            data-take-ended={
-              said?.kind === "ended" ? said.ended.seq : undefined
-            }
-            className="text-muted-foreground min-h-5 text-center text-sm"
-          >
-            {said === null ? null : takeSaid(words, said)}
-          </p>
-        </div>
-      ) : (
-        <p role="status" className="text-muted-foreground text-sm">
-          {full}
-        </p>
-      )}
+      <div className="flex flex-col items-center">
+        <TakeButton
+          view={view.button}
+          size={size}
+          onTap={onTap}
+          canStart={full === undefined}
+        />
+      </div>
+      <TakeNotices view={view} words={words} full={full} />
       <TakeRows
         view={view}
         onPlay={onPlay}
-        onRedo={full === undefined ? onRedo : undefined}
+        onRedo={onRedo}
+        canRedo={full === undefined}
         onLetGo={onLetGo}
         onDelete={onDelete}
         describe={describe}
@@ -120,8 +169,13 @@ export type TakeRowsProps = Pick<
   TakeItemProps,
   "view" | "onPlay" | "onLetGo" | "onDelete" | "describe" | "extra"
 > & {
-  /** Records a current take again (D2); absent while no new take is kept. */
+  /** Records a current take again (D2). */
   onRedo?: TakeItemProps["onRedo"] | undefined
+  /**
+   * False while no new take is kept (a phone full): Redo, which records
+   * one, stays in each row, disabled.
+   */
+  canRedo?: boolean
 }
 
 /**
@@ -134,6 +188,7 @@ export const TakeRows = ({
   view,
   onPlay,
   onRedo,
+  canRedo = true,
   onLetGo,
   onDelete,
   describe,
@@ -149,17 +204,21 @@ export const TakeRows = ({
           {view.current.map((row) => (
             <TakeRow
               key={row.take.id}
-              row={row}
+              row={{
+                ...row,
+                canRedo: canRedo && row.canRedo,
+                // A take on neither this phone nor home has nowhere to set
+                // it aside.
+                canLetGo: row.canLetGo && row.take.kept !== null,
+              }}
               onPlay={() => onPlay(row.take.id)}
               onRedo={
                 onRedo === undefined
                   ? undefined
                   : (): void => onRedo(row.take.id)
               }
-              // A take on neither this phone nor home has nowhere to set
-              // it aside.
               onLetGo={
-                row.take.kept === null
+                onLetGo === undefined
                   ? undefined
                   : (): void =>
                       onLetGo(row.take.id, row.take.kept?.place ?? "phone")

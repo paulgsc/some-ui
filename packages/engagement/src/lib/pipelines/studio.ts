@@ -11,12 +11,13 @@ const studio: Pipeline = {
   wing: "studio",
   domain: "video",
   affordances: [
-    // Studio's Home: the video kept on this phone, opened for a sitting.
+    // The videos made in sittings, under Studio's Episodes (SFEED1): the
+    // video kept on this phone, opened for a sitting.
     {
       id: "sitting",
       surface: "apk",
       name: "A sitting on the video",
-      routes: ["/journal"],
+      routes: ["/journal/episodes/making"],
       offer: "listed",
       emits: ["offered", "taken", "passed-over", "left"],
       touches: true,
@@ -35,7 +36,7 @@ const studio: Pipeline = {
       id: "take",
       surface: "apk",
       name: "A take of a scene",
-      routes: ["/journal"],
+      routes: ["/journal/episodes/making"],
       offer: "listed",
       emits: ["offered", "taken", "passed-over"],
       touches: true,
@@ -45,7 +46,7 @@ const studio: Pipeline = {
       id: "watch-note",
       surface: "apk",
       name: "A note on the review",
-      routes: ["/journal"],
+      routes: ["/journal/episodes/making"],
       offer: "listed",
       emits: ["offered", "taken", "passed-over"],
       touches: true,
@@ -55,7 +56,7 @@ const studio: Pipeline = {
       id: "finish",
       surface: "apk",
       name: "Finish for YouTube",
-      routes: ["/journal"],
+      routes: ["/journal/episodes/making"],
       offer: "listed",
       emits: ["offered", "taken", "passed-over"],
       touches: true,
@@ -66,7 +67,7 @@ const studio: Pipeline = {
       id: "how-did-it-go",
       surface: "apk",
       name: "How did it go?",
-      routes: ["/journal"],
+      routes: ["/journal/episodes/making"],
       offer: "listed",
       emits: ["offered", "said", "passed-over"],
       touches: false,
@@ -76,12 +77,17 @@ const studio: Pipeline = {
         { id: "rough", name: "Rough" },
       ],
     },
-    // New idea (ST26): from Studio's Home and the launcher's shortcut.
+    // New idea (ST26): from the videos made in sittings, Studio's
+    // Intuitions and the launcher's shortcut.
     {
       id: "new-idea",
       surface: "apk",
       name: "New idea",
-      routes: ["/journal", "/journal/idea"],
+      routes: [
+        "/journal/episodes/making",
+        "/journal/intuitions",
+        "/journal/idea",
+      ],
       offer: "listed",
       emits: ["offered", "taken", "passed-over"],
       touches: true,
@@ -91,7 +97,11 @@ const studio: Pipeline = {
       id: "your-ideas",
       surface: "apk",
       name: "Your ideas",
-      routes: ["/journal", "/journal/ideas"],
+      routes: [
+        "/journal/episodes/making",
+        "/journal/intuitions",
+        "/journal/ideas",
+      ],
       offer: "listed",
       emits: ["offered", "taken", "passed-over"],
       touches: true,

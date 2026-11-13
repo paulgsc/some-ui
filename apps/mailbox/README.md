@@ -15,10 +15,13 @@ routines read it instead of hearing the audio themselves. For the routines' book
 the Jobs routine, the queue, what is new since the last digest and each waiting note's newest
 transcript; for the reflections routine, what is answered, the word ids its decks use, its
 latest scenes, the lessons waiting unopened and which reflections and prompts still wait on a
-voice note), so a routine reads it instead of rebuilding it. The index is a view of what home
+voice note; for the Rust Rounds routine, home's record of each week past its deadline), so a
+routine reads it instead of rebuilding it. The index is a view of what home
 keeps, so only the latest of each routine's stays. For the reflections routine: each **written
 reflection** home keeps (`reflection`), its text only, and each **drama prompt** (`prompt`),
-the next scene's prompt as the phone asked for it, its markdown only. For the Build Journal:
+the next scene's prompt as the phone asked for it, its markdown only, and each **note on an
+episode** (`feedback`), the moment and categories the owner picked (SFEED6), which the routine
+files as a pending issue. For the Build Journal:
 the build-journal session's **list of the Studio takes Drive holds** (`drive-takes-…` in
 `brief`), SHA-256s only, so home can tell the phone which takes Drive has too. Each side
 reaches it with its own token, so the files move between them without a hand-carried step.
@@ -40,6 +43,7 @@ cloud routine ◀──GET index── [ mailbox ] ◀──PUT index── home
 cloud routine ◀──GET reflection── [ mailbox ] ◀──PUT reflection── home ◀── phone (a written reflection)
 cloud routine ◀──GET prompt── [ mailbox ] ◀──PUT prompt── home ◀── phone (Ask for the next scene)
 build journal ──PUT brief (drive-takes)──▶ [ mailbox ] ◀──GET brief── home ──▶ phone (Drive has it)
+                                           [ mailbox ] ──ring──▶ home (a socket home holds open)
 ```
 
 The phone talks to home only. The mailbox carries no audio: home keeps the audio
@@ -80,9 +84,9 @@ about it (owner, 2026-10-23):
 Nothing is deleted for good: the bytes are home's before the mailbox lets them go, and the
 `archived` row stays.
 
-A written reflection (`reflection`) and a drama prompt (`prompt`) are archived the same way,
-except that home lists each folder only once a file it put there is old enough, and the routine
-cannot ask for one back (see "Who may do what"). Home's index is not archived (above, "What it keeps"): home can compute
+A written reflection (`reflection`), a drama prompt (`prompt`) and a note on an episode
+(`feedback`) are archived the same way, except that home lists each folder only once a file it
+put there is old enough, and the routine cannot ask for one back (see "Who may do what"). Home's index is not archived (above, "What it keeps"): home can compute
 the same bytes again from what it keeps.
 
 ## API
@@ -99,12 +103,17 @@ Every request needs `Authorization: Bearer <token>`. Every answer is JSON, or th
 | `GET /v1/:folder/archived?after=<seq>&limit=<n>`         | `200 {"items":[{"seq","name","size","sha256","contentType","putAt","archivedAt"}]}`, oldest first by the `seq` each had while live. Paged as above.                                                                                                                                                                                                     |
 | `PUT /v1/:folder/wanted/:name` (no body)                 | Asks home to put an archived file back: `202 {"change":"asked"}`; `200 {"change":"unchanged"}` if already asked; `200 {"change":"live"}` if it is there now; `404` if never archived.                                                                                                                                                                   |
 | `GET /v1/:folder/wanted?limit=<n>`                       | `200 {"items":[{"name","askedAt"}]}`, the open asks, oldest first.                                                                                                                                                                                                                                                                                      |
+| `GET /v1/bell` with `Upgrade: websocket`                 | `101`, a WebSocket the mailbox rings (below, "The bell"); `426` without the upgrade; `405` for another method. `home` only.                                                                                                                                                                                                                             |
 | anything else                                            | `404`; a method the path does not take is `405` with `Allow`. A missing or wrong token is `401`, a token that may not do this is `403`, and storage failing is `503`.                                                                                                                                                                                   |
 
 The folders are `brief`, `decisions`, `scout`, `scene`, `drama`, `run`, `opened`, `leetype`,
-`leetype-log`, `transcript`, `index`, `reflection` and `prompt`. `brief` also holds the
-build-journal session's lists of the takes Drive holds (`drive-takes-…`), which home finds
-in the listing it makes of `brief` every pass anyway, so they cost no listing of their own.
+`leetype-log`, `transcript`, `index`, `reflection`, `prompt` and `feedback`. `brief` also holds the
+build-journal session's lists of the takes Drive holds (`drive-takes-…`) and the Monday
+routine's weeks of Rust Rounds (`rust-week-…`) and the essays that answer them
+(`rust-essay-…`), which home finds in the listing it makes of
+`brief` every pass anyway, so they cost no listing of their own (MI6). Home's record of each
+final week goes back the same way, as the Rust Rounds routine's index in `index` (below), a
+folder home already puts to: no new folder and no new listing.
 
 **`seq` only grows, and it has gaps.** SQLite hands out a number for every put that reaches the
 table, including a put of a name already held (`unchanged` or `conflict`), which stores nothing.
@@ -112,13 +121,35 @@ So after a few repeats the next new file can jump ahead (for example `seq 1`,
 then six repeats, then `seq 8`). Page with `after` set to the highest `seq` you have seen, never
 `after + 1`.
 
+### The bell
+
+Home learns that something waits for it without waiting for its next poll: it holds a
+WebSocket open on `GET /v1/bell`, and the mailbox rings it there (MBP1,
+[#2142](https://github.com/paulgsc/some-ui/issues/2142); the owner chose push on 2026-10-26).
+
+- **A ring** is the text `{"ring":"<folder>"}` and nothing else (MB6). It goes out after a put
+  that adds a file (`201`, never an `unchanged` repeat) to a folder home reads (`brief`,
+  `scene`, `drama`, `run`, `leetype`, as paulgsc/server's `mailbox::pass::READS`), and after
+  the routine opens an ask for an archived file (`202`), with the ask's folder. A ring does
+  not say which of the two it is: any ring starts home's whole pass, which reads the listings
+  and answers the asks, as its poll does. Home's own puts and an archive put back
+  ring nothing.
+- **Best effort.** The put's answer goes out without waiting on the ring, and a ring that
+  fails changes nothing about it. With no one listening the ring is dropped: home runs a pass
+  when it connects, and its poll stays as the backstop.
+- **One listener.** The bell is a Durable Object (`Bell`, `src/bell.ts`), one for the
+  mailbox. A new connection closes the earlier one with code `4000` (`replaced`).
+- **Heartbeat.** Home sends `ping` and gets `pong`, answered without waking the bell
+  (`setWebSocketAutoResponse`). Any other message is ignored. The bell takes the socket
+  with the hibernation API (`acceptWebSocket`), so an open socket bills no duration.
+
 ### Who may do what
 
-| Secret          | Role      | May                                                                                                                                                                      |
-| --------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ROUTINE_TOKEN` | `routine` | read every folder; put `brief`, `scene`, `drama`, `run` and `leetype`; list what is archived and ask for it back, in every folder but `index`, `reflection` and `prompt` |
-| `HOME_TOKEN`    | `home`    | read `brief`, `scene`, `drama`, `run` and `leetype`; put `decisions`, `scout`, `opened`, `leetype-log`, `transcript`, `index`, `reflection` and `prompt`                 |
-| `ARCHIVE_TOKEN` | `archive` | read every folder; archive a file, put an archived one back and list the open asks, in every folder but `index`                                                          |
+| Secret          | Role      | May                                                                                                                                                                                      |
+| --------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ROUTINE_TOKEN` | `routine` | read every folder; put `brief`, `scene`, `drama`, `run` and `leetype`; list what is archived and ask for it back, in every folder but `index`, `reflection`, `prompt` and `feedback`     |
+| `HOME_TOKEN`    | `home`    | read `brief`, `scene`, `drama`, `run` and `leetype`; put `decisions`, `scout`, `opened`, `leetype-log`, `transcript`, `index`, `reflection`, `prompt` and `feedback`; listen on the bell |
+| `ARCHIVE_TOKEN` | `archive` | read every folder; archive a file, put an archived one back and list the open asks, in every folder but `index`                                                                          |
 
 The routine role is every scheduled routine's: the Jobs digest, the study reflections and,
 once it is scheduled, the LeetType review each put to their own folders.
@@ -128,7 +159,8 @@ puts (`written_reflection` in `paulgsc/server`), so it archives one by what it p
 folder only once one is old enough, and never answers an ask for it: a pass with nothing to do
 then makes no request for `reflection` at all. A reflection archived before the routine
 answered it is no longer offered to the routine; home still keeps it. Home holds every drama
-prompt it puts too (`drama_prompt` in `paulgsc/server`).
+prompt it puts too (`drama_prompt` in `paulgsc/server`), and every note on an episode
+(`episode_note`), so neither is asked back either.
 
 Home holds two tokens. `archive` is apart from `home` so the token home uses every pass cannot
 drop a byte. A secret that is unset or empty authenticates no one, and one value set for two
@@ -172,15 +204,21 @@ role, and it is the owner's call, so it is not built.
   `drama-YYYYMMDDTHHMMSSmmmZ.prompt.json`, named for the prompt's stamp as the phone names it
   (the moment it was asked for, in UTC to the millisecond, as home's
   `PUT /api/v1/routine/prompts/:stamp` takes it), so the drama that answers it is the
-  `drama` folder's `drama-<stamp>.json`. `brief` also takes `drive-takes-YYYYMMDDTHHMMSSZ.json`
+  `drama` folder's `drama-<stamp>.json`; and `feedback` takes `feedback-<id>.json`, named for
+  the phone's id for the note (1 to 64 letters, digits, `-` or `_`). `brief` also takes `drive-takes-YYYYMMDDTHHMMSSZ.json`
   (MB2, the owner's route a on paulgsc/some-ui#2401), named for when the build-journal session
   listed Drive's takes folder, in UTC to the second, so each list goes under a new name.
+  `brief` also takes `rust-week-YYYY-wNN.json` (MB2, RR12 paulgsc/some-ui#2687), a week of Rust
+  Rounds named for the ISO week it opens, which is its `id`. `brief` also takes
+  `rust-essay-YYYY-wNN.json` (MB2, RR16 paulgsc/some-ui#2691), the script of the essay that
+  answers a week of Rust Rounds, named for that week, its `week.id`, and
+  `rust-essay-YYYY-wNN-rN.json` for a correction, `N` from 2 with no leading zero.
   Anything else, an audio file's name included, is `422`.
 - **Content type** `application/json` (parameters such as `charset` are ignored), and the body
   must be UTF-8 JSON with no byte-order mark.
 - **Schema**: the top-level `schema` must be `some-ui.job-digest/1`, `some-ui.job-decisions/1`,
   `some-ui.job-scouts/1`, `some-ui.routine-scene/1`, `some-ui.routine-drama/1`, `some-ui.routine-run/1`,
-  `some-ui.routine-opened/1`, `some-ui.leetype-session/1`, `some-ui.leetype-log/1`, `some-ui.voice-transcript/1`, `some-ui.routine-index/1`, `some-ui.reflection/1` or `some-ui.drama-prompt/1` to match the folder (and `some-ui.drive-takes/1` for a list of Drive's takes in `brief`). The Worker checks that and nothing deeper, except for a transcript, an index, a reflection, a prompt and a list of Drive's takes (below); the readers validate the full shape.
+  `some-ui.routine-opened/1`, `some-ui.leetype-session/1`, `some-ui.leetype-log/1`, `some-ui.voice-transcript/1`, `some-ui.routine-index/1`, `some-ui.reflection/1`, `some-ui.drama-prompt/1` or `some-ui.episode-note/1` to match the folder (and `some-ui.drive-takes/1` for a list of Drive's takes in `brief`, `some-ui.rust-week/1` for a week of Rust Rounds, `some-ui.rust-essay/1` for an essay's script). The Worker checks that and nothing deeper, except for a transcript, an index, a reflection, a prompt, a note on an episode, a list of Drive's takes and a week's `id`, which must be the name's (below); the readers validate the full shape.
 - **A scene** is `{"schema":"some-ui.routine-scene/1","answers":"<reflection>","title":"<the
 scene folder's name>","decks":[<read-aloud deck>,<lens deck>]}`, each deck exactly as the
   phone's word set check takes it. **A drama** is `{"schema":"some-ui.routine-drama/1",
@@ -228,7 +266,7 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
   copy. Home puts a new one only when something it counts arrives or a moment the index
   carries passes (for the Jobs index, an open pick lapsing): a new day alone moves nothing
   else, so a day with neither puts none. Its `routine` names the routine, as the file's
-  name does: `jobs` or `reflections`. The Worker holds every index to its routine's keys and
+  name does: `jobs`, `reflections`, `call` or `rust`. The Worker holds every index to its routine's keys and
   no other, a name that carries the body's `routine`, and no audio or Drive link, by the same
   tests as a transcript, each refusal with its reason (`an index carries no audio` or
   `an index names no Drive file`). The Jobs index is
@@ -276,6 +314,37 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
   and `prompts` lists. It carries no reflection's, prompt's or transcript's words:
   reflections and prompts are named by their names here and ids, notes by their ids, and
   transcripts by their name here.
+  The weekly call's index is
+  `{"schema":"some-ui.routine-index/1","routine":"call","asOf","held":[{"from","to","sha256"}]}`
+  (paulgsc/server `mailbox::index::call`, paulgsc/some-ui#2635): `asOf`, when home last took a
+  week of the call from `paulgsc/testing`, and `held`, every week home holds, newest first, by its
+  first and last day and the SHA-256 of the bytes home keeps. Home puts it only when it takes a
+  new week, and none before it holds one. The call's routine reads it to let a week leave
+  `paulgsc/testing` only once home holds that week, byte for byte
+  (`packages/video-render/CALL-ROUTINE.md`, step 6), so the Worker holds it to more than its
+  keys: an `asOf` that is an instant, and a `held` list whose every week has exactly `from`,
+  `to` and `sha256`, two calendar days with `to` no earlier than `from`, a SHA-256 in lower-case
+  hex, and a `from` no other week in the list has. It carries no week's words.
+  The Rust Rounds index is
+  `{"schema":"some-ui.routine-index/1","routine":"rust","asOf","weeks":[<record>…]}`
+  (RR18, paulgsc/some-ui#2693; the owner's choice A, 2026-11-11): `weeks`, every week among the
+  newest four home holds that is past its deadline, newest first, each exactly as
+  `GET /rust-weeks/:id/record` gives it (paulgsc/server `handlers/rust_week_record.rs`), its
+  final send (or `null` when nothing was sent by the deadline), each ticket answered or not with
+  its take's note id, and the errors pasted that week; `asOf`, the latest moment among those
+  weeks' deadlines and what reached home of them, or `null` with no week. The Monday routine
+  writes each week's essay from this record, never from a draft
+  (`packages/ui/rust-rounds/ROUTINE.md`). The Worker holds it to an `asOf` that is an instant
+  or `null`, and a `weeks` list whose every week is an object with a `week` id like `2026-w46`
+  that no other week in the list has, `closed` true, a `sent` that is `null` or an object
+  whose `draft` is false, and `tickets` and `pastes` lists. A pasted error is the owner's own
+  text: a linker's symbol in one can run past 256 base64-like characters, so the scan for
+  encoded bytes reads the body less each paste's text where it stands as a `"text"` value, as
+  `JSON.stringify` writes it (the same string under any other key, or written any other way,
+  stays in and is scanned), and each paste's text
+  is held instead to at most 20,000 characters (home's own cap) with no `data:` URI and no
+  Drive link. It carries the pasted errors' text and the takes' note ids, never what was
+  said: that is the `transcript` folder's.
 - **A written reflection** is `{"schema":"some-ui.reflection/1","reflection","session","at","text"}`:
   the phone's id for it (which the name carries), the session it is about (the phone's id for
   it, as a reflection transcript's `ref` names it), when it was written, and the typed line.
@@ -299,6 +368,20 @@ session, as home holds it>]}`: the events in their home form (paulgsc/server
   as sent carries a `data:` URI, a Drive link or a run of 256 or more base64 characters, by
   the transcript's tests. A prompt is about 40 KB today, most of it the tree prompt; home
   takes one of at most 256 KiB of text, so a file is well under the cap.
+- **A note on an episode** is
+  `{"schema":"some-ui.episode-note/1","note","feed","episode","atMs","categories","take","writtenAt"}`:
+  the phone's id for the note (which the name carries), the feed (`call` or `playoff-delta`),
+  the episode's key, the moment in it in whole milliseconds, what it is about (one or more of
+  SFEED decision 7's set, final by decision 10, each once, in its order: `shallow`, `technical`,
+  `missedIntuition`, `unsupported`, `tooLong`, `tooShort`, `textClipped`, `slideShakes`,
+  `overlap`, `hardToRead`, `pacing`, `voice`, `musicLoud`, `subtitlesOff`), the spoken note's
+  take id or `null`, and when it was written (paulgsc/some-ui#2745). What the owner said in a
+  spoken note is that take's `transcript`, never this file. The Worker holds this shape
+  itself, as it holds a reflection's: every key is required, and any other key is `422`. One
+  that names audio is refused with `a note carries no audio: a spoken one goes as its take's
+transcript`, and one that names Drive with `a note names no Drive file`. A name that does not
+  carry the body's `note` is `422`, and so is a body whose text as sent carries a `data:` URI, a
+  Drive link or a run of 256 or more base64 characters, by the transcript's tests.
 - **A list of the takes Drive holds** is
   `{"schema":"some-ui.drive-takes/1","at","takes":[{"sha256"}]}`: when the build-journal
   session listed Drive's Build Journal takes folder (an instant, which the name carries to the
@@ -323,7 +406,9 @@ names no Drive file or link` when it names Drive or a file id), a take with any 
   and pick), so a few hundred bytes a day; only the latest is kept, and home puts none over
   the cap. A reflections index grows with the bases answered (tens of bytes each) and the
   distinct word ids the decks use (about 35 bytes each, a few new ones per scene), so about
-  1 KB a day; the rest of it is bounded by what still waits.
+  1 KB a day; the rest of it is bounded by what still waits. The call index grows by about
+  100 bytes a week. The Rust Rounds index holds at most four weeks, a few KB each; a pasted
+  error can add up to about 80 KB, and home drops the oldest weeks to stay under the cap.
 
 ## Limits
 
@@ -342,8 +427,17 @@ operation; it does not bill (see MB4).
   CPU. I have not measured whether it fits in 10 ms; files are far below it in practice
   (the sizes are under "What a put must satisfy").
 
+- The bell (above) is a SQLite-backed Durable Object, the only kind Workers Free takes, and
+  it stores nothing. Durable Objects Free: 100,000 requests and 13,000 GB-s of duration a
+  day. A connection is one Worker request and one Durable Object request; home's `ping` is
+  answered without waking it, so it bills neither; a ring is one Durable Object request, and
+  sending it is free. Measured on 2026-11-10 from the live database: 87 files reached a
+  folder that rings in the 19 days from 2026-10-22, about 5 a day and 12 on the busiest, and
+  no ask was open. With a few connections a day that is tens of requests against 100,000,
+  and the bell is awake for milliseconds each time.
+
 A missing or wrong token is answered before any query runs, so a request without a token does
-not spend D1 quota.
+not spend D1 quota. Opening the bell runs no query at all.
 
 ## Gray-area invariants
 
@@ -473,16 +567,21 @@ how each was checked when this workspace landed.
 **MB2: Roles.**
 
 - _Claim:_ the `ROLES` table in `src/core.ts` is the only place a token is mapped to what it
-  may do, and it holds exactly three roles: `routine` (get every folder, put `brief`, `scene`,
-  `drama`, `run` and `leetype`, ask every folder but `index`, `reflection` and `prompt`), `home`
+  may do, `listen` is `true` for `home` and only `home` (the bell, MBP1,
+  [#2142](https://github.com/paulgsc/some-ui/issues/2142): "the bell is `home`'s only"), and
+  it holds exactly three roles: `routine` (get every folder, put `brief`, `scene`,
+  `drama`, `run` and `leetype`, ask every folder but `index`, `reflection`, `prompt` and `feedback`), `home`
   (get `brief`, `scene`, `drama`, `run` and `leetype`, put `decisions`, `scout`, `opened`,
-  `leetype-log`, `transcript`, `index`, `reflection` and `prompt`) and `archive` (get every folder, move
+  `leetype-log`, `transcript`, `index`, `reflection`, `prompt` and `feedback`) and `archive` (get every folder, move
   every folder but `index`; owner, 2026-10-23, and `scene` and `drama` the same day; `run` and
   `opened` 2026-10-24; `leetype` and `leetype-log` 2026-10-24 too; `transcript` 2026-10-25;
   `index` 2026-10-31, paulgsc/server#509, and kept out of `ask` and `move` the same day, since
   it is a view and not a record; `reflection` 2026-10-26, paulgsc/some-ui#2174 decision D2, and
   kept out of `ask` so home lists nothing of it while nothing is due; `prompt` the same day
-  and decision, paulgsc/some-ui#2179, kept out of `ask` for the same reason). The routine's `brief` also takes its one-time backfill: a Jobs decisions or
+  and decision, paulgsc/some-ui#2179, kept out of `ask` for the same reason; `feedback`
+  2026-11-07, SFEED decision 6 on paulgsc/some-ui#2670, "home writes down what I say … the
+  existing daily reflections routine files each as a pending issue", kept out of `ask` for the
+  same reason). The routine's `brief` also takes its one-time backfill: a Jobs decisions or
   scouts file under its Drive name, only as the phone names one (`sharedDay`: a real calendar
   day, a decisions share number from 2 to 99, a scouts stamp at a real time) and only for a
   day from 2026-10-17, when the phone could first share one, through 2026-11-03, the day
@@ -492,10 +591,18 @@ how each was checked when this workspace landed.
   of the takes Drive holds (`FOLDERS`' `also`, `drive-takes-…`, `driveTakesRefusal`; the
   owner's route a, 2026-10-31,
   [paulgsc/some-ui#2401](https://github.com/paulgsc/some-ui/issues/2401#issuecomment-6549482554)),
-  which only the routine role puts and home reads with the digests. Every request passes `authenticate` and then one of `serve`'s
-  `may(grant.get | put | ask | move)` checks before anything reaches the store.
+  which only the routine role puts and home reads with the digests, and, the same way, a week of
+  Rust Rounds (`rust-week-…`, `rustWeekRefusal`; the owner's RR12,
+  [paulgsc/some-ui#2687](https://github.com/paulgsc/some-ui/issues/2687): "the routine puts a
+  week, and home reads it"), and an essay's script (`rust-essay-…`, `rustEssayRefusal`;
+  [the owner's answer on paulgsc/some-ui#2684](https://github.com/paulgsc/some-ui/issues/2684#issuecomment-6714043601): "the routine puts it in a mailbox folder …, home reads and keeps it"). Every request passes `authenticate` and then one of `serve`'s
+  `may(grant.get | put | ask | move)` checks before anything reaches the store, and
+  `GET /v1/bell` passes `authenticate` and `listen`'s `grant.listen` check before anything
+  reaches the bell.
 - _Falsified by_ a hunk that adds, removes or renames a role; adds a folder to, or removes one
-  from, any role's `get`, `put`, `ask` or `move` list; changes which secret a role reads, or
+  from, any role's `get`, `put`, `ask` or `move` list (`HOME_READS` is home's `get`); sets
+  `listen` to `true` for any role but `home`, or loosens or removes `listen`'s `grant.listen`
+  check, or lets `handle` reach `deps.bell` other than through `listen` and `ring`; changes which secret a role reads, or
   lets `authenticate` read another secret or accept an unset, empty or shared one; edits,
   loosens or removes a `may` check in `serve`, or changes which right a listing or method is
   checked against; lets `handle` reach `serve` or the store without a grant; adds a method to
@@ -504,6 +611,8 @@ how each was checked when this workspace landed.
   `DRIVE_ONLY_ENDED`, or lets `kindOf` take a backfill name `sharedDay` does not read or for a
   day outside them; or adds a kind to any folder's `also`, loosens the `drive-takes` name or
   `driveTakesRefusal` (a key beyond `schema`, `at` and `takes`, or beyond `sha256` per take),
+  loosens the `rust-week` name or `rustWeekRefusal`, loosens the `rust-essay` name or
+  `rustEssayRefusal`,
   or removes `kindOf`'s reading of `also`; when the PR description does not name the owner's
   decision to do so.
 - _Scope:_ `apps/mailbox/src/core.ts` and `wrangler.jsonc`.
@@ -564,7 +673,32 @@ how each was checked when this workspace landed.
   `drive-takes` list, which `kindOf` takes only under its own name and holds to its own
   schema and `driveTakesRefusal`; `core.test.ts` pins that the routine puts one, home reads it
   and may not put it, and that a body naming audio, bytes, a Drive file, id or link, a take's
-  name, or any key but `schema`, `at` and `takes` (`sha256` per take) is refused.
+  name, or any key but `schema`, `at` and `takes` (`sha256` per take) is refused. _Checked at
+  the Rust Rounds week amendment (the owner's RR12, paulgsc/some-ui#2687, 2026-11-07):_ `ROLES` is unchanged; `brief`'s `also`
+  holds two kinds, the second the `rust-week` week, taken only as `rust-week-YYYY-wNN.json` and
+  held to `some-ui.rust-week/1` and `rustWeekRefusal` (an ISO week `id`, the name's);
+  `core.test.ts` pins that the routine puts one and home reads it in the `brief` listing (home
+  may put nothing in `brief`, pinned for the folder), and that a misnamed week, a non-week `id`
+  and another schema are refused. _Checked at the feedback amendment (SFEED decision 6 on
+  paulgsc/some-ui#2670, 2026-11-07: notes on an episode are kept on home and filed by the
+  reflections routine; paulgsc/some-ui#2745):_ `ROLES` has three entries; `core.test.ts` pins
+  `feedback` as it pins `reflection`: home puts it and may not read it, the routine reads it
+  and may neither put it, list it as archived nor ask it back (`ASKED`, every record but
+  `reflection`, `prompt` and `feedback`), and the archive role reads and moves it. _Checked at
+  the bell amendment (MBP1, [#2142](https://github.com/paulgsc/some-ui/issues/2142), the
+  owner's choice of push on 2026-10-26, "the bell is `home`'s only"):_ `ROLES` has three
+  entries and only `home`'s `listen` is `true`; home's `get` is `HOME_READS`, unchanged;
+  `handle` reaches the bell only through `listen`, after `authenticate` and the
+  `grant.listen` check, and through `ring`, after a put or an ask its own `may` check
+  allowed; `core.test.ts` pins that no token and a wrong one are `401` and touch nothing, and
+  that the routine and archive tokens are `403`. _Checked at the Rust Rounds essay amendment
+  (RR16, paulgsc/some-ui#2691; [the owner's answer on paulgsc/some-ui#2684](https://github.com/paulgsc/some-ui/issues/2684#issuecomment-6714043601), 2026-11-07, "on home and the mailbox only"):_ `ROLES`
+  is unchanged; `brief`'s `also` holds three kinds, the third the essay's script, taken only as
+  `rust-essay-YYYY-wNN.json` or `-rN.json` with `N` from 2, and held to `some-ui.rust-essay/1`
+  and `rustEssayRefusal` (an ISO week in `week.id`, the name's); `core.test.ts` pins that the
+  routine puts one, that it rings `brief`, that home reads it in the listing and may not put it,
+  that `-r2` and `-r10` are taken and `-r0`, `-r1`, `-r02` and a bare `-r` are not, and that a
+  misnamed essay, a non-week `week.id` and another schema are refused.
 
 **MB3: No token reaches the repo or a log.**
 
@@ -589,6 +723,31 @@ how each was checked when this workspace landed.
 - _Checked at landing:_ one `console` call (`src/index.ts`, `report`, the error's `message`);
   no `vars` in `wrangler.jsonc`; no token-shaped string in the workspace. _Checked when the rule
   landed (2026-10-25, #2042):_ `src/` passes it; `report` logging `String(error)` fails it.
+
+**MB6: A ring carries only a folder name.**
+
+- _Claim:_ the only message the bell sends home is `ringMessage(folder)` in `src/core.ts`,
+  `{"ring":"<folder>"}`, for a folder in `RINGING`; nothing of an item (its name, bytes,
+  SHA-256, size, putter or time) reaches a ring.
+- _Falsified by_ a hunk that adds a key or a value to what `ringMessage` returns, or makes it
+  take anything but a `Folder`; that adds a `send` on a socket in `src/bell.ts` or
+  `src/listeners.ts` other than `ringAll`'s of `ringMessage`, gives a `close` there a reason
+  other than a fixed word, or changes the `PONG` auto-response to carry anything but a fixed
+  word; that lets `ringAll` send for a folder
+  outside `RINGING`, or widens `RINGING` past `RINGS` and `ASKED`; that changes `BellPort`'s
+  `ring` or the `Bell` object's `ring` to take anything but a folder; or that deletes
+  or loosens the ring cases in `__tests__/core.test.ts` or `__tests__/listeners.test.ts`.
+- _Scope:_ `apps/mailbox/src` (`core.ts`, `bell.ts`, `listeners.ts`, `index.ts`).
+- _Why not enforced:_ the types hold half of it: `ring` and `ringMessage` take a `Folder`, so
+  a name or a body cannot be passed where a folder goes, and the tests pin the message
+  exactly. A hunk that changes the message and its test together passes both, and a socket
+  `send` elsewhere is plain code no rule tells apart from `ringAll`'s, so whether a new one
+  leaks an item needs a person.
+- _Checked at landing:_ `ringMessage` is `JSON.stringify({ ring: folder })`; the one `send`
+  is `ringAll`'s, of `ringMessage`; `RINGING` is `RINGS` and `ASKED`; `core.test.ts` pins
+  `{"ring":"brief"}` byte for byte and `listeners.test.ts` that `index` reaches no one; under
+  `wrangler dev` a `home` socket got exactly `{"ring":"brief"}` after a routine put to
+  `brief` and nothing after home's put to `decisions`.
 
 **MB4 (not reviewable): The Cloudflare account has no payment method.** It is account state, so
 no diff can show it. It is listed so a reviewer knows the cost model rests on it. With a card
@@ -648,6 +807,10 @@ the latest) must be in before the Worker whose index put drops the one before, o
 fails with `503` until it is. For archiving (`0002_archive.sql`), also put `ARCHIVE_TOKEN` (step 4) and give the
 same value to home as `MAILBOX_ARCHIVE_TOKEN`.
 
+The bell's Durable Object (`Bell`) is not a D1 migration: `wrangler deploy` creates its class
+itself, from `wrangler.jsonc`'s `migrations` (`v1`, `new_sqlite_classes`). Until home listens,
+the bell rings no one and the poll carries everything, as before.
+
 ## Working on it
 
 ```sh
@@ -658,7 +821,9 @@ pnpm --filter @some-ui/mailbox deploy:dry  # bundles the Worker; needs no accoun
 ```
 
 - `src/core.ts` is the request-to-answer logic with no I/O; `src/store.ts` is the storage port
-  and the D1 adapter; `src/index.ts` only wires the bindings in.
+  and the D1 adapter; `src/listeners.ts` is the bell's rules over the hibernation API's
+  sockets and `src/bell.ts` the Durable Object that binds them; `src/index.ts` only wires the
+  bindings in.
 - `core.test.ts` runs all of `core.ts` against an in-memory store. `store.test.ts` applies the
   real migration to real SQLite (sql.js) and runs one set of cases against the in-memory store
   and the D1 adapter, so the stand-in cannot drift from the real one.

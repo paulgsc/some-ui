@@ -20,7 +20,7 @@ const AT = "2026-11-03T09:00:00.000Z"
 
 /** Every word the table says: each fixed one, and each a maker makes. */
 function everyWord(): Array<string> {
-  const { shown, setAside, line, what, ...fixed } = LIBRARY_WORDS
+  const { shown, setAside, line, what, phoneFull, ...fixed } = LIBRARY_WORDS
   const counts: ReadonlyArray<[number, number, number | null]> = [
     [0, 0, null],
     [1, 1, null],
@@ -41,6 +41,8 @@ function everyWord(): Array<string> {
     ),
     setAside(AT),
     ...FOR.map((each) => line(each, AT)),
+    phoneFull(1),
+    phoneFull(40),
   ]
 }
 
@@ -67,6 +69,12 @@ describe("Takes on home's words (ST32)", () => {
     )
     expect(LIBRARY_WORDS.shown("meaning", "brand", 3, 120, 3)).toMatch(
       /meaning/
+    )
+  })
+
+  it("say what the phone holds that home doesn't have yet when it has no room (ST32)", () => {
+    expect(LIBRARY_WORDS.phoneFull(40)).toBe(
+      "This phone holds 40 takes home doesn't have yet. Once home has some, there's room for another."
     )
   })
 

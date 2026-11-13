@@ -1,20 +1,16 @@
 import type { ComponentProps, JSX } from "react"
-import { createDataSource } from "@some-ui/fetch-kit"
 import {
   PlayoffDeltaStage,
   StorySeasonSchema,
   type StorySeason,
 } from "@some-ui/playoff-delta"
 
-import { DATA_MODE, FETCHES_CONTENT } from "@/lib/data-mode"
-import { PUBLIC_READ } from "@/lib/file-host-config"
+import { FETCHES_CONTENT } from "@/lib/data-mode"
+import { testingSource } from "@/lib/testing-data"
 
 import { locateSeason, seasonOf, STORY_TEAM, type SeasonFeed } from "./feed"
 
-const seasonSource = createDataSource<SeasonFeed, StorySeason>(
-  { static: locateSeason, server: locateSeason },
-  { mode: DATA_MODE, fetchOptions: { ...PUBLIC_READ, responseAs: "json" } }
-)
+const seasonSource = testingSource<SeasonFeed, StorySeason>(locateSeason)
 
 export type LiveStageProps = Omit<
   ComponentProps<typeof PlayoffDeltaStage>,

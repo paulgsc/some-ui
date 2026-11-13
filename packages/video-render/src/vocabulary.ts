@@ -30,10 +30,13 @@ export const path = z
 export const increasing = (xs: ReadonlyArray<number>): boolean =>
   xs.every((x, i) => i === 0 || x > (xs[i - 1] ?? -1))
 
+/** A SHA-256, in lowercase hex. */
+export const Sha256Schema = z.string().regex(/^[0-9a-f]{64}$/)
+
 /** A file the renderer reads, named by the checksum it must still have. */
 export const CheckedFileSchema = z.object({
   file: path,
-  sha256: z.string().regex(/^[0-9a-f]{64}$/),
+  sha256: Sha256Schema,
 })
 export type CheckedFile = z.infer<typeof CheckedFileSchema>
 
@@ -94,7 +97,7 @@ export type Motion = z.infer<typeof MotionSchema>
 export type MotionKind = Motion["kind"]
 export const MOTION_KINDS = MotionSchema.options.map((o) => o.shape.kind.value)
 
-/** The sound kit's names. A series maps each to a CC0 file. */
+/** The sound kit's names. A series pins each to its file, made by `cues.ts`. */
 export const SOUNDS = [
   "whoosh",
   "click",

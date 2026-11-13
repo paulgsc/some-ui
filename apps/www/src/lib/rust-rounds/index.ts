@@ -17,13 +17,22 @@
  * (`withRoom`) refuses a note, which the session then says, never letting
  * one go before home holds it.
  */
+import { engage } from "@some-ui/engagement"
 import type {
   NotesPort,
   RoundsStore,
   RustRoundsPorts,
+  RustWeekPorts,
+  WeeksStore,
 } from "@some-ui/rust-rounds"
-import { homeRef, keptRounds } from "@some-ui/rust-rounds"
-import { onPageVisibility } from "@some-ui/voice-capture"
+import {
+  currentWeek,
+  homeRef,
+  keptRounds,
+  keptWeeks,
+  WEEK_TAKES_KEY,
+} from "@some-ui/rust-rounds"
+import { ONE_TAKE, onPageVisibility } from "@some-ui/voice-capture"
 
 import { copyText } from "@/lib/clipboard"
 import type { PatternDesk } from "@/lib/takes-desk"
@@ -45,8 +54,32 @@ const desk = patternDesk({
   limits: { max: Number.POSITIVE_INFINITY, maxMs: NOTE_MAX_MS },
 })
 
-/** Audio no note names, and a note whose audio never landed. */
-export const sweepRustRoundsNotes = desk.sweep
+/**
+ * A week's takes (RR13): one per ticket, each waiting on this phone until
+ * the week is sent (`send: "on-confirm"`), then going home as a Rust Rounds
+ * voice note named by its line, `<week>:<ticket>` (`lib/home-link/voice-copy`).
+ * Up to three minutes a take, under home's ceiling for a note. No count of
+ * its own, as the notes' desk: only the device's room refuses a take. No
+ * set-aside marks: a take here is let go only by the week's Delete, Redo or
+ * clean-up before Send, for good, and only while it waits.
+ */
+const weekDesk = patternDesk({
+  key: WEEK_TAKES_KEY,
+  screen: "rust-rounds.week",
+  from: null,
+  dbName: "some-ui.rust-week-takes",
+  limits: { max: Number.POSITIVE_INFINITY, maxMs: 180_000 },
+  shape: { ...ONE_TAKE, send: "on-confirm" },
+})
+
+/** Audio no note or take names, and one whose audio never landed. */
+export function sweepRustRoundsNotes(): void {
+  desk.sweep()
+  weekDesk.sweep()
+}
+
+/** The week's desk, for the copy home (`lib/home-link/voice-copy`). */
+export const rustWeekDesk = weekDesk
 
 /** The desk, for the copy home (`lib/home-link/voice-copy`). */
 export const rustRoundsDesk = desk
@@ -87,6 +120,41 @@ let rounds: RoundsStore | null = null
 export function phoneRounds(): RoundsStore {
   rounds ??= keptRounds(browserLocalStorage)
   return rounds
+}
+
+let weeks: WeeksStore | null = null
+
+/**
+ * The weeks this phone holds (RR13), kept in this device's storage, which
+ * the lane fills from home (`lib/home-link/rust-rounds`) and the week's
+ * screens read: one per page load.
+ */
+export function phoneWeeks(): WeeksStore {
+  weeks ??= keptWeeks(browserLocalStorage)
+  return weeks
+}
+
+/**
+ * The week's ports (RR13), with the week open now among those this phone
+ * holds, or null while it holds none; `home` and `heard` are handed in by
+ * the route, which may reach home.
+ */
+export function phoneRustWeekPorts(
+  reach: Pick<RustWeekPorts, "home" | "heard" | "homeHolds" | "onHomeHolds">
+): RustWeekPorts | null {
+  const week = currentWeek(phoneWeeks().held().weeks, Date.now())
+  return week === null
+    ? null
+    : {
+        ...reach,
+        week,
+        takes: weekDesk.phone(),
+        storage: browserLocalStorage,
+        now: () => Date.now(),
+        newId: () => crypto.randomUUID(),
+        onVisibility: onPageVisibility,
+        engage,
+      }
 }
 
 /** The ports the session reads once, on mount. */

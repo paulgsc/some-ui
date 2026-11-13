@@ -14,7 +14,7 @@
  * modules on its allowlist read the lanes, and this is one.
  */
 import type { JSX, ReactNode } from "react"
-import { Button, Label, Switch } from "@some-ui/shared"
+import { Button, Label, Notice, Switch } from "@some-ui/shared"
 
 import { useHomeLink } from "@/lib/home-link"
 import { appEventsLane } from "@/lib/home-link/app-events"
@@ -26,7 +26,12 @@ import type {
   LaneId,
   LaneReading,
 } from "@/lib/home-link/lanes"
-import { askLane, laneReading, useLaneView } from "@/lib/home-link/lanes"
+import {
+  askLane,
+  laneReading,
+  useLaneView,
+  useServes,
+} from "@/lib/home-link/lanes"
 import { practiceLane } from "@/lib/home-link/practice"
 import { rustRoundsLane } from "@/lib/home-link/rust-rounds"
 import { useUnsendable, voiceLane } from "@/lib/home-link/voice"
@@ -66,7 +71,7 @@ const PAGES: Readonly<Record<LaneId, BoardPage>> = {
  * own screens are open, so there is no run here to tell.
  */
 function useAphReading(): LaneReading {
-  return laneReading("aph", NO_COUNTS, INITIAL_KEPT, useHomeLink())
+  return laneReading("aph", NO_COUNTS, INITIAL_KEPT, useHomeLink(), useServes())
 }
 
 /**
@@ -136,11 +141,12 @@ const Row = ({
         </p>
       ))}
       {children}
-      {lane !== null && reading.sendNow ? (
+      {lane !== null ? (
         <Button
           type="button"
           variant="outline"
           size="sm"
+          disabled={!reading.sendNow}
           onClick={() => askLane(lane)}
         >
           {SHEET.sendNow}
@@ -158,13 +164,21 @@ const AphRow = (): JSX.Element => (
   <Row id="aph" reading={useAphReading()} lane={null} />
 )
 
+/** Nothing being asked: what the switch stands for, from the record alone. */
+const STANDING = { asking: false, why: null } as const
+
 /**
  * Whether home tells this phone when the morning run is in (RUN5), where
- * this build can be told; nothing where it can't.
+ * this build can be told; nothing where it can't. Under the switch, what it
+ * stands for, and an ask under way, or why it came to nothing.
  */
 const JobsNotice = (): JSX.Element | null => {
   const { state, notice } = useJobs()
   if (!notice.offered) return null
+  const asked =
+    notice.asking || notice.why !== null
+      ? noticeSaid(state.home.notice, notice)
+      : null
   return (
     <div className="flex items-start gap-3 rounded-md border p-3">
       <Switch
@@ -177,10 +191,17 @@ const JobsNotice = (): JSX.Element | null => {
         <Label htmlFor="jobs-notice" className="text-sm">
           {NOTICE_WORDS.label}
         </Label>
-        <p className="text-muted-foreground text-xs" role="status">
-          {noticeSaid(state.home.notice, notice)}
+        <p className="text-muted-foreground text-xs">
+          {noticeSaid(state.home.notice, STANDING)}
         </p>
       </div>
+      {asked === null ? null : notice.why === null ? (
+        <Notice>{asked}</Notice>
+      ) : (
+        <Notice key={asked} role="alert" tone="warning" dismissible>
+          {asked}
+        </Notice>
+      )}
     </div>
   )
 }

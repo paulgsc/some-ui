@@ -19,7 +19,7 @@ import { reportFailure, toIntentError } from "@some-ui/intent-kit"
 import type { BlobShelf } from "@some-ui/voice-capture"
 import { ShelfFullError } from "@some-ui/voice-capture"
 
-import type { Encoded, VoiceHomePort } from "./home"
+import type { DeletedPort, Encoded, VoiceHomePort } from "./home"
 import type {
   AsidePort,
   CopyEnd,
@@ -60,6 +60,8 @@ export type VoiceHome = {
   copy: (note: VoiceOut, audio: Blob) => Promise<CopyEnd>
   /** What `./home`'s exchange reads and answers through. */
   keeping: VoiceHomePort
+  /** The notes home answered deleted for good that this launch holds back. */
+  deletedHeldBack: DeletedPort["heldBack"]
   /**
    * The owner set note `id` aside at `at` (ISO 8601): home is owed its mark,
    * once. A note already owed, answered or refused is left as it is, so the
@@ -164,6 +166,7 @@ export function createVoiceHome(ports: VoiceHomePorts): VoiceHome {
         copying.delete(note.id)
       }
     },
+    deletedHeldBack: new Map(),
     keeping: {
       state: () => state,
       audio: (id) => shelf.get(id),

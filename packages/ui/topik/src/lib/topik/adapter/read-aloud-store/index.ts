@@ -177,6 +177,20 @@ const READERS = {
   tally: onJson(readTally),
 }
 
+/** Those told of each write read aloud keeps (www's drain, to send it). */
+const written = new Set<() => void>()
+
+/**
+ * Calls `listener` after each write read aloud's stores keep, in any store
+ * on this page. Returns an unsubscribe.
+ */
+export function onReadAloudWritten(listener: () => void): () => void {
+  written.add(listener)
+  return (): void => {
+    written.delete(listener)
+  }
+}
+
 export function createReadAloudStore(
   storage: KeyedStorage | null = localStorageOrNull()
 ): ReadAloudStore {
@@ -188,8 +202,15 @@ export function createReadAloudStore(
    * read and copied aside. Quota, privacy mode: what was lost is a pace, a
    * count or an answer the learner is told of.
    */
-  const write = <T>(key: string, reader: Reader<T>, value: unknown): boolean =>
-    writeKept(storage, key, value, reader)
+  const write = <T>(
+    key: string,
+    reader: Reader<T>,
+    value: unknown
+  ): boolean => {
+    const kept = writeKept(storage, key, value, reader)
+    if (kept) for (const listener of written) listener()
+    return kept
+  }
 
   const paces = (): PaceBook =>
     read(READ_ALOUD_STORAGE_KEYS.paces, READERS.paces, {})
@@ -269,3 +290,122 @@ export const readAloudPracticeRecord = (): PracticeRecord =>
 /** What the learner last said at the end of a sitting, for the export. */
 export const readAloudFeedbackForExport = (): ReadAloudFeedback | null =>
   createReadAloudStore().feedback()
+
+/** Which of home's Korean kinds a read-aloud entry is (paulgsc/server `korean_repo::Kind`). */
+type KoreanKind = "set" | "pace" | "tally" | "record" | "progress" | "feedback"
+
+/** One entry of home's Korean record: its kind, its key there, and its body as kept here. */
+export type KoreanEntry = {
+  readonly kind: KoreanKind
+  readonly key: string
+  readonly body: unknown
+}
+
+/** The key of the read-aloud store's single documents (record, progress, feedback). */
+const SINGLE_DOCUMENT = "phone"
+
+/**
+ * A single document this phone kept and has since cleared (a set finished,
+ * the last answer taken back), as home keeps it: home takes an object, and
+ * an entry left out would leave home holding the document as it was.
+ */
+const CLEARED = { version: 1, cleared: true } as const
+
+/**
+ * Whether this phone cleared `key`: a cleared document is kept as the text
+ * `null`. One never kept has no text, and one this build cannot read keeps
+ * its own bytes, so neither reads as cleared and home's copy stands.
+ */
+function clearedHere(storage: KeyedStorage | null, key: string): boolean {
+  try {
+    return storage?.getItem(key)?.trim() === "null"
+  } catch {
+    return false
+  }
+}
+
+/** The single document `body` under `kind`, `CLEARED` once it was kept and cleared, or none. */
+function singleDocument(
+  kind: "progress" | "feedback",
+  body: unknown,
+  cleared: boolean
+): Array<KoreanEntry> {
+  if (body !== null) return [{ kind, key: SINGLE_DOCUMENT, body }]
+  return cleared ? [{ kind, key: SINGLE_DOCUMENT, body: CLEARED }] : []
+}
+
+/**
+ * `id` as a key home takes (letters, digits, `.`, `_`, `-` and `~`; not
+ * starting `.` or `http`, not ending `.json`), one to one: any other
+ * character, and `~` itself, is written `~<hex>~`, and a key that would
+ * start or end as home refuses is marked `~p~` before or `~s~` after. An id
+ * of letters, digits, `.`, `_` and `-` alone is its own key.
+ */
+export function plainKey(id: string): string {
+  const escaped = Array.from(id, (char) =>
+    /^[\w.-]$/.test(char)
+      ? char
+      : `~${(char.codePointAt(0) ?? 0).toString(16)}~`
+  ).join("")
+  const lead = /^(\.|http)/.test(escaped) || escaped === "" ? "~p~" : ""
+  const tail = /\.json$/i.test(escaped) ? "~s~" : ""
+  return `${lead}${escaped}${tail}`
+}
+
+/**
+ * Everything the read-aloud store keeps, as entries of home's Korean record
+ * (KO-HOME KH3, #2103): each word set by its deck, each word's pace, each
+ * sentence's tally row, and the practice record, the set left unfinished and
+ * the last answers as single documents. Each body is what this phone keeps,
+ * in the form it keeps it; a single document kept and since cleared is
+ * `CLEARED`. Read only.
+ */
+export function readAloudForHome(
+  storage: KeyedStorage | null = localStorageOrNull()
+): Array<KoreanEntry> {
+  const store = createReadAloudStore(storage)
+  const progress = openKept(
+    storage,
+    READ_ALOUD_STORAGE_KEYS.progress,
+    READERS.progress,
+    null
+  ).value
+  const feedback = storedFeedback(store.feedback())
+  const record = store.record()
+  return [
+    ...store.sets().map(
+      (set): KoreanEntry => ({
+        kind: "set",
+        key: plainKey(set.deck.id),
+        body: storedSet(set),
+      })
+    ),
+    ...Object.entries(store.paces()).map(
+      ([wordId, pace]): KoreanEntry => ({
+        kind: "pace",
+        key: plainKey(wordId),
+        body: { wordId, ...pace },
+      })
+    ),
+    ...Object.entries(store.tally()).map(
+      ([sentence, row]): KoreanEntry => ({
+        kind: "tally",
+        key: plainKey(sentence),
+        body: { sentence, ...row },
+      })
+    ),
+    ...(record.days.length > 0
+      ? [{ kind: "record", key: SINGLE_DOCUMENT, body: record } as const]
+      : []),
+    ...singleDocument(
+      "progress",
+      progress,
+      clearedHere(storage, READ_ALOUD_STORAGE_KEYS.progress)
+    ),
+    ...singleDocument(
+      "feedback",
+      feedback,
+      clearedHere(storage, READ_ALOUD_STORAGE_KEYS.feedback)
+    ),
+  ]
+}

@@ -47,6 +47,7 @@ const facts = (over: Partial<LaneFacts> = {}): LaneFacts => ({
   run: INITIAL_KEPT,
   hidden: 0,
   pulled: true,
+  serves: null,
   ...over,
 })
 
@@ -69,6 +70,9 @@ function every(): Array<LaneFacts> {
         )
       }
     }
+  }
+  for (const serves of ["updating", "not-yet", "too-old"] as const) {
+    all.push(facts({ paired: true, waiting: 3, serves }))
   }
   return all
 }
@@ -211,15 +215,15 @@ describe("each lane's sharing words", () => {
       where: "kept",
       how: "no-room",
       word: "No room",
-      line: "This phone has no room left for copies home doesn't have yet. 2 voice notes and ideas wait on this phone and go next time.",
+      line: "This phone has no room left for copies home doesn't have yet. 2 voice notes, ideas, episode notes and videos wait on this phone and go next time.",
     })
     expect(laneView(WORDS.voice, ran("fault", 1)).line).toBe(
-      "Something on this phone went wrong. 1 voice note or idea waits on this phone and goes next time."
+      "Something on this phone went wrong. 1 voice note, idea, episode note or video waits on this phone and goes next time."
     )
     expect(
       laneView(WORDS.voice, facts({ paired: true, waiting: 1 })).line
     ).toBe(
-      "1 voice note or idea waits on this phone. It goes to home while the app is open."
+      "1 voice note, idea, episode note or video waits on this phone. It goes to home while the app is open."
     )
   })
 
@@ -238,6 +242,52 @@ describe("each lane's sharing words", () => {
     expect(laneView(WORDS.aph, busy).line).toBe(
       "Home is busy right now. 2 changes wait on this phone and go next time."
     )
+  })
+
+  it("says home doesn't work with this version over a send that didn't go, after pairing again, and only while paired (#2843)", () => {
+    const failed = {
+      ...INITIAL_KEPT,
+      last: { kind: "failed", why: "fault" },
+    } as const
+    const cases = [
+      ["updating", "Home is updating to work with this version of the app."],
+      ["not-yet", "Home can't work with this version of the app yet."],
+      ["too-old", "This app is older than home. Install the newest version."],
+    ] as const
+    for (const [serves, line] of cases) {
+      expect(
+        laneView(WORDS.practice, facts({ paired: true, serves, run: failed }))
+      ).toMatchObject({ where: "kept", how: serves, line })
+      expect(
+        laneView(
+          WORDS.practice,
+          facts({
+            paired: true,
+            serves,
+            run: { ...INITIAL_KEPT, last: { kind: "unreachable", at: 1 } },
+          })
+        ).how
+      ).toBe(serves)
+      expect(
+        laneView(
+          WORDS.practice,
+          facts({
+            paired: true,
+            serves,
+            run: { ...INITIAL_KEPT, last: { kind: "forgotten" } },
+          })
+        ).how
+      ).toBe("forgotten")
+      expect(
+        laneView(WORDS.practice, facts({ paired: false, serves })).how
+      ).toBeNull()
+    }
+    expect(
+      laneView(
+        WORDS.practice,
+        facts({ paired: true, serves: "fits", run: failed })
+      ).how
+    ).toBe("fault")
   })
 
   it("says what aph holds aside, and what it shows before home answers", () => {
@@ -390,6 +440,9 @@ describe("the routine's files in Korean", () => {
       kept(last({ kind: "failed", why: "refused" })),
       kept(last({ kind: "failed", why: "fault" })),
       kept(last({ kind: "failed", why: "an entry" })),
+      facts({ paired: true, serves: "updating" }),
+      facts({ paired: true, serves: "not-yet" }),
+      facts({ paired: true, serves: "too-old" }),
     ]
     const views = states.map((f) => laneView(WORDS.aph, f))
     const marks = views.map((v) => `${v.where} ${v.how ?? "-"}`)

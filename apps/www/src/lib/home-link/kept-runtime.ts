@@ -3,7 +3,7 @@
  * record this phone drains there (aph's `exchangeWithHome`, the Jobs
  * record's `exchangeJobs`, Practice's `drainHome`, voice notes'
  * `sendVoice`; LA15, docs/learner-data-authority.md), through the link's
- * `keep`, and how each ended; and a lane's exchange as a run makes it
+ * `drain`, and how each ended; and a lane's exchange as a run makes it
  * (`laneExchange`). The record's screens read its snapshot; they hold no
  * request of their own.
  */
@@ -23,12 +23,20 @@ import { HomeUnansweredError } from "./shelf"
 /** A run's end that was this phone's fault, as `failed`'s `why`. */
 const FAULT = "fault"
 
+/** A run's end when home was busy (`429`). */
+const BUSY: Extract<HomeExchanged, { kind: "failed" }> = {
+  kind: "failed",
+  why: "busy",
+}
+
 export type KeptPorts = {
   /** One exchange through `send`; throws what `send` throws. */
   exchange: (send: HomeCall) => Promise<HomeExchanged>
-  keep: HomeLink["keep"]
+  keep: HomeLink["drain"]
   /** Whether the phone is paired, read when the link turns a run away. */
   paired: () => boolean
+  /** Whether home is busy (AD3): a run the link turns away then was home's. */
+  homeBusy: () => boolean
   now: () => number
 }
 
@@ -72,7 +80,8 @@ export function createKept(ports: KeptPorts): Kept {
     try {
       const outcome = await ports.keep(ports.exchange)
       if (outcome === null) {
-        return { kind: ports.paired() ? "busy" : "unpaired" }
+        if (!ports.paired()) return { kind: "unpaired" }
+        return ports.homeBusy() ? BUSY : { kind: "busy" }
       }
       if (outcome.kind === "stopped") return { kind: "stopped" }
       const { value } = outcome
@@ -128,8 +137,6 @@ export function createKept(ports: KeptPorts): Kept {
       }),
   }
 }
-
-const BUSY: HomeExchanged = { kind: "failed", why: "busy" }
 
 type Exchange = (send: HomeCall) => Promise<HomeExchanged>
 

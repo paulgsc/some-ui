@@ -7,9 +7,13 @@
  * Missed days stay visible, folded into one line per run, because a gap is
  * information too. One still within `loggableDays` opens the logger on its
  * latest day.
+ *
+ * Drafts head the list: what I logged and have not yet submitted, picked
+ * and submitted together, since none goes home, and no other day can be
+ * logged, until they are.
  */
 import type { JSX } from "react"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { EntrySheet } from "@aph/components/entry-sheet"
 import {
   CheckpointMark,
@@ -18,21 +22,28 @@ import {
   StatusIcon,
   whenOf,
 } from "@aph/components/status"
-import type { Entry, ReconcileStatus } from "@aph/lib/model"
+import type { AphSettings, Entry, ReconcileStatus } from "@aph/lib/model"
 import {
+  entriesOn,
   formatDelta,
   formatValue,
   goalDelta,
   history,
+  isDraft,
   loggableDays,
   reconcile,
   RECONCILE_ORDER,
   stats,
 } from "@aph/lib/model"
+import { missedDayOffer } from "@aph/lib/offers"
 import type { AphStore } from "@aph/lib/store"
 import { aphStore } from "@aph/lib/store"
 import { useAph } from "@aph/lib/use-aph"
 import { cn, dayOf, formatDay, formatWeekday } from "@some-ui/core-utils"
+import type { Visit } from "@some-ui/engagement"
+import { useShelf } from "@some-ui/react-hooks"
+import { Button, Notice } from "@some-ui/shared"
+import { Send } from "lucide-react"
 
 export type AphHistoryProps = {
   /** Where "Enter their figure" goes: the logger, on the theirs side. */
@@ -42,6 +53,11 @@ export type AphHistoryProps = {
   /** The host's clock (`useMinuteClock` in www), which moves while the screen stays open. */
   now: Date
   store?: AphStore
+  /**
+   * The screen's visit (ENG9): each missed day with a way to log it, and
+   * "Enter their figure", are offered on it while shown.
+   */
+  visit?: Visit
 }
 
 export const AphHistory = ({
@@ -49,6 +65,7 @@ export const AphHistory = ({
   onLogDay,
   now,
   store = aphStore,
+  visit,
 }: AphHistoryProps): JSX.Element => {
   const { settings, entries } = useAph(store)
   const [filter, setFilter] = useState<ReconcileStatus | null>(null)
@@ -61,9 +78,21 @@ export const AphHistory = ({
   const rows = history(settings, entries, today).filter(
     (r) => filter === null || (r.kind === "day" && r.entries.some(shows))
   )
-
+  const missed = rows
+    .flatMap((r) =>
+      r.kind === "gap" && reachable.includes(r.to) ? [r.to] : []
+    )
+    .join(" ")
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-2">
+      {onLogDay !== undefined && <MissedDays visit={visit} days={missed} />}
+      <Drafts
+        settings={settings}
+        entries={entries}
+        store={store}
+        onOpen={setOpen}
+      />
+
       <div
         role="group"
         aria-label="Show only"
@@ -105,7 +134,10 @@ export const AphHistory = ({
             // The gap's latest day, the one most likely still remembered.
             onLog={
               onLogDay !== undefined && reachable.includes(row.to)
-                ? (): void => onLogDay(row.to)
+                ? (): void => {
+                    visit?.take(missedDayOffer(row.to))
+                    onLogDay(row.to)
+                  }
                 : undefined
             }
           />
@@ -157,6 +189,11 @@ export const AphHistory = ({
                       {whenOf(settings, e)}
                     </span>
                     <span className="flex min-w-0 flex-1 flex-col">
+                      {isDraft(e) && (
+                        <span className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wide">
+                          Draft
+                        </span>
+                      )}
                       <Figures entry={e} className="text-sm font-semibold" />
                       {(e.labels.length > 0 || e.note !== null) && (
                         <span className="text-muted-foreground truncate text-xs">
@@ -197,8 +234,128 @@ export const AphHistory = ({
         onClose={() => setOpen(null)}
         onEnterTheirs={onEnterTheirs}
         store={store}
+        visit={visit}
       />
     </div>
+  )
+}
+
+/** Offers each missed day within reach (`days`, space-separated) on the visit. */
+const MissedDays = ({
+  visit,
+  days,
+}: {
+  visit: Visit | undefined
+  days: string
+}): null => {
+  useShelf(
+    visit,
+    "missed-day",
+    useMemo(
+      () => (days === "" ? null : days.split(" ").map(missedDayOffer)),
+      [days]
+    )
+  )
+  return null
+}
+
+/**
+ * The drafts, oldest day first, each with a box to pick it, and one button
+ * that submits the ones picked. Tapping a draft's figures opens it, where it
+ * can be changed or deleted. Nothing when there are none.
+ */
+const Drafts = ({
+  settings,
+  entries,
+  store,
+  onOpen,
+}: {
+  settings: AphSettings
+  entries: ReadonlyArray<Entry>
+  store: AphStore
+  onOpen: (id: string) => void
+}): JSX.Element | null => {
+  const [picked, setPicked] = useState<ReadonlyArray<string>>([])
+  const [refused, setRefused] = useState(false)
+  const days = [...new Set(entries.filter(isDraft).map((e) => e.day))].sort()
+  const drafts = days.flatMap((day) =>
+    entriesOn(settings, entries, day).filter(isDraft)
+  )
+  if (drafts.length === 0) return null
+  // Only drafts still waiting count as picked: one submitted or deleted
+  // since drops out.
+  const chosen = drafts.filter((e) => picked.includes(e.id)).map((e) => e.id)
+  const all = chosen.length === drafts.length
+  const toggle = (id: string): void =>
+    setPicked(
+      chosen.includes(id) ? chosen.filter((p) => p !== id) : [...chosen, id]
+    )
+
+  return (
+    <section
+      aria-label="Drafts"
+      className="border-warning/40 bg-warning/5 flex flex-col gap-2 rounded-xl border p-2"
+    >
+      <div className="flex items-center justify-between px-1">
+        <span className="text-sm font-semibold">
+          {drafts.length} {drafts.length === 1 ? "draft" : "drafts"} not yet
+          submitted
+        </span>
+        <button
+          type="button"
+          onClick={() => setPicked(all ? [] : drafts.map((e) => e.id))}
+          // One width for either word: it sits at the row's end, so a word
+          // that changed its width would move it under the thumb (HS1).
+          className="text-muted-foreground h-9 w-24 px-2 text-right text-sm underline-offset-4 hover:underline"
+        >
+          {all ? "Pick none" : "Pick all"}
+        </button>
+      </div>
+      {drafts.map((e) => (
+        <div
+          key={e.id}
+          className="bg-card flex min-h-11 items-center gap-2 rounded-lg border px-2"
+        >
+          <input
+            type="checkbox"
+            aria-label={`Pick ${formatDay(e.day)} ${whenOf(settings, e)}`}
+            checked={chosen.includes(e.id)}
+            onChange={() => toggle(e.id)}
+            className="size-5 shrink-0"
+          />
+          <button
+            type="button"
+            onClick={() => onOpen(e.id)}
+            className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-left text-sm"
+          >
+            <span className="w-16 shrink-0 font-medium">
+              {formatDay(e.day)}
+            </span>
+            <span className="text-muted-foreground w-11 shrink-0 text-xs">
+              {whenOf(settings, e)}
+            </span>
+            <Figures entry={e} className="text-sm font-semibold" />
+          </button>
+        </div>
+      ))}
+      <Button
+        disabled={chosen.length === 0}
+        onClick={() => {
+          const kept = store.submit(chosen)
+          setRefused(!kept)
+          if (kept) setPicked([])
+        }}
+      >
+        <Send aria-hidden className="mr-2 size-4" />
+        Submit {chosen.length === 0 ? "" : `${chosen.length} `}
+        {chosen.length === 1 ? "draft" : "drafts"}
+      </Button>
+      {refused && (
+        <Notice tone="danger" onDismiss={() => setRefused(false)}>
+          Not submitted: the phone did not keep the change.
+        </Notice>
+      )}
+    </section>
   )
 }
 

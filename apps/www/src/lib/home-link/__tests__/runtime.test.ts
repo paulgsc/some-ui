@@ -4,12 +4,13 @@
  * unpair forgets it on the phone whether or not home heard; Stop and the
  * background end a sync before its next request.
  */
+import { fakeClock } from "@/test-support/fake-clock"
 import type { HomeAnswer } from "@some-ui/core-utils"
 import { describe, expect, it } from "vitest"
 
 import type { HomeRequest } from "@/lib/device-backend/native-http"
 import type { CredentialPort, HomeLink } from "@/lib/home-link/runtime"
-import { createHomeLink } from "@/lib/home-link/runtime"
+import { createHomeLink, homeBusyFor } from "@/lib/home-link/runtime"
 
 const HOME = { base: "https://home.example/api/v1", host: "home.example" }
 
@@ -27,12 +28,18 @@ type Home = {
   sent: Array<HomeRequest>
   record: () => string | null
   hide: () => void
+  /**
+   * Moves the clock on by `ms`, running each timer that falls due, unless
+   * they are held back (a WebView in the background).
+   */
+  pass: (ms: number, timersRun?: boolean) => void
 }
 
 function setup(options: Options = {}): Home {
   let record = options.record ?? null
   const sent: Array<HomeRequest> = []
   let hide: () => void = () => undefined
+  const clock = fakeClock()
   const credential: CredentialPort = {
     read:
       options.read ??
@@ -65,12 +72,15 @@ function setup(options: Options = {}): Home {
         hide = (): void => undefined
       }
     },
+    now: clock.now,
+    after: clock.after,
   })
   return {
     link,
     sent,
     record: (): string | null => record,
     hide: (): void => hide(),
+    pass: clock.pass,
   }
 }
 
@@ -377,6 +387,80 @@ describe("the home link", () => {
     expect(home.sent).toEqual([])
   })
 
+  it("after home says busy, sends nothing until its Retry-After has passed, answering busy itself (AD3)", async () => {
+    let busy = true
+    const home = setup({
+      record: JSON.stringify({ base: HOME.base, token: "t" }),
+      answer: () => {
+        if (!busy) return { status: 200, body: "{}" }
+        busy = false
+        return { status: 429, body: "", retryAfter: "30" }
+      },
+    })
+    await home.link.load()
+    const statuses = async (): Promise<Array<number>> => {
+      const outcome = await home.link.keep(async (send) => [
+        (await send("GET", "/aph")).status,
+        (await send("GET", "/aph")).status,
+      ])
+      return outcome?.kind === "done" ? outcome.value : []
+    }
+
+    // Home's 429 ends the run's sending; the next request is answered here.
+    expect(await statuses()).toEqual([429, 429])
+    expect(home.sent).toHaveLength(1)
+    expect(home.link.getSnapshot().homeBusyUntil).toBe(30_000)
+    // The sync too, while it lasts (the lanes' runs: home-busy.test.ts).
+    home.pass(29_999)
+    const synced = await home.link.sync(
+      async (get) => (await get(`${HOME.base}/curriculum/manifest.json`)).status
+    )
+    expect(synced).toEqual({ kind: "done", value: 429 })
+    expect(home.sent).toHaveLength(1)
+    home.pass(1)
+    expect(home.link.getSnapshot().homeBusyUntil).toBeNull()
+  })
+
+  it("ends home's busy once its time has passed, even when the timer is held back", async () => {
+    let busy = true
+    const home = setup({
+      record: JSON.stringify({ base: HOME.base, token: "t" }),
+      answer: () => {
+        if (!busy) return { status: 200, body: "{}" }
+        busy = false
+        return { status: 429, body: "", retryAfter: "5" }
+      },
+    })
+    await home.link.load()
+    await home.link.keep((send) => send("GET", "/aph"))
+    expect(home.link.getSnapshot().homeBusyUntil).toBe(5_000)
+    home.pass(5_000, false)
+    const outcome = await home.link.keep((send) => send("GET", "/aph"))
+    expect(outcome).toEqual({
+      kind: "done",
+      value: { status: 200, body: "{}" },
+    })
+    expect(home.sent).toHaveLength(2)
+    expect(home.link.getSnapshot().homeBusyUntil).toBeNull()
+  })
+
+  it("waits home's Retry-After, held between 1 s and 10 minutes, or a minute when it can't be read", () => {
+    expect(homeBusyFor("30")).toBe(30_000)
+    expect(homeBusyFor(" 2 ")).toBe(2_000)
+    expect(homeBusyFor("0")).toBe(1_000)
+    expect(homeBusyFor("86400")).toBe(600_000)
+    for (const unread of [
+      undefined,
+      "",
+      "soon",
+      "-5",
+      "1.5",
+      "Wed, 21 Oct 2026 07:28:00 GMT",
+    ]) {
+      expect(homeBusyFor(unread), String(unread)).toBe(60_000)
+    }
+  })
+
   it("does one thing at a time", async () => {
     const home = setup()
     await home.link.load()
@@ -391,5 +475,86 @@ describe("the home link", () => {
     expect(home.sent).toEqual([])
     release()
     await expect(syncing).resolves.toEqual({ kind: "done", value: "ok" })
+  })
+})
+
+describe("a look at home's word on itself (#2843)", () => {
+  it("asks home's own address, under any path the pairing has, without the credential or the person's activity", async () => {
+    const home = setup({
+      record: JSON.stringify({
+        base: "https://home.example/under/api/v1",
+        token: "t",
+        id: "p1",
+      }),
+    })
+    await home.link.load()
+    const outcome = await home.link.look("/compat?needs=2")
+    expect(outcome).toEqual({
+      kind: "done",
+      value: { status: 200, body: "{}" },
+    })
+    expect(home.sent).toEqual([
+      { method: "GET", url: "https://home.example/under/compat?needs=2" },
+    ])
+    expect(home.link.getSnapshot().activity).toEqual({ kind: "idle" })
+  })
+
+  it("sends nothing once home asked to be left alone while it waited its turn (AD3)", async () => {
+    let next: HomeAnswer = { status: 200, body: "{}" }
+    const home = setup({
+      record: JSON.stringify({ base: HOME.base, token: "t", id: "p1" }),
+      answer: () => next,
+    })
+    await home.link.load()
+    // Use up the pace's burst, so the next asks wait their turns.
+    for (let i = 0; i < 49; i += 1) {
+      await home.link.keep((send) => send("GET", "/aph"))
+    }
+    next = { status: 429, body: "", retryAfter: "60" }
+    const looked = home.link.look("/compat?needs=2")
+    // The person's read goes first, and hears home's busy.
+    const kept = home.link.keep((send) => send("GET", "/aph"))
+    const settle = (): Promise<void> =>
+      new Promise((resolve) => setTimeout(resolve, 0))
+    await settle()
+    home.pass(2_000)
+    await kept
+    await settle()
+    home.pass(2_000)
+    expect(await looked).toEqual({
+      kind: "done",
+      value: { status: 429, body: "" },
+    })
+    expect(home.sent.filter((call) => call.url.includes("/compat"))).toEqual([])
+  })
+
+  it("asks nothing unpaired", async () => {
+    const home = setup()
+    await home.link.load()
+    expect(await home.link.look("/compat?needs=2")).toBeNull()
+    expect(home.sent).toEqual([])
+  })
+
+  it("hears only the not-found home gives a route it lacks, never its error for a record it doesn't hold", async () => {
+    const home = setup({
+      record: JSON.stringify({ base: HOME.base, token: "t", id: "p1" }),
+      answer: (call) =>
+        call.url.endsWith("/gone")
+          ? { status: 404, body: "not found" }
+          : {
+              status: 404,
+              body: '{"error":{"code":"not_found","message":"not found"}}',
+            },
+    })
+    await home.link.load()
+    let heard = 0
+    const stop = home.link.onMissing(() => {
+      heard += 1
+    })
+    await home.link.keep((send) => send("GET", "/voice-notes/1/heard"))
+    expect(heard).toBe(0)
+    await home.link.keep((send) => send("GET", "/gone"))
+    expect(heard).toBe(1)
+    stop()
   })
 })

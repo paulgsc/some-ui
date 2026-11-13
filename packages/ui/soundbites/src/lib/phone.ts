@@ -7,17 +7,19 @@
 import {
   audioPlayer,
   micRecorder,
+  NO_HOME,
   NO_LISTENER,
   onPageVisibility,
 } from "@some-ui/voice-capture"
 
 import type { BundlePorts } from "./idea/bundle-runtime"
-import { NO_HOME } from "./idea/bundle-runtime"
 import { keptDraftStore, keptIdeaLists } from "./idea/draft"
 import type { IdeaPorts } from "./idea/runtime"
 import type { ShelfPorts } from "./idea/shelf-runtime"
 import { keptIdeaStore } from "./idea/store"
 import { SOUNDBITE_BITS_PER_SECOND } from "./policy"
+import type { VideoForHome } from "./project/dna"
+import { videosForHome } from "./project/dna"
 import type { StudioNote } from "./project/home"
 import {
   letGoDeletedTakes,
@@ -149,6 +151,10 @@ export type StudioKeeping = {
    */
   readonly letGoOnDrive: (onDrive: ReadonlySet<string>) => Promise<number>
   readonly sittingKey: (sitting: Sitting) => string
+  /** Each revision kept for home to make, as it is sent, oldest first (ST33). */
+  readonly videosForHome: (
+    projects: ReadonlyArray<Project>
+  ) => ReadonlyArray<VideoForHome>
 }
 
 /**
@@ -171,5 +177,6 @@ export function phoneStudioKeeping(): StudioKeeping {
     // Home's word that Drive has a take too (HF11), as the owner chose.
     letGoOnDrive: (onDrive) => letGoOnDrive(store, onDrive, keptLetGo().read()),
     sittingKey,
+    videosForHome,
   }
 }

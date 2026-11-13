@@ -170,7 +170,7 @@ describe("Studio's words", () => {
   it("write a length as a number of seconds", () => {
     expect(seconds(4_700)).toBe("4.7 s")
     expect(STUDIO_WORDS.record.runsWith(5_200)).toBe(
-      "This scene runs 5.2 s: your take and a breath"
+      "Runs 5.2 s: your take and a breath"
     )
   })
 
@@ -228,6 +228,65 @@ describe("Studio's words", () => {
     for (const words of [says.drive, chosen.drive, noRoom("drive", 0)])
       expect(words).not.toMatch(/home sees|sees it in Drive/)
     expect(chosen.home).toBe(says.home)
+  })
+
+  it("ST34: call the place Studio, never its old names", () => {
+    expect(all.filter((text) => /\bjournal\b/i.test(text))).toEqual([])
+    // "Your video" read as the place's name over Start; it names no place.
+    expect(all.filter((text) => /^\s*your video\s*$/i.test(text))).toEqual([])
+    expect(STUDIO_WORDS.heading).toBe("Studio")
+  })
+
+  it("ST34: call a recording a take, never a recording or a bite", () => {
+    expect(
+      all.filter((text) => /\b(recordings?|bites?)\b/i.test(text))
+    ).toEqual([])
+    expect(STUDIO_WORDS.onHome.deleteAnswerName("What's the video?")).toMatch(
+      /\btake\b/
+    )
+    expect(STUDIO_WORDS.onHome.onlyOnHome).toMatch(/\btake\b/)
+  })
+
+  it("ST34: say a phone never paired apart from home out of reach, and name the way to pairing", () => {
+    const { review, sent } = STUDIO_WORDS.bundle
+    expect(review.notNear.unpaired).toMatch(/isn't paired/)
+    expect(review.notNear.unpaired).not.toMatch(/reach/)
+    expect(review.notNear.away).toMatch(/out of reach/)
+    expect(review.notNear.away).not.toMatch(/paired/)
+    expect(sent.notNear.unpaired.title).not.toBe(sent.notNear.away.title)
+    expect(sent.notNear.unpaired.line).toMatch(/paired/)
+    expect(sent.notNear.unpaired.line).not.toMatch(/reach/)
+    expect(sent.notNear.away.line).not.toMatch(/paired/)
+    // Before the phone has read whether it is paired, nothing is said of
+    // pairing or reach (C5): no line on Review, and a Sent that says only
+    // what is true either way.
+    expect(review.notNear.unknown).toBeNull()
+    expect(
+      `${sent.notNear.unknown.title} ${sent.notNear.unknown.line}`
+    ).not.toMatch(/paired|reach|home/)
+    // A full phone is said in what frees room, true paired or not.
+    expect(STUDIO_WORDS.bundle.full.line).not.toMatch(/reach|paired/)
+    // The screens that can't show home's say only what they can't do,
+    // beside the app's way to pairing.
+    expect(STUDIO_WORDS.pair.pair).toMatch(/^Pair/)
+    expect(STUDIO_WORDS.onHome.unpaired).not.toMatch(/Settings/)
+  })
+
+  it("ST34: say what Studio checks, that it doesn't judge whether a scene is good, and the remedy", () => {
+    const { judges } = STUDIO_WORDS
+    expect(judges).toMatch(/checks the mechanics/)
+    expect(judges).toMatch(/every scene has a take/)
+    expect(judges).toMatch(/doesn't judge whether a scene is good/)
+    expect(judges).toMatch(/shape/)
+    expect(judges).toMatch(/template/)
+  })
+
+  it("ST34: offer typing for a take kept unheard, marked as the fallback", () => {
+    const { unheard, typing, typed } = STUDIO_WORDS.bundle
+    expect(unheard.type).toMatch(/^Type it/)
+    expect(unheard.type).toMatch(/didn't hear you/)
+    expect(typing.mark).toMatch(/voice didn't work/)
+    expect(typed.mark).toMatch(/voice didn't work/)
   })
 
   it("never say takes were kept where a sitting wasn't saved", () => {

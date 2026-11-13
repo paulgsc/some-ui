@@ -195,7 +195,7 @@ describe("IdeaShelf", () => {
     ).toBeTruthy()
   })
 
-  it("says so in place of Make when the phone's videos can't be read, and reads them again", async () => {
+  it("says so over the screen, Make held in its place, when the phone's videos can't be read, and reads them again", async () => {
     let reads = 0
     const memory = memoryProjectStore()
     setup([caught()], {
@@ -210,13 +210,13 @@ describe("IdeaShelf", () => {
     fireEvent.click(await screen.findByRole("button", { name: /week 8/ }))
     await pick(replyText({ primer: DRAFT }))
     expect(screen.getByRole("alert").textContent).toContain(W.videosUnread)
-    expect(screen.queryByRole("button", { name: W.make })).toBeNull()
+    expect(screen.getByRole("button", { name: W.make })).toBeDisabled()
     fireEvent.click(
       screen.getByRole("button", { name: STUDIO_WORDS.readAgain })
     )
     await settle()
     expect(screen.queryByRole("alert")).toBeNull()
-    expect(screen.getByRole("button", { name: W.make })).toBeTruthy()
+    expect(screen.getByRole("button", { name: W.make })).toBeEnabled()
   })
 
   it("says it's kept already when the same reply is picked again", async () => {

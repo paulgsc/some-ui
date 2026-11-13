@@ -1,10 +1,19 @@
 import type { JSX } from "react"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { cn, formatTimecode } from "@some-ui/core-utils"
-import { RUST_ROUNDS_TITLE, rustRoundsEntry } from "@some-ui/rust-rounds/entry"
+import type { Offer, Visit } from "@some-ui/engagement"
+import { pageVisit, watchVisit } from "@some-ui/engagement"
+import { useShelf } from "@some-ui/react-hooks"
+import {
+  RUST_ESSAY_LINK,
+  RUST_ROUNDS_TITLE,
+  rustRoundsEntry,
+  rustWeekEntry,
+} from "@some-ui/rust-rounds/entry"
 import {
   BrandMark,
   Button,
+  Notice,
   Skeleton,
   StudyGlyph,
   TalkGlyph,
@@ -14,6 +23,7 @@ import { Check, SquareTerminal } from "lucide-react"
 
 import { useMinuteClock } from "@/lib/clock"
 import { isOfferedActivityId } from "@/lib/playable"
+import { HOME_OFFERS, studyCardOffers } from "@/lib/practice-home"
 import { matchQueryOutcome, queryOutcome } from "@/lib/query-outcome"
 import {
   closedPatch,
@@ -33,6 +43,9 @@ import {
 import { browserLocalStorage } from "@/lib/tenant/storage"
 import { StopReasons } from "@/components/player/session-stop"
 import { NextLesson } from "@/components/practice/next-lesson"
+
+const SAY_WHY = [HOME_OFFERS.sayWhy]
+const RUST_ROUNDS = [HOME_OFFERS.rustRounds]
 
 /**
  * Practice's Home: where studying picks up. What is open, what was finished
@@ -76,7 +89,13 @@ function studiedLine(today: ReadonlyArray<SessionRecord>): string {
  * only unreadable); and known, which says so when what it shows is a cached
  * list whose refresh just failed.
  */
-const StudyCard = ({ now }: { now: Date }): JSX.Element => {
+const StudyCard = ({
+  now,
+  visit,
+}: {
+  now: Date
+  visit: Visit
+}): JSX.Element => {
   const [launching, setLaunching] = useState(false)
   const outcome = queryOutcome(useSessions())
   const status = matchQueryOutcome(outcome, {
@@ -94,6 +113,7 @@ const StudyCard = ({ now }: { now: Date }): JSX.Element => {
 
   const done =
     status.kind === "ready" && status.open === null && status.today.length > 0
+  const refreshRetry = status.kind === "ready" ? status.refreshRetry : null
 
   // An open session stopped past its window closes here, as it stood, and
   // a close whose write failed is retried each minute this Home is open.
@@ -115,6 +135,27 @@ const StudyCard = ({ now }: { now: Date }): JSX.Element => {
       )
     : null
   const cut = lastFinished && cutShortStop(lastFinished.id)
+
+  const lessons =
+    status.kind === "ready" &&
+    (status.open === null || launching) &&
+    isOfferedActivityId("topik")
+  // While a lesson launches, its new session can show as open before Home
+  // leaves: what was offered at the press stands, so nothing new is offered.
+  const open = openId !== null && !launching
+  const read = status.kind === "ready"
+  const studyOffers = useMemo(
+    () => (read ? studyCardOffers({ open, lessons }) : null),
+    [read, open, lessons]
+  )
+  useShelf(visit, "study", studyOffers)
+  useShelf(visit, "bites", done ? null : SAY_WHY)
+  // A visit takes each offer once, so a second press (or a retry after the
+  // app came back) of the same button takes nothing twice.
+  const launch = (offer: Offer): void => {
+    visit.take(offer)
+    setLaunching(true)
+  }
 
   return (
     <div
@@ -169,11 +210,17 @@ const StudyCard = ({ now }: { now: Date }): JSX.Element => {
             variant={status.open === null ? "outline" : "default"}
           >
             {status.open === null ? (
-              <Link to="/sessions/new">{done ? "Another round" : "Start"}</Link>
+              <Link
+                to="/sessions/new"
+                onClick={() => visit.take(HOME_OFFERS.start)}
+              >
+                {done ? "Another round" : "Start"}
+              </Link>
             ) : (
               <Link
                 to="/sessions/$sessionId"
                 params={{ sessionId: status.open.id }}
+                onClick={() => visit.take(HOME_OFFERS.resume)}
               >
                 {stopped ? "Pick up" : "Resume"}
               </Link>
@@ -181,22 +228,20 @@ const StudyCard = ({ now }: { now: Date }): JSX.Element => {
           </Button>
         )}
       </div>
-      {status.kind === "ready" &&
-        (status.open === null || launching) &&
-        isOfferedActivityId("topik") && (
-          <div className="flex flex-wrap gap-2">
-            <NextLesson
-              className="h-12 rounded-2xl px-6 text-base"
-              onLaunch={() => setLaunching(true)}
-            />
-            <NextLesson
-              open="menu"
-              variant="outline"
-              className="h-12 rounded-2xl px-6 text-base"
-              onLaunch={() => setLaunching(true)}
-            />
-          </div>
-        )}
+      {lessons && (
+        <div className="flex flex-wrap gap-2">
+          <NextLesson
+            className="h-12 rounded-2xl px-6 text-base"
+            onLaunch={() => launch(HOME_OFFERS.nextLesson)}
+          />
+          <NextLesson
+            open="menu"
+            variant="outline"
+            className="h-12 rounded-2xl px-6 text-base"
+            onLaunch={() => launch(HOME_OFFERS.hungry)}
+          />
+        </div>
+      )}
       {cut && (
         <div className="flex flex-col gap-2">
           <p className="text-muted-foreground text-sm">
@@ -210,23 +255,20 @@ const StudyCard = ({ now }: { now: Date }): JSX.Element => {
           )}
         </div>
       )}
-      {status.kind === "ready" && status.refreshRetry !== null && (
-        <p
-          role="status"
-          className="text-destructive flex items-center gap-2 text-sm"
+      {refreshRetry !== null && (
+        <Notice
+          tone="warning"
+          dismissible
+          action={{ label: "Retry", onClick: refreshRetry }}
         >
-          <span className="min-w-0 flex-1">
-            Couldn’t refresh; this may be out of date.
-          </span>
-          <Button size="sm" variant="ghost" onClick={status.refreshRetry}>
-            Retry
-          </Button>
-        </p>
+          Couldn’t refresh; this may be out of date.
+        </Notice>
       )}
       {!done && (
         <Link
           to="/soundbites"
           search={{ say: "sessions" }}
+          onClick={() => visit.take(HOME_OFFERS.sayWhy)}
           className="bg-muted/40 text-muted-foreground hover:text-foreground flex items-center gap-2 self-start rounded-full py-1.5 pr-3.5 pl-2.5 text-sm font-medium"
         >
           <TalkGlyph aria-hidden className="size-4" />
@@ -238,27 +280,51 @@ const StudyCard = ({ now }: { now: Date }): JSX.Element => {
 }
 
 /**
- * Rust Rounds' way in (#2235, the owner's D2): one tap opens it on the card
- * left last, or one tap from the first. It says where you left off, and
- * nothing about how long or how much.
+ * Rust Rounds' way in (#2235, the owner's D2): one tap opens the week open
+ * now, saying its deadline and how many tickets are said (RR13), its
+ * read-back once closed, and under it, the way to the week's essay in Studio
+ * (RR17); while the phone holds no week, the card left last, or one tap from
+ * the first.
  */
-const RustRoundsCard = (): JSX.Element => {
+const RustRoundsCard = ({ visit }: { visit: Visit }): JSX.Element => {
   // Read once as Home opens, never on each render; it changes only in Rust
-  // Rounds itself, which is left to come back here.
-  const [line] = useState(() => rustRoundsEntry(browserLocalStorage))
+  // Rounds itself, which is left to come back here. The week open now
+  // (RR13), or, while the phone holds none, where the rounds were left.
+  /* eslint-disable owner-guard/no-mount-snapshot -- read once as Home opens, as the line above says: Rust Rounds is left to come back here, which mounts Home afresh */
+  const [{ line, essay }] = useState(
+    () =>
+      rustWeekEntry(browserLocalStorage, Date.now()) ?? {
+        line: rustRoundsEntry(browserLocalStorage),
+        essay: null,
+      }
+  )
+  /* eslint-enable owner-guard/no-mount-snapshot */
+  useShelf(visit, "rust-rounds", RUST_ROUNDS)
   return (
-    <Link
-      to="/rust-rounds"
-      className="bg-card border-border/50 flex items-center gap-3 rounded-2xl border p-4 shadow-sm"
-    >
-      <span className="bg-brand/30 text-brand-foreground dark:text-brand flex size-12 shrink-0 items-center justify-center rounded-2xl">
-        <SquareTerminal aria-hidden className="size-6" />
-      </span>
-      <span className="flex min-w-0 flex-1 flex-col">
-        <span className="font-bold">{RUST_ROUNDS_TITLE}</span>
-        <span className="text-muted-foreground text-sm">{line}</span>
-      </span>
-    </Link>
+    <div className="flex flex-col gap-2">
+      <Link
+        to="/rust-rounds"
+        onClick={() => visit.take(HOME_OFFERS.rustRounds)}
+        className="bg-card border-border/50 flex items-center gap-3 rounded-2xl border p-4 shadow-sm"
+      >
+        <span className="bg-brand/30 text-brand-foreground dark:text-brand flex size-12 shrink-0 items-center justify-center rounded-2xl">
+          <SquareTerminal aria-hidden className="size-6" />
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="font-bold">{RUST_ROUNDS_TITLE}</span>
+          <span className="text-muted-foreground text-sm">{line}</span>
+        </span>
+      </Link>
+      {essay !== null && (
+        <Link
+          to="/journal/episodes/$feed/$key"
+          params={{ feed: "rust-essay", key: essay }}
+          className="self-start rounded-full px-3 py-1.5 text-sm font-medium underline underline-offset-4"
+        >
+          {RUST_ESSAY_LINK}
+        </Link>
+      )}
+    </div>
   )
 }
 
@@ -302,6 +368,11 @@ const PracticeHome = (): JSX.Element => {
   // Moves while the page stays open, so a stop's pick-up window closes and
   // the date turns over without leaving it.
   const now = useMinuteClock()
+  // What Home offers and which the owner takes (ENGAGE, `pageVisit`): a
+  // visit ends when Home closes or the app goes to the back. In
+  // development's StrictMode the double mount ends one visit at once.
+  const [visit] = useState(() => pageVisit(document))
+  useEffect(() => watchVisit(visit, document), [visit])
 
   return (
     <div className="relative z-[1] mx-auto flex w-full max-w-md flex-col gap-6">
@@ -320,8 +391,8 @@ const PracticeHome = (): JSX.Element => {
         </span>
       </header>
 
-      <StudyCard now={now} />
-      <RustRoundsCard />
+      <StudyCard now={now} visit={visit} />
+      <RustRoundsCard visit={visit} />
     </div>
   )
 }

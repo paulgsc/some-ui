@@ -1,63 +1,133 @@
 /**
- * Playoff Delta as a show (SHOW SH1, SH2): its two formats, the week's and
- * the legend's, made from this workspace's own slides, and an episode, the
- * format applied to one week of the season (`@some-ui/video-render`'s
- * `episodeOf`). The format is a compile-time template: `formatOf` reads the
- * slides' order, names and holds, and each version is pinned under
- * `src/show/formats/` (its test holds the newest equal to `formatOf`), so a
+ * Playoff Delta as a show (SHOW SH1): its two formats, the week's and the
+ * legend's, made from this workspace's own slides, and the facts each scene
+ * keeps. Home's speaker says an episode from a fill (`./voiced`). The format
+ * is a compile-time template: `formatOf` reads the slides' order, names and
+ * holds, and each version is pinned under `@some-ui/video-render`'s
+ * `src/templates/` (its test holds the newest equal to `formatOf`), so a
  * change to the slides fails until a new version is written.
  */
 
 import {
-  episodeOf,
+  BRAND_MOTION,
   FORMAT_SCHEMA,
-  type Episode,
+  inTheme,
+  versionRefusal,
   type Format,
   type Parsed,
-  type UploadCopy,
+  type Shape,
 } from "@some-ui/video-render"
 
-import { callOf, sentence } from "./reading"
 import {
   HOLD_MS,
   LEGEND_SLIDES,
   LEGEND_WEEK,
   legendFacts,
-  MODEL,
   SCENES,
+  slidesOf,
   WEEK_SLIDES,
   weekFacts,
 } from "./slides"
-import type { StorySeason, StoryWeek } from "./story"
-import { nameOf } from "./story"
-import { CALLS, UPLOAD } from "./words"
+import type { StorySeason } from "./story"
 
 export type FormatKind = "week" | "legend"
 
-/** The version `formatOf` gives of each, pinned as `v<n>.json` in its folder. */
+/** Which format week `week` is an episode of: week 0 is the legend. */
+export const kindOf = (week: number): FormatKind =>
+  week === LEGEND_WEEK ? "legend" : "week"
+
+/**
+ * The newest version `formatOf` gives of each, pinned as `v<n>.json` in its
+ * folder. A fill names the version it was written for, and is drawn in it.
+ *
+ * 2 (FEED3 #2646): voiced, in the shape (`SHAPE`).
+ * 3 (SFEED10 #2675, SFEED14 #2766): drawn in Mochi Night, the palette made
+ *   for video, the mark too, in the series' version 3, which is Mochi
+ *   Night's ground and plays our music bed (#2673).
+ * 4 (HYPER5, #2728): the brand intro and outro are `brand-v1`, the code's
+ *   mark moving in the mark's theme, rather than the stage's slides.
+ */
 export const FORMAT_VERSION: Readonly<Record<FormatKind, number>> = {
-  week: 1,
-  legend: 1,
+  week: 4,
+  legend: 4,
+}
+
+const NIGHT_VERSION = 3
+
+/** The first version whose brand intro and outro move (HYPER5). */
+const MOTION_VERSION = 4
+
+/** The first version voiced and drawn in a shape. */
+export const VOICED_VERSION = 2
+
+/**
+ * Each format's shape from version 2 (SFEED2 #2680): the locked intro
+ * (`INTRO`, filled by code), the brand intro and outro, a chapter slide said
+ * aloud before each marked scene, and captions in the series' look. The
+ * chapters mark where an episode turns.
+ */
+const SHAPE: Readonly<Record<FormatKind, Shape>> = {
+  week: {
+    brand: { intro: true, outro: true },
+    chapters: ["division", "results", "standings"],
+    subtitles: "word",
+  },
+  legend: {
+    brand: { intro: true, outro: true },
+    chapters: ["pieces", "poles", "objectives"],
+    subtitles: "word",
+  },
 }
 
 /** The size the recorder records the stage at, in CSS px: a 9:16 frame. */
 export const RECORDING = { width: 1080, height: 1920 } as const
 
-/** Both formats are drawn in the week's series (`@some-ui/video-render`'s sample). */
-const SERIES = { id: "playoff-delta-week", version: 1 } as const
+/**
+ * Both formats are drawn in the week's series (`@some-ui/video-render`'s
+ * sample): version 1 places a recorded clip in a window, version 2 a still
+ * the size of the frame.
+ */
+const seriesOf = (version: number): Format["series"] => ({
+  id: "playoff-delta-week",
+  version: version >= NIGHT_VERSION ? 3 : version >= VOICED_VERSION ? 2 : 1,
+})
+
+function shapeOf(kind: FormatKind, version: number): Shape {
+  if (version < NIGHT_VERSION) return SHAPE[kind]
+  const night = inTheme(SHAPE[kind], "mochi-night")
+  return version >= MOTION_VERSION
+    ? { ...night, brand: { ...night.brand, motion: BRAND_MOTION } }
+    : night
+}
 
 /** A format's id: its folder's name. */
 export const formatId = (kind: FormatKind): string => `playoff-delta-${kind}`
 
-/** The show's format: every scene a week (or the legend) has, in order. */
-export function formatOf(kind: FormatKind): Format {
-  const slides = kind === "week" ? WEEK_SLIDES : LEGEND_SLIDES
+/** Why `version` of `kind`'s format can't be drawn here, or null (VS1). */
+export const versionRefusalOf = (
+  kind: FormatKind,
+  version: number
+): string | null =>
+  versionRefusal(formatId(kind), FORMAT_VERSION[kind], version)
+
+/**
+ * The show's format at `version` (the newest by default): every scene a week
+ * (or the legend) has, in order, and from version 2 its shape. Throws for a
+ * version this build doesn't know (`versionRefusalOf`).
+ */
+export function formatOf(
+  kind: FormatKind,
+  version: number = FORMAT_VERSION[kind]
+): Format {
+  const refused = versionRefusalOf(kind, version)
+  if (refused !== null) throw new Error(refused)
+  const slides = slidesOf(kind)
   return {
     schema: FORMAT_SCHEMA,
     id: formatId(kind),
-    version: FORMAT_VERSION[kind],
+    version,
     title: kind === "week" ? "Playoff Delta week" : "Playoff Delta, the legend",
-    series: SERIES,
+    series: seriesOf(version),
     look: "calm",
     scenes: slides.map((id) => ({
       id,
@@ -70,88 +140,34 @@ export function formatOf(kind: FormatKind): Format {
       },
       holdMs: HOLD_MS[id],
     })),
+    ...(version >= VOICED_VERSION ? { shape: shapeOf(kind, version) } : {}),
   }
 }
 
-/** Where the season's data is published, by its label and team. */
-const sourceOf = (season: StorySeason): string =>
-  `playoff-delta/${season.label}/${season.team}.json`
-
-/** The show both formats are episodes of, as Studio names it. */
-const SHOW = "Playoff Delta"
-
-/**
- * The upload's copy for one week (null for the legend), from the same reading
- * the short says: whose side, our own game, the week's sentence (the
- * outro's) and the model every number is read under. `UPLOAD` holds the
- * words.
- */
-export function uploadOf(
-  season: StorySeason,
-  week: StoryWeek | null
-): UploadCopy {
-  const team = nameOf(season, season.team)
-  if (week === null) {
-    return {
-      title: UPLOAD.legendTitle(season.label),
-      description: [UPLOAD.legendOpening(season.label, team), MODEL].join(
-        "\n\n"
-      ),
-    }
-  }
-  const game =
-    week.game === null
-      ? UPLOAD.bye
-      : week.game.won
-        ? UPLOAD.won(nameOf(season, week.game.opponent))
-        : UPLOAD.lost(nameOf(season, week.game.opponent))
-  return {
-    title: UPLOAD.weekTitle(
-      season.label,
-      week.week,
-      CALLS[callOf(week)].phrase
-    ),
-    description: [
-      UPLOAD.weekOpening(season.label, week.week, team, game),
-      sentence(week),
-      MODEL,
-    ].join("\n\n"),
-  }
-}
+/** What an episode is called: "Playoff Delta, 2026 week 8". */
+export const episodeTitle = (season: StorySeason, week: number): string =>
+  week === LEGEND_WEEK
+    ? "Playoff Delta, the legend"
+    : `Playoff Delta, ${season.label} week ${week}`
 
 /**
- * One week's episode (`LEGEND_WEEK`, 0, for the legend), or every reason
- * there isn't one. `sha256` is the sum of the season as the stage read it
- * (its contract JSON), and `inMs` says where scene `index`'s slide starts in
- * its recorded clip.
+ * The facts each scene of week `week`'s episode keeps, in its format's
+ * order (`LEGEND_WEEK`, 0, for the legend), or why there is no such week.
  */
-export function episodeFor(
+export function factsOf(
   season: StorySeason,
-  week: number,
-  sha256: string,
-  inMs: (index: number) => number
-): Parsed<Episode> {
-  const data = { source: sourceOf(season), sha256 }
+  week: number
+): Parsed<ReadonlyArray<ReadonlyArray<string>>> {
   if (week === LEGEND_WEEK) {
-    return episodeOf(formatOf("legend"), {
-      show: SHOW,
-      title: "Playoff Delta, the legend",
-      period: `${season.label}, the legend`,
-      data,
-      upload: uploadOf(season, null),
-      keep: LEGEND_SLIDES.map((id) => legendFacts(season, id)),
-      inMs,
-    })
+    return {
+      ok: true,
+      value: LEGEND_SLIDES.map((id) => legendFacts(season, id)),
+    }
   }
   const shown = season.weeks.find((w) => w.week === week)
   if (!shown) return { ok: false, problems: [`the season has no week ${week}`] }
-  return episodeOf(formatOf("week"), {
-    show: SHOW,
-    title: `Playoff Delta, ${season.label} week ${week}`,
-    period: `${season.label} week ${week}`,
-    data,
-    upload: uploadOf(season, shown),
-    keep: WEEK_SLIDES.map((id) => weekFacts(season, shown, id)),
-    inMs,
-  })
+  return {
+    ok: true,
+    value: WEEK_SLIDES.map((id) => weekFacts(season, shown, id)),
+  }
 }

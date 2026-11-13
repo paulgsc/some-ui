@@ -15,7 +15,7 @@
 import { newDraft, stepDraft } from "@aph/lib/draft"
 import type { Draft, DraftEvent } from "@aph/lib/draft"
 import type { Entry } from "@aph/lib/model"
-import { breaches, violations } from "@aph/lib/model"
+import { breaches, live, violations } from "@aph/lib/model"
 import { SEED_ENTRIES, SEED_SETTINGS } from "@aph/lib/seed"
 import { createAphStore } from "@aph/lib/store"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
@@ -46,6 +46,17 @@ const TODAY = "2026-10-03"
 /** Today, two within reach, and one (18 days back) past it. */
 const DAYS = [null, "2026-10-01", "2026-10-02", "2026-09-15"]
 
+/** How many entries stand at each checkpoint of each day. */
+function perTime(entries: ReadonlyArray<Entry>): Map<string, number> {
+  const counts = new Map<string, number>()
+  for (const e of live(entries)) {
+    if (e.checkpoint === null) continue
+    const slot = `${e.day} ${e.checkpoint}`
+    counts.set(slot, (counts.get(slot) ?? 0) + 1)
+  }
+  return counts
+}
+
 function figure(next: () => number): Array<DraftEvent> {
   return [...String(3000 + Math.floor(next() * 3500))].map((digit) => ({
     type: "digit",
@@ -69,6 +80,20 @@ describe("the store's rules, under random edits", () => {
     ])
   })
 
+  it("takes a removal, then no change to the removed entry", () => {
+    const store = createAphStore({ settings, entries: SEED_ENTRIES })
+    const target = SEED_ENTRIES[0]
+    if (target === undefined) throw new Error("a paper note")
+    expect(store.remove(target.id)).toBe(true)
+    expect(store.get().entries).toHaveLength(SEED_ENTRIES.length)
+    expect(store.editEntry(target.id, { note: "x" })).toBe(false)
+    expect(store.review(target.id, "agreed")).toBe(false)
+    expect(store.get().entries.find((e) => e.id === target.id)).toEqual({
+      ...target,
+      removed: true,
+    })
+  })
+
   for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
     it(`holds after every one of 400 random edits (seed ${seed})`, () => {
       const next = random(seed)
@@ -77,7 +102,7 @@ describe("the store's rules, under random edits", () => {
       for (let step = 0; step < 400; step += 1) {
         const { entries } = store.get()
         const before = entries
-        const kind = Math.floor(next() * 5)
+        const kind = Math.floor(next() * 9)
         if (kind === 0 || kind === 1) {
           // Mine: at a checkpoint or not, with or without labels.
           const checkpoint =
@@ -109,6 +134,27 @@ describe("the store's rules, under random edits", () => {
           if (target !== undefined) {
             store.editEntry(target.id, { labels: someLabels(next) })
           }
+        } else if (kind === 7) {
+          // Some of the drafts, submitted together.
+          store.submit(
+            entries
+              .filter((e) => e.draft === true && next() < 0.7)
+              .map((e) => e.id)
+          )
+        } else if (kind === 8) {
+          const target = pick(next, entries)
+          if (target !== undefined) store.deleteDraft(target.id)
+        } else if (kind === 4) {
+          const target = pick(next, entries)
+          if (target !== undefined && next() < 0.3) store.remove(target.id)
+        } else if (kind === 5) {
+          const target = pick(next, entries)
+          if (target !== undefined) {
+            store.rewriteMine(target.id, {
+              value: 3000 + Math.floor(next() * 3500),
+              approx: next() < 0.5,
+            })
+          }
         } else {
           const target = pick(next, entries)
           if (target !== undefined) {
@@ -125,6 +171,22 @@ describe("the store's rules, under random edits", () => {
         expect(breaches(before, store.get().entries), `step ${step}`).toEqual(
           []
         )
+        // Drafts are only ever on one day at a time.
+        const draftDays = new Set(
+          store
+            .get()
+            .entries.filter((e) => e.draft === true)
+            .map((e) => e.day)
+        )
+        expect(draftDays.size, `step ${step}`).toBeLessThanOrEqual(1)
+        // A time of day holds one entry: none gains a second, and one the
+        // paper notes logged twice never gains a third.
+        const was = perTime(SEED_ENTRIES)
+        for (const [slot, count] of perTime(store.get().entries)) {
+          expect(count, `step ${step}, ${slot}`).toBeLessThanOrEqual(
+            Math.max(1, was.get(slot) ?? 0)
+          )
+        }
         const reopened = createAphStore({ settings, entries: [] }, storage)
         expect(reopened.get(), `step ${step}`).toEqual(store.get())
       }

@@ -7,6 +7,7 @@ import {
   runtimeOf,
   type TimedWord,
 } from "@burn-ins/lib/captions/timing"
+import { geometryOf, PORTRAIT } from "@burn-ins/lib/geometry"
 import { describe, expect, it } from "vitest"
 
 import { byChars, word } from "./word"
@@ -68,7 +69,7 @@ describe("grouping words into captions", () => {
   })
 
   it.each(THEME_IDS)("keeps every sample word, in order (%s)", (id) => {
-    const captions = captionsFor(SAMPLE, THEMES[id])
+    const captions = captionsFor(SAMPLE, THEMES[id], geometryOf(PORTRAIT))
     expect(captions.flatMap((c) => c.rows.flat())).toEqual(
       SAMPLE.flatMap((line) => line.words)
     )

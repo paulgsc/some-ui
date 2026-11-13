@@ -13,11 +13,14 @@ import {
   Archive,
   ArrowUp,
   Ban,
+  CalendarClock,
   Check,
   CircleX,
+  Download,
   Ellipsis,
   HardDrive,
   Hourglass,
+  RefreshCw,
   TriangleAlert,
   Unlink,
   Unplug,
@@ -25,7 +28,12 @@ import {
 } from "lucide-react"
 
 import type { How, Where } from "@/lib/sharing-marks"
-import { HOW_ORDER, MARK_WORDS, WHERE_ORDER } from "@/lib/sharing-marks"
+import {
+  HOW_ORDER,
+  HOW_TROUBLE,
+  MARK_WORDS,
+  WHERE_ORDER,
+} from "@/lib/sharing-marks"
 
 const HOUSE = "M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"
 
@@ -71,6 +79,9 @@ export const WhereMark = ({
 /** How the last exchange went, drawn beside where. */
 const HOW_ICONS: Readonly<Record<How, LucideIcon>> = {
   current: Check,
+  updating: RefreshCw,
+  "not-yet": CalendarClock,
+  "too-old": Download,
   waiting: ArrowUp,
   sending: Ellipsis,
   "no-answer": WifiOff,
@@ -102,20 +113,9 @@ export const WHERE_TONE: Record<Where, string> = {
   kept: "text-success",
 }
 
-export const HOW_TONE: Record<How, string> = {
-  current: "text-success",
-  waiting: "text-success",
-  sending: "text-success",
-  "no-answer": "text-warning",
-  busy: "text-warning",
-  forgotten: "text-warning",
-  unpaired: "text-warning",
-  full: "text-warning",
-  "no-room": "text-warning",
-  refused: "text-warning",
-  fault: "text-warning",
-  failed: "text-warning",
-}
+/** A how's tone: a warning where the send didn't all go. */
+export const howTone = (how: How): string =>
+  HOW_TROUBLE.has(how) ? "text-warning" : "text-success"
 
 /** A record's two marks side by side, each in its own tone. */
 export const LaneMarks = ({
@@ -128,14 +128,14 @@ export const LaneMarks = ({
   <span className="flex shrink-0 items-center gap-1">
     <WhereMark where={where} className={cn("size-5", WHERE_TONE[where])} />
     {how === null ? null : (
-      <HowMark how={how} className={cn("size-4", HOW_TONE[how])} />
+      <HowMark how={how} className={cn("size-4", howTone(how))} />
     )}
   </span>
 )
 
 /** The tone a lane's words wear: how it went, if that says anything. */
 export const toneOf = (where: Where, how: How | null): string =>
-  how === null ? WHERE_TONE[where] : HOW_TONE[how]
+  how === null ? WHERE_TONE[where] : howTone(how)
 
 /** Every mark a lane can show, and what each means. */
 export const SharingLegend = ({
@@ -166,7 +166,7 @@ export const SharingLegend = ({
         ...how.map((h) => ({
           key: h,
           mark: (
-            <HowMark how={h} className={cn("size-5 shrink-0", HOW_TONE[h])} />
+            <HowMark how={h} className={cn("size-5 shrink-0", howTone(h))} />
           ),
           text: MARK_WORDS.how[h],
         })),

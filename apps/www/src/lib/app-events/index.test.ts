@@ -15,6 +15,7 @@ import {
   appEventsWaiting,
   keepAppEvent,
   letGoHeldAppEvents,
+  recordEngagement,
   TAKE_WENT,
   takeEventOf,
 } from "@/lib/app-events"
@@ -127,5 +128,63 @@ describe("the events waiting for home (TE2)", () => {
     const waiting = appEventsWaiting()
     expect(waiting).toHaveLength(APP_EVENTS_WAITING)
     expect(waiting.at(-1)?.id).toBe("e0")
+  })
+})
+
+describe("an engagement event (ENG2)", () => {
+  const taken = {
+    kind: "taken",
+    pipeline: "topik",
+    affordance: "routine-lens",
+    surface: "apk",
+    at: "2026-11-03T09:00:00.000Z",
+  } as const
+
+  it("waits beside the outcomes as exactly its kind's fields, under an id and the build", () => {
+    expect(recordEngagement(taken, "42a72b958", "g1")).toBe(true)
+    keepAppEvent(event("e1"))
+    expect(appEventsWaiting().map((e) => e.family)).toEqual([
+      "outcome",
+      "engagement",
+    ])
+    expect(appEventsWaiting()[1]).toEqual({
+      ...taken,
+      family: "engagement",
+      id: "g1",
+      build: "42a72b958",
+    })
+  })
+
+  it("is refused when the registry doesn't list it", () => {
+    expect(
+      recordEngagement({ ...taken, affordance: "no-such-thing" }, null, "g1")
+    ).toBe(false)
+    expect(appEventsWaiting()).toEqual([])
+  })
+
+  it("reads back by its shape alone, so one kept under an earlier registry still goes", () => {
+    const kept = {
+      ...taken,
+      affordance: "since-retired",
+      family: "engagement",
+      id: "g1",
+      build: null,
+    }
+    localStorage.setItem("some-ui:app-events", JSON.stringify([kept]))
+    keepAppEvent(event("e1"))
+    expect(appEventsWaiting().map((e) => e.id)).toEqual(["e1", "g1"])
+  })
+
+  it("is not read back with a field outside its kind's", () => {
+    const said = {
+      ...taken,
+      family: "engagement",
+      id: "g1",
+      build: null,
+      words: "what I said",
+    }
+    localStorage.setItem("some-ui:app-events", JSON.stringify([said]))
+    keepAppEvent(event("e1"))
+    expect(appEventsWaiting().map((e) => e.id)).toEqual(["e1"])
   })
 })

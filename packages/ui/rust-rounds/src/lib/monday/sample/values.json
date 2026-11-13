@@ -1,0 +1,239 @@
+{
+  "schema": "some-ui.rust-monday-values/1",
+  "essays": [
+    {
+      "week": "2026-w46",
+      "open": "Week 46 was Quillmoss, an invented company that watches freezers. Forty thousand sensor events a second, and every batch of a thousand has to be parsed and handed to the writer within two milliseconds, so an alarm fires before a freezer warms. Three tickets, all on that one budget. Two of them got an answer, and one got silence, which is an answer too.",
+      "tickets": [
+        {
+          "id": "QM-311",
+          "bests": [
+            "Each `to_string` allocates: three per event, three thousand per batch. The allocator, not the split, is the cost.",
+            "Return `&str` slices that borrow from `line`, and reuse one `Vec` across lines instead of collecting a new one.",
+            "The fields borrow from `line`. Elision ties the output to the one input reference, so they can't outlive the line."
+          ],
+          "question": "Ticket QM-311. The ingest worker calls fields on every event, and at peak the batch misses its two millisecond p99: three point one milliseconds, by the scenario's figures. rustc has nothing to say about this code. Speak to where the time goes, though rustc is silent; what change removes it; and what that asks of the caller.",
+          "best": "Here is an answer that fits each point closely. Each to_string allocates: three per event, three thousand per batch, so the allocator is the cost, not the split. Return string slices that borrow from the line, and reuse one vector across lines instead of collecting a new one each time. The fields then borrow from the line: elision ties the output to the one input reference, so they can't outlive it.",
+          "beside": "Set beside the best fit: where the time goes, covered. What change removes it, partly: the slices are right, and the vector still allocates on every call. What it asks of the caller, covered. On SOLO, that reads relational: one reason joined the allocations, the SLA and the borrow's lifetime.",
+          "answer": {
+            "marks": [
+              {
+                "mark": "covered"
+              },
+              {
+                "mark": "partly",
+                "note": "Slices, yes; the `Vec` still allocates on every call."
+              },
+              {
+                "mark": "covered"
+              }
+            ],
+            "solo": {
+              "level": 4,
+              "why": "You joined the allocation per field, the SLA and the borrow's lifetime into one reason."
+            }
+          },
+          "dives": [
+            {
+              "point": 1,
+              "title": "The allocation that's left",
+              "shows": [
+                "`collect()` builds a new `Vec` on every call.",
+                "Pass one in and `clear()` it: the hot path stops allocating.",
+                "`clear` keeps the capacity, so after the first batch nothing grows."
+              ],
+              "code": "fn fields<'a>(line: &'a str, out: &mut Vec<&'a str>) {\n    out.clear();\n    out.extend(line.split(',').map(str::trim));\n}\n",
+              "said": "The answer found the first allocation and left the second in place. Return slices instead of Strings, and the three copies per event are gone. But look at what fields still returns: a Vec. The collect call at the end builds a new vector for every line, so every event still asks the allocator for memory once, and frees it once when the vector drops at the end of the loop body. At forty thousand events a second, that is forty thousand trips to the allocator a second, on the path the SLA is measured on. It is cheaper than three Strings, but it is the same kind of cost, and it shows up in the same p99.\n\nThe way out is to stop owning the vector inside the function. Have the caller pass one in, and have fields clear it and fill it. Clear keeps the vector's capacity: the length goes back to zero, and the memory it already holds stays. So the first batch grows the vector to the widest line it sees, and after that nothing grows. The hot path does no allocation at all once it is warm.\n\nThat change has a shape you will meet often. The function stops returning a fresh value and starts writing into a buffer it borrows mutably. Its signature now has two references in it: the line, which the fields borrow from, and the output vector, which holds those fields. So the vector's element type has to carry the line's lifetime, and you write it out: the output is a mutable vector of string slices that live as long as the line. Elision can't pick that for you here, because there are two input references and it won't guess which one the slices come from.\n\nWhat it costs the caller is one rule. The vector holds borrows of the line, so the caller must finish with the fields before the next line replaces the old one. In this loop that is natural: parse, hand off, move on. Where it isn't natural, the caller copies what it keeps, and pays for that copy where it can see it."
+            },
+            {
+              "point": 2,
+              "title": "Elision: the rule rustc applied without a word",
+              "shows": [
+                "One reference in, references out: rustc gives them the input's lifetime.",
+                "Nothing to write, and nothing printed when it holds.",
+                "Two references in, and you name which one the output borrows."
+              ],
+              "said": "rustc said nothing about lifetimes in this ticket, and that silence is a rule doing its work. The rule is lifetime elision, and it is written down in the Rust Reference. When a function takes exactly one reference and returns references, the outputs get the input's lifetime. So when fields takes a string slice and returns a vector of string slices, rustc reads it as: the returned slices borrow from the line, and live no longer than the line does. Nothing is printed, because nothing is wrong.\n\nThat is what the answer meant by the catch: the result can't outlive the line. It is the right reading, and it comes straight from the signature. A caller that tries to keep a field after the line is dropped, say by pushing it into a vector that lives across the whole batch while the line is a temporary, gets an error at that call site. The error points at the caller, not at fields, because fields kept its promise. The borrow checker checks each function against its signature, and each call against the signature, and never looks inside the callee to decide.\n\nThe rule has limits worth knowing before you lean on it. With two references in and references out, elision has no single input to tie the output to, so you name one. That is what happened to the buffer version of fields: the line and the output vector are both references, and the signature has to say that the slices borrow from the line. With a method that takes self by reference, the outputs get self's lifetime, which is usually right and sometimes surprising: a method on a parser that returns slices of an argument, not of the parser, has to say so.\n\nSo the habit to build is reading a signature as a contract about borrows. When rustc is quiet about lifetimes, it is not because there are none. It is because the signature already said where every borrow comes from, and every caller agreed."
+            }
+          ]
+        },
+        {
+          "id": "QM-312",
+          "bests": [
+            "`batch` holds slices into `buf`. `clear` and `push_str` can overwrite or move those bytes, so the slices would dangle.",
+            "Offsets `(start, end)` into a buffer that only grows; or bytes each line owns: an arena freed per batch, or reference-counted bytes.",
+            "Offsets cost no copy, and bookkeeping on every read; owned bytes cost one copy per line, with simpler lifetimes. Measure both."
+          ],
+          "question": "Ticket QM-312. To stop copying, a teammate reuses one read buffer and keeps borrowed fields in the batch. rustc refuses it, with two E0502s. Speak to what rustc is protecting; two ways out; and what each costs against two milliseconds.",
+          "best": "Here is an answer that fits each point closely. The batch holds slices into the buffer, and clear and push_str can overwrite or move those bytes, so the slices would dangle. One way out keeps offsets, a start and an end, into a buffer that only grows. The other gives each line bytes it owns: an arena freed once per batch, or reference-counted bytes. Offsets cost no copy and some bookkeeping on every read; owned bytes cost one copy per line, with simpler lifetimes. Measure both against the p99.",
+          "beside": "Set beside the best fit: what rustc is protecting, partly: the borrow checker was named, and not what happens to the bytes. Two ways out, partly: an arena fits, and Cow and Arc don't, as said. What each costs, missing. On SOLO, that reads multistructural: the right words, not yet tied to one mechanism.",
+          "answer": {
+            "marks": [
+              {
+                "mark": "partly",
+                "note": "Named the borrow checker, not what happens to the bytes."
+              },
+              {
+                "mark": "partly",
+                "note": "An arena fits; `Cow` and `Arc` don't, as said."
+              },
+              {
+                "mark": "missing"
+              }
+            ],
+            "solo": {
+              "level": 3,
+              "why": "Borrow checker, lifetime, arena, `Cow` and `Arc` all belong here, but nothing tied them to what `clear` does to the bytes."
+            }
+          },
+          "dives": [
+            {
+              "point": 2,
+              "title": "Copies against bookkeeping, measured",
+              "shows": [
+                "Offsets: no copy, a bounds check on every read.",
+                "Owned bytes: one copy per line, lifetimes as simple as a `String`'s.",
+                "Count what each allocates per batch, then measure the p99."
+              ],
+              "said": "The answer stopped before the third point, and the third point is where the SLA lives. Two ways out of the borrow error were named, and either one works. The question the ticket asked is what each costs against two milliseconds, and that is something you can work out before you measure.\n\nTake offsets first. Instead of keeping slices into the buffer, keep a start and an end for each field, and keep the buffer itself growing: append each line, never clear it until the batch is done. Reading a field becomes slicing the buffer with the two offsets. That slice is checked against the buffer's length, which is a comparison and a branch, and the compiler usually can't remove it, because the offsets are just numbers to it. No bytes are copied. The cost is one bounds check per read and the bookkeeping of a pair of numbers per field, in exchange for zero copies and one allocation that grows to the batch's size and then stays.\n\nNow owned bytes. Give each line its own storage, so the batch can hold fields that borrow from storage nothing will overwrite. The cheapest version is an arena: one large block per batch, each line copied in, everything freed when the batch is done. That is one copy of each line's bytes, and the allocator is visited once per batch, not once per line. A reference-counted buffer per line is simpler to reason about and costs a count and an allocation per line, which is the cost QM-311 was trying to remove.\n\nSo there is an order to try them in. Offsets cost the least on paper, and they make every read go through the buffer. The arena costs one memcpy per line, which for lines of a few dozen bytes is small next to the parse itself. Per-line ownership is the most comfortable and the most expensive.\n\nThen measure. Count the allocations per batch for each version, and run each under the peak load the scenario states, reading the p99, not the mean. The numbers decide; the borrow checker only made you choose."
+            },
+            {
+              "point": 0,
+              "title": "What `clear` and `push_str` do to the bytes",
+              "shows": [
+                "`push_str` may reallocate: every slice into the old bytes points at freed memory.",
+                "`clear` keeps the memory and lets the next line write over it.",
+                "Either way, `batch` would read bytes that changed under it."
+              ],
+              "said": "rustc refused this program twice, and both errors point at the same thing: batch holds slices into buf, and the loop changes buf while those slices are alive. The answer called it the borrow checker and a lifetime problem, which names who refused. The useful part is what the borrow checker is protecting, and that is a fact about bytes.\n\nStart with push_str. A String owns a block of memory with some capacity. When a push needs more room than the capacity, the String asks for a bigger block, copies its bytes over, and frees the old block. Every slice that pointed into the old block now points at memory that has been given back. Reading through one of those slices is reading freed memory: in C that is a use after free, and it may print the right answer for months before it doesn't.\n\nNow clear. Clear frees nothing. It sets the length to zero and keeps the capacity, so the next push_str writes the next line's bytes into the same memory. A slice taken from the first line now shows bytes from the second. Nothing crashes, and the batch is silently wrong: the id of event seven reads as the id of event eight.\n\nThose two cases are why the rule is as simple as it is: while a shared borrow of buf is alive, buf can't be borrowed mutably. Clear and push_str both take a mutable borrow, and batch keeps the shared borrows alive until the print at the end, so rustc points at both calls and at the borrow they conflict with. It doesn't need to know which of the two failures would happen. It refuses the shape that allows either.\n\nThis is the Ownership Inventory's point about reading an error: the message names a rule, and the reason for the rule is a program that would go wrong without it. When you can say which bytes would change under which reference, the ways out follow on their own, because each one is a way to stop that from happening."
+            }
+          ]
+        },
+        {
+          "id": "QM-313",
+          "bests": [
+            "`spawn` needs a `'static` closure: the thread may outlive `buf`. `scope` joins every thread before it returns, so the borrow is long enough.",
+            "A writer that lives across batches can't be scoped: send owned rows over a channel. Scope fits only a writer that finishes within the batch."
+          ],
+          "question": "Ticket QM-313. The batch goes to a writer thread so parsing never waits on disk. With thread spawn it doesn't compile, with E0597; with thread scope the same body does. Speak to why spawn refuses and scope accepts; and which you'd ship here, and why.",
+          "best": "Here is an answer that fits each point closely. spawn needs a 'static closure, because the new thread may outlive buf. scope joins every thread it started before it returns, so a borrow of buf is long enough. A writer that lives across batches can't be scoped, so send it owned rows over a channel; scope fits only a writer that finishes within the batch.",
+          "beside": "With nothing to set beside it, every point is a gap, so the next minutes go deep on both.",
+          "answer": {
+            "guess": "You opened it twice and didn't speak. My guess: nothing in earlier weeks touched thread::scope, so the ticket looked like it had no answer."
+          },
+          "dives": [
+            {
+              "point": 0,
+              "title": "What `'static` asks of a thread",
+              "shows": [
+                "A spawned thread can run after the frame that made it returns.",
+                "So it may hold only what it owns, or what lives forever.",
+                "`scope` changes the promise: every thread ends before the scope does."
+              ],
+              "said": "thread spawn and thread scope take the same closure, and only one of them compiles it. The difference is a promise about time.\n\nA thread made by spawn can keep running after the function that made it returns. Nothing in spawn's signature says when the thread ends, and the join handle can be dropped without joining. So spawn requires that the closure, and everything it holds, could live forever. That is what the 'static bound on spawn says: the closure owns its data, or borrows only data that lives for the whole program. A closure that holds slices of buf, a String on main's stack, can't promise that, because buf is dropped when main returns, and the thread might still be reading it. rustc reports this as buf not living long enough: the error is about the borrow, because the borrow is what would outlive its owner.\n\nthread scope changes the promise. Every thread spawned inside a scope is joined before the scope returns, and the scope's signature says so: the threads may borrow anything that outlives the scope itself. buf is created before the scope and dropped after it, so a borrow of buf lasts long enough, and the same body compiles. Nothing about the threads is different at run time. What changed is that the compiler can now see when they end.\n\nThat is the general shape of 'static. It doesn't mean the data lives forever. It means the type holds no borrow that could end, so whoever holds it is free to keep it as long as they like. Owned values satisfy it: a String, a vector of Strings, an Arc. A borrow satisfies it only if what it borrows is itself static.\n\nSo when spawn refuses a closure, there are two honest fixes. Give the thread something it owns, by moving or cloning the data in. Or bound the thread's life, by spawning it in a scope, so the compiler can check the borrow against an end it can see."
+            },
+            {
+              "point": 1,
+              "title": "Which to ship: scope, or owned rows down a channel",
+              "shows": [
+                "A writer that finishes within the batch: scope fits.",
+                "A writer that lives across batches: it must own what it gets.",
+                "Move the whole buffer in: one move, no copy per row."
+              ],
+              "said": "Which one ships depends on how long the writer lives, and the ticket's scenario answers that. The writer exists so parsing never waits on disk. A writer that is started per batch and joined before the next batch starts is still waiting: the parse of the next batch can't begin until the scope ends, because the scope joins before it returns. So scope would compile and miss the reason the writer exists.\n\nA writer that lives across batches can't borrow from any one batch's buffer. It needs to own what it receives. The usual shape is a channel: the parser sends each finished batch down a channel, and the writer thread loops over what it receives. Sending moves the value, so the writer owns it, and the parser can start on the next batch at once. The only borrow is inside each side's own code.\n\nWhat moves down the channel decides the cost. Sending a vector of Strings means each field was copied into its own allocation, which is QM-311's cost again. Sending the whole buffer is one move: the String's pointer, length and capacity change hands, and no bytes are copied. The writer then splits the buffer itself, or receives offsets beside it. That keeps the copy count at zero and the allocation count at one buffer per batch, and the parser allocates a fresh buffer for the next batch, or gets one back from the writer over a second channel so the two trade buffers.\n\nA bounded channel adds the last piece. If the writer falls behind, a bounded channel makes the parser wait when it is full, so memory doesn't grow without limit at peak. That wait is visible and has a size you choose, which is better than an unbounded queue that hides the problem until the box runs out of memory.\n\nSo for this scenario: scope for work that ends within the batch, like parsing fields in parallel before handing off; owned buffers down a bounded channel for the writer that has to outlive every batch."
+            }
+          ]
+        }
+      ],
+      "weeks": "Over the weeks. This is the first week with an essay, so the chart has one column. Allocation on the hot path and lifetime elision read relational, borrows into a reused buffer read multistructural, and 'static and threads went unanswered. The role line comes later, once there are enough weeks to work it out from.",
+      "next": "Next week is Tallowbrook, an invented label printer. It starts from the error you pasted on Thursday, an Rc that a thread wouldn't take, then moves out of a collection, and aliasing that only fails on a reprint."
+    }
+  ],
+  "week": {
+    "company": {
+      "name": "Tallowbrook",
+      "about": "Shipping labels for warehouses: each order's label is rendered and sent to a thermal printer, about 12,000 labels a minute at peak."
+    },
+    "role": "An engineer on Tallowbrook's label pipeline.",
+    "audience": "The pipeline team, and the warehouse leads who wait on the printers.",
+    "story": "As a warehouse lead, I need every order's label rendered and at the printer within 50 ms, so packers never stand at an empty printer.",
+    "sla": [
+      {
+        "what": "Render one label and hand it to the printer",
+        "target": "50 ms, p99"
+      },
+      {
+        "what": "Peak load",
+        "target": "12,000 labels a minute"
+      }
+    ],
+    "tickets": [
+      {
+        "id": "TB-101",
+        "title": "Print each queued label's address",
+        "spec": "The print loop reads each label from the queue by index. rustc refuses it.",
+        "figures": ["The queue holds up to 2,000 labels at peak."],
+        "speakTo": [
+          "What rustc refuses to do, and why",
+          "Three ways out: borrow, clone, or take",
+          "Which keeps the 50 ms, and what each costs"
+        ],
+        "program": "struct Label {\n    order: u32,\n    address: String,\n}\n\nfn label(order: u32, a: &str) -> Label {\n    Label { order, address: a.into() }\n}\n\nfn main() {\n    let queue = vec![\n        label(7, \"1 Elm St\"),\n        label(8, \"9 Oak Ave\"),\n    ];\n    for i in 0..queue.len() {\n        let to = queue[i].address;\n        let n = queue[i].order;\n        println!(\"{n} -> {to}\");\n    }\n}\n",
+        "expect": {
+          "outcome": "compile-error",
+          "code": "E0507"
+        },
+        "concepts": [
+          {
+            "id": "moves-out-of-collections",
+            "name": "Moves out of collections"
+          }
+        ]
+      },
+      {
+        "id": "TB-102",
+        "title": "Reprint a label without losing the log",
+        "spec": "The printer keeps a log of orders sent. A reprint removes the order before it is sent again. It compiles, and works until an order is printed twice.",
+        "figures": ["About one label in 200 is reprinted after a jam."],
+        "speakTo": [
+          "Why it compiles and still fails",
+          "When it fails, and how often at peak",
+          "How to restructure it so it can't"
+        ],
+        "program": "use std::cell::RefCell;\n\ntype Log = RefCell<Vec<u32>>;\n\nfn reprint(log: &Log, order: u32) {\n    let mut sent = log.borrow_mut();\n    sent.retain(|o| *o != order);\n}\n\nfn print(log: &Log, order: u32) {\n    let mut sent = log.borrow_mut();\n    if sent.contains(&order) {\n        reprint(log, order);\n    }\n    sent.push(order);\n}\n\nfn main() {\n    let log = RefCell::new(Vec::new());\n    print(&log, 7);\n    print(&log, 8);\n    print(&log, 7);\n    println!(\"{:?}\", log.borrow());\n}\n",
+        "expect": {
+          "outcome": "panics"
+        },
+        "concepts": [
+          {
+            "id": "aliasing-and-mutation",
+            "name": "Aliasing and mutation"
+          }
+        ]
+      },
+      {
+        "id": "TB-103",
+        "title": "Render the page on a worker thread",
+        "spec": "The page is shared with the preview, so it sits in an Rc, and the renderer moves a copy to a worker thread. rustc refuses it.",
+        "figures": [],
+        "speakTo": [
+          "What Send is, and why Rc isn't",
+          "What to share the page with instead",
+          "What that costs per label"
+        ],
+        "program": "use std::rc::Rc;\nuse std::thread;\n\nfn main() {\n    let page = Rc::new(vec![0u8; 64]);\n    let copy = Rc::clone(&page);\n    let h = thread::spawn(move || {\n        copy.len()\n    });\n    println!(\"{}\", h.join().unwrap());\n    println!(\"{}\", page.len());\n}\n",
+        "expect": {
+          "outcome": "compile-error",
+          "code": "E0277"
+        },
+        "concepts": [
+          {
+            "id": "send-and-sync",
+            "name": "Send and Sync"
+          }
+        ],
+        "seed": "2026-11-12T17:04:00.000Z"
+      }
+    ]
+  }
+}

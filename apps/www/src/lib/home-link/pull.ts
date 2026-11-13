@@ -8,7 +8,9 @@
  * The lanes share the link, which runs one of them at a time and turns the
  * rest away, so they are asked one after another; a lane turned away all
  * the same (its watch, or a tap in Settings, had the link) is asked once
- * more when the link frees up, the moment its watch asks it again too.
+ * more when the link frees up, the moment its watch asks it again too. Once
+ * home is busy (AD3, `./runtime`), every lane after that one says so: the
+ * pull stops reaching home there.
  *
  * Each run ends in its lane's runtime (`./kept-runtime`), so the marks that
  * read it (the header's, Settings') show how the pull went, lane by lane;
@@ -24,21 +26,22 @@ import { resynced } from "./kept-model"
 import type { Kept } from "./kept-runtime"
 import type { Front } from "./kept-watch"
 import { pullKept } from "./kept-watch"
+import { drainFree } from "./model"
 import { PULL_HOME } from "./words"
 
 export type HomePullPorts = {
   /** The lanes `useLaneHome` watches now. */
   readonly watched: () => ReadonlySet<Kept>
   readonly doc: Front
-  /** Resolves once the link is doing nothing. */
+  /** Resolves once the link would start a drain run. */
   readonly free?: () => Promise<void>
 }
 
-/** Resolves once the home link is doing nothing. */
+/** Resolves once the home link would start a drain run. */
 function linkFree(): Promise<void> {
   const link = homeLink()
   return new Promise((resolve) => {
-    const idle = (): boolean => link.getSnapshot().activity.kind === "idle"
+    const idle = (): boolean => drainFree(link.getSnapshot())
     if (idle()) {
       resolve()
       return

@@ -1,11 +1,18 @@
 /**
- * Rust Rounds' rounds on home, and what home's `rust-runner` recorded for
- * each of their programs (paulgsc/server `routes/rust_rounds.rs` and
- * `handlers/rust_rounds.rs`, RR3 #2234; the round format is RR1's
+ * Rust Rounds' rounds and weeks on home, and what home's `rust-runner`
+ * recorded for each of their programs (paulgsc/server `routes/rust_rounds.rs`
+ * and `handlers/rust_rounds.rs`, RR3 #2234 and RR12 #2687; the round format is RR1's
  * `some-ui.rust-round/1`, `packages/ui/rust-rounds/src/lib/formats`). The
  * phone fetches the list and each round with its runs, and sends a pasted
  * round home, through the app's home link (RR4b #2347,
  * `packages/ui/rust-rounds/src/lib/home`).
+ *
+ * **Weeks** (`/rust-weeks`, RR12) are the routine's, not the phone's: the
+ * mailbox poller keeps each (`rust-week-<id>.json` in `brief`) and queues its
+ * programs, so there is no `PUT`, and nothing here can store one. A week's
+ * runs are shaped as a round's. CI's throwaway home holds no week, so there
+ * the list is empty and the week a `404`; a served week, its `ETag` and the
+ * `304` are held by the server's handler tests.
  *
  * Hand-written: `RoundListSchema` is the server's `RoundList` of
  * `rust_round_repo::RoundEntry`, and `RoundWithRunsSchema` its
@@ -125,6 +132,36 @@ const RoundWithRunsSchema = z.object({
     })
   ),
 })
+
+/** `handlers::rust_rounds::WeekEntry`: a week by its ISO week. */
+const WeekEntrySchema = z.object({
+  id: z.string().regex(/^\d{4}-w\d{2}$/),
+  sha256: HashSchema,
+  receivedAt: z.iso.datetime({ offset: true }),
+})
+
+/** `handlers::rust_rounds::WeekList`: the weeks home holds, newest first. */
+const WeekListSchema = z.object({
+  weeks: z.array(WeekEntrySchema).max(ROUNDS_LISTED),
+})
+
+/** `handlers::rust_rounds::WeekWithRuns`. */
+const WeekWithRunsSchema = WeekEntrySchema.extend({
+  week: z.record(z.string(), z.unknown()),
+  tickets: z.array(
+    z.object({
+      ticket: z.string().regex(/^[A-Z][A-Z0-9]{0,5}-\d{1,6}$/),
+      sourceHash: HashSchema,
+      runs: z.array(RunKeptSchema),
+    })
+  ),
+})
+
+/** The sample week's id (`packages/ui/rust-rounds/src/lib/sample-week`). */
+const SAMPLE_WEEK = "2026-w46"
+
+/** A week in the id's own form that no routine writes. */
+const ABSENT_WEEK = "1999-w01"
 
 /** The worked example's id (`packages/ui/rust-rounds/src/lib/worked-example`). */
 const WORKED_EXAMPLE = "indexing-01"
@@ -303,6 +340,95 @@ export const contracts = [
       "putting a round is a paired phone's: a browser's cookie session is a 403, and nothing is kept",
     mutates: true,
     request: { path: { id: OTHER_ROUND }, body: MISPLACED_ROUND },
+    expect: { status: 403 },
+  }),
+
+  defineContract({
+    id: "rust-weeks.list",
+    module: "rust_rounds",
+    paired: true,
+    method: "GET",
+    path: "/rust-weeks",
+    summary: `this subject's weeks home holds, newest week first, at most ${ROUNDS_LISTED}: each by the ISO week it opens, the hash of what home keeps and when it arrived`,
+    expect: { status: 200, schema: WeekListSchema },
+  }),
+
+  defineContract({
+    id: "rust-weeks.list_signed_out",
+    module: "rust_rounds",
+    method: "GET",
+    path: "/rust-weeks",
+    summary: "the weeks are a paired phone's: without a session it is a 401",
+    expect: { status: 401 },
+  }),
+
+  defineContract({
+    id: "rust-weeks.list_browser",
+    module: "rust_rounds",
+    session: true,
+    method: "GET",
+    path: "/rust-weeks",
+    summary:
+      "the weeks are a paired phone's: a browser's cookie session is a 403",
+    expect: { status: 403 },
+  }),
+
+  defineContract({
+    id: "rust-weeks.week",
+    module: "rust_rounds",
+    paired: true,
+    method: "GET",
+    path: "/rust-weeks/:id",
+    summary:
+      "one week as the routine put it, with each ticket's program and every run home's rust-runner recorded for it; a 404 where home holds no such week",
+    request: { path: { id: SAMPLE_WEEK } },
+    expect: {
+      status: [200, 404],
+      schemaFor: 200,
+      schema: WeekWithRunsSchema,
+    },
+  }),
+
+  defineContract({
+    id: "rust-weeks.week_absent",
+    module: "rust_rounds",
+    paired: true,
+    method: "GET",
+    path: "/rust-weeks/:id",
+    summary: "a week home holds none of for this subject is a 404",
+    request: { path: { id: ABSENT_WEEK } },
+    expect: { status: 404 },
+  }),
+
+  defineContract({
+    id: "rust-weeks.week_not_a_week",
+    module: "rust_rounds",
+    paired: true,
+    method: "GET",
+    path: "/rust-weeks/:id",
+    summary: "an id that is not an ISO week, a round's say, is a 404",
+    request: { path: { id: WORKED_EXAMPLE } },
+    expect: { status: 404 },
+  }),
+
+  defineContract({
+    id: "rust-weeks.week_signed_out",
+    module: "rust_rounds",
+    method: "GET",
+    path: "/rust-weeks/:id",
+    summary: "a week is a paired phone's: without a session it is a 401",
+    request: { path: { id: ABSENT_WEEK } },
+    expect: { status: 401 },
+  }),
+
+  defineContract({
+    id: "rust-weeks.week_browser",
+    module: "rust_rounds",
+    session: true,
+    method: "GET",
+    path: "/rust-weeks/:id",
+    summary: "a week is a paired phone's: a browser's cookie session is a 403",
+    request: { path: { id: ABSENT_WEEK } },
     expect: { status: 403 },
   }),
 ]

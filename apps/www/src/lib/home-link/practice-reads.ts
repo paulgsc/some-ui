@@ -4,7 +4,8 @@
  * IndexedDB answers only asynchronously, and only once their page has handed
  * their store in, `lib/soundbite-keeping`), the grammar-lens record (topik's,
  * loaded only once the phone is paired, as `./voice-copy`'s reading of what
- * home holds is), LeetType's finished sessions (`@some-ui/leetype`'s log,
+ * home holds is), each write read aloud keeps (counted, from the same load),
+ * LeetType's finished sessions (`@some-ui/leetype`'s log,
  * loaded the same way, read again on each event that can finish a session)
  * and Studio's record (each write to its projects heard, and its answers to
  * how a sitting went read, only asynchronously, once Studio's route has
@@ -47,6 +48,8 @@ export type PracticeRead = {
   readonly studioReports: ReadonlyArray<StudioReport>
   /** Moves with Studio's hand-in and each write to its projects. */
   readonly studioWrites: number
+  /** Moves with each write read aloud keeps, once the phone is paired. */
+  readonly koreanWrites: number
 }
 
 /** One number for a list of `key@digest`s. */
@@ -68,6 +71,7 @@ const UNREAD: PracticeRead = {
   leetypeAsIs: sessionsAsIs([]),
   studioReports: [],
   studioWrites: 0,
+  koreanWrites: 0,
 }
 
 let read: PracticeRead = UNREAD
@@ -154,8 +158,15 @@ export function watchPracticeStores(): () => void {
     if (lensAsked || !paired()) return
     lensAsked = true
     import("@some-ui/topik").then(
-      ({ lensRecordForExport, onLensRecordWritten }) => {
+      ({ lensRecordForExport, onLensRecordWritten, onReadAloudWritten }) => {
         if (!live) return
+        // Read aloud's record is read where it is sent (`./going`), so a
+        // write only needs to move the lane's revision.
+        stops.push(
+          onReadAloudWritten(() => {
+            moved({ ...read, koreanWrites: read.koreanWrites + 1 })
+          })
+        )
         const readLens = (): void => {
           try {
             const { entries } = lensRecordForExport()

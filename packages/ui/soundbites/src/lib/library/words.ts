@@ -16,10 +16,10 @@ const dayAt = (iso: string): string => formatDay(dayOf(new Date(iso)))
 
 export const LIBRARY_WORDS = {
   heading: "Takes on home",
-  open: "Takes on home",
   reading: "Asking home…",
+  /** Said with Studio's way to pairing (`STUDIO_WORDS.pair`) beside it (ST34). */
   unpaired:
-    "This phone isn't paired with home, so it can't show the takes home keeps. Pair it in Settings.",
+    "This phone isn't paired with home, so it can't show the takes home keeps.",
   away: "Home can't be reached right now. Try again once you're back in reach.",
   older:
     "Home doesn't list its takes yet. Once it runs a newer version, every take it keeps shows here.",
@@ -76,5 +76,12 @@ export const LIBRARY_WORDS = {
   loading: "Getting it from home…",
   unplayable:
     "Home couldn't give this take back just now. Try again in a moment.",
-  back: "Back to Studio",
+  /** Recording a take with no scene yet, on this phone (ST32). */
+  record: "Record a take",
+  recordLine:
+    "An idea, a line or an aside, before there's a scene for it. It goes home, and shows in the list below once home has it.",
+  recordLabel: "A take with no scene yet",
+  /** The phone holds `max` takes home doesn't have yet. */
+  phoneFull: (count: number): string =>
+    `This phone holds ${takes(count)} home doesn't have yet. Once home has some, there's room for another.`,
 } as const

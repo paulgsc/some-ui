@@ -5,9 +5,12 @@ import {
   homeHearing,
   IdeaShelf,
   IdeasOnHome,
+  keptDraftStore,
   keptIdeasForHome,
+  keptIdeaStore,
   phoneStudioKeeping,
   STUDIO_WORDS,
+  UnnamedIdeaTakes,
 } from "@some-ui/soundbites"
 import type { TurnListener } from "@some-ui/voice-capture"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
@@ -15,11 +18,12 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { phoneIdeaListener } from "@/lib/idea-hearing"
 import { ideasHome } from "@/lib/idea-home"
 import { keepIdeas } from "@/lib/idea-keeping"
-import { ideaBundleTakes } from "@/lib/idea-takes"
+import { ideaBundleTakes, ideaRedoTakes } from "@/lib/idea-takes"
 import { useAsyncIntent } from "@/lib/intent"
 import { IntentButton } from "@/lib/intent/render"
 import { shareIdea } from "@/lib/journal-share"
 import { keepStudio } from "@/lib/studio-keeping"
+import { PairHomeLink } from "@/components/pair-home-link"
 
 const WORDS = STUDIO_WORDS.shelf
 
@@ -54,16 +58,36 @@ const share: IdeaShare | undefined = device
   ? (props): JSX.Element => <ShareIdea {...props} />
   : undefined
 
-/** The way to the video an idea became: Studio, opened on that video. */
+/**
+ * The way to the video an idea became: the videos made in sittings, under
+ * Studio's Episodes, opened on that video.
+ */
 const openVideo = (project: string): JSX.Element => (
   <Link
-    to="/journal"
+    to="/journal/episodes/making"
     search={{ project }}
     className="bg-brand text-brand-foreground focus-visible:ring-ring rounded-2xl px-4 py-3 text-center text-base font-extrabold focus-visible:ring-2 focus-visible:outline-none"
   >
     {WORDS.openVideo}
   </Link>
 )
+
+/**
+ * A new idea's answers no idea holds (ST26, #2483), from this phone's desk,
+ * in the Android app alone.
+ */
+const unnamedPorts = device
+  ? (): Parameters<typeof UnnamedIdeaTakes>[0] => ({
+      takes: ideaBundleTakes(),
+      drafts: keptDraftStore(),
+      ideas: keptIdeaStore(),
+    })
+  : null
+
+const Unnamed = (): JSX.Element | null => {
+  const [ports] = useState(() => unnamedPorts?.() ?? null)
+  return ports === null ? null : <UnnamedIdeaTakes {...ports} />
+}
 
 const link =
   "text-muted-foreground text-sm underline underline-offset-4 self-start"
@@ -83,7 +107,9 @@ function validateIdeasSearch(search: Record<string, unknown>): IdeasSearch {
  * the Android app alone, so no other build carries the link
  * (`build.paths.ts`).
  */
-const onHome = device ? { home: ideasHome, takes: ideaBundleTakes } : null
+const onHome = device
+  ? { home: ideasHome, takes: ideaBundleTakes, redo: ideaRedoTakes }
+  : null
 
 const OnHome = ({ lists }: { lists: boolean }): JSX.Element | null => {
   const navigate = useNavigate()
@@ -94,12 +120,17 @@ const OnHome = ({ lists }: { lists: boolean }): JSX.Element | null => {
   }, [])
   // The desk's runtime is the phone's one; built when the page first shows.
   const [takes] = useState(() => onHome?.takes() ?? null)
-  if (onHome === null || takes === null) return null
+  // An answer said again waits on its own desk until the idea is sent
+  // again (#2579).
+  const [redo] = useState(() => onHome?.redo() ?? null)
+  if (onHome === null || takes === null || redo === null) return null
   return (
     <IdeasOnHome
       home={onHome.home}
       takes={takes}
+      redo={redo}
       initialLists={lists}
+      pair={<PairHomeLink>{STUDIO_WORDS.pair.pair}</PairHomeLink>}
       // An answer's Delete… opens My data on its recording (#2579, MD4).
       openInMyData={(note) =>
         void navigate({
@@ -151,6 +182,7 @@ const IdeasRoute = (): JSX.Element => {
           </Link>
         }
       />
+      <Unnamed />
       {device && (
         <Link to="/journal/ideas" search={{ view: "home" }} className={link}>
           {STUDIO_WORDS.onHome.open}

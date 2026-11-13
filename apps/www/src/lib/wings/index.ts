@@ -167,13 +167,22 @@ export const ROOMS: ReadonlyArray<Room> = [
   },
   { id: "profile", wing: "practice", roots: ["/profile"], nav: "Profile" },
   { id: "aph", wing: "self", roots: ["/aph"] },
-  { id: "journal", wing: "studio", roots: ["/journal"], tab: "Journal" },
+  // The tab says the place's one name, as the foyer and the page do (ST34);
+  // the path keeps its old name, since a path is never said.
+  { id: "journal", wing: "studio", roots: ["/journal"], tab: "Studio" },
   { id: "game-week", wing: "studio", roots: ["/game-week"], tab: "Game day" },
   { id: "playoff-delta", wing: "studio", roots: ["/playoff-delta"] },
   { id: "burn-ins", wing: "studio", roots: ["/burn-ins", "/captions"] },
+  { id: "call", wing: "studio", roots: ["/call"] },
+  { id: "essay", wing: "studio", roots: ["/essay"] },
+  { id: "report", wing: "studio", roots: ["/report"] },
   { id: "jobs", wing: "jobs", roots: ["/jobs"] },
   { id: "job-run", wing: "jobs", roots: ["/job-run"], nav: "Morning run" },
   { id: "lessons", wing: "operate", roots: ["/lessons"], nav: "Lessons" },
+  // Administration (#2357): offered from the home network's launcher and
+  // front page (`lib/site-map`), not a sidebar, since Operate's web side is
+  // making and the `lan` build offers administration.
+  { id: "home-switches", wing: "operate", roots: ["/home-switches"] },
   {
     id: "resume-build",
     wing: "operate",

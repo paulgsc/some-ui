@@ -1,6 +1,9 @@
 /**
  * Log a figure: mine for a checkpoint today (or a day I missed, up to two
- * weeks back), or theirs for an entry that is waiting on one. Built for one thumb and a few seconds: the checkpoint is
+ * weeks back), or theirs for an entry that is waiting on one. A checkpoint
+ * holds one entry a day, so mine where one is logged replaces it, and the
+ * Save button says so before the tap. A new figure is a draft until I submit
+ * it in History, and none is logged while another day's drafts wait. Built for one thumb and a few seconds: the checkpoint is
  * picked from the clock, the keypad is always there, and before saving the
  * screen already says what the figure means (how far from the goal, or
  * whether it reconciles with mine).
@@ -19,16 +22,17 @@ import {
 import type { Draft, Side } from "@aph/lib/draft"
 import {
   atTime,
-  correcting,
   draftDay,
   draftValue,
   newDraft,
+  rewriting,
   stepDraft,
 } from "@aph/lib/draft"
 import type { AphSettings, Entry } from "@aph/lib/model"
 import {
   awaitingTheirs,
   checkpointById,
+  draftWaiting,
   formatDelta,
   formatValue,
   isUsual,
@@ -36,11 +40,14 @@ import {
   primary,
   reconcile,
 } from "@aph/lib/model"
+import { APH_OFFERS } from "@aph/lib/offers"
 import type { AphStore } from "@aph/lib/store"
 import { aphStore } from "@aph/lib/store"
 import { useAph } from "@aph/lib/use-aph"
 import { cn, dayOf, formatDay, formatWeekday } from "@some-ui/core-utils"
-import { Button } from "@some-ui/shared"
+import type { Visit } from "@some-ui/engagement"
+import { useShelf } from "@some-ui/react-hooks"
+import { Button, Notice } from "@some-ui/shared"
 import {
   Check,
   ChevronLeft,
@@ -75,7 +82,15 @@ export type AphLogProps = {
   /** The host's clock (`useMinuteClock` in www), which moves while the screen stays open. */
   now: Date
   store?: AphStore
+  /**
+   * The screen's visit (ENG9): the log of mine is offered on it while the
+   * form is on mine, and taken when a figure of mine is saved.
+   */
+  visit?: Visit
 }
+
+/** The log of mine, as the visit offers it. */
+const LOG = [APH_OFFERS.logMine]
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/
 
@@ -95,6 +110,7 @@ export const AphLog = ({
   onSaved,
   now,
   store = aphStore,
+  visit,
 }: AphLogProps): JSX.Element => {
   const { settings, entries } = useAph(store)
   const today = dayOf(now)
@@ -119,11 +135,19 @@ export const AphLog = ({
   // The checkpoint follows the clock, and the target the waiting list,
   // until I pick one (`atTime`).
   const draft = atTime(raw, settings, entries, now)
+  useShelf(visit, "log", draft.side === "mine" ? LOG : null)
   const day = draftDay(draft, today)
   const dayIndex = days.indexOf(day)
 
   const value = draftValue(draft)
   const checkpoint = checkpointById(settings, draft.checkpoint)
+  const there = rewriting(entries, draft, day)
+  const replaced = there?.mine ?? null
+  // A new entry of mine waits while another day holds drafts.
+  const waits =
+    draft.side === "mine" && there === undefined
+      ? draftWaiting(entries, day)
+      : null
   // Only a waiting entry can be the target: one filled since the link was
   // made (Back after saving) shows as unselected, and Save stays off.
   const targetEntry = waiting.find((e) => e.id === draft.target) ?? null
@@ -143,18 +167,44 @@ export const AphLog = ({
       id,
     })
     setRefused(landed === null)
+    if (landed !== null && raw.side === "mine") visit?.take(APH_OFFERS.logMine)
     if (landed !== null) onSaved?.(landed, raw.side)
   }
 
-  const shownWaiting = showOlder ? waiting : waiting.slice(0, RECENT_WAITING)
   const canSave =
     value !== null &&
-    (draft.side === "mine" ? dayIndex !== -1 : targetEntry !== null)
+    (draft.side === "mine"
+      ? dayIndex !== -1 && waits === null
+      : targetEntry !== null)
   const pickDay = (index: number): void => {
     const next = days[index]
     if (next !== undefined) {
       dispatch({ type: "pickDay", day: next === today ? null : next })
     }
+  }
+
+  const waitingRow = (e: Entry): JSX.Element => {
+    const picked = draft.target === e.id
+    return (
+      <button
+        key={e.id}
+        type="button"
+        role="radio"
+        aria-checked={picked}
+        onClick={() => dispatch({ type: "pickTarget", target: e.id })}
+        className={cn(
+          "flex h-11 items-center gap-2 rounded-lg border px-3 text-left text-sm",
+          picked ? "border-foreground border-2 bg-card" : "border-border"
+        )}
+      >
+        <CheckpointMark settings={settings} checkpoint={e.checkpoint} />
+        <span className="font-medium">{formatDay(e.day)}</span>
+        <span className="text-muted-foreground">{whenOf(settings, e)}</span>
+        <span className="ml-auto">
+          <Figures entry={e} className="text-sm" />
+        </span>
+      </button>
+    )
   }
 
   return (
@@ -279,33 +329,7 @@ export const AphLog = ({
           aria-label="Which entry"
           className="flex flex-col gap-1.5"
         >
-          {shownWaiting.map((e) => {
-            const picked = draft.target === e.id
-            return (
-              <button
-                key={e.id}
-                type="button"
-                role="radio"
-                aria-checked={picked}
-                onClick={() => dispatch({ type: "pickTarget", target: e.id })}
-                className={cn(
-                  "flex h-11 items-center gap-2 rounded-lg border px-3 text-left text-sm",
-                  picked
-                    ? "border-foreground border-2 bg-card"
-                    : "border-border"
-                )}
-              >
-                <CheckpointMark settings={settings} checkpoint={e.checkpoint} />
-                <span className="font-medium">{formatDay(e.day)}</span>
-                <span className="text-muted-foreground">
-                  {whenOf(settings, e)}
-                </span>
-                <span className="ml-auto">
-                  <Figures entry={e} className="text-sm" />
-                </span>
-              </button>
-            )
-          })}
+          {waiting.slice(0, RECENT_WAITING).map(waitingRow)}
           {waiting.length > RECENT_WAITING && (
             <button
               type="button"
@@ -315,6 +339,9 @@ export const AphLog = ({
               {showOlder ? "Fewer" : `${waiting.length - RECENT_WAITING} older`}
             </button>
           )}
+          {/* Below their toggle, so it stays under the thumb that opened
+              them (HS1). */}
+          {showOlder && waiting.slice(RECENT_WAITING).map(waitingRow)}
         </div>
       )}
 
@@ -325,14 +352,6 @@ export const AphLog = ({
         base={base}
         targetEntry={targetEntry}
       />
-
-      {value !== null && !isUsual(settings, value) && (
-        <p className="bg-warning/10 text-warning flex items-center justify-center gap-2 rounded-md px-3 py-1.5 text-sm">
-          <TriangleAlert aria-hidden className="size-4" />
-          Outside your usual {formatValue(settings.usualLow)}–
-          {formatValue(settings.usualHigh)}. Typo?
-        </p>
-      )}
 
       <div className="flex justify-center gap-2">
         <Button
@@ -412,15 +431,6 @@ export const AphLog = ({
         </button>
       </div>
 
-      {refused && (
-        <p
-          role="alert"
-          className="bg-destructive/10 text-destructive rounded-md px-3 py-1.5 text-center text-sm"
-        >
-          Not saved: the phone did not keep it.
-        </p>
-      )}
-
       <Button
         size="lg"
         disabled={!canSave}
@@ -429,11 +439,23 @@ export const AphLog = ({
       >
         <Check aria-hidden className="mr-2 size-5" />
         {draft.side === "mine"
-          ? `${correcting(entries, draft, day) === undefined ? "Save" : "Correct"} mine · ${day === today ? "" : `${formatDay(day)} `}${checkpoint?.label ?? (day === today ? "now" : "other")}`
+          ? `${there === undefined ? "Save draft" : replaced === null ? "Save mine" : `Replace ${formatValue(replaced.value, replaced.approx)}`} · ${day === today ? "" : `${formatDay(day)} `}${checkpoint?.label ?? (day === today ? "now" : "other")}`
           : targetEntry === null
             ? "Save theirs"
             : `Save theirs · ${formatDay(targetEntry.day)} ${whenOf(settings, targetEntry)}`}
       </Button>
+
+      {waits !== null && (
+        <Notice tone="warning">
+          Drafts from {formatWeekday(waits)} {formatDay(waits)} are waiting:
+          submit or delete them in History before logging another day.
+        </Notice>
+      )}
+      {refused && (
+        <Notice tone="danger" onDismiss={() => setRefused(false)}>
+          Not saved: the phone did not keep it.
+        </Notice>
+      )}
     </div>
   )
 }
@@ -457,6 +479,8 @@ const Readout = ({
   targetEntry: Entry | null
 }): JSX.Element => {
   const checkpoint = checkpointById(settings, draft.checkpoint)
+  const approx = draft.side === "mine" && draft.approx
+  const unusual = value !== null && !isUsual(settings, value)
   const preview =
     draft.side === "theirs" && targetEntry !== null && value !== null
       ? reconcile(settings, { ...targetEntry, theirs: { value }, review: null })
@@ -476,12 +500,21 @@ const Readout = ({
           value === null && "text-muted-foreground/50"
         )}
       >
-        {draft.side === "mine" && draft.approx && (
-          <span className="text-muted-foreground mr-1 text-3xl">~</span>
-        )}
+        {/* Always there, seen only for an approximate figure of mine, so
+            "~ approx" does not slide the figure sideways. */}
+        <span
+          aria-hidden={!approx}
+          className={cn(
+            "text-muted-foreground mr-1 text-3xl",
+            !approx && "invisible"
+          )}
+        >
+          ~
+        </span>
         {formatValue(value ?? base)}
       </div>
-      <div className="text-muted-foreground text-center text-sm">
+      {/* One height whether it holds words or a status badge. */}
+      <div className="text-muted-foreground flex min-h-6 items-center justify-center text-center text-sm">
         {draft.side === "mine" ? (
           checkpoint === null ? (
             "No goal off the checkpoints"
@@ -512,6 +545,15 @@ const Readout = ({
           </span>
         )}
       </div>
+      {unusual && (
+        <Notice tone="warning">
+          <span className="flex items-center gap-1.5">
+            <TriangleAlert aria-hidden className="size-4 shrink-0" />
+            Outside your usual {formatValue(settings.usualLow)}–
+            {formatValue(settings.usualHigh)}. Typo?
+          </span>
+        </Notice>
+      )}
     </div>
   )
 }

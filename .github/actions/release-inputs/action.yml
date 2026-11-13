@@ -1,0 +1,19 @@
+name: Release inputs
+description: Skip Pages and APK approval for release bookkeeping across package tracks.
+inputs:
+  base:
+    description: The push's before SHA; empty on dispatch. Checkout must include its history.
+    required: false
+    default: ""
+outputs:
+  changed:
+    description: Whether this push contains more than www release metadata.
+    value: ${{ steps.detect.outputs.changed }}
+runs:
+  using: composite
+  steps:
+    - id: detect
+      shell: bash
+      env:
+        BASE_SHA: ${{ inputs.base }}
+      run: node "$GITHUB_WORKSPACE/scripts/release/track.mjs" node inputs

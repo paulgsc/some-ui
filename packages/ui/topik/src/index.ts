@@ -69,8 +69,11 @@ export type {
   ReadAloudWord,
   WordOccurrence,
 } from "./lib/topik/read-aloud/content"
+export type { KoreanEntry } from "./lib/topik/adapter/read-aloud-store"
 export {
+  onReadAloudWritten,
   readAloudFeedbackForExport,
+  readAloudForHome,
   readAloudPracticeRecord,
 } from "./lib/topik/adapter/read-aloud-store"
 export type { ReadAloudFeedback } from "./lib/topik/read-aloud/feedback"
@@ -135,3 +138,7 @@ export type {
   SceneVoice,
   SceneVoiceSnapshot,
 } from "./lib/topik/adapter/scene-voice"
+
+/** How much of each bounded record is kept; Settings shows it (SM2, #2121). */
+export type { TopikKeptCounts } from "./lib/topik/adapter/kept-counts"
+export { topikKeptCounts } from "./lib/topik/adapter/kept-counts"

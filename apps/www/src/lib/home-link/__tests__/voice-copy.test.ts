@@ -7,6 +7,7 @@
  * bite by its game, with every field it keeps; and what this phone can't
  * send, by why (LA14).
  */
+import { answerRef, pendingOfRef } from "@some-ui/video-render"
 import { describe, expect, it } from "vitest"
 
 import {
@@ -15,9 +16,11 @@ import {
   jobsNotes,
   leetypeNote,
   lensNote,
+  libraryNote,
   reflectionNote,
   refOf,
   rustRoundNote,
+  rustWeekNote,
   sceneNote,
   soundbiteNote,
   unsendable,
@@ -55,6 +58,24 @@ describe("what each voice note is told home as", () => {
     expect(rustRoundNote({ ...take, line: "elsewhere" }, ref)).toBeNull()
   })
 
+  it("tells a take on a week's ticket by its week and ticket, the ref home takes (RR13)", () => {
+    expect(
+      rustWeekNote({
+        id: "w1",
+        line: "2026-w46:QM-311",
+        takenAt: Date.parse("2026-11-10T18:20:00.000Z"),
+        durationMs: 3000,
+        mimeType: "audio/webm",
+      })
+    ).toEqual({
+      id: "w1",
+      of: "rust-round",
+      ref: "2026-w46:QM-311",
+      at: "2026-11-10T18:20:00.000Z",
+      contentType: "audio/webm",
+    })
+  })
+
   it("tells a soundbite by how it came to be recorded, a lens take by its line and a LeetType take by its file and screen (HF5)", () => {
     const takenAt = Date.parse("2026-11-01T09:12:00.000Z")
     const take = { id: "t1", takenAt, durationMs: 3000, mimeType: "audio/webm" }
@@ -73,6 +94,26 @@ describe("what each voice note is told home as", () => {
       id: "t1",
       of: "studio",
       ref: "idea:3f2a-9c:takeaway",
+      at: "2026-11-01T09:12:00.000Z",
+      contentType: "audio/webm",
+    })
+    // SFEED5: an ask's answer goes as a Studio note under the ask's ref, and
+    // the reflections routine's codec reads the same ask back from it.
+    const ask = { repo: "some-ui", number: 2676 } as const
+    const answer = ideaNote({ ...take, line: answerRef(ask) })
+    expect(answer.of).toBe("studio")
+    expect(pendingOfRef(answer.ref)).toEqual({
+      kind: "ask",
+      repo: "some-ui",
+      about: 2676,
+    })
+    // ST32: a take with no scene goes as a Studio note named by its own id,
+    // as home's rule for a name takes it.
+    const free = { ...take, id: "0b6f6c2e-6d1a-4a51-9f3e-1d2c3b4a5e6f" }
+    expect(libraryNote({ ...free, line: "library" })).toEqual({
+      id: free.id,
+      of: "studio",
+      ref: `take:${free.id}`,
       at: "2026-11-01T09:12:00.000Z",
       contentType: "audio/webm",
     })

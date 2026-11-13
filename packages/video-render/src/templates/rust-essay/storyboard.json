@@ -1,0 +1,277 @@
+{
+  "schema": "some-ui.storyboard/1",
+  "template": {
+    "id": "rust-essay",
+    "version": 1
+  },
+  "sample": "the sample essay, 2026-w46",
+  "frames": [
+    {
+      "id": "intro",
+      "kind": "intro",
+      "name": "The Rust Rounds essay",
+      "by": "code",
+      "said": "This is the Rust Rounds essay for 2026-w46, November 9 to November 15. Claude wrote the tutor's words, and code drew every frame. This is a sample: both voices are synthetic, and the second reads made-up answers. Its answers cover 2 of 3 tickets.",
+      "ms": 18800
+    },
+    {
+      "id": "brand-in",
+      "kind": "brand-in",
+      "name": "The Rust Rounds essay",
+      "by": "none",
+      "said": "",
+      "ms": 3000
+    },
+    {
+      "id": "open",
+      "kind": "section",
+      "scene": "open",
+      "name": "The week",
+      "by": "fill",
+      "said": "",
+      "ms": 26800
+    },
+    {
+      "id": "chapter-question-1",
+      "kind": "chapter",
+      "scene": "question",
+      "name": "The question",
+      "by": "code",
+      "said": "QM-311: Parse the batch without a copy per field.",
+      "ms": 4800
+    },
+    {
+      "id": "question-1",
+      "kind": "section",
+      "scene": "question",
+      "name": "The question",
+      "item": 1,
+      "by": "fill",
+      "said": "",
+      "ms": 24000
+    },
+    {
+      "id": "answer-1",
+      "kind": "section",
+      "scene": "answer",
+      "name": "Your answer",
+      "item": 1,
+      "by": "fill",
+      "said": "",
+      "ms": 26000
+    },
+    {
+      "id": "best-1",
+      "kind": "section",
+      "scene": "best",
+      "name": "A best fit",
+      "item": 1,
+      "by": "fill",
+      "said": "",
+      "ms": 29600
+    },
+    {
+      "id": "beside-1",
+      "kind": "section",
+      "scene": "beside",
+      "name": "The best fit beside yours",
+      "item": 1,
+      "by": "fill",
+      "said": "",
+      "ms": 21200
+    },
+    {
+      "id": "dive-1",
+      "kind": "section",
+      "scene": "dive",
+      "name": "A deep dive",
+      "item": 1,
+      "by": "fill",
+      "said": "",
+      "ms": 48000
+    },
+    {
+      "id": "dive-2",
+      "kind": "section",
+      "scene": "dive",
+      "name": "A deep dive",
+      "item": 2,
+      "by": "fill",
+      "said": "",
+      "ms": 36800
+    },
+    {
+      "id": "chapter-question-2",
+      "kind": "chapter",
+      "scene": "question",
+      "name": "The question",
+      "by": "code",
+      "said": "QM-312: Reuse the read buffer without losing the fields.",
+      "ms": 4800
+    },
+    {
+      "id": "question-2",
+      "kind": "section",
+      "scene": "question",
+      "name": "The question",
+      "item": 2,
+      "by": "fill",
+      "said": "",
+      "ms": 17200
+    },
+    {
+      "id": "answer-2",
+      "kind": "section",
+      "scene": "answer",
+      "name": "Your answer",
+      "item": 2,
+      "by": "fill",
+      "said": "",
+      "ms": 14800
+    },
+    {
+      "id": "best-2",
+      "kind": "section",
+      "scene": "best",
+      "name": "A best fit",
+      "item": 2,
+      "by": "fill",
+      "said": "",
+      "ms": 36800
+    },
+    {
+      "id": "beside-2",
+      "kind": "section",
+      "scene": "beside",
+      "name": "The best fit beside yours",
+      "item": 2,
+      "by": "fill",
+      "said": "",
+      "ms": 22800
+    },
+    {
+      "id": "dive-3",
+      "kind": "section",
+      "scene": "dive",
+      "name": "A deep dive",
+      "item": 3,
+      "by": "fill",
+      "said": "",
+      "ms": 45200
+    },
+    {
+      "id": "dive-4",
+      "kind": "section",
+      "scene": "dive",
+      "name": "A deep dive",
+      "item": 4,
+      "by": "fill",
+      "said": "",
+      "ms": 39600
+    },
+    {
+      "id": "chapter-question-3",
+      "kind": "chapter",
+      "scene": "question",
+      "name": "The question",
+      "by": "code",
+      "said": "QM-313: Hand the batch to the writer thread.",
+      "ms": 4400
+    },
+    {
+      "id": "question-3",
+      "kind": "section",
+      "scene": "question",
+      "name": "The question",
+      "item": 3,
+      "by": "fill",
+      "said": "",
+      "ms": 19200
+    },
+    {
+      "id": "answer-3",
+      "kind": "section",
+      "scene": "answer",
+      "name": "Your answer",
+      "item": 3,
+      "by": "fill",
+      "said": "",
+      "ms": 10800
+    },
+    {
+      "id": "best-3",
+      "kind": "section",
+      "scene": "best",
+      "name": "A best fit",
+      "item": 3,
+      "by": "fill",
+      "said": "",
+      "ms": 27200
+    },
+    {
+      "id": "beside-3",
+      "kind": "section",
+      "scene": "beside",
+      "name": "The best fit beside yours",
+      "item": 3,
+      "by": "fill",
+      "said": "",
+      "ms": 8800
+    },
+    {
+      "id": "dive-5",
+      "kind": "section",
+      "scene": "dive",
+      "name": "A deep dive",
+      "item": 5,
+      "by": "fill",
+      "said": "",
+      "ms": 43600
+    },
+    {
+      "id": "dive-6",
+      "kind": "section",
+      "scene": "dive",
+      "name": "A deep dive",
+      "item": 6,
+      "by": "fill",
+      "said": "",
+      "ms": 38400
+    },
+    {
+      "id": "chapter-weeks",
+      "kind": "chapter",
+      "scene": "weeks",
+      "name": "Over the weeks",
+      "by": "code",
+      "said": "Over the weeks.",
+      "ms": 3000
+    },
+    {
+      "id": "weeks",
+      "kind": "section",
+      "scene": "weeks",
+      "name": "Over the weeks",
+      "by": "fill",
+      "said": "",
+      "ms": 34000
+    },
+    {
+      "id": "next",
+      "kind": "section",
+      "scene": "next",
+      "name": "Next week",
+      "by": "fill",
+      "said": "",
+      "ms": 11200
+    },
+    {
+      "id": "brand-out",
+      "kind": "brand-out",
+      "name": "The Rust Rounds essay",
+      "by": "none",
+      "said": "",
+      "ms": 3000
+    }
+  ]
+}

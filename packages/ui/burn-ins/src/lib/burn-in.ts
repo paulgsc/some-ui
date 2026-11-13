@@ -6,7 +6,9 @@
  * (`@some-ui/video-render`'s `BurnInSchema`). `prepare` validates the params
  * against the kind's schema once, saying every reason they can't be drawn,
  * and `frameAt` gives what is on screen `t` ms after the burn-in starts: pure,
- * so the preview page, the recorder and a test agree at every moment.
+ * so the preview page, the recorder and a test agree at every moment. A
+ * burn-in is prepared for one frame (`./geometry`: the 9:16 short or the
+ * 16:9 video), and laid out from that frame's regions.
  *
  * A design a published video used is never edited; a change is a new design.
  * Each kind draws only inside its regions (`./geometry`), so two burn-ins on
@@ -26,7 +28,14 @@ import {
   type AuthorshipFrame,
 } from "./authorship"
 import { frameAt as captionFrameAt, type CaptionFrame } from "./captions/frame"
-import { isThemeId, THEME_IDS, THEMES, type ThemeId } from "./captions/theme"
+import {
+  isThemeId,
+  sizedFor,
+  THEME_IDS,
+  THEMES,
+  type CaptionTheme,
+  type ThemeId,
+} from "./captions/theme"
 import { captionsFor, runtimeOf, type Caption } from "./captions/timing"
 import {
   drawGameCard,
@@ -35,7 +44,14 @@ import {
   GameCardParamsSchema,
   type GameCardFrame,
 } from "./game-card"
-import type { Box, Region } from "./geometry"
+import {
+  frameProblem,
+  geometryOf,
+  type Box,
+  type FrameSize,
+  type Geometry,
+  type Region,
+} from "./geometry"
 import {
   cardFrame,
   CardParamsSchema,
@@ -46,6 +62,11 @@ import {
   type TextFrame,
 } from "./journal"
 import { isOneOf, type Parsed } from "./parsed"
+import {
+  drawPreviewMark,
+  PREVIEW_MARK_DESIGNS,
+  PreviewMarkParamsSchema,
+} from "./preview-mark"
 
 export const KINDS = [
   "captions",
@@ -53,6 +74,7 @@ export const KINDS = [
   "card",
   "authorship",
   "game-card",
+  "preview-mark",
 ] as const
 export type Kind = (typeof KINDS)[number]
 
@@ -65,6 +87,7 @@ export const DESIGNS = {
   card: JOURNAL_DESIGNS,
   authorship: AUTHORSHIP_DESIGNS,
   "game-card": GAME_CARD_DESIGNS,
+  "preview-mark": PREVIEW_MARK_DESIGNS,
 } as const satisfies Record<Kind, ReadonlyArray<string>>
 
 /** Where each kind draws. */
@@ -77,6 +100,8 @@ export const REGIONS_OF = {
   authorship: ["gutter", "header", "body"],
   // A panel at the body's top, under a scene's headline, over its picture.
   "game-card": ["body"],
+  // Under the safe area, where only what is never uploaded sits.
+  "preview-mark": ["foot"],
 } as const satisfies Record<Kind, ReadonlyArray<Region>>
 
 const TimedWordSchema = z
@@ -106,6 +131,9 @@ export type Prepared =
   | {
       readonly kind: "captions"
       readonly design: ThemeId
+      /** The design's look, sized for the frame. */
+      readonly theme: CaptionTheme
+      readonly geometry: Geometry
       readonly captions: ReadonlyArray<Caption>
     }
   | {
@@ -123,12 +151,19 @@ export type Prepared =
       readonly design: (typeof GAME_CARD_DESIGNS)[number]
       readonly frame: GameCardFrame
     }
+  | {
+      readonly kind: "preview-mark"
+      readonly design: (typeof PREVIEW_MARK_DESIGNS)[number]
+      readonly frame: TextFrame
+    }
 
 /** What is on screen at a moment. */
 export type BurnInFrame =
   | {
       readonly kind: "captions"
       readonly design: ThemeId
+      /** The design's look, sized for the frame. */
+      readonly theme: CaptionTheme
       readonly frame: CaptionFrame
     }
   | {
@@ -146,6 +181,11 @@ export type BurnInFrame =
       readonly design: (typeof GAME_CARD_DESIGNS)[number]
       readonly frame: GameCardFrame
     }
+  | {
+      readonly kind: "preview-mark"
+      readonly design: (typeof PREVIEW_MARK_DESIGNS)[number]
+      readonly frame: TextFrame
+    }
 
 const issues = (name: string, error: z.ZodError): ReadonlyArray<string> =>
   error.issues.map(
@@ -159,14 +199,15 @@ function checked<D extends string, P, V>(
   designs: ReadonlyArray<D>,
   b: BurnInData,
   schema: z.ZodType<P>,
-  draw: (params: P) => Parsed<V>
+  draw: (params: P, g: Geometry) => Parsed<V>,
+  g: Geometry
 ): Parsed<{ readonly design: D; readonly value: V }> {
   if (!isOneOf(designs, b.design))
     return { ok: false, problems: [`${name}: no such design`] }
   const params = schema.safeParse(b.params)
   if (!params.success)
     return { ok: false, problems: issues(name, params.error) }
-  const drawn = draw(params.data)
+  const drawn = draw(params.data, g)
   if (!drawn.ok)
     return { ok: false, problems: drawn.problems.map((p) => `${name}: ${p}`) }
   return { ok: true, value: { design: b.design, value: drawn.value } }
@@ -178,9 +219,10 @@ function journal<P>(
   kind: "headline" | "card",
   b: BurnInData,
   schema: z.ZodType<P>,
-  draw: (params: P) => Parsed<TextFrame>
+  draw: (params: P, g: Geometry) => Parsed<TextFrame>,
+  g: Geometry
 ): Parsed<Prepared> {
-  const c = checked(name, JOURNAL_DESIGNS, b, schema, draw)
+  const c = checked(name, JOURNAL_DESIGNS, b, schema, draw, g)
   return c.ok
     ? {
         ok: true,
@@ -193,9 +235,16 @@ function journal<P>(
 export const burnInName = (b: Pick<BurnInData, "kind" | "design">): string =>
   `the ${b.kind} burn-in (${b.design})`
 
-/** The burn-in checked and ready, or every reason it can't be drawn. */
-export function prepare(b: BurnInData): Parsed<Prepared> {
+/**
+ * The burn-in checked and ready to draw into `frame`, or every reason it
+ * can't be drawn there.
+ */
+export function prepare(b: BurnInData, frame: FrameSize): Parsed<Prepared> {
   const name = burnInName(b)
+  const unsupported = frameProblem(frame)
+  if (unsupported !== null)
+    return { ok: false, problems: [`${name}: ${unsupported}`] }
+  const g = geometryOf(frame)
   if (!isKind(b.kind)) return { ok: false, problems: [`${name}: no such kind`] }
   const kind = b.kind
   switch (kind) {
@@ -205,20 +254,23 @@ export function prepare(b: BurnInData): Parsed<Prepared> {
       const params = CaptionParamsSchema.safeParse(b.params)
       if (!params.success)
         return { ok: false, problems: issues(name, params.error) }
+      const theme = sizedFor(THEMES[b.design], g)
       return {
         ok: true,
         value: {
           kind,
           design: b.design,
-          captions: captionsFor(params.data.lines, THEMES[b.design]),
+          theme,
+          geometry: g,
+          captions: captionsFor(params.data.lines, theme, g),
         },
       }
     }
     case "headline": {
-      return journal(name, kind, b, HeadlineParamsSchema, headlineFrame)
+      return journal(name, kind, b, HeadlineParamsSchema, headlineFrame, g)
     }
     case "card": {
-      return journal(name, kind, b, CardParamsSchema, cardFrame)
+      return journal(name, kind, b, CardParamsSchema, cardFrame, g)
     }
     case "authorship": {
       const c = checked(
@@ -226,7 +278,8 @@ export function prepare(b: BurnInData): Parsed<Prepared> {
         AUTHORSHIP_DESIGNS,
         b,
         AuthorshipParamsSchema,
-        drawAuthorship
+        drawAuthorship,
+        g
       )
       return c.ok
         ? {
@@ -241,7 +294,24 @@ export function prepare(b: BurnInData): Parsed<Prepared> {
         GAME_CARD_DESIGNS,
         b,
         GameCardParamsSchema,
-        drawGameCard
+        drawGameCard,
+        g
+      )
+      return c.ok
+        ? {
+            ok: true,
+            value: { kind, design: c.value.design, frame: c.value.value },
+          }
+        : c
+    }
+    case "preview-mark": {
+      const c = checked(
+        name,
+        PREVIEW_MARK_DESIGNS,
+        b,
+        PreviewMarkParamsSchema,
+        drawPreviewMark,
+        g
       )
       return c.ok
         ? {
@@ -263,12 +333,14 @@ export function frameAt(p: Prepared, t: number): BurnInFrame {
       return {
         kind: p.kind,
         design: p.design,
-        frame: captionFrameAt(p.captions, THEMES[p.design], t),
+        theme: p.theme,
+        frame: captionFrameAt(p.captions, p.theme, p.geometry, t),
       }
     }
     case "headline":
     case "card":
-    case "game-card": {
+    case "game-card":
+    case "preview-mark": {
       return p
     }
     case "authorship": {
@@ -296,7 +368,8 @@ export function boxesOf(f: BurnInFrame): ReadonlyArray<Box> {
       return f.frame.caption === null ? [] : [f.frame.layout.box]
     }
     case "headline":
-    case "card": {
+    case "card":
+    case "preview-mark": {
       return textBoxes(f.frame)
     }
     case "authorship": {

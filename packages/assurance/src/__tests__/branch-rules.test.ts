@@ -6,7 +6,7 @@ const required = (
 ): { type: string; parameters: unknown } => ({
   type: "required_status_checks",
   parameters: {
-    strict_required_status_checks_policy: false,
+    strict_required_status_checks_policy: true,
     required_status_checks: contexts.map((context) => ({
       context,
       integration_id: 15368,
@@ -14,7 +14,7 @@ const required = (
   },
 })
 
-// The shape GitHub answers with, as read for paulgsc/some-ui on 2026-10-28.
+// The active rules returned for paulgsc/some-ui with strict checks enabled.
 const someUi = [
   { type: "deletion" },
   { type: "non_fast_forward" },
@@ -45,7 +45,10 @@ describe("GC1: the branch rules require the checks", () => {
   it("is broken when the rules require no checks at all, as when the ruleset is off", () => {
     expect(readBranchRules("paulgsc/some-ui", ["CI Gate"], [])).toEqual({
       verdict: "broken",
-      problems: ['paulgsc/some-ui: main no longer requires "CI Gate"'],
+      problems: [
+        'paulgsc/some-ui: main no longer requires "CI Gate"',
+        "paulgsc/some-ui: main requires neither up-to-date branches nor a merge queue",
+      ],
     })
   })
 
@@ -57,6 +60,40 @@ describe("GC1: the branch rules require the checks", () => {
         [required("a"), required("b")]
       )
     ).toEqual({ verdict: "holds" })
+  })
+
+  it("requires up-to-date branches or a merge queue", () => {
+    for (const strict of [false, undefined, "true"]) {
+      const rule = {
+        type: "required_status_checks",
+        parameters: {
+          strict_required_status_checks_policy: strict,
+          required_status_checks: [{ context: "CI Gate" }],
+        },
+      }
+      expect(readBranchRules("paulgsc/some-ui", ["CI Gate"], [rule])).toEqual({
+        verdict: "broken",
+        problems: [
+          "paulgsc/some-ui: main requires neither up-to-date branches nor a merge queue",
+        ],
+      })
+      expect(
+        readBranchRules(
+          "paulgsc/some-ui",
+          ["CI Gate"],
+          [rule, { type: "merge_queue", parameters: {} }]
+        )
+      ).toEqual({ verdict: "holds" })
+    }
+  })
+
+  it("still requires the checks with a merge queue", () => {
+    expect(
+      readBranchRules("paulgsc/some-ui", ["CI Gate"], [{ type: "merge_queue" }])
+    ).toEqual({
+      verdict: "broken",
+      problems: ['paulgsc/some-ui: main no longer requires "CI Gate"'],
+    })
   })
 
   it("is unknown, never holds, on an answer that is not a list of rules", () => {

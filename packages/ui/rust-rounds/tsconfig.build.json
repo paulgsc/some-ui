@@ -4,6 +4,8 @@
     "**/*.test.ts",
     "**/*.test.tsx",
     "**/__tests__/**",
+    "src/lib/monday/sample/**",
+    "scripts",
     "vite.config.ts",
     "vitest.config.ts",
     "vitest.setup.ts"

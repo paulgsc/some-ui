@@ -1,4 +1,5 @@
 /** @vitest-environment node */
+import { frameName, FRAMES, PORTRAIT } from "@burn-ins/lib/geometry"
 import { SAMPLES } from "@burn-ins/lib/samples"
 import { createRecorder, type RecordPorts } from "@burn-ins/runtime/record"
 import { describe, expect, it } from "vitest"
@@ -46,5 +47,39 @@ describe("the recording protocol", () => {
     expect(await r.seek(10)).toBe(a)
     expect(r.getSnapshot().seq).toBe(seq)
     expect(await r.seek(1500)).not.toBe(a)
+  })
+
+  it("draws in the short when it is given no frame", () => {
+    const r = drawing()
+    r.load({ kind: "headline", design: "v1", params: SAMPLES.headline })
+    expect(r.getSnapshot().geometry.frame).toEqual(PORTRAIT)
+  })
+
+  it.each(FRAMES.map((frame) => ({ frame, name: frameName(frame) })))(
+    "draws on a stage the size of the video's frame ($name)",
+    ({ frame }) => {
+      const r = drawing()
+      expect(
+        r.load({
+          kind: "captions",
+          design: "gridiron",
+          params: SAMPLES.captions,
+          frame,
+        })
+      ).toEqual({ ok: true, value: { runtimeMs: expect.any(Number) } })
+      expect(r.getSnapshot().geometry.frame).toEqual(frame)
+    }
+  )
+
+  it("checks a video's burn-ins in the short when it is given no frame", () => {
+    const r = drawing()
+    const at = { startFrame: 0, frames: 30 }
+    const both = [
+      { kind: "headline", design: "v1", params: SAMPLES.headline, ...at },
+      { kind: "card", design: "v1", params: SAMPLES.card, ...at },
+    ]
+    expect(r.check({ burnIns: both, fps: 30 }).join()).toMatch(
+      /both draw in the header/
+    )
   })
 })

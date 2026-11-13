@@ -6,12 +6,13 @@ import {
   type BurnInFrame,
 } from "@burn-ins/lib/burn-in"
 import { GAME_CARD_TEMPLATES, pathSteps } from "@burn-ins/lib/game-card"
+import { PORTRAIT } from "@burn-ins/lib/geometry"
 import { GAME_CARD_SAMPLES } from "@burn-ins/lib/samples"
 import { PHASE_TITLES, SCENARIOS } from "@some-ui/game-scenarios"
 import { describe, expect, it } from "vitest"
 
 const card = (params: unknown): ReturnType<typeof prepare> =>
-  prepare({ kind: "game-card", design: "gridiron-v1", params })
+  prepare({ kind: "game-card", design: "gridiron-v1", params }, PORTRAIT)
 
 /** The card's frame, or the reasons it was refused. */
 const drawn = (params: unknown): BurnInFrame & { kind: "game-card" } => {

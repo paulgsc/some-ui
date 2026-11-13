@@ -3,19 +3,28 @@
  * words home heard in it, a search over those words, and Play for each, its
  * audio fetched from home. Renders `lib/library/model.ts`'s state and
  * forwards taps; its words are `lib/library/words.ts`'s.
+ *
+ * Where the build hands in the phone's own takes (`ports.phone`), a take
+ * with no scene yet is recorded here, on the take kit's pattern
+ * (`TakeList`), and listed apart, with where each is kept, until home holds
+ * it (`notYetHome`).
  */
-import type { JSX } from "react"
+import type { JSX, ReactNode } from "react"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import { assertNever } from "@some-ui/core-utils"
-import { Button, Input } from "@some-ui/shared"
+import { Button, Input, Notice, TakeList } from "@some-ui/shared"
+import { Unpaired } from "@soundbites/components/unpaired"
 import type {
   LibraryIntent,
   LibraryPage,
   LibraryState,
   LibraryTake,
 } from "@soundbites/lib/library/model"
-import { takeFor } from "@soundbites/lib/library/model"
-import type { LibraryPorts } from "@soundbites/lib/library/runtime"
+import { notYetHome, takeFor } from "@soundbites/lib/library/model"
+import type {
+  LibraryPhone,
+  LibraryPorts,
+} from "@soundbites/lib/library/runtime"
 import { createTakeLibrary } from "@soundbites/lib/library/runtime"
 import { LIBRARY_WORDS } from "@soundbites/lib/library/words"
 import { LoaderCircle, Pause, Play } from "lucide-react"
@@ -27,6 +36,8 @@ type Dispatch = (intent: LibraryIntent) => void
 export type TakeLibraryProps = {
   /** Home, as the build reaches it, and a player. Read once. */
   ports: LibraryPorts
+  /** The app's way to pairing, shown while this phone isn't paired (ST34). */
+  pair: ReactNode
 }
 
 /** What home heard in `take`, or why there is nothing to show. */
@@ -58,6 +69,7 @@ const TakeItem = ({
           size="icon"
           className="bg-brand text-brand-foreground hover:bg-brand/85 size-11 shrink-0 rounded-full"
           onClick={() => dispatch({ type: "play", id: take.id })}
+          disabled={state.phone === "recording"}
           aria-label={here ? WORDS.stop : WORDS.play}
         >
           {!here ? (
@@ -86,18 +98,17 @@ const TakeItem = ({
               {WORDS.setAside(take.setAsideAt)}
             </p>
           )}
-          {here && playback.kind === "loading" && (
-            <p className="text-muted-foreground text-xs" role="status">
-              {WORDS.loading}
-            </p>
-          )}
-          {state.unplayable === take.id && (
-            <p className="text-xs" role="status">
-              {WORDS.unplayable}
-            </p>
-          )}
         </div>
       </div>
+      {here && playback.kind === "loading" && <Notice>{WORDS.loading}</Notice>}
+      {state.unplayable === take.id && (
+        <Notice
+          tone="danger"
+          onDismiss={() => dispatch({ type: "noticeDismissed" })}
+        >
+          {WORDS.unplayable}
+        </Notice>
+      )}
     </li>
   )
 }
@@ -116,7 +127,8 @@ const Listed = ({
   }
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-muted-foreground text-sm" role="status">
+      {/* What the list below holds: the screen's own content. */}
+      <p className="text-muted-foreground text-sm" aria-live="polite">
         {WORDS.shown(
           page.by,
           state.asked,
@@ -144,9 +156,11 @@ const Listed = ({
 const Read = ({
   state,
   dispatch,
+  pair,
 }: {
   state: LibraryState
   dispatch: Dispatch
+  pair: ReactNode
 }): JSX.Element => {
   const { read } = state
   switch (read.kind) {
@@ -157,7 +171,7 @@ const Read = ({
       return <Listed page={read.page} state={state} dispatch={dispatch} />
     }
     case "unpaired": {
-      return <p className="text-sm">{WORDS.unpaired}</p>
+      return <Unpaired line={WORDS.unpaired} pair={pair} />
     }
     case "away":
     case "older":
@@ -182,7 +196,41 @@ const Read = ({
   }
 }
 
-export const TakeLibrary = ({ ports }: TakeLibraryProps): JSX.Element => {
+/** The phone's own takes with no scene: record one, and those home lacks. */
+const PhoneTakes = ({ phone }: { phone: LibraryPhone }): JSX.Element => {
+  const { takes, full } = useSyncExternalStore(
+    phone.subscribe,
+    phone.getSnapshot
+  )
+  const { playback } = useSyncExternalStore(
+    phone.pattern.subscribe,
+    phone.pattern.getSnapshot
+  )
+  const here = notYetHome(
+    takes,
+    playback.kind === "quiet" ? null : playback.id,
+    phone.line
+  )
+  return (
+    <section className="flex flex-col gap-2">
+      <h2 className="text-sm font-semibold">{WORDS.record}</h2>
+      <p className="text-muted-foreground text-sm">{WORDS.recordLine}</p>
+      <TakeList
+        pattern={phone.pattern}
+        answers={phone.line}
+        takes={here}
+        label={WORDS.recordLabel}
+        full={
+          full ? (
+            <p className="text-sm">{WORDS.phoneFull(here.length)}</p>
+          ) : undefined
+        }
+      />
+    </section>
+  )
+}
+
+export const TakeLibrary = ({ ports, pair }: TakeLibraryProps): JSX.Element => {
   /* eslint-disable-next-line owner-guard/no-mount-snapshot -- the runtime is made once per mount, as Studio's screens' are */
   const [library] = useState(() => createTakeLibrary(ports))
   useEffect(() => library.attach(), [library])
@@ -191,6 +239,7 @@ export const TakeLibrary = ({ ports }: TakeLibraryProps): JSX.Element => {
   const searchable = state.read.kind !== "unpaired"
   return (
     <div className="flex flex-col gap-4">
+      {ports.phone !== undefined && <PhoneTakes phone={ports.phone} />}
       {searchable && (
         <form
           role="search"
@@ -215,7 +264,9 @@ export const TakeLibrary = ({ ports }: TakeLibraryProps): JSX.Element => {
             </Button>
           </div>
           {state.tooLong && (
-            <p className="text-muted-foreground text-xs">{WORDS.tooLong}</p>
+            <Notice role="alert" tone="warning">
+              {WORDS.tooLong}
+            </Notice>
           )}
           {state.asked !== null && (
             <Button
@@ -230,7 +281,7 @@ export const TakeLibrary = ({ ports }: TakeLibraryProps): JSX.Element => {
           )}
         </form>
       )}
-      <Read state={state} dispatch={dispatch} />
+      <Read state={state} dispatch={dispatch} pair={pair} />
     </div>
   )
 }

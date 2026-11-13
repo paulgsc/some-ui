@@ -1,8 +1,11 @@
-import type { Player } from "@some-ui/voice-capture"
+import type { PatternTake, Player } from "@some-ui/voice-capture"
+import { ONE_TAKE, TAKE_WORDS } from "@some-ui/voice-capture"
+import { simulatedPattern } from "@some-ui/voice-capture/testing"
 import { TakeLibrary } from "@soundbites/components/take-library"
 import type { LibraryRead, LibraryTake } from "@soundbites/lib/library/model"
-import type { TakesHome } from "@soundbites/lib/library/runtime"
+import type { LibraryPhone, TakesHome } from "@soundbites/lib/library/runtime"
 import { LIBRARY_WORDS } from "@soundbites/lib/library/words"
+import { STUDIO_WORDS } from "@soundbites/lib/studio/words"
 import { act, fireEvent, render, screen } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 
@@ -60,7 +63,9 @@ const settle = (): Promise<void> => act(() => Promise.resolve())
 
 describe("Takes on home (ST32)", () => {
   it("lists the takes home keeps with the words it heard, and says one it hasn't heard yet", async () => {
-    render(<TakeLibrary ports={{ home: home(), player: quietPlayer }} />)
+    render(
+      <TakeLibrary ports={{ home: home(), player: quietPlayer }} pair={null} />
+    )
     await settle()
     expect(screen.getByText(TAKE.heard!.text)).toBeTruthy()
     expect(screen.getByText(W.notHeard)).toBeTruthy()
@@ -71,7 +76,10 @@ describe("Takes on home (ST32)", () => {
   it("searches the words, says the search ran on words, and goes back to the newest", async () => {
     const takes = vi.fn(home().takes)
     render(
-      <TakeLibrary ports={{ home: home({ takes }), player: quietPlayer }} />
+      <TakeLibrary
+        ports={{ home: home({ takes }), player: quietPlayer }}
+        pair={null}
+      />
     )
     await settle()
     fireEvent.change(screen.getByLabelText(W.searchLabel), {
@@ -91,7 +99,10 @@ describe("Takes on home (ST32)", () => {
   it("says a search is too long, and asks home nothing for it", async () => {
     const takes = vi.fn(home().takes)
     render(
-      <TakeLibrary ports={{ home: home({ takes }), player: quietPlayer }} />
+      <TakeLibrary
+        ports={{ home: home({ takes }), player: quietPlayer }}
+        pair={null}
+      />
     )
     await settle()
     fireEvent.change(screen.getByLabelText(W.searchLabel), {
@@ -109,7 +120,12 @@ describe("Takes on home (ST32)", () => {
       .fn<TakesHome["audio"]>()
       .mockResolvedValueOnce(new Blob(["take"]))
       .mockResolvedValueOnce(null)
-    render(<TakeLibrary ports={{ home: home({ audio }), player: { play } }} />)
+    render(
+      <TakeLibrary
+        ports={{ home: home({ audio }), player: { play } }}
+        pair={null}
+      />
+    )
     await settle()
     const [first, second] = screen.getAllByRole("button", { name: W.play })
     fireEvent.click(first!)
@@ -126,7 +142,10 @@ describe("Takes on home (ST32)", () => {
   it("says why there is nothing, offering Try again only where it can help", async () => {
     const takes = vi.fn(() => Promise.resolve({ kind: "away" as const }))
     const { unmount } = render(
-      <TakeLibrary ports={{ home: home({ takes }), player: quietPlayer }} />
+      <TakeLibrary
+        ports={{ home: home({ takes }), player: quietPlayer }}
+        pair={null}
+      />
     )
     await settle()
     expect(screen.getByText(W.away)).toBeTruthy()
@@ -142,11 +161,81 @@ describe("Takes on home (ST32)", () => {
           }),
           player: quietPlayer,
         }}
+        pair={<a href="#pair">{STUDIO_WORDS.pair.pair}</a>}
       />
     )
     await settle()
     expect(screen.getByText(W.unpaired)).toBeTruthy()
+    // The way to pairing is the app's link (ST34), never only "in Settings".
+    expect(
+      screen.getByRole("link", { name: STUDIO_WORDS.pair.pair })
+    ).toBeTruthy()
     expect(screen.queryByRole("button", { name: W.readAgain })).toBeNull()
     expect(screen.queryByLabelText(W.searchLabel)).toBeNull()
+  })
+
+  it("records a take with no scene here, and lists apart, with where each is, only those home doesn't hold yet", async () => {
+    const own = (id: string, kept: PatternTake["kept"]): PatternTake => ({
+      id,
+      answers: "library",
+      durationMs: 4000,
+      recordedAt: "2026-11-05T09:00:00.000Z",
+      standing: "current",
+      kept,
+    })
+    const takes = [
+      own("going", { place: "going" }),
+      own("there", { place: "home", since: null }),
+    ]
+    const sim = simulatedPattern({
+      options: {
+        ...ONE_TAKE,
+        takes: { per: "many", max: 40, full: "make-room" },
+      },
+      seed: takes,
+    })
+    const phone = (full: boolean): LibraryPhone => {
+      const snapshot = { takes, full }
+      return {
+        pattern: sim.pattern,
+        line: "library",
+        getSnapshot: () => snapshot,
+        subscribe: () => () => undefined,
+      }
+    }
+    const { unmount } = render(
+      <TakeLibrary
+        ports={{ home: home(), player: quietPlayer, phone: phone(false) }}
+        pair={null}
+      />
+    )
+    await settle()
+    expect(screen.getByRole("heading", { name: W.record })).toBeTruthy()
+    expect(screen.getByText(W.recordLine)).toBeTruthy()
+    expect(
+      screen.getByRole("button", { name: TAKE_WORDS.buttonLabel.ready })
+    ).toBeTruthy()
+    // Each row says where its take is, after its length.
+    const place = (words: string): RegExp => new RegExp(`· ${words}$`)
+    expect(screen.getByText(place(TAKE_WORDS.place.going))).toBeTruthy()
+    // The one home holds shows in home's list, not twice.
+    expect(screen.queryByText(place(TAKE_WORDS.place.home))).toBeNull()
+    expect(
+      screen.getAllByRole("button", {
+        name: TAKE_WORDS.rowLabel(TAKE_WORDS.play, 4000),
+      })
+    ).toHaveLength(1)
+    unmount()
+    render(
+      <TakeLibrary
+        ports={{ home: home(), player: quietPlayer, phone: phone(true) }}
+        pair={null}
+      />
+    )
+    await settle()
+    expect(screen.getByText(W.phoneFull(1))).toBeTruthy()
+    expect(
+      screen.getByRole("button", { name: TAKE_WORDS.buttonLabel.ready })
+    ).toBeDisabled()
   })
 })

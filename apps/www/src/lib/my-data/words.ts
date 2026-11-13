@@ -5,6 +5,9 @@
  */
 import { assertNever, counted, formatSize, listed } from "@some-ui/core-utils"
 
+import type { Feed } from "@/lib/call-videos/model"
+import { FEED_WORDS } from "@/lib/call-videos/words"
+
 import type { DeletableKind, ReceiptsReading } from "./deleting"
 import { isDeletableKind } from "./deleting"
 import type { HomeReading, Of, Where } from "./model"
@@ -47,6 +50,8 @@ export const KEPT_FOR_GOOD: Readonly<Record<RecordKind, string>> = {
   self: "Self entries",
   leetype: "LeetType sessions",
   "rust-rounds": "Rust Rounds",
+  "rust-weeks": "Rust Rounds weeks you sent",
+  "rust-round-log": "What you did on the Rust Rounds cards",
   "scene-asks": "Asks for the next scene",
   "studio-log": "Studio's log",
 }
@@ -361,7 +366,6 @@ export const RECEIPTS = {
   row: "Deleted",
   rowLine: "What went, and when",
   title: "Deleted",
-  back: "My data",
   lead: "Each recording you deleted, and when. None of them holds what you said.",
   empty: "Nothing has been deleted.",
   /** What a drag down reads again. */
@@ -395,3 +399,43 @@ export function receiptsLine(home: ReceiptsReading["kind"]): string | null {
     }
   }
 }
+
+/**
+ * My data's page for each feed's videos (ST38, #2661; FEED4): an episode's
+ * video, a week of the call, of Playoff Delta or of Rust Rounds, and then the rest of its
+ * folder are let go of home once its YouTube link is saved, each asked once,
+ * "Keep it" first. Each feed's own words (its heading, an episode's label,
+ * "still making") are `FEED_WORDS`', as Studio says them.
+ */
+export const CALL_DELETING = {
+  /** The overview's way in. */
+  row: "The videos home makes",
+  rowLine: "Let home's copy go once a video is on YouTube",
+  title: "The videos home makes",
+  lead: "Home keeps each video, the weekly call's, Playoff Delta's and each Rust Rounds essay's, until it's on YouTube. Once its link is saved in Studio, let home's copy go: the video first, then the rest.",
+  /** An episode, named with its feed, as the sheet says it. */
+  episode: (feed: Feed, key: string): string => {
+    const { heading, week } = FEED_WORDS[feed]
+    const named = week(key)
+    return named === null ? heading : `${heading}, ${named}`
+  },
+  pair: "Pair this phone with home",
+  noLink: "Save its YouTube link in Studio first.",
+  allGone: "Home's copy went. It lives on YouTube.",
+  video: (size: string): string => `Delete the video (${size})…`,
+  rest: (size: string): string => `Delete the rest (${size})…`,
+  asks: {
+    video: "Delete this video?",
+    rest: "Delete the rest of it?",
+  },
+  goes: {
+    video: (size: string): string => `The video home keeps of it, ${size}.`,
+    rest: (size: string): string => `Its takes, stills and cut list, ${size}.`,
+  },
+  stays: "Its words, its YouTube link, and a receipt of this delete.",
+  gone: (at: string): string => `Deleted ${at}. A receipt stays with it.`,
+  kept: "Home kept it. A video goes only once its link is saved, and the rest only after the video.",
+  notHeld: "Home doesn't hold this one.",
+  forgotten: "This phone isn't paired with home now, so nothing was deleted.",
+  unanswered: "Home didn't answer, so nothing was deleted.",
+} as const

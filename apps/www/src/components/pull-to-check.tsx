@@ -8,6 +8,7 @@
 import type { JSX } from "react"
 import { useCallback, useState, useSyncExternalStore } from "react"
 import { assertNever, cn } from "@some-ui/core-utils"
+import { Notice } from "@some-ui/shared"
 import { onlineManager, useQueryClient } from "@tanstack/react-query"
 import { useRouter } from "@tanstack/react-router"
 import { ArrowDown, Check, CircleAlert, RefreshCw } from "lucide-react"
@@ -63,12 +64,25 @@ const PhaseIcon = ({ phase }: { phase: Phase }): JSX.Element | null => {
   }
 }
 
+/** The phase's icon and words, as the pill and the notice both say them. */
+const Said = ({
+  phase,
+  words,
+}: {
+  phase: Phase
+  words: string
+}): JSX.Element => (
+  <span data-pull-words="" className="flex items-center gap-2 text-balance">
+    <PhaseIcon phase={phase} />
+    <span>{words}</span>
+  </span>
+)
+
 /**
- * The indicator for `phase`: a pill that comes down from under the header
- * with the finger and rests at the top of the page while it checks and says
- * how that went. A zero-height box, so the page below never moves; the
- * scroller clips the pill until it has come down. The live region stays
- * mounted, so each change is announced.
+ * The indicator for `phase`. While the finger pulls, a pill comes down from
+ * under the header with it: a zero-height box, so the page below never
+ * moves, and the scroller clips the pill until it has come down. Once let
+ * go, how the check goes (checking, done, failed) is a `Notice`.
  */
 export const PullIndicator = ({
   phase,
@@ -79,27 +93,31 @@ export const PullIndicator = ({
   when?: (at: number) => string
 }): JSX.Element => {
   const words = pullWords(phase, when)
-  const distance =
-    phase.kind === "pulling" || phase.kind === "armed" ? phase.distance : ARM_PX
+  const pulling = phase.kind === "pulling" || phase.kind === "armed"
+  const distance = pulling ? phase.distance : ARM_PX
   return (
-    <div className="relative h-0" data-pull-indicator="">
-      <div
-        role="status"
-        aria-live="polite"
-        className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center"
-        style={{
-          transform: `translateY(${distance - ARM_PX}px)`,
-          opacity: Math.min(1, distance / ARM_PX),
-        }}
-      >
-        {words !== null && (
-          <p className="bg-background text-foreground flex max-w-full items-center gap-2 rounded-2xl border px-3 py-1.5 text-sm text-balance shadow-md">
-            <PhaseIcon phase={phase} />
-            <span>{words}</span>
-          </p>
-        )}
+    <>
+      <div className="relative h-0" data-pull-indicator="">
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center"
+          style={{
+            transform: `translateY(${distance - ARM_PX}px)`,
+            opacity: Math.min(1, distance / ARM_PX),
+          }}
+        >
+          {pulling && words !== null && (
+            <p className="bg-background text-foreground max-w-full rounded-2xl border px-3 py-1.5 text-sm shadow-md">
+              <Said phase={phase} words={words} />
+            </p>
+          )}
+        </div>
       </div>
-    </div>
+      {!pulling && words !== null && (
+        <Notice>
+          <Said phase={phase} words={words} />
+        </Notice>
+      )}
+    </>
   )
 }
 

@@ -17,6 +17,8 @@
  * - MB5: an item never changes, and leaves `item` only into `archived`, or,
  *   for home's index, once a newer index of its routine is live (`store.ts`,
  *   `migrations/`).
+ * - MB6: a ring carries only a folder name (`ringMessage`, the one thing the
+ *   bell sends; `bell.ts`).
  */
 
 import type { Folder, Role, Store } from "./store"
@@ -233,6 +235,103 @@ function wordsRefusal(words: unknown): string | null {
 }
 
 /**
+ * The keys of a `some-ui.episode-note/1` body: a note the owner left at a
+ * moment of one of a feed's episodes (paulgsc/some-ui#2745, SFEED6), as home
+ * keeps it. Any other is refused.
+ */
+const FEEDBACK_KEYS: ReadonlySet<string> = new Set([
+  "schema",
+  "note",
+  "feed",
+  "episode",
+  "atMs",
+  "categories",
+  "take",
+  "writtenAt",
+])
+const FEEDS: ReadonlySet<unknown> = new Set(["call", "playoff-delta"])
+/**
+ * SFEED decision 7's set, in its order, final by decision 10 (#2670), as the
+ * phone's `NoteSchema` holds it (some-ui#2747).
+ */
+const CATEGORIES: ReadonlyArray<string> = [
+  "shallow",
+  "technical",
+  "missedIntuition",
+  "unsupported",
+  "tooLong",
+  "tooShort",
+  "textClipped",
+  "slideShakes",
+  "overlap",
+  "hardToRead",
+  "pacing",
+  "voice",
+  "musicLoud",
+  "subtitlesOff",
+]
+const NO_AUDIO_FEEDBACK =
+  "a note carries no audio: a spoken one goes as its take's transcript"
+const NO_DRIVE_FEEDBACK = "a note names no Drive file"
+
+/** Picked from the fixed set, at least one, each once, in its order. */
+function isPicked(value: unknown): boolean {
+  if (!Array.isArray(value) || value.length === 0) return false
+  let before = -1
+  return value.every((category) => {
+    const place =
+      typeof category === "string" ? CATEGORIES.indexOf(category) : -1
+    const next = place > before
+    before = place
+    return next
+  })
+}
+
+/**
+ * README, "What a put must satisfy": a note on an episode is which episode,
+ * the moment, what it is about, the take that says it if one does, and when
+ * it was written, and nothing else.
+ */
+function feedbackRefusal(
+  body: Readonly<Record<string, unknown>>,
+  text: string,
+  name: string
+): string | null {
+  const shape = shapeRefusal(
+    body,
+    text,
+    FEEDBACK_KEYS,
+    NO_AUDIO_FEEDBACK,
+    NO_DRIVE_FEEDBACK,
+    "note"
+  )
+  if (shape !== null) return shape
+  if (typeof body.note !== "string") return "note must be the note's id"
+  if (name !== `feedback-${body.note}.json`) {
+    return "the name must carry the note's id"
+  }
+  if (!FEEDS.has(body.feed)) return "feed must be call or playoff-delta"
+  if (typeof body.episode !== "string" || !NOTE_REF.test(body.episode)) {
+    return "episode must name the episode"
+  }
+  const { atMs } = body
+  if (typeof atMs !== "number" || !Number.isSafeInteger(atMs) || atMs < 0) {
+    return "atMs must be the moment, in whole milliseconds from the start"
+  }
+  if (!isPicked(body.categories)) {
+    return "categories must be the fixed set's, each once, in its order"
+  }
+  if (
+    body.take !== null &&
+    (typeof body.take !== "string" || !NOTE_ID.test(body.take))
+  ) {
+    return "take must be the spoken note's take id, or null"
+  }
+  if (!isInstant(body.writtenAt)) return "writtenAt must be when it was written"
+  return null
+}
+
+/**
  * The keys of a `some-ui.reflection/1` body: only what the reflections
  * routine reads of a written reflection (paulgsc/some-ui#2174, D2). Any
  * other is refused.
@@ -424,6 +523,24 @@ const REFLECTIONS_INDEX_KEYS: ReadonlySet<string> = new Set([
   "reflections",
   "prompts",
 ])
+/** The keys of a `some-ui.routine-index/1` body for the weekly call's routine; any other is refused. */
+const CALL_INDEX_KEYS: ReadonlySet<string> = new Set([
+  "schema",
+  "routine",
+  "asOf",
+  "held",
+])
+/** The keys of each week the call index lists; any other is refused. */
+const HELD_WEEK_KEYS: ReadonlySet<string> = new Set(["from", "to", "sha256"])
+/** The keys of a `some-ui.routine-index/1` body for the Rust Rounds routine; any other is refused. */
+const RUST_INDEX_KEYS: ReadonlySet<string> = new Set([
+  "schema",
+  "routine",
+  "asOf",
+  "weeks",
+])
+/** Most characters of one pasted error, as home keeps it (paulgsc/server `rust_round_repo::sent::PASTE_MAX_CHARS`). */
+const PASTE_MAX_CHARS = 20_000
 const NO_AUDIO_INDEX = "an index carries no audio: home keeps the audio"
 const NO_DRIVE_INDEX = "an index names no Drive file"
 
@@ -486,13 +603,133 @@ const reflectionsShape: IndexShape = (body) => {
   )
 }
 
+/**
+ * The weekly call's index (paulgsc/some-ui#2635, ST36): when home last took a
+ * week, and every week it holds, each named once by its days and the SHA-256
+ * of the bytes home keeps. The routine lets a week leave `paulgsc/testing`
+ * only once this lists it, so the Worker holds each week to its shape.
+ */
+const callShape: IndexShape = (body) => {
+  if (!isInstant(body.asOf)) return "asOf must be when home last took a week"
+  const list = shapeOf([], ["held"], body)
+  if (list !== null) return list
+  const held: unknown = body.held
+  const seen = new Set<string>()
+  for (const week of Array.isArray(held) ? held.values() : []) {
+    if (
+      !isRecord(week) ||
+      Object.keys(week).some((key) => !HELD_WEEK_KEYS.has(key)) ||
+      [...HELD_WEEK_KEYS].some((key) => !(key in week))
+    ) {
+      return "each held week is its from, to and sha256"
+    }
+    if (
+      !isCalendarDay(week.from) ||
+      !isCalendarDay(week.to) ||
+      week.to < week.from
+    ) {
+      return "each held week runs from a day to a day no earlier"
+    }
+    if (typeof week.sha256 !== "string" || !SHA256_HEX.test(week.sha256)) {
+      return "each held week's sha256 is 64 lower-case hex characters"
+    }
+    if (seen.has(week.from)) return "each held week is named once"
+    seen.add(week.from)
+  }
+  return null
+}
+
+/** The pasted errors' texts in a Rust Rounds index, each as `JSON.parse` kept it. */
+function pastedTexts(body: Readonly<Record<string, unknown>>): Array<string> {
+  const weeks: unknown = body.weeks
+  return (Array.isArray(weeks) ? weeks : []).flatMap((week: unknown) => {
+    const pastes: unknown = isRecord(week) ? week.pastes : undefined
+    return (Array.isArray(pastes) ? pastes : []).flatMap((paste: unknown) =>
+      isRecord(paste) && typeof paste.text === "string" ? [paste.text] : []
+    )
+  })
+}
+
+/**
+ * The Rust Rounds index (RR18, paulgsc/some-ui#2693): every final week among
+ * the newest home holds, each as home's record of it
+ * (paulgsc/server `GET /rust-weeks/:id/record`), so the Monday routine writes
+ * each essay from the final record, never a draft. A pasted error is the
+ * owner's own text, and a linker's symbol can run past 256 base64-like
+ * characters, so the scan for encoded bytes leaves each paste's text out
+ * (`rustScanned`); a paste is still held to no `data:` URI, no Drive link and
+ * home's own length.
+ */
+const rustShape: IndexShape = (body) => {
+  const asOf = asOfRefusal(body)
+  if (asOf !== null) return asOf
+  const list = shapeOf([], ["weeks"], body)
+  if (list !== null) return list
+  const weeks: unknown = body.weeks
+  const seen = new Set<string>()
+  for (const week of Array.isArray(weeks) ? weeks.values() : []) {
+    if (!isRecord(week)) return "each week must be an object"
+    if (typeof week.week !== "string" || !WEEK_ID.test(week.week)) {
+      return "each week's week must be its id, like 2026-w46"
+    }
+    if (seen.has(week.week)) return "each week is named once"
+    seen.add(week.week)
+    if (week.closed !== true) return "each week must be past its deadline"
+    if (
+      week.sent !== null &&
+      !(isRecord(week.sent) && week.sent.draft === false)
+    ) {
+      return "each week's send must be its final, or null"
+    }
+    if (!Array.isArray(week.tickets) || !Array.isArray(week.pastes)) {
+      return "each week's tickets and pastes must be lists"
+    }
+  }
+  for (const text of pastedTexts(body)) {
+    // Home counts characters, not UTF-16 units (`chars().count()`).
+    if ([...text].length > PASTE_MAX_CHARS) {
+      return `a pasted error is at most ${PASTE_MAX_CHARS} characters`
+    }
+    if (DATA_URI.test(text)) return NO_AUDIO_INDEX
+    if (DRIVE_LINK.test(text)) return NO_DRIVE_INDEX
+  }
+  return null
+}
+
+/**
+ * The text the scan for audio reads in a Rust Rounds index: the body as sent,
+ * less each pasted error's text where it stands as a `"text"` value, written
+ * as `JSON.stringify` writes it with no space after the key, as home writes it.
+ * The same string under any other key stays in and is scanned, and so does a
+ * text written any other way.
+ */
+const rustScanned = (
+  body: Readonly<Record<string, unknown>>,
+  text: string
+): string =>
+  pastedTexts(body).reduce(
+    (rest, paste) =>
+      rest.replaceAll(`"text":${JSON.stringify(paste)}`, '"text":""'),
+    text
+  )
+
 /** The routines home computes an index for (README, "What a put must satisfy"), each with its keys and shape. */
 const INDEX_ROUTINES: ReadonlyMap<
   unknown,
-  { readonly keys: ReadonlySet<string>; readonly shape: IndexShape }
+  {
+    readonly keys: ReadonlySet<string>
+    readonly shape: IndexShape
+    /** The text the scan for audio and Drive reads; the body as sent when absent. */
+    readonly scanned?: (
+      body: Readonly<Record<string, unknown>>,
+      text: string
+    ) => string
+  }
 > = new Map([
   ["jobs", { keys: JOBS_INDEX_KEYS, shape: jobsShape }],
   ["reflections", { keys: REFLECTIONS_INDEX_KEYS, shape: reflectionsShape }],
+  ["call", { keys: CALL_INDEX_KEYS, shape: callShape }],
+  ["rust", { keys: RUST_INDEX_KEYS, shape: rustShape, scanned: rustScanned }],
 ])
 
 /**
@@ -511,7 +748,7 @@ function indexRefusal(
   const what = `${String(body.routine)} index`
   const shape = shapeRefusal(
     body,
-    text,
+    routine.scanned?.(body, text) ?? text,
     routine.keys,
     NO_AUDIO_INDEX,
     NO_DRIVE_INDEX,
@@ -525,6 +762,46 @@ function indexRefusal(
   if (missing !== undefined) return `the ${what} carries ${missing}`
   return routine.shape(body)
 }
+
+/**
+ * README, "What a put must satisfy". The routine holds a week to the whole
+ * format (`readWeek`, paulgsc/some-ui#2687) before it puts one; home reads
+ * only what it records.
+ */
+function rustWeekRefusal(
+  body: Readonly<Record<string, unknown>>,
+  _text: string,
+  name: string
+): string | null {
+  if (typeof body.id !== "string" || !WEEK_ID.test(body.id)) {
+    return "id must be the week's, like 2026-w46"
+  }
+  return name === `rust-week-${body.id}.json`
+    ? null
+    : "the name must carry the week's id"
+}
+
+/**
+ * A Rust Rounds essay's script, named for the week it answers, and `-r2` on
+ * for a correction (`some-ui.rust-essay/1`'s `week.id`, `EssaySchema` in
+ * `@some-ui/video-render`).
+ */
+function rustEssayRefusal(
+  body: Readonly<Record<string, unknown>>,
+  _text: string,
+  name: string
+): string | null {
+  const week = isRecord(body.week) ? body.week.id : undefined
+  if (typeof week !== "string" || !WEEK_ID.test(week)) {
+    return "week.id must be the week's, like 2026-w46"
+  }
+  return name.replace(/(-r\d+)?\.json$/, "") === `rust-essay-${week}`
+    ? null
+    : "the name must carry the week's id"
+}
+
+/** `WEEK_ID` in `packages/ui/rust-rounds/src/lib/formats/week.ts`, which this Worker cannot import. */
+const WEEK_ID = /^\d{4}-w(?:0[1-9]|[1-4]\d|5[0-3])$/
 
 /**
  * MB2's backfill (owner, 2026-10-31, paulgsc/server#509, widened 2026-11-01,
@@ -636,6 +913,23 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
         schema: "some-ui.drive-takes/1",
         refuses: driveTakesRefusal,
       },
+      // A week of Rust Rounds the Monday routine writes, for home to keep
+      // and record its programs (RR12, paulgsc/some-ui#2687).
+      {
+        folder: "brief",
+        name: /^rust-week-\d{4}-w\d{2}\.json$/,
+        schema: "some-ui.rust-week/1",
+        refuses: rustWeekRefusal,
+      },
+      // The script of the essay that answers a week, for home to keep and
+      // render; `-r2` on is a correction (RR16, paulgsc/some-ui#2691; the
+      // owner's answer on #2684: home and the mailbox only).
+      {
+        folder: "brief",
+        name: /^rust-essay-\d{4}-w\d{2}(-r(?:[2-9]|[1-9]\d+))?\.json$/,
+        schema: "some-ui.rust-essay/1",
+        refuses: rustEssayRefusal,
+      },
     ],
   },
   DECISIONS,
@@ -713,6 +1007,13 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
     schema: "some-ui.drama-prompt/1",
     refuses: promptRefusal,
   },
+  {
+    // A note on an episode, as home keeps it (SFEED6).
+    folder: "feedback",
+    name: /^feedback-[A-Za-z0-9_-]{1,64}\.json$/,
+    schema: "some-ui.episode-note/1",
+    refuses: feedbackRefusal,
+  },
 ]
 
 /** The Worker secrets. An unset or empty one never authenticates anyone. */
@@ -733,6 +1034,8 @@ type Grant = {
   readonly ask: ReadonlyArray<Folder>
   /** Archive items, put archived ones back, and list the asks. */
   readonly move: ReadonlyArray<Folder>
+  /** Listen on the bell (`GET /v1/bell`) for its rings. */
+  readonly listen: boolean
 }
 
 /**
@@ -754,14 +1057,28 @@ const RECORDS: ReadonlyArray<Folder> = [
   "transcript",
   "reflection",
   "prompt",
+  "feedback",
 ]
 
 const ALL: ReadonlyArray<Folder> = [...RECORDS, "index"]
 
-/** Every record but `reflection` and `prompt`, which the routine never asks back (README, "Who may do what"; MI6). */
+/** Every record but `reflection`, `prompt` and `feedback`, which the routine never asks back (README, "Who may do what"; MI6). */
 const ASKED: ReadonlyArray<Folder> = RECORDS.filter(
-  (folder) => folder !== "reflection" && folder !== "prompt"
+  (folder) =>
+    folder !== "reflection" && folder !== "prompt" && folder !== "feedback"
 )
+
+/**
+ * What home reads: the folders paulgsc/server's `mailbox::pass::READS` lists.
+ * A file added to one rings the bell (`RINGS`).
+ */
+const HOME_READS: ReadonlyArray<Folder> = [
+  "brief",
+  "scene",
+  "drama",
+  "run",
+  "leetype",
+]
 
 /** MB2. Another role (the phone's, say) is the owner's call, not a code change. */
 const ROLES: ReadonlyArray<Grant> = [
@@ -772,11 +1089,12 @@ const ROLES: ReadonlyArray<Grant> = [
     put: ["brief", "scene", "drama", "run", "leetype"],
     ask: ASKED,
     move: [],
+    listen: false,
   },
   {
     role: "home",
     token: (tokens) => tokens.home,
-    get: ["brief", "scene", "drama", "run", "leetype"],
+    get: HOME_READS,
     put: [
       "decisions",
       "scout",
@@ -786,9 +1104,11 @@ const ROLES: ReadonlyArray<Grant> = [
       "index",
       "reflection",
       "prompt",
+      "feedback",
     ],
     ask: [],
     move: [],
+    listen: true,
   },
   {
     role: "archive",
@@ -797,15 +1117,48 @@ const ROLES: ReadonlyArray<Grant> = [
     put: [],
     ask: [],
     move: RECORDS,
+    listen: false,
   },
 ]
+
+/** The folders an added file rings the bell for (README, "The bell"). */
+export const RINGS: ReadonlyArray<Folder> = HOME_READS
+
+/**
+ * The one message the bell sends (MB6): which folder to look in, never what
+ * is in it. Home reads the rest through the listing, as its poll does.
+ */
+export function ringMessage(folder: Folder): string {
+  return JSON.stringify({ ring: folder })
+}
+
+/** Every folder a ring may name: what home reads, and what the routine may ask back. */
+export const RINGING: ReadonlySet<Folder> = new Set([...RINGS, ...ASKED])
+
+/** Home's heartbeat on the bell, answered without waking it: it sends `PING` and gets `PONG`. */
+export const PING = "ping"
+export const PONG = "pong"
+/** The close code an earlier listener gets when home connects again: one listener at a time. */
+export const REPLACED = 4000
+
+/** The Durable Object the Worker forwards to; `index.ts` binds it. */
+type BellPort = {
+  /** Takes home's upgrade request and answers it with the socket (`101`). */
+  readonly listen: (request: Request) => Promise<Response>
+  /**
+   * Rings whoever listens, without the caller waiting: best effort, so a
+   * put's answer never depends on it.
+   */
+  readonly ring: (folder: Folder) => void
+}
 
 export type Deps = {
   readonly tokens: Tokens
   readonly store: Store
   readonly now: () => Date
-  /** Told of a storage failure. */
+  /** Told of a storage failure, or a ring that could not be sent. */
   readonly report: (error: unknown) => void
+  readonly bell: BellPort
 }
 
 function answer(
@@ -825,6 +1178,15 @@ function refuse(
   headers: Record<string, string> = {}
 ): Response {
   return answer(status, { error }, headers)
+}
+
+/** Best effort: a ring that fails is reported, never answered. */
+function ring(folder: Folder, deps: Deps): void {
+  try {
+    deps.bell.ring(folder)
+  } catch (error) {
+    deps.report(error)
+  }
 }
 
 async function sha256(data: string | Uint8Array): Promise<Uint8Array> {
@@ -1109,6 +1471,9 @@ async function write(
   if (result.change === "superseded") {
     return refuse(409, "a newer index of this routine is held")
   }
+  if (result.change === "added" && RINGS.includes(rules.folder)) {
+    ring(rules.folder, deps)
+  }
   return answer(result.change === "added" ? 201 : 200, {
     change: result.change,
     seq: result.seq,
@@ -1214,6 +1579,7 @@ async function ask(
   )
   switch (result.change) {
     case "asked": {
+      ring(rules.folder, deps)
       return answer(202, { change: result.change })
     }
     case "unchanged":
@@ -1272,6 +1638,22 @@ async function serve(
   return write(request, rules, name, grant.role, deps)
 }
 
+/** `GET /v1/bell` with `Upgrade: websocket`, for a role that may listen (MB2). */
+function listen(
+  request: Request,
+  grant: Grant,
+  deps: Deps
+): Promise<Response> | Response {
+  if (request.method !== "GET") {
+    return refuse(405, "method_not_allowed", { allow: "GET" })
+  }
+  if (!grant.listen) return refuse(403, "forbidden")
+  if (request.headers.get("upgrade")?.toLowerCase() !== "websocket") {
+    return refuse(426, "the bell is a WebSocket", { upgrade: "websocket" })
+  }
+  return deps.bell.listen(request)
+}
+
 /** A missing or wrong token is answered before the store is touched: no D1 quota for strangers. */
 export async function handle(request: Request, deps: Deps): Promise<Response> {
   const grant = await authenticate(
@@ -1282,6 +1664,9 @@ export async function handle(request: Request, deps: Deps): Promise<Response> {
     return refuse(401, "unauthorized", { "www-authenticate": "Bearer" })
   }
   try {
+    if (new URL(request.url).pathname === "/v1/bell") {
+      return await listen(request, grant, deps)
+    }
     return await serve(request, grant, deps)
   } catch (error) {
     deps.report(error)

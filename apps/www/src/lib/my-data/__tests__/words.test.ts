@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest"
 import { MACHINERY } from "@/lib/home-link/__tests__/machinery"
 import { KINDS } from "@/lib/my-data/model"
 import {
+  CALL_DELETING,
   DELETABLE_NAMES,
   DELETING,
   homeLine,
@@ -109,6 +110,25 @@ describe("My data's words", () => {
     expect(
       said.filter((text) => /set-aside mark|mailbox copy|drive copy/.test(text))
     ).toEqual([])
+  })
+
+  it("never name the machinery when letting a feed's episode go", () => {
+    const said = [
+      ...strings(CALL_DELETING),
+      CALL_DELETING.episode("call", "2026-10-30"),
+      CALL_DELETING.episode("playoff-delta", "2026-SF-08"),
+      CALL_DELETING.episode("playoff-delta", "2026-SF-00"),
+      CALL_DELETING.video("95 MB"),
+      CALL_DELETING.rest("1.2 GB"),
+      CALL_DELETING.goes.video("95 MB"),
+      CALL_DELETING.goes.rest("1.2 GB"),
+      CALL_DELETING.gone(itemName(AT)),
+    ]
+    expect(said.filter((text) => MACHINERY.test(text))).toEqual([])
+    // A key the feed can't read is named by the feed alone, never the key.
+    expect(CALL_DELETING.episode("playoff-delta", "2026-10-30")).toBe(
+      "Playoff Delta"
+    )
   })
 
   it("say what went and stayed as a sentence", () => {

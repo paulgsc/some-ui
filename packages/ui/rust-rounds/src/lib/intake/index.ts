@@ -65,7 +65,10 @@ function child(value: unknown, key: PropertyKey): unknown {
 }
 
 /** `cards[1] ("b").hunk.line`: the path, with each card's id. */
-function pathOf(path: ReadonlyArray<PropertyKey>, value: unknown): string {
+export function pathOf(
+  path: ReadonlyArray<PropertyKey>,
+  value: unknown
+): string {
   let text = ""
   let at = value
   for (const key of path) {

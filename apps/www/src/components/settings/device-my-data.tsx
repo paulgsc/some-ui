@@ -22,7 +22,7 @@
 import type { JSX } from "react"
 import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { formatSize } from "@some-ui/core-utils"
-import { Button } from "@some-ui/shared"
+import { Button, Notice } from "@some-ui/shared"
 import { Link } from "@tanstack/react-router"
 import {
   Check,
@@ -61,6 +61,7 @@ import type {
 import type { RecordReading } from "@/lib/my-data/record"
 import { RECORD_KINDS } from "@/lib/my-data/record"
 import {
+  CALL_DELETING,
   DELETING,
   homeLine,
   itemLine,
@@ -90,11 +91,15 @@ import {
 } from "./device-my-data-charts"
 import { DeleteSheetView } from "./device-my-data-delete"
 
+/**
+ * What the page says of how its reading went (home asked, home silent, a
+ * store not opened yet).
+ */
 const Status = ({ line }: { line: string | null }): JSX.Element | null =>
   line === null ? null : (
-    <p className="text-muted-foreground text-sm" role="status">
+    <Notice key={line} dismissible>
       {line}
-    </p>
+    </Notice>
   )
 
 const Tile = ({
@@ -264,23 +269,16 @@ export const MyDataOverview = ({
         )}
       </Section>
       <KeptForGood record={record} />
-      {hasAudience("apk") ? (
-        <Link
-          to="/settings/data/deleted"
-          className={`hover:bg-accent bg-card rounded-xl border ${ROW}`}
-        >
-          <span className="min-w-0 flex-1">
-            <span className="block text-sm font-medium">{RECEIPTS.row}</span>
-            <span className="text-muted-foreground block text-xs">
-              {RECEIPTS.rowLine}
-            </span>
-          </span>
-          <ChevronRight
-            className="text-muted-foreground size-4 shrink-0"
-            aria-hidden
-          />
-        </Link>
-      ) : null}
+      <PageRow
+        to="/settings/data/calls"
+        title={CALL_DELETING.row}
+        line={CALL_DELETING.rowLine}
+      />
+      <PageRow
+        to="/settings/data/deleted"
+        title={RECEIPTS.row}
+        line={RECEIPTS.rowLine}
+      />
     </div>
   )
 }
@@ -510,8 +508,34 @@ export const DeviceMyData = (): JSX.Element => {
   )
 }
 
-/** The page's heading for kind `of`: its name, and the way back to My data. */
-const KindHeading = ({ of }: { of: Of | null }): JSX.Element => (
+/** The overview's way into one of My data's own pages. */
+const PageRow = ({
+  to,
+  title,
+  line,
+}: {
+  to: "/settings/data/calls" | "/settings/data/deleted"
+  title: string
+  line: string
+}): JSX.Element | null =>
+  hasAudience("apk") ? (
+    <Link
+      to={to}
+      className={`hover:bg-accent bg-card rounded-xl border ${ROW}`}
+    >
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-medium">{title}</span>
+        <span className="text-muted-foreground block text-xs">{line}</span>
+      </span>
+      <ChevronRight
+        className="text-muted-foreground size-4 shrink-0"
+        aria-hidden
+      />
+    </Link>
+  ) : null
+
+/** A My data page's heading: its title, and the way back to My data. */
+export const MyDataHeading = ({ title }: { title: string }): JSX.Element => (
   <div className="space-y-1">
     {hasAudience("apk") ? (
       <Link
@@ -523,7 +547,7 @@ const KindHeading = ({ of }: { of: Of | null }): JSX.Element => (
       </Link>
     ) : null}
     <h1 className="text-2xl font-semibold tracking-tight break-words">
-      {of === null ? MY_DATA.kind.unknown : KIND_NAMES[of]}
+      {title}
     </h1>
   </div>
 )
@@ -605,7 +629,9 @@ export const DeviceMyDataKind = ({
   const of = isKind(kind) ? kind : null
   return (
     <>
-      <KindHeading of={of} />
+      <MyDataHeading
+        title={of === null ? MY_DATA.kind.unknown : KIND_NAMES[of]}
+      />
       {of === null ? null : <KindList of={of} note={note} />}
     </>
   )
@@ -667,20 +693,7 @@ export const DeviceMyDataReceipts = (): JSX.Element => {
   }, [receipts])
   return (
     <>
-      <div className="space-y-1">
-        {hasAudience("apk") ? (
-          <Link
-            to="/settings/data"
-            className="text-muted-foreground hover:text-foreground -ml-1 inline-flex items-center gap-1 text-sm"
-          >
-            <ChevronLeft className="size-4" aria-hidden />
-            {RECEIPTS.back}
-          </Link>
-        ) : null}
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {RECEIPTS.title}
-        </h1>
-      </div>
+      <MyDataHeading title={RECEIPTS.title} />
       <MyDataReceipts state={state} />
     </>
   )

@@ -1,5 +1,6 @@
 /**
- * The owner's rules for what reaches the screen (#2231, #2235): no score,
+ * The owner's rules for what reaches the screen (#2231, #2235), on the cards
+ * and on a week's screens (RR13): no score,
  * verdict, "you said", level, streak, duration, timer or "done", and no
  * status code or internal name. And nowhere in the package's own source is
  * there a duration, a timer or a completion to show.
@@ -8,24 +9,40 @@ import { readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { BLOOM_STEPS } from "@rust-rounds/lib/formats"
 import { entryLine, runHeading, WORDS } from "@rust-rounds/lib/play/words"
+import { QUILLMOSS_WEEK } from "@rust-rounds/lib/sample-week"
+import { WEEK_WORDS } from "@rust-rounds/lib/week-play/words"
 import { INDEXING_01_RUNS } from "@rust-rounds/lib/worked-example"
 import { describe, expect, it } from "vitest"
 
-/** Every string the table can produce, with sample arguments. */
+/** Every string a table can produce, with sample arguments. */
 function everyWord(value: unknown): Array<string> {
   if (typeof value === "string") return [value]
   if (typeof value === "function") {
     const args =
-      value.length === 2
+      value.length === 3
         ? [
-            ["indexing", 3],
-            ["indexing", 1],
+            [QUILLMOSS_WEEK, 1, 3],
+            ["QM-1", 2, 3],
           ]
-        : [[1], [12], ["1.97.0"]]
-    return args.flatMap((sample) => {
-      const said: unknown = Reflect.apply(value, undefined, sample)
-      return typeof said === "string" ? [said] : []
+        : value.length === 2
+          ? [
+              ["indexing", 3],
+              ["indexing", 1],
+              ["QM-1", "Parse the batch"],
+            ]
+          : [[1], [12], ["1.97.0"], [QUILLMOSS_WEEK], [true], [false]]
+    // A sample meant for another word may throw; a word no sample can say
+    // fails, so none goes unchecked.
+    const said = args.flatMap((sample) => {
+      try {
+        const word: unknown = Reflect.apply(value, undefined, sample)
+        return typeof word === "string" ? [word] : []
+      } catch {
+        return []
+      }
     })
+    if (said.length === 0) throw new Error(`no sample says ${value.name}`)
+    return said
   }
   if (typeof value === "object" && value !== null) {
     return Object.values(value).flatMap(everyWord)
@@ -35,6 +52,8 @@ function everyWord(value: unknown): Array<string> {
 
 const SHOWN = [
   ...everyWord(WORDS),
+  // The week's (RR13), the Practice Home card's included.
+  ...everyWord(WEEK_WORDS),
   ...Object.values(INDEXING_01_RUNS).map(runHeading),
   ...(["time", "memory", "output", "exit"] as const).map((why) =>
     runHeading({

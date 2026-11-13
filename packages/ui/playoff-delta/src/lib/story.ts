@@ -126,6 +126,24 @@ export type StoryCohort = z.infer<typeof Cohort>
 export const parseStorySeason = (data: unknown): StorySeason =>
   StorySeasonSchema.parse(data)
 
+/**
+ * The season as the stage publishes it for the recorder: the bytes an
+ * episode's sum, and a narration's, are of.
+ */
+export const seasonData = (season: StorySeason): string =>
+  JSON.stringify(season)
+
+/**
+ * The season as week `week` reads it: its weeks up to that one, and the
+ * first week always, which the legend (week 0) reads. A week's facts read no
+ * later week (`__tests__/narration.test.ts` holds it), so a narration pins
+ * this (`./narration`).
+ */
+export const seasonTo = (season: StorySeason, week: number): StorySeason => ({
+  ...season,
+  weeks: season.weeks.filter((w, i) => i === 0 || w.week <= week),
+})
+
 export const nameOf = (season: StorySeason, code: string): string =>
   season.names[code] ?? code
 

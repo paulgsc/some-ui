@@ -1,5 +1,128 @@
 # www
 
+## 0.1.68
+
+### Patch Changes
+
+- www's build graph changed - the app itself or one of its workspace
+  dependencies was touched since the last Docker publish. Most
+  dependency bumps don't change www's actual behaviour, so this
+  needs a human read of the diff: merge (squash) this PR to build
+  and push an updated `paulgsc/www` image to Docker Hub, or close it
+  if the change doesn't warrant a new image.
+
+## 0.1.67
+
+### Patch Changes
+
+- www's build graph changed - the app itself or one of its workspace
+  dependencies was touched since the last Docker publish. Most
+  dependency bumps don't change www's actual behaviour, so this
+  needs a human read of the diff: merge (squash) this PR to build
+  and push an updated `paulgsc/www` image to Docker Hub, or close it
+  if the change doesn't warrant a new image.
+
+## 0.1.66
+
+### Patch Changes
+
+- www's build graph changed - the app itself or one of its workspace
+  dependencies was touched since the last Docker publish. Most
+  dependency bumps don't change www's actual behaviour, so this
+  needs a human read of the diff: merge (squash) this PR to build
+  and push an updated `paulgsc/www` image to Docker Hub, or close it
+  if the change doesn't warrant a new image.
+
+## 0.1.65
+
+### Patch Changes
+
+- www's build graph changed - the app itself or one of its workspace
+  dependencies was touched since the last Docker publish. Most
+  dependency bumps don't change www's actual behaviour, so this
+  needs a human read of the diff: merge (squash) this PR to build
+  and push an updated `paulgsc/www` image to Docker Hub, or close it
+  if the change doesn't warrant a new image.
+
+## 0.1.64
+
+### Patch Changes
+
+- www's build graph changed - the app itself or one of its workspace
+  dependencies was touched since the last Docker publish. Most
+  dependency bumps don't change www's actual behaviour, so this
+  needs a human read of the diff: merge (squash) this PR to build
+  and push an updated `paulgsc/www` image to Docker Hub, or close it
+  if the change doesn't warrant a new image.
+
+## 0.1.63
+
+### Patch Changes
+
+- www's build graph changed - the app itself or one of its workspace
+  dependencies was touched since the last Docker publish. Most
+  dependency bumps don't change www's actual behaviour, so this
+  needs a human read of the diff: merge (squash) this PR to build
+  and push an updated `paulgsc/www` image to Docker Hub, or close it
+  if the change doesn't warrant a new image.
+
+## 0.1.62
+
+### Patch Changes
+
+- www's build graph changed - the app itself or one of its workspace
+  dependencies was touched since the last Docker publish. Most
+  dependency bumps don't change www's actual behaviour, so this
+  needs a human read of the diff: merge (squash) this PR to build
+  and push an updated `paulgsc/www` image to Docker Hub, or close it
+  if the change doesn't warrant a new image.
+
+## 0.1.61
+
+### Patch Changes
+
+- www's build graph changed - the app itself or one of its workspace
+  dependencies was touched since the last Docker publish. Most
+  dependency bumps don't change www's actual behaviour, so this
+  needs a human read of the diff: merge (squash) this PR to build
+  and push an updated `paulgsc/www` image to Docker Hub, or close it
+  if the change doesn't warrant a new image.
+
+## 0.1.60
+
+### Patch Changes
+
+- www's build graph changed - the app itself or one of its workspace
+  dependencies was touched since the last Docker publish. Most
+  dependency bumps don't change www's actual behaviour, so this
+  needs a human read of the diff: merge (squash) this PR to build
+  and push an updated `paulgsc/www` image to Docker Hub, or close it
+  if the change doesn't warrant a new image.
+
+## 0.1.59
+
+### Patch Changes
+
+- www's build graph changed - the app itself or one of its workspace
+  dependencies was touched since the last Docker publish. Most
+  dependency bumps don't change www's actual behaviour, so this
+  needs a human read of the diff: merge (squash) this PR to build
+  and push an updated `paulgsc/www` image to Docker Hub, or close it
+  if the change doesn't warrant a new image.
+
+## 0.1.58
+
+### Patch Changes
+
+- The weekly call's stage at `/call` (ST29, #2624 and #2631), reading its
+  weeks from `paulgsc/testing` (ST36, #2636). Home's render worker records
+  the call from this image, pinned by digest (#2639).
+- Studio: a take with no scene on Takes on home (#2614), one name for Studio
+  and a take (#2615), and a finished episode sent home as its DNA (#2621).
+- The phone's screens hold still under a tap (HS1, #2623 and #2634), and
+  the error and status lines a phone screen mounts are counted (HS2, #2625).
+- APH: one entry per time a day, drafts then submit (#2618).
+
 ## 0.1.57
 
 ### Patch Changes

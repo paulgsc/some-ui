@@ -1,6 +1,11 @@
 /** @vitest-environment node */
 import { inMemoryStorage } from "@some-ui/core-utils"
-import type { Listening, TakeKit, TurnListener } from "@some-ui/voice-capture"
+import type {
+  HeardAnswer,
+  Listening,
+  TakeKit,
+  TurnListener,
+} from "@some-ui/voice-capture"
 import { microphoneOwner, NO_LISTENER, takeKit } from "@some-ui/voice-capture"
 import type { KeepScript, MicScript } from "@some-ui/voice-capture/testing"
 import {
@@ -8,11 +13,7 @@ import {
   simulatedMicrophone,
   SPEAKING,
 } from "@some-ui/voice-capture/testing"
-import type {
-  HeardAnswer,
-  HearingState,
-  IdeaTakes,
-} from "@soundbites/lib/idea/hearing"
+import type { HearingState, IdeaTakes } from "@soundbites/lib/idea/hearing"
 import {
   HEARING_TIMING,
   homeHearing,
@@ -522,6 +523,45 @@ describe("IH1: an answer said as a take, its words from home", () => {
     expect(phaseOf(run.state())).toBe("idle")
     expect(run.state().turn.notice).toBe("notHeard")
     expect(run.kept()).toEqual([])
+  })
+})
+
+describe("SFEED5: an ask's answer, as home hears it", () => {
+  it("starts the take on what it answers, the ask's ref", () => {
+    vi.useFakeTimers({ now: NOW })
+    const now = (): number => Date.now()
+    const mic = simulatedMicrophone({ now })
+    const kit = takeKit(
+      {
+        screen: "test",
+        startRecording: mic.startRecording,
+        now,
+        keep: memoryKeep([]).keep,
+        owner: microphoneOwner(),
+      },
+      LIMITS
+    )
+    const takes = kitTakes(kit, false, () => false)
+    const started: Array<string> = []
+    const hearing = homeHearing({
+      takes: {
+        ...takes,
+        start: (answers): void => {
+          started.push(answers)
+          takes.start(answers)
+        },
+      },
+      heard: () => Promise.resolve({ kind: "notYet" }),
+      now,
+      onVisibility: page().onVisibility,
+    })
+    const listening = hearing.listen(
+      () => undefined,
+      () => undefined,
+      { answers: "ask:some-ui-2676", onHearing: () => undefined }
+    )
+    expect(started).toEqual(["ask:some-ui-2676"])
+    listening.cancel()
   })
 })
 

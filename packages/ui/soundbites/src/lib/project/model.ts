@@ -23,11 +23,16 @@
  * - **A released revision is never edited** (ST7, `./finish`). Its mark
  *   and its link stay as written, it takes no new note, and a change makes
  *   the next revision.
+ * - **A queued revision stays queued as it was** (ST33). An episode's
+ *   revision marked ready is queued for home to make once, with the take
+ *   each scene says then and the DNA made of them (`queued`, made by
+ *   `./dna`'s `queueMark`); the mark is never rewritten, so each send of it
+ *   is the body it holds.
  * - **The owner's word on whose idea a scene is stays** (ST5, `./origin`).
- * - **A take's fact check is the session's, and the owner's word is theirs**
- *   (SHOW SH5). `checks` holds each verdict a round brought (`./merge`),
- *   `accepted` the owner's word to keep a take that didn't pass after three
- *   rounds (PDM15); both only grow.
+ * - **What an episode's takes were checked against stays** (SHOW SH5).
+ *   `checks` holds each verdict a round brought (`./merge`), `accepted` the
+ *   owner's word to keep a take anyway (PDM15); both only grow, and nothing
+ *   reads them: an episode is never voiced here (FEED6 #2649).
  * - **An episode keeps its format** (SHOW SH3). A project opened from an
  *   episode file is pinned to it (`episode`), and a version that changes
  *   its scenes, their order, its series, its look or the voice plan (the
@@ -37,11 +42,11 @@
  *   and `anchorAt` finds that shot in any later revision by id, or says the
  *   shot is gone; its time is read from the renderer's shot times.
  */
-import { assertNever } from "@some-ui/core-utils"
+import { assertNever, youtubeLink } from "@some-ui/core-utils"
 import type { CutList, EpisodePin, ShotTime } from "@some-ui/video-render"
 import type { Primer } from "@soundbites/lib/journal/primer"
 
-import { BEST_OF, finishOf, isReleased, youtubeLink } from "./finish"
+import { finishOf, isQueued, isReleased } from "./finish"
 import { latestShot, sameJson, shotIds, shotIn } from "./lookup"
 import type { OriginMark } from "./origin"
 import { originRefusal } from "./origin"
@@ -130,6 +135,20 @@ type Accepted = {
   readonly at: string
 }
 
+/**
+ * The owner's word that home makes revision `rev` (ST33): when they finished
+ * it, the take each scene says, as voice notes home holds by the take's id,
+ * and the video's DNA made of them then (`./dna`'s `queueMark`).
+ */
+export type Queued = Mark & {
+  readonly takes: ReadonlyArray<{
+    readonly scene: string
+    readonly note: string
+  }>
+  /** The DNA as home is sent it, made once: every send is these bytes. */
+  readonly dna: string
+}
+
 /** Where revision `rev` went up, as the owner pasted it once uploaded. */
 type Release = Mark & {
   /** `https://youtu.be/<id>` (`youtubeLink`). */
@@ -149,6 +168,8 @@ export type Project = {
   readonly ready?: ReadonlyArray<Mark>
   /** Each revision released, in order; absent as `ready` is. */
   readonly released?: ReadonlyArray<Release>
+  /** Each revision queued for home to make (ST33), in order; absent before. */
+  readonly queued?: ReadonlyArray<Queued>
   /**
    * The owner's word on each scene's idea (ST5), in order; absent on a
    * project from before Watch asked it.
@@ -159,9 +180,9 @@ export type Project = {
    * period and data. Absent on a video of your own.
    */
   readonly episode?: EpisodePin
-  /** Each take's fact check, as merges brought them; the latest by `at` counts (SH5). */
+  /** Each take's fact check, as merges brought them (SH5); kept, read by nothing. */
   readonly checks?: ReadonlyArray<FactCheck>
-  /** The owner's word on each take kept after three rounds (SH5). */
+  /** The owner's word on each take kept after three rounds (PDM15); kept, read by nothing. */
   readonly accepted?: ReadonlyArray<Accepted>
 }
 
@@ -218,9 +239,9 @@ export type ProjectEvent =
       "done" | "next" | "shot"
     >)
   | ({ readonly type: "markedReady" } & Mark)
-  /** The owner keeps scene `shot`'s chosen take after three rounds (SH5). */
-  | { readonly type: "bestKept"; readonly shot: string; readonly at: string }
   | ({ readonly type: "released" } & Release)
+  /** Queue the latest revision, ready, for home to make (ST33), as `./dna`'s `queueMark` made its mark. */
+  | ({ readonly type: "queued" } & Queued)
 
 export type ProjectEffect =
   | { readonly type: "save"; readonly project: Project }
@@ -253,6 +274,7 @@ export type Refusal =
   | "otherIdea"
   | "notYours"
   | "notInFormat"
+  | "noTemplate"
 
 export type ProjectStep = {
   readonly state: ProjectState
@@ -467,7 +489,7 @@ export function isAppendOnly(before: Project, after: Project): boolean {
     )
   })
   const marks = (
-    ["ready", "released", "origins", "checks", "accepted"] as const
+    ["ready", "released", "origins", "checks", "accepted", "queued"] as const
   ).every((key) =>
     (before[key] ?? []).every((mark, index) =>
       sameJson(mark, after[key]?.[index])
@@ -725,25 +747,6 @@ export function step(state: ProjectState, event: ProjectEvent): ProjectStep {
       })
     }
 
-    case "bestKept": {
-      const finish = finishOf(project)
-      if (
-        finish.kind !== "facts" ||
-        finish.shot !== event.shot ||
-        finish.rounds < BEST_OF
-      )
-        return refuse(state, "notReady")
-      const take = project.chosen[event.shot]
-      if (take === undefined) return refuse(state, "noTake")
-      return changed(state, {
-        ...project,
-        accepted: [
-          ...(project.accepted ?? []),
-          { shot: event.shot, take, at: event.at },
-        ],
-      })
-    }
-
     case "released": {
       const url = youtubeLink(event.url)
       if (url === null) return refuse(state, "noLink")
@@ -758,6 +761,20 @@ export function step(state: ProjectState, event: ProjectEvent): ProjectStep {
           ...(project.released ?? []),
           { rev: event.rev, at: event.at, url },
         ],
+      })
+    }
+
+    case "queued": {
+      // A video of your own waits on its template (ST29).
+      if (project.episode === undefined) return refuse(state, "noTemplate")
+      if (event.rev !== latest(project).rev) return refuse(state, "notLatest")
+      if (isQueued(project, event.rev)) return refuse(state, "duplicate")
+      const finish = finishOf(project)
+      if (finish.kind !== "ready") return refuse(state, "notReady")
+      const { rev, at, takes, dna } = event
+      return changed(state, {
+        ...project,
+        queued: [...(project.queued ?? []), { rev, at, takes, dna }],
       })
     }
 

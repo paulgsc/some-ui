@@ -8,9 +8,10 @@
     "apps/www/tests/layout-invariants/stress-content.ts",
     "packages/eslint/tests/lint-fixtures/**",
     "packages/some-styles/styles-build/*.d.mts",
-    "packages/some-styles/styles-build/examples/**"
+    "packages/some-styles/styles-build/examples/**",
+    "packages/video-motion/compositions/**"
   ],
-  "ignoreBinaries": ["typst", "rustc", "wasm-pack", "ffmpeg"],
+  "ignoreBinaries": ["typst", "rustc", "wasm-pack", "ffmpeg", "ffprobe"],
   "ignoreIssues": {
     "extensions/some-censor/src/lib/content/debug.ts": ["exports"],
     "packages/eslint/src/index.ts": ["duplicates"]
@@ -20,6 +21,9 @@
       "entry": ["scripts/audit-node-licenses.mjs", "extensions/scripts/*.mjs"],
       "ignoreDependencies": ["@changesets/cli", "typescript-language-server"],
       "ignoreBinaries": ["web-ext"]
+    },
+    "apps/mailbox": {
+      "ignoreDependencies": ["cloudflare"]
     },
     "apps/mobile": {
       "ignoreDependencies": [
@@ -34,7 +38,8 @@
     "apps/www": {
       "entry": [
         "tests/ui-fit/panel-page/main.tsx",
-        "tests/ui-fit/phone-page/main.tsx"
+        "tests/ui-fit/phone-page/main.tsx",
+        "stage/main.tsx"
       ]
     },
     "extensions/common": {
@@ -104,6 +109,12 @@
     "packages/job-desk": {
       "entry": ["src/index.ts", "src/sample.ts"]
     },
+    "packages/ui/playoff-delta": {
+      "entry": ["src/index.ts", "src/recording.ts"]
+    },
+    "packages/ui/burn-ins": {
+      "entry": ["src/index.ts", "src/contract.ts"]
+    },
     "packages/ui/resume": {
       "ignoreDependencies": ["@some-ui/contract-harness"]
     },
@@ -123,6 +134,9 @@
         "tests/real-microphone/*.spec.ts",
         "tests/real-microphone/clips/make-clips.ts"
       ]
+    },
+    "packages/video-motion": {
+      "ignoreDependencies": ["@fontsource/barlow-condensed"]
     }
   }
 }

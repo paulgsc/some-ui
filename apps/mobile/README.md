@@ -42,7 +42,7 @@ The wings:
   bar: aph's own strip (Log, History, Trend, Settings) is its navigation.
 - **Studio** (`/journal`): the Build Journal's voice takes, and **Game
   day** (`/game-week`): a bite said while a game is on, kept on the phone
-  until home holds it. Its bar holds **Journal** and **Game day**.
+  until home holds it. Its bar holds **Studio** and **Game day**.
 - **Jobs** (`/jobs`): the morning run's picks from Drive, worked through
   step by step (review, decide, résumé, apply, debrief), my own finds, and
   the record of each application. One room, so no bar: its strip (Today,
@@ -166,6 +166,15 @@ game bites have no cap yet (#2264). There is no
 size per table. LeetType's session files, picked from storage, count toward
 it too, and nothing lets them go yet (#1921); each stays where it was picked
 from.
+
+Every cap is shown on the Settings page of its concern, with where it stands
+and what happens at it (`apps/www/src/lib/limits`, SM2): the budget and each
+store's own cap (reflections, every desk of takes, the lens record, word sets,
+Jobs) under **Settings → This phone**, the voice notes on their way home under
+**Settings → Home**, and the failure log and what waits to tell home under
+**How it's running**. Each count is read from the store that keeps it. A test
+fails when a cap in code has no row there and no reason it is left off
+(`lib/limits/__tests__/coverage.test.ts`).
 
 A restore has to be able to open what it brings back, which is why the SQLite
 plugin's unused encryption is off (`capacitor.config.ts` says why; the review
@@ -326,8 +335,10 @@ Only a debug build offers it.
 ### In CI (how to get the APK onto a phone)
 
 `.github/workflows/mobile-apk.yml` builds it from a push to `main` that
-touches what it is built from, once you approve that run, and on nothing
-else (pull requests do not). Each such push starts a run that waits on the
+touches what it is built from, once you approve that run; a manual dispatch
+can also validate a branch (pull requests do not build it). Pushes changing
+only package versions, changelogs and consumed changesets skip
+approval. Other matching pushes start a run that waits on the
 `mobile-release` environment: GitHub notifies its required reviewer, and
 **Review deployments** on the run approves it. A newer push cancels a run
 still waiting, so the one waiting is always `main`'s newest; an unapproved

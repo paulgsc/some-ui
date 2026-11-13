@@ -161,7 +161,20 @@ async function writeAndShare(dir: string, title: string, files: Files): Shared {
     },
   }).outcome
   if (written.status !== "succeeded") return written
+  return shareUris(dir, title, written.value)
+}
 
+/**
+ * Opens the share sheet with files already in the cache under `dir`, at
+ * `uris` (an episode's video of a feed, which `lib/call-videos` fetched there
+ * a part at a time). Backing out is
+ * `cancelled`, not a failure.
+ */
+export function shareUris(
+  dir: string,
+  title: string,
+  uris: ReadonlyArray<string>
+): Shared {
   const settle = sidecarOpening(dir)
   const shared = callForeign({
     port: PORT,
@@ -169,7 +182,7 @@ async function writeAndShare(dir: string, title: string, files: Files): Shared {
     start: async (): Promise<"shared" | "cancelled"> => {
       const { Share } = await import("@capacitor/share")
       try {
-        await Share.share({ title, files: written.value })
+        await Share.share({ title, files: [...uris] })
         return "shared"
       } catch (error) {
         if (error instanceof Error && error.message === "Share canceled") {

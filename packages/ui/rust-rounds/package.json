@@ -16,7 +16,8 @@
     "lint:js": "eslint \"**/*.{js,mjs,ts,tsx}\" --cache",
     "prettier": "prettier \"**/*.{js,mjs,ts,tsx,md,mdx,json,yml,css}\" --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "monday": "tsx scripts/monday.ts"
   },
   "peerDependencies": {
     "react": "^19.2.0",
@@ -24,7 +25,9 @@
   },
   "dependencies": {
     "@some-ui/core-utils": "workspace:*",
+    "@some-ui/engagement": "workspace:*",
     "@some-ui/shared": "workspace:*",
+    "@some-ui/video-render": "workspace:*",
     "@some-ui/voice-capture": "workspace:*",
     "lucide-react": "catalog:",
     "zod": "catalog:"
@@ -32,7 +35,8 @@
   "devDependencies": {
     "@some-ui/tsconfig": "workspace:*",
     "@some-ui/vite-config": "workspace:*",
-    "@types/react": "^19.0.4"
+    "@types/react": "^19.0.4",
+    "tsx": "^4.22.4"
   },
   "repository": {
     "type": "git",

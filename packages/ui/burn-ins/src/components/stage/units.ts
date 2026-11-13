@@ -1,17 +1,28 @@
 import type { CSSProperties } from "react"
 import { clamp01 } from "@burn-ins/lib/captions/frame"
-import { FRAME, type Box } from "@burn-ins/lib/geometry"
+import type { Box, FrameSize } from "@burn-ins/lib/geometry"
 
-/** Frame pixels (of 1080 across) as container units of the stage. */
-export const cq = (px: number): string =>
-  `${((px * 100) / FRAME.width).toFixed(4)}cqw`
+/** A frame's pixels as the stage draws them. */
+export type Units = {
+  /** Frame pixels as container units of the stage, which is the frame's width. */
+  readonly cq: (px: number) => string
+  /** A box of the frame, placed on the stage. */
+  readonly placed: (box: Box) => CSSProperties
+}
 
-export const placed = (box: Box): CSSProperties => ({
-  left: cq(box.x),
-  top: cq(box.y),
-  width: cq(box.width),
-  height: cq(box.height),
-})
+export const unitsOf = (frame: FrameSize): Units => {
+  const cq = (px: number): string =>
+    `${((px * 100) / frame.width).toFixed(4)}cqw`
+  return {
+    cq,
+    placed: (box) => ({
+      left: cq(box.x),
+      top: cq(box.y),
+      width: cq(box.width),
+      height: cq(box.height),
+    }),
+  }
+}
 
 /** A colour with an opacity, as #rrggbbaa. */
 export const withAlpha = (hex: string, opacity: number): string =>

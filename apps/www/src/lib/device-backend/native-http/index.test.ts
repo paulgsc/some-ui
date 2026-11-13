@@ -34,6 +34,60 @@ describe("homeRequest", () => {
     expect(missing).not.toBeInstanceOf(HomeNoAnswerError)
   })
 
+  it("asks for a range of bytes as a blob, credentialed over https only", async () => {
+    plugin.request.mockResolvedValue({
+      status: 206,
+      data: "AAEC",
+      headers: { "Content-Range": "bytes 0-2/10" },
+    })
+    const range = { start: 0, end: 2 }
+    const answer = await homeRequest({
+      method: "GET",
+      url: "https://home.local/api/v1/feeds/call/videos/2026-10-30/video",
+      token: "t",
+      range,
+    })
+    expect(answer).toEqual({ status: 206, body: "AAEC" })
+    expect(plugin.request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        headers: { Authorization: "Bearer t", Range: "bytes=0-2" },
+        responseType: "blob",
+        disableRedirects: true,
+      })
+    )
+    plugin.request.mockClear()
+    await expect(
+      homeRequest({
+        method: "GET",
+        url: "http://home.local/x",
+        token: "t",
+        range,
+      })
+    ).rejects.toThrow("https only")
+    expect(plugin.request).not.toHaveBeenCalled()
+  })
+
+  it("asks for all of a small file as a blob, with no Range", async () => {
+    plugin.request.mockResolvedValue({
+      status: 200,
+      data: "iVBORw0KGgo=",
+      headers: {},
+    })
+    const answer = await homeRequest({
+      method: "GET",
+      url: "https://home.local/api/v1/clips/a/after/01.png",
+      token: "t",
+      range: "whole",
+    })
+    expect(answer).toEqual({ status: 200, body: "iVBORw0KGgo=" })
+    expect(plugin.request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        headers: { Authorization: "Bearer t" },
+        responseType: "blob",
+      })
+    )
+  })
+
   it("sends If-None-Match, and reads a bodiless 304 with its ETag", async () => {
     plugin.request.mockResolvedValue({
       status: 304,
@@ -51,17 +105,22 @@ describe("homeRequest", () => {
     )
   })
 
-  it("reads the tag in any case, and carries none it wasn't given", async () => {
+  it("reads the tag and home's Retry-After (AD3) in any case, and carries none it wasn't given", async () => {
     plugin.request.mockResolvedValue({
       status: 200,
       data: { topiks: [] },
-      headers: { etag: '"v2"' },
+      headers: { etag: '"v2"', "RETRY-after": "17" },
     })
     const answer = await homeRequest({
       method: "GET",
       url: "http://192.168.1.10:3000/api/v1/curriculum/manifest.json",
     })
-    expect(answer).toEqual({ status: 200, body: '{"topiks":[]}', etag: '"v2"' })
+    expect(answer).toEqual({
+      status: 200,
+      body: '{"topiks":[]}',
+      etag: '"v2"',
+      retryAfter: "17",
+    })
     expect(plugin.request).toHaveBeenCalledWith(
       expect.objectContaining({ headers: {} })
     )

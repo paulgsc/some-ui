@@ -1,0 +1,100 @@
+{
+  "schema": "some-ui.rust-week/1",
+  "id": "2026-w46",
+  "by": "claude-routine",
+  "family": "performance-task",
+  "opens": "2026-11-09T00:00:00-08:00",
+  "due": "2026-11-15T23:59:00-08:00",
+  "company": {
+    "name": "Quillmoss",
+    "about": "Sensor telemetry for cold storage: freezers report temperature and door events, about 40,000 a second at peak."
+  },
+  "role": "An engineer on Quillmoss's ingestion team.",
+  "audience": "The ingestion team, and the operators who watch the freezers.",
+  "story": "As an operator, I need every batch of sensor events parsed and handed to the writer within 2 ms, so an alarm fires before a freezer warms.",
+  "sla": [
+    {
+      "what": "Parse one 1,000-event batch and hand it to the writer",
+      "target": "2 ms, p99"
+    },
+    {
+      "what": "Peak load",
+      "target": "40,000 events a second"
+    }
+  ],
+  "tickets": [
+    {
+      "id": "QM-311",
+      "title": "Parse the batch without a copy per field",
+      "spec": "The ingest worker calls `fields` on every event, and at peak the batch misses its 2 ms p99. rustc has nothing to say about this code.",
+      "figures": [
+        "At peak, a 1,000-event batch takes 3.1 ms at p99, against the 2 ms SLA."
+      ],
+      "speakTo": [
+        "Where the time goes, though rustc is silent",
+        "What change removes it",
+        "What that asks of the caller"
+      ],
+      "program": "fn fields(line: &str) -> Vec<String> {\n    line.split(',')\n        .map(|f| f.trim().to_string())\n        .collect()\n}\n\nfn main() {\n    let input =\n        [\"7,ok,12.5\", \"8,late,40.1\"];\n    for line in input {\n        let f = fields(line);\n        println!(\"{} {}\", f[0], f[1]);\n    }\n}\n",
+      "expect": {
+        "outcome": "prints",
+        "stdout": "7 ok\n8 late\n"
+      },
+      "concepts": [
+        {
+          "id": "allocation-on-the-hot-path",
+          "name": "Allocation on the hot path"
+        },
+        {
+          "id": "lifetime-elision",
+          "name": "Lifetime elision"
+        }
+      ]
+    },
+    {
+      "id": "QM-312",
+      "title": "Reuse the read buffer without losing the fields",
+      "spec": "To stop copying, a teammate reuses one read buffer and keeps borrowed fields in the batch. rustc refuses it.",
+      "figures": [],
+      "speakTo": [
+        "What rustc is protecting",
+        "Two ways out",
+        "What each costs against 2 ms"
+      ],
+      "program": "fn main() {\n    let input =\n        [\"7,ok,12.5\", \"8,late,40.1\"];\n    let mut buf = String::new();\n    let mut batch = Vec::new();\n    for line in input {\n        buf.clear();\n        buf.push_str(line);\n        let id = buf.split(',').next();\n        batch.push(id.unwrap());\n    }\n    println!(\"{}\", batch.len());\n}\n",
+      "expect": {
+        "outcome": "compile-error",
+        "code": "E0502"
+      },
+      "concepts": [
+        {
+          "id": "borrows-into-a-reused-buffer",
+          "name": "Borrows into a reused buffer"
+        }
+      ]
+    },
+    {
+      "id": "QM-313",
+      "title": "Hand the batch to the writer thread",
+      "spec": "The batch goes to a writer thread so parsing never waits on disk. With `thread::spawn` it doesn't compile; with `thread::scope` the same body does.",
+      "figures": [],
+      "speakTo": [
+        "Why spawn refuses and scope accepts",
+        "Which you'd ship here, and why"
+      ],
+      "program": "use std::thread;\n\nfn main() {\n    let buf = String::from(\n        \"7,ok,12.5\\n8,late,40.1\",\n    );\n    let batch: Vec<&str> =\n        buf.lines().collect();\n    let writer = thread::spawn(move || {\n        let n = batch.len();\n        println!(\"{n} rows\");\n    });\n    writer.join().unwrap();\n}\n",
+      "expect": {
+        "outcome": "compile-error",
+        "code": "E0597"
+      },
+      "concepts": [
+        {
+          "id": "static-and-threads",
+          "name": "'static and threads"
+        }
+      ]
+    }
+  ],
+  "references": ["rust-reference", "ownership-inventory"],
+  "rubric": "solo"
+}

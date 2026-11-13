@@ -1,9 +1,10 @@
 /**
- * Where a caption sits in a 1080x1920 short, in that frame's pixels: centred
- * at the bottom of the safe area (`../geometry`), in the lower third.
+ * Where a caption sits in a frame, in that frame's pixels: centred at the
+ * bottom of its safe area (`../geometry`), in the lower third. The theme is
+ * the one sized for the frame (`sizedFor`).
  */
 
-import { SAFE_AREA, type Box } from "@burn-ins/lib/geometry"
+import type { Box, Geometry } from "@burn-ins/lib/geometry"
 import type { HasText, Measure } from "@burn-ins/lib/lines"
 import { rowText, widthOf } from "@burn-ins/lib/text"
 
@@ -19,11 +20,35 @@ const padY = (theme: CaptionTheme): number => theme.plate?.padYPx ?? 0
  * A line's width in the theme's type at its size, from the font's advance
  * widths, against the safe area's width less the plate and the outline.
  */
-export const measureFor = (theme: CaptionTheme): Measure => ({
+export const measureFor = (
+  theme: CaptionTheme,
+  geometry: Geometry
+): Measure => ({
   widthOf: (row: ReadonlyArray<HasText>) =>
     widthOf(rowText(row), theme.font, theme.font.letterSpacingEm),
-  limit: SAFE_AREA.width - 2 * padX(theme) - theme.strokePx,
+  limit: geometry.safeArea.width - 2 * padX(theme) - theme.strokePx,
 })
+
+const bottomOf = (geometry: Geometry): number =>
+  geometry.safeArea.y + geometry.safeArea.height - CAPTION_LIFT_PX
+
+const heightOf = (
+  rows: number,
+  lineHeightPx: number,
+  theme: CaptionTheme
+): number => rows * lineHeightPx + 2 * padY(theme) + theme.strokePx
+
+/**
+ * The highest a caption of `rows` rows reaches in `theme`: its type at full
+ * size, since a long line only ever shrinks it (`layoutCaption`).
+ */
+export const captionTop = (
+  rows: number,
+  theme: CaptionTheme,
+  geometry: Geometry
+): number =>
+  bottomOf(geometry) -
+  heightOf(rows, theme.font.sizePx * theme.font.lineHeight, theme)
 
 export type CaptionLayout = {
   /** The bound the caption is drawn inside; its text is centred in it. */
@@ -39,9 +64,11 @@ export type CaptionLayout = {
  */
 export function layoutCaption(
   rows: ReadonlyArray<ReadonlyArray<HasText>>,
-  theme: CaptionTheme
+  theme: CaptionTheme,
+  geometry: Geometry
 ): CaptionLayout {
-  const { widthOf: rowPx, limit } = measureFor(theme)
+  const { widthOf: rowPx, limit } = measureFor(theme, geometry)
+  const safe = geometry.safeArea
   const longest = Math.max(1, ...rows.map(rowPx))
   const scale = Math.min(1, limit / longest)
   const fontPx = theme.font.sizePx * scale
@@ -49,11 +76,11 @@ export function layoutCaption(
   // `min` because `longest * (limit / longest)` can round above `limit`.
   const width =
     Math.min(limit, longest * scale) + 2 * padX(theme) + theme.strokePx
-  const height = rows.length * lineHeightPx + 2 * padY(theme) + theme.strokePx
+  const height = heightOf(rows.length, lineHeightPx, theme)
   return {
     box: {
-      x: SAFE_AREA.x + (SAFE_AREA.width - width) / 2,
-      y: SAFE_AREA.y + SAFE_AREA.height - CAPTION_LIFT_PX - height,
+      x: safe.x + (safe.width - width) / 2,
+      y: bottomOf(geometry) - height,
       width,
       height,
     },

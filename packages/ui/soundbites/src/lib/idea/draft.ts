@@ -35,6 +35,28 @@ export type IdeaDraft = {
   readonly about: IdeaAbout
   /** Answers typed because voice didn't work, at most `TYPED_MAX` long. */
   readonly typed: Partial<Readonly<Record<QuestionId, string>>>
+  /**
+   * Typed words that stand beside a take kept with no voice heard in it
+   * (ST34): that take's id, by the question both answer. The take stays,
+   * and both go with the idea. Absent in a draft kept before.
+   */
+  readonly beside?: Partial<Readonly<Record<QuestionId, string>>>
+  /**
+   * By question, its last take kept, when that take held no voice heard
+   * (ST34): its card offers typing beside it until a take heard replaces
+   * it, however often the screen came and went or a try failed in between.
+   * Absent when none is.
+   */
+  readonly unheard?: Partial<Readonly<Record<QuestionId, string>>>
+  /**
+   * Typed words a take has since answered in place of, with no end of it
+   * seen (kept while the screen was gone), by question, oldest first
+   * (ST34). Kept, never shown or sent, so a later take kept unheard never
+   * brings them back as the answer. Absent when there are none.
+   */
+  readonly overtaken?: Partial<
+    Readonly<Record<QuestionId, ReadonlyArray<string>>>
+  >
   /** Questions left to come back to, in the order they were left. */
   readonly later: ReadonlyArray<QuestionId>
 }
@@ -116,13 +138,32 @@ export function answersOf(ideaId: string, question: QuestionId): string {
   return `idea:${ideaId}:${question}`
 }
 
-/** The question a take answers, when it is one of draft `ideaId`'s. */
-export function questionOf(ideaId: string, answers: string): QuestionId | null {
-  return (
-    IDEA_QUESTIONS.find(
-      (question) => answersOf(ideaId, question) === answers
-    ) ?? null
-  )
+/**
+ * The idea and question a take answers, by `answersOf`'s shape; null for
+ * any other.
+ */
+export function answerOf(
+  answers: string
+): { readonly idea: string; readonly question: QuestionId } | null {
+  const [kind, idea, question, ...rest] = answers.split(":")
+  const known = question === undefined ? null : questionOf(question)
+  return kind === "idea" &&
+    idea !== undefined &&
+    idea !== "" &&
+    rest.length === 0 &&
+    known !== null
+    ? { idea, question: known }
+    : null
+}
+
+/** `question` as one of the idea's own questions; null for any other. */
+export function questionOf(question: string): QuestionId | null {
+  return IDEA_QUESTIONS.find((each) => each === question) ?? null
+}
+
+/** The idea a take answers, by `answersOf`'s shape; null for any other. */
+export function ideaAnswered(answers: string): string | null {
+  return answerOf(answers)?.idea ?? null
 }
 
 const DraftSchema: z.ZodType<IdeaDraft> = z.object({
@@ -136,6 +177,11 @@ const DraftSchema: z.ZodType<IdeaDraft> = z.object({
     format: z.enum(IDEA_FORMATS),
   }),
   typed: z.partialRecord(z.enum(IDEA_QUESTIONS), z.string().max(TYPED_MAX)),
+  beside: z.partialRecord(z.enum(IDEA_QUESTIONS), z.string()).optional(),
+  unheard: z.partialRecord(z.enum(IDEA_QUESTIONS), z.string()).optional(),
+  overtaken: z
+    .partialRecord(z.enum(IDEA_QUESTIONS), z.array(z.string().max(TYPED_MAX)))
+    .optional(),
   later: z.array(z.enum(IDEA_QUESTIONS)),
 })
 

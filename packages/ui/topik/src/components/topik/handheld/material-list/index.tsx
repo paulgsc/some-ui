@@ -1,7 +1,9 @@
 import type { JSX } from "react"
-import { useId, useState } from "react"
+import { useId, useMemo, useState } from "react"
 import { cn } from "@some-ui/core-utils"
-import { Button, Input } from "@some-ui/shared"
+import type { Visit } from "@some-ui/engagement"
+import { useShelf } from "@some-ui/react-hooks"
+import { Button, Input, Notice } from "@some-ui/shared"
 import { FeedThumb, FeedTile } from "@topik/components/topik/handheld/feed-tile"
 import { PortionMark } from "@topik/components/topik/handheld/portion-menu"
 import type { TopikMetadata } from "@topik/lib/topik"
@@ -10,6 +12,10 @@ import type { DramaLesson } from "@topik/lib/topik/core/drama"
 import { titleOf } from "@topik/lib/topik/core/drama"
 import type { FeedCard, Seed } from "@topik/lib/topik/core/feed-card"
 import { cardOf, koreanGenre, seedOf } from "@topik/lib/topik/core/feed-card"
+import {
+  readySetOffer,
+  routineOffers,
+} from "@topik/lib/topik/core/lesson-engagement"
 import type { LessonItem } from "@topik/lib/topik/core/lesson-feed"
 import {
   FEED_FIRST,
@@ -94,6 +100,12 @@ type MaterialListProps = {
   routineNote?: StorageNote | null
   /** A scene opens on the set `setId`; a drama plays. */
   onOpenRoutine?: (key: string, setId?: string) => void
+  /**
+   * The lesson's visit (ENG3): the list shows on it what it shows, the cards
+   * "From the routine" and the sets "Ready for you", so what is offered is
+   * what is on screen, a level or a search included.
+   */
+  visit?: Visit
   /** The routine's mark (`RoutineStatus`), shown with or without its files. */
   routineStatus?: JSX.Element
   /** Opens "What are you hungry for?"; absent where it isn't offered. */
@@ -180,7 +192,9 @@ const Card = ({
 /**
  * "Open … from storage": the system picker, then the file's text. Its read
  * is this card's, so leaving the list lets it go. What the text holds is the
- * caller's to judge, and `note` says what came of it.
+ * caller's to judge, and `note` says what came of it. The card says what it
+ * offers; the notices say what came of a pick ("Opening...", a refusal,
+ * what was added).
  */
 const OpenFromStorage = ({
   title,
@@ -190,7 +204,7 @@ const OpenFromStorage = ({
   note = null,
 }: {
   title: string
-  /** What the card offers, while nothing is reading and nothing to note. */
+  /** What the card offers. */
   offer: string
   onText: (text: string) => void
   hint?: string
@@ -200,11 +214,11 @@ const OpenFromStorage = ({
   const name = useId()
   const about = useId()
   const where = useId()
-  const problem =
+  const told: StorageNote | null =
     state.kind === "failed"
-      ? state.summary
-      : state.kind === "idle" && note?.tone === "problem"
-        ? note.text
+      ? { tone: "problem", text: state.summary }
+      : state.kind === "idle"
+        ? note
         : null
   return (
     <label className="bg-card border-border focus-within:ring-ring relative flex min-h-16 shrink-0 cursor-pointer items-center gap-3 rounded-2xl border p-4 text-left focus-within:ring-2">
@@ -213,20 +227,8 @@ const OpenFromStorage = ({
         <span id={name} className="block font-semibold">
           {title}
         </span>
-        <span
-          id={about}
-          aria-live="polite"
-          className={cn(
-            "block text-sm",
-            problem ? "text-destructive" : "text-muted-foreground"
-          )}
-        >
-          {problem ??
-            (state.kind === "reading"
-              ? "Opening..."
-              : note?.tone === "done"
-                ? note.text
-                : offer)}
+        <span id={about} className="text-muted-foreground block text-sm">
+          {offer}
         </span>
         {hint && (
           <span id={where} className="text-muted-foreground block text-xs">
@@ -234,9 +236,25 @@ const OpenFromStorage = ({
           </span>
         )}
       </span>
+      {state.kind === "reading" && (
+        <Notice>
+          <span className="flex items-center gap-2">
+            <Loader2 className="size-4 animate-spin" /> Opening...
+          </span>
+        </Notice>
+      )}
+      {told !== null && (
+        <Notice
+          key={told.text}
+          tone={told.tone === "problem" ? "danger" : "neutral"}
+          dismissible
+        >
+          {told.text}
+        </Notice>
+      )}
       <input
         type="file"
-        // Named by the title alone; the hint or the read's state describes it.
+        // Named by the title alone; the hint describes where to look.
         aria-labelledby={name}
         aria-describedby={hint ? `${about} ${where}` : about}
         className="sr-only"
@@ -335,13 +353,20 @@ const FromRoutine = ({
   items,
   note,
   onOpen,
+  visit,
 }: {
   items: ReadonlyArray<LessonItem>
   note: StorageNote | null
   onOpen: (key: string, setId?: string) => void
+  visit: Visit | undefined
 }): JSX.Element => {
   const [query, setQuery] = useState("")
   const shown = searchLessons(items, query)
+  useShelf(
+    visit,
+    "routine",
+    useMemo(() => routineOffers(shown), [shown])
+  )
   const searching = query.trim() !== ""
   const status = searching
     ? shown.length === 0
@@ -383,19 +408,15 @@ const FromRoutine = ({
       >
         {status}
       </p>
-      {/* Always mounted, so a note that arrives is announced. */}
-      <p
-        aria-live="polite"
-        data-slot="routine-note"
-        className={cn(
-          "text-sm empty:hidden",
-          note?.tone === "problem"
-            ? "text-destructive"
-            : "text-muted-foreground"
-        )}
-      >
-        {note?.text}
-      </p>
+      {note !== null && (
+        <Notice
+          key={note.text}
+          tone={note.tone === "problem" ? "danger" : "neutral"}
+          dismissible
+        >
+          <span data-slot="routine-note">{note.text}</span>
+        </Notice>
+      )}
     </section>
   )
 }
@@ -578,6 +599,7 @@ export const MaterialList = ({
   onOpenRoutine,
   routineStatus,
   onOrder,
+  visit,
 }: MaterialListProps): JSX.Element => {
   // The level shown alone; null shows every level.
   const [only, setOnly] = useState<number | null>(null)
@@ -598,6 +620,14 @@ export const MaterialList = ({
   const routineShown = fromRoutine.filter((item) => atLevel(item.level))
   const readyShown = readySets.filter((card) => atLevel(card.level))
   const dramasShown = dramaCards.filter((card) => atLevel(card.level))
+  const readyOffers = useMemo(
+    () =>
+      onReadAloud && onOpenSet
+        ? readyShown.map((card) => readySetOffer(card.id))
+        : null,
+    [onReadAloud, onOpenSet, readyShown]
+  )
+  useShelf(visit, "ready", readyOffers)
   return (
     <div
       data-slot="topik-material-list"
@@ -647,6 +677,7 @@ export const MaterialList = ({
           items={routineShown}
           note={routineNote}
           onOpen={onOpenRoutine}
+          visit={visit}
         />
       )}
 
@@ -777,23 +808,23 @@ export const MaterialList = ({
       )}
 
       {loading && (
-        <p className="text-muted-foreground flex items-center justify-center gap-2 py-8 text-sm">
-          <Loader2 className="size-4 animate-spin" /> Loading this week&apos;s
-          dramas...
-        </p>
+        <Notice>
+          <span className="flex items-center gap-2">
+            <Loader2 className="size-4 animate-spin" /> Loading this week&apos;s
+            dramas...
+          </span>
+        </Notice>
       )}
 
       {error && (
-        <div className="flex flex-col items-center gap-3 py-8 text-center">
-          <p className="text-destructive text-sm">{error}</p>
-          <Button
-            variant="outline"
-            className="h-11 rounded-xl"
-            onClick={onReload}
-          >
-            Try again
-          </Button>
-        </div>
+        <Notice
+          key={error}
+          tone="danger"
+          dismissible
+          action={{ label: "Try again", onClick: onReload }}
+        >
+          {error}
+        </Notice>
       )}
 
       {!loading && !error && dramas.length === 0 && (

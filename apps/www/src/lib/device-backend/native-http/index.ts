@@ -18,7 +18,7 @@
  * `responseType`, so `body` is re-serialised here.
  */
 import { CapacitorHttp } from "@capacitor/core"
-import type { HomeAnswer } from "@some-ui/core-utils"
+import type { HomeAnswer, HomeRange } from "@some-ui/core-utils"
 import { isHomeBytes } from "@some-ui/core-utils"
 import type { ForeignPort, ForeignVerdict } from "@some-ui/intent-kit"
 import {
@@ -54,6 +54,13 @@ export type HomeRequest = {
   body?: unknown
   /** Sent as `If-None-Match`. */
   ifNoneMatch?: string
+  /**
+   * Sent as `Range: bytes=start-end`: the answer's body is those bytes as
+   * base64, read as the plugin's `blob`, so a large file comes a part at a
+   * time and is never held whole. `"whole"` sends no `Range` and reads all
+   * of a small file as base64 the same way.
+   */
+  range?: HomeRange
 }
 
 /** A credentialed request to a URL that is not `https:`. Nothing was sent. */
@@ -92,7 +99,7 @@ const PORT: ForeignPort = {
 }
 
 export async function homeRequest(call: HomeRequest): Promise<HomeAnswer> {
-  const { method, url, token, body, ifNoneMatch } = call
+  const { method, url, token, body, ifNoneMatch, range } = call
   if (token !== undefined && new URL(url).protocol !== "https:") {
     throw new InsecureHomeError()
   }
@@ -103,6 +110,9 @@ export async function homeRequest(call: HomeRequest): Promise<HomeAnswer> {
     headers["Content-Type"] = bytes?.contentType ?? "application/json"
   }
   if (ifNoneMatch !== undefined) headers["If-None-Match"] = ifNoneMatch
+  if (range !== undefined && range !== "whole") {
+    headers.Range = `bytes=${String(range.start)}-${String(range.end)}`
+  }
   const answer = await foreignValue(
     callForeign({
       port: PORT,
@@ -118,7 +128,7 @@ export async function homeRequest(call: HomeRequest): Promise<HomeAnswer> {
             : body === undefined
               ? {}
               : { data: body }),
-          responseType: "text",
+          responseType: range === undefined ? "text" : "blob",
           disableRedirects: true,
           connectTimeout: TIMEOUT_MS,
           readTimeout: TIMEOUT_MS,
@@ -130,12 +140,16 @@ export async function homeRequest(call: HomeRequest): Promise<HomeAnswer> {
         : new ForeignCallError(error)
   )
   const { data } = answer
-  const etag = Object.entries(answer.headers).find(
-    ([name]) => name.toLowerCase() === "etag"
-  )?.[1]
+  const header = (wanted: string): string | undefined =>
+    Object.entries(answer.headers).find(
+      ([name]) => name.toLowerCase() === wanted
+    )?.[1]
+  const etag = header("etag")
+  const retryAfter = header("retry-after")
   return {
     status: answer.status,
     body: typeof data === "string" ? data : JSON.stringify(data),
     ...(etag === undefined ? {} : { etag }),
+    ...(retryAfter === undefined ? {} : { retryAfter }),
   }
 }

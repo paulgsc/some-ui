@@ -50,13 +50,7 @@ function profileSummaryContent(
         <Skeleton className="h-5 w-32" />
       </>
     ),
-    failed: (error, retry) => (
-      <IntentFailure
-        error={error}
-        onRetry={retry}
-        className="min-w-0 flex-1 py-1.5"
-      />
-    ),
+    failed: (error, retry) => <IntentFailure error={error} onRetry={retry} />,
     ready: (profile, refreshError) => (
       <>
         <Avatar className="size-12 text-2xl">
@@ -72,7 +66,6 @@ function profileSummaryContent(
           <IntentFailure
             error={refreshError.error}
             onRetry={refreshError.retry}
-            className="min-w-0 flex-1 py-1.5"
           />
         )}
       </>

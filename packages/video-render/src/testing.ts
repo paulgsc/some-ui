@@ -6,6 +6,7 @@
 
 import { CUT_LIST_SCHEMA } from "./cut-list"
 import type { CutList, Shot } from "./cut-list"
+import type { Ports } from "./render"
 import { SERIES_SCHEMA } from "./series"
 import type { Series } from "./series"
 import type { Motion, MotionKind } from "./vocabulary"
@@ -96,3 +97,13 @@ export const MOTIONS: Readonly<Record<MotionKind, Motion>> = {
   "punch-in": { kind: "punch-in", at: [300, 800], amount: 0.2 },
   freeze: { kind: "freeze", atMs: 500 },
 }
+
+/** Runs ffmpeg through `ports` quietly, throwing what it says on failure. */
+export async function make(
+  ports: Ports,
+  args: ReadonlyArray<string>
+): Promise<void> {
+  const ran = await ports.ffmpeg({ args: ["-v", "error", "-y", ...args] })
+  if (!ran.ok) throw new Error(ran.stderr)
+}
+export * from "./episode-file"

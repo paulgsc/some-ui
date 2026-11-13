@@ -11,14 +11,20 @@ address) through the web surface's door.
 ## What it is
 
 A burn-in is a kind (`captions`, `headline`, `card`, `authorship`,
-`game-card`), a named design and one video's params, which the cut list
+`game-card`, `preview-mark`), a named design and one video's params, which the cut list
 carries. `src/lib/burn-in.ts` holds the contract and says why it is the way
 it is; each module's header does the same for its part:
 
-- `src/lib/geometry.ts`: the frame, the safe area, the regions.
+- `src/lib/geometry.ts`: the frames, and each one's safe area and regions.
+  A burn-in is drawn into the 9:16 short (1080x1920: Playoff Delta, the
+  Build Journal shorts) or the 16:9 video (1920x1080: the weekly call), and
+  any other frame is refused (SFEED11, #2707). Each kind lays itself out from
+  the regions of its frame. The 16:9 frame's body is shorter, so a card that
+  fits the short can be refused there, with the reason.
 - `src/lib/text.ts`, `src/lib/advances.ts`: text set by the font's own
   advance widths, subtitles' lines included.
-- `src/lib/captions/`: the subtitles (GWB11, #2085).
+- `src/lib/captions/`: the subtitles (GWB11, #2085), every feed's captions
+  (SFEED11, #2707), and `captionSpace`, the band a stage leaves for them.
 - `src/lib/journal.ts`: the Build Journal headline and card, design `v1`.
 - `src/lib/authorship.ts`: whose idea and whose hands, design `cells-v1`:
   an intro and an end card over the bare cards that open and close the
@@ -29,16 +35,20 @@ it is; each module's header does the same for its part:
   `/authorship?r=…`, which draws the mark's key and that video's record from
   the link alone and keeps nothing.
 - `src/lib/game-card.ts`: Game Week Bites' cards (GWB12), design `gridiron-v1`.
+- `src/lib/preview-mark.ts`: the mark on every frame of a template's preview
+  (SFEED12, #2757), design `plate-v1`, in the frame's foot: under the band
+  captions are drawn in, where a stage draws nothing. Only a preview's cut
+  carries it (`@some-ui/video-render`'s `previewOf`), never an episode's.
 - `src/runtime/record.ts`, `src/components/record`: the recording protocol.
 - `src/components/preview`, `src/components/stage`: the preview page.
 
 ## Recording
 
 `apps/www/tests/record/burn-ins.ts` fills the renderer's `recordBurnIn`
-port: it opens `/burn-ins?record` in a headless browser at 1080x1920, and
-for each frame seeks to its exact time and captures the picture with
-transparency, only when it changed, into a lossless `.mov` the renderer
-lays over the video. With it, a video renders with its burn-ins:
+port: it opens `/burn-ins?record` in a headless browser at the size of the
+video's frame, and for each frame seeks to its exact time and captures the
+picture with transparency, only when it changed, into a lossless `.mov`
+the renderer lays over the video. With it, a video renders with its burn-ins:
 
 ```sh
 pnpm --filter www build
@@ -50,7 +60,27 @@ video, which the host page loads in the weights 600 and 800.
 
 ## Word timings
 
-Real subtitles need each word's start and end, from home's transcriber
-(whisper.cpp's per-word times). The owner approved keeping them
-(2026-10-26, confirmed 2026-10-29; the shape is on GWB11, #2085). Until that
-server change lands, subtitles run on the sample.
+Captions need each word's start and end. A voiced feed (the weekly call,
+Playoff Delta) has them from home's speaker (`/timed`), and the renderer
+(`@some-ui/video-render`) draws each scene's captions from its take's words,
+a scene at a time. Words from my own takes need home's transcriber
+(whisper.cpp's per-word times), which the owner approved keeping
+(2026-10-26, confirmed 2026-10-29; the shape is on GWB11, #2085).
+
+## A caption look sent from Studio
+
+The phone's Studio sets a template's caption look on its Templates page and sends it as a new
+GitHub issue holding the look in one ` ```json caption-look ` block (SFEED11, #2707; www's
+`lib/caption-look`). The look is code, so a session lands it:
+
+1. Add the block's look to `THEMES` (`src/lib/captions/theme.ts`) under a new id in
+   `THEME_IDS`. Leave the look it changed from as it is: videos already made name it.
+2. Pin a new version of the series that names the old look
+   (`packages/video-render/src/sample/series/<series>/v<n+1>.json`), its `designs.captions`
+   naming the new id, and move `packages/video-render/src/templates.ts`'s import of it to that
+   version (its test fails until both agree). Check that the recorder for that feed writes the
+   new series version into its cut list, so the next render draws it.
+3. Close the issue with the PR.
+
+Studio's preview is one still line drawn from the look's values. The first render on home in a
+new look is the one to watch.

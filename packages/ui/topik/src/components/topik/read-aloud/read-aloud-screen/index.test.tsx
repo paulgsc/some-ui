@@ -506,9 +506,7 @@ describe("ReadAloudScreen's tally (Rem. 7.5)", () => {
     expect(store.tally()).toEqual({})
     expect(createReadAloudStore(storage).tally()).toEqual({})
     expect(store.record().totals.reps).toBe(1)
-    expect(
-      document.querySelector('[data-slot="read-aloud-tally"]')?.textContent
-    ).toContain("Cleared.")
+    expect(screen.getByRole("status").textContent).toContain("Cleared.")
   })
 
   it("keeps what it holds, and says so, when the phone cannot clear it", () => {
@@ -527,9 +525,9 @@ describe("ReadAloudScreen's tally (Rem. 7.5)", () => {
       screen.getByRole("button", { name: "Clear what is kept about sentences" })
     )
     fireEvent.click(screen.getByRole("button", { name: "Clear it" }))
-    expect(
-      document.querySelector('[data-slot="read-aloud-tally"]')?.textContent
-    ).toContain("This phone couldn't clear it.")
+    expect(screen.getByRole("alert").textContent).toContain(
+      "This phone couldn't clear it."
+    )
     expect(Object.keys(createReadAloudStore(base).tally())).toHaveLength(
       DECK.lines.length
     )

@@ -3,6 +3,7 @@ import type { Side } from "@some-ui/aph"
 import { AphLog } from "@some-ui/aph"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 
+import { useAphVisit } from "@/lib/aph-visit"
 import { useMinuteClock } from "@/lib/clock"
 
 /**
@@ -17,6 +18,7 @@ const LogRoute = (): JSX.Element => {
   const { side, entry, day } = readSearch(Route.useSearch())
   const navigate = useNavigate()
   const now = useMinuteClock()
+  const visit = useAphVisit()
 
   return (
     <AphLog
@@ -28,6 +30,7 @@ const LogRoute = (): JSX.Element => {
       initialDay={day ?? null}
       // To History, which lists what was just saved. aph is Self's Home
       // (lib/wings), so there is no other Home to go back to.
+      visit={visit}
       onSaved={() => void navigate({ to: "/aph/history" })}
     />
   )

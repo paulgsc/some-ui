@@ -11,6 +11,10 @@
  * (`pulled`), and lets go of each change home answers with as it is
  * (`sent`). The store does no I/O for that; it is told.
  *
+ * The state holds every entry, removed ones too, since they are part of the
+ * record and go home like any change; the screens read the ones standing
+ * (`useAph`).
+ *
  * Every write is checked against `violations` (the state it leaves) and
  * `breaches` (the step it takes), both in model.ts, and refused, the state
  * left as it was, when it would break one: the rules live here, once, not
@@ -23,7 +27,14 @@
  * `useSyncExternalStore`.
  */
 import type { Commit, Draft } from "./draft"
-import { commitDraft, reviewEntry } from "./draft"
+import {
+  commitDraft,
+  deleteDraft,
+  removeEntry,
+  reviewEntry,
+  rewriteMine,
+  submitEntries,
+} from "./draft"
 import type { HomeHeld, HomeRecord, Outbox, Receipt, Refusal } from "./home"
 import {
   afterSend,
@@ -93,6 +104,14 @@ export type AphStore = {
     id: string,
     patch: Partial<Pick<Entry, "labels" | "note">>
   ) => boolean
+  /** My figure on entry `id`, rewritten (`rewriteMine`). */
+  rewriteMine: (id: string, mine: { value: number; approx: boolean }) => boolean
+  /** Entry `id` out of the log, kept in the record (`removeEntry`). */
+  remove: (id: string) => boolean
+  /** The drafts among `ids`, submitted (`submitEntries`). */
+  submit: (ids: ReadonlyArray<string>) => boolean
+  /** Draft `id`, deleted outright (`deleteDraft`). */
+  deleteDraft: (id: string) => boolean
   editSettings: (patch: Partial<AphSettings>) => boolean
 }
 
@@ -234,6 +253,13 @@ export function createAphStore(
           e.id === id ? { ...e, ...patch } : e
         ),
       }),
+    rewriteMine: (id, mine) =>
+      set({ ...state, entries: rewriteMine(state.entries, id, mine) }),
+    remove: (id) => set({ ...state, entries: removeEntry(state.entries, id) }),
+    submit: (ids) =>
+      set({ ...state, entries: submitEntries(state.entries, ids) }),
+    deleteDraft: (id) =>
+      set({ ...state, entries: deleteDraft(state.entries, id) }),
     editSettings: (patch) =>
       set({ ...state, settings: { ...state.settings, ...patch } }),
   }

@@ -103,10 +103,14 @@ export function startView(project: Project): StartView {
   return {
     title: latest(project).cutList.title,
     standing: STUDIO_WORDS.standing(lastLog(project)),
+    // An episode is never voiced or reshaped here (SH3, FEED6): it is
+    // watched, and finished once every scene has its take.
     sittings:
       episode === undefined
         ? sittings
-        : sittings.filter((row) => row.kind !== "shape"),
+        : sittings
+            .filter((row) => row.kind === "watch" || row.kind === "finish")
+            .map((row) => ({ ...row, startHere: row.kind === "watch" })),
     made:
       episode === undefined
         ? null
@@ -118,13 +122,13 @@ export function startView(project: Project): StartView {
   }
 }
 
-/** Where an episode stands: released, ready, under way, or waiting for your voice. */
+/** Where an episode stands: released, ready, or not made. */
 function standingOf(project: Project): EpisodeStanding {
   const finish = finishOf(project)
   if (finish.kind === "released" || finish.kind === "ready") {
     return finish.kind
   }
-  return takenCount(project) > 0 ? "going" : "voice"
+  return "waiting"
 }
 
 type Episodic = Project & { readonly episode: EpisodePin }
@@ -247,9 +251,7 @@ function finishStatus(finish: Finish): string {
     case "idea": {
       return words.idea(finish.count)
     }
-    case "facts": {
-      return words.facts(finish.n)
-    }
+    case "unsaid":
     case "unmarked":
     case "ready":
     case "released": {
@@ -450,19 +452,20 @@ export function originView(
 }
 
 /** A project's take as the take pattern's row draws it. */
-export function patternTakeOf(take: ProjectTake): PatternTake {
+export function patternTakeOf(take: ProjectTake, paired: boolean): PatternTake {
   return {
     id: take.id,
     answers: take.shot,
     durationMs: take.durationMs,
     recordedAt: take.recordedAt,
     standing: "current",
-    // On home once home holds it; on this phone, going home, until
-    // then; on neither, no place (a take carried in without its audio).
+    // On home once home holds it; on this phone until then, going home
+    // only on a phone paired with it (ST34); on neither, no place (a take
+    // carried in without its audio).
     kept: homeHolds(take)
       ? { place: "home", since: null }
       : take.onPhone
-        ? { place: "going" }
+        ? { place: paired ? "going" : "phone" }
         : null,
     ...(take.deletedAt === undefined ? {} : { deleted: take.deletedAt }),
   }
@@ -478,7 +481,7 @@ export function patternTakeOf(take: ProjectTake): PatternTake {
  * projects the machine's activity and the chosen take onto the parts.
  */
 export function recordTake(
-  state: Pick<StudioState, "activity">,
+  state: Pick<StudioState, "activity" | "paired">,
   view: Pick<RecordView, "take">
 ): { readonly button: TakeButtonView; readonly row: TakeRowView | null } {
   const { activity } = state
@@ -515,7 +518,7 @@ export function recordTake(
   return {
     button,
     row: {
-      take: patternTakeOf(take),
+      take: patternTakeOf(take, state.paired),
       playing: activity.kind === "playing" && activity.take === take.id,
       canPlay: settled && take.onPhone,
       // Recording it again is the button's ("Tap to record again").

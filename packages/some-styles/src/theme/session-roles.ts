@@ -12,7 +12,7 @@
  */
 
 import type { Oklch, SessionRoles } from "./feeling"
-import { mixOklab } from "./feeling"
+import { mixOklab, srgbHex } from "./feeling"
 import type { SessionTheme } from "./registry"
 
 /** CSS source text, by file: `tokens/base.css` and each `themes/<id>.css`. */
@@ -29,7 +29,9 @@ function declarations(css: string, selector: string): Map<string, string> {
     withoutComments.matchAll(/([^{}]+)\{([^{}]*)\}/g)
   )) {
     const [, selectors = "", body = ""] = match
-    if (selectors.trim() !== selector) continue
+    // A block counts when `selector` is one of its list (`:root,
+    // .session-theme`), and every such block adds to what it declares.
+    if (!selectors.split(",").some((each) => each.trim() === selector)) continue
     for (const declaration of body.split(";")) {
       const colon = declaration.indexOf(":")
       const name = declaration.slice(0, colon).trim()
@@ -151,4 +153,20 @@ export function sessionRoles(
     foreground: role("--foreground"),
     mutedForeground: role("--muted-foreground"),
   }
+}
+
+/**
+ * Each custom property `names` lists, as `theme` resolves it, as `#rrggbb`: the
+ * colours a theme gives something drawn outside a browser (the mark on a
+ * video's brand slides, HYPER5).
+ */
+export function themeColours(
+  theme: SessionTheme,
+  sources: ThemeSources,
+  names: ReadonlyArray<string>
+): Readonly<Record<string, string>> {
+  const properties = cascade(theme, sources)
+  return Object.fromEntries(
+    names.map((name) => [name, srgbHex(resolve(`var(${name})`, properties))])
+  )
 }

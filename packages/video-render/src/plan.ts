@@ -37,8 +37,9 @@ export type Facts = ReadonlyMap<string, SourceFacts>
 
 export type FfmpegCall = { readonly args: ReadonlyArray<string> }
 
-const QUIET = ["-hide_banner", "-nostdin", "-v", "error", "-y"]
-const BITEXACT = [
+export const QUIET = ["-hide_banner", "-nostdin", "-v", "error", "-y"]
+/** VR1. */
+export const BITEXACT = [
   "-fflags",
   "+bitexact",
   "-flags:v",
@@ -50,6 +51,47 @@ const BITEXACT = [
   "-map_chapters",
   "-1",
 ]
+
+/**
+ * VR1: what one ffmpeg call may hold. Each input is decoded on one thread
+ * and the encoder runs on two, whatever the machine has, so the same video
+ * gives the same bytes on any machine and a decoder holds a few frames, not
+ * one per core. Measured on a week of the call (38 crossfaded 1080p scenes),
+ * joining them in one call peaked at 4.17 GB with ffmpeg's own threads,
+ * 2.10 GB pinned, and grew by about 46 MB a scene, so scenes are also joined
+ * at most JOIN_BATCH at a time (`planJoin`): a call's memory is bounded by
+ * the batch, never by the length of the video.
+ */
+const DECODE = ["-threads", "1"] as const
+const ENCODE = ["-threads", "2"] as const
+const FILTER_THREADS = ["-filter_complex_threads", "1"] as const
+
+/**
+ * SFEED10 (#2675): every video is BT.709, as YouTube reads HD. A segment is
+ * drawn in RGB and turned to video once, by BT.709's matrix in the video
+ * range (`TO_VIDEO`); a layer laid over the joined video is turned the same
+ * way first; and every encode tags its stream so (`BT709`), so no player or
+ * later step falls back to BT.601, ffmpeg's default for an untagged stream.
+ * The frames carry the tags too (`setparams`): ffmpeg 7.1 on takes a stream's
+ * primaries and transfer from its frames, not from `BT709`'s options, and
+ * home's ffmpeg (6.1) and CI's (9.0) must both tag it.
+ */
+export const TO_VIDEO =
+  "scale=out_color_matrix=bt709:out_range=tv," +
+  "setparams=colorspace=bt709:color_primaries=bt709:color_trc=bt709:range=tv"
+export const BT709 = [
+  "-colorspace",
+  "bt709",
+  "-color_primaries",
+  "bt709",
+  "-color_trc",
+  "bt709",
+  "-color_range",
+  "tv",
+] as const
+
+/** How many scene segments one ffmpeg call joins at most (VR1). */
+export const JOIN_BATCH = 10
 
 /** Seconds, exact to the microsecond, as ffmpeg reads them. */
 const sec = (ms: number): string => (ms / 1000).toFixed(6)
@@ -87,6 +129,9 @@ export function pictureBox(
 ): Box {
   const p = shot.shot.picture
   const win = series.window
+  if (p.kind === "composition") {
+    throw new Error(`${shot.shot.id}: a composition is planned with its clip`)
+  }
   if (p.kind === "card") return win
   if (p.kind === "capture" && p.framing.mode === "crop") return win
   const f = facts.get(p.source)
@@ -246,15 +291,50 @@ function spaceChain(
 const cover = (b: Box): string =>
   `scale=${b.width}:${b.height}:force_original_aspect_ratio=increase:flags=lanczos,crop=${b.width}:${b.height},setsar=1`
 
+/** How many inputs `inputs` names: the index the next one gets. */
+const inputCount = (inputs: ReadonlyArray<string>): number =>
+  inputs.filter((a) => a === "-i").length
+
+/**
+ * `file`, a recording with transparency, as the next input, laid over `acc`
+ * from `startFrame` on; where it ends first, the picture passes. Returns the
+ * label of the result, `[label]`. Over a segment, still in RGB, it is laid
+ * in RGB; over the joined video, it is turned to BT.709 first.
+ */
+function overlay(
+  file: string,
+  startFrame: number,
+  fps: number,
+  acc: string,
+  label: string,
+  inputs: Array<string>,
+  filters: Array<string>,
+  over: "rgb" | "video"
+): string {
+  const n = inputCount(inputs)
+  inputs.push(...DECODE, "-i", file)
+  const into = over === "rgb" ? "" : `${TO_VIDEO},format=yuva420p,`
+  filters.push(
+    `[${n}:v]${into}setpts=PTS-STARTPTS+${at(startFrame, fps)}/TB[${label}in]`,
+    `${acc}[${label}in]overlay=0:0:eof_action=pass${over === "rgb" ? ":format=gbrp" : ""}[${label}]`
+  )
+  return `[${label}]`
+}
+
 /** A scene and where it sits. */
 export type Scene = { readonly shot: ResolvedShot; readonly placed: Placed }
 
-/** One scene, picture only, to `out`: exactly `placed.frames` frames. */
+/**
+ * One scene, picture only, to `out`: exactly `placed.frames` frames, with
+ * `layer`, a recording with transparency from the scene's first frame (its
+ * captions, SFEED11), laid over it where one is given.
+ */
 export function planSegment(
   { shot, placed }: Scene,
   series: Series,
   facts: Facts,
-  out: string
+  out: string,
+  layer?: string
 ): FfmpegCall {
   const { width, height, fps } = series.frame
   const frame = { width, height }
@@ -265,10 +345,18 @@ export function planSegment(
   // The picture, when there is one, is input 0; the background follows it.
   let pic: string | null = null
   if (p.kind === "capture") {
-    inputs.push("-ss", sec(p.inMs), "-i", p.source)
+    inputs.push(...DECODE, "-ss", sec(p.inMs), "-i", p.source)
     pic = "0:v"
   } else if (p.kind === "still") {
-    inputs.push("-loop", "1", "-framerate", String(fps), "-i", p.source)
+    inputs.push(
+      ...DECODE,
+      "-loop",
+      "1",
+      "-framerate",
+      String(fps),
+      "-i",
+      p.source
+    )
     pic = "0:v"
   }
   const bgIn = pic ? 1 : 0
@@ -276,6 +364,7 @@ export function planSegment(
   switch (bg.kind) {
     case "as-captured": {
       inputs.push(
+        ...DECODE,
         "-f",
         "lavfi",
         "-i",
@@ -285,7 +374,15 @@ export function planSegment(
       break
     }
     case "image": {
-      inputs.push("-loop", "1", "-framerate", String(fps), "-i", bg.image.file)
+      inputs.push(
+        ...DECODE,
+        "-loop",
+        "1",
+        "-framerate",
+        String(fps),
+        "-i",
+        bg.image.file
+      )
       filters.push(`[${bgIn}:v]fps=${fps},${cover(frame)}[bg]`)
       break
     }
@@ -310,21 +407,74 @@ export function planSegment(
     const y = series.window.y + (series.window.height - box.height) / 2
     filters.push(
       `[src]${spaceChain(shot, series, facts, box, placed.frames)}[pic]`,
-      `[bg][pic]overlay=x=${x}:y=${y},format=yuv420p[v]`
+      `[bg][pic]overlay=x=${x}:y=${y}:format=gbrp[framed]`
     )
   } else {
-    filters.push(`[bg]format=yuv420p[v]`)
+    // RGB, as a scene with a picture is, so `TO_VIDEO` turns both the same.
+    filters.push(`[bg]format=gbrp[framed]`)
   }
+  return segmentCall(
+    inputs,
+    filters,
+    "[framed]",
+    layer,
+    placed.frames,
+    fps,
+    out
+  )
+}
+
+/**
+ * A composition scene (HYPER2), picture only, to `out`: `clip`, the
+ * composition drawn over the whole frame for the scene's length
+ * (`Ports.compositions`), with `layer` laid over it as over any scene.
+ */
+export function planCompositionSegment(
+  { placed }: Scene,
+  series: Series,
+  clip: string,
+  out: string,
+  layer?: string
+): FfmpegCall {
+  const inputs = [...DECODE, "-i", clip]
+  const filters = ["[0:v]setpts=PTS-STARTPTS,setsar=1[framed]"]
+  return segmentCall(
+    inputs,
+    filters,
+    "[framed]",
+    layer,
+    placed.frames,
+    series.frame.fps,
+    out
+  )
+}
+
+/** A segment's call: `framed`, `layer` over it, as exactly `frames` frames. */
+function segmentCall(
+  inputs: Array<string>,
+  filters: Array<string>,
+  framed: string,
+  layer: string | undefined,
+  frames: number,
+  fps: number,
+  out: string
+): FfmpegCall {
+  const shown =
+    layer === undefined
+      ? framed
+      : overlay(layer, 0, fps, framed, "layered", inputs, filters, "rgb")
+  filters.push(`${shown}${TO_VIDEO},format=yuv420p[v]`)
   return {
     args: [
       ...QUIET,
+      ...FILTER_THREADS,
       ...inputs,
       "-filter_complex",
       filters.join(";"),
       "-map",
       "[v]",
       "-frames:v",
-      String(placed.frames),
+      String(frames),
       "-r",
       String(fps),
       "-an",
@@ -334,6 +484,8 @@ export function planSegment(
       "veryfast",
       "-crf",
       "8",
+      ...ENCODE,
+      ...BT709,
       ...BITEXACT,
       out,
     ],
@@ -366,6 +518,38 @@ export function placeTakes(
   })
 }
 
+/**
+ * VR1 over ffmpeg's versions (#2785): the inputs of a mix are placed and
+ * sized without depending on the order their ends arrive in. On ffmpeg 9
+ * (CI's), in a graph of several inputs, an `adelay` sometimes loses what it
+ * still holds when its input ends, so a cue or a take vanished from about
+ * one render in six, and an `apad` after an `amix` sometimes added nothing.
+ * So each input starts after exact silence joined in sequence (`concat`
+ * runs its parts one after another), and is padded to the whole length on
+ * its own, so every input of the mix ends on the same sample. A correct
+ * render's bytes are unchanged; only the lost cases are gone.
+ */
+const toLength = (seconds: string): string =>
+  `apad=whole_dur=${seconds},atrim=duration=${seconds}`
+
+/**
+ * Chain `head` (a graph fragment with no output label) heard from `atMs`
+ * on, then `tail`, as `[out]`: exact silence, then it, in sequence.
+ */
+function placedAt(
+  head: string,
+  atMs: number,
+  tail: string,
+  out: string
+): string {
+  if (atMs <= 0) return `${head},${tail}[${out}]`
+  return (
+    `anullsrc=r=48000:cl=mono,atrim=duration=${sec(atMs)},${MONO}[${out}w];` +
+    `${head}[${out}s];` +
+    `[${out}w][${out}s]concat=n=2:v=0:a=1,${tail}[${out}]`
+  )
+}
+
 /** Every take on one mono track, high-passed, the video's length. */
 export function planVoice(
   takes: ReadonlyArray<PlacedTake>,
@@ -376,10 +560,12 @@ export function planVoice(
   const inputs = takes.flatMap((t) => ["-i", t.file])
   const chains = takes.map((t, i) => {
     const len = (t.outMs - t.inMs) / 1000
-    return (
+    return placedAt(
       `[${i}:a]atrim=start=${sec(t.inMs)}:end=${sec(t.outMs)},asetpts=PTS-STARTPTS,` +
-      `${MONO},afade=t=in:d=0.03,afade=t=out:st=${Math.max(0, len - 0.08).toFixed(6)}:d=0.08,` +
-      `adelay=${t.atMs}:all=1[t${i}]`
+        `${MONO},afade=t=in:d=0.03,afade=t=out:st=${Math.max(0, len - 0.08).toFixed(6)}:d=0.08`,
+      t.atMs,
+      toLength(sec(totalMs)),
+      `t${i}`
     )
   })
   const mix =
@@ -388,7 +574,7 @@ export function planVoice(
       .join(
         ""
       )}amix=inputs=${takes.length}:normalize=0:duration=longest,highpass=f=70,` +
-    `apad=whole_dur=${sec(totalMs)},atrim=duration=${sec(totalMs)}[o]`
+    `atrim=duration=${sec(totalMs)}[o]`
   return {
     args: [
       ...QUIET,
@@ -608,13 +794,18 @@ export function planMix(a: Mix, series: Series, out: string): FfmpegCall {
   for (const file of [a.voice, a.bed]) {
     if (!file) continue
     inputs.push("-i", file)
-    filters.push(`[${next}:a]${MONO}[p${next}]`)
+    filters.push(`[${next}:a]${MONO},${toLength(total)}[p${next}]`)
     parts.push(`[p${next++}]`)
   }
   a.cues.forEach((c, i) => {
     inputs.push("-i", c.file)
     filters.push(
-      `[${next++}:a]${MONO},adelay=${c.atMs}:all=1,volume=${series.soundGainDb}dB[c${i}]`
+      placedAt(
+        `[${next++}:a]${MONO}`,
+        c.atMs,
+        `volume=${series.soundGainDb}dB,${toLength(total)}`,
+        `c${i}`
+      )
     )
     parts.push(`[c${i}]`)
   })
@@ -643,6 +834,119 @@ export function planMix(a: Mix, series: Series, out: string): FfmpegCall {
   }
 }
 
+/**
+ * Each segment's input, then the chain that joins them, as the timeline from
+ * `originFrame` on: each scene's transition at its own frame, less the
+ * origin. Returns the label of the joined picture.
+ */
+function joinChain(
+  scenes: ReadonlyArray<Scene>,
+  segments: ReadonlyArray<string>,
+  originFrame: number,
+  fps: number,
+  inputs: Array<string>,
+  filters: Array<string>
+): string {
+  const first = inputCount(inputs)
+  segments.forEach((file, i) => {
+    inputs.push(...DECODE, "-i", file)
+    filters.push(`[${first + i}:v]settb=AVTB,setpts=PTS-STARTPTS[s${i}]`)
+  })
+  let acc = "[s0]"
+  scenes.forEach(({ shot: s, placed: p }, i) => {
+    if (i === 0) return
+    const label = `[j${i}]`
+    if (s.transitionIn === "cut") {
+      filters.push(`${acc}[s${i}]concat=n=2:v=1:a=0${label}`)
+    } else {
+      filters.push(
+        `${acc}[s${i}]xfade=transition=${XFADE[s.transitionIn]}:` +
+          `duration=${at(p.overlapFrames, fps)}:offset=${at(p.startFrame - originFrame, fps)}${label}`
+      )
+    }
+    acc = label
+  })
+  return acc
+}
+
+/**
+ * VR1: joins at most JOIN_BATCH segments, picture only, to `out`, a part as
+ * near-lossless as a segment. Its first scene starts it, so a part is placed
+ * where its first scene is and joins the part before it by that scene's
+ * transition, as the scenes themselves would have.
+ */
+export function planJoin(
+  scenes: ReadonlyArray<Scene>,
+  segments: ReadonlyArray<string>,
+  series: Series,
+  out: string
+): FfmpegCall {
+  const fps = series.frame.fps
+  const first = scenes[0]
+  const last = scenes.at(-1)
+  if (!first || !last) throw new Error("a part joins at least one scene")
+  const originFrame = first.placed.startFrame
+  const inputs: Array<string> = []
+  const filters: Array<string> = []
+  const acc = joinChain(scenes, segments, originFrame, fps, inputs, filters)
+  filters.push(`${acc}format=yuv420p[v]`)
+  return {
+    args: [
+      ...QUIET,
+      ...FILTER_THREADS,
+      ...inputs,
+      "-filter_complex",
+      filters.join(";"),
+      "-map",
+      "[v]",
+      "-frames:v",
+      String(last.placed.startFrame + last.placed.frames - originFrame),
+      "-r",
+      String(fps),
+      "-an",
+      "-c:v",
+      "libx264",
+      "-preset",
+      "veryfast",
+      "-crf",
+      "8",
+      ...ENCODE,
+      ...BT709,
+      ...BITEXACT,
+      out,
+    ],
+  }
+}
+
+/**
+ * The scenes `planAssembly` joins when they were joined JOIN_BATCH at a
+ * time: each part stands where its first scene does, for as long as its
+ * scenes run, and comes in by that scene's transition.
+ */
+export function batches<T>(
+  items: ReadonlyArray<T>
+): ReadonlyArray<ReadonlyArray<T>> {
+  const out: Array<ReadonlyArray<T>> = []
+  for (let i = 0; i < items.length; i += JOIN_BATCH)
+    out.push(items.slice(i, i + JOIN_BATCH))
+  return out
+}
+
+export function partScene(scenes: ReadonlyArray<Scene>, index: number): Scene {
+  const first = scenes[0]
+  const last = scenes.at(-1)
+  if (!first || !last) throw new Error("a part joins at least one scene")
+  return {
+    shot: first.shot,
+    placed: {
+      ...first.placed,
+      id: `part-${index}`,
+      frames:
+        last.placed.startFrame + last.placed.frames - first.placed.startFrame,
+    },
+  }
+}
+
 /** Joins the segments, lays the burn-ins on, adds the mixed sound, to `out`. */
 export function planAssembly(
   a: Assembly,
@@ -652,48 +956,33 @@ export function planAssembly(
   const fps = series.frame.fps
   const inputs: Array<string> = []
   const filters: Array<string> = []
-  let next = 0
-  const segIn = a.segments.map((file) => {
-    inputs.push("-i", file)
-    return next++
-  })
-  segIn.forEach((n, i) =>
-    filters.push(`[${n}:v]settb=AVTB,setpts=PTS-STARTPTS[s${i}]`)
-  )
-  let acc = "[s0]"
-  a.scenes.forEach(({ shot: s, placed: p }, i) => {
-    if (i === 0) return
-    const label = `[j${i}]`
-    if (s.transitionIn === "cut") {
-      filters.push(`${acc}[s${i}]concat=n=2:v=1:a=0${label}`)
-    } else {
-      filters.push(
-        `${acc}[s${i}]xfade=transition=${XFADE[s.transitionIn]}:` +
-          `duration=${at(p.overlapFrames, fps)}:offset=${at(p.startFrame, fps)}${label}`
-      )
-    }
-    acc = label
-  })
+  let acc = joinChain(a.scenes, a.segments, 0, fps, inputs, filters)
   a.layers.forEach((layer, i) => {
-    inputs.push("-i", layer.file)
-    filters.push(
-      `[${next++}:v]setpts=PTS-STARTPTS+${at(layer.startFrame, fps)}/TB[b${i}]`,
-      `${acc}[b${i}]overlay=0:0:eof_action=pass[l${i}]`
+    acc = overlay(
+      layer.file,
+      layer.startFrame,
+      fps,
+      acc,
+      `l${i}`,
+      inputs,
+      filters,
+      "video"
     )
-    acc = `[l${i}]`
   })
   filters.push(`${acc}format=yuv420p[v]`)
-  inputs.push("-i", a.mix)
+  const mix = inputCount(inputs)
+  inputs.push(...DECODE, "-i", a.mix)
   return {
     args: [
       ...QUIET,
+      ...FILTER_THREADS,
       ...inputs,
       "-filter_complex",
       filters.join(";"),
       "-map",
       "[v]",
       "-map",
-      `${next}:a`,
+      `${mix}:a`,
       "-frames:v",
       String(a.totalFrames),
       "-r",
@@ -712,6 +1001,8 @@ export function planAssembly(
       "160k",
       "-movflags",
       "+faststart",
+      ...ENCODE,
+      ...BT709,
       ...BITEXACT,
       out,
     ],

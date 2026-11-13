@@ -14,6 +14,7 @@ import {
   appEventsWaiting,
   keepAppEvent,
   letGoHeldAppEvents,
+  recordEngagement,
 } from "@/lib/app-events"
 import { exchangeAppEvents } from "@/lib/home-link/app-events-send"
 import { HomeUnansweredError } from "@/lib/home-link/shelf"
@@ -81,6 +82,30 @@ describe("sending the app events home (TE2)", () => {
     expect(ids()).toEqual([])
   })
 
+  it("lets go of an engagement event home echoes as home writes it (ENG2)", async () => {
+    recordEngagement(
+      {
+        kind: "passed-over",
+        pipeline: "topik",
+        affordance: "routine-lens",
+        surface: "apk",
+        at: "2026-11-03T09:05:00.000Z",
+        offeredAt: "2026-11-03T09:00:00.000Z",
+        ending: "took-another",
+      },
+      null,
+      "g1"
+    )
+    // Home (paulgsc/server app_event_repo) writes `build` as null and
+    // leaves out the extras of every other kind, as the phone sent it.
+    const { send } = home(() => ({
+      status: 200,
+      body: `{"change":"added","event":{"family":"engagement","id":"g1","at":"2026-11-03T09:05:00.000Z","build":null,"kind":"passed-over","pipeline":"topik","affordance":"routine-lens","surface":"apk","offeredAt":"2026-11-03T09:00:00.000Z","ending":"took-another"}}`,
+    }))
+    await expect(exchangeAppEvents(send)).resolves.toEqual({ kind: "synced" })
+    expect(ids()).toEqual([])
+  })
+
   it("keeps one home refused or holds otherwise, and offers a refused one no more this page load", async () => {
     keepAppEvent(event("refused", "2026-11-03T09:00:00.000Z"))
     keepAppEvent(event("differs", "2026-11-03T09:01:00.000Z"))
@@ -89,7 +114,7 @@ describe("sending the app events home (TE2)", () => {
       sent.id === "refused"
         ? { status: 422, body: "{}" }
         : sent.id === "differs"
-          ? holds({ ...sent, went: "failed" })
+          ? holds({ ...sent, at: "2026-11-03T08:00:00.000Z" })
           : holds(sent)
     )
     await expect(exchangeAppEvents(first.send)).resolves.toEqual({

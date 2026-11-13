@@ -421,6 +421,23 @@ const rustRounds: Pipeline = {
         { id: "say-it", name: "Saying it" },
       ],
     },
+    // A ticket of the week opened on its card, by its place in the week
+    // (RR14; `rust-rounds`' `lib/week-play/opens`).
+    {
+      id: "week-ticket",
+      surface: "apk",
+      name: "A ticket of the week",
+      routes: ["/rust-rounds"],
+      offer: null,
+      emits: ["taken", "left"],
+      touches: true,
+      places: [
+        { id: "ticket-1", name: "The week's first ticket" },
+        { id: "ticket-2", name: "Its second" },
+        { id: "ticket-3", name: "Its third" },
+        { id: "ticket-4", name: "Its fourth" },
+      ],
+    },
     // Paste an error from the desk, from any card (RR4c).
     {
       id: "desk-paste",

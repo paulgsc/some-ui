@@ -2,14 +2,22 @@
 
 export const API_BASE_PATH = "/api/v1";
 
+/** The server contract epoch this snapshot is (file_host's `contract::CONTRACT_EPOCH`). */
+export const SERVER_CONTRACT_EPOCH = 4;
+/** The lowest epoch that server still serves (`contract::OLDEST_SUPPORTED`). */
+export const SERVER_OLDEST_SUPPORTED = 1;
+
 export type ServerRoute =
   | "/api/v1/activities"
   | "/api/v1/activities/:id"
+  | "/api/v1/admin/settings/:namespace"
+  | "/api/v1/admin/settings/:namespace/history"
   | "/api/v1/aph"
   | "/api/v1/aph/entries/:id"
   | "/api/v1/aph/settings"
   | "/api/v1/app-events/:id"
   | "/api/v1/app-events/summary"
+  | "/api/v1/app-events/weeks/:week"
   | "/api/v1/auth/account"
   | "/api/v1/auth/pairing/finish"
   | "/api/v1/auth/pairing/start"
@@ -22,6 +30,7 @@ export type ServerRoute =
   | "/api/v1/auth/sign-in/start"
   | "/api/v1/auth/sign-out"
   | "/api/v1/auth/sign-out-everywhere"
+  | "/api/v1/clips/:id/:side/:file"
   | "/api/v1/curriculum/:key"
   | "/api/v1/curriculum/manifest"
   | "/api/v1/curriculum/manifest.json"
@@ -29,6 +38,13 @@ export type ServerRoute =
   | "/api/v1/curriculum/operator/lessons/:key"
   | "/api/v1/curriculum/operator/lessons/:key/restore"
   | "/api/v1/curriculum/operator/lessons/:key/retire"
+  | "/api/v1/feeds/:feed/notes"
+  | "/api/v1/feeds/:feed/notes/:id"
+  | "/api/v1/feeds/:feed/videos"
+  | "/api/v1/feeds/:feed/videos/:key/description"
+  | "/api/v1/feeds/:feed/videos/:key/link"
+  | "/api/v1/feeds/:feed/videos/:key/rest"
+  | "/api/v1/feeds/:feed/videos/:key/video"
   | "/api/v1/idea-lists"
   | "/api/v1/idea-lists/keywords/:name"
   | "/api/v1/idea-lists/topics/:name"
@@ -58,15 +74,25 @@ export type ServerRoute =
   | "/api/v1/now-playing"
   | "/api/v1/outcomes"
   | "/api/v1/presence/lease"
+  | "/api/v1/previews/:template"
+  | "/api/v1/previews/:template/:id/video"
   | "/api/v1/push/subscriptions"
   | "/api/v1/push/test"
   | "/api/v1/push/vapid-key"
+  | "/api/v1/renders"
   | "/api/v1/routine/files"
   | "/api/v1/routine/opened"
   | "/api/v1/routine/prompts/:stamp"
   | "/api/v1/routine/reflections/:id"
+  | "/api/v1/rust-round-log/sessions"
+  | "/api/v1/rust-round-log/sessions/:id"
   | "/api/v1/rust-rounds"
   | "/api/v1/rust-rounds/:id"
+  | "/api/v1/rust-weeks"
+  | "/api/v1/rust-weeks/:id"
+  | "/api/v1/rust-weeks/:id/pastes/:at"
+  | "/api/v1/rust-weeks/:id/record"
+  | "/api/v1/rust-weeks/:id/sent"
   | "/api/v1/sessions"
   | "/api/v1/sessions/:id"
   | "/api/v1/sessions/:id/duplicate"
@@ -79,6 +105,8 @@ export type ServerRoute =
   | "/api/v1/studio/sittings"
   | "/api/v1/studio/sittings/:sitting/events"
   | "/api/v1/studio/sittings/:sitting/events/:id"
+  | "/api/v1/studio/videos"
+  | "/api/v1/studio/videos/:video/queued/:rev"
   | "/api/v1/study-notes/:kind/:id"
   | "/api/v1/subjects/me/kept"
   | "/api/v1/subjects/me/stats"
@@ -102,6 +130,8 @@ export type ServerRoute =
 
 /** Routes NOT nested under API_BASE_PATH. */
 export type UnversionedRoute =
+  | "/compat"
   | "/health"
   | "/ready"
-  | "/ws";
+  | "/ws"
+  | "/ws/game-week";

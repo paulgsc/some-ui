@@ -1,0 +1,47 @@
+{
+  "name": "@some-ui/video-motion",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./node": "./src/node.ts"
+  },
+  "description": "HyperFrames compositions, pinned: the motion a video's scene is drawn in, rendered to the same bytes every time.",
+  "license": "MIT",
+  "homepage": "https://pgdev.maishatu.com/?tab=github",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/paulgsc/some-ui"
+  },
+  "bugs": {
+    "url": "https://github.com/paulgsc/some-ui/issues"
+  },
+  "keywords": [],
+  "scripts": {
+    "motion": "tsx src/cli.ts",
+    "clean": "rm -rf .turbo node_modules .eslintcache",
+    "knip": "knip --directory \"$(git rev-parse --show-toplevel)\" --workspace \"$(git rev-parse --show-prefix | sed 's:/*$::')\"",
+    "lint": "pnpm lint:js && pnpm prettier && pnpm typecheck",
+    "lint:js": "eslint \"**/*.ts\" --cache",
+    "prettier": "prettier . --ignore-path $(git rev-parse --show-toplevel)/.prettierignore --check --cache",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fontsource/barlow-condensed": "5.3.0",
+    "@some-extension/suspender-ledger": "workspace:*",
+    "@some-ui/styles": "workspace:*",
+    "@some-ui/video-render": "workspace:*",
+    "hyperframes": "0.9.22",
+    "playwright-core": "1.62.1",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@some-ui/eslint-kit": "workspace:*",
+    "@some-ui/tsconfig": "workspace:*",
+    "@some-ui/vite-config": "workspace:*",
+    "tsx": "^4.19.2",
+    "typescript": "catalog:",
+    "vitest": "^5.1.0"
+  }
+}

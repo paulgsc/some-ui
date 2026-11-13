@@ -10,9 +10,11 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { promisify } from "node:util"
 import { authorshipOf } from "@video-render/authorship"
-import type { CutList, Shot } from "@video-render/cut-list"
+import type { CutList, Shot, TimedWord } from "@video-render/cut-list"
 import { nodePorts } from "@video-render/node"
-import type { Ports } from "@video-render/render"
+import { JOIN_BATCH } from "@video-render/plan"
+import { DEFAULT_POLICY, MB } from "@video-render/policy"
+import type { BurnInRequest, Ports } from "@video-render/render"
 import { render } from "@video-render/render"
 import type { Series } from "@video-render/series"
 import * as fixtures from "@video-render/testing"
@@ -29,10 +31,8 @@ let root = ""
 let ports: Ports
 const sums = new Map<string, string>()
 
-async function make(args: ReadonlyArray<string>): Promise<void> {
-  const ran = await ports.ffmpeg({ args: ["-v", "error", "-y", ...args] })
-  if (!ran.ok) throw new Error(ran.stderr)
-}
+const make = (args: ReadonlyArray<string>): Promise<void> =>
+  fixtures.make(ports, args)
 
 const sha = async (file: string): Promise<string> =>
   createHash("sha256")
@@ -156,6 +156,26 @@ function everyMember(): CutList {
   return fixtures.cutList(shots)
 }
 
+/** A burn-in recorded as a red tint, as long as it asks for. */
+async function tint(r: BurnInRequest): Promise<boolean> {
+  const { width, height, fps } = r.frame
+  const ran = await ports.ffmpeg({
+    args: [
+      "-v",
+      "error",
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      `color=c=red@0.4:s=${width}x${height}:r=${fps}:d=${(r.frames / fps).toFixed(3)},format=rgba`,
+      "-c:v",
+      "png",
+      r.out,
+    ],
+  })
+  return ran.ok
+}
+
 async function frames(file: string): Promise<number> {
   const { stdout } = await promisify(execFile)(
     "ffprobe",
@@ -266,6 +286,167 @@ describe("render", () => {
     60_000
   )
 
+  /** `n` scenes of footage, each in by `transition` (the first by a cut). */
+  const long = (n: number, transition: "crossfade" | "cut"): CutList =>
+    fixtures.cutList(
+      Array.from({ length: n }, (_, i) =>
+        fixtures.shot(`L${i + 1}`, {
+          picture: fixtures.capture((i % 8) * 600),
+          durationMs: 1000,
+          overrides: i === 0 ? {} : { transitionIn: transition },
+        })
+      )
+    )
+
+  it("joins a video longer than a batch in parts: every frame, the same bytes (VR1)", async () => {
+    const n = JOIN_BATCH * 2 + 3
+    const cut = long(n, "crossfade")
+    const mixed: CutList = {
+      ...cut,
+      shots: cut.shots.map((s, i) => {
+        const joined =
+          i % 4 === 3
+            ? {
+                ...s,
+                overrides: { ...s.overrides, transitionIn: "cut" as const },
+              }
+            : s
+        // A scene named like a part, in the second batch: its segment must
+        // stay its own, never be overwritten by the first batch's join.
+        return i === JOIN_BATCH + 2 ? { ...joined, id: "part-1" } : joined
+      }),
+    }
+    const runs = []
+    for (const k of [1, 2]) {
+      const done = await render(mixed, series(), ports, {
+        workDir: `work-long-${k}`,
+        out: `out-long-${k}/video.mp4`,
+      })
+      if (!done.ok) throw new Error(done.problems.join("\n"))
+      runs.push(done.value)
+    }
+    const parts = (await readdir(join(root, "work-long-1/parts"))).filter((f) =>
+      /^\d+\.mkv$/.test(f)
+    )
+    expect(parts.length).toBe(Math.ceil(n / JOIN_BATCH))
+    // Its segment holds its own scene's frames, not a batch's.
+    const own = runs[0]?.shotTimes.find((t) => t.id === "part-1")
+    if (!own) throw new Error("no part-1 scene")
+    expect(await frames("work-long-1/part-1.mkv")).toBe(
+      Math.round((own.durationMs * 30) / 1000)
+    )
+    const last = runs[0]?.shotTimes.at(-1)
+    if (!last) throw new Error("no shot times")
+    expect(await frames("out-long-1/video.mp4")).toBe(
+      Math.round(((last.startMs + last.durationMs) * 30) / 1000)
+    )
+    expect(await sha("out-long-1/video.mp4")).toBe(
+      await sha("out-long-2/video.mp4")
+    )
+  }, 120_000)
+
+  // VR1 (promise): no ffmpeg call the renderer makes opens more than
+  // JOIN_BATCH scene segments, and every call that draws picture decodes each
+  // input on one thread and encodes on two, whatever the video's length.
+  // Family: scene counts 1 to 60 (a call has at most 57), each joined by
+  // crossfades or by cuts. Proof: every member, rendered with ffmpeg faked.
+  it("holds at most a batch of segments in any ffmpeg call, for 1 to 60 scenes (VR1)", async () => {
+    const calls: Array<ReadonlyArray<string>> = []
+    const faked: Ports = {
+      ...ports,
+      probe: () =>
+        Promise.resolve({ width: 206, height: 458, durationMs: 8000 }),
+      ffmpeg: (call) => {
+        calls.push(call.args)
+        return Promise.resolve({ ok: true, stderr: "" })
+      },
+    }
+    for (const transition of ["crossfade", "cut"] as const) {
+      for (let n = 1; n <= 60; n += 1) {
+        calls.length = 0
+        const done = await render(long(n, transition), series(), faked, {
+          workDir: `work-vr1-${transition}-${n}`,
+          out: `out-vr1-${transition}-${n}/video.mp4`,
+        })
+        expect(done.ok ? [] : done.problems).toEqual([])
+        for (const args of calls) {
+          const inputs = args.flatMap((a, i) =>
+            a === "-i" ? [args[i + 1] ?? ""] : []
+          )
+          const segments = inputs.filter((f) => f.endsWith(".mkv"))
+          expect(
+            segments.length,
+            `${transition} ${n}: ${args.join(" ")}`
+          ).toBeLessThanOrEqual(JOIN_BATCH)
+          if (!args.includes("-filter_complex") || args.includes("-vn"))
+            continue
+          if (!args.some((a) => a === "[v]")) continue
+          expect(args).toEqual(
+            expect.arrayContaining(["-filter_complex_threads"])
+          )
+          args.forEach((a, i) => {
+            if (a === "-i") {
+              const before = args.slice(0, i)
+              const opened = before.lastIndexOf("-threads")
+              expect(
+                opened,
+                `${transition} ${n}: ${inputs.join(" ")}`
+              ).toBeGreaterThanOrEqual(0)
+              expect(args[opened + 1]).toBe("1")
+            }
+          })
+          const out = args.lastIndexOf("-threads")
+          expect(args[out + 1]).toBe("2")
+        }
+      }
+    }
+  }, 120_000)
+
+  it("refuses a video past the policy's length before drawing anything", async () => {
+    const calls: Array<ReadonlyArray<string>> = []
+    const faked: Ports = {
+      ...ports,
+      probe: () =>
+        Promise.resolve({ width: 206, height: 458, durationMs: 8000 }),
+      ffmpeg: (call) => {
+        calls.push(call.args)
+        return Promise.resolve({ ok: true, stderr: "" })
+      },
+    }
+    const done = await render(long(3, "cut"), series(), faked, {
+      workDir: "work-too-long",
+      out: "out-too-long/video.mp4",
+      policy: { ...DEFAULT_POLICY, maxVideoMs: 2_000 },
+    })
+    expect(done.ok ? [] : done.problems).toEqual([
+      "the video would run 0.1 min, past the policy's 0.0 min",
+    ])
+    expect(calls).toEqual([])
+  })
+
+  it("removes and refuses a finished video past the policy's size", async () => {
+    const removed: Array<string> = []
+    const faked: Ports = {
+      ...ports,
+      probe: () =>
+        Promise.resolve({ width: 206, height: 458, durationMs: 8000 }),
+      ffmpeg: () => Promise.resolve({ ok: true, stderr: "" }),
+      fileBytes: () => Promise.resolve(600 * MB),
+      remove: (file) => {
+        removed.push(file)
+        return Promise.resolve()
+      },
+    }
+    const done = await render(long(2, "cut"), series(), faked, {
+      workDir: "work-too-big",
+      out: "out-too-big/video.mp4",
+    })
+    expect(done.ok ? [] : done.problems).toEqual([
+      "the video is 600 MB, past the policy's 500 MB",
+    ])
+    expect(removed).toEqual(["out-too-big/video.mp4"])
+  })
+
   it("needs footage only up to a freeze", async () => {
     const short: Ports = {
       ...ports,
@@ -332,10 +513,29 @@ describe("render", () => {
 
   it("lays burn-ins over the video, or lists what it left out", async () => {
     const cut = everyMember()
+    const word = (text: string, startMs: number, endMs: number): TimedWord => ({
+      text,
+      startMs,
+      endMs,
+    })
     const withLayers: CutList = {
       ...cut,
       shots: cut.shots.slice(0, 2).map((s) => ({
         ...s,
+        // S1's take says two lines; its last word is past the take's trim.
+        ...(s.take
+          ? {
+              take: {
+                ...s.take,
+                words: [
+                  word("Every", 0, 250),
+                  word("word.", 300, 500),
+                  word("Next", 600, 900),
+                  word("cut", 1100, 1300),
+                ],
+              },
+            }
+          : {}),
         burnIns: [
           { kind: "headline", design: "v1", params: { headline: s.id } },
         ],
@@ -358,7 +558,7 @@ describe("render", () => {
     })
     expect(
       leftOut.ok ? leftOut.value.leftOut.map((b) => b.kind) : leftOut.problems
-    ).toEqual(["captions", "authorship", "headline", "headline"])
+    ).toEqual(["authorship", "headline", "headline", "captions"])
 
     const asked: Array<string> = []
     const clashing = await render(
@@ -377,10 +577,11 @@ describe("render", () => {
     expect(clashing.ok ? [] : clashing.problems).toEqual([
       "the headline and the card clash",
     ])
-    expect(asked).toEqual(["captions", "authorship", "headline", "headline"])
+    expect(asked).toEqual(["authorship", "headline", "headline", "captions"])
 
     const recorded: Array<string> = []
     const marks: Array<unknown> = []
+    const captions: Array<unknown> = []
     const drawn = await render(
       withLayers,
       series(),
@@ -389,23 +590,8 @@ describe("render", () => {
         recordBurnIn: async (r) => {
           recorded.push(`${r.kind}@${r.startFrame}+${r.frames}`)
           if (r.kind === "authorship") marks.push(r.params)
-          const d = (r.frames / r.frame.fps).toFixed(3)
-          const { width, height, fps } = r.frame
-          const ran = await ports.ffmpeg({
-            args: [
-              "-v",
-              "error",
-              "-y",
-              "-f",
-              "lavfi",
-              "-i",
-              `color=c=red@0.4:s=${width}x${height}:r=${fps}:d=${d},format=rgba`,
-              "-c:v",
-              "png",
-              r.out,
-            ],
-          })
-          return ran.ok
+          if (r.kind === "captions") captions.push(r.params)
+          return tint(r)
         },
       },
       { workDir: "work-b2", out: "out-b2/video.mp4" }
@@ -423,12 +609,114 @@ describe("render", () => {
       },
     ])
     expect(recorded).toEqual([
-      "captions@0+60",
       "authorship@0+60",
       // The first scene's headline ends where the crossfade into the second
       // begins, so the two are never up together.
       "headline@0+24",
       "headline@24+36",
+      // SFEED11: S1's captions alone, for as long as it shows before S2,
+      // in its own time; S2 says nothing, so it has none.
+      "captions@0+24",
     ])
+    // The words heard, from where the take starts in the scene (100 ms),
+    // as the speaker's two sentences.
+    expect(captions).toEqual([
+      {
+        lines: [
+          { words: [word("Every", 100, 350), word("word.", 400, 600)] },
+          { words: [word("Next", 700, 1000)] },
+        ],
+      },
+    ])
+    expect(await frames("out-b2/video.mp4")).toBe(60)
   }, 120_000)
+})
+
+describe("a composition scene (HYPER2)", () => {
+  const said = (text: string): Array<TimedWord> => [
+    { text, startMs: 0, endMs: 500 },
+  ]
+  const mixed = fixtures.cutList(
+    [
+      fixtures.shot("S1", {
+        picture: {
+          kind: "composition",
+          ref: "promo-hook",
+          variables: { title: "Hi" },
+          files: ["captures/still.png"],
+        },
+        durationMs: 1000,
+        voiceInMs: 100,
+        take: { file: "voice/a.wav", inMs: 0, outMs: 800, words: said("Hi.") },
+      }),
+      fixtures.shot("S2", {
+        picture: { kind: "still", source: "captures/still.png" },
+        durationMs: 1000,
+        voiceInMs: 100,
+        take: { file: "voice/b.wav", inMs: 0, outMs: 800, words: said("Bye.") },
+      }),
+    ],
+    { burnIns: [{ kind: "captions", design: "gridiron", params: {} }] }
+  )
+  const asked: Array<string> = []
+  /** Draws a composition as ffmpeg's test pattern, and a burn-in as a tint. */
+  const drawing: Partial<Ports> = {
+    compositions: {
+      pin: () => Promise.resolve("fixture"),
+      record: async (r) => {
+        asked.push(`${r.out} ${r.ref}:${r.frames}:${r.files.join(",")}`)
+        const { width, height, fps } = r.frame
+        const ran = await ports.ffmpeg({
+          args: [
+            "-v",
+            "error",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            `testsrc2=s=${width}x${height}:r=${fps}`,
+            "-frames:v",
+            String(r.frames),
+            "-c:v",
+            "ffv1",
+            r.out,
+          ],
+        })
+        return ran.ok ? { ok: true } : { ok: false, problem: ran.stderr }
+      },
+    },
+    recordBurnIn: tint,
+  }
+
+  it("is drawn by the port, captioned and voiced like any scene, the same bytes twice", async () => {
+    const outs = ["out-c1/video.mp4", "out-c2/video.mp4"]
+    for (const [i, out] of outs.entries()) {
+      const drawn = await render(
+        mixed,
+        series(),
+        { ...ports, ...drawing },
+        { workDir: `work-c${i + 1}`, out }
+      )
+      expect(drawn.ok ? drawn.value.leftOut : drawn.problems).toEqual([])
+    }
+    // In a folder of their own, so no scene's segment shares a clip's name.
+    expect(asked).toEqual([
+      "work-c1/compositions/S1.mkv promo-hook:30:captures/still.png",
+      "work-c2/compositions/S1.mkv promo-hook:30:captures/still.png",
+    ])
+    expect(await frames("out-c1/video.mp4")).toBe(60)
+    expect(await sha("out-c1/video.mp4")).toBe(await sha("out-c2/video.mp4"))
+  }, 120_000)
+
+  it("is refused before anything runs when nothing can draw it", async () => {
+    const drawn = await render(
+      mixed,
+      series(),
+      { ...ports, ...drawing, compositions: undefined },
+      { workDir: "work-c3", out: "out-c3/video.mp4" }
+    )
+    expect(drawn.ok ? [] : drawn.problems).toEqual([
+      "nothing here can draw a composition",
+    ])
+  })
 })

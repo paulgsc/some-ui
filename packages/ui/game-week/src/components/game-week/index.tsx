@@ -38,6 +38,8 @@ import {
   ago,
   MINUTE_LINE,
   MODE_WORDS,
+  noGamesLine,
+  noOfferLine,
   outboxLine,
   WORDS,
 } from "@game-week/lib/words"
@@ -51,6 +53,7 @@ import {
 } from "@some-ui/game-scenarios"
 import {
   Button,
+  Notice,
   Sheet,
   SheetContent,
   SheetHeader,
@@ -487,6 +490,14 @@ export const GameWeek = ({ ports, outbox }: GameWeekProps): JSX.Element => {
     dispatch(asking ? { type: "answer", said } : { type: "say", said })
   }
   const outboxWords = outboxLine(waiting)
+  // A line put away stays away until the screen says another; Undo stays.
+  const [heard, setHeard] = useState("")
+  if (state.notice === "" && heard !== "") setHeard("")
+  const said = state.notice === heard ? "" : state.notice
+  // Whichever bite Undo is open on: a keep can answer after the next bite
+  // is taken.
+  const undoOffered = state.undo !== null && !asking
+  const blocked = activity.kind === "idle" ? state.blocked : null
   // The bite as the take pattern's parts show it: its button while it
   // records, and the newest bite kept as a row.
   const bite = biteView(state)
@@ -550,11 +561,15 @@ export const GameWeek = ({ ports, outbox }: GameWeekProps): JSX.Element => {
           onLegend={() => setPanel("legend")}
         />
       ) : game === null ? (
-        <p className="text-muted-foreground text-sm">{WORDS.noGames}</p>
+        <p className="text-muted-foreground text-sm">
+          {noGamesLine(state.link)}
+        </p>
       ) : (
         <>
           {view === null ? (
-            <p className="text-muted-foreground text-sm">{WORDS.noOffer}</p>
+            <p className="text-muted-foreground text-sm">
+              {noOfferLine(state.link)}
+            </p>
           ) : (
             <Offers view={view} now={now} onSay={say} />
           )}
@@ -577,31 +592,22 @@ export const GameWeek = ({ ports, outbox }: GameWeekProps): JSX.Element => {
         </>
       )}
 
-      {state.blocked !== null && activity.kind === "idle" && (
-        <p
-          role="alert"
-          className="border-destructive/40 bg-destructive/5 rounded-lg border p-3 text-sm"
-        >
-          {RECORDING_FAILURE_COPY[state.blocked]}
-        </p>
+      {(said !== "" || undoOffered) && (
+        <Notice {...(said === "" ? {} : { onDismiss: () => setHeard(said) })}>
+          <div className="flex items-center gap-3">
+            <p className="min-w-0 flex-1">{said}</p>
+            {undoOffered && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => dispatch({ type: "undo" })}
+              >
+                {WORDS.undo}
+              </Button>
+            )}
+          </div>
+        </Notice>
       )}
-
-      <div aria-live="polite" className="flex min-h-9 items-center gap-3">
-        <p className="text-muted-foreground min-w-0 flex-1 text-sm">
-          {state.notice}
-        </p>
-        {/* Whichever bite Undo is open on: a keep can answer after the
-            next bite is taken. */}
-        {state.undo !== null && !asking && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => dispatch({ type: "undo" })}
-          >
-            {WORDS.undo}
-          </Button>
-        )}
-      </div>
 
       {row !== null && !asking && (
         <ul>
@@ -612,6 +618,12 @@ export const GameWeek = ({ ports, outbox }: GameWeekProps): JSX.Element => {
             {bite.unplayable ? TAKE_WORDS.unplayable : undefined}
           </TakeRow>
         </ul>
+      )}
+
+      {blocked !== null && (
+        <Notice key={blocked} tone="danger" dismissible>
+          {RECORDING_FAILURE_COPY[blocked]}
+        </Notice>
       )}
 
       {outboxWords !== "" && (

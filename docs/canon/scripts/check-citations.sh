@@ -23,7 +23,7 @@ set -euo pipefail
 # tracked `.typ` file (canon or other typst, in docs/canon or elsewhere) and
 # every tracked text file that names a docs/canon path (source, docs, tests).
 # Proof: check-citations.test.sh runs this script over a scratch repository
-# holding each cell of that family, and pr.yml's `canon` job, which CI Gate
+# holding each cell of that family, and pr.yml's `guards` job, which CI Gate
 # needs, runs both.
 
 repo_root="$(git rev-parse --show-toplevel)"

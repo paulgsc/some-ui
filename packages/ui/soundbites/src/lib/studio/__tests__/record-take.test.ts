@@ -8,7 +8,7 @@ import type { ProjectTake } from "@soundbites/lib/project/model"
 import { recordTake } from "@soundbites/lib/studio/view"
 import { describe, expect, it } from "vitest"
 
-const IDLE = { activity: { kind: "idle" } } as const
+const IDLE = { activity: { kind: "idle" }, paired: true } as const
 
 function take(over: Partial<ProjectTake> = {}): ProjectTake {
   return {
@@ -24,9 +24,12 @@ function take(over: Partial<ProjectTake> = {}): ProjectTake {
 }
 
 describe("recordTake", () => {
-  it("says where the chosen take is kept: home, going home, or no place", () => {
-    const kept = (over: Partial<ProjectTake>): TakeKept | null | undefined =>
-      recordTake(IDLE, { take: take(over) }).row?.take.kept
+  it("says where the chosen take is kept: home, going home on a paired phone, kept on an unpaired one, or no place", () => {
+    const kept = (
+      over: Partial<ProjectTake>,
+      paired = true
+    ): TakeKept | null | undefined =>
+      recordTake({ ...IDLE, paired }, { take: take(over) }).row?.take.kept
     expect(kept({ keptBy: ["home"], onPhone: true })).toEqual({
       place: "home",
       since: null,
@@ -36,6 +39,15 @@ describe("recordTake", () => {
       since: null,
     })
     expect(kept({ keptBy: [], onPhone: true })).toEqual({ place: "going" })
+    // Not known to be paired (ST34), it is kept here; what home already
+    // holds stays on home.
+    expect(kept({ keptBy: [], onPhone: true }, false)).toEqual({
+      place: "phone",
+    })
+    expect(kept({ keptBy: ["home"], onPhone: true }, false)).toEqual({
+      place: "home",
+      since: null,
+    })
     // Carried in without its audio, and home doesn't hold it.
     expect(kept({ keptBy: [], onPhone: false })).toBeNull()
   })
@@ -47,6 +59,7 @@ describe("recordTake", () => {
     ).toBe(false)
     const playing = {
       activity: { kind: "playing", take: "t1", seq: 1 },
+      paired: true,
     } as const
     expect(recordTake(playing, { take: take() }).row).toMatchObject({
       playing: true,
@@ -76,6 +89,7 @@ describe("recordTake", () => {
         capMs: 60_000,
         project: "p",
       },
+      paired: true,
     } as const
     expect(recordTake(recording, { take: null }).button).toEqual({
       kind: "recording",

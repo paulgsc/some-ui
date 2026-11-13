@@ -2,6 +2,8 @@ import { AphHistory } from "@aph/components/aph-history"
 import { SEED_ENTRIES, SEED_SETTINGS } from "@aph/lib/seed"
 import type { AphStore } from "@aph/lib/store"
 import { createAphStore } from "@aph/lib/store"
+import type { EngagementEvent } from "@some-ui/engagement"
+import { createVisit } from "@some-ui/engagement"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import { fireEvent, render, screen, within } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
@@ -43,6 +45,37 @@ describe("History's missed days", () => {
     expect(onLogDay).toHaveBeenCalledWith("2026-09-30")
     expect(screen.queryByRole("button", { name: /Log Sep 15/ })).toBeNull()
     expect(screen.getByText(/Sep 14 – Sep 15 · 2 days/)).toBeInTheDocument()
+  })
+
+  it("offer each day within reach on the visit, and take the one logged (ENG9)", () => {
+    const sent: Array<EngagementEvent> = []
+    const visit = createVisit(
+      () => noon,
+      (event) => sent.push(event)
+    )
+    render(
+      <AphHistory
+        now={noon}
+        store={createAphStore({
+          settings: SEED_SETTINGS,
+          entries: SEED_ENTRIES,
+        })}
+        onLogDay={vi.fn()}
+        onEnterTheirs={vi.fn()}
+        visit={visit}
+      />
+    )
+    const missed = (kind: string): number =>
+      sent.filter((e) => e.affordance === "missed-day" && e.kind === kind)
+        .length
+    // Four gaps end within reach (Sep 19, 21, 27 and 30); nothing of the
+    // day leaves the phone.
+    expect(missed("offered")).toBe(4)
+    fireEvent.click(screen.getByRole("button", { name: /Log Sep 30/ }))
+    expect(missed("taken")).toBe(1)
+    expect(JSON.stringify(sent)).not.toContain("2026-09-30")
+    visit.end("moved-on")
+    expect(missed("passed-over")).toBe(3)
   })
 })
 
@@ -87,6 +120,46 @@ describe("History", () => {
     fireEvent.click(screen.getByRole("button", { name: /Take back/ }))
     expect(
       store.get().entries.find((e) => e.id === entry?.id)?.review
+    ).toBeNull()
+  })
+
+  it("changes my figure from the entry, and clears my call on it", () => {
+    const { store } = setup()
+    const day = screen.getByRole("region", { name: "Thu Oct 1" })
+    fireEvent.click(
+      within(day).getByRole("button", { name: "12:00: Your call" })
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Flag it" }))
+    fireEvent.change(screen.getByLabelText("Change mine"), {
+      target: { value: "5,2o0" },
+    })
+    fireEvent.click(screen.getByRole("button", { name: "Save" }))
+    const entry = store
+      .get()
+      .entries.find((e) => e.day === "2026-10-01" && e.checkpoint === "12")
+    expect(entry?.mine?.value).toBe(520)
+    expect(entry?.review).toBeNull()
+  })
+
+  it("removes an entry once asked twice, and the record keeps it", () => {
+    const { store } = setup()
+    const day = screen.getByRole("region", { name: "Fri Oct 2" })
+    fireEvent.click(
+      within(day).getByRole("button", { name: "7:00: Awaiting theirs" })
+    )
+    fireEvent.click(screen.getByRole("button", { name: /Remove from the log/ }))
+    fireEvent.click(screen.getByRole("button", { name: "Keep it" }))
+    fireEvent.click(screen.getByRole("button", { name: /Remove from the log/ }))
+    fireEvent.click(screen.getByRole("button", { name: "Remove" }))
+    const entry = store
+      .get()
+      .entries.find((e) => e.day === "2026-10-02" && e.checkpoint === "7")
+    expect(entry?.removed).toBe(true)
+    expect(
+      within(screen.getByRole("region", { name: "Fri Oct 2" })).queryByRole(
+        "button",
+        { name: /^7:00/ }
+      )
     ).toBeNull()
   })
 
@@ -161,5 +234,40 @@ describe("History", () => {
     fireEvent.change(note, { target: { value: "after coffee" } })
     fireEvent.blur(note)
     expect(note).toHaveValue("")
+  })
+})
+
+describe("History's drafts", () => {
+  it("lists drafts, and submits the ones picked together", () => {
+    const draft = (
+      id: string,
+      checkpoint: string
+    ): (typeof SEED_ENTRIES)[number] => ({
+      ...SEED_ENTRIES.find(
+        (e) => e.checkpoint === checkpoint && e.labels.length === 0
+      )!,
+      id,
+      day: "2026-10-02",
+      draft: true,
+    })
+    const store = createAphStore({
+      settings: SEED_SETTINGS,
+      entries: [
+        ...SEED_ENTRIES.filter((e) => e.day !== "2026-10-02"),
+        draft("d7", "7"),
+        draft("d12", "12"),
+      ],
+    })
+    render(<AphHistory now={noon} store={store} />)
+    const drafts = screen.getByRole("region", { name: "Drafts" })
+    expect(
+      within(drafts).getByText(/2 drafts not yet submitted/)
+    ).toBeInTheDocument()
+    fireEvent.click(within(drafts).getByRole("button", { name: "Pick all" }))
+    fireEvent.click(
+      within(drafts).getByRole("button", { name: /Submit 2 drafts/ })
+    )
+    expect(store.get().entries.filter((e) => e.draft === true)).toEqual([])
+    expect(screen.queryByRole("region", { name: "Drafts" })).toBeNull()
   })
 })

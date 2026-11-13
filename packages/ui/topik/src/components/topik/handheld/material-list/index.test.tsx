@@ -1,4 +1,6 @@
 import type { ComponentProps } from "react"
+import type { EngagementEvent } from "@some-ui/engagement"
+import { createVisit } from "@some-ui/engagement"
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import type { LessonItem } from "@topik/lib/topik/core/lesson-feed"
 import { afterEach, describe, expect, it } from "vitest"
@@ -74,5 +76,34 @@ describe("MaterialList's level filter", () => {
       />
     )
     expect(screen.queryByRole("radiogroup")).toBeNull()
+  })
+})
+
+describe("what MaterialList offers on the lesson's visit (ENG3)", () => {
+  it("offers the cards it shows, a level picked included, and nothing it hides", () => {
+    const read = (n: number, level: number): LessonItem => ({
+      ...scene(n, level),
+      sessions: [
+        { practice: "read-aloud", id: `set-${n}`, size: "", opened: false },
+      ],
+    })
+    const sent: Array<EngagementEvent> = []
+    const visit = createVisit(undefined, (event) => sent.push(event))
+    render(
+      <MaterialList
+        {...list({
+          fromRoutine: [read(1, 1), read(2, 1), read(3, 1), read(4, 2)],
+          visit,
+        })}
+      />
+    )
+    const offered = (): Array<EngagementEvent> =>
+      sent.filter((event) => event.kind === "offered")
+    expect(offered()).toHaveLength(3)
+    // Level 2 shows the fourth card, which is offered then and not before.
+    fireEvent.click(screen.getByRole("radio", { name: "TOPIK 2" }))
+    expect(offered()).toHaveLength(4)
+    visit.end("moved-on")
+    expect(sent.filter((event) => event.kind === "passed-over")).toHaveLength(4)
   })
 })

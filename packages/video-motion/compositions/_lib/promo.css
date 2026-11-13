@@ -1,0 +1,107 @@
+/* What every promo composition shares: the fonts, the palette's names, the
+   frame and its type. Copied into each render as lib/promo.css. */
+@font-face {
+  font-family: Display;
+  font-weight: 800;
+  src: url("../fonts/barlow-condensed-800.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: Display;
+  font-weight: 600;
+  src: url("../fonts/barlow-condensed-600.woff2") format("woff2");
+}
+
+:root {
+  /* The palette comes from each composition's variables (lib/motion.js);
+     these two are drawn from it. */
+  --mute: color-mix(in srgb, var(--ink) 55%, var(--ground));
+  --line: color-mix(in srgb, var(--ink) 16%, transparent);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  background: var(--ground);
+  height: 1920px;
+  overflow: hidden;
+  width: 1080px;
+}
+
+/* The ground is painted on the root: HyperFrames captures the page itself
+   with no background, so anything see-through over it would lose its blend. */
+#root {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: Display, sans-serif;
+  font-weight: 600;
+  inset: 0;
+  overflow: hidden;
+  position: absolute;
+}
+
+.mask {
+  display: block;
+  margin-bottom: -0.12em;
+  overflow: hidden;
+  padding-bottom: 0.12em;
+}
+
+/* One line each, measured by lib/motion.js's fit. */
+.line {
+  display: inline-block;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.display {
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.chip {
+  align-items: center;
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  border: 2px solid var(--line);
+  border-radius: 36px;
+  display: inline-flex;
+  flex: none;
+  font-size: 38px;
+  gap: 14px;
+  height: 72px;
+  letter-spacing: 0.02em;
+  padding: 0 32px;
+  white-space: nowrap;
+}
+
+.chip .dot {
+  background: var(--accent);
+  border-radius: 50%;
+  height: 16px;
+  width: 16px;
+}
+
+.glow {
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--accent) 22%, transparent),
+    transparent
+  );
+  border-radius: 50%;
+  height: 1200px;
+  left: -60px;
+  position: absolute;
+  width: 1200px;
+}
+
+.mark {
+  position: absolute;
+}

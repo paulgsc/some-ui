@@ -20,11 +20,17 @@
  * in by the idea screens' routes (`routes/_dashboard/_apk/journal`), which
  * may import it. Phone-only (`build.paths.ts`).
  */
-import type { HearingPorts, HomeReach, IdeaHome } from "@some-ui/soundbites"
-import type { Listening, TurnListener } from "@some-ui/voice-capture"
+import type { HearingPorts } from "@some-ui/soundbites"
+import type {
+  BundleHome,
+  HomeReach,
+  Listening,
+  TurnListener,
+} from "@some-ui/voice-capture"
 import { onPageVisibility } from "@some-ui/voice-capture"
 
 import { deviceListener } from "@/lib/device-listen"
+import type { HomeLinkState } from "@/lib/home-link"
 import { homeLink, pairingOf } from "@/lib/home-link"
 import { askHeard } from "@/lib/home-link/heard"
 import type { KeptRun } from "@/lib/home-link/kept-model"
@@ -91,52 +97,87 @@ export function eitherListener(ports: {
 let home: TurnListener | null = null
 
 /**
- * The idea screens' listener: home hearing each take (`hear`, soundbites'
- * `homeHearing`, made on first use, so a route builds no desk until it
- * listens) while paired, the phone's recognizer otherwise.
+ * Home hearing each take said on the phone's one desk of Studio's answers
+ * (`hear`, soundbites' `homeHearing`, made on first use, so a route builds
+ * no desk until it listens): an idea's (`phoneIdeaListener`) or an ask's
+ * (SFEED5, `lib/ask-answer`), named by what the take answers.
+ */
+function phoneHomeListener(
+  hear: (ports: HearingPorts) => TurnListener
+): TurnListener {
+  home ??= hear({
+    takes: ideaTakes(),
+    heard: askHeard,
+    now: () => Date.now(),
+    onVisibility: onPageVisibility,
+  })
+  return home
+}
+
+/**
+ * What an ask's answer listens through (SFEED5, `lib/ask-answer`): home's
+ * hearing alone, since only home hears an answer, and the phone's pairing,
+ * read once it has loaded.
+ */
+export function phoneAskHearing(hear: (ports: HearingPorts) => TurnListener): {
+  readonly listener: TurnListener
+  readonly loaded: () => Promise<void>
+  readonly paired: () => boolean
+} {
+  return {
+    listener: phoneHomeListener(hear),
+    loaded: () => homeLink().load(),
+    paired: () => pairingOf() !== null,
+  }
+}
+
+/**
+ * The idea screens' listener: home hearing each take while paired
+ * (`phoneHomeListener`), the phone's recognizer otherwise.
  */
 export function phoneIdeaListener(
   hear: (ports: HearingPorts) => TurnListener
 ): TurnListener {
-  const homeListener = (): TurnListener => {
-    home ??= hear({
-      takes: ideaTakes(),
-      heard: askHeard,
-      now: () => Date.now(),
-      onVisibility: onPageVisibility,
-    })
-    return home
-  }
   return eitherListener({
     loaded: () => homeLink().load(),
     pairing: () => pairingOf(),
     home: {
-      available: () => homeListener().available(),
+      available: () => phoneHomeListener(hear).available(),
       listen: (onWords, onReady, take) =>
-        homeListener().listen(onWords, onReady, take),
+        phoneHomeListener(hear).listen(onWords, onReady, take),
     },
     device: deviceListener,
     now: () => Date.now(),
   })
 }
 
-/** Where home is, from the pairing held and the voice lane's last run. */
+/**
+ * Where home is, from the phone's link to home and the voice lane's last
+ * run: unknown while the phone's own record of its pairing is still being
+ * read, so a paired phone never says it isn't for that moment (ST34).
+ */
 export function reachOf(
-  pairing: string | null,
+  link: HomeLinkState["link"],
   last: KeptRun | null
 ): HomeReach {
-  if (pairing === null) return "unpaired"
+  if (link.kind === "reading") return "unknown"
+  if (link.kind !== "paired") return "unpaired"
   return last?.kind === "unreachable" ? "away" : "near"
 }
 
 /**
- * Home, as a new idea's screen says where its idea goes (ST26): unpaired,
+ * Home, as a new idea's screen and Studio's takes say where things go
+ * (ST26, ST34): unknown until the phone has read its pairing; unpaired,
  * read from the pairing this phone holds; away, while the voice lane's last
  * run, which carries ideas home (`lib/home-link/ideas`), found home out of
  * reach; near otherwise.
  */
-export const ideaHome: IdeaHome = {
-  reach: () => reachOf(pairingOf(), laneRun(voiceLane).getSnapshot().last),
+export const ideaHome: BundleHome = {
+  reach: () =>
+    reachOf(
+      homeLink().getSnapshot().link,
+      laneRun(voiceLane).getSnapshot().last
+    ),
   subscribe: (listener) => {
     const stops = [
       homeLink().subscribe(listener),

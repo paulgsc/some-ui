@@ -5,6 +5,7 @@ import { Pause, Play } from "lucide-react"
 
 import { cn } from "../../../lib/utils"
 import { Button } from "../../ui/button"
+import { SameWidth } from "../../ui/same-width"
 
 export type TakeRowProps = {
   /** One take as the pattern shows it: `takeItemView(...).current[i]`. */
@@ -16,7 +17,7 @@ export type TakeRowProps = {
   /** Sets it aside (D3); absent for a take that offers no Let go. */
   onLetGo?: (() => void) | undefined
   /**
-   * Opens My data on this record (MD4), shown while `row.canDelete`: the
+   * Opens My data on this record (MD4), offered while `row.canDelete`: the
    * screen never deletes a record in place.
    */
   onDelete?: (() => void) | undefined
@@ -41,8 +42,6 @@ export type TakeRowProps = {
  * record home marks deletable offers Delete… instead (`row.canDelete`,
  * the pattern's `records: "delete-in-my-data"`), which opens My data on it
  * (MD4); one home deleted says when.
- * A control the row can't offer now (a take under way) stays in place,
- * disabled, so nothing jumps.
  */
 export const TakeRow = ({
   row,
@@ -81,7 +80,9 @@ export const TakeRow = ({
           )}
         </Button>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium">
+          {/* One line, cut short rather than wrapped: where it is kept
+              changes as it goes home, and the row keeps its height (HS1). */}
+          <p className="truncate text-sm font-medium">
             <span className="tabular-nums">
               {words.length(take.durationMs)}
             </span>
@@ -108,7 +109,7 @@ export const TakeRow = ({
       </div>
       {(onRedo !== undefined ||
         onLetGo !== undefined ||
-        (onDelete !== undefined && row.canDelete) ||
+        onDelete !== undefined ||
         extra !== undefined) && (
         <div className="flex flex-wrap items-center justify-end gap-1">
           {extra}
@@ -134,16 +135,21 @@ export const TakeRow = ({
               disabled={!row.canLetGo}
               aria-label={words.rowLabel(letGo, take.durationMs)}
             >
-              {letGo}
+              {/* "Let it go" or "Delete" as the take leaves the phone: one
+                  width, so Redo beside it stays put (HS1). */}
+              <SameWidth every={[words.letGo, words.discard]}>
+                {letGo}
+              </SameWidth>
             </Button>
           )}
-          {onDelete !== undefined && row.canDelete && (
+          {onDelete !== undefined && (
             <Button
               type="button"
               size="sm"
               variant="ghost"
               className="text-muted-foreground"
               onClick={onDelete}
+              disabled={!row.canDelete}
               aria-label={words.rowLabel(words.deleteRecord, take.durationMs)}
             >
               {words.deleteRecord}

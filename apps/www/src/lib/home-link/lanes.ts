@@ -13,18 +13,24 @@
  */
 import { useEffect, useSyncExternalStore } from "react"
 import type { HomeCall, HomeExchanged } from "@some-ui/core-utils"
+import { SERVER_CONTRACT_EPOCH } from "@some-ui/server-routes"
 
 import { screenRefreshers } from "@/lib/pull-refresh/refreshers"
 
-import { homeLink, paired, pairingOf, useHomeLink } from "./index"
+import { askCompat } from "./compat-read"
+import { homeLink, LINK_CLOCK, paired, pairingOf, useHomeLink } from "./index"
 import type { KeptRun, KeptState } from "./kept-model"
 import type { Kept, KeptPorts } from "./kept-runtime"
 import { createKept, laneExchange } from "./kept-runtime"
 import type { KeptRecord } from "./kept-watch"
 import { askKept, watchKept } from "./kept-watch"
 import type { HomeLinkState } from "./model"
+import { homeBusy } from "./model"
 import type { HomeRefresher } from "./pull"
 import { homeRefresher } from "./pull"
+import type { ServesRun } from "./serves"
+import { createServes, servesRefresher, watchServes } from "./serves"
+import type { Serves } from "./serves-model"
 import type { LaneView } from "./words"
 import { laneView, WORDS } from "./words"
 
@@ -46,7 +52,11 @@ export type LaneKind =
   | "jobs"
   | "voice"
   | "ideas"
+  | "episodeNotes"
   | "rounds"
+  | "rustWeeks"
+  | "rustPastes"
+  | "roundLog"
   | "endings"
 
 /** What a lane's sheet counts, as its record says. */
@@ -88,11 +98,17 @@ const wired = new Map<LaneId, Wired>()
 /** The runtimes of the lanes `useLaneHome` watches now: what a pull asks. */
 const watched = new Set<Kept>()
 
-/** How every run here reaches home: through the link, one at a time. */
+/** Whether home is still to be left alone, on the link's clock (AD3). */
+export function busyNow(): boolean {
+  return homeBusy(homeLink().getSnapshot(), LINK_CLOCK.now())
+}
+
+/** How every run here reaches home: through the link's drain, one at a time. */
 const LINK_PORTS: Omit<KeptPorts, "exchange"> = {
-  keep: (run) => homeLink().keep(run),
+  keep: (run) => homeLink().drain(run),
   paired,
-  now: Date.now,
+  homeBusy: busyNow,
+  now: LINK_CLOCK.now,
 }
 
 /** One runtime per lane per page load, over the first `lane` handed in. */
@@ -195,12 +211,13 @@ export type LaneReading = {
   readonly sendNow: boolean
 }
 
-/** How lane `id` reads from its `counts`, its `run` and the link's `state`. */
+/** How lane `id` reads from its `counts`, its `run`, the link's `state` and whether home `serves` this version. */
 export function laneReading(
   id: LaneId,
   counts: LaneCounts,
   run: KeptState,
-  state: HomeLinkState
+  state: HomeLinkState,
+  serves: Serves | null
 ): LaneReading {
   const isPaired = pairingOf(state) !== null
   return {
@@ -211,6 +228,7 @@ export function laneReading(
       known: state.link.kind !== "reading",
       paired: isPaired,
       run,
+      serves,
     }),
     sendNow: offersSendNow(run, counts, isPaired),
   }
@@ -218,7 +236,46 @@ export function laneReading(
 
 /** `lane` as its mark and Settings show it, read without a watch of its own. */
 export function useLaneView(lane: Lane): LaneReading {
-  return laneReading(lane.id, lane.useCounts(), useLaneRun(lane), useHomeLink())
+  return laneReading(
+    lane.id,
+    lane.useCounts(),
+    useLaneRun(lane),
+    useHomeLink(),
+    useServes()
+  )
+}
+
+let serves: ServesRun | null = null
+
+/** One ask of whether home works with this build, per page load. */
+function servesRun(): ServesRun {
+  serves ??= createServes({
+    read: () => askCompat(SERVER_CONTRACT_EPOCH),
+    now: LINK_CLOCK.now,
+  })
+  return serves
+}
+
+/**
+ * While mounted (the app shell's `HomeLanes`), asks home whether it works
+ * with this build at the moments `./serves` names, a pull among them (#2843).
+ */
+export function useHomeServes(): void {
+  useEffect(() => {
+    const run = servesRun()
+    const unwatch = watchServes(run, { link: homeLink(), doc: document })
+    const drop = screenRefreshers.register(servesRefresher(run))
+    return (): void => {
+      unwatch()
+      drop()
+    }
+  }, [])
+}
+
+/** What home last said of this build, for the marks; null when it said nothing. */
+export function useServes(): Serves | null {
+  const run = servesRun()
+  return useSyncExternalStore(run.subscribe, run.getSnapshot).serves
 }
 
 /** "Send now": asks for a run, as any moment the watch names would. */

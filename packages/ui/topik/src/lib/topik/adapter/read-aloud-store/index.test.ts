@@ -2,7 +2,10 @@ import type { KeyedStorage } from "@some-ui/core-utils"
 import { memoryStorage } from "@some-ui/vite-config/vitest/memory-storage"
 import {
   createReadAloudStore,
+  onReadAloudWritten,
+  plainKey,
   READ_ALOUD_STORAGE_KEYS,
+  readAloudForHome,
 } from "@topik/lib/topik/adapter/read-aloud-store"
 import { storedSet } from "@topik/lib/topik/read-aloud/added-sets"
 import { emptyRecord } from "@topik/lib/topik/read-aloud/records"
@@ -50,6 +53,26 @@ const PROGRESS: SetProgress = {
   returns: { "s:cafe-order": 1 },
   counted: 4,
   reported: true,
+}
+
+const SET = {
+  deck: {
+    id: "everyday-2",
+    title: "Everyday",
+    from: 'your note on Oct 13: "level two"',
+    words: [{ id: "juda", lemma: "주다", gloss: "give" }],
+    lines: [
+      {
+        id: "give",
+        level: 2 as const,
+        korean: "주세요.",
+        english: "Please give it to me.",
+        words: [{ wordId: "juda", surface: "주세요", stemEnd: 1 }],
+      },
+    ],
+  },
+  addedAt: "2026-10-14T06:00:00.000Z",
+  openedAt: null,
 }
 
 describe("the read-aloud store", () => {
@@ -102,25 +125,7 @@ describe("the read-aloud store", () => {
   it("keeps the added word sets, and leaves out one that no longer parses", () => {
     const storage = memoryStorage()
     const store = createReadAloudStore(storage)
-    const set = {
-      deck: {
-        id: "everyday-2",
-        title: "Everyday",
-        from: 'your note on Oct 13: "level two"',
-        words: [{ id: "juda", lemma: "주다", gloss: "give" }],
-        lines: [
-          {
-            id: "give",
-            level: 2 as const,
-            korean: "주세요.",
-            english: "Please give it to me.",
-            words: [{ wordId: "juda", surface: "주세요", stemEnd: 1 }],
-          },
-        ],
-      },
-      addedAt: "2026-10-14T06:00:00.000Z",
-      openedAt: null,
-    }
+    const set = SET
     store.saveSets([set])
     expect(createReadAloudStore(storage).sets()).toEqual([set])
 
@@ -154,8 +159,12 @@ describe("the read-aloud store", () => {
     expect(createReadAloudStore(storage).progress(1, ":all")).toEqual(PROGRESS)
   })
 
-  it("keeps the sitting's answers across stores, and says when it could not", () => {
+  it("keeps the sitting's answers across stores, says when it could not, and tells of each write it kept", () => {
     const storage = memoryStorage()
+    let told = 0
+    const stop = onReadAloudWritten(() => {
+      told += 1
+    })
     const answers = {
       tooEasy: { at: "2026-10-21T08:00:00.000Z" },
       tooManyRepeats: null,
@@ -164,9 +173,14 @@ describe("the read-aloud store", () => {
     expect(createReadAloudStore(storage).feedback()).toEqual(answers)
     createReadAloudStore(storage).saveFeedback(null)
     expect(createReadAloudStore(storage).feedback()).toBeNull()
+    expect(told).toBe(2)
     for (const gone of [null, refusing]) {
       expect(createReadAloudStore(gone).saveFeedback(answers)).toBe(false)
     }
+    expect(told).toBe(2)
+    stop()
+    createReadAloudStore(storage).saveFeedback(answers)
+    expect(told).toBe(2)
   })
 
   it("keeps the sentence tally across stores, empties it on a clear, and says when it could not", () => {
@@ -224,6 +238,77 @@ describe("the read-aloud store", () => {
       expect(store.sets()).toEqual([])
       expect(store.tally()).toEqual({})
       expect(store.count({ type: "set" }, "2026-09-28").totals.sets).toBe(1)
+    }
+  })
+
+  it("reads every Korean record it keeps as home's entries (KH3), and nothing it doesn't", () => {
+    const storage = memoryStorage()
+    expect(readAloudForHome(storage)).toEqual([])
+    const store = createReadAloudStore(storage)
+    store.savePace("juda", { factor: 1.2, seen: 3 })
+    store.count({ type: "set" }, "2026-10-20")
+    store.saveProgress(2, "everyday-2", PROGRESS)
+    store.saveFeedback({
+      tooEasy: { at: "2026-10-21T08:00:00.000Z" },
+      tooManyRepeats: null,
+    })
+    store.saveTally(noteShown({}, "cafe-order:1x2", "2026-10-20T09:00:00.000Z"))
+    store.saveSets([SET])
+    const entries = readAloudForHome(storage)
+    expect(entries.map(({ kind, key }) => `${kind} ${key}`)).toEqual([
+      "set everyday-2",
+      "pace juda",
+      "tally cafe-order~3a~1x2",
+      "record phone",
+      "progress phone",
+      "feedback phone",
+    ])
+    expect(entries[0]?.body).toEqual(storedSet(SET))
+    expect(entries[1]?.body).toEqual({ wordId: "juda", factor: 1.2, seen: 3 })
+    expect(entries[2]?.body).toMatchObject({ sentence: "cafe-order:1x2" })
+
+    // A set finished and the answers taken back go home as cleared, so
+    // home doesn't keep holding them as they were.
+    store.saveProgress(2, "everyday-2", null)
+    store.saveFeedback(null)
+    const cleared = readAloudForHome(storage).filter(
+      ({ kind }) => kind === "progress" || kind === "feedback"
+    )
+    expect(cleared).toEqual([
+      { kind: "progress", key: "phone", body: { version: 1, cleared: true } },
+      { kind: "feedback", key: "phone", body: { version: 1, cleared: true } },
+    ])
+
+    // A document this build can't read is never sent as cleared: home's
+    // copy stands.
+    storage.map.set(READ_ALOUD_STORAGE_KEYS.progress, '{"version":9}')
+    storage.map.set(READ_ALOUD_STORAGE_KEYS.feedback, "{not json")
+    expect(
+      readAloudForHome(storage).filter(
+        ({ kind }) => kind === "progress" || kind === "feedback"
+      )
+    ).toEqual([])
+  })
+
+  it("makes any id a key home takes, and no two ids one key", () => {
+    expect(plainKey("everyday-2")).toBe("everyday-2")
+    const ids = [
+      "w:주다",
+      "w:가다",
+      ".hidden",
+      "https-deck",
+      "~p~https-deck",
+      "deck.json",
+      "deck.json~s~",
+      "a~b",
+      "",
+    ]
+    const keys = ids.map(plainKey)
+    expect(new Set(keys).size).toBe(ids.length)
+    for (const key of keys) {
+      expect(key).toMatch(/^[\w.~-]+$/)
+      expect(key.startsWith(".") || key.startsWith("http")).toBe(false)
+      expect(/\.json$/i.test(key)).toBe(false)
     }
   })
 })

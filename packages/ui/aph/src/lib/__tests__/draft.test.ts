@@ -2,11 +2,14 @@ import type { Draft, DraftEvent } from "@aph/lib/draft"
 import {
   atTime,
   commitDraft,
+  deleteDraft,
   draftValue,
   keepsOnePlain,
   newDraft,
+  removeEntry,
   reviewEntry,
   stepDraft,
+  submitEntries,
 } from "@aph/lib/draft"
 import { reconcile } from "@aph/lib/model"
 import { SEED_ENTRIES, SEED_SETTINGS } from "@aph/lib/seed"
@@ -160,13 +163,45 @@ describe("saving mine", () => {
     expect(reconcile(settings, fixed).status).toBe("matched")
   })
 
-  it("adds a labelled figure beside the plain one, as a comparison", () => {
+  it("rewrites the one entry at a time already logged, labelled or not", () => {
+    // Oct 2 at 7:00 is logged (~4,300): a labelled figure there replaces it
+    // and carries the draft's labels, rather than standing beside it.
+    const target = must(
+      SEED_ENTRIES.find((e) => e.day === "2026-10-02" && e.checkpoint === "7")
+    )
     const d = run(newDraft("mine", "7", null), [
       ...typed("4100"),
       { type: "toggleLabel", label: "no-bs" },
     ])
-    const after = commitDraft(settings, SEED_ENTRIES, d, commit)?.entries ?? []
-    expect(after).toHaveLength(SEED_ENTRIES.length + 1)
+    const saved = commitDraft(settings, SEED_ENTRIES, d, commit)
+    expect(saved?.id).toBe(target.id)
+    expect(saved?.entries).toHaveLength(SEED_ENTRIES.length)
+    expect(must(saved?.entries.find((e) => e.id === target.id))).toMatchObject({
+      mine: { value: 4100, approx: true },
+      labels: ["no-bs"],
+    })
+    // Saved again with no label picked, it keeps the ones it has.
+    const again = run(newDraft("mine", "7", null), typed("4200"))
+    const kept = commitDraft(settings, saved?.entries ?? [], again, commit)
+    expect(must(kept?.entries.find((e) => e.id === target.id))).toMatchObject({
+      mine: { value: 4200, approx: true },
+      labels: ["no-bs"],
+    })
+  })
+
+  it("adds a new entry where the one logged there was removed", () => {
+    const target = must(
+      SEED_ENTRIES.find((e) => e.day === "2026-10-02" && e.checkpoint === "7")
+    )
+    const before = removeEntry(SEED_ENTRIES, target.id)
+    const d = run(newDraft("mine", "7", null), typed("4100"))
+    const saved = commitDraft(settings, before, d, commit)
+    expect(saved?.id).toBe("new")
+    expect(saved?.entries).toHaveLength(SEED_ENTRIES.length + 1)
+    expect(must(saved?.entries.find((e) => e.id === target.id))).toEqual({
+      ...target,
+      removed: true,
+    })
   })
 
   it("saves nothing without a figure", () => {
@@ -292,5 +327,32 @@ describe("saving theirs", () => {
   it("saves nothing for an entry that is not there", () => {
     const d = run(newDraft("theirs", null, "gone"), typed("4900"))
     expect(commitDraft(settings, SEED_ENTRIES, d, commit)).toBeNull()
+  })
+})
+
+describe("drafts", () => {
+  it("saves a new figure as a draft, and none while another day's drafts wait", () => {
+    const d = run(newDraft("mine", "7", null, "2026-10-01"), typed("4100"))
+    const first = commitDraft(settings, [], d, commit)
+    expect(must(first?.entries[0]).draft).toBe(true)
+    const today = run(newDraft("mine", "12", null), typed("5000"))
+    expect(
+      commitDraft(settings, first?.entries ?? [], today, {
+        ...commit,
+        id: "later",
+      })
+    ).toBeNull()
+    const submitted = submitEntries(first?.entries ?? [], ["new"])
+    expect(must(submitted[0])).not.toHaveProperty("draft")
+    expect(
+      commitDraft(settings, submitted, today, { ...commit, id: "later" })
+    ).not.toBeNull()
+  })
+
+  it("deletes a draft outright, and only a draft", () => {
+    const draft = { ...must(SEED_ENTRIES[0]), id: "d", draft: true }
+    expect(deleteDraft([draft, ...SEED_ENTRIES], "d")).toEqual(SEED_ENTRIES)
+    const target = must(SEED_ENTRIES[0])
+    expect(deleteDraft(SEED_ENTRIES, target.id)).toEqual(SEED_ENTRIES)
   })
 })

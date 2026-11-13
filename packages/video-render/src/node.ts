@@ -6,8 +6,16 @@
 import { execFile } from "node:child_process"
 import { createHash } from "node:crypto"
 import { createReadStream } from "node:fs"
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises"
-import { join, resolve as resolvePath } from "node:path"
+import {
+  copyFile,
+  mkdir,
+  readdir,
+  readFile,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises"
+import { basename, dirname, join, resolve as resolvePath } from "node:path"
 import { z } from "zod"
 
 import { parseCutList } from "./cut-list"
@@ -15,10 +23,17 @@ import type { Parsed } from "./cut-list"
 import { parseFormat } from "./format"
 import type { Format } from "./format"
 import type { SourceFacts } from "./plan"
+import { DEFAULT_POLICY } from "./policy"
 import { render } from "./render"
 import type { Ports, Rendered, RenderOptions } from "./render"
 import { parseSeries, versionFile, versionOfFile } from "./series"
 import type { Series } from "./series"
+import {
+  stepCache,
+  withCachedBurnIns,
+  withCachedCompositions,
+  withCachedFfmpeg,
+} from "./step-cache"
 
 type Ran = {
   readonly ok: boolean
@@ -180,7 +195,26 @@ export function nodePorts(root: string): Ports {
       await mkdir(at(dir), { recursive: true })
     },
     writeFile: (file, text) => writeFile(at(file), text),
+    fileBytes: async (file): Promise<number | null> => {
+      try {
+        return (await stat(at(file))).size
+      } catch {
+        return null
+      }
+    },
+    remove: async (file): Promise<void> => {
+      await rm(at(file), { force: true })
+    },
   }
+}
+
+export { keyOf, stepCache } from "./step-cache"
+export type { StepCache } from "./step-cache"
+
+/** ffmpeg's version line, the part of a step's key that names the tool. */
+export async function ffmpegVersion(cwd: string): Promise<string> {
+  const ran = await run("ffmpeg", ["-version"], cwd)
+  return ran.stdout.toString("utf8").split("\n")[0] ?? ""
 }
 
 export const readJson = async (file: string): Promise<unknown> =>
@@ -237,6 +271,71 @@ async function readVersioned<T extends { readonly version: number }>(
   return parsed
 }
 
+/** Where in home's brand folder the sound kit is kept (HYPER4, #2727). */
+export const BRAND_SOUNDS = "sounds"
+
+/**
+ * The brand files a series version names, copied into a video's `root` from
+ * `brand`, home's folder of the owner's files (`${STORAGE}/brand`, mounted
+ * read-only at `/brand`; never a repository's): the music bed from `brand`
+ * itself, each sound of the kit from `brand/sounds`. Each is found by its
+ * file name and lands where the series names it. Nothing is checked here:
+ * the renderer checks each file against the series' sum, so a changed file
+ * is refused, not used.
+ */
+export async function placeBrandFiles(
+  series: Series,
+  brand: string | undefined,
+  root: string
+): Promise<Parsed<{ readonly bed: boolean; readonly sounds: number }>> {
+  const wanted: Array<{
+    readonly what: string
+    readonly from: string
+    readonly to: string
+  }> = []
+  const bed = series.music?.bed
+  if (bed)
+    wanted.push({
+      what: "the music bed",
+      from: basename(bed.file),
+      to: bed.file,
+    })
+  for (const [sound, kit] of Object.entries(series.sounds)) {
+    wanted.push({
+      what: `the ${sound} sound`,
+      from: join(BRAND_SOUNDS, basename(kit.file)),
+      to: kit.file,
+    })
+  }
+  if (wanted.length === 0) return { ok: true, value: { bed: false, sounds: 0 } }
+  if (brand === undefined) {
+    return {
+      ok: false,
+      problems: [
+        `The series names ${wanted.map((w) => w.what).join(", ")}, and no brand folder was given to hold them`,
+      ],
+    }
+  }
+  const problems: Array<string> = []
+  for (const w of wanted) {
+    const from = join(brand, w.from)
+    try {
+      await mkdir(dirname(join(root, w.to)), { recursive: true })
+      await copyFile(from, join(root, w.to))
+    } catch {
+      problems.push(`${w.what}: ${from} can't be read`)
+    }
+  }
+  if (problems.length > 0) return { ok: false, problems }
+  return {
+    ok: true,
+    value: {
+      bed: bed !== undefined,
+      sounds: Object.keys(series.sounds).length,
+    },
+  }
+}
+
 /** One version of the series in `dir`, or the newest (`readVersioned`). */
 export const readSeries = (
   dir: string,
@@ -257,7 +356,23 @@ export const readFormat = (
 export async function renderFolder(
   root: string,
   seriesDir: string,
-  options: RenderOptions & Partial<Pick<Ports, "recordBurnIn" | "checkBurnIns">>
+  options: RenderOptions &
+    Partial<Pick<Ports, "recordBurnIn" | "checkBurnIns" | "compositions">> & {
+      /**
+       * Keep each ffmpeg step, each burn-in recorded and each composition
+       * drawn under this folder,
+       * relative to `root`, so a retry runs only what changed; held to
+       * `policy.cacheBytes`.
+       */
+      readonly stepCacheDir?: string
+      /** Where a step not kept, over the cache's budget, is said. */
+      readonly warn?: (line: string) => void
+      /**
+       * Home's brand folder: the series' brand files are copied into `root`
+       * from it first (`placeBrandFiles`). Without it, they must be there.
+       */
+      readonly brand?: string
+    }
 ): Promise<Rendered> {
   const cutList = parseCutList(await readJson(join(root, "cut-list.json")))
   if (!cutList.ok) {
@@ -271,15 +386,80 @@ export async function renderFolder(
   }
   const series = await readSeries(seriesDir, cutList.value.series.version)
   if (!series.ok) return series
-  const { recordBurnIn, checkBurnIns, ...rest } = options
-  return render(
-    cutList.value,
-    series.value,
-    {
-      ...nodePorts(root),
-      ...(recordBurnIn ? { recordBurnIn } : {}),
-      ...(checkBurnIns ? { checkBurnIns } : {}),
-    },
-    rest
-  )
+  const {
+    recordBurnIn,
+    checkBurnIns,
+    compositions,
+    stepCacheDir,
+    warn,
+    brand,
+    ...rest
+  } = options
+  if (brand !== undefined) {
+    const placed = await placeBrandFiles(series.value, brand, root)
+    if (!placed.ok) return placed
+  }
+  const own: Ports = {
+    ...nodePorts(root),
+    ...(recordBurnIn ? { recordBurnIn } : {}),
+    ...(checkBurnIns ? { checkBurnIns } : {}),
+    ...(compositions ? { compositions } : {}),
+  }
+  let version: Promise<string> | null = null
+  const cache = stepCacheDir
+    ? stepCache(
+        resolvePath(root, stepCacheDir),
+        rest.policy ?? DEFAULT_POLICY,
+        warn ??
+          ((line): void => {
+            process.stderr.write(`${line}\n`)
+          })
+      )
+    : null
+  const ports = cache
+    ? withCachedCompositions(
+        withCachedBurnIns(
+          withCachedFfmpeg(
+            own,
+            root,
+            cache,
+            (): Promise<string> => (version ??= ffmpegVersion(root))
+          ),
+          root,
+          cache
+        ),
+        root,
+        cache
+      )
+    : own
+  return render(cutList.value, series.value, ports, rest)
+}
+
+/**
+ * The folder every show's format is pinned in, one folder per format
+ * (`templates.ts`): the call's and Playoff Delta's, whose tests read their
+ * pins here.
+ */
+export const TEMPLATES_DIR = join(import.meta.dirname, "templates")
+
+/** A path from where the command was typed (`pnpm --filter` sets INIT_CWD). */
+export const here = (p: string): string =>
+  resolvePath(process.env["INIT_CWD"] ?? process.cwd(), p)
+
+/** Stops a command, saying why; `runCommand` prints it and sets the exit code. */
+export class Refused extends Error {}
+
+export function fail(lines: ReadonlyArray<string>): never {
+  throw new Refused(lines.join("\n"))
+}
+
+/** Runs `main`, printing a refusal's reasons rather than a stack. */
+export async function runCommand(main: () => Promise<void>): Promise<void> {
+  try {
+    await main()
+  } catch (e) {
+    if (!(e instanceof Refused)) throw e
+    process.stderr.write(`${e.message}\n`)
+    process.exitCode = 1
+  }
 }

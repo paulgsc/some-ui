@@ -18,7 +18,7 @@ import {
   pacificDay,
   PASS_REASONS,
 } from "@some-ui/job-desk"
-import { Badge, Button, Input, Label, Textarea } from "@some-ui/shared"
+import { Badge, Button, Input, Label, Notice, Textarea } from "@some-ui/shared"
 import { ExternalLink } from "lucide-react"
 
 import { useMinuteClock } from "@/lib/clock"
@@ -430,7 +430,9 @@ const Draft = ({
         {note !== undefined && (
           <p className="text-muted-foreground text-xs">{note}</p>
         )}
-        <CopyButton text={draft} what={label} />
+        <div>
+          <CopyButton text={draft} what={label} />
+        </div>
       </>
     )}
   </div>
@@ -549,9 +551,11 @@ const FitNote = ({
       >
         Keep it for the next run
       </Button>
-      <p role="status" className="text-muted-foreground text-xs">
+      {/* The pick's own count, always shown: a keep changes its words, not
+          the screen's layout (HS1). */}
+      <p className="text-muted-foreground text-xs">
         {kept === 0
-          ? ""
+          ? "No fit note kept for this pick yet."
           : `${kept === 1 ? "One fit note" : `${kept} fit notes`} kept for this pick.`}
       </p>
     </section>
@@ -637,9 +641,9 @@ const Ending = ({
               onChange={(e) => keep({ minutes: e.target.value })}
             />
             {said && !minutesFit && (
-              <span className="text-muted-foreground text-xs">
+              <Notice tone="warning">
                 {minutesRange(MAX_DEBRIEF_MINUTES)}
-              </span>
+              </Notice>
             )}
           </section>
           <section className="flex flex-col gap-2">

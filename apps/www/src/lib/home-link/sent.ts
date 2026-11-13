@@ -7,9 +7,13 @@
  * reflection's as home answered it (`./reflections`), each ask for the next
  * scene's as home answered it (`./prompts`), each study note's SHA-256 as
  * home answered for it (`./notes`), each grammar-lens entry's digest as home
- * read it back (`./lens-record`), each Studio idea's as home answered it
- * (`./ideas`, held or refused), and the digests home
- * refused, so the drain does not offer an unchanged refused item again
+ * read it back (`./lens-record`), each other Korean entry's (`./korean-record`,
+ * as `<kind>/<key>`), each Studio idea's as home answered it
+ * (`./ideas`, held or refused), each note on an episode as home answered it
+ * (`./episode-notes`, held or refused), each Studio video kept for home to make as
+ * home answered it (`./videos`), each Rust Rounds week sent, paste and
+ * card-log sitting as home answered or read it back (`./rust-kept`), the events of a log home took
+ * (`events`, `./leetype-log`'s `TakenEvents`), and the digests home refused, so the drain does not offer an unchanged refused item again
  * (it goes once its bytes change). Kept for one pairing (`pairing`, the
  * link's id for it): another pairing starts from nothing. Bookkeeping, not
  * the record: lost, it only means sending again, which home answers as
@@ -43,7 +47,14 @@ export type Sent = {
   readonly prompts: Readonly<Record<string, string>>
   readonly notes: Readonly<Record<string, string>>
   readonly lens: Readonly<Record<string, string>>
+  readonly korean: Readonly<Record<string, string>>
   readonly ideas: Readonly<Record<string, string>>
+  readonly episodeNotes: Readonly<Record<string, string>>
+  readonly videos: Readonly<Record<string, string>>
+  readonly rustWeeks: Readonly<Record<string, string>>
+  readonly rustPastes: Readonly<Record<string, string>>
+  readonly roundLog: Readonly<Record<string, string>>
+  readonly events: Readonly<Record<string, string>>
 }
 
 type Store = KeyedStorage | null
@@ -59,7 +70,14 @@ const emptyFor = (pairing: string): Sent => ({
   prompts: {},
   notes: {},
   lens: {},
+  korean: {},
   ideas: {},
+  episodeNotes: {},
+  videos: {},
+  rustWeeks: {},
+  rustPastes: {},
+  roundLog: {},
+  events: {},
 })
 
 /** The string entries of `value`, and whether every entry was one. */
@@ -93,7 +111,14 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
   const prompts = stringsOf(parsed.prompts)
   const notes = stringsOf(parsed.notes)
   const lens = stringsOf(parsed.lens)
+  const korean = stringsOf(parsed.korean)
   const ideas = stringsOf(parsed.ideas)
+  const episodeNotes = stringsOf(parsed.episodeNotes)
+  const videos = stringsOf(parsed.videos)
+  const rustWeeks = stringsOf(parsed.rustWeeks)
+  const rustPastes = stringsOf(parsed.rustPastes)
+  const roundLog = stringsOf(parsed.roundLog)
+  const events = stringsOf(parsed.events)
   return {
     value: {
       pairing: parsed.pairing,
@@ -106,7 +131,14 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
       prompts: prompts.value,
       notes: notes.value,
       lens: lens.value,
+      korean: korean.value,
       ideas: ideas.value,
+      episodeNotes: episodeNotes.value,
+      videos: videos.value,
+      rustWeeks: rustWeeks.value,
+      rustPastes: rustPastes.value,
+      roundLog: roundLog.value,
+      events: events.value,
     },
     whole: [
       sessions,
@@ -118,7 +150,14 @@ function readSentRecord(raw: string): Salvaged<Sent> | null {
       prompts,
       notes,
       lens,
+      korean,
       ideas,
+      episodeNotes,
+      videos,
+      rustWeeks,
+      rustPastes,
+      roundLog,
+      events,
     ].every((kind) => kind.whole),
   }
 }
@@ -144,6 +183,8 @@ export type KeyedGoing<T> = {
 export type Staying = {
   readonly notes?: (key: string) => boolean
   readonly lens?: (key: string) => boolean
+  readonly korean?: (key: string) => boolean
+  readonly events?: (key: string) => boolean
 }
 
 /** `record` with only the keys `stays` keeps; all of them without it. */
@@ -170,7 +211,7 @@ function without(
 /**
  * `sent` with what home now holds added; unwritten, the next send repeats
  * it. A kept item is held or refused, never both: home's latest answer for
- * it replaces the other. The study notes and the grammar-lens record keep
+ * it replaces the other. The study notes and the Korean record keep
  * only the keys `stays` says are still on the phone: those stores let items
  * go at their caps, and one value in `localStorage` must not outgrow them.
  */
@@ -191,7 +232,14 @@ export function rememberSent(
     prompts: { ...sent.prompts, ...more.prompts },
     notes: keptOnly({ ...sent.notes, ...more.notes }, stays.notes),
     lens: keptOnly({ ...sent.lens, ...more.lens }, stays.lens),
+    korean: keptOnly({ ...sent.korean, ...more.korean }, stays.korean),
     ideas: { ...sent.ideas, ...more.ideas },
+    episodeNotes: { ...sent.episodeNotes, ...more.episodeNotes },
+    videos: { ...sent.videos, ...more.videos },
+    rustWeeks: { ...sent.rustWeeks, ...more.rustWeeks },
+    rustPastes: { ...sent.rustPastes, ...more.rustPastes },
+    roundLog: { ...sent.roundLog, ...more.roundLog },
+    events: keptOnly({ ...sent.events, ...more.events }, stays.events),
   }
   // Unwritten (full): the next send carries these again, and home says
   // unchanged.

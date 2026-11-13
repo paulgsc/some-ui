@@ -1,5 +1,6 @@
 import { inMemoryStorage } from "@some-ui/core-utils"
-import { parseEpisode, REVIEW_SCHEMA } from "@some-ui/video-render"
+import { REVIEW_SCHEMA } from "@some-ui/video-render"
+import { parseEpisode } from "@some-ui/video-render/testing"
 import type { Playback } from "@some-ui/voice-capture"
 import { TAKE_WORDS } from "@some-ui/voice-capture"
 import { simulatedMicrophone, SPEAKING } from "@some-ui/voice-capture/testing"
@@ -179,6 +180,9 @@ describe("Studio", () => {
     expect(
       await screen.findByRole("region", { name: W.finish.upload.heading })
     ).toBeInTheDocument()
+    // Where a review is looked for, Finish says what Studio checks and
+    // what it doesn't judge (ST34, decision 10).
+    expect(screen.getByText(W.judges)).toBeInTheDocument()
     expect(screen.getByText(upload.title)).toBeInTheDocument()
     expect(screen.getByText(upload.description)).toBeInTheDocument()
     expect(screen.queryByText(W.finish.uploadCopy)).toBeNull()
@@ -186,6 +190,21 @@ describe("Studio", () => {
     fireEvent.click(screen.getByRole("button", { name: "Copy description" }))
     expect(copied).toEqual([upload.title, upload.description])
     expect(screen.getByLabelText(W.finish.linkLabel)).toBeInTheDocument()
+    // Home making it (ST33).
+    const home = screen.getByRole("region", { name: W.finish.toHome.heading })
+    expect(home).toHaveTextContent(W.finish.toHome.offer)
+    expect(home).toHaveTextContent(W.finish.toHome.drive)
+    fireEvent.click(
+      screen.getByRole("button", { name: W.finish.toHome.button })
+    )
+    expect(await screen.findByText(W.finish.toHome.handed)).toBeInTheDocument()
+    // Held in its place once asked; where it stands is said over the screen.
+    expect(
+      screen.getByRole("button", { name: W.finish.toHome.button })
+    ).toBeDisabled()
+    expect(
+      screen.getByText(/Kept on this phone since .*paired/)
+    ).toBeInTheDocument()
   })
 
   it("shows the loop as steps with no video, then Record as the place to start once Claude's scenes are opened", async () => {
@@ -213,7 +232,12 @@ describe("Studio", () => {
     ).toBeInTheDocument()
     expect(screen.getByText(W.record.adLib)).toBeInTheDocument()
     expect(screen.getByText(W.record.mustStayTrue(2))).toBeInTheDocument()
-    expect(screen.getByText(W.record.runs(20_000))).toBeInTheDocument()
+    // How long the scene runs, and how long a take may: what is left of the
+    // video's time.
+    const runs = W.record.runs(20_000, 0).split(" · ")[0] ?? ""
+    expect(
+      screen.getByText((text) => text.startsWith(`${runs} · `))
+    ).toBeInTheDocument()
     await takeOne()
     // The scene's length follows the take at once.
     expect(screen.getByText(W.record.runsWith(4_700))).toBeInTheDocument()

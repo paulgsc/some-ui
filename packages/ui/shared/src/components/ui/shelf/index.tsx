@@ -6,6 +6,7 @@ import type { ShelfPort } from "../../../lib/shelf"
 import type { ShelfRuntime } from "../../../lib/shelf/runtime"
 import { createShelfKeeper, createShelfList } from "../../../lib/shelf/runtime"
 import { Button } from "../button"
+import { Notice } from "../notice"
 
 /*
  * The learner shelf on screen (canon Rem. 7.3; `lib/shelf` holds the rules
@@ -187,10 +188,14 @@ export const KeptShelf = <Kept,>({
       )}
 
       {rowError && (
-        <p role="alert" className="text-destructive text-sm">
+        <Notice
+          key={`${rowError.action} ${rowError.key}`}
+          tone="danger"
+          dismissible
+        >
           {rowError.key} could not be{" "}
           {rowError.action === "read" ? "read" : "removed"}. Try again.
-        </p>
+        </Notice>
       )}
     </section>
   )
@@ -208,6 +213,9 @@ type KeepOnShelfProps = Omit<KeptShelfProps<never>, "replay"> & {
  * so, with the shelf itself below to make room from; nothing is removed
  * unless the learner removes it. Key it on the item, so a new item is a new
  * question.
+ *
+ * The button keeps its place in every state, disabled where nothing a tap
+ * could do now; the full shelf's list is the one thing that opens below.
  */
 export const KeepOnShelf = ({
   shelf,
@@ -216,61 +224,65 @@ export const KeepOnShelf = ({
   body,
 }: KeepOnShelfProps): JSX.Element => {
   const [keeper, keeping] = useRuntime(shelf, createShelfKeeper)
-
-  if (keeping.status === "kept") {
-    const replay = `Replay it from ${words.replayFrom}.`
-    return (
-      <p role="status" className="flex items-center gap-2 px-1 text-sm">
-        <Check className="text-success size-4" aria-hidden="true" />
-        {keeping.unchanged
-          ? "Already on this account."
-          : keeping.key === shelfKey
-            ? `Kept on this account. ${replay}`
-            : `Kept on this account as ${keeping.key}, beside the one already named ${shelfKey}. ${replay}`}
-      </p>
-    )
-  }
-
+  const kept = keeping.status === "kept" ? keeping : null
   const failure = keeping.status === "failed" ? keeping.failure : null
+  const replay = `Replay it from ${words.replayFrom}.`
+  // Nothing a tap could do now.
+  const gone = failure === "signed-out" || failure === "invalid"
+  const refusal =
+    failure === "full"
+      ? `Your shelf is full. Remove a ${words.noun} you kept, then keep this one.`
+      : failure === "signed-out"
+        ? "Sign in to keep this."
+        : failure === "invalid"
+          ? `This ${words.noun} can't be kept: the shelf refused it, most likely because it is too large.`
+          : failure === "failed"
+            ? "It could not be kept. Try again."
+            : null
+  const said =
+    kept === null
+      ? null
+      : kept.unchanged
+        ? "Already on this account."
+        : kept.key === shelfKey
+          ? `Kept on this account. ${replay}`
+          : `Kept on this account as ${kept.key}, beside the one already named ${shelfKey}. ${replay}`
 
   return (
     <div className="flex min-w-0 flex-col gap-2">
-      {failure === "full" && (
-        <p role="alert" className="text-sm">
-          Your shelf is full. Remove a {words.noun} you kept, then keep this
-          one.
-        </p>
-      )}
-      {failure === "signed-out" && (
-        <p role="alert" className="text-sm">
-          Sign in to keep this.
-        </p>
-      )}
-      {failure === "invalid" && (
-        <p role="alert" className="text-destructive text-sm">
-          This {words.noun} can&apos;t be kept: the shelf refused it, most
-          likely because it is too large.
-        </p>
-      )}
-      {failure === "failed" && (
-        <p role="alert" className="text-destructive text-sm">
-          It could not be kept. Try again.
-        </p>
-      )}
-      {failure !== "signed-out" && failure !== "invalid" && (
-        <Button
-          variant="outline"
-          className="min-h-11 gap-2 rounded-xl"
-          disabled={keeping.status === "keeping"}
-          onClick={() => keeper.keep(shelfKey, body)}
+      <Button
+        variant="outline"
+        className="min-h-11 gap-2 rounded-xl"
+        disabled={keeping.status === "keeping" || kept !== null || gone}
+        onClick={() => keeper.keep(shelfKey, body)}
+      >
+        {keeping.status === "keeping" ? (
+          <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+        ) : kept === null ? (
+          <Bookmark className="size-4" aria-hidden="true" />
+        ) : (
+          <Check className="text-success size-4" aria-hidden="true" />
+        )}
+        {kept === null ? "Keep on this account" : "Kept"}
+      </Button>
+      {refusal !== null && (
+        <Notice
+          key={refusal}
+          role="alert"
+          tone={
+            failure === "full" || failure === "signed-out"
+              ? "warning"
+              : "danger"
+          }
+          dismissible
         >
-          {keeping.status === "keeping" ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-          ) : (
-            <Bookmark className="size-4" aria-hidden="true" />
-          )}
-          Keep on this account
-        </Button>
+          {refusal}
+        </Notice>
+      )}
+      {said !== null && (
+        <Notice key={said} dismissible>
+          {said}
+        </Notice>
       )}
       {failure === "full" && <KeptShelf shelf={shelf} words={words} />}
     </div>

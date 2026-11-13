@@ -56,6 +56,17 @@ export const GAME_CARD_SAMPLES: Readonly<
   },
 }
 
+/** The sample card. */
+const CARD = {
+  kicker: "BUILD JOURNAL · SHORT 7",
+  headline: "What the video draws, and what it films",
+  body: "Takes, footage and a background picked for one video stay in Drive. Subtitles, cards and the mark of who made what are drawn the same way into every one.",
+  note: "So changing how a card looks changes it for the next video, and never for one already up.",
+}
+
+/** The sample card without its note, which the 16:9 video's shorter body has no room for. */
+export const CARD_WITHOUT_NOTE = { ...CARD, note: "" }
+
 /** One sample for each kind but a game card, which has one per template. */
 export const SAMPLES: Readonly<
   Record<Exclude<Kind, "game-card">, BurnInData["params"]>
@@ -66,12 +77,7 @@ export const SAMPLES: Readonly<
     headline: "Every word on screen comes from one place",
     line: "Phone build, recorded in a browser · sound off  ·  Studio",
   },
-  card: {
-    kicker: "BUILD JOURNAL · SHORT 7",
-    headline: "What the video draws, and what it films",
-    body: "Takes, footage and a background picked for one video stay in Drive. Subtitles, cards and the mark of who made what are drawn the same way into every one.",
-    note: "So changing how a card looks changes it for the next video, and never for one already up.",
-  },
+  card: CARD,
   authorship: {
     scenes: [
       { startMs: 0, origin: "agent", wording: "agent", hands: ["code"] },
@@ -99,6 +105,7 @@ export const SAMPLES: Readonly<
     ],
     endMs: STILL_SAMPLE_MS,
   },
+  "preview-mark": {},
 }
 
 export const samplesOf = (kind: Kind): ReadonlyArray<BurnInData["params"]> =>

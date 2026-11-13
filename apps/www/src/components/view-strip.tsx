@@ -23,9 +23,12 @@ const COLUMNS: Readonly<Record<number, string>> = {
 export const ViewStrip = ({
   label,
   views,
+  onPick,
 }: {
   label: string
   views: ReadonlyArray<View>
+  /** Told of the view pressed, before the move. */
+  onPick?: (view: View) => void
 }): JSX.Element => (
   <nav
     aria-label={label}
@@ -35,6 +38,7 @@ export const ViewStrip = ({
       <Link
         key={v.to}
         to={v.to}
+        onClick={() => onPick?.(v)}
         activeOptions={{ exact: v.exact, includeSearch: false }}
         className="text-muted-foreground flex h-9 items-center justify-center rounded-md text-sm"
         activeProps={{

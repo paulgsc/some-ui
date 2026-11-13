@@ -1,9 +1,6 @@
 import type { JSX } from "react"
 import { useCallback, useMemo, useState } from "react"
 import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
   Badge,
   Button,
   Dialog,
@@ -11,6 +8,8 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  Notice,
+  SameWidth,
 } from "@some-ui/shared"
 import { BookshelfGrid } from "@topik/components/topik/change-material/bookshelf-grid"
 import { OmniSearchInput } from "@topik/components/topik/change-material/omni-search-input"
@@ -18,14 +17,12 @@ import { TopikBookCard } from "@topik/components/topik/change-material/topik-boo
 import type { TopikMetadata } from "@topik/lib/topik"
 import { getRecommendedItems } from "@topik/lib/topik/utils"
 import {
-  AlertCircle,
   BookOpen,
   Clock,
   Layers,
   RefreshCw,
   Sparkles,
   Target,
-  XCircle,
 } from "lucide-react"
 
 // Props
@@ -135,6 +132,22 @@ export const ChangeMaterialDialog = ({
     }
   }, [onReload])
 
+  // Retry, in a failed load's notice, where the host can load again.
+  const retry = onReload && {
+    label: (
+      <>
+        <RefreshCw
+          className={`size-4 mr-2 ${isReloading ? "animate-spin" : ""}`}
+        />
+        <SameWidth every={["Retry", "Retrying..."]}>
+          {isReloading ? "Retrying..." : "Retry"}
+        </SameWidth>
+      </>
+    ),
+    onClick: handleReload,
+    disabled: isReloading,
+  }
+
   const handleHighlight = useCallback((key: string | undefined) => {
     setHighlightedKey(key)
   }, [])
@@ -154,69 +167,37 @@ export const ChangeMaterialDialog = ({
 
         {/* ─── Loading state ───────────────────────────────── */}
         {loading && (
-          <div className="flex items-center justify-center py-16">
-            <div className="text-center">
-              <div className="inline-block size-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent" />
-              <p className="mt-3 text-sm text-muted-foreground">
-                Loading materials...
-              </p>
-            </div>
-          </div>
+          <Notice>
+            <span className="flex items-center gap-2">
+              <span className="inline-block size-4 animate-spin rounded-full border-2 border-solid border-primary border-r-transparent" />
+              Loading materials...
+            </span>
+          </Notice>
         )}
 
         {/* ─── Fatal error (no items available) ────────────── */}
         {!loading && hasFatalError && (
-          <div className="py-8">
-            <Alert variant="destructive">
-              <XCircle className="size-4" />
-              <AlertTitle>Failed to Load Materials</AlertTitle>
-              <AlertDescription className="mt-2 space-y-3">
-                <p>{error}</p>
-                {onReload && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleReload}
-                    disabled={isReloading}
-                  >
-                    <RefreshCw
-                      className={`size-4 mr-2 ${isReloading ? "animate-spin" : ""}`}
-                    />
-                    {isReloading ? "Retrying..." : "Retry"}
-                  </Button>
-                )}
-              </AlertDescription>
-            </Alert>
-          </div>
+          <Notice tone="danger" action={retry}>
+            <p className="font-semibold">Failed to Load Materials</p>
+            <p>{error}</p>
+          </Notice>
         )}
 
         {/* ─── Main content ────────────────────────────────── */}
         {!loading && !hasFatalError && (
           <div className="flex flex-col gap-5 mt-2">
-            {/* Non-fatal error banner */}
+            {/* Non-fatal error */}
             {error && items.length > 0 && (
-              <Alert className="border-[hsl(40,50%,65%)] bg-[hsl(40,30%,93%)] dark:bg-[hsl(40,12%,14%)]">
-                <AlertCircle className="size-4 text-[hsl(40,60%,40%)]" />
-                <AlertTitle className="text-[hsl(40,35%,25%)] dark:text-[hsl(40,30%,75%)]">
-                  Partial Load
-                </AlertTitle>
-                <AlertDescription className="mt-2 space-y-3 text-[hsl(40,25%,35%)] dark:text-[hsl(40,20%,65%)]">
-                  <p>{error}</p>
-                  {onReload && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleReload}
-                      disabled={isReloading}
-                    >
-                      <RefreshCw
-                        className={`size-4 mr-2 ${isReloading ? "animate-spin" : ""}`}
-                      />
-                      {isReloading ? "Retrying..." : "Retry"}
-                    </Button>
-                  )}
-                </AlertDescription>
-              </Alert>
+              <Notice
+                key={error}
+                role="alert"
+                tone="warning"
+                dismissible
+                action={retry}
+              >
+                <p className="font-semibold">Partial Load</p>
+                <p>{error}</p>
+              </Notice>
             )}
 
             {/* Search */}

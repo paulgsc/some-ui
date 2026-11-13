@@ -1,9 +1,15 @@
 import type { CSSProperties, JSX } from "react"
-import { cq, placed } from "@burn-ins/components/stage/units"
+import type { Units } from "@burn-ins/components/stage/units"
 import type { TextFrame } from "@burn-ins/lib/journal"
 
 /** A text burn-in's panels and blocks, each where the frame model set it. */
-export const TextLayer = ({ frame }: { frame: TextFrame }): JSX.Element => (
+export const TextLayer = ({
+  frame,
+  units: { cq, placed },
+}: {
+  frame: TextFrame
+  units: Units
+}): JSX.Element => (
   <>
     {frame.panels.map((p) => (
       <div

@@ -1,6 +1,7 @@
 /**
  * The sharing mark's two axes (#2148), as words and orders: where a record
- * is kept, and how its last exchange with home went, each a mark of its own
+ * is kept, and how its last exchange with home went (or that home doesn't
+ * work with this version of the app, #2843), each a mark of its own
  * (`components/sharing-marks`), which no two states of a lane share
  * (`lib/home-link/__tests__/words.test.ts`, the glyph's own test).
  *
@@ -15,6 +16,9 @@ export type Where = (typeof WHERE_ORDER)[number]
 
 export const HOW_ORDER = [
   "current",
+  "updating",
+  "not-yet",
+  "too-old",
   "waiting",
   "sending",
   "no-answer",
@@ -30,6 +34,22 @@ export const HOW_ORDER = [
 
 export type How = (typeof HOW_ORDER)[number]
 
+/** How a last send went that the person should hear of: it didn't all go. */
+export const HOW_TROUBLE: ReadonlySet<How> = new Set<How>([
+  "updating",
+  "not-yet",
+  "too-old",
+  "no-answer",
+  "busy",
+  "forgotten",
+  "unpaired",
+  "full",
+  "no-room",
+  "refused",
+  "fault",
+  "failed",
+])
+
 /** What each mark means, as the sheet's legend says it. */
 export const MARK_WORDS = {
   title: "What the marks mean",
@@ -42,6 +62,9 @@ export const MARK_WORDS = {
   } satisfies Record<Where, string>,
   how: {
     current: "Home has all of it",
+    updating: "Home is updating to work with this version of the app",
+    "not-yet": "Home can't work with this version of the app yet",
+    "too-old": "This app is older than home: install the newest version",
     waiting: "Some waits on this phone, and goes next time",
     sending: "Going to home now",
     "no-answer": "Home didn't answer",

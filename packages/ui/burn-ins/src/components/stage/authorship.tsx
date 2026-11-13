@@ -1,6 +1,6 @@
 import type { JSX } from "react"
 import { TextLayer } from "@burn-ins/components/stage/text"
-import { cq, placed } from "@burn-ins/components/stage/units"
+import type { Units } from "@burn-ins/components/stage/units"
 import type { AuthorshipFrame, Cell } from "@burn-ins/lib/authorship"
 import { INK } from "@burn-ins/lib/journal"
 
@@ -19,11 +19,13 @@ const fillOf = (c: Cell): string =>
  */
 export const AuthorshipLayer = ({
   frame,
+  units,
 }: {
   frame: AuthorshipFrame
+  units: Units
 }): JSX.Element => (
   <>
-    <TextLayer frame={frame} />
+    <TextLayer frame={frame} units={units} />
     {frame.cells.map((c) => {
       const edge = c.hand ? Math.max(3, c.box.width / 10) : 2
       const inset = c.box.width / 5
@@ -36,12 +38,12 @@ export const AuthorshipLayer = ({
           data-idea={c.idea ?? "none"}
           data-hand={c.hand}
           style={{
-            ...placed(c.box),
+            ...units.placed(c.box),
             background: fillOf(c),
             backgroundClip: "content-box",
-            padding: cq(inset - edge),
-            border: `${cq(edge)} solid ${c.hand ? c.colour : INK.edge}`,
-            borderRadius: cq(c.box.width / 5),
+            padding: units.cq(inset - edge),
+            border: `${units.cq(edge)} solid ${c.hand ? c.colour : INK.edge}`,
+            borderRadius: units.cq(c.box.width / 5),
           }}
         />
       )

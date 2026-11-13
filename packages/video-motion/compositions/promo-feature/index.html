@@ -1,0 +1,224 @@
+<!doctype html>
+<!--
+  A release promo's feature (HYPER3): the app's own screens from its walk
+  (src/walk), one after another in a frame, a ring where each tap lands, and
+  a caption for each screen. The runner sets data-duration to the scene's
+  length and copies the snips into assets/.
+-->
+<html
+  lang="en"
+  data-composition-variables='[
+    {"id":"appName","type":"string","label":"App name","default":"Suspender Ledger"},
+    {"id":"version","type":"string","label":"Version","default":"v0.3.1"},
+    {"id":"walk","type":"string","label":"The walk: snips, taps, viewport (JSON)","default":"{\"viewport\":{\"width\":320,\"height\":600,\"scale\":2},\"snips\":[],\"taps\":[]}"},
+    {"id":"captions","type":"string","label":"A caption per snip (JSON list, | splits lines)","default":"[]"},
+    {"id":"walkStart","type":"number","label":"Seconds before the first snip","default":0.8},
+    {"id":"ground","type":"color","label":"Ground","default":"#111821"},
+    {"id":"ink","type":"color","label":"Ink","default":"#f4efe6"},
+    {"id":"accent","type":"color","label":"Accent","default":"#f5b75b"},
+    {"id":"accentInk","type":"color","label":"Ink on accent","default":"#2a1a0c"}
+  ]'
+>
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="lib/promo.css" />
+    <style>
+      #head {
+        position: absolute;
+        left: 120px;
+        right: 120px;
+        top: 120px;
+        height: 72px;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        font-size: 48px;
+      }
+      #head img {
+        width: 64px;
+        height: 64px;
+      }
+      #headVersion {
+        margin-left: auto;
+        color: var(--mute);
+        font-size: 40px;
+      }
+      #steps {
+        position: absolute;
+        left: 0;
+        width: 1080px;
+        top: 222px;
+        height: 76px;
+      }
+      .step {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        justify-content: center;
+      }
+      .step .chip b {
+        width: 46px;
+        height: 46px;
+        margin-left: -18px;
+        border-radius: 50%;
+        background: var(--accent);
+        color: var(--accentInk);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 32px;
+      }
+      #stage {
+        position: absolute;
+        inset: 0;
+      }
+      #frame {
+        position: absolute;
+        overflow: hidden;
+        border-radius: 40px;
+        background: #1a1a1a;
+        box-shadow:
+          0 60px 140px rgba(0, 0, 0, 0.6),
+          0 0 0 2px color-mix(in srgb, var(--ink) 10%, transparent);
+      }
+      #frame img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
+      .ring {
+        position: absolute;
+        width: 150px;
+        height: 150px;
+        margin: -75px 0 0 -75px;
+        border-radius: 50%;
+        border: 8px solid var(--accent);
+        box-shadow: 0 0 40px color-mix(in srgb, var(--accent) 55%, transparent);
+      }
+      .caption {
+        position: absolute;
+        left: 80px;
+        width: 920px;
+        top: 1600px;
+        font-size: 76px;
+        line-height: 1.08;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="9"
+      data-width="1080"
+      data-height="1920"
+      data-fps="30"
+      data-no-timeline
+    >
+      <div id="head">
+        <img src="brand/mark.svg" alt="" />
+        <span id="headName"></span>
+        <span id="headVersion"></span>
+      </div>
+      <div id="steps"></div>
+      <div id="stage"><div id="frame"></div></div>
+    </div>
+    <script src="lib/motion.js"></script>
+    <script>
+      const { length: L, track, lines, vars, $, make } = window.motion
+      const walk = JSON.parse(vars.walk)
+      const captions = JSON.parse(vars.captions)
+      const W = vars.walkStart
+      const leave = L - 0.5
+      $("headName").textContent = vars.appName
+      $("headVersion").textContent = vars.version
+
+      // The frame: the walk's screens at their own pixels, centred.
+      const { width, height, scale } = walk.viewport
+      const frame = $("frame")
+      const frameLeft = (1080 - width * scale) / 2
+      const frameTop = 330
+      Object.assign(frame.style, {
+        left: `${frameLeft}px`,
+        top: `${frameTop}px`,
+        width: `${width * scale}px`,
+        height: `${height * scale}px`,
+      })
+      const at = (snip) => W + snip.atMs / 1000
+      walk.snips.forEach((snip, i) => {
+        const img = make("img", "", frame)
+        img.src = `assets/${snip.file}`
+        if (i > 0) {
+          track(img, [
+            [at(snip) - 0.12, { opacity: 0 }],
+            [at(snip) + 0.12, {}],
+          ])
+        }
+        const text = captions[i]
+        if (!text) return
+        const caption = make("div", "caption", $("root"))
+        const end = walk.snips[i + 1] ? at(walk.snips[i + 1]) - 0.3 : leave
+        lines(caption, text).forEach((line, k) =>
+          track(line, [
+            [at(snip) + 0.15 + k * 0.08, { yPct: 110 }],
+            [at(snip) + 0.9 + k * 0.08, {}],
+            [end + k * 0.04, {}, "in"],
+            [end + 0.35 + k * 0.04, { yPct: -110 }],
+          ])
+        )
+      })
+
+      // The frame comes in, punches a little at each tap, and leaves.
+      const punches = walk.taps.flatMap((tap) => {
+        const t = W + tap.atMs / 1000
+        return [
+          [t, {}, "linear"],
+          [t + 0.12, { scale: 1.025 }],
+          [t + 0.6, {}],
+        ]
+      })
+      track($("stage"), [
+        [0, { opacity: 0, scale: 0.9 }],
+        [0.8, {}],
+        ...punches,
+        [leave, {}, "in"],
+        [L, { opacity: 0, scale: 0.9 }],
+      ])
+      track($("head"), [
+        [0.1, { opacity: 0, y: -30 }],
+        [0.8, {}],
+        [leave - 0.1, {}, "in"],
+        [leave + 0.25, { opacity: 0, y: -24 }],
+      ])
+
+      // A ring where each tap lands, and a numbered chip saying what it does.
+      walk.taps.forEach((tap, i) => {
+        const t = W + tap.atMs / 1000
+        const ring = make("div", "ring", $("stage"))
+        ring.style.left = `${frameLeft + tap.x * scale}px`
+        ring.style.top = `${frameTop + tap.y * scale}px`
+        track(ring, [
+          [t - 0.001, { opacity: 0, scale: 0.35 }, "linear"],
+          [t, { opacity: 0.95, scale: 0.35 }],
+          [t + 0.7, { opacity: 0, scale: 1.5 }],
+        ])
+        const step = make("div", "step", $("steps"))
+        const chip = make("span", "chip", step)
+        make("b", "", chip).textContent = String(i + 1)
+        chip.appendChild(document.createTextNode(tap.label))
+        const next = walk.taps[i + 1]
+        // Each leaves before the next comes in, in the same place.
+        const until = next ? W + next.atMs / 1000 - 0.7 : leave - 0.1
+        track(step, [
+          [t - 0.3, { opacity: 0, y: 24 }],
+          [t + 0.3, {}],
+          [until, {}, "in"],
+          [until + 0.3, { opacity: 0, y: -18 }],
+        ])
+      })
+    </script>
+  </body>
+</html>

@@ -245,30 +245,67 @@ export const CALLS: Readonly<
 }
 
 /**
- * The upload's copy (SHOW SH5): the title and description every episode
- * goes up with, filled from its week by `uploadOf` (`./show`), in the same
- * words the short says. A draft for the owner, who uploads by hand.
+ * The locked intro (SFEED2, #2670): who wrote an episode, what drew it, that
+ * its voice is synthetic, and whose side it is read from. Code fills it,
+ * never the fill, so no fill can change who it says made the video.
  */
-export const UPLOAD = {
-  /** "Playoff Delta · 2026 week 7 · Keep driving". */
-  weekTitle: (label: string, week: number, call: string): string =>
-    `Playoff Delta · ${label} week ${week} · ${call}`,
-  /** "Playoff Delta · 2026 · the legend". */
-  legendTitle: (label: string): string =>
-    `Playoff Delta · ${label} · the legend`,
-  /** The description's first line: whose week, and our own game. */
-  weekOpening: (
-    label: string,
-    week: number,
-    team: string,
-    game: string
-  ): string => `${label} week ${week}, read from the ${team}' side. ${game}`,
-  won: (opponent: string): string => `We beat the ${opponent}.`,
-  lost: (opponent: string): string => `We lost to the ${opponent}.`,
-  bye: "Our bye week.",
-  legendOpening: (label: string, team: string): string =>
-    `The words every week of Playoff Delta uses, and what each one means, read on the ${team}' ${label} season.`,
+export const INTRO = {
+  title: "Who made this",
+  rows: {
+    written: "Written by",
+    numbers: "Numbers by",
+    drawn: "Drawn by",
+    voices: "Voices",
+    side: "Read from",
+  },
+  written: "Claude, from the season's numbers",
+  numbers:
+    "Code: Playoff Delta's model in paulgsc/server, over every way the rest of the season can go",
+  drawn: (version: number): string =>
+    `Code: Playoff Delta's template, version ${version}, in paulgsc/some-ui`,
+  voices: "Kokoro, a synthetic speaker. No voice here is a person's",
+  side: (team: string): string => `The ${team}' side`,
+  /** What the intro says aloud. */
+  said: (episode: string, team: string): string =>
+    [
+      `This is Playoff Delta for ${episode}, read from the ${team}' side.`,
+      "Claude wrote the words, from numbers code works out over every way the rest of the season can go.",
+      "Code drew every frame, and every voice you hear is synthetic.",
+    ].join(" "),
+  /** An episode as the intro says it: "2026, week 8", "2026, the legend". */
+  week: (label: string, week: number): string => `${label}, week ${week}`,
+  legend: (label: string): string => `${label}, the legend`,
+  /** The brand slides' line under the mark, and the outro's source under it. */
+  show: "Playoff Delta",
+  source: "The code: github.com/paulgsc/some-ui",
+  mark: "The owner's mark",
 } as const
+
+/**
+ * What a forecast says, which no word of the show does: the show says what
+ * can still happen, never odds, and never the statistics the grammar retired
+ * (CLAUDE.md, "Say what it is").
+ */
+export const FORECAST_WORDS = [
+  "chance",
+  "odds",
+  "likely",
+  "likelihood",
+  "probability",
+  "probabilities",
+  "percent",
+  "percentage",
+  "share",
+  "spread",
+  "average",
+  "sample",
+] as const
+
+/** Any forecast word, alone or plural: "share" and "shares", not "shared". */
+export const FORECAST = new RegExp(
+  `\\b(?:${FORECAST_WORDS.join("|")})s?\\b`,
+  "i"
+)
 
 /** "one" to "ten" in words, digits past that. */
 export function numberWord(n: number): string {

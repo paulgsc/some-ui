@@ -1,12 +1,12 @@
 /**
  * "Ask for the next scene" (docs/makjang/README.md, "Asking home for the next
  * scene"): the prompt, with the scene's voice notes named by id, kept by the
- * host to go home, and what the host says of it since.
+ * host to go home, and what the host says of it since, once asked.
  */
 
 import type { JSX } from "react"
 import { useState, useSyncExternalStore } from "react"
-import { Button } from "@some-ui/shared"
+import { Button, Notice } from "@some-ui/shared"
 import type { SceneAsk } from "@topik/lib/topik/adapter/next-scene-ask"
 import type { SceneNote } from "@topik/lib/topik/adapter/scene-voice"
 import {
@@ -50,9 +50,10 @@ export const AskScene = ({
     asks.getSnapshot,
     asks.getSnapshot
   )
-  // Whether the last tap's ask was refused by the device; a later tap that
-  // keeps one clears it.
-  const [refused, setRefused] = useState(false)
+  // What the last tap came to, until the next tap or the person dismisses
+  // it: refused by the device, or kept, after which the host's word on it
+  // shows.
+  const [told, setTold] = useState<"refused" | "kept" | null>(null)
   const tap = (): void => {
     const at = new Date()
     const named = notes.map(({ id, mimeType }, index) => ({
@@ -67,11 +68,11 @@ export const AskScene = ({
       text: nextSceneFile(text, at, named).text,
       notes: ids,
     })
-    setRefused(!kept)
+    setTold(kept ? "kept" : "refused")
     if (kept) onAsked(text, ids)
   }
   return (
-    <div data-slot="topik-ask-scene" className="flex flex-col gap-1">
+    <div data-slot="topik-ask-scene" className="flex flex-col">
       <Button
         variant="outline"
         className="h-12 w-full gap-2 rounded-2xl"
@@ -85,14 +86,13 @@ export const AskScene = ({
         )}
         <span lang={labelLang}>{label}</span>
       </Button>
-      {refused ? (
-        <p role="alert" className="text-destructive text-sm">
+      {told === "refused" && (
+        <Notice tone="danger" onDismiss={() => setTold(null)}>
           {ASK_NOT_KEPT}
-        </p>
-      ) : (
-        <p role="status" className="text-muted-foreground text-xs">
-          {snapshot.said}
-        </p>
+        </Notice>
+      )}
+      {told === "kept" && (
+        <Notice onDismiss={() => setTold(null)}>{snapshot.said}</Notice>
       )}
     </div>
   )

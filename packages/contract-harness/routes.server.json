@@ -2,6 +2,8 @@
   "schema_version": 1,
   "api_base_path": "/api/v1",
   "server_version": "0.0.0",
+  "contract_epoch": 4,
+  "oldest_supported": 1,
   "routes": [
     {
       "method": "GET",
@@ -16,6 +18,27 @@
       "full_path": "/api/v1/activities/:id",
       "versioned": true,
       "module": "activities"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/settings/:namespace",
+      "full_path": "/api/v1/admin/settings/:namespace",
+      "versioned": true,
+      "module": "admin_settings"
+    },
+    {
+      "method": "PUT",
+      "path": "/admin/settings/:namespace",
+      "full_path": "/api/v1/admin/settings/:namespace",
+      "versioned": true,
+      "module": "admin_settings"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/settings/:namespace/history",
+      "full_path": "/api/v1/admin/settings/:namespace/history",
+      "versioned": true,
+      "module": "admin_settings"
     },
     {
       "method": "GET",
@@ -49,6 +72,13 @@
       "method": "GET",
       "path": "/app-events/summary",
       "full_path": "/api/v1/app-events/summary",
+      "versioned": true,
+      "module": "app_events"
+    },
+    {
+      "method": "GET",
+      "path": "/app-events/weeks/:week",
+      "full_path": "/api/v1/app-events/weeks/:week",
       "versioned": true,
       "module": "app_events"
     },
@@ -138,6 +168,20 @@
     },
     {
       "method": "GET",
+      "path": "/clips/:id/:side/:file",
+      "full_path": "/api/v1/clips/:id/:side/:file",
+      "versioned": true,
+      "module": "clips"
+    },
+    {
+      "method": "GET",
+      "path": "/compat",
+      "full_path": "/compat",
+      "versioned": false,
+      "module": "compat"
+    },
+    {
+      "method": "GET",
       "path": "/curriculum/:key",
       "full_path": "/api/v1/curriculum/:key",
       "versioned": true,
@@ -184,6 +228,62 @@
       "full_path": "/api/v1/curriculum/operator/lessons/:key/retire",
       "versioned": true,
       "module": "curriculum_operator"
+    },
+    {
+      "method": "GET",
+      "path": "/feeds/:feed/notes",
+      "full_path": "/api/v1/feeds/:feed/notes",
+      "versioned": true,
+      "module": "episode_notes"
+    },
+    {
+      "method": "PUT",
+      "path": "/feeds/:feed/notes/:id",
+      "full_path": "/api/v1/feeds/:feed/notes/:id",
+      "versioned": true,
+      "module": "episode_notes"
+    },
+    {
+      "method": "GET",
+      "path": "/feeds/:feed/videos",
+      "full_path": "/api/v1/feeds/:feed/videos",
+      "versioned": true,
+      "module": "feed_videos"
+    },
+    {
+      "method": "GET",
+      "path": "/feeds/:feed/videos/:key/description",
+      "full_path": "/api/v1/feeds/:feed/videos/:key/description",
+      "versioned": true,
+      "module": "feed_videos"
+    },
+    {
+      "method": "PUT",
+      "path": "/feeds/:feed/videos/:key/link",
+      "full_path": "/api/v1/feeds/:feed/videos/:key/link",
+      "versioned": true,
+      "module": "feed_videos"
+    },
+    {
+      "method": "DELETE",
+      "path": "/feeds/:feed/videos/:key/rest",
+      "full_path": "/api/v1/feeds/:feed/videos/:key/rest",
+      "versioned": true,
+      "module": "feed_videos"
+    },
+    {
+      "method": "DELETE",
+      "path": "/feeds/:feed/videos/:key/video",
+      "full_path": "/api/v1/feeds/:feed/videos/:key/video",
+      "versioned": true,
+      "module": "feed_videos"
+    },
+    {
+      "method": "GET",
+      "path": "/feeds/:feed/videos/:key/video",
+      "full_path": "/api/v1/feeds/:feed/videos/:key/video",
+      "versioned": true,
+      "module": "feed_videos"
     },
     {
       "method": "GET",
@@ -459,6 +559,27 @@
       "module": "presence"
     },
     {
+      "method": "GET",
+      "path": "/previews/:template",
+      "full_path": "/api/v1/previews/:template",
+      "versioned": true,
+      "module": "previews"
+    },
+    {
+      "method": "POST",
+      "path": "/previews/:template",
+      "full_path": "/api/v1/previews/:template",
+      "versioned": true,
+      "module": "previews"
+    },
+    {
+      "method": "GET",
+      "path": "/previews/:template/:id/video",
+      "full_path": "/api/v1/previews/:template/:id/video",
+      "versioned": true,
+      "module": "previews"
+    },
+    {
       "method": "DELETE",
       "path": "/push/subscriptions",
       "full_path": "/api/v1/push/subscriptions",
@@ -495,6 +616,13 @@
     },
     {
       "method": "GET",
+      "path": "/renders",
+      "full_path": "/api/v1/renders",
+      "versioned": true,
+      "module": "renders"
+    },
+    {
+      "method": "GET",
       "path": "/routine/files",
       "full_path": "/api/v1/routine/files",
       "versioned": true,
@@ -523,6 +651,27 @@
     },
     {
       "method": "GET",
+      "path": "/rust-round-log/sessions",
+      "full_path": "/api/v1/rust-round-log/sessions",
+      "versioned": true,
+      "module": "rust_rounds"
+    },
+    {
+      "method": "GET",
+      "path": "/rust-round-log/sessions/:id",
+      "full_path": "/api/v1/rust-round-log/sessions/:id",
+      "versioned": true,
+      "module": "rust_rounds"
+    },
+    {
+      "method": "PUT",
+      "path": "/rust-round-log/sessions/:id",
+      "full_path": "/api/v1/rust-round-log/sessions/:id",
+      "versioned": true,
+      "module": "rust_rounds"
+    },
+    {
+      "method": "GET",
       "path": "/rust-rounds",
       "full_path": "/api/v1/rust-rounds",
       "versioned": true,
@@ -539,6 +688,41 @@
       "method": "PUT",
       "path": "/rust-rounds/:id",
       "full_path": "/api/v1/rust-rounds/:id",
+      "versioned": true,
+      "module": "rust_rounds"
+    },
+    {
+      "method": "GET",
+      "path": "/rust-weeks",
+      "full_path": "/api/v1/rust-weeks",
+      "versioned": true,
+      "module": "rust_rounds"
+    },
+    {
+      "method": "GET",
+      "path": "/rust-weeks/:id",
+      "full_path": "/api/v1/rust-weeks/:id",
+      "versioned": true,
+      "module": "rust_rounds"
+    },
+    {
+      "method": "PUT",
+      "path": "/rust-weeks/:id/pastes/:at",
+      "full_path": "/api/v1/rust-weeks/:id/pastes/:at",
+      "versioned": true,
+      "module": "rust_rounds"
+    },
+    {
+      "method": "GET",
+      "path": "/rust-weeks/:id/record",
+      "full_path": "/api/v1/rust-weeks/:id/record",
+      "versioned": true,
+      "module": "rust_rounds"
+    },
+    {
+      "method": "PUT",
+      "path": "/rust-weeks/:id/sent",
+      "full_path": "/api/v1/rust-weeks/:id/sent",
       "versioned": true,
       "module": "rust_rounds"
     },
@@ -667,6 +851,20 @@
       "full_path": "/api/v1/studio/sittings/:sitting/events/:id",
       "versioned": true,
       "module": "studio_log"
+    },
+    {
+      "method": "GET",
+      "path": "/studio/videos",
+      "full_path": "/api/v1/studio/videos",
+      "versioned": true,
+      "module": "studio_videos"
+    },
+    {
+      "method": "PUT",
+      "path": "/studio/videos/:video/queued/:rev",
+      "full_path": "/api/v1/studio/videos/:video/queued/:rev",
+      "versioned": true,
+      "module": "studio_videos"
     },
     {
       "method": "PUT",
@@ -847,6 +1045,13 @@
       "method": "GET",
       "path": "/ws",
       "full_path": "/ws",
+      "versioned": false,
+      "module": "websocket"
+    },
+    {
+      "method": "GET",
+      "path": "/ws/game-week",
+      "full_path": "/ws/game-week",
       "versioned": false,
       "module": "websocket"
     }

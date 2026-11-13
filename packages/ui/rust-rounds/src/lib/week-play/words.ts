@@ -1,0 +1,221 @@
+/**
+ * Every word the week's screens put on the phone (RR13), in one pure table,
+ * held to the owner's rules by `__tests__/words.test.ts` as the cards' are:
+ * no score, verdict, "you said", level or streak, nothing that counts time
+ * or says "done", and no status code or internal name. rustc's own output
+ * is shown as printed, beside these words, never in them. Nothing answers:
+ * no word replies to a take, and none calls anything correct.
+ *
+ * The cards' and the look over's words are the shared bundle's parts'
+ * (`@some-ui/shared`'s `BundleWords`), filled in here; a take's own are the
+ * take pattern's.
+ */
+import type { Week } from "@rust-rounds/lib/formats/week"
+import type { BundleWords } from "@some-ui/shared"
+import { TAKE_WORDS } from "@some-ui/voice-capture"
+
+import { CARD_WORDS, clock, weekday, weekNumber } from "./card-words"
+
+const answers = (n: number): string => (n === 1 ? "1 answer" : `${n} answers`)
+
+const BUNDLE: BundleWords = {
+  dot: {
+    said: (n) => `Ticket ${n}, said`,
+    typed: (n) => `Ticket ${n}, said`,
+    failed: (n) => `Ticket ${n}, your voice didn't come through`,
+    full: (n) => `Ticket ${n}, no room to record it`,
+    later: (n) => `Ticket ${n}, left for later`,
+    open: (n) => `Ticket ${n}, not said yet`,
+  },
+  cardOf: (n, of) => `Ticket ${n} of ${of}`,
+  prev: (n) => `← ${n}`,
+  next: (n) => `${n} →`,
+  last: "Last ticket",
+  unsaid: () => "Swipe on to leave it for now.",
+  failed: {
+    title: "You wanted to say this. Your voice didn't come through.",
+    line: "Nothing was kept. Try again, or come back to it later.",
+    again: "Try saying it again",
+    later: "Come back later",
+    type: "",
+  },
+  full: {
+    title: "This phone holds as many takes as it can until home has them.",
+    line: "Nothing was kept. Come back to it once home has the takes on this phone.",
+  },
+  unheard: { type: "" },
+  typing: { mark: "", hint: "", left: () => "", voice: "", keep: "" },
+  typed: { mark: "", sayInstead: "Say it instead" },
+  later: {
+    line: "Left for later. It's marked on the dots above.",
+    sayNow: "Say it now",
+  },
+  saidCount: (n, of) => `${n} of ${of} said · all on this phone until you send`,
+  toReview: "Look it over before sending",
+  review: {
+    kept: "Kept on this phone only. Nothing has been sent.",
+    playAll: "Play all, in order",
+    stopAll: "Stop",
+    deleteAll: "Delete all",
+    notSaid: "Not said. Sent as it is, it counts as not answered.",
+    typed: "",
+    sayIt: "Say it",
+    delete: "Delete",
+  },
+  confirm: {
+    answerTitle: "Delete this take?",
+    answerLine: (label) =>
+      `Your take on ${label} hasn't left this phone, so deleting it removes it for good. You can say it again.`,
+    besideLine: (label) =>
+      `Your take on ${label} hasn't left this phone, so deleting it removes it for good. You can say it again.`,
+    allTitle: "Delete every take this week?",
+    allLine:
+      "None of them has left this phone, so every take this week is removed for good.",
+    yes: "Delete for good",
+    keep: "Keep it",
+  },
+  notice: {
+    deleted: TAKE_WORDS.discarded,
+    deletedAll: TAKE_WORDS.discarded,
+    notKept:
+      "This phone couldn't keep that change, so it would be lost if you left now.",
+    notSent:
+      "This phone couldn't keep the week's takes as sent, so nothing went. They're all still here.",
+    notDeleted: "That couldn't be deleted, so it's still here.",
+  },
+}
+
+/** Where a ticket stands, on the brief. */
+export type TicketStanding =
+  | "open"
+  | "said"
+  | "sent"
+  /** Sent before, and said again since, on this phone (RR22). */
+  | "resaid"
+  | "unanswered"
+
+export const WEEK_WORDS = {
+  ...BUNDLE,
+  title: "Rust Rounds",
+  reading: "Opening the week…",
+  unreadable:
+    "What this phone keeps for the week couldn't be read, so nothing new can be kept yet.",
+  readAgain: "Try again",
+  back: "Back",
+  backToPractice: "Back to Practice",
+  /** The brief's heading: "Week 46 · due Sunday 23:59". */
+  heading: (week: Pick<Week, "id" | "due">): string =>
+    `Week ${weekNumber(week.id)} · due ${weekday(week.due)} ${clock(week.due)}`,
+  sla: "What it has to meet",
+  tickets: "Tickets",
+  standing: {
+    open: "Not said",
+    said: "Said, on this phone",
+    sent: "Sent",
+    resaid: "Said again, on this phone until you send",
+    unanswered: "Not answered",
+  } satisfies Record<TicketStanding, string>,
+  /** What a ticket's program did, in a word, once home ran it. */
+  compiles: "Compiles",
+  doesntCompile: "Doesn't compile",
+  speakToCount: (n: number): string => `${n} to speak to`,
+  toReviewOf: (n: number, of: number): string =>
+    `Look it over before sending · ${n} of ${of}`,
+  /** A ticket's card. */
+  ticketOf: (id: string, n: number, of: number): string =>
+    `${id} · ticket ${n} of ${of}`,
+  speakTo: "Speak to",
+  guideOn: (id: string): string => `Guide on ${id}`,
+  figures: "The scenario's figures, given, not measured",
+  rustcSilent: "rustc had nothing to say.",
+  printed: "It printed",
+  rustcPrinted: "What rustc printed",
+  noRunYet:
+    "Home hasn't run this program yet. What rustc does with it shows here once it has.",
+  noRun:
+    "Home couldn't run this program, so there's nothing from rustc to show.",
+  /** The look over. */
+  ticketLabel: (id: string, title: string): string => `${id} · ${title}`,
+  send: (n: number): string => `Send to home · ${answers(n)}`,
+  /** Send, once the week went home before (RR22). */
+  sendAgain: (n: number): string => `Send again · ${answers(n)}`,
+  needs: {
+    nothing: "Say one ticket at least to send the week.",
+    unchanged:
+      "Home already holds the week as it is. Say a ticket, or say one again, to send it again.",
+    closed:
+      "The week closed at its deadline, so these takes can't count. They stay on this phone.",
+  },
+  /** Why the week is kept rather than sent, where home is out of reach. */
+  notNear: {
+    away: "Home is out of reach. The takes are kept here and go home when you're back in reach.",
+    unpaired:
+      "This phone isn't paired with home yet. The takes are kept here and go home once it is.",
+    unknown: null,
+  },
+  /** Over the brief, once the week was sent and while it is open (RR22). */
+  held: (n: number, of: number, at: string): string =>
+    `Home has your send from ${weekday(at)} ${clock(at)}: ${n} of ${of} answered.`,
+  /** Sent from this phone, and home hasn't had it yet. */
+  goesHome: (n: number, of: number, at: string): string =>
+    `Your send from ${weekday(at)} ${clock(at)}, ${n} of ${of} answered, is on this phone. It goes home when you're in reach.`,
+  openUntil: (week: Pick<Week, "due">): string =>
+    `What home has at ${weekday(week.due)} ${clock(week.due)} is what counts, and is kept for good. Until then you can answer any ticket, say one again and send the week again.`,
+  backToWeek: "Back to the week",
+  /** A ticket's card, for its take home holds. */
+  home: {
+    holds: "This is the take you sent for this ticket.",
+    again:
+      "You sent an earlier take for this ticket. The one here goes when you send again.",
+  },
+  /** After Send. */
+  sent: {
+    title: (n: number, of: number): string => `Sent home: ${n} of ${of}.`,
+    line: "Home keeps your takes and writes down the words it hears in them. Nothing answers now. The essay comes after the deadline, and covers every ticket, answered or not.",
+    again: (week: Pick<Week, "due">): string =>
+      `What home has at ${weekday(week.due)} ${clock(week.due)} is what counts. Until then you can still answer, say a ticket again and send again.`,
+    heard: "What home heard",
+    hearing: "Home is hearing it.",
+    /** Not asked this opening, or home doesn't hold it or couldn't say. */
+    later:
+      "Its words show here once home has heard it, the next time you open the week.",
+    noWords: "Home heard no words in it.",
+    notAnswered: "Not answered.",
+  },
+  /** The week read back once it closed (RR22): nothing records or sends. */
+  closed: {
+    title: (week: Pick<Week, "id">): string =>
+      `Week ${weekNumber(week.id)} has closed.`,
+    line: (week: Pick<Week, "due">): string =>
+      `It closed ${weekday(week.due)} ${clock(week.due)}. What home had then is what counts, kept for good, and the essay comes from home. Nothing more can be said or sent here.`,
+    /** A send made on this phone that home didn't have by the deadline. */
+    late: (at: string): string =>
+      `Your send from ${weekday(at)} ${clock(at)} didn't reach home before the deadline, so it doesn't count. It stays on this phone.`,
+    unplayable: "This take isn't on this phone to play.",
+  },
+  card: CARD_WORDS,
+  /** An error pasted from your own code, and a note on it. */
+  paste: {
+    open: "Paste an error",
+    heading: "An error from your own code",
+    line: "Paste rustc's output as it printed it. Next week's exercise can be built from it.",
+    label: "Paste it as rustc printed it",
+    left: (n: number): string => `${n} characters left`,
+    say: "Say what you make of it, if you like.",
+    where:
+      "Kept on this phone as you type it. Nothing leaves before you keep it.",
+    keep: "Keep it",
+    back: "Back to the week",
+    deleteNote: {
+      title: "Delete this note?",
+      line: "Your note on the paste hasn't left this phone, so deleting it removes it for good. You can say it again.",
+    },
+    kept: "Kept on this phone. A note on it goes home with your other takes; the error itself stays here until home keeps the week's record.",
+    notKept:
+      "This phone couldn't keep the paste, so nothing went. It's all still here.",
+    draftNotKept:
+      "This phone couldn't keep that change to the paste, so it would be lost if you left now.",
+  },
+  /** The cards from before the weeks, until RR20 retires them. */
+  rounds: "The rounds from before",
+} as const

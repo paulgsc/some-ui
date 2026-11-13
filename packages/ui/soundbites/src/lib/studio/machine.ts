@@ -55,13 +55,17 @@
  *   them" lets go every take home holds (`leave`); "until Drive has it too"
  *   drops any such let-go not yet begun, and only the owner's "Drive has it"
  *   on a take (`driveHasIt`) then lets that one go.
+ * - **A video handed to home is kept first** (ST33). Finish's offer
+ *   writes the mark (`Pending` `queue`), its DNA made once in that write
+ *   (`queueMark`), and only once that write lands is the DNA the mark keeps
+ *   handed to the home link (`handHome`): a mark not kept hands nothing over.
  * - **Nothing records while the page is off screen.** A take recording when
  *   the page is hidden or left is finished and kept; a microphone that opens
  *   then, or once the Record screen is gone, is let go.
  */
-import { assertNever, isRecord, jsonOf } from "@some-ui/core-utils"
-import type { Episode, Idea, Look, Review, Voice } from "@some-ui/video-render"
-import { EPISODE_SCHEMA, parseEpisode, readReview } from "@some-ui/video-render"
+import { assertNever, isRecord, jsonOf, youtubeLink } from "@some-ui/core-utils"
+import type { Idea, Look, Review, Voice } from "@some-ui/video-render"
+import { EPISODE_SCHEMA, readReview } from "@some-ui/video-render"
 import type {
   Listened,
   RecordingFailure,
@@ -82,8 +86,10 @@ import {
   SOUNDBITE_BITS_PER_SECOND,
   SOUNDBITE_MIN_MS,
 } from "@soundbites/lib/policy"
+import type { VideoForHome } from "@soundbites/lib/project/dna"
+import { queueMark, videoForHome } from "@soundbites/lib/project/dna"
 import { isProjectFile, readProjectFile } from "@soundbites/lib/project/file"
-import { BEST_OF, finishOf, youtubeLink } from "@soundbites/lib/project/finish"
+import { finishOf, queuedOf } from "@soundbites/lib/project/finish"
 import type { LetGo, LetGoChoice } from "@soundbites/lib/project/let-go"
 import {
   driveHasItIn,
@@ -101,7 +107,6 @@ import {
   currentOf,
   cutListOf,
   fitted,
-  projectFromEpisode,
   projectFromPrimer,
   projectIdFor,
   resumeAt,
@@ -115,6 +120,8 @@ import type {
   Written,
 } from "@soundbites/lib/project/store"
 
+import type { HomeVideos } from "./home-videos"
+import { finishHome, NO_HOME_VIDEOS } from "./home-videos"
 import type { TimeEvent } from "./time-log"
 import { originView, sceneBeside, whoseOf } from "./view"
 import { askedAt, changesIn, ideaAsking, isReviewOf, shotAt } from "./watch"
@@ -235,7 +242,6 @@ type Pending = { readonly project: string } & (
       readonly kind: "create"
       readonly primer: Primer
       readonly at: string
-      readonly episode?: Episode
     }
   | { readonly kind: "revise"; readonly primer: Primer; readonly at: string }
   | { readonly kind: "open"; readonly at: string }
@@ -260,8 +266,6 @@ type Pending = { readonly project: string } & (
       readonly at: string
     }
   | { readonly kind: "ready"; readonly rev: number; readonly at: string }
-  /** The owner keeps scene `shot`'s take after three rounds (SH5). */
-  | { readonly kind: "best"; readonly shot: string; readonly at: string }
   | {
       readonly kind: "note"
       readonly note: Omit<Note, "status" | "reason">
@@ -286,6 +290,8 @@ type Pending = { readonly project: string } & (
       readonly url: string
       readonly at: string
     }
+  /** Home makes revision `rev` (ST33): the mark, and the takes it names. */
+  | { readonly kind: "queue"; readonly rev: number; readonly at: string }
 )
 
 /**
@@ -384,6 +390,12 @@ export type StudioState = {
    */
   readonly letGo: LetGoChoice
   /**
+   * Whether this phone is paired with home, as the home port last said
+   * (ST34): a take not on home yet is going home only on a paired phone, and
+   * kept on this phone otherwise. False until the port says.
+   */
+  readonly paired: boolean
+  /**
    * A Done for now's close waiting on the take under way, and every write asked
    * for after it, in order, so none runs ahead of that close.
    */
@@ -400,6 +412,8 @@ export type StudioState = {
    * read from `from` on is the newest when it lands answers it.
    */
   readonly checking: { readonly from: number | null } | null
+  /** What the home link knows of the videos handed to home (ST33). */
+  readonly videos: HomeVideos
   readonly readSeq: number
   readonly pickSeq: number
   readonly playSeq: number
@@ -425,9 +439,9 @@ export type StudioIntent =
   /** Finish's button to the one thing missing: the note's or take's scene. */
   | { readonly type: "finishGo" }
   | { readonly type: "readyMarked" }
-  /** Finish: keep the scene's take after three rounds of its fact check (SH5). */
-  | { readonly type: "bestKept" }
   | { readonly type: "linkPasted"; readonly text: string }
+  /** Finish: have home make the episode, ready (ST33). */
+  | { readonly type: "homeAsked" }
   | { readonly type: "watchChosen" }
   | { readonly type: "historyChosen" }
   /** A show on Start (SHOW SH3), by its name. */
@@ -477,6 +491,14 @@ export type StudioIntent =
     }
   | { readonly type: "projectOpened"; readonly project: string }
   | { readonly type: "retryRead" }
+  /**
+   * The person closed what Studio said: its notice, a pick's problem, or why
+   * the microphone didn't open.
+   */
+  | {
+      readonly type: "noticeDismissed"
+      readonly what: "notice" | "problem" | "blocked"
+    }
   /** When a take home holds leaves the phone (HF11). */
   | { readonly type: "letGoChosen"; readonly letGo: LetGo }
   /** Drive has `take` too, on the owner's word: it may leave. */
@@ -496,6 +518,8 @@ type StudioSignal =
   | { readonly type: "shown" }
   | { readonly type: "carried"; readonly carried: Carried }
   | { readonly type: "carryFailed" }
+  /** The home port says whether this phone is paired (ST34). */
+  | { readonly type: "paired"; readonly paired: boolean }
   | { readonly type: "storeChanged" }
   | { readonly type: "ticked"; readonly now: number; readonly level: number }
   | { readonly type: "micOpened"; readonly at: number }
@@ -531,6 +555,8 @@ type StudioSignal =
     }
   | { readonly type: "reviewUnreadable"; readonly seq: number }
   | { readonly type: "timeLogRead"; readonly log: ReadonlyArray<TimeEvent> }
+  /** What the home link knows of the videos handed to it, now (ST33). */
+  | { readonly type: "videosHeard"; readonly videos: HomeVideos }
   | { readonly type: "written"; readonly written: Written }
   | { readonly type: "writeFailed"; readonly reason: "full" | "failed" }
   | { readonly type: "reported" }
@@ -602,6 +628,8 @@ export type StudioEffect =
   | { readonly type: "cancelListening" }
   /** A pull's read landed (`ok`) or could not be read. */
   | { readonly type: "checked"; readonly ok: boolean }
+  /** Hand a video kept for home to make to the home link (ST33). */
+  | { readonly type: "handHome"; readonly video: VideoForHome }
 
 export type Step = {
   readonly state: StudioState
@@ -634,10 +662,12 @@ export function initialStudioState(
     said: [],
     roomBytes: null,
     letGo,
+    paired: false,
     held: [],
     closed: null,
     filings: [],
     checking: null,
+    videos: NO_HOME_VIDEOS,
     readSeq: 0,
     pickSeq: 0,
     playSeq: 0,
@@ -747,12 +777,8 @@ function applied(project: Project | null, pending: Pending): Project | null {
   switch (pending.kind) {
     case "create": {
       if (project !== null) return null
-      const { episode, primer, at } = pending
-      return (
-        episode === undefined
-          ? projectFromPrimer(pending.project, primer, at)
-          : projectFromEpisode(pending.project, episode, primer, at)
-      ).project
+      const { primer, at } = pending
+      return projectFromPrimer(pending.project, primer, at).project
     }
     case "revise": {
       if (project === null) return null
@@ -858,14 +884,6 @@ function applied(project: Project | null, pending: Pending): Project | null {
         at: pending.at,
       })
     }
-    case "best": {
-      if (project === null) return null
-      return model(project, {
-        type: "bestKept",
-        shot: pending.shot,
-        at: pending.at,
-      })
-    }
     case "note": {
       if (project === null) return null
       return model(project, { type: "noted", note: pending.note })
@@ -939,6 +957,15 @@ function applied(project: Project | null, pending: Pending): Project | null {
         url: pending.url,
         at: pending.at,
       })
+    }
+    case "queue": {
+      if (project === null) return null
+      // The DNA is made once, here, of the project as this write reads it,
+      // and kept in the mark; one no DNA can be made of is never kept.
+      const made = queueMark(project, pending.at)
+      return "refused" in made || made.mark.rev !== pending.rev
+        ? null
+        : model(project, { type: "queued", ...made.mark })
     }
     default: {
       return assertNever(pending)
@@ -1394,11 +1421,11 @@ function landedNotice(
     case "ready": {
       return WORDS.finish.marked
     }
-    case "best": {
-      return WORDS.finish.bestKept
-    }
     case "release": {
       return WORDS.finish.released
+    }
+    case "queue": {
+      return WORDS.finish.toHome.handed
     }
     case "merge": {
       const merged =
@@ -1466,8 +1493,8 @@ function unchangedNotice(
     }
     case "shape":
     case "ready":
-    case "best":
     case "release":
+    case "queue":
     case "note":
     case "good": {
       return WORDS.notice.notSaved
@@ -1584,6 +1611,28 @@ function closedSitting(pending: Pending, written: Written): string | null {
   )
 }
 
+/**
+ * A kept mark's DNA handed to the home link, once its write has landed
+ * (ST33); nothing for any other write, or one that kept nothing.
+ */
+function handHome(
+  state: StudioState,
+  pending: Pending,
+  written: Written
+): Step {
+  if (pending.kind !== "queue" || !written.changed || written.project === null)
+    return stay(state)
+  const mark = queuedOf(written.project, pending.rev)
+  return mark === null
+    ? stay(state)
+    : {
+        state,
+        effects: [
+          { type: "handHome", video: videoForHome(written.project, mark) },
+        ],
+      }
+}
+
 /** `first`, then `then` from its state, effects in order. */
 function then(first: Step, next: (state: StudioState) => Step): Step {
   const second = next(first.state)
@@ -1591,41 +1640,6 @@ function then(first: Step, next: (state: StudioState) => Step): Step {
     state: second.state,
     effects: [...first.effects, ...second.effects],
   }
-}
-
-/**
- * An episode file picked on Start (SHOW SH3): the episode this phone holds
- * already, if it has it (the same show, format, period and data), opened;
- * else a new project of it.
- */
-function pickedEpisode(
-  state: StudioState,
-  episode: Episode,
-  primer: Primer,
-  at: string
-): Step {
-  // Until the phone's videos are read, one it holds can't be told apart.
-  if (state.shelf.kind !== "read")
-    return stay({ ...state, primerProblem: WORDS.show.notYet })
-  const same = (pin: Episode["episode"] | undefined): boolean =>
-    pin !== undefined && sameJson(pin, episode.episode)
-  const held = projectsOf(state).find((each) => same(each.episode))
-  const cleared = { ...state, choosing: null, primerProblem: null }
-  if (held !== undefined)
-    return stay({ ...cleared, current: held.id, notice: WORDS.show.held })
-  // One on its way to being kept is held too, once it lands.
-  const ways = [state.inFlight, ...state.queue, ...state.held]
-  if (
-    ways.some((each) => each?.kind === "create" && same(each.episode?.episode))
-  )
-    return stay(cleared)
-  return enqueue(cleared, {
-    kind: "create",
-    project: projectIdFor(primer.title, at),
-    primer,
-    episode,
-    at,
-  })
 }
 
 /** A note of the owner's from Watch: kept now, or held as `asking` on an episode. */
@@ -1931,6 +1945,23 @@ export function step(state: StudioState, event: StudioEvent): Step {
       return read({ ...state, shelf: { kind: "reading" } })
     }
 
+    case "noticeDismissed": {
+      switch (event.what) {
+        case "notice": {
+          return stay({ ...state, notice: "" })
+        }
+        case "problem": {
+          return stay({ ...state, primerProblem: null })
+        }
+        case "blocked": {
+          return stay({ ...state, blocked: null })
+        }
+        default: {
+          return assertNever(event.what)
+        }
+      }
+    }
+
     case "listed": {
       if (event.seq !== state.readSeq) return stay(state)
       const kept = event.projects.some((each) => each.id === state.current)
@@ -2008,14 +2039,11 @@ export function step(state: StudioState, event: StudioEvent): Step {
       if (isIdeaReply(event.text))
         return stay({ ...state, primerProblem: WORDS.start.ideaReply })
       const raw = jsonOf(event.text)
-      const episode = parseEpisode(raw)
       const reading = readPrimer(event.text)
-      if (episode.ok && reading.ok)
-        return pickedEpisode(state, episode.value, reading.primer, event.at)
-      // A file that says it is an episode and isn't one whole is never a
-      // video of your own.
+      // An episode is said by home now, never by you (FEED6 #2649): its file
+      // is no video of your own either.
       if (saysEpisode(raw))
-        return stay({ ...state, primerProblem: WORDS.start.sentProblem })
+        return stay({ ...state, primerProblem: WORDS.start.episodeSaid })
       // What is wrong names cuts and fields: for the session that wrote the
       // file (`PrimerReading`), never the screen (SW1).
       if (!reading.ok)
@@ -2065,7 +2093,13 @@ export function step(state: StudioState, event: StudioEvent): Step {
     }
 
     case "recordChosen": {
-      if (project === null || screen.kind !== "start") return stay(state)
+      // An episode is never voiced here (FEED6 #2649).
+      if (
+        project === null ||
+        project.episode !== undefined ||
+        screen.kind !== "start"
+      )
+        return stay(state)
       return enqueue(
         {
           ...state,
@@ -2175,6 +2209,12 @@ export function step(state: StudioState, event: StudioEvent): Step {
         : stay(state)
     }
 
+    case "videosHeard": {
+      return state.videos === event.videos
+        ? stay(state)
+        : stay({ ...state, videos: event.videos })
+    }
+
     case "showChosen": {
       if (
         screen.kind !== "start" ||
@@ -2215,6 +2255,11 @@ export function step(state: StudioState, event: StudioEvent): Step {
       }
     }
 
+    case "paired": {
+      return state.paired === event.paired
+        ? stay(state)
+        : stay({ ...state, paired: event.paired })
+    }
     case "voiceChecked":
     case "speakPressed":
     case "speakStopped":
@@ -2510,13 +2555,11 @@ export function step(state: StudioState, event: StudioEvent): Step {
       const finish = finishOf(project)
       if (finish.kind === "idea")
         return watchOpened(state, project, finish.shot, event.at)
-      if (
-        finish.kind !== "note" &&
-        finish.kind !== "take" &&
-        finish.kind !== "facts"
-      )
-        return stay(state)
+      if (finish.kind !== "note" && finish.kind !== "take") return stay(state)
       const wanted = finish.kind === "note" ? finish.note.shot : finish.shot
+      // An episode's note opens on Watch: it is never voiced here (FEED6).
+      if (project.episode !== undefined)
+        return watchOpened(state, project, wanted, event.at)
       // A note on a scene a later revision dropped opens where work resumes.
       const there = latest(project).cutList.shots.some(
         (each) => each.id === wanted
@@ -2544,16 +2587,6 @@ export function step(state: StudioState, event: StudioEvent): Step {
       )
     }
 
-    case "bestKept": {
-      if (screen.kind !== "finish" || project === null) return stay(state)
-      const finish = finishOf(project)
-      if (finish.kind !== "facts" || finish.rounds < BEST_OF) return stay(state)
-      return enqueue(
-        { ...state, notice: "" },
-        { kind: "best", project: project.id, shot: finish.shot, at: event.at }
-      )
-    }
-
     case "linkPasted": {
       if (screen.kind !== "finish" || project === null) return stay(state)
       const finish = finishOf(project)
@@ -2569,6 +2602,28 @@ export function step(state: StudioState, event: StudioEvent): Step {
           url,
           at: event.at,
         }
+      )
+    }
+
+    case "homeAsked": {
+      // Only the offer Finish shows asks (`finishHome`).
+      if (
+        screen.kind !== "finish" ||
+        project === null ||
+        finishHome(project, state.videos)?.kind !== "offer"
+      )
+        return stay(state)
+      const made = queueMark(project, event.at)
+      if ("refused" in made)
+        return stay({ ...state, notice: WORDS.finish.toHome[made.refused] })
+      const asked = stepProject(
+        { project, taking: null, closing: null },
+        { type: "queued", ...made.mark }
+      )
+      if (asked.refused !== null) return stay(state)
+      return enqueue(
+        { ...state, notice: "" },
+        { kind: "queue", project: project.id, rev: made.mark.rev, at: event.at }
       )
     }
 
@@ -2747,12 +2802,15 @@ export function step(state: StudioState, event: StudioEvent): Step {
         : unchangedNotice(state, pending, written)
       return then(
         then(
-          told(
-            written.changed ? landed : ideaUnkept(landed, pending),
-            notice,
-            written.changed ? null : lostBy(pending, notice)
+          then(
+            told(
+              written.changed ? landed : ideaUnkept(landed, pending),
+              notice,
+              written.changed ? null : lostBy(pending, notice)
+            ),
+            (now) => closeSettled(now, pending, closedSitting(pending, written))
           ),
-          (now) => closeSettled(now, pending, closedSitting(pending, written))
+          (now) => handHome(now, pending, written)
         ),
         pump
       )

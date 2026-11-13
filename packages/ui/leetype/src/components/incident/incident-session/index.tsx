@@ -33,7 +33,8 @@ import {
 } from "@leetype/lib/leetype/session-log"
 import type { SessionFile } from "@leetype/types/session-file"
 import { assertNever, cn } from "@some-ui/core-utils"
-import { Button } from "@some-ui/shared"
+import { engage } from "@some-ui/engagement"
+import { Button, Notice } from "@some-ui/shared"
 
 type IncidentSessionProps = {
   /** The file's name, as the session log names it. */
@@ -78,6 +79,7 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
         visibility: ports?.visibility ?? pageVisibility,
         ...(ports?.takes === undefined ? {} : { takes: ports.takes }),
         ...(ports?.after === undefined ? {} : { after: ports.after }),
+        engage: ports?.engage ?? engage,
       }),
     }
   })
@@ -247,13 +249,16 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
         <p className="min-w-0 truncate text-xs text-muted-foreground">
           {play.file.title}
         </p>
-        {boundary && (
+        {/* Out of reach through a round; the end screen has its own way
+            out. */}
+        {ended === null && (
           <div className="flex shrink-0 gap-1">
             {parked.length > 0 && (
               <Button
                 variant="ghost"
                 className="min-h-11"
                 aria-expanded={waiting}
+                disabled={!boundary}
                 onClick={(): void => setWaiting((now) => !now)}
               >
                 Rounds waiting
@@ -262,6 +267,7 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
             <Button
               variant="ghost"
               className="min-h-11"
+              disabled={!boundary}
               onClick={(): void => dispatch({ type: "leave" })}
             >
               End here
@@ -269,8 +275,13 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
           </div>
         )}
       </header>
-      {boundary && waiting && (
-        <div className="pb-4">
+      {waiting && (
+        // Open through a round, its rounds out of reach until its end.
+        <div
+          className={cn("pb-4", !boundary && "opacity-50")}
+          aria-hidden={!boundary}
+          inert={!boundary}
+        >
           <ParkedRounds
             parked={parked}
             inView={play.screen}
@@ -284,20 +295,17 @@ export const IncidentSession: FC<IncidentSessionProps> = ({
           />
         </div>
       )}
+      {body}
       {timeUp && ended === null && (
-        <p
-          role="status"
-          className="pb-2 text-pretty text-sm text-muted-foreground"
-        >
+        <Notice dismissible>
           That is the time you set. End here to see where you are, or go on.
-        </p>
+        </Notice>
       )}
       {problem !== null && (
-        <p role="alert" className="pb-2 text-sm text-destructive">
+        <Notice key={problem} tone="danger" dismissible>
           {problem}
-        </p>
+        </Notice>
       )}
-      {body}
     </div>
   )
 }

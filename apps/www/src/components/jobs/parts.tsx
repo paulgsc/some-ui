@@ -11,7 +11,7 @@ import {
   useEffect,
   useSyncExternalStore,
 } from "react"
-import { Button, TakeList, useTakePattern } from "@some-ui/shared"
+import { Button, Notice, TakeList, useTakePattern } from "@some-ui/shared"
 import { FolderOpen } from "lucide-react"
 
 import type { JobsSnapshot } from "@/lib/jobs"
@@ -168,9 +168,9 @@ export const OpenDigest = (): JSX.Element => {
       </Button>
       {where && <span className="text-muted-foreground text-xs">{where}</span>}
       {importing.kind === "rejected" && (
-        <p role="alert" className="text-destructive text-sm">
+        <Notice key={importing.problem} tone="danger" dismissible>
           {importing.problem}
-        </p>
+        </Notice>
       )}
     </div>
   )
@@ -229,20 +229,22 @@ export const FileProblem = ({
   // Read again whenever the record changes.
   useJobs()
   const outgoing = phoneJobs().keeping.outgoing(kind)
-  if (outgoing === null || !("problem" in outgoing)) return null
+  const problem =
+    outgoing !== null && "problem" in outgoing ? outgoing.problem : null
+  if (problem === null) return null
   return (
-    <p role="alert" className="text-destructive px-3.5 pb-3.5 text-sm">
-      {outgoing.problem}
-    </p>
+    <Notice key={problem} tone="danger" dismissible>
+      {problem}
+    </Notice>
   )
 }
 
 /** What the record refused to keep, said once. */
 export const Problem = (): JSX.Element | null => {
   const { problem } = useJobs()
-  return problem ? (
-    <p role="alert" className="text-destructive text-sm">
+  return problem === null ? null : (
+    <Notice tone="danger" onDismiss={() => phoneJobs().dismissProblem()}>
       {problem}
-    </p>
-  ) : null
+    </Notice>
+  )
 }

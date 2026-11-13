@@ -12,7 +12,7 @@ import {
 type LadderDockProps = {
   /** The line's rung: audio only, Hangul, gloss (canon Cor. 4.4). */
   rung: 0 | 1 | 2
-  /** Whether the next rung may be reached now. */
+  /** Whether the next rung may be reached now; not, its button stays, disabled. */
   canReveal: boolean
   audio: boolean
   speaking: boolean
@@ -54,23 +54,24 @@ export const LadderDock = ({
           {rung === 0 ? "Listen" : "Again"}
         </Button>
       )}
-      {canReveal && (
-        <Button
-          variant="outline"
-          className="h-12 min-w-0 flex-1 gap-2 rounded-2xl"
-          onClick={onReveal}
-        >
-          {rung === 0 ? (
-            <>
-              <Eye className="size-4" /> Show Korean
-            </>
-          ) : (
-            <>
-              <Languages className="size-4" /> Show English
-            </>
-          )}
-        </Button>
-      )}
+      {/* At the top rung it stays in its place, disabled, so Listen keeps
+          its width and, with no voice, the row its height (HS1). */}
+      <Button
+        variant="outline"
+        className="h-12 min-w-0 flex-1 gap-2 rounded-2xl"
+        disabled={!canReveal}
+        onClick={onReveal}
+      >
+        {rung === 0 ? (
+          <>
+            <Eye className="size-4" /> Show Korean
+          </>
+        ) : (
+          <>
+            <Languages className="size-4" /> Show English
+          </>
+        )}
+      </Button>
     </div>
     <div className="flex gap-2">
       <Button

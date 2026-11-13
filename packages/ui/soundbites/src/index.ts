@@ -2,10 +2,9 @@ export { IdeaCapture } from "./components/idea"
 export type { IdeaCaptureProps } from "./components/idea"
 export { IdeaBundle } from "./components/idea-bundle"
 export type { IdeaBundleProps } from "./components/idea-bundle"
-export type { BundleTakes, IdeaHome } from "./lib/idea/bundle-runtime"
-export type { HomeReach } from "./lib/idea/bundle"
 export { keptDraftStore } from "./lib/idea/draft"
 export { keptIdeaStore } from "./lib/idea/store"
+export { UnnamedIdeaTakes } from "./components/idea-unnamed"
 export type { IdeaStore } from "./lib/idea/store"
 export { keptIdeasForHome } from "./lib/idea/home"
 export type { IdeaForHome } from "./lib/idea/home"
@@ -17,11 +16,10 @@ export type {
   HomeRead,
   HomeWrite,
 } from "./lib/idea/on-home"
-export type { IdeasHome } from "./lib/idea/on-home-runtime"
+export type { IdeasHome, RedoPorts } from "./lib/idea/on-home-runtime"
 export { IdeaShelf } from "./components/idea-shelf"
 export type { IdeaShare, IdeaShelfProps } from "./components/idea-shelf"
 export type {
-  HeardAnswer,
   HearingPorts,
   HearingTiming,
   IdeaTakes,
@@ -30,7 +28,7 @@ export type {
 export { homeHearing } from "./lib/idea/hearing"
 export { TakeLibrary } from "./components/take-library"
 export type { LibraryPage, LibraryRead } from "./lib/library/model"
-export type { TakesHome } from "./lib/library/runtime"
+export type { LibraryPhone, TakesHome } from "./lib/library/runtime"
 export { LIBRARY_WORDS } from "./lib/library/words"
 export { Studio } from "./components/studio"
 export { StudioRecords } from "./components/studio-records"
@@ -74,6 +72,13 @@ export {
   waitingIds,
 } from "./lib/project/home"
 export type { StudioNote } from "./lib/project/home"
+export type { VideoForHome } from "./lib/project/dna"
+export type {
+  HomeVideo,
+  HomeVideos,
+  VideoAnswer,
+  VideosHome,
+} from "./lib/studio/home-videos"
 export { ProjectFullError, ProjectRewriteError } from "./lib/project/store"
 export type { Friction, ProjectStore } from "./lib/project/store"
 export type { LetGoChoice } from "./lib/project/let-go"

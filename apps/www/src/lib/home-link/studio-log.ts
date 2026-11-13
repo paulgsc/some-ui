@@ -13,7 +13,7 @@ import type { Friction, Project, Sitting, TimeEvent } from "@some-ui/soundbites"
 
 import type { studioKeeping } from "@/lib/studio-keeping"
 
-import type { EventLog, LogReport } from "./leetype-log"
+import type { EventLog, LogReport, TakenEvents } from "./leetype-log"
 import { bucketOf, sendLogs } from "./leetype-log"
 import type { Sent } from "./sent"
 import { digestOf } from "./sent"
@@ -106,15 +106,17 @@ const sittingPath = (sitting: string): string =>
 /**
  * Sends `going` through `send`, into `report` (a sitting refused or read
  * back otherwise is counted as LeetType's sessions are); `held` hears each
- * key `sent.studio` should remember.
+ * key `sent.studio` should remember, and `taken` each sitting's events
+ * home took.
  */
 export async function sendStudio(
   going: StudioGoing,
   send: HomeCall,
   report: LogReport,
-  held: (key: string, digest: string) => void
+  held: (key: string, digest: string) => void,
+  taken: TakenEvents
 ): Promise<void> {
-  await sendLogs(going.sittings, sittingPath, send, report, held)
+  await sendLogs(going.sittings, sittingPath, send, report, held, taken)
   if (report.forgotten || report.unreachable) return
   for (const answer of going.reports) {
     const sent = await answerOrEnd(

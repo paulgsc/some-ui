@@ -5,6 +5,7 @@
  * no audio goes but a bite's the record says home holds (#2080), and an
  * unreadable record is moved aside, never written over (GW3).
  */
+import { fakeClock } from "@/test-support/fake-clock"
 import type { KeyedStorage } from "@some-ui/core-utils"
 import type { KeptBite } from "@some-ui/game-week"
 import type { BlobShelf } from "@some-ui/voice-capture"
@@ -112,22 +113,15 @@ function world(start = T0): {
   advance: (ms: number) => Promise<void>
   show: () => Promise<void>
 } {
-  let now = start
-  let timers: Array<{ at: number; run: () => void }> = []
+  const clock = fakeClock(start)
   const visibility = new Set<(hidden: boolean) => void>()
   const settle = async (): Promise<void> => {
     for (let i = 0; i < 20; i += 1) await Promise.resolve()
   }
   return {
     ports: {
-      now: () => now,
-      after: (ms, run): (() => void) => {
-        const timer = { at: now + ms, run }
-        timers.push(timer)
-        return (): void => {
-          timers = timers.filter((each) => each !== timer)
-        }
-      },
+      now: clock.now,
+      after: clock.after,
       onVisibility: (listener): (() => void) => {
         visibility.add(listener)
         listener(false)
@@ -135,10 +129,7 @@ function world(start = T0): {
       },
     },
     async advance(ms): Promise<void> {
-      now += ms
-      const due = timers.filter(({ at }) => at <= now)
-      timers = timers.filter(({ at }) => at > now)
-      for (const { run } of due) run()
+      clock.pass(ms)
       await settle()
     },
     async show(): Promise<void> {

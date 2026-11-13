@@ -72,34 +72,102 @@ same data the slide draws:
 ## The show
 
 Playoff Delta is a show (SHOW epic, #2525): every week is an episode of the
-same format, fed that week's data, and the owner brings only the voice.
+same format, fed that week's data, filled by a routine and said by home's
+speaker; the owner watches it (FEED, #2643).
 `src/lib/show.ts` makes both formats (the week's and the legend's) from the
 slides above, a compile-time template, and pins each version under
-`src/show/formats/<id>/v<n>.json`. Its test holds the newest equal to the
+`@some-ui/video-render`'s `src/templates/<id>/v<n>.json`. Its test holds the newest equal to the
 code, so a change to the slides (their order, names, points or holds)
-fails until a new version is pinned. An episode is
-`episodeFor(season, week, sum, inMs)`: a primer the phone's Studio opens
-(each scene's point and the facts a take keeps, voiced ad-lib), listed
-under the show "Playoff Delta" and pinned to the format, the series and `sum`, with a cut list whose pictures are the
-clips, each starting at `inMs`. The recorder sums the season as the stage
-read it (its contract JSON), not the published file's bytes.
-The episode also carries its upload's title and description (SH5),
-`uploadOf(season, week)`, worded in `UPLOAD` (`src/lib/words.ts`) under the
-same words rules as the slides and held to YouTube's limits; the phone's
-Finish shows them once the episode is ready, and the owner uploads by hand.
-The schemas are `@some-ui/video-render`'s (`format.ts`, `episode.ts`).
+fails until a new version is pinned. `factsOf(season, week)` gives the facts
+each scene keeps, which the fill's check holds the narration to.
+The format schema is `@some-ui/video-render`'s (`format.ts`).
+
+## What is said
+
+I watch the show; I don't voice it (FEED, #2643). What is said over each
+scene is the one part an AI fills, and this package owns the rest: the
+schema it fills (`some-ui.pd-narration/1`), what it reads, and the check
+(`src/lib/narration.ts`, FEED1 #2644).
+
+```sh
+pnpm --filter @some-ui/playoff-delta narration due --season <file|sample> --folder <narration folder>
+pnpm --filter @some-ui/playoff-delta narration packet --season <file|sample> --week 9
+pnpm --filter @some-ui/playoff-delta narration check <fill.json> --season <file|sample> --week 9
+pnpm --filter @some-ui/playoff-delta narration index --root <testing>/playoff-delta
+```
+
+Each Tuesday in season a scheduled session fills the weeks due into
+`paulgsc/testing`'s `playoff-delta/<season>/narration/<team>-week-NN.json`, as `NARRATION-ROUTINE.md` says (FEED2 #2645).
+
+- **The packet** is everything a filler reads, and nothing else:
+  - the guidance (who the words are for, and what they're for);
+  - the episode's pins, which the fill copies: season, team, week, format,
+    and the sum of the season up to that week (`seasonTo`), so a fill still
+    checks once later weeks land, and stops checking if a week it reads
+    changes;
+  - each scene's point and facts;
+  - what the legend taught;
+  - the schema as JSON Schema.
+- **The check** refuses a fill that:
+
+  - isn't in the schema's shape;
+  - carries another episode's pins;
+  - has scenes other than the format's, in its order;
+  - forecasts (`FORECAST` in `src/lib/words.ts`);
+  - says a team's code ("LAR") in place of its name: the facts write codes,
+    which a voice can only spell, so the packet carries every team's name;
+  - says a number its scene's facts don't give, or a week not yet played.
+
+  It judges nothing else about the words.
+
+- **The index** (`playoff-delta/index.json`, `some-ui.pd-narration-index/1`)
+  lists every fill in the repository by season, team and week, with the
+  SHA-256 of its file. Home reads it hourly and keeps each fill it lacks,
+  with its season file, for good (FEED4 #2647); it is the one file home
+  needs, since `raw.githubusercontent.com` can't list a folder.
+- **The weeks due** are the legend once, then every played week after the
+  newest one filled; a first run fills the legend and the newest week, not
+  the weeks before it.
 
 ## Recording
 
 ```sh
 pnpm --filter www build
-pnpm --filter www record:playoff-delta --week 9
-pnpm --filter www record:playoff-delta --week 0   # the legend
+pnpm --filter www record:playoff-delta --week 8 --narration SF-week-08.json --season-file SF.json
 ```
 
-`apps/www/tests/record/playoff-delta.ts` writes one clip and still per
-scene and `episode.json`, made from the season the stage played; its header
-has the options.
+From format version 2 an episode is voiced (FEED3, #2646):
+`apps/www/tests/record/playoff-delta.ts` checks the week's fill against the
+season the stage plays, records a still of each scene with every animation
+at rest, has home's Kokoro speaker say each in `PD_VOICE`, and renders one
+9:16 MP4 in the series' version 2. `src/lib/voiced.ts` makes the scenes:
+
+- the **locked intro**: who wrote the words (Claude, from the season's
+  numbers), what computed the numbers and drew the frames (code), that the
+  voice is synthetic, and whose side it is read from, filled by code and
+  never by the fill (`INTRO` in `src/lib/words.ts`);
+- the **brand intro and outro**, the owner's mark;
+- a **chapter slide** said aloud before each slide the format marks
+  (`SHAPE` in `src/lib/show.ts`);
+- the slides, each said as the fill says it, with **captions** in the
+  series' look (`@some-ui/burn-ins`), the word being said lit, in the band
+  the stage leaves empty at the frame's foot (`captionSpace`).
+
+The same fill and season give the same bytes. The recorder refuses a scene
+the frame can't hold (`data-overflow`). A fill written for version 1 was for
+my voice and isn't voiced: an episode is never mine to voice (FEED6, #2649).
+The recorder's header has every option.
+
+A template's preview (SFEED12, #2757) is the sample season's episode of
+that format, the legend or the sample's newest week, cut to 15–30 s:
+
+```sh
+pnpm --filter www record:preview --template playoff-delta-week --voices none --out <folder>
+```
+
+It is said from the sample's fill, written once and kept in code
+(`src/lib/sample-fill.ts`), so no model is asked for a preview. Its test
+holds it passing the check, in each format's newest version.
 
 ## Next
 

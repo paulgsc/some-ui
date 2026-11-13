@@ -8,7 +8,7 @@
 
 import type { BurnInData, Prepared } from "./burn-in"
 import { boxesOf, burnInName, frameAt, prepare } from "./burn-in"
-import { overlaps, REGIONS } from "./geometry"
+import { geometryOf, overlaps, type FrameSize, type Geometry } from "./geometry"
 
 /** A burn-in placed in a video, as the renderer asks to record it. */
 export type PlacedBurnIn = BurnInData & {
@@ -18,10 +18,14 @@ export type PlacedBurnIn = BurnInData & {
 }
 
 /** The regions a burn-in draws in, `atMs` into its run. */
-function regionsAt(p: Prepared, atMs: number): ReadonlySet<string> {
+function regionsAt(
+  g: Geometry,
+  p: Prepared,
+  atMs: number
+): ReadonlySet<string> {
   const boxes = boxesOf(frameAt(p, atMs))
   return new Set(
-    Object.entries(REGIONS)
+    Object.entries(g.regions)
       .filter(([, region]) => boxes.some((box) => overlaps(box, region)))
       .map(([name]) => name)
   )
@@ -29,18 +33,22 @@ function regionsAt(p: Prepared, atMs: number): ReadonlySet<string> {
 
 /**
  * Every pair of `burnIns` that draw in one region at one frame, each said
- * once, with where and when; empty when none do. A burn-in that can't be
- * drawn at all is left to the recorder's `load`, which says why.
+ * once, with where and when, in the video's `frame`; empty when none do. A
+ * burn-in that can't be drawn at all, or a frame burn-ins aren't drawn for,
+ * is left to the recorder's `load`, which says why.
  */
 export function clashes(
   burnIns: ReadonlyArray<PlacedBurnIn>,
-  fps: number
+  fps: number,
+  frame: FrameSize
 ): ReadonlyArray<string> {
   const ready = burnIns.flatMap((b) => {
-    const p = prepare(b)
+    const p = prepare(b, frame)
     return p.ok ? [{ b, p: p.value }] : []
   })
   const problems: Array<string> = []
+  if (ready.length === 0) return problems
+  const g = geometryOf(frame)
   for (const [i, one] of ready.entries()) {
     for (const other of ready.slice(i + 1)) {
       const from = Math.max(one.b.startFrame, other.b.startFrame)
@@ -49,8 +57,9 @@ export function clashes(
         other.b.startFrame + other.b.frames
       )
       for (let f = from; f < to; f++) {
-        const mine = regionsAt(one.p, ((f - one.b.startFrame) * 1000) / fps)
+        const mine = regionsAt(g, one.p, ((f - one.b.startFrame) * 1000) / fps)
         const theirs = regionsAt(
+          g,
           other.p,
           ((f - other.b.startFrame) * 1000) / fps
         )

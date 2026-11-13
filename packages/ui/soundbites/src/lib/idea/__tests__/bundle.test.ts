@@ -1,4 +1,5 @@
 /** @vitest-environment node */
+import { inMemoryStorage } from "@some-ui/core-utils"
 import type { PatternTake, TakeEnded } from "@some-ui/voice-capture"
 import type {
   BundleEffect,
@@ -13,7 +14,11 @@ import {
   stepBundle,
 } from "@soundbites/lib/idea/bundle"
 import type { IdeaDraft } from "@soundbites/lib/idea/draft"
-import { IDEA_LISTS_SEED, newDraft } from "@soundbites/lib/idea/draft"
+import {
+  IDEA_LISTS_SEED,
+  keptDraftStore,
+  newDraft,
+} from "@soundbites/lib/idea/draft"
 import type { Idea } from "@soundbites/lib/idea/model"
 import { describe, expect, it } from "vitest"
 
@@ -52,7 +57,7 @@ const opened = (
   draft: kept,
   kept: ideas,
   takes,
-  lists: IDEA_LISTS_SEED,
+  context: IDEA_LISTS_SEED,
   id: "fresh",
   at: AT,
 })
@@ -88,6 +93,19 @@ const ended = (
   },
 })
 
+/** A take kept with no voice heard in it (D4, ST34). */
+const unheardEnd = (id: string, question = "what", seq = 1): BundleEvent => ({
+  type: "ended",
+  ended: {
+    seq,
+    answers: `idea:idea-1:${question}`,
+    ending: "kept",
+    id,
+    reason: null,
+    unheard: true,
+  },
+})
+
 /** Opened on a titled draft, at its questions. */
 function onQuestions(
   over: Partial<IdeaDraft> = {},
@@ -113,7 +131,7 @@ describe("a new idea as one bundle (ST26)", () => {
         opened(null),
       ])
       expect(effects).toEqual([{ type: "open" }])
-      expect(state.screen).toBe("about")
+      expect(state.screen).toBe("intro")
       expect(state.draft).toMatchObject({
         id: "fresh",
         at: AT,
@@ -122,10 +140,10 @@ describe("a new idea as one bundle (ST26)", () => {
     })
 
     it("resumes a kept idea at its questions once it has a title", () => {
-      expect(onQuestions().screen).toBe("questions")
+      expect(onQuestions().screen).toBe("cards")
       expect(
         run([{ type: "entered", at: AT }, opened(draft())]).state.screen
-      ).toBe("about")
+      ).toBe("intro")
     })
 
     it("says what is kept can't be read, and keeps nothing, when the draft or the ideas can't be", () => {
@@ -196,7 +214,7 @@ describe("a new idea as one bundle (ST26)", () => {
       expect(effects).toEqual([{ type: "open" }])
     })
 
-    it("takes off the draft what a take kept since answers: typed words said instead, and a mark for later", () => {
+    it("takes off the draft what a take kept since answers: a mark for later, and typed words it was said instead of, set aside, kept but neither shown nor sent", () => {
       const { state, effects } = run([
         { type: "entered", at: AT },
         opened(
@@ -209,6 +227,13 @@ describe("a new idea as one bundle (ST26)", () => {
         ),
       ])
       expect(state.draft.typed).toEqual({ takeaway: "still typed" })
+      expect(state.draft.overtaken).toEqual({ what: ["typed first"] })
+      expect(cardView(state, "what", false)).toEqual({ kind: "take" })
+      expect(
+        bundleIdea(state, LATER).answers.find(
+          (answer) => answer.question === "what"
+        )?.versions
+      ).toEqual([])
       expect(state.draft.later).toEqual(["picture"])
       expect(effects).toEqual([
         { type: "open" },
@@ -231,12 +256,15 @@ describe("a new idea as one bundle (ST26)", () => {
     it("keeps each change to the draft as it is made", () => {
       const { state, effects } = run(
         [
-          tap({ type: "format", format: "video" }),
-          tap({ type: "title", text: "Two hearings, one word" }),
-          tap({ type: "topic", topic: "Korean" }),
-          tap({ type: "keyword", keyword: "voice" }),
-          tap({ type: "keyword", keyword: "mistakes" }),
-          tap({ type: "keyword", keyword: "voice" }),
+          tap({ type: "edit", edit: { type: "format", format: "video" } }),
+          tap({
+            type: "edit",
+            edit: { type: "title", text: "Two hearings, one word" },
+          }),
+          tap({ type: "edit", edit: { type: "topic", topic: "Korean" } }),
+          tap({ type: "edit", edit: { type: "keyword", keyword: "voice" } }),
+          tap({ type: "edit", edit: { type: "keyword", keyword: "mistakes" } }),
+          tap({ type: "edit", edit: { type: "keyword", keyword: "voice" } }),
         ],
         about
       )
@@ -253,9 +281,12 @@ describe("a new idea as one bundle (ST26)", () => {
     it("holds the title to 80 characters, and picks only from the lists", () => {
       const { state } = run(
         [
-          tap({ type: "title", text: "x".repeat(120) }),
-          tap({ type: "topic", topic: "Not a topic" }),
-          tap({ type: "keyword", keyword: "not a keyword" }),
+          tap({ type: "edit", edit: { type: "title", text: "x".repeat(120) } }),
+          tap({ type: "edit", edit: { type: "topic", topic: "Not a topic" } }),
+          tap({
+            type: "edit",
+            edit: { type: "keyword", keyword: "not a keyword" },
+          }),
         ],
         about
       )
@@ -265,9 +296,7 @@ describe("a new idea as one bundle (ST26)", () => {
     })
 
     it("goes on to the questions", () => {
-      expect(run([tap({ type: "start" })], about).state.screen).toBe(
-        "questions"
-      )
+      expect(run([tap({ type: "start" })], about).state.screen).toBe("cards")
     })
   })
 
@@ -309,7 +338,7 @@ describe("a new idea as one bundle (ST26)", () => {
   describe("saying an answer", () => {
     it("starts a take only with the draft it answers, kept first", () => {
       const at = onQuestions({}, [take("t1", "what")])
-      const { effects } = run([tap({ type: "tap", question: "what" })], at)
+      const { effects } = run([tap({ type: "tap", item: "what" })], at)
       expect(effects).toEqual([
         {
           type: "tap",
@@ -322,7 +351,7 @@ describe("a new idea as one bundle (ST26)", () => {
 
     it("says it again: once the new take is kept, the one it replaced is deleted for good, and only once", () => {
       const at = onQuestions({}, [take("t1", "what")])
-      const redone = run([tap({ type: "tap", question: "what" })], at).state
+      const redone = run([tap({ type: "tap", item: "what" })], at).state
       const now = take("t22", "what", {
         recordedAt: "2026-11-01T09:03:00.000Z",
       })
@@ -356,17 +385,15 @@ describe("a new idea as one bundle (ST26)", () => {
 
     it("stops the take under way on its tap, and nothing else", () => {
       const busy = run([{ type: "busy", busy: true }], onQuestions()).state
-      expect(
-        run([tap({ type: "tap", question: "what" })], busy).effects
-      ).toEqual([
+      expect(run([tap({ type: "tap", item: "what" })], busy).effects).toEqual([
         { type: "tap", answers: "idea:idea-1:what", supersedes: null },
       ])
     })
 
     it("redoes one from the look-over at its own card", () => {
       const review = run([tap({ type: "review" })], onQuestions()).state
-      const { state } = run([tap({ type: "tap", question: "spark" })], review)
-      expect(state.screen).toBe("questions")
+      const { state } = run([tap({ type: "tap", item: "spark" })], review)
+      expect(state.screen).toBe("cards")
       expect(state.index).toBe(2)
     })
   })
@@ -395,13 +422,13 @@ describe("a new idea as one bundle (ST26)", () => {
       const at = onQuestions()
       // Typing is never offered first.
       expect(
-        run([tap({ type: "typeInstead", question: "what" })], at).state.modes
+        run([tap({ type: "typeInstead", item: "what" })], at).state.modes
       ).toEqual({})
       const typed = run(
         [
           ended("blocked"),
-          tap({ type: "typeInstead", question: "what" }),
-          tap({ type: "typed", question: "what", text: "y".repeat(1_200) }),
+          tap({ type: "typeInstead", item: "what" }),
+          tap({ type: "typed", item: "what", text: "y".repeat(1_200) }),
         ],
         at
       )
@@ -411,8 +438,8 @@ describe("a new idea as one bundle (ST26)", () => {
       })
       const kept = run(
         [
-          tap({ type: "typed", question: "what", text: "  Two hearings  " }),
-          tap({ type: "keepTyped", question: "what" }),
+          tap({ type: "typed", item: "what", text: "  Two hearings  " }),
+          tap({ type: "keepTyped", item: "what" }),
         ],
         typed.state
       )
@@ -424,7 +451,7 @@ describe("a new idea as one bundle (ST26)", () => {
       // Say it instead: the take kept takes the typed words' place.
       const said = run(
         [
-          tap({ type: "tap", question: "what" }),
+          tap({ type: "tap", item: "what" }),
           {
             type: "takes",
             takes: [take("t1", "what")],
@@ -441,12 +468,176 @@ describe("a new idea as one bundle (ST26)", () => {
       expect(cardView(said.state, "what", false)).toEqual({ kind: "take" })
     })
 
+    it("offers typing beside a take kept with no voice heard, through a try that fails and a reload, keeps both, and sends both (ST34)", () => {
+      const heard = run(
+        [unheardEnd("t1")],
+        onQuestions({}, [take("t1", "what")])
+      )
+      expect(cardView(heard.state, "what", false)).toEqual({ kind: "unheard" })
+      expect(heard.state.draft.unheard).toEqual({ what: "t1" })
+      // A try that fails, or is too short, leaves the take and its offer.
+      for (const ending of ["failed", "blocked", "short", "early"] as const) {
+        const retried = run(
+          [tap({ type: "tap", item: "what" }), ended(ending)],
+          heard.state
+        )
+        expect(cardView(retried.state, "what", false)).toEqual({
+          kind: "unheard",
+        })
+      }
+      // Kept on the draft, the offer comes back with the screen.
+      const storage = inMemoryStorage()
+      const drafts = keptDraftStore(() => storage)
+      expect(drafts.write(heard.state.draft)).toBe(true)
+      const reopened = run([
+        { type: "entered", at: AT },
+        opened(drafts.read(), [take("t1", "what")]),
+      ])
+      expect(cardView(reopened.state, "what", false)).toEqual({
+        kind: "unheard",
+      })
+      const typed = run(
+        [
+          tap({ type: "typeInstead", item: "what" }),
+          tap({ type: "typed", item: "what", text: "Two hearings" }),
+          tap({ type: "keepTyped", item: "what" }),
+        ],
+        reopened.state
+      )
+      expect(typed.state.draft.typed).toEqual({ what: "Two hearings" })
+      expect(typed.state.draft.beside).toEqual({ what: "t1" })
+      expect(cardView(typed.state, "what", false)).toEqual({
+        kind: "typed",
+        words: "Two hearings",
+      })
+      // The take is never let go for the words: a listing keeps both.
+      const listed = run(
+        [{ type: "takes", takes: [take("t1", "what")] }],
+        typed.state
+      )
+      expect(listed.state.draft.typed).toEqual({ what: "Two hearings" })
+      expect(
+        listed.effects.filter((effect) =>
+          ["deleteTakes", "drop", "deleteAll"].includes(effect.type)
+        )
+      ).toEqual([])
+      expect(bundleIdea(listed.state, LATER).answers).toEqual([
+        {
+          question: "what",
+          versions: [{ at: LATER, how: "typed", words: "Two hearings" }],
+          takes: [{ at: take("t1", "what").recordedAt, take: "t1" }],
+        },
+      ])
+    })
+
+    it("keeps typed words beside each take kept unheard, whichever of its end and the take list comes first, until one heard takes their place (ST34)", () => {
+      const t1 = take("t1", "what", { standing: "earlier" })
+      const t22 = take("t22", "what")
+      // Typed once voice failed, then said again and kept unheard: the
+      // words stand beside the take.
+      const typedFirst = run(
+        [
+          ended("failed"),
+          tap({ type: "typeInstead", item: "what" }),
+          tap({ type: "typed", item: "what", text: "Two hearings" }),
+          tap({ type: "keepTyped", item: "what" }),
+          tap({ type: "tap", item: "what" }),
+          unheardEnd("t1"),
+          { type: "takes", takes: [take("t1", "what")] },
+        ],
+        onQuestions()
+      )
+      expect(typedFirst.state.draft.typed).toEqual({ what: "Two hearings" })
+      expect(typedFirst.state.draft.beside).toEqual({ what: "t1" })
+      const besideT1 = typedFirst.state
+      const again = tap({ type: "tap", item: "what" })
+      const listing: BundleEvent = { type: "takes", takes: [t1, t22] }
+      for (const order of [
+        [again, unheardEnd("t22"), listing],
+        [again, listing, unheardEnd("t22")],
+      ]) {
+        const { state } = run(order, besideT1)
+        expect(state.draft.typed).toEqual({ what: "Two hearings" })
+        expect(state.draft.beside).toEqual({ what: "t22" })
+        expect(state.draft.unheard).toEqual({ what: "t22" })
+        expect(cardView(state, "what", false)).toEqual({
+          kind: "typed",
+          words: "Two hearings",
+        })
+        expect(bundleIdea(state, LATER).answers).toEqual([
+          {
+            question: "what",
+            versions: [{ at: LATER, how: "typed", words: "Two hearings" }],
+            takes: [{ at: t22.recordedAt, take: "t22" }],
+          },
+        ])
+      }
+      // Said again and heard, the new take takes the typed words' place.
+      const said = run(
+        [
+          again,
+          {
+            type: "takes",
+            takes: [
+              t1,
+              take("t22", "what", { standing: "earlier" }),
+              take("t333", "what"),
+            ],
+          },
+          ended("kept"),
+        ],
+        run([again, unheardEnd("t22"), listing], besideT1).state
+      )
+      expect(said.state.draft.typed).toEqual({})
+      expect(said.state.draft.beside).toBeUndefined()
+      expect(said.state.draft.unheard).toBeUndefined()
+      expect(cardView(said.state, "what", false)).toEqual({ kind: "take" })
+      // Said again and kept heard after the screen went, its end unseen:
+      // the screen opening sets the words aside, so a take kept unheard
+      // after it never brings them back as the answer.
+      const t333 = take("t333", "what")
+      const reopened = run([
+        { type: "entered", at: AT },
+        opened(besideT1.draft, [
+          t1,
+          take("t22", "what", { standing: "earlier" }),
+          t333,
+        ]),
+      ])
+      expect(reopened.state.draft.typed).toEqual({})
+      expect(reopened.state.draft.overtaken).toEqual({
+        what: ["Two hearings"],
+      })
+      const t4444 = take("t4444", "what")
+      const unheardAfter = run(
+        [
+          again,
+          unheardEnd("t4444"),
+          {
+            type: "takes",
+            takes: [take("t333", "what", { standing: "earlier" }), t4444],
+          },
+        ],
+        reopened.state
+      )
+      expect(cardView(unheardAfter.state, "what", false)).toEqual({
+        kind: "unheard",
+      })
+      expect(bundleIdea(unheardAfter.state, LATER).answers).toEqual([
+        {
+          question: "what",
+          versions: [],
+          takes: [{ at: t4444.recordedAt, take: "t4444" }],
+        },
+      ])
+      expect(unheardAfter.state.draft.overtaken).toEqual({
+        what: ["Two hearings"],
+      })
+    })
+
     it("comes back later: marked, and on to the next card", () => {
       const { state } = run(
-        [
-          ended("failed", "takeaway"),
-          tap({ type: "later", question: "takeaway" }),
-        ],
+        [ended("failed", "takeaway"), tap({ type: "later", item: "takeaway" })],
         run([tap({ type: "go", index: 1 })], onQuestions()).state
       )
       expect(state.index).toBe(2)
@@ -454,8 +645,7 @@ describe("a new idea as one bundle (ST26)", () => {
       expect(cardView(state, "takeaway", false)).toEqual({ kind: "later" })
       // Said now, it is no longer left for later.
       expect(
-        run([tap({ type: "tap", question: "takeaway" })], state).state.draft
-          .later
+        run([tap({ type: "tap", item: "takeaway" })], state).state.draft.later
       ).toEqual([])
     })
   })
@@ -467,8 +657,8 @@ describe("a new idea as one bundle (ST26)", () => {
         take("t22", "what", { standing: "earlier" }),
         take("t333", "spark"),
       ])
-      const asked = run([tap({ type: "askDelete", question: "what" })], at)
-      expect(asked.state.confirm).toEqual({ kind: "answer", question: "what" })
+      const asked = run([tap({ type: "askDelete", item: "what" })], at)
+      expect(asked.state.confirm).toEqual({ kind: "answer", item: "what" })
       expect(
         run([tap({ type: "keepIt" })], asked.state).state.confirm
       ).toBeNull()
@@ -485,14 +675,10 @@ describe("a new idea as one bundle (ST26)", () => {
     it("deletes typed words the same way, and asks nothing for an answer not given", () => {
       const at = onQuestions({ typed: { spark: "a word" } })
       expect(
-        run([tap({ type: "askDelete", question: "takeaway" })], at).state
-          .confirm
+        run([tap({ type: "askDelete", item: "takeaway" })], at).state.confirm
       ).toBeNull()
       const { state } = run(
-        [
-          tap({ type: "askDelete", question: "spark" }),
-          tap({ type: "confirmed" }),
-        ],
+        [tap({ type: "askDelete", item: "spark" }), tap({ type: "confirmed" })],
         at
       )
       expect(state.draft.typed).toEqual({})
@@ -517,7 +703,7 @@ describe("a new idea as one bundle (ST26)", () => {
         [{ type: "deletedAll", deleted: true, id: "idea-2", at: LATER }],
         state
       ).state
-      expect(gone.screen).toBe("about")
+      expect(gone.screen).toBe("intro")
       expect(gone.draft.id).toBe("idea-2")
       expect(gone.notice).toBe("deletedAll")
       const kept = run(
@@ -574,7 +760,7 @@ describe("a new idea as one bundle (ST26)", () => {
       const { effects } = run([tap({ type: "send" })], review)
       const idea = bundleIdea(review, LATER)
       // Only the take each answer has now: the rest are never sent.
-      expect(effects).toEqual([{ type: "send", idea, takes: ["t2"] }])
+      expect(effects).toEqual([{ type: "send", record: idea, takes: ["t2"] }])
       expect(idea).toEqual({
         id: "idea-1",
         at: AT,
@@ -607,7 +793,7 @@ describe("a new idea as one bundle (ST26)", () => {
       ])
       const redone = run(
         [
-          tap({ type: "tap", question: "spark" }),
+          tap({ type: "tap", item: "spark" }),
           {
             type: "takes",
             takes: [
@@ -615,7 +801,7 @@ describe("a new idea as one bundle (ST26)", () => {
               take("t1", "spark", { standing: "earlier" }),
             ],
           },
-          tap({ type: "askDelete", question: "spark" }),
+          tap({ type: "askDelete", item: "spark" }),
           tap({ type: "confirmed" }),
         ],
         at
@@ -637,7 +823,7 @@ describe("a new idea as one bundle (ST26)", () => {
       expect(send).toMatchObject({ type: "send", takes: [] })
       expect(
         send?.type === "send" &&
-          send.idea.answers.map((answer) => answer.question)
+          send.record.answers.map((answer) => answer.question)
       ).toEqual(["what"])
     })
 
@@ -647,17 +833,17 @@ describe("a new idea as one bundle (ST26)", () => {
         onQuestions({}, [take("t1", "what")])
       ).state
       const idea = bundleIdea(review, LATER)
-      const sent = run([{ type: "sentKept", idea }], review).state
+      const sent = run([{ type: "sentKept", record: idea }], review).state
       expect(sent.screen).toBe("sent")
       expect(sent.sent).toBe(idea)
       expect(
-        run([{ type: "sentKept", idea: null }], review).state
+        run([{ type: "sentKept", record: null }], review).state
       ).toMatchObject({ screen: "review", notice: "notSent" })
       const another = run(
         [{ type: "another", id: "idea-2", at: LATER }],
         sent
       ).state
-      expect(another.screen).toBe("about")
+      expect(another.screen).toBe("intro")
       expect(another.draft.id).toBe("idea-2")
     })
   })

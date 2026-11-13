@@ -27,20 +27,19 @@
 import { z } from "zod"
 
 import { recordLink } from "./authorship-link"
-import { REGIONS, type Box } from "./geometry"
+import { inside, type Box, type Geometry } from "./geometry"
 import {
   blocksOf,
-  CARD_INNER,
-  CARD_INNER_BOTTOM,
-  CARD_PANEL,
   cardHeadline,
+  cardSpace,
   INK,
   kicker,
   textBoxes,
+  type CardSpace,
   type Panel,
 } from "./journal"
 import type { Parsed } from "./parsed"
-import { barlow, setText, type TextBlock } from "./text"
+import { barlow, setText, widthOf, type TextBlock } from "./text"
 import { WORDS } from "./words"
 
 export const AUTHORSHIP_DESIGNS = ["cells-v1"] as const
@@ -162,14 +161,15 @@ const square = (x: number, y: number, size: number): Box => ({
 type Named = ReadonlyArray<readonly [string, TextBlock | null]>
 
 /** A part's kicker and headline, as a Build Journal card has them. */
-const heading = (part: string, headline: string): Named => [
-  [`${part}'s kicker`, kicker(WORDS.authorship.kicker)],
-  [`${part}'s headline`, cardHeadline(headline)],
+const heading = (part: string, headline: string, g: Geometry): Named => [
+  [`${part}'s kicker`, kicker(WORDS.authorship.kicker, g)],
+  [`${part}'s headline`, cardHeadline(headline, g)],
 ]
 
 /** A part over a bare card: its panel, its words set, its cells. */
 const onCard = (
   part: "intro" | "end",
+  space: CardSpace,
   named: Named,
   cells: ReadonlyArray<Cell>
 ): Parsed<AuthorshipFrame> => {
@@ -177,30 +177,61 @@ const onCard = (
   return set.ok
     ? {
         ok: true,
-        value: { part, cells, panels: [CARD_PANEL], blocks: set.value.blocks },
+        value: { part, cells, panels: [space.panel], blocks: set.value.blocks },
       }
     : set
 }
 
-/** The intro: each actor's cell and what it stands for, then the grammar. */
-function introFrame(): Parsed<AuthorshipFrame> {
+/** An actor's row in the intro: its cell, and its name and line beside it. */
+const ACTOR_ROW = 124
+/** A grammar line's row in the intro, when they stack. */
+const GRAMMAR_ROW = 76
+/** How far in from a cell its words start. */
+const TEXT_IN = 96
+/** Between two grammar lines, when they share a row. */
+const GRAMMAR_GAP = 48
+const GRAMMAR_CELL = 48
+
+/**
+ * The intro: each actor's cell and what it stands for, then the grammar.
+ * Where the card is tall enough (the short), the actors and the grammar
+ * lines stack in one column; where it is not (the 16:9 frame), the actors
+ * take two to a row and the grammar lines share one row under them. A part
+ * that would reach past the card's text is refused, never drawn over the
+ * region below.
+ */
+function introFrame(g: Geometry): Parsed<AuthorshipFrame> {
   const words = WORDS.authorship
+  const space = cardSpace(g)
+  const { inner } = space
+  const grammar = [
+    ["filled", words.grammar.origin, "origin", false],
+    ["half filled", words.grammar.wording, "wording", false],
+    ["outlined", words.grammar.hand, null, true],
+  ] as const
+  const stacked =
+    inner.y +
+      ACTORS.length * ACTOR_ROW +
+      40 +
+      (grammar.length - 1) * GRAMMAR_ROW +
+      GRAMMAR_CELL <=
+    space.innerBottom
+  const perRow = stacked ? 1 : 2
+  const column = inner.width / perRow
   const cells: Array<Cell> = []
-  const named: Array<readonly [string, TextBlock | null]> = [
-    ...heading("intro", words.introHeadline),
-  ]
-  const textX = CARD_INNER.x + 96
-  const textWidth = CARD_INNER.width - 96
+  const own: Array<readonly [string, TextBlock | null]> = []
   ACTORS.forEach((actor, i) => {
-    const y = CARD_INNER.y + i * 124
-    cells.push(key(actor, square(CARD_INNER.x, y, 64), "origin", true))
-    named.push(
+    const x = inner.x + (i % perRow) * column
+    const y = inner.y + Math.floor(i / perRow) * ACTOR_ROW
+    const text = { x: x + TEXT_IN, width: column - TEXT_IN }
+    cells.push(key(actor, square(x, y, 64), "origin", true))
+    own.push(
       [
         `intro's ${actor} name`,
         setText(
           words.actors[actor].name,
           barlow(800, 44, INK.text),
-          { x: textX, y: y - 4, width: textWidth },
+          { ...text, y: y - 4 },
           1
         ),
       ],
@@ -209,39 +240,56 @@ function introFrame(): Parsed<AuthorshipFrame> {
         setText(
           words.actors[actor].about,
           barlow(600, 30, INK.muted),
-          { x: textX, y: y + 52, width: textWidth },
+          { ...text, y: y + 52 },
           1
         ),
       ]
     )
   })
-  const grammar = [
-    ["filled", words.grammar.origin, "origin", false],
-    ["half filled", words.grammar.wording, "wording", false],
-    ["outlined", words.grammar.hand, null, true],
-  ] as const
+  const grammarStyle = barlow(600, 34, INK.text)
+  const actorRows = Math.ceil(ACTORS.length / perRow)
+  let across = inner.x
   grammar.forEach(([name, text, idea, hand], i) => {
-    const y = CARD_INNER.y + 4 * 124 + 40 + i * 76
-    cells.push(key("agent", square(CARD_INNER.x + 8, y, 48), idea, hand))
-    named.push([
+    const x = stacked ? inner.x : across
+    const y = stacked
+      ? inner.y + actorRows * ACTOR_ROW + 40 + i * GRAMMAR_ROW
+      : inner.y + actorRows * ACTOR_ROW
+    const width = stacked
+      ? inner.width - TEXT_IN
+      : Math.ceil(widthOf(text, grammarStyle))
+    cells.push(key("agent", square(x + 8, y, GRAMMAR_CELL), idea, hand))
+    own.push([
       `intro's ${name} line`,
-      setText(
-        text,
-        barlow(600, 34, INK.text),
-        { x: textX, y: y + 2, width: textWidth },
-        1
-      ),
+      setText(text, grammarStyle, { x: x + TEXT_IN, y: y + 2, width }, 1),
     ])
+    across = x + TEXT_IN + width + GRAMMAR_GAP
   })
-  return onCard("intro", named, cells)
+  const top = space.panel.box.y
+  const room: Box = {
+    x: inner.x,
+    y: top,
+    width: inner.width,
+    height: space.innerBottom - top,
+  }
+  const overflows = [
+    ...cells.map((c) => c.box),
+    ...own.flatMap(([, b]) => (b ? [b.box] : [])),
+  ].some((box) => !inside(box, room))
+  if (overflows) return { ok: false, problems: ["the intro doesn't fit"] }
+  return onCard(
+    "intro",
+    space,
+    [...heading("intro", words.introHeadline, g), ...own],
+    cells
+  )
 }
 
 /** The mark: the scene's cells, small, down the gutter. */
-const markFrame = (s: AuthoredScene): AuthorshipFrame => ({
+const markFrame = (s: AuthoredScene, g: Geometry): AuthorshipFrame => ({
   part: "mark",
   cells: claims(
     s,
-    { x: REGIONS.gutter.x + 4, y: REGIONS.gutter.y + 12 },
+    { x: g.regions.gutter.x + 4, y: g.regions.gutter.y + 12 },
     34,
     12,
     false
@@ -250,29 +298,38 @@ const markFrame = (s: AuthoredScene): AuthorshipFrame => ({
   blocks: [],
 })
 
-const ROWS_PER_COLUMN = 12
 const ROW = 54
 const COLUMN = 430
+/** A scene's entry: its number, then its four cells. */
+const ENTRY = 64 + ACTORS.length * 36 + (ACTORS.length - 1) * 10
 const LINK_PX = 26
 
-/** The end card: a legend, the grammar, then each scene's cells, numbered. */
+/**
+ * The end card: a legend, the grammar, then each scene's cells, numbered,
+ * in as many rows as fit above the link and as many columns as fit across
+ * (12 rows of 2 in the short, which holds `MOST_SCENES`; fewer in the
+ * shorter 16:9 card, which refuses a record it can't hold).
+ */
 function endFrame(
-  between: ReadonlyArray<AuthoredScene>
+  between: ReadonlyArray<AuthoredScene>,
+  g: Geometry
 ): Parsed<AuthorshipFrame> {
   const words = WORDS.authorship
+  const space = cardSpace(g)
+  const { inner } = space
   const cells: Array<Cell> = []
   const named: Array<readonly [string, TextBlock | null]> = [
-    ...heading("end card", words.endHeadline),
+    ...heading("end card", words.endHeadline, g),
   ]
   ACTORS.forEach((actor, i) => {
-    const x = CARD_INNER.x + i * 215
-    cells.push(key(actor, square(x, CARD_INNER.y, 32), "origin", false))
+    const x = inner.x + i * 215
+    cells.push(key(actor, square(x, inner.y, 32), "origin", false))
     named.push([
       `end card's ${actor} name`,
       setText(
         words.actors[actor].name,
         barlow(600, 30, INK.text),
-        { x: x + 44, y: CARD_INNER.y - 2, width: 160 },
+        { x: x + 44, y: inner.y - 2, width: 160 },
         1
       ),
     ])
@@ -282,14 +339,22 @@ function endFrame(
     setText(
       words.grammarShort,
       barlow(600, 28, INK.muted),
-      { x: CARD_INNER.x, y: CARD_INNER.y + 60, width: CARD_INNER.width },
+      { x: inner.x, y: inner.y + 60, width: inner.width },
       1
     ),
   ])
-  const top = CARD_INNER.y + 130
+  // The link on a row of its own, under what it is: it has no space to break at.
+  const linkY = space.innerBottom - LINK_PX * 1.25
+  const labelY = linkY - LINK_PX * 1.25
+  const top = inner.y + 130
+  const rows = Math.floor((labelY - top) / ROW)
+  const columns = Math.floor((inner.width - ENTRY) / COLUMN) + 1
+  if (between.length > Math.max(0, rows) * columns) {
+    return { ok: false, problems: ["the end card's record doesn't fit"] }
+  }
   between.forEach((s, i) => {
-    const x = CARD_INNER.x + Math.floor(i / ROWS_PER_COLUMN) * COLUMN
-    const y = top + (i % ROWS_PER_COLUMN) * ROW
+    const x = inner.x + Math.floor(i / rows) * COLUMN
+    const y = top + (i % rows) * ROW
     named.push([
       `end card's scene ${i + 1}`,
       setText(
@@ -301,13 +366,10 @@ function endFrame(
     ])
     cells.push(...claims(s, { x: x + 64, y }, 36, 10, true))
   })
-  // The link on a row of its own, under what it is: it has no space to break at.
-  const linkY = CARD_INNER_BOTTOM - LINK_PX * 1.25
-  const labelY = linkY - LINK_PX * 1.25
   const row = (y: number): { x: number; y: number; width: number } => ({
-    x: CARD_INNER.x,
+    x: inner.x,
     y,
-    width: CARD_INNER.width,
+    width: inner.width,
   })
   named.push(
     [
@@ -324,18 +386,16 @@ function endFrame(
       ),
     ]
   )
-  const lastY = top + Math.min(between.length, ROWS_PER_COLUMN) * ROW
-  const result = onCard("end", named, cells)
-  if (result.ok && lastY > labelY) {
-    return { ok: false, problems: ["the end card's record doesn't fit"] }
-  }
-  return result
+  return onCard("end", space, named, cells)
 }
 
 /** Every part drawn from checked params, or every reason one can't be. */
-export function drawAuthorship(p: AuthorshipParams): Parsed<AuthorshipDrawing> {
-  const intro = introFrame()
-  const end = endFrame(p.scenes.slice(1, -1))
+export function drawAuthorship(
+  p: AuthorshipParams,
+  g: Geometry
+): Parsed<AuthorshipDrawing> {
+  const intro = introFrame(g)
+  const end = endFrame(p.scenes.slice(1, -1), g)
   const problems = [
     ...(intro.ok ? [] : intro.problems),
     ...(end.ok ? [] : end.problems),
@@ -346,7 +406,7 @@ export function drawAuthorship(p: AuthorshipParams): Parsed<AuthorshipDrawing> {
     value: {
       scenes: p.scenes,
       intro: intro.value,
-      marks: p.scenes.map(markFrame),
+      marks: p.scenes.map((s) => markFrame(s, g)),
       end: end.value,
     },
   }

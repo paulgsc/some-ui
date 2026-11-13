@@ -55,6 +55,8 @@ const fakes = vi.hoisted(
     onDrive: Array<ReadonlyArray<string>>
     /** The takes Studio was told home deleted. */
     deleted: Array<ReadonlyArray<string>>
+    /** Whether Studio's store fails to let a deleted take go. */
+    deleteFails: boolean
     /** Whether the phone is paired with home. */
     paired: boolean
   } => ({
@@ -66,6 +68,7 @@ const fakes = vi.hoisted(
     waitingIds: [],
     onDrive: [],
     deleted: [],
+    deleteFails: false,
     paired: true,
   })
 )
@@ -338,6 +341,7 @@ function handStudioIn(): void {
     ],
     letGoHeldTakes: () => Promise.resolve(0),
     letGoDeletedTakes: (deleted) => {
+      if (fakes.deleteFails) return Promise.reject(new Error("disk full"))
       fakes.deleted.push([...deleted])
       return Promise.resolve(1)
     },
@@ -348,6 +352,7 @@ function handStudioIn(): void {
       return Promise.resolve(1)
     },
     sittingKey: () => "s",
+    videosForHome: () => [],
   })
 }
 
@@ -382,6 +387,44 @@ describe("Studio's takes, once its route hands them in (ST12)", () => {
     expect(await letGoDeleted(["t1"])).toBe(true)
     expect(fakes.home?.getSnapshot().waiting).toEqual([])
     expect(await fakes.home?.keeping.audio("t1")).toBeNull()
+    expect(fakes.deleted).toEqual([["t1"]])
+  })
+
+  it("LA8: a copy whose take Studio couldn't let go stays waiting, held back for the launch, and the next launch's deleted_for_good lets it go", async () => {
+    setUp(5, {})
+    handStudioIn()
+    const deletedForGood: HomeCall = () =>
+      Promise.resolve({
+        status: 409,
+        body: JSON.stringify({ error: { code: "deleted_for_good" } }),
+      })
+    fakes.deleted = []
+    fakes.deleteFails = true
+    try {
+      await sendVoice(deletedForGood, AT_PAIRING)
+      expect(fakes.home?.getSnapshot()).toMatchObject({
+        waiting: [{ id: "t1" }],
+        refused: [],
+      })
+    } finally {
+      fakes.deleteFails = false
+    }
+    const sent: Array<string> = []
+    const counting: HomeCall = (method, path, init) => {
+      sent.push(path)
+      return deletedForGood(method, path, init)
+    }
+    await sendVoice(counting, AT_PAIRING)
+    expect(sent.filter((path) => path.startsWith("/voice-notes/t1"))).toEqual(
+      []
+    )
+    // The next launch's runtime holds nothing back.
+    fakes.home?.deletedHeldBack.clear()
+    await sendVoice(counting, AT_PAIRING)
+    expect(fakes.home?.getSnapshot()).toMatchObject({
+      waiting: [],
+      refused: [],
+    })
     expect(fakes.deleted).toEqual([["t1"]])
   })
 

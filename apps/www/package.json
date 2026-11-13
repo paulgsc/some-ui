@@ -1,7 +1,7 @@
 {
   "name": "www",
   "private": true,
-  "version": "0.1.57",
+  "version": "0.1.68",
   "type": "module",
   "scripts": {
     "dev": "node scripts/sync-resume.mjs && vite",
@@ -9,6 +9,7 @@
     "content:link": "node scripts/link-content-assets.js",
     "build": "node scripts/sync-resume.mjs && vite build && tsc",
     "build:fit": "WWW_FIT_HARNESS=1 vite build --outDir out/ui-fit --emptyOutDir",
+    "build:stage": "WWW_STAGE=1 vite build --outDir out/stage --emptyOutDir",
     "build:fit-phone": "SOME_UI_PROFILE=mobile WWW_FIT_HARNESS=1 WWW_FIT_PAGE=phone vite build --outDir out/ui-fit-phone --emptyOutDir",
     "check:bundle-paths": "node check-bundle-paths.ts",
     "serve": "vite preview",
@@ -25,7 +26,11 @@
     "test:e2e": "playwright test --config playwright.config.ts",
     "test:ui-fit": "playwright test --config playwright.config.ts tests/ui-fit",
     "test:sw": "playwright test --config playwright.config.ts tests/study-nudge",
+    "record:call": "tsx tests/record/call.ts",
+    "record:essay": "tsx tests/record/essay.ts",
     "record:playoff-delta": "tsx tests/record/playoff-delta.ts",
+    "record:preview": "tsx tests/record/preview.ts",
+    "record:report": "tsx tests/record/report.ts",
     "record:short": "tsx tests/record/short.ts"
   },
   "dependencies": {
@@ -48,6 +53,7 @@
     "@some-ui/burn-ins": "workspace:*",
     "@some-ui/content-registry": "workspace:*",
     "@some-ui/core-utils": "workspace:*",
+    "@some-ui/engagement": "workspace:*",
     "@some-ui/fetch-kit": "workspace:*",
     "@some-ui/game-week": "workspace:*",
     "@some-ui/honeycomb": "workspace:*",
@@ -59,12 +65,14 @@
     "@some-ui/react-hooks": "workspace:*",
     "@some-ui/resume": "workspace:*",
     "@some-ui/rust-rounds": "workspace:*",
+    "@some-ui/server-routes": "workspace:*",
     "@some-ui/shared": "workspace:*",
     "@some-ui/soundbites": "workspace:*",
     "@some-ui/speech": "workspace:*",
     "@some-ui/styles": "workspace:*",
     "@some-ui/topik": "workspace:*",
     "@some-ui/types": "workspace:*",
+    "@some-ui/video-render": "workspace:*",
     "@some-ui/vite-config": "workspace:*",
     "@some-ui/voice-capture": "workspace:*",
     "@tailwindcss/vite": "catalog:",
@@ -85,9 +93,8 @@
   "devDependencies": {
     "@playwright/test": "1.62.1",
     "@some-ui/contract-harness": "workspace:*",
-    "@some-ui/engagement": "workspace:*",
-    "@some-ui/video-render": "workspace:*",
-    "@vitejs/plugin-react": "^6.1.2",
-    "vite": "^8.3.5"
+    "@some-ui/video-motion": "workspace:*",
+    "@vitejs/plugin-react": "^6.3.0",
+    "vite": "^8.3.7"
   }
 }

@@ -149,6 +149,11 @@ export type JobsRuntime = {
    * token; the next exchange with home files it (`./home`).
    */
   wantNotice: (on: boolean) => void
+  /**
+   * The person read the change the record refused and closed it, so the
+   * next refusal, though it says the same, is said again.
+   */
+  dismissProblem: () => void
   /** The record one exchange with home reads and answers (`./home`). */
   keeping: JobsRecordPort
 }
@@ -170,6 +175,9 @@ const IDLE: Importing = { kind: "idle" }
 
 const DRAFT_NOT_KEPT =
   "This phone couldn’t keep what you typed, so it lasts only while Jobs stays open. Free some space."
+const READ_ONLY =
+  "This phone can't read its jobs record, so it isn't changing it."
+const NOT_KEPT = "This phone couldn't keep that. Free some space and try again."
 
 export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
   const opened = openStored(ports.storage)
@@ -260,9 +268,7 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
     if (next === state) return false
     if (readOnly || !writeStored(ports.storage, next)) {
       if (quiet) return false
-      problem = readOnly
-        ? "This phone can't read its jobs record, so it isn't changing it."
-        : "This phone couldn't keep that. Free some space and try again."
+      problem = readOnly ? READ_ONLY : NOT_KEPT
       publish()
       return false
     }
@@ -439,6 +445,10 @@ export function createJobsRuntime(ports: JobsPorts): JobsRuntime {
         return
       }
       if (ports.notice !== undefined) void askForToken(ports.notice, false)
+    },
+    dismissProblem(): void {
+      problem = null
+      publish()
     },
     getSnapshot: () => snapshot,
     subscribe(listener): () => void {

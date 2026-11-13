@@ -106,6 +106,21 @@ function newestFirst(a: PatternTake, b: PatternTake): number {
 }
 
 /**
+ * The newest take answering `answers` that is still the item's own (not an
+ * earlier one, not set aside), or null when none is.
+ */
+export function currentTakeOf<T extends PatternTake>(
+  takes: ReadonlyArray<T>,
+  answers: string
+): T | null {
+  return (
+    takes
+      .filter((take) => take.answers === answers && take.standing === "current")
+      .sort(newestFirst)[0] ?? null
+  )
+}
+
+/**
  * `answers`' takes as the pattern shows them: a take set aside is out of the
  * item (D3), and under `per: "one"` only the newest current take is the
  * item's; any other is shown as earlier.
@@ -206,8 +221,11 @@ export function takeItemView(
   const ids = new Set(
     takes.filter((take) => take.answers === answers).map((take) => take.id)
   )
+  // Released (sent), a take on this phone no longer waits: it has left.
   const unsent = (take: PatternTake): boolean =>
-    take.kept !== null && discards(options, take.kept.place)
+    take.kept !== null &&
+    discards(options, take.kept.place) &&
+    take.waits === true
   const canDelete = (take: PatternTake): boolean =>
     deletesInMyData(options, take) && !unsent(take)
   return {

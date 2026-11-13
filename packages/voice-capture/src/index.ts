@@ -98,7 +98,12 @@ export type {
   TakeRowView,
   TakeSaid,
 } from "./lib/take-view"
-export { deletesInMyData, NEARLY_UP_MS, takeItemView } from "./lib/take-view"
+export {
+  currentTakeOf,
+  deletesInMyData,
+  NEARLY_UP_MS,
+  takeItemView,
+} from "./lib/take-view"
 export type { TakeWords } from "./lib/take-words"
 export {
   buttonLabel,
@@ -144,3 +149,29 @@ export type {
 } from "./lib/turn-runtime"
 export { NO_LISTENER, turnListening } from "./lib/turn-runtime"
 export { TURN_WORDS, turnNoticeSaid } from "./lib/turn-words"
+export type {
+  Answered,
+  BundleAnswer,
+  BundleDraft,
+  BundleEffect,
+  BundleEvent,
+  BundleIntent,
+  BundleKind,
+  BundleMachine,
+  BundleNotice,
+  BundleSpec,
+  BundleState,
+  CardView,
+  HomeReach,
+} from "./lib/bundle"
+export { bundleMachine, isPaired } from "./lib/bundle"
+export type {
+  BundleDrafts,
+  BundleHome,
+  BundlePorts,
+  BundleRecords,
+  BundleRuntime,
+  BundleTakes,
+} from "./lib/bundle-runtime"
+export { bundleRuntime, NO_HOME } from "./lib/bundle-runtime"
+export type { HeardAnswer } from "./lib/heard"

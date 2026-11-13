@@ -59,6 +59,19 @@ const PictureSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("still"), source: path }),
   /** The series' ground alone, for a card burn-in to draw on. */
   z.object({ kind: z.literal("card") }),
+  /**
+   * A HyperFrames composition (HYPER2, #2725), drawn over the whole frame for
+   * the scene's length: one of `@some-ui/video-motion`'s, by its folder's
+   * name. It draws its own motion, and its own way in and out.
+   */
+  z.object({
+    kind: z.literal("composition"),
+    ref: z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/),
+    /** Its inputs, over its declared defaults; one it doesn't declare is refused. */
+    variables: z.record(z.string(), z.unknown()).default({}),
+    /** Files in the video's folder it reads, beside it as `assets/<file>`. */
+    files: z.array(path).default([]),
+  }),
 ])
 
 /** A burn-in's kind and design, as names (`@some-ui/burn-ins` knows them). */
@@ -103,14 +116,39 @@ export const IdeaSchema = z.discriminatedUnion("origin", [
   }),
 ])
 
+/** A word said, and when, in ms: what home's speaker gives (`/timed`). */
+export const TimedWordSchema = z.object({
+  text: z.string().min(1),
+  startMs: z.number().int().nonnegative(),
+  endMs: z.number().int().nonnegative(),
+})
+
+export type TimedWord = Readonly<z.infer<typeof TimedWordSchema>>
+
 export const ShotSchema = z.object({
   id,
   /** The primer's cut this scene says. */
   cut: id.optional(),
   picture: PictureSchema,
   durationMs: ms.min(100),
-  /** One cut's take, trimmed to `inMs`..`outMs`. */
-  take: z.object({ file: path, inMs: ms, outMs: ms }).optional(),
+  /**
+   * One cut's take, trimmed to `inMs`..`outMs`, with each word said in it
+   * and when, in ms into the file, where the speaker gave them (`/timed`):
+   * what the video's captions draw.
+   */
+  take: z
+    .object({
+      file: path,
+      inMs: ms,
+      outMs: ms,
+      words: z.array(TimedWordSchema).optional(),
+    })
+    .optional(),
+  /**
+   * The speech model that said this scene's take (home's Kokoro, `kokoro`),
+   * absent when the owner said it: whose voice the authorship mark reports.
+   */
+  speaker: z.string().min(1).optional(),
   /** This scene's voice under a Mixed plan: the point said, or the line read. */
   voice: z.enum(["ad-lib", "read"]).optional(),
   /** When the take starts, after the scene does. */
@@ -181,6 +219,7 @@ export type CutList = z.infer<typeof CutListSchema>
 export type Shot = z.infer<typeof ShotSchema>
 export type Picture = Shot["picture"]
 export type Capture = Extract<Picture, { kind: "capture" }>
+export type Composition = Extract<Picture, { kind: "composition" }>
 export type BurnIn = z.infer<typeof BurnInSchema>
 export type Idea = z.infer<typeof IdeaSchema>
 
@@ -207,6 +246,12 @@ export function parseCutList(raw: unknown): Parsed<CutList> {
   const problems = once([
     ...shotProblems(parsed.data.shots),
     ...authorshipProblems(parsed.data),
+    ...wholeVideoProblems(
+      parsed.data,
+      isCaptions,
+      "the captions burn-in",
+      "each take's words"
+    ),
   ])
   return problems.length
     ? { ok: false, problems }
@@ -239,6 +284,13 @@ function shotProblems(shots: ReadonlyArray<Shot>): Array<string> {
     if (p.kind === "card" && o.motion && o.motion.kind !== "still") {
       say("a card has no picture to move")
     }
+    const into = o.transitionIn ?? "cut"
+    if (isComposition(s)) {
+      if (o.motion || o.background) say("a composition draws its own picture")
+      if (into !== "cut") say("a composition draws its own way in")
+    } else if (isComposition(shots[i - 1]) && into !== "cut") {
+      say("the composition before it draws its own way out")
+    }
     const m = o.motion
     const times =
       m?.kind === "punch-in"
@@ -267,18 +319,52 @@ const AUTHORSHIP = "authorship"
 /** Whether a burn-in is the authorship mark. */
 export const isAuthorship = (b: BurnIn): boolean => b.kind === AUTHORSHIP
 
+/** The captions' kind among the burn-ins (`@some-ui/burn-ins`). */
+const CAPTIONS = "captions"
+
+/** Whether a burn-in is the captions. */
+export const isCaptions = (b: BurnIn): boolean => b.kind === CAPTIONS
+
+/** Whether a scene's picture is a composition, which draws its own (HYPER2). */
+export const isComposition = (s: Shot | undefined): boolean =>
+  s?.picture.kind === "composition"
+
+/**
+ * What a burn-in the renderer draws over the whole video, from the scenes
+ * alone, may not be: on one scene, asked for twice, or written for. The
+ * authorship mark and the captions (SFEED11) are such burn-ins.
+ */
+function wholeVideoProblems(
+  cut: CutList,
+  is: (b: BurnIn) => boolean,
+  name: string,
+  from: string
+): Array<string> {
+  const problems = cut.shots
+    .filter((s) => s.burnIns.some(is))
+    .map((s) => `${s.id}: ${name} covers the whole video`)
+  const asked = cut.burnIns.filter(is)
+  if (asked.length > 1) problems.push(`${name} is drawn once`)
+  if (asked.some((b) => Object.keys(b.params).length > 0)) {
+    problems.push(`${name} is drawn from ${from}; nothing is written for it`)
+  }
+  return problems
+}
+
 /**
  * Where the authorship mark can go: over the whole video, with nothing
  * written for it (the renderer draws it from the scenes alone), and a bare
  * card first and last for its intro and its end card.
  */
 function authorshipProblems(cut: CutList): Array<string> {
-  const problems: Array<string> = []
+  const problems = wholeVideoProblems(
+    cut,
+    isAuthorship,
+    "the authorship mark",
+    "the scenes"
+  )
   const authorOf = new Map(cut.notes.map((n) => [n.id, n.author]))
   for (const s of cut.shots) {
-    if (s.burnIns.some(isAuthorship)) {
-      problems.push(`${s.id}: the authorship mark covers the whole video`)
-    }
     const idea = s.idea
     // Only a note is checked here: the cut list carries its notes, but an
     // `idea` cites an answer kept on the phone, outside it, so the phone
@@ -299,14 +385,7 @@ function authorshipProblems(cut: CutList): Array<string> {
       )
     }
   }
-  const marks = cut.burnIns.filter(isAuthorship)
-  if (marks.length === 0) return problems
-  if (marks.length > 1) problems.push("the authorship mark is drawn once")
-  if (marks.some((b) => Object.keys(b.params).length > 0)) {
-    problems.push(
-      "the authorship mark is drawn from the scenes; nothing is written for it"
-    )
-  }
+  if (!cut.burnIns.some(isAuthorship)) return problems
   const bare = (s: Shot | undefined): boolean =>
     s?.picture.kind === "card" && s.burnIns.length === 0
   if (cut.shots.length < 3) {

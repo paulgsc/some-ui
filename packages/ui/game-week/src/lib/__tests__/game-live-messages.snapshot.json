@@ -1,0 +1,159 @@
+{
+  "closes": [
+    {
+      "code": 4400,
+      "reason": "unreadable"
+    },
+    {
+      "code": 4426,
+      "reason": "version"
+    },
+    {
+      "code": 4401,
+      "reason": "unpaired"
+    },
+    {
+      "code": 4408,
+      "reason": "quiet"
+    },
+    {
+      "code": 1001,
+      "reason": "going away"
+    }
+  ],
+  "home": [
+    {
+      "catalogVersion": 1,
+      "engineVersion": 1,
+      "following": true,
+      "games": [
+        {
+          "away": "NE",
+          "home": "CHI",
+          "id": "401873010",
+          "kickoff": "2026-10-23T00:15:00Z",
+          "want": null
+        },
+        {
+          "away": "SEA",
+          "home": "SF",
+          "id": "401873023",
+          "kickoff": "2026-10-26T20:25:00Z",
+          "want": "SF"
+        }
+      ],
+      "offer": {
+        "gameId": "401873010",
+        "justHappened": [
+          {
+            "at": "2026-10-23T01:52:20Z",
+            "id": "in.sack",
+            "line": "NE sacked on 2nd and 5",
+            "playId": "4018730101234"
+          }
+        ],
+        "scenarios": [
+          {
+            "id": "in.third-long",
+            "line": "3rd and 8, down 6"
+          },
+          {
+            "id": "in.play-call",
+            "line": "NE on 3rd and 8"
+          }
+        ],
+        "strip": {
+          "clock": "8:42 left in the 3rd",
+          "down": "3rd and 8 at the CHI 35",
+          "possession": "NE has the ball",
+          "score": "CHI 13, NE 7"
+        }
+      },
+      "seq": 1761178000042,
+      "type": "offer",
+      "v": 1
+    },
+    {
+      "catalogVersion": 1,
+      "engineVersion": 1,
+      "following": true,
+      "games": [
+        {
+          "away": "NE",
+          "home": "CHI",
+          "id": "401873010",
+          "kickoff": "2026-10-23T00:15:00Z",
+          "want": null
+        },
+        {
+          "away": "SEA",
+          "home": "SF",
+          "id": "401873023",
+          "kickoff": "2026-10-26T20:25:00Z",
+          "want": "SF"
+        }
+      ],
+      "offer": {
+        "gameId": "401873023",
+        "justHappened": [],
+        "scenarios": [],
+        "strip": {
+          "clock": "Kickoff in 2 h 10 min",
+          "down": null,
+          "possession": null,
+          "score": null
+        }
+      },
+      "seq": 1761178000043,
+      "type": "offer",
+      "v": 1
+    },
+    {
+      "catalogVersion": 1,
+      "engineVersion": 1,
+      "following": false,
+      "games": [],
+      "offer": null,
+      "seq": 1761178000044,
+      "type": "offer",
+      "v": 1
+    },
+    {
+      "homeAt": 1761178500012,
+      "phoneAt": 1761178500000,
+      "type": "pong",
+      "v": 1
+    }
+  ],
+  "path": "/ws/game-week",
+  "phone": [
+    {
+      "gameId": null,
+      "lastSeq": null,
+      "mode": "standard",
+      "type": "hello",
+      "utcOffsetMinutes": -420,
+      "v": 1,
+      "watching": {}
+    },
+    {
+      "gameId": "401873010",
+      "lastSeq": 1761178000041,
+      "mode": "full",
+      "type": "hello",
+      "utcOffsetMinutes": -420,
+      "v": 1,
+      "watching": {
+        "401873010": true,
+        "401873023": false
+      }
+    },
+    {
+      "phoneAt": 1761178500000,
+      "type": "ping",
+      "v": 1
+    }
+  ],
+  "protocol": "game-week.v1",
+  "v": 1
+}

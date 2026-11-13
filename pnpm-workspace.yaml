@@ -58,6 +58,10 @@ overrides:
   "zod@4": ^4.6.6
 minimumReleaseAgeExclude:
   - "@some-ui/leetype-wasm"
+  # The release HYPER1 pins (#2724, the owner's choice of 0.9.22), published
+  # hours before it landed. Scoped to that one version: a bump waits out the
+  # release age like any other package, or names its own exception here.
+  - hyperframes@0.9.22
 # Single source of truth for dependencies that more than one workspace needs
 # to agree on. Reference them as `"lucide-react": "catalog:"` in a package
 # manifest instead of a version range — there is then no per-package version

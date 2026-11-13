@@ -4,11 +4,10 @@
  * (`small.en`) each hear every take, from the same bytes (the takes
  * manifest's `sha256`). Different engines make different mistakes, so where
  * they agree is evidence, and where they differ marks the words to check:
- * each such word comes back `unsure`, which ST21's take check reads as not
- * said and reports as unsure (`take-check.ts`), and each place they differ
- * is listed for ST24's review.
+ * each such word comes back `unsure`, and each place they differ is listed
+ * for review.
  *
- * - **Words compare as the take check compares them** (`tokenized`): case,
+ * - **Words compare as `heard.ts` reads them** (`tokenized`): case,
  *   punctuation and a plural's `s` aside, and a number however each engine
  *   wrote it, so `21` and `twenty-one` agree.
  * - **Lined up by time as well as by word**: a word agrees with the other
@@ -20,7 +19,7 @@
  *   `p`. Where they differ, both hearings' words are kept, each marked whose
  *   it is, the session's on home's clock, and a number there as the one
  *   numeral it reads as, so it never runs into the other hearing's number
- *   when the take check reads the words again. A written word the two partly
+ *   when the words are read again. A written word the two partly
  *   agree on (`two-year` against `three-year`) goes word by word, so the
  *   part both heard (`year`) is kept.
  * - **A filler is never a difference**: `um`, `uh` and the like, heard by
@@ -33,8 +32,8 @@
 import type { LcsStep } from "@some-ui/core-utils"
 import { lcsAlignment, median } from "@some-ui/core-utils"
 
-import type { HeardWord, Token } from "./take-check"
-import { tokenized } from "./take-check"
+import type { HeardWord, Token } from "./heard"
+import { tokenized } from "./heard"
 
 /** Who heard a take: home's transcriber, or the session's. */
 export type Hearer = "home" | "session"

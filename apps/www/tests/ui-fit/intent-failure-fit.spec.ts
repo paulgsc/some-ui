@@ -3,8 +3,7 @@
  * (`./panel-page/intent-failure.tsx`) at the phone's sizes.
  *
  * Promise IB1.
- * - Claim: in a wrapping row of `IntentButton`s that sets `failureOwnLine`,
- *   a failure moves no button, and shows below them all, inside the row.
+ * - Claim: in a wrapping row of `IntentButton`s, a failure moves no button.
  * - Family: which of the row's buttons failed (none, either, both), at each
  *   phone size, the phone held sideways among them.
  * - Proof: this spec, which enumerates both.
@@ -18,6 +17,7 @@
  */
 
 import { expect, test, type Locator, type Page } from "@playwright/test"
+import { moved, type Box } from "@tests/layout-invariants/stays-put"
 
 import {
   INTENT_FAILURE_FIXTURE,
@@ -29,8 +29,6 @@ const PAGE = servePanelPage()
 
 const ROWS = ["menu-failed", "next-failed", "both-failed"] as const
 const BUTTONS = ["Next lesson", "Pick a portion"] as const
-
-type Box = { x: number; y: number; width: number; height: number }
 
 async function boxOf(locator: Locator): Promise<Box> {
   const box = await locator.boundingBox()
@@ -45,12 +43,6 @@ async function placed(page: Page, row: string, button: string): Promise<Box> {
   const box = await boxOf(frame.getByRole("button", { name: button }))
   return { ...box, x: box.x - at.x, y: box.y - at.y }
 }
-
-const same = (a: Box, b: Box): boolean =>
-  Math.abs(a.x - b.x) < 0.5 &&
-  Math.abs(a.y - b.y) < 0.5 &&
-  Math.abs(a.width - b.width) < 0.5 &&
-  Math.abs(a.height - b.height) < 0.5
 
 test.describe("a refused press moves no button", () => {
   PAGE.skipUnbuilt()
@@ -69,33 +61,16 @@ test.describe("a refused press moves no button", () => {
 
       const failures: Array<string> = []
       for (const row of ROWS) {
-        const frame = page.locator(`[data-row="${row}"]`)
-        const rowBox = await boxOf(frame)
-        let lowest = 0
         for (const button of BUTTONS) {
           const idle = await placed(page, "idle", button)
           const now = await placed(page, row, button)
-          if (!same(idle, now)) {
+          if (moved(idle, now)) {
             failures.push(
               `${row}: "${button}" moved from ${JSON.stringify(idle)} to ${JSON.stringify(now)}`
             )
           }
-          lowest = Math.max(lowest, rowBox.y + now.y + now.height)
-        }
-        for (const alert of await frame.getByRole("alert").all()) {
-          const box = await boxOf(alert)
-          if (box.y < lowest - 0.5) {
-            failures.push(`${row}: a failure sits beside a button, not below`)
-          }
-          if (
-            box.x < rowBox.x - 0.5 ||
-            box.x + box.width > rowBox.x + rowBox.width + 0.5
-          ) {
-            failures.push(`${row}: a failure leaves its row`)
-          }
         }
       }
-
       await testInfo.attach(`intent-failure-${phone.name}`, {
         body: await page.screenshot({ fullPage: true }),
         contentType: "image/png",

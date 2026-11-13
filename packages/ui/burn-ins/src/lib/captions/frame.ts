@@ -1,9 +1,12 @@
 /**
  * The frame at time `t`: which caption is up, the word being said, and how
- * far each word has popped in. A pure function of (captions, theme, t), so
- * the preview page and the renderer recording a short draw the same thing at
- * the same moment, and a test can check any moment without a clock.
+ * far each word has popped in. A pure function of (captions, theme, the
+ * frame's geometry, t), so the preview page and the renderer recording a
+ * video draw the same thing at the same moment, and a test can check any
+ * moment without a clock.
  */
+
+import type { Geometry } from "@burn-ins/lib/geometry"
 
 import { layoutCaption, type CaptionLayout } from "./layout"
 import type { CaptionTheme } from "./theme"
@@ -36,6 +39,7 @@ export const clamp01 = (x: number): number => Math.max(0, Math.min(1, x))
 export function frameAt(
   captions: ReadonlyArray<Caption>,
   theme: CaptionTheme,
+  geometry: Geometry,
   t: number
 ): CaptionFrame {
   const index = captions.findIndex((c) => c.startMs <= t && t < c.endMs)
@@ -61,7 +65,11 @@ export function frameAt(
       }
     })
   )
-  return { caption: index, rows, layout: layoutCaption(caption.rows, theme) }
+  return {
+    caption: index,
+    rows,
+    layout: layoutCaption(caption.rows, theme, geometry),
+  }
 }
 
 /**

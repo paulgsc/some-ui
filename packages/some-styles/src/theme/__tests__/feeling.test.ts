@@ -14,7 +14,6 @@ import { describe, expect, it } from "vitest"
 import {
   FEELING_CSS_PATH,
   feelingCss,
-  themeSources,
 } from "../../../scripts/write-feeling-css"
 import type { Oklch } from "../feeling"
 import {
@@ -25,9 +24,11 @@ import {
   feelingColors,
   feelingFrame,
   feelingTone,
+  srgbHex,
 } from "../feeling"
 import { SESSION_THEMES } from "../registry"
 import { parseOklch, sessionRoles } from "../session-roles"
+import { sessionColours, themeSources } from "../sources"
 
 const sources = themeSources()
 const sessions = SESSION_THEMES.map((theme) => ({
@@ -169,5 +170,31 @@ describe("the derivation", () => {
     expect(reveals).toEqual(["twist"])
     // The light session's ink becomes the twist's ground.
     expect(feelingColors("twist", light).ground[0]).toBeLessThan(0.3)
+  })
+})
+
+describe("a theme's colours outside a browser (HYPER5)", () => {
+  it("writes a colour as sRGB hex, clamped to the gamut", () => {
+    expect(srgbHex([1, 0, 0])).toBe("#ffffff")
+    expect(srgbHex([0, 0, 0])).toBe("#000000")
+    expect(srgbHex([0.7, 0.35, 30])).toBe("#ff0000")
+  })
+
+  it("resolves a session theme's roles from its own CSS", () => {
+    expect(
+      sessionColours("mochi-night", [
+        "--brand",
+        "--brand-foreground",
+        "--background",
+      ])
+    ).toEqual({
+      "--brand": "#f2aa3c",
+      "--brand-foreground": "#241a13",
+      "--background": "#241a13",
+    })
+    // Rosé Night sets its own brand; Mochi leaves it to the base palette.
+    expect(sessionColours("rose-night", ["--brand"])["--brand"]).not.toBe(
+      sessionColours("mochi", ["--brand"])["--brand"]
+    )
   })
 })

@@ -15,6 +15,7 @@ import { sweepIdeaTakes } from "@/lib/idea-takes"
 import { listenForNoticeTaps } from "@/lib/jobs/notice-native"
 import { sweepLeetypeTakes } from "@/lib/leetype-takes"
 import { sweepLensTakes } from "@/lib/lens-takes"
+import { sweepLibraryTakes } from "@/lib/library-takes"
 import { sweepOrphans } from "@/lib/reflection-voice"
 import { sweepRustRoundsNotes } from "@/lib/rust-rounds"
 import { sweepSceneVoice } from "@/lib/scene-voice"
@@ -47,14 +48,15 @@ import.meta.glob(
 bootDeviceBackend()
 
 // Voice reflections, scene notes, grammar-lens takes, LeetType takes, Rust
-// Rounds' notes and Studio's idea takes, and their audio, each without the
-// other.
+// Rounds' notes, Studio's idea takes and takes with no scene, and their
+// audio, each without the other.
 if (import.meta.env.VITE_DEVICE_BACKEND === "true") {
   sweepOrphans()
   sweepLensTakes()
   sweepLeetypeTakes()
   sweepRustRoundsNotes()
   sweepIdeaTakes()
+  sweepLibraryTakes()
   sweepSceneVoice()
   installShareSidecar(driveFiling())
 }

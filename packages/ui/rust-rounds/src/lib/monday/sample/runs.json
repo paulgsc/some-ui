@@ -1,0 +1,23 @@
+{
+  "TB-101": {
+    "outcome": "compile-error",
+    "toolchain": "1.97.0",
+    "code": "E0507",
+    "stderr": "error[E0507]: cannot move out of index of `Vec<Label>`\n  --> main.rs:16:18\n   |\n16 |         let to = queue[i].address;\n   |                  ^^^^^^^^^^^^^^^^ move occurs because value has type `String`, which does not implement the `Copy` trait\n   |\nhelp: consider borrowing here\n   |\n16 |         let to = &queue[i].address;\n   |                  +\nhelp: consider cloning the value if the performance cost is acceptable\n   |\n16 |         let to = queue[i].address.clone();\n   |                                  ++++++++\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0507`.\n",
+    "span": null
+  },
+  "TB-102": {
+    "outcome": "panics",
+    "toolchain": "1.97.0",
+    "compileStderr": "",
+    "stdout": "",
+    "stderr": "\nthread 'main' (6716) panicked at main.rs:6:24:\nRefCell already borrowed\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n"
+  },
+  "TB-103": {
+    "outcome": "compile-error",
+    "toolchain": "1.97.0",
+    "code": "E0277",
+    "stderr": "error[E0277]: `Rc<Vec<u8>>` cannot be sent between threads safely\n --> main.rs:7:27\n  |\n7 |       let h = thread::spawn(move || {\n  |               ------------- ^------\n  |               |             |\n  |  _____________|_____________within this `{closure@main.rs:7:27: 7:34}`\n  | |             |\n  | |             required by a bound introduced by this call\n8 | |         copy.len()\n9 | |     });\n  | |_____^ `Rc<Vec<u8>>` cannot be sent between threads safely\n  |\n  = help: within `{closure@main.rs:7:27: 7:34}`, the trait `Send` is not implemented for `Rc<Vec<u8>>`\nnote: required because it's used within this closure\n --> main.rs:7:27\n  |\n7 |     let h = thread::spawn(move || {\n  |                           ^^^^^^^\nnote: required by a bound in `spawn`\n --> /rustc/2d8144b7880597b6e6d3dfd63a9a9efae3f533d3/library/std/src/thread/functions.rs:125:0\n\nerror: aborting due to 1 previous error\n\nFor more information about this error, try `rustc --explain E0277`.\n",
+    "span": null
+  }
+}
