@@ -5443,7 +5443,13 @@
           ]
         }
       ],
-      "signals": [],
+      "signals": [
+        {
+          "says": "Slack is told when a week's report render fails or an ended week waits unrendered, as the essay's worker's alerts do; it comes with the server's report job.",
+          "status": "planned",
+          "tracked": "server#821"
+        }
+      ],
       "checks": []
     },
     {
