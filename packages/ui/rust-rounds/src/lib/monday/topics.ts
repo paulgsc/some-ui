@@ -6,15 +6,16 @@
  *
  * 1. **Your own errors.** Each error pasted in a week that ended seeds a
  *    ticket (the owner's answer on #2685), at most `SEEDS_MOST`.
- * 2. **What the decay record marks due** (RR19, #2695): concepts it says
- *    decayed or due a check, in its order. Until RR19 lands there is none,
- *    and the routine passes `null`.
+ * 2. **What the decay record marks due** (RR19, #2695,
+ *    `@rust-rounds/lib/decay`): concepts that decayed, may have faded, or are
+ *    met and not yet known, each past its Leitner recheck, in its order.
  * 3. **The references' areas** (`AREAS`): the area no week touched longest
  *    ago first, one never touched before any, ties in the table's order.
  *
  * A topic is a concept id: next week's tickets must name each one in their
  * `concepts`, so the decay record later counts it under the same row.
  */
+import type { DueConcept } from "@rust-rounds/lib/decay"
 import type { Reference, Week } from "@rust-rounds/lib/formats/week"
 
 /** An area of a reference a ticket can press on: a concept, by its stable id. */
@@ -101,9 +102,6 @@ export const AREAS: ReadonlyArray<Area> = [
 /** The most pasted errors one week is built from; a week has at most 4 tickets. */
 export const SEEDS_MOST = 3
 
-/** A concept the decay record (RR19) marks decayed or due a check. */
-export type DueConcept = { readonly id: string; readonly name: string }
-
 /** One error pasted in a week that ended, and what the owner said about it. */
 export type Seed = {
   /** The week it was pasted in. */
@@ -156,8 +154,8 @@ export function chooseTopics({
   /** Every week the mailbox holds, ended or not. */
   readonly weeks: ReadonlyArray<Week>
   readonly seeds: ReadonlyArray<Seed>
-  /** RR19's concepts due, in its order; null until the decay record exists. */
-  readonly due: ReadonlyArray<DueConcept> | null
+  /** The decay record's concepts due, in its order (RR19). */
+  readonly due: ReadonlyArray<DueConcept>
 }): TopicChoice {
   const ordered = [...seeds].sort((a, b) =>
     a.at === b.at ? 0 : Date.parse(a.at) < Date.parse(b.at) ? -1 : 1
@@ -166,7 +164,7 @@ export function chooseTopics({
   const room = taken.length >= SEEDS_MOST ? 1 : 2
   const topics: Array<Topic> = []
   const chosen = new Set<string>()
-  for (const concept of due ?? []) {
+  for (const concept of due) {
     if (topics.length >= room || chosen.has(concept.id)) continue
     const area = AREAS.find((a) => a.id === concept.id)
     topics.push({

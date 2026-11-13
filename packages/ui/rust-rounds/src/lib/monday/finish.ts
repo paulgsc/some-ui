@@ -11,19 +11,18 @@
  * - every restated field (the week, its company, story, SLA, tickets,
  *   speak-to points, programs, the owner's transcripts and the silences'
  *   counts), and next week's id, dates, references, rubric and family;
- * - **the chart** (C101): until the decay record (RR19) derives it, each row
- *   is a concept the week's tickets named, and each cell, per week the
- *   mailbox holds an essay for, the highest SOLO level of that week's answered
- *   tickets naming it, `silent` when every one naming it went unanswered, and
- *   `unmet` when none named it;
- * - **the role line** (C102): RR19 derives it (#2694), so until then it says it
- *   isn't worked out yet, on the ladder the sample cites;
+ * - **the chart and the role line**, both the decay record's (RR19, #2695,
+ *   `@rust-rounds/lib/decay`), read over every week the mailbox holds an
+ *   essay for and this one; the essay pins version 2 of its template only
+ *   when its chart draws decay or fading (C270);
  * - a seed ticket's source, as a sentence at the end of its spec (#2685).
  *
  * What it holds beyond the parsers: each deep dive said in 2 to 5 minutes
  * (C103), every topic and seed covered by a ticket, and each topic's concept
  * named as the area table names it.
  */
+import type { Judged } from "@rust-rounds/lib/decay"
+import { chartOf, recordOf, roleAt } from "@rust-rounds/lib/decay"
 import type { RustcRun } from "@rust-rounds/lib/formats"
 import { expectMatches } from "@rust-rounds/lib/formats"
 import { ReferenceSchema, WEEK_SCHEMA } from "@rust-rounds/lib/formats/week"
@@ -34,6 +33,7 @@ import type {
   EndedWeek,
   History,
 } from "@rust-rounds/lib/monday/bundle"
+import { judgedOf, judgedWeek } from "@rust-rounds/lib/monday/bundle"
 import { AREAS } from "@rust-rounds/lib/monday/topics"
 import type {
   EssayTicketValues,
@@ -43,13 +43,14 @@ import type {
 import { ValuesSchema } from "@rust-rounds/lib/monday/values"
 import { describeWeekProblem, readWeek } from "@rust-rounds/lib/week-check"
 import { assertNever, pacificDay } from "@some-ui/core-utils"
-import type { Essay, EssayCell } from "@some-ui/video-render"
+import type { Essay } from "@some-ui/video-render"
 import {
-  ESSAY_CONCEPTS_MOST,
+  ESSAY_CHART_ROWS,
+  ESSAY_DECAY_VERSION,
   ESSAY_ID,
   ESSAY_SCHEMA,
-  ESSAY_VERSION,
   ESSAY_WEEKS_MOST,
+  needsDecayVersion,
   parseEssay,
 } from "@some-ui/video-render"
 
@@ -61,15 +62,6 @@ import {
 const WORDS_A_MINUTE = 150
 export const DIVE_WORDS_LEAST = 2 * WORDS_A_MINUTE
 export const DIVE_WORDS_MOST = 5 * WORDS_A_MINUTE
-
-/** The role line until RR19 derives it (C102). */
-export const ROLE_NOT_YET: Essay["weeks"]["role"] = {
-  ladder: "The Dreyfus model of skill acquisition",
-  source: "Dreyfus & Dreyfus, 1980",
-  fits: "Not worked out yet",
-  next: "Worked out across several weeks of answers",
-  gap: "The rule that derives it from the SOLO history comes with the decay record.",
-}
 
 /** Who writes the weeks the routine puts. */
 const ROUTINE_BY = "claude-routine"
@@ -87,55 +79,6 @@ const wordCount = (text: string): number =>
 /** The sentence a seed ticket's spec ends with: where it came from. */
 export function seedLine(at: string): string {
   return `It comes from an error you pasted on ${pacificDay(new Date(at))}.`
-}
-
-/** A week's tickets with each one's SOLO level, or null for a silence. */
-type Levelled = ReadonlyArray<{
-  readonly concepts: ReadonlyArray<{ readonly id: string }>
-  readonly level: number | null
-}>
-
-function cellOf(tickets: Levelled, concept: string): EssayCell {
-  const naming = tickets.filter((t) => t.concepts.some((c) => c.id === concept))
-  if (naming.length === 0) return "unmet"
-  const levels = naming.flatMap((t) => (t.level === null ? [] : [t.level]))
-  return levels.length === 0 ? "silent" : Math.max(...levels)
-}
-
-/** C101: the chart from the weeks the mailbox holds an essay for, ending on this one. */
-function chartOf(
-  ended: EndedWeek,
-  levels: Levelled,
-  history: History
-): Pick<Essay["weeks"], "weeks" | "concepts"> {
-  const past = history.weeks
-    .filter((week) => week.id < ended.week)
-    .flatMap((week) => {
-      const essay = history.essays.find((e) => e.week.id === week.id)
-      if (essay === undefined) return []
-      const tickets: Levelled = week.tickets.map((ticket) => {
-        const answer = essay.tickets.find((t) => t.id === ticket.id)?.answer
-        return {
-          concepts: ticket.concepts,
-          level: answer?.kind === "take" ? answer.solo.level : null,
-        }
-      })
-      return [{ id: week.id, tickets }]
-    })
-  const shown = [...past, { id: ended.week, tickets: levels }].slice(
-    -ESSAY_WEEKS_MOST
-  )
-  const rows = new Map<string, string>()
-  for (const ticket of ended.tickets)
-    for (const concept of ticket.concepts)
-      if (!rows.has(concept.id)) rows.set(concept.id, concept.name)
-  return {
-    weeks: shown.map((week) => week.id),
-    concepts: [...rows].slice(0, ESSAY_CONCEPTS_MOST).map(([id, name]) => ({
-      name,
-      cells: shown.map((week) => cellOf(week.tickets, id)),
-    })),
-  }
 }
 
 function essayTicket(
@@ -228,19 +171,26 @@ function buildEssay(
     )
   }
   if (problems.length > before || following === undefined) return null
-  const levels: Levelled = ended.tickets.map((ticket) => {
-    const answer = tickets.find((t) => t.id === ticket.id)?.answer
-    return {
-      concepts: ticket.concepts,
-      level: answer?.kind === "take" ? answer.solo.level : null,
-    }
-  })
+  const judged: Array<Judged> = [
+    ...judgedOf(history).filter((j) => j.week < ended.week),
+    judgedWeek(ended.week, ended.tickets, tickets),
+  ]
+  const record = recordOf(judged)
+  const chart = chartOf(
+    record,
+    judged.map((j) => j.week),
+    ended.tickets.flatMap((t) => t.concepts),
+    { weeks: ESSAY_WEEKS_MOST, concepts: ESSAY_CHART_ROWS }
+  )
+  const version = chart.concepts.some((c) => c.cells.some(needsDecayVersion))
+    ? ESSAY_DECAY_VERSION
+    : 1
   const topics = [
     ...new Set(following.tickets.flatMap((t) => t.concepts.map((c) => c.name))),
   ]
   const essay = {
     schema: ESSAY_SCHEMA,
-    template: { id: ESSAY_ID, version: ESSAY_VERSION },
+    template: { id: ESSAY_ID, version },
     week: { id: ended.week, from: ended.from, to: ended.to },
     company: ended.company,
     story: ended.story,
@@ -250,8 +200,8 @@ function buildEssay(
     tickets,
     weeks: {
       said: values.weeks,
-      ...chartOf(ended, levels, history),
-      role: ROLE_NOT_YET,
+      ...chart,
+      role: roleAt(record, chart.weeks),
     },
     next: { said: values.next, week: following.id, topics },
   }

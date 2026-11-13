@@ -35,7 +35,6 @@ import {
   RUSTC_FLAGS,
   toolchainOf,
 } from "@rust-rounds/lib/monday/rustc"
-import type { DueConcept } from "@rust-rounds/lib/monday/topics"
 import { ValuesSchema } from "@rust-rounds/lib/monday/values"
 import {
   fail,
@@ -48,7 +47,7 @@ import { z } from "zod"
 
 const USAGE = [
   "usage: monday pull --to <dir>",
-  "       monday prepare --from <dir> [--now <instant>] [--due <file>]",
+  "       monday prepare --from <dir> [--now <instant>]",
   "       monday finish --from <dir>",
   "       monday put --from <dir>",
 ]
@@ -125,41 +124,25 @@ async function pull(dir: string): Promise<void> {
   )
 }
 
-const DueSchema = z.array(z.strictObject({ id: z.string(), name: z.string() }))
-
 /** What `prepare` makes of the run's folder at `now`. */
-async function preparedIn(
-  dir: string,
-  now: Date,
-  due: ReadonlyArray<DueConcept> | null
-): Promise<Prepared> {
+async function preparedIn(dir: string, now: Date): Promise<Prepared> {
   return prepare({
     now,
     brief: await filesIn(join(dir, "brief")),
     records: (await filesIn(join(dir, "records"))).map((file) => file.body),
     transcripts: await filesIn(join(dir, "transcript")),
-    due,
   })
 }
 
-async function prepareIn(
-  dir: string,
-  now: Date,
-  dueFile: string | undefined
-): Promise<void> {
-  let due: ReadonlyArray<DueConcept> | null = null
-  if (dueFile !== undefined) {
-    const read = DueSchema.safeParse(await readJson(here(dueFile)))
-    if (!read.success) fail([`${dueFile} isn't a list of concepts due`])
-    due = read.data
-  }
-  const { bundle } = await preparedIn(dir, now, due)
+async function prepareIn(dir: string, now: Date): Promise<void> {
+  const { bundle } = await preparedIn(dir, now)
   await writeFile(join(dir, "bundle.json"), json(bundle))
   console.log(
     [
       `essays to write: ${bundle.essays.map((e) => e.week).join(", ") || "none"}`,
       ...bundle.waiting.map((w) => `waiting: ${w.week}, ${w.why}`),
       `next week: ${bundle.next?.id ?? "already in the mailbox"}`,
+      `due a recheck: ${bundle.due.map((d) => `${d.id} (${d.why})`).join(", ") || "none"}`,
       ...bundle.unread.map((u) => `unread: ${u.name}, ${u.why}`),
     ].join("\n")
   )
@@ -221,14 +204,10 @@ async function runPrograms(values: unknown): Promise<Record<string, RustcRun>> {
  */
 async function finishIn(dir: string): Promise<void> {
   const held = z
-    .object({ now: z.iso.datetime(), due: DueSchema.nullable() })
+    .object({ now: z.iso.datetime() })
     .safeParse(await readJson(join(dir, "bundle.json")))
   if (!held.success) fail(["bundle.json isn't prepare's: run prepare again"])
-  const { bundle, history } = await preparedIn(
-    dir,
-    new Date(held.data.now),
-    held.data.due
-  )
+  const { bundle, history } = await preparedIn(dir, new Date(held.data.now))
   if (json(bundle) !== (await readFile(join(dir, "bundle.json"), "utf8"))) {
     fail(["bundle.json changed since prepare wrote it: run prepare again"])
   }
@@ -276,7 +255,6 @@ await runCommand(async () => {
       to: { type: "string" },
       from: { type: "string" },
       now: { type: "string" },
-      due: { type: "string" },
     },
   })
   const [command] = positionals
@@ -290,7 +268,7 @@ await runCommand(async () => {
       const now = values.now === undefined ? new Date() : new Date(values.now)
       if (Number.isNaN(now.getTime()))
         fail([`--now ${values.now ?? ""} isn't an instant`])
-      return prepareIn(here(values.from), now, values.due)
+      return prepareIn(here(values.from), now)
     }
     case "finish": {
       if (values.from === undefined) fail(USAGE)

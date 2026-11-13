@@ -1,0 +1,127 @@
+{
+  "schema": "some-ui.show-format/1",
+  "id": "rust-essay",
+  "version": 2,
+  "title": "The Rust Rounds essay",
+  "series": {
+    "id": "conference-call",
+    "version": 2
+  },
+  "look": "calm",
+  "scenes": [
+    {
+      "id": "open",
+      "name": "The week",
+      "point": "The company, its story and the SLA the tickets answer to",
+      "picture": {
+        "kind": "capture",
+        "from": "the essay's open view",
+        "cssWidth": 1920
+      },
+      "holdMs": 40000
+    },
+    {
+      "id": "question",
+      "name": "The question",
+      "point": "What the ticket asked, and what to speak to",
+      "picture": {
+        "kind": "capture",
+        "from": "the essay's question view",
+        "cssWidth": 1920
+      },
+      "holdMs": 40000,
+      "repeat": {
+        "max": 4
+      }
+    },
+    {
+      "id": "answer",
+      "name": "Your answer",
+      "point": "Your take, played whole; or the silence, and a guess at why",
+      "picture": {
+        "kind": "capture",
+        "from": "the essay's answer view",
+        "cssWidth": 1920
+      },
+      "holdMs": 45000,
+      "repeat": {
+        "max": 4
+      }
+    },
+    {
+      "id": "best",
+      "name": "A best fit",
+      "point": "An answer to each speak-to point, made apart from yours",
+      "picture": {
+        "kind": "capture",
+        "from": "the essay's best view",
+        "cssWidth": 1920
+      },
+      "holdMs": 60000,
+      "repeat": {
+        "max": 4
+      }
+    },
+    {
+      "id": "beside",
+      "name": "The best fit beside yours",
+      "point": "Each point covered, partly or missing, and where that sits on SOLO",
+      "picture": {
+        "kind": "capture",
+        "from": "the essay's beside view",
+        "cssWidth": 1920
+      },
+      "holdMs": 50000,
+      "repeat": {
+        "max": 4
+      }
+    },
+    {
+      "id": "dive",
+      "name": "A deep dive",
+      "point": "One of the biggest gaps, from the ground up, or one step past the ticket",
+      "picture": {
+        "kind": "capture",
+        "from": "the essay's dive view",
+        "cssWidth": 1920
+      },
+      "holdMs": 180000,
+      "repeat": {
+        "max": 8
+      }
+    },
+    {
+      "id": "weeks",
+      "name": "Over the weeks",
+      "point": "Each concept across the weeks: shown, not met yet, met but not yet known, decayed, may have faded, or not answered; when each is due a recheck; and the role it fits",
+      "picture": {
+        "kind": "capture",
+        "from": "the essay's weeks view",
+        "cssWidth": 1920
+      },
+      "holdMs": 70000
+    },
+    {
+      "id": "next",
+      "name": "Next week",
+      "point": "What next week comes back to",
+      "picture": {
+        "kind": "capture",
+        "from": "the essay's next view",
+        "cssWidth": 1920
+      },
+      "holdMs": 20000
+    }
+  ],
+  "shape": {
+    "brand": {
+      "intro": true,
+      "outro": true,
+      "theme": "mochi-night",
+      "motion": "brand-v1"
+    },
+    "chapters": ["question", "weeks"],
+    "subtitles": "word",
+    "theme": "mochi-night"
+  }
+}
