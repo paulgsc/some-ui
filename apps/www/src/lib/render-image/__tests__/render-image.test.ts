@@ -9,9 +9,11 @@
  * fixed with this test).
  *
  * Read as plain text: the filters out of the Dockerfile, each package's
- * workspace dependencies out of its `package.json`. Not covered: what the
+ * workspace dependencies out of its `package.json`. A package whose entry is
+ * source loads its own `dependencies` when it runs, so those are followed too
+ * (`@some-ui/video-render` loads `@some-ui/core-utils` from dist/). Not covered: what the
  * stage (`build:stage`) itself bundles, which vite resolves at build time.
- * The last case feeds a Dockerfile with a filter dropped, so a check that
+ * The last cases feed a Dockerfile with a filter dropped, so a check that
  * stopped looking cannot stay green.
  */
 
@@ -31,7 +33,10 @@ const RECORDERS = "apps/www/tests/record"
 type Pkg = {
   name: string
   builtEntry: boolean
+  /** Workspace dependencies, dev included: what turbo builds first. */
   deps: Array<string>
+  /** Workspace `dependencies` alone: what loading this package loads. */
+  runtimeDeps: Array<string>
 }
 
 function read(path: string): string {
@@ -70,7 +75,7 @@ function manifestOf(value: unknown): Manifest {
   }
 }
 
-/** Every workspace package under packages/ and apps/, by name. */
+/** Every workspace package under packages/, apps/ and extensions/, by name. */
 function workspace(): Map<string, Pkg> {
   const found = new Map<string, Pkg>()
   const walk = (dir: string, depth: number): void => {
@@ -91,16 +96,20 @@ function workspace(): Map<string, Pkg> {
             json.main ?? null,
             json.exports ?? null,
           ])
-          const deps = Object.entries({
-            ...json.dependencies,
-            ...json.devDependencies,
-          })
-            .filter(([, range]) => range.startsWith("workspace:"))
-            .map(([name]) => name)
+          const workspaceOf = (
+            map: Record<string, string> = {}
+          ): Array<string> =>
+            Object.entries(map)
+              .filter(([, range]) => range.startsWith("workspace:"))
+              .map(([name]) => name)
           found.set(json.name, {
             name: json.name,
             builtEntry: /(^|[^\w])dist\//.test(entry),
-            deps,
+            deps: workspaceOf({
+              ...json.dependencies,
+              ...json.devDependencies,
+            }),
+            runtimeDeps: workspaceOf(json.dependencies),
           })
         }
       }
@@ -109,6 +118,7 @@ function workspace(): Map<string, Pkg> {
   }
   walk("packages", 2)
   walk("apps", 1)
+  walk("extensions", 1)
   return found
 }
 
@@ -131,28 +141,48 @@ function builtBy(dockerfile: string, pkgs: Map<string, Pkg>): Set<string> {
   return built
 }
 
-/** Workspace packages the recorders import at run time (type imports aside). */
+/**
+ * Workspace packages the recorders import or re-export at run time (type-only
+ * imports aside). Subpaths count as their package.
+ */
 function recorderImports(): Set<string> {
   const names = new Set<string>()
   for (const file of readdirSync(join(REPO_ROOT, RECORDERS))) {
     if (!file.endsWith(".ts")) continue
     const text = read(join(RECORDERS, file))
     for (const [whole, name] of text.matchAll(
-      /^import\s+(?:type\s+)?(?:[^"';]*?\s+from\s+)?"(@some-ui\/[\w-]+)/gm
+      /^(?:import|export)\s+(?:type\s+)?(?:[^"';]*?\s+from\s+)?"(@some-ui\/[\w-]+)/gm
     )) {
-      if (!/^import\s+type\s/.test(whole)) names.add(name)
+      if (!/^(?:import|export)\s+type\s/.test(whole)) names.add(name)
     }
   }
   return names
 }
 
+/**
+ * The packages a recorder ends up loading from dist/: each import that has a
+ * dist/ entry, and, through each one whose entry is source (tsx compiles it on
+ * the fly), the packages that one loads in turn.
+ */
+function loadedFromDist(pkgs: Map<string, Pkg>): Set<string> {
+  const needed = new Set<string>()
+  const seen = new Set<string>()
+  const visit = (name: string): void => {
+    if (seen.has(name)) return
+    seen.add(name)
+    const pkg = pkgs.get(name)
+    if (pkg === undefined) return
+    if (pkg.builtEntry) needed.add(name)
+    else for (const dep of pkg.runtimeDeps) visit(dep)
+  }
+  for (const name of recorderImports()) visit(name)
+  return needed
+}
+
 function unbuilt(dockerfile: string): Array<string> {
   const pkgs = workspace()
   const built = builtBy(dockerfile, pkgs)
-  return [...recorderImports()]
-    .filter((name) => pkgs.get(name)?.builtEntry === true)
-    .filter((name) => !built.has(name))
-    .sort()
+  return [...loadedFromDist(pkgs)].filter((name) => !built.has(name)).sort()
 }
 
 describe("the render image (RI1)", () => {
@@ -160,12 +190,10 @@ describe("the render image (RI1)", () => {
     expect(unbuilt(read(DOCKERFILE))).toEqual([])
   })
 
-  it("reads real imports: the recorders load at least one built package", () => {
-    const pkgs = workspace()
-    const loaded = [...recorderImports()].filter(
-      (name) => pkgs.get(name)?.builtEntry === true
-    )
+  it("reads real imports, direct and through source packages", () => {
+    const loaded = loadedFromDist(workspace())
     expect(loaded).toContain("@some-ui/engagement")
+    expect(loaded).toContain("@some-ui/core-utils")
   })
 
   it("fails a Dockerfile whose filter for such a package is dropped", () => {
@@ -174,5 +202,15 @@ describe("the render image (RI1)", () => {
       ""
     )
     expect(unbuilt(dropped)).toContain("@some-ui/engagement")
+  })
+
+  it("fails a Dockerfile that builds only what the recorders import directly", () => {
+    // Every filter but engagement's dropped: core-utils, which the recorders
+    // load only through @some-ui/video-render's source, is then unbuilt.
+    const direct = read(DOCKERFILE).replace(
+      /turbo run build[\s\S]*?&& pnpm/,
+      'turbo run build --filter="@some-ui/engagement..." && pnpm'
+    )
+    expect(unbuilt(direct)).toContain("@some-ui/core-utils")
   })
 })
