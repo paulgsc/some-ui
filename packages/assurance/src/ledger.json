@@ -2067,7 +2067,7 @@
           "claim": "Home pulls a newer server only when the app asks for one, and never more than its bounds allow.",
           "requirement": "Nothing on home pulls a newer server by itself: the on-demand deploy starts only when the app asks for a server that works with newer apps than the one home runs. It runs one deploy at a time, each pull fetching one image and each run stopped after 30 minutes; it pulls at most once every 10 minutes, and, when the last pull could tell which apps the newest server works with and the newest server it found does not work with the app, it waits 6 hours before pulling again; it refuses an ask from an app more than 1000 steps ahead in which apps it works with, and puts up a newer server only when it works with newer apps than the one running.",
           "verdict": "holds",
-          "conclusion": "Each bound is tested on the server, the 30-minute stop included, and so is that nothing starts the deploy on a timer. Where the last pull could not tell which apps the newest server works with, only the 10-minute gap holds, so an app nothing serves can cause a pull every 10 minutes while it keeps asking. Nothing in the app asks yet (some-ui#2843 adds that).",
+          "conclusion": "Each bound is tested on the server, and the 30-minute stop's configured value is checked, and so is that nothing starts the deploy on a timer. Where the last pull could not tell which apps the newest server works with, only the 10-minute gap holds, so an app nothing serves can cause a pull every 10 minutes while it keeps asking. Nothing in the app asks yet (some-ui#2843 adds that).",
           "proof": [
             "server:apps/servers/file_host/src/deploy.rs#a_need_the_last_pull_could_not_meet_waits_six_hours",
             "server:apps/servers/file_host/src/deploy.rs#a_forged_need_past_the_ceiling_pulls_nothing",
@@ -5893,7 +5893,7 @@
       ],
       "signals": [
         {
-          "says": "Every ask is counted by what home answered, and what each deploy did (runs by outcome, pulls, bytes, the last run's time and exit) is exported every 10 s from the deploy's record; DeployFailed and DeployStuck tell the owner (HD2). It misses everything while home's server is down, and a deploy cut short before it records.",
+          "says": "Every ask is counted by what home answered, and what each deploy did (runs by outcome, pulls, bytes, the last run's time and exit) is exported every 10 s from the deploy's record; DeployFailed, DeployStuck and DeployCannotRequest tell the owner (HD2). It misses everything while home's server is down, and a deploy cut short before it records.",
           "status": "live",
           "ref": "server:apps/servers/file_host/src/metrics/deploy.rs"
         }
