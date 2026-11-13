@@ -67,6 +67,48 @@ export function weekOf(day: string): string {
   return addDays(day, -((dateOf(day).getDay() + 6) % 7))
 }
 
+const DAY_MS = 86_400_000
+
+function utcOf(day: string): number {
+  const date = dateOf(day)
+  return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())
+}
+
+/**
+ * The ISO week `day` falls in, as `2026-W46`: the week (Monday to Sunday)
+ * that holds its Thursday, numbered in that Thursday's year.
+ */
+export function isoWeekOf(day: string): string {
+  const thursday = addDays(weekOf(day), 3)
+  const year = thursday.slice(0, 4)
+  const n = Math.floor((utcOf(thursday) - utcOf(`${year}-01-01`)) / DAY_MS / 7)
+  return `${year}-W${String(n + 1).padStart(2, "0")}`
+}
+
+/** How many ISO weeks `year` has: 52 or 53. */
+export function isoWeeksIn(year: number): number {
+  return isoWeekOf(`${year}-12-28`).endsWith("W53") ? 53 : 52
+}
+
+/**
+ * An ISO week (`2026-W46`) as its year and number. Throws a `RangeError`
+ * for a week that is not one.
+ */
+export function parseIsoWeek(week: string): { year: number; week: number } {
+  const match = /^(\d{4})-W(\d{2})$/.exec(week)
+  const year = Number(match?.[1])
+  const n = Number(match?.[2])
+  if (match === null || n < 1 || n > isoWeeksIn(year))
+    throw new RangeError(`${week} is not an ISO week`)
+  return { year, week: n }
+}
+
+/** The Monday (`YYYY-MM-DD`) ISO week `week` (`2026-W46`) starts on. */
+export function isoWeekMonday(week: string): string {
+  const { year, week: n } = parseIsoWeek(week)
+  return addDays(weekOf(`${year}-01-04`), (n - 1) * 7)
+}
+
 /**
  * The owner's time zone: every routine and deadline that says "the owner's
  * day" or "the owner's clock" reads it here.
