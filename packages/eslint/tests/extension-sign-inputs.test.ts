@@ -14,7 +14,14 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { afterAll, describe, expect, it } from "vitest"
-import { isMap, isScalar, isSeq, parseAllDocuments } from "yaml"
+import {
+  isAlias,
+  isMap,
+  isNode,
+  isScalar,
+  isSeq,
+  parseAllDocuments,
+} from "yaml"
 
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url))
 const FILE = ".github/workflows/extension-sign-manual.yml"
@@ -45,16 +52,26 @@ function parsed(yaml: string): unknown {
 
 /**
  * Every decoded key or value holding `${{`, as `path = value`. Escapes, line
- * continuations, anchors and flow style are all decoded first.
+ * continuations and flow style are decoded first. An anchor, an alias or a
+ * key that is not a plain scalar is refused outright: each can place one
+ * value under a second path the list never names.
  */
 function expressions(yaml: string): Array<string> | null {
   const root = parsed(yaml)
   if (root === null) return null
   const found: Array<string> = []
   const walk = (node: unknown, path: string): void => {
+    if (isAlias(node) || (isNode(node) && node.anchor !== undefined)) {
+      found.push(`${path} is an anchor or alias`)
+      return
+    }
     if (isMap(node)) {
       for (const pair of node.items) {
-        const key = isScalar(pair.key) ? String(pair.key.value) : "?"
+        if (!isScalar(pair.key) || pair.key.anchor !== undefined) {
+          found.push(`${path} has a key that is not plain text`)
+          continue
+        }
+        const key = String(pair.key.value)
         if (key.includes("${{")) found.push(`${path} key = ${key}`)
         walk(pair.value, path === "" ? key : `${path}.${key}`)
       }
@@ -97,36 +114,69 @@ describe("WS1: extension-sign-manual.yml", () => {
     expect(stray(text)).toEqual([])
   })
 
-  const step = "printf 'Signing extension: %q\\n' \"$EXTENSION\""
+  // Inside the preflight step's script, and as a new step after it.
+  const script = "printf 'Signing extension: %q\\n' \"$EXTENSION\""
+  const nextJob = "\n  build-matrix:\n"
   it.each([
     [
       "an input inside a script",
-      `${step}\n          echo "\${{ inputs.extension }}"`,
+      script,
+      `${script}\n          echo "\${{ inputs.extension }}"`,
+      ["jobs.preflight.steps.1.run = "],
     ],
     [
       "an env block written inside a script",
-      `${step}\n          env:\n            EXTENSION: \${{ inputs.extension }}`,
+      script,
+      `${script}\n          env:\n            EXTENSION: \${{ inputs.extension }}`,
+      ["jobs.preflight.steps.1.run = "],
     ],
     [
       "a flow-style step",
-      `${step}\n      - { run: "echo \${{ env.EXTENSION }}" }`,
+      nextJob,
+      `\n      - { run: "echo \${{ env.EXTENSION }}" }${nextJob}`,
+      ["jobs.preflight.steps.2.run = echo ${{ env.EXTENSION }}"],
     ],
     [
       "an escaped dollar",
-      `${step}\n      - run: "echo \\x24{{ inputs.extension }}"`,
+      nextJob,
+      `\n      - run: "echo \\x24{{ inputs.extension }}"${nextJob}`,
+      ["jobs.preflight.steps.2.run = echo ${{ inputs.extension }}"],
     ],
     [
       "an escaped line break",
-      `${step}\n      - run: "echo $\\\n          {{ inputs.extension }}"`,
+      nextJob,
+      `\n      - run: "echo $\\\n          {{ inputs.extension }}"${nextJob}`,
+      ["jobs.preflight.steps.2.run = echo ${{ inputs.extension }}"],
     ],
     [
       "an env block inside another action's script",
-      `${step}\n      - uses: actions/github-script@v7\n        with:\n          script: |\n            env:\n              EXTENSION: \${{ inputs.extension }}`,
+      nextJob,
+      `\n      - uses: actions/github-script@v7\n        with:\n          script: |\n            env:\n              EXTENSION: \${{ inputs.extension }}${nextJob}`,
+      ["jobs.preflight.steps.2.with.script = "],
     ],
-  ])("fails %s", (_, replacement) => {
-    const tainted = text.replace(step, replacement)
+    [
+      "an anchored value aliased into a script",
+      nextJob,
+      `\n      - env:\n          X: &a \${{ inputs.extension }}\n      - run: *a${nextJob}`,
+      [
+        "jobs.preflight.steps.2.env.X is an anchor or alias",
+        "jobs.preflight.steps.3.run is an anchor or alias",
+      ],
+    ],
+    [
+      "a key that is not plain text",
+      nextJob,
+      `\n      - ? [ "\${{ inputs.extension }}" ]\n        : x${nextJob}`,
+      ["jobs.preflight.steps.2 has a key that is not plain text"],
+    ],
+  ])("fails %s", (_, at, replacement, expected) => {
+    const tainted = text.replace(at, replacement)
     expect(tainted).not.toEqual(text)
-    expect(stray(tainted)).toHaveLength(1)
+    const found = stray(tainted)
+    expect(found).toHaveLength(expected.length)
+    expected.forEach((start, i) => {
+      expect(found[i]?.startsWith(start)).toBe(true)
+    })
   })
 
   it("fails a file it cannot read as one document", () => {
