@@ -1135,6 +1135,15 @@ describe("voice transcripts", () => {
     }
   })
 
+  it("takes an interview take's transcript, named by its week and question or read card (IW1)", async () => {
+    for (const ref of ["2026-W46:about-you", "2026-W46:read:iw1-motivation"]) {
+      const said = { ...HEARD, of: "interview", ref }
+      expect((await asHome(deps(), NAME, JSON.stringify(said))).status).toBe(
+        201
+      )
+    }
+  })
+
   it("takes only a transcript's own shape", async () => {
     const d = deps()
     const { text: _text, ...untold } = HEARD
@@ -1177,7 +1186,7 @@ describe("voice transcripts", () => {
       [{ ...HEARD, note: "k3v" }, "the name must carry the note's id"],
       [
         { ...HEARD, of: "diary" },
-        "of must be reflection, jobs, scene, studio or rust-round",
+        "of must be reflection, jobs, scene, studio, rust-round or interview",
       ],
       [{ ...HEARD, ref: 7 }, "ref must name what the note belongs to"],
       [{ ...HEARD, at: "soon" }, "at must be when the note was recorded"],

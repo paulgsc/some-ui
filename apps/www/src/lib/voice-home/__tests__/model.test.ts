@@ -24,6 +24,7 @@ import {
   runEnd,
   settled,
   stepVoiceHome,
+  VOICE_OFS,
 } from "@/lib/voice-home/model"
 
 const NOTE: VoiceOut = {
@@ -92,6 +93,21 @@ describe("the record of voice notes on their way home", () => {
     ).toBe(INITIAL_VOICE_HOME)
   })
 
+  it("names every kind home's voice_repo::Of takes, in its order (IW1)", () => {
+    expect(VOICE_OFS).toEqual([
+      "reflection",
+      "jobs",
+      "scene",
+      "game",
+      "studio",
+      "soundbite",
+      "lens",
+      "leetype",
+      "rust-round",
+      "interview",
+    ])
+  })
+
   it("reads back what it stored, and nothing else", () => {
     const bite: VoiceOut = {
       ...NOTE,
@@ -106,8 +122,17 @@ describe("the record of voice notes on their way home", () => {
       of: "rust-round",
       ref: "indexing-01:a",
     }
+    const answered: VoiceOut = {
+      ...NOTE,
+      id: "i1",
+      of: "interview",
+      ref: "2026-W46:read:iw1-motivation",
+    }
     const state = stepVoiceHome(
-      copied(copied(copied(INITIAL_VOICE_HOME, NOTE), bite), said),
+      copied(
+        copied(copied(copied(INITIAL_VOICE_HOME, NOTE), bite), said),
+        answered
+      ),
       {
         kind: "roomless",
         id: "n3",

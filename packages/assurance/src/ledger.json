@@ -4472,7 +4472,7 @@
     {
       "store": "server:voice_note",
       "class": "record",
-      "growth": "Per voice note sent home (reflection, jobs, scene, game, studio, soundbite, lens, leetype): one small metadata row; append-only.",
+      "growth": "Per voice note sent home (reflection, jobs, scene, game, studio, soundbite, lens, leetype, rust-round, interview): one small metadata row; append-only.",
       "family": "voice-heard"
     },
     {
