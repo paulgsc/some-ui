@@ -10,6 +10,7 @@
  */
 import { assertNever, counted } from "@some-ui/core-utils"
 
+import { whenSaid } from "@/lib/journey"
 import { OFFLINE_SET_WORDS } from "@/lib/session-reflection/policy"
 import type { How, Where } from "@/lib/sharing-marks"
 import type { Unsendable } from "@/lib/voice-home/model"
@@ -412,6 +413,8 @@ export type LaneFacts = LaneCounts & {
   run: KeptState
   /** Whether home works with this version of the app (`./serves-model`). */
   serves: Serves | null
+  /** Away from home since `since` (AW1, `./away`), read at `now`; null at home. */
+  away: { readonly since: number; readonly now: number } | null
 }
 
 export type LaneView = {
@@ -544,6 +547,18 @@ export function laneView(words: LaneWords, facts: LaneFacts): LaneView {
     )
   }
   if (last?.kind === "unreachable") {
+    if (facts.away !== null) {
+      const since = whenSaid(
+        new Date(facts.away.since).toISOString(),
+        new Date(facts.away.now)
+      )
+      return show(
+        "kept",
+        "no-answer",
+        "Away",
+        `Away from home since ${since}.${later}`
+      )
+    }
     return show("kept", "no-answer", "No answer", `Home didn't answer.${later}`)
   }
   if (last?.kind === "failed") {

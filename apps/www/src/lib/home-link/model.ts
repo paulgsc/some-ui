@@ -26,6 +26,9 @@
  */
 import { assertNever } from "@some-ui/core-utils"
 
+import type { Away, AwayEvent } from "./away"
+import { held, stepAway } from "./away"
+
 /** Why the phone is not paired, said once beside the block. */
 export type UnpairedNote =
   /** Unpaired, and home was told. */
@@ -91,6 +94,14 @@ export type HomeLinkState = {
   } | null
   /** When home's busy ends (AD3, `./runtime`); null while it is not busy. */
   readonly homeBusyUntil: number | null
+  /** The stretch away from home under way (AW1, `./away`); null at home. */
+  readonly away: Away | null
+  /**
+   * How many times a hold away ended on its time or a stretch ended with home
+   * answering (AW1): each is one ask of the lanes that found no answer
+   * (`./kept-watch`). A network change, a pull or Send now ask themselves.
+   */
+  readonly awayReleases: number
 }
 
 export type HomeLinkEvent =
@@ -122,6 +133,8 @@ export type HomeLinkEvent =
   | { readonly type: "homeBusy"; readonly until: number }
   /** The time home asked for has passed. */
   | { readonly type: "cooled" }
+  /** Away from home (AW1, `./away`): a request found no answer, or one did. */
+  | AwayEvent
 
 export const INITIAL: HomeLinkState = {
   link: { kind: "reading" },
@@ -129,6 +142,8 @@ export const INITIAL: HomeLinkState = {
   drain: { kind: "idle" },
   pairFailure: null,
   homeBusyUntil: null,
+  away: null,
+  awayReleases: 0,
 }
 
 const idle = { kind: "idle" } as const
@@ -162,9 +177,17 @@ export function drainFree(state: HomeLinkState): boolean {
   return state.drain.kind === "idle" && !writing(state.activity)
 }
 
-/** Whether the link would start a drain run at `now`, home not busy. */
+/**
+ * Whether the link holds what the phone starts on its own at `now`, away
+ * from home (AW1): a hold whose time has passed is over.
+ */
+export function awayHeld(state: HomeLinkState, now: number): boolean {
+  return held(state.away, now)
+}
+
+/** Whether the link would start a drain run at `now`, home not busy nor held away. */
 export function linkOpen(state: HomeLinkState, now: number): boolean {
-  return drainFree(state) && !homeBusy(state, now)
+  return drainFree(state) && !homeBusy(state, now) && !awayHeld(state, now)
 }
 
 export function step(
@@ -236,6 +259,7 @@ export function step(
         },
         activity: idle,
         pairFailure: null,
+        away: null,
       }
     }
     case "unpairFailed": {
@@ -282,6 +306,20 @@ export function step(
     case "cooled": {
       if (state.homeBusyUntil === null) return state
       return { ...state, homeBusyUntil: null }
+    }
+    case "unanswered":
+    case "answered":
+    case "lapsed":
+    case "lookAgain": {
+      const away = stepAway(state.away, event)
+      if (away === state.away) return state
+      // A hold ending on its time, or home answering: a release (AW1).
+      const released = event.type === "lapsed" || event.type === "answered"
+      return {
+        ...state,
+        away,
+        awayReleases: state.awayReleases + (released ? 1 : 0),
+      }
     }
     default: {
       return assertNever(event)

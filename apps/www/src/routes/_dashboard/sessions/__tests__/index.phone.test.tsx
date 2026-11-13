@@ -50,6 +50,8 @@ const UNPAIRED: HomeLinkState = {
   drain: { kind: "idle" },
   pairFailure: null,
   homeBusyUntil: null,
+  away: null,
+  awayReleases: 0,
 }
 
 const PAIRED: HomeLinkState = {
@@ -63,6 +65,8 @@ const PAIRED: HomeLinkState = {
   drain: { kind: "idle" },
   pairFailure: null,
   homeBusyUntil: null,
+  away: null,
+  awayReleases: 0,
 }
 
 const rows = vi.hoisted((): { list: Array<SessionRecord> } => ({ list: [] }))

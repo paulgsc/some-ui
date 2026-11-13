@@ -10,7 +10,8 @@
  * the same (its watch, or a tap in Settings, had the link) is asked once
  * more when the link frees up, the moment its watch asks it again too. Once
  * home is busy (AD3, `./runtime`), every lane after that one says so: the
- * pull stops reaching home there.
+ * pull stops reaching home there. Away from home (AW1, `./away`), a pull
+ * lets the link's hold go first: the person asked to check again.
  *
  * Each run ends in its lane's runtime (`./kept-runtime`), so the marks that
  * read it (the header's, Settings') show how the pull went, lane by lane;
@@ -35,6 +36,8 @@ export type HomePullPorts = {
   readonly doc: Front
   /** Resolves once the link would start a drain run. */
   readonly free?: () => Promise<void>
+  /** Ends the link's hold away from home, so the pull's asks go (AW1). */
+  readonly lookAgain?: () => void
 }
 
 /** Resolves once the home link would start a drain run. */
@@ -69,6 +72,7 @@ export function homeRefresher({
   watched,
   doc,
   free = linkFree,
+  lookAgain = (): void => homeLink().lookAgain(),
 }: HomePullPorts): HomeRefresher {
   const pullLane = async (lane: Kept): Promise<KeptRun | null> => {
     const end = await pullKept(lane, doc)
@@ -81,6 +85,7 @@ export function homeRefresher({
   let out: ReadonlyMap<Kept, Promise<KeptRun | null>> | null = null
   const pull = (): ReadonlyMap<Kept, Promise<KeptRun | null>> => {
     if (out !== null) return out
+    lookAgain()
     const ends = new Map<Kept, Promise<KeptRun | null>>()
     let turn: Promise<void> = Promise.resolve()
     for (const lane of Array.from(watched())) {

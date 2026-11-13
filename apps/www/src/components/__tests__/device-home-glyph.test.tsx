@@ -60,6 +60,20 @@ async function unreachable(): Promise<never> {
   throw noAnswer()
 }
 
+/**
+ * Home silent only where `path` names, failing (503) elsewhere: one silence
+ * holds every lane away from home (AW1), so a test of one lane against a
+ * silent home keeps the others from being silent first.
+ */
+function silentOnly(
+  part: string
+): (call: NativeCall) => Promise<{ status: number; body: string }> {
+  return (call) =>
+    new URL(call.url).pathname.includes(part)
+      ? unreachable()
+      : Promise.resolve({ status: 503, body: "" })
+}
+
 const SESSION = sessionRecord({
   status: "completed",
   id: "s1",
@@ -267,9 +281,10 @@ describe("Practice's sharing mark", () => {
   it("asks for a run again from Send now", async () => {
     await mount()
     await waitFor(() => expect(howOf(mark())).toBe("no-answer"))
-    // A send that didn't go is said over the screen, the mark a fixed icon.
+    // A send that didn't go is said over the screen, the mark a fixed icon:
+    // home's silence is a stretch away from home, said with its start (AW1).
     expect(screen.getByRole("status").textContent).toContain(
-      "Home didn't answer."
+      "Away from home since"
     )
     const before = home.sent.length
     fireEvent.click(mark())
@@ -281,6 +296,7 @@ describe("Practice's sharing mark", () => {
 describe("the Jobs record's mark", () => {
   it("drains once paired, from the shell, and says what waits", async () => {
     jobsRecord(2)
+    home.answer = silentOnly("/jobs")
     await mount("jobs")
     await waitFor(() =>
       expect(
@@ -306,7 +322,8 @@ describe("the Jobs record's mark", () => {
     const fromHome = { ...INDEXING_01, id: "borrowing-01" }
     home.answer = (call): Promise<{ status: number; body: string }> => {
       const path = new URL(call.url).pathname
-      if (!path.includes("/rust-rounds")) return unreachable()
+      if (!path.includes("/rust-rounds"))
+        return Promise.resolve({ status: 503, body: "" })
       if (call.method === "PUT")
         return Promise.resolve({ status: 201, body: "{}" })
       if (path.endsWith("/rust-rounds")) {
@@ -430,6 +447,7 @@ async function mountAph(store: AphStore): Promise<void> {
 
 describe("aph's mark", () => {
   it("moves aph to home on a paired phone's first run, and sends", async () => {
+    home.answer = silentOnly("/aph")
     const store = aphStore(true, 2)
     await mountAph(store)
     await waitFor(() =>
@@ -532,9 +550,11 @@ describe("a pull (PULL3)", () => {
   })
 
   it("asks every lane the shell drains for one run, and the mark says how it went", async () => {
+    home.answer = (): Promise<{ status: number; body: string }> =>
+      Promise.resolve({ status: 503, body: "" })
     await mount()
-    await waitFor(() => expect(howOf(mark())).toBe("no-answer"))
-    // The watch's first runs, each one request home doesn't answer, are over.
+    await waitFor(() => expect(howOf(mark())).toBe("failed"))
+    // The watch's first runs, each one request home fails, are over.
     await waitFor(() => expect(new Set(sentSince(0)).size).toBe(3))
     await act(() => new Promise((resolve) => setTimeout(resolve, 0)))
     const before = home.sent.length
@@ -544,6 +564,18 @@ describe("a pull (PULL3)", () => {
     expect(sentSince(before).sort()).toEqual(
       ["/api/v1/jobs", "/api/v1/rust-rounds", "/api/v1/sessions"].sort()
     )
+    expect(howOf(mark())).toBe("failed")
+  })
+
+  it("away from home, tries once and says no answer for every lane (AW1)", async () => {
+    await mount()
+    await waitFor(() => expect(howOf(mark())).toBe("no-answer"))
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)))
+    const before = home.sent.length
+    const { PULL_HOME } = await import("@/lib/home-link/words")
+    expect(await pull()).toEqual([PULL_HOME.what])
+    // The pull lets the hold go: one try finds no answer, and holds the rest.
+    expect(sentSince(before)).toHaveLength(1)
     expect(howOf(mark())).toBe("no-answer")
   })
 
