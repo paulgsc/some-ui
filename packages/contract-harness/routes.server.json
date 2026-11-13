@@ -2,7 +2,7 @@
   "schema_version": 1,
   "api_base_path": "/api/v1",
   "server_version": "0.0.0",
-  "contract_epoch": 2,
+  "contract_epoch": 3,
   "oldest_supported": 1,
   "routes": [
     {
@@ -72,6 +72,13 @@
       "method": "GET",
       "path": "/app-events/summary",
       "full_path": "/api/v1/app-events/summary",
+      "versioned": true,
+      "module": "app_events"
+    },
+    {
+      "method": "GET",
+      "path": "/app-events/weeks/:week",
+      "full_path": "/api/v1/app-events/weeks/:week",
       "versioned": true,
       "module": "app_events"
     },
