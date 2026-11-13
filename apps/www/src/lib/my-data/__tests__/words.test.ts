@@ -12,15 +12,18 @@ import {
   CALL_DELETING,
   DELETABLE_NAMES,
   DELETING,
+  heardLine,
   homeLine,
   itemLine,
   itemName,
+  itemWhere,
   KEPT_FOR_GOOD,
   keptLine,
   keptNote,
   KIND_NAMES,
   kindLead,
   kindLine,
+  lengthOf,
   MY_DATA,
   receiptKind,
   receiptParts,
@@ -62,15 +65,53 @@ describe("My data's words", () => {
         .filter((line): line is string => line !== null),
       MY_DATA.kind.play(itemName(AT)),
       MY_DATA.kind.stop(itemName(AT)),
+      MY_DATA.kind.fetching(itemName(AT)),
       MY_DATA.kind.newest(5, 8),
       ...[unreadLine(["studio"]), unreadLine(["studio", "soundbite"])].filter(
         (line): line is string => line !== null
       ),
       kindLine(4, AT, true),
       kindLead(4, 2_048, AT),
-      itemLine(AT, 2_048),
+      itemLine(AT, null),
+      itemLine(AT, 42_000),
+      itemWhere("home", 2_048),
+      ...(["home", "phone"] as const).flatMap((where) =>
+        (
+          [
+            { kind: "silent" },
+            { kind: "notYet" },
+            { kind: "words", text: "a word", cut: false },
+          ] as const
+        ).map((heard) => heardLine(heard, where) ?? "")
+      ),
     ]
     expect(said.filter((text) => MACHINERY.test(text))).toEqual([])
+  })
+
+  it("say when a recording was made apart from how long it is (MD8, MDL1)", () => {
+    expect(lengthOf(0)).toBe("1 s")
+    expect(lengthOf(42_400)).toBe("42 s")
+    expect(lengthOf(60_000)).toBe("1 min")
+    expect(lengthOf(185_000)).toBe("3 min 5 s")
+    expect(itemLine(AT, null)).toMatch(/^Recorded 20 Oct at \d\d:\d\d$/)
+    expect(itemLine(AT, 42_000)).toMatch(
+      /^Recorded 20 Oct at \d\d:\d\d · 42 s long$/
+    )
+  })
+
+  it("say what home heard only of a recording home holds (MD8, MDL1)", () => {
+    expect(
+      heardLine({ kind: "words", text: "hello there", cut: false }, "home")
+    ).toBe("“hello there”")
+    expect(
+      heardLine({ kind: "words", text: "hello there", cut: true }, "home")
+    ).toBe("“hello there…”")
+    expect(heardLine({ kind: "notYet" }, "aside")).toBe(
+      "Home hasn't heard it yet."
+    )
+    expect(heardLine({ kind: "notYet" }, "phone")).toBeNull()
+    expect(heardLine({ kind: "notYet" }, "going")).toBeNull()
+    expect(heardLine({ kind: "unsaid" }, "home")).toBeNull()
   })
 
   it("never name the machinery when deleting, nor on a receipt (MD3)", () => {
