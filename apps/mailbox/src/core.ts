@@ -433,7 +433,7 @@ function pickupRefusal(
     return "heard must be what home heard in the take"
   }
   if (!isLabels(body.labels)) {
-    return "labels must be the take's, at most 8, each 1 to 32 printable characters"
+    return "labels must be the take's, at most 8, each 1 to 32 printable characters with no space at either end"
   }
   if (!isInstant(body.readyAt)) {
     return "readyAt must be when the take was moved to ready for pickup"

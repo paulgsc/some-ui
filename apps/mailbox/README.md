@@ -399,7 +399,7 @@ transcript`, and one that names Drive with `a note names no Drive file`. A name 
   transcript's `ref`, `<project>:<shot>:<take>`), what home heard in it (its newest transcript's
   text when home first files the pickup, so home files one only once it has heard the take), its labels as home keeps them
   from that move on (at most 8, each 1 to 32 printable characters with no space at either end,
-  possibly none), when it was moved to ready for pickup (the move's `at`, an instant) and that
+  `[]` when it has none, never `null`), when it was moved to ready for pickup (the move's `at`, an instant) and that
   move's number on home (`seq`, from 1). A name holds one body for good, so home keeps the
   bytes it first put and sends those same bytes on any retry; a transcript heard later does
   not change a pickup already filed. Home puts one for each ready-for-pickup move, so the
@@ -617,8 +617,7 @@ how each was checked when this workspace landed.
   and decision, paulgsc/some-ui#2179, kept out of `ask` for the same reason; `feedback`
   2026-11-07, SFEED decision 6 on paulgsc/some-ui#2670, "home writes down what I say … the
   existing daily reflections routine files each as a pending issue", kept out of `ask` for the
-  same reason; `pickup` and `picked` 2026-11-13, CONVEYOR3 #2875, the owner's "labels go to the
-  mailbox, the comment stays home" (`C296`), `pickup` kept out of `ask` for the same reason).
+  same reason; `pickup` and `picked` 2026-11-13, CONVEYOR3 #2875, the owner's decision that a take ready for pickup goes to the mailbox with its labels and its comment stays home (`C296`), `pickup` kept out of `ask` for the same reason).
   The routine's `brief` also takes its one-time backfill: a Jobs decisions or
   scouts file under its Drive name, only as the phone names one (`sharedDay`: a real calendar
   day, a decisions share number from 2 to 99, a scouts stamp at a real time) and only for a

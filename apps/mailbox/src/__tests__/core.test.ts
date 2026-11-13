@@ -2147,6 +2147,7 @@ describe("a take ready for pickup, and the routine's answer (CONVEYOR3)", () => 
       [],
       Array.from({ length: 8 }, (_, n) => `l${n}`),
       ["a".repeat(32)],
+      ["\u{1F600}".repeat(32)],
       // Home's trim (Rust's) keeps U+FEFF, so the mailbox takes it too.
       ["\uFEFFep04"],
     ]
@@ -2231,6 +2232,10 @@ describe("a take ready for pickup, and the routine's answer (CONVEYOR3)", () => 
         "seq must be the ready-for-pickup move's number",
       ],
       [
+        { ...READY, seq: 2 ** 53 },
+        "seq must be the ready-for-pickup move's number",
+      ],
+      [
         { ...READY, note: "another-take" },
         "the name must carry the take's id and the move's number",
       ],
@@ -2246,6 +2251,12 @@ describe("a take ready for pickup, and the routine's answer (CONVEYOR3)", () => 
         "ep04",
         [""],
         [" ep04"],
+        ["ep04 "],
+        ["\u0085x"],
+        ["\u007f"],
+        null,
+        // Code points, as home counts them: 33 astral characters.
+        ["\u{1F600}".repeat(33)],
         ["a".repeat(33)],
         ["tab\there"],
         [7],
@@ -2254,7 +2265,7 @@ describe("a take ready for pickup, and the routine's answer (CONVEYOR3)", () => 
         (labels) =>
           [
             { ...READY, labels },
-            "labels must be the take's, at most 8, each 1 to 32 printable characters",
+            "labels must be the take's, at most 8, each 1 to 32 printable characters with no space at either end",
           ] as const
       ),
       [
@@ -2293,6 +2304,8 @@ describe("a take ready for pickup, and the routine's answer (CONVEYOR3)", () => 
         "paulgsc/some-ui#02",
         "https://github.com/paulgsc/some-ui/issues/2990",
         "paul gsc/some-ui#1",
+        `${"a".repeat(101)}/some-ui#1`,
+        "paulgsc/some-ui#1234567890",
         2990,
       ].map(
         (issue) =>
