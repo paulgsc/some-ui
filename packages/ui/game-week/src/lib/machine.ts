@@ -61,7 +61,15 @@ import {
 
 import type { BiteMoment, KeptBite, Said } from "./bite"
 import { biteFields, pickedAfter } from "./bite"
-import type { Feed, Game, JustHappened, Offer, OfferCard } from "./feed"
+import type {
+  Feed,
+  FeedChoice,
+  FeedLink,
+  Game,
+  JustHappened,
+  Offer,
+  OfferCard,
+} from "./feed"
 import type { ModeId } from "./modes"
 import { BITE_LIMITS, MODE_RULES, pregameFrom } from "./modes"
 import type { Prefs } from "./ports"
@@ -134,6 +142,10 @@ export type GameWeekState = {
   readonly now: number
   readonly games: ReadonlyArray<Game>
   readonly offer: Offer | null
+  /** How the phone stands with home: why there is no live offer. */
+  readonly link: FeedLink
+  /** Home's clock minus the phone's, as last measured (GW5). */
+  readonly offsetMs: number | null
   readonly prefs: Prefs
   readonly activity: Activity
   /** The take pattern's state: the bite's take, and what plays. */
@@ -242,6 +254,8 @@ export function initialState(prefs: Prefs, now: number): GameWeekState {
     now,
     games: [],
     offer: null,
+    link: "asking",
+    offsetMs: null,
     prefs,
     activity: { kind: "idle" },
     takes: initialTakePattern,
@@ -266,6 +280,21 @@ export function currentGame(state: GameWeekState): Game | null {
 
 export function isWatching(prefs: Prefs, gameId: string): boolean {
   return !prefs.notWatching.includes(gameId)
+}
+
+/**
+ * What home is told the recorder is on: the mode, the game on screen and
+ * the watching flag of every game of the week. The runtime tells the feed
+ * whenever this changes.
+ */
+export function homeChoice(state: GameWeekState): FeedChoice {
+  return {
+    mode: state.prefs.mode,
+    gameId: currentGame(state)?.id ?? null,
+    watching: Object.fromEntries(
+      state.games.map((game) => [game.id, isWatching(state.prefs, game.id)])
+    ),
+  }
 }
 
 /**
@@ -424,6 +453,7 @@ function start(state: GameWeekState, said: Said): Step {
     strip: view?.strip ?? "",
     watching: isWatching(state.prefs, game.id),
     mode: state.prefs.mode,
+    offsetMs: state.offsetMs,
   }
   const closed = closeUndo(state)
   const opened = withTakes(
@@ -549,6 +579,8 @@ export function step(state: GameWeekState, event: GameWeekEvent): Step {
         ...state,
         games: event.feed.games,
         offer: event.feed.offer,
+        link: event.feed.link,
+        offsetMs: event.feed.offsetMs,
       })
     }
 

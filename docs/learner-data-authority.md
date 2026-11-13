@@ -191,8 +191,11 @@ declared (checked by reading every call site and by the tests named).
   the presence lease, a push subscription), which needs the account _and_ the
   person's separate opt-in (LA6). The network globals (`fetch`,
   `XMLHttpRequest`, `WebSocket`, `EventSource`, `navigator.sendBeacon`) are
-  restricted by lint in `apps/www/src` except in the two files that are the choke
-  point: `lib/file-host-config/client.ts` and `lib/device-backend/interceptor/index.ts`.
+  restricted by lint in `apps/www/src` except in the files that are the choke
+  point: `lib/file-host-config/client.ts` and `lib/device-backend/interceptor/index.ts`,
+  and, for the phone's game day alone, `lib/home-link/live-socket.ts` (LA21),
+  which reaches the paired home, never the account's backend, and carries no
+  session, signal, presence, shelf item or push subscription.
 - _Falsified by:_ a hunk that adds a `fetch`, `XMLHttpRequest`, `WebSocket`,
   `EventSource` or `sendBeacon` to a path under `apps/www/src` that carries
   sessions, signals, presence, a shelf item or a push subscription and does not
@@ -393,7 +396,8 @@ declared (checked by reading every call site and by the tests named).
 
 - _Claim:_ in the Android app, every request to the home server goes through
   `lib/device-backend/native-http` (the one module that names
-  `CapacitorHttp`), which only `lib/home-link` calls, and, but for the drain
+  `CapacitorHttp`), which only `lib/home-link` calls (the game day's live
+  socket, which native HTTP cannot carry, is LA21's), and, but for the drain
   of what this phone keeps (LA15: aph, the Jobs record, Practice's record,
   Rust Rounds' rounds, whose run also reads home's rounds and their runs
   back, voice notes, the notes of how each take ended (CK2, one
@@ -1839,6 +1843,79 @@ beside a `/voice-notes/`, `/call/videos/` or `/feeds/` path), so no chain can de
 was true when declared (MD5, #2479), by the reading listed under LA19's
 "Held when declared". Tracked: #2473, the MY-DATA epic.
 
+### LA21: the game day's live socket is open only while Game day watches it, in front, paired
+
+The recorder's offers come from home while home has them (GWB4, #2078; the
+owner chose a WebSocket, push and pull, on 2026-10-25). Native HTTP has no
+socket, so the phone's one WebSocket to home is `lib/home-link/live-socket.ts`
+(an LA1 exemption), opened only by `lib/home-link/live.ts`, which alone reads
+the pairing's token for it (`livePairing`, `lib/home-link/live-pairing.ts`);
+only the Game day route wires that feed (`gameDayFeed`). When the socket opens,
+what it sends and when it gives up is the pure machine
+`lib/home-link/live-machine.ts` (`step`); `live.ts` is the runtime that runs
+its effects. Who reaches each of those is enforced by
+`lib/serving-privacy/__tests__/egress-choke-points.test.ts`; the machine over
+every stale event and the 4400 rule by `lib/home-link/__tests__/live-machine.test.ts`;
+how the feed opens, pulls, drops a stale offer, tries again and stops by
+`lib/home-link/__tests__/live.test.ts`; the messages by
+`packages/ui/game-week/src/lib/__tests__/live-wire.test.ts`. What no test can
+say is that no other path opens it:
+
+- _Claim:_ `step` (`lib/home-link/live-machine.ts`) asks for a socket
+  (`read-pairing`) only from `connect`, which opens nothing unless the
+  recorder watches the feed, the page is visible and no socket is open or
+  being made; it opens one (`open`) only for a pairing whose base is `https:`
+  (`liveUrl` turns it into `wss:`; `openLiveSocket` refuses any other
+  scheme); it sends only a `hello` (once home accepts the socket, and on each
+  `choose` while open) and a `ping` every `PING_MS`; it drops the offer on
+  every close, on `QUIET_MS` with nothing from home or `OPEN_MS` with no
+  socket open, ignores an offer numbered no later than the last and every
+  event from an earlier opening; it tries again only after a close that
+  leaves it `away`, after `retryDelayMs`, or at once after a `4400` that
+  followed a hello with a `lastSeq` (with the `lastSeq` forgotten), and
+  after `update` or `unpaired` not until the pairing changes, the app comes
+  back to the front or Game day is opened again; `liveFeed` (`live.ts`) opens, sends and arms timers only as
+  `step`'s effects say; and the Game day route makes the feed with
+  `gameDayFeed` only in the device build's non-development branch.
+- _Falsified by:_ a hunk to `lib/home-link/live-machine.ts` that returns a
+  `read-pairing` effect from anything but `connect`, or calls `connect` from
+  anything but `watch`, the shown branch of `visibility`, `relinked` (on a
+  changed pairing), the `retry` timer or the 4400 rule; that weakens
+  `connect`'s guard; that returns a `hello` or `ping` effect from anywhere but
+  `hello`, `opened` and the `ping` timer; that keeps `offer` across `end`,
+  removes the `seq` check in `heard` or the `stale` check in `step`, or
+  removes or lengthens the quiet timer or the opening one (`OPEN_MS`); that retries after a close
+  `triesAgain` refuses other than by the 4400 rule, or widens that rule beyond
+  a hello with a `lastSeq`; or that changes `linkAfterClose`, `triesAgain` or
+  `retryDelayMs` (`live-model.ts`) to retry sooner or after `update` or
+  `unpaired`; a hunk to `lib/home-link/live.ts` that opens a socket, sends on
+  it or arms a timer other than in `run` for the matching effect, or drops
+  `stop`'s `unwatch` or its unsubscribes; a hunk to `live-socket.ts` that
+  removes the `wss:` check, sends the token anywhere but the offered
+  subprotocols, or reports a close it asked for; a hunk to
+  `routes/_dashboard/_apk/game-week.tsx` that calls `gameDayFeed` outside
+  `PhoneGameWeek`'s ports or in the development branch; a hunk that widens the
+  LA21 allowlists in the egress test; or a hunk that deletes, renames or moves
+  any file, function or constant this claim names without carrying the claim
+  to its new place.
+- _Scope:_ `apps/www/src/lib/home-link/live.ts`, `live-machine.ts`,
+  `live-model.ts`, `live-socket.ts`, `live-pairing.ts`,
+  `apps/www/src/routes/_dashboard/_apk/game-week.tsx`.
+- _Why not enforced:_ the tests drive the machine and the runtime with a fake
+  socket and clock and see what they do in the states they name; whether a
+  new event or effect opens the socket at a moment the person is not on Game
+  day is a reading of intent no test or lint can make. Held when declared, by
+  reading every call: `connect` from `watch`, `visibility`, `relinked`, the
+  `retry` timer and `closed`'s 4400 rule; `hello` effects only from `hello`
+  (called by `choose` and `opened`); `ping` effects only from `opened` and the
+  `ping` timer; `socket.send` and `ports.open` only in `run`; `gameDayFeed`
+  only in `gameWeekPorts`'s non-`DEV` branch. One limit, stated rather
+  than held: home refuses a revoked session's upgrade with a 401 or 403,
+  which a page sees only as close 1006, so a phone that still holds a
+  pairing home has ended reads it as `away` and keeps trying (at most every
+  30 s, and only while Game day shows) until the pairing changes; `4401`
+  reaches it only on a socket already open.
+
 ## Not covered, on purpose
 
 - **The shared origin.** On GitHub Pages every project under the same `github.io`
@@ -1861,7 +1938,9 @@ was true when declared (MD5, #2479), by the reading listed under LA19's
   and the phone-full offer's "Remove it" copy their one session home before
   it leaves (LA8); a paired phone drains what it
   keeps to home on its own, since home is the owner's own store (LA15), and
-  Korean reads the routine's files from it. The share sheet and the speech
+  Korean reads the routine's files from it. Game day holds a live socket to
+  home while it shows (LA21); what it says there (the mode, the game, which
+  games the owner is watching) decides home's offer and is kept nowhere. The share sheet and the speech
   provider reach beyond home, and the share sheet's "arrived" is the
   receiver's copy, not home's (HF1, #2176).
 - **The server's side.** What `file_host` stores and logs is
