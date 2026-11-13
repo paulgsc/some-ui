@@ -168,7 +168,7 @@ export type JobEvent = { id: string; at: string } & (
       through: number
       voice: ReadonlyArray<string>
     }
-  /** The person said a share's files arrived: they count as sent. */
+  /** A share's files arrived (filed with home, or confirmed before HF2): they count as sent. */
   | { type: "arrived"; shareId: string }
 )
 
@@ -1117,8 +1117,9 @@ export function disagreed(state: JobsState): ReadonlySet<string> {
 }
 
 /**
- * The last share of `kind` the person said arrived. A share they did not
- * confirm counts for nothing, so what it carried is offered again.
+ * The last share of `kind` recorded arrived: filed with home, or, before
+ * HF2, confirmed. A sheet's share nobody confirmed counts for nothing, so
+ * what it carried is filed again.
  */
 export function lastDelivered(
   state: JobsState,
