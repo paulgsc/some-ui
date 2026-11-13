@@ -95,7 +95,7 @@
  *   × every home state (held; waiting; unpaired; off the LAN, which the
  *   phone sees alike as not held; held only by the home of another
  *   pairing, a re-paired or reset one, which it sees as not held either:
- *   HP1, `lib/voice-home/model.ts`, which lets nothing go on it; a game
+ *   HP1, `lib/voice-home/model.ts`, which lets nothing go on that pairing's word; a game
  *   bite's own stamp still says it is on home, #2955); for Studio takes, × every
  *   choice (none yet, once home has them, until Drive has it too) × the
  *   owner's "Drive has it" on the take (tapped or not), home's word that

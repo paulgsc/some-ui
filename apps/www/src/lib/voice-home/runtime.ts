@@ -101,7 +101,7 @@ export type VoiceHome = {
   sweep: () => void
   /**
    * Follows the pairing `pairing` says, from now on (HP1): the home link's
-   * (`lib/home-link/voice-copy`). Handing in the one it follows does nothing.
+   * (`lib/home-link/voice-copy`).
    */
   follow: (pairing: PairingPort) => void
 }

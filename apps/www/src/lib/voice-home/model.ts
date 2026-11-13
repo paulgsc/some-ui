@@ -41,8 +41,9 @@
  *   `__tests__/runtime.test.ts` ("HP1": the store follows the pairing it is
  *   handed, steps nothing while it is read, and keeps each home's word
  *   across a relaunch; a word heard late keeps the copy's audio). The desks
- *   read where a take is through `keptIn` (`lib/takes-desk`'s "MIC3" test),
- *   so none another pairing's home holds makes room at a cap.
+ *   read where a take is through `keptIn`
+ *   (`lib/takes-desk/__tests__/runtime.test.ts`'s "MIC3" test), so none
+ *   another pairing's home holds makes room at a cap.
  * - _Tolerance:_ a record written before HP1 noted no pairing: what it says
  *   home holds is taken as the word of the first pairing this phone is seen
  *   under after it, or, when it is first seen unpaired, kept as no
@@ -153,7 +154,7 @@ export type AsideState = {
 export const NO_ASIDE: AsideState = { owed: [], answered: [] }
 
 /** What one pairing's home holds, as this phone heard it (HP1). */
-export type Holding = {
+type Holding = {
   readonly held: ReadonlyArray<string>
   readonly heldAt: Readonly<Record<string, string>>
 }
