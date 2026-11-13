@@ -21,12 +21,12 @@
  *   over and left; never `said` (a stop answer), never a time of day;
  * - a count under 5 shows as "fewer than 5" (`UNDER`);
  * - a change shows as up, down or flat, with the difference (`publicChange`,
- *   call C143);
+ *   call C175);
  * - a line nothing reached 5 on says so in bands, never "nothing" (`quiet`);
  * - aph and Jobs (the self and jobs wings) show only as one "Self and work"
  *   line (`FOLDED`).
  *
- * Each count is banded on its own (call C144): where offered and taken are
+ * Each count is banded on its own (call C176): where offered and taken are
  * both shown, their difference estimates a banded passed over.
  *
  * A week runs from Monday midnight on the owner's clock (Pacific) to the
