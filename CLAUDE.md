@@ -841,6 +841,9 @@ Cloud sessions keep no files between them, so the issues and the ledger are the 
 A footgun that recurs across sessions belongs promoted into this file (the section above) rather
 than left in one epic.
 
+A session that coordinates other sessions (a choir) reads `.claude/skills/coordinate/SKILL.md`
+before it spawns or messages any of them.
+
 See `.claude/skills/steward/SKILL.md` for how to drive an already-open PR (auto-merge
 mechanics, bot-review handling, review coverage on every head) and
 `.claude/skills/babysit/SKILL.md` for the separate polling-cadence policy — both are
