@@ -6,26 +6,22 @@
  *
  * Hand-written against paulgsc/server's `handlers/interview_weeks.rs` and
  * `rust_round_repo::interview` (`Sent`, strict), as on its `main` at
- * 3e8910c: `WeekList` of `WeekEntry`, at most `LIST_LIMIT`, and
+ * 3e8910c: `WeekList` of `WeekEntry`, and
  * `HeldInterviewWeek` and `InterviewRecord`. `week` is the routine's file byte for byte, so
  * here it is only an object; the interview week's own format reads it (IW4).
  *
  * A send is a draft until the week's due, and what stands then is final, as
- * Rust Rounds' are (RR22): `{ change, sent }`, a `201` added, a `200`
- * replaced, unchanged or superseded, a `409` for another body at the draft's
- * `at`, and a `422` once the week is final. Those are held by the server's
- * own handler tests.
+ * Rust Rounds' are (RR22); its other answers are held by the server's
+ * handler tests.
  *
- * **Who may call.** A paired phone only: no session is a `401`, a browser's
- * cookie session a `403`.
- *
- * **Nothing here keeps anything.** A send goes to a week no routine writes,
- * a `404` before anything is kept.
+ * **What a probe keeps.** A send goes to a week no routine writes, a `404`
+ * before anything is kept. A read of a week's record after its deadline makes
+ * the draft standing then final, as the phone's next read would.
  */
 
 import { z } from "zod"
 
-import { defineContract } from "../src/contract"
+import { defineContract, pairedPhoneOnly } from "../src/contract"
 
 const MODULE = "interview_weeks"
 
@@ -102,40 +98,6 @@ const SENT = {
   passedReads: [],
 }
 
-/** The two answers every route gives a caller that isn't a paired phone. */
-function strangers(
-  id: string,
-  method: "GET" | "PUT",
-  path: string,
-  what: string,
-  request: { path?: Record<string, string>; body?: unknown }
-): Array<ReturnType<typeof defineContract>> {
-  const mutates = method === "PUT"
-  return [
-    defineContract({
-      id: `${id}_signed_out`,
-      module: MODULE,
-      method,
-      path,
-      summary: `${what} is a paired phone's: without a session it is a 401`,
-      ...(mutates ? { mutates } : {}),
-      request,
-      expect: { status: 401 },
-    }),
-    defineContract({
-      id: `${id}_browser`,
-      module: MODULE,
-      session: true,
-      method,
-      path,
-      summary: `${what} is a paired phone's: a browser's cookie session is a 403`,
-      ...(mutates ? { mutates } : {}),
-      request,
-      expect: { status: 403 },
-    }),
-  ]
-}
-
 export const contracts = [
   defineContract({
     id: "interview-weeks.list",
@@ -146,7 +108,8 @@ export const contracts = [
     summary: `this subject's interview weeks home holds, newest first, at most ${WEEKS_LISTED}: each by the ISO week it opens, the hash of what home keeps and when it arrived`,
     expect: { status: 200, schema: WeekListSchema },
   }),
-  ...strangers(
+  ...pairedPhoneOnly(
+    MODULE,
     "interview-weeks.list",
     "GET",
     "/interview-weeks",
@@ -175,7 +138,8 @@ export const contracts = [
     request: { path: { id: ABSENT_WEEK } },
     expect: { status: 404 },
   }),
-  ...strangers(
+  ...pairedPhoneOnly(
+    MODULE,
     "interview-weeks.week",
     "GET",
     "/interview-weeks/:id",
@@ -195,7 +159,8 @@ export const contracts = [
     request: { path: { id: ABSENT_WEEK }, body: SENT },
     expect: { status: 404 },
   }),
-  ...strangers(
+  ...pairedPhoneOnly(
+    MODULE,
     "interview-weeks.sent",
     "PUT",
     "/interview-weeks/:id/sent",
@@ -224,7 +189,8 @@ export const contracts = [
     request: { path: { id: ABSENT_WEEK } },
     expect: { status: 404 },
   }),
-  ...strangers(
+  ...pairedPhoneOnly(
+    MODULE,
     "interview-weeks.record",
     "GET",
     "/interview-weeks/:id/record",
