@@ -154,6 +154,22 @@ export const contracts = [
   }),
 
   defineContract({
+    id: "admin_settings.game_feed_write_refused",
+    module: "admin_settings",
+    session: true,
+    method: "PUT",
+    path: "/admin/settings/:namespace",
+    summary:
+      "another lever's value is refused for following NFL games (a 422), and nothing is kept",
+    mutates: true,
+    request: {
+      path: { namespace: "game-feed" },
+      body: { recording: false },
+    },
+    expect: { status: 422 },
+  }),
+
+  defineContract({
     id: "admin_settings.unknown_namespace",
     module: "admin_settings",
     session: true,

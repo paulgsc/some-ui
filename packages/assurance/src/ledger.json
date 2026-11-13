@@ -1004,7 +1004,7 @@
           "kind": "OA6",
           "property": "outcome",
           "claim": "A game feed that has stopped reads as stopped, not as a quiet week.",
-          "requirement": "Every wake stamps game_feed_last_attempt_timestamp_seconds, whether or not anything is due, so a dashboard tells 'nothing to fetch' (a recent stamp) from 'not running' (an old one), and game_feed_enabled tells 'switched off' from both; an alert tells the owner when the stamp goes stale.",
+          "requirement": "Every wake stamps game_feed_last_attempt_timestamp_seconds, whether or not anything is due, so a dashboard tells 'nothing to fetch' (a recent stamp) from 'not running' (an old one), and game_feed_enabled, the owner's switch as the last pass read it (1 following, 0 paused), tells 'switched off' from both; an alert tells the owner when the stamp goes stale.",
           "verdict": "holds",
           "conclusion": "The dashboard tells a quiet week from a stopped feed, and Slack tells you within about three minutes of its last wake once it stops, or through the server-down alert if home's server stops; a feed that is on but has never woken has no alert, and Grafana itself is not yet watched.",
           "evidence": [
@@ -1042,7 +1042,14 @@
             "by": "alert",
             "ref": "server:infra/grafana/provisioning/alerting/home-alerts.yml"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-11-13",
+              "change": "game_feed_enabled is the owner's switch on Home's switches (the game-feed setting, on by default), as each pass reads it, in place of GAME_FEED_ENABLED read once at start.",
+              "why": "The owner does not keep policy as an environment variable: whether home follows games is a switch set from the web app, as Rust Rounds recording is. The gauge still tells 'switched off' from a quiet week and from a stopped feed, so the claim holds as before.",
+              "decision": "https://github.com/paulgsc/server/issues/617#issuecomment-6861136019"
+            }
+          ]
         },
         {
           "id": "GA5",
@@ -1065,7 +1072,7 @@
             },
             {
               "class": "unknown",
-              "says": "The ratio of response rows to bodies on a real Sunday, and their bytes from storage_sample, are not read yet: the feed is off.",
+              "says": "The ratio of response rows to bodies on a real Sunday, and their bytes from storage_sample, are not read yet: the feed was off. Home follows games by default once the game feed's switch ships, so they are measurable from the first Sunday after it deploys.",
               "ref": "server:docs/storage.md"
             }
           ],
