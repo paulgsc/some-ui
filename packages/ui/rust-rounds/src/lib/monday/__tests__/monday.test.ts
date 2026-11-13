@@ -165,14 +165,46 @@ describe("a week that ended without an essay", () => {
         },
       }
     })
-    const dueAt = (now: string): Array<string> =>
+    const dueAt = (
+      now: string,
+      records: ReadonlyArray<unknown> = []
+    ): Array<string> =>
       samplePrepared({
         now: new Date(now),
         brief: [...SAMPLE_BRIEF, ...brief],
-        records: [],
+        records,
       }).bundle.due.map((d) => d.id)
     expect(dueAt("2026-11-23T12:00:00Z")).not.toContain("static-and-threads")
+    // Still waiting three weeks on, it no longer holds them.
     expect(dueAt("2026-12-07T12:00:00Z")).toContain("static-and-threads")
+    // Written in this very run, however late, its answers are being read.
+    const w47 = readWeek(brief.find((f) => f.name.includes("w47"))?.body)
+    if (!w47.ok) throw new Error("week 47 isn't readable")
+    const final47 = {
+      ...record(),
+      week: "2026-w47",
+      opens: w47.week.opens,
+      due: w47.week.due,
+      sent: null,
+      tickets: w47.week.tickets.map((t) => ({
+        ticket: t.id,
+        answered: false,
+        take: null,
+        recordedAt: null,
+        opens: 1,
+      })),
+      unanswered: w47.week.tickets.map((t) => t.id),
+      pastes: [],
+    }
+    const late = samplePrepared({
+      now: new Date("2026-12-07T12:00:00Z"),
+      brief: [...SAMPLE_BRIEF, ...brief],
+      records: [final47],
+    })
+    expect(late.bundle.essays.map((e) => e.week)).toEqual(["2026-w47"])
+    expect(dueAt("2026-12-07T12:00:00Z", [final47])).not.toContain(
+      "static-and-threads"
+    )
   })
 })
 

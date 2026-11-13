@@ -2031,7 +2031,7 @@
         "packages/video-render/src/essay.ts",
         "packages/ui/rust-rounds/src/lib/monday/topics.ts"
       ],
-      "chose": "A concept comes back on the Leitner system (Leitner, 1972): five boxes rechecked after 1, 2, 4, 8 and 16 weeks. An answer at relational or above that didn't come back lower moves it up a box. Anything else, a silence included, sends it to box 1. Decay is an answer below the level it stood at, the highest shown since it last decayed, so a concept that settles lower climbs again. Only a concept last shown known may have faded; one below relational is just due. The due list runs decayed, then faded, then last left unanswered, then not yet known, the longest overdue first, and leaves out a concept that a week ended in the last two weeks asked, while that week's essay isn't written yet.",
+      "chose": "A concept comes back on the Leitner system (Leitner, 1972): five boxes rechecked after 1, 2, 4, 8 and 16 weeks. An answer at relational or above that didn't come back lower moves it up a box. Anything else, a silence included, sends it to box 1. Decay is an answer below the level it stood at, the highest shown since it last decayed, so a concept that settles lower climbs again. Only a concept last shown known may have faded; one below relational is just due. The due list runs decayed, then faded, then last left unanswered, then not yet known, the longest overdue first, and leaves out a concept asked by a week whose essay isn't written yet when this run writes it, or when that week ended in the last two weeks.",
       "options": [
         "the Leitner system, relational as the pass",
         "SM-2's ease factors over the five SOLO levels",

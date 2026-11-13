@@ -32,8 +32,8 @@ const BUNDLE_SCHEMA = "some-ui.rust-monday/1"
 export const ESSAYS_MOST = 2
 
 /**
- * How many weeks before next week an ended week, its essay not yet written,
- * keeps its concepts off the due list: as long as a run can still write it.
+ * How many weeks before next week an ended week still waiting on home keeps
+ * its concepts off the due list; a week this run writes always does.
  */
 const PENDING_WEEKS = 2
 
@@ -270,11 +270,15 @@ export function prepare({
     weeks,
     essays: [...essays.values()].map(({ essay }) => essay),
   }
+  const writing = new Set(ended.map((e) => e.week))
   const pending = new Set(
     weeks
       .filter((week) => Date.parse(week.due) < now.getTime())
       .filter((week) => !essayNames.has(week.id))
-      .filter((week) => weeksBetween(week.id, nextId) <= PENDING_WEEKS)
+      .filter(
+        (week) =>
+          writing.has(week.id) || weeksBetween(week.id, nextId) <= PENDING_WEEKS
+      )
       .flatMap((week) =>
         week.tickets.flatMap((t) => t.concepts.map((c) => c.id))
       )
