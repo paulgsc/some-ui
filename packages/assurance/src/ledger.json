@@ -1088,7 +1088,7 @@
     {
       "id": "bite-matched",
       "name": "Home matches each game bite to its play",
-      "why": "Home's reconciler, a task beside the game feed's worker, reads the feed's play log and the game's bites, and keeps for each bite the play it was about or why there was none, so every short can lay the right moment over a bite (GWB7, paulgsc/some-ui#2081). It runs whether or not home is following games, and reads only what the feed has kept; while the feed is paused no game goes final, so a pass finds only bites late for games already final.",
+      "why": "Home's reconciler, a task beside the game feed's worker, reads the feed's play log and the game's bites, and keeps for each bite the play it was about or why there was none, so every short can lay the right moment over a bite (GWB7, paulgsc/some-ui#2081). It runs whether or not home is following games, and reads only what the feed has kept; while the feed is paused a pass reconciles only games already final, again only when their bites or mappings changed, or after home restarts.",
       "paths": [
         "server:apps/servers/file_host/src/reconcile.rs",
         "server:crates/db/voice/src/bite_match.rs"
@@ -1146,7 +1146,7 @@
           "kind": "RE7",
           "property": "work",
           "claim": "A game already final is reconciled again only when it has new bites.",
-          "requirement": "Every reconcile::TICK (10 minutes) the task reconciles a final game once, and again only when a bite arrived since its last pass; it runs whatever the game feed's switch says.",
+          "requirement": "Every reconcile::TICK (10 minutes) the task reconciles a final game once per start, and again only when a bite or mapping arrived since its last pass; it runs whatever the game feed's switch says.",
           "verdict": "holds",
           "conclusion": "The worker's test passes over a final game once, then again only after a new bite; idle, a pass reads the newest scoreboard and the games it names and writes nothing.",
           "evidence": [
@@ -5177,7 +5177,7 @@
       ],
       "signals": [
         {
-          "says": "Each pass logs how many bites it matched, marked unmatched and left as they were.",
+          "says": "A pass that reconciled or failed a game logs its counts; a pass whose storage failed logs that it failed.",
           "status": "live",
           "ref": "server:apps/servers/file_host/src/reconcile.rs"
         }
