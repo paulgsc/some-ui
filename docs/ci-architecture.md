@@ -144,7 +144,7 @@ A dispatch input is text whoever runs the workflow types. Expanded into a
 `run:` script with `${{ }}`, it becomes part of the script before the shell
 reads it, so a quote or `$(...)` in it runs as code (#2116).
 
-Promise WI1 holds that for the manual sign workflow: its free-text
+Promise WS1 holds that for the manual sign workflow: its free-text
 `extension` input reaches a `run:` script only as an `env:` variable, and the
 `Resolve extension metadata` step admits it only when it equals the name of a
 directory under `extensions/` with a `package.json` and a `manifest*.json`
@@ -152,10 +152,13 @@ source. The matrix `_extension-sign.yml` expands into its scripts then holds a
 name read from the repository, never the input's own text. Its Family is every
 string a dispatcher can type, over each step that reads the input or the
 matrix built from it. `packages/eslint/tests/extension-sign-inputs.test.ts`
-is its proof: it reads every line of the workflow that names an input, then
-runs the step's own script over a known extension and a sample of hostile
+is its proof: it fails any `${{ }}` inside any of the workflow's `run:`
+scripts, whatever it reads (an input by dot or bracket, `env`, `toJSON`),
+and any other line naming an input but an `env:` value, the compliance `if:`
+and the job's name; then it runs the step's own script over a known extension and a sample of hostile
 input (`$(...)`, a quote and a second command, paths, a newline, the empty
-string), each of which must fail with no matrix written and no command run. The
+string), each of which must fail with no matrix written and no command run, under
+GitHub's own shell flags. The
 `guards` job in `pr.yml` runs it on every pull request, since `node-test`
 runs only affected packages and would skip a change to the workflow alone.
 
