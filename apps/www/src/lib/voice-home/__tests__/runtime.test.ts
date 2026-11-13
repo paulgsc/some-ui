@@ -242,4 +242,23 @@ describe("the voice notes on their way home", () => {
       heldAt: { n1: HEARD },
     })
   })
+
+  it("keeps the copy of a note whose held word came after the pairing moved, so it waits for this home (HP1)", async () => {
+    const s = shelf()
+    const home = createVoiceHome({
+      storage: memoryStorage(),
+      shelf: s,
+      encode,
+      now,
+    })
+    home.follow({
+      current: (): string => "pairing-2",
+      subscribe: () => (): void => undefined,
+    })
+    await home.copy(note("n1"), new Blob(["a"]))
+    home.keeping.answered({ kind: "held", id: "n1", pairing: PAIRING })
+    await Promise.resolve()
+    expect(home.getSnapshot().waiting).toEqual([note("n1")])
+    expect(await home.keeping.audio("n1")).not.toBeNull()
+  })
 })

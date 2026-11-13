@@ -30,12 +30,17 @@
  *   audio go on what home holds, LG1) only if home said it holds that note
  *   under the pairing this phone holds now; while the phone is unpaired none
  *   reads as held, and what an earlier pairing's home said is kept, never
- *   deleted, and read again only if that pairing comes back.
+ *   deleted, and read again only if that pairing comes back. A pairing id
+ *   is made at each pairing, so it comes back only when the phone could not
+ *   read its pairing for a while; Unpair and pair again, even with the same
+ *   home, is a new pairing, which reads nothing held and is sent again what
+ *   is still on the phone.
  * - _Family:_ every sequence of pairing changes (paired with one home, then
- *   unpaired, paired with another home or with a reset one, or with the
- *   first again) × where each note was when it changed (waiting, held,
- *   refused, not copied) × an answer from home heard after the pairing
- *   changed under its run × a record written before this was noted.
+ *   unpaired, paired with another home or with a reset one, or the first
+ *   pairing's id back) × where each note was when it changed (waiting,
+ *   held, refused, not copied) × an answer from home heard after the
+ *   pairing changed under its run × a record written before this was
+ *   noted, first seen paired or unpaired.
  * - _Proof:_ `__tests__/model.test.ts` ("HP1": every pairing change from
  *   every holding, a late answer, and an earlier build's record) and
  *   `__tests__/runtime.test.ts` ("HP1": the store follows the pairing it is
@@ -44,7 +49,8 @@
  *   ("HP1": at the cap, no take another pairing's home holds makes room).
  * - _Tolerance:_ a record written before HP1 noted no pairing: what it says
  *   home holds is taken as the word of the first pairing this phone is seen
- *   under after it, and reads as held until then (C288). A phone re-paired
+ *   under after it, or, when it is first seen unpaired, kept as no
+ *   pairing's word (C288); while the link is still read it reads as held. A phone re-paired
  *   with another home before that build reads the old home's word as the
  *   new one's, as it did before. Until the voice lane hands the record the
  *   home link's pairing (`follow`: at the app shell's mount, or a run), it
@@ -307,15 +313,36 @@ function merged(a: Holding, b: Holding): Holding {
 }
 
 /**
+ * Where an earlier build's word goes when the first pairing this phone is
+ * seen under is none (C288): a key no pairing id takes (they are UUIDs), so
+ * it is kept and never read as held.
+ */
+export const UNKNOWN_PAIRING = ""
+
+/**
  * The record under `pairing` (HP1): what the pairing it was under holds goes
  * to `others`, and what `pairing`'s home was heard to hold comes back. A
  * record under no pairing hands what it holds to the next one: empty once a
- * pairing was noted, an earlier build's word otherwise (C288).
+ * pairing was noted, an earlier build's word otherwise (C288), unless the
+ * phone is first seen unpaired, when that word is kept under
+ * `UNKNOWN_PAIRING`.
  */
 function repaired(
   state: VoiceHomeState,
   pairing: string | null
 ): VoiceHomeState {
+  if (pairing === null && state.pairing === null) {
+    if (state.held.length === 0) return state
+    return {
+      ...state,
+      held: [],
+      heldAt: {},
+      others: {
+        ...state.others,
+        [UNKNOWN_PAIRING]: { held: state.held, heldAt: state.heldAt },
+      },
+    }
+  }
   if (pairing === state.pairing) return state
   const current: Holding = { held: state.held, heldAt: state.heldAt }
   const others: Record<string, Holding> = { ...state.others }
@@ -369,8 +396,11 @@ export function stepVoiceHome(
         ? {
             ...state,
             waiting,
-            held: [...state.held, event.id],
-            heldAt: { ...state.heldAt, [event.id]: event.at },
+            // Once each: a pairing back again may already hold it (HP1).
+            held: state.held.includes(event.id)
+              ? state.held
+              : [...state.held, event.id],
+            heldAt: { [event.id]: event.at, ...state.heldAt },
           }
         : {
             ...state,

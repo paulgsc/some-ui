@@ -25,6 +25,7 @@ import {
   runEnd,
   settled,
   stepVoiceHome,
+  UNKNOWN_PAIRING,
   VOICE_OFS,
 } from "@/lib/voice-home/model"
 
@@ -435,6 +436,36 @@ describe("what home holds, by the pairing that said so (HP1, #2437)", () => {
       held: [],
       others: { [PAIRING]: { held: ["n1"] } },
     })
+  })
+
+  it("keeps an earlier build's record seen first unpaired as no pairing's word, read as held by none (C288)", () => {
+    const read = parseVoiceHome(
+      JSON.stringify({ waiting: [], held: ["n1"], refused: [], roomless: [] })
+    )
+    if (read === null) throw new Error("unread")
+    const unpaired = step(read, { kind: "paired", pairing: null })
+    expect(unpaired).toMatchObject({
+      pairing: null,
+      held: [],
+      others: { [UNKNOWN_PAIRING]: { held: ["n1"] } },
+    })
+    expect(step(unpaired, { kind: "paired", pairing: null })).toBe(unpaired)
+    expect(step(unpaired, { kind: "paired", pairing: ANOTHER })).toMatchObject({
+      pairing: ANOTHER,
+      held: [],
+    })
+  })
+
+  it("lists a note once when a pairing back again hears it held again, its first time kept", () => {
+    const moved = copied(
+      step(first, { kind: "paired", pairing: ANOTHER }),
+      NOTE
+    )
+    const back = step(moved, { kind: "paired", pairing: PAIRING })
+    const again = step(back, heldBy(PAIRING, "n1", "2026-12-01T00:00:00.000Z"))
+    expect(again.held).toEqual(["n1"])
+    expect(again.heldAt).toEqual({ n1: HEARD })
+    expect(again.waiting).toEqual([OTHER])
   })
 
   it("reads back each pairing's word, and nothing else", () => {

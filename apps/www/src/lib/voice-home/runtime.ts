@@ -198,7 +198,9 @@ export function createVoiceHome(ports: VoiceHomePorts): VoiceHome {
             ? { ...answer, at: new Date(ports.now()).toISOString() }
             : answer
         )
-        if (answer.kind === "held") {
+        // Only once the record says this pairing's home holds it: a word
+        // heard after the pairing changed leaves the copy waiting (HP1).
+        if (answer.kind === "held" && state.held.includes(answer.id)) {
           // Ignored: a copy home holds is named by no record once this step
           // is kept, so the next `sweep` clears one that fails to go.
           shelf.remove([answer.id]).catch(() => undefined)
