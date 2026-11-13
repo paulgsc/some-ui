@@ -83,6 +83,7 @@ const NOTE_OF: ReadonlySet<unknown> = new Set([
   "scene",
   "studio",
   "rust-round",
+  "interview",
 ])
 const INSTANT =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?(Z|[+-]\d{2}:\d{2})$/
@@ -181,7 +182,7 @@ function transcriptRefusal(
     return "the name must carry the note's id"
   }
   if (!NOTE_OF.has(body.of))
-    return "of must be reflection, jobs, scene, studio or rust-round"
+    return "of must be reflection, jobs, scene, studio, rust-round or interview"
   if (typeof body.ref !== "string" || !NOTE_REF.test(body.ref)) {
     return "ref must name what the note belongs to"
   }
