@@ -30,6 +30,7 @@
     "record:essay": "tsx tests/record/essay.ts",
     "record:playoff-delta": "tsx tests/record/playoff-delta.ts",
     "record:preview": "tsx tests/record/preview.ts",
+    "record:report": "tsx tests/record/report.ts",
     "record:short": "tsx tests/record/short.ts"
   },
   "dependencies": {

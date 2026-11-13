@@ -1,0 +1,243 @@
+{
+  "week": "2026-W46",
+  "weeks": [
+    {
+      "role": "this",
+      "week": "2026-W46",
+      "from": "2026-11-09T08:00:00.000Z",
+      "to": "2026-11-16T08:00:00.000Z",
+      "complete": true,
+      "measured": true,
+      "affordances": [
+        {
+          "pipeline": "aph",
+          "affordance": "log-mine",
+          "surface": "apk",
+          "offered": 7,
+          "taken": 6,
+          "passedOver": 1,
+          "left": 0
+        },
+        {
+          "pipeline": "jobs",
+          "affordance": "todays-pick",
+          "surface": "apk",
+          "offered": 5,
+          "taken": 3,
+          "passedOver": 2,
+          "left": 0
+        },
+        {
+          "pipeline": "lessons",
+          "affordance": "lesson",
+          "surface": "web",
+          "offered": 1,
+          "taken": 1,
+          "passedOver": 0,
+          "left": 0
+        },
+        {
+          "pipeline": "rust-rounds",
+          "affordance": "concept",
+          "surface": "apk",
+          "offered": 2,
+          "taken": 2,
+          "passedOver": 0,
+          "left": 0
+        },
+        {
+          "pipeline": "rust-rounds",
+          "affordance": "week-ticket",
+          "surface": "apk",
+          "offered": 6,
+          "taken": 5,
+          "passedOver": 1,
+          "left": 0
+        },
+        {
+          "pipeline": "studio",
+          "affordance": "sitting",
+          "surface": "apk",
+          "offered": 7,
+          "taken": 6,
+          "passedOver": 0,
+          "left": 1
+        },
+        {
+          "pipeline": "studio",
+          "affordance": "take",
+          "surface": "apk",
+          "offered": 11,
+          "taken": 11,
+          "passedOver": 0,
+          "left": 0
+        },
+        {
+          "pipeline": "topik",
+          "affordance": "ask-scene",
+          "surface": "apk",
+          "offered": 3,
+          "taken": 1,
+          "passedOver": 2,
+          "left": 0
+        },
+        {
+          "pipeline": "topik",
+          "affordance": "next-lesson",
+          "surface": "apk",
+          "offered": 14,
+          "taken": 9,
+          "passedOver": 3,
+          "left": 2
+        },
+        {
+          "pipeline": "topik",
+          "affordance": "routine-drama",
+          "surface": "apk",
+          "offered": 12,
+          "taken": 0,
+          "passedOver": 10,
+          "left": 2
+        },
+        {
+          "pipeline": "topik",
+          "affordance": "routine-read-aloud",
+          "surface": "apk",
+          "offered": 12,
+          "taken": 9,
+          "passedOver": 2,
+          "left": 1
+        }
+      ]
+    },
+    {
+      "role": "last",
+      "week": "2026-W45",
+      "from": "2026-11-02T08:00:00.000Z",
+      "to": "2026-11-09T08:00:00.000Z",
+      "complete": true,
+      "measured": true,
+      "affordances": [
+        {
+          "pipeline": "aph",
+          "affordance": "log-mine",
+          "surface": "apk",
+          "offered": 7,
+          "taken": 7,
+          "passedOver": 0,
+          "left": 0
+        },
+        {
+          "pipeline": "jobs",
+          "affordance": "todays-pick",
+          "surface": "apk",
+          "offered": 5,
+          "taken": 2,
+          "passedOver": 3,
+          "left": 0
+        },
+        {
+          "pipeline": "rust-rounds",
+          "affordance": "week-ticket",
+          "surface": "apk",
+          "offered": 6,
+          "taken": 4,
+          "passedOver": 2,
+          "left": 0
+        },
+        {
+          "pipeline": "studio",
+          "affordance": "sitting",
+          "surface": "apk",
+          "offered": 5,
+          "taken": 5,
+          "passedOver": 0,
+          "left": 0
+        },
+        {
+          "pipeline": "studio",
+          "affordance": "take",
+          "surface": "apk",
+          "offered": 8,
+          "taken": 8,
+          "passedOver": 0,
+          "left": 0
+        },
+        {
+          "pipeline": "topik",
+          "affordance": "next-lesson",
+          "surface": "apk",
+          "offered": 12,
+          "taken": 6,
+          "passedOver": 4,
+          "left": 2
+        },
+        {
+          "pipeline": "topik",
+          "affordance": "routine-drama",
+          "surface": "apk",
+          "offered": 9,
+          "taken": 0,
+          "passedOver": 8,
+          "left": 1
+        },
+        {
+          "pipeline": "topik",
+          "affordance": "routine-read-aloud",
+          "surface": "apk",
+          "offered": 10,
+          "taken": 6,
+          "passedOver": 3,
+          "left": 1
+        }
+      ]
+    },
+    {
+      "role": "quarterAgo",
+      "week": "2026-W33",
+      "from": "2026-08-10T07:00:00.000Z",
+      "to": "2026-08-17T07:00:00.000Z",
+      "complete": true,
+      "measured": true,
+      "affordances": [
+        {
+          "pipeline": "topik",
+          "affordance": "next-lesson",
+          "surface": "apk",
+          "offered": 7,
+          "taken": 5,
+          "passedOver": 2,
+          "left": 0
+        },
+        {
+          "pipeline": "topik",
+          "affordance": "routine-read-aloud",
+          "surface": "apk",
+          "offered": 7,
+          "taken": 3,
+          "passedOver": 4,
+          "left": 0
+        },
+        {
+          "pipeline": "studio",
+          "affordance": "take",
+          "surface": "apk",
+          "offered": 4,
+          "taken": 4,
+          "passedOver": 0,
+          "left": 0
+        }
+      ]
+    },
+    {
+      "role": "yearAgo",
+      "week": "2025-W46",
+      "from": "2025-11-10T08:00:00.000Z",
+      "to": "2025-11-17T08:00:00.000Z",
+      "complete": true,
+      "measured": false,
+      "affordances": []
+    }
+  ],
+  "seen": []
+}

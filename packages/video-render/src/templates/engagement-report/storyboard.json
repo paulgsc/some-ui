@@ -1,0 +1,147 @@
+{
+  "schema": "some-ui.storyboard/1",
+  "template": {
+    "id": "engagement-report",
+    "version": 1
+  },
+  "sample": "the sample report, 2026-W46",
+  "frames": [
+    {
+      "id": "intro",
+      "kind": "intro",
+      "name": "The weekly engagement report",
+      "by": "code",
+      "said": "The engagement report for 2026-W46, written by code from the app's own records, with no writer. It says what the app offered and what was taken, never how well. There is no record from a year ago to compare with yet.",
+      "ms": 17600
+    },
+    {
+      "id": "brand-in",
+      "kind": "brand-in",
+      "name": "The weekly engagement report",
+      "by": "none",
+      "said": "",
+      "ms": 3000
+    },
+    {
+      "id": "overview",
+      "kind": "section",
+      "scene": "overview",
+      "name": "The week at a glance",
+      "by": "fill",
+      "said": "",
+      "ms": 18000
+    },
+    {
+      "id": "chapter-wing-1",
+      "kind": "chapter",
+      "scene": "pipeline",
+      "name": "A pipeline",
+      "by": "code",
+      "said": "Practice.",
+      "ms": 3000
+    },
+    {
+      "id": "pipeline-1",
+      "kind": "section",
+      "scene": "pipeline",
+      "name": "A pipeline",
+      "item": 1,
+      "by": "fill",
+      "said": "",
+      "ms": 28800
+    },
+    {
+      "id": "pipeline-2",
+      "kind": "section",
+      "scene": "pipeline",
+      "name": "A pipeline",
+      "item": 2,
+      "by": "fill",
+      "said": "",
+      "ms": 16400
+    },
+    {
+      "id": "chapter-wing-2",
+      "kind": "chapter",
+      "scene": "pipeline",
+      "name": "A pipeline",
+      "by": "code",
+      "said": "Studio.",
+      "ms": 3000
+    },
+    {
+      "id": "pipeline-3",
+      "kind": "section",
+      "scene": "pipeline",
+      "name": "A pipeline",
+      "item": 3,
+      "by": "fill",
+      "said": "",
+      "ms": 16000
+    },
+    {
+      "id": "chapter-wing-3",
+      "kind": "chapter",
+      "scene": "pipeline",
+      "name": "A pipeline",
+      "by": "code",
+      "said": "Operate.",
+      "ms": 3000
+    },
+    {
+      "id": "pipeline-4",
+      "kind": "section",
+      "scene": "pipeline",
+      "name": "A pipeline",
+      "item": 4,
+      "by": "fill",
+      "said": "",
+      "ms": 8400
+    },
+    {
+      "id": "chapter-wing-4",
+      "kind": "chapter",
+      "scene": "pipeline",
+      "name": "A pipeline",
+      "by": "code",
+      "said": "Self and work.",
+      "ms": 3000
+    },
+    {
+      "id": "pipeline-5",
+      "kind": "section",
+      "scene": "pipeline",
+      "name": "A pipeline",
+      "item": 5,
+      "by": "fill",
+      "said": "",
+      "ms": 8800
+    },
+    {
+      "id": "chapter-moved",
+      "kind": "chapter",
+      "scene": "moved",
+      "name": "What moved most",
+      "by": "code",
+      "said": "What moved most.",
+      "ms": 3000
+    },
+    {
+      "id": "moved",
+      "kind": "section",
+      "scene": "moved",
+      "name": "What moved most",
+      "by": "fill",
+      "said": "",
+      "ms": 5600
+    },
+    {
+      "id": "brand-out",
+      "kind": "brand-out",
+      "name": "The weekly engagement report",
+      "by": "none",
+      "said": "",
+      "ms": 3000
+    }
+  ]
+}

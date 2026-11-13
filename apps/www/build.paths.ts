@@ -259,10 +259,12 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       modules: [
         "packages/video-render/src/call.ts",
         "packages/video-render/src/essay.ts",
+        "packages/video-render/src/engagement-report.ts",
+        "packages/video-render/src/engagement-report-video.ts",
         "packages/video-render/src/stills.ts",
       ],
       profiles: ["lan", "pages"],
-      why: "the weekly call's template and its sample week, and the Rust Rounds essay's and its sample essay, which only their stages draw (src/lib/web-surface/call), and whether a format's shape draws captions (`hasCaptions`), which only Playoff Delta's stage reads (src/lib/web-surface/playoff-delta): desktop pages the Android app's build leaves out",
+      why: "the weekly call's template and its sample week, the Rust Rounds essay's and its sample essay, and the engagement report's writer, template and sample report, which only their stages draw (src/lib/web-surface/call), and whether a format's shape draws captions (`hasCaptions`), which only Playoff Delta's stage reads (src/lib/web-surface/playoff-delta): desktop pages the Android app's build leaves out",
     },
     {
       modules: ["apps/www/src/lib/clipboard/**"],
@@ -408,6 +410,11 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
     },
     {
       profile: "lan",
+      modules: ["apps/www/src/lib/web-surface/call/report-stage.tsx"],
+      why: "the engagement report's stage renders through this; without it /report renders nothing",
+    },
+    {
+      profile: "lan",
       modules: ["apps/www/src/lib/web-surface/hangul/panel.tsx"],
       why: "the web builds play Hangul Honeycomb through this; without it the activity is offered and renders nothing. Also what keeps its `exclusive` rule from passing by matching nothing",
     },
@@ -463,6 +470,7 @@ export const paths: PathRules<Profile> = definePaths<Profile>({
       "burn-ins.tsx*",
       "call.tsx*",
       "essay.tsx*",
+      "report.tsx*",
       "captions.tsx*",
       "authorship.tsx*",
       "_dashboard/app.tsx*",

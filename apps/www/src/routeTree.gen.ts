@@ -21,6 +21,7 @@ import { Route as EssayRouteImport } from './routes/essay'
 import { Route as ExtensionsRouteImport } from './routes/extensions'
 import { Route as MissionRouteImport } from './routes/mission'
 import { Route as PlayoffDeltaRouteImport } from './routes/playoff-delta'
+import { Route as ReportRouteImport } from './routes/report'
 import { Route as DashboardApkRouteImport } from './routes/_dashboard/_apk'
 import { Route as DashboardLanRouteImport } from './routes/_dashboard/_lan'
 import { Route as DashboardAppRouteImport } from './routes/_dashboard/app'
@@ -139,6 +140,11 @@ const MissionRoute = MissionRouteImport.update({
 const PlayoffDeltaRoute = PlayoffDeltaRouteImport.update({
   id: '/playoff-delta',
   path: '/playoff-delta',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportRoute = ReportRouteImport.update({
+  id: '/report',
+  path: '/report',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardApkRoute = DashboardApkRouteImport.update({
@@ -486,6 +492,7 @@ export interface FileRoutesByFullPath {
   '/extensions': typeof ExtensionsRoute
   '/mission': typeof MissionRoute
   '/playoff-delta': typeof PlayoffDeltaRoute
+  '/report': typeof ReportRoute
   '/app': typeof DashboardAppRoute
   '/job-run': typeof DashboardJobRunRoute
   '/profile': typeof DashboardProfileRoute
@@ -557,6 +564,7 @@ export interface FileRoutesByTo {
   '/extensions': typeof ExtensionsRoute
   '/mission': typeof MissionRoute
   '/playoff-delta': typeof PlayoffDeltaRoute
+  '/report': typeof ReportRoute
   '/app': typeof DashboardAppRoute
   '/job-run': typeof DashboardJobRunRoute
   '/profile': typeof DashboardProfileRoute
@@ -627,6 +635,7 @@ export interface FileRoutesById {
   '/extensions': typeof ExtensionsRoute
   '/mission': typeof MissionRoute
   '/playoff-delta': typeof PlayoffDeltaRoute
+  '/report': typeof ReportRoute
   '/_dashboard/_apk': typeof DashboardApkRouteWithChildren
   '/_dashboard/_lan': typeof DashboardLanRouteWithChildren
   '/_dashboard/app': typeof DashboardAppRoute
@@ -702,6 +711,7 @@ export interface FileRouteTypes {
     | '/extensions'
     | '/mission'
     | '/playoff-delta'
+    | '/report'
     | '/app'
     | '/job-run'
     | '/profile'
@@ -773,6 +783,7 @@ export interface FileRouteTypes {
     | '/extensions'
     | '/mission'
     | '/playoff-delta'
+    | '/report'
     | '/app'
     | '/job-run'
     | '/profile'
@@ -842,6 +853,7 @@ export interface FileRouteTypes {
     | '/extensions'
     | '/mission'
     | '/playoff-delta'
+    | '/report'
     | '/_dashboard/_apk'
     | '/_dashboard/_lan'
     | '/_dashboard/app'
@@ -917,6 +929,7 @@ export interface RootRouteChildren {
   ExtensionsRoute: typeof ExtensionsRoute
   MissionRoute: typeof MissionRoute
   PlayoffDeltaRoute: typeof PlayoffDeltaRoute
+  ReportRoute: typeof ReportRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1003,6 +1016,13 @@ declare module '@tanstack/react-router' {
       path: '/playoff-delta'
       fullPath: '/playoff-delta'
       preLoaderRoute: typeof PlayoffDeltaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/report': {
+      id: '/report'
+      path: '/report'
+      fullPath: '/report'
+      preLoaderRoute: typeof ReportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_dashboard/_apk': {
@@ -1624,6 +1644,7 @@ const rootRouteChildren: RootRouteChildren = {
   ExtensionsRoute: ExtensionsRoute,
   MissionRoute: MissionRoute,
   PlayoffDeltaRoute: PlayoffDeltaRoute,
+  ReportRoute: ReportRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

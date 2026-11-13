@@ -6,6 +6,7 @@ import { hasAudience } from "@/lib/build-profile"
 
 import type { BurnInsPreviewProps } from "./burn-ins/preview"
 import type { EssayStageProps } from "./call/essay-stage"
+import type { ReportStageProps } from "./call/report-stage"
 import type { CallStageProps } from "./call/stage"
 import type { LiveStageProps } from "./playoff-delta/stage"
 
@@ -114,5 +115,15 @@ export const CallStage: ComponentType<CallStageProps> =
 export const EssayStage: ComponentType<EssayStageProps> =
   import.meta.env.VITE_DEVICE_BACKEND !== "true" && hasAudience("web")
     ? lazyWithPreload(() => import("./call/essay-stage"), "EssayStagePage")
+        .Component
+    : Nothing
+
+/**
+ * The weekly engagement report's stage (a desktop recording stage for the
+ * report's video, ENG12); nothing where the build has no web surface.
+ */
+export const ReportStage: ComponentType<ReportStageProps> =
+  import.meta.env.VITE_DEVICE_BACKEND !== "true" && hasAudience("web")
+    ? lazyWithPreload(() => import("./call/report-stage"), "ReportStagePage")
         .Component
     : Nothing

@@ -1,0 +1,60 @@
+{
+  "schema": "some-ui.show-format/1",
+  "id": "engagement-report",
+  "version": 1,
+  "title": "The weekly engagement report",
+  "series": {
+    "id": "conference-call",
+    "version": 2
+  },
+  "look": "calm",
+  "scenes": [
+    {
+      "id": "overview",
+      "name": "The week at a glance",
+      "point": "Each wing, and how many of its lines were taken 5 times or more",
+      "picture": {
+        "kind": "capture",
+        "from": "the report's overview view",
+        "cssWidth": 1920
+      },
+      "holdMs": 20000
+    },
+    {
+      "id": "pipeline",
+      "name": "A pipeline",
+      "point": "What it offered and what was taken, against last week, a quarter ago and a year ago",
+      "picture": {
+        "kind": "capture",
+        "from": "the report's pipeline view",
+        "cssWidth": 1920
+      },
+      "holdMs": 30000,
+      "repeat": {
+        "max": 24
+      }
+    },
+    {
+      "id": "moved",
+      "name": "What moved most",
+      "point": "The line whose taken count moved most on last week",
+      "picture": {
+        "kind": "capture",
+        "from": "the report's moved view",
+        "cssWidth": 1920
+      },
+      "holdMs": 15000
+    }
+  ],
+  "shape": {
+    "brand": {
+      "intro": true,
+      "outro": true,
+      "theme": "mochi-night",
+      "motion": "brand-v1"
+    },
+    "chapters": ["pipeline", "moved"],
+    "subtitles": "word",
+    "theme": "mochi-night"
+  }
+}

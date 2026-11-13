@@ -25,8 +25,11 @@ import {
   ChapterSlide,
   Field,
   LockedIntro,
+  sceneNames,
   StageFrame,
   StageRefused,
+  Title,
+  whereOf,
 } from "./frame"
 import { STAGE_WORDS as SW } from "./frame-words"
 
@@ -51,9 +54,7 @@ export type EssayStageProps = {
   onScene?: (scene: string) => void
 }
 
-const NAMES: Readonly<Record<string, string>> = Object.fromEntries(
-  essayFormat().scenes.map((scene) => [scene.id, scene.name])
-)
+const NAMES = sceneNames(essayFormat())
 
 const SAMPLE = sampleEssay()
 
@@ -95,20 +96,6 @@ const labelOf = (scene: EssayScene, essay: Essay): string => {
       return assertNever(scene)
     }
   }
-}
-
-/** What the frame's header calls the scene. */
-const whereOf = (at: EssayAt, essay: Essay): string => {
-  const scene = at.scene
-  const name =
-    scene.section === "brand-in" || scene.section === "brand-out"
-      ? ""
-      : scene.section === "chapter"
-        ? scene.title
-        : labelOf(scene, essay)
-  return [name, `${at.index + 1}/${at.scenes.length}`]
-    .filter(Boolean)
-    .join(" · ")
 }
 
 /** The tutor's icon: neutral, never any company's mark. */
@@ -202,10 +189,6 @@ const Code = ({ code }: { code: string }): JSX.Element => (
   <pre className="bg-background border-border overflow-hidden rounded-[0.4em] border px-[0.8em] py-[0.5em] font-mono text-[0.62em] leading-snug [overflow-wrap:normal] whitespace-pre">
     {code.trimEnd()}
   </pre>
-)
-
-const Title = ({ children }: { children: ReactNode }): JSX.Element => (
-  <p className="text-[1.4em] leading-tight font-bold">{children}</p>
 )
 
 const MARK_CLASS: Readonly<Record<string, string>> = {
@@ -615,8 +598,8 @@ export const EssayStagePage = ({
       title={W.title}
       where={
         voicing === "sample"
-          ? `${whereOf(at, essay)} · ${W.sample}`
-          : whereOf(at, essay)
+          ? `${whereOf(at, () => labelOf(at.scene, essay))} · ${W.sample}`
+          : whereOf(at, () => labelOf(at.scene, essay))
       }
       captioned={record && hasCaptions(format)}
       said={at.scene.said}
