@@ -13,84 +13,87 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
-import { indentOf } from "@eslint/workflow-guards.js"
 import { afterAll, describe, expect, it } from "vitest"
+import { isMap, isScalar, isSeq, parseAllDocuments } from "yaml"
 
 const ROOT = fileURLToPath(new URL("../../../", import.meta.url))
 const FILE = ".github/workflows/extension-sign-manual.yml"
 const text = readFileSync(join(ROOT, FILE), "utf8")
 
 /**
- * Every expression the file may hold, each with the key it must sit under
- * and no `run:` above it. Listing lines rather than parsing out scripts
- * leaves no YAML shape (a quoted scalar over two lines, an anchor, a
- * flow-style step) that can carry one into a script unseen; `ESCAPED` closes
- * the one spelling that is not `${{` in the raw text.
+ * Every expression the file may hold, by where it sits and what it says.
+ * Each is a value GitHub reads as data, never a script.
  */
-const ALLOWED: ReadonlyArray<[line: string, parent: string]> = [
-  [
-    "if: ${{ inputs.compliance_confirmed != true }}",
-    "- name: Fail if compliance not confirmed",
-  ],
-  ["EXTENSION: ${{ inputs.extension }}", "env:"],
-  ["COMPLIANCE_CONFIRMED: ${{ inputs.compliance_confirmed }}", "env:"],
-  ["matrix: ${{ steps.matrix.outputs.matrix }}", "outputs:"],
-  ["name: Sign ${{ inputs.extension }}", "sign:"],
-  ["matrix: ${{ needs.build-matrix.outputs.matrix }}", "with:"],
+const ALLOWED: ReadonlyArray<string> = [
+  "jobs.preflight.steps.0.if = ${{ inputs.compliance_confirmed != true }}",
+  "jobs.preflight.steps.1.env.EXTENSION = ${{ inputs.extension }}",
+  "jobs.preflight.steps.1.env.COMPLIANCE_CONFIRMED = ${{ inputs.compliance_confirmed }}",
+  "jobs.build-matrix.outputs.matrix = ${{ steps.matrix.outputs.matrix }}",
+  "jobs.build-matrix.steps.1.env.EXTENSION = ${{ inputs.extension }}",
+  "jobs.sign.name = Sign ${{ inputs.extension }}",
+  "jobs.sign.with.matrix = ${{ needs.build-matrix.outputs.matrix }}",
 ]
 
-/** A YAML escape for `$` or `{`, which a quoted scalar decodes. */
-const ESCAPED = /\\(?:x24|x7b|u0024|u007b|U00000024|U0000007b)/i
+/** The workflow's one document as YAML decodes it; null if unreadable. */
+function parsed(yaml: string): unknown {
+  const docs = parseAllDocuments(yaml)
+  if (!Array.isArray(docs) || docs.length !== 1) return null
+  const [doc] = docs
+  if (!doc || doc.errors.length > 0 || doc.warnings.length > 0) return null
+  return doc.contents
+}
 
-/** The lines above `i` that hold it, nearest first, each indented less. */
-function ancestorsOf(lines: ReadonlyArray<string>, i: number): Array<string> {
+/**
+ * Every decoded key or value holding `${{`, as `path = value`. Escapes, line
+ * continuations, anchors and flow style are all decoded first.
+ */
+function expressions(yaml: string): Array<string> | null {
+  const root = parsed(yaml)
+  if (root === null) return null
   const found: Array<string> = []
-  let own = indentOf(lines[i] ?? "")
-  for (let j = i - 1; j >= 0 && own > 0; j--) {
-    const l = lines[j] ?? ""
-    if (l.trim() === "" || indentOf(l) >= own) continue
-    found.push(l.trim())
-    own = indentOf(l)
+  const walk = (node: unknown, path: string): void => {
+    if (isMap(node)) {
+      for (const pair of node.items) {
+        const key = isScalar(pair.key) ? String(pair.key.value) : "?"
+        if (key.includes("${{")) found.push(`${path} key = ${key}`)
+        walk(pair.value, path === "" ? key : `${path}.${key}`)
+      }
+    } else if (isSeq(node)) {
+      node.items.forEach((item, i) => {
+        walk(item, `${path}.${String(i)}`)
+      })
+    } else if (isScalar(node) && String(node.value).includes("${{")) {
+      found.push(`${path} = ${String(node.value)}`)
+    }
   }
+  walk(root, "")
   return found
 }
 
-/** Each line holding `${{` that is not an allowed expression in its place. */
+/** Each expression not listed in its place; one line if unreadable. */
 function stray(yaml: string): Array<string> {
-  const lines = yaml.split("\n")
-  return lines.flatMap((l, i) => {
-    if (ESCAPED.test(l)) return [`${String(i + 1)}: ${l.trim()}`]
-    if (!l.includes("${{")) return []
-    const above = ancestorsOf(lines, i)
-    const ok =
-      !above.some((a) => /^(?:- )?run:/.test(a)) &&
-      ALLOWED.some(([line, parent]) => l.trim() === line && above[0] === parent)
-    return ok ? [] : [`${String(i + 1)}: ${l.trim()}`]
-  })
+  const found = expressions(yaml)
+  if (found === null) return ["the workflow is not one readable document"]
+  return found.filter((e) => !ALLOWED.includes(e))
 }
 
-/** The `run: |` script of the step named `name`, dedented. Empty if absent. */
+/** The decoded `run:` of the step named `name`. Empty if absent. */
 function scriptOf(name: string): string {
-  const lines = text.split("\n")
-  const start = lines.findIndex((l) => l.trim() === `- name: ${name}`)
-  const run = lines.findIndex((l, i) => i > start && l.trim() === "run: |")
-  const between = lines.slice(start + 1, run)
-  if (start < 0 || run < 0 || between.some((l) => l.trim().startsWith("- ")))
-    return ""
-  const after = lines.slice(run + 1)
-  const close = after.findIndex(
-    (l) => l.trim() !== "" && indentOf(l) <= indentOf(lines[run] ?? "")
-  )
-  const body = close < 0 ? after : after.slice(0, close)
-  const pad = Math.min(
-    ...body.filter((l) => l.trim() !== "").map((l) => indentOf(l))
-  )
-  return body.map((l) => l.slice(pad)).join("\n")
+  let script = ""
+  const walk = (node: unknown): void => {
+    if (isSeq(node)) node.items.forEach(walk)
+    if (!isMap(node)) return
+    if (node.get("name") === name && typeof node.get("run") === "string")
+      script = String(node.get("run"))
+    for (const pair of node.items) walk(pair.value)
+  }
+  walk(parsed(text))
+  return script
 }
 
 describe("WS1: extension-sign-manual.yml", () => {
   it("holds an expression only where GitHub reads it as data", () => {
-    expect(text.split("${{").length - 1).toBe(7)
+    expect(expressions(text)).toHaveLength(ALLOWED.length)
     expect(stray(text)).toEqual([])
   })
 
@@ -101,26 +104,34 @@ describe("WS1: extension-sign-manual.yml", () => {
       `${step}\n          echo "\${{ inputs.extension }}"`,
     ],
     [
-      "an env line's copy inside a script",
-      `${step}\n          EXTENSION: \${{ inputs.extension }}`,
-    ],
-    [
       "an env block written inside a script",
       `${step}\n          env:\n            EXTENSION: \${{ inputs.extension }}`,
     ],
     [
-      "an escaped expression",
+      "a flow-style step",
+      `${step}\n      - { run: "echo \${{ env.EXTENSION }}" }`,
+    ],
+    [
+      "an escaped dollar",
       `${step}\n      - run: "echo \\x24{{ inputs.extension }}"`,
     ],
-    ["an inline run:", `${step}\n      - run: echo \${{ env.EXTENSION }}`],
     [
-      "a quoted run: over two lines",
-      `${step}\n      - run: "echo a\n          \${{ toJSON(inputs) }}"`,
+      "an escaped line break",
+      `${step}\n      - run: "echo $\\\n          {{ inputs.extension }}"`,
+    ],
+    [
+      "an env block inside another action's script",
+      `${step}\n      - uses: actions/github-script@v7\n        with:\n          script: |\n            env:\n              EXTENSION: \${{ inputs.extension }}`,
     ],
   ])("fails %s", (_, replacement) => {
     const tainted = text.replace(step, replacement)
     expect(tainted).not.toEqual(text)
     expect(stray(tainted)).toHaveLength(1)
+  })
+
+  it("fails a file it cannot read as one document", () => {
+    expect(stray(`${text}\n---\nx: 1\n`)).toHaveLength(1)
+    expect(stray(`${text}\n  : [\n`)).toHaveLength(1)
   })
 
   describe("the Resolve extension metadata step", () => {
