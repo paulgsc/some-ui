@@ -19,6 +19,7 @@ describe("wordsOf", () => {
   })
 
   it.each([
+    { name: "another schema", body: { schema: "x/1", words: [] } },
     {
       name: "a transcript without words",
       body: { schema: "some-ui.voice-transcript/1" },
@@ -36,8 +37,23 @@ describe("wordsOf", () => {
 })
 
 describe("FILLERS", () => {
-  it("holds vocalised hesitations and no lexical filler (C265)", () => {
-    expect(FILLERS.has("um") && FILLERS.has("uh")).toBe(true)
-    expect(FILLERS.has("like")).toBe(false)
+  // home's transcriber keeps a copy of this list (#2933): a change here is a
+  // change there too, so the list is pinned word for word (C265).
+  it("is the closed list C265 chose", () => {
+    expect([...FILLERS]).toEqual([
+      "um",
+      "umm",
+      "uh",
+      "uhh",
+      "uhm",
+      "er",
+      "erm",
+      "ah",
+      "ahh",
+      "hm",
+      "hmm",
+      "mm",
+      "mhm",
+    ])
   })
 })

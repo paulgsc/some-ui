@@ -21,7 +21,7 @@ faults and charts them over the weeks; nothing here grades.
   question's parts.
 
 The thresholds are in `thresholds.ts` (C263–C266); the filler list is
-`fillers.json` (C265).
+`fillers.json` (C265), which home's transcriber copies (#2933).
 
 ## Limits
 

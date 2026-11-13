@@ -107,10 +107,10 @@ describe("measureRead", () => {
     const pause = READ_PAUSE_MS
     const words = [
       ...said("I built this to", { atMs: 0 }),
-      ...// ends 1500
-      said("keep the record.", { atMs: 1500 + pause }),
-      ...// ends 2700 + pause
-      said("Nothing is lost, ever.", { atMs: 2700 + 2 * pause + 300 }),
+      // the part above ends at 1500
+      ...said("keep the record.", { atMs: 1500 + pause }),
+      // the part above ends at 2700 + pause
+      ...said("Nothing is lost, ever.", { atMs: 2700 + 2 * pause + 300 }),
     ]
     const faults = measure(words, SCRIPT)
     expect(faults.pauses).toEqual({
@@ -124,8 +124,8 @@ describe("measureRead", () => {
     const script = "one two three. four five six."
     const words = [
       ...said("one two", { atMs: 0 }),
-      ...// ends 700
-      said("four five six", { atMs: 2000 }),
+      // the part above ends at 700
+      ...said("four five six", { atMs: 2000 }),
     ]
     expect(measure(words, script).pauses).toEqual({
       atBreak: 1,
@@ -138,8 +138,8 @@ describe("measureRead", () => {
     const script = "the cat sat. the dog ran."
     const words = [
       ...said("the cat sat and", { atMs: 0 }),
-      ...// ends 1500
-      said("the dog ran", { atMs: 1500 + READ_PAUSE_MS }),
+      // the part above ends at 1500
+      ...said("the dog ran", { atMs: 1500 + READ_PAUSE_MS }),
     ]
     expect(measure(words, script).pauses.atBreak).toBe(1)
   })
@@ -188,8 +188,8 @@ describe("measureRead", () => {
   it("takes a spaced hyphen as a break and a hyphen inside a word as none", () => {
     const words = [
       ...said("I came", { atMs: 0 }),
-      ...// ends 700
-      said("I saw well known", { atMs: 700 + READ_PAUSE_MS }),
+      // the part above ends at 700
+      ...said("I saw well known", { atMs: 700 + READ_PAUSE_MS }),
     ]
     expect(measure(words, "I came - I saw well-known.").pauses.atBreak).toBe(1)
     expect(measure(words, "I came-I saw well-known.").pauses.midPhrase).toBe(1)
@@ -198,8 +198,8 @@ describe("measureRead", () => {
   it("takes punctuation inside a number as no break", () => {
     const words = [
       ...said("at 10", { atMs: 0 }),
-      ...// ends 700
-      said("30 we met", { atMs: 700 + READ_PAUSE_MS }),
+      // the part above ends at 700
+      ...said("30 we met", { atMs: 700 + READ_PAUSE_MS }),
     ]
     expect(measure(words, "at 10:30 we met").pauses.midPhrase).toBe(1)
   })
@@ -259,8 +259,8 @@ describe("measureRead", () => {
   it("takes a pause after a filler at a break as phrasing", () => {
     const words = [
       ...said("I built this to keep the record. um", { atMs: 0 }),
-      ...// ends 3100
-      said("Nothing is lost, ever.", { atMs: 3100 + READ_PAUSE_MS }),
+      // the part above ends at 3100
+      ...said("Nothing is lost, ever.", { atMs: 3100 + READ_PAUSE_MS }),
     ]
     expect(measure(words, SCRIPT).pauses.atBreak).toBe(1)
   })

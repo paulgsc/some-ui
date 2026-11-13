@@ -124,8 +124,9 @@ type Step = "match" | "substitute" | "skip" | "insert"
  * for each spoken word, the script word it reads (or null when it was added),
  * and the counts of each step. A filler reads only the same filler in the
  * script ("Ah, that makes sense") and is otherwise added; a filler on either
- * side never stands in for another word. Ties prefer reading a word over skipping one, and skipping
- * over adding, so the result is the same for the same input.
+ * side never stands in for another word. Ties prefer reading a word over
+ * skipping one, and skipping over adding, so the result is the same for the
+ * same input.
  */
 function align(
   said: ReadonlyArray<string>,
