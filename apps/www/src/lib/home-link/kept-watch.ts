@@ -74,6 +74,8 @@ export function watchKept(
   // (AW1): each asks once a lane whose last run found no answer.
   let releases = link.getSnapshot().awayReleases
   let releasesAtStart = releases
+  let running = home.getSnapshot().running
+  let stopped = false
 
   const onRecord = (): void => {
     const now = record.revision()
@@ -83,10 +85,10 @@ export function watchKept(
   }
   const onRun = (): void => {
     const run = home.getSnapshot()
-    if (run.running) {
-      releasesAtStart = link.getSnapshot().awayReleases
-      return
-    }
+    const started = run.running && !running
+    running = run.running
+    if (started) releasesAtStart = link.getSnapshot().awayReleases
+    if (run.running) return
     owed = turnedAwayBy(run.last)
     // Found no answer while a release came: asked once, after this run's
     // end has settled (asking inside it would start a second loop).
@@ -95,7 +97,10 @@ export function watchKept(
       link.getSnapshot().awayReleases > releasesAtStart
     ) {
       releasesAtStart = link.getSnapshot().awayReleases
-      queueMicrotask(() => askKept(home, doc))
+      queueMicrotask(() => {
+        // Gone, or asked meanwhile by the release's own notice.
+        if (!stopped && !home.getSnapshot().running) askKept(home, doc)
+      })
     }
   }
   const onLink = (): void => {
@@ -133,6 +138,7 @@ export function watchKept(
   win.addEventListener("online", onBack)
   askKept(home, doc)
   return () => {
+    stopped = true
     unsubscribeRecord()
     unsubscribeRun()
     unsubscribeLink()

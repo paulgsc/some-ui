@@ -493,4 +493,68 @@ describe("away from home over the real link (AW1)", () => {
       "/voice",
     ])
   })
+
+  for (const edited of [false, true]) {
+    it(`a release while a lane's run is still ending asks it once more${edited ? ", an edit meanwhile included" : ""}`, async () => {
+      const home = await pairedHome()
+      // A lane that finishes work of its own after home's silence, before
+      // its run ends, as a run writing what it kept does.
+      const gate: { finish: (() => void) | null } = { finish: null }
+      const slow = { on: false }
+      let revision = 0
+      const listeners = new Set<() => void>()
+      const lane: Lane = {
+        id: "practice",
+        exchange: async (send): Promise<HomeExchanged> => {
+          try {
+            await send("GET", "/practice")
+            return { kind: "synced" }
+          } catch (error) {
+            if (slow.on) {
+              await new Promise<void>((resolve) => {
+                gate.finish = resolve
+              })
+            }
+            throw error
+          }
+        },
+        revision: () => revision,
+        subscribe: (listener) => {
+          listeners.add(listener)
+          return (): void => {
+            listeners.delete(listener)
+          }
+        },
+        useCounts: () => {
+          throw new Error("not shown here")
+        },
+      }
+      const kept = createKept({
+        exchange: laneExchange(lane, () => "p"),
+        keep: (run) => theLink().drain(run),
+        paired: () => true,
+        homeBusy: busyNow,
+        now: () => 0,
+      })
+      stops.push(watchKept(lane, kept))
+      const watched = [{ kept, edit: (): void => undefined }]
+      await settled(watched)
+      slow.on = true
+      // The hold ends: the lane is asked, finds no answer, and its new hold
+      // ends too before its run has.
+      home.clock.pass(FIRST_HOLD_MS)
+      await vi.waitFor(() => expect(kept.getSnapshot().running).toBe(true))
+      await vi.waitFor(() => expect(gate.finish).not.toBeNull())
+      home.clock.pass(holdMs(1))
+      if (edited) {
+        revision += 1
+        for (const listener of listeners) listener()
+      }
+      slow.on = false
+      const before = home.sent.length
+      gate.finish?.()
+      await settled(watched)
+      expect(home.sent.length).toBeGreaterThan(before)
+    })
+  }
 })
