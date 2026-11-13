@@ -152,15 +152,7 @@ source. The matrix `_extension-sign.yml` expands into its scripts then holds a
 name read from the repository, never the input's own text. Its Family is every
 string a dispatcher can type, over each step that reads the input or the
 matrix built from it. `packages/eslint/tests/extension-sign-inputs.test.ts`
-is its proof: it fails any `${{ }}` inside any of the workflow's `run:`
-scripts, whatever it reads (an input by dot or bracket, `env`, `toJSON`),
-and any other line naming an input but an `env:` value, the compliance `if:`
-and the job's name; then it runs the step's own script over a known extension and a sample of hostile
-input (`$(...)`, a quote and a second command, paths, a newline, the empty
-string), each of which must fail with no matrix written and no command run, under
-GitHub's own shell flags. The
-`guards` job in `pr.yml` runs it on every pull request, since `node-test`
-runs only affected packages and would skip a change to the workflow alone.
+is its proof, and the `guards` job in `pr.yml` runs it on every pull request.
 
 The other workflows' expansions of trusted values, and running a workflow
 security check in CI, are #2116's later steps.

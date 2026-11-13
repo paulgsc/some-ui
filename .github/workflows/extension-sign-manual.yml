@@ -66,7 +66,7 @@ jobs:
       # discovers: a directory under extensions/ with a package.json and a
       # manifest*.json source. Anything else (a path, a shell word, a
       # workspace that ships no manifest) fails here, before a build, and is
-      # never echoed back. It arrives as $EXTENSION, not a template (#2116).
+      # never echoed back.
       - name: Resolve extension metadata
         id: matrix
         env:
