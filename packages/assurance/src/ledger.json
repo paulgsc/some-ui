@@ -5676,7 +5676,17 @@
           "tracked": "some-ui#2757"
         }
       ],
-      "checks": []
+      "checks": [
+        {
+          "id": "image-proof",
+          "kind": "probe",
+          "name": "Before the render image is published, it renders the weekly call's preview twice, offline and as home runs it, and both videos must be the same bytes",
+          "runs": "ci",
+          "segments": ["template-preview/render"],
+          "status": "live",
+          "ref": "some-ui:.github/workflows/render-docker-release.yml"
+        }
+      ]
     },
     {
       "id": "rust-essays",
