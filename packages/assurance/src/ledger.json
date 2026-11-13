@@ -3145,6 +3145,194 @@
           "amendments": []
         }
       ]
+    },
+    {
+      "id": "home-compute",
+      "name": "Home's one machine is shared, and what it costs is heard",
+      "why": "Home is one machine with no swap. Several services share it, and each has its own clock, cap and retries. Renders are the lowest class, run only when there is room and give way when anything else needs it (the owner, 2026-11-07: no clock, no window), and every kill the kernel makes for memory reaches the owner.",
+      "paths": [
+        "server:docs/home-compute.md",
+        "server:infra/prometheus/rules/home.yml",
+        "server:crates/lane",
+        "server:apps/servers/file_host/src/call_weeks/lane.rs",
+        "server:infra/render/render-calls.sh"
+      ],
+      "modules": [],
+      "objectives": [
+        {
+          "id": "LN2",
+          "kind": "OA8",
+          "property": "outcome",
+          "claim": "Every process the kernel kills on home for memory is heard, and named when it can be.",
+          "requirement": "Every OOM kill the kernel counts on home (node_vmstat_oom_kill, inside a container's cap or across the host) fires an alert within the hour that reaches the owner: HomeOomKill naming the container cAdvisor attributes it to, or HomeOomKillUnattributed when the kernel counted more kills than cAdvisor named, held 2 minutes so one counter scraped before the other is not a kill. A second kill within the hour is the same firing alert; WHO DUNNIT's OOM tile counts each kill. Tolerance: a kill made while Prometheus was down for more than an hour shows on the tile, and no alert says it.",
+          "verdict": "holds",
+          "conclusion": "Both alerts read the kernel's own count, and promtool cases prove each fires on a kill and stays quiet without one, including a kill cAdvisor did not name.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "promtool cases for HomeOomKill and HomeOomKillUnattributed, each firing and quiet.",
+              "ref": "server:infra/prometheus/rules/home.test.yml"
+            },
+            {
+              "class": "structural",
+              "says": "What each kill costs each service, and who is killed first (oom_score_adj by class).",
+              "ref": "server:docs/home-compute.md"
+            }
+          ],
+          "proof": [
+            "server:infra/prometheus/rules/home.test.yml#HomeOomKill",
+            "server:infra/prometheus/rules/home.test.yml#HomeOomKillUnattributed"
+          ],
+          "watch": {
+            "by": "alert",
+            "ref": "server:infra/prometheus/rules/home.yml"
+          },
+          "amendments": []
+        },
+        {
+          "id": "LN3",
+          "kind": "OA6",
+          "property": "outcome",
+          "claim": "The lane that decides when renders run is heard when it stops deciding, when a job is stuck, and when it cannot read a signal.",
+          "requirement": "file_host's lane writes its decision every 5 s. LaneStale fires when none was written for over a minute (one never written included); LaneStuck when the job in progress was stopped for memory or pressure stuck_after times in a row (LA4); LaneSignalsUnreadable when a signal it reads has been unreadable for 5 minutes, naming it, so a kernel without PSI is heard. file_host not answering a scrape is FileHostDown's.",
+          "verdict": "holds",
+          "conclusion": "Each alert has a promtool case that fires and one that stays quiet; the CALL dashboard's LANE row shows what the lane decided and why.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "promtool cases for LaneStale, LaneStuck and LaneSignalsUnreadable, each firing and quiet.",
+              "ref": "server:infra/prometheus/rules/home.test.yml"
+            },
+            {
+              "class": "structural",
+              "says": "The lane's tick, its decision file and its metrics.",
+              "ref": "server:apps/servers/file_host/src/call_weeks/lane.rs"
+            }
+          ],
+          "proof": [
+            "server:infra/prometheus/rules/home.test.yml#LaneStale",
+            "server:infra/prometheus/rules/home.test.yml#LaneStuck",
+            "server:infra/prometheus/rules/home.test.yml#LaneSignalsUnreadable"
+          ],
+          "watch": {
+            "by": "alert",
+            "ref": "server:infra/prometheus/rules/home.yml"
+          },
+          "amendments": []
+        },
+        {
+          "id": "LA1",
+          "kind": "RE10",
+          "property": "work",
+          "claim": "A render never runs while home's interactive work waits: it pauses, or does not start.",
+          "requirement": "While a voice note is heard or a Rust Rounds program recorded, the lane says pause (or does not say run), and the render worker freezes the recorder and everything it started (SIGSTOP), keeping its memory and taking no CPU, and thaws it once the lane says run again.",
+          "verdict": "holds",
+          "conclusion": "The decision is a pure function held by its tests, and the render worker's obedience by its shell test with a fake lane and recorder. Home has not yet been watched pausing a real render.",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "crates/lane's step decides pause whenever interactive work waits.",
+              "ref": "server:crates/lane/src/lib.rs"
+            },
+            {
+              "class": "measured",
+              "says": "A pause freezes the recorder and what it started, and the render then finishes with the same bytes, its steps made once.",
+              "ref": "server:infra/render/render-calls.test.sh"
+            }
+          ],
+          "proof": [
+            "server:crates/lane/src/tests.rs#la1_never_runs_or_starts_while_interactive_work_waits",
+            "server:crates/lane/src/tests.rs#a_pause_resumes_as_soon_as_interactive_work_is_done"
+          ],
+          "watch": {
+            "by": "dashboard",
+            "ref": "server:infra/grafana/dashboards/lib/call-panels.libsonnet"
+          },
+          "amendments": []
+        },
+        {
+          "id": "LA2",
+          "kind": "RE3",
+          "property": "work",
+          "claim": "A render starts only with room for its peak above the floor, held for the hold-down; a reading that failed, or no peak, is never room.",
+          "requirement": "Batch work starts, or starts again after a stop, only when MemAvailable leaves room for its peak above the floor and memory pressure is under its limit, both held for the hold-down. The peak is the measured one or, before any is measured, the declared ceiling. While the lane says run, a job not seen before keeps that permission only while that room holds. An unreadable signal or a missing peak is never room.",
+          "verdict": "holds",
+          "conclusion": "Held by the lane's tests; the worker starts only on a run decision written after its job id was, also tested.",
+          "evidence": [
+            {
+              "class": "structural",
+              "says": "The policy home runs: 2 GiB floor, 10% some avg10, 30 s hold-down.",
+              "ref": "server:docs/home-compute.md"
+            },
+            {
+              "class": "measured",
+              "says": "No render starts on a missing or stale decision, nor before the lane has seen the job.",
+              "ref": "server:infra/render/render-calls.test.sh"
+            }
+          ],
+          "proof": [
+            "server:crates/lane/src/tests.rs#la2_never_starts_without_room_for_the_peak_above_the_floor",
+            "server:crates/lane/src/tests.rs#la2_a_reading_that_could_not_be_made_is_never_room",
+            "server:crates/lane/src/tests.rs#la2_no_peak_at_all_is_never_room"
+          ],
+          "watch": {
+            "by": "dashboard",
+            "ref": "server:infra/grafana/dashboards/lib/call-panels.libsonnet"
+          },
+          "amendments": []
+        },
+        {
+          "id": "LA3",
+          "kind": "RE3",
+          "property": "work",
+          "claim": "A render running or paused lets go of its memory once home runs short, and resumes from its kept steps.",
+          "requirement": "Once free memory falls under the floor, memory pressure passes its limit, or a signal can no longer be read, the lane says stop and the worker kills the recorder's tree, keeps the work and the job's id, and resumes later from the step cache, paying only for the step in flight. A stop is never a failure.",
+          "verdict": "holds",
+          "conclusion": "Held by the lane's tests, and the worker's stop and resume by its shell test, with the same bytes as a render never stopped.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "A stop kills the recorder and what it started, keeps the work and the job's id, and the render resumes from its kept steps with the same bytes.",
+              "ref": "server:infra/render/render-calls.test.sh"
+            }
+          ],
+          "proof": [
+            "server:crates/lane/src/tests.rs#la3_running_or_paused_work_lets_go_when_memory_runs_short",
+            "server:crates/lane/src/tests.rs#la3_running_work_lets_go_past_the_pressure_limit_but_not_at_it",
+            "server:crates/lane/src/tests.rs#la3_running_work_stops_when_a_reading_is_lost_without_counting_it"
+          ],
+          "watch": {
+            "by": "dashboard",
+            "ref": "server:infra/grafana/dashboards/lib/call-panels.libsonnet"
+          },
+          "amendments": []
+        },
+        {
+          "id": "LA4",
+          "kind": "OA6",
+          "property": "outcome",
+          "claim": "A render that never fits is reported as stuck, not retried silently.",
+          "requirement": "Stops for memory or pressure are counted against the job in progress, named by an id the worker keeps through pauses and stops; from stuck_after (3 on home) in a row the lane says the job is stuck and LaneStuck fires. Another id, or none, starts the count again, so an idle lane is never stuck.",
+          "verdict": "holds",
+          "conclusion": "Held by the lane's tests; LaneStuck's promtool cases are LN3's.",
+          "evidence": [
+            {
+              "class": "measured",
+              "says": "LaneStuck fires on a stuck job and stays quiet otherwise.",
+              "ref": "server:infra/prometheus/rules/home.test.yml"
+            }
+          ],
+          "proof": [
+            "server:crates/lane/src/tests.rs#la4_stops_in_a_row_are_stuck_and_a_finished_job_clears_them",
+            "server:crates/lane/src/tests.rs#la4_an_idle_lane_is_never_called_stuck"
+          ],
+          "watch": {
+            "by": "alert",
+            "ref": "server:infra/prometheus/rules/home.yml"
+          },
+          "amendments": []
+        }
+      ]
     }
   ],
   "synchronous": [
@@ -5537,6 +5725,10 @@
     {
       "family": "home-admits",
       "why": "Home's one limiter admits every request, whichever process sends it, and the phone's home link waits out its busy and paces every request it sends on one pace inside it."
+    },
+    {
+      "family": "home-compute",
+      "why": "How home's one machine is shared between every process on it, and how a kill for memory is heard, whichever process it hits."
     }
   ]
 }

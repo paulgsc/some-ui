@@ -12,7 +12,6 @@
  */
 import type { JSX, ReactNode } from "react"
 import { useEffect, useSyncExternalStore } from "react"
-import { formatSize } from "@some-ui/core-utils"
 import type { Intent } from "@some-ui/intent-kit"
 import { matchIntent } from "@some-ui/intent-kit"
 import { Button, Notice } from "@some-ui/shared"
@@ -33,9 +32,10 @@ import type { SessionLetGo } from "@/components/sessions/device-let-go"
 import { useSessionLetGo } from "@/components/sessions/device-let-go"
 
 /**
- * What a pull reads again (PULL4): on Settings' This phone, and on every
- * screen through the phone-full offer the shell mounts, so a pull anywhere
- * can bring up a notice of what was let go.
+ * What a pull reads again (PULL4): on every screen through the phone-full
+ * offer the shell mounts, so a pull anywhere can bring up a notice of what
+ * was let go. Settings' This phone counts its room in its limits
+ * (`lib/limits`, SM2).
  */
 const ROOM = { what: PULL_WORDS.room, checkAgain: deviceStorage.check }
 
@@ -49,23 +49,6 @@ function useDeviceStorage(): DeviceStorageView | null {
     return screenRefreshers.register(ROOM)
   }, [])
   return view
-}
-
-export const DeviceStorageSummary = (): JSX.Element | null => {
-  const view = useDeviceStorage()
-  if (view === null) return null
-  const { databaseBytes, webViewBytes, quotaBytes } = view.use
-  return (
-    <div className="space-y-1">
-      <p className="text-sm">
-        Using {formatSize(databaseBytes + webViewBytes)} of{" "}
-        {formatSize(quotaBytes)}
-      </p>
-      <p className="text-muted-foreground text-xs">
-        Clear finished sessions home holds to free up space.
-      </p>
-    </div>
-  )
 }
 
 const finishedOn = (stamp: string): string =>

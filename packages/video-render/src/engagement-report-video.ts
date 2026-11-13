@@ -41,6 +41,7 @@ import {
   ENGAGEMENT_REPORT_ID,
   EngagementReportSchema,
   isoWeekRange,
+  QUIET_SAID,
   reportWeek,
   UNDER,
 } from "./engagement-report"
@@ -400,7 +401,7 @@ export function pageSaid(page: ReportPage): string {
   const name =
     page.of > 1 ? `${page.pipeline}, part ${page.page}` : page.pipeline
   if (quiet === all)
-    return `${name}: every line had fewer than ${UNDER} of anything this week, or in any compared week on record.`
+    return `${name}: every line had fewer than ${UNDER} ${QUIET_SAID}.`
   if (none === all) return `${name}: there is no record of this week.`
   // A pipeline that is one line of its own name (the folded line) says it once.
   const head =
@@ -408,7 +409,7 @@ export function pageSaid(page: ReportPage): string {
   const quietSaid =
     quiet === 0
       ? null
-      : `${plural(quiet, "more line", "more lines")} had fewer than ${UNDER} of anything this week, or in any compared week on record.`
+      : `${plural(quiet, "more line", "more lines")} had fewer than ${UNDER} ${QUIET_SAID}.`
   const noneSaid =
     none === 0
       ? null

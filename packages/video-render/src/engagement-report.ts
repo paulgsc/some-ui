@@ -382,14 +382,17 @@ export function sayChange(
   return `${change.way}${by} on ${AGAINST[against]}`
 }
 
+/** What a quiet line had: the words a line, or a table of them, ends on. */
+export const QUIET_SAID =
+  "of anything this week, or in any compared week on record"
+
 /**
  * The sentence said over a line: what was offered and taken this week, each
  * against last week. "Read aloud: offered 12 times, taken 9 times, up 3 on
  * last week." A quiet line says so in bands.
  */
 export function lineSaid(line: ReportLine): string {
-  if (line.quiet)
-    return `${line.name}: fewer than 5 of anything this week, or in any compared week on record.`
+  if (line.quiet) return `${line.name}: fewer than 5 ${QUIET_SAID}.`
   const parts = (["offered", "taken"] as const).map((kind) => {
     const cell = line.counts[kind]
     const said = sayCount(cell.now, KIND_WORDS[kind])

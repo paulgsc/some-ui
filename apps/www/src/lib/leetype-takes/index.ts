@@ -22,7 +22,7 @@ import { inView, makesRoom, patternDesk } from "@/lib/takes-desk"
 
 export type { Take as LeetypeTake } from "@/lib/takes-desk"
 
-const MAX = 40
+export const LEETYPE_TAKES_MAX = 40
 /** A spoken answer runs up to sixty seconds (Def. 9.5). */
 const MAX_MS = 60_000
 
@@ -31,7 +31,7 @@ const desk = patternDesk({
   screen: "leetype.spoken-answer",
   from: "leetype",
   dbName: "some-ui.leetype-takes",
-  limits: { max: MAX, maxMs: MAX_MS },
+  limits: { max: LEETYPE_TAKES_MAX, maxMs: MAX_MS },
 })
 
 /** A settled answer's note, by its own id. */
@@ -60,7 +60,11 @@ const isNote = (value: unknown): value is LeetypeTakeNote => {
   )
 }
 
-const notes = boundedList("some-ui:leetype-take-notes", MAX, isNote)
+const notes = boundedList(
+  "some-ui:leetype-take-notes",
+  LEETYPE_TAKES_MAX,
+  isNote
+)
 
 // Home holds none until the voice lane says otherwise (`leetypeNotesHeldByHome`).
 let notesHeld: () => (id: string) => boolean = () => () => false
@@ -75,10 +79,15 @@ const notesMoved = (): void => {
 
 /** The oldest note home holds, which a new one may replace at the cap. */
 const roomFor = (): LeetypeTakeNote | null =>
-  makesRoom(notes.read(), MAX, notesHeld(), (note) => note.notedAt)
+  makesRoom(
+    notes.read(),
+    LEETYPE_TAKES_MAX,
+    notesHeld(),
+    (note) => note.notedAt
+  )
 
 const notesFull = (): boolean =>
-  notes.read().length >= MAX && roomFor() === null
+  notes.read().length >= LEETYPE_TAKES_MAX && roomFor() === null
 
 /**
  * The port's snapshot, made again only when the takes change or either list
