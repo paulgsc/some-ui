@@ -94,7 +94,7 @@ const HOME_BUSY: HomeAnswer = { status: 429, body: "" }
 /** A pairing kept before it had an id is known by its base. */
 type Pairing = { base: string; token: string; id: string }
 
-function parsePairing(record: string): Pairing | null {
+export function parsePairing(record: string): Pairing | null {
   try {
     const parsed: unknown = JSON.parse(record)
     return isRecord(parsed) &&

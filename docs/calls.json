@@ -1718,18 +1718,13 @@
       ],
       "gray": "The bar names the owner as the judge. The owner, 2026-11-13: \"These aren't blocked on me… for one of them, there is a wait on me. Let's just go with the recommended.\"",
       "undo": "Reopen #2077 and ask the owner to step through the replay file.",
-      "refs": [
-        "#2077",
-        "#2074"
-      ]
+      "refs": ["#2077", "#2074"]
     },
     {
       "id": "C141",
       "made": "2026-11-13",
       "by": "claude",
-      "paths": [
-        "server:crates/scenario_engine/src/rules.rs"
-      ],
+      "paths": ["server:crates/scenario_engine/src/rules.rs"],
       "chose": "\"Just happened\" keeps counting scenario entries, not plays: one touchdown may fill Standard's two (the try and the red-zone trip), each a way to file a bite about it.",
       "options": [
         "scenario entries (as built)",
@@ -1737,9 +1732,7 @@
       ],
       "gray": "Asked on #2077 with no recommendation written; the replay meets the 8-in-10 bar either way. The owner, 2026-11-13: \"These aren't blocked on me… for one of them, there is a wait on me. Let's just go with the recommended.\"",
       "undo": "In rules::just_happened, keep only the first entry per play_id, and bump ENGINE_VERSION.",
-      "refs": [
-        "#2077"
-      ]
+      "refs": ["#2077"]
     },
     {
       "id": "C142",
@@ -1756,11 +1749,7 @@
       ],
       "gray": "The task offered either; flipping the default would change nothing on home while the deployment file states the value, and no session holds a key to edit it. The owner, 2026-11-13: \"These aren't blocked on me… for one of them, there is a wait on me. Let's just go with the recommended.\"",
       "undo": "Set default_value_t = true for game_feed_enabled in apps/servers/file_host/src/config.rs and infra/env/file_host.json.",
-      "refs": [
-        "#2074",
-        "server#534",
-        "server#544"
-      ]
+      "refs": ["#2074", "server#534", "server#544"]
     },
     {
       "id": "C143",
@@ -1779,11 +1768,7 @@
       ],
       "gray": "#2013 put it to the owner as a choice between keeping the confirmation and recording arrival from a run's read; nothing recorded settled it. Owner, 2026-11-13, on #2013 and two other items: \"These aren't blocked on me… for one of them, there is a wait on me. Let's just go with the recommended.\"",
       "undo": "Nothing to undo in code: a confirmation would first have to come back with a share sheet, and then (b) or (c) could be built on it.",
-      "refs": [
-        "#2013",
-        "#2006",
-        "#2177"
-      ]
+      "refs": ["#2013", "#2006", "#2177"]
     },
     {
       "id": "C144",
@@ -1803,10 +1788,7 @@
       ],
       "gray": "#2013 put it to the owner; (b) changes home's event shape and its deploy is the owner's to approve, against a rare state (a reinstall while a reshare made after a missed run is still within the kept digests) that heals itself. Owner, 2026-11-13, on #2013 and two other items: \"These aren't blocked on me… for one of them, there is a wait on me. Let's just go with the recommended.\"",
       "undo": "Take (b): add the field to paulgsc/server's shared event and deploy it, then have the phone send carried with each shared event and take it back in on restore (model.ts restored), and drop the restored-phone sentence from JB2's Tolerance in journey.ts.",
-      "refs": [
-        "#2013",
-        "#2006"
-      ]
+      "refs": ["#2013", "#2006"]
     },
     {
       "id": "C146",
@@ -1869,6 +1851,42 @@
         "#2701",
         "#2910"
       ]
+    },
+    {
+      "id": "C205",
+      "made": "2026-11-13",
+      "by": "claude",
+      "agreed": "2026-11-13",
+      "paths": [
+        "docs/learner-data-authority.md",
+        "apps/www/src/lib/home-link/live-socket.ts",
+        "apps/www/src/lib/home-link/live.ts"
+      ],
+      "chose": "LA8 is widened as built on Oct 31: the paired phone reaches home through native HTTP and, for Game day alone, through one WebSocket (`live-socket.ts`, held by LA21), since native HTTP cannot carry a socket. LA1's exemption list gains that one file.",
+      "options": [
+        "(a) widen LA8 and LA1 for the game day socket, as built",
+        "(b) keep LA8 to native HTTP alone and carry live offers by polling a route instead of a socket"
+      ],
+      "gray": "The owner chose a WebSocket on 2026-10-25, but LA8 said every request to home goes through one module, and the Oct 31 session asked the owner to review the widening. Owner, 2026-11-13, on Game Week Bites: \"Let's just go with the recommended.\"",
+      "undo": "Take (b): replace `lib/home-link/live*.ts` with a feed that polls a home route through native HTTP, drop LA21, and restore LA8's and LA1's earlier claims.",
+      "refs": ["#2078", "#2074"]
+    },
+    {
+      "id": "C206",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "apps/www/src/lib/home-link/live-model.ts",
+        "apps/www/src/lib/home-link/live-machine.ts"
+      ],
+      "chose": "When home closes the game day socket 4400 (it could not read what the phone sent) after a hello that told it a lastSeq, the phone forgets that lastSeq and says hello again at once; after any other hello, a 4400 leaves Game day saying this app needs an update, and it stops trying, as for 4426.",
+      "options": [
+        "(a) any other 4400 is an update, and the phone stops trying",
+        "(b) any other 4400 counts as home being out of reach, and the phone keeps trying, 1 s doubling to 30 s"
+      ],
+      "gray": "Home sends 4400 for a lastSeq it could not have sent and for a frame it cannot read. Only the first is the phone's to repair; the second means this build and home disagree on the messages, which retrying cannot fix, but saying 'update' could be wrong if home misreads a frame for another reason.",
+      "undo": "In live-model.ts, drop UNREADABLE from linkAfterClose's update branch, so a 4400 not explained by a lastSeq reads as away and retries.",
+      "refs": ["#2078", "server#824"]
     }
   ]
 }
