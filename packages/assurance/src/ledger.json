@@ -1088,7 +1088,7 @@
     {
       "id": "bite-matched",
       "name": "Home matches each game bite to its play",
-      "why": "Home's reconciler, a task beside the game feed's worker, reads the feed's play log and the game's bites, and keeps for each bite the play it was about or why there was none, so every short can lay the right moment over a bite (GWB7, paulgsc/some-ui#2081). It runs only while the game feed is on.",
+      "why": "Home's reconciler, a task beside the game feed's worker, reads the feed's play log and the game's bites, and keeps for each bite the play it was about or why there was none, so every short can lay the right moment over a bite (GWB7, paulgsc/some-ui#2081). It runs whether or not home is following games; while the owner has the game feed paused, it reads only what the feed already kept.",
       "paths": [
         "server:apps/servers/file_host/src/reconcile.rs",
         "server:crates/db/voice/src/bite_match.rs"
@@ -1146,7 +1146,7 @@
           "kind": "RE7",
           "property": "work",
           "claim": "A game already final is reconciled again only when it has new bites.",
-          "requirement": "Every reconcile::TICK (10 minutes) the task reconciles a game in play, and a final game only when a bite arrived since its last pass; with the game feed off it logs that once and spawns nothing.",
+          "requirement": "Every reconcile::TICK (10 minutes) the task reconciles a game in play, and a final game only when a bite arrived since its last pass; it runs whatever the game feed's switch says, and while the feed is paused a pass reads only what the feed already kept.",
           "verdict": "holds",
           "conclusion": "The worker's test passes over a final game once, then again only after a new bite; idle, a pass reads the newest scoreboard and the games it names and writes nothing.",
           "evidence": [
@@ -1162,7 +1162,14 @@
           "watch": {
             "by": "none"
           },
-          "amendments": []
+          "amendments": [
+            {
+              "on": "2026-11-13",
+              "change": "The reconciler always runs, a pass every reconcile::TICK, where it was spawned only while GAME_FEED_ENABLED was on and logged once and spawned nothing while it was off.",
+              "why": "Whether home follows games became the owner's switch, read each wake, so it is no longer known when home starts; the reconciler runs regardless, and while the feed is paused its pass reads only what is already kept, a final game only when a bite arrived since its last pass.",
+              "decision": "https://github.com/paulgsc/server/issues/617#issuecomment-6861136019"
+            }
+          ]
         },
         {
           "id": "BM4",
