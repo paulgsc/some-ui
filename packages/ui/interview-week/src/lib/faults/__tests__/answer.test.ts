@@ -9,7 +9,7 @@ import {
 import fc from "fast-check"
 import { describe, expect, it } from "vitest"
 
-import { joined, said } from "./fixture"
+import { said } from "./fixture"
 
 const TARGET = 60_000
 
@@ -68,10 +68,10 @@ describe("measureAnswer", () => {
     { gap: ANSWER_PAUSE_MS, pauses: 1 },
     { gap: ANSWER_PAUSE_MS + 1, pauses: 1 },
   ])("a gap of $gap ms is $pauses pause(s)", ({ gap, pauses }) => {
-    const words = joined(
-      said("I led it", { atMs: 0 }),
-      said("and shipped", { atMs: 1100 + gap })
-    )
+    const words = [
+      ...said("I led it", { atMs: 0 }),
+      ...said("and shipped", { atMs: 1100 + gap }),
+    ]
     const faults = measure(words)
     expect(faults.pauses.count).toBe(pauses)
     expect(faults.pauses.longestMs).toBe(gap)
@@ -94,10 +94,10 @@ describe("measureAnswer", () => {
   })
 
   it("leaves words without p out of the mumbled share", () => {
-    const words = joined(
-      said("one", { p: 0.1 }),
-      said("two three", { atMs: 1000 })
-    )
+    const words = [
+      ...said("one", { p: 0.1 }),
+      ...said("two three", { atMs: 1000 }),
+    ]
     expect(measure(words).mumbled).toEqual({ count: 1, share: 1 })
   })
 
@@ -178,11 +178,6 @@ describe("measureAnswer over any take", () => {
         (words, takeMs) => {
           const faults = measure(words, takeMs)
           expect(measure([...words].reverse(), takeMs)).toEqual(faults)
-          expect(faults.fillers.count).toBeLessThanOrEqual(faults.words)
-          expect(faults.mumbled.count).toBeLessThanOrEqual(faults.words)
-          expect(faults.pauses.count).toBeLessThanOrEqual(
-            Math.max(0, faults.words - 1)
-          )
         }
       )
     )

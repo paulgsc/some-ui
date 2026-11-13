@@ -26,8 +26,3 @@ export function said(
       }
     })
 }
-
-/** The words of `parts` in turn, each part starting where its `atMs` says. */
-export function joined(...parts: Array<Array<HeardWord>>): Array<HeardWord> {
-  return parts.flat()
-}

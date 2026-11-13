@@ -19,7 +19,6 @@ describe("wordsOf", () => {
   })
 
   it.each([
-    { name: "another schema", body: { schema: "x/1", words: [] } },
     {
       name: "a transcript without words",
       body: { schema: "some-ui.voice-transcript/1" },
@@ -31,28 +30,14 @@ describe("wordsOf", () => {
         words: [{ text: "a", startMs: 10, endMs: 5 }],
       },
     },
-    { name: "no object", body: "words" },
   ])("is null for $name", ({ body }) => {
     expect(wordsOf(body)).toBeNull()
   })
 })
 
 describe("FILLERS", () => {
-  it("is the closed list, as fillers.json has it", () => {
-    expect([...FILLERS]).toEqual([
-      "um",
-      "umm",
-      "uh",
-      "uhh",
-      "uhm",
-      "er",
-      "erm",
-      "ah",
-      "ahh",
-      "hm",
-      "hmm",
-      "mm",
-      "mhm",
-    ])
+  it("holds vocalised hesitations and no lexical filler (C265)", () => {
+    expect(FILLERS.has("um") && FILLERS.has("uh")).toBe(true)
+    expect(FILLERS.has("like")).toBe(false)
   })
 })

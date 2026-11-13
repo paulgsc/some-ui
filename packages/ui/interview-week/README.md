@@ -4,7 +4,7 @@ The interview week (#2931): a week of mock interview and teleprompter reads by
 voice on the phone, then an essay on how I communicated. The essay counts
 faults and charts them over the weeks; nothing here grades.
 
-## What is here today
+## What it holds
 
 `src/lib/faults` (#2934): the faults of one take, from the words home heard
 (`some-ui.voice-transcript/1`'s `words`, each with its timing and `p`).
@@ -17,30 +17,25 @@ faults and charts them over the weeks; nothing here grades.
   skipped, substituted, repeated and inserted by a word-level alignment,
   pauses at the script's breaks against pauses inside a phrase, pace and its
   variation across phrases, and the lead-in from the cue to the first word.
-- **The judged half** (`JudgedAnswerSchema`): STAR parts as covered, partly
-  or missing, hedges, and for a decision question its options, why, trade-off
-  and undo. The model fills it; code only types it (LEVERS, #2162).
+- **The judged half** (`JudgedAnswerSchema`): STAR, hedges, and a decision
+  question's parts.
 
-The measures are pure: no clock, network or storage. Each threshold is a named
-constant in `thresholds.ts` with where its value comes from, and a call in
-`docs/calls.json` (C263–C266).
-
-`fillers.json` is the canonical closed list of fillers. Home's transcriber
-(paulgsc/server, #2933) keeps the same fillers in its prompt and cites this
-file.
+The thresholds are in `thresholds.ts` (C263–C266); the filler list is
+`fillers.json` (C265).
 
 ## Limits
 
 - Words are compared as written: a script's "2" and a heard "two" are a
-  substitution.
+  substitution. `@some-ui/video-render`'s `tokenized` folds spoken numbers,
+  but also drops a plural "s" and joins hyphenated words, so it is not used.
 - The alignment takes the fewest changes, so a word said twice in place of the
   next one ("a a c" for "a b c") is one substitution, not a repeat and a skip.
+- A full stop inside an abbreviation ("e.g.") is a break of the script.
 - A hyphenated word counts as one word per part ("state-of-the-art" is four),
   each with the whole word's timing.
 - Pitch and loudness need the audio, so they are home's (#2942), not here.
 
 ## What reaches it
 
-Nothing yet. The interview week's routine (#2935, IW4) and its essay (#2937,
-IW6) are the next stories and call these measures; the phone's screen (#2936,
-IW5) joins them here.
+The interview week's routine (#2935, IW4) and essay (#2937, IW6) call these
+measures; until they land, nothing does.

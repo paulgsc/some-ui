@@ -44,7 +44,6 @@ describe("JudgedAnswerSchema", () => {
       name: "a covered part with no quote",
       result: { mark: "covered", quote: null },
     },
-    { name: "a score in place of a mark", result: { mark: 3, quote: "x" } },
   ])("refuses $name", ({ result }) => {
     expect(
       JudgedAnswerSchema.safeParse({

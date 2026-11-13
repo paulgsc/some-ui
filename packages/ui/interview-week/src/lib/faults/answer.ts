@@ -1,10 +1,19 @@
 import { z } from "zod"
 
 import { ANSWER_PAUSE_MS, MUMBLE_P } from "./thresholds"
-import { gapsBetween, perMinute, spokenMs } from "./timing"
+import {
+  Count,
+  gapsBetween,
+  lastEndMs,
+  longest,
+  Ms,
+  perMinute,
+  Rate,
+  spokenMs,
+  wpm,
+} from "./timing"
 import { HeardWordsSchema, spokenTokens, type HeardWord } from "./words"
 
-/** One interview take to measure: its words and the question's target. */
 export const AnswerTakeSchema = z.object({
   words: HeardWordsSchema,
   /** The question's target length, in milliseconds. */
@@ -12,25 +21,16 @@ export const AnswerTakeSchema = z.object({
   /** The take's whole length, when the recording gives it. */
   takeMs: z.int().nonnegative().nullable(),
 })
+// Written out, not inferred, so a caller may pass a readonly array.
 export type AnswerTake = {
   words: ReadonlyArray<HeardWord>
   targetMs: number
   takeMs: number | null
 }
 
-const Count = z.int().nonnegative()
-const Ms = z.int().nonnegative()
-const Rate = z.number().nonnegative()
-
-/**
- * The measured faults of an interview answer. Counted, never graded (#2931):
- * the essay charts each count over the weeks.
- */
+/** The measured faults of an interview answer. */
 export const AnswerFaultsSchema = z.object({
-  /**
-   * Every word heard, fillers included, counted as compared: a hyphenated word
-   * ("state-of-the-art") is one per part, each with the whole word's timing.
-   */
+  /** Every word heard, fillers included, as `spokenTokens` counts them. */
   words: Count,
   /** Words from the closed list (`fillers.json`), and how many a minute. */
   fillers: z.object({ count: Count, perMinute: Rate.nullable() }),
@@ -66,11 +66,7 @@ export const AnswerFaultsSchema = z.object({
 })
 export type AnswerFaults = z.infer<typeof AnswerFaultsSchema>
 
-/**
- * The measured faults of one interview take. Pure: same take, same record.
- * The take is checked against `AnswerTakeSchema` first, and one that fails it
- * throws.
- */
+/** The measured faults of one interview take; throws on one the schema refuses. */
 export function measureAnswer(input: AnswerTake): AnswerFaults {
   const take = AnswerTakeSchema.parse(input)
   const spoken = spokenTokens(take.words)
@@ -80,14 +76,14 @@ export function measureAnswer(input: AnswerTake): AnswerFaults {
   const sure = spoken.filter((word) => word.p !== undefined)
   const mumbled = sure.filter((word) => (word.p ?? 1) < MUMBLE_P).length
   const first = spoken.at(0)
-  const lastEnd = first === undefined ? null : first.startMs + spokenTime
+  const lastEnd = lastEndMs(spoken)
   const overMs = Math.max(0, spokenTime - take.targetMs)
   return {
     words: spoken.length,
     fillers: { count: fillers, perMinute: perMinute(fillers, spokenTime) },
     pauses: {
       count: gaps.filter((gap) => gap >= ANSWER_PAUSE_MS).length,
-      longestMs: gaps.length === 0 ? null : Math.max(...gaps),
+      longestMs: longest(gaps),
       leadingMs: first?.startMs ?? null,
       trailingMs:
         lastEnd === null || take.takeMs === null
@@ -98,7 +94,7 @@ export function measureAnswer(input: AnswerTake): AnswerFaults {
       count: mumbled,
       share: sure.length === 0 ? null : mumbled / sure.length,
     },
-    pace: { wpm: perMinute(spoken.length - fillers, spokenTime) },
+    pace: { wpm: wpm(spoken) },
     length: {
       spokenMs: spokenTime,
       targetMs: take.targetMs,

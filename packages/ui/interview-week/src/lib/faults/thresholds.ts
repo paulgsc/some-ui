@@ -1,10 +1,4 @@
 /**
- * The thresholds the measures use, each with where its value comes from.
- * Every value is a gray-area call recorded in `docs/calls.json` (C263, C264,
- * C266); changing one is a story that moves that call.
- */
-
-/**
  * A gap between two words of an answer at or over this is a pause. Source:
  * #2934's suggested default (2 s). Shorter gaps are breath and thought; a gap
  * this long in a spoken answer reads as a lost thread. Inclusive, so a gap of

@@ -6,7 +6,7 @@
  * teleprompter read's misreads, pauses at breaks against mid-phrase, pace
  * variation and lead-in. The judged half is a schema the model fills (STAR,
  * hedges, a decision's options, why, trade-off and undo). Nothing here reads
- * a clock, the network or storage, and nothing grades: the essay counts.
+ * a clock, the network or storage.
  */
 export {
   type AnswerFaults,

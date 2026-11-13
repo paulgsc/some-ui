@@ -2,7 +2,7 @@
   "name": "@some-ui/interview-week",
   "private": true,
   "version": "0.0.1",
-  "description": "The interview week: a mock interview and teleprompter reads by voice, then an essay on how I communicated. Today it holds the measured faults of a take (fillers, pauses, mumbling, pace, length, misreads) and the shape of the judged ones.",
+  "description": "The interview week: a mock interview and teleprompter reads by voice, then an essay on how I communicated. It holds the measured faults of a take (fillers, pauses, mumbling, pace, length, misreads) and the shape of the judged ones.",
   "type": "module",
   "someUi": {
     "audience": "public"
