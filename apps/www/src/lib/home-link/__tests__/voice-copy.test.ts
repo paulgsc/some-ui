@@ -7,6 +7,7 @@
  * bite by its game, with every field it keeps; and what this phone can't
  * send, by why (LA14).
  */
+import { answerRef, pendingOfRef } from "@some-ui/video-render"
 import { describe, expect, it } from "vitest"
 
 import {
@@ -95,6 +96,16 @@ describe("what each voice note is told home as", () => {
       ref: "idea:3f2a-9c:takeaway",
       at: "2026-11-01T09:12:00.000Z",
       contentType: "audio/webm",
+    })
+    // SFEED5: an ask's answer goes as a Studio note under the ask's ref, and
+    // the reflections routine's codec reads the same ask back from it.
+    const ask = { repo: "some-ui", number: 2676 } as const
+    const answer = ideaNote({ ...take, line: answerRef(ask) })
+    expect(answer.of).toBe("studio")
+    expect(pendingOfRef(answer.ref)).toEqual({
+      kind: "ask",
+      repo: "some-ui",
+      about: 2676,
     })
     // ST32: a take with no scene goes as a Studio note named by its own id,
     // as home's rule for a name takes it.
