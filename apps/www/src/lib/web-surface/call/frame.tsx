@@ -262,3 +262,38 @@ export const Field = ({
     <div>{children}</div>
   </div>
 )
+
+/** A format's scene names by scene id, as a stage's header and tags name them. */
+export const sceneNames = (format: {
+  readonly scenes: ReadonlyArray<{ readonly id: string; readonly name: string }>
+}): Readonly<Record<string, string>> =>
+  Object.fromEntries(format.scenes.map((scene) => [scene.id, scene.name]))
+
+/**
+ * What the frame's header calls a scene: nothing for a brand slide, a
+ * chapter's title, any other scene's label, then where it is in the video.
+ */
+export function whereOf(
+  at: {
+    readonly scene: { readonly section: string; readonly title?: string }
+    readonly index: number
+    readonly scenes: ReadonlyArray<unknown>
+  },
+  label: () => string
+): string {
+  const { scene } = at
+  const name =
+    scene.section === "brand-in" || scene.section === "brand-out"
+      ? ""
+      : scene.section === "chapter"
+        ? (scene.title ?? "")
+        : label()
+  return [name, `${at.index + 1}/${at.scenes.length}`]
+    .filter(Boolean)
+    .join(" · ")
+}
+
+/** A scene's title line. */
+export const Title = ({ children }: { children: ReactNode }): JSX.Element => (
+  <p className="text-[1.4em] leading-tight font-bold">{children}</p>
+)

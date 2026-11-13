@@ -37,6 +37,7 @@ import { chapterSlides } from "./chapters"
 import { once, problemsOf } from "./cut-list"
 import type { CutList, Parsed } from "./cut-list"
 import {
+  comparedWeeks,
   ENGAGEMENT_REPORT_ID,
   EngagementReportSchema,
   isoWeekRange,
@@ -63,7 +64,7 @@ export const REPORT_VERSION = 1
 /** The most lines one statement table shows; a pipeline with more takes more pages. */
 export const REPORT_PAGE_LINES = 8
 
-/** The most statement tables a report has (the most a format repeats a scene; the registry's 64 lines make 14 today). */
+/** The most statement tables a report has (the most a format repeats a scene; the registry's lines make 15 today). */
 const PAGES_MOST = 24
 
 /** The one voice that says the report: home's Kokoro, as the call's host. */
@@ -116,7 +117,6 @@ export function reportFormat(version: number = REPORT_VERSION): Format {
     id: ENGAGEMENT_REPORT_ID,
     version,
     title: "The weekly engagement report",
-    // Drawn in the call's series: its frame, captions and music bed.
     series: { id: CALL_ID, version: 2 },
     look: "calm",
     scenes: [
@@ -224,6 +224,20 @@ export function reportWeeksOf(raw: unknown): Parsed<ReportWeeks> {
     )
   }
   const now = by.get("this")
+  if (range !== null) {
+    // The report labels each comparison by the writer's weeks, so home's
+    // rows must be those weeks.
+    const compared = comparedWeeks(home.week)
+    for (const [role, week] of [
+      ["last", compared.last],
+      ["quarterAgo", compared.quarter],
+      ["yearAgo", compared.year],
+    ] as const) {
+      const row = by.get(role)
+      if (row !== undefined && row.week !== week)
+        problems.push(`weeks: the ${role} week is ${row.week}, not ${week}`)
+    }
+  }
   if (now !== undefined && range !== null) {
     if (now.week !== home.week)
       problems.push(`weeks: this week is ${now.week}, not ${home.week}`)
@@ -493,7 +507,7 @@ export function reportIntroRows(
 export function reportScenes(
   report: EngagementReport
 ): ReadonlyArray<ReportScene> {
-  const shape = reportFormat().shape ?? REPORT_SHAPE
+  const shape = REPORT_SHAPE
   const scenes: Array<ReportScene> = [
     { section: "intro", id: "intro", said: report.intro },
   ]

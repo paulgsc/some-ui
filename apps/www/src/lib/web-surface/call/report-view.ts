@@ -93,9 +93,9 @@ function viewOf(
         ...(wing === undefined
           ? {}
           : {
-              pipelines: new Set(
-                report.wings[wing]?.lines.map((line) => line.pipeline)
-              ).size,
+              pipelines: reportPages(report).filter(
+                (page) => page.wing === wing && page.page === 1
+              ).length,
             }),
       }
     }

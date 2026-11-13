@@ -2,6 +2,7 @@ import type { JSX } from "react"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 
 import { VIEWER_BUILD } from "@/lib/data-mode"
+import { stageSearch } from "@/lib/stage-search"
 import { CallStage } from "@/lib/web-surface"
 import { ViewerStrip } from "@/components/provenance-strip"
 
@@ -13,21 +14,6 @@ import { ViewerStrip } from "@/components/provenance-strip"
  * A viewer of the Pages build gets the viewer strip above it. Web only: the
  * stage comes through the web surface's door.
  */
-
-type CallSearch = { week?: string; scene?: string; record?: boolean }
-
-function validateSearch(search: Record<string, unknown>): CallSearch {
-  const record = search.record === true || search.record === "true"
-  return {
-    ...(typeof search.week === "string" && search.week !== ""
-      ? { week: search.week }
-      : {}),
-    ...(typeof search.scene === "string" && search.scene !== ""
-      ? { scene: search.scene }
-      : {}),
-    ...(record ? { record } : {}),
-  }
-}
 
 const Call = (): JSX.Element => {
   const { week, scene, record } = Route.useSearch()
@@ -48,6 +34,6 @@ const Call = (): JSX.Element => {
 }
 
 export const Route = createFileRoute("/call")({
-  validateSearch,
+  validateSearch: stageSearch,
   component: Call,
 })

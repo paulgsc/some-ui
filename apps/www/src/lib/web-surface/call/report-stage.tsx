@@ -21,8 +21,11 @@ import {
   BrandSlide,
   ChapterSlide,
   LockedIntro,
+  sceneNames,
   StageFrame,
   StageRefused,
+  Title,
+  whereOf,
 } from "./frame"
 import { STAGE_WORDS as SW } from "./frame-words"
 import type { ReportAt } from "./report-view"
@@ -51,9 +54,7 @@ export type ReportStageProps = {
   onScene?: (scene: string) => void
 }
 
-const NAMES: Readonly<Record<string, string>> = Object.fromEntries(
-  reportFormat().scenes.map((scene) => [scene.id, scene.name])
-)
+const NAMES = sceneNames(reportFormat())
 
 const SAMPLE = sampleReport()
 
@@ -94,20 +95,6 @@ function pageName(report: EngagementReport, index: number): string {
     : page.pipeline
 }
 
-/** What the frame's header calls the scene. */
-const whereOf = (at: ReportAt, report: EngagementReport): string => {
-  const scene = at.scene
-  const name =
-    scene.section === "brand-in" || scene.section === "brand-out"
-      ? ""
-      : scene.section === "chapter"
-        ? scene.title
-        : labelOf(scene, report)
-  return [name, `${at.index + 1}/${at.scenes.length}`]
-    .filter(Boolean)
-    .join(" · ")
-}
-
 /** A scene's panel: what it is, and its content. */
 const Panel = ({
   tag,
@@ -120,10 +107,6 @@ const Panel = ({
     <p className="text-primary text-[0.7em] tracking-wide uppercase">{tag}</p>
     {children}
   </div>
-)
-
-const Title = ({ children }: { children: ReactNode }): JSX.Element => (
-  <p className="text-[1.4em] leading-tight font-bold">{children}</p>
 )
 
 const WAY_CLASS: Readonly<Record<string, string>> = {
@@ -178,7 +161,6 @@ const Statement = ({
               : "border-border h-[1.8em] border-t"
           }
         >
-          {/* A quiet line is dimmed: every cell of it already reads "< 5". */}
           <th className="pr-[0.6em] font-semibold">{line.name}</th>
           {COUNT_KINDS.map((kind) => (
             <td
@@ -360,7 +342,9 @@ export const ReportStagePage = ({
       theme={format.shape?.theme}
       title={W.title}
       where={
-        sample ? `${whereOf(at, report)} · ${W.sample}` : whereOf(at, report)
+        sample
+          ? `${whereOf(at, () => labelOf(at.scene, report))} · ${W.sample}`
+          : whereOf(at, () => labelOf(at.scene, report))
       }
       captioned={record && hasCaptions(format)}
       said={at.scene.said}

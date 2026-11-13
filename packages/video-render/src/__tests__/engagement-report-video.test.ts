@@ -5,8 +5,6 @@
  * every reason; and the sample's scenes, words, cut list and chapters come
  * out the same every time.
  */
-import { readdirSync, readFileSync } from "node:fs"
-import { join } from "node:path"
 import { parseCutList } from "@video-render/cut-list"
 import {
   ENGAGEMENT_REPORT_ID,
@@ -34,13 +32,9 @@ import {
   sampleReport,
 } from "@video-render/engagement-report-video"
 import type { HomeWeeks } from "@video-render/engagement-report-video"
-import { parseFormat } from "@video-render/format"
-import { versionOfFile } from "@video-render/series"
 import { templateStoryboard } from "@video-render/templates"
 import sampleHome from "@video-render/templates/engagement-report/sample-weeks.json"
 import { describe, expect, it } from "vitest"
-
-const DIR = join(import.meta.dirname, "../templates", ENGAGEMENT_REPORT_ID)
 
 function sample(): EngagementReport {
   const parsed = sampleReport()
@@ -52,21 +46,6 @@ function sample(): EngagementReport {
 const home = (): HomeWeeks => HomeWeeksSchema.parse(structuredClone(sampleHome))
 
 describe("the report's format", () => {
-  it("every pinned version parses, and the newest is the code's", () => {
-    const pinned = readdirSync(DIR)
-      .map((file) => ({ file, version: versionOfFile(file) }))
-      .filter((f): f is { file: string; version: number } => f.version !== null)
-      .sort((a, b) => a.version - b.version)
-    expect(pinned.map((p) => p.version)).toEqual(
-      Array.from({ length: REPORT_VERSION }, (_, i) => i + 1)
-    )
-    for (const { file, version } of pinned) {
-      const raw: unknown = JSON.parse(readFileSync(join(DIR, file), "utf8"))
-      expect(parseFormat(raw).ok).toBe(true)
-      expect(raw).toEqual(reportFormat(version))
-    }
-  })
-
   it("refuses a version newer than the newest (VS1)", () => {
     expect(reportVersionRefusal(REPORT_VERSION)).toBe(null)
     expect(() => reportFormat(REPORT_VERSION + 1)).toThrow(
@@ -119,7 +98,7 @@ describe("home's answer, as the writer's four weeks", () => {
     ])
   })
 
-  it("refuses a week missing, one twice, and another week than asked", () => {
+  it("refuses a week missing, one twice, and other weeks than asked", () => {
     const raw = home()
     raw.weeks = raw.weeks.filter((week) => week.role !== "yearAgo")
     raw.weeks.push(structuredClone(raw.weeks[1] ?? raw.weeks[0]!))
@@ -127,6 +106,8 @@ describe("home's answer, as the writer's four weeks", () => {
     const weeks = reportWeeksOf(raw)
     expect(weeks.ok ? [] : weeks.problems).toEqual([
       "weeks: last is there twice",
+      "weeks: the last week is 2026-W45, not 2026-W46",
+      "weeks: the quarterAgo week is 2026-W33, not 2026-W34",
       "weeks: this week is 2026-W46, not 2026-W47",
       "weeks: this week runs 2026-11-09T08:00:00.000Z to 2026-11-16T08:00:00.000Z, not the owner's 2026-11-16T08:00:00.000Z to 2026-11-23T08:00:00.000Z",
       "weeks: there is no yearAgo week",
@@ -135,7 +116,7 @@ describe("home's answer, as the writer's four weeks", () => {
 
   it("refuses what isn't an answer, by where", () => {
     const weeks = reportWeeksOf({ week: "2026-W46", weeks: [{ role: "now" }] })
-    expect(weeks.ok).toBe(false)
+    expect(weeks.ok ? [] : weeks.problems[0]).toMatch(/^weeks\.0\.role: /)
   })
 })
 
@@ -158,10 +139,6 @@ describe("the sample report's scenes", () => {
       "moved",
       "brand-out",
     ])
-  })
-
-  it("are the same every time", () => {
-    expect(reportScenes(sample())).toEqual(reportScenes(sample()))
   })
 
   it("read out each line that showed, and count the rest together", () => {

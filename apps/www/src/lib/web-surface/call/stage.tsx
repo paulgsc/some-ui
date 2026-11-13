@@ -19,6 +19,7 @@ import {
   ChapterSlide,
   Field,
   LockedIntro,
+  sceneNames,
   StageFrame,
   StageRefused,
 } from "./frame"
@@ -44,9 +45,7 @@ export type CallStageProps = {
   onScene?: (scene: string) => void
 }
 
-const NAMES: Readonly<Record<string, string>> = Object.fromEntries(
-  callFormat().scenes.map((scene) => [scene.id, scene.name])
-)
+const NAMES = sceneNames(callFormat())
 
 const SAMPLE = sampleCallWeek()
 

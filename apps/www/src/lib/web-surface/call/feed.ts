@@ -1,4 +1,5 @@
 import { createDataSource } from "@some-ui/fetch-kit"
+import type { DataSource } from "@some-ui/fetch-kit"
 import type { CallIndex } from "@some-ui/video-render"
 
 import { DATA_MODE } from "@/lib/data-mode"
@@ -26,45 +27,33 @@ export const weekSource = testingSource<string, unknown>(
 )
 
 /**
- * Where the essay's stage reads an essay named by its week (RR16): beside
- * the stage, never `paulgsc/testing`, since an essay carries the owner's
- * words. Home's render worker answers it from the essay home keeps
- * (`record:essay --essay-file`); nothing else serves it to a browser yet.
+ * A file named by its week, read from beside the stage under `folder`,
+ * unchecked: the stage parses it. No cookie goes with it (LA4): home's render
+ * worker's recorder answers it from the file it was handed, and nothing else
+ * serves it to a browser.
  */
-const essayAddress = (week: string): URL =>
-  new URL(
-    `/rust-essays/${encodeURIComponent(week)}.json`,
-    window.location.origin
+function besideStage(folder: string): DataSource<string, unknown> {
+  const address = (week: string): URL =>
+    new URL(
+      `/${folder}/${encodeURIComponent(week)}.json`,
+      window.location.origin
+    )
+  return createDataSource<string, unknown>(
+    { static: address, server: address },
+    { mode: DATA_MODE, fetchOptions: { ...PUBLIC_READ, responseAs: "json" } }
   )
-
-/** An essay's file as read, unchecked: the stage parses it (`essayStageOf`). */
-export const essaySource = createDataSource<string, unknown>(
-  { static: essayAddress, server: essayAddress },
-  {
-    mode: DATA_MODE,
-    // No cookie goes with it (LA4): the recorder answers it from the file.
-    fetchOptions: { ...PUBLIC_READ, responseAs: "json" },
-  }
-)
+}
 
 /**
- * Where the report's stage reads a report named by its week: beside the
- * stage, as the essay's is. Home's render worker answers it from the report
- * the recorder writes from home's own records (`record:report
- * --report-file`); nothing else serves it to a browser.
+ * An essay, by its week (RR16; `essayStageOf` parses it): beside the stage,
+ * never `paulgsc/testing`, since an essay carries the owner's words; the
+ * recorder answers it from `record:essay --essay-file`.
  */
-const reportAddress = (week: string): URL =>
-  new URL(
-    `/engagement-reports/${encodeURIComponent(week)}.json`,
-    window.location.origin
-  )
+export const essaySource = besideStage("rust-essays")
 
-/** A report's file as read, unchecked: the stage parses it (`reportStageOf`). */
-export const reportSource = createDataSource<string, unknown>(
-  { static: reportAddress, server: reportAddress },
-  {
-    mode: DATA_MODE,
-    // No cookie goes with it (LA4): the recorder answers it from the file.
-    fetchOptions: { ...PUBLIC_READ, responseAs: "json" },
-  }
-)
+/**
+ * An engagement report, by its ISO week (ENG12; `reportStageOf` parses it):
+ * the recorder answers it with the report it writes from
+ * `record:report --report-file`.
+ */
+export const reportSource = besideStage("engagement-reports")

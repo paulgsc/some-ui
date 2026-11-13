@@ -2,6 +2,7 @@ import type { JSX } from "react"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 
 import { VIEWER_BUILD } from "@/lib/data-mode"
+import { stageSearch } from "@/lib/stage-search"
 import { EssayStage } from "@/lib/web-surface"
 import { ViewerStrip } from "@/components/provenance-strip"
 
@@ -14,21 +15,6 @@ import { ViewerStrip } from "@/components/provenance-strip"
  * above it. Web only: the stage comes through
  * the web surface's door.
  */
-
-type EssaySearch = { week?: string; scene?: string; record?: boolean }
-
-function validateSearch(search: Record<string, unknown>): EssaySearch {
-  const record = search.record === true || search.record === "true"
-  return {
-    ...(typeof search.week === "string" && search.week !== ""
-      ? { week: search.week }
-      : {}),
-    ...(typeof search.scene === "string" && search.scene !== ""
-      ? { scene: search.scene }
-      : {}),
-    ...(record ? { record } : {}),
-  }
-}
 
 const Essay = (): JSX.Element => {
   const { week, scene, record } = Route.useSearch()
@@ -49,6 +35,6 @@ const Essay = (): JSX.Element => {
 }
 
 export const Route = createFileRoute("/essay")({
-  validateSearch,
+  validateSearch: stageSearch,
   component: Essay,
 })

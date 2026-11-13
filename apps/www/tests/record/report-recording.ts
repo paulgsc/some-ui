@@ -36,7 +36,7 @@ import {
   siteOf,
 } from "./voiced"
 
-/** The stage's read of a report named by its week (`web-surface/report/source`). */
+/** The stage's read of a report named by its week (`call/feed.ts`' `reportSource`). */
 const REPORT_READ = /\/engagement-reports\/[^/?#]+\.json$/
 
 export type ReportValues = Omit<CallValues, "week" | "week-file"> & {

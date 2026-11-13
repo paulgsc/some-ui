@@ -2,6 +2,7 @@ import type { JSX } from "react"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 
 import { VIEWER_BUILD } from "@/lib/data-mode"
+import { stageSearch } from "@/lib/stage-search"
 import { ReportStage } from "@/lib/web-surface"
 import { ViewerStrip } from "@/components/provenance-strip"
 
@@ -14,21 +15,6 @@ import { ViewerStrip } from "@/components/provenance-strip"
  * gets the viewer strip above it, and the sample whatever week is named.
  * Web only: the stage comes through the web surface's door.
  */
-
-type ReportSearch = { week?: string; scene?: string; record?: boolean }
-
-function validateSearch(search: Record<string, unknown>): ReportSearch {
-  const record = search.record === true || search.record === "true"
-  return {
-    ...(typeof search.week === "string" && search.week !== ""
-      ? { week: search.week }
-      : {}),
-    ...(typeof search.scene === "string" && search.scene !== ""
-      ? { scene: search.scene }
-      : {}),
-    ...(record ? { record } : {}),
-  }
-}
 
 const Report = (): JSX.Element => {
   const { week, scene, record } = Route.useSearch()
@@ -49,6 +35,6 @@ const Report = (): JSX.Element => {
 }
 
 export const Route = createFileRoute("/report")({
-  validateSearch,
+  validateSearch: stageSearch,
   component: Report,
 })
