@@ -87,9 +87,10 @@ export type StationMove = {
 /**
  * How home answered a move: not yet, kept, refused as it is, dropped
  * because the take had moved on since it was made, or dropped because the
- * take is off the conveyor (let go, or not one home keeps on it).
+ * take is off the conveyor (let go, or not one home keeps on it), or
+ * dropped with an earlier move of the take it was made along (`chained`).
  */
-type MoveHome = "owed" | "held" | "refused" | "stale" | "off"
+type MoveHome = "owed" | "held" | "refused" | "stale" | "off" | "chained"
 
 /** Where home said the take was, on a stale move: its station and number. */
 export type There = { readonly station: TakeStation; readonly seq: number }
@@ -124,7 +125,10 @@ export type ConveyorEvent =
  * How home answered `move`, from owed; a move never goes back to owed. A
  * move home didn't keep takes with it each later owed move of the same take
  * made from where it would have put the take (its `to`, and the next move
- * number), and so on along that chain; any other owed move stays owed.
+ * number), and so on along that chain; any other owed move stays owed. A
+ * stale answer that finds home just where the move would have put the take
+ * takes nothing with it; a refused or off one can't know where home stands,
+ * so its chain goes with it.
  */
 function answered(
   state: ConveyorState,
@@ -157,7 +161,7 @@ function answered(
         kept.seq === after.seq + 1
       if (!chained) return kept
       after = kept
-      return { ...kept, home: "stale" }
+      return { ...kept, home: "chained" }
     }),
   }
 }
@@ -240,7 +244,11 @@ export type TakeStanding = {
   readonly seq: number
   /** Moved on this phone, and home hasn't kept that move yet. */
   readonly going: boolean
-  /** The phone's latest move of it, which home didn't keep; else null. */
+  /**
+   * The phone's latest move of it that home didn't keep (not counting
+   * those dropped with an earlier one), while home is no further on; else
+   * null.
+   */
   readonly missed: Missed | null
 }
 
@@ -274,9 +282,15 @@ export function stationOf(
   // the owner missed.
   const landed = (kept: KeptMove): boolean =>
     kept.there?.station === kept.to && kept.there.seq === kept.seq + 1
+  // The latest the owner missed: a move dropped with an earlier one is said
+  // through that one, so the head of a refused chain is the one named.
   const unkept = mine
     .slice(lastTaken + 1)
-    .find((kept) => !landed(kept) && homeSeq <= upTo(kept))
+    .filter(
+      (kept) =>
+        kept.home !== "chained" && !landed(kept) && homeSeq <= upTo(kept)
+    )
+    .at(-1)
   const missed: Missed | null =
     unkept === undefined
       ? null
@@ -401,6 +415,7 @@ const HOMES: ReadonlyArray<MoveHome> = [
   "refused",
   "stale",
   "off",
+  "chained",
 ]
 
 const isThere = (value: unknown): value is There =>
@@ -417,6 +432,7 @@ function isKeptMove(kept: unknown): kept is KeptMove {
     isTakeStation(kept.from) &&
     isTakeStation(kept.to) &&
     typeof kept.at === "string" &&
+    !Number.isNaN(Date.parse(kept.at)) &&
     typeof kept.seq === "number" &&
     Number.isInteger(kept.seq) &&
     kept.seq >= 0 &&

@@ -258,6 +258,55 @@ describe("a move of a take, to home (CONVEYOR1)", () => {
     expect(ahead.port.due()).toHaveLength(2)
   })
 
+  it("drops a move as off the conveyor when home's read after a 409 no longer holds the take", async () => {
+    const conveyor = conveyorWith(["t1"])
+    const gone: HomeCall = (method) =>
+      Promise.resolve(
+        method === "POST"
+          ? {
+              status: 409,
+              body: JSON.stringify({
+                error: {
+                  code: "conflict",
+                  message:
+                    "the take is not at the station this move starts from",
+                  details: { station: ["canned"], seq: ["2"] },
+                },
+              }),
+            }
+          : {
+              status: 404,
+              body: JSON.stringify({
+                error: { code: "not_found", message: "not found" },
+              }),
+            }
+      )
+    await sendStationMoves(conveyor.port, gone)
+    expect(conveyor.port.due()).toEqual([])
+    expect(
+      conveyor.standing("t1", { station: "in-the-oven", stationSeq: 0 })?.missed
+    ).toEqual({ to: "cooking", why: "off" })
+  })
+
+  it("refuses a move whose 422 names more than when it was made", async () => {
+    const conveyor = conveyorWith(["t1"])
+    const refuse: HomeCall = () =>
+      Promise.resolve({
+        status: 422,
+        body: JSON.stringify({
+          error: {
+            code: "unprocessable_entity",
+            details: { at: ["ahead"], labels: ["too many labels"] },
+          },
+        }),
+      })
+    await sendStationMoves(conveyor.port, refuse)
+    expect(conveyor.port.due()).toEqual([])
+    expect(
+      conveyor.standing("t1", { station: "in-the-oven", stationSeq: 0 })?.missed
+    ).toEqual({ to: "cooking", why: "refused" })
+  })
+
   it("still sends the chain of a move another device already made, and says nothing missed", async () => {
     const conveyor = (() => {
       const made = conveyorWith(["t1"])

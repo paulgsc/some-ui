@@ -36,7 +36,7 @@ export const TAKE_CONVEYOR_WORDS = {
   standing: (standing: TakeStanding): string => {
     const name = STATIONS[standing.station]
     const where = standing.going
-      ? `${name}. Home hears of it once it's in reach.`
+      ? `${name}. Home hasn't taken this move yet.`
       : standing.at === null
         ? name
         : `${name} since ${dayAt(standing.at)}`

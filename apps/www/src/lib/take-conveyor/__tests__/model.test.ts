@@ -186,6 +186,46 @@ describe("stationOf", () => {
     ).toMatchObject({ station: "canned", missed: null })
   })
 
+  it("names the latest move the owner missed, and where it found the take, when home's read lags", () => {
+    const state = stepConveyor(
+      stepConveyor(
+        moved(
+          INITIAL_CONVEYOR,
+          move("m1", "in-the-oven", "cooking", 0),
+          move("m2", "ready-for-pickup", "canned", 1)
+        ),
+        {
+          kind: "stale",
+          move: "m1",
+          there: { station: "ready-for-pickup", seq: 1 },
+        }
+      ),
+      { kind: "stale", move: "m2", there: { station: "cooking", seq: 2 } }
+    )
+    expect(
+      stationOf("take-1", { station: "ready-for-pickup", stationSeq: 1 }, state)
+    ).toMatchObject({
+      station: "cooking",
+      seq: 2,
+      missed: { to: "canned", why: "stale" },
+    })
+  })
+
+  it("names the head of a refused chain, not the moves dropped with it", () => {
+    const state = stepConveyor(
+      moved(
+        INITIAL_CONVEYOR,
+        move("m1", "in-the-oven", "cooking", 0),
+        move("m2", "cooking", "canned", 1)
+      ),
+      { kind: "refused", move: "m1" }
+    )
+    expect(stationOf("take-1", oven, state)?.missed).toEqual({
+      to: "cooking",
+      why: "refused",
+    })
+  })
+
   it("says a move dropped as off the conveyor", () => {
     const off = stepConveyor(
       moved(INITIAL_CONVEYOR, move("m1", "in-the-oven", "cooking", 0)),
@@ -319,6 +359,9 @@ describe("parseConveyor", () => {
     )
     expect(parseConveyor(JSON.parse(JSON.stringify(state)))).toEqual(state)
     expect(parseConveyor({ moves: [{ move: "m1" }] })).toBeNull()
+    expect(
+      parseConveyor({ moves: [{ ...state.moves[0], at: "soon" }] })
+    ).toBeNull()
     expect(
       parseConveyor({ moves: [{ ...state.moves[0], seq: "1" }] })
     ).toBeNull()

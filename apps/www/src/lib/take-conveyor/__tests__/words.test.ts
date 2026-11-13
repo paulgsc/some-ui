@@ -85,7 +85,7 @@ describe("TAKE_CONVEYOR_WORDS", () => {
         going: true,
         missed: null,
       })
-    ).toBe("Ready for pickup. Home hears of it once it's in reach.")
+    ).toBe("Ready for pickup. Home hasn't taken this move yet.")
     expect(
       standing({
         station: "in-the-oven",
