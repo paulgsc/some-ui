@@ -22,6 +22,7 @@ import { parseCutList } from "./cut-list"
 import type { Parsed } from "./cut-list"
 import { parseFormat } from "./format"
 import type { Format } from "./format"
+import type { Mailbox } from "./mailbox"
 import type { SourceFacts } from "./plan"
 import { DEFAULT_POLICY } from "./policy"
 import { render } from "./render"
@@ -462,4 +463,20 @@ export async function runCommand(main: () => Promise<void>): Promise<void> {
     process.stderr.write(`${e.message}\n`)
     process.exitCode = 1
   }
+}
+
+export * from "./mailbox"
+
+/**
+ * The Jobs mailbox a routine reads and puts to, from `JOBS_MAILBOX_URL` and
+ * `JOBS_MAILBOX_TOKEN`; refused when either is unset. The token is never
+ * printed.
+ */
+export function mailboxFromEnv(): Mailbox {
+  const url = process.env["JOBS_MAILBOX_URL"]
+  const token = process.env["JOBS_MAILBOX_TOKEN"]
+  if (url === undefined || url === "" || token === undefined || token === "") {
+    return fail(["JOBS_MAILBOX_URL and JOBS_MAILBOX_TOKEN must be set"])
+  }
+  return { url: url.replace(/\/+$/, ""), token, fetch }
 }

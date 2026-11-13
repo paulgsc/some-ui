@@ -19,14 +19,7 @@ import type { RustcRun } from "@rust-rounds/lib/formats"
 import type { MailboxFile, Prepared } from "@rust-rounds/lib/monday/bundle"
 import { prepare } from "@rust-rounds/lib/monday/bundle"
 import { finish } from "@rust-rounds/lib/monday/finish"
-import type { Mailbox } from "@rust-rounds/lib/monday/mailbox"
-import {
-  get,
-  list,
-  noteOfTranscript,
-  notesNamed,
-  put,
-} from "@rust-rounds/lib/monday/mailbox"
+import { noteOfTranscript, notesNamed } from "@rust-rounds/lib/monday/mailbox"
 import { indexWeeks, WeekRecordSchema } from "@rust-rounds/lib/monday/record"
 import type { Ran } from "@rust-rounds/lib/monday/rustc"
 import {
@@ -38,7 +31,11 @@ import {
 import { ValuesSchema } from "@rust-rounds/lib/monday/values"
 import {
   fail,
+  get,
   here,
+  list,
+  mailboxFromEnv,
+  put,
   readJson,
   Refused,
   runCommand,
@@ -53,15 +50,6 @@ const USAGE = [
 ]
 
 const json = (value: unknown): string => `${JSON.stringify(value, null, 2)}\n`
-
-function mailboxFromEnv(): Mailbox {
-  const url = process.env["JOBS_MAILBOX_URL"]
-  const token = process.env["JOBS_MAILBOX_TOKEN"]
-  if (url === undefined || url === "" || token === undefined || token === "") {
-    return fail(["JOBS_MAILBOX_URL and JOBS_MAILBOX_TOKEN must be set"])
-  }
-  return { url: url.replace(/\/+$/, ""), token, fetch }
-}
 
 async function filesIn(dir: string): Promise<Array<MailboxFile>> {
   const names = await readdir(dir).catch(() => [])

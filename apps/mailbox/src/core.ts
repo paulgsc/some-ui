@@ -782,6 +782,62 @@ function rustWeekRefusal(
     : "the name must carry the week's id"
 }
 
+/** IW1's id for a question or card (paulgsc/some-ui#2935): a kebab slug, at most 64 characters. */
+const TAKE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+const TAKE_ID_MAX = 64
+
+/**
+ * The ids of `list`'s objects, as home will hold a take's ref to them: each
+ * a slug, once each, and never `reserved`. Why not, or `null`.
+ */
+function takeIdsRefusal(
+  list: unknown,
+  what: "question" | "card",
+  reserved: string | null
+): string | null {
+  if (!Array.isArray(list)) return `${what}s must be a list`
+  const seen = new Set<unknown>()
+  for (const item of list.values()) {
+    const id: unknown = isRecord(item) ? item.id : undefined
+    if (
+      typeof id !== "string" ||
+      id.length > TAKE_ID_MAX ||
+      !TAKE_ID.test(id)
+    ) {
+      return `each ${what}'s id must be a kebab slug of at most ${TAKE_ID_MAX} characters`
+    }
+    if (id === reserved) return `no ${what} may be named ${reserved}`
+    if (seen.has(id)) return `each ${what}'s id is used once`
+    seen.add(id)
+  }
+  return null
+}
+
+/**
+ * README, "What a put must satisfy". A week of mock interview the interview
+ * week's routine writes (IW4, paulgsc/some-ui#2935), named for its id. Home
+ * takes an interview take only by IW1's refs, `<week>:<question>` and
+ * `<week>:read:<card>`, so the Worker holds the ids those refs name; the
+ * routine holds the rest of the format (`readWeek` in
+ * `@some-ui/interview-week`) before it puts one.
+ */
+function interviewWeekRefusal(
+  body: Readonly<Record<string, unknown>>,
+  _text: string,
+  name: string
+): string | null {
+  if (typeof body.id !== "string" || !WEEK_ID.test(body.id)) {
+    return "id must be the week's, like 2026-w47"
+  }
+  if (name !== `interview-week-${body.id}.json`) {
+    return "the name must carry the week's id"
+  }
+  return (
+    takeIdsRefusal(body.questions, "question", "read") ??
+    takeIdsRefusal(body.cards, "card", null)
+  )
+}
+
 /**
  * A Rust Rounds essay's script, named for the week it answers, and `-r2` on
  * for a correction (`some-ui.rust-essay/1`'s `week.id`, `EssaySchema` in
@@ -921,6 +977,14 @@ const FOLDERS: ReadonlyArray<FolderRules> = [
         name: /^rust-week-\d{4}-w\d{2}\.json$/,
         schema: "some-ui.rust-week/1",
         refuses: rustWeekRefusal,
+      },
+      // A week of mock interview the interview week's routine writes, for
+      // home to keep and serve to the phone (IW4, paulgsc/some-ui#2935).
+      {
+        folder: "brief",
+        name: /^interview-week-\d{4}-w\d{2}\.json$/,
+        schema: "some-ui.interview-week/1",
+        refuses: interviewWeekRefusal,
       },
       // The script of the essay that answers a week, for home to keep and
       // render; `-r2` on is a correction (RR16, paulgsc/some-ui#2691; the

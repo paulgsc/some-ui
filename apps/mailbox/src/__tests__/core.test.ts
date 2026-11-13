@@ -462,6 +462,71 @@ describe("a week of Rust Rounds rides brief (MB2, RR12)", () => {
   })
 })
 
+describe("a week of mock interview rides brief (MB2, IW4)", () => {
+  const week = (fields: Record<string, unknown> = {}): string =>
+    JSON.stringify({
+      schema: "some-ui.interview-week/1",
+      id: "2026-w47",
+      questions: [{ id: "conflict" }, { id: "decision-c266" }],
+      cards: [{ id: "invariant-rs1" }],
+      ...fields,
+    })
+  const NAME = "interview-week-2026-w47.json"
+
+  it("the routine puts one in brief, and home reads it with the digests", async () => {
+    const d = deps()
+    expect((await put(d, "brief", NAME, { body: week() })).status).toBe(201)
+    const read = await send(d, "GET", `/v1/brief/items/${NAME}`, {
+      token: HOME,
+    })
+    expect(await read.text()).toBe(week())
+  })
+
+  it("refuses a week whose name isn't its id's, or whose ids a take's ref can't name", async () => {
+    const refused = async (body: string, name = NAME): Promise<unknown> =>
+      json(await put(deps(), "brief", name, { body }))
+    expect(await refused(week(), "interview-week-2026-w48.json")).toEqual({
+      error: "the name must carry the week's id",
+    })
+    expect(await refused(week({ id: "2026-W47" }))).toEqual({
+      error: "id must be the week's, like 2026-w47",
+    })
+    expect(await refused(week({ questions: [{ id: "read" }] }))).toEqual({
+      error: "no question may be named read",
+    })
+    // A card may be named read: its ref is <week>:read:<card>.
+    expect(
+      (
+        await put(deps(), "brief", NAME, {
+          body: week({ cards: [{ id: "read" }] }),
+        })
+      ).status
+    ).toBe(201)
+    const slug = {
+      error: "each card's id must be a kebab slug of at most 64 characters",
+    }
+    for (const id of ["Rs1", "a--b", "-a", "x".repeat(65), 7]) {
+      expect(await refused(week({ cards: [{ id }] }))).toEqual(slug)
+    }
+    expect(
+      await refused(week({ questions: [{ id: "a" }, { id: "a" }] }))
+    ).toEqual({ error: "each question's id is used once" })
+    expect(await refused(week({ cards: undefined }))).toEqual({
+      error: "cards must be a list",
+    })
+    expect(await refused(DIGEST)).toEqual({
+      error: "the body's schema must be some-ui.interview-week/1",
+    })
+    expect(
+      (
+        await put(deps(), "brief", "interview-week-2026-47.json", {
+          body: week(),
+        })
+      ).status
+    ).toBe(422)
+  })
+})
+
 describe("a Rust Rounds essay's script rides brief (MB2, RR16)", () => {
   const essay = (week: string): string =>
     JSON.stringify({
