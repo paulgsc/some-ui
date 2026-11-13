@@ -1,0 +1,19 @@
+{
+  "schema": "some-ui.fillers/1",
+  "about": "The closed list of fillers an interview take is counted for. Each is a vocalised hesitation, matched as one whole word after lowercasing and keeping only letters and digits. Lexical fillers (like, you know, so, basically, I mean) are left out: telling them from their ordinary use is judging, which the model does (LEVERS, #2162). This file is the canonical copy (#2934); home's transcriber cites it for the fillers its prompt keeps (#2933).",
+  "fillers": [
+    "um",
+    "umm",
+    "uh",
+    "uhh",
+    "uhm",
+    "er",
+    "erm",
+    "ah",
+    "ahh",
+    "hm",
+    "hmm",
+    "mm",
+    "mhm"
+  ]
+}

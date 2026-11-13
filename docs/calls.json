@@ -2000,6 +2000,80 @@
       "chose": "Whether home follows NFL games is the owner's switch on Home's switches (the game-feed setting), on by default, in place of GAME_FEED_ENABLED and the sops step C142 chose; policy is not kept as an environment variable.",
       "undo": "Bring back GAME_FEED_ENABLED in paulgsc/server's file_host config and drop the game-feed row and SWITCH_KEYS entry from apps/www/src/lib/home-switches.",
       "refs": ["#2074", "#2927", "server#617"]
+    },
+    {
+      "id": "C263",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "packages/ui/interview-week/src/lib/faults/thresholds.ts",
+        "packages/ui/interview-week/src/lib/faults/answer.ts",
+        "packages/ui/interview-week/src/lib/faults/read.ts"
+      ],
+      "chose": "A pause in an interview answer is a gap between words of 2 s or more, and in a teleprompter read of 0.5 s or more; a gap exactly at the threshold counts, and the silence before the first word and after the last is counted apart, never as a pause.",
+      "options": [
+        "(a) 2 s for answers and 0.5 s for reads, inclusive",
+        "(b) one 2 s threshold for both flows",
+        "(c) 1 s for answers and 0.3 s for reads",
+        "(d) the same values, counting only gaps over the threshold"
+      ],
+      "gray": "#2934 suggests 2 s for answers and leaves reads open; the threshold decides which silences the essay charts as the owner's pauses each week, and a phrasing pause at a comma is far shorter than a lost thread.",
+      "undo": "Change ANSWER_PAUSE_MS or READ_PAUSE_MS in packages/ui/interview-week/src/lib/faults/thresholds.ts, or `>=` to `>` where answer.ts and read.ts compare a gap with them.",
+      "refs": ["#2931", "#2934"]
+    },
+    {
+      "id": "C264",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "packages/ui/interview-week/src/lib/faults/thresholds.ts",
+        "packages/ui/interview-week/src/lib/faults/answer.ts"
+      ],
+      "chose": "A word is mumbled when whisper's probability for it is under 0.5, and the mumbled share is over the words that carry a probability; a word without one is neither mumbled nor counted in the share.",
+      "options": [
+        "(a) p under 0.5, words without p left out of the share",
+        "(b) p under 0.5, words without p counted as heard",
+        "(c) a stricter p under 0.3"
+      ],
+      "gray": "No check or earlier decision says how unsure the transcriber must be before a word reads as mumbled; the value sets the mumbling count the owner sees charted each week.",
+      "undo": "Change MUMBLE_P in packages/ui/interview-week/src/lib/faults/thresholds.ts, or count words without p in measureAnswer's share.",
+      "refs": ["#2934"]
+    },
+    {
+      "id": "C265",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "packages/ui/interview-week/src/lib/faults/fillers.json",
+        "packages/ui/interview-week/src/lib/faults/words.ts"
+      ],
+      "chose": "The closed filler list holds only vocalised hesitations (um, umm, uh, uhh, uhm, er, erm, ah, ahh, hm, hmm, mm, mhm), each matched as one whole word after lowercasing and keeping letters and digits; lexical fillers (like, you know, so, basically, I mean) are left out. The list lives in fillers.json, the canonical copy home's transcriber cites.",
+      "options": [
+        "(a) vocalised hesitations only",
+        "(b) vocalised hesitations plus lexical fillers (like, you know, so, basically)",
+        "(c) a short list: um, uh, er, ah"
+      ],
+      "gray": "The owner asked to count 'ums' and the epic leaves the list to IW2 and IW3; counting \"like\" or \"so\" by code would count their ordinary use too, which only judging can tell apart (LEVERS, #2162).",
+      "undo": "Edit the fillers in packages/ui/interview-week/src/lib/faults/fillers.json and the copy home's transcriber cites (#2933).",
+      "refs": ["#2931", "#2933", "#2934"]
+    },
+    {
+      "id": "C266",
+      "made": "2026-11-13",
+      "by": "claude",
+      "paths": [
+        "packages/ui/interview-week/src/lib/faults/thresholds.ts",
+        "packages/ui/interview-week/src/lib/faults/read.ts"
+      ],
+      "chose": "A read is aligned to its script word by word (Levenshtein over lowercased words without punctuation or apostrophes, fillers set aside first so each is an inserted word); an added word is repeated when the same word was spoken within 3 words of it; a pause is at a break when the word before it (fillers skipped) reads a script word followed by punctuation or a line end; pace variation is the standard deviation over the mean of the words a minute of each phrase between breaks with at least 3 words.",
+      "options": [
+        "(a) word alignment, a repeat within 3 words, variation as the coefficient of variation over phrases of 3 or more words",
+        "(b) a repeat only when it follows the same word directly",
+        "(c) variation over fixed windows of time rather than the script's phrases"
+      ],
+      "gray": "#2934 names the measures (misreads, pauses at breaks against mid-phrase, pace variation) and leaves their rules open; each rule decides what the owner sees counted as a stumble or a stiff read.",
+      "undo": "Change REPEAT_WINDOW or MIN_PHRASE_WORDS in packages/ui/interview-week/src/lib/faults/thresholds.ts, or isRepeat, phrasePaces and variation in read.ts.",
+      "refs": ["#2931", "#2934"]
     }
   ]
 }
