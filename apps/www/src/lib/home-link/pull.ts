@@ -85,7 +85,6 @@ export function homeRefresher({
   let out: ReadonlyMap<Kept, Promise<KeptRun | null>> | null = null
   const pull = (): ReadonlyMap<Kept, Promise<KeptRun | null>> => {
     if (out !== null) return out
-    // The person asked to check again: away from home or not, it goes now.
     lookAgain()
     const ends = new Map<Kept, Promise<KeptRun | null>>()
     let turn: Promise<void> = Promise.resolve()

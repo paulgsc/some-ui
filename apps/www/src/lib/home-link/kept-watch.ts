@@ -100,8 +100,6 @@ export function watchKept(
     // Turned away by another run: asked once that run ends, even while home
     // is busy, when the run only says so (it sends nothing). Turned away by
     // home: asked once home's busy or the hold away ends, and not before.
-    // Found no answer: asked once the hold away is released on its time or
-    // home answers, as soon as the link is open (AW1).
     const again =
       (owed === "link" && nowIdle && !idle) ||
       ((owed === "link" || owed === "home") && nowOpen && !open) ||

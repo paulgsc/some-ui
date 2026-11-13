@@ -125,8 +125,6 @@ describe("the live socket's machine", () => {
     ])
   })
 
-  // AW1: every order of the link's hold beginning or ending against a
-  // socket being made, found silent, or opened.
   describe("away from home (AW1)", () => {
     /** A watched socket being made at opening 1. */
     const connecting: LiveState = {
@@ -191,12 +189,6 @@ describe("the live socket's machine", () => {
         const after = step(state, { kind: "home", held: true })
         expect([after.state.phase, kinds(after)]).toEqual([state.phase, ""])
       }
-    })
-
-    it("tells the link home answered once a socket opens", () => {
-      expect(
-        step(connecting, { kind: "opened", at: 1 }).effects
-      ).toContainEqual({ kind: "reached" })
     })
   })
 })

@@ -35,15 +35,10 @@
  *   send's `send` takes a path, and the base is the one stored with the
  *   token.
  *
- * AW1 (#2928, `./away`), as this module holds it: **away from home is said
- * once, and waited out.** A request that finds no answer starts a stretch
- * away, told to `report` once, when it starts; while its hold lasts, a drain,
- * a screen's read on its own (`keep`'s `onItsOwn`) and `look` send nothing
- * and are answered as unanswered (`HomeAwayError`) at once, nor told again.
- * What the person asks for still goes (a sync, a send, a screen's read,
- * pairing and Unpair): a tap is a try. Any answer ends the stretch; the
- * hold's end, a network change (`onNetwork`) or `lookAgain` (a pull, Send
- * now) lets the next ask go.
+ * AW1 (`./away`): a stretch away is told to `report` once; while its hold
+ * lasts, a drain, `keep`'s `onItsOwn` and `look` send nothing
+ * (`HomeAwayError`); sync, send, `keep`, pairing and Unpair still go;
+ * `onNetwork` and `lookAgain` end the hold.
  */
 import type { HomeAnswer, HomeCall } from "@some-ui/core-utils"
 import { isRecord } from "@some-ui/core-utils"

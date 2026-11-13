@@ -1,15 +1,8 @@
 /**
- * Away from home as one state the phone knows (AW1, #2928): home's name
- * answers only on the home network, so off it every request waits out the
- * connect timeout and finds nothing. The first request that finds no answer
- * starts a stretch away; while its hold lasts the link sends nothing the
- * phone started on its own (a drain, a screen's timed read, home's word on
- * itself)
- * and answers each as unanswered at once; the hold doubles with each try that
- * finds no answer again, from `FIRST_HOLD_MS` to `LONGEST_HOLD_MS`. Any
- * answer from home ends the stretch; a network change or the person's pull
- * ends the hold, so the next ask goes at once. Pure; `./runtime` keeps the
- * timer and feeds the events, `./model` holds the state.
+ * Away from home as one state the phone knows (#2928): home's name answers
+ * only on the home network, so off it every request waits out the connect
+ * timeout and finds nothing. Pure; `./runtime` keeps the timer and feeds the
+ * events, `./model` holds the state.
  *
  * **AW1: away from home is said once and waited out, not a failure per call.**
  *
@@ -32,8 +25,9 @@
  *   finding no answer.
  * - _Proof:_ `__tests__/away.test.ts` ("AW1"), over `stepAway` and over the
  *   real link, lanes and watches; `__tests__/live-machine.test.ts` and
- *   `__tests__/live.test.ts` for the socket; `__tests__/words.test.ts` for
- *   the line.
+ *   `__tests__/live.test.ts` for the socket; `__tests__/pull.test.ts` and
+ *   `components/__tests__/device-home-glyph.test.tsx` for a pull;
+ *   `__tests__/words.test.ts` for the line.
  * - _Tolerance:_ the phone cannot tell off the home network from home being
  *   down on it, so either is one stretch, told once; a network change the
  *   WebView does not announce (`online`) waits for the hold.
