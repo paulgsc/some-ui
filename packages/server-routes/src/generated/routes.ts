@@ -3,7 +3,7 @@
 export const API_BASE_PATH = "/api/v1";
 
 /** The server contract epoch this snapshot is (file_host's `contract::CONTRACT_EPOCH`). */
-export const SERVER_CONTRACT_EPOCH = 3;
+export const SERVER_CONTRACT_EPOCH = 4;
 /** The lowest epoch that server still serves (`contract::OLDEST_SUPPORTED`). */
 export const SERVER_OLDEST_SUPPORTED = 1;
 
@@ -133,4 +133,5 @@ export type UnversionedRoute =
   | "/compat"
   | "/health"
   | "/ready"
-  | "/ws";
+  | "/ws"
+  | "/ws/game-week";
