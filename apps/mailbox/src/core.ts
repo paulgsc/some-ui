@@ -359,6 +359,11 @@ const LABELS_MAX = 8
 const LABEL_CHARS_MAX = 32
 // eslint-disable-next-line no-control-regex -- the point is to find control characters
 const CONTROL = /[\u0000-\u001f\u007f-\u009f]/
+/**
+ * Space at either end, as Rust's `str::trim` takes it (Unicode White_Space,
+ * which leaves out U+FEFF, unlike JavaScript's `trim`): home trims a label so.
+ */
+const EDGE_SPACE = /^\p{White_Space}|\p{White_Space}$/u
 /** `<owner>/<repo>#<n>`, as home's `conveyor::is_issue` reads it. */
 const ISSUE = /^[A-Za-z0-9_.-]{1,100}\/[A-Za-z0-9_.-]{1,100}#[1-9]\d{0,8}$/
 const NO_AUDIO_TAKE = "a take carries no audio: home keeps the audio"
@@ -376,7 +381,7 @@ function isLabels(value: unknown): boolean {
     (label) =>
       typeof label === "string" &&
       label !== "" &&
-      label === label.trim() &&
+      !EDGE_SPACE.test(label) &&
       [...label].length <= LABEL_CHARS_MAX &&
       !CONTROL.test(label)
   )

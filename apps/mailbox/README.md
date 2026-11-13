@@ -397,10 +397,12 @@ transcript`, and one that names Drive with `a note names no Drive file`. A name 
   `{"schema":"some-ui.take-pickup/1","note","ref","heard","labels","readyAt","seq"}`
   (CONVEYOR3, #2875): the take's id (as its transcript's `note`), the shot it belongs to (as its
   transcript's `ref`, `<project>:<shot>:<take>`), what home heard in it (its newest transcript's
-  text, so home files a pickup only once it has heard the take), its labels as home keeps them
+  text when home first files the pickup, so home files one only once it has heard the take), its labels as home keeps them
   from that move on (at most 8, each 1 to 32 printable characters with no space at either end,
   possibly none), when it was moved to ready for pickup (the move's `at`, an instant) and that
-  move's number on home (`seq`, from 1). Home puts one for each ready-for-pickup move, so the
+  move's number on home (`seq`, from 1). A name holds one body for good, so home keeps the
+  bytes it first put and sends those same bytes on any retry; a transcript heard later does
+  not change a pickup already filed. Home puts one for each ready-for-pickup move, so the
   routine files only what the owner marked ready. The move's comment stays home, and so does
   the audio (owner, 2026-11-13, `C296` in `docs/calls.json`). The Worker holds this shape
   itself: every key is required, any other key (a `comment` included) is `422`, a name that does
@@ -648,7 +650,10 @@ how each was checked when this workspace landed.
   day outside them; or adds a kind to any folder's `also`, loosens the `drive-takes` name or
   `driveTakesRefusal` (a key beyond `schema`, `at` and `takes`, or beyond `sha256` per take),
   loosens the `rust-week` name or `rustWeekRefusal`, loosens the `rust-essay` name or
-  `rustEssayRefusal`,
+  `rustEssayRefusal`, loosens the `pickup` name or `pickupRefusal` (a key beyond `schema`,
+  `note`, `ref`, `heard`, `labels`, `readyAt` and `seq`, a `comment` included, against `C296`),
+  loosens the `picked` name or `pickedRefusal` (a key beyond `schema`, `note`, `seq` and
+  `issue`),
   or removes `kindOf`'s reading of `also`; when the PR description does not name the owner's
   decision to do so.
 - _Scope:_ `apps/mailbox/src/core.ts` and `wrangler.jsonc`.
@@ -740,8 +745,8 @@ how each was checked when this workspace landed.
   comment stays home):_ `ROLES` has three entries; `core.test.ts` pins `pickup` as it pins
   `feedback` (home puts it and may not read it, the routine reads it and may neither put it,
   list it as archived nor ask it back) and `picked` as the routine's answer (the routine puts
-  it, which rings `picked`, home reads it and may not put it); `RINGS` is `HOME_READS` with
-  `picked`, and the archive role reads and moves both.
+  it, which rings `picked`, home reads it and may not put it); `HOME_READS`, which is
+  `RINGS`, now holds `picked`, and the archive role reads and moves both.
 
 **MB3: No token reaches the repo or a log.**
 

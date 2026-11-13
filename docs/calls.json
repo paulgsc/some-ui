@@ -2154,8 +2154,7 @@
       "by": "owner",
       "paths": [
         "apps/mailbox/src/core.ts",
-        "apps/mailbox/README.md",
-        "server:crates/db/voice/src/conveyor.rs"
+        "apps/mailbox/README.md"
       ],
       "chose": "A Studio take moved to ready for pickup goes to the mailbox (the routine's side) with its labels and what home heard in it; the move's comment, and the audio, stay on home.",
       "undo": "Add comment to PICKUP_KEYS and pickupRefusal in apps/mailbox/src/core.ts (and the README's shape), and have home put the move's comment in some-ui.take-pickup/1.",

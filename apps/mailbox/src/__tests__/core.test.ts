@@ -2141,10 +2141,64 @@ describe("a take ready for pickup, and the routine's answer (CONVEYOR3)", () => 
     ).toBe(403)
   })
 
-  it("takes a take with no labels", async () => {
+  it("takes a take with no labels, and with as many and as long as home keeps", async () => {
     const d = deps()
-    const body = JSON.stringify({ ...READY, labels: [] })
-    expect((await asHome(d, PICKUP_NAME, body)).status).toBe(201)
+    const labelled = [
+      [],
+      Array.from({ length: 8 }, (_, n) => `l${n}`),
+      ["a".repeat(32)],
+      // Home's trim (Rust's) keeps U+FEFF, so the mailbox takes it too.
+      ["\uFEFFep04"],
+    ]
+    for (const [seq, labels] of labelled.entries()) {
+      const body = JSON.stringify({ ...READY, seq: seq + 1, labels })
+      const name = `pickup-${READY.note}-${seq + 1}.json`
+      expect([labels, (await asHome(d, name, body)).status]).toEqual([
+        labels,
+        201,
+      ])
+    }
+  })
+
+  it("names a pickup and its answer only as <folder>-<note>-<seq>.json", async () => {
+    const d = deps()
+    // Each body carries its name, so only the name's own rule refuses it.
+    for (const note of ["a".repeat(65), "a b"]) {
+      for (const [folder, base, token] of [
+        ["pickup", READY, HOME],
+        ["picked", FILED, ROUTINE],
+      ] as const) {
+        const answer = await put(d, folder, `${folder}-${note}-3.json`, {
+          token,
+          body: JSON.stringify({ ...base, note, seq: 3 }),
+        })
+        expect([folder, note, await json(answer)]).toEqual([
+          folder,
+          note,
+          { error: "the name does not fit this folder" },
+        ])
+      }
+    }
+    for (const [folder, base, token] of [
+      ["pickup", READY, HOME],
+      ["picked", FILED, ROUTINE],
+    ] as const) {
+      for (const name of [
+        `${folder}-${base.note}.json`,
+        `${folder}-${base.note}-0.json`,
+        `${folder}-${base.note}-03.json`,
+        `${folder}-${base.note}-3.txt`,
+      ]) {
+        const answer = await put(d, folder, name, {
+          token,
+          body: JSON.stringify(base),
+        })
+        expect([name, await json(answer)]).toEqual([
+          name,
+          { error: "the name does not fit this folder" },
+        ])
+      }
+    }
   })
 
   it("takes only a pickup's own shape, and no comment", async () => {
@@ -2213,15 +2267,6 @@ describe("a take ready for pickup, and the routine's answer (CONVEYOR3)", () => 
       expect([body, answer.status]).toEqual([body, 422])
       expect(await json(answer)).toEqual({ error: why })
     }
-    for (const name of [
-      `pickup-${READY.note}.json`,
-      `pickup-${READY.note}-0.json`,
-      `pickup-${READY.note}-03.json`,
-      `pickup-${"a".repeat(65)}-3.json`,
-      `picked-${READY.note}-3.json`,
-    ]) {
-      expect((await asHome(d, name)).status).toBe(422)
-    }
   })
 
   it("takes only an answer's own shape", async () => {
@@ -2230,6 +2275,12 @@ describe("a take ready for pickup, and the routine's answer (CONVEYOR3)", () => 
       [
         { ...FILED, labels: ["ep04"] },
         "labels is not part of a take picked up",
+      ],
+      [{ ...FILED, note: "a/b" }, "note must be the take's id"],
+      [{ ...FILED, seq: 0 }, "seq must be the ready-for-pickup move's number"],
+      [
+        { ...FILED, note: "another-take" },
+        "the name must carry the take's id and the move's number",
       ],
       [
         { ...FILED, seq: 4 },
@@ -2815,8 +2866,9 @@ describe("the bell (MBP1: MB2, MB6)", () => {
     expect(reported).toHaveLength(1)
   })
 
-  it("rings for exactly paulgsc/server's pass::READS, which lives in the other repo", () => {
-    // `picked` until home's half of CONVEYOR3 lands there (paulgsc/some-ui#2875).
+  it("rings for exactly what home reads: paulgsc/server's pass::READS, which lives in the other repo", () => {
+    // `picked` is ahead of pass::READS until home's half of CONVEYOR3 adds it
+    // there (paulgsc/some-ui#2875); until then a `picked` ring runs a plain pass.
     expect(RINGS).toEqual([
       "brief",
       "scene",
