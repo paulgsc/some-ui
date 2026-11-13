@@ -3,7 +3,7 @@ import { z } from "zod"
 import { MIN_PHRASE_WORDS, READ_PAUSE_MS, REPEAT_WINDOW } from "./thresholds"
 import { Count, gapsBetween, longest, Ms, perMinute, Rate, wpm } from "./timing"
 import {
-  asFillers,
+  fillerCount,
   FILLERS,
   HeardWordsSchema,
   normalised,
@@ -45,8 +45,8 @@ export const ReadFaultsSchema = z.object({
    * as another word, and words the reader added. An added word is `repeated`
    * when it says again, within `REPEAT_WINDOW` words, a word that reads the
    * script or an earlier added word (so of two copies the second repeats),
-   * and `inserted` otherwise; an added filler is inserted, and also counted
-   * apart.
+   * and `inserted` otherwise. An added filler is inserted and also counted
+   * in `fillers`, once per heard word ("Mm-hmm" is one).
    */
   misread: z.object({
     skipped: Count,
@@ -97,7 +97,7 @@ function scriptTokens(script: string): Array<ScriptToken> {
   const words = tokens(script)
   const between = normalised(script).split(/[\p{L}\p{N}]+/u)
   // `between[k + 1]` is the text after word `k`.
-  const marked = words.map((token, k) => {
+  return words.map((token, k) => {
     const after = between[k + 1] ?? ""
     const next = words[k + 1] ?? ""
     const inNumber =
@@ -105,25 +105,8 @@ function scriptTokens(script: string): Array<ScriptToken> {
     return {
       token,
       breakAfter: k === words.length - 1 || (!inNumber && BREAK.test(after)),
-      hyphened: after === "-",
     }
   })
-  // A hyphenated word made only of fillers ("Mm-hmm") is one, as it is heard.
-  const joined: Array<ScriptToken> = []
-  let group: Array<(typeof marked)[number]> = []
-  for (const word of marked) {
-    group.push(word)
-    if (word.hyphened && word !== marked.at(-1)) continue
-    const last = group.at(-1)
-    for (const token of asFillers(group.map((part) => part.token))) {
-      joined.push({ token, breakAfter: false })
-    }
-    const end = joined.at(-1)
-    if (end !== undefined && last !== undefined)
-      end.breakAfter = last.breakAfter
-    group = []
-  }
-  return joined
 }
 
 /** No alignment is this long, so a step that costs it is never taken. */
@@ -257,9 +240,8 @@ export function measureRead(take: ReadTake): ReadFaults {
     said,
     script.map((word) => word.token)
   )
-  const fillers = spoken.filter(
-    (word, k) => word.filler && at[k] === null
-  ).length
+  const addedFillers = spoken.filter((word, k) => word.filler && at[k] === null)
+  const fillers = fillerCount(addedFillers)
   const repeated = at.filter(
     (place, k) => place === null && isRepeat(said, at, k)
   ).length
@@ -290,7 +272,7 @@ export function measureRead(take: ReadTake): ReadFaults {
       skipped: steps.skip,
       substituted: steps.substitute,
       repeated,
-      inserted: steps.insert - repeated,
+      inserted: steps.insert - repeated - addedFillers.length + fillers,
       fillers,
     },
     pauses: {

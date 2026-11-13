@@ -59,11 +59,11 @@ describe("measureAnswer", () => {
     expect(faults.fillers.perMinute).toBe(160)
   })
 
-  it("counts a hyphenated word made only of fillers as one filler", () => {
+  it("counts at most one filler per heard word", () => {
     const faults = measure(said("Mm-hmm, uh-huh"))
     // "uh-huh" keeps "huh", a word, so its "uh" is a filler of its own.
     expect(faults.fillers.count).toBe(2)
-    expect(faults.words).toBe(3)
+    expect(faults.words).toBe(4)
   })
 
   it("counts a word that only contains a filler as no filler", () => {

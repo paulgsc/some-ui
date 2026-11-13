@@ -209,11 +209,31 @@ describe("measureRead", () => {
     expect(measure(said(script), script).pace.phrases).toBe(2)
   })
 
-  it("reads a hyphenated filler the script says as one read word", () => {
+  it("reads a hyphenated filler the script says, and counts an added one once", () => {
     const script = "Mm-hmm, that makes sense."
-    expect(measure(said(script), script)).toMatchObject({
-      script: { words: 4, breaks: 1 },
-      misread: { skipped: 0, inserted: 0, fillers: 0 },
+    expect(measure(said(script), script).misread).toMatchObject({
+      skipped: 0,
+      inserted: 0,
+      fillers: 0,
+    })
+    expect(
+      measure(said("mm-hmm that makes sense"), "Yes, that makes sense.").misread
+    ).toEqual({
+      skipped: 1,
+      substituted: 0,
+      repeated: 0,
+      inserted: 1,
+      fillers: 1,
+    })
+    expect(
+      measure(said("that mm-hmm mm-hmm makes sense"), "That makes sense.")
+        .misread
+    ).toEqual({
+      skipped: 0,
+      substituted: 0,
+      repeated: 0,
+      inserted: 2,
+      fillers: 2,
     })
   })
 

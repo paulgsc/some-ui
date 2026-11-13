@@ -78,13 +78,14 @@ export type SpokenToken = {
   endMs: number
   p: number | undefined
   filler: boolean
+  /** Which heard word it came from, in the order they were spoken. */
+  heard: number
 }
 
 /**
  * The heard words as comparable words, in the order they were spoken. A heard
  * word that is punctuation alone gives none; one with a hyphen gives one per
- * part, each with the whole word's timing, except that a word made only of
- * fillers ("Mm-hmm") is one filler (`asFillers`).
+ * part, each with the whole word's timing.
  */
 export function spokenTokens(
   words: ReadonlyArray<HeardWord>
@@ -92,20 +93,23 @@ export function spokenTokens(
   const ordered = words
     .map((word, index) => ({ word, index }))
     .sort((a, b) => a.word.startMs - b.word.startMs || a.index - b.index)
-  return ordered.flatMap(({ word }) =>
-    asFillers(tokens(word.text)).map((token) => ({
+  return ordered.flatMap(({ word }, heard) =>
+    tokens(word.text).map((token) => ({
+      heard,
       token,
       startMs: word.startMs,
       endMs: word.endMs,
       p: word.p,
-      filler: token.split("-").every((part) => FILLERS.has(part)),
+      filler: FILLERS.has(token),
     }))
   )
 }
 
-/** Joins the parts of one hyphenated word ("mm-hmm") when every part is a filler. */
-export function asFillers(parts: ReadonlyArray<string>): Array<string> {
-  return parts.length > 1 && parts.every((part) => FILLERS.has(part))
-    ? [parts.join("-")]
-    : [...parts]
+/**
+ * How many fillers these words hold, counted by heard word: a word whose parts
+ * are fillers ("Mm-hmm") is one, as it was said once.
+ */
+export function fillerCount(spoken: ReadonlyArray<SpokenToken>): number {
+  return new Set(spoken.filter((word) => word.filler).map((word) => word.heard))
+    .size
 }

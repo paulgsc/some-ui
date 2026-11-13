@@ -12,7 +12,12 @@ import {
   spokenMs,
   wpm,
 } from "./timing"
-import { HeardWordsSchema, spokenTokens, type HeardWord } from "./words"
+import {
+  fillerCount,
+  HeardWordsSchema,
+  spokenTokens,
+  type HeardWord,
+} from "./words"
 
 export const AnswerTakeSchema = z.object({
   words: HeardWordsSchema,
@@ -32,7 +37,10 @@ export type AnswerTake = {
 export const AnswerFaultsSchema = z.object({
   /** Every word heard, fillers included, as `spokenTokens` counts them. */
   words: Count,
-  /** Words from the closed list (`fillers.json`), and how many a minute. */
+  /**
+   * Words from the closed list (`fillers.json`), one per heard word ("Mm-hmm"
+   * is one), and how many a minute.
+   */
   fillers: z.object({ count: Count, perMinute: Rate.nullable() }),
   /**
    * Gaps between words at or over `ANSWER_PAUSE_MS`, and the longest gap
@@ -72,7 +80,7 @@ export function measureAnswer(input: AnswerTake): AnswerFaults {
   const spoken = spokenTokens(take.words)
   const spokenTime = spokenMs(spoken)
   const gaps = gapsBetween(spoken)
-  const fillers = spoken.filter((word) => word.filler).length
+  const fillers = fillerCount(spoken)
   const sure = spoken.filter((word) => word.p !== undefined)
   const mumbled = sure.filter((word) => (word.p ?? 1) < MUMBLE_P).length
   const first = spoken.at(0)
