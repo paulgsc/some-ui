@@ -43,11 +43,22 @@ export const ESSAY_WORDS = {
   into: "Into",
   ticketOf: (n: number, of: number): string => `Ticket ${n} of ${of}`,
   cell: {
-    unmet: "Not met that week",
+    unmet: "Not met yet",
+    unchecked: "Not checked that week",
     silent: "Not answered",
-    decayed: "Lower than before: decayed",
+    decayed: "Decayed: lower than before",
+    faded: "May have faded: unchecked past its recheck",
+    notKnown: "Met, not yet known",
   },
-  legendLevel: "1–5: shown, by SOLO level",
+  legendLevel: "1–5: SOLO level shown",
+  /** Under the chart: a decay, which an answer showed. */
+  noteDecayed: (name: string, week: string, below: string): string =>
+    `${name}: lower in week ${weekNumber(week)} than in week ${weekNumber(below)}. That's decay, not something new.`,
+  /** Under the chart: a fading, which is presumed, never seen. */
+  noteFaded: (name: string, since: string): string =>
+    `${name}: unchecked past its recheck from week ${weekNumber(since)}, so it may have faded. A guess, not an answer.`,
+  recheckSource: (name: string, source: string, weeks: string): string =>
+    `${name} (${source}) rechecks after ${weeks} weeks: longer once shown known, sooner once it slips`,
   role: "The role it fits",
   roleNext: (next: string, gap: string): string => `Next, ${next}: ${gap}`,
   roleSource: (ladder: string, source: string): string =>
