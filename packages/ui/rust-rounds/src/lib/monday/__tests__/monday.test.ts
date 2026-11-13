@@ -7,7 +7,6 @@ import {
   DIVE_WORDS_LEAST,
   DIVE_WORDS_MOST,
   finish,
-  ROLE_NOT_YET,
   seedLine,
 } from "@rust-rounds/lib/monday/finish"
 import {
@@ -44,7 +43,6 @@ const samplePrepared = (
     brief: SAMPLE_BRIEF,
     records: SAMPLE_RECORDS,
     transcripts: SAMPLE_TRANSCRIPTS,
-    due: null,
     ...overrides,
   })
 
@@ -81,7 +79,9 @@ describe("the Monday routine, on the sample week", () => {
     const silence = essay.value.tickets[2]?.answer
     expect(silence?.kind === "silence" && silence.opened).toBe(2)
     expect(essay.value.next.week).toBe("2026-w47")
-    expect(essay.value.weeks.role).toEqual(ROLE_NOT_YET)
+    // One week of answers: the role line waits for three (RR19, C269).
+    expect(essay.value.weeks.role.fits).toBe("Not worked out yet")
+    expect(essay.value.template.version).toBe(1)
     expect(essay.value.weeks.concepts.map((c) => c.cells)).toEqual([
       [4],
       [4],
@@ -108,6 +108,43 @@ describe("the Monday routine, on the sample week", () => {
     const take = essay.ok ? essay.value.tickets[0]?.answer : undefined
     expect(take?.kind === "take" && take.transcript).toMatch(
       /^Every field becomes its own String/
+    )
+  })
+})
+
+describe("the next Monday, after the sample run (RR19)", () => {
+  it("takes next week's topics first from what the decay record marks due", () => {
+    const { bundle, history } = samplePrepared()
+    const done = finish({ bundle, history, values: SAMPLE_VALUES, runs: RUNS })
+    if (!done.ok) throw new Error(done.problems.join("\n"))
+    // Week 47 has ended with no record from home yet, so its essay waits.
+    const after = samplePrepared({
+      now: new Date("2026-11-23T12:00:00Z"),
+      brief: [...SAMPLE_BRIEF, ...done.files],
+      records: [],
+    })
+    expect(after.bundle.waiting.map((w) => w.week)).toEqual(["2026-w47"])
+    expect(after.bundle.next?.id).toBe("2026-w48")
+    const w47 = done.files.find((f) => f.name === "rust-week-2026-w47.json")
+    const checked = readWeek(w47?.body)
+    if (!checked.ok) throw new Error("week 47 isn't readable")
+    const pending = new Set(
+      checked.week.tickets.flatMap((t) => t.concepts.map((c) => c.id))
+    )
+    // What week 47 asked waits for its own answer, so isn't due.
+    expect(after.bundle.due.map((d) => [d.id, d.why])).toEqual([
+      // Relational in week 46: box 2, so due again two weeks on.
+      ["allocation-on-the-hot-path", "faded"],
+      ["lifetime-elision", "faded"],
+      // Below relational, or silent: box 1, due the next week it can be.
+      ["borrows-into-a-reused-buffer", "not-yet-known"],
+      ["static-and-threads", "not-yet-known"],
+    ])
+    expect(after.bundle.due.some((d) => pending.has(d.id))).toBe(false)
+    const topics = after.bundle.next?.topics ?? []
+    const room = topics.length
+    expect(topics.map((t) => [t.id, t.why])).toEqual(
+      after.bundle.due.slice(0, room).map((d) => [d.id, "due"])
     )
   })
 })

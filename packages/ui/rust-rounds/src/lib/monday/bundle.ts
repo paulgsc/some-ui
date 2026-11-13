@@ -7,21 +7,19 @@
  * each can be written yet (home's record final, every take heard), what each
  * ticket's answer was (a take and what home heard in it, or the silence and
  * how often the ticket was opened), and next week's frame: its id, when it
- * opens and is due, and its seeds and topics (`chooseTopics`). The model then
+ * opens and is due, and its seeds and topics (`chooseTopics`), the decay
+ * record's concepts due first (RR19, `@rust-rounds/lib/decay`). The model then
  * writes only the values `values.ts` asks for; `finish.ts` builds and checks
  * the two files from the bundle and those values.
  */
+import type { DueConcept, Judged } from "@rust-rounds/lib/decay"
+import { dueAt, recordOf } from "@rust-rounds/lib/decay"
 import { REFERENCES } from "@rust-rounds/lib/formats/week"
 import type { Reference, Ticket, Week } from "@rust-rounds/lib/formats/week"
 import { heardByNote, readFinalRecord } from "@rust-rounds/lib/monday/record"
 import type { WeekRecord } from "@rust-rounds/lib/monday/record"
 import { chooseTopics } from "@rust-rounds/lib/monday/topics"
-import type {
-  DueConcept,
-  Seed,
-  Topic,
-  TopicChoice,
-} from "@rust-rounds/lib/monday/topics"
+import type { Seed, Topic, TopicChoice } from "@rust-rounds/lib/monday/topics"
 import { weekAround } from "@rust-rounds/lib/monday/when"
 import { isoWeekId, readWeek } from "@rust-rounds/lib/week-check"
 import { pacificDay } from "@some-ui/core-utils"
@@ -73,8 +71,8 @@ type NextFrame = {
 export type Bundle = {
   readonly schema: typeof BUNDLE_SCHEMA
   readonly now: string
-  /** The decay record's concepts due that chose the topics; null until RR19 exists. */
-  readonly due: ReadonlyArray<DueConcept> | null
+  /** The decay record's concepts due next week (RR19), which come first among its topics. */
+  readonly due: ReadonlyArray<DueConcept>
   readonly essays: ReadonlyArray<EndedWeek>
   /** Weeks owed an essay that can't be written this run, and why, in the owner's terms. */
   readonly waiting: ReadonlyArray<{
@@ -97,6 +95,29 @@ export type History = {
 }
 
 export type Prepared = { readonly bundle: Bundle; readonly history: History }
+
+/**
+ * The weeks the mailbox holds an essay for, as the decay record reads them:
+ * each ticket's concepts and its SOLO level, or null for a silence.
+ */
+export function judgedOf(history: History): Array<Judged> {
+  return history.weeks.flatMap((week) => {
+    const essay = history.essays.find((e) => e.week.id === week.id)
+    if (essay === undefined) return []
+    return [
+      {
+        week: week.id,
+        tickets: week.tickets.map((ticket) => {
+          const answer = essay.tickets.find((t) => t.id === ticket.id)?.answer
+          return {
+            concepts: ticket.concepts,
+            level: answer?.kind === "take" ? answer.solo.level : null,
+          }
+        }),
+      },
+    ]
+  })
+}
 
 function readBrief(brief: ReadonlyArray<MailboxFile>): {
   weeks: Array<Week>
@@ -171,7 +192,6 @@ export function prepare({
   brief,
   records,
   transcripts,
-  due,
 }: {
   readonly now: Date
   /** The mailbox's `brief` folder's weeks and essays. */
@@ -180,8 +200,6 @@ export function prepare({
   readonly records: ReadonlyArray<unknown>
   /** The mailbox's `transcript` folder's files. */
   readonly transcripts: ReadonlyArray<MailboxFile>
-  /** RR19's concepts due; null until the decay record exists. */
-  readonly due: ReadonlyArray<DueConcept> | null
 }): Prepared {
   const { weeks, essays, essayNames, unread } = readBrief(brief)
   const heard = heardByNote(transcripts)
@@ -234,6 +252,21 @@ export function prepare({
 
   const around = weekAround(now)
   const nextId = isoWeekId(around.monday)
+  const history: History = {
+    weeks,
+    essays: [...essays.values()].map(({ essay }) => essay),
+  }
+  // A concept a week that ended named, with no essay yet, was just checked:
+  // its answer is still to be read, so it isn't due.
+  const pending = new Set(
+    weeks
+      .filter((week) => Date.parse(week.due) < now.getTime())
+      .filter((week) => !essayNames.has(week.id))
+      .flatMap((week) =>
+        week.tickets.flatMap((t) => t.concepts.map((c) => c.id))
+      )
+  )
+  const due = dueAt(recordOf(judgedOf(history)), nextId, pending)
   let next: NextFrame | null = null
   if (!weeks.some((week) => week.id === nextId)) {
     const choice: TopicChoice = chooseTopics({ weeks, seeds, due })
@@ -256,6 +289,6 @@ export function prepare({
       next,
       unread,
     },
-    history: { weeks, essays: [...essays.values()].map(({ essay }) => essay) },
+    history,
   }
 }

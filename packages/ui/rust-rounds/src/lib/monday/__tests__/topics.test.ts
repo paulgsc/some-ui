@@ -32,7 +32,7 @@ describe("chooseTopics", () => {
     const { topics } = chooseTopics({
       weeks: [QUILLMOSS_WEEK],
       seeds: [],
-      due: null,
+      due: [],
     })
     expect(topics.map((t) => t.id)).toEqual([
       "moves-out-of-collections",
@@ -54,7 +54,7 @@ describe("chooseTopics", () => {
         .slice(3)
         .map((id, i) => touching(`2026-w${41 + i}`, id, id, id)),
     ]
-    const { topics } = chooseTopics({ weeks, seeds: [], due: null })
+    const { topics } = chooseTopics({ weeks, seeds: [], due: [] })
     expect(topics.map((t) => t.id)).toEqual(untouched.slice(0, 2))
   })
 
@@ -62,7 +62,14 @@ describe("chooseTopics", () => {
     const { topics } = chooseTopics({
       weeks: [],
       seeds: [],
-      due: [{ id: "send-and-sync", name: "Send and Sync" }],
+      due: [
+        {
+          id: "send-and-sync",
+          name: "Send and Sync",
+          why: "decayed",
+          last: "2026-w44",
+        },
+      ],
     })
     expect(topics.map((t) => [t.id, t.why, t.reference])).toEqual([
       ["send-and-sync", "due", "rustonomicon"],
@@ -77,7 +84,7 @@ describe("chooseTopics", () => {
       "2026-11-12T09:00:00-08:00",
       "2026-11-11T09:00:00Z",
     ].map(seed)
-    const choice = chooseTopics({ weeks: [], seeds, due: null })
+    const choice = chooseTopics({ weeks: [], seeds, due: [] })
     expect(choice.seeds.map((s) => s.at)).toEqual([
       "2026-11-10T09:00:00Z",
       "2026-11-11T09:00:00Z",
