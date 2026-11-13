@@ -34,10 +34,12 @@
  *   phone restored from home has lost its notes of where shares began
  *   (`carried`): a reshare it made after a missed run counts from the last
  *   share that had arrived, so what that run missed reads as missed, even
- *   once a run read the reshare, until it is filed once more.
+ *   once a run read the reshare, until it is filed once more. That needs
+ *   no tap: once home's digests are back, an exchange files it again
+ *   (`deliveryView`), with what the run read of the reshare (C144).
  * - Proof: `__tests__/journey.test.ts` derives each state of the union from
- *   a record built for it, and `components/__tests__/journey-status.test.tsx`
- *   renders every state.
+ *   a record built for it, and the restored phone's refiling;
+ *   `components/__tests__/journey-status.test.tsx` renders every state.
  */
 import { assertNever } from "@some-ui/core-utils"
 
