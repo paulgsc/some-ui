@@ -196,6 +196,7 @@ import { homeLink, paired, pairingOf } from "./index"
 import { lensEntriesHeld } from "./lens-record"
 import { notesHeld } from "./notes"
 import { askOnDrive } from "./on-drive"
+import { unanswered } from "./runtime"
 import { markSetAside } from "./set-aside"
 import { phoneVideos, sendVideos } from "./videos"
 import { askAudio } from "./voice-audio"
@@ -923,6 +924,8 @@ function copySoon(): void {
 
 /** Home's word on Drive could not be read or acted on, to the native log. */
 function unheard(error: unknown): void {
+  // Home's silence is the link's to tell, once a stretch away (AW1).
+  if (unanswered(error)) return
   reportFailure({
     port: "voice notes (which takes Drive has)",
     error: {
