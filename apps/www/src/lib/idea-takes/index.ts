@@ -36,7 +36,7 @@ export type { Take as IdeaTake } from "@/lib/takes-desk"
 
 /** A spoken answer runs up to a minute, as a Jobs note does. */
 const MAX_MS = 60_000
-const MAX = 40
+export const IDEA_TAKES_MAX = 40
 
 const desk = takesDesk({
   key: "some-ui:idea-takes",
@@ -44,7 +44,7 @@ const desk = takesDesk({
   // The kit's desk: no Let go.
   from: null,
   dbName: "some-ui.idea-takes",
-  limits: { max: MAX, maxMs: MAX_MS },
+  limits: { max: IDEA_TAKES_MAX, maxMs: MAX_MS },
 })
 
 /** A new idea's answers (ST26): each waits on the phone until it is sent. */
@@ -57,7 +57,7 @@ const bundleDesk = patternDesk({
   // its mark owed as a Studio note's (LA13).
   from: "studio",
   dbName: "some-ui.idea-bundle-takes",
-  limits: { max: MAX, maxMs: MAX_MS },
+  limits: { max: IDEA_TAKES_MAX, maxMs: MAX_MS },
   shape: { ...ONE_TAKE, send: "on-confirm" },
 })
 
@@ -75,7 +75,7 @@ const redoDesk = patternDesk({
   // sent, set aside only when a later take said again replaces it (LA13).
   from: "studio",
   dbName: "some-ui.idea-redo-takes",
-  limits: { max: MAX, maxMs: MAX_MS },
+  limits: { max: IDEA_TAKES_MAX, maxMs: MAX_MS },
   shape: { ...ONE_TAKE, send: "on-confirm" },
 })
 

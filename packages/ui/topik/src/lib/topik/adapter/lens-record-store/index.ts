@@ -196,6 +196,13 @@ function oldestHeld(stored: ReadonlyArray<unknown>): unknown {
   return oldest === null ? null : oldest.stored
 }
 
+/** How many entries the record keeps now, against `LENS_RECORD_MAX`. */
+export function lensRecordKept(
+  storage: KeyedStorage | null = localStorageOrNull()
+): number {
+  return readStored(storage).value.length
+}
+
 export function createLensRecordStore(
   storage: KeyedStorage | null = localStorageOrNull()
 ): LensRecordStore {

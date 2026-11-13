@@ -146,7 +146,7 @@ vi.mock("@/lib/home-link/let-go", () => ({
 }))
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 
-const { DeviceStoragePrompt, DeviceStorageSummary } = await import(
+const { DeviceStoragePrompt } = await import(
   "@/components/settings/device-storage"
 )
 const { screenRefreshers } = await import("@/lib/pull-refresh/refreshers")
@@ -363,7 +363,7 @@ describe("the phone-full offer", () => {
 
 describe("a pull (PULL4)", () => {
   it("reads the phone's room again while it shows, and not once it is gone", async () => {
-    const { unmount } = render(<DeviceStorageSummary />)
+    const { unmount } = render(withQueryClient(<DeviceStoragePrompt />))
     await expect(screenRefreshers.checkAll()).resolves.toEqual([])
     expect(storage.checked).toBe(1)
     unmount()
