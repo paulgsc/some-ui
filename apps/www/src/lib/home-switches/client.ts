@@ -1,8 +1,12 @@
 /**
- * The port to home's levers (paulgsc/server `routes::admin_settings`,
- * operator-only): read Rust Rounds recording as it stands, and set it.
+ * The port to home's switches (paulgsc/server `routes::admin_settings`,
+ * operator-only): read one switch as it stands, and set it.
  * `packages/contract-harness/contracts/admin-settings.contract.ts` pins the
  * same shapes against a running server.
+ *
+ * Each switch is one of home's settings, whose value is one yes-or-no field
+ * (`FIELD`): Rust Rounds' `{ recording }` and the game feed's
+ * `{ following }`. The model only ever sees it as on or off.
  *
  * Every failure is turned into a `Refusal` here (`refusalOf`), so the model
  * and the words never see a status code or an error class.
@@ -18,27 +22,30 @@ import {
   requestJSON,
 } from "@/lib/file-host-config/client"
 
-import type { Refusal, Standing } from "./model"
+import type { Refusal, Standing, SwitchKey } from "./model"
 
-const ROUTE = "/admin/settings/rust-rounds"
+/** The one field of each switch's value on home. */
+const FIELD: Readonly<Record<SwitchKey, string>> = {
+  "rust-rounds": "recording",
+  "game-feed": "following",
+}
 
-/** What home answers for a lever, as far as this page reads it. */
+/** What home answers for a switch, as far as this page reads it. */
 const StandingSchema = z.object({
-  value: z.object({ recording: z.boolean() }),
+  value: z.record(z.string(), z.unknown()),
   isDefault: z.boolean(),
   setBy: z.enum(["owner", "operator"]).nullable(),
   setAt: z.string().nullable(),
 })
 
-function standingOf(answer: unknown): Standing {
+function standingOf(field: string, answer: unknown): Standing {
   const read = StandingSchema.parse(answer)
+  // Another switch's value (a different field) fails here, not as "off".
+  const on = z.boolean().parse(read.value[field])
   if (read.isDefault || read.setBy === null || read.setAt === null) {
-    return { recording: read.value.recording, set: null }
+    return { on, set: null }
   }
-  return {
-    recording: read.value.recording,
-    set: { by: read.setBy, at: read.setAt },
-  }
+  return { on, set: { by: read.setBy, at: read.setAt } }
 }
 
 /** This build has no home to ask. */
@@ -63,10 +70,10 @@ export function refusalOf(error: unknown): Refusal {
 }
 
 export type SwitchesClient = {
-  /** Rust Rounds recording as home follows it now. */
+  /** The switch as home follows it now. */
   read: () => Promise<Standing>
   /** Sets it, answering with how it now stands. */
-  set: (recording: boolean) => Promise<Standing>
+  set: (on: boolean) => Promise<Standing>
 }
 
 /**
@@ -74,19 +81,23 @@ export type SwitchesClient = {
  * every caller in this app does (`lib/file-host-config`).
  */
 export function createSwitchesClient(
+  key: SwitchKey,
   transport: FileHostTransport | null = createFileHostTransport("account")
 ): SwitchesClient {
+  const route = `/admin/settings/${key}`
+  const field = FIELD[key]
   const request = async (init?: RequestInit): Promise<Standing> => {
     if (!transport) throw new NoHomeError()
     // A PUT of a whole value converges if repeated, so a timed-out one may
     // be asked again.
     return standingOf(
-      await requestJSON<unknown>(transport, ROUTE, init, { idempotent: true })
+      field,
+      await requestJSON<unknown>(transport, route, init, { idempotent: true })
     )
   }
   return {
     read: () => request(),
-    set: (recording) =>
-      request({ method: "PUT", body: JSON.stringify({ recording }) }),
+    set: (on) =>
+      request({ method: "PUT", body: JSON.stringify({ [field]: on }) }),
   }
 }
